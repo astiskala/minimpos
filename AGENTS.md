@@ -13,15 +13,19 @@ Android POS app that runs on Adyen Android payment terminals and takes payments 
   stores the last two length-prefixed; a catalogue alone is still written as v3, which has a per-product flags varint,
   bit 0 = pre-authorisation; v1/v2 still decode as sale products), refund QR payload (`MPR1*…`),
   Adyen currency table (`AdyenCurrencies`, Adyen's decimals win over ISO, e.g. ISK=2, IDR=0; search and device-country
-  default). Any of its 138 currencies can be configured; there is deliberately no country/region setting (blank currency
-  follows the device's country, else EUR).
+  default), `CurrencySpec.parseMinor` (typed amounts: `34`, `34,5`, `$34.50`; null with too many decimals),
+  `payment.PaymentMethods` (scheme names for Adyen brand codes, else the code upper-cased; `Wallet` from the
+  `_applepay`/`_googlepay`/`_samsungpay` suffix of a `paymentMethodVariant`). Any of its 138 currencies can be
+  configured; there is deliberately no country/region setting (blank currency follows the device's country, else EUR).
 - `:terminal-api` – built on the official `com.adyen:adyen-java-api-library`: nexo models, `TerminalLocalAPI`
   (encryption via `NexoCrypto`), `TerminalCommonNameValidator`, `SaleToAcquirerData`/`ApplicationInfo`. Our code:
   `TerminalTls` (trusts both bundled Adyen terminal fleet roots; the root a chain anchors to must match the leaf's
   `*.test|live.terminal.adyen.com` name, and that environment is reported via `onEnvironment` – there is no
   TEST/LIVE setting), `TerminalHttpClient` (OkHttp `ClientInterface`),
   `AdyenLocalTransport`, `TerminalClient` (payment/reversal/print/diagnosis/abort with transaction-status recovery),
-  `RetryAdvice` (Adyen's declined-payment tables), in-process `TerminalSimulator` (round-trips through the library's Gson).
+  `RetryAdvice` (Adyen's declined-payment tables), in-process `TerminalSimulator` (round-trips through the library's Gson;
+  its random card pool is plain Visa and Mastercard plus `visa_applepay` and `mc_googlepay`, sent as
+  `paymentMethodVariant`, which `TransactionDetails.paymentMethodVariant` carries).
   `PaymentParams.preAuthorisation` sends `SaleToAcquirerData.authorisationType=PreAuth` plus
   `additionalData.manualCapture=true` (Adyen's JSON form); the simulator labels those receipts, returns an
   `adjustAuthorisationData` blob for approved ones (as with "return adjust authorisation data") and answers a full
@@ -144,7 +148,7 @@ Android POS app that runs on Adyen Android payment terminals and takes payments 
   mode (clock 09:30, full Wi-Fi and battery, no notifications). Demo café data ("Harbour Coffee Co.", 1 Wharf Street
   Fremantle, ABN; GST 10% default and GST-free; AUD; 10 products in Coffee/Food/Retail, the beans GST-free with a
   barcode; plus "Catering deposit" $200.00 GST 10% in a Bookings category as a pre-authorisation product) is seeded
-  before the first launch: a Room DB built from `app/schemas/.../6.json` (Python sqlite3,
+  before the first launch: a Room DB built from `app/schemas/.../7.json` (Python sqlite3,
   `PRAGMA user_version`) and `files/datastore/settings.json` (also auto-lock 10 min, simulator delay 6 s so the
   "waiting" screen can be captured), piped in with `adb shell "cat … | run-as io.github.astiskala.minimpos sh -c 'cat >
   …'"` (debug builds only). The admin PIN (1357) is set in the app. Flows: sale of 2 flat whites, banana bread and
@@ -155,7 +159,11 @@ Android POS app that runs on Adyen Android payment terminals and takes payments 
   TOTAL and SIGNATURE lines in the expanded printer sheet, `tip.png` the Enter tip screen with Total $45.00 typed),
   confirmed so History shows Capture requested and Tips $7.00, then a pre-authorisation of the catering deposit
   (CUST-2077; `pre-auth.png` is the Pre-authorize screen before tapping it, `pre-auth-detail.png` its history detail
-  with Capture, Adjust amount and Cancel pre-authorisation), left open so Home shows the split tile. `transfer.png` and `export.png` are Products › More › Share with another terminal (after the PIN is set, so passwords and keys are offered) before and after Show QR codes, paused on a code. Switches have no
+  with Capture, Adjust amount and Cancel pre-authorisation), left open so Home shows the split tile. In the DB the
+  $11.50 sale is `visa_applepay` and the $29.50 one `mc_googlepay` (the others plain, matching `receipt.png`/
+  `approved.png`), so `history.png` shows "VISA Apple Pay" and "MC Google Pay"; `history-search.png` is History
+  searched for `CUST-1042` (typed with `adb shell input text`, keyboard closed with Back), showing that sale and its
+  refund. `transfer.png` and `export.png` are Products › More › Share with another terminal (after the PIN is set, so passwords and keys are offered) before and after Show QR codes, paused on a code. Switches have no
   text in the `uiautomator` dump: tap the n-th `checkable` node. Drive the UI by finding nodes by text in
   `uiautomator dump` (dialogs are separate windows; tap keypad keys by their labels, and press Back twice to close the
   printer sheet, as the first only collapses it). `social.png` (1200×630) is an HTML page (navy background with a
@@ -220,6 +228,18 @@ Android POS app that runs on Adyen Android payment terminals and takes payments 
   default is `PaymentSettings.preAuthTokenizeDefaultOn` (default on). History: `HistoryFilter.PRE_AUTHS`, day totals
   count open pre-auths as "Held" (not sales), cancellations are neither refunds nor shown with a minus.
   `statusTitle(sale)`/`statusKind(sale)` show "Pre-authorized" / "Cancellation requested" (`refundedMinor > 0`).
+- History search (user's design choices; `feature/history/HistorySearch`, pure, plain JUnit tests): one search field
+  plus a "Payment method" menu chip at the start of the filter chips, combined with the `HistoryFilter` (AND); day
+  totals cover only what is shown. Every whitespace-separated word must match (case-insensitive substring) the merchant
+  reference, PSP reference, auth code, customer/shopper reference, shopper email, the masked PAN's last 4 digits, brand
+  code or name, variant or wallet name, or be exactly the amount (`amountMinor`, or `totalMinor` before a tip) parsed
+  in the item's currency. Refunds/cancellations match their own references, `originalReference`/
+  `originalTransactionId` and amount, plus their local sale's texts (not its amount); the method menu matches them
+  through their sale (none without a local sale). `PaymentMethodFilter` is `Brand(code)` (wallets included) or
+  `InWallet(wallet)`; the menu lists brands in history by name, then wallets. The wallet comes from
+  `sales.paymentMethodVariant` (DB v7, auto-migration 6→7; older sales have none) and shows in History rows ("VISA
+  Apple Pay") and as a Wallet row on the payment result screen (deliberately not on the sale detail). When a narrowed
+  list is empty, History shows "No matching transactions" with "Show all" (`HistoryViewModel.showAll`).
 - Setting up another terminal (user's design choices; `data/transfer/SetupTransfer`, screens `feature/transfer`,
   routes `TransferExport`/`TransferImport` behind the PIN, from Products' menu and Settings › Data): one combined
   transfer with switches for catalogue, settings and secrets. Settings travel as lenient JSON without defaults
@@ -292,9 +312,11 @@ Android POS app that runs on Adyen Android payment terminals and takes payments 
   content for the keyboard (`contentWindowInsets` ∪ IME) and hides the bottom bar while typing. Prefer `Dimens`
   fields (`cardPadding`, `titleStyle`, `outcomeStyle`, `amountStyle`, …) over hard-coded paddings, heights and styles.
 - Shared UI (`ui/components`): `PrimaryButton` / `SecondaryButton` / `TertiaryButton` (text, same height as secondary)
-  for every action; `OutcomeHeader` + `OutcomeNote` top every result and detail screen; `ProcessingContent` while the
-  terminal works; `TransactionRow` for sales and refunds in lists; `QuantityStepper`; `Keypad` (amounts via
-  `NumericKeypad`, and the PIN pad); `ScanHint` over camera views (`ScannerView` is always dark). Result screens put
+  for every action; `rememberSearchControl` + `SearchToggle` (app-bar icon, tag `openSearch`) + `SearchField` (tag
+  `search`) for list searches (sale products, History): on request only on compact screens, closing clears it;
+  `OutcomeHeader` + `OutcomeNote` top every result and detail screen; `ProcessingContent` while the terminal works;
+  `TransactionRow` for sales and refunds in lists; `QuantityStepper`; `Keypad` (amounts via `NumericKeypad`, and the
+  PIN pad); `ScanHint` over camera views (`ScannerView` is always dark). Result screens put
   Home (`HomeButton`) beside their primary action.
 - Terminal: `container.gateway` (`TerminalGateway`) resolves where payments go and runs every Terminal API operation;
   missing setup is never thrown but reported in the outcome (`setupProblem` is the one readiness rule). It remembers

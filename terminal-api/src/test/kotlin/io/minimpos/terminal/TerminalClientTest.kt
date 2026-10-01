@@ -126,7 +126,8 @@ class TerminalClientTest {
                     ResultType.SUCCESS,
                     additional =
                         base64(
-                            """{"additionalData":{"pspReference":"PSP123","tokenization.storedPaymentMethodId":"TOKEN1",""" +
+                            """{"additionalData":{"pspReference":"PSP123","paymentMethodVariant":"mc_applepay",""" +
+                                """"tokenization.storedPaymentMethodId":"TOKEN1",""" +
                                 """"tokenization.shopperReference":"CUST-1","tokenization.store.operationType":"created"}}""",
                         ),
                 )
@@ -202,6 +203,7 @@ class TerminalClientTest {
             assertThat(details.amount).isEqualTo(BigDecimal("12.50"))
             assertThat(details.currency).isEqualTo("AUD")
             assertThat(details.paymentBrand).isEqualTo("mc")
+            assertThat(details.paymentMethodVariant).isEqualTo("mc_applepay")
             assertThat(details.maskedPan).isEqualTo("541333 **** 9999")
             assertThat(details.entryMode).isEqualTo("Contactless")
             assertThat(details.approvalCode).isEqualTo("123456")
@@ -244,6 +246,7 @@ class TerminalClientTest {
             assertThat(details.message).isEqualTo("Do Not Honor")
             assertThat(details.advice).isEqualTo(RetryAdvice.DIFFERENT_PAYMENT_METHOD)
             assertThat(details.paymentBrand).isEqualTo("visa")
+            assertThat(details.paymentMethodVariant).isNull()
             assertThat(details.approvalCode).isEqualTo("9")
             assertThat(details.tokenization!!.storedPaymentMethodId).isEqualTo("R1")
             assertThat(details.tokenization.cardAlias).isEqualTo("A1")

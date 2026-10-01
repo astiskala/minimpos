@@ -144,6 +144,7 @@ class SaleBook(
                     poiTimestamp = details.poiTimestamp,
                     pspReference = details.pspReference,
                     paymentBrand = details.paymentBrand,
+                    paymentMethodVariant = details.paymentMethodVariant,
                     maskedPan = details.maskedPan,
                     entryMode = details.entryMode,
                     authCode = details.approvalCode,

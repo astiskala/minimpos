@@ -4,6 +4,7 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.PaddingValues
@@ -20,13 +21,18 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ReceiptLong
 import androidx.compose.material.icons.automirrored.filled.Undo
+import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.LockOpen
 import androidx.compose.material.icons.filled.Payments
 import androidx.compose.material.icons.filled.Print
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.SearchOff
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -75,6 +81,9 @@ import io.minimpos.app.ui.components.MiniScaffold
 import io.minimpos.app.ui.components.OutcomeHeader
 import io.minimpos.app.ui.components.OutcomeNote
 import io.minimpos.app.ui.components.ReceiptPreview
+import io.minimpos.app.ui.components.SearchField
+import io.minimpos.app.ui.components.SearchMode
+import io.minimpos.app.ui.components.SearchToggle
 import io.minimpos.app.ui.components.SecondaryButton
 import io.minimpos.app.ui.components.StatusKind
 import io.minimpos.app.ui.components.TertiaryButton
@@ -82,12 +91,14 @@ import io.minimpos.app.ui.components.TextInputDialog
 import io.minimpos.app.ui.components.TransactionRow
 import io.minimpos.app.ui.components.currentLocale
 import io.minimpos.app.ui.components.rememberMoneyFormatter
+import io.minimpos.app.ui.components.rememberSearchControl
 import io.minimpos.app.ui.navigation.Navigator
 import io.minimpos.app.ui.navigation.Route
 import io.minimpos.app.ui.theme.LocalDimens
 import io.minimpos.app.ui.theme.LocalStatusColors
 import io.minimpos.core.money.CurrencySpec
 import io.minimpos.core.money.MoneyFormatter
+import io.minimpos.core.payment.PaymentMethods
 import io.minimpos.core.receipt.ReceiptCopy
 import io.minimpos.core.shopper.ShopperReferences
 import io.minimpos.terminal.client.RetryAdvice
@@ -99,10 +110,9 @@ import java.time.format.FormatStyle
 import java.util.Locale
 
 /**
- * Sales and refunds by day, newest first, with each day's totals and filters for sales, refunds and issues.
- * Tapping an entry opens its detail.
+ * Sales and refunds by day, newest first, with each day's totals, filters for sales, refunds and issues, a payment
+ * method menu and a search field (behind an app-bar icon on compact screens). Tapping an entry opens its detail.
  */
-@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun HistoryScreen(
     navigator: Navigator,
@@ -110,56 +120,102 @@ fun HistoryScreen(
     vm: HistoryViewModel = historyViewModel(),
 ) {
     val state by vm.state.collectAsStateWithLifecycle()
-    val timeFormat = remember { DateTimeFormatter.ofLocalizedTime(FormatStyle.SHORT) }
-    val dateFormat = remember { DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM) }
-
-    MiniScaffold(title = stringResource(R.string.history_title), onBack = navigator::back, modifier = modifier) { padding ->
+    val search = rememberSearchControl(available = state.hasHistory, onRequest = LocalDimens.current.compact, state.query, vm::setQuery)
+    MiniScaffold(
+        title = stringResource(R.string.history_title),
+        onBack = navigator::back,
+        modifier = modifier,
+        actions = { if (search.onRequest) SearchToggle(search.mode, stringResource(R.string.history_search), search.toggle) },
+    ) { padding ->
         Column(Modifier.fillMaxSize().padding(padding)) {
-            HistoryFilters(state.filter, vm::setFilter)
-            if (state.loaded && state.days.isEmpty()) {
-                EmptyState(
-                    Icons.AutoMirrored.Filled.ReceiptLong,
-                    stringResource(R.string.history_empty),
-                    stringResource(R.string.history_empty_hint),
+            if (search.mode != SearchMode.HIDDEN) {
+                SearchField(
+                    state.query,
+                    vm::setQuery,
+                    stringResource(R.string.history_search),
+                    focus = search.mode == SearchMode.REQUESTED,
+                    modifier = Modifier.fillMaxWidth().padding(start = 12.dp, end = 12.dp, top = 8.dp),
                 )
-                return@Column
             }
-            LazyColumn(Modifier.fillMaxSize().testTag("historyList")) {
-                state.days.forEach { day ->
-                    stickyHeader(key = day.date.toString()) {
-                        DayHeader(
-                            day,
-                            if (day.date == LocalDate.now()) {
-                                stringResource(R.string.history_today)
-                            } else {
-                                dateFormat.format(day.date)
-                            },
-                        )
-                    }
-                    items(day.items, key = { it.id }) { item ->
-                        HistoryRow(item, timeFormat) {
-                            when (item) {
-                                is HistoryItem.Sale -> navigator.push(Route.SaleDetail(item.sale.id))
-                                is HistoryItem.Refund -> navigator.push(Route.RefundDetail(item.refund.id))
-                            }
+            HistoryFilters(state.filter, vm::setFilter, state.methods, state.method, vm::setMethod)
+            when {
+                !state.loaded -> {}
+
+                state.days.isNotEmpty() -> {
+                    HistoryList(state.days) { item ->
+                        when (item) {
+                            is HistoryItem.Sale -> navigator.push(Route.SaleDetail(item.sale.id))
+                            is HistoryItem.Refund -> navigator.push(Route.RefundDetail(item.refund.id))
                         }
-                        HorizontalDivider()
                     }
+                }
+
+                state.hasHistory && state.narrowed -> {
+                    EmptyState(
+                        Icons.Default.SearchOff,
+                        stringResource(R.string.history_no_match),
+                        stringResource(R.string.history_no_match_hint),
+                    ) { SecondaryButton(stringResource(R.string.history_show_all), vm::showAll, modifier = Modifier.testTag("showAll")) }
+                }
+
+                else -> {
+                    EmptyState(
+                        Icons.AutoMirrored.Filled.ReceiptLong,
+                        stringResource(R.string.history_empty),
+                        stringResource(R.string.history_empty_hint),
+                    )
                 }
             }
         }
     }
 }
 
+/** The [days] of history under sticky day headers; tapping an entry calls [onOpen]. */
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+private fun HistoryList(
+    days: List<HistoryDay>,
+    onOpen: (HistoryItem) -> Unit,
+) {
+    val timeFormat = remember { DateTimeFormatter.ofLocalizedTime(FormatStyle.SHORT) }
+    val dateFormat = remember { DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM) }
+    LazyColumn(Modifier.fillMaxSize().testTag("historyList")) {
+        days.forEach { day ->
+            stickyHeader(key = day.date.toString()) {
+                DayHeader(
+                    day,
+                    if (day.date == LocalDate.now()) {
+                        stringResource(R.string.history_today)
+                    } else {
+                        dateFormat.format(day.date)
+                    },
+                )
+            }
+            items(day.items, key = { it.id }) { item ->
+                HistoryRow(item, timeFormat) { onOpen(item) }
+                HorizontalDivider()
+            }
+        }
+    }
+}
+
+/**
+ * The payment method menu (when history has [methods] to choose from), then a chip per [HistoryFilter], in one row
+ * that scrolls sideways.
+ */
 @Composable
 private fun HistoryFilters(
     selected: HistoryFilter,
     onSelect: (HistoryFilter) -> Unit,
+    methods: List<PaymentMethodFilter>,
+    method: PaymentMethodFilter?,
+    onMethod: (PaymentMethodFilter?) -> Unit,
 ) {
     LazyRow(
         contentPadding = PaddingValues(horizontal = 12.dp, vertical = if (LocalDimens.current.compact) 4.dp else 12.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
+        if (methods.isNotEmpty() || method != null) item(key = "method") { PaymentMethodChip(methods, method, onMethod) }
         items(HistoryFilter.entries) { filter ->
             FilterChip(
                 selected = selected == filter,
@@ -179,6 +235,40 @@ private fun HistoryFilters(
                     )
                 },
             )
+        }
+    }
+}
+
+/**
+ * A chip naming the chosen payment [method] (or "Payment method" for any) that opens a menu: any payment method, then
+ * the card brands and the wallets in [methods].
+ */
+@Composable
+private fun PaymentMethodChip(
+    methods: List<PaymentMethodFilter>,
+    method: PaymentMethodFilter?,
+    onMethod: (PaymentMethodFilter?) -> Unit,
+) {
+    var expanded by remember { mutableStateOf(false) }
+    val choose = { value: PaymentMethodFilter? ->
+        expanded = false
+        onMethod(value)
+    }
+    Box {
+        FilterChip(
+            selected = method != null,
+            onClick = { expanded = true },
+            label = { Text(method?.label ?: stringResource(R.string.history_method)) },
+            trailingIcon = { Icon(Icons.Default.ArrowDropDown, contentDescription = null) },
+            modifier = Modifier.testTag("paymentMethod"),
+        )
+        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+            DropdownMenuItem(text = { Text(stringResource(R.string.history_method_any)) }, onClick = { choose(null) })
+            val (brands, wallets) = methods.partition { it is PaymentMethodFilter.Brand }
+            listOf(brands, wallets).filter { it.isNotEmpty() }.forEach { group ->
+                HorizontalDivider()
+                group.forEach { DropdownMenuItem(text = { Text(it.label) }, onClick = { choose(it) }) }
+            }
         }
     }
 }
@@ -246,7 +336,7 @@ private fun historyRowText(
             val sale = item.sale
             HistoryRowText(
                 sale.merchantReference,
-                listOfNotNull(time, sale.paymentBrand?.uppercase(), sale.customerReference).joinToString(" · "),
+                listOfNotNull(time, paymentMethodText(sale), sale.customerReference).joinToString(" · "),
                 MoneyFormatter(CurrencySpec.of(sale.currency), locale).format(sale.amountMinor),
                 statusTitle(sale),
                 statusKind(sale),
@@ -266,6 +356,12 @@ private fun historyRowText(
             )
         }
     }
+
+/** The card brand code in upper case and the wallet, such as "VISA Apple Pay"; null when the terminal reported neither. */
+private fun paymentMethodText(sale: SaleEntity): String? =
+    listOfNotNull(sale.paymentBrand?.uppercase(), PaymentMethods.wallet(sale.paymentMethodVariant)?.displayName)
+        .joinToString(" ")
+        .ifBlank { null }
 
 /**
  * One sale from history: its items, payment details, refunds and receipt. It can be reprinted, emailed and

@@ -267,6 +267,11 @@ data class TransactionDetails(
     val currency: String?,
     /** The card scheme, e.g. `mc` or `visa`. */
     val paymentBrand: String?,
+    /**
+     * Adyen's `paymentMethodVariant` from the `AdditionalResponse`, e.g. `visa`, `mc_debit` or, for a card in a mobile
+     * wallet, `visa_applepay`, `mc_googlepay` or `amex_samsungpay`; null when the terminal did not send it.
+     */
+    val paymentMethodVariant: String? = null,
     /** The card number with most digits hidden, e.g. `541333 **** 9999`. */
     val maskedPan: String?,
     /** How the card was read: the nexo entry mode (e.g. `Contactless`) or Adyen's `posEntryMode` (e.g. `CLESS_CHIP`). */

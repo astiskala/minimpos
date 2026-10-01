@@ -71,6 +71,13 @@ class TerminalSimulatorTest {
     }
 
     @Test
+    fun `cards come plain or in a mobile wallet, named by the payment method variant`() {
+        val payments = (1..40).map { pay() }
+        assertThat(payments.map { it.paymentMethodVariant }.toSet()).containsExactly("mc", "visa", "visa_applepay", "mc_googlepay")
+        payments.forEach { assertThat(it.paymentMethodVariant).startsWith(it.paymentBrand!!) }
+    }
+
+    @Test
     fun `pre-authorisations are labelled on the receipt and reversing one cancels it`() {
         val preAuth = pay(tokenizing.copy(preAuthorisation = true))
         assertThat(preAuth.success).isTrue()

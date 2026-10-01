@@ -152,6 +152,7 @@
   <string name="detail_date">Date</string>
   <string name="detail_reference">Reference</string>
   <string name="detail_card">Card</string>
+  <string name="detail_wallet">Wallet</string>
   <string name="detail_entry">Entry</string>
   <string name="detail_auth">Auth code</string>
   <string name="detail_psp">PSP reference</string>
@@ -247,6 +248,12 @@
   <string name="history_cancellation">Cancellation</string>
   <string name="history_filter_awaiting_tip">Awaiting tip</string>
   <string name="history_day_tips">Tips %1$s</string>
+  <string name="history_search">Search transactions</string>
+  <string name="history_method">Payment method</string>
+  <string name="history_method_any">Any payment method</string>
+  <string name="history_no_match">No matching transactions</string>
+  <string name="history_no_match_hint">Try a reference, auth code, shopper, the card’s last 4 digits or an amount.</string>
+  <string name="history_show_all">Show all</string>
 
   <!-- Tips and captures -->
   <string name="tip_title">Enter tip</string>

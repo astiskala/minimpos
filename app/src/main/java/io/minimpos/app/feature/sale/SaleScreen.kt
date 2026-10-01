@@ -98,9 +98,14 @@ import io.minimpos.app.ui.components.MiniScaffold
 import io.minimpos.app.ui.components.NumericKeypad
 import io.minimpos.app.ui.components.PrimaryButton
 import io.minimpos.app.ui.components.QuantityStepper
+import io.minimpos.app.ui.components.SearchControl
+import io.minimpos.app.ui.components.SearchField
+import io.minimpos.app.ui.components.SearchMode
+import io.minimpos.app.ui.components.SearchToggle
 import io.minimpos.app.ui.components.SecondaryButton
 import io.minimpos.app.ui.components.currentLocale
 import io.minimpos.app.ui.components.rememberMoneyFormatter
+import io.minimpos.app.ui.components.rememberSearchControl
 import io.minimpos.app.ui.navigation.Navigator
 import io.minimpos.app.ui.navigation.Route
 import io.minimpos.app.ui.theme.LocalDimens
@@ -133,7 +138,7 @@ fun SaleScreen(
     val onChosen = { if (preAuthorisation && navigator.current == Route.PreAuth) navigator.push(checkout) }
     var overlay by rememberSaveable { mutableStateOf<SaleOverlay?>(null) }
     var customOffered by rememberSaveable { mutableStateOf(false) }
-    val search = rememberSearchControl(state.products.size, state.query, vm::setQuery)
+    val search = rememberProductSearch(state.products.size, state.query, vm::setQuery)
     val snackbar = remember { SnackbarHostState() }
     val addScannedSku = rememberSkuHandler(snackbar, vm::addBySku, onAdd = onChosen)
 
@@ -191,48 +196,19 @@ fun SaleScreen(
     )
 }
 
-/** What the sale screen shows over the products; only one at a time. */
-private enum class SaleOverlay { CART, CUSTOM_ITEM, SCANNER, CLEAR_CART }
-
-/** Whether the product search field is shown: not at all, always, or because it was just opened (and gets the focus). */
-private enum class ProductSearchMode { HIDDEN, SHOWN, REQUESTED }
-
 /**
- * The search field's [mode]; with [onRequest] it is only shown once asked for from the app bar, and [toggle] opens or
- * closes (and clears) it.
- */
-private class SearchControl(
-    val mode: ProductSearchMode,
-    val onRequest: Boolean,
-    val toggle: () -> Unit,
-)
-
-/**
- * Where the search field is shown for [productCount] products and the current [query]: always once there are enough
- * products to need it, but where height is short only once it is asked for, so it takes no room from the tiles.
+ * The product search for [productCount] products: shown once there are enough products to need it, but where height is
+ * short only once it is asked for, so it takes no room from the tiles.
  */
 @Composable
-private fun rememberSearchControl(
+private fun rememberProductSearch(
     productCount: Int,
     query: String,
     onQuery: (String) -> Unit,
-): SearchControl {
-    val many = productCount > SEARCH_THRESHOLD
-    val onRequest = LocalDimens.current.compact && many
-    var requested by rememberSaveable { mutableStateOf(false) }
-    val mode =
-        when {
-            query.isNotEmpty() -> ProductSearchMode.SHOWN
-            onRequest -> if (requested) ProductSearchMode.REQUESTED else ProductSearchMode.HIDDEN
-            many -> ProductSearchMode.SHOWN
-            else -> ProductSearchMode.HIDDEN
-        }
-    return SearchControl(mode, onRequest) {
-        // Closing the search also clears it, so every product shows again.
-        if (mode != ProductSearchMode.HIDDEN) onQuery("")
-        requested = mode == ProductSearchMode.HIDDEN
-    }
-}
+): SearchControl = rememberSearchControl(productCount > SEARCH_THRESHOLD, LocalDimens.current.compact, query, onQuery)
+
+/** What the sale screen shows over the products; only one at a time. */
+private enum class SaleOverlay { CART, CUSTOM_ITEM, SCANNER, CLEAR_CART }
 
 /** The open [overlay], if any. Each action that ends it also calls [onClose]. */
 @Composable
@@ -326,20 +302,12 @@ private fun rememberSkuHandler(
 private fun RowScope.SaleBarActions(
     canScan: Boolean,
     canClear: Boolean,
-    search: ProductSearchMode?,
+    search: SearchMode?,
     onScan: () -> Unit,
     onClear: () -> Unit,
     onSearch: () -> Unit,
 ) {
-    if (search != null) {
-        val open = search != ProductSearchMode.HIDDEN
-        IconButton(onClick = onSearch, modifier = Modifier.testTag("openSearch")) {
-            Icon(
-                if (open) Icons.Default.SearchOff else Icons.Default.Search,
-                contentDescription = stringResource(if (open) R.string.sale_search_close else R.string.sale_search),
-            )
-        }
-    }
+    if (search != null) SearchToggle(search, stringResource(R.string.sale_search), onSearch)
     if (canScan) {
         IconButton(onClick = onScan, modifier = Modifier.testTag("scanSku")) {
             Icon(Icons.Default.QrCodeScanner, contentDescription = stringResource(R.string.sale_scan_barcode))
@@ -360,7 +328,7 @@ private fun RowScope.SaleBarActions(
 private fun SaleLayout(
     state: SaleUiState,
     money: MoneyFormatter,
-    search: ProductSearchMode,
+    search: SearchMode,
     onQuery: (String) -> Unit,
     onCategory: (Long?) -> Unit,
     onAdd: (ProductEntity) -> Unit,
@@ -451,7 +419,7 @@ private fun saleViewModel(preAuthorisation: Boolean): SaleViewModel {
 private fun ProductBrowser(
     state: SaleUiState,
     money: MoneyFormatter,
-    search: ProductSearchMode,
+    search: SearchMode,
     onQuery: (String) -> Unit,
     onCategory: (Long?) -> Unit,
     onAdd: (ProductEntity) -> Unit,
@@ -462,11 +430,12 @@ private fun ProductBrowser(
     val gap = dimens.spacing
     val tileHeight = dimens.tileHeight
     Column(modifier) {
-        if (search != ProductSearchMode.HIDDEN) {
-            ProductSearch(
+        if (search != SearchMode.HIDDEN) {
+            SearchField(
                 state.query,
                 onQuery,
-                focus = search == ProductSearchMode.REQUESTED,
+                stringResource(R.string.sale_search),
+                focus = search == SearchMode.REQUESTED,
                 modifier = Modifier.fillMaxWidth().padding(start = gap, end = gap, top = gap),
             )
         }
@@ -497,37 +466,6 @@ private fun ProductBrowser(
             }
         }
     }
-}
-
-/** The search field; with [focus] it takes the focus (and so the keyboard) as it appears. */
-@Composable
-private fun ProductSearch(
-    query: String,
-    onQuery: (String) -> Unit,
-    focus: Boolean,
-    modifier: Modifier = Modifier,
-) {
-    val focusRequester = remember { FocusRequester() }
-    val keyboard = LocalSoftwareKeyboardController.current
-    LaunchedEffect(focus) { if (focus) focusRequester.requestFocus() }
-    OutlinedTextField(
-        value = query,
-        onValueChange = onQuery,
-        placeholder = { Text(stringResource(R.string.sale_search)) },
-        leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
-        trailingIcon = {
-            if (query.isNotEmpty()) {
-                IconButton(onClick = {
-                    onQuery("")
-                }) { Icon(Icons.Default.Clear, contentDescription = stringResource(R.string.action_clear)) }
-            }
-        },
-        singleLine = true,
-        // The list filters while typing, so the keyboard's search key only has to get out of the way.
-        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-        keyboardActions = KeyboardActions(onSearch = { keyboard?.hide() }),
-        modifier = modifier.focusRequester(focusRequester).testTag("search"),
-    )
 }
 
 /** "All" and a chip per category; [selected] is null for all products. */

@@ -13,6 +13,7 @@ import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -26,6 +27,7 @@ import io.minimpos.app.await
 import io.minimpos.app.awaitCondition
 import io.minimpos.app.data.db.ProductEntity
 import io.minimpos.app.data.db.RefundStatus
+import io.minimpos.app.data.db.SaleEntity
 import io.minimpos.app.data.db.SaleKind
 import io.minimpos.app.data.db.SaleStatus
 import io.minimpos.app.data.db.TaxRateEntity
@@ -310,6 +312,54 @@ class AppFlowTest {
         assertThat(refund.full).isTrue()
         compose.onNodeWithTag("refundDone").performClick()
         compose.waitForTag("newSale")
+    }
+
+    @Test
+    fun `searches the history and narrows it to a payment method`() {
+        await {
+            listOf(
+                Triple("REF-A", "visa" to "visa_applepay", "CUST-1042"),
+                Triple("REF-B", "mc" to "mc", null),
+            ).forEachIndexed { index, (reference, method, customer) ->
+                container.database.saleDao().insert(
+                    SaleEntity(
+                        id = reference,
+                        createdAt = System.currentTimeMillis() - index,
+                        currency = "AUD",
+                        taxMode = "INCLUSIVE",
+                        netMinor = 1000,
+                        taxMinor = 100,
+                        totalMinor = 1100L + index * 100,
+                        status = SaleStatus.APPROVED,
+                        merchantReference = reference,
+                        customerReference = customer,
+                        paymentBrand = method.first,
+                        paymentMethodVariant = method.second,
+                    ),
+                )
+            }
+        }
+        compose.waitForTag("history")
+        compose.onNodeWithTag("history").performClick()
+        waitForText("REF-B")
+        // The wallet shows beside the brand.
+        compose.onNodeWithText("VISA Apple Pay · CUST-1042", substring = true, useUnmergedTree = true).assertIsDisplayed()
+
+        // On a phone-sized screen the field is always there, without an app-bar icon.
+        compose.onNodeWithTag("openSearch").assertDoesNotExist()
+        compose.onNodeWithTag("search").assertIsDisplayed().performTextInput("12")
+        compose.awaitCondition("the search narrows the list") { compose.onAllNodesWithText("REF-A").fetchSemanticsNodes().isEmpty() }
+        compose.onNodeWithText("REF-B").assertIsDisplayed()
+        compose.onNodeWithTag("search").performTextReplacement("")
+
+        compose.onNodeWithTag("paymentMethod").performClick()
+        compose.onNodeWithText("Mastercard").assertIsDisplayed()
+        compose.onNodeWithText("Apple Pay").performClick()
+        compose.onNodeWithTag("paymentMethod").assertIsSelected().assertTextContains("Apple Pay")
+        compose.awaitCondition(
+            "the payment method narrows the list",
+        ) { compose.onAllNodesWithText("REF-B").fetchSemanticsNodes().isEmpty() }
+        compose.onNodeWithText("REF-A").assertIsDisplayed()
     }
 
     @Test

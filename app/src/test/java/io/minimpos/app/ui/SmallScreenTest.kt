@@ -1,6 +1,9 @@
 package io.minimpos.app.ui
 
+import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.ExperimentalTestApi
+import androidx.compose.ui.test.SemanticsMatcher
+import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.hasTestTag
@@ -12,6 +15,7 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performImeAction
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextInput
+import androidx.compose.ui.text.AnnotatedString
 import com.google.common.truth.Truth.assertThat
 import io.minimpos.app.FakeDevice
 import io.minimpos.app.FakeTerminal
@@ -21,6 +25,7 @@ import io.minimpos.app.await
 import io.minimpos.app.awaitCondition
 import io.minimpos.app.data.db.CaptureStatus
 import io.minimpos.app.data.db.ProductEntity
+import io.minimpos.app.data.db.SaleEntity
 import io.minimpos.app.data.db.SaleKind
 import io.minimpos.app.data.db.SaleStatus
 import io.minimpos.app.data.security.Secret
@@ -149,6 +154,48 @@ class SmallScreenTest {
         compose.onNodeWithTag("openSearch").performClick()
         compose.onNodeWithTag("search").assertDoesNotExist()
         compose.onNodeWithText("Product 1").assertIsDisplayed()
+    }
+
+    @Test
+    fun `the history search opens from the app bar and says when nothing matches`() {
+        configureKey()
+        await {
+            container.database.saleDao().insert(
+                SaleEntity(
+                    id = "s1",
+                    createdAt = System.currentTimeMillis(),
+                    currency = "AUD",
+                    taxMode = "INCLUSIVE",
+                    netMinor = 3091,
+                    taxMinor = 309,
+                    totalMinor = 3400,
+                    status = SaleStatus.APPROVED,
+                    merchantReference = "261001-072245-W2HT",
+                    authCode = "654321",
+                    paymentBrand = "visa",
+                ),
+            )
+        }
+        compose.setContent { MiniMposApp(container) }
+        compose.onNodeWithTag("history").performClick()
+        waitForText("W2HT")
+        compose.onNodeWithTag("search").assertDoesNotExist()
+        compose.onNodeWithTag("paymentMethod").assertIsDisplayed()
+
+        compose.onNodeWithTag("openSearch").performClick()
+        compose.onNodeWithTag("search").assertIsDisplayed().performTextInput("654321")
+        compose.onNodeWithText("261001-072245-W2HT").assertIsDisplayed()
+        compose.onNodeWithTag("search").performTextInput("9")
+        waitForText("No matching transactions")
+        compose.onNodeWithTag("showAll").assertIsDisplayed().performClick()
+        waitForText("W2HT")
+        // The field stays open, empty, for another search; the app-bar icon closes it.
+        compose
+            .onNodeWithTag("search")
+            .assertIsDisplayed()
+            .assert(SemanticsMatcher.expectValue(SemanticsProperties.EditableText, AnnotatedString("")))
+        compose.onNodeWithTag("openSearch").performClick()
+        compose.onNodeWithTag("search").assertDoesNotExist()
     }
 
     private fun saleFitsTheScreen() {

@@ -500,6 +500,7 @@ class TerminalClient(
                 amount = response.paymentResult?.amountsResp?.authorizedAmount,
                 currency = response.paymentResult?.amountsResp?.currency,
                 paymentBrand = card?.paymentBrand ?: additional["paymentMethod"],
+                paymentMethodVariant = additional["paymentMethodVariant"],
                 maskedPan = card?.maskedPAN,
                 entryMode = card?.entryMode?.firstOrNull()?.value() ?: additional["posEntryMode"],
                 approvalCode = response.paymentResult?.paymentAcquirerData?.approvalCode ?: additional["authCode"],

@@ -34,11 +34,24 @@ data class CurrencySpec(
      */
     fun toMinor(major: BigDecimal): Long = major.setScale(fractionDigits, RoundingMode.HALF_UP).unscaledValue().longValueExact()
 
+    /**
+     * Reads an amount typed in major units, such as `34`, `34.5`, `34,50` or `$34.50` (one leading currency symbol, a
+     * dot or comma before the decimals, no grouping separators), in minor units (3450 for AUD). Null when [text] is
+     * not such an amount, has more decimals than [fractionDigits] or does not fit in a [Long].
+     */
+    fun parseMinor(text: String): Long? {
+        val match = TYPED_AMOUNT.matchEntire(text.trim()) ?: return null
+        val (whole, decimals) = match.destructured
+        if (decimals.length > fractionDigits) return null
+        return runCatching { toMinor(BigDecimal(if (decimals.isEmpty()) whole else "$whole.$decimals")) }.getOrNull()
+    }
+
     /** Looking up currencies by code. */
     companion object {
         /** ISO 4217 codes have three letters. */
         const val CODE_LENGTH = 3
         private const val MAX_FRACTION_DIGITS = 4
+        private val TYPED_AMOUNT = Regex("""\p{Sc}?(\d+)(?:[.,](\d+))?""")
 
         /**
          * Resolves [code] (case and surrounding whitespace ignored) via Adyen's currency table.

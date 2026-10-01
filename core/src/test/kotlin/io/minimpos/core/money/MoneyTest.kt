@@ -64,6 +64,22 @@ class MoneyTest {
     }
 
     @Test
+    fun `reads typed amounts`() {
+        val aud = CurrencySpec("AUD", 2)
+        assertThat(aud.parseMinor("34")).isEqualTo(3400)
+        assertThat(aud.parseMinor(" 34.5 ")).isEqualTo(3450)
+        assertThat(aud.parseMinor("34,50")).isEqualTo(3450)
+        assertThat(aud.parseMinor("$34.50")).isEqualTo(3450)
+        assertThat(aud.parseMinor("€0.05")).isEqualTo(5)
+        listOf("34.505", "1,000.00", "C-1", "34.", ".5", "$", "", "abc", "99999999999999999999").forEach {
+            assertThat(aud.parseMinor(it)).isNull()
+        }
+        val jpy = CurrencySpec("JPY", 0)
+        assertThat(jpy.parseMinor("500")).isEqualTo(500)
+        assertThat(jpy.parseMinor("500.0")).isNull()
+    }
+
+    @Test
     fun `formats amounts for the locale`() {
         val formatter = MoneyFormatter(CurrencySpec("AUD", 2), Locale.forLanguageTag("en-AU"))
         assertThat(formatter.format(123_456)).isEqualTo("$1,234.56")

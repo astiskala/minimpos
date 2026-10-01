@@ -173,6 +173,23 @@ class DatabaseMigrationTest {
     }
 
     @Test
+    fun `version 6 sales have no payment method variant`() {
+        val name = "migration-v6.db"
+        createDatabase(name, 6) {
+            execSQL(
+                "INSERT INTO sales (id, createdAt, currency, taxMode, netMinor, taxMinor, totalMinor, status, merchantReference, " +
+                    "tokenizationRequested, signatureRequired, refundedMinor, kind, tipOnReceipt, paymentBrand) VALUES ('s1', 1, " +
+                    "'AUD', 'INCLUSIVE', 91, 9, 100, 'APPROVED', 'MP-1', 0, 0, 0, 'SALE', 0, 'visa')",
+            )
+        }
+        migrated(name) { db ->
+            val sale = db.saleDao().sale("s1")!!.sale
+            assertThat(sale.paymentBrand).isEqualTo("visa")
+            assertThat(sale.paymentMethodVariant).isNull()
+        }
+    }
+
+    @Test
     fun `version 3 untaxed products use an existing zero rate`() {
         val name = "migration-v3-existing.db"
         createDatabase(name, 3) {

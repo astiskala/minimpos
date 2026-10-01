@@ -252,6 +252,7 @@ class TerminalSimulator(
                 "pspReference" to payment.psp,
                 "merchantReference" to payment.merchantReference,
                 "paymentMethod" to payment.card.brand,
+                "paymentMethodVariant" to payment.card.variant,
                 "cardSummary" to payment.card.maskedPan.takeLast(4),
                 "posEntryMode" to "CLESS_CHIP",
             )
@@ -566,6 +567,7 @@ class TerminalSimulator(
 
     private data class SimulatedCard(
         val brand: String,
+        val variant: String,
         val label: String,
         val maskedPan: String,
         val aid: String,
@@ -600,8 +602,11 @@ class TerminalSimulator(
         private const val ALNUM = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"
         private val CARDS =
             listOf(
-                SimulatedCard("mc", "MasterCard", "541333 **** 9999", "A0000000041010", "M469509594859802"),
-                SimulatedCard("visa", "Visa", "411111 **** 1111", "A0000000031010", "K421000000000001"),
+                SimulatedCard("mc", "mc", "MasterCard", "541333 **** 9999", "A0000000041010", "M469509594859802"),
+                SimulatedCard("visa", "visa", "Visa", "411111 **** 1111", "A0000000031010", "K421000000000001"),
+                // Cards in a mobile wallet: the brand stays the scheme's, the variant names the wallet.
+                SimulatedCard("visa", "visa_applepay", "Visa", "476173 **** 0119", "A0000000031010", "K421000000000002"),
+                SimulatedCard("mc", "mc_googlepay", "MasterCard", "555555 **** 4444", "A0000000041010", "M469509594859803"),
             )
     }
 }

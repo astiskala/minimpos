@@ -37,6 +37,12 @@ tip, if you like), and refund a sale by scanning the QR code on its receipt.
   refund QR code. They can also be **emailed** over your own SMTP server.
 - **Referenced refunds**: scan the receipt's QR code, or start from history. Refund in full, by item, or an amount.
   Like payments, refunds are saved first, and one whose result is unknown can be checked again from history.
+- **History** by day with daily totals, filters (sales, awaiting tip, pre-auths, refunds, needs attention) and a
+  **search** that finds a transaction by its merchant reference, PSP reference or auth code, the shopper (customer
+  reference, shopper reference or email), the card's last 4 digits, its brand or wallet, or an amount (`34` or `34.50`).
+  Every word must match, so `visa 34` finds Visa payments of $34.00, and a refund also turns up when you search for its
+  sale's shopper or card. A **Payment method** menu narrows the list to one card brand or wallet (Apple Pay, Google
+  Pay, Samsung Pay), from the brands and wallets in history. Wallets are shown beside the card brand.
 - **Tipping on the receipt** for table service: switch on **Tip on the receipt** at checkout (offered while a printer
   is available) and the receipt prints with blank Tip and Total lines, plus a signature line on the merchant copy. The
   bill is pre-authorized; later, from the result screen or History (filter *Awaiting tip*), enter the tip or the total
@@ -77,8 +83,8 @@ tip, if you like), and refund a sale by scanning the QR code on its receipt.
 | History | Waiting for the card | Share with another terminal | Settings |
 | <img src="docs/images/pre-auth.png" width="190" alt="Pre-authorizing a catering deposit"> | <img src="docs/images/pre-auth-detail.png" width="190" alt="A pre-authorization in history, with Capture, Adjust amount and Cancel pre-authorization"> | <img src="docs/images/tip-receipt.png" width="190" alt="Printed merchant copy with blank tip, total and signature lines"> | <img src="docs/images/tip.png" width="190" alt="Entering the tip written on the receipt"> |
 | Pre-authorize | Pre-authorization in history | Receipt with tip lines | Enter tip |
-| | | | <img src="docs/images/transfer.png" width="190" alt="Choosing the catalog, settings and passwords to share with another terminal"> |
-| | | | Choose what to share |
+| <img src="docs/images/history-search.png" width="190" alt="Searching history for a customer reference, with the sale and its refund found"> | | | <img src="docs/images/transfer.png" width="190" alt="Choosing the catalog, settings and passwords to share with another terminal"> |
+| Searching history | | | Choose what to share |
 
 Screenshots show a demo café running on the built-in simulator (hence the "SIMULATOR" banner).
 
@@ -185,6 +191,10 @@ only asks for the internet, network state and camera permissions, and the build 
 - Without a Checkout API key, captures are only recorded in the app: capture the amount shown in the Customer Area
   (Payments › Payment list). Holds expire, so capture tips and pre-authorizations promptly. Canceling one from history
   is a full reversal: Adyen refunds it in full if it was already captured.
+- History's wallet (Apple Pay, Google Pay, Samsung Pay) comes from the `paymentMethodVariant` the terminal returns,
+  such as `visa_applepay`. Sales taken with earlier versions of the app did not store it, so they are found by their
+  card brand only. Search and filters only cover transactions still on the terminal (Settings › Data › Keep
+  transactions for).
 - Transfer codes that include settings or secrets use format version 4, which older versions of the app cannot read;
   a catalog alone is still sent as version 3. Codes from older versions still import, so update all terminals
   together.

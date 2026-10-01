@@ -81,6 +81,7 @@ import io.minimpos.app.ui.navigation.Route
 import io.minimpos.app.ui.theme.LocalDimens
 import io.minimpos.core.money.CurrencySpec
 import io.minimpos.core.money.MoneyFormatter
+import io.minimpos.core.payment.PaymentMethods
 import io.minimpos.core.receipt.ReceiptDocument
 import io.minimpos.core.shopper.ShopperReferences
 import io.minimpos.terminal.client.RetryAdvice
@@ -516,7 +517,10 @@ private fun ColumnScope.UnapprovedSaleActions(
     )
 }
 
-/** The reference, card and PSP reference, and whether the card was saved when that was asked for. */
+/**
+ * The reference, card (and the wallet it was in), PSP reference, and whether the card was saved when that was asked
+ * for.
+ */
 @Composable
 private fun SalePaymentCard(sale: SaleEntity) {
     Card {
@@ -527,6 +531,7 @@ private fun SalePaymentCard(sale: SaleEntity) {
                 null
             },
         )
+        LabeledValue(stringResource(R.string.detail_wallet), PaymentMethods.wallet(sale.paymentMethodVariant)?.displayName)
         LabeledValue(stringResource(R.string.detail_psp), sale.pspReference)
         if (sale.tokenizationRequested) {
             LabeledValue(

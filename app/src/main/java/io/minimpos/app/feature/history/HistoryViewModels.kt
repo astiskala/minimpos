@@ -105,36 +105,84 @@ enum class HistoryFilter {
  * @property loaded False until history has been read.
  * @property filter The selected filter.
  * @property days The matching transactions grouped by day, newest day first.
+ * @property query The search field's text; see [HistorySearch] for what it matches.
+ * @property method The payment method chosen, or null for any.
+ * @property methods The payment methods to choose from: those of the sales in history.
+ * @property hasHistory Whether history holds any transaction at all, matching or not.
  */
 data class HistoryUiState(
     val loaded: Boolean = false,
     val filter: HistoryFilter = HistoryFilter.ALL,
     val days: List<HistoryDay> = emptyList(),
-)
+    val query: String = "",
+    val method: PaymentMethodFilter? = null,
+    val methods: List<PaymentMethodFilter> = emptyList(),
+    val hasHistory: Boolean = false,
+) {
+    /** Whether the filter, the search or the payment method leaves transactions out. */
+    val narrowed: Boolean get() = filter != HistoryFilter.ALL || HistorySearch(query, method).isActive
+}
 
-/** The history list: sales and refunds by day, with daily totals. */
+/** The history list: sales and refunds by day, with daily totals, filtered and searched. */
 class HistoryViewModel(
     history: HistoryRepository,
     /** The time zone days are counted in; read for each update, so it follows the device's setting. */
     private val zone: () -> ZoneId = { ZoneId.systemDefault() },
 ) : ViewModel() {
     private val filter = MutableStateFlow(HistoryFilter.ALL)
+    private val query = MutableStateFlow("")
+    private val method = MutableStateFlow<PaymentMethodFilter?>(null)
 
-    /** The list state, updated whenever history or the filter changes. */
+    /** The list state, updated whenever history, the filter, the search or the payment method changes. */
     val state: StateFlow<HistoryUiState> =
-        combine(history.items(), filter) { items, selected ->
+        combine(history.items(), filter, query, method) { items, selected, text, chosen ->
+            val sales = items.filterIsInstance<HistoryItem.Sale>().associate { it.id to it.sale }
             val preAuths =
-                items
-                    .filterIsInstance<HistoryItem.Sale>()
-                    .filter { it.sale.kind == SaleKind.PRE_AUTHORISATION }
+                sales.values
+                    .filter { it.kind == SaleKind.PRE_AUTHORISATION }
                     .map { it.id }
                     .toSet()
-            HistoryUiState(loaded = true, filter = selected, days = group(items.filter { matches(it, selected, preAuths) }))
+            val search = HistorySearch(text, chosen)
+            val shown =
+                items.filter { item ->
+                    val sale =
+                        when (item) {
+                            is HistoryItem.Sale -> item.sale
+                            is HistoryItem.Refund -> item.refund.saleId?.let(sales::get)
+                        }
+                    matches(item, selected, preAuths) && search.matches(item, sale)
+                }
+            HistoryUiState(
+                loaded = true,
+                filter = selected,
+                days = group(shown),
+                query = text,
+                method = chosen,
+                methods = PaymentMethodFilter.available(sales.values.toList()),
+                hasHistory = items.isNotEmpty(),
+            )
         }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), HistoryUiState())
 
     /** Shows the transactions matching [value]. */
     fun setFilter(value: HistoryFilter) {
         filter.value = value
+    }
+
+    /** Shows the transactions matching every word of [value] ([HistorySearch]). */
+    fun setQuery(value: String) {
+        query.value = value
+    }
+
+    /** Shows only the transactions paid with [value]; null shows every payment method. */
+    fun setMethod(value: PaymentMethodFilter?) {
+        method.value = value
+    }
+
+    /** Shows every transaction again: no filter, search or payment method. */
+    fun showAll() {
+        filter.value = HistoryFilter.ALL
+        query.value = ""
+        method.value = null
     }
 
     /** Whether [item] shows with [filter]; [preAuths] are the IDs of the pre-authorisations, whose cancellations show with them. */

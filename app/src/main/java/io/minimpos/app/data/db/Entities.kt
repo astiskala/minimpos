@@ -239,6 +239,12 @@ data class SaleEntity(
      * display; null when it did. Added in database version 6.
      */
     val modificationMessage: String? = null,
+    /**
+     * Adyen's `paymentMethodVariant` as the terminal reported it, such as `visa` or `mc_applepay` for a card in a mobile
+     * wallet ([io.minimpos.core.payment.PaymentMethods.wallet] reads it); null when it sent none, and for sales from
+     * before database version 7.
+     */
+    val paymentMethodVariant: String? = null,
 ) {
     /** What the payment holds on the card: [authorisedMinor] after an adjustment, else [totalMinor]. */
     val heldMinor: Long get() = authorisedMinor ?: totalMinor

@@ -188,7 +188,11 @@ Android POS app that runs on Adyen Android payment terminals and takes payments 
   the background connection check. `TestEnvironment` is also a rule: compose tests declare it `@get:Rule(order = 0)`
   before the compose rule (`order = 1`), so the view models are gone before its database closes (otherwise a late
   catalogue query fails a random test with "attempt to re-open an already-closed object"). Tests must not depend on
-  the network or DNS (give `TerminalHttpClient` a `baseClient` with a fake `Dns` instead).
+  the network or DNS (give `TerminalHttpClient` a `baseClient` with a fake `Dns` instead). In compose tests, wait for
+  work a screen starts (saves resume on the main looper) with `compose.awaitCondition`, never `await` (it blocks the
+  main thread, which deadlocks on slow machines such as CI), and after a save wait for the editor to close rather
+  than for text the editor itself shows. Running a test class with all cores busy (e.g. a dozen `yes > /dev/null`)
+  reproduces CI-only timeouts.
 - Screen sizes: sizes come from `LocalDimens` (`ui/theme/Theme.kt`), chosen from the window less the system bars (the
   app is edge to edge): `Compact` below 360 dp wide or 520 dp tall (AMS1, P630), `Medium` below 640 dp (S1F2:
   360×568 dp), else `Regular` (S1E4/S1F4 Pro, phones). `compact` is true for Compact and Medium: it switches layouts

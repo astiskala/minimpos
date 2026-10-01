@@ -12,6 +12,7 @@ import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -33,6 +34,7 @@ import io.minimpos.app.data.settings.TerminalMode
 import io.minimpos.core.cart.AppliedTax
 import io.minimpos.terminal.simulator.SimulatedOutcome
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.runBlocking
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
@@ -64,6 +66,13 @@ class AppFlowTest {
     private fun SemanticsNodeInteractionsProvider.waitForTag(tag: String) = compose.waitUntilAtLeastOneExists(hasTestTag(tag), 15_000)
 
     private fun waitForText(text: String) = compose.waitUntilAtLeastOneExists(hasText(text), 15_000)
+
+    /**
+     * Waits until the product editor has saved and closed. Its own fields show the product's name and tax rate, so
+     * waiting for that text alone could press Back before the save finishes (and cancel it).
+     */
+    private fun awaitEditorClosed() =
+        compose.awaitCondition("the product editor closes") { compose.onAllNodesWithTag("productName").fetchSemanticsNodes().isEmpty() }
 
     /** There are no products in these tests, so a new sale opens the custom item keypad straight away. */
     private fun ringUpCustomAmount(vararg digits: Int) {
@@ -125,6 +134,7 @@ class AppFlowTest {
         compose.onNodeWithTag("productName").performTextInput("Flat white")
         compose.onNodeWithTag("productPrice").performTextInput("4.50")
         compose.onNodeWithTag("saveProduct").performClick()
+        awaitEditorClosed()
         waitForText("Flat white")
         compose.onNodeWithTag("back").performClick()
 
@@ -183,6 +193,7 @@ class AppFlowTest {
         compose.onNodeWithText("GST-free 0%").performClick()
         compose.onNodeWithTag("taxRatePicker").assertTextContains("GST-free 0%")
         compose.onNodeWithTag("saveProduct").performClick()
+        awaitEditorClosed()
         waitForText("GST-free 0%")
         assertThat(await { container.catalog.products.first { it.isNotEmpty() } }.single().taxRateId).isEqualTo(free.id)
         compose.onNodeWithTag("back").performClick()
@@ -239,7 +250,8 @@ class AppFlowTest {
             compose.onNodeWithTag("pin_OK").performClick()
         }
         compose.waitForTag("setPin")
-        await { container.pinManager.pinConfigured.first { it } }
+        // The PIN is saved by work that resumes on the main looper, so blocking the main thread (await) would starve it.
+        compose.awaitCondition("the PIN is saved") { runBlocking { container.pinManager.pinConfigured.first() } }
         compose.onNodeWithTag("back").performClick()
         compose.onNodeWithTag("back").performClick()
 

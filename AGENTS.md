@@ -301,12 +301,17 @@ Android POS app that runs on Adyen Android payment terminals and takes payments 
   the certificate's environment and, per POIID, whether the terminal has a printer. `container.terminalStatus`
   (`TerminalStatus`) publishes one `TerminalState` (mode, POIID, setup problem, connection, printer availability,
   environment) for Home, Settings and the receipt screens; `start()` runs a debounced diagnosis when terminal settings
-  or the passphrase change and persists a detected environment to `TerminalSettings.environment` (display only, e.g.
-  the TEST banner).
-- Home shows only the tiles, plus the setup/connection card when payments cannot work. By the maintainer's choice there
+  or the passphrase change and persists a detected environment to `TerminalSettings.environment` (shown in Settings ›
+  About, and it picks the Checkout API endpoint). `ModeBanner` appears only for the simulator: there is deliberately no
+  TEST banner, since Adyen's test terminals already show TEST in their own status bar.
+- Home shows the payment tile(s), Refund and History tiles, and Products/Settings as a slim row of grey outlined buttons
+  below them (admin areas, deliberately less prominent; a lock icon when a PIN is set), plus the setup/connection card
+  when payments cannot work. By the maintainer's choice there
   is no "settings not protected" warning and no terminal/printer status line: where payments go, the POIID,
   environment and printer are in Settings › About. The passphrase's Saved/Not saved yet status is its own line under
-  the field, at the screen's text edge with an icon (not the field's indented supporting text).
+  the field, at the screen's text edge with an icon (not the field's indented supporting text). Secret fields'
+  placeholders are kept short and to one line ("Type to replace"): a wrapping placeholder made the field grow when it
+  got the focus on the AMS1.
 - `SecretStore.set` runs the Keystore off the main thread and throws `SecretStoreException` when encryption fails;
   `SettingsViewModel` reports it (`secretError`) instead of crashing. A stored secret that no longer decrypts gives a
   distinct "could not be read" configuration error.

@@ -3,6 +3,7 @@ package io.minimpos.app.feature.home
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
@@ -26,8 +27,10 @@ import androidx.compose.material.icons.filled.LockClock
 import androidx.compose.material.icons.filled.PointOfSale
 import androidx.compose.material.icons.filled.QrCodeScanner
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -225,37 +228,38 @@ private fun PaymentTileText(
     }
 }
 
-/** Two rows of tiles for the other areas; the admin ones show a lock when [locked] (a PIN is set). */
+/**
+ * Tiles for the everyday areas, then the admin ones as a slim row of plain buttons, which show a lock when [locked]
+ * (a PIN is set).
+ */
 @Composable
 private fun ColumnScope.AreaTiles(
     locked: Boolean,
     onOpen: (Route) -> Unit,
 ) {
-    TileRow {
+    Row(Modifier.fillMaxWidth().weight(1f), horizontalArrangement = Arrangement.spacedBy(LocalDimens.current.spacing)) {
         HomeTile(
             Icons.Default.QrCodeScanner,
             stringResource(R.string.home_refund),
-            locked = false,
             onClick = { onOpen(Route.RefundScan) },
             modifier = Modifier.testTag("refund"),
         )
         HomeTile(
             Icons.AutoMirrored.Filled.ReceiptLong,
             stringResource(R.string.home_history),
-            locked = false,
             onClick = { onOpen(Route.History) },
             modifier = Modifier.testTag("history"),
         )
     }
-    TileRow {
-        HomeTile(
+    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(LocalDimens.current.spacing)) {
+        AdminButton(
             Icons.Default.Inventory2,
             stringResource(R.string.home_products),
             locked = locked,
             onClick = { onOpen(Route.Products) },
             modifier = Modifier.testTag("products"),
         )
-        HomeTile(
+        AdminButton(
             Icons.Default.Settings,
             stringResource(R.string.home_settings),
             locked = locked,
@@ -265,9 +269,30 @@ private fun ColumnScope.AreaTiles(
     }
 }
 
+/** A low-key outlined button in grey for an admin area, with a small lock after the [label] when [locked]. */
 @Composable
-private fun ColumnScope.TileRow(content: @Composable RowScope.() -> Unit) {
-    Row(Modifier.fillMaxWidth().weight(1f), horizontalArrangement = Arrangement.spacedBy(LocalDimens.current.spacing), content = content)
+private fun RowScope.AdminButton(
+    icon: ImageVector,
+    label: String,
+    locked: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    OutlinedButton(
+        onClick = onClick,
+        shape = MaterialTheme.shapes.medium,
+        colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.onSurfaceVariant),
+        contentPadding = PaddingValues(horizontal = 8.dp),
+        modifier = modifier.weight(1f).heightIn(min = LocalDimens.current.secondaryButtonHeight),
+    ) {
+        Icon(icon, contentDescription = null, modifier = Modifier.size(18.dp))
+        Spacer(Modifier.width(8.dp))
+        Text(label, style = MaterialTheme.typography.labelLarge, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        if (locked) {
+            Spacer(Modifier.width(6.dp))
+            Icon(Icons.Default.Lock, contentDescription = stringResource(R.string.locked), modifier = Modifier.size(14.dp))
+        }
+    }
 }
 
 /** Points to Terminal settings while payments cannot work yet: the shared key is missing, or the terminal did not answer. */
@@ -303,7 +328,6 @@ private fun SetupCard(
 private fun RowScope.HomeTile(
     icon: ImageVector,
     label: String,
-    locked: Boolean,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -315,22 +339,12 @@ private fun RowScope.HomeTile(
         modifier = modifier.weight(1f).fillMaxHeight(),
     ) {
         Column(Modifier.padding(dimens.cardPadding)) {
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                Icon(
-                    icon,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(if (dimens.compact) 24.dp else 32.dp),
-                )
-                if (locked) {
-                    Icon(
-                        Icons.Default.Lock,
-                        contentDescription = stringResource(R.string.locked),
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.size(18.dp),
-                    )
-                }
-            }
+            Icon(
+                icon,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(if (dimens.compact) 24.dp else 32.dp),
+            )
             Spacer(Modifier.height(4.dp).weight(1f))
             Text(label, style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }

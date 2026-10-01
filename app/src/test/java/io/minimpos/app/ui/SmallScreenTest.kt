@@ -25,6 +25,7 @@ import io.minimpos.app.data.db.SaleKind
 import io.minimpos.app.data.db.SaleStatus
 import io.minimpos.app.data.security.Secret
 import io.minimpos.app.data.settings.PrinterMode
+import io.minimpos.terminal.transport.TerminalEnvironment
 import kotlinx.coroutines.flow.first
 import org.junit.Before
 import org.junit.Rule
@@ -152,9 +153,13 @@ class SmallScreenTest {
 
     private fun saleFitsTheScreen() {
         configureKey()
+        env.updateSettings { it.copy(terminal = it.terminal.copy(environment = TerminalEnvironment.TEST)) }
+        await { container.terminalStatus.state.first { it.environment == TerminalEnvironment.TEST } }
         compose.setContent { MiniMposApp(container) }
         listOf("newSale", "refund", "history", "products", "settings").forEach { compose.onNodeWithTag(it).assertIsDisplayed() }
         compose.onNodeWithTag("terminalSetup").assertDoesNotExist()
+        // A test terminal already says TEST in its own status bar, so the app adds no banner.
+        compose.onNodeWithTag("modeBanner").assertDoesNotExist()
 
         compose.onNodeWithTag("newSale").performClick()
         waitForTag("addCustom")

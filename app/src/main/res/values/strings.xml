@@ -26,7 +26,6 @@
   <string name="action_send">Send</string>
 
   <string name="banner_simulator">SIMULATOR – no real payments</string>
-  <string name="banner_test">TEST environment</string>
   <string name="virtual_printer_title">Simulated printer</string>
 
   <!-- Home -->
@@ -430,8 +429,8 @@
   <string name="settings_secret_new">New value</string>
   <string name="settings_secret_saved">Saved</string>
   <string name="settings_secret_not_saved">Not saved yet</string>
-  <string name="settings_secret_replace">Type a new one to replace it</string>
-  <string name="settings_secret_enter">Exactly as in the Customer Area</string>
+  <string name="settings_secret_replace">Type to replace</string>
+  <string name="settings_secret_enter">As in the Customer Area</string>
   <string name="settings_secret_show">Show</string>
   <string name="settings_secret_hide">Hide</string>
   <string name="settings_secret_not_stored">This device could not store it securely (%1$s). Try again, or restart the terminal.</string>
@@ -442,6 +441,7 @@
   <string name="settings_mode_network">A terminal on your network</string>
   <string name="settings_mode_simulator">Simulator</string>
   <string name="settings_environment">Environment</string>
+  <string name="settings_env_test">TEST environment</string>
   <string name="settings_env_live">LIVE environment</string>
   <string name="settings_poiid">Terminal ID (POIID)</string>
   <string name="settings_poiid_hint" tools:ignore="TypographyDashes">e.g. S1F2-000158213605014</string>

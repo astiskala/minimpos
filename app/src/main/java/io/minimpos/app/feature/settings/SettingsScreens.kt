@@ -580,7 +580,7 @@ internal fun connectionTitle(connection: TerminalConnection): String =
 @ReadOnlyComposable
 private fun environmentLabel(environment: TerminalEnvironment?): String? =
     when (environment) {
-        TerminalEnvironment.TEST -> stringResource(R.string.banner_test)
+        TerminalEnvironment.TEST -> stringResource(R.string.settings_env_test)
         TerminalEnvironment.LIVE -> stringResource(R.string.settings_env_live)
         null -> null
     }

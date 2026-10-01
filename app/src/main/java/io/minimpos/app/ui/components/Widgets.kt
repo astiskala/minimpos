@@ -59,7 +59,6 @@ import io.minimpos.terminal.client.PrintAlign
 import io.minimpos.terminal.client.PrintJob
 import io.minimpos.terminal.client.PrintLine
 import io.minimpos.terminal.client.PrintStyle
-import io.minimpos.terminal.transport.TerminalEnvironment
 import java.util.Locale
 
 /** The process's [AppContainer], provided by `MiniMposApp`; screens use it to build their view models. */
@@ -85,21 +84,19 @@ fun rememberMoneyFormatter(currency: CurrencySpec): MoneyFormatter {
 fun rememberMoneyFormatter(currencyCode: String): MoneyFormatter =
     rememberMoneyFormatter(remember(currencyCode) { CurrencySpec.of(currencyCode) })
 
-/** Thin banner under the top bar when payments are simulated or go to the TEST environment. */
+/**
+ * Thin banner under the top bar when payments are simulated. There is none for the TEST environment: Adyen's test
+ * terminals already say TEST in their own status bar.
+ */
 @Composable
 fun ModeBanner(modifier: Modifier = Modifier) {
     val container = LocalAppContainer.current
     val terminal by container.terminalStatus.state.collectAsStateWithLifecycle()
+    if (terminal.mode != TerminalMode.SIMULATOR) return
     val colors = LocalStatusColors.current
-    val text =
-        when {
-            terminal.mode == TerminalMode.SIMULATOR -> stringResource(R.string.banner_simulator)
-            terminal.environment == TerminalEnvironment.TEST -> stringResource(R.string.banner_test)
-            else -> return
-        }
     val compact = LocalDimens.current.compact
     Text(
-        text = text,
+        text = stringResource(R.string.banner_simulator),
         color = colors.warning,
         style = if (compact) MaterialTheme.typography.labelSmall else MaterialTheme.typography.labelMedium,
         textAlign = TextAlign.Center,

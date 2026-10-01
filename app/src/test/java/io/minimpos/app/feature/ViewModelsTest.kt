@@ -52,6 +52,7 @@ import io.minimpos.terminal.simulator.TerminalSimulator
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.setMain
@@ -487,6 +488,28 @@ class ViewModelsTest {
     }
 
     @Test
+    fun `a second tap on Save while the product is being saved is ignored`() {
+        val (tax, _) = seedCatalogue()
+        val edit = ProductEditViewModel(null, null, container.catalog, container.settingsState, container::currency)
+        await { edit.state.first { it.loaded } }
+        edit.update { it.copy(name = "Scone", price = "4.50", taxRateId = tax.id) }
+        // Hold the save on a queue, so the second tap certainly comes while the first save is under way.
+        val queued = StandardTestDispatcher()
+        Dispatchers.setMain(queued)
+        var saved = false
+        edit.save { saved = true }
+        assertThat(edit.state.value.saving).isTrue()
+        edit.save { error("a second save must be ignored") }
+        Dispatchers.setMain(UnconfinedTestDispatcher())
+        queued.scheduler.advanceUntilIdle()
+
+        await { edit.state.first { !it.saving } }
+        assertThat(saved).isTrue()
+        val products = await { container.catalog.products.first { it.any { p -> p.name == "Scone" } } }
+        assertThat(products.count { it.name == "Scone" }).isEqualTo(1)
+    }
+
+    @Test
     fun `products view models manage the catalogue`() {
         env.useSimulator { it.copy(payment = it.payment.copy(currencyCode = "AUD")) }
         val (tax, _) = seedCatalogue()
@@ -509,13 +532,8 @@ class ViewModelsTest {
         assertThat(edit.state.value.priceMinor).isEqualTo(450)
         var saved = false
         edit.save { saved = true }
-        // A second tap while the first save is under way must not add the product twice.
-        assertThat(edit.state.value.saving).isTrue()
-        edit.save { error("a second save must be ignored") }
-        val products = await { container.catalog.products.first { it.any { p -> p.name == "Scone" } } }
-        assertThat(products.count { it.name == "Scone" }).isEqualTo(1)
+        await { container.catalog.products.first { it.any { p -> p.name == "Scone" } } }
         assertThat(saved).isTrue()
-        assertThat(edit.state.value.saving).isFalse()
 
         val scone = await { container.catalog.productBySku("NEW1")!! }
         assertThat(scone.taxRateId).isEqualTo(tax.id)

@@ -1,0 +1,103 @@
+name: Release
+
+# Run from the Actions tab (Release › Run workflow) on main. It raises the version in version.properties, runs the
+# quality gate, builds the APK signed with the upload key, then commits the new version, tags it and publishes a GitHub
+# Release with the APK.
+on:
+  workflow_dispatch:
+    inputs:
+      bump:
+        description: Part of the version to raise (the versionCode always goes up by one)
+        type: choice
+        options: [patch, minor, major]
+        default: patch
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    # The signing secrets live in this environment, which only main can use.
+    environment: release
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - uses: gradle/actions/setup-gradle@3f5f9adaf7d9fecd50b5935e54106014257a94e6 # v6.4.0
+
+      - name: Raise the version
+        id: version
+        env:
+          BUMP: ${{ inputs.bump }}
+        run: |
+          IFS=. read -r major minor patch <<< "$(sed -n 's/^versionName=//p' version.properties)"
+          code=$(( $(sed -n 's/^versionCode=//p' version.properties) + 1 ))
+          case "$BUMP" in
+            major) major=$((major + 1)); minor=0; patch=0 ;;
+            minor) minor=$((minor + 1)); patch=0 ;;
+            patch) patch=$((patch + 1)) ;;
+          esac
+          name="$major.$minor.$patch"
+          if [ -n "$(git ls-remote --tags origin "refs/tags/v$name")" ]; then
+            echo "::error::Tag v$name already exists"
+            exit 1
+          fi
+          sed -i -e "s/^versionName=.*/versionName=$name/" -e "s/^versionCode=.*/versionCode=$code/" version.properties
+          echo "name=$name" >> "$GITHUB_OUTPUT"
+          echo "Releasing $name (versionCode $code)" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Set up signing
+        env:
+          RELEASE_KEYSTORE: ${{ secrets.RELEASE_KEYSTORE }}
+          RELEASE_SIGNING_PROPERTIES: ${{ secrets.RELEASE_SIGNING_PROPERTIES }}
+        run: |
+          if [ -z "$RELEASE_KEYSTORE" ] || [ -z "$RELEASE_SIGNING_PROPERTIES" ]; then
+            echo "::error::The release environment needs the RELEASE_KEYSTORE and RELEASE_SIGNING_PROPERTIES secrets"
+            exit 1
+          fi
+          printf '%s' "$RELEASE_KEYSTORE" | base64 --decode > "$RUNNER_TEMP/release.jks"
+          printf 'storeFile=%s\n%s\n' "$RUNNER_TEMP/release.jks" "$RELEASE_SIGNING_PROPERTIES" > keystore.properties
+
+      - name: Quality gate and signed release build
+        run: ./gradlew qualityGate :app:assembleRelease
+
+      - name: Check the signature
+        run: |
+          apksigner=$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -n 1)/apksigner
+          "$apksigner" verify --print-certs app/build/outputs/apk/release/app-release.apk | grep -v '^WARNING'
+          cp app/build/outputs/apk/release/app-release.apk "$RUNNER_TEMP/minimpos-${{ steps.version.outputs.name }}.apk"
+
+      - name: Commit and tag the version
+        env:
+          VERSION: ${{ steps.version.outputs.name }}
+        run: |
+          git config user.name "Adam Stiskala"
+          git config user.email "github@adamstiskala.com"
+          git commit --quiet --message "Release $VERSION" version.properties
+          git tag --annotate "v$VERSION" --message "Mini mPOS $VERSION"
+          git push --atomic origin HEAD:main "refs/tags/v$VERSION"
+
+      - name: Publish the GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.version.outputs.name }}
+        run: |
+          gh release create "v$VERSION" "$RUNNER_TEMP/minimpos-$VERSION.apk" \
+            --verify-tag --title "Mini mPOS $VERSION" --generate-notes
+
+      - name: Remove the signing key
+        if: ${{ always() }}
+        run: rm -f "$RUNNER_TEMP/release.jks" keystore.properties

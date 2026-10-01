@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<lint>
+    <!-- Only Adyen's TEST-only TerminalLocalAPIUnencrypted trusts every certificate. Mini mPOS never uses it (payments go
+         through TerminalLocalAPI with TLS pinned to Adyen's terminal fleet roots) and R8 removes it from release builds.
+         The check still applies to all other code and dependencies. -->
+    <issue id="TrustAllX509TrustManager">
+        <ignore path="**/adyen-java-api-library-*.jar" />
+    </issue>
+
+    <!-- Xerces is only there for DatatypeFactory (nexo timestamps); its StAX schema and validation classes are never
+         loaded and R8 removes them. -->
+    <issue id="InvalidPackage">
+        <ignore path="**/xercesImpl-*.jar" />
+    </issue>
+
+    <!-- The Customer Area only renders PNG application icons (see VerifyTerminalManifestTask). -->
+    <issue id="ConvertToWebp">
+        <ignore path="**/mipmap-*/ic_launcher.png" />
+    </issue>
+
+    <!-- Off by default in lint: text that reads the same in English as a screen title, a button and a receipt label
+         often needs different translations, so each place keeps its own string. -->
+    <issue id="DuplicateStrings" severity="ignore" />
+</lint>

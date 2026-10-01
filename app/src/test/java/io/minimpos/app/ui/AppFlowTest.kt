@@ -1,0 +1,444 @@
+package io.minimpos.app.ui
+
+import androidx.compose.ui.test.ExperimentalTestApi
+import androidx.compose.ui.test.SemanticsNodeInteractionsProvider
+import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsNotEnabled
+import androidx.compose.ui.test.assertIsOff
+import androidx.compose.ui.test.assertIsOn
+import androidx.compose.ui.test.assertIsSelected
+import androidx.compose.ui.test.assertTextContains
+import androidx.compose.ui.test.assertTextEquals
+import androidx.compose.ui.test.hasTestTag
+import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.performTextInput
+import androidx.compose.ui.test.performTextReplacement
+import com.google.common.truth.Truth.assertThat
+import io.minimpos.app.MiniMposApp
+import io.minimpos.app.TestEnvironment
+import io.minimpos.app.await
+import io.minimpos.app.awaitCondition
+import io.minimpos.app.data.db.RefundStatus
+import io.minimpos.app.data.db.SaleStatus
+import io.minimpos.app.data.db.TaxRateEntity
+import io.minimpos.app.data.repo.HistoryItem
+import io.minimpos.app.data.settings.EmailCapture
+import io.minimpos.app.data.settings.ShopperReferenceSource
+import io.minimpos.app.data.settings.TerminalMode
+import io.minimpos.core.cart.AppliedTax
+import io.minimpos.terminal.simulator.SimulatedOutcome
+import kotlinx.coroutines.flow.first
+import org.junit.Before
+import org.junit.Rule
+import org.junit.Test
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
+import org.robolectric.annotation.Config
+
+@OptIn(ExperimentalTestApi::class)
+@RunWith(RobolectricTestRunner::class)
+@Config(qualifiers = "en-rAU-w411dp-h891dp-xhdpi")
+class AppFlowTest {
+    @get:Rule(order = 0)
+    val env = TestEnvironment()
+
+    @get:Rule(order = 1)
+    val compose = createComposeRule()
+
+    private val container = env.container
+
+    @Before
+    fun setUp() {
+        env.useSimulator {
+            it.copy(payment = it.payment.copy(currencyCode = "AUD"), receipt = it.receipt.copy(businessName = "Corner Cafe"))
+        }
+        await { container.catalog.seedDefaults("GST", "GST-free") }
+        compose.setContent { MiniMposApp(container) }
+    }
+
+    private fun SemanticsNodeInteractionsProvider.waitForTag(tag: String) = compose.waitUntilAtLeastOneExists(hasTestTag(tag), 15_000)
+
+    private fun waitForText(text: String) = compose.waitUntilAtLeastOneExists(hasText(text), 15_000)
+
+    /** There are no products in these tests, so a new sale opens the custom item keypad straight away. */
+    private fun ringUpCustomAmount(vararg digits: Int) {
+        compose.onNodeWithTag("newSale").performClick()
+        compose.waitForTag("addCustom")
+        digits.forEach { compose.onNodeWithTag("key_$it").performClick() }
+        compose.onNodeWithTag("addCustom").performClick()
+    }
+
+    @Test
+    fun `rings up a custom amount, pays, prints and starts a new sale`() {
+        compose.onNodeWithTag("modeBanner").assertIsDisplayed()
+        ringUpCustomAmount(1, 2, 5, 0)
+        compose.onNodeWithText("Charge $12.50").assertIsDisplayed()
+        compose.onNodeWithTag("charge").performClick()
+        compose.waitForTag("pay")
+        compose.onNodeWithTag("customerReference").performTextInput("CUST-42")
+        compose.onNodeWithTag("tokenize").performClick()
+        compose.onNodeWithTag("pay").performClick()
+
+        waitForText("Approved")
+        compose.onNodeWithText("$12.50").assertIsDisplayed()
+        compose.onNodeWithTag("print").performClick()
+        compose.waitForTag("virtualPrinter")
+        waitForText("Scan this code for returns")
+
+        val sale = await { container.history.items().first { it.isNotEmpty() } }.single()
+        val record = await { container.sales.get(sale.id)!! }
+        assertThat(record.sale.status).isEqualTo(SaleStatus.APPROVED)
+        assertThat(record.sale.storedPaymentMethodId).isNotNull()
+        assertThat(record.sale.customerReference).isEqualTo("CUST-42")
+        assertThat(container.saleSession.cart.value.lines).isEmpty()
+    }
+
+    @Test
+    fun `declined payments can be retried`() {
+        env.useSimulator { it.copy(simulator = it.simulator.copy(outcome = SimulatedOutcome.DECLINE)) }
+        ringUpCustomAmount(5, 0, 0)
+        compose.onNodeWithTag("charge").performClick()
+        compose.waitForTag("pay")
+        compose.onNodeWithTag("pay").performClick()
+        waitForText("Declined")
+        compose.onNodeWithText("Not enough balance").assertIsDisplayed()
+        compose.onNodeWithTag("retryAdvice").assertTextEquals("You can try again.")
+        compose.onNodeWithTag("abortBusy").assertDoesNotExist()
+        compose.onNodeWithTag("tryAgain").performClick()
+        compose.waitForTag("pay")
+        compose.onNodeWithTag("checkoutAmount").assertIsDisplayed()
+        assertThat(container.saleSession.cart.value.lines).hasSize(1)
+    }
+
+    @Test
+    fun `adds a product and sells it`() {
+        compose.onNodeWithTag("products").performClick()
+        compose.waitForTag("addFab")
+        compose.onNodeWithTag("addFab").performClick()
+        compose.waitForTag("productName")
+        compose.onNodeWithTag("saveProduct").assertIsNotEnabled()
+        compose.onNodeWithTag("productName").performTextInput("Flat white")
+        compose.onNodeWithTag("productPrice").performTextInput("4.50")
+        compose.onNodeWithTag("saveProduct").performClick()
+        waitForText("Flat white")
+        compose.onNodeWithTag("back").performClick()
+
+        compose.waitForTag("newSale")
+        compose.onNodeWithTag("newSale").performClick()
+        waitForText("Flat white")
+        // With products to choose from, the custom item keypad only opens on request.
+        compose.onNodeWithTag("addCustom").assertDoesNotExist()
+        compose.onNodeWithText("Flat white").performClick()
+        compose.onNodeWithText("Flat white").performClick()
+        compose.onNodeWithText("Charge $9.00").assertIsDisplayed()
+        compose.onNodeWithTag("cartButton").performClick()
+        compose.waitForTag("cartList")
+        compose.onNodeWithText("2 items").assertIsDisplayed()
+    }
+
+    @Test
+    fun `without products a new sale starts with the custom item keypad, once`() {
+        compose.onNodeWithTag("newSale").performClick()
+        compose.waitForTag("addCustom")
+        compose.onNodeWithText("Cancel").performClick()
+        waitForText("No products yet. Add them under Products, or use a custom item.")
+        compose.onNodeWithTag("addCustom").assertDoesNotExist()
+
+        compose.onNodeWithTag("customItem").performClick()
+        compose.waitForTag("addCustom")
+        listOf(3, 0, 0).forEach { compose.onNodeWithTag("key_$it").performClick() }
+        compose.onNodeWithTag("addCustom").performClick()
+        waitForText("Charge $3.00")
+        compose.onNodeWithText("Charge $3.00").performClick()
+        compose.waitForTag("checkoutAmount")
+        compose.onNodeWithTag("back").performClick()
+        // Back from checkout, the sale carries on without reopening the keypad.
+        waitForText("Charge $3.00")
+        compose.onNodeWithTag("addCustom").assertDoesNotExist()
+    }
+
+    @Test
+    fun `products and custom items are sold without tax with a zero rate`() {
+        val free =
+            await {
+                container.catalog.taxRates
+                    .first()
+                    .single { it.rateMilliPercent == 0 }
+            }
+        compose.onNodeWithTag("products").performClick()
+        compose.waitForTag("addFab")
+        compose.onNodeWithTag("addFab").performClick()
+        compose.waitForTag("productName")
+        // New products start with the default rate; there is no separate "tax applies" switch.
+        compose.onNodeWithTag("taxRatePicker").assertTextContains("GST 10%")
+        compose.onNodeWithText("Tax applies").assertDoesNotExist()
+        compose.onNodeWithTag("productName").performTextInput("Stamp")
+        compose.onNodeWithTag("productPrice").performTextInput("1.20")
+        compose.onNodeWithTag("taxRatePicker").performClick()
+        compose.onNodeWithText("GST-free 0%").performClick()
+        compose.onNodeWithTag("taxRatePicker").assertTextContains("GST-free 0%")
+        compose.onNodeWithTag("saveProduct").performClick()
+        waitForText("GST-free 0%")
+        assertThat(await { container.catalog.products.first { it.isNotEmpty() } }.single().taxRateId).isEqualTo(free.id)
+        compose.onNodeWithTag("back").performClick()
+
+        compose.waitForTag("newSale")
+        compose.onNodeWithTag("newSale").performClick()
+        waitForText("Stamp")
+        compose.onNodeWithText("Stamp").performClick()
+        compose.onNodeWithTag("customItem").performClick()
+        compose.waitForTag("addCustom")
+        compose.onNodeWithTag("taxRatePicker").performClick()
+        compose.onNodeWithText("GST-free 0%").performClick()
+        listOf(5, 0, 0).forEach { compose.onNodeWithTag("key_$it").performClick() }
+        compose.onNodeWithTag("addCustom").performClick()
+        waitForText("Charge $6.20")
+        assertThat(
+            container.saleSession.cart.value.lines.map {
+                it.tax
+            },
+        ).containsExactly(AppliedTax("GST-free", 0), AppliedTax("GST-free", 0))
+        compose.onNodeWithTag("back").performClick()
+
+        // With tax switched off, products and custom items no longer ask.
+        compose.waitForTag("settings")
+        compose.onNodeWithTag("settings").performClick()
+        compose.waitForTag("section_tax")
+        compose.onNodeWithTag("section_tax").performScrollTo().performClick()
+        compose.waitForTag("chargeTax")
+        compose.onNodeWithTag("chargeTax").performClick()
+        compose.awaitCondition("Switching tax off") { !container.settingsState.value.payment.chargeTax }
+        compose.onNodeWithTag("addTaxRate").assertDoesNotExist()
+        compose.onNodeWithTag("back").performClick()
+        waitForText("Off")
+        compose.onNodeWithTag("back").performClick()
+        compose.waitForTag("products")
+        compose.onNodeWithTag("products").performClick()
+        compose.waitForTag("addFab")
+        compose.onNodeWithText("GST-free 0%").assertDoesNotExist()
+        compose.onNodeWithTag("addFab").performClick()
+        compose.waitForTag("productName")
+        compose.onNodeWithTag("taxRatePicker").assertDoesNotExist()
+    }
+
+    @Test
+    fun `an admin PIN locks settings`() {
+        compose.onNodeWithTag("settings").performClick()
+        compose.waitForTag("section_security")
+        compose.onNodeWithTag("section_security").performClick()
+        compose.waitForTag("setPin")
+        compose.onNodeWithTag("setPin").performClick()
+        repeat(2) {
+            compose.waitForTag("pin_1")
+            listOf(1, 3, 5, 7).forEach { digit -> compose.onNodeWithTag("pin_$digit").performClick() }
+            compose.onNodeWithTag("pin_OK").performClick()
+        }
+        compose.waitForTag("setPin")
+        await { container.pinManager.pinConfigured.first { it } }
+        compose.onNodeWithTag("back").performClick()
+        compose.onNodeWithTag("back").performClick()
+
+        compose.waitForTag("settings")
+        compose.onNodeWithTag("settings").performClick()
+        compose.waitForTag("pin_1")
+        listOf(9, 9, 9, 9).forEach { compose.onNodeWithTag("pin_$it").performClick() }
+        compose.onNodeWithTag("pin_OK").performClick()
+        waitForText("Wrong PIN (attempts left: 4)")
+        listOf(1, 3, 5, 7).forEach { compose.onNodeWithTag("pin_$it").performClick() }
+        compose.onNodeWithTag("pin_OK").performClick()
+        compose.waitForTag("section_terminal")
+    }
+
+    @Test
+    fun `refunds a sale from the history`() {
+        ringUpCustomAmount(2, 0, 0)
+        compose.onNodeWithTag("charge").performClick()
+        compose.waitForTag("pay")
+        compose.onNodeWithTag("pay").performClick()
+        waitForText("Approved")
+        compose.onNodeWithTag("home").performClick()
+
+        compose.waitForTag("history")
+        compose.onNodeWithTag("history").performClick()
+        // The list is shown before the history has loaded, so wait for the sale itself.
+        waitForText("$2.00")
+        compose.onNodeWithText("$2.00", useUnmergedTree = true).performClick()
+        compose.waitForTag("detailRefund")
+        compose.onNodeWithTag("detailRefund").performClick()
+        compose.waitForTag("startRefund")
+        compose.onNodeWithTag("option_ITEMS").performClick()
+        compose.onNodeWithTag("startRefund").assertIsNotEnabled()
+        compose.onNodeWithTag("option_FULL").performClick()
+        compose.onNodeWithTag("startRefund").performClick()
+        compose.onNodeWithTag("confirm").performClick()
+        waitForText("Refund requested")
+
+        val refund =
+            await { container.history.items().first { items -> items.any { it is HistoryItem.Refund } } }
+                .filterIsInstance<HistoryItem.Refund>()
+                .single()
+                .refund
+        assertThat(refund.status).isEqualTo(RefundStatus.REQUESTED)
+        assertThat(refund.full).isTrue()
+        compose.onNodeWithTag("refundDone").performClick()
+        compose.waitForTag("newSale")
+    }
+
+    private fun awaitSetting(
+        description: String,
+        condition: () -> Boolean,
+    ) = compose.awaitCondition("Saving $description", condition)
+
+    @Test
+    fun `any Adyen currency can be chosen, or automatic`() {
+        compose.onNodeWithTag("settings").performClick()
+        compose.waitForTag("section_payments")
+        compose.onNodeWithTag("section_payments").performClick()
+        compose.waitForTag("currency")
+        compose.onNodeWithTag("currency").assertTextContains("AUD – Australian Dollar", substring = true)
+        compose.onNodeWithTag("currency").performClick()
+        compose.waitForTag("currencySearch")
+        compose.onNodeWithTag("currency_AUD").assertIsSelected()
+        compose.onNodeWithTag("currencySearch").performTextInput("real")
+        compose.waitForTag("currency_BRL")
+        compose.onNodeWithTag("currency_auto").assertDoesNotExist()
+        compose.onNodeWithTag("currency_BRL").performClick()
+        awaitSetting("BRL") { container.settingsState.value.payment.currencyCode == "BRL" }
+        compose.onNodeWithTag("currency").assertTextContains("BRL – Brazilian Real", substring = true)
+
+        compose.onNodeWithTag("currency").performClick()
+        compose.waitForTag("currencySearch")
+        compose.onNodeWithTag("currencySearch").performTextInput("no such money")
+        waitForText("No matching currency")
+        compose.onNodeWithTag("currencySearch").performTextReplacement("")
+        compose.waitForTag("currency_auto")
+        compose.onNodeWithTag("currency_auto").performScrollTo().performClick()
+        awaitSetting("Automatic") {
+            container.settingsState.value.payment.currencyCode
+                .isEmpty()
+        }
+        // The device is in Australia, so Automatic means AUD.
+        compose.onNodeWithTag("currency").assertTextContains("Automatic (AUD – Australian Dollar)", substring = true)
+        assertThat(container.currency().code).isEqualTo("AUD")
+    }
+
+    @Test
+    fun `home shows just the tiles, and About shows where payments go and the printer`() {
+        compose.onNodeWithText("Settings are not protected", substring = true).assertDoesNotExist()
+        compose.onNodeWithText("printer available", substring = true).assertDoesNotExist()
+        compose.onNodeWithTag("settings").performClick()
+        compose.waitForTag("section_about")
+        compose.onNodeWithTag("section_about").performScrollTo().performClick()
+        waitForText("Payments go to")
+        compose.onNodeWithText("Simulator").assertExists()
+        compose.onNodeWithText("Printer").assertExists()
+        compose.onNodeWithText("Available").assertExists()
+    }
+
+    @Test
+    fun `with the email as shopper reference checkout asks for the email and no customer reference`() {
+        env.updateSettings {
+            it.copy(
+                payment = it.payment.copy(shopperReferenceSource = ShopperReferenceSource.EMAIL, emailCapture = EmailCapture.AFTER_PAYMENT),
+            )
+        }
+        ringUpCustomAmount(5, 0, 0)
+        compose.onNodeWithTag("charge").performClick()
+        compose.waitForTag("pay")
+        compose.onNodeWithTag("email").assertExists()
+        compose.onNodeWithTag("customerReference").assertDoesNotExist()
+    }
+
+    @Test
+    fun `with the email as shopper reference it is always asked for before payment`() {
+        env.updateSettings {
+            it.copy(
+                payment = it.payment.copy(shopperReferenceSource = ShopperReferenceSource.EMAIL, emailCapture = EmailCapture.AFTER_PAYMENT),
+            )
+        }
+        compose.onNodeWithTag("settings").performClick()
+        compose.waitForTag("section_payments")
+        compose.onNodeWithTag("section_payments").performClick()
+        compose.waitForTag("emailCapture")
+        // There is no separate customer reference to ask for.
+        compose.onNodeWithTag("referenceSource").assertTextContains("No separate customer reference", substring = true)
+        compose.onNodeWithTag("emailCapture").performScrollTo().assertTextContains("Before and after payment", substring = true)
+        compose.onNodeWithTag("emailCapture").assertTextContains("the email is the shopper reference", substring = true)
+        compose.onNodeWithTag("emailCapture").performClick()
+        compose.waitForTag("emailCapture_BEFORE_PAYMENT")
+        compose.onNodeWithTag("emailCapture_OFF").assertDoesNotExist()
+        compose.onNodeWithTag("emailCapture_AFTER_PAYMENT").assertDoesNotExist()
+        compose.onNodeWithTag("emailCapture_BEFORE_PAYMENT").performClick()
+        awaitSetting("Before payment") { container.settingsState.value.payment.emailCapture == EmailCapture.BEFORE_PAYMENT }
+
+        // Back to the customer reference as shopper reference: checkout asks for it again.
+        compose.onNodeWithTag("referenceSource").performScrollTo().performClick()
+        compose.waitForTag("referenceSource_CUSTOMER_REFERENCE")
+        compose.onNodeWithTag("referenceSource_CUSTOMER_REFERENCE").performClick()
+        awaitSetting("Customer reference") {
+            container.settingsState.value.payment.shopperReferenceSource == ShopperReferenceSource.CUSTOMER_REFERENCE
+        }
+        compose.onNodeWithTag("referenceSource").assertTextContains("Checkout asks for a customer reference", substring = true)
+        compose.onNodeWithText("No separate customer reference", substring = true).assertDoesNotExist()
+    }
+
+    @Test
+    fun `settings screens edit values`() {
+        compose.onNodeWithTag("settings").performClick()
+        compose.waitForTag("section_receipts")
+        compose.onNodeWithTag("section_receipts").performClick()
+        compose.waitForTag("businessName")
+        compose.onNodeWithTag("businessName").performTextReplacement("Harbour Kiosk")
+        compose.awaitCondition("Saving the business name") { container.settingsState.value.receipt.businessName == "Harbour Kiosk" }
+        waitForText("Harbour Kiosk")
+        compose.onNodeWithTag("back").performClick()
+        compose.waitForTag("section_terminal")
+        compose.onNodeWithTag("section_terminal").performClick()
+        compose.waitForTag("terminalMode")
+        compose.onNodeWithTag("terminalMode").assertTextContains("Simulator", substring = true)
+        // The simulator needs no connection settings; rarely needed ones wait under Advanced.
+        compose.onNodeWithTag("keyIdentifier").assertDoesNotExist()
+        compose.onNodeWithText("Sale ID").assertDoesNotExist()
+        compose.onNodeWithTag("advanced").performClick()
+        waitForText("Sale ID")
+
+        // Off-terminal, a terminal on the network needs its address and ID as well as the shared key.
+        compose.onNodeWithTag("terminalMode").performClick()
+        compose.onNodeWithTag("terminalMode_TERMINAL").performClick()
+        awaitSetting("Terminal mode") { container.settingsState.value.terminal.mode == TerminalMode.TERMINAL }
+        compose.waitForTag("host")
+        compose.onNodeWithTag("poiId").assertExists()
+        compose.onNodeWithTag("keyIdentifier").assertExists()
+        compose.onNodeWithTag("terminalMode").performClick()
+        compose.onNodeWithTag("terminalMode_SIMULATOR").performClick()
+        // Choosing the device's own default stores Automatic, so it keeps following the device.
+        awaitSetting("Automatic mode") { container.settingsState.value.terminal.mode == TerminalMode.AUTO }
+    }
+
+    @Test
+    fun `tax rates are listed and chosen in settings, not products`() {
+        val vat = await { container.catalog.saveTaxRate(TaxRateEntity(name = "VAT", rateMilliPercent = 25_500, sortOrder = 9)) }
+        await { container.settings.update { it.copy(payment = it.payment.copy(defaultTaxRateId = vat)) } }
+        compose.onNodeWithTag("settings").performClick()
+        waitForText("VAT 25.5%")
+        compose.onNodeWithTag("section_tax").performScrollTo().performClick()
+        compose.waitForTag("taxRow_$vat")
+        compose.onNodeWithTag("taxRow_$vat").assertTextContains("25.5%", substring = true)
+        compose.onNodeWithTag("taxRow_$vat").assertTextContains("Default", substring = true)
+        compose.onNodeWithTag("addTaxRate").performScrollTo().assertIsDisplayed()
+
+        // Tax rates are no longer edited under Products.
+        compose.onNodeWithTag("back").performClick()
+        compose.waitForTag("section_tax")
+        compose.onNodeWithTag("back").performClick()
+        compose.waitForTag("products")
+        compose.onNodeWithTag("products").performClick()
+        compose.waitForTag("tab_1")
+        compose.onNodeWithTag("tab_2").assertDoesNotExist()
+    }
+}

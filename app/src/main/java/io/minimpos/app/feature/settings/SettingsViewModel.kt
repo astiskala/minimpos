@@ -1,0 +1,282 @@
+package io.minimpos.app.feature.settings
+
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import io.minimpos.app.data.db.TaxRateEntity
+import io.minimpos.app.data.repo.CatalogRepository
+import io.minimpos.app.data.repo.DeleteResult
+import io.minimpos.app.data.repo.HistoryRepository
+import io.minimpos.app.data.security.PinManager
+import io.minimpos.app.data.security.Secret
+import io.minimpos.app.data.security.SecretStore
+import io.minimpos.app.data.security.SecretStoreException
+import io.minimpos.app.data.security.SessionLock
+import io.minimpos.app.data.settings.AppSettings
+import io.minimpos.app.data.settings.SettingsRepository
+import io.minimpos.app.feature.sale.ActionState
+import io.minimpos.app.feature.sale.toState
+import io.minimpos.app.payment.ReceiptDelivery
+import io.minimpos.app.terminal.TerminalConnection
+import io.minimpos.app.terminal.TerminalStatus
+import io.minimpos.core.receipt.ReceiptDocument
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
+import java.util.Locale
+
+/**
+ * What the settings screen shows.
+ *
+ * @property settings The stored settings.
+ * @property secrets Which secrets are stored (their values are never exposed to the UI).
+ * @property taxRates All tax rates, in display order.
+ * @property taxRateUsage Number of products using each tax rate, by tax rate id.
+ * @property loaded False until the settings, secrets and catalogue have been read.
+ */
+data class SettingsUiState(
+    val settings: AppSettings = AppSettings(),
+    val secrets: Set<Secret> = emptySet(),
+    val taxRates: List<TaxRateEntity> = emptyList(),
+    val taxRateUsage: Map<Long, Int> = emptyMap(),
+    val loaded: Boolean = false,
+) {
+    /** Whether an admin PIN is set. */
+    val pinSet: Boolean get() = Secret.PIN_VERIFIER in secrets
+
+    /** The rate new products and custom items start with: the configured one, else the first. */
+    val defaultTaxRate: TaxRateEntity?
+        get() = taxRates.firstOrNull { it.id == settings.payment.defaultTaxRateId } ?: taxRates.firstOrNull()
+}
+
+/**
+ * Outcomes of the settings screen's actions.
+ *
+ * @property connection The latest connection test; its message is shown in a dialog until
+ *   [SettingsViewModel.dismissConnectionResult].
+ * @property passphraseStored Whether the passphrase given to the latest connection test was stored (so the field can be
+ *   cleared).
+ * @property secretError Set when a secret (password, passphrase or PIN) could not be stored on this device.
+ * @property email The latest test email.
+ * @property print The latest test print.
+ * @property cleared Whether the history has been cleared.
+ * @property taxRateInUse Set when a tax rate could not be deleted: the number of products still using it.
+ */
+data class SettingsActions(
+    val connection: ActionState = ActionState(),
+    val passphraseStored: Boolean = false,
+    val secretError: String? = null,
+    val email: ActionState = ActionState(),
+    val print: ActionState = ActionState(),
+    val cleared: Boolean = false,
+    val taxRateInUse: Int? = null,
+)
+
+/**
+ * Localised messages of the settings screen's actions.
+ *
+ * @property connectionOk Start of the message after a successful connection test.
+ * @property connectionFailed Start of the message after a failed connection test.
+ * @property printerPresent Added to a successful connection test when the terminal has a printer.
+ * @property printerAbsent Added to a successful connection test when it has none.
+ * @property testEmailSent Format with the address, shown after the test email was sent.
+ * @property testPrinted Shown after the test receipt was printed.
+ * @property secretNotStored Format with the error, e.g. "This device could not store it securely (%1$s)".
+ */
+data class SettingsMessages(
+    val connectionOk: String,
+    val connectionFailed: String,
+    val printerPresent: String,
+    val printerAbsent: String,
+    val testEmailSent: String,
+    val testPrinted: String,
+    val secretNotStored: String,
+)
+
+/**
+ * The services behind the settings screen's test buttons.
+ *
+ * @property status Tests the connection to the terminal, which also tells whether it has a printer.
+ * @property receipts Prints the test receipt and sends the test email.
+ */
+class SettingsChecks(
+    val status: TerminalStatus,
+    val receipts: ReceiptDelivery,
+)
+
+/**
+ * All of Settings: stored settings, secrets and the PIN, tax rates, the connection, email and print tests, and
+ * clearing history. Secrets are only ever written and checked for presence here, never shown.
+ */
+class SettingsViewModel(
+    private val settings: SettingsRepository,
+    private val secrets: SecretStore,
+    private val pins: PinManager,
+    private val sessionLock: SessionLock,
+    private val checks: SettingsChecks,
+    private val history: HistoryRepository,
+    private val catalog: CatalogRepository,
+    private val messages: SettingsMessages,
+) : ViewModel() {
+    /** The screen state, updated whenever settings, secrets or the catalogue change. */
+    val state: StateFlow<SettingsUiState> =
+        combine(settings.settings, secrets.configured, catalog.taxRates, catalog.products) { appSettings, configured, taxRates, products ->
+            SettingsUiState(
+                appSettings,
+                configured,
+                taxRates,
+                products
+                    .mapNotNull {
+                        it.taxRateId
+                    }.groupingBy { it }
+                    .eachCount(),
+                loaded = true,
+            )
+        }.stateIn(viewModelScope, SharingStarted.Eagerly, SettingsUiState())
+
+    private val _actions = MutableStateFlow(SettingsActions())
+
+    /** Outcomes of the latest actions. */
+    val actions: StateFlow<SettingsActions> = _actions.asStateFlow()
+
+    /** Stores the settings with [transform] applied; [transform] must not have side effects. */
+    fun update(transform: (AppSettings) -> AppSettings) {
+        viewModelScope.launch { settings.update(transform) }
+    }
+
+    /** Adds (ID 0) or updates [taxRate], trimming its name, and makes it the default rate when [makeDefault]. */
+    fun saveTaxRate(
+        taxRate: TaxRateEntity,
+        makeDefault: Boolean,
+    ) {
+        _actions.update { it.copy(taxRateInUse = null) }
+        viewModelScope.launch {
+            val id = catalog.saveTaxRate(taxRate.copy(name = taxRate.name.trim()))
+            if (makeDefault) settings.update { it.copy(payment = it.payment.copy(defaultTaxRateId = id)) }
+        }
+    }
+
+    /** Deletes [taxRate] unless products still use it or it is the last one (products and custom items need a rate). */
+    fun deleteTaxRate(taxRate: TaxRateEntity) {
+        if (state.value.taxRates.size <= 1) return
+        viewModelScope.launch {
+            when (val result = catalog.deleteTaxRate(taxRate)) {
+                DeleteResult.Deleted -> _actions.update { it.copy(taxRateInUse = null) }
+                is DeleteResult.InUse -> _actions.update { it.copy(taxRateInUse = result.productCount) }
+            }
+        }
+    }
+
+    /** Stores [value] as [secret], or removes it for null or empty; a failure is reported in [SettingsActions.secretError]. */
+    fun setSecret(
+        secret: Secret,
+        value: String?,
+    ) {
+        viewModelScope.launch { storeSecret { secrets.set(secret, value) } }
+    }
+
+    /** Sets the admin PIN and keeps the admin area unlocked; [pin] must be [PinManager.isValidPin]. */
+    fun setPin(pin: String) {
+        viewModelScope.launch {
+            if (storeSecret { pins.setPin(pin) }) sessionLock.unlock()
+        }
+    }
+
+    /** Removes the admin PIN. */
+    fun clearPin() {
+        viewModelScope.launch { pins.clearPin() }
+    }
+
+    /** Runs [store], reporting (instead of crashing on) a device that cannot encrypt secrets. Returns whether it worked. */
+    private suspend fun storeSecret(store: suspend () -> Unit): Boolean =
+        try {
+            store()
+            _actions.update { it.copy(secretError = null) }
+            true
+        } catch (e: SecretStoreException) {
+            _actions.update { it.copy(secretError = messages.secretNotStored.format(Locale.getDefault(), e.message)) }
+            false
+        }
+
+    /**
+     * Checks the connection to the terminal, first saving [passphrase] if one was entered, and verifying that it reads
+     * back. The outcome is shown until [dismissConnectionResult].
+     */
+    fun testConnection(passphrase: String? = null) {
+        _actions.update { it.copy(connection = ActionState(running = true), passphraseStored = false) }
+        viewModelScope.launch {
+            if (!passphrase.isNullOrEmpty()) {
+                val stored =
+                    storeSecret { secrets.set(Secret.TERMINAL_PASSPHRASE, passphrase) } &&
+                        secrets.get(Secret.TERMINAL_PASSPHRASE) == passphrase
+                if (!stored) {
+                    val error =
+                        _actions.value.secretError
+                            ?: messages.secretNotStored.format(Locale.getDefault(), "the passphrase did not read back")
+                    _actions.update { it.copy(connection = ActionState(message = error, isError = true)) }
+                    return@launch
+                }
+                _actions.update { it.copy(passphraseStored = true) }
+            }
+            val result =
+                when (val connection = checks.status.check()) {
+                    is TerminalConnection.Connected -> {
+                        val diagnosis = connection.diagnosis
+                        val printer = if (diagnosis.hasPrinter) messages.printerPresent else messages.printerAbsent
+                        ActionState(message = "${messages.connectionOk} (${diagnosis.globalStatus ?: "OK"}, $printer)", done = true)
+                    }
+
+                    is TerminalConnection.NotSetUp -> {
+                        ActionState(message = connection.message, isError = true)
+                    }
+
+                    is TerminalConnection.Failed -> {
+                        ActionState(
+                            message = "${messages.connectionFailed}: ${connection.message}",
+                            isError = true,
+                        )
+                    }
+
+                    TerminalConnection.Checking, TerminalConnection.Unknown -> {
+                        ActionState()
+                    }
+                }
+            _actions.update { it.copy(connection = result) }
+        }
+    }
+
+    /** Closes the connection test's result dialog. */
+    fun dismissConnectionResult() {
+        _actions.update { it.copy(connection = ActionState()) }
+    }
+
+    /** Sends a test email to [to] with the stored SMTP settings. */
+    fun sendTestEmail(to: String) {
+        _actions.update { it.copy(email = ActionState(running = true)) }
+        viewModelScope.launch {
+            val result = checks.receipts.sendTestEmail(to).toState(messages.testEmailSent.format(Locale.getDefault(), to))
+            _actions.update { it.copy(email = result) }
+        }
+    }
+
+    /** Prints [document] (a sample receipt with the current settings) to check the receipt layout. */
+    fun printTest(document: ReceiptDocument) {
+        _actions.update { it.copy(print = ActionState(running = true)) }
+        viewModelScope.launch {
+            val result = checks.receipts.printDocument(document)
+            _actions.update { it.copy(print = result.toState(messages.testPrinted)) }
+        }
+    }
+
+    /** Deletes every sale and refund; the catalogue and settings stay. */
+    fun clearHistory() {
+        viewModelScope.launch {
+            history.clear()
+            _actions.update { it.copy(cleared = true) }
+        }
+    }
+}

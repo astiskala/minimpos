@@ -1,0 +1,47 @@
+version: 2
+updates:
+  - package-ecosystem: gradle
+    directory: /
+    schedule:
+      interval: weekly
+    # Releases must be at least a week old (CONTRIBUTING.md).
+    cooldown:
+      default-days: 7
+    groups:
+      kotlin:
+        patterns:
+          - "org.jetbrains.kotlin*"
+          - "com.google.devtools.ksp*"
+      android-gradle-plugin:
+        patterns:
+          - "com.android*"
+      androidx:
+        patterns:
+          - "androidx.*"
+      kotlinx:
+        patterns:
+          - "org.jetbrains.kotlinx*"
+      code-quality:
+        patterns:
+          - "com.diffplug.spotless*"
+          - "dev.detekt*"
+          - "io.nlopez.compose.rules*"
+          - "com.tngtech.archunit*"
+      testing:
+        patterns:
+          - "junit*"
+          - "com.google.truth*"
+          - "org.robolectric*"
+          - "com.squareup.okhttp3:mockwebserver*"
+    # The Adyen library (com.adyen) stays ungrouped: each upgrade needs its own review (see AGENTS.md).
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    cooldown:
+      default-days: 7
+    groups:
+      github-actions:
+        patterns:
+          - "*"

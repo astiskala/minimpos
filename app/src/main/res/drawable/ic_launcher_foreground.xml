@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- From docs/favicon.svg, whose paths are already on the 108-unit adaptive icon grid. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+  android:width="108dp"
+  android:height="108dp"
+  android:viewportWidth="108"
+  android:viewportHeight="108">
+  <path
+    android:fillColor="#FFFFFF"
+    android:pathData="M38,30h32a2,2 0,0 1,2 2v44l-4,-3 -4,3 -4,-3 -4,3 -4,-3 -4,3 -4,-3 -4,3 -4,-3 -4,3V32a2,2 0,0 1,2 -2z" />
+  <path
+    android:fillColor="#0ABF53"
+    android:pathData="M42,38h16v3h-16zM62,38h4v3h-4zM42,46h16v3h-16zM62,46h4v3h-4zM42,54h16v3h-16zM62,54h4v3h-4zM42,63h24v3h-24z" />
+</vector>

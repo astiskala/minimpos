@@ -1,0 +1,52 @@
+package io.minimpos.app.data.db
+
+import android.content.Context
+import androidx.room.AutoMigration
+import androidx.room.Database
+import androidx.room.Room
+import androidx.room.RoomDatabase
+import io.minimpos.app.R
+
+/**
+ * The app's Room database, `minimpos.db`: the catalogue, sales and refunds.
+ *
+ * Schema history (exported to `app/schemas/`): version 2 added `sales.errorCondition` and `sales.refusalReason`;
+ * version 3 made `products.taxRateId` optional; version 4 made it required again ([TaxRateRequiredMigration]). Versions
+ * 1 to 3 are Room auto-migrations. There is no destructive fallback, so every schema change needs a migration.
+ */
+@Database(
+    entities = [
+        TaxRateEntity::class,
+        CategoryEntity::class,
+        ProductEntity::class,
+        SaleEntity::class,
+        SaleLineEntity::class,
+        RefundEntity::class,
+    ],
+    version = 4,
+    exportSchema = true,
+    autoMigrations = [AutoMigration(from = 1, to = 2), AutoMigration(from = 2, to = 3)],
+)
+abstract class AppDatabase : RoomDatabase() {
+    /** Tax rates, categories and products. */
+    abstract fun catalogDao(): CatalogDao
+
+    /** Sales and their lines. */
+    abstract fun saleDao(): SaleDao
+
+    /** Refunds. */
+    abstract fun refundDao(): RefundDao
+
+    /** Opening the database with its migrations. */
+    companion object {
+        /** Adds the hand-written migrations to [builder]; the others are Room auto-migrations. */
+        fun withMigrations(
+            builder: RoomDatabase.Builder<AppDatabase>,
+            context: Context,
+        ): RoomDatabase.Builder<AppDatabase> = builder.addMigrations(TaxRateRequiredMigration(context.getString(R.string.tax_default_zero)))
+
+        /** Opens (lazily, on first query) the on-disk database with all migrations. */
+        fun create(context: Context): AppDatabase =
+            withMigrations(Room.databaseBuilder(context, AppDatabase::class.java, "minimpos.db"), context).build()
+    }
+}

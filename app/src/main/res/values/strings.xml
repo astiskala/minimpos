@@ -1,0 +1,502 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources xmlns:tools="http://schemas.android.com/tools">
+  <string name="app_name">Mini mPOS</string>
+  <string name="locked">Locked</string>
+
+  <!-- Actions -->
+  <string name="action_add">Add</string>
+  <string name="action_back">Back</string>
+  <string name="action_backspace">Delete digit</string>
+  <string name="action_cancel">Cancel</string>
+  <string name="action_clear">Clear</string>
+  <string name="action_close">Close</string>
+  <string name="action_decrease">Decrease</string>
+  <string name="action_delete">Delete</string>
+  <string name="action_done">Done</string>
+  <string name="action_home">Home</string>
+  <string name="action_increase">Increase</string>
+  <string name="action_more">More options</string>
+  <string name="action_next">Next</string>
+  <string name="action_ok">OK</string>
+  <string name="action_pause">Pause</string>
+  <string name="action_play">Play</string>
+  <string name="action_previous">Previous</string>
+  <string name="action_remove">Remove</string>
+  <string name="action_save">Save</string>
+  <string name="action_send">Send</string>
+
+  <string name="banner_simulator">SIMULATOR – no real payments</string>
+  <string name="banner_test">TEST environment</string>
+  <string name="virtual_printer_title">Simulated printer</string>
+
+  <!-- Home -->
+  <string name="home_new_sale">New sale</string>
+  <string name="home_new_sale_hint">Add products or a custom amount</string>
+  <string name="home_refund">Refund</string>
+  <string name="home_history">History</string>
+  <string name="home_products">Products</string>
+  <string name="home_settings">Settings</string>
+  <string name="home_printer_yes">printer available</string>
+  <string name="home_printer_no">no printer</string>
+  <string name="home_setup_title">Connect to this terminal</string>
+  <string name="home_setup_text">Enter the shared key from your Customer Area to start taking payments.</string>
+  <string name="home_connection_failed">Payments cannot reach the terminal</string>
+
+  <!-- PIN -->
+  <string name="pin_title">Admin PIN</string>
+  <string name="pin_enter">Enter the admin PIN</string>
+  <string name="pin_wrong">Wrong PIN (attempts left: %1$d)</string>
+  <string name="pin_locked_out">Too many attempts. Try again at %1$s.</string>
+  <string name="pin_set_title">Set admin PIN</string>
+  <string name="pin_new">Enter a new PIN</string>
+  <string name="pin_confirm">Enter the PIN again</string>
+  <string name="pin_mismatch">The PINs did not match. Start again.</string>
+  <string name="pin_hint">PIN length: %1$d to %2$d</string>
+
+  <!-- Sale -->
+  <string name="sale_title">New sale</string>
+  <string name="sale_search">Search products</string>
+  <string name="sale_search_close">Close the search</string>
+  <string name="sale_all">All</string>
+  <string name="sale_custom_item">Custom item</string>
+  <string name="sale_custom_description">Description (optional)</string>
+  <string name="sale_no_products">No products yet. Add them under Products, or use a custom item.</string>
+  <string name="sale_cart">Current sale</string>
+  <string name="sale_cart_empty">Nothing added yet</string>
+  <string name="sale_cart_empty_hint">Tap a product or add a custom item.</string>
+  <string name="sale_charge">Charge %1$s</string>
+  <string name="sale_clear">Clear sale</string>
+  <string name="sale_clear_title">Clear this sale?</string>
+  <string name="sale_clear_message">All items will be removed.</string>
+  <string name="sale_scan_barcode">Scan barcode</string>
+  <string name="sale_sku_added">Added %1$s</string>
+  <string name="sale_sku_not_found">No product with barcode %1$s</string>
+  <plurals name="sale_items">
+    <item quantity="one">%1$d item</item>
+    <item quantity="other">%1$d items</item>
+  </plurals>
+  <string name="tax_rate">Tax rate</string>
+  <string name="tax_default_standard">Standard</string>
+  <string name="tax_default_zero">Zero rated</string>
+
+  <!-- Checkout and payment -->
+  <string name="checkout_title">Checkout</string>
+  <string name="checkout_tax">Tax</string>
+  <string name="checkout_total">Total</string>
+  <string name="checkout_transaction_reference">Transaction reference</string>
+  <string name="checkout_auto">Generated automatically</string>
+  <string name="checkout_customer_reference">Customer reference</string>
+  <string name="checkout_customer_reference_short">Minimum length: %1$d</string>
+  <string name="checkout_email">Shopper email</string>
+  <string name="checkout_email_hint">The receipt is emailed once the payment is approved.</string>
+  <string name="checkout_save_card">Save card for future payments</string>
+  <string name="checkout_save_card_hint">Tokenizes the card for this customer reference. Ask the shopper for consent.</string>
+  <string name="checkout_save_card_email_hint">Tokenizes the card for this email address. Ask the shopper for consent.</string>
+  <string name="checkout_pay">Pay %1$s</string>
+  <string name="payment_title">Payment</string>
+  <string name="payment_follow_terminal">Follow the instructions on the terminal</string>
+  <string name="payment_cancelling">Cancelling…</string>
+  <string name="payment_unknown_outcome">The terminal did not confirm the result. Check the payment in your Customer Area before charging again.</string>
+  <string name="payment_interrupted">The app stopped before the result was received.</string>
+
+  <!-- Results -->
+  <string name="result_title">Result</string>
+  <string name="result_print">Print receipt</string>
+  <string name="result_print_merchant">Print merchant copy</string>
+  <string name="result_tear_off">Tear off the customer copy, then print the merchant copy.</string>
+  <string name="result_printed">Printed</string>
+  <string name="result_email">Email receipt</string>
+  <string name="result_emailed">Receipt sent to %1$s</string>
+  <string name="result_show_receipt">Show receipt</string>
+  <string name="result_hide_receipt">Hide receipt</string>
+  <string name="result_new_sale">New sale</string>
+  <string name="result_try_again">Try again</string>
+  <string name="result_back_to_sale">Back to sale</string>
+  <string name="result_check_again">Check result again</string>
+  <string name="result_abort_busy">Cancel the terminal’s current transaction</string>
+  <string name="result_abort_sent">The terminal was asked to cancel its current transaction. Try again once it is idle.</string>
+  <string name="advice_retry">You can try again.</string>
+  <string name="advice_wait_and_retry">The terminal is not available right now. Wait a moment, then try again.</string>
+  <string name="advice_different_payment_method">Do not retry with this card. Ask the shopper for a different card or payment method.</string>
+  <string name="advice_terminal_busy">The terminal is busy with another transaction or its admin menu. Finish that first, then try again.</string>
+  <string name="advice_check_setup">The terminal did not accept the request. Check the Terminal settings before trying again.</string>
+  <string name="advice_do_not_retry">Do not charge again: this payment went through.</string>
+  <string name="status_approved">Approved</string>
+  <string name="status_declined">Declined</string>
+  <string name="status_cancelled">Cancelled</string>
+  <string name="status_failed">Not processed</string>
+  <string name="status_unknown">Result unknown</string>
+  <string name="status_pending">In progress</string>
+
+  <!-- Details -->
+  <string name="detail_title">Sale</string>
+  <string name="detail_date">Date</string>
+  <string name="detail_reference">Reference</string>
+  <string name="detail_card">Card</string>
+  <string name="detail_entry">Entry</string>
+  <string name="detail_auth">Auth code</string>
+  <string name="detail_psp">PSP reference</string>
+  <string name="detail_shopper_reference">Shopper reference</string>
+  <string name="detail_token">Saved card token</string>
+  <string name="detail_token_not_created">Not created</string>
+  <string name="detail_terminal">Terminal</string>
+  <string name="detail_message">Message</string>
+  <string name="detail_error_condition">Error condition</string>
+  <string name="detail_emailed">Emailed to</string>
+  <string name="detail_refund">Refund</string>
+  <string name="detail_refunds">Refunds</string>
+  <string name="detail_refunded">Refunded %1$s</string>
+  <string name="detail_reprint">Reprint receipt</string>
+  <string name="detail_still_unknown">The terminal still cannot confirm this payment. Check your Customer Area.</string>
+
+  <!-- Refunds -->
+  <string name="refund_title">Refund</string>
+  <string name="refund_detail_title">Refund details</string>
+  <string name="refund_scan_title">Scan receipt</string>
+  <string name="refund_scan_hint">Scan the QR code printed on the receipt</string>
+  <string name="refund_scan_invalid">This is not a Mini mPOS receipt code.</string>
+  <string name="refund_unavailable">Refund not possible</string>
+  <string name="refund_not_refundable">This payment was not approved, or the terminal did not report the transaction details a refund needs.</string>
+  <string name="refund_fully_refunded">This payment has already been refunded in full.</string>
+  <string name="refund_not_local">This sale was taken on another terminal, so items cannot be selected. Refund in full or enter an amount.</string>
+  <string name="refund_original_amount">Original amount</string>
+  <string name="refund_already_refunded">Already refunded</string>
+  <string name="refund_option_full">Full</string>
+  <string name="refund_option_items">Items</string>
+  <string name="refund_option_amount">Amount</string>
+  <string name="refund_line_hint">%1$s · sold: %2$d · refunded: %3$d</string>
+  <string name="refund_too_much">At most %1$s can be refunded.</string>
+  <string name="refund_button">Refund %1$s</string>
+  <string name="refund_confirm_title">Refund this payment?</string>
+  <string name="refund_confirm_message">%1$s will be returned to the shopper’s card.</string>
+  <string name="refund_confirm">Refund</string>
+  <string name="refund_processing">Requesting the refund…</string>
+  <string name="refund_status_requested">Refund requested</string>
+  <string name="refund_status_failed">Refund failed</string>
+  <string name="refund_status_unknown">Refund result unknown</string>
+  <string name="refund_unknown_outcome">The terminal did not confirm the refund. Check it in your Customer Area before refunding again.</string>
+  <string name="refund_still_unknown">The terminal still cannot confirm this refund. Check your Customer Area.</string>
+  <string name="refund_async_note">Adyen processes refunds asynchronously; the final outcome appears in your Customer Area.</string>
+
+  <!-- History -->
+  <string name="history_title">History</string>
+  <string name="history_today">Today</string>
+  <string name="history_filter_all">All</string>
+  <string name="history_filter_sales">Sales</string>
+  <string name="history_filter_refunds">Refunds</string>
+  <string name="history_filter_issues">Needs attention</string>
+  <string name="history_empty">No transactions</string>
+  <string name="history_empty_hint">Completed sales and refunds appear here.</string>
+  <string name="history_day_sales">Sales %1$s (%2$d)</string>
+  <string name="history_day_refunds">Refunds %1$s (%2$d)</string>
+  <string name="history_refund">Refund</string>
+
+  <!-- Products -->
+  <string name="products_title">Products</string>
+  <string name="products_tab_products">Products</string>
+  <string name="products_tab_categories">Categories</string>
+  <string name="products_empty">No products</string>
+  <string name="products_empty_hint">Add products with the + button, or import a catalogue from another terminal.</string>
+  <string name="products_no_categories">No categories</string>
+  <string name="products_no_categories_hint">Categories group products on the sale screen.</string>
+  <string name="products_no_tax_hint">Add a tax rate under Settings › Tax first (it can be 0%).</string>
+  <string name="products_count">Products: %1$d</string>
+  <string name="products_add">Add product</string>
+  <string name="products_edit">Edit product</string>
+  <string name="products_add_category">Add category</string>
+  <string name="products_edit_category">Edit category</string>
+  <string name="products_name">Name</string>
+  <string name="products_price">Price (%1$s)</string>
+  <string name="products_category">Category</string>
+  <string name="products_no_category">No category</string>
+  <string name="products_sku">SKU / barcode (optional)</string>
+  <string name="products_sku_in_use">Another product already uses this code</string>
+  <string name="products_delete_title">Delete product?</string>
+  <string name="products_delete_message">%1$s will be removed from the catalogue.</string>
+
+  <!-- Catalogue transfer -->
+  <string name="transfer_export">Share catalogue (QR)</string>
+  <string name="transfer_import">Receive catalogue (QR)</string>
+  <string name="transfer_export_hint">On the other terminal open Products › Receive catalogue and point its camera at these codes.</string>
+  <string name="transfer_import_hint">Point the camera at the QR codes shown on the other terminal.</string>
+  <string name="transfer_code_of">Code %1$d of %2$d</string>
+  <string name="transfer_received">Scanned %1$d/%2$d</string>
+  <string name="transfer_not_catalogue">That QR code is not a catalogue code.</string>
+  <string name="transfer_corrupt">The catalogue could not be read. Scan the codes again.</string>
+  <string name="transfer_products">Products</string>
+  <string name="transfer_categories">Categories</string>
+  <string name="transfer_tax_rates">Tax rates</string>
+  <string name="transfer_currency">Currency</string>
+  <string name="transfer_currency_mismatch">This catalogue was priced in %1$s but this terminal uses %2$s. Prices are imported as-is.</string>
+  <string name="transfer_ready">Catalogue received</string>
+  <string name="transfer_merge">Merge into this catalogue</string>
+  <string name="transfer_merge_hint">Products with the same SKU (or name) are updated; everything else is added.</string>
+  <string name="transfer_replace">Replace this catalogue</string>
+  <string name="transfer_replace_hint">Deletes all products, categories and tax rates here first.</string>
+  <string name="transfer_replace_confirm">All products, categories and tax rates on this terminal will be deleted and replaced.</string>
+  <string name="transfer_scan_again">Scan again</string>
+  <string name="transfer_done">Import complete</string>
+  <string name="transfer_added">Products added</string>
+  <string name="transfer_updated">Products updated</string>
+  <string name="transfer_new_categories">New categories</string>
+  <string name="transfer_new_tax_rates">New tax rates</string>
+
+  <!-- Scanner -->
+  <string name="scan_hint_qr">Point the camera at the QR code</string>
+  <string name="scan_hint_barcode">Point the camera at the barcode</string>
+  <string name="scan_permission">Camera access is needed to scan codes.</string>
+  <string name="scan_grant">Allow camera</string>
+  <string name="scan_camera_error">The camera could not be started.</string>
+
+  <!-- Receipts -->
+  <string name="receipt_date">Date</string>
+  <string name="receipt_reference">Reference</string>
+  <string name="receipt_customer">Customer</string>
+  <string name="receipt_subtotal">Subtotal</string>
+  <string name="receipt_tax">Tax</string>
+  <string name="receipt_total">TOTAL</string>
+  <string name="receipt_includes_tax">Includes %1$s</string>
+  <string name="receipt_quantity">"  %1$d x %2$s"</string>
+  <string name="receipt_refund_qr_caption">Scan this code for returns</string>
+  <string name="receipt_merchant_copy">MERCHANT COPY</string>
+  <string name="receipt_refund_title">REFUND</string>
+  <string name="receipt_original_sale">Original sale</string>
+  <string name="receipt_refund_total">REFUND TOTAL</string>
+  <string name="receipt_partial_refund">Partial refund</string>
+  <string name="receipt_card_saved">Card saved for future payments</string>
+  <string name="receipt_not_completed">PAYMENT NOT COMPLETED</string>
+
+  <!-- Email -->
+  <string name="email_intro">Thank you for your purchase. Your receipt is below.</string>
+  <string name="email_refund_intro">Your refund has been requested. The details are below.</string>
+  <string name="email_test_subject">Mini mPOS test email</string>
+  <string name="email_test_body">Your SMTP settings work. Receipts can now be emailed from Mini mPOS.</string>
+  <string name="email_not_configured">Email is not set up. Configure SMTP in Settings › Email.</string>
+  <string name="email_invalid_address">Enter a valid email address</string>
+  <string name="error_not_found">The record could not be found.</string>
+
+  <!-- Settings -->
+  <string name="settings_title">Settings</string>
+  <string name="settings_terminal">Terminal</string>
+  <string name="settings_simulator">Simulator</string>
+  <string name="settings_payments">Payments</string>
+  <string name="settings_receipts">Receipts</string>
+  <string name="settings_email">Email (SMTP)</string>
+  <string name="settings_security">Security</string>
+  <string name="settings_data">Data</string>
+  <string name="settings_about">About</string>
+  <string name="settings_not_configured">Not configured</string>
+  <string name="settings_pin_on">Admin PIN on</string>
+  <string name="settings_pin_off">No admin PIN</string>
+  <string name="settings_secret_set">Set</string>
+  <string name="settings_secret_not_set">Not set</string>
+  <string name="settings_secret_new">New value</string>
+  <string name="settings_secret_saved">Saved</string>
+  <string name="settings_secret_not_saved">Not saved yet</string>
+  <string name="settings_secret_replace">Type a new one to replace it</string>
+  <string name="settings_secret_enter">Exactly as in the Customer Area</string>
+  <string name="settings_secret_show">Show</string>
+  <string name="settings_secret_hide">Hide</string>
+  <string name="settings_secret_not_stored">This device could not store it securely (%1$s). Try again, or restart the terminal.</string>
+  <string name="settings_advanced">Advanced</string>
+
+  <string name="settings_mode">Payments go to</string>
+  <string name="settings_mode_terminal">This terminal</string>
+  <string name="settings_mode_network">A terminal on your network</string>
+  <string name="settings_mode_simulator">Simulator</string>
+  <string name="settings_environment">Environment</string>
+  <string name="settings_env_live">LIVE environment</string>
+  <string name="settings_poiid">Terminal ID (POIID)</string>
+  <string name="settings_poiid_hint" tools:ignore="TypographyDashes">e.g. S1F2-000158213605014</string>
+  <string name="settings_poiid_help">The terminal’s model and serial number, as on its Device info screen.</string>
+  <string name="settings_host">Terminal IP address</string>
+  <string name="settings_host_placeholder">e.g. 192.168.1.20</string>
+  <string name="settings_host_hint">The terminal must be on the same network as this device.</string>
+  <string name="settings_port">Port</string>
+  <string name="settings_sale_id">Sale ID</string>
+  <string name="settings_timeout">Payment timeout (seconds)</string>
+  <string name="settings_timeout_hint">Without a response by then, the app checks the transaction status (Adyen advises 120 seconds).</string>
+  <string name="settings_shared_key">Shared key</string>
+  <string name="settings_shared_key_hint">Copy these from your Customer Area: Devices › Device settings › Integrations › Terminal API › Encryption key (select the pencil icon to see them).</string>
+  <string name="settings_key_identifier">Key identifier</string>
+  <string name="settings_key_version">Key version</string>
+  <string name="settings_passphrase">Key passphrase</string>
+  <string name="settings_test_connection">Test connection</string>
+  <string name="settings_save_and_test">Save and test</string>
+  <string name="settings_forget_passphrase">Remove saved passphrase</string>
+  <string name="settings_connection_ok">Connected</string>
+  <string name="settings_connection_failed">Connection failed</string>
+  <string name="settings_connection_result_failed">Could not connect</string>
+  <string name="settings_status_checking">Checking the connection…</string>
+  <string name="settings_status_connected">Connected</string>
+  <string name="settings_status_not_set_up">Not set up yet</string>
+  <string name="settings_status_not_set_up_hint">Enter the shared key below, then tap Save and test.</string>
+  <string name="settings_status_failed">Not connected</string>
+
+  <string name="settings_simulator_hint">The simulator answers payments, refunds and print requests without a terminal, so every screen can be tried on an emulator or phone.</string>
+  <string name="settings_sim_outcome">Payment outcome</string>
+  <string name="settings_sim_approve">Approve</string>
+  <string name="settings_sim_decline">Decline</string>
+  <string name="settings_sim_cancel">Shopper cancels</string>
+  <string name="settings_sim_timeout">Time out (then recover)</string>
+  <string name="settings_sim_busy">Terminal busy</string>
+  <string name="settings_sim_random">Random</string>
+  <string name="settings_sim_delay">Delay (ms)</string>
+  <string name="settings_sim_printer">Has a printer</string>
+  <string name="settings_sim_signature">Signature required</string>
+
+  <string name="settings_pricing">Pricing</string>
+  <string name="settings_currency">Currency</string>
+  <string name="settings_currency_auto">Automatic (%1$s)</string>
+  <string name="settings_currency_hint">Any currency Adyen processes. Check that your Adyen account accepts it for in-person payments.</string>
+  <string name="settings_currency_search">Search by code or name</string>
+  <string name="settings_currency_none">No matching currency</string>
+  <string name="settings_tax">Tax</string>
+  <string name="settings_tax_off">Off</string>
+  <string name="settings_charge_tax">Charge tax</string>
+  <string name="settings_charge_tax_on">Products and custom items are taxed at their tax rate. Give items without tax a 0% rate, such as Zero rated.</string>
+  <string name="settings_charge_tax_off">No sale is taxed. Each product keeps its tax rate for when this is switched back on.</string>
+  <string name="settings_tax_rates">Tax rates</string>
+  <string name="settings_tax_is_default">Default</string>
+  <string name="settings_tax_add">Add tax rate</string>
+  <string name="settings_tax_edit">Edit tax rate</string>
+  <string name="settings_tax_name">Name</string>
+  <string name="settings_tax_rate">Rate</string>
+  <string name="settings_tax_rate_hint">e.g. 5, 8.1 or 25.5</string>
+  <string name="settings_tax_rate_invalid">Enter 0 to 100, with at most 3 decimals</string>
+  <string name="settings_tax_default">Default for new products and custom items</string>
+  <string name="settings_tax_preview">Shown as “%1$s” on receipts</string>
+  <string name="settings_tax_note">Each product uses one tax rate (items without tax use a 0% rate), and receipts show tax by name and rate. Tax rates are included in catalogue exports.</string>
+  <plurals name="settings_tax_products">
+    <item quantity="one">%d product</item>
+    <item quantity="other">%d products</item>
+  </plurals>
+  <plurals name="settings_tax_in_use">
+    <item quantity="one">Still used by %d product. Give it another tax rate first.</item>
+    <item quantity="other">Still used by %d products. Give them another tax rate first.</item>
+  </plurals>
+  <string-array name="tax_name_suggestions">
+    <item>GST</item>
+    <item>VAT</item>
+    <item>SST</item>
+    <item>Consumption tax</item>
+    <item>Sales tax</item>
+  </string-array>
+  <string name="settings_tax_mode">Prices</string>
+  <string name="settings_tax_inclusive">Include tax</string>
+  <string name="settings_tax_exclusive">Exclude tax (added at checkout)</string>
+  <string name="settings_references">References</string>
+  <string name="settings_reference_prefix">Reference prefix</string>
+  <string name="settings_reference_prefix_hint">Optional. Added, with a hyphen, to the start of generated references.</string>
+  <string name="settings_ask_transaction_reference">Ask for a transaction reference</string>
+  <string name="settings_tokenization">Saving cards</string>
+  <string name="settings_tokenize_default">Save card switch on by default</string>
+  <string name="settings_tokenize_default_hint">Only shown when a shopper reference is available.</string>
+  <string name="settings_recurring_model">Recurring processing model</string>
+  <string name="settings_shopper_reference_source">Shopper reference comes from</string>
+  <string name="settings_source_customer">Customer reference</string>
+  <string name="settings_source_customer_hint">Checkout asks for a customer reference to save cards under.</string>
+  <string name="settings_source_email">Shopper email</string>
+  <string name="settings_source_email_hint">No separate customer reference is asked for: the email identifies the shopper.</string>
+  <string name="settings_email_reference_mode">Email as shopper reference</string>
+  <string name="settings_email_hashed">Hashed (recommended)</string>
+  <string name="settings_email_raw">Raw email address</string>
+  <string name="settings_email_reference_hint">Adyen advises against personal data such as email addresses in shopperReference.</string>
+  <string name="settings_email_salt">Hash salt</string>
+  <string name="settings_email_salt_hint">Use the same salt on every terminal so the same email maps to the same token.</string>
+  <string name="settings_send_shopper_email">Send shopper email with saved cards</string>
+  <string name="settings_email_receipts">Email receipts</string>
+  <string name="settings_email_capture">Ask for the shopper’s email</string>
+  <string name="settings_capture_off">Never</string>
+  <string name="settings_capture_before">Before payment</string>
+  <string name="settings_capture_after">After payment</string>
+  <string name="settings_capture_both">Before and after payment</string>
+  <string name="settings_email_capture_reference">Always before payment: the email is the shopper reference for saved cards.</string>
+  <string name="settings_auto_send">Email the receipt automatically</string>
+
+  <string name="settings_header_footer">Header and footer</string>
+  <string name="settings_business_name">Business name</string>
+  <string name="settings_address">Address (one line per row)</string>
+  <string name="settings_tax_id_label">Tax ID label</string>
+  <string name="settings_tax_id">Tax ID</string>
+  <string name="settings_phone">Phone</string>
+  <string name="settings_receipt_title">Receipt title</string>
+  <string name="settings_footer">Footer</string>
+  <string name="settings_content">Content</string>
+  <string name="settings_show_tax">Show tax breakdown</string>
+  <string name="settings_show_references">Show references</string>
+  <string name="settings_show_qr">Show refund QR code</string>
+  <string name="settings_show_qr_hint">Lets staff start a referenced refund by scanning the receipt.</string>
+  <string name="settings_printing">Printing</string>
+  <string name="settings_printer">Printer</string>
+  <string name="settings_printer_auto">Detect automatically</string>
+  <string name="settings_printer_on">Always available</string>
+  <string name="settings_printer_off">Never print</string>
+  <string name="settings_auto_print">Print automatically after payment</string>
+  <string name="settings_merchant_copy">Merchant copy</string>
+  <string name="settings_merchant_never">Never</string>
+  <string name="settings_merchant_signature">Only when a signature is needed</string>
+  <string name="settings_merchant_always">Always</string>
+  <string name="settings_chars_per_line">Characters per line</string>
+  <string name="settings_chars_per_line_hint">Width of divider lines and plain-text receipts.</string>
+  <string name="settings_preview">Preview</string>
+  <string name="settings_print_test">Print test receipt</string>
+
+  <string name="settings_smtp">SMTP server</string>
+  <string name="settings_smtp_host">Server</string>
+  <string name="settings_smtp_security">Security</string>
+  <string name="settings_smtp_starttls">STARTTLS (usually port 587)</string>
+  <string name="settings_smtp_ssl">SSL/TLS (usually port 465)</string>
+  <string name="settings_smtp_none">None (not recommended)</string>
+  <string name="settings_smtp_username">Username</string>
+  <string name="settings_smtp_password">Password</string>
+  <string name="settings_message">Message</string>
+  <string name="settings_from_address">From address</string>
+  <string name="settings_from_name">From name</string>
+  <string name="settings_bcc">BCC copy to (optional)</string>
+  <string name="settings_subject">Subject</string>
+  <string name="settings_subject_hint">{business} and {reference} are replaced.</string>
+  <string name="settings_send_test">Send test email</string>
+  <string name="settings_test_email_sent">Test email sent to %1$s</string>
+
+  <string name="settings_pin_hint">The admin PIN protects settings and product management.</string>
+  <string name="settings_set_pin">Set PIN</string>
+  <string name="settings_change_pin">Change PIN</string>
+  <string name="settings_remove_pin">Remove PIN</string>
+  <string name="settings_remove_pin_message">Settings and products will no longer be protected.</string>
+  <string name="settings_auto_lock">Lock again after</string>
+  <string name="settings_auto_lock_never">Only when leaving</string>
+  <plurals name="settings_minutes">
+    <item quantity="one">%1$d minute</item>
+    <item quantity="other">%1$d minutes</item>
+  </plurals>
+  <string name="settings_pin_forgotten">Forgotten the PIN? Clear the app’s data from the terminal settings; configuration and history on this terminal are then lost.</string>
+
+  <string name="settings_history">History</string>
+  <string name="settings_retention">Keep transactions for</string>
+  <string name="settings_retention_forever">Forever</string>
+  <plurals name="settings_days">
+    <item quantity="one">%1$d day</item>
+    <item quantity="other">%1$d days</item>
+  </plurals>
+  <string name="settings_clear_history">Clear history</string>
+  <string name="settings_clear_history_message">All sales and refunds stored on this terminal will be deleted. Payments are not affected.</string>
+  <string name="settings_history_cleared">History cleared</string>
+  <string name="settings_catalogue">Catalogue</string>
+  <string name="settings_export_hint">Show the catalogue as QR codes for another terminal</string>
+  <string name="settings_import_hint">Scan another terminal’s catalogue codes</string>
+
+  <string name="about_version">Version</string>
+  <string name="about_printer">Printer</string>
+  <string name="about_printer_yes">Available</string>
+  <string name="about_printer_no">None</string>
+  <string name="about_model">Model</string>
+  <string name="about_android">Android</string>
+  <string name="about_app_info">Application info sent with payments and refunds</string>
+  <string name="about_app_info_application">Application</string>
+  <string name="about_app_info_platform">Platform</string>
+  <string name="about_app_info_integrator">Integrator</string>
+  <string name="about_app_info_device">Device</string>
+  <string name="about_app_info_library">Adyen library</string>
+  <string name="about_text">Mini mPOS takes payments with the Adyen Terminal API on the terminal it runs on. It uses Adyen’s Java API library for the encrypted local communication, protected by the terminal’s shared key.</string>
+</resources>

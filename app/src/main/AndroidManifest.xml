@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+  xmlns:tools="http://schemas.android.com/tools">
+
+  <uses-permission android:name="android.permission.INTERNET" />
+  <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+  <uses-permission android:name="android.permission.CAMERA" />
+  <!-- androidx.core also adds DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION, which is not on Adyen's terminal allowlist;
+       StripManifestPermissionsTask (app/build.gradle.kts) removes it from the merged manifest. -->
+
+  <uses-feature
+    android:name="android.hardware.camera.any"
+    android:required="false" />
+
+  <application
+    android:name=".MiniMposApplication"
+    android:allowBackup="false"
+    android:dataExtractionRules="@xml/data_extraction_rules"
+    android:fullBackupContent="false"
+    android:icon="@mipmap/ic_launcher"
+    android:label="@string/app_name"
+    android:supportsRtl="true"
+    android:theme="@style/Theme.MiniMpos"
+    tools:targetApi="37">
+    <!-- Launchers show the activity's adaptive icon, filling their icon shape; the application icon stays a bitmap
+         for the Customer Area (see VerifyTerminalManifestTask). -->
+    <activity
+      android:name=".MainActivity"
+      android:exported="true"
+      android:icon="@mipmap/ic_launcher_adaptive"
+      android:windowSoftInputMode="adjustResize">
+      <intent-filter>
+        <action android:name="android.intent.action.MAIN" />
+        <category android:name="android.intent.category.LAUNCHER" />
+      </intent-filter>
+    </activity>
+  </application>
+</manifest>

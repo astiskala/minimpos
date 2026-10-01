@@ -1,0 +1,172 @@
+# Builds on detekt's default configuration (buildUponDefaultConfig) and the Compose rules plugin's defaults.
+# Formatting is ktlint's job (Spotless), so only rules about correctness, clarity, documentation and modern Kotlin are
+# added here. Every relaxation below has a reason; prefer fixing code over adding one.
+
+# Documentation: every public or protected class, object, function, property and enum entry needs KDoc (test sources
+# are excluded by detekt's defaults), its @param/@property tags must match the declaration, and sentences must end
+# properly. detekt cannot tell whether a [link] in KDoc resolves; Dokka checks that (dokkaGeneratePublicationHtml, which
+# every module's check runs, fails on unresolved links).
+comments:
+  DeprecatedBlockTag:
+    active: true
+  EndOfSentenceFormat:
+    active: true
+  KDocReferencesNonPublicProperty:
+    active: true
+  OutdatedDocumentation:
+    active: true
+  UndocumentedPublicClass:
+    active: true
+    # Protected members are part of the contract subclasses rely on, so they are documented like public ones.
+    searchInProtectedClass: true
+  UndocumentedPublicFunction:
+    active: true
+    searchProtectedFunction: true
+  UndocumentedPublicProperty:
+    active: true
+    searchProtectedProperty: true
+
+complexity:
+  CyclomaticComplexMethod:
+    # A `when` that maps each case to a single call is a lookup, not branching logic.
+    ignoreSimpleWhenEntries: true
+  LongParameterList:
+    # Composables receive their state and event callbacks as parameters (state hoisting).
+    ignoreAnnotated: ['Composable']
+    # Parameters with defaults are optional (test seams such as clocks and ID generators).
+    ignoreDefaultParameters: true
+    # Classes receive their collaborators through the constructor (manual DI in AppContainer).
+    allowedConstructorParameters: 8
+  TooManyFunctions:
+    # Small private helpers are encouraged, and implementing an interface is not a design choice; count what a file
+    # or class adds to its public surface.
+    ignorePrivate: true
+    ignoreOverridden: true
+    # A Room DAO declares one function per query.
+    ignoreAnnotated: ['Dao']
+
+coroutines:
+  CoroutineLaunchedInTestWithoutRunTest:
+    active: true
+  GlobalCoroutineUsage:
+    active: true
+  SuspendFunInFinallySection:
+    active: true
+  SuspendFunSwallowedCancellation:
+    active: true
+  SuspendFunWithCoroutineScopeReceiver:
+    active: true
+
+exceptions:
+  ErrorUsageWithThrowable:
+    active: true
+  NotImplementedDeclaration:
+    active: true
+  ObjectExtendsThrowable:
+    active: true
+
+naming:
+  FunctionNaming:
+    # Composables are named like types (Compose API guidelines).
+    ignoreAnnotated: ['Composable']
+  NonBooleanPropertyPrefixedWithIs:
+    active: true
+
+performance:
+  UnnecessaryInitOnArray:
+    active: true
+  UnnecessaryPartOfBinaryExpression:
+    active: true
+  UnnecessaryTypeCasting:
+    active: true
+
+potential-bugs:
+  CastNullableToNonNullableType:
+    active: true
+  CharArrayToStringCall:
+    active: true
+  DontDowncastCollectionTypes:
+    active: true
+  ElseCaseInsteadOfExhaustiveWhen:
+    active: true
+  ExitOutsideMain:
+    active: true
+  MissingSuperCall:
+    active: true
+  NullCheckOnMutableProperty:
+    active: true
+  NullableToStringCall:
+    active: true
+  PropertyUsedBeforeDeclaration:
+    active: true
+  UnconditionalJumpStatementInLoop:
+    active: true
+  UnnecessaryNotNullCheck:
+    active: true
+
+style:
+  AlsoCouldBeApply:
+    active: true
+  CanBeNonNullable:
+    active: true
+  CollapsibleIfStatements:
+    active: true
+  DataClassShouldBeImmutable:
+    active: true
+  DoubleNegativeExpression:
+    active: true
+  DoubleNegativeLambda:
+    active: true
+  EqualsOnSignatureLine:
+    active: true
+  ExplicitCollectionElementAccessMethod:
+    active: true
+  ForbiddenMethodCall:
+    active: true
+    methods:
+      - reason: 'print to the console; the app never logs (secrets must never reach logs)'
+        value: 'kotlin.io.print'
+      - reason: 'print to the console; the app never logs (secrets must never reach logs)'
+        value: 'kotlin.io.println'
+      - reason: 'blocks the calling thread; use a suspending API or runTest in tests'
+        value: 'java.lang.Thread.sleep'
+  MaxLineLength:
+    # The same limit as ktlint (.editorconfig).
+    maxLineLength: 140
+  MagicNumber:
+    # Layout values (weights, alpha, sizes) are read in place in Compose UI code.
+    ignoreAnnotated: ['Composable']
+  NullableBooleanCheck:
+    active: true
+  RangeUntilInsteadOfRangeTo:
+    active: true
+  RedundantExplicitType:
+    active: true
+  RedundantVisibilityModifier:
+    active: true
+  ReturnCount:
+    # Guard clauses (early returns for invalid input) read better than nesting.
+    excludeGuardClauses: true
+  ThrowsCount:
+    # Guard clauses (early throws for invalid input) read better than nesting.
+    excludeGuardClauses: true
+  TrimMultilineRawString:
+    active: true
+  UnderscoresInNumericLiterals:
+    active: true
+  UnnecessaryBackticks:
+    active: true
+  UnnecessaryFullyQualifiedName:
+    active: true
+  UnnecessaryInnerClass:
+    active: true
+  UnnecessaryLet:
+    active: true
+  UnnecessaryReversed:
+    active: true
+  UseEmptyCounterpart:
+    active: true
+  UseIfEmptyOrIfBlank:
+    active: true
+  UseSumOfInsteadOfFlatMapSize:
+    active: true

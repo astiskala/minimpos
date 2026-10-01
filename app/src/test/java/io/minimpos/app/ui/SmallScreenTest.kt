@@ -1,0 +1,206 @@
+package io.minimpos.app.ui
+
+import androidx.compose.ui.test.ExperimentalTestApi
+import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertTextContains
+import androidx.compose.ui.test.hasTestTag
+import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performImeAction
+import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.performTextInput
+import com.google.common.truth.Truth.assertThat
+import io.minimpos.app.FakeDevice
+import io.minimpos.app.FakeTerminal
+import io.minimpos.app.MiniMposApp
+import io.minimpos.app.TestEnvironment
+import io.minimpos.app.await
+import io.minimpos.app.awaitCondition
+import io.minimpos.app.data.db.ProductEntity
+import io.minimpos.app.data.db.SaleStatus
+import io.minimpos.app.data.security.Secret
+import kotlinx.coroutines.flow.first
+import org.junit.Before
+import org.junit.Rule
+import org.junit.Test
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
+import org.robolectric.annotation.Config
+
+/**
+ * The app on an Adyen AMS1: a 4" 480×800 px screen, of which the status bar and Adyen's navigation bar leave about
+ * 320×460 dp. The main flows must work without scrolling to their primary action; some are also tried on the P630's
+ * 320×456 dp and the S1F2's 360×568 dp.
+ */
+@OptIn(ExperimentalTestApi::class)
+@RunWith(RobolectricTestRunner::class)
+@Config(qualifiers = "en-rAU-w320dp-h460dp-hdpi")
+class SmallScreenTest {
+    private val terminal = FakeTerminal(passphrase = "correct horse battery staple")
+
+    @get:Rule(order = 0)
+    val env = TestEnvironment(FakeDevice(detectedPoiId = "AMS1-000168223606144"), terminal)
+
+    @get:Rule(order = 1)
+    val compose = createComposeRule()
+
+    private val container = env.container
+
+    @Before
+    fun setUp() {
+        env.updateSettings { it.copy(payment = it.payment.copy(currencyCode = "AUD")) }
+        await { container.catalog.seedDefaults("GST", "GST-free") }
+    }
+
+    private fun waitForTag(tag: String) = compose.waitUntilAtLeastOneExists(hasTestTag(tag), 15_000)
+
+    private fun waitForText(text: String) = compose.waitUntilAtLeastOneExists(hasText(text, substring = true), 15_000)
+
+    private fun configureKey() {
+        env.updateSettings { it.copy(terminal = it.terminal.copy(keyIdentifier = "mini-key")) }
+        await { container.secrets.set(Secret.TERMINAL_PASSPHRASE, "correct horse battery staple") }
+    }
+
+    @Test
+    fun `home guides the terminal setup, which only asks for the shared key`() {
+        compose.setContent { MiniMposApp(container) }
+        compose.onNodeWithTag("terminalSetup").assertIsDisplayed().performClick()
+        waitForTag("keyIdentifier")
+        // On the terminal itself its ID, address and environment are known, so they are not asked for.
+        compose.onNodeWithTag("host").assertDoesNotExist()
+        compose.onNodeWithTag("poiId").assertDoesNotExist()
+        compose.onNodeWithText("Environment").assertDoesNotExist()
+        compose.onNodeWithTag("connectionStatus").assertTextContains("Checking", substring = true)
+
+        compose.onNodeWithTag("keyIdentifier").performTextInput("mini-key")
+        compose.awaitCondition("Saving the key identifier") { container.settingsState.value.terminal.keyIdentifier == "mini-key" }
+        compose.onNodeWithTag("passphrase").performTextInput("wrong passphrase")
+        compose
+            .onNodeWithTag("testConnection")
+            .performScrollTo()
+            .assertTextContains("Save and test")
+            .performClick()
+        waitForText("Could not connect")
+        compose.onNodeWithTag("connectionResult").assertTextContains("shared key", substring = true)
+        compose.onNodeWithTag("connectionResultOk").performClick()
+        compose.onNodeWithTag("connectionStatus").assertTextContains("Not connected", substring = true)
+
+        // The keyboard's Done key saves and tests too, and the result shows however far the screen is scrolled.
+        compose.onNodeWithTag("passphrase").performTextInput("correct horse battery staple")
+        compose.onNodeWithTag("passphrase").performImeAction()
+        waitForText("Connected (OK")
+        compose.onNodeWithTag("connectionResultOk").performClick()
+        compose.onNodeWithTag("connectionStatus").assertTextContains("AMS1-000168223606144", substring = true)
+        assertThat(await { container.secrets.get(Secret.TERMINAL_PASSPHRASE) }).isEqualTo("correct horse battery staple")
+        compose.onNodeWithText("Saved", useUnmergedTree = true).assertExists()
+        compose.onNodeWithTag("testConnection").assertTextContains("Test connection")
+        assertThat(terminal.hosts.distinct()).containsExactly("localhost")
+
+        compose.onNodeWithTag("back").performClick()
+        waitForTag("newSale")
+        compose.onNodeWithTag("terminalSetup").assertDoesNotExist()
+    }
+
+    @Test
+    fun `a sale fits the screen from home to the result`() = saleFitsTheScreen()
+
+    /** The P630: 320×480 px at mdpi, less the status bar (it has keys instead of a navigation bar). */
+    @Test
+    @Config(qualifiers = "en-rAU-w320dp-h456dp-mdpi")
+    fun `a sale fits the P630 screen`() = saleFitsTheScreen()
+
+    /** The S1F2: 720×1280 px at xhdpi, less both bars; the medium sizes still need the compact layouts. */
+    @Test
+    @Config(qualifiers = "en-rAU-w360dp-h568dp-xhdpi")
+    fun `a sale fits the S1F2 screen`() = saleFitsTheScreen()
+
+    @Test
+    fun `the search field only takes room once asked for`() {
+        configureKey()
+        await {
+            val rate =
+                container.catalog.taxRates
+                    .first()
+                    .first()
+            (1..9).forEach {
+                container.catalog.saveProduct(
+                    ProductEntity(name = "Product $it", priceMinor = 100L * it, taxRateId = rate.id),
+                )
+            }
+        }
+        compose.setContent { MiniMposApp(container) }
+        compose.onNodeWithTag("newSale").performClick()
+        compose.waitUntilAtLeastOneExists(hasText("Product 1"), 15_000)
+        compose.onNodeWithTag("search").assertDoesNotExist()
+
+        compose.onNodeWithTag("openSearch").performClick()
+        compose.onNodeWithTag("search").assertIsDisplayed().performTextInput("Product 3")
+        compose.onNodeWithText("Product 1").assertDoesNotExist()
+        compose.onNode(hasText("Product 3") and hasTestTag("search").not()).assertIsDisplayed()
+
+        // Closing the search clears it too.
+        compose.onNodeWithTag("openSearch").performClick()
+        compose.onNodeWithTag("search").assertDoesNotExist()
+        compose.onNodeWithText("Product 1").assertIsDisplayed()
+    }
+
+    private fun saleFitsTheScreen() {
+        configureKey()
+        compose.setContent { MiniMposApp(container) }
+        listOf("newSale", "refund", "history", "products", "settings").forEach { compose.onNodeWithTag(it).assertIsDisplayed() }
+        compose.onNodeWithTag("terminalSetup").assertDoesNotExist()
+
+        compose.onNodeWithTag("newSale").performClick()
+        waitForTag("addCustom")
+        // The custom item keypad fits without scrolling.
+        compose.onNodeWithTag("addCustom").assertIsDisplayed()
+        compose.onNodeWithTag("key_00").assertIsDisplayed()
+        listOf(1, 2, 5, 0).forEach { compose.onNodeWithTag("key_$it").performClick() }
+        compose.onNodeWithTag("addCustom").performClick()
+        compose.onNodeWithTag("charge").assertIsDisplayed().performClick()
+
+        // Pay stays in reach below the checkout form.
+        waitForTag("pay")
+        compose
+            .onNodeWithTag("pay")
+            .assertIsDisplayed()
+            .assertTextContains("Pay $12.50")
+            .performClick()
+        waitForTag("newSaleAfter")
+        compose.onNodeWithTag("newSaleAfter").assertIsDisplayed()
+        compose.onNodeWithTag("home").assertIsDisplayed()
+        compose.onNodeWithTag("resultStatus").assertTextContains("Approved")
+
+        val sale = await { container.history.items().first { it.isNotEmpty() } }.single()
+        val record = await { container.sales.get(sale.id)!! }
+        assertThat(record.sale.status).isEqualTo(SaleStatus.APPROVED)
+        assertThat(record.sale.poiId).isEqualTo("AMS1-000168223606144")
+    }
+
+    @Test
+    fun `the PIN pad fits the screen`() = pinPadFitsTheScreen()
+
+    @Test
+    @Config(qualifiers = "en-rAU-w320dp-h456dp-mdpi")
+    fun `the PIN pad fits the P630 screen`() = pinPadFitsTheScreen()
+
+    @Test
+    @Config(qualifiers = "en-rAU-w360dp-h568dp-xhdpi")
+    fun `the PIN pad fits the S1F2 screen`() = pinPadFitsTheScreen()
+
+    private fun pinPadFitsTheScreen() {
+        configureKey()
+        await { container.pinManager.setPin("1357") }
+        compose.setContent { MiniMposApp(container) }
+        compose.onNodeWithTag("settings").performClick()
+        waitForTag("pin_OK")
+        listOf("pin_1", "pin_0", "pin_<", "pin_OK", "pinMessage").forEach { compose.onNodeWithTag(it).assertIsDisplayed() }
+        listOf(1, 3, 5, 7).forEach { compose.onNodeWithTag("pin_$it").performClick() }
+        compose.onNodeWithTag("pin_OK").performClick()
+        waitForTag("section_terminal")
+        compose.onNodeWithTag("section_terminal").assertTextContains("Checking", substring = true)
+    }
+}

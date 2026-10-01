@@ -1,0 +1,5 @@
+{
+  // The project has no Java sources, and the Java extension's Gradle import fails on this build (Gradle 9 with
+  // parallel execution, eclipse-jdtls/eclipse.jdt.ls#3505), reporting errors in every build.gradle.kts.
+  "java.import.gradle.enabled": false
+}

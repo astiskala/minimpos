@@ -1,0 +1,10 @@
+# Settings for the Compose rules plugin (io.nlopez.compose.rules), layered on detekt.yml for :app.
+
+Compose:
+  CompositionLocalAllowlist:
+    # The app container (manual DI), the small-screen dimensions and the status palette are deliberate locals.
+    allowedCompositionLocals: LocalAppContainer,LocalDimens,LocalStatusColors
+  UnnecessaryLaunchedEffect:
+    # Its suggested SideEffect runs after every recomposition, but these effects (navigation, permission requests,
+    # clearing a field) must run once per key.
+    active: false

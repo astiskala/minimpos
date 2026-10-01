@@ -1,0 +1,169 @@
+package io.minimpos.terminal
+
+import com.adyen.model.nexo.DiagnosisRequest
+import com.adyen.model.nexo.MessageHeader
+import com.adyen.model.nexo.SaleToPOIRequest
+import com.adyen.model.terminal.TerminalAPIRequest
+import com.google.common.truth.Truth.assertThat
+import io.minimpos.terminal.client.PaymentParams
+import io.minimpos.terminal.client.PosApplication
+import io.minimpos.terminal.client.PrintAlign
+import io.minimpos.terminal.client.PrintJob
+import io.minimpos.terminal.client.PrintLine
+import io.minimpos.terminal.client.PrintOutcome
+import io.minimpos.terminal.client.PrintStyle
+import io.minimpos.terminal.client.RecoveryPolicy
+import io.minimpos.terminal.client.RecurringModel
+import io.minimpos.terminal.client.RefundParams
+import io.minimpos.terminal.client.RetryAdvice
+import io.minimpos.terminal.client.TerminalClient
+import io.minimpos.terminal.client.TerminalIdentity
+import io.minimpos.terminal.client.TransactionOutcome
+import io.minimpos.terminal.simulator.SimulatedOutcome
+import io.minimpos.terminal.simulator.SimulatorConfig
+import io.minimpos.terminal.simulator.TerminalSimulator
+import io.minimpos.terminal.transport.TerminalProtocolException
+import kotlinx.coroutines.async
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.runBlocking
+import org.junit.Assert.assertThrows
+import org.junit.Test
+import java.math.BigDecimal
+import kotlin.random.Random
+import kotlin.time.Duration.Companion.seconds
+
+class TerminalSimulatorTest {
+    private var config = SimulatorConfig(delayMillis = 0)
+    private val printed = mutableListOf<PrintJob>()
+    private val simulator = TerminalSimulator(config = { config }, random = Random(42), onPrint = { printed += it })
+    private val client =
+        TerminalClient(
+            transport = simulator,
+            identity = TerminalIdentity("POS1", "SIMULATOR-000000001"),
+            application = PosApplication("Mini mPOS", "1.0", "Mini mPOS", "Android", "13"),
+            recovery = RecoveryPolicy(attempts = 2, intervalMillis = 10),
+        )
+    private val tokenizing =
+        PaymentParams(
+            amount = BigDecimal("12.00"),
+            currency = "AUD",
+            merchantReference = "MP-1",
+            shopperReference = "CUST-1",
+            shopperEmail = "a@b.co",
+            recurringProcessingModel = RecurringModel.UNSCHEDULED_CARD_ON_FILE,
+        )
+
+    private fun pay(params: PaymentParams = tokenizing) = runBlocking { client.pay(params) as TransactionOutcome.Completed }.details
+
+    @Test
+    fun `approves with receipts and tokenization`() {
+        val details = pay()
+        assertThat(details.success).isTrue()
+        assertThat(details.amount).isEqualTo(BigDecimal("12.00"))
+        assertThat(details.poiTransactionId).contains(".")
+        assertThat(details.poiTimestamp).isNotNull()
+        assertThat(details.tokenization!!.shopperReference).isEqualTo("CUST-1")
+        assertThat(details.additionalData["shopperEmail"]).isEqualTo("a@b.co")
+        assertThat(details.customerReceipt.map { it.name }).contains("APPROVED")
+        assertThat(details.cashierReceipt.map { it.name }).contains("MERCHANT COPY")
+        assertThat(details.entryMode).isEqualTo("Contactless")
+        assertThat(details.signatureRequired).isFalse()
+    }
+
+    @Test
+    fun `approvals without a shopper reference are not tokenized, signatures on request`() {
+        config = config.copy(signatureRequired = true)
+        val details = pay(tokenizing.copy(shopperReference = null, recurringProcessingModel = null))
+        assertThat(details.tokenization).isNull()
+        assertThat(details.signatureRequired).isTrue()
+        assertThat(details.cashierReceipt.map { it.key }).contains("sigline")
+    }
+
+    @Test
+    fun `declines, cancellations, busy terminals and random outcomes`() {
+        config = config.copy(outcome = SimulatedOutcome.DECLINE)
+        assertThat(pay().message).isEqualTo("Not enough balance")
+        config = config.copy(outcome = SimulatedOutcome.CANCEL)
+        assertThat(pay().errorCondition).isEqualTo("Cancel")
+        config = config.copy(outcome = SimulatedOutcome.BUSY)
+        val busy = pay()
+        assertThat(busy.advice).isEqualTo(RetryAdvice.TERMINAL_BUSY)
+        assertThat(busy.busyServiceId).isEqualTo(TerminalSimulator.BUSY_SERVICE_ID)
+        assertThat(busy.pspReference).isNull()
+        assertThat(busy.maskedPan).isNull()
+        config = config.copy(outcome = SimulatedOutcome.RANDOM)
+        assertThat((1..40).map { pay().success }.toSet()).containsExactly(true, false)
+    }
+
+    @Test
+    fun `timeouts are recovered through transaction status`() {
+        config = config.copy(outcome = SimulatedOutcome.TIMEOUT)
+        val outcome = runBlocking { client.pay(tokenizing) } as TransactionOutcome.Completed
+        assertThat(outcome.recovered).isTrue()
+        assertThat(outcome.details.success).isTrue()
+    }
+
+    @Test
+    fun `abort stops an in-flight payment`() =
+        runBlocking {
+            config = config.copy(delayMillis = 10_000)
+            var serviceId: String? = null
+            val payment = async { client.pay(tokenizing) { serviceId = it } }
+            while (serviceId == null) delay(10)
+            client.abort(serviceId)
+            val details = (payment.await() as TransactionOutcome.Completed).details
+            assertThat(details.errorCondition).isEqualTo("Aborted")
+        }
+
+    @Test
+    fun `refunds, prints and diagnoses`() =
+        runBlocking {
+            val payment = pay()
+            val refund = client.refund(RefundParams(payment.poiTransactionId!!, payment.poiTimestamp!!, "MP-R", BigDecimal("2.00"), "AUD"))
+            val details = (refund as TransactionOutcome.Completed).details
+            assertThat(details.success).isTrue()
+            assertThat(details.amount).isEqualTo(BigDecimal("2.00"))
+            assertThat(details.customerReceipt.map { it.name }).contains("REFUND REQUESTED")
+            val full = client.refund(RefundParams(payment.poiTransactionId, payment.poiTimestamp, "MP-R2")) as TransactionOutcome.Completed
+            assertThat(full.details.customerReceipt.map { it.value }).contains("Full amount")
+
+            // What the simulator prints reads back as the jobs that were sent.
+            val text =
+                PrintJob.Text(
+                    listOf(
+                        PrintLine.Text("Shop", PrintAlign.CENTER, PrintStyle.BOLD),
+                        PrintLine.Columns("Total", "$1", PrintStyle.UNDERLINE),
+                        PrintLine.Text("Thanks", PrintAlign.RIGHT),
+                        PrintLine.Text(""),
+                    ),
+                )
+            val qr = PrintJob.QrCode("MPR1*x y")
+            assertThat(client.print(listOf(text, qr))).isEqualTo(PrintOutcome.Printed)
+            assertThat(printed).containsExactly(text, qr).inOrder()
+            assertThat(client.diagnose().hasPrinter).isTrue()
+
+            config = config.copy(hasPrinter = false)
+            val failed = client.print(listOf(qr)) as PrintOutcome.Failed
+            assertThat(failed.noPrinter).isTrue()
+            assertThat(failed.message).contains("no printer")
+            assertThat(client.diagnose().hasPrinter).isFalse()
+        }
+
+    @Test
+    fun `unknown transactions are not found and unsupported requests fail`() =
+        runBlocking {
+            assertThat(client.status("NOPE")).isInstanceOf(TransactionOutcome.NotProcessed::class.java)
+            val unsupported = TerminalAPIRequest().apply { saleToPOIRequest = SaleToPOIRequest().apply { messageHeader = MessageHeader() } }
+            assertThrows(TerminalProtocolException::class.java) { runBlocking { simulator.send(unsupported, 1.seconds) } }
+            assertThrows(TerminalProtocolException::class.java) { runBlocking { simulator.send(TerminalAPIRequest(), 1.seconds) } }
+            val diagnosis =
+                TerminalAPIRequest().apply {
+                    saleToPOIRequest =
+                        SaleToPOIRequest().apply {
+                            messageHeader = MessageHeader()
+                            diagnosisRequest = DiagnosisRequest()
+                        }
+                }
+            assertThat(simulator.send(diagnosis, 1.seconds)!!.saleToPOIResponse.diagnosisResponse).isNotNull()
+        }
+}

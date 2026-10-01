@@ -1,0 +1,199 @@
+package io.minimpos.app.terminal
+
+import com.google.common.truth.Truth.assertThat
+import io.minimpos.app.FakeDevice
+import io.minimpos.app.FakeTerminal
+import io.minimpos.app.TestEnvironment
+import io.minimpos.app.await
+import io.minimpos.app.data.security.Secret
+import io.minimpos.app.data.settings.PrinterMode
+import io.minimpos.app.data.settings.TerminalMode
+import io.minimpos.terminal.client.PaymentParams
+import io.minimpos.terminal.client.PrintJob
+import io.minimpos.terminal.client.PrintLine
+import io.minimpos.terminal.client.PrintOutcome
+import io.minimpos.terminal.client.TransactionKind
+import io.minimpos.terminal.client.TransactionOutcome
+import io.minimpos.terminal.transport.TerminalEnvironment
+import kotlinx.coroutines.flow.first
+import org.junit.After
+import org.junit.Test
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
+import java.math.BigDecimal
+
+/** The terminal as the app sees it: where payments go, operations without complete setup, and the published status. */
+@RunWith(RobolectricTestRunner::class)
+class TerminalTest {
+    private val env = TestEnvironment()
+    private val container = env.container
+    private val payment = PaymentParams(BigDecimal("1.00"), "AUD", "MP-1")
+
+    @After
+    fun tearDown() = env.close()
+
+    /** A second environment that plays an Adyen terminal whose shared key passphrase is [passphrase]. */
+    private fun onTerminal(
+        poiId: String = "S1F2-000158213605014",
+        passphrase: String = "correct horse battery staple",
+        block: (TestEnvironment, FakeTerminal) -> Unit,
+    ) {
+        val fake = FakeTerminal(passphrase)
+        val terminal = TestEnvironment(FakeDevice(detectedPoiId = poiId), fake)
+        try {
+            block(terminal, fake)
+        } finally {
+            terminal.close()
+        }
+    }
+
+    private fun status(env: TestEnvironment = this.env) =
+        await {
+            env.container.terminalStatus.state
+                .first { it.loaded }
+        }
+
+    @Test
+    fun `off a terminal payments go to the simulator, or a terminal with its address, POIID and key`() {
+        val gateway = container.gateway
+        val terminal = container.settingsState.value.terminal
+        assertThat(gateway.automaticMode).isEqualTo(TerminalMode.SIMULATOR)
+        assertThat(gateway.effectiveMode(terminal)).isEqualTo(TerminalMode.SIMULATOR)
+        assertThat(gateway.poiId(terminal)).isEqualTo(TerminalGateway.SIMULATOR_POI_ID)
+        assertThat(gateway.setupProblem(terminal, passphraseSaved = false)).isNull()
+
+        val network = terminal.copy(mode = TerminalMode.TERMINAL)
+        assertThat(gateway.poiId(network)).isNull()
+        assertThat(gateway.poiId(network.copy(poiIdOverride = " S1U2-1 "))).isEqualTo("S1U2-1")
+        assertThat(gateway.setupProblem(network, passphraseSaved = true)).contains("POIID")
+        val withId = network.copy(poiIdOverride = "S1U2-000158213605014")
+        assertThat(gateway.setupProblem(withId, passphraseSaved = true)).contains("IP address")
+        val withHost = withId.copy(host = "10.0.0.9")
+        assertThat(gateway.setupProblem(withHost, passphraseSaved = true)).contains("key identifier")
+        val withKey = withHost.copy(keyIdentifier = "key")
+        assertThat(gateway.setupProblem(withKey, passphraseSaved = false)).contains("passphrase")
+        assertThat(gateway.setupProblem(withKey.copy(keyVersion = 0), passphraseSaved = true)).contains("version")
+        assertThat(gateway.setupProblem(withKey, passphraseSaved = true)).isNull()
+    }
+
+    @Test
+    fun `without complete setup nothing is sent, and every operation says what to enter`() {
+        env.updateSettings { it.copy(terminal = it.terminal.copy(mode = TerminalMode.TERMINAL)) }
+        val gateway = container.gateway
+        var sending: String? = null
+        val paid = await { gateway.pay(payment, "S1") { sending = it } } as TransactionOutcome.NotProcessed
+        assertThat(paid.reason).contains("POIID")
+        assertThat(sending).isNull()
+        assertThat(await { gateway.status("S1", TransactionKind.REFUND) }).isInstanceOf(TransactionOutcome.Unknown::class.java)
+        assertThat(await { gateway.abort("S1") }).isFalse()
+        val printed = await { gateway.print(listOf(PrintJob.Text(listOf(PrintLine.Text("x"))))) } as PrintOutcome.Failed
+        assertThat(printed.noPrinter).isFalse()
+        assertThat((await { gateway.diagnose() } as TerminalConnection.NotSetUp).message).contains("POIID")
+    }
+
+    @Test
+    fun `on a terminal its own POIID and localhost apply, and only the shared key is needed`() =
+        onTerminal { terminal, fake ->
+            val gateway = terminal.container.gateway
+            val settings = terminal.container.settingsState.value.terminal
+            assertThat(gateway.automaticMode).isEqualTo(TerminalMode.TERMINAL)
+            assertThat(gateway.poiId(settings.copy(poiIdOverride = " S1U2-1 "))).isEqualTo("S1F2-000158213605014")
+            terminal.updateSettings { it.copy(terminal = it.terminal.copy(keyIdentifier = "key", saleId = " ", host = "10.0.0.9")) }
+            assertThat((await { gateway.diagnose() } as TerminalConnection.NotSetUp).message).contains("passphrase")
+
+            await { terminal.container.secrets.set(Secret.TERMINAL_PASSPHRASE, "correct horse battery staple") }
+            var sending: String? = null
+            val paid = await { gateway.pay(payment, "PAY1") { sending = it } }
+            assertThat((paid as TransactionOutcome.Completed).details.success).isTrue()
+            assertThat(sending).isEqualTo("S1F2-000158213605014")
+            assertThat(await { gateway.abort("PAY1", TransactionKind.PAYMENT) }).isTrue()
+            assertThat(await { gateway.status("PAY1", TransactionKind.PAYMENT) }).isInstanceOf(TransactionOutcome.Completed::class.java)
+            // The transport is reused while host and key stay the same.
+            assertThat(fake.hosts).containsExactly("localhost")
+
+            // A passphrase that was saved but can no longer be decrypted is reported as such.
+            terminal.cipher.fail = true
+            assertThat((await { gateway.diagnose() } as TerminalConnection.NotSetUp).message).contains("could not be read")
+        }
+
+    @Test
+    fun `connection checks report setup, rejection and success, and learn about the printer`() =
+        onTerminal(poiId = "AMS1-000168223606144") { terminal, _ ->
+            val status = terminal.container.terminalStatus
+            assertThat(status(terminal).connection).isEqualTo(TerminalConnection.Unknown)
+            assertThat(status(terminal).setupProblem).contains("key identifier")
+            assertThat((await { status.check() } as TerminalConnection.NotSetUp).message).contains("key identifier")
+
+            terminal.updateSettings { it.copy(terminal = it.terminal.copy(keyIdentifier = "key")) }
+            await { terminal.container.secrets.set(Secret.TERMINAL_PASSPHRASE, "wrong") }
+            assertThat((await { status.check() } as TerminalConnection.Failed).message).contains("shared key")
+            // AMS1 terminals have no printer as far as their name tells, until one answers.
+            assertThat(status(terminal).printerAvailable).isFalse()
+
+            await { terminal.container.secrets.set(Secret.TERMINAL_PASSPHRASE, "correct horse battery staple") }
+            val connected = await { status.check() } as TerminalConnection.Connected
+            assertThat(connected.diagnosis.hasPrinter).isTrue()
+            val state = await { status.state.first { it.connection == connected } }
+            assertThat(state.setupProblem).isNull()
+            assertThat(state.printerAvailable).isTrue()
+            assertThat(terminal.container.gateway.printers.value).containsExactly("AMS1-000168223606144", true)
+        }
+
+    @Test
+    fun `the status follows the printer setting, the simulator and what the terminal reported`() {
+        env.useSimulator()
+        assertThat(status().printerAvailable).isTrue()
+        env.useSimulator { it.copy(simulator = it.simulator.copy(hasPrinter = false)) }
+        assertThat(await { container.terminalStatus.state.first { !it.printerAvailable } }.mode).isEqualTo(TerminalMode.SIMULATOR)
+        // A print refused for want of a printer is remembered for that terminal.
+        val failed = await { container.gateway.print(listOf(PrintJob.QrCode("x"))) } as PrintOutcome.Failed
+        assertThat(failed.noPrinter).isTrue()
+        assertThat(container.gateway.printers.value[TerminalGateway.SIMULATOR_POI_ID]).isFalse()
+
+        env.updateSettings { it.copy(receipt = it.receipt.copy(printerMode = PrinterMode.ON)) }
+        assertThat(await { container.terminalStatus.state.first { it.printerAvailable } }.printerAvailable).isTrue()
+        env.updateSettings {
+            it.copy(
+                receipt = it.receipt.copy(printerMode = PrinterMode.OFF),
+                simulator = it.simulator.copy(hasPrinter = true),
+            )
+        }
+        assertThat(await { container.terminalStatus.state.first { !it.printerAvailable } }.printerAvailable).isFalse()
+
+        // A terminal not asked yet is judged by its model.
+        env.updateSettings {
+            it.copy(
+                receipt = it.receipt.copy(printerMode = PrinterMode.AUTO),
+                terminal = it.terminal.copy(mode = TerminalMode.TERMINAL, poiIdOverride = "S1F2-000158213605014"),
+            )
+        }
+        val f2 = await { container.terminalStatus.state.first { it.mode == TerminalMode.TERMINAL } }
+        assertThat(f2.printerAvailable).isTrue()
+        assertThat(f2.onTerminal).isFalse()
+        env.updateSettings { it.copy(terminal = it.terminal.copy(poiIdOverride = "S1U2-000158213605014")) }
+        assertThat(await { container.terminalStatus.state.first { it.poiId == "S1U2-000158213605014" } }.printerAvailable).isFalse()
+        env.updateSettings { it.copy(terminal = it.terminal.copy(poiIdOverride = "")) }
+        assertThat(await { container.terminalStatus.state.first { it.poiId == null } }.printerAvailable).isFalse()
+    }
+
+    @Test
+    fun `the app checks the connection in the background, retries failures and remembers the environment`() =
+        onTerminal(poiId = "AMS1-000168223606144") { terminal, _ ->
+            val container = terminal.container
+            container.start()
+            await { container.terminalStatus.state.first { it.connection is TerminalConnection.NotSetUp } }
+            terminal.updateSettings { it.copy(terminal = it.terminal.copy(keyIdentifier = "key")) }
+            await { container.secrets.set(Secret.TERMINAL_PASSPHRASE, "wrong") }
+            await { container.terminalStatus.state.first { it.connection is TerminalConnection.Failed } }
+            // Home retries a failed check; with the right key it now connects.
+            await { container.secrets.set(Secret.TERMINAL_PASSPHRASE, "correct horse battery staple") }
+            await { container.terminalStatus.recheckIfFailed() }
+            val connected = await { container.terminalStatus.state.first { it.connection is TerminalConnection.Connected } }
+            assertThat(connected.printerAvailable).isTrue()
+            await { container.terminalStatus.recheckIfFailed() }
+
+            container.gateway.environmentDetected(TerminalEnvironment.LIVE)
+            await { container.settingsState.first { it.terminal.environment == TerminalEnvironment.LIVE } }
+            assertThat(await { container.terminalStatus.state.first { it.environment == TerminalEnvironment.LIVE } }.onTerminal).isTrue()
+        }
+}

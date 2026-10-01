@@ -184,6 +184,12 @@ data class PaymentParams(
     val metadata: Map<String, String> = emptyMap(),
     /** Requests the card alias (TokenRequestedType=Customer); tokenization itself is driven by the shopper fields. */
     val requestCardAlias: Boolean = false,
+    /**
+     * Only holds [amount] on the card: Adyen's authorisation type `PreAuth` with manual capture, so the payment can be
+     * adjusted and is captured (or cancelled) later instead of being captured automatically. False takes a normal
+     * payment with the account's default authorisation type and capture.
+     */
+    val preAuthorisation: Boolean = false,
 )
 
 /**

@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import io.minimpos.app.data.db.RefundEntity
 import io.minimpos.app.data.db.RefundStatus
+import io.minimpos.app.data.db.SaleKind
 import io.minimpos.app.data.db.SaleStatus
 import io.minimpos.app.data.db.SaleWithLines
 import io.minimpos.app.data.repo.HistoryItem
@@ -16,6 +17,7 @@ import io.minimpos.app.feature.sale.toState
 import io.minimpos.app.payment.PaymentStart
 import io.minimpos.app.payment.ReceiptDelivery
 import io.minimpos.app.payment.TransactionLifecycle
+import io.minimpos.app.refund.RefundStart
 import io.minimpos.app.refund.Refundability
 import io.minimpos.app.refund.RefundablePayment
 import io.minimpos.app.terminal.TerminalState
@@ -27,24 +29,32 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import java.time.Clock
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
 import java.util.Locale
 
 /**
- * Totals per currency for one day: approved sales and accepted refunds, of the items the filter shows.
+ * Totals per currency for one day, of the items the filter shows: approved sales, accepted refunds and the
+ * pre-authorisations still held. Pre-authorisations are not sales (they are captured in the Customer Area), and their
+ * cancellations are not refunds.
  *
  * @property salesMinor Approved sales' totals by ISO 4217 currency code, in minor units.
  * @property saleCount Number of approved sales.
  * @property refundsMinor Accepted refunds' amounts by currency code, in minor units.
  * @property refundCount Number of accepted refunds.
+ * @property preAuthsMinor Amounts held by approved pre-authorisations without an accepted cancellation, by currency
+ *   code, in minor units.
+ * @property preAuthCount Number of those pre-authorisations.
  */
 data class DayTotals(
     val salesMinor: Map<String, Long>,
     val saleCount: Int,
     val refundsMinor: Map<String, Long>,
     val refundCount: Int,
+    val preAuthsMinor: Map<String, Long> = emptyMap(),
+    val preAuthCount: Int = 0,
 )
 
 /**
@@ -65,10 +75,13 @@ enum class HistoryFilter {
     /** Every sale and refund. */
     ALL,
 
-    /** Sales only, whatever their status. */
+    /** Sales only (not pre-authorisations), whatever their status. */
     SALES,
 
-    /** Refunds only, whatever their status. */
+    /** Pre-authorisations and their cancellations, whatever their status. */
+    PRE_AUTHS,
+
+    /** Refunds only (not cancellations of pre-authorisations), whatever their status. */
     REFUNDS,
 
     /** Sales and refunds whose outcome is still pending or unknown, which need checking. */
@@ -117,11 +130,18 @@ class HistoryViewModel(
             }
 
             HistoryFilter.SALES -> {
-                item is HistoryItem.Sale
+                item is HistoryItem.Sale && item.sale.kind == SaleKind.SALE
+            }
+
+            HistoryFilter.PRE_AUTHS -> {
+                when (item) {
+                    is HistoryItem.Sale -> item.sale.kind == SaleKind.PRE_AUTHORISATION
+                    is HistoryItem.Refund -> item.refund.cancellation
+                }
             }
 
             HistoryFilter.REFUNDS -> {
-                item is HistoryItem.Refund
+                item is HistoryItem.Refund && !item.refund.cancellation
             }
 
             HistoryFilter.ISSUES -> {
@@ -136,13 +156,18 @@ class HistoryViewModel(
         items
             .groupBy { Instant.ofEpochMilli(it.createdAt).atZone(zone()).toLocalDate() }
             .map { (date, dayItems) ->
-                val approved = dayItems.filterIsInstance<HistoryItem.Sale>().map { it.sale }.filter { it.status == SaleStatus.APPROVED }
+                val (approved, preAuths) =
+                    dayItems
+                        .filterIsInstance<HistoryItem.Sale>()
+                        .map { it.sale }
+                        .filter { it.status == SaleStatus.APPROVED }
+                        .partition { it.kind == SaleKind.SALE }
+                val held = preAuths.filter { it.refundedMinor == 0L }
                 val refunds =
                     dayItems
                         .filterIsInstance<HistoryItem.Refund>()
-                        .map {
-                            it.refund
-                        }.filter { it.status == RefundStatus.REQUESTED }
+                        .map { it.refund }
+                        .filter { it.status == RefundStatus.REQUESTED && !it.cancellation }
                 HistoryDay(
                     date = date,
                     totals =
@@ -151,6 +176,8 @@ class HistoryViewModel(
                             saleCount = approved.size,
                             refundsMinor = refunds.groupBy { it.currency }.mapValues { (_, list) -> list.sumOf { it.amountMinor } },
                             refundCount = refunds.size,
+                            preAuthsMinor = held.groupBy { it.currency }.mapValues { (_, list) -> list.sumOf { it.totalMinor } },
+                            preAuthCount = held.size,
                         ),
                     items = dayItems,
                 )
@@ -181,17 +208,37 @@ data class SaleDetailUiState(
 ) {
     /** Whether a refund can be offered, as [RefundablePayment.check] decides. */
     val canRefund: Boolean get() = record?.let(RefundablePayment::check) is Refundability.Refundable
+
+    /** Whether the pre-authorisation can be cancelled, as [RefundablePayment.canCancel] decides. */
+    val canCancel: Boolean get() = record?.let(RefundablePayment::canCancel) == true
 }
 
-/** One sale from history: its receipt, refunds, reprinting and emailing, and re-checking an unknown outcome. */
+/**
+ * One sale (or pre-authorisation) from history: its receipt, refunds, reprinting and emailing, re-checking an unknown
+ * outcome, and cancelling a pre-authorisation.
+ *
+ * @param saleId The sale shown.
+ * @param sales Where it is stored.
+ * @param receipts Prints and emails its receipt.
+ * @param payments The payments' lifecycle, for re-checking an unknown outcome.
+ * @param refunds The refunds' lifecycle, which also runs cancellations of pre-authorisations.
+ * @param settings The current settings.
+ * @param terminal Whether printing is offered.
+ * @param messages Localised outcome messages.
+ * @param clock Stamps the merchant reference of a cancellation.
+ * @param zone The time zone of that reference.
+ */
 class SaleDetailViewModel(
     private val saleId: String,
     sales: SaleRepository,
     private val receipts: ReceiptDelivery,
     private val payments: TransactionLifecycle<PaymentStart>,
+    private val refunds: TransactionLifecycle<RefundStart>,
     settings: StateFlow<AppSettings>,
     terminal: StateFlow<TerminalState>,
     private val messages: ResultMessages,
+    private val clock: Clock = Clock.systemDefaultZone(),
+    private val zone: () -> ZoneId = { ZoneId.systemDefault() },
 ) : ViewModel() {
     private val local = MutableStateFlow(SaleDetailUiState())
 
@@ -223,6 +270,19 @@ class SaleDetailViewModel(
             val result = receipts.emailSale(saleId, to).toState(messages.emailed.format(Locale.getDefault(), to))
             local.update { it.copy(email = result) }
         }
+    }
+
+    /**
+     * Starts cancelling the pre-authorisation (a full reversal, see [RefundablePayment.cancellation]) and returns the
+     * cancellation's ID, to follow it like a refund; null when it cannot be cancelled or a refund is already running.
+     */
+    fun cancel(): String? {
+        val current = state.value
+        val request =
+            current.record?.let {
+                RefundablePayment.cancellation(it, current.settings.payment.referencePrefix, clock.instant(), zone())
+            } ?: return null
+        return runCatching { refunds.start(request) }.getOrNull()
     }
 
     /** Asks the terminal for the transaction status of a sale whose outcome is unknown. */

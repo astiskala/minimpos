@@ -54,8 +54,9 @@ fun AppNavHost() {
             entryProvider {
                 entry<Route.Home> { HomeScreen(navigator) }
                 entry<Route.Sale> { SaleScreen(navigator) }
-                entry<Route.Checkout> { CheckoutScreen(navigator) }
-                entry<Route.Payment> { PaymentScreen(navigator) }
+                entry<Route.PreAuth> { SaleScreen(navigator, preAuthorisation = true) }
+                entry<Route.Checkout> { CheckoutScreen(navigator, it.preAuthorisation) }
+                entry<Route.Payment> { PaymentScreen(navigator, it.preAuthorisation) }
                 entry<Route.SaleResult> { SaleResultScreen(it.saleId, navigator) }
                 entry<Route.RefundScan> { RefundScanScreen(navigator) }
                 entry<Route.Refund> { RefundScreen(it.payload, it.saleId, navigator) }

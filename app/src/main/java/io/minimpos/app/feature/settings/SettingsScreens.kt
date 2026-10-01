@@ -640,19 +640,13 @@ private fun ColumnScope.PaymentsSection(
     EmailCaptureSettings(payment, ::update)
 }
 
-/** Saving cards: the default, the recurring model, and what the shopper reference is made from. */
+/** Saving cards: the defaults, the recurring model, and what the shopper reference is made from. */
 @Composable
 private fun ColumnScope.TokenizationSettings(
     payment: PaymentSettings,
     update: ((PaymentSettings) -> PaymentSettings) -> Unit,
 ) {
-    SettingSwitch(
-        stringResource(R.string.settings_tokenize_default),
-        payment.tokenizeDefaultOn,
-        { value -> update { it.copy(tokenizeDefaultOn = value) } },
-        subtitle = stringResource(R.string.settings_tokenize_default_hint),
-        tag = "tokenizeDefault",
-    )
+    SaveCardDefaults(payment, update)
     SettingChoice(
         title = stringResource(R.string.settings_recurring_model),
         options = PaymentSettings.RECURRING_MODELS.map { it to it },
@@ -700,6 +694,28 @@ private fun ColumnScope.TokenizationSettings(
     SettingSwitch(stringResource(R.string.settings_send_shopper_email), payment.sendShopperEmail, { value ->
         update { it.copy(sendShopperEmail = value) }
     })
+}
+
+/** Whether "Save card" starts switched on at checkout, for sales and for pre-authorisations. */
+@Composable
+private fun ColumnScope.SaveCardDefaults(
+    payment: PaymentSettings,
+    update: ((PaymentSettings) -> PaymentSettings) -> Unit,
+) {
+    SettingSwitch(
+        stringResource(R.string.settings_tokenize_default),
+        payment.tokenizeDefaultOn,
+        { value -> update { it.copy(tokenizeDefaultOn = value) } },
+        subtitle = stringResource(R.string.settings_tokenize_default_hint),
+        tag = "tokenizeDefault",
+    )
+    SettingSwitch(
+        stringResource(R.string.settings_pre_auth_tokenize_default),
+        payment.preAuthTokenizeDefaultOn,
+        { value -> update { it.copy(preAuthTokenizeDefaultOn = value) } },
+        subtitle = stringResource(R.string.settings_pre_auth_tokenize_default_hint),
+        tag = "preAuthTokenizeDefault",
+    )
 }
 
 /** When checkout asks for the email, and sending the receipt automatically. */

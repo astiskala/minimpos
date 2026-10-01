@@ -22,6 +22,7 @@ import androidx.compose.material.icons.filled.ErrorOutline
 import androidx.compose.material.icons.filled.Inventory2
 import androidx.compose.material.icons.filled.Key
 import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.LockClock
 import androidx.compose.material.icons.filled.PointOfSale
 import androidx.compose.material.icons.filled.QrCodeScanner
 import androidx.compose.material.icons.filled.Settings
@@ -32,16 +33,19 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.minimpos.app.R
+import io.minimpos.app.data.db.SaleKind
 import io.minimpos.app.data.settings.TerminalMode
 import io.minimpos.app.feature.settings.SettingsSections
 import io.minimpos.app.terminal.TerminalConnection
@@ -51,6 +55,7 @@ import io.minimpos.app.ui.navigation.Navigator
 import io.minimpos.app.ui.navigation.Route
 import io.minimpos.app.ui.theme.LocalDimens
 import io.minimpos.app.ui.theme.LocalStatusColors
+import kotlinx.coroutines.flow.map
 
 /** The home screen fills the available height rather than scrolling, so everything fits on a 4" terminal screen. */
 @Composable
@@ -63,6 +68,9 @@ fun HomeScreen(
     val settings by container.settingsState.collectAsStateWithLifecycle()
     val pinSet by container.pinManager.pinConfigured.collectAsStateWithLifecycle(initialValue = false)
     val terminal by container.terminalStatus.state.collectAsStateWithLifecycle()
+    val preAuthOffered by remember {
+        container.catalog.products.map { products -> products.any { it.kind == SaleKind.PRE_AUTHORISATION } }
+    }.collectAsStateWithLifecycle(initialValue = false)
     // A failed check is retried whenever Home is shown, so its warning clears once the terminal answers again.
     LaunchedEffect(Unit) { container.terminalStatus.recheckIfFailed() }
 
@@ -85,10 +93,50 @@ fun HomeScreen(
                         navigator.push(Route.SettingsSection(SettingsSections.TERMINAL))
                     }
                 }
-                NewSaleTile { navigator.push(Route.Sale) }
+                PaymentTiles(preAuthOffered, onOpen = navigator::push)
                 AreaTiles(locked = pinSet, onOpen = navigator::push)
             }
         }
+    }
+}
+
+/**
+ * The large green tile that starts a sale or, when pre-authorisation products exist ([preAuthOffered]), two side by
+ * side: New sale and Pre-authorise.
+ */
+@Composable
+private fun ColumnScope.PaymentTiles(
+    preAuthOffered: Boolean,
+    onOpen: (Route) -> Unit,
+) {
+    if (!preAuthOffered) {
+        PaymentTile(
+            Icons.Default.PointOfSale,
+            stringResource(R.string.home_new_sale),
+            stringResource(R.string.home_new_sale_hint),
+            stacked = false,
+            onClick = { onOpen(Route.Sale) },
+            modifier = Modifier.fillMaxWidth().weight(1.2f).testTag("newSale"),
+        )
+        return
+    }
+    Row(Modifier.fillMaxWidth().weight(1.2f), horizontalArrangement = Arrangement.spacedBy(LocalDimens.current.spacing)) {
+        PaymentTile(
+            Icons.Default.PointOfSale,
+            stringResource(R.string.home_new_sale),
+            stringResource(R.string.home_new_sale_hint),
+            stacked = true,
+            onClick = { onOpen(Route.Sale) },
+            modifier = Modifier.weight(1f).fillMaxHeight().testTag("newSale"),
+        )
+        PaymentTile(
+            Icons.Default.LockClock,
+            stringResource(R.string.home_pre_auth),
+            stringResource(R.string.home_pre_auth_hint),
+            stacked = true,
+            onClick = { onOpen(Route.PreAuth) },
+            modifier = Modifier.weight(1f).fillMaxHeight().testTag("preAuth"),
+        )
     }
 }
 
@@ -122,34 +170,58 @@ private fun ConnectionProblem(
     }
 }
 
-/** The large green tile that starts a sale. */
+/**
+ * A large green tile that starts a payment: a sale, or a pre-authorisation. Alone it is a row (icon beside the text);
+ * [stacked] beside another one, the icon sits above the text, which then also gets a smaller style to fit half the
+ * width.
+ */
 @Composable
-private fun ColumnScope.NewSaleTile(onClick: () -> Unit) {
+private fun PaymentTile(
+    icon: ImageVector,
+    title: String,
+    hint: String,
+    stacked: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
     val dimens = LocalDimens.current
+    val iconSize = if (dimens.compact) 32.dp else 40.dp
     Surface(
         onClick = onClick,
         color = MaterialTheme.colorScheme.primary,
         contentColor = Color.White,
         shape = MaterialTheme.shapes.large,
-        modifier = Modifier.fillMaxWidth().weight(1.2f).testTag("newSale"),
+        modifier = modifier,
     ) {
-        Row(Modifier.padding(horizontal = dimens.screenPadding + 8.dp), verticalAlignment = Alignment.CenterVertically) {
-            Icon(
-                Icons.Default.PointOfSale,
-                contentDescription = null,
-                modifier = Modifier.size(if (dimens.compact) 32.dp else 40.dp),
-            )
-            Spacer(Modifier.width(dimens.screenPadding))
-            Column {
-                Text(stringResource(R.string.home_new_sale), style = MaterialTheme.typography.headlineSmall)
-                Text(
-                    stringResource(R.string.home_new_sale_hint),
-                    style = MaterialTheme.typography.bodyMedium,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
+        if (stacked) {
+            Column(Modifier.padding(dimens.cardPadding), verticalArrangement = Arrangement.Center) {
+                Icon(icon, contentDescription = null, modifier = Modifier.size(iconSize))
+                Spacer(Modifier.height(dimens.spacing).weight(1f, fill = false))
+                PaymentTileText(
+                    title,
+                    hint,
+                    if (dimens.compact) MaterialTheme.typography.titleMedium else MaterialTheme.typography.titleLarge,
                 )
             }
+        } else {
+            Row(Modifier.padding(horizontal = dimens.screenPadding + 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                Icon(icon, contentDescription = null, modifier = Modifier.size(iconSize))
+                Spacer(Modifier.width(dimens.screenPadding))
+                PaymentTileText(title, hint, MaterialTheme.typography.headlineSmall)
+            }
         }
+    }
+}
+
+@Composable
+private fun PaymentTileText(
+    title: String,
+    hint: String,
+    titleStyle: TextStyle,
+) {
+    Column {
+        Text(title, style = titleStyle, maxLines = 2, overflow = TextOverflow.Ellipsis)
+        Text(hint, style = MaterialTheme.typography.bodyMedium, maxLines = 2, overflow = TextOverflow.Ellipsis)
     }
 }
 

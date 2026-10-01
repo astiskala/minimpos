@@ -48,6 +48,13 @@ interface CatalogDao {
     @Query("SELECT * FROM products WHERE sku = :sku LIMIT 1")
     suspend fun productBySku(sku: String): ProductEntity?
 
+    /** Returns a product of [kind] whose SKU equals [sku] exactly (any one of them), or null. */
+    @Query("SELECT * FROM products WHERE sku = :sku AND kind = :kind LIMIT 1")
+    suspend fun productBySku(
+        sku: String,
+        kind: SaleKind,
+    ): ProductEntity?
+
     /** Counts the products that use the tax rate [taxRateId]; such a rate cannot be deleted. */
     @Query("SELECT COUNT(*) FROM products WHERE taxRateId = :taxRateId")
     suspend fun productCountForTaxRate(taxRateId: Long): Int

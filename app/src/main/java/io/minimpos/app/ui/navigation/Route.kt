@@ -18,11 +18,26 @@ sealed interface Route : NavKey {
     /** Ringing up a sale: product tiles, custom items and the cart. */
     @Serializable data object Sale : Route
 
-    /** References, email and saving the card, before paying. */
-    @Serializable data object Checkout : Route
+    /** Choosing the one pre-authorisation product, or custom amount, to hold on a card. */
+    @Serializable data object PreAuth : Route
 
-    /** Waiting for the terminal while the shopper pays. */
-    @Serializable data object Payment : Route
+    /**
+     * References, email and saving the card, before paying.
+     *
+     * @property preAuthorisation Whether the amount is only held (a pre-authorisation) rather than charged.
+     */
+    @Serializable data class Checkout(
+        val preAuthorisation: Boolean = false,
+    ) : Route
+
+    /**
+     * Waiting for the terminal while the shopper pays.
+     *
+     * @property preAuthorisation Whether the payment is a pre-authorisation.
+     */
+    @Serializable data class Payment(
+        val preAuthorisation: Boolean = false,
+    ) : Route
 
     /**
      * The outcome of a payment just taken.
@@ -122,5 +137,11 @@ sealed interface Route : NavKey {
         val section: String,
     ) : Route {
         override val isProtected get() = true
+    }
+
+    /** Routes shared by sales and pre-authorisations. */
+    companion object {
+        /** Where a payment is rung up: [PreAuth] for a pre-authorisation, else [Sale]. */
+        fun ringUp(preAuthorisation: Boolean): Route = if (preAuthorisation) PreAuth else Sale
     }
 }

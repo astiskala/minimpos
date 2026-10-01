@@ -21,6 +21,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ReceiptLong
 import androidx.compose.material.icons.automirrored.filled.Undo
 import androidx.compose.material.icons.filled.Email
+import androidx.compose.material.icons.filled.LockOpen
 import androidx.compose.material.icons.filled.Print
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.FilterChip
@@ -49,6 +50,7 @@ import io.minimpos.app.R
 import io.minimpos.app.data.db.RefundEntity
 import io.minimpos.app.data.db.RefundStatus
 import io.minimpos.app.data.db.SaleEntity
+import io.minimpos.app.data.db.SaleKind
 import io.minimpos.app.data.db.SaleStatus
 import io.minimpos.app.data.repo.HistoryItem
 import io.minimpos.app.feature.refund.RefundResultScreen
@@ -60,6 +62,7 @@ import io.minimpos.app.feature.sale.statusKind
 import io.minimpos.app.feature.sale.statusTitle
 import io.minimpos.app.ui.components.ActionMessage
 import io.minimpos.app.ui.components.Card
+import io.minimpos.app.ui.components.ConfirmDialog
 import io.minimpos.app.ui.components.EmailReceiptDialog
 import io.minimpos.app.ui.components.EmptyState
 import io.minimpos.app.ui.components.LabeledValue
@@ -163,6 +166,7 @@ private fun HistoryFilters(
                             when (filter) {
                                 HistoryFilter.ALL -> R.string.history_filter_all
                                 HistoryFilter.SALES -> R.string.history_filter_sales
+                                HistoryFilter.PRE_AUTHS -> R.string.history_filter_pre_auths
                                 HistoryFilter.REFUNDS -> R.string.history_filter_refunds
                                 HistoryFilter.ISSUES -> R.string.history_filter_issues
                             },
@@ -194,6 +198,9 @@ private fun DayHeader(
                 }
                 if (day.totals.refundCount > 0) {
                     add(stringResource(R.string.history_day_refunds, totals(day.totals.refundsMinor), day.totals.refundCount))
+                }
+                if (day.totals.preAuthCount > 0) {
+                    add(stringResource(R.string.history_day_pre_auths, totals(day.totals.preAuthsMinor), day.totals.preAuthCount))
                 }
             }
         if (parts.isNotEmpty()) {
@@ -235,18 +242,20 @@ private fun historyRowText(
                 sale.merchantReference,
                 listOfNotNull(time, sale.paymentBrand?.uppercase(), sale.customerReference).joinToString(" · "),
                 MoneyFormatter(CurrencySpec.of(sale.currency), locale).format(sale.totalMinor),
-                statusTitle(sale.status),
-                statusKind(sale.status),
+                statusTitle(sale),
+                statusKind(sale),
             )
         }
 
         is HistoryItem.Refund -> {
             val refund = item.refund
+            val amount = MoneyFormatter(CurrencySpec.of(refund.currency), locale).format(refund.amountMinor)
             HistoryRowText(
-                stringResource(R.string.history_refund),
+                stringResource(if (refund.cancellation) R.string.history_cancellation else R.string.history_refund),
                 listOf(time, refund.originalReference ?: refund.originalTransactionId).joinToString(" · "),
-                "−" + MoneyFormatter(CurrencySpec.of(refund.currency), locale).format(refund.amountMinor),
-                refundStatusTitle(refund.status),
+                // A cancellation releases a hold rather than paying money back.
+                if (refund.cancellation) amount else "−$amount",
+                refundStatusTitle(refund.status, refund.cancellation),
                 refundStatusKind(refund.status),
             )
         }
@@ -254,7 +263,8 @@ private fun historyRowText(
 
 /**
  * One sale from history: its items, payment details, refunds and receipt. It can be reprinted, emailed and
- * refunded, and a sale with an unknown outcome can be checked again with the terminal.
+ * refunded, and a sale with an unknown outcome can be checked again with the terminal. A pre-authorisation is never
+ * refunded here, but can be cancelled, after the operator confirms.
  */
 @Composable
 fun SaleDetailScreen(
@@ -265,9 +275,14 @@ fun SaleDetailScreen(
 ) {
     val container = LocalAppContainer.current
     val state by vm.state.collectAsStateWithLifecycle()
-    var askEmail by remember { mutableStateOf(false) }
+    var dialog by remember { mutableStateOf<DetailDialog?>(null) }
     val dimens = LocalDimens.current
-    MiniScaffold(title = stringResource(R.string.detail_title), onBack = navigator::back, modifier = modifier) { padding ->
+    val preAuth = state.record?.sale?.kind == SaleKind.PRE_AUTHORISATION
+    MiniScaffold(
+        title = stringResource(if (preAuth) R.string.detail_pre_auth_title else R.string.detail_title),
+        onBack = navigator::back,
+        modifier = modifier,
+    ) { padding ->
         val record = state.record ?: return@MiniScaffold
         val sale = record.sale
         val money = rememberMoneyFormatter(sale.currency)
@@ -281,51 +296,105 @@ fun SaleDetailScreen(
         ) {
             // The outcome and actions come first, as on the result screen, so they show without scrolling past every detail.
             Column(Modifier.widthIn(max = 560.dp), verticalArrangement = Arrangement.spacedBy(dimens.spacing)) {
-                OutcomeHeader(statusKind(sale.status), statusTitle(sale.status), money.format(sale.totalMinor), titleTag = "detailStatus") {
-                    OutcomeNote(
-                        listOfNotNull(
-                            container.receiptFactory.formatDateTime(sale.createdAt),
-                            sale.refundedMinor
-                                .takeIf { it > 0 }
-                                ?.let { stringResource(R.string.detail_refunded, money.format(it)) },
-                        ).joinToString(" · "),
-                    )
-                }
+                SaleDetailOutcome(state, money, container.receiptFactory::formatDateTime)
                 SaleDetailActions(
                     state = state,
                     onRecheck = vm::recheck,
                     onRefund = { navigator.push(Route.Refund(saleId = sale.id)) },
+                    onCancel = { dialog = DetailDialog.CANCEL },
                     onPrint = vm::print,
-                    onEmail = { askEmail = true },
+                    onEmail = { dialog = DetailDialog.EMAIL },
                 )
-                SaleRefunds(state.refunds, money, container.receiptFactory::formatDateTime) { navigator.push(Route.RefundDetail(it)) }
+                SaleRefunds(state.refunds, money, preAuth, container.receiptFactory::formatDateTime) {
+                    navigator.push(Route.RefundDetail(it))
+                }
                 PaymentDetailsCard(sale)
                 ReceiptPreview(container.receiptFactory.sale(record, state.settings.receipt), Modifier.align(Alignment.CenterHorizontally))
             }
         }
     }
-    if (askEmail) {
+    state.record?.sale?.let { sale ->
+        SaleDetailDialogs(sale, dialog, onEmail = vm::email, onDismiss = { dialog = null }) {
+            if (vm.cancel() != null) navigator.push(Route.RefundProcessing)
+        }
+    }
+}
+
+/** The dialogs the sale detail screen opens. */
+private enum class DetailDialog { EMAIL, CANCEL }
+
+/**
+ * The outcome badge, title and amount, with when it was paid, what was refunded and, for a pre-authorisation that can
+ * still be cancelled, how to capture it.
+ */
+@Composable
+private fun SaleDetailOutcome(
+    state: SaleDetailUiState,
+    money: MoneyFormatter,
+    formatDateTime: (Long) -> String,
+) {
+    val sale = state.record?.sale ?: return
+    OutcomeHeader(statusKind(sale), statusTitle(sale), money.format(sale.totalMinor), titleTag = "detailStatus") {
+        OutcomeNote(
+            listOfNotNull(
+                formatDateTime(sale.createdAt),
+                sale.refundedMinor
+                    .takeIf { it > 0 && sale.kind == SaleKind.SALE }
+                    ?.let { stringResource(R.string.detail_refunded, money.format(it)) },
+            ).joinToString(" · "),
+        )
+        if (state.canCancel) OutcomeNote(stringResource(R.string.detail_pre_auth_note))
+    }
+}
+
+/**
+ * The [dialog] open over the detail of [sale], if any: the address to email the receipt to, or confirming the
+ * cancellation of a pre-authorisation. Either closes ([onDismiss]) before [onEmail] or [onCancel] runs.
+ */
+@Composable
+private fun SaleDetailDialogs(
+    sale: SaleEntity,
+    dialog: DetailDialog?,
+    onEmail: (to: String) -> Unit,
+    onDismiss: () -> Unit,
+    onCancel: () -> Unit,
+) {
+    if (dialog == DetailDialog.EMAIL) {
         EmailReceiptDialog(
             onSend = {
-                askEmail = false
-                vm.email(it)
+                onDismiss()
+                onEmail(it)
             },
-            onDismiss = { askEmail = false },
-            initial =
-                state.record
-                    ?.sale
-                    ?.shopperEmail
-                    .orEmpty(),
+            onDismiss = onDismiss,
+            initial = sale.shopperEmail.orEmpty(),
+        )
+    }
+    if (dialog == DetailDialog.CANCEL) {
+        ConfirmDialog(
+            title = stringResource(R.string.pre_auth_cancel_title),
+            message = stringResource(R.string.pre_auth_cancel_message, rememberMoneyFormatter(sale.currency).format(sale.totalMinor)),
+            confirmLabel = stringResource(R.string.pre_auth_cancel_confirm),
+            destructive = true,
+            dismissLabel = stringResource(R.string.pre_auth_cancel_keep),
+            onConfirm = {
+                onDismiss()
+                onCancel()
+            },
+            onDismiss = onDismiss,
         )
     }
 }
 
-/** What can be done with the sale: the retry advice, a status check, refunding, reprinting and emailing. */
+/**
+ * What can be done with the sale: the retry advice, a status check, refunding (or cancelling a pre-authorisation),
+ * reprinting and emailing.
+ */
 @Composable
 private fun ColumnScope.SaleDetailActions(
     state: SaleDetailUiState,
     onRecheck: () -> Unit,
     onRefund: () -> Unit,
+    onCancel: () -> Unit,
     onPrint: (ReceiptCopy) -> Unit,
     onEmail: () -> Unit,
 ) {
@@ -355,6 +424,14 @@ private fun ColumnScope.SaleDetailActions(
             modifier = Modifier.testTag("detailRefund"),
         )
     }
+    if (state.canCancel) {
+        SecondaryButton(
+            stringResource(R.string.detail_cancel_pre_auth),
+            onCancel,
+            icon = Icons.Default.LockOpen,
+            modifier = Modifier.testTag("cancelPreAuth"),
+        )
+    }
     if (sale.status != SaleStatus.APPROVED) return
     if (state.printerAvailable) {
         SecondaryButton(stringResource(R.string.detail_reprint), {
@@ -369,24 +446,31 @@ private fun ColumnScope.SaleDetailActions(
     }
 }
 
-/** The refunds made from this terminal against the sale, if any; tapping one opens it. */
+/**
+ * The refunds made from this terminal against the sale (for a [preAuthorisation], its cancellations), if any; tapping
+ * one opens it.
+ */
 @Composable
 private fun ColumnScope.SaleRefunds(
     refunds: List<RefundEntity>,
     money: MoneyFormatter,
+    preAuthorisation: Boolean,
     formatDateTime: (Long) -> String,
     onOpen: (refundId: String) -> Unit,
 ) {
     if (refunds.isEmpty()) return
     // Rows like the history list's, inside a card like the payment details.
     Card {
-        Text(stringResource(R.string.detail_refunds), style = MaterialTheme.typography.titleSmall)
+        Text(
+            stringResource(if (preAuthorisation) R.string.detail_cancellations else R.string.detail_refunds),
+            style = MaterialTheme.typography.titleSmall,
+        )
         refunds.forEach { refund ->
             TransactionRow(
                 title = refund.merchantReference,
                 subtitle = formatDateTime(refund.createdAt),
-                amount = "−${money.format(refund.amountMinor)}",
-                status = refundStatusTitle(refund.status),
+                amount = if (refund.cancellation) money.format(refund.amountMinor) else "−${money.format(refund.amountMinor)}",
+                status = refundStatusTitle(refund.status, refund.cancellation),
                 kind = refundStatusKind(refund.status),
                 onClick = { onOpen(refund.id) },
                 contentPadding = PaddingValues(vertical = LocalDimens.current.rowPadding),
@@ -438,6 +522,7 @@ private fun saleDetailViewModel(saleId: String): SaleDetailViewModel {
             container.sales,
             container.receipts,
             container.payments,
+            container.refunds,
             container.settingsState,
             container.terminalStatus.state,
             ResultMessages(printed, emailed, stillUnknown = stillUnknown),

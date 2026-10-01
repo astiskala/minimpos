@@ -105,13 +105,13 @@ each one has a comment explaining why. If you think a rule is wrong for your cas
 - **Database:** raise the version in `AppDatabase`, add an `AutoMigration` (or a manual migration), and commit the new
   schema file that the build writes to `app/schemas/`. Extend `DatabaseMigrationTest` so existing data is checked.
 - **Settings:** new fields in `AppSettings` need default values, so settings saved by older versions still load.
-- **QR formats:** the catalogue and refund QR codes are read by other terminals, which may run an older version. If
+- **QR formats:** the catalog and refund QR codes are read by other terminals, which may run an older version. If
   you change a format, bump its version number and keep decoding the older versions.
 
 ## Screenshots
 
 The screenshots in `docs/images/` come from an emulator running Android 13 in English (Australia), with a demo café
-catalogue and the simulator. The status bar was cleaned up with Android's system UI demo mode. Resize new screenshots
+catalog and the simulator. The status bar was cleaned up with Android's system UI demo mode. Resize new screenshots
 to 540 pixels wide and keep the demo data consistent, so the README and the website match.
 
 ## Releases
@@ -133,4 +133,4 @@ and `keyPassword` lines of `keystore.properties`).
 - Make sure `./gradlew qualityGate` passes.
 - Don't commit secrets, keystores, `keystore.properties` or `local.properties`.
 
-By contributing, you agree that your contributions are licensed under the project's [MIT licence](LICENSE).
+By contributing, you agree that your contributions are licensed under the project's [MIT license](LICENSE).

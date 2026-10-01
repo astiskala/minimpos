@@ -177,7 +177,7 @@ a:focus-visible, summary:focus-visible { outline: 3px solid var(--green); outlin
 
 .features {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
   gap: 20px;
 }
 
@@ -292,6 +292,67 @@ summary { cursor: pointer; font-weight: 700; font-size: 1.05rem; }
 
 details p { color: var(--grey); margin: 12px 0 0; }
 
+/* Guide */
+
+.nav a[aria-current="page"] { color: var(--green-dark); }
+
+.guide-hero {
+  background: linear-gradient(180deg, var(--green-light) 0%, #fff 100%);
+  padding: 56px 0 24px;
+}
+
+.guide {
+  display: grid;
+  grid-template-columns: 240px minmax(0, 1fr);
+  gap: 56px;
+  align-items: start;
+  padding-bottom: 88px;
+}
+
+.toc {
+  position: sticky;
+  top: 88px;
+  padding: 20px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  font-size: 0.95rem;
+}
+
+.toc-title { margin: 0 0 8px; font-weight: 700; }
+
+.toc ol { margin: 0; padding-left: 1.2em; }
+
+.toc li { margin: 4px 0; }
+
+.toc a { color: var(--navy); text-decoration: none; }
+
+.toc a:hover { color: var(--green-dark); }
+
+.guide-body { max-width: 760px; }
+
+.guide-body section { padding-top: 24px; }
+
+.guide-body h2 { font-size: clamp(1.4rem, 2.6vw, 1.8rem); }
+
+.guide-body h3 { margin-top: 1.4em; }
+
+.guide-body li { margin-bottom: 6px; }
+
+.guide-body code { font-family: var(--mono); font-size: 0.9em; background: var(--grey-light); padding: 1px 5px; border-radius: 4px; }
+
+.guide-body pre code { background: none; padding: 0; }
+
+.note {
+  padding: 14px 18px;
+  border-left: 4px solid var(--green);
+  border-radius: 8px;
+  background: var(--green-light);
+}
+
+.settings-list dt { font-weight: 700; margin-top: 14px; }
+
+.settings-list dd { margin: 4px 0 0; color: var(--grey); }
+
 /* Footer */
 
 .site-footer { padding: 40px 0; border-top: 1px solid var(--border); color: var(--grey); font-size: 0.95rem; }
@@ -305,7 +366,9 @@ details p { color: var(--grey); margin: 12px 0 0; }
 /* Smaller screens */
 
 @media (max-width: 900px) {
-  .hero-grid, .split, .steps { grid-template-columns: 1fr; }
+  .hero-grid, .split, .steps, .guide { grid-template-columns: 1fr; }
+  .guide { gap: 24px; }
+  .toc { position: static; }
   .hero { padding-top: 48px; }
   .hero-shots { height: 440px; max-width: 420px; margin: 0 auto; width: 100%; }
   .hero-shots .phone { width: 200px; }

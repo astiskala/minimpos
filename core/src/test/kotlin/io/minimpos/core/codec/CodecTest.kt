@@ -46,6 +46,7 @@ class CodecTest {
                     CatalogueProduct("Banana bread", 650, 1, 1, "9300000000001"),
                     CatalogueProduct("Gift card", 5_000_000_000, 1, null, "GC"),
                     CatalogueProduct("Stamp", 120, null, null, null),
+                    CatalogueProduct("Catering deposit", 20_000, 0, null, null, preAuthorisation = true),
                 ),
         )
 
@@ -69,7 +70,28 @@ class CodecTest {
                     listOf(CatalogueProduct("Latte", 450, 0, 0, "L1"), CatalogueProduct("Water", 300, 1, null, null)),
                 ),
             )
-        assertThat(Base45.decode(CatalogueCodec.encode(catalogue))[0].toInt()).isEqualTo(2)
+        assertThat(Base45.decode(CatalogueCodec.encode(catalogue))[0].toInt()).isEqualTo(3)
+    }
+
+    @Test
+    fun `catalogues from before pre-authorisation products decode as sale products`() {
+        // Encoded by the version 2 codec, which had no product kind.
+        val v2 = "SE0/ML-FF*P12ECS-E2%1XIS+HP0 JU1JQPJA+OASIXJA3MFSIJGJIDAPRZ6+P4S9NJMG+DG00"
+        assertThat(CatalogueCodec.decode(v2))
+            .isEqualTo(
+                Catalogue(
+                    "AUD",
+                    listOf(CatalogueTaxRate("GST", 10_000)),
+                    listOf(CatalogueCategory("Coffee")),
+                    listOf(CatalogueProduct("Latte", 450, 0, 0, "L1"), CatalogueProduct("Stamp", 120, null, null, null)),
+                ),
+            )
+    }
+
+    @Test
+    fun `the product kind survives the transfer`() {
+        val decoded = CatalogueCodec.decode(CatalogueCodec.encode(catalogue))
+        assertThat(decoded.products.filter { it.preAuthorisation }.map { it.name }).containsExactly("Catering deposit")
     }
 
     @Test
@@ -102,7 +124,7 @@ class CodecTest {
             )
         }
         assertFormatError("") { CatalogueCodec.decode(reencode { it.copyOf(it.size - 4) }) }
-        assertFormatError("Invalid catalogue data") { CatalogueCodec.decode("A") }
+        assertFormatError("Invalid catalog data") { CatalogueCodec.decode("A") }
         assertFormatError("") { CatalogueCodec.decode(reencode { it.also { b -> b[6] = 0x7F } }) }
     }
 

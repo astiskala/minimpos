@@ -24,14 +24,14 @@ class ReceiptBuilder(
     /**
      * Builds the [copy] of a sale receipt: header, date and references, items, totals and tax, a warning if the
      * payment was not approved, Adyen's card receipt lines, the footer and, on approved customer copies, the refund QR
-     * code.
+     * code. A pre-authorisation is titled and totalled as an amount held instead, with no refund QR code.
      */
     fun sale(
         receipt: SaleReceipt,
         copy: ReceiptCopy = ReceiptCopy.CUSTOMER,
     ): ReceiptDocument {
         val out = mutableListOf<ReceiptElement>()
-        header(out)
+        header(out, title = if (receipt.preAuthorisation) labels.preAuthTitle else branding.title)
         if (copy == ReceiptCopy.MERCHANT) out += Text(labels.merchantCopy, Align.CENTER, TextStyle.BOLD)
         out += Row(labels.date, receipt.dateTime)
         if (options.showReferences) {
@@ -45,29 +45,37 @@ class ReceiptBuilder(
         if (!receipt.approved) {
             out += Blank
             out += Text(labels.notCompleted, Align.CENTER, TextStyle.BOLD)
+        } else if (receipt.preAuthorisation) {
+            out += Text(labels.preAuthNote, Align.CENTER)
         }
         if (receipt.cardSaved) out += Text(labels.cardSaved, Align.CENTER)
         cardReceipt(out, receipt.cardReceipt)
         footer(out)
-        val showsRefundQr = copy == ReceiptCopy.CUSTOMER && receipt.approved && options.showRefundQr
+        val showsRefundQr = copy == ReceiptCopy.CUSTOMER && receipt.approved && !receipt.preAuthorisation && options.showRefundQr
         receipt.refundQr?.takeIf { showsRefundQr }?.let { out += Qr(it, labels.refundQrCaption) }
         return ReceiptDocument(out)
     }
 
     /**
      * Builds a refund receipt: header titled [ReceiptLabels.refundTitle], date and references, the refunded items (or
-     * [ReceiptLabels.partialRefund]), the refunded total, Adyen's card receipt lines and the footer.
+     * [ReceiptLabels.partialRefund]), the refunded total, Adyen's card receipt lines and the footer. The cancellation
+     * of a pre-authorisation is laid out the same way with its own title and labels.
      */
     fun refund(receipt: RefundReceipt): ReceiptDocument {
         val out = mutableListOf<ReceiptElement>()
-        header(out, title = labels.refundTitle)
+        val cancellation = receipt.cancellation
+        header(out, title = if (cancellation) labels.cancellationTitle else labels.refundTitle)
         out += Row(labels.date, receipt.dateTime)
         if (options.showReferences) out += Row(labels.reference, receipt.reference)
-        out += Row(labels.originalReference, receipt.originalReference)
+        out += Row(if (cancellation) labels.cancelledReference else labels.originalReference, receipt.originalReference)
         out += Divider
-        if (receipt.items.isEmpty()) out += Text(labels.partialRefund) else items(out, receipt.items)
+        when {
+            cancellation -> out += Text(labels.cancellationNote)
+            receipt.items.isEmpty() -> out += Text(labels.partialRefund)
+            else -> items(out, receipt.items)
+        }
         out += Divider
-        out += Row(labels.refundTotal, money.format(receipt.amount), TextStyle.BOLD)
+        out += Row(if (cancellation) labels.released else labels.refundTotal, money.format(receipt.amount), TextStyle.BOLD)
         cardReceipt(out, receipt.cardReceipt)
         footer(out)
         return ReceiptDocument(out)
@@ -75,7 +83,7 @@ class ReceiptBuilder(
 
     private fun header(
         out: MutableList<ReceiptElement>,
-        title: String = branding.title,
+        title: String,
     ) {
         val start = out.size
         branding.businessName.takeIf { it.isNotBlank() }?.let { out += Text(it, Align.CENTER, TextStyle.BOLD) }
@@ -103,6 +111,8 @@ class ReceiptBuilder(
         receipt: SaleReceipt,
     ) {
         val taxed = receipt.breakdown.filter { it.amounts.tax != 0L }
+        val total =
+            Row(if (receipt.preAuthorisation) labels.amountHeld else labels.total, money.format(receipt.amounts.gross), TextStyle.BOLD)
         when (receipt.mode) {
             TaxMode.EXCLUSIVE -> {
                 out += Row(labels.subtotal, money.format(receipt.amounts.net))
@@ -111,11 +121,11 @@ class ReceiptBuilder(
                 } else if (receipt.amounts.tax != 0L) {
                     out += Row(labels.tax, money.format(receipt.amounts.tax))
                 }
-                out += Row(labels.total, money.format(receipt.amounts.gross), TextStyle.BOLD)
+                out += total
             }
 
             TaxMode.INCLUSIVE -> {
-                out += Row(labels.total, money.format(receipt.amounts.gross), TextStyle.BOLD)
+                out += total
                 if (options.showTaxBreakdown) {
                     taxed.forEach {
                         out +=

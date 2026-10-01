@@ -2,6 +2,7 @@ package io.minimpos.app.refund
 
 import com.google.common.truth.Truth.assertThat
 import io.minimpos.app.data.db.SaleEntity
+import io.minimpos.app.data.db.SaleKind
 import io.minimpos.app.data.db.SaleLineEntity
 import io.minimpos.app.data.db.SaleStatus
 import io.minimpos.app.data.db.SaleWithLines
@@ -159,6 +160,39 @@ class RefundablePaymentTest {
         assertThat(RefundablePayment.qrCode(record.copy(sale = sale.copy(status = SaleStatus.UNKNOWN)))).isNull()
         // Transaction IDs the code cannot carry.
         assertThat(RefundablePayment.qrCode(record.copy(sale = sale.copy(poiTransactionId = "A B")))).isNull()
+    }
+
+    @Test
+    fun `pre-authorisations are never refunded, only cancelled in full, once`() {
+        val preAuth = record.copy(sale = sale.copy(kind = SaleKind.PRE_AUTHORISATION))
+        assertThat(reason(preAuth)).isEqualTo(RefundInvalidReason.PRE_AUTHORISATION)
+        val qr = RefundQrPayload("BV0q001643892070000.PSP1", Instant.parse("2026-09-29T11:04:00Z"), 1_000, "AUD", "MP-1")
+        assertThat((RefundablePayment.find(preAuth, qr) as Refundability.NotRefundable).reason)
+            .isEqualTo(RefundInvalidReason.PRE_AUTHORISATION)
+        assertThat(RefundablePayment.qrCode(preAuth)).isNull()
+
+        val cancel = RefundablePayment.cancellation(preAuth, " MP ", now, ZoneOffset.UTC)!!
+        assertThat(cancel.cancellation).isTrue()
+        assertThat(cancel.full).isTrue()
+        assertThat(cancel.saleId).isEqualTo("s1")
+        assertThat(cancel.amountMinor).isEqualTo(1_000)
+        assertThat(cancel.originalTransactionId).isEqualTo(sale.poiTransactionId)
+        assertThat(cancel.originalTimestamp).isEqualTo(sale.poiTimestamp)
+        assertThat(cancel.merchantReference).matches("MP-C-260930-145811-[0-9A-Z]{4}")
+        assertThat(cancel.params().amount).isNull()
+        assertThat(RefundablePayment.canCancel(preAuth)).isTrue()
+
+        // Sales are refunded instead; unapproved pre-authorisations, ones the terminal gave no transaction details for
+        // and ones already cancelled cannot be cancelled.
+        listOf(
+            record,
+            preAuth.copy(sale = preAuth.sale.copy(status = SaleStatus.DECLINED)),
+            preAuth.copy(sale = preAuth.sale.copy(poiTransactionId = null)),
+            preAuth.copy(sale = preAuth.sale.copy(refundedMinor = 1_000)),
+        ).forEach {
+            assertThat(RefundablePayment.cancellation(it, "", now, ZoneOffset.UTC)).isNull()
+            assertThat(RefundablePayment.canCancel(it)).isFalse()
+        }
     }
 
     @Test

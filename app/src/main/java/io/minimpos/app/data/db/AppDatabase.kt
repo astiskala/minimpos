@@ -11,8 +11,10 @@ import io.minimpos.app.R
  * The app's Room database, `minimpos.db`: the catalogue, sales and refunds.
  *
  * Schema history (exported to `app/schemas/`): version 2 added `sales.errorCondition` and `sales.refusalReason`;
- * version 3 made `products.taxRateId` optional; version 4 made it required again ([TaxRateRequiredMigration]). Versions
- * 1 to 3 are Room auto-migrations. There is no destructive fallback, so every schema change needs a migration.
+ * version 3 made `products.taxRateId` optional; version 4 made it required again ([TaxRateRequiredMigration]); version
+ * 5 added `products.kind`, `sales.kind` (both [SaleKind.SALE] for existing rows) and `refunds.cancellation`. Versions
+ * 1 to 3 and 4 to 5 are Room auto-migrations. There is no destructive fallback, so every schema change needs a
+ * migration.
  */
 @Database(
     entities = [
@@ -23,9 +25,9 @@ import io.minimpos.app.R
         SaleLineEntity::class,
         RefundEntity::class,
     ],
-    version = 4,
+    version = 5,
     exportSchema = true,
-    autoMigrations = [AutoMigration(from = 1, to = 2), AutoMigration(from = 2, to = 3)],
+    autoMigrations = [AutoMigration(from = 1, to = 2), AutoMigration(from = 2, to = 3), AutoMigration(from = 4, to = 5)],
 )
 abstract class AppDatabase : RoomDatabase() {
     /** Tax rates, categories and products. */

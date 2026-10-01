@@ -82,6 +82,14 @@ data class ReceiptOptions(
  * @property partialRefund the text shown instead of items for a refund of an amount rather than of items.
  * @property cardSaved the note printed when the shopper's card was stored for future payments.
  * @property notCompleted the warning on receipts of payments that were not approved.
+ * @property preAuthTitle the heading of pre-authorisation receipts, instead of [ReceiptBranding.title].
+ * @property amountHeld the label of a pre-authorisation's total, instead of [total].
+ * @property preAuthNote the note under a pre-authorisation's totals that nothing has been charged yet.
+ * @property cancellationTitle the heading of the receipt of a cancelled pre-authorisation.
+ * @property cancelledReference the label of the cancelled pre-authorisation's reference, instead of
+ *   [originalReference].
+ * @property cancellationNote the text shown instead of items on the receipt of a cancelled pre-authorisation.
+ * @property released the label of the amount a cancellation released, instead of [refundTotal].
  */
 data class ReceiptLabels(
     val date: String = "Date",
@@ -100,6 +108,13 @@ data class ReceiptLabels(
     val partialRefund: String = "Partial refund",
     val cardSaved: String = "Card saved for future payments",
     val notCompleted: String = "PAYMENT NOT COMPLETED",
+    val preAuthTitle: String = "PRE-AUTHORIZATION",
+    val amountHeld: String = "AMOUNT HELD",
+    val preAuthNote: String = "Held on the card, not charged yet",
+    val cancellationTitle: String = "CANCELLATION",
+    val cancelledReference: String = "Pre-authorization",
+    val cancellationNote: String = "Pre-authorization canceled",
+    val released: String = "RELEASED",
 )
 
 /**
@@ -141,6 +156,8 @@ enum class ReceiptCopy {
  * @property cardReceipt Adyen's receipt lines for this copy (customer or cashier receipt), printed verbatim.
  * @property refundQr the encoded `RefundQrPayload` to print on the customer copy, or null for none.
  * @property cardSaved whether the shopper's card was stored for future payments, which adds a note.
+ * @property preAuthorisation whether the payment only held the amount (a pre-authorisation, captured later): the
+ *   receipt is titled [ReceiptLabels.preAuthTitle], shows the [ReceiptLabels.amountHeld] and never a refund QR code.
  */
 data class SaleReceipt(
     val reference: String,
@@ -154,6 +171,7 @@ data class SaleReceipt(
     val cardReceipt: List<CardReceiptLine>,
     val refundQr: String?,
     val cardSaved: Boolean,
+    val preAuthorisation: Boolean = false,
 )
 
 /**
@@ -165,6 +183,8 @@ data class SaleReceipt(
  * @property items the refunded items; empty for a refund of an amount, which prints [ReceiptLabels.partialRefund].
  * @property amount the refunded amount in minor units.
  * @property cardReceipt Adyen's receipt lines for the refund, printed verbatim.
+ * @property cancellation whether this cancelled a pre-authorisation rather than refunding a sale, which the title,
+ *   labels and [ReceiptLabels.cancellationNote] (instead of items) say.
  */
 data class RefundReceipt(
     val reference: String,
@@ -173,6 +193,7 @@ data class RefundReceipt(
     val items: List<ReceiptItem>,
     val amount: Long,
     val cardReceipt: List<CardReceiptLine>,
+    val cancellation: Boolean = false,
 )
 
 /** "GST 10%" - or the name as-is when the merchant already put the rate in it. */

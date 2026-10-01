@@ -186,6 +186,45 @@ class ReceiptBuilderTest {
     }
 
     @Test
+    fun `pre-authorisation receipts are titled, show the amount held and never get a refund QR`() {
+        val doc = builder().sale(sale().copy(preAuthorisation = true))
+        assertThat(doc.elements)
+            .containsAtLeast(
+                Text("PRE-AUTHORIZATION", Align.CENTER, TextStyle.BOLD),
+                Row("AMOUNT HELD", "$12.00", TextStyle.BOLD),
+                Text("Held on the card, not charged yet", Align.CENTER),
+            ).inOrder()
+        assertThat(doc.elements).doesNotContain(Text("TAX INVOICE", Align.CENTER, TextStyle.BOLD))
+        assertThat(doc.elements).doesNotContain(Row("TOTAL", "$12.00", TextStyle.BOLD))
+        assertThat(doc.qrCodes).isEmpty()
+        val exclusive = builder().sale(sale(mode = TaxMode.EXCLUSIVE).copy(preAuthorisation = true))
+        assertThat(exclusive.elements).contains(Row("AMOUNT HELD", "$12.00", TextStyle.BOLD))
+    }
+
+    @Test
+    fun `cancellation receipts say the pre-authorisation was released`() {
+        val cancellation =
+            RefundReceipt(
+                reference = "C-1",
+                originalReference = "MP-1",
+                dateTime = "30/09/2026 10:00",
+                items = emptyList(),
+                amount = 20_000,
+                cardReceipt = emptyList(),
+                cancellation = true,
+            )
+        val doc = builder().refund(cancellation)
+        assertThat(doc.elements)
+            .containsAtLeast(
+                Text("CANCELLATION", Align.CENTER, TextStyle.BOLD),
+                Row("Pre-authorization", "MP-1"),
+                Text("Pre-authorization canceled"),
+                Row("RELEASED", "$200.00", TextStyle.BOLD),
+            ).inOrder()
+        assertThat(doc.elements).containsNoneOf(Text("Partial refund"), Text("REFUND", Align.CENTER, TextStyle.BOLD))
+    }
+
+    @Test
     fun `tax labels include the rate unless already present`() {
         assertThat(AppliedTax("VAT", 20_000).label()).isEqualTo("VAT 20%")
         assertThat(AppliedTax("GST 10%", 10_000).label()).isEqualTo("GST 10%")

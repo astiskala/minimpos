@@ -1,6 +1,7 @@
 package io.minimpos.app.payment
 
 import io.minimpos.app.data.db.SaleEntity
+import io.minimpos.app.data.db.SaleKind
 import io.minimpos.app.data.repo.RefundRepository
 import io.minimpos.app.data.repo.SaleRepository
 import io.minimpos.app.data.settings.AppSettings
@@ -121,7 +122,8 @@ class ReceiptDelivery(
     ): ActionResult {
         val record = sales.get(saleId) ?: return ActionResult.Failure(notFound)
         val document = receipts.sale(record, settings.current().receipt)
-        return emailer.sendSale(to, document, record.sale.merchantReference).also {
+        val preAuthorisation = record.sale.kind == SaleKind.PRE_AUTHORISATION
+        return emailer.sendSale(to, document, record.sale.merchantReference, preAuthorisation).also {
             if (it == ActionResult.Success) sales.markEmailed(saleId, to.trim())
         }
     }
@@ -132,7 +134,7 @@ class ReceiptDelivery(
         to: String,
     ): ActionResult {
         val refund = refunds.get(refundId) ?: return ActionResult.Failure(notFound)
-        return emailer.sendRefund(to, receipts.refund(refund, settings.current().receipt), refund.merchantReference)
+        return emailer.sendRefund(to, receipts.refund(refund, settings.current().receipt), refund.merchantReference, refund.cancellation)
     }
 
     /** Sends a short test email to [to], to check the SMTP settings. */

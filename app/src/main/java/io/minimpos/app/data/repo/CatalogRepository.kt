@@ -5,6 +5,7 @@ import io.minimpos.app.data.db.AppDatabase
 import io.minimpos.app.data.db.CatalogDao
 import io.minimpos.app.data.db.CategoryEntity
 import io.minimpos.app.data.db.ProductEntity
+import io.minimpos.app.data.db.SaleKind
 import io.minimpos.app.data.db.TaxRateEntity
 import io.minimpos.core.catalogue.Catalogue
 import io.minimpos.core.catalogue.CatalogueCategory
@@ -142,8 +143,14 @@ class CatalogRepository(
     /** Returns the product with row ID [id], or null if there is none. */
     suspend fun product(id: Long): ProductEntity? = dao.product(id)
 
-    /** Returns a product with the scanned or typed [sku] (surrounding whitespace ignored), or null. */
-    suspend fun productBySku(sku: String): ProductEntity? = dao.productBySku(sku.trim())
+    /**
+     * Returns a product with the scanned or typed [sku] (surrounding whitespace ignored), of [kind] when one is given
+     * (else of either kind), or null.
+     */
+    suspend fun productBySku(
+        sku: String,
+        kind: SaleKind? = null,
+    ): ProductEntity? = if (kind == null) dao.productBySku(sku.trim()) else dao.productBySku(sku.trim(), kind)
 
     /**
      * Snapshots the whole catalogue for sharing. Tax rates and categories are referenced by their index in the exported
@@ -166,6 +173,7 @@ class CatalogRepository(
                         taxIndex.getValue(it.taxRateId),
                         it.categoryId?.let(categoryIndex::get),
                         it.sku,
+                        preAuthorisation = it.kind == SaleKind.PRE_AUTHORISATION,
                     )
                 },
         )
@@ -176,9 +184,9 @@ class CatalogRepository(
      *
      * Tax rates are reused when one with the same name (ignoring case) and rate exists, categories when one with the same
      * name exists; the rest are added in the catalogue's order. Products are matched as described for [ImportMode.MERGE]
-     * (in [ImportMode.REPLACE] everything was deleted first, so all are added); a matched product keeps its sort order.
-     * Untaxed products from older catalogues get the first 0% rate, which is created if there is none. The currency is
-     * not checked here; prices are taken as they are.
+     * (in [ImportMode.REPLACE] everything was deleted first, so all are added); a matched product keeps its sort order and
+     * takes the incoming kind (sale or pre-authorisation). Untaxed products from older catalogues get the first 0% rate,
+     * which is created if there is none. The currency is not checked here; prices are taken as they are.
      */
     suspend fun import(
         catalogue: Catalogue,
@@ -243,6 +251,7 @@ class CatalogRepository(
                     categoryId = product.categoryIndex?.let(categoryIds::get),
                     sku = product.sku,
                     sortOrder = match?.sortOrder ?: index,
+                    kind = if (product.preAuthorisation) SaleKind.PRE_AUTHORISATION else SaleKind.SALE,
                 )
             if (match == null) {
                 dao.insert(entity)

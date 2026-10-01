@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import io.minimpos.app.data.db.CategoryEntity
 import io.minimpos.app.data.db.ProductEntity
+import io.minimpos.app.data.db.SaleKind
 import io.minimpos.app.data.db.SaleStatus
 import io.minimpos.app.data.db.SaleWithLines
 import io.minimpos.app.data.db.TaxRateEntity
@@ -45,8 +46,9 @@ import java.util.Locale
  * What the sale screen shows: the product tiles and the cart.
  *
  * @property loaded False until the catalogue and settings have been read, so an empty catalogue is not shown too early.
- * @property products All products, in display order.
- * @property categories All categories, in display order.
+ * @property products The products of [kind], in display order.
+ * @property categories The categories with products of [kind] (for a sale, also those without any products yet), in
+ *   display order.
  * @property taxRates All tax rates, for custom items.
  * @property query The search text; it matches product names (ignoring case) and SKUs.
  * @property selectedCategory The category filter, or null for all products.
@@ -55,6 +57,7 @@ import java.util.Locale
  * @property currency The currency prices are shown in.
  * @property defaultTaxRateId The configured default tax rate for custom items; see [defaultTaxRate].
  * @property chargeTax Settings › Tax › Charge tax.
+ * @property kind A sale, or a pre-authorisation, whose cart holds a single item.
  */
 data class SaleUiState(
     val loaded: Boolean = false,
@@ -68,7 +71,11 @@ data class SaleUiState(
     val currency: CurrencySpec = CurrencySpec("EUR", 2),
     val defaultTaxRateId: Long? = null,
     val chargeTax: Boolean = true,
+    val kind: SaleKind = SaleKind.SALE,
 ) {
+    /** Whether this is a pre-authorisation, which holds one item. */
+    val preAuthorisation: Boolean get() = kind == SaleKind.PRE_AUTHORISATION
+
     /** The products matching [selectedCategory] and [query]. */
     val visibleProducts: List<ProductEntity>
         get() =
@@ -90,18 +97,35 @@ data class SaleUiState(
     fun quantityInCart(productId: Long): Int = cart.lines.filter { it.productId == productId }.sumOf { it.quantity }
 }
 
-/** The sale screen: browsing the catalogue and building the cart in the shared [SaleSession]. */
+/**
+ * The sale screen, or the pre-authorise screen: browsing the products of [kind] and building the cart in the shared
+ * [SaleSession] (for a pre-authorisation, a single-item one).
+ *
+ * @param catalog Where the products are read.
+ * @param session The cart being built.
+ * @param settings The current settings.
+ * @param currency The currency prices are shown in with the given settings.
+ * @param kind Whose products are offered: sale products, or pre-authorisation products.
+ */
 class SaleViewModel(
     private val catalog: CatalogRepository,
     private val session: SaleSession,
     settings: StateFlow<AppSettings>,
     currency: (AppSettings) -> CurrencySpec,
+    private val kind: SaleKind = SaleKind.SALE,
 ) : ViewModel() {
     private val filters = MutableStateFlow("" to null as Long?)
 
     private val catalogue =
         combine(catalog.products, catalog.categories, catalog.taxRates) { products, categories, taxRates ->
-            Triple(products, categories, taxRates)
+            val offered = products.filter { it.kind == kind }
+            // A category is shown when it has products of this kind; a sale also keeps categories without products yet.
+            val shown =
+                categories.filter { category ->
+                    offered.any { it.categoryId == category.id } ||
+                        (kind == SaleKind.SALE && products.none { it.categoryId == category.id })
+                }
+            Triple(offered, shown, taxRates)
         }
 
     /** The screen state, updated whenever the catalogue, cart, settings or filters change. */
@@ -119,8 +143,9 @@ class SaleViewModel(
                 currency = currency(appSettings),
                 defaultTaxRateId = appSettings.payment.defaultTaxRateId,
                 chargeTax = appSettings.payment.chargeTax,
+                kind = kind,
             )
-        }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), SaleUiState())
+        }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), SaleUiState(kind = kind))
 
     /** Filters the tiles by [query]. */
     fun setQuery(query: String) = filters.update { query to it.second }
@@ -128,20 +153,22 @@ class SaleViewModel(
     /** Shows only the products of category [categoryId], or all of them for null. */
     fun selectCategory(categoryId: Long?) = filters.update { it.first to categoryId }
 
-    /** Adds one unit of [product]; ignored while its tax rate is not loaded. */
-    fun add(product: ProductEntity) {
-        val tax = state.value.taxRates.firstOrNull { it.id == product.taxRateId } ?: return
+    /** Adds one unit of [product] and returns true; ignored (false) while its tax rate is not loaded. */
+    fun add(product: ProductEntity): Boolean {
+        val tax = state.value.taxRates.firstOrNull { it.id == product.taxRateId } ?: return false
         session.addProduct(product, tax)
+        return true
     }
 
-    /** Adds a custom item of [amountMinor] with the tax rate [taxRateId]; ignored for an unknown rate. */
+    /** Adds a custom item of [amountMinor] with the tax rate [taxRateId] and returns true; ignored (false) for an unknown rate. */
     fun addCustom(
         name: String,
         amountMinor: Long,
         taxRateId: Long,
-    ) {
-        val tax = state.value.taxRates.firstOrNull { it.id == taxRateId } ?: return
+    ): Boolean {
+        val tax = state.value.taxRates.firstOrNull { it.id == taxRateId } ?: return false
         session.addCustom(name, amountMinor, tax)
+        return true
     }
 
     /** Sets the quantity of cart line [key]; zero or less removes it. */
@@ -156,9 +183,9 @@ class SaleViewModel(
     /** Empties the cart and the checkout form. */
     fun clear() = session.clear()
 
-    /** Adds the product with this barcode/SKU; returns its name, or null when there is none. */
+    /** Adds the product of this screen's kind with this barcode/SKU; returns its name, or null when there is none. */
     suspend fun addBySku(sku: String): String? {
-        val product = catalog.productBySku(sku) ?: return null
+        val product = catalog.productBySku(sku, kind) ?: return null
         val tax = catalog.taxRates.first().firstOrNull { it.id == product.taxRateId } ?: return null
         session.addProduct(product, tax)
         return product.name
@@ -172,12 +199,14 @@ class SaleViewModel(
  * @property payment The payment settings, which decide the fields shown.
  * @property totals The cart priced with the current tax settings; its gross total is charged.
  * @property currency The currency charged.
+ * @property preAuthorisation Whether the amount is only held (a pre-authorisation) rather than charged.
  */
 data class CheckoutUiState(
     val form: CheckoutForm = CheckoutForm(),
     val payment: PaymentSettings = PaymentSettings(),
     val totals: CartTotals = Cart().totals(TaxMode.INCLUSIVE),
     val currency: CurrencySpec = CurrencySpec("EUR", 2),
+    val preAuthorisation: Boolean = false,
 ) {
     /** Whether the email field is shown. */
     val showEmail: Boolean get() = payment.captureEmailBefore
@@ -215,8 +244,12 @@ data class CheckoutUiState(
     /** Whether the card can be saved, which needs a [shopperReference]; the switch is disabled otherwise. */
     val canTokenize: Boolean get() = shopperReference != null
 
-    /** Whether the card will be saved: the operator's choice, else the settings default, when [canTokenize]. */
-    val tokenize: Boolean get() = canTokenize && (form.tokenize ?: payment.tokenizeDefaultOn)
+    /**
+     * Whether the card will be saved: the operator's choice, else the settings default (the pre-authorisation one for
+     * [preAuthorisation]), when [canTokenize].
+     */
+    val tokenize: Boolean
+        get() = canTokenize && (form.tokenize ?: if (preAuthorisation) payment.preAuthTokenizeDefaultOn else payment.tokenizeDefaultOn)
 
     /** Whether "Pay" is enabled: something to charge and every entered field valid. */
     val canPay: Boolean get() = !totals.isEmpty && totals.amounts.gross > 0 && emailValid && referenceValid && customerReferenceValid
@@ -228,12 +261,23 @@ data class CheckoutUiState(
     }
 }
 
-/** The checkout screen: references, email and saving the card, then starting the payment. */
+/**
+ * The checkout screen: references, email and saving the card, then starting the payment.
+ *
+ * @param session The cart (or pre-authorisation item) and the form.
+ * @param payments Runs the payment.
+ * @param settings The current settings.
+ * @param currency The currency charged with the given settings.
+ * @param kind A sale, or a pre-authorisation that only holds the amount.
+ * @param clock Stamps generated merchant references.
+ * @param zone The time zone of generated merchant references.
+ */
 class CheckoutViewModel(
     private val session: SaleSession,
     private val payments: TransactionLifecycle<PaymentStart>,
     settings: StateFlow<AppSettings>,
     currency: (AppSettings) -> CurrencySpec,
+    private val kind: SaleKind = SaleKind.SALE,
     private val clock: Clock = Clock.systemDefaultZone(),
     private val zone: () -> ZoneId = { ZoneId.systemDefault() },
 ) : ViewModel() {
@@ -245,8 +289,9 @@ class CheckoutViewModel(
                 appSettings.payment,
                 cart.totals(appSettings.payment.taxMode, appSettings.payment.chargeTax),
                 currency(appSettings),
+                kind == SaleKind.PRE_AUTHORISATION,
             )
-        }.stateIn(viewModelScope, SharingStarted.Eagerly, CheckoutUiState())
+        }.stateIn(viewModelScope, SharingStarted.Eagerly, CheckoutUiState(preAuthorisation = kind == SaleKind.PRE_AUTHORISATION))
 
     /** Updates the form (kept in the [SaleSession] so it survives going back to the cart). */
     fun update(transform: (CheckoutForm) -> CheckoutForm) = session.updateCheckout(transform)
@@ -278,6 +323,7 @@ class CheckoutViewModel(
                     current.shopperReference?.takeIf { current.tokenize }?.let {
                         TokenizationRequest(it, payment.recurringModel(), payment.sendShopperEmail)
                     },
+                kind = kind,
             ),
         )
         return true
@@ -326,6 +372,9 @@ data class SaleResultUiState(
     /** Whether the payment was approved. */
     val approved: Boolean get() = record?.sale?.status == SaleStatus.APPROVED
 
+    /** Whether the payment was a pre-authorisation, which only held the amount. */
+    val preAuthorisation: Boolean get() = record?.sale?.kind == SaleKind.PRE_AUTHORISATION
+
     /** Adyen's retry guidance for a failed payment; null when the terminal gave no ErrorCondition. */
     val advice: RetryAdvice?
         get() =
@@ -336,15 +385,24 @@ data class SaleResultUiState(
 
 /**
  * Post-payment actions: printing (with the optional merchant copy) and emailing the receipt. When the sale is approved
- * the cart is cleared, and what [ReceiptDelivery] delivers automatically runs once (not again when the screen is
+ * its cart is cleared, and what [ReceiptDelivery] delivers automatically runs once (not again when the screen is
  * recreated).
+ *
+ * @param saleId The sale (or pre-authorisation) that was paid.
+ * @param sales Where it is stored.
+ * @param receipts Prints and emails its receipt.
+ * @param payments The payments' lifecycle, for status checks, busy terminals and leaving the result.
+ * @param sessions The cart of each kind of payment; the one of the sale's kind is cleared once it is approved.
+ * @param settings The current settings.
+ * @param terminal Whether printing is offered.
+ * @param messages Localised outcome messages.
  */
 class SaleResultViewModel(
     private val saleId: String,
     sales: SaleRepository,
     private val receipts: ReceiptDelivery,
     private val payments: TransactionLifecycle<PaymentStart>,
-    private val session: SaleSession,
+    private val sessions: (SaleKind) -> SaleSession,
     settings: StateFlow<AppSettings>,
     terminal: StateFlow<TerminalState>,
     private val messages: ResultMessages,
@@ -360,7 +418,7 @@ class SaleResultViewModel(
     init {
         viewModelScope.launch {
             val record = sales.observe(saleId).first { it != null } ?: return@launch
-            if (record.sale.status == SaleStatus.APPROVED) session.clear()
+            if (record.sale.status == SaleStatus.APPROVED) sessions(record.sale.kind).clear()
             val automatic = receipts.automationForSale(saleId)
             if (automatic.print) print()
             automatic.emailTo?.let(::email)

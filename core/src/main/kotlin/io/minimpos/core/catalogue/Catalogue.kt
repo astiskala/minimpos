@@ -64,6 +64,8 @@ data class CatalogueCategory(
  *   (no tax) only in catalogues from older ones, which import it as a 0% rate.
  * @property categoryIndex the index of the product's category in [Catalogue.categories], or null when uncategorised.
  * @property sku the barcode or SKU used to find the product by scanning, or null when it has none.
+ * @property preAuthorisation true for a product taken as a pre-authorisation (sold on its own, with the amount only
+ *   held on the card) rather than in a sale; catalogues from versions without the flag hold sale products only.
  */
 data class CatalogueProduct(
     val name: String,
@@ -71,4 +73,5 @@ data class CatalogueProduct(
     val taxRateIndex: Int?,
     val categoryIndex: Int?,
     val sku: String?,
+    val preAuthorisation: Boolean = false,
 )

@@ -310,6 +310,74 @@ class AppFlowTest {
         compose.waitForTag("newSale")
     }
 
+    @Test
+    fun `takes a pre-authorisation of its own product and cancels it from the history`() {
+        compose.onNodeWithTag("preAuth").assertDoesNotExist()
+        compose.onNodeWithTag("products").performClick()
+        compose.waitForTag("addFab")
+        compose.onNodeWithTag("addFab").performClick()
+        compose.waitForTag("productName")
+        compose.onNodeWithTag("productName").performTextInput("Catering deposit")
+        compose.onNodeWithTag("productPrice").performTextInput("200")
+        compose.onNodeWithTag("productPreAuth").performScrollTo().performClick()
+        compose.onNodeWithTag("saveProduct").performClick()
+        awaitEditorClosed()
+        waitForText("Pre-auth · GST 10%")
+        compose.onNodeWithTag("back").performClick()
+
+        // Home now offers pre-authorisations (that a sale does not show the product is checked in the view model test).
+        compose.waitForTag("preAuth")
+        compose.onNodeWithTag("preAuth").performClick()
+        waitForText("Catering deposit")
+        // There is no cart: choosing the one item, a custom amount here, opens checkout straight away.
+        compose.onNodeWithTag("charge").assertDoesNotExist()
+        compose.onNodeWithTag("customItem").performClick()
+        compose.waitForTag("addCustom")
+        listOf(5, 0, 0, 0).forEach { compose.onNodeWithTag("key_$it").performClick() }
+        compose.onNodeWithTag("addCustom").performClick()
+        compose.waitForTag("pay")
+        compose.onNodeWithTag("pay").assertTextEquals("Pre-authorize $50.00")
+        // Back on the Pre-authorise screen, a product replaces the custom amount.
+        compose.onNodeWithTag("back").performClick()
+        waitForText("Catering deposit")
+        compose.onNodeWithText("Catering deposit").performClick()
+        compose.waitUntilAtLeastOneExists(hasTestTag("pay") and hasText("Pre-authorize $200.00"), 15_000)
+        assertThat(
+            container.preAuthSession.cart.value.lines
+                .map { it.name },
+        ).containsExactly("Catering deposit")
+        compose.onNodeWithTag("preAuthNote").assertIsDisplayed()
+        compose.onNodeWithTag("customerReference").performTextInput("CUST-7")
+        // Cards are saved by default for pre-authorisations, for charging late costs.
+        compose.onNodeWithTag("tokenize").assertIsOn()
+        compose.onNodeWithTag("pay").assertTextEquals("Pre-authorize $200.00").performClick()
+        compose.waitUntilAtLeastOneExists(hasTestTag("resultStatus") and hasText("Pre-authorized"), 15_000)
+        compose.onNodeWithTag("newSaleAfter").assertTextEquals("New pre-auth")
+        compose.onNodeWithTag("home").performClick()
+
+        compose.waitForTag("history")
+        compose.onNodeWithTag("history").performClick()
+        waitForText("$200.00")
+        compose.onNodeWithText("Pre-authorized", useUnmergedTree = true).performClick()
+        compose.waitForTag("cancelPreAuth")
+        compose.onNodeWithTag("detailRefund").assertDoesNotExist()
+        compose.onNodeWithTag("cancelPreAuth").performClick()
+        // The way out of the dialog is not also called "Cancel".
+        compose.onNodeWithText("Keep it").assertIsDisplayed()
+        compose.onNodeWithTag("confirm").performClick()
+        waitForText("Cancellation requested")
+
+        val cancellation =
+            await { container.history.items().first { items -> items.any { it is HistoryItem.Refund } } }
+                .filterIsInstance<HistoryItem.Refund>()
+                .single()
+                .refund
+        assertThat(cancellation.cancellation).isTrue()
+        assertThat(cancellation.status).isEqualTo(RefundStatus.REQUESTED)
+        compose.onNodeWithTag("refundDone").performClick()
+        compose.waitForTag("preAuth")
+    }
+
     private fun awaitSetting(
         description: String,
         condition: () -> Boolean,

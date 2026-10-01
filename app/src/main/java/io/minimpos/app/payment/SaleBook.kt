@@ -1,6 +1,7 @@
 package io.minimpos.app.payment
 
 import io.minimpos.app.data.db.SaleEntity
+import io.minimpos.app.data.db.SaleKind
 import io.minimpos.app.data.db.SaleLineEntity
 import io.minimpos.app.data.db.SaleStatus
 import io.minimpos.app.data.repo.ReceiptLinesJson
@@ -22,6 +23,8 @@ import io.minimpos.terminal.parse.ReceiptField
  * @property customerReference Sent as payment metadata when set; only when it is also the shopper reference.
  * @property shopperEmail The shopper's email, for the receipt; sent to Adyen only with [tokenization] that includes it.
  * @property tokenization Set only when the shopper opted in to saving their card.
+ * @property kind A sale, or a pre-authorisation that only holds the amount (sent with `authorisationType=PreAuth` and
+ *   manual capture).
  */
 data class PaymentStart(
     val totals: CartTotals,
@@ -30,6 +33,7 @@ data class PaymentStart(
     val customerReference: String?,
     val shopperEmail: String?,
     val tokenization: TokenizationRequest?,
+    val kind: SaleKind = SaleKind.SALE,
 )
 
 /**
@@ -80,6 +84,7 @@ class SaleBook(
                 shopperEmail = request.shopperEmail,
                 tokenizationRequested = request.tokenization != null,
                 serviceId = serviceId,
+                kind = request.kind,
             )
         sales.createPending(sale, lines(id, totals))
     }
@@ -98,6 +103,7 @@ class SaleBook(
                 tenderOptions = listOf(RECEIPT_HANDLER),
                 metadata = listOfNotNull(request.customerReference?.let { "customerReference" to it }).toMap(),
                 requestCardAlias = tokenization != null,
+                preAuthorisation = request.kind == SaleKind.PRE_AUTHORISATION,
             ),
         )
     }

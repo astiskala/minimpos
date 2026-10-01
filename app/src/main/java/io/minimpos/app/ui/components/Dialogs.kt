@@ -24,7 +24,8 @@ import io.minimpos.core.shopper.ShopperReferences
 
 /**
  * Asks the operator to confirm [message] before an action such as deleting. [destructive] shows the confirm button in
- * the error colour. Dismissing or cancelling calls [onDismiss]; the caller hides the dialog in both callbacks.
+ * the error colour. Dismissing or the [dismissLabel] button ("Cancel" when null, which reads badly when the action
+ * itself is a cancellation) calls [onDismiss]; the caller hides the dialog in both callbacks.
  */
 @Composable
 fun ConfirmDialog(
@@ -34,6 +35,7 @@ fun ConfirmDialog(
     onConfirm: () -> Unit,
     onDismiss: () -> Unit,
     destructive: Boolean = false,
+    dismissLabel: String? = null,
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -44,7 +46,7 @@ fun ConfirmDialog(
                 Text(confirmLabel, color = if (destructive) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary)
             }
         },
-        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(dismissLabel ?: stringResource(R.string.action_cancel)) } },
     )
 }
 

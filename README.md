@@ -1,15 +1,16 @@
 # Mini mPOS
 
 A small point-of-sale app for Adyen Android payment terminals. Ring up products or custom amounts, take card payments
-through Adyen's Terminal API on the same device, print or email a receipt, and refund a sale by scanning the QR code on
-its receipt.
+(or pre-authorize a deposit) through Adyen's Terminal API on the same device, print or email a receipt, and refund a
+sale by scanning the QR code on its receipt.
 
 [![CI](https://github.com/astiskala/minimpos/actions/workflows/ci.yml/badge.svg)](https://github.com/astiskala/minimpos/actions/workflows/ci.yml)
-[![Licence: MIT](https://img.shields.io/badge/licence-MIT-0abf53.svg)](LICENSE)
+[![License: MIT](https://img.shields.io/badge/license-MIT-0abf53.svg)](LICENSE)
 ![Android 9+](https://img.shields.io/badge/Android-9%2B-00112c.svg)
 ![Kotlin](https://img.shields.io/badge/Kotlin-Jetpack%20Compose-00112c.svg)
 
-**Website:** <https://astiskala.github.io/minimpos/>
+**Website:** <https://astiskala.github.io/minimpos/> · **Setup guide:**
+<https://astiskala.github.io/minimpos/getting-started.html>
 
 <p align="center">
   <img src="docs/images/home.png" width="200" alt="Home screen">
@@ -36,10 +37,14 @@ its receipt.
   refund QR code. They can also be **emailed** over your own SMTP server.
 - **Referenced refunds**: scan the receipt's QR code, or start from history. Refund in full, by item, or an amount.
   Like payments, refunds are saved first, and one whose result is unknown can be checked again from history.
+- **Pre-authorizations** for deposits, bookings and hire: mark a product as a pre-authorization product and Home gets a
+  **Pre-authorize** tile beside New sale. A pre-authorization holds one product (or custom amount) on the card with
+  manual capture, so tapping it goes straight to checkout; you capture it in the Customer Area, or cancel it from
+  history. History lists them under their own filter and shows what is still held each day.
 - **Tax** set up your way: named rates such as GST, VAT, SST, Consumption tax or Sales tax (up to three decimals),
   prices with or without tax, a rate per product (0%, such as Zero rated, for items without tax), or tax switched off.
 - **Any Adyen currency**: all 138 currencies Adyen processes, with Adyen's own decimals, whatever country you are in.
-- **Catalogue transfer** between terminals with a few QR codes: no cloud account or computer needed.
+- **Catalog transfer** between terminals with a few QR codes: no cloud account or computer needed.
 - **Admin PIN** for settings and product management, with automatic re-lock.
 - **Made for terminal screens**, down to the AMS1's 4-inch display: layouts tighten on small screens and the main
   action (Pay, Refund, Save, New sale) stays in reach without scrolling.
@@ -55,8 +60,10 @@ its receipt.
 | New sale | Checkout | Printed receipt | Products |
 | <img src="docs/images/home.png" width="190" alt="Home"> | <img src="docs/images/approved.png" width="190" alt="Approved payment"> | <img src="docs/images/refund.png" width="190" alt="Item refund"> | <img src="docs/images/tax-dialog.png" width="190" alt="Adding a tax rate"> |
 | Home | Approved | Refund by item | Tax rates |
-| <img src="docs/images/history.png" width="190" alt="History"> | <img src="docs/images/processing.png" width="190" alt="Waiting for the card"> | <img src="docs/images/export.png" width="190" alt="Catalogue QR code"> | <img src="docs/images/settings.png" width="190" alt="Settings"> |
-| History | Waiting for the card | Share catalogue | Settings |
+| <img src="docs/images/history.png" width="190" alt="History"> | <img src="docs/images/processing.png" width="190" alt="Waiting for the card"> | <img src="docs/images/export.png" width="190" alt="Catalog QR code"> | <img src="docs/images/settings.png" width="190" alt="Settings"> |
+| History | Waiting for the card | Share catalog | Settings |
+| <img src="docs/images/pre-auth.png" width="190" alt="Pre-authorizing a catering deposit"> | <img src="docs/images/pre-auth-detail.png" width="190" alt="A pre-authorization in history, with Cancel pre-authorization"> | | |
+| Pre-authorize | Pre-authorization in history | | |
 
 Screenshots show a demo café running on the built-in simulator (hence the "SIMULATOR" banner).
 
@@ -77,7 +84,7 @@ The code is split into three modules:
 
 | Module | Contents |
 | --- | --- |
-| `core` | Plain Kotlin: money and tax maths, cart, refunds, receipt layout, catalogue and refund QR codes, Adyen's currency table. |
+| `core` | Plain Kotlin: money and tax math, cart, refunds, receipt layout, catalog and refund QR codes, Adyen's currency table. |
 | `terminal-api` | The Terminal API client on top of Adyen's Java library, OkHttp transport, retry advice and the simulator. |
 | `app` | The Android app: Jetpack Compose (Material 3), Navigation 3, Room, DataStore, CameraX and ZXing, JavaMail. |
 
@@ -102,6 +109,9 @@ cd minimpos
 Or open the project in Android Studio and run the `app` configuration.
 
 ## Put it on your terminals
+
+The [Getting started guide](https://astiskala.github.io/minimpos/getting-started.html) walks through all of this,
+plus setting up your business, products and pre-authorizations. In short:
 
 1. **Create a shared key** in your Customer Area under **Devices › Device settings › Integrations › Terminal API ›
    Encryption key**, and note its identifier, passphrase and version.
@@ -140,7 +150,14 @@ only asks for the internet, network state and camera permissions, and the build 
 - Refunds are processed by Adyen asynchronously, so the app shows them as "Refund requested". The final outcome is in
   your Customer Area; Mini mPOS has no backend to receive webhooks.
 - Refunds are always referenced to the original payment. Unreferenced refunds are not supported.
-- Moving a catalogue between terminals uses the camera, so the receiving terminal needs one.
+- Pre-authorizations are sent with `authorisationType=PreAuth` and `manualCapture=true`, so only they wait for a
+  manual capture; ask Adyen Support to enable pre-authorization for your payment methods first. Capture them in the
+  Customer Area (Payments › Payment list), up to the amount held. Adjusting the amount held needs Adyen's Checkout API,
+  which the app deliberately does not use (it would need an API key on every terminal), and the app is not told about
+  captures. Canceling one from history is a full reversal: Adyen refunds it in full if it was already captured.
+- Catalog QR codes now carry whether a product is a pre-authorization product (format version 3). Older catalog
+  codes still import, but older versions of the app cannot read the new ones, so update all terminals together.
+- Moving a catalog between terminals uses the camera, so the receiving terminal needs one.
 - Only the latest [release](https://github.com/astiskala/minimpos/releases) is maintained.
 
 ## Contributing and security
@@ -148,7 +165,7 @@ only asks for the internet, network state and camera permissions, and the build 
 Contributions are welcome: see [CONTRIBUTING.md](CONTRIBUTING.md) for how to build, test and propose changes. Please
 report security issues privately as described in [SECURITY.md](SECURITY.md).
 
-## Licence
+## License
 
 [MIT](LICENSE) © 2026 Adam Stiskala.
 

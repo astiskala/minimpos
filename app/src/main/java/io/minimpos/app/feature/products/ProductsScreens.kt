@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -39,6 +40,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.PrimaryTabRow
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -53,6 +55,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
@@ -61,6 +64,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import io.minimpos.app.R
 import io.minimpos.app.data.db.CategoryEntity
 import io.minimpos.app.data.db.ProductEntity
+import io.minimpos.app.data.db.SaleKind
 import io.minimpos.app.feature.sale.TaxRatePicker
 import io.minimpos.app.scan.ScanMode
 import io.minimpos.app.scan.ScannerDialog
@@ -180,7 +184,10 @@ private fun TransferMenu(onOpen: (Route) -> Unit) {
     }
 }
 
-/** The products tab: each product's name, tax rate (when tax is charged), category, SKU and price. */
+/**
+ * The products tab: each product's name, whether it is a pre-authorisation product, tax rate (when tax is charged),
+ * category, SKU and price.
+ */
 @Composable
 private fun ProductList(
     state: ProductsUiState,
@@ -195,6 +202,7 @@ private fun ProductList(
         )
         return
     }
+    val preAuth = stringResource(R.string.products_kind_pre_auth)
     // The bottom padding keeps the last row clear of the add button.
     LazyColumn(Modifier.fillMaxSize().testTag("productList"), contentPadding = PaddingValues(bottom = 88.dp)) {
         items(state.products, key = { it.id }) { product ->
@@ -204,6 +212,7 @@ private fun ProductList(
                 title = product.name,
                 subtitle =
                     listOfNotNull(
+                        preAuth.takeIf { product.kind == SaleKind.PRE_AUTHORISATION },
                         tax?.takeIf { state.chargeTax }?.let { AppliedTax(it.name, it.rateMilliPercent).label() },
                         category?.name,
                         product.sku,
@@ -306,7 +315,7 @@ private fun CategoryDialog(
 
 /**
  * Adding ([productId] null, optionally with a scanned [sku]) or editing a product: name, price, tax rate,
- * category and SKU, which can be scanned.
+ * category, SKU (which can be scanned) and whether it is a pre-authorisation product.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -445,6 +454,29 @@ private fun ColumnScope.ProductFields(
         singleLine = true,
         modifier = Modifier.fillMaxWidth().testTag("productSku"),
     )
+    PreAuthorisationSwitch(form.preAuthorisation) { checked -> onUpdate { it.copy(preAuthorisation = checked) } }
+}
+
+/** Whether the product is taken as a pre-authorisation ([checked]) rather than sold, with what that means. */
+@Composable
+private fun PreAuthorisationSwitch(
+    checked: Boolean,
+    onChange: (Boolean) -> Unit,
+) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier.fillMaxWidth().toggleable(checked, role = Role.Switch, onValueChange = onChange).testTag("productPreAuth"),
+    ) {
+        Column(Modifier.weight(1f)) {
+            Text(stringResource(R.string.products_pre_auth), style = MaterialTheme.typography.bodyLarge)
+            Text(
+                stringResource(R.string.products_pre_auth_hint),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        Switch(checked = checked, onCheckedChange = null)
+    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)

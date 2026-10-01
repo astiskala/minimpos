@@ -6,12 +6,14 @@ import io.minimpos.app.await
 import io.minimpos.app.data.db.ProductEntity
 import io.minimpos.app.data.db.RefundEntity
 import io.minimpos.app.data.db.RefundStatus
+import io.minimpos.app.data.db.SaleKind
 import io.minimpos.app.data.db.SaleStatus
 import io.minimpos.app.data.db.TaxRateEntity
 import io.minimpos.app.data.repo.ReceiptLinesJson
 import io.minimpos.app.data.repo.RefundedLine
 import io.minimpos.app.data.settings.TerminalMode
 import io.minimpos.app.refund.RefundStart
+import io.minimpos.app.refund.RefundablePayment
 import io.minimpos.core.cart.AppliedTax
 import io.minimpos.core.cart.Cart
 import io.minimpos.core.cart.CartProduct
@@ -27,6 +29,8 @@ import org.junit.Assert.assertThrows
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import java.time.Instant
+import java.time.ZoneOffset
 
 /** Payments and refunds share one lifecycle; these tests run it through the simulator and an in-memory database. */
 @RunWith(RobolectricTestRunner::class)
@@ -286,6 +290,78 @@ class TransactionLifecycleTest {
         assertThat(broken.status).isEqualTo(RefundStatus.UNKNOWN)
         assertThat(broken.message).isNotEmpty()
         assertThrows(IllegalArgumentException::class.java) { refunds.start(refundStart(null, 0, full = true)) }
+    }
+
+    @Test
+    fun `pre-authorisations are stored as such and can be cancelled through the refund lifecycle`() {
+        useSimulatorWithAutoPrint()
+        val cart = Cart().addProduct(CartProduct(7, "Catering deposit", null, 20_000, gst)) { "a" }
+        val saleId =
+            payments.start(
+                PaymentStart(
+                    totals = cart.totals(TaxMode.INCLUSIVE),
+                    currency = CurrencySpec("AUD", 2),
+                    merchantReference = "MP-2",
+                    customerReference = null,
+                    shopperEmail = null,
+                    tokenization = null,
+                    kind = SaleKind.PRE_AUTHORISATION,
+                ),
+            )
+        val record = finished(saleId)
+        assertThat(record.sale.kind).isEqualTo(SaleKind.PRE_AUTHORISATION)
+        assertThat(record.sale.status).isEqualTo(SaleStatus.APPROVED)
+        assertThat(ReceiptLinesJson.decode(record.sale.customerReceiptJson).map { it.name }).contains("Pre-authorization")
+        payments.acknowledge()
+
+        val cancellation = refundFinished(refunds.start(RefundablePayment.cancellation(record, "", Instant.now(), ZoneOffset.UTC)!!))
+        assertThat(cancellation.cancellation).isTrue()
+        assertThat(cancellation.full).isTrue()
+        assertThat(cancellation.status).isEqualTo(RefundStatus.REQUESTED)
+        assertThat(ReceiptLinesJson.decode(cancellation.customerReceiptJson).map { it.name }).contains("CANCELLATION REQUESTED")
+        assertThat(
+            await {
+                container.sales
+                    .get(saleId)!!
+                    .sale.refundedMinor
+            },
+        ).isEqualTo(20_000)
+        assertThat(RefundablePayment.canCancel(await { container.sales.get(saleId)!! })).isFalse()
+    }
+
+    @Test
+    fun `a single-item session holds one item at a time`() {
+        var keys = 0
+        val session = SaleSession(singleItem = true) { "k${++keys}" }
+        val tax = TaxRateEntity(1, "GST", 10_000)
+        session.addProduct(ProductEntity(5, "Room", 15_000, 1), tax)
+        session.addProduct(ProductEntity(5, "Room", 15_000, 1), tax)
+        assertThat(
+            session.cart.value.lines
+                .map { it.name to it.quantity },
+        ).containsExactly("Room" to 1)
+        session.addProduct(ProductEntity(6, "Hire bond", 5_000, 1), tax)
+        assertThat(
+            session.cart.value.lines
+                .map { it.name },
+        ).containsExactly("Hire bond")
+        session.setQuantity(
+            session.cart.value.lines
+                .single()
+                .key,
+            3,
+        )
+        assertThat(
+            session.cart.value.lines
+                .single()
+                .quantity,
+        ).isEqualTo(1)
+        session.addCustom("Deposit", 2_500, tax)
+        assertThat(
+            session.cart.value.lines
+                .map { it.name to it.unitPrice },
+        ).containsExactly("Deposit" to 2_500L)
+        assertThat(SaleSession().singleItem).isFalse()
     }
 
     @Test

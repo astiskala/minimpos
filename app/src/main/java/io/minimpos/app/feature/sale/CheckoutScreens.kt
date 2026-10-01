@@ -47,6 +47,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import io.minimpos.app.R
 import io.minimpos.app.data.db.SaleEntity
+import io.minimpos.app.data.db.SaleKind
 import io.minimpos.app.data.db.SaleStatus
 import io.minimpos.app.data.settings.EmailCapture
 import io.minimpos.app.data.settings.ShopperReferenceSource
@@ -83,13 +84,15 @@ import java.util.Locale
 
 /**
  * The last step before paying: the amount, the optional merchant reference, customer reference and email fields,
- * and saving the card. Pay starts the payment and opens [PaymentScreen].
+ * and saving the card. Pay starts the payment and opens [PaymentScreen]. With [preAuthorisation] the amount is only
+ * held, which the screen explains.
  */
 @Composable
 fun CheckoutScreen(
     navigator: Navigator,
+    preAuthorisation: Boolean,
     modifier: Modifier = Modifier,
-    vm: CheckoutViewModel = checkoutViewModel(),
+    vm: CheckoutViewModel = checkoutViewModel(preAuthorisation),
 ) {
     val state by vm.state.collectAsStateWithLifecycle()
     val money = rememberMoneyFormatter(state.currency)
@@ -102,9 +105,13 @@ fun CheckoutScreen(
         bottomBar = {
             BottomActions {
                 PrimaryButton(
-                    text = stringResource(R.string.checkout_pay, money.format(state.totals.amounts.gross)),
+                    text =
+                        stringResource(
+                            if (preAuthorisation) R.string.pre_auth_charge else R.string.checkout_pay,
+                            money.format(state.totals.amounts.gross),
+                        ),
                     enabled = state.canPay,
-                    onClick = { if (vm.pay()) navigator.replace(Route.Payment) },
+                    onClick = { if (vm.pay()) navigator.replace(Route.Payment(preAuthorisation)) },
                     modifier = Modifier.testTag("pay"),
                 )
             }
@@ -125,6 +132,15 @@ fun CheckoutScreen(
                     textAlign = TextAlign.Center,
                     modifier = Modifier.fillMaxWidth().testTag("checkoutAmount"),
                 )
+                if (preAuthorisation) {
+                    Text(
+                        stringResource(R.string.checkout_pre_auth_note),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.fillMaxWidth().testTag("preAuthNote"),
+                    )
+                }
                 CartSummary(state, money)
                 CheckoutFields(state, onUpdate = vm::update)
             }
@@ -233,30 +249,37 @@ private fun SaveCardSwitch(
 }
 
 @Composable
-private fun checkoutViewModel(): CheckoutViewModel {
+private fun checkoutViewModel(preAuthorisation: Boolean): CheckoutViewModel {
     val container = LocalAppContainer.current
-    return viewModel { CheckoutViewModel(container.saleSession, container.payments, container.settingsState, container::currency) }
+    val kind = kindOf(preAuthorisation)
+    return viewModel(key = kind.name) {
+        CheckoutViewModel(container.session(kind), container.payments, container.settingsState, container::currency, kind)
+    }
 }
+
+private fun kindOf(preAuthorisation: Boolean) = if (preAuthorisation) SaleKind.PRE_AUTHORISATION else SaleKind.SALE
 
 /**
  * Waits while the shopper pays on the terminal (whose own payment screen usually covers this one), then opens the
- * result. The cancel button, and Back, ask the terminal to cancel the payment once it has been sent.
+ * result. The cancel button, and Back, ask the terminal to cancel the payment once it has been sent. [preAuthorisation]
+ * says which cart is being paid.
  */
 @Composable
 fun PaymentScreen(
     navigator: Navigator,
+    preAuthorisation: Boolean,
     modifier: Modifier = Modifier,
 ) {
     val container = LocalAppContainer.current
     val state by container.payments.state.collectAsStateWithLifecycle()
-    val cart by container.saleSession.cart.collectAsStateWithLifecycle()
+    val cart by container.session(kindOf(preAuthorisation)).cart.collectAsStateWithLifecycle()
     val settings by container.settingsState.collectAsStateWithLifecycle()
     val money = rememberMoneyFormatter(container.currency(settings))
 
     LaunchedEffect(state) {
         when (val current = state) {
             is TransactionState.Finished -> navigator.replace(Route.SaleResult(current.id))
-            TransactionState.Idle -> navigator.popTo(Route.Sale)
+            TransactionState.Idle -> navigator.popTo(Route.ringUp(preAuthorisation))
             is TransactionState.Processing -> Unit
         }
     }
@@ -294,23 +317,24 @@ fun SaleResultScreen(
     val state by vm.state.collectAsStateWithLifecycle()
     var showReceipt by remember { mutableStateOf(false) }
     val record = state.record
+    val ringUp = Route.ringUp(state.preAuthorisation)
 
     fun done(route: Route) {
         vm.finish()
         navigator.popTo(route)
     }
-    BackHandler { done(Route.Sale) }
+    BackHandler { done(ringUp) }
     val dimens = LocalDimens.current
 
     MiniScaffold(
         title = stringResource(R.string.result_title),
-        onBack = { done(Route.Sale) },
+        onBack = { done(ringUp) },
         modifier = modifier,
         bottomBar = {
             if (record != null) {
-                SaleResultBottomBar(state.approved, onHome = { done(Route.Home) }, onNewSale = { done(Route.Sale) }, onTryAgain = {
+                SaleResultBottomBar(state, onHome = { done(Route.Home) }, onNewSale = { done(ringUp) }, onTryAgain = {
                     vm.finish()
-                    navigator.replace(Route.Checkout)
+                    navigator.replace(Route.Checkout(state.preAuthorisation))
                 })
             }
         },
@@ -347,7 +371,7 @@ fun SaleResultScreen(
                         state = state,
                         onRecheck = vm::recheck,
                         onAbortBusy = vm::abortBusyTransaction,
-                        onBackToSale = { done(Route.Sale) },
+                        onBackToSale = { done(ringUp) },
                     )
                 }
             }
@@ -362,8 +386,9 @@ private fun SaleOutcome(
     money: MoneyFormatter,
 ) {
     val sale = state.record?.sale ?: return
-    OutcomeHeader(statusKind(sale.status), statusTitle(sale.status), money.format(sale.totalMinor), titleTag = "resultStatus") {
+    OutcomeHeader(statusKind(sale), statusTitle(sale), money.format(sale.totalMinor), titleTag = "resultStatus") {
         sale.message?.takeIf { sale.status != SaleStatus.APPROVED }?.let { OutcomeNote(it) }
+        if (state.approved && state.preAuthorisation) OutcomeNote(stringResource(R.string.checkout_pre_auth_note))
         state.advice?.let { advice ->
             Text(
                 adviceText(advice),
@@ -376,12 +401,12 @@ private fun SaleOutcome(
 }
 
 /**
- * Home, beside "New sale" after an approved payment or "Try again" otherwise, which goes back to checkout with the same
- * cart.
+ * Home, beside "New sale" (or "New pre-auth" after a pre-authorisation) after an approved payment or "Try again"
+ * otherwise, which goes back to checkout with the same cart.
  */
 @Composable
 private fun SaleResultBottomBar(
-    approved: Boolean,
+    state: SaleResultUiState,
     onHome: () -> Unit,
     onNewSale: () -> Unit,
     onTryAgain: () -> Unit,
@@ -389,8 +414,12 @@ private fun SaleResultBottomBar(
     BottomActions {
         Row(horizontalArrangement = Arrangement.spacedBy(LocalDimens.current.spacing), verticalAlignment = Alignment.CenterVertically) {
             HomeButton(onHome, Modifier.weight(1f))
-            if (approved) {
-                PrimaryButton(stringResource(R.string.result_new_sale), onNewSale, modifier = Modifier.weight(1f).testTag("newSaleAfter"))
+            if (state.approved) {
+                PrimaryButton(
+                    stringResource(if (state.preAuthorisation) R.string.result_new_pre_auth else R.string.result_new_sale),
+                    onNewSale,
+                    modifier = Modifier.weight(1f).testTag("newSaleAfter"),
+                )
             } else {
                 PrimaryButton(stringResource(R.string.result_try_again), onTryAgain, modifier = Modifier.weight(1f).testTag("tryAgain"))
             }
@@ -438,7 +467,10 @@ private fun ColumnScope.UnapprovedSaleActions(
         )
     }
     state.abort.message?.let { ActionMessage(it, state.abort.isError) }
-    SecondaryButton(stringResource(R.string.result_back_to_sale), onBackToSale)
+    SecondaryButton(
+        stringResource(if (state.preAuthorisation) R.string.result_back_to_pre_auth else R.string.result_back_to_sale),
+        onBackToSale,
+    )
 }
 
 /** The reference, card and PSP reference, and whether the card was saved when that was asked for. */
@@ -547,7 +579,7 @@ private fun saleResultViewModel(saleId: String): SaleResultViewModel {
             sales = container.sales,
             receipts = container.receipts,
             payments = container.payments,
-            session = container.saleSession,
+            sessions = container::session,
             settings = container.settingsState,
             terminal = container.terminalStatus.state,
             messages = ResultMessages(printed, emailed, abortSent),
@@ -580,6 +612,29 @@ fun statusKind(status: SaleStatus): StatusKind =
         SaleStatus.CANCELLED, SaleStatus.UNKNOWN, SaleStatus.PENDING -> StatusKind.WARNING
         SaleStatus.DECLINED, SaleStatus.FAILED -> StatusKind.ERROR
     }
+
+/**
+ * How [sale] is shown: as its status says ([statusKind]), except that a pre-authorisation whose cancellation was
+ * accepted is a warning.
+ */
+fun statusKind(sale: SaleEntity): StatusKind = if (sale.cancelledPreAuthorisation) StatusKind.WARNING else statusKind(sale.status)
+
+/**
+ * The heading for [sale]: its status ([statusTitle]), except that an approved pre-authorisation reads "Pre-authorised",
+ * or "Cancellation requested" once its cancellation was accepted.
+ */
+@Composable
+@ReadOnlyComposable
+fun statusTitle(sale: SaleEntity): String =
+    when {
+        sale.cancelledPreAuthorisation -> stringResource(R.string.status_cancellation_requested)
+        sale.kind == SaleKind.PRE_AUTHORISATION && sale.status == SaleStatus.APPROVED -> stringResource(R.string.status_pre_authorised)
+        else -> statusTitle(sale.status)
+    }
+
+/** An approved pre-authorisation that a cancellation (a full reversal) has been accepted for. */
+private val SaleEntity.cancelledPreAuthorisation: Boolean
+    get() = kind == SaleKind.PRE_AUTHORISATION && status == SaleStatus.APPROVED && refundedMinor > 0
 
 /** The heading for a sale in [status], such as "Approved". */
 @Composable

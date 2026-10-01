@@ -6,6 +6,7 @@ import androidx.datastore.core.DataStoreFactory
 import androidx.datastore.core.handlers.ReplaceFileCorruptionHandler
 import androidx.datastore.dataStoreFile
 import io.minimpos.app.data.db.AppDatabase
+import io.minimpos.app.data.db.SaleKind
 import io.minimpos.app.data.repo.CatalogRepository
 import io.minimpos.app.data.repo.HistoryRepository
 import io.minimpos.app.data.repo.RefundRepository
@@ -156,6 +157,8 @@ class AppContainer(
                             testBody = context.getString(R.string.email_test_body),
                             notConfigured = context.getString(R.string.email_not_configured),
                             invalidAddress = context.getString(R.string.email_invalid_address),
+                            preAuthIntro = context.getString(R.string.email_pre_auth_intro),
+                            cancellationIntro = context.getString(R.string.email_cancellation_intro),
                         ),
                     qrPng = { QrCodes.png(it) },
                 ),
@@ -164,6 +167,15 @@ class AppContainer(
 
     /** The cart being built, shared by the sale and checkout screens. */
     val saleSession = SaleSession()
+
+    /**
+     * The one item of the pre-authorisation being taken, shared by the pre-authorise and checkout screens; separate
+     * from [saleSession], so a sale being rung up is kept meanwhile.
+     */
+    val preAuthSession = SaleSession(singleItem = true)
+
+    /** [saleSession] or [preAuthSession], for payments of [kind]. */
+    fun session(kind: SaleKind): SaleSession = if (kind == SaleKind.PRE_AUTHORISATION) preAuthSession else saleSession
 
     /** Runs card payments and keeps their progress. */
     val payments: TransactionLifecycle<PaymentStart> =
@@ -231,6 +243,13 @@ class AppContainer(
             partialRefund = context.getString(R.string.receipt_partial_refund),
             cardSaved = context.getString(R.string.receipt_card_saved),
             notCompleted = context.getString(R.string.receipt_not_completed),
+            preAuthTitle = context.getString(R.string.receipt_pre_auth_title),
+            amountHeld = context.getString(R.string.receipt_amount_held),
+            preAuthNote = context.getString(R.string.receipt_pre_auth_note),
+            cancellationTitle = context.getString(R.string.receipt_cancellation_title),
+            cancelledReference = context.getString(R.string.receipt_cancelled_reference),
+            cancellationNote = context.getString(R.string.receipt_cancellation_note),
+            released = context.getString(R.string.receipt_released),
         )
 
     /** The application identity and currency resolution, also used without a container. */

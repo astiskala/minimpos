@@ -1,5 +1,6 @@
 package io.minimpos.app.refund
 
+import io.minimpos.app.data.db.SaleKind
 import io.minimpos.app.data.db.SaleStatus
 import io.minimpos.app.data.db.SaleWithLines
 import io.minimpos.app.data.repo.RefundedLine
@@ -12,6 +13,7 @@ import io.minimpos.terminal.client.RefundParams
 import io.minimpos.terminal.client.TerminalClient
 import java.time.Instant
 import java.time.ZoneId
+import java.time.ZoneOffset
 
 /** Why a payment cannot be refunded. */
 enum class RefundInvalidReason {
@@ -26,6 +28,12 @@ enum class RefundInvalidReason {
 
     /** Everything has already been refunded from this terminal. */
     FULLY_REFUNDED,
+
+    /**
+     * It is a pre-authorisation, which is captured in the Customer Area rather than charged; the app can only cancel it,
+     * from history ([RefundablePayment.cancellation]).
+     */
+    PRE_AUTHORISATION,
 }
 
 /** What the operator chose to refund of a [RefundablePayment]. */
@@ -87,6 +95,8 @@ sealed interface Refundability {
  *   amount.
  * @property merchantReference The refund's own merchant reference, such as `R-260930-145811-VQ45`.
  * @property lines The items refunded, for an item refund; empty for an amount or full refund.
+ * @property cancellation Whether this full reversal cancels a pre-authorisation ([RefundablePayment.cancellation])
+ *   rather than refunding a sale.
  * @throws IllegalArgumentException if [amountMinor] is not positive.
  */
 data class RefundStart(
@@ -99,6 +109,7 @@ data class RefundStart(
     val full: Boolean,
     val merchantReference: String,
     val lines: List<RefundedLine> = emptyList(),
+    val cancellation: Boolean = false,
 ) {
     init {
         require(amountMinor > 0) { "Refund amount must be positive" }
@@ -118,7 +129,8 @@ data class RefundStart(
 /**
  * A payment that can be refunded, from the local history or only from its receipt QR code, and the one set of rules
  * for refunding it: whether it can be refunded at all ([check], [find]), what is left, what a [RefundChoice] refunds,
- * the refund request itself ([request]) and the refund QR code printed on the sale's receipt ([qrCode]).
+ * the refund request itself ([request]) and the refund QR code printed on the sale's receipt ([qrCode]). It also holds
+ * the rule for pre-authorisations, which are never refunded but can be cancelled ([cancellation], [canCancel]).
  *
  * A payment can be refunded when it was approved and the terminal gave a transaction ID and a time stamp that a
  * reversal can send back, and something is left to refund. Pure: callers look the sale up themselves.
@@ -208,11 +220,45 @@ class RefundablePayment private constructor(
             RefundedLine(line.id, line.name, quantity, line.unitPriceMinor, share)
         }
 
-    /** Deciding whether payments can be refunded. */
+    /** Deciding whether payments can be refunded, and pre-authorisations cancelled. */
     companion object {
-        /** Whether the stored sale [record] can be refunded. */
+        /** Whether the stored sale [record] can be refunded; a pre-authorisation never can. */
         fun check(record: SaleWithLines): Refundability =
-            eligible(record)?.let(::refundable) ?: Refundability.NotRefundable(RefundInvalidReason.NOT_REFUNDABLE)
+            when {
+                record.sale.kind == SaleKind.PRE_AUTHORISATION -> Refundability.NotRefundable(RefundInvalidReason.PRE_AUTHORISATION)
+                else -> eligible(record)?.let(::refundable) ?: Refundability.NotRefundable(RefundInvalidReason.NOT_REFUNDABLE)
+            }
+
+        /**
+         * The cancellation of the pre-authorisation [record], or null when it cannot be cancelled: it is not an approved
+         * pre-authorisation with the terminal's transaction details, or a cancellation was already accepted. It is a
+         * full reversal (no amount, so Adyen releases the whole hold, or refunds it in full if it was captured in the
+         * meantime), with a merchant reference generated from [now] in [zone] with "C" after [referencePrefix].
+         */
+        fun cancellation(
+            record: SaleWithLines,
+            referencePrefix: String,
+            now: Instant,
+            zone: ZoneId,
+        ): RefundStart? {
+            if (record.sale.kind != SaleKind.PRE_AUTHORISATION) return null
+            val payment = eligible(record)?.takeIf { it.refundedMinor == 0L } ?: return null
+            val prefix = referencePrefix.trim().let { if (it.isEmpty()) "C" else "$it-C" }
+            return RefundStart(
+                saleId = record.sale.id,
+                originalTransactionId = payment.transactionId,
+                originalTimestamp = payment.timestamp,
+                originalReference = payment.reference,
+                currency = payment.currency,
+                amountMinor = payment.amountMinor,
+                full = true,
+                merchantReference = Ids.transactionReference(prefix, now, zone),
+                cancellation = true,
+            )
+        }
+
+        /** Whether the pre-authorisation [record] can be cancelled, as [cancellation] decides. */
+        fun canCancel(record: SaleWithLines): Boolean = cancellation(record, "", Instant.EPOCH, ZoneOffset.UTC) != null
 
         /**
          * Whether the payment to refund can be refunded: the stored sale [record] when there is one (a scanned code of a
@@ -248,10 +294,12 @@ class RefundablePayment private constructor(
             }
 
         /**
-         * The refund QR code content for [record]'s receipt, or null when the sale could never be refunded (or its
-         * transaction ID cannot be carried in the code). Printed whether or not something is left to refund.
+         * The refund QR code content for [record]'s receipt, or null when the sale could never be refunded (a
+         * pre-authorisation, or its transaction ID cannot be carried in the code). Printed whether or not something is
+         * left to refund.
          */
         fun qrCode(record: SaleWithLines): String? {
+            if (record.sale.kind == SaleKind.PRE_AUTHORISATION) return null
             val payment = eligible(record) ?: return null
             // Eligibility already requires a time stamp with a time zone, so it is one instant.
             val instant = checkNotNull(TerminalClient.instantOf(payment.timestamp))

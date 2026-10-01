@@ -31,6 +31,11 @@ data class CheckoutForm(
  * so the cart survives navigation, and is cleared once the payment is approved. Updates are atomic and thread-safe.
  */
 class SaleSession(
+    /**
+     * Holds at most one item, with a quantity of one, as a pre-authorisation does: adding a product or custom item
+     * replaces whatever is in the cart.
+     */
+    val singleItem: Boolean = false,
     /** Generates cart line keys; tests make them predictable. */
     private val newKey: () -> String = { UUID.randomUUID().toString() },
 ) {
@@ -45,16 +50,18 @@ class SaleSession(
     val checkout: StateFlow<CheckoutForm> = _checkout.asStateFlow()
 
     /**
-     * Adds one unit of [product] with [tax], joining an existing line for the same product at the same price and tax.
-     * The tax rate's name and rate are copied, so later edits to the rate do not change the cart.
+     * Adds one unit of [product] with [tax], joining an existing line for the same product at the same price and tax
+     * (with [singleItem], it replaces the cart instead). The tax rate's name and rate are copied, so later edits to the
+     * rate do not change the cart.
      */
     fun addProduct(
         product: ProductEntity,
         tax: TaxRateEntity,
-    ) = _cart.update { it.addProduct(CartProduct(product.id, product.name, product.sku, product.priceMinor, applied(tax)), newKey) }
+    ) = _cart.update { base(it).addProduct(CartProduct(product.id, product.name, product.sku, product.priceMinor, applied(tax)), newKey) }
 
     /**
-     * Adds a custom item of [amountMinor] (minor units, positive) with [tax] as a new line.
+     * Adds a custom item of [amountMinor] (minor units, positive) with [tax] as a new line (with [singleItem], it
+     * replaces the cart instead).
      *
      * @throws IllegalArgumentException if [amountMinor] is not positive.
      */
@@ -62,15 +69,20 @@ class SaleSession(
         name: String,
         amountMinor: Long,
         tax: TaxRateEntity,
-    ) = _cart.update { it.addCustom(name, amountMinor, applied(tax), newKey()) }
+    ) = _cart.update { base(it).addCustom(name, amountMinor, applied(tax), newKey()) }
+
+    private fun base(cart: Cart) = if (singleItem) Cart() else cart
 
     private fun applied(tax: TaxRateEntity) = AppliedTax(tax.name, tax.rateMilliPercent)
 
-    /** Sets the quantity of the line with [key], capped at [Cart.MAX_QUANTITY]; zero or less removes the line. */
+    /**
+     * Sets the quantity of the line with [key], capped at [Cart.MAX_QUANTITY] (at one with [singleItem]); zero or less
+     * removes the line.
+     */
     fun setQuantity(
         key: String,
         quantity: Int,
-    ) = _cart.update { it.setQuantity(key, quantity) }
+    ) = _cart.update { it.setQuantity(key, if (singleItem) quantity.coerceAtMost(1) else quantity) }
 
     /** Removes the line with [key]; an unknown key changes nothing. */
     fun remove(key: String) = _cart.update { it.remove(key) }

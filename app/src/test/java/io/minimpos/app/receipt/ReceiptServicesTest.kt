@@ -6,6 +6,7 @@ import io.minimpos.app.await
 import io.minimpos.app.data.db.RefundEntity
 import io.minimpos.app.data.db.RefundStatus
 import io.minimpos.app.data.db.SaleEntity
+import io.minimpos.app.data.db.SaleKind
 import io.minimpos.app.data.db.SaleLineEntity
 import io.minimpos.app.data.db.SaleStatus
 import io.minimpos.app.data.db.SaleWithLines
@@ -45,6 +46,8 @@ import java.io.ByteArrayOutputStream
 import java.time.ZoneOffset
 import java.util.Locale
 import javax.mail.MessagingException
+import javax.mail.Multipart
+import javax.mail.Part
 import javax.mail.internet.MimeMultipart
 
 @RunWith(RobolectricTestRunner::class)
@@ -271,6 +274,55 @@ class ReceiptServicesTest {
         assertThat(await { container.receipts.emailSale("missing", "a@b.co") }).isInstanceOf(ActionResult.Failure::class.java)
         assertThat(await { container.receipts.emailRefund("missing", "a@b.co") }).isInstanceOf(ActionResult.Failure::class.java)
     }
+
+    @Test
+    fun `pre-authorisations and their cancellations get their own receipts and emails`() {
+        configureEmail()
+        await { container.sales.createPending(sale.copy(kind = SaleKind.PRE_AUTHORISATION), lines) }
+        val record = await { container.sales.get("s1")!! }
+        val receipt = container.receiptFactory.sale(record, ReceiptSettings())
+        assertThat(receipt.elements).contains(ReceiptElement.Text("PRE-AUTHORIZATION", Align.CENTER, TextStyle.BOLD))
+        assertThat(receipt.elements.filterIsInstance<ReceiptElement.Row>().map { it.left }).contains("AMOUNT HELD")
+        assertThat(receipt.qrCodes).isEmpty()
+        assertThat(await { container.receipts.emailSale("s1", "a@b.co") }).isEqualTo(ActionResult.Success)
+        assertThat(
+            env.mail.sent
+                .last()
+                .allText(),
+        ).contains("The amount is held on your card")
+
+        val cancellation =
+            RefundEntity(
+                id = "c1",
+                saleId = "s1",
+                createdAt = 0,
+                merchantReference = "C-1",
+                originalTransactionId = "T.X",
+                originalTimestamp = "t",
+                originalReference = "MP-1",
+                currency = "AUD",
+                amountMinor = 1_200,
+                full = true,
+                status = RefundStatus.REQUESTED,
+                cancellation = true,
+            )
+        await { container.refundRecords.create(cancellation) }
+        assertThat(container.receiptFactory.refund(cancellation, ReceiptSettings()).elements)
+            .contains(ReceiptElement.Text("CANCELLATION", Align.CENTER, TextStyle.BOLD))
+        assertThat(await { container.receipts.emailRefund("c1", "a@b.co") }).isEqualTo(ActionResult.Success)
+        assertThat(
+            env.mail.sent
+                .last()
+                .allText(),
+        ).contains("Your pre-authorization has been canceled")
+    }
+
+    private fun Part.allText(): String =
+        when (val content = content) {
+            is String -> content
+            is Multipart -> (0 until content.count).joinToString("\n") { content.getBodyPart(it).allText() }
+            else -> ""
+        }
 
     @Test
     fun `email validates configuration, addresses and transport errors`() {

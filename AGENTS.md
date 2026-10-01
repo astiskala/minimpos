@@ -4,8 +4,10 @@ Android POS app that runs on Adyen Android payment terminals and takes payments 
 (`https://localhost:8443/nexo`) on the same device.
 
 ## Modules
-- `:core` – pure Kotlin: money/tax maths, cart, refund apportioning, receipt document model + HTML/plain renderers,
-  compact catalogue codec (binary + raw deflate + Base45, chunked into `MPC1:` QR codes), refund QR payload (`MPR1*…`),
+- `:core` – pure Kotlin: money/tax maths, cart, refund apportioning, receipt document model + HTML/plain renderers
+  (pre-authorisation and cancellation receipts too), compact catalogue codec (binary + raw deflate + Base45, chunked
+  into `MPC1:` QR codes; v3 adds a per-product flags varint, bit 0 = pre-authorisation, and v1/v2 still decode as sale
+  products), refund QR payload (`MPR1*…`),
   Adyen currency table (`AdyenCurrencies`, Adyen's decimals win over ISO, e.g. ISK=2, IDR=0; search and device-country
   default). Any of its 138 currencies can be configured; there is deliberately no country/region setting (blank currency
   follows the device's country, else EUR).
@@ -16,6 +18,9 @@ Android POS app that runs on Adyen Android payment terminals and takes payments 
   TEST/LIVE setting), `TerminalHttpClient` (OkHttp `ClientInterface`),
   `AdyenLocalTransport`, `TerminalClient` (payment/reversal/print/diagnosis/abort with transaction-status recovery),
   `RetryAdvice` (Adyen's declined-payment tables), in-process `TerminalSimulator` (round-trips through the library's Gson).
+  `PaymentParams.preAuthorisation` sends `SaleToAcquirerData.authorisationType=PreAuth` plus
+  `additionalData.manualCapture=true` (Adyen's JSON form); the simulator labels those receipts and answers a full
+  reversal of one as a cancellation.
   Its interface uses only its own types (`PrintJob`/`PrintLine`, `RecurringModel`, `TransactionKind`,
   `ApplicationSummary`); the nexo mapping (document qualifiers, URL-encoded QR contents) stays inside, and `:app`'s
   `ArchitectureTest` forbids `com.adyen` in the app.
@@ -115,7 +120,8 @@ Android POS app that runs on Adyen Android payment terminals and takes payments 
 
 ## Documentation and website
 - Human docs: `README.md`, `CONTRIBUTING.md`, `SECURITY.md` (GitHub private vulnerability reporting), `LICENSE` (MIT).
-  Repository: `github.com/astiskala/minimpos`. Keep feature claims in README and `docs/index.html` in sync with the app.
+  Repository: `github.com/astiskala/minimpos`. Keep feature claims in README, `docs/index.html` and the setup guide
+  `docs/getting-started.html` (Customer Area paths, Settings names, pre-authorisation setup) in sync with the app.
 - `docs/` is the GitHub Pages site (static HTML/CSS, no build step, `.nojekyll`); enable Pages from `main` › `/docs`.
   It is served at `https://astiskala.github.io/minimpos/`; `docs/images/social.png` is the Open Graph image.
 - Screenshots in `docs/images/` are 540×1170 PNGs with a 96-colour palette (Pillow: Lanczos resize, median-cut, no
@@ -125,12 +131,15 @@ Android POS app that runs on Adyen Android payment terminals and takes payments 
   alone does not stick), then `stop`/`start`; window, transition and animator animations off; SystemUI demo
   mode (clock 09:30, full Wi-Fi and battery, no notifications). Demo café data ("Harbour Coffee Co.", 1 Wharf Street
   Fremantle, ABN; GST 10% default and GST-free; AUD; 10 products in Coffee/Food/Retail, the beans GST-free with a
-  barcode) is seeded before the first launch: a Room DB built from `app/schemas/.../4.json` (Python sqlite3,
+  barcode; plus "Catering deposit" $200.00 GST 10% in a Bookings category as a pre-authorisation product) is seeded
+  before the first launch: a Room DB built from `app/schemas/.../5.json` (Python sqlite3,
   `PRAGMA user_version`) and `files/datastore/settings.json` (also auto-lock 10 min, simulator delay 6 s so the
   "waiting" screen can be captured), piped in with `adb shell "cat … | run-as io.github.astiskala.minimpos sh -c 'cat >
   …'"` (debug builds only). The admin PIN (1357) is set in the app. Flows: sale of 2 flat whites, banana bread and
   beans ($34.00, CUST-1042, save card) → printed receipt (simulated printer sheet, expanded and scrolled to the items),
-  sales of $11.50 and $29.50, then an item refund of the first sale ($11.00). Drive the UI by finding nodes by text in
+  sales of $11.50 and $29.50, then an item refund of the first sale ($11.00), then a pre-authorisation of the catering
+  deposit (CUST-2077; `pre-auth.png` is the Pre-authorize screen before tapping it, `pre-auth-detail.png` its history
+  detail with Cancel pre-authorisation), left open so Home shows the split tile. Drive the UI by finding nodes by text in
   `uiautomator dump` (dialogs are separate windows; tap keypad keys by their labels, and press Back twice to close the
   printer sheet, as the first only collapses it). `social.png` (1200×630) is an HTML page (navy background with a
   green glow, favicon + "Mini mPOS", "The whole checkout, on the payment terminal.", lead line, green footer, and
@@ -147,6 +156,13 @@ Android POS app that runs on Adyen Android payment terminals and takes payments 
   `adb shell settings put global device_name AMS1-000168223606144` makes the debug app behave as on a terminal.
 
 ## Conventions
+- All user-facing English is US English: `strings.xml`, the `:core` receipt label defaults, the simulator's receipt
+  text, exception messages that can reach the screen, README, CONTRIBUTING, SECURITY and the `docs/` site (authorize,
+  pre-authorization, catalog, canceled/canceling but cancellation, license, math). Unchanged on purpose: code
+  identifiers and resource names (`preAuthorisation`, `CatalogueCodec`, `R.string.status_cancelled`), stored values
+  (`SaleKind.PRE_AUTHORISATION` is persisted), Adyen's field names (`authorisationType`) and texts Adyen sends
+  (refusal reasons such as "Cancelled by shopper", mirrored by the simulator), URLs, and the demo business name
+  "Harbour Coffee Co.". KDoc and comments are not user-facing and may use either spelling.
 - KDoc on every public or protected class, object (unnamed companions too), function, property and enum entry
   (detekt's `Undocumented*` with `searchProtected*`, `EndOfSentenceFormat` and `OutdatedDocumentation` rules; tests are
   exempt). Document units, `null` meaning, threading, `@throws` and Adyen or format details; never restate the name.
@@ -168,7 +184,23 @@ Android POS app that runs on Adyen Android payment terminals and takes payments 
 - Refund rules live in `refund/RefundablePayment` (pure, plain JUnit tests): eligibility (approved, transaction ID, a
   time stamp `TerminalClient.instantOf` can read), what is left, pricing a `RefundChoice`, the `RefundStart` (full
   reversal only before any refund, "R" reference) and the receipt's refund QR code. Sale detail, the refund screen,
-  `ReceiptFactory` and `RefundBook` all use it; do not re-derive refundability elsewhere.
+  `ReceiptFactory` and `RefundBook` all use it; do not re-derive refundability elsewhere. It also holds the
+  pre-authorisation rule: never refundable (`RefundInvalidReason.PRE_AUTHORISATION`, no refund QR), only
+  `cancellation()` once (a full reversal, "C" reference, `RefundStart.cancellation`) while nothing was accepted.
+- Pre-authorisations: `SaleKind` (`SALE`/`PRE_AUTHORISATION`) on `products.kind` and `sales.kind`, and
+  `refunds.cancellation` (DB v5, auto-migration 4→5 with column defaults). By the maintainer's choice the app does not
+  adjust or capture them: that needs the Checkout API and an API key on the device. They are captured in the Customer
+  Area and cancelled from history through the refunds' `TransactionLifecycle`. `container.preAuthSession` is a separate
+  single-item `SaleSession` (`container.session(kind)`), so a sale being rung up survives. `Route.PreAuth` is
+  `SaleScreen(preAuthorisation = true)`: only pre-auth products (`productBySku(sku, kind)`) and no cart at all (no
+  checkout bar, cart sheet or panel, clear action or quantity badges); tapping a product, adding a custom amount or a
+  found barcode pushes `Route.Checkout(true)` straight away (guarded by `navigator.current == Route.PreAuth` against
+  double taps), and Back from checkout lets another choice replace the item. `Route.Checkout`/`Route.Payment` carry
+  `preAuthorisation`, and `Route.ringUp()` picks where to return.
+  Home splits the green tile into New sale + Pre-authorize only while a pre-auth product exists. Checkout's save-card
+  default is `PaymentSettings.preAuthTokenizeDefaultOn` (default on). History: `HistoryFilter.PRE_AUTHS`, day totals
+  count open pre-auths as "Held" (not sales), cancellations are neither refunds nor shown with a minus.
+  `statusTitle(sale)`/`statusKind(sale)` show "Pre-authorized" / "Cancellation requested" (`refundedMinor > 0`).
 - Receipts: `container.receipts` (`ReceiptDelivery`) prints and emails by sale/refund ID and owns the post-transaction
   automation (the lifecycles `arm` it on success; result screens claim it once with `automationForSale`/`ForRefund`,
   which applies auto-print, auto-email and the merchant copy policy).
@@ -240,11 +272,11 @@ Android POS app that runs on Adyen Android payment terminals and takes payments 
   deliberately no "tax applies" switch. `TaxRateRequiredMigration` (3→4, hand-written, in `AppDatabase.migrations`)
   moved untaxed products to the first 0% rate or a new "Zero rated". With "Charge tax" off,
   `Cart.totals(mode, chargeTax = false)` maps lines to `AppliedTax.NONE` and taxes nothing, but each product keeps its
-  rate. Catalogue QR format v2 can still carry untaxed products (from older builds); import gives them a 0% rate, and
-  v1 codes still decode.
-- The reference prefix defaults to empty (references like `260930-145811-VQ45`, refunds `R-…`). When the shopper
-  reference comes from the email, `PaymentSettings.effectiveEmailCapture` always includes "before payment" (Never →
-  Before, After → Both), and Settings only offers the "before" choices.
+  rate. Catalogue QR format v2/v3 can still carry untaxed products (from older builds); import gives them a 0% rate,
+  and v1 and v2 codes still decode (as sale products). Older app versions cannot read v3 codes.
+- The reference prefix defaults to empty (references like `260930-145811-VQ45`, refunds `R-…`, cancellations of
+  pre-authorisations `C-…`). When the shopper reference comes from the email, `PaymentSettings.effectiveEmailCapture`
+  always includes "before payment" (Never → Before, After → Both), and Settings only offers the "before" choices.
 - The customer reference is asked for exactly when it is the shopper reference (`PaymentSettings.asksCustomerReference`,
   "Shopper reference comes from" = Customer reference), so cards can always be saved; there is deliberately no "Ask for
   a customer reference" switch (the old `askCustomerReference` key in stored settings is ignored). With the email as

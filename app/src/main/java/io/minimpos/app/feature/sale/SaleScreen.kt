@@ -87,6 +87,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import io.minimpos.app.R
 import io.minimpos.app.data.db.CategoryEntity
 import io.minimpos.app.data.db.ProductEntity
+import io.minimpos.app.data.db.SaleKind
 import io.minimpos.app.data.db.TaxRateEntity
 import io.minimpos.app.scan.ScanMode
 import io.minimpos.app.scan.ScannerDialog
@@ -113,22 +114,28 @@ import java.util.Locale
 
 /**
  * Ringing up a sale: product tiles with search and category filters, custom amounts, barcode scanning and the cart,
- * with checkout as the main action.
+ * with checkout as the main action. With [preAuthorisation] it is the pre-authorise screen instead: only
+ * pre-authorisation products, and no cart, because a pre-authorisation holds one item: tapping a product, adding a
+ * custom amount or scanning a barcode goes straight to checkout with it (replacing any item chosen before).
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SaleScreen(
     navigator: Navigator,
     modifier: Modifier = Modifier,
-    vm: SaleViewModel = saleViewModel(),
+    preAuthorisation: Boolean = false,
+    vm: SaleViewModel = saleViewModel(preAuthorisation),
 ) {
     val state by vm.state.collectAsStateWithLifecycle()
     val money = rememberMoneyFormatter(state.currency)
+    val checkout = Route.Checkout(preAuthorisation)
+    // Checking the screen on top keeps a second quick tap from opening checkout twice.
+    val onChosen = { if (preAuthorisation && navigator.current == Route.PreAuth) navigator.push(checkout) }
     var overlay by rememberSaveable { mutableStateOf<SaleOverlay?>(null) }
     var customOffered by rememberSaveable { mutableStateOf(false) }
     val search = rememberSearchControl(state.products.size, state.query, vm::setQuery)
     val snackbar = remember { SnackbarHostState() }
-    val addScannedSku = rememberSkuHandler(snackbar, vm::addBySku)
+    val addScannedSku = rememberSkuHandler(snackbar, vm::addBySku, onAdd = onChosen)
 
     // With no products to choose from, a new sale goes straight to the custom item keypad (once per visit, so
     // cancelling it or coming back from checkout doesn't reopen it).
@@ -140,14 +147,14 @@ fun SaleScreen(
     }
 
     MiniScaffold(
-        title = stringResource(R.string.sale_title),
+        title = stringResource(if (preAuthorisation) R.string.pre_auth_title else R.string.sale_title),
         onBack = navigator::back,
         modifier = modifier,
         snackbarHostState = snackbar,
         actions = {
             SaleBarActions(
                 canScan = state.hasSkus,
-                canClear = state.cart.lines.isNotEmpty(),
+                canClear = state.cart.lines.isNotEmpty() && !preAuthorisation,
                 onScan = { overlay = SaleOverlay.SCANNER },
                 onClear = { overlay = SaleOverlay.CLEAR_CART },
                 search = search.mode.takeIf { search.onRequest },
@@ -161,12 +168,12 @@ fun SaleScreen(
             search = search.mode,
             onQuery = vm::setQuery,
             onCategory = vm::selectCategory,
-            onAdd = vm::add,
+            onAdd = { if (vm.add(it)) onChosen() },
             onCustom = { overlay = SaleOverlay.CUSTOM_ITEM },
             onQuantity = vm::setQuantity,
             onRemove = vm::remove,
             onCart = { overlay = SaleOverlay.CART },
-            onCheckout = { navigator.push(Route.Checkout) },
+            onCheckout = { navigator.push(checkout) },
             modifier = Modifier.padding(padding),
         )
     }
@@ -176,10 +183,10 @@ fun SaleScreen(
         money = money,
         onQuantity = vm::setQuantity,
         onRemove = vm::remove,
-        onAddCustom = vm::addCustom,
+        onAddCustom = { name, amount, taxRateId -> if (vm.addCustom(name, amount, taxRateId)) onChosen() },
         onSkuScan = addScannedSku,
         onClear = vm::clear,
-        onCheckout = { navigator.push(Route.Checkout) },
+        onCheckout = { navigator.push(checkout) },
         onClose = { overlay = null },
     )
 }
@@ -289,13 +296,14 @@ private fun SaleOverlayContent(
 }
 
 /**
- * Adds the product with a scanned SKU and says in [snackbar] whether one was found. The work runs in the calling
- * screen's scope, so it finishes even though the scanner closes straight away.
+ * Adds the product with a scanned SKU, calls [onAdd] when there was one, and says in [snackbar] whether one was
+ * found. The work runs in the calling screen's scope, so it finishes even though the scanner closes straight away.
  */
 @Composable
 private fun rememberSkuHandler(
     snackbar: SnackbarHostState,
     addBySku: suspend (String) -> String?,
+    onAdd: () -> Unit,
 ): (String) -> Unit {
     val scope = rememberCoroutineScope()
     val notFound = stringResource(R.string.sale_sku_not_found)
@@ -304,6 +312,7 @@ private fun rememberSkuHandler(
     return { code ->
         scope.launch {
             val name = addBySku(code)
+            if (name != null) onAdd()
             snackbar.showSnackbar(if (name != null) added.format(locale, name) else notFound.format(locale, code))
         }
     }
@@ -345,7 +354,7 @@ private fun RowScope.SaleBarActions(
 
 /**
  * The product browser with, on narrow screens, a checkout bar that opens the cart sheet; screens at least 720 dp wide
- * show the cart beside the products instead.
+ * show the cart beside the products instead. A pre-authorisation has neither: choosing its item opens checkout.
  */
 @Composable
 private fun SaleLayout(
@@ -364,6 +373,7 @@ private fun SaleLayout(
 ) {
     BoxWithConstraints(modifier.fillMaxSize()) {
         val wide = maxWidth >= 720.dp
+        val cart = !state.preAuthorisation
         Row(Modifier.fillMaxSize()) {
             Column(Modifier.weight(1f).fillMaxHeight()) {
                 ProductBrowser(
@@ -376,7 +386,7 @@ private fun SaleLayout(
                     onCustom = onCustom,
                     modifier = Modifier.weight(1f),
                 )
-                if (!wide) {
+                if (cart && !wide) {
                     CheckoutBar(
                         itemCount = state.totals.itemCount,
                         total = money.format(state.totals.amounts.gross),
@@ -385,7 +395,7 @@ private fun SaleLayout(
                     )
                 }
             }
-            if (wide) {
+            if (cart && wide) {
                 Surface(color = MaterialTheme.colorScheme.surfaceVariant, modifier = Modifier.width(340.dp).fillMaxHeight()) {
                     Column {
                         CartList(state.cart.lines, money, onQuantity, onRemove, Modifier.weight(1f))
@@ -429,9 +439,12 @@ private fun CartSheet(
 }
 
 @Composable
-private fun saleViewModel(): SaleViewModel {
+private fun saleViewModel(preAuthorisation: Boolean): SaleViewModel {
     val container = LocalAppContainer.current
-    return viewModel { SaleViewModel(container.catalog, container.saleSession, container.settingsState, container::currency) }
+    val kind = if (preAuthorisation) SaleKind.PRE_AUTHORISATION else SaleKind.SALE
+    return viewModel(key = kind.name) {
+        SaleViewModel(container.catalog, container.session(kind), container.settingsState, container::currency, kind)
+    }
 }
 
 @Composable
@@ -469,12 +482,14 @@ private fun ProductBrowser(
         ) {
             item(key = "custom") { CustomItemTile(tileHeight, onCustom) }
             items(state.visibleProducts, key = { it.id }) { product ->
-                ProductTile(product, money.format(product.priceMinor), state.quantityInCart(product.id), tileHeight) { onAdd(product) }
+                // A pre-authorisation's item is never shown as in a cart: choosing it opens checkout.
+                val inCart = if (state.preAuthorisation) 0 else state.quantityInCart(product.id)
+                ProductTile(product, money.format(product.priceMinor), inCart, tileHeight) { onAdd(product) }
             }
             if (state.loaded && state.products.isEmpty()) {
                 item(span = { GridItemSpan(maxLineSpan) }) {
                     Text(
-                        stringResource(R.string.sale_no_products),
+                        stringResource(if (state.preAuthorisation) R.string.pre_auth_no_products else R.string.sale_no_products),
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(8.dp),
                     )

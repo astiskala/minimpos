@@ -10,7 +10,8 @@ import io.minimpos.terminal.client.TransactionKind
 /**
  * Referenced refunds (Terminal API reversals) as stored refunds ([RefundEntity]), for the refunds'
  * [TransactionLifecycle]. Adyen confirms refunds asynchronously; the terminal only accepts them, which is stored as
- * [RefundStatus.REQUESTED]. Refunds that are cancelled, declined or never sent are [RefundStatus.FAILED].
+ * [RefundStatus.REQUESTED]. Refunds that are cancelled, declined or never sent are [RefundStatus.FAILED]. Cancellations
+ * of pre-authorisations are stored the same way, marked as [RefundEntity.cancellation].
  *
  * @param refunds Where refunds are stored; completing an accepted one also updates what has been refunded of the sale.
  */
@@ -40,6 +41,7 @@ class RefundBook(
                 status = RefundStatus.PENDING,
                 serviceId = serviceId,
                 linesJson = ReceiptLinesJson.encodeRefunded(request.lines),
+                cancellation = request.cancellation,
             ),
         )
     }

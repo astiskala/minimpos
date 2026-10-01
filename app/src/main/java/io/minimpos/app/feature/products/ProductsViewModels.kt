@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import io.minimpos.app.data.db.CategoryEntity
 import io.minimpos.app.data.db.ProductEntity
+import io.minimpos.app.data.db.SaleKind
 import io.minimpos.app.data.db.TaxRateEntity
 import io.minimpos.app.data.repo.CatalogRepository
 import io.minimpos.app.data.settings.AppSettings
@@ -70,6 +71,8 @@ class ProductsViewModel(
  * @property categoryId The category, or null for none.
  * @property sku The SKU or barcode as typed; blank for none.
  * @property sortOrder The product's position, kept unchanged by the form.
+ * @property preAuthorisation Whether the product is taken as a pre-authorisation (under Pre-authorise) rather than
+ *   sold in a sale.
  */
 data class ProductForm(
     val id: Long = 0,
@@ -79,6 +82,7 @@ data class ProductForm(
     val categoryId: Long? = null,
     val sku: String = "",
     val sortOrder: Int = 0,
+    val preAuthorisation: Boolean = false,
 )
 
 /**
@@ -157,6 +161,7 @@ class ProductEditViewModel(
                         categoryId = it.categoryId,
                         sku = it.sku.orEmpty(),
                         sortOrder = it.sortOrder,
+                        preAuthorisation = it.kind == SaleKind.PRE_AUTHORISATION,
                     )
                 } ?: ProductForm(taxRateId = defaultTaxRateId, sku = initialSku.orEmpty())
             _state.value = ProductEditUiState(true, form, taxRates, categories, spec, chargeTax = appSettings.payment.chargeTax)
@@ -198,6 +203,7 @@ class ProductEditViewModel(
                         .trim()
                         .ifEmpty { null },
                 sortOrder = current.form.sortOrder,
+                kind = if (current.form.preAuthorisation) SaleKind.PRE_AUTHORISATION else SaleKind.SALE,
             )
         _state.update { it.copy(saving = true) }
         launchWrite({ catalog.saveProduct(product) }) { _ ->

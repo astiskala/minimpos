@@ -120,7 +120,9 @@ enum class ShopperReferenceSource {
  * @property referencePrefix Optional start of generated merchant references; they are unique without one.
  * @property askTransactionReference Whether checkout has a merchant reference field; left empty, a reference is
  *   generated as it is when the field is hidden.
- * @property tokenizeDefaultOn Whether "Save card" starts switched on at checkout.
+ * @property tokenizeDefaultOn Whether "Save card" starts switched on at checkout of a sale.
+ * @property preAuthTokenizeDefaultOn Whether "Save card" starts switched on at checkout of a pre-authorisation, where a
+ *   saved card allows charging late costs after the pre-authorisation has been captured.
  * @property recurringProcessingModel Adyen's `recurringProcessingModel` for saved cards, one of [RECURRING_MODELS].
  * @property emailCapture When checkout asks for an email; [effectiveEmailCapture] is what applies.
  * @property autoSendEmail When the email was captured before payment, send the receipt as soon as the payment is
@@ -141,6 +143,7 @@ data class PaymentSettings(
     val referencePrefix: String = "",
     val askTransactionReference: Boolean = true,
     val tokenizeDefaultOn: Boolean = false,
+    val preAuthTokenizeDefaultOn: Boolean = true,
     val recurringProcessingModel: String = "UnscheduledCardOnFile",
     val emailCapture: EmailCapture = EmailCapture.AFTER_PAYMENT,
     val autoSendEmail: Boolean = true,

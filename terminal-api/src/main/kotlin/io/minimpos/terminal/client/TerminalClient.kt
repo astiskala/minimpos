@@ -81,7 +81,8 @@ class TerminalClient(
     /**
      * Takes a card payment: the terminal asks the shopper to present a card and the call returns when the payment is
      * approved, declined or cancelled, or once the transaction timeout (by default [DEFAULT_TRANSACTION_TIMEOUT]) has
-     * passed without an answer.
+     * passed without an answer. A [PaymentParams.preAuthorisation] only holds the amount (Adyen pre-authorisation with
+     * manual capture); [refund] then cancels it while it is uncaptured.
      *
      * If the terminal cannot be reached, or rejects the request, nothing was charged and the outcome is
      * [TransactionOutcome.NotProcessed]. If the request was sent but the answer went missing (timeout, broken connection,
@@ -115,6 +116,10 @@ class TerminalClient(
                                             params.recurringProcessingModel?.let { RecurringProcessingModelEnum.valueOf(it.name) }
                                         tenderOption = params.tenderOptions.takeIf { it.isNotEmpty() }?.joinToString(",")
                                         metadata = params.metadata.takeIf { it.isNotEmpty() }
+                                        if (params.preAuthorisation) {
+                                            authorisationType = PRE_AUTH
+                                            additionalData = mapOf(MANUAL_CAPTURE to "true")
+                                        }
                                     }
                                 if (params.requestCardAlias) tokenRequestedType = TokenRequestedType.CUSTOMER
                             }
@@ -135,8 +140,9 @@ class TerminalClient(
     /**
      * Refunds an earlier payment with a nexo reversal (reason `MerchantCancel`), which refers to the original
      * transaction instead of asking for the card. A partial refund also states the original currency in
-     * `SaleToAcquirerData`, as Adyen requires. Timeouts and lost replies are settled with status checks exactly as for
-     * [pay].
+     * `SaleToAcquirerData`, as Adyen requires. Adyen processes it as a cancel-or-refund: a full reversal of a payment
+     * that is not captured yet (such as a pre-authorisation) cancels it instead. Timeouts and lost replies are settled
+     * with status checks exactly as for [pay].
      *
      * @param params The payment to refund, and how much.
      * @param serviceId The refund's ServiceID; pass one to record it before the terminal is called.
@@ -423,6 +429,12 @@ class TerminalClient(
         /** How long to wait for a payment or refund response before checking its status, as Adyen advises. */
         val DEFAULT_TRANSACTION_TIMEOUT: Duration = 120.seconds
         private val TIMESTAMP = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'").withZone(ZoneOffset.UTC)
+
+        /** Adyen's `authorisationType` for an amount that can be adjusted and is captured later. */
+        private const val PRE_AUTH = "PreAuth"
+
+        /** The `additionalData` key that leaves a payment uncaptured until it is captured manually. */
+        private const val MANUAL_CAPTURE = "manualCapture"
         private const val SERVICE_ID_CHARS = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ"
         private const val SERVICE_ID_LENGTH = 10
 

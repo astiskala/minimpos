@@ -1,6 +1,7 @@
 package io.minimpos.app.feature.refund
 
 import androidx.activity.compose.BackHandler
+import androidx.annotation.StringRes
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -225,6 +226,7 @@ private fun RefundUnavailable(
                     RefundInvalidReason.NOT_A_RECEIPT -> R.string.refund_scan_invalid
                     RefundInvalidReason.NOT_REFUNDABLE -> R.string.refund_not_refundable
                     RefundInvalidReason.FULLY_REFUNDED -> R.string.refund_fully_refunded
+                    RefundInvalidReason.PRE_AUTHORISATION -> R.string.refund_pre_authorisation
                 },
             ),
         modifier = modifier,
@@ -407,7 +409,10 @@ private fun refundViewModel(
     }
 }
 
-/** Waits while the terminal handles the refund, then shows its result. Back is disabled until then. */
+/**
+ * Waits while the terminal handles the refund (or the cancellation of a pre-authorisation), then shows its result. Back
+ * is disabled until then.
+ */
 @Composable
 fun RefundProcessingScreen(
     navigator: Navigator,
@@ -427,10 +432,15 @@ fun RefundProcessingScreen(
     val refundId = (state as? TransactionState.Processing)?.id
     val refund by remember(refundId) { refundId?.let(container.refundRecords::observe) ?: flowOf(null) }
         .collectAsStateWithLifecycle(initialValue = null)
-    MiniScaffold(title = stringResource(R.string.refund_title), onBack = null, modifier = modifier) { padding ->
+    val cancellation = refund?.cancellation == true
+    MiniScaffold(
+        title = stringResource(if (cancellation) R.string.cancellation_title else R.string.refund_title),
+        onBack = null,
+        modifier = modifier,
+    ) { padding ->
         ProcessingContent(
             amount = refund?.let { rememberMoneyFormatter(it.currency).format(it.amountMinor) },
-            message = stringResource(R.string.refund_processing),
+            message = stringResource(if (cancellation) R.string.cancellation_processing else R.string.refund_processing),
             modifier = Modifier.padding(padding),
         )
     }
@@ -460,7 +470,7 @@ fun RefundResultScreen(
     BackHandler { done() }
     val dimens = LocalDimens.current
     MiniScaffold(
-        title = stringResource(if (fromHistory) R.string.refund_detail_title else R.string.refund_title),
+        title = stringResource(resultTitle(state.refund?.cancellation == true, fromHistory)),
         onBack = { done() },
         modifier = modifier,
         bottomBar = {
@@ -510,6 +520,18 @@ fun RefundResultScreen(
     }
 }
 
+/** The result screen's title: a refund or a [cancellation], just made or opened [fromHistory]. */
+@StringRes
+private fun resultTitle(
+    cancellation: Boolean,
+    fromHistory: Boolean,
+): Int =
+    when {
+        cancellation -> if (fromHistory) R.string.cancellation_detail_title else R.string.cancellation_title
+        fromHistory -> R.string.refund_detail_title
+        else -> R.string.refund_title
+    }
+
 /** The outcome badge and title, the amount and what happens next. */
 @Composable
 private fun RefundOutcome(
@@ -517,11 +539,13 @@ private fun RefundOutcome(
     money: MoneyFormatter,
 ) = OutcomeHeader(
     refundStatusKind(refund.status),
-    refundStatusTitle(refund.status),
+    refundStatusTitle(refund.status, refund.cancellation),
     money.format(refund.amountMinor),
     titleTag = "refundStatus",
 ) {
-    if (refund.status == RefundStatus.REQUESTED) OutcomeNote(stringResource(R.string.refund_async_note))
+    if (refund.status == RefundStatus.REQUESTED) {
+        OutcomeNote(stringResource(if (refund.cancellation) R.string.cancellation_async_note else R.string.refund_async_note))
+    }
     refund.message?.let { OutcomeNote(it) }
 }
 
@@ -533,20 +557,26 @@ fun refundStatusKind(status: RefundStatus): StatusKind =
         RefundStatus.UNKNOWN, RefundStatus.PENDING -> StatusKind.WARNING
     }
 
-/** The heading for a refund in [status], such as "Refund requested". */
+/**
+ * The heading for a refund in [status], such as "Refund requested", or for the [cancellation] of a pre-authorisation,
+ * such as "Cancellation requested".
+ */
 @Composable
 @ReadOnlyComposable
-fun refundStatusTitle(status: RefundStatus): String =
+fun refundStatusTitle(
+    status: RefundStatus,
+    cancellation: Boolean = false,
+): String =
     stringResource(
         when (status) {
-            RefundStatus.REQUESTED -> R.string.refund_status_requested
-            RefundStatus.FAILED -> R.string.refund_status_failed
-            RefundStatus.UNKNOWN -> R.string.refund_status_unknown
+            RefundStatus.REQUESTED -> if (cancellation) R.string.cancellation_status_requested else R.string.refund_status_requested
+            RefundStatus.FAILED -> if (cancellation) R.string.cancellation_status_failed else R.string.refund_status_failed
+            RefundStatus.UNKNOWN -> if (cancellation) R.string.cancellation_status_unknown else R.string.refund_status_unknown
             RefundStatus.PENDING -> R.string.status_pending
         },
     )
 
-/** The refund's reference, the sale it refunds, when it was made and its PSP reference. */
+/** The refund's reference, the sale (or pre-authorisation) it refunds, when it was made and its PSP reference. */
 @Composable
 private fun RefundDetailsCard(
     refund: RefundEntity,
@@ -554,7 +584,10 @@ private fun RefundDetailsCard(
 ) {
     Card {
         LabeledValue(stringResource(R.string.detail_reference), refund.merchantReference)
-        LabeledValue(stringResource(R.string.receipt_original_sale), refund.originalReference ?: refund.originalTransactionId)
+        LabeledValue(
+            stringResource(if (refund.cancellation) R.string.receipt_cancelled_reference else R.string.receipt_original_sale),
+            refund.originalReference ?: refund.originalTransactionId,
+        )
         LabeledValue(stringResource(R.string.detail_date), formatDateTime(refund.createdAt))
         LabeledValue(stringResource(R.string.detail_psp), refund.pspReference)
     }

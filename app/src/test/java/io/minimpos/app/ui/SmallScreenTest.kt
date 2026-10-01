@@ -20,6 +20,7 @@ import io.minimpos.app.TestEnvironment
 import io.minimpos.app.await
 import io.minimpos.app.awaitCondition
 import io.minimpos.app.data.db.ProductEntity
+import io.minimpos.app.data.db.SaleKind
 import io.minimpos.app.data.db.SaleStatus
 import io.minimpos.app.data.security.Secret
 import kotlinx.coroutines.flow.first
@@ -178,6 +179,60 @@ class SmallScreenTest {
         val record = await { container.sales.get(sale.id)!! }
         assertThat(record.sale.status).isEqualTo(SaleStatus.APPROVED)
         assertThat(record.sale.poiId).isEqualTo("AMS1-000168223606144")
+    }
+
+    @Test
+    fun `a pre-authorisation fits the screen from home to its cancellation`() = preAuthFitsTheScreen()
+
+    @Test
+    @Config(qualifiers = "en-rAU-w320dp-h456dp-mdpi")
+    fun `a pre-authorisation fits the P630 screen`() = preAuthFitsTheScreen()
+
+    @Test
+    @Config(qualifiers = "en-rAU-w360dp-h568dp-xhdpi")
+    fun `a pre-authorisation fits the S1F2 screen`() = preAuthFitsTheScreen()
+
+    private fun preAuthFitsTheScreen() {
+        configureKey()
+        await {
+            val rate =
+                container.catalog.taxRates
+                    .first()
+                    .first()
+            container.catalog.saveProduct(ProductEntity(name = "Flat white", priceMinor = 450, taxRateId = rate.id))
+            container.catalog.saveProduct(
+                ProductEntity(name = "Catering deposit", priceMinor = 20_000, taxRateId = rate.id, kind = SaleKind.PRE_AUTHORISATION),
+            )
+        }
+        compose.setContent { MiniMposApp(container) }
+        // The big tile is split in two, and every tile still fits.
+        waitForTag("preAuth")
+        listOf("newSale", "preAuth", "refund", "history", "products", "settings").forEach { compose.onNodeWithTag(it).assertIsDisplayed() }
+
+        compose.onNodeWithTag("preAuth").performClick()
+        waitForText("Catering deposit")
+        // Tapping the product goes straight to checkout.
+        compose.onNodeWithText("Catering deposit").performClick()
+        waitForTag("pay")
+        compose
+            .onNodeWithTag("pay")
+            .assertIsDisplayed()
+            .assertTextContains("Pre-authorize $200.00")
+            .performClick()
+        waitForTag("newSaleAfter")
+        compose.onNodeWithTag("newSaleAfter").assertIsDisplayed()
+        compose.onNodeWithTag("home").assertIsDisplayed()
+        compose.onNodeWithTag("resultStatus").assertTextContains("Pre-authorized")
+
+        val preAuth = await { container.history.items().first { it.isNotEmpty() } }.single()
+        compose.onNodeWithTag("home").performClick()
+        waitForTag("history")
+        compose.onNodeWithTag("history").performClick()
+        waitForText("Pre-authorized")
+        compose.onNodeWithText("Pre-authorized", useUnmergedTree = true).performClick()
+        waitForTag("cancelPreAuth")
+        compose.onNodeWithTag("cancelPreAuth").assertIsDisplayed()
+        assertThat(await { container.sales.get(preAuth.id)!! }.sale.kind).isEqualTo(SaleKind.PRE_AUTHORISATION)
     }
 
     @Test

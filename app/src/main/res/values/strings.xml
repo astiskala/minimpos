@@ -32,6 +32,8 @@
   <!-- Home -->
   <string name="home_new_sale">New sale</string>
   <string name="home_new_sale_hint">Add products or a custom amount</string>
+  <string name="home_pre_auth">Pre-authorize</string>
+  <string name="home_pre_auth_hint">Hold an amount on a card</string>
   <string name="home_refund">Refund</string>
   <string name="home_history">History</string>
   <string name="home_products">Products</string>
@@ -75,6 +77,9 @@
     <item quantity="one">%1$d item</item>
     <item quantity="other">%1$d items</item>
   </plurals>
+  <string name="pre_auth_title">Pre-authorize</string>
+  <string name="pre_auth_no_products">No pre-authorization products yet. Mark products as pre-authorization under Products, or use a custom amount.</string>
+  <string name="pre_auth_charge">Pre-authorize %1$s</string>
   <string name="tax_rate">Tax rate</string>
   <string name="tax_default_standard">Standard</string>
   <string name="tax_default_zero">Zero rated</string>
@@ -93,9 +98,10 @@
   <string name="checkout_save_card_hint">Tokenizes the card for this customer reference. Ask the shopper for consent.</string>
   <string name="checkout_save_card_email_hint">Tokenizes the card for this email address. Ask the shopper for consent.</string>
   <string name="checkout_pay">Pay %1$s</string>
+  <string name="checkout_pre_auth_note">This only holds the amount on the card. Capture it later in your Customer Area, or cancel it from History.</string>
   <string name="payment_title">Payment</string>
   <string name="payment_follow_terminal">Follow the instructions on the terminal</string>
-  <string name="payment_cancelling">Cancelling…</string>
+  <string name="payment_cancelling">Canceling…</string>
   <string name="payment_unknown_outcome">The terminal did not confirm the result. Check the payment in your Customer Area before charging again.</string>
   <string name="payment_interrupted">The app stopped before the result was received.</string>
 
@@ -110,8 +116,10 @@
   <string name="result_show_receipt">Show receipt</string>
   <string name="result_hide_receipt">Hide receipt</string>
   <string name="result_new_sale">New sale</string>
+  <string name="result_new_pre_auth">New pre-auth</string>
   <string name="result_try_again">Try again</string>
   <string name="result_back_to_sale">Back to sale</string>
+  <string name="result_back_to_pre_auth">Back to pre-authorization</string>
   <string name="result_check_again">Check result again</string>
   <string name="result_abort_busy">Cancel the terminal’s current transaction</string>
   <string name="result_abort_sent">The terminal was asked to cancel its current transaction. Try again once it is idle.</string>
@@ -123,10 +131,12 @@
   <string name="advice_do_not_retry">Do not charge again: this payment went through.</string>
   <string name="status_approved">Approved</string>
   <string name="status_declined">Declined</string>
-  <string name="status_cancelled">Cancelled</string>
+  <string name="status_cancelled">Canceled</string>
   <string name="status_failed">Not processed</string>
   <string name="status_unknown">Result unknown</string>
   <string name="status_pending">In progress</string>
+  <string name="status_pre_authorised">Pre-authorized</string>
+  <string name="status_cancellation_requested">Cancellation requested</string>
 
   <!-- Details -->
   <string name="detail_title">Sale</string>
@@ -148,6 +158,14 @@
   <string name="detail_refunded">Refunded %1$s</string>
   <string name="detail_reprint">Reprint receipt</string>
   <string name="detail_still_unknown">The terminal still cannot confirm this payment. Check your Customer Area.</string>
+  <string name="detail_pre_auth_title">Pre-authorization</string>
+  <string name="detail_pre_auth_note">Capture it in your Customer Area under Payments › Payment list, by its PSP reference (up to the amount held). Captures there do not show here.</string>
+  <string name="detail_cancel_pre_auth">Cancel pre-authorization</string>
+  <string name="detail_cancellations">Cancellation</string>
+  <string name="pre_auth_cancel_title">Cancel this pre-authorization?</string>
+  <string name="pre_auth_cancel_message">The %1$s held on the shopper’s card will be released. If it has already been captured in the Customer Area, Adyen refunds it in full instead.</string>
+  <string name="pre_auth_cancel_confirm">Cancel pre-auth</string>
+  <string name="pre_auth_cancel_keep">Keep it</string>
 
   <!-- Refunds -->
   <string name="refund_title">Refund</string>
@@ -177,6 +195,14 @@
   <string name="refund_unknown_outcome">The terminal did not confirm the refund. Check it in your Customer Area before refunding again.</string>
   <string name="refund_still_unknown">The terminal still cannot confirm this refund. Check your Customer Area.</string>
   <string name="refund_async_note">Adyen processes refunds asynchronously; the final outcome appears in your Customer Area.</string>
+  <string name="refund_pre_authorisation">This is a pre-authorization, which cannot be refunded here. Cancel it from History, or capture and refund it in your Customer Area.</string>
+  <string name="cancellation_title">Cancellation</string>
+  <string name="cancellation_detail_title">Cancellation details</string>
+  <string name="cancellation_processing">Requesting the cancellation…</string>
+  <string name="cancellation_status_requested">Cancellation requested</string>
+  <string name="cancellation_status_failed">Cancellation failed</string>
+  <string name="cancellation_status_unknown">Cancellation result unknown</string>
+  <string name="cancellation_async_note">Adyen processes cancellations asynchronously; the final outcome appears in your Customer Area.</string>
 
   <!-- History -->
   <string name="history_title">History</string>
@@ -185,18 +211,21 @@
   <string name="history_filter_sales">Sales</string>
   <string name="history_filter_refunds">Refunds</string>
   <string name="history_filter_issues">Needs attention</string>
+  <string name="history_filter_pre_auths">Pre-auths</string>
   <string name="history_empty">No transactions</string>
   <string name="history_empty_hint">Completed sales and refunds appear here.</string>
   <string name="history_day_sales">Sales %1$s (%2$d)</string>
   <string name="history_day_refunds">Refunds %1$s (%2$d)</string>
   <string name="history_refund">Refund</string>
+  <string name="history_day_pre_auths">Held %1$s (%2$d)</string>
+  <string name="history_cancellation">Pre-auth cancellation</string>
 
   <!-- Products -->
   <string name="products_title">Products</string>
   <string name="products_tab_products">Products</string>
   <string name="products_tab_categories">Categories</string>
   <string name="products_empty">No products</string>
-  <string name="products_empty_hint">Add products with the + button, or import a catalogue from another terminal.</string>
+  <string name="products_empty_hint">Add products with the + button, or import a catalog from another terminal.</string>
   <string name="products_no_categories">No categories</string>
   <string name="products_no_categories_hint">Categories group products on the sale screen.</string>
   <string name="products_no_tax_hint">Add a tax rate under Settings › Tax first (it can be 0%).</string>
@@ -212,26 +241,29 @@
   <string name="products_sku">SKU / barcode (optional)</string>
   <string name="products_sku_in_use">Another product already uses this code</string>
   <string name="products_delete_title">Delete product?</string>
-  <string name="products_delete_message">%1$s will be removed from the catalogue.</string>
+  <string name="products_delete_message">%1$s will be removed from the catalog.</string>
+  <string name="products_pre_auth">Pre-authorization product</string>
+  <string name="products_pre_auth_hint">Taken on its own under Pre-authorize instead of in a sale: the amount is only held on the card until you capture it in your Customer Area.</string>
+  <string name="products_kind_pre_auth">Pre-auth</string>
 
-  <!-- Catalogue transfer -->
-  <string name="transfer_export">Share catalogue (QR)</string>
-  <string name="transfer_import">Receive catalogue (QR)</string>
-  <string name="transfer_export_hint">On the other terminal open Products › Receive catalogue and point its camera at these codes.</string>
+  <!-- Catalog transfer -->
+  <string name="transfer_export">Share catalog (QR)</string>
+  <string name="transfer_import">Receive catalog (QR)</string>
+  <string name="transfer_export_hint">On the other terminal open Products › Receive catalog and point its camera at these codes.</string>
   <string name="transfer_import_hint">Point the camera at the QR codes shown on the other terminal.</string>
   <string name="transfer_code_of">Code %1$d of %2$d</string>
   <string name="transfer_received">Scanned %1$d/%2$d</string>
-  <string name="transfer_not_catalogue">That QR code is not a catalogue code.</string>
-  <string name="transfer_corrupt">The catalogue could not be read. Scan the codes again.</string>
+  <string name="transfer_not_catalogue">That QR code is not a catalog code.</string>
+  <string name="transfer_corrupt">The catalog could not be read. Scan the codes again.</string>
   <string name="transfer_products">Products</string>
   <string name="transfer_categories">Categories</string>
   <string name="transfer_tax_rates">Tax rates</string>
   <string name="transfer_currency">Currency</string>
-  <string name="transfer_currency_mismatch">This catalogue was priced in %1$s but this terminal uses %2$s. Prices are imported as-is.</string>
-  <string name="transfer_ready">Catalogue received</string>
-  <string name="transfer_merge">Merge into this catalogue</string>
+  <string name="transfer_currency_mismatch">This catalog was priced in %1$s but this terminal uses %2$s. Prices are imported as-is.</string>
+  <string name="transfer_ready">Catalog received</string>
+  <string name="transfer_merge">Merge into this catalog</string>
   <string name="transfer_merge_hint">Products with the same SKU (or name) are updated; everything else is added.</string>
-  <string name="transfer_replace">Replace this catalogue</string>
+  <string name="transfer_replace">Replace this catalog</string>
   <string name="transfer_replace_hint">Deletes all products, categories and tax rates here first.</string>
   <string name="transfer_replace_confirm">All products, categories and tax rates on this terminal will be deleted and replaced.</string>
   <string name="transfer_scan_again">Scan again</string>
@@ -265,10 +297,19 @@
   <string name="receipt_partial_refund">Partial refund</string>
   <string name="receipt_card_saved">Card saved for future payments</string>
   <string name="receipt_not_completed">PAYMENT NOT COMPLETED</string>
+  <string name="receipt_pre_auth_title">PRE-AUTHORIZATION</string>
+  <string name="receipt_amount_held">AMOUNT HELD</string>
+  <string name="receipt_pre_auth_note">Held on the card, not charged yet</string>
+  <string name="receipt_cancellation_title">CANCELLATION</string>
+  <string name="receipt_cancelled_reference">Pre-authorization</string>
+  <string name="receipt_cancellation_note">Pre-authorization canceled</string>
+  <string name="receipt_released">RELEASED</string>
 
   <!-- Email -->
   <string name="email_intro">Thank you for your purchase. Your receipt is below.</string>
   <string name="email_refund_intro">Your refund has been requested. The details are below.</string>
+  <string name="email_pre_auth_intro">Thank you. The amount is held on your card and only charged later; the final amount may differ. The details are below.</string>
+  <string name="email_cancellation_intro">Your pre-authorization has been canceled and the amount held on your card released. The details are below.</string>
   <string name="email_test_subject">Mini mPOS test email</string>
   <string name="email_test_body">Your SMTP settings work. Receipts can now be emailed from Mini mPOS.</string>
   <string name="email_not_configured">Email is not set up. Configure SMTP in Settings › Email.</string>
@@ -366,7 +407,7 @@
   <string name="settings_tax_rate_invalid">Enter 0 to 100, with at most 3 decimals</string>
   <string name="settings_tax_default">Default for new products and custom items</string>
   <string name="settings_tax_preview">Shown as “%1$s” on receipts</string>
-  <string name="settings_tax_note">Each product uses one tax rate (items without tax use a 0% rate), and receipts show tax by name and rate. Tax rates are included in catalogue exports.</string>
+  <string name="settings_tax_note">Each product uses one tax rate (items without tax use a 0% rate), and receipts show tax by name and rate. Tax rates are included in catalog exports.</string>
   <plurals name="settings_tax_products">
     <item quantity="one">%d product</item>
     <item quantity="other">%d products</item>
@@ -392,6 +433,8 @@
   <string name="settings_tokenization">Saving cards</string>
   <string name="settings_tokenize_default">Save card switch on by default</string>
   <string name="settings_tokenize_default_hint">Only shown when a shopper reference is available.</string>
+  <string name="settings_pre_auth_tokenize_default">Save card on by default for pre-authorizations</string>
+  <string name="settings_pre_auth_tokenize_default_hint">A saved card lets you charge late costs once the pre-authorization has been captured.</string>
   <string name="settings_recurring_model">Recurring processing model</string>
   <string name="settings_shopper_reference_source">Shopper reference comes from</string>
   <string name="settings_source_customer">Customer reference</string>
@@ -482,9 +525,9 @@
   <string name="settings_clear_history">Clear history</string>
   <string name="settings_clear_history_message">All sales and refunds stored on this terminal will be deleted. Payments are not affected.</string>
   <string name="settings_history_cleared">History cleared</string>
-  <string name="settings_catalogue">Catalogue</string>
-  <string name="settings_export_hint">Show the catalogue as QR codes for another terminal</string>
-  <string name="settings_import_hint">Scan another terminal’s catalogue codes</string>
+  <string name="settings_catalogue">Catalog</string>
+  <string name="settings_export_hint">Show the catalog as QR codes for another terminal</string>
+  <string name="settings_import_hint">Scan another terminal’s catalog codes</string>
 
   <string name="about_version">Version</string>
   <string name="about_printer">Printer</string>

@@ -7,6 +7,7 @@ import androidx.test.core.app.ApplicationProvider
 import com.google.common.truth.Truth.assertThat
 import io.minimpos.app.data.db.AppDatabase
 import io.minimpos.app.data.db.ProductEntity
+import io.minimpos.app.data.db.SaleKind
 import kotlinx.coroutines.runBlocking
 import org.json.JSONObject
 import org.junit.Test
@@ -111,6 +112,41 @@ class DatabaseMigrationTest {
                 .containsExactly("Latte", 1L, "Stamp", zero.id, "Card", zero.id)
             // New products carry on after the existing ids.
             assertThat(dao.insert(ProductEntity(name = "Tea", priceMinor = 350, taxRateId = 1))).isEqualTo(4)
+        }
+    }
+
+    @Test
+    fun `version 4 products, sales and refunds become sale ones`() {
+        val name = "migration-v4.db"
+        createDatabase(name, 4) {
+            execSQL("INSERT INTO tax_rates (id, name, rateMilliPercent, sortOrder) VALUES (1, 'GST', 10000, 0)")
+            insertProduct(1, "Latte", 1)
+            execSQL(
+                "INSERT INTO sales (id, createdAt, currency, taxMode, netMinor, taxMinor, totalMinor, status, merchantReference, " +
+                    "tokenizationRequested, signatureRequired, refundedMinor) VALUES ('s1', 1, 'AUD', 'INCLUSIVE', 91, 9, 100, " +
+                    "'APPROVED', 'MP-1', 0, 0, 0)",
+            )
+            execSQL(
+                "INSERT INTO refunds (id, saleId, createdAt, merchantReference, originalTransactionId, originalTimestamp, currency, " +
+                    "amountMinor, full, status) VALUES ('r1', 's1', 2, 'R-1', 'T.P', '2026-09-30T01:02:03.456Z', 'AUD', 100, 1, " +
+                    "'REQUESTED')",
+            )
+        }
+        migrated(name) { db ->
+            assertThat(
+                db
+                    .catalogDao()
+                    .productsOnce()
+                    .single()
+                    .kind,
+            ).isEqualTo(SaleKind.SALE)
+            assertThat(
+                db
+                    .saleDao()
+                    .sale("s1")!!
+                    .sale.kind,
+            ).isEqualTo(SaleKind.SALE)
+            assertThat(db.refundDao().refund("r1")!!.cancellation).isFalse()
         }
     }
 

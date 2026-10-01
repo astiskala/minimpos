@@ -110,7 +110,8 @@ data class SimulatorConfig(
  *
  * It handles payments, reversals, aborts, prints, diagnoses and transaction status checks, and throws
  * [TerminalProtocolException] for any other request. Finished payments and reversals are remembered in memory for
- * status checks, so after a restart they are reported as not found. The timeout passed to [send] is ignored.
+ * status checks, so after a restart they are reported as not found. Approved pre-authorisations are remembered the same
+ * way, so a full reversal of one is answered as a cancellation. The timeout passed to [send] is ignored.
  */
 class TerminalSimulator(
     /** The current settings, read at the start of each request. */
@@ -127,6 +128,9 @@ class TerminalSimulator(
     private val gson = TerminalAPIGsonBuilder.create()
     private val completed = ConcurrentHashMap<String, RepeatedResponseMessageBody>()
     private val aborted = ConcurrentHashMap.newKeySet<String>()
+
+    /** POITransactionIDs of approved pre-authorisations that have not been reversed yet. */
+    private val preAuthorised = ConcurrentHashMap.newKeySet<String>()
 
     override suspend fun send(
         request: TerminalAPIRequest,
@@ -240,7 +244,9 @@ class TerminalSimulator(
                         .orEmpty(),
                 amountText = "${amount.currency} ${amount.requestedAmount.toPlainString()}",
                 approved = outcome == SimulatedOutcome.APPROVE || outcome == SimulatedOutcome.TIMEOUT,
+                preAuthorisation = request.saleData?.saleToAcquirerData?.authorisationType == PRE_AUTH,
             )
+        if (payment.approved && payment.preAuthorisation) preAuthorised += "${payment.tender}.${payment.psp}"
         val additional =
             linkedMapOf(
                 "pspReference" to payment.psp,
@@ -373,6 +379,13 @@ class TerminalSimulator(
                 ?.transactionID
                 .orEmpty()
         val amount = request.reversedAmount
+        // Like Adyen's cancel-or-refund: a full reversal of an uncaptured pre-authorisation cancels it.
+        val cancels =
+            amount == null &&
+                request.originalPOITransaction
+                    ?.poiTransactionID
+                    ?.transactionID
+                    ?.let(preAuthorised::remove) == true
         val response =
             ReversalResponse().apply {
                 response =
@@ -389,11 +402,15 @@ class TerminalSimulator(
                             text(
                                 listOf(
                                     line("filler"),
-                                    line("txtype", "REFUND", bold = true),
+                                    line("txtype", if (cancels) "CANCELLATION" else "REFUND", bold = true),
                                     line("mref", "Reference", merchantReference),
-                                    line("totalAmount", "Refund", amount?.toPlainString() ?: "Full amount"),
+                                    line(
+                                        "totalAmount",
+                                        if (cancels) "Released" else "Refund",
+                                        amount?.toPlainString() ?: "Full amount",
+                                    ),
                                     line("filler"),
-                                    line("approved", "REFUND REQUESTED", bold = true),
+                                    line("approved", if (cancels) "CANCELLATION REQUESTED" else "REFUND REQUESTED", bold = true),
                                 ),
                             )
                     }
@@ -462,7 +479,7 @@ class TerminalSimulator(
                 add(line("txdate", "Date", DateTimeFormatter.ofPattern("dd/MM/yyyy").format(now)))
                 add(line("txtime", "Time", DateTimeFormatter.ofPattern("HH:mm:ss").format(now)))
                 add(line("filler"))
-                add(line("txtype", "Payment", bold = true))
+                add(line("txtype", if (payment.preAuthorisation) "Pre-authorization" else "Payment", bold = true))
                 add(line("totalAmount", "TOTAL", payment.amountText, bold = true))
                 add(line("filler"))
                 add(line("cardholderHeader", copyLabel))
@@ -561,12 +578,14 @@ class TerminalSimulator(
         val merchantReference: String,
         val amountText: String,
         val approved: Boolean,
+        val preAuthorisation: Boolean,
     )
 
     /** Fixed values that tests and callers can rely on. */
     companion object {
         /** The ServiceID a [SimulatedOutcome.BUSY] payment names as the transaction the terminal is busy with. */
         const val BUSY_SERVICE_ID = "SIMBUSY001"
+        private const val PRE_AUTH = "PreAuth"
         private const val POLL_MILLIS = 100L
         private const val PERCENT = 100
         private const val RANDOM_APPROVAL_PERCENT = 80

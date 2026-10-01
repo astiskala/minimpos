@@ -1,6 +1,7 @@
 package io.minimpos.app.receipt
 
 import io.minimpos.app.data.db.RefundEntity
+import io.minimpos.app.data.db.SaleKind
 import io.minimpos.app.data.db.SaleStatus
 import io.minimpos.app.data.db.SaleWithLines
 import io.minimpos.app.data.repo.ReceiptLinesJson
@@ -46,7 +47,7 @@ class ReceiptFactory(
     /**
      * The receipt of [record]: its items, taxes per rate (highest rate first) and the card receipt lines of [copy].
      * A sale that can be refunded gets a refund QR code ([RefundablePayment.qrCode]); unapproved ones are marked as not
-     * completed.
+     * completed, and pre-authorisations are titled and totalled as an amount held.
      */
     fun sale(
         record: SaleWithLines,
@@ -83,13 +84,14 @@ class ReceiptFactory(
                     ),
                 refundQr = RefundablePayment.qrCode(record),
                 cardSaved = sale.storedPaymentMethodId != null,
+                preAuthorisation = sale.kind == SaleKind.PRE_AUTHORISATION,
             )
         return builder(settings, currency).sale(receipt, copy)
     }
 
     /**
      * The receipt of [refund], referring to the original sale by its merchant reference (or, for a payment known only
-     * from its QR code without one, its transaction ID).
+     * from its QR code without one, its transaction ID). The cancellation of a pre-authorisation is labelled as one.
      */
     fun refund(
         refund: RefundEntity,
@@ -106,6 +108,7 @@ class ReceiptFactory(
                     },
                 amount = refund.amountMinor,
                 cardReceipt = ReceiptLinesJson.decode(refund.customerReceiptJson),
+                cancellation = refund.cancellation,
             )
         return builder(settings, CurrencySpec.of(refund.currency)).refund(receipt)
     }

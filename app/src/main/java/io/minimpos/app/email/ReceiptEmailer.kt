@@ -22,6 +22,8 @@ import javax.mail.MessagingException
  * @property testBody Body of the test email.
  * @property notConfigured Error when SMTP is not set up.
  * @property invalidAddress Error when the recipient address is not valid.
+ * @property preAuthIntro Paragraph above a pre-authorisation receipt.
+ * @property cancellationIntro Paragraph above the receipt of a cancelled pre-authorisation.
  */
 data class EmailTexts(
     val appName: String,
@@ -31,6 +33,8 @@ data class EmailTexts(
     val testBody: String,
     val notConfigured: String,
     val invalidAddress: String,
+    val preAuthIntro: String,
+    val cancellationIntro: String,
 )
 
 /**
@@ -46,19 +50,27 @@ class ReceiptEmailer(
     /** Renders QR code content as a PNG image. */
     private val qrPng: (String) -> ByteArray,
 ) {
-    /** Emails [document], the receipt of the sale with merchant reference [reference], to [to]. */
+    /**
+     * Emails [document], the receipt of the sale (or, with [preAuthorisation], the pre-authorisation) with merchant
+     * reference [reference], to [to].
+     */
     suspend fun sendSale(
         to: String,
         document: ReceiptDocument,
         reference: String,
-    ): ActionResult = send(settings.current(), to, document, texts.intro, reference)
+        preAuthorisation: Boolean = false,
+    ): ActionResult = send(settings.current(), to, document, if (preAuthorisation) texts.preAuthIntro else texts.intro, reference)
 
-    /** Emails [document], the receipt of the refund with merchant reference [reference], to [to]. */
+    /**
+     * Emails [document], the receipt of the refund (or, with [cancellation], of the cancelled pre-authorisation) with
+     * merchant reference [reference], to [to].
+     */
     suspend fun sendRefund(
         to: String,
         document: ReceiptDocument,
         reference: String,
-    ): ActionResult = send(settings.current(), to, document, texts.refundIntro, reference)
+        cancellation: Boolean = false,
+    ): ActionResult = send(settings.current(), to, document, if (cancellation) texts.cancellationIntro else texts.refundIntro, reference)
 
     /** Sends a short test email to [to], to check the SMTP settings. */
     suspend fun sendTest(to: String): ActionResult {

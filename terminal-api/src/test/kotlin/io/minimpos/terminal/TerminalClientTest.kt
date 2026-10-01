@@ -211,6 +211,22 @@ class TerminalClientTest {
         }
 
     @Test
+    fun `pre-authorisations ask for PreAuth with manual capture, other payments for neither`() =
+        runTest {
+            val terminal = client { respond { paymentResponse = approval() } }
+            terminal.pay(params.copy(preAuthorisation = true))
+            terminal.pay(params)
+            val (preAuth, sale) = sent.map { it.saleToPOIRequest.paymentRequest.saleData.saleToAcquirerData }
+            assertThat(preAuth.authorisationType).isEqualTo("PreAuth")
+            assertThat(preAuth.additionalData).containsExactly("manualCapture", "true")
+            val wire = String(Base64.getDecoder().decode(preAuth.toBase64()))
+            assertThat(wire).containsMatch("\"authorisationType\":\\s*\"PreAuth\"")
+            assertThat(wire).containsMatch("\"additionalData\":\\s*\\{\\s*\"manualCapture\":\\s*\"true\"\\s*}")
+            assertThat(sale.authorisationType).isNull()
+            assertThat(sale.additionalData).isNull()
+        }
+
+    @Test
     fun `maps declines, busy terminals and legacy fields`() =
         runTest {
             val declined =

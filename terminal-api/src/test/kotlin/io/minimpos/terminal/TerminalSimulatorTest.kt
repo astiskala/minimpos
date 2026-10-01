@@ -71,6 +71,20 @@ class TerminalSimulatorTest {
     }
 
     @Test
+    fun `pre-authorisations are labelled on the receipt and reversing one cancels it`() {
+        val preAuth = pay(tokenizing.copy(preAuthorisation = true))
+        assertThat(preAuth.success).isTrue()
+        assertThat(preAuth.customerReceipt.single { it.key == "txtype" }.name).isEqualTo("Pre-authorization")
+        assertThat(pay().customerReceipt.single { it.key == "txtype" }.name).isEqualTo("Payment")
+        val cancel =
+            runBlocking {
+                client.refund(RefundParams(preAuth.poiTransactionId!!, preAuth.poiTimestamp!!, "C-1")) as TransactionOutcome.Completed
+            }.details
+        assertThat(cancel.success).isTrue()
+        assertThat(cancel.customerReceipt.map { it.name }).containsAtLeast("CANCELLATION", "CANCELLATION REQUESTED")
+    }
+
+    @Test
     fun `approvals without a shopper reference are not tokenized, signatures on request`() {
         config = config.copy(signatureRequired = true)
         val details = pay(tokenizing.copy(shopperReference = null, recurringProcessingModel = null))

@@ -8,6 +8,7 @@ import io.minimpos.app.data.db.ProductEntity
 import io.minimpos.app.data.db.RefundEntity
 import io.minimpos.app.data.db.RefundStatus
 import io.minimpos.app.data.db.SaleEntity
+import io.minimpos.app.data.db.SaleKind
 import io.minimpos.app.data.db.SaleLineEntity
 import io.minimpos.app.data.db.SaleStatus
 import io.minimpos.app.data.db.TaxRateEntity
@@ -88,6 +89,7 @@ class RepositoriesTest {
                 listOf(
                     CatalogueProduct("Latte", 500, 0, 0, "L1"),
                     CatalogueProduct("Water", 300, 1, null, null),
+                    CatalogueProduct("Catering deposit", 20_000, 0, null, "CD", preAuthorisation = true),
                 ),
         )
 
@@ -98,10 +100,20 @@ class RepositoriesTest {
             val standard = catalog.taxRates.first().first()
             catalog.saveProduct(ProductEntity(name = "Old", priceMinor = 1, taxRateId = standard.id))
             val summary = catalog.import(incoming, ImportMode.REPLACE)
-            assertThat(summary.productsAdded).isEqualTo(2)
+            assertThat(summary.productsAdded).isEqualTo(3)
             assertThat(summary.taxRatesAdded).isEqualTo(2)
             assertThat(summary.categoriesAdded).isEqualTo(1)
             assertThat(catalog.export("AUD")).isEqualTo(incoming)
+        }
+
+    @Test
+    fun `barcodes find products of the kind being sold only`() =
+        await {
+            catalog.import(incoming, ImportMode.REPLACE)
+            assertThat(catalog.productBySku("CD", SaleKind.SALE)).isNull()
+            assertThat(catalog.productBySku("CD", SaleKind.PRE_AUTHORISATION)!!.name).isEqualTo("Catering deposit")
+            assertThat(catalog.productBySku("L1", SaleKind.SALE)!!.kind).isEqualTo(SaleKind.SALE)
+            assertThat(catalog.productBySku("L1", SaleKind.PRE_AUTHORISATION)).isNull()
         }
 
     @Test
@@ -114,11 +126,11 @@ class RepositoriesTest {
             catalog.saveProduct(ProductEntity(name = "Tea", priceMinor = 350, taxRateId = gst))
             val summary = catalog.import(incoming, ImportMode.MERGE)
             assertThat(summary.productsUpdated).isEqualTo(2)
-            assertThat(summary.productsAdded).isEqualTo(0)
+            assertThat(summary.productsAdded).isEqualTo(1)
             assertThat(summary.taxRatesAdded).isEqualTo(1)
             assertThat(summary.categoriesAdded).isEqualTo(0)
             val products = catalog.products.first().associateBy { it.name }
-            assertThat(products.keys).containsExactly("Latte", "Water", "Tea")
+            assertThat(products.keys).containsExactly("Latte", "Water", "Tea", "Catering deposit")
             assertThat(products.getValue("Latte").priceMinor).isEqualTo(500)
             assertThat(products.getValue("Water").priceMinor).isEqualTo(300)
         }

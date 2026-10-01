@@ -71,7 +71,9 @@ import io.minimpos.app.data.settings.SimulatorSettings
 import io.minimpos.app.data.settings.SmtpSecurity
 import io.minimpos.app.data.settings.TerminalMode
 import io.minimpos.app.data.settings.TerminalSettings
+import io.minimpos.app.feature.OutcomeMessage
 import io.minimpos.app.feature.lock.SetPinScreen
+import io.minimpos.app.feature.text
 import io.minimpos.app.terminal.TerminalConnection
 import io.minimpos.app.ui.components.ActionMessage
 import io.minimpos.app.ui.components.ConfirmDialog
@@ -102,17 +104,6 @@ import io.minimpos.terminal.transport.TerminalEnvironment
 @Composable
 private fun settingsViewModel(): SettingsViewModel {
     val container = LocalAppContainer.current
-    val messages =
-        SettingsMessages(
-            connectionOk = stringResource(R.string.settings_connection_ok),
-            connectionFailed = stringResource(R.string.settings_connection_failed),
-            printerPresent = stringResource(R.string.home_printer_yes),
-            printerAbsent = stringResource(R.string.home_printer_no),
-            testEmailSent = stringResource(R.string.settings_test_email_sent),
-            testPrinted = stringResource(R.string.result_printed),
-            secretNotStored = stringResource(R.string.settings_secret_not_stored),
-            apiOk = stringResource(R.string.settings_api_ok),
-        )
     return viewModel {
         SettingsViewModel(
             settings = container.settings,
@@ -122,7 +113,7 @@ private fun settingsViewModel(): SettingsViewModel {
             checks = SettingsChecks(container.terminalStatus, container.receipts, container.api),
             history = container.history,
             catalog = container.catalog,
-            messages = messages,
+            sampleReceipt = container::sampleReceipt,
         )
     }
 }
@@ -364,13 +355,13 @@ private fun ColumnScope.TerminalSection(
         SettingNumberField(
             stringResource(R.string.settings_timeout),
             terminal.timeoutSeconds,
-            TerminalSettings.MIN_TIMEOUT_SECONDS..TerminalSettings.MAX_TIMEOUT_SECONDS,
+            TerminalSettings.TIMEOUT_SECONDS,
             { seconds -> update { it.copy(timeoutSeconds = seconds) } },
             supporting = stringResource(R.string.settings_timeout_hint),
         )
     }
-    actions.connection.message?.let { message ->
-        ConnectionResultDialog(message, actions.connection.isError, terminal.environment, vm::dismissConnectionResult)
+    actions.connection.outcome?.let { outcome ->
+        ConnectionResultDialog(outcome.text(), actions.connection.isError, terminal.environment, vm::dismissConnectionResult)
     }
 }
 
@@ -458,7 +449,7 @@ private fun ColumnScope.SharedKeySettings(
         onSubmit = onSaveAndTest,
         tag = "passphrase",
     )
-    SettingNumberField(stringResource(R.string.settings_key_version), terminal.keyVersion, 1..9999, { version ->
+    SettingNumberField(stringResource(R.string.settings_key_version), terminal.keyVersion, TerminalSettings.KEY_VERSIONS, { version ->
         update { it.copy(keyVersion = version) }
     }, tag = "keyVersion")
     Column(Modifier.padding(horizontal = 16.dp, vertical = LocalDimens.current.spacing)) {
@@ -485,7 +476,7 @@ private fun ColumnScope.SharedKeySettings(
                 modifier = Modifier.testTag("forgetPassphrase"),
             )
         }
-        actions.secretError?.let { ActionMessage(it, isError = true) }
+        actions.secretError?.let { ActionMessage(it.text(), isError = true) }
     }
 }
 
@@ -560,7 +551,7 @@ private fun ColumnScope.ApiSettings(
                 modifier = Modifier.testTag("forgetApiKey"),
             )
         }
-        test.message?.let { ActionMessage(it, test.isError, Modifier.testTag("apiResult")) }
+        OutcomeMessage(test, Modifier.testTag("apiResult"))
     }
 }
 
@@ -674,9 +665,16 @@ private fun SimulatorSection(
         onSelect = { outcome -> update { it.copy(outcome = outcome) } },
         tag = "simOutcome",
     )
-    SettingNumberField(stringResource(R.string.settings_sim_delay), simulator.delayMillis.toInt(), 0..60_000, { delay ->
-        update { it.copy(delayMillis = delay.toLong()) }
-    })
+    SettingNumberField(
+        stringResource(
+            R.string.settings_sim_delay,
+        ),
+        simulator.delayMillis.toInt(),
+        SimulatorSettings.DELAY_MILLIS,
+        { delay ->
+            update { it.copy(delayMillis = delay.toLong()) }
+        },
+    )
     SettingSwitch(stringResource(R.string.settings_sim_printer), simulator.hasPrinter, { value -> update { it.copy(hasPrinter = value) } })
     SettingSwitch(stringResource(R.string.settings_sim_signature), simulator.signatureRequired, { value ->
         update { it.copy(signatureRequired = value) }
@@ -849,7 +847,6 @@ private fun ColumnScope.ReceiptsSection(
     actions: SettingsActions,
     vm: SettingsViewModel,
 ) {
-    val container = LocalAppContainer.current
     val receipt = state.settings.receipt
 
     fun update(transform: (ReceiptSettings) -> ReceiptSettings) = vm.update { it.copy(receipt = transform(it.receipt)) }
@@ -869,14 +866,13 @@ private fun ColumnScope.ReceiptsSection(
     )
     ReceiptPrintingSettings(receipt, ::update)
     SectionHeader(stringResource(R.string.settings_preview))
-    val payment = state.settings.payment
-    val sample = sampleSale(container.currency(state.settings).code, payment.taxMode, payment.asksCustomerReference)
-    val document = container.receiptFactory.sale(sample, receipt)
-    Box(Modifier.fillMaxWidth().padding(16.dp), contentAlignment = Alignment.Center) { ReceiptPreview(document) }
+    state.sampleReceipt?.let { document ->
+        Box(Modifier.fillMaxWidth().padding(16.dp), contentAlignment = Alignment.Center) { ReceiptPreview(document) }
+    }
     Box(Modifier.padding(horizontal = 16.dp)) {
         Column {
-            SecondaryButton(stringResource(R.string.settings_print_test), { vm.printTest(document) }, loading = actions.print.running)
-            actions.print.message?.let { ActionMessage(it, actions.print.isError) }
+            SecondaryButton(stringResource(R.string.settings_print_test), vm::printTest, loading = actions.print.running)
+            OutcomeMessage(actions.print)
         }
     }
 }
@@ -942,38 +938,9 @@ private fun ColumnScope.ReceiptPrintingSettings(
     SettingNumberField(
         stringResource(R.string.settings_chars_per_line),
         receipt.charsPerLine,
-        24..64,
+        ReceiptSettings.CHARS_PER_LINE,
         { chars -> update { it.copy(charsPerLine = chars) } },
         supporting = stringResource(R.string.settings_chars_per_line_hint),
-    )
-}
-
-private fun sampleSale(
-    currency: String,
-    mode: TaxMode,
-    withCustomerReference: Boolean,
-): SaleWithLines {
-    val lines =
-        listOf(
-            SaleLineEntity(1, "sample", 0, 1, "Flat white", null, 450, 2, "GST", 10_000, 818, 82, 900),
-            SaleLineEntity(2, "sample", 1, null, "Custom item", null, 300, 1, "GST-free", 0, 300, 0, 300),
-        )
-    return SaleWithLines(
-        SaleEntity(
-            id = "sample",
-            createdAt = System.currentTimeMillis(),
-            currency = currency,
-            taxMode = mode.name,
-            netMinor = 1118,
-            taxMinor = 82,
-            totalMinor = 1200,
-            status = SaleStatus.APPROVED,
-            merchantReference = "MP-SAMPLE-0001",
-            customerReference = "CUST-001".takeIf { withCustomerReference },
-            poiTransactionId = "SAMP001234567890123.SAMPLEPSP0000001",
-            poiTimestamp = "2026-01-01T00:00:00.000Z",
-        ),
-        lines,
     )
 }
 
@@ -990,7 +957,7 @@ private fun ColumnScope.EmailSection(
     SmtpServerSettings(
         email = email,
         passwordSaved = Secret.SMTP_PASSWORD in state.secrets,
-        secretError = actions.secretError,
+        secretError = actions.secretError?.text(),
         onPassword = { vm.setSecret(Secret.SMTP_PASSWORD, it) },
         update = ::update,
     )
@@ -1019,7 +986,7 @@ private fun ColumnScope.EmailSection(
             SecondaryButton(stringResource(R.string.settings_send_test), {
                 askRecipient = true
             }, enabled = email.isConfigured, loading = actions.email.running)
-            actions.email.message?.let { ActionMessage(it, actions.email.isError) }
+            OutcomeMessage(actions.email)
         }
     }
     if (askRecipient) {
@@ -1051,7 +1018,7 @@ private fun ColumnScope.SmtpServerSettings(
     SettingTextField(stringResource(R.string.settings_smtp_host), email.host, { value ->
         update { it.copy(host = value.trim()) }
     }, tag = "smtpHost")
-    SettingNumberField(stringResource(R.string.settings_port), email.port, 1..MAX_PORT, { port -> update { it.copy(port = port) } })
+    SettingNumberField(stringResource(R.string.settings_port), email.port, EmailSettings.PORTS, { port -> update { it.copy(port = port) } })
     SettingChoice(
         title = stringResource(R.string.settings_smtp_security),
         options =
@@ -1091,7 +1058,7 @@ private fun SecuritySection(
                     confirmRemove = true
                 }, modifier = Modifier.padding(top = 8.dp))
             }
-            actions.secretError?.let { ActionMessage(it, isError = true) }
+            actions.secretError?.let { ActionMessage(it.text(), isError = true) }
         }
     }
     SettingChoice(
@@ -1216,5 +1183,3 @@ private fun AboutSection(state: SettingsUiState) {
         Text(stringResource(R.string.about_text))
     }
 }
-
-private const val MAX_PORT = 65_535

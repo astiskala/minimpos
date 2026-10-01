@@ -10,11 +10,13 @@ import io.minimpos.app.data.db.SaleKind
 import io.minimpos.app.data.db.SaleLineEntity
 import io.minimpos.app.data.db.SaleStatus
 import io.minimpos.app.data.security.Secret
+import io.minimpos.app.data.settings.CaptureMode
 import io.minimpos.app.data.settings.TerminalMode
-import io.minimpos.app.refund.PaymentHold
+import io.minimpos.app.refund.PaymentStanding
+import io.minimpos.app.refund.standing
 import io.minimpos.app.terminal.AdyenApi
 import io.minimpos.app.terminal.ApiTarget
-import io.minimpos.app.terminal.CaptureMode
+import io.minimpos.app.terminal.TerminalSetupSource
 import io.minimpos.core.cart.AppliedTax
 import io.minimpos.core.cart.Cart
 import io.minimpos.core.cart.CartProduct
@@ -27,6 +29,7 @@ import io.minimpos.terminal.checkout.PaymentModifications
 import io.minimpos.terminal.transport.TerminalEnvironment
 import kotlinx.coroutines.flow.first
 import org.junit.After
+import org.junit.Assert.assertThrows
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
@@ -77,8 +80,10 @@ class CapturesTest {
     private val env = TestEnvironment()
     private val container = env.container
     private val fake = FakeModifications()
-    private val api = AdyenApi(container.settings, container.secrets, container.gateway, simulated = fake, connect = { fake })
-    private val captures = Captures(container.sales, api)
+
+    /** Where captures go; each test sets what it needs, without touching settings or secrets. */
+    private var target: ApiTarget = ApiTarget.Ready(fake)
+    private val captures = Captures(container.sales) { target }
 
     @After
     fun tearDown() = env.close()
@@ -113,7 +118,6 @@ class CapturesTest {
 
     @Test
     fun `a small tip is captured with the bill without adjusting`() {
-        env.useSimulator()
         store()
         assertThat(await { captures.addTip("s1", 300) }).isEqualTo(CaptureResult.Requested)
         val captured = sale()
@@ -131,7 +135,6 @@ class CapturesTest {
 
     @Test
     fun `no tip captures the bill`() {
-        env.useSimulator()
         store()
         assertThat(await { captures.addTip("s1", 0) }).isEqualTo(CaptureResult.Requested)
         assertThat(sale().amountMinor).isEqualTo(2_000)
@@ -142,7 +145,6 @@ class CapturesTest {
 
     @Test
     fun `a large tip raises the authorisation first, synchronously with the blob`() {
-        env.useSimulator()
         store()
         assertThat(await { captures.addTip("s1", 600) }).isEqualTo(CaptureResult.Requested)
         assertThat(fake.adjustments.single()).isEqualTo(ModificationAmount("AUD", 2_600) to "BQABAQfirst")
@@ -156,7 +158,6 @@ class CapturesTest {
 
     @Test
     fun `a refused adjustment keeps the tip unsaved, so a smaller one can be entered`() {
-        env.useSimulator()
         store()
         fake.adjustResult = ModificationResult.Refused("Not enough balance")
         assertThat(await { captures.addTip("s1", 1_000) }).isEqualTo(CaptureResult.Refused("Not enough balance"))
@@ -164,7 +165,7 @@ class CapturesTest {
         assertThat(refused.tipMinor).isNull()
         assertThat(refused.modificationMessage).isEqualTo("Not enough balance")
         assertThat(fake.captures).isEmpty()
-        assertThat(PaymentHold.canEnterTip(refused)).isTrue()
+        assertThat(refused.standing).isEqualTo(PaymentStanding.AWAITING_TIP)
 
         fake.adjustResult = ModificationResult.Unknown("timeout")
         assertThat(await { captures.addTip("s1", 1_000) }).isEqualTo(CaptureResult.Failed("timeout"))
@@ -177,7 +178,6 @@ class CapturesTest {
 
     @Test
     fun `a capture Adyen did not take, or whose outcome is unknown, is sent again with the same key`() {
-        env.useSimulator()
         store()
         fake.captureResult = ModificationResult.NotProcessed("Invalid amount (HTTP 422, code 137)")
         assertThat(await { captures.addTip("s1", 100) }).isEqualTo(CaptureResult.Failed("Invalid amount (HTTP 422, code 137)"))
@@ -185,7 +185,7 @@ class CapturesTest {
         assertThat(failed.tipMinor).isEqualTo(100)
         assertThat(failed.captureStatus).isEqualTo(CaptureStatus.FAILED)
         assertThat(failed.modificationMessage).contains("Invalid amount")
-        assertThat(PaymentHold.canRetryCapture(failed)).isTrue()
+        assertThat(failed.standing).isEqualTo(PaymentStanding.CAPTURE_FAILED)
 
         fake.captureResult = ModificationResult.Unknown("timeout")
         assertThat(await { captures.retryCapture("s1") }).isEqualTo(CaptureResult.Failed("timeout"))
@@ -200,20 +200,20 @@ class CapturesTest {
 
     @Test
     fun `without a Checkout API the capture is recorded for the Customer Area`() {
-        env.updateSettings { it.copy(terminal = it.terminal.copy(mode = TerminalMode.TERMINAL)) }
+        target = ApiTarget.CustomerArea
         store()
-        assertThat(await { api.target() }).isEqualTo(ApiTarget.CustomerArea)
         assertThat(await { captures.addTip("s1", 600) }).isEqualTo(CaptureResult.Recorded)
         val recorded = sale()
         assertThat(recorded.captureStatus).isEqualTo(CaptureStatus.MANUAL)
         assertThat(recorded.capturedMinor).isEqualTo(2_600)
-        assertThat(recorded.captured).isTrue()
+        assertThat(recorded.tipMinor).isEqualTo(600)
+        assertThat(recorded.standing).isEqualTo(PaymentStanding.CAPTURED_MANUALLY)
         assertThat(fake.keys).isEmpty()
     }
 
     @Test
     fun `a partly set up API sends nothing and says what is missing`() {
-        env.updateSettings { it.copy(terminal = it.terminal.copy(mode = TerminalMode.TERMINAL, merchantAccount = "Merchant")) }
+        target = ApiTarget.NotSetUp("Enter the Checkout API key in Terminal settings")
         store()
         val result = await { captures.addTip("s1", 100) }
         assertThat(result).isEqualTo(CaptureResult.Failed("Enter the Checkout API key in Terminal settings"))
@@ -224,7 +224,6 @@ class CapturesTest {
 
     @Test
     fun `pre-authorisations are captured up to what they hold directly, beyond it after adjusting`() {
-        env.useSimulator()
         store(bill.copy(id = "p1", tipOnReceipt = false, kind = SaleKind.PRE_AUTHORISATION, adjustAuthorisationData = null))
         store(bill.copy(id = "p2", tipOnReceipt = false, kind = SaleKind.PRE_AUTHORISATION, adjustAuthorisationData = null))
         assertThat(await { captures.capture("p1", 1_500) }).isEqualTo(CaptureResult.Requested)
@@ -244,7 +243,6 @@ class CapturesTest {
 
     @Test
     fun `adjusting what a pre-authorisation holds needs the API`() {
-        env.useSimulator()
         store(bill.copy(id = "p1", tipOnReceipt = false, kind = SaleKind.PRE_AUTHORISATION))
         assertThat(await { captures.adjust("p1", 3_000) }).isEqualTo(CaptureResult.Adjusted)
         assertThat(sale("p1").heldMinor).isEqualTo(3_000)
@@ -256,7 +254,8 @@ class CapturesTest {
         store()
         assertThat(await { captures.adjust("s1", 3_000) }).isEqualTo(CaptureResult.NotAllowed)
 
-        env.updateSettings { it.copy(terminal = it.terminal.copy(mode = TerminalMode.TERMINAL)) }
+        // An adjustment cannot be left to the Customer Area; a capture can.
+        target = ApiTarget.CustomerArea
         assertThat(await { captures.adjust("p1", 3_000) }).isEqualTo(CaptureResult.NotAllowed)
         assertThat(await { captures.capture("p1", 2_800) }).isEqualTo(CaptureResult.Recorded)
         assertThat(sale("p1").capturedMinor).isEqualTo(2_800)
@@ -273,16 +272,14 @@ class CapturesTest {
     @Test
     fun `the API is used once anything of it is set up, and needs the environment and live prefix`() {
         val connected = mutableListOf<CheckoutCredentials>()
+        val setups = TerminalSetupSource(container.settings, container.secrets, container.device)
         val live =
-            AdyenApi(container.settings, container.secrets, container.gateway, simulated = fake, connect = {
+            AdyenApi(setups, container.secrets, simulated = fake, connect = {
                 connected += it
                 fake
             })
         env.updateSettings { it.copy(terminal = it.terminal.copy(mode = TerminalMode.TERMINAL)) }
-        val terminal = { container.settingsState.value.terminal }
-        assertThat(live.mode(terminal(), keySaved = false)).isEqualTo(CaptureMode.CUSTOMER_AREA)
-        assertThat(live.setupProblem(terminal(), keySaved = false)).isNull()
-        assertThat(live.mode(terminal(), keySaved = true)).isEqualTo(CaptureMode.API)
+        assertThat(await { live.target() }).isEqualTo(ApiTarget.CustomerArea)
         assertThat(await { live.verify() }).isEqualTo("Enter the merchant account and the Checkout API key first")
 
         env.updateSettings { it.copy(terminal = it.terminal.copy(merchantAccount = "Merchant")) }
@@ -301,8 +298,7 @@ class CapturesTest {
         assertThat(await { live.verify() }).contains("could not be read")
         env.cipher.fail = false
         env.useSimulator()
-        assertThat(live.setupProblem(terminal(), keySaved = false)).isNull()
-        assertThat(live.mode(terminal(), keySaved = false)).isEqualTo(CaptureMode.API)
+        assertThat(await { live.target() }).isEqualTo(ApiTarget.Ready(fake))
     }
 
     @Test
@@ -317,13 +313,8 @@ class CapturesTest {
         val tipSale = sale(id)
         assertThat(tipSale.tipOnReceipt).isTrue()
         assertThat(tipSale.adjustAuthorisationData).startsWith("BQABAQ")
-        assertThat(PaymentHold.awaitingTip(tipSale)).isTrue()
+        assertThat(tipSale.standing).isEqualTo(PaymentStanding.AWAITING_TIP)
         // A pre-authorisation is never also taken for a tip.
-        val preAuth = start.copy(kind = SaleKind.PRE_AUTHORISATION)
-        container.payments.acknowledge()
-        container.payments.start(preAuth)
-        val preAuthId =
-            await { (container.payments.state.first { it is TransactionState.Finished && it.id != id } as TransactionState.Finished).id }
-        assertThat(sale(preAuthId).tipOnReceipt).isFalse()
+        assertThrows(IllegalArgumentException::class.java) { start.copy(kind = SaleKind.PRE_AUTHORISATION) }
     }
 }

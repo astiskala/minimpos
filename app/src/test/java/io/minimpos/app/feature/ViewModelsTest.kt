@@ -4,10 +4,12 @@ import com.google.common.truth.Truth.assertThat
 import io.minimpos.app.AppContainer
 import io.minimpos.app.FakeDevice
 import io.minimpos.app.FakeTerminal
+import io.minimpos.app.R
 import io.minimpos.app.TestEnvironment
 import io.minimpos.app.await
 import io.minimpos.app.data.db.CategoryEntity
 import io.minimpos.app.data.db.ProductEntity
+import io.minimpos.app.data.db.SaleKind
 import io.minimpos.app.data.db.SaleStatus
 import io.minimpos.app.data.db.TaxRateEntity
 import io.minimpos.app.data.repo.ImportMode
@@ -26,17 +28,15 @@ import io.minimpos.app.feature.refund.RefundOption
 import io.minimpos.app.feature.refund.RefundResultViewModel
 import io.minimpos.app.feature.refund.RefundViewModel
 import io.minimpos.app.feature.sale.CheckoutViewModel
-import io.minimpos.app.feature.sale.ResultMessages
 import io.minimpos.app.feature.sale.SaleResultViewModel
 import io.minimpos.app.feature.sale.SaleViewModel
-import io.minimpos.app.feature.settings.SettingsChecks
-import io.minimpos.app.feature.settings.SettingsMessages
-import io.minimpos.app.feature.settings.SettingsViewModel
 import io.minimpos.app.payment.TransactionState
+import io.minimpos.app.refund.PaymentAction
 import io.minimpos.app.refund.RefundInvalidReason
 import io.minimpos.app.refund.Refundability
 import io.minimpos.app.refund.RefundablePayment
 import io.minimpos.core.codec.RefundQrPayload
+import io.minimpos.core.receipt.ReceiptCopy
 import io.minimpos.core.receipt.ReceiptDocument
 import io.minimpos.core.receipt.ReceiptElement
 import io.minimpos.core.shopper.EmailReferenceMode
@@ -46,8 +46,11 @@ import io.minimpos.core.tax.TaxRates
 import io.minimpos.terminal.client.RetryAdvice
 import io.minimpos.terminal.simulator.SimulatedOutcome
 import io.minimpos.terminal.simulator.TerminalSimulator
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
@@ -65,7 +68,6 @@ import java.time.Instant
 class ViewModelsTest {
     private val env = TestEnvironment()
     private val container = env.container
-    private val messages = ResultMessages("Printed", "Sent to %s")
 
     @Before
     fun setUp() = Dispatchers.setMain(UnconfinedTestDispatcher())
@@ -88,12 +90,13 @@ class ViewModelsTest {
             TaxRateEntity(taxId, "GST", 10_000) to container.catalog.product(productId)!!
         }
 
-    private fun saleViewModel() = SaleViewModel(container.catalog, container.saleSession, container.settingsState, container::currency)
+    private fun saleViewModel() =
+        SaleViewModel(container.catalog, container.session(SaleKind.SALE), container.settingsState, container::currency)
 
     private fun payAndWait(configure: (CheckoutViewModel) -> Unit = {}): String {
         val checkout =
             CheckoutViewModel(
-                container.saleSession,
+                container.session(SaleKind.SALE),
                 container.payments,
                 container.settingsState,
                 container.terminalStatus.state,
@@ -182,10 +185,10 @@ class ViewModelsTest {
     fun `checkout validates input and derives the shopper reference`() {
         env.useSimulator()
         val (tax, latte) = seedCatalogue()
-        container.saleSession.addProduct(latte, tax)
+        container.session(SaleKind.SALE).addProduct(latte, tax)
         val vm =
             CheckoutViewModel(
-                container.saleSession,
+                container.session(SaleKind.SALE),
                 container.payments,
                 container.settingsState,
                 container.terminalStatus.state,
@@ -255,59 +258,78 @@ class ViewModelsTest {
         }
         await { container.terminalStatus.state.first { it.printerAvailable } }
         val (tax, latte) = seedCatalogue()
-        container.saleSession.addProduct(latte, tax)
+        container.session(SaleKind.SALE).addProduct(latte, tax)
         val saleId = payAndWait { vm -> vm.update { it.copy(email = "a@b.co") } }
-        val vm =
-            SaleResultViewModel(
-                saleId,
-                container.sales,
-                container.receipts,
-                container.payments,
-                container::session,
-                container.settingsState,
-                container.terminalStatus.state,
-                messages,
-            )
-        val state = await { vm.state.first { it.print.done && it.email.done } }
+        // The payment's cart was cleared as soon as it was approved.
+        assertThat(
+            container
+                .session(SaleKind.SALE)
+                .cart.value.lines,
+        ).isEmpty()
+        val vm = SaleResultViewModel(saleId, container.storedPayments, container.receipts, container.payments)
+        val state = await { vm.state.first { it.transaction.print.done && it.transaction.email.done } }
         assertThat(state.approved).isTrue()
-        assertThat(state.merchantCopyPending).isTrue()
-        assertThat(state.email.message).isEqualTo("Sent to a@b.co")
+        assertThat(state.transaction.merchantCopyPending).isTrue()
+        assertThat(state.transaction.email.outcome).isEqualTo(ActionOutcome.Emailed("a@b.co"))
+        assertThat(state.transaction.canPrint).isTrue()
+        assertThat(state.transaction.canEmail).isTrue()
+        assertThat(state.transaction.receipt).isNotNull()
         assertThat(env.mail.sent).hasSize(1)
-        assertThat(container.saleSession.cart.value.lines).isEmpty()
-        vm.printMerchantCopy()
-        assertThat(await { vm.state.first { it.print.done && !it.merchantCopyPending } }.print.message).isEqualTo("Printed")
-        vm.email("c@d.co")
-        await { vm.state.first { it.email.message == "Sent to c@d.co" } }
-        vm.recheck()
-        await { vm.state.first { !it.rechecking } }
+        assertThat(
+            container
+                .session(SaleKind.SALE)
+                .cart.value.lines,
+        ).isEmpty()
+        vm.transaction.print(ReceiptCopy.MERCHANT)
+        assertThat(
+            await {
+                vm.state.first { it.transaction.print.done && !it.transaction.merchantCopyPending }
+            }.transaction.print.outcome,
+        ).isEqualTo(ActionOutcome.Printed)
+        vm.transaction.email("c@d.co")
+        await { vm.state.first { it.transaction.email.outcome == ActionOutcome.Emailed("c@d.co") } }
+        // A second view model for the same sale (the screen recreated) delivers nothing again.
+        val again = SaleResultViewModel(saleId, container.storedPayments, container.receipts, container.payments)
+        await { again.state.first { it.record != null && it.transaction.receipt != null } }
+        assertThat(again.state.value.transaction.print).isEqualTo(ActionState())
+        assertThat(env.mail.sent).hasSize(2)
+        vm.transaction.recheck()
+        await { vm.state.first { !it.transaction.rechecking } }
         assertThat(state.advice).isNull()
         vm.finish()
         assertThat(container.payments.state.value).isEqualTo(TransactionState.Idle)
     }
 
     @Test
+    fun `an email sent from a result screen is recorded on the sale even when the screen closes`() {
+        env.useSimulator { it.copy(email = it.email.copy(host = "smtp", fromAddress = "shop@example.com")) }
+        val (tax, latte) = seedCatalogue()
+        container.session(SaleKind.SALE).addProduct(latte, tax)
+        val saleId = payAndWait()
+        val screen = CoroutineScope(Job() + UnconfinedTestDispatcher())
+        val actions = TransactionActions.forSale(screen, saleId, container.receipts, container.payments, fresh = false)
+        actions.email("a@b.co")
+        // Leaving the screen cancels its scope while the email is being sent.
+        screen.cancel()
+        assertThat(await { container.sales.observe(saleId).first { it?.sale?.emailedTo != null } }!!.sale.emailedTo).isEqualTo("a@b.co")
+        assertThat(env.mail.sent).hasSize(1)
+        // The screen that is gone is not updated.
+        assertThat(actions.state.value.email.running).isTrue()
+    }
+
+    @Test
     fun `result view model gives retry advice and cancels a busy terminal's transaction`() {
         env.useSimulator { it.copy(simulator = it.simulator.copy(outcome = SimulatedOutcome.BUSY)) }
         val (tax, latte) = seedCatalogue()
-        container.saleSession.addProduct(latte, tax)
+        container.session(SaleKind.SALE).addProduct(latte, tax)
         val saleId = payAndWait()
-        val vm =
-            SaleResultViewModel(
-                saleId,
-                container.sales,
-                container.receipts,
-                container.payments,
-                container::session,
-                container.settingsState,
-                container.terminalStatus.state,
-                messages.copy(abortSent = "Cancel sent"),
-            )
+        val vm = SaleResultViewModel(saleId, container.storedPayments, container.receipts, container.payments)
         val busy = await { vm.state.first { it.record != null } }
         assertThat(busy.advice).isEqualTo(RetryAdvice.TERMINAL_BUSY)
         assertThat(busy.busyServiceId).isEqualTo(TerminalSimulator.BUSY_SERVICE_ID)
         vm.abortBusyTransaction()
         val aborted = await { vm.state.first { it.abort.done } }
-        assertThat(aborted.abort.message).isEqualTo("Cancel sent")
+        assertThat(aborted.abort.outcome).isEqualTo(ActionOutcome.AbortSent)
         assertThat(aborted.busyServiceId).isNull()
         vm.abortBusyTransaction()
         assertThat(await { vm.state.first { it.abort.isError } }.abort.isError).isTrue()
@@ -317,8 +339,8 @@ class ViewModelsTest {
     fun `refund view model supports full, item and amount refunds`() {
         env.useSimulator()
         val (tax, latte) = seedCatalogue()
-        container.saleSession.addProduct(latte, tax)
-        container.saleSession.addProduct(latte, tax)
+        container.session(SaleKind.SALE).addProduct(latte, tax)
+        container.session(SaleKind.SALE).addProduct(latte, tax)
         val saleId = payAndWait()
         container.payments.acknowledge()
         val record = await { container.sales.get(saleId)!! }
@@ -351,23 +373,15 @@ class ViewModelsTest {
         assertThat(refund.merchantReference).startsWith("R-")
         assertThat(refund.full).isFalse()
 
-        val result =
-            RefundResultViewModel(
-                refundId,
-                container.refundRecords,
-                container.receipts,
-                container.refunds,
-                container.settingsState,
-                container.terminalStatus.state,
-                messages,
-            )
+        val result = RefundResultViewModel(refundId, container.refundRecords, container.receipts, container.refunds)
         val resultState = await { result.state.first { it.refund != null } }
         assertThat(resultState.accepted).isTrue()
         assertThat(resultState.canRecheck).isFalse()
-        result.print()
-        await { result.state.first { it.print.done || it.print.isError } }
-        result.email("a@b.co")
-        assertThat(await { result.state.first { it.email.isError } }.email.message).contains("not set up")
+        result.transaction.print()
+        await { result.state.first { it.transaction.print.done || it.transaction.print.isError } }
+        result.transaction.email("a@b.co")
+        assertThat(await { result.state.first { it.transaction.email.isError } }.transaction.email.outcome)
+            .isEqualTo(ActionOutcome.Failed(env.context.getString(R.string.email_not_configured)))
         result.finish()
         assertThat(container.refunds.state.value).isEqualTo(TransactionState.Idle)
     }
@@ -376,8 +390,8 @@ class ViewModelsTest {
     fun `refunds opened again from history or scanned again know what is left`() {
         env.useSimulator()
         val (tax, latte) = seedCatalogue()
-        container.saleSession.addProduct(latte, tax)
-        container.saleSession.addProduct(latte, tax)
+        container.session(SaleKind.SALE).addProduct(latte, tax)
+        container.session(SaleKind.SALE).addProduct(latte, tax)
         val saleId = payAndWait()
         container.payments.acknowledge()
         val lineId = await { container.sales.get(saleId)!! }.sortedLines.single().id
@@ -390,22 +404,15 @@ class ViewModelsTest {
         container.refunds.acknowledge()
 
         // Opened again from history, nothing is delivered automatically or acknowledged.
-        val fromHistory =
-            RefundResultViewModel(
-                refundId,
-                container.refundRecords,
-                container.receipts,
-                container.refunds,
-                container.settingsState,
-                container.terminalStatus.state,
-                messages.copy(stillUnknown = "still unknown"),
-                justMade = false,
-            )
-        assertThat(await { fromHistory.state.first { it.refund != null } }.print.running).isFalse()
+        val fromHistory = RefundResultViewModel(refundId, container.refundRecords, container.receipts, container.refunds, justMade = false)
+        assertThat(await { fromHistory.state.first { it.refund != null } }.transaction.print.running).isFalse()
         // Only an unknown outcome is checked again.
-        fromHistory.recheck()
-        assertThat(await { fromHistory.state.first { !it.rechecking && it.recheckMessage != null } }.recheckMessage)
-            .isEqualTo("still unknown")
+        fromHistory.transaction.recheck()
+        assertThat(
+            await {
+                fromHistory.state.first { !it.transaction.rechecking && it.transaction.stillUnknown }
+            }.transaction.stillUnknown,
+        ).isTrue()
         fromHistory.finish()
 
         // Scanning the same receipt again knows what is left.
@@ -447,7 +454,7 @@ class ViewModelsTest {
 
         env.useSimulator { it.copy(simulator = it.simulator.copy(outcome = SimulatedOutcome.DECLINE)) }
         val (tax, latte) = seedCatalogue()
-        container.saleSession.addProduct(latte, tax)
+        container.session(SaleKind.SALE).addProduct(latte, tax)
         val declined = payAndWait()
         assertThat(invalid(null, declined)).isEqualTo(RefundInvalidReason.NOT_REFUNDABLE)
     }
@@ -456,11 +463,11 @@ class ViewModelsTest {
     fun `history groups by day and filters`() {
         env.useSimulator()
         val (tax, latte) = seedCatalogue()
-        container.saleSession.addProduct(latte, tax)
+        container.session(SaleKind.SALE).addProduct(latte, tax)
         val saleId = payAndWait()
         container.payments.acknowledge()
         env.useSimulator { it.copy(simulator = it.simulator.copy(outcome = SimulatedOutcome.DECLINE)) }
-        container.saleSession.addProduct(latte, tax)
+        container.session(SaleKind.SALE).addProduct(latte, tax)
         payAndWait()
         val vm = HistoryViewModel(container.history)
         val day = await { vm.state.first { it.days.sumOf { d -> d.items.size } == 2 } }.days.single()
@@ -481,21 +488,26 @@ class ViewModelsTest {
         val detail =
             SaleDetailViewModel(
                 saleId,
-                container.sales,
+                container.storedPayments,
+                container.refundRecords,
                 container.receipts,
                 SaleOperations(container.payments, container.refunds, container.captures),
                 container.settingsState,
-                container.terminalStatus.state,
-                messages.copy(stillUnknown = "still unknown"),
             )
         val state = await { detail.state.first { it.record != null } }
-        assertThat(state.canRefund).isTrue()
-        detail.print()
-        await { detail.state.first { !it.print.running } }
-        detail.email("a@b.co")
-        await { detail.state.first { it.email.isError } }
-        detail.recheck()
-        assertThat(await { detail.state.first { !it.rechecking && it.recheckMessage != null } }.recheckMessage).isEqualTo("still unknown")
+        assertThat(state.actions).contains(PaymentAction.REFUND)
+        detail.transaction.print()
+        await { detail.state.first { !it.transaction.print.running } }
+        detail.transaction.email("a@b.co")
+        await { detail.state.first { it.transaction.email.isError } }
+        detail.transaction.recheck()
+        assertThat(
+            await {
+                detail.state.first {
+                    !it.transaction.rechecking && it.transaction.stillUnknown
+                }
+            }.transaction.stillUnknown,
+        ).isTrue()
     }
 
     @Test

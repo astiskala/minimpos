@@ -102,7 +102,7 @@ class ReceiptEmailer(
                 to = to,
                 subject = subject,
                 html = HtmlReceiptRenderer().render(document, subject, intro),
-                text = intro + "\n\n" + PlainTextReceiptRenderer(current.receipt.charsPerLine.coerceIn(24, 64)).render(document),
+                text = intro + "\n\n" + PlainTextReceiptRenderer(current.receipt.charsPerLine).render(document),
                 images = images,
             )
         return deliver(current, message)

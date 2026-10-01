@@ -4,6 +4,7 @@ import androidx.room.withTransaction
 import io.minimpos.app.data.db.AppDatabase
 import io.minimpos.app.data.db.RefundEntity
 import io.minimpos.app.data.db.RefundStatus
+import io.minimpos.terminal.client.TransactionDetails
 import kotlinx.coroutines.flow.Flow
 import kotlinx.serialization.Serializable
 
@@ -29,17 +30,21 @@ data class RefundedLine(
 )
 
 /**
- * Stored referenced refunds ([RefundEntity]).
+ * Stored referenced refunds ([RefundEntity]), including cancellations of held payments.
  *
- * A refund is created as PENDING before the terminal is called and completed with its outcome afterwards (see
- * [io.minimpos.app.payment.RefundBook]). Completing an accepted refund also updates what has been refunded on the
- * local sale. All functions are main-safe (Room runs them on its own executor).
+ * A refund is created as PENDING before the terminal is called ([create]) and settled with its outcome afterwards
+ * ([settle], see [io.minimpos.app.payment.RefundBook]); there is no other write to a refund. What an accepted refund
+ * does to its local sale is the sale's own transition, [SaleRepository.applyRefund], run in the same transaction. All
+ * functions are main-safe (Room runs them on its own executor).
+ *
+ * @param db The database.
+ * @param sales Records accepted refunds on their sales.
  */
 class RefundRepository(
     private val db: AppDatabase,
+    private val sales: SaleRepository,
 ) {
     private val dao = db.refundDao()
-    private val saleDao = db.saleDao()
 
     /** Inserts a new [refund], normally PENDING. */
     suspend fun create(refund: RefundEntity) = dao.insert(refund)
@@ -50,34 +55,32 @@ class RefundRepository(
     /** Observes the refund with ID [id]; emits null while there is none. */
     fun observe(id: String): Flow<RefundEntity?> = dao.observeRefund(id)
 
+    /** Observes the refunds (and cancellations) made from this terminal against sale [saleId], newest first. */
+    fun forSale(saleId: String): Flow<List<RefundEntity>> = dao.refundsForSale(saleId)
+
     /**
-     * Stores the refund result and, when it was accepted ([RefundStatus.REQUESTED]) for a local sale, records what has
-     * been refunded so the same items or amount cannot be refunded twice from this terminal.
-     *
-     * A full refund marks every line and the sale's whole amount (with any tip, see
-     * [io.minimpos.app.data.db.SaleEntity.amountMinor]) as refunded; a partial one adds its [RefundedLine] quantities
-     * and its amount. Neither can exceed what was sold. Runs in one transaction.
+     * Stores how refund [id] ended: its [status], the [message] shown when it was not accepted and, when the terminal
+     * answered, its [details] (PSP reference and the customer's card receipt; without an answer the stored ones are
+     * kept). When it was accepted ([RefundStatus.REQUESTED]) it is applied to its local sale
+     * ([SaleRepository.applyRefund]), so the same items or amount cannot be refunded twice from this terminal. This is
+     * the only change to a refund after [create]. Reads and writes in one transaction; does nothing when the refund no
+     * longer exists.
      */
-    suspend fun complete(refund: RefundEntity) =
-        db.withTransaction {
-            dao.update(refund)
-            if (refund.status != RefundStatus.REQUESTED || refund.saleId == null) return@withTransaction
-            val sale = saleDao.sale(refund.saleId) ?: return@withTransaction
-            val refundedLines = ReceiptLinesJson.decodeRefunded(refund.linesJson).groupBy { it.lineId }
-            val lines =
-                sale.lines.map { line ->
-                    val quantity =
-                        if (refund.full) {
-                            line.quantity
-                        } else {
-                            line.refundedQuantity +
-                                refundedLines[line.id].orEmpty().sumOf { it.quantity }
-                        }
-                    line.copy(refundedQuantity = quantity.coerceAtMost(line.quantity))
-                }
-            saleDao.updateLines(lines)
-            val amount = sale.sale.amountMinor
-            val refunded = if (refund.full) amount else sale.sale.refundedMinor + refund.amountMinor
-            saleDao.update(sale.sale.copy(refundedMinor = refunded.coerceAtMost(amount)))
-        }
+    suspend fun settle(
+        id: String,
+        status: RefundStatus,
+        message: String?,
+        details: TransactionDetails?,
+    ) = db.withTransaction {
+        val stored = dao.refund(id) ?: return@withTransaction
+        val refund =
+            stored.copy(
+                status = status,
+                message = message,
+                pspReference = details?.pspReference ?: stored.pspReference,
+                customerReceiptJson = details?.let { ReceiptLinesJson.encodeFields(it.customerReceipt) } ?: stored.customerReceiptJson,
+            )
+        dao.update(refund)
+        sales.applyRefund(refund)
+    }
 }

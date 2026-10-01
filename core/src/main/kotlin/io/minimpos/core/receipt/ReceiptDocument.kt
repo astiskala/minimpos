@@ -75,19 +75,20 @@ sealed interface ReceiptSegment {
     /**
      * Consecutive text elements, printed as one text request.
      *
-     * @property elements the elements in order; never a [ReceiptElement.Qr], and never only blank lines.
+     * @property elements the elements in order, ending with the caption of a QR code that follows; never a
+     *   [ReceiptElement.Qr], and never only blank lines.
      */
     data class TextBlock(
         val elements: List<ReceiptElement>,
     ) : ReceiptSegment
 
     /**
-     * A QR code, printed as a request of its own.
+     * A QR code, printed as a request of its own; its caption is in the text block before it.
      *
-     * @property qr the code and its caption.
+     * @property content the text encoded in the QR code.
      */
     data class QrCode(
-        val qr: ReceiptElement.Qr,
+        val content: String,
     ) : ReceiptSegment
 }
 
@@ -102,8 +103,9 @@ data class ReceiptDocument(
 ) {
     /**
      * Splits the document into consecutive text blocks and QR codes. Adyen terminals print text and QR codes in
-     * separate print requests, which come out on one slip when sent back to back. Blocks consisting only of blank
-     * lines are dropped.
+     * separate print requests, which come out on one slip when sent back to back. A QR code's caption ends the text
+     * block before it, after a blank line and centred, so it prints right above the code. Blocks consisting only of
+     * blank lines are dropped.
      */
     fun segments(): List<ReceiptSegment> {
         val segments = mutableListOf<ReceiptSegment>()
@@ -115,8 +117,9 @@ data class ReceiptDocument(
         }
         for (element in elements) {
             if (element is ReceiptElement.Qr) {
+                element.caption?.let { pending += listOf(ReceiptElement.Blank, ReceiptElement.Text(it, Align.CENTER)) }
                 flush()
-                segments += ReceiptSegment.QrCode(element)
+                segments += ReceiptSegment.QrCode(element.content)
             } else {
                 pending += element
             }

@@ -32,8 +32,8 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import io.minimpos.app.R
-import io.minimpos.app.refund.PaymentHold
-import io.minimpos.app.terminal.CaptureMode
+import io.minimpos.app.data.settings.CaptureMode
+import io.minimpos.app.refund.PaymentStanding
 import io.minimpos.app.ui.components.ActionMessage
 import io.minimpos.app.ui.components.BottomActions
 import io.minimpos.app.ui.components.Card
@@ -126,7 +126,7 @@ private fun TipEntry(
             state.belowBill -> Note(stringResource(R.string.tip_below_bill), isError = true)
             tip != null -> Note(sum(state.billMinor, tip, money))
         }
-        if (state.needsAdjustment) Note(stringResource(R.string.tip_adjustment_note, PaymentHold.TIP_ADJUSTMENT_PERCENT))
+        if (state.needsAdjustment) Note(stringResource(R.string.tip_adjustment_note, PaymentStanding.TIP_ADJUSTMENT_PERCENT))
         state.submission.problem?.let {
             ActionMessage(problemText(it, money, R.string.tip_refused, R.string.capture_failed), isError = true)
         }
@@ -402,7 +402,7 @@ private fun problemText(
 @Composable
 private fun tipViewModel(saleId: String): TipViewModel {
     val container = LocalAppContainer.current
-    return viewModel(key = "tip-$saleId") { TipViewModel(saleId, container.sales, container.captures, container.terminalStatus.state) }
+    return viewModel(key = "tip-$saleId") { TipViewModel(saleId, container.storedPayments, container.captures) }
 }
 
 @Composable
@@ -412,6 +412,6 @@ private fun captureViewModel(
 ): CaptureViewModel {
     val container = LocalAppContainer.current
     return viewModel(key = "capture-$saleId-$adjustOnly") {
-        CaptureViewModel(saleId, adjustOnly, container.sales, container.captures, container.terminalStatus.state)
+        CaptureViewModel(saleId, adjustOnly, container.storedPayments, container.captures)
     }
 }

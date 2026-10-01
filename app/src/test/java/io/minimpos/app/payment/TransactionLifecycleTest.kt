@@ -11,9 +11,13 @@ import io.minimpos.app.data.db.SaleStatus
 import io.minimpos.app.data.db.TaxRateEntity
 import io.minimpos.app.data.repo.ReceiptLinesJson
 import io.minimpos.app.data.repo.RefundedLine
+import io.minimpos.app.data.settings.CaptureMode
 import io.minimpos.app.data.settings.TerminalMode
+import io.minimpos.app.refund.PaymentStanding
 import io.minimpos.app.refund.RefundStart
 import io.minimpos.app.refund.RefundablePayment
+import io.minimpos.app.refund.actions
+import io.minimpos.app.refund.standing
 import io.minimpos.core.cart.AppliedTax
 import io.minimpos.core.cart.Cart
 import io.minimpos.core.cart.CartProduct
@@ -160,7 +164,7 @@ class TransactionLifecycleTest {
         env.useSimulator()
         val saleId = start()
         val record = finished(saleId)
-        await { container.sales.update(record.sale.copy(status = SaleStatus.UNKNOWN, pspReference = null)) }
+        await { container.database.saleDao().update(record.sale.copy(status = SaleStatus.UNKNOWN, pspReference = null)) }
         await { assertThat(payments.recheck(saleId)).isTrue() }
         val settled = await { container.sales.get(saleId)!!.sale }
         assertThat(settled.status).isEqualTo(SaleStatus.APPROVED)
@@ -169,7 +173,7 @@ class TransactionLifecycleTest {
         await { assertThat(payments.recheck(saleId)).isFalse() }
 
         // Without complete setup the terminal cannot be asked, so the outcome stays unknown.
-        await { container.sales.update(settled.copy(status = SaleStatus.UNKNOWN)) }
+        await { container.database.saleDao().update(settled.copy(status = SaleStatus.UNKNOWN)) }
         env.useSimulator { it.copy(terminal = it.terminal.copy(mode = TerminalMode.TERMINAL, poiIdOverride = "X-000000001")) }
         await { assertThat(payments.recheck(saleId)).isFalse() }
         assertThat(
@@ -319,20 +323,17 @@ class TransactionLifecycleTest {
         assertThat(cancellation.full).isTrue()
         assertThat(cancellation.status).isEqualTo(RefundStatus.REQUESTED)
         assertThat(ReceiptLinesJson.decode(cancellation.customerReceiptJson).map { it.name }).contains("CANCELLATION REQUESTED")
-        assertThat(
-            await {
-                container.sales
-                    .get(saleId)!!
-                    .sale.refundedMinor
-            },
-        ).isEqualTo(20_000)
-        assertThat(RefundablePayment.canCancel(await { container.sales.get(saleId)!! })).isFalse()
+        // A cancellation refunds nothing: the sale records the cancelled hold instead.
+        val cancelled = await { container.sales.get(saleId)!! }
+        assertThat(cancelled.sale.refundedMinor).isEqualTo(0)
+        assertThat(cancelled.sale.standing).isEqualTo(PaymentStanding.HOLD_CANCELLED)
+        assertThat(cancelled.actions(CaptureMode.API)).isEmpty()
     }
 
     @Test
     fun `a single-item session holds one item at a time`() {
         var keys = 0
-        val session = SaleSession(singleItem = true) { "k${++keys}" }
+        val session = SaleSession(SaleKind.PRE_AUTHORISATION) { "k${++keys}" }
         val tax = TaxRateEntity(1, "GST", 10_000)
         session.addProduct(ProductEntity(5, "Room", 15_000, 1), tax)
         session.addProduct(ProductEntity(5, "Room", 15_000, 1), tax)
@@ -361,7 +362,7 @@ class TransactionLifecycleTest {
             session.cart.value.lines
                 .map { it.name to it.unitPrice },
         ).containsExactly("Deposit" to 2_500L)
-        assertThat(SaleSession().singleItem).isFalse()
+        assertThat(SaleSession().kind.singleItem).isFalse()
     }
 
     @Test
@@ -371,7 +372,7 @@ class TransactionLifecycleTest {
         session.addProduct(ProductEntity(5, "Tea", 400, 1), tax)
         session.addCustom("Gift", 1_000, tax)
         session.setQuantity("key", 3)
-        session.updateCheckout { it.copy(email = "a@b.co") }
+        session.updateForm { it.copy(email = "a@b.co") }
         assertThat(
             session.cart.value.lines
                 .first()
@@ -379,8 +380,8 @@ class TransactionLifecycleTest {
         ).isEqualTo(3)
         session.remove("key")
         assertThat(session.cart.value.lines).isEmpty()
-        assertThat(session.checkout.value.email).isEqualTo("a@b.co")
+        assertThat(session.form.value.email).isEqualTo("a@b.co")
         session.clear()
-        assertThat(session.checkout.value).isEqualTo(CheckoutForm())
+        assertThat(session.form.value).isEqualTo(CheckoutForm())
     }
 }

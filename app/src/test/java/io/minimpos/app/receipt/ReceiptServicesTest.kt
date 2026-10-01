@@ -14,6 +14,7 @@ import io.minimpos.app.data.db.SaleWithLines
 import io.minimpos.app.data.repo.ReceiptLinesJson
 import io.minimpos.app.data.repo.RefundedLine
 import io.minimpos.app.data.security.Secret
+import io.minimpos.app.data.settings.AppSettings
 import io.minimpos.app.data.settings.EmailCapture
 import io.minimpos.app.data.settings.EmailSettings
 import io.minimpos.app.data.settings.MerchantCopyPolicy
@@ -24,11 +25,13 @@ import io.minimpos.app.email.InlineImage
 import io.minimpos.app.email.MailTransport
 import io.minimpos.app.email.SmtpMailer
 import io.minimpos.app.payment.AutoDelivery
+import io.minimpos.app.payment.ReceiptOffer
 import io.minimpos.app.payment.SalePrint
 import io.minimpos.app.qr.QrCodes
 import io.minimpos.core.codec.RefundQrPayload
 import io.minimpos.core.receipt.Align
 import io.minimpos.core.receipt.CardReceiptLine
+import io.minimpos.core.receipt.PlainTextReceiptRenderer
 import io.minimpos.core.receipt.ReceiptCopy
 import io.minimpos.core.receipt.ReceiptDocument
 import io.minimpos.core.receipt.ReceiptElement
@@ -187,7 +190,7 @@ class ReceiptServicesTest {
         env.updateSettings { it.copy(receipt = it.receipt.copy(merchantCopy = MerchantCopyPolicy.NEVER)) }
         assertThat(await { receipts.printSale("s1") }.merchantCopyDue).isFalse()
         env.updateSettings { it.copy(receipt = it.receipt.copy(merchantCopy = MerchantCopyPolicy.ALWAYS)) }
-        await { container.sales.update(sale.copy(signatureRequired = false)) }
+        await { container.database.saleDao().update(sale.copy(signatureRequired = false)) }
         assertThat(await { receipts.printSale("s1") }.merchantCopyDue).isTrue()
         env.updateSettings { it.copy(receipt = it.receipt.copy(merchantCopy = MerchantCopyPolicy.SIGNATURE_ONLY)) }
         assertThat(await { receipts.printSale("s1") }.merchantCopyDue).isFalse()
@@ -235,6 +238,37 @@ class ReceiptServicesTest {
         assertThat(await { receipts.automationForRefund("r1") }).isEqualTo(AutoDelivery())
         receipts.arm("missing")
         assertThat(await { receipts.automationForSale("missing") }).isEqualTo(AutoDelivery())
+    }
+
+    @Test
+    fun `screens are offered the receipt, printing and email as the settings and printer say`() {
+        env.useSimulator { it.copy(payment = it.payment.copy(emailCapture = EmailCapture.OFF)) }
+        await { container.terminalStatus.state.first { it.printerAvailable } }
+        val receipts = container.receipts
+        assertThat(
+            await { receipts.saleOffer("s1", justPaid = false).first() },
+        ).isEqualTo(ReceiptOffer(null, canPrint = true, canEmail = false))
+        store()
+        configureEmail()
+        val later = await { receipts.saleOffer("s1", justPaid = false).first { it.canEmail } }
+        assertThat(later.receipt!!.qrCodes).hasSize(1)
+        // Right after the payment email is offered only when checkout captures emails.
+        assertThat(await { receipts.saleOffer("s1", justPaid = true).first() }.canEmail).isFalse()
+        env.updateSettings { it.copy(payment = it.payment.copy(emailCapture = EmailCapture.AFTER_PAYMENT)) }
+        assertThat(await { receipts.saleOffer("s1", justPaid = true).first { it.canEmail } }.canEmail).isTrue()
+        env.useSimulator { it.copy(simulator = it.simulator.copy(hasPrinter = false)) }
+        assertThat(
+            await {
+                receipts.refundOffer("missing").first { !it.canPrint }
+            },
+        ).isEqualTo(ReceiptOffer(null, canPrint = false, canEmail = true))
+
+        val sample = container.sampleReceipt(AppSettings(receipt = ReceiptSettings(businessName = "Cafe")))
+        val text = PlainTextReceiptRenderer(48).render(sample)
+        assertThat(text).contains("Cafe")
+        assertThat(text).contains("Flat white")
+        assertThat(text).contains("MP-SAMPLE-0001")
+        assertThat(RefundQrPayload.decode(sample.qrCodes.single().content)!!.amountMinor).isEqualTo(1_200)
     }
 
     private fun configureEmail() {
@@ -335,7 +369,7 @@ class ReceiptServicesTest {
         assertThat(merchant.elements.filterIsInstance<ReceiptElement.Row>().map { it.left }).contains("SIGNATURE")
 
         val tipped = awaiting.copy(tipMinor = 300, capturedMinor = 1_500, captureStatus = CaptureStatus.REQUESTED)
-        await { container.sales.update(tipped) }
+        await { container.database.saleDao().update(tipped) }
         val entered = factory.sale(SaleWithLines(tipped, lines), ReceiptSettings())
         assertThat(entered.elements)
             .containsAtLeast(ReceiptElement.Row("TIP", "A$3.00"), ReceiptElement.Row("TOTAL", "A$15.00", TextStyle.BOLD))

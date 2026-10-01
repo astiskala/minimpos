@@ -141,14 +141,16 @@ interface TransactionBook<R> {
  * Every transaction is stored as PENDING before the terminal is called and always ends in a final status, even if
  * something unexpected fails, so an interrupted one can be traced. Terminal outcomes are classified in one place (see
  * [SettlementStatus]); an unknown outcome can be checked again later with [recheck]. [onSucceeded] is told once per
- * transaction that succeeds while the app runs, for the automatic receipt.
+ * transaction that succeeds while the app runs, for the automatic receipt and to clear what the payment was rung up
+ * from.
  *
  * @param R What the screen collected for one transaction, as the [book] stores it.
  * @param scope Where transactions run.
  * @param gateway Sends the requests.
  * @param book How the records are stored.
  * @param unknownOutcome Stored as the message of a transaction whose outcome the terminal could not confirm.
- * @param onSucceeded Called with the record ID when a transaction succeeds (not when a [recheck] settles one).
+ * @param onSucceeded Called with the record ID and the request when a transaction succeeds (not when a [recheck]
+ *   settles one), before the state becomes [TransactionState.Finished].
  * @param clock Stamps the records.
  * @param newId Generates record IDs.
  * @param newServiceId Generates the ServiceIDs of the requests.
@@ -158,7 +160,7 @@ class TransactionLifecycle<R>(
     private val gateway: TerminalGateway,
     private val book: TransactionBook<R>,
     private val unknownOutcome: String,
-    private val onSucceeded: (id: String) -> Unit = {},
+    private val onSucceeded: (id: String, request: R) -> Unit = { _, _ -> },
     private val clock: Clock = Clock.systemUTC(),
     private val newId: () -> String = { UUID.randomUUID().toString() },
     private val newServiceId: () -> String = { TerminalClient.randomServiceId() },
@@ -257,7 +259,7 @@ class TransactionLifecycle<R>(
             }
         val settlement = settle(id, outcome)
         book.settle(id, settlement)
-        if (settlement.status == SettlementStatus.SUCCEEDED) onSucceeded(id)
+        if (settlement.status == SettlementStatus.SUCCEEDED) onSucceeded(id, request)
         _state.value = TransactionState.Finished(id)
     }
 

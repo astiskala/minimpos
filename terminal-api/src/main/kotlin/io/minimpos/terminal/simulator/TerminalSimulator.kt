@@ -109,9 +109,11 @@ data class SimulatorConfig(
  * through the Adyen library's JSON serialisation, exactly as they would on the way to and from a real terminal.
  *
  * It handles payments, reversals, aborts, prints, diagnoses and transaction status checks, and throws
- * [TerminalProtocolException] for any other request. Finished payments and reversals are remembered in memory for
- * status checks, so after a restart they are reported as not found. Approved pre-authorisations are remembered the same
- * way, so a full reversal of one is answered as a cancellation. The timeout passed to [send] is ignored.
+ * [TerminalProtocolException] for any other request. A status check of a payment still under way is answered
+ * `InProgress`; finished payments and reversals are remembered in memory for status checks, so after a restart they are
+ * reported as not found. Approved payments are remembered the same way, shared with the simulated Checkout API
+ * ([modifications]): a full reversal of an uncaptured pre-authorisation is answered as a cancellation, and captures
+ * follow what happened to a payment. The timeout passed to [send] is ignored.
  */
 class TerminalSimulator(
     /** The current settings, read at the start of each request. */
@@ -128,9 +130,11 @@ class TerminalSimulator(
     private val gson = TerminalAPIGsonBuilder.create()
     private val completed = ConcurrentHashMap<String, RepeatedResponseMessageBody>()
     private val aborted = ConcurrentHashMap.newKeySet<String>()
+    private val inProgress = ConcurrentHashMap.newKeySet<String>()
+    private val ledger = SimulatedLedger()
 
-    /** POITransactionIDs of approved pre-authorisations that have not been reversed yet. */
-    private val preAuthorised = ConcurrentHashMap.newKeySet<String>()
+    /** Adyen's Checkout API for the payments this simulator takes, answering from what happened to them. */
+    val modifications: SimulatedModifications = SimulatedModifications(random, ledger)
 
     override suspend fun send(
         request: TerminalAPIRequest,
@@ -199,10 +203,15 @@ class TerminalSimulator(
         settings: SimulatorConfig,
     ): TerminalAPIResponse {
         val serviceId = header.serviceID.orEmpty()
+        inProgress += serviceId
         var waited = 0L
-        while (waited < settings.delayMillis && serviceId !in aborted) {
-            delay(POLL_MILLIS)
-            waited += POLL_MILLIS
+        try {
+            while (waited < settings.delayMillis && serviceId !in aborted) {
+                delay(POLL_MILLIS)
+                waited += POLL_MILLIS
+            }
+        } finally {
+            inProgress -= serviceId
         }
         val outcome =
             when {
@@ -244,9 +253,9 @@ class TerminalSimulator(
                         .orEmpty(),
                 amountText = "${amount.currency} ${amount.requestedAmount.toPlainString()}",
                 approved = outcome == SimulatedOutcome.APPROVE || outcome == SimulatedOutcome.TIMEOUT,
-                preAuthorisation = request.saleData?.saleToAcquirerData?.authorisationType == PRE_AUTH,
+                preAuthorisation = request.saleData?.saleToAcquirerData?.authorisationType == TerminalClient.PRE_AUTH,
             )
-        if (payment.approved && payment.preAuthorisation) preAuthorised += "${payment.tender}.${payment.psp}"
+        if (payment.approved) ledger.approved(payment.psp, manualCapture = payment.preAuthorisation)
         val additional =
             linkedMapOf(
                 "pspReference" to payment.psp,
@@ -382,13 +391,15 @@ class TerminalSimulator(
                 ?.transactionID
                 .orEmpty()
         val amount = request.reversedAmount
-        // Like Adyen's cancel-or-refund: a full reversal of an uncaptured pre-authorisation cancels it.
+        // Like Adyen's cancel-or-refund: a full reversal of an uncaptured pre-authorisation cancels it. The transaction
+        // ID is `<tender reference>.<PSP reference>`.
         val cancels =
             amount == null &&
                 request.originalPOITransaction
                     ?.poiTransactionID
                     ?.transactionID
-                    ?.let(preAuthorised::remove) == true
+                    ?.substringAfter('.')
+                    ?.let(ledger::cancel) == true
         val response =
             ReversalResponse().apply {
                 response =
@@ -445,9 +456,16 @@ class TerminalSimulator(
     }
 
     private fun status(request: TransactionStatusRequest): TransactionStatusResponse {
-        val body = request.messageReference?.serviceID?.let(completed::get)
+        val serviceId = request.messageReference?.serviceID
+        val body = serviceId?.let(completed::get)
         return TransactionStatusResponse().apply {
-            if (body == null) {
+            if (body == null && serviceId != null && serviceId in inProgress) {
+                response =
+                    Response().apply {
+                        result = ResultType.FAILURE
+                        errorCondition = ErrorConditionType.IN_PROGRESS
+                    }
+            } else if (body == null) {
                 response =
                     Response().apply {
                         result = ResultType.FAILURE
@@ -589,7 +607,6 @@ class TerminalSimulator(
     companion object {
         /** The ServiceID a [SimulatedOutcome.BUSY] payment names as the transaction the terminal is busy with. */
         const val BUSY_SERVICE_ID = "SIMBUSY001"
-        private const val PRE_AUTH = "PreAuth"
         private const val POLL_MILLIS = 100L
         private const val PERCENT = 100
         private const val RANDOM_APPROVAL_PERCENT = 80

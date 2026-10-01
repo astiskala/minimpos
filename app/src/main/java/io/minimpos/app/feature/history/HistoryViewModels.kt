@@ -9,36 +9,38 @@ import io.minimpos.app.data.db.SaleStatus
 import io.minimpos.app.data.db.SaleWithLines
 import io.minimpos.app.data.repo.HistoryItem
 import io.minimpos.app.data.repo.HistoryRepository
-import io.minimpos.app.data.repo.SaleRepository
+import io.minimpos.app.data.repo.RefundRepository
 import io.minimpos.app.data.settings.AppSettings
+import io.minimpos.app.data.settings.CaptureMode
+import io.minimpos.app.feature.ActionOutcome
+import io.minimpos.app.feature.ActionState
+import io.minimpos.app.feature.TransactionActions
+import io.minimpos.app.feature.TransactionActionsState
 import io.minimpos.app.feature.launchWrite
-import io.minimpos.app.feature.sale.ActionState
-import io.minimpos.app.feature.sale.ResultMessages
-import io.minimpos.app.feature.sale.toState
 import io.minimpos.app.payment.CaptureResult
 import io.minimpos.app.payment.Captures
 import io.minimpos.app.payment.PaymentStart
 import io.minimpos.app.payment.ReceiptDelivery
 import io.minimpos.app.payment.TransactionLifecycle
-import io.minimpos.app.refund.PaymentHold
+import io.minimpos.app.refund.PaymentAction
+import io.minimpos.app.refund.PaymentStanding
 import io.minimpos.app.refund.RefundStart
-import io.minimpos.app.refund.Refundability
 import io.minimpos.app.refund.RefundablePayment
-import io.minimpos.app.terminal.CaptureMode
-import io.minimpos.app.terminal.TerminalState
-import io.minimpos.core.receipt.ReceiptCopy
+import io.minimpos.app.refund.StoredPayment
+import io.minimpos.app.refund.StoredPayments
+import io.minimpos.app.refund.TotalsShare
+import io.minimpos.app.refund.standing
+import io.minimpos.app.refund.totalsShare
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
-import kotlinx.coroutines.launch
 import java.time.Clock
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
-import java.util.Locale
 
 /**
  * Totals per currency for one day, of the items the filter shows: approved sales (with their tips), accepted refunds
@@ -201,7 +203,7 @@ class HistoryViewModel(
             }
 
             HistoryFilter.AWAITING_TIP -> {
-                item is HistoryItem.Sale && PaymentHold.awaitingTip(item.sale)
+                item is HistoryItem.Sale && item.sale.standing == PaymentStanding.AWAITING_TIP
             }
 
             HistoryFilter.PRE_AUTHS -> {
@@ -231,20 +233,9 @@ class HistoryViewModel(
         items
             .groupBy { Instant.ofEpochMilli(it.createdAt).atZone(zone()).toLocalDate() }
             .map { (date, dayItems) ->
-                val approved =
-                    dayItems
-                        .filterIsInstance<HistoryItem.Sale>()
-                        .map { it.sale }
-                        .filter { it.status == SaleStatus.APPROVED }
-                // A cancelled hold was never charged.
-                val cancelled =
-                    approved.filter {
-                        (it.kind == SaleKind.PRE_AUTHORISATION || it.tipOnReceipt) && it.refundedMinor > 0 &&
-                            !it.captured
-                    }
-                val (sales, held) =
-                    (approved - cancelled.toSet())
-                        .partition { it.kind == SaleKind.SALE || it.captured }
+                val shares = dayItems.filterIsInstance<HistoryItem.Sale>().map { it.sale }.groupBy { it.totalsShare }
+                val sales = shares[TotalsShare.SALE].orEmpty()
+                val held = shares[TotalsShare.HELD].orEmpty()
                 val tipped = sales.filter { (it.tipMinor ?: 0) > 0 }
                 val refunds =
                     dayItems
@@ -271,46 +262,25 @@ class HistoryViewModel(
 /**
  * What the sale detail screen shows.
  *
- * @property record The sale, or null until loaded (or when it has been pruned).
+ * @property payment The sale with what can be done with it now, or null until loaded (or when it has been pruned).
  * @property refunds Refunds made from this terminal against the sale, newest first.
- * @property settings The current settings.
- * @property printerAvailable Whether printing is offered.
- * @property print The latest print.
- * @property email The latest email.
- * @property rechecking Whether a transaction status check is running.
- * @property recheckMessage Shown when the check found the outcome still unknown; null otherwise.
- * @property captureMode Whether captures go through the Checkout API or are made in the Customer Area.
+ * @property transaction The receipt, reprinting and emailing it, and re-checking an unknown outcome.
  * @property retry The latest retry of the capture.
  */
 data class SaleDetailUiState(
-    val record: SaleWithLines? = null,
+    val payment: StoredPayment? = null,
     val refunds: List<RefundEntity> = emptyList(),
-    val settings: AppSettings = AppSettings(),
-    val printerAvailable: Boolean = false,
-    val print: ActionState = ActionState(),
-    val email: ActionState = ActionState(),
-    val rechecking: Boolean = false,
-    val recheckMessage: String? = null,
-    val captureMode: CaptureMode = CaptureMode.API,
+    val transaction: TransactionActionsState = TransactionActionsState(),
     val retry: ActionState = ActionState(),
 ) {
-    /** Whether a refund can be offered, as [RefundablePayment.check] decides. */
-    val canRefund: Boolean get() = record?.let(RefundablePayment::check) is Refundability.Refundable
+    /** The sale and its lines, or null until loaded. */
+    val record: SaleWithLines? get() = payment?.record
 
-    /** Whether the payment can be cancelled (it only holds its amount), as [RefundablePayment.canCancel] decides. */
-    val canCancel: Boolean get() = record?.let(RefundablePayment::canCancel) == true
+    /** What can be done with the payment now (refund, cancel, enter the tip, capture, adjust, retry the capture). */
+    val actions: Set<PaymentAction> get() = payment?.actions.orEmpty()
 
-    /** Whether the tip written on the receipt can be entered ([PaymentHold.canEnterTip]). */
-    val canEnterTip: Boolean get() = record?.sale?.let(PaymentHold::canEnterTip) == true
-
-    /** Whether the pre-authorisation can be captured ([PaymentHold.canCapture]). */
-    val canCapture: Boolean get() = record?.sale?.let(PaymentHold::canCapture) == true
-
-    /** Whether what the pre-authorisation holds can be adjusted, which needs the Checkout API. */
-    val canAdjust: Boolean get() = canCapture && captureMode == CaptureMode.API
-
-    /** Whether the capture can be sent again as it was ([PaymentHold.canRetryCapture]). */
-    val canRetryCapture: Boolean get() = record?.sale?.let(PaymentHold::canRetryCapture) == true
+    /** Whether captures go through the Checkout API or are made in the Customer Area; the API until loaded. */
+    val captureMode: CaptureMode get() = payment?.captureMode ?: CaptureMode.API
 }
 
 /**
@@ -327,77 +297,47 @@ class SaleOperations(
 )
 
 /**
- * One sale (or pre-authorisation) from history: its receipt, refunds, reprinting and emailing, re-checking an unknown
- * outcome, cancelling a payment that only holds its amount, and sending a capture again.
+ * One sale (or pre-authorisation) from history: its receipt, refunds, reprinting and emailing and re-checking an
+ * unknown outcome ([transaction]), cancelling a payment that only holds its amount, and sending a capture again.
  *
  * @param saleId The sale shown.
- * @param sales Where it is stored.
+ * @param payments Follows it, with what can be done with it.
+ * @param refunds Where its refunds and cancellations are stored.
  * @param receipts Prints and emails its receipt.
  * @param operations Re-checks, cancels and captures.
- * @param settings The current settings.
- * @param terminal Whether printing is offered, and how captures are made.
- * @param messages Localised outcome messages.
+ * @param settings The current settings, for the reference prefix of a cancellation.
  * @param clock Stamps the merchant reference of a cancellation.
  * @param zone The time zone of that reference.
  */
 class SaleDetailViewModel(
     private val saleId: String,
-    sales: SaleRepository,
-    private val receipts: ReceiptDelivery,
+    payments: StoredPayments,
+    refunds: RefundRepository,
+    receipts: ReceiptDelivery,
     private val operations: SaleOperations,
-    settings: StateFlow<AppSettings>,
-    terminal: StateFlow<TerminalState>,
-    private val messages: ResultMessages,
+    private val settings: StateFlow<AppSettings>,
     private val clock: Clock = Clock.systemDefaultZone(),
     private val zone: () -> ZoneId = { ZoneId.systemDefault() },
 ) : ViewModel() {
     private val local = MutableStateFlow(SaleDetailUiState())
 
-    /** The screen state, updated whenever the sale, its refunds, settings, printer or an action changes. */
+    /** The receipt, reprinting and emailing it, and re-checking an unknown outcome. */
+    val transaction = TransactionActions.forSale(viewModelScope, saleId, receipts, operations.payments, fresh = false)
+
+    /** The screen state, updated whenever the sale, its refunds, the capture mode or an action changes. */
     val state: StateFlow<SaleDetailUiState> =
-        combine(sales.observe(saleId), sales.refundsForSale(saleId), settings, terminal, local) {
-            record,
-            refunds,
-            appSettings,
-            status,
-            ui,
-            ->
-            ui.copy(
-                record = record,
-                refunds = refunds,
-                settings = appSettings,
-                printerAvailable = status.printerAvailable,
-                captureMode = status.captureMode,
-            )
+        combine(payments.observe(saleId), refunds.forSale(saleId), local, transaction.state) { payment, refunds, ui, actions ->
+            ui.copy(payment = payment, refunds = refunds, transaction = actions)
         }.stateIn(viewModelScope, SharingStarted.Eagerly, SaleDetailUiState())
-
-    /** Reprints [copy] of the receipt. */
-    fun print(copy: ReceiptCopy = ReceiptCopy.CUSTOMER) {
-        local.update { it.copy(print = ActionState(running = true)) }
-        viewModelScope.launch {
-            val result = receipts.printSale(saleId, copy).result.toState(messages.printed)
-            local.update { it.copy(print = result) }
-        }
-    }
-
-    /** Emails the receipt to [to]. */
-    fun email(to: String) {
-        local.update { it.copy(email = ActionState(running = true)) }
-        viewModelScope.launch {
-            val result = receipts.emailSale(saleId, to).toState(messages.emailed.format(Locale.getDefault(), to))
-            local.update { it.copy(email = result) }
-        }
-    }
 
     /**
      * Starts cancelling the pre-authorisation (a full reversal, see [RefundablePayment.cancellation]) and returns the
      * cancellation's ID, to follow it like a refund; null when it cannot be cancelled or a refund is already running.
      */
     fun cancel(): String? {
-        val current = state.value
         val request =
-            current.record?.let {
-                RefundablePayment.cancellation(it, current.settings.payment.referencePrefix, clock.instant(), zone())
+            state.value.record?.let {
+                RefundablePayment.cancellation(it, settings.value.payment.referencePrefix, clock.instant(), zone())
             } ?: return null
         return runCatching { operations.refunds.start(request) }.getOrNull()
     }
@@ -414,19 +354,10 @@ class SaleDetailViewModel(
                         if (failure == null) {
                             ActionState(done = true)
                         } else {
-                            ActionState(message = messages.notCaptured.format(Locale.getDefault(), failure), isError = true)
+                            ActionState(outcome = ActionOutcome.NotCaptured(failure), isError = true)
                         },
                 )
             }
-        }
-    }
-
-    /** Asks the terminal for the transaction status of a sale whose outcome is unknown. */
-    fun recheck() {
-        local.update { it.copy(rechecking = true, recheckMessage = null) }
-        viewModelScope.launch {
-            val settled = operations.payments.recheck(saleId)
-            local.update { it.copy(rechecking = false, recheckMessage = if (settled) null else messages.stillUnknown) }
         }
     }
 }

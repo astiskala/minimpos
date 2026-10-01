@@ -5,10 +5,10 @@ import android.os.Build
 import android.provider.Settings
 import io.minimpos.app.data.security.Secret
 import io.minimpos.app.data.security.SecretStore
-import io.minimpos.app.data.settings.SettingsRepository
 import io.minimpos.app.data.settings.SimulatorSettings
 import io.minimpos.app.data.settings.TerminalMode
 import io.minimpos.app.data.settings.TerminalSettings
+import io.minimpos.terminal.checkout.PaymentModifications
 import io.minimpos.terminal.client.DiagnosisResult
 import io.minimpos.terminal.client.PaymentParams
 import io.minimpos.terminal.client.PosApplication
@@ -29,7 +29,6 @@ import io.minimpos.terminal.transport.TerminalTransport
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlin.time.Duration.Companion.seconds
 
@@ -90,7 +89,7 @@ sealed interface TerminalConnection {
     /**
      * Something must be set up first (e.g. the shared key), so the terminal was not contacted.
      *
-     * @property message What to enter, as [TerminalGateway.setupProblem] words it.
+     * @property message What to enter, as [TerminalSetup.problem] words it.
      */
     data class NotSetUp(
         val message: String,
@@ -123,19 +122,19 @@ class VirtualPrinter {
 }
 
 /**
- * The payment terminal as the rest of the app sees it: where payments go (this terminal, one on the network, or the
- * built-in simulator), and the Terminal API operations, run with the stored settings at the time of each call.
+ * The payment terminal as the rest of the app sees it: the Terminal API operations, sent where the [TerminalSetup] at
+ * the time of each call says (this terminal, one on the network, or the built-in simulator).
  *
- * Missing setup (no POIID, IP address or shared key) never throws: every operation reports it through its outcome,
- * which then says what to enter. The transport to a real terminal is reused while its host and shared key stay the
- * same. What terminals report about themselves (their certificate's environment and whether they have a printer) is
- * remembered in [detectedEnvironment] and [printers].
+ * Missing setup (no POIID, IP address or shared key, [TerminalSetup.problem]) never throws: every operation reports it
+ * through its outcome, which then says what to enter. The transport to a real terminal is reused while its host and
+ * shared key stay the same. What terminals report about themselves (their certificate's environment and whether they
+ * have a printer) is remembered in [detectedEnvironment] and [printers].
  */
 class TerminalGateway(
-    private val settings: SettingsRepository,
+    /** Where payments go now, and what is missing. */
+    private val setups: TerminalSetupSource,
+    /** Holds the shared key passphrase. */
     private val secrets: SecretStore,
-    /** The device the app runs on, which decides where [TerminalMode.AUTO] sends payments. */
-    val device: DeviceInfo,
     virtualPrinter: VirtualPrinter,
     /** Identifies Mini mPOS to Adyen on every payment and refund. */
     private val application: PosApplication,
@@ -145,6 +144,12 @@ class TerminalGateway(
     @Volatile private var simulatorConfig = SimulatorConfig()
     private val simulator = TerminalSimulator(config = { simulatorConfig }, onPrint = virtualPrinter::print)
     private var cachedLocal: Pair<LocalKey, TerminalTransport>? = null
+
+    /**
+     * Adyen's Checkout API as the simulator's payments need it, answering from what the simulator knows about them (see
+     * [TerminalSimulator.modifications]); [AdyenApi] uses it while payments go to the simulator.
+     */
+    val simulatedModifications: PaymentModifications get() = simulator.modifications
 
     private val _detectedEnvironment = MutableStateFlow<TerminalEnvironment?>(null)
 
@@ -159,37 +164,6 @@ class TerminalGateway(
      * one is fitted, and a print request can be refused because there is none. Terminals not asked yet are absent.
      */
     val printers: StateFlow<Map<String, Boolean>> = _printers.asStateFlow()
-
-    /** Where payments go in [TerminalMode.AUTO]: this terminal when running on one, the simulator elsewhere. */
-    val automaticMode: TerminalMode get() = if (device.isAdyenTerminal) TerminalMode.TERMINAL else TerminalMode.SIMULATOR
-
-    /** Where payments go with [terminal]: its mode, with [TerminalMode.AUTO] resolved to [automaticMode]. */
-    fun effectiveMode(terminal: TerminalSettings): TerminalMode = if (terminal.mode == TerminalMode.AUTO) automaticMode else terminal.mode
-
-    /** On a terminal, its own POIID; elsewhere the configured one (or the simulator's). */
-    fun poiId(terminal: TerminalSettings): String? =
-        device.detectedPoiId
-            ?: terminal.poiIdOverride.trim().ifEmpty { null }
-            ?: SIMULATOR_POI_ID.takeIf { effectiveMode(terminal) == TerminalMode.SIMULATOR }
-
-    /**
-     * What must still be entered before requests can be sent with [terminal], given whether a shared key passphrase
-     * is saved ([passphraseSaved]); null when nothing is missing. Every operation applies the same rule, and also fails
-     * when a saved passphrase can no longer be decrypted. The simulator needs nothing.
-     */
-    fun setupProblem(
-        terminal: TerminalSettings,
-        passphraseSaved: Boolean,
-    ): String? =
-        when {
-            poiId(terminal) == null -> "Enter the terminal ID (POIID) in Terminal settings"
-            effectiveMode(terminal) == TerminalMode.SIMULATOR -> null
-            !device.isAdyenTerminal && terminal.host.isBlank() -> "Enter the terminal's IP address in Terminal settings"
-            terminal.keyIdentifier.isBlank() -> "Enter the shared key identifier in Terminal settings"
-            !passphraseSaved -> "Enter the shared key passphrase in Terminal settings"
-            terminal.keyVersion < 1 -> "Enter the shared key version in Terminal settings"
-            else -> null
-        }
 
     /**
      * Takes a card payment, see [TerminalClient.pay]. [onSending] is called with the terminal's POIID right before the
@@ -315,18 +289,17 @@ class TerminalGateway(
 
     /** A client for where payments go now with the stored settings, or what must be entered first. */
     private suspend fun target(): Target {
-        val appSettings = settings.current()
-        val terminal = appSettings.terminal
-        val problem = setupProblem(terminal, passphraseSaved = Secret.TERMINAL_PASSPHRASE in secrets.configured.first())
+        val setup = setups.current()
+        val terminal = setup.settings.terminal
         val transport =
             when {
-                problem != null -> null
-                effectiveMode(terminal) == TerminalMode.SIMULATOR -> simulator(appSettings.simulator)
-                else -> localTransport(terminal)
+                setup.problem != null -> null
+                setup.mode == TerminalMode.SIMULATOR -> simulator(setup.settings.simulator)
+                else -> localTransport(checkNotNull(setup.host), terminal)
             }
         return when {
-            problem != null -> {
-                Target.NotSetUp(problem)
+            setup.problem != null -> {
+                Target.NotSetUp(setup.problem)
             }
 
             transport == null -> {
@@ -337,12 +310,10 @@ class TerminalGateway(
                 Target.Ready(
                     TerminalClient(
                         transport = transport,
-                        identity = TerminalIdentity(terminal.saleId.trim().ifEmpty { DEFAULT_SALE_ID }, checkNotNull(poiId(terminal))),
+                        identity = TerminalIdentity(terminal.saleId.trim().ifEmpty { DEFAULT_SALE_ID }, checkNotNull(setup.poiId)),
                         application = application,
-                        transactionTimeout =
-                            terminal.timeoutSeconds
-                                .coerceIn(TerminalSettings.MIN_TIMEOUT_SECONDS, TerminalSettings.MAX_TIMEOUT_SECONDS)
-                                .seconds,
+                        // Stored settings are normalized, so the timeout is within its range.
+                        transactionTimeout = terminal.timeoutSeconds.seconds,
                     ),
                 )
             }
@@ -355,10 +326,12 @@ class TerminalGateway(
         return simulator
     }
 
-    /** The transport to the configured terminal; null when the saved passphrase cannot be decrypted. */
-    private suspend fun localTransport(terminal: TerminalSettings): TerminalTransport? {
+    /** The transport to the terminal at [host] with [terminal]'s shared key; null when the saved passphrase cannot be decrypted. */
+    private suspend fun localTransport(
+        host: String,
+        terminal: TerminalSettings,
+    ): TerminalTransport? {
         val passphrase = secrets.get(Secret.TERMINAL_PASSPHRASE) ?: return null
-        val host = if (device.isAdyenTerminal) LOCALHOST else terminal.host.trim()
         val key = LocalKey(host, TerminalKey(terminal.keyIdentifier.trim(), passphrase, terminal.keyVersion))
         return cachedLocal?.takeIf { it.first == key }?.second ?: connect(key.host, key.key, tls).also { cachedLocal = key to it }
     }
@@ -378,15 +351,9 @@ class TerminalGateway(
         val key: TerminalKey,
     )
 
-    /** Fixed identities and addresses. */
+    /** Fixed identities. */
     companion object {
-        /** The POIID the simulator reports, in the same `<model>-<serial>` form as a real one. */
-        const val SIMULATOR_POI_ID = "SIMULATOR-000000001"
-
         /** The nexo SaleID used when none is configured. */
         const val DEFAULT_SALE_ID = "MiniMPOS"
-
-        /** Where the Terminal API listens when the app runs on the terminal itself. */
-        const val LOCALHOST = "localhost"
     }
 }

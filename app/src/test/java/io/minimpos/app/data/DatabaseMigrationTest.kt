@@ -190,6 +190,48 @@ class DatabaseMigrationTest {
     }
 
     @Test
+    fun `version 7 cancellations become cancelled holds that refunded nothing`() {
+        val name = "migration-v7.db"
+        createDatabase(name, 7) {
+            listOf("c1", "c2", "s1").forEach { id ->
+                execSQL(
+                    "INSERT INTO sales (id, createdAt, currency, taxMode, netMinor, taxMinor, totalMinor, status, merchantReference, " +
+                        "tokenizationRequested, signatureRequired, refundedMinor, kind, tipOnReceipt) VALUES ('$id', 1, 'AUD', " +
+                        "'INCLUSIVE', 91, 9, 100, 'APPROVED', 'MP-$id', 0, 0, 100, " +
+                        "'${if (id == "s1") "SALE" else "PRE_AUTHORISATION"}', 0)",
+                )
+                execSQL(
+                    "INSERT INTO sale_lines (saleId, position, productId, name, sku, unitPriceMinor, quantity, taxName, " +
+                        "taxRateMilliPercent, netMinor, taxMinor, grossMinor, refundedQuantity) VALUES ('$id', 0, NULL, 'A', NULL, " +
+                        "100, 1, 'GST', 10000, 91, 9, 100, 1)",
+                )
+            }
+            // c1 was cancelled; c2's cancellation failed; s1 was refunded in full.
+            val refunds =
+                listOf(Triple("r1", "c1", "1, 'REQUESTED'"), Triple("r2", "c2", "1, 'FAILED'"), Triple("r3", "s1", "0, 'REQUESTED'"))
+            refunds.forEach { (refund, sale, outcome) ->
+                execSQL(
+                    "INSERT INTO refunds (id, saleId, createdAt, merchantReference, originalTransactionId, originalTimestamp, " +
+                        "currency, amountMinor, full, cancellation, status) VALUES ('$refund', '$sale', 2, 'R', 'T.P', " +
+                        "'2026-09-30T01:02:03.456Z', 'AUD', 100, 1, $outcome)",
+                )
+            }
+        }
+        migrated(name) { db ->
+            val sales = listOf("c1", "c2", "s1").associateWith { db.saleDao().sale(it)!! }
+            assertThat(sales.mapValues { it.value.sale.holdCancelled }).containsExactly("c1", true, "c2", false, "s1", false)
+            assertThat(sales.mapValues { it.value.sale.refundedMinor }).containsExactly("c1", 0L, "c2", 100L, "s1", 100L)
+            assertThat(
+                sales.mapValues {
+                    it.value.lines
+                        .single()
+                        .refundedQuantity
+                },
+            ).containsExactly("c1", 0, "c2", 1, "s1", 1)
+        }
+    }
+
+    @Test
     fun `version 3 untaxed products use an existing zero rate`() {
         val name = "migration-v3-existing.db"
         createDatabase(name, 3) {

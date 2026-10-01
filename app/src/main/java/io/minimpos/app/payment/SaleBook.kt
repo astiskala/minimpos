@@ -4,18 +4,15 @@ import io.minimpos.app.data.db.SaleEntity
 import io.minimpos.app.data.db.SaleKind
 import io.minimpos.app.data.db.SaleLineEntity
 import io.minimpos.app.data.db.SaleStatus
-import io.minimpos.app.data.repo.ReceiptLinesJson
 import io.minimpos.app.data.repo.SaleRepository
 import io.minimpos.core.cart.CartTotals
 import io.minimpos.core.money.CurrencySpec
-import io.minimpos.core.receipt.CardReceiptLine
 import io.minimpos.terminal.client.PaymentParams
 import io.minimpos.terminal.client.RecurringModel
 import io.minimpos.terminal.client.TransactionKind
-import io.minimpos.terminal.parse.ReceiptField
 
 /**
- * Everything checkout collected for one payment.
+ * Everything checkout collected for one payment, as [Checkout.paymentStart] makes it.
  *
  * @property totals The priced cart; its gross total is the amount charged.
  * @property currency The currency charged.
@@ -27,6 +24,7 @@ import io.minimpos.terminal.parse.ReceiptField
  *   manual capture).
  * @property tipOnReceipt For a sale: taken for tipping on the receipt, so it is pre-authorised like a pre-authorisation
  *   and captured with the tip once that is entered (see [Captures]).
+ * @throws IllegalArgumentException if a pre-authorisation is taken for tipping on the receipt.
  */
 data class PaymentStart(
     val totals: CartTotals,
@@ -37,7 +35,17 @@ data class PaymentStart(
     val tokenization: TokenizationRequest?,
     val kind: SaleKind = SaleKind.SALE,
     val tipOnReceipt: Boolean = false,
-)
+) {
+    init {
+        require(!tipOnReceipt || kind == SaleKind.SALE) { "Only a sale can be taken for tipping on the receipt" }
+    }
+
+    /**
+     * Whether the payment only holds its amount until it is captured (`authorisationType=PreAuth` with manual capture):
+     * a pre-authorisation, or a sale taken for tipping on the receipt, which Adyen's flow captures with the tip.
+     */
+    val manualCapture: Boolean get() = kind == SaleKind.PRE_AUTHORISATION || tipOnReceipt
+}
 
 /**
  * Saving the shopper's card with the payment (Adyen tokenization).
@@ -88,7 +96,7 @@ class SaleBook(
                 tokenizationRequested = request.tokenization != null,
                 serviceId = serviceId,
                 kind = request.kind,
-                tipOnReceipt = request.tipOnReceipt && request.kind == SaleKind.SALE,
+                tipOnReceipt = request.tipOnReceipt,
             )
         sales.createPending(sale, lines(id, totals))
     }
@@ -108,7 +116,7 @@ class SaleBook(
                 metadata = listOfNotNull(request.customerReference?.let { "customerReference" to it }).toMap(),
                 requestCardAlias = tokenization != null,
                 // A tip on the receipt is captured later with the tip, as Adyen's tipping on the receipt flow asks.
-                preAuthorisation = request.kind == SaleKind.PRE_AUTHORISATION || request.tipOnReceipt,
+                preAuthorisation = request.manualCapture,
             ),
         )
     }
@@ -116,15 +124,12 @@ class SaleBook(
     override suspend fun sending(
         id: String,
         poiId: String,
-    ) {
-        sales.get(id)?.let { sales.update(it.sale.copy(poiId = poiId)) }
-    }
+    ) = sales.markSending(id, poiId)
 
     override suspend fun settle(
         id: String,
         settlement: Settlement,
     ) {
-        val sale = sales.get(id)?.sale ?: return
         val status =
             when (settlement.status) {
                 SettlementStatus.SUCCEEDED -> SaleStatus.APPROVED
@@ -133,32 +138,7 @@ class SaleBook(
                 SettlementStatus.FAILED -> SaleStatus.FAILED
                 SettlementStatus.UNKNOWN -> SaleStatus.UNKNOWN
             }
-        val details = settlement.details
-        sales.update(
-            if (details == null) {
-                sale.copy(status = status, message = settlement.message)
-            } else {
-                sale.copy(
-                    status = status,
-                    poiTransactionId = details.poiTransactionId,
-                    poiTimestamp = details.poiTimestamp,
-                    pspReference = details.pspReference,
-                    paymentBrand = details.paymentBrand,
-                    paymentMethodVariant = details.paymentMethodVariant,
-                    maskedPan = details.maskedPan,
-                    entryMode = details.entryMode,
-                    authCode = details.approvalCode,
-                    message = settlement.message,
-                    errorCondition = details.errorCondition,
-                    refusalReason = details.refusalReason,
-                    storedPaymentMethodId = details.tokenization?.storedPaymentMethodId,
-                    customerReceiptJson = ReceiptLinesJson.encode(details.customerReceipt.map(::toLine)),
-                    cashierReceiptJson = ReceiptLinesJson.encode(details.cashierReceipt.map(::toLine)),
-                    signatureRequired = details.signatureRequired,
-                    adjustAuthorisationData = details.additionalData[ADJUST_AUTHORISATION_DATA],
-                )
-            },
-        )
+        sales.settle(id, status, settlement.message, settlement.details)
     }
 
     override suspend fun unsettledServiceId(id: String): String? =
@@ -197,14 +177,5 @@ class SaleBook(
          * with the card receipt lines instead.
          */
         const val RECEIPT_HANDLER = "ReceiptHandler"
-
-        /**
-         * The `AdditionalResponse` key of the blob for synchronous authorisation adjustments, sent for pre-authorised
-         * payments when "return adjust authorisation data" is enabled in the Customer Area.
-         */
-        const val ADJUST_AUTHORISATION_DATA = "adjustAuthorisationData"
-
-        /** Converts a card receipt field from the terminal into the stored and printed form. */
-        fun toLine(field: ReceiptField) = CardReceiptLine(field.key, field.name, field.value, field.bold)
     }
 }

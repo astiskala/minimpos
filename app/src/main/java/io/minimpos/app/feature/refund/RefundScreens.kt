@@ -58,8 +58,8 @@ import io.minimpos.app.R
 import io.minimpos.app.data.db.RefundEntity
 import io.minimpos.app.data.db.RefundStatus
 import io.minimpos.app.data.db.SaleLineEntity
+import io.minimpos.app.feature.OutcomeMessage
 import io.minimpos.app.feature.sale.ReceiptToggle
-import io.minimpos.app.feature.sale.ResultMessages
 import io.minimpos.app.payment.TransactionState
 import io.minimpos.app.refund.RefundInvalidReason
 import io.minimpos.app.refund.Refundability
@@ -186,7 +186,7 @@ fun RefundScreen(
                 RefundChoice(
                     state = state,
                     original = load.payment,
-                    formatDateTime = container.receiptFactory::formatDateTime,
+                    formatDateTime = container::formatDateTime,
                     onSelectOption = vm::selectOption,
                     onQuantity = vm::setQuantity,
                     onAmount = vm::updateAmount,
@@ -496,13 +496,13 @@ fun RefundResultScreen(
                 verticalArrangement = Arrangement.spacedBy(dimens.spacing),
             ) {
                 RefundOutcome(refund, money)
-                RefundDetailsCard(refund, container.receiptFactory::formatDateTime)
-                if (state.canRecheck) RefundRecheck(state, vm::recheck)
+                RefundDetailsCard(refund, container::formatDateTime)
+                if (state.canRecheck) RefundRecheck(state, vm.transaction::recheck)
                 if (state.accepted) {
                     RefundReceiptActions(
                         state = state,
-                        receipt = if (showReceipt) container.receiptFactory.refund(refund, state.settings.receipt) else null,
-                        onPrint = vm::print,
+                        receipt = state.transaction.receipt?.takeIf { showReceipt },
+                        onPrint = vm.transaction::print,
                         onEmail = { askEmail = true },
                         onToggleReceipt = { showReceipt = !showReceipt },
                     )
@@ -514,7 +514,7 @@ fun RefundResultScreen(
         EmailReceiptDialog(
             onSend = {
                 askEmail = false
-                vm.email(it)
+                vm.transaction.email(it)
             },
             onDismiss = { askEmail = false },
         )
@@ -603,11 +603,13 @@ private fun ColumnScope.RefundRecheck(
     SecondaryButton(
         stringResource(R.string.result_check_again),
         onRecheck,
-        loading = state.rechecking,
+        loading = state.transaction.rechecking,
         icon = Icons.Default.Refresh,
         modifier = Modifier.testTag("refundRecheck"),
     )
-    state.recheckMessage?.let { Text(it, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth()) }
+    if (state.transaction.stillUnknown) {
+        Text(stringResource(R.string.refund_still_unknown), textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
+    }
 }
 
 /** Printing and emailing an accepted refund's receipt, and showing it ([receipt] is null while hidden). */
@@ -619,18 +621,23 @@ private fun ColumnScope.RefundReceiptActions(
     onEmail: () -> Unit,
     onToggleReceipt: () -> Unit,
 ) {
-    if (state.printerAvailable) {
+    if (state.transaction.canPrint) {
         SecondaryButton(
             stringResource(R.string.result_print),
             onPrint,
-            loading = state.print.running,
+            loading = state.transaction.print.running,
             icon = Icons.Default.Print,
         )
-        state.print.message?.let { ActionMessage(it, state.print.isError) }
+        OutcomeMessage(state.transaction.print)
     }
-    if (state.settings.email.isConfigured) {
-        SecondaryButton(stringResource(R.string.result_email), onEmail, loading = state.email.running, icon = Icons.Default.Email)
-        state.email.message?.let { ActionMessage(it, state.email.isError) }
+    if (state.transaction.canEmail) {
+        SecondaryButton(
+            stringResource(R.string.result_email),
+            onEmail,
+            loading = state.transaction.email.running,
+            icon = Icons.Default.Email,
+        )
+        OutcomeMessage(state.transaction.email)
     }
     ReceiptToggle(receipt, onToggleReceipt)
 }
@@ -641,19 +648,7 @@ private fun refundResultViewModel(
     fromHistory: Boolean,
 ): RefundResultViewModel {
     val container = LocalAppContainer.current
-    val printed = stringResource(R.string.result_printed)
-    val emailed = stringResource(R.string.result_emailed)
-    val stillUnknown = stringResource(R.string.refund_still_unknown)
     return viewModel(key = refundId) {
-        RefundResultViewModel(
-            refundId = refundId,
-            refunds = container.refundRecords,
-            receipts = container.receipts,
-            lifecycle = container.refunds,
-            settings = container.settingsState,
-            terminal = container.terminalStatus.state,
-            messages = ResultMessages(printed, emailed, stillUnknown = stillUnknown),
-            justMade = !fromHistory,
-        )
+        RefundResultViewModel(refundId, container.refundRecords, container.receipts, container.refunds, justMade = !fromHistory)
     }
 }

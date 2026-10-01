@@ -12,10 +12,10 @@ import io.minimpos.app.feature.history.HistoryViewModel
 import io.minimpos.app.feature.history.SaleDetailViewModel
 import io.minimpos.app.feature.history.SaleOperations
 import io.minimpos.app.feature.sale.CheckoutViewModel
-import io.minimpos.app.feature.sale.ResultMessages
 import io.minimpos.app.feature.sale.SaleResultViewModel
 import io.minimpos.app.feature.sale.SaleViewModel
 import io.minimpos.app.payment.TransactionState
+import io.minimpos.app.refund.PaymentAction
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.first
@@ -34,7 +34,6 @@ import org.robolectric.RobolectricTestRunner
 class PreAuthorisationViewModelsTest {
     private val env = TestEnvironment()
     private val container = env.container
-    private val messages = ResultMessages("Printed", "Sent to %s")
 
     @Before
     fun setUp() {
@@ -66,22 +65,21 @@ class PreAuthorisationViewModelsTest {
         }
 
     private fun preAuthViewModel() =
-        SaleViewModel(container.catalog, container.preAuthSession, container.settingsState, container::currency, SaleKind.PRE_AUTHORISATION)
+        SaleViewModel(container.catalog, container.session(SaleKind.PRE_AUTHORISATION), container.settingsState, container::currency)
 
     /** Takes a pre-authorisation of [deposit] (taxed at [tax]) for customer CUST-1 and returns its sale ID. */
     private fun preAuthorise(
         deposit: ProductEntity,
         tax: TaxRateEntity,
     ): String {
-        container.preAuthSession.addProduct(deposit, tax)
+        container.session(SaleKind.PRE_AUTHORISATION).addProduct(deposit, tax)
         val checkout =
             CheckoutViewModel(
-                container.preAuthSession,
+                container.session(SaleKind.PRE_AUTHORISATION),
                 container.payments,
                 container.settingsState,
                 container.terminalStatus.state,
                 container::currency,
-                SaleKind.PRE_AUTHORISATION,
             )
         checkout.update { it.copy(customerReference = "CUST-1") }
         await { checkout.state.first { it.form.customerReference == "CUST-1" && !it.totals.isEmpty } }
@@ -100,7 +98,7 @@ class PreAuthorisationViewModelsTest {
             container.catalog.saveProduct(ProductEntity(name = "Tea", priceMinor = 400, taxRateId = tax.id, categoryId = coffee))
             container.catalog.saveProduct(deposit.copy(categoryId = bookings))
         }
-        val sale = SaleViewModel(container.catalog, container.saleSession, container.settingsState, container::currency)
+        val sale = SaleViewModel(container.catalog, container.session(SaleKind.SALE), container.settingsState, container::currency)
         // A sale keeps categories that have no products yet, as before.
         assertThat(await { sale.state.first { it.categories.isNotEmpty() } }.categories.map { it.id }).containsExactly(coffee, empty)
         assertThat(await { preAuthViewModel().state.first { it.categories.isNotEmpty() } }.categories.map { it.id })
@@ -110,7 +108,7 @@ class PreAuthorisationViewModelsTest {
     @Test
     fun `the pre-authorise screen offers only pre-authorisation products, one at a time`() {
         val (_, _, deposit) = seed()
-        val sale = SaleViewModel(container.catalog, container.saleSession, container.settingsState, container::currency)
+        val sale = SaleViewModel(container.catalog, container.session(SaleKind.SALE), container.settingsState, container::currency)
         assertThat(await { sale.state.first { it.products.isNotEmpty() } }.products.map { it.name }).containsExactly("Latte")
         assertThat(await { sale.addBySku("CD") }).isNull()
 
@@ -122,20 +120,23 @@ class PreAuthorisationViewModelsTest {
         assertThat(await { preAuth.addBySku("CD") }).isEqualTo("Catering deposit")
         preAuth.add(deposit)
         assertThat(await { preAuth.state.first { it.cart.lines.isNotEmpty() } }.totals.itemCount).isEqualTo(1)
-        assertThat(container.saleSession.cart.value.lines).isEmpty()
+        assertThat(
+            container
+                .session(SaleKind.SALE)
+                .cart.value.lines,
+        ).isEmpty()
     }
 
     @Test
-    fun `checkout saves the card by default, and the result clears only the pre-authorisation`() {
+    fun `checkout saves the card by default, and approval clears only the pre-authorisation`() {
         val (tax, latte, deposit) = seed()
         val checkout =
             CheckoutViewModel(
-                container.preAuthSession,
+                container.session(SaleKind.PRE_AUTHORISATION),
                 container.payments,
                 container.settingsState,
                 container.terminalStatus.state,
                 container::currency,
-                SaleKind.PRE_AUTHORISATION,
             )
         checkout.update { it.copy(customerReference = "CUST-1") }
         val form = await { checkout.state.first { it.form.customerReference == "CUST-1" } }
@@ -143,26 +144,25 @@ class PreAuthorisationViewModelsTest {
         // Saving the card is on for pre-authorisations, whatever the default for sales.
         assertThat(form.tokenize).isTrue()
 
+        // A sale being rung up meanwhile is kept.
+        container.session(SaleKind.SALE).addProduct(latte, tax)
         val id = preAuthorise(deposit, tax)
         val record = await { container.sales.get(id)!! }
         assertThat(record.sale.kind).isEqualTo(SaleKind.PRE_AUTHORISATION)
         assertThat(record.sale.storedPaymentMethodId).isNotNull()
+        assertThat(
+            container
+                .session(SaleKind.PRE_AUTHORISATION)
+                .cart.value.lines,
+        ).isEmpty()
 
-        container.saleSession.addProduct(latte, tax)
-        val result =
-            SaleResultViewModel(
-                id,
-                container.sales,
-                container.receipts,
-                container.payments,
-                container::session,
-                container.settingsState,
-                container.terminalStatus.state,
-                messages,
-            )
+        val result = SaleResultViewModel(id, container.storedPayments, container.receipts, container.payments)
         assertThat(await { result.state.first { it.record != null } }.preAuthorisation).isTrue()
-        await { container.preAuthSession.cart.first { it.lines.isEmpty() } }
-        assertThat(container.saleSession.cart.value.lines).hasSize(1)
+        assertThat(
+            container
+                .session(SaleKind.SALE)
+                .cart.value.lines,
+        ).hasSize(1)
     }
 
     @Test
@@ -181,16 +181,15 @@ class PreAuthorisationViewModelsTest {
         val detail =
             SaleDetailViewModel(
                 id,
-                container.sales,
+                container.storedPayments,
+                container.refundRecords,
                 container.receipts,
                 SaleOperations(container.payments, container.refunds, container.captures),
                 container.settingsState,
-                container.terminalStatus.state,
-                messages,
             )
         val loaded = await { detail.state.first { it.record != null } }
-        assertThat(loaded.canRefund).isFalse()
-        assertThat(loaded.canCancel).isTrue()
+        assertThat(loaded.actions).doesNotContain(PaymentAction.REFUND)
+        assertThat(loaded.actions).contains(PaymentAction.CANCEL)
         val cancellationId = detail.cancel()!!
         val cancellation =
             await {
@@ -198,7 +197,9 @@ class PreAuthorisationViewModelsTest {
                 container.refundRecords.get(cancellationId)!!
             }
         assertThat(cancellation.cancellation).isTrue()
-        assertThat(await { detail.state.first { !it.canCancel } }.refunds.map { it.id }).containsExactly(cancellationId)
+        assertThat(
+            await { detail.state.first { PaymentAction.CANCEL !in it.actions } }.refunds.map { it.id },
+        ).containsExactly(cancellationId)
         assertThat(detail.cancel()).isNull()
 
         history.setFilter(HistoryFilter.PRE_AUTHS)

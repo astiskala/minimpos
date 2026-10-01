@@ -245,20 +245,21 @@ class RepositoriesTest {
 
             val partial = refund("s1", full = false, amount = 300, lines = listOf(RefundedLine(lineA.id, "A", 1, 300, 300)))
             refunds.create(partial.copy(status = RefundStatus.PENDING))
-            refunds.complete(partial)
+            refunds.settle(partial.id, RefundStatus.REQUESTED, null, null)
             val afterPartial = sales.get("s1")!!
             assertThat(afterPartial.sale.refundedMinor).isEqualTo(300)
             assertThat(afterPartial.sortedLines.map { it.refundedQuantity }).containsExactly(1, 0).inOrder()
-            assertThat(sales.refundsForSale("s1").first()).hasSize(1)
+            assertThat(refunds.forSale("s1").first()).hasSize(1)
 
             val failed = refund("s1", full = false, amount = 100, status = RefundStatus.FAILED, createdAt = 3_000)
-            refunds.create(failed)
-            refunds.complete(failed)
+            refunds.create(failed.copy(status = RefundStatus.PENDING))
+            refunds.settle(failed.id, RefundStatus.FAILED, "Declined", null)
+            assertThat(refunds.get(failed.id)!!.message).isEqualTo("Declined")
             assertThat(sales.get("s1")!!.sale.refundedMinor).isEqualTo(300)
 
             val full = refund("s1", full = true, amount = 1_100, createdAt = 4_000)
-            refunds.create(full)
-            refunds.complete(full)
+            refunds.create(full.copy(status = RefundStatus.PENDING))
+            refunds.settle(full.id, RefundStatus.REQUESTED, null, null)
             val afterFull = sales.get("s1")!!
             assertThat(afterFull.sale.refundedMinor).isEqualTo(1_100)
             assertThat(afterFull.sortedLines.map { it.refundedQuantity }).containsExactly(2, 1).inOrder()
@@ -266,14 +267,31 @@ class RepositoriesTest {
         }
 
     @Test
+    fun `an accepted cancellation marks the hold cancelled and refunds nothing`() =
+        await {
+            sales.createPending(sale("h1").copy(kind = SaleKind.PRE_AUTHORISATION), lines("h1"))
+            val cancellation = refund("h1", full = true, amount = 1_100, status = RefundStatus.PENDING).copy(cancellation = true)
+            refunds.create(cancellation)
+            refunds.settle(cancellation.id, RefundStatus.REQUESTED, null, null)
+            val cancelled = sales.get("h1")!!
+            assertThat(cancelled.sale.holdCancelled).isTrue()
+            assertThat(cancelled.sale.refundedMinor).isEqualTo(0)
+            assertThat(cancelled.sortedLines.map { it.refundedQuantity }).containsExactly(0, 0).inOrder()
+            assertThat(refunds.get(cancellation.id)!!.status).isEqualTo(RefundStatus.REQUESTED)
+            // A refund that no longer exists is not settled.
+            refunds.settle("gone", RefundStatus.REQUESTED, null, null)
+            assertThat(refunds.get("gone")).isNull()
+        }
+
+    @Test
     fun `foreign refunds do not touch local sales`() =
         await {
             val foreign = refund(null, full = false, amount = 50)
             refunds.create(foreign)
-            refunds.complete(foreign)
+            refunds.settle(foreign.id, RefundStatus.REQUESTED, null, null)
             val missing = refund("gone", full = false, amount = 50, createdAt = 9)
             refunds.create(missing)
-            refunds.complete(missing)
+            refunds.settle(missing.id, RefundStatus.REQUESTED, null, null)
             assertThat(refunds.observe(foreign.id).first()!!.amountMinor).isEqualTo(50)
         }
 

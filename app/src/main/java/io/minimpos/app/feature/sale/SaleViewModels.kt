@@ -9,38 +9,37 @@ import io.minimpos.app.data.db.SaleStatus
 import io.minimpos.app.data.db.SaleWithLines
 import io.minimpos.app.data.db.TaxRateEntity
 import io.minimpos.app.data.repo.CatalogRepository
-import io.minimpos.app.data.repo.SaleRepository
 import io.minimpos.app.data.settings.AppSettings
-import io.minimpos.app.data.settings.PaymentSettings
-import io.minimpos.app.data.settings.ShopperReferenceSource
+import io.minimpos.app.feature.ActionOutcome
+import io.minimpos.app.feature.ActionState
+import io.minimpos.app.feature.TransactionActions
+import io.minimpos.app.feature.TransactionActionsState
+import io.minimpos.app.payment.Checkout
 import io.minimpos.app.payment.CheckoutForm
 import io.minimpos.app.payment.PaymentStart
 import io.minimpos.app.payment.ReceiptDelivery
 import io.minimpos.app.payment.SaleSession
-import io.minimpos.app.payment.TokenizationRequest
 import io.minimpos.app.payment.TransactionLifecycle
-import io.minimpos.app.receipt.ActionResult
+import io.minimpos.app.refund.PaymentAction
+import io.minimpos.app.refund.StoredPayment
+import io.minimpos.app.refund.StoredPayments
 import io.minimpos.app.terminal.TerminalState
 import io.minimpos.core.cart.Cart
 import io.minimpos.core.cart.CartTotals
-import io.minimpos.core.ids.Ids
 import io.minimpos.core.money.CurrencySpec
-import io.minimpos.core.receipt.ReceiptCopy
-import io.minimpos.core.shopper.ShopperReferences
 import io.minimpos.core.tax.TaxMode
 import io.minimpos.terminal.client.RetryAdvice
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.time.Clock
 import java.time.ZoneId
-import java.util.Locale
 
 /**
  * What the sale screen shows: the product tiles and the cart.
@@ -98,22 +97,21 @@ data class SaleUiState(
 }
 
 /**
- * The sale screen, or the pre-authorise screen: browsing the products of [kind] and building the cart in the shared
- * [SaleSession] (for a pre-authorisation, a single-item one).
+ * The sale screen, or the pre-authorise screen: browsing the products of the [session]'s kind and building its cart
+ * (for a pre-authorisation, a single item).
  *
  * @param catalog Where the products are read.
- * @param session The cart being built.
+ * @param session The payment being rung up; its [SaleSession.kind] decides whose products are offered.
  * @param settings The current settings.
  * @param currency The currency prices are shown in with the given settings.
- * @param kind Whose products are offered: sale products, or pre-authorisation products.
  */
 class SaleViewModel(
     private val catalog: CatalogRepository,
     private val session: SaleSession,
     settings: StateFlow<AppSettings>,
     currency: (AppSettings) -> CurrencySpec,
-    private val kind: SaleKind = SaleKind.SALE,
 ) : ViewModel() {
+    private val kind = session.kind
     private val filters = MutableStateFlow("" to null as Long?)
 
     private val catalogue =
@@ -193,91 +191,14 @@ class SaleViewModel(
 }
 
 /**
- * What the checkout screen shows and whether the payment can start.
+ * The checkout screen: references, email, saving the card and tipping on the receipt, then starting the payment. What
+ * the entries make of the payment is the session's [Checkout].
  *
- * @property form What the operator entered.
- * @property payment The payment settings, which decide the fields shown.
- * @property totals The cart priced with the current tax settings; its gross total is charged.
- * @property currency The currency charged.
- * @property preAuthorisation Whether the amount is only held (a pre-authorisation) rather than charged.
- * @property printerAvailable Whether printing is offered, which tipping on the receipt needs.
- */
-data class CheckoutUiState(
-    val form: CheckoutForm = CheckoutForm(),
-    val payment: PaymentSettings = PaymentSettings(),
-    val totals: CartTotals = Cart().totals(TaxMode.INCLUSIVE),
-    val currency: CurrencySpec = CurrencySpec("EUR", 2),
-    val preAuthorisation: Boolean = false,
-    val printerAvailable: Boolean = false,
-) {
-    /** Whether the email field is shown. */
-    val showEmail: Boolean get() = payment.captureEmailBefore
-
-    /** Whether the customer reference field is shown (exactly when it is the shopper reference). */
-    val showCustomerReference: Boolean get() = payment.asksCustomerReference
-
-    /** False when an email was typed that is not a valid address; blank is valid. */
-    val emailValid: Boolean get() = form.email.isBlank() || ShopperReferences.isValidEmail(form.email)
-
-    /** False when the typed merchant reference is longer than [MAX_REFERENCE_LENGTH]. */
-    val referenceValid: Boolean get() = form.transactionReference.trim().length <= MAX_REFERENCE_LENGTH
-
-    /** The entered customer reference; null when none was entered or none is asked for (the email is the shopper reference). */
-    val customerReference: String? get() = form.customerReference.trim().takeIf { showCustomerReference && it.isNotEmpty() }
-
-    /** False when the entered customer reference is not a valid Adyen shopper reference; none entered is valid. */
-    val customerReferenceValid: Boolean get() = customerReference?.let(ShopperReferences::isValidReference) != false
-
-    /** The Adyen shopperReference tokenization would use, if the entered data allows one. */
-    val shopperReference: String?
-        get() =
-            when (payment.shopperReferenceSource) {
-                ShopperReferenceSource.CUSTOMER_REFERENCE -> {
-                    customerReference?.takeIf(ShopperReferences::isValidReference)
-                }
-
-                ShopperReferenceSource.EMAIL -> {
-                    form.email.trim().takeIf { ShopperReferences.isValidEmail(it) }?.let {
-                        ShopperReferences.fromEmail(it, payment.emailReferenceMode, payment.emailReferenceSalt)
-                    }
-                }
-            }
-
-    /** Whether the card can be saved, which needs a [shopperReference]; the switch is disabled otherwise. */
-    val canTokenize: Boolean get() = shopperReference != null
-
-    /**
-     * Whether the card will be saved: the operator's choice, else the settings default (the pre-authorisation one for
-     * [preAuthorisation]), when [canTokenize].
-     */
-    val tokenize: Boolean
-        get() = canTokenize && (form.tokenize ?: if (preAuthorisation) payment.preAuthTokenizeDefaultOn else payment.tokenizeDefaultOn)
-
-    /** Whether "Tip on the receipt" is offered: for a sale, while a printer is available to print the receipt. */
-    val canTipOnReceipt: Boolean get() = !preAuthorisation && printerAvailable
-
-    /** Whether the sale is taken for tipping on the receipt: the operator's choice, else the settings default. */
-    val tipOnReceipt: Boolean get() = canTipOnReceipt && (form.tipOnReceipt ?: payment.tipOnReceiptDefaultOn)
-
-    /** Whether "Pay" is enabled: something to charge and every entered field valid. */
-    val canPay: Boolean get() = !totals.isEmpty && totals.amounts.gross > 0 && emailValid && referenceValid && customerReferenceValid
-
-    /** Field limits. */
-    companion object {
-        /** Longest merchant reference accepted, in characters (Adyen's limit for `merchantReference`). */
-        const val MAX_REFERENCE_LENGTH = 80
-    }
-}
-
-/**
- * The checkout screen: references, email and saving the card, then starting the payment.
- *
- * @param session The cart (or pre-authorisation item) and the form.
+ * @param session The cart (or pre-authorisation item) and the form; its [SaleSession.kind] is the kind of payment.
  * @param payments Runs the payment.
  * @param settings The current settings.
  * @param terminal Whether printing is offered, which tipping on the receipt needs.
  * @param currency The currency charged with the given settings.
- * @param kind A sale, or a pre-authorisation that only holds the amount.
  * @param clock Stamps generated merchant references.
  * @param zone The time zone of generated merchant references.
  */
@@ -287,105 +208,54 @@ class CheckoutViewModel(
     settings: StateFlow<AppSettings>,
     terminal: StateFlow<TerminalState>,
     currency: (AppSettings) -> CurrencySpec,
-    private val kind: SaleKind = SaleKind.SALE,
     private val clock: Clock = Clock.systemDefaultZone(),
     private val zone: () -> ZoneId = { ZoneId.systemDefault() },
 ) : ViewModel() {
     /** The screen state, updated whenever the form, cart, settings or printer change. */
-    val state: StateFlow<CheckoutUiState> =
-        combine(session.checkout, session.cart, settings, terminal) { form, cart, appSettings, status ->
-            CheckoutUiState(
-                form,
-                appSettings.payment,
-                cart.totals(appSettings.payment.taxMode, appSettings.payment.chargeTax),
-                currency(appSettings),
-                kind == SaleKind.PRE_AUTHORISATION,
-                status.printerAvailable,
-            )
-        }.stateIn(viewModelScope, SharingStarted.Eagerly, CheckoutUiState(preAuthorisation = kind == SaleKind.PRE_AUTHORISATION))
+    val state: StateFlow<Checkout> =
+        session
+            .checkout(settings, terminal.map { it.printerAvailable }, currency)
+            .stateIn(viewModelScope, SharingStarted.Eagerly, Checkout(kind = session.kind))
 
     /** Updates the form (kept in the [SaleSession] so it survives going back to the cart). */
-    fun update(transform: (CheckoutForm) -> CheckoutForm) = session.updateCheckout(transform)
+    fun update(transform: (CheckoutForm) -> CheckoutForm) = session.updateForm(transform)
 
-    /**
-     * Starts the payment; returns false when the form is not ready. A blank merchant reference is generated with the
-     * configured prefix.
-     */
+    /** Starts the payment ([Checkout.paymentStart]); returns false when the form is not ready. */
     fun pay(): Boolean {
-        val current = state.value
-        if (!current.canPay) return false
-        val payment = current.payment
-        val reference =
-            current.form.transactionReference.trim().ifEmpty {
-                Ids.transactionReference(payment.referencePrefix, clock.instant(), zone())
-            }
-        val email =
-            current.form.email
-                .trim()
-                .takeIf { it.isNotEmpty() }
-        payments.start(
-            PaymentStart(
-                totals = current.totals,
-                currency = current.currency,
-                merchantReference = reference,
-                customerReference = current.customerReference,
-                shopperEmail = email,
-                tokenization =
-                    current.shopperReference?.takeIf { current.tokenize }?.let {
-                        TokenizationRequest(it, payment.recurringModel(), payment.sendShopperEmail)
-                    },
-                kind = kind,
-                tipOnReceipt = current.tipOnReceipt,
-            ),
-        )
+        val start = state.value.paymentStart(clock.instant(), zone()) ?: return false
+        payments.start(start)
         return true
     }
 }
 
 /**
- * The state of a button-triggered action such as printing, emailing or a connection test.
- *
- * @property running Whether it is in progress (the button shows a spinner).
- * @property message The outcome to show, or null.
- * @property isError Whether [message] is an error.
- * @property done Whether it finished successfully.
- */
-data class ActionState(
-    val running: Boolean = false,
-    val message: String? = null,
-    val isError: Boolean = false,
-    val done: Boolean = false,
-)
-
-/**
  * What the payment result screen shows.
  *
- * @property record The sale, or null until it has been loaded.
- * @property settings The current settings.
- * @property printerAvailable Whether printing is offered.
- * @property print The latest print.
- * @property merchantCopyPending Whether the customer copy has printed and the merchant copy is still to be printed.
- * @property email The latest email.
- * @property rechecking Whether a transaction status check is running.
+ * @property payment The sale with what can be done with it now, or null until it has been loaded.
+ * @property transaction The receipt, printing (with the merchant copy when it is due), emailing and re-checking the sale.
  * @property busyServiceId The terminal's own in-progress transaction, when the payment was declined as Busy.
  * @property abort The latest abort of that transaction.
  */
 data class SaleResultUiState(
-    val record: SaleWithLines? = null,
-    val settings: AppSettings = AppSettings(),
-    val printerAvailable: Boolean = false,
-    val print: ActionState = ActionState(),
-    val merchantCopyPending: Boolean = false,
-    val email: ActionState = ActionState(),
-    val rechecking: Boolean = false,
+    val payment: StoredPayment? = null,
+    val transaction: TransactionActionsState = TransactionActionsState(),
     val busyServiceId: String? = null,
     val abort: ActionState = ActionState(),
 ) {
+    /** The sale and its lines, or null until loaded. */
+    val record: SaleWithLines? get() = payment?.record
+
+    /** What can be done with the payment now, such as entering the tip written on the receipt. */
+    val actions: Set<PaymentAction> get() = payment?.actions.orEmpty()
+
     /** Whether the payment was approved. */
     val approved: Boolean get() = record?.sale?.status == SaleStatus.APPROVED
 
+    /** What kind of payment it was; a sale until the record is loaded. */
+    val kind: SaleKind get() = record?.sale?.kind ?: SaleKind.SALE
+
     /** Whether the payment was a pre-authorisation, which only held the amount. */
-    val preAuthorisation: Boolean get() = record?.sale?.kind == SaleKind.PRE_AUTHORISATION
+    val preAuthorisation: Boolean get() = kind == SaleKind.PRE_AUTHORISATION
 
     /** Adyen's retry guidance for a failed payment; null when the terminal gave no ErrorCondition. */
     val advice: RetryAdvice?
@@ -396,121 +266,46 @@ data class SaleResultUiState(
 }
 
 /**
- * Post-payment actions: printing (with the optional merchant copy) and emailing the receipt. When the sale is approved
- * its cart is cleared, and what [ReceiptDelivery] delivers automatically runs once (not again when the screen is
- * recreated).
+ * Post-payment actions: the receipt, printing it (with the optional merchant copy), emailing it and re-checking an
+ * unknown outcome ([transaction], which also delivers the automatic receipt once), and cancelling what a busy terminal
+ * is working on.
  *
  * @param saleId The sale (or pre-authorisation) that was paid.
- * @param sales Where it is stored.
+ * @param payments Follows it, with what can be done with it.
  * @param receipts Prints and emails its receipt.
- * @param payments The payments' lifecycle, for status checks, busy terminals and leaving the result.
- * @param sessions The cart of each kind of payment; the one of the sale's kind is cleared once it is approved.
- * @param settings The current settings.
- * @param terminal Whether printing is offered.
- * @param messages Localised outcome messages.
+ * @param lifecycle The payments' lifecycle, for status checks, busy terminals and leaving the result.
  */
 class SaleResultViewModel(
     private val saleId: String,
-    sales: SaleRepository,
-    private val receipts: ReceiptDelivery,
-    private val payments: TransactionLifecycle<PaymentStart>,
-    private val sessions: (SaleKind) -> SaleSession,
-    settings: StateFlow<AppSettings>,
-    terminal: StateFlow<TerminalState>,
-    private val messages: ResultMessages,
+    payments: StoredPayments,
+    receipts: ReceiptDelivery,
+    private val lifecycle: TransactionLifecycle<PaymentStart>,
 ) : ViewModel() {
-    private val local = MutableStateFlow(SaleResultUiState(busyServiceId = payments.busyServiceId(saleId)))
+    private val local = MutableStateFlow(SaleResultUiState(busyServiceId = lifecycle.busyServiceId(saleId)))
 
-    /** The screen state, updated whenever the sale, settings, printer or an action changes. */
+    /** The receipt, printing (the customer copy, then the merchant copy when it is due), emailing and re-checking. */
+    val transaction = TransactionActions.forSale(viewModelScope, saleId, receipts, lifecycle, fresh = true)
+
+    /** The screen state, updated whenever the sale, the capture mode or an action changes. */
     val state: StateFlow<SaleResultUiState> =
-        combine(sales.observe(saleId), settings, terminal, local) { record, appSettings, status, ui ->
-            ui.copy(record = record, settings = appSettings, printerAvailable = status.printerAvailable)
+        combine(payments.observe(saleId), local, transaction.state) { payment, ui, actions ->
+            ui.copy(payment = payment, transaction = actions)
         }.stateIn(viewModelScope, SharingStarted.Eagerly, SaleResultUiState())
-
-    init {
-        viewModelScope.launch {
-            val record = sales.observe(saleId).first { it != null } ?: return@launch
-            if (record.sale.status == SaleStatus.APPROVED) sessions(record.sale.kind).clear()
-            val automatic = receipts.automationForSale(saleId)
-            if (automatic.print) print()
-            automatic.emailTo?.let(::email)
-        }
-    }
-
-    /** Prints the customer copy; the merchant copy then waits for the operator to tear off the first (see [printMerchantCopy]). */
-    fun print() {
-        local.update { it.copy(print = ActionState(running = true)) }
-        viewModelScope.launch {
-            val printed = receipts.printSale(saleId, ReceiptCopy.CUSTOMER)
-            local.update { it.copy(print = printed.result.toState(messages.printed), merchantCopyPending = printed.merchantCopyDue) }
-        }
-    }
-
-    /** Prints the merchant copy, with Adyen's cashier receipt lines. */
-    fun printMerchantCopy() {
-        local.update { it.copy(print = ActionState(running = true), merchantCopyPending = false) }
-        viewModelScope.launch {
-            val result = receipts.printSale(saleId, ReceiptCopy.MERCHANT).result.toState(messages.printed)
-            local.update { it.copy(print = result) }
-        }
-    }
-
-    /** Emails the receipt to [to]. */
-    fun email(to: String) {
-        local.update { it.copy(email = ActionState(running = true)) }
-        viewModelScope.launch {
-            val result = receipts.emailSale(saleId, to).toState(messages.emailed.format(Locale.getDefault(), to))
-            local.update { it.copy(email = result) }
-        }
-    }
-
-    /** Checks the transaction status of an unknown outcome again; the sale updates when it is settled. */
-    fun recheck() {
-        local.update { it.copy(rechecking = true) }
-        viewModelScope.launch {
-            payments.recheck(saleId)
-            local.update { it.copy(rechecking = false) }
-        }
-    }
 
     /** Cancels the transaction a busy terminal is working on, so the payment can be retried. */
     fun abortBusyTransaction() {
         local.update { it.copy(abort = ActionState(running = true)) }
         viewModelScope.launch {
-            val sent = payments.abortBusyTransaction(saleId)
+            val sent = lifecycle.abortBusyTransaction(saleId)
             local.update {
                 it.copy(
                     busyServiceId = null,
-                    abort = if (sent) ActionState(message = messages.abortSent, done = true) else ActionState(isError = true),
+                    abort = if (sent) ActionState(outcome = ActionOutcome.AbortSent, done = true) else ActionState(isError = true),
                 )
             }
         }
     }
 
     /** Leaves the result, so the next payment can start. */
-    fun finish() = payments.acknowledge()
+    fun finish() = lifecycle.acknowledge()
 }
-
-/**
- * Localised messages of the result screens.
- *
- * @property printed Shown after a successful print.
- * @property emailed Format with the address, shown after the receipt was sent.
- * @property abortSent Shown after the busy terminal's transaction was aborted.
- * @property stillUnknown Shown when a status check found the outcome still unknown.
- * @property notCaptured Format with the reason, shown when a capture sent again did not go through.
- */
-data class ResultMessages(
-    val printed: String,
-    val emailed: String,
-    val abortSent: String = "",
-    val stillUnknown: String = "",
-    val notCaptured: String = "",
-)
-
-/** This result as a finished [ActionState]: [successMessage] on success, else the failure's message as an error. */
-fun ActionResult.toState(successMessage: String) =
-    when (this) {
-        ActionResult.Success -> ActionState(message = successMessage, done = true)
-        is ActionResult.Failure -> ActionState(message = message, isError = true)
-    }

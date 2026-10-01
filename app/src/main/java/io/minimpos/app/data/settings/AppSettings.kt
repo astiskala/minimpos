@@ -13,7 +13,9 @@ import kotlinx.serialization.Serializable
  * key passphrase, SMTP password, PIN verifier) live in [io.minimpos.app.data.security.SecretStore].
  *
  * Every field has a default, so settings files from older versions keep loading: missing keys take the default and
- * unknown keys are ignored.
+ * unknown keys are ignored. Each section knows the limits of its numbers ([normalized]); [SettingsRepository] applies
+ * them to whatever it reads or writes, so a value out of range (from an old file, a transfer or a bug) never reaches the
+ * rest of the app, and the Settings fields offer the same ranges.
  *
  * @property terminal Where payments are sent and how the terminal is reached.
  * @property payment Currency, tax, references and what checkout asks for.
@@ -32,7 +34,18 @@ data class AppSettings(
     val security: SecuritySettings = SecuritySettings(),
     val simulator: SimulatorSettings = SimulatorSettings(),
     val history: HistorySettings = HistorySettings(),
-)
+) {
+    /** These settings with every number brought within its section's limits. */
+    fun normalized(): AppSettings =
+        copy(
+            terminal = terminal.normalized(),
+            receipt = receipt.normalized(),
+            email = email.normalized(),
+            security = security.normalized(),
+            simulator = simulator.normalized(),
+            history = history.normalized(),
+        )
+}
 
 /** Where payments go ("Payments go to" in Settings › Terminal). */
 enum class TerminalMode {
@@ -47,6 +60,18 @@ enum class TerminalMode {
 }
 
 /**
+ * How payments taken with manual capture (pre-authorisations, tips on the receipt) are captured and adjusted. Not stored:
+ * it follows from whether the Checkout API is set up in Settings › Terminal (see `io.minimpos.app.terminal.AdyenApi`).
+ */
+enum class CaptureMode {
+    /** By the app, through Adyen's Checkout API (simulated while payments go to the simulator). */
+    API,
+
+    /** By staff in the Customer Area: no Checkout API is set up, so the app only records what to capture. */
+    CUSTOMER_AREA,
+}
+
+/**
  * How the terminal is reached and identified. Only the shared key fields apply on a terminal: there the app always
  * uses `localhost` and the device's own POIID.
  *
@@ -57,9 +82,9 @@ enum class TerminalMode {
  * @property poiIdOverride Only used off-terminal; on a terminal its own POIID (`Settings.Global.DEVICE_NAME`) is used.
  * @property saleId The nexo SaleID the app identifies itself with in every request; blank uses "MiniMPOS".
  * @property keyIdentifier Identifier of the shared key configured for the terminal in the Customer Area.
- * @property keyVersion Version of that shared key, from 1.
- * @property timeoutSeconds How long to wait for a payment response before checking the transaction status, between
- *   [MIN_TIMEOUT_SECONDS] and [MAX_TIMEOUT_SECONDS]. Adyen advises 120 seconds for local integrations.
+ * @property keyVersion Version of that shared key, within [KEY_VERSIONS].
+ * @property timeoutSeconds How long to wait for a payment response before checking the transaction status, within
+ *   [TIMEOUT_SECONDS]. Adyen advises 120 seconds for local integrations.
  * @property merchantAccount The Adyen merchant account the terminal takes payments for, for captures and authorisation
  *   adjustments through the Checkout API (its API key is a secret). Blank, together with no API key, leaves captures to
  *   the Customer Area.
@@ -79,13 +104,31 @@ data class TerminalSettings(
     val merchantAccount: String = "",
     val liveUrlPrefix: String = "",
 ) {
-    /** The allowed range of [timeoutSeconds]. */
+    /** These settings with [keyVersion] and [timeoutSeconds] within their ranges. */
+    fun normalized(): TerminalSettings =
+        copy(keyVersion = keyVersion.coerceIn(KEY_VERSIONS), timeoutSeconds = timeoutSeconds.coerceIn(TIMEOUT_SECONDS))
+
+    /**
+     * These settings with the fields that belong to one device taken from [device]: where payments go ([mode]), the
+     * certificate's [environment], the [host] and the [poiIdOverride]. Everything else is shared by the terminals of
+     * a merchant account, so it travels when one terminal sets up another.
+     */
+    fun withDeviceFieldsOf(device: TerminalSettings): TerminalSettings =
+        copy(mode = device.mode, environment = device.environment, host = device.host, poiIdOverride = device.poiIdOverride)
+
+    /** The limits of the numbers. */
     companion object {
         /** The shortest payment timeout, and the default. */
         const val MIN_TIMEOUT_SECONDS = 120
 
         /** The longest payment timeout. */
         const val MAX_TIMEOUT_SECONDS = 600
+
+        /** The allowed range of [timeoutSeconds]. */
+        val TIMEOUT_SECONDS = MIN_TIMEOUT_SECONDS..MAX_TIMEOUT_SECONDS
+
+        /** The allowed range of [keyVersion]. */
+        val KEY_VERSIONS = 1..9_999
     }
 }
 
@@ -244,7 +287,8 @@ enum class MerchantCopyPolicy {
  * @property showTaxBreakdown Show the tax per rate.
  * @property showReferences Show the merchant and customer references.
  * @property showRefundQr Print the refund QR code on approved sales' customer copies.
- * @property charsPerLine Characters per printed line (32 fits a 58 mm roll); emails use it between 24 and 64.
+ * @property charsPerLine Characters per printed line (32 fits a 58 mm roll), within [CHARS_PER_LINE]; plain-text
+ *   emails use it too.
  */
 @Serializable
 data class ReceiptSettings(
@@ -262,7 +306,16 @@ data class ReceiptSettings(
     val showReferences: Boolean = true,
     val showRefundQr: Boolean = true,
     val charsPerLine: Int = 32,
-)
+) {
+    /** These settings with [charsPerLine] within [CHARS_PER_LINE]. */
+    fun normalized(): ReceiptSettings = copy(charsPerLine = charsPerLine.coerceIn(CHARS_PER_LINE))
+
+    /** The limits of the numbers. */
+    companion object {
+        /** The allowed range of [charsPerLine]. */
+        val CHARS_PER_LINE = 24..64
+    }
+}
 
 /** How the SMTP connection is secured. */
 enum class SmtpSecurity {
@@ -281,7 +334,7 @@ enum class SmtpSecurity {
  * [io.minimpos.app.data.security.SecretStore].
  *
  * @property host SMTP server name.
- * @property port SMTP server port; 587 for STARTTLS, usually 465 for [SmtpSecurity.SSL].
+ * @property port SMTP server port, within [PORTS]; 587 for STARTTLS, usually 465 for [SmtpSecurity.SSL].
  * @property security How the connection is secured.
  * @property username Login name; blank sends without authentication.
  * @property fromAddress Sender address.
@@ -303,24 +356,36 @@ data class EmailSettings(
 ) {
     /** Whether enough is set to try sending: a host and a sender address. */
     val isConfigured: Boolean get() = host.isNotBlank() && fromAddress.isNotBlank()
+
+    /** These settings with [port] within [PORTS]. */
+    fun normalized(): EmailSettings = copy(port = port.coerceIn(PORTS))
+
+    /** The limits of the numbers. */
+    companion object {
+        /** The allowed range of [port]. */
+        val PORTS = 1..65_535
+    }
 }
 
 /**
  * Admin area locking. The admin PIN itself is in [io.minimpos.app.data.security.PinManager].
  *
  * @property autoLockMinutes Minutes without activity after which the admin area locks again; 0 locks it only when the
- *   admin area is left.
+ *   admin area is left. Never negative.
  */
 @Serializable
 data class SecuritySettings(
     val autoLockMinutes: Int = 2,
-)
+) {
+    /** These settings with [autoLockMinutes] not negative. */
+    fun normalized(): SecuritySettings = copy(autoLockMinutes = autoLockMinutes.coerceAtLeast(0))
+}
 
 /**
  * How the built-in terminal simulator behaves, for trying the app without a terminal.
  *
  * @property outcome How every simulated payment ends.
- * @property delayMillis How long the simulated terminal takes to answer, in milliseconds.
+ * @property delayMillis How long the simulated terminal takes to answer, in milliseconds, within [DELAY_MILLIS].
  * @property hasPrinter Whether the simulated terminal has a printer (prints are shown on screen).
  * @property signatureRequired Whether simulated approvals ask for a signature, which affects the merchant copy.
  */
@@ -330,14 +395,27 @@ data class SimulatorSettings(
     val delayMillis: Long = 2_500,
     val hasPrinter: Boolean = true,
     val signatureRequired: Boolean = false,
-)
+) {
+    /** These settings with [delayMillis] within [DELAY_MILLIS]. */
+    fun normalized(): SimulatorSettings = copy(delayMillis = delayMillis.coerceIn(DELAY_MILLIS.first.toLong(), DELAY_MILLIS.last.toLong()))
+
+    /** The limits of the numbers. */
+    companion object {
+        /** The allowed range of [delayMillis], in milliseconds. */
+        val DELAY_MILLIS = 0..60_000
+    }
+}
 
 /**
  * How long transactions are kept.
  *
  * @property retentionDays Sales and refunds older than this many days are deleted at startup; 0 keeps them forever.
+ *   Never negative.
  */
 @Serializable
 data class HistorySettings(
     val retentionDays: Int = 90,
-)
+) {
+    /** These settings with [retentionDays] not negative. */
+    fun normalized(): HistorySettings = copy(retentionDays = retentionDays.coerceAtLeast(0))
+}

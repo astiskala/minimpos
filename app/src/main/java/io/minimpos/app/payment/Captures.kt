@@ -4,7 +4,9 @@ import io.minimpos.app.data.db.AdjustmentStatus
 import io.minimpos.app.data.db.CaptureStatus
 import io.minimpos.app.data.db.SaleEntity
 import io.minimpos.app.data.repo.SaleRepository
-import io.minimpos.app.refund.PaymentHold
+import io.minimpos.app.refund.PaymentAction
+import io.minimpos.app.refund.PaymentStanding
+import io.minimpos.app.refund.StoredPayment
 import io.minimpos.app.terminal.AdyenApi
 import io.minimpos.app.terminal.ApiTarget
 import io.minimpos.terminal.checkout.ModificationAmount
@@ -52,21 +54,22 @@ sealed interface CaptureResult {
  * it, captures a pre-authorisation (adjusting it first when more is captured than it holds) and adjusts what a
  * pre-authorisation holds. Through the Checkout API when it is set up ([AdyenApi]); otherwise the amount to capture is
  * only recorded ([CaptureStatus.MANUAL]) for staff to capture in the Customer Area. Which payments allow what is decided
- * by [PaymentHold].
+ * by their [StoredPayment.actions] with the target's [ApiTarget.captureMode], the same reading the screens use; anything
+ * else is [CaptureResult.NotAllowed].
  *
- * A tip above [PaymentHold.TIP_ADJUSTMENT_PERCENT] of the bill first raises the authorisation to bill plus tip; if the
- * issuer refuses, the tip is not saved, so a smaller one can be entered. Otherwise the tip is saved and the total
+ * A tip above [PaymentStanding.TIP_ADJUSTMENT_PERCENT] of the bill first raises the authorisation to bill plus tip; if
+ * the issuer refuses, the tip is not saved, so a smaller one can be entered. Otherwise the tip is saved and the total
  * captured (Adyen's overcapture). Every capture is stored as [CaptureStatus.PENDING] before it is sent and with an
  * idempotency key made from the sale and amount, so one whose outcome is unknown can be sent again
  * ([retryCapture]) without capturing twice. One operation runs at a time. A caller that must not lose an operation
  * when it is cancelled (a view model whose screen closes) runs it with `persisting`.
  *
- * @param sales Where the payments are stored and updated.
- * @param api Where captures and adjustments go.
+ * @param sales Where the payments are stored, and their capture recorded.
+ * @param target Where captures and adjustments go now: [AdyenApi.target] in the app, a fixed target in tests.
  */
 class Captures(
     private val sales: SaleRepository,
-    private val api: AdyenApi,
+    private val target: suspend () -> ApiTarget,
 ) {
     private val mutex = Mutex()
 
@@ -76,27 +79,17 @@ class Captures(
         tipMinor: Long,
     ): CaptureResult =
         mutex.withLock {
-            val sale = sales.get(saleId)?.sale?.takeIf { PaymentHold.canEnterTip(it) && tipMinor >= 0 }
-            val tipped = sale?.copy(tipMinor = tipMinor)
-            when {
-                sale == null || tipped == null -> {
-                    CaptureResult.NotAllowed
+            val target = target()
+            val sale =
+                allowing(saleId, PaymentAction.ENTER_TIP, target)?.takeIf { tipMinor >= 0 } ?: return@withLock CaptureResult.NotAllowed
+            val total = sale.totalMinor + tipMinor
+            if (PaymentStanding.tipNeedsAdjustment(sale.totalMinor, tipMinor) && total > sale.heldMinor) {
+                // The tip is only saved once the higher amount is authorised.
+                withApi(target, sale, total, tipMinor) { modifications ->
+                    adjusted(sale, total, modifications) { capture(it, total, modifications, tipMinor) }
                 }
-
-                PaymentHold.needsAdjustment(sale.totalMinor, tipMinor) && tipped.amountMinor > sale.heldMinor -> {
-                    // The tip is only saved once the higher amount is authorised.
-                    withApi(tipped, tipped.amountMinor) { modifications ->
-                        adjusted(
-                            sale,
-                            tipped.amountMinor,
-                            modifications,
-                        ) { capture(it.copy(tipMinor = tipMinor), tipped.amountMinor, modifications) }
-                    }
-                }
-
-                else -> {
-                    withApi(tipped, tipped.amountMinor) { capture(tipped, tipped.amountMinor, it) }
-                }
+            } else {
+                withApi(target, sale, total, tipMinor) { capture(sale, total, it, tipMinor) }
             }
         }
 
@@ -109,59 +102,67 @@ class Captures(
         amountMinor: Long,
     ): CaptureResult =
         mutex.withLock {
-            val sale = sales.get(saleId)?.sale?.takeIf { PaymentHold.canCapture(it) && amountMinor > 0 }
-            when {
-                sale == null -> {
-                    CaptureResult.NotAllowed
+            val target = target()
+            val sale =
+                allowing(saleId, PaymentAction.CAPTURE, target)?.takeIf { amountMinor > 0 } ?: return@withLock CaptureResult.NotAllowed
+            if (amountMinor > sale.heldMinor) {
+                withApi(target, sale, amountMinor) { modifications ->
+                    adjusted(sale, amountMinor, modifications) { capture(it, amountMinor, modifications) }
                 }
-
-                amountMinor > sale.heldMinor -> {
-                    withApi(sale, amountMinor) { modifications ->
-                        adjusted(sale, amountMinor, modifications) { capture(it, amountMinor, modifications) }
-                    }
-                }
-
-                else -> {
-                    withApi(sale, amountMinor) { capture(sale, amountMinor, it) }
-                }
+            } else {
+                withApi(target, sale, amountMinor) { capture(sale, amountMinor, it) }
             }
         }
 
     /**
      * Changes what the pre-authorisation [saleId] holds to [amountMinor] (the same amount extends the authorisation),
-     * without capturing. Needs the Checkout API: in the Customer Area mode it is [CaptureResult.NotAllowed].
+     * without capturing. Needs the Checkout API ([PaymentAction.ADJUST]): an adjustment cannot be left to the Customer
+     * Area, so in that mode it is [CaptureResult.NotAllowed].
      */
     suspend fun adjust(
         saleId: String,
         amountMinor: Long,
     ): CaptureResult =
         mutex.withLock {
-            val sale = sales.get(saleId)?.sale?.takeIf { PaymentHold.canCapture(it) && amountMinor > 0 }
-            when (val target = if (sale == null) null else api.target()) {
-                null, ApiTarget.CustomerArea -> CaptureResult.NotAllowed
-                is ApiTarget.NotSetUp -> fail(checkNotNull(sale), target.message)
-                is ApiTarget.Ready -> adjust(checkNotNull(sale), amountMinor, target.modifications)
-            }
+            val target = target()
+            val sale =
+                allowing(saleId, PaymentAction.ADJUST, target)?.takeIf { amountMinor > 0 } ?: return@withLock CaptureResult.NotAllowed
+            withApi(target, sale, amountMinor) { adjust(sale, amountMinor, it) }
         }
 
-    /** Sends the capture of [saleId] again as it was, when [PaymentHold.canRetryCapture] allows it. */
+    /** Sends the capture of [saleId] again as it was, when its [StoredPayment.actions] include [PaymentAction.RETRY_CAPTURE]. */
     suspend fun retryCapture(saleId: String): CaptureResult =
         mutex.withLock {
-            val sale = sales.get(saleId)?.sale?.takeIf(PaymentHold::canRetryCapture)
+            val target = target()
+            val sale = allowing(saleId, PaymentAction.RETRY_CAPTURE, target)
             val amount = sale?.capturedMinor
-            if (sale == null || amount == null) CaptureResult.NotAllowed else withApi(sale, amount) { capture(sale, amount, it) }
+            if (sale == null || amount == null) CaptureResult.NotAllowed else withApi(target, sale, amount) { capture(sale, amount, it) }
         }
 
+    /** The stored sale [saleId] when, with [target]'s capture mode, its [StoredPayment.actions] include [action]; else null. */
+    private suspend fun allowing(
+        saleId: String,
+        action: PaymentAction,
+        target: ApiTarget,
+    ): SaleEntity? =
+        sales
+            .get(saleId)
+            ?.let { StoredPayment(it, target.captureMode) }
+            ?.takeIf { action in it.actions }
+            ?.sale
+
     /**
-     * Runs [send] with the Checkout API when it is set up. Without one, [sale] is stored with the capture of [amount]
-     * left to the Customer Area; when it is only partly set up, nothing is sent.
+     * Runs [send] with the Checkout API when [target] is it. Without one, the capture of [amount] of [sale] (with
+     * [tipMinor], when a tip is entered) is left to the Customer Area; when it is only partly set up, nothing is sent.
      */
     private suspend fun withApi(
+        target: ApiTarget,
         sale: SaleEntity,
         amount: Long,
+        tipMinor: Long? = null,
         send: suspend (PaymentModifications) -> CaptureResult,
     ): CaptureResult =
-        when (val target = api.target()) {
+        when (target) {
             is ApiTarget.Ready -> {
                 send(target.modifications)
             }
@@ -171,7 +172,7 @@ class Captures(
             }
 
             ApiTarget.CustomerArea -> {
-                sales.update(sale.copy(capturedMinor = amount, captureStatus = CaptureStatus.MANUAL, modificationMessage = null))
+                sales.recordCapture(sale.id, CaptureStatus.MANUAL, amount, tipMinor)
                 CaptureResult.Recorded
             }
         }
@@ -204,46 +205,40 @@ class Captures(
                 sale.adjustAuthorisationData,
                 key,
             )
-        val (updated, outcome) =
-            when (result) {
-                is ModificationResult.Authorised -> {
-                    sale.copy(
-                        authorisedMinor = amount,
-                        adjustment = AdjustmentStatus.AUTHORISED,
-                        adjustAuthorisationData = result.adjustAuthorisationData,
-                        modificationMessage = null,
-                    ) to CaptureResult.Adjusted
-                }
-
-                is ModificationResult.Received -> {
-                    sale.copy(authorisedMinor = amount, adjustment = AdjustmentStatus.REQUESTED, modificationMessage = null) to
-                        CaptureResult.Adjusted
-                }
-
-                is ModificationResult.Refused -> {
-                    sale.copy(modificationMessage = result.reason) to CaptureResult.Refused(result.reason)
-                }
-
-                is ModificationResult.NotProcessed -> {
-                    sale.copy(modificationMessage = result.message) to CaptureResult.Failed(result.message)
-                }
-
-                is ModificationResult.Unknown -> {
-                    sale.copy(modificationMessage = result.message) to CaptureResult.Failed(result.message)
-                }
+        return when (result) {
+            is ModificationResult.Authorised -> {
+                sales.recordAdjustment(sale.id, amount, AdjustmentStatus.AUTHORISED, result.adjustAuthorisationData)
+                CaptureResult.Adjusted
             }
-        sales.update(updated)
-        return outcome
+
+            is ModificationResult.Received -> {
+                sales.recordAdjustment(sale.id, amount, AdjustmentStatus.REQUESTED)
+                CaptureResult.Adjusted
+            }
+
+            is ModificationResult.Refused -> {
+                sales.modificationFailed(sale.id, result.reason)
+                CaptureResult.Refused(result.reason)
+            }
+
+            is ModificationResult.NotProcessed -> {
+                fail(sale, result.message)
+            }
+
+            is ModificationResult.Unknown -> {
+                fail(sale, result.message)
+            }
+        }
     }
 
     private suspend fun capture(
         sale: SaleEntity,
         amount: Long,
         modifications: PaymentModifications,
+        tipMinor: Long? = null,
     ): CaptureResult {
         val psp = sale.pspReference ?: return CaptureResult.NotAllowed
-        val pending = sale.copy(capturedMinor = amount, captureStatus = CaptureStatus.PENDING, modificationMessage = null)
-        sales.update(pending)
+        sales.recordCapture(sale.id, CaptureStatus.PENDING, amount, tipMinor)
         val result =
             modifications.capture(
                 psp,
@@ -258,7 +253,7 @@ class Captures(
                 is ModificationResult.NotProcessed -> CaptureStatus.FAILED to CaptureResult.Failed(result.message)
                 is ModificationResult.Unknown -> CaptureStatus.UNKNOWN to CaptureResult.Failed(result.message)
             }
-        sales.update(pending.copy(captureStatus = status, modificationMessage = (outcome as? CaptureResult.Failed)?.message))
+        sales.recordCapture(sale.id, status, message = (outcome as? CaptureResult.Failed)?.message)
         return outcome
     }
 
@@ -266,7 +261,7 @@ class Captures(
         sale: SaleEntity,
         message: String,
     ): CaptureResult {
-        sales.get(sale.id)?.sale?.let { sales.update(it.copy(modificationMessage = message)) }
+        sales.modificationFailed(sale.id, message)
         return CaptureResult.Failed(message)
     }
 }

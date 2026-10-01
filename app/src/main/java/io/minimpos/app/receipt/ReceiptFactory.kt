@@ -7,8 +7,10 @@ import io.minimpos.app.data.db.SaleWithLines
 import io.minimpos.app.data.repo.ReceiptLinesJson
 import io.minimpos.app.data.settings.ReceiptSettings
 import io.minimpos.app.refund.RefundablePayment
+import io.minimpos.app.refund.standing
 import io.minimpos.core.cart.AppliedTax
 import io.minimpos.core.cart.TaxBreakdown
+import io.minimpos.core.codec.RefundQrPayload
 import io.minimpos.core.money.CurrencySpec
 import io.minimpos.core.money.MoneyFormatter
 import io.minimpos.core.receipt.ReceiptBranding
@@ -97,7 +99,8 @@ class ReceiptFactory(
                         else -> null
                     },
                 heldNow = sale.authorisedMinor?.takeIf { sale.kind == SaleKind.PRE_AUTHORISATION && it != sale.totalMinor },
-                captured = sale.capturedMinor?.takeIf { sale.kind == SaleKind.PRE_AUTHORISATION && sale.captured },
+                captured =
+                    sale.capturedMinor?.takeIf { sale.kind == SaleKind.PRE_AUTHORISATION && sale.standing.captured },
             )
         return builder(settings, currency).sale(receipt, copy)
     }
@@ -126,6 +129,35 @@ class ReceiptFactory(
         return builder(settings, CurrencySpec.of(refund.currency)).refund(receipt)
     }
 
+    /**
+     * A sample receipt with [settings] in [currency], as Settings previews and test-prints it: two items (one taxed at
+     * 10%, one tax-free), totals in tax [mode], a customer reference when [withCustomerReference] (checkout asks for
+     * one) and a refund QR code, dated now. The amounts are fixed, whatever the [mode].
+     */
+    fun sample(
+        settings: ReceiptSettings,
+        currency: CurrencySpec,
+        mode: TaxMode,
+        withCustomerReference: Boolean,
+    ): ReceiptDocument {
+        val receipt =
+            SaleReceipt(
+                reference = SAMPLE_REFERENCE,
+                customerReference = SAMPLE_CUSTOMER.takeIf { withCustomerReference },
+                dateTime = formatDateTime(System.currentTimeMillis()),
+                mode = mode,
+                items = SAMPLE_ITEMS,
+                amounts = SAMPLE_TOTALS,
+                breakdown = SAMPLE_BREAKDOWN,
+                approved = true,
+                cardReceipt = emptyList(),
+                refundQr =
+                    RefundQrPayload(SAMPLE_TRANSACTION_ID, SAMPLE_TIMESTAMP, SAMPLE_TOTALS.gross, currency.code, SAMPLE_REFERENCE).encode(),
+                cardSaved = false,
+            )
+        return builder(settings, currency).sale(receipt, ReceiptCopy.CUSTOMER)
+    }
+
     private fun builder(
         settings: ReceiptSettings,
         currency: CurrencySpec,
@@ -144,4 +176,18 @@ class ReceiptFactory(
         labels = labels,
         money = MoneyFormatter(currency, locale()),
     )
+
+    private companion object {
+        const val SAMPLE_REFERENCE = "MP-SAMPLE-0001"
+        const val SAMPLE_CUSTOMER = "CUST-001"
+        const val SAMPLE_TRANSACTION_ID = "SAMP001234567890123.SAMPLEPSP0000001"
+        val SAMPLE_TIMESTAMP: Instant = Instant.parse("2026-01-01T00:00:00Z")
+        val SAMPLE_ITEMS = listOf(ReceiptItem("Flat white", 2, 450, 900), ReceiptItem("Custom item", 1, 300, 300))
+        val SAMPLE_TOTALS = TaxAmounts(1_118, 82, 1_200)
+        val SAMPLE_BREAKDOWN =
+            listOf(
+                TaxBreakdown(AppliedTax("GST", 10_000), TaxAmounts(818, 82, 900)),
+                TaxBreakdown(AppliedTax("GST-free", 0), TaxAmounts(300, 0, 300)),
+            )
+    }
 }

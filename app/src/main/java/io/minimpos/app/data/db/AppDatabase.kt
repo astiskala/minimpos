@@ -15,8 +15,9 @@ import io.minimpos.app.R
  * 5 added `products.kind`, `sales.kind` (both [SaleKind.SALE] for existing rows) and `refunds.cancellation`; version 6
  * added tipping on the receipt and captures (`sales.tipOnReceipt`, `tipMinor`, `authorisedMinor`, `adjustment`,
  * `adjustAuthorisationData`, `capturedMinor`, `captureStatus`, `modificationMessage`); version 7 added
- * `sales.paymentMethodVariant`, which names the wallet of a card in one. Versions 1 to 3 and 4 to 7 are Room
- * auto-migrations. There is no destructive fallback, so every schema change needs a migration.
+ * `sales.paymentMethodVariant`, which names the wallet of a card in one; version 8 added `sales.holdCancelled`
+ * ([HoldCancelledMigration]). Versions 1 to 3 and 4 to 7 are Room auto-migrations. There is no destructive fallback,
+ * so every schema change needs a migration.
  */
 @Database(
     entities = [
@@ -27,7 +28,7 @@ import io.minimpos.app.R
         SaleLineEntity::class,
         RefundEntity::class,
     ],
-    version = 7,
+    version = 8,
     exportSchema = true,
     autoMigrations = [
         AutoMigration(from = 1, to = 2),
@@ -53,7 +54,8 @@ abstract class AppDatabase : RoomDatabase() {
         fun withMigrations(
             builder: RoomDatabase.Builder<AppDatabase>,
             context: Context,
-        ): RoomDatabase.Builder<AppDatabase> = builder.addMigrations(TaxRateRequiredMigration(context.getString(R.string.tax_default_zero)))
+        ): RoomDatabase.Builder<AppDatabase> =
+            builder.addMigrations(TaxRateRequiredMigration(context.getString(R.string.tax_default_zero)), HoldCancelledMigration)
 
         /** Opens (lazily, on first query) the on-disk database with all migrations. */
         fun create(context: Context): AppDatabase =

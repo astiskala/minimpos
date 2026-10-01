@@ -13,7 +13,6 @@ import io.minimpos.terminal.client.RefundParams
 import io.minimpos.terminal.client.TerminalClient
 import java.time.Instant
 import java.time.ZoneId
-import java.time.ZoneOffset
 
 /** Why a payment cannot be refunded. */
 enum class RefundInvalidReason {
@@ -31,13 +30,13 @@ enum class RefundInvalidReason {
 
     /**
      * It is a pre-authorisation that has not been captured yet, so nothing was charged; until it is captured the app
-     * can only cancel it, from history ([RefundablePayment.cancellation]).
+     * can only cancel it, from history ([PaymentAction.CANCEL]).
      */
     PRE_AUTHORISATION,
 
     /**
      * It was taken for tipping on the receipt and its tip has not been captured yet; until then it can only be
-     * cancelled, from history ([RefundablePayment.cancellation]).
+     * cancelled, from history ([PaymentAction.CANCEL]).
      */
     AWAITING_TIP,
 }
@@ -136,8 +135,9 @@ data class RefundStart(
  * A payment that can be refunded, from the local history or only from its receipt QR code, and the one set of rules
  * for refunding it: whether it can be refunded at all ([check], [find]), what is left, what a [RefundChoice] refunds,
  * the refund request itself ([request]) and the refund QR code printed on the sale's receipt ([qrCode]). It also holds
- * the rule for payments that only hold their amount (pre-authorisations and sales awaiting a tip, see [PaymentHold]),
- * which are not refunded until they are captured but can be cancelled ([cancellation], [canCancel]).
+ * the rule for payments that only hold their amount ([PaymentStanding.held]: pre-authorisations and sales awaiting a
+ * tip), which are not refunded until they are captured but can be cancelled ([cancellation]). Whether a stored sale
+ * offers either is [PaymentAction.REFUND] or [PaymentAction.CANCEL] in its [actions].
  *
  * A payment can be refunded when it was approved and the terminal gave a transaction ID and a time stamp that a
  * reversal can send back, and something is left to refund. Its amount is the sale's as it stands (with the tip, or what
@@ -234,19 +234,18 @@ class RefundablePayment private constructor(
     /** Deciding whether payments can be refunded, and pre-authorisations cancelled. */
     companion object {
         /**
-         * Whether the stored sale [record] can be refunded: a pre-authorisation or a tip-on-receipt sale only once it was
-         * captured ([io.minimpos.app.data.db.SaleEntity.captured]), up to the amount captured.
+         * Whether the stored sale [record] can be refunded: a pre-authorisation or a tip-on-receipt sale only once it
+         * is [PaymentStanding.captured], up to the amount captured.
          */
         fun check(record: SaleWithLines): Refundability {
             val sale = record.sale
+            val uncaptured = sale.manualCapture && !sale.standing.captured
             return when {
-                sale.kind == SaleKind.PRE_AUTHORISATION && !sale.captured -> {
-                    Refundability.NotRefundable(
-                        RefundInvalidReason.PRE_AUTHORISATION,
-                    )
+                uncaptured && sale.kind == SaleKind.PRE_AUTHORISATION -> {
+                    Refundability.NotRefundable(RefundInvalidReason.PRE_AUTHORISATION)
                 }
 
-                sale.tipOnReceipt && !sale.captured -> {
+                uncaptured -> {
                     Refundability.NotRefundable(RefundInvalidReason.AWAITING_TIP)
                 }
 
@@ -257,11 +256,10 @@ class RefundablePayment private constructor(
         }
 
         /**
-         * The cancellation of [record], a payment that still only holds its amount ([PaymentHold.isHeld]: a
-         * pre-authorisation or a sale awaiting its tip), or null when it cannot be cancelled: it is not held, has no
-         * transaction details from the terminal, or a cancellation was already accepted. It is a full reversal (no
-         * amount, so Adyen releases the whole hold, or refunds it in full if it was captured in the meantime), with a
-         * merchant reference generated from [now] in [zone] with "C" after [referencePrefix].
+         * The cancellation of [record], a payment that still only holds its amount ([PaymentStanding.held]: a
+         * pre-authorisation or a sale awaiting its tip), or null when it cannot be cancelled ([cancellable]). It is a
+         * full reversal (no amount, so Adyen releases the whole hold, or refunds it in full if it was captured in the
+         * meantime), with a merchant reference generated from [now] in [zone] with "C" after [referencePrefix].
          */
         fun cancellation(
             record: SaleWithLines,
@@ -269,8 +267,7 @@ class RefundablePayment private constructor(
             now: Instant,
             zone: ZoneId,
         ): RefundStart? {
-            if (!PaymentHold.isHeld(record.sale)) return null
-            val payment = eligible(record) ?: return null
+            val payment = eligible(record)?.takeIf { record.sale.standing.held } ?: return null
             val prefix = referencePrefix.trim().let { if (it.isEmpty()) "C" else "$it-C" }
             return RefundStart(
                 saleId = record.sale.id,
@@ -285,8 +282,11 @@ class RefundablePayment private constructor(
             )
         }
 
-        /** Whether [record] can be cancelled, as [cancellation] decides. */
-        fun canCancel(record: SaleWithLines): Boolean = cancellation(record, "", Instant.EPOCH, ZoneOffset.UTC) != null
+        /**
+         * Whether [record] can be cancelled: it is [PaymentStanding.held] (so not captured, and no cancellation was
+         * accepted yet) and the terminal gave the transaction details a reversal refers to.
+         */
+        internal fun cancellable(record: SaleWithLines): Boolean = record.sale.standing.held && eligible(record) != null
 
         /**
          * Whether the payment to refund can be refunded: the stored sale [record] when there is one (a scanned code of a

@@ -4,7 +4,9 @@ import com.adyen.Client
 import com.tngtech.archunit.core.domain.JavaClasses
 import com.tngtech.archunit.core.importer.ClassFileImporter
 import com.tngtech.archunit.core.importer.ImportOption
+import com.tngtech.archunit.lang.syntax.ArchRuleDefinition.classes
 import com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses
+import com.tngtech.archunit.library.Architectures.layeredArchitecture
 import com.tngtech.archunit.library.GeneralCodingRules
 import com.tngtech.archunit.library.dependencies.SlicesRuleDefinition.slices
 import org.junit.Test
@@ -53,14 +55,44 @@ class ArchitectureTest {
             .check(terminal)
 
     @Test
-    fun `the simulator is a transport, not something the client relies on`() =
-        noClasses()
-            .that()
-            .resideOutsideOfPackage("io.minimpos.terminal.simulator..")
-            .should()
-            .dependOnClassesThat()
-            .resideInAPackage("io.minimpos.terminal.simulator..")
+    fun `packages only depend downwards`() =
+        // The simulator stands in for both APIs and shares its ledger between them, so nothing relies on it; the Terminal
+        // API client and the Checkout API client know nothing of each other.
+        layeredArchitecture()
+            .consideringOnlyDependenciesInLayers()
+            .layer(SIMULATOR)
+            .definedBy("io.minimpos.terminal.simulator..")
+            .layer(CLIENT)
+            .definedBy("io.minimpos.terminal.client..")
+            .layer(CHECKOUT)
+            .definedBy("io.minimpos.terminal.checkout..")
+            .layer(TRANSPORT)
+            .definedBy("io.minimpos.terminal.transport..")
+            .layer(PARSE)
+            .definedBy("io.minimpos.terminal.parse..")
+            .whereLayer(SIMULATOR)
+            .mayNotBeAccessedByAnyLayer()
+            .whereLayer(CLIENT)
+            .mayOnlyBeAccessedByLayers(SIMULATOR)
+            .whereLayer(CHECKOUT)
+            .mayOnlyBeAccessedByLayers(SIMULATOR)
+            .whereLayer(TRANSPORT)
+            .mayOnlyBeAccessedByLayers(CLIENT, CHECKOUT, SIMULATOR)
+            .whereLayer(PARSE)
+            .mayOnlyBeAccessedByLayers(TRANSPORT, CLIENT, SIMULATOR)
             .check(terminal)
+
+    @Test
+    fun `every class is in a layer`() =
+        classes()
+            .should()
+            .resideInAnyPackage(
+                "io.minimpos.terminal.simulator..",
+                "io.minimpos.terminal.client..",
+                "io.minimpos.terminal.checkout..",
+                "io.minimpos.terminal.transport..",
+                "io.minimpos.terminal.parse..",
+            ).check(terminal)
 
     @Test
     fun `packages have no dependency cycles`() =
@@ -77,6 +109,12 @@ class ArchitectureTest {
     }
 
     private companion object {
+        const val SIMULATOR = "Simulator"
+        const val CLIENT = "Client"
+        const val CHECKOUT = "Checkout"
+        const val TRANSPORT = "Transport"
+        const val PARSE = "Parse"
+
         val terminal: JavaClasses =
             ClassFileImporter().withImportOption(ImportOption.Predefined.DO_NOT_INCLUDE_TESTS).importPackages("io.minimpos.terminal")
     }

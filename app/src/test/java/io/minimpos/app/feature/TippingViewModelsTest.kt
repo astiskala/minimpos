@@ -8,6 +8,7 @@ import io.minimpos.app.data.db.ProductEntity
 import io.minimpos.app.data.db.SaleKind
 import io.minimpos.app.data.db.TaxRateEntity
 import io.minimpos.app.data.security.Secret
+import io.minimpos.app.data.settings.CaptureMode
 import io.minimpos.app.data.settings.PrinterMode
 import io.minimpos.app.data.settings.TerminalMode
 import io.minimpos.app.feature.capture.CaptureProblem
@@ -20,13 +21,11 @@ import io.minimpos.app.feature.history.HistoryViewModel
 import io.minimpos.app.feature.history.SaleDetailViewModel
 import io.minimpos.app.feature.history.SaleOperations
 import io.minimpos.app.feature.sale.CheckoutViewModel
-import io.minimpos.app.feature.sale.ResultMessages
 import io.minimpos.app.feature.settings.SettingsChecks
-import io.minimpos.app.feature.settings.SettingsMessages
 import io.minimpos.app.feature.settings.SettingsViewModel
 import io.minimpos.app.payment.CaptureResult
 import io.minimpos.app.payment.TransactionState
-import io.minimpos.app.terminal.CaptureMode
+import io.minimpos.app.refund.PaymentAction
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.first
@@ -72,13 +71,12 @@ class TippingViewModelsTest {
             container.settingsState,
             container.terminalStatus.state,
             container::currency,
-            kind,
         )
 
     /** Takes a sale of the dinner for a tip on the receipt and returns its ID. */
     private fun tipSale(): String {
         val (tax, dinner) = seed()
-        container.saleSession.addProduct(dinner, tax)
+        container.session(SaleKind.SALE).addProduct(dinner, tax)
         val vm = checkout()
         vm.update { it.copy(tipOnReceipt = true) }
         await { vm.state.first { it.tipOnReceipt && !it.totals.isEmpty } }
@@ -91,12 +89,11 @@ class TippingViewModelsTest {
     private fun detail(id: String) =
         SaleDetailViewModel(
             id,
-            container.sales,
+            container.storedPayments,
+            container.refundRecords,
             container.receipts,
             SaleOperations(container.payments, container.refunds, container.captures),
             container.settingsState,
-            container.terminalStatus.state,
-            ResultMessages("Printed", "Sent to %s", notCaptured = "Not captured: %s"),
         )
 
     @Test
@@ -119,11 +116,11 @@ class TippingViewModelsTest {
     fun `the tip is entered as the tip or the total and captured, then the sale can be refunded`() {
         val id = tipSale()
         val awaiting = await { detail(id).state.first { it.record != null } }
-        assertThat(awaiting.canEnterTip).isTrue()
-        assertThat(awaiting.canRefund).isFalse()
-        assertThat(awaiting.canCancel).isTrue()
+        assertThat(awaiting.actions).contains(PaymentAction.ENTER_TIP)
+        assertThat(awaiting.actions).doesNotContain(PaymentAction.REFUND)
+        assertThat(awaiting.actions).contains(PaymentAction.CANCEL)
 
-        val tip = TipViewModel(id, container.sales, container.captures, container.terminalStatus.state)
+        val tip = TipViewModel(id, container.storedPayments, container.captures)
         assertThat(await { tip.state.first { it.sale != null } }.billMinor).isEqualTo(2_000)
         tip.setInput(TipInput.TOTAL)
         listOf(1, 5).forEach { digit -> tip.updateEntry { it.append(digit) } }
@@ -144,9 +141,9 @@ class TippingViewModelsTest {
         await { tip.state.first { it.submission.done && it.sale?.captureStatus == CaptureStatus.REQUESTED } }
 
         val captured = await { detail(id).state.first { it.record?.sale?.captured == true } }
-        assertThat(captured.canEnterTip).isFalse()
-        assertThat(captured.canCancel).isFalse()
-        assertThat(captured.canRefund).isTrue()
+        assertThat(captured.actions).doesNotContain(PaymentAction.ENTER_TIP)
+        assertThat(captured.actions).doesNotContain(PaymentAction.CANCEL)
+        assertThat(captured.actions).contains(PaymentAction.REFUND)
         assertThat(captured.record!!.sale.amountMinor).isEqualTo(2_300)
         // Submitting again does nothing.
         tip.submit(100)
@@ -180,7 +177,7 @@ class TippingViewModelsTest {
     fun `a cancelled tip sale is neither a sale nor shown with the pre-authorisations`() {
         val id = tipSale()
         val vm = detail(id)
-        await { vm.state.first { it.canCancel } }
+        await { vm.state.first { PaymentAction.CANCEL in it.actions } }
         val cancellationId = vm.cancel()!!
         await { container.refunds.state.first { it == TransactionState.Finished(cancellationId) } }
         container.refunds.acknowledge()
@@ -205,7 +202,7 @@ class TippingViewModelsTest {
         // In terminal mode with only a merchant account the API is not set up, so the capture fails.
         env.updateSettings { it.copy(terminal = it.terminal.copy(mode = TerminalMode.TERMINAL, merchantAccount = "Merchant")) }
         await {
-            container.sales.update(
+            container.database.saleDao().update(
                 container.sales
                     .get(id)!!
                     .sale
@@ -213,17 +210,21 @@ class TippingViewModelsTest {
             )
         }
         val vm = detail(id)
-        assertThat(await { vm.state.first { it.record != null } }.canRetryCapture).isTrue()
+        assertThat(await { vm.state.first { it.record != null } }.actions).contains(PaymentAction.RETRY_CAPTURE)
         vm.retryCapture()
         assertThat(
             await {
                 vm.state.first { it.retry.isError }
-            }.retry.message,
-        ).isEqualTo("Not captured: Enter the Checkout API key in Terminal settings")
+            }.retry.outcome,
+        ).isEqualTo(ActionOutcome.NotCaptured("Enter the Checkout API key in Terminal settings"))
         env.useSimulator()
         vm.retryCapture()
         await { vm.state.first { it.retry.done } }
-        assertThat(await { vm.state.first { it.record?.sale?.captureStatus == CaptureStatus.REQUESTED } }.canRetryCapture).isFalse()
+        assertThat(
+            await {
+                vm.state.first { it.record?.sale?.captureStatus == CaptureStatus.REQUESTED }
+            }.actions,
+        ).doesNotContain(PaymentAction.RETRY_CAPTURE)
     }
 
     @Test
@@ -237,16 +238,16 @@ class TippingViewModelsTest {
                     ),
                 )!!
             }
-        container.preAuthSession.addProduct(deposit, tax)
+        container.session(SaleKind.PRE_AUTHORISATION).addProduct(deposit, tax)
         val pay = checkout(SaleKind.PRE_AUTHORISATION)
         await { pay.state.first { !it.totals.isEmpty } }
         assertThat(pay.pay()).isTrue()
         val id = await { (container.payments.state.first { it is TransactionState.Finished } as TransactionState.Finished).id }
         val shown = await { detail(id).state.first { it.record != null } }
-        assertThat(shown.canCapture).isTrue()
-        assertThat(shown.canAdjust).isTrue()
+        assertThat(shown.actions).contains(PaymentAction.CAPTURE)
+        assertThat(shown.actions).contains(PaymentAction.ADJUST)
 
-        val adjust = CaptureViewModel(id, adjustOnly = true, container.sales, container.captures, container.terminalStatus.state)
+        val adjust = CaptureViewModel(id, adjustOnly = true, container.storedPayments, container.captures)
         // The amount held is proposed; the first key starts a new amount.
         assertThat(await { adjust.state.first { it.sale != null } }.amountMinor).isEqualTo(20_000)
         listOf(2, 5, 0, 0, 0).forEach { digit -> adjust.updateEntry { it.append(digit) } }
@@ -255,7 +256,7 @@ class TippingViewModelsTest {
         await { adjust.state.first { it.submission.done } }
         assertThat(await { container.sales.get(id)!! }.sale.heldMinor).isEqualTo(25_000)
 
-        val capture = CaptureViewModel(id, adjustOnly = false, container.sales, container.captures, container.terminalStatus.state)
+        val capture = CaptureViewModel(id, adjustOnly = false, container.storedPayments, container.captures)
         assertThat(await { capture.state.first { it.sale?.heldMinor == 25_000L } }.amountMinor).isEqualTo(25_000)
         listOf(2, 4, 0, 0, 0).forEach { digit -> capture.updateEntry { it.append(digit) } }
         await { capture.state.first { it.amountMinor == 24_000L } }
@@ -273,13 +274,7 @@ class TippingViewModelsTest {
         val ca = await { container.terminalStatus.state.first { it.captureMode == CaptureMode.CUSTOMER_AREA } }
         assertThat(ca.apiProblem).isNull()
         assertThat(
-            CaptureViewModel(
-                id,
-                adjustOnly = true,
-                container.sales,
-                container.captures,
-                container.terminalStatus.state,
-            ).state.value.canSubmit,
+            CaptureViewModel(id, adjustOnly = true, container.storedPayments, container.captures).state.value.canSubmit,
         ).isFalse()
     }
 
@@ -287,22 +282,22 @@ class TippingViewModelsTest {
     fun `a refused tip is explained and can be entered again`() {
         val id = tipSale()
         await {
-            container.sales.update(
+            container.database.saleDao().update(
                 container.sales
                     .get(id)!!
                     .sale
                     .copy(pspReference = null),
             )
         }
-        val tip = TipViewModel(id, container.sales, container.captures, container.terminalStatus.state)
+        val tip = TipViewModel(id, container.storedPayments, container.captures)
         // Without the PSP reference a capture cannot refer to the payment, so the tip cannot be entered.
         assertThat(await { tip.state.first { it.sale != null } }.canSubmit).isFalse()
         await {
-            container.sales.update(
+            container.database.saleDao().update(
                 container.sales
                     .get(id)!!
                     .sale
-                    .copy(pspReference = "PSP", refundedMinor = 2_000),
+                    .copy(pspReference = "PSP", holdCancelled = true),
             )
         }
         // Cancelled meanwhile.
@@ -323,22 +318,23 @@ class TippingViewModelsTest {
                 SettingsChecks(container.terminalStatus, container.receipts, container.api),
                 container.history,
                 container.catalog,
-                SettingsMessages("Connected", "Failed", "printer", "no printer", "Sent to %s", "Printed", "Not stored (%s)", "Works"),
+                container::sampleReceipt,
             )
         // The simulator stands in for the API.
         vm.saveAndTest(Secret.CHECKOUT_API_KEY)
-        assertThat(await { vm.actions.first { it.api.done } }.api.message).isEqualTo("Works")
+        assertThat(await { vm.actions.first { it.api.done } }.api.outcome).isEqualTo(ActionOutcome.ApiWorks)
 
         env.updateSettings { it.copy(terminal = it.terminal.copy(mode = TerminalMode.TERMINAL, merchantAccount = "Merchant")) }
         vm.saveAndTest(Secret.CHECKOUT_API_KEY, " secret-key ")
         val tested = await { vm.actions.first { it.apiKeyStored && !it.api.running } }
         assertThat(tested.api.isError).isTrue()
-        assertThat(tested.api.message).contains("Test the connection to the terminal first")
+        assertThat((tested.api.outcome as? ActionOutcome.Failed)?.message).contains("Test the connection to the terminal first")
         assertThat(await { container.secrets.get(Secret.CHECKOUT_API_KEY) }).isEqualTo("secret-key")
 
         env.cipher.failEncrypt = true
         vm.saveAndTest(Secret.CHECKOUT_API_KEY, "other")
-        assertThat(await { vm.actions.first { it.api.isError && !it.apiKeyStored } }.api.message).startsWith("Not stored")
+        assertThat(await { vm.actions.first { it.api.isError && !it.apiKeyStored } }.api.outcome)
+            .isInstanceOf(ActionOutcome.SecretNotStored::class.java)
         env.cipher.failEncrypt = false
     }
 }

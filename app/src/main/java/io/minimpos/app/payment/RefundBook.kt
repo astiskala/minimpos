@@ -11,9 +11,10 @@ import io.minimpos.terminal.client.TransactionKind
  * Referenced refunds (Terminal API reversals) as stored refunds ([RefundEntity]), for the refunds'
  * [TransactionLifecycle]. Adyen confirms refunds asynchronously; the terminal only accepts them, which is stored as
  * [RefundStatus.REQUESTED]. Refunds that are cancelled, declined or never sent are [RefundStatus.FAILED]. Cancellations
- * of pre-authorisations are stored the same way, marked as [RefundEntity.cancellation].
+ * of held payments are stored the same way, marked as [RefundEntity.cancellation].
  *
- * @param refunds Where refunds are stored; completing an accepted one also updates what has been refunded of the sale.
+ * @param refunds Where refunds are stored; completing an accepted one also records it on its sale (what has been
+ *   refunded, or that the hold was cancelled).
  */
 class RefundBook(
     private val refunds: RefundRepository,
@@ -52,22 +53,13 @@ class RefundBook(
         id: String,
         settlement: Settlement,
     ) {
-        val refund = refunds.get(id) ?: return
-        val details = settlement.details
-        refunds.complete(
-            refund.copy(
-                status =
-                    when (settlement.status) {
-                        SettlementStatus.SUCCEEDED -> RefundStatus.REQUESTED
-                        SettlementStatus.UNKNOWN -> RefundStatus.UNKNOWN
-                        SettlementStatus.CANCELLED, SettlementStatus.DECLINED, SettlementStatus.FAILED -> RefundStatus.FAILED
-                    },
-                pspReference = details?.pspReference ?: refund.pspReference,
-                message = settlement.message,
-                customerReceiptJson =
-                    details?.let { ReceiptLinesJson.encode(it.customerReceipt.map(SaleBook::toLine)) } ?: refund.customerReceiptJson,
-            ),
-        )
+        val status =
+            when (settlement.status) {
+                SettlementStatus.SUCCEEDED -> RefundStatus.REQUESTED
+                SettlementStatus.UNKNOWN -> RefundStatus.UNKNOWN
+                SettlementStatus.CANCELLED, SettlementStatus.DECLINED, SettlementStatus.FAILED -> RefundStatus.FAILED
+            }
+        refunds.settle(id, status, settlement.message, settlement.details)
     }
 
     override suspend fun unsettledServiceId(id: String): String? = refunds.get(id)?.takeIf { it.status == RefundStatus.UNKNOWN }?.serviceId

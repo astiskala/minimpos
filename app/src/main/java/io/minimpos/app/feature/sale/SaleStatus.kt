@@ -10,11 +10,11 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import io.minimpos.app.R
 import io.minimpos.app.data.db.AdjustmentStatus
-import io.minimpos.app.data.db.CaptureStatus
 import io.minimpos.app.data.db.SaleEntity
 import io.minimpos.app.data.db.SaleKind
 import io.minimpos.app.data.db.SaleStatus
-import io.minimpos.app.refund.PaymentHold
+import io.minimpos.app.refund.PaymentStanding
+import io.minimpos.app.refund.standing
 import io.minimpos.app.ui.components.OutcomeNote
 import io.minimpos.app.ui.components.SecondaryButton
 import io.minimpos.app.ui.components.StatusKind
@@ -65,12 +65,26 @@ fun statusKind(status: SaleStatus): StatusKind =
  * did not take is an error.
  */
 fun statusKind(sale: SaleEntity): StatusKind =
-    when {
-        sale.cancelledHold -> StatusKind.WARNING
-        sale.status != SaleStatus.APPROVED -> statusKind(sale.status)
-        sale.captureStatus == CaptureStatus.FAILED -> StatusKind.ERROR
-        sale.captureStatus == CaptureStatus.REQUESTED || sale.captureStatus == null -> StatusKind.SUCCESS
-        else -> StatusKind.WARNING
+    when (sale.standing) {
+        PaymentStanding.NOT_APPROVED -> {
+            statusKind(sale.status)
+        }
+
+        PaymentStanding.CHARGED, PaymentStanding.AWAITING_TIP, PaymentStanding.HELD, PaymentStanding.CAPTURE_REQUESTED -> {
+            StatusKind.SUCCESS
+        }
+
+        PaymentStanding.CAPTURE_FAILED -> {
+            StatusKind.ERROR
+        }
+
+        PaymentStanding.CAPTURE_SENDING,
+        PaymentStanding.CAPTURE_UNKNOWN,
+        PaymentStanding.CAPTURED_MANUALLY,
+        PaymentStanding.HOLD_CANCELLED,
+        -> {
+            StatusKind.WARNING
+        }
     }
 
 /**
@@ -81,30 +95,62 @@ fun statusKind(sale: SaleEntity): StatusKind =
 @Composable
 @ReadOnlyComposable
 fun statusTitle(sale: SaleEntity): String =
-    when {
-        sale.cancelledHold -> stringResource(R.string.status_cancellation_requested)
-        sale.status != SaleStatus.APPROVED -> statusTitle(sale.status)
-        PaymentHold.awaitingTip(sale) -> stringResource(R.string.status_awaiting_tip)
-        sale.captureStatus != null -> captureTitle(sale.captureStatus)
-        sale.kind == SaleKind.PRE_AUTHORISATION -> stringResource(R.string.status_pre_authorised)
-        else -> statusTitle(sale.status)
+    when (val standing = sale.standing) {
+        PaymentStanding.NOT_APPROVED, PaymentStanding.CHARGED -> {
+            statusTitle(sale.status)
+        }
+
+        PaymentStanding.HOLD_CANCELLED -> {
+            stringResource(R.string.status_cancellation_requested)
+        }
+
+        PaymentStanding.AWAITING_TIP -> {
+            stringResource(R.string.status_awaiting_tip)
+        }
+
+        PaymentStanding.HELD -> {
+            if (sale.kind == SaleKind.PRE_AUTHORISATION) stringResource(R.string.status_pre_authorised) else statusTitle(sale.status)
+        }
+
+        PaymentStanding.CAPTURE_REQUESTED,
+        PaymentStanding.CAPTURED_MANUALLY,
+        PaymentStanding.CAPTURE_FAILED,
+        PaymentStanding.CAPTURE_SENDING,
+        PaymentStanding.CAPTURE_UNKNOWN,
+        -> {
+            stringResource(checkNotNull(captureStrings(standing)).first)
+        }
     }
 
-@Composable
-@ReadOnlyComposable
-private fun captureTitle(status: CaptureStatus): String =
-    stringResource(
-        when (status) {
-            CaptureStatus.REQUESTED -> R.string.status_capture_requested
-            CaptureStatus.MANUAL -> R.string.status_capture_manual
-            CaptureStatus.FAILED -> R.string.status_capture_failed
-            CaptureStatus.PENDING, CaptureStatus.UNKNOWN -> R.string.status_capture_unknown
-        },
-    )
+/** The heading and the note (formatted with the amount) of where a capture stands; null when none was attempted. */
+private fun captureStrings(standing: PaymentStanding): Pair<Int, Int>? =
+    when (standing) {
+        PaymentStanding.CAPTURE_REQUESTED -> {
+            R.string.status_capture_requested to R.string.detail_capture_requested
+        }
 
-/** A payment that only held its amount (pre-authorisation or tip on the receipt) and whose cancellation was accepted. */
-private val SaleEntity.cancelledHold: Boolean
-    get() = (kind == SaleKind.PRE_AUTHORISATION || tipOnReceipt) && status == SaleStatus.APPROVED && refundedMinor > 0 && !captured
+        PaymentStanding.CAPTURED_MANUALLY -> {
+            R.string.status_capture_manual to R.string.detail_capture_manual
+        }
+
+        PaymentStanding.CAPTURE_FAILED -> {
+            R.string.status_capture_failed to R.string.detail_capture_failed
+        }
+
+        PaymentStanding.CAPTURE_SENDING, PaymentStanding.CAPTURE_UNKNOWN -> {
+            R.string.status_capture_unknown to
+                R.string.detail_capture_unknown
+        }
+
+        PaymentStanding.NOT_APPROVED,
+        PaymentStanding.CHARGED,
+        PaymentStanding.AWAITING_TIP,
+        PaymentStanding.HELD,
+        PaymentStanding.HOLD_CANCELLED,
+        -> {
+            null
+        }
+    }
 
 /**
  * Notes under the outcome of an approved [sale] that held its amount: the tip and bill, that the tip is awaited (on
@@ -117,12 +163,13 @@ internal fun ColumnScope.HoldNotes(
     money: MoneyFormatter,
     afterPayment: Boolean = false,
 ) {
-    if (sale.status != SaleStatus.APPROVED || sale.cancelledHold) return
+    val standing = sale.standing
+    if (standing == PaymentStanding.NOT_APPROVED || standing == PaymentStanding.HOLD_CANCELLED) return
     sale.tipMinor?.let { OutcomeNote(stringResource(R.string.detail_tip, money.format(sale.totalMinor), money.format(it))) }
-    if (PaymentHold.awaitingTip(sale)) {
+    if (standing == PaymentStanding.AWAITING_TIP) {
         OutcomeNote(stringResource(if (afterPayment) R.string.result_tip_note else R.string.detail_tip_awaiting))
     }
-    if (sale.kind == SaleKind.PRE_AUTHORISATION && sale.authorisedMinor != null && !sale.captured) {
+    if (sale.kind == SaleKind.PRE_AUTHORISATION && sale.authorisedMinor != null && !standing.captured) {
         val held = money.format(sale.heldMinor)
         OutcomeNote(
             if (sale.adjustment == AdjustmentStatus.REQUESTED) {
@@ -132,15 +179,8 @@ internal fun ColumnScope.HoldNotes(
             },
         )
     }
-    val captured = money.format(sale.capturedMinor ?: return)
-    val note =
-        when (sale.captureStatus ?: return) {
-            CaptureStatus.REQUESTED -> R.string.detail_capture_requested
-            CaptureStatus.MANUAL -> R.string.detail_capture_manual
-            CaptureStatus.FAILED -> R.string.detail_capture_failed
-            CaptureStatus.PENDING, CaptureStatus.UNKNOWN -> R.string.detail_capture_unknown
-        }
-    OutcomeNote(stringResource(note, captured), Modifier.testTag("captureNote"))
+    val note = captureStrings(standing)?.second ?: return
+    OutcomeNote(stringResource(note, money.format(sale.capturedMinor ?: return)), Modifier.testTag("captureNote"))
 }
 
 /** The heading for a sale in [status], such as "Approved". */

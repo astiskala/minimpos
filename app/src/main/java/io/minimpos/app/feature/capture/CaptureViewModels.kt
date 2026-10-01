@@ -3,13 +3,14 @@ package io.minimpos.app.feature.capture
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import io.minimpos.app.data.db.SaleEntity
-import io.minimpos.app.data.repo.SaleRepository
+import io.minimpos.app.data.settings.CaptureMode
 import io.minimpos.app.feature.launchWrite
 import io.minimpos.app.payment.CaptureResult
 import io.minimpos.app.payment.Captures
-import io.minimpos.app.refund.PaymentHold
-import io.minimpos.app.terminal.CaptureMode
-import io.minimpos.app.terminal.TerminalState
+import io.minimpos.app.refund.PaymentAction
+import io.minimpos.app.refund.PaymentStanding
+import io.minimpos.app.refund.StoredPayment
+import io.minimpos.app.refund.StoredPayments
 import io.minimpos.core.money.AmountEntry
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -81,19 +82,26 @@ enum class TipInput {
 /**
  * What the tip screen shows.
  *
- * @property sale The sale awaiting its tip, or null until loaded (or when it is gone).
- * @property captureMode Whether the app captures through the Checkout API or only records the tip.
+ * @property payment The sale awaiting its tip, or null until loaded (or when it is gone).
  * @property input What is being typed.
  * @property entry The amount typed.
  * @property submission Sending the tip.
  */
 data class TipUiState(
-    val sale: SaleEntity? = null,
-    val captureMode: CaptureMode = CaptureMode.API,
+    val payment: StoredPayment? = null,
     val input: TipInput = TipInput.TIP,
     val entry: AmountEntry = AmountEntry(),
     val submission: Submission = Submission(),
 ) {
+    /** The sale, or null until loaded. */
+    val sale: SaleEntity? get() = payment?.sale
+
+    /** What can be done with the sale now; the tip can be entered with [PaymentAction.ENTER_TIP]. */
+    val actions: Set<PaymentAction> get() = payment?.actions.orEmpty()
+
+    /** Whether the app captures through the Checkout API or only records the tip; the API until loaded. */
+    val captureMode: CaptureMode get() = payment?.captureMode ?: CaptureMode.API
+
     /** The bill: what was pre-authorised, in minor units. */
     val billMinor: Long get() = sale?.totalMinor ?: 0
 
@@ -103,12 +111,15 @@ data class TipUiState(
     /** Whether the typed total is below the bill (and so not valid). */
     val belowBill: Boolean get() = input == TipInput.TOTAL && entry.minor > 0 && tipMinor == null
 
-    /** Whether the tip is high enough that the authorisation is raised before the capture ([PaymentHold.needsAdjustment]). */
+    /**
+     * Whether the tip is high enough that the authorisation is raised before the capture
+     * ([PaymentStanding.tipNeedsAdjustment]).
+     */
     val needsAdjustment: Boolean
-        get() = captureMode == CaptureMode.API && tipMinor?.let { PaymentHold.needsAdjustment(billMinor, it) } == true
+        get() = captureMode == CaptureMode.API && tipMinor?.let { PaymentStanding.tipNeedsAdjustment(billMinor, it) } == true
 
     /** Whether the sale still awaits a tip and nothing is being sent. */
-    val canSubmit: Boolean get() = sale?.let(PaymentHold::canEnterTip) == true && !submission.running
+    val canSubmit: Boolean get() = PaymentAction.ENTER_TIP in actions && !submission.running
 
     /** Whether "Add tip" is enabled: [canSubmit] with a tip above zero ("No tip" is its own button). */
     val canAddTip: Boolean get() = canSubmit && (tipMinor ?: 0) > 0
@@ -119,23 +130,20 @@ data class TipUiState(
  * tip is sent with `persisting`, so it finishes even if the screen closes.
  *
  * @param saleId The sale awaiting its tip.
- * @param sales Where it is stored.
+ * @param payments Follows it, with how captures are made.
  * @param captures Enters the tip and captures.
- * @param terminal How captures are made.
  */
 class TipViewModel(
     private val saleId: String,
-    sales: SaleRepository,
+    payments: StoredPayments,
     private val captures: Captures,
-    terminal: StateFlow<TerminalState>,
 ) : ViewModel() {
     private val local = MutableStateFlow(TipUiState())
 
     /** The screen state, updated whenever the sale, the capture mode or the entry changes. */
     val state: StateFlow<TipUiState> =
-        combine(sales.observe(saleId), terminal, local) { record, status, ui ->
-            ui.copy(sale = record?.sale, captureMode = status.captureMode)
-        }.stateIn(viewModelScope, SharingStarted.Eagerly, TipUiState())
+        combine(payments.observe(saleId), local) { payment, ui -> ui.copy(payment = payment) }
+            .stateIn(viewModelScope, SharingStarted.Eagerly, TipUiState())
 
     /** Switches between typing the tip and the total, starting the entry afresh. */
     fun setInput(input: TipInput) = local.update { it.copy(input = input, entry = AmountEntry()) }
@@ -157,32 +165,38 @@ class TipViewModel(
 /**
  * What the capture screen shows.
  *
- * @property sale The pre-authorisation, or null until loaded (or when it is gone).
- * @property captureMode Whether the app captures through the Checkout API or only records the capture.
+ * @property payment The pre-authorisation, or null until loaded (or when it is gone).
  * @property adjustOnly Adjust what it holds without capturing.
  * @property entry The amount typed; null until the first key, while the amount held is proposed.
  * @property submission Sending the capture or adjustment.
  */
 data class CaptureUiState(
-    val sale: SaleEntity? = null,
-    val captureMode: CaptureMode = CaptureMode.API,
+    val payment: StoredPayment? = null,
     val adjustOnly: Boolean = false,
     val entry: AmountEntry? = null,
     val submission: Submission = Submission(),
 ) {
+    /** The pre-authorisation's sale, or null until loaded. */
+    val sale: SaleEntity? get() = payment?.sale
+
+    /** What can be done with it now: [PaymentAction.CAPTURE], and [PaymentAction.ADJUST] with the Checkout API. */
+    val actions: Set<PaymentAction> get() = payment?.actions.orEmpty()
+
+    /** Whether the app captures through the Checkout API or only records the capture; the API until loaded. */
+    val captureMode: CaptureMode get() = payment?.captureMode ?: CaptureMode.API
+
     /** What the pre-authorisation holds now, in minor units. */
     val heldMinor: Long get() = sale?.heldMinor ?: 0
 
     /** The amount to capture or hold: the typed one, else what is held. */
     val amountMinor: Long get() = entry?.minor ?: heldMinor
 
-    /** Whether it can be sent: the pre-authorisation can still be captured, an amount is set and nothing is being sent. */
+    /**
+     * Whether it can be sent: the pre-authorisation can still be captured (or adjusted, with [adjustOnly]), an amount is
+     * set and nothing is being sent.
+     */
     val canSubmit: Boolean
-        get() =
-            sale?.let(PaymentHold::canCapture) == true &&
-                amountMinor > 0 &&
-                !submission.running &&
-                (!adjustOnly || captureMode == CaptureMode.API)
+        get() = (if (adjustOnly) PaymentAction.ADJUST else PaymentAction.CAPTURE) in actions && amountMinor > 0 && !submission.running
 }
 
 /**
@@ -192,24 +206,21 @@ data class CaptureUiState(
  *
  * @param saleId The pre-authorisation.
  * @param adjustOnly Adjust without capturing.
- * @param sales Where it is stored.
+ * @param payments Follows it, with how captures are made.
  * @param captures Captures and adjusts.
- * @param terminal How captures are made.
  */
 class CaptureViewModel(
     private val saleId: String,
     adjustOnly: Boolean,
-    sales: SaleRepository,
+    payments: StoredPayments,
     private val captures: Captures,
-    terminal: StateFlow<TerminalState>,
 ) : ViewModel() {
     private val local = MutableStateFlow(CaptureUiState(adjustOnly = adjustOnly))
 
     /** The screen state, updated whenever the pre-authorisation, the capture mode or the entry changes. */
     val state: StateFlow<CaptureUiState> =
-        combine(sales.observe(saleId), terminal, local) { record, status, ui ->
-            ui.copy(sale = record?.sale, captureMode = status.captureMode)
-        }.stateIn(viewModelScope, SharingStarted.Eagerly, CaptureUiState(adjustOnly = adjustOnly))
+        combine(payments.observe(saleId), local) { payment, ui -> ui.copy(payment = payment) }
+            .stateIn(viewModelScope, SharingStarted.Eagerly, CaptureUiState(adjustOnly = adjustOnly))
 
     /** Updates the typed amount with a keypad step; the first key replaces the amount held that was proposed. */
     fun updateEntry(transform: (AmountEntry) -> AmountEntry) = local.update { it.copy(entry = transform(it.entry ?: AmountEntry())) }

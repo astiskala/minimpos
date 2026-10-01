@@ -108,7 +108,11 @@ class AppFlowTest {
         assertThat(record.sale.status).isEqualTo(SaleStatus.APPROVED)
         assertThat(record.sale.storedPaymentMethodId).isNotNull()
         assertThat(record.sale.customerReference).isEqualTo("CUST-42")
-        assertThat(container.saleSession.cart.value.lines).isEmpty()
+        assertThat(
+            container
+                .session(SaleKind.SALE)
+                .cart.value.lines,
+        ).isEmpty()
     }
 
     @Test
@@ -125,7 +129,11 @@ class AppFlowTest {
         compose.onNodeWithTag("tryAgain").performClick()
         compose.waitForTag("pay")
         compose.onNodeWithTag("checkoutAmount").assertIsDisplayed()
-        assertThat(container.saleSession.cart.value.lines).hasSize(1)
+        assertThat(
+            container
+                .session(SaleKind.SALE)
+                .cart.value.lines,
+        ).hasSize(1)
     }
 
     @Test
@@ -214,7 +222,7 @@ class AppFlowTest {
         compose.onNodeWithTag("addCustom").performClick()
         waitForText("Charge $6.20")
         assertThat(
-            container.saleSession.cart.value.lines.map {
+            container.session(SaleKind.SALE).cart.value.lines.map {
                 it.tax
             },
         ).containsExactly(AppliedTax("GST-free", 0), AppliedTax("GST-free", 0))
@@ -273,8 +281,10 @@ class AppFlowTest {
     @Test
     fun `refunds a sale from the history`() {
         ringUpCustomAmount(2, 0, 0)
-        container.saleSession.setQuantity(
-            container.saleSession.cart.value.lines
+        container.session(SaleKind.SALE).setQuantity(
+            container
+                .session(SaleKind.SALE)
+                .cart.value.lines
                 .single()
                 .key,
             2,
@@ -395,7 +405,9 @@ class AppFlowTest {
         compose.onNodeWithText("Catering deposit").performClick()
         compose.waitUntilAtLeastOneExists(hasTestTag("pay") and hasText("Pre-authorize $200.00"), 15_000)
         assertThat(
-            container.preAuthSession.cart.value.lines
+            container
+                .session(SaleKind.PRE_AUTHORISATION)
+                .cart.value.lines
                 .map { it.name },
         ).containsExactly("Catering deposit")
         compose.onNodeWithTag("preAuthNote").assertIsDisplayed()

@@ -8,6 +8,7 @@ import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.runtime.rememberNavBackStack
 import androidx.navigation3.runtime.rememberSaveableStateHolderNavEntryDecorator
 import androidx.navigation3.ui.NavDisplay
+import io.minimpos.app.data.db.SaleKind
 import io.minimpos.app.feature.capture.CaptureScreen
 import io.minimpos.app.feature.capture.TipScreen
 import io.minimpos.app.feature.history.HistoryScreen
@@ -55,10 +56,10 @@ fun AppNavHost() {
         entryProvider =
             entryProvider {
                 entry<Route.Home> { HomeScreen(navigator) }
-                entry<Route.Sale> { SaleScreen(navigator) }
-                entry<Route.PreAuth> { SaleScreen(navigator, preAuthorisation = true) }
-                entry<Route.Checkout> { CheckoutScreen(navigator, it.preAuthorisation) }
-                entry<Route.Payment> { PaymentScreen(navigator, it.preAuthorisation) }
+                entry<Route.Sale> { SaleScreen(navigator, SaleKind.SALE) }
+                entry<Route.PreAuth> { SaleScreen(navigator, SaleKind.PRE_AUTHORISATION) }
+                entry<Route.Checkout> { CheckoutScreen(navigator, it.kind) }
+                entry<Route.Payment> { PaymentScreen(navigator, it.kind) }
                 entry<Route.SaleResult> { SaleResultScreen(it.saleId, navigator) }
                 entry<Route.Tip> { TipScreen(it.saleId, navigator) }
                 entry<Route.Capture> { CaptureScreen(it.saleId, it.adjustOnly, navigator) }

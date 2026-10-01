@@ -55,6 +55,13 @@ enum class SaleKind {
      * refunded from the app.
      */
     PRE_AUTHORISATION,
+    ;
+
+    /**
+     * Whether a payment of this kind holds a single item with a quantity of one, so adding a product or custom item
+     * replaces the cart: a pre-authorisation.
+     */
+    val singleItem: Boolean get() = this == PRE_AUTHORISATION
 }
 
 /**
@@ -195,7 +202,7 @@ data class SaleEntity(
     val cashierReceiptJson: String? = null,
     /** Whether the terminal asked for a signature, which makes the merchant copy necessary by default. */
     val signatureRequired: Boolean = false,
-    /** Amount already refunded from this terminal, never more than [totalMinor]. */
+    /** Amount already refunded from this terminal, never more than [amountMinor]; cancellations do not count. */
     val refundedMinor: Long = 0,
     /** The address the receipt was last emailed to, or null if it has not been emailed. */
     val emailedTo: String? = null,
@@ -245,9 +252,20 @@ data class SaleEntity(
      * before database version 7.
      */
     val paymentMethodVariant: String? = null,
+    /**
+     * Whether the payment held its amount and its cancellation (a full reversal) was accepted, so nothing was charged.
+     * A cancellation refunds nothing, so it leaves [refundedMinor] alone. Added in database version 8.
+     */
+    @ColumnInfo(defaultValue = "0") val holdCancelled: Boolean = false,
 ) {
     /** What the payment holds on the card: [authorisedMinor] after an adjustment, else [totalMinor]. */
     val heldMinor: Long get() = authorisedMinor ?: totalMinor
+
+    /**
+     * Whether the payment was taken with manual capture, so it only held its amount until captured: a
+     * pre-authorisation, or a sale taken for tipping on the receipt.
+     */
+    val manualCapture: Boolean get() = kind == SaleKind.PRE_AUTHORISATION || tipOnReceipt
 
     /** Whether a capture was requested from Adyen or left to the Customer Area, so the payment counts as charged. */
     val captured: Boolean get() = captureStatus == CaptureStatus.REQUESTED || captureStatus == CaptureStatus.MANUAL

@@ -5,6 +5,7 @@ import androidx.datastore.core.DataStore
 import androidx.datastore.core.Serializer
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
@@ -44,20 +45,21 @@ class JsonDataStoreSerializer<T>(
 }
 
 /**
- * The app's [AppSettings], persisted in DataStore. Reads and writes are main-safe; DataStore serialises updates, so
+ * The app's [AppSettings], persisted in DataStore and always [AppSettings.normalized]: values out of range are brought
+ * within their limits when read and when written. Reads and writes are main-safe; DataStore serialises updates, so
  * concurrent [update]s never lose each other's changes.
  */
 class SettingsRepository(
     private val store: DataStore<AppSettings>,
 ) {
     /** The stored settings, emitted now and after every change. */
-    val settings: Flow<AppSettings> = store.data
+    val settings: Flow<AppSettings> = store.data.map { it.normalized() }
 
     /** The settings as stored now; suspends only until the file has been read once. */
-    suspend fun current(): AppSettings = store.data.first()
+    suspend fun current(): AppSettings = settings.first()
 
     /** Atomically replaces the settings with [transform] applied to the stored ones; [transform] must not have side effects. */
     suspend fun update(transform: (AppSettings) -> AppSettings) {
-        store.updateData(transform)
+        store.updateData { transform(it.normalized()).normalized() }
     }
 }

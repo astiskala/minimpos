@@ -35,6 +35,7 @@ import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -52,11 +53,13 @@ import io.minimpos.app.data.db.CaptureStatus
 import io.minimpos.app.data.db.SaleEntity
 import io.minimpos.app.data.db.SaleKind
 import io.minimpos.app.data.db.SaleStatus
-import io.minimpos.app.data.settings.EmailCapture
 import io.minimpos.app.data.settings.ShopperReferenceSource
+import io.minimpos.app.feature.OutcomeMessage
+import io.minimpos.app.payment.Checkout
 import io.minimpos.app.payment.CheckoutForm
 import io.minimpos.app.payment.TransactionState
-import io.minimpos.app.refund.PaymentHold
+import io.minimpos.app.refund.PaymentAction
+import io.minimpos.app.refund.standing
 import io.minimpos.app.ui.components.ActionMessage
 import io.minimpos.app.ui.components.BottomActions
 import io.minimpos.app.ui.components.Card
@@ -82,6 +85,7 @@ import io.minimpos.app.ui.theme.LocalDimens
 import io.minimpos.core.money.CurrencySpec
 import io.minimpos.core.money.MoneyFormatter
 import io.minimpos.core.payment.PaymentMethods
+import io.minimpos.core.receipt.ReceiptCopy
 import io.minimpos.core.receipt.ReceiptDocument
 import io.minimpos.core.shopper.ShopperReferences
 import io.minimpos.terminal.client.RetryAdvice
@@ -89,17 +93,18 @@ import java.util.Locale
 
 /**
  * The last step before paying: the amount, the optional merchant reference, customer reference and email fields,
- * and saving the card. Pay starts the payment and opens [PaymentScreen]. With [preAuthorisation] the amount is only
- * held, which the screen explains.
+ * and saving the card, for a payment of [kind]. Pay starts the payment and opens [PaymentScreen]. For a
+ * pre-authorisation the amount is only held, which the screen explains.
  */
 @Composable
 fun CheckoutScreen(
     navigator: Navigator,
-    preAuthorisation: Boolean,
+    kind: SaleKind,
     modifier: Modifier = Modifier,
-    vm: CheckoutViewModel = checkoutViewModel(preAuthorisation),
+    vm: CheckoutViewModel = checkoutViewModel(kind),
 ) {
     val state by vm.state.collectAsStateWithLifecycle()
+    val preAuthorisation = state.preAuthorisation
     val money = rememberMoneyFormatter(state.currency)
     val dimens = LocalDimens.current
 
@@ -116,7 +121,7 @@ fun CheckoutScreen(
                             money.format(state.totals.amounts.gross),
                         ),
                     enabled = state.canPay,
-                    onClick = { if (vm.pay()) navigator.replace(Route.Payment(preAuthorisation)) },
+                    onClick = { if (vm.pay()) navigator.replace(Route.Payment(kind)) },
                     modifier = Modifier.testTag("pay"),
                 )
             }
@@ -157,7 +162,7 @@ fun CheckoutScreen(
 /** The cart's lines, the tax (when it is charged) and the total. */
 @Composable
 private fun CartSummary(
-    state: CheckoutUiState,
+    state: Checkout,
     money: MoneyFormatter,
 ) {
     Card {
@@ -173,7 +178,7 @@ private fun CartSummary(
 /** The fields the payment settings ask for; [onUpdate] applies a change to the form. */
 @Composable
 private fun ColumnScope.CheckoutFields(
-    state: CheckoutUiState,
+    state: Checkout,
     onUpdate: ((CheckoutForm) -> CheckoutForm) -> Unit,
 ) {
     val payment = state.payment
@@ -230,7 +235,7 @@ private fun ColumnScope.CheckoutFields(
 /** Saving the card, when a shopper reference allows it, and tipping on the receipt, when a printer is available. */
 @Composable
 private fun ColumnScope.CheckoutSwitches(
-    state: CheckoutUiState,
+    state: Checkout,
     onUpdate: ((CheckoutForm) -> CheckoutForm) -> Unit,
 ) {
     val payment = state.payment
@@ -285,9 +290,8 @@ private fun LabeledSwitch(
 }
 
 @Composable
-private fun checkoutViewModel(preAuthorisation: Boolean): CheckoutViewModel {
+private fun checkoutViewModel(kind: SaleKind): CheckoutViewModel {
     val container = LocalAppContainer.current
-    val kind = kindOf(preAuthorisation)
     return viewModel(key = kind.name) {
         CheckoutViewModel(
             container.session(kind),
@@ -295,34 +299,33 @@ private fun checkoutViewModel(preAuthorisation: Boolean): CheckoutViewModel {
             container.settingsState,
             container.terminalStatus.state,
             container::currency,
-            kind,
         )
     }
 }
 
-private fun kindOf(preAuthorisation: Boolean) = if (preAuthorisation) SaleKind.PRE_AUTHORISATION else SaleKind.SALE
-
 /**
  * Waits while the shopper pays on the terminal (whose own payment screen usually covers this one), then opens the
- * result. The cancel button, and Back, ask the terminal to cancel the payment once it has been sent. [preAuthorisation]
- * says which cart is being paid.
+ * result. The cancel button, and Back, ask the terminal to cancel the payment once it has been sent. [kind] says
+ * which cart is being paid.
  */
 @Composable
 fun PaymentScreen(
     navigator: Navigator,
-    preAuthorisation: Boolean,
+    kind: SaleKind,
     modifier: Modifier = Modifier,
 ) {
     val container = LocalAppContainer.current
     val state by container.payments.state.collectAsStateWithLifecycle()
-    val cart by container.session(kindOf(preAuthorisation)).cart.collectAsStateWithLifecycle()
+    val cart by container.session(kind).cart.collectAsStateWithLifecycle()
     val settings by container.settingsState.collectAsStateWithLifecycle()
     val money = rememberMoneyFormatter(container.currency(settings))
+    // The session is cleared as soon as the payment is approved, so the amount shown is the one the payment started with.
+    val paying = rememberSaveable { cart.totals(settings.payment.taxMode, settings.payment.chargeTax).amounts.gross }
 
     LaunchedEffect(state) {
         when (val current = state) {
             is TransactionState.Finished -> navigator.replace(Route.SaleResult(current.id))
-            TransactionState.Idle -> navigator.popTo(Route.ringUp(preAuthorisation))
+            TransactionState.Idle -> navigator.popTo(Route.ringUp(kind))
             is TransactionState.Processing -> Unit
         }
     }
@@ -331,7 +334,7 @@ fun PaymentScreen(
     val processing = state as? TransactionState.Processing
     MiniScaffold(title = stringResource(R.string.payment_title), onBack = null, modifier = modifier) { padding ->
         ProcessingContent(
-            amount = money.format(cart.totals(settings.payment.taxMode, settings.payment.chargeTax).amounts.gross),
+            amount = money.format(paying),
             message = stringResource(if (processing?.cancelling == true) R.string.payment_cancelling else R.string.payment_follow_terminal),
             modifier = Modifier.padding(padding),
         ) {
@@ -356,11 +359,10 @@ fun SaleResultScreen(
     modifier: Modifier = Modifier,
     vm: SaleResultViewModel = saleResultViewModel(saleId),
 ) {
-    val container = LocalAppContainer.current
     val state by vm.state.collectAsStateWithLifecycle()
     var showReceipt by remember { mutableStateOf(false) }
     val record = state.record
-    val ringUp = Route.ringUp(state.preAuthorisation)
+    val ringUp = Route.ringUp(state.kind)
 
     fun done(route: Route) {
         vm.finish()
@@ -377,7 +379,7 @@ fun SaleResultScreen(
             if (record != null) {
                 SaleResultBottomBar(state, onHome = { done(Route.Home) }, onNewSale = { done(ringUp) }, onTryAgain = {
                     vm.finish()
-                    navigator.replace(Route.Checkout(state.preAuthorisation))
+                    navigator.replace(Route.Checkout(state.kind))
                 })
             }
         },
@@ -402,17 +404,17 @@ fun SaleResultScreen(
                 if (state.approved) {
                     ApprovedSaleActions(
                         state = state,
-                        receipt = if (showReceipt) container.receiptFactory.sale(record, state.settings.receipt) else null,
-                        onPrint = vm::print,
-                        onPrintMerchantCopy = vm::printMerchantCopy,
+                        receipt = state.transaction.receipt?.takeIf { showReceipt },
+                        onPrint = vm.transaction::print,
+                        onPrintMerchantCopy = { vm.transaction.print(ReceiptCopy.MERCHANT) },
                         onEnterTip = { navigator.push(Route.Tip(saleId)) },
-                        onEmail = vm::email,
+                        onEmail = vm.transaction::email,
                         onToggleReceipt = { showReceipt = !showReceipt },
                     )
                 } else {
                     UnapprovedSaleActions(
                         state = state,
-                        onRecheck = vm::recheck,
+                        onRecheck = vm.transaction::recheck,
                         onAbortBusy = vm::abortBusyTransaction,
                         onBackToSale = { done(ringUp) },
                     )
@@ -431,7 +433,7 @@ private fun SaleOutcome(
     val sale = state.record?.sale ?: return
     OutcomeHeader(statusKind(sale), statusTitle(sale), money.format(sale.amountMinor), titleTag = "resultStatus") {
         sale.message?.takeIf { sale.status != SaleStatus.APPROVED }?.let { OutcomeNote(it) }
-        if (state.approved && state.preAuthorisation && !sale.captured) OutcomeNote(stringResource(R.string.checkout_pre_auth_note))
+        if (state.preAuthorisation && sale.standing.held) OutcomeNote(stringResource(R.string.checkout_pre_auth_note))
         HoldNotes(sale, money, afterPayment = true)
         state.advice?.let { advice ->
             Text(
@@ -498,9 +500,12 @@ private fun ColumnScope.UnapprovedSaleActions(
         SecondaryButton(
             stringResource(R.string.result_check_again),
             onRecheck,
-            loading = state.rechecking,
+            loading = state.transaction.rechecking,
             icon = Icons.Default.Refresh,
         )
+        if (state.transaction.stillUnknown) {
+            Text(stringResource(R.string.detail_still_unknown), textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
+        }
     }
     if (state.busyServiceId != null) {
         SecondaryButton(
@@ -510,7 +515,7 @@ private fun ColumnScope.UnapprovedSaleActions(
             modifier = Modifier.testTag("abortBusy"),
         )
     }
-    state.abort.message?.let { ActionMessage(it, state.abort.isError) }
+    OutcomeMessage(state.abort)
     SecondaryButton(
         stringResource(if (state.preAuthorisation) R.string.result_back_to_pre_auth else R.string.result_back_to_sale),
         onBackToSale,
@@ -558,30 +563,30 @@ private fun ColumnScope.ApprovedSaleActions(
     onToggleReceipt: () -> Unit,
 ) {
     var askEmail by remember { mutableStateOf(false) }
-    if (state.printerAvailable) {
+    if (state.transaction.canPrint) {
         SecondaryButton(
             stringResource(R.string.result_print),
             onPrint,
-            loading = state.print.running,
+            loading = state.transaction.print.running,
             icon = Icons.Default.Print,
             modifier = Modifier.testTag("print"),
         )
-        if (state.merchantCopyPending) {
+        if (state.transaction.merchantCopyPending) {
             Text(stringResource(R.string.result_tear_off), textAlign = TextAlign.Center)
             SecondaryButton(stringResource(R.string.result_print_merchant), onPrintMerchantCopy, icon = Icons.Default.Print)
         }
-        state.print.message?.let { ActionMessage(it, state.print.isError) }
+        OutcomeMessage(state.transaction.print)
     }
-    if (state.record?.sale?.let(PaymentHold::canEnterTip) == true) EnterTipButton(onEnterTip)
-    if (state.settings.email.isConfigured && state.settings.payment.effectiveEmailCapture != EmailCapture.OFF) {
+    if (PaymentAction.ENTER_TIP in state.actions) EnterTipButton(onEnterTip)
+    if (state.transaction.canEmail) {
         SecondaryButton(
             stringResource(R.string.result_email),
             { askEmail = true },
-            loading = state.email.running,
+            loading = state.transaction.email.running,
             icon = Icons.Default.Email,
             modifier = Modifier.testTag("emailReceipt"),
         )
-        state.email.message?.let { ActionMessage(it, state.email.isError) }
+        OutcomeMessage(state.transaction.email)
     }
     ReceiptToggle(receipt, onToggleReceipt)
     if (askEmail) {
@@ -621,19 +626,7 @@ fun ColumnScope.ReceiptToggle(
 @Composable
 private fun saleResultViewModel(saleId: String): SaleResultViewModel {
     val container = LocalAppContainer.current
-    val printed = stringResource(R.string.result_printed)
-    val emailed = stringResource(R.string.result_emailed)
-    val abortSent = stringResource(R.string.result_abort_sent)
     return viewModel(key = saleId) {
-        SaleResultViewModel(
-            saleId = saleId,
-            sales = container.sales,
-            receipts = container.receipts,
-            payments = container.payments,
-            sessions = container::session,
-            settings = container.settingsState,
-            terminal = container.terminalStatus.state,
-            messages = ResultMessages(printed, emailed, abortSent),
-        )
+        SaleResultViewModel(saleId, container.storedPayments, container.receipts, container.payments)
     }
 }

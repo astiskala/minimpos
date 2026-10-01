@@ -1,13 +1,18 @@
 package io.minimpos.app.payment
 
 import io.minimpos.app.data.db.ProductEntity
+import io.minimpos.app.data.db.SaleKind
 import io.minimpos.app.data.db.TaxRateEntity
+import io.minimpos.app.data.settings.AppSettings
 import io.minimpos.core.cart.AppliedTax
 import io.minimpos.core.cart.Cart
 import io.minimpos.core.cart.CartProduct
+import io.minimpos.core.money.CurrencySpec
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.update
 import java.util.UUID
 
@@ -29,31 +34,46 @@ data class CheckoutForm(
 )
 
 /**
- * The sale being rung up, shared by the sale, checkout and payment screens. It lives in the [io.minimpos.app.AppContainer]
- * so the cart survives navigation, and is cleared once the payment is approved. Updates are atomic and thread-safe.
+ * The payment being rung up, shared by the sale (or pre-authorise), checkout and payment screens of its [kind]: the
+ * cart, the checkout form and, with the settings, the [Checkout] that decides what payment they make. One per kind
+ * lives in the [io.minimpos.app.AppContainer] so the cart survives navigation (and a sale being rung up survives a
+ * pre-authorisation meanwhile); the payments' [TransactionLifecycle] clears it once a payment started from it is
+ * approved. Updates are atomic and thread-safe.
  */
 class SaleSession(
-    /**
-     * Holds at most one item, with a quantity of one, as a pre-authorisation does: adding a product or custom item
-     * replaces whatever is in the cart.
-     */
-    val singleItem: Boolean = false,
+    /** What is being rung up; a [SaleKind.singleItem] kind holds at most one item, with a quantity of one. */
+    val kind: SaleKind = SaleKind.SALE,
     /** Generates cart line keys; tests make them predictable. */
     private val newKey: () -> String = { UUID.randomUUID().toString() },
 ) {
+    private val singleItem = kind.singleItem
     private val _cart = MutableStateFlow(Cart())
 
     /** The current cart. */
     val cart: StateFlow<Cart> = _cart.asStateFlow()
 
-    private val _checkout = MutableStateFlow(CheckoutForm())
+    private val _form = MutableStateFlow(CheckoutForm())
 
     /** The current checkout form. */
-    val checkout: StateFlow<CheckoutForm> = _checkout.asStateFlow()
+    val form: StateFlow<CheckoutForm> = _form.asStateFlow()
+
+    /**
+     * The checkout of this session's cart and form with [settings], charged in the [currency] the settings give and
+     * offering tipping on the receipt while [printerAvailable]; updated whenever any of them changes.
+     */
+    fun checkout(
+        settings: Flow<AppSettings>,
+        printerAvailable: Flow<Boolean>,
+        currency: (AppSettings) -> CurrencySpec,
+    ): Flow<Checkout> =
+        combine(form, cart, settings, printerAvailable) { form, cart, appSettings, printer ->
+            val payment = appSettings.payment
+            Checkout(form, payment, cart.totals(payment.taxMode, payment.chargeTax), currency(appSettings), kind, printer)
+        }
 
     /**
      * Adds one unit of [product] with [tax], joining an existing line for the same product at the same price and tax
-     * (with [singleItem], it replaces the cart instead). The tax rate's name and rate are copied, so later edits to the
+     * (for a [SaleKind.singleItem] kind, it replaces the cart instead). The tax rate's name and rate are copied, so later edits to the
      * rate do not change the cart.
      */
     fun addProduct(
@@ -62,8 +82,8 @@ class SaleSession(
     ) = _cart.update { base(it).addProduct(CartProduct(product.id, product.name, product.sku, product.priceMinor, applied(tax)), newKey) }
 
     /**
-     * Adds a custom item of [amountMinor] (minor units, positive) with [tax] as a new line (with [singleItem], it
-     * replaces the cart instead).
+     * Adds a custom item of [amountMinor] (minor units, positive) with [tax] as a new line (for a [SaleKind.singleItem]
+     * kind, it replaces the cart instead).
      *
      * @throws IllegalArgumentException if [amountMinor] is not positive.
      */
@@ -78,8 +98,8 @@ class SaleSession(
     private fun applied(tax: TaxRateEntity) = AppliedTax(tax.name, tax.rateMilliPercent)
 
     /**
-     * Sets the quantity of the line with [key], capped at [Cart.MAX_QUANTITY] (at one with [singleItem]); zero or less
-     * removes the line.
+     * Sets the quantity of the line with [key], capped at [Cart.MAX_QUANTITY] (at one for a [SaleKind.singleItem] kind); zero or
+     * less removes the line.
      */
     fun setQuantity(
         key: String,
@@ -90,11 +110,11 @@ class SaleSession(
     fun remove(key: String) = _cart.update { it.remove(key) }
 
     /** Updates the checkout form atomically; [transform] must not have side effects, as it can run more than once. */
-    fun updateCheckout(transform: (CheckoutForm) -> CheckoutForm) = _checkout.update(transform)
+    fun updateForm(transform: (CheckoutForm) -> CheckoutForm) = _form.update(transform)
 
     /** Empties the cart and the checkout form, for the next sale. */
     fun clear() {
         _cart.value = Cart()
-        _checkout.value = CheckoutForm()
+        _form.value = CheckoutForm()
     }
 }

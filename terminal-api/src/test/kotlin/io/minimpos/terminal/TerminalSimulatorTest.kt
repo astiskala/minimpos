@@ -5,6 +5,8 @@ import com.adyen.model.nexo.MessageHeader
 import com.adyen.model.nexo.SaleToPOIRequest
 import com.adyen.model.terminal.TerminalAPIRequest
 import com.google.common.truth.Truth.assertThat
+import io.minimpos.terminal.checkout.ModificationAmount
+import io.minimpos.terminal.checkout.ModificationResult
 import io.minimpos.terminal.client.PaymentParams
 import io.minimpos.terminal.client.PosApplication
 import io.minimpos.terminal.client.PrintAlign
@@ -19,10 +21,12 @@ import io.minimpos.terminal.client.RetryAdvice
 import io.minimpos.terminal.client.TerminalClient
 import io.minimpos.terminal.client.TerminalIdentity
 import io.minimpos.terminal.client.TransactionOutcome
+import io.minimpos.terminal.simulator.SimulatedModifications
 import io.minimpos.terminal.simulator.SimulatedOutcome
 import io.minimpos.terminal.simulator.SimulatorConfig
 import io.minimpos.terminal.simulator.TerminalSimulator
 import io.minimpos.terminal.transport.TerminalProtocolException
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.async
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
@@ -93,6 +97,56 @@ class TerminalSimulatorTest {
         assertThat(cancel.success).isTrue()
         assertThat(cancel.customerReceipt.map { it.name }).containsAtLeast("CANCELLATION", "CANCELLATION REQUESTED")
     }
+
+    @Test
+    fun `the simulated Checkout API follows what happened to the simulator's payments`() =
+        runBlocking {
+            val api = simulator.modifications
+            val amount = ModificationAmount("AUD", 1_200)
+            // A sale was captured when it was taken.
+            val sale = pay()
+            assertThat(api.capture(sale.pspReference!!, amount, "MP-1", "k1")).isInstanceOf(ModificationResult.NotProcessed::class.java)
+            assertThat(api.updateAmount(sale.pspReference, amount, "MP-1", null, "k2"))
+                .isInstanceOf(ModificationResult.NotProcessed::class.java)
+
+            // A pre-authorisation is adjusted while held, then captured (again with the same key), and no longer adjusted.
+            val held = pay(tokenizing.copy(preAuthorisation = true))
+            val psp = held.pspReference!!
+            assertThat(api.updateAmount(psp, amount, "MP-1", held.adjustAuthorisationData, "k3"))
+                .isInstanceOf(ModificationResult.Authorised::class.java)
+            assertThat(api.capture(psp, amount, "MP-1", "k4")).isInstanceOf(ModificationResult.Received::class.java)
+            assertThat(api.capture(psp, amount, "MP-1", "k4")).isInstanceOf(ModificationResult.Received::class.java)
+            val captured = api.updateAmount(psp, amount, "MP-1", null, "k5") as ModificationResult.NotProcessed
+            assertThat(captured.message).contains("already captured")
+            // Reversing it in full now refunds it rather than releasing a hold.
+            val refund = client.refund(RefundParams(held.poiTransactionId!!, held.poiTimestamp!!, "R-1")) as TransactionOutcome.Completed
+            assertThat(refund.details.customerReceipt.map { it.name }).contains("REFUND REQUESTED")
+
+            // A cancelled pre-authorisation cannot be captured.
+            val cancelled = pay(tokenizing.copy(preAuthorisation = true))
+            client.refund(RefundParams(cancelled.poiTransactionId!!, cancelled.poiTimestamp!!, "C-1"))
+            val refused = api.capture(cancelled.pspReference!!, amount, "MP-1", "k6") as ModificationResult.NotProcessed
+            assertThat(refused.message).contains("cancelled")
+
+            // Payments it never saw (from before a restart) are accepted.
+            assertThat(api.capture("UNKNOWNPSP", amount, "MP-1", "k7")).isInstanceOf(ModificationResult.Received::class.java)
+            assertThat(SimulatedModifications().capture(sale.pspReference, amount, "MP-1", "k8"))
+                .isInstanceOf(ModificationResult.Received::class.java)
+        }
+
+    @Test
+    fun `a status check while a payment is under way is answered in progress`() =
+        runBlocking {
+            config = config.copy(delayMillis = 10_000)
+            val started = CompletableDeferred<String>()
+            val payment = async { client.pay(tokenizing) { started.complete(it) } }
+            val id = started.await()
+            delay(50)
+            assertThat(client.status(id)).isInstanceOf(TransactionOutcome.Unknown::class.java)
+            client.abort(id)
+            payment.await()
+            assertThat(client.status(id)).isInstanceOf(TransactionOutcome.Completed::class.java)
+        }
 
     @Test
     fun `approvals without a shopper reference are not tokenized, signatures on request`() {

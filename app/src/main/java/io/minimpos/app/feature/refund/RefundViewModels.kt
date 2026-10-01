@@ -7,16 +7,14 @@ import io.minimpos.app.data.db.RefundStatus
 import io.minimpos.app.data.repo.RefundRepository
 import io.minimpos.app.data.repo.SaleRepository
 import io.minimpos.app.data.settings.AppSettings
-import io.minimpos.app.feature.sale.ActionState
-import io.minimpos.app.feature.sale.ResultMessages
-import io.minimpos.app.feature.sale.toState
+import io.minimpos.app.feature.TransactionActions
+import io.minimpos.app.feature.TransactionActionsState
 import io.minimpos.app.payment.ReceiptDelivery
 import io.minimpos.app.payment.TransactionLifecycle
 import io.minimpos.app.refund.RefundChoice
 import io.minimpos.app.refund.RefundStart
 import io.minimpos.app.refund.Refundability
 import io.minimpos.app.refund.RefundablePayment
-import io.minimpos.app.terminal.TerminalState
 import io.minimpos.core.codec.RefundQrPayload
 import io.minimpos.core.money.AmountEntry
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -24,13 +22,11 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.time.Clock
 import java.time.ZoneId
-import java.util.Locale
 
 /** What to refund, as offered on the refund screen. */
 enum class RefundOption {
@@ -138,21 +134,11 @@ class RefundViewModel(
  * What the refund result screen shows.
  *
  * @property refund The refund, or null until loaded.
- * @property settings The current settings.
- * @property printerAvailable Whether printing is offered.
- * @property print The latest print.
- * @property email The latest email.
- * @property rechecking Whether a transaction status check is running.
- * @property recheckMessage Shown when the check found the outcome still unknown; null otherwise.
+ * @property transaction The receipt, printing and emailing it, and re-checking an unknown outcome.
  */
 data class RefundResultUiState(
     val refund: RefundEntity? = null,
-    val settings: AppSettings = AppSettings(),
-    val printerAvailable: Boolean = false,
-    val print: ActionState = ActionState(),
-    val email: ActionState = ActionState(),
-    val rechecking: Boolean = false,
-    val recheckMessage: String? = null,
+    val transaction: TransactionActionsState = TransactionActionsState(),
 ) {
     /** Whether the terminal accepted the refund (Adyen confirms it later). */
     val accepted: Boolean get() = refund?.status == RefundStatus.REQUESTED
@@ -161,61 +147,30 @@ data class RefundResultUiState(
     val canRecheck: Boolean get() = refund?.status == RefundStatus.UNKNOWN && refund.serviceId != null
 }
 
-/** A refund's outcome and receipt, right after the refund or later from history, and re-checking an unknown outcome. */
+/**
+ * A refund's outcome and receipt, right after the refund or later from history: the receipt, printing and emailing it,
+ * and re-checking an unknown outcome ([transaction], which delivers the automatic receipt of a refund [justMade]).
+ *
+ * @param refundId The refund shown.
+ * @param refunds Where it is stored.
+ * @param receipts Prints and emails its receipt.
+ * @param lifecycle The refunds' lifecycle, for status checks and leaving the result.
+ * @param justMade False when opened from history: nothing is delivered automatically and leaving acknowledges nothing.
+ */
 class RefundResultViewModel(
-    private val refundId: String,
+    refundId: String,
     refunds: RefundRepository,
-    private val receipts: ReceiptDelivery,
+    receipts: ReceiptDelivery,
     private val lifecycle: TransactionLifecycle<RefundStart>,
-    settings: StateFlow<AppSettings>,
-    terminal: StateFlow<TerminalState>,
-    private val messages: ResultMessages,
-    /** False when opened from history: nothing is delivered automatically and leaving acknowledges nothing. */
     private val justMade: Boolean = true,
 ) : ViewModel() {
-    private val local = MutableStateFlow(RefundResultUiState())
+    /** The receipt, printing and emailing it, and re-checking an unknown outcome. */
+    val transaction = TransactionActions.forRefund(viewModelScope, refundId, receipts, lifecycle, fresh = justMade)
 
     /** The screen state, updated whenever the refund, settings, printer or an action changes. */
     val state: StateFlow<RefundResultUiState> =
-        combine(refunds.observe(refundId), settings, terminal, local) { refund, appSettings, status, ui ->
-            ui.copy(refund = refund, settings = appSettings, printerAvailable = status.printerAvailable)
-        }.stateIn(viewModelScope, SharingStarted.Eagerly, RefundResultUiState())
-
-    init {
-        if (justMade) {
-            viewModelScope.launch {
-                refunds.observe(refundId).first { it != null }
-                if (receipts.automationForRefund(refundId).print) print()
-            }
-        }
-    }
-
-    /** Prints the refund receipt. */
-    fun print() {
-        local.update { it.copy(print = ActionState(running = true)) }
-        viewModelScope.launch {
-            val result = receipts.printRefund(refundId).toState(messages.printed)
-            local.update { it.copy(print = result) }
-        }
-    }
-
-    /** Emails the refund receipt to [to]. */
-    fun email(to: String) {
-        local.update { it.copy(email = ActionState(running = true)) }
-        viewModelScope.launch {
-            val result = receipts.emailRefund(refundId, to).toState(messages.emailed.format(Locale.getDefault(), to))
-            local.update { it.copy(email = result) }
-        }
-    }
-
-    /** Asks the terminal for the transaction status of a refund whose outcome is unknown; the refund updates when settled. */
-    fun recheck() {
-        local.update { it.copy(rechecking = true, recheckMessage = null) }
-        viewModelScope.launch {
-            val settled = lifecycle.recheck(refundId)
-            local.update { it.copy(rechecking = false, recheckMessage = if (settled) null else messages.stillUnknown) }
-        }
-    }
+        combine(refunds.observe(refundId), transaction.state) { refund, actions -> RefundResultUiState(refund, actions) }
+            .stateIn(viewModelScope, SharingStarted.Eagerly, RefundResultUiState())
 
     /** Leaves the result, so the next refund can start. */
     fun finish() {

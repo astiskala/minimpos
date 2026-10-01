@@ -118,24 +118,24 @@ import kotlinx.coroutines.launch
 import java.util.Locale
 
 /**
- * Ringing up a sale: product tiles with search and category filters, custom amounts, barcode scanning and the cart,
- * with checkout as the main action. With [preAuthorisation] it is the pre-authorise screen instead: only
- * pre-authorisation products, and no cart, because a pre-authorisation holds one item: tapping a product, adding a
- * custom amount or scanning a barcode goes straight to checkout with it (replacing any item chosen before).
+ * Ringing up a payment of [kind]. For a sale: product tiles with search and category filters, custom amounts, barcode
+ * scanning and the cart, with checkout as the main action. For a [SaleKind.singleItem] kind (the pre-authorise screen)
+ * only its products, and no cart: tapping a product, adding a custom amount or scanning a barcode goes straight to
+ * checkout with it (replacing any item chosen before).
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SaleScreen(
     navigator: Navigator,
+    kind: SaleKind,
     modifier: Modifier = Modifier,
-    preAuthorisation: Boolean = false,
-    vm: SaleViewModel = saleViewModel(preAuthorisation),
+    vm: SaleViewModel = saleViewModel(kind),
 ) {
     val state by vm.state.collectAsStateWithLifecycle()
     val money = rememberMoneyFormatter(state.currency)
-    val checkout = Route.Checkout(preAuthorisation)
+    val checkout = Route.Checkout(kind)
     // Checking the screen on top keeps a second quick tap from opening checkout twice.
-    val onChosen = { if (preAuthorisation && navigator.current == Route.PreAuth) navigator.push(checkout) }
+    val onChosen = { if (kind.singleItem && navigator.current == Route.ringUp(kind)) navigator.push(checkout) }
     var overlay by rememberSaveable { mutableStateOf<SaleOverlay?>(null) }
     var customOffered by rememberSaveable { mutableStateOf(false) }
     val search = rememberProductSearch(state.products.size, state.query, vm::setQuery)
@@ -152,14 +152,14 @@ fun SaleScreen(
     }
 
     MiniScaffold(
-        title = stringResource(if (preAuthorisation) R.string.pre_auth_title else R.string.sale_title),
+        title = stringResource(if (kind == SaleKind.PRE_AUTHORISATION) R.string.pre_auth_title else R.string.sale_title),
         onBack = navigator::back,
         modifier = modifier,
         snackbarHostState = snackbar,
         actions = {
             SaleBarActions(
                 canScan = state.hasSkus,
-                canClear = state.cart.lines.isNotEmpty() && !preAuthorisation,
+                canClear = state.cart.lines.isNotEmpty() && !kind.singleItem,
                 onScan = { overlay = SaleOverlay.SCANNER },
                 onClear = { overlay = SaleOverlay.CLEAR_CART },
                 search = search.mode.takeIf { search.onRequest },
@@ -341,7 +341,7 @@ private fun SaleLayout(
 ) {
     BoxWithConstraints(modifier.fillMaxSize()) {
         val wide = maxWidth >= 720.dp
-        val cart = !state.preAuthorisation
+        val cart = !state.kind.singleItem
         Row(Modifier.fillMaxSize()) {
             Column(Modifier.weight(1f).fillMaxHeight()) {
                 ProductBrowser(
@@ -407,11 +407,10 @@ private fun CartSheet(
 }
 
 @Composable
-private fun saleViewModel(preAuthorisation: Boolean): SaleViewModel {
+private fun saleViewModel(kind: SaleKind): SaleViewModel {
     val container = LocalAppContainer.current
-    val kind = if (preAuthorisation) SaleKind.PRE_AUTHORISATION else SaleKind.SALE
     return viewModel(key = kind.name) {
-        SaleViewModel(container.catalog, container.session(kind), container.settingsState, container::currency, kind)
+        SaleViewModel(container.catalog, container.session(kind), container.settingsState, container::currency)
     }
 }
 
@@ -452,7 +451,7 @@ private fun ProductBrowser(
             item(key = "custom") { CustomItemTile(tileHeight, onCustom) }
             items(state.visibleProducts, key = { it.id }) { product ->
                 // A pre-authorisation's item is never shown as in a cart: choosing it opens checkout.
-                val inCart = if (state.preAuthorisation) 0 else state.quantityInCart(product.id)
+                val inCart = if (state.kind.singleItem) 0 else state.quantityInCart(product.id)
                 ProductTile(product, money.format(product.priceMinor), inCart, tileHeight) { onAdd(product) }
             }
             if (state.loaded && state.products.isEmpty()) {

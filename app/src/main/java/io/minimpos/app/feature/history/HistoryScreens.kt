@@ -60,16 +60,17 @@ import io.minimpos.app.data.db.SaleEntity
 import io.minimpos.app.data.db.SaleKind
 import io.minimpos.app.data.db.SaleStatus
 import io.minimpos.app.data.repo.HistoryItem
+import io.minimpos.app.data.settings.CaptureMode
+import io.minimpos.app.feature.OutcomeMessage
 import io.minimpos.app.feature.refund.RefundResultScreen
 import io.minimpos.app.feature.refund.refundStatusKind
 import io.minimpos.app.feature.refund.refundStatusTitle
 import io.minimpos.app.feature.sale.EnterTipButton
 import io.minimpos.app.feature.sale.HoldNotes
-import io.minimpos.app.feature.sale.ResultMessages
 import io.minimpos.app.feature.sale.adviceText
 import io.minimpos.app.feature.sale.statusKind
 import io.minimpos.app.feature.sale.statusTitle
-import io.minimpos.app.terminal.CaptureMode
+import io.minimpos.app.refund.PaymentAction
 import io.minimpos.app.ui.components.ActionMessage
 import io.minimpos.app.ui.components.Card
 import io.minimpos.app.ui.components.ConfirmDialog
@@ -400,7 +401,7 @@ fun SaleDetailScreen(
         ) {
             // The outcome and actions come first, as on the result screen, so they show without scrolling past every detail.
             Column(Modifier.widthIn(max = 560.dp), verticalArrangement = Arrangement.spacedBy(dimens.spacing)) {
-                SaleDetailOutcome(state, money, container.receiptFactory::formatDateTime)
+                SaleDetailOutcome(state, money, container::formatDateTime)
                 HoldActions(
                     state = state,
                     onEnterTip = { navigator.push(Route.Tip(sale.id)) },
@@ -410,22 +411,22 @@ fun SaleDetailScreen(
                 )
                 SaleDetailActions(
                     state = state,
-                    onRecheck = vm::recheck,
+                    onRecheck = vm.transaction::recheck,
                     onRefund = { navigator.push(Route.Refund(saleId = sale.id)) },
                     onCancel = { dialog = DetailDialog.CANCEL },
-                    onPrint = vm::print,
+                    onPrint = vm.transaction::print,
                     onEmail = { dialog = DetailDialog.EMAIL },
                 )
-                SaleRefunds(state.refunds, money, preAuth, container.receiptFactory::formatDateTime) {
+                SaleRefunds(state.refunds, money, preAuth, container::formatDateTime) {
                     navigator.push(Route.RefundDetail(it))
                 }
                 PaymentDetailsCard(sale)
-                ReceiptPreview(container.receiptFactory.sale(record, state.settings.receipt), Modifier.align(Alignment.CenterHorizontally))
+                state.transaction.receipt?.let { ReceiptPreview(it, Modifier.align(Alignment.CenterHorizontally)) }
             }
         }
     }
     state.record?.sale?.let { sale ->
-        SaleDetailDialogs(sale, dialog, onEmail = vm::email, onDismiss = { dialog = null }) {
+        SaleDetailDialogs(sale, dialog, onEmail = vm.transaction::email, onDismiss = { dialog = null }) {
             if (vm.cancel() != null) navigator.push(Route.RefundProcessing)
         }
     }
@@ -450,12 +451,16 @@ private fun SaleDetailOutcome(
             listOfNotNull(
                 formatDateTime(sale.createdAt),
                 sale.refundedMinor
-                    .takeIf { it > 0 && (sale.captured || (sale.kind == SaleKind.SALE && !sale.tipOnReceipt)) }
+                    .takeIf { it > 0 }
                     ?.let { stringResource(R.string.detail_refunded, money.format(it)) },
             ).joinToString(" · "),
         )
         HoldNotes(sale, money)
-        if (state.canCapture && state.captureMode == CaptureMode.CUSTOMER_AREA) OutcomeNote(stringResource(R.string.detail_pre_auth_note))
+        if (PaymentAction.CAPTURE in state.actions &&
+            state.captureMode == CaptureMode.CUSTOMER_AREA
+        ) {
+            OutcomeNote(stringResource(R.string.detail_pre_auth_note))
+        }
     }
 }
 
@@ -471,8 +476,8 @@ private fun ColumnScope.HoldActions(
     onAdjust: () -> Unit,
     onRetryCapture: () -> Unit,
 ) {
-    if (state.canEnterTip) EnterTipButton(onEnterTip)
-    if (state.canCapture) {
+    if (PaymentAction.ENTER_TIP in state.actions) EnterTipButton(onEnterTip)
+    if (PaymentAction.CAPTURE in state.actions) {
         SecondaryButton(
             stringResource(if (state.captureMode == CaptureMode.API) R.string.detail_capture else R.string.detail_record_capture),
             onCapture,
@@ -480,8 +485,12 @@ private fun ColumnScope.HoldActions(
             modifier = Modifier.testTag("capture"),
         )
     }
-    if (state.canAdjust) TertiaryButton(stringResource(R.string.detail_adjust), onAdjust, modifier = Modifier.testTag("adjust"))
-    if (state.canRetryCapture) {
+    if (PaymentAction.ADJUST in
+        state.actions
+    ) {
+        TertiaryButton(stringResource(R.string.detail_adjust), onAdjust, modifier = Modifier.testTag("adjust"))
+    }
+    if (PaymentAction.RETRY_CAPTURE in state.actions) {
         SecondaryButton(
             stringResource(R.string.detail_retry_capture),
             onRetryCapture,
@@ -490,7 +499,7 @@ private fun ColumnScope.HoldActions(
             modifier = Modifier.testTag("retryCapture"),
         )
     }
-    state.retry.message?.let { ActionMessage(it, state.retry.isError) }
+    OutcomeMessage(state.retry)
 }
 
 /**
@@ -563,12 +572,14 @@ private fun ColumnScope.SaleDetailActions(
         SecondaryButton(
             stringResource(R.string.result_check_again),
             onRecheck,
-            loading = state.rechecking,
+            loading = state.transaction.rechecking,
             icon = Icons.Default.Refresh,
         )
-        state.recheckMessage?.let { Text(it, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth()) }
+        if (state.transaction.stillUnknown) {
+            Text(stringResource(R.string.detail_still_unknown), textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
+        }
     }
-    if (state.canRefund) {
+    if (PaymentAction.REFUND in state.actions) {
         SecondaryButton(
             stringResource(R.string.detail_refund),
             onRefund,
@@ -576,7 +587,7 @@ private fun ColumnScope.SaleDetailActions(
             modifier = Modifier.testTag("detailRefund"),
         )
     }
-    if (state.canCancel) {
+    if (PaymentAction.CANCEL in state.actions) {
         SecondaryButton(
             stringResource(if (sale.tipOnReceipt) R.string.detail_cancel_payment else R.string.detail_cancel_pre_auth),
             onCancel,
@@ -585,16 +596,21 @@ private fun ColumnScope.SaleDetailActions(
         )
     }
     if (sale.status != SaleStatus.APPROVED) return
-    if (state.printerAvailable) {
+    if (state.transaction.canPrint) {
         SecondaryButton(stringResource(R.string.detail_reprint), {
             onPrint(ReceiptCopy.CUSTOMER)
-        }, loading = state.print.running, icon = Icons.Default.Print)
+        }, loading = state.transaction.print.running, icon = Icons.Default.Print)
         TertiaryButton(stringResource(R.string.result_print_merchant), { onPrint(ReceiptCopy.MERCHANT) })
-        state.print.message?.let { ActionMessage(it, state.print.isError) }
+        OutcomeMessage(state.transaction.print)
     }
-    if (state.settings.email.isConfigured) {
-        SecondaryButton(stringResource(R.string.result_email), onEmail, loading = state.email.running, icon = Icons.Default.Email)
-        state.email.message?.let { ActionMessage(it, state.email.isError) }
+    if (state.transaction.canEmail) {
+        SecondaryButton(
+            stringResource(R.string.result_email),
+            onEmail,
+            loading = state.transaction.email.running,
+            icon = Icons.Default.Email,
+        )
+        OutcomeMessage(state.transaction.email)
     }
 }
 
@@ -666,19 +682,14 @@ private fun historyViewModel(): HistoryViewModel {
 @Composable
 private fun saleDetailViewModel(saleId: String): SaleDetailViewModel {
     val container = LocalAppContainer.current
-    val printed = stringResource(R.string.result_printed)
-    val emailed = stringResource(R.string.result_emailed)
-    val stillUnknown = stringResource(R.string.detail_still_unknown)
-    val notCaptured = stringResource(R.string.capture_failed)
     return viewModel(key = saleId) {
         SaleDetailViewModel(
             saleId,
-            container.sales,
+            container.storedPayments,
+            container.refundRecords,
             container.receipts,
             SaleOperations(container.payments, container.refunds, container.captures),
             container.settingsState,
-            container.terminalStatus.state,
-            ResultMessages(printed, emailed, stillUnknown = stillUnknown, notCaptured = notCaptured),
         )
     }
 }

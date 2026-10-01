@@ -26,18 +26,16 @@ import io.minimpos.app.feature.refund.RefundOption
 import io.minimpos.app.feature.refund.RefundResultViewModel
 import io.minimpos.app.feature.refund.RefundViewModel
 import io.minimpos.app.feature.sale.CheckoutViewModel
-import io.minimpos.app.feature.sale.ResultMessages
 import io.minimpos.app.feature.sale.SaleResultViewModel
 import io.minimpos.app.feature.sale.SaleViewModel
 import io.minimpos.app.feature.settings.SettingsChecks
-import io.minimpos.app.feature.settings.SettingsMessages
 import io.minimpos.app.feature.settings.SettingsViewModel
 import io.minimpos.app.payment.TransactionState
 import io.minimpos.app.refund.RefundInvalidReason
 import io.minimpos.app.refund.Refundability
 import io.minimpos.app.refund.RefundablePayment
 import io.minimpos.core.codec.RefundQrPayload
-import io.minimpos.core.receipt.ReceiptDocument
+import io.minimpos.core.receipt.PlainTextReceiptRenderer
 import io.minimpos.core.receipt.ReceiptElement
 import io.minimpos.core.shopper.EmailReferenceMode
 import io.minimpos.core.shopper.ShopperReferences
@@ -97,7 +95,7 @@ class SettingsViewModelTest {
             SettingsChecks(target.terminalStatus, target.receipts, target.api),
             target.history,
             target.catalog,
-            SettingsMessages("Connected", "Failed", "printer", "no printer", "Sent to %s", "Printed", "Not stored (%s)"),
+            target::sampleReceipt,
         )
 
     @Test
@@ -109,21 +107,21 @@ class SettingsViewModelTest {
 
             vm.saveAndTest(Secret.TERMINAL_PASSPHRASE, "wrong passphrase")
             val rejected = await { vm.actions.first { it.connection.isError } }
-            assertThat(rejected.connection.message).contains("shared key")
+            assertThat((rejected.connection.outcome as? ActionOutcome.ConnectionFailed)?.reason).contains("shared key")
             assertThat(rejected.passphraseStored).isTrue()
             vm.dismissConnectionResult()
-            assertThat(vm.actions.value.connection.message).isNull()
+            assertThat(vm.actions.value.connection.outcome).isNull()
 
             vm.saveAndTest(Secret.TERMINAL_PASSPHRASE, "correct horse battery staple")
             val connected = await { vm.actions.first { it.connection.done } }
-            assertThat(connected.connection.message).startsWith("Connected")
+            assertThat(connected.connection.outcome).isInstanceOf(ActionOutcome.Connected::class.java)
             assertThat(await { onTerminal.container.secrets.get(Secret.TERMINAL_PASSPHRASE) }).isEqualTo("correct horse battery staple")
 
             // A device that cannot encrypt secrets is reported, not a crash, and the saved passphrase is kept.
             onTerminal.cipher.failEncrypt = true
             vm.saveAndTest(Secret.TERMINAL_PASSPHRASE, "another passphrase")
             val failed = await { vm.actions.first { it.connection.isError } }
-            assertThat(failed.connection.message).startsWith("Not stored (ProviderException: Keystore unavailable)")
+            assertThat(failed.connection.outcome).isEqualTo(ActionOutcome.SecretNotStored("ProviderException: Keystore unavailable"))
             assertThat(failed.passphraseStored).isFalse()
             assertThat(await { onTerminal.container.secrets.get(Secret.TERMINAL_PASSPHRASE) }).isEqualTo("correct horse battery staple")
             vm.setSecret(Secret.SMTP_PASSWORD, "hunter2")
@@ -188,25 +186,33 @@ class SettingsViewModelTest {
         await { vm.state.first { !it.pinSet } }
 
         vm.saveAndTest(Secret.TERMINAL_PASSPHRASE)
-        assertThat(await { vm.actions.first { it.connection.done } }.connection.message).contains("Connected")
-        vm.printTest(ReceiptDocument(listOf(ReceiptElement.Text("Test"))))
-        assertThat(await { vm.actions.first { it.print.done } }.print.message).isEqualTo("Printed")
+        assertThat(await { vm.actions.first { it.connection.done } }.connection.outcome)
+            .isEqualTo(ActionOutcome.Connected(globalStatus = "OK", hasPrinter = true))
+        // The sample receipt follows the settings, before and after they are stored.
+        val sample = await { vm.state.first { it.sampleReceipt != null } }.sampleReceipt!!
+        assertThat(sample.qrCodes).hasSize(1)
+        assertThat(PlainTextReceiptRenderer(48).render(sample)).contains("Shop")
+        vm.printTest()
+        assertThat(await { vm.actions.first { it.print.done } }.print.outcome).isEqualTo(ActionOutcome.Printed)
+        assertThat(container.virtualPrinter.jobs.value).isNotEmpty()
         vm.sendTestEmail("a@b.co")
-        assertThat(await { vm.actions.first { !it.email.running && it.email.message != null } }.email.isError).isTrue()
+        assertThat(await { vm.actions.first { !it.email.running && it.email.outcome != null } }.email.isError).isTrue()
         vm.clearHistory()
         await { vm.actions.first { it.cleared } }
 
         env.updateSettings { it.copy(terminal = it.terminal.copy(mode = TerminalMode.TERMINAL)) }
         vm.saveAndTest(Secret.TERMINAL_PASSPHRASE)
-        assertThat(await { vm.actions.first { it.connection.isError } }.connection.message).contains("POIID")
+        assertThat(
+            (await { vm.actions.first { it.connection.isError } }.connection.outcome as? ActionOutcome.Failed)?.message,
+        ).contains("POIID")
         env.updateSettings {
             it.copy(terminal = it.terminal.copy(poiIdOverride = "S1F2-000000001", keyIdentifier = "k", host = "127.0.0.1"))
         }
         vm.saveAndTest(Secret.TERMINAL_PASSPHRASE)
         assertThat(
             await {
-                vm.actions.first { it.connection.isError && it.connection.message?.startsWith("Failed") == true }
-            }.connection.message,
+                vm.actions.first { it.connection.isError && it.connection.outcome is ActionOutcome.ConnectionFailed }
+            }.connection.outcome.let { (it as? ActionOutcome.ConnectionFailed)?.reason },
         ).contains("Cannot connect")
     }
 }

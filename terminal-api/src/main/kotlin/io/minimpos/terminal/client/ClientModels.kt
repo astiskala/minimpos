@@ -297,6 +297,18 @@ data class TransactionDetails(
 
     /** With ErrorCondition Busy, the transaction the terminal is busy with (it can be aborted). */
     val busyServiceId: String? get() = additionalData["serviceId"]?.takeIf { errorCondition == "Busy" }
+
+    /**
+     * Adyen's `adjustAuthorisationData` blob for synchronous authorisation adjustments, sent for pre-authorised payments
+     * when "return adjust authorisation data" is enabled in the Customer Area; null otherwise.
+     */
+    val adjustAuthorisationData: String? get() = additionalData[ADJUST_AUTHORISATION_DATA]
+
+    /** `AdditionalResponse` keys read by the typed properties. */
+    companion object {
+        /** The `AdditionalResponse` key of [adjustAuthorisationData]. */
+        const val ADJUST_AUTHORISATION_DATA = "adjustAuthorisationData"
+    }
 }
 
 /**

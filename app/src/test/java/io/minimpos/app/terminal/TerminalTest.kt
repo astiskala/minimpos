@@ -54,29 +54,6 @@ class TerminalTest {
         }
 
     @Test
-    fun `off a terminal payments go to the simulator, or a terminal with its address, POIID and key`() {
-        val gateway = container.gateway
-        val terminal = container.settingsState.value.terminal
-        assertThat(gateway.automaticMode).isEqualTo(TerminalMode.SIMULATOR)
-        assertThat(gateway.effectiveMode(terminal)).isEqualTo(TerminalMode.SIMULATOR)
-        assertThat(gateway.poiId(terminal)).isEqualTo(TerminalGateway.SIMULATOR_POI_ID)
-        assertThat(gateway.setupProblem(terminal, passphraseSaved = false)).isNull()
-
-        val network = terminal.copy(mode = TerminalMode.TERMINAL)
-        assertThat(gateway.poiId(network)).isNull()
-        assertThat(gateway.poiId(network.copy(poiIdOverride = " S1U2-1 "))).isEqualTo("S1U2-1")
-        assertThat(gateway.setupProblem(network, passphraseSaved = true)).contains("POIID")
-        val withId = network.copy(poiIdOverride = "S1U2-000158213605014")
-        assertThat(gateway.setupProblem(withId, passphraseSaved = true)).contains("IP address")
-        val withHost = withId.copy(host = "10.0.0.9")
-        assertThat(gateway.setupProblem(withHost, passphraseSaved = true)).contains("key identifier")
-        val withKey = withHost.copy(keyIdentifier = "key")
-        assertThat(gateway.setupProblem(withKey, passphraseSaved = false)).contains("passphrase")
-        assertThat(gateway.setupProblem(withKey.copy(keyVersion = 0), passphraseSaved = true)).contains("version")
-        assertThat(gateway.setupProblem(withKey, passphraseSaved = true)).isNull()
-    }
-
-    @Test
     fun `without complete setup nothing is sent, and every operation says what to enter`() {
         env.updateSettings { it.copy(terminal = it.terminal.copy(mode = TerminalMode.TERMINAL)) }
         val gateway = container.gateway
@@ -95,9 +72,7 @@ class TerminalTest {
     fun `on a terminal its own POIID and localhost apply, and only the shared key is needed`() =
         onTerminal { terminal, fake ->
             val gateway = terminal.container.gateway
-            val settings = terminal.container.settingsState.value.terminal
-            assertThat(gateway.automaticMode).isEqualTo(TerminalMode.TERMINAL)
-            assertThat(gateway.poiId(settings.copy(poiIdOverride = " S1U2-1 "))).isEqualTo("S1F2-000158213605014")
+            assertThat(terminal.container.terminalStatus.automaticMode).isEqualTo(TerminalMode.TERMINAL)
             terminal.updateSettings { it.copy(terminal = it.terminal.copy(keyIdentifier = "key", saleId = " ", host = "10.0.0.9")) }
             assertThat((await { gateway.diagnose() } as TerminalConnection.NotSetUp).message).contains("passphrase")
 
@@ -148,7 +123,7 @@ class TerminalTest {
         // A print refused for want of a printer is remembered for that terminal.
         val failed = await { container.gateway.print(listOf(PrintJob.QrCode("x"))) } as PrintOutcome.Failed
         assertThat(failed.noPrinter).isTrue()
-        assertThat(container.gateway.printers.value[TerminalGateway.SIMULATOR_POI_ID]).isFalse()
+        assertThat(container.gateway.printers.value[TerminalSetup.SIMULATOR_POI_ID]).isFalse()
 
         env.updateSettings { it.copy(receipt = it.receipt.copy(printerMode = PrinterMode.ON)) }
         assertThat(await { container.terminalStatus.state.first { it.printerAvailable } }.printerAvailable).isTrue()

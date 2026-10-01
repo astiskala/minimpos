@@ -13,10 +13,11 @@ import io.minimpos.app.data.security.SecretStoreException
 import io.minimpos.app.data.security.SessionLock
 import io.minimpos.app.data.settings.AppSettings
 import io.minimpos.app.data.settings.SettingsRepository
+import io.minimpos.app.feature.ActionOutcome
+import io.minimpos.app.feature.ActionState
 import io.minimpos.app.feature.launchWrite
 import io.minimpos.app.feature.persisting
-import io.minimpos.app.feature.sale.ActionState
-import io.minimpos.app.feature.sale.toState
+import io.minimpos.app.feature.toState
 import io.minimpos.app.payment.ReceiptDelivery
 import io.minimpos.app.terminal.AdyenApi
 import io.minimpos.app.terminal.TerminalConnection
@@ -30,7 +31,6 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import java.util.Locale
 
 /**
  * What the settings screen shows.
@@ -40,6 +40,7 @@ import java.util.Locale
  * @property taxRates All tax rates, in display order.
  * @property taxRateUsage Number of products using each tax rate, by tax rate id.
  * @property loaded False until the settings, secrets and catalogue have been read.
+ * @property sampleReceipt The sample receipt with the current settings, previewed and test-printed; null until loaded.
  */
 data class SettingsUiState(
     val settings: AppSettings = AppSettings(),
@@ -47,6 +48,7 @@ data class SettingsUiState(
     val taxRates: List<TaxRateEntity> = emptyList(),
     val taxRateUsage: Map<Long, Int> = emptyMap(),
     val loaded: Boolean = false,
+    val sampleReceipt: ReceiptDocument? = null,
 ) {
     /** Whether an admin PIN is set. */
     val pinSet: Boolean get() = Secret.PIN_VERIFIER in secrets
@@ -74,36 +76,13 @@ data class SettingsUiState(
 data class SettingsActions(
     val connection: ActionState = ActionState(),
     val passphraseStored: Boolean = false,
-    val secretError: String? = null,
+    val secretError: ActionOutcome.SecretNotStored? = null,
     val email: ActionState = ActionState(),
     val print: ActionState = ActionState(),
     val cleared: Boolean = false,
     val taxRateInUse: Int? = null,
     val api: ActionState = ActionState(),
     val apiKeyStored: Boolean = false,
-)
-
-/**
- * Localised messages of the settings screen's actions.
- *
- * @property connectionOk Start of the message after a successful connection test.
- * @property connectionFailed Start of the message after a failed connection test.
- * @property printerPresent Added to a successful connection test when the terminal has a printer.
- * @property printerAbsent Added to a successful connection test when it has none.
- * @property testEmailSent Format with the address, shown after the test email was sent.
- * @property testPrinted Shown after the test receipt was printed.
- * @property secretNotStored Format with the error, e.g. "This device could not store it securely (%1$s)".
- * @property apiOk Shown after a successful Checkout API test.
- */
-data class SettingsMessages(
-    val connectionOk: String,
-    val connectionFailed: String,
-    val printerPresent: String,
-    val printerAbsent: String,
-    val testEmailSent: String,
-    val testPrinted: String,
-    val secretNotStored: String,
-    val apiOk: String = "",
 )
 
 /**
@@ -122,6 +101,15 @@ class SettingsChecks(
 /**
  * All of Settings: stored settings, secrets and the PIN, tax rates, the connection, email and print tests, and
  * clearing history. Secrets are only ever written and checked for presence here, never shown.
+ *
+ * @param settings The stored settings.
+ * @param secrets The stored secrets.
+ * @param pins The admin PIN.
+ * @param sessionLock Kept unlocked when a PIN is set here.
+ * @param checks The services behind the test buttons.
+ * @param history Cleared from here.
+ * @param catalog The tax rates.
+ * @param sampleReceipt The sample receipt with the given settings.
  */
 class SettingsViewModel(
     private val settings: SettingsRepository,
@@ -131,7 +119,7 @@ class SettingsViewModel(
     private val checks: SettingsChecks,
     private val history: HistoryRepository,
     private val catalog: CatalogRepository,
-    private val messages: SettingsMessages,
+    sampleReceipt: (AppSettings) -> ReceiptDocument,
 ) : ViewModel() {
     /** The screen state, updated whenever settings, secrets or the catalogue change. */
     val state: StateFlow<SettingsUiState> =
@@ -146,6 +134,7 @@ class SettingsViewModel(
                     }.groupingBy { it }
                     .eachCount(),
                 loaded = true,
+                sampleReceipt = sampleReceipt(appSettings),
             )
         }.stateIn(viewModelScope, SharingStarted.Eagerly, SettingsUiState())
 
@@ -207,7 +196,7 @@ class SettingsViewModel(
             _actions.update { it.copy(secretError = null) }
             true
         } catch (e: SecretStoreException) {
-            _actions.update { it.copy(secretError = messages.secretNotStored.format(Locale.getDefault(), e.message)) }
+            _actions.update { it.copy(secretError = ActionOutcome.SecretNotStored(e.message)) }
             false
         }
 
@@ -240,8 +229,8 @@ class SettingsViewModel(
             if (entered != null) {
                 val stored = persisting { storeSecret { secrets.set(secret, entered) } } && secrets.get(secret) == entered
                 if (!stored) {
-                    val error = _actions.value.secretError ?: messages.secretNotStored.format(Locale.getDefault(), "it did not read back")
-                    val failed = ActionState(message = error, isError = true)
+                    val error = _actions.value.secretError ?: ActionOutcome.SecretNotStored("it did not read back")
+                    val failed = ActionState(outcome = error, isError = true)
                     _actions.update { if (api) it.copy(api = failed) else it.copy(connection = failed) }
                     return@launch
                 }
@@ -256,16 +245,15 @@ class SettingsViewModel(
         when (val connection = checks.status.check()) {
             is TerminalConnection.Connected -> {
                 val diagnosis = connection.diagnosis
-                val printer = if (diagnosis.hasPrinter) messages.printerPresent else messages.printerAbsent
-                ActionState(message = "${messages.connectionOk} (${diagnosis.globalStatus ?: "OK"}, $printer)", done = true)
+                ActionState(outcome = ActionOutcome.Connected(diagnosis.globalStatus, diagnosis.hasPrinter), done = true)
             }
 
             is TerminalConnection.NotSetUp -> {
-                ActionState(message = connection.message, isError = true)
+                ActionState(outcome = ActionOutcome.Failed(connection.message), isError = true)
             }
 
             is TerminalConnection.Failed -> {
-                ActionState(message = "${messages.connectionFailed}: ${connection.message}", isError = true)
+                ActionState(outcome = ActionOutcome.ConnectionFailed(connection.message), isError = true)
             }
 
             TerminalConnection.Checking, TerminalConnection.Unknown -> {
@@ -274,7 +262,8 @@ class SettingsViewModel(
         }
 
     private suspend fun apiResult(): ActionState =
-        checks.api.verify()?.let { ActionState(message = it, isError = true) } ?: ActionState(message = messages.apiOk, done = true)
+        checks.api.verify()?.let { ActionState(outcome = ActionOutcome.Failed(it), isError = true) }
+            ?: ActionState(outcome = ActionOutcome.ApiWorks, done = true)
 
     /** Closes the connection test's result dialog. */
     fun dismissConnectionResult() {
@@ -285,17 +274,18 @@ class SettingsViewModel(
     fun sendTestEmail(to: String) {
         _actions.update { it.copy(email = ActionState(running = true)) }
         viewModelScope.launch {
-            val result = checks.receipts.sendTestEmail(to).toState(messages.testEmailSent.format(Locale.getDefault(), to))
+            val result = checks.receipts.sendTestEmail(to).toState(ActionOutcome.TestEmailSent(to))
             _actions.update { it.copy(email = result) }
         }
     }
 
-    /** Prints [document] (a sample receipt with the current settings) to check the receipt layout. */
-    fun printTest(document: ReceiptDocument) {
+    /** Prints the [SettingsUiState.sampleReceipt] to check the receipt layout; ignored until it is loaded. */
+    fun printTest() {
+        val document = state.value.sampleReceipt ?: return
         _actions.update { it.copy(print = ActionState(running = true)) }
         viewModelScope.launch {
             val result = checks.receipts.printDocument(document)
-            _actions.update { it.copy(print = result.toState(messages.testPrinted)) }
+            _actions.update { it.copy(print = result.toState(ActionOutcome.Printed)) }
         }
     }
 

@@ -1,9 +1,6 @@
 package io.minimpos.app.terminal
 
-import io.minimpos.app.data.security.Secret
-import io.minimpos.app.data.security.SecretStore
-import io.minimpos.app.data.settings.AppSettings
-import io.minimpos.app.data.settings.PrinterMode
+import io.minimpos.app.data.settings.CaptureMode
 import io.minimpos.app.data.settings.SettingsRepository
 import io.minimpos.app.data.settings.TerminalMode
 import io.minimpos.terminal.transport.TerminalEnvironment
@@ -17,6 +14,7 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filterNotNull
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
@@ -28,13 +26,11 @@ import kotlinx.coroutines.launch
  * @property onTerminal Whether the app runs on an Adyen terminal, which then is where payments go in terminal mode.
  * @property poiId The terminal's POIID (or the simulator's); null while one still has to be entered.
  * @property setupProblem What must still be entered before the terminal can be used, from
- *   [TerminalGateway.setupProblem]; null when nothing is missing (always in simulator mode).
+ *   [TerminalSetup.problem]; null when nothing is missing (always in simulator mode).
  * @property connection The latest connection check, whose result stays until the next one.
- * @property printerAvailable Whether printing is offered, see [TerminalStatus].
+ * @property printerAvailable Whether printing is offered, see [TerminalSetup.printerAvailable].
  * @property environment The environment of the terminal's certificate, remembered from the last connection.
- * @property captureMode How pre-authorisations and tips on the receipt are captured, see [AdyenApi.mode].
- * @property apiProblem What must still be entered before the Checkout API can be used, from
- *   [AdyenApi.setupProblem]; null when nothing is missing or no API is set up.
+ * @property apiSetup How far the Checkout API is set up, see [TerminalSetup.apiSetup]; captures follow the same decision.
  */
 data class TerminalState(
     val loaded: Boolean = false,
@@ -45,57 +41,50 @@ data class TerminalState(
     val connection: TerminalConnection = TerminalConnection.Unknown,
     val printerAvailable: Boolean = false,
     val environment: TerminalEnvironment? = null,
-    val captureMode: CaptureMode = CaptureMode.API,
-    val apiProblem: String? = null,
-)
+    val apiSetup: ApiSetup = ApiSetup.Simulated,
+) {
+    /** How pre-authorisations and tips on the receipt are captured ([ApiSetup.mode]). */
+    val captureMode: CaptureMode get() = apiSetup.mode
+
+    /** What must still be entered before the Checkout API can be used ([ApiSetup.problem]); null when nothing is. */
+    val apiProblem: String? get() = apiSetup.problem
+}
 
 /**
- * The terminal's status, kept up to date from the settings, the saved secrets and what the terminal reports, and
- * published as one [state].
+ * The terminal's status, kept up to date from the [TerminalSetup] (which follows the settings and saved secrets) and
+ * what the terminal reports, and published as one [state].
  *
- * Printing is offered as Settings › Receipts › Printer says: always, never, or detected. Detected means the simulator's
- * own setting, or whether the terminal reported a printer (see [TerminalGateway.printers]); a terminal not asked yet is
- * assumed to have one when its POIID starts with S1F2 or S1F4, since models such as the S1E4Pro and S1F4Pro share the
- * same `Build.MODEL`.
- *
- * @param gateway Checks the connection and knows where payments go.
- * @param settings The stored settings, followed as they change.
- * @param secrets Tells whether a shared key passphrase and a Checkout API key are saved.
+ * @param setups Where payments go and what is missing, as the settings and secrets change.
+ * @param gateway Checks the connection, and tells which terminals have a printer and which environment they are in.
+ * @param settings The stored settings; a detected environment is saved into them.
  * @param scope Keeps [state] up to date and runs the background checks started by [start].
- * @param api Tells how captures are made.
  */
 class TerminalStatus(
+    private val setups: TerminalSetupSource,
     private val gateway: TerminalGateway,
     private val settings: SettingsRepository,
-    private val secrets: SecretStore,
     private val scope: CoroutineScope,
-    api: AdyenApi,
 ) {
     private val connection = MutableStateFlow<TerminalConnection>(TerminalConnection.Unknown)
 
     /** The current status; it holds the defaults (not [TerminalState.loaded]) until settings and secrets are read. */
     val state: StateFlow<TerminalState> =
-        combine(settings.settings, secrets.configured, connection, gateway.printers) { appSettings, configured, checked, printers ->
-            val terminal = appSettings.terminal
-            val mode = gateway.effectiveMode(terminal)
-            val poiId = gateway.poiId(terminal)
-            val apiKeySaved = Secret.CHECKOUT_API_KEY in configured
+        combine(setups.changes, connection, gateway.printers) { setup, checked, printers ->
             TerminalState(
                 loaded = true,
-                mode = mode,
-                onTerminal = gateway.device.isAdyenTerminal,
-                poiId = poiId,
-                setupProblem = gateway.setupProblem(terminal, Secret.TERMINAL_PASSPHRASE in configured),
+                mode = setup.mode,
+                onTerminal = setup.onTerminal,
+                poiId = setup.poiId,
+                setupProblem = setup.problem,
                 connection = checked,
-                printerAvailable = printerAvailable(appSettings, mode, poiId, printers),
-                environment = terminal.environment,
-                captureMode = api.mode(terminal, apiKeySaved),
-                apiProblem = api.setupProblem(terminal, apiKeySaved),
+                printerAvailable = setup.printerAvailable(printers),
+                environment = setup.settings.terminal.environment,
+                apiSetup = setup.apiSetup,
             )
         }.stateIn(scope, SharingStarted.Eagerly, TerminalState())
 
-    /** Where payments go in [TerminalMode.AUTO] on this device, see [TerminalGateway.automaticMode]. */
-    val automaticMode: TerminalMode get() = gateway.automaticMode
+    /** Where payments go in [TerminalMode.AUTO] on this device, see [TerminalSetup.automaticMode]. */
+    val automaticMode: TerminalMode get() = TerminalSetup.automaticMode(setups.device)
 
     /**
      * Starts the background work, once per process: a connection check at startup and whenever the terminal settings or
@@ -105,13 +94,11 @@ class TerminalStatus(
     @OptIn(FlowPreview::class)
     fun start() {
         scope.launch {
-            combine(settings.settings, secrets.configured) { current, configured ->
-                current.terminal.copy(environment = null) to (Secret.TERMINAL_PASSPHRASE in configured)
-            }.distinctUntilChanged()
+            setups.changes
+                .map { setup -> Triple(setup.settings.terminal.copy(environment = null), setup.mode, setup.problem) }
+                .distinctUntilChanged()
                 .debounce(CHECK_DELAY_MILLIS)
-                .collectLatest {
-                    if (gateway.effectiveMode(settings.current().terminal) == TerminalMode.TERMINAL) check()
-                }
+                .collectLatest { (_, mode) -> if (mode == TerminalMode.TERMINAL) check() }
         }
         scope.launch {
             gateway.detectedEnvironment.filterNotNull().collect { environment ->
@@ -131,21 +118,7 @@ class TerminalStatus(
         if (state.value.mode == TerminalMode.TERMINAL && connection.value is TerminalConnection.Failed) check()
     }
 
-    private fun printerAvailable(
-        appSettings: AppSettings,
-        mode: TerminalMode,
-        poiId: String?,
-        printers: Map<String, Boolean>,
-    ): Boolean =
-        when (appSettings.receipt.printerMode) {
-            PrinterMode.ON -> true
-            PrinterMode.OFF -> false
-            PrinterMode.AUTO if mode == TerminalMode.SIMULATOR -> appSettings.simulator.hasPrinter
-            PrinterMode.AUTO -> poiId != null && (printers[poiId] ?: PRINTER_MODEL_PREFIXES.any { poiId.startsWith(it, ignoreCase = true) })
-        }
-
     private companion object {
         const val CHECK_DELAY_MILLIS = 1_000L
-        val PRINTER_MODEL_PREFIXES = listOf("S1F2", "S1F4")
     }
 }

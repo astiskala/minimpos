@@ -1,0 +1,174 @@
+package io.minimpos.app.refund
+
+import io.minimpos.app.data.db.CaptureStatus
+import io.minimpos.app.data.db.SaleEntity
+import io.minimpos.app.data.db.SaleKind
+import io.minimpos.app.data.db.SaleStatus
+import io.minimpos.app.data.db.SaleWithLines
+import io.minimpos.app.data.settings.CaptureMode
+
+/**
+ * Where a stored sale stands as a payment, worked out once from its status, kind, capture and cancellation. It is the
+ * one reading of those fields: what can be done with the payment ([actions]), how it counts in the day's totals
+ * ([totalsShare]), the status headings and notes, and the receipts all start from it, so none of them reads
+ * [SaleEntity.captureStatus] or [SaleEntity.holdCancelled] itself.
+ *
+ * Payments taken with manual capture ([SaleEntity.manualCapture]: pre-authorisations and sales taken for tipping on the
+ * receipt) move from [AWAITING_TIP] or [HELD] through a capture ([CAPTURE_SENDING], then [CAPTURE_REQUESTED],
+ * [CAPTURE_FAILED] or [CAPTURE_UNKNOWN]; or straight to [CAPTURED_MANUALLY]) or end in [HOLD_CANCELLED]. A plain sale is
+ * [CHARGED] as soon as it is approved.
+ */
+enum class PaymentStanding {
+    /** The payment was not approved (yet): pending, declined, cancelled, failed or unknown, as its [SaleStatus] says. */
+    NOT_APPROVED,
+
+    /** An approved plain sale, charged straight away. Refunds do not change it. */
+    CHARGED,
+
+    /** A sale taken for tipping on the receipt that holds its bill until its tip is entered. */
+    AWAITING_TIP,
+
+    /** Holds its amount and no capture was attempted: a pre-authorisation (adjusted or not). */
+    HELD,
+
+    /** Holds its amount after Adyen did not take its capture ([CaptureStatus.FAILED]); it can be captured again. */
+    CAPTURE_FAILED,
+
+    /** Its capture is being sent ([CaptureStatus.PENDING]). */
+    CAPTURE_SENDING,
+
+    /** Whether Adyen received its capture is not known ([CaptureStatus.UNKNOWN]); it can be sent again safely. */
+    CAPTURE_UNKNOWN,
+
+    /** Captured: Adyen received the capture ([CaptureStatus.REQUESTED]) and confirms it in the Customer Area. */
+    CAPTURE_REQUESTED,
+
+    /** Captured: left to staff in the Customer Area ([CaptureStatus.MANUAL]), as no Checkout API is set up. */
+    CAPTURED_MANUALLY,
+
+    /** A held payment whose cancellation (a full reversal) was accepted, so nothing was charged. */
+    HOLD_CANCELLED,
+    ;
+
+    /** Whether the payment still only holds its amount, so it can be cancelled: [AWAITING_TIP], [HELD] or [CAPTURE_FAILED]. */
+    val held: Boolean get() = this == AWAITING_TIP || this == HELD || this == CAPTURE_FAILED
+
+    /** Whether it was captured, so it counts as charged and is refunded up to the capture: [CAPTURE_REQUESTED] or [CAPTURED_MANUALLY]. */
+    val captured: Boolean get() = this == CAPTURE_REQUESTED || this == CAPTURED_MANUALLY
+
+    /** Whether the payment counts as charged: [CHARGED] or [captured]. */
+    val charged: Boolean get() = this == CHARGED || captured
+
+    /** Working out the standing of a stored sale, and the tip rule of tipping on the receipt. */
+    companion object {
+        private const val PERCENT = 100
+
+        /**
+         * Adyen's rule of thumb for tipping on the receipt: a tip above this percentage of the bill needs an authorisation
+         * adjustment before the capture; a smaller one is simply captured with the bill (overcapture).
+         */
+        const val TIP_ADJUSTMENT_PERCENT = 20
+
+        /** Where [sale] stands. */
+        fun of(sale: SaleEntity): PaymentStanding =
+            when {
+                sale.status != SaleStatus.APPROVED -> NOT_APPROVED
+                !sale.manualCapture -> CHARGED
+                sale.holdCancelled -> HOLD_CANCELLED
+                else -> captureStanding(sale)
+            }
+
+        /** Whether a tip of [tipMinor] on a bill of [billMinor] is more than [TIP_ADJUSTMENT_PERCENT] of it. */
+        fun tipNeedsAdjustment(
+            billMinor: Long,
+            tipMinor: Long,
+        ): Boolean = tipMinor * PERCENT > billMinor * TIP_ADJUSTMENT_PERCENT
+
+        private fun captureStanding(sale: SaleEntity): PaymentStanding =
+            when (sale.captureStatus) {
+                CaptureStatus.REQUESTED -> CAPTURE_REQUESTED
+                CaptureStatus.MANUAL -> CAPTURED_MANUALLY
+                CaptureStatus.PENDING -> CAPTURE_SENDING
+                CaptureStatus.UNKNOWN -> CAPTURE_UNKNOWN
+                CaptureStatus.FAILED -> CAPTURE_FAILED
+                null -> if (sale.tipOnReceipt && sale.tipMinor == null) AWAITING_TIP else HELD
+            }
+    }
+}
+
+/** Where this sale stands as a payment, see [PaymentStanding.of]. */
+val SaleEntity.standing: PaymentStanding get() = PaymentStanding.of(this)
+
+/** What the operator can do with a stored payment now, see [actions]. */
+enum class PaymentAction {
+    /** Refund it, as [RefundablePayment.check] allows: approved and charged, with something left to refund. */
+    REFUND,
+
+    /** Cancel the hold with a full reversal ([RefundablePayment.cancellation]): it is [PaymentStanding.held]. */
+    CANCEL,
+
+    /** Enter the tip written on the receipt and capture it ([PaymentStanding.AWAITING_TIP]). */
+    ENTER_TIP,
+
+    /** Capture a held pre-authorisation, or record its capture for the Customer Area. */
+    CAPTURE,
+
+    /** Change what a held pre-authorisation holds; needs the Checkout API ([CaptureMode.API]). */
+    ADJUST,
+
+    /**
+     * Send the capture again as it was (same amount and idempotency key): its outcome is unknown, or Adyen did not take
+     * the capture of a tip. A pre-authorisation whose capture failed is captured again with a new amount instead.
+     */
+    RETRY_CAPTURE,
+}
+
+/**
+ * What can be done with this stored payment now, with captures made as [captureMode] says. Captures, adjustments and
+ * retries also need the PSP reference the Checkout API refers to, and a cancellation the terminal's transaction details.
+ */
+fun SaleWithLines.actions(captureMode: CaptureMode): Set<PaymentAction> =
+    buildSet {
+        if (RefundablePayment.check(this@actions) is Refundability.Refundable) add(PaymentAction.REFUND)
+        if (RefundablePayment.cancellable(this@actions)) add(PaymentAction.CANCEL)
+        if (sale.pspReference != null) addAll(captureActions(sale, captureMode))
+    }
+
+/** What the Checkout API (or the Customer Area) can do with [sale], which has a PSP reference. */
+private fun captureActions(
+    sale: SaleEntity,
+    captureMode: CaptureMode,
+): Set<PaymentAction> {
+    val standing = sale.standing
+    val capture = sale.kind == SaleKind.PRE_AUTHORISATION && standing.held
+    val retry = standing == PaymentStanding.CAPTURE_UNKNOWN || (standing == PaymentStanding.CAPTURE_FAILED && sale.tipOnReceipt)
+    return buildSet {
+        if (standing == PaymentStanding.AWAITING_TIP) add(PaymentAction.ENTER_TIP)
+        if (capture) add(PaymentAction.CAPTURE)
+        if (capture && captureMode == CaptureMode.API) add(PaymentAction.ADJUST)
+        if (retry && sale.capturedMinor != null) add(PaymentAction.RETRY_CAPTURE)
+    }
+}
+
+/** How a stored payment counts in History's day totals, see [totalsShare]. */
+enum class TotalsShare {
+    /** Not at all: it was not approved, or it held its amount and was cancelled, so nothing was charged. */
+    NONE,
+
+    /** As a sale, at [SaleEntity.amountMinor]: a sale (one awaiting its tip at its bill), or a captured pre-authorisation. */
+    SALE,
+
+    /** As held, at [SaleEntity.heldMinor]: a pre-authorisation that has not been captured. */
+    HELD,
+}
+
+/** How this sale counts in the day's totals: a pre-authorisation counts as a sale only once it is captured. */
+val SaleEntity.totalsShare: TotalsShare
+    get() {
+        val standing = standing
+        return when {
+            standing == PaymentStanding.NOT_APPROVED || standing == PaymentStanding.HOLD_CANCELLED -> TotalsShare.NONE
+            kind == SaleKind.SALE || standing.charged -> TotalsShare.SALE
+            else -> TotalsShare.HELD
+        }
+    }

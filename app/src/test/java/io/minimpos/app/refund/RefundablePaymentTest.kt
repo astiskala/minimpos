@@ -181,7 +181,6 @@ class RefundablePaymentTest {
         assertThat(cancel.originalTimestamp).isEqualTo(sale.poiTimestamp)
         assertThat(cancel.merchantReference).matches("MP-C-260930-145811-[0-9A-Z]{4}")
         assertThat(cancel.params().amount).isNull()
-        assertThat(RefundablePayment.canCancel(preAuth)).isTrue()
 
         // Sales are refunded instead; unapproved pre-authorisations, ones the terminal gave no transaction details for
         // and ones already cancelled cannot be cancelled.
@@ -189,18 +188,15 @@ class RefundablePaymentTest {
             record,
             preAuth.copy(sale = preAuth.sale.copy(status = SaleStatus.DECLINED)),
             preAuth.copy(sale = preAuth.sale.copy(poiTransactionId = null)),
-            preAuth.copy(sale = preAuth.sale.copy(refundedMinor = 1_000)),
+            preAuth.copy(sale = preAuth.sale.copy(holdCancelled = true)),
         ).forEach {
             assertThat(RefundablePayment.cancellation(it, "", now, ZoneOffset.UTC)).isNull()
-            assertThat(RefundablePayment.canCancel(it)).isFalse()
         }
     }
 
     @Test
     fun `a sale awaiting its tip can only be cancelled, and once captured is refunded with the tip`() {
         val awaiting = record.copy(sale = sale.copy(tipOnReceipt = true, pspReference = "PSP1"))
-        assertThat(PaymentHold.awaitingTip(awaiting.sale)).isTrue()
-        assertThat(PaymentHold.canEnterTip(awaiting.sale)).isTrue()
         assertThat(reason(awaiting)).isEqualTo(RefundInvalidReason.AWAITING_TIP)
         val cancel = RefundablePayment.cancellation(awaiting, "", now, ZoneOffset.UTC)!!
         assertThat(cancel.amountMinor).isEqualTo(1_000)
@@ -210,17 +206,13 @@ class RefundablePaymentTest {
 
         // A capture Adyen did not take leaves it held; one whose outcome is unknown neither held nor refundable.
         val failed = awaiting.copy(sale = awaiting.sale.copy(tipMinor = 250, capturedMinor = 1_250, captureStatus = CaptureStatus.FAILED))
-        assertThat(PaymentHold.awaitingTip(failed.sale)).isFalse()
-        assertThat(PaymentHold.canRetryCapture(failed.sale)).isTrue()
-        assertThat(RefundablePayment.canCancel(failed)).isTrue()
+        assertThat(RefundablePayment.cancellation(failed, "", now, ZoneOffset.UTC)).isNotNull()
         assertThat(reason(failed)).isEqualTo(RefundInvalidReason.AWAITING_TIP)
         val unknown = failed.copy(sale = failed.sale.copy(captureStatus = CaptureStatus.UNKNOWN))
-        assertThat(RefundablePayment.canCancel(unknown)).isFalse()
-        assertThat(PaymentHold.canRetryCapture(unknown.sale)).isTrue()
+        assertThat(RefundablePayment.cancellation(unknown, "", now, ZoneOffset.UTC)).isNull()
 
         val captured = failed.copy(sale = failed.sale.copy(captureStatus = CaptureStatus.REQUESTED))
-        assertThat(RefundablePayment.canCancel(captured)).isFalse()
-        assertThat(PaymentHold.canRetryCapture(captured.sale)).isFalse()
+        assertThat(RefundablePayment.cancellation(captured, "", now, ZoneOffset.UTC)).isNull()
         val payment = refundable(captured)
         assertThat(payment.amountMinor).isEqualTo(1_250)
         assertThat(payment.itemsKnown).isTrue()
@@ -231,31 +223,18 @@ class RefundablePaymentTest {
     @Test
     fun `a captured pre-authorisation is refunded up to the capture, by amount`() {
         val preAuth = record.copy(sale = sale.copy(kind = SaleKind.PRE_AUTHORISATION, pspReference = "PSP1"))
-        assertThat(PaymentHold.canCapture(preAuth.sale)).isTrue()
-        assertThat(PaymentHold.canCapture(preAuth.sale.copy(pspReference = null))).isFalse()
         val adjusted = preAuth.sale.copy(authorisedMinor = 1_500)
         assertThat(adjusted.heldMinor).isEqualTo(1_500)
         assertThat(adjusted.amountMinor).isEqualTo(1_500)
         assertThat(RefundablePayment.cancellation(preAuth.copy(sale = adjusted), "", now, ZoneOffset.UTC)!!.amountMinor).isEqualTo(1_500)
 
         val captured = preAuth.copy(sale = adjusted.copy(capturedMinor = 1_400, captureStatus = CaptureStatus.MANUAL))
-        assertThat(PaymentHold.canCapture(captured.sale)).isFalse()
-        assertThat(RefundablePayment.canCancel(captured)).isFalse()
+        assertThat(RefundablePayment.cancellation(captured, "", now, ZoneOffset.UTC)).isNull()
         val payment = refundable(captured)
         assertThat(payment.amountMinor).isEqualTo(1_400)
         assertThat(payment.itemsKnown).isFalse()
         // Pre-authorisation receipts carry no refund QR code.
         assertThat(RefundablePayment.qrCode(captured)).isNull()
-        // A pre-authorisation whose capture failed is captured again with a new amount, not retried.
-        assertThat(PaymentHold.canRetryCapture(captured.sale.copy(captureStatus = CaptureStatus.FAILED))).isFalse()
-        assertThat(PaymentHold.canCapture(captured.sale.copy(captureStatus = CaptureStatus.FAILED))).isTrue()
-    }
-
-    @Test
-    fun `tips above a fifth of the bill need the authorisation raised first`() {
-        assertThat(PaymentHold.needsAdjustment(1_000, 200)).isFalse()
-        assertThat(PaymentHold.needsAdjustment(1_000, 201)).isTrue()
-        assertThat(PaymentHold.needsAdjustment(1_000, 0)).isFalse()
     }
 
     @Test

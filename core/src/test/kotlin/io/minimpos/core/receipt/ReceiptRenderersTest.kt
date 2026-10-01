@@ -68,13 +68,18 @@ class ReceiptRenderersTest {
     }
 
     @Test
-    fun `segments split text blocks around QR codes`() {
+    fun `segments split text blocks around QR codes, with each caption printed above its code`() {
         val segments = document.segments()
         assertThat(segments).hasSize(3)
-        assertThat((segments[0] as ReceiptSegment.TextBlock).elements).hasSize(6)
-        assertThat((segments[1] as ReceiptSegment.QrCode).qr.content).isEqualTo("MPR1*x")
+        val text = (segments[0] as ReceiptSegment.TextBlock).elements
+        assertThat(text).hasSize(8)
+        assertThat(text.takeLast(2)).containsExactly(Blank, Text("Scan me", Align.CENTER)).inOrder()
+        assertThat(segments.drop(1)).containsExactly(ReceiptSegment.QrCode("MPR1*x"), ReceiptSegment.QrCode("MPR1*y")).inOrder()
         assertThat(
             ReceiptDocument(listOf(Blank, Qr("a"), Blank)).segments(),
-        ).containsExactly(ReceiptSegment.QrCode(Qr("a")))
+        ).containsExactly(ReceiptSegment.QrCode("a"))
+        // A caption on its own is worth a text request.
+        assertThat(ReceiptDocument(listOf(Qr("a", "Code"))).segments().first())
+            .isEqualTo(ReceiptSegment.TextBlock(listOf(Blank, Text("Code", Align.CENTER))))
     }
 }

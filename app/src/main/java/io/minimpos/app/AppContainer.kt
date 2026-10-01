@@ -36,13 +36,16 @@ import io.minimpos.app.payment.TransactionLifecycle
 import io.minimpos.app.qr.QrCodes
 import io.minimpos.app.receipt.ReceiptFactory
 import io.minimpos.app.refund.RefundStart
+import io.minimpos.app.refund.StoredPayments
 import io.minimpos.app.terminal.AdyenApi
 import io.minimpos.app.terminal.AndroidDeviceInfo
 import io.minimpos.app.terminal.DeviceInfo
 import io.minimpos.app.terminal.TerminalGateway
+import io.minimpos.app.terminal.TerminalSetupSource
 import io.minimpos.app.terminal.TerminalStatus
 import io.minimpos.app.terminal.VirtualPrinter
 import io.minimpos.core.money.CurrencySpec
+import io.minimpos.core.receipt.ReceiptDocument
 import io.minimpos.core.receipt.ReceiptLabels
 import io.minimpos.terminal.client.PosApplication
 import io.minimpos.terminal.transport.AdyenLocalTransport
@@ -55,6 +58,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.filter
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.serialization.KSerializer
@@ -113,7 +118,7 @@ class AppContainer(
     val sales = SaleRepository(database)
 
     /** Stored refunds. */
-    val refundRecords = RefundRepository(database)
+    val refundRecords = RefundRepository(database, sales)
 
     /** The combined transaction history and its housekeeping. */
     val history = HistoryRepository(database)
@@ -131,17 +136,37 @@ class AppContainer(
             osVersion = device.osVersion,
         )
 
-    /** The payment terminal (or the simulator): where payments go, and the Terminal API operations. */
-    val gateway = TerminalGateway(settings, secrets, device, virtualPrinter, application, terminalTransport)
+    private val terminalSetup = TerminalSetupSource(settings, secrets, device)
+
+    /** The payment terminal (or the simulator): the Terminal API operations, sent where payments go. */
+    val gateway = TerminalGateway(terminalSetup, secrets, virtualPrinter, application, terminalTransport)
 
     /** Adyen's Checkout API, for captures and authorisation adjustments (simulated with the simulator). */
-    val api = AdyenApi(settings, secrets, gateway)
+    val api = AdyenApi(terminalSetup, secrets, simulated = gateway.simulatedModifications)
 
     /** Whether payments and printing can work, for Home, Settings and the receipt screens. */
-    val terminalStatus = TerminalStatus(gateway, settings, secrets, appScope, api)
+    val terminalStatus = TerminalStatus(terminalSetup, gateway, settings, appScope)
 
-    /** Builds receipt documents from stored sales and refunds, with localised labels. */
-    val receiptFactory = ReceiptFactory(receiptLabels())
+    /** Stored sales with what can be done with them now, for the screens that show one. */
+    val storedPayments = StoredPayments(sales, terminalStatus.state.filter { it.loaded }.map { it.captureMode })
+
+    /**
+     * Builds receipt documents from stored sales and refunds, with localised labels. Screens get their receipts from
+     * [receipts] (through `TransactionActions`); tests build documents with it directly.
+     */
+    internal val receiptFactory = ReceiptFactory(receiptLabels())
+
+    /** A time stamp (epoch milliseconds) as a short date and time in the device's locale and zone, as receipts print it. */
+    fun formatDateTime(epochMillis: Long): String = receiptFactory.formatDateTime(epochMillis)
+
+    /** The sample receipt Settings shows and test-prints with [appSettings], which may not be stored yet. */
+    fun sampleReceipt(appSettings: AppSettings): ReceiptDocument =
+        receiptFactory.sample(
+            appSettings.receipt,
+            currency(appSettings),
+            appSettings.payment.taxMode,
+            appSettings.payment.asksCustomerReference,
+        )
 
     /** Printing and emailing of stored sales and refunds, including what is delivered automatically. */
     val receipts =
@@ -174,17 +199,13 @@ class AppContainer(
             notFound = context.getString(R.string.error_not_found),
         )
 
-    /** The cart being built, shared by the sale and checkout screens. */
-    val saleSession = SaleSession()
+    private val sessions = SaleKind.entries.associateWith { SaleSession(it) }
 
     /**
-     * The one item of the pre-authorisation being taken, shared by the pre-authorise and checkout screens; separate
-     * from [saleSession], so a sale being rung up is kept meanwhile.
+     * The payment of [kind] being rung up, shared by its ring-up and checkout screens; one per kind, so a sale being rung
+     * up is kept while a pre-authorisation is taken.
      */
-    val preAuthSession = SaleSession(singleItem = true)
-
-    /** [saleSession] or [preAuthSession], for payments of [kind]. */
-    fun session(kind: SaleKind): SaleSession = if (kind == SaleKind.PRE_AUTHORISATION) preAuthSession else saleSession
+    fun session(kind: SaleKind): SaleSession = sessions.getValue(kind)
 
     /** Runs card payments and keeps their progress. */
     val payments: TransactionLifecycle<PaymentStart> =
@@ -193,11 +214,15 @@ class AppContainer(
             gateway = gateway,
             book = SaleBook(sales),
             unknownOutcome = context.getString(R.string.payment_unknown_outcome),
-            onSucceeded = receipts::arm,
+            onSucceeded = { id, start ->
+                receipts.arm(id)
+                // The cart has been paid for, so the next payment of its kind starts afresh.
+                session(start.kind).clear()
+            },
         )
 
     /** Enters tips and captures and adjusts payments taken with manual capture. */
-    val captures = Captures(sales, api)
+    val captures = Captures(sales, api::target)
 
     /** Runs referenced refunds and keeps their progress. */
     val refunds: TransactionLifecycle<RefundStart> =
@@ -206,7 +231,7 @@ class AppContainer(
             gateway = gateway,
             book = RefundBook(refundRecords),
             unknownOutcome = context.getString(R.string.refund_unknown_outcome),
-            onSucceeded = receipts::arm,
+            onSucceeded = { id, _ -> receipts.arm(id) },
         )
 
     /**

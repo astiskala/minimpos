@@ -430,8 +430,11 @@ class TerminalClient(
         val DEFAULT_TRANSACTION_TIMEOUT: Duration = 120.seconds
         private val TIMESTAMP = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'").withZone(ZoneOffset.UTC)
 
-        /** Adyen's `authorisationType` for an amount that can be adjusted and is captured later. */
-        private const val PRE_AUTH = "PreAuth"
+        /**
+         * Adyen's `authorisationType` for an amount that can be adjusted and is captured later; the simulator reads it
+         * the way a terminal does.
+         */
+        internal const val PRE_AUTH = "PreAuth"
 
         /** The `additionalData` key that leaves a payment uncaptured until it is captured manually. */
         private const val MANUAL_CAPTURE = "manualCapture"

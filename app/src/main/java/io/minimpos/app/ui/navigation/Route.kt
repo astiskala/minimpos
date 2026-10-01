@@ -1,6 +1,7 @@
 package io.minimpos.app.ui.navigation
 
 import androidx.navigation3.runtime.NavKey
+import io.minimpos.app.data.db.SaleKind
 import kotlinx.serialization.Serializable
 
 /**
@@ -24,19 +25,19 @@ sealed interface Route : NavKey {
     /**
      * References, email and saving the card, before paying.
      *
-     * @property preAuthorisation Whether the amount is only held (a pre-authorisation) rather than charged.
+     * @property kind A sale, or a pre-authorisation whose amount is only held.
      */
     @Serializable data class Checkout(
-        val preAuthorisation: Boolean = false,
+        val kind: SaleKind = SaleKind.SALE,
     ) : Route
 
     /**
      * Waiting for the terminal while the shopper pays.
      *
-     * @property preAuthorisation Whether the payment is a pre-authorisation.
+     * @property kind What is being paid.
      */
     @Serializable data class Payment(
-        val preAuthorisation: Boolean = false,
+        val kind: SaleKind = SaleKind.SALE,
     ) : Route
 
     /**
@@ -161,7 +162,11 @@ sealed interface Route : NavKey {
 
     /** Routes shared by sales and pre-authorisations. */
     companion object {
-        /** Where a payment is rung up: [PreAuth] for a pre-authorisation, else [Sale]. */
-        fun ringUp(preAuthorisation: Boolean): Route = if (preAuthorisation) PreAuth else Sale
+        /** Where a payment of [kind] is rung up: [PreAuth] for a pre-authorisation, else [Sale]. */
+        fun ringUp(kind: SaleKind): Route =
+            when (kind) {
+                SaleKind.SALE -> Sale
+                SaleKind.PRE_AUTHORISATION -> PreAuth
+            }
     }
 }

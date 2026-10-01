@@ -2,6 +2,7 @@ package io.minimpos.app.data.repo
 
 import io.minimpos.app.data.settings.StorageJson
 import io.minimpos.core.receipt.CardReceiptLine
+import io.minimpos.terminal.parse.ReceiptField
 import kotlinx.serialization.serializer
 
 /**
@@ -17,6 +18,9 @@ object ReceiptLinesJson {
 
     /** Encodes card receipt [lines], or returns null when there are none. */
     fun encode(lines: List<CardReceiptLine>): String? = lines.takeIf { it.isNotEmpty() }?.let { StorageJson.encodeToString(serializer, it) }
+
+    /** Encodes the card receipt [fields] the terminal sent, as [encode] does; null when there are none. */
+    fun encodeFields(fields: List<ReceiptField>): String? = encode(fields.map { CardReceiptLine(it.key, it.name, it.value, it.bold) })
 
     /** Decodes card receipt lines stored by [encode]; empty when [json] is null or unreadable. */
     fun decode(json: String?): List<CardReceiptLine> =

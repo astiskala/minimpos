@@ -223,7 +223,7 @@ class SetupTransfer(
         val rates = catalog.taxRates.first()
         val default = rates.firstOrNull { it.id == current.payment.defaultTaxRateId }
         return TransferredSettings(
-            terminal = TransferredTerminal.of(current.terminal),
+            terminal = current.terminal.withDeviceFieldsOf(TerminalSettings()),
             payment = current.payment.copy(defaultTaxRateId = null),
             receipt = current.receipt,
             email = current.email,
@@ -243,12 +243,13 @@ class SetupTransfer(
             }
         settings.update { current ->
             current.copy(
-                terminal = transferred.terminal.applyTo(current.terminal),
+                // The repository brings every number within its limits.
+                terminal = transferred.terminal.withDeviceFieldsOf(current.terminal),
                 payment = transferred.payment.copy(defaultTaxRateId = rate?.id),
-                receipt = transferred.receipt.copy(charsPerLine = transferred.receipt.charsPerLine.coerceIn(MIN_CHARS, MAX_CHARS)),
-                email = transferred.email.copy(port = transferred.email.port.coerceIn(1, MAX_PORT)),
-                security = transferred.security.copy(autoLockMinutes = transferred.security.autoLockMinutes.coerceAtLeast(0)),
-                history = transferred.history.copy(retentionDays = transferred.history.retentionDays.coerceAtLeast(0)),
+                receipt = transferred.receipt,
+                email = transferred.email,
+                security = transferred.security,
+                history = transferred.history,
             )
         }
     }
@@ -264,9 +265,6 @@ class SetupTransfer(
             }
         val SETTINGS = serializer<TransferredSettings>()
         val SECRETS = serializer<Map<String, String>>()
-        const val MIN_CHARS = 24
-        const val MAX_CHARS = 64
-        const val MAX_PORT = 65_535
     }
 }
 
@@ -274,7 +272,8 @@ class SetupTransfer(
  * The settings in a transfer: [AppSettings] without what belongs to the device. Read leniently, like stored settings:
  * missing values take their default and unknown ones (from newer versions) are ignored.
  *
- * @property terminal The shared key, SaleID, timeout and Checkout API settings.
+ * @property terminal The terminal settings without those of the sending device, which are left at their defaults (see
+ *   [TerminalSettings.withDeviceFieldsOf]): the shared key, SaleID, timeout and Checkout API settings.
  * @property payment The payment settings; their default tax rate ID is left out, see [defaultTaxRate].
  * @property receipt The receipt settings.
  * @property email The SMTP settings (the password is a secret).
@@ -284,7 +283,7 @@ class SetupTransfer(
  */
 @Serializable
 internal data class TransferredSettings(
-    val terminal: TransferredTerminal = TransferredTerminal(),
+    val terminal: TerminalSettings = TerminalSettings(),
     val payment: PaymentSettings = PaymentSettings(),
     val receipt: ReceiptSettings = ReceiptSettings(),
     val email: EmailSettings = EmailSettings(),
@@ -292,51 +291,6 @@ internal data class TransferredSettings(
     val history: HistorySettings = HistorySettings(),
     val defaultTaxRate: TaxRateRef? = null,
 )
-
-/**
- * The [TerminalSettings] a terminal of the same merchant account shares.
- *
- * @property saleId See [TerminalSettings.saleId].
- * @property keyIdentifier See [TerminalSettings.keyIdentifier].
- * @property keyVersion See [TerminalSettings.keyVersion].
- * @property timeoutSeconds See [TerminalSettings.timeoutSeconds].
- * @property merchantAccount See [TerminalSettings.merchantAccount].
- * @property liveUrlPrefix See [TerminalSettings.liveUrlPrefix].
- */
-@Serializable
-internal data class TransferredTerminal(
-    val saleId: String = TerminalSettings().saleId,
-    val keyIdentifier: String = "",
-    val keyVersion: Int = 1,
-    val timeoutSeconds: Int = TerminalSettings.MIN_TIMEOUT_SECONDS,
-    val merchantAccount: String = "",
-    val liveUrlPrefix: String = "",
-) {
-    /** [current] with these values; where payments go, the address, POIID and environment stay. */
-    fun applyTo(current: TerminalSettings): TerminalSettings =
-        current.copy(
-            saleId = saleId,
-            keyIdentifier = keyIdentifier,
-            keyVersion = keyVersion.coerceAtLeast(1),
-            timeoutSeconds = timeoutSeconds.coerceIn(TerminalSettings.MIN_TIMEOUT_SECONDS, TerminalSettings.MAX_TIMEOUT_SECONDS),
-            merchantAccount = merchantAccount,
-            liveUrlPrefix = liveUrlPrefix,
-        )
-
-    /** Builds one from this terminal's settings. */
-    companion object {
-        /** The shared values of [terminal]. */
-        fun of(terminal: TerminalSettings): TransferredTerminal =
-            TransferredTerminal(
-                terminal.saleId,
-                terminal.keyIdentifier,
-                terminal.keyVersion,
-                terminal.timeoutSeconds,
-                terminal.merchantAccount,
-                terminal.liveUrlPrefix,
-            )
-    }
-}
 
 /**
  * A tax rate identified by what it is rather than by row ID, which differs between terminals.

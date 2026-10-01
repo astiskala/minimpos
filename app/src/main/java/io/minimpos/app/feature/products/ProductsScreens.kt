@@ -341,7 +341,7 @@ fun ProductEditScreen(
                     PrimaryButton(
                         stringResource(R.string.action_save),
                         { vm.save(navigator::back) },
-                        enabled = state.valid,
+                        enabled = state.valid && !state.saving,
                         modifier = Modifier.testTag("saveProduct"),
                     )
                 }

@@ -7,6 +7,7 @@ import io.minimpos.app.data.db.ProductEntity
 import io.minimpos.app.data.db.TaxRateEntity
 import io.minimpos.app.data.repo.CatalogRepository
 import io.minimpos.app.data.settings.AppSettings
+import io.minimpos.app.feature.launchWrite
 import io.minimpos.core.money.CurrencySpec
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -50,12 +51,12 @@ class ProductsViewModel(
 
     /** Adds [category] (ID 0) or renames it, trimming the name. */
     fun saveCategory(category: CategoryEntity) {
-        viewModelScope.launch { catalog.saveCategory(category.copy(name = category.name.trim())) }
+        launchWrite({ catalog.saveCategory(category.copy(name = category.name.trim())) })
     }
 
     /** Deletes [category]; its products become uncategorised. */
     fun deleteCategory(category: CategoryEntity) {
-        viewModelScope.launch { catalog.deleteCategory(category) }
+        launchWrite({ catalog.deleteCategory(category) })
     }
 }
 
@@ -90,6 +91,7 @@ data class ProductForm(
  * @property currency The currency of the price.
  * @property skuInUse Whether another product already has the typed SKU, which blocks saving.
  * @property chargeTax Settings › Tax › Charge tax; when off the product's tax rate is hidden (but kept).
+ * @property saving Whether a save or delete is under way; another one is ignored until it has finished.
  */
 data class ProductEditUiState(
     val loaded: Boolean = false,
@@ -99,6 +101,7 @@ data class ProductEditUiState(
     val currency: CurrencySpec = CurrencySpec("EUR", 2),
     val skuInUse: Boolean = false,
     val chargeTax: Boolean = true,
+    val saving: Boolean = false,
 ) {
     /** The typed price in minor units; null unless it is positive with no more decimals than the currency has. */
     val priceMinor: Long?
@@ -174,37 +177,46 @@ class ProductEditViewModel(
         _state.update { it.copy(skuInUse = existing != null && existing.id != it.form.id) }
     }
 
-    /** Saves the product when the form is [ProductEditUiState.valid], then calls [onSaved]; does nothing otherwise. */
+    /**
+     * Saves the product when the form is [ProductEditUiState.valid] and nothing is being saved, then calls [onSaved]
+     * (unless the editor was closed meanwhile; the save still finishes). Does nothing otherwise.
+     */
     fun save(onSaved: () -> Unit) {
         val current = _state.value
         val price = current.priceMinor ?: return
         val taxRateId = current.form.taxRateId ?: return
-        if (!current.valid) return
-        viewModelScope.launch {
-            catalog.saveProduct(
-                ProductEntity(
-                    id = current.form.id,
-                    name = current.form.name.trim(),
-                    priceMinor = price,
-                    taxRateId = taxRateId,
-                    categoryId = current.form.categoryId,
-                    sku =
-                        current.form.sku
-                            .trim()
-                            .ifEmpty { null },
-                    sortOrder = current.form.sortOrder,
-                ),
+        if (!current.valid || current.saving) return
+        val product =
+            ProductEntity(
+                id = current.form.id,
+                name = current.form.name.trim(),
+                priceMinor = price,
+                taxRateId = taxRateId,
+                categoryId = current.form.categoryId,
+                sku =
+                    current.form.sku
+                        .trim()
+                        .ifEmpty { null },
+                sortOrder = current.form.sortOrder,
             )
+        _state.update { it.copy(saving = true) }
+        launchWrite({ catalog.saveProduct(product) }) { _ ->
+            _state.update { it.copy(saving = false) }
             onSaved()
         }
     }
 
-    /** Deletes the product being edited, then calls [onDeleted]; does nothing for a new product. */
+    /**
+     * Deletes the product being edited, then calls [onDeleted] (unless the editor was closed meanwhile); does nothing
+     * for a new product or while saving.
+     */
     fun delete(onDeleted: () -> Unit) {
-        val id = _state.value.form.id
-        if (id == 0L) return
-        viewModelScope.launch {
-            catalog.product(id)?.let { catalog.deleteProduct(it) }
+        val current = _state.value
+        val id = current.form.id
+        if (id == 0L || current.saving) return
+        _state.update { it.copy(saving = true) }
+        launchWrite({ catalog.product(id)?.let { catalog.deleteProduct(it) } }) { _ ->
+            _state.update { it.copy(saving = false) }
             onDeleted()
         }
     }

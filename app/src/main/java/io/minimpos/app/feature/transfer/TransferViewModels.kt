@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import io.minimpos.app.data.repo.CatalogRepository
 import io.minimpos.app.data.repo.ImportMode
 import io.minimpos.app.data.repo.ImportSummary
+import io.minimpos.app.feature.launchWrite
 import io.minimpos.core.catalogue.Catalogue
 import io.minimpos.core.codec.CatalogueCodec
 import io.minimpos.core.codec.CatalogueFormatException
@@ -147,7 +148,7 @@ class CatalogueImportViewModel(
     fun import(mode: ImportMode) {
         val ready = _state.value as? ImportUiState.Ready ?: return
         _state.value = ImportUiState.Importing
-        viewModelScope.launch { _state.value = ImportUiState.Done(catalog.import(ready.catalogue, mode)) }
+        launchWrite({ catalog.import(ready.catalogue, mode) }) { _state.value = ImportUiState.Done(it) }
     }
 
     /** Forgets the scanned codes and starts scanning again. */

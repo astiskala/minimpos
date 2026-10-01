@@ -33,6 +33,12 @@ Android POS app that runs on Adyen Android payment terminals and takes payments 
   Kover thresholds (core ≥95% line/85% branch, terminal-api ≥90%/75%, app non-UI ≥80%), and
   `verify{Debug,Release}TerminalManifest`. CI (`.github/workflows/ci.yml`) runs it plus `:app:assembleRelease`;
   Dependabot (`.github/dependabot.yml`) has a 7-day cooldown and leaves `com.adyen` ungrouped.
+- Security advisories on transitive dependencies (GitHub's automatic dependency submission resolves the whole build,
+  so alerts also cover AGP's, Android Lint's and Dokka's own libraries, all reported against `settings.gradle.kts`):
+  Dependabot cannot fix those (its security update fails with `dependency_not_found`). Add the patched version, at
+  least 7 days old, to the `patched` table in `settings.gradle.kts`, which raises older versions of the release line
+  in every configuration and build script classpath; then check `./gradlew <module>:dependencies buildEnvironment`
+  and run the gate plus the signed release build. Drop entries once upstream has caught up.
 - Versions: `version.properties` (root) holds `versionName`/`versionCode`, read by `app/build.gradle.kts`. Releases
   come only from `.github/workflows/release.yml` (manual, on `main`, input patch/minor/major): it raises the
   version (versionCode +1), runs the gate, builds the APK signed with secrets `RELEASE_KEYSTORE` (base64 JKS) and
@@ -179,6 +185,11 @@ Android POS app that runs on Adyen Android payment terminals and takes payments 
 - Receipts: the terminal's own printing is suppressed (`tenderOption=ReceiptHandler`); the app prints one combined slip
   (header, items, tax, Adyen card receipt lines, footer) plus the refund QR code as a second back-to-back print request.
 - Do not call suspending side effects inside `MutableStateFlow.update {}` (it retries on contention and repeats them).
+- Writes a screen starts (saving a product, a setting, a secret, the PIN, a tax rate, an import, clearing history) go
+  through `launchWrite`/`persisting` (`feature/ViewModelWrites.kt`), never a bare `viewModelScope.launch`: leaving the
+  screen cancels `viewModelScope`, which would silently drop a write still under way. The write always finishes; the
+  follow-up (navigating back, updating the screen) runs only while the view model is in use. The product editor also
+  ignores a second Save/Delete while one is running (`ProductEditUiState.saving`).
 - Robolectric tests run at SDK 33 with `TestApplication`; UI tests use the v2 compose rule and `en-rAU` qualifiers.
   `SmallScreenTest` runs at `w320dp-h460dp-hdpi` (AMS1), with some flows also at `w320dp-h456dp-mdpi` (P630) and
   `w360dp-h568dp-xhdpi` (S1F2), and asserts primary actions are displayed without scrolling. Robolectric has no

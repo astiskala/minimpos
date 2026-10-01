@@ -164,7 +164,7 @@
   <string name="refund_option_full">Full</string>
   <string name="refund_option_items">Items</string>
   <string name="refund_option_amount">Amount</string>
-  <string name="refund_line_hint">%1$s · sold: %2$d · refunded: %3$d</string>
+  <string name="refund_line_hint">%1$s each · sold: %2$d · refunded: %3$d</string>
   <string name="refund_too_much">At most %1$s can be refunded.</string>
   <string name="refund_button">Refund %1$s</string>
   <string name="refund_confirm_title">Refund this payment?</string>

@@ -13,6 +13,8 @@ import io.minimpos.app.data.security.SecretStoreException
 import io.minimpos.app.data.security.SessionLock
 import io.minimpos.app.data.settings.AppSettings
 import io.minimpos.app.data.settings.SettingsRepository
+import io.minimpos.app.feature.launchWrite
+import io.minimpos.app.feature.persisting
 import io.minimpos.app.feature.sale.ActionState
 import io.minimpos.app.feature.sale.toState
 import io.minimpos.app.payment.ReceiptDelivery
@@ -145,7 +147,7 @@ class SettingsViewModel(
 
     /** Stores the settings with [transform] applied; [transform] must not have side effects. */
     fun update(transform: (AppSettings) -> AppSettings) {
-        viewModelScope.launch { settings.update(transform) }
+        launchWrite({ settings.update(transform) })
     }
 
     /** Adds (ID 0) or updates [taxRate], trimming its name, and makes it the default rate when [makeDefault]. */
@@ -154,17 +156,17 @@ class SettingsViewModel(
         makeDefault: Boolean,
     ) {
         _actions.update { it.copy(taxRateInUse = null) }
-        viewModelScope.launch {
+        launchWrite({
             val id = catalog.saveTaxRate(taxRate.copy(name = taxRate.name.trim()))
             if (makeDefault) settings.update { it.copy(payment = it.payment.copy(defaultTaxRateId = id)) }
-        }
+        })
     }
 
     /** Deletes [taxRate] unless products still use it or it is the last one (products and custom items need a rate). */
     fun deleteTaxRate(taxRate: TaxRateEntity) {
         if (state.value.taxRates.size <= 1) return
-        viewModelScope.launch {
-            when (val result = catalog.deleteTaxRate(taxRate)) {
+        launchWrite({ catalog.deleteTaxRate(taxRate) }) { result ->
+            when (result) {
                 DeleteResult.Deleted -> _actions.update { it.copy(taxRateInUse = null) }
                 is DeleteResult.InUse -> _actions.update { it.copy(taxRateInUse = result.productCount) }
             }
@@ -176,19 +178,17 @@ class SettingsViewModel(
         secret: Secret,
         value: String?,
     ) {
-        viewModelScope.launch { storeSecret { secrets.set(secret, value) } }
+        launchWrite({ storeSecret { secrets.set(secret, value) } })
     }
 
     /** Sets the admin PIN and keeps the admin area unlocked; [pin] must be [PinManager.isValidPin]. */
     fun setPin(pin: String) {
-        viewModelScope.launch {
-            if (storeSecret { pins.setPin(pin) }) sessionLock.unlock()
-        }
+        launchWrite({ if (storeSecret { pins.setPin(pin) }) sessionLock.unlock() })
     }
 
     /** Removes the admin PIN. */
     fun clearPin() {
-        viewModelScope.launch { pins.clearPin() }
+        launchWrite({ pins.clearPin() })
     }
 
     /** Runs [store], reporting (instead of crashing on) a device that cannot encrypt secrets. Returns whether it worked. */
@@ -211,7 +211,7 @@ class SettingsViewModel(
         viewModelScope.launch {
             if (!passphrase.isNullOrEmpty()) {
                 val stored =
-                    storeSecret { secrets.set(Secret.TERMINAL_PASSPHRASE, passphrase) } &&
+                    persisting { storeSecret { secrets.set(Secret.TERMINAL_PASSPHRASE, passphrase) } } &&
                         secrets.get(Secret.TERMINAL_PASSPHRASE) == passphrase
                 if (!stored) {
                     val error =
@@ -274,9 +274,6 @@ class SettingsViewModel(
 
     /** Deletes every sale and refund; the catalogue and settings stay. */
     fun clearHistory() {
-        viewModelScope.launch {
-            history.clear()
-            _actions.update { it.copy(cleared = true) }
-        }
+        launchWrite({ history.clear() }) { _ -> _actions.update { it.copy(cleared = true) } }
     }
 }

@@ -269,6 +269,13 @@ class AppFlowTest {
     @Test
     fun `refunds a sale from the history`() {
         ringUpCustomAmount(2, 0, 0)
+        container.saleSession.setQuantity(
+            container.saleSession.cart.value.lines
+                .single()
+                .key,
+            2,
+        )
+        waitForText("Charge $4.00")
         compose.onNodeWithTag("charge").performClick()
         compose.waitForTag("pay")
         compose.onNodeWithTag("pay").performClick()
@@ -278,12 +285,14 @@ class AppFlowTest {
         compose.waitForTag("history")
         compose.onNodeWithTag("history").performClick()
         // The list is shown before the history has loaded, so wait for the sale itself.
-        waitForText("$2.00")
-        compose.onNodeWithText("$2.00", useUnmergedTree = true).performClick()
+        waitForText("$4.00")
+        compose.onNodeWithText("$4.00", useUnmergedTree = true).performClick()
         compose.waitForTag("detailRefund")
         compose.onNodeWithTag("detailRefund").performClick()
         compose.waitForTag("startRefund")
         compose.onNodeWithTag("option_ITEMS").performClick()
+        // Each line shows its unit price, as on the receipt ("2 x $2.00"), not the line total.
+        compose.onNodeWithText("$2.00 each · sold: 2 · refunded: 0").assertIsDisplayed()
         compose.onNodeWithTag("startRefund").assertIsNotEnabled()
         compose.onNodeWithTag("option_FULL").performClick()
         compose.onNodeWithTag("startRefund").performClick()

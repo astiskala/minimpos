@@ -385,7 +385,7 @@ private fun ColumnScope.RefundLines(
             Column(Modifier.weight(1f)) {
                 Text(line.name, style = MaterialTheme.typography.bodyLarge, maxLines = 2, overflow = TextOverflow.Ellipsis)
                 Text(
-                    stringResource(R.string.refund_line_hint, money.format(line.grossMinor), line.quantity, line.refundedQuantity),
+                    stringResource(R.string.refund_line_hint, money.format(line.unitPriceMinor), line.quantity, line.refundedQuantity),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )

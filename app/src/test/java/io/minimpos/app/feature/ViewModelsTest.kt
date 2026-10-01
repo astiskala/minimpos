@@ -509,8 +509,13 @@ class ViewModelsTest {
         assertThat(edit.state.value.priceMinor).isEqualTo(450)
         var saved = false
         edit.save { saved = true }
-        await { container.catalog.products.first { it.any { p -> p.name == "Scone" } } }
+        // A second tap while the first save is under way must not add the product twice.
+        assertThat(edit.state.value.saving).isTrue()
+        edit.save { error("a second save must be ignored") }
+        val products = await { container.catalog.products.first { it.any { p -> p.name == "Scone" } } }
+        assertThat(products.count { it.name == "Scone" }).isEqualTo(1)
         assertThat(saved).isTrue()
+        assertThat(edit.state.value.saving).isFalse()
 
         val scone = await { container.catalog.productBySku("NEW1")!! }
         assertThat(scone.taxRateId).isEqualTo(tax.id)

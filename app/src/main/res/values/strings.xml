@@ -406,6 +406,15 @@
   <string name="receipt_signature">SIGNATURE</string>
   <string name="receipt_held_now">HELD NOW</string>
   <string name="receipt_captured">CAPTURED</string>
+  <string name="receipt_default_title">RECEIPT</string>
+  <string name="receipt_default_footer">Thank you!</string>
+  <string name="receipt_default_tax_id">Tax ID</string>
+  <string name="receipt_sample_coffee">Flat white</string>
+  <string name="receipt_sample_item">Custom item</string>
+  <string name="receipt_sample_tax">GST</string>
+  <string name="receipt_sample_zero_tax">GST-free</string>
+  <string name="receipt_taxable_gross_format"></string>
+  <string name="receipt_taxable_net_format"></string>
 
   <!-- Email -->
   <string name="email_intro">Thank you for your purchase. Your receipt is below.</string>
@@ -416,6 +425,7 @@
   <string name="email_test_body">Your SMTP settings work. Receipts can now be emailed from Mini mPOS.</string>
   <string name="email_not_configured">Email is not set up. Configure SMTP in Settings › Email.</string>
   <string name="email_invalid_address">Enter a valid email address</string>
+  <string name="email_default_subject">Your receipt from {business}</string>
   <string name="error_not_found">The record could not be found.</string>
 
   <!-- Settings -->
@@ -442,6 +452,19 @@
   <string name="settings_secret_hide">Hide</string>
   <string name="settings_secret_not_stored">This device could not store it securely (%1$s). Try again, or restart the terminal.</string>
   <string name="settings_advanced">Advanced</string>
+  <string name="setup_poiid">Enter the terminal ID (POIID) in Terminal settings</string>
+  <string name="setup_host">Enter the terminal’s IP address in Terminal settings</string>
+  <string name="setup_key_identifier">Enter the shared key identifier in Terminal settings</string>
+  <string name="setup_passphrase">Enter the shared key passphrase in Terminal settings</string>
+  <string name="setup_key_version">Enter the shared key version in Terminal settings</string>
+  <string name="setup_merchant_account">Enter the merchant account in Terminal settings</string>
+  <string name="setup_api_key">Enter the Checkout API key in Terminal settings</string>
+  <string name="setup_environment">Test the connection to the terminal first, so the app knows whether it is TEST or LIVE</string>
+  <string name="setup_live_prefix">Enter the live URL prefix in Terminal settings</string>
+  <string name="setup_unreadable_passphrase">The saved shared key passphrase could not be read on this device; enter it again in Terminal settings</string>
+  <string name="setup_unreadable_api_key">The saved Checkout API key could not be read on this device; enter it again in Terminal settings</string>
+  <string name="setup_api_required">Enter the merchant account and the Checkout API key first</string>
+  <string name="setup_no_response">The terminal did not answer</string>
 
   <string name="settings_mode">Payments go to</string>
   <string name="settings_mode_terminal">This terminal</string>
@@ -549,6 +572,9 @@
   <string name="settings_pre_auth_tokenize_default">Save card on by default for pre-authorizations</string>
   <string name="settings_pre_auth_tokenize_default_hint">A saved card lets you charge late costs once the pre-authorization has been captured.</string>
   <string name="settings_recurring_model">Recurring processing model</string>
+  <string name="recurring_card_on_file">Card on file</string>
+  <string name="recurring_subscription">Subscription</string>
+  <string name="recurring_unscheduled">Unscheduled card on file</string>
   <string name="settings_shopper_reference_source">Shopper reference comes from</string>
   <string name="settings_source_customer">Customer reference</string>
   <string name="settings_source_customer_hint">Checkout asks for a customer reference to save cards under.</string>

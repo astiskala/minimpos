@@ -32,13 +32,32 @@ import java.time.format.FormatStyle
 import java.util.Locale
 
 /**
+ * Localised product and tax names used only in the sample receipt, not in stored sales.
+ *
+ * @property coffee The sample's first product.
+ * @property custom The sample's second product.
+ * @property taxed The sample's 10% tax rate name.
+ * @property zero The sample's 0% tax rate name.
+ */
+data class ReceiptSampleTexts(
+    val coffee: String = "Flat white",
+    val custom: String = "Custom item",
+    val taxed: String = "GST",
+    val zero: String = "GST-free",
+)
+
+/**
  * Turns stored sales and refunds into receipt documents using the current receipt settings. Dates and amounts use the
  * device's current locale and time zone, read on each call.
  */
 class ReceiptFactory(
-    private val labels: ReceiptLabels,
+    labels: ReceiptLabels,
     private val locale: () -> Locale = { Locale.getDefault() },
     private val zone: () -> ZoneId = { ZoneId.systemDefault() },
+    /** Reads receipt labels in the current language, rather than caching them for the process lifetime. */
+    private val currentLabels: () -> ReceiptLabels = { labels },
+    /** Product and tax names for the sample receipt in the current language. */
+    private val sampleTexts: () -> ReceiptSampleTexts = { ReceiptSampleTexts() },
 ) {
     /** [epochMillis] as a short localised date and time, as printed on receipts and shown in history. */
     fun formatDateTime(epochMillis: Long): String =
@@ -140,15 +159,20 @@ class ReceiptFactory(
         mode: TaxMode,
         withCustomerReference: Boolean,
     ): ReceiptDocument {
+        val texts = sampleTexts()
         val receipt =
             SaleReceipt(
                 reference = SAMPLE_REFERENCE,
                 customerReference = SAMPLE_CUSTOMER.takeIf { withCustomerReference },
                 dateTime = formatDateTime(System.currentTimeMillis()),
                 mode = mode,
-                items = SAMPLE_ITEMS,
+                items = listOf(ReceiptItem(texts.coffee, 2, 450, 900), ReceiptItem(texts.custom, 1, 300, 300)),
                 amounts = SAMPLE_TOTALS,
-                breakdown = SAMPLE_BREAKDOWN,
+                breakdown =
+                    listOf(
+                        TaxBreakdown(AppliedTax(texts.taxed, 10_000), TaxAmounts(818, 82, 900)),
+                        TaxBreakdown(AppliedTax(texts.zero, 0), TaxAmounts(300, 0, 300)),
+                    ),
                 approved = true,
                 cardReceipt = emptyList(),
                 refundQr =
@@ -173,7 +197,7 @@ class ReceiptFactory(
                 footer = settings.footer,
             ),
         options = ReceiptOptions(settings.showTaxBreakdown, settings.showReferences, settings.showRefundQr),
-        labels = labels,
+        labels = currentLabels(),
         money = MoneyFormatter(currency, locale()),
     )
 
@@ -182,12 +206,6 @@ class ReceiptFactory(
         const val SAMPLE_CUSTOMER = "CUST-001"
         const val SAMPLE_TRANSACTION_ID = "SAMP001234567890123.SAMPLEPSP0000001"
         val SAMPLE_TIMESTAMP: Instant = Instant.parse("2026-01-01T00:00:00Z")
-        val SAMPLE_ITEMS = listOf(ReceiptItem("Flat white", 2, 450, 900), ReceiptItem("Custom item", 1, 300, 300))
         val SAMPLE_TOTALS = TaxAmounts(1_118, 82, 1_200)
-        val SAMPLE_BREAKDOWN =
-            listOf(
-                TaxBreakdown(AppliedTax("GST", 10_000), TaxAmounts(818, 82, 900)),
-                TaxBreakdown(AppliedTax("GST-free", 0), TaxAmounts(300, 0, 300)),
-            )
     }
 }

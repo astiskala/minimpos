@@ -54,6 +54,52 @@ class ReceiptRenderersTest {
     }
 
     @Test
+    fun `CJK receipts align and wrap in display columns`() {
+        val renderer = PlainTextReceiptRenderer(width = 16)
+        val text =
+            renderer.render(
+                ReceiptDocument(
+                    listOf(
+                        Text("領収書", Align.CENTER),
+                        Text("谢谢惠顾", Align.RIGHT),
+                        Row("合計", "￥1,200"),
+                        Row("超长的中文商品名称", "¥12.00"),
+                    ),
+                ),
+            )
+        assertThat(text.lines())
+            .containsExactly(
+                "     領収書",
+                "        谢谢惠顾",
+                "合計     ￥1,200",
+                "超长的中文商品名",
+                "称",
+                "          ¥12.00",
+                "",
+            ).inOrder()
+        assertThat(renderer.wrap("全角ＡＢＣ１２３商品名")).containsExactly("全角ＡＢＣ１２３", "商品名").inOrder()
+        assertThat(renderer.wrap("ラテ とても長い商品名ラテ")).containsExactly("ラテ", "とても長い商品名", "ラテ").inOrder()
+        assertThat(renderer.wrap("短い 名前")).containsExactly("短い 名前")
+    }
+
+    @Test
+    fun `receipt width counts code points and combining marks without splitting them`() {
+        assertThat(ReceiptTextWidth.columns("")).isEqualTo(0)
+        assertThat(ReceiptTextWidth.columns("Cafe\u0301")).isEqualTo(4)
+        assertThat(ReceiptTextWidth.columns("\u0903\u20DD")).isEqualTo(0)
+        assertThat(ReceiptTextWidth.columns("ｶﾀｶﾅ")).isEqualTo(4)
+        assertThat(ReceiptTextWidth.columns("中文かなＡＢ한글")).isEqualTo(16)
+        val astral = "\uD840\uDC00"
+        assertThat(ReceiptTextWidth.columns(astral)).isEqualTo(2)
+        assertThat(ReceiptTextWidth.lineEnd("a\u0301$astral", 1)).isEqualTo(2)
+        assertThat(ReceiptTextWidth.lineEnd(astral, 1)).isEqualTo(0)
+        assertThat(ReceiptTextWidth.lineEnd(astral, 2)).isEqualTo(2)
+        val renderer = PlainTextReceiptRenderer(16)
+        assertThat(renderer.wrap(astral.repeat(9))).containsExactly(astral.repeat(8), astral).inOrder()
+        assertThat(renderer.wrap("a\u0301".repeat(17))).containsExactly("a\u0301".repeat(16), "a\u0301").inOrder()
+    }
+
+    @Test
     fun `html escapes content and references QR attachments`() {
         val html = HtmlReceiptRenderer().render(document, title = "Receipt & co", intro = "Hi <there>")
         assertThat(html).contains("<title>Receipt &amp; co</title>")

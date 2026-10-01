@@ -22,7 +22,7 @@ class TerminalSetupTest {
         saved: Set<Secret> = emptySet(),
         device: DeviceInfo = phone,
         settings: AppSettings = AppSettings(),
-    ) = TerminalSetup.resolve(settings.copy(terminal = terminal), saved, device)
+    ) = TerminalSetup.resolve(settings.copy(terminal = terminal), saved, device, TerminalTexts())
 
     @Test
     fun `off a terminal payments go to the simulator, or a terminal with its address, POIID and key`() {

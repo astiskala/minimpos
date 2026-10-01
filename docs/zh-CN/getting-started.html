@@ -1,0 +1,263 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8"/>
+    <meta content="width=device-width, initial-scale=1" name="viewport"/>
+    <title>快速入门 – Mini mPOS</title>
+    <meta content="在 Adyen Android 支付终端上安装和设置 Mini mPOS：配置共享密钥、商家信息和商品，处理销售、退款、收据小费和预授权。" name="description"/>
+    <link href="../favicon.svg" rel="icon" type="image/svg+xml"/>
+    <link href="https://astiskala.github.io/minimpos/zh-CN/getting-started.html" rel="canonical"/>
+    <meta content="article" property="og:type"/>
+    <meta content="Mini mPOS 快速入门" property="og:title"/>
+    <meta content="从 Adyen 账户到终端上的第一笔支付：安装、连接、设置并开始销售。" property="og:description"/>
+    <meta content="https://astiskala.github.io/minimpos/zh-CN/getting-started.html" property="og:url"/>
+    <meta content="https://astiskala.github.io/minimpos/images/social.png" property="og:image"/>
+    <meta content="summary_large_image" name="twitter:card"/>
+    <meta content="#00112C" name="theme-color"/>
+    <link href="../styles.css" rel="stylesheet"/>
+    <link href="https://astiskala.github.io/minimpos/getting-started.html" hreflang="en" rel="alternate"/>
+    <link href="https://astiskala.github.io/minimpos/zh-CN/getting-started.html" hreflang="zh-CN" rel="alternate"/>
+    <link href="https://astiskala.github.io/minimpos/ja/getting-started.html" hreflang="ja" rel="alternate"/>
+    <link href="https://astiskala.github.io/minimpos/getting-started.html" hreflang="x-default" rel="alternate"/>
+    <meta content="en_US" property="og:locale:alternate"/>
+    <meta content="zh_CN" property="og:locale"/>
+    <meta content="ja_JP" property="og:locale:alternate"/>
+    <meta content="Mini mPOS 与 Adyen 支付终端示意图，展示英文演示界面。" property="og:image:alt"/>
+    <meta content="Mini mPOS 快速入门" name="twitter:title"/>
+    <meta content="从 Adyen 账户到终端上的第一笔支付：安装、连接、设置并开始销售。" name="twitter:description"/>
+    <meta content="https://astiskala.github.io/minimpos/images/social.png" name="twitter:image"/>
+    <meta content="Mini mPOS 与 Adyen 支付终端示意图，展示英文演示界面。" name="twitter:image:alt"/>
+  </head>
+  <body>
+    <a class="skip" href="#main">跳到正文</a>
+    <header class="site-header">
+      <div class="wrap header-row">
+        <a aria-label="Mini mPOS 首页" class="brand" href="./"> <img alt="" height="36" src="../favicon.svg" width="36"/> <span>Mini mPOS</span> </a>
+        <nav aria-label="主导航">
+          <ul class="nav">
+            <li><a href="./#features">功能</a></li>
+            <li><a href="./#how">使用方式</a></li>
+            <li><a aria-current="page" href="getting-started.html">快速入门</a></li>
+            <li><a class="button button-small" href="https://github.com/astiskala/minimpos">GitHub</a></li>
+          </ul>
+        </nav>
+      </div>
+      <div class="wrap language-row">
+        <nav aria-label="语言" class="languages">
+          <a href="../getting-started.html" hreflang="en" lang="en">English</a>
+          <a aria-current="page" href="../zh-CN/getting-started.html" hreflang="zh-CN" lang="zh-CN">简体中文</a>
+          <a href="../ja/getting-started.html" hreflang="ja" lang="ja">日本語</a>
+        </nav>
+      </div>
+    </header>
+    <main id="main">
+      <section class="guide-hero">
+        <div class="wrap">
+          <p class="eyebrow">指南</p>
+          <h1>快速入门</h1>
+          <p class="lead">从 Adyen 账户到终端上的第一笔支付。大部分配置只需在 Adyen 商户后台和 Mini mPOS 的设置中完成一次。请预留约半小时，另加 Adyen 部署应用所需的时间。</p>
+        </div>
+      </section>
+      <div class="wrap guide">
+        <nav aria-label="本页目录" class="toc">
+          <p class="toc-title">本页目录</p>
+          <ol>
+            <li><a href="#before">开始之前</a></li>
+            <li><a href="#try">没有终端也能试用</a></li>
+            <li><a href="#key">创建共享密钥</a></li>
+            <li><a href="#install">将应用安装到终端</a></li>
+            <li><a href="#connect">连接支付终端</a></li>
+            <li><a href="#business">设置您的业务</a></li>
+            <li><a href="#products">添加商品</a></li>
+            <li><a href="#sell">销售与退款</a></li>
+            <li><a href="#api">扣款与 Checkout API</a></li>
+            <li><a href="#tips">收据小费</a></li>
+            <li><a href="#preauth">预授权</a></li>
+            <li><a href="#more">更多终端</a></li>
+            <li><a href="#live">正式上线之前</a></li>
+            <li><a href="#trouble">出现问题时</a></li>
+          </ol>
+        </nav>
+        <article class="guide-body">
+          <section id="before">
+            <h2>1. 开始之前</h2>
+            <ul>
+              <li>一个已开通线下支付（Terminal API）的 <strong>Adyen 账户</strong>，以及能够查看设备设置、上传应用和管理支付的<strong>商户后台</strong>用户。</li>
+              <li><strong>运行 Android 9 或更高版本的 Adyen Android 支付终端</strong>，例如 S1F2、S1F4Pro、S1E4Pro、S1E2L、AMS1、S1U2 或 SFO1。打印需要终端配备打印机；扫描收据、条形码和另一台终端的设置二维码需要摄像头。</li>
+              <li>可选：如果要通过电子邮件发送收据，请准备一个 <strong>SMTP 邮件服务器</strong>及其主机地址、端口、用户名和密码。</li>
+              <li>可选：如果希望应用直接为收据小费和预授权扣款，请准备 Adyen Checkout API 的 <strong>API 凭据</strong>（参见<a href="#api">扣款与 Checkout API</a>）。</li>
+            </ul>
+            <p class="note">Mini mPOS 是独立项目，并非 Adyen 产品。在接受真实支付之前，请先在 TEST 终端上充分测试。</p>
+          </section>
+          <section id="try">
+            <h2>2. 没有终端也能试用</h2>
+            <p>在 Android 模拟器或手机上，Mini mPOS 使用<strong>内置支付模拟器</strong>模拟支付，让您先体验所有界面。通过源代码安装：</p>
+            <pre><code>git clone https://github.com/astiskala/minimpos.git
+cd minimpos
+./gradlew :app:installDebug</code></pre>
+            <p>在<strong>设置 › 模拟器</strong>中，可以选择模拟支付的结果：成功、被拒绝、已取消、超时或终端忙碌。模拟器也会模拟 Checkout API，因此还可以试用小费和扣款功能。</p>
+          </section>
+          <section id="key">
+            <h2>3. 创建共享密钥</h2>
+            <p>Mini mPOS 使用共享密钥加密发送给终端的每个请求。请在商户后台创建密钥：</p>
+            <ol>
+              <li>为将运行 Mini mPOS 的终端（或所属门店或账户）打开 <strong>Devices › Device settings › Integrations › Terminal API › Encryption key</strong>。</li>
+              <li>创建密钥，记下<strong>密钥标识符</strong>、<strong>密钥口令</strong>和<strong>密钥版本</strong>。以后可以点击铅笔图标再次查看。</li>
+            </ol>
+          </section>
+          <section id="install">
+            <h2>4. 将应用安装到终端</h2>
+            <ol>
+              <li>从<a href="https://github.com/astiskala/minimpos/releases/latest">最新发布版本</a>下载 <code>minimpos-&lt;version&gt;.apk</code>。该文件已由维护者签名，这是 Adyen 的要求；未签名的 APK 可以上传，但终端会拒绝安装。</li>
+              <li>按照 Adyen 的<a href="https://docs.adyen.com/point-of-sale/android-terminals/deploy-apps">应用部署指南</a>上传文件并部署到终端。Adyen 会转换应用，并安装到您选择的终端。</li>
+            </ol>
+            <p>也可以自行构建并签名 APK；参见 <a href="https://github.com/astiskala/minimpos#put-it-on-your-terminals">README</a>。无论选择哪种方式，都请保持一致：商户后台只接受使用同一密钥签名的后续版本。</p>
+          </section>
+          <section id="connect">
+            <h2>5. 连接支付终端</h2>
+            <ol>
+              <li>在终端上打开 Mini mPOS，点击首页的<strong>连接此终端</strong>，或进入<strong>设置 › 终端</strong>。</li>
+              <li>输入<strong>密钥标识符</strong>和<strong>密钥口令</strong>；如果<strong>密钥版本</strong>不是 1，也需要填写版本。</li>
+              <li>点击<strong>保存并测试</strong>，或键盘的“完成”键。结果会立即显示。</li>
+            </ol>
+            <p>应用会自动检测终端 ID（POIID）、地址以及 TEST 或 LIVE 环境，无需填写其他信息。设置 › 关于会显示检测结果；TEST 终端的系统状态栏也会显示 TEST。</p>
+            <p>如果要从手机或模拟器连接真实终端，请将<strong>支付目标</strong>设为<strong>同一网络中的终端</strong>，并输入终端的 IP 地址和 POIID（见终端的 Device info 界面）。</p>
+          </section>
+          <section id="business">
+            <h2>6. 设置您的业务</h2>
+            <p>以下选项均位于<strong>设置</strong>中。</p>
+            <dl class="settings-list">
+              <dt>支付</dt>
+              <dd><strong>币种</strong>（Adyen 支持的 138 种币种；自动选择会跟随设备所在国家或地区）、是否在结账时询问<strong>交易识别号</strong>及其前缀、保存卡片设置（普通销售和预授权的默认开关、循环扣款模式、购物者识别号来自客户识别号还是电子邮箱）、何时询问购物者的电子邮箱，以及结账时是否默认启用<strong>在收据上填写小费</strong>。</dd>
+              <dt>税</dt>
+              <dd>自定义名称的<strong>税率</strong>（例如 GST 10% 和 GST-free 0%）、价格是否含税、新商品的默认税率，以及<strong>收取税费</strong>开关。</dd>
+              <dt>收据</dt>
+              <dd>商家名称、地址、税号、电话、标题和页脚；收据显示内容（税费明细、识别号、退款二维码）；终端是否配有打印机（默认自动检测）、自动打印、商家联以及每行字符宽度。</dd>
+              <dt>电子邮件（SMTP）</dt>
+              <dd>邮件服务器、发件人、可选密送地址和邮件主题，以及测试邮件功能。</dd>
+              <dt>安全</dt>
+              <dd>用于保护设置和商品管理的<strong>管理员 PIN</strong>，以及自动重新锁定的时间。请在把终端放到柜台上之前设置 PIN 码。</dd>
+              <dt>数据</dt>
+              <dd>销售和退款记录的保留时间、清空交易记录，以及用此终端设置其他终端（参见<a href="#more">更多终端</a>）。</dd>
+            </dl>
+            <h3 id="language-receipts">语言与收据</h3>
+            <p>Mini mPOS 支持英语、简体中文和日语。在 Android 12 及更早版本上，应用跟随设备语言；在 Android 13 及更高版本上，可通过 Android 系统的应用语言设置选择语言。</p>
+            <p>新安装会使用本地化的收据默认值和示例标签。切换语言不会翻译或覆盖已有的收据标题、页脚、税率名称、邮件主题或传输导入的商品目录。尤其在使用已有配置或从另一台终端导入后，请在<strong>设置 › 收据</strong>、<strong>设置 › 税</strong>、<strong>设置 › 电子邮件（SMTP）</strong>和<strong>商品</strong>中检查并按需修改。</p>
+            <p>Adyen 生成的支付收据数据保留原文，并遵循支付终端自身配置的收据语言。纯文本收据排版将中日文宽字符按两列计算。日语收据还按税率显示应税金额，标记为 税込（含税）或 税抜（不含税）。请使用<strong>设置 › 收据 › 打印测试收据</strong>检查实际打印效果。</p>
+            <p class="note">Mini mPOS 提供的是收据，不是中国税务机关认可的发票，也不保证符合日本適格請求書或適格簡易請求書的要求。仅显示各税率合计并不等于完整支持发票制度。减低税率商品标记、税额舍入、税务登记及其他适用要求需另行核实。背景资料可参考<a href="https://www.nta.go.jp/english/taxes/consumption_tax/pdf/2023/general_04.pdf">日本国税厅的適格簡易請求書说明</a>和<a href="https://inv-veri.chinatax.gov.cn/">国家税务总局全国增值税发票查验平台</a>。这些链接仅供参考，不代表合规保证，也不是法律意见。</p>
+          </section>
+          <section id="products">
+            <h2>7. 添加商品</h2>
+            <p>在<strong>商品</strong>中点击 <strong>+</strong>，输入名称、价格和税率，也可以添加分类和条形码（手动输入或扫描）。第二个标签页中的分类会对销售界面的商品进行分组。</p>
+            <p>商品也可以设为<strong>预授权商品</strong>，例如订金或租赁押金；参见<a href="#preauth">预授权</a>。</p>
+            <p>要将商品目录复制到另一台终端，请参见<a href="#more">更多终端</a>。</p>
+          </section>
+          <section id="sell">
+            <h2>8. 销售与退款</h2>
+            <ul>
+              <li><strong>新建销售：</strong>点击商品、扫描条形码或添加自定义金额，然后点击<strong>收款</strong>。在结账时填写识别号，并在取得购物者同意后选择保存卡片，再点击<strong>支付</strong>并按终端提示操作。</li>
+              <li><strong>收据</strong>将商家抬头、商品、税费、卡片收据和退款二维码整合打印，也可以通过电子邮件发送。</li>
+              <li><strong>退款：</strong>扫描收据上的二维码，或在<strong>交易记录</strong>中打开销售记录。可以全额退款、按商品退款或输入退款金额。Adyen 异步处理退款，因此应用显示为<em>已请求退款</em>；最终结果请在商户后台查看。</li>
+              <li><strong>交易记录</strong>按日分组交易，并显示每日合计和小费。<em>需处理</em>会列出结果未确认的支付，您可以再次向终端查询结果。</li>
+              <li><strong>查找交易：</strong>在交易记录的搜索框输入内容（小屏终端请先点击搜索图标）：商家识别号、PSP 识别号、授权码、客户识别号、购物者电子邮箱、卡号后 4 位，或金额，例如 <code>34</code> 或 <code>34.50</code>。每个搜索词都必须匹配，因此 <code>visa 34</code> 会找到金额为 $34.00 的 Visa 支付；搜索原销售的购物者或卡片信息也能找到对应退款。筛选栏开头的<strong>付款方式</strong>可按卡品牌或钱包（Apple Pay、Google Pay、Samsung Pay）缩小范围。</li>
+            </ul>
+          </section>
+          <section id="api">
+            <h2>9. 扣款与 Checkout API</h2>
+            <p>收据小费和预授权使用<strong>手动扣款</strong>：在扣款前只冻结金额。Mini mPOS 可以通过 Adyen Checkout API 扣款并调整冻结金额，也可以由您在商户后台完成扣款。</p>
+            <ol>
+              <li>在商户后台打开 <strong>Developers › API credentials</strong>，为终端创建仅具有 <strong>Checkout webservice role</strong> 的凭据，并生成 <strong>API 密钥</strong>。</li>
+              <li>在 Mini mPOS 中进入<strong>设置 › 终端 › Checkout API</strong>，输入<strong>商家账户</strong>和 <strong>API 密钥</strong>，然后点击<strong>保存并测试 API 密钥</strong>。密钥在终端上加密存储；测试不会更改支付。</li>
+              <li>LIVE 终端还需要 <strong>live URL prefix</strong>，可在 <strong>Developers › API URLs</strong> 中找到。应用通过终端证书判断 TEST 或 LIVE 环境。</li>
+              <li>可选：在 <strong>Devices › Developer › Additional data › Return adjust authorisation data</strong> 中启用同步授权调整。这样应用能立即得知更高金额是否获批；否则需稍后在商户后台确认调整结果。</li>
+            </ol>
+            <p>Adyen 异步确认扣款，因此应用会显示<em>已请求扣款</em>。Mini mPOS 没有接收 webhook 的后端，最终结果请在商户后台查看。结果未知的扣款可以从交易记录再次发送，不会重复扣款。</p>
+            <p>没有 API 密钥时，应用会记录待扣款金额并显示<em>在商户后台扣款</em>。请在 <strong>Payments › Payment list</strong> 中选择交易记录所示的 PSP 识别号，然后点击 <strong>Capture payment</strong>。</p>
+          </section>
+          <section id="tips">
+            <h2>10. 收据小费</h2>
+            <p>对于餐厅和酒吧等在支付后添加小费的场景，Mini mPOS 遵循 Adyen 的<a href="https://docs.adyen.com/point-of-sale/tipping/tipping-on-receipt">收据小费流程</a>：先对账单金额进行预授权，由顾客在打印的收据上填写小费并签名，再对账单加小费的总额扣款。</p>
+            <h3>在 Adyen 完成一次性设置</h3>
+            <ul>
+              <li>请联系 <strong>Adyen Support</strong>，为您的付款方式配置预授权并启用 <strong>overcapture</strong>（超额扣款）：不超过账单金额 20% 的小费可在已授权金额之上直接扣款。钱包和借记卡可能不支持此流程。</li>
+              <li>可选但建议：配置 <a href="#api">Checkout API</a>，让应用直接为小费扣款。</li>
+            </ul>
+            <h3>在 Mini mPOS 中操作</h3>
+            <ol>
+              <li>结账时开启<strong>在收据上填写小费</strong>（仅在有打印机的终端上显示；可在设置 › 支付 › 小费中设为默认开启），然后点击<strong>支付</strong>。</li>
+              <li>结果会显示<em>待填写小费</em>。打印收据，上面会有空白的<strong>小费</strong>和<strong>合计</strong>栏；商家联还会有<strong>持卡人签名</strong>栏（默认商家联设置下，在客户联之后打印）。</li>
+              <li>顾客填写后，在结果界面或稍后的<strong>交易记录</strong>中点击<strong>输入小费</strong>（<em>待填写小费</em>筛选会列出相关交易）。输入小费或总额，也可以点击<strong>无小费</strong>，然后确认。</li>
+            </ol>
+            <p>应用随后会为账单加小费的总额扣款。超过账单金额 20% 的小费会先请求授权；如果发卡行拒绝，则不会扣款，您可以输入较少的小费或不收小费。小费一旦录入就不能更改，此后该销售可像其他销售一样退款，包括小费。在录入小费之前，只能从交易记录中取消该销售。</p>
+            <p class="note">冻结金额会到期，请及时录入小费，例如在每个班次结束时处理。</p>
+          </section>
+          <section id="preauth">
+            <h2>11. 预授权</h2>
+            <p>预授权会在购物者的卡上冻结一笔金额，而不立即扣款，例如活动、客房或设备租赁的订金。您可以稍后按实际应收金额扣款（在冻结额度以内），或取消预授权以解除冻结。</p>
+            <h3>在 Adyen 完成一次性设置</h3>
+            <ul>
+              <li>请联系 <strong>Adyen Support</strong>，为您的付款方式配置预授权。卡片是否支持取决于卡组织和您的商家类别码（MCC）；参见 Adyen 的<a href="https://docs.adyen.com/point-of-sale/pre-authorisation">预授权指南</a>。</li>
+              <li><strong>无需</strong>将整个账户切换为手动扣款：Mini mPOS 仅对每笔预授权请求手动扣款（<code>authorisationType=PreAuth</code> 和 <code>manualCapture=true</code>），普通销售仍按账户原有设置扣款。</li>
+              <li>可选：<strong>smart pre-authorization</strong>（商户后台的 <strong>Devices › Device settings › Payment features</strong>）可让终端在当前卡不支持时提示更换卡片。</li>
+            </ul>
+            <h3>在 Mini mPOS 中操作</h3>
+            <ol>
+              <li>在<strong>商品</strong>中编辑或添加商品，开启<strong>预授权商品</strong>。该商品不再出现在新建销售中。</li>
+              <li>首页会在新建销售旁显示<strong>预授权</strong>。每笔预授权包含一个商品，因此点击商品、添加自定义金额或扫描条形码后会直接进入结账；在那里点击<strong>预授权</strong>。</li>
+              <li>结账时默认启用保存卡片（设置 › 支付 › 保存卡片；需取得购物者同意），以便预授权扣款后收取后续费用。收据标题为<em>预授权凭证</em>，并显示冻结金额。</li>
+            </ol>
+            <h3>扣款、调整或取消</h3>
+            <ul>
+              <li><strong>扣款：</strong>在<strong>交易记录</strong>中打开预授权，点击<strong>扣款</strong>。默认金额为冻结金额；扣款金额较少会释放剩余额度，扣款金额更高则会先向发卡行请求授权。扣款后可以从交易记录退款。</li>
+              <li><strong>调整金额</strong>会更改冻结金额，但不扣款；提交相同金额会延长授权。</li>
+              <li>这两项操作都需要 <a href="#api">Checkout API</a>。没有 API 时，请在商户后台扣款（<strong>Payments › Payment list</strong>，选择 PSP 识别号，再点击 <strong>Capture payment</strong>），然后在应用中点击<strong>记录扣款</strong>，以便交易记录反映该操作。</li>
+              <li><strong>取消：</strong>点击<strong>取消预授权</strong>。如果已经在商户后台完成扣款，Adyen 会改为全额退款。</li>
+            </ul>
+            <p class="note">冻结金额会到期，某些卡组织可能仅保留几天；在此期间，购物者的账单上会显示为待处理金额。请及时扣款或取消。交易记录的<em>预授权</em>筛选会列出这些交易，每日合计会显示仍冻结的金额。</p>
+          </section>
+          <section id="more">
+            <h2>12. 更多终端</h2>
+            <p>配置好一台终端后，可以通过几个二维码设置其他终端，无需重复输入。请在所有终端上安装相同版本的 Mini mPOS。</p>
+            <ol>
+              <li>在已配置的终端上进入<strong>设置 › 数据 › 共享至另一台终端</strong>，或打开<strong>商品</strong>菜单。选择要复制的<strong>商品目录</strong>、<strong>设置</strong>以及<strong>密码和密钥</strong>（共享密钥口令、Checkout API 密钥、SMTP 密码和管理员 PIN），然后点击<strong>显示二维码</strong>。</li>
+              <li>在新终端的相同位置选择<strong>从另一台终端设置</strong>，用摄像头扫描二维码，顺序不限。</li>
+              <li>选择<strong>合并到此商品目录</strong>或<strong>替换此商品目录</strong>。要导入密码和密钥，请输入第一台终端在二维码上方显示的<strong>传输码</strong>；不输入时会导入其他内容，但跳过密码和密钥。点击<strong>导入</strong>。</li>
+              <li>在<strong>设置 › 终端</strong>中点击<strong>测试连接</strong>，检查连接。</li>
+            </ol>
+            <p>导入的设置会替换新终端的设置，但不更改支付目标、终端自己的地址和 ID、TEST/LIVE 环境或模拟器设置。共享密钥只有在商户后台为两台终端分配相同密钥时才适用（例如在门店或商家账户级别配置）；否则请分别输入各终端的密钥。每次传输都会生成新的传输码，并且只在第一台终端显示，因此仅拍摄二维码不会泄露密码。</p>
+          </section>
+          <section id="live">
+            <h2>13. 正式上线之前</h2>
+            <ul>
+              <li>在 TEST 终端上使用 Adyen 的<a href="https://docs.adyen.com/point-of-sale/testing-pos-payments">测试卡</a>进行几笔销售和退款；如果使用小费或预授权，也请一并测试。</li>
+              <li>在<strong>设置 › 收据 › 打印测试收据</strong>中检查收据布局。</li>
+              <li>设置管理员 PIN，再将相同版本部署到 LIVE 终端，并输入它们的共享密钥。</li>
+            </ul>
+          </section>
+          <section id="trouble">
+            <h2>14. 出现问题时</h2>
+            <dl class="settings-list">
+              <dt>首页显示“无法连接支付终端”</dt>
+              <dd>将设置 › 终端中的密钥标识符、口令和版本与商户后台的信息核对，然后点击保存并测试。</dd>
+              <dt>终端拒绝安装应用</dt>
+              <dd><code>INSTALL_PARSE_FAILED_NO_CERTIFICATES</code> 等错误表示 APK 未签名。请上传发布页面提供的已签名 <code>minimpos-&lt;version&gt;.apk</code>。</dd>
+              <dt>支付结果未知</dt>
+              <dd>从交易记录的<em>需处理</em>中打开该支付，点击<strong>重新查询结果</strong>。再次向购物者收款之前，请先检查商户后台。</dd>
+              <dt>扣款失败或结果未知</dt>
+              <dd>交易记录会显示原因。如有需要，请修正 Checkout API 设置，再点击<strong>重试扣款</strong>：再次发送不会重复扣款。</dd>
+              <dt>显示“无法读取二维码”</dt>
+              <dd>另一台终端可能运行更新的 Mini mPOS。请将两台终端更新到相同版本，再次扫描。</dd>
+            </dl>
+            <p>仍有问题？请在 <a href="https://github.com/astiskala/minimpos/issues">GitHub 上提交 issue</a>。</p>
+          </section>
+        </article>
+      </div>
+    </main>
+    <footer class="site-footer">
+      <div class="wrap footer-row">
+        <p><img alt="" height="24" src="../favicon.svg" width="24"/> Mini mPOS · MIT 许可证 · <a href="https://github.com/astiskala/minimpos">GitHub</a> · <a href="https://github.com/astiskala/minimpos/blob/main/SECURITY.md">安全</a></p>
+        <p class="fine">Adyen 是 Adyen N.V. 的商标。Mini mPOS 是独立项目，与 Adyen 无关联，未获其背书，也不由其提供支持。</p>
+      </div>
+    </footer>
+  </body>
+</html>

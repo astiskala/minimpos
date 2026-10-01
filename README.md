@@ -1,8 +1,8 @@
 # Mini mPOS
 
-A small point-of-sale app for Adyen Android payment terminals. Ring up products or custom amounts, take card payments
-(or pre-authorize a deposit) through Adyen's Terminal API on the same device, print or email a receipt (with lines for a
-tip, if you like), and refund a sale by scanning the QR code on its receipt.
+A free, open-source point-of-sale app for Adyen Android payment terminals. Sell products, take card and wallet
+payments, print or email receipts, and refund by scanning a receipt. Hold deposits and collect tips too, all on one
+device, with no extra tablet or app subscription.
 
 [![CI](https://github.com/astiskala/minimpos/actions/workflows/ci.yml/badge.svg)](https://github.com/astiskala/minimpos/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-0abf53.svg)](LICENSE)
@@ -11,6 +11,11 @@ tip, if you like), and refund a sale by scanning the QR code on its receipt.
 
 **Website:** <https://astiskala.github.io/minimpos/> · **Setup guide:**
 <https://astiskala.github.io/minimpos/getting-started.html>
+
+**简体中文:** [网站](https://astiskala.github.io/minimpos/zh-CN/) ·
+[快速入门](https://astiskala.github.io/minimpos/zh-CN/getting-started.html) ·
+**日本語:** [ウェブサイト](https://astiskala.github.io/minimpos/ja/) ·
+[はじめに](https://astiskala.github.io/minimpos/ja/getting-started.html)
 
 <p align="center">
   <img src="docs/images/home.png" width="200" alt="Home screen">
@@ -27,16 +32,13 @@ tip, if you like), and refund a sale by scanning the QR code on its receipt.
 
 - **Products and categories** in a local database, each with a name, price, optional barcode and tax rate.
 - **Sales** from a product grid with search, category filters and barcode scanning, plus keyed-in custom amounts.
-- **Card payments** with Adyen's local Terminal API on the terminal itself. Every payment is saved before the terminal
-  is called. If the result doesn't come back, the app checks the transaction status, or flags the sale to re-check
-  later, so a payment can't silently go missing.
+- **Card and wallet payments** through Adyen, directly on your payment terminal.
 - **Customer and transaction references**, and optional **card tokenization** (for later merchant-initiated payments).
   Cards are saved under the customer reference that checkout asks for, or instead under the shopper's email address
   (hashed by default), in which case no customer reference is asked for.
 - **Receipts** printed on terminals with a printer as one slip: your header, the items, tax, the card receipt and a
   refund QR code. They can also be **emailed** over your own SMTP server.
 - **Referenced refunds**: scan the receipt's QR code, or start from history. Refund in full, by item, or an amount.
-  Like payments, refunds are saved first, and one whose result is unknown can be checked again from history.
 - **History** by day with daily totals, filters (sales, awaiting tip, pre-auths, refunds, needs attention) and a
   **search** that finds a transaction by its merchant reference, PSP reference or auth code, the shopper (customer
   reference, shopper reference or email), the card's last 4 digits, its brand or wallet, or an amount (`34` or `34.50`).
@@ -58,18 +60,31 @@ tip, if you like), and refund a sale by scanning the QR code on its receipt.
   app captures tips and pre-authorizations and adjusts their authorization itself (synchronously when the terminal
   returns Adyen's adjustment data). Without an API key, it records the amount and you capture it in the Customer
   Area.
-- **Tax** set up your way: named rates such as GST, VAT, SST, Consumption tax or Sales tax (up to three decimals),
-  prices with or without tax, a rate per product (0%, such as Zero rated, for items without tax), or tax switched off.
+- **Flexible tax**: set your own rates, include tax in prices or add it at checkout, or switch tax off.
 - **Any Adyen currency**: all 138 currencies Adyen processes, with Adyen's own decimals, whatever country you are in.
-- **Set up the next terminal from the first** with a few QR codes: the catalog, the settings (payments, tax,
-  receipts, email, security, the shared key's identifier and the Checkout API) and, protected by a one-time transfer
-  code, the shared key passphrase, Checkout API key, SMTP password and admin PIN. No cloud account or computer needed.
+- **Easy import and export**: share products and settings with another terminal using QR codes. Bring passwords
+  and keys too, protected by a one-time transfer code. No cloud account or computer needed.
 - **Admin PIN** for settings and product management, with automatic re-lock.
 - **Made for terminal screens**, down to the AMS1's 4-inch display: layouts tighten on small screens and the main
   action (Pay, Refund, Save, New sale) stays in reach without scrolling.
 - **Guided setup**: on a terminal only the shared key is needed. The terminal ID, address and TEST/LIVE environment
   are detected, and Home points to the setup until payments can reach the terminal.
 - **Built-in simulator**, so you can try every flow on an emulator or phone without a terminal.
+- **English, Simplified Chinese and Japanese**, with receipts laid out for wide characters (see below).
+
+## Language and receipts
+
+The app supports English, Simplified Chinese and Japanese. On Android 12 or earlier it follows the device language;
+on Android 13 or later, choose a language in the system's app-language settings. New installations use localized
+receipt defaults and sample labels. Existing receipt titles, footers, tax names, email subjects and transferred
+catalogs stay as written: review them in Settings › Receipts, Tax and Email (SMTP), and in Products.
+
+Adyen-generated payment receipt data stays verbatim and follows the terminal's own receipt-language setting.
+Plain-text receipts account for wide Chinese and Japanese characters, and Japanese receipts show taxable amounts
+by rate (税込 / 税抜). This does **not** make them official Chinese 发票 or guarantee Japanese qualified-invoice
+compliance; reduced-rate item marking, rounding and registration requirements need separate verification. See the
+[language and receipt guidance](https://astiskala.github.io/minimpos/getting-started.html#language-receipts) for details
+and official reference links.
 
 ## Screenshots
 
@@ -86,7 +101,8 @@ tip, if you like), and refund a sale by scanning the QR code on its receipt.
 | <img src="docs/images/history-search.png" width="190" alt="Searching history for a customer reference, with the sale and its refund found"> | | | <img src="docs/images/transfer.png" width="190" alt="Choosing the catalog, settings and passwords to share with another terminal"> |
 | Searching history | | | Choose what to share |
 
-Screenshots show a demo café running on the built-in simulator (hence the "SIMULATOR" banner).
+Screenshots show an English demo café running on the built-in simulator (hence the "SIMULATOR" banner).
+The website's terminal illustrations are illustrative, not product photographs.
 
 ## How it works
 

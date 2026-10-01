@@ -103,7 +103,7 @@ class AdyenApi(
         val key =
             secrets.get(Secret.CHECKOUT_API_KEY)
                 ?: return ApiTarget.NotSetUp(
-                    "The saved Checkout API key could not be read on this device; enter it again in Terminal settings",
+                    setups.messages.unreadableApiKey,
                 )
         val credentials =
             CheckoutCredentials(key, terminal.merchantAccount.trim(), checkNotNull(terminal.environment), terminal.liveUrlPrefix.trim())
@@ -118,7 +118,7 @@ class AdyenApi(
     suspend fun verify(): String? =
         when (val target = target()) {
             is ApiTarget.Ready -> target.modifications.verify()
-            ApiTarget.CustomerArea -> "Enter the merchant account and the Checkout API key first"
+            ApiTarget.CustomerArea -> setups.messages.apiRequired
             is ApiTarget.NotSetUp -> target.message
         }
 }

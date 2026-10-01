@@ -107,6 +107,44 @@ class ReceiptBuilderTest {
     }
 
     @Test
+    fun `Japanese receipts can show per-rate taxable totals without changing their amounts`() {
+        val labels = ReceiptLabels(taxableGrossFormat = "%s対象（税込）", taxableNetFormat = "%s対象（税抜）")
+        val taxed =
+            sale().copy(
+                breakdown =
+                    listOf(
+                        TaxBreakdown(AppliedTax("消費税", 10_000), TaxAmounts(1000, 100, 1100)),
+                        TaxBreakdown(AppliedTax("消費税", 8000), TaxAmounts(1000, 80, 1080)),
+                        TaxBreakdown(AppliedTax("税率0%", 0), TaxAmounts(300, 0, 300)),
+                    ),
+                amounts = TaxAmounts(2300, 180, 2480),
+            )
+        val builder = ReceiptBuilder(branding, ReceiptOptions(), labels, money)
+        assertThat(builder.sale(taxed).elements)
+            .containsAtLeast(
+                Row("消費税 10%対象（税込）", "$11.00"),
+                Row("消費税 8%対象（税込）", "$10.80"),
+                Row("税率0%対象（税込）", "$3.00"),
+            ).inOrder()
+        assertThat(builder.sale(taxed.copy(mode = TaxMode.EXCLUSIVE)).elements)
+            .containsAtLeast(
+                Row("消費税 10%対象（税抜）", "$10.00"),
+                Row("消費税 8%対象（税抜）", "$10.00"),
+                Row("税率0%対象（税抜）", "$3.00"),
+            ).inOrder()
+        val hidden = ReceiptBuilder(branding, ReceiptOptions(showTaxBreakdown = false), labels, money).sale(taxed)
+        assertThat(hidden.elements.filterIsInstance<Row>().map { it.left }).doesNotContain("消費税 10%対象（税込）")
+        val withoutNetFormat = ReceiptBuilder(branding, ReceiptOptions(), labels.copy(taxableNetFormat = null), money)
+        assertThat(
+            withoutNetFormat
+                .sale(taxed.copy(mode = TaxMode.EXCLUSIVE))
+                .elements
+                .filterIsInstance<Row>()
+                .map { it.left },
+        ).doesNotContain("消費税 10%対象（税抜）")
+    }
+
+    @Test
     fun `exclusive receipts without tax omit the tax line`() {
         val untaxed = sale(mode = TaxMode.EXCLUSIVE).copy(amounts = TaxAmounts(300, 0, 300), breakdown = emptyList())
         val doc = builder(ReceiptOptions(showTaxBreakdown = false)).sale(untaxed)

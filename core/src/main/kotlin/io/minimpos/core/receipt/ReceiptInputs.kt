@@ -50,8 +50,8 @@ data class ReceiptBranding(
 /**
  * Which optional parts receipts include, from the receipt settings.
  *
- * @property showTaxBreakdown list the tax per rate; when off, tax-exclusive receipts show one tax line and
- *   tax-inclusive receipts none.
+ * @property showTaxBreakdown list the tax per rate and any localised per-rate taxable amount rows; when off,
+ *   tax-exclusive receipts show one tax line and tax-inclusive receipts none.
  * @property showReferences print the merchant reference and, on sale receipts, the customer reference.
  * @property showRefundQr print the refund QR code on approved sales' customer copies.
  */
@@ -96,6 +96,9 @@ data class ReceiptOptions(
  * @property signature the label of the line the shopper signs on the merchant copy of a receipt awaiting a tip.
  * @property heldNow the label of the amount a pre-authorisation holds after an adjustment.
  * @property captured the label of the amount captured of a pre-authorisation.
+ * @property taxableGrossFormat Optional tax-rate total row on inclusive receipts; `%s` is the rate label. Null omits
+ *   it. Japanese receipts use it to show the tax-inclusive amount subject to each rate.
+ * @property taxableNetFormat The equivalent tax-exclusive row; null omits it.
  */
 data class ReceiptLabels(
     val date: String = "Date",
@@ -127,6 +130,8 @@ data class ReceiptLabels(
     val signature: String = "SIGNATURE",
     val heldNow: String = "HELD NOW",
     val captured: String = "CAPTURED",
+    val taxableGrossFormat: String? = null,
+    val taxableNetFormat: String? = null,
 )
 
 /** The tip lines of a receipt for tipping on the receipt. */
@@ -180,7 +185,8 @@ enum class ReceiptCopy {
  * @property mode whether prices included tax, which decides how totals and tax are laid out.
  * @property items the items sold.
  * @property amounts the sale's net, tax and gross totals.
- * @property breakdown the per-rate tax totals; rates with no tax are not printed.
+ * @property breakdown the per-rate tax totals; tax rows with no tax are omitted, but optional per-rate amount rows
+ *   still include those rates.
  * @property approved false for payments that failed or whose outcome is unknown, which get a warning and no refund
  *   QR code.
  * @property cardReceipt Adyen's receipt lines for this copy (customer or cashier receipt), printed verbatim.

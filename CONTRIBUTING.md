@@ -79,7 +79,9 @@ each one has a comment explaining why. If you think a rule is wrong for your cas
   week old.
 - **Never log or store secrets in plain text.** Passphrases, API keys and passwords go through `SecretStore`, which
   encrypts them with the Android Keystore.
-- **Put user-facing text in `strings.xml`**, in short plain sentences.
+- **Put user-facing text in `strings.xml`**, in short plain US English sentences, and add the Simplified Chinese
+  (`values-zh-rCN`) and Japanese (`values-ja`) translations in the same change. Chinese and Japanese plurals only use
+  `other`. Keep Adyen's Customer Area menu paths (such as Devices › Device settings) in English in every language.
 - **Document the code.** Every public or protected class, object (companion objects too), function, property and
   enum entry needs a KDoc comment (detekt checks this). Say what it's for, and include units (minor units, thousandths
   of a percent), what `null` means, threading, errors (`@throws`) and Adyen or format details a maintainer would
@@ -98,6 +100,9 @@ each one has a comment explaining why. If you think a rule is wrong for your cas
   generated test vectors, TLS against a fake Adyen root certificate, and the simulator.
 - `app` uses Robolectric for data, view model and Compose UI tests (`app/src/test`). UI tests run with the
   `en-rAU` locale, so amounts show as `$4.50`.
+- `LocalizationTest` checks that every string has its translations with the same format arguments, and writes sample
+  receipts in each language to `app/build/reports/localization/`. `LocalizedUiTest` runs checkout in Chinese and
+  Japanese at the AMS1's screen size.
 - Robolectric never settles when a dialog at the platform default width (such as an `AlertDialog`) contains a text
   field. Use a `Dialog` with `DialogProperties(usePlatformDefaultWidth = false)`, as the currency picker does, or put
   the dialog's content in its own composable and test that directly, as `TaxRateFormTest` does.
@@ -115,6 +120,10 @@ each one has a comment explaining why. If you think a rule is wrong for your cas
 The screenshots in `docs/images/` come from an emulator running Android 13 in English (Australia), with a demo café
 catalog and the simulator. The status bar was cleaned up with Android's system UI demo mode. Resize new screenshots
 to 540 pixels wide and keep the demo data consistent, so the README and the website match.
+
+The website in `docs/` has English, Simplified Chinese (`docs/zh-CN/`) and Japanese (`docs/ja/`) pages, which all use
+the English screenshots. Change all three languages together and check them with `python3 docs/tests/test_site.py`
+(links, language switches, metadata and the app labels the guides quote).
 
 ## Releases
 

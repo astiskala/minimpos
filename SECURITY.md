@@ -40,8 +40,8 @@ this project. Report them to Adyen through its
   terminal's TLS certificate must chain to one of Adyen's terminal root certificates (TEST or LIVE), and its name must
   be an Adyen terminal name for that same environment. The environment the app shows comes from this certificate.
 - **Secrets are encrypted on the device.** The shared-key passphrase, the optional Checkout API key and the SMTP
-  password are encrypted with AES-256-GCM, using a key kept in the Android Keystore. The admin PIN is stored only as a salted PBKDF2 hash, and repeated wrong
-  PINs lock entry for increasing periods.
+  password are encrypted with AES-256-GCM, using a key kept in the Android Keystore. The admin PIN is stored only as a
+  salted PBKDF2 hash, and repeated wrong PINs lock entry for increasing periods.
 - **Setting up another terminal protects the secrets.** The QR codes that copy a terminal's setup carry the secrets
   only encrypted (AES-256-GCM, with a key derived by PBKDF2 from a one-time 12-character transfer code). The code is
   shown only on the sending terminal and typed on the receiving one; both screens are behind the admin PIN.

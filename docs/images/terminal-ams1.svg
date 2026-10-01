@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 260 480">
+<!-- Original illustrative artwork. Public model reference: https://www.adyen.com/devices/ams1. Not a product photograph or an Adyen asset. -->
+<defs><linearGradient id="body" x2="1" y2="1"><stop stop-color="#343b46"/><stop offset="1" stop-color="#10151c"/></linearGradient></defs>
+<rect x="3" y="3" width="254" height="474" rx="32" fill="url(#body)" stroke="#535b67" stroke-width="3"/>
+<path d="M17 63V34Q17 17 34 17h192q17 0 17 17v29" fill="none" stroke="#626b76"/>
+<rect x="20" y="60" width="220" height="366" rx="3" fill="white"/>
+<rect x="104" y="27" width="52" height="4" rx="2" fill="#080d15"/><circle cx="182" cy="29" r="4" fill="#080d15"/>
+<path d="M91 468h78" stroke="#02070d" stroke-width="5" stroke-linecap="round"/>
+</svg>

@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 600">
+<!-- Original illustrative artwork. Public model reference: https://www.adyen.com/devices/castles-s1f2. Not a product photograph or an Adyen asset. -->
+<defs><linearGradient id="body" x2="1" y2="1"><stop stop-color="#434a55"/><stop offset="1" stop-color="#111821"/></linearGradient><linearGradient id="printer" x2="0" y2="1"><stop stop-color="#636b77"/><stop offset="1" stop-color="#252e39"/></linearGradient></defs>
+<path d="M34 4h232q27 0 29 34v525q0 31-31 33H36Q5 596 5 563V38Q7 4 34 4" fill="url(#body)" stroke="#68717d" stroke-width="3"/>
+<path d="M25 99V34q0-15 18-15h214q18 0 18 15v65" fill="url(#printer)"/>
+<path d="M30 67q120-18 240 0" fill="none" stroke="#121924" stroke-width="8" stroke-linecap="round"/>
+<path d="M44 54q106-13 212 0" fill="none" stroke="#9198a3" stroke-width="2"/>
+<rect x="23" y="135" width="254" height="410" rx="4" fill="white"/>
+<rect x="118" y="111" width="64" height="4" rx="2" fill="#080e17"/>
+<g fill="#78b690"><circle cx="129" cy="88" r="3"/><circle cx="143" cy="88" r="3"/><circle cx="157" cy="88" r="3"/><circle cx="171" cy="88" r="3"/></g>
+<path d="M88 587h124" stroke="#02070d" stroke-width="6" stroke-linecap="round"/>
+</svg>

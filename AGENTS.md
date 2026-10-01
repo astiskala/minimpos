@@ -109,6 +109,13 @@ the code does not tell you.
 - User-facing English is US English (strings, receipt label defaults, simulator texts, messages that reach the screen,
   README and `docs/`). Unchanged on purpose: identifiers and resource names (`preAuthorisation`), stored values
   (`SaleKind.PRE_AUTHORISATION`), Adyen's field names and texts, and "Harbour Coffee Co.".
+- Languages: English, Simplified Chinese (`values-zh-rCN`) and Japanese (`values-ja`); `locales_config` exposes
+  per-app language choices on Android 13+. Keep resource keys and format arguments covered in both translations
+  (Chinese/Japanese plurals use only `other`). Localize new-install receipt/email defaults, never stored merchant text
+  or imported catalogues. Receipt/email labels are read again at delivery; Adyen receipt fields stay verbatim.
+  Japanese receipts add per-rate taxable totals; plain-text receipts count wide CJK glyphs as two columns. Customer
+  Area menu paths (Devices › Device settings, Payments › Payment list, …) stay in English in strings and docs; zh-CN
+  quotes UI names with “”, ja with 「」.
 - KDoc on every public or protected declaration (tests exempt): units, `null` meaning, threading, `@throws`, formats;
   never restate the name. detekt's `OutdatedDocumentation` wants, once a class KDoc has constructor tags, one tag per
   constructor parameter in order: `@property` for public properties, `@param` for the rest (a `private val` is a
@@ -124,6 +131,8 @@ the code does not tell you.
 ## Tests
 - Robolectric at SDK 33 with `TestApplication`; Compose tests use the v2 rule and `en-rAU`. `SmallScreenTest` checks
   primary actions are visible without scrolling at `w320dp-h460dp-hdpi` (AMS1), plus P630 and S1F2 sizes.
+- `LocalizationTest` checks translation/format parity and receipt defaults and writes sample previews under
+  `app/build/reports/localization/`; `LocalizedUiTest` checks Chinese/Japanese checkout at AMS1 size.
 - `TestEnvironment(device = FakeDevice(detectedPoiId = …), terminal = FakeTerminal())` plays a terminal; it is a rule
   declared `@get:Rule(order = 0)` before the compose rule (`order = 1`). Call `container.start()` for the background
   connection check. No network or DNS in tests (give `TerminalHttpClient` a fake `Dns`).
@@ -157,3 +166,9 @@ the code does not tell you.
 - Human docs: `README.md`, `CONTRIBUTING.md`, `SECURITY.md`, `LICENSE` (MIT). Keep feature claims in README,
   `docs/index.html` and `docs/getting-started.html` (Customer Area paths, Settings names) in sync with the app.
 - `docs/` is the static GitHub Pages site (`https://astiskala.github.io/minimpos/`, no build step).
+- Chinese/Japanese pages and guides are in `docs/zh-CN/` and `docs/ja/`, with reciprocal language switches and
+  canonical/hreflang links. Check all six pages with `python3 docs/tests/test_site.py`. Marketing screenshots use
+  original AMS1/S1F2-style SVG illustrations: keep bottom bezels blank and the AMS1 top free of an NFC symbol.
+  The demo screens remain English, visibly disclosed. `social.png` (1200×630) uses the same blank terminal frames.
+  Guides explain receipt-language settings, the physical-printer check, and the limits: not Chinese tax invoices
+  or guaranteed Japanese qualified invoices.

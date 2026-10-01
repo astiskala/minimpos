@@ -64,11 +64,12 @@ data class TerminalSetup(
         /** Where payments go in [TerminalMode.AUTO] on [device]: this terminal when running on one, the simulator elsewhere. */
         fun automaticMode(device: DeviceInfo): TerminalMode = if (device.isAdyenTerminal) TerminalMode.TERMINAL else TerminalMode.SIMULATOR
 
-        /** The setup with [settings] on [device], given which secrets are [saved]. */
+        /** The setup with [settings] on [device], given which secrets are [saved], using [texts] for missing fields. */
         fun resolve(
             settings: AppSettings,
             saved: Set<Secret>,
             device: DeviceInfo,
+            texts: TerminalTexts,
         ): TerminalSetup {
             val terminal = settings.terminal
             val mode = if (terminal.mode == TerminalMode.AUTO) automaticMode(device) else terminal.mode
@@ -85,15 +86,15 @@ data class TerminalSetup(
                 }
             val problem =
                 when {
-                    poiId == null -> "Enter the terminal ID (POIID) in Terminal settings"
+                    poiId == null -> texts.poiId
                     simulator -> null
-                    host == null -> "Enter the terminal's IP address in Terminal settings"
-                    terminal.keyIdentifier.isBlank() -> "Enter the shared key identifier in Terminal settings"
-                    Secret.TERMINAL_PASSPHRASE !in saved -> "Enter the shared key passphrase in Terminal settings"
-                    terminal.keyVersion < 1 -> "Enter the shared key version in Terminal settings"
+                    host == null -> texts.host
+                    terminal.keyIdentifier.isBlank() -> texts.keyIdentifier
+                    Secret.TERMINAL_PASSPHRASE !in saved -> texts.passphrase
+                    terminal.keyVersion < 1 -> texts.keyVersion
                     else -> null
                 }
-            val api = apiSetup(settings, simulator, keySaved = Secret.CHECKOUT_API_KEY in saved)
+            val api = apiSetup(settings, simulator, keySaved = Secret.CHECKOUT_API_KEY in saved, texts)
             return TerminalSetup(settings, mode, device.isAdyenTerminal, poiId, host, problem, api)
         }
 
@@ -105,6 +106,7 @@ data class TerminalSetup(
             settings: AppSettings,
             simulator: Boolean,
             keySaved: Boolean,
+            texts: TerminalTexts,
         ): ApiSetup {
             val terminal = settings.terminal
             return when {
@@ -117,19 +119,19 @@ data class TerminalSetup(
                 }
 
                 terminal.merchantAccount.isBlank() -> {
-                    ApiSetup.Incomplete("Enter the merchant account in Terminal settings")
+                    ApiSetup.Incomplete(texts.merchantAccount)
                 }
 
                 !keySaved -> {
-                    ApiSetup.Incomplete("Enter the Checkout API key in Terminal settings")
+                    ApiSetup.Incomplete(texts.apiKey)
                 }
 
                 terminal.environment == null -> {
-                    ApiSetup.Incomplete("Test the connection to the terminal first, so the app knows whether it is TEST or LIVE")
+                    ApiSetup.Incomplete(texts.environment)
                 }
 
                 terminal.environment == TerminalEnvironment.LIVE && terminal.liveUrlPrefix.isBlank() -> {
-                    ApiSetup.Incomplete("Enter the live URL prefix in Terminal settings")
+                    ApiSetup.Incomplete(texts.livePrefix)
                 }
 
                 else -> {
@@ -147,16 +149,21 @@ data class TerminalSetup(
  * @param settings The stored settings.
  * @param secrets Tells which secrets are saved.
  * @property device The device the app runs on.
+ * @param texts Supplies messages in the current language whenever the setup is resolved.
  */
 class TerminalSetupSource(
     private val settings: SettingsRepository,
     private val secrets: SecretStore,
     val device: DeviceInfo,
+    private val texts: () -> TerminalTexts = { TerminalTexts() },
 ) {
+    /** Messages in the current language, also used by the gateway and Checkout API. */
+    val messages: TerminalTexts get() = texts()
+
     /** The setup with the stored settings now. */
-    suspend fun current(): TerminalSetup = TerminalSetup.resolve(settings.current(), secrets.configured.first(), device)
+    suspend fun current(): TerminalSetup = TerminalSetup.resolve(settings.current(), secrets.configured.first(), device, messages)
 
     /** The setup each time the settings or the saved secrets change. */
     val changes: Flow<TerminalSetup> =
-        combine(settings.settings, secrets.configured) { current, saved -> TerminalSetup.resolve(current, saved, device) }
+        combine(settings.settings, secrets.configured) { current, saved -> TerminalSetup.resolve(current, saved, device, messages) }
 }

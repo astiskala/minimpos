@@ -46,10 +46,14 @@ class ReceiptEmailer(
     private val settings: SettingsRepository,
     private val secrets: SecretStore,
     private val mailer: SmtpMailer,
-    private val texts: EmailTexts,
+    texts: EmailTexts,
     /** Renders QR code content as a PNG image. */
     private val qrPng: (String) -> ByteArray,
+    /** Reads resources again after a device language change; defaults to the texts supplied at construction. */
+    private val currentTexts: () -> EmailTexts = { texts },
 ) {
+    private val texts: EmailTexts get() = currentTexts()
+
     /**
      * Emails [document], the receipt of the sale (or, with [preAuthorisation], the pre-authorisation) with merchant
      * reference [reference], to [to].

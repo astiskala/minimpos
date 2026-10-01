@@ -52,9 +52,11 @@ Seeded before the first launch (debug builds only), piped in with
 - Press Back twice to close the printer sheet; the first only collapses it.
 
 ## Social image and site rendering
-- `social.png` (1200×630) is an HTML page (navy background with a green glow, favicon + "Mini mPOS", "The whole
-  checkout, on the payment terminal.", lead line, green footer, and `sale.png`/`receipt.png` in navy phone frames
-  rotated −4°/6°).
+- `social.png` (1200×630) is an HTML page (light green-white background, favicon + "Mini mPOS", "The whole checkout.
+  One payment terminal.", a lead line, a navy "Free and open source" pill, a grey disclosure footer, and
+  `sale.png`/`receipt.png` in the blank `terminal-ams1.svg`/`terminal-s1f2.svg` frames, tilted left and right).
+- The site's terminal frames are original SVG illustrations: keep their bottom bezels blank (no model labels) and the
+  AMS1's top free of an NFC symbol; `docs/tests/test_site.py` checks this.
 - Render pages with Playwright's `chrome-headless-shell` (`~/Library/Caches/ms-playwright/`) and
   `--screenshot --window-size=W,H`; full Chrome headless and the Playwright MCP browser crashed in this sandbox.
 

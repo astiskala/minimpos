@@ -35,6 +35,7 @@ import io.minimpos.app.payment.SaleSession
 import io.minimpos.app.payment.TransactionLifecycle
 import io.minimpos.app.qr.QrCodes
 import io.minimpos.app.receipt.ReceiptFactory
+import io.minimpos.app.receipt.ReceiptSampleTexts
 import io.minimpos.app.refund.RefundStart
 import io.minimpos.app.refund.StoredPayments
 import io.minimpos.app.terminal.AdyenApi
@@ -43,6 +44,7 @@ import io.minimpos.app.terminal.DeviceInfo
 import io.minimpos.app.terminal.TerminalGateway
 import io.minimpos.app.terminal.TerminalSetupSource
 import io.minimpos.app.terminal.TerminalStatus
+import io.minimpos.app.terminal.TerminalTexts
 import io.minimpos.app.terminal.VirtualPrinter
 import io.minimpos.core.money.CurrencySpec
 import io.minimpos.core.receipt.ReceiptDocument
@@ -93,11 +95,24 @@ class AppContainer(
     terminalTransport: (host: String, key: TerminalKey, tls: TerminalTls) -> TerminalTransport = ::AdyenLocalTransport,
     private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
 ) {
+    private val defaults =
+        AppSettings().let {
+            it.copy(
+                receipt =
+                    it.receipt.copy(
+                        title = context.getString(R.string.receipt_default_title),
+                        footer = context.getString(R.string.receipt_default_footer),
+                        taxIdLabel = context.getString(R.string.receipt_default_tax_id),
+                    ),
+                email = it.email.copy(subject = context.getString(R.string.email_default_subject)),
+            )
+        }
+
     /** Non-secret settings (`settings.json`). */
-    val settings = SettingsRepository(store("settings.json", serializer<AppSettings>(), AppSettings()))
+    val settings = SettingsRepository(store("settings.json", serializer<AppSettings>(), defaults))
 
     /** [settings] as a state that is always available; it holds the defaults until the file has been read. */
-    val settingsState: StateFlow<AppSettings> = settings.settings.stateIn(appScope, SharingStarted.Eagerly, AppSettings())
+    val settingsState: StateFlow<AppSettings> = settings.settings.stateIn(appScope, SharingStarted.Eagerly, defaults)
 
     /** Encrypted credentials (`secrets.json`). */
     val secrets = SecretStore(store("secrets.json", serializer<SecretBlob>(), SecretBlob()), cipher, ioDispatcher)
@@ -136,7 +151,7 @@ class AppContainer(
             osVersion = device.osVersion,
         )
 
-    private val terminalSetup = TerminalSetupSource(settings, secrets, device)
+    private val terminalSetup = TerminalSetupSource(settings, secrets, device, ::terminalTexts)
 
     /** The payment terminal (or the simulator): the Terminal API operations, sent where payments go. */
     val gateway = TerminalGateway(terminalSetup, secrets, virtualPrinter, application, terminalTransport)
@@ -154,7 +169,19 @@ class AppContainer(
      * Builds receipt documents from stored sales and refunds, with localised labels. Screens get their receipts from
      * [receipts] (through `TransactionActions`); tests build documents with it directly.
      */
-    internal val receiptFactory = ReceiptFactory(receiptLabels())
+    internal val receiptFactory =
+        ReceiptFactory(
+            receiptLabels(),
+            currentLabels = ::receiptLabels,
+            sampleTexts = {
+                ReceiptSampleTexts(
+                    coffee = context.getString(R.string.receipt_sample_coffee),
+                    custom = context.getString(R.string.receipt_sample_item),
+                    taxed = context.getString(R.string.receipt_sample_tax),
+                    zero = context.getString(R.string.receipt_sample_zero_tax),
+                )
+            },
+        )
 
     /** A time stamp (epoch milliseconds) as a short date and time in the device's locale and zone, as receipts print it. */
     fun formatDateTime(epochMillis: Long): String = receiptFactory.formatDateTime(epochMillis)
@@ -182,18 +209,8 @@ class AppContainer(
                     settings = settings,
                     secrets = secrets,
                     mailer = mailTransport?.let { SmtpMailer(it, ioDispatcher) } ?: SmtpMailer(io = ioDispatcher),
-                    texts =
-                        EmailTexts(
-                            appName = context.getString(R.string.app_name),
-                            intro = context.getString(R.string.email_intro),
-                            refundIntro = context.getString(R.string.email_refund_intro),
-                            testSubject = context.getString(R.string.email_test_subject),
-                            testBody = context.getString(R.string.email_test_body),
-                            notConfigured = context.getString(R.string.email_not_configured),
-                            invalidAddress = context.getString(R.string.email_invalid_address),
-                            preAuthIntro = context.getString(R.string.email_pre_auth_intro),
-                            cancellationIntro = context.getString(R.string.email_cancellation_intro),
-                        ),
+                    texts = emailTexts(),
+                    currentTexts = ::emailTexts,
                     qrPng = { QrCodes.png(it) },
                 ),
             notFound = context.getString(R.string.error_not_found),
@@ -293,6 +310,38 @@ class AppContainer(
             signature = context.getString(R.string.receipt_signature),
             heldNow = context.getString(R.string.receipt_held_now),
             captured = context.getString(R.string.receipt_captured),
+            taxableGrossFormat = context.getString(R.string.receipt_taxable_gross_format).ifEmpty { null },
+            taxableNetFormat = context.getString(R.string.receipt_taxable_net_format).ifEmpty { null },
+        )
+
+    private fun emailTexts() =
+        EmailTexts(
+            appName = context.getString(R.string.app_name),
+            intro = context.getString(R.string.email_intro),
+            refundIntro = context.getString(R.string.email_refund_intro),
+            testSubject = context.getString(R.string.email_test_subject),
+            testBody = context.getString(R.string.email_test_body),
+            notConfigured = context.getString(R.string.email_not_configured),
+            invalidAddress = context.getString(R.string.email_invalid_address),
+            preAuthIntro = context.getString(R.string.email_pre_auth_intro),
+            cancellationIntro = context.getString(R.string.email_cancellation_intro),
+        )
+
+    private fun terminalTexts() =
+        TerminalTexts(
+            poiId = context.getString(R.string.setup_poiid),
+            host = context.getString(R.string.setup_host),
+            keyIdentifier = context.getString(R.string.setup_key_identifier),
+            passphrase = context.getString(R.string.setup_passphrase),
+            keyVersion = context.getString(R.string.setup_key_version),
+            merchantAccount = context.getString(R.string.setup_merchant_account),
+            apiKey = context.getString(R.string.setup_api_key),
+            environment = context.getString(R.string.setup_environment),
+            livePrefix = context.getString(R.string.setup_live_prefix),
+            unreadablePassphrase = context.getString(R.string.setup_unreadable_passphrase),
+            unreadableApiKey = context.getString(R.string.setup_unreadable_api_key),
+            apiRequired = context.getString(R.string.setup_api_required),
+            noResponse = context.getString(R.string.setup_no_response),
         )
 
     /** The application identity and currency resolution, also used without a container. */

@@ -142,6 +142,23 @@ class ReceiptBuilder(
                 }
             }
         }
+        taxRateTotals(out, receipt)
+    }
+
+    private fun taxRateTotals(
+        out: MutableList<ReceiptElement>,
+        receipt: SaleReceipt,
+    ) {
+        if (!options.showTaxBreakdown) return
+        val inclusive = receipt.mode == TaxMode.INCLUSIVE
+        val format = (if (inclusive) labels.taxableGrossFormat else labels.taxableNetFormat) ?: return
+        receipt.breakdown.forEach {
+            out +=
+                Row(
+                    format.format(money.locale, it.tax.label()),
+                    money.format(if (inclusive) it.amounts.gross else it.amounts.net),
+                )
+        }
     }
 
     /** A pre-authorisation's adjusted and captured amounts, and the tip lines. */

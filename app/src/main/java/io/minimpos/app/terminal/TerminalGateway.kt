@@ -272,7 +272,7 @@ class TerminalGateway(
                     learnPrinter(target.client, diagnosis.hasPrinter)
                     TerminalConnection.Connected(diagnosis)
                 } else {
-                    TerminalConnection.Failed(diagnosis.message ?: "The terminal did not answer")
+                    TerminalConnection.Failed(diagnosis.message ?: setups.messages.noResponse)
                 }
             }
         }
@@ -303,7 +303,7 @@ class TerminalGateway(
             }
 
             transport == null -> {
-                Target.NotSetUp("The saved shared key passphrase could not be read on this device; enter it again in Terminal settings")
+                Target.NotSetUp(setups.messages.unreadablePassphrase)
             }
 
             else -> {

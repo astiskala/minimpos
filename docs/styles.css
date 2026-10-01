@@ -14,7 +14,7 @@
 
 * { box-sizing: border-box; }
 
-html { scroll-behavior: smooth; scroll-padding-top: 80px; }
+html { scroll-behavior: smooth; scroll-padding-top: 120px; }
 
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
@@ -30,6 +30,10 @@ body {
 }
 
 img { max-width: 100%; height: auto; }
+
+p, li, dd { overflow-wrap: anywhere; }
+
+:lang(zh-CN), :lang(ja) { line-break: strict; }
 
 a { color: var(--green-dark); }
 
@@ -68,7 +72,13 @@ h3 { font-size: 1.15rem; }
   border-bottom: 1px solid var(--border);
 }
 
-.header-row { display: flex; align-items: center; justify-content: space-between; height: 64px; }
+.header-row { display: flex; align-items: center; justify-content: space-between; min-height: 64px; gap: 20px; }
+
+.language-row { display: flex; justify-content: flex-end; padding-bottom: 10px; }
+.languages { display: flex; flex-wrap: wrap; gap: 16px; font-size: 0.85rem; }
+.languages a { color: var(--grey); text-decoration: none; padding: 3px 0; }
+.languages a[aria-current="page"] { color: var(--navy); font-weight: 700; border-bottom: 2px solid var(--green); }
+.languages a:hover { color: var(--green-dark); }
 
 .brand {
   display: flex;
@@ -149,21 +159,20 @@ a:focus-visible, summary:focus-visible { outline: 3px solid var(--green); outlin
 
 .hero-points li::before { content: "✓"; color: var(--green); font-weight: 800; margin-right: 6px; }
 
-.hero-shots { position: relative; height: 560px; }
-
-.phone {
-  display: block;
-  border-radius: 28px;
-  border: 8px solid var(--navy);
-  background: var(--navy);
-  box-shadow: 0 24px 48px rgba(0, 17, 44, 0.18);
-}
-
-.hero-shots .phone { position: absolute; width: 250px; }
-
-.phone-front { right: 150px; top: 20px; z-index: 2; }
-
-.phone-back { right: 0; top: 70px; transform: rotate(4deg); opacity: 0.95; }
+/* Original AMS1/S1F2-inspired payment terminal illustrations. The screenshot
+   uses contain, never cover: demo captures retain their original aspect ratio. */
+.hero-shots { position: relative; height: 565px; }
+.hero-visual { min-width: 0; }
+.demo-note { font-size: 0.8rem; color: var(--grey); margin: 20px 0 0; text-align: center; }
+.terminal { position: relative; width: 100%; filter: drop-shadow(0 18px 20px rgba(0, 17, 44, 0.18)); }
+.terminal-ams1 { aspect-ratio: 260 / 480; background: url("images/terminal-ams1.svg") center / 100% 100% no-repeat; }
+.terminal-s1f2 { aspect-ratio: 300 / 600; background: url("images/terminal-s1f2.svg") center / 100% 100% no-repeat; }
+.terminal img { position: absolute; display: block; object-fit: contain; background: white; }
+.terminal-ams1 img { left: 7.6923%; top: 12.5%; width: 84.6154%; height: 76.25%; }
+.terminal-s1f2 img { left: 7.6667%; top: 22.5%; width: 84.6667%; height: 68.3333%; }
+.hero-shots .terminal { position: absolute; width: 240px; }
+.terminal-front { left: 0; top: 65px; z-index: 2; transform: rotate(-6deg); }
+.terminal-back { right: 0; top: 0; transform: rotate(6deg); }
 
 /* Sections */
 
@@ -177,7 +186,7 @@ a:focus-visible, summary:focus-visible { outline: 3px solid var(--green); outlin
 
 .features {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr));
   gap: 20px;
 }
 
@@ -209,7 +218,7 @@ a:focus-visible, summary:focus-visible { outline: 3px solid var(--green); outlin
   margin: 40px 0 0;
 }
 
-.flow .phone { width: 100%; max-width: 240px; margin: 0 auto 20px; }
+.flow .terminal { max-width: 240px; margin: 0 auto 28px; }
 
 .flow h3 { display: flex; align-items: center; gap: 10px; }
 
@@ -252,9 +261,9 @@ a:focus-visible, summary:focus-visible { outline: 3px solid var(--green); outlin
   place-items: center;
 }
 
-.shot-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+.shot-pair { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; align-items: start; }
 
-.shot-pair .phone:last-child { margin-top: 48px; }
+.shot-pair .terminal:last-child { margin-top: 48px; }
 
 .steps { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-top: 32px; }
 
@@ -311,7 +320,7 @@ details p { color: var(--grey); margin: 12px 0 0; }
 
 .toc {
   position: sticky;
-  top: 88px;
+  top: 120px;
   padding: 20px;
   border: 1px solid var(--border);
   border-radius: var(--radius);
@@ -328,7 +337,7 @@ details p { color: var(--grey); margin: 12px 0 0; }
 
 .toc a:hover { color: var(--green-dark); }
 
-.guide-body { max-width: 760px; }
+.guide-body { max-width: 760px; min-width: 0; }
 
 .guide-body section { padding-top: 24px; }
 
@@ -366,14 +375,16 @@ details p { color: var(--grey); margin: 12px 0 0; }
 /* Smaller screens */
 
 @media (max-width: 900px) {
-  .hero-grid, .split, .steps, .guide { grid-template-columns: 1fr; }
+  .hero-grid, .split, .steps, .guide { grid-template-columns: minmax(0, 1fr); }
   .guide { gap: 24px; }
   .toc { position: static; }
   .hero { padding-top: 48px; }
-  .hero-shots { height: 440px; max-width: 420px; margin: 0 auto; width: 100%; }
-  .hero-shots .phone { width: 200px; }
-  .phone-front { right: auto; left: 20px; }
-  .phone-back { right: 20px; }
+  .hero-visual { max-width: 440px; margin: 0 auto; width: 100%; }
+  .hero-shots { height: 480px; }
+  .hero-shots .terminal { width: 220px; }
+  .terminal-front { left: 15px; }
+  .terminal-back { right: 15px; }
+  .nav { gap: 16px; font-size: 0.9rem; }
   .flow { grid-template-columns: repeat(2, 1fr); }
   .shot-pair { max-width: 520px; }
 }
@@ -382,8 +393,17 @@ details p { color: var(--grey); margin: 12px 0 0; }
   body { font-size: 16px; }
   .nav li:not(:last-child) { display: none; }
   .section { padding: 64px 0; }
-  .hero-shots { height: 380px; }
-  .hero-shots .phone { width: 170px; }
-  .phone { border-width: 6px; border-radius: 22px; }
+  .wrap { padding-left: 20px; padding-right: 20px; }
+  .hero-shots { height: 370px; }
+  .hero-shots .terminal { width: 165px; }
+  .terminal-front { left: 4px; top: 55px; }
+  .terminal-back { right: 4px; }
+  .language-row { justify-content: flex-start; }
+  .step { padding: 22px; }
   .flow { gap: 20px; }
+}
+
+@media (max-width: 360px) {
+  .hero-shots { height: 325px; }
+  .hero-shots .terminal { width: 145px; }
 }

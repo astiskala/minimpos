@@ -15,6 +15,18 @@
   <meta name="twitter:card" content="summary_large_image">
   <meta name="theme-color" content="#00112C">
   <link rel="stylesheet" href="styles.css">
+  <link href="https://astiskala.github.io/minimpos/getting-started.html" hreflang="en" rel="alternate"/>
+  <link href="https://astiskala.github.io/minimpos/zh-CN/getting-started.html" hreflang="zh-CN" rel="alternate"/>
+  <link href="https://astiskala.github.io/minimpos/ja/getting-started.html" hreflang="ja" rel="alternate"/>
+  <link href="https://astiskala.github.io/minimpos/getting-started.html" hreflang="x-default" rel="alternate"/>
+  <meta content="en_US" property="og:locale"/>
+  <meta content="zh_CN" property="og:locale:alternate"/>
+  <meta content="ja_JP" property="og:locale:alternate"/>
+  <meta content="Mini mPOS on illustrated Adyen payment terminals, with English demo screens." property="og:image:alt"/>
+  <meta content="Getting started with Mini mPOS" name="twitter:title"/>
+  <meta content="From an Adyen account to your first payment on the terminal: install, connect, set up and sell." name="twitter:description"/>
+  <meta content="https://astiskala.github.io/minimpos/images/social.png" name="twitter:image"/>
+  <meta content="Mini mPOS on illustrated Adyen payment terminals, with English demo screens." name="twitter:image:alt"/>
 </head>
 <body>
   <a class="skip" href="#main">Skip to content</a>
@@ -32,6 +44,13 @@
           <li><a href="getting-started.html" aria-current="page">Getting started</a></li>
           <li><a class="button button-small" href="https://github.com/astiskala/minimpos">GitHub</a></li>
         </ul>
+      </nav>
+    </div>
+    <div class="wrap language-row">
+      <nav aria-label="Language" class="languages">
+        <a aria-current="page" href="getting-started.html" hreflang="en" lang="en">English</a>
+        <a href="zh-CN/getting-started.html" hreflang="zh-CN" lang="zh-CN">简体中文</a>
+        <a href="ja/getting-started.html" hreflang="ja" lang="ja">日本語</a>
       </nav>
     </div>
   </header>
@@ -156,15 +175,35 @@ cd minimpos
               default rate for new products, and a <strong>Charge tax</strong> switch.</dd>
             <dt>Receipts</dt>
             <dd>Business name, address, tax ID, phone, title and footer; what the receipt shows (tax breakdown,
-              references, refund QR code); printing automatically and the merchant copy.</dd>
+              references, refund QR code); whether the terminal has a printer (detected automatically), printing
+              automatically, the merchant copy and the characters per line.</dd>
             <dt>Email (SMTP)</dt>
             <dd>Your mail server, sender, an optional blind copy and the subject, with a test email.</dd>
             <dt>Security</dt>
             <dd>An <strong>admin PIN</strong> for Settings and Products, and how soon they lock again. Set one before
               the terminal goes on the counter.</dd>
             <dt>Data</dt>
-            <dd>How long sales and refunds are kept, and clearing the history.</dd>
+            <dd>How long sales and refunds are kept, clearing the history, and setting up other terminals from this one
+              (see <a href="#more">More terminals</a>).</dd>
           </dl>
+          <h3 id="language-receipts">Language and receipts</h3>
+          <p>Mini mPOS supports English, Simplified Chinese and Japanese. On Android 12 or earlier, it follows the
+            device language. On Android 13 or later, choose a language in Android's system app-language settings.</p>
+          <p>New installations use localized receipt defaults and sample labels. Changing language does not translate
+            existing receipt titles, footers, tax names, email subjects or transferred product catalogs. Review them in
+            <strong>Settings › Receipts</strong>, <strong>Settings › Tax</strong>, <strong>Settings › Email (SMTP)</strong>
+            and <strong>Products</strong>, especially if you already have settings or import them from another terminal.</p>
+          <p>Adyen-generated payment receipt data is kept verbatim and follows the payment terminal's own configured
+            receipt language. Wide Chinese and Japanese characters use two columns in plain-text receipt layout.
+            Japanese receipts also show taxable amounts by tax rate, marked 税込 (tax-inclusive) or 税抜 (tax-exclusive).
+            Check the printed layout with <strong>Settings › Receipts › Print test receipt</strong>.</p>
+          <p class="note">Mini mPOS receipts are not official Chinese 发票 and are not guaranteed to qualify as Japanese
+            適格請求書 (qualified invoices) or 適格簡易請求書 (qualified simplified invoices). Per-rate totals alone are not
+            a complete invoice system. Separately verify reduced-rate item marking, tax rounding, registration and all
+            other applicable requirements. For context, see the
+            <a href="https://www.nta.go.jp/english/taxes/consumption_tax/pdf/2023/general_04.pdf">Japan National Tax Agency's qualified simplified invoice guidance</a>
+            and the <a href="https://inv-veri.chinatax.gov.cn/">China State Taxation Administration's VAT invoice verification service</a>.
+            These links are reference material, not a claim of compliance or legal advice.</p>
         </section>
 
         <section id="products">

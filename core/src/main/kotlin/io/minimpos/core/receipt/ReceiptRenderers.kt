@@ -1,8 +1,9 @@
 package io.minimpos.core.receipt
 
 /**
- * Fixed-width text rendering, used for the plain-text part of emailed receipts. Lines are at most `width` characters
- * (default [DEFAULT_WIDTH]); the constructor throws [IllegalArgumentException] when the width is below [MIN_WIDTH].
+ * Fixed-width text rendering, used for the plain-text part of emailed receipts. Lines are at most `width` columns
+ * (default [DEFAULT_WIDTH]). East Asian wide characters occupy two columns, combining marks zero and other characters
+ * one. The constructor throws [IllegalArgumentException] when the width is below [MIN_WIDTH].
  */
 class PlainTextReceiptRenderer(
     private val width: Int = DEFAULT_WIDTH,
@@ -33,8 +34,9 @@ class PlainTextReceiptRenderer(
         left: String,
         right: String,
     ): List<String> {
-        if (left.length + 1 + right.length <= width) {
-            return listOf(left + " ".repeat(width - left.length - right.length) + right)
+        val occupied = ReceiptTextWidth.columns(left) + ReceiptTextWidth.columns(right)
+        if (occupied + 1 <= width) {
+            return listOf(left + " ".repeat(width - occupied) + right)
         }
         return wrap(left) + wrap(right).map { align(it, Align.RIGHT) }
     }
@@ -45,8 +47,8 @@ class PlainTextReceiptRenderer(
     ): String =
         when (align) {
             Align.LEFT -> text
-            Align.RIGHT -> text.padStart(width)
-            Align.CENTER -> " ".repeat(((width - text.length) / 2).coerceAtLeast(0)) + text
+            Align.RIGHT -> " ".repeat((width - ReceiptTextWidth.columns(text)).coerceAtLeast(0)) + text
+            Align.CENTER -> " ".repeat(((width - ReceiptTextWidth.columns(text)) / 2).coerceAtLeast(0)) + text
         }
 
     /**
@@ -54,20 +56,21 @@ class PlainTextReceiptRenderer(
      * check the edge cases directly.
      */
     internal fun wrap(text: String): List<String> {
-        if (text.length <= width) return listOf(text)
+        if (ReceiptTextWidth.columns(text) <= width) return listOf(text)
         val lines = mutableListOf<String>()
         var current = StringBuilder()
         for (word in text.split(' ')) {
             var remaining = word
-            while (remaining.length > width) {
+            while (ReceiptTextWidth.columns(remaining) > width) {
                 if (current.isNotEmpty()) {
                     lines += current.toString()
                     current = StringBuilder()
                 }
-                lines += remaining.take(width)
-                remaining = remaining.drop(width)
+                val end = ReceiptTextWidth.lineEnd(remaining, width)
+                lines += remaining.take(end)
+                remaining = remaining.drop(end)
             }
-            if (current.isNotEmpty() && current.length + 1 + remaining.length > width) {
+            if (current.isNotEmpty() && ReceiptTextWidth.columns(current.toString()) + 1 + ReceiptTextWidth.columns(remaining) > width) {
                 lines += current.toString()
                 current = StringBuilder()
             }
@@ -80,12 +83,59 @@ class PlainTextReceiptRenderer(
 
     /** The supported line widths. */
     companion object {
-        /** Characters per line by default, as on a typical 58 mm receipt printer. */
+        /** Columns per line by default, as on a typical 58 mm receipt printer. */
         const val DEFAULT_WIDTH = 32
 
         /** The narrowest supported width. */
         const val MIN_WIDTH = 16
     }
+}
+
+/** Monospaced receipt widths, counting full-width CJK glyphs rather than UTF-16 code units. */
+internal object ReceiptTextWidth {
+    private val COMBINING_TYPES =
+        setOf(Character.NON_SPACING_MARK.toInt(), Character.COMBINING_SPACING_MARK.toInt(), Character.ENCLOSING_MARK.toInt())
+    private val WIDE_RANGES =
+        listOf(
+            0x1100..0x115F,
+            0x2329..0x232A,
+            0x2E80..0xA4CF,
+            0xAC00..0xD7A3,
+            0xF900..0xFAFF,
+            0xFE10..0xFE19,
+            0xFE30..0xFE6F,
+            0xFF01..0xFF60,
+            0xFFE0..0xFFE6,
+            0x1F300..0x1FAFF,
+            0x20000..0x3FFFD,
+        )
+
+    /** The display columns in [text]; surrogate pairs and combining marks are kept intact. */
+    fun columns(text: String): Int = text.codePoints().toArray().sumOf(::codePointWidth)
+
+    /** UTF-16 index after the longest prefix fitting [columns], without splitting a code point. */
+    fun lineEnd(
+        text: String,
+        columns: Int,
+    ): Int {
+        var end = 0
+        var used = 0
+        while (end < text.length) {
+            val point = text.codePointAt(end)
+            val size = codePointWidth(point)
+            if (used + size > columns) break
+            used += size
+            end += Character.charCount(point)
+        }
+        return end
+    }
+
+    private fun codePointWidth(point: Int): Int =
+        when {
+            Character.getType(point) in COMBINING_TYPES -> 0
+            WIDE_RANGES.any { point in it } -> 2
+            else -> 1
+        }
 }
 
 /**
@@ -150,7 +200,10 @@ class HtmlReceiptRenderer(
                         append("<div style=\"text-align:center;margin-top:16px;\">")
                         append(
                             "<img src=\"cid:",
-                        ).append(qrContentId(qrIndex++)).append("\" width=\"180\" height=\"180\" alt=\"QR code\">")
+                        ).append(qrContentId(qrIndex++))
+                            .append("\" width=\"180\" height=\"180\" alt=\"")
+                            .append(escape(element.caption.orEmpty()))
+                            .append("\">")
                         element.caption?.let {
                             append("<div style=\"font-size:12px;color:#5c687c;\">").append(escape(it)).append("</div>")
                         }

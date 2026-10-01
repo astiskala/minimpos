@@ -40,11 +40,34 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import io.minimpos.app.R
+import io.minimpos.app.ui.components.currentLocale
 import io.minimpos.app.ui.theme.LocalDimens
 import io.minimpos.core.money.AdyenCurrencies
 import io.minimpos.core.money.AdyenCurrency
+import java.util.Currency
+import java.util.Locale
 
-private fun AdyenCurrency.label() = "$code – $name"
+/** The localised currency name, falling back to Adyen's for codes the device does not recognise. */
+internal fun AdyenCurrency.localName(locale: Locale): String =
+    if (locale.language == "en") name else runCatching { Currency.getInstance(code).getDisplayName(locale) }.getOrDefault(name)
+
+private fun AdyenCurrency.label(locale: Locale) = "$code – ${localName(locale)}"
+
+/** Currency codes matching [query] in English or [locale], with the automatic choice first when the query is blank. */
+internal fun currencyOptions(
+    query: String,
+    locale: Locale,
+): List<String> {
+    val term = query.trim()
+    return listOf("").filter { term.isEmpty() } +
+        AdyenCurrencies.all.values
+            .filter {
+                it.code.contains(term, ignoreCase = true) ||
+                    it.name.contains(term, ignoreCase = true) ||
+                    it.localName(locale).contains(term, ignoreCase = true)
+            }.map { it.code }
+            .sorted()
+}
 
 /**
  * Settings › Payments › Currency: any currency in Adyen's table, or Automatic ([automatic], the device country's own
@@ -57,7 +80,8 @@ internal fun CurrencySetting(
     onSelect: (String) -> Unit,
 ) {
     var open by rememberSaveable { mutableStateOf(false) }
-    val autoLabel = stringResource(R.string.settings_currency_auto, AdyenCurrencies[automatic]?.label() ?: automatic)
+    val locale = currentLocale()
+    val autoLabel = stringResource(R.string.settings_currency_auto, AdyenCurrencies[automatic]?.label(locale) ?: automatic)
     Row(
         Modifier
             .fillMaxWidth()
@@ -70,7 +94,7 @@ internal fun CurrencySetting(
         Column(Modifier.weight(1f)) {
             Text(stringResource(R.string.settings_currency), style = MaterialTheme.typography.bodyLarge)
             Text(
-                AdyenCurrencies[selectedCode]?.label() ?: autoLabel,
+                AdyenCurrencies[selectedCode]?.label(locale) ?: autoLabel,
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.primary,
             )
@@ -103,8 +127,9 @@ private fun CurrencyPickerDialog(
     onDismiss: () -> Unit,
 ) {
     var query by rememberSaveable { mutableStateOf("") }
+    val locale = currentLocale()
     // Currency codes, with "" (Automatic) first while not searching.
-    val options = remember(query) { listOf("").filter { query.isBlank() } + AdyenCurrencies.search(query).map { it.code } }
+    val options = remember(query, locale) { currencyOptions(query, locale) }
     val initialIndex = remember { options.indexOf(selectedCode).coerceAtLeast(0) }
     val listState = rememberLazyListState(initialFirstVisibleItemIndex = initialIndex)
     Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
@@ -134,7 +159,7 @@ private fun CurrencyPickerDialog(
                 )
                 LazyColumn(state = listState, modifier = Modifier.weight(1f, fill = false)) {
                     items(options, key = { it }) { code ->
-                        CurrencyOption(AdyenCurrencies[code]?.label() ?: autoLabel, code == selectedCode, code.ifEmpty { "auto" }) {
+                        CurrencyOption(AdyenCurrencies[code]?.label(locale) ?: autoLabel, code == selectedCode, code.ifEmpty { "auto" }) {
                             onSelect(code)
                         }
                     }

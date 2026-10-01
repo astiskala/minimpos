@@ -211,7 +211,81 @@ data class SaleEntity(
      * capture). Added in database version 5.
      */
     @ColumnInfo(defaultValue = "SALE") val kind: SaleKind = SaleKind.SALE,
-)
+    /**
+     * Taken for tipping on the receipt: pre-authorised (`authorisationType=PreAuth`, manual capture) for [totalMinor],
+     * printed with lines for a tip, and captured with the tip once it is entered. Added in database version 6.
+     */
+    @ColumnInfo(defaultValue = "0") val tipOnReceipt: Boolean = false,
+    /** The tip written on the receipt; null while it is awaited (or for other sales), 0 for no tip. Added in version 6. */
+    val tipMinor: Long? = null,
+    /**
+     * What the payment holds after authorisation adjustments; null while it was never adjusted, when [totalMinor] is
+     * held. Added in database version 6.
+     */
+    val authorisedMinor: Long? = null,
+    /** How the latest adjustment to [authorisedMinor] went; null before any. Added in database version 6. */
+    val adjustment: AdjustmentStatus? = null,
+    /**
+     * Adyen's latest `adjustAuthorisationData` blob, from the payment response or the last synchronous adjustment;
+     * null when the terminal sent none, so adjustments are asynchronous. Added in database version 6.
+     */
+    val adjustAuthorisationData: String? = null,
+    /** The amount of the capture recorded by [captureStatus]; null before any. Added in database version 6. */
+    val capturedMinor: Long? = null,
+    /** Where the capture of a payment taken with manual capture stands; null before any. Added in database version 6. */
+    val captureStatus: CaptureStatus? = null,
+    /**
+     * Why the latest capture or adjustment did not go through (for example the issuer refused a higher amount), for
+     * display; null when it did. Added in database version 6.
+     */
+    val modificationMessage: String? = null,
+) {
+    /** What the payment holds on the card: [authorisedMinor] after an adjustment, else [totalMinor]. */
+    val heldMinor: Long get() = authorisedMinor ?: totalMinor
+
+    /** Whether a capture was requested from Adyen or left to the Customer Area, so the payment counts as charged. */
+    val captured: Boolean get() = captureStatus == CaptureStatus.REQUESTED || captureStatus == CaptureStatus.MANUAL
+
+    /**
+     * The payment's amount as it stands: the capture's once [captured], else the bill plus any tip entered, else what a
+     * pre-authorisation holds, else [totalMinor].
+     */
+    val amountMinor: Long
+        get() =
+            when {
+                captured -> capturedMinor ?: totalMinor
+                tipMinor != null -> totalMinor + tipMinor
+                kind == SaleKind.PRE_AUTHORISATION -> heldMinor
+                else -> totalMinor
+            }
+}
+
+/** How the latest authorisation adjustment of a payment went; stored by name in `sales.adjustment`. */
+enum class AdjustmentStatus {
+    /** Adjusted synchronously: Adyen confirmed that the new amount is authorised. */
+    AUTHORISED,
+
+    /** Adjusted asynchronously: Adyen received the request and confirms the outcome only in the Customer Area. */
+    REQUESTED,
+}
+
+/** Where the capture of a payment taken with manual capture stands; stored by name in `sales.captureStatus`. */
+enum class CaptureStatus {
+    /** Written before the Checkout API is called. A capture still PENDING at the next app start was interrupted. */
+    PENDING,
+
+    /** Adyen received the capture request; it confirms the capture only in the Customer Area. */
+    REQUESTED,
+
+    /** No Checkout API is set up, so staff capture the amount in the Customer Area. */
+    MANUAL,
+
+    /** Adyen did not take the capture request, so nothing was captured; it can be sent again. */
+    FAILED,
+
+    /** It is not known whether Adyen received the request; sending it again is safe (same idempotency key). */
+    UNKNOWN,
+}
 
 /**
  * One item of a sale (table `sale_lines`), frozen as sold so receipts and refunds do not change when the catalogue

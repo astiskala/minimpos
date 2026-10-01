@@ -1,5 +1,6 @@
 package io.minimpos.app.feature.transfer
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -9,6 +10,9 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.selectableGroup
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.NavigateBefore
@@ -20,6 +24,8 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -34,15 +40,24 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardCapitalization
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import io.minimpos.app.R
 import io.minimpos.app.data.repo.ImportMode
-import io.minimpos.app.data.repo.ImportSummary
+import io.minimpos.app.data.security.Secret
+import io.minimpos.app.data.transfer.TransferContents
+import io.minimpos.app.data.transfer.TransferExport
+import io.minimpos.app.feature.settings.SettingSwitch
 import io.minimpos.app.scan.ScanMode
 import io.minimpos.app.scan.ScannerView
+import io.minimpos.app.ui.components.ActionMessage
 import io.minimpos.app.ui.components.BottomActions
 import io.minimpos.app.ui.components.Card
 import io.minimpos.app.ui.components.ConfirmDialog
@@ -60,88 +75,179 @@ import io.minimpos.core.catalogue.Catalogue
 import kotlinx.coroutines.delay
 
 /**
- * Shows the catalogue as a series of QR codes that play in a loop for another terminal to scan; the screen stays
- * on meanwhile and the codes can be paused and stepped through.
+ * Shares this terminal's setup with another one: first the choice of catalogue, settings and secrets, then the QR
+ * codes, which play in a loop while the screen stays on and can be paused and stepped through. With secrets, the
+ * transfer code to type on the other terminal is shown above the codes. Back from the codes returns to the choice.
  */
 @Composable
-fun CatalogueExportScreen(
+fun TransferExportScreen(
     navigator: Navigator,
     modifier: Modifier = Modifier,
-    vm: CatalogueExportViewModel = catalogueExportViewModel(),
+    vm: TransferExportViewModel = transferExportViewModel(),
 ) {
     val state by vm.state.collectAsStateWithLifecycle()
+    val export = state.export
+    BackHandler(enabled = export != null) { vm.hide() }
+    MiniScaffold(
+        title = stringResource(R.string.transfer_export),
+        onBack = { if (export != null) vm.hide() else navigator.back() },
+        modifier = modifier,
+        bottomBar = {
+            if (export == null) {
+                BottomActions {
+                    PrimaryButton(
+                        stringResource(R.string.transfer_show_codes),
+                        vm::show,
+                        enabled = state.canShow,
+                        loading = state.loading,
+                        modifier = Modifier.testTag("showCodes"),
+                    )
+                }
+            }
+        },
+    ) { padding ->
+        if (export == null) {
+            ExportChoice(state, onChange = vm::setContents, modifier = Modifier.padding(padding))
+        } else {
+            ExportCodes(export, state.codes, modifier = Modifier.padding(padding))
+        }
+    }
+}
+
+/** What to share: the catalogue, the settings and (when any are set) the secrets. */
+@Composable
+private fun ExportChoice(
+    state: ExportUiState,
+    onChange: ((TransferContents) -> TransferContents) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val noSecrets = state.secretsAvailable.isEmpty()
+    Column(modifier.fillMaxSize().verticalScroll(rememberScrollState()), horizontalAlignment = Alignment.CenterHorizontally) {
+        Column(Modifier.widthIn(max = 560.dp)) {
+            Text(
+                stringResource(R.string.transfer_choose_hint),
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(LocalDimens.current.screenPadding),
+            )
+            SettingSwitch(
+                stringResource(R.string.transfer_part_catalogue),
+                state.contents.catalogue,
+                { checked -> onChange { it.copy(catalogue = checked) } },
+                subtitle = stringResource(R.string.transfer_part_catalogue_hint),
+                tag = "shareCatalogue",
+            )
+            SettingSwitch(
+                stringResource(R.string.transfer_part_settings),
+                state.contents.settings,
+                { checked -> onChange { it.copy(settings = checked) } },
+                subtitle = stringResource(R.string.transfer_part_settings_hint),
+                tag = "shareSettings",
+            )
+            SettingSwitch(
+                stringResource(R.string.transfer_part_secrets),
+                state.sharesSecrets,
+                { checked -> if (!noSecrets) onChange { it.copy(secrets = checked) } },
+                subtitle = stringResource(if (noSecrets) R.string.transfer_part_secrets_none else R.string.transfer_part_secrets_hint),
+                tag = "shareSecrets",
+            )
+        }
+    }
+}
+
+/** The transfer code (when there are secrets), the QR codes in a loop with their controls, and what they hold. */
+@Composable
+private fun ExportCodes(
+    export: TransferExport,
+    codes: List<String>,
+    modifier: Modifier = Modifier,
+) {
     var index by remember { mutableIntStateOf(0) }
     var playing by remember { mutableStateOf(true) }
     KeepScreenOn()
-    LaunchedEffect(state.codes.size, playing) {
-        while (playing && state.codes.size > 1) {
+    LaunchedEffect(codes.size, playing) {
+        while (playing && codes.size > 1) {
             delay(ADVANCE_MILLIS)
-            index = (index + 1) % state.codes.size
+            index = (index + 1) % codes.size
         }
     }
-    MiniScaffold(title = stringResource(R.string.transfer_export), onBack = navigator::back, modifier = modifier) { padding ->
-        if (state.loading) {
-            Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
-            return@MiniScaffold
-        }
-        val catalogue = state.catalogue ?: return@MiniScaffold
-        val dimens = LocalDimens.current
-        Column(
-            Modifier
-                .fillMaxSize()
-                .padding(padding)
-                .verticalScroll(rememberScrollState())
-                .padding(dimens.screenPadding),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(dimens.spacing),
-        ) {
-            Text(
-                stringResource(R.string.transfer_export_hint),
-                textAlign = TextAlign.Center,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+    val dimens = LocalDimens.current
+    Column(
+        modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+            .padding(dimens.screenPadding),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(dimens.spacing),
+    ) {
+        Text(
+            stringResource(R.string.transfer_export_hint),
+            textAlign = TextAlign.Center,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        export.code?.let { TransferCodeCard(it, Modifier.widthIn(max = 420.dp)) }
+        val code = codes[index.coerceIn(0, codes.lastIndex)]
+        QrImage(code, Modifier.widthIn(max = 420.dp).fillMaxWidth().testTag("exportQr"))
+        if (codes.size > 1) {
+            CodeControls(
+                index = index,
+                count = codes.size,
+                playing = playing,
+                onStep = { step ->
+                    playing = false
+                    index = (index + step + codes.size) % codes.size
+                },
+                onTogglePlay = { playing = !playing },
             )
-            val code = state.codes[index.coerceIn(0, state.codes.lastIndex)]
-            QrImage(code, Modifier.widthIn(max = 420.dp).fillMaxWidth().testTag("exportQr"))
-            if (state.codes.size > 1) {
-                CodeControls(
-                    index = index,
-                    count = state.codes.size,
-                    playing = playing,
-                    onStep = { step ->
-                        playing = false
-                        index = (index + step + state.codes.size) % state.codes.size
-                    },
-                    onTogglePlay = { playing = !playing },
-                )
-            }
-            CatalogueSummary(catalogue, Modifier.widthIn(max = 420.dp))
         }
+        TransferSummary(export.catalogue, export.settings, secretNames(export.secrets), Modifier.widthIn(max = 420.dp))
+    }
+}
+
+/** The transfer code in large type, with what it is for. */
+@Composable
+private fun TransferCodeCard(
+    code: String,
+    modifier: Modifier = Modifier,
+) {
+    Card(modifier) {
+        Text(stringResource(R.string.transfer_code_title), style = MaterialTheme.typography.labelLarge)
+        Text(
+            code,
+            style = MaterialTheme.typography.headlineSmall.copy(fontFamily = FontFamily.Monospace),
+            modifier = Modifier.testTag("transferCode"),
+        )
+        Text(
+            stringResource(R.string.transfer_code_hint),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
     }
 }
 
 @Composable
-private fun catalogueExportViewModel(): CatalogueExportViewModel {
+private fun transferExportViewModel(): TransferExportViewModel {
     val container = LocalAppContainer.current
     val currency = container.currency().code
-    return viewModel { CatalogueExportViewModel(container.catalog, currency) }
+    return viewModel { TransferExportViewModel(container.setupTransfer, currency) }
 }
 
 @Composable
-private fun catalogueImportViewModel(): CatalogueImportViewModel {
+private fun transferImportViewModel(): TransferImportViewModel {
     val container = LocalAppContainer.current
     val currency = container.currency().code
-    return viewModel { CatalogueImportViewModel(container.catalog, currency) }
+    return viewModel { TransferImportViewModel(container.setupTransfer, currency) }
 }
 
 /**
- * Scans another terminal's catalogue codes in any order, then replaces or merges the catalogue on this one. It
- * warns when the catalogue's currency differs from this device's.
+ * Scans another terminal's transfer codes in any order, then imports them: the catalogue merged or replacing this
+ * one, the settings, and with the transfer code the secrets. It warns when the catalogue's currency differs from the
+ * one this terminal will use.
  */
 @Composable
-fun CatalogueImportScreen(
+fun TransferImportScreen(
     navigator: Navigator,
     modifier: Modifier = Modifier,
-    vm: CatalogueImportViewModel = catalogueImportViewModel(),
+    vm: TransferImportViewModel = transferImportViewModel(),
 ) {
     val currency = LocalAppContainer.current.currency().code
     val state by vm.state.collectAsStateWithLifecycle()
@@ -150,13 +256,7 @@ fun CatalogueImportScreen(
         title = stringResource(R.string.transfer_import),
         onBack = navigator::back,
         modifier = modifier,
-        bottomBar = {
-            if (state is ImportUiState.Done) {
-                BottomActions {
-                    PrimaryButton(stringResource(R.string.action_done), navigator::back, modifier = Modifier.testTag("importFinished"))
-                }
-            }
-        },
+        bottomBar = { ImportBottomBar(state, onImport = { if (it) confirmReplace = true else vm.import() }, onDone = navigator::back) },
     ) { padding ->
         when (val current = state) {
             is ImportUiState.Scanning -> {
@@ -167,8 +267,8 @@ fun CatalogueImportScreen(
                 ImportReady(
                     state = current,
                     currency = currency,
-                    onMerge = { vm.import(ImportMode.MERGE) },
-                    onReplace = { confirmReplace = true },
+                    onMode = vm::setMode,
+                    onCode = vm::setCode,
                     onScanAgain = vm::restart,
                     modifier = Modifier.padding(padding),
                 )
@@ -181,7 +281,7 @@ fun CatalogueImportScreen(
             }
 
             is ImportUiState.Done -> {
-                ImportDone(current.summary, modifier = Modifier.padding(padding))
+                ImportDone(current, modifier = Modifier.padding(padding))
             }
         }
     }
@@ -193,10 +293,41 @@ fun CatalogueImportScreen(
             destructive = true,
             onConfirm = {
                 confirmReplace = false
-                vm.import(ImportMode.REPLACE)
+                vm.import()
             },
             onDismiss = { confirmReplace = false },
         )
+    }
+}
+
+/**
+ * Import when ready ([onImport] is told whether the catalogue replaces this one, which needs confirming), Done when
+ * finished.
+ */
+@Composable
+private fun ImportBottomBar(
+    state: ImportUiState,
+    onImport: (replaces: Boolean) -> Unit,
+    onDone: () -> Unit,
+) {
+    when (state) {
+        is ImportUiState.Ready -> {
+            BottomActions {
+                PrimaryButton(
+                    stringResource(R.string.transfer_import_action),
+                    { onImport(state.received.catalogue != null && state.mode == ImportMode.REPLACE) },
+                    modifier = Modifier.testTag("import"),
+                )
+            }
+        }
+
+        is ImportUiState.Done -> {
+            BottomActions {
+                PrimaryButton(stringResource(R.string.action_done), onDone, modifier = Modifier.testTag("importFinished"))
+            }
+        }
+
+        is ImportUiState.Scanning, ImportUiState.Importing -> {}
     }
 }
 
@@ -226,18 +357,44 @@ private fun CodeControls(
     }
 }
 
-/** What a catalogue holds: its counts and currency. */
+/** What a transfer holds: the catalogue's counts and currency, whether settings are included, and which secrets. */
 @Composable
-private fun CatalogueSummary(
-    catalogue: Catalogue,
+private fun TransferSummary(
+    catalogue: Catalogue?,
+    settings: Boolean,
+    secrets: String?,
     modifier: Modifier = Modifier,
 ) {
+    val none = stringResource(R.string.transfer_not_included)
     Card(modifier) {
-        LabeledValue(stringResource(R.string.transfer_products), catalogue.products.size.toString())
-        LabeledValue(stringResource(R.string.transfer_categories), catalogue.categories.size.toString())
-        LabeledValue(stringResource(R.string.transfer_tax_rates), catalogue.taxRates.size.toString())
-        LabeledValue(stringResource(R.string.transfer_currency), catalogue.currencyCode)
+        if (catalogue == null) {
+            LabeledValue(stringResource(R.string.transfer_part_catalogue), none)
+        } else {
+            LabeledValue(stringResource(R.string.transfer_products), catalogue.products.size.toString())
+            LabeledValue(stringResource(R.string.transfer_categories), catalogue.categories.size.toString())
+            LabeledValue(stringResource(R.string.transfer_tax_rates), catalogue.taxRates.size.toString())
+            LabeledValue(stringResource(R.string.transfer_currency), catalogue.currencyCode)
+        }
+        LabeledValue(stringResource(R.string.transfer_part_settings), if (settings) stringResource(R.string.transfer_included) else none)
+        LabeledValue(stringResource(R.string.transfer_part_secrets), secrets ?: none)
     }
+}
+
+/** The names of [secrets], in a fixed order; null when there are none. */
+@Composable
+private fun secretNames(secrets: Set<Secret>): String? {
+    val names =
+        Secret.entries.filter { it in secrets }.map {
+            stringResource(
+                when (it) {
+                    Secret.TERMINAL_PASSPHRASE -> R.string.transfer_secret_passphrase
+                    Secret.CHECKOUT_API_KEY -> R.string.transfer_secret_api_key
+                    Secret.SMTP_PASSWORD -> R.string.transfer_secret_smtp
+                    Secret.PIN_VERIFIER -> R.string.transfer_secret_pin
+                },
+            )
+        }
+    return names.takeIf { it.isNotEmpty() }?.joinToString(", ")
 }
 
 /** The camera, with how many codes of the set have been read and what was wrong with the last one. */
@@ -265,7 +422,7 @@ private fun ImportScanning(
             }
             state.error?.let {
                 Text(
-                    stringResource(if (it == ImportError.CORRUPT) R.string.transfer_corrupt else R.string.transfer_not_catalogue),
+                    stringResource(if (it == ImportError.CORRUPT) R.string.transfer_corrupt else R.string.transfer_not_transfer),
                     color = MaterialTheme.colorScheme.error,
                 )
             }
@@ -273,17 +430,21 @@ private fun ImportScanning(
     }
 }
 
-/** The scanned catalogue, a warning when its currency is not [currency], and merging or replacing. */
+/**
+ * What was scanned, a warning when the catalogue's currency is not [currency], the choice of merging or replacing the
+ * catalogue, what happens to the settings, and the transfer code for the secrets.
+ */
 @Composable
 private fun ImportReady(
     state: ImportUiState.Ready,
     currency: String,
-    onMerge: () -> Unit,
-    onReplace: () -> Unit,
+    onMode: (ImportMode) -> Unit,
+    onCode: (String) -> Unit,
     onScanAgain: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val dimens = LocalDimens.current
+    val received = state.received
     Column(
         modifier
             .fillMaxSize()
@@ -293,37 +454,92 @@ private fun ImportReady(
     ) {
         Column(Modifier.widthIn(max = 560.dp), verticalArrangement = Arrangement.spacedBy(dimens.spacing)) {
             Text(stringResource(R.string.transfer_ready), style = MaterialTheme.typography.titleLarge)
-            CatalogueSummary(state.catalogue)
-            if (!state.currencyMatches) {
-                Text(
-                    stringResource(R.string.transfer_currency_mismatch, state.catalogue.currencyCode, currency),
-                    color = MaterialTheme.colorScheme.error,
-                )
+            val secrets = if (received.hasSecrets) stringResource(R.string.transfer_secrets_sealed) else null
+            TransferSummary(received.catalogue, received.hasSettings, secrets)
+            received.catalogue?.let { catalogue ->
+                if (!state.currencyMatches) {
+                    Text(
+                        stringResource(
+                            R.string.transfer_currency_mismatch,
+                            catalogue.currencyCode,
+                            received.currencyCode?.ifBlank { null } ?: currency,
+                        ),
+                        color = MaterialTheme.colorScheme.error,
+                    )
+                }
+                CatalogueModeChoice(state.mode, onMode)
             }
-            PrimaryButton(stringResource(R.string.transfer_merge), onMerge, modifier = Modifier.testTag("merge"))
-            Text(
-                stringResource(R.string.transfer_merge_hint),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            SecondaryButton(stringResource(R.string.transfer_replace), onReplace, modifier = Modifier.testTag("replace"))
-            Text(
-                stringResource(R.string.transfer_replace_hint),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
+            if (received.hasSettings) Note(stringResource(R.string.transfer_settings_note))
+            if (received.hasSecrets) TransferCodeField(state.code, state.wrongCode, onCode)
             SecondaryButton(stringResource(R.string.transfer_scan_again), onScanAgain)
         }
     }
 }
 
+/** Merge into this catalogue or replace it, as radio options with what each does. */
+@Composable
+private fun CatalogueModeChoice(
+    selected: ImportMode,
+    onSelect: (ImportMode) -> Unit,
+) {
+    Column(Modifier.selectableGroup()) {
+        listOf(
+            Triple(ImportMode.MERGE, R.string.transfer_merge, R.string.transfer_merge_hint),
+            Triple(ImportMode.REPLACE, R.string.transfer_replace, R.string.transfer_replace_hint),
+        ).forEach { (mode, title, hint) ->
+            Row(
+                Modifier
+                    .fillMaxWidth()
+                    .selectable(selected = mode == selected, onClick = { onSelect(mode) }, role = Role.RadioButton)
+                    .padding(vertical = 8.dp)
+                    .testTag(if (mode == ImportMode.MERGE) "merge" else "replace"),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                RadioButton(selected = mode == selected, onClick = null)
+                Column(Modifier.padding(start = 12.dp)) {
+                    Text(stringResource(title), style = MaterialTheme.typography.bodyLarge)
+                    Note(stringResource(hint))
+                }
+            }
+        }
+    }
+}
+
+/** The transfer code the other terminal shows, which opens the secrets; [wrong] says the last one did not. */
+@Composable
+private fun TransferCodeField(
+    code: String,
+    wrong: Boolean,
+    onChange: (String) -> Unit,
+) = OutlinedTextField(
+    value = code,
+    onValueChange = onChange,
+    label = { Text(stringResource(R.string.transfer_code_title)) },
+    supportingText = { Text(stringResource(if (wrong) R.string.transfer_code_wrong else R.string.transfer_code_import_hint)) },
+    isError = wrong,
+    singleLine = true,
+    keyboardOptions =
+        KeyboardOptions(
+            capitalization = KeyboardCapitalization.Characters,
+            autoCorrectEnabled = false,
+            keyboardType = KeyboardType.Ascii,
+            imeAction = ImeAction.Done,
+        ),
+    modifier = Modifier.fillMaxWidth().testTag("transferCodeInput"),
+)
+
+/** Small secondary text. */
+@Composable
+private fun Note(text: String) = Text(text, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+
 /** What the import added and updated, under a success badge like the other results. */
 @Composable
 private fun ImportDone(
-    summary: ImportSummary,
+    state: ImportUiState.Done,
     modifier: Modifier = Modifier,
 ) {
     val dimens = LocalDimens.current
+    val result = state.result
     Column(
         modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(dimens.screenPadding),
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -337,11 +553,17 @@ private fun ImportDone(
             modifier = Modifier.testTag("importDone"),
         )
         Card(Modifier.widthIn(max = 560.dp)) {
-            LabeledValue(stringResource(R.string.transfer_added), summary.productsAdded.toString())
-            LabeledValue(stringResource(R.string.transfer_updated), summary.productsUpdated.toString())
-            LabeledValue(stringResource(R.string.transfer_new_categories), summary.categoriesAdded.toString())
-            LabeledValue(stringResource(R.string.transfer_new_tax_rates), summary.taxRatesAdded.toString())
+            result.catalogue?.let { summary ->
+                LabeledValue(stringResource(R.string.transfer_added), summary.productsAdded.toString())
+                LabeledValue(stringResource(R.string.transfer_updated), summary.productsUpdated.toString())
+                LabeledValue(stringResource(R.string.transfer_new_categories), summary.categoriesAdded.toString())
+                LabeledValue(stringResource(R.string.transfer_new_tax_rates), summary.taxRatesAdded.toString())
+            }
+            if (result.settings) LabeledValue(stringResource(R.string.transfer_part_settings), stringResource(R.string.transfer_imported))
+            val secrets = secretNames(result.secrets) ?: stringResource(R.string.transfer_skipped).takeIf { state.secretsSkipped }
+            LabeledValue(stringResource(R.string.transfer_part_secrets), secrets)
         }
+        result.secretsError?.let { ActionMessage(stringResource(R.string.transfer_secrets_failed, it), isError = true) }
     }
 }
 

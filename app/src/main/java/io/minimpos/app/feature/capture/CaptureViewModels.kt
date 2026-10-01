@@ -1,0 +1,227 @@
+package io.minimpos.app.feature.capture
+
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import io.minimpos.app.data.db.SaleEntity
+import io.minimpos.app.data.repo.SaleRepository
+import io.minimpos.app.feature.launchWrite
+import io.minimpos.app.payment.CaptureResult
+import io.minimpos.app.payment.Captures
+import io.minimpos.app.refund.PaymentHold
+import io.minimpos.app.terminal.CaptureMode
+import io.minimpos.app.terminal.TerminalState
+import io.minimpos.core.money.AmountEntry
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.update
+
+/** Why a tip, capture or adjustment did not go through, as the screens explain it. */
+sealed interface CaptureProblem {
+    /**
+     * The card issuer did not authorise the higher amount.
+     *
+     * @property amountMinor The amount asked for, in minor units of the sale's currency.
+     * @property reason Adyen's refusal reason.
+     */
+    data class Refused(
+        val amountMinor: Long,
+        val reason: String,
+    ) : CaptureProblem
+
+    /**
+     * Adyen did not take the request, its outcome is unknown, or the Checkout API is not set up.
+     *
+     * @property message Why, in English.
+     */
+    data class Failed(
+        val message: String,
+    ) : CaptureProblem
+
+    /** The payment no longer allows it (captured or cancelled meanwhile). */
+    data object NotAllowed : CaptureProblem
+}
+
+/**
+ * The state of the submission shared by the tip and capture screens.
+ *
+ * @property running Whether it is being sent.
+ * @property problem Why the last one did not go through; null otherwise.
+ * @property done Whether it went through, so the screen can close.
+ */
+data class Submission(
+    val running: Boolean = false,
+    val problem: CaptureProblem? = null,
+    val done: Boolean = false,
+) {
+    /** This submission after [result], which asked for [amountMinor]. */
+    fun after(
+        result: CaptureResult,
+        amountMinor: Long,
+    ): Submission =
+        when (result) {
+            CaptureResult.Requested, CaptureResult.Recorded, CaptureResult.Adjusted -> Submission(done = true)
+            is CaptureResult.Refused -> Submission(problem = CaptureProblem.Refused(amountMinor, result.reason))
+            is CaptureResult.Failed -> Submission(problem = CaptureProblem.Failed(result.message))
+            CaptureResult.NotAllowed -> Submission(problem = CaptureProblem.NotAllowed)
+        }
+}
+
+/** What the operator types on the tip screen: the tip, or the total the customer wrote. */
+enum class TipInput {
+    /** The tip itself. */
+    TIP,
+
+    /** The total with the tip; the tip is what it adds to the bill. */
+    TOTAL,
+}
+
+/**
+ * What the tip screen shows.
+ *
+ * @property sale The sale awaiting its tip, or null until loaded (or when it is gone).
+ * @property captureMode Whether the app captures through the Checkout API or only records the tip.
+ * @property input What is being typed.
+ * @property entry The amount typed.
+ * @property submission Sending the tip.
+ */
+data class TipUiState(
+    val sale: SaleEntity? = null,
+    val captureMode: CaptureMode = CaptureMode.API,
+    val input: TipInput = TipInput.TIP,
+    val entry: AmountEntry = AmountEntry(),
+    val submission: Submission = Submission(),
+) {
+    /** The bill: what was pre-authorised, in minor units. */
+    val billMinor: Long get() = sale?.totalMinor ?: 0
+
+    /** The tip the entry makes; null for a total below the bill. */
+    val tipMinor: Long? get() = if (input == TipInput.TIP) entry.minor else (entry.minor - billMinor).takeIf { it >= 0 }
+
+    /** Whether the typed total is below the bill (and so not valid). */
+    val belowBill: Boolean get() = input == TipInput.TOTAL && entry.minor > 0 && tipMinor == null
+
+    /** Whether the tip is high enough that the authorisation is raised before the capture ([PaymentHold.needsAdjustment]). */
+    val needsAdjustment: Boolean
+        get() = captureMode == CaptureMode.API && tipMinor?.let { PaymentHold.needsAdjustment(billMinor, it) } == true
+
+    /** Whether the sale still awaits a tip and nothing is being sent. */
+    val canSubmit: Boolean get() = sale?.let(PaymentHold::canEnterTip) == true && !submission.running
+
+    /** Whether "Add tip" is enabled: [canSubmit] with a tip above zero ("No tip" is its own button). */
+    val canAddTip: Boolean get() = canSubmit && (tipMinor ?: 0) > 0
+}
+
+/**
+ * Entering the tip written on the receipt of [saleId] and capturing the bill plus the tip (see [Captures.addTip]). The
+ * tip is sent with `persisting`, so it finishes even if the screen closes.
+ *
+ * @param saleId The sale awaiting its tip.
+ * @param sales Where it is stored.
+ * @param captures Enters the tip and captures.
+ * @param terminal How captures are made.
+ */
+class TipViewModel(
+    private val saleId: String,
+    sales: SaleRepository,
+    private val captures: Captures,
+    terminal: StateFlow<TerminalState>,
+) : ViewModel() {
+    private val local = MutableStateFlow(TipUiState())
+
+    /** The screen state, updated whenever the sale, the capture mode or the entry changes. */
+    val state: StateFlow<TipUiState> =
+        combine(sales.observe(saleId), terminal, local) { record, status, ui ->
+            ui.copy(sale = record?.sale, captureMode = status.captureMode)
+        }.stateIn(viewModelScope, SharingStarted.Eagerly, TipUiState())
+
+    /** Switches between typing the tip and the total, starting the entry afresh. */
+    fun setInput(input: TipInput) = local.update { it.copy(input = input, entry = AmountEntry()) }
+
+    /** Updates the typed amount with a keypad step such as [AmountEntry.append]. */
+    fun updateEntry(transform: (AmountEntry) -> AmountEntry) = local.update { it.copy(entry = transform(it.entry)) }
+
+    /** Enters [tipMinor] (0 for no tip) and captures; ignored while one is being sent or the sale no longer awaits a tip. */
+    fun submit(tipMinor: Long) {
+        val current = state.value
+        if (!current.canSubmit) return
+        local.update { it.copy(submission = Submission(running = true)) }
+        launchWrite({ captures.addTip(saleId, tipMinor) }) { result ->
+            local.update { it.copy(submission = it.submission.after(result, current.billMinor + tipMinor)) }
+        }
+    }
+}
+
+/**
+ * What the capture screen shows.
+ *
+ * @property sale The pre-authorisation, or null until loaded (or when it is gone).
+ * @property captureMode Whether the app captures through the Checkout API or only records the capture.
+ * @property adjustOnly Adjust what it holds without capturing.
+ * @property entry The amount typed; null until the first key, while the amount held is proposed.
+ * @property submission Sending the capture or adjustment.
+ */
+data class CaptureUiState(
+    val sale: SaleEntity? = null,
+    val captureMode: CaptureMode = CaptureMode.API,
+    val adjustOnly: Boolean = false,
+    val entry: AmountEntry? = null,
+    val submission: Submission = Submission(),
+) {
+    /** What the pre-authorisation holds now, in minor units. */
+    val heldMinor: Long get() = sale?.heldMinor ?: 0
+
+    /** The amount to capture or hold: the typed one, else what is held. */
+    val amountMinor: Long get() = entry?.minor ?: heldMinor
+
+    /** Whether it can be sent: the pre-authorisation can still be captured, an amount is set and nothing is being sent. */
+    val canSubmit: Boolean
+        get() =
+            sale?.let(PaymentHold::canCapture) == true &&
+                amountMinor > 0 &&
+                !submission.running &&
+                (!adjustOnly || captureMode == CaptureMode.API)
+}
+
+/**
+ * Capturing the pre-authorisation [saleId] (adjusting it first when more is captured than it holds), or with
+ * [adjustOnly] changing what it holds (see [Captures]). Sent with `persisting`, so it finishes even if the screen
+ * closes.
+ *
+ * @param saleId The pre-authorisation.
+ * @param adjustOnly Adjust without capturing.
+ * @param sales Where it is stored.
+ * @param captures Captures and adjusts.
+ * @param terminal How captures are made.
+ */
+class CaptureViewModel(
+    private val saleId: String,
+    adjustOnly: Boolean,
+    sales: SaleRepository,
+    private val captures: Captures,
+    terminal: StateFlow<TerminalState>,
+) : ViewModel() {
+    private val local = MutableStateFlow(CaptureUiState(adjustOnly = adjustOnly))
+
+    /** The screen state, updated whenever the pre-authorisation, the capture mode or the entry changes. */
+    val state: StateFlow<CaptureUiState> =
+        combine(sales.observe(saleId), terminal, local) { record, status, ui ->
+            ui.copy(sale = record?.sale, captureMode = status.captureMode)
+        }.stateIn(viewModelScope, SharingStarted.Eagerly, CaptureUiState(adjustOnly = adjustOnly))
+
+    /** Updates the typed amount with a keypad step; the first key replaces the amount held that was proposed. */
+    fun updateEntry(transform: (AmountEntry) -> AmountEntry) = local.update { it.copy(entry = transform(it.entry ?: AmountEntry())) }
+
+    /** Captures (or adjusts to) the amount; ignored when it cannot be sent. */
+    fun submit() {
+        val current = state.value
+        if (!current.canSubmit) return
+        val amount = current.amountMinor
+        local.update { it.copy(submission = Submission(running = true)) }
+        launchWrite({ if (current.adjustOnly) captures.adjust(saleId, amount) else captures.capture(saleId, amount) }) { result ->
+            local.update { it.copy(submission = it.submission.after(result, amount)) }
+        }
+    }
+}

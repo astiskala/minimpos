@@ -30,10 +30,16 @@ enum class RefundInvalidReason {
     FULLY_REFUNDED,
 
     /**
-     * It is a pre-authorisation, which is captured in the Customer Area rather than charged; the app can only cancel it,
-     * from history ([RefundablePayment.cancellation]).
+     * It is a pre-authorisation that has not been captured yet, so nothing was charged; until it is captured the app
+     * can only cancel it, from history ([RefundablePayment.cancellation]).
      */
     PRE_AUTHORISATION,
+
+    /**
+     * It was taken for tipping on the receipt and its tip has not been captured yet; until then it can only be
+     * cancelled, from history ([RefundablePayment.cancellation]).
+     */
+    AWAITING_TIP,
 }
 
 /** What the operator chose to refund of a [RefundablePayment]. */
@@ -130,15 +136,17 @@ data class RefundStart(
  * A payment that can be refunded, from the local history or only from its receipt QR code, and the one set of rules
  * for refunding it: whether it can be refunded at all ([check], [find]), what is left, what a [RefundChoice] refunds,
  * the refund request itself ([request]) and the refund QR code printed on the sale's receipt ([qrCode]). It also holds
- * the rule for pre-authorisations, which are never refunded but can be cancelled ([cancellation], [canCancel]).
+ * the rule for payments that only hold their amount (pre-authorisations and sales awaiting a tip, see [PaymentHold]),
+ * which are not refunded until they are captured but can be cancelled ([cancellation], [canCancel]).
  *
  * A payment can be refunded when it was approved and the terminal gave a transaction ID and a time stamp that a
- * reversal can send back, and something is left to refund. Pure: callers look the sale up themselves.
+ * reversal can send back, and something is left to refund. Its amount is the sale's as it stands (with the tip, or what
+ * was captured, see [io.minimpos.app.data.db.SaleEntity.amountMinor]). Pure: callers look the sale up themselves.
  *
  * @property transactionId Its POITransactionID.
  * @property timestamp Its POITransactionID time stamp, as sent back in the reversal request.
  * @property createdAt When it was paid.
- * @property amountMinor The amount paid, in minor units of [currency].
+ * @property amountMinor The amount paid (with any tip, or what was captured), in minor units of [currency].
  * @property currency ISO 4217 code of the payment.
  * @property reference Its merchant reference, if known.
  * @property local The sale on this terminal, or null for a payment known only from its QR code (its items and earlier
@@ -163,8 +171,11 @@ class RefundablePayment private constructor(
     val lines: List<RefundableLine>
         get() = local?.sortedLines.orEmpty().map { RefundableLine(it.id, it.quantity, it.refundedQuantity, it.grossMinor) }
 
-    /** Whether items can be chosen, which needs the [local] sale. */
-    val itemsKnown: Boolean get() = local != null
+    /**
+     * Whether items can be chosen, which needs the [local] sale; not for a captured pre-authorisation, whose capture can
+     * differ from its item.
+     */
+    val itemsKnown: Boolean get() = local?.sale?.kind == SaleKind.SALE
 
     /** How much [choice] refunds, in minor units; items are apportioned by [RefundCalculator.amountFor]. */
     fun amountFor(choice: RefundChoice): Long =
@@ -222,18 +233,35 @@ class RefundablePayment private constructor(
 
     /** Deciding whether payments can be refunded, and pre-authorisations cancelled. */
     companion object {
-        /** Whether the stored sale [record] can be refunded; a pre-authorisation never can. */
-        fun check(record: SaleWithLines): Refundability =
-            when {
-                record.sale.kind == SaleKind.PRE_AUTHORISATION -> Refundability.NotRefundable(RefundInvalidReason.PRE_AUTHORISATION)
-                else -> eligible(record)?.let(::refundable) ?: Refundability.NotRefundable(RefundInvalidReason.NOT_REFUNDABLE)
+        /**
+         * Whether the stored sale [record] can be refunded: a pre-authorisation or a tip-on-receipt sale only once it was
+         * captured ([io.minimpos.app.data.db.SaleEntity.captured]), up to the amount captured.
+         */
+        fun check(record: SaleWithLines): Refundability {
+            val sale = record.sale
+            return when {
+                sale.kind == SaleKind.PRE_AUTHORISATION && !sale.captured -> {
+                    Refundability.NotRefundable(
+                        RefundInvalidReason.PRE_AUTHORISATION,
+                    )
+                }
+
+                sale.tipOnReceipt && !sale.captured -> {
+                    Refundability.NotRefundable(RefundInvalidReason.AWAITING_TIP)
+                }
+
+                else -> {
+                    eligible(record)?.let(::refundable) ?: Refundability.NotRefundable(RefundInvalidReason.NOT_REFUNDABLE)
+                }
             }
+        }
 
         /**
-         * The cancellation of the pre-authorisation [record], or null when it cannot be cancelled: it is not an approved
-         * pre-authorisation with the terminal's transaction details, or a cancellation was already accepted. It is a
-         * full reversal (no amount, so Adyen releases the whole hold, or refunds it in full if it was captured in the
-         * meantime), with a merchant reference generated from [now] in [zone] with "C" after [referencePrefix].
+         * The cancellation of [record], a payment that still only holds its amount ([PaymentHold.isHeld]: a
+         * pre-authorisation or a sale awaiting its tip), or null when it cannot be cancelled: it is not held, has no
+         * transaction details from the terminal, or a cancellation was already accepted. It is a full reversal (no
+         * amount, so Adyen releases the whole hold, or refunds it in full if it was captured in the meantime), with a
+         * merchant reference generated from [now] in [zone] with "C" after [referencePrefix].
          */
         fun cancellation(
             record: SaleWithLines,
@@ -241,8 +269,8 @@ class RefundablePayment private constructor(
             now: Instant,
             zone: ZoneId,
         ): RefundStart? {
-            if (record.sale.kind != SaleKind.PRE_AUTHORISATION) return null
-            val payment = eligible(record)?.takeIf { it.refundedMinor == 0L } ?: return null
+            if (!PaymentHold.isHeld(record.sale)) return null
+            val payment = eligible(record) ?: return null
             val prefix = referencePrefix.trim().let { if (it.isEmpty()) "C" else "$it-C" }
             return RefundStart(
                 saleId = record.sale.id,
@@ -250,14 +278,14 @@ class RefundablePayment private constructor(
                 originalTimestamp = payment.timestamp,
                 originalReference = payment.reference,
                 currency = payment.currency,
-                amountMinor = payment.amountMinor,
+                amountMinor = record.sale.heldMinor,
                 full = true,
                 merchantReference = Ids.transactionReference(prefix, now, zone),
                 cancellation = true,
             )
         }
 
-        /** Whether the pre-authorisation [record] can be cancelled, as [cancellation] decides. */
+        /** Whether [record] can be cancelled, as [cancellation] decides. */
         fun canCancel(record: SaleWithLines): Boolean = cancellation(record, "", Instant.EPOCH, ZoneOffset.UTC) != null
 
         /**
@@ -317,7 +345,7 @@ class RefundablePayment private constructor(
                 transactionId,
                 timestamp,
                 Instant.ofEpochMilli(sale.createdAt),
-                sale.totalMinor,
+                sale.amountMinor,
                 sale.currency,
                 sale.merchantReference,
                 record,

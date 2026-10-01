@@ -23,7 +23,7 @@ import javax.mail.MessagingException
  * @property notConfigured Error when SMTP is not set up.
  * @property invalidAddress Error when the recipient address is not valid.
  * @property preAuthIntro Paragraph above a pre-authorisation receipt.
- * @property cancellationIntro Paragraph above the receipt of a cancelled pre-authorisation.
+ * @property cancellationIntro Paragraph above the receipt of a cancelled payment that only held its amount.
  */
 data class EmailTexts(
     val appName: String,
@@ -62,7 +62,7 @@ class ReceiptEmailer(
     ): ActionResult = send(settings.current(), to, document, if (preAuthorisation) texts.preAuthIntro else texts.intro, reference)
 
     /**
-     * Emails [document], the receipt of the refund (or, with [cancellation], of the cancelled pre-authorisation) with
+     * Emails [document], the receipt of the refund (or, with [cancellation], of the cancelled hold) with
      * merchant reference [reference], to [to].
      */
     suspend fun sendRefund(

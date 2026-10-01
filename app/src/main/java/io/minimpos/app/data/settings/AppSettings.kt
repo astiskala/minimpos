@@ -60,6 +60,11 @@ enum class TerminalMode {
  * @property keyVersion Version of that shared key, from 1.
  * @property timeoutSeconds How long to wait for a payment response before checking the transaction status, between
  *   [MIN_TIMEOUT_SECONDS] and [MAX_TIMEOUT_SECONDS]. Adyen advises 120 seconds for local integrations.
+ * @property merchantAccount The Adyen merchant account the terminal takes payments for, for captures and authorisation
+ *   adjustments through the Checkout API (its API key is a secret). Blank, together with no API key, leaves captures to
+ *   the Customer Area.
+ * @property liveUrlPrefix The company's live endpoint prefix for the Checkout API (Customer Area: Developers › API
+ *   URLs); only used when [environment] is LIVE.
  */
 @Serializable
 data class TerminalSettings(
@@ -71,6 +76,8 @@ data class TerminalSettings(
     val keyIdentifier: String = "",
     val keyVersion: Int = 1,
     val timeoutSeconds: Int = MIN_TIMEOUT_SECONDS,
+    val merchantAccount: String = "",
+    val liveUrlPrefix: String = "",
 ) {
     /** The allowed range of [timeoutSeconds]. */
     companion object {
@@ -123,6 +130,8 @@ enum class ShopperReferenceSource {
  * @property tokenizeDefaultOn Whether "Save card" starts switched on at checkout of a sale.
  * @property preAuthTokenizeDefaultOn Whether "Save card" starts switched on at checkout of a pre-authorisation, where a
  *   saved card allows charging late costs after the pre-authorisation has been captured.
+ * @property tipOnReceiptDefaultOn Whether "Tip on the receipt" starts switched on at checkout of a sale (it is only
+ *   offered while a printer is available).
  * @property recurringProcessingModel Adyen's `recurringProcessingModel` for saved cards, one of [RECURRING_MODELS].
  * @property emailCapture When checkout asks for an email; [effectiveEmailCapture] is what applies.
  * @property autoSendEmail When the email was captured before payment, send the receipt as soon as the payment is
@@ -144,6 +153,7 @@ data class PaymentSettings(
     val askTransactionReference: Boolean = true,
     val tokenizeDefaultOn: Boolean = false,
     val preAuthTokenizeDefaultOn: Boolean = true,
+    val tipOnReceiptDefaultOn: Boolean = false,
     val recurringProcessingModel: String = "UnscheduledCardOnFile",
     val emailCapture: EmailCapture = EmailCapture.AFTER_PAYMENT,
     val autoSendEmail: Boolean = true,

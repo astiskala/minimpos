@@ -22,6 +22,7 @@ import androidx.compose.material.icons.automirrored.filled.ReceiptLong
 import androidx.compose.material.icons.automirrored.filled.Undo
 import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.LockOpen
+import androidx.compose.material.icons.filled.Payments
 import androidx.compose.material.icons.filled.Print
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.FilterChip
@@ -56,10 +57,13 @@ import io.minimpos.app.data.repo.HistoryItem
 import io.minimpos.app.feature.refund.RefundResultScreen
 import io.minimpos.app.feature.refund.refundStatusKind
 import io.minimpos.app.feature.refund.refundStatusTitle
+import io.minimpos.app.feature.sale.EnterTipButton
+import io.minimpos.app.feature.sale.HoldNotes
 import io.minimpos.app.feature.sale.ResultMessages
 import io.minimpos.app.feature.sale.adviceText
 import io.minimpos.app.feature.sale.statusKind
 import io.minimpos.app.feature.sale.statusTitle
+import io.minimpos.app.terminal.CaptureMode
 import io.minimpos.app.ui.components.ActionMessage
 import io.minimpos.app.ui.components.Card
 import io.minimpos.app.ui.components.ConfirmDialog
@@ -166,6 +170,7 @@ private fun HistoryFilters(
                             when (filter) {
                                 HistoryFilter.ALL -> R.string.history_filter_all
                                 HistoryFilter.SALES -> R.string.history_filter_sales
+                                HistoryFilter.AWAITING_TIP -> R.string.history_filter_awaiting_tip
                                 HistoryFilter.PRE_AUTHS -> R.string.history_filter_pre_auths
                                 HistoryFilter.REFUNDS -> R.string.history_filter_refunds
                                 HistoryFilter.ISSUES -> R.string.history_filter_issues
@@ -196,6 +201,7 @@ private fun DayHeader(
                 if (day.totals.saleCount > 0) {
                     add(stringResource(R.string.history_day_sales, totals(day.totals.salesMinor), day.totals.saleCount))
                 }
+                if (day.totals.tipsMinor.isNotEmpty()) add(stringResource(R.string.history_day_tips, totals(day.totals.tipsMinor)))
                 if (day.totals.refundCount > 0) {
                     add(stringResource(R.string.history_day_refunds, totals(day.totals.refundsMinor), day.totals.refundCount))
                 }
@@ -241,7 +247,7 @@ private fun historyRowText(
             HistoryRowText(
                 sale.merchantReference,
                 listOfNotNull(time, sale.paymentBrand?.uppercase(), sale.customerReference).joinToString(" · "),
-                MoneyFormatter(CurrencySpec.of(sale.currency), locale).format(sale.totalMinor),
+                MoneyFormatter(CurrencySpec.of(sale.currency), locale).format(sale.amountMinor),
                 statusTitle(sale),
                 statusKind(sale),
             )
@@ -263,8 +269,10 @@ private fun historyRowText(
 
 /**
  * One sale from history: its items, payment details, refunds and receipt. It can be reprinted, emailed and
- * refunded, and a sale with an unknown outcome can be checked again with the terminal. A pre-authorisation is never
- * refunded here, but can be cancelled, after the operator confirms.
+ * refunded, and a sale with an unknown outcome can be checked again with the terminal. A payment that only holds its
+ * amount is not refunded until it is captured: a sale awaiting its tip offers entering the tip, a pre-authorisation
+ * capturing it (and adjusting what it holds), and both can be cancelled after the operator confirms. A capture whose
+ * outcome is unknown, or that Adyen did not take for a tip, can be sent again.
  */
 @Composable
 fun SaleDetailScreen(
@@ -297,6 +305,13 @@ fun SaleDetailScreen(
             // The outcome and actions come first, as on the result screen, so they show without scrolling past every detail.
             Column(Modifier.widthIn(max = 560.dp), verticalArrangement = Arrangement.spacedBy(dimens.spacing)) {
                 SaleDetailOutcome(state, money, container.receiptFactory::formatDateTime)
+                HoldActions(
+                    state = state,
+                    onEnterTip = { navigator.push(Route.Tip(sale.id)) },
+                    onCapture = { navigator.push(Route.Capture(sale.id)) },
+                    onAdjust = { navigator.push(Route.Capture(sale.id, adjustOnly = true)) },
+                    onRetryCapture = vm::retryCapture,
+                )
                 SaleDetailActions(
                     state = state,
                     onRecheck = vm::recheck,
@@ -324,8 +339,8 @@ fun SaleDetailScreen(
 private enum class DetailDialog { EMAIL, CANCEL }
 
 /**
- * The outcome badge, title and amount, with when it was paid, what was refunded and, for a pre-authorisation that can
- * still be cancelled, how to capture it.
+ * The outcome badge, title and amount, with when it was paid, what was refunded, the tip, adjustments and capture of a
+ * payment that held its amount and, for a pre-authorisation to capture in the Customer Area, how to.
  */
 @Composable
 private fun SaleDetailOutcome(
@@ -334,17 +349,52 @@ private fun SaleDetailOutcome(
     formatDateTime: (Long) -> String,
 ) {
     val sale = state.record?.sale ?: return
-    OutcomeHeader(statusKind(sale), statusTitle(sale), money.format(sale.totalMinor), titleTag = "detailStatus") {
+    OutcomeHeader(statusKind(sale), statusTitle(sale), money.format(sale.amountMinor), titleTag = "detailStatus") {
         OutcomeNote(
             listOfNotNull(
                 formatDateTime(sale.createdAt),
                 sale.refundedMinor
-                    .takeIf { it > 0 && sale.kind == SaleKind.SALE }
+                    .takeIf { it > 0 && (sale.captured || (sale.kind == SaleKind.SALE && !sale.tipOnReceipt)) }
                     ?.let { stringResource(R.string.detail_refunded, money.format(it)) },
             ).joinToString(" · "),
         )
-        if (state.canCancel) OutcomeNote(stringResource(R.string.detail_pre_auth_note))
+        HoldNotes(sale, money)
+        if (state.canCapture && state.captureMode == CaptureMode.CUSTOMER_AREA) OutcomeNote(stringResource(R.string.detail_pre_auth_note))
     }
+}
+
+/**
+ * What finishes a payment that holds its amount: entering the tip, capturing or adjusting a pre-authorisation (in the
+ * Customer Area mode, recording its capture), and sending a capture again, with the outcome of the last retry.
+ */
+@Composable
+private fun ColumnScope.HoldActions(
+    state: SaleDetailUiState,
+    onEnterTip: () -> Unit,
+    onCapture: () -> Unit,
+    onAdjust: () -> Unit,
+    onRetryCapture: () -> Unit,
+) {
+    if (state.canEnterTip) EnterTipButton(onEnterTip)
+    if (state.canCapture) {
+        SecondaryButton(
+            stringResource(if (state.captureMode == CaptureMode.API) R.string.detail_capture else R.string.detail_record_capture),
+            onCapture,
+            icon = Icons.Default.Payments,
+            modifier = Modifier.testTag("capture"),
+        )
+    }
+    if (state.canAdjust) TertiaryButton(stringResource(R.string.detail_adjust), onAdjust, modifier = Modifier.testTag("adjust"))
+    if (state.canRetryCapture) {
+        SecondaryButton(
+            stringResource(R.string.detail_retry_capture),
+            onRetryCapture,
+            loading = state.retry.running,
+            icon = Icons.Default.Refresh,
+            modifier = Modifier.testTag("retryCapture"),
+        )
+    }
+    state.retry.message?.let { ActionMessage(it, state.retry.isError) }
 }
 
 /**
@@ -370,10 +420,16 @@ private fun SaleDetailDialogs(
         )
     }
     if (dialog == DetailDialog.CANCEL) {
+        val held = rememberMoneyFormatter(sale.currency).format(sale.heldMinor)
         ConfirmDialog(
-            title = stringResource(R.string.pre_auth_cancel_title),
-            message = stringResource(R.string.pre_auth_cancel_message, rememberMoneyFormatter(sale.currency).format(sale.totalMinor)),
-            confirmLabel = stringResource(R.string.pre_auth_cancel_confirm),
+            title = stringResource(if (sale.tipOnReceipt) R.string.tip_cancel_title else R.string.pre_auth_cancel_title),
+            message =
+                if (sale.tipOnReceipt) {
+                    stringResource(R.string.tip_cancel_message, held)
+                } else {
+                    stringResource(R.string.pre_auth_cancel_message, held)
+                },
+            confirmLabel = stringResource(if (sale.tipOnReceipt) R.string.detail_cancel_payment else R.string.pre_auth_cancel_confirm),
             destructive = true,
             dismissLabel = stringResource(R.string.pre_auth_cancel_keep),
             onConfirm = {
@@ -426,7 +482,7 @@ private fun ColumnScope.SaleDetailActions(
     }
     if (state.canCancel) {
         SecondaryButton(
-            stringResource(R.string.detail_cancel_pre_auth),
+            stringResource(if (sale.tipOnReceipt) R.string.detail_cancel_payment else R.string.detail_cancel_pre_auth),
             onCancel,
             icon = Icons.Default.LockOpen,
             modifier = Modifier.testTag("cancelPreAuth"),
@@ -500,6 +556,7 @@ private fun PaymentDetailsCard(sale: SaleEntity) {
         LabeledValue(stringResource(R.string.detail_terminal), sale.poiId)
         LabeledValue(stringResource(R.string.detail_message), sale.message)
         LabeledValue(stringResource(R.string.detail_error_condition), sale.errorCondition)
+        LabeledValue(stringResource(R.string.detail_modification_message), sale.modificationMessage)
         LabeledValue(stringResource(R.string.detail_emailed), sale.emailedTo)
     }
 }
@@ -516,16 +573,16 @@ private fun saleDetailViewModel(saleId: String): SaleDetailViewModel {
     val printed = stringResource(R.string.result_printed)
     val emailed = stringResource(R.string.result_emailed)
     val stillUnknown = stringResource(R.string.detail_still_unknown)
+    val notCaptured = stringResource(R.string.capture_failed)
     return viewModel(key = saleId) {
         SaleDetailViewModel(
             saleId,
             container.sales,
             container.receipts,
-            container.payments,
-            container.refunds,
+            SaleOperations(container.payments, container.refunds, container.captures),
             container.settingsState,
             container.terminalStatus.state,
-            ResultMessages(printed, emailed, stillUnknown = stillUnknown),
+            ResultMessages(printed, emailed, stillUnknown = stillUnknown, notCaptured = notCaptured),
         )
     }
 }

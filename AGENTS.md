@@ -5,9 +5,13 @@ Android POS app that runs on Adyen Android payment terminals and takes payments 
 
 ## Modules
 - `:core` – pure Kotlin: money/tax maths, cart, refund apportioning, receipt document model + HTML/plain renderers
-  (pre-authorisation and cancellation receipts too), compact catalogue codec (binary + raw deflate + Base45, chunked
-  into `MPC1:` QR codes; v3 adds a per-product flags varint, bit 0 = pre-authorisation, and v1/v2 still decode as sale
-  products), refund QR payload (`MPR1*…`),
+  (pre-authorisation and cancellation receipts too; `SaleReceipt.tip` = `TipLines.Blank` prints AMOUNT plus write-in TIP
+  and TOTAL rows, and a SIGNATURE row on the merchant copy, `TipLines.Entered` the tip and total; `heldNow`/`captured`
+  add a pre-authorisation's adjusted and captured amounts), compact transfer codec `TransferCodec` (binary + raw
+  deflate + Base45, chunked into `MPC1:` QR codes; a `Transfer` holds an optional catalogue, settings text and
+  `SealedSecrets`, all opaque to core; v4 starts with a sections varint (bit 0 catalogue, 1 settings, 2 secrets) and
+  stores the last two length-prefixed; a catalogue alone is still written as v3, which has a per-product flags varint,
+  bit 0 = pre-authorisation; v1/v2 still decode as sale products), refund QR payload (`MPR1*…`),
   Adyen currency table (`AdyenCurrencies`, Adyen's decimals win over ISO, e.g. ISK=2, IDR=0; search and device-country
   default). Any of its 138 currencies can be configured; there is deliberately no country/region setting (blank currency
   follows the device's country, else EUR).
@@ -19,8 +23,16 @@ Android POS app that runs on Adyen Android payment terminals and takes payments 
   `AdyenLocalTransport`, `TerminalClient` (payment/reversal/print/diagnosis/abort with transaction-status recovery),
   `RetryAdvice` (Adyen's declined-payment tables), in-process `TerminalSimulator` (round-trips through the library's Gson).
   `PaymentParams.preAuthorisation` sends `SaleToAcquirerData.authorisationType=PreAuth` plus
-  `additionalData.manualCapture=true` (Adyen's JSON form); the simulator labels those receipts and answers a full
-  reversal of one as a cancellation.
+  `additionalData.manualCapture=true` (Adyen's JSON form); the simulator labels those receipts, returns an
+  `adjustAuthorisationData` blob for approved ones (as with "return adjust authorisation data") and answers a full
+  reversal of one as a cancellation. Package `checkout`: `PaymentModifications` (capture, `amountUpdates` with reason
+  `DelayedCharge`, synchronous when the blob is sent, and `verify` via `/paymentMethods`), `CheckoutModifications`
+  (Checkout API v72 posted directly with OkHttp and Gson, `x-api-key` and `Idempotency-Key` headers; the library's
+  Checkout models need Jackson and keep rules for hundreds of classes, so they are not used; 4xx except 408/429 and
+  unsent requests are `NotProcessed`, timeouts/408/429/5xx `Unknown`), `CheckoutCredentials` (TEST
+  `checkout-test.adyen.com/v72`, LIVE `{prefix}-checkout-live.adyenpayments.com/checkout/v72`; `toString` hides the
+  key). `simulator.SimulatedModifications` accepts everything (authorised with a new blob when one was sent). The
+  `ArchitectureTest` lets only `transport` and `checkout` use OkHttp.
   Its interface uses only its own types (`PrintJob`/`PrintLine`, `RecurringModel`, `TransactionKind`,
   `ApplicationSummary`); the nexo mapping (document qualifiers, URL-encoded QR contents) stays inside, and `:app`'s
   `ArchitectureTest` forbids `com.adyen` in the app.
@@ -132,14 +144,19 @@ Android POS app that runs on Adyen Android payment terminals and takes payments 
   mode (clock 09:30, full Wi-Fi and battery, no notifications). Demo café data ("Harbour Coffee Co.", 1 Wharf Street
   Fremantle, ABN; GST 10% default and GST-free; AUD; 10 products in Coffee/Food/Retail, the beans GST-free with a
   barcode; plus "Catering deposit" $200.00 GST 10% in a Bookings category as a pre-authorisation product) is seeded
-  before the first launch: a Room DB built from `app/schemas/.../5.json` (Python sqlite3,
+  before the first launch: a Room DB built from `app/schemas/.../6.json` (Python sqlite3,
   `PRAGMA user_version`) and `files/datastore/settings.json` (also auto-lock 10 min, simulator delay 6 s so the
   "waiting" screen can be captured), piped in with `adb shell "cat … | run-as io.github.astiskala.minimpos sh -c 'cat >
   …'"` (debug builds only). The admin PIN (1357) is set in the app. Flows: sale of 2 flat whites, banana bread and
-  beans ($34.00, CUST-1042, save card) → printed receipt (simulated printer sheet, expanded and scrolled to the items),
-  sales of $11.50 and $29.50, then an item refund of the first sale ($11.00), then a pre-authorisation of the catering
-  deposit (CUST-2077; `pre-auth.png` is the Pre-authorize screen before tapping it, `pre-auth-detail.png` its history
-  detail with Cancel pre-authorisation), left open so Home shows the split tile. Drive the UI by finding nodes by text in
+  beans ($34.00, CUST-1042, save card; `checkout.png` shows Save card on and Tip on the receipt off) → printed receipt
+  (simulated printer sheet, expanded and scrolled to the items), sales of $11.50 and $29.50, then an item refund of the
+  first sale ($11.00) – these four can also be seeded into the DB to re-capture later screens only – then a tip on the
+  receipt sale of 2 avocado toast and 2 flat whites ($38.00; `tip-receipt.png` is its merchant copy with the blank TIP,
+  TOTAL and SIGNATURE lines in the expanded printer sheet, `tip.png` the Enter tip screen with Total $45.00 typed),
+  confirmed so History shows Capture requested and Tips $7.00, then a pre-authorisation of the catering deposit
+  (CUST-2077; `pre-auth.png` is the Pre-authorize screen before tapping it, `pre-auth-detail.png` its history detail
+  with Capture, Adjust amount and Cancel pre-authorisation), left open so Home shows the split tile. `transfer.png` and `export.png` are Products › More › Share with another terminal (after the PIN is set, so passwords and keys are offered) before and after Show QR codes, paused on a code. Switches have no
+  text in the `uiautomator` dump: tap the n-th `checkable` node. Drive the UI by finding nodes by text in
   `uiautomator dump` (dialogs are separate windows; tap keypad keys by their labels, and press Back twice to close the
   printer sheet, as the first only collapses it). `social.png` (1200×630) is an HTML page (navy background with a
   green glow, favicon + "Mini mPOS", "The whole checkout, on the payment terminal.", lead line, green footer, and
@@ -185,12 +202,14 @@ Android POS app that runs on Adyen Android payment terminals and takes payments 
   time stamp `TerminalClient.instantOf` can read), what is left, pricing a `RefundChoice`, the `RefundStart` (full
   reversal only before any refund, "R" reference) and the receipt's refund QR code. Sale detail, the refund screen,
   `ReceiptFactory` and `RefundBook` all use it; do not re-derive refundability elsewhere. It also holds the
-  pre-authorisation rule: never refundable (`RefundInvalidReason.PRE_AUTHORISATION`, no refund QR), only
-  `cancellation()` once (a full reversal, "C" reference, `RefundStart.cancellation`) while nothing was accepted.
+  rule for payments that only hold their amount (`PaymentHold.isHeld`: pre-authorisations and tip sales not yet
+  captured): not refundable (`RefundInvalidReason.PRE_AUTHORISATION`/`AWAITING_TIP`) but `cancellation()` once (a full
+  reversal of `heldMinor`, "C" reference, `RefundStart.cancellation`). Once captured they are refundable up to the
+  capture (a captured pre-authorisation by amount only, and still without a refund QR code).
 - Pre-authorisations: `SaleKind` (`SALE`/`PRE_AUTHORISATION`) on `products.kind` and `sales.kind`, and
-  `refunds.cancellation` (DB v5, auto-migration 4→5 with column defaults). By the maintainer's choice the app does not
-  adjust or capture them: that needs the Checkout API and an API key on the device. They are captured in the Customer
-  Area and cancelled from history through the refunds' `TransactionLifecycle`. `container.preAuthSession` is a separate
+  `refunds.cancellation` (DB v5, auto-migration 4→5 with column defaults). History's detail captures them
+  (`Route.Capture`: capturing more than `heldMinor` adjusts first, less releases the rest) or adjusts them
+  (`Route.Capture(adjustOnly = true)`, API only), and cancels them through the refunds' `TransactionLifecycle`. `container.preAuthSession` is a separate
   single-item `SaleSession` (`container.session(kind)`), so a sale being rung up survives. `Route.PreAuth` is
   `SaleScreen(preAuthorisation = true)`: only pre-auth products (`productBySku(sku, kind)`) and no cart at all (no
   checkout bar, cart sheet or panel, clear action or quantity badges); tapping a product, adding a custom amount or a
@@ -201,16 +220,45 @@ Android POS app that runs on Adyen Android payment terminals and takes payments 
   default is `PaymentSettings.preAuthTokenizeDefaultOn` (default on). History: `HistoryFilter.PRE_AUTHS`, day totals
   count open pre-auths as "Held" (not sales), cancellations are neither refunds nor shown with a minus.
   `statusTitle(sale)`/`statusKind(sale)` show "Pre-authorized" / "Cancellation requested" (`refundedMinor > 0`).
+- Setting up another terminal (user's design choices; `data/transfer/SetupTransfer`, screens `feature/transfer`,
+  routes `TransferExport`/`TransferImport` behind the PIN, from Products' menu and Settings › Data): one combined
+  transfer with switches for catalogue, settings and secrets. Settings travel as lenient JSON without defaults
+  (`TransferredSettings`: `AppSettings` minus terminal mode, host, POIID, environment and simulator; everything else,
+  printer settings, reference prefix and SaleID included) and replace the receiver's on import; the default tax rate
+  travels by name and rate. Secrets (all four, the PIN as its verifier, checked by `PinManager.isValidVerifier`) are
+  sealed by `data.security.TransferSeal` (PBKDF2-HMAC-SHA256, 150,000 iterations stored in the blob, AES-256-GCM) with
+  a 12-character code from `23456789ABCDEFGHJKMNPQRSTUVWXYZ` shown on the sender; without the code the rest imports.
+  View-model tests of the import must run the main looper while waiting (`TransferViewModelsTest.settled`): `await`
+  blocks it and stalls the import.
 - Receipts: `container.receipts` (`ReceiptDelivery`) prints and emails by sale/refund ID and owns the post-transaction
   automation (the lifecycles `arm` it on success; result screens claim it once with `automationForSale`/`ForRefund`,
-  which applies auto-print, auto-email and the merchant copy policy).
+  which applies auto-print, auto-email and the merchant copy policy). Under "Only when a signature is needed" a sale
+  awaiting its tip also makes the merchant copy due (the shopper signs it).
+- Tipping on the receipt (user's design choices): checkout's "Tip on the receipt" switch (`CheckoutForm.tipOnReceipt`,
+  default `PaymentSettings.tipOnReceiptDefaultOn`) is offered for sales only while `printerAvailable`; such a sale
+  (`sales.tipOnReceipt`) is sent as a pre-authorisation (PreAuth + manual capture). Printing follows the normal
+  auto-print/merchant-copy settings. The tip is entered on `Route.Tip` (from the result screen, or History's detail and
+  its `AWAITING_TIP` filter) as the tip or the total, or "No tip"; it is final once confirmed. `Captures.addTip`
+  adjusts first when the tip is above `PaymentHold.TIP_ADJUSTMENT_PERCENT` (20%, Adyen's rule of thumb; otherwise
+  overcapture, which Adyen Support must enable); a refused or failed adjustment leaves the tip unsaved. Day totals count
+  tips (`DayTotals.tipsMinor`), status titles say "Awaiting tip" / "Capture requested" / "Capture in Customer Area".
+- Captures (`payment/Captures`, rules in `refund/PaymentHold`): through the optional Checkout API (`terminal/AdyenApi`:
+  `TerminalSettings.merchantAccount`/`liveUrlPrefix`, `Secret.CHECKOUT_API_KEY`, environment from the terminal
+  certificate; simulated with the simulator), else recorded as `CaptureStatus.MANUAL` for the Customer Area. Anything
+  of the API entered means API mode, so a half setup fails visibly (`TerminalState.captureMode`/`apiProblem`). DB v6
+  (auto-migration 5→6) adds `sales.tipOnReceipt`, `tipMinor`, `authorisedMinor`, `adjustment`,
+  `adjustAuthorisationData` (from the payment response, then each synchronous adjustment), `capturedMinor`,
+  `captureStatus` (PENDING before the call, interrupted ones become UNKNOWN at startup) and `modificationMessage`.
+  Idempotency keys are `capture-{saleId}-{amount}` and `adjust-{saleId}-{heldBefore}-{amount}`, so retries
+  (`PaymentHold.canRetryCapture`) never act twice. `SaleEntity.amountMinor` is the amount as it stands (capture, else
+  bill + tip, else what a pre-authorisation holds) for lists, refunds and refund QR codes.
 - Fix findings instead of silencing them: no new `@Suppress`, lint ignores, baselines or rule exclusions. The existing
   ones are deliberate and commented: `TooGenericExceptionCaught` where the Adyen API throws `Exception` and where the
   payment/refund jobs must never leave a sale in progress; the Compose relaxations in `config/detekt/`; the lint
   ignores in `app/lint.xml` (third-party jars, the PNG launcher icon, `DuplicateStrings`); lint's online version checks;
   `TypographyDashes` on the POIID example.
-- Never log or persist secrets in plain text: shared-key passphrase, SMTP password and the PIN verifier live in
-  `SecretStore` (AES-GCM, Android Keystore). Non-secret settings are `AppSettings` in DataStore.
+- Never log or persist secrets in plain text: shared-key passphrase, Checkout API key, SMTP password and the PIN
+  verifier live in `SecretStore` (AES-GCM, Android Keystore). Non-secret settings are `AppSettings` in DataStore.
 - Every sale is written as PENDING before the terminal is called; interrupted ones become UNKNOWN at startup and can be
   re-checked (TransactionStatus) from history. Without a response after the payment timeout (default 120 s, Adyen's
   advice for local integrations) the client polls the status every 5 s, and keeps polling while it is `InProgress`.

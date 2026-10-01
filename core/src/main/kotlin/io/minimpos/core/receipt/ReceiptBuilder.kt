@@ -24,7 +24,9 @@ class ReceiptBuilder(
     /**
      * Builds the [copy] of a sale receipt: header, date and references, items, totals and tax, a warning if the
      * payment was not approved, Adyen's card receipt lines, the footer and, on approved customer copies, the refund QR
-     * code. A pre-authorisation is titled and totalled as an amount held instead, with no refund QR code.
+     * code. A pre-authorisation is titled and totalled as an amount held instead, with no refund QR code, followed by
+     * what it holds after an adjustment and what was captured. [SaleReceipt.tip] adds the tip lines after the totals:
+     * blank ones to fill in (and on the merchant copy a line to sign), or the tip entered and the total with it.
      */
     fun sale(
         receipt: SaleReceipt,
@@ -42,10 +44,11 @@ class ReceiptBuilder(
         items(out, receipt.items)
         out += Divider
         totals(out, receipt)
+        modifications(out, receipt, copy)
         if (!receipt.approved) {
             out += Blank
             out += Text(labels.notCompleted, Align.CENTER, TextStyle.BOLD)
-        } else if (receipt.preAuthorisation) {
+        } else if (receipt.preAuthorisation && receipt.captured == null) {
             out += Text(labels.preAuthNote, Align.CENTER)
         }
         if (receipt.cardSaved) out += Text(labels.cardSaved, Align.CENTER)
@@ -111,8 +114,13 @@ class ReceiptBuilder(
         receipt: SaleReceipt,
     ) {
         val taxed = receipt.breakdown.filter { it.amounts.tax != 0L }
-        val total =
-            Row(if (receipt.preAuthorisation) labels.amountHeld else labels.total, money.format(receipt.amounts.gross), TextStyle.BOLD)
+        val label =
+            when {
+                receipt.preAuthorisation -> labels.amountHeld
+                receipt.tip != null -> labels.amount
+                else -> labels.total
+            }
+        val total = Row(label, money.format(receipt.amounts.gross), TextStyle.BOLD)
         when (receipt.mode) {
             TaxMode.EXCLUSIVE -> {
                 out += Row(labels.subtotal, money.format(receipt.amounts.net))
@@ -132,6 +140,37 @@ class ReceiptBuilder(
                             Row(labels.includesTaxFormat.format(money.locale, it.tax.label()), money.format(it.amounts.tax))
                     }
                 }
+            }
+        }
+    }
+
+    /** A pre-authorisation's adjusted and captured amounts, and the tip lines. */
+    private fun modifications(
+        out: MutableList<ReceiptElement>,
+        receipt: SaleReceipt,
+        copy: ReceiptCopy,
+    ) {
+        receipt.heldNow?.let { out += Row(labels.heldNow, money.format(it)) }
+        receipt.captured?.let { out += Row(labels.captured, money.format(it), TextStyle.BOLD) }
+        when (val tip = receipt.tip) {
+            null -> {}
+
+            TipLines.Blank -> {
+                // Blank lines leave room to write on the paper.
+                out += Blank
+                out += Row(labels.tip, WRITE_IN)
+                out += Blank
+                out += Row(labels.tipTotal, WRITE_IN, TextStyle.BOLD)
+                if (copy == ReceiptCopy.MERCHANT) {
+                    out += Blank
+                    out += Blank
+                    out += Row(labels.signature, SIGN_HERE)
+                }
+            }
+
+            is TipLines.Entered -> {
+                out += Row(labels.tip, money.format(tip.tip))
+                out += Row(labels.tipTotal, money.format(receipt.amounts.gross + tip.tip), TextStyle.BOLD)
             }
         }
     }
@@ -171,5 +210,11 @@ class ReceiptBuilder(
     private companion object {
         /** Merchant name/address lines configured in the Customer Area; redundant when we print our own header. */
         val ADYEN_HEADER_KEYS = setOf("header1", "header2")
+
+        /** A line to write an amount on; fits next to its label on a 24-character roll. */
+        val WRITE_IN = "_".repeat(14)
+
+        /** A line to sign on. */
+        val SIGN_HERE = "_".repeat(20)
     }
 }

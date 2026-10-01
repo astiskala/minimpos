@@ -17,6 +17,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.EditNote
 import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Print
@@ -46,6 +47,8 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import io.minimpos.app.R
+import io.minimpos.app.data.db.AdjustmentStatus
+import io.minimpos.app.data.db.CaptureStatus
 import io.minimpos.app.data.db.SaleEntity
 import io.minimpos.app.data.db.SaleKind
 import io.minimpos.app.data.db.SaleStatus
@@ -53,6 +56,7 @@ import io.minimpos.app.data.settings.EmailCapture
 import io.minimpos.app.data.settings.ShopperReferenceSource
 import io.minimpos.app.payment.CheckoutForm
 import io.minimpos.app.payment.TransactionState
+import io.minimpos.app.refund.PaymentHold
 import io.minimpos.app.ui.components.ActionMessage
 import io.minimpos.app.ui.components.BottomActions
 import io.minimpos.app.ui.components.Card
@@ -143,6 +147,7 @@ fun CheckoutScreen(
                 }
                 CartSummary(state, money)
                 CheckoutFields(state, onUpdate = vm::update)
+                CheckoutSwitches(state, onUpdate = vm::update)
             }
         }
     }
@@ -164,7 +169,7 @@ private fun CartSummary(
     }
 }
 
-/** The fields the payment settings ask for, and saving the card; [onUpdate] applies a change to the form. */
+/** The fields the payment settings ask for; [onUpdate] applies a change to the form. */
 @Composable
 private fun ColumnScope.CheckoutFields(
     state: CheckoutUiState,
@@ -219,11 +224,29 @@ private fun ColumnScope.CheckoutFields(
             modifier = Modifier.fillMaxWidth().testTag("email"),
         )
     }
+}
+
+/** Saving the card, when a shopper reference allows it, and tipping on the receipt, when a printer is available. */
+@Composable
+private fun ColumnScope.CheckoutSwitches(
+    state: CheckoutUiState,
+    onUpdate: ((CheckoutForm) -> CheckoutForm) -> Unit,
+) {
+    val payment = state.payment
     if (state.canTokenize) {
         SaveCardSwitch(
             checked = state.tokenize,
             byEmail = payment.shopperReferenceSource == ShopperReferenceSource.EMAIL,
             onChange = { checked -> onUpdate { it.copy(tokenize = checked) } },
+        )
+    }
+    if (state.canTipOnReceipt) {
+        LabeledSwitch(
+            title = stringResource(R.string.checkout_tip_on_receipt),
+            hint = stringResource(R.string.checkout_tip_on_receipt_hint),
+            checked = state.tipOnReceipt,
+            onChange = { checked -> onUpdate { it.copy(tipOnReceipt = checked) } },
+            tag = "tipOnReceipt",
         )
     }
 }
@@ -234,17 +257,29 @@ private fun SaveCardSwitch(
     checked: Boolean,
     byEmail: Boolean,
     onChange: (Boolean) -> Unit,
+) = LabeledSwitch(
+    title = stringResource(R.string.checkout_save_card),
+    hint = stringResource(if (byEmail) R.string.checkout_save_card_email_hint else R.string.checkout_save_card_hint),
+    checked = checked,
+    onChange = onChange,
+    tag = "tokenize",
+)
+
+/** A checkout switch with its [title] and an explaining [hint]; the switch is tagged [tag]. */
+@Composable
+private fun LabeledSwitch(
+    title: String,
+    hint: String,
+    checked: Boolean,
+    onChange: (Boolean) -> Unit,
+    tag: String,
 ) {
     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
         Column(Modifier.weight(1f)) {
-            Text(stringResource(R.string.checkout_save_card), style = MaterialTheme.typography.bodyLarge)
-            Text(
-                stringResource(if (byEmail) R.string.checkout_save_card_email_hint else R.string.checkout_save_card_hint),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
+            Text(title, style = MaterialTheme.typography.bodyLarge)
+            Text(hint, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
-        Switch(checked = checked, onCheckedChange = onChange, modifier = Modifier.testTag("tokenize"))
+        Switch(checked = checked, onCheckedChange = onChange, modifier = Modifier.testTag(tag))
     }
 }
 
@@ -253,7 +288,14 @@ private fun checkoutViewModel(preAuthorisation: Boolean): CheckoutViewModel {
     val container = LocalAppContainer.current
     val kind = kindOf(preAuthorisation)
     return viewModel(key = kind.name) {
-        CheckoutViewModel(container.session(kind), container.payments, container.settingsState, container::currency, kind)
+        CheckoutViewModel(
+            container.session(kind),
+            container.payments,
+            container.settingsState,
+            container.terminalStatus.state,
+            container::currency,
+            kind,
+        )
     }
 }
 
@@ -340,8 +382,7 @@ fun SaleResultScreen(
         },
     ) { padding ->
         if (record == null) return@MiniScaffold
-        val sale = record.sale
-        val money = rememberMoneyFormatter(sale.currency)
+        val money = rememberMoneyFormatter(record.sale.currency)
         Column(
             Modifier
                 .fillMaxSize()
@@ -356,13 +397,14 @@ fun SaleResultScreen(
                 verticalArrangement = Arrangement.spacedBy(dimens.spacing),
             ) {
                 SaleOutcome(state, money)
-                SalePaymentCard(sale)
+                SalePaymentCard(record.sale)
                 if (state.approved) {
                     ApprovedSaleActions(
                         state = state,
                         receipt = if (showReceipt) container.receiptFactory.sale(record, state.settings.receipt) else null,
                         onPrint = vm::print,
                         onPrintMerchantCopy = vm::printMerchantCopy,
+                        onEnterTip = { navigator.push(Route.Tip(saleId)) },
                         onEmail = vm::email,
                         onToggleReceipt = { showReceipt = !showReceipt },
                     )
@@ -386,9 +428,10 @@ private fun SaleOutcome(
     money: MoneyFormatter,
 ) {
     val sale = state.record?.sale ?: return
-    OutcomeHeader(statusKind(sale), statusTitle(sale), money.format(sale.totalMinor), titleTag = "resultStatus") {
+    OutcomeHeader(statusKind(sale), statusTitle(sale), money.format(sale.amountMinor), titleTag = "resultStatus") {
         sale.message?.takeIf { sale.status != SaleStatus.APPROVED }?.let { OutcomeNote(it) }
-        if (state.approved && state.preAuthorisation) OutcomeNote(stringResource(R.string.checkout_pre_auth_note))
+        if (state.approved && state.preAuthorisation && !sale.captured) OutcomeNote(stringResource(R.string.checkout_pre_auth_note))
+        HoldNotes(sale, money, afterPayment = true)
         state.advice?.let { advice ->
             Text(
                 adviceText(advice),
@@ -495,8 +538,9 @@ private fun SalePaymentCard(sale: SaleEntity) {
 }
 
 /**
- * Printing (then the merchant copy, when one is due), emailing and showing the receipt of an approved sale ([receipt]
- * is null while hidden). The email button asks for the address, starting with the one captured at checkout.
+ * Printing (then the merchant copy, when one is due), entering the tip of a sale awaiting one, emailing and showing the
+ * receipt of an approved sale ([receipt] is null while hidden). The email button asks for the address, starting with
+ * the one captured at checkout.
  */
 @Composable
 private fun ColumnScope.ApprovedSaleActions(
@@ -504,6 +548,7 @@ private fun ColumnScope.ApprovedSaleActions(
     receipt: ReceiptDocument?,
     onPrint: () -> Unit,
     onPrintMerchantCopy: () -> Unit,
+    onEnterTip: () -> Unit,
     onEmail: (to: String) -> Unit,
     onToggleReceipt: () -> Unit,
 ) {
@@ -522,6 +567,7 @@ private fun ColumnScope.ApprovedSaleActions(
         }
         state.print.message?.let { ActionMessage(it, state.print.isError) }
     }
+    if (state.record?.sale?.let(PaymentHold::canEnterTip) == true) EnterTipButton(onEnterTip)
     if (state.settings.email.isConfigured && state.settings.payment.effectiveEmailCapture != EmailCapture.OFF) {
         SecondaryButton(
             stringResource(R.string.result_email),
@@ -586,67 +632,3 @@ private fun saleResultViewModel(saleId: String): SaleResultViewModel {
         )
     }
 }
-
-/** The operator-facing explanation of [advice]. */
-@Composable
-@ReadOnlyComposable
-fun adviceText(advice: RetryAdvice): String =
-    stringResource(
-        when (advice) {
-            RetryAdvice.RETRY -> R.string.advice_retry
-            RetryAdvice.WAIT_AND_RETRY -> R.string.advice_wait_and_retry
-            RetryAdvice.DIFFERENT_PAYMENT_METHOD -> R.string.advice_different_payment_method
-            RetryAdvice.TERMINAL_BUSY -> R.string.advice_terminal_busy
-            RetryAdvice.CHECK_SETUP -> R.string.advice_check_setup
-            RetryAdvice.DO_NOT_RETRY -> R.string.advice_do_not_retry
-        },
-    )
-
-/**
- * How a sale in [status] is shown: approved is a success, declined and failed are errors, and cancelled or unsettled
- * sales are warnings.
- */
-fun statusKind(status: SaleStatus): StatusKind =
-    when (status) {
-        SaleStatus.APPROVED -> StatusKind.SUCCESS
-        SaleStatus.CANCELLED, SaleStatus.UNKNOWN, SaleStatus.PENDING -> StatusKind.WARNING
-        SaleStatus.DECLINED, SaleStatus.FAILED -> StatusKind.ERROR
-    }
-
-/**
- * How [sale] is shown: as its status says ([statusKind]), except that a pre-authorisation whose cancellation was
- * accepted is a warning.
- */
-fun statusKind(sale: SaleEntity): StatusKind = if (sale.cancelledPreAuthorisation) StatusKind.WARNING else statusKind(sale.status)
-
-/**
- * The heading for [sale]: its status ([statusTitle]), except that an approved pre-authorisation reads "Pre-authorised",
- * or "Cancellation requested" once its cancellation was accepted.
- */
-@Composable
-@ReadOnlyComposable
-fun statusTitle(sale: SaleEntity): String =
-    when {
-        sale.cancelledPreAuthorisation -> stringResource(R.string.status_cancellation_requested)
-        sale.kind == SaleKind.PRE_AUTHORISATION && sale.status == SaleStatus.APPROVED -> stringResource(R.string.status_pre_authorised)
-        else -> statusTitle(sale.status)
-    }
-
-/** An approved pre-authorisation that a cancellation (a full reversal) has been accepted for. */
-private val SaleEntity.cancelledPreAuthorisation: Boolean
-    get() = kind == SaleKind.PRE_AUTHORISATION && status == SaleStatus.APPROVED && refundedMinor > 0
-
-/** The heading for a sale in [status], such as "Approved". */
-@Composable
-@ReadOnlyComposable
-fun statusTitle(status: SaleStatus): String =
-    stringResource(
-        when (status) {
-            SaleStatus.APPROVED -> R.string.status_approved
-            SaleStatus.DECLINED -> R.string.status_declined
-            SaleStatus.CANCELLED -> R.string.status_cancelled
-            SaleStatus.FAILED -> R.string.status_failed
-            SaleStatus.UNKNOWN -> R.string.status_unknown
-            SaleStatus.PENDING -> R.string.status_pending
-        },
-    )

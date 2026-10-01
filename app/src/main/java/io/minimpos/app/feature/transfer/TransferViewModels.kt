@@ -2,49 +2,64 @@ package io.minimpos.app.feature.transfer
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import io.minimpos.app.data.repo.CatalogRepository
 import io.minimpos.app.data.repo.ImportMode
-import io.minimpos.app.data.repo.ImportSummary
+import io.minimpos.app.data.security.Secret
+import io.minimpos.app.data.security.TransferSeal
+import io.minimpos.app.data.transfer.ReceivedTransfer
+import io.minimpos.app.data.transfer.SetupTransfer
+import io.minimpos.app.data.transfer.TransferContents
+import io.minimpos.app.data.transfer.TransferExport
+import io.minimpos.app.data.transfer.TransferResult
 import io.minimpos.app.feature.launchWrite
-import io.minimpos.core.catalogue.Catalogue
-import io.minimpos.core.codec.CatalogueCodec
-import io.minimpos.core.codec.CatalogueFormatException
 import io.minimpos.core.codec.QrChunkAssembler
 import io.minimpos.core.codec.QrChunks
+import io.minimpos.core.codec.TransferCodec
+import io.minimpos.core.codec.TransferFormatException
 import io.minimpos.core.ids.Ids
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlin.random.Random
 
 /**
- * What the catalogue export screen shows.
+ * What the export screen shows: first the choice of what to share, then the QR codes.
  *
- * @property loading Whether the codes are still being made.
+ * @property contents What the operator chose to share.
+ * @property secretsAvailable The secrets set on this terminal; sharing secrets is only offered when there are some.
+ * @property loading Whether the codes are being made.
+ * @property export The export shown as [codes]; null while choosing.
  * @property codes The QR code contents, in order (`MPC1:` chunks of one set).
- * @property catalogue The exported catalogue, for its counts; null while loading.
  */
 data class ExportUiState(
-    val loading: Boolean = true,
+    val contents: TransferContents = TransferContents(),
+    val secretsAvailable: Set<Secret> = emptySet(),
+    val loading: Boolean = false,
+    val export: TransferExport? = null,
     val codes: List<String> = emptyList(),
-    val catalogue: Catalogue? = null,
-)
+) {
+    /** Whether the secrets would be shared: chosen, and some are set. */
+    val sharesSecrets: Boolean get() = contents.secrets && secretsAvailable.isNotEmpty()
+
+    /** Whether "Show QR codes" is enabled: something is chosen and no codes are being made. */
+    val canShow: Boolean get() = !loading && (contents.catalogue || contents.settings || sharesSecrets)
+}
 
 /**
- * Encodes the whole catalogue into QR codes for another terminal to scan. Each export gets a new random set ID, so its
- * codes cannot be mixed up with an earlier export's.
+ * Exports the catalogue, settings and secrets as QR codes for another terminal to scan (see [SetupTransfer]). Each
+ * export gets a new random set ID, so its codes cannot be mixed up with an earlier export's, and a new transfer code.
  *
- * @param catalog The catalogue to export, read once.
+ * @param setup Builds the export.
  * @param currencyCode The currency the prices are in, carried in the catalogue.
  * @param chunkSize Data characters per QR code.
  * @param random Source of the set ID; tests make it predictable.
  */
-class CatalogueExportViewModel(
-    catalog: CatalogRepository,
-    currencyCode: String,
-    chunkSize: Int = QrChunks.DEFAULT_MAX_DATA_CHARS,
-    random: Random = Random.Default,
+class TransferExportViewModel(
+    private val setup: SetupTransfer,
+    private val currencyCode: String,
+    private val chunkSize: Int = QrChunks.DEFAULT_MAX_DATA_CHARS,
+    private val random: Random = Random.Default,
 ) : ViewModel() {
     private val _state = MutableStateFlow(ExportUiState())
 
@@ -53,15 +68,36 @@ class CatalogueExportViewModel(
 
     init {
         viewModelScope.launch {
-            val catalogue = catalog.export(currencyCode)
-            val setId = Ids.randomString(QrChunks.SET_ID_LENGTH, random)
-            val codes = QrChunks.split(CatalogueCodec.encode(catalogue), setId, chunkSize).map { it.encode() }
-            _state.value = ExportUiState(loading = false, codes = codes, catalogue = catalogue)
+            val available = setup.configuredSecrets()
+            _state.update { it.copy(secretsAvailable = available) }
         }
     }
+
+    /** Changes what is shared with [transform]; ignored while the codes are made or shown. */
+    fun setContents(transform: (TransferContents) -> TransferContents) {
+        if (_state.value.loading || _state.value.export != null) return
+        _state.update { it.copy(contents = transform(it.contents)) }
+    }
+
+    /** Makes the codes for what was chosen; ignored unless [ExportUiState.canShow]. */
+    fun show() {
+        val current = _state.value
+        if (!current.canShow || current.export != null) return
+        _state.update { it.copy(loading = true) }
+        viewModelScope.launch {
+            // The secrets set are looked up again, in case they were asked for before they had been read.
+            val export = setup.export(current.contents, currencyCode)
+            val setId = Ids.randomString(QrChunks.SET_ID_LENGTH, random)
+            val codes = QrChunks.split(export.payload, setId, chunkSize).map { it.encode() }
+            _state.update { it.copy(loading = false, export = export, codes = codes) }
+        }
+    }
+
+    /** Goes back from the codes to the choice; the next codes get a new set ID and transfer code. */
+    fun hide() = _state.update { it.copy(export = null, codes = emptyList()) }
 }
 
-/** Where a catalogue import is. */
+/** Where an import is. */
 sealed interface ImportUiState {
     /**
      * Scanning the codes.
@@ -77,42 +113,55 @@ sealed interface ImportUiState {
     ) : ImportUiState
 
     /**
-     * Every code was scanned and the catalogue decoded; waiting for the operator to replace or merge.
+     * Every code was scanned and decoded; waiting for the operator to import.
      *
-     * @property catalogue The decoded catalogue.
-     * @property currencyMatches Whether its currency is this device's; if not, prices are imported as they are.
+     * @property received What was scanned.
+     * @property currencyMatches Whether the catalogue's currency is the one this terminal will use (the transferred
+     *   settings' when they choose one, else this terminal's); if not, prices are imported as they are.
+     * @property mode How the catalogue is combined with this one.
+     * @property code The transfer code typed so far, for the secrets.
+     * @property wrongCode Whether the last code tried did not open the secrets.
      */
     data class Ready(
-        val catalogue: Catalogue,
+        val received: ReceivedTransfer,
         val currencyMatches: Boolean,
+        val mode: ImportMode = ImportMode.MERGE,
+        val code: String = "",
+        val wrongCode: Boolean = false,
     ) : ImportUiState
 
-    /** Writing the catalogue to the database. */
+    /** Opening the secrets and writing everything. */
     data object Importing : ImportUiState
 
     /**
      * The import finished.
      *
-     * @property summary What was added and updated.
+     * @property result What was imported.
+     * @property secretsSkipped Whether secrets were transferred but not imported, because no code was typed.
      */
     data class Done(
-        val summary: ImportSummary,
+        val result: TransferResult,
+        val secretsSkipped: Boolean = false,
     ) : ImportUiState
 }
 
 /** Why a scanned code could not be used. */
 enum class ImportError {
-    /** It is not a catalogue transfer code (such as a refund code or a product barcode). */
-    NOT_A_CATALOGUE,
+    /** It is not a transfer code (such as a refund code or a product barcode). */
+    NOT_A_TRANSFER,
 
     /** All codes were scanned but the data did not decode; scanning starts over. */
     CORRUPT,
 }
 
-/** Scans a catalogue from another terminal's export codes, in any order, then imports it. */
-class CatalogueImportViewModel(
-    private val catalog: CatalogRepository,
-    /** This device's currency, to warn when the catalogue's differs. */
+/**
+ * Scans another terminal's transfer codes, in any order, then imports them (see [SetupTransfer]).
+ *
+ * @param setup Reads and imports the transfer.
+ * @param currencyCode This terminal's currency, to warn when the catalogue's differs.
+ */
+class TransferImportViewModel(
+    private val setup: SetupTransfer,
     private val currencyCode: String,
 ) : ViewModel() {
     private val assembler = QrChunkAssembler()
@@ -126,7 +175,7 @@ class CatalogueImportViewModel(
         if (_state.value !is ImportUiState.Scanning) return
         val chunk = QrChunks.parse(text)
         if (chunk == null) {
-            _state.value = ImportUiState.Scanning(assembler.received, assembler.expected, ImportError.NOT_A_CATALOGUE)
+            _state.value = ImportUiState.Scanning(assembler.received, assembler.expected, ImportError.NOT_A_TRANSFER)
             return
         }
         assembler.add(chunk)
@@ -136,19 +185,45 @@ class CatalogueImportViewModel(
         }
         _state.value =
             try {
-                val catalogue = CatalogueCodec.decode(assembler.assemble())
-                ImportUiState.Ready(catalogue, catalogue.currencyCode == currencyCode)
-            } catch (ignored: CatalogueFormatException) {
+                val received = setup.receive(TransferCodec.decode(assembler.assemble()))
+                val target = received.currencyCode?.takeIf { it.isNotBlank() } ?: currencyCode
+                ImportUiState.Ready(received, received.catalogue?.let { it.currencyCode == target } != false)
+            } catch (ignored: TransferFormatException) {
                 assembler.reset()
                 ImportUiState.Scanning(error = ImportError.CORRUPT)
             }
     }
 
-    /** Imports the decoded catalogue with [mode]; ignored unless [ImportUiState.Ready]. */
-    fun import(mode: ImportMode) {
+    /** Chooses how the catalogue is combined with this one; ignored unless [ImportUiState.Ready]. */
+    fun setMode(mode: ImportMode) = updateReady { it.copy(mode = mode) }
+
+    /** Updates the typed transfer code; ignored unless [ImportUiState.Ready]. */
+    fun setCode(code: String) = updateReady { it.copy(code = code, wrongCode = false) }
+
+    /**
+     * Imports what was scanned; ignored unless [ImportUiState.Ready]. Secrets are imported when a transfer code was
+     * typed; a wrong one goes back to [ImportUiState.Ready] with [ImportUiState.Ready.wrongCode] before anything is
+     * written. Without a code the rest is imported and the secrets skipped.
+     */
+    fun import() {
         val ready = _state.value as? ImportUiState.Ready ?: return
+        val withSecrets = ready.received.hasSecrets && ready.code.isNotBlank()
+        if (withSecrets && !TransferSeal.isValidCode(ready.code)) {
+            _state.value = ready.copy(wrongCode = true)
+            return
+        }
         _state.value = ImportUiState.Importing
-        launchWrite({ catalog.import(ready.catalogue, mode) }) { _state.value = ImportUiState.Done(it) }
+        launchWrite({
+            val unlocked = if (withSecrets) setup.unlock(ready.received, ready.code) else emptyMap()
+            unlocked?.let { setup.import(ready.received, ready.mode, it) }
+        }) { result ->
+            _state.value =
+                if (result == null) {
+                    ready.copy(wrongCode = true)
+                } else {
+                    ImportUiState.Done(result, secretsSkipped = ready.received.hasSecrets && !withSecrets)
+                }
+        }
     }
 
     /** Forgets the scanned codes and starts scanning again. */
@@ -156,4 +231,7 @@ class CatalogueImportViewModel(
         assembler.reset()
         _state.value = ImportUiState.Scanning()
     }
+
+    private fun updateReady(transform: (ImportUiState.Ready) -> ImportUiState.Ready) =
+        _state.update { if (it is ImportUiState.Ready) transform(it) else it }
 }

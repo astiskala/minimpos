@@ -25,6 +25,8 @@ import io.minimpos.terminal.parse.ReceiptField
  * @property tokenization Set only when the shopper opted in to saving their card.
  * @property kind A sale, or a pre-authorisation that only holds the amount (sent with `authorisationType=PreAuth` and
  *   manual capture).
+ * @property tipOnReceipt For a sale: taken for tipping on the receipt, so it is pre-authorised like a pre-authorisation
+ *   and captured with the tip once that is entered (see [Captures]).
  */
 data class PaymentStart(
     val totals: CartTotals,
@@ -34,6 +36,7 @@ data class PaymentStart(
     val shopperEmail: String?,
     val tokenization: TokenizationRequest?,
     val kind: SaleKind = SaleKind.SALE,
+    val tipOnReceipt: Boolean = false,
 )
 
 /**
@@ -52,7 +55,7 @@ data class TokenizationRequest(
 /**
  * Card payments as stored sales ([SaleEntity] with its [SaleLineEntity] items), for the payments' [TransactionLifecycle].
  * The sale gets the cart as priced, the terminal's POIID once the request is sent, and the card, receipt and
- * tokenization details of the answer.
+ * tokenization details of the answer (and, for a pre-authorised payment, the blob for synchronous adjustments).
  *
  * @param sales Where sales are stored.
  */
@@ -85,6 +88,7 @@ class SaleBook(
                 tokenizationRequested = request.tokenization != null,
                 serviceId = serviceId,
                 kind = request.kind,
+                tipOnReceipt = request.tipOnReceipt && request.kind == SaleKind.SALE,
             )
         sales.createPending(sale, lines(id, totals))
     }
@@ -103,7 +107,8 @@ class SaleBook(
                 tenderOptions = listOf(RECEIPT_HANDLER),
                 metadata = listOfNotNull(request.customerReference?.let { "customerReference" to it }).toMap(),
                 requestCardAlias = tokenization != null,
-                preAuthorisation = request.kind == SaleKind.PRE_AUTHORISATION,
+                // A tip on the receipt is captured later with the tip, as Adyen's tipping on the receipt flow asks.
+                preAuthorisation = request.kind == SaleKind.PRE_AUTHORISATION || request.tipOnReceipt,
             ),
         )
     }
@@ -149,6 +154,7 @@ class SaleBook(
                     customerReceiptJson = ReceiptLinesJson.encode(details.customerReceipt.map(::toLine)),
                     cashierReceiptJson = ReceiptLinesJson.encode(details.cashierReceipt.map(::toLine)),
                     signatureRequired = details.signatureRequired,
+                    adjustAuthorisationData = details.additionalData[ADJUST_AUTHORISATION_DATA],
                 )
             },
         )
@@ -190,6 +196,12 @@ class SaleBook(
          * with the card receipt lines instead.
          */
         const val RECEIPT_HANDLER = "ReceiptHandler"
+
+        /**
+         * The `AdditionalResponse` key of the blob for synchronous authorisation adjustments, sent for pre-authorised
+         * payments when "return adjust authorisation data" is enabled in the Customer Area.
+         */
+        const val ADJUST_AUTHORISATION_DATA = "adjustAuthorisationData"
 
         /** Converts a card receipt field from the terminal into the stored and printed form. */
         fun toLine(field: ReceiptField) = CardReceiptLine(field.key, field.name, field.value, field.bold)

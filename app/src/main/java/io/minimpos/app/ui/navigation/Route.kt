@@ -48,6 +48,26 @@ sealed interface Route : NavKey {
         val saleId: String,
     ) : Route
 
+    /**
+     * Entering the tip written on the receipt of a sale taken for tipping on the receipt, which captures it.
+     *
+     * @property saleId The sale awaiting its tip.
+     */
+    @Serializable data class Tip(
+        val saleId: String,
+    ) : Route
+
+    /**
+     * Capturing a pre-authorisation, or adjusting what it holds.
+     *
+     * @property saleId The pre-authorisation.
+     * @property adjustOnly Adjust the amount held without capturing.
+     */
+    @Serializable data class Capture(
+        val saleId: String,
+        val adjustOnly: Boolean = false,
+    ) : Route
+
     /** Scanning the refund QR code on a receipt. */
     @Serializable data object RefundScan : Route
 
@@ -113,13 +133,13 @@ sealed interface Route : NavKey {
         override val isProtected get() = true
     }
 
-    /** Showing the catalogue as QR codes for another terminal. */
-    @Serializable data object CatalogueExport : Route {
+    /** Sharing the catalogue, settings and secrets as QR codes with another terminal. */
+    @Serializable data object TransferExport : Route {
         override val isProtected get() = true
     }
 
-    /** Scanning another terminal's catalogue codes. */
-    @Serializable data object CatalogueImport : Route {
+    /** Scanning another terminal's transfer codes to set this one up the same way. */
+    @Serializable data object TransferImport : Route {
         override val isProtected get() = true
     }
 

@@ -155,7 +155,7 @@ private fun productsViewModel(): ProductsViewModel {
     return viewModel { ProductsViewModel(container.catalog, container.settingsState, container::currency) }
 }
 
-/** The overflow menu with catalogue export and import. */
+/** The overflow menu with sharing to and setting up from another terminal. */
 @Composable
 private fun TransferMenu(onOpen: (Route) -> Unit) {
     var menu by remember { mutableStateOf(false) }
@@ -169,7 +169,7 @@ private fun TransferMenu(onOpen: (Route) -> Unit) {
                 leadingIcon = { Icon(Icons.Default.FileUpload, contentDescription = null) },
                 onClick = {
                     menu = false
-                    onOpen(Route.CatalogueExport)
+                    onOpen(Route.TransferExport)
                 },
             )
             DropdownMenuItem(
@@ -177,7 +177,7 @@ private fun TransferMenu(onOpen: (Route) -> Unit) {
                 leadingIcon = { Icon(Icons.Default.FileDownload, contentDescription = null) },
                 onClick = {
                     menu = false
-                    onOpen(Route.CatalogueImport)
+                    onOpen(Route.TransferImport)
                 },
             )
         }

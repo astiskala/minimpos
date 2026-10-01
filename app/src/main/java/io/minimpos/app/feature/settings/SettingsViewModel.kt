@@ -18,6 +18,7 @@ import io.minimpos.app.feature.persisting
 import io.minimpos.app.feature.sale.ActionState
 import io.minimpos.app.feature.sale.toState
 import io.minimpos.app.payment.ReceiptDelivery
+import io.minimpos.app.terminal.AdyenApi
 import io.minimpos.app.terminal.TerminalConnection
 import io.minimpos.app.terminal.TerminalStatus
 import io.minimpos.core.receipt.ReceiptDocument
@@ -67,6 +68,8 @@ data class SettingsUiState(
  * @property print The latest test print.
  * @property cleared Whether the history has been cleared.
  * @property taxRateInUse Set when a tax rate could not be deleted: the number of products still using it.
+ * @property api The latest Checkout API test.
+ * @property apiKeyStored Whether the API key given to the latest API test was stored (so the field can be cleared).
  */
 data class SettingsActions(
     val connection: ActionState = ActionState(),
@@ -76,6 +79,8 @@ data class SettingsActions(
     val print: ActionState = ActionState(),
     val cleared: Boolean = false,
     val taxRateInUse: Int? = null,
+    val api: ActionState = ActionState(),
+    val apiKeyStored: Boolean = false,
 )
 
 /**
@@ -88,6 +93,7 @@ data class SettingsActions(
  * @property testEmailSent Format with the address, shown after the test email was sent.
  * @property testPrinted Shown after the test receipt was printed.
  * @property secretNotStored Format with the error, e.g. "This device could not store it securely (%1$s)".
+ * @property apiOk Shown after a successful Checkout API test.
  */
 data class SettingsMessages(
     val connectionOk: String,
@@ -97,6 +103,7 @@ data class SettingsMessages(
     val testEmailSent: String,
     val testPrinted: String,
     val secretNotStored: String,
+    val apiOk: String = "",
 )
 
 /**
@@ -104,10 +111,12 @@ data class SettingsMessages(
  *
  * @property status Tests the connection to the terminal, which also tells whether it has a printer.
  * @property receipts Prints the test receipt and sends the test email.
+ * @property api Tests the Checkout API key.
  */
 class SettingsChecks(
     val status: TerminalStatus,
     val receipts: ReceiptDelivery,
+    val api: AdyenApi,
 )
 
 /**
@@ -203,51 +212,69 @@ class SettingsViewModel(
         }
 
     /**
-     * Checks the connection to the terminal, first saving [passphrase] if one was entered, and verifying that it reads
-     * back. The outcome is shown until [dismissConnectionResult].
+     * Tests the terminal connection ([Secret.TERMINAL_PASSPHRASE]) or the Checkout API ([Secret.CHECKOUT_API_KEY]),
+     * first saving [value] as [secret] if one was entered (an API key without surrounding spaces) and verifying that it
+     * reads back. Neither test charges anything. The connection's outcome is shown until [dismissConnectionResult].
+     *
+     * @throws IllegalArgumentException for a secret that cannot be tested.
      */
-    fun testConnection(passphrase: String? = null) {
-        _actions.update { it.copy(connection = ActionState(running = true), passphraseStored = false) }
+    fun saveAndTest(
+        secret: Secret,
+        value: String? = null,
+    ) {
+        require(secret == Secret.TERMINAL_PASSPHRASE || secret == Secret.CHECKOUT_API_KEY) { "$secret cannot be tested" }
+        val api = secret == Secret.CHECKOUT_API_KEY
+        val running = ActionState(running = true)
+        _actions.update {
+            if (api) {
+                it.copy(
+                    api = running,
+                    apiKeyStored = false,
+                )
+            } else {
+                it.copy(connection = running, passphraseStored = false)
+            }
+        }
         viewModelScope.launch {
-            if (!passphrase.isNullOrEmpty()) {
-                val stored =
-                    persisting { storeSecret { secrets.set(Secret.TERMINAL_PASSPHRASE, passphrase) } } &&
-                        secrets.get(Secret.TERMINAL_PASSPHRASE) == passphrase
+            val entered = (if (api) value?.trim() else value)?.takeIf { it.isNotEmpty() }
+            if (entered != null) {
+                val stored = persisting { storeSecret { secrets.set(secret, entered) } } && secrets.get(secret) == entered
                 if (!stored) {
-                    val error =
-                        _actions.value.secretError
-                            ?: messages.secretNotStored.format(Locale.getDefault(), "the passphrase did not read back")
-                    _actions.update { it.copy(connection = ActionState(message = error, isError = true)) }
+                    val error = _actions.value.secretError ?: messages.secretNotStored.format(Locale.getDefault(), "it did not read back")
+                    val failed = ActionState(message = error, isError = true)
+                    _actions.update { if (api) it.copy(api = failed) else it.copy(connection = failed) }
                     return@launch
                 }
-                _actions.update { it.copy(passphraseStored = true) }
+                _actions.update { if (api) it.copy(apiKeyStored = true) else it.copy(passphraseStored = true) }
             }
-            val result =
-                when (val connection = checks.status.check()) {
-                    is TerminalConnection.Connected -> {
-                        val diagnosis = connection.diagnosis
-                        val printer = if (diagnosis.hasPrinter) messages.printerPresent else messages.printerAbsent
-                        ActionState(message = "${messages.connectionOk} (${diagnosis.globalStatus ?: "OK"}, $printer)", done = true)
-                    }
-
-                    is TerminalConnection.NotSetUp -> {
-                        ActionState(message = connection.message, isError = true)
-                    }
-
-                    is TerminalConnection.Failed -> {
-                        ActionState(
-                            message = "${messages.connectionFailed}: ${connection.message}",
-                            isError = true,
-                        )
-                    }
-
-                    TerminalConnection.Checking, TerminalConnection.Unknown -> {
-                        ActionState()
-                    }
-                }
-            _actions.update { it.copy(connection = result) }
+            val result = if (api) apiResult() else connectionResult()
+            _actions.update { if (api) it.copy(api = result) else it.copy(connection = result) }
         }
     }
+
+    private suspend fun connectionResult(): ActionState =
+        when (val connection = checks.status.check()) {
+            is TerminalConnection.Connected -> {
+                val diagnosis = connection.diagnosis
+                val printer = if (diagnosis.hasPrinter) messages.printerPresent else messages.printerAbsent
+                ActionState(message = "${messages.connectionOk} (${diagnosis.globalStatus ?: "OK"}, $printer)", done = true)
+            }
+
+            is TerminalConnection.NotSetUp -> {
+                ActionState(message = connection.message, isError = true)
+            }
+
+            is TerminalConnection.Failed -> {
+                ActionState(message = "${messages.connectionFailed}: ${connection.message}", isError = true)
+            }
+
+            TerminalConnection.Checking, TerminalConnection.Unknown -> {
+                ActionState()
+            }
+        }
+
+    private suspend fun apiResult(): ActionState =
+        checks.api.verify()?.let { ActionState(message = it, isError = true) } ?: ActionState(message = messages.apiOk, done = true)
 
     /** Closes the connection test's result dialog. */
     fun dismissConnectionResult() {

@@ -227,6 +227,7 @@ private fun RefundUnavailable(
                     RefundInvalidReason.NOT_REFUNDABLE -> R.string.refund_not_refundable
                     RefundInvalidReason.FULLY_REFUNDED -> R.string.refund_fully_refunded
                     RefundInvalidReason.PRE_AUTHORISATION -> R.string.refund_pre_authorisation
+                    RefundInvalidReason.AWAITING_TIP -> R.string.refund_awaiting_tip
                 },
             ),
         modifier = modifier,

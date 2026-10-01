@@ -39,17 +39,23 @@ this project. Report them to Adyen through its
   Adyen's Java API library. Messages are encrypted and signed with the shared key from your Customer Area. The
   terminal's TLS certificate must chain to one of Adyen's terminal root certificates (TEST or LIVE), and its name must
   be an Adyen terminal name for that same environment. The environment the app shows comes from this certificate.
-- **Secrets are encrypted on the device.** The shared-key passphrase and SMTP password are encrypted with AES-256-GCM,
-  using a key kept in the Android Keystore. The admin PIN is stored only as a salted PBKDF2 hash, and repeated wrong
+- **Secrets are encrypted on the device.** The shared-key passphrase, the optional Checkout API key and the SMTP
+  password are encrypted with AES-256-GCM, using a key kept in the Android Keystore. The admin PIN is stored only as a salted PBKDF2 hash, and repeated wrong
   PINs lock entry for increasing periods.
+- **Setting up another terminal protects the secrets.** The QR codes that copy a terminal's setup carry the secrets
+  only encrypted (AES-256-GCM, with a key derived by PBKDF2 from a one-time 12-character transfer code). The code is
+  shown only on the sending terminal and typed on the receiving one; both screens are behind the admin PIN.
 - **No backend and no tracking.** Products, settings and sales history stay on the terminal. The app sends nothing
-  anywhere except to the payment terminal and, if you set it up, your SMTP server.
+  anywhere except to the payment terminal and, if you set them up, Adyen's Checkout API (to capture tips and
+  pre-authorizations) and your SMTP server.
 
 ## Recommendations for merchants
 
 - Set an **admin PIN** (Settings › Security), so staff and shoppers can't change settings or products.
 - Keep TEST and LIVE shared keys separate, and check for the "TEST environment" banner before taking real payments.
   Change the shared key if you think it has been exposed.
+- If you give the app a **Checkout API key**, use an API credential with only the Checkout webservice role, one per
+  store or terminal fleet, and revoke it in the Customer Area if a terminal is lost.
 - Send receipt email over **STARTTLS or SSL**. The "None" option sends email and your SMTP password unencrypted.
 - Choose a sensible **history retention** period (Settings › Data). Sales history includes customer references and
   shopper email addresses.

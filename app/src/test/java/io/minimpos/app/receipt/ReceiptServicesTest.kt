@@ -3,6 +3,7 @@ package io.minimpos.app.receipt
 import com.google.common.truth.Truth.assertThat
 import io.minimpos.app.TestEnvironment
 import io.minimpos.app.await
+import io.minimpos.app.data.db.CaptureStatus
 import io.minimpos.app.data.db.RefundEntity
 import io.minimpos.app.data.db.RefundStatus
 import io.minimpos.app.data.db.SaleEntity
@@ -314,7 +315,74 @@ class ReceiptServicesTest {
             env.mail.sent
                 .last()
                 .allText(),
-        ).contains("Your pre-authorization has been canceled")
+        ).contains("Your payment has been canceled")
+    }
+
+    @Test
+    fun `tip receipts have lines to fill in until the tip is entered, and the shopper signs the merchant copy`() {
+        env.useSimulator()
+        val awaiting = sale.copy(tipOnReceipt = true, signatureRequired = false, pspReference = "PSP1")
+        await { container.sales.createPending(awaiting, lines) }
+        val factory = container.receiptFactory
+        val write = "_".repeat(14)
+        val blank = factory.sale(SaleWithLines(awaiting, lines), ReceiptSettings())
+        assertThat(
+            blank.elements,
+        ).containsAtLeast(ReceiptElement.Row("AMOUNT", "A$12.00", TextStyle.BOLD), ReceiptElement.Row("TIP", write))
+        // The shopper signs for the tip, so the merchant copy is due even though the terminal asked for no signature.
+        assertThat(await { container.receipts.printSale("s1") }.merchantCopyDue).isTrue()
+        val merchant = factory.sale(SaleWithLines(awaiting, lines), ReceiptSettings(), ReceiptCopy.MERCHANT)
+        assertThat(merchant.elements.filterIsInstance<ReceiptElement.Row>().map { it.left }).contains("SIGNATURE")
+
+        val tipped = awaiting.copy(tipMinor = 300, capturedMinor = 1_500, captureStatus = CaptureStatus.REQUESTED)
+        await { container.sales.update(tipped) }
+        val entered = factory.sale(SaleWithLines(tipped, lines), ReceiptSettings())
+        assertThat(entered.elements)
+            .containsAtLeast(ReceiptElement.Row("TIP", "A$3.00"), ReceiptElement.Row("TOTAL", "A$15.00", TextStyle.BOLD))
+            .inOrder()
+        assertThat(RefundQrPayload.decode(entered.qrCodes.single().content)!!.amountMinor).isEqualTo(1_500)
+        assertThat(await { container.receipts.printSale("s1") }.merchantCopyDue).isFalse()
+        // Nor does an emailed receipt.
+        assertThat(
+            factory
+                .sale(
+                    SaleWithLines(awaiting, lines),
+                    ReceiptSettings(),
+                    paper = false,
+                ).elements
+                .filterIsInstance<ReceiptElement.Row>()
+                .map {
+                    it.left
+                },
+        ).doesNotContain("TIP")
+        // A declined sale gets no lines to fill in.
+        val declined = factory.sale(SaleWithLines(awaiting.copy(status = SaleStatus.DECLINED), lines), ReceiptSettings())
+        assertThat(declined.elements.filterIsInstance<ReceiptElement.Row>().map { it.left }).doesNotContain("TIP")
+    }
+
+    @Test
+    fun `an adjusted and captured pre-authorisation shows what it holds and what was captured`() {
+        val preAuth =
+            sale.copy(
+                kind = SaleKind.PRE_AUTHORISATION,
+                authorisedMinor = 1_500,
+                capturedMinor = 1_450,
+                captureStatus = CaptureStatus.MANUAL,
+            )
+        val rows =
+            container.receiptFactory
+                .sale(
+                    SaleWithLines(preAuth, lines),
+                    ReceiptSettings(),
+                ).elements
+                .filterIsInstance<ReceiptElement.Row>()
+        assertThat(rows.map { it.left }).containsAtLeast("AMOUNT HELD", "HELD NOW", "CAPTURED").inOrder()
+        val held =
+            container.receiptFactory.sale(
+                SaleWithLines(preAuth.copy(capturedMinor = null, captureStatus = null), lines),
+                ReceiptSettings(),
+            )
+        assertThat(held.elements.filterIsInstance<ReceiptElement.Row>().map { it.left }).doesNotContain("CAPTURED")
     }
 
     private fun Part.allText(): String =

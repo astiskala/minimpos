@@ -163,6 +163,10 @@ interface SaleDao {
     @Query("SELECT * FROM sales WHERE status = 'PENDING'")
     suspend fun pendingSales(): List<SaleEntity>
 
+    /** Returns the sales whose capture is still marked [CaptureStatus.PENDING], in no particular order. */
+    @Query("SELECT * FROM sales WHERE captureStatus = 'PENDING'")
+    suspend fun pendingCaptures(): List<SaleEntity>
+
     /** Deletes the sales created before [before] (epoch milliseconds), with their lines; returns how many sales. */
     @Query("DELETE FROM sales WHERE createdAt < :before")
     suspend fun deleteSalesBefore(before: Long): Int

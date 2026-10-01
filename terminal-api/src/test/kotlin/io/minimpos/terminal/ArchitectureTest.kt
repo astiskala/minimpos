@@ -43,10 +43,10 @@ class ArchitectureTest {
             .check(terminal)
 
     @Test
-    fun `only the transport talks HTTP and TLS`() =
+    fun `only the transport and the Checkout API client talk HTTP and TLS`() =
         noClasses()
             .that()
-            .resideOutsideOfPackage("io.minimpos.terminal.transport..")
+            .resideOutsideOfPackages("io.minimpos.terminal.transport..", "io.minimpos.terminal.checkout..")
             .should()
             .dependOnClassesThat()
             .resideInAnyPackage("okhttp3..", "okio..", "javax.net..")

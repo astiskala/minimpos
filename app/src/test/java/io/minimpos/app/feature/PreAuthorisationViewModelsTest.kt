@@ -10,6 +10,7 @@ import io.minimpos.app.data.db.TaxRateEntity
 import io.minimpos.app.feature.history.HistoryFilter
 import io.minimpos.app.feature.history.HistoryViewModel
 import io.minimpos.app.feature.history.SaleDetailViewModel
+import io.minimpos.app.feature.history.SaleOperations
 import io.minimpos.app.feature.sale.CheckoutViewModel
 import io.minimpos.app.feature.sale.ResultMessages
 import io.minimpos.app.feature.sale.SaleResultViewModel
@@ -78,6 +79,7 @@ class PreAuthorisationViewModelsTest {
                 container.preAuthSession,
                 container.payments,
                 container.settingsState,
+                container.terminalStatus.state,
                 container::currency,
                 SaleKind.PRE_AUTHORISATION,
             )
@@ -131,6 +133,7 @@ class PreAuthorisationViewModelsTest {
                 container.preAuthSession,
                 container.payments,
                 container.settingsState,
+                container.terminalStatus.state,
                 container::currency,
                 SaleKind.PRE_AUTHORISATION,
             )
@@ -180,8 +183,7 @@ class PreAuthorisationViewModelsTest {
                 id,
                 container.sales,
                 container.receipts,
-                container.payments,
-                container.refunds,
+                SaleOperations(container.payments, container.refunds, container.captures),
                 container.settingsState,
                 container.terminalStatus.state,
                 messages,

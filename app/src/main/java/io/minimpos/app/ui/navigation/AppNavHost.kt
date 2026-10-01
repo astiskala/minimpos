@@ -8,6 +8,8 @@ import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.runtime.rememberNavBackStack
 import androidx.navigation3.runtime.rememberSaveableStateHolderNavEntryDecorator
 import androidx.navigation3.ui.NavDisplay
+import io.minimpos.app.feature.capture.CaptureScreen
+import io.minimpos.app.feature.capture.TipScreen
 import io.minimpos.app.feature.history.HistoryScreen
 import io.minimpos.app.feature.history.RefundDetailScreen
 import io.minimpos.app.feature.history.SaleDetailScreen
@@ -25,8 +27,8 @@ import io.minimpos.app.feature.sale.SaleResultScreen
 import io.minimpos.app.feature.sale.SaleScreen
 import io.minimpos.app.feature.settings.SettingsScreen
 import io.minimpos.app.feature.settings.SettingsSectionScreen
-import io.minimpos.app.feature.transfer.CatalogueExportScreen
-import io.minimpos.app.feature.transfer.CatalogueImportScreen
+import io.minimpos.app.feature.transfer.TransferExportScreen
+import io.minimpos.app.feature.transfer.TransferImportScreen
 import io.minimpos.app.ui.components.LocalAppContainer
 
 /**
@@ -58,6 +60,8 @@ fun AppNavHost() {
                 entry<Route.Checkout> { CheckoutScreen(navigator, it.preAuthorisation) }
                 entry<Route.Payment> { PaymentScreen(navigator, it.preAuthorisation) }
                 entry<Route.SaleResult> { SaleResultScreen(it.saleId, navigator) }
+                entry<Route.Tip> { TipScreen(it.saleId, navigator) }
+                entry<Route.Capture> { CaptureScreen(it.saleId, it.adjustOnly, navigator) }
                 entry<Route.RefundScan> { RefundScanScreen(navigator) }
                 entry<Route.Refund> { RefundScreen(it.payload, it.saleId, navigator) }
                 entry<Route.RefundProcessing> { RefundProcessingScreen(navigator) }
@@ -67,8 +71,8 @@ fun AppNavHost() {
                 entry<Route.RefundDetail> { RefundDetailScreen(it.refundId, navigator) }
                 entry<Route.Products> { PinGate(navigator) { ProductsScreen(navigator) } }
                 entry<Route.ProductEdit> { PinGate(navigator) { ProductEditScreen(it.productId, it.sku, navigator) } }
-                entry<Route.CatalogueExport> { PinGate(navigator) { CatalogueExportScreen(navigator) } }
-                entry<Route.CatalogueImport> { PinGate(navigator) { CatalogueImportScreen(navigator) } }
+                entry<Route.TransferExport> { PinGate(navigator) { TransferExportScreen(navigator) } }
+                entry<Route.TransferImport> { PinGate(navigator) { TransferImportScreen(navigator) } }
                 entry<Route.Settings> { PinGate(navigator) { SettingsScreen(navigator) } }
                 entry<Route.SettingsSection> { PinGate(navigator) { SettingsSectionScreen(it.section, navigator) } }
             },

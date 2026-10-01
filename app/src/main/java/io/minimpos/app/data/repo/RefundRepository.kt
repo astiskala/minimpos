@@ -54,7 +54,8 @@ class RefundRepository(
      * Stores the refund result and, when it was accepted ([RefundStatus.REQUESTED]) for a local sale, records what has
      * been refunded so the same items or amount cannot be refunded twice from this terminal.
      *
-     * A full refund marks every line and the whole total as refunded; a partial one adds its [RefundedLine] quantities
+     * A full refund marks every line and the sale's whole amount (with any tip, see
+     * [io.minimpos.app.data.db.SaleEntity.amountMinor]) as refunded; a partial one adds its [RefundedLine] quantities
      * and its amount. Neither can exceed what was sold. Runs in one transaction.
      */
     suspend fun complete(refund: RefundEntity) =
@@ -75,7 +76,8 @@ class RefundRepository(
                     line.copy(refundedQuantity = quantity.coerceAtMost(line.quantity))
                 }
             saleDao.updateLines(lines)
-            val refunded = if (refund.full) sale.sale.totalMinor else sale.sale.refundedMinor + refund.amountMinor
-            saleDao.update(sale.sale.copy(refundedMinor = refunded.coerceAtMost(sale.sale.totalMinor)))
+            val amount = sale.sale.amountMinor
+            val refunded = if (refund.full) amount else sale.sale.refundedMinor + refund.amountMinor
+            saleDao.update(sale.sale.copy(refundedMinor = refunded.coerceAtMost(amount)))
         }
 }

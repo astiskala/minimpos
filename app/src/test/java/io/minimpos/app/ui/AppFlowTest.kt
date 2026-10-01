@@ -24,7 +24,9 @@ import io.minimpos.app.MiniMposApp
 import io.minimpos.app.TestEnvironment
 import io.minimpos.app.await
 import io.minimpos.app.awaitCondition
+import io.minimpos.app.data.db.ProductEntity
 import io.minimpos.app.data.db.RefundStatus
+import io.minimpos.app.data.db.SaleKind
 import io.minimpos.app.data.db.SaleStatus
 import io.minimpos.app.data.db.TaxRateEntity
 import io.minimpos.app.data.repo.HistoryItem
@@ -376,6 +378,82 @@ class AppFlowTest {
         assertThat(cancellation.status).isEqualTo(RefundStatus.REQUESTED)
         compose.onNodeWithTag("refundDone").performClick()
         compose.waitForTag("preAuth")
+    }
+
+    @Test
+    fun `takes a sale for a tip on the receipt and enters the tip afterwards`() {
+        ringUpCustomAmount(2, 5, 0, 0)
+        compose.onNodeWithTag("charge").performClick()
+        compose.waitForTag("pay")
+        compose
+            .onNodeWithTag("tipOnReceipt")
+            .performScrollTo()
+            .assertIsOff()
+            .performClick()
+        compose.onNodeWithTag("pay").performClick()
+        compose.waitUntilAtLeastOneExists(hasTestTag("resultStatus") and hasText("Awaiting tip"), 15_000)
+        compose.onNodeWithText("Print the receipt so the customer can add a tip and sign it, then enter the tip.").assertIsDisplayed()
+
+        compose.onNodeWithTag("enterTip").performScrollTo().performClick()
+        compose.waitForTag("addTip")
+        compose.onNodeWithTag("addTip").assertIsNotEnabled()
+        // The customer wrote the total.
+        compose.onNodeWithTag("tipInput_TOTAL").performClick()
+        listOf(3, 1, 0, 0).forEach { compose.onNodeWithTag("key_$it").performClick() }
+        compose.onNodeWithText("Bill $25.00 + tip $6.00 = $31.00.").assertIsDisplayed()
+        compose.onNodeWithText("More than 20% of the bill", substring = true).assertIsDisplayed()
+        compose.onNodeWithTag("addTip").performClick()
+        compose.onNodeWithText("Add a $6.00 tip?").assertIsDisplayed()
+        compose.onNodeWithTag("confirm").performClick()
+
+        compose.waitUntilAtLeastOneExists(hasTestTag("resultStatus") and hasText("Capture requested"), 15_000)
+        compose.onNodeWithText("$31.00").assertIsDisplayed()
+        compose.onNodeWithText("Bill $25.00 + tip $6.00").assertIsDisplayed()
+        compose.onNodeWithTag("enterTip").assertDoesNotExist()
+        val sale = await { container.history.items().first { it.isNotEmpty() } }.filterIsInstance<HistoryItem.Sale>().single()
+        val record = await { container.sales.get(sale.id)!! }.sale
+        assertThat(record.tipMinor).isEqualTo(600)
+        assertThat(record.authorisedMinor).isEqualTo(3_100)
+        assertThat(record.capturedMinor).isEqualTo(3_100)
+    }
+
+    @Test
+    fun `captures a pre-authorisation from the history`() {
+        await {
+            val rate =
+                container.catalog.taxRates
+                    .first()
+                    .first()
+            container.catalog.saveProduct(
+                ProductEntity(name = "Catering deposit", priceMinor = 20_000, taxRateId = rate.id, kind = SaleKind.PRE_AUTHORISATION),
+            )
+        }
+        compose.waitForTag("preAuth")
+        compose.onNodeWithTag("preAuth").performClick()
+        waitForText("Catering deposit")
+        compose.onNodeWithText("Catering deposit").performClick()
+        compose.waitForTag("pay")
+        compose.onNodeWithTag("pay").performClick()
+        compose.waitUntilAtLeastOneExists(hasTestTag("resultStatus") and hasText("Pre-authorized"), 15_000)
+        compose.onNodeWithTag("home").performClick()
+        compose.waitForTag("history")
+        compose.onNodeWithTag("history").performClick()
+        waitForText("Pre-authorized")
+        compose.onNodeWithText("Pre-authorized", useUnmergedTree = true).performClick()
+        compose.waitForTag("capture")
+        compose.onNodeWithTag("adjust").assertIsDisplayed()
+        compose.onNodeWithTag("capture").performClick()
+        compose.waitForTag("submitCapture")
+        compose.onNodeWithTag("submitCapture").assertTextEquals("Capture $200.00")
+        listOf(1, 8, 5, 0, 0).forEach { compose.onNodeWithTag("key_$it").performClick() }
+        compose.onNodeWithText("The rest of the amount held is released.").assertIsDisplayed()
+        compose.onNodeWithTag("submitCapture").assertTextEquals("Capture $185.00").performClick()
+        compose.onNodeWithTag("confirm").performClick()
+        compose.waitUntilAtLeastOneExists(hasTestTag("detailStatus") and hasText("Capture requested"), 15_000)
+        compose.onNodeWithTag("captureNote").assertTextContains("Capture of $185.00 requested", substring = true)
+        compose.onNodeWithTag("capture").assertDoesNotExist()
+        compose.onNodeWithTag("cancelPreAuth").assertDoesNotExist()
+        compose.onNodeWithTag("detailRefund").performScrollTo().assertIsDisplayed()
     }
 
     private fun awaitSetting(

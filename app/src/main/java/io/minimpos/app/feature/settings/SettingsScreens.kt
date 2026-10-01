@@ -17,6 +17,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.Error
+import androidx.compose.material.icons.filled.FileDownload
+import androidx.compose.material.icons.filled.FileUpload
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Payments
@@ -109,6 +111,7 @@ private fun settingsViewModel(): SettingsViewModel {
             testEmailSent = stringResource(R.string.settings_test_email_sent),
             testPrinted = stringResource(R.string.result_printed),
             secretNotStored = stringResource(R.string.settings_secret_not_stored),
+            apiOk = stringResource(R.string.settings_api_ok),
         )
     return viewModel {
         SettingsViewModel(
@@ -116,7 +119,7 @@ private fun settingsViewModel(): SettingsViewModel {
             secrets = container.secrets,
             pins = container.pinManager,
             sessionLock = container.sessionLock,
-            checks = SettingsChecks(container.terminalStatus, container.receipts),
+            checks = SettingsChecks(container.terminalStatus, container.receipts, container.api),
             history = container.history,
             catalog = container.catalog,
             messages = messages,
@@ -296,7 +299,8 @@ fun SettingsSectionScreen(
 /**
  * Settings › Terminal. On an Adyen terminal only the shared key needs entering: the POIID is detected, the host is
  * localhost and the environment comes from the terminal's certificate. Off-terminal (a terminal on the network), the
- * IP address and POIID are asked for too.
+ * IP address and POIID are asked for too. The optional Checkout API (for captures) follows the shared key; the
+ * simulator stands in for both.
  */
 @Composable
 private fun ColumnScope.TerminalSection(
@@ -319,7 +323,7 @@ private fun ColumnScope.TerminalSection(
     fun update(transform: (TerminalSettings) -> TerminalSettings) = vm.update { it.copy(terminal = transform(it.terminal)) }
 
     fun saveAndTest() {
-        if (!actions.connection.running) vm.testConnection(passphrase)
+        if (!actions.connection.running) vm.saveAndTest(Secret.TERMINAL_PASSPHRASE, passphrase)
     }
     if (mode != TerminalMode.SIMULATOR) ConnectionStatus(status.connection, status.poiId, status.environment)
     TerminalModeChoice(mode, onTerminal) { choice ->
@@ -344,6 +348,15 @@ private fun ColumnScope.TerminalSection(
             update = ::update,
             onSaveAndTest = ::saveAndTest,
             onForgetPassphrase = { vm.setSecret(Secret.TERMINAL_PASSPHRASE, null) },
+        )
+        ApiSettings(
+            terminal = terminal,
+            apiKeySaved = Secret.CHECKOUT_API_KEY in state.secrets,
+            problem = status.apiProblem,
+            actions = actions,
+            update = ::update,
+            onSaveAndTest = { key -> if (!actions.api.running) vm.saveAndTest(Secret.CHECKOUT_API_KEY, key) },
+            onForgetApiKey = { vm.setSecret(Secret.CHECKOUT_API_KEY, null) },
         )
     }
     AdvancedSettings {
@@ -473,6 +486,81 @@ private fun ColumnScope.SharedKeySettings(
             )
         }
         actions.secretError?.let { ActionMessage(it, isError = true) }
+    }
+}
+
+/**
+ * The optional Checkout API: merchant account, API key (only kept in memory while typed, and cleared once stored) and,
+ * unless the terminal is known to be TEST, the live URL prefix; what is still missing ([problem]), and the button that
+ * saves the key typed ([onSaveAndTest] gets it, or an empty one) and tests it, with the outcome of the last test.
+ */
+@Composable
+private fun ColumnScope.ApiSettings(
+    terminal: TerminalSettings,
+    apiKeySaved: Boolean,
+    problem: String?,
+    actions: SettingsActions,
+    update: ((TerminalSettings) -> TerminalSettings) -> Unit,
+    onSaveAndTest: (apiKey: String) -> Unit,
+    onForgetApiKey: () -> Unit,
+) {
+    var apiKey by remember { mutableStateOf("") }
+    LaunchedEffect(actions.apiKeyStored) { if (actions.apiKeyStored) apiKey = "" }
+    val test = actions.api
+    SectionHeader(stringResource(R.string.settings_api))
+    SettingNote(stringResource(R.string.settings_api_hint))
+    SettingTextField(
+        stringResource(R.string.settings_merchant_account),
+        terminal.merchantAccount,
+        { value -> update { it.copy(merchantAccount = value.trim()) } },
+        autoCorrect = false,
+        imeAction = ImeAction.Next,
+        tag = "merchantAccount",
+    )
+    SecretField(
+        label = stringResource(R.string.settings_api_key),
+        isSet = apiKeySaved,
+        value = apiKey,
+        onValueChange = { apiKey = it },
+        onSubmit = { onSaveAndTest(apiKey) },
+        tag = "apiKey",
+    )
+    if (terminal.environment != TerminalEnvironment.TEST) {
+        SettingTextField(
+            stringResource(R.string.settings_live_prefix),
+            terminal.liveUrlPrefix,
+            { value -> update { it.copy(liveUrlPrefix = value.trim()) } },
+            supporting = stringResource(R.string.settings_live_prefix_hint),
+            autoCorrect = false,
+            tag = "livePrefix",
+        )
+    }
+    Column(Modifier.padding(horizontal = 16.dp, vertical = LocalDimens.current.spacing)) {
+        problem?.let { ActionMessage(it, isError = true) }
+        if (apiKey.isNotBlank()) {
+            PrimaryButton(
+                stringResource(R.string.settings_save_and_test_api),
+                { onSaveAndTest(apiKey) },
+                loading = test.running,
+                modifier = Modifier.testTag("testApi"),
+            )
+        } else {
+            SecondaryButton(
+                stringResource(R.string.settings_test_api),
+                { onSaveAndTest("") },
+                loading = test.running,
+                modifier = Modifier.testTag("testApi"),
+            )
+        }
+        if (apiKeySaved) {
+            TertiaryButton(
+                stringResource(R.string.settings_forget_api_key),
+                onForgetApiKey,
+                destructive = true,
+                modifier = Modifier.testTag("forgetApiKey"),
+            )
+        }
+        test.message?.let { ActionMessage(it, test.isError, Modifier.testTag("apiResult")) }
     }
 }
 
@@ -636,6 +724,14 @@ private fun ColumnScope.PaymentsSection(
     })
     SectionHeader(stringResource(R.string.settings_tokenization))
     TokenizationSettings(payment, ::update)
+    SectionHeader(stringResource(R.string.settings_tipping))
+    SettingSwitch(
+        stringResource(R.string.settings_tip_default),
+        payment.tipOnReceiptDefaultOn,
+        { value -> update { it.copy(tipOnReceiptDefaultOn = value) } },
+        subtitle = stringResource(R.string.settings_tip_default_hint),
+        tag = "tipDefault",
+    )
     SectionHeader(stringResource(R.string.settings_email_receipts))
     EmailCaptureSettings(payment, ::update)
 }
@@ -1058,12 +1154,20 @@ private fun DataSection(
         }
     }
     SectionHeader(stringResource(R.string.settings_catalogue))
-    SettingNavRow(Icons.Default.Storage, stringResource(R.string.transfer_export), stringResource(R.string.settings_export_hint), {
-        navigator.push(Route.CatalogueExport)
-    })
-    SettingNavRow(Icons.Default.Storage, stringResource(R.string.transfer_import), stringResource(R.string.settings_import_hint), {
-        navigator.push(Route.CatalogueImport)
-    })
+    SettingNavRow(
+        Icons.Default.FileUpload,
+        stringResource(R.string.transfer_export),
+        stringResource(R.string.settings_export_hint),
+        { navigator.push(Route.TransferExport) },
+        tag = "shareToTerminal",
+    )
+    SettingNavRow(
+        Icons.Default.FileDownload,
+        stringResource(R.string.transfer_import),
+        stringResource(R.string.settings_import_hint),
+        { navigator.push(Route.TransferImport) },
+        tag = "setUpFromTerminal",
+    )
     if (confirmClear) {
         ConfirmDialog(
             title = stringResource(R.string.settings_clear_history),

@@ -3,7 +3,7 @@ package io.minimpos.core.catalogue
 import io.minimpos.core.money.CurrencySpec
 
 /**
- * Portable product catalogue, as transferred between terminals (see `CatalogueCodec`). Products reference tax
+ * Portable product catalogue, as transferred between terminals (see `TransferCodec`). Products reference tax
  * rates/categories by index into this catalogue's lists rather than by database id, so it does not depend on the
  * sending terminal's database.
  *

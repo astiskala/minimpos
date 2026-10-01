@@ -21,10 +21,12 @@ import io.minimpos.app.data.settings.AppSettings
 import io.minimpos.app.data.settings.JsonDataStoreSerializer
 import io.minimpos.app.data.settings.PaymentSettings
 import io.minimpos.app.data.settings.SettingsRepository
+import io.minimpos.app.data.transfer.SetupTransfer
 import io.minimpos.app.email.EmailTexts
 import io.minimpos.app.email.MailTransport
 import io.minimpos.app.email.ReceiptEmailer
 import io.minimpos.app.email.SmtpMailer
+import io.minimpos.app.payment.Captures
 import io.minimpos.app.payment.PaymentStart
 import io.minimpos.app.payment.ReceiptDelivery
 import io.minimpos.app.payment.RefundBook
@@ -34,6 +36,7 @@ import io.minimpos.app.payment.TransactionLifecycle
 import io.minimpos.app.qr.QrCodes
 import io.minimpos.app.receipt.ReceiptFactory
 import io.minimpos.app.refund.RefundStart
+import io.minimpos.app.terminal.AdyenApi
 import io.minimpos.app.terminal.AndroidDeviceInfo
 import io.minimpos.app.terminal.DeviceInfo
 import io.minimpos.app.terminal.TerminalGateway
@@ -103,6 +106,9 @@ class AppContainer(
     /** Tax rates, categories and products. */
     val catalog = CatalogRepository(database, context.getString(R.string.tax_default_zero))
 
+    /** Copies the catalogue, settings and secrets to another terminal by QR code. */
+    val setupTransfer = SetupTransfer(catalog, settings, secrets)
+
     /** Stored sales. */
     val sales = SaleRepository(database)
 
@@ -128,8 +134,11 @@ class AppContainer(
     /** The payment terminal (or the simulator): where payments go, and the Terminal API operations. */
     val gateway = TerminalGateway(settings, secrets, device, virtualPrinter, application, terminalTransport)
 
+    /** Adyen's Checkout API, for captures and authorisation adjustments (simulated with the simulator). */
+    val api = AdyenApi(settings, secrets, gateway)
+
     /** Whether payments and printing can work, for Home, Settings and the receipt screens. */
-    val terminalStatus = TerminalStatus(gateway, settings, secrets, appScope)
+    val terminalStatus = TerminalStatus(gateway, settings, secrets, appScope, api)
 
     /** Builds receipt documents from stored sales and refunds, with localised labels. */
     val receiptFactory = ReceiptFactory(receiptLabels())
@@ -187,6 +196,9 @@ class AppContainer(
             onSucceeded = receipts::arm,
         )
 
+    /** Enters tips and captures and adjusts payments taken with manual capture. */
+    val captures = Captures(sales, api)
+
     /** Runs referenced refunds and keeps their progress. */
     val refunds: TransactionLifecycle<RefundStart> =
         TransactionLifecycle(
@@ -198,12 +210,12 @@ class AppContainer(
         )
 
     /**
-     * Starts the background work, once per process: marks transactions interrupted by the last shutdown as UNKNOWN,
+     * Starts the background work, once per process: marks transactions and captures interrupted by the last shutdown as UNKNOWN,
      * seeds the default tax rates, prunes old history, and starts the [terminalStatus] checks.
      */
     fun start() {
         appScope.launch {
-            history.settleInterrupted(context.getString(R.string.payment_interrupted))
+            history.settleInterrupted(context.getString(R.string.payment_interrupted), context.getString(R.string.capture_interrupted))
             catalog.seedDefaults(context.getString(R.string.tax_default_standard), context.getString(R.string.tax_default_zero))
             history.prune(settings.current().history.retentionDays, System.currentTimeMillis())
         }
@@ -250,6 +262,12 @@ class AppContainer(
             cancelledReference = context.getString(R.string.receipt_cancelled_reference),
             cancellationNote = context.getString(R.string.receipt_cancellation_note),
             released = context.getString(R.string.receipt_released),
+            amount = context.getString(R.string.receipt_amount),
+            tip = context.getString(R.string.receipt_tip),
+            tipTotal = context.getString(R.string.receipt_tip_total),
+            signature = context.getString(R.string.receipt_signature),
+            heldNow = context.getString(R.string.receipt_held_now),
+            captured = context.getString(R.string.receipt_captured),
         )
 
     /** The application identity and currency resolution, also used without a container. */

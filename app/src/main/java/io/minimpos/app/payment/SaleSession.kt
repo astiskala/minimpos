@@ -18,12 +18,14 @@ import java.util.UUID
  * @property customerReference The customer reference typed in (only asked for when it is the shopper reference).
  * @property email The shopper's email typed in, for the receipt and possibly the shopper reference.
  * @property tokenize Null until the operator touches the switch; then the settings default no longer applies.
+ * @property tipOnReceipt "Tip on the receipt": null until the operator touches the switch, as with [tokenize].
  */
 data class CheckoutForm(
     val transactionReference: String = "",
     val customerReference: String = "",
     val email: String = "",
     val tokenize: Boolean? = null,
+    val tipOnReceipt: Boolean? = null,
 )
 
 /**

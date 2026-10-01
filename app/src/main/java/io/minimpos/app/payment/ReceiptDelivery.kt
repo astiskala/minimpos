@@ -11,6 +11,7 @@ import io.minimpos.app.email.ReceiptEmailer
 import io.minimpos.app.receipt.ActionResult
 import io.minimpos.app.receipt.PrintRenderer
 import io.minimpos.app.receipt.ReceiptFactory
+import io.minimpos.app.refund.PaymentHold
 import io.minimpos.app.terminal.TerminalGateway
 import io.minimpos.app.terminal.TerminalStatus
 import io.minimpos.core.receipt.ReceiptCopy
@@ -121,7 +122,7 @@ class ReceiptDelivery(
         to: String,
     ): ActionResult {
         val record = sales.get(saleId) ?: return ActionResult.Failure(notFound)
-        val document = receipts.sale(record, settings.current().receipt)
+        val document = receipts.sale(record, settings.current().receipt, paper = false)
         val preAuthorisation = record.sale.kind == SaleKind.PRE_AUTHORISATION
         return emailer.sendSale(to, document, record.sale.merchantReference, preAuthorisation).also {
             if (it == ActionResult.Success) sales.markEmailed(saleId, to.trim())
@@ -150,7 +151,10 @@ class ReceiptDelivery(
     ): Boolean =
         when (current.receipt.merchantCopy) {
             MerchantCopyPolicy.NEVER -> false
-            MerchantCopyPolicy.SIGNATURE_ONLY -> sale.signatureRequired
+
+            // The shopper signs the merchant copy of a receipt awaiting a tip.
+            MerchantCopyPolicy.SIGNATURE_ONLY -> sale.signatureRequired || PaymentHold.awaitingTip(sale)
+
             MerchantCopyPolicy.ALWAYS -> true
         }
 

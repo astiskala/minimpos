@@ -20,6 +20,7 @@ import io.minimpos.core.receipt.ReceiptLabels
 import io.minimpos.core.receipt.ReceiptOptions
 import io.minimpos.core.receipt.RefundReceipt
 import io.minimpos.core.receipt.SaleReceipt
+import io.minimpos.core.receipt.TipLines
 import io.minimpos.core.tax.TaxAmounts
 import io.minimpos.core.tax.TaxMode
 import java.time.Instant
@@ -47,12 +48,15 @@ class ReceiptFactory(
     /**
      * The receipt of [record]: its items, taxes per rate (highest rate first) and the card receipt lines of [copy].
      * A sale that can be refunded gets a refund QR code ([RefundablePayment.qrCode]); unapproved ones are marked as not
-     * completed, and pre-authorisations are titled and totalled as an amount held.
+     * completed, and pre-authorisations are titled and totalled as an amount held, with what they hold after an
+     * adjustment and what was captured. A sale taken for tipping on the receipt gets tip lines to fill in until its
+     * tip is entered (only on [paper]: an emailed receipt leaves them out), then the tip and the total with it.
      */
     fun sale(
         record: SaleWithLines,
         settings: ReceiptSettings,
         copy: ReceiptCopy = ReceiptCopy.CUSTOMER,
+        paper: Boolean = true,
     ): ReceiptDocument {
         val sale = record.sale
         val currency = CurrencySpec.of(sale.currency)
@@ -85,6 +89,15 @@ class ReceiptFactory(
                 refundQr = RefundablePayment.qrCode(record),
                 cardSaved = sale.storedPaymentMethodId != null,
                 preAuthorisation = sale.kind == SaleKind.PRE_AUTHORISATION,
+                tip =
+                    when {
+                        !sale.tipOnReceipt -> null
+                        sale.tipMinor != null -> TipLines.Entered(sale.tipMinor)
+                        approved && paper -> TipLines.Blank
+                        else -> null
+                    },
+                heldNow = sale.authorisedMinor?.takeIf { sale.kind == SaleKind.PRE_AUTHORISATION && it != sale.totalMinor },
+                captured = sale.capturedMinor?.takeIf { sale.kind == SaleKind.PRE_AUTHORISATION && sale.captured },
             )
         return builder(settings, currency).sale(receipt, copy)
     }

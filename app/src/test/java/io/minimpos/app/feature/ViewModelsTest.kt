@@ -19,6 +19,7 @@ import io.minimpos.app.data.settings.TerminalMode
 import io.minimpos.app.feature.history.HistoryFilter
 import io.minimpos.app.feature.history.HistoryViewModel
 import io.minimpos.app.feature.history.SaleDetailViewModel
+import io.minimpos.app.feature.history.SaleOperations
 import io.minimpos.app.feature.products.ProductEditViewModel
 import io.minimpos.app.feature.products.ProductsViewModel
 import io.minimpos.app.feature.refund.RefundOption
@@ -31,10 +32,6 @@ import io.minimpos.app.feature.sale.SaleViewModel
 import io.minimpos.app.feature.settings.SettingsChecks
 import io.minimpos.app.feature.settings.SettingsMessages
 import io.minimpos.app.feature.settings.SettingsViewModel
-import io.minimpos.app.feature.transfer.CatalogueExportViewModel
-import io.minimpos.app.feature.transfer.CatalogueImportViewModel
-import io.minimpos.app.feature.transfer.ImportError
-import io.minimpos.app.feature.transfer.ImportUiState
 import io.minimpos.app.payment.TransactionState
 import io.minimpos.app.refund.RefundInvalidReason
 import io.minimpos.app.refund.Refundability
@@ -94,7 +91,14 @@ class ViewModelsTest {
     private fun saleViewModel() = SaleViewModel(container.catalog, container.saleSession, container.settingsState, container::currency)
 
     private fun payAndWait(configure: (CheckoutViewModel) -> Unit = {}): String {
-        val checkout = CheckoutViewModel(container.saleSession, container.payments, container.settingsState, container::currency)
+        val checkout =
+            CheckoutViewModel(
+                container.saleSession,
+                container.payments,
+                container.settingsState,
+                container.terminalStatus.state,
+                container::currency,
+            )
         configure(checkout)
         assertThat(checkout.pay()).isTrue()
         return await { (container.payments.state.first { it is TransactionState.Finished } as TransactionState.Finished).id }
@@ -179,7 +183,14 @@ class ViewModelsTest {
         env.useSimulator()
         val (tax, latte) = seedCatalogue()
         container.saleSession.addProduct(latte, tax)
-        val vm = CheckoutViewModel(container.saleSession, container.payments, container.settingsState, container::currency)
+        val vm =
+            CheckoutViewModel(
+                container.saleSession,
+                container.payments,
+                container.settingsState,
+                container.terminalStatus.state,
+                container::currency,
+            )
         vm.update { it.copy(customerReference = "ab") }
         var state = await { vm.state.first { it.form.customerReference == "ab" } }
         assertThat(state.customerReferenceValid).isFalse()
@@ -472,8 +483,7 @@ class ViewModelsTest {
                 saleId,
                 container.sales,
                 container.receipts,
-                container.payments,
-                container.refunds,
+                SaleOperations(container.payments, container.refunds, container.captures),
                 container.settingsState,
                 container.terminalStatus.state,
                 messages.copy(stillUnknown = "still unknown"),
@@ -569,155 +579,5 @@ class ViewModelsTest {
         await { container.catalog.products.first { it.none { p -> p.name == "Scone" } } }
         assertThat(deleted).isTrue()
         other.delete { error("new products cannot be deleted") }
-    }
-
-    @Test
-    fun `catalogue transfer view models round trip`() {
-        env.useSimulator { it.copy(payment = it.payment.copy(currencyCode = "AUD")) }
-        seedCatalogue()
-        val export = CatalogueExportViewModel(container.catalog, "AUD", chunkSize = 20)
-        val codes = await { export.state.first { !it.loading } }.codes
-        assertThat(codes.size).isGreaterThan(1)
-
-        val import = CatalogueImportViewModel(container.catalog, "NZD")
-        import.onCode("hello")
-        assertThat((import.state.value as ImportUiState.Scanning).error).isEqualTo(ImportError.NOT_A_CATALOGUE)
-        import.onCode(codes.first())
-        assertThat((import.state.value as ImportUiState.Scanning).received).isEqualTo(1)
-        codes.drop(1).forEach(import::onCode)
-        val ready = import.state.value as ImportUiState.Ready
-        assertThat(ready.currencyMatches).isFalse()
-        assertThat(ready.catalogue.products).hasSize(2)
-        import.onCode(codes.first())
-        import.import(ImportMode.MERGE)
-        val done = await { import.state.first { it is ImportUiState.Done } } as ImportUiState.Done
-        assertThat(done.summary.productsUpdated).isEqualTo(2)
-        import.import(ImportMode.REPLACE)
-        import.restart()
-        assertThat(import.state.value).isEqualTo(ImportUiState.Scanning())
-        import.onCode("MPC1:ABCD:1/1:AAAA")
-        assertThat((import.state.value as ImportUiState.Scanning).error).isEqualTo(ImportError.CORRUPT)
-    }
-
-    private fun settingsViewModel(target: AppContainer = container) =
-        SettingsViewModel(
-            target.settings,
-            target.secrets,
-            target.pinManager,
-            target.sessionLock,
-            SettingsChecks(target.terminalStatus, target.receipts),
-            target.history,
-            target.catalog,
-            SettingsMessages("Connected", "Failed", "printer", "no printer", "Sent to %s", "Printed", "Not stored (%s)"),
-        )
-
-    @Test
-    fun `settings view model saves the passphrase before testing, and reports what went wrong`() {
-        val onTerminal = TestEnvironment(FakeDevice(detectedPoiId = "AMS1-000168223606144"), FakeTerminal())
-        try {
-            onTerminal.updateSettings { it.copy(terminal = it.terminal.copy(keyIdentifier = "key")) }
-            val vm = settingsViewModel(onTerminal.container)
-
-            vm.testConnection("wrong passphrase")
-            val rejected = await { vm.actions.first { it.connection.isError } }
-            assertThat(rejected.connection.message).contains("shared key")
-            assertThat(rejected.passphraseStored).isTrue()
-            vm.dismissConnectionResult()
-            assertThat(vm.actions.value.connection.message).isNull()
-
-            vm.testConnection("correct horse battery staple")
-            val connected = await { vm.actions.first { it.connection.done } }
-            assertThat(connected.connection.message).startsWith("Connected")
-            assertThat(await { onTerminal.container.secrets.get(Secret.TERMINAL_PASSPHRASE) }).isEqualTo("correct horse battery staple")
-
-            // A device that cannot encrypt secrets is reported, not a crash, and the saved passphrase is kept.
-            onTerminal.cipher.failEncrypt = true
-            vm.testConnection("another passphrase")
-            val failed = await { vm.actions.first { it.connection.isError } }
-            assertThat(failed.connection.message).startsWith("Not stored (ProviderException: Keystore unavailable)")
-            assertThat(failed.passphraseStored).isFalse()
-            assertThat(await { onTerminal.container.secrets.get(Secret.TERMINAL_PASSPHRASE) }).isEqualTo("correct horse battery staple")
-            vm.setSecret(Secret.SMTP_PASSWORD, "hunter2")
-            vm.setPin("2468")
-            await { vm.actions.first { it.secretError != null } }
-            assertThat(onTerminal.container.sessionLock.unlocked.value).isFalse()
-            onTerminal.cipher.failEncrypt = false
-            vm.setSecret(Secret.SMTP_PASSWORD, "hunter2")
-            await { vm.actions.first { it.secretError == null } }
-        } finally {
-            onTerminal.close()
-        }
-    }
-
-    @Test
-    fun `settings view model manages named tax rates`() {
-        val (gst, _) = seedCatalogue()
-        val vm = settingsViewModel()
-        var state = await { vm.state.first { it.loaded && it.taxRates.isNotEmpty() } }
-        assertThat(state.taxRateUsage[gst.id]).isEqualTo(2)
-        assertThat(state.defaultTaxRate).isEqualTo(gst)
-
-        vm.saveTaxRate(TaxRateEntity(name = " VAT ", rateMilliPercent = TaxRates.parse("25.5")!!), makeDefault = true)
-        // VAT sorts first, so it is the fallback default too: wait until it is stored as the default.
-        state = await { vm.state.first { s -> s.settings.payment.defaultTaxRateId != null && s.defaultTaxRate?.name == "VAT" } }
-        val vat = state.taxRates.single { it.name == "VAT" }
-        assertThat(vat.rateMilliPercent).isEqualTo(25_500)
-        assertThat(state.taxRateUsage[vat.id]).isNull()
-        vm.saveTaxRate(vat.copy(name = "Consumption tax", rateMilliPercent = TaxRates.parse("8.1")!!), makeDefault = false)
-        state = await { vm.state.first { s -> s.taxRates.any { it.name == "Consumption tax" } } }
-        assertThat(state.defaultTaxRate!!.rateMilliPercent).isEqualTo(8_100)
-
-        // Rates still used by products stay, and say why.
-        vm.deleteTaxRate(gst)
-        assertThat(await { vm.actions.first { it.taxRateInUse != null } }.taxRateInUse).isEqualTo(2)
-        vm.deleteTaxRate(state.defaultTaxRate!!)
-        await { vm.actions.first { it.taxRateInUse == null } }
-        state = await { vm.state.first { it.taxRates.size == 1 } }
-        // The default falls back to the remaining rate, which cannot be deleted.
-        assertThat(state.defaultTaxRate).isEqualTo(gst)
-        await {
-            container.catalog.products
-                .first()
-                .forEach { p -> container.catalog.deleteProduct(p) }
-        }
-        vm.deleteTaxRate(gst)
-        assertThat(await { vm.state.first { it.taxRateUsage.isEmpty() } }.taxRates).containsExactly(gst)
-    }
-
-    @Test
-    fun `settings view model updates settings, secrets and runs checks`() {
-        env.useSimulator()
-        val vm = settingsViewModel()
-        vm.update { it.copy(receipt = it.receipt.copy(businessName = "Shop")) }
-        await { vm.state.first { it.settings.receipt.businessName == "Shop" } }
-        vm.setSecret(Secret.TERMINAL_PASSPHRASE, "secret")
-        await { vm.state.first { Secret.TERMINAL_PASSPHRASE in it.secrets } }
-        vm.setPin("2468")
-        assertThat(await { vm.state.first { it.pinSet } }.pinSet).isTrue()
-        await { container.sessionLock.unlocked.first { it } }
-        vm.clearPin()
-        await { vm.state.first { !it.pinSet } }
-
-        vm.testConnection()
-        assertThat(await { vm.actions.first { it.connection.done } }.connection.message).contains("Connected")
-        vm.printTest(ReceiptDocument(listOf(ReceiptElement.Text("Test"))))
-        assertThat(await { vm.actions.first { it.print.done } }.print.message).isEqualTo("Printed")
-        vm.sendTestEmail("a@b.co")
-        assertThat(await { vm.actions.first { !it.email.running && it.email.message != null } }.email.isError).isTrue()
-        vm.clearHistory()
-        await { vm.actions.first { it.cleared } }
-
-        env.updateSettings { it.copy(terminal = it.terminal.copy(mode = TerminalMode.TERMINAL)) }
-        vm.testConnection()
-        assertThat(await { vm.actions.first { it.connection.isError } }.connection.message).contains("POIID")
-        env.updateSettings {
-            it.copy(terminal = it.terminal.copy(poiIdOverride = "S1F2-000000001", keyIdentifier = "k", host = "127.0.0.1"))
-        }
-        vm.testConnection()
-        assertThat(
-            await {
-                vm.actions.first { it.connection.isError && it.connection.message?.startsWith("Failed") == true }
-            }.connection.message,
-        ).contains("Cannot connect")
     }
 }

@@ -151,6 +151,28 @@ class DatabaseMigrationTest {
     }
 
     @Test
+    fun `version 5 sales are neither taken for a tip nor captured`() {
+        val name = "migration-v5.db"
+        createDatabase(name, 5) {
+            execSQL(
+                "INSERT INTO sales (id, createdAt, currency, taxMode, netMinor, taxMinor, totalMinor, status, merchantReference, " +
+                    "tokenizationRequested, signatureRequired, refundedMinor, kind) VALUES ('s1', 1, 'AUD', 'INCLUSIVE', 91, 9, 100, " +
+                    "'APPROVED', 'MP-1', 0, 0, 0, 'PRE_AUTHORISATION')",
+            )
+        }
+        migrated(name) { db ->
+            val sale = db.saleDao().sale("s1")!!.sale
+            assertThat(sale.kind).isEqualTo(SaleKind.PRE_AUTHORISATION)
+            assertThat(sale.tipOnReceipt).isFalse()
+            assertThat(sale.tipMinor).isNull()
+            assertThat(sale.captureStatus).isNull()
+            assertThat(sale.authorisedMinor).isNull()
+            assertThat(sale.amountMinor).isEqualTo(100)
+            assertThat(db.saleDao().pendingCaptures()).isEmpty()
+        }
+    }
+
+    @Test
     fun `version 3 untaxed products use an existing zero rate`() {
         val name = "migration-v3-existing.db"
         createDatabase(name, 3) {

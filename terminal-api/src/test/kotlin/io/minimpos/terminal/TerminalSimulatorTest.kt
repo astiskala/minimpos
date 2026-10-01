@@ -75,7 +75,10 @@ class TerminalSimulatorTest {
         val preAuth = pay(tokenizing.copy(preAuthorisation = true))
         assertThat(preAuth.success).isTrue()
         assertThat(preAuth.customerReceipt.single { it.key == "txtype" }.name).isEqualTo("Pre-authorization")
-        assertThat(pay().customerReceipt.single { it.key == "txtype" }.name).isEqualTo("Payment")
+        assertThat(preAuth.additionalData["adjustAuthorisationData"]).startsWith("BQABAQ")
+        val sale = pay()
+        assertThat(sale.customerReceipt.single { it.key == "txtype" }.name).isEqualTo("Payment")
+        assertThat(sale.additionalData).doesNotContainKey("adjustAuthorisationData")
         val cancel =
             runBlocking {
                 client.refund(RefundParams(preAuth.poiTransactionId!!, preAuth.poiTimestamp!!, "C-1")) as TransactionOutcome.Completed

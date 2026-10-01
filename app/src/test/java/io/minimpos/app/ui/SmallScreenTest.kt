@@ -19,10 +19,12 @@ import io.minimpos.app.MiniMposApp
 import io.minimpos.app.TestEnvironment
 import io.minimpos.app.await
 import io.minimpos.app.awaitCondition
+import io.minimpos.app.data.db.CaptureStatus
 import io.minimpos.app.data.db.ProductEntity
 import io.minimpos.app.data.db.SaleKind
 import io.minimpos.app.data.db.SaleStatus
 import io.minimpos.app.data.security.Secret
+import io.minimpos.app.data.settings.PrinterMode
 import kotlinx.coroutines.flow.first
 import org.junit.Before
 import org.junit.Rule
@@ -233,6 +235,72 @@ class SmallScreenTest {
         waitForTag("cancelPreAuth")
         compose.onNodeWithTag("cancelPreAuth").assertIsDisplayed()
         assertThat(await { container.sales.get(preAuth.id)!! }.sale.kind).isEqualTo(SaleKind.PRE_AUTHORISATION)
+    }
+
+    @Test
+    fun `a tip on the receipt fits the screen, and is recorded for the Customer Area without an API`() = tipFitsTheScreen()
+
+    @Test
+    @Config(qualifiers = "en-rAU-w320dp-h456dp-mdpi")
+    fun `a tip on the receipt fits the P630 screen`() = tipFitsTheScreen()
+
+    private fun tipFitsTheScreen() {
+        configureKey()
+        // The AMS1 has no printer of its own; tipping on the receipt needs one.
+        env.updateSettings { it.copy(receipt = it.receipt.copy(printerMode = PrinterMode.ON)) }
+        compose.setContent { MiniMposApp(container) }
+        compose.onNodeWithTag("newSale").performClick()
+        waitForTag("addCustom")
+        listOf(4, 0, 0, 0).forEach { compose.onNodeWithTag("key_$it").performClick() }
+        compose.onNodeWithTag("addCustom").performClick()
+        compose.onNodeWithTag("charge").performClick()
+        waitForTag("pay")
+        compose.onNodeWithTag("tipOnReceipt").performScrollTo().performClick()
+        compose.onNodeWithTag("pay").assertIsDisplayed().performClick()
+        compose.waitUntilAtLeastOneExists(hasTestTag("resultStatus") and hasText("Awaiting tip"), 15_000)
+        compose.onNodeWithTag("newSaleAfter").assertIsDisplayed()
+
+        compose.onNodeWithTag("enterTip").performScrollTo().performClick()
+        waitForTag("addTip")
+        // The keypad and both actions fit without scrolling.
+        listOf("addTip", "noTip", "key_00", "tipInput_TOTAL").forEach { compose.onNodeWithTag(it).assertIsDisplayed() }
+        listOf(6, 0, 0).forEach { compose.onNodeWithTag("key_$it").performClick() }
+        compose.onNodeWithTag("addTip").performClick()
+        compose.onNodeWithText("Capture $46.00 in your Customer Area afterwards", substring = true).assertExists()
+        compose.onNodeWithTag("confirm").performClick()
+        compose.waitUntilAtLeastOneExists(hasTestTag("resultStatus") and hasText("Capture in Customer Area"), 15_000)
+        compose.onNodeWithTag("newSaleAfter").assertIsDisplayed()
+        val sale = await { container.history.items().first { it.isNotEmpty() } }.single()
+        assertThat(await { container.sales.get(sale.id)!! }.sale.captureStatus).isEqualTo(CaptureStatus.MANUAL)
+    }
+
+    @Test
+    fun `the Checkout API is set up under Terminal settings, and says what is still missing`() {
+        configureKey()
+        compose.setContent { MiniMposApp(container) }
+        compose.onNodeWithTag("settings").performClick()
+        waitForTag("section_terminal")
+        compose.onNodeWithTag("section_terminal").performClick()
+        waitForTag("merchantAccount")
+        compose.onNodeWithTag("merchantAccount").performScrollTo().performTextInput("HarbourCoffeeCOM")
+        compose.awaitCondition(
+            "Saving the merchant account",
+        ) { container.settingsState.value.terminal.merchantAccount == "HarbourCoffeeCOM" }
+        compose.onNodeWithTag("apiKey").performScrollTo().performTextInput("AQE-secret")
+        compose
+            .onNodeWithTag("testApi")
+            .performScrollTo()
+            .assertTextContains("Save and test API key")
+            .performClick()
+        // The terminal's environment is not known until a connection has been made over TLS.
+        compose.waitUntilAtLeastOneExists(
+            hasTestTag("apiResult") and hasText("Test the connection to the terminal first", substring = true),
+            15_000,
+        )
+        assertThat(await { container.secrets.get(Secret.CHECKOUT_API_KEY) }).isEqualTo("AQE-secret")
+        compose.onNodeWithTag("livePrefix").assertExists()
+        compose.onNodeWithTag("forgetApiKey").performScrollTo().performClick()
+        compose.awaitCondition("Removing the API key") { await { container.secrets.get(Secret.CHECKOUT_API_KEY) } == null }
     }
 
     @Test

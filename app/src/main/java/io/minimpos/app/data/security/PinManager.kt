@@ -131,9 +131,28 @@ class PinManager(
         private const val DEFAULT_ITERATIONS = 20_000
         private const val SALT_BYTES = 16
         private const val HASH_BITS = 256
+        private const val VERIFIER_PARTS = 4
+        private const val MAX_ITERATIONS = 1_000_000
 
         /** Whether [pin] is [MIN_LENGTH] to [MAX_LENGTH] ASCII digits. */
         fun isValidPin(pin: String): Boolean = pin.length in MIN_LENGTH..MAX_LENGTH && pin.all { it in '0'..'9' }
+
+        /**
+         * Whether [verifier] has the stored format (`v1:<iterations>:<salt>:<hash>`), so [verify] can check PINs
+         * against it; used for a verifier copied from another terminal.
+         */
+        fun isValidVerifier(verifier: String): Boolean {
+            val parts = verifier.split(':')
+            if (parts.size != VERIFIER_PARTS) return false
+            val (version, rounds, salt) = parts
+            if (version != "v1" || rounds.toIntOrNull() !in 1..MAX_ITERATIONS) return false
+            return try {
+                val decoder = Base64.getDecoder()
+                decoder.decode(salt).isNotEmpty() && decoder.decode(parts.last()).size * Byte.SIZE_BITS == HASH_BITS
+            } catch (ignored: IllegalArgumentException) {
+                false
+            }
+        }
     }
 }
 

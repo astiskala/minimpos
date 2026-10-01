@@ -114,6 +114,56 @@ class ReceiptBuilderTest {
     }
 
     @Test
+    fun `receipts awaiting a tip have lines to fill in, and the merchant copy a line to sign`() {
+        val write = "_".repeat(14)
+        val customer = builder().sale(sale().copy(tip = TipLines.Blank))
+        assertThat(customer.elements)
+            .containsAtLeast(
+                Row("AMOUNT", "$12.00", TextStyle.BOLD),
+                Row("Includes GST 10%", "$0.82"),
+                Blank,
+                Row("TIP", write),
+                Blank,
+                Row("TOTAL", write, TextStyle.BOLD),
+                Divider,
+            ).inOrder()
+        assertThat(customer.elements.filterIsInstance<Row>().map { it.left }).doesNotContain("SIGNATURE")
+        assertThat(customer.qrCodes).hasSize(1)
+        val merchant = builder().sale(sale().copy(tip = TipLines.Blank), ReceiptCopy.MERCHANT)
+        assertThat(merchant.elements)
+            .containsAtLeast(Row("TOTAL", write, TextStyle.BOLD), Blank, Blank, Row("SIGNATURE", "_".repeat(20)), Divider)
+            .inOrder()
+    }
+
+    @Test
+    fun `an entered tip is printed with the total it makes`() {
+        val doc = builder().sale(sale(mode = TaxMode.EXCLUSIVE).copy(tip = TipLines.Entered(250)), ReceiptCopy.MERCHANT)
+        assertThat(doc.elements)
+            .containsAtLeast(
+                Row("Subtotal", "$11.18"),
+                Row("AMOUNT", "$12.00", TextStyle.BOLD),
+                Row("TIP", "$2.50"),
+                Row("TOTAL", "$14.50", TextStyle.BOLD),
+            ).inOrder()
+        assertThat(doc.elements.filterIsInstance<Row>().map { it.left }).doesNotContain("SIGNATURE")
+    }
+
+    @Test
+    fun `an adjusted and captured pre-authorisation shows both amounts and drops the not charged note`() {
+        val preAuth = sale().copy(preAuthorisation = true, heldNow = 1_500, captured = 1_450)
+        val doc = builder().sale(preAuth)
+        assertThat(doc.elements)
+            .containsAtLeast(
+                Row("AMOUNT HELD", "$12.00", TextStyle.BOLD),
+                Row("HELD NOW", "$15.00"),
+                Row("CAPTURED", "$14.50", TextStyle.BOLD),
+            ).inOrder()
+        assertThat(doc.elements).doesNotContain(Text("Held on the card, not charged yet", Align.CENTER))
+        assertThat(builder().sale(sale().copy(preAuthorisation = true)).elements)
+            .contains(Text("Held on the card, not charged yet", Align.CENTER))
+    }
+
+    @Test
     fun `merchant copy is labelled and has no QR`() {
         val doc = builder().sale(sale(), ReceiptCopy.MERCHANT)
         assertThat(doc.elements).contains(Text("MERCHANT COPY", Align.CENTER, TextStyle.BOLD))
@@ -217,8 +267,8 @@ class ReceiptBuilderTest {
         assertThat(doc.elements)
             .containsAtLeast(
                 Text("CANCELLATION", Align.CENTER, TextStyle.BOLD),
-                Row("Pre-authorization", "MP-1"),
-                Text("Pre-authorization canceled"),
+                Row("Canceled payment", "MP-1"),
+                Text("Payment canceled"),
                 Row("RELEASED", "$200.00", TextStyle.BOLD),
             ).inOrder()
         assertThat(doc.elements).containsNoneOf(Text("Partial refund"), Text("REFUND", Align.CENTER, TextStyle.BOLD))

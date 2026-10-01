@@ -98,12 +98,15 @@
   <string name="checkout_save_card_hint">Tokenizes the card for this customer reference. Ask the shopper for consent.</string>
   <string name="checkout_save_card_email_hint">Tokenizes the card for this email address. Ask the shopper for consent.</string>
   <string name="checkout_pay">Pay %1$s</string>
-  <string name="checkout_pre_auth_note">This only holds the amount on the card. Capture it later in your Customer Area, or cancel it from History.</string>
+  <string name="checkout_pre_auth_note">This only holds the amount on the card. Capture or cancel it later from History.</string>
+  <string name="checkout_tip_on_receipt">Tip on the receipt</string>
+  <string name="checkout_tip_on_receipt_hint">The customer writes a tip on the printed receipt and signs it. Enter the tip afterwards to capture the total.</string>
   <string name="payment_title">Payment</string>
   <string name="payment_follow_terminal">Follow the instructions on the terminal</string>
   <string name="payment_cancelling">Canceling…</string>
   <string name="payment_unknown_outcome">The terminal did not confirm the result. Check the payment in your Customer Area before charging again.</string>
   <string name="payment_interrupted">The app stopped before the result was received.</string>
+  <string name="capture_interrupted">The app stopped before Adyen answered the capture. Sending it again is safe.</string>
 
   <!-- Results -->
   <string name="result_title">Result</string>
@@ -137,6 +140,13 @@
   <string name="status_pending">In progress</string>
   <string name="status_pre_authorised">Pre-authorized</string>
   <string name="status_cancellation_requested">Cancellation requested</string>
+  <string name="status_awaiting_tip">Awaiting tip</string>
+  <string name="status_capture_requested">Capture requested</string>
+  <string name="status_capture_manual">Capture in Customer Area</string>
+  <string name="status_capture_failed">Capture failed</string>
+  <string name="status_capture_unknown">Capture result unknown</string>
+  <string name="result_tip_note">Print the receipt so the customer can add a tip and sign it, then enter the tip.</string>
+  <string name="result_enter_tip">Enter tip</string>
 
   <!-- Details -->
   <string name="detail_title">Sale</string>
@@ -159,7 +169,23 @@
   <string name="detail_reprint">Reprint receipt</string>
   <string name="detail_still_unknown">The terminal still cannot confirm this payment. Check your Customer Area.</string>
   <string name="detail_pre_auth_title">Pre-authorization</string>
-  <string name="detail_pre_auth_note">Capture it in your Customer Area under Payments › Payment list, by its PSP reference (up to the amount held). Captures there do not show here.</string>
+  <string name="detail_pre_auth_note">No Checkout API is set up: capture it in your Customer Area under Payments › Payment list, by its PSP reference, and record the capture here.</string>
+  <string name="detail_capture">Capture</string>
+  <string name="detail_record_capture">Record capture</string>
+  <string name="detail_adjust">Adjust amount</string>
+  <string name="detail_retry_capture">Retry capture</string>
+  <string name="detail_cancel_payment">Cancel payment</string>
+  <string name="detail_tip_awaiting">Waiting for the tip written on the receipt.</string>
+  <string name="detail_tip">Bill %1$s + tip %2$s</string>
+  <string name="detail_capture_requested">Capture of %1$s requested. Adyen confirms it in your Customer Area.</string>
+  <string name="detail_capture_manual">Capture %1$s in your Customer Area under Payments › Payment list, by its PSP reference.</string>
+  <string name="detail_capture_failed">Adyen did not take the capture of %1$s.</string>
+  <string name="detail_capture_unknown">It is not known whether Adyen received the capture of %1$s. Retrying is safe.</string>
+  <string name="detail_held_now">Now holds %1$s</string>
+  <string name="detail_adjustment_requested">Adjustment to %1$s requested. Adyen confirms it in your Customer Area.</string>
+  <string name="detail_modification_message">Capture or adjustment issue</string>
+  <string name="tip_cancel_title">Cancel this payment?</string>
+  <string name="tip_cancel_message">The %1$s held on the shopper’s card will be released, and no tip can be added.</string>
   <string name="detail_cancel_pre_auth">Cancel pre-authorization</string>
   <string name="detail_cancellations">Cancellation</string>
   <string name="pre_auth_cancel_title">Cancel this pre-authorization?</string>
@@ -195,7 +221,8 @@
   <string name="refund_unknown_outcome">The terminal did not confirm the refund. Check it in your Customer Area before refunding again.</string>
   <string name="refund_still_unknown">The terminal still cannot confirm this refund. Check your Customer Area.</string>
   <string name="refund_async_note">Adyen processes refunds asynchronously; the final outcome appears in your Customer Area.</string>
-  <string name="refund_pre_authorisation">This is a pre-authorization, which cannot be refunded here. Cancel it from History, or capture and refund it in your Customer Area.</string>
+  <string name="refund_pre_authorisation">This pre-authorization has not been captured, so there is nothing to refund yet. Capture or cancel it from History.</string>
+  <string name="refund_awaiting_tip">This payment is waiting for its tip to be captured. Enter the tip from History, or cancel the payment there.</string>
   <string name="cancellation_title">Cancellation</string>
   <string name="cancellation_detail_title">Cancellation details</string>
   <string name="cancellation_processing">Requesting the cancellation…</string>
@@ -218,7 +245,45 @@
   <string name="history_day_refunds">Refunds %1$s (%2$d)</string>
   <string name="history_refund">Refund</string>
   <string name="history_day_pre_auths">Held %1$s (%2$d)</string>
-  <string name="history_cancellation">Pre-auth cancellation</string>
+  <string name="history_cancellation">Cancellation</string>
+  <string name="history_filter_awaiting_tip">Awaiting tip</string>
+  <string name="history_day_tips">Tips %1$s</string>
+
+  <!-- Tips and captures -->
+  <string name="tip_title">Enter tip</string>
+  <string name="tip_option_tip">Tip</string>
+  <string name="tip_option_total">Total</string>
+  <string name="tip_below_bill">The total cannot be less than the bill.</string>
+  <string name="tip_adjustment_note">More than %1$d%% of the bill: the card issuer is asked to authorize the new total first.</string>
+  <string name="tip_no_tip">No tip</string>
+  <string name="tip_add">Add tip</string>
+  <string name="tip_confirm_title">Add a %1$s tip?</string>
+  <string name="tip_confirm_no_tip_title">No tip?</string>
+  <string name="tip_confirm_sum">Bill %1$s + tip %2$s = %3$s.</string>
+  <string name="tip_confirm_capture">%1$s is captured now, and the tip cannot be changed afterwards.</string>
+  <string name="tip_confirm_manual">Capture %1$s in your Customer Area afterwards. The tip cannot be changed here.</string>
+  <string name="tip_refused">The card issuer did not authorize %1$s (%2$s). Enter a smaller tip, or no tip.</string>
+  <string name="capture_failed">Not captured: %1$s</string>
+  <string name="capture_not_allowed">This payment can no longer be captured.</string>
+  <string name="capture_title">Capture</string>
+  <string name="adjust_title">Adjust amount</string>
+  <string name="capture_original">Pre-authorized</string>
+  <string name="capture_held">Held now</string>
+  <string name="capture_more_note">More than the amount held: the card issuer is asked to authorize %1$s first.</string>
+  <string name="capture_less_note">The rest of the amount held is released.</string>
+  <string name="capture_manual_note">No Checkout API is set up: capture this amount in your Customer Area, then record it here.</string>
+  <string name="adjust_note">The card issuer is asked to hold this amount instead. The same amount extends the authorization.</string>
+  <string name="capture_button">Capture %1$s</string>
+  <string name="capture_record_button">Record capture of %1$s</string>
+  <string name="adjust_button">Hold %1$s</string>
+  <string name="capture_confirm_title">Capture %1$s?</string>
+  <string name="capture_confirm_message">The shopper is charged %1$s and the rest of the hold is released. This cannot be undone.</string>
+  <string name="capture_confirm_more">The card issuer is first asked to authorize the higher amount.</string>
+  <string name="capture_confirm_manual">This only records the capture. Capture %1$s in your Customer Area too.</string>
+  <string name="adjust_confirm_title">Hold %1$s?</string>
+  <string name="adjust_confirm_message">The card issuer is asked to hold %1$s on the shopper’s card instead of %2$s.</string>
+  <string name="capture_refused">The card issuer did not authorize %1$s (%2$s).</string>
+  <string name="adjust_failed">Not adjusted: %1$s</string>
 
   <!-- Products -->
   <string name="products_title">Products</string>
@@ -243,24 +308,24 @@
   <string name="products_delete_title">Delete product?</string>
   <string name="products_delete_message">%1$s will be removed from the catalog.</string>
   <string name="products_pre_auth">Pre-authorization product</string>
-  <string name="products_pre_auth_hint">Taken on its own under Pre-authorize instead of in a sale: the amount is only held on the card until you capture it in your Customer Area.</string>
+  <string name="products_pre_auth_hint">Taken on its own under Pre-authorize instead of in a sale: the amount is only held on the card until it is captured.</string>
   <string name="products_kind_pre_auth">Pre-auth</string>
 
   <!-- Catalog transfer -->
-  <string name="transfer_export">Share catalog (QR)</string>
-  <string name="transfer_import">Receive catalog (QR)</string>
-  <string name="transfer_export_hint">On the other terminal open Products › Receive catalog and point its camera at these codes.</string>
+  <string name="transfer_export">Share with another terminal</string>
+  <string name="transfer_import">Set up from another terminal</string>
+  <string name="transfer_export_hint">On the other terminal choose Set up from another terminal (in Products or Settings › Data) and point its camera at these codes.</string>
   <string name="transfer_import_hint">Point the camera at the QR codes shown on the other terminal.</string>
   <string name="transfer_code_of">Code %1$d of %2$d</string>
   <string name="transfer_received">Scanned %1$d/%2$d</string>
-  <string name="transfer_not_catalogue">That QR code is not a catalog code.</string>
-  <string name="transfer_corrupt">The catalog could not be read. Scan the codes again.</string>
+  <string name="transfer_not_transfer">That QR code is not a Mini mPOS transfer code.</string>
+  <string name="transfer_corrupt">The codes could not be read. Scan them again.</string>
   <string name="transfer_products">Products</string>
   <string name="transfer_categories">Categories</string>
   <string name="transfer_tax_rates">Tax rates</string>
   <string name="transfer_currency">Currency</string>
-  <string name="transfer_currency_mismatch">This catalog was priced in %1$s but this terminal uses %2$s. Prices are imported as-is.</string>
-  <string name="transfer_ready">Catalog received</string>
+  <string name="transfer_currency_mismatch">This catalog was priced in %1$s but this terminal will use %2$s. Prices are imported as-is.</string>
+  <string name="transfer_ready">Ready to import</string>
   <string name="transfer_merge">Merge into this catalog</string>
   <string name="transfer_merge_hint">Products with the same SKU (or name) are updated; everything else is added.</string>
   <string name="transfer_replace">Replace this catalog</string>
@@ -272,6 +337,31 @@
   <string name="transfer_updated">Products updated</string>
   <string name="transfer_new_categories">New categories</string>
   <string name="transfer_new_tax_rates">New tax rates</string>
+  <string name="transfer_choose_hint">Choose what to copy to the other terminal. It should take payments for the same merchant account.</string>
+  <string name="transfer_part_catalogue">Catalog</string>
+  <string name="transfer_part_catalogue_hint">Products, categories and tax rates</string>
+  <string name="transfer_part_settings">Settings</string>
+  <string name="transfer_part_settings_hint">Payments, tax, receipts, email, security, history, the shared key’s identifier and the Checkout API. Where payments go and the terminal’s own address and ID are not copied.</string>
+  <string name="transfer_part_secrets">Passwords and keys</string>
+  <string name="transfer_part_secrets_hint">Shared key passphrase, Checkout API key, SMTP password and admin PIN, protected by a transfer code</string>
+  <string name="transfer_part_secrets_none">None set on this terminal</string>
+  <string name="transfer_show_codes">Show QR codes</string>
+  <string name="transfer_code_title">Transfer code</string>
+  <string name="transfer_code_hint">Type this code on the other terminal to import the passwords and keys. It is only shown here.</string>
+  <string name="transfer_code_import_hint">Shown on the other terminal. Leave it empty to import without the passwords and keys.</string>
+  <string name="transfer_code_wrong">That transfer code is wrong. Check it on the other terminal, or leave it empty.</string>
+  <string name="transfer_included">Included</string>
+  <string name="transfer_not_included">Not included</string>
+  <string name="transfer_secrets_sealed">Included, with a transfer code</string>
+  <string name="transfer_secret_passphrase">Shared key passphrase</string>
+  <string name="transfer_secret_api_key">Checkout API key</string>
+  <string name="transfer_secret_smtp">SMTP password</string>
+  <string name="transfer_secret_pin">Admin PIN</string>
+  <string name="transfer_settings_note">The settings replace this terminal’s. Where payments go and the terminal’s own address and ID stay as they are.</string>
+  <string name="transfer_import_action">Import</string>
+  <string name="transfer_imported">Imported</string>
+  <string name="transfer_skipped">Skipped (no transfer code)</string>
+  <string name="transfer_secrets_failed">Passwords and keys could not be stored on this terminal: %1$s</string>
 
   <!-- Scanner -->
   <string name="scan_hint_qr">Point the camera at the QR code</string>
@@ -301,15 +391,21 @@
   <string name="receipt_amount_held">AMOUNT HELD</string>
   <string name="receipt_pre_auth_note">Held on the card, not charged yet</string>
   <string name="receipt_cancellation_title">CANCELLATION</string>
-  <string name="receipt_cancelled_reference">Pre-authorization</string>
-  <string name="receipt_cancellation_note">Pre-authorization canceled</string>
+  <string name="receipt_cancelled_reference">Canceled payment</string>
+  <string name="receipt_cancellation_note">Payment canceled</string>
   <string name="receipt_released">RELEASED</string>
+  <string name="receipt_amount">AMOUNT</string>
+  <string name="receipt_tip">TIP</string>
+  <string name="receipt_tip_total">TOTAL</string>
+  <string name="receipt_signature">SIGNATURE</string>
+  <string name="receipt_held_now">HELD NOW</string>
+  <string name="receipt_captured">CAPTURED</string>
 
   <!-- Email -->
   <string name="email_intro">Thank you for your purchase. Your receipt is below.</string>
   <string name="email_refund_intro">Your refund has been requested. The details are below.</string>
   <string name="email_pre_auth_intro">Thank you. The amount is held on your card and only charged later; the final amount may differ. The details are below.</string>
-  <string name="email_cancellation_intro">Your pre-authorization has been canceled and the amount held on your card released. The details are below.</string>
+  <string name="email_cancellation_intro">Your payment has been canceled and the amount held on your card released. The details are below.</string>
   <string name="email_test_subject">Mini mPOS test email</string>
   <string name="email_test_body">Your SMTP settings work. Receipts can now be emailed from Mini mPOS.</string>
   <string name="email_not_configured">Email is not set up. Configure SMTP in Settings › Email.</string>
@@ -373,8 +469,18 @@
   <string name="settings_status_not_set_up">Not set up yet</string>
   <string name="settings_status_not_set_up_hint">Enter the shared key below, then tap Save and test.</string>
   <string name="settings_status_failed">Not connected</string>
+  <string name="settings_api">Checkout API (optional)</string>
+  <string name="settings_api_hint">With an API key, the app captures tips on the receipt and pre-authorizations, and adjusts what they hold. Without one, capture them in your Customer Area. Create an API credential under Developers › API credentials with only the Checkout webservice role.</string>
+  <string name="settings_merchant_account">Merchant account</string>
+  <string name="settings_api_key">API key</string>
+  <string name="settings_live_prefix">Live URL prefix</string>
+  <string name="settings_live_prefix_hint">LIVE terminals only: Developers › API URLs, e.g. 1797a841fbb37ca7-AdyenDemo.</string>
+  <string name="settings_test_api">Test API key</string>
+  <string name="settings_save_and_test_api">Save and test API key</string>
+  <string name="settings_forget_api_key">Remove saved API key</string>
+  <string name="settings_api_ok">The API key works.</string>
 
-  <string name="settings_simulator_hint">The simulator answers payments, refunds and print requests without a terminal, so every screen can be tried on an emulator or phone.</string>
+  <string name="settings_simulator_hint">The simulator answers payments, refunds and print requests without a terminal, and stands in for the Checkout API, so every screen can be tried on an emulator or phone.</string>
   <string name="settings_sim_outcome">Payment outcome</string>
   <string name="settings_sim_approve">Approve</string>
   <string name="settings_sim_decline">Decline</string>
@@ -449,6 +555,9 @@
   <string name="settings_email_salt_hint">Use the same salt on every terminal so the same email maps to the same token.</string>
   <string name="settings_send_shopper_email">Send shopper email with saved cards</string>
   <string name="settings_email_receipts">Email receipts</string>
+  <string name="settings_tipping">Tipping</string>
+  <string name="settings_tip_default">Tip on the receipt on by default</string>
+  <string name="settings_tip_default_hint">Checkout offers it for sales while a printer is available. The amount is pre-authorized and captured with the tip once you enter it.</string>
   <string name="settings_email_capture">Ask for the shopper’s email</string>
   <string name="settings_capture_off">Never</string>
   <string name="settings_capture_before">Before payment</string>
@@ -525,9 +634,9 @@
   <string name="settings_clear_history">Clear history</string>
   <string name="settings_clear_history_message">All sales and refunds stored on this terminal will be deleted. Payments are not affected.</string>
   <string name="settings_history_cleared">History cleared</string>
-  <string name="settings_catalogue">Catalog</string>
-  <string name="settings_export_hint">Show the catalog as QR codes for another terminal</string>
-  <string name="settings_import_hint">Scan another terminal’s catalog codes</string>
+  <string name="settings_catalogue">Other terminals</string>
+  <string name="settings_export_hint">Show the catalog, settings, passwords and keys as QR codes</string>
+  <string name="settings_import_hint">Scan another terminal’s codes to copy its catalog and settings</string>
 
   <string name="about_version">Version</string>
   <string name="about_printer">Printer</string>

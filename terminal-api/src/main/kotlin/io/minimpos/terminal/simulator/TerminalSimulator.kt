@@ -258,6 +258,8 @@ class TerminalSimulator(
         val refusal = if (payment.approved) null else refusal(outcome)
         if (refusal == null) {
             additional["authCode"] = payment.authCode
+            // As with "return adjust authorisation data" enabled in the Customer Area, for synchronous adjustments.
+            if (payment.preAuthorisation) additional["adjustAuthorisationData"] = SimulatedModifications.blob(random)
             additional += tokenization(payment.card, request.saleData?.saleToAcquirerData)
         } else {
             additional["refusalReason"] = refusal.second

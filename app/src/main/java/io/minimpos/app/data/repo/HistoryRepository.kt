@@ -2,6 +2,7 @@ package io.minimpos.app.data.repo
 
 import androidx.room.withTransaction
 import io.minimpos.app.data.db.AppDatabase
+import io.minimpos.app.data.db.CaptureStatus
 import io.minimpos.app.data.db.RefundEntity
 import io.minimpos.app.data.db.RefundStatus
 import io.minimpos.app.data.db.SaleEntity
@@ -61,13 +62,20 @@ class HistoryRepository(
 
     /**
      * Marks sales and refunds that never got an answer (for example because the app was killed mid-payment) as UNKNOWN
-     * with [message], so staff can check them from history. Only safe at startup, before any payment or refund starts,
+     * with [message], so staff can check them from history, and captures that were being requested as UNKNOWN with
+     * [captureMessage], so they can be sent again. Only safe at startup, before any payment, refund or capture starts,
      * because it treats every PENDING row as interrupted.
      */
-    suspend fun settleInterrupted(message: String) {
+    suspend fun settleInterrupted(
+        message: String,
+        captureMessage: String = message,
+    ) {
         db.withTransaction {
             saleDao.pendingSales().forEach { saleDao.update(it.copy(status = SaleStatus.UNKNOWN, message = message)) }
             refundDao.pendingRefunds().forEach { refundDao.update(it.copy(status = RefundStatus.UNKNOWN, message = message)) }
+            saleDao.pendingCaptures().forEach {
+                saleDao.update(it.copy(captureStatus = CaptureStatus.UNKNOWN, modificationMessage = captureMessage))
+            }
         }
     }
 

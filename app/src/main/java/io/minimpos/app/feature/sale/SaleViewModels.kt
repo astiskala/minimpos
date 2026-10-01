@@ -200,6 +200,7 @@ class SaleViewModel(
  * @property totals The cart priced with the current tax settings; its gross total is charged.
  * @property currency The currency charged.
  * @property preAuthorisation Whether the amount is only held (a pre-authorisation) rather than charged.
+ * @property printerAvailable Whether printing is offered, which tipping on the receipt needs.
  */
 data class CheckoutUiState(
     val form: CheckoutForm = CheckoutForm(),
@@ -207,6 +208,7 @@ data class CheckoutUiState(
     val totals: CartTotals = Cart().totals(TaxMode.INCLUSIVE),
     val currency: CurrencySpec = CurrencySpec("EUR", 2),
     val preAuthorisation: Boolean = false,
+    val printerAvailable: Boolean = false,
 ) {
     /** Whether the email field is shown. */
     val showEmail: Boolean get() = payment.captureEmailBefore
@@ -251,6 +253,12 @@ data class CheckoutUiState(
     val tokenize: Boolean
         get() = canTokenize && (form.tokenize ?: if (preAuthorisation) payment.preAuthTokenizeDefaultOn else payment.tokenizeDefaultOn)
 
+    /** Whether "Tip on the receipt" is offered: for a sale, while a printer is available to print the receipt. */
+    val canTipOnReceipt: Boolean get() = !preAuthorisation && printerAvailable
+
+    /** Whether the sale is taken for tipping on the receipt: the operator's choice, else the settings default. */
+    val tipOnReceipt: Boolean get() = canTipOnReceipt && (form.tipOnReceipt ?: payment.tipOnReceiptDefaultOn)
+
     /** Whether "Pay" is enabled: something to charge and every entered field valid. */
     val canPay: Boolean get() = !totals.isEmpty && totals.amounts.gross > 0 && emailValid && referenceValid && customerReferenceValid
 
@@ -267,6 +275,7 @@ data class CheckoutUiState(
  * @param session The cart (or pre-authorisation item) and the form.
  * @param payments Runs the payment.
  * @param settings The current settings.
+ * @param terminal Whether printing is offered, which tipping on the receipt needs.
  * @param currency The currency charged with the given settings.
  * @param kind A sale, or a pre-authorisation that only holds the amount.
  * @param clock Stamps generated merchant references.
@@ -276,20 +285,22 @@ class CheckoutViewModel(
     private val session: SaleSession,
     private val payments: TransactionLifecycle<PaymentStart>,
     settings: StateFlow<AppSettings>,
+    terminal: StateFlow<TerminalState>,
     currency: (AppSettings) -> CurrencySpec,
     private val kind: SaleKind = SaleKind.SALE,
     private val clock: Clock = Clock.systemDefaultZone(),
     private val zone: () -> ZoneId = { ZoneId.systemDefault() },
 ) : ViewModel() {
-    /** The screen state, updated whenever the form, cart or settings change. */
+    /** The screen state, updated whenever the form, cart, settings or printer change. */
     val state: StateFlow<CheckoutUiState> =
-        combine(session.checkout, session.cart, settings) { form, cart, appSettings ->
+        combine(session.checkout, session.cart, settings, terminal) { form, cart, appSettings, status ->
             CheckoutUiState(
                 form,
                 appSettings.payment,
                 cart.totals(appSettings.payment.taxMode, appSettings.payment.chargeTax),
                 currency(appSettings),
                 kind == SaleKind.PRE_AUTHORISATION,
+                status.printerAvailable,
             )
         }.stateIn(viewModelScope, SharingStarted.Eagerly, CheckoutUiState(preAuthorisation = kind == SaleKind.PRE_AUTHORISATION))
 
@@ -324,6 +335,7 @@ class CheckoutViewModel(
                         TokenizationRequest(it, payment.recurringModel(), payment.sendShopperEmail)
                     },
                 kind = kind,
+                tipOnReceipt = current.tipOnReceipt,
             ),
         )
         return true
@@ -486,12 +498,14 @@ class SaleResultViewModel(
  * @property emailed Format with the address, shown after the receipt was sent.
  * @property abortSent Shown after the busy terminal's transaction was aborted.
  * @property stillUnknown Shown when a status check found the outcome still unknown.
+ * @property notCaptured Format with the reason, shown when a capture sent again did not go through.
  */
 data class ResultMessages(
     val printed: String,
     val emailed: String,
     val abortSent: String = "",
     val stillUnknown: String = "",
+    val notCaptured: String = "",
 )
 
 /** This result as a finished [ActionState]: [successMessage] on success, else the failure's message as an error. */

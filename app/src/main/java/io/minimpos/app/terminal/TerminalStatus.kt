@@ -32,6 +32,9 @@ import kotlinx.coroutines.launch
  * @property connection The latest connection check, whose result stays until the next one.
  * @property printerAvailable Whether printing is offered, see [TerminalStatus].
  * @property environment The environment of the terminal's certificate, remembered from the last connection.
+ * @property captureMode How pre-authorisations and tips on the receipt are captured, see [AdyenApi.mode].
+ * @property apiProblem What must still be entered before the Checkout API can be used, from
+ *   [AdyenApi.setupProblem]; null when nothing is missing or no API is set up.
  */
 data class TerminalState(
     val loaded: Boolean = false,
@@ -42,6 +45,8 @@ data class TerminalState(
     val connection: TerminalConnection = TerminalConnection.Unknown,
     val printerAvailable: Boolean = false,
     val environment: TerminalEnvironment? = null,
+    val captureMode: CaptureMode = CaptureMode.API,
+    val apiProblem: String? = null,
 )
 
 /**
@@ -55,14 +60,16 @@ data class TerminalState(
  *
  * @param gateway Checks the connection and knows where payments go.
  * @param settings The stored settings, followed as they change.
- * @param secrets Tells whether a shared key passphrase is saved.
+ * @param secrets Tells whether a shared key passphrase and a Checkout API key are saved.
  * @param scope Keeps [state] up to date and runs the background checks started by [start].
+ * @param api Tells how captures are made.
  */
 class TerminalStatus(
     private val gateway: TerminalGateway,
     private val settings: SettingsRepository,
     private val secrets: SecretStore,
     private val scope: CoroutineScope,
+    api: AdyenApi,
 ) {
     private val connection = MutableStateFlow<TerminalConnection>(TerminalConnection.Unknown)
 
@@ -72,6 +79,7 @@ class TerminalStatus(
             val terminal = appSettings.terminal
             val mode = gateway.effectiveMode(terminal)
             val poiId = gateway.poiId(terminal)
+            val apiKeySaved = Secret.CHECKOUT_API_KEY in configured
             TerminalState(
                 loaded = true,
                 mode = mode,
@@ -81,6 +89,8 @@ class TerminalStatus(
                 connection = checked,
                 printerAvailable = printerAvailable(appSettings, mode, poiId, printers),
                 environment = terminal.environment,
+                captureMode = api.mode(terminal, apiKeySaved),
+                apiProblem = api.setupProblem(terminal, apiKeySaved),
             )
         }.stateIn(scope, SharingStarted.Eagerly, TerminalState())
 

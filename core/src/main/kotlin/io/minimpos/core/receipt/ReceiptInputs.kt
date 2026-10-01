@@ -85,11 +85,17 @@ data class ReceiptOptions(
  * @property preAuthTitle the heading of pre-authorisation receipts, instead of [ReceiptBranding.title].
  * @property amountHeld the label of a pre-authorisation's total, instead of [total].
  * @property preAuthNote the note under a pre-authorisation's totals that nothing has been charged yet.
- * @property cancellationTitle the heading of the receipt of a cancelled pre-authorisation.
- * @property cancelledReference the label of the cancelled pre-authorisation's reference, instead of
+ * @property cancellationTitle the heading of the receipt of a cancelled payment that only held its amount.
+ * @property cancelledReference the label of the cancelled payment's reference, instead of
  *   [originalReference].
- * @property cancellationNote the text shown instead of items on the receipt of a cancelled pre-authorisation.
+ * @property cancellationNote the text shown instead of items on the receipt of a cancelled payment.
  * @property released the label of the amount a cancellation released, instead of [refundTotal].
+ * @property amount the label of the bill on a receipt with tip lines, instead of [total].
+ * @property tip the label of the tip line.
+ * @property tipTotal the label of the bill plus the tip.
+ * @property signature the label of the line the shopper signs on the merchant copy of a receipt awaiting a tip.
+ * @property heldNow the label of the amount a pre-authorisation holds after an adjustment.
+ * @property captured the label of the amount captured of a pre-authorisation.
  */
 data class ReceiptLabels(
     val date: String = "Date",
@@ -112,10 +118,34 @@ data class ReceiptLabels(
     val amountHeld: String = "AMOUNT HELD",
     val preAuthNote: String = "Held on the card, not charged yet",
     val cancellationTitle: String = "CANCELLATION",
-    val cancelledReference: String = "Pre-authorization",
-    val cancellationNote: String = "Pre-authorization canceled",
+    val cancelledReference: String = "Canceled payment",
+    val cancellationNote: String = "Payment canceled",
     val released: String = "RELEASED",
+    val amount: String = "AMOUNT",
+    val tip: String = "TIP",
+    val tipTotal: String = "TOTAL",
+    val signature: String = "SIGNATURE",
+    val heldNow: String = "HELD NOW",
+    val captured: String = "CAPTURED",
 )
+
+/** The tip lines of a receipt for tipping on the receipt. */
+sealed interface TipLines {
+    /**
+     * Empty tip and total lines for the shopper to fill in, and on the merchant copy a line to sign; the bill is
+     * labelled [ReceiptLabels.amount].
+     */
+    data object Blank : TipLines
+
+    /**
+     * The tip written on the receipt and the resulting total.
+     *
+     * @property tip the tip in minor units; 0 when the shopper gave none.
+     */
+    data class Entered(
+        val tip: Long,
+    ) : TipLines
+}
 
 /**
  * An item line as printed; amounts are in the receipt currency's minor units.
@@ -158,6 +188,10 @@ enum class ReceiptCopy {
  * @property cardSaved whether the shopper's card was stored for future payments, which adds a note.
  * @property preAuthorisation whether the payment only held the amount (a pre-authorisation, captured later): the
  *   receipt is titled [ReceiptLabels.preAuthTitle], shows the [ReceiptLabels.amountHeld] and never a refund QR code.
+ * @property tip the tip lines of a sale taken for tipping on the receipt, or null for none.
+ * @property heldNow what a pre-authorisation holds after an adjustment, in minor units; null when it was not adjusted.
+ * @property captured what was captured of a pre-authorisation, in minor units; null until it is captured, after which
+ *   the note that nothing has been charged is left out.
  */
 data class SaleReceipt(
     val reference: String,
@@ -172,6 +206,9 @@ data class SaleReceipt(
     val refundQr: String?,
     val cardSaved: Boolean,
     val preAuthorisation: Boolean = false,
+    val tip: TipLines? = null,
+    val heldNow: Long? = null,
+    val captured: Long? = null,
 )
 
 /**
@@ -183,8 +220,9 @@ data class SaleReceipt(
  * @property items the refunded items; empty for a refund of an amount, which prints [ReceiptLabels.partialRefund].
  * @property amount the refunded amount in minor units.
  * @property cardReceipt Adyen's receipt lines for the refund, printed verbatim.
- * @property cancellation whether this cancelled a pre-authorisation rather than refunding a sale, which the title,
- *   labels and [ReceiptLabels.cancellationNote] (instead of items) say.
+ * @property cancellation whether this cancelled a payment that only held its amount (a pre-authorisation or a sale
+ *   awaiting its tip) rather than refunding a sale, which the title, labels and [ReceiptLabels.cancellationNote]
+ *   (instead of items) say.
  */
 data class RefundReceipt(
     val reference: String,

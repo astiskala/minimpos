@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Getting started – Mini mPOS</title>
-  <meta name="description" content="Set up Mini mPOS on your Adyen Android terminals: install the app, connect it with your shared key, set up your business and products, and take sales, refunds and pre-authorizations.">
+  <meta name="description" content="Set up Mini mPOS on your Adyen Android terminals: install the app, connect it with your shared key, set up your business and products, and take sales, refunds, tips on the receipt and pre-authorizations.">
   <link rel="icon" href="favicon.svg" type="image/svg+xml">
   <link rel="canonical" href="https://astiskala.github.io/minimpos/getting-started.html">
   <meta property="og:type" content="article">
@@ -60,7 +60,10 @@
           <li><a href="#business">Set up your business</a></li>
           <li><a href="#products">Add your products</a></li>
           <li><a href="#sell">Sell and refund</a></li>
+          <li><a href="#api">Captures and the Checkout API</a></li>
+          <li><a href="#tips">Tips on the receipt</a></li>
           <li><a href="#preauth">Pre-authorizations</a></li>
+          <li><a href="#more">More terminals</a></li>
           <li><a href="#live">Before you go live</a></li>
           <li><a href="#trouble">If something goes wrong</a></li>
         </ol>
@@ -74,9 +77,11 @@
               <strong>Customer Area</strong> that can see device settings, upload apps and manage payments.</li>
             <li><strong>Adyen Android terminals running Android 9 or later</strong>, for example the S1F2, S1F4Pro,
               S1E4Pro, S1E2L, AMS1, S1U2 or SFO1. Printing needs a model with a printer; scanning receipts, barcodes and
-              catalog codes needs a camera.</li>
+              setup codes from another terminal needs a camera.</li>
             <li>Optional: an <strong>SMTP mail server</strong> (host, port, user and password) if you want to email
               receipts.</li>
+            <li>Optional: an <strong>API credential</strong> for Adyen's Checkout API, if the app should capture tips on
+              the receipt and pre-authorizations itself (see <a href="#api">Captures and the Checkout API</a>).</li>
           </ul>
           <p class="note">Mini mPOS is an independent project, not an Adyen product. Try everything on TEST terminals
             before you take live payments.</p>
@@ -90,7 +95,8 @@
 cd minimpos
 ./gradlew :app:installDebug</code></pre>
           <p>Under <strong>Settings › Simulator</strong> you choose how simulated payments end: approved, declined,
-            canceled, timed out or with a busy terminal.</p>
+            canceled, timed out or with a busy terminal. The simulator also stands in for the Checkout API, so tips and
+            captures can be tried too.</p>
         </section>
 
         <section id="key">
@@ -143,7 +149,8 @@ cd minimpos
             <dd>The <strong>currency</strong> (any of the 138 Adyen processes; automatic follows the device's country),
               whether checkout asks for a <strong>transaction reference</strong> and a reference prefix, saving cards
               (on by default or not, for sales and for pre-authorizations, the recurring model and whether the shopper
-              reference comes from a customer reference or the email) and when to ask for the shopper's email.</dd>
+              reference comes from a customer reference or the email), when to ask for the shopper's email, and
+              whether <strong>Tip on the receipt</strong> starts switched on at checkout.</dd>
             <dt>Tax</dt>
             <dd>Your named <strong>tax rates</strong> (such as GST 10% and GST-free 0%), whether prices include tax, the
               default rate for new products, and a <strong>Charge tax</strong> switch.</dd>
@@ -167,9 +174,7 @@ cd minimpos
             sale screen.</p>
           <p>A product can also be a <strong>pre-authorization product</strong>, such as a deposit or a hire bond; see
             <a href="#preauth">Pre-authorizations</a>.</p>
-          <p>To copy the catalog to another terminal, open the menu in Products and choose <strong>Share catalog
-            (QR)</strong>; on the other terminal choose <strong>Receive catalog (QR)</strong> and point its camera at
-            the codes. Run the same version of Mini mPOS on both terminals.</p>
+          <p>To copy the catalog to another terminal, see <a href="#more">More terminals</a>.</p>
         </section>
 
         <section id="sell">
@@ -183,13 +188,73 @@ cd minimpos
             <li><strong>Refund:</strong> scan the QR code on the receipt, or open the sale in <strong>History</strong>.
               Refund everything, some items, or an amount. Adyen processes refunds asynchronously, so the app shows
               them as requested; the final outcome is in your Customer Area.</li>
-            <li><strong>History</strong> groups transactions by day with daily totals. <em>Needs attention</em> lists
-              payments whose result was not confirmed, which you can check again with the terminal.</li>
+            <li><strong>History</strong> groups transactions by day with daily totals (and tips). <em>Needs
+              attention</em> lists payments whose result was not confirmed, which you can check again with the
+              terminal.</li>
           </ul>
         </section>
 
+        <section id="api">
+          <h2>9. Captures and the Checkout API</h2>
+          <p>Tips on the receipt and pre-authorizations are taken with <strong>manual capture</strong>: the amount is
+            only held until it is captured. Mini mPOS can capture them (and adjust what they hold) through Adyen's
+            Checkout API, or leave the capture to you in the Customer Area.</p>
+          <ol>
+            <li>In the Customer Area, go to <strong>Developers › API credentials</strong> and create a credential for
+              the terminals with only the <strong>Checkout webservice role</strong>. Generate its <strong>API
+              key</strong>.</li>
+            <li>In Mini mPOS, go to <strong>Settings › Terminal › Checkout API</strong>, enter your <strong>merchant
+              account</strong> and the <strong>API key</strong>, and tap <strong>Save and test API key</strong>. The
+              key is stored encrypted on the terminal; the test changes nothing.</li>
+            <li>LIVE terminals also need your <strong>live URL prefix</strong>, from <strong>Developers › API
+              URLs</strong>. Whether a terminal is TEST or LIVE is detected from its certificate.</li>
+            <li>Optional: ask for synchronous adjustments with <strong>Devices › Developer › Additional data › Return
+              adjust authorisation data</strong>. The app then knows straight away whether a higher amount was
+              authorized; otherwise adjustments are confirmed later, in the Customer Area.</li>
+          </ol>
+          <p>Adyen confirms captures asynchronously, so the app shows them as <em>Capture requested</em>; Mini mPOS has
+            no backend for webhooks, so the final outcome is in your Customer Area. A capture whose result is unknown
+            can be sent again from History without capturing twice.</p>
+          <p>Without an API key, the app records what to capture (<em>Capture in Customer Area</em>) and you capture it
+            under <strong>Payments › Payment list</strong>: select the PSP reference shown in History, then
+            <strong>Capture payment</strong>.</p>
+        </section>
+
+        <section id="tips">
+          <h2>10. Tips on the receipt</h2>
+          <p>Where customers add a tip after paying, as in restaurants and bars, Mini mPOS follows Adyen's
+            <a href="https://docs.adyen.com/point-of-sale/tipping/tipping-on-receipt">tipping on the receipt</a> flow:
+            the bill is pre-authorized, the customer writes a tip on the printed receipt and signs it, and the bill plus
+            tip is captured.</p>
+
+          <h3>With Adyen, once</h3>
+          <ul>
+            <li>Ask <strong>Adyen Support</strong> to set up pre-authorization for your payment methods, and to enable
+              <strong>overcapture</strong>: tips up to 20% of the bill are captured on top of the amount authorized.
+              Wallets and debit cards may not support the flow.</li>
+            <li>Optional but recommended: the <a href="#api">Checkout API</a>, so the app captures the tips itself.</li>
+          </ul>
+
+          <h3>In Mini mPOS</h3>
+          <ol>
+            <li>At checkout, switch on <strong>Tip on the receipt</strong> (shown on terminals with a printer; make it
+              the default under Settings › Payments › Tipping), then <strong>Pay</strong>.</li>
+            <li>The result shows <em>Awaiting tip</em>. Print the receipt: it has blank <strong>TIP</strong> and
+              <strong>TOTAL</strong> lines, and the merchant copy (printed after it under the default merchant copy
+              setting) a <strong>SIGNATURE</strong> line.</li>
+            <li>When the customer has filled it in, tap <strong>Enter tip</strong>, on the result screen or later from
+              <strong>History</strong> (the <em>Awaiting tip</em> filter lists them). Type the tip or the total, or tap
+              <strong>No tip</strong>, and confirm.</li>
+          </ol>
+          <p>The app then captures bill plus tip. A tip above 20% of the bill is authorized first; if the card issuer
+            refuses it, nothing is captured and you can enter a smaller tip (or none). Once entered, a tip cannot be
+            changed, and the sale can be refunded like any other, tip included. Until then it can only be canceled,
+            from its History entry.</p>
+          <p class="note">Holds expire, so enter tips promptly, for example at the end of each shift.</p>
+        </section>
+
         <section id="preauth">
-          <h2>9. Pre-authorizations</h2>
+          <h2>11. Pre-authorizations</h2>
           <p>A pre-authorization holds an amount on the shopper's card without charging it, for example a deposit for
             an event, a room or equipment hire. You capture it later (the amount actually owed, up to the amount held),
             or cancel it to release the hold.</p>
@@ -219,28 +284,51 @@ cd minimpos
               <em>PRE-AUTHORIZATION</em> and shows the amount held.</li>
           </ol>
 
-          <h3>Capture or cancel</h3>
+          <h3>Capture, adjust or cancel</h3>
           <ul>
-            <li><strong>Capture</strong> in the Customer Area: <strong>Payments › Payment list</strong>, select the PSP
-              reference (shown in the app's History), then <strong>Capture payment</strong> from the payment actions.
-              You can capture less than the amount held; the rest is released. Captures there do not show in the
-              app.</li>
-            <li><strong>Cancel</strong> in the app: open the pre-authorization in <strong>History</strong> and tap
-              <strong>Cancel pre-authorization</strong>. If it has already been captured, Adyen refunds it in full
-              instead.</li>
-            <li><strong>Adjusting</strong> the amount held (up or down) is only possible with Adyen's Checkout API
-              (<code>/payments/{pspReference}/amountUpdates</code>), not in the app or the Customer Area. If you need
-              more than the hold, capture it and take the difference as a new sale.</li>
+            <li><strong>Capture</strong>: open the pre-authorization in <strong>History</strong> and tap
+              <strong>Capture</strong>. It proposes the amount held; capturing less releases the rest, and capturing
+              more first asks the card issuer to authorize it. Once captured, it can be refunded from History.</li>
+            <li><strong>Adjust amount</strong> changes what it holds without capturing (the same amount extends the
+              authorization).</li>
+            <li>Both need the <a href="#api">Checkout API</a>. Without it, capture in the Customer Area
+              (<strong>Payments › Payment list</strong>, select the PSP reference, then <strong>Capture
+              payment</strong>), and tap <strong>Record capture</strong> in the app so History shows it.</li>
+            <li><strong>Cancel</strong>: tap <strong>Cancel pre-authorization</strong>. If it has already been captured
+              in the Customer Area, Adyen refunds it in full instead.</li>
           </ul>
           <p class="note">Holds expire, after as little as a few days for some card schemes, and the shopper sees the
             amount as pending on their statement until then. Capture or cancel promptly; History's <em>Pre-auths</em>
             filter lists them, and the day totals show what is still held.</p>
         </section>
 
+        <section id="more">
+          <h2>12. More terminals</h2>
+          <p>Once one terminal is set up, set up the others from it with a few QR codes instead of entering everything
+            again. Install the same version of Mini mPOS on all of them.</p>
+          <ol>
+            <li>On the terminal that is set up, go to <strong>Settings › Data › Share with another terminal</strong>
+              (or the menu in <strong>Products</strong>). Choose what to copy: the <strong>catalog</strong>, the
+              <strong>settings</strong>, and the <strong>passwords and keys</strong> (shared key passphrase, Checkout
+              API key, SMTP password and admin PIN). Tap <strong>Show QR codes</strong>.</li>
+            <li>On the new terminal, choose <strong>Set up from another terminal</strong> in the same places and point
+              its camera at the codes, in any order.</li>
+            <li>Choose whether the catalog is merged into the new terminal's or replaces it. To bring the passwords and
+              keys, type the <strong>transfer code</strong> the first terminal shows above the codes; without it, the
+              rest is imported and they are skipped. Tap <strong>Import</strong>.</li>
+            <li>Check the connection under <strong>Settings › Terminal</strong> with <strong>Test connection</strong>.</li>
+          </ol>
+          <p>The settings replace the new terminal's, except where payments go, its own address and ID, its TEST/LIVE
+            environment and the simulator. The shared key only works on both terminals if the Customer Area assigns the
+            same key to them (for example at store or merchant account level); otherwise enter each terminal's own key.
+            The transfer code is new each time and only shown on the first terminal, so a photo of the QR codes does
+            not reveal the passwords.</p>
+        </section>
+
         <section id="live">
-          <h2>10. Before you go live</h2>
+          <h2>13. Before you go live</h2>
           <ul>
-            <li>Run a few sales, refunds and (if you use them) pre-authorizations on a TEST terminal with Adyen's
+            <li>Run a few sales, refunds and (if you use them) tips and pre-authorizations on a TEST terminal with Adyen's
               <a href="https://docs.adyen.com/point-of-sale/testing-pos-payments">test cards</a>.</li>
             <li>Check the receipt layout with <strong>Settings › Receipts › Print test receipt</strong>.</li>
             <li>Set an admin PIN, then deploy the same version to your LIVE terminals and enter their shared key.</li>
@@ -248,7 +336,7 @@ cd minimpos
         </section>
 
         <section id="trouble">
-          <h2>11. If something goes wrong</h2>
+          <h2>14. If something goes wrong</h2>
           <dl class="settings-list">
             <dt>Home says “Payments cannot reach the terminal”</dt>
             <dd>Check the key identifier, passphrase and version in Settings › Terminal against the Customer Area, and
@@ -259,8 +347,11 @@ cd minimpos
             <dt>A payment's result is unknown</dt>
             <dd>Open it from History (<em>Needs attention</em>) and tap <strong>Check result again</strong>. Check the
               Customer Area before charging the shopper again.</dd>
-            <dt>“Unsupported catalog version”</dt>
-            <dd>The other terminal runs a newer Mini mPOS. Update both to the same version.</dd>
+            <dt>A capture failed or its result is unknown</dt>
+            <dd>History shows why. Fix the Checkout API settings if needed, then tap <strong>Retry capture</strong>:
+              sending it again cannot capture twice.</dd>
+            <dt>“The codes could not be read”</dt>
+            <dd>The other terminal may run a newer Mini mPOS. Update both to the same version and scan again.</dd>
           </dl>
           <p>Still stuck? <a href="https://github.com/astiskala/minimpos/issues">Open an issue on GitHub</a>.</p>
         </section>

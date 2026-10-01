@@ -41,13 +41,16 @@
             <li><a class="button button-small" href="https://github.com/astiskala/minimpos">GitHub</a></li>
           </ul>
         </nav>
-      </div>
-      <div class="wrap language-row">
-        <nav aria-label="Language" class="languages">
-          <a aria-current="page" href="./" hreflang="en" lang="en">English</a>
-          <a href="zh-CN/" hreflang="zh-CN" lang="zh-CN">简体中文</a>
-          <a href="ja/" hreflang="ja" lang="ja">日本語</a>
-        </nav>
+        <details class="language-menu">
+          <summary aria-label="Language: English" title="Language"><svg aria-hidden="true" class="globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 2.7 3.8 5.7 3.8 9s-1.3 6.3-3.8 9c-2.5-2.7-3.8-5.7-3.8-9S9.5 5.7 12 3z"/></svg><span class="language-current">English</span></summary>
+          <nav aria-label="Language">
+            <ul>
+              <li><a aria-current="page" href="./" hreflang="en" lang="en">English</a></li>
+              <li><a href="zh-CN/" hreflang="zh-CN" lang="zh-CN">简体中文</a></li>
+              <li><a href="ja/" hreflang="ja" lang="ja">日本語</a></li>
+            </ul>
+          </nav>
+        </details>
       </div>
     </header>
     <main id="main">
@@ -71,10 +74,10 @@
           <div class="hero-visual">
             <div class="hero-shots">
               <div class="terminal terminal-s1f2 terminal-back">
-                <img alt="Receipt demo on an S1F2-style terminal" height="1170" src="images/receipt.png" width="540"/>
+                <img alt="Receipt demo on an S1F2-style terminal" height="960" src="images/receipt.png" width="540"/>
               </div>
               <div class="terminal terminal-ams1 terminal-front">
-                <img alt="Sale demo on an AMS1-style terminal" height="1170" src="images/sale.png" width="540"/>
+                <img alt="Sale demo on an AMS1-style terminal" height="800" src="images/sale-ams1.png" width="480"/>
               </div>
             </div>
             <p class="demo-note">AMS1 and S1F2 illustrations with English demo screens. Not product photographs.</p>
@@ -140,28 +143,28 @@
           <ol class="flow">
             <li>
               <div class="terminal terminal-s1f2">
-                <img alt="The sale screen with a grid of café products and a Charge $34.00 button" height="1170" loading="lazy" src="images/sale.png" width="540"/>
+                <img alt="The sale screen with a grid of café products and a Charge $34.00 button" height="960" loading="lazy" src="images/sale.png" width="540"/>
               </div>
               <h3><span>1</span> Ring it up</h3>
               <p>Tap products or key in an amount.</p>
             </li>
             <li>
               <div class="terminal terminal-s1f2">
-                <img alt="Checkout showing the items, $1.46 tax, a customer reference and a Save card for future payments switch" height="1170" loading="lazy" src="images/checkout.png" width="540"/>
+                <img alt="Checkout showing the items, $1.46 tax, a customer reference and a Save card for future payments switch" height="960" loading="lazy" src="images/checkout.png" width="540"/>
               </div>
               <h3><span>2</span> Check out</h3>
               <p>Add a reference and, with consent, save the card.</p>
             </li>
             <li>
               <div class="terminal terminal-s1f2">
-                <img alt="A printed receipt with the café's details, items, card receipt and a refund QR code" height="1170" loading="lazy" src="images/receipt.png" width="540"/>
+                <img alt="A printed receipt with the café's details, items, card receipt and a refund QR code" height="960" loading="lazy" src="images/receipt.png" width="540"/>
               </div>
               <h3><span>3</span> Print the receipt</h3>
               <p>One slip with everything, plus a QR code.</p>
             </li>
             <li>
               <div class="terminal terminal-s1f2">
-                <img alt="Refunding one flat white and a banana bread for $11.00" height="1170" loading="lazy" src="images/refund.png" width="540"/>
+                <img alt="Refunding one flat white and a banana bread for $11.00" height="960" loading="lazy" src="images/refund.png" width="540"/>
               </div>
               <h3><span>4</span> Refund by scanning</h3>
               <p>Scan the receipt and pick what to refund.</p>
@@ -173,10 +176,10 @@
         <div class="wrap split">
           <div class="shot-pair">
             <div class="terminal terminal-s1f2">
-              <img alt="Sales history grouped by day with a pre-authorization, a sale with a captured tip, a refund and three approved sales, some paid with Apple Pay or Google Pay" height="1170" loading="lazy" src="images/history.png" width="540"/>
+              <img alt="Sales history grouped by day with a pre-authorization, a sale with a captured tip, a refund and three approved sales, some paid with Apple Pay or Google Pay" height="960" loading="lazy" src="images/history.png" width="540"/>
             </div>
             <div class="terminal terminal-s1f2">
-              <img alt="History searched for customer reference CUST-1042, showing that customer's sale and its refund" height="1170" loading="lazy" src="images/history-search.png" width="540"/>
+              <img alt="History searched for customer reference CUST-1042, showing that customer's sale and its refund" height="960" loading="lazy" src="images/history-search.png" width="540"/>
             </div>
           </div>
           <div>
@@ -203,10 +206,10 @@
           </div>
           <div class="shot-pair">
             <div class="terminal terminal-s1f2">
-              <img alt="Tax settings with a Charge tax switch and GST and GST-free rates" height="1170" loading="lazy" src="images/tax.png" width="540"/>
+              <img alt="Tax settings with a Charge tax switch and GST and GST-free rates" height="960" loading="lazy" src="images/tax.png" width="540"/>
             </div>
             <div class="terminal terminal-s1f2">
-              <img alt="An approved $34.00 payment with its reference, card and PSP reference" height="1170" loading="lazy" src="images/approved.png" width="540"/>
+              <img alt="An approved $34.00 payment with its reference, card and PSP reference" height="960" loading="lazy" src="images/approved.png" width="540"/>
             </div>
           </div>
         </div>

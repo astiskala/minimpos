@@ -118,8 +118,9 @@ each one has a comment explaining why. If you think a rule is wrong for your cas
 ## Screenshots
 
 The screenshots in `docs/images/` come from an emulator running Android 13 in English (Australia), with a demo café
-catalog and the simulator. The status bar was cleaned up with Android's system UI demo mode. Resize new screenshots
-to 540 pixels wide and keep the demo data consistent, so the README and the website match.
+catalog and the simulator. The status bar was cleaned up with Android's system UI demo mode. The website shows them in
+S1F2 and AMS1 frames, so capture them at those screens' sizes: 720×1280 (S1F2, resized to 540×960) and 480×800 (AMS1,
+only `sale-ams1.png`). Keep the demo data consistent, so the README and the website match.
 
 The website in `docs/` has English, Simplified Chinese (`docs/zh-CN/`) and Japanese (`docs/ja/`) pages, which all use
 the English screenshots. Change all three languages together and check them with `python3 docs/tests/test_site.py`

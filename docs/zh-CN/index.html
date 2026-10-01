@@ -41,13 +41,16 @@
             <li><a class="button button-small" href="https://github.com/astiskala/minimpos">GitHub</a></li>
           </ul>
         </nav>
-      </div>
-      <div class="wrap language-row">
-        <nav aria-label="语言" class="languages">
-          <a href="../" hreflang="en" lang="en">English</a>
-          <a aria-current="page" href="../zh-CN/" hreflang="zh-CN" lang="zh-CN">简体中文</a>
-          <a href="../ja/" hreflang="ja" lang="ja">日本語</a>
-        </nav>
+        <details class="language-menu">
+          <summary aria-label="语言：简体中文" title="语言"><svg aria-hidden="true" class="globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 2.7 3.8 5.7 3.8 9s-1.3 6.3-3.8 9c-2.5-2.7-3.8-5.7-3.8-9S9.5 5.7 12 3z"/></svg><span class="language-current">简体中文</span></summary>
+          <nav aria-label="语言">
+            <ul>
+              <li><a href="../" hreflang="en" lang="en">English</a></li>
+              <li><a aria-current="page" href="../zh-CN/" hreflang="zh-CN" lang="zh-CN">简体中文</a></li>
+              <li><a href="../ja/" hreflang="ja" lang="ja">日本語</a></li>
+            </ul>
+          </nav>
+        </details>
       </div>
     </header>
     <main id="main">
@@ -71,10 +74,10 @@
           <div class="hero-visual">
             <div class="hero-shots">
               <div class="terminal terminal-s1f2 terminal-back">
-                <img alt="S1F2 风格支付终端上的收据演示" height="1170" src="../images/receipt.png" width="540"/>
+                <img alt="S1F2 风格支付终端上的收据演示" height="960" src="../images/receipt.png" width="540"/>
               </div>
               <div class="terminal terminal-ams1 terminal-front">
-                <img alt="AMS1 风格支付终端上的销售演示" height="1170" src="../images/sale.png" width="540"/>
+                <img alt="AMS1 风格支付终端上的销售演示" height="800" src="../images/sale-ams1.png" width="480"/>
               </div>
             </div>
             <p class="demo-note">AMS1 和 S1F2 示意图，展示英文演示界面，并非产品照片。</p>
@@ -140,28 +143,28 @@
           <ol class="flow">
             <li>
               <div class="terminal terminal-s1f2">
-                <img alt="英文演示：咖啡店商品网格与 $34.00 收款按钮" height="1170" loading="lazy" src="../images/sale.png" width="540"/>
+                <img alt="英文演示：咖啡店商品网格与 $34.00 收款按钮" height="960" loading="lazy" src="../images/sale.png" width="540"/>
               </div>
               <h3><span>1</span> 选择商品</h3>
               <p>点击商品或输入金额。</p>
             </li>
             <li>
               <div class="terminal terminal-s1f2">
-                <img alt="英文演示：结账界面中的商品、$1.46 税费、客户识别号与保存卡片开关" height="1170" loading="lazy" src="../images/checkout.png" width="540"/>
+                <img alt="英文演示：结账界面中的商品、$1.46 税费、客户识别号与保存卡片开关" height="960" loading="lazy" src="../images/checkout.png" width="540"/>
               </div>
               <h3><span>2</span> 结账</h3>
               <p>添加识别号，并在征得同意后保存卡片。</p>
             </li>
             <li>
               <div class="terminal terminal-s1f2">
-                <img alt="英文演示：含商家信息、商品、卡片收据和退款二维码的收据" height="1170" loading="lazy" src="../images/receipt.png" width="540"/>
+                <img alt="英文演示：含商家信息、商品、卡片收据和退款二维码的收据" height="960" loading="lazy" src="../images/receipt.png" width="540"/>
               </div>
               <h3><span>3</span> 打印收据</h3>
               <p>一张收据包含全部信息和二维码。</p>
             </li>
             <li>
               <div class="terminal terminal-s1f2">
-                <img alt="英文演示：为一杯馥芮白和一份香蕉面包退款 $11.00" height="1170" loading="lazy" src="../images/refund.png" width="540"/>
+                <img alt="英文演示：为一杯馥芮白和一份香蕉面包退款 $11.00" height="960" loading="lazy" src="../images/refund.png" width="540"/>
               </div>
               <h3><span>4</span> 扫码退款</h3>
               <p>扫描收据，选择要退款的内容。</p>
@@ -173,10 +176,10 @@
         <div class="wrap split">
           <div class="shot-pair">
             <div class="terminal terminal-s1f2">
-              <img alt="英文演示：按日分组的交易记录，含预授权、小费、退款和钱包支付" height="1170" loading="lazy" src="../images/history.png" width="540"/>
+              <img alt="英文演示：按日分组的交易记录，含预授权、小费、退款和钱包支付" height="960" loading="lazy" src="../images/history.png" width="540"/>
             </div>
             <div class="terminal terminal-s1f2">
-              <img alt="英文演示：搜索客户识别号 CUST-1042，显示对应销售与退款" height="1170" loading="lazy" src="../images/history-search.png" width="540"/>
+              <img alt="英文演示：搜索客户识别号 CUST-1042，显示对应销售与退款" height="960" loading="lazy" src="../images/history-search.png" width="540"/>
             </div>
           </div>
           <div>
@@ -203,10 +206,10 @@
           </div>
           <div class="shot-pair">
             <div class="terminal terminal-s1f2">
-              <img alt="英文演示：税费设置中的收取税费开关及 GST 和 GST-free 税率" height="1170" loading="lazy" src="../images/tax.png" width="540"/>
+              <img alt="英文演示：税费设置中的收取税费开关及 GST 和 GST-free 税率" height="960" loading="lazy" src="../images/tax.png" width="540"/>
             </div>
             <div class="terminal terminal-s1f2">
-              <img alt="英文演示：已批准的 $34.00 支付及卡片信息、商家识别号和 PSP 识别号" height="1170" loading="lazy" src="../images/approved.png" width="540"/>
+              <img alt="英文演示：已批准的 $34.00 支付及卡片信息、商家识别号和 PSP 识别号" height="960" loading="lazy" src="../images/approved.png" width="540"/>
             </div>
           </div>
         </div>

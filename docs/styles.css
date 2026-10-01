@@ -14,7 +14,7 @@
 
 * { box-sizing: border-box; }
 
-html { scroll-behavior: smooth; scroll-padding-top: 120px; }
+html { scroll-behavior: smooth; scroll-padding-top: 88px; }
 
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
@@ -74,11 +74,64 @@ h3 { font-size: 1.15rem; }
 
 .header-row { display: flex; align-items: center; justify-content: space-between; min-height: 64px; gap: 20px; }
 
-.language-row { display: flex; justify-content: flex-end; padding-bottom: 10px; }
-.languages { display: flex; flex-wrap: wrap; gap: 16px; font-size: 0.85rem; }
-.languages a { color: var(--grey); text-decoration: none; padding: 3px 0; }
-.languages a[aria-current="page"] { color: var(--navy); font-weight: 700; border-bottom: 2px solid var(--green); }
-.languages a:hover { color: var(--green-dark); }
+.header-row .brand { margin-right: auto; }
+
+/* Language menu: a native <details> dropdown, so the site needs no script. */
+.language-menu { position: relative; }
+.language-menu summary {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 10px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  color: var(--navy);
+  font-size: 0.95rem;
+  font-weight: 500;
+  list-style: none;
+  cursor: pointer;
+  user-select: none;
+}
+.language-menu summary::-webkit-details-marker { display: none; }
+.language-menu summary::after {
+  content: "";
+  width: 6px;
+  height: 6px;
+  margin: 0 2px 3px 2px;
+  border-right: 2px solid var(--grey);
+  border-bottom: 2px solid var(--grey);
+  transform: rotate(45deg);
+  transition: transform 0.15s;
+}
+.language-menu[open] summary::after { transform: translateY(3px) rotate(-135deg); }
+.language-menu summary:hover, .language-menu[open] summary { background: var(--grey-light); border-color: var(--grey-light); }
+.globe { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.6; }
+.language-menu ul {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 20;
+  min-width: 170px;
+  margin: 0;
+  padding: 6px;
+  list-style: none;
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: 0 14px 30px rgba(0, 17, 44, 0.14);
+}
+.language-menu li a {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  color: var(--navy);
+  text-decoration: none;
+}
+.language-menu li a:hover { background: var(--grey-light); color: var(--green-dark); }
+.language-menu a[aria-current="page"] { font-weight: 700; }
+.language-menu a[aria-current="page"]::after { content: "✓"; color: var(--green); font-weight: 800; }
 
 .brand {
   display: flex;
@@ -169,7 +222,7 @@ a:focus-visible, summary:focus-visible { outline: 3px solid var(--green); outlin
 .terminal-s1f2 { aspect-ratio: 300 / 600; background: url("images/terminal-s1f2.svg") center / 100% 100% no-repeat; }
 .terminal img { position: absolute; display: block; object-fit: contain; background: white; }
 .terminal-ams1 img { left: 7.6923%; top: 12.5%; width: 84.6154%; height: 76.25%; }
-.terminal-s1f2 img { left: 7.6667%; top: 22.5%; width: 84.6667%; height: 68.3333%; }
+.terminal-s1f2 img { left: 10%; top: 20.3333%; width: 80%; height: 71.1111%; }
 .hero-shots .terminal { position: absolute; width: 240px; }
 .terminal-front { left: 0; top: 65px; z-index: 2; transform: rotate(-6deg); }
 .terminal-back { right: 0; top: 0; transform: rotate(6deg); }
@@ -292,14 +345,14 @@ pre {
   overflow-x: auto;
 }
 
-details {
+.faq details {
   border-bottom: 1px solid var(--border);
   padding: 18px 0;
 }
 
-summary { cursor: pointer; font-weight: 700; font-size: 1.05rem; }
+.faq summary { cursor: pointer; font-weight: 700; font-size: 1.05rem; }
 
-details p { color: var(--grey); margin: 12px 0 0; }
+.faq details p { color: var(--grey); margin: 12px 0 0; }
 
 /* Guide */
 
@@ -320,7 +373,7 @@ details p { color: var(--grey); margin: 12px 0 0; }
 
 .toc {
   position: sticky;
-  top: 120px;
+  top: 88px;
   padding: 20px;
   border: 1px solid var(--border);
   border-radius: var(--radius);
@@ -398,7 +451,8 @@ details p { color: var(--grey); margin: 12px 0 0; }
   .hero-shots .terminal { width: 165px; }
   .terminal-front { left: 4px; top: 55px; }
   .terminal-back { right: 4px; }
-  .language-row { justify-content: flex-start; }
+  .language-current { display: none; }
+  .header-row { gap: 12px; }
   .step { padding: 22px; }
   .flow { gap: 20px; }
 }

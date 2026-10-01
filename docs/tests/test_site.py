@@ -226,6 +226,24 @@ class SiteTest(unittest.TestCase):
         self.assertEqual(data[:8], b"\x89PNG\r\n\x1a\n")
         self.assertEqual(struct.unpack(">II", data[16:24]), (1200, 630))
 
+    def test_screenshots_match_their_terminal_frames(self):
+        screens = {}
+        for model in ("ams1", "s1f2"):
+            artwork = (DOCS / f"images/terminal-{model}.svg").read_text()
+            screen = re.search(r'<rect x="[\d.]+" y="[\d.]+" width="([\d.]+)" height="([\d.]+)"[^>]*fill="white"', artwork)
+            screens[model] = float(screen.group(1)) / float(screen.group(2))
+        shot = re.compile(r'class="terminal terminal-(ams1|s1f2)[^"]*">\s*<img ([^>]*)>')
+        for language in LANGUAGES:
+            page = self.pages[(language, False)]
+            found = shot.findall(page.path.read_text(encoding="utf-8"))
+            self.assertTrue(found, page.path)
+            for model, attributes in found:
+                values = dict(re.findall(r'(\w+)="([^"]*)"', attributes))
+                data = (page.path.parent / values["src"]).read_bytes()
+                width, height = struct.unpack(">II", data[16:24])
+                self.assertEqual((values["width"], values["height"]), (str(width), str(height)), values["src"])
+                self.assertAlmostEqual(width / height, screens[model], delta=0.005, msg=values["src"])
+
     def test_terminal_frames_have_no_model_labels(self):
         for model in ("ams1", "s1f2"):
             artwork = (DOCS / f"images/terminal-{model}.svg").read_text()

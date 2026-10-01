@@ -169,6 +169,8 @@ the code does not tell you.
 - Chinese/Japanese pages and guides are in `docs/zh-CN/` and `docs/ja/`, with reciprocal language switches and
   canonical/hreflang links. Check all six pages with `python3 docs/tests/test_site.py`. Marketing screenshots use
   original AMS1/S1F2-style SVG illustrations: keep bottom bezels blank and the AMS1 top free of an NFC symbol.
+  Screenshots match their frame's screen (S1F2 9:16 at 540×960, AMS1 3:5 at 480×800). The language switch is a
+  script-free `<details>` globe menu at the top right of the header.
   The demo screens remain English, visibly disclosed. `social.png` (1200×630) uses the same blank terminal frames.
   Guides explain receipt-language settings, the physical-printer check, and the limits: not Chinese tax invoices
   or guaranteed Japanese qualified invoices.

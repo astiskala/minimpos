@@ -1,6 +1,7 @@
 package io.minimpos.app.data
 
 import com.google.common.truth.Truth.assertThat
+import io.minimpos.app.FakeDevice
 import io.minimpos.app.TestEnvironment
 import io.minimpos.app.await
 import io.minimpos.app.data.db.CategoryEntity
@@ -42,14 +43,32 @@ class RepositoriesTest {
     @Test
     fun `seeds default tax rates once`() =
         await {
-            catalog.seedDefaults("Standard", "Zero")
-            catalog.seedDefaults("Standard", "Zero")
+            catalog.seedDefaults(STARTER)
+            catalog.seedDefaults(listOf(TaxRateEntity(name = "Other", rateMilliPercent = 5_000)))
             assertThat(
                 catalog.taxRates.first().map {
                     it.name to it.rateMilliPercent
                 },
             ).containsExactly("Standard" to 10_000, "Zero" to 0).inOrder()
+            assertThat(catalog.taxRates.first().map { it.sortOrder }).containsExactly(0, 1).inOrder()
         }
+
+    @Test
+    fun `seeds the starter tax rates of the device's country`() {
+        val rates = { country: String ->
+            val other = TestEnvironment(device = FakeDevice(country = country))
+            try {
+                other.container.starterTaxRates().map { it.name to it.rateMilliPercent }
+            } finally {
+                other.close()
+            }
+        }
+        assertThat(rates("DE")).containsExactly("Standard" to 19_000, "Zero rated" to 0).inOrder()
+        assertThat(rates("JP")).containsExactly("Standard" to 10_000, "Reduced" to 8_000, "Zero rated" to 0).inOrder()
+        // No national rate, or an unknown country: no tax until the merchant sets a rate.
+        assertThat(rates("US")).containsExactly("Zero rated" to 0)
+        assertThat(rates("")).containsExactly("Zero rated" to 0)
+    }
 
     @Test
     fun `saves, updates and deletes catalogue entries`() =
@@ -96,7 +115,7 @@ class RepositoriesTest {
     @Test
     fun `exports and replaces catalogues`() =
         await {
-            catalog.seedDefaults("Standard", "Zero")
+            catalog.seedDefaults(STARTER)
             val standard = catalog.taxRates.first().first()
             catalog.saveProduct(ProductEntity(name = "Old", priceMinor = 1, taxRateId = standard.id))
             val summary = catalog.import(incoming, ImportMode.REPLACE)
@@ -338,5 +357,10 @@ class RepositoriesTest {
         assertThat(ReceiptLinesJson.decode("not json")).isEmpty()
         assertThat(ReceiptLinesJson.decodeRefunded("[")).isEmpty()
         assertThat(ReceiptLinesJson.encodeRefunded(emptyList())).isNull()
+    }
+
+    private companion object {
+        val STARTER =
+            listOf(TaxRateEntity(name = "Standard", rateMilliPercent = 10_000), TaxRateEntity(name = "Zero", rateMilliPercent = 0))
     }
 }

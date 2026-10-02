@@ -36,8 +36,9 @@ app.
 - **Sales** from a product grid with search, category filters and barcode scanning, plus keyed-in custom amounts.
 - **Card and wallet payments** through Adyen, directly on your payment terminal.
 - **Customer and transaction references**, and optional **card tokenization** (for later merchant-initiated payments).
-  Cards are saved under the customer reference that checkout asks for, or instead under the shopper's email address
-  (hashed by default), in which case no customer reference is asked for.
+  Out of the box checkout asks for neither and saves no cards; switch them on in Settings › Payments. Cards are then
+  saved under the customer reference that checkout asks for, or instead under the shopper's email address (hashed by
+  default), in which case no customer reference is asked for.
 - **Receipts** printed on terminals with a printer as one slip: your header, the items, tax, the card receipt and a
   refund QR code. They can also be **emailed** over your own SMTP server and, on tablets and phones, **shared** as an
   image through Android's share sheet (to a messaging app, for example).
@@ -69,7 +70,9 @@ app.
   app captures tips and pre-authorizations and adjusts their authorization itself (synchronously when the terminal
   returns Adyen's adjustment data). Without an API key, it records the amount and you capture it in the Customer
   Area.
-- **Flexible tax**: set your own rates, include tax in prices or add it at checkout, or switch tax off.
+- **Flexible tax**: set your own rates, include tax in prices or add it at checkout, or switch tax off. A new
+  installation starts with the standard rate of the device's country (where the app knows it), and only a 0% rate
+  elsewhere.
 - **Any Adyen currency**: all 138 currencies Adyen processes, with Adyen's own decimals, whatever country you are in.
 - **Easy import and export**: share products and settings with another terminal using QR codes. Bring passwords
   and keys too, protected by a one-time transfer code. No cloud account or computer needed.
@@ -77,7 +80,8 @@ app.
 - **Made for terminal screens**, down to the AMS1's 4-inch display: layouts tighten on small screens and the main
   action (Pay, Refund, Save, New sale) stays in reach without scrolling.
 - **Guided setup**: on a terminal only the shared key is needed. The terminal ID, address and TEST/LIVE environment
-  are detected, and Home points to the setup until payments can reach the terminal.
+  are detected, and Home points to the setup, saying what is missing, until payments can reach the terminal (on a
+  tablet or phone too). Out of the box checkout asks for nothing but payment and receipts print by themselves.
 - **Tablets and phones too**: off-terminal, payments go to a terminal on your network (local Terminal API), a terminal
   over the internet (Adyen's Cloud device API, with an API key; the terminal can be chosen from those connected), or
   **Tap to Pay** on the phone itself through the Adyen Payments app, which the app sets up (boards) for you. See
@@ -192,16 +196,16 @@ plus setting up your business, products and pre-authorizations. In short:
 4. **Set it up on the terminal:** open Mini mPOS and tap **Connect to this terminal** on Home (or go to Settings ›
    Terminal). Enter the key identifier and passphrase (and the version, if it isn't 1), then tap **Save and test** or
    the keyboard's Done key; the result is shown straight away. The terminal's ID, address and TEST/LIVE environment
-   are detected automatically.
-5. **Set up your business:** Settings › Payments (currency), Tax, Receipts and optionally Email.
-   Then set an admin PIN under Security. For each further terminal, open Settings › Data › **Share with another
+   are detected automatically, and the result names the currency if it follows the device's region.
+5. **Set up your business:** Settings › Payments (currency), Tax (check the starting rate), Receipts and optionally
+   Email. Then set an admin PIN under Security. For each further terminal, open Settings › Data › **Share with another
    terminal** on this one and **Set up from another terminal** on the new one, and type the transfer code shown.
 6. **Optional, for tips on the receipt, pre-authorizations and payment links:** create an API credential (Customer
    Area, Developers › API credentials) with only the **Checkout webservice role**, and enter your merchant account and
-   its API key under Settings › Terminal › Checkout API, then tap **Save and test API key**. LIVE terminals also need
-   your live URL prefix (Developers › API URLs). For payment links, also switch on Settings › Payments › **Offer
-   payment links**; before the first LIVE link, add your terms and conditions in the Customer Area (Payments › Payment
-   link settings).
+   its API key under Settings › Terminal › Checkout API (tap it to open), then tap **Save and test API key**. LIVE
+   terminals also need your live URL prefix (Developers › API URLs), asked for once the terminal is known to be LIVE.
+   For payment links, also switch on Settings › Payments › **Offer payment links**; before the first LIVE link, add
+   your terms and conditions in the Customer Area (Payments › Payment link settings).
 
 The app meets Adyen's [app requirements](https://docs.adyen.com/point-of-sale/android-terminals/app-requirements): it
 only asks for the internet, network state and camera permissions, and the build checks this on every run.

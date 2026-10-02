@@ -7,6 +7,7 @@ import io.minimpos.app.data.db.TaxRateEntity
 import io.minimpos.app.data.settings.AppSettings
 import io.minimpos.app.data.settings.EmailCapture
 import io.minimpos.app.data.settings.PaymentSettings
+import io.minimpos.app.data.settings.ShopperReferenceSource
 import io.minimpos.core.cart.AppliedTax
 import io.minimpos.core.cart.Cart
 import io.minimpos.core.cart.CartProduct
@@ -59,6 +60,19 @@ class CheckoutTest {
             ).paymentStart(now, ZoneOffset.UTC)!!
         assertThat(typed.merchantReference).isEqualTo("ORDER-7")
         assertThat(typed.tokenization).isNull()
+    }
+
+    @Test
+    fun `without a shopper reference source no card is saved and no customer reference asked for`() {
+        val none = PaymentSettings(shopperReferenceSource = ShopperReferenceSource.NONE, preAuthTokenizeDefaultOn = true)
+        val preAuth =
+            checkout(CheckoutForm(customerReference = "CUST-1", email = "a@b.co", tokenize = true), none, SaleKind.PRE_AUTHORISATION)
+        assertThat(preAuth.showCustomerReference).isFalse()
+        assertThat(preAuth.canTokenize).isFalse()
+        val start = preAuth.paymentStart(now, ZoneOffset.UTC)!!
+        assertThat(start.tokenization).isNull()
+        assertThat(start.customerReference).isNull()
+        assertThat(start.shopperEmail).isEqualTo("a@b.co")
     }
 
     @Test

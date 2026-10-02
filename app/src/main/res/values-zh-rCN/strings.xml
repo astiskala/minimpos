@@ -36,6 +36,7 @@
   <string name="home_printer_no">无打印机</string>
   <string name="home_setup_title">连接此终端</string>
   <string name="home_setup_text">输入商户后台中的共享密钥，即可开始收款。</string>
+  <string name="home_setup_title_remote">完成收款设置</string>
   <string name="home_connection_failed">无法连接支付终端</string>
   <string name="pin_title">管理员 PIN</string>
   <string name="pin_enter">输入管理员 PIN</string>
@@ -71,6 +72,7 @@
   <string name="pre_auth_charge">预授权 %1$s</string>
   <string name="tax_rate">税率</string>
   <string name="tax_default_standard">标准税率</string>
+  <string name="tax_default_reduced">低税率</string>
   <string name="tax_default_zero">零税率</string>
   <string name="checkout_title">结账</string>
   <string name="checkout_tax">税额</string>
@@ -467,6 +469,7 @@
   <string name="settings_save_and_test">保存并测试</string>
   <string name="settings_forget_passphrase">移除已保存的口令</string>
   <string name="settings_connection_ok">已连接</string>
+  <string name="settings_connection_currency">收款币种为 %1$s（根据设备所在地区）。如需更改，请前往“设置 › 支付”。</string>
   <string name="settings_connection_failed">连接失败</string>
   <string name="settings_connection_result_failed">无法连接</string>
   <string name="settings_status_checking">正在检查连接…</string>
@@ -575,6 +578,8 @@
   <string name="settings_source_customer_hint">结账时要求输入客户识别号，用于关联保存的卡片。</string>
   <string name="settings_source_email">购物者电子邮件地址</string>
   <string name="settings_source_email_hint">不单独要求客户识别号：使用电子邮件地址识别购物者。</string>
+  <string name="settings_source_none">无（不保存卡片）</string>
+  <string name="settings_source_none_hint">结账时不要求输入客户识别号，也不提供保存卡片的选项。</string>
   <string name="settings_email_reference_mode">电子邮件作为购物者识别号</string>
   <string name="settings_email_hashed">哈希值（推荐）</string>
   <string name="settings_email_raw">原始电子邮件地址</string>

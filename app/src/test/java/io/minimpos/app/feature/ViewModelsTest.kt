@@ -183,7 +183,7 @@ class ViewModelsTest {
 
     @Test
     fun `checkout validates input and derives the shopper reference`() {
-        env.useSimulator()
+        env.useSimulator { it.copy(payment = it.payment.copy(shopperReferenceSource = ShopperReferenceSource.CUSTOMER_REFERENCE)) }
         val (tax, latte) = seedCatalogue()
         container.session(SaleKind.SALE).addProduct(latte, tax)
         val vm =

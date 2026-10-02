@@ -7,6 +7,7 @@ import androidx.datastore.core.handlers.ReplaceFileCorruptionHandler
 import androidx.datastore.dataStoreFile
 import io.minimpos.app.data.db.AppDatabase
 import io.minimpos.app.data.db.SaleKind
+import io.minimpos.app.data.db.TaxRateEntity
 import io.minimpos.app.data.repo.CatalogRepository
 import io.minimpos.app.data.repo.HistoryRepository
 import io.minimpos.app.data.repo.RefundRepository
@@ -53,6 +54,7 @@ import io.minimpos.app.terminal.VirtualPrinter
 import io.minimpos.core.money.CurrencySpec
 import io.minimpos.core.receipt.ReceiptDocument
 import io.minimpos.core.receipt.ReceiptLabels
+import io.minimpos.core.tax.StarterTax
 import io.minimpos.terminal.checkout.CheckoutCredentials
 import io.minimpos.terminal.checkout.CheckoutPaymentLinks
 import io.minimpos.terminal.checkout.PaymentLinkApi
@@ -121,7 +123,7 @@ class AppContainer(
     paymentLinks: (CheckoutCredentials) -> PaymentLinkApi = { CheckoutPaymentLinks(it) },
 ) {
     private val defaults =
-        AppSettings().let {
+        AppSettings.forNewInstallation(device.country).let {
             it.copy(
                 receipt =
                     it.receipt.copy(
@@ -317,15 +319,38 @@ class AppContainer(
 
     /**
      * Starts the background work, once per process: marks transactions and captures interrupted by the last shutdown as UNKNOWN,
-     * seeds the default tax rates, prunes old history, and starts the [terminalStatus] checks.
+     * seeds the [starterTaxRates] on first launch, prunes old history, and starts the [terminalStatus] checks.
      */
     fun start() {
         appScope.launch {
             history.settleInterrupted(context.getString(R.string.payment_interrupted), context.getString(R.string.capture_interrupted))
-            catalog.seedDefaults(context.getString(R.string.tax_default_standard), context.getString(R.string.tax_default_zero))
+            catalog.seedDefaults(starterTaxRates())
             history.prune(settings.current().history.retentionDays, System.currentTimeMillis())
         }
         terminalStatus.start()
+    }
+
+    /**
+     * The tax rates a new installation starts with, named in the current language: the [StarterTax] of the device's
+     * country (its standard rate, and a reduced one where it has one), then always a 0% rate.
+     */
+    internal fun starterTaxRates(): List<TaxRateEntity> {
+        val starter = StarterTax.forCountry(device.country)
+        return listOfNotNull(
+            starter.standardMilliPercent?.let {
+                TaxRateEntity(
+                    name = context.getString(R.string.tax_default_standard),
+                    rateMilliPercent = it,
+                )
+            },
+            starter.reducedMilliPercent?.let {
+                TaxRateEntity(
+                    name = context.getString(R.string.tax_default_reduced),
+                    rateMilliPercent = it,
+                )
+            },
+            TaxRateEntity(name = context.getString(R.string.tax_default_zero), rateMilliPercent = 0),
+        )
     }
 
     /** The currency payments are taken in with [appSettings] (by default the current ones). */

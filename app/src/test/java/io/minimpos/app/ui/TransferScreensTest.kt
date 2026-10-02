@@ -20,6 +20,7 @@ import androidx.compose.ui.test.performTextReplacement
 import androidx.navigation3.runtime.NavBackStack
 import androidx.navigation3.runtime.NavKey
 import com.google.common.truth.Truth.assertThat
+import io.minimpos.app.GST_RATES
 import io.minimpos.app.MiniMposApp
 import io.minimpos.app.TestEnvironment
 import io.minimpos.app.await
@@ -64,7 +65,7 @@ class TransferScreensTest {
             )
         }
         await {
-            container.catalog.seedDefaults("GST", "GST-free")
+            container.catalog.seedDefaults(GST_RATES)
             val rate =
                 container.catalog.taxRates
                     .first()

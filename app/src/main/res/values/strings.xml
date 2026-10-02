@@ -41,6 +41,7 @@
   <string name="home_printer_no">no printer</string>
   <string name="home_setup_title">Connect to this terminal</string>
   <string name="home_setup_text">Enter the shared key from your Customer Area to start taking payments.</string>
+  <string name="home_setup_title_remote">Finish setting up payments</string>
   <string name="home_connection_failed">Payments cannot reach the terminal</string>
 
   <!-- PIN -->
@@ -81,6 +82,7 @@
   <string name="pre_auth_charge">Pre-authorize %1$s</string>
   <string name="tax_rate">Tax rate</string>
   <string name="tax_default_standard">Standard</string>
+  <string name="tax_default_reduced">Reduced</string>
   <string name="tax_default_zero">Zero rated</string>
 
   <!-- Checkout and payment -->
@@ -502,6 +504,7 @@
   <string name="settings_save_and_test">Save and test</string>
   <string name="settings_forget_passphrase">Remove saved passphrase</string>
   <string name="settings_connection_ok">Connected</string>
+  <string name="settings_connection_currency">Payments are taken in %1$s, which follows the device’s region. To change it, go to Settings › Payments.</string>
   <string name="settings_connection_failed">Connection failed</string>
   <string name="settings_connection_result_failed">Could not connect</string>
   <string name="settings_status_checking">Checking the connection…</string>
@@ -614,6 +617,8 @@
   <string name="settings_source_customer_hint">Checkout asks for a customer reference to save cards under.</string>
   <string name="settings_source_email">Shopper email</string>
   <string name="settings_source_email_hint">No separate customer reference is asked for: the email identifies the shopper.</string>
+  <string name="settings_source_none">None – don’t save cards</string>
+  <string name="settings_source_none_hint">Checkout asks for no customer reference and does not offer to save the card.</string>
   <string name="settings_email_reference_mode">Email as shopper reference</string>
   <string name="settings_email_hashed">Hashed (recommended)</string>
   <string name="settings_email_raw">Raw email address</string>

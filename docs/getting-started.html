@@ -160,7 +160,8 @@ cd minimpos
           </ol>
           <p>The terminal's ID (POIID), its address and whether it is a TEST or LIVE terminal are detected, so there is
             nothing else to enter. Settings › About shows what was found; a TEST terminal also shows TEST in its own
-            status bar.</p>
+            status bar. While the currency follows the device's region, the result also names it: check that it is the
+            one your Adyen account takes payments in (Settings › Payments).</p>
           <p>To try a real terminal from a phone or emulator instead, choose <strong>Payments go to › A terminal on your
             network</strong> and also enter the terminal's IP address and POIID (as on its Device info screen).</p>
 
@@ -191,6 +192,7 @@ cd minimpos
               the phone. Each payment then opens the Payments app and returns to Mini mPOS. To stop, tap
               <strong>Remove this phone</strong>.</dd>
           </dl>
+          <p>Until everything is entered, Home says what is still missing and opens Settings › Terminal.</p>
           <p class="note">In the cloud and for Tap to Pay, an Adyen API key is stored on the device, encrypted with the
             Android Keystore. Adyen advises keeping API keys on a server, and Mini mPOS has none: use a credential for
             this device only, set an admin PIN, and revoke the key in the Customer Area if the device is lost.</p>
@@ -202,17 +204,21 @@ cd minimpos
           <dl class="settings-list">
             <dt>Payments</dt>
             <dd>The <strong>currency</strong> (any of the 138 Adyen processes; automatic follows the device's country),
-              whether checkout asks for a <strong>transaction reference</strong> and a reference prefix, saving cards
-              (on by default or not, for sales and for pre-authorizations, the recurring model and whether the shopper
-              reference comes from a customer reference or the email), when to ask for the shopper's email, and
-              whether <strong>Tip on the receipt</strong> starts switched on at checkout.</dd>
+              whether checkout asks for a <strong>transaction reference</strong> (off at first) and a reference prefix,
+              saving cards (off at first: choose whether the shopper reference comes from a customer reference or the
+              email, then whether Save card starts switched on, for sales and for pre-authorizations, and the recurring
+              model), when to ask for the shopper's email, and whether <strong>Tip on the receipt</strong> starts
+              switched on at checkout.</dd>
             <dt>Tax</dt>
             <dd>Your named <strong>tax rates</strong> (such as GST 10% and GST-free 0%), whether prices include tax, the
-              default rate for new products, and a <strong>Charge tax</strong> switch.</dd>
+              default rate for new products, and a <strong>Charge tax</strong> switch. A new installation starts with
+              the standard rate of the device's country where the app knows it (in Japan also the reduced 8% rate), and
+              a 0% rate; in the US and Canada only the 0% rate, with tax added on top of prices. Check them before you
+              add products.</dd>
             <dt>Receipts</dt>
             <dd>Business name, address, tax ID, phone, title and footer; what the receipt shows (tax breakdown,
               references, refund QR code); whether the terminal has a printer (detected automatically), printing
-              automatically, the merchant copy and the characters per line.</dd>
+              automatically (on at first), the merchant copy and the characters per line.</dd>
             <dt>Email (SMTP)</dt>
             <dd>Your mail server, sender, an optional blind copy and the subject, with a test email.</dd>
             <dt>Security</dt>
@@ -256,8 +262,8 @@ cd minimpos
           <h2>8. Sell and refund</h2>
           <ul>
             <li><strong>New sale:</strong> tap products, scan a barcode or add a custom amount, then
-              <strong>Charge</strong>. At checkout, add a reference and (with the shopper's consent) save the card, then
-              <strong>Pay</strong> and follow the terminal.</li>
+              <strong>Charge</strong>. At checkout, add a reference and (with the shopper's consent) save the card, if
+              switched on in Settings › Payments, then <strong>Pay</strong> and follow the terminal.</li>
             <li><strong>Receipts</strong> print as one slip with your header, the items, tax, the card receipt and a
               refund QR code, and can be emailed. On a tablet or phone, <strong>Share receipt</strong> sends it as an
               image through Android's share sheet, to a messaging app for example.</li>
@@ -285,12 +291,13 @@ cd minimpos
             <li>In the Customer Area, go to <strong>Developers › API credentials</strong> and create a credential for
               the terminals with only the <strong>Checkout webservice role</strong>. Generate its <strong>API
               key</strong>.</li>
-            <li>In Mini mPOS, go to <strong>Settings › Terminal › Checkout API</strong>, enter your <strong>merchant
-              account</strong> and the <strong>API key</strong>, and tap <strong>Save and test API key</strong>. The
-              key is stored encrypted on the terminal; the test changes nothing.</li>
+            <li>In Mini mPOS, go to <strong>Settings › Terminal</strong> and tap <strong>Checkout API</strong> to open
+              it, enter your <strong>merchant account</strong> and the <strong>API key</strong>, and tap <strong>Save
+              and test API key</strong>. The key is stored encrypted on the terminal; the test changes nothing.</li>
             <li>LIVE terminals also need your <strong>live URL prefix</strong>, from <strong>Developers › API
-              URLs</strong>. Whether a terminal is TEST or LIVE is detected from its certificate (in the cloud, from
-              the API key; with Tap to Pay, from the Payments app installed).</li>
+              URLs</strong>; the field appears once the terminal is known to be LIVE. Whether a terminal is TEST or
+              LIVE is detected from its certificate (in the cloud, from the API key; with Tap to Pay, from the Payments
+              app installed).</li>
             <li>Optional: ask for synchronous adjustments with <strong>Devices › Developer › Additional data › Return
               adjust authorisation data</strong>. The app then knows straight away whether a higher amount was
               authorized; otherwise adjustments are confirmed later, in the Customer Area.</li>
@@ -380,8 +387,8 @@ cd minimpos
             <li>Home now shows <strong>Pre-authorize</strong> beside New sale. A pre-authorization holds a single
               item, so tapping a product (or adding a custom amount, or scanning a barcode) goes straight to checkout;
               tap <strong>Pre-authorize</strong> there.</li>
-            <li>At checkout, saving the card is on by default (Settings › Payments › Saving cards), so late costs can
-              be charged once the pre-authorization has been captured. The receipt is titled
+            <li>Once saving cards is switched on (Settings › Payments › Saving cards), Save card starts switched on at
+              checkout, so late costs can be charged once the pre-authorization has been captured. The receipt is titled
               <em>PRE-AUTHORIZATION</em> and shows the amount held.</li>
           </ol>
 

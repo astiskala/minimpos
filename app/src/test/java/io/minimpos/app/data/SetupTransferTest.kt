@@ -181,8 +181,9 @@ class SetupTransferTest {
         val export = await { setup(source).export(TransferContents(catalogue = false, secrets = false), "AUD") }
         assertThat(export.catalogue).isNull()
         assertThat(export.code).isNull()
-        // Only what differs from the defaults is written.
-        assertThat(TransferCodec.decode(export.payload).settings).isEqualTo("{}")
+        // Only what differs from the constructor's defaults is written: here a new installation's own choices.
+        assertThat(TransferCodec.decode(export.payload).settings)
+            .isEqualTo("""{"payment":{"askTransactionReference":false,"shopperReferenceSource":"NONE"},"receipt":{"autoPrint":true}}""")
         val outcome = await { setup(target).import(setup(target).receive(TransferCodec.decode(export.payload)), ImportMode.REPLACE) }
         assertThat((outcome as ImportOutcome.Imported).result.catalogue).isNull()
         assertThat(outcome.secretsSkipped).isFalse()

@@ -81,17 +81,16 @@ class CatalogRepository(
     val products: Flow<List<ProductEntity>> = dao.products()
 
     /**
-     * Creates the starter tax rates on first launch, so products can be added straight away: [standardName] at 10% and
-     * [zeroName] at 0%. Does nothing once any tax rate exists.
+     * Creates the starter tax rates on first launch, so products can be added straight away: [rates] (their names and
+     * rates), in this order, so the first is the one new products start with. Does nothing once any tax rate exists.
+     *
+     * @throws IllegalArgumentException if [rates] is empty, since at least one rate must always exist.
      */
-    suspend fun seedDefaults(
-        standardName: String,
-        zeroName: String,
-    ) {
+    suspend fun seedDefaults(rates: List<TaxRateEntity>) {
+        require(rates.isNotEmpty()) { "At least one tax rate is needed" }
         db.withTransaction {
             if (dao.taxRateCount() == 0) {
-                dao.insert(TaxRateEntity(name = standardName, rateMilliPercent = DEFAULT_STANDARD_RATE, sortOrder = 0))
-                dao.insert(TaxRateEntity(name = zeroName, rateMilliPercent = 0, sortOrder = 1))
+                rates.forEachIndexed { index, rate -> dao.insert(rate.copy(id = 0, sortOrder = index)) }
             }
         }
     }
@@ -289,9 +288,4 @@ class CatalogRepository(
         var added: Int = 0,
         var updated: Int = 0,
     )
-
-    private companion object {
-        /** 10% in thousandths of a percent. */
-        const val DEFAULT_STANDARD_RATE = 10_000
-    }
 }

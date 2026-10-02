@@ -36,7 +36,8 @@ the other.
   has no PSP reference, so it is refunded in the Customer Area. Sales only. _Avoid_: invoice, pay-by-link (in code).
 - **References**: the **merchant reference** (Adyen's `reference`: an optional prefix, then `yyMMdd-HHmmss-XXXX`;
   refunds `R-…`, cancellations `C-…`); the **customer reference** typed at checkout, asked for exactly when it is the
-  **shopper reference** (Adyen's `shopperReference` for saving a card, made from the customer reference or the email).
+  **shopper reference** (Adyen's `shopperReference` for saving a card, made from the customer reference or the email,
+  or from nothing, `ShopperReferenceSource.NONE`, when no card is saved).
 
 ## After the payment
 
@@ -93,6 +94,10 @@ the other.
 - **Outcome** (`ActionOutcome`, `ActionState`): what a finished action reports, typed, worded only by the screens
   (`feature/OutcomeMessages.kt`). _Avoid_: message, error string.
 - **Catalogue**: products, categories and tax rates (`CatalogRepository`); every product has a tax rate.
+- **Starter tax** (`StarterTax`): the tax rates (the national standard rate where known, then 0%) and price style
+  (tax included or added) a new installation starts with, from the device's country.
+- **New-installation settings** (`AppSettings.forNewInstallation`): what a new installation starts with, which may
+  differ from the constructor's defaults; those keep meaning what a value left out of a transfer means.
 - **Transfer** (`SetupTransfer`, `TransferCodec` `MPC1:`): copying the catalogue, settings and secrets to another
   terminal as QR codes, sealed with a 12-character **transfer code** (`TransferSeal`). **Device fields**
   (`AppSettings.withDeviceFieldsOf`) stay behind.

@@ -60,4 +60,29 @@ class TaxTest {
     fun `tax amounts add up`() {
         assertThat(TaxAmounts(1, 2, 3) + TaxAmounts(10, 20, 30)).isEqualTo(TaxAmounts(11, 22, 33))
     }
+
+    @Test
+    fun `a new installation starts with its country's standard rate, included in prices`() {
+        assertThat(StarterTax.forCountry("AU")).isEqualTo(StarterTax(10_000))
+        assertThat(StarterTax.forCountry(" de ")).isEqualTo(StarterTax(19_000, null, TaxMode.INCLUSIVE))
+        assertThat(StarterTax.forCountry("FI").standardMilliPercent).isEqualTo(25_500)
+        // Japanese receipts total the reduced rate separately, so it is there from the start.
+        assertThat(StarterTax.forCountry("JP")).isEqualTo(StarterTax(10_000, 8_000, TaxMode.INCLUSIVE))
+    }
+
+    @Test
+    fun `without a national rate or a known country, only a zero rate is started with`() {
+        // Sales tax depends on the state or province, and is added on top.
+        assertThat(StarterTax.forCountry("US")).isEqualTo(StarterTax(null, null, TaxMode.EXCLUSIVE))
+        assertThat(StarterTax.forCountry("ca").mode).isEqualTo(TaxMode.EXCLUSIVE)
+        assertThat(StarterTax.forCountry("")).isEqualTo(StarterTax.NONE)
+        assertThat(StarterTax.forCountry("HK")).isEqualTo(StarterTax.NONE)
+        assertThat(StarterTax.NONE.mode).isEqualTo(TaxMode.INCLUSIVE)
+    }
+
+    @Test
+    fun `every starter rate is a valid rate`() {
+        val rates = ('A'..'Z').flatMap { a -> ('A'..'Z').map { b -> StarterTax.forCountry("$a$b") } }
+        assertThat(rates.flatMap { listOfNotNull(it.standardMilliPercent, it.reducedMilliPercent) }.all(TaxRates::isValid)).isTrue()
+    }
 }

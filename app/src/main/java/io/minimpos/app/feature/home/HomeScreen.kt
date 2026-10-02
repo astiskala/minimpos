@@ -51,7 +51,9 @@ import io.minimpos.app.R
 import io.minimpos.app.data.db.SaleKind
 import io.minimpos.app.data.settings.TerminalMode
 import io.minimpos.app.feature.settings.SettingsSections
+import io.minimpos.app.feature.text
 import io.minimpos.app.terminal.TerminalConnection
+import io.minimpos.app.terminal.TerminalState
 import io.minimpos.app.ui.components.LocalAppContainer
 import io.minimpos.app.ui.components.MiniScaffold
 import io.minimpos.app.ui.navigation.Navigator
@@ -91,10 +93,9 @@ fun HomeScreen(
                 Modifier.widthIn(max = 560.dp).heightIn(max = 640.dp).fillMaxHeight(),
                 verticalArrangement = Arrangement.spacedBy(dimens.spacing),
             ) {
-                if (terminal.loaded && terminal.mode == TerminalMode.TERMINAL) {
-                    ConnectionProblem(terminal.connection, terminal.setupProblem != null) {
-                        navigator.push(Route.SettingsSection(SettingsSections.TERMINAL))
-                    }
+                // Wherever payments go but the simulator: this terminal, one on the network or in the cloud, or Tap to Pay.
+                if (terminal.loaded && terminal.mode != TerminalMode.SIMULATOR) {
+                    ConnectionProblem(terminal) { navigator.push(Route.SettingsSection(SettingsSections.TERMINAL)) }
                 }
                 PaymentTiles(preAuthOffered, onOpen = navigator::push)
                 AreaTiles(locked = pinSet, onOpen = navigator::push)
@@ -143,19 +144,23 @@ private fun ColumnScope.PaymentTiles(
     }
 }
 
-/** A [SetupCard] while payments cannot work: something must still be entered or the terminal did not answer; else nothing. */
+/**
+ * A [SetupCard] while payments cannot work: something must still be entered or the terminal did not answer; else
+ * nothing. On a terminal only its shared key can be missing; elsewhere the card says what is.
+ */
 @Composable
 private fun ConnectionProblem(
-    connection: TerminalConnection,
-    setupNeeded: Boolean,
+    terminal: TerminalState,
     onClick: () -> Unit,
 ) {
+    val connection = terminal.connection
+    val problem = terminal.setupProblem ?: (connection as? TerminalConnection.NotSetUp)?.problem
     when {
-        setupNeeded || connection is TerminalConnection.NotSetUp -> {
+        problem != null -> {
             SetupCard(
                 Icons.Default.Key,
-                stringResource(R.string.home_setup_title),
-                stringResource(R.string.home_setup_text),
+                stringResource(if (terminal.onTerminal) R.string.home_setup_title else R.string.home_setup_title_remote),
+                if (terminal.onTerminal) stringResource(R.string.home_setup_text) else problem.text(),
                 error = false,
                 onClick = onClick,
             )
@@ -295,7 +300,7 @@ private fun RowScope.AdminButton(
     }
 }
 
-/** Points to Terminal settings while payments cannot work yet: the shared key is missing, or the terminal did not answer. */
+/** Points to Terminal settings while payments cannot work yet: something is missing, or the terminal did not answer. */
 @Composable
 private fun SetupCard(
     icon: ImageVector,

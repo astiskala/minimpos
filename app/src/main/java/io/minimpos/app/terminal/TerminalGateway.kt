@@ -45,7 +45,10 @@ interface DeviceInfo {
     /** Whether this is an Adyen terminal, which is decided by a POIID having been detected. */
     val isAdyenTerminal: Boolean get() = detectedPoiId != null
 
-    /** The device's country (ISO 3166-1 alpha-2, possibly empty), which picks the Cloud device API's data centre. */
+    /**
+     * The device's country (ISO 3166-1 alpha-2, possibly empty), which picks the Cloud device API's data centre and the
+     * tax a new installation starts with.
+     */
     val country: String get() = Locale.getDefault().country
 
     /**

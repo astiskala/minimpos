@@ -21,6 +21,7 @@ import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.performTextReplacement
 import com.google.common.truth.Truth.assertThat
+import io.minimpos.app.GST_RATES
 import io.minimpos.app.MiniMposApp
 import io.minimpos.app.TestEnvironment
 import io.minimpos.app.await
@@ -32,6 +33,7 @@ import io.minimpos.app.data.db.SaleKind
 import io.minimpos.app.data.db.SaleStatus
 import io.minimpos.app.data.db.TaxRateEntity
 import io.minimpos.app.data.repo.HistoryItem
+import io.minimpos.app.data.settings.AppSettings
 import io.minimpos.app.data.settings.EmailCapture
 import io.minimpos.app.data.settings.ShopperReferenceSource
 import io.minimpos.app.data.settings.TerminalMode
@@ -60,10 +62,14 @@ class AppFlowTest {
 
     @Before
     fun setUp() {
+        // These flows ask for a customer reference and print on request, unlike a new installation (see below).
         env.useSimulator {
-            it.copy(payment = it.payment.copy(currencyCode = "AUD"), receipt = it.receipt.copy(businessName = "Corner Cafe"))
+            it.copy(
+                payment = it.payment.copy(currencyCode = "AUD", shopperReferenceSource = ShopperReferenceSource.CUSTOMER_REFERENCE),
+                receipt = it.receipt.copy(businessName = "Corner Cafe", autoPrint = false),
+            )
         }
-        await { container.catalog.seedDefaults("GST", "GST-free") }
+        await { container.catalog.seedDefaults(GST_RATES) }
         compose.setContent { MiniMposApp(container) }
     }
 
@@ -113,6 +119,32 @@ class AppFlowTest {
                 .session(SaleKind.SALE)
                 .cart.value.lines,
         ).isEmpty()
+    }
+
+    @Test
+    fun `a new installation's checkout asks for nothing but payment, and prints the receipt by itself`() {
+        val fresh = AppSettings.forNewInstallation("AU")
+        env.updateSettings { it.copy(payment = fresh.payment.copy(currencyCode = "AUD"), receipt = fresh.receipt) }
+        ringUpCustomAmount(9, 5, 0)
+        compose.onNodeWithTag("charge").performClick()
+        compose.waitForTag("pay")
+        listOf("transactionReference", "customerReference", "email", "tokenize").forEach { compose.onNodeWithTag(it).assertDoesNotExist() }
+        compose.onNodeWithTag("pay").performClick()
+        waitForText("Approved")
+        compose.waitForTag("virtualPrinter")
+        waitForText("Scan this code for returns")
+    }
+
+    @Test
+    fun `home says what payments off the terminal still need`() {
+        env.updateSettings { it.copy(terminal = it.terminal.copy(mode = TerminalMode.CLOUD)) }
+        compose.waitForTag("terminalSetup")
+        compose
+            .onNodeWithTag("terminalSetup")
+            .assertTextContains("Finish setting up payments", substring = true)
+            .assertTextContains("Enter the merchant account", substring = true)
+            .performClick()
+        compose.waitForTag("terminalMode")
     }
 
     @Test

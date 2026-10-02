@@ -63,6 +63,9 @@ terminal constraints, where payments go and the conventions; `ArchitectureTest` 
 - \* Settings ranges live on each settings section's companion; `SettingsRepository` normalises on every read and write
   (only it and `AppSettings` call `normalized()`), so nothing downstream clamps again. New `AppSettings` fields need
   defaults, so settings saved by older versions still load.
+- Never change a constructor default of the settings: a transfer leaves out values at their default, so it would change
+  what transfers from older versions mean. Change what a new installation starts with in
+  `AppSettings.forNewInstallation` instead (the container's `defaults`).
 - \* Composables other than a screen (`…Screen`) and its `…ViewModel()` factories neither take nor get a view model:
   screens pass state and callbacks (Settings bundles its sections' callbacks per view model in `SettingsEvents` and
   `TerminalSetupEvents`).

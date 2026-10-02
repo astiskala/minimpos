@@ -7,9 +7,11 @@ import io.minimpos.app.data.settings.HistorySettings
 import io.minimpos.app.data.settings.PaymentSettings
 import io.minimpos.app.data.settings.ReceiptSettings
 import io.minimpos.app.data.settings.SecuritySettings
+import io.minimpos.app.data.settings.ShopperReferenceSource
 import io.minimpos.app.data.settings.SimulatorSettings
 import io.minimpos.app.data.settings.TerminalMode
 import io.minimpos.app.data.settings.TerminalSettings
+import io.minimpos.core.tax.TaxMode
 import io.minimpos.terminal.transport.CloudRegion
 import io.minimpos.terminal.transport.TerminalEnvironment
 import org.junit.Test
@@ -38,6 +40,22 @@ class AppSettingsTest {
         assertThat(SimulatorSettings(delayMillis = 90_000).normalized().delayMillis).isEqualTo(SimulatorSettings.DELAY_MILLIS.last.toLong())
         // Values within their limits, and the defaults, are left alone.
         assertThat(AppSettings().normalized()).isEqualTo(AppSettings())
+    }
+
+    @Test
+    fun `a new installation asks for nothing extra at checkout, prints automatically and taxes as is usual there`() {
+        val australia = AppSettings.forNewInstallation("AU")
+        assertThat(australia.payment.askTransactionReference).isFalse()
+        assertThat(australia.payment.shopperReferenceSource).isEqualTo(ShopperReferenceSource.NONE)
+        assertThat(australia.payment.asksCustomerReference).isFalse()
+        assertThat(australia.receipt.autoPrint).isTrue()
+        assertThat(australia.payment.taxMode).isEqualTo(TaxMode.INCLUSIVE)
+        assertThat(AppSettings.forNewInstallation("US").payment.taxMode).isEqualTo(TaxMode.EXCLUSIVE)
+        // The constructor's defaults are what a value left out of a transfer means, so they keep their old meaning.
+        assertThat(AppSettings().payment.askTransactionReference).isTrue()
+        assertThat(AppSettings().payment.shopperReferenceSource).isEqualTo(ShopperReferenceSource.CUSTOMER_REFERENCE)
+        assertThat(AppSettings().receipt.autoPrint).isFalse()
+        assertThat(australia.copy(payment = PaymentSettings(), receipt = ReceiptSettings())).isEqualTo(AppSettings())
     }
 
     @Test

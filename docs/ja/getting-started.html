@@ -124,7 +124,7 @@ cd minimpos
               <li><strong>キー識別子</strong>と<strong>キーのパスフレーズ</strong>を入力します。<strong>キーバージョン</strong>が 1 でない場合は、バージョンも入力します。</li>
               <li><strong>保存してテスト</strong>、またはキーボードの完了キーをタップします。結果はすぐに表示されます。</li>
             </ol>
-            <p>端末 ID（POIID）、アドレス、TEST／LIVE 環境は自動検出されるため、ほかの入力は不要です。設定 › アプリ情報で検出結果を確認できます。TEST 端末のステータスバーには TEST と表示されます。</p>
+            <p>端末 ID（POIID）、アドレス、TEST／LIVE 環境は自動検出されるため、ほかの入力は不要です。設定 › アプリ情報で検出結果を確認できます。TEST 端末のステータスバーには TEST と表示されます。通貨が端末の地域に従っている場合は、テスト結果にその通貨も表示されます。Adyen アカウントで決済を受け付ける通貨であることを確認してください（設定 › 決済）。</p>
             <p>スマートフォンやエミュレーターから実際の端末を試す場合は、<strong>決済先 › ネットワーク上の端末</strong>を選び、端末の IP アドレスと POIID（端末の Device info 画面に表示）も入力します。</p>
             <h3 id="tablet">タブレットやスマートフォンで使う</h3>
             <p>Mini mPOS は Android のタブレットやスマートフォンでも動作します。同じ APK をインストールし、<strong>設定 › 端末 › 決済先</strong>で次のいずれかを選びます。</p>
@@ -136,6 +136,7 @@ cd minimpos
               <dt>このスマートフォンでTap to Pay</dt>
               <dd>お客様はこのスマートフォンの Adyen Payments アプリで、カードやスマートフォンをタッチして支払います。プリンターはないため、領収書はメールで送ります。NFC 対応で Android 12 以降を搭載し、Google の認定を受けたスマートフォンが必要です。Adyen サポートに Tap to Pay on Android と Adyen Payments app role の有効化を依頼し、Google Play から <strong>Adyen Payments Test</strong>（TEST）または <strong>Adyen Payments</strong>（LIVE）をインストールします。共有キーとマーチャントアカウントを入力し、<strong>Tap to Pay</strong> で <strong>PaymentsアプリのAPIキー</strong>（Adyen Payments app role のみを持つ認証情報）と、1 店舗だけに設定する場合はその店舗 ID を入力します。<strong>Tap to Payを設定</strong>をタップすると、Payments アプリが開いてスマートフォンを登録します。以降、支払いのたびに Payments アプリが開き、Mini mPOS に戻ります。やめるときは<strong>このスマートフォンを削除</strong>をタップします。</dd>
             </dl>
+            <p>すべての入力が終わるまで、ホームに不足している項目が表示され、タップすると設定 › 端末が開きます。</p>
             <p class="note">クラウドと Tap to Pay では、Adyen の APIキーがデバイスに保存されます（Android Keystore で暗号化）。Adyen は APIキーをサーバーで管理することを推奨していますが、Mini mPOS にはサーバーがありません。このデバイス専用の認証情報を使い、管理者 PIN を設定し、デバイスを紛失した場合は Customer Area でキーを無効にしてください。</p>
           </section>
           <section id="business">
@@ -143,11 +144,11 @@ cd minimpos
             <p>以下はすべて<strong>設定</strong>にあります。</p>
             <dl class="settings-list">
               <dt>決済</dt>
-              <dd><strong>通貨</strong>（Adyen が扱う 138 通貨。自動設定は端末の国に従います）、会計時に<strong>取引参照ID</strong>を入力するかどうかと参照IDの接頭辞、カード保存の設定（通常販売とプリオーソリゼーションそれぞれの初期状態、継続課金モデル、購入者参照IDを顧客参照IDとメールアドレスのどちらから取得するか）、購入者のメールアドレスを確認するタイミング、会計時に<strong>領収書にチップを記入</strong>を初期状態でオンにするかどうかを設定します。</dd>
+              <dd><strong>通貨</strong>（Adyen が扱う 138 通貨。自動設定は端末の国に従います）、会計時に<strong>取引参照ID</strong>を入力するかどうか（初期状態はオフ）と参照IDの接頭辞、カード保存の設定（初期状態は保存しない。購入者参照IDを顧客参照IDとメールアドレスのどちらから取得するかを選ぶと、通常販売とプリオーソリゼーションそれぞれの初期状態と継続課金モデルも設定できます）、購入者のメールアドレスを確認するタイミング、会計時に<strong>領収書にチップを記入</strong>を初期状態でオンにするかどうかを設定します。</dd>
               <dt>税</dt>
-              <dd>名前付きの<strong>税率</strong>（例：GST 10%、GST-free 0%）、税込価格か税抜価格か、新商品の初期税率、<strong>税を適用</strong>するかどうかを設定します。</dd>
+              <dd>名前付きの<strong>税率</strong>（例：GST 10%、GST-free 0%）、税込価格か税抜価格か、新商品の初期税率、<strong>税を適用</strong>するかどうかを設定します。新規インストール時は、アプリが端末の国の標準税率を把握していればその税率（日本では軽減税率 8% も）と 0% の税率が用意されます。米国とカナダでは 0% の税率のみで、税は価格に上乗せされます。商品を追加する前に確認してください。</dd>
               <dt>領収書</dt>
-              <dd>店舗名、住所、税務番号、電話番号、タイトル、フッター、表示内容（税額内訳、参照ID、返金用 QR コード）、プリンターの有無（通常は自動検出）、自動印刷、加盟店控え、1 行の文字幅を設定します。</dd>
+              <dd>店舗名、住所、税務番号、電話番号、タイトル、フッター、表示内容（税額内訳、参照ID、返金用 QR コード）、プリンターの有無（通常は自動検出）、自動印刷（初期状態はオン）、加盟店控え、1 行の文字幅を設定します。</dd>
               <dt>メール（SMTP）</dt>
               <dd>メールサーバー、差出人、任意の BCC、件名を設定し、テストメールを送信できます。</dd>
               <dt>セキュリティ</dt>
@@ -170,7 +171,7 @@ cd minimpos
           <section id="sell">
             <h2>8. 販売と返金</h2>
             <ul>
-              <li><strong>新規販売：</strong>商品をタップするか、バーコードをスキャンするか、任意の金額を追加して、<strong>…を会計</strong>ボタンをタップします。会計時に参照IDを入力し、購入者の同意を得てカードを保存できます。その後、<strong>…を決済</strong>ボタンをタップして端末の案内に従います。</li>
+              <li><strong>新規販売：</strong>商品をタップするか、バーコードをスキャンするか、任意の金額を追加して、<strong>…を会計</strong>ボタンをタップします。会計時に参照IDを入力し、購入者の同意を得てカードを保存できます（設定 › 決済でオンにした場合）。その後、<strong>…を決済</strong>ボタンをタップして端末の案内に従います。</li>
               <li><strong>領収書</strong>には店舗のヘッダー、商品、税金、カード決済の領収書、返金用 QR コードをまとめて印刷できます。メール送信も可能です。タブレットやスマートフォンでは、<strong>領収書を共有</strong>で Android の共有シートから画像として送れます（メッセージアプリなど）。</li>
               <li><strong>返金：</strong>領収書の QR コードをスキャンするか、<strong>取引履歴</strong>から販売を開きます。全額、商品単位、または指定金額で返金できます。Adyen は返金を非同期で処理するため、アプリでは<em>返金要求済み</em>と表示されます。最終結果は Customer Area で確認してください。</li>
               <li><strong>取引履歴</strong>は取引を日別にまとめ、日計とチップを表示します。<em>要確認</em>には結果が未確定の決済が表示され、端末に結果を再照会できます。</li>
@@ -182,8 +183,8 @@ cd minimpos
             <p>領収書のチップとプリオーソリゼーションは<strong>手動キャプチャ</strong>で処理します。キャプチャするまでは金額を確保するだけです。Mini mPOS は Adyen Checkout API でキャプチャや確保額の調整を実行できます。Customer Area で手動でキャプチャすることもできます。</p>
             <ol>
               <li>Customer Area の <strong>Developers › API credentials</strong> で、端末用の認証情報を作成します。付与するロールは <strong>Checkout webservice role</strong> のみにして、<strong>APIキー</strong>を生成してください。</li>
-              <li>Mini mPOS の<strong>設定 › 端末 › Checkout API</strong>に<strong>マーチャントアカウント</strong>と <strong>APIキー</strong>を入力し、<strong>APIキーを保存してテスト</strong>をタップします。キーは端末に暗号化して保存されます。このテストでは決済は変更されません。</li>
-              <li>LIVE 端末では、<strong>Developers › API URLs</strong> にある <strong>live URL prefix</strong> も必要です。TEST／LIVE 環境は端末の証明書から自動検出されます（クラウドでは APIキーから、Tap to Pay ではインストールされた Payments アプリから判別します）。</li>
+              <li>Mini mPOS の<strong>設定 › 端末</strong>で<strong>Checkout API（任意）</strong>をタップして開き、<strong>マーチャントアカウント</strong>と <strong>APIキー</strong>を入力し、<strong>APIキーを保存してテスト</strong>をタップします。キーは端末に暗号化して保存されます。このテストでは決済は変更されません。</li>
+              <li>LIVE 端末では、<strong>Developers › API URLs</strong> にある <strong>live URL prefix</strong> も必要です。この欄は端末が LIVE と判明してから表示されます。TEST／LIVE 環境は端末の証明書から自動検出されます（クラウドでは APIキーから、Tap to Pay ではインストールされた Payments アプリから判別します）。</li>
               <li>任意：<strong>Devices › Developer › Additional data › Return adjust authorisation data</strong> で同期的なオーソリゼーション調整を有効にします。有効な場合、増額が承認されたかどうかをアプリですぐに確認できます。無効な場合、調整結果は後から Customer Area で確認します。</li>
             </ol>
             <p>Adyen はキャプチャを非同期で確定するため、アプリでは<em>キャプチャ要求済み</em>と表示されます。Mini mPOS には webhook を受信するバックエンドがないため、最終結果は Customer Area で確認してください。結果が不明なキャプチャは、取引履歴から再送しても二重にキャプチャされません。</p>
@@ -227,7 +228,7 @@ cd minimpos
             <ol>
               <li><strong>商品</strong>で商品を編集または追加し、<strong>プリオーソリ商品</strong>をオンにします。その商品は新規販売には表示されなくなります。</li>
               <li>ホームの新規販売の隣に<strong>プリオーソリ</strong>が表示されます。1 件につき 1 商品の金額を確保するため、商品の選択、任意の金額の追加、バーコードのスキャンから直接会計画面に進みます。そこで<strong>…をプリオーソリ</strong>をタップします。</li>
-              <li>会計時のカード保存は初期状態でオンです（設定 › 決済 › カードの保存。購入者の同意が必要です）。プリオーソリゼーションをキャプチャした後に、追加費用を請求するために利用できます。領収書のタイトルは<em>プリオーソリゼーション</em>で、確保額が表示されます。</li>
+              <li>カードの保存をオンにすると（設定 › 決済 › カードの保存。購入者の同意が必要です）、会計時のカード保存が初期状態でオンになります。プリオーソリゼーションをキャプチャした後に、追加費用を請求するために利用できます。領収書のタイトルは<em>プリオーソリゼーション</em>で、確保額が表示されます。</li>
             </ol>
             <h3>キャプチャ、調整、キャンセル</h3>
             <ul>

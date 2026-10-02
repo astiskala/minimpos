@@ -57,7 +57,7 @@ data class Checkout(
     /** False when the entered customer reference is not a valid Adyen shopper reference; none entered is valid. */
     val customerReferenceValid: Boolean get() = customerReference?.let(ShopperReferences::isValidReference) != false
 
-    /** The Adyen shopperReference tokenization would use, if the entered data allows one. */
+    /** The Adyen shopperReference tokenization would use, if cards are saved and the entered data allows one. */
     val shopperReference: String?
         get() =
             when (payment.shopperReferenceSource) {
@@ -69,6 +69,10 @@ data class Checkout(
                     form.email.trim().takeIf { ShopperReferences.isValidEmail(it) }?.let {
                         ShopperReferences.fromEmail(it, payment.emailReferenceMode, payment.emailReferenceSalt)
                     }
+                }
+
+                ShopperReferenceSource.NONE -> {
+                    null
                 }
             }
 

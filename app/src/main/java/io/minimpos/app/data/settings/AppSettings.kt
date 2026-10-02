@@ -3,6 +3,7 @@ package io.minimpos.app.data.settings
 import io.minimpos.app.data.db.TaxRateEntity
 import io.minimpos.core.money.AdyenCurrencies
 import io.minimpos.core.shopper.EmailReferenceMode
+import io.minimpos.core.tax.StarterTax
 import io.minimpos.core.tax.TaxMode
 import io.minimpos.terminal.client.RecurringModel
 import io.minimpos.terminal.simulator.SimulatedOutcome
@@ -76,6 +77,30 @@ data class AppSettings(
         other: AppSettings,
         defaultTaxRateId: Long?,
     ): AppSettings = other.withDeviceFieldsOf(copy(payment = payment.copy(defaultTaxRateId = defaultTaxRateId)))
+
+    /** The settings a new installation starts with. */
+    companion object {
+        /**
+         * The settings a new installation starts with on a device in [country] (ISO 3166-1 alpha-2, possibly empty), for
+         * a quick start: prices include tax or not as is usual there ([StarterTax]), checkout asks for no reference and
+         * saves no cards, and receipts print as soon as a payment is approved wherever there is a printer. These differ
+         * from the constructor's defaults on purpose: those are what a value left out of a settings file or a transfer
+         * means (a transfer leaves out values at their default, also one from an older version), so they keep their
+         * meaning.
+         */
+        fun forNewInstallation(country: String): AppSettings =
+            AppSettings().let {
+                it.copy(
+                    payment =
+                        it.payment.copy(
+                            taxMode = StarterTax.forCountry(country).mode,
+                            askTransactionReference = false,
+                            shopperReferenceSource = ShopperReferenceSource.NONE,
+                        ),
+                    receipt = it.receipt.copy(autoPrint = true),
+                )
+            }
+    }
 }
 
 /** Where payments go ("Payments go to" in Settings › Terminal). */
@@ -208,13 +233,16 @@ enum class EmailCapture {
     BOTH,
 }
 
-/** What the Adyen shopper reference of a saved card is made from. */
+/** What the Adyen shopper reference of a saved card is made from, if cards are saved at all. */
 enum class ShopperReferenceSource {
     /** The customer reference typed at checkout. */
     CUSTOMER_REFERENCE,
 
     /** The shopper's email address, as set by [PaymentSettings.emailReferenceMode]. */
     EMAIL,
+
+    /** Nothing: cards are not saved, so checkout asks for no customer reference (and the email only as set). */
+    NONE,
 }
 
 /**
@@ -222,12 +250,13 @@ enum class ShopperReferenceSource {
  *
  * @property currencyCode Any currency in Adyen's currency table; blank follows the device's country.
  * @property chargeTax Off: no sale is taxed; products keep their tax rate for when it is switched back on.
- * @property taxMode Whether prices include tax.
+ * @property taxMode Whether prices include tax; a new installation starts as is usual in the device's country
+ *   ([AppSettings.forNewInstallation]).
  * @property defaultTaxRateId The tax rate new products and custom items start with; null (or a deleted rate) means the
  *   first rate.
  * @property referencePrefix Optional start of generated merchant references; they are unique without one.
  * @property askTransactionReference Whether checkout has a merchant reference field; left empty, a reference is
- *   generated as it is when the field is hidden.
+ *   generated as it is when the field is hidden. A new installation starts without it.
  * @property tokenizeDefaultOn Whether "Save card" starts switched on at checkout of a sale.
  * @property preAuthTokenizeDefaultOn Whether "Save card" starts switched on at checkout of a pre-authorisation, where a
  *   saved card allows charging late costs after the pre-authorisation has been captured.
@@ -237,7 +266,8 @@ enum class ShopperReferenceSource {
  * @property emailCapture When checkout asks for an email; [effectiveEmailCapture] is what applies.
  * @property autoSendEmail When the email was captured before payment, send the receipt as soon as the payment is
  *   approved.
- * @property shopperReferenceSource What the shopper reference of a saved card is made from.
+ * @property shopperReferenceSource What the shopper reference of a saved card is made from;
+ *   [ShopperReferenceSource.NONE] (what a new installation starts with) saves no cards.
  * @property emailReferenceMode How an email becomes a shopper reference, when [shopperReferenceSource] is
  *   [ShopperReferenceSource.EMAIL].
  * @property emailReferenceSalt Salt mixed into hashed email references. Terminals with the same salt give a shopper the
@@ -363,7 +393,8 @@ enum class MerchantCopyPolicy {
  * @property title Heading above the items.
  * @property footer Text at the bottom of receipts.
  * @property printerMode Whether printing is offered; see [PrinterMode].
- * @property autoPrint Print the customer receipt as soon as a payment is approved or a refund accepted.
+ * @property autoPrint Print the customer receipt as soon as a payment is approved or a refund accepted, while printing
+ *   is offered; a new installation starts with it on.
  * @property merchantCopy When the merchant copy is printed; see [MerchantCopyPolicy].
  * @property showTaxBreakdown Show the tax per rate.
  * @property showReferences Show the merchant and customer references.

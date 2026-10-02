@@ -16,7 +16,8 @@ device API or the Adyen Payments app (Tap to Pay); anywhere through its built-in
 
 - `:core` – pure Kotlin: money/tax, cart, refund apportioning, receipt document model and renderers, QR formats
   (`TransferCodec` `MPC1:`, refund `MPR1*`), Adyen currency table (Adyen's decimals win over ISO), `PaymentMethods`.
-  There is deliberately no country/region setting (blank currency follows the device's country, else EUR).
+  There is deliberately no country/region setting (blank currency follows the device's country, else EUR; a new
+  installation's tax rates and price style too, `StarterTax`, whose table of standard rates needs keeping up to date).
 - `:terminal-api` – the Terminal API client on top of `com.adyen:adyen-java-api-library`: local, cloud and Payments app
   transports, Checkout API calls (captures, payment links), the in-process simulator. Knows neither Android nor
   `:core`.
@@ -148,7 +149,12 @@ device API or the Adyen Payments app (Tap to Pay); anywhere through its built-in
 - Every product has a tax rate (0% rates for untaxed items; no "tax applies" switch); "Charge tax" off taxes nothing
   but keeps rates. The last tax rate cannot be deleted.
 - The customer reference is asked for exactly when it is the shopper reference (no separate switch); with the email
-  as shopper reference, email capture always includes "before payment".
+  as shopper reference, email capture always includes "before payment". New installations save no cards
+  (`ShopperReferenceSource.NONE`), ask for no transaction reference and print automatically, so checkout is only Pay.
+- Home's setup card shows wherever payments go but the simulator, saying what is missing (on a terminal, the shared
+  key). A successful connection test names the currency while it follows the device's region. The optional Checkout
+  API section in Settings › Terminal stays collapsed until something of it is entered (not in the cloud, which needs
+  it), and the live URL prefix is asked for only once the environment is LIVE.
 - Pre-authorisations and tips follow `CONTEXT.md` (cancelled, not refunded; "Held" in day totals; a tip over 20% is
   adjusted first, else overcaptured). Tip on the receipt is only offered with a printer; a refused adjustment leaves
   the tip unsaved. Idempotency keys (`capture-{saleId}-{amount}`, `adjust-{saleId}-{heldBefore}-{amount}`) make

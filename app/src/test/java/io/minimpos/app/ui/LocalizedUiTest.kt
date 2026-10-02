@@ -31,12 +31,7 @@ class LocalizedUiTest {
     @Before
     fun setUp() {
         env.useSimulator { it.copy(payment = it.payment.copy(currencyCode = "JPY")) }
-        await {
-            env.container.catalog.seedDefaults(
-                env.context.getString(R.string.tax_default_standard),
-                env.context.getString(R.string.tax_default_zero),
-            )
-        }
+        await { env.container.catalog.seedDefaults(env.container.starterTaxRates()) }
     }
 
     @Test

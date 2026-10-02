@@ -36,6 +36,7 @@
   <string name="home_printer_no">プリンターなし</string>
   <string name="home_setup_title">この端末に接続</string>
   <string name="home_setup_text">Customer Areaの共有キーを入力すると、決済を受け付けられます。</string>
+  <string name="home_setup_title_remote">決済の設定を完了</string>
   <string name="home_connection_failed">決済端末に接続できません</string>
   <string name="pin_title">管理者PIN</string>
   <string name="pin_enter">管理者PINを入力</string>
@@ -71,6 +72,7 @@
   <string name="pre_auth_charge">%1$sをプリオーソリ</string>
   <string name="tax_rate">税率</string>
   <string name="tax_default_standard">標準税率</string>
+  <string name="tax_default_reduced">軽減税率</string>
   <string name="tax_default_zero">税率0%</string>
   <string name="checkout_title">チェックアウト</string>
   <string name="checkout_tax">税額</string>
@@ -467,6 +469,7 @@
   <string name="settings_save_and_test">保存してテスト</string>
   <string name="settings_forget_passphrase">保存したパスフレーズを削除</string>
   <string name="settings_connection_ok">接続済み</string>
+  <string name="settings_connection_currency">決済は%1$sで行われます（端末の地域から自動設定）。変更するには「設定 › 決済」を開いてください。</string>
   <string name="settings_connection_failed">接続失敗</string>
   <string name="settings_connection_result_failed">接続できませんでした</string>
   <string name="settings_status_checking">接続を確認中…</string>
@@ -575,6 +578,8 @@
   <string name="settings_source_customer_hint">保存するカードの紐付け先として、会計時に顧客参照IDを入力します。</string>
   <string name="settings_source_email">購入者のメールアドレス</string>
   <string name="settings_source_email_hint">別途顧客参照IDは入力しません。メールアドレスで購入者を識別します。</string>
+  <string name="settings_source_none">なし（カードを保存しない）</string>
+  <string name="settings_source_none_hint">会計時に顧客参照IDを入力せず、カードの保存も表示しません。</string>
   <string name="settings_email_reference_mode">メールを購入者参照IDに使用</string>
   <string name="settings_email_hashed">ハッシュ化（推奨）</string>
   <string name="settings_email_raw">メールアドレスをそのまま使用</string>

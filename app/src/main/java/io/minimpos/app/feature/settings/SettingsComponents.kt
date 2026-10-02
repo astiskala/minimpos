@@ -2,6 +2,7 @@ package io.minimpos.app.feature.settings
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -361,8 +362,21 @@ fun SettingSecret(
 fun AdvancedSettings(
     modifier: Modifier = Modifier,
     content: @Composable () -> Unit,
+) = CollapsibleSettings(stringResource(R.string.settings_advanced), tag = "advanced", modifier = modifier) { content() }
+
+/**
+ * Settings under an upper-case [title] that opens and closes them; they start open when [initiallyOpen]. The title is
+ * tagged [tag] for tests.
+ */
+@Composable
+fun CollapsibleSettings(
+    title: String,
+    tag: String,
+    modifier: Modifier = Modifier,
+    initiallyOpen: Boolean = false,
+    content: @Composable ColumnScope.() -> Unit,
 ) {
-    var open by rememberSaveable { mutableStateOf(false) }
+    var open by rememberSaveable { mutableStateOf(initiallyOpen) }
     Column(modifier) {
         Row(
             Modifier
@@ -370,11 +384,11 @@ fun AdvancedSettings(
                 .clickable {
                     open = !open
                 }.padding(horizontal = 16.dp, vertical = LocalDimens.current.rowPadding)
-                .testTag("advanced"),
+                .testTag(tag),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(
-                stringResource(R.string.settings_advanced).uppercase(),
+                title.uppercase(),
                 style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.weight(1f),

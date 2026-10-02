@@ -97,6 +97,7 @@ import io.minimpos.app.ui.navigation.Route
 import io.minimpos.app.ui.theme.LocalDimens
 import io.minimpos.app.ui.theme.LocalStatusColors
 import io.minimpos.core.cart.AppliedTax
+import io.minimpos.core.money.AdyenCurrencies
 import io.minimpos.core.receipt.label
 import io.minimpos.core.shopper.EmailReferenceMode
 import io.minimpos.core.shopper.ShopperReferences
@@ -517,6 +518,7 @@ private fun ColumnScope.TerminalApiSection(
     if (mode != TerminalMode.SIMULATOR) {
         ApiSettings(
             terminal = terminal,
+            environment = status.environment,
             apiKeySaved = Secret.CHECKOUT_API_KEY in state.secrets,
             problem = status.apiProblem?.text(),
             cloud = mode == TerminalMode.CLOUD,
@@ -566,9 +568,11 @@ private fun ColumnScope.TerminalAdvancedSection(
     actions: SettingsActions,
     events: SettingsEvents,
 ) {
-    val status by LocalAppContainer.current.terminalStatus.state
-        .collectAsStateWithLifecycle()
+    val container = LocalAppContainer.current
+    val status by container.terminalStatus.state.collectAsStateWithLifecycle()
     val terminal = state.settings.terminal
+    // A currency that follows the device's region may not be the merchant's, so a successful test names it.
+    val automaticCurrency = container.currency(state.settings).code.takeIf { AdyenCurrencies[state.settings.payment.currencyCode] == null }
 
     fun update(transform: (TerminalSettings) -> TerminalSettings) = events.onUpdate { it.copy(terminal = transform(it.terminal)) }
     AdvancedSettings {
@@ -582,7 +586,13 @@ private fun ColumnScope.TerminalAdvancedSection(
         )
     }
     actions.connection.outcome?.let { outcome ->
-        ConnectionResultDialog(outcome.text(), actions.connection.isError, status.environment, events::onConnectionResultDismiss)
+        ConnectionResultDialog(
+            outcome.text(),
+            actions.connection.isError,
+            status.environment,
+            automaticCurrency,
+            events::onConnectionResultDismiss,
+        )
     }
 }
 
@@ -709,14 +719,16 @@ private fun ColumnScope.SharedKeySettings(
 }
 
 /**
- * The Checkout API: merchant account, API key (only kept in memory while typed, and cleared once stored) and, unless
- * the terminal is known to be TEST, the live URL prefix; what is still missing ([problem]), and the button that saves
- * the key typed ([onSaveAndTest] gets it, or an empty one) and tests it, with the outcome of the last test. It is
- * optional, except in the [cloud], where the same API key reaches the terminal.
+ * The Checkout API: merchant account, API key (only kept in memory while typed, and cleared once stored) and, once
+ * payments are known to go to LIVE ([environment]), the live URL prefix; what is still missing ([problem]), and the
+ * button that saves the key typed ([onSaveAndTest] gets it, or an empty one) and tests it, with the outcome of the last
+ * test. It is optional, so collapsed until anything of it is entered, except in the [cloud], where the same API key
+ * reaches the terminal.
  */
 @Composable
 private fun ColumnScope.ApiSettings(
     terminal: TerminalSettings,
+    environment: TerminalEnvironment?,
     apiKeySaved: Boolean,
     problem: String?,
     cloud: Boolean,
@@ -725,11 +737,38 @@ private fun ColumnScope.ApiSettings(
     onSaveAndTest: (apiKey: String) -> Unit,
     onForgetApiKey: () -> Unit,
 ) {
+    if (cloud) {
+        SectionHeader(stringResource(R.string.settings_api_cloud))
+        SettingNote(stringResource(R.string.settings_api_cloud_hint))
+        ApiFields(terminal, environment, apiKeySaved, problem, actions, update, onSaveAndTest, onForgetApiKey)
+        return
+    }
+    // Collapsed for a new merchant, whose first task is the shared key above.
+    CollapsibleSettings(
+        stringResource(R.string.settings_api),
+        tag = "checkoutApi",
+        initiallyOpen = apiKeySaved || terminal.merchantAccount.isNotBlank(),
+    ) {
+        SettingNote(stringResource(R.string.settings_api_hint))
+        ApiFields(terminal, environment, apiKeySaved, problem, actions, update, onSaveAndTest, onForgetApiKey)
+    }
+}
+
+/** The fields and buttons of [ApiSettings]. */
+@Composable
+private fun ColumnScope.ApiFields(
+    terminal: TerminalSettings,
+    environment: TerminalEnvironment?,
+    apiKeySaved: Boolean,
+    problem: String?,
+    actions: SettingsActions,
+    update: ((TerminalSettings) -> TerminalSettings) -> Unit,
+    onSaveAndTest: (apiKey: String) -> Unit,
+    onForgetApiKey: () -> Unit,
+) {
     var apiKey by remember { mutableStateOf("") }
     LaunchedEffect(actions.apiKeyStored) { if (actions.apiKeyStored) apiKey = "" }
     val test = actions.api
-    SectionHeader(stringResource(if (cloud) R.string.settings_api_cloud else R.string.settings_api))
-    SettingNote(stringResource(if (cloud) R.string.settings_api_cloud_hint else R.string.settings_api_hint))
     SettingTextField(
         stringResource(R.string.settings_merchant_account),
         terminal.merchantAccount,
@@ -746,7 +785,8 @@ private fun ColumnScope.ApiSettings(
         onSubmit = { onSaveAndTest(apiKey) },
         tag = "apiKey",
     )
-    if (terminal.environment != TerminalEnvironment.TEST) {
+    // Until the environment is known, the Checkout API cannot be used anyway (SetupProblem.ENVIRONMENT).
+    if (environment == TerminalEnvironment.LIVE) {
         SettingTextField(
             stringResource(R.string.settings_live_prefix),
             terminal.liveUrlPrefix,
@@ -855,14 +895,27 @@ private fun ConnectionStatus(
     }
 }
 
-/** The outcome of a connection test, in a dialog so it is seen however far the screen is scrolled. */
+/**
+ * The outcome of a connection test, in a dialog so it is seen however far the screen is scrolled. After a success it
+ * also names the [environment] and, while the currency follows the device's region, that [automaticCurrency] (a code).
+ */
 @Composable
 private fun ConnectionResultDialog(
     message: String,
     isError: Boolean,
     environment: TerminalEnvironment?,
+    automaticCurrency: String?,
     onDismiss: () -> Unit,
 ) {
+    val details =
+        if (isError) {
+            emptyList()
+        } else {
+            listOfNotNull(
+                environmentLabel(environment),
+                automaticCurrency?.let { stringResource(R.string.settings_connection_currency, it) },
+            )
+        }
     AlertDialog(
         onDismissRequest = onDismiss,
         icon = {
@@ -873,7 +926,7 @@ private fun ConnectionResultDialog(
         },
         text = {
             Text(
-                listOfNotNull(message, environmentLabel(environment).takeIf { !isError }).joinToString("\n"),
+                (listOf(message) + details).joinToString("\n"),
                 modifier = Modifier.testTag("connectionResult"),
             )
         },
@@ -1004,12 +1057,18 @@ private fun ColumnScope.PaymentLinkSettings(
     }
 }
 
-/** Saving cards: the defaults, the recurring model, and what the shopper reference is made from. */
+/**
+ * Saving cards: what the shopper reference is made from (or none, so no card is saved), then, while cards are saved,
+ * the defaults, the recurring model and how an email becomes a reference.
+ */
 @Composable
 private fun ColumnScope.TokenizationSettings(
     payment: PaymentSettings,
     update: ((PaymentSettings) -> PaymentSettings) -> Unit,
 ) {
+    val source = payment.shopperReferenceSource
+    ShopperReferenceSourceChoice(source) { choice -> update { it.copy(shopperReferenceSource = choice) } }
+    if (source == ShopperReferenceSource.NONE) return
     SaveCardDefaults(payment, update)
     SettingChoice(
         title = stringResource(R.string.settings_recurring_model),
@@ -1027,24 +1086,7 @@ private fun ColumnScope.TokenizationSettings(
         selected = payment.recurringProcessingModel,
         onSelect = { model -> update { it.copy(recurringProcessingModel = model) } },
     )
-    // The source also decides whether checkout asks for a customer reference, which has no switch of its own.
-    val emailIsReference = payment.shopperReferenceSource == ShopperReferenceSource.EMAIL
-    SettingChoice(
-        title = stringResource(R.string.settings_shopper_reference_source),
-        options =
-            listOf(
-                ShopperReferenceSource.CUSTOMER_REFERENCE to stringResource(R.string.settings_source_customer),
-                ShopperReferenceSource.EMAIL to stringResource(R.string.settings_source_email),
-            ),
-        selected = payment.shopperReferenceSource,
-        onSelect = { source -> update { it.copy(shopperReferenceSource = source) } },
-        subtitle =
-            stringResource(
-                if (emailIsReference) R.string.settings_source_email_hint else R.string.settings_source_customer_hint,
-            ),
-        tag = "referenceSource",
-    )
-    if (emailIsReference) {
+    if (source == ShopperReferenceSource.EMAIL) {
         SettingChoice(
             title = stringResource(R.string.settings_email_reference_mode),
             options =
@@ -1069,6 +1111,35 @@ private fun ColumnScope.TokenizationSettings(
         update { it.copy(sendShopperEmail = value) }
     })
 }
+
+/**
+ * What the shopper reference of a saved card is made from, [source] (none saves no card); it also decides whether
+ * checkout asks for a customer reference, which has no switch of its own.
+ */
+@Composable
+private fun ShopperReferenceSourceChoice(
+    source: ShopperReferenceSource,
+    onSelect: (ShopperReferenceSource) -> Unit,
+) = SettingChoice(
+    title = stringResource(R.string.settings_shopper_reference_source),
+    options =
+        listOf(
+            ShopperReferenceSource.NONE to stringResource(R.string.settings_source_none),
+            ShopperReferenceSource.CUSTOMER_REFERENCE to stringResource(R.string.settings_source_customer),
+            ShopperReferenceSource.EMAIL to stringResource(R.string.settings_source_email),
+        ),
+    selected = source,
+    onSelect = onSelect,
+    subtitle =
+        stringResource(
+            when (source) {
+                ShopperReferenceSource.NONE -> R.string.settings_source_none_hint
+                ShopperReferenceSource.CUSTOMER_REFERENCE -> R.string.settings_source_customer_hint
+                ShopperReferenceSource.EMAIL -> R.string.settings_source_email_hint
+            },
+        ),
+    tag = "referenceSource",
+)
 
 /** Whether "Save card" starts switched on at checkout, for sales and for pre-authorisations. */
 @Composable

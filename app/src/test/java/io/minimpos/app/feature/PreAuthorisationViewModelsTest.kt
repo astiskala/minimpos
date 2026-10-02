@@ -7,6 +7,7 @@ import io.minimpos.app.data.db.CategoryEntity
 import io.minimpos.app.data.db.ProductEntity
 import io.minimpos.app.data.db.SaleKind
 import io.minimpos.app.data.db.TaxRateEntity
+import io.minimpos.app.data.settings.ShopperReferenceSource
 import io.minimpos.app.feature.history.HistoryFilter
 import io.minimpos.app.feature.history.HistoryViewModel
 import io.minimpos.app.feature.history.SaleDetailViewModel
@@ -38,7 +39,16 @@ class PreAuthorisationViewModelsTest {
     @Before
     fun setUp() {
         Dispatchers.setMain(UnconfinedTestDispatcher())
-        env.useSimulator { it.copy(payment = it.payment.copy(currencyCode = "AUD", tokenizeDefaultOn = false)) }
+        env.useSimulator {
+            it.copy(
+                payment =
+                    it.payment.copy(
+                        currencyCode = "AUD",
+                        tokenizeDefaultOn = false,
+                        shopperReferenceSource = ShopperReferenceSource.CUSTOMER_REFERENCE,
+                    ),
+            )
+        }
     }
 
     @After

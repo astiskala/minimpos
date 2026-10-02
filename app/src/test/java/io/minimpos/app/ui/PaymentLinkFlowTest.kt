@@ -16,6 +16,7 @@ import androidx.core.content.IntentCompat
 import androidx.test.core.app.ApplicationProvider
 import com.google.common.truth.Truth.assertThat
 import io.minimpos.app.FakeLinkApi
+import io.minimpos.app.GST_RATES
 import io.minimpos.app.MiniMposApp
 import io.minimpos.app.TestEnvironment
 import io.minimpos.app.await
@@ -48,7 +49,7 @@ class PaymentLinkFlowTest {
     @Before
     fun setUp() {
         env.useSimulator { it.copy(payment = it.payment.copy(currencyCode = "AUD")) }
-        await { container.catalog.seedDefaults("GST", "GST-free") }
+        await { container.catalog.seedDefaults(GST_RATES) }
         compose.setContent { MiniMposApp(container) }
     }
 

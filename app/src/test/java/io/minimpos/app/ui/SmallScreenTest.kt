@@ -19,6 +19,7 @@ import androidx.compose.ui.text.AnnotatedString
 import com.google.common.truth.Truth.assertThat
 import io.minimpos.app.FakeDevice
 import io.minimpos.app.FakeTerminal
+import io.minimpos.app.GST_RATES
 import io.minimpos.app.MiniMposApp
 import io.minimpos.app.TestEnvironment
 import io.minimpos.app.await
@@ -61,7 +62,7 @@ class SmallScreenTest {
     @Before
     fun setUp() {
         env.updateSettings { it.copy(payment = it.payment.copy(currencyCode = "AUD")) }
-        await { container.catalog.seedDefaults("GST", "GST-free") }
+        await { container.catalog.seedDefaults(GST_RATES) }
     }
 
     private fun waitForTag(tag: String) = compose.waitUntilAtLeastOneExists(hasTestTag(tag), 15_000)
@@ -101,6 +102,8 @@ class SmallScreenTest {
         compose.onNodeWithTag("passphrase").performTextInput("correct horse battery staple")
         compose.onNodeWithTag("passphrase").performImeAction()
         waitForText("Connected (OK")
+        // The currency was chosen, so the result does not need to name it.
+        compose.onNodeWithText("Payments are taken in", substring = true).assertDoesNotExist()
         compose.onNodeWithTag("connectionResultOk").performClick()
         compose.onNodeWithTag("connectionStatus").assertTextContains("AMS1-000168223606144", substring = true)
         assertThat(await { container.secrets.get(Secret.TERMINAL_PASSPHRASE) }).isEqualTo("correct horse battery staple")
@@ -111,6 +114,20 @@ class SmallScreenTest {
         compose.onNodeWithTag("back").performClick()
         waitForTag("newSale")
         compose.onNodeWithTag("terminalSetup").assertDoesNotExist()
+    }
+
+    @Test
+    fun `a successful connection test names a currency that follows the device's region`() {
+        configureKey()
+        env.updateSettings { it.copy(payment = it.payment.copy(currencyCode = "")) }
+        compose.setContent { MiniMposApp(container) }
+        compose.onNodeWithTag("settings").performClick()
+        waitForTag("section_terminal")
+        compose.onNodeWithTag("section_terminal").performClick()
+        waitForTag("testConnection")
+        compose.onNodeWithTag("testConnection").performScrollTo().performClick()
+        waitForText("Connected (OK")
+        compose.onNodeWithTag("connectionResult").assertTextContains("Payments are taken in AUD", substring = true)
     }
 
     @Test
@@ -366,6 +383,10 @@ class SmallScreenTest {
         compose.onNodeWithTag("settings").performClick()
         waitForTag("section_terminal")
         compose.onNodeWithTag("section_terminal").performClick()
+        // It is optional, so it stays collapsed under the shared key until opened.
+        waitForTag("checkoutApi")
+        compose.onNodeWithTag("merchantAccount").assertDoesNotExist()
+        compose.onNodeWithTag("checkoutApi").performScrollTo().performClick()
         waitForTag("merchantAccount")
         compose.onNodeWithTag("merchantAccount").performScrollTo().performTextInput("HarbourCoffeeCOM")
         compose.awaitCondition(
@@ -383,7 +404,10 @@ class SmallScreenTest {
             15_000,
         )
         assertThat(await { container.secrets.get(Secret.CHECKOUT_API_KEY) }).isEqualTo("AQE-secret")
-        compose.onNodeWithTag("livePrefix").assertExists()
+        // The live URL prefix is only asked for once the terminal is known to be LIVE.
+        compose.onNodeWithTag("livePrefix").assertDoesNotExist()
+        env.updateSettings { it.copy(terminal = it.terminal.copy(environment = TerminalEnvironment.LIVE)) }
+        waitForTag("livePrefix")
         compose.onNodeWithTag("forgetApiKey").performScrollTo().performClick()
         compose.awaitCondition("Removing the API key") { await { container.secrets.get(Secret.CHECKOUT_API_KEY) } == null }
     }

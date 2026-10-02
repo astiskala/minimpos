@@ -11,6 +11,7 @@ import io.minimpos.app.data.db.SaleKind
 import io.minimpos.app.data.db.SaleStatus
 import io.minimpos.app.data.db.TaxRateEntity
 import io.minimpos.app.data.settings.CaptureMode
+import io.minimpos.app.data.settings.ShopperReferenceSource
 import io.minimpos.app.refund.PaymentAction
 import io.minimpos.app.refund.PaymentStanding
 import io.minimpos.app.refund.ReceiptStanding
@@ -62,6 +63,9 @@ class PaymentLinksTest {
         return checkNotNull(checkout.linkStart(now, ZoneOffset.UTC))
     }
 
+    private fun savingCardsUnderCustomerReference() =
+        env.updateSettings { it.copy(payment = it.payment.copy(shopperReferenceSource = ShopperReferenceSource.CUSTOMER_REFERENCE)) }
+
     private fun saleWhen(
         id: String,
         condition: (SaleEntity) -> Boolean,
@@ -76,6 +80,7 @@ class PaymentLinksTest {
     @Test
     fun `a link is stored before Adyen is called, then awaits its payment and clears the cart`() {
         env.useLinks()
+        savingCardsUnderCustomerReference()
         val start = linkStart()
         val id = links.start(start)
         val sale = saleWhen(id) { it.status == SaleStatus.AWAITING_PAYMENT }
@@ -104,6 +109,7 @@ class PaymentLinksTest {
     @Test
     fun `checking finds a link open, then paid, which is charged but refunded in the Customer Area`() {
         env.useLinks()
+        savingCardsUnderCustomerReference()
         val id = links.start(linkStart(tokenize = true))
         saleWhen(id) { it.status == SaleStatus.AWAITING_PAYMENT }
         assertThat(

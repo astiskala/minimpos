@@ -12,6 +12,7 @@ import com.adyen.model.terminal.TerminalAPISecuredResponse
 import com.adyen.terminal.security.NexoCrypto
 import com.adyen.terminal.serialization.TerminalAPIGsonBuilder
 import io.minimpos.app.data.db.AppDatabase
+import io.minimpos.app.data.db.TaxRateEntity
 import io.minimpos.app.data.security.Secret
 import io.minimpos.app.data.security.SecretCipher
 import io.minimpos.app.data.settings.AppSettings
@@ -423,6 +424,13 @@ fun forgetSharedFileRoots() {
         )
     synchronized(cache) { (cache as MutableMap<*, *>).clear() }
 }
+
+/** Starter tax rates for tests: GST at 10%, then GST-free at 0%. */
+val GST_RATES =
+    listOf(
+        TaxRateEntity(name = "GST", rateMilliPercent = 10_000),
+        TaxRateEntity(name = "GST-free", rateMilliPercent = 0),
+    )
 
 /** Runs [block] to completion on the calling thread, failing the test after 10 seconds. */
 fun <T> await(block: suspend () -> T): T = runBlocking { withTimeout(10_000) { block() } }

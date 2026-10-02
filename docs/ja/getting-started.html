@@ -91,7 +91,7 @@
               <li><strong>Android 9 以降を搭載した Adyen Android 決済端末</strong>。例：S1F2、S1F4Pro、S1E4Pro、S1E2L、AMS1、S1U2、SFO1。印刷にはプリンター搭載モデルが必要です。領収書、バーコード、別の端末の設定用 QR コードの読み取りにはカメラが必要です。</li>
               <li>または <strong>Android のタブレットやスマートフォン</strong>。ネットワークやインターネット経由で端末を使うか、Tap to Pay で支払いを受け付けます（<a href="#tablet">タブレットやスマートフォンで使う</a>を参照）。</li>
               <li>任意：領収書をメールで送る場合は、<strong>SMTP メールサーバー</strong>か、一般的なメールサービスのメールボックスを用意してください。</li>
-              <li>任意：領収書のチップやプリオーソリゼーションをアプリからキャプチャする場合や、支払いリンクを送る場合は、Adyen Checkout API の <strong>API 認証情報</strong>を用意してください（<a href="#api">Checkout API とキャプチャ</a>を参照）。</li>
+              <li>Adyen Checkout API の <strong>API 認証情報</strong>。すべての支払いに必要です。アプリはこれを通じて領収書のチップとプリオーソリゼーションをキャプチャし、支払いリンクを送ります（<a href="#api">Checkout API とキャプチャ</a>を参照）。</li>
             </ul>
             <p class="note">Mini mPOS は独立したプロジェクトであり、Adyen の製品ではありません。本番の決済を受け付ける前に、TEST 端末ですべての操作を試してください。</p>
           </section>
@@ -126,22 +126,23 @@ cd minimpos
               <li>端末で Mini mPOS を開き、ホームの<strong>この端末に接続</strong>をタップします。または、<strong>設定 › 端末</strong>を開きます。</li>
               <li><strong>キー識別子</strong>と<strong>キーのパスフレーズ</strong>を入力します。<strong>キーバージョン</strong>が 1 でない場合は、バージョンも入力します。</li>
               <li><strong>保存してテスト</strong>、またはキーボードの完了キーをタップします。結果はすぐに表示されます。</li>
+              <li>その下のステップ 2 で <a href="#api">Checkout API</a> を接続します。支払いに必要なため、入力するまでホームに表示されます。</li>
             </ol>
             <p>端末 ID（POIID）、アドレス、TEST／LIVE 環境は自動検出されるため、ほかの入力は不要です。設定 › アプリ情報で検出結果を確認できます。TEST 端末のステータスバーには TEST と表示されます。通貨が端末の地域に従っている場合は、テスト結果にその通貨も表示されます。Adyen アカウントで決済を受け付ける通貨であることを確認してください（設定 › 決済）。</p>
           </section>
           <section id="tablet">
             <h2>6. タブレットやスマートフォンで使う</h2>
-            <p>Mini mPOS は Android のタブレットやスマートフォンでも動作します。同じ APK をインストールし（Customer Area での配布は不要です）、<strong>設定 › 端末 › 決済先</strong>で次のいずれかを選びます。</p>
+            <p>Mini mPOS は Android のタブレットやスマートフォンでも動作します。同じ APK をインストールし（Customer Area での配布は不要です）、<strong>設定 › 端末 › 決済先</strong>で次のいずれかを選び、その下の番号付きの手順に従います。</p>
             <dl class="settings-list">
               <dt>ネットワーク上の端末</dt>
-              <dd>カウンターのタブレットにおすすめの方法です。タブレットはローカルネットワーク経由で端末にリクエストを送り、共有キーで暗号化するため、APIキーは不要です。共有キーに加えて、端末の IP アドレスと POIID（端末の Device info 画面に表示）を入力します。端末に Mini mPOS をインストールする必要はありません。</dd>
+              <dd>カウンターのタブレットにおすすめの方法です。タブレットはローカルネットワーク経由で端末にリクエストを送り、共有キーで暗号化します。(1) 端末の IP アドレスと POIID（端末の Device info 画面に表示）、(2) 共有キー、(3) <a href="#api">Checkout API</a> を入力します。端末に Mini mPOS をインストールする必要はありません。</dd>
               <dt>インターネット経由の端末（クラウド）</dt>
-              <dd>タブレットと端末が別のネットワークにある場合に使います。リクエストは Adyen の Cloud device API を経由し、共有キーの代わりに APIキーを使います。Customer Area の <strong>Developers › API credentials</strong> で、このデバイス用に <strong>Cloud Device API</strong> ロール（チップとプリオーソリゼーションをアプリでキャプチャする場合や支払いリンクを送る場合は Checkout webservice role も）を持つ認証情報を作成します。<strong>Adyen API</strong> にマーチャントアカウントと APIキーを入力し、<strong>接続中の端末を検索</strong>をタップして端末を選びます（POIID を入力しても構いません）。キーが TEST か LIVE か、どのデータセンターを使うかは、接続時に自動で判別されます。</dd>
+              <dd>タブレットと端末が別のネットワークにある場合に使います。リクエストは Adyen の Cloud device API を経由し、共有キーの代わりに APIキーを使います。このキーは Checkout API にも使われます。Customer Area の <strong>Developers › API credentials</strong> で、このデバイス用に <strong>Cloud Device API</strong> ロールと <strong>Checkout webservice</strong> ロールを持つ認証情報を作成します。(1) <strong>Adyenアカウント</strong>にマーチャントアカウントと APIキーを入力し、(2) <strong>接続中の端末を検索</strong>をタップして端末を選び（POIID を入力しても構いません）、<strong>接続をテスト</strong>をタップすると、端末と Checkout API の両方をテストします。キーが TEST か LIVE か、どのデータセンターを使うかは、接続時に自動で判別されます。</dd>
               <dt>このスマートフォンでTap to Pay</dt>
-              <dd>お客様はこのスマートフォンの Adyen Payments アプリで、カードやスマートフォンをタッチして支払います。プリンターはないため、領収書はメールで送るか共有します。NFC 対応で Android 12 以降を搭載し、Google の認定を受けたスマートフォンが必要です。Adyen サポートに Tap to Pay on Android と Adyen Payments app role の有効化を依頼し、Google Play から <strong>Adyen Payments Test</strong>（TEST）または <strong>Adyen Payments</strong>（LIVE）をインストールします。共有キーとマーチャントアカウントを入力し、<strong>Tap to Pay</strong> で <strong>PaymentsアプリのAPIキー</strong>（Adyen Payments app role のみを持つ認証情報）と、1 店舗だけに設定する場合はその店舗 ID を入力します。<strong>Tap to Payを設定</strong>をタップすると、Payments アプリが開いてスマートフォンを登録します。以降、支払いのたびに Payments アプリが開き、Mini mPOS に戻ります。やめるときは<strong>このスマートフォンを削除</strong>をタップします。</dd>
+              <dd>お客様はこのスマートフォンの Adyen Payments アプリで、カードやスマートフォンをタッチして支払います。プリンターはないため、領収書はメールで送るか共有します。NFC 対応で Android 12 以降を搭載し、Google の認定を受けたスマートフォンが必要です。Adyen サポートに Tap to Pay on Android と Adyen Payments app role の有効化を依頼してから、次の手順で設定します。(1) Google Play から <strong>Adyen Payments Test</strong>（TEST）または <strong>Adyen Payments</strong>（LIVE）をインストールします（どちらも未インストールの間は、Mini mPOS にそれぞれのボタンが表示されます）。(2) <a href="#api">Checkout API</a> を接続します。スマートフォンはそのマーチャントアカウントに登録されます。(3) <strong>Tap to Pay</strong> で <strong>PaymentsアプリのAPIキー</strong>（Adyen Payments app role のみを持つ認証情報）と、1 店舗だけに設定する場合はその店舗 ID を入力し、<strong>Tap to Payを設定</strong>をタップします。Payments アプリが開いてスマートフォンを登録します。(4) <strong>共有キー</strong>を入力します。Payments アプリへの支払いリクエストはすべてこのキーで暗号化されます。以降、支払いのたびに Payments アプリが開き、Mini mPOS に戻ります。やめるときは<strong>このスマートフォンを削除</strong>をタップします。</dd>
             </dl>
             <p>すべての入力が終わるまで、ホームに<strong>決済の設定を完了</strong>と不足している項目が表示され、タップすると設定 › 端末が開きます。このガイドのほかの部分は、端末で使う場合と同じです。</p>
-            <p class="note">クラウドと Tap to Pay では、Adyen の APIキーがデバイスに保存されます（Android Keystore で暗号化）。Adyen は APIキーをサーバーで管理することを推奨していますが、Mini mPOS にはサーバーがありません。このデバイス専用の認証情報を使い、管理者 PIN を設定し、デバイスを紛失した場合は Customer Area でキーを無効にしてください。</p>
+            <p class="note">Adyen の APIキーはデバイスに保存されます（Android Keystore で暗号化）。決済先にかかわらず Checkout API キーが、Tap to Pay では PaymentsアプリのAPIキーも保存されます。Adyen は APIキーをサーバーで管理することを推奨していますが、Mini mPOS にはサーバーがありません。このデバイス専用の認証情報を使い、管理者 PIN を設定し、デバイスを紛失した場合は Customer Area でキーを無効にしてください。</p>
           </section>
           <section id="business">
             <h2>7. 店舗情報を設定する</h2>
@@ -205,16 +206,16 @@ cd minimpos
           </section>
           <section id="api">
             <h2>10. Checkout API とキャプチャ</h2>
-            <p>Adyen の Checkout API は任意です。設定すると、Mini mPOS が領収書のチップとプリオーソリゼーションをキャプチャし（確保額の調整も含む）、<a href="#payment-links">支払いリンク</a>も送れるようになります。</p>
+            <p>すべての支払いに Adyen の Checkout API が必要です。Mini mPOS はこれを通じて領収書のチップとプリオーソリゼーションをキャプチャし（確保額の調整も含む）、<a href="#payment-links">支払いリンク</a>を送ります。設定するまで、ホームに不足している項目が表示され、支払いは受け付けられません。</p>
             <ol>
               <li>Customer Area の <strong>Developers › API credentials</strong> で、端末用の認証情報を作成します。付与するロールは <strong>Checkout webservice role</strong> のみにして、<strong>APIキー</strong>を生成してください。</li>
-              <li>Mini mPOS の<strong>設定 › 端末</strong>で<strong>Checkout API（任意）</strong>をタップして開き、<strong>マーチャントアカウント</strong>と <strong>APIキー</strong>を入力し、<strong>APIキーを保存してテスト</strong>をタップします。キーは端末に暗号化して保存されます。このテストでは決済は変更されません。クラウドでは、Adyen API の APIキーの認証情報に Checkout webservice role も付与すれば、そのキーで処理されます。</li>
+              <li>Mini mPOS の<strong>設定 › 端末</strong>を開き、<strong>Checkout API</strong> のステップで<strong>マーチャントアカウント</strong>と <strong>APIキー</strong>を入力し、<strong>APIキーを保存してテスト</strong>をタップします。キーは端末に暗号化して保存されます。このテストでは決済は変更されません。クラウドでは、Adyenアカウントの APIキーの認証情報に Checkout webservice role も付与されているため、そのキーで処理されます。</li>
               <li>LIVE 端末では、<strong>Developers › API URLs</strong> にある <strong>live URL prefix</strong> も必要です。この欄は端末が LIVE と判明してから表示されます。TEST／LIVE 環境は端末の証明書から自動検出されます（クラウドでは APIキーから、Tap to Pay ではインストールされた Payments アプリから判別します）。</li>
               <li>任意：<strong>Devices › Developer › Additional data › Return adjust authorisation data</strong> で同期的なオーソリゼーション調整を有効にします。有効な場合、増額が承認されたかどうかをアプリですぐに確認できます。無効な場合、調整結果は後から Customer Area で確認します。</li>
             </ol>
             <h3>キャプチャの仕組み</h3>
             <p>領収書のチップとプリオーソリゼーションは<strong>手動キャプチャ</strong>で処理します。キャプチャするまでは金額を確保するだけです。Adyen はキャプチャを非同期で確定するため、アプリでは<em>キャプチャ要求済み</em>と表示されます。Mini mPOS には webhook を受信するバックエンドがないため、最終結果は Customer Area で確認してください。結果が不明なキャプチャは、取引履歴から再送しても二重にキャプチャされません。</p>
-            <p>API キーがない場合、アプリはキャプチャする金額を記録し、<em>Customer Areaでキャプチャ</em>と表示します。<strong>Payments › Payment list</strong> で取引履歴に表示された PSP参照IDを選び、<strong>Capture payment</strong> を実行してください。</p>
+            <p>Checkout API がなかった以前のバージョンの Mini mPOS で Customer Area でのキャプチャに回された販売は、引き続き<em>Customer Areaでキャプチャ</em>と表示されます。<strong>Payments › Payment list</strong> で取引履歴に表示された PSP参照IDを選び、<strong>Capture payment</strong> を実行してください。</p>
           </section>
           <section id="payment-links">
             <h2>11. 支払いリンク</h2>
@@ -232,7 +233,7 @@ cd minimpos
             <h3>Adyen で一度だけ設定</h3>
             <ul>
               <li><strong>Adyen Support</strong> に、決済方法のプリオーソリゼーション設定と <strong>overcapture</strong>（承認額を超えるキャプチャ）の有効化を依頼します。請求額の 20% までのチップは、承認額に上乗せしてキャプチャできます。ウォレットやデビットカードは、このフローに対応しない場合があります。</li>
-              <li>任意ですが推奨：<a href="#api">Checkout API</a> を設定すると、アプリからチップをキャプチャできます。</li>
+              <li><a href="#api">Checkout API</a>。アプリはこれを通じてチップをキャプチャします。</li>
             </ul>
             <h3>Mini mPOS での操作</h3>
             <ol>
@@ -262,7 +263,7 @@ cd minimpos
             <ul>
               <li><strong>キャプチャ：</strong><strong>取引履歴</strong>からプリオーソリゼーションを開き、<strong>キャプチャ</strong>をタップします。初期値は確保額です。少ない金額をキャプチャすると残額が解放され、増額する場合は先にカード発行会社へ承認を求めます。キャプチャ後は取引履歴から返金できます。</li>
               <li><strong>金額を調整</strong>では、キャプチャせずに確保額を変更します。同じ金額での調整はオーソリゼーションを延長します。</li>
-              <li>どちらも <a href="#api">Checkout API</a> が必要です。API を使わない場合は、Customer Area の <strong>Payments › Payment list</strong> で PSP参照IDを選び、<strong>Capture payment</strong> を実行します。その後、アプリの<strong>キャプチャを記録</strong>をタップして取引履歴に反映してください。</li>
+              <li>どちらも <a href="#api">Checkout API</a> を通じて行います。</li>
               <li><strong>キャンセル：</strong><strong>プリオーソリをキャンセル</strong>をタップします。Customer Area ですでにキャプチャされていた場合は、Adyen が全額を返金します。</li>
             </ul>
             <p class="note">確保には有効期限があり、カードスキームによっては数日で失効します。それまでは購入者の明細に保留中として表示されます。速やかにキャプチャまたはキャンセルしてください。取引履歴の<em>プリオーソリ</em>フィルターで一覧を確認でき、日計にはまだ確保されている金額が表示されます。</p>
@@ -283,7 +284,7 @@ cd minimpos
             <ul>
               <li>TEST 端末で Adyen の<a href="https://docs.adyen.com/point-of-sale/testing-pos-payments">テストカード</a>を使い、販売、返金、利用する場合は支払いリンク、チップ、プリオーソリゼーションも何件か試してください。</li>
               <li><strong>設定 › 領収書 › テスト領収書を印刷</strong>でレイアウトを、<strong>テストメールを送信</strong>でメール設定を確認します。</li>
-              <li>管理者PIN を設定してから、同じバージョンを LIVE 端末に配布し、それぞれの共有キーを入力します（Checkout API を使う場合は、LIVE の APIキーと live URL prefix も入力します）。</li>
+              <li>管理者PIN を設定してから、同じバージョンを LIVE 端末に配布し、それぞれの共有キー、LIVE の Checkout API キー、live URL prefix を入力します。</li>
               <li>設定 › アプリ情報に LIVE 環境と表示されることを確認します。</li>
             </ul>
           </section>

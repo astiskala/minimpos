@@ -65,6 +65,8 @@ class MainActivity : ComponentActivity() {
 
     override fun onResume() {
         super.onResume()
+        // Back from Google Play, say, where the Payments app may just have been installed.
+        (application as MiniMposApplication).container.terminalStatus.readDevice()
         // Back from the Payments app: an answer comes with onNewIntent before this; without one, it is not coming.
         val waiting = paymentsApp.awaitingAnswer ?: return
         lifecycleScope.launch {

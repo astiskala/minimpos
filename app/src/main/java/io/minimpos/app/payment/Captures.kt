@@ -9,7 +9,6 @@ import io.minimpos.app.refund.PaymentAction
 import io.minimpos.app.refund.PaymentStanding
 import io.minimpos.app.refund.StoredPayment
 import io.minimpos.app.terminal.AdyenApi
-import io.minimpos.app.terminal.ApiSetup
 import io.minimpos.app.terminal.ApiTarget
 import io.minimpos.terminal.checkout.ModificationAmount
 import io.minimpos.terminal.checkout.ModificationResult
@@ -21,9 +20,6 @@ import kotlinx.coroutines.sync.withLock
 sealed interface CaptureResult {
     /** Adyen received the capture; it confirms it in the Customer Area. */
     data object Requested : CaptureResult
-
-    /** No Checkout API is set up: the amount was recorded, for staff to capture in the Customer Area. */
-    data object Recorded : CaptureResult
 
     /** The adjustment went through: authorised, or received by Adyen when it is asynchronous. */
     data object Adjusted : CaptureResult
@@ -47,7 +43,7 @@ sealed interface CaptureResult {
     ) : CaptureResult
 
     /**
-     * Nothing was sent, because the Checkout API is only partly set up.
+     * Nothing was sent, because the Checkout API is not set up.
      *
      * @property problem What is missing.
      */
@@ -62,10 +58,9 @@ sealed interface CaptureResult {
 /**
  * Finishes payments taken with manual capture: enters the tip of a sale taken for tipping on the receipt and captures
  * it, captures a pre-authorisation (adjusting it first when more is captured than it holds) and adjusts what a
- * pre-authorisation holds. Through the Checkout API when it is set up ([AdyenApi]); otherwise the amount to capture is
- * only recorded ([CaptureStatus.MANUAL]) for staff to capture in the Customer Area. Which payments allow what is decided
- * by their [StoredPayment.actions] with the target's [ApiSetup.mode], the same reading the screens use; anything
- * else is [CaptureResult.NotAllowed].
+ * pre-authorisation holds, through the Checkout API ([AdyenApi]); while it is not set up nothing is sent
+ * ([CaptureResult.NotSetUp]). Which payments allow what is decided by their [StoredPayment.actions], the same reading
+ * the screens use; anything else is [CaptureResult.NotAllowed].
  *
  * A tip above [PaymentStanding.TIP_ADJUSTMENT_PERCENT] of the bill first raises the authorisation to bill plus tip; if
  * the issuer refuses, the tip is not saved, so a smaller one can be entered. Otherwise the tip is saved and the total
@@ -91,15 +86,15 @@ class Captures(
         mutex.withLock {
             val target = target()
             val sale =
-                allowing(saleId, PaymentAction.ENTER_TIP, target)?.takeIf { tipMinor >= 0 } ?: return@withLock CaptureResult.NotAllowed
+                allowing(saleId, PaymentAction.ENTER_TIP)?.takeIf { tipMinor >= 0 } ?: return@withLock CaptureResult.NotAllowed
             val total = sale.totalMinor + tipMinor
             if (PaymentStanding.tipNeedsAdjustment(sale.totalMinor, tipMinor) && total > sale.heldMinor) {
                 // The tip is only saved once the higher amount is authorised.
-                withApi(target, sale, total, tipMinor) { modifications ->
+                withApi(target, sale) { modifications ->
                     adjusted(sale, total, modifications) { capture(it, total, modifications, tipMinor) }
                 }
             } else {
-                withApi(target, sale, total, tipMinor) { capture(sale, total, it, tipMinor) }
+                withApi(target, sale) { capture(sale, total, it, tipMinor) }
             }
         }
 
@@ -114,20 +109,19 @@ class Captures(
         mutex.withLock {
             val target = target()
             val sale =
-                allowing(saleId, PaymentAction.CAPTURE, target)?.takeIf { amountMinor > 0 } ?: return@withLock CaptureResult.NotAllowed
+                allowing(saleId, PaymentAction.CAPTURE)?.takeIf { amountMinor > 0 } ?: return@withLock CaptureResult.NotAllowed
             if (amountMinor > sale.heldMinor) {
-                withApi(target, sale, amountMinor) { modifications ->
+                withApi(target, sale) { modifications ->
                     adjusted(sale, amountMinor, modifications) { capture(it, amountMinor, modifications) }
                 }
             } else {
-                withApi(target, sale, amountMinor) { capture(sale, amountMinor, it) }
+                withApi(target, sale) { capture(sale, amountMinor, it) }
             }
         }
 
     /**
      * Changes what the pre-authorisation [saleId] holds to [amountMinor] (the same amount extends the authorisation),
-     * without capturing. Needs the Checkout API ([PaymentAction.ADJUST]): an adjustment cannot be left to the Customer
-     * Area, so in that mode it is [CaptureResult.NotAllowed].
+     * without capturing ([PaymentAction.ADJUST]).
      */
     suspend fun adjust(
         saleId: String,
@@ -136,59 +130,40 @@ class Captures(
         mutex.withLock {
             val target = target()
             val sale =
-                allowing(saleId, PaymentAction.ADJUST, target)?.takeIf { amountMinor > 0 } ?: return@withLock CaptureResult.NotAllowed
-            withApi(target, sale, amountMinor) { adjust(sale, amountMinor, it) }
+                allowing(saleId, PaymentAction.ADJUST)?.takeIf { amountMinor > 0 } ?: return@withLock CaptureResult.NotAllowed
+            withApi(target, sale) { adjust(sale, amountMinor, it) }
         }
 
     /** Sends the capture of [saleId] again as it was, when its [StoredPayment.actions] include [PaymentAction.RETRY_CAPTURE]. */
     suspend fun retryCapture(saleId: String): CaptureResult =
         mutex.withLock {
             val target = target()
-            val sale = allowing(saleId, PaymentAction.RETRY_CAPTURE, target)
+            val sale = allowing(saleId, PaymentAction.RETRY_CAPTURE)
             val amount = sale?.capturedMinor
-            if (sale == null || amount == null) CaptureResult.NotAllowed else withApi(target, sale, amount) { capture(sale, amount, it) }
+            if (sale == null || amount == null) CaptureResult.NotAllowed else withApi(target, sale) { capture(sale, amount, it) }
         }
 
-    /** The stored sale [saleId] when, with [target]'s capture mode, its [StoredPayment.actions] include [action]; else null. */
+    /** The stored sale [saleId] when its [StoredPayment.actions] include [action]; else null. */
     private suspend fun allowing(
         saleId: String,
         action: PaymentAction,
-        target: ApiTarget,
     ): SaleEntity? =
         sales
             .get(saleId)
-            ?.let { StoredPayment(it, target.setup.mode) }
+            ?.let(::StoredPayment)
             ?.takeIf { action in it.actions }
             ?.sale
 
-    /**
-     * Runs [send] with the Checkout API when [target] is it. Without one, the capture of [amount] of [sale] (with
-     * [tipMinor], when a tip is entered) is left to the Customer Area; when it is only partly set up, nothing is sent.
-     */
+    /** Runs [send] with the Checkout API when [target] has it; else nothing is sent, and [sale] records why. */
     private suspend fun withApi(
         target: ApiTarget,
         sale: SaleEntity,
-        amount: Long,
-        tipMinor: Long? = null,
         send: suspend (PaymentModifications) -> CaptureResult,
     ): CaptureResult {
-        val modifications = target.modifications
-        val problem = target.setup.problem
-        return when {
-            modifications != null -> {
-                send(modifications)
-            }
-
-            problem != null -> {
-                sales.record(sale.id, SaleEvent.ModificationNotSetUp(problem))
-                CaptureResult.NotSetUp(problem)
-            }
-
-            else -> {
-                sales.record(sale.id, SaleEvent.CaptureLeftToStaff(amount, tipMinor))
-                CaptureResult.Recorded
-            }
-        }
+        target.modifications?.let { return send(it) }
+        val problem = target.setup.problem ?: SetupProblem.API_REQUIRED
+        sales.record(sale.id, SaleEvent.ModificationNotSetUp(problem))
+        return CaptureResult.NotSetUp(problem)
     }
 
     /** Adjusts [sale] to [amount] and, once that went through, runs [then] with the adjusted sale. */

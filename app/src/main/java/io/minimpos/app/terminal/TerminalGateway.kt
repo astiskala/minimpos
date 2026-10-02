@@ -212,8 +212,9 @@ sealed interface ConnectedTerminals {
  * app on this phone, or the built-in simulator). What a destination can do (abort, diagnose, recover a missing answer,
  * how long payments wait) is the destination's; the gateway asks it rather than the mode.
  *
- * Missing setup (no POIID, IP address or shared key, [TerminalSetup.problem]) never throws: every operation reports it
- * typed, as [Attempt.NotSetUp] (or what a connection check or status check returns without one). What terminals report
+ * Missing setup (no POIID, IP address or shared key, [TerminalSetup.connectionProblem]; for payments also the Checkout
+ * API, [TerminalSetup.problem]) never throws: every operation reports it typed, as [Attempt.NotSetUp] (or what a
+ * connection check or status check returns without one). What terminals report
  * about themselves (the environment and whether they have a printer) is remembered in [detectedEnvironment] and
  * [printers].
  */
@@ -250,17 +251,18 @@ class TerminalGateway(
 
     /**
      * Takes a card payment, see [TerminalClient.pay]. [onSending] is called with the terminal's POIID right before the
-     * request is sent; without complete setup nothing is sent ([Attempt.NotSetUp]), and an unreachable destination is
-     * [TransactionOutcome.NotProcessed].
+     * request is sent; without complete setup, the Checkout API included, nothing is sent ([Attempt.NotSetUp]), and an
+     * unreachable destination is [TransactionOutcome.NotProcessed].
      */
     suspend fun pay(
         params: PaymentParams,
         serviceId: String,
         onSending: suspend (poiId: String) -> Unit = {},
-    ): Attempt<TransactionOutcome> = send(serviceId, onSending) { it.pay(params, serviceId) }
+    ): Attempt<TransactionOutcome> = send(serviceId, paying = true, onSending) { it.pay(params, serviceId) }
 
     /**
-     * Refunds an earlier payment, see [TerminalClient.refund]; [onSending] and missing setup are handled as for [pay].
+     * Refunds an earlier payment, see [TerminalClient.refund]; [onSending] and missing setup are handled as for [pay],
+     * except that a refund does not need the Checkout API.
      *
      * @throws IllegalArgumentException If [RefundParams.originalTimestamp] is not an XML date-time.
      */
@@ -268,7 +270,7 @@ class TerminalGateway(
         params: RefundParams,
         serviceId: String,
         onSending: suspend (poiId: String) -> Unit = {},
-    ): Attempt<TransactionOutcome> = send(serviceId, onSending) { it.refund(params, serviceId) }
+    ): Attempt<TransactionOutcome> = send(serviceId, paying = false, onSending) { it.refund(params, serviceId) }
 
     /**
      * Asks the terminal once for the result of the [kind] of transaction sent with [serviceId], see
@@ -368,21 +370,28 @@ class TerminalGateway(
         hasPrinter: Boolean,
     ) = _printers.update { it + (client.identity.poiId to hasPrinter) }
 
-    /** The client for where payments go now with the stored settings, or why there is none. */
-    private suspend fun connection(): Connection {
+    /**
+     * The client for where payments go now with the stored settings, or why there is none: for a payment ([paying]) the
+     * whole [TerminalSetup.problem], Checkout API included, else the [TerminalSetup.connectionProblem].
+     */
+    private suspend fun connection(paying: Boolean = false): Connection {
         val unlocked = setups.unlocked()
         val setup = unlocked.setup
-        return setup.problem?.let(Connection::NotSetUp)
+        return (if (paying) setup.problem else setup.connectionProblem)?.let(Connection::NotSetUp)
             ?: destinations.single { it.rules == setup.destination }.connect(unlocked, application)
     }
 
-    /** Sends a payment or refund with [call] once [onSending] was told the POIID, or says why nothing can be sent. */
+    /**
+     * Sends a payment ([paying]) or refund with [call] once [onSending] was told the POIID, or says why nothing can be
+     * sent.
+     */
     private suspend fun send(
         serviceId: String,
+        paying: Boolean,
         onSending: suspend (poiId: String) -> Unit,
         call: suspend (TerminalClient) -> TransactionOutcome,
     ): Attempt<TransactionOutcome> =
-        when (val connection = connection()) {
+        when (val connection = connection(paying)) {
             is Connection.Open -> {
                 onSending(connection.client.identity.poiId)
                 Attempt.Made(call(connection.client))

@@ -16,15 +16,18 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.DeleteSweep
 import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.Error
 import androidx.compose.material.icons.filled.FileDownload
 import androidx.compose.material.icons.filled.FileUpload
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.LockOpen
 import androidx.compose.material.icons.filled.Payments
 import androidx.compose.material.icons.filled.Percent
 import androidx.compose.material.icons.filled.PhonelinkSetup
+import androidx.compose.material.icons.filled.Print
 import androidx.compose.material.icons.filled.Receipt
 import androidx.compose.material.icons.filled.Science
 import androidx.compose.material.icons.filled.Storage
@@ -172,8 +175,8 @@ internal interface SettingsEvents {
 
 /** What Settings › Terminal asks [TerminalSetupViewModel] to do, as [SettingsEvents] does for [SettingsViewModel]. */
 internal interface TerminalSetupEvents {
-    /** Lists the terminals connected in the cloud ([TerminalSetupViewModel.findTerminals]). */
-    fun onTerminalsFind()
+    /** Lists the terminals connected in the cloud, saving [apiKey] first ([TerminalSetupViewModel.findTerminals]). */
+    fun onTerminalsFind(apiKey: String)
 
     /** Takes [poiId] as the terminal in the cloud; null only closes the list ([TerminalSetupViewModel.chooseTerminal]). */
     fun onTerminalChoose(poiId: String?)
@@ -223,7 +226,7 @@ private fun settingsEvents(settings: SettingsViewModel): SettingsEvents =
 
 private fun terminalSetupEvents(setup: TerminalSetupViewModel): TerminalSetupEvents =
     object : TerminalSetupEvents {
-        override fun onTerminalsFind() = setup.findTerminals()
+        override fun onTerminalsFind(apiKey: String) = setup.findTerminals(apiKey)
 
         override fun onTerminalChoose(poiId: String?) = setup.chooseTerminal(poiId)
 
@@ -380,8 +383,7 @@ fun SettingsSectionScreen(
             Column(Modifier.widthIn(max = 640.dp).padding(bottom = 32.dp)) {
                 when (section) {
                     SettingsSections.TERMINAL -> {
-                        TerminalSection(state, actions, events, navigator)
-                        TerminalApiSection(state, actions, setupActions, events, setupEvents)
+                        TerminalSection(state, actions, setupActions, events, setupEvents, navigator)
                         TerminalAdvancedSection(state, actions, events)
                     }
 
@@ -438,26 +440,21 @@ private fun sectionTitle(section: String): Int =
     }
 
 /**
- * Settings › Terminal. On an Adyen terminal only the shared key needs entering: the POIID is detected, the host is
- * localhost and the environment comes from the terminal's certificate. Off-terminal, payments can also go to a terminal
- * on the network (its IP address and POIID), one in the cloud (an API key instead of the shared key) or the Adyen
- * Payments app on this phone (the shared key, then Tap to Pay is set up). The Checkout API (for captures) follows; it is
- * optional except in the cloud, whose API key it shares. The simulator stands in for all of them.
+ * Settings › Terminal: where the connection stands, where payments go, then what that destination needs as numbered
+ * steps ([TerminalSteps]), the Checkout API among them; for the simulator, its own settings.
  */
 @Composable
 private fun ColumnScope.TerminalSection(
     state: SettingsUiState,
     actions: SettingsActions,
+    setup: TerminalSetupActions,
     events: SettingsEvents,
+    setupEvents: TerminalSetupEvents,
     navigator: Navigator,
 ) {
-    val container = LocalAppContainer.current
-    val terminalStatus = container.terminalStatus
+    val terminalStatus = LocalAppContainer.current.terminalStatus
     val status by terminalStatus.state.collectAsStateWithLifecycle()
-    val terminal = state.settings.terminal
     val mode = status.mode
-
-    fun update(transform: (TerminalSettings) -> TerminalSettings) = events.onUpdate { it.copy(terminal = transform(it.terminal)) }
     if (mode != TerminalMode.SIMULATOR) {
         ConnectionStatus(status.connection, status.poiId, status.environment, status.setupProblem?.takeIf { mode != TerminalMode.TERMINAL })
     }
@@ -465,98 +462,17 @@ private fun ColumnScope.TerminalSection(
         // The device's own default is stored as Automatic, so the app keeps following it. Another destination has its
         // own environment, found again at its first connection.
         val stored = if (choice == terminalStatus.automaticMode) TerminalMode.AUTO else choice
-        if (choice != mode) update { it.copy(mode = stored, environment = null, cloudRegion = null) }
+        if (choice != mode) events.onUpdate { it.copy(terminal = it.terminal.copy(mode = stored, environment = null, cloudRegion = null)) }
     }
-    when (mode) {
-        TerminalMode.SIMULATOR -> {
-            SettingNavRow(
-                Icons.Default.Science,
-                stringResource(R.string.settings_simulator),
-                simulatorOutcomeLabel(state.settings.simulator.outcome),
-                { navigator.push(Route.SettingsSection(SettingsSections.SIMULATOR)) },
-            )
-        }
-
-        TerminalMode.TERMINAL, TerminalMode.PAYMENTS_APP, TerminalMode.AUTO -> {
-            if (mode == TerminalMode.TERMINAL && !status.onTerminal) NetworkTerminalFields(terminal, ::update)
-            SharedKeySettings(
-                terminal = terminal,
-                passphraseSaved = Secret.TERMINAL_PASSPHRASE in state.secrets,
-                actions = actions,
-                update = ::update,
-                onSaveAndTest = { passphrase ->
-                    if (!actions.connection.running) events.onSaveAndTest(Secret.TERMINAL_PASSPHRASE, passphrase, SettingsTest.CONNECTION)
-                },
-                onForgetPassphrase = { events.onSecretChange(Secret.TERMINAL_PASSPHRASE, null) },
-            )
-        }
-
-        // A terminal in the cloud is reached with the API key, below.
-        TerminalMode.CLOUD -> {}
-    }
-}
-
-/**
- * The rest of Settings › Terminal that depends on where payments go: the Checkout API (shared with the cloud), and the
- * terminal in the cloud or the Tap to Pay setup.
- */
-@Composable
-private fun ColumnScope.TerminalApiSection(
-    state: SettingsUiState,
-    actions: SettingsActions,
-    setup: TerminalSetupActions,
-    events: SettingsEvents,
-    setupEvents: TerminalSetupEvents,
-) {
-    val container = LocalAppContainer.current
-    val status by container.terminalStatus.state.collectAsStateWithLifecycle()
-    val terminal = state.settings.terminal
-    val mode = status.mode
-
-    fun update(transform: (TerminalSettings) -> TerminalSettings) = events.onUpdate { it.copy(terminal = transform(it.terminal)) }
-    if (mode != TerminalMode.SIMULATOR) {
-        ApiSettings(
-            terminal = terminal,
-            environment = status.environment,
-            apiKeySaved = Secret.CHECKOUT_API_KEY in state.secrets,
-            problem = status.apiProblem?.text(),
-            cloud = mode == TerminalMode.CLOUD,
-            actions = actions,
-            update = ::update,
-            onSaveAndTest = { key -> if (!actions.api.running) events.onSaveAndTest(Secret.CHECKOUT_API_KEY, key, SettingsTest.API) },
-            onForgetApiKey = { events.onSecretChange(Secret.CHECKOUT_API_KEY, null) },
+    if (mode == TerminalMode.SIMULATOR) {
+        SettingNavRow(
+            Icons.Default.Science,
+            stringResource(R.string.settings_simulator),
+            simulatorOutcomeLabel(state.settings.simulator.outcome),
+            { navigator.push(Route.SettingsSection(SettingsSections.SIMULATOR)) },
         )
-    }
-    when (mode) {
-        TerminalMode.CLOUD -> {
-            CloudTerminalSettings(
-                poiId = terminal.poiIdOverride,
-                setup = setup,
-                testing = actions.connection.running,
-                onPoiId = { id -> update { it.copy(poiIdOverride = id) } },
-                onFindTerminals = setupEvents::onTerminalsFind,
-                onChooseTerminal = setupEvents::onTerminalChoose,
-                onTestConnection = {
-                    if (!actions.connection.running) events.onSaveAndTest(Secret.CHECKOUT_API_KEY, null, SettingsTest.CONNECTION)
-                },
-            )
-        }
-
-        TerminalMode.PAYMENTS_APP -> {
-            TapToPaySettings(
-                paymentsApps = remember { container.device.paymentsApps },
-                installationId = terminal.paymentsAppInstallationId,
-                storeId = terminal.storeId,
-                apiKeySaved = Secret.PAYMENTS_APP_API_KEY in state.secrets,
-                setup = setup,
-                onStoreId = { id -> update { it.copy(storeId = id) } },
-                onSetUp = setupEvents::onTapToPaySetUp,
-                onRemove = setupEvents::onTapToPayRemove,
-                onForgetApiKey = { events.onSecretChange(Secret.PAYMENTS_APP_API_KEY, null) },
-            )
-        }
-
-        TerminalMode.TERMINAL, TerminalMode.SIMULATOR, TerminalMode.AUTO -> {}
+    } else {
+        TerminalSteps(status, state, actions, setup, events, setupEvents)
     }
 }
 
@@ -585,11 +501,20 @@ private fun ColumnScope.TerminalAdvancedSection(
         )
     }
     actions.connection.outcome?.let { outcome ->
+        // In the cloud the same test checks the Checkout API too (SettingsTest.CLOUD).
+        val api = actions.api.outcome?.takeIf { status.mode == TerminalMode.CLOUD }
         ConnectionResultDialog(
             outcome.text(),
             actions.connection.isError,
             status.environment,
             automaticCurrency,
+            api?.let {
+                if (actions.api.isError) {
+                    stringResource(R.string.settings_connection_api_failed, it.text())
+                } else {
+                    stringResource(R.string.settings_connection_api_ok)
+                }
+            },
             events::onConnectionResultDismiss,
         )
     }
@@ -621,207 +546,6 @@ private fun TerminalModeChoice(
         onSelect = onSelect,
         tag = "terminalMode",
     )
-}
-
-/** The IP address and POIID of a terminal on the network; a terminal running the app knows both itself. */
-@Composable
-private fun ColumnScope.NetworkTerminalFields(
-    terminal: TerminalSettings,
-    update: ((TerminalSettings) -> TerminalSettings) -> Unit,
-) {
-    SettingTextField(
-        stringResource(R.string.settings_host),
-        terminal.host,
-        { value -> update { it.copy(host = value.trim()) } },
-        placeholder = stringResource(R.string.settings_host_placeholder),
-        supporting = stringResource(R.string.settings_host_hint),
-        keyboardType = KeyboardType.Uri,
-        autoCorrect = false,
-        imeAction = ImeAction.Next,
-        tag = "host",
-    )
-    SettingTextField(
-        label = stringResource(R.string.settings_poiid),
-        value = terminal.poiIdOverride,
-        onCommit = { value -> update { it.copy(poiIdOverride = value.trim()) } },
-        placeholder = stringResource(R.string.settings_poiid_hint),
-        supporting = stringResource(R.string.settings_poiid_help),
-        autoCorrect = false,
-        imeAction = ImeAction.Next,
-        tag = "poiId",
-    )
-}
-
-/**
- * The shared key: identifier, passphrase (only kept in memory while typed, and cleared once stored) and version, and
- * the button that saves the passphrase typed ([onSaveAndTest] gets it, or an empty one) and tests the connection.
- */
-@Composable
-private fun ColumnScope.SharedKeySettings(
-    terminal: TerminalSettings,
-    passphraseSaved: Boolean,
-    actions: SettingsActions,
-    update: ((TerminalSettings) -> TerminalSettings) -> Unit,
-    onSaveAndTest: (passphrase: String) -> Unit,
-    onForgetPassphrase: () -> Unit,
-) {
-    var passphrase by remember { mutableStateOf("") }
-    LaunchedEffect(actions.passphraseStored) { if (actions.passphraseStored) passphrase = "" }
-    SectionHeader(stringResource(R.string.settings_shared_key))
-    SettingNote(stringResource(R.string.settings_shared_key_hint))
-    // Next moves on to the passphrase, whose Done key saves and tests.
-    SettingTextField(
-        stringResource(R.string.settings_key_identifier),
-        terminal.keyIdentifier,
-        { value -> update { it.copy(keyIdentifier = value.trim()) } },
-        autoCorrect = false,
-        imeAction = ImeAction.Next,
-        tag = "keyIdentifier",
-    )
-    SecretField(
-        label = stringResource(R.string.settings_passphrase),
-        isSet = passphraseSaved,
-        value = passphrase,
-        onValueChange = { passphrase = it },
-        onSubmit = { onSaveAndTest(passphrase) },
-        tag = "passphrase",
-    )
-    SettingNumberField(stringResource(R.string.settings_key_version), terminal.keyVersion, TerminalSettings.KEY_VERSIONS, { version ->
-        update { it.copy(keyVersion = version) }
-    }, tag = "keyVersion")
-    Column(Modifier.padding(horizontal = 16.dp, vertical = LocalDimens.current.spacing)) {
-        if (passphrase.isNotEmpty()) {
-            PrimaryButton(
-                stringResource(R.string.settings_save_and_test),
-                { onSaveAndTest(passphrase) },
-                loading = actions.connection.running,
-                modifier = Modifier.testTag("testConnection"),
-            )
-        } else {
-            SecondaryButton(
-                stringResource(R.string.settings_test_connection),
-                { onSaveAndTest("") },
-                loading = actions.connection.running,
-                modifier = Modifier.testTag("testConnection"),
-            )
-        }
-        if (passphraseSaved) {
-            TertiaryButton(
-                stringResource(R.string.settings_forget_passphrase),
-                onForgetPassphrase,
-                destructive = true,
-                modifier = Modifier.testTag("forgetPassphrase"),
-            )
-        }
-        actions.secretError?.let { ActionMessage(it.text(), isError = true) }
-    }
-}
-
-/**
- * The Checkout API: merchant account, API key (only kept in memory while typed, and cleared once stored) and, once
- * payments are known to go to LIVE ([environment]), the live URL prefix; what is still missing ([problem]), and the
- * button that saves the key typed ([onSaveAndTest] gets it, or an empty one) and tests it, with the outcome of the last
- * test. It is optional, so collapsed until anything of it is entered, except in the [cloud], where the same API key
- * reaches the terminal.
- */
-@Composable
-private fun ColumnScope.ApiSettings(
-    terminal: TerminalSettings,
-    environment: TerminalEnvironment?,
-    apiKeySaved: Boolean,
-    problem: String?,
-    cloud: Boolean,
-    actions: SettingsActions,
-    update: ((TerminalSettings) -> TerminalSettings) -> Unit,
-    onSaveAndTest: (apiKey: String) -> Unit,
-    onForgetApiKey: () -> Unit,
-) {
-    if (cloud) {
-        SectionHeader(stringResource(R.string.settings_api_cloud))
-        SettingNote(stringResource(R.string.settings_api_cloud_hint))
-        ApiFields(terminal, environment, apiKeySaved, problem, actions, update, onSaveAndTest, onForgetApiKey)
-        return
-    }
-    // Collapsed for a new merchant, whose first task is the shared key above.
-    CollapsibleSettings(
-        stringResource(R.string.settings_api),
-        tag = "checkoutApi",
-        initiallyOpen = apiKeySaved || terminal.merchantAccount.isNotBlank(),
-    ) {
-        SettingNote(stringResource(R.string.settings_api_hint))
-        ApiFields(terminal, environment, apiKeySaved, problem, actions, update, onSaveAndTest, onForgetApiKey)
-    }
-}
-
-/** The fields and buttons of [ApiSettings]. */
-@Composable
-private fun ColumnScope.ApiFields(
-    terminal: TerminalSettings,
-    environment: TerminalEnvironment?,
-    apiKeySaved: Boolean,
-    problem: String?,
-    actions: SettingsActions,
-    update: ((TerminalSettings) -> TerminalSettings) -> Unit,
-    onSaveAndTest: (apiKey: String) -> Unit,
-    onForgetApiKey: () -> Unit,
-) {
-    var apiKey by remember { mutableStateOf("") }
-    LaunchedEffect(actions.apiKeyStored) { if (actions.apiKeyStored) apiKey = "" }
-    val test = actions.api
-    SettingTextField(
-        stringResource(R.string.settings_merchant_account),
-        terminal.merchantAccount,
-        { value -> update { it.copy(merchantAccount = value.trim()) } },
-        autoCorrect = false,
-        imeAction = ImeAction.Next,
-        tag = "merchantAccount",
-    )
-    SecretField(
-        label = stringResource(R.string.settings_api_key),
-        isSet = apiKeySaved,
-        value = apiKey,
-        onValueChange = { apiKey = it },
-        onSubmit = { onSaveAndTest(apiKey) },
-        tag = "apiKey",
-    )
-    // Until the environment is known, the Checkout API cannot be used anyway (SetupProblem.ENVIRONMENT).
-    if (environment == TerminalEnvironment.LIVE) {
-        SettingTextField(
-            stringResource(R.string.settings_live_prefix),
-            terminal.liveUrlPrefix,
-            { value -> update { it.copy(liveUrlPrefix = value.trim()) } },
-            supporting = stringResource(R.string.settings_live_prefix_hint),
-            autoCorrect = false,
-            tag = "livePrefix",
-        )
-    }
-    Column(Modifier.padding(horizontal = 16.dp, vertical = LocalDimens.current.spacing)) {
-        problem?.let { ActionMessage(it, isError = true) }
-        if (apiKey.isNotBlank()) {
-            PrimaryButton(
-                stringResource(R.string.settings_save_and_test_api),
-                { onSaveAndTest(apiKey) },
-                loading = test.running,
-                modifier = Modifier.testTag("testApi"),
-            )
-        } else {
-            SecondaryButton(
-                stringResource(R.string.settings_test_api),
-                { onSaveAndTest("") },
-                loading = test.running,
-                modifier = Modifier.testTag("testApi"),
-            )
-        }
-        if (apiKeySaved) {
-            TertiaryButton(
-                stringResource(R.string.settings_forget_api_key),
-                onForgetApiKey,
-                destructive = true,
-                modifier = Modifier.testTag("forgetApiKey"),
-            )
-        }
-        OutcomeMessage(test, Modifier.testTag("apiResult"))
-    }
 }
 
 @Composable
@@ -896,7 +620,8 @@ private fun ConnectionStatus(
 
 /**
  * The outcome of a connection test, in a dialog so it is seen however far the screen is scrolled. After a success it
- * also names the [environment] and, while the currency follows the device's region, that [automaticCurrency] (a code).
+ * also names the [environment], how the Checkout API test that came with it went ([api], in the cloud) and, while the
+ * currency follows the device's region, that [automaticCurrency] (a code).
  */
 @Composable
 private fun ConnectionResultDialog(
@@ -904,6 +629,7 @@ private fun ConnectionResultDialog(
     isError: Boolean,
     environment: TerminalEnvironment?,
     automaticCurrency: String?,
+    api: String?,
     onDismiss: () -> Unit,
 ) {
     val details =
@@ -912,6 +638,7 @@ private fun ConnectionResultDialog(
         } else {
             listOfNotNull(
                 environmentLabel(environment),
+                api,
                 automaticCurrency?.let { stringResource(R.string.settings_connection_currency, it) },
             )
         }
@@ -1050,7 +777,7 @@ private fun ColumnScope.PaymentLinkSettings(
         tag = "linkExpiry",
     )
     if (status.loaded && !status.paymentLinks) {
-        Column(Modifier.padding(horizontal = 16.dp, vertical = LocalDimens.current.spacing)) {
+        SettingActions {
             ActionMessage(stringResource(R.string.settings_links_need_api), isError = true, modifier = Modifier.testTag("linksNeedApi"))
         }
     }
@@ -1250,11 +977,14 @@ private fun ColumnScope.ReceiptsSection(
     state.sampleReceipt?.let { document ->
         Box(Modifier.fillMaxWidth().padding(16.dp), contentAlignment = Alignment.Center) { ReceiptPreview(document) }
     }
-    Box(Modifier.padding(horizontal = 16.dp)) {
-        Column {
-            SecondaryButton(stringResource(R.string.settings_print_test), events::onTestPrint, loading = actions.print.running)
-            OutcomeMessage(actions.print)
-        }
+    SettingActions {
+        SecondaryButton(
+            stringResource(R.string.settings_print_test),
+            events::onTestPrint,
+            loading = actions.print.running,
+            icon = Icons.Default.Print,
+        )
+        OutcomeMessage(actions.print)
     }
 }
 
@@ -1365,13 +1095,15 @@ private fun ColumnScope.EmailSection(
     SettingTextField(stringResource(R.string.settings_subject), email.subject, { value ->
         update { it.copy(subject = value) }
     }, supporting = stringResource(R.string.settings_subject_hint))
-    Box(Modifier.padding(16.dp)) {
-        Column {
-            SecondaryButton(stringResource(R.string.settings_send_test), {
-                askRecipient = true
-            }, enabled = email.isConfigured, loading = actions.email.running)
-            OutcomeMessage(actions.email)
-        }
+    SettingActions {
+        SecondaryButton(
+            stringResource(R.string.settings_send_test),
+            { askRecipient = true },
+            enabled = email.isConfigured,
+            loading = actions.email.running,
+            icon = Icons.Default.Email,
+        )
+        OutcomeMessage(actions.email)
     }
     if (askRecipient) {
         TextInputDialog(
@@ -1396,22 +1128,25 @@ private fun SecuritySection(
     events: SettingsEvents,
     onSetPin: () -> Unit,
 ) {
-    var confirmRemove by remember { mutableStateOf(false) }
     SettingNote(stringResource(R.string.settings_pin_hint))
-    Box(Modifier.padding(16.dp)) {
-        Column {
-            SecondaryButton(
-                stringResource(if (state.pinSet) R.string.settings_change_pin else R.string.settings_set_pin),
-                onSetPin,
-                modifier = Modifier.testTag("setPin"),
+    SettingActions {
+        SecondaryButton(
+            stringResource(if (state.pinSet) R.string.settings_change_pin else R.string.settings_set_pin),
+            onSetPin,
+            icon = Icons.Default.Lock,
+            modifier = Modifier.testTag("setPin"),
+        )
+        if (state.pinSet) {
+            ConfirmedRemoval(
+                text = stringResource(R.string.settings_remove_pin),
+                confirmTitle = stringResource(R.string.settings_remove_pin),
+                confirmMessage = stringResource(R.string.settings_remove_pin_message),
+                onConfirm = events::onPinClear,
+                icon = Icons.Default.LockOpen,
+                modifier = Modifier.testTag("removePin"),
             )
-            if (state.pinSet) {
-                SecondaryButton(stringResource(R.string.settings_remove_pin), {
-                    confirmRemove = true
-                }, modifier = Modifier.padding(top = 8.dp))
-            }
-            actions.secretError?.let { ActionMessage(it.text(), isError = true) }
         }
+        actions.secretError?.let { ActionMessage(it.text(), isError = true) }
     }
     SettingChoice(
         title = stringResource(R.string.settings_auto_lock),
@@ -1428,19 +1163,6 @@ private fun SecuritySection(
         onSelect = { minutes -> events.onUpdate { it.copy(security = it.security.copy(autoLockMinutes = minutes)) } },
     )
     SettingNote(stringResource(R.string.settings_pin_forgotten))
-    if (confirmRemove) {
-        ConfirmDialog(
-            title = stringResource(R.string.settings_remove_pin),
-            message = stringResource(R.string.settings_remove_pin_message),
-            confirmLabel = stringResource(R.string.settings_remove_pin),
-            destructive = true,
-            onConfirm = {
-                confirmRemove = false
-                events.onPinClear()
-            },
-            onDismiss = { confirmRemove = false },
-        )
-    }
 }
 
 @Composable
@@ -1450,7 +1172,6 @@ private fun DataSection(
     events: SettingsEvents,
     navigator: Navigator,
 ) {
-    var confirmClear by remember { mutableStateOf(false) }
     SectionHeader(stringResource(R.string.settings_history))
     SettingChoice(
         title = stringResource(R.string.settings_retention),
@@ -1466,11 +1187,16 @@ private fun DataSection(
         selected = state.settings.history.retentionDays,
         onSelect = { days -> events.onUpdate { it.copy(history = it.history.copy(retentionDays = days)) } },
     )
-    Box(Modifier.padding(16.dp)) {
-        Column {
-            SecondaryButton(stringResource(R.string.settings_clear_history), { confirmClear = true })
-            if (actions.cleared) ActionMessage(stringResource(R.string.settings_history_cleared), isError = false)
-        }
+    SettingActions {
+        ConfirmedRemoval(
+            text = stringResource(R.string.settings_clear_history),
+            confirmTitle = stringResource(R.string.settings_clear_history),
+            confirmMessage = stringResource(R.string.settings_clear_history_message),
+            onConfirm = events::onHistoryClear,
+            icon = Icons.Default.DeleteSweep,
+            modifier = Modifier.testTag("clearHistory"),
+        )
+        if (actions.cleared) ActionMessage(stringResource(R.string.settings_history_cleared), isError = false)
     }
     SectionHeader(stringResource(R.string.settings_catalogue))
     SettingNavRow(
@@ -1487,19 +1213,6 @@ private fun DataSection(
         { navigator.push(Route.TransferImport) },
         tag = "setUpFromTerminal",
     )
-    if (confirmClear) {
-        ConfirmDialog(
-            title = stringResource(R.string.settings_clear_history),
-            message = stringResource(R.string.settings_clear_history_message),
-            confirmLabel = stringResource(R.string.settings_clear_history),
-            destructive = true,
-            onConfirm = {
-                confirmClear = false
-                events.onHistoryClear()
-            },
-            onDismiss = { confirmClear = false },
-        )
-    }
 }
 
 @Composable

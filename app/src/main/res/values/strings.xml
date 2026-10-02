@@ -171,9 +171,7 @@
   <string name="detail_reprint">Reprint receipt</string>
   <string name="detail_still_unknown">The terminal still cannot confirm this payment. Check your Customer Area.</string>
   <string name="detail_pre_auth_title">Pre-authorization</string>
-  <string name="detail_pre_auth_note">No Checkout API is set up: capture it in your Customer Area under Payments › Payment list, by its PSP reference, and record the capture here.</string>
   <string name="detail_capture">Capture</string>
-  <string name="detail_record_capture">Record capture</string>
   <string name="detail_adjust">Adjust amount</string>
   <string name="detail_retry_capture">Retry capture</string>
   <string name="detail_cancel_payment">Cancel payment</string>
@@ -269,7 +267,6 @@
   <string name="tip_confirm_no_tip_title">No tip?</string>
   <string name="tip_confirm_sum">Bill %1$s + tip %2$s = %3$s.</string>
   <string name="tip_confirm_capture">%1$s is captured now, and the tip cannot be changed afterwards.</string>
-  <string name="tip_confirm_manual">Capture %1$s in your Customer Area afterwards. The tip cannot be changed here.</string>
   <string name="tip_refused">The card issuer did not authorize %1$s (%2$s). Enter a smaller tip, or no tip.</string>
   <string name="capture_failed">Not captured: %1$s</string>
   <string name="capture_not_allowed">This payment can no longer be captured.</string>
@@ -279,15 +276,12 @@
   <string name="capture_held">Held now</string>
   <string name="capture_more_note">More than the amount held: the card issuer is asked to authorize %1$s first.</string>
   <string name="capture_less_note">The rest of the amount held is released.</string>
-  <string name="capture_manual_note">No Checkout API is set up: capture this amount in your Customer Area, then record it here.</string>
   <string name="adjust_note">The card issuer is asked to hold this amount instead. The same amount extends the authorization.</string>
   <string name="capture_button">Capture %1$s</string>
-  <string name="capture_record_button">Record capture of %1$s</string>
   <string name="adjust_button">Hold %1$s</string>
   <string name="capture_confirm_title">Capture %1$s?</string>
   <string name="capture_confirm_message">The shopper is charged %1$s and the rest of the hold is released. This cannot be undone.</string>
   <string name="capture_confirm_more">The card issuer is first asked to authorize the higher amount.</string>
-  <string name="capture_confirm_manual">This only records the capture. Capture %1$s in your Customer Area too.</string>
   <string name="adjust_confirm_title">Hold %1$s?</string>
   <string name="adjust_confirm_message">The card issuer is asked to hold %1$s on the shopper’s card instead of %2$s.</string>
   <string name="capture_refused">The card issuer did not authorize %1$s (%2$s).</string>
@@ -503,6 +497,8 @@
   <string name="settings_test_connection">Test connection</string>
   <string name="settings_save_and_test">Save and test</string>
   <string name="settings_forget_passphrase">Remove saved passphrase</string>
+  <string name="settings_forget_passphrase_title">Remove the saved passphrase?</string>
+  <string name="settings_forget_passphrase_message">Payments stop until the passphrase is entered again.</string>
   <string name="settings_connection_ok">Connected</string>
   <string name="settings_connection_currency">Payments are taken in %1$s, which follows the device’s region. To change it, go to Settings › Payments.</string>
   <string name="settings_connection_failed">Connection failed</string>
@@ -512,8 +508,8 @@
   <string name="settings_status_not_set_up">Not set up yet</string>
   <string name="settings_status_not_set_up_hint">Enter the shared key below, then tap Save and test.</string>
   <string name="settings_status_failed">Not connected</string>
-  <string name="settings_api">Checkout API (optional)</string>
-  <string name="settings_api_hint">With an API key, the app captures tips on the receipt and pre-authorizations, and adjusts what they hold. Without one, capture them in your Customer Area. Create an API credential under Developers › API credentials with only the Checkout webservice role.</string>
+  <string name="settings_api">Checkout API</string>
+  <string name="settings_api_hint">Every payment needs it: through it the app captures tips on the receipt and pre-authorizations, adjusts what they hold and sends payment links. In your Customer Area, create an API credential under Developers › API credentials with the Checkout webservice role, and enter its API key with your merchant account.</string>
   <string name="settings_merchant_account">Merchant account</string>
   <string name="settings_api_key">API key</string>
   <string name="settings_live_prefix">Live URL prefix</string>
@@ -521,17 +517,27 @@
   <string name="settings_test_api">Test API key</string>
   <string name="settings_save_and_test_api">Save and test API key</string>
   <string name="settings_forget_api_key">Remove saved API key</string>
+  <string name="settings_forget_api_key_title">Remove the saved API key?</string>
+  <string name="settings_forget_api_key_message">Payments, captures and payment links stop until an API key is entered again.</string>
   <string name="settings_api_ok">The API key works.</string>
-  <string name="settings_api_cloud">Adyen API</string>
-  <string name="settings_api_cloud_hint">Terminals in the cloud are reached with an API key, which is stored encrypted on this device. Create an API credential under Developers › API credentials for this device only, with the Cloud Device API role (add the Checkout webservice role for captures). Remove the key there if the device is lost.</string>
-  <string name="settings_cloud_terminal">Terminal</string>
+  <string name="settings_connection_api_ok">The Checkout API works with this API key.</string>
+  <string name="settings_connection_api_failed">The Checkout API did not work: %1$s</string>
+  <string name="settings_api_cloud">Adyen account</string>
+  <string name="settings_api_cloud_hint">Terminals in the cloud are reached with an API key, which is stored encrypted on this device and also used for the Checkout API (captures and payment links). Create an API credential under Developers › API credentials for this device only, with the Cloud Device API and Checkout webservice roles. Remove the key there if the device is lost.</string>
+  <string name="settings_step_terminal">Terminal</string>
   <string name="settings_cloud_poiid_help">The terminal’s model and serial number. It must be online and assigned to this merchant account.</string>
   <string name="settings_find_terminals">Find connected terminals</string>
   <string name="settings_choose_terminal">Choose a terminal</string>
   <string name="settings_no_terminals">No terminals are connected to this merchant account.</string>
   <string name="settings_tap_to_pay">Tap to Pay</string>
-  <string name="settings_tap_to_pay_hint">Shoppers tap their card or phone on this phone, in the Adyen Payments app. Install it from Google Play (Adyen Payments Test for TEST) and ask Adyen Support to enable Tap to Pay on Android; then enter the shared key and merchant account above, and set up Tap to Pay here. There is no printer: receipts are emailed.</string>
+  <string name="settings_tap_to_pay_hint">Ask Adyen Support to enable Tap to Pay on Android and the Adyen Payments app role. Setting up registers this phone in the Payments app for the merchant account above, or one of its stores. Shoppers then tap their card or phone on this phone; there is no printer, so receipts are emailed.</string>
   <string name="settings_payments_app">Adyen Payments app</string>
+  <string name="settings_payments_app_hint">Tap to Pay runs in the Adyen Payments app: Adyen Payments Test for test accounts, Adyen Payments for live ones. Install it from Google Play.</string>
+  <string name="settings_payments_app_installed">Installed</string>
+  <string name="settings_payments_app_test">Adyen Payments Test (TEST)</string>
+  <string name="settings_payments_app_live">Adyen Payments (LIVE)</string>
+  <string name="settings_get_payments_app_test">Get Adyen Payments Test</string>
+  <string name="settings_get_payments_app_live">Get Adyen Payments</string>
   <string name="settings_payments_app_none">Not installed</string>
   <string name="settings_payments_app_both">TEST and LIVE are both installed</string>
   <string name="settings_installation_id">Installation ID</string>
@@ -543,7 +549,11 @@
   <string name="settings_set_up_tap_to_pay">Set up Tap to Pay</string>
   <string name="settings_set_up_again">Set up again</string>
   <string name="settings_remove_phone">Remove this phone</string>
+  <string name="settings_remove_phone_title">Remove this phone?</string>
+  <string name="settings_remove_phone_message">Adyen stops taking Tap to Pay payments on this phone until it is set up again.</string>
   <string name="settings_forget_payments_app_key">Remove saved Payments app API key</string>
+  <string name="settings_forget_payments_app_key_title">Remove the saved Payments app API key?</string>
+  <string name="settings_forget_payments_app_key_message">Payments go on, but this phone cannot be set up again or removed until the key is entered again.</string>
   <string name="result_tap_to_pay_ready">Tap to Pay is set up (installation %1$s).</string>
   <string name="result_tap_to_pay_removed">This phone was removed. Also select Unregister in the Adyen Payments app’s settings.</string>
 

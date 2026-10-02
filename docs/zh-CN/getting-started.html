@@ -91,7 +91,7 @@
               <li><strong>运行 Android 9 或更高版本的 Adyen Android 支付终端</strong>，例如 S1F2、S1F4Pro、S1E4Pro、S1E2L、AMS1、S1U2 或 SFO1。打印需要终端配备打印机；扫描收据、条形码和另一台终端的设置二维码需要摄像头。</li>
               <li>或者一台 <strong>Android 平板电脑或手机</strong>，用于通过本地网络或互联网在终端上收款，或使用 Tap to Pay 收款（见<a href="#tablet">或在平板电脑或手机上使用</a>）。</li>
               <li>可选：如果要通过电子邮件发送收据，请准备一个 <strong>SMTP 邮件服务器</strong>，或常见邮件服务商的邮箱。</li>
-              <li>可选：如果希望应用直接为收据小费和预授权扣款，或发送支付链接，请准备 Adyen Checkout API 的 <strong>API 凭据</strong>（参见<a href="#api">Checkout API 与扣款</a>）。</li>
+              <li>Adyen Checkout API 的 <strong>API 凭据</strong>，每笔付款都需要它：应用通过它为收据小费和预授权扣款并发送支付链接（参见<a href="#api">Checkout API 与扣款</a>）。</li>
             </ul>
             <p class="note">Mini mPOS 是独立项目，并非 Adyen 产品。在接受真实支付之前，请先在 TEST 终端上充分测试。</p>
           </section>
@@ -126,22 +126,23 @@ cd minimpos
               <li>在终端上打开 Mini mPOS，点击首页的<strong>连接此终端</strong>，或进入<strong>设置 › 终端</strong>。</li>
               <li>输入<strong>密钥标识符</strong>和<strong>密钥口令</strong>；如果<strong>密钥版本</strong>不是 1，也需要填写版本。</li>
               <li>点击<strong>保存并测试</strong>，或键盘的“完成”键。结果会立即显示。</li>
+              <li>在下方第 2 步中连接 <a href="#api">Checkout API</a>：付款需要它，填写之前首页会一直提示。</li>
             </ol>
             <p>应用会自动检测终端 ID（POIID）、地址以及 TEST 或 LIVE 环境，无需填写其他信息。设置 › 关于会显示检测结果；TEST 终端的系统状态栏也会显示 TEST。如果币种跟随设备所在地区，测试结果还会显示该币种：请确认它是您的 Adyen 账户收款使用的币种（设置 › 支付）。</p>
           </section>
           <section id="tablet">
             <h2>6. 或在平板电脑或手机上使用</h2>
-            <p>Mini mPOS 也可以在 Android 平板电脑和手机上运行。在设备上安装同一个 APK（无需在商户后台部署），然后在<strong>设置 › 终端 › 支付目标</strong>中选择：</p>
+            <p>Mini mPOS 也可以在 Android 平板电脑和手机上运行。在设备上安装同一个 APK（无需在商户后台部署），然后在<strong>设置 › 终端 › 支付目标</strong>中选择，并按下方的编号步骤操作：</p>
             <dl class="settings-list">
               <dt>同一网络中的终端</dt>
-              <dd>柜台平板电脑的推荐方式。平板电脑通过本地网络向终端发送请求，并使用共享密钥加密，因此无需 API 密钥。除共享密钥外，还需输入终端的 IP 地址和 POIID（见终端的 Device info 界面）。终端上无需安装 Mini mPOS。</dd>
+              <dd>柜台平板电脑的推荐方式。平板电脑通过本地网络向终端发送请求，并使用共享密钥加密。依次输入 (1) 终端的 IP 地址和 POIID（见终端的 Device info 界面），(2) 共享密钥，(3) <a href="#api">Checkout API</a>。终端上无需安装 Mini mPOS。</dd>
               <dt>通过互联网连接的终端（云端）</dt>
-              <dd>适用于平板电脑和终端不在同一网络的情况。请求经由 Adyen 的 Cloud device API 发送，使用 API 密钥代替共享密钥。请在商户后台的 <strong>Developers › API credentials</strong> 中为本设备创建具有 <strong>Cloud Device API</strong> 角色的凭据（如需应用为小费和预授权扣款或发送支付链接，再加上 Checkout webservice role）。在 <strong>Adyen API</strong> 下输入商家账户和 API 密钥，然后点击<strong>查找已连接的终端</strong>并选择终端（或输入其 POIID）。连接时会自动判断密钥属于 TEST 还是 LIVE，以及要使用的数据中心。</dd>
+              <dd>适用于平板电脑和终端不在同一网络的情况。请求经由 Adyen 的 Cloud device API 发送，使用 API 密钥代替共享密钥，Checkout API 也使用该密钥。请在商户后台的 <strong>Developers › API credentials</strong> 中为本设备创建具有 <strong>Cloud Device API</strong> 和 <strong>Checkout webservice</strong> 角色的凭据。(1) 在 <strong>Adyen 账户</strong>下输入商家账户和 API 密钥，然后 (2) 点击<strong>查找已连接的终端</strong>并选择终端（或输入其 POIID），再点击<strong>测试连接</strong>，同时测试终端和 Checkout API。连接时会自动判断密钥属于 TEST 还是 LIVE，以及要使用的数据中心。</dd>
               <dt>在本手机上使用 Tap to Pay</dt>
-              <dd>顾客在本手机上的 Adyen Payments 应用中轻触银行卡或手机付款；没有打印机，收据通过电子邮件发送或分享。手机需支持 NFC、运行 Android 12 或更高版本，并通过 Google 认证。请让 Adyen 支持团队开通 Tap to Pay on Android 和 Adyen Payments app role，并从 Google Play 安装 <strong>Adyen Payments Test</strong>（TEST）或 <strong>Adyen Payments</strong>（LIVE）。输入共享密钥和商家账户，然后在 <strong>Tap to Pay</strong> 下输入 <strong>Payments 应用 API 密钥</strong>（仅具有 Adyen Payments app role 的凭据）；如只为一家门店设置，还需输入门店 ID。点击<strong>设置 Tap to Pay</strong>，Payments 应用会打开以注册本手机。之后每笔付款都会打开 Payments 应用，再返回 Mini mPOS。如要停用，请点击<strong>移除本手机</strong>。</dd>
+              <dd>顾客在本手机上的 Adyen Payments 应用中轻触银行卡或手机付款；没有打印机，收据通过电子邮件发送或分享。手机需支持 NFC、运行 Android 12 或更高版本，并通过 Google 认证。请让 Adyen 支持团队开通 Tap to Pay on Android 和 Adyen Payments app role，然后：(1) 从 Google Play 安装 <strong>Adyen Payments Test</strong>（TEST）或 <strong>Adyen Payments</strong>（LIVE）（两者都未安装时，Mini mPOS 会为每个应用显示一个按钮）；(2) 连接 <a href="#api">Checkout API</a>，本手机将登记到其商家账户；(3) 在 <strong>Tap to Pay</strong> 下输入 <strong>Payments 应用 API 密钥</strong>（仅具有 Adyen Payments app role 的凭据），如只为一家门店设置，还需输入门店 ID，然后点击<strong>设置 Tap to Pay</strong>，Payments 应用会打开以注册本手机；(4) 输入<strong>共享密钥</strong>，发送给 Payments 应用的每个付款请求都用它加密。之后每笔付款都会打开 Payments 应用，再返回 Mini mPOS。如要停用，请点击<strong>移除本手机</strong>。</dd>
             </dl>
             <p>在全部信息填写完成之前，首页会显示<strong>完成收款设置</strong>并提示还缺少什么，点击即可打开设置 › 终端。本指南的其余部分与在终端上使用时相同。</p>
-            <p class="note">在云端模式和 Tap to Pay 模式下，Adyen API 密钥会保存在设备上，并通过 Android Keystore 加密。Adyen 建议将 API 密钥保存在服务器上，而 Mini mPOS 没有服务器：请为本设备使用专用凭据，设置管理员 PIN，并在设备丢失时于商户后台撤销该密钥。</p>
+            <p class="note">Adyen API 密钥会保存在设备上，并通过 Android Keystore 加密：无论支付目标为何都会保存 Checkout API 密钥，Tap to Pay 模式下还会保存 Payments 应用 API 密钥。Adyen 建议将 API 密钥保存在服务器上，而 Mini mPOS 没有服务器：请为本设备使用专用凭据，设置管理员 PIN，并在设备丢失时于商户后台撤销该密钥。</p>
           </section>
           <section id="business">
             <h2>7. 设置您的业务</h2>
@@ -205,16 +206,16 @@ cd minimpos
           </section>
           <section id="api">
             <h2>10. Checkout API 与扣款</h2>
-            <p>Adyen Checkout API 是可选的。配置后，Mini mPOS 可以直接为收据小费和预授权扣款（并调整冻结金额），还可以发送<a href="#payment-links">支付链接</a>。</p>
+            <p>每笔付款都需要 Adyen Checkout API：Mini mPOS 通过它为收据小费和预授权扣款（并调整冻结金额），并发送<a href="#payment-links">支付链接</a>。设置完成之前，首页会提示缺少的内容，付款也会暂缓。</p>
             <ol>
               <li>在商户后台打开 <strong>Developers › API credentials</strong>，为终端创建仅具有 <strong>Checkout webservice role</strong> 的凭据，并生成 <strong>API 密钥</strong>。</li>
-              <li>在 Mini mPOS 中进入<strong>设置 › 终端</strong>，点击<strong>Checkout API（可选）</strong>将其展开，输入<strong>商家账户</strong>和 <strong>API 密钥</strong>，然后点击<strong>保存并测试 API 密钥</strong>。密钥在终端上加密存储；测试不会更改支付。在云端模式下，只要 Adyen API 中密钥的凭据也具有 Checkout webservice role，就由该密钥完成这些操作。</li>
+              <li>在 Mini mPOS 中进入<strong>设置 › 终端</strong>，在 <strong>Checkout API</strong> 步骤中输入<strong>商家账户</strong>和 <strong>API 密钥</strong>，然后点击<strong>保存并测试 API 密钥</strong>。密钥在终端上加密存储；测试不会更改支付。在云端模式下，由 Adyen 账户中的 API 密钥完成这些操作，因为其凭据也具有 Checkout webservice role。</li>
               <li>LIVE 终端还需要 <strong>live URL prefix</strong>，可在 <strong>Developers › API URLs</strong> 中找到；确认终端为 LIVE 后才会显示该字段。应用通过终端证书判断 TEST 或 LIVE 环境（云端模式根据 API 密钥判断，Tap to Pay 根据已安装的 Payments 应用判断）。</li>
               <li>可选：在 <strong>Devices › Developer › Additional data › Return adjust authorisation data</strong> 中启用同步授权调整。这样应用能立即得知更高金额是否获批；否则需稍后在商户后台确认调整结果。</li>
             </ol>
             <h3>扣款的工作方式</h3>
             <p>收据小费和预授权使用<strong>手动扣款</strong>：在扣款前只冻结金额。Adyen 异步确认扣款，因此应用会显示<em>已请求扣款</em>。Mini mPOS 没有接收 webhook 的后端，最终结果请在商户后台查看。结果未知的扣款可以从交易记录再次发送，不会重复扣款。</p>
-            <p>没有 API 密钥时，应用会记录待扣款金额并显示<em>在商户后台扣款</em>。请在 <strong>Payments › Payment list</strong> 中选择交易记录所示的 PSP 识别号，然后点击 <strong>Capture payment</strong>。</p>
+            <p>旧版 Mini mPOS 在没有 Checkout API 时留待在商户后台扣款的销售仍显示<em>在商户后台扣款</em>：请在 <strong>Payments › Payment list</strong> 中选择交易记录所示的 PSP 识别号，然后点击 <strong>Capture payment</strong>。</p>
           </section>
           <section id="payment-links">
             <h2>11. 支付链接</h2>
@@ -232,7 +233,7 @@ cd minimpos
             <h3>在 Adyen 完成一次性设置</h3>
             <ul>
               <li>请联系 <strong>Adyen Support</strong>，为您的付款方式配置预授权并启用 <strong>overcapture</strong>（超额扣款）：不超过账单金额 20% 的小费可在已授权金额之上直接扣款。钱包和借记卡可能不支持此流程。</li>
-              <li>可选但建议：配置 <a href="#api">Checkout API</a>，让应用直接为小费扣款。</li>
+              <li>配置 <a href="#api">Checkout API</a>，应用通过它为小费扣款。</li>
             </ul>
             <h3>在 Mini mPOS 中操作</h3>
             <ol>
@@ -262,7 +263,7 @@ cd minimpos
             <ul>
               <li><strong>扣款：</strong>在<strong>交易记录</strong>中打开预授权，点击<strong>扣款</strong>。默认金额为冻结金额；扣款金额较少会释放剩余额度，扣款金额更高则会先向发卡行请求授权。扣款后可以从交易记录退款。</li>
               <li><strong>调整金额</strong>会更改冻结金额，但不扣款；提交相同金额会延长授权。</li>
-              <li>这两项操作都需要 <a href="#api">Checkout API</a>。没有 API 时，请在商户后台扣款（<strong>Payments › Payment list</strong>，选择 PSP 识别号，再点击 <strong>Capture payment</strong>），然后在应用中点击<strong>记录扣款</strong>，以便交易记录反映该操作。</li>
+              <li>这两项操作都通过 <a href="#api">Checkout API</a> 完成。</li>
               <li><strong>取消：</strong>点击<strong>取消预授权</strong>。如果已经在商户后台完成扣款，Adyen 会改为全额退款。</li>
             </ul>
             <p class="note">冻结金额会到期，某些卡组织可能仅保留几天；在此期间，购物者的账单上会显示为待处理金额。请及时扣款或取消。交易记录的<em>预授权</em>筛选会列出这些交易，每日合计会显示仍冻结的金额。</p>
@@ -283,7 +284,7 @@ cd minimpos
             <ul>
               <li>在 TEST 终端上使用 Adyen 的<a href="https://docs.adyen.com/point-of-sale/testing-pos-payments">测试卡</a>进行几笔销售和退款；如果使用支付链接、小费或预授权，也请一并测试。</li>
               <li>在<strong>设置 › 收据 › 打印测试收据</strong>中检查收据布局，并用<strong>发送测试邮件</strong>检查电子邮件设置。</li>
-              <li>设置管理员 PIN，再将相同版本部署到 LIVE 终端，并输入它们的共享密钥（如使用 Checkout API，还需输入 LIVE API 密钥和 live URL prefix）。</li>
+              <li>设置管理员 PIN，再将相同版本部署到 LIVE 终端，并输入它们的共享密钥、LIVE Checkout API 密钥和 live URL prefix。</li>
               <li>确认设置 › 关于中显示的是 LIVE 环境。</li>
             </ul>
           </section>

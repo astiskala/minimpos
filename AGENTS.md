@@ -78,10 +78,10 @@ device API or the Adyen Payments app (Tap to Pay); anywhere through its built-in
   new `versionCode` each time. Unsigned APKs upload fine but fail to install on terminals.
 - Smallest target screen: AMS1, 4" 480×800 hdpi, ~320×460 dp usable, Android 10, no printer.
 - Terminals have no Google Play services: no dependency may need them (hence CameraX + ZXing for scanning).
-- On a terminal the POIID comes from `Settings.Global.DEVICE_NAME` and the host is `localhost`; only the shared key is
-  entered. The manifest's `<queries>` (the two Payments app packages), the `minimpos://paymentsapp` VIEW filter on the
-  `singleTask` `MainActivity` and the unexported `FileProvider` for shared receipt images add no permission, so the
-  same APK stays acceptable for terminals.
+- On a terminal the POIID comes from `Settings.Global.DEVICE_NAME` and the host is `localhost`; only the shared key (and
+  the Checkout API) is entered. The manifest's `<queries>` (the two Payments app packages), the
+  `minimpos://paymentsapp` VIEW filter on the `singleTask` `MainActivity` and the unexported `FileProvider` for shared
+  receipt images add no permission, so the same APK stays acceptable for terminals.
 - `:core` and `:terminal-api` are JVM modules, so Android Lint does not check their API levels: `AndroidApiLevelTest`
   checks every Java/Android class, method and field they reach against the compile SDK's `api-versions.xml` at the
   app's minSdk, accepting what D8 backports (`listBackportedMethods`). E.g. `URLEncoder.encode(String, Charset)` is
@@ -95,12 +95,17 @@ device API or the Adyen Payments app (Tap to Pay); anywhere through its built-in
 - "Payments go to" (`TerminalMode`): this terminal or one on the network (local Terminal API, shared key), `CLOUD`
   (Cloud device API `/sync` with the `CHECKOUT_API_KEY` secret, which also does captures; payment timeout at least
   160 s), `PAYMENTS_APP` (Tap to Pay through the Adyen Payments app, shared key; POIID is the boarded installation ID),
-  or the simulator. Cloud and Payments app are only offered off-terminal; Automatic stays the simulator there.
+  or the simulator. Cloud and Payments app are only offered off-terminal; Automatic stays the simulator there. The
+  Payments app needs the shared key too (Adyen's docs: requests are encrypted as for local communications).
+- The Checkout API is required wherever payments go but the simulator (a product decision: captures, adjustments and
+  payment links all need it): payments wait for it (`TerminalSetup.problem`, the Home setup card) except for a not yet
+  detected environment, which the first connection finds; connection checks, refunds and printing need only the
+  destination (`TerminalSetup.connectionProblem`). There is no Customer Area capture mode any more; `CaptureStatus.MANUAL`
+  stays only for sales stored by older versions.
 - The environment (TEST/LIVE) is never a setting: it comes from the terminal certificate, else the endpoint that accepts
   the cloud API key (`CloudDevices.detect`: TEST, then the device country's live data centre, then the others), else the
   installed Payments app package (both installed is a setup problem), and picks the Checkout API endpoint. Changing the
-  mode clears the stored environment. Partly entered Checkout API setup fails visibly instead of falling back to the
-  Customer Area.
+  mode clears the stored environment.
 - The Payments app takes only payments and reversals: no print, abort or diagnosis (the connection check only checks the
   setup), no printer; status checks are answered only from answers that arrived with no exchange waiting
   (`AppLinkExchange.lateReplies`). `PaymentsAppBridge` is the activity's side; coming back without an answer makes the
@@ -159,10 +164,15 @@ device API or the Adyen Payments app (Tap to Pay); anywhere through its built-in
   retirement (off by default from the end of 2026). Check the table against the providers' help pages when it changes.
   The app links the help pages only off a terminal (terminals have no browser); the getting started guide lists the
   same links, so keep `SmtpProvider.helpUrl` and the guide's three languages in sync.
-- Home's setup card shows wherever payments go but the simulator, saying what is missing (on a terminal, the shared
-  key). A successful connection test names the currency while it follows the device's region. The optional Checkout
-  API section in Settings › Terminal stays collapsed until something of it is entered (not in the cloud, which needs
-  it), and the live URL prefix is asked for only once the environment is LIVE.
+- Home's setup card shows wherever payments go but the simulator, saying what is missing (on a terminal whose shared
+  key is missing, the shared key). A successful connection test names the currency while it follows the device's
+  region. Settings › Terminal is numbered steps per destination (`TerminalSteps`): this terminal: shared key, Checkout
+  API; a terminal on the network: address and POIID, shared key, Checkout API; the cloud: Adyen account (merchant
+  account and the API key it shares), terminal with one test of both (`SettingsTest.CLOUD`); Tap to Pay: Payments app
+  (Google Play buttons for both apps while none is installed; the app re-reads the device on resume), Checkout API,
+  setting up Tap to Pay, shared key. The live URL prefix is asked for only once the environment is LIVE.
+- Buttons: Settings groups their buttons in `SettingActions` (spaced like `BottomActions`), every Settings button has an
+  icon, and removing something saved (keys, PIN, phone, history) is a red `ConfirmedRemoval` that asks first.
 - Pre-authorisations and tips follow `CONTEXT.md` (cancelled, not refunded; "Held" in day totals; a tip over 20% is
   adjusted first, else overcaptured). Tip on the receipt is only offered with a printer; a refused adjustment leaves
   the tip unsaved. Idempotency keys (`capture-{saleId}-{amount}`, `adjust-{saleId}-{heldBefore}-{amount}`) make

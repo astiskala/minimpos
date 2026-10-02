@@ -51,7 +51,7 @@ import io.minimpos.app.R
 import io.minimpos.app.data.db.SaleKind
 import io.minimpos.app.data.settings.TerminalMode
 import io.minimpos.app.feature.settings.SettingsSections
-import io.minimpos.app.feature.text
+import io.minimpos.app.feature.setupCard
 import io.minimpos.app.terminal.TerminalConnection
 import io.minimpos.app.terminal.TerminalState
 import io.minimpos.app.ui.components.LocalAppContainer
@@ -145,8 +145,9 @@ private fun ColumnScope.PaymentTiles(
 }
 
 /**
- * A [SetupCard] while payments cannot work: something must still be entered or the terminal did not answer; else
- * nothing. On a terminal only its shared key can be missing; elsewhere the card says what is.
+ * A [SetupCard] while payments cannot work: something must still be entered (the Checkout API included) or the terminal
+ * did not answer; else nothing. On a terminal whose shared key is missing it asks for that; otherwise it says what is
+ * missing.
  */
 @Composable
 private fun ConnectionProblem(
@@ -157,10 +158,11 @@ private fun ConnectionProblem(
     val problem = terminal.setupProblem ?: (connection as? TerminalConnection.NotSetUp)?.problem
     when {
         problem != null -> {
+            val (title, text) = problem.setupCard(terminal.onTerminal)
             SetupCard(
                 Icons.Default.Key,
-                stringResource(if (terminal.onTerminal) R.string.home_setup_title else R.string.home_setup_title_remote),
-                if (terminal.onTerminal) stringResource(R.string.home_setup_text) else problem.text(),
+                title,
+                text,
                 error = false,
                 onClick = onClick,
             )

@@ -11,7 +11,6 @@ import io.minimpos.app.data.db.SaleStatus
 import io.minimpos.app.data.db.SetupProblem
 import io.minimpos.app.data.db.StoredReason
 import io.minimpos.app.data.db.TaxRateEntity
-import io.minimpos.app.data.settings.CaptureMode
 import io.minimpos.app.data.settings.ShopperReferenceSource
 import io.minimpos.app.refund.PaymentAction
 import io.minimpos.app.refund.PaymentStanding
@@ -127,7 +126,7 @@ class PaymentLinksTest {
         assertThat(paid.sale.totalsShare).isEqualTo(TotalsShare.SALE)
         assertThat(ReceiptStanding.of(paid.sale).paidOnline).isTrue()
         assertThat(ReceiptStanding.of(paid.sale).unpaidLink).isNull()
-        assertThat(StoredPayment(paid, CaptureMode.API).actions).doesNotContain(PaymentAction.REFUND)
+        assertThat(StoredPayment(paid).actions).doesNotContain(PaymentAction.REFUND)
         // A settled link is not asked about again.
         assertThat(await { links.check(id) }).isEqualTo(LinkUpdate.Settled)
         assertThat(api.asked).hasSize(2)

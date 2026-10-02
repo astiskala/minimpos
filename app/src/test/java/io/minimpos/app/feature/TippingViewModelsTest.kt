@@ -9,7 +9,6 @@ import io.minimpos.app.data.db.SaleKind
 import io.minimpos.app.data.db.SetupProblem
 import io.minimpos.app.data.db.TaxRateEntity
 import io.minimpos.app.data.security.Secret
-import io.minimpos.app.data.settings.CaptureMode
 import io.minimpos.app.data.settings.PrinterMode
 import io.minimpos.app.data.settings.TerminalMode
 import io.minimpos.app.feature.capture.CaptureViewModel
@@ -276,14 +275,6 @@ class TippingViewModelsTest {
         // Now it is captured, it can be neither captured nor adjusted again.
         capture.submit()
         assertThat(capture.state.value.canSubmit).isFalse()
-
-        // Without the API, adjusting is not offered and a capture is only recorded.
-        env.updateSettings { it.copy(terminal = it.terminal.copy(mode = TerminalMode.TERMINAL)) }
-        val ca = await { container.terminalStatus.state.first { it.captureMode == CaptureMode.CUSTOMER_AREA } }
-        assertThat(ca.apiProblem).isNull()
-        assertThat(
-            CaptureViewModel(id, adjustOnly = true, container.storedPayments, container.captures).state.value.canSubmit,
-        ).isFalse()
     }
 
     @Test
@@ -315,7 +306,7 @@ class TippingViewModelsTest {
         assertThat(refused.isError).isTrue()
         assertThat(refused.done).isFalse()
         assertThat(CaptureResult.NotAllowed.toState(CaptureStep.TIP, 2_500, "AUD").outcome).isEqualTo(ActionOutcome.CaptureNotAllowed)
-        assertThat(CaptureResult.Recorded.toState(CaptureStep.CAPTURE, 2_500, "AUD")).isEqualTo(ActionState(done = true))
+        assertThat(CaptureResult.Requested.toState(CaptureStep.CAPTURE, 2_500, "AUD")).isEqualTo(ActionState(done = true))
         assertThat(CaptureResult.NotSetUp(SetupProblem.LIVE_PREFIX).toState(CaptureStep.ADJUSTMENT, 2_500, "AUD"))
             .isEqualTo(ActionState(outcome = ActionOutcome.NotSetUp(SetupProblem.LIVE_PREFIX), isError = true))
     }

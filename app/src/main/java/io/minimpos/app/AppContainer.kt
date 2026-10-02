@@ -76,8 +76,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.filter
-import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.serialization.KSerializer
@@ -211,7 +209,7 @@ class AppContainer(
     val terminalStatus = TerminalStatus(terminalSetup, gateway, settings, appScope)
 
     /** Stored sales with what can be done with them now, for the screens that show one. */
-    val storedPayments = StoredPayments(sales, terminalStatus.state.filter { it.loaded }.map { it.captureMode })
+    val storedPayments = StoredPayments(sales)
 
     /**
      * Builds receipt documents from stored sales and refunds, with localised labels. Screens get their receipts from

@@ -134,17 +134,6 @@ sealed interface SaleEvent {
     ) : SaleEvent
 
     /**
-     * No Checkout API is set up, so the capture of [amountMinor] is left to staff in the Customer Area.
-     *
-     * @property amountMinor The amount to capture.
-     * @property tipMinor The tip written on the receipt; null keeps the stored one.
-     */
-    data class CaptureLeftToStaff(
-        val amountMinor: Long,
-        val tipMinor: Long? = null,
-    ) : SaleEvent
-
-    /**
      * A capture or adjustment was not sent, because the Checkout API is only partly set up.
      *
      * @property problem What is missing.
@@ -173,7 +162,6 @@ fun SaleEntity.after(event: SaleEvent): SaleEntity =
         is SaleEvent.AdjustmentAnswered -> adjustmentAnswered(event.amountMinor, event.result)
         is SaleEvent.CaptureSending -> captureRecorded(CaptureStatus.PENDING, event.amountMinor, event.tipMinor)
         is SaleEvent.CaptureAnswered -> captureAnswered(event.result)
-        is SaleEvent.CaptureLeftToStaff -> captureRecorded(CaptureStatus.MANUAL, event.amountMinor, event.tipMinor)
         is SaleEvent.ModificationNotSetUp -> modificationFailed(null, StoredReason.NotSetUp(event.problem))
         SaleEvent.Interrupted -> interrupted()
     }

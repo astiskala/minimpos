@@ -69,13 +69,15 @@ class SmallScreenTest {
 
     private fun waitForText(text: String) = compose.waitUntilAtLeastOneExists(hasText(text, substring = true), 15_000)
 
+    /** The shared key and the Checkout API are entered, so payments can go to the terminal. */
     private fun configureKey() {
         env.updateSettings { it.copy(terminal = it.terminal.copy(keyIdentifier = "mini-key")) }
         await { container.secrets.set(Secret.TERMINAL_PASSPHRASE, "correct horse battery staple") }
+        env.useCheckoutApi()
     }
 
     @Test
-    fun `home guides the terminal setup, which only asks for the shared key`() {
+    fun `home guides the terminal setup, which asks for the shared key, then the Checkout API`() {
         compose.setContent { MiniMposApp(container) }
         compose.onNodeWithTag("terminalSetup").assertIsDisplayed().performClick()
         waitForTag("keyIdentifier")
@@ -110,6 +112,24 @@ class SmallScreenTest {
         compose.onNodeWithText("Saved", useUnmergedTree = true).assertExists()
         compose.onNodeWithTag("testConnection").assertTextContains("Test connection")
         assertThat(terminal.hosts.distinct()).containsExactly("localhost")
+
+        // Payments still wait for the Checkout API, the next step.
+        compose.onNodeWithTag("back").performClick()
+        waitForTag("newSale")
+        compose.onNodeWithTag("terminalSetup").assertTextContains("Enter the merchant account", substring = true).performClick()
+        waitForTag("step_2")
+        compose.onNodeWithTag("merchantAccount").performScrollTo().performTextInput("HarbourCoffeeCOM")
+        compose.awaitCondition("Saving the merchant account") {
+            container.settingsState.value.terminal.merchantAccount
+                .isNotEmpty()
+        }
+        compose.onNodeWithTag("apiKey").performScrollTo().performTextInput("AQE-secret")
+        compose
+            .onNodeWithTag("testApi")
+            .performScrollTo()
+            .assertTextContains("Save and test API key")
+            .performClick()
+        compose.awaitCondition("Saving the API key") { await { container.secrets.get(Secret.CHECKOUT_API_KEY) } == "AQE-secret" }
 
         compose.onNodeWithTag("back").performClick()
         waitForTag("newSale")
@@ -340,16 +360,16 @@ class SmallScreenTest {
     }
 
     @Test
-    fun `a tip on the receipt fits the screen, and is recorded for the Customer Area without an API`() = tipFitsTheScreen()
+    fun `a tip on the receipt fits the screen, and is captured`() = tipFitsTheScreen()
 
     @Test
     @Config(qualifiers = "en-rAU-w320dp-h456dp-mdpi")
     fun `a tip on the receipt fits the P630 screen`() = tipFitsTheScreen()
 
     private fun tipFitsTheScreen() {
-        configureKey()
-        // The AMS1 has no printer of its own; tipping on the receipt needs one.
-        env.updateSettings { it.copy(receipt = it.receipt.copy(printerMode = PrinterMode.ON)) }
+        // The simulator stands in for the Checkout API that captures the tip. The AMS1 has no printer of its own;
+        // tipping on the receipt needs one.
+        env.useSimulator { it.copy(receipt = it.receipt.copy(printerMode = PrinterMode.ON)) }
         compose.setContent { MiniMposApp(container) }
         compose.onNodeWithTag("newSale").performClick()
         waitForTag("addCustom")
@@ -368,26 +388,27 @@ class SmallScreenTest {
         listOf("addTip", "noTip", "key_00", "tipInput_TOTAL").forEach { compose.onNodeWithTag(it).assertIsDisplayed() }
         listOf(6, 0, 0).forEach { compose.onNodeWithTag("key_$it").performClick() }
         compose.onNodeWithTag("addTip").performClick()
-        compose.onNodeWithText("Capture $46.00 in your Customer Area afterwards", substring = true).assertExists()
+        compose.onNodeWithText("$46.00 is captured now", substring = true).assertExists()
         compose.onNodeWithTag("confirm").performClick()
-        compose.waitUntilAtLeastOneExists(hasTestTag("resultStatus") and hasText("Capture in Customer Area"), 15_000)
+        compose.waitUntilAtLeastOneExists(hasTestTag("resultStatus") and hasText("Capture requested"), 15_000)
         compose.onNodeWithTag("newSaleAfter").assertIsDisplayed()
         val sale = await { container.history.items().first { it.isNotEmpty() } }.single()
-        assertThat(await { container.sales.get(sale.id)!! }.sale.captureStatus).isEqualTo(CaptureStatus.MANUAL)
+        assertThat(await { container.sales.get(sale.id)!! }.sale.captureStatus).isEqualTo(CaptureStatus.REQUESTED)
     }
 
     @Test
     fun `the Checkout API is set up under Terminal settings, and says what is still missing`() {
-        configureKey()
+        env.updateSettings { it.copy(terminal = it.terminal.copy(keyIdentifier = "mini-key")) }
+        await { container.secrets.set(Secret.TERMINAL_PASSPHRASE, "correct horse battery staple") }
         compose.setContent { MiniMposApp(container) }
         compose.onNodeWithTag("settings").performClick()
         waitForTag("section_terminal")
         compose.onNodeWithTag("section_terminal").performClick()
-        // It is optional, so it stays collapsed under the shared key until opened.
-        waitForTag("checkoutApi")
-        compose.onNodeWithTag("merchantAccount").assertDoesNotExist()
-        compose.onNodeWithTag("checkoutApi").performScrollTo().performClick()
-        waitForTag("merchantAccount")
+        // Every payment needs it, so it is the step after the shared key, open from the start.
+        waitForTag("step_2")
+        compose.onNodeWithTag("step_1").assertTextContains("Shared key")
+        compose.onNodeWithTag("step_2").assertTextContains("Checkout API")
+        compose.onNodeWithTag("apiProblem").performScrollTo().assertTextContains("Enter the merchant account", substring = true)
         compose.onNodeWithTag("merchantAccount").performScrollTo().performTextInput("HarbourCoffeeCOM")
         compose.awaitCondition(
             "Saving the merchant account",
@@ -408,7 +429,10 @@ class SmallScreenTest {
         compose.onNodeWithTag("livePrefix").assertDoesNotExist()
         env.updateSettings { it.copy(terminal = it.terminal.copy(environment = TerminalEnvironment.LIVE)) }
         waitForTag("livePrefix")
+        // Removing the saved key asks first.
         compose.onNodeWithTag("forgetApiKey").performScrollTo().performClick()
+        compose.onNodeWithText("Remove the saved API key?").assertIsDisplayed()
+        compose.onNodeWithTag("confirm").performClick()
         compose.awaitCondition("Removing the API key") { await { container.secrets.get(Secret.CHECKOUT_API_KEY) } == null }
     }
 

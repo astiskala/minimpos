@@ -191,7 +191,7 @@ enum class CaptureStep {
 
 /**
  * This result of a [step] that asked for [amountMinor] (in minor units of [currency]) as a finished [ActionState]:
- * done once Adyen received it, adjusted it or the amount was recorded for the Customer Area; else why not, as an error.
+ * done once Adyen received or adjusted it; else why not, as an error.
  */
 fun CaptureResult.toState(
     step: CaptureStep,
@@ -199,7 +199,7 @@ fun CaptureResult.toState(
     currency: String,
 ): ActionState =
     when (this) {
-        CaptureResult.Requested, CaptureResult.Recorded, CaptureResult.Adjusted -> {
+        CaptureResult.Requested, CaptureResult.Adjusted -> {
             ActionState(done = true)
         }
 

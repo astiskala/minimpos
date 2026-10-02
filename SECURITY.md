@@ -52,14 +52,15 @@ this project. Report them to Adyen through its
   only encrypted (AES-256-GCM, with a key derived by PBKDF2 from a one-time 12-character transfer code). The code is
   shown only on the sending terminal and typed on the receiving one; both screens are behind the admin PIN.
 - **No backend and no tracking.** Products, settings and sales history stay on the device. The app sends nothing
-  anywhere except to the payment terminal (or the Adyen Payments app) and, if you set them up, Adyen's Checkout API (to
-  capture tips and pre-authorizations and for payment links), Cloud device API (terminals in the cloud), Management API
-  (boarding the Payments app) and your SMTP server. A receipt shared from a tablet or phone goes only to the app the
-  user picks in Android's share sheet: the app writes the one receipt image to its cache and grants that app read access
-  to it alone.
+  anywhere except to the payment terminal (or the Adyen Payments app), Adyen's Checkout API (to capture tips and
+  pre-authorizations and for payment links) and, if you set them up, Cloud device API (terminals in the cloud),
+  Management API (boarding the Payments app) and your SMTP server. A receipt shared from a tablet or phone goes only to
+  the app the user picks in Android's share sheet: the app writes the one receipt image to its cache and grants that
+  app read access to it alone.
 - **API keys on the device are a trade-off.** Adyen advises keeping API keys on a server. Mini mPOS has no backend, so
-  in the cloud and for Tap to Pay the keys live on the tablet or phone, which is less protected than a payment terminal.
-  A terminal on your network needs no API key.
+  the Checkout API key (which every setup needs) lives on the terminal, tablet or phone, and in the cloud and for Tap to
+  Pay so do the keys that reach the terminal or board the phone. A tablet or phone is less protected than a payment
+  terminal.
 
 ## Recommendations for merchants
 
@@ -67,11 +68,11 @@ this project. Report them to Adyen through its
 - Keep TEST and LIVE shared keys separate. Before taking real payments, check that Settings › About shows LIVE as the
   environment (a TEST terminal also shows TEST in its status bar). Change the shared key if you think it has been
   exposed.
-- If you give the app a **Checkout API key**, use an API credential with only the Checkout webservice role, one per
-  store or terminal fleet, and revoke it in the Customer Area if a terminal is lost.
+- For the **Checkout API key**, use an API credential with only the Checkout webservice role, one per store or
+  terminal fleet, and revoke it in the Customer Area if a terminal is lost.
 - On a **tablet or phone**, prefer a terminal on your network. For the cloud or Tap to Pay, create an API credential
-  for each device with only the roles it needs (Cloud Device API, plus Checkout webservice for captures; or only the
-  Adyen Payments app role for boarding), keep the device's screen lock and Android security updates on, set an admin
+  for each device with only the roles it needs (Cloud Device API and Checkout webservice; or only the Adyen Payments
+  app role for boarding), keep the device's screen lock and Android security updates on, set an admin
   PIN, and revoke the credential (and, for Tap to Pay, remove the phone in Settings › Terminal) if the device is lost.
 - Send receipt email over **STARTTLS or SSL**. The "None" option sends email and your SMTP password unencrypted.
 - Choose a sensible **history retention** period (Settings › Data). Sales history includes customer references and

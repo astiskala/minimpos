@@ -11,7 +11,6 @@ import io.minimpos.app.data.repo.HistoryItem
 import io.minimpos.app.data.repo.HistoryRepository
 import io.minimpos.app.data.repo.RefundRepository
 import io.minimpos.app.data.settings.AppSettings
-import io.minimpos.app.data.settings.CaptureMode
 import io.minimpos.app.feature.ActionState
 import io.minimpos.app.feature.CaptureStep
 import io.minimpos.app.feature.TransactionActions
@@ -278,9 +277,6 @@ data class SaleDetailUiState(
 
     /** What can be done with the payment now (refund, cancel, enter the tip, capture, adjust, retry the capture). */
     val actions: Set<PaymentAction> get() = payment?.actions.orEmpty()
-
-    /** Whether captures go through the Checkout API or are made in the Customer Area; the API until loaded. */
-    val captureMode: CaptureMode get() = payment?.captureMode ?: CaptureMode.API
 }
 
 /**

@@ -5,7 +5,6 @@ import io.minimpos.app.data.db.SaleEntity
 import io.minimpos.app.data.db.SaleKind
 import io.minimpos.app.data.db.SaleStatus
 import io.minimpos.app.data.db.SaleWithLines
-import io.minimpos.app.data.settings.CaptureMode
 import io.minimpos.terminal.client.Decline
 
 /**
@@ -16,8 +15,8 @@ import io.minimpos.terminal.client.Decline
  *
  * Payments taken with manual capture ([SaleEntity.manualCapture]: pre-authorisations and sales taken for tipping on the
  * receipt) move from [AWAITING_TIP] or [HELD] through a capture ([CAPTURE_SENDING], then [CAPTURE_REQUESTED],
- * [CAPTURE_FAILED] or [CAPTURE_UNKNOWN]; or straight to [CAPTURED_MANUALLY]) or end in [HOLD_CANCELLED]. A plain sale is
- * [CHARGED] as soon as it is approved.
+ * [CAPTURE_FAILED] or [CAPTURE_UNKNOWN]; with older versions also [CAPTURED_MANUALLY]) or end in [HOLD_CANCELLED]. A
+ * plain sale is [CHARGED] as soon as it is approved.
  *
  * @property capture The capture status a payment taken with manual capture stands here with; null for the standings
  *   before (or without) a capture.
@@ -49,7 +48,7 @@ enum class PaymentStanding(
     /** Captured: Adyen received the capture ([CaptureStatus.REQUESTED]) and confirms it in the Customer Area. */
     CAPTURE_REQUESTED(CaptureStatus.REQUESTED),
 
-    /** Captured: left to staff in the Customer Area ([CaptureStatus.MANUAL]), as no Checkout API is set up. */
+    /** Captured: left to staff in the Customer Area ([CaptureStatus.MANUAL]) by an older version, without Checkout API. */
     CAPTURED_MANUALLY(CaptureStatus.MANUAL),
 
     /** A held payment whose cancellation (a full reversal) was accepted, so nothing was charged. */
@@ -174,10 +173,10 @@ enum class PaymentAction {
     /** Enter the tip written on the receipt and capture it ([PaymentStanding.AWAITING_TIP]). */
     ENTER_TIP,
 
-    /** Capture a held pre-authorisation, or record its capture for the Customer Area. */
+    /** Capture a held pre-authorisation. */
     CAPTURE,
 
-    /** Change what a held pre-authorisation holds; needs the Checkout API ([CaptureMode.API]). */
+    /** Change what a held pre-authorisation holds. */
     ADJUST,
 
     /**
@@ -188,28 +187,25 @@ enum class PaymentAction {
 }
 
 /**
- * What can be done with this stored payment now, with captures made as [captureMode] says. Captures, adjustments and
- * retries also need the PSP reference the Checkout API refers to, and a cancellation the terminal's transaction details.
+ * What can be done with this stored payment now. Captures, adjustments and retries go through the Checkout API, so they
+ * also need the PSP reference it refers to, and a cancellation the terminal's transaction details.
  */
-fun SaleWithLines.actions(captureMode: CaptureMode): Set<PaymentAction> =
-    buildSet {
-        if (RefundablePayment.check(this@actions) is Refundability.Refundable) add(PaymentAction.REFUND)
-        if (RefundablePayment.cancellable(this@actions)) add(PaymentAction.CANCEL)
-        if (sale.pspReference != null) addAll(captureActions(sale, captureMode))
-    }
+val SaleWithLines.actions: Set<PaymentAction>
+    get() =
+        buildSet {
+            if (RefundablePayment.check(this@actions) is Refundability.Refundable) add(PaymentAction.REFUND)
+            if (RefundablePayment.cancellable(this@actions)) add(PaymentAction.CANCEL)
+            if (sale.pspReference != null) addAll(captureActions(sale))
+        }
 
-/** What the Checkout API (or the Customer Area) can do with [sale], which has a PSP reference. */
-private fun captureActions(
-    sale: SaleEntity,
-    captureMode: CaptureMode,
-): Set<PaymentAction> {
+/** What the Checkout API can do with [sale], which has a PSP reference. */
+private fun captureActions(sale: SaleEntity): Set<PaymentAction> {
     val standing = sale.standing
     val capture = sale.kind == SaleKind.PRE_AUTHORISATION && standing.held
     val retry = standing == PaymentStanding.CAPTURE_UNKNOWN || (standing == PaymentStanding.CAPTURE_FAILED && sale.tipOnReceipt)
     return buildSet {
         if (standing == PaymentStanding.AWAITING_TIP) add(PaymentAction.ENTER_TIP)
-        if (capture) add(PaymentAction.CAPTURE)
-        if (capture && captureMode == CaptureMode.API) add(PaymentAction.ADJUST)
+        if (capture) addAll(listOf(PaymentAction.CAPTURE, PaymentAction.ADJUST))
         if (retry && sale.capturedMinor != null) add(PaymentAction.RETRY_CAPTURE)
     }
 }

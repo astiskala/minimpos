@@ -51,9 +51,9 @@ enum class SaleKind {
     SALE,
 
     /**
-     * A pre-authorisation: one pre-authorisation product or custom amount, only held on the card. It is captured
-     * through Adyen's Checkout API or in the Customer Area (adjusting the held amount needs the Checkout API), or
-     * cancelled from history; it can be refunded only once captured, up to the amount captured.
+     * A pre-authorisation: one pre-authorisation product or custom amount, only held on the card. It is captured (or
+     * what it holds adjusted) through Adyen's Checkout API, or cancelled from history; it can be refunded only once
+     * captured, up to the amount captured.
      */
     PRE_AUTHORISATION,
     ;
@@ -334,7 +334,10 @@ enum class CaptureStatus {
     /** Adyen received the capture request; it confirms the capture only in the Customer Area. */
     REQUESTED,
 
-    /** No Checkout API is set up, so staff capture the amount in the Customer Area. */
+    /**
+     * Left to staff to capture in the Customer Area, because no Checkout API was set up. Only older versions wrote it,
+     * when the Checkout API was optional; such payments stay captured.
+     */
     MANUAL,
 
     /** Adyen did not take the capture request, so nothing was captured; it can be sent again. */

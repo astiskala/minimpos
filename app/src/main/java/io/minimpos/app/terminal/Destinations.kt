@@ -10,6 +10,7 @@ import io.minimpos.terminal.client.PosApplication
 import io.minimpos.terminal.client.RecoveryPolicy
 import io.minimpos.terminal.client.TerminalClient
 import io.minimpos.terminal.client.TerminalIdentity
+import io.minimpos.terminal.paymentsapp.PaymentsAppLinks
 import io.minimpos.terminal.simulator.SimulatorConfig
 import io.minimpos.terminal.simulator.TerminalSimulator
 import io.minimpos.terminal.transport.AdyenCloudDevices
@@ -373,10 +374,10 @@ internal class PaymentsAppDestination(
 
     /**
      * The rules of the Payments app ([TerminalMode.PAYMENTS_APP]): a phone with exactly one Payments app installed, whose
-     * environment it is, the shared key, and boarding, whose installation ID is the POIID. It takes only payments and
-     * refunds: no abort (it has its own Cancel), no diagnosis and no printer, and it cannot be asked for a transaction's
-     * status, only answer from a late reply, so a payment whose answer is missing is checked once, shortly after, before
-     * it is reported unknown.
+     * environment it is, boarding (for the merchant account), whose installation ID is the POIID, then the shared key, in
+     * the order Settings › Terminal asks for them. It takes only payments and refunds: no abort (it has its own Cancel),
+     * no diagnosis and no printer, and it cannot be asked for a transaction's status, only answer from a late reply, so a
+     * payment whose answer is missing is checked once, shortly after, before it is reported unknown.
      */
     companion object : DestinationRules {
         private val RECOVERY = RecoveryPolicy(attempts = 1, intervalMillis = 2_000, maxInProgressChecks = 1)
@@ -405,8 +406,24 @@ internal class PaymentsAppDestination(
             host: String?,
         ): SetupProblem? =
             paymentsAppProblem(device.isAdyenTerminal, device.paymentsApps)
+                ?: boardingProblem(terminal, poiId)
                 ?: sharedKeyProblem(terminal, saved)
-                ?: SetupProblem.PAYMENTS_APP_NOT_BOARDED.takeIf { poiId == null }
+
+        /** Until boarded ([poiId] is null): the merchant account boarding needs, else boarding itself. */
+        private fun boardingProblem(
+            terminal: TerminalSettings,
+            poiId: String?,
+        ): SetupProblem? =
+            when {
+                poiId != null -> null
+                terminal.merchantAccount.isBlank() -> SetupProblem.MERCHANT_ACCOUNT
+                else -> SetupProblem.PAYMENTS_APP_NOT_BOARDED
+            }
+
+        private const val PLAY_STORE = "https://play.google.com/store/apps/details?id="
+
+        /** The Google Play page of the Adyen Payments app for [environment], where Settings offers to install it. */
+        fun storeUrl(environment: TerminalEnvironment): String = PLAY_STORE + PaymentsAppLinks.packageName(environment)
 
         override fun printer(
             settings: AppSettings,

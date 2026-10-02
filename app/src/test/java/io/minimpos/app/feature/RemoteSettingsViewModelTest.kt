@@ -88,6 +88,34 @@ class RemoteSettingsViewModelTest {
     }
 
     @Test
+    fun `in the cloud finding terminals saves the key typed, and one test checks the terminal, then the Checkout API`() {
+        container.start()
+        env.updateSettings { it.copy(terminal = it.terminal.copy(mode = TerminalMode.CLOUD, merchantAccount = "Merchant")) }
+        val vm = settingsViewModel()
+        val setup = setupViewModel()
+        setup.findTerminals(" cloud-key ")
+        val found = await { setup.actions.first { it.connectedTerminals != null } }
+        assertThat(found.apiKeyStored).isTrue()
+        assertThat(await { container.secrets.get(Secret.CHECKOUT_API_KEY) }).isEqualTo("cloud-key")
+        setup.chooseTerminal("S1F2-000158213605014")
+        await { container.settings.settings.first { it.terminal.poiIdOverride == "S1F2-000158213605014" } }
+
+        vm.saveAndTest(Secret.CHECKOUT_API_KEY, test = SettingsTest.CLOUD)
+        val tested = await { vm.actions.first { it.connection.done && it.api.outcome != null } }
+        assertThat(tested.connection.outcome).isInstanceOf(ActionOutcome.Connected::class.java)
+        // The key reaches a LIVE data center, so the Checkout API asks for the live URL prefix next.
+        assertThat(tested.api.outcome).isEqualTo(ActionOutcome.NotSetUp(SetupProblem.LIVE_PREFIX))
+        assertThat(tested.api.isError).isTrue()
+
+        // Without a terminal to reach, the Checkout API is not tested.
+        env.updateSettings { it.copy(terminal = it.terminal.copy(poiIdOverride = "")) }
+        vm.saveAndTest(Secret.CHECKOUT_API_KEY, test = SettingsTest.CLOUD)
+        val failed = await { vm.actions.first { it.connection.isError } }
+        assertThat(failed.connection.outcome).isEqualTo(ActionOutcome.NotSetUp(SetupProblem.POI_ID))
+        assertThat(failed.api.outcome).isNull()
+    }
+
+    @Test
     fun `Tap to Pay is set up with the Payments app API key typed, and the phone can be removed again`() {
         env.updateSettings {
             it.copy(terminal = it.terminal.copy(mode = TerminalMode.PAYMENTS_APP, keyIdentifier = "key", merchantAccount = "Merchant"))

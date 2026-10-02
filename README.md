@@ -44,8 +44,7 @@ app.
 
 - **Card and wallet payments** through Adyen, on the terminal the app runs on.
 - **Payment links** (Adyen [Pay by Link](https://docs.adyen.com/unified-commerce/pay-by-link)) instead of the terminal:
-  the customer scans the link's QR code, or you email, print or share it, and they pay on Adyen's payment page. Needs
-  the optional Checkout API.
+  the customer scans the link's QR code, or you email, print or share it, and they pay on Adyen's payment page.
 - **Pre-authorizations** for deposits, bookings and hire: hold an amount on the card, then capture it (more or less than
   held), adjust what it holds, or cancel it.
 - **Tipping on the receipt** for table service: the receipt prints with blank Tip and Total lines, and the app captures
@@ -63,15 +62,14 @@ app.
 - **Referenced refunds**: scan the receipt's QR code, or start from history. Refund in full, by item, or an amount.
 - **History** by day with daily totals, filters (sales, awaiting tip, pre-auths, refunds, needs attention), a payment
   method menu, and a **search** by reference, auth code, shopper, card, brand, wallet or amount.
-- **Captures with the optional Checkout API**: with a merchant account and API key, the app captures tips and
-  pre-authorizations and adjusts what they hold itself. Without one, it records the amount for you to capture in the
-  Customer Area.
+- **Captures through the Checkout API**: with your merchant account and an API key, the app captures tips and
+  pre-authorizations, adjusts what they hold and sends payment links itself.
 
 ### Setting up and running it
 
-- **Guided setup**: on a terminal only the shared key is needed. The terminal ID, address and TEST/LIVE environment are
-  detected, and Home says what is still missing until payments can go through. A new installation is ready to sell:
-  checkout asks for nothing but payment, and receipts print by themselves.
+- **Guided setup** in numbered steps: on a terminal only the shared key and the Checkout API are needed. The terminal
+  ID, address and TEST/LIVE environment are detected, and Home says what is still missing until payments can go
+  through. A new installation is ready to sell: checkout asks for nothing but payment, and receipts print by themselves.
 - **Set up more terminals from one**: share the catalog, settings and (with a one-time transfer code) passwords and keys
   with another terminal as QR codes. No cloud account or computer needed.
 - **Admin PIN** for settings and products, with automatic re-lock.
@@ -111,8 +109,8 @@ The website's terminal illustrations are illustrative, not product photographs.
   a Google-certified phone with NFC and Android 12 or later, the Adyen Payments app, and Tap to Pay on Android enabled
   by Adyen Support (see Adyen's [requirements](https://docs.adyen.com/point-of-sale/mobile-android/requirements) and the
   [countries and payment methods](https://docs.adyen.com/point-of-sale/ipp-mobile) it supports).
-- Optional: an API credential for Adyen's Checkout API (captures and payment links) and an SMTP mail server (emailed
-  receipts).
+- An API credential for Adyen's Checkout API (captures, adjustments and payment links), and optionally an SMTP mail
+  server (emailed receipts).
 - To build it yourself: JDK 17 or later (the build downloads JDK 21 for itself) and the Android SDK with platform 37.
 
 ## Try it
@@ -166,10 +164,10 @@ plus setting up your business, products, payment links, tips and pre-authorizati
    result names the currency if it follows the device's region.
 5. **Set up your business:** Settings › Payments (currency, references, saved cards), Tax (check the starting rates),
    Receipts and optionally Email (SMTP). Then set an admin PIN under Security.
-6. **Optional, for captures and payment links:** create an API credential (Customer Area, Developers › API
-   credentials) with only the **Checkout webservice role**, and enter your merchant account and its API key under
-   Settings › Terminal › Checkout API (tap it to open), then tap **Save and test API key**. LIVE terminals also need
-   your live URL prefix (Developers › API URLs), asked for once the terminal is known to be LIVE.
+6. **Connect the Checkout API** (step 2 of Settings › Terminal; payments wait for it): create an API credential
+   (Customer Area, Developers › API credentials) with only the **Checkout webservice role**, enter your merchant
+   account and its API key, then tap **Save and test API key**. LIVE terminals also need your live URL prefix
+   (Developers › API URLs), asked for once the terminal is known to be LIVE.
 7. **More terminals:** on the first one, open Settings › Data › **Share with another terminal**; on each new one,
    **Set up from another terminal**, scan the codes and type the transfer code shown.
 
@@ -179,29 +177,32 @@ only asks for the internet, network state and camera permissions, and the build 
 ## Use it on a tablet or phone
 
 Install the same APK (sideloaded from the [latest release](https://github.com/astiskala/minimpos/releases/latest)),
-then choose under Settings › Terminal › **Payments go to**:
+then choose under Settings › Terminal › **Payments go to**, and follow the numbered steps below it:
 
 - **A terminal on your network**: the recommended setup for a tablet at the counter. Requests go straight to the
-  terminal, encrypted with its shared key, so no API key is needed. Enter the terminal's IP address and POIID as well as
-  the shared key. Mini mPOS does not need to be installed on the terminal.
+  terminal, encrypted with its shared key. Enter (1) the terminal's IP address and POIID, (2) the shared key and (3) the
+  Checkout API. Mini mPOS does not need to be installed on the terminal.
 - **A terminal over the internet (cloud)**: for a tablet and terminal on different networks. Create an API credential
-  for this device with the **Cloud Device API** role (and the Checkout webservice role for captures and payment links),
-  enter the merchant account and API key under **Adyen API**, then tap **Find connected terminals** and choose one (or
-  type its POIID). Payment requests wait at least 160 seconds, as Adyen requires for cloud payments.
-- **Tap to Pay on this phone**: shoppers tap on the phone, in the Adyen Payments app (no card reader). Install
-  **Adyen Payments Test** (TEST) or **Adyen Payments** (LIVE) from Google Play, enter the shared key and merchant
-  account, then under **Tap to Pay** the **Payments app API key** (a credential with only the Adyen Payments app role,
-  which Adyen Support enables) and optionally a store ID, and tap **Set up Tap to Pay**. The environment follows the
-  Payments app installed.
+  for this device with the **Cloud Device API** and **Checkout webservice** roles, enter (1) the merchant account and
+  API key under **Adyen account**, then (2) tap **Find connected terminals** and choose one (or type its POIID), and
+  **Test connection**, which tests the terminal and the Checkout API. Payment requests wait at least 160 seconds, as
+  Adyen requires for cloud payments.
+- **Tap to Pay on this phone**: shoppers tap on the phone, in the Adyen Payments app (no card reader). (1) Install
+  **Adyen Payments Test** (TEST) or **Adyen Payments** (LIVE) from Google Play (the app links to both), (2) enter the
+  Checkout API, (3) under **Tap to Pay** the **Payments app API key** (a credential with only the Adyen Payments app
+  role, which Adyen Support enables) and optionally a store ID, and tap **Set up Tap to Pay**, then (4) enter the
+  shared key, which encrypts the payments, as Adyen's
+  [Payments app guide](https://docs.adyen.com/point-of-sale/mobile-android/build/payments-app) requires. The
+  environment follows the Payments app installed.
 
 Off a terminal, results and history also offer **Share receipt**, which sends the receipt as an image through Android's
 share sheet.
 
 > [!WARNING]
-> With the cloud and Tap to Pay, an Adyen API key is stored on the device (encrypted with the Android Keystore).
-> Adyen advises keeping API keys on a server; Mini mPOS has none. Use a credential for that device only, with only the
-> roles it needs, set an admin PIN, and revoke the key in the Customer Area if the device is lost. A terminal on your
-> network needs no API key.
+> Mini mPOS stores Adyen API keys on the device (encrypted with the Android Keystore): the Checkout API key wherever
+> payments go, and with Tap to Pay also the Payments app API key. Adyen advises keeping API keys on a server; Mini mPOS
+> has none. Use a credential for that device only, with only the roles it needs, set an admin PIN, and revoke the key
+> in the Customer Area if the device is lost.
 
 ## Language and receipts
 
@@ -232,8 +233,7 @@ and official reference links.
 - A capture whose result is unknown can be sent again from history without capturing twice (it reuses its idempotency
   key). Synchronous adjustments need **Return adjust authorisation data** (Customer Area, Devices › Developer ›
   Additional data); without it, adjustments are asynchronous.
-- Without a Checkout API key, captures are only recorded in the app: capture the amount shown in the Customer Area
-  (Payments › Payment list). Holds expire, so capture tips and pre-authorizations promptly. Canceling one from history
+- Holds expire, so capture tips and pre-authorizations promptly. Canceling one from history
   is a full reversal: Adyen refunds it in full if it was already captured.
 - Payment links: without a server for webhooks, the app learns that a link was paid only by asking Adyen (every few
   seconds while the link is shown, or with **Check payment**), and Adyen's answer has no PSP reference. So a sale paid
@@ -285,7 +285,7 @@ app asks the terminal for the transaction's status every few seconds until it is
 
 The app has no backend: products, settings and sales history stay on the device. Card details never reach the app;
 it only sees what Adyen returns, such as the brand, masked card number, PSP reference and (when tokenizing) the stored
-payment method ID. Only if you give it a Checkout API key does it also call Adyen's
+payment method ID. With its Checkout API key it also calls Adyen's
 [Checkout API](https://docs.adyen.com/api-explorer/Checkout/latest/overview) (`/payments/{pspReference}/captures` and
 `/amountUpdates`) to capture tips and pre-authorizations, and `/paymentLinks` to create, check and expire payment
 links; the key is stored encrypted with the Android Keystore.

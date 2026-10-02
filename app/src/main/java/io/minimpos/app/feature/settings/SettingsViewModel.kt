@@ -29,9 +29,11 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
 
 /**
  * What the settings screen shows.
@@ -93,6 +95,12 @@ enum class SettingsTest {
 
     /** The Checkout API key. */
     API,
+
+    /**
+     * A terminal in the cloud and the Checkout API, which share the API key: the connection, shown in a dialog, then
+     * (once connected) the Checkout API, whose outcome the dialog shows too.
+     */
+    CLOUD,
 }
 
 /**
@@ -213,8 +221,9 @@ class SettingsViewModel(
     /**
      * Saves [value] as [secret] if one was entered (an API key without surrounding spaces) and verifies that it reads
      * back, then runs [test]: by default the terminal connection for [Secret.TERMINAL_PASSPHRASE] and the Checkout API
-     * for [Secret.CHECKOUT_API_KEY] (which also reaches terminals in the cloud, so its test can be the connection). No
-     * test charges anything. The connection's outcome is shown until [dismissConnectionResult].
+     * for [Secret.CHECKOUT_API_KEY] (which also reaches terminals in the cloud, so its test can be both,
+     * [SettingsTest.CLOUD]). No test charges anything. The connection's outcome is shown until
+     * [dismissConnectionResult].
      *
      * @throws IllegalArgumentException for a secret that cannot be tested.
      */
@@ -228,7 +237,10 @@ class SettingsViewModel(
         val apiKey = secret == Secret.CHECKOUT_API_KEY
 
         fun SettingsActions.with(state: ActionState) = if (api) copy(api = state) else copy(connection = state)
-        _actions.update { it.with(ActionState(running = true)).copy(apiKeyStored = false, passphraseStored = false) }
+        _actions.update {
+            val started = it.with(ActionState(running = true)).copy(apiKeyStored = false, passphraseStored = false)
+            if (test == SettingsTest.CLOUD) started.copy(api = ActionState()) else started
+        }
         viewModelScope.launch {
             val entered = (if (apiKey) value?.trim() else value)?.takeIf { it.isNotEmpty() }
             if (entered != null) {
@@ -240,9 +252,36 @@ class SettingsViewModel(
                 }
                 _actions.update { if (apiKey) it.copy(apiKeyStored = true) else it.copy(passphraseStored = true) }
             }
-            val result = if (api) apiResult() else connectionResult()
-            _actions.update { it.with(result) }
+            run(test)
         }
+    }
+
+    /** Runs [test] and shows its outcome. */
+    private suspend fun run(test: SettingsTest) {
+        when (test) {
+            SettingsTest.API -> {
+                _actions.update { it.copy(api = apiResult()) }
+            }
+
+            SettingsTest.CONNECTION -> {
+                _actions.update { it.copy(connection = connectionResult()) }
+            }
+
+            SettingsTest.CLOUD -> {
+                val connection = connectionResult()
+                val checked = if (connection.done) detectedApiResult() else ActionState()
+                _actions.update { it.copy(connection = connection, api = checked) }
+            }
+        }
+    }
+
+    /**
+     * The Checkout API test right after a connection that found where payments go: once the environment it detected is
+     * saved (at most [ENVIRONMENT_WAIT_MILLIS] later), as the Checkout API needs it.
+     */
+    private suspend fun detectedApiResult(): ActionState {
+        withTimeoutOrNull(ENVIRONMENT_WAIT_MILLIS) { settings.settings.first { it.terminal.environment != null } }
+        return apiResult()
     }
 
     private suspend fun connectionResult(): ActionState =
@@ -299,5 +338,10 @@ class SettingsViewModel(
     /** Deletes every sale and refund; the catalogue and settings stay. */
     fun clearHistory() {
         launchWrite({ history.clear() }) { _ -> _actions.update { it.copy(cleared = true) } }
+    }
+
+    private companion object {
+        /** How long the cloud's test waits for the detected environment to be saved before testing the Checkout API. */
+        const val ENVIRONMENT_WAIT_MILLIS = 2_000L
     }
 }

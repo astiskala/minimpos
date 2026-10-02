@@ -61,7 +61,6 @@ import io.minimpos.app.data.db.SaleEntity
 import io.minimpos.app.data.db.SaleKind
 import io.minimpos.app.data.db.SaleStatus
 import io.minimpos.app.data.repo.HistoryItem
-import io.minimpos.app.data.settings.CaptureMode
 import io.minimpos.app.feature.OutcomeMessage
 import io.minimpos.app.feature.TransactionActionsState
 import io.minimpos.app.feature.modificationNote
@@ -446,7 +445,7 @@ private enum class DetailDialog { EMAIL, CANCEL }
 
 /**
  * The outcome badge, title and amount, with when it was paid, what was refunded, the tip, adjustments and capture of a
- * payment that held its amount and, for a pre-authorisation to capture in the Customer Area, how to.
+ * payment that held its amount, and that a link was paid online.
  */
 @Composable
 private fun SaleDetailOutcome(
@@ -466,17 +465,12 @@ private fun SaleDetailOutcome(
         )
         HoldNotes(sale, money)
         if (sale.paymentLink && sale.status == SaleStatus.APPROVED) OutcomeNote(stringResource(R.string.link_paid_note))
-        if (PaymentAction.CAPTURE in state.actions &&
-            state.captureMode == CaptureMode.CUSTOMER_AREA
-        ) {
-            OutcomeNote(stringResource(R.string.detail_pre_auth_note))
-        }
     }
 }
 
 /**
- * What finishes a payment that holds its amount: entering the tip, capturing or adjusting a pre-authorisation (in the
- * Customer Area mode, recording its capture), and sending a capture again, with the outcome of the last retry.
+ * What finishes a payment that holds its amount: entering the tip, capturing or adjusting a pre-authorisation, and
+ * sending a capture again, with the outcome of the last retry.
  */
 @Composable
 private fun ColumnScope.HoldActions(
@@ -489,7 +483,7 @@ private fun ColumnScope.HoldActions(
     if (PaymentAction.ENTER_TIP in state.actions) EnterTipButton(onEnterTip)
     if (PaymentAction.CAPTURE in state.actions) {
         SecondaryButton(
-            stringResource(if (state.captureMode == CaptureMode.API) R.string.detail_capture else R.string.detail_record_capture),
+            stringResource(R.string.detail_capture),
             onCapture,
             icon = Icons.Default.Payments,
             modifier = Modifier.testTag("capture"),

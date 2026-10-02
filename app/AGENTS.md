@@ -48,7 +48,7 @@ terminal constraints, where payments go and the conventions; `ArchitectureTest` 
   container the `SimulatedTerminal`), picks the one whose rules the setup holds, and is the only one that opens them.
   Outside `Destinations.kt`, `DestinationRules.kt` and the settings (`data.settings`, `feature.settings`), nothing
   names `CLOUD` or `PAYMENTS_APP`.
-- \* `ApiSetup` is the one reading of the Checkout API (capture mode, problem); `AdyenApi.target()` pairs it with the
+- \* `ApiSetup` is the one reading of the Checkout API (problem); `AdyenApi.target()` pairs it with the
   client as an `ApiTarget`. `Captures` take a `suspend () -> ApiTarget`, not `AdyenApi`; `AdyenApi` takes the
   `SimulatedTerminal`'s modifications from the container, not the gateway.
 - \* `TransactionLifecycle` (payments and refunds: PENDING first, one at a time, recheck, abort) stores only through a

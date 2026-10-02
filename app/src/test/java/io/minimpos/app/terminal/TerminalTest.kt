@@ -71,7 +71,7 @@ class TerminalTest {
     }
 
     @Test
-    fun `on a terminal its own POIID and localhost apply, and only the shared key is needed`() =
+    fun `on a terminal its own POIID and localhost apply, and payments need the shared key and the Checkout API`() =
         onTerminal { terminal, fake ->
             val gateway = terminal.container.gateway
             assertThat(terminal.container.terminalStatus.automaticMode).isEqualTo(TerminalMode.TERMINAL)
@@ -79,6 +79,10 @@ class TerminalTest {
             assertThat((await { gateway.diagnose() } as TerminalConnection.NotSetUp).problem).isEqualTo(SetupProblem.PASSPHRASE)
 
             await { terminal.container.secrets.set(Secret.TERMINAL_PASSPHRASE, "correct horse battery staple") }
+            // The terminal answers now, but payments wait for the Checkout API.
+            assertThat(await { gateway.diagnose() }).isInstanceOf(TerminalConnection.Connected::class.java)
+            assertThat(await { gateway.pay(payment, "PAY0") }).isEqualTo(Attempt.NotSetUp(SetupProblem.MERCHANT_ACCOUNT))
+            terminal.useCheckoutApi()
             var sending: String? = null
             val paid = await { gateway.pay(payment, "PAY1") { sending = it } }.made()
             assertThat((paid as TransactionOutcome.Completed).details.success).isTrue()
@@ -111,7 +115,10 @@ class TerminalTest {
             val connected = await { status.check() } as TerminalConnection.Connected
             assertThat(connected.diagnosis.hasPrinter).isTrue()
             val state = await { status.state.first { it.connection == connected } }
-            assertThat(state.setupProblem).isNull()
+            // Connected, but payments wait for the Checkout API.
+            assertThat(state.setupProblem).isEqualTo(SetupProblem.MERCHANT_ACCOUNT)
+            terminal.useCheckoutApi()
+            assertThat(await { status.state.first { it.setupProblem == null } }.connection).isEqualTo(connected)
             assertThat(state.printerAvailable).isTrue()
             assertThat(terminal.container.gateway.printers.value).containsExactly("AMS1-000168223606144", true)
         }

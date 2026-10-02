@@ -71,6 +71,7 @@ import io.minimpos.app.feature.sale.adviceText
 import io.minimpos.app.feature.sale.statusKind
 import io.minimpos.app.feature.sale.statusTitle
 import io.minimpos.app.refund.PaymentAction
+import io.minimpos.app.refund.decline
 import io.minimpos.app.ui.components.ActionMessage
 import io.minimpos.app.ui.components.Card
 import io.minimpos.app.ui.components.ConfirmDialog
@@ -102,7 +103,6 @@ import io.minimpos.core.money.MoneyFormatter
 import io.minimpos.core.payment.PaymentMethods
 import io.minimpos.core.receipt.ReceiptCopy
 import io.minimpos.core.shopper.ShopperReferences
-import io.minimpos.terminal.client.RetryAdvice
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
@@ -560,9 +560,9 @@ private fun ColumnScope.SaleDetailActions(
     onEmail: () -> Unit,
 ) {
     val sale = state.record?.sale ?: return
-    sale.errorCondition?.takeIf { sale.status != SaleStatus.APPROVED }?.let {
+    sale.decline?.advice?.let {
         Text(
-            adviceText(RetryAdvice.forPayment(it, sale.refusalReason)),
+            adviceText(it),
             style = MaterialTheme.typography.bodyMedium,
             textAlign = TextAlign.Center,
             modifier = Modifier.fillMaxWidth(),

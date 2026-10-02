@@ -272,6 +272,16 @@ class CodecTest {
     }
 
     @Test
+    fun `chunks keep Base45 spaces at the ends of their data, but not a scanner's line break`() {
+        // Space is a Base45 character, so a chunk's data can start or end with one.
+        val chunks = QrChunks.split(" AB C ", "SET1", maxDataChars = 3)
+        assertThat(chunks.map { it.data }).containsExactly(" AB", " C ").inOrder()
+        val assembler = QrChunkAssembler()
+        chunks.forEach { assembler.add(QrChunks.parse(" " + it.encode() + "\r\n")!!) }
+        assertThat(assembler.assemble()).isEqualTo(" AB C ")
+    }
+
+    @Test
     fun `end to end catalogue transfer over chunks`() {
         val chunks = QrChunks.split(encodeCatalogue(catalogue), "X1Y2", maxDataChars = 50)
         assertThat(chunks.size).isGreaterThan(1)

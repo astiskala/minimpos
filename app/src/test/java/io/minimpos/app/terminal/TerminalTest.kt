@@ -65,7 +65,7 @@ class TerminalTest {
         assertThat(await { gateway.abort("S1") }).isFalse()
         val printed = await { gateway.print(listOf(PrintJob.Text(listOf(PrintLine.Text("x"))))) } as PrintOutcome.Failed
         assertThat(printed.noPrinter).isFalse()
-        assertThat((await { gateway.diagnose() } as TerminalConnection.NotSetUp).message).contains("POIID")
+        assertThat((await { gateway.diagnose() } as TerminalConnection.NotSetUp).problem).isEqualTo(SetupProblem.POI_ID)
     }
 
     @Test
@@ -74,7 +74,7 @@ class TerminalTest {
             val gateway = terminal.container.gateway
             assertThat(terminal.container.terminalStatus.automaticMode).isEqualTo(TerminalMode.TERMINAL)
             terminal.updateSettings { it.copy(terminal = it.terminal.copy(keyIdentifier = "key", saleId = " ", host = "10.0.0.9")) }
-            assertThat((await { gateway.diagnose() } as TerminalConnection.NotSetUp).message).contains("passphrase")
+            assertThat((await { gateway.diagnose() } as TerminalConnection.NotSetUp).problem).isEqualTo(SetupProblem.PASSPHRASE)
 
             await { terminal.container.secrets.set(Secret.TERMINAL_PASSPHRASE, "correct horse battery staple") }
             var sending: String? = null
@@ -88,7 +88,7 @@ class TerminalTest {
 
             // A passphrase that was saved but can no longer be decrypted is reported as such.
             terminal.cipher.fail = true
-            assertThat((await { gateway.diagnose() } as TerminalConnection.NotSetUp).message).contains("could not be read")
+            assertThat((await { gateway.diagnose() } as TerminalConnection.NotSetUp).problem).isEqualTo(SetupProblem.UNREADABLE_PASSPHRASE)
         }
 
     @Test
@@ -96,8 +96,8 @@ class TerminalTest {
         onTerminal(poiId = "AMS1-000168223606144") { terminal, _ ->
             val status = terminal.container.terminalStatus
             assertThat(status(terminal).connection).isEqualTo(TerminalConnection.Unknown)
-            assertThat(status(terminal).setupProblem).contains("key identifier")
-            assertThat((await { status.check() } as TerminalConnection.NotSetUp).message).contains("key identifier")
+            assertThat(status(terminal).setupProblem).isEqualTo(SetupProblem.KEY_IDENTIFIER)
+            assertThat((await { status.check() } as TerminalConnection.NotSetUp).problem).isEqualTo(SetupProblem.KEY_IDENTIFIER)
 
             terminal.updateSettings { it.copy(terminal = it.terminal.copy(keyIdentifier = "key")) }
             await { terminal.container.secrets.set(Secret.TERMINAL_PASSPHRASE, "wrong") }

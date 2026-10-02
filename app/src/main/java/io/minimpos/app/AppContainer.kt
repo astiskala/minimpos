@@ -26,6 +26,7 @@ import io.minimpos.app.email.EmailTexts
 import io.minimpos.app.email.MailTransport
 import io.minimpos.app.email.ReceiptEmailer
 import io.minimpos.app.email.SmtpMailer
+import io.minimpos.app.feature.textRes
 import io.minimpos.app.payment.Captures
 import io.minimpos.app.payment.PaymentStart
 import io.minimpos.app.payment.ReceiptDelivery
@@ -41,16 +42,26 @@ import io.minimpos.app.refund.StoredPayments
 import io.minimpos.app.terminal.AdyenApi
 import io.minimpos.app.terminal.AndroidDeviceInfo
 import io.minimpos.app.terminal.DeviceInfo
+import io.minimpos.app.terminal.PaymentsAppBridge
+import io.minimpos.app.terminal.SimulatedTerminal
+import io.minimpos.app.terminal.TapToPaySetup
 import io.minimpos.app.terminal.TerminalGateway
 import io.minimpos.app.terminal.TerminalSetupSource
 import io.minimpos.app.terminal.TerminalStatus
-import io.minimpos.app.terminal.TerminalTexts
 import io.minimpos.app.terminal.VirtualPrinter
 import io.minimpos.core.money.CurrencySpec
 import io.minimpos.core.receipt.ReceiptDocument
 import io.minimpos.core.receipt.ReceiptLabels
 import io.minimpos.terminal.client.PosApplication
+import io.minimpos.terminal.paymentsapp.AdyenPaymentsAppManagement
+import io.minimpos.terminal.paymentsapp.AppLinkExchange
+import io.minimpos.terminal.paymentsapp.PaymentsAppManagement
+import io.minimpos.terminal.paymentsapp.PaymentsAppTransport
+import io.minimpos.terminal.transport.AdyenCloudDevices
 import io.minimpos.terminal.transport.AdyenLocalTransport
+import io.minimpos.terminal.transport.CloudCredentials
+import io.minimpos.terminal.transport.CloudDevices
+import io.minimpos.terminal.transport.TerminalEnvironment
 import io.minimpos.terminal.transport.TerminalKey
 import io.minimpos.terminal.transport.TerminalTls
 import io.minimpos.terminal.transport.TerminalTransport
@@ -83,6 +94,9 @@ import java.util.Locale
  * @property appScope Where work that outlives any screen runs (payments, refunds, connection checks).
  * @param terminalTransport Connects to a real terminal at a host with a shared key.
  * @param ioDispatcher Runs file and Keystore work.
+ * @param cloudDevices Reaches terminals in the cloud with an API key.
+ * @param paymentsAppExchange Opens the Adyen Payments app; null uses [paymentsApp], which the activity serves.
+ * @param paymentsAppManagement Boards and revokes the Payments app with an API key, in an environment.
  */
 class AppContainer(
     private val context: Context,
@@ -94,6 +108,11 @@ class AppContainer(
     val appScope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Default),
     terminalTransport: (host: String, key: TerminalKey, tls: TerminalTls) -> TerminalTransport = ::AdyenLocalTransport,
     private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
+    cloudDevices: (CloudCredentials) -> CloudDevices = { AdyenCloudDevices(it) },
+    paymentsAppExchange: AppLinkExchange? = null,
+    paymentsAppManagement: (apiKey: String, environment: TerminalEnvironment) -> PaymentsAppManagement = { key, environment ->
+        AdyenPaymentsAppManagement(key, environment)
+    },
 ) {
     private val defaults =
         AppSettings().let {
@@ -151,13 +170,33 @@ class AppContainer(
             osVersion = device.osVersion,
         )
 
-    private val terminalSetup = TerminalSetupSource(settings, secrets, device, ::terminalTexts)
+    private val terminalSetup = TerminalSetupSource(settings, secrets, device, describe = { context.getString(it.textRes) })
+
+    /** The built-in simulator, which stands in for the terminal and the Checkout API alike. */
+    private val simulator = SimulatedTerminal(virtualPrinter)
+
+    /** The App Links to the Adyen Payments app, which the activity opens and answers. */
+    val paymentsApp = PaymentsAppBridge()
+
+    private val paymentsAppLinks: AppLinkExchange = paymentsAppExchange ?: paymentsApp
 
     /** The payment terminal (or the simulator): the Terminal API operations, sent where payments go. */
-    val gateway = TerminalGateway(terminalSetup, secrets, virtualPrinter, application, terminalTransport)
+    val gateway =
+        TerminalGateway(
+            setups = terminalSetup,
+            secrets = secrets,
+            simulator = simulator,
+            application = application,
+            paymentsApp = { key, environment -> PaymentsAppTransport(key, environment, paymentsAppLinks, PaymentsAppBridge.RETURN_URL) },
+            connect = terminalTransport,
+            cloud = cloudDevices,
+        )
+
+    /** Boards (and revokes) the Adyen Payments app on this phone, for Tap to Pay. */
+    val tapToPay = TapToPaySetup(terminalSetup, secrets, settings, paymentsAppLinks, paymentsAppManagement)
 
     /** Adyen's Checkout API, for captures and authorisation adjustments (simulated with the simulator). */
-    val api = AdyenApi(terminalSetup, secrets, simulated = gateway.simulatedModifications)
+    val api = AdyenApi(terminalSetup, secrets, simulated = simulator.modifications)
 
     /** Whether payments and printing can work, for Home, Settings and the receipt screens. */
     val terminalStatus = TerminalStatus(terminalSetup, gateway, settings, appScope)
@@ -239,7 +278,7 @@ class AppContainer(
         )
 
     /** Enters tips and captures and adjusts payments taken with manual capture. */
-    val captures = Captures(sales, api::target)
+    val captures = Captures(sales, api::target, terminalSetup.describe)
 
     /** Runs referenced refunds and keeps their progress. */
     val refunds: TransactionLifecycle<RefundStart> =
@@ -325,23 +364,6 @@ class AppContainer(
             invalidAddress = context.getString(R.string.email_invalid_address),
             preAuthIntro = context.getString(R.string.email_pre_auth_intro),
             cancellationIntro = context.getString(R.string.email_cancellation_intro),
-        )
-
-    private fun terminalTexts() =
-        TerminalTexts(
-            poiId = context.getString(R.string.setup_poiid),
-            host = context.getString(R.string.setup_host),
-            keyIdentifier = context.getString(R.string.setup_key_identifier),
-            passphrase = context.getString(R.string.setup_passphrase),
-            keyVersion = context.getString(R.string.setup_key_version),
-            merchantAccount = context.getString(R.string.setup_merchant_account),
-            apiKey = context.getString(R.string.setup_api_key),
-            environment = context.getString(R.string.setup_environment),
-            livePrefix = context.getString(R.string.setup_live_prefix),
-            unreadablePassphrase = context.getString(R.string.setup_unreadable_passphrase),
-            unreadableApiKey = context.getString(R.string.setup_unreadable_api_key),
-            apiRequired = context.getString(R.string.setup_api_required),
-            noResponse = context.getString(R.string.setup_no_response),
         )
 
     /** The application identity and currency resolution, also used without a container. */

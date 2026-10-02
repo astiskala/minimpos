@@ -5,18 +5,34 @@ import android.content.Context
 import androidx.compose.ui.test.junit4.ComposeTestRule
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
+import com.adyen.model.terminal.TerminalAPIRequest
+import com.adyen.model.terminal.TerminalAPISecuredRequest
+import com.adyen.model.terminal.TerminalAPISecuredResponse
+import com.adyen.terminal.security.NexoCrypto
+import com.adyen.terminal.serialization.TerminalAPIGsonBuilder
 import io.minimpos.app.data.db.AppDatabase
 import io.minimpos.app.data.security.SecretCipher
 import io.minimpos.app.data.settings.AppSettings
 import io.minimpos.app.data.settings.TerminalMode
 import io.minimpos.app.email.MailTransport
 import io.minimpos.app.terminal.DeviceInfo
+import io.minimpos.terminal.parse.FormEncoding
+import io.minimpos.terminal.paymentsapp.AppLinkExchange
+import io.minimpos.terminal.paymentsapp.BoardingTarget
+import io.minimpos.terminal.paymentsapp.ManagementResult
+import io.minimpos.terminal.paymentsapp.PaymentsAppManagement
 import io.minimpos.terminal.simulator.SimulatorConfig
 import io.minimpos.terminal.simulator.TerminalSimulator
 import io.minimpos.terminal.transport.AdyenLocalTransport
+import io.minimpos.terminal.transport.CloudCredentials
+import io.minimpos.terminal.transport.CloudDetection
+import io.minimpos.terminal.transport.CloudDevices
+import io.minimpos.terminal.transport.CloudEndpoint
+import io.minimpos.terminal.transport.CloudRegion
+import io.minimpos.terminal.transport.Delivery
+import io.minimpos.terminal.transport.TerminalEnvironment
 import io.minimpos.terminal.transport.TerminalHttpClient
 import io.minimpos.terminal.transport.TerminalKey
-import io.minimpos.terminal.transport.TerminalRejectedException
 import io.minimpos.terminal.transport.TerminalTransport
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
@@ -28,11 +44,15 @@ import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
 import org.junit.rules.ExternalResource
 import java.io.File
+import java.net.URLDecoder
 import java.nio.file.Files
 import java.security.ProviderException
+import java.util.Base64
 import javax.crypto.AEADBadTagException
 import javax.mail.internet.MimeMessage
 import kotlin.experimental.xor
+import kotlin.time.Duration
+import kotlin.time.Duration.Companion.seconds
 
 /** Robolectric application that does not build the production container. */
 class TestApplication : Application()
@@ -60,11 +80,16 @@ class FakeCipher : SecretCipher {
     }
 }
 
-/** A device for tests; give it a [detectedPoiId] to play an Adyen terminal (see [FakeTerminal]). */
+/**
+ * A device for tests; give it a [detectedPoiId] to play an Adyen terminal (see [FakeTerminal]), or [paymentsApps] to
+ * play a phone with the Adyen Payments app (see [FakePaymentsApp]).
+ */
 class FakeDevice(
     override val detectedPoiId: String? = null,
     override val model: String = "Robolectric",
     override val osVersion: String = "13",
+    override val country: String = "AU",
+    override var paymentsApps: Set<TerminalEnvironment> = emptySet(),
 ) : DeviceInfo
 
 /** Collects the emails the app sends instead of delivering them. */
@@ -102,10 +127,114 @@ class FakeTerminal(
             simulator
         } else {
             TerminalTransport { _, _ ->
-                throw TerminalRejectedException("Terminal rejected the request: Crypto error. ${TerminalHttpClient.KEY_ADVICE}")
+                Delivery.NotSent("Terminal rejected the request: Crypto error. ${TerminalHttpClient.KEY_ADVICE}")
             }
         }
     }
+}
+
+/**
+ * Terminals in the cloud, played by the simulator: [detect] answers with [detection] and every request goes to the
+ * simulator. Records the credentials it was created with and how often it looked for the endpoint.
+ */
+class FakeCloud(
+    var detection: CloudDetection =
+        CloudDetection.Found(
+            CloudEndpoint(TerminalEnvironment.LIVE, CloudRegion.AU),
+            listOf("S1F2-000158213605014", "AMS1-000168223606144"),
+        ),
+) : CloudDevices {
+    /** The credentials of every connection, in order. */
+    val credentials = mutableListOf<CloudCredentials>()
+
+    /** How often [detect] was called. */
+    var detections = 0
+    private val simulator = TerminalSimulator(config = { SimulatorConfig(delayMillis = 0) })
+
+    /** Stands in for `AdyenCloudDevices`. */
+    fun connect(credentials: CloudCredentials): CloudDevices = also { this.credentials += credentials }
+
+    override suspend fun detect(
+        poiId: String?,
+        country: String,
+    ): CloudDetection = detection.also { detections++ }
+
+    override fun transport(endpoint: CloudEndpoint): TerminalTransport = simulator
+}
+
+/**
+ * The Adyen Payments app on a phone, played by the simulator: it boards (once [boarded] or asked to) and answers
+ * payments and refunds encrypted with the shared key [passphrase] (identifier `key`, version 1). Records the links.
+ */
+class FakePaymentsApp(
+    passphrase: String = "correct horse battery staple",
+) : AppLinkExchange {
+    private val gson = TerminalAPIGsonBuilder.create()
+    private val crypto = NexoCrypto(TerminalKey("key", passphrase, 1).toSecurityKey())
+    private val simulator = TerminalSimulator(config = { SimulatorConfig(delayMillis = 0) })
+
+    /** Every link opened, in order. */
+    val opened = mutableListOf<String>()
+
+    /** Whether it is boarded, and so answers the boarding check (unless it reboards) with its installation ID. */
+    var boarded = false
+
+    override suspend fun exchange(
+        link: String,
+        packageName: String,
+        timeout: Duration,
+    ): String {
+        opened += link
+        val parameters = FormEncoding.decode(link.substringAfter('?'))
+        val returnUrl = URLDecoder.decode(parameters.getValue("returnUrl"), "UTF-8")
+        return when {
+            link.contains("/boarded?") && boarded && "reboard=true" !in link -> "$returnUrl?boarded=true&installationId=$INSTALLATION_ID"
+            link.contains("/boarded?") -> "$returnUrl?boarded=false&installationId=$INSTALLATION_ID&boardingRequestToken=BRT"
+            link.contains("/board?") -> "$returnUrl?boarded=true&installationId=$INSTALLATION_ID".also { boarded = true }
+            else -> "$returnUrl?response=${answer(parameters.getValue("request"))}"
+        }
+    }
+
+    override fun lateReplies(): List<String> = emptyList()
+
+    private suspend fun answer(request: String): String {
+        val secured = gson.fromJson(String(Base64.getUrlDecoder().decode(request)), TerminalAPISecuredRequest::class.java)
+        val delivery = simulator.send(gson.fromJson(crypto.decrypt(secured.saleToPOIRequest), TerminalAPIRequest::class.java), 1.seconds)
+        val response = checkNotNull((delivery as Delivery.Answered).response)
+        val encrypted =
+            TerminalAPISecuredResponse().apply {
+                saleToPOIResponse =
+                    crypto.encrypt(gson.toJson(response), response.saleToPOIResponse.messageHeader)
+            }
+        return Base64.getUrlEncoder().encodeToString(gson.toJson(encrypted).toByteArray())
+    }
+
+    /** The installation ID it boards with. */
+    companion object {
+        /** The installation ID the fake Payments app reports. */
+        const val INSTALLATION_ID = "INSTALLATION-1"
+    }
+}
+
+/** Adyen's Management API for the Payments app: answers with [result] and records the boarding token requests. */
+class FakeManagement(
+    var result: ManagementResult = ManagementResult.Done("BT-1"),
+) : PaymentsAppManagement {
+    /** Every boarding token request, in order. */
+    val requests = mutableListOf<BoardingTarget>()
+
+    /** Every revoked installation ID, in order. */
+    val revoked = mutableListOf<String>()
+
+    override suspend fun boardingToken(
+        target: BoardingTarget,
+        boardingRequestToken: String,
+    ): ManagementResult = result.also { requests += target }
+
+    override suspend fun revoke(
+        merchantAccount: String,
+        installationId: String,
+    ): ManagementResult = result.also { revoked += installationId }
 }
 
 /**
@@ -121,6 +250,12 @@ class TestEnvironment(
     terminal: FakeTerminal? = null,
     /** Runs the container's application scope (payments, refunds and connection checks). */
     dispatcher: CoroutineDispatcher = Dispatchers.Default,
+    /** Replaces the Cloud device API. */
+    cloud: FakeCloud = FakeCloud(),
+    /** Replaces the Adyen Payments app. */
+    paymentsApp: FakePaymentsApp = FakePaymentsApp(),
+    /** Replaces the Management API that boards the Payments app. */
+    management: FakeManagement = FakeManagement(),
 ) : ExternalResource() {
     /** Robolectric's application context. */
     val context: Context = ApplicationProvider.getApplicationContext()
@@ -149,6 +284,9 @@ class TestEnvironment(
             storageDir = { File(dir, it) },
             appScope = scope,
             terminalTransport = { host, key, tls -> terminal?.connect(host, key) ?: AdyenLocalTransport(host, key, tls) },
+            cloudDevices = cloud::connect,
+            paymentsAppExchange = paymentsApp,
+            paymentsAppManagement = { _, _ -> management },
         )
 
     /** Simulator with no delay, and settings loaded into the container's state. */

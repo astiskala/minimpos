@@ -20,6 +20,7 @@ import io.minimpos.app.feature.persisting
 import io.minimpos.app.feature.toState
 import io.minimpos.app.payment.ReceiptDelivery
 import io.minimpos.app.terminal.AdyenApi
+import io.minimpos.app.terminal.ApiCheck
 import io.minimpos.app.terminal.TerminalConnection
 import io.minimpos.app.terminal.TerminalStatus
 import io.minimpos.core.receipt.ReceiptDocument
@@ -55,7 +56,7 @@ data class SettingsUiState(
 
     /** The rate new products and custom items start with: the configured one, else the first. */
     val defaultTaxRate: TaxRateEntity?
-        get() = taxRates.firstOrNull { it.id == settings.payment.defaultTaxRateId } ?: taxRates.firstOrNull()
+        get() = settings.payment.defaultTaxRate(taxRates)
 }
 
 /**
@@ -71,7 +72,7 @@ data class SettingsUiState(
  * @property cleared Whether the history has been cleared.
  * @property taxRateInUse Set when a tax rate could not be deleted: the number of products still using it.
  * @property api The latest Checkout API test.
- * @property apiKeyStored Whether the API key given to the latest API test was stored (so the field can be cleared).
+ * @property apiKeyStored Whether the API key given to the latest test was stored (so the field can be cleared).
  */
 data class SettingsActions(
     val connection: ActionState = ActionState(),
@@ -84,6 +85,15 @@ data class SettingsActions(
     val api: ActionState = ActionState(),
     val apiKeyStored: Boolean = false,
 )
+
+/** What [SettingsViewModel.saveAndTest] checks after saving. */
+enum class SettingsTest {
+    /** The connection to where payments go, shown in a dialog. */
+    CONNECTION,
+
+    /** The Checkout API key. */
+    API,
+}
 
 /**
  * The services behind the settings screen's test buttons.
@@ -201,43 +211,37 @@ class SettingsViewModel(
         }
 
     /**
-     * Tests the terminal connection ([Secret.TERMINAL_PASSPHRASE]) or the Checkout API ([Secret.CHECKOUT_API_KEY]),
-     * first saving [value] as [secret] if one was entered (an API key without surrounding spaces) and verifying that it
-     * reads back. Neither test charges anything. The connection's outcome is shown until [dismissConnectionResult].
+     * Saves [value] as [secret] if one was entered (an API key without surrounding spaces) and verifies that it reads
+     * back, then runs [test]: by default the terminal connection for [Secret.TERMINAL_PASSPHRASE] and the Checkout API
+     * for [Secret.CHECKOUT_API_KEY] (which also reaches terminals in the cloud, so its test can be the connection). No
+     * test charges anything. The connection's outcome is shown until [dismissConnectionResult].
      *
      * @throws IllegalArgumentException for a secret that cannot be tested.
      */
     fun saveAndTest(
         secret: Secret,
         value: String? = null,
+        test: SettingsTest = if (secret == Secret.CHECKOUT_API_KEY) SettingsTest.API else SettingsTest.CONNECTION,
     ) {
         require(secret == Secret.TERMINAL_PASSPHRASE || secret == Secret.CHECKOUT_API_KEY) { "$secret cannot be tested" }
-        val api = secret == Secret.CHECKOUT_API_KEY
-        val running = ActionState(running = true)
-        _actions.update {
-            if (api) {
-                it.copy(
-                    api = running,
-                    apiKeyStored = false,
-                )
-            } else {
-                it.copy(connection = running, passphraseStored = false)
-            }
-        }
+        val api = test == SettingsTest.API
+        val apiKey = secret == Secret.CHECKOUT_API_KEY
+
+        fun SettingsActions.with(state: ActionState) = if (api) copy(api = state) else copy(connection = state)
+        _actions.update { it.with(ActionState(running = true)).copy(apiKeyStored = false, passphraseStored = false) }
         viewModelScope.launch {
-            val entered = (if (api) value?.trim() else value)?.takeIf { it.isNotEmpty() }
+            val entered = (if (apiKey) value?.trim() else value)?.takeIf { it.isNotEmpty() }
             if (entered != null) {
                 val stored = persisting { storeSecret { secrets.set(secret, entered) } } && secrets.get(secret) == entered
                 if (!stored) {
                     val error = _actions.value.secretError ?: ActionOutcome.SecretNotStored("it did not read back")
-                    val failed = ActionState(outcome = error, isError = true)
-                    _actions.update { if (api) it.copy(api = failed) else it.copy(connection = failed) }
+                    _actions.update { it.with(ActionState(outcome = error, isError = true)) }
                     return@launch
                 }
-                _actions.update { if (api) it.copy(apiKeyStored = true) else it.copy(passphraseStored = true) }
+                _actions.update { if (apiKey) it.copy(apiKeyStored = true) else it.copy(passphraseStored = true) }
             }
             val result = if (api) apiResult() else connectionResult()
-            _actions.update { if (api) it.copy(api = result) else it.copy(connection = result) }
+            _actions.update { it.with(result) }
         }
     }
 
@@ -249,7 +253,7 @@ class SettingsViewModel(
             }
 
             is TerminalConnection.NotSetUp -> {
-                ActionState(outcome = ActionOutcome.Failed(connection.message), isError = true)
+                ActionState(outcome = ActionOutcome.NotSetUp(connection.problem), isError = true)
             }
 
             is TerminalConnection.Failed -> {
@@ -262,8 +266,11 @@ class SettingsViewModel(
         }
 
     private suspend fun apiResult(): ActionState =
-        checks.api.verify()?.let { ActionState(outcome = ActionOutcome.Failed(it), isError = true) }
-            ?: ActionState(outcome = ActionOutcome.ApiWorks, done = true)
+        when (val check = checks.api.verify()) {
+            ApiCheck.Works -> ActionState(outcome = ActionOutcome.ApiWorks, done = true)
+            is ApiCheck.NotSetUp -> ActionState(outcome = ActionOutcome.NotSetUp(check.problem), isError = true)
+            is ApiCheck.Failed -> ActionState(outcome = ActionOutcome.Failed(check.message), isError = true)
+        }
 
     /** Closes the connection test's result dialog. */
     fun dismissConnectionResult() {

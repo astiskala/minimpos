@@ -16,6 +16,7 @@ import io.minimpos.terminal.client.RecoveryPolicy
 import io.minimpos.terminal.client.RecurringModel
 import io.minimpos.terminal.client.TerminalClient
 import io.minimpos.terminal.client.TerminalIdentity
+import io.minimpos.terminal.transport.Delivery
 import io.minimpos.terminal.transport.TerminalKey
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertThrows
@@ -95,7 +96,7 @@ class AdyenLibraryTest {
             TerminalClient(
                 transport = { request, _ ->
                     sent = request
-                    null
+                    Delivery.Answered(null)
                 },
                 identity = TerminalIdentity("MiniMPOS", "S1F2-000158213605014"),
                 application = PosApplication("Mini mPOS", "1.2.0", "Mini mPOS", "Android", "13"),

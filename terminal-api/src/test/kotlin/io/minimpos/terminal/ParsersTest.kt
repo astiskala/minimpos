@@ -6,6 +6,7 @@ import com.adyen.model.nexo.OutputContent
 import com.adyen.model.nexo.OutputText
 import com.adyen.model.nexo.PaymentReceipt
 import com.google.common.truth.Truth.assertThat
+import io.minimpos.terminal.client.Decline
 import io.minimpos.terminal.client.PosApplication
 import io.minimpos.terminal.client.RetryAdvice
 import io.minimpos.terminal.parse.AdditionalResponseParser
@@ -100,8 +101,12 @@ class ParsersTest {
         fun advice(
             condition: String?,
             reason: String? = null,
-        ) = RetryAdvice.forPayment(condition, reason)
+        ) = Decline(condition, reason).advice
         assertThat(advice("Aborted")).isEqualTo(RetryAdvice.RETRY)
+        assertThat(advice("NotFound")).isEqualTo(RetryAdvice.RETRY)
+        assertThat(advice("UnavailableDevice")).isEqualTo(RetryAdvice.WAIT_AND_RETRY)
+        assertThat(advice("PaymentRestriction")).isEqualTo(RetryAdvice.DIFFERENT_PAYMENT_METHOD)
+        assertThat(advice("SomethingNew")).isEqualTo(RetryAdvice.RETRY)
         assertThat(advice("WrongPIN")).isEqualTo(RetryAdvice.RETRY)
         assertThat(advice("UnreachableHost")).isEqualTo(RetryAdvice.RETRY)
         assertThat(advice("DeviceOut")).isEqualTo(RetryAdvice.WAIT_AND_RETRY)
@@ -117,6 +122,19 @@ class ParsersTest {
         assertThat(advice("Refusal", "Card is blocked")).isEqualTo(RetryAdvice.DIFFERENT_PAYMENT_METHOD)
         assertThat(advice("Refusal", "Not enough balance")).isEqualTo(RetryAdvice.RETRY)
         assertThat(advice("Refusal")).isEqualTo(RetryAdvice.RETRY)
-        assertThat(advice(null)).isEqualTo(RetryAdvice.RETRY)
+        assertThat(advice(null)).isNull()
+    }
+
+    @Test
+    fun `a decline tells cancellations and the transaction a busy terminal is working on`() {
+        assertThat(Decline.of(succeeded = true, errorCondition = "Cancel", refusalReason = null)).isNull()
+        assertThat(Decline.of(false, "Cancel", null)!!.cancelled).isTrue()
+        assertThat(Decline.of(false, "Aborted", null)!!.cancelled).isTrue()
+        assertThat(Decline.of(false, "Refusal", "Do Not Honor")!!.cancelled).isFalse()
+        assertThat(Decline.of(false, null, null)!!.cancelled).isFalse()
+        val busy = mapOf("serviceId" to "OTHER1")
+        assertThat(Decline.of(false, "Busy", null, busy)!!.busyServiceId).isEqualTo("OTHER1")
+        assertThat(Decline.of(false, "Refusal", null, busy)!!.busyServiceId).isNull()
+        assertThat(Decline.of(false, "Busy", null)!!.busyServiceId).isNull()
     }
 }

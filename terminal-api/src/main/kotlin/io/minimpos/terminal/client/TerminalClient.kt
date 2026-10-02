@@ -32,11 +32,9 @@ import com.adyen.model.terminal.SaleToAcquirerData.RecurringProcessingModelEnum
 import com.adyen.model.terminal.TerminalAPIRequest
 import io.minimpos.terminal.parse.AdditionalResponseParser
 import io.minimpos.terminal.parse.ReceiptParser
-import io.minimpos.terminal.transport.TerminalRejectedException
+import io.minimpos.terminal.transport.Delivery
 import io.minimpos.terminal.transport.TerminalTransport
-import io.minimpos.terminal.transport.TerminalUnreachableException
 import kotlinx.coroutines.delay
-import java.io.IOException
 import java.time.Clock
 import java.time.Instant
 import java.time.ZoneOffset
@@ -204,11 +202,8 @@ class TerminalClient(
                             }
                     }
             }
-        try {
-            transport.send(wrap(request), shortTimeout)
-        } catch (ignored: IOException) {
-            // The payment result (aborted or not) still arrives on the original request.
-        }
+        // Whatever the delivery, the payment result (aborted or not) still arrives on the original request.
+        transport.send(wrap(request), shortTimeout)
     }
 
     /**
@@ -229,14 +224,17 @@ class TerminalClient(
                 printRequest = PrintRequest().apply { printOutput = job.toNexo() }
             }
         val response =
-            try {
-                transport
-                    .send(wrap(request), shortTimeout)
-                    ?.saleToPOIResponse
-                    ?.printResponse
-                    ?.response
-            } catch (e: IOException) {
-                return PrintOutcome.Failed(e.message ?: "Could not reach the terminal", noPrinter = false)
+            when (val delivery = transport.send(wrap(request), shortTimeout)) {
+                is Delivery.Answered -> {
+                    delivery.response
+                        ?.saleToPOIResponse
+                        ?.printResponse
+                        ?.response
+                }
+
+                is Delivery.Failed -> {
+                    return PrintOutcome.Failed(delivery.reason, noPrinter = false)
+                }
             } ?: return PrintOutcome.Failed("No print response from the terminal", noPrinter = false)
         if (response.result == ResultType.SUCCESS) return null
         val message = AdditionalResponseParser.parse(response.additionalResponse)["message"] ?: "Printing failed"
@@ -258,10 +256,9 @@ class TerminalClient(
                 diagnosisRequest = DiagnosisRequest().apply { setHostDiagnosisFlag(false) }
             }
         val response =
-            try {
-                transport.send(wrap(request), shortTimeout)?.saleToPOIResponse?.diagnosisResponse
-            } catch (e: IOException) {
-                return DiagnosisResult(reachable = false, message = e.message ?: "Could not reach the terminal")
+            when (val delivery = transport.send(wrap(request), shortTimeout)) {
+                is Delivery.Answered -> delivery.response?.saleToPOIResponse?.diagnosisResponse
+                is Delivery.Failed -> return DiagnosisResult(reachable = false, message = delivery.reason)
             } ?: return DiagnosisResult(reachable = false, message = "No diagnosis response from the terminal")
         val additional = AdditionalResponseParser.parse(response.response?.additionalResponse)
         return DiagnosisResult(
@@ -297,14 +294,10 @@ class TerminalClient(
         extract: (SaleToPOIResponse) -> TransactionDetails?,
     ): TransactionOutcome {
         val response =
-            try {
-                transport.send(wrap(request), transactionTimeout)
-            } catch (e: TerminalUnreachableException) {
-                return TransactionOutcome.NotProcessed(serviceId, e.message ?: "Could not reach the terminal")
-            } catch (e: TerminalRejectedException) {
-                return TransactionOutcome.NotProcessed(serviceId, e.message ?: "The terminal rejected the request")
-            } catch (e: IOException) {
-                return recover(serviceId, category, e.message)
+            when (val delivery = transport.send(wrap(request), transactionTimeout)) {
+                is Delivery.Answered -> delivery.response
+                is Delivery.NotSent -> return TransactionOutcome.NotProcessed(serviceId, delivery.reason)
+                is Delivery.MaybeSent -> return recover(serviceId, category, delivery.reason)
             }
         val details =
             response?.saleToPOIResponse?.let(extract) ?: return recover(serviceId, category, "Unexpected response")
@@ -344,12 +337,9 @@ class TerminalClient(
         serviceId: String,
         category: MessageCategoryType,
     ): StatusCheck {
+        val delivery = transport.send(wrap(statusRequest(serviceId, category)), shortTimeout)
         val status =
-            try {
-                transport.send(wrap(statusRequest(serviceId, category)), shortTimeout)
-            } catch (ignored: IOException) {
-                null
-            }?.saleToPOIResponse?.transactionStatusResponse ?: return StatusCheck.NoAnswer
+            (delivery as? Delivery.Answered)?.response?.saleToPOIResponse?.transactionStatusResponse ?: return StatusCheck.NoAnswer
         val response = status.response
         return when {
             response?.result == ResultType.SUCCESS -> {

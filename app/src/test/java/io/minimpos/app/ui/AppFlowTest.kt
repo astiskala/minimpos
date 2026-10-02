@@ -643,7 +643,28 @@ class AppFlowTest {
         compose.waitForTag("host")
         compose.onNodeWithTag("poiId").assertExists()
         compose.onNodeWithTag("keyIdentifier").assertExists()
+
+        // A terminal in the cloud needs the API key and its ID, which can be found among those connected.
         compose.onNodeWithTag("terminalMode").performClick()
+        compose.onNodeWithTag("terminalMode_CLOUD").performClick()
+        awaitSetting("Cloud mode") { container.settingsState.value.terminal.mode == TerminalMode.CLOUD }
+        compose.waitForTag("findTerminals")
+        compose.onNodeWithTag("apiKey").assertExists()
+        compose.onNodeWithTag("host").assertDoesNotExist()
+        compose.onNodeWithTag("keyIdentifier").assertDoesNotExist()
+        waitForText("ADYEN API")
+
+        // Tap to Pay needs the shared key, and is set up with the Payments app API key.
+        compose.onNodeWithTag("terminalMode").performScrollTo().performClick()
+        compose.onNodeWithTag("terminalMode_PAYMENTS_APP").performClick()
+        awaitSetting("Tap to Pay mode") { container.settingsState.value.terminal.mode == TerminalMode.PAYMENTS_APP }
+        compose.waitForTag("setUpTapToPay")
+        compose.onNodeWithTag("keyIdentifier").assertExists()
+        compose.onNodeWithTag("paymentsAppKey").assertExists()
+        compose.onNodeWithText("Not installed").assertExists()
+        compose.onNodeWithTag("host").assertDoesNotExist()
+
+        compose.onNodeWithTag("terminalMode").performScrollTo().performClick()
         compose.onNodeWithTag("terminalMode_SIMULATOR").performClick()
         // Choosing the device's own default stores Automatic, so it keeps following the device.
         awaitSetting("Automatic mode") { container.settingsState.value.terminal.mode == TerminalMode.AUTO }

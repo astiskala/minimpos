@@ -1,10 +1,12 @@
 package io.minimpos.app.data.settings
 
+import io.minimpos.app.data.db.TaxRateEntity
 import io.minimpos.core.money.AdyenCurrencies
 import io.minimpos.core.shopper.EmailReferenceMode
 import io.minimpos.core.tax.TaxMode
 import io.minimpos.terminal.client.RecurringModel
 import io.minimpos.terminal.simulator.SimulatedOutcome
+import io.minimpos.terminal.transport.CloudRegion
 import io.minimpos.terminal.transport.TerminalEnvironment
 import kotlinx.serialization.Serializable
 
@@ -45,6 +47,34 @@ data class AppSettings(
             simulator = simulator.normalized(),
             history = history.normalized(),
         )
+
+    /**
+     * These settings with what belongs to one device taken from [device]: the fields each section names as its own
+     * device's ([TerminalSettings.withDeviceFieldsOf], [PaymentSettings.withDeviceFieldsOf]) and the whole simulator.
+     * Everything else is shared by the terminals of a merchant account, so a new section, or a new field of a section,
+     * travels by default; a section with a device-bound field names it next to its declaration.
+     */
+    fun withDeviceFieldsOf(device: AppSettings): AppSettings =
+        copy(
+            terminal = terminal.withDeviceFieldsOf(device.terminal),
+            payment = payment.withDeviceFieldsOf(device.payment),
+            simulator = device.simulator,
+        )
+
+    /**
+     * These settings as another terminal of the same merchant account takes them: what belongs to this device
+     * ([withDeviceFieldsOf]) is left at its defaults.
+     */
+    fun shared(): AppSettings = withDeviceFieldsOf(AppSettings())
+
+    /**
+     * [other]'s [shared] settings in place of these, keeping what belongs to this device ([withDeviceFieldsOf]), except
+     * that the default tax rate is [defaultTaxRateId], the row of this device that matches the one [other] named.
+     */
+    fun takingOver(
+        other: AppSettings,
+        defaultTaxRateId: Long?,
+    ): AppSettings = other.withDeviceFieldsOf(copy(payment = payment.copy(defaultTaxRateId = defaultTaxRateId)))
 }
 
 /** Where payments go ("Payments go to" in Settings › Terminal). */
@@ -54,6 +84,15 @@ enum class TerminalMode {
 
     /** A real terminal through the local Terminal API: this device when it is a terminal, else one on the network. */
     TERMINAL,
+
+    /**
+     * A terminal reached over the internet through Adyen's Cloud device API, with an API key instead of the shared key.
+     * Only offered off-terminal.
+     */
+    CLOUD,
+
+    /** Tap to Pay on this phone through the Adyen Payments app. Only offered off-terminal (it does not run on terminals). */
+    PAYMENTS_APP,
 
     /** The in-process [io.minimpos.terminal.simulator.TerminalSimulator]; no card is charged. */
     SIMULATOR,
@@ -76,10 +115,18 @@ enum class CaptureMode {
  * uses `localhost` and the device's own POIID.
  *
  * @property mode Where payments go; see [TerminalMode].
- * @property environment Not a choice: the environment of the terminal's certificate, remembered from the last
- *   connection (null until then). Only used for display, such as the TEST banner.
+ * @property environment Not a choice: the environment of the terminal's certificate, or of the API key in
+ *   [TerminalMode.CLOUD], remembered from the last connection (null until then); it picks the Checkout API endpoint.
+ *   With [TerminalMode.PAYMENTS_APP] the installed Payments app decides instead.
+ * @property cloudRegion Not a choice: the Cloud device API's live data centre found for the API key in
+ *   [TerminalMode.CLOUD]; null for TEST or until found.
  * @property host Only used off-terminal (a terminal on the network): its IP address or host name. Port 8443 is implied.
- * @property poiIdOverride Only used off-terminal; on a terminal its own POIID (`Settings.Global.DEVICE_NAME`) is used.
+ * @property poiIdOverride Only used off-terminal, for a terminal on the network or in the cloud; on a terminal its own
+ *   POIID (`Settings.Global.DEVICE_NAME`) is used.
+ * @property paymentsAppInstallationId The Adyen Payments app instance boarded on this phone, which is the POIID in
+ *   [TerminalMode.PAYMENTS_APP]; blank until boarded.
+ * @property storeId The ID of the store the Payments app is boarded for (not its reference); blank boards it for the
+ *   merchant account.
  * @property saleId The nexo SaleID the app identifies itself with in every request; blank uses "MiniMPOS".
  * @property keyIdentifier Identifier of the shared key configured for the terminal in the Customer Area.
  * @property keyVersion Version of that shared key, within [KEY_VERSIONS].
@@ -95,8 +142,11 @@ enum class CaptureMode {
 data class TerminalSettings(
     val mode: TerminalMode = TerminalMode.AUTO,
     val environment: TerminalEnvironment? = null,
+    val cloudRegion: CloudRegion? = null,
     val host: String = "",
     val poiIdOverride: String = "",
+    val paymentsAppInstallationId: String = "",
+    val storeId: String = "",
     val saleId: String = "MiniMPOS",
     val keyIdentifier: String = "",
     val keyVersion: Int = 1,
@@ -110,11 +160,18 @@ data class TerminalSettings(
 
     /**
      * These settings with the fields that belong to one device taken from [device]: where payments go ([mode]), the
-     * certificate's [environment], the [host] and the [poiIdOverride]. Everything else is shared by the terminals of
-     * a merchant account, so it travels when one terminal sets up another.
+     * detected [environment] and [cloudRegion], the [host], the [poiIdOverride] and the [paymentsAppInstallationId].
+     * Everything else is shared by the terminals of a merchant account, so it travels when one terminal sets up another.
      */
     fun withDeviceFieldsOf(device: TerminalSettings): TerminalSettings =
-        copy(mode = device.mode, environment = device.environment, host = device.host, poiIdOverride = device.poiIdOverride)
+        copy(
+            mode = device.mode,
+            environment = device.environment,
+            cloudRegion = device.cloudRegion,
+            host = device.host,
+            poiIdOverride = device.poiIdOverride,
+            paymentsAppInstallationId = device.paymentsAppInstallationId,
+        )
 
     /** The limits of the numbers. */
     companion object {
@@ -228,6 +285,15 @@ data class PaymentSettings(
      */
     val asksCustomerReference: Boolean
         get() = shopperReferenceSource == ShopperReferenceSource.CUSTOMER_REFERENCE
+
+    /** The rate new products and custom items start with among [rates]: [defaultTaxRateId]'s, else the first; null without rates. */
+    fun defaultTaxRate(rates: List<TaxRateEntity>): TaxRateEntity? = rates.firstOrNull { it.id == defaultTaxRateId } ?: rates.firstOrNull()
+
+    /**
+     * These settings with the field that belongs to one device taken from [device]: [defaultTaxRateId], a row ID of
+     * that device's database (another terminal finds its own row by name and rate, see `SetupTransfer`).
+     */
+    fun withDeviceFieldsOf(device: PaymentSettings): PaymentSettings = copy(defaultTaxRateId = device.defaultTaxRateId)
 
     /** The currency in effect: the chosen one, else the device [country]'s own currency if Adyen supports it, else EUR. */
     fun resolvedCurrency(country: String): String =

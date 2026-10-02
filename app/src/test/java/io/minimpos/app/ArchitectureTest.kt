@@ -1,5 +1,6 @@
 package io.minimpos.app
 
+import androidx.compose.runtime.Composable
 import androidx.compose.runtime.internal.StabilityInferred
 import androidx.lifecycle.ViewModel
 import androidx.room.Dao
@@ -15,14 +16,19 @@ import com.tngtech.archunit.core.domain.JavaClass.Predicates.resideInAnyPackage
 import com.tngtech.archunit.core.domain.JavaClass.Predicates.simpleNameEndingWith
 import com.tngtech.archunit.core.domain.JavaClass.Predicates.type
 import com.tngtech.archunit.core.domain.JavaClasses
+import com.tngtech.archunit.core.domain.JavaMethod
 import com.tngtech.archunit.core.domain.JavaMethodCall
 import com.tngtech.archunit.core.domain.properties.CanBeAnnotated.Predicates.annotatedWith
 import com.tngtech.archunit.core.domain.properties.HasOwner.Predicates.With.owner
 import com.tngtech.archunit.core.importer.ClassFileImporter
 import com.tngtech.archunit.core.importer.ImportOption
+import com.tngtech.archunit.lang.ArchCondition
+import com.tngtech.archunit.lang.ConditionEvents
+import com.tngtech.archunit.lang.SimpleConditionEvent
 import com.tngtech.archunit.lang.syntax.ArchRuleDefinition.classes
 import com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses
 import com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noFields
+import com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noMethods
 import com.tngtech.archunit.library.Architectures.layeredArchitecture
 import com.tngtech.archunit.library.GeneralCodingRules
 import com.tngtech.archunit.library.dependencies.SlicesRuleDefinition.slices
@@ -36,22 +42,32 @@ import io.minimpos.app.data.repo.RefundRepository
 import io.minimpos.app.data.repo.SaleRepository
 import io.minimpos.app.data.security.SecretStore
 import io.minimpos.app.data.settings.AppSettings
+import io.minimpos.app.data.settings.SettingsRepository
+import io.minimpos.app.data.settings.TerminalMode
+import io.minimpos.app.feature.ActionOutcome
 import io.minimpos.app.feature.TransactionActions
+import io.minimpos.app.payment.CaptureResult
 import io.minimpos.app.payment.ReceiptDelivery
+import io.minimpos.app.payment.SaleSession
 import io.minimpos.app.receipt.PrintRenderer
 import io.minimpos.app.receipt.ReceiptFactory
 import io.minimpos.app.refund.PaymentStanding
 import io.minimpos.app.refund.StoredPayment
 import io.minimpos.app.terminal.AdyenApi
+import io.minimpos.app.terminal.Destination
+import io.minimpos.app.terminal.SetupProblem
+import io.minimpos.app.terminal.SimulatedTerminal
 import io.minimpos.app.terminal.TerminalGateway
 import io.minimpos.app.terminal.TerminalSetup
 import io.minimpos.app.terminal.TerminalSetupSource
 import io.minimpos.terminal.client.PrintJob
 import io.minimpos.terminal.client.PrintLine
 import io.minimpos.terminal.client.TerminalClient
+import io.minimpos.terminal.client.TransactionDetails
 import io.minimpos.terminal.parse.ReceiptField
-import io.minimpos.terminal.simulator.TerminalSimulator
-import io.minimpos.terminal.transport.TerminalTransport
+import io.minimpos.terminal.simulator.SimulatedOutcome
+import io.minimpos.terminal.transport.CloudRegion
+import io.minimpos.terminal.transport.TerminalEnvironment
 import org.junit.Test
 import java.time.Clock
 
@@ -61,12 +77,8 @@ class ArchitectureTest {
         layeredArchitecture()
             .consideringOnlyDependenciesInLayers()
             .layer(UI)
-            .definedBy(
-                "io.minimpos.app.feature..",
-                "io.minimpos.app.ui..",
-                "io.minimpos.app.scan..",
-                "io.minimpos.app.qr..",
-            ).layer(PAYMENT)
+            .definedBy(*UI_PACKAGES)
+            .layer(PAYMENT)
             .definedBy("io.minimpos.app.payment..")
             .layer(EMAIL)
             .definedBy("io.minimpos.app.email..")
@@ -194,19 +206,68 @@ class ArchitectureTest {
             .check(app)
 
     @Test
-    fun `only the gateway talks to the terminal`() =
+    fun `only the terminal package talks to the terminal, the cloud and the Payments app`() {
+        // The container plugs the transports, the cloud and the Payments app's links into the gateway and Tap to Pay
+        // setup; the activity only serves the bridge's links. Elsewhere the transports, the simulator and the Payments
+        // app are only the values the settings store, and a TerminalClient only its helpers for IDs and timestamps.
         noClasses()
             .that()
-            .resideOutsideOfPackage("io.minimpos.app.terminal..")
-            // The container passes the gateway its way of connecting to a real terminal.
+            .resideOutsideOfPackage(TERMINAL_PACKAGE)
             .and()
             .haveNameNotMatching(CONTAINER)
             .should()
-            .dependOnClassesThat()
-            .belongToAnyOf(TerminalTransport::class.java, TerminalSimulator::class.java)
-            .orShould()
+            .dependOnClassesThat(
+                resideInAnyPackage(
+                    "io.minimpos.terminal.transport..",
+                    "io.minimpos.terminal.simulator..",
+                    "io.minimpos.terminal.paymentsapp..",
+                ).and(not(belongToAnyOf(TerminalEnvironment::class.java, CloudRegion::class.java, SimulatedOutcome::class.java))),
+            ).orShould()
+            .callMethodWhere(target(owner(type(TerminalClient::class.java))))
+            .check(app)
+        // Destination.connect makes the one client every request is sent with.
+        noClasses()
+            .that()
+            .haveNameNotMatching(within(Destination::class.java.name))
+            .should()
             .callConstructorWhere(target(owner(assignableTo(TerminalClient::class.java))))
             .check(app)
+    }
+
+    @Test
+    fun `the gateway asks the destination what it can do`() {
+        // The gateway makes the destinations it chooses between; the container makes the simulator, whose Checkout API
+        // simulation it hands to AdyenApi.
+        noClasses()
+            .that()
+            .haveNameNotMatching(within(TerminalGateway::class.java.name))
+            .should()
+            .callConstructorWhere(target(owner(assignableTo(Destination::class.java).and(not(type(SimulatedTerminal::class.java))))))
+            .check(app)
+        noClasses()
+            .that()
+            .haveNameNotMatching(CONTAINER)
+            .should()
+            .callConstructorWhere(target(owner(type(SimulatedTerminal::class.java))))
+            .check(app)
+        noClasses()
+            .that(not(declaredIn("io.minimpos.app.terminal", "Destinations.kt")))
+            .and()
+            .haveNameNotMatching(within(TerminalGateway::class.java.name))
+            .should()
+            .callMethodWhere(
+                callToSubtypeOf(
+                    Destination::class.java,
+                    "open",
+                    "connect",
+                    "getAborts",
+                    "getDiagnoses",
+                    "getRecovery",
+                    "transactionTimeout",
+                    "connectedTerminals",
+                ),
+            ).check(app)
+    }
 
     @Test
     fun `the terminal setup is resolved in one place`() {
@@ -214,7 +275,7 @@ class ArchitectureTest {
             .that()
             .haveNameNotMatching(within(TerminalSetupSource::class.java.name))
             .should()
-            .callMethodWhere(callTo(TerminalSetup.Companion::class.java.name, "resolve"))
+            .callMethodWhere(callTo(TerminalSetup.Companion::class.java.name, "resolve", "boarding"))
             .check(app)
         // The container makes the one source and hands it to the gateway, the API and the status.
         noClasses()
@@ -227,6 +288,21 @@ class ArchitectureTest {
             .belongToAnyOf(TerminalSetupSource::class.java)
             .check(app)
     }
+
+    @Test
+    fun `only the setup and the gateway's choice of destination tell the remote destinations apart`() =
+        // What the cloud or the Payments app can do lives in their Destination; the rest of the logic asks it, not the mode.
+        // Only the settings (stored and on screen) offer the modes by name.
+        noClasses()
+            .that()
+            .resideOutsideOfPackages("io.minimpos.app.data.settings..", "io.minimpos.app.feature.settings..")
+            .and()
+            .haveNameNotMatching(within(TerminalSetup::class.java.name, TerminalGateway::class.java.name))
+            .should()
+            .accessField(TerminalMode::class.java, TerminalMode.CLOUD.name)
+            .orShould()
+            .accessField(TerminalMode::class.java, TerminalMode.PAYMENTS_APP.name)
+            .check(app)
 
     @Test
     fun `captures reach the Checkout API through their target`() {
@@ -281,6 +357,21 @@ class ArchitectureTest {
             .haveNameNotMatching(within(PaymentStanding::class.java.name))
             .should()
             .callMethodWhere(callTo(SaleEntity::class.java.name, "getCaptureStatus", "getHoldCancelled"))
+            .check(app)
+
+    @Test
+    fun `only the decline reads why a payment was not approved`() =
+        // SaleRepository stores the ErrorCondition, SaleEntity.decline reads it back and History shows it as it was sent;
+        // cancellations, busy terminals and retry advice come from Decline.
+        noClasses()
+            .that()
+            .resideOutsideOfPackage("io.minimpos.app.data..")
+            .and()
+            .haveNameNotMatching(within(PAYMENT_STANDING_FILE, "io.minimpos.app.feature.history.HistoryScreensKt"))
+            .should()
+            .callMethodWhere(callTo(TransactionDetails::class.java.name, "getErrorCondition", "getRefusalReason"))
+            .orShould()
+            .callMethodWhere(callTo(SaleEntity::class.java.name, "getErrorCondition", "getRefusalReason"))
             .check(app)
 
     @Test
@@ -396,6 +487,101 @@ class ArchitectureTest {
             .check(app)
 
     @Test
+    fun `a tip, capture or adjustment becomes an action state in one place`() {
+        // CaptureResult.toState makes their failures, which OutcomeMessages words.
+        noClasses()
+            .that()
+            .haveNameNotMatching(within(TRANSACTION_ACTIONS_FILE, OUTCOME_MESSAGES_FILE))
+            .should()
+            .dependOnClassesThat()
+            .belongToAnyOf(
+                ActionOutcome.NotCaptured::class.java,
+                ActionOutcome.CaptureRefused::class.java,
+                ActionOutcome.CaptureNotAllowed::class.java,
+            ).check(app)
+        noClasses()
+            .that()
+            .resideInAPackage("io.minimpos.app.feature..")
+            .and()
+            .haveNameNotMatching(within(TRANSACTION_ACTIONS_FILE))
+            .should()
+            .dependOnClassesThat(assignableTo(CaptureResult::class.java).and(not(type(CaptureResult::class.java))))
+            .check(app)
+    }
+
+    @Test
+    fun `setup problems are worded in one place`() {
+        // The screens word them through OutcomeMessages; the container words those stored with a transaction or capture.
+        noClasses()
+            .that()
+            .haveNameNotMatching(within(OUTCOME_MESSAGES_FILE))
+            .and()
+            .haveNameNotMatching(CONTAINER)
+            .should()
+            .callMethodWhere(callTo(OUTCOME_MESSAGES_FILE, "getTextRes"))
+            .check(app)
+        noClasses()
+            .that()
+            .resideInAnyPackage(*UI_PACKAGES)
+            .and()
+            .haveNameNotMatching(within(OUTCOME_MESSAGES_FILE))
+            .should()
+            .accessFieldWhere(
+                DescribedPredicate.describe("an access to a SetupProblem") { it.targetOwner.isEquivalentTo(SetupProblem::class.java) },
+            ).check(app)
+    }
+
+    @Test
+    fun `each kind of sale has one session, kept by the container`() =
+        noClasses()
+            .that()
+            .haveNameNotMatching(CONTAINER)
+            .and()
+            .doNotBelongToAnyOf(SaleSession::class.java)
+            .should()
+            .callConstructorWhere(target(owner(type(SaleSession::class.java))))
+            .check(app)
+
+    @Test
+    fun `settings are normalized only where they are read and written`() =
+        // Each section's ranges live on its companion; SettingsRepository normalizes on every read and write.
+        noClasses()
+            .that()
+            .haveNameNotMatching(within(SettingsRepository::class.java.name, AppSettings::class.java.name))
+            .should()
+            .callMethodWhere(
+                DescribedPredicate.describe("a call to a settings section's normalized()") { call ->
+                    call.name == "normalized" && call.targetOwner.packageName == "io.minimpos.app.data.settings"
+                },
+            ).check(app)
+
+    @Test
+    fun `composables get state and callbacks, not view models`() =
+        // A screen gets its view models (a parameter for tests, or from its `…ViewModel()` factories) and hands its parts
+        // what they show and what to call; its composable lambdas are part of it.
+        noMethods()
+            .that()
+            .areAnnotatedWith(Composable::class.java)
+            .and()
+            .haveNameNotMatching(".*Screen|.*ViewModel|.*\\\$lambda\\$.*")
+            .should(
+                object : ArchCondition<JavaMethod>("take or get a view model") {
+                    override fun check(
+                        method: JavaMethod,
+                        events: ConditionEvents,
+                    ) {
+                        fun JavaClass.isViewModel() = isAssignableTo(ViewModel::class.java)
+                        method.rawParameterTypes.filter { it.isViewModel() }.forEach {
+                            events.add(SimpleConditionEvent.satisfied(method, "${method.description} takes a ${it.simpleName}"))
+                        }
+                        method.methodCallsFromSelf.filter { it.target.rawReturnType.isViewModel() }.forEach {
+                            events.add(SimpleConditionEvent.satisfied(method, it.description))
+                        }
+                    }
+                },
+            ).check(app)
+
+    @Test
     fun `the terminal's receipt fields and print jobs are converted in one place each`() {
         noClasses()
             .that()
@@ -435,7 +621,12 @@ class ArchitectureTest {
 
         const val CONTAINER = "io\\.minimpos\\.app\\.AppContainer\\b.*"
         const val DB = "io.minimpos.app.data.db.."
+        const val TERMINAL_PACKAGE = "io.minimpos.app.terminal.."
         const val PAYMENT_STANDING_FILE = "io.minimpos.app.refund.PaymentStandingKt"
+        const val TRANSACTION_ACTIONS_FILE = "io.minimpos.app.feature.TransactionActionsKt"
+        const val OUTCOME_MESSAGES_FILE = "io.minimpos.app.feature.OutcomeMessagesKt"
+
+        val UI_PACKAGES = arrayOf("io.minimpos.app.feature..", "io.minimpos.app.ui..", "io.minimpos.app.scan..", "io.minimpos.app.qr..")
 
         val BUSINESS_PACKAGES =
             arrayOf(
@@ -481,6 +672,15 @@ class ArchitectureTest {
         ): DescribedPredicate<JavaMethodCall> =
             DescribedPredicate.describe("a call to $owner.${methods.joinToString("/")}") { call ->
                 call.targetOwner.name == owner && call.name.removeSuffix("\$default") in methods
+            }
+
+        /** A call to one of [methods] (or its default-arguments bridge) of [type] or one of its subtypes. */
+        fun callToSubtypeOf(
+            type: Class<*>,
+            vararg methods: String,
+        ): DescribedPredicate<JavaMethodCall> =
+            DescribedPredicate.describe("a call to ${type.simpleName}.${methods.joinToString("/")}") { call ->
+                call.targetOwner.isAssignableTo(type) && call.name.removeSuffix("\$default") in methods
             }
     }
 }

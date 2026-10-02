@@ -150,7 +150,7 @@ class ProductEditViewModel(
             val taxRates = catalog.taxRates.first()
             val categories = catalog.categories.first()
             val product = productId?.let { catalog.product(it) }
-            val defaultTaxRateId = taxRates.firstOrNull { it.id == appSettings.payment.defaultTaxRateId }?.id ?: taxRates.firstOrNull()?.id
+            val defaultTaxRateId = appSettings.payment.defaultTaxRate(taxRates)?.id
             val form =
                 product?.let {
                     ProductForm(

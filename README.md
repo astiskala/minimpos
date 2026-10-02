@@ -2,7 +2,8 @@
 
 A free, open-source point-of-sale app for Adyen Android payment terminals. Sell products, take card and wallet
 payments, print or email receipts, and refund by scanning a receipt. Hold deposits and collect tips too, all on one
-device, with no extra tablet or app subscription.
+device, with no extra tablet or app subscription. It also runs on Android tablets and phones, taking payments on a
+terminal over your network or the internet, or with Tap to Pay through the Adyen Payments app.
 
 [![CI](https://github.com/astiskala/minimpos/actions/workflows/ci.yml/badge.svg)](https://github.com/astiskala/minimpos/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-0abf53.svg)](LICENSE)
@@ -69,6 +70,10 @@ device, with no extra tablet or app subscription.
   action (Pay, Refund, Save, New sale) stays in reach without scrolling.
 - **Guided setup**: on a terminal only the shared key is needed. The terminal ID, address and TEST/LIVE environment
   are detected, and Home points to the setup until payments can reach the terminal.
+- **Tablets and phones too**: off-terminal, payments go to a terminal on your network (local Terminal API), a terminal
+  over the internet (Adyen's Cloud device API, with an API key; the terminal can be chosen from those connected), or
+  **Tap to Pay** on the phone itself through the Adyen Payments app, which the app sets up (boards) for you. See
+  [Use it on a tablet or phone](#use-it-on-a-tablet-or-phone).
 - **Built-in simulator**, so you can try every flow on an emulator or phone without a terminal.
 - **English, Simplified Chinese and Japanese**, with receipts laid out for wide characters (see below).
 
@@ -113,6 +118,14 @@ your shared key, and the terminal's certificate is checked against Adyen's termi
 app; the root it chains to tells the app whether the terminal is a TEST or LIVE one. Each payment and refund
 identifies itself to Adyen as "Mini mPOS" (application info).
 
+Off-terminal, the same requests go to a terminal on the network (with the shared key, at
+`https://<address>:8443/nexo`), to Adyen's [Cloud device API](https://docs.adyen.com/point-of-sale/design-your-integration/choose-your-architecture/cloud)
+(`/v1/merchants/{merchantAccount}/devices/{POIID}/sync`, authenticated with an API key; the TEST or LIVE endpoint and
+data center are found by trying the key), or to the
+[Adyen Payments app](https://docs.adyen.com/point-of-sale/mobile-android/build/payments-app) on the same phone, as App
+Links encrypted with the shared key. The Payments app is boarded with Adyen's Management API, using an API key with the
+Adyen Payments app role.
+
 The app has no backend: products, settings and sales history stay on the terminal. Card details never reach the app;
 it only sees what Adyen returns, such as the brand, masked card number, PSP reference and (when tokenizing) the stored
 payment method ID. Only if you give it a Checkout API key does it also call Adyen's
@@ -124,7 +137,7 @@ The code is split into three modules:
 | Module | Contents |
 | --- | --- |
 | `core` | Plain Kotlin: money and tax math, cart, refunds, receipt layout, catalog and refund QR codes, Adyen's currency table. |
-| `terminal-api` | The Terminal API client on top of Adyen's Java library, OkHttp transport, retry advice and the simulator. |
+| `terminal-api` | The Terminal API client on top of Adyen's Java library; local, cloud and Payments app transports (OkHttp); retry advice and the simulator. |
 | `app` | The Android app: Jetpack Compose (Material 3), Navigation 3, Room, DataStore, CameraX and ZXing, JavaMail. |
 
 ## Requirements
@@ -132,6 +145,10 @@ The code is split into three modules:
 - An Adyen account with Terminal API enabled, and Android payment terminals running **Android 9 or later**, for example
   S1F2, S1F4Pro, S1E4Pro, S1E2L, AMS1, S1U2 or SFO1. The older S1E runs Android 7.1 and is not supported. Printing
   needs a terminal with a printer; QR scanning needs a camera.
+- Or an Android tablet or phone (Android 9 or later) to use a terminal on your network or in the cloud. For Tap to Pay,
+  a Google-certified phone with NFC and Android 12 or later, the Adyen Payments app, and Tap to Pay on Android enabled
+  by Adyen Support (see Adyen's [requirements](https://docs.adyen.com/point-of-sale/mobile-android/requirements) and the
+  [countries and payment methods](https://docs.adyen.com/point-of-sale/ipp-mobile) it supports).
 - To build: JDK 17 or later (the build downloads JDK 21 for itself) and the Android SDK with platform 37.
 
 ## Try it
@@ -189,6 +206,30 @@ plus setting up your business, products and pre-authorizations. In short:
 The app meets Adyen's [app requirements](https://docs.adyen.com/point-of-sale/android-terminals/app-requirements): it
 only asks for the internet, network state and camera permissions, and the build checks this on every run.
 
+## Use it on a tablet or phone
+
+Install the same APK (sideloaded from the [latest release](https://github.com/astiskala/minimpos/releases/latest)),
+then choose under Settings › Terminal › **Payments go to**:
+
+- **A terminal on your network**: the recommended setup for a tablet at the counter. Requests go straight to the
+  terminal, encrypted with its shared key, so no API key is needed. Enter the terminal's IP address and POIID as well as
+  the shared key. Mini mPOS does not need to be installed on the terminal.
+- **A terminal over the internet (cloud)**: for a tablet and terminal on different networks. Create an API credential
+  for this device with the **Cloud Device API** role (and the Checkout webservice role for captures), enter the merchant
+  account and API key under **Adyen API**, then tap **Find connected terminals** and choose one (or type its POIID).
+  Payment requests wait at least 160 seconds, as Adyen requires for cloud payments.
+- **Tap to Pay on this phone**: shoppers tap on the phone, in the Adyen Payments app (no card reader). Install
+  **Adyen Payments Test** (TEST) or **Adyen Payments** (LIVE) from Google Play, enter the shared key and merchant
+  account, then under **Tap to Pay** the **Payments app API key** (a credential with only the Adyen Payments app role,
+  which Adyen Support enables) and optionally a store ID, and tap **Set up Tap to Pay**. The environment follows the
+  Payments app installed.
+
+> [!WARNING]
+> With the cloud and Tap to Pay, an Adyen API key is stored on the device (encrypted with the Android Keystore).
+> Adyen advises keeping API keys on a server; Mini mPOS has none. Use a credential for that device only, with only the
+> roles it needs, set an admin PIN, and revoke the key in the Customer Area if the device is lost. A terminal on your
+> network needs no API key.
+
 ## Good to know
 
 - Refunds are processed by Adyen asynchronously, so the app shows them as "Refund requested". The final outcome is in
@@ -214,8 +255,14 @@ only asks for the internet, network state and camera permissions, and the build 
 - Transfer codes that include settings or secrets use format version 4, which older versions of the app cannot read;
   a catalog alone is still sent as version 3. Codes from older versions still import, so update all terminals
   together.
-- Settings from another terminal replace this terminal's, except where payments go, its own address and ID, the
-  detected TEST/LIVE environment and the simulator. The shared key passphrase only works if the Customer Area gives
+- With Tap to Pay there is no printer (receipts are emailed, so tips on the receipt are not offered), and the Payments
+  app takes only payments and referenced refunds. It cannot be asked for a transaction's status, so a payment whose
+  answer goes missing (for example when you come back from the Payments app without a result) stays "unknown": check it
+  in the Customer Area. An answer that arrives after Mini mPOS was restarted is used by **Check result again**.
+- In the cloud, a payment fails straight away when Adyen reports the terminal as not connected; when Adyen got no
+  answer from it, the payment is settled with status checks, as on the network.
+- Settings from another terminal replace this terminal's, except where payments go, its own address and ID, its Tap to
+  Pay installation, the detected TEST/LIVE environment and data center, and the simulator. The shared key passphrase only works if the Customer Area gives
   both terminals the same shared key (for example at store or merchant account level).
 - Setting up from another terminal uses the camera, so the receiving terminal needs one.
 - Only the latest [release](https://github.com/astiskala/minimpos/releases) is maintained.

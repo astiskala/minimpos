@@ -4,7 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import io.minimpos.app.data.repo.ImportMode
 import io.minimpos.app.data.security.Secret
-import io.minimpos.app.data.security.TransferSeal
+import io.minimpos.app.data.transfer.ImportOutcome
 import io.minimpos.app.data.transfer.ReceivedTransfer
 import io.minimpos.app.data.transfer.SetupTransfer
 import io.minimpos.app.data.transfer.TransferContents
@@ -116,8 +116,8 @@ sealed interface ImportUiState {
      * Every code was scanned and decoded; waiting for the operator to import.
      *
      * @property received What was scanned.
-     * @property currencyMatches Whether the catalogue's currency is the one this terminal will use (the transferred
-     *   settings' when they choose one, else this terminal's); if not, prices are imported as they are.
+     * @property currencyMatches Whether the catalogue's currency is the one this terminal will use, see
+     *   [ReceivedTransfer.currencyMatches].
      * @property mode How the catalogue is combined with this one.
      * @property code The transfer code typed so far, for the secrets.
      * @property wrongCode Whether the last code tried did not open the secrets.
@@ -186,8 +186,7 @@ class TransferImportViewModel(
         _state.value =
             try {
                 val received = setup.receive(TransferCodec.decode(assembler.assemble()))
-                val target = received.currencyCode?.takeIf { it.isNotBlank() } ?: currencyCode
-                ImportUiState.Ready(received, received.catalogue?.let { it.currencyCode == target } != false)
+                ImportUiState.Ready(received, received.currencyMatches(currencyCode))
             } catch (ignored: TransferFormatException) {
                 assembler.reset()
                 ImportUiState.Scanning(error = ImportError.CORRUPT)
@@ -207,21 +206,16 @@ class TransferImportViewModel(
      */
     fun import() {
         val ready = _state.value as? ImportUiState.Ready ?: return
-        val withSecrets = ready.received.hasSecrets && ready.code.isNotBlank()
-        if (withSecrets && !TransferSeal.isValidCode(ready.code)) {
+        if (!ready.received.accepts(ready.code)) {
             _state.value = ready.copy(wrongCode = true)
             return
         }
         _state.value = ImportUiState.Importing
-        launchWrite({
-            val unlocked = if (withSecrets) setup.unlock(ready.received, ready.code) else emptyMap()
-            unlocked?.let { setup.import(ready.received, ready.mode, it) }
-        }) { result ->
+        launchWrite({ setup.import(ready.received, ready.mode, ready.code) }) { outcome ->
             _state.value =
-                if (result == null) {
-                    ready.copy(wrongCode = true)
-                } else {
-                    ImportUiState.Done(result, secretsSkipped = ready.received.hasSecrets && !withSecrets)
+                when (outcome) {
+                    ImportOutcome.WrongCode -> ready.copy(wrongCode = true)
+                    is ImportOutcome.Imported -> ImportUiState.Done(outcome.result, outcome.secretsSkipped)
                 }
         }
     }

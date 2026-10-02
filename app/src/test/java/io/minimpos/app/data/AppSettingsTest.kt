@@ -4,15 +4,17 @@ import com.google.common.truth.Truth.assertThat
 import io.minimpos.app.data.settings.AppSettings
 import io.minimpos.app.data.settings.EmailSettings
 import io.minimpos.app.data.settings.HistorySettings
+import io.minimpos.app.data.settings.PaymentSettings
 import io.minimpos.app.data.settings.ReceiptSettings
 import io.minimpos.app.data.settings.SecuritySettings
 import io.minimpos.app.data.settings.SimulatorSettings
 import io.minimpos.app.data.settings.TerminalMode
 import io.minimpos.app.data.settings.TerminalSettings
+import io.minimpos.terminal.transport.CloudRegion
 import io.minimpos.terminal.transport.TerminalEnvironment
 import org.junit.Test
 
-/** Plain JUnit: the settings model owns the limits of its numbers and which terminal settings belong to one device. */
+/** Plain JUnit: the settings model owns the limits of its numbers and which settings belong to one device. */
 class AppSettingsTest {
     @Test
     fun `every number is brought within its section's limits`() {
@@ -44,8 +46,11 @@ class AppSettingsTest {
             TerminalSettings(
                 mode = TerminalMode.TERMINAL,
                 environment = TerminalEnvironment.LIVE,
+                cloudRegion = CloudRegion.AU,
                 host = "192.168.1.20",
                 poiIdOverride = "S1F2-000158",
+                paymentsAppInstallationId = "INSTALLATION-1",
+                storeId = "ST1",
                 saleId = "Shop",
                 keyIdentifier = "KEY",
                 keyVersion = 3,
@@ -59,9 +64,50 @@ class AppSettingsTest {
         assertThat(shared.environment).isNull()
         assertThat(shared.host).isEmpty()
         assertThat(shared.poiIdOverride).isEmpty()
+        assertThat(shared.cloudRegion).isNull()
+        assertThat(shared.paymentsAppInstallationId).isEmpty()
+        // The store is shared by the merchant account's devices.
+        assertThat(shared.storeId).isEqualTo("ST1")
         assertThat(shared.withDeviceFieldsOf(receiver))
             .isEqualTo(
-                sender.copy(mode = TerminalMode.SIMULATOR, environment = TerminalEnvironment.TEST, host = "10.0.0.2", poiIdOverride = ""),
+                sender.copy(
+                    mode = TerminalMode.SIMULATOR,
+                    environment = TerminalEnvironment.TEST,
+                    cloudRegion = null,
+                    host = "10.0.0.2",
+                    poiIdOverride = "",
+                    paymentsAppInstallationId = "",
+                ),
             )
+    }
+
+    @Test
+    fun `the device's fields of every section stay behind, and everything else travels`() {
+        val sender =
+            AppSettings(
+                terminal = TerminalSettings(mode = TerminalMode.TERMINAL, host = "192.168.1.20", merchantAccount = "Merchant"),
+                payment = PaymentSettings(defaultTaxRateId = 7, referencePrefix = "SHOP"),
+                receipt = ReceiptSettings(title = "Harbour Coffee Co."),
+                simulator = SimulatorSettings(hasPrinter = false),
+                history = HistorySettings(retentionDays = 30),
+            )
+        val shared = sender.shared()
+        assertThat(shared).isEqualTo(shared.withDeviceFieldsOf(AppSettings()))
+        assertThat(shared.terminal.host).isEmpty()
+        assertThat(shared.payment.defaultTaxRateId).isNull()
+        assertThat(shared.simulator).isEqualTo(SimulatorSettings())
+        // What does not belong to the device travels as it is.
+        assertThat(shared.copy(terminal = sender.terminal, payment = sender.payment, simulator = sender.simulator)).isEqualTo(sender)
+        // Putting the device's fields back gives the settings again.
+        assertThat(shared.withDeviceFieldsOf(sender)).isEqualTo(sender)
+
+        val receiver = AppSettings(terminal = TerminalSettings(host = "10.0.0.2"), simulator = SimulatorSettings(delayMillis = 0))
+        val taken = receiver.takingOver(shared, defaultTaxRateId = 3)
+        assertThat(taken.terminal.host).isEqualTo("10.0.0.2")
+        assertThat(taken.terminal.merchantAccount).isEqualTo("Merchant")
+        assertThat(taken.simulator).isEqualTo(receiver.simulator)
+        assertThat(taken.payment).isEqualTo(sender.payment.copy(defaultTaxRateId = 3))
+        assertThat(taken.receipt).isEqualTo(sender.receipt)
+        assertThat(taken.history).isEqualTo(sender.history)
     }
 }

@@ -1,4 +1,6 @@
 import com.android.build.api.artifact.SingleArtifact
+import com.android.tools.r8.BackportedMethodList
+import com.android.tools.r8.BackportedMethodListCommand
 import dev.detekt.gradle.Detekt
 import org.jetbrains.kotlin.gradle.tasks.KotlinJvmCompile
 import org.w3c.dom.Element
@@ -427,6 +429,74 @@ androidComponents {
             }
         tasks.named("check").configure { dependsOn(verifyTask) }
     }
+}
+
+/** Lists the Java and Android methods D8 backports (so every API level has them) when dexing for [minSdk], as Lint does. */
+abstract class BackportedMethodsTask : DefaultTask() {
+    @get:InputFile
+    @get:PathSensitive(PathSensitivity.NONE)
+    abstract val androidJar: RegularFileProperty
+
+    @get:Input
+    abstract val minSdk: Property<Int>
+
+    @get:OutputFile
+    abstract val list: RegularFileProperty
+
+    @TaskAction
+    fun write() {
+        BackportedMethodList.run(
+            BackportedMethodListCommand
+                .builder()
+                .setMinApiLevel(minSdk.get())
+                .addLibraryFiles(androidJar.get().asFile.toPath())
+                .setOutputPath(list.get().asFile.toPath())
+                .build(),
+        )
+    }
+}
+
+/**
+ * Points `AndroidApiLevelTest` at the compile SDK's API database, D8's backported methods and the minimum SDK: :core and
+ * :terminal-api run on the terminals too, but as JVM modules Android Lint does not check which Android versions have
+ * the Java APIs they call.
+ */
+abstract class AndroidApiArguments : CommandLineArgumentProvider {
+    @get:InputFile
+    @get:PathSensitive(PathSensitivity.NONE)
+    abstract val apiDatabase: RegularFileProperty
+
+    @get:InputFile
+    @get:PathSensitive(PathSensitivity.NONE)
+    abstract val backportedMethods: RegularFileProperty
+
+    @get:Input
+    abstract val minSdk: Property<Int>
+
+    override fun asArguments() =
+        listOf(
+            "-Dminimpos.apiDatabase=${apiDatabase.get().asFile.absolutePath}",
+            "-Dminimpos.backportedMethods=${backportedMethods.get().asFile.absolutePath}",
+            "-Dminimpos.minSdk=${minSdk.get()}",
+        )
+}
+
+val sdkAndroidJar = androidComponents.sdkComponents.bootClasspath.map { jars -> jars.first { it.asFile.name == "android.jar" }.asFile }
+
+val listBackportedMethods =
+    tasks.register<BackportedMethodsTask>("listBackportedMethods") {
+        androidJar.set(layout.file(sdkAndroidJar))
+        minSdk.set(android.defaultConfig.minSdk)
+        list.set(layout.buildDirectory.file("intermediates/backported-methods.txt"))
+    }
+
+tasks.withType<Test>().configureEach {
+    jvmArgumentProviders +=
+        objects.newInstance<AndroidApiArguments>().apply {
+            apiDatabase.set(layout.file(sdkAndroidJar.map { it.resolveSibling("data/api-versions.xml") }))
+            backportedMethods.set(listBackportedMethods.flatMap { it.list })
+            minSdk.set(android.defaultConfig.minSdk)
+        }
 }
 
 // The app has no variant-specific sources, so analysing the release variant too would only repeat the debug findings.

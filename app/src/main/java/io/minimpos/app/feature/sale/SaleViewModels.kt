@@ -23,6 +23,7 @@ import io.minimpos.app.payment.TransactionLifecycle
 import io.minimpos.app.refund.PaymentAction
 import io.minimpos.app.refund.StoredPayment
 import io.minimpos.app.refund.StoredPayments
+import io.minimpos.app.refund.decline
 import io.minimpos.app.terminal.TerminalState
 import io.minimpos.core.cart.Cart
 import io.minimpos.core.cart.CartTotals
@@ -54,7 +55,8 @@ import java.time.ZoneId
  * @property cart The cart of the current sale.
  * @property totals The cart priced with the current tax settings.
  * @property currency The currency prices are shown in.
- * @property defaultTaxRateId The configured default tax rate for custom items; see [defaultTaxRate].
+ * @property defaultTaxRate The rate custom items start with ([io.minimpos.app.data.settings.PaymentSettings.defaultTaxRate]);
+ *   null only before any rate exists.
  * @property chargeTax Settings › Tax › Charge tax.
  * @property kind A sale, or a pre-authorisation, whose cart holds a single item.
  */
@@ -68,7 +70,7 @@ data class SaleUiState(
     val cart: Cart = Cart(),
     val totals: CartTotals = Cart().totals(TaxMode.INCLUSIVE),
     val currency: CurrencySpec = CurrencySpec("EUR", 2),
-    val defaultTaxRateId: Long? = null,
+    val defaultTaxRate: TaxRateEntity? = null,
     val chargeTax: Boolean = true,
     val kind: SaleKind = SaleKind.SALE,
 ) {
@@ -85,9 +87,6 @@ data class SaleUiState(
                             product.sku?.contains(query.trim()) == true
                     )
             }
-
-    /** The rate custom items start with: the configured default, else the first rate; null only before any exists. */
-    val defaultTaxRate: TaxRateEntity? get() = taxRates.firstOrNull { it.id == defaultTaxRateId } ?: taxRates.firstOrNull()
 
     /** Whether any product has a SKU, which is when barcode scanning is offered. */
     val hasSkus: Boolean get() = products.any { !it.sku.isNullOrBlank() }
@@ -139,7 +138,7 @@ class SaleViewModel(
                 cart = cart,
                 totals = cart.totals(appSettings.payment.taxMode, appSettings.payment.chargeTax),
                 currency = currency(appSettings),
-                defaultTaxRateId = appSettings.payment.defaultTaxRateId,
+                defaultTaxRate = appSettings.payment.defaultTaxRate(taxRates),
                 chargeTax = appSettings.payment.chargeTax,
                 kind = kind,
             )
@@ -258,11 +257,7 @@ data class SaleResultUiState(
     val preAuthorisation: Boolean get() = kind == SaleKind.PRE_AUTHORISATION
 
     /** Adyen's retry guidance for a failed payment; null when the terminal gave no ErrorCondition. */
-    val advice: RetryAdvice?
-        get() =
-            record?.sale?.takeIf { it.status != SaleStatus.APPROVED && it.errorCondition != null }?.let {
-                RetryAdvice.forPayment(it.errorCondition, it.refusalReason)
-            }
+    val advice: RetryAdvice? get() = record?.sale?.decline?.advice
 }
 
 /**

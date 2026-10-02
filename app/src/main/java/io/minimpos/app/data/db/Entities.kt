@@ -50,9 +50,9 @@ enum class SaleKind {
     SALE,
 
     /**
-     * A pre-authorisation: one pre-authorisation product or custom amount, only held on the card. It is captured in the
-     * Customer Area (adjusting the held amount needs Adyen's Checkout API), or cancelled from history; it cannot be
-     * refunded from the app.
+     * A pre-authorisation: one pre-authorisation product or custom amount, only held on the card. It is captured
+     * through Adyen's Checkout API or in the Customer Area (adjusting the held amount needs the Checkout API), or
+     * cancelled from history; it can be refunded only once captured, up to the amount captured.
      */
     PRE_AUTHORISATION,
     ;

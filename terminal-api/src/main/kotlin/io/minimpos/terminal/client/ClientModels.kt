@@ -292,11 +292,8 @@ data class TransactionDetails(
     /** The stored card, when a payment asked for tokenization and Adyen stored it; null otherwise. */
     val tokenization: Tokenization?,
 ) {
-    /** What the POS should do next; [RetryAdvice.DO_NOT_RETRY] for a successful transaction. */
-    val advice: RetryAdvice get() = if (success) RetryAdvice.DO_NOT_RETRY else RetryAdvice.forPayment(errorCondition, refusalReason)
-
-    /** With ErrorCondition Busy, the transaction the terminal is busy with (it can be aborted). */
-    val busyServiceId: String? get() = additionalData["serviceId"]?.takeIf { errorCondition == "Busy" }
+    /** Why it was not approved (cancelled, busy, what to do next); null when it [succeeded][success]. */
+    val decline: Decline? get() = Decline.of(success, errorCondition, refusalReason, additionalData)
 
     /**
      * Adyen's `adjustAuthorisationData` blob for synchronous authorisation adjustments, sent for pre-authorised payments

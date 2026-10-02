@@ -1,6 +1,7 @@
 package io.minimpos.app.feature
 
 import io.minimpos.app.payment.AutoDelivery
+import io.minimpos.app.payment.CaptureResult
 import io.minimpos.app.payment.PaymentStart
 import io.minimpos.app.payment.ReceiptDelivery
 import io.minimpos.app.payment.ReceiptOffer
@@ -8,6 +9,7 @@ import io.minimpos.app.payment.SalePrint
 import io.minimpos.app.payment.TransactionLifecycle
 import io.minimpos.app.receipt.ActionResult
 import io.minimpos.app.refund.RefundStart
+import io.minimpos.app.terminal.SetupProblem
 import io.minimpos.core.receipt.ReceiptCopy
 import io.minimpos.core.receipt.ReceiptDocument
 import kotlinx.coroutines.CoroutineScope
@@ -39,14 +41,39 @@ sealed interface ActionOutcome {
     /** The busy terminal was asked to cancel the transaction it is working on. */
     data object AbortSent : ActionOutcome
 
+    /** A tip, capture or adjustment did not go through, see [CaptureResult.toState]. */
+    sealed interface CaptureFailed : ActionOutcome
+
     /**
-     * A capture sent again did not go through.
+     * A tip, capture or adjustment did not go through: Adyen did not take it, its outcome is unknown (it can be sent
+     * again safely), or the Checkout API is not set up.
      *
      * @property reason Why, as Adyen or the app worded it.
+     * @property step What was sent.
      */
     data class NotCaptured(
         val reason: String,
-    ) : ActionOutcome
+        val step: CaptureStep,
+    ) : CaptureFailed
+
+    /**
+     * The card issuer refused the higher amount a tip, capture or adjustment needed, so nothing was captured (and a tip
+     * was not saved, so a smaller one can be entered).
+     *
+     * @property step What was sent.
+     * @property amountMinor The amount asked for, in minor units of [currency].
+     * @property currency The payment's ISO 4217 currency code.
+     * @property reason Adyen's refusal reason.
+     */
+    data class CaptureRefused(
+        val step: CaptureStep,
+        val amountMinor: Long,
+        val currency: String,
+        val reason: String,
+    ) : CaptureFailed
+
+    /** The payment no longer allows the tip, capture or adjustment (captured or cancelled meanwhile, or gone). */
+    data object CaptureNotAllowed : CaptureFailed
 
     /**
      * The connection test reached the terminal.
@@ -62,14 +89,38 @@ sealed interface ActionOutcome {
     /**
      * The connection test could not reach the terminal, or it did not answer properly.
      *
-     * @property reason Why.
+     * @property reason Why, as the terminal or Adyen worded it; null when it did not answer at all.
      */
     data class ConnectionFailed(
-        val reason: String,
+        val reason: String?,
     ) : ActionOutcome
+
+    /**
+     * Nothing was sent, because something must be entered, installed or fixed first.
+     *
+     * @property problem What.
+     */
+    data class NotSetUp(
+        val problem: SetupProblem,
+    ) : ActionOutcome
+
+    /** The Payments app (or the terminal) did not answer, and gave no reason. */
+    data object NoAnswer : ActionOutcome
 
     /** The Checkout API test went through. */
     data object ApiWorks : ActionOutcome
+
+    /**
+     * The Adyen Payments app is boarded on this phone, so Tap to Pay works.
+     *
+     * @property installationId The boarded instance's ID.
+     */
+    data class TapToPayReady(
+        val installationId: String,
+    ) : ActionOutcome
+
+    /** The Payments app instance on this phone was revoked and forgotten. */
+    data object TapToPayRemoved : ActionOutcome
 
     /**
      * The test email was sent.
@@ -119,6 +170,45 @@ fun ActionResult.toState(success: ActionOutcome) =
     when (this) {
         ActionResult.Success -> ActionState(outcome = success, done = true)
         is ActionResult.Failure -> ActionState(outcome = ActionOutcome.Failed(message), isError = true)
+    }
+
+/** What a tip, capture or adjustment sent, which the wording of its failure names. */
+enum class CaptureStep {
+    /** Entering the tip written on the receipt, and capturing the bill plus the tip. */
+    TIP,
+
+    /** Capturing a pre-authorisation, or sending a capture again. */
+    CAPTURE,
+
+    /** Changing what a pre-authorisation holds, without capturing. */
+    ADJUSTMENT,
+}
+
+/**
+ * This result of a [step] that asked for [amountMinor] (in minor units of [currency]) as a finished [ActionState]:
+ * done once Adyen received it, adjusted it or the amount was recorded for the Customer Area; else why not, as an error.
+ */
+fun CaptureResult.toState(
+    step: CaptureStep,
+    amountMinor: Long,
+    currency: String,
+): ActionState =
+    when (this) {
+        CaptureResult.Requested, CaptureResult.Recorded, CaptureResult.Adjusted -> {
+            ActionState(done = true)
+        }
+
+        is CaptureResult.Refused -> {
+            ActionState(outcome = ActionOutcome.CaptureRefused(step, amountMinor, currency, reason), isError = true)
+        }
+
+        is CaptureResult.Failed -> {
+            ActionState(outcome = ActionOutcome.NotCaptured(message, step), isError = true)
+        }
+
+        CaptureResult.NotAllowed -> {
+            ActionState(outcome = ActionOutcome.CaptureNotAllowed, isError = true)
+        }
     }
 
 /**

@@ -87,6 +87,7 @@
             <ul>
               <li>一个已开通线下支付（Terminal API）的 <strong>Adyen 账户</strong>，以及能够查看设备设置、上传应用和管理支付的<strong>商户后台</strong>用户。</li>
               <li><strong>运行 Android 9 或更高版本的 Adyen Android 支付终端</strong>，例如 S1F2、S1F4Pro、S1E4Pro、S1E2L、AMS1、S1U2 或 SFO1。打印需要终端配备打印机；扫描收据、条形码和另一台终端的设置二维码需要摄像头。</li>
+              <li>或者一台 <strong>Android 平板电脑或手机</strong>，用于通过本地网络或互联网在终端上收款，或使用 Tap to Pay 收款（见<a href="#tablet">在平板电脑或手机上使用</a>）。</li>
               <li>可选：如果要通过电子邮件发送收据，请准备一个 <strong>SMTP 邮件服务器</strong>及其主机地址、端口、用户名和密码。</li>
               <li>可选：如果希望应用直接为收据小费和预授权扣款，请准备 Adyen Checkout API 的 <strong>API 凭据</strong>（参见<a href="#api">扣款与 Checkout API</a>）。</li>
             </ul>
@@ -125,6 +126,17 @@ cd minimpos
             </ol>
             <p>应用会自动检测终端 ID（POIID）、地址以及 TEST 或 LIVE 环境，无需填写其他信息。设置 › 关于会显示检测结果；TEST 终端的系统状态栏也会显示 TEST。</p>
             <p>如果要从手机或模拟器连接真实终端，请将<strong>支付目标</strong>设为<strong>同一网络中的终端</strong>，并输入终端的 IP 地址和 POIID（见终端的 Device info 界面）。</p>
+            <h3 id="tablet">在平板电脑或手机上使用</h3>
+            <p>Mini mPOS 也可以在 Android 平板电脑和手机上运行：安装同一个 APK，然后在<strong>设置 › 终端 › 支付目标</strong>中选择：</p>
+            <dl class="settings-list">
+              <dt>同一网络中的终端</dt>
+              <dd>柜台平板电脑的推荐方式。平板电脑通过本地网络向终端发送请求，并使用共享密钥加密，因此无需 API 密钥。除共享密钥外，还需输入终端的 IP 地址和 POIID。终端上无需安装 Mini mPOS。</dd>
+              <dt>通过互联网连接的终端（云端）</dt>
+              <dd>适用于平板电脑和终端不在同一网络的情况。请求经由 Adyen 的 Cloud device API 发送，使用 API 密钥代替共享密钥。请在商户后台的 <strong>Developers › API credentials</strong> 中为本设备创建具有 <strong>Cloud Device API</strong> 角色的凭据（如需应用为小费和预授权扣款，再加上 Checkout webservice role）。在 <strong>Adyen API</strong> 下输入商家账户和 API 密钥，然后点击<strong>查找已连接的终端</strong>并选择终端（或输入其 POIID）。连接时会自动判断密钥属于 TEST 还是 LIVE，以及要使用的数据中心。</dd>
+              <dt>在本手机上使用 Tap to Pay</dt>
+              <dd>顾客在本手机上的 Adyen Payments 应用中轻触银行卡或手机付款；没有打印机，收据通过电子邮件发送。手机需支持 NFC、运行 Android 12 或更高版本，并通过 Google 认证。请让 Adyen 支持团队开通 Tap to Pay on Android 和 Adyen Payments app role，并从 Google Play 安装 <strong>Adyen Payments Test</strong>（TEST）或 <strong>Adyen Payments</strong>（LIVE）。输入共享密钥和商家账户，然后在 <strong>Tap to Pay</strong> 下输入 <strong>Payments 应用 API 密钥</strong>（仅具有 Adyen Payments app role 的凭据）；如只为一家门店设置，还需输入门店 ID。点击<strong>设置 Tap to Pay</strong>，Payments 应用会打开以注册本手机。之后每笔付款都会打开 Payments 应用，再返回 Mini mPOS。如要停用，请点击<strong>移除本手机</strong>。</dd>
+            </dl>
+            <p class="note">在云端模式和 Tap to Pay 模式下，Adyen API 密钥会保存在设备上，并通过 Android Keystore 加密。Adyen 建议将 API 密钥保存在服务器上，而 Mini mPOS 没有服务器：请为本设备使用专用凭据，设置管理员 PIN，并在设备丢失时于商户后台撤销该密钥。</p>
           </section>
           <section id="business">
             <h2>6. 设置您的业务</h2>
@@ -171,7 +183,7 @@ cd minimpos
             <ol>
               <li>在商户后台打开 <strong>Developers › API credentials</strong>，为终端创建仅具有 <strong>Checkout webservice role</strong> 的凭据，并生成 <strong>API 密钥</strong>。</li>
               <li>在 Mini mPOS 中进入<strong>设置 › 终端 › Checkout API</strong>，输入<strong>商家账户</strong>和 <strong>API 密钥</strong>，然后点击<strong>保存并测试 API 密钥</strong>。密钥在终端上加密存储；测试不会更改支付。</li>
-              <li>LIVE 终端还需要 <strong>live URL prefix</strong>，可在 <strong>Developers › API URLs</strong> 中找到。应用通过终端证书判断 TEST 或 LIVE 环境。</li>
+              <li>LIVE 终端还需要 <strong>live URL prefix</strong>，可在 <strong>Developers › API URLs</strong> 中找到。应用通过终端证书判断 TEST 或 LIVE 环境（云端模式根据 API 密钥判断，Tap to Pay 根据已安装的 Payments 应用判断）。</li>
               <li>可选：在 <strong>Devices › Developer › Additional data › Return adjust authorisation data</strong> 中启用同步授权调整。这样应用能立即得知更高金额是否获批；否则需稍后在商户后台确认调整结果。</li>
             </ol>
             <p>Adyen 异步确认扣款，因此应用会显示<em>已请求扣款</em>。Mini mPOS 没有接收 webhook 的后端，最终结果请在商户后台查看。结果未知的扣款可以从交易记录再次发送，不会重复扣款。</p>
@@ -222,12 +234,12 @@ cd minimpos
             <h2>12. 更多终端</h2>
             <p>配置好一台终端后，可以通过几个二维码设置其他终端，无需重复输入。请在所有终端上安装相同版本的 Mini mPOS。</p>
             <ol>
-              <li>在已配置的终端上进入<strong>设置 › 数据 › 共享至另一台终端</strong>，或打开<strong>商品</strong>菜单。选择要复制的<strong>商品目录</strong>、<strong>设置</strong>以及<strong>密码和密钥</strong>（共享密钥口令、Checkout API 密钥、SMTP 密码和管理员 PIN），然后点击<strong>显示二维码</strong>。</li>
+              <li>在已配置的终端上进入<strong>设置 › 数据 › 共享至另一台终端</strong>，或打开<strong>商品</strong>菜单。选择要复制的<strong>商品目录</strong>、<strong>设置</strong>以及<strong>密码和密钥</strong>（共享密钥口令、Checkout API 密钥、Payments 应用 API 密钥、SMTP 密码和管理员 PIN），然后点击<strong>显示二维码</strong>。</li>
               <li>在新终端的相同位置选择<strong>从另一台终端设置</strong>，用摄像头扫描二维码，顺序不限。</li>
               <li>选择<strong>合并到此商品目录</strong>或<strong>替换此商品目录</strong>。要导入密码和密钥，请输入第一台终端在二维码上方显示的<strong>传输码</strong>；不输入时会导入其他内容，但跳过密码和密钥。点击<strong>导入</strong>。</li>
               <li>在<strong>设置 › 终端</strong>中点击<strong>测试连接</strong>，检查连接。</li>
             </ol>
-            <p>导入的设置会替换新终端的设置，但不更改支付目标、终端自己的地址和 ID、TEST/LIVE 环境或模拟器设置。共享密钥只有在商户后台为两台终端分配相同密钥时才适用（例如在门店或商家账户级别配置）；否则请分别输入各终端的密钥。每次传输都会生成新的传输码，并且只在第一台终端显示，因此仅拍摄二维码不会泄露密码。</p>
+            <p>导入的设置会替换新终端的设置，但不更改支付目标、终端自己的地址和 ID、Tap to Pay 设置、TEST/LIVE 环境或模拟器设置。共享密钥只有在商户后台为两台终端分配相同密钥时才适用（例如在门店或商家账户级别配置）；否则请分别输入各终端的密钥。每次传输都会生成新的传输码，并且只在第一台终端显示，因此仅拍摄二维码不会泄露密码。</p>
           </section>
           <section id="live">
             <h2>13. 正式上线之前</h2>
@@ -248,6 +260,8 @@ cd minimpos
               <dd>从交易记录的<em>需处理</em>中打开该支付，点击<strong>重新查询结果</strong>。再次向购物者收款之前，请先检查商户后台。</dd>
               <dt>扣款失败或结果未知</dt>
               <dd>交易记录会显示原因。如有需要，请修正 Checkout API 设置，再点击<strong>重试扣款</strong>：再次发送不会重复扣款。</dd>
+              <dt>Tap to Pay 返回时没有结果</dt>
+              <dd>此时付款结果未知，且无法再次向 Payments 应用查询：在再次向顾客收款前，请先在商户后台（Payments › Payment list）中确认。</dd>
               <dt>显示“无法读取二维码”</dt>
               <dd>另一台终端可能运行更新的 Mini mPOS。请将两台终端更新到相同版本，再次扫描。</dd>
             </dl>

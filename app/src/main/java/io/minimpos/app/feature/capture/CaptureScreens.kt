@@ -1,6 +1,5 @@
 package io.minimpos.app.feature.capture
 
-import androidx.annotation.StringRes
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
@@ -33,8 +32,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import io.minimpos.app.R
 import io.minimpos.app.data.settings.CaptureMode
+import io.minimpos.app.feature.OutcomeMessage
 import io.minimpos.app.refund.PaymentStanding
-import io.minimpos.app.ui.components.ActionMessage
 import io.minimpos.app.ui.components.BottomActions
 import io.minimpos.app.ui.components.Card
 import io.minimpos.app.ui.components.ConfirmDialog
@@ -127,9 +126,7 @@ private fun TipEntry(
             tip != null -> Note(sum(state.billMinor, tip, money))
         }
         if (state.needsAdjustment) Note(stringResource(R.string.tip_adjustment_note, PaymentStanding.TIP_ADJUSTMENT_PERCENT))
-        state.submission.problem?.let {
-            ActionMessage(problemText(it, money, R.string.tip_refused, R.string.capture_failed), isError = true)
-        }
+        OutcomeMessage(state.submission)
     }
 }
 
@@ -263,10 +260,7 @@ private fun CaptureEntry(
             amount > state.heldMinor -> Note(stringResource(R.string.capture_more_note, money.format(amount)))
             amount in 1..<state.heldMinor -> Note(stringResource(R.string.capture_less_note))
         }
-        state.submission.problem?.let {
-            val failed = if (state.adjustOnly) R.string.adjust_failed else R.string.capture_failed
-            ActionMessage(problemText(it, money, R.string.capture_refused, failed), isError = true)
-        }
+        OutcomeMessage(state.submission)
     }
 }
 
@@ -375,29 +369,6 @@ private fun sum(
     tipMinor: Long,
     money: MoneyFormatter,
 ): String = stringResource(R.string.tip_confirm_sum, money.format(billMinor), money.format(tipMinor), money.format(billMinor + tipMinor))
-
-/** Why the tip, capture or adjustment did not go through, worded by the [refused] and [failed] format strings. */
-@Composable
-@ReadOnlyComposable
-private fun problemText(
-    problem: CaptureProblem,
-    money: MoneyFormatter,
-    @StringRes refused: Int,
-    @StringRes failed: Int,
-): String =
-    when (problem) {
-        is CaptureProblem.Refused -> {
-            stringResource(refused, money.format(problem.amountMinor), problem.reason)
-        }
-
-        is CaptureProblem.Failed -> {
-            stringResource(failed, problem.message)
-        }
-
-        CaptureProblem.NotAllowed -> {
-            stringResource(R.string.capture_not_allowed)
-        }
-    }
 
 @Composable
 private fun tipViewModel(saleId: String): TipViewModel {

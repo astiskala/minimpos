@@ -13,6 +13,7 @@ import io.minimpos.app.refund.PaymentAction.CAPTURE
 import io.minimpos.app.refund.PaymentAction.ENTER_TIP
 import io.minimpos.app.refund.PaymentAction.REFUND
 import io.minimpos.app.refund.PaymentAction.RETRY_CAPTURE
+import io.minimpos.terminal.client.RetryAdvice
 import org.junit.Test
 
 /** Plain JUnit: where a stored sale stands, and so what can be done with it, follows from its fields alone. */
@@ -47,6 +48,15 @@ class PaymentStandingTest {
                 assertThat(stored.totalsShare).isEqualTo(TotalsShare.NONE)
             }
         }
+    }
+
+    @Test
+    fun `a stored decline gives advice only with the ErrorCondition the terminal sent`() {
+        assertThat(sale.decline).isNull()
+        val refused = sale.copy(status = SaleStatus.DECLINED, errorCondition = "Refusal", refusalReason = "Do Not Honor")
+        assertThat(refused.decline!!.advice).isEqualTo(RetryAdvice.DIFFERENT_PAYMENT_METHOD)
+        assertThat(sale.copy(status = SaleStatus.CANCELLED, errorCondition = "Cancel").decline!!.cancelled).isTrue()
+        assertThat(sale.copy(status = SaleStatus.UNKNOWN).decline!!.advice).isNull()
     }
 
     @Test
@@ -130,6 +140,28 @@ class PaymentStandingTest {
         assertThat(preAuth.copy(holdCancelled = true).totalsShare).isEqualTo(TotalsShare.NONE)
         assertThat(tipSale.totalsShare).isEqualTo(TotalsShare.SALE)
         assertThat(tipSale.copy(holdCancelled = true).totalsShare).isEqualTo(TotalsShare.NONE)
+    }
+
+    @Test
+    fun `receipts show tip lines only while the tip is awaited, and held and captured amounts only for pre-authorisations`() {
+        assertThat(ReceiptStanding.of(sale)).isEqualTo(ReceiptStanding(true, false, null, false, null, null))
+        assertThat(ReceiptStanding.of(sale.copy(status = SaleStatus.DECLINED)).approved).isFalse()
+        assertThat(ReceiptStanding.of(tipSale).awaitingTip).isTrue()
+        // A declined or cancelled one no longer asks for a tip.
+        assertThat(ReceiptStanding.of(tipSale.copy(status = SaleStatus.DECLINED)).awaitingTip).isFalse()
+        assertThat(ReceiptStanding.of(tipSale.copy(holdCancelled = true)).awaitingTip).isFalse()
+        val tipped = ReceiptStanding.of(tipSale.copy(tipMinor = 200, captureStatus = CaptureStatus.REQUESTED, capturedMinor = 1_200))
+        assertThat(tipped.tipMinor).isEqualTo(200)
+        assertThat(tipped.awaitingTip).isFalse()
+        // A tip sale's capture is its total with the tip, not a pre-authorisation's capture.
+        assertThat(tipped.capturedMinor).isNull()
+
+        assertThat(ReceiptStanding.of(preAuth.copy(authorisedMinor = 1_000)).heldNowMinor).isNull()
+        val adjusted = ReceiptStanding.of(preAuth.copy(authorisedMinor = 1_500))
+        assertThat(adjusted.preAuthorisation).isTrue()
+        assertThat(adjusted.heldNowMinor).isEqualTo(1_500)
+        assertThat(ReceiptStanding.of(preAuth.copy(captureStatus = CaptureStatus.UNKNOWN, capturedMinor = 800)).capturedMinor).isNull()
+        assertThat(ReceiptStanding.of(preAuth.copy(captureStatus = CaptureStatus.MANUAL, capturedMinor = 800)).capturedMinor).isEqualTo(800)
     }
 
     @Test

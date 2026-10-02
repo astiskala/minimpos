@@ -165,7 +165,7 @@ private fun ConnectionProblem(
             SetupCard(
                 Icons.Default.ErrorOutline,
                 stringResource(R.string.home_connection_failed),
-                connection.message,
+                connection.message ?: stringResource(R.string.setup_no_response),
                 error = true,
                 onClick = onClick,
             )

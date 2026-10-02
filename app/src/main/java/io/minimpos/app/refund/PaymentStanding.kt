@@ -6,6 +6,7 @@ import io.minimpos.app.data.db.SaleKind
 import io.minimpos.app.data.db.SaleStatus
 import io.minimpos.app.data.db.SaleWithLines
 import io.minimpos.app.data.settings.CaptureMode
+import io.minimpos.terminal.client.Decline
 
 /**
  * Where a stored sale stands as a payment, worked out once from its status, kind, capture and cancellation. It is the
@@ -98,6 +99,52 @@ enum class PaymentStanding {
 
 /** Where this sale stands as a payment, see [PaymentStanding.of]. */
 val SaleEntity.standing: PaymentStanding get() = PaymentStanding.of(this)
+
+/**
+ * Why this sale's payment was not approved, read from the ErrorCondition and refusal reason stored with it (see
+ * [Decline]); null once it is approved. Without a stored ErrorCondition (pending, unknown or never sent) it gives no
+ * [Decline.advice].
+ */
+val SaleEntity.decline: Decline? get() = Decline.of(status == SaleStatus.APPROVED, errorCondition, refusalReason)
+
+/**
+ * What a sale's receipt says about it as a payment, read from where it stands ([PaymentStanding.of]), so the receipt
+ * does not combine the sale's fields itself.
+ *
+ * @property approved Whether the payment was approved; an unapproved one is marked as not completed.
+ * @property preAuthorisation Whether it is a pre-authorisation, titled and totalled as an amount held.
+ * @property tipMinor The tip entered for a sale taken for tipping on the receipt, in minor units; null while none is.
+ * @property awaitingTip Whether it still awaits the tip written on the receipt ([PaymentStanding.AWAITING_TIP]), so a
+ *   paper receipt gets blank tip lines.
+ * @property heldNowMinor What a pre-authorisation holds after an adjustment, when that differs from its amount; else
+ *   null.
+ * @property capturedMinor What a captured pre-authorisation ([PaymentStanding.captured]) captured; else null.
+ */
+data class ReceiptStanding(
+    val approved: Boolean,
+    val preAuthorisation: Boolean,
+    val tipMinor: Long?,
+    val awaitingTip: Boolean,
+    val heldNowMinor: Long?,
+    val capturedMinor: Long?,
+) {
+    /** Reading a sale. */
+    companion object {
+        /** What [sale]'s receipt says about it. */
+        fun of(sale: SaleEntity): ReceiptStanding {
+            val standing = sale.standing
+            val preAuthorisation = sale.kind == SaleKind.PRE_AUTHORISATION
+            return ReceiptStanding(
+                approved = standing != PaymentStanding.NOT_APPROVED,
+                preAuthorisation = preAuthorisation,
+                tipMinor = sale.tipMinor?.takeIf { sale.tipOnReceipt },
+                awaitingTip = standing == PaymentStanding.AWAITING_TIP,
+                heldNowMinor = sale.authorisedMinor?.takeIf { preAuthorisation && it != sale.totalMinor },
+                capturedMinor = sale.capturedMinor?.takeIf { preAuthorisation && standing.captured },
+            )
+        }
+    }
+}
 
 /** What the operator can do with a stored payment now, see [actions]. */
 enum class PaymentAction {

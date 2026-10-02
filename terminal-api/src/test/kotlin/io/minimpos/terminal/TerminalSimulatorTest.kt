@@ -25,12 +25,11 @@ import io.minimpos.terminal.simulator.SimulatedModifications
 import io.minimpos.terminal.simulator.SimulatedOutcome
 import io.minimpos.terminal.simulator.SimulatorConfig
 import io.minimpos.terminal.simulator.TerminalSimulator
-import io.minimpos.terminal.transport.TerminalProtocolException
+import io.minimpos.terminal.transport.Delivery
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.async
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
-import org.junit.Assert.assertThrows
 import org.junit.Test
 import java.math.BigDecimal
 import kotlin.random.Random
@@ -162,11 +161,11 @@ class TerminalSimulatorTest {
         config = config.copy(outcome = SimulatedOutcome.DECLINE)
         assertThat(pay().message).isEqualTo("Not enough balance")
         config = config.copy(outcome = SimulatedOutcome.CANCEL)
-        assertThat(pay().errorCondition).isEqualTo("Cancel")
+        assertThat(pay().decline!!.cancelled).isTrue()
         config = config.copy(outcome = SimulatedOutcome.BUSY)
         val busy = pay()
-        assertThat(busy.advice).isEqualTo(RetryAdvice.TERMINAL_BUSY)
-        assertThat(busy.busyServiceId).isEqualTo(TerminalSimulator.BUSY_SERVICE_ID)
+        assertThat(busy.decline!!.advice).isEqualTo(RetryAdvice.TERMINAL_BUSY)
+        assertThat(busy.decline!!.busyServiceId).isEqualTo(TerminalSimulator.BUSY_SERVICE_ID)
         assertThat(busy.pspReference).isNull()
         assertThat(busy.maskedPan).isNull()
         config = config.copy(outcome = SimulatedOutcome.RANDOM)
@@ -191,6 +190,7 @@ class TerminalSimulatorTest {
             client.abort(serviceId)
             val details = (payment.await() as TransactionOutcome.Completed).details
             assertThat(details.errorCondition).isEqualTo("Aborted")
+            assertThat(details.decline!!.cancelled).isTrue()
         }
 
     @Test
@@ -232,8 +232,8 @@ class TerminalSimulatorTest {
         runBlocking {
             assertThat(client.status("NOPE")).isInstanceOf(TransactionOutcome.NotProcessed::class.java)
             val unsupported = TerminalAPIRequest().apply { saleToPOIRequest = SaleToPOIRequest().apply { messageHeader = MessageHeader() } }
-            assertThrows(TerminalProtocolException::class.java) { runBlocking { simulator.send(unsupported, 1.seconds) } }
-            assertThrows(TerminalProtocolException::class.java) { runBlocking { simulator.send(TerminalAPIRequest(), 1.seconds) } }
+            assertThat(simulator.send(unsupported, 1.seconds)).isInstanceOf(Delivery.MaybeSent::class.java)
+            assertThat(simulator.send(TerminalAPIRequest(), 1.seconds)).isInstanceOf(Delivery.MaybeSent::class.java)
             val diagnosis =
                 TerminalAPIRequest().apply {
                     saleToPOIRequest =
@@ -242,6 +242,7 @@ class TerminalSimulatorTest {
                             diagnosisRequest = DiagnosisRequest()
                         }
                 }
-            assertThat(simulator.send(diagnosis, 1.seconds)!!.saleToPOIResponse.diagnosisResponse).isNotNull()
+            val answered = simulator.send(diagnosis, 1.seconds) as Delivery.Answered
+            assertThat(answered.response!!.saleToPOIResponse.diagnosisResponse).isNotNull()
         }
 }

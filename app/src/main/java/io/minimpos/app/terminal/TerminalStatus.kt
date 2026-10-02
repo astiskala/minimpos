@@ -22,14 +22,15 @@ import kotlinx.coroutines.launch
  * Where payments go and whether they, and printing, can work, as Home, Settings and the receipt screens show it.
  *
  * @property loaded False until the settings and the list of saved secrets have been read.
- * @property mode Where payments go: [TerminalMode.TERMINAL] or [TerminalMode.SIMULATOR], never [TerminalMode.AUTO].
+ * @property mode Where payments go: a terminal (local or in the cloud), the Payments app or the simulator, never
+ *   [TerminalMode.AUTO].
  * @property onTerminal Whether the app runs on an Adyen terminal, which then is where payments go in terminal mode.
  * @property poiId The terminal's POIID (or the simulator's); null while one still has to be entered.
  * @property setupProblem What must still be entered before the terminal can be used, from
  *   [TerminalSetup.problem]; null when nothing is missing (always in simulator mode).
  * @property connection The latest connection check, whose result stays until the next one.
  * @property printerAvailable Whether printing is offered, see [TerminalSetup.printerAvailable].
- * @property environment The environment of the terminal's certificate, remembered from the last connection.
+ * @property environment Where payments go, TEST or LIVE, as [TerminalSetup.environment] says.
  * @property apiSetup How far the Checkout API is set up, see [TerminalSetup.apiSetup]; captures follow the same decision.
  */
 data class TerminalState(
@@ -37,7 +38,7 @@ data class TerminalState(
     val mode: TerminalMode = TerminalMode.SIMULATOR,
     val onTerminal: Boolean = false,
     val poiId: String? = null,
-    val setupProblem: String? = null,
+    val setupProblem: SetupProblem? = null,
     val connection: TerminalConnection = TerminalConnection.Unknown,
     val printerAvailable: Boolean = false,
     val environment: TerminalEnvironment? = null,
@@ -47,7 +48,7 @@ data class TerminalState(
     val captureMode: CaptureMode get() = apiSetup.mode
 
     /** What must still be entered before the Checkout API can be used ([ApiSetup.problem]); null when nothing is. */
-    val apiProblem: String? get() = apiSetup.problem
+    val apiProblem: SetupProblem? get() = apiSetup.problem
 }
 
 /**
@@ -78,7 +79,7 @@ class TerminalStatus(
                 setupProblem = setup.problem,
                 connection = checked,
                 printerAvailable = setup.printerAvailable(printers),
-                environment = setup.settings.terminal.environment,
+                environment = setup.environment,
                 apiSetup = setup.apiSetup,
             )
         }.stateIn(scope, SharingStarted.Eagerly, TerminalState())
@@ -88,21 +89,24 @@ class TerminalStatus(
 
     /**
      * Starts the background work, once per process: a connection check at startup and whenever the terminal settings or
-     * the saved passphrase change (typing is debounced into one check), while payments go to a terminal; and saving the
+     * the saved passphrase change (typing is debounced into one check), while [TerminalSetup.checksConnection]; and saving the
      * environment each connection reports into the settings.
      */
     @OptIn(FlowPreview::class)
     fun start() {
         scope.launch {
             setups.changes
-                .map { setup -> Triple(setup.settings.terminal.copy(environment = null), setup.mode, setup.problem) }
-                .distinctUntilChanged()
+                .map { setup ->
+                    Triple(setup.settings.terminal.copy(environment = null, cloudRegion = null), setup.checksConnection, setup.problem)
+                }.distinctUntilChanged()
                 .debounce(CHECK_DELAY_MILLIS)
-                .collectLatest { (_, mode) -> if (mode == TerminalMode.TERMINAL) check() }
+                .collectLatest { (_, checked) -> if (checked) check() }
         }
         scope.launch {
-            gateway.detectedEnvironment.filterNotNull().collect { environment ->
-                settings.update { it.copy(terminal = it.terminal.copy(environment = environment)) }
+            gateway.detectedEnvironment.filterNotNull().collect { detected ->
+                settings.update {
+                    it.copy(terminal = it.terminal.copy(environment = detected.environment, cloudRegion = detected.cloudRegion))
+                }
             }
         }
     }
@@ -115,8 +119,11 @@ class TerminalStatus(
 
     /** Checks again when the last check failed while payments go to a terminal, so a warning clears once it answers. */
     suspend fun recheckIfFailed() {
-        if (state.value.mode == TerminalMode.TERMINAL && connection.value is TerminalConnection.Failed) check()
+        if (connection.value is TerminalConnection.Failed && setups.current().checksConnection) check()
     }
+
+    /** The terminals connected in the cloud, for choosing one in Settings; see [TerminalGateway.connectedTerminals]. */
+    suspend fun connectedTerminals(): ConnectedTerminals = gateway.connectedTerminals()
 
     private companion object {
         const val CHECK_DELAY_MILLIS = 1_000L

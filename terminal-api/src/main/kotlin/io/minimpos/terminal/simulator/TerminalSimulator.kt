@@ -27,8 +27,6 @@ import com.adyen.model.nexo.PaymentType
 import com.adyen.model.nexo.PrintOutput
 import com.adyen.model.nexo.PrintResponse
 import com.adyen.model.nexo.PrinterStatusType
-import com.adyen.model.nexo.RepeatedMessageResponse
-import com.adyen.model.nexo.RepeatedResponseMessageBody
 import com.adyen.model.nexo.Response
 import com.adyen.model.nexo.ResultType
 import com.adyen.model.nexo.ReversalRequest
@@ -46,9 +44,13 @@ import com.adyen.terminal.serialization.TerminalAPIGsonBuilder
 import io.minimpos.terminal.client.PrintJob
 import io.minimpos.terminal.client.TerminalClient
 import io.minimpos.terminal.client.toPrintJob
+import io.minimpos.terminal.transport.CompletedTransactions
+import io.minimpos.terminal.transport.Delivery
 import io.minimpos.terminal.transport.TerminalProtocolException
 import io.minimpos.terminal.transport.TerminalTransport
+import io.minimpos.terminal.transport.toDelivery
 import kotlinx.coroutines.delay
+import java.io.IOException
 import java.math.BigDecimal
 import java.net.SocketTimeoutException
 import java.net.URLEncoder
@@ -108,8 +110,8 @@ data class SimulatorConfig(
  * mimic real Terminal API payloads, including receipt data and tokenization details. Requests and responses pass
  * through the Adyen library's JSON serialisation, exactly as they would on the way to and from a real terminal.
  *
- * It handles payments, reversals, aborts, prints, diagnoses and transaction status checks, and throws
- * [TerminalProtocolException] for any other request. A status check of a payment still under way is answered
+ * It handles payments, reversals, aborts, prints, diagnoses and transaction status checks; any other request, like a
+ * simulated timeout, is [Delivery.MaybeSent]. A status check of a payment still under way is answered
  * `InProgress`; finished payments and reversals are remembered in memory for status checks, so after a restart they are
  * reported as not found. Approved payments are remembered the same way, shared with the simulated Checkout API
  * ([modifications]): a full reversal of an uncaptured pre-authorisation is answered as a cancellation, and captures
@@ -128,7 +130,7 @@ class TerminalSimulator(
     private val onPrint: (PrintJob) -> Unit = {},
 ) : TerminalTransport {
     private val gson = TerminalAPIGsonBuilder.create()
-    private val completed = ConcurrentHashMap<String, RepeatedResponseMessageBody>()
+    private val completed = CompletedTransactions()
     private val aborted = ConcurrentHashMap.newKeySet<String>()
     private val inProgress = ConcurrentHashMap.newKeySet<String>()
     private val ledger = SimulatedLedger()
@@ -139,10 +141,15 @@ class TerminalSimulator(
     override suspend fun send(
         request: TerminalAPIRequest,
         timeout: Duration,
-    ): TerminalAPIResponse? {
+    ): Delivery {
         val received = gson.fromJson(gson.toJson(request), TerminalAPIRequest::class.java)
-        val response = handle(received) ?: return null
-        return gson.fromJson(gson.toJson(response), TerminalAPIResponse::class.java)
+        val response =
+            try {
+                handle(received)
+            } catch (e: IOException) {
+                return e.toDelivery("No response from the simulator")
+            }
+        return Delivery.Answered(response?.let { gson.fromJson(gson.toJson(it), TerminalAPIResponse::class.java) })
     }
 
     private suspend fun handle(request: TerminalAPIRequest): TerminalAPIResponse? {
@@ -228,7 +235,7 @@ class TerminalSimulator(
                 }
             }
         val response = paymentResponse(request, outcome, settings)
-        completed[serviceId] = RepeatedResponseMessageBody().apply { paymentResponse = response }
+        completed.remember(serviceId, payment = response)
         if (outcome == SimulatedOutcome.TIMEOUT) throw SocketTimeoutException("Simulated timeout")
         return respond(header) { paymentResponse = response }
     }
@@ -429,7 +436,7 @@ class TerminalSimulator(
                             )
                     }
             }
-        completed[header.serviceID.orEmpty()] = RepeatedResponseMessageBody().apply { reversalResponse = response }
+        completed.remember(header.serviceID.orEmpty(), reversal = response)
         return response
     }
 
@@ -457,26 +464,10 @@ class TerminalSimulator(
 
     private fun status(request: TransactionStatusRequest): TransactionStatusResponse {
         val serviceId = request.messageReference?.serviceID
-        val body = serviceId?.let(completed::get)
-        return TransactionStatusResponse().apply {
-            if (body == null && serviceId != null && serviceId in inProgress) {
-                response =
-                    Response().apply {
-                        result = ResultType.FAILURE
-                        errorCondition = ErrorConditionType.IN_PROGRESS
-                    }
-            } else if (body == null) {
-                response =
-                    Response().apply {
-                        result = ResultType.FAILURE
-                        errorCondition = ErrorConditionType.NOT_FOUND
-                    }
-            } else {
-                response = Response().apply { result = ResultType.SUCCESS }
-                messageReference = request.messageReference
-                repeatedMessageResponse = RepeatedMessageResponse().apply { repeatedResponseMessageBody = body }
-            }
-        }
+        return completed.repeat(request)
+            ?: CompletedTransactions.failed(
+                if (serviceId != null && serviceId in inProgress) ErrorConditionType.IN_PROGRESS else ErrorConditionType.NOT_FOUND,
+            )
     }
 
     private fun poiData(

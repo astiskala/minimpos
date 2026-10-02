@@ -391,6 +391,7 @@ private fun secretNames(secrets: Set<Secret>): String? {
                     Secret.CHECKOUT_API_KEY -> R.string.transfer_secret_api_key
                     Secret.SMTP_PASSWORD -> R.string.transfer_secret_smtp
                     Secret.PIN_VERIFIER -> R.string.transfer_secret_pin
+                    Secret.PAYMENTS_APP_API_KEY -> R.string.transfer_secret_payments_app_key
                 },
             )
         }
@@ -462,7 +463,7 @@ private fun ImportReady(
                         stringResource(
                             R.string.transfer_currency_mismatch,
                             catalogue.currencyCode,
-                            received.currencyCode?.ifBlank { null } ?: currency,
+                            received.currencyAfterImport(currency),
                         ),
                         color = MaterialTheme.colorScheme.error,
                     )

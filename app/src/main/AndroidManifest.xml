@@ -12,6 +12,13 @@
     android:name="android.hardware.camera.any"
     android:required="false" />
 
+  <!-- The Adyen Payments apps (TEST and LIVE), for Tap to Pay on phones: Android 11+ only shows the app those it names.
+       No permission is needed, so the same APK stays acceptable for Adyen terminals. -->
+  <queries>
+    <package android:name="com.adyen.ipp.mobile.companion.test" />
+    <package android:name="com.adyen.ipp.mobile.companion.live" />
+  </queries>
+
   <application
     android:name=".MiniMposApplication"
     android:allowBackup="false"
@@ -25,14 +32,24 @@
     tools:targetApi="37">
     <!-- Launchers show the activity's adaptive icon, filling their icon shape; the application icon stays a bitmap
          for the Customer Area (see VerifyTerminalManifestTask). -->
+    <!-- singleTask: the Payments app's answers (minimpos://paymentsapp/…) return to the one running instance. -->
     <activity
       android:name=".MainActivity"
       android:exported="true"
       android:icon="@mipmap/ic_launcher_adaptive"
+      android:launchMode="singleTask"
       android:windowSoftInputMode="adjustResize">
       <intent-filter>
         <action android:name="android.intent.action.MAIN" />
         <category android:name="android.intent.category.LAUNCHER" />
+      </intent-filter>
+      <intent-filter>
+        <action android:name="android.intent.action.VIEW" />
+        <category android:name="android.intent.category.DEFAULT" />
+        <category android:name="android.intent.category.BROWSABLE" />
+        <data
+          android:host="paymentsapp"
+          android:scheme="minimpos" />
       </intent-filter>
     </activity>
   </application>

@@ -23,29 +23,76 @@ enum class TerminalEnvironment(
     LIVE(Environment.LIVE, "/io/minimpos/terminal/adyen-terminalfleet-live.pem"),
 }
 
-/** Sends one Terminal API message and returns the terminal's reply (null when the terminal answers with no body). */
+/**
+ * What became of one message sent with [TerminalTransport.send]: the terminal's reply, or how sure it is that the
+ * request took no effect. This is the one statement of that certainty, which decides whether a payment is reported as
+ * not processed or has its status checked; every transport works it out once, and no caller sees an exception.
+ */
+sealed interface Delivery {
+    /**
+     * The terminal answered.
+     *
+     * @property response Its reply; null when it answered with an empty body (as it does for an abort).
+     */
+    data class Answered(
+        val response: TerminalAPIResponse?,
+    ) : Delivery
+
+    /** No usable answer came back; [NotSent] and [MaybeSent] tell whether the request can have taken effect. */
+    sealed interface Failed : Delivery {
+        /** Why, in English. */
+        val reason: String
+    }
+
+    /**
+     * The request took no effect: it never reached the terminal (no connection, an untrusted certificate, an unknown or
+     * offline terminal) or the terminal refused it (such as a wrong shared key).
+     */
+    data class NotSent(
+        override val reason: String,
+    ) : Failed
+
+    /**
+     * The request may have reached the terminal, but no usable answer came back (a timeout, a dropped connection, an
+     * HTTP error, or a reply that could not be read or verified), so whether it took effect is unknown.
+     */
+    data class MaybeSent(
+        override val reason: String,
+    ) : Failed
+}
+
+/** Sends one Terminal API message and returns what became of it. */
 fun interface TerminalTransport {
     /**
      * Sends [request] and suspends until the reply arrives. The terminal holds a payment request open while the shopper
-     * pays, so [timeout] limits the whole exchange, not just the connection.
-     *
-     * Implementations report failures as [IOException] subclasses, which tell the caller whether the request can have
-     * taken effect: [TerminalUnreachableException] (never delivered), [TerminalRejectedException] (delivered but
-     * refused), [TerminalProtocolException] (answered with something unusable), or a plain [IOException] such as a
-     * timeout, after which the outcome is unknown.
+     * pays, so [timeout] limits the whole exchange, not just the connection. Failures are returned, never thrown.
      *
      * @param request The plain (unencrypted) Terminal API message; encryption is the transport's job.
      * @param timeout How long to wait for the reply.
-     * @return The terminal's reply, or null when it answered with an empty body (as it does for an abort).
-     * @throws IOException As described above.
+     * @return The reply, or whether the request can have taken effect without one.
      */
     suspend fun send(
         request: TerminalAPIRequest,
         timeout: Duration,
-    ): TerminalAPIResponse?
+    ): Delivery
 }
 
-/** The request was never delivered (e.g. connection refused), so it is safe to treat as not processed. */
+/**
+ * The delivery this I/O failure means, read from its type: [TerminalUnreachableException] and
+ * [TerminalRejectedException] are [Delivery.NotSent]; anything else, such as a [TerminalProtocolException] or a timeout,
+ * is [Delivery.MaybeSent]. [fallback] is the reason when the failure has no message.
+ */
+internal fun IOException.toDelivery(fallback: String): Delivery =
+    when (this) {
+        is TerminalUnreachableException, is TerminalRejectedException -> Delivery.NotSent(message ?: fallback)
+        else -> Delivery.MaybeSent(message ?: fallback)
+    }
+
+/**
+ * The request was never delivered (e.g. connection refused), so it is safe to treat as not processed. This and the
+ * exceptions below are how the parts of a transport that must throw (the Adyen library's HTTP client, App Link
+ * exchanges) report failures; the transport turns them into a [Delivery].
+ */
 open class TerminalUnreachableException(
     message: String,
     cause: Throwable? = null,

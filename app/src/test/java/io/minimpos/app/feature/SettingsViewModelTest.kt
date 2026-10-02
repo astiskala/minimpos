@@ -34,6 +34,7 @@ import io.minimpos.app.payment.TransactionState
 import io.minimpos.app.refund.RefundInvalidReason
 import io.minimpos.app.refund.Refundability
 import io.minimpos.app.refund.RefundablePayment
+import io.minimpos.app.terminal.SetupProblem
 import io.minimpos.core.codec.RefundQrPayload
 import io.minimpos.core.receipt.PlainTextReceiptRenderer
 import io.minimpos.core.receipt.ReceiptElement
@@ -202,9 +203,8 @@ class SettingsViewModelTest {
 
         env.updateSettings { it.copy(terminal = it.terminal.copy(mode = TerminalMode.TERMINAL)) }
         vm.saveAndTest(Secret.TERMINAL_PASSPHRASE)
-        assertThat(
-            (await { vm.actions.first { it.connection.isError } }.connection.outcome as? ActionOutcome.Failed)?.message,
-        ).contains("POIID")
+        assertThat(await { vm.actions.first { it.connection.isError } }.connection.outcome)
+            .isEqualTo(ActionOutcome.NotSetUp(SetupProblem.POI_ID))
         env.updateSettings {
             it.copy(terminal = it.terminal.copy(poiIdOverride = "S1F2-000000001", keyIdentifier = "k", host = "127.0.0.1"))
         }

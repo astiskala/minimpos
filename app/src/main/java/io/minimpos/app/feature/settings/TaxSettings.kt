@@ -54,12 +54,12 @@ import io.minimpos.core.tax.TaxRates
 internal fun ColumnScope.TaxSection(
     state: SettingsUiState,
     actions: SettingsActions,
-    vm: SettingsViewModel,
+    events: SettingsEvents,
 ) {
     var editing by remember { mutableStateOf<TaxRateEntity?>(null) }
     val defaultId = state.defaultTaxRate?.id
 
-    fun update(transform: (PaymentSettings) -> PaymentSettings) = vm.update { it.copy(payment = transform(it.payment)) }
+    fun update(transform: (PaymentSettings) -> PaymentSettings) = events.onUpdate { it.copy(payment = transform(it.payment)) }
     val chargeTax = state.settings.payment.chargeTax
     SettingSwitch(
         title = stringResource(R.string.settings_charge_tax),
@@ -106,11 +106,11 @@ internal fun ColumnScope.TaxSection(
             isDefault = rate.id != 0L && rate.id == defaultId,
             canDelete = rate.id != 0L && state.taxRates.size > 1,
             onSave = { updated, makeDefault ->
-                vm.saveTaxRate(updated, makeDefault)
+                events.onTaxRateSave(updated, makeDefault)
                 editing = null
             },
             onDelete = {
-                vm.deleteTaxRate(rate)
+                events.onTaxRateDelete(rate)
                 editing = null
             },
             onDismiss = { editing = null },

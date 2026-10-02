@@ -5,7 +5,6 @@ import com.adyen.Config
 import com.adyen.enums.Environment
 import com.adyen.httpclient.ClientInterface
 import com.adyen.model.terminal.TerminalAPIRequest
-import com.adyen.model.terminal.TerminalAPIResponse
 import com.adyen.model.terminal.security.SecurityKey
 import com.adyen.service.TerminalLocalAPI
 import com.adyen.terminal.security.NexoCrypto
@@ -60,10 +59,10 @@ data class TerminalKey(
  * Local Terminal API through Adyen's [TerminalLocalAPI], which encrypts requests with the shared key and posts them to
  * `https://<host>:8443/nexo` (use `localhost` when the app runs on the terminal itself).
  *
- * [send] runs the library's blocking call on the dispatcher; cancelling the coroutine interrupts it. Errors from the
- * HTTP client pass through unchanged (see [TerminalTransport.send]); a reply that fails decryption or its HMAC check
- * becomes a [TerminalProtocolException] with advice to check the shared key, and any other library failure a plain
- * [TerminalProtocolException].
+ * [send] runs the library's blocking call on the dispatcher; cancelling the coroutine interrupts it. What the HTTP
+ * client throws ([TerminalHttpClient]) decides the [Delivery]: no connection, an untrusted certificate or a rejection is
+ * [Delivery.NotSent], anything else [Delivery.MaybeSent]; so is a reply that fails decryption or its HMAC check (with
+ * advice to check the shared key) and any other library failure.
  */
 class AdyenLocalTransport(
     /** The terminal's IP address or host name, without scheme or port. */
@@ -87,27 +86,24 @@ class AdyenLocalTransport(
     override suspend fun send(
         request: TerminalAPIRequest,
         timeout: Duration,
-    ): TerminalAPIResponse? =
+    ): Delivery =
         runInterruptible(dispatcher) {
             try {
-                api(timeout.inWholeMilliseconds).request(request)
+                Delivery.Answered(api(timeout.inWholeMilliseconds).request(request))
             } catch (e: IOException) {
-                throw e
-            } catch (e: NexoCryptoException) {
-                throw keyMismatch(e)
-            } catch (e: GeneralSecurityException) {
+                e.toDelivery("No response from the terminal")
+            } catch (ignored: NexoCryptoException) {
+                KEY_MISMATCH
+            } catch (ignored: GeneralSecurityException) {
                 // A wrong passphrase usually fails AES padding before the HMAC check.
-                throw keyMismatch(e)
+                KEY_MISMATCH
             } catch (
                 // TerminalLocalAPI.request is declared to throw Exception.
-                @Suppress("TooGenericExceptionCaught") e: Exception,
+                @Suppress("TooGenericExceptionCaught") ignored: Exception,
             ) {
-                throw TerminalProtocolException("Unexpected response from the terminal", e)
+                Delivery.MaybeSent("Unexpected response from the terminal")
             }
         }
-
-    private fun keyMismatch(cause: Exception) =
-        TerminalProtocolException("The terminal's reply could not be verified. ${TerminalHttpClient.KEY_ADVICE}", cause)
 
     private fun api(timeoutMillis: Long): TerminalLocalAPI =
         apis.getOrPut(timeoutMillis) {
@@ -124,5 +120,6 @@ class AdyenLocalTransport(
 
     private companion object {
         const val CONNECT_TIMEOUT_MILLIS = 10_000
+        val KEY_MISMATCH = Delivery.MaybeSent("The terminal's reply could not be verified. ${TerminalHttpClient.KEY_ADVICE}")
     }
 }

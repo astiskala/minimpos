@@ -54,9 +54,12 @@ object QrChunks {
         return parts.mapIndexed { i, part -> Chunk(setId, i + 1, parts.size, part) }
     }
 
-    /** Parses scanned [text] (surrounding whitespace ignored); null when it is not a well-formed chunk. */
+    /**
+     * Parses scanned [text]; null when it is not a well-formed chunk. Whitespace before the prefix is ignored, and after
+     * the data only line breaks and tabs: space is a Base45 character, so the data can end with one.
+     */
     fun parse(text: String): Chunk? {
-        val parts = text.trim().split(':', limit = FIELDS)
+        val parts = text.trimStart().trimEnd { it.isWhitespace() && it != ' ' }.split(':', limit = FIELDS)
         if (parts.size != FIELDS || parts[0] != PREFIX || parts[1].length != SET_ID_LENGTH) return null
         val position = parts[2].split('/')
         val index = position.getOrNull(0)?.toIntOrNull() ?: return null

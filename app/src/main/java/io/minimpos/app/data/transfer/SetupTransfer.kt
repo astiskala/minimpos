@@ -9,13 +9,7 @@ import io.minimpos.app.data.security.SecretStore
 import io.minimpos.app.data.security.SecretStoreException
 import io.minimpos.app.data.security.TransferSeal
 import io.minimpos.app.data.settings.AppSettings
-import io.minimpos.app.data.settings.EmailSettings
-import io.minimpos.app.data.settings.HistorySettings
-import io.minimpos.app.data.settings.PaymentSettings
-import io.minimpos.app.data.settings.ReceiptSettings
-import io.minimpos.app.data.settings.SecuritySettings
 import io.minimpos.app.data.settings.SettingsRepository
-import io.minimpos.app.data.settings.TerminalSettings
 import io.minimpos.core.catalogue.Catalogue
 import io.minimpos.core.codec.SealedSecrets
 import io.minimpos.core.codec.Transfer
@@ -28,6 +22,8 @@ import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.serializer
 
 /**
@@ -79,8 +75,43 @@ class ReceivedTransfer internal constructor(
     /** Whether sealed secrets were transferred, which need the transfer code. */
     val hasSecrets: Boolean get() = transfer.sealedSecrets != null
 
-    /** The currency the transferred settings choose; null without settings, and blank when it follows the country. */
-    val currencyCode: String? get() = settings?.payment?.currencyCode
+    /**
+     * Whether the catalogue's prices are in the currency this terminal will use after the import: the transferred
+     * settings' when they choose one, else [localCurrency] (this terminal's). True without a catalogue; if false, prices
+     * are imported as they are.
+     */
+    fun currencyMatches(localCurrency: String): Boolean = catalogue?.let { it.currencyCode == currencyAfterImport(localCurrency) } != false
+
+    /** The currency code this terminal uses after the import: the transferred settings' when they choose one, else [localCurrency]. */
+    fun currencyAfterImport(localCurrency: String): String =
+        settings
+            ?.settings
+            ?.payment
+            ?.currencyCode
+            ?.takeIf { it.isNotBlank() } ?: localCurrency
+
+    /**
+     * Whether [code] can be tried on the secrets: always without secrets or with no code typed (the secrets are then
+     * skipped), else only when it has the form of a transfer code ([TransferSeal.isValidCode]).
+     */
+    fun accepts(code: String): Boolean = !hasSecrets || code.isBlank() || TransferSeal.isValidCode(code)
+}
+
+/** What [SetupTransfer.import] did. */
+sealed interface ImportOutcome {
+    /**
+     * Everything was imported.
+     *
+     * @property result What was imported.
+     * @property secretsSkipped Whether secrets were transferred but not imported, because no code was typed.
+     */
+    data class Imported(
+        val result: TransferResult,
+        val secretsSkipped: Boolean,
+    ) : ImportOutcome
+
+    /** The transfer code did not open the secrets, so nothing was written. */
+    data object WrongCode : ImportOutcome
 }
 
 /**
@@ -135,7 +166,7 @@ class SetupTransfer(
         currencyCode: String,
     ): TransferExport {
         val catalogue = if (contents.catalogue) catalog.export(currencyCode) else null
-        val settingsText = if (contents.settings) TransferJson.encodeToString(SETTINGS, snapshot(settings.current())) else null
+        val settingsText = if (contents.settings) snapshot(settings.current()) else null
         val values = if (contents.secrets) configuredSecrets().associateWith { secrets.get(it) }.filterValues { it != null } else emptyMap()
         val code = if (values.isEmpty()) null else seal.newCode()
         val sealed =
@@ -162,7 +193,7 @@ class SetupTransfer(
         val read =
             transfer.settings?.let {
                 try {
-                    TransferJson.decodeFromString(SETTINGS, it)
+                    TransferredSettings.decode(it)
                 } catch (e: SerializationException) {
                     throw TransferFormatException("Unreadable settings", e)
                 } catch (e: IllegalArgumentException) {
@@ -176,7 +207,7 @@ class SetupTransfer(
      * Opens the secrets of [received] with the transfer [code] the other terminal shows; null when the code is wrong
      * (or there are no secrets). Unknown secrets and an unusable PIN verifier are left out.
      */
-    suspend fun unlock(
+    internal suspend fun unlock(
         received: ReceivedTransfer,
         code: String,
     ): Map<Secret, String>? {
@@ -195,14 +226,19 @@ class SetupTransfer(
     }
 
     /**
-     * Imports [received]: its catalogue with [mode], then its settings, then [unlocked] secrets (from [unlock]). The
-     * catalogue import is one transaction; a secret this device cannot store is reported, not thrown.
+     * Imports [received]: its catalogue with [mode], then its settings, then its secrets when a transfer [code] was
+     * typed. A code that does not open the secrets ([ReceivedTransfer.accepts], then [unlock]) is
+     * [ImportOutcome.WrongCode] before anything is written; without a code the secrets are skipped. The catalogue
+     * import is one transaction; a secret this device cannot store is reported, not thrown.
      */
     suspend fun import(
         received: ReceivedTransfer,
         mode: ImportMode,
-        unlocked: Map<Secret, String> = emptyMap(),
-    ): TransferResult {
+        code: String = "",
+    ): ImportOutcome {
+        val withSecrets = received.hasSecrets && code.isNotBlank()
+        if (!received.accepts(code)) return ImportOutcome.WrongCode
+        val unlocked = (if (withSecrets) unlock(received, code) else emptyMap()) ?: return ImportOutcome.WrongCode
         val summary = received.catalogue?.let { catalog.import(it, mode) }
         received.settings?.let { apply(it) }
         val stored = mutableSetOf<Secret>()
@@ -216,21 +252,12 @@ class SetupTransfer(
             } catch (e: SecretStoreException) {
                 e.message ?: "Secrets could not be stored"
             }
-        return TransferResult(summary, received.hasSettings, stored, error)
+        return ImportOutcome.Imported(TransferResult(summary, received.hasSettings, stored, error), received.hasSecrets && !withSecrets)
     }
 
-    private suspend fun snapshot(current: AppSettings): TransferredSettings {
-        val rates = catalog.taxRates.first()
-        val default = rates.firstOrNull { it.id == current.payment.defaultTaxRateId }
-        return TransferredSettings(
-            terminal = current.terminal.withDeviceFieldsOf(TerminalSettings()),
-            payment = current.payment.copy(defaultTaxRateId = null),
-            receipt = current.receipt,
-            email = current.email,
-            security = current.security,
-            history = current.history,
-            defaultTaxRate = default?.let { TaxRateRef(it.name, it.rateMilliPercent) },
-        )
+    private suspend fun snapshot(current: AppSettings): String {
+        val default = catalog.taxRates.first().firstOrNull { it.id == current.payment.defaultTaxRateId }
+        return TransferredSettings(current.shared(), default?.let { TaxRateRef(it.name, it.rateMilliPercent) }).encode()
     }
 
     private suspend fun apply(transferred: TransferredSettings) {
@@ -241,56 +268,64 @@ class SetupTransfer(
                         it.rateMilliPercent == wanted.rateMilliPercent
                 }
             }
-        settings.update { current ->
-            current.copy(
-                // The repository brings every number within its limits.
-                terminal = transferred.terminal.withDeviceFieldsOf(current.terminal),
-                payment = transferred.payment.copy(defaultTaxRateId = rate?.id),
-                receipt = transferred.receipt,
-                email = transferred.email,
-                security = transferred.security,
-                history = transferred.history,
-            )
-        }
+        // The repository brings every number within its limits.
+        settings.update { it.takingOver(transferred.settings, rate?.id) }
     }
 
     private companion object {
-        /** Leaves out values at their default, so the codes stay small; the receiver reads them back as defaults. */
-        val TransferJson =
-            Json {
-                ignoreUnknownKeys = true
-                coerceInputValues = true
-                encodeDefaults = false
-                explicitNulls = false
-            }
-        val SETTINGS = serializer<TransferredSettings>()
         val SECRETS = serializer<Map<String, String>>()
     }
 }
 
+/** Leaves out values at their default, so the codes stay small; the receiver reads them back as defaults. */
+private val TransferJson =
+    Json {
+        ignoreUnknownKeys = true
+        coerceInputValues = true
+        encodeDefaults = false
+        explicitNulls = false
+    }
+
 /**
- * The settings in a transfer: [AppSettings] without what belongs to the device. Read leniently, like stored settings:
- * missing values take their default and unknown ones (from newer versions) are ignored.
+ * The settings in a transfer: [AppSettings.shared] (read leniently, like stored settings: missing values take their
+ * default and unknown ones, from newer versions, are ignored), and the default tax rate by name and rate. In the code
+ * they are one JSON object, the settings' sections with a `defaultTaxRate` beside them.
  *
- * @property terminal The terminal settings without those of the sending device, which are left at their defaults (see
- *   [TerminalSettings.withDeviceFieldsOf]): the shared key, SaleID, timeout and Checkout API settings.
- * @property payment The payment settings; their default tax rate ID is left out, see [defaultTaxRate].
- * @property receipt The receipt settings.
- * @property email The SMTP settings (the password is a secret).
- * @property security The admin area's automatic lock (the PIN is a secret).
- * @property history How long transactions are kept.
+ * @property settings The shared settings.
  * @property defaultTaxRate The default tax rate for new products, by name and rate; null for the first rate.
  */
-@Serializable
 internal data class TransferredSettings(
-    val terminal: TerminalSettings = TerminalSettings(),
-    val payment: PaymentSettings = PaymentSettings(),
-    val receipt: ReceiptSettings = ReceiptSettings(),
-    val email: EmailSettings = EmailSettings(),
-    val security: SecuritySettings = SecuritySettings(),
-    val history: HistorySettings = HistorySettings(),
-    val defaultTaxRate: TaxRateRef? = null,
-)
+    val settings: AppSettings,
+    val defaultTaxRate: TaxRateRef?,
+) {
+    /** These settings as the JSON text a transfer carries. */
+    fun encode(): String {
+        val sections = TransferJson.encodeToJsonElement(APP_SETTINGS, settings).jsonObject
+        val rate = defaultTaxRate?.let { DEFAULT_TAX_RATE to TransferJson.encodeToJsonElement(TAX_RATE, it) }
+        return JsonObject(sections + listOfNotNull(rate)).toString()
+    }
+
+    /** Reading the JSON text a transfer carries. */
+    companion object {
+        private const val DEFAULT_TAX_RATE = "defaultTaxRate"
+        private val APP_SETTINGS = serializer<AppSettings>()
+        private val TAX_RATE = serializer<TaxRateRef>()
+
+        /**
+         * The settings in [text].
+         *
+         * @throws SerializationException if it is not JSON settings.
+         * @throws IllegalArgumentException if a value cannot be read.
+         */
+        fun decode(text: String): TransferredSettings {
+            val json = TransferJson.parseToJsonElement(text).jsonObject
+            return TransferredSettings(
+                TransferJson.decodeFromJsonElement(APP_SETTINGS, json),
+                json[DEFAULT_TAX_RATE]?.let { TransferJson.decodeFromJsonElement(TAX_RATE, it) },
+            )
+        }
+    }
+}
 
 /**
  * A tax rate identified by what it is rather than by row ID, which differs between terminals.

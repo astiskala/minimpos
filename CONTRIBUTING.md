@@ -48,7 +48,10 @@ It runs:
 - Architecture tests (`ArchitectureTest` in each module, using ArchUnit). They keep `core` and `terminal-api` free of
   Android and dependency cycles, keep the app's layers apart (business logic free of Compose, Room only in `data`,
   secrets encrypted only in `data.security`), keep money out of floating-point types, stop anything from using the
-  Adyen library's Apache HTTP client or its unencrypted TEST-only API, and forbid logging.
+  Adyen library's Apache HTTP client or its unencrypted TEST-only API, and forbid logging. They also give each
+  decision one home (where a payment stands, where payments go, how outcomes are worded, …), as `AGENTS.md` lists.
+- An API level check (`AndroidApiLevelTest`): `core` and `terminal-api` run on Android 9 terminals, but Lint doesn't
+  check JVM modules, so the test checks every Java API they use against the Android SDK's API database.
 - Kover coverage thresholds: `core` 95% lines and 85% branches, `terminal-api` 90% and 75%, `app` (non-UI) 80% lines.
 - A manifest check against Adyen's app requirements (minimum Android version, allowed permissions, no home-screen or
   test-only flags).
@@ -66,6 +69,8 @@ each one has a comment explaining why. If you think a rule is wrong for your cas
 
 ## Guidelines
 
+- **Use the project's words.** `CONTEXT.md` defines the domain terms (sale, pre-authorization, standing, destination,
+  delivery, …) and where each is decided; name new code after them.
 - **Keep the modules pure.** `core` and `terminal-api` are plain Kotlin with no Android dependencies, so they stay fast
   to test. Android code lives in `app`.
 - **Money is `Long` minor units** with `CurrencySpec`, never `Double`. Tax rates are thousandths of a percent.

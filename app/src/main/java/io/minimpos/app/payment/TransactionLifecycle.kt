@@ -51,7 +51,7 @@ enum class SettlementStatus {
     /** Approved (a payment) or accepted (a refund). */
     SUCCEEDED,
 
-    /** Cancelled or aborted on the terminal (ErrorCondition `Cancel` or `Aborted`). */
+    /** Cancelled or aborted on the terminal ([Decline.cancelled][io.minimpos.terminal.client.Decline.cancelled]). */
     CANCELLED,
 
     /** Refused for another reason, such as `Refusal` or `Busy`. */
@@ -271,14 +271,15 @@ class TransactionLifecycle<R>(
         when (outcome) {
             is TransactionOutcome.Completed -> {
                 val details = outcome.details
-                details.busyServiceId?.let { synchronized(busyServiceIds) { busyServiceIds[id] = it } }
+                val decline = details.decline
+                decline?.busyServiceId?.let { synchronized(busyServiceIds) { busyServiceIds[id] = it } }
                 val status =
                     when {
-                        details.success -> SettlementStatus.SUCCEEDED
-                        details.errorCondition in CANCEL_CONDITIONS -> SettlementStatus.CANCELLED
+                        decline == null -> SettlementStatus.SUCCEEDED
+                        decline.cancelled -> SettlementStatus.CANCELLED
                         else -> SettlementStatus.DECLINED
                     }
-                Settlement(status, if (details.success) null else details.message ?: details.errorCondition, details)
+                Settlement(status, decline?.let { details.message ?: it.errorCondition }, details)
             }
 
             is TransactionOutcome.NotProcessed -> {
@@ -289,8 +290,4 @@ class TransactionLifecycle<R>(
                 Settlement(SettlementStatus.UNKNOWN, unknownOutcome)
             }
         }
-
-    private companion object {
-        val CANCEL_CONDITIONS = setOf("Cancel", "Aborted")
-    }
 }

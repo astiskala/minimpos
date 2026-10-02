@@ -87,6 +87,7 @@
             <ul>
               <li>対面決済（Terminal API）が有効な <strong>Adyen アカウント</strong>と、端末設定の閲覧、アプリのアップロード、決済の管理ができる <strong>Customer Area</strong> のユーザーが必要です。</li>
               <li><strong>Android 9 以降を搭載した Adyen Android 決済端末</strong>。例：S1F2、S1F4Pro、S1E4Pro、S1E2L、AMS1、S1U2、SFO1。印刷にはプリンター搭載モデルが必要です。領収書、バーコード、別の端末の設定用 QR コードの読み取りにはカメラが必要です。</li>
+              <li>または <strong>Android のタブレットやスマートフォン</strong>。ネットワークやインターネット経由で端末を使うか、Tap to Pay で支払いを受け付けます（<a href="#tablet">タブレットやスマートフォンで使う</a>を参照）。</li>
               <li>任意：領収書をメールで送る場合は、<strong>SMTP メールサーバー</strong>のホスト、ポート、ユーザー名、パスワードを用意してください。</li>
               <li>任意：領収書のチップやプリオーソリゼーションをアプリからキャプチャする場合は、Adyen Checkout API の <strong>API 認証情報</strong>を用意してください（<a href="#api">キャプチャと Checkout API</a>を参照）。</li>
             </ul>
@@ -125,6 +126,17 @@ cd minimpos
             </ol>
             <p>端末 ID（POIID）、アドレス、TEST／LIVE 環境は自動検出されるため、ほかの入力は不要です。設定 › アプリ情報で検出結果を確認できます。TEST 端末のステータスバーには TEST と表示されます。</p>
             <p>スマートフォンやエミュレーターから実際の端末を試す場合は、<strong>決済先 › ネットワーク上の端末</strong>を選び、端末の IP アドレスと POIID（端末の Device info 画面に表示）も入力します。</p>
+            <h3 id="tablet">タブレットやスマートフォンで使う</h3>
+            <p>Mini mPOS は Android のタブレットやスマートフォンでも動作します。同じ APK をインストールし、<strong>設定 › 端末 › 決済先</strong>で次のいずれかを選びます。</p>
+            <dl class="settings-list">
+              <dt>ネットワーク上の端末</dt>
+              <dd>カウンターのタブレットにおすすめの方法です。タブレットはローカルネットワーク経由で端末にリクエストを送り、共有キーで暗号化するため、APIキーは不要です。共有キーに加えて、端末の IP アドレスと POIID を入力します。端末に Mini mPOS をインストールする必要はありません。</dd>
+              <dt>インターネット経由の端末（クラウド）</dt>
+              <dd>タブレットと端末が別のネットワークにある場合に使います。リクエストは Adyen の Cloud device API を経由し、共有キーの代わりに APIキーを使います。Customer Area の <strong>Developers › API credentials</strong> で、このデバイス用に <strong>Cloud Device API</strong> ロール（チップとプリオーソリゼーションをアプリでキャプチャする場合は Checkout webservice role も）を持つ認証情報を作成します。<strong>Adyen API</strong> にマーチャントアカウントと APIキーを入力し、<strong>接続中の端末を検索</strong>をタップして端末を選びます（POIID を入力しても構いません）。キーが TEST か LIVE か、どのデータセンターを使うかは、接続時に自動で判別されます。</dd>
+              <dt>このスマートフォンでTap to Pay</dt>
+              <dd>お客様はこのスマートフォンの Adyen Payments アプリで、カードやスマートフォンをタッチして支払います。プリンターはないため、領収書はメールで送ります。NFC 対応で Android 12 以降を搭載し、Google の認定を受けたスマートフォンが必要です。Adyen サポートに Tap to Pay on Android と Adyen Payments app role の有効化を依頼し、Google Play から <strong>Adyen Payments Test</strong>（TEST）または <strong>Adyen Payments</strong>（LIVE）をインストールします。共有キーとマーチャントアカウントを入力し、<strong>Tap to Pay</strong> で <strong>PaymentsアプリのAPIキー</strong>（Adyen Payments app role のみを持つ認証情報）と、1 店舗だけに設定する場合はその店舗 ID を入力します。<strong>Tap to Payを設定</strong>をタップすると、Payments アプリが開いてスマートフォンを登録します。以降、支払いのたびに Payments アプリが開き、Mini mPOS に戻ります。やめるときは<strong>このスマートフォンを削除</strong>をタップします。</dd>
+            </dl>
+            <p class="note">クラウドと Tap to Pay では、Adyen の APIキーがデバイスに保存されます（Android Keystore で暗号化）。Adyen は APIキーをサーバーで管理することを推奨していますが、Mini mPOS にはサーバーがありません。このデバイス専用の認証情報を使い、管理者 PIN を設定し、デバイスを紛失した場合は Customer Area でキーを無効にしてください。</p>
           </section>
           <section id="business">
             <h2>6. 店舗情報を設定する</h2>
@@ -171,7 +183,7 @@ cd minimpos
             <ol>
               <li>Customer Area の <strong>Developers › API credentials</strong> で、端末用の認証情報を作成します。付与するロールは <strong>Checkout webservice role</strong> のみにして、<strong>APIキー</strong>を生成してください。</li>
               <li>Mini mPOS の<strong>設定 › 端末 › Checkout API</strong>に<strong>マーチャントアカウント</strong>と <strong>APIキー</strong>を入力し、<strong>APIキーを保存してテスト</strong>をタップします。キーは端末に暗号化して保存されます。このテストでは決済は変更されません。</li>
-              <li>LIVE 端末では、<strong>Developers › API URLs</strong> にある <strong>live URL prefix</strong> も必要です。TEST／LIVE 環境は端末の証明書から自動検出されます。</li>
+              <li>LIVE 端末では、<strong>Developers › API URLs</strong> にある <strong>live URL prefix</strong> も必要です。TEST／LIVE 環境は端末の証明書から自動検出されます（クラウドでは APIキーから、Tap to Pay ではインストールされた Payments アプリから判別します）。</li>
               <li>任意：<strong>Devices › Developer › Additional data › Return adjust authorisation data</strong> で同期的なオーソリゼーション調整を有効にします。有効な場合、増額が承認されたかどうかをアプリですぐに確認できます。無効な場合、調整結果は後から Customer Area で確認します。</li>
             </ol>
             <p>Adyen はキャプチャを非同期で確定するため、アプリでは<em>キャプチャ要求済み</em>と表示されます。Mini mPOS には webhook を受信するバックエンドがないため、最終結果は Customer Area で確認してください。結果が不明なキャプチャは、取引履歴から再送しても二重にキャプチャされません。</p>
@@ -222,12 +234,12 @@ cd minimpos
             <h2>12. 端末を追加する</h2>
             <p>1 台の設定が済んだら、いくつかの QR コードでほかの端末を設定できます。同じ情報を再入力する必要はありません。すべての端末に同じバージョンの Mini mPOS をインストールしてください。</p>
             <ol>
-              <li>設定済みの端末で<strong>設定 › データ › 別の端末に共有</strong>、または<strong>商品</strong>のメニューを開きます。コピーする<strong>カタログ</strong>、<strong>設定</strong>、<strong>パスワードとキー</strong>（共有キーのパスフレーズ、Checkout API キー、SMTP パスワード、管理者PIN）を選び、<strong>QRコードを表示</strong>をタップします。</li>
+              <li>設定済みの端末で<strong>設定 › データ › 別の端末に共有</strong>、または<strong>商品</strong>のメニューを開きます。コピーする<strong>カタログ</strong>、<strong>設定</strong>、<strong>パスワードとキー</strong>（共有キーのパスフレーズ、Checkout API キー、PaymentsアプリのAPIキー、SMTP パスワード、管理者PIN）を選び、<strong>QRコードを表示</strong>をタップします。</li>
               <li>新しい端末で同じ場所から<strong>別の端末から設定</strong>を選び、カメラでコードを読み取ります。順番は問いません。</li>
               <li><strong>カタログに統合</strong>または<strong>カタログを置換</strong>を選びます。パスワードとキーも移すには、最初の端末のコード上部に表示される<strong>転送コード</strong>を入力してください。入力しない場合は、それらを除く情報だけが取り込まれます。<strong>インポート</strong>をタップします。</li>
               <li><strong>設定 › 端末</strong>の<strong>接続をテスト</strong>で接続を確認します。</li>
             </ol>
-            <p>設定は新しい端末の設定を置き換えますが、決済先、端末固有のアドレスと ID、TEST／LIVE 環境、シミュレーター設定は変わりません。共有キーが両方の端末で使えるのは、Customer Area で同じキーが割り当てられている場合だけです（店舗やマーチャントアカウント単位での設定など）。異なる場合は、それぞれのキーを入力してください。転送コードは毎回新しく生成され、最初の端末だけに表示されます。QR コードの写真だけではパスワードはわかりません。</p>
+            <p>設定は新しい端末の設定を置き換えますが、決済先、端末固有のアドレスと ID、Tap to Pay の設定、TEST／LIVE 環境、シミュレーター設定は変わりません。共有キーが両方の端末で使えるのは、Customer Area で同じキーが割り当てられている場合だけです（店舗やマーチャントアカウント単位での設定など）。異なる場合は、それぞれのキーを入力してください。転送コードは毎回新しく生成され、最初の端末だけに表示されます。QR コードの写真だけではパスワードはわかりません。</p>
           </section>
           <section id="live">
             <h2>13. 本番運用の前に</h2>
@@ -248,6 +260,8 @@ cd minimpos
               <dd>取引履歴の<em>要確認</em>から決済を開き、<strong>結果を再確認</strong>をタップします。購入者に再請求する前に、Customer Area を確認してください。</dd>
               <dt>キャプチャが失敗した、または結果が不明</dt>
               <dd>取引履歴に理由が表示されます。必要に応じて Checkout API の設定を修正し、<strong>キャプチャを再試行</strong>をタップします。再送しても二重にキャプチャされません。</dd>
+              <dt>Tap to Pay から結果なしで戻った</dt>
+              <dd>この場合、決済結果は不明で、Payments アプリに再度問い合わせることはできません。お客様に再度請求する前に、Customer Area（Payments › Payment list）で確認してください。</dd>
               <dt>「コードを読み取れませんでした」と表示される</dt>
               <dd>もう一方の端末が新しい Mini mPOS を使用している可能性があります。両方を同じバージョンに更新し、もう一度スキャンしてください。</dd>
             </dl>

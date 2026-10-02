@@ -8,7 +8,9 @@ import io.minimpos.app.refund.PaymentAction
 import io.minimpos.app.refund.PaymentStanding
 import io.minimpos.app.refund.StoredPayment
 import io.minimpos.app.terminal.AdyenApi
+import io.minimpos.app.terminal.ApiSetup
 import io.minimpos.app.terminal.ApiTarget
+import io.minimpos.app.terminal.SetupProblem
 import io.minimpos.terminal.checkout.ModificationAmount
 import io.minimpos.terminal.checkout.ModificationResult
 import io.minimpos.terminal.checkout.PaymentModifications
@@ -54,7 +56,7 @@ sealed interface CaptureResult {
  * it, captures a pre-authorisation (adjusting it first when more is captured than it holds) and adjusts what a
  * pre-authorisation holds. Through the Checkout API when it is set up ([AdyenApi]); otherwise the amount to capture is
  * only recorded ([CaptureStatus.MANUAL]) for staff to capture in the Customer Area. Which payments allow what is decided
- * by their [StoredPayment.actions] with the target's [ApiTarget.captureMode], the same reading the screens use; anything
+ * by their [StoredPayment.actions] with the target's [ApiSetup.mode], the same reading the screens use; anything
  * else is [CaptureResult.NotAllowed].
  *
  * A tip above [PaymentStanding.TIP_ADJUSTMENT_PERCENT] of the bill first raises the authorisation to bill plus tip; if
@@ -66,10 +68,12 @@ sealed interface CaptureResult {
  *
  * @param sales Where the payments are stored, and their capture recorded.
  * @param target Where captures and adjustments go now: [AdyenApi.target] in the app, a fixed target in tests.
+ * @param describe Words what is missing when the API is only partly set up, for the message stored with the sale.
  */
 class Captures(
     private val sales: SaleRepository,
     private val target: suspend () -> ApiTarget,
+    private val describe: (SetupProblem) -> String = { it.name },
 ) {
     private val mutex = Mutex()
 
@@ -147,7 +151,7 @@ class Captures(
     ): SaleEntity? =
         sales
             .get(saleId)
-            ?.let { StoredPayment(it, target.captureMode) }
+            ?.let { StoredPayment(it, target.setup.mode) }
             ?.takeIf { action in it.actions }
             ?.sale
 
@@ -161,21 +165,24 @@ class Captures(
         amount: Long,
         tipMinor: Long? = null,
         send: suspend (PaymentModifications) -> CaptureResult,
-    ): CaptureResult =
-        when (target) {
-            is ApiTarget.Ready -> {
-                send(target.modifications)
+    ): CaptureResult {
+        val modifications = target.modifications
+        val problem = target.setup.problem
+        return when {
+            modifications != null -> {
+                send(modifications)
             }
 
-            is ApiTarget.NotSetUp -> {
-                fail(sale, target.message)
+            problem != null -> {
+                fail(sale, describe(problem))
             }
 
-            ApiTarget.CustomerArea -> {
+            else -> {
                 sales.recordCapture(sale.id, CaptureStatus.MANUAL, amount, tipMinor)
                 CaptureResult.Recorded
             }
         }
+    }
 
     /** Adjusts [sale] to [amount] and, once that went through, runs [then] with the adjusted sale. */
     private suspend fun adjusted(

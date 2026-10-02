@@ -12,12 +12,12 @@ import io.minimpos.app.data.repo.HistoryRepository
 import io.minimpos.app.data.repo.RefundRepository
 import io.minimpos.app.data.settings.AppSettings
 import io.minimpos.app.data.settings.CaptureMode
-import io.minimpos.app.feature.ActionOutcome
 import io.minimpos.app.feature.ActionState
+import io.minimpos.app.feature.CaptureStep
 import io.minimpos.app.feature.TransactionActions
 import io.minimpos.app.feature.TransactionActionsState
 import io.minimpos.app.feature.launchWrite
-import io.minimpos.app.payment.CaptureResult
+import io.minimpos.app.feature.toState
 import io.minimpos.app.payment.Captures
 import io.minimpos.app.payment.PaymentStart
 import io.minimpos.app.payment.ReceiptDelivery
@@ -344,20 +344,11 @@ class SaleDetailViewModel(
 
     /** Sends the capture again as it was (same amount and idempotency key); the sale updates with the outcome. */
     fun retryCapture() {
+        val sale = state.value.record?.sale ?: return
         if (local.value.retry.running) return
         local.update { it.copy(retry = ActionState(running = true)) }
         launchWrite({ operations.captures.retryCapture(saleId) }) { result ->
-            val failure = (result as? CaptureResult.Failed)?.message
-            local.update {
-                it.copy(
-                    retry =
-                        if (failure == null) {
-                            ActionState(done = true)
-                        } else {
-                            ActionState(outcome = ActionOutcome.NotCaptured(failure), isError = true)
-                        },
-                )
-            }
+            local.update { it.copy(retry = result.toState(CaptureStep.CAPTURE, sale.capturedMinor ?: 0, sale.currency)) }
         }
     }
 }

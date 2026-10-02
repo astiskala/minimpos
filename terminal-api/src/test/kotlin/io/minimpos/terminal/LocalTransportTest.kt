@@ -23,6 +23,7 @@ import com.adyen.terminal.security.TerminalCommonNameValidator
 import com.adyen.terminal.serialization.TerminalAPIGsonBuilder
 import com.google.common.truth.Truth.assertThat
 import io.minimpos.terminal.transport.AdyenLocalTransport
+import io.minimpos.terminal.transport.Delivery
 import io.minimpos.terminal.transport.TerminalEnvironment
 import io.minimpos.terminal.transport.TerminalHttpClient
 import io.minimpos.terminal.transport.TerminalKey
@@ -31,6 +32,7 @@ import io.minimpos.terminal.transport.TerminalRejectedException
 import io.minimpos.terminal.transport.TerminalTls
 import io.minimpos.terminal.transport.TerminalUnreachableException
 import io.minimpos.terminal.transport.TerminalUntrustedException
+import io.minimpos.terminal.transport.toDelivery
 import kotlinx.coroutines.runBlocking
 import mockwebserver3.MockResponse
 import mockwebserver3.MockWebServer
@@ -214,7 +216,7 @@ class LocalTransportTest {
         server.reply(securedResponse(diagnosisOk()))
         val redirect = Redirect(server.url("/nexo/"), http())
         val transport = AdyenLocalTransport("localhost", key, tls(), redirect)
-        val response = runBlocking { transport.send(request, 5.seconds) }!!
+        val response = (runBlocking { transport.send(request, 5.seconds) } as Delivery.Answered).response!!
         assertThat(response.saleToPOIResponse.diagnosisResponse.response.result).isEqualTo(ResultType.SUCCESS)
         assertThat(redirect.endpoint).isEqualTo("https://localhost:8443/nexo/")
 
@@ -240,9 +242,22 @@ class LocalTransportTest {
         )
         server.reply("""{"SaleToPOIResponse":{"NexoBlob":"AAAA"}}""")
         val transport = AdyenLocalTransport("localhost", key, tls(), Redirect(server.url("/nexo/"), http()))
-        val mismatch = assertThrows(TerminalProtocolException::class.java) { runBlocking { transport.send(request, 5.seconds) } }
-        assertThat(mismatch.message).contains("shared key")
-        assertThrows(TerminalProtocolException::class.java) { runBlocking { transport.send(request, 5.seconds) } }
+        val mismatch = runBlocking { transport.send(request, 5.seconds) } as Delivery.MaybeSent
+        assertThat(mismatch.reason).contains("shared key")
+        assertThat(runBlocking { transport.send(request, 5.seconds) }).isInstanceOf(Delivery.MaybeSent::class.java)
+    }
+
+    @Test
+    fun `what the HTTP client throws decides whether the request can have taken effect`() {
+        assertThat(TerminalUnreachableException("gone").toDelivery("x")).isEqualTo(Delivery.NotSent("gone"))
+        assertThat(TerminalUntrustedException("stranger").toDelivery("x")).isEqualTo(Delivery.NotSent("stranger"))
+        assertThat(TerminalRejectedException("wrong key").toDelivery("x")).isEqualTo(Delivery.NotSent("wrong key"))
+        assertThat(TerminalProtocolException("garbled").toDelivery("x")).isEqualTo(Delivery.MaybeSent("garbled"))
+        assertThat(IOException().toDelivery("no answer")).isEqualTo(Delivery.MaybeSent("no answer"))
+        val server = server()
+        server.reply("oops", code = 500)
+        val transport = AdyenLocalTransport("localhost", key, tls(), Redirect(server.url("/nexo/"), http()))
+        assertThat(runBlocking { transport.send(request, 5.seconds) }).isEqualTo(Delivery.MaybeSent("Terminal returned HTTP 500"))
     }
 
     @Test

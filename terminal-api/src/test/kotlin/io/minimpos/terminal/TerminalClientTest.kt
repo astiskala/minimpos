@@ -50,15 +50,12 @@ import io.minimpos.terminal.client.TerminalClient
 import io.minimpos.terminal.client.TerminalIdentity
 import io.minimpos.terminal.client.TransactionKind
 import io.minimpos.terminal.client.TransactionOutcome
-import io.minimpos.terminal.transport.TerminalProtocolException
-import io.minimpos.terminal.transport.TerminalRejectedException
+import io.minimpos.terminal.transport.Delivery
 import io.minimpos.terminal.transport.TerminalTransport
-import io.minimpos.terminal.transport.TerminalUnreachableException
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertThrows
 import org.junit.Test
 import java.math.BigDecimal
-import java.net.SocketTimeoutException
 import java.time.Clock
 import java.time.Instant
 import java.time.ZoneOffset
@@ -72,7 +69,7 @@ class TerminalClientTest {
     private fun client(
         application: PosApplication? = PosApplication("Mini mPOS", "1.0", "Mini mPOS", "Android", "13"),
         recovery: RecoveryPolicy = RecoveryPolicy(attempts = 3, intervalMillis = 10, maxInProgressChecks = 3),
-        reply: (TerminalAPIRequest) -> TerminalAPIResponse?,
+        reply: (TerminalAPIRequest) -> Delivery,
     ) = TerminalClient(
         transport =
             TerminalTransport { request, _ ->
@@ -87,10 +84,14 @@ class TerminalClientTest {
     )
 
     private fun respond(body: SaleToPOIResponse.() -> Unit) =
-        TerminalAPIResponse().apply {
-            saleToPOIResponse =
-                SaleToPOIResponse().apply(body)
-        }
+        Delivery.Answered(
+            TerminalAPIResponse().apply {
+                saleToPOIResponse =
+                    SaleToPOIResponse().apply(body)
+            },
+        )
+
+    private val empty = Delivery.Answered(null)
 
     private fun statusReply(
         response: Response,
@@ -195,7 +196,7 @@ class TerminalClientTest {
             val details = (outcome as TransactionOutcome.Completed).details
             assertThat(outcome.recovered).isFalse()
             assertThat(details.success).isTrue()
-            assertThat(details.advice).isEqualTo(RetryAdvice.DO_NOT_RETRY)
+            assertThat(details.decline).isNull()
             assertThat(details.pspReference).isEqualTo("PSP123")
             assertThat(details.poiTransactionId).isEqualTo("TENDER.PSP123")
             assertThat(details.poiTimestamp).isEqualTo("2026-09-30T01:02:03.456Z")
@@ -244,13 +245,14 @@ class TerminalClientTest {
             assertThat(details.success).isFalse()
             assertThat(details.errorCondition).isEqualTo("Refusal")
             assertThat(details.message).isEqualTo("Do Not Honor")
-            assertThat(details.advice).isEqualTo(RetryAdvice.DIFFERENT_PAYMENT_METHOD)
+            assertThat(details.decline!!.advice).isEqualTo(RetryAdvice.DIFFERENT_PAYMENT_METHOD)
+            assertThat(details.decline!!.cancelled).isFalse()
             assertThat(details.paymentBrand).isEqualTo("visa")
             assertThat(details.paymentMethodVariant).isNull()
             assertThat(details.approvalCode).isEqualTo("9")
             assertThat(details.tokenization!!.storedPaymentMethodId).isEqualTo("R1")
             assertThat(details.tokenization.cardAlias).isEqualTo("A1")
-            assertThat(details.busyServiceId).isNull()
+            assertThat(details.decline!!.busyServiceId).isNull()
 
             val busy =
                 PaymentResponse().apply {
@@ -258,8 +260,8 @@ class TerminalClientTest {
                         result(ResultType.FAILURE, ErrorConditionType.BUSY, "message=ADMIN_MENU&serviceId=OTHER1")
                 }
             val busyDetails = (client { respond { paymentResponse = busy } }.pay(params) as TransactionOutcome.Completed).details
-            assertThat(busyDetails.advice).isEqualTo(RetryAdvice.TERMINAL_BUSY)
-            assertThat(busyDetails.busyServiceId).isEqualTo("OTHER1")
+            assertThat(busyDetails.decline!!.advice).isEqualTo(RetryAdvice.TERMINAL_BUSY)
+            assertThat(busyDetails.decline!!.busyServiceId).isEqualTo("OTHER1")
             assertThat(busyDetails.message).isEqualTo("ADMIN_MENU")
 
             val format =
@@ -274,9 +276,9 @@ class TerminalClientTest {
     @Test
     fun `unreachable or rejecting terminals mean not processed`() =
         runTest {
-            val unreachable = client { throw TerminalUnreachableException("Cannot connect") }.pay(params)
+            val unreachable = client { Delivery.NotSent("Cannot connect") }.pay(params)
             assertThat((unreachable as TransactionOutcome.NotProcessed).reason).isEqualTo("Cannot connect")
-            val rejected = client { throw TerminalRejectedException("Terminal rejected the request") }.pay(params)
+            val rejected = client { Delivery.NotSent("Terminal rejected the request") }.pay(params)
             assertThat(rejected).isInstanceOf(TransactionOutcome.NotProcessed::class.java)
         }
 
@@ -288,9 +290,9 @@ class TerminalClientTest {
                 client { request ->
                     calls++
                     when {
-                        request.saleToPOIRequest.paymentRequest != null -> throw SocketTimeoutException("timeout")
+                        request.saleToPOIRequest.paymentRequest != null -> Delivery.MaybeSent("timeout")
                         calls == 2 -> statusReply(result(ResultType.FAILURE, ErrorConditionType.IN_PROGRESS))
-                        calls == 3 -> throw TerminalProtocolException("garbled")
+                        calls == 3 -> Delivery.MaybeSent("garbled")
                         else -> statusReply(result(ResultType.SUCCESS), paymentBody(approval()))
                     }
                 }.pay(params)
@@ -311,7 +313,7 @@ class TerminalClientTest {
             val notFound =
                 client { request ->
                     if (request.saleToPOIRequest.paymentRequest != null) {
-                        null
+                        empty
                     } else {
                         statusReply(result(ResultType.FAILURE, ErrorConditionType.NOT_FOUND))
                     }
@@ -319,8 +321,7 @@ class TerminalClientTest {
             assertThat(notFound).isInstanceOf(TransactionOutcome.NotProcessed::class.java)
             val silent =
                 client { request ->
-                    if (request.saleToPOIRequest.paymentRequest != null) throw SocketTimeoutException("t")
-                    null
+                    if (request.saleToPOIRequest.paymentRequest != null) Delivery.MaybeSent("t") else empty
                 }.pay(params)
             assertThat((silent as TransactionOutcome.Unknown).reason).isEqualTo("t")
             val busy =
@@ -335,7 +336,7 @@ class TerminalClientTest {
             val successWithoutBody =
                 client { request ->
                     if (request.saleToPOIRequest.paymentRequest != null) {
-                        null
+                        empty
                     } else {
                         statusReply(result(ResultType.SUCCESS))
                     }
@@ -385,7 +386,7 @@ class TerminalClientTest {
             val outcome =
                 client { request ->
                     if (request.saleToPOIRequest.reversalRequest != null) {
-                        throw SocketTimeoutException("t")
+                        Delivery.MaybeSent("t")
                     } else {
                         val reversal = ReversalResponse().apply { response = result(ResultType.SUCCESS, additional = "pspReference=R9") }
                         statusReply(result(ResultType.SUCCESS), RepeatedResponseMessageBody().apply { reversalResponse = reversal })
@@ -402,7 +403,7 @@ class TerminalClientTest {
     @Test
     fun `abort references the transaction and swallows errors`() =
         runTest {
-            val client = client { throw TerminalUnreachableException("gone") }
+            val client = client { Delivery.NotSent("gone") }
             client.abort("PAY1")
             val abort = sent.single().saleToPOIRequest
             assertThat(abort.messageHeader.messageCategory).isEqualTo(MessageCategoryType.ABORT)
@@ -429,8 +430,8 @@ class TerminalClientTest {
                         1, 2 -> printReply(result(ResultType.SUCCESS))
                         3 -> printReply(result(ResultType.FAILURE, ErrorConditionType.UNAVAILABLE_DEVICE))
                         4 -> printReply(result(ResultType.FAILURE, additional = "message=Paper%20jam"))
-                        5 -> null
-                        else -> throw TerminalUnreachableException("gone")
+                        5 -> empty
+                        else -> Delivery.NotSent("gone")
                     }
                 }
             assertThat(client.print(listOf(job, job))).isEqualTo(PrintOutcome.Printed)
@@ -509,8 +510,8 @@ class TerminalClientTest {
             assertThat(ok.globalStatus).isEqualTo("OK")
             assertThat(ok.printerStatus).isEqualTo("PaperLow")
             assertThat(ok.hasPrinter).isTrue()
-            assertThat(client { null }.diagnose().reachable).isFalse()
-            assertThat(client { throw TerminalUnreachableException("gone") }.diagnose().message).isEqualTo("gone")
+            assertThat(client { empty }.diagnose().reachable).isFalse()
+            assertThat(client { Delivery.NotSent("gone") }.diagnose().message).isEqualTo("gone")
         }
 
     @Test
@@ -519,7 +520,7 @@ class TerminalClientTest {
             val settled =
                 client { statusReply(result(ResultType.SUCCESS), paymentBody(approval())) }.status("OLD1")
             assertThat((settled as TransactionOutcome.Completed).details.pspReference).isEqualTo("PSP123")
-            assertThat(client { null }.status("OLD2", TransactionKind.REFUND)).isInstanceOf(TransactionOutcome.Unknown::class.java)
+            assertThat(client { empty }.status("OLD2", TransactionKind.REFUND)).isInstanceOf(TransactionOutcome.Unknown::class.java)
             assertThat(
                 sent
                     .last()
@@ -543,7 +544,7 @@ class TerminalClientTest {
     fun `requests without application info still carry the library details`() =
         runTest {
             val plain = params.copy(tenderOptions = emptyList(), metadata = emptyMap(), requestCardAlias = false)
-            client(application = null) { null }.pay(plain)
+            client(application = null) { empty }.pay(plain)
             val saleData =
                 sent
                     .first()

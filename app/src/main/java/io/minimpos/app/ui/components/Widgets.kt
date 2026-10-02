@@ -26,6 +26,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -66,6 +67,7 @@ val LocalAppContainer = compositionLocalOf<AppContainer> { error("No AppContaine
 
 /** The current UI locale, observed so text re-formats when the configuration changes. */
 @Composable
+@ReadOnlyComposable
 fun currentLocale(): Locale = LocalConfiguration.current.locales[0] ?: Locale.ROOT
 
 /** A formatter for [currency] in the current UI locale, kept until either changes. */

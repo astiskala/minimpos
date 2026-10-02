@@ -31,8 +31,14 @@ enum class Secret {
     /** The admin PIN's salted hash, written by [PinManager]; the PIN itself is never stored. */
     PIN_VERIFIER,
 
-    /** API key for Adyen's Checkout API, for captures and authorisation adjustments (see `TerminalSettings`). */
+    /**
+     * API key for Adyen's Checkout API, for captures and authorisation adjustments (see `TerminalSettings`), and for the
+     * Cloud device API when payments go to a terminal in the cloud (the stored name predates that).
+     */
     CHECKOUT_API_KEY,
+
+    /** API key with the Adyen Payments app role, for boarding and revoking the Payments app on this phone. */
+    PAYMENTS_APP_API_KEY,
 }
 
 /** Encrypts secrets at rest. Implementations may block (Keystore calls), so [SecretStore] calls them off the main thread. */

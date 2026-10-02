@@ -1,13 +1,11 @@
 package io.minimpos.app.receipt
 
 import io.minimpos.app.data.db.RefundEntity
-import io.minimpos.app.data.db.SaleKind
-import io.minimpos.app.data.db.SaleStatus
 import io.minimpos.app.data.db.SaleWithLines
 import io.minimpos.app.data.repo.ReceiptLinesJson
 import io.minimpos.app.data.settings.ReceiptSettings
+import io.minimpos.app.refund.ReceiptStanding
 import io.minimpos.app.refund.RefundablePayment
-import io.minimpos.app.refund.standing
 import io.minimpos.core.cart.AppliedTax
 import io.minimpos.core.cart.TaxBreakdown
 import io.minimpos.core.codec.RefundQrPayload
@@ -88,7 +86,7 @@ class ReceiptFactory(
                 .map { (tax, group) ->
                     TaxBreakdown(tax, TaxAmounts(group.sumOf { it.netMinor }, group.sumOf { it.taxMinor }, group.sumOf { it.grossMinor }))
                 }.sortedWith(compareByDescending<TaxBreakdown> { it.tax.rateMilliPercent }.thenBy { it.tax.name })
-        val approved = sale.status == SaleStatus.APPROVED
+        val standing = ReceiptStanding.of(sale)
         val receipt =
             SaleReceipt(
                 reference = sale.merchantReference,
@@ -98,7 +96,7 @@ class ReceiptFactory(
                 items = lines.map { ReceiptItem(it.name, it.quantity, it.unitPriceMinor, it.grossMinor) },
                 amounts = TaxAmounts(sale.netMinor, sale.taxMinor, sale.totalMinor),
                 breakdown = breakdown,
-                approved = approved,
+                approved = standing.approved,
                 cardReceipt =
                     ReceiptLinesJson.decode(
                         if (copy == ReceiptCopy.CUSTOMER) {
@@ -109,17 +107,15 @@ class ReceiptFactory(
                     ),
                 refundQr = RefundablePayment.qrCode(record),
                 cardSaved = sale.storedPaymentMethodId != null,
-                preAuthorisation = sale.kind == SaleKind.PRE_AUTHORISATION,
+                preAuthorisation = standing.preAuthorisation,
                 tip =
                     when {
-                        !sale.tipOnReceipt -> null
-                        sale.tipMinor != null -> TipLines.Entered(sale.tipMinor)
-                        approved && paper -> TipLines.Blank
+                        standing.tipMinor != null -> TipLines.Entered(standing.tipMinor)
+                        standing.awaitingTip && paper -> TipLines.Blank
                         else -> null
                     },
-                heldNow = sale.authorisedMinor?.takeIf { sale.kind == SaleKind.PRE_AUTHORISATION && it != sale.totalMinor },
-                captured =
-                    sale.capturedMinor?.takeIf { sale.kind == SaleKind.PRE_AUTHORISATION && sale.standing.captured },
+                heldNow = standing.heldNowMinor,
+                captured = standing.capturedMinor,
             )
         return builder(settings, currency).sale(receipt, copy)
     }

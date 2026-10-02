@@ -100,6 +100,8 @@
             <li><strong>Adyen Android terminals running Android 9 or later</strong>, for example the S1F2, S1F4Pro,
               S1E4Pro, S1E2L, AMS1, S1U2 or SFO1. Printing needs a model with a printer; scanning receipts, barcodes and
               setup codes from another terminal needs a camera.</li>
+            <li>Or an <strong>Android tablet or phone</strong>, to take payments on a terminal over your network or the
+              internet, or with Tap to Pay (see <a href="#tablet">From a tablet or phone</a>).</li>
             <li>Optional: an <strong>SMTP mail server</strong> (host, port, user and password) if you want to email
               receipts.</li>
             <li>Optional: an <strong>API credential</strong> for Adyen's Checkout API, if the app should capture tips on
@@ -161,6 +163,37 @@ cd minimpos
             status bar.</p>
           <p>To try a real terminal from a phone or emulator instead, choose <strong>Payments go to › A terminal on your
             network</strong> and also enter the terminal's IP address and POIID (as on its Device info screen).</p>
+
+          <h3 id="tablet">From a tablet or phone</h3>
+          <p>Mini mPOS also runs on Android tablets and phones: install the same APK there, then choose under
+            <strong>Settings › Terminal › Payments go to</strong>:</p>
+          <dl class="settings-list">
+            <dt>A terminal on your network</dt>
+            <dd>The recommended way for a tablet at the counter. The tablet sends requests to the terminal over your
+              local network, encrypted with the shared key, so no API key is needed. Enter the terminal's IP address and
+              POIID as well as the shared key. Mini mPOS does not have to be installed on the terminal.</dd>
+            <dt>A terminal over the internet (cloud)</dt>
+            <dd>For a tablet and a terminal on different networks. Requests go through Adyen's Cloud device API, with an
+              API key instead of the shared key. In the Customer Area, under <strong>Developers › API
+              credentials</strong>, create a credential for this device with the <strong>Cloud Device API</strong> role
+              (and the Checkout webservice role if the app should capture tips and pre-authorizations). Enter the
+              merchant account and API key under <strong>Adyen API</strong>, then tap <strong>Find connected
+              terminals</strong> and choose the terminal (or type its POIID). Whether the key is TEST or LIVE, and the
+              data center to use, are found when it connects.</dd>
+            <dt>Tap to Pay on this phone</dt>
+            <dd>Shoppers tap their card or phone on the phone itself, in the Adyen Payments app; there is no printer, so
+              receipts are emailed. The phone needs NFC and Android 12 or later, and must be Google-certified. Ask Adyen
+              Support to enable Tap to Pay on Android and the Adyen Payments app role, and install
+              <strong>Adyen Payments Test</strong> (TEST) or <strong>Adyen Payments</strong> (LIVE) from Google Play.
+              Enter the shared key and the merchant account, then under <strong>Tap to Pay</strong> the
+              <strong>Payments app API key</strong> (a credential with only the Adyen Payments app role) and, to set it
+              up for one store, its store ID. Tap <strong>Set up Tap to Pay</strong>: the Payments app opens to register
+              the phone. Each payment then opens the Payments app and returns to Mini mPOS. To stop, tap
+              <strong>Remove this phone</strong>.</dd>
+          </dl>
+          <p class="note">In the cloud and for Tap to Pay, an Adyen API key is stored on the device, encrypted with the
+            Android Keystore. Adyen advises keeping API keys on a server, and Mini mPOS has none: use a credential for
+            this device only, set an admin PIN, and revoke the key in the Customer Area if the device is lost.</p>
         </section>
 
         <section id="business">
@@ -255,7 +288,8 @@ cd minimpos
               account</strong> and the <strong>API key</strong>, and tap <strong>Save and test API key</strong>. The
               key is stored encrypted on the terminal; the test changes nothing.</li>
             <li>LIVE terminals also need your <strong>live URL prefix</strong>, from <strong>Developers › API
-              URLs</strong>. Whether a terminal is TEST or LIVE is detected from its certificate.</li>
+              URLs</strong>. Whether a terminal is TEST or LIVE is detected from its certificate (in the cloud, from
+              the API key; with Tap to Pay, from the Payments app installed).</li>
             <li>Optional: ask for synchronous adjustments with <strong>Devices › Developer › Additional data › Return
               adjust authorisation data</strong>. The app then knows straight away whether a higher amount was
               authorized; otherwise adjustments are confirmed later, in the Customer Area.</li>
@@ -358,7 +392,7 @@ cd minimpos
             <li>On the terminal that is set up, go to <strong>Settings › Data › Share with another terminal</strong>
               (or the menu in <strong>Products</strong>). Choose what to copy: the <strong>catalog</strong>, the
               <strong>settings</strong>, and the <strong>passwords and keys</strong> (shared key passphrase, Checkout
-              API key, SMTP password and admin PIN). Tap <strong>Show QR codes</strong>.</li>
+              API key, Payments app API key, SMTP password and admin PIN). Tap <strong>Show QR codes</strong>.</li>
             <li>On the new terminal, choose <strong>Set up from another terminal</strong> in the same places and point
               its camera at the codes, in any order.</li>
             <li>Choose whether the catalog is merged into the new terminal's or replaces it. To bring the passwords and
@@ -366,8 +400,8 @@ cd minimpos
               rest is imported and they are skipped. Tap <strong>Import</strong>.</li>
             <li>Check the connection under <strong>Settings › Terminal</strong> with <strong>Test connection</strong>.</li>
           </ol>
-          <p>The settings replace the new terminal's, except where payments go, its own address and ID, its TEST/LIVE
-            environment and the simulator. The shared key only works on both terminals if the Customer Area assigns the
+          <p>The settings replace the new terminal's, except where payments go, its own address and ID, its Tap to Pay
+            setup, its TEST/LIVE environment and the simulator. The shared key only works on both terminals if the Customer Area assigns the
             same key to them (for example at store or merchant account level); otherwise enter each terminal's own key.
             The transfer code is new each time and only shown on the first terminal, so a photo of the QR codes does
             not reveal the passwords.</p>
@@ -398,6 +432,9 @@ cd minimpos
             <dt>A capture failed or its result is unknown</dt>
             <dd>History shows why. Fix the Checkout API settings if needed, then tap <strong>Retry capture</strong>:
               sending it again cannot capture twice.</dd>
+            <dt>Tap to Pay comes back without a result</dt>
+            <dd>The payment's result is then unknown, and the Payments app cannot be asked for it again: check the
+              Customer Area (Payments › Payment list) before charging the shopper again.</dd>
             <dt>“The codes could not be read”</dt>
             <dd>The other terminal may run a newer Mini mPOS. Update both to the same version and scan again.</dd>
           </dl>

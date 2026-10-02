@@ -15,6 +15,7 @@ import io.minimpos.app.data.settings.MerchantCopyPolicy
 import io.minimpos.app.data.settings.PrinterMode
 import io.minimpos.app.data.settings.SmtpSecurity
 import io.minimpos.app.data.settings.TerminalMode
+import io.minimpos.app.data.transfer.ImportOutcome
 import io.minimpos.app.data.transfer.SetupTransfer
 import io.minimpos.app.data.transfer.TransferContents
 import io.minimpos.core.codec.Base45
@@ -118,11 +119,21 @@ class SetupTransferTest {
         val received = receiving.receive(transfer)
         assertThat(received.hasSettings).isTrue()
         assertThat(received.hasSecrets).isTrue()
-        assertThat(received.currencyCode).isEqualTo("EUR")
-        assertThat(await { receiving.unlock(received, "2222-2222-2222") }).isNull()
+        // The transferred settings choose EUR, so this terminal's own currency does not matter.
+        assertThat(received.currencyMatches("NZD")).isTrue()
+        assertThat(received.accepts("abc")).isFalse()
+        assertThat(await { receiving.import(received, ImportMode.MERGE, "abc") }).isEqualTo(ImportOutcome.WrongCode)
+        assertThat(await { receiving.import(received, ImportMode.MERGE, "2222-2222-2222") }).isEqualTo(ImportOutcome.WrongCode)
+        assertThat(
+            await {
+                target.container.catalog.products
+                    .first()
+            },
+        ).isEmpty()
         // Typed in lower case and without hyphens.
-        val unlocked = await { receiving.unlock(received, export.code!!.lowercase().replace("-", " ")) }!!
-        val result = await { receiving.import(received, ImportMode.MERGE, unlocked) }
+        val imported = await { receiving.import(received, ImportMode.MERGE, export.code!!.lowercase().replace("-", " ")) }
+        val result = (imported as ImportOutcome.Imported).result
+        assertThat(imported.secretsSkipped).isFalse()
         assertThat(result.catalogue!!.productsAdded).isEqualTo(1)
         assertThat(result.settings).isTrue()
         assertThat(result.secrets).hasSize(4)
@@ -172,8 +183,9 @@ class SetupTransferTest {
         assertThat(export.code).isNull()
         // Only what differs from the defaults is written.
         assertThat(TransferCodec.decode(export.payload).settings).isEqualTo("{}")
-        val result = await { setup(target).import(setup(target).receive(TransferCodec.decode(export.payload)), ImportMode.REPLACE) }
-        assertThat(result.catalogue).isNull()
+        val outcome = await { setup(target).import(setup(target).receive(TransferCodec.decode(export.payload)), ImportMode.REPLACE) }
+        assertThat((outcome as ImportOutcome.Imported).result.catalogue).isNull()
+        assertThat(outcome.secretsSkipped).isFalse()
         val copied = await { target.container.settings.current() }
         assertThat(copied.payment.referencePrefix).isEmpty()
         assertThat(copied.payment.defaultTaxRateId).isNull()
@@ -193,7 +205,8 @@ class SetupTransferTest {
         val received = setup(target).receive(TransferCodec.decode(secretsOnly.payload))
         assertThat(received.catalogue).isNull()
         assertThat(received.hasSettings).isFalse()
-        assertThat(received.currencyCode).isNull()
+        assertThat(received.currencyMatches("AUD")).isTrue()
+        assertThat(received.accepts("")).isTrue()
         assertThat(await { setup(target).unlock(received, secretsOnly.code!!) }).containsExactly(Secret.SMTP_PASSWORD, "pw")
         assertThrows(IllegalArgumentException::class.java) {
             await { setup(source).export(TransferContents(catalogue = false, settings = false, secrets = false), "AUD") }
@@ -236,9 +249,8 @@ class SetupTransferTest {
         await { source.container.secrets.set(Secret.SMTP_PASSWORD, "pw") }
         val export = await { setup(source).export(TransferContents(catalogue = false), "AUD") }
         val received = setup(target).receive(TransferCodec.decode(export.payload))
-        val unlocked = await { setup(target).unlock(received, export.code!!) }!!
         target.cipher.failEncrypt = true
-        val result = await { setup(target).import(received, ImportMode.MERGE, unlocked) }
+        val result = (await { setup(target).import(received, ImportMode.MERGE, export.code!!) } as ImportOutcome.Imported).result
         assertThat(result.settings).isTrue()
         assertThat(result.secrets).isEmpty()
         assertThat(result.secretsError).contains("Keystore")

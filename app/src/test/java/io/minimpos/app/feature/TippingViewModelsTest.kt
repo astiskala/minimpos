@@ -11,9 +11,7 @@ import io.minimpos.app.data.security.Secret
 import io.minimpos.app.data.settings.CaptureMode
 import io.minimpos.app.data.settings.PrinterMode
 import io.minimpos.app.data.settings.TerminalMode
-import io.minimpos.app.feature.capture.CaptureProblem
 import io.minimpos.app.feature.capture.CaptureViewModel
-import io.minimpos.app.feature.capture.Submission
 import io.minimpos.app.feature.capture.TipInput
 import io.minimpos.app.feature.capture.TipViewModel
 import io.minimpos.app.feature.history.HistoryFilter
@@ -26,6 +24,7 @@ import io.minimpos.app.feature.settings.SettingsViewModel
 import io.minimpos.app.payment.CaptureResult
 import io.minimpos.app.payment.TransactionState
 import io.minimpos.app.refund.PaymentAction
+import io.minimpos.app.terminal.SetupProblem
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.first
@@ -216,7 +215,7 @@ class TippingViewModelsTest {
             await {
                 vm.state.first { it.retry.isError }
             }.retry.outcome,
-        ).isEqualTo(ActionOutcome.NotCaptured("Enter the Checkout API key in Terminal settings"))
+        ).isEqualTo(ActionOutcome.NotCaptured("Enter the Checkout API key in Terminal settings", CaptureStep.CAPTURE))
         env.useSimulator()
         vm.retryCapture()
         await { vm.state.first { it.retry.done } }
@@ -302,9 +301,12 @@ class TippingViewModelsTest {
         }
         // Cancelled meanwhile.
         assertThat(await { tip.state.first { it.sale?.pspReference == "PSP" } }.canSubmit).isFalse()
-        val problem = Submission().after(CaptureResult.Refused("No"), 2_500)
-        assertThat(problem.problem).isEqualTo(CaptureProblem.Refused(2_500, "No"))
-        assertThat(problem.done).isFalse()
+        val refused = CaptureResult.Refused("No").toState(CaptureStep.TIP, 2_500, "AUD")
+        assertThat(refused.outcome).isEqualTo(ActionOutcome.CaptureRefused(CaptureStep.TIP, 2_500, "AUD", "No"))
+        assertThat(refused.isError).isTrue()
+        assertThat(refused.done).isFalse()
+        assertThat(CaptureResult.NotAllowed.toState(CaptureStep.TIP, 2_500, "AUD").outcome).isEqualTo(ActionOutcome.CaptureNotAllowed)
+        assertThat(CaptureResult.Recorded.toState(CaptureStep.CAPTURE, 2_500, "AUD")).isEqualTo(ActionState(done = true))
     }
 
     @Test
@@ -328,7 +330,7 @@ class TippingViewModelsTest {
         vm.saveAndTest(Secret.CHECKOUT_API_KEY, " secret-key ")
         val tested = await { vm.actions.first { it.apiKeyStored && !it.api.running } }
         assertThat(tested.api.isError).isTrue()
-        assertThat((tested.api.outcome as? ActionOutcome.Failed)?.message).contains("Test the connection to the terminal first")
+        assertThat(tested.api.outcome).isEqualTo(ActionOutcome.NotSetUp(SetupProblem.ENVIRONMENT))
         assertThat(await { container.secrets.get(Secret.CHECKOUT_API_KEY) }).isEqualTo("secret-key")
 
         env.cipher.failEncrypt = true

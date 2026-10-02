@@ -1,6 +1,8 @@
 package io.minimpos.terminal
 
 import com.adyen.Client
+import com.tngtech.archunit.core.domain.JavaClass.Predicates.assignableTo
+import com.tngtech.archunit.core.domain.JavaClass.Predicates.resideInAPackage
 import com.tngtech.archunit.core.domain.JavaClasses
 import com.tngtech.archunit.core.importer.ClassFileImporter
 import com.tngtech.archunit.core.importer.ImportOption
@@ -9,7 +11,14 @@ import com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses
 import com.tngtech.archunit.library.Architectures.layeredArchitecture
 import com.tngtech.archunit.library.GeneralCodingRules
 import com.tngtech.archunit.library.dependencies.SlicesRuleDefinition.slices
+import io.minimpos.terminal.client.Decline
+import io.minimpos.terminal.client.TransactionDetails
+import io.minimpos.terminal.transport.AdyenHttp
+import io.minimpos.terminal.transport.TerminalHttpClient
+import okhttp3.OkHttpClient
+import okhttp3.Request
 import org.junit.Test
+import java.io.IOException
 
 /** :terminal-api wraps the Adyen Java library for the local Terminal API; it runs on Android but must not depend on it. */
 class ArchitectureTest {
@@ -45,19 +54,71 @@ class ArchitectureTest {
             .check(terminal)
 
     @Test
-    fun `only the transport and the Checkout API client talk HTTP and TLS`() =
+    fun `only the transports and the Checkout and Management API clients talk HTTP and TLS`() =
         noClasses()
             .that()
-            .resideOutsideOfPackages("io.minimpos.terminal.transport..", "io.minimpos.terminal.checkout..")
-            .should()
+            .resideOutsideOfPackages(
+                "io.minimpos.terminal.transport..",
+                "io.minimpos.terminal.checkout..",
+                "io.minimpos.terminal.paymentsapp..",
+            ).should()
             .dependOnClassesThat()
             .resideInAnyPackage("okhttp3..", "okio..", "javax.net..")
             .check(terminal)
 
     @Test
+    fun `only the transports send HTTP requests`() =
+        // Calls to Adyen's HTTPS APIs go through AdyenHttp, which owns the retry, timeout and failure rules.
+        noClasses()
+            .that()
+            .resideOutsideOfPackage("io.minimpos.terminal.transport..")
+            .should()
+            .dependOnClassesThat()
+            .haveFullyQualifiedName("okhttp3.Request")
+            .orShould()
+            .dependOnClassesThat()
+            .haveFullyQualifiedName("okhttp3.Call")
+            .check(terminal)
+
+    @Test
+    fun `only AdyenHttp and the library's HTTP client make HTTP calls`() =
+        // AdyenHttp makes the calls to Adyen's HTTPS APIs (cloud, Checkout, Management); TerminalHttpClient is the Adyen
+        // library's client for the local Terminal API.
+        noClasses()
+            .that()
+            .doNotBelongToAnyOf(AdyenHttp::class.java, TerminalHttpClient::class.java)
+            .should()
+            .callMethod(OkHttpClient::class.java, "newCall", Request::class.java)
+            .check(terminal)
+
+    @Test
+    fun `transport failures reach the clients only as deliveries`() =
+        // Each transport works out once whether a request can have taken effect (Delivery); the clients never catch.
+        noClasses()
+            .that()
+            .resideInAnyPackage("io.minimpos.terminal.client..", "io.minimpos.terminal.checkout..")
+            .should()
+            .dependOnClassesThat(
+                resideInAPackage("io.minimpos.terminal.transport..").and(assignableTo(IOException::class.java)),
+            ).check(terminal)
+
+    @Test
+    fun `only the decline reads why a transaction was not approved`() =
+        // Cancellations, busy terminals and retry advice come from Decline; nothing else compares ErrorCondition strings.
+        noClasses()
+            .that()
+            .doNotBelongToAnyOf(Decline::class.java, TransactionDetails::class.java)
+            .should()
+            .callMethod(TransactionDetails::class.java, "getErrorCondition")
+            .orShould()
+            .callMethod(TransactionDetails::class.java, "getRefusalReason")
+            .check(terminal)
+
+    @Test
     fun `packages only depend downwards`() =
         // The simulator stands in for both APIs and shares its ledger between them, so nothing relies on it; the Terminal
-        // API client and the Checkout API client know nothing of each other.
+        // API client and the Checkout API client know nothing of each other. The Payments app is one more transport
+        // (with its own boarding), which only the app plugs in.
         layeredArchitecture()
             .consideringOnlyDependenciesInLayers()
             .layer(SIMULATOR)
@@ -66,6 +127,8 @@ class ArchitectureTest {
             .definedBy("io.minimpos.terminal.client..")
             .layer(CHECKOUT)
             .definedBy("io.minimpos.terminal.checkout..")
+            .layer(PAYMENTS_APP)
+            .definedBy("io.minimpos.terminal.paymentsapp..")
             .layer(TRANSPORT)
             .definedBy("io.minimpos.terminal.transport..")
             .layer(PARSE)
@@ -76,10 +139,12 @@ class ArchitectureTest {
             .mayOnlyBeAccessedByLayers(SIMULATOR)
             .whereLayer(CHECKOUT)
             .mayOnlyBeAccessedByLayers(SIMULATOR)
+            .whereLayer(PAYMENTS_APP)
+            .mayNotBeAccessedByAnyLayer()
             .whereLayer(TRANSPORT)
-            .mayOnlyBeAccessedByLayers(CLIENT, CHECKOUT, SIMULATOR)
+            .mayOnlyBeAccessedByLayers(CLIENT, CHECKOUT, PAYMENTS_APP, SIMULATOR)
             .whereLayer(PARSE)
-            .mayOnlyBeAccessedByLayers(TRANSPORT, CLIENT, SIMULATOR)
+            .mayOnlyBeAccessedByLayers(TRANSPORT, CLIENT, PAYMENTS_APP, SIMULATOR)
             .check(terminal)
 
     @Test
@@ -90,6 +155,7 @@ class ArchitectureTest {
                 "io.minimpos.terminal.simulator..",
                 "io.minimpos.terminal.client..",
                 "io.minimpos.terminal.checkout..",
+                "io.minimpos.terminal.paymentsapp..",
                 "io.minimpos.terminal.transport..",
                 "io.minimpos.terminal.parse..",
             ).check(terminal)
@@ -112,6 +178,7 @@ class ArchitectureTest {
         const val SIMULATOR = "Simulator"
         const val CLIENT = "Client"
         const val CHECKOUT = "Checkout"
+        const val PAYMENTS_APP = "PaymentsApp"
         const val TRANSPORT = "Transport"
         const val PARSE = "Parse"
 

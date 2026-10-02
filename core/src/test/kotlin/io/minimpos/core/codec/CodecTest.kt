@@ -217,7 +217,30 @@ class CodecTest {
                 .single()
                 .name,
         ).isEqualTo("P")
-        assertFormatError("version 5") { TransferCodec.decode(packetFor(varint(1) + body(), version = 5)) }
+        assertFormatError("version 6") { TransferCodec.decode(packetFor(varint(1) + body(), version = 6)) }
+    }
+
+    @Test
+    fun `a connection is carried in version 5, which version 4 may not claim`() {
+        val secrets = SealedSecrets(byteArrayOf(7, 8, 9))
+        val connection = """{"destination":"network","host":"192.168.1.20","poiId":"S1F2-000158213605014"}"""
+        val setup = Transfer(sealedSecrets = secrets, connection = connection)
+        val encoded = TransferCodec.encode(setup)
+        assertThat(Base45.decode(encoded)[0].toInt()).isEqualTo(5)
+        assertThat(TransferCodec.decode(encoded)).isEqualTo(setup)
+        val everything = Transfer(catalogue, "{}", secrets, connection)
+        assertThat(TransferCodec.decode(TransferCodec.encode(everything))).isEqualTo(everything)
+        assertThat(TransferCodec.decode(TransferCodec.encode(Transfer(connection = "{}")))).isEqualTo(Transfer(connection = "{}"))
+        // Without a connection, terminals still write version 4, which older builds read.
+        assertThat(Base45.decode(TransferCodec.encode(Transfer(settings = "{}")))[0].toInt()).isEqualTo(4)
+
+        assertFormatError("sections") { TransferCodec.decode(packetFor(varint(8) + varint(2) + "{}".toByteArray(), version = 4)) }
+        assertFormatError("sections") { TransferCodec.decode(packetFor(varint(16), version = 5)) }
+        assertFormatError("Invalid data") { TransferCodec.decode(packetFor(varint(8) + varint(5_000), version = 5)) }
+        assertThat(TransferCodec.decode(packetFor(varint(8) + varint(2) + "{}".toByteArray(), version = 5)).connection).isEqualTo("{}")
+        assertThrows(IllegalArgumentException::class.java) {
+            TransferCodec.encode(Transfer(connection = "x".repeat(TransferCodec.MAX_CONNECTION_BYTES + 1)))
+        }
     }
 
     @Test

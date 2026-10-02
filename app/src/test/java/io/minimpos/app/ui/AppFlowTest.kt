@@ -404,8 +404,20 @@ class AppFlowTest {
     }
 
     @Test
+    fun `takes a pre-authorisation of a custom amount without pre-authorisation products`() {
+        compose.waitForTag("preAuth")
+        compose.onNodeWithTag("preAuth").assertIsDisplayed().performClick()
+        // With nothing to choose from, the custom amount keypad opens straight away.
+        compose.waitForTag("addCustom")
+        listOf(7, 5, 0, 0).forEach { compose.onNodeWithTag("key_$it").performClick() }
+        compose.onNodeWithTag("addCustom").performClick()
+        compose.waitForTag("pay")
+        compose.onNodeWithTag("pay").assertTextEquals("Pre-authorize $75.00").performClick()
+        compose.waitUntilAtLeastOneExists(hasTestTag("resultStatus") and hasText("Pre-authorized"), 15_000)
+    }
+
+    @Test
     fun `takes a pre-authorisation of its own product and cancels it from the history`() {
-        compose.onNodeWithTag("preAuth").assertDoesNotExist()
         compose.onNodeWithTag("products").performClick()
         compose.waitForTag("addFab")
         compose.onNodeWithTag("addFab").performClick()
@@ -418,7 +430,7 @@ class AppFlowTest {
         waitForText("Pre-auth · GST 10%")
         compose.onNodeWithTag("back").performClick()
 
-        // Home now offers pre-authorisations (that a sale does not show the product is checked in the view model test).
+        // A sale does not show the product (checked in the view model test); a pre-authorisation does.
         compose.waitForTag("preAuth")
         compose.onNodeWithTag("preAuth").performClick()
         waitForText("Catering deposit")

@@ -36,8 +36,8 @@
         <nav aria-label="メインナビゲーション">
           <ul class="nav">
             <li><a href="#features">機能</a></li>
-            <li><a href="#how">使い方</a></li>
             <li><a href="getting-started.html">はじめに</a></li>
+            <li><a href="setup.html">セットアップヘルパー</a></li>
             <li><a class="button button-small" href="https://github.com/astiskala/minimpos">GitHub</a></li>
           </ul>
         </nav>
@@ -57,15 +57,16 @@
       <section class="hero" id="top">
         <div class="wrap hero-grid">
           <div class="hero-copy">
-            <p class="eyebrow">無料・オープンソース · Adyen Android 決済端末向け</p>
-            <h1>お会計のすべてを、決済端末 1 台で。</h1>
-            <p class="lead">Mini mPOS は Adyen Android 決済端末を、小さくても頼れる POS に変えます。商品を選び、カード決済を受け付け、領収書を印刷またはメール送信。返金は領収書をスキャンするだけ。追加のタブレットもレジも、アプリのサブスクリプションも不要です。</p>
+            <p class="eyebrow">無料・オープンソース · Adyen Android 決済端末で直接動作</p>
+            <h1>お会計のすべてを、決済端末そのもので。</h1>
+            <p class="lead">Mini mPOS は Adyen Android 決済端末の上で直接動作します。商品を選び、決済を受け付け、領収書を印刷またはメール送信し、返金は領収書をスキャンするだけ。すべてが 1 台で完結し、別のレジもタブレットも、アプリのサブスクリプションも不要です。タブレットやスマートフォンで使いたい場合も、お手持ちの端末や Tap to Pay と組み合わせて動作します。</p>
             <div class="actions">
               <a class="button" href="#start">はじめる</a>
-              <a class="button button-ghost" href="https://github.com/astiskala/minimpos">GitHub で見る</a>
+              <a class="button button-ghost" href="setup.html">セットアップヘルパーを開く</a>
             </div>
             <ul class="hero-points">
-              <li>Android 9 以降の端末に対応</li>
+              <li>決済端末の上で直接動作</li>
+              <li>タブレットやスマートフォンにも対応</li>
               <li>Adyen が扱うすべての通貨に対応</li>
               <li>内蔵シミュレーターでお試し</li>
               <li>英語・中国語（簡体字）・日本語に対応</li>
@@ -80,14 +81,13 @@
                 <img alt="AMS1 をイメージした決済端末の販売デモ" height="800" src="../images/sale-ams1.png" width="480">
               </div>
             </div>
-            <p class="demo-note">AMS1 と S1F2 のイラストに英語のデモ画面を表示しています。製品写真ではありません。</p>
           </div>
         </div>
       </section>
       <section aria-labelledby="features-title" class="section" id="features">
         <div class="wrap">
-          <h2 id="features-title">小さなお店に必要な機能を</h2>
-          <p class="section-lead">カフェ、マーケットの屋台、ポップアップストア、サービス業の毎日をシンプルに。</p>
+          <h2 id="features-title">対面販売に必要なすべてを</h2>
+          <p class="section-lead">カウンター 1 か所から、店舗・イベント・配達・出張サービスにまたがる複数のデバイスまで。商品、決済、領収書、返金を、バックオフィスの運用なしで。</p>
           <div class="features">
             <article class="feature">
               <svg aria-hidden="true" viewbox="0 0 24 24"><path d="M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z"></path></svg>
@@ -131,8 +131,8 @@
             </article>
             <article class="feature">
               <svg aria-hidden="true" viewbox="0 0 24 24"><path d="M4 4h10v6H4zm6 10h10v6H10zM16 5h3a1 1 0 0 1 1 1v5h2l-3 3-3-3h2V7h-2zM8 19H5a1 1 0 0 1-1-1v-5H2l3-3 3 3H6v4h2z"></path></svg>
-              <h3>インポートとエクスポートを簡単に</h3>
-              <p>QR コードで商品と設定を別の端末へ。パスワードやキーも、保護された転送コードで移せます。</p>
+              <h3>数分でセットアップ</h3>
+              <p>セットアップヘルパーでパソコンからキーを入力し、デバイスで読み取るだけ。商品と設定も QR コードで別のデバイスにコピーでき、キーは転送コードで保護して移せます。</p>
             </article>
             <article class="feature">
               <svg aria-hidden="true" viewbox="0 0 24 24"><path d="M12 2a5 5 0 0 1 5 5v3h1a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-8a2 2 0 0 1 2-2h1V7a5 5 0 0 1 5-5zm0 2a3 3 0 0 0-3 3v3h6V7a3 3 0 0 0-3-3z"></path></svg>
@@ -201,12 +201,12 @@
       <section aria-labelledby="how-title" class="section section-alt" id="how">
         <div class="wrap split">
           <div>
-            <h2 id="how-title">Adyen 決済端末のために</h2>
-            <p class="section-lead">商品、決済、領収書を 1 台で。追加のタブレットも、運用するバックエンドも不要です。</p>
+            <h2 id="how-title">Adyen 決済端末に組み込んで</h2>
+            <p class="section-lead">端末にインストールすれば、ほかのハードウェアも運用するバックエンドも不要です。タブレットやスマートフォンでは、お手持ちの端末や Tap to Pay と組み合わせて使えます。</p>
             <ul class="checks">
               <li><strong>カード情報は Adyen が管理。</strong>Mini mPOS が受け取るのは、マスクされたカード情報と決済の参照IDだけです。</li>
-              <li><strong>店舗のデータは端末に。</strong>商品、設定、取引履歴を端末内で管理。クラウドアカウントは不要です。</li>
-              <li><strong>カウンターでも、持ち歩いても。</strong>AMS1 のような小型端末にも、プリンター搭載モデルにも対応します。</li>
+              <li><strong>店舗のデータはデバイスに。</strong>商品、設定、取引履歴をデバイス内で管理。クラウドアカウントは不要です。</li>
+              <li><strong>カウンターでも、持ち歩いても。</strong>AMS1 のような小型端末、プリンター搭載モデル、タブレットやスマートフォンに対応します。</li>
             </ul>
           </div>
           <div class="shot-pair">
@@ -230,8 +230,8 @@
             </article>
             <article class="step">
               <h3>お店で使う準備はできましたか？</h3>
-              <p>アプリをダウンロードし、Adyen Customer Area から配布して端末に接続します。ガイドで手順を確認できます。</p>
-              <p><a href="getting-started.html">設定ガイドを読む</a> · <a href="https://github.com/astiskala/minimpos/releases/latest">アプリをダウンロード</a></p>
+              <p>アプリをダウンロードし、Adyen Customer Area から端末に配布（またはタブレットやスマートフォンにインストール）して、セットアップヘルパーでキーを読み取ります。ガイドで手順を確認できます。</p>
+              <p><a href="getting-started.html">設定ガイドを読む</a> · <a href="setup.html">セットアップヘルパーを開く</a> · <a href="https://github.com/astiskala/minimpos/releases/latest">アプリをダウンロード</a></p>
             </article>
           </div>
         </div>
@@ -241,8 +241,8 @@
           <h2 id="faq-title">よくある質問</h2>
           <div class="faq">
             <details>
-              <summary>どの端末で使えますか？</summary>
-              <p>Android 9 以降を搭載した Adyen Android 決済端末で使えます。例：S1F2、S1F4Pro、S1E4Pro、S1E2L、AMS1、S1U2、SFO1。印刷にはプリンター、QR コードの読み取りにはカメラが必要です。</p>
+              <summary>どのデバイスで使えますか？</summary>
+              <p>Android 9 以降を搭載した Adyen Android 決済端末（例：S1F2、S1F4Pro、S1E4Pro、S1E2L、AMS1、S1U2、SFO1）と、Android のタブレットやスマートフォンで使えます。印刷にはプリンター搭載端末、QR コードの読み取りにはカメラが必要です。</p>
             </details>
             <details>
               <summary>タブレットやスマートフォンでも使えますか？</summary>
@@ -254,7 +254,7 @@
             </details>
             <details>
               <summary>Adyen の製品ですか？</summary>
-              <p>いいえ。Adyen 端末向けの独立したプロジェクトです。Adyen が開発、推奨、サポートするものではありません。本番運用前に Adyen の TEST 環境で試してください。</p>
+              <p>いいえ。Adyen 端末向けの独立したプロジェクトです。Adyen が開発、推奨、サポートするものではありません。本番運用前に Adyen の TEST 環境で試してください。Adyen のアカウント、決済方法、入金については Adyen に、アプリについては <a href="https://github.com/astiskala/minimpos/issues">GitHub の issue</a> でお問い合わせください。</p>
             </details>
             <details>
               <summary>予約金やプリオーソリゼーションに使えますか？</summary>
@@ -270,11 +270,11 @@
             </details>
             <details>
               <summary>データはどこに保存されますか？</summary>
-              <p>商品、設定、取引履歴は端末（またはタブレットやスマートフォン）に保存されます。別の端末に共有したり、自分のメールサーバーで領収書を送ったりすることもできます。決済は Adyen が処理します。</p>
+              <p>商品、設定、取引履歴は Mini mPOS を動かしているデバイスに保存されます。別のデバイスに共有したり、自分のメールサーバーで領収書を送ったりすることもできます。決済は Adyen が処理します。</p>
             </details>
             <details>
               <summary>サーバーや Adyen の APIキーは必要ですか？</summary>
-              <p>サーバーは不要です。端末では、Customer Area の共有キーと、キャプチャと支払いリンクに使う Checkout API キーが必要です。ガイドの<a href="getting-started.html#api">Checkout API とキャプチャ</a>を参照してください。</p>
+              <p>サーバーは不要です。端末では、Customer Area の共有キーと、キャプチャと支払いリンクに使う Checkout API キーが必要です。<a href="setup.html">セットアップヘルパー</a>を使えばパソコンから入力できます。ガイドの<a href="getting-started.html#api">Checkout API とキャプチャ</a>を参照してください。</p>
             </details>
           </div>
         </div>
@@ -283,7 +283,7 @@
     <footer class="site-footer">
       <div class="wrap footer-row">
         <p><img alt="" height="24" src="../favicon.svg" width="24"> Mini mPOS · MIT ライセンス · <a href="https://github.com/astiskala/minimpos">GitHub</a> · <a href="https://github.com/astiskala/minimpos/blob/main/SECURITY.md">セキュリティ</a></p>
-        <p class="fine">Adyen は Adyen N.V. の商標です。Mini mPOS は独立したプロジェクトであり、Adyen との提携関係はなく、Adyen による推奨やサポートもありません。 端末のイラストはイメージであり、製品写真ではありません。画面は内蔵シミュレーターの英語のデモカフェを表示しています。</p>
+        <p class="fine">Adyen は Adyen N.V. の商標です。Mini mPOS は独立したプロジェクトであり、Adyen との提携関係はなく、Adyen による推奨やサポートもありません。画面は内蔵シミュレーターの英語のデモカフェを表示しています。</p>
       </div>
     </footer>
   </body>

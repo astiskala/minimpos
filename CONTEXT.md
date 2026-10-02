@@ -114,8 +114,11 @@ the other.
 - **New-installation settings** (`AppSettings.forNewInstallation`): what a new installation starts with, which may
   differ from the constructor's defaults; those keep meaning what a value left out of a transfer means.
 - **Transfer** (`SetupTransfer`, `TransferCodec` `MPC1:`): copying the catalogue, settings and secrets to another
-  terminal as QR codes, sealed with a 12-character **transfer code** (`TransferSeal`). **Device fields**
+  device as QR codes, sealed with a 12-character **transfer code** (`TransferSeal`). **Device fields**
   (`AppSettings.withDeviceFieldsOf`) stay behind.
+- **Setup helper** (`docs/setup.html`): the web page that makes a transfer on a computer, holding a **connection**
+  (`ConnectionSetup`: where payments go, address, POIID, shared key, Checkout API, store) and its secrets; importing it
+  sets only what it holds. _Avoid_: wizard, provisioning.
 - **Secrets** (`SecretStore`): the shared-key passphrase, API keys, SMTP password and PIN verifier; encrypted, never
   logged.
 
@@ -123,6 +126,8 @@ the other.
 
 - "Terminal" is the payment device; "Payments go to" names the **destination**, which may be no terminal at all
   (Payments app, simulator). Code says `Destination` for the latter.
+- The **device** is what runs Mini mPOS: a terminal, or a tablet or phone. User text says "device" for it (setting up
+  another device, stored on this device) and "terminal" only for the one that takes the card.
 - "Held" is a standing (`PaymentStanding.held`); "hold" is what a pre-authorisation does. A sale awaiting its tip is
   held too.
 - "Captured" means Adyen received the capture (or an older version left it to staff); Adyen confirms it only in the

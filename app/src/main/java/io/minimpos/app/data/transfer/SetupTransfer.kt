@@ -9,6 +9,7 @@ import io.minimpos.app.data.security.SecretStore
 import io.minimpos.app.data.security.SecretStoreException
 import io.minimpos.app.data.security.TransferSeal
 import io.minimpos.app.data.settings.AppSettings
+import io.minimpos.app.data.settings.ConnectionSetup
 import io.minimpos.app.data.settings.SettingsRepository
 import io.minimpos.core.catalogue.Catalogue
 import io.minimpos.core.codec.SealedSecrets
@@ -57,20 +58,25 @@ data class TransferExport(
 )
 
 /**
- * A scanned transfer whose settings were read, ready to import.
+ * A scanned transfer whose settings and connection were read, ready to import.
  *
  * @property transfer What was scanned.
  * @property settings Its settings, read; null when none were transferred.
+ * @property connection Its connection, read; null when none was transferred.
  */
 class ReceivedTransfer internal constructor(
     val transfer: Transfer,
     internal val settings: TransferredSettings?,
+    internal val connection: ConnectionSetup? = null,
 ) {
     /** The catalogue, or null when it was not transferred. */
     val catalogue: Catalogue? get() = transfer.catalogue
 
     /** Whether settings were transferred. */
     val hasSettings: Boolean get() = settings != null
+
+    /** Whether a connection (from the setup helper web page) was transferred. */
+    val hasConnection: Boolean get() = connection != null
 
     /** Whether sealed secrets were transferred, which need the transfer code. */
     val hasSecrets: Boolean get() = transfer.sealedSecrets != null
@@ -121,17 +127,20 @@ sealed interface ImportOutcome {
  * @property settings Whether the settings were applied.
  * @property secrets The secrets stored.
  * @property secretsError Why secrets could not be stored on this device; null when they were (or there were none).
+ * @property connection Whether a connection was applied.
  */
 data class TransferResult(
     val catalogue: ImportSummary?,
     val settings: Boolean,
     val secrets: Set<Secret>,
     val secretsError: String? = null,
+    val connection: Boolean = false,
 )
 
 /**
  * Sets up another terminal of the same merchant account like this one, through QR codes ([TransferCodec]): the
- * catalogue, the settings and the secrets.
+ * catalogue, the settings and the secrets. It also imports the codes of the setup helper web page: a connection
+ * ([ConnectionSetup], which only sets what it holds) and its secrets.
  *
  * The settings leave out what belongs to the device: where payments go, the terminal's address and POIID, its
  * detected TEST/LIVE environment and the simulator. Everything else travels, and on import replaces this terminal's
@@ -145,6 +154,7 @@ data class TransferResult(
  * @param secrets The secrets exported and stored.
  * @param seal Seals and opens the secrets.
  * @param cpu Where the slow key derivation runs.
+ * @param onTerminal Whether this device is an Adyen terminal, which decides what a connection's destination does.
  */
 class SetupTransfer(
     private val catalog: CatalogRepository,
@@ -152,6 +162,7 @@ class SetupTransfer(
     private val secrets: SecretStore,
     private val seal: TransferSeal = TransferSeal(),
     private val cpu: CoroutineDispatcher = Dispatchers.Default,
+    private val onTerminal: Boolean = false,
 ) {
     /** The secrets set on this terminal, which an export can include. */
     suspend fun configuredSecrets(): Set<Secret> = secrets.configured.first()
@@ -185,23 +196,28 @@ class SetupTransfer(
     }
 
     /**
-     * Reads the settings of a scanned [transfer].
+     * Reads the settings and the connection of a scanned [transfer].
      *
      * @throws TransferFormatException if they cannot be read.
      */
-    fun receive(transfer: Transfer): ReceivedTransfer {
-        val read =
-            transfer.settings?.let {
-                try {
-                    TransferredSettings.decode(it)
-                } catch (e: SerializationException) {
-                    throw TransferFormatException("Unreadable settings", e)
-                } catch (e: IllegalArgumentException) {
-                    throw TransferFormatException("Unreadable settings", e)
-                }
-            }
-        return ReceivedTransfer(transfer, read)
-    }
+    fun receive(transfer: Transfer): ReceivedTransfer =
+        ReceivedTransfer(
+            transfer,
+            transfer.settings?.let { readable("settings") { TransferredSettings.decode(it) } },
+            transfer.connection?.let { readable("connection") { TransferJson.decodeFromString(CONNECTION, it) } },
+        )
+
+    private fun <T> readable(
+        what: String,
+        read: () -> T,
+    ): T =
+        try {
+            read()
+        } catch (e: SerializationException) {
+            throw TransferFormatException("Unreadable $what", e)
+        } catch (e: IllegalArgumentException) {
+            throw TransferFormatException("Unreadable $what", e)
+        }
 
     /**
      * Opens the secrets of [received] with the transfer [code] the other terminal shows; null when the code is wrong
@@ -226,8 +242,8 @@ class SetupTransfer(
     }
 
     /**
-     * Imports [received]: its catalogue with [mode], then its settings, then its secrets when a transfer [code] was
-     * typed. A code that does not open the secrets ([ReceivedTransfer.accepts], then [unlock]) is
+     * Imports [received]: its catalogue with [mode], then its settings and its connection, then its secrets when a
+     * transfer [code] was typed. A code that does not open the secrets ([ReceivedTransfer.accepts], then [unlock]) is
      * [ImportOutcome.WrongCode] before anything is written; without a code the secrets are skipped. The catalogue
      * import is one transaction; a secret this device cannot store is reported, not thrown.
      */
@@ -241,6 +257,7 @@ class SetupTransfer(
         val unlocked = (if (withSecrets) unlock(received, code) else emptyMap()) ?: return ImportOutcome.WrongCode
         val summary = received.catalogue?.let { catalog.import(it, mode) }
         received.settings?.let { apply(it) }
+        received.connection?.let { connection -> settings.update { it.copy(terminal = connection.appliedTo(it.terminal, onTerminal)) } }
         val stored = mutableSetOf<Secret>()
         val error =
             try {
@@ -252,7 +269,10 @@ class SetupTransfer(
             } catch (e: SecretStoreException) {
                 e.message ?: "Secrets could not be stored"
             }
-        return ImportOutcome.Imported(TransferResult(summary, received.hasSettings, stored, error), received.hasSecrets && !withSecrets)
+        return ImportOutcome.Imported(
+            TransferResult(summary, received.hasSettings, stored, error, received.hasConnection),
+            received.hasSecrets && !withSecrets,
+        )
     }
 
     private suspend fun snapshot(current: AppSettings): String {
@@ -274,6 +294,7 @@ class SetupTransfer(
 
     private companion object {
         val SECRETS = serializer<Map<String, String>>()
+        val CONNECTION = serializer<ConnectionSetup>()
     }
 }
 

@@ -31,7 +31,7 @@
   <!-- Home -->
   <string name="home_new_sale">New sale</string>
   <string name="home_new_sale_hint">Add products or a custom amount</string>
-  <string name="home_pre_auth">Pre-authorize</string>
+  <string name="home_pre_auth">New pre-authorization</string>
   <string name="home_pre_auth_hint">Hold an amount on a card</string>
   <string name="home_refund">Refund</string>
   <string name="home_history">History</string>
@@ -202,7 +202,7 @@
   <string name="refund_unavailable">Refund not possible</string>
   <string name="refund_not_refundable">This payment was not approved, or the terminal did not report the transaction details a refund needs.</string>
   <string name="refund_fully_refunded">This payment has already been refunded in full.</string>
-  <string name="refund_not_local">This sale was taken on another terminal, so items cannot be selected. Refund in full or enter an amount.</string>
+  <string name="refund_not_local">This sale was taken on another device, so items cannot be selected. Refund in full or enter an amount.</string>
   <string name="refund_original_amount">Original amount</string>
   <string name="refund_already_refunded">Already refunded</string>
   <string name="refund_option_full">Full</string>
@@ -292,7 +292,7 @@
   <string name="products_tab_products">Products</string>
   <string name="products_tab_categories">Categories</string>
   <string name="products_empty">No products</string>
-  <string name="products_empty_hint">Add products with the + button, or import a catalog from another terminal.</string>
+  <string name="products_empty_hint">Add products with the + button, or import a catalog from another device.</string>
   <string name="products_no_categories">No categories</string>
   <string name="products_no_categories_hint">Categories group products on the sale screen.</string>
   <string name="products_no_tax_hint">Add a tax rate under Settings › Tax first (it can be 0%).</string>
@@ -314,10 +314,10 @@
   <string name="products_kind_pre_auth">Pre-auth</string>
 
   <!-- Catalog transfer -->
-  <string name="transfer_export">Share with another terminal</string>
-  <string name="transfer_import">Set up from another terminal</string>
-  <string name="transfer_export_hint">On the other terminal choose Set up from another terminal (in Products or Settings › Data) and point its camera at these codes.</string>
-  <string name="transfer_import_hint">Point the camera at the QR codes shown on the other terminal.</string>
+  <string name="transfer_export">Share with another device</string>
+  <string name="transfer_import">Set up from another device</string>
+  <string name="transfer_export_hint">On the other device choose Set up from another device (in Products or Settings › Data) and point its camera at these codes.</string>
+  <string name="transfer_import_hint">Point the camera at the QR codes shown on the other device or on the setup helper page.</string>
   <string name="transfer_code_of">Code %1$d of %2$d</string>
   <string name="transfer_received">Scanned %1$d/%2$d</string>
   <string name="transfer_not_transfer">That QR code is not a Mini mPOS transfer code.</string>
@@ -326,32 +326,32 @@
   <string name="transfer_categories">Categories</string>
   <string name="transfer_tax_rates">Tax rates</string>
   <string name="transfer_currency">Currency</string>
-  <string name="transfer_currency_mismatch">This catalog was priced in %1$s but this terminal will use %2$s. Prices are imported as-is.</string>
+  <string name="transfer_currency_mismatch">This catalog was priced in %1$s but this device will use %2$s. Prices are imported as-is.</string>
   <string name="transfer_ready">Ready to import</string>
   <string name="transfer_merge">Merge into this catalog</string>
   <string name="transfer_merge_hint">Products with the same SKU (or name) are updated; everything else is added.</string>
   <string name="transfer_replace">Replace this catalog</string>
   <string name="transfer_replace_hint">Deletes all products, categories and tax rates here first.</string>
-  <string name="transfer_replace_confirm">All products, categories and tax rates on this terminal will be deleted and replaced.</string>
+  <string name="transfer_replace_confirm">All products, categories and tax rates on this device will be deleted and replaced.</string>
   <string name="transfer_scan_again">Scan again</string>
   <string name="transfer_done">Import complete</string>
   <string name="transfer_added">Products added</string>
   <string name="transfer_updated">Products updated</string>
   <string name="transfer_new_categories">New categories</string>
   <string name="transfer_new_tax_rates">New tax rates</string>
-  <string name="transfer_choose_hint">Choose what to copy to the other terminal. It should take payments for the same merchant account.</string>
+  <string name="transfer_choose_hint">Choose what to copy to the other device. It should take payments for the same merchant account.</string>
   <string name="transfer_part_catalogue">Catalog</string>
   <string name="transfer_part_catalogue_hint">Products, categories and tax rates</string>
   <string name="transfer_part_settings">Settings</string>
-  <string name="transfer_part_settings_hint">Payments, tax, receipts, email, security, history, the shared key’s identifier and the Checkout API. Where payments go and the terminal’s own address and ID are not copied.</string>
+  <string name="transfer_part_settings_hint">Payments, tax, receipts, email, security, history, the shared key’s identifier and the Checkout API. Where payments go, and the address and ID of the terminal they go to, are not copied.</string>
   <string name="transfer_part_secrets">Passwords and keys</string>
   <string name="transfer_part_secrets_hint">Shared key passphrase, Checkout API key, Payments app API key, SMTP password and admin PIN, protected by a transfer code</string>
-  <string name="transfer_part_secrets_none">None set on this terminal</string>
+  <string name="transfer_part_secrets_none">None set on this device</string>
   <string name="transfer_show_codes">Show QR codes</string>
   <string name="transfer_code_title">Transfer code</string>
-  <string name="transfer_code_hint">Type this code on the other terminal to import the passwords and keys. It is only shown here.</string>
-  <string name="transfer_code_import_hint">Shown on the other terminal. Leave it empty to import without the passwords and keys.</string>
-  <string name="transfer_code_wrong">That transfer code is wrong. Check it on the other terminal, or leave it empty.</string>
+  <string name="transfer_code_hint">Type this code on the other device to import the passwords and keys. It is only shown here.</string>
+  <string name="transfer_code_import_hint">Shown on the other device or on the setup helper page. Leave it empty to import without the passwords and keys.</string>
+  <string name="transfer_code_wrong">That transfer code is wrong. Check it on the other device or the setup helper page, or leave it empty.</string>
   <string name="transfer_included">Included</string>
   <string name="transfer_not_included">Not included</string>
   <string name="transfer_secrets_sealed">Included, with a transfer code</string>
@@ -360,11 +360,13 @@
   <string name="transfer_secret_payments_app_key">Payments app API key</string>
   <string name="transfer_secret_smtp">SMTP password</string>
   <string name="transfer_secret_pin">Admin PIN</string>
-  <string name="transfer_settings_note">The settings replace this terminal’s. Where payments go and the terminal’s own address and ID stay as they are.</string>
+  <string name="transfer_settings_note">The settings replace this device’s. Where payments go, and the address and ID of the terminal they go to, stay as they are.</string>
+  <string name="transfer_part_connection">Connection</string>
+  <string name="transfer_connection_note">From the setup helper: where payments go and the connection details it holds replace this device’s. Other settings stay as they are.</string>
   <string name="transfer_import_action">Import</string>
   <string name="transfer_imported">Imported</string>
   <string name="transfer_skipped">Skipped (no transfer code)</string>
-  <string name="transfer_secrets_failed">Passwords and keys could not be stored on this terminal: %1$s</string>
+  <string name="transfer_secrets_failed">Passwords and keys could not be stored on this device: %1$s</string>
 
   <!-- Scanner -->
   <string name="scan_hint_qr">Point the camera at the QR code</string>
@@ -447,7 +449,7 @@
   <string name="settings_secret_enter">As in the Customer Area</string>
   <string name="settings_secret_show">Show</string>
   <string name="settings_secret_hide">Hide</string>
-  <string name="settings_secret_not_stored">This device could not store it securely (%1$s). Try again, or restart the terminal.</string>
+  <string name="settings_secret_not_stored">This device could not store it securely (%1$s). Try again, or restart the device.</string>
   <string name="settings_advanced">Advanced</string>
   <string name="setup_poiid">Enter the terminal ID (POIID) in Terminal settings</string>
   <string name="setup_host">Enter the terminal’s IP address in Terminal settings</string>
@@ -636,7 +638,7 @@
   <string name="settings_email_raw">Raw email address</string>
   <string name="settings_email_reference_hint">Adyen advises against personal data such as email addresses in shopperReference.</string>
   <string name="settings_email_salt">Hash salt</string>
-  <string name="settings_email_salt_hint">Use the same salt on every terminal so the same email maps to the same token.</string>
+  <string name="settings_email_salt_hint">Use the same salt on every device so the same email maps to the same token.</string>
   <string name="settings_send_shopper_email">Send shopper email with saved cards</string>
   <string name="settings_send_shopper_email_hint">When a card is saved at the terminal, the email typed at checkout goes to Adyen too and is kept with the shopper’s details. Payment links always send it.</string>
   <string name="settings_email_receipts">Email receipts</string>
@@ -717,7 +719,7 @@
     <item quantity="one">%1$d minute</item>
     <item quantity="other">%1$d minutes</item>
   </plurals>
-  <string name="settings_pin_forgotten">Forgotten the PIN? Clear the app’s data from the terminal settings; configuration and history on this terminal are then lost.</string>
+  <string name="settings_pin_forgotten">Forgotten the PIN? Clear the app’s data from the device’s settings; configuration and history on this device are then lost.</string>
 
   <string name="settings_history">History</string>
   <string name="settings_retention">Keep transactions for</string>
@@ -727,11 +729,11 @@
     <item quantity="other">%1$d days</item>
   </plurals>
   <string name="settings_clear_history">Clear history</string>
-  <string name="settings_clear_history_message">All sales and refunds stored on this terminal will be deleted. Payments are not affected.</string>
+  <string name="settings_clear_history_message">All sales and refunds stored on this device will be deleted. Payments are not affected.</string>
   <string name="settings_history_cleared">History cleared</string>
-  <string name="settings_catalogue">Other terminals</string>
+  <string name="settings_catalogue">Other devices</string>
   <string name="settings_export_hint">Show the catalog, settings, passwords and keys as QR codes</string>
-  <string name="settings_import_hint">Scan another terminal’s codes to copy its catalog and settings</string>
+  <string name="settings_import_hint">Scan the codes of another device or of the setup helper page to copy its setup</string>
 
   <string name="about_version">Version</string>
   <string name="about_printer">Printer</string>

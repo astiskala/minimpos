@@ -9,7 +9,7 @@
     <link href="https://astiskala.github.io/minimpos/ja/getting-started.html" rel="canonical">
     <meta content="article" property="og:type">
     <meta content="Mini mPOS をはじめる" property="og:title">
-    <meta content="Adyen アカウントから端末での最初の決済まで。インストール、接続、設定、販売の手順。" property="og:description">
+    <meta content="Adyen アカウントから最初の決済まで。インストール、接続、設定、販売の手順。" property="og:description">
     <meta content="https://astiskala.github.io/minimpos/ja/getting-started.html" property="og:url">
     <meta content="https://astiskala.github.io/minimpos/images/social.png" property="og:image">
     <meta content="summary_large_image" name="twitter:card">
@@ -24,7 +24,7 @@
     <meta content="ja_JP" property="og:locale">
     <meta content="Adyen 決済端末をイメージした Mini mPOS のイラストと英語のデモ画面。" property="og:image:alt">
     <meta content="Mini mPOS をはじめる" name="twitter:title">
-    <meta content="Adyen アカウントから端末での最初の決済まで。インストール、接続、設定、販売の手順。" name="twitter:description">
+    <meta content="Adyen アカウントから最初の決済まで。インストール、接続、設定、販売の手順。" name="twitter:description">
     <meta content="https://astiskala.github.io/minimpos/images/social.png" name="twitter:image">
     <meta content="Adyen 決済端末をイメージした Mini mPOS のイラストと英語のデモ画面。" name="twitter:image:alt">
   </head>
@@ -36,8 +36,8 @@
         <nav aria-label="メインナビゲーション">
           <ul class="nav">
             <li><a href="./#features">機能</a></li>
-            <li><a href="./#how">使い方</a></li>
             <li><a aria-current="page" href="getting-started.html">はじめに</a></li>
+            <li><a href="setup.html">セットアップヘルパー</a></li>
             <li><a class="button button-small" href="https://github.com/astiskala/minimpos">GitHub</a></li>
           </ul>
         </nav>
@@ -58,7 +58,7 @@
         <div class="wrap">
           <p class="eyebrow">ガイド</p>
           <h1>はじめに</h1>
-          <p class="lead">Adyen アカウントから、端末での最初の決済まで。多くの設定は Adyen Customer Area と Mini mPOS の設定で一度だけ行います。約 30 分と、Adyen によるアプリ配布の時間を見込んでください。</p>
+          <p class="lead">Adyen アカウントから、最初の決済まで。多くの設定は Adyen Customer Area と Mini mPOS の設定で一度だけ行います。約 30 分と、Adyen による端末へのアプリ配布の時間を見込んでください。</p>
         </div>
       </section>
       <div class="wrap guide">
@@ -69,7 +69,7 @@
             <li><a href="#try">端末なしで試す</a></li>
             <li><a href="#key">共有キーを作成する</a></li>
             <li><a href="#install">端末にアプリをインストールする</a></li>
-            <li><a href="#connect">決済端末に接続する</a></li>
+            <li><a href="#connect">接続する</a></li>
             <li><a href="#tablet">タブレットやスマートフォンで使う</a></li>
             <li><a href="#business">店舗情報を設定する</a></li>
             <li><a href="#products">商品を追加する</a></li>
@@ -78,7 +78,7 @@
             <li><a href="#payment-links">支払いリンク</a></li>
             <li><a href="#tips">領収書のチップ</a></li>
             <li><a href="#preauth">プリオーソリゼーション</a></li>
-            <li><a href="#more">端末を追加する</a></li>
+            <li><a href="#more">デバイスを追加する</a></li>
             <li><a href="#live">本番運用の前に</a></li>
             <li><a href="#trouble">問題が起きたら</a></li>
           </ol>
@@ -88,12 +88,12 @@
             <h2>1. 始める前に</h2>
             <ul>
               <li>対面決済（Terminal API）が有効な <strong>Adyen アカウント</strong>と、端末設定の閲覧、アプリのアップロード、決済の管理ができる <strong>Customer Area</strong> のユーザーが必要です。</li>
-              <li><strong>Android 9 以降を搭載した Adyen Android 決済端末</strong>。例：S1F2、S1F4Pro、S1E4Pro、S1E2L、AMS1、S1U2、SFO1。印刷にはプリンター搭載モデルが必要です。領収書、バーコード、別の端末の設定用 QR コードの読み取りにはカメラが必要です。</li>
+              <li><strong>Android 9 以降を搭載した Adyen Android 決済端末</strong>。例：S1F2、S1F4Pro、S1E4Pro、S1E2L、AMS1、S1U2、SFO1。Mini mPOS をこの上で動かします。印刷にはプリンター搭載モデルが必要です。領収書、バーコード、設定用 QR コードの読み取りにはカメラが必要です。</li>
               <li>または <strong>Android のタブレットやスマートフォン</strong>。ネットワークやインターネット経由で端末を使うか、Tap to Pay で支払いを受け付けます（<a href="#tablet">タブレットやスマートフォンで使う</a>を参照）。</li>
               <li>任意：領収書をメールで送る場合は、<strong>SMTP メールサーバー</strong>か、一般的なメールサービスのメールボックスを用意してください。</li>
               <li>Adyen Checkout API の <strong>API 認証情報</strong>。すべての支払いに必要です。アプリはこれを通じて領収書のチップとプリオーソリゼーションをキャプチャし、支払いリンクを送ります（<a href="#api">Checkout API とキャプチャ</a>を参照）。</li>
             </ul>
-            <p class="note">Mini mPOS は独立したプロジェクトであり、Adyen の製品ではありません。本番の決済を受け付ける前に、TEST 端末ですべての操作を試してください。</p>
+            <p class="note">Mini mPOS は独立したプロジェクトであり、Adyen の製品ではありません。本番の決済を受け付ける前に、TEST 端末ですべての操作を試してください。このガイドでは Mini mPOS に必要なことだけを説明します。Adyen アカウント、Customer Area、端末の使い方は、リンク先の Adyen の公式ドキュメント（常に最新）を参照してください。</p>
           </section>
           <section id="try">
             <h2>2. 端末なしで試す</h2>
@@ -105,12 +105,8 @@ cd minimpos
           </section>
           <section id="key">
             <h2>3. 共有キーを作成する</h2>
-            <p>Mini mPOS は共有キーで端末へのすべてのリクエストを暗号化します。Customer Area でキーを作成してください。</p>
-            <ol>
-              <li>Mini mPOS を使用する端末（または店舗やアカウント）の <strong>Devices › Device settings › Integrations › Terminal API › Encryption key</strong> を開きます。</li>
-              <li>キーを作成し、<strong>キー識別子</strong>、<strong>キーのパスフレーズ</strong>、<strong>キーバージョン</strong>を控えます。後から鉛筆アイコンで再確認できます。</li>
-            </ol>
-            <p>店舗やマーチャントアカウント単位でキーを設定すると、その配下のすべての端末で同じキーを使えるため、<a href="#more">端末の追加</a>が簡単になります。</p>
+            <p>Mini mPOS は共有キーで端末（と Adyen Payments アプリ）へのすべてのリクエストを暗号化します。Adyen の<a href="https://docs.adyen.com/point-of-sale/design-your-integration/choose-your-architecture/local">ローカル統合ガイド</a>のとおり、Customer Area の <strong>Devices › Device settings › Integrations › Terminal API › Encryption key</strong> でキーを作成し、<strong>キー識別子</strong>、<strong>キーのパスフレーズ</strong>、<strong>キーバージョン</strong>を控えてください。</p>
+            <p>店舗やマーチャントアカウント単位でキーを設定すると、その配下のすべての端末で同じキーを使えるため、<a href="#more">デバイスの追加</a>が簡単になります。クラウドでは APIキーを使うため、共有キーは不要です。</p>
           </section>
           <section id="install">
             <h2>4. 端末にアプリをインストールする</h2>
@@ -118,21 +114,22 @@ cd minimpos
               <li><a href="https://github.com/astiskala/minimpos/releases/latest">最新リリース</a>から <code>minimpos-&lt;version&gt;.apk</code> をダウンロードします。Adyen の要件に従ってメンテナーが署名したファイルです。未署名の APK はアップロードできますが、端末にはインストールできません。</li>
               <li>Adyen の<a href="https://docs.adyen.com/point-of-sale/android-terminals/deploy-apps">アプリ配布ガイド</a>に従ってアップロードし、端末に配布します。Adyen がアプリを端末向けに変換し、選択した端末にインストールします。</li>
             </ol>
-            <p>自分で APK をビルドして署名することもできます。<a href="https://github.com/astiskala/minimpos#put-it-on-your-terminals">README</a> を参照してください。どちらを選んでも、途中で変更しないでください。Customer Area は、同じキーで署名した後続バージョンのみを受け付けます。すべての端末で同じバージョンを使ってください。</p>
+            <p>自分で APK をビルドして署名することもできます。<a href="https://github.com/astiskala/minimpos#put-it-on-your-terminals">README</a> を参照してください。どちらを選んでも、途中で変更しないでください。Customer Area は、同じキーで署名した後続バージョンのみを受け付けます。タブレットやスマートフォンには同じ APK を直接インストールします。配布は不要です。</p>
           </section>
           <section id="connect">
-            <h2>5. 決済端末に接続する</h2>
+            <h2>5. 接続する</h2>
+            <p>Mini mPOS には共有キーと <a href="#api">Checkout API</a>（マーチャントアカウントと APIキー）が必要です。両方がそろうまで決済は保留され、ホームに不足している項目が表示されます。Customer Area を開いているパソコンから入力するのが最も簡単です。</p>
             <ol>
-              <li>端末で Mini mPOS を開き、ホームの<strong>この端末に接続</strong>をタップします。または、<strong>設定 › 端末</strong>を開きます。</li>
-              <li><strong>キー識別子</strong>と<strong>キーのパスフレーズ</strong>を入力します。<strong>キーバージョン</strong>が 1 でない場合は、バージョンも入力します。</li>
-              <li><strong>保存してテスト</strong>、またはキーボードの完了キーをタップします。結果はすぐに表示されます。</li>
-              <li>その下のステップ 2 で <a href="#api">Checkout API</a> を接続します。支払いに必要なため、入力するまでホームに表示されます。</li>
+              <li>パソコンで<a href="setup.html">セットアップヘルパー</a>を開き、<strong>Adyen 端末で動かす</strong>を選んで、キー識別子、パスフレーズ、マーチャントアカウント、APIキーを貼り付け、<strong>QRコードを作成</strong>をクリックします。</li>
+              <li>端末の Mini mPOS で<strong>設定 › データ › 別のデバイスから設定</strong>を開き、カメラでコードを読み取ります。</li>
+              <li>セットアップヘルパーに表示された<strong>転送コード</strong>を入力し、<strong>インポート</strong>をタップします。</li>
             </ol>
-            <p>端末 ID（POIID）、アドレス、TEST／LIVE 環境は自動検出されるため、ほかの入力は不要です。設定 › アプリ情報で検出結果を確認できます。TEST 端末のステータスバーには TEST と表示されます。通貨が端末の地域に従っている場合は、テスト結果にその通貨も表示されます。Adyen アカウントで決済を受け付ける通貨であることを確認してください（設定 › 決済）。</p>
+            <p>端末で直接入力することもできます。ホームの<strong>この端末に接続</strong>をタップし（または<strong>設定 › 端末</strong>を開き）、<strong>キー識別子</strong>、<strong>キーのパスフレーズ</strong>、1 でない場合は<strong>キーバージョン</strong>を入力して<strong>保存してテスト</strong>をタップします。続いて、その下のステップ 2 で Checkout API を入力します。</p>
+            <p>端末 ID（POIID）、アドレス、TEST／LIVE 環境は自動検出されるため、ほかの入力は不要です。設定 › アプリ情報で検出結果を確認できます。TEST 端末のステータスバーには TEST と表示されます。通貨がデバイスの地域に従っている場合は、接続テストの結果にその通貨も表示されます。Adyen アカウントで決済を受け付ける通貨であることを確認してください（設定 › 決済）。</p>
           </section>
           <section id="tablet">
             <h2>6. タブレットやスマートフォンで使う</h2>
-            <p>Mini mPOS は Android のタブレットやスマートフォンでも動作します。同じ APK をインストールし（Customer Area での配布は不要です）、<strong>設定 › 端末 › 決済先</strong>で次のいずれかを選び、その下の番号付きの手順に従います。</p>
+            <p>Mini mPOS は Android のタブレットやスマートフォンでも動作します。同じ APK をインストールし（Customer Area での配布は不要です）、<strong>設定 › 端末 › 決済先</strong>で次のいずれかを選び、その下の番号付きの手順に従います。<a href="setup.html">セットアップヘルパー</a>を使えば、決済先を含めてすべてパソコンから入力できます。</p>
             <dl class="settings-list">
               <dt>ネットワーク上の端末</dt>
               <dd>カウンターのタブレットにおすすめの方法です。タブレットはローカルネットワーク経由で端末にリクエストを送り、共有キーで暗号化します。(1) 端末の IP アドレスと POIID（端末の Device info 画面に表示）、(2) 共有キー、(3) <a href="#api">Checkout API</a> を入力します。端末に Mini mPOS をインストールする必要はありません。</dd>
@@ -153,7 +150,7 @@ cd minimpos
                 <ul>
                   <li><strong>価格設定：</strong><strong>通貨</strong>。Adyen が扱う 138 通貨から選べます。自動設定は端末の地域に従います。</li>
                   <li><strong>参照ID：</strong>アプリが生成する参照IDの接頭辞と、会計時に<strong>取引参照ID</strong>の入力を求めるかどうか（初期状態はオフ）。</li>
-                  <li><strong>購入者とカードの保存：</strong>すべての決済で送信する<strong>購入者参照ID</strong>。初期状態はなしで、会計時に入力する顧客参照IDか購入者のメールアドレス（初期設定ではハッシュ化。すべての端末で同じソルトを使ってください）を選べます。購入者参照IDがある場合は、<strong>カード保存の選択肢を表示</strong>で、会計時にカード保存を表示するかどうか、その初期状態（通常販売とプリオーソリゼーションそれぞれ）、継続課金モデル、カード保存時に購入者のメールアドレスを Adyen に送るかどうかを設定します。</li>
+                  <li><strong>購入者とカードの保存：</strong>すべての決済で送信する<strong>購入者参照ID</strong>。初期状態はなしで、会計時に入力する顧客参照IDか購入者のメールアドレス（初期設定ではハッシュ化。すべてのデバイスで同じソルトを使ってください）を選べます。購入者参照IDがある場合は、<strong>カード保存の選択肢を表示</strong>で、会計時にカード保存を表示するかどうか、その初期状態（通常販売とプリオーソリゼーションそれぞれ）、継続課金モデル、カード保存時に購入者のメールアドレスを Adyen に送るかどうかを設定します。</li>
                   <li><strong>チップ：</strong>会計時に<strong>領収書にチップを記入</strong>を初期状態でオンにするかどうか（<a href="#tips">領収書のチップ</a>を参照）。</li>
                   <li><strong>領収書のメール送信：</strong>購入者にメールアドレスを尋ねるタイミング（尋ねない、決済前、決済後、両方）と、領収書を自動でメール送信するかどうか。</li>
                   <li><strong>支払いリンク：</strong>会計時に支払いリンクを使えるようにするかどうかと、リンクの有効時間（<a href="#payment-links">支払いリンク</a>を参照）。</li>
@@ -174,17 +171,17 @@ cd minimpos
                   <li><a href="https://www.zoho.com/mail/help/zoho-smtp.html">Zoho Mail</a></li>
                   <li><a href="https://proton.me/support/smtp-submission">Proton Mail</a></li>
                 </ul>
-                Outlook.com は他のアプリからの送信にパスワードを使えなくなったため、含まれていません。</dd>
+              </dd>
               <dt>セキュリティ</dt>
-              <dd>設定と商品管理を保護する<strong>管理者PIN</strong>と、再ロックまでの時間を設定します。端末をカウンターに置く前に PIN を設定してください。PIN を何度も間違えると、しばらく入力できなくなります。PIN を忘れた場合は、端末の設定からアプリのデータを消去するしかありません。</dd>
+              <dd>設定と商品管理を保護する<strong>管理者PIN</strong>と、再ロックまでの時間を設定します。デバイスをカウンターに置く前に PIN を設定してください。PIN を何度も間違えると、しばらく入力できなくなります。PIN を忘れた場合は、デバイスの設定からアプリのデータを消去するしかありません。</dd>
               <dt>データ</dt>
-              <dd>販売と返金の保存期間（初期状態は 90 日）の設定、取引履歴の消去、この端末を元にしたほかの端末の設定（<a href="#more">端末を追加する</a>を参照）を行えます。</dd>
+              <dd>販売と返金の保存期間（初期状態は 90 日）の設定、取引履歴の消去、このデバイスを元にしたほかのデバイスの設定、セットアップヘルパーからのこのデバイスの設定（<a href="#more">デバイスを追加する</a>を参照）を行えます。</dd>
               <dt>アプリ情報</dt>
               <dd>アプリのバージョン、TEST／LIVE 環境、プリンターの有無、デバイスの情報、決済ごとにアプリが Adyen に送るアプリケーション情報を確認できます。</dd>
             </dl>
             <h3 id="language-receipts">言語と領収書</h3>
             <p>Mini mPOS は英語、簡体字中国語、日本語に対応しています。Android 12 以前では端末の言語に従います。Android 13 以降では、Android のシステム設定にあるアプリの言語設定から選択できます。</p>
-            <p>新規インストール時は、領収書の初期値やサンプルの表示名も選択した言語になります。言語を変えても、保存済みの領収書タイトル、フッター、税率名、メールの件名、転送した商品カタログは翻訳・上書きされません。既存の設定を使う場合や別の端末から取り込んだ場合は、<strong>設定 › 領収書</strong>、<strong>設定 › 税</strong>、<strong>設定 › メール（SMTP）</strong>、<strong>商品</strong>で確認・変更してください。</p>
+            <p>新規インストール時は、領収書の初期値やサンプルの表示名も選択した言語になります。言語を変えても、保存済みの領収書タイトル、フッター、税率名、メールの件名、転送した商品カタログは翻訳・上書きされません。既存の設定を使う場合や別のデバイスから取り込んだ場合は、<strong>設定 › 領収書</strong>、<strong>設定 › 税</strong>、<strong>設定 › メール（SMTP）</strong>、<strong>商品</strong>で確認・変更してください。</p>
             <p>Adyen が生成する決済の領収書データは原文のまま使用し、決済端末側で設定した領収書の言語に従います。プレーンテキストの領収書では、中国語や日本語の全角文字を 2 桁分として配置します。日本語の領収書は、税率別の対象金額を<strong>税込</strong>または<strong>税抜</strong>で表示します。<strong>設定 › 領収書 › テスト領収書を印刷</strong>で実際の印字を確認してください。</p>
             <p class="note">Mini mPOS の印刷物が適格請求書や適格簡易請求書の要件を満たすことは保証していません。税率別合計の表示だけでインボイス制度に完全対応するものではありません。軽減税率対象商品の表示、税額の端数処理、登録番号など、適用される要件は別途確認してください。また、中国の正式な税務発票を発行する機能ではありません。参考資料として、<a href="https://www.nta.go.jp/english/taxes/consumption_tax/pdf/2023/general_04.pdf">国税庁の適格簡易請求書の説明</a>と<a href="https://inv-veri.chinatax.gov.cn/">中国国家税務総局の増値税発票確認サービス</a>を参照できます。これらは参考情報であり、法令適合の保証や法律上の助言ではありません。</p>
           </section>
@@ -192,36 +189,35 @@ cd minimpos
             <h2>8. 商品を追加する</h2>
             <p><strong>商品</strong>で <strong>+</strong> をタップし、名前、価格、税率を入力します。カテゴリーとバーコードは任意です。バーコードは入力するかスキャンできます。税のかからない商品には 0% の税率を使います。2 つ目のタブにあるカテゴリーで、販売画面の商品をグループ分けできます。</p>
             <p>商品を<strong>プリオーソリ商品</strong>として設定することもできます。予約金やレンタル保証金などに利用します。<a href="#preauth">プリオーソリゼーション</a>を参照してください。</p>
-            <p>商品カタログを別の端末にコピーする方法は、<a href="#more">端末を追加する</a>を参照してください。</p>
+            <p>商品カタログを別のデバイスにコピーする方法は、<a href="#more">デバイスを追加する</a>を参照してください。</p>
           </section>
           <section id="sell">
             <h2>9. 販売と返金</h2>
             <ul>
               <li><strong>新規販売：</strong>商品をタップするか、バーコードをスキャンするか、任意の商品を追加して、<strong>…を会計</strong>ボタンをタップします。会計画面には商品と税額が表示されます。設定 › 決済の内容によっては、取引参照ID、顧客参照ID、購入者のメールアドレスの入力を求められ、カードの保存（購入者の同意が必要）、領収書へのチップ記入、支払いリンクの送信も選べます。<strong>…を決済</strong>ボタンをタップして端末の案内に従います。</li>
               <li><strong>領収書</strong>には店舗のヘッダー、商品、税金、カード決済の領収書、返金用 QR コードをまとめて印刷します。自動で印刷されるほか、結果画面の<strong>領収書を印刷</strong>でも印刷できます。メールを設定していれば<strong>領収書をメール送信</strong>も使えます。タブレットやスマートフォンでは、<strong>領収書を共有</strong>で Android の共有シートから画像として送れます（メッセージアプリなど）。</li>
-              <li><strong>返金：</strong>ホームの<strong>返金</strong>をタップして領収書の QR コードをスキャンするか、<strong>取引履歴</strong>から販売を開きます。全額、商品単位、または指定金額で返金できます（別の端末で行った販売は、全額か指定金額のみ）。Adyen は返金を非同期で処理するため、アプリでは<em>返金要求済み</em>と表示されます。最終結果は Customer Area で確認してください。</li>
+              <li><strong>返金：</strong>ホームの<strong>返金</strong>をタップして領収書の QR コードをスキャンするか、<strong>取引履歴</strong>から販売を開きます。全額、商品単位、または指定金額で返金できます（別のデバイスで行った販売は、全額か指定金額のみ）。Adyen は返金を非同期で処理するため、アプリでは<em>返金要求済み</em>と表示されます。最終結果は Customer Area で確認してください。</li>
               <li><strong>取引履歴</strong>は取引を日別にまとめ、販売、チップ、返金、確保額の日計を表示します。フィルターで販売、チップ入力待ちの取引、プリオーソリゼーション、返金、<em>要確認</em>（結果が未確定の決済。端末に結果を再照会できます）を一覧にできます。</li>
-              <li><strong>取引を検索：</strong>取引履歴の検索欄に入力します。小型端末では先に検索アイコンをタップしてください。加盟店参照ID、PSP参照ID、承認コード、顧客参照ID、購入者のメールアドレス、カード番号の下 4 桁、または <code>34</code> や <code>34.50</code> のような金額で検索できます。すべての検索語が一致する必要があるため、<code>visa 34</code> は $34.00 の Visa 決済を見つけます。元の販売の購入者やカード情報でも返金が見つかります。フィルターの先頭にある<strong>決済方法</strong>では、カードブランドやウォレット（Apple Pay、Google Pay、Samsung Pay）で絞り込めます。</li>
+              <li><strong>取引を検索：</strong>取引履歴の検索欄に入力します。小さな画面では先に検索アイコンをタップしてください。加盟店参照ID、PSP参照ID、承認コード、顧客参照ID、購入者のメールアドレス、カード番号の下 4 桁、または <code>34</code> や <code>34.50</code> のような金額で検索できます。すべての検索語が一致する必要があるため、<code>visa 34</code> は $34.00 の Visa 決済を見つけます。元の販売の購入者やカード情報でも返金が見つかります。フィルターの先頭にある<strong>決済方法</strong>では、カードブランドやウォレット（Apple Pay、Google Pay、Samsung Pay）で絞り込めます。</li>
             </ul>
           </section>
           <section id="api">
             <h2>10. Checkout API とキャプチャ</h2>
             <p>すべての支払いに Adyen の Checkout API が必要です。Mini mPOS はこれを通じて領収書のチップとプリオーソリゼーションをキャプチャし（確保額の調整も含む）、<a href="#payment-links">支払いリンク</a>を送ります。設定するまで、ホームに不足している項目が表示され、支払いは受け付けられません。</p>
             <ol>
-              <li>Customer Area の <strong>Developers › API credentials</strong> で、端末用の認証情報を作成します。付与するロールは <strong>Checkout webservice role</strong> のみにして、<strong>APIキー</strong>を生成してください。</li>
-              <li>Mini mPOS の<strong>設定 › 端末</strong>を開き、<strong>Checkout API</strong> のステップで<strong>マーチャントアカウント</strong>と <strong>APIキー</strong>を入力し、<strong>APIキーを保存してテスト</strong>をタップします。キーは端末に暗号化して保存されます。このテストでは決済は変更されません。クラウドでは、Adyenアカウントの APIキーの認証情報に Checkout webservice role も付与されているため、そのキーで処理されます。</li>
-              <li>LIVE 端末では、<strong>Developers › API URLs</strong> にある <strong>live URL prefix</strong> も必要です。この欄は端末が LIVE と判明してから表示されます。TEST／LIVE 環境は端末の証明書から自動検出されます（クラウドでは APIキーから、Tap to Pay ではインストールされた Payments アプリから判別します）。</li>
-              <li>任意：<strong>Devices › Developer › Additional data › Return adjust authorisation data</strong> で同期的なオーソリゼーション調整を有効にします。有効な場合、増額が承認されたかどうかをアプリですぐに確認できます。無効な場合、調整結果は後から Customer Area で確認します。</li>
+              <li>Customer Area の <strong>Developers › API credentials</strong> で認証情報を作成します（Adyen の <a href="https://docs.adyen.com/development-resources/api-credentials">API 認証情報</a>ガイドを参照）。付与するロールは <strong>Checkout webservice role</strong> のみにして、<strong>APIキー</strong>を生成してください。</li>
+              <li><a href="setup.html">セットアップヘルパー</a>、または Mini mPOS の<strong>設定 › 端末</strong>の <strong>Checkout API</strong> のステップで<strong>マーチャントアカウント</strong>と <strong>APIキー</strong>を入力し、<strong>APIキーを保存してテスト</strong>をタップします。キーはデバイスに暗号化して保存されます。このテストでは決済は変更されません。クラウドでは、Adyenアカウントの APIキーの認証情報に Checkout webservice role も付与されているため、そのキーで処理されます。</li>
+              <li>LIVE アカウントでは <strong>live URL prefix</strong> も必要です（Adyen の <a href="https://docs.adyen.com/development-resources/live-endpoints">LIVE エンドポイント</a>を参照）。アプリでは、この欄は端末が LIVE と判明してから表示されます。TEST／LIVE 環境は端末の証明書から自動検出されます（クラウドでは APIキーから、Tap to Pay ではインストールされた Payments アプリから判別します）。</li>
+              <li>任意：<strong>Return adjust authorisation data</strong> で同期的なオーソリゼーション調整を有効にします（Adyen の<a href="https://docs.adyen.com/online-payments/adjust-authorisation">オーソリゼーション調整</a>ガイドを参照）。有効な場合、増額が承認されたかどうかをアプリですぐに確認できます。無効な場合、調整結果は後から Customer Area で確認します。</li>
             </ol>
             <h3>キャプチャの仕組み</h3>
             <p>領収書のチップとプリオーソリゼーションは<strong>手動キャプチャ</strong>で処理します。キャプチャするまでは金額を確保するだけです。Adyen はキャプチャを非同期で確定するため、アプリでは<em>キャプチャ要求済み</em>と表示されます。Mini mPOS には webhook を受信するバックエンドがないため、最終結果は Customer Area で確認してください。結果が不明なキャプチャは、取引履歴から再送しても二重にキャプチャされません。</p>
-            <p>Checkout API がなかった以前のバージョンの Mini mPOS で Customer Area でのキャプチャに回された販売は、引き続き<em>Customer Areaでキャプチャ</em>と表示されます。<strong>Payments › Payment list</strong> で取引履歴に表示された PSP参照IDを選び、<strong>Capture payment</strong> を実行してください。</p>
           </section>
           <section id="payment-links">
             <h2>11. 支払いリンク</h2>
             <p><a href="#api">Checkout API</a> を設定すると、端末の代わりに Adyen の<a href="https://docs.adyen.com/unified-commerce/pay-by-link">支払いリンク</a>で販売の代金を受け取れます。お客様はご自身のスマートフォンやパソコンで Adyen の決済ページから支払います。</p>
             <ol>
-              <li>最初の LIVE リンクを作成する前に、LIVE の Customer Area の <strong>Payments › Payment link settings</strong> で利用規約を追加してください。</li>
+              <li>最初の LIVE リンクを作成する前に、利用規約など、Adyen の Pay by Link がアカウントに求める設定を確認してください。</li>
               <li>Mini mPOS の<strong>設定 › 決済 › 支払いリンクを使う</strong>をオンにし、リンクの有効時間を選びます（既定は 24 時間、最長 70 日）。</li>
               <li>会計画面で、決済ボタンの下の<strong>支払いリンクを送信</strong>をタップします。お客様が表示された QR コードを読み取るか、<strong>リンクをメール送信</strong>（未払いの領収書付き）、<strong>リンクを印刷</strong>、またはタブレットやスマートフォンで<strong>リンクを共有</strong>します。</li>
             </ol>
@@ -251,12 +247,12 @@ cd minimpos
             <ul>
               <li><strong>Adyen Support</strong> に、決済方法のプリオーソリゼーション設定を依頼します。利用可否はカードスキームと加盟店カテゴリーコード（MCC）によって異なります。Adyen の<a href="https://docs.adyen.com/point-of-sale/pre-authorisation">プリオーソリゼーションガイド</a>を参照してください。</li>
               <li>アカウント全体を手動キャプチャに切り替える<strong>必要はありません</strong>。Mini mPOS はプリオーソリゼーションごとにのみ手動キャプチャを指定します（<code>authorisationType=PreAuth</code> と <code>manualCapture=true</code>）。通常の販売は、アカウントの設定どおりにキャプチャされます。</li>
-              <li>任意：<strong>smart pre-authorization</strong>（Customer Area の <strong>Devices › Device settings › Payment features</strong>）を有効にすると、提示されたカードが対応していない場合に、端末が別のカードを求められます。</li>
+              <li>任意：同じガイドで説明されている <strong>smart pre-authorization</strong> を有効にすると、提示されたカードが対応していない場合に、端末が別のカードを求められます。</li>
             </ul>
             <h3>Mini mPOS での操作</h3>
             <ol>
-              <li><strong>商品</strong>で商品を編集または追加し、<strong>プリオーソリ商品</strong>をオンにします。その商品は新規販売には表示されなくなります。</li>
-              <li>ホームの新規販売の隣に<strong>プリオーソリ</strong>が表示されます。1 件につき 1 商品の金額を確保するため、商品の選択、任意の金額の追加、バーコードのスキャンから直接会計画面に進みます。そこで<strong>…をプリオーソリ</strong>をタップします。</li>
+              <li>任意：予約金など、よく確保する金額は、<strong>商品</strong>で商品を編集または追加し、<strong>プリオーソリ商品</strong>をオンにします。その商品は新規販売には表示されなくなります。</li>
+              <li>ホームの<strong>新規プリオーソリ</strong>をタップします。1 件につき 1 商品の金額を確保するため、商品の選択、任意の金額の追加、バーコードのスキャンから直接会計画面に進みます。そこで<strong>…をプリオーソリ</strong>をタップします。プリオーソリ商品がない場合は、任意の金額から始まります。</li>
               <li>購入者参照IDを設定して<strong>カード保存の選択肢を表示</strong>をオンにすると（設定 › 決済 › 購入者とカードの保存）、プリオーソリゼーションの会計ではカード保存が初期状態でオンになります（購入者の同意が必要です）。プリオーソリゼーションをキャプチャした後に、追加費用を請求するために利用できます。領収書のタイトルは<em>プリオーソリゼーション</em>で、確保額が表示されます。</li>
             </ol>
             <h3>キャプチャ、調整、キャンセル</h3>
@@ -269,22 +265,23 @@ cd minimpos
             <p class="note">確保には有効期限があり、カードスキームによっては数日で失効します。それまでは購入者の明細に保留中として表示されます。速やかにキャプチャまたはキャンセルしてください。取引履歴の<em>プリオーソリ</em>フィルターで一覧を確認でき、日計にはまだ確保されている金額が表示されます。</p>
           </section>
           <section id="more">
-            <h2>14. 端末を追加する</h2>
-            <p>1 台の設定が済んだら、いくつかの QR コードでほかの端末を設定できます。同じ情報を再入力する必要はありません。すべての端末に同じバージョンの Mini mPOS をインストールしてください。</p>
+            <h2>14. デバイスを追加する</h2>
+            <p>1 台の設定が済んだら、いくつかの QR コードでほかのデバイスを設定できます。同じ情報を再入力する必要はありません。</p>
             <ol>
-              <li>設定済みの端末で<strong>設定 › データ › 別の端末に共有</strong>、または<strong>商品</strong>のメニューを開きます。コピーする<strong>カタログ</strong>、<strong>設定</strong>、<strong>パスワードとキー</strong>（共有キーのパスフレーズ、Checkout API キー、PaymentsアプリのAPIキー、SMTP パスワード、管理者PIN）を選び、<strong>QRコードを表示</strong>をタップします。</li>
-              <li>新しい端末で同じ場所から<strong>別の端末から設定</strong>を選び、カメラでコードを読み取ります。順番は問いません。</li>
-              <li><strong>カタログに統合</strong>または<strong>カタログを置換</strong>を選びます。パスワードとキーも移すには、最初の端末のコード上部に表示される<strong>転送コード</strong>を入力してください。入力しない場合は、それらを除く情報だけが取り込まれます。<strong>インポート</strong>をタップします。</li>
+              <li>設定済みのデバイスで<strong>設定 › データ › 別のデバイスに共有</strong>、または<strong>商品</strong>のメニューを開きます。コピーする<strong>カタログ</strong>、<strong>設定</strong>、<strong>パスワードとキー</strong>（共有キーのパスフレーズ、Checkout API キー、PaymentsアプリのAPIキー、SMTP パスワード、管理者PIN）を選び、<strong>QRコードを表示</strong>をタップします。</li>
+              <li>新しいデバイスで同じ場所から<strong>別のデバイスから設定</strong>を選び、カメラでコードを読み取ります。順番は問いません。</li>
+              <li><strong>カタログに統合</strong>または<strong>カタログを置換</strong>を選びます。パスワードとキーも移すには、最初のデバイスのコード上部に表示される<strong>転送コード</strong>を入力してください。入力しない場合は、それらを除く情報だけが取り込まれます。<strong>インポート</strong>をタップします。</li>
               <li><strong>設定 › 端末</strong>の<strong>接続をテスト</strong>で接続を確認します。</li>
             </ol>
-            <p>設定は新しい端末の設定を置き換えますが、決済先、端末固有のアドレスと ID、Tap to Pay の設定、TEST／LIVE 環境、シミュレーター設定は変わりません。共有キーが両方の端末で使えるのは、Customer Area で同じキーが割り当てられている場合だけです（店舗やマーチャントアカウント単位での設定など）。異なる場合は、それぞれのキーを入力してください。転送コードは毎回新しく生成され、最初の端末だけに表示されます。QR コードの写真だけではパスワードはわかりません。</p>
+            <p>設定は新しいデバイスの設定を置き換えますが、決済先、その端末のアドレスと ID、Tap to Pay の設定、TEST／LIVE 環境、シミュレーター設定は変わりません。共有キーが両方の端末で使えるのは、Customer Area で同じキーが割り当てられている場合だけです（店舗やマーチャントアカウント単位での設定など）。異なる場合は、それぞれのキーを入力してください。転送コードは毎回新しく生成され、最初のデバイスだけに表示されます。QR コードの写真だけではパスワードはわかりません。</p>
+            <p><a href="setup.html">セットアップヘルパー</a>は同じ種類のコードをパソコンで作成します。対象は接続情報（決済先、共有キー、Checkout API、Tap to Pay）だけで、デバイスでは入力した項目だけが変わります。</p>
           </section>
           <section id="live">
             <h2>15. 本番運用の前に</h2>
             <ul>
               <li>TEST 端末で Adyen の<a href="https://docs.adyen.com/point-of-sale/testing-pos-payments">テストカード</a>を使い、販売、返金、利用する場合は支払いリンク、チップ、プリオーソリゼーションも何件か試してください。</li>
               <li><strong>設定 › 領収書 › テスト領収書を印刷</strong>でレイアウトを、<strong>テストメールを送信</strong>でメール設定を確認します。</li>
-              <li>管理者PIN を設定してから、同じバージョンを LIVE 端末に配布し、それぞれの共有キー、LIVE の Checkout API キー、live URL prefix を入力します。</li>
+              <li>管理者PIN を設定してから、アプリを LIVE 端末に配布し、それぞれの共有キー、LIVE の Checkout API キー、live URL prefix を入力します（<a href="setup.html">セットアップヘルパー</a>に LIVE の選択肢があります）。</li>
               <li>設定 › アプリ情報に LIVE 環境と表示されることを確認します。</li>
             </ul>
           </section>
@@ -307,10 +304,8 @@ cd minimpos
               <dd>この場合、決済結果は不明で、Payments アプリに再度問い合わせることはできません。お客様に再度請求する前に、Customer Area（Payments › Payment list）で確認してください。</dd>
               <dt>領収書が印刷されない</dt>
               <dd>設定 › 領収書 › プリンター（自動検出、または常に使用可能）と、設定 › アプリ情報でプリンターが検出されているかを確認してください。</dd>
-              <dt>「コードを読み取れませんでした」と表示される</dt>
-              <dd>もう一方の端末が新しい Mini mPOS を使用している可能性があります。両方を同じバージョンに更新し、もう一度スキャンしてください。</dd>
               <dt>管理者PIN を忘れた</dt>
-              <dd>端末の設定からアプリのデータを消去してください。その端末の設定、商品、取引履歴は失われるため、別の端末から設定し直してください。</dd>
+              <dd>デバイスの設定からアプリのデータを消去してください。そのデバイスの設定、商品、取引履歴は失われるため、別のデバイスから設定し直してください。</dd>
             </dl>
             <p>解決しない場合は、<a href="https://github.com/astiskala/minimpos/issues">GitHub で issue を作成</a>してください。</p>
           </section>

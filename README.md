@@ -1,10 +1,10 @@
 # Mini mPOS
 
-A free, open-source point-of-sale app for Adyen Android payment terminals. Sell products, take card and wallet
-payments or send a payment link, print, email or share receipts, and refund by scanning a receipt. Hold deposits and
-collect tips too, all on one device, with no extra tablet or app subscription. It also runs on Android tablets and
-phones, taking payments on a terminal over your network or the internet, or with Tap to Pay through the Adyen Payments
-app.
+A free, open-source point-of-sale app that runs directly on Adyen Android payment terminals. Sell products, take card
+and wallet payments or send a payment link, print, email or share receipts, and refund by scanning a receipt. Hold
+deposits and collect tips too, all on the terminal itself, with no extra tablet or app subscription. The same app runs
+on Android tablets and phones, taking payments on a terminal over your network or the internet, or with Tap to Pay
+through the Adyen Payments app.
 
 [![CI](https://github.com/astiskala/minimpos/actions/workflows/ci.yml/badge.svg)](https://github.com/astiskala/minimpos/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-0abf53.svg)](LICENSE)
@@ -12,7 +12,8 @@ app.
 ![Kotlin](https://img.shields.io/badge/Kotlin-Jetpack%20Compose-00112c.svg)
 
 **Website:** <https://astiskala.github.io/minimpos/> · **Setup guide:**
-<https://astiskala.github.io/minimpos/getting-started.html>
+<https://astiskala.github.io/minimpos/getting-started.html> · **Setup helper:**
+<https://astiskala.github.io/minimpos/setup.html>
 
 **简体中文:** [网站](https://astiskala.github.io/minimpos/zh-CN/) ·
 [快速入门](https://astiskala.github.io/minimpos/zh-CN/getting-started.html) ·
@@ -70,8 +71,11 @@ app.
 - **Guided setup** in numbered steps: on a terminal only the shared key and the Checkout API are needed. The terminal
   ID, address and TEST/LIVE environment are detected, and Home says what is still missing until payments can go
   through. A new installation is ready to sell: checkout asks for nothing but payment, and receipts print by themselves.
-- **Set up more terminals from one**: share the catalog, settings and (with a one-time transfer code) passwords and keys
-  with another terminal as QR codes. No cloud account or computer needed.
+- **Setup helper**: a [web page](https://astiskala.github.io/minimpos/setup.html) where you paste the keys and account
+  codes on a computer, next to the Customer Area, and scan them into the device as QR codes instead of typing long API
+  keys on a keypad. It runs entirely in the browser and seals the keys with a transfer code.
+- **Set up more devices from one**: share the catalog, settings and (with a one-time transfer code) passwords and keys
+  with another device as QR codes. No cloud account or computer needed.
 - **Admin PIN** for settings and products, with automatic re-lock.
 - **Made for terminal screens**, down to the AMS1's 4-inch display: layouts tighten on small screens and the main
   action (Pay, Refund, Save, New sale) stays in reach without scrolling.
@@ -92,13 +96,12 @@ app.
 | New sale | Waiting for the card | Refund by item | Tax rates |
 | <img src="docs/images/pre-auth.png" width="190" alt="Pre-authorizing a catering deposit"> | <img src="docs/images/approved.png" width="190" alt="Approved payment"> | <img src="docs/images/tip-receipt.png" width="190" alt="Printed merchant copy with blank tip, total and signature lines"> | <img src="docs/images/settings.png" width="190" alt="Settings"> |
 | Pre-authorize | Approved | Receipt with tip lines | Settings |
-| <img src="docs/images/history.png" width="190" alt="History"> | <img src="docs/images/pre-auth-detail.png" width="190" alt="A pre-authorization in history, with Capture, Adjust amount and Cancel pre-authorization"> | <img src="docs/images/tip.png" width="190" alt="Entering the tip written on the receipt"> | <img src="docs/images/transfer.png" width="190" alt="Choosing the catalog, settings and passwords to share with another terminal"> |
+| <img src="docs/images/history.png" width="190" alt="History"> | <img src="docs/images/pre-auth-detail.png" width="190" alt="A pre-authorization in history, with Capture, Adjust amount and Cancel pre-authorization"> | <img src="docs/images/tip.png" width="190" alt="Entering the tip written on the receipt"> | <img src="docs/images/transfer.png" width="190" alt="Choosing the catalog, settings and passwords to share with another device"> |
 | History | Pre-authorization in history | Enter tip | Choose what to share |
-| <img src="docs/images/history-search.png" width="190" alt="Searching history for a customer reference, with the sale and its refund found"> | | | <img src="docs/images/export.png" width="190" alt="Transfer code and QR codes for another terminal"> |
-| Searching history | | | Share with another terminal |
+| <img src="docs/images/history-search.png" width="190" alt="Searching history for a customer reference, with the sale and its refund found"> | | | <img src="docs/images/export.png" width="190" alt="Transfer code and QR codes for another device"> |
+| Searching history | | | Share with another device |
 
 Screenshots show an English demo café running on the built-in simulator (hence the "SIMULATOR" banner).
-The website's terminal illustrations are illustrative, not product photographs.
 
 ## Requirements
 
@@ -158,18 +161,20 @@ plus setting up your business, products, payment links, tips and pre-authorizati
 3. **Upload and deploy** the APK in your Customer Area, as described in Adyen's
    [app deployment guide](https://docs.adyen.com/point-of-sale/android-terminals/deploy-apps). Adyen converts the app
    for the terminals and installs it on the ones you choose.
-4. **Connect it:** open Mini mPOS on the terminal and tap **Connect to this terminal** on Home (or go to Settings ›
-   Terminal). Enter the key identifier and passphrase (and the version, if it isn't 1), then tap **Save and test** or
-   the keyboard's Done key. The terminal's ID, address and TEST/LIVE environment are detected automatically, and the
-   result names the currency if it follows the device's region.
+4. **Connect it:** paste the shared key and the Checkout API (step 6) into the
+   [setup helper](https://astiskala.github.io/minimpos/setup.html) on a computer and scan its codes with Settings ›
+   Data › **Set up from another device**. Or tap **Connect to this terminal** on Home (or go to Settings › Terminal),
+   enter the key identifier and passphrase (and the version, if it isn't 1), then tap **Save and test** or the
+   keyboard's Done key. The terminal's ID, address and TEST/LIVE environment are detected automatically, and the result
+   names the currency if it follows the device's region.
 5. **Set up your business:** Settings › Payments (currency, references, saved cards), Tax (check the starting rates),
    Receipts and optionally Email (SMTP). Then set an admin PIN under Security.
 6. **Connect the Checkout API** (step 2 of Settings › Terminal; payments wait for it): create an API credential
    (Customer Area, Developers › API credentials) with only the **Checkout webservice role**, enter your merchant
    account and its API key, then tap **Save and test API key**. LIVE terminals also need your live URL prefix
    (Developers › API URLs), asked for once the terminal is known to be LIVE.
-7. **More terminals:** on the first one, open Settings › Data › **Share with another terminal**; on each new one,
-   **Set up from another terminal**, scan the codes and type the transfer code shown.
+7. **More devices:** on the first one, open Settings › Data › **Share with another device**; on each new one,
+   **Set up from another device**, scan the codes and type the transfer code shown.
 
 The app meets Adyen's [app requirements](https://docs.adyen.com/point-of-sale/android-terminals/app-requirements): it
 only asks for the internet, network state and camera permissions, and the build checks this on every run.
@@ -177,7 +182,8 @@ only asks for the internet, network state and camera permissions, and the build 
 ## Use it on a tablet or phone
 
 Install the same APK (sideloaded from the [latest release](https://github.com/astiskala/minimpos/releases/latest)),
-then choose under Settings › Terminal › **Payments go to**, and follow the numbered steps below it:
+then choose under Settings › Terminal › **Payments go to**, and follow the numbered steps below it (or fill all of it
+in on a computer with the [setup helper](https://astiskala.github.io/minimpos/setup.html)):
 
 - **A terminal on your network**: the recommended setup for a tablet at the counter. Requests go straight to the
   terminal, encrypted with its shared key. Enter (1) the terminal's IP address and POIID, (2) the shared key and (3) the
@@ -243,8 +249,7 @@ and official reference links.
   need the Checkout API, with payments going to a terminal, the cloud or Tap to Pay. Your account's risk and capture
   settings apply to them, as to any online payment.
 - History's wallet (Apple Pay, Google Pay, Samsung Pay) comes from the `paymentMethodVariant` the terminal returns,
-  such as `visa_applepay`. Sales taken with earlier versions of the app did not store it, so they are found by their
-  card brand only. Search and filters only cover transactions still on the terminal (Settings › Data › Keep
+  such as `visa_applepay`. Search and filters only cover transactions still on the device (Settings › Data › Keep
   transactions for).
 - With Tap to Pay there is no printer (receipts are emailed or shared, so tips on the receipt are not offered), and the
   Payments app takes only payments and referenced refunds. It cannot be asked for a transaction's status, so a payment
@@ -253,12 +258,13 @@ and official reference links.
   again**.
 - In the cloud, a payment fails straight away when Adyen reports the terminal as not connected; when Adyen got no
   answer from it, the payment is settled with status checks, as on the network.
-- Settings from another terminal replace this terminal's, except where payments go, its own address and ID, its Tap to
-  Pay installation, the detected TEST/LIVE environment and data center, and the simulator. The shared key passphrase
-  only works if the Customer Area gives both terminals the same shared key (for example at store or merchant account
-  level). The receiving terminal needs a camera.
-- Older versions of the app cannot read setup codes that include settings or secrets (format version 4; a catalog
-  alone is still sent as version 3), so update all terminals together. Codes from older versions still import.
+- Settings from another device replace this device's, except where payments go, the address and ID of its terminal,
+  its Tap to Pay installation, the detected TEST/LIVE environment and data center, and the simulator. The shared key
+  passphrase only works if the Customer Area gives both terminals the same shared key (for example at store or merchant
+  account level). The receiving device needs a camera.
+- The setup helper's codes set only what was filled in (where payments go, the terminal's address and ID, the shared
+  key, the Checkout API, Tap to Pay); the device's other settings stay as they are. On a terminal, payments always stay
+  on the terminal itself.
 - Only the latest [release](https://github.com/astiskala/minimpos/releases) is maintained.
 
 ## How it works

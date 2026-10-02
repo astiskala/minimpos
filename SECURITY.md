@@ -48,9 +48,13 @@ this project. Report them to Adyen through its
 - **Secrets are encrypted on the device.** The shared-key passphrase, the API key (Checkout and Cloud device API), the
   Payments app API key and the SMTP password are encrypted with AES-256-GCM, using a key kept in the Android Keystore.
   The admin PIN is stored only as a salted PBKDF2 hash, and repeated wrong PINs lock entry for increasing periods.
-- **Setting up another terminal protects the secrets.** The QR codes that copy a terminal's setup carry the secrets
-  only encrypted (AES-256-GCM, with a key derived by PBKDF2 from a one-time 12-character transfer code). The code is
-  shown only on the sending terminal and typed on the receiving one; both screens are behind the admin PIN.
+- **Setting up another device protects the secrets.** The QR codes that copy a device's setup carry the secrets only
+  encrypted (AES-256-GCM, with a key derived by PBKDF2 from a one-time 12-character transfer code). The code is shown
+  only on the sending device and typed on the receiving one; both screens are behind the admin PIN.
+- **The setup helper web page sends nothing.** It makes the same kind of codes in the browser (`docs/js/setup.js`,
+  with the QR library vendored next to it), sealing the keys the same way with a transfer code it shows only on the
+  page. It loads no third-party resources, stores nothing, and its Content Security Policy forbids network requests and
+  form submission (`connect-src 'none'`, `form-action 'none'`). Use it on a computer you trust, and close it when done.
 - **No backend and no tracking.** Products, settings and sales history stay on the device. The app sends nothing
   anywhere except to the payment terminal (or the Adyen Payments app), Adyen's Checkout API (to capture tips and
   pre-authorizations and for payment links) and, if you set them up, Cloud device API (terminals in the cloud),

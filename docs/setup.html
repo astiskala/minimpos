@@ -1,0 +1,234 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="Content-Security-Policy" content="connect-src 'none'; form-action 'none'; base-uri 'none'; object-src 'none'; frame-src 'none'; worker-src 'none'">
+  <meta name="referrer" content="no-referrer">
+  <title>Setup helper – Mini mPOS</title>
+  <meta name="description" content="Type your Adyen keys and account details on a computer, where the Customer Area is easy to reach, and scan them into Mini mPOS as QR codes instead of typing long API keys on the device.">
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <link rel="canonical" href="https://astiskala.github.io/minimpos/setup.html">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="Mini mPOS setup helper">
+  <meta property="og:description" content="Copy your Adyen keys on a computer and scan them into Mini mPOS as QR codes.">
+  <meta property="og:url" content="https://astiskala.github.io/minimpos/setup.html">
+  <meta property="og:image" content="https://astiskala.github.io/minimpos/images/social.png">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="theme-color" content="#00112C">
+  <link rel="stylesheet" href="styles.css">
+  <link href="https://astiskala.github.io/minimpos/setup.html" hreflang="en" rel="alternate">
+  <link href="https://astiskala.github.io/minimpos/zh-CN/setup.html" hreflang="zh-CN" rel="alternate">
+  <link href="https://astiskala.github.io/minimpos/ja/setup.html" hreflang="ja" rel="alternate">
+  <link href="https://astiskala.github.io/minimpos/setup.html" hreflang="x-default" rel="alternate">
+  <meta content="en_US" property="og:locale">
+  <meta content="zh_CN" property="og:locale:alternate">
+  <meta content="ja_JP" property="og:locale:alternate">
+  <meta content="Mini mPOS on illustrated Adyen payment terminals, with English demo screens." property="og:image:alt">
+  <meta content="Mini mPOS setup helper" name="twitter:title">
+  <meta content="Copy your Adyen keys on a computer and scan them into Mini mPOS as QR codes." name="twitter:description">
+  <meta content="https://astiskala.github.io/minimpos/images/social.png" name="twitter:image">
+  <meta content="Mini mPOS on illustrated Adyen payment terminals, with English demo screens." name="twitter:image:alt">
+  <script defer src="js/qrcodegen.js"></script>
+  <script defer src="js/setup.js"></script>
+</head>
+<body>
+  <a class="skip" href="#main">Skip to content</a>
+
+  <header class="site-header">
+    <div class="wrap header-row">
+      <a class="brand" href="./" aria-label="Mini mPOS home">
+        <img src="favicon.svg" alt="" width="36" height="36">
+        <span>Mini mPOS</span>
+      </a>
+      <nav aria-label="Main">
+        <ul class="nav">
+          <li><a href="./#features">Features</a></li>
+          <li><a href="getting-started.html">Getting started</a></li>
+          <li><a href="setup.html" aria-current="page">Setup helper</a></li>
+          <li><a class="button button-small" href="https://github.com/astiskala/minimpos">GitHub</a></li>
+        </ul>
+      </nav>
+      <details class="language-menu">
+        <summary aria-label="Language: English" title="Language"><svg aria-hidden="true" class="globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 2.7 3.8 5.7 3.8 9s-1.3 6.3-3.8 9c-2.5-2.7-3.8-5.7-3.8-9S9.5 5.7 12 3z"/></svg><span class="language-current">English</span></summary>
+        <nav aria-label="Language">
+          <ul>
+            <li><a aria-current="page" href="setup.html" hreflang="en" lang="en">English</a></li>
+            <li><a href="zh-CN/setup.html" hreflang="zh-CN" lang="zh-CN">简体中文</a></li>
+            <li><a href="ja/setup.html" hreflang="ja" lang="ja">日本語</a></li>
+          </ul>
+        </nav>
+      </details>
+    </div>
+  </header>
+
+  <main id="main">
+    <section class="guide-hero">
+      <div class="wrap">
+        <p class="eyebrow">Setup helper</p>
+        <h1>Set up a device from your computer</h1>
+        <p class="lead">
+          Long API keys are hard to type on a terminal's keypad. Fill them in here, next to your Customer Area, and
+          scan the result into Mini mPOS as QR codes.
+        </p>
+      </div>
+    </section>
+
+    <div class="wrap setup">
+      <div class="setup-main">
+        <p class="note" id="setup-noscript">The setup helper needs JavaScript. Switch it on for this page, or enter the
+          details in the app as the <a href="getting-started.html#connect">getting started guide</a> describes.</p>
+
+        <form id="setup-form" class="setup-form" hidden autocomplete="off"
+              data-msg-making="Making the codes…"
+              data-msg-ready="Ready: {total} code(s) below."
+              data-msg-code-of="Code {n} of {total}"
+              data-msg-pause="Pause"
+              data-msg-play="Play"
+              data-msg-unsupported="This browser cannot make the codes. Use a current version of Chrome, Edge, Firefox or Safari.">
+          <fieldset>
+            <legend>1. Where does Mini mPOS run, and where do payments go?</legend>
+            <label class="choice"><input type="radio" name="destination" value="thisTerminal" checked> <span><strong>On an Adyen terminal</strong> that takes the payments itself</span></label>
+            <label class="choice"><input type="radio" name="destination" value="network"> <span><strong>On a tablet or phone</strong>, with a terminal on the same network</span></label>
+            <label class="choice"><input type="radio" name="destination" value="cloud"> <span><strong>On a tablet or phone</strong>, with a terminal over the internet (cloud)</span></label>
+            <label class="choice"><input type="radio" name="destination" value="tapToPay"> <span><strong>On a phone</strong>, with Tap to Pay in the Adyen Payments app</span></label>
+          </fieldset>
+
+          <fieldset>
+            <legend>2. Which Adyen environment?</legend>
+            <label class="choice"><input type="radio" name="environment" value="test" checked> <span><strong>TEST</strong>: test terminals and test cards</span></label>
+            <label class="choice"><input type="radio" name="environment" value="live"> <span><strong>LIVE</strong>: real payments</span></label>
+            <p class="hint">The app finds out the environment by itself when it connects; this choice only opens the
+              right Customer Area below, and asks for the live URL prefix.</p>
+          </fieldset>
+
+          <fieldset data-for="network">
+            <legend>The terminal on your network</legend>
+            <label for="host">IP address</label>
+            <input id="host" name="host" type="text" inputmode="url" required spellcheck="false" placeholder="192.168.1.20">
+            <label for="poiId">Terminal ID (POIID)</label>
+            <input id="poiId" name="poiId" type="text" required spellcheck="false" placeholder="S1F2-000158213605014">
+            <p class="hint">Both are on the terminal's Device info screen.</p>
+          </fieldset>
+
+          <fieldset data-for="cloud">
+            <legend>The terminal in the cloud</legend>
+            <label for="cloudPoiId">Terminal ID (POIID), optional</label>
+            <input id="cloudPoiId" name="poiId" type="text" spellcheck="false" placeholder="S1F2-000158213605014">
+            <p class="hint">Leave it empty to choose from the connected terminals in the app.</p>
+          </fieldset>
+
+          <fieldset data-for="thisTerminal network tapToPay">
+            <legend>Shared key</legend>
+            <p class="hint">In the Customer Area: <a data-ca="devices/device-settings?categoryId=tapi" href="https://ca-test.adyen.com/ca/ui/devices/device-settings?categoryId=tapi">Devices › Device settings › Terminal API</a>,
+              under Encryption key (select the pencil icon to see it).</p>
+            <label for="keyIdentifier">Key identifier</label>
+            <input id="keyIdentifier" name="keyIdentifier" type="text" required spellcheck="false">
+            <label for="passphrase">Passphrase</label>
+            <input id="passphrase" name="passphrase" type="password" required spellcheck="false">
+            <label for="keyVersion">Version</label>
+            <input id="keyVersion" name="keyVersion" type="number" min="1" max="9999" value="1" required>
+          </fieldset>
+
+          <fieldset data-for="thisTerminal network cloud tapToPay">
+            <legend>Checkout API</legend>
+            <p class="hint">Create an API credential in <a data-ca="developers/api-credentials/" href="https://ca-test.adyen.com/ca/ui/developers/api-credentials/">Developers › API credentials</a>,
+              <span data-only="thisTerminal network tapToPay">with the Checkout webservice role,</span><span data-only="cloud" hidden>with the Cloud Device API and Checkout webservice roles,</span>
+              and generate its API key.</p>
+            <label for="merchantAccount">Merchant account</label>
+            <input id="merchantAccount" name="merchantAccount" type="text" required spellcheck="false">
+            <label for="apiKey">API key</label>
+            <input id="apiKey" name="apiKey" type="password" required spellcheck="false">
+          </fieldset>
+
+          <fieldset data-for="thisTerminal network cloud tapToPay" data-env="live">
+            <legend>Live URL prefix</legend>
+            <p class="hint">In <a data-ca="developers/api-urls" href="https://ca-live.adyen.com/ca/ui/developers/api-urls">Developers › API URLs</a>.</p>
+            <label for="liveUrlPrefix">Prefix</label>
+            <input id="liveUrlPrefix" name="liveUrlPrefix" type="text" required spellcheck="false" placeholder="1797a841fbb37ca7-AdyenDemo">
+          </fieldset>
+
+          <fieldset data-for="tapToPay">
+            <legend>Tap to Pay</legend>
+            <p class="hint">An API credential with only the Adyen Payments app role, which Adyen Support enables; see
+              Adyen's <a href="https://docs.adyen.com/point-of-sale/mobile-android/build/payments-app">Payments app guide</a>.</p>
+            <label for="paymentsAppApiKey">Payments app API key</label>
+            <input id="paymentsAppApiKey" name="paymentsAppApiKey" type="password" required spellcheck="false">
+            <label for="storeId">Store ID, optional</label>
+            <input id="storeId" name="storeId" type="text" spellcheck="false">
+            <p class="hint">To set up the phone for one store: its ID (not its reference) from <a data-ca="devices/stores/" href="https://ca-test.adyen.com/ca/ui/devices/stores/">Devices › Stores</a>.</p>
+          </fieldset>
+
+          <div class="setup-actions">
+            <button class="button" type="submit">Make QR codes</button>
+            <button class="button button-ghost" type="reset">Clear</button>
+          </div>
+          <p class="hint" id="setup-status" role="status" aria-live="polite"></p>
+        </form>
+
+        <section id="setup-codes" class="setup-codes" hidden aria-labelledby="setup-codes-title">
+          <h2 id="setup-codes-title">Scan these codes with the device</h2>
+          <ol>
+            <li>In Mini mPOS on the device, open <strong>Settings › Data › Set up from another
+              device</strong>.</li>
+            <li>Point its camera at the codes below. With more than one, they change by themselves.</li>
+            <li>Type the <strong>transfer code</strong> and tap <strong>Import</strong>. Only what you filled in here
+              changes on the device.</li>
+            <li>Check the connection under <strong>Settings › Terminal</strong>. With Tap to Pay, tap <strong>Set up Tap
+              to Pay</strong> there.</li>
+          </ol>
+          <div class="setup-code-card" id="setup-code-card">
+            <p>Transfer code</p>
+            <p class="setup-code" id="setup-code"></p>
+          </div>
+          <div class="setup-qr" id="setup-qr"></div>
+          <div class="setup-controls">
+            <button class="button button-ghost button-small" id="setup-previous" type="button">Previous</button>
+            <span id="setup-position"></span>
+            <button class="button button-ghost button-small" id="setup-next" type="button">Next</button>
+            <button class="button button-ghost button-small" id="setup-pause" type="button">Pause</button>
+          </div>
+        </section>
+      </div>
+
+      <aside class="setup-side">
+        <h2>Good to know</h2>
+        <ul>
+          <li><strong>Nothing leaves this page.</strong> The codes are made in your browser; the page sends nothing
+            anywhere and stores nothing. Close it when you are done.</li>
+          <li><strong>The keys are sealed.</strong> Passwords and keys in the codes are encrypted with the transfer
+            code, which is shown only here, so a photo of the codes alone does not reveal them.</li>
+          <li><strong>Use the codes once.</strong> Each time you make them, they get a new transfer code.</li>
+          <li><strong>Copying a whole setup?</strong> To copy products and settings from one device to another, use
+            <a href="getting-started.html#more">Share with another device</a> in the app instead.</li>
+        </ul>
+        <h2>Customer Area shortcuts</h2>
+        <table class="setup-links">
+          <thead>
+            <tr><th scope="col">Page</th><th scope="col">TEST</th><th scope="col">LIVE</th></tr>
+          </thead>
+          <tbody>
+            <tr><th scope="row">Sign in</th><td><a href="https://ca-test.adyen.com/ca/ui/">TEST</a></td><td><a href="https://ca-live.adyen.com/ca/ui/">LIVE</a></td></tr>
+            <tr><th scope="row">Terminal apps (upload the APK)</th><td><a href="https://ca-test.adyen.com/ca/ui/devices/terminal-apps/">TEST</a></td><td><a href="https://ca-live.adyen.com/ca/ui/devices/terminal-apps/">LIVE</a></td></tr>
+            <tr><th scope="row">API credentials</th><td><a href="https://ca-test.adyen.com/ca/ui/developers/api-credentials/">TEST</a></td><td><a href="https://ca-live.adyen.com/ca/ui/developers/api-credentials/">LIVE</a></td></tr>
+            <tr><th scope="row">Terminal API (shared key)</th><td><a href="https://ca-test.adyen.com/ca/ui/devices/device-settings?categoryId=tapi">TEST</a></td><td><a href="https://ca-live.adyen.com/ca/ui/devices/device-settings?categoryId=tapi">LIVE</a></td></tr>
+            <tr><th scope="row">Stores</th><td><a href="https://ca-test.adyen.com/ca/ui/devices/stores/">TEST</a></td><td><a href="https://ca-live.adyen.com/ca/ui/devices/stores/">LIVE</a></td></tr>
+            <tr><th scope="row">API URLs (live prefix)</th><td>–</td><td><a href="https://ca-live.adyen.com/ca/ui/developers/api-urls">LIVE</a></td></tr>
+          </tbody>
+        </table>
+      </aside>
+    </div>
+  </main>
+
+  <footer class="site-footer">
+    <div class="wrap footer-row">
+      <p>
+        <img src="favicon.svg" alt="" width="24" height="24"> Mini mPOS · MIT license ·
+        <a href="https://github.com/astiskala/minimpos">GitHub</a> ·
+        <a href="https://github.com/astiskala/minimpos/blob/main/SECURITY.md">Security</a>
+      </p>
+      <p class="fine">Adyen is a trademark of Adyen N.V. Mini mPOS is an independent project and is not affiliated with, endorsed by or supported by Adyen. The QR codes are drawn with Project Nayuki's QR Code generator library (MIT license).</p>
+    </div>
+  </footer>
+</body>
+</html>

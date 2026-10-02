@@ -150,8 +150,10 @@ device API or the Adyen Payments app (Tap to Pay); anywhere through its built-in
   answers on TEST (the `paid` status, the PATCH answer for an already paid link, line item validation), and that a
   terminal payment with a `shopperReference` but no `recurringProcessingModel` stores no card.
 - No TEST banner (test terminals show TEST themselves); `ModeBanner` only for the simulator. No "settings not
-  protected" warning and no terminal/printer status line on Home (they are in Settings › About); Products/Settings
-  are slim grey buttons. Secret field placeholders stay one line ("Type to replace").
+  protected" warning and no terminal/printer status line on Home (they are in Settings › About). Home is, top to
+  bottom: New sale and New pre-authorization as full-width green tiles (both always, since a pre-authorisation can be
+  a custom amount), Refund and History as half-width tiles, then Products/Settings as slim grey buttons. Secret field
+  placeholders stay one line ("Type to replace").
 - Every product has a tax rate (0% rates for untaxed items; no "tax applies" switch); "Charge tax" off taxes nothing
   but keeps rates. The last tax rate cannot be deleted.
 - The customer reference is asked for exactly when it is the shopper reference (no separate switch); with the email
@@ -183,11 +185,21 @@ device API or the Adyen Payments app (Tap to Pay); anywhere through its built-in
   with the unpaid receipt) is offered only off-terminal (`TerminalState.canShare`); terminals email instead.
 - History search: every word must match (case-insensitive) a reference, auth code, shopper data, card last 4, brand or
   wallet, or be exactly the amount; combined with the filter chips, and day totals cover only what is shown.
-- Setting up another terminal: one QR transfer with switches for catalogue, settings (minus the device fields of
+- Setting up another device: one QR transfer with switches for catalogue, settings (minus the device fields of
   `AppSettings.withDeviceFieldsOf`, which each section names next to its fields) and secrets, sealed by `TransferSeal`
   with a 12-character code. What travels is `AppSettings.shared()` (taken over with `takingOver`), so a new settings
   section or field transfers by default; the import rules (currency after import, transfer code, skipped secrets) are
   `SetupTransfer`'s and `ReceivedTransfer`'s.
+- The setup helper (`docs/setup.html`, `docs/js/setup.js`) makes transfer codes in the browser: a connection
+  (`ConnectionSetup`, `TransferCodec` version 5, written only when there is one) and sealed secrets, imported through
+  "Set up from another device". It sets only what it holds, device fields included, never the other settings; on a
+  terminal only "this terminal" changes where payments go. `setup.js` mirrors `TransferCodec`, `QrChunks` and
+  `TransferSeal` (stored DEFLATE blocks, WebCrypto PBKDF2/AES-GCM): change them together, and regenerate the codes in
+  `SetupTransferTest`'s setup helper test from the page. The page sends nothing (CSP `connect-src 'none'`); the QR
+  encoder is a vendored, compiled Project Nayuki release (`docs/js/qrcodegen.js`, header says which).
+- Terminology: the **device** runs Mini mPOS (a terminal, tablet or phone); the **terminal** takes the card. User
+  text says "device" for what runs the app (transfers, data, PIN) and keeps "terminal" for payments and for Settings ›
+  Terminal; the docs keep saying that Mini mPOS runs on the terminal itself, which sets it apart.
 
 ## Documentation
 
@@ -195,11 +207,16 @@ device API or the Adyen Payments app (Tap to Pay); anywhere through its built-in
   `https://astiskala.github.io/minimpos/`, published by GitHub Pages as is), `CONTRIBUTING.md` (contributors: setup,
   what the gate runs, guidelines), `SECURITY.md` (reporting, data protection), `CONTEXT.md` and the `AGENTS.md` files.
   Say a thing once, where its reader looks, and link to it from elsewhere.
-- Keep feature claims, Customer Area paths and Settings names in README, `docs/index.html` and
-  `docs/getting-started.html` in sync with the app, and change the site's three languages together (`docs/zh-CN/`,
-  `docs/ja/`: reciprocal language switches, canonical/hreflang links, a script-free `<details>` globe menu at the top
-  right of the header). `./gradlew :website-test:check` checks all six pages (void elements take no trailing slash);
-  a new guide section also goes into its `GUIDE_SECTIONS`, and the guides' `<code>` elements must match in order.
+- Keep feature claims, Customer Area paths and Settings names in README, `docs/index.html`,
+  `docs/getting-started.html` and `docs/setup.html` in sync with the app, and change the site's three languages
+  together (`docs/zh-CN/`, `docs/ja/`: reciprocal language switches, canonical/hreflang links, a script-free `<details>`
+  globe menu at the top right of the header). `./gradlew :website-test:check` checks all nine pages (void elements take
+  no trailing slash); a new guide section also goes into its `GUIDE_SECTIONS`, the guides' `<code>` elements must match
+  in order, and the setup helpers' form fields, links and messages must match. Only the setup helper runs scripts.
+- The app is pre-release: docs and UI carry no warnings about older app versions (reading codes from them, keeping
+  devices on the same version, data they left behind).
+- The guides cover what Mini mPOS needs and link to Adyen's documentation for how Adyen works (account, Customer Area,
+  roles, endpoints), rather than describing Adyen's screens, which change and are Adyen's to support.
 - Screenshots are English demo screens on the simulator, visibly disclosed, shown in original AMS1/S1F2-style SVG
   frames (bottom bezels blank, no NFC symbol on the AMS1's top); each matches its frame's screen (S1F2 9:16 at 540×960,
   AMS1 3:5 at 480×800). Re-capture them, and `social.png`, with the `docs-screenshots` skill.

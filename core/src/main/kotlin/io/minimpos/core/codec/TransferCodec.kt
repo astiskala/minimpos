@@ -26,6 +26,10 @@ class TransferFormatException(
  * `version(1) | crc32(4) | raw-deflate(body)`, where the body uses unsigned LEB128 varints and length-prefixed
  * UTF-8 strings. The result is Base45-encoded so it fits QR alphanumeric mode.
  *
+ * Version 5 adds the connection section (bit 3), as length-prefixed UTF-8 after the others; it is the only version
+ * that may carry it, and is written only when there is one (the setup helper web page writes it too), so transfers
+ * between terminals stay readable by builds that know version 4.
+ *
  * Version 4 starts the body with a varint of the sections present (bit 0: catalogue, bit 1: settings, bit 2: sealed
  * secrets), followed by them in that order: the catalogue as in version 3, then the settings and the secrets as
  * length-prefixed bytes. A transfer of a catalogue alone is still written as version 3, which older builds can read.
@@ -36,7 +40,8 @@ class TransferFormatException(
  * builds can be imported, with sale products only.
  */
 object TransferCodec {
-    private const val VERSION: Int = 4
+    private const val VERSION: Int = 5
+    private const val VERSION_SECTIONS: Int = 4
     private const val VERSION_CATALOGUE: Int = 3
     private const val VERSION_TAX_OPTIONAL: Int = 2
     private const val VERSION_TAX_REQUIRED: Int = 1
@@ -44,7 +49,9 @@ object TransferCodec {
     private const val SECTION_CATALOGUE = 1L
     private const val SECTION_SETTINGS = 2L
     private const val SECTION_SECRETS = 4L
-    private const val ALL_SECTIONS = SECTION_CATALOGUE or SECTION_SETTINGS or SECTION_SECRETS
+    private const val SECTION_CONNECTION = 8L
+    private const val VERSION_4_SECTIONS = SECTION_CATALOGUE or SECTION_SETTINGS or SECTION_SECRETS
+    private const val ALL_SECTIONS = VERSION_4_SECTIONS or SECTION_CONNECTION
     private const val HEADER_SIZE = 5
     private const val MAX_BODY_BYTES = 2 * 1024 * 1024
     private const val MAX_STRING_BYTES = 1024
@@ -54,6 +61,9 @@ object TransferCodec {
 
     /** The most sealed secrets a transfer carries, in bytes. */
     const val MAX_SECRETS_BYTES: Int = 4 * 1024
+
+    /** The most connection text a transfer carries, in UTF-8 bytes. */
+    const val MAX_CONNECTION_BYTES: Int = 4 * 1024
     private const val MAX_ITEMS = 100_000
     private const val BUFFER_BYTES = 4096
 
@@ -70,25 +80,34 @@ object TransferCodec {
 
     /**
      * Encodes [transfer], ready to be split into QR codes with [QrChunks]: as version 3 when it holds only a
-     * catalogue, else as version 4.
+     * catalogue, as version 5 when it holds a connection, else as version 4.
      *
      * @throws IllegalArgumentException if a name or SKU is longer than 1,024 bytes in UTF-8, a price or rate is
-     *   negative, or the settings or secrets are longer than [MAX_SETTINGS_BYTES] or [MAX_SECRETS_BYTES].
+     *   negative, or the settings, secrets or connection are longer than [MAX_SETTINGS_BYTES], [MAX_SECRETS_BYTES] or
+     *   [MAX_CONNECTION_BYTES].
      */
     fun encode(transfer: Transfer): String {
         val body = BinaryWriter()
-        val catalogueOnly = transfer.settings == null && transfer.sealedSecrets == null
+        val catalogueOnly = transfer.settings == null && transfer.sealedSecrets == null && transfer.connection == null
         if (!catalogueOnly) {
             var sections = 0L
             if (transfer.catalogue != null) sections = sections or SECTION_CATALOGUE
             if (transfer.settings != null) sections = sections or SECTION_SETTINGS
             if (transfer.sealedSecrets != null) sections = sections or SECTION_SECRETS
+            if (transfer.connection != null) sections = sections or SECTION_CONNECTION
             body.writeVarint(sections)
         }
         transfer.catalogue?.let { writeCatalogue(body, it) }
         transfer.settings?.let { body.writeBytes(it.toByteArray(Charsets.UTF_8), MAX_SETTINGS_BYTES) }
         transfer.sealedSecrets?.let { body.writeBytes(it.toByteArray(), MAX_SECRETS_BYTES) }
-        return pack(if (catalogueOnly) VERSION_CATALOGUE else VERSION, body.toByteArray())
+        transfer.connection?.let { body.writeBytes(it.toByteArray(Charsets.UTF_8), MAX_CONNECTION_BYTES) }
+        val version =
+            when {
+                catalogueOnly -> VERSION_CATALOGUE
+                transfer.connection != null -> VERSION
+                else -> VERSION_SECTIONS
+            }
+        return pack(version, body.toByteArray())
     }
 
     private fun writeCatalogue(
@@ -132,9 +151,9 @@ object TransferCodec {
     }
 
     /**
-     * Decodes [text] produced by [encode] in format version 1 to 4. Limits on sizes and counts protect against
-     * malicious codes: at most 2 MiB of data, 100,000 entries per list, 1,024 bytes per text, and the settings and
-     * secrets limits.
+     * Decodes [text] produced by [encode] in format version 1 to 5. Limits on sizes and counts protect against
+     * malicious codes: at most 2 MiB of data, 100,000 entries per list, 1,024 bytes per text, and the settings,
+     * secrets and connection limits.
      *
      * @throws TransferFormatException if [text] is not a valid transfer.
      */
@@ -167,23 +186,28 @@ object TransferCodec {
         if (crc != expectedCrc) throw TransferFormatException("Transfer checksum mismatch")
         val reader = BinaryReader(raw)
         val transfer =
-            if (version < VERSION) {
+            if (version < VERSION_SECTIONS) {
                 Transfer(readCatalogue(reader, taxOptional = version >= VERSION_TAX_OPTIONAL, hasFlags = version >= VERSION_CATALOGUE))
             } else {
-                readSections(reader)
+                readSections(reader, if (version == VERSION_SECTIONS) VERSION_4_SECTIONS else ALL_SECTIONS)
             }
         if (!reader.isAtEnd) throw TransferFormatException("Unexpected trailing transfer data")
         return transfer
     }
 
-    private fun readSections(reader: BinaryReader): Transfer {
+    private fun readSections(
+        reader: BinaryReader,
+        allowed: Long,
+    ): Transfer {
         val sections = reader.readVarint()
-        if (sections == 0L || sections and ALL_SECTIONS.inv() != 0L) throw TransferFormatException("Invalid transfer sections")
+        if (sections == 0L || sections and allowed.inv() != 0L) throw TransferFormatException("Invalid transfer sections")
         val catalogue = if (sections and SECTION_CATALOGUE != 0L) readCatalogue(reader, taxOptional = true, hasFlags = true) else null
         val settings =
             if (sections and SECTION_SETTINGS != 0L) reader.readBytes(MAX_SETTINGS_BYTES).toString(Charsets.UTF_8) else null
         val secrets = if (sections and SECTION_SECRETS != 0L) SealedSecrets(reader.readBytes(MAX_SECRETS_BYTES)) else null
-        return Transfer(catalogue, settings, secrets)
+        val connection =
+            if (sections and SECTION_CONNECTION != 0L) reader.readBytes(MAX_CONNECTION_BYTES).toString(Charsets.UTF_8) else null
+        return Transfer(catalogue, settings, secrets, connection)
     }
 
     private fun readCatalogue(

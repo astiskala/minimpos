@@ -150,8 +150,8 @@ class AppContainer(
     /** Tax rates, categories and products. */
     val catalog = CatalogRepository(database, context.getString(R.string.tax_default_zero))
 
-    /** Copies the catalogue, settings and secrets to another terminal by QR code. */
-    val setupTransfer = SetupTransfer(catalog, settings, secrets)
+    /** Copies the catalogue, settings and secrets to another device by QR code, and imports the setup helper's codes. */
+    val setupTransfer = SetupTransfer(catalog, settings, secrets, onTerminal = device.isAdyenTerminal)
 
     /** Stored sales. */
     val sales = SaleRepository(database)

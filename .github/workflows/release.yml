@@ -30,6 +30,8 @@ jobs:
       contents: write
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
       - uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
         with:
@@ -75,20 +77,28 @@ jobs:
         run: ./gradlew qualityGate :app:assembleRelease
 
       - name: Check the signature
+        env:
+          VERSION: ${{ steps.version.outputs.name }}
         run: |
-          apksigner=$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -n 1)/apksigner
+          apksigner=$(printf '%s\n' "$ANDROID_HOME"/build-tools/* | sort -V | tail -n 1)/apksigner
           "$apksigner" verify --print-certs app/build/outputs/apk/release/app-release.apk | grep -v '^WARNING'
-          cp app/build/outputs/apk/release/app-release.apk "$RUNNER_TEMP/minimpos-${{ steps.version.outputs.name }}.apk"
+          cp app/build/outputs/apk/release/app-release.apk "$RUNNER_TEMP/minimpos-$VERSION.apk"
 
+      # The checkout does not keep the token in .git/config, where the build (third-party Gradle plugins and
+      # dependencies) could read it; only this step gets it, the way actions/checkout passes it to git.
       - name: Commit and tag the version
         env:
+          GH_TOKEN: ${{ github.token }}
           VERSION: ${{ steps.version.outputs.name }}
         run: |
           git config user.name "Adam Stiskala"
           git config user.email "github@adamstiskala.com"
           git commit --quiet --message "Release $VERSION" version.properties
           git tag --annotate "v$VERSION" --message "Mini mPOS $VERSION"
-          git push --atomic origin HEAD:main "refs/tags/v$VERSION"
+          auth=$(printf 'x-access-token:%s' "$GH_TOKEN" | base64 -w0)
+          echo "::add-mask::$auth"
+          git -c "http.https://github.com/.extraheader=AUTHORIZATION: basic $auth" \
+            push --atomic origin HEAD:main "refs/tags/v$VERSION"
 
       - name: Publish the GitHub Release
         env:

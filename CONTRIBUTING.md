@@ -11,6 +11,8 @@ You need:
   (`gradle/gradle-daemon-jvm.properties`).
 - The Android SDK with platform 37 and recent build tools. Android Studio installs these for you; otherwise point
   `sdk.dir` in `local.properties` at your SDK.
+- macOS or Linux for the full quality gate: it downloads the release binaries of the Markdown and workflow linters
+  (checked against pinned SHA-256 checksums), which are built for those systems only.
 - An emulator or Android phone (Android 9 or later) to run the app. Without an Adyen terminal the app uses its
   built-in simulator.
 
@@ -35,8 +37,15 @@ Run the full quality gate before you open a pull request:
 
 It runs:
 
-- Spotless with ktlint (formatting). Fix formatting with `./gradlew spotlessApply`. ktlint caches `.editorconfig`
-  inside the Gradle daemon, so after editing it run `./gradlew --stop` before checking again.
+- Spotless with ktlint (formatting), and trailing whitespace and final newlines in the other text files. Fix
+  formatting with `./gradlew spotlessApply`, which also fixes what it can in the Markdown files. ktlint caches
+  `.editorconfig` inside the Gradle daemon, so after editing it run `./gradlew --stop` before checking again.
+- [rumdl](https://rumdl.dev) (`.rumdl.toml`) on every Markdown file: markdownlint's rules, lines of at most 120
+  characters outside tables and code, and relative links that point at existing files. It keeps your line breaks, so
+  wrap prose yourself.
+- The website's checks (`website-test`): tests of its links, languages, metadata, quoted app labels and screenshots,
+  and the [W3C Nu Html Checker](https://validator.github.io/validator/) on its HTML and CSS.
+- The GitHub workflows' checks: actionlint (with shellcheck on their scripts) and zizmor's security audit.
 - detekt with the Compose rules (`config/detekt/`), including the documentation rules described below. There is no
   baseline: every finding must be fixed.
 - A KDoc link check: Dokka builds each module's documentation (`dokkaGeneratePublicationHtml`, part of `check`) and
@@ -59,7 +68,8 @@ It runs:
 Kotlin warnings are errors in every module. It's also worth building the release APK
 (`./gradlew :app:assembleRelease`) when you add a dependency, because R8 may need keep rules for it. GitHub Actions
 runs the quality gate and the release build on every pull request (`.github/workflows/ci.yml`), and Dependabot proposes
-dependency updates once they are a week old.
+dependency updates (Gradle and GitHub Actions) once they are a week old. Each push to `main` also submits the
+resolved Gradle dependency graph, so Dependabot alerts cover transitive dependencies too.
 
 ### Rules are fixed, not silenced
 
@@ -128,8 +138,9 @@ S1F2 and AMS1 frames, so capture them at those screens' sizes: 720×1280 (S1F2, 
 only `sale-ams1.png`). Keep the demo data consistent, so the README and the website match.
 
 The website in `docs/` has English, Simplified Chinese (`docs/zh-CN/`) and Japanese (`docs/ja/`) pages, which all use
-the English screenshots. Change all three languages together and check them with `python3 docs/tests/test_site.py`
-(links, language switches, metadata and the app labels the guides quote).
+the English screenshots. Change all three languages together and check them with `./gradlew :website-test:check` (part
+of the quality gate): links, language switches, metadata, the app labels the guides quote, and valid HTML and CSS
+(void elements such as `<img ...>` take no trailing slash).
 
 ## Releases
 

@@ -1,38 +1,38 @@
 <!doctype html>
 <html lang="zh-CN">
   <head>
-    <meta charset="utf-8"/>
-    <meta content="width=device-width, initial-scale=1" name="viewport"/>
+    <meta charset="utf-8">
+    <meta content="width=device-width, initial-scale=1" name="viewport">
     <title>快速入门 – Mini mPOS</title>
-    <meta content="在 Adyen Android 支付终端上安装和设置 Mini mPOS：配置共享密钥、商家信息和商品，处理销售、退款、收据小费和预授权。" name="description"/>
-    <link href="../favicon.svg" rel="icon" type="image/svg+xml"/>
-    <link href="https://astiskala.github.io/minimpos/zh-CN/getting-started.html" rel="canonical"/>
-    <meta content="article" property="og:type"/>
-    <meta content="Mini mPOS 快速入门" property="og:title"/>
-    <meta content="从 Adyen 账户到终端上的第一笔支付：安装、连接、设置并开始销售。" property="og:description"/>
-    <meta content="https://astiskala.github.io/minimpos/zh-CN/getting-started.html" property="og:url"/>
-    <meta content="https://astiskala.github.io/minimpos/images/social.png" property="og:image"/>
-    <meta content="summary_large_image" name="twitter:card"/>
-    <meta content="#00112C" name="theme-color"/>
-    <link href="../styles.css" rel="stylesheet"/>
-    <link href="https://astiskala.github.io/minimpos/getting-started.html" hreflang="en" rel="alternate"/>
-    <link href="https://astiskala.github.io/minimpos/zh-CN/getting-started.html" hreflang="zh-CN" rel="alternate"/>
-    <link href="https://astiskala.github.io/minimpos/ja/getting-started.html" hreflang="ja" rel="alternate"/>
-    <link href="https://astiskala.github.io/minimpos/getting-started.html" hreflang="x-default" rel="alternate"/>
-    <meta content="en_US" property="og:locale:alternate"/>
-    <meta content="zh_CN" property="og:locale"/>
-    <meta content="ja_JP" property="og:locale:alternate"/>
-    <meta content="Mini mPOS 与 Adyen 支付终端示意图，展示英文演示界面。" property="og:image:alt"/>
-    <meta content="Mini mPOS 快速入门" name="twitter:title"/>
-    <meta content="从 Adyen 账户到终端上的第一笔支付：安装、连接、设置并开始销售。" name="twitter:description"/>
-    <meta content="https://astiskala.github.io/minimpos/images/social.png" name="twitter:image"/>
-    <meta content="Mini mPOS 与 Adyen 支付终端示意图，展示英文演示界面。" name="twitter:image:alt"/>
+    <meta content="在 Adyen Android 支付终端上安装和设置 Mini mPOS：配置共享密钥、商家信息和商品，处理销售、退款、收据小费和预授权。" name="description">
+    <link href="../favicon.svg" rel="icon" type="image/svg+xml">
+    <link href="https://astiskala.github.io/minimpos/zh-CN/getting-started.html" rel="canonical">
+    <meta content="article" property="og:type">
+    <meta content="Mini mPOS 快速入门" property="og:title">
+    <meta content="从 Adyen 账户到终端上的第一笔支付：安装、连接、设置并开始销售。" property="og:description">
+    <meta content="https://astiskala.github.io/minimpos/zh-CN/getting-started.html" property="og:url">
+    <meta content="https://astiskala.github.io/minimpos/images/social.png" property="og:image">
+    <meta content="summary_large_image" name="twitter:card">
+    <meta content="#00112C" name="theme-color">
+    <link href="../styles.css" rel="stylesheet">
+    <link href="https://astiskala.github.io/minimpos/getting-started.html" hreflang="en" rel="alternate">
+    <link href="https://astiskala.github.io/minimpos/zh-CN/getting-started.html" hreflang="zh-CN" rel="alternate">
+    <link href="https://astiskala.github.io/minimpos/ja/getting-started.html" hreflang="ja" rel="alternate">
+    <link href="https://astiskala.github.io/minimpos/getting-started.html" hreflang="x-default" rel="alternate">
+    <meta content="en_US" property="og:locale:alternate">
+    <meta content="zh_CN" property="og:locale">
+    <meta content="ja_JP" property="og:locale:alternate">
+    <meta content="Mini mPOS 与 Adyen 支付终端示意图，展示英文演示界面。" property="og:image:alt">
+    <meta content="Mini mPOS 快速入门" name="twitter:title">
+    <meta content="从 Adyen 账户到终端上的第一笔支付：安装、连接、设置并开始销售。" name="twitter:description">
+    <meta content="https://astiskala.github.io/minimpos/images/social.png" name="twitter:image">
+    <meta content="Mini mPOS 与 Adyen 支付终端示意图，展示英文演示界面。" name="twitter:image:alt">
   </head>
   <body>
     <a class="skip" href="#main">跳到正文</a>
     <header class="site-header">
       <div class="wrap header-row">
-        <a aria-label="Mini mPOS 首页" class="brand" href="./"> <img alt="" height="36" src="../favicon.svg" width="36"/> <span>Mini mPOS</span> </a>
+        <a aria-label="Mini mPOS 首页" class="brand" href="./"> <img alt="" height="36" src="../favicon.svg" width="36"> <span>Mini mPOS</span> </a>
         <nav aria-label="主导航">
           <ul class="nav">
             <li><a href="./#features">功能</a></li>
@@ -81,7 +81,7 @@
             <li><a href="#trouble">出现问题时</a></li>
           </ol>
         </nav>
-        <article class="guide-body">
+        <div class="guide-body">
           <section id="before">
             <h2>1. 开始之前</h2>
             <ul>
@@ -267,12 +267,12 @@ cd minimpos
             </dl>
             <p>仍有问题？请在 <a href="https://github.com/astiskala/minimpos/issues">GitHub 上提交 issue</a>。</p>
           </section>
-        </article>
+        </div>
       </div>
     </main>
     <footer class="site-footer">
       <div class="wrap footer-row">
-        <p><img alt="" height="24" src="../favicon.svg" width="24"/> Mini mPOS · MIT 许可证 · <a href="https://github.com/astiskala/minimpos">GitHub</a> · <a href="https://github.com/astiskala/minimpos/blob/main/SECURITY.md">安全</a></p>
+        <p><img alt="" height="24" src="../favicon.svg" width="24"> Mini mPOS · MIT 许可证 · <a href="https://github.com/astiskala/minimpos">GitHub</a> · <a href="https://github.com/astiskala/minimpos/blob/main/SECURITY.md">安全</a></p>
         <p class="fine">Adyen 是 Adyen N.V. 的商标。Mini mPOS 是独立项目，与 Adyen 无关联，未获其背书，也不由其提供支持。</p>
       </div>
     </footer>

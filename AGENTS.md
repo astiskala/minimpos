@@ -6,6 +6,7 @@ the code does not tell you. `CONTEXT.md` is the domain glossary: use its terms (
 tests and docs, and add a term there before naming a module after a new concept.
 
 ## Modules
+
 - `:core` – pure Kotlin: money/tax, cart, refund apportioning, receipt document model and renderers, QR formats
   (`TransferCodec` `MPC1:`, refund `MPR1*`), Adyen currency table (Adyen's decimals win over ISO), `PaymentMethods`.
   There is deliberately no country/region setting (blank currency follows the device's country, else EUR).
@@ -27,16 +28,30 @@ tests and docs, and add a term there before naming a module after a new concept.
   behaviour (pre-auth blobs, `InProgress` status, cancellations) and shares a ledger with its `SimulatedModifications`.
 - `:app` – Compose (Material 3, Navigation 3), Room, DataStore (JSON), Keystore-encrypted secrets, CameraX + ZXing (no
   Google Play services on terminals), JavaMail, manual DI in `AppContainer`.
+- `:website-test` – no app code: checks the `docs/` website (GitHub Pages publishes `docs/` as is, so its build files
+  live here): `WebsiteTest` (jsoup) and the W3C Nu Html Checker (`htmlCheck`).
 
 ## Build and verify
+
 - Run `./gradlew qualityGate` after every change: Spotless/ktlint, detekt (no baseline), Dokka with `failOnWarning`
   (every `[link]` in KDoc must resolve), Android Lint (warnings are errors), unit/Robolectric/Compose tests, ArchUnit
   `ArchitectureTest` in each module, `AndroidApiLevelTest` (in `:app`), Kover thresholds (core 95/85, terminal-api
   90/75, app non-UI 80 line/branch %), and `verify{Debug,Release}TerminalManifest`. Kotlin warnings are errors; the
   build output stays warning-free.
+- The gate also checks the non-Kotlin files with nothing but the JDK: `markdownCheck` (rumdl, `.rumdl.toml`:
+  markdownlint's rules, 120-column lines outside tables/code, relative links must exist; line breaks are kept, so wrap
+  prose by hand), `actionlint` (shellcheck on `run:` scripts) and `zizmor` (offline), all `ToolCheck`s in the root
+  `build.gradle.kts`; `:website-test` checks `docs/` (`WebsiteTest`, and `htmlCheck`: the W3C Nu Html Checker on the
+  HTML and CSS, failing on any message, informational ones included). Spotless `misc` keeps whitespace and final
+  newlines in the other text files (YAML included; there is no YAML formatter).
+- rumdl, actionlint, shellcheck and zizmor are official release binaries that `ToolDownload` fetches and checks against
+  the SHA-256 pinned in `registerDownload` (macOS and Linux, x64 and arm64). Dependabot cannot update them: to upgrade,
+  pick a release at least 7 days old, take the checksums from its checksum files (or hash the archives after
+  `gh attestation verify`), and update the version and all four checksums together.
 - A new architectural decision gets its ArchUnit rule in the same change (a starred bullet below), with a comment
   saying why; check a new rule fails on a deliberate violation before relying on it.
-- Format with `./gradlew spotlessApply`. After editing `.editorconfig`, run `./gradlew --stop` (ktlint caches it).
+- Format with `./gradlew spotlessApply` (also runs `rumdl fmt`). After editing `.editorconfig`, run `./gradlew --stop`
+  (ktlint caches it).
 - detekt does not run compiler plugins: in `:app` main code use `serializer<T>()`, not `T.serializer()`.
 - Fix findings instead of silencing them: no new `@Suppress`, lint ignores, baselines or rule exclusions. The existing
   ones are deliberate and commented.
@@ -47,7 +62,10 @@ tests and docs, and add a term there before naming a module after a new concept.
   key is `~/.android/minimpos-release.jks`, alias `minimpos`, outside the repo).
 - Security advisories on transitive dependencies (Dependabot cannot fix them): add the patched version, at least 7
   days old, to the `patched` table in `settings.gradle.kts`; check `./gradlew <module>:dependencies buildEnvironment`
-  and run the gate plus the signed release build. Drop entries once upstream catches up.
+  and run the gate plus the signed release build. Drop entries once upstream catches up. The Dependency submission
+  workflow sends the resolved graph to GitHub, so Dependabot alerts name them.
+- Workflows: pin actions by commit SHA, check out with `persist-credentials: false` (the release passes its token only
+  to the push), pass `${{ }}` values to `run:` scripts through `env`, and keep caches out of the release job.
 - Dead-code audit: after `:app:assembleRelease`, the first block of `app/build/outputs/mapping/release/usage.txt`
   (before any `androidx.*` entry) lists public members production never reaches. Check `@Serializable`/Room members by
   hand (kept by rules).
@@ -55,6 +73,7 @@ tests and docs, and add a term there before naming a module after a new concept.
   `AppDatabase.migrations`, and extend `DatabaseMigrationTest`.
 
 ## Adyen terminal constraints
+
 - `VerifyTerminalManifestTask` enforces: minSdk 28, no CATEGORY_HOME, no `testOnly`, only allowlisted permissions
   (INTERNET, ACCESS_NETWORK_STATE, CAMERA; `StripManifestPermissionsTask` removes androidx's
   `DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION`), and a PNG-only `android:icon` (the Customer Area cannot render adaptive
@@ -75,6 +94,7 @@ tests and docs, and add a term there before naming a module after a new concept.
   for the AMS1 emulator and the website screenshots.
 
 ## Adyen Java library on Android
+
 - Always set our `TerminalHttpClient` on the `Client`; the default Apache client crashes on Android. Inside
   `Client(...).apply { }` a bare `httpClient` calls `Client.getHttpClient()`, which creates it (ArchUnit forbids that
   call).
@@ -84,6 +104,7 @@ tests and docs, and add a term there before naming a module after a new concept.
 - Unknown enum values deserialise to null. Application info goes on every payment and refund, formatted identically.
 
 ## Architecture (`ArchitectureTest` in each module enforces the starred rules)
+
 - \* `:app` layers: UI (`feature`, `ui`, `scan`, `qr`) → `payment` → `email` → `receipt` → `refund`/`terminal` →
   `data`. Only the UI reaches into `AppContainer`. View models live in `feature` and hold no Android UI types or
   display text.
@@ -158,6 +179,7 @@ tests and docs, and add a term there before naming a module after a new concept.
   or persist them in plain text.
 
 ## Conventions
+
 - User-facing English is US English (strings, receipt label defaults, simulator texts, messages that reach the screen,
   README and `docs/`). Unchanged on purpose: identifiers and resource names (`preAuthorisation`), stored values
   (`SaleKind.PRE_AUTHORISATION`), Adyen's field names and texts, and "Harbour Coffee Co.".
@@ -181,6 +203,7 @@ tests and docs, and add a term there before naming a module after a new concept.
   `TransactionRow`, `Keypad`, …); result screens put `HomeButton` beside their primary action.
 
 ## Tests
+
 - Robolectric at SDK 33 with `TestApplication`; Compose tests use the v2 rule and `en-rAU`. `SmallScreenTest` checks
   primary actions are visible without scrolling at `w320dp-h460dp-hdpi` (AMS1), plus P630 and S1F2 sizes.
 - `LocalizationTest` checks translation/format parity and receipt defaults and writes sample previews under
@@ -197,6 +220,7 @@ tests and docs, and add a term there before naming a module after a new concept.
   field: test that content as its own composable (`TaxRateForm`/`TaxRateFormTest`).
 
 ## Product decisions (deliberate; do not "fix")
+
 - API keys on tablets and phones (cloud, Tap to Pay) go against Adyen's advice to keep keys on a server; the app has no
   backend by design, so the docs and SECURITY.md say so and recommend a terminal on the network. The Mobile SDK (card
   readers) is deliberately not integrated: it needs a backend for `/auth/certificate`, a private Maven repo, PCI MPoC and
@@ -226,13 +250,15 @@ tests and docs, and add a term there before naming a module after a new concept.
   `SetupTransfer`'s and `ReceivedTransfer`'s.
 
 ## Documentation
+
 - Human docs: `README.md`, `CONTRIBUTING.md`, `SECURITY.md`, `CONTEXT.md` (domain glossary), `LICENSE` (MIT). Keep
   feature claims in README, `docs/index.html` and `docs/getting-started.html` (Customer Area paths, Settings names) in
   sync with the app.
 - `docs/` is the static GitHub Pages site (`https://astiskala.github.io/minimpos/`, no build step).
 - Chinese/Japanese pages and guides are in `docs/zh-CN/` and `docs/ja/`, with reciprocal language switches and
-  canonical/hreflang links. Check all six pages with `python3 docs/tests/test_site.py`. Marketing screenshots use
-  original AMS1/S1F2-style SVG illustrations: keep bottom bezels blank and the AMS1 top free of an NFC symbol.
+  canonical/hreflang links. Check all six pages with `./gradlew :website-test:check` (void elements take no trailing
+  slash). Marketing screenshots use original AMS1/S1F2-style SVG illustrations: keep bottom bezels blank and the AMS1
+  top free of an NFC symbol.
   Screenshots match their frame's screen (S1F2 9:16 at 540×960, AMS1 3:5 at 480×800). The language switch is a
   script-free `<details>` globe menu at the top right of the header.
   The demo screens remain English, visibly disclosed. `social.png` (1200×630) uses the same blank terminal frames.

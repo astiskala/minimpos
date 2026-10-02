@@ -6,9 +6,10 @@ description: Re-capture the screenshots and social image of the docs/ website, o
 # Screenshots for `docs/images/` and the AMS1 emulator
 
 ## Output format
+
 - The site shows every screenshot inside a terminal frame, so each must have its frame's screen ratio
-  (`test_screenshots_match_their_terminal_frames` checks the PNG sizes, the `width`/`height` attributes and the white
-  screen `rect` of each SVG):
+  (`WebsiteTest`'s "screenshots match their terminal frames" checks the PNG sizes, the `width`/`height` attributes and
+  the white screen `rect` of each SVG):
   - S1F2 (9:16): captured at the S1F2's 720×1280 xhdpi, saved as 540×960. All screenshots except the hero's AMS1 one.
   - AMS1 (3:5): `sale-ams1.png`, captured and saved at the AMS1's 480×800 hdpi (`wm size 480x800`, `wm density 240`
     on the S1F2 AVD, then `wm size reset`/`wm density reset`; `screencap` then returns 480×800).
@@ -17,6 +18,7 @@ description: Re-capture the screenshots and social image of the docs/ website, o
   the social page to match.
 
 ## Emulator
+
 - AVD `MiniMpos_Docs_S1F2`: a clone (`cp -c -R`) of `MiniMpos_Docs_Pixel4a` (API 33 google_apis, gesture nav,
   `hw.keyboard=no`) with `hw.lcd.width/height/density` = 720/1280/320, so it keeps the demo data. Use these separate
   AVDs so existing emulator data is untouched. Headless: `-no-window -no-snapshot -gpu swiftshader_indirect`. A
@@ -37,8 +39,10 @@ description: Re-capture the screenshots and social image of the docs/ website, o
 - Shut emulators down with `adb shell reboot -p`: `adb emu kill` can leave a freshly installed APK corrupt.
 
 ## Demo data
+
 Seeded before the first launch (debug builds only), piped in with
 `adb shell "cat … | run-as io.github.astiskala.minimpos sh -c 'cat > …'"`:
+
 - A Room DB built from the latest `app/schemas/io.minimpos.app.data.db.AppDatabase/<version>.json` (Python sqlite3,
   `PRAGMA user_version`).
 - `files/datastore/settings.json`: auto-lock 10 min, simulator delay 6 s (so the "waiting" screen can be captured).
@@ -48,6 +52,7 @@ Seeded before the first launch (debug builds only), piped in with
 - The admin PIN (1357) is set in the app.
 
 ## Flows
+
 1. Sale of 2 flat whites, banana bread and beans ($34.00, CUST-1042, save card; `checkout.png` shows Save card on and
    Tip on the receipt off) → printed receipt (simulated printer sheet, expanded and scrolled to the items) → `refund.png`
    from that sale's history detail (Refund › Items, one flat white and the banana bread, $11.00). The same cart on the
@@ -68,6 +73,7 @@ Seeded before the first launch (debug builds only), piped in with
    and keys are offered) before and after Show QR codes, paused on a code.
 
 ## Driving the UI
+
 - Find nodes by text in `uiautomator dump` (dialogs are separate windows; tap keypad keys by their labels). A dump
   takes about 2 s: tap known coordinates where the layout is fixed.
 - Switches have no text in the dump: tap the n-th `checkable` node.
@@ -79,17 +85,19 @@ Seeded before the first launch (debug builds only), piped in with
   seeded sales.
 
 ## Social image and site rendering
+
 - `social.png` (1200×630) is an HTML page (light green-white background, favicon + "Mini mPOS", "The whole checkout.
   One payment terminal.", a lead line, a navy "Free and open source" pill, a grey disclosure footer, and
   `sale-ams1.png`/`receipt.png` in the blank `terminal-ams1.svg`/`terminal-s1f2.svg` frames, rotated -6° and 6°, with
-  the same screen insets as `docs/styles.css`). Render it with `--allow-file-access-from-files
-  --force-device-scale-factor=1`.
+  the same screen insets as `docs/styles.css`). Render it with `--allow-file-access-from-files` and
+  `--force-device-scale-factor=1`.
 - The site's terminal frames are original SVG illustrations: keep their bottom bezels blank (no model labels) and the
-  AMS1's top free of an NFC symbol; `docs/tests/test_site.py` checks this.
+  AMS1's top free of an NFC symbol; `./gradlew :website-test:check` checks this.
 - Render pages with Playwright's `chrome-headless-shell` (`~/Library/Caches/ms-playwright/`) and
   `--screenshot --window-size=W,H`; full Chrome headless and the Playwright MCP browser crashed in this sandbox.
 
 ## AMS1-sized emulator
+
 - AVD `MiniMpos_AMS1_480x800` (API 33 google_apis arm64, "Nexus S" profile edited to 480×800 /
   `hw.lcd.density=240`, `hw.keyboard=no`, `hw.mainKeys = no`). Headless:
   `emulator -avd MiniMpos_AMS1_480x800 -no-window -no-snapshot -gpu swiftshader_indirect -port 5560`.

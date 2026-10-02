@@ -1,0 +1,16 @@
+# rumdl (markdownlint's rules), run by ./gradlew markdownCheck (part of qualityGate); ./gradlew spotlessApply fixes what it
+# can. Line breaks are kept as written, so prose is wrapped by hand.
+
+[global]
+line-length = 120
+
+[MD013]
+# Tables and code cannot be wrapped.
+tables = false
+code-blocks = false
+# Only report long lines; never rewrap paragraphs.
+reflow = false
+
+[MD033]
+# The README lays out its screenshots in a table of images.
+allowed-elements = ["p", "img"]

@@ -27,12 +27,14 @@ updates:
           - "dev.detekt*"
           - "io.nlopez.compose.rules*"
           - "com.tngtech.archunit*"
+          - "nu.validator*"
       testing:
         patterns:
           - "junit*"
           - "com.google.truth*"
           - "org.robolectric*"
           - "com.squareup.okhttp3:mockwebserver*"
+          - "org.jsoup*"
     # The Adyen library (com.adyen) stays ungrouped: each upgrade needs its own review (see AGENTS.md).
 
   - package-ecosystem: github-actions

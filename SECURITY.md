@@ -44,8 +44,8 @@ this project. Report them to Adyen through its
   App Links encrypted and signed with the shared key; answers that cannot be verified with it, or that answer another
   request, are rejected.
 - **Secrets are encrypted on the device.** The shared-key passphrase, the API key (Checkout and Cloud device API), the
-  Payments app API key and the SMTP password are encrypted with AES-256-GCM, using a key kept in the Android Keystore. The admin PIN is stored only as a
-  salted PBKDF2 hash, and repeated wrong PINs lock entry for increasing periods.
+  Payments app API key and the SMTP password are encrypted with AES-256-GCM, using a key kept in the Android Keystore.
+  The admin PIN is stored only as a salted PBKDF2 hash, and repeated wrong PINs lock entry for increasing periods.
 - **Setting up another terminal protects the secrets.** The QR codes that copy a terminal's setup carry the secrets
   only encrypted (AES-256-GCM, with a key derived by PBKDF2 from a one-time 12-character transfer code). The code is
   shown only on the sending terminal and typed on the receiving one; both screens are behind the admin PIN.

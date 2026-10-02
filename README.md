@@ -176,10 +176,12 @@ plus setting up your business, products and pre-authorizations. In short:
 
    Or build and sign your own. Adyen accepts an unsigned upload, but the terminal then refuses it with
    `INSTALL_PARSE_FAILED_NO_CERTIFICATES`. Create a key once and keep it safe:
+
    ```sh
    keytool -genkeypair -keystore ~/.android/minimpos-release.jks -alias minimpos -keyalg RSA -keysize 4096 \
      -validity 10000 -dname "CN=Mini mPOS"
    ```
+
    Then add a `keystore.properties` file (never commit it) with `storeFile`, `storePassword`, `keyAlias` and
    `keyPassword`, raise `versionCode` in `version.properties` for every upload, and run
    `./gradlew :app:assembleRelease`. Upload `app/build/outputs/apk/release/app-release.apk`, not
@@ -262,8 +264,9 @@ then choose under Settings › Terminal › **Payments go to**:
 - In the cloud, a payment fails straight away when Adyen reports the terminal as not connected; when Adyen got no
   answer from it, the payment is settled with status checks, as on the network.
 - Settings from another terminal replace this terminal's, except where payments go, its own address and ID, its Tap to
-  Pay installation, the detected TEST/LIVE environment and data center, and the simulator. The shared key passphrase only works if the Customer Area gives
-  both terminals the same shared key (for example at store or merchant account level).
+  Pay installation, the detected TEST/LIVE environment and data center, and the simulator. The shared key passphrase
+  only works if the Customer Area gives both terminals the same shared key (for example at store or merchant account
+  level).
 - Setting up from another terminal uses the camera, so the receiving terminal needs one.
 - Only the latest [release](https://github.com/astiskala/minimpos/releases) is maintained.
 

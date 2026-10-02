@@ -84,4 +84,4 @@ gradle.lifecycle.beforeProject {
 
 rootProject.name = "minimpos"
 
-include(":app", ":core", ":terminal-api")
+include(":app", ":core", ":terminal-api", ":website-test")

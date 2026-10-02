@@ -87,9 +87,9 @@ each one has a comment explaining why. If you think a rule is wrong for your cas
 - **Money is `Long` minor units** with `CurrencySpec`, never `Double`. Tax rates are thousandths of a percent.
 - **Use Adyen's library** for anything the Terminal API needs (models, encryption, certificate checks) instead of
   writing it yourself. [`terminal-api/AGENTS.md`](terminal-api/AGENTS.md) lists what it takes to make that library
-  work on Android. The optional Checkout API calls (captures and authorization adjustments) are the exception: they
-  post plain JSON with OkHttp, because the library's Checkout models need Jackson and keep rules for hundreds of
-  classes.
+  work on Android. The optional Checkout API calls (captures, authorization adjustments and payment links) and the
+  cloud transport are the exception: they post plain JSON with OkHttp, because the library's Checkout and cloud models
+  need Jackson and keep rules for hundreds of classes.
 - **Respect the terminal's rules.** Don't add permissions (only internet, network state and camera are allowed), don't
   raise `minSdk` above 28, and don't depend on Google Play services, which Adyen terminals don't have.
 - **Add dependencies through `gradle/libs.versions.toml`**, pin exact versions, and prefer releases that are at least a

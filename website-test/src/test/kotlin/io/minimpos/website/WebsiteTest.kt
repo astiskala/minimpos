@@ -237,7 +237,24 @@ private const val BASE = "https://astiskala.github.io/minimpos/"
 private const val FRAME_TOLERANCE = 0.005
 private val LANGUAGES = listOf("en", "zh-CN", "ja")
 private val GUIDE_SECTIONS =
-    setOf("before", "try", "key", "install", "connect", "business", "products", "sell", "api", "tips", "preauth", "more", "live", "trouble")
+    setOf(
+        "before",
+        "try",
+        "key",
+        "install",
+        "connect",
+        "tablet",
+        "business",
+        "products",
+        "sell",
+        "api",
+        "payment-links",
+        "tips",
+        "preauth",
+        "more",
+        "live",
+        "trouble",
+    )
 
 private val docs: Path =
     Path.of(checkNotNull(System.getProperty("minimpos.website")) { "minimpos.website is not set" }).toAbsolutePath().normalize()

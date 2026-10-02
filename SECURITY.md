@@ -64,8 +64,8 @@ this project. Report them to Adyen through its
 ## Recommendations for merchants
 
 - Set an **admin PIN** (Settings › Security), so staff and shoppers can't change settings or products.
-- Keep TEST and LIVE shared keys separate. Before taking real payments, check that Settings › About shows "LIVE
-  environment" (a TEST terminal also shows TEST in its status bar). Change the shared key if you think it has been
+- Keep TEST and LIVE shared keys separate. Before taking real payments, check that Settings › About shows LIVE as the
+  environment (a TEST terminal also shows TEST in its status bar). Change the shared key if you think it has been
   exposed.
 - If you give the app a **Checkout API key**, use an API credential with only the Checkout webservice role, one per
   store or terminal fleet, and revoke it in the Customer Area if a terminal is lost.

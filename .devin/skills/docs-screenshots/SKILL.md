@@ -30,8 +30,14 @@ description: Re-capture the screenshots and social image of the docs/ website, o
   `service call alarm 3 s16 Australia/Perth`; setprop alone does not stick), then `stop`/`start`; window, transition
   and animator animations off; SystemUI demo mode (clock 09:30, full Wi-Fi and battery, no notifications; re-send it
   after every `stop`/`start`).
+- The frames show terminals, so make the app behave as on one: `settings put global device_name S1F2-000158213605014`
+  and `"terminal": {"mode": "SIMULATOR"}` in the seeded `settings.json` (Automatic would pick the local terminal).
+  Off a terminal, results and history add Share receipt, which terminals never show. `settings delete global
+  device_name` afterwards.
 - History groups by day: with `settings put global auto_time 0` and `date MMDDhhmmYYYY.ss` set the clock to the
   afternoon of the seeded day, so "Today" stays and new sales sort above the seeded ones. Turn `auto_time` back on.
+  Or move the seeded sales to today instead (`createdAt` of `sales` and `refunds`, and the `yyMMdd` in their
+  merchant references) and capture in the afternoon.
 - To re-capture a flow without leaving extra sales in History, snapshot the app's data as root
   (`cd /data/data/io.github.astiskala.minimpos && tar -cf /data/local/tmp/minimpos-base.tar .`) and restore it between
   flows (force-stop, delete, untar, `chown` to the app's uid, `restorecon -R`); the Keystore keys stay valid because

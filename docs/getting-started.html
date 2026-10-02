@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Getting started – Mini mPOS</title>
-  <meta name="description" content="Set up Mini mPOS on your Adyen Android terminals: install the app, connect it with your shared key, set up your business and products, and take sales, refunds, tips on the receipt and pre-authorizations.">
+  <meta name="description" content="Set up Mini mPOS on your Adyen Android terminals: install the app, connect it with your shared key, set up your business and products, and take sales, payment links, refunds, tips on the receipt and pre-authorizations, on a terminal or from a tablet or phone.">
   <link rel="icon" href="favicon.svg" type="image/svg+xml">
   <link rel="canonical" href="https://astiskala.github.io/minimpos/getting-started.html">
   <meta property="og:type" content="article">
@@ -79,10 +79,12 @@
           <li><a href="#key">Create a shared key</a></li>
           <li><a href="#install">Put the app on your terminals</a></li>
           <li><a href="#connect">Connect it to the terminal</a></li>
+          <li><a href="#tablet">Or use a tablet or phone</a></li>
           <li><a href="#business">Set up your business</a></li>
           <li><a href="#products">Add your products</a></li>
           <li><a href="#sell">Sell and refund</a></li>
-          <li><a href="#api">Captures and the Checkout API</a></li>
+          <li><a href="#api">The Checkout API and captures</a></li>
+          <li><a href="#payment-links">Payment links</a></li>
           <li><a href="#tips">Tips on the receipt</a></li>
           <li><a href="#preauth">Pre-authorizations</a></li>
           <li><a href="#more">More terminals</a></li>
@@ -101,11 +103,12 @@
               S1E4Pro, S1E2L, AMS1, S1U2 or SFO1. Printing needs a model with a printer; scanning receipts, barcodes and
               setup codes from another terminal needs a camera.</li>
             <li>Or an <strong>Android tablet or phone</strong>, to take payments on a terminal over your network or the
-              internet, or with Tap to Pay (see <a href="#tablet">From a tablet or phone</a>).</li>
-            <li>Optional: an <strong>SMTP mail server</strong> (host, port, user and password) if you want to email
-              receipts.</li>
+              internet, or with Tap to Pay (see <a href="#tablet">Or use a tablet or phone</a>).</li>
+            <li>Optional: an <strong>SMTP mail server</strong> or a mailbox at a common email provider, if you want to
+              email receipts.</li>
             <li>Optional: an <strong>API credential</strong> for Adyen's Checkout API, if the app should capture tips on
-              the receipt and pre-authorizations itself (see <a href="#api">Captures and the Checkout API</a>).</li>
+              the receipt and pre-authorizations itself, or send payment links (see <a href="#api">The Checkout API and
+              captures</a>).</li>
           </ul>
           <p class="note">Mini mPOS is an independent project, not an Adyen product. Try everything on TEST terminals
             before you take live payments.</p>
@@ -113,14 +116,18 @@
 
         <section id="try">
           <h2>2. Try it without a terminal</h2>
-          <p>On an Android emulator or phone, Mini mPOS takes payments with its <strong>built-in simulator</strong>, so
-            you can explore every screen first. Install it from the source code:</p>
+          <p>On any Android phone or emulator, Mini mPOS takes payments with its <strong>built-in simulator</strong>, so
+            you can explore every screen first. Download <code>minimpos-&lt;version&gt;.apk</code> from the
+            <a href="https://github.com/astiskala/minimpos/releases/latest">latest release</a> and open it on the phone
+            (Android asks you to allow installing apps from your browser or file manager), or build it from the source
+            code:</p>
           <pre><code>git clone https://github.com/astiskala/minimpos.git
 cd minimpos
 ./gradlew :app:installDebug</code></pre>
-          <p>Under <strong>Settings › Simulator</strong> you choose how simulated payments end: approved, declined,
-            canceled, timed out or with a busy terminal. The simulator also stands in for the Checkout API, so tips and
-            captures can be tried too.</p>
+          <p>Under <strong>Settings › Simulator</strong> you choose how simulated payments end (approved, declined,
+            canceled by the shopper, timed out, a busy terminal, or at random), how long they take and whether there is
+            a printer; printed receipts then appear on the screen. The simulator also stands in for the Checkout API, so
+            tips, captures and pre-authorizations can be tried too. Payment links are not simulated.</p>
         </section>
 
         <section id="key">
@@ -132,6 +139,8 @@ cd minimpos
             <li>Create the key, and note its <strong>key identifier</strong>, <strong>passphrase</strong> and
               <strong>version</strong>. Select the pencil icon to see them again later.</li>
           </ol>
+          <p>Setting the key at store or merchant account level lets every terminal there use the same key, which makes
+            <a href="#more">setting up more terminals</a> quicker.</p>
         </section>
 
         <section id="install">
@@ -146,7 +155,8 @@ cd minimpos
           </ol>
           <p>Building and signing your own APK works too; see the
             <a href="https://github.com/astiskala/minimpos#put-it-on-your-terminals">README</a>. Whichever you choose,
-            stick to it: the Customer Area only accepts later versions signed with the same key.</p>
+            stick to it: the Customer Area only accepts later versions signed with the same key. Keep all your terminals
+            on the same version.</p>
         </section>
 
         <section id="connect">
@@ -162,29 +172,30 @@ cd minimpos
             nothing else to enter. Settings › About shows what was found; a TEST terminal also shows TEST in its own
             status bar. While the currency follows the device's region, the result also names it: check that it is the
             one your Adyen account takes payments in (Settings › Payments).</p>
-          <p>To try a real terminal from a phone or emulator instead, choose <strong>Payments go to › A terminal on your
-            network</strong> and also enter the terminal's IP address and POIID (as on its Device info screen).</p>
+        </section>
 
-          <h3 id="tablet">From a tablet or phone</h3>
-          <p>Mini mPOS also runs on Android tablets and phones: install the same APK there, then choose under
-            <strong>Settings › Terminal › Payments go to</strong>:</p>
+        <section id="tablet">
+          <h2>6. Or use a tablet or phone</h2>
+          <p>Mini mPOS also runs on Android tablets and phones. Install the same APK there (there is nothing to deploy
+            in the Customer Area), then choose under <strong>Settings › Terminal › Payments go to</strong>:</p>
           <dl class="settings-list">
             <dt>A terminal on your network</dt>
             <dd>The recommended way for a tablet at the counter. The tablet sends requests to the terminal over your
               local network, encrypted with the shared key, so no API key is needed. Enter the terminal's IP address and
-              POIID as well as the shared key. Mini mPOS does not have to be installed on the terminal.</dd>
+              POIID (as on its Device info screen) as well as the shared key. Mini mPOS does not have to be installed on
+              the terminal.</dd>
             <dt>A terminal over the internet (cloud)</dt>
             <dd>For a tablet and a terminal on different networks. Requests go through Adyen's Cloud device API, with an
               API key instead of the shared key. In the Customer Area, under <strong>Developers › API
               credentials</strong>, create a credential for this device with the <strong>Cloud Device API</strong> role
-              (and the Checkout webservice role if the app should capture tips and pre-authorizations). Enter the
-              merchant account and API key under <strong>Adyen API</strong>, then tap <strong>Find connected
-              terminals</strong> and choose the terminal (or type its POIID). Whether the key is TEST or LIVE, and the
-              data center to use, are found when it connects.</dd>
+              (and the Checkout webservice role if the app should capture tips and pre-authorizations or send payment
+              links). Enter the merchant account and API key under <strong>Adyen API</strong>, then tap <strong>Find
+              connected terminals</strong> and choose the terminal (or type its POIID). Whether the key is TEST or LIVE,
+              and the data center to use, are found when it connects.</dd>
             <dt>Tap to Pay on this phone</dt>
             <dd>Shoppers tap their card or phone on the phone itself, in the Adyen Payments app; there is no printer, so
-              receipts are emailed. The phone needs NFC and Android 12 or later, and must be Google-certified. Ask Adyen
-              Support to enable Tap to Pay on Android and the Adyen Payments app role, and install
+              receipts are emailed or shared. The phone needs NFC and Android 12 or later, and must be Google-certified.
+              Ask Adyen Support to enable Tap to Pay on Android and the Adyen Payments app role, and install
               <strong>Adyen Payments Test</strong> (TEST) or <strong>Adyen Payments</strong> (LIVE) from Google Play.
               Enter the shared key and the merchant account, then under <strong>Tap to Pay</strong> the
               <strong>Payments app API key</strong> (a credential with only the Adyen Payments app role) and, to set it
@@ -192,23 +203,39 @@ cd minimpos
               the phone. Each payment then opens the Payments app and returns to Mini mPOS. To stop, tap
               <strong>Remove this phone</strong>.</dd>
           </dl>
-          <p>Until everything is entered, Home says what is still missing and opens Settings › Terminal.</p>
+          <p>Until everything is entered, Home shows <strong>Finish setting up payments</strong>, says what is still
+            missing and opens Settings › Terminal. The rest of this guide applies as it does on a terminal.</p>
           <p class="note">In the cloud and for Tap to Pay, an Adyen API key is stored on the device, encrypted with the
             Android Keystore. Adyen advises keeping API keys on a server, and Mini mPOS has none: use a credential for
             this device only, set an admin PIN, and revoke the key in the Customer Area if the device is lost.</p>
         </section>
 
         <section id="business">
-          <h2>6. Set up your business</h2>
-          <p>Everything below is in <strong>Settings</strong>.</p>
+          <h2>7. Set up your business</h2>
+          <p>A new installation is ready to sell: checkout asks for nothing but payment, and receipts print by
+            themselves where there is a printer. Everything below is in <strong>Settings</strong>, in the order the app
+            shows it.</p>
           <dl class="settings-list">
             <dt>Payments</dt>
-            <dd>The <strong>currency</strong> (any of the 138 Adyen processes; automatic follows the device's country),
-              whether checkout asks for a <strong>transaction reference</strong> (off at first) and a reference prefix,
-              the <strong>shopper reference</strong> sent with every payment (none at first: a customer reference typed
-              at checkout or the shopper's email) and, with one, <strong>Offer to save cards</strong> (whether Save card
-              starts switched on, for sales and for pre-authorizations, and the recurring model), when to ask for the
-              shopper's email, and whether <strong>Tip on the receipt</strong> starts switched on at checkout.</dd>
+            <dd>
+              <ul>
+                <li><strong>Pricing:</strong> the <strong>currency</strong>, any of the 138 Adyen processes. Automatic
+                  follows the device's region.</li>
+                <li><strong>References:</strong> a prefix for the references the app generates, and whether checkout
+                  asks for a <strong>transaction reference</strong> (off at first).</li>
+                <li><strong>Shoppers and saved cards:</strong> the <strong>shopper reference</strong> sent with every
+                  payment: none at first, a customer reference typed at checkout, or the shopper's email (hashed by
+                  default; use the same salt on every terminal). With one, <strong>Offer to save cards</strong> decides
+                  whether checkout shows Save card, whether it starts switched on (for sales and for pre-authorizations),
+                  the recurring processing model, and whether the shopper's email goes to Adyen with the saved card.</li>
+                <li><strong>Tipping:</strong> whether <strong>Tip on the receipt</strong> starts switched on at checkout
+                  (see <a href="#tips">Tips on the receipt</a>).</li>
+                <li><strong>Email receipts:</strong> when to ask for the shopper's email (never, before or after
+                  payment, or both) and whether the receipt is emailed automatically.</li>
+                <li><strong>Payment links:</strong> whether checkout offers them, and how long they work (see
+                  <a href="#payment-links">Payment links</a>).</li>
+              </ul>
+            </dd>
             <dt>Tax</dt>
             <dd>Your named <strong>tax rates</strong> (such as GST 10% and GST-free 0%), whether prices include tax, the
               default rate for new products, and a <strong>Charge tax</strong> switch. A new installation starts with
@@ -217,8 +244,9 @@ cd minimpos
               add products.</dd>
             <dt>Receipts</dt>
             <dd>Business name, address, tax ID, phone, title and footer; what the receipt shows (tax breakdown,
-              references, refund QR code); whether the terminal has a printer (detected automatically), printing
-              automatically (on at first), the merchant copy and the characters per line.</dd>
+              references, refund QR code); whether there is a printer (detected automatically), printing automatically
+              after payment (on at first), the merchant copy and the characters per line. A preview shows the result,
+              and <strong>Print test receipt</strong> prints it.</dd>
             <dt>Email (SMTP)</dt>
             <dd>Your mail server, sender, an optional blind copy and the subject, with a test email. Buttons fill in the
               server for these providers (or <strong>Other</strong>, to type your own) and say what password they need
@@ -236,10 +264,14 @@ cd minimpos
               Outlook.com is not among them: it no longer accepts a password for sending from other apps.</dd>
             <dt>Security</dt>
             <dd>An <strong>admin PIN</strong> for Settings and Products, and how soon they lock again. Set one before
-              the terminal goes on the counter.</dd>
+              the terminal goes on the counter. Repeated wrong PINs lock entry for a while; a forgotten PIN can only be
+              cleared with the app's data, from the terminal's settings.</dd>
             <dt>Data</dt>
-            <dd>How long sales and refunds are kept, clearing the history, and setting up other terminals from this one
-              (see <a href="#more">More terminals</a>).</dd>
+            <dd>How long sales and refunds are kept (90 days at first), clearing the history, and setting up other
+              terminals from this one (see <a href="#more">More terminals</a>).</dd>
+            <dt>About</dt>
+            <dd>The app version, the TEST or LIVE environment, whether there is a printer, the device, and what the app
+              tells Adyen about itself with each payment.</dd>
           </dl>
           <h3 id="language-receipts">Language and receipts</h3>
           <p>Mini mPOS supports English, Simplified Chinese and Japanese. On Android 12 or earlier, it follows the
@@ -262,29 +294,33 @@ cd minimpos
         </section>
 
         <section id="products">
-          <h2>7. Add your products</h2>
+          <h2>8. Add your products</h2>
           <p>In <strong>Products</strong>, tap <strong>+</strong> and enter a name, price and tax rate, and optionally
-            a category and a barcode (type it or scan it). Categories, on the second tab, group the products on the
-            sale screen.</p>
+            a category and a barcode (type it or scan it). Items without tax get a 0% rate. Categories, on the second
+            tab, group the products on the sale screen.</p>
           <p>A product can also be a <strong>pre-authorization product</strong>, such as a deposit or a hire bond; see
             <a href="#preauth">Pre-authorizations</a>.</p>
           <p>To copy the catalog to another terminal, see <a href="#more">More terminals</a>.</p>
         </section>
 
         <section id="sell">
-          <h2>8. Sell and refund</h2>
+          <h2>9. Sell and refund</h2>
           <ul>
-            <li><strong>New sale:</strong> tap products, scan a barcode or add a custom amount, then
-              <strong>Charge</strong>. At checkout, add a reference and (with the shopper's consent) save the card, if
-              switched on in Settings › Payments, then <strong>Pay</strong> and follow the terminal.</li>
+            <li><strong>New sale:</strong> tap products, scan a barcode or add a custom item, then
+              <strong>Charge</strong>. Checkout shows the items and tax. Depending on Settings › Payments, it also asks
+              for a transaction or customer reference or the shopper's email, and offers Save card (with the shopper's
+              consent), Tip on the receipt and Send payment link. Tap <strong>Pay</strong> and follow the terminal.</li>
             <li><strong>Receipts</strong> print as one slip with your header, the items, tax, the card receipt and a
-              refund QR code, and can be emailed. On a tablet or phone, <strong>Share receipt</strong> sends it as an
-              image through Android's share sheet, to a messaging app for example.</li>
-            <li><strong>Refund:</strong> scan the QR code on the receipt, or open the sale in <strong>History</strong>.
-              Refund everything, some items, or an amount. Adyen processes refunds asynchronously, so the app shows
-              them as requested; the final outcome is in your Customer Area.</li>
-            <li><strong>History</strong> groups transactions by day with daily totals (and tips). <em>Needs
-              attention</em> lists payments whose result was not confirmed, which you can check again with the
+              refund QR code: automatically, or with <strong>Print receipt</strong> on the result screen. With email set
+              up, <strong>Email receipt</strong> sends it too. On a tablet or phone, <strong>Share receipt</strong> sends
+              it as an image through Android's share sheet, to a messaging app for example.</li>
+            <li><strong>Refund:</strong> tap <strong>Refund</strong> on Home and scan the QR code on the receipt, or
+              open the sale in <strong>History</strong>. Refund everything, some items, or an amount (a sale taken on
+              another terminal only in full or by amount). Adyen processes refunds asynchronously, so the app shows them
+              as requested; the final outcome is in your Customer Area.</li>
+            <li><strong>History</strong> groups transactions by day with daily totals of sales, tips, refunds and
+              amounts held. Filters list sales, transactions awaiting a tip, pre-authorizations, refunds, and
+              <em>Needs attention</em>: payments whose result was not confirmed, which you can check again with the
               terminal.</li>
             <li><strong>Find a transaction</strong> by typing in History's search field (on small terminals, tap the
               search icon first): a merchant or PSP reference, auth code, customer reference, shopper email, the
@@ -296,17 +332,18 @@ cd minimpos
         </section>
 
         <section id="api">
-          <h2>9. Captures and the Checkout API</h2>
-          <p>Tips on the receipt and pre-authorizations are taken with <strong>manual capture</strong>: the amount is
-            only held until it is captured. Mini mPOS can capture them (and adjust what they hold) through Adyen's
-            Checkout API, or leave the capture to you in the Customer Area.</p>
+          <h2>10. The Checkout API and captures</h2>
+          <p>Adyen's Checkout API is optional. With it, Mini mPOS captures tips on the receipt and pre-authorizations
+            (and adjusts what they hold) itself, and can send <a href="#payment-links">payment links</a>.</p>
           <ol>
             <li>In the Customer Area, go to <strong>Developers › API credentials</strong> and create a credential for
               the terminals with only the <strong>Checkout webservice role</strong>. Generate its <strong>API
               key</strong>.</li>
             <li>In Mini mPOS, go to <strong>Settings › Terminal</strong> and tap <strong>Checkout API</strong> to open
               it, enter your <strong>merchant account</strong> and the <strong>API key</strong>, and tap <strong>Save
-              and test API key</strong>. The key is stored encrypted on the terminal; the test changes nothing.</li>
+              and test API key</strong>. The key is stored encrypted on the terminal; the test changes nothing. In the
+              cloud, the API key under Adyen API does this, once its credential also has the Checkout webservice
+              role.</li>
             <li>LIVE terminals also need your <strong>live URL prefix</strong>, from <strong>Developers › API
               URLs</strong>; the field appears once the terminal is known to be LIVE. Whether a terminal is TEST or
               LIVE is detected from its certificate (in the cloud, from the API key; with Tap to Pay, from the Payments
@@ -315,14 +352,19 @@ cd minimpos
               adjust authorisation data</strong>. The app then knows straight away whether a higher amount was
               authorized; otherwise adjustments are confirmed later, in the Customer Area.</li>
           </ol>
-          <p>Adyen confirms captures asynchronously, so the app shows them as <em>Capture requested</em>; Mini mPOS has
-            no backend for webhooks, so the final outcome is in your Customer Area. A capture whose result is unknown
-            can be sent again from History without capturing twice.</p>
+          <h3>How captures work</h3>
+          <p>Tips on the receipt and pre-authorizations are taken with <strong>manual capture</strong>: the amount is
+            only held until it is captured. Adyen confirms captures asynchronously, so the app shows them as
+            <em>Capture requested</em>; Mini mPOS has no backend for webhooks, so the final outcome is in your Customer
+            Area. A capture whose result is unknown can be sent again from History without capturing twice.</p>
           <p>Without an API key, the app records what to capture (<em>Capture in Customer Area</em>) and you capture it
             under <strong>Payments › Payment list</strong>: select the PSP reference shown in History, then
             <strong>Capture payment</strong>.</p>
-          <h3 id="payment-links">Payment links</h3>
-          <p>With the Checkout API set up, a sale can also be paid with an Adyen
+        </section>
+
+        <section id="payment-links">
+          <h2>11. Payment links</h2>
+          <p>With the <a href="#api">Checkout API</a> set up, a sale can also be paid with an Adyen
             <a href="https://docs.adyen.com/unified-commerce/pay-by-link">payment link</a> instead of on the terminal:
             the customer pays on Adyen's payment page, on their own phone or computer.</p>
           <ol>
@@ -334,15 +376,16 @@ cd minimpos
               you <strong>Email link</strong> (with an unpaid receipt), <strong>Print link</strong> or, on a tablet or
               phone, <strong>Share link</strong>.</li>
           </ol>
-          <p>While the link is shown the app checks every few seconds whether it was paid, and again when you tap
+          <p>The link carries the items, the shopper's email and reference, and (with Save card on) the offer to save
+            the card. While it is shown the app checks every few seconds whether it was paid, and again when you tap
             <strong>Check payment</strong>. History lists the sale as <em>Awaiting payment</em> until it is paid, it
-            expires or you <strong>Cancel link</strong>. Adyen only sends a paid link's PSP reference to a webhook,
-            which Mini mPOS has no backend for, so refund a paid link in the Customer Area (Payments › Payment list).
-            Payment links are for sales only, and not available with the simulator.</p>
+            expires or you <strong>Cancel link</strong>; an unpaid link counts in no day total. Adyen only sends a paid
+            link's PSP reference to a webhook, which Mini mPOS has no backend for, so refund a paid link in the Customer
+            Area (Payments › Payment list). Payment links are for sales only, and not available with the simulator.</p>
         </section>
 
         <section id="tips">
-          <h2>10. Tips on the receipt</h2>
+          <h2>12. Tips on the receipt</h2>
           <p>Where customers add a tip after paying, as in restaurants and bars, Mini mPOS follows Adyen's
             <a href="https://docs.adyen.com/point-of-sale/tipping/tipping-on-receipt">tipping on the receipt</a> flow:
             the bill is pre-authorized, the customer writes a tip on the printed receipt and signs it, and the bill plus
@@ -358,7 +401,7 @@ cd minimpos
 
           <h3>In Mini mPOS</h3>
           <ol>
-            <li>At checkout, switch on <strong>Tip on the receipt</strong> (shown on terminals with a printer; make it
+            <li>At checkout, switch on <strong>Tip on the receipt</strong> (shown while a printer is available; make it
               the default under Settings › Payments › Tipping), then <strong>Pay</strong>.</li>
             <li>The result shows <em>Awaiting tip</em>. Print the receipt: it has blank <strong>TIP</strong> and
               <strong>TOTAL</strong> lines, and the merchant copy (printed after it under the default merchant copy
@@ -375,10 +418,10 @@ cd minimpos
         </section>
 
         <section id="preauth">
-          <h2>11. Pre-authorizations</h2>
+          <h2>13. Pre-authorizations</h2>
           <p>A pre-authorization holds an amount on the shopper's card without charging it, for example a deposit for
-            an event, a room or equipment hire. You capture it later (the amount actually owed, up to the amount held),
-            or cancel it to release the hold.</p>
+            an event, a room or equipment hire. You capture it later (the amount actually owed, which may be less or
+            more than the amount held), or cancel it to release the hold.</p>
 
           <h3>With Adyen, once</h3>
           <ul>
@@ -400,9 +443,10 @@ cd minimpos
             <li>Home now shows <strong>Pre-authorize</strong> beside New sale. A pre-authorization holds a single
               item, so tapping a product (or adding a custom amount, or scanning a barcode) goes straight to checkout;
               tap <strong>Pre-authorize</strong> there.</li>
-            <li>Once there is a shopper reference and saving cards is offered (Settings › Payments › Shoppers and saved
-              cards), Save card starts switched on at checkout, so late costs can be charged once the pre-authorization
-              has been captured. The receipt is titled <em>PRE-AUTHORIZATION</em> and shows the amount held.</li>
+            <li>With a shopper reference and <strong>Offer to save cards</strong> on (Settings › Payments › Shoppers and
+              saved cards), Save card starts switched on for pre-authorizations, so late costs can be charged once the
+              pre-authorization has been captured. The receipt is titled <em>PRE-AUTHORIZATION</em> and shows the amount
+              held.</li>
           </ol>
 
           <h3>Capture, adjust or cancel</h3>
@@ -424,7 +468,7 @@ cd minimpos
         </section>
 
         <section id="more">
-          <h2>12. More terminals</h2>
+          <h2>14. More terminals</h2>
           <p>Once one terminal is set up, set up the others from it with a few QR codes instead of entering everything
             again. Install the same version of Mini mPOS on all of them.</p>
           <ol>
@@ -440,42 +484,60 @@ cd minimpos
             <li>Check the connection under <strong>Settings › Terminal</strong> with <strong>Test connection</strong>.</li>
           </ol>
           <p>The settings replace the new terminal's, except where payments go, its own address and ID, its Tap to Pay
-            setup, its TEST/LIVE environment and the simulator. The shared key only works on both terminals if the Customer Area assigns the
-            same key to them (for example at store or merchant account level); otherwise enter each terminal's own key.
-            The transfer code is new each time and only shown on the first terminal, so a photo of the QR codes does
-            not reveal the passwords.</p>
+            setup, its TEST/LIVE environment and the simulator. The shared key only works on both terminals if the
+            Customer Area assigns the same key to them (for example at store or merchant account level); otherwise enter
+            each terminal's own key. The transfer code is new each time and only shown on the first terminal, so a photo
+            of the QR codes does not reveal the passwords.</p>
         </section>
 
         <section id="live">
-          <h2>13. Before you go live</h2>
+          <h2>15. Before you go live</h2>
           <ul>
-            <li>Run a few sales, refunds and (if you use them) tips and pre-authorizations on a TEST terminal with Adyen's
-              <a href="https://docs.adyen.com/point-of-sale/testing-pos-payments">test cards</a>.</li>
-            <li>Check the receipt layout with <strong>Settings › Receipts › Print test receipt</strong>.</li>
-            <li>Set an admin PIN, then deploy the same version to your LIVE terminals and enter their shared key.</li>
+            <li>Run a few sales, refunds and (if you use them) payment links, tips and pre-authorizations on a TEST
+              terminal with Adyen's <a href="https://docs.adyen.com/point-of-sale/testing-pos-payments">test
+              cards</a>.</li>
+            <li>Check the receipt layout with <strong>Settings › Receipts › Print test receipt</strong>, and the email
+              settings with <strong>Send test email</strong>.</li>
+            <li>Set an admin PIN, then deploy the same version to your LIVE terminals and enter their shared key (and,
+              if you use it, a live Checkout API key and your live URL prefix).</li>
+            <li>Check that Settings › About shows the LIVE environment.</li>
           </ul>
         </section>
 
         <section id="trouble">
-          <h2>14. If something goes wrong</h2>
+          <h2>16. If something goes wrong</h2>
           <dl class="settings-list">
             <dt>Home says “Payments cannot reach the terminal”</dt>
             <dd>Check the key identifier, passphrase and version in Settings › Terminal against the Customer Area, and
-              tap Save and test.</dd>
+              tap Save and test. On a tablet or phone, also check the terminal's IP address and that both are on the
+              same network.</dd>
             <dt>The terminal refuses to install the app</dt>
             <dd>An error such as <code>INSTALL_PARSE_FAILED_NO_CERTIFICATES</code> means the APK was not signed. Upload
               the signed <code>minimpos-&lt;version&gt;.apk</code> from the releases page.</dd>
             <dt>A payment's result is unknown</dt>
             <dd>Open it from History (<em>Needs attention</em>) and tap <strong>Check result again</strong>. Check the
               Customer Area before charging the shopper again.</dd>
+            <dt>The terminal is busy</dt>
+            <dd>Finish what the terminal is doing (another payment or its admin menu), or tap <strong>Cancel the
+              terminal’s current transaction</strong> on the result screen, then try again.</dd>
             <dt>A capture failed or its result is unknown</dt>
             <dd>History shows why. Fix the Checkout API settings if needed, then tap <strong>Retry capture</strong>:
               sending it again cannot capture twice.</dd>
+            <dt>Checkout has no Send payment link</dt>
+            <dd>Payment links need the merchant account and Checkout API key in Settings › Terminal, and Settings ›
+              Payments › Offer payment links switched on. They are not offered for pre-authorizations or with the
+              simulator.</dd>
             <dt>Tap to Pay comes back without a result</dt>
             <dd>The payment's result is then unknown, and the Payments app cannot be asked for it again: check the
               Customer Area (Payments › Payment list) before charging the shopper again.</dd>
+            <dt>Receipts do not print</dt>
+            <dd>Check Settings › Receipts › Printer (detected automatically, or set it to always available) and Settings
+              › About, which shows whether a printer was found.</dd>
             <dt>“The codes could not be read”</dt>
             <dd>The other terminal may run a newer Mini mPOS. Update both to the same version and scan again.</dd>
+            <dt>The admin PIN is forgotten</dt>
+            <dd>Clear the app's data from the terminal's settings. Its settings, products and history on that terminal
+              are then lost, so set it up again from another terminal.</dd>
           </dl>
           <p>Still stuck? <a href="https://github.com/astiskala/minimpos/issues">Open an issue on GitHub</a>.</p>
         </section>

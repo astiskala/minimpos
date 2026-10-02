@@ -188,7 +188,8 @@ device API or the Adyen Payments app (Tap to Pay); anywhere through its built-in
 - Keep feature claims, Customer Area paths and Settings names in README, `docs/index.html` and
   `docs/getting-started.html` in sync with the app, and change the site's three languages together (`docs/zh-CN/`,
   `docs/ja/`: reciprocal language switches, canonical/hreflang links, a script-free `<details>` globe menu at the top
-  right of the header). `./gradlew :website-test:check` checks all six pages (void elements take no trailing slash).
+  right of the header). `./gradlew :website-test:check` checks all six pages (void elements take no trailing slash);
+  a new guide section also goes into its `GUIDE_SECTIONS`, and the guides' `<code>` elements must match in order.
 - Screenshots are English demo screens on the simulator, visibly disclosed, shown in original AMS1/S1F2-style SVG
   frames (bottom bezels blank, no NFC symbol on the AMS1's top); each matches its frame's screen (S1F2 9:16 at 540×960,
   AMS1 3:5 at 480×800). Re-capture them, and `social.png`, with the `docs-screenshots` skill.

@@ -19,6 +19,8 @@ import io.minimpos.app.data.transfer.ImportOutcome
 import io.minimpos.app.data.transfer.SetupTransfer
 import io.minimpos.app.data.transfer.TransferContents
 import io.minimpos.core.codec.Base45
+import io.minimpos.core.codec.QrChunkAssembler
+import io.minimpos.core.codec.QrChunks
 import io.minimpos.core.codec.SealedSecrets
 import io.minimpos.core.codec.Transfer
 import io.minimpos.core.codec.TransferCodec
@@ -243,6 +245,83 @@ class SetupTransferTest {
         val filtered = await { setup(target).unlock(mixed, code) }
         assertThat(filtered).containsExactly(Secret.TERMINAL_PASSPHRASE, "p")
         assertThat(await { setup(target).unlock(setup(target).receive(Transfer(settings = "{}")), code) }).isNull()
+    }
+
+    @Test
+    fun `the setup helper's connection sets only what it holds, and its secrets open with its code`() {
+        target.updateSettings {
+            it.copy(
+                terminal = it.terminal.copy(mode = TerminalMode.SIMULATOR, environment = TerminalEnvironment.TEST, saleId = "Cafe"),
+                receipt = it.receipt.copy(footer = "Keep me"),
+            )
+        }
+        val code = seal.newCode()
+        val secrets = """{"TERMINAL_PASSPHRASE":"correct horse","CHECKOUT_API_KEY":"AQE-key"}"""
+        val connection =
+            """{"destination":"network","host":" 192.168.1.20 ","poiId":"S1F2-000158213605014","keyIdentifier":"store-key",""" +
+                """"keyVersion":2,"merchantAccount":"HarbourCoffeeCOM","liveUrlPrefix":"","future":true}"""
+        val payload =
+            TransferCodec.encode(
+                Transfer(sealedSecrets = SealedSecrets(seal.seal(secrets.toByteArray(), code)), connection = connection),
+            )
+        val received = setup(target).receive(TransferCodec.decode(payload))
+        assertThat(received.hasConnection).isTrue()
+        assertThat(received.hasSettings).isFalse()
+        assertThat(received.catalogue).isNull()
+
+        val outcome = await { setup(target).import(received, ImportMode.MERGE, code) } as ImportOutcome.Imported
+        assertThat(outcome.result.connection).isTrue()
+        assertThat(outcome.result.settings).isFalse()
+        assertThat(outcome.result.secrets).containsExactly(Secret.TERMINAL_PASSPHRASE, Secret.CHECKOUT_API_KEY)
+        val copied = await { target.container.settings.current() }
+        // Another destination forgets the environment found for the last one.
+        assertThat(copied.terminal.mode).isEqualTo(TerminalMode.TERMINAL)
+        assertThat(copied.terminal.environment).isNull()
+        assertThat(copied.terminal.host).isEqualTo("192.168.1.20")
+        assertThat(copied.terminal.poiIdOverride).isEqualTo("S1F2-000158213605014")
+        assertThat(copied.terminal.keyIdentifier).isEqualTo("store-key")
+        assertThat(copied.terminal.keyVersion).isEqualTo(2)
+        assertThat(copied.terminal.merchantAccount).isEqualTo("HarbourCoffeeCOM")
+        // What it does not hold stays as it was.
+        assertThat(copied.terminal.saleId).isEqualTo("Cafe")
+        assertThat(copied.receipt.footer).isEqualTo("Keep me")
+        assertThat(await { target.container.secrets.get(Secret.TERMINAL_PASSPHRASE) }).isEqualTo("correct horse")
+        assertThat(await { target.container.secrets.get(Secret.CHECKOUT_API_KEY) }).isEqualTo("AQE-key")
+
+        assertThrows(TransferFormatException::class.java) { setup(target).receive(Transfer(connection = "not json")) }
+        assertThrows(TransferFormatException::class.java) { setup(target).receive(Transfer(connection = """{"keyVersion":"x"}""")) }
+        // A destination from a newer page is ignored.
+        assertThat(setup(target).receive(Transfer(connection = """{"destination":"moon"}""")).hasConnection).isTrue()
+    }
+
+    @Test
+    fun `codes made by the setup helper web page import`() {
+        // Made by docs/js/setup.js (Settings: a terminal on the network), so the page and the app keep one format.
+        val chunks =
+            listOf(
+                "MPC1:JTKI:1/2:6X0X64QXAI0N.F9OQ1IB0200SF919TVVOHA4USFXJ5:-QHRLY-0HJG6XQCNH\$TRF5VLJOA321H8M\$P+3T:8PEI" +
+                    "0MAOWH8P827SB/AHC-AGIE9TR\$VPK*P *B/%A1631/MAIDC*3JKH7%8/A1JQHOVLM*BOC8-0CX8BKCND7S0%T\$5F72DRJN6PU8\$R" +
+                    "HRS\$BF4MO%KHQIL/B81VTT IFPDH 3DY0FYPPPU2BLGS0X7NNDCTCQ4PEATE8.92I936NF36DXUP0N2ENR-FCFBBKJPAGHYIV/T." +
+                    "2LJBHBQLM+Q3U4C46HU0J.J8*AA-NWRM%9B:1ARB673BQIP:0V%MD+*B\$:5R 3I3W0Y2N/0*XM*IBXOO\$MMQH3T*I6SRPLUVS6P*" +
+                    "50SUFZD-SUMUS1JE4T9U%6TPA/%DO.BCFH%9A1G2J%T0SM*/JMPF6VC QEZEDIEC EDO-DWF71/DPWE04ELOD3Q559D QE",
+                "MPC1:JTKI:2/2:WE4NE4HA7Z\$5K%6Z\$5 \$5\$363Q5S9E/DDTTCWF7CNAF*83W5646.96V47+96C%6QW6-96IE4 F4C\$CNC91\$CBW" +
+                    "ER.C5\$CWE4:F4HWEZKEHX5C\$CIE4%F45\$CNPCCECGVEIPC34EG/DWE41F4GEC:JC6%ESN8O.C\$ C-M8 X93Q5/PDCFF5\$CPQE-3E" +
+                    "WE4AH6",
+            )
+        val assembler = QrChunkAssembler()
+        chunks.forEach { assembler.add(checkNotNull(QrChunks.parse(it))) }
+        val received = setup(target).receive(TransferCodec.decode(assembler.assemble()))
+        val outcome = await { setup(target).import(received, ImportMode.MERGE, "XF4V-CK7Y-MRDZ") } as ImportOutcome.Imported
+        assertThat(outcome.result.secrets).containsExactly(Secret.TERMINAL_PASSPHRASE, Secret.CHECKOUT_API_KEY)
+        val terminal = await { target.container.settings.current() }.terminal
+        assertThat(terminal.mode).isEqualTo(TerminalMode.TERMINAL)
+        assertThat(terminal.host).isEqualTo("192.168.1.20")
+        assertThat(terminal.poiIdOverride).isEqualTo("S1F2-000158213605014")
+        assertThat(terminal.keyIdentifier).isEqualTo("store-key")
+        assertThat(terminal.keyVersion).isEqualTo(2)
+        assertThat(terminal.merchantAccount).isEqualTo("HarbourCoffeeCOM")
+        assertThat(await { target.container.secrets.get(Secret.TERMINAL_PASSPHRASE) }).isEqualTo("correct horse battery")
+        assertThat(await { target.container.secrets.get(Secret.CHECKOUT_API_KEY) }).endsWith("-i1i}2s:=Eb,k7Zg%Yjz")
     }
 
     @Test

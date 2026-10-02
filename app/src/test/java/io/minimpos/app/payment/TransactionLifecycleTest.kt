@@ -13,7 +13,6 @@ import io.minimpos.app.data.db.StoredReason
 import io.minimpos.app.data.db.TaxRateEntity
 import io.minimpos.app.data.repo.ReceiptLinesJson
 import io.minimpos.app.data.repo.RefundedLine
-import io.minimpos.app.data.settings.CaptureMode
 import io.minimpos.app.data.settings.TerminalMode
 import io.minimpos.app.payment.StoredTransaction
 import io.minimpos.app.refund.PaymentStanding
@@ -359,7 +358,7 @@ class TransactionLifecycleTest {
         val cancelled = await { container.sales.get(saleId)!! }
         assertThat(cancelled.sale.refundedMinor).isEqualTo(0)
         assertThat(cancelled.sale.standing).isEqualTo(PaymentStanding.HOLD_CANCELLED)
-        assertThat(cancelled.actions(CaptureMode.API)).isEmpty()
+        assertThat(cancelled.actions).isEmpty()
     }
 
     @Test

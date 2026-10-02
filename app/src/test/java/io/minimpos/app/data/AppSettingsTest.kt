@@ -2,6 +2,8 @@ package io.minimpos.app.data
 
 import com.google.common.truth.Truth.assertThat
 import io.minimpos.app.data.settings.AppSettings
+import io.minimpos.app.data.settings.ConnectionDestination
+import io.minimpos.app.data.settings.ConnectionSetup
 import io.minimpos.app.data.settings.EmailSettings
 import io.minimpos.app.data.settings.HistorySettings
 import io.minimpos.app.data.settings.PaymentSettings
@@ -127,5 +129,30 @@ class AppSettingsTest {
         assertThat(taken.payment).isEqualTo(sender.payment.copy(defaultTaxRateId = 3))
         assertThat(taken.receipt).isEqualTo(sender.receipt)
         assertThat(taken.history).isEqualTo(sender.history)
+    }
+
+    @Test
+    fun `a connection chooses where payments go only where the device can take them that way`() {
+        val simulated =
+            TerminalSettings(mode = TerminalMode.SIMULATOR, environment = TerminalEnvironment.TEST, cloudRegion = CloudRegion.AU)
+        val phone = { destination: ConnectionDestination -> ConnectionSetup(destination).appliedTo(simulated, onTerminal = false) }
+        val terminal = { destination: ConnectionDestination -> ConnectionSetup(destination).appliedTo(simulated, onTerminal = true) }
+        assertThat(phone(ConnectionDestination.NETWORK).mode).isEqualTo(TerminalMode.TERMINAL)
+        assertThat(phone(ConnectionDestination.CLOUD).mode).isEqualTo(TerminalMode.CLOUD)
+        assertThat(phone(ConnectionDestination.TAP_TO_PAY).mode).isEqualTo(TerminalMode.PAYMENTS_APP)
+        assertThat(phone(ConnectionDestination.CLOUD).environment).isNull()
+        assertThat(phone(ConnectionDestination.CLOUD).cloudRegion).isNull()
+        // A phone is no terminal, and a terminal takes payments only itself, where Automatic is that.
+        assertThat(phone(ConnectionDestination.THIS_TERMINAL)).isEqualTo(simulated)
+        assertThat(terminal(ConnectionDestination.THIS_TERMINAL).mode).isEqualTo(TerminalMode.AUTO)
+        ConnectionDestination.entries.filter { it != ConnectionDestination.THIS_TERMINAL }.forEach {
+            assertThat(terminal(it)).isEqualTo(simulated)
+        }
+        // The same destination keeps what was found for it, and blank or missing values change nothing.
+        val cloud = simulated.copy(mode = TerminalMode.CLOUD, merchantAccount = "Merchant", storeId = "ST1")
+        assertThat(ConnectionSetup(ConnectionDestination.CLOUD, merchantAccount = " ", storeId = "").appliedTo(cloud, onTerminal = false))
+            .isEqualTo(cloud)
+        assertThat(ConnectionSetup(liveUrlPrefix = " abc ", storeId = "ST2").appliedTo(cloud, onTerminal = false))
+            .isEqualTo(cloud.copy(liveUrlPrefix = "abc", storeId = "ST2"))
     }
 }

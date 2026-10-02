@@ -118,8 +118,11 @@ class PaymentLinkFlowTest {
         compose.onNodeWithTag("linkExpiry").assertDoesNotExist()
         compose.onNodeWithTag("paymentLinks").performScrollTo().performClick()
         compose.awaitCondition("links switched on") { container.settingsState.value.payment.paymentLinks }
+        // The screen recomposes with the stored settings a moment after they change.
+        waitForTag("linkExpiry")
         compose.onNodeWithTag("linkExpiry").performScrollTo().assertIsDisplayed()
         // Payments go to the simulator, which has no payment links.
+        waitForTag("linksNeedApi")
         compose.onNodeWithTag("linksNeedApi").performScrollTo().assertIsDisplayed()
         compose.onNodeWithTag("back").performClick()
         compose.onNodeWithTag("back").performClick()

@@ -92,6 +92,23 @@ private fun note(
         else -> "$worded ($said)"
     }
 
+/**
+ * The title and text of Home's setup card while this is missing: on a terminal ([onTerminal]) whose shared key is
+ * missing, the request to enter it; otherwise "finish setting up" with what is missing.
+ */
+@Composable
+@ReadOnlyComposable
+fun SetupProblem.setupCard(onTerminal: Boolean): Pair<String, String> =
+    if (onTerminal && this in SHARED_KEY_PROBLEMS) {
+        stringResource(R.string.home_setup_title) to stringResource(R.string.home_setup_text)
+    } else {
+        stringResource(R.string.home_setup_title_remote) to text()
+    }
+
+/** What is missing of the shared key, which a terminal running the app needs first. */
+private val SHARED_KEY_PROBLEMS =
+    setOf(SetupProblem.KEY_IDENTIFIER, SetupProblem.PASSPHRASE, SetupProblem.KEY_VERSION, SetupProblem.UNREADABLE_PASSPHRASE)
+
 /** This stored reason in the current language: an unknown outcome as [unknown], an interruption as [interrupted]. */
 @Composable
 @ReadOnlyComposable

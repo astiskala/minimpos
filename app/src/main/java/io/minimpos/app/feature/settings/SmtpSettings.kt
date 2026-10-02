@@ -10,12 +10,12 @@ import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.OpenInNew
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -36,6 +36,7 @@ import io.minimpos.app.data.settings.SmtpSecurity
 import io.minimpos.app.email.SmtpProvider
 import io.minimpos.app.ui.components.ActionMessage
 import io.minimpos.app.ui.components.SectionHeader
+import io.minimpos.app.ui.components.TertiaryButton
 
 /**
  * The SMTP server, login and password ([onPassword] with null forgets it); the providers' help pages are linked only
@@ -185,12 +186,17 @@ private fun SmtpProviderHelp(
             modifier = Modifier.testTag("smtpAdvice"),
         )
         if (canOpenLinks) {
-            TextButton(onClick = {
-                try {
-                    context.startActivity(Intent(Intent.ACTION_VIEW, provider.helpUrl.toUri()))
-                } catch (ignored: ActivityNotFoundException) {
-                }
-            }, modifier = Modifier.testTag("smtpHelp")) { Text(stringResource(R.string.settings_smtp_help, provider.label)) }
+            TertiaryButton(
+                stringResource(R.string.settings_smtp_help, provider.label),
+                {
+                    try {
+                        context.startActivity(Intent(Intent.ACTION_VIEW, provider.helpUrl.toUri()))
+                    } catch (ignored: ActivityNotFoundException) {
+                    }
+                },
+                icon = Icons.AutoMirrored.Filled.OpenInNew,
+                modifier = Modifier.testTag("smtpHelp"),
+            )
         }
     }
 }

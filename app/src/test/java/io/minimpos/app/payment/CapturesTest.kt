@@ -13,7 +13,6 @@ import io.minimpos.app.data.db.SaleStatus
 import io.minimpos.app.data.db.SetupProblem
 import io.minimpos.app.data.db.StoredReason
 import io.minimpos.app.data.security.Secret
-import io.minimpos.app.data.settings.CaptureMode
 import io.minimpos.app.data.settings.TerminalMode
 import io.minimpos.app.refund.PaymentStanding
 import io.minimpos.app.refund.standing
@@ -204,20 +203,7 @@ class CapturesTest {
     }
 
     @Test
-    fun `without a Checkout API the capture is recorded for the Customer Area`() {
-        target = ApiTarget(ApiSetup.CustomerArea)
-        store()
-        assertThat(await { captures.addTip("s1", 600) }).isEqualTo(CaptureResult.Recorded)
-        val recorded = sale()
-        assertThat(recorded.captureStatus).isEqualTo(CaptureStatus.MANUAL)
-        assertThat(recorded.capturedMinor).isEqualTo(2_600)
-        assertThat(recorded.tipMinor).isEqualTo(600)
-        assertThat(recorded.standing).isEqualTo(PaymentStanding.CAPTURED_MANUALLY)
-        assertThat(fake.keys).isEmpty()
-    }
-
-    @Test
-    fun `a partly set up API sends nothing and says what is missing`() {
+    fun `an API not set up sends nothing and says what is missing`() {
         target = ApiTarget(ApiSetup.Incomplete(SetupProblem.API_KEY))
         store()
         val result = await { captures.addTip("s1", 100) }
@@ -226,6 +212,11 @@ class CapturesTest {
         assertThat(sale().modificationReason).isEqualTo(StoredReason.NotSetUp(SetupProblem.API_KEY))
         assertThat(sale().modificationMessage).isNull()
         assertThat(fake.keys).isEmpty()
+        // Nothing of it entered is no longer left to the Customer Area either.
+        target = ApiTarget(ApiSetup.Incomplete(SetupProblem.MERCHANT_ACCOUNT))
+        assertThat(await { captures.addTip("s1", 600) }).isEqualTo(CaptureResult.NotSetUp(SetupProblem.MERCHANT_ACCOUNT))
+        assertThat(sale().captureStatus).isNull()
+        assertThat(sale().standing).isEqualTo(PaymentStanding.AWAITING_TIP)
     }
 
     @Test
@@ -248,7 +239,7 @@ class CapturesTest {
     }
 
     @Test
-    fun `adjusting what a pre-authorisation holds needs the API`() {
+    fun `adjusting what a pre-authorisation holds goes through the API`() {
         store(bill.copy(id = "p1", tipOnReceipt = false, kind = SaleKind.PRE_AUTHORISATION))
         assertThat(await { captures.adjust("p1", 3_000) }).isEqualTo(CaptureResult.Adjusted)
         assertThat(sale("p1").heldMinor).isEqualTo(3_000)
@@ -260,11 +251,11 @@ class CapturesTest {
         store()
         assertThat(await { captures.adjust("s1", 3_000) }).isEqualTo(CaptureResult.NotAllowed)
 
-        // An adjustment cannot be left to the Customer Area; a capture can.
-        target = ApiTarget(ApiSetup.CustomerArea)
-        assertThat(await { captures.adjust("p1", 3_000) }).isEqualTo(CaptureResult.NotAllowed)
-        assertThat(await { captures.capture("p1", 2_800) }).isEqualTo(CaptureResult.Recorded)
-        assertThat(sale("p1").capturedMinor).isEqualTo(2_800)
+        // Without the API neither an adjustment nor a capture is made.
+        target = ApiTarget(ApiSetup.Incomplete(SetupProblem.API_KEY))
+        assertThat(await { captures.adjust("p1", 3_500) }).isEqualTo(CaptureResult.NotSetUp(SetupProblem.API_KEY))
+        assertThat(await { captures.capture("p1", 2_800) }).isEqualTo(CaptureResult.NotSetUp(SetupProblem.API_KEY))
+        assertThat(sale("p1").capturedMinor).isNull()
     }
 
     @Test
@@ -276,7 +267,7 @@ class CapturesTest {
     }
 
     @Test
-    fun `the API is used once anything of it is set up, and needs the environment and live prefix`() {
+    fun `the API needs the merchant account, key, environment and live prefix`() {
         val connected = mutableListOf<CheckoutCredentials>()
         val links = FakeLinkApi()
         val setups = TerminalSetupSource(container.settings, container.secrets, container.device)
@@ -286,8 +277,8 @@ class CapturesTest {
                 fake
             }, connectLinks = { links })
         env.updateSettings { it.copy(terminal = it.terminal.copy(mode = TerminalMode.TERMINAL)) }
-        assertThat(await { live.target() }).isEqualTo(ApiTarget(ApiSetup.CustomerArea))
-        assertThat(await { live.verify() }).isEqualTo(ApiCheck.NotSetUp(SetupProblem.API_REQUIRED))
+        assertThat(await { live.target() }).isEqualTo(ApiTarget(ApiSetup.Incomplete(SetupProblem.MERCHANT_ACCOUNT)))
+        assertThat(await { live.verify() }).isEqualTo(ApiCheck.NotSetUp(SetupProblem.MERCHANT_ACCOUNT))
 
         env.updateSettings { it.copy(terminal = it.terminal.copy(merchantAccount = "Merchant")) }
         await { container.secrets.set(Secret.CHECKOUT_API_KEY, "key") }
@@ -298,7 +289,7 @@ class CapturesTest {
         assertThat(await { live.verify() }).isEqualTo(ApiCheck.Works)
         assertThat(await { live.target() }).isEqualTo(ApiTarget(ApiSetup.Complete, fake, links))
         assertThat(connected.single()).isEqualTo(CheckoutCredentials("key", "Merchant", TerminalEnvironment.LIVE, "abc-Company"))
-        await { container.terminalStatus.state.first { it.captureMode == CaptureMode.API && it.apiProblem == null } }
+        await { container.terminalStatus.state.first { it.apiSetup == ApiSetup.Complete && it.apiProblem == null } }
 
         // A key that no longer decrypts has to be entered again.
         env.cipher.fail = true

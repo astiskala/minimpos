@@ -78,7 +78,7 @@ Seeded before the first launch (debug builds only), piped in with
 5. Pre-authorisation of the catering deposit (CUST-2077): `pre-auth.png` is its checkout (tapping the deposit opens it)
    with CUST-2077 typed, before tapping Pre-authorize $200.00, `pre-auth-detail.png` its history detail with Capture,
    Adjust amount and Cancel pre-authorisation; left open so Home shows the split tile.
-6. `transfer.png` and `export.png`: Products › More › Share with another terminal (after the PIN is set, so passwords
+6. `transfer.png` and `export.png`: Products › More › Share with another device (after the PIN is set, so passwords
    and keys are offered) before and after Show QR codes, paused on a code.
 
 ## Driving the UI

@@ -6,7 +6,6 @@ import io.minimpos.app.data.db.SaleEntity
 import io.minimpos.app.data.db.SaleKind
 import io.minimpos.app.data.db.SaleStatus
 import io.minimpos.app.data.db.SaleWithLines
-import io.minimpos.app.data.settings.CaptureMode
 import io.minimpos.app.refund.PaymentAction.ADJUST
 import io.minimpos.app.refund.PaymentAction.CANCEL
 import io.minimpos.app.refund.PaymentAction.CAPTURE
@@ -36,7 +35,7 @@ class PaymentStandingTest {
     private val preAuth = sale.copy(kind = SaleKind.PRE_AUTHORISATION)
     private val tipSale = sale.copy(tipOnReceipt = true)
 
-    private fun SaleEntity.actions(mode: CaptureMode = CaptureMode.API) = SaleWithLines(this, emptyList()).actions(mode)
+    private fun SaleEntity.actions() = SaleWithLines(this, emptyList()).actions
 
     @Test
     fun `payments that were not approved stand nowhere else and allow nothing`() {
@@ -137,9 +136,8 @@ class PaymentStandingTest {
     }
 
     @Test
-    fun `a held pre-authorisation is captured or cancelled, and adjusted only through the Checkout API`() {
-        assertThat(preAuth.actions(CaptureMode.API)).containsExactly(CANCEL, CAPTURE, ADJUST)
-        assertThat(preAuth.actions(CaptureMode.CUSTOMER_AREA)).containsExactly(CANCEL, CAPTURE)
+    fun `a held pre-authorisation is captured, adjusted or cancelled`() {
+        assertThat(preAuth.actions()).containsExactly(CANCEL, CAPTURE, ADJUST)
         // Without a PSP reference the Checkout API has nothing to refer to.
         assertThat(preAuth.copy(pspReference = null).actions()).containsExactly(CANCEL)
         // Without the terminal's transaction details a reversal has nothing to refer to.

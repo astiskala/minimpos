@@ -36,22 +36,19 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.minimpos.app.R
-import io.minimpos.app.data.db.SaleKind
 import io.minimpos.app.data.settings.TerminalMode
 import io.minimpos.app.feature.settings.SettingsSections
-import io.minimpos.app.feature.text
+import io.minimpos.app.feature.setupCard
 import io.minimpos.app.terminal.TerminalConnection
 import io.minimpos.app.terminal.TerminalState
 import io.minimpos.app.ui.components.LocalAppContainer
@@ -60,7 +57,6 @@ import io.minimpos.app.ui.navigation.Navigator
 import io.minimpos.app.ui.navigation.Route
 import io.minimpos.app.ui.theme.LocalDimens
 import io.minimpos.app.ui.theme.LocalStatusColors
-import kotlinx.coroutines.flow.map
 
 /** The home screen fills the available height rather than scrolling, so everything fits on a 4" terminal screen. */
 @Composable
@@ -73,9 +69,6 @@ fun HomeScreen(
     val settings by container.settingsState.collectAsStateWithLifecycle()
     val pinSet by container.pinManager.pinConfigured.collectAsStateWithLifecycle(initialValue = false)
     val terminal by container.terminalStatus.state.collectAsStateWithLifecycle()
-    val preAuthOffered by remember {
-        container.catalog.products.map { products -> products.any { it.kind == SaleKind.PRE_AUTHORISATION } }
-    }.collectAsStateWithLifecycle(initialValue = false)
     // A failed check is retried whenever Home is shown, so its warning clears once the terminal answers again.
     LaunchedEffect(Unit) { container.terminalStatus.recheckIfFailed() }
 
@@ -97,7 +90,7 @@ fun HomeScreen(
                 if (terminal.loaded && terminal.mode != TerminalMode.SIMULATOR) {
                     ConnectionProblem(terminal) { navigator.push(Route.SettingsSection(SettingsSections.TERMINAL)) }
                 }
-                PaymentTiles(preAuthOffered, onOpen = navigator::push)
+                PaymentTiles(onOpen = navigator::push)
                 AreaTiles(locked = pinSet, onOpen = navigator::push)
             }
         }
@@ -105,48 +98,31 @@ fun HomeScreen(
 }
 
 /**
- * The large green tile that starts a sale or, when pre-authorisation products exist ([preAuthOffered]), two side by
- * side: New sale and Pre-authorise.
+ * The two large green tiles that start a payment, one above the other: New sale and New pre-authorisation. Both are
+ * always there, since a pre-authorisation can also be of a custom amount, without pre-authorisation products.
  */
 @Composable
-private fun ColumnScope.PaymentTiles(
-    preAuthOffered: Boolean,
-    onOpen: (Route) -> Unit,
-) {
-    if (!preAuthOffered) {
-        PaymentTile(
-            Icons.Default.PointOfSale,
-            stringResource(R.string.home_new_sale),
-            stringResource(R.string.home_new_sale_hint),
-            stacked = false,
-            onClick = { onOpen(Route.Sale) },
-            modifier = Modifier.fillMaxWidth().weight(1.2f).testTag("newSale"),
-        )
-        return
-    }
-    Row(Modifier.fillMaxWidth().weight(1.2f), horizontalArrangement = Arrangement.spacedBy(LocalDimens.current.spacing)) {
-        PaymentTile(
-            Icons.Default.PointOfSale,
-            stringResource(R.string.home_new_sale),
-            stringResource(R.string.home_new_sale_hint),
-            stacked = true,
-            onClick = { onOpen(Route.Sale) },
-            modifier = Modifier.weight(1f).fillMaxHeight().testTag("newSale"),
-        )
-        PaymentTile(
-            Icons.Default.LockClock,
-            stringResource(R.string.home_pre_auth),
-            stringResource(R.string.home_pre_auth_hint),
-            stacked = true,
-            onClick = { onOpen(Route.PreAuth) },
-            modifier = Modifier.weight(1f).fillMaxHeight().testTag("preAuth"),
-        )
-    }
+private fun ColumnScope.PaymentTiles(onOpen: (Route) -> Unit) {
+    PaymentTile(
+        Icons.Default.PointOfSale,
+        stringResource(R.string.home_new_sale),
+        stringResource(R.string.home_new_sale_hint),
+        onClick = { onOpen(Route.Sale) },
+        modifier = Modifier.fillMaxWidth().weight(1f).testTag("newSale"),
+    )
+    PaymentTile(
+        Icons.Default.LockClock,
+        stringResource(R.string.home_pre_auth),
+        stringResource(R.string.home_pre_auth_hint),
+        onClick = { onOpen(Route.PreAuth) },
+        modifier = Modifier.fillMaxWidth().weight(1f).testTag("preAuth"),
+    )
 }
 
 /**
- * A [SetupCard] while payments cannot work: something must still be entered or the terminal did not answer; else
- * nothing. On a terminal only its shared key can be missing; elsewhere the card says what is.
+ * A [SetupCard] while payments cannot work: something must still be entered (the Checkout API included) or the terminal
+ * did not answer; else nothing. On a terminal whose shared key is missing it asks for that; otherwise it says what is
+ * missing.
  */
 @Composable
 private fun ConnectionProblem(
@@ -157,10 +133,11 @@ private fun ConnectionProblem(
     val problem = terminal.setupProblem ?: (connection as? TerminalConnection.NotSetUp)?.problem
     when {
         problem != null -> {
+            val (title, text) = problem.setupCard(terminal.onTerminal)
             SetupCard(
                 Icons.Default.Key,
-                stringResource(if (terminal.onTerminal) R.string.home_setup_title else R.string.home_setup_title_remote),
-                if (terminal.onTerminal) stringResource(R.string.home_setup_text) else problem.text(),
+                title,
+                text,
                 error = false,
                 onClick = onClick,
             )
@@ -179,21 +156,18 @@ private fun ConnectionProblem(
 }
 
 /**
- * A large green tile that starts a payment: a sale, or a pre-authorisation. Alone it is a row (icon beside the text);
- * [stacked] beside another one, the icon sits above the text, which then also gets a smaller style to fit half the
- * width.
+ * A large green tile that starts a payment (a sale, or a pre-authorisation): the icon beside the title and hint. Where
+ * the height is limited the title gets a smaller style and the hint a single line, so two tiles fit a 4" screen.
  */
 @Composable
 private fun PaymentTile(
     icon: ImageVector,
     title: String,
     hint: String,
-    stacked: Boolean,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val dimens = LocalDimens.current
-    val iconSize = if (dimens.compact) 32.dp else 40.dp
     Surface(
         onClick = onClick,
         color = MaterialTheme.colorScheme.primary,
@@ -201,35 +175,24 @@ private fun PaymentTile(
         shape = MaterialTheme.shapes.large,
         modifier = modifier,
     ) {
-        if (stacked) {
-            Column(Modifier.padding(dimens.cardPadding), verticalArrangement = Arrangement.Center) {
-                Icon(icon, contentDescription = null, modifier = Modifier.size(iconSize))
-                Spacer(Modifier.height(dimens.spacing).weight(1f, fill = false))
-                PaymentTileText(
+        Row(Modifier.padding(horizontal = dimens.screenPadding + 8.dp), verticalAlignment = Alignment.CenterVertically) {
+            Icon(icon, contentDescription = null, modifier = Modifier.size(if (dimens.compact) 32.dp else 40.dp))
+            Spacer(Modifier.width(dimens.screenPadding))
+            Column {
+                Text(
                     title,
+                    style = if (dimens.compact) MaterialTheme.typography.titleLarge else MaterialTheme.typography.headlineSmall,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                Text(
                     hint,
-                    if (dimens.compact) MaterialTheme.typography.titleMedium else MaterialTheme.typography.titleLarge,
+                    style = MaterialTheme.typography.bodyMedium,
+                    maxLines = if (dimens.compact) 1 else 2,
+                    overflow = TextOverflow.Ellipsis,
                 )
             }
-        } else {
-            Row(Modifier.padding(horizontal = dimens.screenPadding + 8.dp), verticalAlignment = Alignment.CenterVertically) {
-                Icon(icon, contentDescription = null, modifier = Modifier.size(iconSize))
-                Spacer(Modifier.width(dimens.screenPadding))
-                PaymentTileText(title, hint, MaterialTheme.typography.headlineSmall)
-            }
         }
-    }
-}
-
-@Composable
-private fun PaymentTileText(
-    title: String,
-    hint: String,
-    titleStyle: TextStyle,
-) {
-    Column {
-        Text(title, style = titleStyle, maxLines = 2, overflow = TextOverflow.Ellipsis)
-        Text(hint, style = MaterialTheme.typography.bodyMedium, maxLines = 2, overflow = TextOverflow.Ellipsis)
     }
 }
 
@@ -242,7 +205,7 @@ private fun ColumnScope.AreaTiles(
     locked: Boolean,
     onOpen: (Route) -> Unit,
 ) {
-    Row(Modifier.fillMaxWidth().weight(1f), horizontalArrangement = Arrangement.spacedBy(LocalDimens.current.spacing)) {
+    Row(Modifier.fillMaxWidth().weight(0.8f), horizontalArrangement = Arrangement.spacedBy(LocalDimens.current.spacing)) {
         HomeTile(
             Icons.Default.QrCodeScanner,
             stringResource(R.string.home_refund),

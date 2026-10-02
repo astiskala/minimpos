@@ -28,12 +28,14 @@ import kotlinx.coroutines.launch
  * @property tapToPay The latest setup or removal of Tap to Pay.
  * @property paymentsAppKeyStored Whether the Payments app API key given to the latest setup was stored (so the field
  *   can be cleared).
+ * @property apiKeyStored Whether the API key given to the latest search was stored (so the field can be cleared).
  */
 data class TerminalSetupActions(
     val terminals: ActionState = ActionState(),
     val connectedTerminals: List<String>? = null,
     val tapToPay: ActionState = ActionState(),
     val paymentsAppKeyStored: Boolean = false,
+    val apiKeyStored: Boolean = false,
 )
 
 /**
@@ -41,7 +43,7 @@ data class TerminalSetupActions(
  * and setting up (or removing) Tap to Pay with the Adyen Payments app.
  *
  * @param settings Where the chosen terminal is stored.
- * @param secrets Where the Payments app API key is stored.
+ * @param secrets Where the Payments app API key and the API key for the cloud are stored.
  * @param status Lists the terminals connected in the cloud.
  * @param tapToPay Boards and removes the Payments app.
  */
@@ -56,10 +58,20 @@ class TerminalSetupViewModel(
     /** Outcomes of the latest actions. */
     val actions: StateFlow<TerminalSetupActions> = _actions.asStateFlow()
 
-    /** Looks for the terminals connected to the merchant account in the cloud, to offer them in [actions]. */
-    fun findTerminals() {
-        _actions.update { it.copy(terminals = ActionState(running = true), connectedTerminals = null) }
+    /**
+     * Looks for the terminals connected to the merchant account in the cloud, to offer them in [actions], first saving
+     * [apiKey] as the API key if one was entered.
+     */
+    fun findTerminals(apiKey: String? = null) {
+        _actions.update { it.copy(terminals = ActionState(running = true), connectedTerminals = null, apiKeyStored = false) }
         viewModelScope.launch {
+            val entered = apiKey?.trim()?.takeIf { it.isNotEmpty() }
+            val notStored = entered?.let { persisting { store(Secret.CHECKOUT_API_KEY, it) } }
+            if (notStored != null) {
+                _actions.update { it.copy(terminals = ActionState(outcome = notStored, isError = true)) }
+                return@launch
+            }
+            if (entered != null) _actions.update { it.copy(apiKeyStored = true) }
             val found = status.connectedTerminals()
             _actions.update {
                 when (found) {
@@ -104,7 +116,7 @@ class TerminalSetupViewModel(
         _actions.update { it.copy(tapToPay = ActionState(running = true), paymentsAppKeyStored = false) }
         viewModelScope.launch {
             val entered = apiKey?.trim()?.takeIf { it.isNotEmpty() }
-            val notStored = entered?.let { persisting { store(it) } }
+            val notStored = entered?.let { persisting { store(Secret.PAYMENTS_APP_API_KEY, it) } }
             if (notStored != null) {
                 _actions.update { it.copy(tapToPay = ActionState(outcome = notStored, isError = true)) }
                 return@launch
@@ -135,10 +147,13 @@ class TerminalSetupViewModel(
         }
     }
 
-    /** Stores [apiKey]; null when it was stored, else why not. */
-    private suspend fun store(apiKey: String): ActionOutcome.SecretNotStored? =
+    /** Stores [apiKey] as [secret]; null when it was stored, else why not. */
+    private suspend fun store(
+        secret: Secret,
+        apiKey: String,
+    ): ActionOutcome.SecretNotStored? =
         try {
-            secrets.set(Secret.PAYMENTS_APP_API_KEY, apiKey)
+            secrets.set(secret, apiKey)
             null
         } catch (e: SecretStoreException) {
             ActionOutcome.SecretNotStored(e.message)

@@ -45,6 +45,7 @@ spotless {
             "*/lint.xml",
             "docs/**/*.html",
             "docs/**/*.css",
+            "docs/**/*.js",
             "docs/**/*.svg",
         )
         trimTrailingWhitespace()

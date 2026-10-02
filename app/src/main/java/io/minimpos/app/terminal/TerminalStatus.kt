@@ -1,7 +1,6 @@
 package io.minimpos.app.terminal
 
 import io.minimpos.app.data.db.SetupProblem
-import io.minimpos.app.data.settings.CaptureMode
 import io.minimpos.app.data.settings.SettingsRepository
 import io.minimpos.app.data.settings.TerminalMode
 import io.minimpos.terminal.transport.TerminalEnvironment
@@ -27,13 +26,14 @@ import kotlinx.coroutines.launch
  *   [TerminalMode.AUTO].
  * @property onTerminal Whether the app runs on an Adyen terminal, which then is where payments go in terminal mode.
  * @property poiId The terminal's POIID (or the simulator's); null while one still has to be entered.
- * @property setupProblem What must still be entered before the terminal can be used, from
+ * @property setupProblem What must still be entered before payments can be taken (the Checkout API included), from
  *   [TerminalSetup.problem]; null when nothing is missing (always in simulator mode).
  * @property connection The latest connection check, whose result stays until the next one.
  * @property printerAvailable Whether printing is offered, see [TerminalSetup.printerAvailable].
  * @property environment Where payments go, TEST or LIVE, as [TerminalSetup.environment] says.
  * @property apiSetup How far the Checkout API is set up, see [TerminalSetup.apiSetup]; captures follow the same decision.
  * @property paymentLinks Whether checkout offers payment links, see [TerminalSetup.paymentLinks].
+ * @property paymentsApps The Adyen Payments apps installed, by environment, see [TerminalSetup.paymentsApps].
  */
 data class TerminalState(
     val loaded: Boolean = false,
@@ -46,15 +46,13 @@ data class TerminalState(
     val environment: TerminalEnvironment? = null,
     val apiSetup: ApiSetup = ApiSetup.Simulated,
     val paymentLinks: Boolean = false,
+    val paymentsApps: Set<TerminalEnvironment> = emptySet(),
 ) {
     /**
      * Whether receipts and payment links can be shared through Android's share sheet: on phones and tablets, not on an
      * Adyen terminal, which has no apps to share with (it emails instead).
      */
     val canShare: Boolean get() = !onTerminal
-
-    /** How pre-authorisations and tips on the receipt are captured ([ApiSetup.mode]). */
-    val captureMode: CaptureMode get() = apiSetup.mode
 
     /** What must still be entered before the Checkout API can be used ([ApiSetup.problem]); null when nothing is. */
     val apiProblem: SetupProblem? get() = apiSetup.problem
@@ -91,6 +89,7 @@ class TerminalStatus(
                 environment = setup.environment,
                 apiSetup = setup.apiSetup,
                 paymentLinks = setup.paymentLinks,
+                paymentsApps = setup.paymentsApps,
             )
         }.stateIn(scope, SharingStarted.Eagerly, TerminalState())
 
@@ -107,7 +106,11 @@ class TerminalStatus(
         scope.launch {
             setups.changes
                 .map { setup ->
-                    Triple(setup.settings.terminal.copy(environment = null, cloudRegion = null), setup.checksConnection, setup.problem)
+                    Triple(
+                        setup.settings.terminal.copy(environment = null, cloudRegion = null),
+                        setup.checksConnection,
+                        setup.connectionProblem,
+                    )
                 }.distinctUntilChanged()
                 .debounce(CHECK_DELAY_MILLIS)
                 .collectLatest { (_, checked) -> if (checked) check() }
@@ -131,6 +134,12 @@ class TerminalStatus(
     suspend fun recheckIfFailed() {
         if (connection.value is TerminalConnection.Failed && setups.current().checksConnection) check()
     }
+
+    /**
+     * Reads the device again, so [state] follows an Adyen Payments app installed or removed while the app was in the
+     * background (see [TerminalSetupSource.readDevice]); called whenever the app comes back to the front.
+     */
+    fun readDevice() = setups.readDevice()
 
     /** The terminals connected in the cloud, for choosing one in Settings; see [TerminalGateway.connectedTerminals]. */
     suspend fun connectedTerminals(): ConnectedTerminals = gateway.connectedTerminals()

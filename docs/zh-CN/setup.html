@@ -1,0 +1,221 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="Content-Security-Policy" content="connect-src 'none'; form-action 'none'; base-uri 'none'; object-src 'none'; frame-src 'none'; worker-src 'none'">
+  <meta name="referrer" content="no-referrer">
+  <title>设置助手 – Mini mPOS</title>
+  <meta name="description" content="在方便打开商户后台的电脑上填写 Adyen 密钥和账户信息，再以二维码形式扫描到 Mini mPOS 中，无需在设备上输入冗长的 API 密钥。">
+  <link rel="icon" href="../favicon.svg" type="image/svg+xml">
+  <link rel="canonical" href="https://astiskala.github.io/minimpos/zh-CN/setup.html">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="Mini mPOS 设置助手">
+  <meta property="og:description" content="在电脑上复制 Adyen 密钥，再以二维码形式扫描到 Mini mPOS 中。">
+  <meta property="og:url" content="https://astiskala.github.io/minimpos/zh-CN/setup.html">
+  <meta property="og:image" content="https://astiskala.github.io/minimpos/images/social.png">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="theme-color" content="#00112C">
+  <link rel="stylesheet" href="../styles.css">
+  <link href="https://astiskala.github.io/minimpos/setup.html" hreflang="en" rel="alternate">
+  <link href="https://astiskala.github.io/minimpos/zh-CN/setup.html" hreflang="zh-CN" rel="alternate">
+  <link href="https://astiskala.github.io/minimpos/ja/setup.html" hreflang="ja" rel="alternate">
+  <link href="https://astiskala.github.io/minimpos/setup.html" hreflang="x-default" rel="alternate">
+  <meta content="zh_CN" property="og:locale">
+  <meta content="en_US" property="og:locale:alternate">
+  <meta content="ja_JP" property="og:locale:alternate">
+  <meta content="Adyen 支付终端示意图上的 Mini mPOS，展示英文演示界面。" property="og:image:alt">
+  <meta content="Mini mPOS 设置助手" name="twitter:title">
+  <meta content="在电脑上复制 Adyen 密钥，再以二维码形式扫描到 Mini mPOS 中。" name="twitter:description">
+  <meta content="https://astiskala.github.io/minimpos/images/social.png" name="twitter:image">
+  <meta content="Adyen 支付终端示意图上的 Mini mPOS，展示英文演示界面。" name="twitter:image:alt">
+  <script defer src="../js/qrcodegen.js"></script>
+  <script defer src="../js/setup.js"></script>
+</head>
+<body>
+  <a class="skip" href="#main">跳到正文</a>
+
+  <header class="site-header">
+    <div class="wrap header-row">
+      <a class="brand" href="./" aria-label="Mini mPOS 首页">
+        <img src="../favicon.svg" alt="" width="36" height="36">
+        <span>Mini mPOS</span>
+      </a>
+      <nav aria-label="主导航">
+        <ul class="nav">
+          <li><a href="./#features">功能</a></li>
+          <li><a href="getting-started.html">快速入门</a></li>
+          <li><a href="setup.html" aria-current="page">设置助手</a></li>
+          <li><a class="button button-small" href="https://github.com/astiskala/minimpos">GitHub</a></li>
+        </ul>
+      </nav>
+      <details class="language-menu">
+        <summary aria-label="语言：简体中文" title="语言"><svg aria-hidden="true" class="globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 2.7 3.8 5.7 3.8 9s-1.3 6.3-3.8 9c-2.5-2.7-3.8-5.7-3.8-9S9.5 5.7 12 3z"/></svg><span class="language-current">简体中文</span></summary>
+        <nav aria-label="语言">
+          <ul>
+            <li><a href="../setup.html" hreflang="en" lang="en">English</a></li>
+            <li><a aria-current="page" href="../zh-CN/setup.html" hreflang="zh-CN" lang="zh-CN">简体中文</a></li>
+            <li><a href="../ja/setup.html" hreflang="ja" lang="ja">日本語</a></li>
+          </ul>
+        </nav>
+      </details>
+    </div>
+  </header>
+
+  <main id="main">
+    <section class="guide-hero">
+      <div class="wrap">
+        <p class="eyebrow">设置助手</p>
+        <h1>在电脑上设置设备</h1>
+        <p class="lead">
+          在终端键盘上输入冗长的 API 密钥既费时又容易出错。请在这里对照商户后台填写，再以二维码形式扫描到 Mini mPOS 中。
+        </p>
+      </div>
+    </section>
+
+    <div class="wrap setup">
+      <div class="setup-main">
+        <p class="note" id="setup-noscript">设置助手需要 JavaScript。请为此页面启用 JavaScript，或按照<a href="getting-started.html#connect">快速入门指南</a>在应用中输入。</p>
+
+        <form id="setup-form" class="setup-form" hidden autocomplete="off"
+              data-msg-making="正在生成二维码…"
+              data-msg-ready="已生成 {total} 个二维码，见下方。"
+              data-msg-code-of="第 {n} 个，共 {total} 个"
+              data-msg-pause="暂停"
+              data-msg-play="播放"
+              data-msg-unsupported="此浏览器无法生成二维码。请使用最新版本的 Chrome、Edge、Firefox 或 Safari。">
+          <fieldset>
+            <legend>1. Mini mPOS 在哪里运行，支付发往哪里？</legend>
+            <label class="choice"><input type="radio" name="destination" value="thisTerminal" checked> <span><strong>在 Adyen 终端上运行</strong>，由该终端直接收款</span></label>
+            <label class="choice"><input type="radio" name="destination" value="network"> <span><strong>在平板电脑或手机上运行</strong>，配合同一网络中的终端</span></label>
+            <label class="choice"><input type="radio" name="destination" value="cloud"> <span><strong>在平板电脑或手机上运行</strong>，配合通过互联网连接的终端（云端）</span></label>
+            <label class="choice"><input type="radio" name="destination" value="tapToPay"> <span><strong>在手机上运行</strong>，通过 Adyen Payments 应用使用 Tap to Pay</span></label>
+          </fieldset>
+
+          <fieldset>
+            <legend>2. 使用哪个 Adyen 环境？</legend>
+            <label class="choice"><input type="radio" name="environment" value="test" checked> <span><strong>TEST</strong>：测试终端和测试卡</span></label>
+            <label class="choice"><input type="radio" name="environment" value="live"> <span><strong>LIVE</strong>：真实支付</span></label>
+            <p class="hint">应用连接时会自动判断环境；此选项只用于打开下方对应的商户后台，并决定是否要求填写 LIVE URL 前缀。</p>
+          </fieldset>
+
+          <fieldset data-for="network">
+            <legend>同一网络中的终端</legend>
+            <label for="host">终端 IP 地址</label>
+            <input id="host" name="host" type="text" inputmode="url" required spellcheck="false" placeholder="192.168.1.20">
+            <label for="poiId">终端 ID（POIID）</label>
+            <input id="poiId" name="poiId" type="text" required spellcheck="false" placeholder="S1F2-000158213605014">
+            <p class="hint">两者都可在终端的 Device info（设备信息）界面查看。</p>
+          </fieldset>
+
+          <fieldset data-for="cloud">
+            <legend>云端终端</legend>
+            <label for="cloudPoiId">终端 ID（POIID，可选）</label>
+            <input id="cloudPoiId" name="poiId" type="text" spellcheck="false" placeholder="S1F2-000158213605014">
+            <p class="hint">留空则可在应用中从已连接的终端中选择。</p>
+          </fieldset>
+
+          <fieldset data-for="thisTerminal network tapToPay">
+            <legend>共享密钥</legend>
+            <p class="hint">在商户后台的 <a data-ca="devices/device-settings?categoryId=tapi" href="https://ca-test.adyen.com/ca/ui/devices/device-settings?categoryId=tapi">Devices › Device settings › Terminal API</a> 中的 Encryption key 下（点击铅笔图标查看）。</p>
+            <label for="keyIdentifier">密钥标识符</label>
+            <input id="keyIdentifier" name="keyIdentifier" type="text" required spellcheck="false">
+            <label for="passphrase">密钥口令</label>
+            <input id="passphrase" name="passphrase" type="password" required spellcheck="false">
+            <label for="keyVersion">密钥版本</label>
+            <input id="keyVersion" name="keyVersion" type="number" min="1" max="9999" value="1" required>
+          </fieldset>
+
+          <fieldset data-for="thisTerminal network cloud tapToPay">
+            <legend>Checkout API</legend>
+            <p class="hint">在 <a data-ca="developers/api-credentials/" href="https://ca-test.adyen.com/ca/ui/developers/api-credentials/">Developers › API credentials</a> 中创建<span data-only="thisTerminal network tapToPay">具有 Checkout webservice role 的</span><span data-only="cloud" hidden>具有 Cloud Device API role 和 Checkout webservice role 的</span> API 凭据，并生成其 API 密钥。</p>
+            <label for="merchantAccount">商家账户</label>
+            <input id="merchantAccount" name="merchantAccount" type="text" required spellcheck="false">
+            <label for="apiKey">API 密钥</label>
+            <input id="apiKey" name="apiKey" type="password" required spellcheck="false">
+          </fieldset>
+
+          <fieldset data-for="thisTerminal network cloud tapToPay" data-env="live">
+            <legend>LIVE URL 前缀</legend>
+            <p class="hint">见 <a data-ca="developers/api-urls" href="https://ca-live.adyen.com/ca/ui/developers/api-urls">Developers › API URLs</a>。</p>
+            <label for="liveUrlPrefix">前缀</label>
+            <input id="liveUrlPrefix" name="liveUrlPrefix" type="text" required spellcheck="false" placeholder="1797a841fbb37ca7-AdyenDemo">
+          </fieldset>
+
+          <fieldset data-for="tapToPay">
+            <legend>Tap to Pay</legend>
+            <p class="hint">仅具有 Adyen Payments app role 的 API 凭据，该角色需由 Adyen 支持团队开通；参见 Adyen 的 <a href="https://docs.adyen.com/point-of-sale/mobile-android/build/payments-app">Payments 应用指南</a>。</p>
+            <label for="paymentsAppApiKey">Payments 应用 API 密钥</label>
+            <input id="paymentsAppApiKey" name="paymentsAppApiKey" type="password" required spellcheck="false">
+            <label for="storeId">门店 ID（可选）</label>
+            <input id="storeId" name="storeId" type="text" spellcheck="false">
+            <p class="hint">如只为一家门店设置本手机：填写 <a data-ca="devices/stores/" href="https://ca-test.adyen.com/ca/ui/devices/stores/">Devices › Stores</a> 中该门店的 ID（不是其 reference）。</p>
+          </fieldset>
+
+          <div class="setup-actions">
+            <button class="button" type="submit">生成二维码</button>
+            <button class="button button-ghost" type="reset">清空</button>
+          </div>
+          <p class="hint" id="setup-status" role="status" aria-live="polite"></p>
+        </form>
+
+        <section id="setup-codes" class="setup-codes" hidden aria-labelledby="setup-codes-title">
+          <h2 id="setup-codes-title">用设备扫描这些二维码</h2>
+          <ol>
+            <li>在设备上的 Mini mPOS 中打开<strong>设置 › 数据 › 从另一台设备设置</strong>。</li>
+            <li>用摄像头扫描下方的二维码。有多个二维码时会自动轮换。</li>
+            <li>输入<strong>传输码</strong>，然后点击<strong>导入</strong>。设备上只会更改您在这里填写的内容。</li>
+            <li>在<strong>设置 › 终端</strong>中检查连接。使用 Tap to Pay 时，请在那里点击<strong>设置 Tap to Pay</strong>。</li>
+          </ol>
+          <div class="setup-code-card" id="setup-code-card">
+            <p>传输码</p>
+            <p class="setup-code" id="setup-code"></p>
+          </div>
+          <div class="setup-qr" id="setup-qr"></div>
+          <div class="setup-controls">
+            <button class="button button-ghost button-small" id="setup-previous" type="button">上一个</button>
+            <span id="setup-position"></span>
+            <button class="button button-ghost button-small" id="setup-next" type="button">下一个</button>
+            <button class="button button-ghost button-small" id="setup-pause" type="button">暂停</button>
+          </div>
+        </section>
+      </div>
+
+      <aside class="setup-side">
+        <h2>须知</h2>
+        <ul>
+          <li><strong>数据不会离开此页面。</strong>二维码在您的浏览器中生成；页面不会发送或保存任何内容。完成后请关闭页面。</li>
+          <li><strong>密钥经过加密。</strong>二维码中的密码和密钥使用传输码加密，传输码只在这里显示，因此仅拍摄二维码不会泄露它们。</li>
+          <li><strong>二维码只用一次。</strong>每次生成都会使用新的传输码。</li>
+          <li><strong>要复制整套设置？</strong>如要将商品和设置从一台设备复制到另一台，请改用应用中的<a href="getting-started.html#more">共享至另一台设备</a>。</li>
+        </ul>
+        <h2>商户后台快捷链接</h2>
+        <table class="setup-links">
+          <thead>
+            <tr><th scope="col">页面</th><th scope="col">TEST</th><th scope="col">LIVE</th></tr>
+          </thead>
+          <tbody>
+            <tr><th scope="row">登录</th><td><a href="https://ca-test.adyen.com/ca/ui/">TEST</a></td><td><a href="https://ca-live.adyen.com/ca/ui/">LIVE</a></td></tr>
+            <tr><th scope="row">Terminal apps（上传 APK）</th><td><a href="https://ca-test.adyen.com/ca/ui/devices/terminal-apps/">TEST</a></td><td><a href="https://ca-live.adyen.com/ca/ui/devices/terminal-apps/">LIVE</a></td></tr>
+            <tr><th scope="row">API credentials</th><td><a href="https://ca-test.adyen.com/ca/ui/developers/api-credentials/">TEST</a></td><td><a href="https://ca-live.adyen.com/ca/ui/developers/api-credentials/">LIVE</a></td></tr>
+            <tr><th scope="row">Terminal API（共享密钥）</th><td><a href="https://ca-test.adyen.com/ca/ui/devices/device-settings?categoryId=tapi">TEST</a></td><td><a href="https://ca-live.adyen.com/ca/ui/devices/device-settings?categoryId=tapi">LIVE</a></td></tr>
+            <tr><th scope="row">Stores（门店）</th><td><a href="https://ca-test.adyen.com/ca/ui/devices/stores/">TEST</a></td><td><a href="https://ca-live.adyen.com/ca/ui/devices/stores/">LIVE</a></td></tr>
+            <tr><th scope="row">API URLs（LIVE 前缀）</th><td>–</td><td><a href="https://ca-live.adyen.com/ca/ui/developers/api-urls">LIVE</a></td></tr>
+          </tbody>
+        </table>
+      </aside>
+    </div>
+  </main>
+
+  <footer class="site-footer">
+    <div class="wrap footer-row">
+      <p>
+        <img src="../favicon.svg" alt="" width="24" height="24"> Mini mPOS · MIT 许可证 ·
+        <a href="https://github.com/astiskala/minimpos">GitHub</a> ·
+        <a href="https://github.com/astiskala/minimpos/blob/main/SECURITY.md">安全</a>
+      </p>
+      <p class="fine">Adyen 是 Adyen N.V. 的商标。Mini mPOS 是独立项目，与 Adyen 无关联，未获其背书，也不由其提供支持。二维码使用 Project Nayuki 的 QR Code generator 库（MIT 许可证）绘制。</p>
+    </div>
+  </footer>
+</body>
+</html>

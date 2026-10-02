@@ -1,6 +1,7 @@
 package io.minimpos.app.ui.components
 
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -28,13 +29,14 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import io.minimpos.app.R
 import io.minimpos.app.ui.theme.LocalDimens
 
 /**
- * A screen's main action: full width, at least the theme's button height. While [loading] it shows a spinner and
- * cannot be pressed again.
+ * A screen's main action: full width, at least the theme's button height, with an optional leading [icon]. While
+ * [loading] it shows a spinner and cannot be pressed again.
  */
 @Composable
 fun PrimaryButton(
@@ -44,6 +46,7 @@ fun PrimaryButton(
     enabled: Boolean = true,
     loading: Boolean = false,
     color: Color = MaterialTheme.colorScheme.primary,
+    icon: ImageVector? = null,
 ) {
     Button(
         onClick = onClick,
@@ -52,11 +55,7 @@ fun PrimaryButton(
         shape = MaterialTheme.shapes.medium,
         colors = ButtonDefaults.buttonColors(containerColor = color),
     ) {
-        if (loading) {
-            CircularProgressIndicator(modifier = Modifier.size(22.dp), strokeWidth = 2.dp, color = MaterialTheme.colorScheme.onPrimary)
-            Spacer(Modifier.width(12.dp))
-        }
-        Text(text, style = MaterialTheme.typography.labelLarge)
+        ButtonContent(text, icon, if (loading) MaterialTheme.colorScheme.onPrimary else null, spinnerSize = 22.dp)
     }
 }
 
@@ -76,20 +75,14 @@ fun SecondaryButton(
         modifier = modifier.fillMaxWidth().heightIn(min = LocalDimens.current.secondaryButtonHeight),
         shape = MaterialTheme.shapes.medium,
     ) {
-        if (loading) {
-            CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
-            Spacer(Modifier.width(12.dp))
-        } else if (icon != null) {
-            Icon(icon, contentDescription = null, modifier = Modifier.size(20.dp))
-            Spacer(Modifier.width(8.dp))
-        }
-        Text(text, style = MaterialTheme.typography.labelLarge)
+        ButtonContent(text, icon, if (loading) MaterialTheme.colorScheme.primary else null, spinnerSize = 18.dp)
     }
 }
 
 /**
  * A lesser full-width action as text, such as showing the receipt, with the height of a [SecondaryButton] so every
- * action is as easy to hit. [destructive] shows it in the error colour.
+ * action is as easy to hit, and an optional leading [icon]. [destructive] shows it in the error colour, as for removing
+ * something saved.
  */
 @Composable
 fun TertiaryButton(
@@ -98,6 +91,7 @@ fun TertiaryButton(
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
     destructive: Boolean = false,
+    icon: ImageVector? = null,
 ) {
     TextButton(
         onClick = onClick,
@@ -111,8 +105,29 @@ fun TertiaryButton(
                 ButtonDefaults.textButtonColors()
             },
     ) {
-        Text(text, style = MaterialTheme.typography.labelLarge)
+        ButtonContent(text, icon, spinner = null, spinnerSize = 18.dp)
     }
+}
+
+/**
+ * What every button shows: a [spinner] in that colour (while it works) or else the [icon], then the [text], so all
+ * kinds of button line up the same way.
+ */
+@Composable
+private fun RowScope.ButtonContent(
+    text: String,
+    icon: ImageVector?,
+    spinner: Color?,
+    spinnerSize: Dp,
+) {
+    if (spinner != null) {
+        CircularProgressIndicator(modifier = Modifier.size(spinnerSize), strokeWidth = 2.dp, color = spinner)
+        Spacer(Modifier.width(12.dp))
+    } else if (icon != null) {
+        Icon(icon, contentDescription = null, modifier = Modifier.size(20.dp))
+        Spacer(Modifier.width(8.dp))
+    }
+    Text(text, style = MaterialTheme.typography.labelLarge)
 }
 
 /**

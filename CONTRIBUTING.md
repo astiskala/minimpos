@@ -87,7 +87,7 @@ each one has a comment explaining why. If you think a rule is wrong for your cas
 - **Money is `Long` minor units** with `CurrencySpec`, never `Double`. Tax rates are thousandths of a percent.
 - **Use Adyen's library** for anything the Terminal API needs (models, encryption, certificate checks) instead of
   writing it yourself. [`terminal-api/AGENTS.md`](terminal-api/AGENTS.md) lists what it takes to make that library
-  work on Android. The optional Checkout API calls (captures, authorization adjustments and payment links) and the
+  work on Android. The Checkout API calls (captures, authorization adjustments and payment links) and the
   cloud transport are the exception: they post plain JSON with OkHttp, because the library's Checkout and cloud models
   need Jackson and keep rules for hundreds of classes.
 - **Respect the terminal's rules.** Don't add permissions (only internet, network state and camera are allowed), don't
@@ -128,8 +128,10 @@ each one has a comment explaining why. If you think a rule is wrong for your cas
 - **Database:** raise the version in `AppDatabase`, add an `AutoMigration` (or a manual migration), and commit the new
   schema file that the build writes to `app/schemas/`. Extend `DatabaseMigrationTest` so existing data is checked.
 - **Settings:** new fields in `AppSettings` need default values, so settings saved by older versions still load.
-- **QR formats:** the catalog and refund QR codes are read by other terminals, which may run an older version. If
-  you change a format, bump its version number and keep decoding the older versions.
+- **QR formats:** the catalog and refund QR codes are read by other devices, which may run an older version. If
+  you change a format, bump its version number and keep decoding the older versions. The setup helper page
+  (`docs/js/setup.js`) writes transfer codes too: keep it in step with `TransferCodec`, `QrChunks` and `TransferSeal`,
+  and regenerate the codes in `SetupTransferTest`'s setup helper test when its output changes.
 
 ## Screenshots
 
@@ -143,7 +145,9 @@ demo data, the flows behind each screenshot, the social image) is in
 The website in `docs/` has English, Simplified Chinese (`docs/zh-CN/`) and Japanese (`docs/ja/`) pages, which all use
 the English screenshots. Change all three languages together and check them with `./gradlew :website-test:check` (part
 of the quality gate): links, language switches, metadata, the app labels the guides quote, and valid HTML and CSS
-(void elements such as `<img ...>` take no trailing slash).
+(void elements such as `<img ...>` take no trailing slash). Only the setup helper pages run scripts, and only the two
+in `docs/js/`: `setup.js` and `qrcodegen.js`, a vendored copy of Project Nayuki's QR Code generator (its header says
+which release and how it was compiled; replace the whole file to upgrade it).
 
 ## Releases
 

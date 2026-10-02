@@ -53,9 +53,9 @@ the other.
 - **Receipt standing** (`ReceiptStanding`): what a sale's receipt says about it (tip lines, held now, captured).
 - **Actions** (`StoredPayment.actions`, `PaymentAction`): what the operator can do with a stored payment now: refund,
   cancel, enter tip, capture, adjust.
-- **Capture** (`payment/Captures`): taking a held amount, through the Checkout API, or recorded for staff to do in the
-  Customer Area (`CaptureMode`). An **adjustment** changes what a pre-authorisation holds before capture; a tip over
-  20% of the bill is adjusted first, a smaller one **overcaptured**.
+- **Capture** (`payment/Captures`): taking a held amount, through the Checkout API (older versions without it left it
+  to staff in the Customer Area: `CaptureStatus.MANUAL`, still counted as captured). An **adjustment** changes what a
+  pre-authorisation holds before capture; a tip over 20% of the bill is adjusted first, a smaller one **overcaptured**.
 - **Cancellation** (of a hold): a full reversal of a held payment, so nothing is charged. _Avoid_: void, refund.
 - **Refund** (`RefundablePayment`, `RefundStart`): a referenced refund of a charged (or captured) payment: everything
   left, an amount, or items of a sale taken on this terminal; found from history or its **refund QR** (`MPR1…`).
@@ -87,7 +87,9 @@ the other.
 - **Boarding** (`TapToPaySetup`, `TerminalSetup.boarding`): registering the Payments app on this phone with the
   Payments app API key, so Tap to Pay works.
 - **Checkout API** (`ApiSetup`, `ApiTarget`, `AdyenApi`): Adyen's online API for captures, adjustments and payment
-  links, set up or not (then captures are left to the Customer Area, and there are no payment links).
+  links. Required wherever payments go (simulated with the simulator): until it is set up, payments wait for it
+  (`TerminalSetup.problem`; only a not yet detected environment does not hold them back), while the destination can
+  already be reached (`TerminalSetup.connectionProblem`).
 
 ## Receipts and setup
 
@@ -112,8 +114,11 @@ the other.
 - **New-installation settings** (`AppSettings.forNewInstallation`): what a new installation starts with, which may
   differ from the constructor's defaults; those keep meaning what a value left out of a transfer means.
 - **Transfer** (`SetupTransfer`, `TransferCodec` `MPC1:`): copying the catalogue, settings and secrets to another
-  terminal as QR codes, sealed with a 12-character **transfer code** (`TransferSeal`). **Device fields**
+  device as QR codes, sealed with a 12-character **transfer code** (`TransferSeal`). **Device fields**
   (`AppSettings.withDeviceFieldsOf`) stay behind.
+- **Setup helper** (`docs/setup.html`): the web page that makes a transfer on a computer, holding a **connection**
+  (`ConnectionSetup`: where payments go, address, POIID, shared key, Checkout API, store) and its secrets; importing it
+  sets only what it holds. _Avoid_: wizard, provisioning.
 - **Secrets** (`SecretStore`): the shared-key passphrase, API keys, SMTP password and PIN verifier; encrypted, never
   logged.
 
@@ -121,7 +126,10 @@ the other.
 
 - "Terminal" is the payment device; "Payments go to" names the **destination**, which may be no terminal at all
   (Payments app, simulator). Code says `Destination` for the latter.
+- The **device** is what runs Mini mPOS: a terminal, or a tablet or phone. User text says "device" for it (setting up
+  another device, stored on this device) and "terminal" only for the one that takes the card.
 - "Held" is a standing (`PaymentStanding.held`); "hold" is what a pre-authorisation does. A sale awaiting its tip is
   held too.
-- "Captured" means Adyen received the capture or staff were left to do it; Adyen confirms it only in the Customer Area.
+- "Captured" means Adyen received the capture (or an older version left it to staff); Adyen confirms it only in the
+  Customer Area.
 - "Refund" never covers a cancellation: held payments are cancelled, charged ones refunded.

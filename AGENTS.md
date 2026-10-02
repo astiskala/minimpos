@@ -78,10 +78,10 @@ device API or the Adyen Payments app (Tap to Pay); anywhere through its built-in
   new `versionCode` each time. Unsigned APKs upload fine but fail to install on terminals.
 - Smallest target screen: AMS1, 4" 480×800 hdpi, ~320×460 dp usable, Android 10, no printer.
 - Terminals have no Google Play services: no dependency may need them (hence CameraX + ZXing for scanning).
-- On a terminal the POIID comes from `Settings.Global.DEVICE_NAME` and the host is `localhost`; only the shared key is
-  entered. The manifest's `<queries>` (the two Payments app packages), the `minimpos://paymentsapp` VIEW filter on the
-  `singleTask` `MainActivity` and the unexported `FileProvider` for shared receipt images add no permission, so the
-  same APK stays acceptable for terminals.
+- On a terminal the POIID comes from `Settings.Global.DEVICE_NAME` and the host is `localhost`; only the shared key (and
+  the Checkout API) is entered. The manifest's `<queries>` (the two Payments app packages), the
+  `minimpos://paymentsapp` VIEW filter on the `singleTask` `MainActivity` and the unexported `FileProvider` for shared
+  receipt images add no permission, so the same APK stays acceptable for terminals.
 - `:core` and `:terminal-api` are JVM modules, so Android Lint does not check their API levels: `AndroidApiLevelTest`
   checks every Java/Android class, method and field they reach against the compile SDK's `api-versions.xml` at the
   app's minSdk, accepting what D8 backports (`listBackportedMethods`). E.g. `URLEncoder.encode(String, Charset)` is
@@ -95,12 +95,17 @@ device API or the Adyen Payments app (Tap to Pay); anywhere through its built-in
 - "Payments go to" (`TerminalMode`): this terminal or one on the network (local Terminal API, shared key), `CLOUD`
   (Cloud device API `/sync` with the `CHECKOUT_API_KEY` secret, which also does captures; payment timeout at least
   160 s), `PAYMENTS_APP` (Tap to Pay through the Adyen Payments app, shared key; POIID is the boarded installation ID),
-  or the simulator. Cloud and Payments app are only offered off-terminal; Automatic stays the simulator there.
+  or the simulator. Cloud and Payments app are only offered off-terminal; Automatic stays the simulator there. The
+  Payments app needs the shared key too (Adyen's docs: requests are encrypted as for local communications).
+- The Checkout API is required wherever payments go but the simulator (a product decision: captures, adjustments and
+  payment links all need it): payments wait for it (`TerminalSetup.problem`, the Home setup card) except for a not yet
+  detected environment, which the first connection finds; connection checks, refunds and printing need only the
+  destination (`TerminalSetup.connectionProblem`). There is no Customer Area capture mode any more; `CaptureStatus.MANUAL`
+  stays only for sales stored by older versions.
 - The environment (TEST/LIVE) is never a setting: it comes from the terminal certificate, else the endpoint that accepts
   the cloud API key (`CloudDevices.detect`: TEST, then the device country's live data centre, then the others), else the
   installed Payments app package (both installed is a setup problem), and picks the Checkout API endpoint. Changing the
-  mode clears the stored environment. Partly entered Checkout API setup fails visibly instead of falling back to the
-  Customer Area.
+  mode clears the stored environment.
 - The Payments app takes only payments and reversals: no print, abort or diagnosis (the connection check only checks the
   setup), no printer; status checks are answered only from answers that arrived with no exchange waiting
   (`AppLinkExchange.lateReplies`). `PaymentsAppBridge` is the activity's side; coming back without an answer makes the
@@ -145,8 +150,10 @@ device API or the Adyen Payments app (Tap to Pay); anywhere through its built-in
   answers on TEST (the `paid` status, the PATCH answer for an already paid link, line item validation), and that a
   terminal payment with a `shopperReference` but no `recurringProcessingModel` stores no card.
 - No TEST banner (test terminals show TEST themselves); `ModeBanner` only for the simulator. No "settings not
-  protected" warning and no terminal/printer status line on Home (they are in Settings › About); Products/Settings
-  are slim grey buttons. Secret field placeholders stay one line ("Type to replace").
+  protected" warning and no terminal/printer status line on Home (they are in Settings › About). Home is, top to
+  bottom: New sale and New pre-authorization as full-width green tiles (both always, since a pre-authorisation can be
+  a custom amount), Refund and History as half-width tiles, then Products/Settings as slim grey buttons. Secret field
+  placeholders stay one line ("Type to replace").
 - Every product has a tax rate (0% rates for untaxed items; no "tax applies" switch); "Charge tax" off taxes nothing
   but keeps rates. The last tax rate cannot be deleted.
 - The customer reference is asked for exactly when it is the shopper reference (no separate switch); with the email
@@ -159,10 +166,15 @@ device API or the Adyen Payments app (Tap to Pay); anywhere through its built-in
   retirement (off by default from the end of 2026). Check the table against the providers' help pages when it changes.
   The app links the help pages only off a terminal (terminals have no browser); the getting started guide lists the
   same links, so keep `SmtpProvider.helpUrl` and the guide's three languages in sync.
-- Home's setup card shows wherever payments go but the simulator, saying what is missing (on a terminal, the shared
-  key). A successful connection test names the currency while it follows the device's region. The optional Checkout
-  API section in Settings › Terminal stays collapsed until something of it is entered (not in the cloud, which needs
-  it), and the live URL prefix is asked for only once the environment is LIVE.
+- Home's setup card shows wherever payments go but the simulator, saying what is missing (on a terminal whose shared
+  key is missing, the shared key). A successful connection test names the currency while it follows the device's
+  region. Settings › Terminal is numbered steps per destination (`TerminalSteps`): this terminal: shared key, Checkout
+  API; a terminal on the network: address and POIID, shared key, Checkout API; the cloud: Adyen account (merchant
+  account and the API key it shares), terminal with one test of both (`SettingsTest.CLOUD`); Tap to Pay: Payments app
+  (Google Play buttons for both apps while none is installed; the app re-reads the device on resume), Checkout API,
+  setting up Tap to Pay, shared key. The live URL prefix is asked for only once the environment is LIVE.
+- Buttons: Settings groups their buttons in `SettingActions` (spaced like `BottomActions`), every Settings button has an
+  icon, and removing something saved (keys, PIN, phone, history) is a red `ConfirmedRemoval` that asks first.
 - Pre-authorisations and tips follow `CONTEXT.md` (cancelled, not refunded; "Held" in day totals; a tip over 20% is
   adjusted first, else overcaptured). Tip on the receipt is only offered with a printer; a refused adjustment leaves
   the tip unsaved. Idempotency keys (`capture-{saleId}-{amount}`, `adjust-{saleId}-{heldBefore}-{amount}`) make
@@ -173,11 +185,21 @@ device API or the Adyen Payments app (Tap to Pay); anywhere through its built-in
   with the unpaid receipt) is offered only off-terminal (`TerminalState.canShare`); terminals email instead.
 - History search: every word must match (case-insensitive) a reference, auth code, shopper data, card last 4, brand or
   wallet, or be exactly the amount; combined with the filter chips, and day totals cover only what is shown.
-- Setting up another terminal: one QR transfer with switches for catalogue, settings (minus the device fields of
+- Setting up another device: one QR transfer with switches for catalogue, settings (minus the device fields of
   `AppSettings.withDeviceFieldsOf`, which each section names next to its fields) and secrets, sealed by `TransferSeal`
   with a 12-character code. What travels is `AppSettings.shared()` (taken over with `takingOver`), so a new settings
   section or field transfers by default; the import rules (currency after import, transfer code, skipped secrets) are
   `SetupTransfer`'s and `ReceivedTransfer`'s.
+- The setup helper (`docs/setup.html`, `docs/js/setup.js`) makes transfer codes in the browser: a connection
+  (`ConnectionSetup`, `TransferCodec` version 5, written only when there is one) and sealed secrets, imported through
+  "Set up from another device". It sets only what it holds, device fields included, never the other settings; on a
+  terminal only "this terminal" changes where payments go. `setup.js` mirrors `TransferCodec`, `QrChunks` and
+  `TransferSeal` (stored DEFLATE blocks, WebCrypto PBKDF2/AES-GCM): change them together, and regenerate the codes in
+  `SetupTransferTest`'s setup helper test from the page. The page sends nothing (CSP `connect-src 'none'`); the QR
+  encoder is a vendored, compiled Project Nayuki release (`docs/js/qrcodegen.js`, header says which).
+- Terminology: the **device** runs Mini mPOS (a terminal, tablet or phone); the **terminal** takes the card. User
+  text says "device" for what runs the app (transfers, data, PIN) and keeps "terminal" for payments and for Settings ›
+  Terminal; the docs keep saying that Mini mPOS runs on the terminal itself, which sets it apart.
 
 ## Documentation
 
@@ -185,11 +207,16 @@ device API or the Adyen Payments app (Tap to Pay); anywhere through its built-in
   `https://astiskala.github.io/minimpos/`, published by GitHub Pages as is), `CONTRIBUTING.md` (contributors: setup,
   what the gate runs, guidelines), `SECURITY.md` (reporting, data protection), `CONTEXT.md` and the `AGENTS.md` files.
   Say a thing once, where its reader looks, and link to it from elsewhere.
-- Keep feature claims, Customer Area paths and Settings names in README, `docs/index.html` and
-  `docs/getting-started.html` in sync with the app, and change the site's three languages together (`docs/zh-CN/`,
-  `docs/ja/`: reciprocal language switches, canonical/hreflang links, a script-free `<details>` globe menu at the top
-  right of the header). `./gradlew :website-test:check` checks all six pages (void elements take no trailing slash);
-  a new guide section also goes into its `GUIDE_SECTIONS`, and the guides' `<code>` elements must match in order.
+- Keep feature claims, Customer Area paths and Settings names in README, `docs/index.html`,
+  `docs/getting-started.html` and `docs/setup.html` in sync with the app, and change the site's three languages
+  together (`docs/zh-CN/`, `docs/ja/`: reciprocal language switches, canonical/hreflang links, a script-free `<details>`
+  globe menu at the top right of the header). `./gradlew :website-test:check` checks all nine pages (void elements take
+  no trailing slash); a new guide section also goes into its `GUIDE_SECTIONS`, the guides' `<code>` elements must match
+  in order, and the setup helpers' form fields, links and messages must match. Only the setup helper runs scripts.
+- The app is pre-release: docs and UI carry no warnings about older app versions (reading codes from them, keeping
+  devices on the same version, data they left behind).
+- The guides cover what Mini mPOS needs and link to Adyen's documentation for how Adyen works (account, Customer Area,
+  roles, endpoints), rather than describing Adyen's screens, which change and are Adyen's to support.
 - Screenshots are English demo screens on the simulator, visibly disclosed, shown in original AMS1/S1F2-style SVG
   frames (bottom bezels blank, no NFC symbol on the AMS1's top); each matches its frame's screen (S1F2 9:16 at 540×960,
   AMS1 3:5 at 480×800). Re-capture them, and `social.png`, with the `docs-screenshots` skill.

@@ -3,7 +3,6 @@ package io.minimpos.app.terminal
 import io.minimpos.app.data.db.SetupProblem
 import io.minimpos.app.data.security.Secret
 import io.minimpos.app.data.security.SecretStore
-import io.minimpos.app.data.settings.CaptureMode
 import io.minimpos.app.data.settings.TerminalSettings
 import io.minimpos.terminal.checkout.CheckoutCredentials
 import io.minimpos.terminal.checkout.CheckoutModifications
@@ -14,25 +13,19 @@ import io.minimpos.terminal.transport.TerminalEnvironment
 
 /**
  * How far the Checkout API is set up, see [TerminalSetup.apiSetup]: the one decision behind both what the screens show
- * ([mode], [problem]) and where captures go ([AdyenApi.target], whose setup [TerminalSetup.unlock] also says when a saved
- * API key can no longer be read).
+ * ([problem]) and where captures go ([AdyenApi.target], whose setup [TerminalSetup.unlock] also says when a saved API key
+ * can no longer be read).
  */
 sealed interface ApiSetup {
-    /** How captures are made: in the Customer Area only for [CustomerArea], else through the API. */
-    val mode: CaptureMode get() = if (this == CustomerArea) CaptureMode.CUSTOMER_AREA else CaptureMode.API
-
     /** What must still be entered before the API can be called; null unless [Incomplete]. */
     val problem: SetupProblem? get() = (this as? Incomplete)?.problem
 
     /** Payments go to the simulator, so the API is simulated too. */
     data object Simulated : ApiSetup
 
-    /** Nothing of the API is entered: staff capture in the Customer Area. */
-    data object CustomerArea : ApiSetup
-
     /**
-     * Something of the API is entered, but not all of it, so captures fail visibly instead of silently going to the
-     * Customer Area.
+     * Not all of the API is entered (or known), so captures, adjustments and payment links fail visibly, and payments
+     * wait for it too (see [TerminalSetup.problem]).
      *
      * @property problem What to enter.
      */
@@ -47,11 +40,10 @@ sealed interface ApiSetup {
 /**
  * Where captures, adjustments and payment links go now, see [AdyenApi.target].
  *
- * @property setup How far the API is set up, which decides how captures are made ([ApiSetup.mode]) and, when nothing can
- *   be sent, why ([ApiSetup.problem]); [ApiSetup.Incomplete] with [SetupProblem.UNREADABLE_API_KEY] when the saved key
- *   cannot be decrypted.
- * @property modifications Sends the captures and adjustments; null when the API cannot be called ([ApiSetup.CustomerArea]
- *   or [ApiSetup.Incomplete]).
+ * @property setup How far the API is set up, which decides, when nothing can be sent, why ([ApiSetup.problem]);
+ *   [ApiSetup.Incomplete] with [SetupProblem.UNREADABLE_API_KEY] when the saved key cannot be decrypted.
+ * @property modifications Sends the captures and adjustments; null when the API cannot be called
+ *   ([ApiSetup.Incomplete]).
  * @property links Creates, checks and expires payment links; null unless the API is [ApiSetup.Complete] (payment links
  *   are never simulated).
  */
@@ -87,12 +79,11 @@ sealed interface ApiCheck {
 
 /**
  * Adyen's Checkout API as the app uses it: for capturing payments taken with manual capture and adjusting what they
- * hold, and for payment links. It is optional and set up in Settings › Terminal (merchant account and live URL prefix in
- * [io.minimpos.app.data.settings.TerminalSettings], the API key in
- * [io.minimpos.app.data.security.SecretStore]); without it, staff capture in the
- * Customer Area. How far it is set up is [TerminalSetup.apiSetup]. While payments go to the simulator the API is
- * simulated too. The environment (TEST or LIVE) is where payments go ([TerminalSetup.environment]): the terminal
- * certificate's, the cloud API key's or the installed Payments app's.
+ * hold, and for payment links. It is required wherever payments go and set up in Settings › Terminal (merchant account
+ * and live URL prefix in [io.minimpos.app.data.settings.TerminalSettings], the API key in
+ * [io.minimpos.app.data.security.SecretStore]). How far it is set up is [TerminalSetup.apiSetup]. While payments go to
+ * the simulator the API is simulated too. The environment (TEST or LIVE) is where payments go
+ * ([TerminalSetup.environment]): the terminal certificate's, the cloud API key's or the installed Payments app's.
  *
  * @param setups Where payments go now, how far the API is set up, and the API key.
  * @param simulated Answers while payments go to the simulator: in the app the [SimulatedTerminal]'s, which knows the
@@ -116,7 +107,7 @@ class AdyenApi(
         return when (val api = setup.apiSetup) {
             ApiSetup.Simulated -> ApiTarget(api, simulated)
             ApiSetup.Complete -> connected(setup.settings.terminal, checkNotNull(setup.environment), checkNotNull(unlocked.apiKey))
-            ApiSetup.CustomerArea, is ApiSetup.Incomplete -> ApiTarget(api)
+            is ApiSetup.Incomplete -> ApiTarget(api)
         }
     }
 

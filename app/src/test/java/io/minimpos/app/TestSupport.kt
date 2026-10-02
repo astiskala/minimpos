@@ -363,6 +363,15 @@ class TestEnvironment(
         )
 
     /**
+     * The Checkout API is entered (merchant account and API key), so payments to a real destination no longer wait for
+     * it; whether it is complete also depends on the environment.
+     */
+    fun useCheckoutApi() {
+        await { container.secrets.set(Secret.CHECKOUT_API_KEY, "key") }
+        updateSettings { it.copy(terminal = it.terminal.copy(merchantAccount = "HarbourCoffeeCOM")) }
+    }
+
+    /**
      * Payment links work: the merchant account and API key are saved, and payments go to this terminal (whose
      * environment, TEST, is detected), so the Checkout API is set up; [enabled] switches links on in Settings.
      */

@@ -92,12 +92,11 @@ internal fun ColumnScope.TaxSection(
             modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
         )
     }
-    SecondaryButton(
-        stringResource(R.string.settings_tax_add),
-        { editing = TaxRateEntity(name = "", rateMilliPercent = 0, sortOrder = state.taxRates.size) },
-        icon = Icons.Default.Add,
-        modifier = Modifier.padding(16.dp).fillMaxWidth().testTag("addTaxRate"),
-    )
+    SettingActions {
+        SecondaryButton(stringResource(R.string.settings_tax_add), {
+            editing = TaxRateEntity(name = "", rateMilliPercent = 0, sortOrder = state.taxRates.size)
+        }, icon = Icons.Default.Add, modifier = Modifier.testTag("addTaxRate"))
+    }
     SettingNote(stringResource(R.string.settings_tax_note))
 
     editing?.let { rate ->

@@ -130,6 +130,9 @@ class RemoteTerminalTest {
         assertThat(await { gateway.diagnose() }).isInstanceOf(TerminalConnection.Connected::class.java)
         assertThat(paymentsApp.opened).hasSize(opened)
 
+        // Payments wait for the Checkout API, whose merchant account boarding already had.
+        assertThat(await { gateway.pay(payment, "PAY0") }).isEqualTo(Attempt.NotSetUp(SetupProblem.API_KEY))
+        await { container.secrets.set(Secret.CHECKOUT_API_KEY, "key") }
         var sending: String? = null
         val paid = await { gateway.pay(payment, "PAY1") { sending = it } }.made() as TransactionOutcome.Completed
         assertThat(paid.details.success).isTrue()

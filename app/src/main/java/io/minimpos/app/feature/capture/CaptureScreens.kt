@@ -31,7 +31,6 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import io.minimpos.app.R
-import io.minimpos.app.data.settings.CaptureMode
 import io.minimpos.app.feature.OutcomeMessage
 import io.minimpos.app.refund.PaymentStanding
 import io.minimpos.app.ui.components.BottomActions
@@ -51,8 +50,8 @@ import io.minimpos.core.money.MoneyFormatter
 
 /**
  * Entering the tip the customer wrote on the receipt of sale [saleId], as the tip or as the total, then capturing the
- * bill plus the tip after the operator confirms ("No tip" captures the bill). Closes once the capture went through (or
- * was recorded for the Customer Area); a refusal or failure is shown here.
+ * bill plus the tip after the operator confirms ("No tip" captures the bill). Closes once the capture went through; a
+ * refusal or failure is shown here.
  */
 @Composable
 fun TipScreen(
@@ -161,7 +160,6 @@ private fun TipConfirmDialog(
     onDismiss: () -> Unit,
 ) {
     val total = money.format(state.billMinor + tipMinor)
-    val api = state.captureMode == CaptureMode.API
     ConfirmDialog(
         title =
             if (tipMinor > 0) {
@@ -171,8 +169,8 @@ private fun TipConfirmDialog(
             },
         message =
             sum(state.billMinor, tipMinor, money) + "\n\n" +
-                stringResource(if (api) R.string.tip_confirm_capture else R.string.tip_confirm_manual, total),
-        confirmLabel = stringResource(if (api) R.string.capture_title else R.string.action_save),
+                stringResource(R.string.tip_confirm_capture, total),
+        confirmLabel = stringResource(R.string.capture_title),
         onConfirm = onConfirm,
         onDismiss = onDismiss,
     )
@@ -180,8 +178,7 @@ private fun TipConfirmDialog(
 
 /**
  * Capturing the pre-authorisation [saleId] (or with [adjustOnly] changing what it holds): the amount, starting at what
- * it holds, is sent after the operator confirms. Without the Checkout API the capture is only recorded, for staff to
- * make in the Customer Area. Closes once it went through; a refusal or failure is shown here.
+ * it holds, is sent after the operator confirms. Closes once it went through; a refusal or failure is shown here.
  */
 @Composable
 fun CaptureScreen(
@@ -204,14 +201,7 @@ fun CaptureScreen(
                 val amount = rememberMoneyFormatter(sale.currency).format(state.amountMinor)
                 BottomActions {
                     PrimaryButton(
-                        stringResource(
-                            when {
-                                adjustOnly -> R.string.adjust_button
-                                state.captureMode == CaptureMode.API -> R.string.capture_button
-                                else -> R.string.capture_record_button
-                            },
-                            amount,
-                        ),
+                        stringResource(if (adjustOnly) R.string.adjust_button else R.string.capture_button, amount),
                         { confirming = true },
                         enabled = state.canSubmit,
                         loading = state.submission.running,
@@ -256,7 +246,6 @@ private fun CaptureEntry(
         val amount = state.amountMinor
         when {
             state.adjustOnly -> Note(stringResource(R.string.adjust_note))
-            state.captureMode == CaptureMode.CUSTOMER_AREA -> Note(stringResource(R.string.capture_manual_note))
             amount > state.heldMinor -> Note(stringResource(R.string.capture_more_note, money.format(amount)))
             amount in 1..<state.heldMinor -> Note(stringResource(R.string.capture_less_note))
         }
@@ -273,33 +262,20 @@ private fun CaptureConfirmDialog(
     onDismiss: () -> Unit,
 ) {
     val amount = money.format(state.amountMinor)
-    val api = state.captureMode == CaptureMode.API
     val (title, message, confirm) =
-        when {
-            state.adjustOnly -> {
-                Triple(
-                    stringResource(R.string.adjust_confirm_title, amount),
-                    stringResource(R.string.adjust_confirm_message, amount, money.format(state.heldMinor)),
-                    stringResource(R.string.detail_adjust),
-                )
-            }
-
-            !api -> {
-                Triple(
-                    stringResource(R.string.capture_confirm_title, amount),
-                    stringResource(R.string.capture_confirm_manual, amount),
-                    stringResource(R.string.detail_record_capture),
-                )
-            }
-
-            else -> {
-                val more = if (state.amountMinor > state.heldMinor) "\n\n" + stringResource(R.string.capture_confirm_more) else ""
-                Triple(
-                    stringResource(R.string.capture_confirm_title, amount),
-                    stringResource(R.string.capture_confirm_message, amount) + more,
-                    stringResource(R.string.capture_title),
-                )
-            }
+        if (state.adjustOnly) {
+            Triple(
+                stringResource(R.string.adjust_confirm_title, amount),
+                stringResource(R.string.adjust_confirm_message, amount, money.format(state.heldMinor)),
+                stringResource(R.string.detail_adjust),
+            )
+        } else {
+            val more = if (state.amountMinor > state.heldMinor) "\n\n" + stringResource(R.string.capture_confirm_more) else ""
+            Triple(
+                stringResource(R.string.capture_confirm_title, amount),
+                stringResource(R.string.capture_confirm_message, amount) + more,
+                stringResource(R.string.capture_title),
+            )
         }
     ConfirmDialog(title = title, message = message, confirmLabel = confirm, onConfirm = onConfirm, onDismiss = onDismiss)
 }

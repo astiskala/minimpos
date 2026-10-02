@@ -100,10 +100,15 @@ class PaymentLinkViewModelsTest {
                 .single()
                 .first.amount.value,
         ).isEqualTo(900)
+        // The cart is cleared once the link exists, just after the sale is stored as awaiting payment.
         assertThat(
-            container
-                .session(SaleKind.SALE)
-                .cart.value.lines,
+            await {
+                container
+                    .session(SaleKind.SALE)
+                    .cart
+                    .first { it.lines.isEmpty() }
+                    .lines
+            },
         ).isEmpty()
         assertThat(
             await {
@@ -119,7 +124,8 @@ class PaymentLinkViewModelsTest {
         env.useLinks()
         val id = sendLink()
         val vm = linkViewModel(id)
-        val open = await { vm.state.first { it.openLink != null } }
+        // The receipt is read separately from the link, so it may arrive just after it.
+        val open = await { vm.state.first { it.openLink != null && it.transaction.receipt != null } }
         assertThat(open.openLink).isEqualTo(FakeLinkApi.URL)
         assertThat(open.creating).isFalse()
         assertThat(

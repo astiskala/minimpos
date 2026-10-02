@@ -10,16 +10,18 @@ import io.minimpos.app.data.settings.TerminalMode
 import io.minimpos.terminal.transport.TerminalEnvironment
 import io.minimpos.terminal.transport.TerminalKey
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.update
 
 /**
  * Where payments go and what is still missing, resolved in one place ([resolve]) from the stored settings, which
  * secrets are saved and the device. It is the one reading of the terminal and Checkout API setup: [TerminalGateway]
- * sends requests (or reports [problem]) with it, [AdyenApi] takes [apiSetup] from it, and [TerminalStatus] publishes it.
- * What each destination needs is its [DestinationRules], which [resolve] asks. Missing setup is never thrown; it is a
- * [problem] that says what to enter. A saved secret that can no longer be decrypted is only found when it is read
- * ([unlock]).
+ * sends requests (or reports [connectionProblem] or [problem]) with it, [AdyenApi] takes [apiSetup] from it, and
+ * [TerminalStatus] publishes it. What each destination needs is its [DestinationRules], which [resolve] asks. Missing
+ * setup is never thrown; it is a [problem] that says what to enter. A saved secret that can no longer be decrypted is
+ * only found when it is read ([unlock]).
  *
  * @property settings The settings it was resolved from; the gateway takes the shared key and timeout from them.
  * @property destination Where payments go, with what it needs and can do.
@@ -28,12 +30,13 @@ import kotlinx.coroutines.flow.first
  *   its boarded installation ID; for the simulator the simulator's. Null while one still has to be entered (or boarded).
  * @property host Where the Terminal API listens in terminal mode: [LOCALHOST] on a terminal, else the configured address;
  *   null in the other modes or while none is entered.
- * @property problem What must still be entered before requests can be sent; null when nothing is missing (always for the
- *   simulator).
+ * @property connectionProblem What must still be entered before the [destination] can be reached (connection checks,
+ *   refunds, status checks, printing); null when nothing is missing (always for the simulator).
  * @property apiSetup How far the Checkout API is set up, which decides where captures go.
  * @property environment Where payments go: the installed Payments app's environment with [TerminalMode.PAYMENTS_APP],
  *   else the one detected at the last connection ([io.minimpos.app.data.settings.TerminalSettings.environment]); null
  *   for the simulator and until known.
+ * @property paymentsApps The environments of the Adyen Payments apps installed on the device when it was resolved.
  */
 data class TerminalSetup(
     val settings: AppSettings,
@@ -41,15 +44,24 @@ data class TerminalSetup(
     val onTerminal: Boolean,
     val poiId: String?,
     val host: String?,
-    val problem: SetupProblem?,
+    val connectionProblem: SetupProblem?,
     val apiSetup: ApiSetup,
     val environment: TerminalEnvironment?,
+    val paymentsApps: Set<TerminalEnvironment> = emptySet(),
 ) {
     /**
      * Where payments go: [TerminalMode.TERMINAL], [TerminalMode.CLOUD], [TerminalMode.PAYMENTS_APP] or
      * [TerminalMode.SIMULATOR], never [TerminalMode.AUTO].
      */
     val mode: TerminalMode get() = destination.mode
+
+    /**
+     * What must still be entered before payments can be taken; null when nothing is missing (always for the simulator):
+     * the [connectionProblem], else what the Checkout API is missing, which every destination needs. Only an unknown
+     * environment ([SetupProblem.ENVIRONMENT]) does not hold payments back, since the first connection finds it.
+     */
+    val problem: SetupProblem?
+        get() = connectionProblem ?: apiSetup.problem?.takeUnless { it == SetupProblem.ENVIRONMENT }
 
     /**
      * Whether printing is offered, as Settings › Receipts › Printer says: always, never, or detected, which the
@@ -79,12 +91,12 @@ data class TerminalSetup(
 
     /**
      * This setup with the secrets [read] for it (see [secretsToRead]): each decrypted value, or null for one saved that
-     * can no longer be decrypted, which becomes the [problem] (when the [destination] needs it and nothing else is
-     * missing) or makes a complete [apiSetup] incomplete.
+     * can no longer be decrypted, which becomes the [connectionProblem] (when the [destination] needs it and nothing
+     * else is missing) or makes a complete [apiSetup] incomplete.
      */
     fun unlock(read: Map<Secret, String?>): UnlockedSetup {
         val unreadable = read.filterValues { it == null }.keys
-        val problem = problem ?: destination.secrets.filter { it in unreadable }.firstNotNullOfOrNull(::unreadable)
+        val problem = connectionProblem ?: destination.secrets.filter { it in unreadable }.firstNotNullOfOrNull(::unreadable)
         val api =
             if (apiSetup == ApiSetup.Complete && Secret.CHECKOUT_API_KEY in unreadable) {
                 ApiSetup.Incomplete(SetupProblem.UNREADABLE_API_KEY)
@@ -92,7 +104,7 @@ data class TerminalSetup(
                 apiSetup
             }
         return UnlockedSetup(
-            copy(problem = problem, apiSetup = api),
+            copy(connectionProblem = problem, apiSetup = api),
             read
                 .mapNotNull { (secret, value) ->
                     value?.let { secret to it }
@@ -124,7 +136,7 @@ data class TerminalSetup(
             val environment = destination.environment(terminal, device)
             val problem = destination.problem(terminal, saved, device, poiId, host)
             val api = apiSetup(settings, environment, destination.simulatesApi, keySaved = Secret.CHECKOUT_API_KEY in saved)
-            return TerminalSetup(settings, destination, device.isAdyenTerminal, poiId, host, problem, api, environment)
+            return TerminalSetup(settings, destination, device.isAdyenTerminal, poiId, host, problem, api, environment, device.paymentsApps)
         }
 
         /**
@@ -161,8 +173,8 @@ data class TerminalSetup(
             }
 
         /**
-         * How far the Checkout API is set up: simulated in simulator mode; else the Customer Area while nothing of it is
-         * entered, and once anything is, complete or what is missing (including the [environment], until detected).
+         * How far the Checkout API is set up: simulated in simulator mode; else complete or what is missing (including
+         * the [environment], until detected).
          */
         private fun apiSetup(
             settings: AppSettings,
@@ -174,10 +186,6 @@ data class TerminalSetup(
             return when {
                 simulator -> {
                     ApiSetup.Simulated
-                }
-
-                !keySaved && terminal.merchantAccount.isBlank() -> {
-                    ApiSetup.CustomerArea
                 }
 
                 terminal.merchantAccount.isBlank() -> {
@@ -290,7 +298,15 @@ class TerminalSetupSource(
         return TerminalSetup.boarding(settings.current(), saved, device, key)
     }
 
-    /** The setup each time the settings or the saved secrets change, without reading any secret. */
+    private val deviceReads = MutableStateFlow(0)
+
+    /**
+     * The setup each time the settings or the saved secrets change, or the device is read again ([readDevice]), without
+     * reading any secret.
+     */
     val changes: Flow<TerminalSetup> =
-        combine(settings.settings, secrets.configured) { current, saved -> TerminalSetup.resolve(current, saved, device) }
+        combine(settings.settings, secrets.configured, deviceReads) { current, saved, _ -> TerminalSetup.resolve(current, saved, device) }
+
+    /** Resolves [changes] again with what the device says now: an Adyen Payments app may have been installed or removed. */
+    fun readDevice() = deviceReads.update { it + 1 }
 }

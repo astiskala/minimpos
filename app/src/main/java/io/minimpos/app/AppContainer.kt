@@ -76,8 +76,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.filter
-import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.serialization.KSerializer
@@ -152,8 +150,8 @@ class AppContainer(
     /** Tax rates, categories and products. */
     val catalog = CatalogRepository(database, context.getString(R.string.tax_default_zero))
 
-    /** Copies the catalogue, settings and secrets to another terminal by QR code. */
-    val setupTransfer = SetupTransfer(catalog, settings, secrets)
+    /** Copies the catalogue, settings and secrets to another device by QR code, and imports the setup helper's codes. */
+    val setupTransfer = SetupTransfer(catalog, settings, secrets, onTerminal = device.isAdyenTerminal)
 
     /** Stored sales. */
     val sales = SaleRepository(database)
@@ -211,7 +209,7 @@ class AppContainer(
     val terminalStatus = TerminalStatus(terminalSetup, gateway, settings, appScope)
 
     /** Stored sales with what can be done with them now, for the screens that show one. */
-    val storedPayments = StoredPayments(sales, terminalStatus.state.filter { it.loaded }.map { it.captureMode })
+    val storedPayments = StoredPayments(sales)
 
     /**
      * Builds receipt documents from stored sales and refunds, with localised labels. Screens get their receipts from

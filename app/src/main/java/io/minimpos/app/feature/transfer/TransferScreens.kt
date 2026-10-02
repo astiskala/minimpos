@@ -357,13 +357,17 @@ private fun CodeControls(
     }
 }
 
-/** What a transfer holds: the catalogue's counts and currency, whether settings are included, and which secrets. */
+/**
+ * What a transfer holds: the catalogue's counts and currency, whether settings are included, and which secrets; and a
+ * [connection] when it has one (only the setup helper's codes do).
+ */
 @Composable
 private fun TransferSummary(
     catalogue: Catalogue?,
     settings: Boolean,
     secrets: String?,
     modifier: Modifier = Modifier,
+    connection: Boolean = false,
 ) {
     val none = stringResource(R.string.transfer_not_included)
     Card(modifier) {
@@ -377,6 +381,7 @@ private fun TransferSummary(
         }
         LabeledValue(stringResource(R.string.transfer_part_settings), if (settings) stringResource(R.string.transfer_included) else none)
         LabeledValue(stringResource(R.string.transfer_part_secrets), secrets ?: none)
+        if (connection) LabeledValue(stringResource(R.string.transfer_part_connection), stringResource(R.string.transfer_included))
     }
 }
 
@@ -456,7 +461,7 @@ private fun ImportReady(
         Column(Modifier.widthIn(max = 560.dp), verticalArrangement = Arrangement.spacedBy(dimens.spacing)) {
             Text(stringResource(R.string.transfer_ready), style = MaterialTheme.typography.titleLarge)
             val secrets = if (received.hasSecrets) stringResource(R.string.transfer_secrets_sealed) else null
-            TransferSummary(received.catalogue, received.hasSettings, secrets)
+            TransferSummary(received.catalogue, received.hasSettings, secrets, connection = received.hasConnection)
             received.catalogue?.let { catalogue ->
                 if (!state.currencyMatches) {
                     Text(
@@ -471,6 +476,7 @@ private fun ImportReady(
                 CatalogueModeChoice(state.mode, onMode)
             }
             if (received.hasSettings) Note(stringResource(R.string.transfer_settings_note))
+            if (received.hasConnection) Note(stringResource(R.string.transfer_connection_note))
             if (received.hasSecrets) TransferCodeField(state.code, state.wrongCode, onCode)
             SecondaryButton(stringResource(R.string.transfer_scan_again), onScanAgain)
         }
@@ -561,6 +567,12 @@ private fun ImportDone(
                 LabeledValue(stringResource(R.string.transfer_new_tax_rates), summary.taxRatesAdded.toString())
             }
             if (result.settings) LabeledValue(stringResource(R.string.transfer_part_settings), stringResource(R.string.transfer_imported))
+            if (result.connection) {
+                LabeledValue(
+                    stringResource(R.string.transfer_part_connection),
+                    stringResource(R.string.transfer_imported),
+                )
+            }
             val secrets = secretNames(result.secrets) ?: stringResource(R.string.transfer_skipped).takeIf { state.secretsSkipped }
             LabeledValue(stringResource(R.string.transfer_part_secrets), secrets)
         }

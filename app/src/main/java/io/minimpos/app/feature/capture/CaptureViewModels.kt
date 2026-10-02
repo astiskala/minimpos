@@ -3,7 +3,6 @@ package io.minimpos.app.feature.capture
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import io.minimpos.app.data.db.SaleEntity
-import io.minimpos.app.data.settings.CaptureMode
 import io.minimpos.app.feature.ActionState
 import io.minimpos.app.feature.CaptureStep
 import io.minimpos.app.feature.launchWrite
@@ -50,9 +49,6 @@ data class TipUiState(
     /** What can be done with the sale now; the tip can be entered with [PaymentAction.ENTER_TIP]. */
     val actions: Set<PaymentAction> get() = payment?.actions.orEmpty()
 
-    /** Whether the app captures through the Checkout API or only records the tip; the API until loaded. */
-    val captureMode: CaptureMode get() = payment?.captureMode ?: CaptureMode.API
-
     /** The bill: what was pre-authorised, in minor units. */
     val billMinor: Long get() = sale?.totalMinor ?: 0
 
@@ -67,7 +63,7 @@ data class TipUiState(
      * ([PaymentStanding.tipNeedsAdjustment]).
      */
     val needsAdjustment: Boolean
-        get() = captureMode == CaptureMode.API && tipMinor?.let { PaymentStanding.tipNeedsAdjustment(billMinor, it) } == true
+        get() = tipMinor?.let { PaymentStanding.tipNeedsAdjustment(billMinor, it) } == true
 
     /** Whether the sale still awaits a tip and nothing is being sent. */
     val canSubmit: Boolean get() = PaymentAction.ENTER_TIP in actions && !submission.running
@@ -81,7 +77,7 @@ data class TipUiState(
  * tip is sent with `persisting`, so it finishes even if the screen closes.
  *
  * @param saleId The sale awaiting its tip.
- * @param payments Follows it, with how captures are made.
+ * @param payments Follows it.
  * @param captures Enters the tip and captures.
  */
 class TipViewModel(
@@ -91,7 +87,7 @@ class TipViewModel(
 ) : ViewModel() {
     private val local = MutableStateFlow(TipUiState())
 
-    /** The screen state, updated whenever the sale, the capture mode or the entry changes. */
+    /** The screen state, updated whenever the sale or the entry changes. */
     val state: StateFlow<TipUiState> =
         combine(payments.observe(saleId), local) { payment, ui -> ui.copy(payment = payment) }
             .stateIn(viewModelScope, SharingStarted.Eagerly, TipUiState())
@@ -130,11 +126,8 @@ data class CaptureUiState(
     /** The pre-authorisation's sale, or null until loaded. */
     val sale: SaleEntity? get() = payment?.sale
 
-    /** What can be done with it now: [PaymentAction.CAPTURE], and [PaymentAction.ADJUST] with the Checkout API. */
+    /** What can be done with it now: [PaymentAction.CAPTURE] and [PaymentAction.ADJUST]. */
     val actions: Set<PaymentAction> get() = payment?.actions.orEmpty()
-
-    /** Whether the app captures through the Checkout API or only records the capture; the API until loaded. */
-    val captureMode: CaptureMode get() = payment?.captureMode ?: CaptureMode.API
 
     /** What the pre-authorisation holds now, in minor units. */
     val heldMinor: Long get() = sale?.heldMinor ?: 0
@@ -157,7 +150,7 @@ data class CaptureUiState(
  *
  * @param saleId The pre-authorisation.
  * @param adjustOnly Adjust without capturing.
- * @param payments Follows it, with how captures are made.
+ * @param payments Follows it.
  * @param captures Captures and adjusts.
  */
 class CaptureViewModel(

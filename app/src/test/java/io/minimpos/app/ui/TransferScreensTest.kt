@@ -27,6 +27,7 @@ import io.minimpos.app.await
 import io.minimpos.app.awaitCondition
 import io.minimpos.app.data.db.ProductEntity
 import io.minimpos.app.data.security.Secret
+import io.minimpos.app.data.security.TransferSeal
 import io.minimpos.app.data.transfer.TransferContents
 import io.minimpos.app.feature.transfer.TransferImportScreen
 import io.minimpos.app.feature.transfer.TransferImportViewModel
@@ -35,6 +36,9 @@ import io.minimpos.app.ui.navigation.Navigator
 import io.minimpos.app.ui.navigation.Route
 import io.minimpos.app.ui.theme.MiniMposTheme
 import io.minimpos.core.codec.QrChunks
+import io.minimpos.core.codec.SealedSecrets
+import io.minimpos.core.codec.Transfer
+import io.minimpos.core.codec.TransferCodec
 import kotlinx.coroutines.flow.first
 import org.junit.Before
 import org.junit.Rule
@@ -89,7 +93,7 @@ class TransferScreensTest {
         compose.onNodeWithTag("shareSettings").assertIsOn()
         // Nothing secret is set yet.
         compose.onNodeWithTag("shareSecrets").performScrollTo().assertIsOff()
-        compose.onNodeWithText("None set on this terminal").assertExists()
+        compose.onNodeWithText("None set on this device").assertExists()
         compose.onNodeWithTag("shareCatalogue").performClick()
         compose.onNodeWithTag("shareSettings").performClick()
         compose.onNodeWithTag("showCodes").assertIsDisplayed().assertIsNotEnabled()
@@ -144,5 +148,34 @@ class TransferScreensTest {
         } finally {
             source.close()
         }
+    }
+
+    @Test
+    fun `the setup helper's codes set up the connection and its keys`() {
+        val seal = TransferSeal(iterations = 1_000)
+        val code = seal.newCode()
+        val sealed = SealedSecrets(seal.seal("""{"CHECKOUT_API_KEY":"AQE-key"}""".toByteArray(), code))
+        val payload = TransferCodec.encode(Transfer(sealedSecrets = sealed, connection = """{"merchantAccount":"HarbourCoffeeCOM"}"""))
+        val vm = TransferImportViewModel(container.setupTransfer, "AUD")
+        QrChunks.split(payload, "WEB1").forEach { vm.onCode(it.encode()) }
+        compose.setContent {
+            MiniMposTheme {
+                CompositionLocalProvider(LocalAppContainer provides container) {
+                    TransferImportScreen(Navigator(NavBackStack<NavKey>(Route.Home)), vm = vm)
+                }
+            }
+        }
+        waitForTag("import")
+        compose.onNodeWithText("Connection").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("From the setup helper", substring = true).performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("transferCodeInput").performScrollTo().performTextInput(code)
+        compose.onNodeWithTag("import").performClick()
+        waitForTag("importDone")
+        compose.onNodeWithText("Connection").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("Checkout API key").performScrollTo().assertIsDisplayed()
+        compose.awaitCondition("Applying the connection") { container.settingsState.value.terminal.merchantAccount == "HarbourCoffeeCOM" }
+        // The other settings stay as they were.
+        assertThat(container.settingsState.value.receipt.businessName).isEqualTo("Corner Cafe")
+        assertThat(await { container.secrets.get(Secret.CHECKOUT_API_KEY) }).isEqualTo("AQE-key")
     }
 }

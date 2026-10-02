@@ -125,18 +125,6 @@ enum class TerminalMode {
 }
 
 /**
- * How payments taken with manual capture (pre-authorisations, tips on the receipt) are captured and adjusted. Not stored:
- * it follows from whether the Checkout API is set up in Settings › Terminal (see `io.minimpos.app.terminal.AdyenApi`).
- */
-enum class CaptureMode {
-    /** By the app, through Adyen's Checkout API (simulated while payments go to the simulator). */
-    API,
-
-    /** By staff in the Customer Area: no Checkout API is set up, so the app only records what to capture. */
-    CUSTOMER_AREA,
-}
-
-/**
  * How the terminal is reached and identified. Only the shared key fields apply on a terminal: there the app always
  * uses `localhost` and the device's own POIID.
  *

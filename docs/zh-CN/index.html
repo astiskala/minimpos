@@ -36,8 +36,8 @@
         <nav aria-label="主导航">
           <ul class="nav">
             <li><a href="#features">功能</a></li>
-            <li><a href="#how">使用方式</a></li>
             <li><a href="getting-started.html">快速入门</a></li>
+            <li><a href="setup.html">设置助手</a></li>
             <li><a class="button button-small" href="https://github.com/astiskala/minimpos">GitHub</a></li>
           </ul>
         </nav>
@@ -57,15 +57,16 @@
       <section class="hero" id="top">
         <div class="wrap hero-grid">
           <div class="hero-copy">
-            <p class="eyebrow">免费开源 · 适用于 Adyen Android 支付终端</p>
-            <h1>完整收银流程，尽在支付终端。</h1>
-            <p class="lead">Mini mPOS 将 Adyen Android 支付终端变成小巧完整的收银系统。选购商品、接受卡片支付、打印或发送电子收据，再通过扫描收据完成退款。无需额外平板、收银机或应用订阅。</p>
+            <p class="eyebrow">免费开源 · 直接运行在 Adyen Android 支付终端上</p>
+            <h1>完整收银流程，就在支付终端上。</h1>
+            <p class="lead">Mini mPOS 直接运行在 Adyen Android 支付终端上，一台设备即可选购商品、收款、打印或发送电子收据，并通过扫描收据完成退款。无需单独的收银机、平板或应用订阅。更喜欢用平板电脑或手机？Mini mPOS 同样可以在上面运行，配合您的终端或 Tap to Pay 收款。</p>
             <div class="actions">
               <a class="button" href="#start">开始使用</a>
-              <a class="button button-ghost" href="https://github.com/astiskala/minimpos">在 GitHub 上查看</a>
+              <a class="button button-ghost" href="setup.html">打开设置助手</a>
             </div>
             <ul class="hero-points">
-              <li>适用于 Android 9 及以上版本的终端</li>
+              <li>直接在终端上运行</li>
+              <li>也可用于平板电脑或手机</li>
               <li>支持 Adyen 处理的所有币种</li>
               <li>内置模拟器，方便试用</li>
               <li>支持英语、简体中文和日语</li>
@@ -80,14 +81,13 @@
                 <img alt="AMS1 风格支付终端上的销售演示" height="800" src="../images/sale-ams1.png" width="480">
               </div>
             </div>
-            <p class="demo-note">AMS1 和 S1F2 示意图，展示英文演示界面，并非产品照片。</p>
           </div>
         </div>
       </section>
       <section aria-labelledby="features-title" class="section" id="features">
         <div class="wrap">
-          <h2 id="features-title">小店所需，一应俱全</h2>
-          <p class="section-lead">为咖啡店、集市摊位、快闪店和服务型商家而设计，让日常经营更简单。</p>
+          <h2 id="features-title">线下收款所需，一应俱全</h2>
+          <p class="section-lead">从一个柜台到分布在门店、活动、配送和上门服务中的多台设备：商品、支付、收据和退款，无需运营后台。</p>
           <div class="features">
             <article class="feature">
               <svg aria-hidden="true" viewbox="0 0 24 24"><path d="M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z"></path></svg>
@@ -131,8 +131,8 @@
             </article>
             <article class="feature">
               <svg aria-hidden="true" viewbox="0 0 24 24"><path d="M4 4h10v6H4zm6 10h10v6H10zM16 5h3a1 1 0 0 1 1 1v5h2l-3 3-3-3h2V7h-2zM8 19H5a1 1 0 0 1-1-1v-5H2l3-3 3 3H6v4h2z"></path></svg>
-              <h3>轻松导入与导出</h3>
-              <p>使用二维码与另一台终端分享商品和设置，也可以通过受保护的传输码一起传输密码和密钥。</p>
+              <h3>几分钟完成设置</h3>
+              <p>在电脑上用设置助手填写密钥，再扫码导入设备。还可以通过二维码把商品和设置复制到更多设备，密钥也可一并传输，并由传输码保护。</p>
             </article>
             <article class="feature">
               <svg aria-hidden="true" viewbox="0 0 24 24"><path d="M12 2a5 5 0 0 1 5 5v3h1a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-8a2 2 0 0 1 2-2h1V7a5 5 0 0 1 5-5zm0 2a3 3 0 0 0-3 3v3h6V7a3 3 0 0 0-3-3z"></path></svg>
@@ -201,12 +201,12 @@
       <section aria-labelledby="how-title" class="section section-alt" id="how">
         <div class="wrap split">
           <div>
-            <h2 id="how-title">为 Adyen 支付终端而设计</h2>
-            <p class="section-lead">商品、支付和收据，一台设备即可完成。无需额外平板，也无需运行后端。</p>
+            <h2 id="how-title">内置于 Adyen 支付终端</h2>
+            <p class="section-lead">安装在终端上后，Mini mPOS 无需其他硬件，也无需运行后端。在平板电脑或手机上，它可配合您的终端或 Tap to Pay 使用。</p>
             <ul class="checks">
               <li><strong>卡片数据留在 Adyen。</strong>Mini mPOS 仅接收掩码卡片信息和支付识别号。</li>
-              <li><strong>您的业务，就在您的终端上。</strong>在本地管理商品、设置和交易记录，无需云端账户。</li>
-              <li><strong>柜台内外都适用。</strong>适配 AMS1 等小型终端，也适配内置打印机的机型。</li>
+              <li><strong>您的业务，就在您的设备上。</strong>在设备上管理商品、设置和交易记录，无需云端账户。</li>
+              <li><strong>柜台内外都适用。</strong>适配 AMS1 等小型终端、内置打印机的机型，以及平板电脑和手机。</li>
             </ul>
           </div>
           <div class="shot-pair">
@@ -230,8 +230,8 @@
             </article>
             <article class="step">
               <h3>准备好开始营业了吗？</h3>
-              <p>下载应用，通过 Adyen 商户后台部署并连接终端。指南将带您完成每一步。</p>
-              <p><a href="getting-started.html">阅读设置指南</a> · <a href="https://github.com/astiskala/minimpos/releases/latest">下载应用</a></p>
+              <p>下载应用，通过 Adyen 商户后台部署到终端（或安装到平板电脑或手机上），再用设置助手扫码导入密钥。指南将带您完成每一步。</p>
+              <p><a href="getting-started.html">阅读设置指南</a> · <a href="setup.html">打开设置助手</a> · <a href="https://github.com/astiskala/minimpos/releases/latest">下载应用</a></p>
             </article>
           </div>
         </div>
@@ -241,12 +241,12 @@
           <h2 id="faq-title">常见问题</h2>
           <div class="faq">
             <details>
-              <summary>支持哪些终端？</summary>
-              <p>支持运行 Android 9 或更高版本的 Adyen Android 支付终端，例如 S1F2、S1F4Pro、S1E4Pro、S1E2L、AMS1、S1U2 和 SFO1。打印需要内置打印机，扫描二维码需要摄像头。</p>
+              <summary>支持哪些设备？</summary>
+              <p>支持运行 Android 9 或更高版本的 Adyen Android 支付终端，例如 S1F2、S1F4Pro、S1E4Pro、S1E2L、AMS1、S1U2 和 SFO1，以及 Android 平板电脑和手机。打印需要带打印机的终端，扫描二维码需要摄像头。</p>
             </details>
             <details>
               <summary>能在平板电脑或手机上使用吗？</summary>
-              <p>可以。在 Android 平板电脑或手机上，它可以通过本地网络或互联网使用 Adyen 终端收款，也可以通过 Adyen Payments 应用使用 Tap to Pay 收款。请参阅指南中的<a href="getting-started.html#tablet">或在平板电脑或手机上使用</a>。</p>
+              <p>可以。在 Android 平板电脑或手机上，它可以通过本地网络或互联网使用 Adyen 终端收款，也可以通过 Adyen Payments 应用使用 Tap to Pay 收款。请参阅指南中的<a href="getting-started.html#tablet">在平板电脑或手机上使用</a>。</p>
             </details>
             <details>
               <summary>费用是多少？</summary>
@@ -254,7 +254,7 @@
             </details>
             <details>
               <summary>这是 Adyen 的产品吗？</summary>
-              <p>不是。这是为 Adyen 终端开发的独立项目，并非由 Adyen 制作、背书或提供支持。正式上线前，请在 Adyen TEST 环境中测试。</p>
+              <p>不是。这是为 Adyen 终端开发的独立项目，并非由 Adyen 制作、背书或提供支持。正式上线前，请在 Adyen TEST 环境中测试。Adyen 账户、付款方式和结算问题请联系 Adyen；应用问题请<a href="https://github.com/astiskala/minimpos/issues">在 GitHub 上提交 issue</a>。</p>
             </details>
             <details>
               <summary>能收取订金或进行预授权吗？</summary>
@@ -270,11 +270,11 @@
             </details>
             <details>
               <summary>数据存储在哪里？</summary>
-              <p>商品、设置和交易记录保存在终端（或平板电脑、手机）上。您可以选择与另一台终端分享，或通过自己的邮件服务器发送收据。支付由 Adyen 处理。</p>
+              <p>商品、设置和交易记录保存在运行 Mini mPOS 的设备上。您可以选择与另一台设备分享，或通过自己的邮件服务器发送收据。支付由 Adyen 处理。</p>
             </details>
             <details>
               <summary>需要服务器或 Adyen API 密钥吗？</summary>
-              <p>不需要服务器。在终端上，只需商户后台中的共享密钥。API 密钥是可选的，用于扣款和支付链接；云端终端和 Tap to Pay 需要 API 密钥。请参阅指南中的<a href="getting-started.html#api">Checkout API 与扣款</a>。</p>
+              <p>不需要服务器。在终端上，需要商户后台中的共享密钥，以及用于扣款和支付链接的 Checkout API 密钥；可以通过<a href="setup.html">设置助手</a>在电脑上输入。请参阅指南中的<a href="getting-started.html#api">Checkout API 与扣款</a>。</p>
             </details>
           </div>
         </div>
@@ -283,7 +283,7 @@
     <footer class="site-footer">
       <div class="wrap footer-row">
         <p><img alt="" height="24" src="../favicon.svg" width="24"> Mini mPOS · MIT 许可证 · <a href="https://github.com/astiskala/minimpos">GitHub</a> · <a href="https://github.com/astiskala/minimpos/blob/main/SECURITY.md">安全</a></p>
-        <p class="fine">Adyen 是 Adyen N.V. 的商标。Mini mPOS 是独立项目，与 Adyen 无关联，未获其背书，也不由其提供支持。 终端插图仅为示意，并非产品照片。截图展示内置模拟器中的英文演示咖啡店。</p>
+        <p class="fine">Adyen 是 Adyen N.V. 的商标。Mini mPOS 是独立项目，与 Adyen 无关联，未获其背书，也不由其提供支持。截图展示内置模拟器中的英文演示咖啡店。</p>
       </div>
     </footer>
   </body>

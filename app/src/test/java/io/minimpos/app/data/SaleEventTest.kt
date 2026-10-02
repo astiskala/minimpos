@@ -12,7 +12,6 @@ import io.minimpos.app.data.db.StoredReason
 import io.minimpos.app.data.db.StoredReasonConverter
 import io.minimpos.app.data.repo.SaleEvent
 import io.minimpos.app.data.repo.after
-import io.minimpos.app.data.settings.CaptureMode
 import io.minimpos.app.refund.PaymentAction
 import io.minimpos.app.refund.PaymentStanding
 import io.minimpos.app.refund.actions
@@ -63,7 +62,7 @@ class SaleEventTest {
     private val tipSale = pending.copy(tipOnReceipt = true).after(SaleEvent.Settled(SaleStatus.APPROVED, null, approved))
     private val preAuth = pending.copy(kind = SaleKind.PRE_AUTHORISATION).after(SaleEvent.Settled(SaleStatus.APPROVED, null, approved))
 
-    private fun SaleEntity.actions() = SaleWithLines(this, emptyList()).actions(CaptureMode.API)
+    private fun SaleEntity.actions() = SaleWithLines(this, emptyList()).actions
 
     private fun SaleEntity.afterAll(vararg events: SaleEvent): SaleEntity = events.fold(this) { sale, event -> sale.after(event) }
 
@@ -116,8 +115,8 @@ class SaleEventTest {
     }
 
     @Test
-    fun `a capture left to staff counts as captured`() {
-        val manual = preAuth.after(SaleEvent.CaptureLeftToStaff(1_500))
+    fun `a capture an older version left to staff still counts as captured`() {
+        val manual = preAuth.copy(captureStatus = CaptureStatus.MANUAL, capturedMinor = 1_500)
         assertThat(manual.standing).isEqualTo(PaymentStanding.CAPTURED_MANUALLY)
         assertThat(manual.amountMinor).isEqualTo(1_500)
         assertThat(manual.standing.captured).isTrue()

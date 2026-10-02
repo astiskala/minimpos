@@ -5,7 +5,8 @@ project maintained on a best-effort basis.
 
 ## Supported versions
 
-Only the latest version on the `main` branch gets security fixes.
+Only the [latest release](https://github.com/astiskala/minimpos/releases/latest) gets security fixes. Fixes land on
+`main` and ship in the next release, so keep every terminal and device on the latest version.
 
 ## Reporting a vulnerability
 
@@ -35,14 +36,15 @@ this project. Report them to Adyen through its
 - **Card data never reaches the app.** The terminal's Adyen payment app reads the card. Mini mPOS only receives what
   Adyen returns: card brand, masked card number, PSP reference, receipt lines and, when tokenizing, the stored payment
   method ID.
-- **Terminal communication is encrypted and authenticated.** Requests go to the terminal's local Terminal API through
-  Adyen's Java API library. Messages are encrypted and signed with the shared key from your Customer Area. The
-  terminal's TLS certificate must chain to one of Adyen's terminal root certificates (TEST or LIVE), and its name must
-  be an Adyen terminal name for that same environment. The environment the app shows comes from this certificate.
-- **Off-terminal**, requests to a terminal in the cloud go to Adyen's Cloud device API over TLS, authenticated with an
-  API key (they are not also encrypted with the shared key). Requests to the Adyen Payments app (Tap to Pay) travel as
-  App Links encrypted and signed with the shared key; answers that cannot be verified with it, or that answer another
-  request, are rejected.
+- **Terminal communication is encrypted and authenticated.** Requests go to the terminal's local Terminal API (on the
+  terminal itself, or over your network from a tablet or phone) through Adyen's Java API library. Messages are
+  encrypted and signed with the shared key from your Customer Area. The terminal's TLS certificate must chain to one
+  of Adyen's terminal root certificates (TEST or LIVE), and its name must be an Adyen terminal name for that same
+  environment. The environment the app shows comes from this certificate.
+- **In the cloud and with Tap to Pay**, requests to a terminal in the cloud go to Adyen's Cloud device API over TLS,
+  authenticated with an API key (they are not also encrypted with the shared key). Requests to the Adyen Payments app
+  (Tap to Pay) travel as App Links encrypted and signed with the shared key; answers that cannot be verified with it,
+  or that answer another request, are rejected.
 - **Secrets are encrypted on the device.** The shared-key passphrase, the API key (Checkout and Cloud device API), the
   Payments app API key and the SMTP password are encrypted with AES-256-GCM, using a key kept in the Android Keystore.
   The admin PIN is stored only as a salted PBKDF2 hash, and repeated wrong PINs lock entry for increasing periods.
@@ -72,4 +74,4 @@ this project. Report them to Adyen through its
 - Send receipt email over **STARTTLS or SSL**. The "None" option sends email and your SMTP password unencrypted.
 - Choose a sensible **history retention** period (Settings › Data). Sales history includes customer references and
   shopper email addresses.
-- Keep the app up to date.
+- Keep the app up to date (see [Supported versions](#supported-versions)).

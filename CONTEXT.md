@@ -1,8 +1,9 @@
 # Mini mPOS: domain language
 
 The words the code, tests, docs and reviews use for Mini mPOS's domain, and the one place each concept is decided.
-`AGENTS.md` holds the rules and how they are enforced; KDoc holds the details. When code names a concept, use the term
-here (and its code name); add a term before naming a new module after it.
+The `AGENTS.md` files (the root one, `app/AGENTS.md`, `terminal-api/AGENTS.md`) hold the rules and how they are
+enforced; KDoc holds the details. When code names a concept, use the term here (and its code name); add a term before
+naming a new module after it.
 
 Spelling: user-facing text is US English ("pre-authorization"), but identifiers and stored values keep their
 original spelling (`preAuthorisation`, `SaleKind.PRE_AUTHORISATION`, `authorisedMinor`). Don't rename either to match
@@ -28,9 +29,9 @@ the other.
   **abort** asks a busy terminal to stop one.
 - **Decline** (`client/Decline`): why a transaction was not approved (refused, cancelled, busy) and the retry advice;
   read only from the ErrorCondition. _Avoid_: error, rejection.
-- **References**: the **merchant reference** (Adyen's `reference`, `yyMMdd-HHmmss-XXXX`, refunds `R-…`, cancellations
-  `C-…`); the **customer reference** typed at checkout, asked for exactly when it is the **shopper reference** (Adyen's
-  `shopperReference` for saving a card, made from the customer reference or the email).
+- **References**: the **merchant reference** (Adyen's `reference`: an optional prefix, then `yyMMdd-HHmmss-XXXX`;
+  refunds `R-…`, cancellations `C-…`); the **customer reference** typed at checkout, asked for exactly when it is the
+  **shopper reference** (Adyen's `shopperReference` for saving a card, made from the customer reference or the email).
 
 ## After the payment
 

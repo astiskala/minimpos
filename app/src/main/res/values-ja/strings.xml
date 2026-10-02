@@ -323,7 +323,7 @@
   <string name="transfer_part_settings">設定</string>
   <string name="transfer_part_settings_hint">決済、税、領収書、メール、セキュリティ、履歴、共有キーの識別子、Checkout API。決済先と端末自身のアドレス・IDはコピーしません。</string>
   <string name="transfer_part_secrets">パスワードとキー</string>
-  <string name="transfer_part_secrets_hint">共有キーのパスフレーズ、Checkout APIキー、SMTPパスワード、管理者PINを転送コードで保護します</string>
+  <string name="transfer_part_secrets_hint">共有キーのパスフレーズ、Checkout APIキー、PaymentsアプリのAPIキー、SMTPパスワード、管理者PINを転送コードで保護します</string>
   <string name="transfer_part_secrets_none">この端末では未設定</string>
   <string name="transfer_show_codes">QRコードを表示</string>
   <string name="transfer_code_title">転送コード</string>
@@ -671,5 +671,5 @@
   <string name="about_app_info_integrator">インテグレーター</string>
   <string name="about_app_info_device">デバイス</string>
   <string name="about_app_info_library">Adyenライブラリ</string>
-  <string name="about_text">Mini mPOSは、アプリが動作している端末上でAdyen Terminal APIを使って決済を受け付けます。端末とのローカル通信にはAdyenのJava APIライブラリを使用し、端末の共有キーで暗号化して保護します。</string>
+  <string name="about_text">Mini mPOSはAdyen Terminal APIで決済を受け付けます。アプリが動作している端末、ネットワーク上またはインターネット経由（クラウド）の端末、またはAdyen PaymentsアプリのTap to Payに対応しています。AdyenのJava APIライブラリを使用し、端末やPaymentsアプリへのメッセージは共有キーで暗号化します。クラウドへのリクエストはAPIキーで認証します。</string>
 </resources>

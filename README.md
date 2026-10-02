@@ -75,21 +75,8 @@ terminal over your network or the internet, or with Tap to Pay through the Adyen
   **Tap to Pay** on the phone itself through the Adyen Payments app, which the app sets up (boards) for you. See
   [Use it on a tablet or phone](#use-it-on-a-tablet-or-phone).
 - **Built-in simulator**, so you can try every flow on an emulator or phone without a terminal.
-- **English, Simplified Chinese and Japanese**, with receipts laid out for wide characters (see below).
-
-## Language and receipts
-
-The app supports English, Simplified Chinese and Japanese. On Android 12 or earlier it follows the device language;
-on Android 13 or later, choose a language in the system's app-language settings. New installations use localized
-receipt defaults and sample labels. Existing receipt titles, footers, tax names, email subjects and transferred
-catalogs stay as written: review them in Settings › Receipts, Tax and Email (SMTP), and in Products.
-
-Adyen-generated payment receipt data stays verbatim and follows the terminal's own receipt-language setting.
-Plain-text receipts account for wide Chinese and Japanese characters, and Japanese receipts show taxable amounts
-by rate (税込 / 税抜). This does **not** make them official Chinese 发票 or guarantee Japanese qualified-invoice
-compliance; reduced-rate item marking, rounding and registration requirements need separate verification. See the
-[language and receipt guidance](https://astiskala.github.io/minimpos/getting-started.html#language-receipts) for details
-and official reference links.
+- **English, Simplified Chinese and Japanese**, with receipts laid out for wide characters (see
+  [Language and receipts](#language-and-receipts)).
 
 ## Screenshots
 
@@ -132,12 +119,12 @@ payment method ID. Only if you give it a Checkout API key does it also call Adye
 [Checkout API](https://docs.adyen.com/api-explorer/Checkout/latest/overview) (`/payments/{pspReference}/captures` and
 `/amountUpdates`) to capture tips and pre-authorizations; the key is stored encrypted with the Android Keystore.
 
-The code is split into three modules:
+The code is split into three modules, plus `website-test`, which checks the website in `docs/`:
 
 | Module | Contents |
 | --- | --- |
 | `core` | Plain Kotlin: money and tax math, cart, refunds, receipt layout, catalog and refund QR codes, Adyen's currency table. |
-| `terminal-api` | The Terminal API client on top of Adyen's Java library; local, cloud and Payments app transports (OkHttp); retry advice and the simulator. |
+| `terminal-api` | The Terminal API client on top of Adyen's Java library; local, cloud and Payments app transports (OkHttp); Checkout API captures; retry advice and the simulator. |
 | `app` | The Android app: Jetpack Compose (Material 3), Navigation 3, Room, DataStore, CameraX and ZXing, JavaMail. |
 
 ## Requirements
@@ -232,6 +219,20 @@ then choose under Settings › Terminal › **Payments go to**:
 > roles it needs, set an admin PIN, and revoke the key in the Customer Area if the device is lost. A terminal on your
 > network needs no API key.
 
+## Language and receipts
+
+The app supports English, Simplified Chinese and Japanese. On Android 12 or earlier it follows the device language;
+on Android 13 or later, choose a language in the system's app-language settings. New installations use localized
+receipt defaults and sample labels. Existing receipt titles, footers, tax names, email subjects and transferred
+catalogs stay as written: review them in Settings › Receipts, Tax and Email (SMTP), and in Products.
+
+Adyen-generated payment receipt data stays verbatim and follows the terminal's own receipt-language setting.
+Plain-text receipts account for wide Chinese and Japanese characters, and Japanese receipts show taxable amounts
+by rate (税込 / 税抜). This does **not** make them official Chinese 发票 or guarantee Japanese qualified-invoice
+compliance; reduced-rate item marking, rounding and registration requirements need separate verification. See the
+[language and receipt guidance](https://astiskala.github.io/minimpos/getting-started.html#language-receipts) for details
+and official reference links.
+
 ## Good to know
 
 - Refunds are processed by Adyen asynchronously, so the app shows them as "Refund requested". The final outcome is in
@@ -254,9 +255,8 @@ then choose under Settings › Terminal › **Payments go to**:
   such as `visa_applepay`. Sales taken with earlier versions of the app did not store it, so they are found by their
   card brand only. Search and filters only cover transactions still on the terminal (Settings › Data › Keep
   transactions for).
-- Transfer codes that include settings or secrets use format version 4, which older versions of the app cannot read;
-  a catalog alone is still sent as version 3. Codes from older versions still import, so update all terminals
-  together.
+- Older versions of the app cannot read setup codes that include settings or secrets (format version 4; a catalog
+  alone is still sent as version 3), so update all terminals together. Codes from older versions still import.
 - With Tap to Pay there is no printer (receipts are emailed, so tips on the receipt are not offered), and the Payments
   app takes only payments and referenced refunds. It cannot be asked for a transaction's status, so a payment whose
   answer goes missing (for example when you come back from the Payments app without a result) stays "unknown": check it

@@ -58,7 +58,8 @@ It runs:
   Android and dependency cycles, keep the app's layers apart (business logic free of Compose, Room only in `data`,
   secrets encrypted only in `data.security`), keep money out of floating-point types, stop anything from using the
   Adyen library's Apache HTTP client or its unencrypted TEST-only API, and forbid logging. They also give each
-  decision one home (where a payment stands, where payments go, how outcomes are worded, …), as `AGENTS.md` lists.
+  decision one home (where a payment stands, where payments go, how outcomes are worded, …), as
+  [`app/AGENTS.md`](app/AGENTS.md) and [`terminal-api/AGENTS.md`](terminal-api/AGENTS.md) list.
 - An API level check (`AndroidApiLevelTest`): `core` and `terminal-api` run on Android 9 terminals, but Lint doesn't
   check JVM modules, so the test checks every Java API they use against the Android SDK's API database.
 - Kover coverage thresholds: `core` 95% lines and 85% branches, `terminal-api` 90% and 75%, `app` (non-UI) 80% lines.
@@ -85,9 +86,10 @@ each one has a comment explaining why. If you think a rule is wrong for your cas
   to test. Android code lives in `app`.
 - **Money is `Long` minor units** with `CurrencySpec`, never `Double`. Tax rates are thousandths of a percent.
 - **Use Adyen's library** for anything the Terminal API needs (models, encryption, certificate checks) instead of
-  writing it yourself. `AGENTS.md` lists what it takes to make that library work on Android. The optional Checkout API
-  calls (captures and authorization adjustments) are the exception: they post plain JSON with OkHttp, because the
-  library's Checkout models need Jackson and keep rules for hundreds of classes.
+  writing it yourself. [`terminal-api/AGENTS.md`](terminal-api/AGENTS.md) lists what it takes to make that library
+  work on Android. The optional Checkout API calls (captures and authorization adjustments) are the exception: they
+  post plain JSON with OkHttp, because the library's Checkout models need Jackson and keep rules for hundreds of
+  classes.
 - **Respect the terminal's rules.** Don't add permissions (only internet, network state and camera are allowed), don't
   raise `minSdk` above 28, and don't depend on Google Play services, which Adyen terminals don't have.
 - **Add dependencies through `gradle/libs.versions.toml`**, pin exact versions, and prefer releases that are at least a
@@ -118,9 +120,8 @@ each one has a comment explaining why. If you think a rule is wrong for your cas
 - `LocalizationTest` checks that every string has its translations with the same format arguments, and writes sample
   receipts in each language to `app/build/reports/localization/`. `LocalizedUiTest` runs checkout in Chinese and
   Japanese at the AMS1's screen size.
-- Robolectric never settles when a dialog at the platform default width (such as an `AlertDialog`) contains a text
-  field. Use a `Dialog` with `DialogProperties(usePlatformDefaultWidth = false)`, as the currency picker does, or put
-  the dialog's content in its own composable and test that directly, as `TaxRateFormTest` does.
+- [`app/AGENTS.md`](app/AGENTS.md) describes the test helpers (`TestEnvironment` and the fake terminal, cloud and
+  Payments app) and the Robolectric pitfalls to avoid, such as text fields in an `AlertDialog`.
 
 ## Changing stored data
 
@@ -135,7 +136,9 @@ each one has a comment explaining why. If you think a rule is wrong for your cas
 The screenshots in `docs/images/` come from an emulator running Android 13 in English (Australia), with a demo café
 catalog and the simulator. The status bar was cleaned up with Android's system UI demo mode. The website shows them in
 S1F2 and AMS1 frames, so capture them at those screens' sizes: 720×1280 (S1F2, resized to 540×960) and 480×800 (AMS1,
-only `sale-ams1.png`). Keep the demo data consistent, so the README and the website match.
+only `sale-ams1.png`). Keep the demo data consistent, so the README and the website match. The full recipe (emulators,
+demo data, the flows behind each screenshot, the social image) is in
+[`.devin/skills/docs-screenshots/SKILL.md`](.devin/skills/docs-screenshots/SKILL.md).
 
 The website in `docs/` has English, Simplified Chinese (`docs/zh-CN/`) and Japanese (`docs/ja/`) pages, which all use
 the English screenshots. Change all three languages together and check them with `./gradlew :website-test:check` (part

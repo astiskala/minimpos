@@ -349,7 +349,7 @@
   <string name="transfer_part_settings">Settings</string>
   <string name="transfer_part_settings_hint">Payments, tax, receipts, email, security, history, the shared key’s identifier and the Checkout API. Where payments go and the terminal’s own address and ID are not copied.</string>
   <string name="transfer_part_secrets">Passwords and keys</string>
-  <string name="transfer_part_secrets_hint">Shared key passphrase, Checkout API key, SMTP password and admin PIN, protected by a transfer code</string>
+  <string name="transfer_part_secrets_hint">Shared key passphrase, Checkout API key, Payments app API key, SMTP password and admin PIN, protected by a transfer code</string>
   <string name="transfer_part_secrets_none">None set on this terminal</string>
   <string name="transfer_show_codes">Show QR codes</string>
   <string name="transfer_code_title">Transfer code</string>
@@ -717,5 +717,5 @@
   <string name="about_app_info_integrator">Integrator</string>
   <string name="about_app_info_device">Device</string>
   <string name="about_app_info_library">Adyen library</string>
-  <string name="about_text">Mini mPOS takes payments with the Adyen Terminal API on the terminal it runs on. It uses Adyen’s Java API library for the encrypted local communication, protected by the terminal’s shared key.</string>
+  <string name="about_text">Mini mPOS takes payments with the Adyen Terminal API: on the terminal it runs on, on a terminal on your network or over the internet (cloud), or with Tap to Pay in the Adyen Payments app. It uses Adyen’s Java API library. Messages to a terminal or the Payments app are encrypted with the shared key; cloud requests are authenticated with your API key.</string>
 </resources>

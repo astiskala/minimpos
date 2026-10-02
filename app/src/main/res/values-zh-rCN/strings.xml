@@ -323,7 +323,7 @@
   <string name="transfer_part_settings">设置</string>
   <string name="transfer_part_settings_hint">支付、税、收据、电子邮件、安全、交易记录、共享密钥标识符和 Checkout API。不会复制支付目标及终端自身的地址和 ID。</string>
   <string name="transfer_part_secrets">密码和密钥</string>
-  <string name="transfer_part_secrets_hint">共享密钥口令、Checkout API 密钥、SMTP 密码和管理员 PIN，均由传输码保护</string>
+  <string name="transfer_part_secrets_hint">共享密钥口令、Checkout API 密钥、Payments 应用 API 密钥、SMTP 密码和管理员 PIN，均由传输码保护</string>
   <string name="transfer_part_secrets_none">此终端尚未设置</string>
   <string name="transfer_show_codes">显示二维码</string>
   <string name="transfer_code_title">传输码</string>
@@ -671,5 +671,5 @@
   <string name="about_app_info_integrator">集成方</string>
   <string name="about_app_info_device">设备</string>
   <string name="about_app_info_library">Adyen 程序库</string>
-  <string name="about_text">Mini mPOS 在其所在终端上通过 Adyen Terminal API 收款。它使用 Adyen Java API 程序库进行加密本地通信，并通过终端共享密钥保护通信。</string>
+  <string name="about_text">Mini mPOS 通过 Adyen Terminal API 收款：在其所在终端上、通过同一网络中或互联网（云端）连接的终端，或在 Adyen Payments 应用中使用 Tap to Pay。它使用 Adyen Java API 程序库。发往终端或 Payments 应用的消息使用共享密钥加密；云端请求通过您的 API 密钥进行验证。</string>
 </resources>

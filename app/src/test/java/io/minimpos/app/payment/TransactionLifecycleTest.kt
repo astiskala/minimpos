@@ -67,7 +67,8 @@ class TransactionLifecycleTest {
                 merchantReference = "MP-1",
                 customerReference = "CUST-1",
                 shopperEmail = email,
-                tokenization = TokenizationRequest("CUST-1", RecurringModel.CARD_ON_FILE, includeEmail = true).takeIf { tokenize },
+                tokenization = TokenizationRequest(RecurringModel.CARD_ON_FILE, includeEmail = true).takeIf { tokenize },
+                shopperReference = "CUST-1",
             ),
         )
     }
@@ -107,6 +108,33 @@ class TransactionLifecycleTest {
         assertThat(await { container.receipts.automation(StoredTransaction.Sale(saleId)) }).isEqualTo(AutoDelivery())
         payments.acknowledge()
         assertThat(payments.state.value).isEqualTo(TransactionState.Idle)
+    }
+
+    @Test
+    fun `the shopper reference goes with every payment, and only saving the card adds the recurring model and email`() {
+        env.useSimulator()
+        val plain = finished(start(email = "a@b.co")).sale
+        assertThat(plain.status).isEqualTo(SaleStatus.APPROVED)
+        assertThat(plain.shopperReference).isEqualTo("CUST-1")
+        assertThat(plain.tokenizationRequested).isFalse()
+        assertThat(plain.storedPaymentMethodId).isNull()
+        payments.acknowledge()
+
+        val book = SaleBook(container.sales)
+        val totals = Cart().addProduct(CartProduct(1, "Latte", null, 450, gst)) { "a" }.totals(TaxMode.INCLUSIVE)
+        val start = PaymentStart(totals, CurrencySpec("AUD", 2), "MP-3", "CUST-1", "a@b.co", null, shopperReference = "CUST-1")
+        val params = (book.operation(start) as TerminalOperation.Pay).params
+        assertThat(params.shopperReference).isEqualTo("CUST-1")
+        assertThat(params.recurringProcessingModel).isNull()
+        assertThat(params.shopperEmail).isNull()
+        assertThat(params.requestCardAlias).isFalse()
+        val saving = TokenizationRequest(RecurringModel.CARD_ON_FILE, includeEmail = true)
+        val saved = (book.operation(start.copy(tokenization = saving)) as TerminalOperation.Pay).params
+        assertThat(saved.shopperReference).isEqualTo("CUST-1")
+        assertThat(saved.recurringProcessingModel).isEqualTo(RecurringModel.CARD_ON_FILE)
+        assertThat(saved.shopperEmail).isEqualTo("a@b.co")
+        assertThat(saved.requestCardAlias).isTrue()
+        assertThrows(IllegalArgumentException::class.java) { start.copy(tokenization = saving, shopperReference = null) }
     }
 
     @Test

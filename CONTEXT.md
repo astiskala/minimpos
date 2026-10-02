@@ -36,8 +36,10 @@ the other.
   has no PSP reference, so it is refunded in the Customer Area. Sales only. _Avoid_: invoice, pay-by-link (in code).
 - **References**: the **merchant reference** (Adyen's `reference`: an optional prefix, then `yyMMdd-HHmmss-XXXX`;
   refunds `R-…`, cancellations `C-…`); the **customer reference** typed at checkout, asked for exactly when it is the
-  **shopper reference** (Adyen's `shopperReference` for saving a card, made from the customer reference or the email,
-  or from nothing, `ShopperReferenceSource.NONE`, when no card is saved).
+  **shopper reference** (Adyen's `shopperReference`, sent with every payment whether or not the card is saved, made
+  from the customer reference or the email, or none, `ShopperReferenceSource.NONE`, which also means no card can be
+  saved). **Saving a card** (tokenization) files it under the shopper reference, offered at checkout while
+  `PaymentSettings.offerCardSaving` is on.
 - **Sale event** (`data/repo/SaleEvent`): something that happened to a stored sale after it was opened (sent, settled,
   link answered, capture sending/answered/left to staff, adjustment answered, interrupted, emailed), which moves it on
   (`SaleEntity.after`). The one place that decides which statuses and fields each happening writes. _Avoid_: update,

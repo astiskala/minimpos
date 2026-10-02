@@ -144,13 +144,23 @@ cd minimpos
             <p>以下选项均位于<strong>设置</strong>中。</p>
             <dl class="settings-list">
               <dt>支付</dt>
-              <dd><strong>币种</strong>（Adyen 支持的 138 种币种；自动选择会跟随设备所在国家或地区）、是否在结账时询问<strong>交易识别号</strong>（初始为关闭）及其前缀、保存卡片设置（初始为不保存：选择购物者识别号来自客户识别号还是电子邮箱后，再设置普通销售和预授权的默认开关以及循环扣款模式）、何时询问购物者的电子邮箱，以及结账时是否默认启用<strong>在收据上填写小费</strong>。</dd>
+              <dd><strong>币种</strong>（Adyen 支持的 138 种币种；自动选择会跟随设备所在国家或地区）、是否在结账时询问<strong>交易识别号</strong>（初始为关闭）及其前缀、随每笔支付发送的<strong>购物者识别号</strong>（初始为无：可选结账时输入的客户识别号或购物者的电子邮箱），以及有识别号时的<strong>提供保存卡片选项</strong>（普通销售和预授权的默认开关以及循环扣款模式）、何时询问购物者的电子邮箱，以及结账时是否默认启用<strong>在收据上填写小费</strong>。</dd>
               <dt>税</dt>
               <dd>自定义名称的<strong>税率</strong>（例如 GST 10% 和 GST-free 0%）、价格是否含税、新商品的默认税率，以及<strong>收取税费</strong>开关。新安装时，如果应用知道设备所在国家或地区的标准税率，就会预设该税率（日本还会预设 8% 的低税率）以及一个 0% 税率；在美国和加拿大只预设 0% 税率，并在价格之外另行加税。添加商品前请先检查这些税率。</dd>
               <dt>收据</dt>
               <dd>商家名称、地址、税号、电话、标题和页脚；收据显示内容（税费明细、识别号、退款二维码）；终端是否配有打印机（默认自动检测）、自动打印（初始为开启）、商家联以及每行字符宽度。</dd>
               <dt>电子邮件（SMTP）</dt>
-              <dd>邮件服务器、发件人、可选密送地址和邮件主题，以及测试邮件功能。</dd>
+              <dd>邮件服务器、发件人、可选密送地址和邮件主题，以及测试邮件功能。可通过按钮填入以下服务商的服务器（选择<strong>其他</strong>可手动填写），应用会说明所需的密码（通常为应用专用密码）。如何获取密码请参阅各服务商的帮助页面；在平板或手机上，应用中也会提供这些链接。
+                <ul>
+                  <li><a href="https://support.google.com/mail/answer/185833">Gmail</a></li>
+                  <li><a href="https://learn.microsoft.com/en-us/exchange/mail-flow-best-practices/how-to-set-up-a-multifunction-device-or-application-to-send-email-using-microsoft-365-or-office-365">Microsoft 365</a></li>
+                  <li><a href="https://support.apple.com/en-us/102525">iCloud Mail</a></li>
+                  <li><a href="https://help.yahoo.com/kb/pop-smtp-settings-article-sln4724.html">Yahoo Mail</a></li>
+                  <li><a href="https://www.fastmail.help/hc/en-us/articles/1500000278342-Server-names-and-ports">Fastmail</a></li>
+                  <li><a href="https://www.zoho.com/mail/help/zoho-smtp.html">Zoho Mail</a></li>
+                  <li><a href="https://proton.me/support/smtp-submission">Proton Mail</a></li>
+                </ul>
+                Outlook.com 不在其中：它已不再接受其他应用使用密码发送邮件。</dd>
               <dt>安全</dt>
               <dd>用于保护设置和商品管理的<strong>管理员 PIN</strong>，以及自动重新锁定的时间。请在把终端放到柜台上之前设置 PIN 码。</dd>
               <dt>数据</dt>
@@ -228,7 +238,7 @@ cd minimpos
             <ol>
               <li>在<strong>商品</strong>中编辑或添加商品，开启<strong>预授权商品</strong>。该商品不再出现在新建销售中。</li>
               <li>首页会在新建销售旁显示<strong>预授权</strong>。每笔预授权包含一个商品，因此点击商品、添加自定义金额或扫描条形码后会直接进入结账；在那里点击<strong>预授权</strong>。</li>
-              <li>开启保存卡片后（设置 › 支付 › 保存卡片；需取得购物者同意），预授权结账时会默认启用保存卡片，以便预授权扣款后收取后续费用。收据标题为<em>预授权凭证</em>，并显示冻结金额。</li>
+              <li>设置购物者识别号并提供保存卡片选项后（设置 › 支付 › 购物者与保存卡片；需取得购物者同意），预授权结账时会默认启用保存卡片，以便预授权扣款后收取后续费用。收据标题为<em>预授权凭证</em>，并显示冻结金额。</li>
             </ol>
             <h3>扣款、调整或取消</h3>
             <ul>

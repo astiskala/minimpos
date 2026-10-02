@@ -67,7 +67,7 @@ class CatalogRepository(
      * Name for the 0% rate created when an imported catalogue has untaxed products (possible in format v2 from older
      * builds) and no 0% rate exists.
      */
-    private val zeroRateName: String = "Zero rated",
+    private val zeroRateName: String = "No tax",
 ) {
     private val dao = db.catalogDao()
 

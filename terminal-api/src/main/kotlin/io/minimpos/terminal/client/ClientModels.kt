@@ -169,7 +169,10 @@ data class PaymentParams(
      * reference in the Customer Area and is echoed back in [TransactionDetails.merchantReference].
      */
     val merchantReference: String,
-    /** With [recurringProcessingModel], asks Adyen to store the card for this shopper. */
+    /**
+     * Adyen's `shopperReference`, which links the payment to a shopper; with [recurringProcessingModel] Adyen also
+     * stores the card for them. Null sends none.
+     */
     val shopperReference: String? = null,
     /** The shopper's email address, sent to Adyen with the shopper's details; null sends none. */
     val shopperEmail: String? = null,

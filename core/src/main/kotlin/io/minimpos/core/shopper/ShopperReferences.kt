@@ -13,8 +13,8 @@ enum class EmailReferenceMode {
 }
 
 /**
- * Validation and derivation of the Adyen shopperReference, which identifies a shopper for saving cards (tokenisation).
- * It comes either from a customer reference typed at checkout or from the shopper's email address.
+ * Validation and derivation of the Adyen shopperReference, which identifies a shopper and files their saved cards
+ * (tokenisation). It comes either from a customer reference typed at checkout or from the shopper's email address.
  */
 object ShopperReferences {
     /** The fewest characters, after trimming, that a typed customer reference needs; see [isValidReference]. */

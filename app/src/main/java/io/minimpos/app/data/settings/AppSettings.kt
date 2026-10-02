@@ -233,7 +233,10 @@ enum class EmailCapture {
     BOTH,
 }
 
-/** What the Adyen shopper reference of a saved card is made from, if cards are saved at all. */
+/**
+ * What the Adyen shopper reference sent with every payment is made from, if anything; saved cards are filed under it
+ * (see [PaymentSettings.offerCardSaving]).
+ */
 enum class ShopperReferenceSource {
     /** The customer reference typed at checkout. */
     CUSTOMER_REFERENCE,
@@ -241,7 +244,10 @@ enum class ShopperReferenceSource {
     /** The shopper's email address, as set by [PaymentSettings.emailReferenceMode]. */
     EMAIL,
 
-    /** Nothing: cards are not saved, so checkout asks for no customer reference (and the email only as set). */
+    /**
+     * Nothing: payments carry no shopper reference and cards cannot be saved, so checkout asks for no customer
+     * reference (and the email only as set).
+     */
     NONE,
 }
 
@@ -266,12 +272,14 @@ enum class ShopperReferenceSource {
  * @property emailCapture When checkout asks for an email; [effectiveEmailCapture] is what applies.
  * @property autoSendEmail When the email was captured before payment, send the receipt as soon as the payment is
  *   approved.
- * @property shopperReferenceSource What the shopper reference of a saved card is made from;
- *   [ShopperReferenceSource.NONE] (what a new installation starts with) saves no cards.
+ * @property shopperReferenceSource What the shopper reference sent with every payment is made from, whether or not the
+ *   card is saved; [ShopperReferenceSource.NONE] (what a new installation starts with) sends none and saves no cards.
  * @property emailReferenceMode How an email becomes a shopper reference, when [shopperReferenceSource] is
  *   [ShopperReferenceSource.EMAIL].
  * @property emailReferenceSalt Salt mixed into hashed email references. Terminals with the same salt give a shopper the
  *   same reference, so saved cards work on all of them; changing it gives every shopper a new reference.
+ * @property offerCardSaving Whether checkout offers "Save card" while there is a shopper reference. On by default, as
+ *   settings from before it existed offered it with every shopper reference.
  * @property sendShopperEmail Include `shopperEmail` in tokenization requests.
  * @property paymentLinks Whether checkout offers an Adyen payment link instead of sending a sale to the terminal; it
  *   also needs the Checkout API (see `io.minimpos.app.terminal.TerminalSetup.paymentLinks`).
@@ -294,6 +302,7 @@ data class PaymentSettings(
     val shopperReferenceSource: ShopperReferenceSource = ShopperReferenceSource.CUSTOMER_REFERENCE,
     val emailReferenceMode: EmailReferenceMode = EmailReferenceMode.HASHED,
     val emailReferenceSalt: String = "",
+    val offerCardSaving: Boolean = true,
     val sendShopperEmail: Boolean = true,
     val paymentLinks: Boolean = false,
     val linkExpiryHours: Int = DEFAULT_LINK_EXPIRY_HOURS,
@@ -319,8 +328,8 @@ data class PaymentSettings(
             effectiveEmailCapture == EmailCapture.BOTH
 
     /**
-     * Checkout asks for a customer reference exactly when it is the shopper reference, so cards can always be saved.
-     * With the email as shopper reference there is no separate customer reference.
+     * Checkout asks for a customer reference exactly when it is the shopper reference. With the email as shopper
+     * reference there is no separate customer reference.
      */
     val asksCustomerReference: Boolean
         get() = shopperReferenceSource == ShopperReferenceSource.CUSTOMER_REFERENCE

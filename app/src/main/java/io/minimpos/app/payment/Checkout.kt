@@ -57,7 +57,10 @@ data class Checkout(
     /** False when the entered customer reference is not a valid Adyen shopper reference; none entered is valid. */
     val customerReferenceValid: Boolean get() = customerReference?.let(ShopperReferences::isValidReference) != false
 
-    /** The Adyen shopperReference tokenization would use, if cards are saved and the entered data allows one. */
+    /**
+     * The Adyen shopperReference sent with the payment, whether or not the card is saved: made as
+     * [PaymentSettings.shopperReferenceSource] says, when the entered data allows one; null otherwise.
+     */
     val shopperReference: String?
         get() =
             when (payment.shopperReferenceSource) {
@@ -76,8 +79,11 @@ data class Checkout(
                 }
             }
 
-    /** Whether the card can be saved, which needs a [shopperReference]; the switch is disabled otherwise. */
-    val canTokenize: Boolean get() = shopperReference != null
+    /**
+     * Whether the card can be saved: saving is offered ([PaymentSettings.offerCardSaving]) and there is a
+     * [shopperReference] to save it under; the switch is hidden otherwise.
+     */
+    val canTokenize: Boolean get() = payment.offerCardSaving && shopperReference != null
 
     /**
      * Whether the card will be saved: the operator's choice, else the settings default (the pre-authorisation one for
@@ -97,7 +103,7 @@ data class Checkout(
 
     /**
      * The payment to start, or null unless [canPay]. A blank merchant reference is generated from [now] in [zone] with
-     * the configured prefix; the card is saved only when [tokenize] says so.
+     * the configured prefix; the [shopperReference] is always sent, and the card saved only when [tokenize] says so.
      */
     fun paymentStart(
         now: Instant,
@@ -110,12 +116,10 @@ data class Checkout(
             merchantReference = form.transactionReference.trim().ifEmpty { Ids.transactionReference(payment.referencePrefix, now, zone) },
             customerReference = customerReference,
             shopperEmail = form.email.trim().takeIf { it.isNotEmpty() },
-            tokenization =
-                shopperReference?.takeIf { tokenize }?.let {
-                    TokenizationRequest(it, payment.recurringModel(), payment.sendShopperEmail)
-                },
+            tokenization = TokenizationRequest(payment.recurringModel(), payment.sendShopperEmail).takeIf { tokenize },
             kind = kind,
             tipOnReceipt = tipOnReceipt,
+            shopperReference = shopperReference,
         )
     }
 
@@ -127,8 +131,8 @@ data class Checkout(
 
     /**
      * The payment link to create, or null unless [canSendLink]: the [paymentStart] at [now] in [zone] without tipping on
-     * the receipt (there is no paper to write on), with the [shopperReference] whether or not the card is saved, working
-     * for [PaymentSettings.linkExpiryHours] but at most [MAX_LINK_LIFETIME].
+     * the receipt (there is no paper to write on), working for [PaymentSettings.linkExpiryHours] but at most
+     * [MAX_LINK_LIFETIME].
      */
     fun linkStart(
         now: Instant,
@@ -137,7 +141,7 @@ data class Checkout(
         if (!canSendLink) return null
         val start = paymentStart(now, zone)?.copy(tipOnReceipt = false) ?: return null
         val lifetime = minOf(Duration.ofHours(payment.linkExpiryHours.toLong()), MAX_LINK_LIFETIME)
-        return PaymentLinkStart(start, shopperReference, now.plus(lifetime))
+        return PaymentLinkStart(start, now.plus(lifetime))
     }
 
     /** Field limits. */

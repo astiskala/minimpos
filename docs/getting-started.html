@@ -205,10 +205,10 @@ cd minimpos
             <dt>Payments</dt>
             <dd>The <strong>currency</strong> (any of the 138 Adyen processes; automatic follows the device's country),
               whether checkout asks for a <strong>transaction reference</strong> (off at first) and a reference prefix,
-              saving cards (off at first: choose whether the shopper reference comes from a customer reference or the
-              email, then whether Save card starts switched on, for sales and for pre-authorizations, and the recurring
-              model), when to ask for the shopper's email, and whether <strong>Tip on the receipt</strong> starts
-              switched on at checkout.</dd>
+              the <strong>shopper reference</strong> sent with every payment (none at first: a customer reference typed
+              at checkout or the shopper's email) and, with one, <strong>Offer to save cards</strong> (whether Save card
+              starts switched on, for sales and for pre-authorizations, and the recurring model), when to ask for the
+              shopper's email, and whether <strong>Tip on the receipt</strong> starts switched on at checkout.</dd>
             <dt>Tax</dt>
             <dd>Your named <strong>tax rates</strong> (such as GST 10% and GST-free 0%), whether prices include tax, the
               default rate for new products, and a <strong>Charge tax</strong> switch. A new installation starts with
@@ -220,7 +220,20 @@ cd minimpos
               references, refund QR code); whether the terminal has a printer (detected automatically), printing
               automatically (on at first), the merchant copy and the characters per line.</dd>
             <dt>Email (SMTP)</dt>
-            <dd>Your mail server, sender, an optional blind copy and the subject, with a test email.</dd>
+            <dd>Your mail server, sender, an optional blind copy and the subject, with a test email. Buttons fill in the
+              server for these providers (or <strong>Other</strong>, to type your own) and say what password they need
+              (usually an app password). Their help pages explain how to get it; on a tablet or phone the app links to
+              them too.
+              <ul>
+                <li><a href="https://support.google.com/mail/answer/185833">Gmail</a></li>
+                <li><a href="https://learn.microsoft.com/en-us/exchange/mail-flow-best-practices/how-to-set-up-a-multifunction-device-or-application-to-send-email-using-microsoft-365-or-office-365">Microsoft 365</a></li>
+                <li><a href="https://support.apple.com/en-us/102525">iCloud Mail</a></li>
+                <li><a href="https://help.yahoo.com/kb/pop-smtp-settings-article-sln4724.html">Yahoo Mail</a></li>
+                <li><a href="https://www.fastmail.help/hc/en-us/articles/1500000278342-Server-names-and-ports">Fastmail</a></li>
+                <li><a href="https://www.zoho.com/mail/help/zoho-smtp.html">Zoho Mail</a></li>
+                <li><a href="https://proton.me/support/smtp-submission">Proton Mail</a></li>
+              </ul>
+              Outlook.com is not among them: it no longer accepts a password for sending from other apps.</dd>
             <dt>Security</dt>
             <dd>An <strong>admin PIN</strong> for Settings and Products, and how soon they lock again. Set one before
               the terminal goes on the counter.</dd>
@@ -387,9 +400,9 @@ cd minimpos
             <li>Home now shows <strong>Pre-authorize</strong> beside New sale. A pre-authorization holds a single
               item, so tapping a product (or adding a custom amount, or scanning a barcode) goes straight to checkout;
               tap <strong>Pre-authorize</strong> there.</li>
-            <li>Once saving cards is switched on (Settings › Payments › Saving cards), Save card starts switched on at
-              checkout, so late costs can be charged once the pre-authorization has been captured. The receipt is titled
-              <em>PRE-AUTHORIZATION</em> and shows the amount held.</li>
+            <li>Once there is a shopper reference and saving cards is offered (Settings › Payments › Shoppers and saved
+              cards), Save card starts switched on at checkout, so late costs can be charged once the pre-authorization
+              has been captured. The receipt is titled <em>PRE-AUTHORIZATION</em> and shows the amount held.</li>
           </ol>
 
           <h3>Capture, adjust or cancel</h3>

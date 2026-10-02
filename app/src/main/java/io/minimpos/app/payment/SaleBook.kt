@@ -20,12 +20,15 @@ import io.minimpos.terminal.client.TransactionKind
  * @property merchantReference Adyen's merchant reference for the payment, such as `260930-145811-VQ45`.
  * @property customerReference Sent as payment metadata when set; only when it is also the shopper reference.
  * @property shopperEmail The shopper's email, for the receipt; sent to Adyen only with [tokenization] that includes it.
- * @property tokenization Set only when the shopper opted in to saving their card.
+ * @property tokenization Set only when the shopper opted in to saving their card (under [shopperReference]).
  * @property kind A sale, or a pre-authorisation that only holds the amount (sent with `authorisationType=PreAuth` and
  *   manual capture).
  * @property tipOnReceipt For a sale: taken for tipping on the receipt, so it is pre-authorised like a pre-authorisation
  *   and captured with the tip once that is entered (see [Captures]).
- * @throws IllegalArgumentException if a pre-authorisation is taken for tipping on the receipt.
+ * @property shopperReference Adyen's `shopperReference`, sent with the payment whether or not the card is saved; null
+ *   for none.
+ * @throws IllegalArgumentException if a pre-authorisation is taken for tipping on the receipt, or a card is to be saved
+ *   without a [shopperReference].
  */
 data class PaymentStart(
     val totals: CartTotals,
@@ -36,9 +39,11 @@ data class PaymentStart(
     val tokenization: TokenizationRequest?,
     val kind: SaleKind = SaleKind.SALE,
     val tipOnReceipt: Boolean = false,
+    val shopperReference: String? = null,
 ) {
     init {
         require(!tipOnReceipt || kind == SaleKind.SALE) { "Only a sale can be taken for tipping on the receipt" }
+        require(tokenization == null || shopperReference != null) { "Saving a card needs a shopper reference" }
     }
 
     /**
@@ -49,14 +54,13 @@ data class PaymentStart(
 }
 
 /**
- * Saving the shopper's card with the payment (Adyen tokenization).
+ * Saving the shopper's card with the payment (Adyen tokenization), under the payment's
+ * [PaymentStart.shopperReference].
  *
- * @property shopperReference Adyen's `shopperReference`, which the saved card is filed under.
  * @property recurringProcessingModel How the saved card will be used later.
  * @property includeEmail Whether to send `shopperEmail` with the request.
  */
 data class TokenizationRequest(
-    val shopperReference: String,
     val recurringProcessingModel: RecurringModel,
     val includeEmail: Boolean,
 )
@@ -89,7 +93,7 @@ class SaleBook(
                 amount = request.currency.toMajor(request.totals.amounts.gross),
                 currency = request.currency.code,
                 merchantReference = request.merchantReference,
-                shopperReference = tokenization?.shopperReference,
+                shopperReference = request.shopperReference,
                 shopperEmail = request.shopperEmail?.takeIf { tokenization?.includeEmail == true },
                 recurringProcessingModel = tokenization?.recurringProcessingModel,
                 // The app prints its own combined receipt, including the card details.
@@ -155,7 +159,7 @@ class SaleBook(
                 status = SaleStatus.PENDING,
                 merchantReference = request.merchantReference,
                 customerReference = request.customerReference,
-                shopperReference = request.tokenization?.shopperReference,
+                shopperReference = request.shopperReference,
                 shopperEmail = request.shopperEmail,
                 tokenizationRequested = request.tokenization != null,
                 kind = request.kind,

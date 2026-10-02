@@ -144,13 +144,23 @@ cd minimpos
             <p>以下はすべて<strong>設定</strong>にあります。</p>
             <dl class="settings-list">
               <dt>決済</dt>
-              <dd><strong>通貨</strong>（Adyen が扱う 138 通貨。自動設定は端末の国に従います）、会計時に<strong>取引参照ID</strong>を入力するかどうか（初期状態はオフ）と参照IDの接頭辞、カード保存の設定（初期状態は保存しない。購入者参照IDを顧客参照IDとメールアドレスのどちらから取得するかを選ぶと、通常販売とプリオーソリゼーションそれぞれの初期状態と継続課金モデルも設定できます）、購入者のメールアドレスを確認するタイミング、会計時に<strong>領収書にチップを記入</strong>を初期状態でオンにするかどうかを設定します。</dd>
+              <dd><strong>通貨</strong>（Adyen が扱う 138 通貨。自動設定は端末の国に従います）、会計時に<strong>取引参照ID</strong>を入力するかどうか（初期状態はオフ）と参照IDの接頭辞、すべての決済で送信する<strong>購入者参照ID</strong>（初期状態はなし。会計時に入力する顧客参照IDか購入者のメールアドレス）と、購入者参照IDがある場合の<strong>カード保存の選択肢を表示</strong>（通常販売とプリオーソリゼーションそれぞれの初期状態と継続課金モデル）、購入者のメールアドレスを確認するタイミング、会計時に<strong>領収書にチップを記入</strong>を初期状態でオンにするかどうかを設定します。</dd>
               <dt>税</dt>
               <dd>名前付きの<strong>税率</strong>（例：GST 10%、GST-free 0%）、税込価格か税抜価格か、新商品の初期税率、<strong>税を適用</strong>するかどうかを設定します。新規インストール時は、アプリが端末の国の標準税率を把握していればその税率（日本では軽減税率 8% も）と 0% の税率が用意されます。米国とカナダでは 0% の税率のみで、税は価格に上乗せされます。商品を追加する前に確認してください。</dd>
               <dt>領収書</dt>
               <dd>店舗名、住所、税務番号、電話番号、タイトル、フッター、表示内容（税額内訳、参照ID、返金用 QR コード）、プリンターの有無（通常は自動検出）、自動印刷（初期状態はオン）、加盟店控え、1 行の文字幅を設定します。</dd>
               <dt>メール（SMTP）</dt>
-              <dd>メールサーバー、差出人、任意の BCC、件名を設定し、テストメールを送信できます。</dd>
+              <dd>メールサーバー、差出人、任意の BCC、件名を設定し、テストメールを送信できます。ボタンで次のサービスのサーバーを入力でき（<strong>その他</strong>を選ぶと手動で入力できます）、必要なパスワード（通常はアプリパスワード）が案内されます。パスワードの取得方法は各サービスのヘルプページをご覧ください。タブレットやスマートフォンではアプリからもリンクされます。
+                <ul>
+                  <li><a href="https://support.google.com/mail/answer/185833">Gmail</a></li>
+                  <li><a href="https://learn.microsoft.com/en-us/exchange/mail-flow-best-practices/how-to-set-up-a-multifunction-device-or-application-to-send-email-using-microsoft-365-or-office-365">Microsoft 365</a></li>
+                  <li><a href="https://support.apple.com/en-us/102525">iCloud Mail</a></li>
+                  <li><a href="https://help.yahoo.com/kb/pop-smtp-settings-article-sln4724.html">Yahoo Mail</a></li>
+                  <li><a href="https://www.fastmail.help/hc/en-us/articles/1500000278342-Server-names-and-ports">Fastmail</a></li>
+                  <li><a href="https://www.zoho.com/mail/help/zoho-smtp.html">Zoho Mail</a></li>
+                  <li><a href="https://proton.me/support/smtp-submission">Proton Mail</a></li>
+                </ul>
+                Outlook.com は他のアプリからの送信にパスワードを使えなくなったため、含まれていません。</dd>
               <dt>セキュリティ</dt>
               <dd>設定と商品管理を保護する<strong>管理者PIN</strong>と、再ロックまでの時間を設定します。端末をカウンターに置く前に PIN を設定してください。</dd>
               <dt>データ</dt>
@@ -228,7 +238,7 @@ cd minimpos
             <ol>
               <li><strong>商品</strong>で商品を編集または追加し、<strong>プリオーソリ商品</strong>をオンにします。その商品は新規販売には表示されなくなります。</li>
               <li>ホームの新規販売の隣に<strong>プリオーソリ</strong>が表示されます。1 件につき 1 商品の金額を確保するため、商品の選択、任意の金額の追加、バーコードのスキャンから直接会計画面に進みます。そこで<strong>…をプリオーソリ</strong>をタップします。</li>
-              <li>カードの保存をオンにすると（設定 › 決済 › カードの保存。購入者の同意が必要です）、会計時のカード保存が初期状態でオンになります。プリオーソリゼーションをキャプチャした後に、追加費用を請求するために利用できます。領収書のタイトルは<em>プリオーソリゼーション</em>で、確保額が表示されます。</li>
+              <li>購入者参照IDを設定してカード保存の選択肢を表示すると（設定 › 決済 › 購入者とカードの保存。購入者の同意が必要です）、会計時のカード保存が初期状態でオンになります。プリオーソリゼーションをキャプチャした後に、追加費用を請求するために利用できます。領収書のタイトルは<em>プリオーソリゼーション</em>で、確保額が表示されます。</li>
             </ol>
             <h3>キャプチャ、調整、キャンセル</h3>
             <ul>

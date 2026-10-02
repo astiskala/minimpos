@@ -83,7 +83,7 @@
   <string name="tax_rate">Tax rate</string>
   <string name="tax_default_standard">Standard</string>
   <string name="tax_default_reduced">Reduced</string>
-  <string name="tax_default_zero">Zero rated</string>
+  <string name="tax_default_zero">No tax</string>
 
   <!-- Checkout and payment -->
   <string name="checkout_title">Checkout</string>
@@ -568,7 +568,7 @@
   <string name="settings_tax">Tax</string>
   <string name="settings_tax_off">Off</string>
   <string name="settings_charge_tax">Charge tax</string>
-  <string name="settings_charge_tax_on">Products and custom items are taxed at their tax rate. Give items without tax a 0% rate, such as Zero rated.</string>
+  <string name="settings_charge_tax_on">Products and custom items are taxed at their tax rate. Give items without tax a 0% rate, such as No tax.</string>
   <string name="settings_charge_tax_off">No sale is taxed. Each product keeps its tax rate for when this is switched back on.</string>
   <string name="settings_tax_rates">Tax rates</string>
   <string name="settings_tax_is_default">Default</string>
@@ -603,7 +603,9 @@
   <string name="settings_reference_prefix">Reference prefix</string>
   <string name="settings_reference_prefix_hint">Optional. Added, with a hyphen, to the start of generated references.</string>
   <string name="settings_ask_transaction_reference">Ask for a transaction reference</string>
-  <string name="settings_tokenization">Saving cards</string>
+  <string name="settings_tokenization">Shoppers and saved cards</string>
+  <string name="settings_offer_card_saving">Offer to save cards</string>
+  <string name="settings_offer_card_saving_hint">Checkout offers to save the card when there is a shopper reference. Ask the shopper for consent.</string>
   <string name="settings_tokenize_default">Save card switch on by default</string>
   <string name="settings_tokenize_default_hint">Only shown when a shopper reference is available.</string>
   <string name="settings_pre_auth_tokenize_default">Save card on by default for pre-authorizations</string>
@@ -612,13 +614,13 @@
   <string name="recurring_card_on_file">Card on file</string>
   <string name="recurring_subscription">Subscription</string>
   <string name="recurring_unscheduled">Unscheduled card on file</string>
-  <string name="settings_shopper_reference_source">Shopper reference comes from</string>
+  <string name="settings_shopper_reference_source">Shopper reference</string>
   <string name="settings_source_customer">Customer reference</string>
-  <string name="settings_source_customer_hint">Checkout asks for a customer reference to save cards under.</string>
+  <string name="settings_source_customer_hint">Checkout asks for a customer reference and sends it to Adyen as the shopper reference.</string>
   <string name="settings_source_email">Shopper email</string>
   <string name="settings_source_email_hint">No separate customer reference is asked for: the email identifies the shopper.</string>
-  <string name="settings_source_none">None – don’t save cards</string>
-  <string name="settings_source_none_hint">Checkout asks for no customer reference and does not offer to save the card.</string>
+  <string name="settings_source_none">None</string>
+  <string name="settings_source_none_hint">Checkout asks for no customer reference. Payments are not linked to a shopper, so cards cannot be saved.</string>
   <string name="settings_email_reference_mode">Email as shopper reference</string>
   <string name="settings_email_hashed">Hashed (recommended)</string>
   <string name="settings_email_raw">Raw email address</string>
@@ -626,6 +628,7 @@
   <string name="settings_email_salt">Hash salt</string>
   <string name="settings_email_salt_hint">Use the same salt on every terminal so the same email maps to the same token.</string>
   <string name="settings_send_shopper_email">Send shopper email with saved cards</string>
+  <string name="settings_send_shopper_email_hint">When a card is saved at the terminal, the email typed at checkout goes to Adyen too and is kept with the shopper’s details. Payment links always send it.</string>
   <string name="settings_email_receipts">Email receipts</string>
   <string name="settings_tipping">Tipping</string>
   <string name="settings_tip_default">Tip on the receipt on by default</string>
@@ -674,6 +677,16 @@
   <string name="settings_smtp_none">None (not recommended)</string>
   <string name="settings_smtp_username">Username</string>
   <string name="settings_smtp_password">Password</string>
+  <string name="settings_smtp_providers">Fill in the server for:</string>
+  <string name="settings_smtp_other">Other</string>
+  <string name="settings_smtp_help">How to set up %1$s</string>
+  <string name="settings_smtp_advice_gmail">Use an app password, not your Google password. Creating one needs 2-Step Verification.</string>
+  <string name="settings_smtp_advice_microsoft_365">Your admin must allow SMTP AUTH for this mailbox. Microsoft turns password sign-in for it off by default at the end of 2026 and is phasing it out.</string>
+  <string name="settings_smtp_advice_icloud">Use an app-specific password, not your Apple Account password. The username is your full iCloud email address.</string>
+  <string name="settings_smtp_advice_yahoo">Use an app password, not your Yahoo password. Create one under Account security.</string>
+  <string name="settings_smtp_advice_fastmail">Use an app password, not your Fastmail password. Basic plans have no SMTP access.</string>
+  <string name="settings_smtp_advice_zoho">With your own domain on a paid plan, the server is smtppro.zoho.com; outside the US, use the one Zoho Mail’s settings show (such as smtp.zoho.eu). With two-factor authentication, use an app-specific password.</string>
+  <string name="settings_smtp_advice_proton">Needs a paid plan and an address on your own domain. Use an SMTP token from Proton Mail’s settings as the password.</string>
   <string name="settings_message">Message</string>
   <string name="settings_from_address">From address</string>
   <string name="settings_from_name">From name</string>

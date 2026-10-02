@@ -424,7 +424,7 @@ private fun ColumnScope.ProductFields(
         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
         modifier = Modifier.fillMaxWidth().testTag("productPrice"),
     )
-    // Items without tax get a 0% rate (such as Zero rated) from the same list.
+    // Items without tax get a 0% rate (such as No tax) from the same list.
     if (state.chargeTax) {
         TaxRatePicker(
             state.taxRates,

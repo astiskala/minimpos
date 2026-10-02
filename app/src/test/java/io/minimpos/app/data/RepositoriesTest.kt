@@ -64,11 +64,11 @@ class RepositoriesTest {
                 other.close()
             }
         }
-        assertThat(rates("DE")).containsExactly("Standard" to 19_000, "Zero rated" to 0).inOrder()
-        assertThat(rates("JP")).containsExactly("Standard" to 10_000, "Reduced" to 8_000, "Zero rated" to 0).inOrder()
+        assertThat(rates("DE")).containsExactly("Standard" to 19_000, "No tax" to 0).inOrder()
+        assertThat(rates("JP")).containsExactly("Standard" to 10_000, "Reduced" to 8_000, "No tax" to 0).inOrder()
         // No national rate, or an unknown country: no tax until the merchant sets a rate.
-        assertThat(rates("US")).containsExactly("Zero rated" to 0)
-        assertThat(rates("")).containsExactly("Zero rated" to 0)
+        assertThat(rates("US")).containsExactly("No tax" to 0)
+        assertThat(rates("")).containsExactly("No tax" to 0)
     }
 
     @Test
@@ -169,7 +169,7 @@ class RepositoriesTest {
             val summary = catalog.import(older, ImportMode.REPLACE)
             assertThat(summary.taxRatesAdded).isEqualTo(2)
             val zero = catalog.taxRates.first().single { it.rateMilliPercent == 0 }
-            assertThat(zero.name).isEqualTo("Zero rated")
+            assertThat(zero.name).isEqualTo("No tax")
             assertThat(catalog.products.first().map { it.taxRateId }).containsExactly(zero.id, zero.id)
             // An existing 0% rate is used, whatever its name.
             catalog.saveTaxRate(zero.copy(name = "GST-free"))

@@ -141,16 +141,24 @@ device API or the Adyen Payments app (Tap to Pay); anywhere through its built-in
   readers) is deliberately not integrated: it needs a backend for `/auth/certificate`, a private Maven repo, PCI MPoC and
   six-monthly updates.
 - Not verified against Adyen yet (no test account in CI): the cloud's event notifications for an offline or busy
-  terminal, the Payments app's return URL encoding, `error` answers and size limits on a real phone, and payment links'
-  answers on TEST (the `paid` status, the PATCH answer for an already paid link, line item validation).
+  terminal, the Payments app's return URL encoding, `error` answers and size limits on a real phone, payment links'
+  answers on TEST (the `paid` status, the PATCH answer for an already paid link, line item validation), and that a
+  terminal payment with a `shopperReference` but no `recurringProcessingModel` stores no card.
 - No TEST banner (test terminals show TEST themselves); `ModeBanner` only for the simulator. No "settings not
   protected" warning and no terminal/printer status line on Home (they are in Settings › About); Products/Settings
   are slim grey buttons. Secret field placeholders stay one line ("Type to replace").
 - Every product has a tax rate (0% rates for untaxed items; no "tax applies" switch); "Charge tax" off taxes nothing
   but keeps rates. The last tax rate cannot be deleted.
 - The customer reference is asked for exactly when it is the shopper reference (no separate switch); with the email
-  as shopper reference, email capture always includes "before payment". New installations save no cards
-  (`ShopperReferenceSource.NONE`), ask for no transaction reference and print automatically, so checkout is only Pay.
+  as shopper reference, email capture always includes "before payment". The shopper reference goes with every payment
+  (terminal and link); "Offer to save cards" (`offerCardSaving`, shown only with a shopper reference) decides whether
+  checkout offers Save card. New installations have no shopper reference (`ShopperReferenceSource.NONE`), ask for no
+  transaction reference and print automatically, so checkout is only Pay.
+- Settings › Email's provider buttons (`SmtpProvider`) list only providers that still accept a password for SMTP,
+  since `SmtpMailer` has no OAuth: Outlook.com is left out, and Microsoft 365's advice follows Microsoft's SMTP AUTH
+  retirement (off by default from the end of 2026). Check the table against the providers' help pages when it changes.
+  The app links the help pages only off a terminal (terminals have no browser); the getting started guide lists the
+  same links, so keep `SmtpProvider.helpUrl` and the guide's three languages in sync.
 - Home's setup card shows wherever payments go but the simulator, saying what is missing (on a terminal, the shared
   key). A successful connection test names the currency while it follows the device's region. The optional Checkout
   API section in Settings › Terminal stays collapsed until something of it is entered (not in the cloud, which needs

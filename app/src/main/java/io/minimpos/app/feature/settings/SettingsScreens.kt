@@ -71,7 +71,6 @@ import io.minimpos.app.data.settings.PrinterMode
 import io.minimpos.app.data.settings.ReceiptSettings
 import io.minimpos.app.data.settings.ShopperReferenceSource
 import io.minimpos.app.data.settings.SimulatorSettings
-import io.minimpos.app.data.settings.SmtpSecurity
 import io.minimpos.app.data.settings.TerminalMode
 import io.minimpos.app.data.settings.TerminalSettings
 import io.minimpos.app.feature.OutcomeMessage
@@ -1008,7 +1007,7 @@ private fun ColumnScope.PaymentsSection(
         update { it.copy(askTransactionReference = value) }
     })
     SectionHeader(stringResource(R.string.settings_tokenization))
-    TokenizationSettings(payment, ::update)
+    ShopperReferenceSettings(payment, ::update)
     SectionHeader(stringResource(R.string.settings_tipping))
     SettingSwitch(
         stringResource(R.string.settings_tip_default),
@@ -1058,17 +1057,65 @@ private fun ColumnScope.PaymentLinkSettings(
 }
 
 /**
- * Saving cards: what the shopper reference is made from (or none, so no card is saved), then, while cards are saved,
- * the defaults, the recurring model and how an email becomes a reference.
+ * Shoppers and saved cards: what the shopper reference sent with every payment is made from (or none, so no card can be
+ * saved) and how an email becomes one, then, while there is one, offering to save cards under it.
  */
 @Composable
-private fun ColumnScope.TokenizationSettings(
+private fun ColumnScope.ShopperReferenceSettings(
     payment: PaymentSettings,
     update: ((PaymentSettings) -> PaymentSettings) -> Unit,
 ) {
     val source = payment.shopperReferenceSource
     ShopperReferenceSourceChoice(source) { choice -> update { it.copy(shopperReferenceSource = choice) } }
     if (source == ShopperReferenceSource.NONE) return
+    if (source == ShopperReferenceSource.EMAIL) EmailReferenceSettings(payment, update)
+    CardSavingSettings(payment, update)
+}
+
+/** How the shopper's email becomes the shopper reference: hashed (with its salt) or the raw address. */
+@Composable
+private fun ColumnScope.EmailReferenceSettings(
+    payment: PaymentSettings,
+    update: ((PaymentSettings) -> PaymentSettings) -> Unit,
+) {
+    SettingChoice(
+        title = stringResource(R.string.settings_email_reference_mode),
+        options =
+            listOf(
+                EmailReferenceMode.HASHED to stringResource(R.string.settings_email_hashed),
+                EmailReferenceMode.RAW to stringResource(R.string.settings_email_raw),
+            ),
+        selected = payment.emailReferenceMode,
+        onSelect = { mode -> update { it.copy(emailReferenceMode = mode) } },
+        subtitle = stringResource(R.string.settings_email_reference_hint),
+    )
+    if (payment.emailReferenceMode == EmailReferenceMode.HASHED) {
+        SettingTextField(
+            stringResource(R.string.settings_email_salt),
+            payment.emailReferenceSalt,
+            { value -> update { it.copy(emailReferenceSalt = value) } },
+            supporting = stringResource(R.string.settings_email_salt_hint),
+        )
+    }
+}
+
+/**
+ * Whether checkout offers "Save card", then, while it does, its defaults, the recurring model and sending the shopper's
+ * email with saved cards.
+ */
+@Composable
+private fun ColumnScope.CardSavingSettings(
+    payment: PaymentSettings,
+    update: ((PaymentSettings) -> PaymentSettings) -> Unit,
+) {
+    SettingSwitch(
+        stringResource(R.string.settings_offer_card_saving),
+        payment.offerCardSaving,
+        { value -> update { it.copy(offerCardSaving = value) } },
+        subtitle = stringResource(R.string.settings_offer_card_saving_hint),
+        tag = "offerCardSaving",
+    )
+    if (!payment.offerCardSaving) return
     SaveCardDefaults(payment, update)
     SettingChoice(
         title = stringResource(R.string.settings_recurring_model),
@@ -1086,35 +1133,18 @@ private fun ColumnScope.TokenizationSettings(
         selected = payment.recurringProcessingModel,
         onSelect = { model -> update { it.copy(recurringProcessingModel = model) } },
     )
-    if (source == ShopperReferenceSource.EMAIL) {
-        SettingChoice(
-            title = stringResource(R.string.settings_email_reference_mode),
-            options =
-                listOf(
-                    EmailReferenceMode.HASHED to stringResource(R.string.settings_email_hashed),
-                    EmailReferenceMode.RAW to stringResource(R.string.settings_email_raw),
-                ),
-            selected = payment.emailReferenceMode,
-            onSelect = { mode -> update { it.copy(emailReferenceMode = mode) } },
-            subtitle = stringResource(R.string.settings_email_reference_hint),
-        )
-        if (payment.emailReferenceMode == EmailReferenceMode.HASHED) {
-            SettingTextField(
-                stringResource(R.string.settings_email_salt),
-                payment.emailReferenceSalt,
-                { value -> update { it.copy(emailReferenceSalt = value) } },
-                supporting = stringResource(R.string.settings_email_salt_hint),
-            )
-        }
-    }
-    SettingSwitch(stringResource(R.string.settings_send_shopper_email), payment.sendShopperEmail, { value ->
-        update { it.copy(sendShopperEmail = value) }
-    })
+    SettingSwitch(
+        stringResource(R.string.settings_send_shopper_email),
+        payment.sendShopperEmail,
+        { value -> update { it.copy(sendShopperEmail = value) } },
+        subtitle = stringResource(R.string.settings_send_shopper_email_hint),
+        tag = "sendShopperEmail",
+    )
 }
 
 /**
- * What the shopper reference of a saved card is made from, [source] (none saves no card); it also decides whether
- * checkout asks for a customer reference, which has no switch of its own.
+ * What the shopper reference sent with every payment is made from, [source] (none sends none and saves no card); it
+ * also decides whether checkout asks for a customer reference, which has no switch of its own.
  */
 @Composable
 private fun ShopperReferenceSourceChoice(
@@ -1302,6 +1332,8 @@ private fun ColumnScope.EmailSection(
     events: SettingsEvents,
 ) {
     val email = state.settings.email
+    val terminal by LocalAppContainer.current.terminalStatus.state
+        .collectAsStateWithLifecycle()
     var askRecipient by remember { mutableStateOf(false) }
 
     fun update(transform: (EmailSettings) -> EmailSettings) = events.onUpdate { it.copy(email = transform(it.email)) }
@@ -1309,6 +1341,7 @@ private fun ColumnScope.EmailSection(
         email = email,
         passwordSaved = Secret.SMTP_PASSWORD in state.secrets,
         secretError = actions.secretError?.text(),
+        canOpenLinks = terminal.loaded && !terminal.onTerminal,
         onPassword = { events.onSecretChange(Secret.SMTP_PASSWORD, it) },
         update = ::update,
     )
@@ -1354,38 +1387,6 @@ private fun ColumnScope.EmailSection(
             onDismiss = { askRecipient = false },
         )
     }
-}
-
-/** The SMTP server, login and password ([onPassword] with null forgets it). */
-@Composable
-private fun ColumnScope.SmtpServerSettings(
-    email: EmailSettings,
-    passwordSaved: Boolean,
-    secretError: String?,
-    onPassword: (String?) -> Unit,
-    update: ((EmailSettings) -> EmailSettings) -> Unit,
-) {
-    SectionHeader(stringResource(R.string.settings_smtp))
-    SettingTextField(stringResource(R.string.settings_smtp_host), email.host, { value ->
-        update { it.copy(host = value.trim()) }
-    }, tag = "smtpHost")
-    SettingNumberField(stringResource(R.string.settings_port), email.port, EmailSettings.PORTS, { port -> update { it.copy(port = port) } })
-    SettingChoice(
-        title = stringResource(R.string.settings_smtp_security),
-        options =
-            listOf(
-                SmtpSecurity.STARTTLS to stringResource(R.string.settings_smtp_starttls),
-                SmtpSecurity.SSL to stringResource(R.string.settings_smtp_ssl),
-                SmtpSecurity.NONE to stringResource(R.string.settings_smtp_none),
-            ),
-        selected = email.security,
-        onSelect = { security -> update { it.copy(security = security) } },
-    )
-    SettingTextField(stringResource(R.string.settings_smtp_username), email.username, { value ->
-        update { it.copy(username = value.trim()) }
-    })
-    SettingSecret(stringResource(R.string.settings_smtp_password), passwordSaved, onPassword, { onPassword(null) })
-    secretError?.let { ActionMessage(it, isError = true, modifier = Modifier.padding(horizontal = 16.dp)) }
 }
 
 @Composable

@@ -12,14 +12,12 @@ import java.util.Locale
 /**
  * A sale to be paid through an Adyen payment link instead of on the terminal, as [Checkout.linkStart] makes it.
  *
- * @property payment What checkout collected, as for the terminal (never taken for tipping on the receipt).
- * @property shopperReference The shopper reference to send with the link, whether or not the card is to be saved
- *   ([PaymentStart.tokenization] decides that); null when checkout has none.
+ * @property payment What checkout collected, as for the terminal (never taken for tipping on the receipt), shopper
+ *   reference included.
  * @property expiresAt When the link stops working.
  */
 data class PaymentLinkStart(
     val payment: PaymentStart,
-    val shopperReference: String?,
     val expiresAt: Instant,
 ) {
     /** This link as the new PENDING sale [id], started at [createdAt] (epoch ms), before Adyen is called. */
@@ -28,7 +26,6 @@ data class PaymentLinkStart(
         createdAt: Long,
     ): SaleEntity =
         SaleBook.pendingSale(id, payment, createdAt).copy(
-            shopperReference = payment.tokenization?.shopperReference ?: shopperReference,
             paymentLink = true,
             paymentLinkExpiresAt = expiresAt.toEpochMilli(),
         )

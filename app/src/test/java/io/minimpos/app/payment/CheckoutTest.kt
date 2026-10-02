@@ -12,6 +12,7 @@ import io.minimpos.core.cart.AppliedTax
 import io.minimpos.core.cart.Cart
 import io.minimpos.core.cart.CartProduct
 import io.minimpos.core.money.CurrencySpec
+import io.minimpos.core.shopper.EmailReferenceMode
 import io.minimpos.core.tax.TaxMode
 import io.minimpos.terminal.client.RecurringModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -49,9 +50,8 @@ class CheckoutTest {
         assertThat(start.merchantReference).matches("MP-260930-145811-[0-9A-Z]{4}")
         assertThat(start.customerReference).isEqualTo("CUST-1")
         assertThat(start.shopperEmail).isEqualTo("a@b.co")
-        assertThat(
-            start.tokenization,
-        ).isEqualTo(TokenizationRequest("CUST-1", RecurringModel.UNSCHEDULED_CARD_ON_FILE, includeEmail = true))
+        assertThat(start.shopperReference).isEqualTo("CUST-1")
+        assertThat(start.tokenization).isEqualTo(TokenizationRequest(RecurringModel.UNSCHEDULED_CARD_ON_FILE, includeEmail = true))
         assertThat(start.manualCapture).isFalse()
         // A typed reference is kept; without the switch the settings default (off for sales) applies.
         val typed =
@@ -60,6 +60,8 @@ class CheckoutTest {
             ).paymentStart(now, ZoneOffset.UTC)!!
         assertThat(typed.merchantReference).isEqualTo("ORDER-7")
         assertThat(typed.tokenization).isNull()
+        // The shopper reference goes with the payment even though the card is not saved.
+        assertThat(typed.shopperReference).isEqualTo("CUST-1")
     }
 
     @Test
@@ -71,8 +73,32 @@ class CheckoutTest {
         assertThat(preAuth.canTokenize).isFalse()
         val start = preAuth.paymentStart(now, ZoneOffset.UTC)!!
         assertThat(start.tokenization).isNull()
+        assertThat(start.shopperReference).isNull()
         assertThat(start.customerReference).isNull()
         assertThat(start.shopperEmail).isEqualTo("a@b.co")
+    }
+
+    @Test
+    fun `with saving cards not offered the shopper reference is still sent, but no card is saved`() {
+        val email =
+            PaymentSettings(
+                shopperReferenceSource = ShopperReferenceSource.EMAIL,
+                emailReferenceMode = EmailReferenceMode.RAW,
+                offerCardSaving = false,
+                preAuthTokenizeDefaultOn = true,
+            )
+        val preAuth = checkout(CheckoutForm(email = " S@Example.com ", tokenize = true), email, SaleKind.PRE_AUTHORISATION)
+        assertThat(preAuth.showEmail).isTrue()
+        assertThat(preAuth.shopperReference).isEqualTo("s@example.com")
+        assertThat(preAuth.canTokenize).isFalse()
+        assertThat(preAuth.tokenize).isFalse()
+        val start = preAuth.paymentStart(now, ZoneOffset.UTC)!!
+        assertThat(start.shopperReference).isEqualTo("s@example.com")
+        assertThat(start.tokenization).isNull()
+        val customer = checkout(CheckoutForm(customerReference = "CUST-1"), PaymentSettings(offerCardSaving = false))
+        assertThat(customer.showCustomerReference).isTrue()
+        assertThat(customer.canTokenize).isFalse()
+        assertThat(customer.paymentStart(now, ZoneOffset.UTC)!!.shopperReference).isEqualTo("CUST-1")
     }
 
     @Test
@@ -122,7 +148,7 @@ class CheckoutTest {
             ).linkStart(now, ZoneOffset.UTC)!!
         assertThat(start.payment.tipOnReceipt).isFalse()
         assertThat(start.payment.tokenization).isNull()
-        assertThat(start.shopperReference).isEqualTo("CUST-1")
+        assertThat(start.payment.shopperReference).isEqualTo("CUST-1")
         assertThat(start.expiresAt).isEqualTo(now.plusSeconds(48 * 3600))
         val longest =
             Checkout(
@@ -133,7 +159,7 @@ class CheckoutTest {
                 linksAvailable = true,
             ).linkStart(now, ZoneOffset.UTC)!!
         assertThat(longest.expiresAt).isEqualTo(now.plus(Checkout.MAX_LINK_LIFETIME))
-        assertThat(longest.shopperReference).isNull()
+        assertThat(longest.payment.shopperReference).isNull()
         val sale = start.pendingSale("s1", 5)
         assertThat(sale.paymentLink).isTrue()
         assertThat(sale.shopperReference).isEqualTo("CUST-1")

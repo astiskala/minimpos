@@ -34,7 +34,6 @@ import io.minimpos.app.data.db.SaleStatus
 import io.minimpos.app.data.db.TaxRateEntity
 import io.minimpos.app.data.repo.HistoryItem
 import io.minimpos.app.data.settings.AppSettings
-import io.minimpos.app.data.settings.EmailCapture
 import io.minimpos.app.data.settings.ShopperReferenceSource
 import io.minimpos.app.data.settings.TerminalMode
 import io.minimpos.core.cart.AppliedTax
@@ -599,53 +598,6 @@ class AppFlowTest {
         compose.onNodeWithText("Simulator").assertExists()
         compose.onNodeWithText("Printer").assertExists()
         compose.onNodeWithText("Available").assertExists()
-    }
-
-    @Test
-    fun `with the email as shopper reference checkout asks for the email and no customer reference`() {
-        env.updateSettings {
-            it.copy(
-                payment = it.payment.copy(shopperReferenceSource = ShopperReferenceSource.EMAIL, emailCapture = EmailCapture.AFTER_PAYMENT),
-            )
-        }
-        ringUpCustomAmount(5, 0, 0)
-        compose.onNodeWithTag("charge").performClick()
-        compose.waitForTag("pay")
-        compose.onNodeWithTag("email").assertExists()
-        compose.onNodeWithTag("customerReference").assertDoesNotExist()
-    }
-
-    @Test
-    fun `with the email as shopper reference it is always asked for before payment`() {
-        env.updateSettings {
-            it.copy(
-                payment = it.payment.copy(shopperReferenceSource = ShopperReferenceSource.EMAIL, emailCapture = EmailCapture.AFTER_PAYMENT),
-            )
-        }
-        compose.onNodeWithTag("settings").performClick()
-        compose.waitForTag("section_payments")
-        compose.onNodeWithTag("section_payments").performClick()
-        compose.waitForTag("emailCapture")
-        // There is no separate customer reference to ask for.
-        compose.onNodeWithTag("referenceSource").assertTextContains("No separate customer reference", substring = true)
-        compose.onNodeWithTag("emailCapture").performScrollTo().assertTextContains("Before and after payment", substring = true)
-        compose.onNodeWithTag("emailCapture").assertTextContains("the email is the shopper reference", substring = true)
-        compose.onNodeWithTag("emailCapture").performClick()
-        compose.waitForTag("emailCapture_BEFORE_PAYMENT")
-        compose.onNodeWithTag("emailCapture_OFF").assertDoesNotExist()
-        compose.onNodeWithTag("emailCapture_AFTER_PAYMENT").assertDoesNotExist()
-        compose.onNodeWithTag("emailCapture_BEFORE_PAYMENT").performClick()
-        awaitSetting("Before payment") { container.settingsState.value.payment.emailCapture == EmailCapture.BEFORE_PAYMENT }
-
-        // Back to the customer reference as shopper reference: checkout asks for it again.
-        compose.onNodeWithTag("referenceSource").performScrollTo().performClick()
-        compose.waitForTag("referenceSource_CUSTOMER_REFERENCE")
-        compose.onNodeWithTag("referenceSource_CUSTOMER_REFERENCE").performClick()
-        awaitSetting("Customer reference") {
-            container.settingsState.value.payment.shopperReferenceSource == ShopperReferenceSource.CUSTOMER_REFERENCE
-        }
-        compose.onNodeWithTag("referenceSource").assertTextContains("Checkout asks for a customer reference", substring = true)
-        compose.onNodeWithText("No separate customer reference", substring = true).assertDoesNotExist()
     }
 
     @Test

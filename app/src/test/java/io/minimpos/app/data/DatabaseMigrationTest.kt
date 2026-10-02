@@ -108,7 +108,7 @@ class DatabaseMigrationTest {
         migrated(name) { db ->
             val dao = db.catalogDao()
             val zero = dao.taxRatesOnce().single { it.rateMilliPercent == 0 }
-            assertThat(zero.name).isEqualTo("Zero rated")
+            assertThat(zero.name).isEqualTo("No tax")
             assertThat(zero.sortOrder).isEqualTo(1)
             assertThat(dao.productsOnce().associate { it.name to it.taxRateId })
                 .containsExactly("Latte", 1L, "Stamp", zero.id, "Card", zero.id)

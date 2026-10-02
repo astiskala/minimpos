@@ -22,6 +22,7 @@ import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
+import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -40,6 +41,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
@@ -76,27 +78,46 @@ fun SettingTextField(
     tag: String? = null,
 ) {
     var text by remember { mutableStateOf(value) }
-    OutlinedTextField(
-        value = text,
-        onValueChange = {
-            text = it
-            if (!isError(it)) onCommit(it)
-        },
-        label = { Text(label) },
-        placeholder = placeholder?.let { { Text(it) } },
-        supportingText = supporting?.let { { Text(it) } },
-        isError = isError(text),
-        singleLine = singleLine,
-        minLines = if (singleLine) 1 else 3,
-        keyboardOptions = KeyboardOptions(keyboardType = keyboardType, autoCorrectEnabled = autoCorrect, imeAction = imeAction),
-        modifier =
-            modifier
-                .fillMaxWidth()
-                .padding(
-                    horizontal = 16.dp,
-                    vertical = if (LocalDimens.current.compact) 2.dp else 4.dp,
-                ).tagged(tag),
-    )
+    val error = isError(text)
+    Column(modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = if (LocalDimens.current.compact) 2.dp else 4.dp)) {
+        OutlinedTextField(
+            value = text,
+            onValueChange = {
+                text = it
+                if (!isError(it)) onCommit(it)
+            },
+            label = { Text(label) },
+            placeholder = placeholder?.let { { Text(it) } },
+            isError = error,
+            singleLine = singleLine,
+            minLines = if (singleLine) 1 else 3,
+            keyboardOptions = KeyboardOptions(keyboardType = keyboardType, autoCorrectEnabled = autoCorrect, imeAction = imeAction),
+            modifier = Modifier.fillMaxWidth().tagged(tag),
+        )
+        supporting?.let {
+            FieldNote(
+                Icons.Outlined.Info,
+                it,
+                if (error) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
+                Modifier.padding(top = 4.dp),
+            )
+        }
+    }
+}
+
+/** A line under a field, starting at its edge: an [icon] and then [text], both in [tint]. */
+@Composable
+private fun FieldNote(
+    icon: ImageVector,
+    text: String,
+    tint: Color,
+    modifier: Modifier = Modifier,
+) {
+    Row(modifier.fillMaxWidth()) {
+        Icon(icon, contentDescription = null, tint = tint, modifier = Modifier.size(16.dp))
+        Spacer(Modifier.width(6.dp))
+        Text(text, style = MaterialTheme.typography.bodySmall, color = tint)
+    }
 }
 
 /** A whole-number setting; [onCommit] only gets values in [range], and others are shown as an error. */
@@ -266,24 +287,12 @@ fun SecretField(
             modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = if (compact) 2.dp else 4.dp).tagged(tag),
         )
         // Whether it is saved, on its own line at the screen's text edge (not indented like a field's supporting text).
-        val tint = if (isSet) colors.success else colors.error
-        Row(
-            Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, top = 6.dp, bottom = if (compact) 8.dp else 12.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Icon(
-                if (isSet) Icons.Default.CheckCircle else Icons.Default.ErrorOutline,
-                contentDescription = null,
-                tint = tint,
-                modifier = Modifier.size(16.dp),
-            )
-            Spacer(Modifier.width(6.dp))
-            Text(
-                stringResource(if (isSet) R.string.settings_secret_saved else R.string.settings_secret_not_saved),
-                style = MaterialTheme.typography.bodySmall,
-                color = tint,
-            )
-        }
+        FieldNote(
+            if (isSet) Icons.Default.CheckCircle else Icons.Default.ErrorOutline,
+            stringResource(if (isSet) R.string.settings_secret_saved else R.string.settings_secret_not_saved),
+            if (isSet) colors.success else colors.error,
+            Modifier.padding(start = 16.dp, end = 16.dp, top = 6.dp, bottom = if (compact) 8.dp else 12.dp),
+        )
     }
 }
 

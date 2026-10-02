@@ -49,14 +49,22 @@ fun adviceText(advice: RetryAdvice): String =
     )
 
 /**
- * How a sale in [status] is shown: approved is a success, declined and failed are errors, and cancelled or unsettled
- * sales are warnings.
+ * How a sale in [status] is shown: approved is a success, declined and failed are errors, and cancelled, unsettled,
+ * unpaid and expired payment links are warnings.
  */
 fun statusKind(status: SaleStatus): StatusKind =
     when (status) {
-        SaleStatus.APPROVED -> StatusKind.SUCCESS
-        SaleStatus.CANCELLED, SaleStatus.UNKNOWN, SaleStatus.PENDING -> StatusKind.WARNING
-        SaleStatus.DECLINED, SaleStatus.FAILED -> StatusKind.ERROR
+        SaleStatus.APPROVED -> {
+            StatusKind.SUCCESS
+        }
+
+        SaleStatus.CANCELLED, SaleStatus.UNKNOWN, SaleStatus.PENDING, SaleStatus.AWAITING_PAYMENT, SaleStatus.EXPIRED -> {
+            StatusKind.WARNING
+        }
+
+        SaleStatus.DECLINED, SaleStatus.FAILED -> {
+            StatusKind.ERROR
+        }
     }
 
 /**
@@ -195,5 +203,7 @@ fun statusTitle(status: SaleStatus): String =
             SaleStatus.FAILED -> R.string.status_failed
             SaleStatus.UNKNOWN -> R.string.status_unknown
             SaleStatus.PENDING -> R.string.status_pending
+            SaleStatus.AWAITING_PAYMENT -> R.string.status_awaiting_payment
+            SaleStatus.EXPIRED -> R.string.status_link_expired
         },
     )

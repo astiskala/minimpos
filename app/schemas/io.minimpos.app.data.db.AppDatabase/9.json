@@ -1,0 +1,719 @@
+{
+  "formatVersion": 1,
+  "database": {
+    "version": 9,
+    "identityHash": "ae48adbb800ba441dfb984795b990dda",
+    "entities": [
+      {
+        "tableName": "tax_rates",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `name` TEXT NOT NULL, `rateMilliPercent` INTEGER NOT NULL, `sortOrder` INTEGER NOT NULL)",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "name",
+            "columnName": "name",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "rateMilliPercent",
+            "columnName": "rateMilliPercent",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "sortOrder",
+            "columnName": "sortOrder",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "id"
+          ]
+        }
+      },
+      {
+        "tableName": "categories",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `name` TEXT NOT NULL, `sortOrder` INTEGER NOT NULL)",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "name",
+            "columnName": "name",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "sortOrder",
+            "columnName": "sortOrder",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "id"
+          ]
+        }
+      },
+      {
+        "tableName": "products",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `name` TEXT NOT NULL, `priceMinor` INTEGER NOT NULL, `taxRateId` INTEGER NOT NULL, `categoryId` INTEGER, `sku` TEXT, `sortOrder` INTEGER NOT NULL, `kind` TEXT NOT NULL DEFAULT 'SALE', FOREIGN KEY(`taxRateId`) REFERENCES `tax_rates`(`id`) ON UPDATE NO ACTION ON DELETE RESTRICT , FOREIGN KEY(`categoryId`) REFERENCES `categories`(`id`) ON UPDATE NO ACTION ON DELETE SET NULL )",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "name",
+            "columnName": "name",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "priceMinor",
+            "columnName": "priceMinor",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "taxRateId",
+            "columnName": "taxRateId",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "categoryId",
+            "columnName": "categoryId",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "sku",
+            "columnName": "sku",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "sortOrder",
+            "columnName": "sortOrder",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "kind",
+            "columnName": "kind",
+            "affinity": "TEXT",
+            "notNull": true,
+            "defaultValue": "'SALE'"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_products_taxRateId",
+            "unique": false,
+            "columnNames": [
+              "taxRateId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_products_taxRateId` ON `${TABLE_NAME}` (`taxRateId`)"
+          },
+          {
+            "name": "index_products_categoryId",
+            "unique": false,
+            "columnNames": [
+              "categoryId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_products_categoryId` ON `${TABLE_NAME}` (`categoryId`)"
+          },
+          {
+            "name": "index_products_sku",
+            "unique": false,
+            "columnNames": [
+              "sku"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_products_sku` ON `${TABLE_NAME}` (`sku`)"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "table": "tax_rates",
+            "onDelete": "RESTRICT",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "taxRateId"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          },
+          {
+            "table": "categories",
+            "onDelete": "SET NULL",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "categoryId"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          }
+        ]
+      },
+      {
+        "tableName": "sales",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `createdAt` INTEGER NOT NULL, `currency` TEXT NOT NULL, `taxMode` TEXT NOT NULL, `netMinor` INTEGER NOT NULL, `taxMinor` INTEGER NOT NULL, `totalMinor` INTEGER NOT NULL, `status` TEXT NOT NULL, `merchantReference` TEXT NOT NULL, `customerReference` TEXT, `shopperReference` TEXT, `shopperEmail` TEXT, `tokenizationRequested` INTEGER NOT NULL, `storedPaymentMethodId` TEXT, `serviceId` TEXT, `poiId` TEXT, `poiTransactionId` TEXT, `poiTimestamp` TEXT, `pspReference` TEXT, `paymentBrand` TEXT, `maskedPan` TEXT, `entryMode` TEXT, `authCode` TEXT, `message` TEXT, `customerReceiptJson` TEXT, `cashierReceiptJson` TEXT, `signatureRequired` INTEGER NOT NULL, `refundedMinor` INTEGER NOT NULL, `emailedTo` TEXT, `errorCondition` TEXT, `refusalReason` TEXT, `kind` TEXT NOT NULL DEFAULT 'SALE', `tipOnReceipt` INTEGER NOT NULL DEFAULT 0, `tipMinor` INTEGER, `authorisedMinor` INTEGER, `adjustment` TEXT, `adjustAuthorisationData` TEXT, `capturedMinor` INTEGER, `captureStatus` TEXT, `modificationMessage` TEXT, `paymentMethodVariant` TEXT, `holdCancelled` INTEGER NOT NULL DEFAULT 0, `paymentLink` INTEGER NOT NULL DEFAULT 0, `paymentLinkId` TEXT, `paymentLinkUrl` TEXT, `paymentLinkExpiresAt` INTEGER, PRIMARY KEY(`id`))",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "createdAt",
+            "columnName": "createdAt",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "currency",
+            "columnName": "currency",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "taxMode",
+            "columnName": "taxMode",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "netMinor",
+            "columnName": "netMinor",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "taxMinor",
+            "columnName": "taxMinor",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "totalMinor",
+            "columnName": "totalMinor",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "status",
+            "columnName": "status",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "merchantReference",
+            "columnName": "merchantReference",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "customerReference",
+            "columnName": "customerReference",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "shopperReference",
+            "columnName": "shopperReference",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "shopperEmail",
+            "columnName": "shopperEmail",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "tokenizationRequested",
+            "columnName": "tokenizationRequested",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "storedPaymentMethodId",
+            "columnName": "storedPaymentMethodId",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "serviceId",
+            "columnName": "serviceId",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "poiId",
+            "columnName": "poiId",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "poiTransactionId",
+            "columnName": "poiTransactionId",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "poiTimestamp",
+            "columnName": "poiTimestamp",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "pspReference",
+            "columnName": "pspReference",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "paymentBrand",
+            "columnName": "paymentBrand",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "maskedPan",
+            "columnName": "maskedPan",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "entryMode",
+            "columnName": "entryMode",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "authCode",
+            "columnName": "authCode",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "message",
+            "columnName": "message",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "customerReceiptJson",
+            "columnName": "customerReceiptJson",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "cashierReceiptJson",
+            "columnName": "cashierReceiptJson",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "signatureRequired",
+            "columnName": "signatureRequired",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "refundedMinor",
+            "columnName": "refundedMinor",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "emailedTo",
+            "columnName": "emailedTo",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "errorCondition",
+            "columnName": "errorCondition",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "refusalReason",
+            "columnName": "refusalReason",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "kind",
+            "columnName": "kind",
+            "affinity": "TEXT",
+            "notNull": true,
+            "defaultValue": "'SALE'"
+          },
+          {
+            "fieldPath": "tipOnReceipt",
+            "columnName": "tipOnReceipt",
+            "affinity": "INTEGER",
+            "notNull": true,
+            "defaultValue": "0"
+          },
+          {
+            "fieldPath": "tipMinor",
+            "columnName": "tipMinor",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "authorisedMinor",
+            "columnName": "authorisedMinor",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "adjustment",
+            "columnName": "adjustment",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "adjustAuthorisationData",
+            "columnName": "adjustAuthorisationData",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "capturedMinor",
+            "columnName": "capturedMinor",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "captureStatus",
+            "columnName": "captureStatus",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "modificationMessage",
+            "columnName": "modificationMessage",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "paymentMethodVariant",
+            "columnName": "paymentMethodVariant",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "holdCancelled",
+            "columnName": "holdCancelled",
+            "affinity": "INTEGER",
+            "notNull": true,
+            "defaultValue": "0"
+          },
+          {
+            "fieldPath": "paymentLink",
+            "columnName": "paymentLink",
+            "affinity": "INTEGER",
+            "notNull": true,
+            "defaultValue": "0"
+          },
+          {
+            "fieldPath": "paymentLinkId",
+            "columnName": "paymentLinkId",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "paymentLinkUrl",
+            "columnName": "paymentLinkUrl",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "paymentLinkExpiresAt",
+            "columnName": "paymentLinkExpiresAt",
+            "affinity": "INTEGER"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_sales_createdAt",
+            "unique": false,
+            "columnNames": [
+              "createdAt"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_sales_createdAt` ON `${TABLE_NAME}` (`createdAt`)"
+          },
+          {
+            "name": "index_sales_poiTransactionId",
+            "unique": false,
+            "columnNames": [
+              "poiTransactionId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_sales_poiTransactionId` ON `${TABLE_NAME}` (`poiTransactionId`)"
+          }
+        ]
+      },
+      {
+        "tableName": "sale_lines",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `saleId` TEXT NOT NULL, `position` INTEGER NOT NULL, `productId` INTEGER, `name` TEXT NOT NULL, `sku` TEXT, `unitPriceMinor` INTEGER NOT NULL, `quantity` INTEGER NOT NULL, `taxName` TEXT NOT NULL, `taxRateMilliPercent` INTEGER NOT NULL, `netMinor` INTEGER NOT NULL, `taxMinor` INTEGER NOT NULL, `grossMinor` INTEGER NOT NULL, `refundedQuantity` INTEGER NOT NULL, FOREIGN KEY(`saleId`) REFERENCES `sales`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "saleId",
+            "columnName": "saleId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "position",
+            "columnName": "position",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "productId",
+            "columnName": "productId",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "name",
+            "columnName": "name",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "sku",
+            "columnName": "sku",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "unitPriceMinor",
+            "columnName": "unitPriceMinor",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "quantity",
+            "columnName": "quantity",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "taxName",
+            "columnName": "taxName",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "taxRateMilliPercent",
+            "columnName": "taxRateMilliPercent",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "netMinor",
+            "columnName": "netMinor",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "taxMinor",
+            "columnName": "taxMinor",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "grossMinor",
+            "columnName": "grossMinor",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "refundedQuantity",
+            "columnName": "refundedQuantity",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_sale_lines_saleId",
+            "unique": false,
+            "columnNames": [
+              "saleId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_sale_lines_saleId` ON `${TABLE_NAME}` (`saleId`)"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "table": "sales",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "saleId"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          }
+        ]
+      },
+      {
+        "tableName": "refunds",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `saleId` TEXT, `createdAt` INTEGER NOT NULL, `merchantReference` TEXT NOT NULL, `originalTransactionId` TEXT NOT NULL, `originalTimestamp` TEXT NOT NULL, `originalReference` TEXT, `currency` TEXT NOT NULL, `amountMinor` INTEGER NOT NULL, `full` INTEGER NOT NULL, `status` TEXT NOT NULL, `serviceId` TEXT, `pspReference` TEXT, `message` TEXT, `customerReceiptJson` TEXT, `linesJson` TEXT, `cancellation` INTEGER NOT NULL DEFAULT 0, PRIMARY KEY(`id`))",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "saleId",
+            "columnName": "saleId",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "createdAt",
+            "columnName": "createdAt",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "merchantReference",
+            "columnName": "merchantReference",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "originalTransactionId",
+            "columnName": "originalTransactionId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "originalTimestamp",
+            "columnName": "originalTimestamp",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "originalReference",
+            "columnName": "originalReference",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "currency",
+            "columnName": "currency",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "amountMinor",
+            "columnName": "amountMinor",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "full",
+            "columnName": "full",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "status",
+            "columnName": "status",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "serviceId",
+            "columnName": "serviceId",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "pspReference",
+            "columnName": "pspReference",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "message",
+            "columnName": "message",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "customerReceiptJson",
+            "columnName": "customerReceiptJson",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "linesJson",
+            "columnName": "linesJson",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "cancellation",
+            "columnName": "cancellation",
+            "affinity": "INTEGER",
+            "notNull": true,
+            "defaultValue": "0"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_refunds_createdAt",
+            "unique": false,
+            "columnNames": [
+              "createdAt"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_refunds_createdAt` ON `${TABLE_NAME}` (`createdAt`)"
+          },
+          {
+            "name": "index_refunds_saleId",
+            "unique": false,
+            "columnNames": [
+              "saleId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_refunds_saleId` ON `${TABLE_NAME}` (`saleId`)"
+          }
+        ]
+      }
+    ],
+    "setupQueries": [
+      "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'ae48adbb800ba441dfb984795b990dda')"
+    ]
+  }
+}

@@ -119,6 +119,10 @@ val SaleEntity.decline: Decline? get() = Decline.of(status == SaleStatus.APPROVE
  * @property heldNowMinor What a pre-authorisation holds after an adjustment, when that differs from its amount; else
  *   null.
  * @property capturedMinor What a captured pre-authorisation ([PaymentStanding.captured]) captured; else null.
+ * @property unpaidLink The address of the payment link a sale still awaits its payment through
+ *   ([SaleStatus.AWAITING_PAYMENT]), so its receipt is an unpaid one with the link; else null.
+ * @property linkExpiresAt When that link stops working, in epoch milliseconds; null without one.
+ * @property paidOnline Whether it was paid through its payment link, which the receipt says.
  */
 data class ReceiptStanding(
     val approved: Boolean,
@@ -127,6 +131,9 @@ data class ReceiptStanding(
     val awaitingTip: Boolean,
     val heldNowMinor: Long?,
     val capturedMinor: Long?,
+    val unpaidLink: String? = null,
+    val linkExpiresAt: Long? = null,
+    val paidOnline: Boolean = false,
 ) {
     /** Reading a sale. */
     companion object {
@@ -134,6 +141,7 @@ data class ReceiptStanding(
         fun of(sale: SaleEntity): ReceiptStanding {
             val standing = sale.standing
             val preAuthorisation = sale.kind == SaleKind.PRE_AUTHORISATION
+            val unpaidLink = sale.paymentLinkUrl?.takeIf { sale.awaitsLinkPayment }
             return ReceiptStanding(
                 approved = standing != PaymentStanding.NOT_APPROVED,
                 preAuthorisation = preAuthorisation,
@@ -141,10 +149,16 @@ data class ReceiptStanding(
                 awaitingTip = standing == PaymentStanding.AWAITING_TIP,
                 heldNowMinor = sale.authorisedMinor?.takeIf { preAuthorisation && it != sale.totalMinor },
                 capturedMinor = sale.capturedMinor?.takeIf { preAuthorisation && standing.captured },
+                unpaidLink = unpaidLink,
+                linkExpiresAt = sale.paymentLinkExpiresAt?.takeIf { unpaidLink != null },
+                paidOnline = sale.paymentLink && standing.charged,
             )
         }
     }
 }
+
+/** Whether this sale's payment link has been created and not paid yet, so the shopper can still pay with it. */
+val SaleEntity.awaitsLinkPayment: Boolean get() = paymentLink && status == SaleStatus.AWAITING_PAYMENT && paymentLinkUrl != null
 
 /** What the operator can do with a stored payment now, see [actions]. */
 enum class PaymentAction {

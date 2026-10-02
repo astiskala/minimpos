@@ -28,6 +28,7 @@ import io.minimpos.app.email.ReceiptEmailer
 import io.minimpos.app.email.SmtpMailer
 import io.minimpos.app.feature.textRes
 import io.minimpos.app.payment.Captures
+import io.minimpos.app.payment.PaymentLinks
 import io.minimpos.app.payment.PaymentStart
 import io.minimpos.app.payment.ReceiptDelivery
 import io.minimpos.app.payment.RefundBook
@@ -52,6 +53,9 @@ import io.minimpos.app.terminal.VirtualPrinter
 import io.minimpos.core.money.CurrencySpec
 import io.minimpos.core.receipt.ReceiptDocument
 import io.minimpos.core.receipt.ReceiptLabels
+import io.minimpos.terminal.checkout.CheckoutCredentials
+import io.minimpos.terminal.checkout.CheckoutPaymentLinks
+import io.minimpos.terminal.checkout.PaymentLinkApi
 import io.minimpos.terminal.client.PosApplication
 import io.minimpos.terminal.paymentsapp.AdyenPaymentsAppManagement
 import io.minimpos.terminal.paymentsapp.AppLinkExchange
@@ -97,6 +101,7 @@ import java.util.Locale
  * @param cloudDevices Reaches terminals in the cloud with an API key.
  * @param paymentsAppExchange Opens the Adyen Payments app; null uses [paymentsApp], which the activity serves.
  * @param paymentsAppManagement Boards and revokes the Payments app with an API key, in an environment.
+ * @param paymentLinks Creates, checks and expires payment links with Checkout API credentials.
  */
 class AppContainer(
     private val context: Context,
@@ -113,6 +118,7 @@ class AppContainer(
     paymentsAppManagement: (apiKey: String, environment: TerminalEnvironment) -> PaymentsAppManagement = { key, environment ->
         AdyenPaymentsAppManagement(key, environment)
     },
+    paymentLinks: (CheckoutCredentials) -> PaymentLinkApi = { CheckoutPaymentLinks(it) },
 ) {
     private val defaults =
         AppSettings().let {
@@ -195,8 +201,11 @@ class AppContainer(
     /** Boards (and revokes) the Adyen Payments app on this phone, for Tap to Pay. */
     val tapToPay = TapToPaySetup(terminalSetup, secrets, settings, paymentsAppLinks, paymentsAppManagement)
 
-    /** Adyen's Checkout API, for captures and authorisation adjustments (simulated with the simulator). */
-    val api = AdyenApi(terminalSetup, secrets, simulated = simulator.modifications)
+    /**
+     * Adyen's Checkout API, for captures and authorisation adjustments (simulated with the simulator) and payment links
+     * (never simulated).
+     */
+    val api = AdyenApi(terminalSetup, secrets, simulated = simulator.modifications, connectLinks = paymentLinks)
 
     /** Whether payments and printing can work, for Home, Settings and the receipt screens. */
     val terminalStatus = TerminalStatus(terminalSetup, gateway, settings, appScope)
@@ -280,6 +289,22 @@ class AppContainer(
     /** Enters tips and captures and adjusts payments taken with manual capture. */
     val captures = Captures(sales, api::target, terminalSetup.describe)
 
+    /** Creates payment links for sales, asks Adyen whether they were paid, and cancels them. */
+    val links =
+        PaymentLinks(
+            scope = appScope,
+            sales = sales,
+            settings = settings,
+            target = api::target,
+            unknownOutcome = context.getString(R.string.link_unknown_outcome),
+            describe = terminalSetup.describe,
+            onCreated = { id, start ->
+                receipts.arm(id)
+                // The cart is now the link's to pay, so the next sale starts afresh.
+                session(start.payment.kind).clear()
+            },
+        )
+
     /** Runs referenced refunds and keeps their progress. */
     val refunds: TransactionLifecycle<RefundStart> =
         TransactionLifecycle(
@@ -351,6 +376,13 @@ class AppContainer(
             captured = context.getString(R.string.receipt_captured),
             taxableGrossFormat = context.getString(R.string.receipt_taxable_gross_format).ifEmpty { null },
             taxableNetFormat = context.getString(R.string.receipt_taxable_net_format).ifEmpty { null },
+            amountDue = context.getString(R.string.receipt_amount_due),
+            unpaid = context.getString(R.string.receipt_unpaid),
+            payLinkCaption = context.getString(R.string.receipt_pay_link_caption),
+            payLinkIntro = context.getString(R.string.receipt_pay_link_intro),
+            payNow = context.getString(R.string.receipt_pay_now),
+            linkValidFormat = context.getString(R.string.receipt_link_valid),
+            paidOnline = context.getString(R.string.receipt_paid_online),
         )
 
     private fun emailTexts() =
@@ -364,6 +396,8 @@ class AppContainer(
             invalidAddress = context.getString(R.string.email_invalid_address),
             preAuthIntro = context.getString(R.string.email_pre_auth_intro),
             cancellationIntro = context.getString(R.string.email_cancellation_intro),
+            linkSubject = context.getString(R.string.email_link_subject),
+            linkIntro = context.getString(R.string.email_link_intro),
         )
 
     /** The application identity and currency resolution, also used without a container. */

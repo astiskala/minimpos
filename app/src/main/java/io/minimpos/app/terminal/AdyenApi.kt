@@ -6,6 +6,8 @@ import io.minimpos.app.data.settings.CaptureMode
 import io.minimpos.app.data.settings.TerminalSettings
 import io.minimpos.terminal.checkout.CheckoutCredentials
 import io.minimpos.terminal.checkout.CheckoutModifications
+import io.minimpos.terminal.checkout.CheckoutPaymentLinks
+import io.minimpos.terminal.checkout.PaymentLinkApi
 import io.minimpos.terminal.checkout.PaymentModifications
 import io.minimpos.terminal.transport.TerminalEnvironment
 
@@ -42,17 +44,20 @@ sealed interface ApiSetup {
 }
 
 /**
- * Where captures and adjustments go now, see [AdyenApi.target].
+ * Where captures, adjustments and payment links go now, see [AdyenApi.target].
  *
  * @property setup How far the API is set up, which decides how captures are made ([ApiSetup.mode]) and, when nothing can
  *   be sent, why ([ApiSetup.problem]); [ApiSetup.Incomplete] with [SetupProblem.UNREADABLE_API_KEY] when the saved key
  *   cannot be decrypted.
  * @property modifications Sends the captures and adjustments; null when the API cannot be called ([ApiSetup.CustomerArea]
  *   or [ApiSetup.Incomplete]).
+ * @property links Creates, checks and expires payment links; null unless the API is [ApiSetup.Complete] (payment links
+ *   are never simulated).
  */
 data class ApiTarget(
     val setup: ApiSetup,
     val modifications: PaymentModifications? = null,
+    val links: PaymentLinkApi? = null,
 )
 
 /** What [AdyenApi.verify] found. */
@@ -81,7 +86,7 @@ sealed interface ApiCheck {
 
 /**
  * Adyen's Checkout API as the app uses it: for capturing payments taken with manual capture and adjusting what they
- * hold. It is optional and set up in Settings › Terminal (merchant account and live URL prefix in
+ * hold, and for payment links. It is optional and set up in Settings › Terminal (merchant account and live URL prefix in
  * [io.minimpos.app.data.settings.TerminalSettings], the API key in [SecretStore]); without it, staff capture in the
  * Customer Area. How far it is set up is [TerminalSetup.apiSetup]. While payments go to the simulator the API is
  * simulated too. The environment (TEST or LIVE) is where payments go ([TerminalSetup.environment]): the terminal
@@ -92,16 +97,19 @@ sealed interface ApiCheck {
  * @param simulated Answers while payments go to the simulator: in the app the [SimulatedTerminal]'s, which knows the
  *   simulator's payments.
  * @param connect Makes the client for real credentials; tests replace it.
+ * @param connectLinks Makes the payment link client for real credentials; tests replace it.
  */
 class AdyenApi(
     private val setups: TerminalSetupSource,
     private val secrets: SecretStore,
     private val simulated: PaymentModifications,
     private val connect: (CheckoutCredentials) -> PaymentModifications = { CheckoutModifications(it) },
+    private val connectLinks: (CheckoutCredentials) -> PaymentLinkApi = { CheckoutPaymentLinks(it) },
 ) {
     private val clients = Reused<CheckoutCredentials, PaymentModifications>()
+    private val linkClients = Reused<CheckoutCredentials, PaymentLinkApi>()
 
-    /** Where captures and adjustments go now with the stored settings, as [TerminalSetup.apiSetup] decides. */
+    /** Where captures, adjustments and payment links go now with the stored settings, as [TerminalSetup.apiSetup] decides. */
     suspend fun target(): ApiTarget {
         val setup = setups.current()
         return when (val api = setup.apiSetup) {
@@ -118,7 +126,7 @@ class AdyenApi(
     ): ApiTarget {
         val key = secrets.get(Secret.CHECKOUT_API_KEY) ?: return ApiTarget(ApiSetup.Incomplete(SetupProblem.UNREADABLE_API_KEY))
         val credentials = CheckoutCredentials(key, terminal.merchantAccount.trim(), environment, terminal.liveUrlPrefix.trim())
-        return ApiTarget(ApiSetup.Complete, clients.get(credentials, connect))
+        return ApiTarget(ApiSetup.Complete, clients.get(credentials, connect), linkClients.get(credentials, connectLinks))
     }
 
     /** Checks that the API can be used with the stored settings, without changing anything. */

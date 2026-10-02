@@ -23,6 +23,8 @@ fun ActionOutcome.text(): String =
 
         ActionOutcome.AbortSent -> stringResource(R.string.result_abort_sent)
 
+        ActionOutcome.LinkNotPaid -> stringResource(R.string.link_not_paid)
+
         is ActionOutcome.CaptureFailed -> captureText()
 
         is ActionOutcome.Connected -> connectedText()

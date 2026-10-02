@@ -3,6 +3,7 @@ package io.minimpos.app
 import android.app.Application
 import android.content.Context
 import androidx.compose.ui.test.junit4.ComposeTestRule
+import androidx.core.content.FileProvider
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import com.adyen.model.terminal.TerminalAPIRequest
@@ -11,11 +12,17 @@ import com.adyen.model.terminal.TerminalAPISecuredResponse
 import com.adyen.terminal.security.NexoCrypto
 import com.adyen.terminal.serialization.TerminalAPIGsonBuilder
 import io.minimpos.app.data.db.AppDatabase
+import io.minimpos.app.data.security.Secret
 import io.minimpos.app.data.security.SecretCipher
 import io.minimpos.app.data.settings.AppSettings
 import io.minimpos.app.data.settings.TerminalMode
 import io.minimpos.app.email.MailTransport
 import io.minimpos.app.terminal.DeviceInfo
+import io.minimpos.terminal.checkout.PaymentLink
+import io.minimpos.terminal.checkout.PaymentLinkApi
+import io.minimpos.terminal.checkout.PaymentLinkRequest
+import io.minimpos.terminal.checkout.PaymentLinkResult
+import io.minimpos.terminal.checkout.PaymentLinkStatus
 import io.minimpos.terminal.parse.FormEncoding
 import io.minimpos.terminal.paymentsapp.AppLinkExchange
 import io.minimpos.terminal.paymentsapp.BoardingTarget
@@ -47,7 +54,9 @@ import java.io.File
 import java.net.URLDecoder
 import java.nio.file.Files
 import java.security.ProviderException
+import java.time.Instant
 import java.util.Base64
+import java.util.Collections
 import javax.crypto.AEADBadTagException
 import javax.mail.internet.MimeMessage
 import kotlin.experimental.xor
@@ -238,6 +247,61 @@ class FakeManagement(
 }
 
 /**
+ * Adyen's payment links: answers with a link in [status] (or the result set for a call), and records what was sent.
+ * Thread-safe, as the container calls it from its own scope.
+ */
+class FakeLinkApi(
+    @Volatile var status: PaymentLinkStatus = PaymentLinkStatus.ACTIVE,
+) : PaymentLinkApi {
+    /** Answers the next creations instead of a link, when set. */
+    @Volatile var createResult: PaymentLinkResult? = null
+
+    /** Answers the next status checks instead of a link, when set. */
+    @Volatile var getResult: PaymentLinkResult? = null
+
+    /** Answers the next expiries instead of an expired link, when set. */
+    @Volatile var expireResult: PaymentLinkResult? = null
+
+    /** Every creation, with its idempotency key, in order. */
+    val created: MutableList<Pair<PaymentLinkRequest, String>> = Collections.synchronizedList(mutableListOf())
+
+    /** Every link asked about, in order. */
+    val asked: MutableList<String> = Collections.synchronizedList(mutableListOf())
+
+    /** Every link expired, in order. */
+    val expired: MutableList<String> = Collections.synchronizedList(mutableListOf())
+
+    /** The link in [status]. */
+    fun link(status: PaymentLinkStatus = this.status) = PaymentLink(LINK_ID, URL, status, EXPIRES)
+
+    override suspend fun create(
+        request: PaymentLinkRequest,
+        idempotencyKey: String,
+    ): PaymentLinkResult = (createResult ?: PaymentLinkResult.Answered(link())).also { created += request to idempotencyKey }
+
+    override suspend fun status(linkId: String): PaymentLinkResult =
+        (getResult ?: PaymentLinkResult.Answered(link())).also {
+            asked +=
+                linkId
+        }
+
+    override suspend fun expire(linkId: String): PaymentLinkResult =
+        (expireResult ?: PaymentLinkResult.Answered(link(PaymentLinkStatus.EXPIRED))).also { expired += linkId }
+
+    /** The link it answers with. */
+    companion object {
+        /** Adyen's ID of the link. */
+        const val LINK_ID = "PL50C5F751CED39G71"
+
+        /** The link's address. */
+        const val URL = "https://test.adyen.link/PL50C5F751CED39G71"
+
+        /** When Adyen says it expires. */
+        val EXPIRES: Instant = Instant.parse("2026-10-03T09:30:00Z")
+    }
+}
+
+/**
  * A complete [AppContainer] for Robolectric tests: an in-memory database, settings and secrets in a temporary
  * directory, [FakeCipher] instead of the Keystore and [RecordingTransport] instead of SMTP. Call [close] after each
  * test, or use it as a rule: compose tests order it outside the compose rule, so the screens and their view models are
@@ -256,9 +320,15 @@ class TestEnvironment(
     paymentsApp: FakePaymentsApp = FakePaymentsApp(),
     /** Replaces the Management API that boards the Payments app. */
     management: FakeManagement = FakeManagement(),
+    /** Replaces Adyen's payment links. */
+    links: FakeLinkApi = FakeLinkApi(),
 ) : ExternalResource() {
     /** Robolectric's application context. */
     val context: Context = ApplicationProvider.getApplicationContext()
+
+    init {
+        forgetSharedFileRoots()
+    }
 
     /** Where the DataStore files live; deleted by [close]. */
     val dir: File = Files.createTempDirectory("minimpos").toFile()
@@ -287,7 +357,28 @@ class TestEnvironment(
             cloudDevices = cloud::connect,
             paymentsAppExchange = paymentsApp,
             paymentsAppManagement = { _, _ -> management },
+            paymentLinks = { links },
         )
+
+    /**
+     * Payment links work: the merchant account and API key are saved, and payments go to this terminal (whose
+     * environment, TEST, is detected), so the Checkout API is set up; [enabled] switches links on in Settings.
+     */
+    fun useLinks(enabled: Boolean = true) {
+        await { container.secrets.set(Secret.CHECKOUT_API_KEY, "key") }
+        updateSettings {
+            it.copy(
+                terminal =
+                    it.terminal.copy(
+                        mode = TerminalMode.TERMINAL,
+                        merchantAccount = "HarbourCoffeeCOM",
+                        environment = TerminalEnvironment.TEST,
+                    ),
+                payment = it.payment.copy(paymentLinks = enabled),
+            )
+        }
+        runBlocking { withTimeout(5_000) { container.terminalStatus.state.first { it.paymentLinks == enabled } } }
+    }
 
     /** Simulator with no delay, and settings loaded into the container's state. */
     fun useSimulator(transform: (AppSettings) -> AppSettings = { it }) =
@@ -316,6 +407,21 @@ class TestEnvironment(
     }
 
     override fun after() = close()
+}
+
+/**
+ * Forgets the folders `FileProvider` resolved for earlier tests. It keeps them in a static cache, and Robolectric gives
+ * each test its own data folder in the same class loader, so a later test's shared file would not be found.
+ */
+fun forgetSharedFileRoots() {
+    val cache =
+        checkNotNull(
+            FileProvider::class.java
+                .getDeclaredField("sCache")
+                .apply { isAccessible = true }
+                .get(null),
+        )
+    synchronized(cache) { (cache as MutableMap<*, *>).clear() }
 }
 
 /** Runs [block] to completion on the calling thread, failing the test after 10 seconds. */

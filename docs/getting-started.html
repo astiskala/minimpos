@@ -259,7 +259,8 @@ cd minimpos
               <strong>Charge</strong>. At checkout, add a reference and (with the shopper's consent) save the card, then
               <strong>Pay</strong> and follow the terminal.</li>
             <li><strong>Receipts</strong> print as one slip with your header, the items, tax, the card receipt and a
-              refund QR code, and can be emailed.</li>
+              refund QR code, and can be emailed. On a tablet or phone, <strong>Share receipt</strong> sends it as an
+              image through Android's share sheet, to a messaging app for example.</li>
             <li><strong>Refund:</strong> scan the QR code on the receipt, or open the sale in <strong>History</strong>.
               Refund everything, some items, or an amount. Adyen processes refunds asynchronously, so the app shows
               them as requested; the final outcome is in your Customer Area.</li>
@@ -300,6 +301,24 @@ cd minimpos
           <p>Without an API key, the app records what to capture (<em>Capture in Customer Area</em>) and you capture it
             under <strong>Payments › Payment list</strong>: select the PSP reference shown in History, then
             <strong>Capture payment</strong>.</p>
+          <h3 id="payment-links">Payment links</h3>
+          <p>With the Checkout API set up, a sale can also be paid with an Adyen
+            <a href="https://docs.adyen.com/unified-commerce/pay-by-link">payment link</a> instead of on the terminal:
+            the customer pays on Adyen's payment page, on their own phone or computer.</p>
+          <ol>
+            <li>Before the first LIVE link, add your terms and conditions in the live Customer Area under
+              <strong>Payments › Payment link settings</strong>.</li>
+            <li>In Mini mPOS, switch on <strong>Settings › Payments › Offer payment links</strong> and choose how long
+              links work (24 hours by default, up to 70 days).</li>
+            <li>At checkout, tap <strong>Send payment link</strong> under Pay. The customer scans the QR code shown, or
+              you <strong>Email link</strong> (with an unpaid receipt), <strong>Print link</strong> or, on a tablet or
+              phone, <strong>Share link</strong>.</li>
+          </ol>
+          <p>While the link is shown the app checks every few seconds whether it was paid, and again when you tap
+            <strong>Check payment</strong>. History lists the sale as <em>Awaiting payment</em> until it is paid, it
+            expires or you <strong>Cancel link</strong>. Adyen only sends a paid link's PSP reference to a webhook,
+            which Mini mPOS has no backend for, so refund a paid link in the Customer Area (Payments › Payment list).
+            Payment links are for sales only, and not available with the simulator.</p>
         </section>
 
         <section id="tips">

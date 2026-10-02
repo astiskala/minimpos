@@ -236,6 +236,39 @@ class SmallScreenTest {
     }
 
     @Test
+    fun `a payment link fits the screen, with emailing and printing but no share sheet on a terminal`() {
+        configureKey()
+        env.useLinks()
+        env.updateSettings {
+            it.copy(
+                receipt = it.receipt.copy(printerMode = PrinterMode.ON),
+                email = it.email.copy(host = "smtp.example.com", fromAddress = "shop@example.com"),
+            )
+        }
+        compose.setContent { MiniMposApp(container) }
+        compose.onNodeWithTag("newSale").performClick()
+        waitForTag("addCustom")
+        listOf(1, 2, 5, 0).forEach { compose.onNodeWithTag("key_$it").performClick() }
+        compose.onNodeWithTag("addCustom").performClick()
+        compose.onNodeWithTag("charge").performClick()
+        // Both ways to pay stay in reach below the checkout form.
+        waitForTag("sendLink")
+        compose.onNodeWithTag("pay").assertIsDisplayed()
+        compose.onNodeWithTag("sendLink").assertIsDisplayed().performClick()
+        compose.waitUntilAtLeastOneExists(hasTestTag("linkStatus") and hasText("Awaiting payment"), 15_000)
+        compose.onNodeWithTag("newSaleAfter").assertIsDisplayed()
+        compose.onNodeWithTag("home").assertIsDisplayed()
+        compose.onNodeWithTag("linkQr").assertExists()
+        listOf(
+            "emailLink",
+            "printLink",
+            "checkLink",
+            "cancelLink",
+        ).forEach { compose.onNodeWithTag(it).performScrollTo().assertIsDisplayed() }
+        compose.onNodeWithTag("shareLink").assertDoesNotExist()
+    }
+
+    @Test
     fun `a pre-authorisation fits the screen from home to its cancellation`() = preAuthFitsTheScreen()
 
     @Test

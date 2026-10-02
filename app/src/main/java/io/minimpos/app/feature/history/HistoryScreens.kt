@@ -23,6 +23,7 @@ import androidx.compose.material.icons.automirrored.filled.ReceiptLong
 import androidx.compose.material.icons.automirrored.filled.Undo
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.Email
+import androidx.compose.material.icons.filled.Link
 import androidx.compose.material.icons.filled.LockOpen
 import androidx.compose.material.icons.filled.Payments
 import androidx.compose.material.icons.filled.Print
@@ -62,16 +63,19 @@ import io.minimpos.app.data.db.SaleStatus
 import io.minimpos.app.data.repo.HistoryItem
 import io.minimpos.app.data.settings.CaptureMode
 import io.minimpos.app.feature.OutcomeMessage
+import io.minimpos.app.feature.TransactionActionsState
 import io.minimpos.app.feature.refund.RefundResultScreen
 import io.minimpos.app.feature.refund.refundStatusKind
 import io.minimpos.app.feature.refund.refundStatusTitle
 import io.minimpos.app.feature.sale.EnterTipButton
 import io.minimpos.app.feature.sale.HoldNotes
+import io.minimpos.app.feature.sale.ShareReceiptButton
 import io.minimpos.app.feature.sale.adviceText
 import io.minimpos.app.feature.sale.statusKind
 import io.minimpos.app.feature.sale.statusTitle
 import io.minimpos.app.refund.PaymentAction
 import io.minimpos.app.refund.decline
+import io.minimpos.app.share.ShareEffect
 import io.minimpos.app.ui.components.ActionMessage
 import io.minimpos.app.ui.components.Card
 import io.minimpos.app.ui.components.ConfirmDialog
@@ -416,6 +420,8 @@ fun SaleDetailScreen(
                     onCancel = { dialog = DetailDialog.CANCEL },
                     onPrint = vm.transaction::print,
                     onEmail = { dialog = DetailDialog.EMAIL },
+                    onShare = vm.transaction::share,
+                    onShowLink = { navigator.push(Route.PaymentLink(sale.id)) },
                 )
                 SaleRefunds(state.refunds, money, preAuth, container::formatDateTime) {
                     navigator.push(Route.RefundDetail(it))
@@ -430,6 +436,7 @@ fun SaleDetailScreen(
             if (vm.cancel() != null) navigator.push(Route.RefundProcessing)
         }
     }
+    ShareEffect(state.transaction.share, vm.transaction::shared)
 }
 
 /** The dialogs the sale detail screen opens. */
@@ -456,6 +463,7 @@ private fun SaleDetailOutcome(
             ).joinToString(" · "),
         )
         HoldNotes(sale, money)
+        if (sale.paymentLink && sale.status == SaleStatus.APPROVED) OutcomeNote(stringResource(R.string.link_paid_note))
         if (PaymentAction.CAPTURE in state.actions &&
             state.captureMode == CaptureMode.CUSTOMER_AREA
         ) {
@@ -547,8 +555,8 @@ private fun SaleDetailDialogs(
 }
 
 /**
- * What can be done with the sale: the retry advice, a status check, refunding (or cancelling a pre-authorisation),
- * reprinting and emailing.
+ * What can be done with the sale: opening its payment link while it can still be paid (or its outcome is unknown), the
+ * retry advice, a status check, refunding (or cancelling a pre-authorisation), then its receipt.
  */
 @Composable
 private fun ColumnScope.SaleDetailActions(
@@ -558,8 +566,18 @@ private fun ColumnScope.SaleDetailActions(
     onCancel: () -> Unit,
     onPrint: (ReceiptCopy) -> Unit,
     onEmail: () -> Unit,
+    onShare: () -> Unit,
+    onShowLink: () -> Unit,
 ) {
     val sale = state.record?.sale ?: return
+    if (sale.paymentLink && (sale.status == SaleStatus.AWAITING_PAYMENT || sale.status == SaleStatus.UNKNOWN)) {
+        SecondaryButton(
+            stringResource(R.string.detail_show_link),
+            onShowLink,
+            icon = Icons.Default.Link,
+            modifier = Modifier.testTag("showLink"),
+        )
+    }
     sale.decline?.advice?.let {
         Text(
             adviceText(it),
@@ -595,23 +613,34 @@ private fun ColumnScope.SaleDetailActions(
             modifier = Modifier.testTag("cancelPreAuth"),
         )
     }
-    if (sale.status != SaleStatus.APPROVED) return
-    if (state.transaction.canPrint) {
+    if (sale.status == SaleStatus.APPROVED) SaleReceiptActions(state.transaction, onPrint, onEmail, onShare)
+}
+
+/** Reprinting (either copy), emailing and sharing (on phones and tablets) an approved sale's receipt. */
+@Composable
+private fun ColumnScope.SaleReceiptActions(
+    transaction: TransactionActionsState,
+    onPrint: (ReceiptCopy) -> Unit,
+    onEmail: () -> Unit,
+    onShare: () -> Unit,
+) {
+    if (transaction.canPrint) {
         SecondaryButton(stringResource(R.string.detail_reprint), {
             onPrint(ReceiptCopy.CUSTOMER)
-        }, loading = state.transaction.print.running, icon = Icons.Default.Print)
+        }, loading = transaction.print.running, icon = Icons.Default.Print)
         TertiaryButton(stringResource(R.string.result_print_merchant), { onPrint(ReceiptCopy.MERCHANT) })
-        OutcomeMessage(state.transaction.print)
+        OutcomeMessage(transaction.print)
     }
-    if (state.transaction.canEmail) {
+    if (transaction.canEmail) {
         SecondaryButton(
             stringResource(R.string.result_email),
             onEmail,
-            loading = state.transaction.email.running,
+            loading = transaction.email.running,
             icon = Icons.Default.Email,
         )
-        OutcomeMessage(state.transaction.email)
+        OutcomeMessage(transaction.email)
     }
+    if (transaction.canShare) ShareReceiptButton(onShare)
 }
 
 /**
@@ -663,6 +692,7 @@ private fun PaymentDetailsCard(sale: SaleEntity) {
         LabeledValue(stringResource(R.string.detail_entry), sale.entryMode)
         LabeledValue(stringResource(R.string.detail_auth), sale.authCode)
         LabeledValue(stringResource(R.string.detail_psp), sale.pspReference)
+        LabeledValue(stringResource(R.string.detail_payment_link), sale.paymentLinkUrl)
         LabeledValue(stringResource(R.string.detail_shopper_reference), sale.shopperReference)
         LabeledValue(stringResource(R.string.detail_token), sale.storedPaymentMethodId)
         LabeledValue(stringResource(R.string.detail_terminal), sale.poiId)

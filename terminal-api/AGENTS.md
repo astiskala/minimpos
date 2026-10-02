@@ -7,9 +7,10 @@ rules.
 
 ## Packages
 
-- \* Layered downwards: `simulator` → `client` (`TerminalClient`), `checkout` (Checkout API v72), `paymentsapp` (Adyen
-  Payments app: App Links, `PaymentsAppTransport`, Management API boarding; only the app plugs it in) → `transport`
-  (`TerminalTls`, the local and Cloud device API transports) → `parse`. No cycles; every class is in a layer.
+- \* Layered downwards: `simulator` → `client` (`TerminalClient`), `checkout` (Checkout API v72: captures and
+  adjustments, payment links with `CheckoutPaymentLinks`), `paymentsapp` (Adyen Payments app: App Links,
+  `PaymentsAppTransport`, Management API boarding; only the app plugs it in) → `transport` (`TerminalTls`, the local
+  and Cloud device API transports) → `parse`. No cycles; every class is in a layer.
 - \* Plain Kotlin: no Android, no `:core`, no `:app`. The module's interface uses only its own types (`PrintJob`,
   `ReceiptField`, …). It never logs or prints.
 - `checkout` posts JSON with OkHttp + Gson, and the cloud transport uses OkHttp instead of the library's `CloudDeviceApi`:

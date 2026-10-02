@@ -26,7 +26,9 @@ class ReceiptBuilder(
      * payment was not approved, Adyen's card receipt lines, the footer and, on approved customer copies, the refund QR
      * code. A pre-authorisation is titled and totalled as an amount held instead, with no refund QR code, followed by
      * what it holds after an adjustment and what was captured. [SaleReceipt.tip] adds the tip lines after the totals:
-     * blank ones to fill in (and on the merchant copy a line to sign), or the tip entered and the total with it.
+     * blank ones to fill in (and on the merchant copy a line to sign), or the tip entered and the total with it. A sale
+     * still to be paid through its payment link ([SaleReceipt.unpaidLink]) is marked unpaid and totalled as the amount
+     * due, with the link's QR code, its address and how long it works; one paid through it says so.
      */
     fun sale(
         receipt: SaleReceipt,
@@ -45,12 +47,7 @@ class ReceiptBuilder(
         out += Divider
         totals(out, receipt)
         modifications(out, receipt, copy)
-        if (!receipt.approved) {
-            out += Blank
-            out += Text(labels.notCompleted, Align.CENTER, TextStyle.BOLD)
-        } else if (receipt.preAuthorisation && receipt.captured == null) {
-            out += Text(labels.preAuthNote, Align.CENTER)
-        }
+        standing(out, receipt)
         if (receipt.cardSaved) out += Text(labels.cardSaved, Align.CENTER)
         cardReceipt(out, receipt.cardReceipt)
         footer(out)
@@ -118,6 +115,7 @@ class ReceiptBuilder(
             when {
                 receipt.preAuthorisation -> labels.amountHeld
                 receipt.tip != null -> labels.amount
+                receipt.unpaidLink != null -> labels.amountDue
                 else -> labels.total
             }
         val total = Row(label, money.format(receipt.amounts.gross), TextStyle.BOLD)
@@ -190,6 +188,45 @@ class ReceiptBuilder(
                 out += Row(labels.tipTotal, money.format(receipt.amounts.gross + tip.tip), TextStyle.BOLD)
             }
         }
+    }
+
+    /**
+     * What the payment's state adds under the totals: the payment link of an unpaid sale, the warning on one not
+     * approved, the note that a pre-authorisation charged nothing yet, or that the sale was paid online.
+     */
+    private fun standing(
+        out: MutableList<ReceiptElement>,
+        receipt: SaleReceipt,
+    ) {
+        val link = receipt.unpaidLink
+        when {
+            link != null -> {
+                unpaid(out, link)
+            }
+
+            !receipt.approved -> {
+                out += Blank
+                out += Text(labels.notCompleted, Align.CENTER, TextStyle.BOLD)
+            }
+
+            receipt.preAuthorisation && receipt.captured == null -> {
+                out += Text(labels.preAuthNote, Align.CENTER)
+            }
+        }
+        if (receipt.paidOnline) out += Text(labels.paidOnline, Align.CENTER)
+    }
+
+    /** The unpaid mark, then the payment [link] as a QR code to scan and as an address to open, and how long it works. */
+    private fun unpaid(
+        out: MutableList<ReceiptElement>,
+        link: UnpaidLink,
+    ) {
+        out += Blank
+        out += Text(labels.unpaid, Align.CENTER, TextStyle.BOLD)
+        out += Qr(link.url, labels.payLinkCaption)
+        out += Text(labels.payLinkIntro, Align.CENTER)
+        out += ReceiptElement.Link(link.url, labels.payNow)
+        link.validUntil?.let { out += Text(labels.linkValidFormat.format(money.locale, it), Align.CENTER) }
     }
 
     private fun cardReceipt(

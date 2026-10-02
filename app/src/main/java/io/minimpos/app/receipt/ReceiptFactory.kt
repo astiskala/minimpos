@@ -21,6 +21,7 @@ import io.minimpos.core.receipt.ReceiptOptions
 import io.minimpos.core.receipt.RefundReceipt
 import io.minimpos.core.receipt.SaleReceipt
 import io.minimpos.core.receipt.TipLines
+import io.minimpos.core.receipt.UnpaidLink
 import io.minimpos.core.tax.TaxAmounts
 import io.minimpos.core.tax.TaxMode
 import java.time.Instant
@@ -69,7 +70,9 @@ class ReceiptFactory(
      * A sale that can be refunded gets a refund QR code ([RefundablePayment.qrCode]); unapproved ones are marked as not
      * completed, and pre-authorisations are titled and totalled as an amount held, with what they hold after an
      * adjustment and what was captured. A sale taken for tipping on the receipt gets tip lines to fill in until its
-     * tip is entered (only on [paper]: an emailed receipt leaves them out), then the tip and the total with it.
+     * tip is entered (only on [paper]: an emailed receipt leaves them out), then the tip and the total with it. A sale
+     * still awaiting its payment link's payment is an unpaid receipt with the link and when it stops working; one paid
+     * through it says it was paid online.
      */
     fun sale(
         record: SaleWithLines,
@@ -116,6 +119,8 @@ class ReceiptFactory(
                     },
                 heldNow = standing.heldNowMinor,
                 captured = standing.capturedMinor,
+                unpaidLink = standing.unpaidLink?.let { UnpaidLink(it, standing.linkExpiresAt?.let(::formatDateTime)) },
+                paidOnline = standing.paidOnline,
             )
         return builder(settings, currency).sale(receipt, copy)
     }

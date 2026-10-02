@@ -2,10 +2,13 @@ package io.minimpos.app.feature
 
 import io.minimpos.app.payment.AutoDelivery
 import io.minimpos.app.payment.CaptureResult
+import io.minimpos.app.payment.LinkUpdate
+import io.minimpos.app.payment.PaymentLinks
 import io.minimpos.app.payment.PaymentStart
 import io.minimpos.app.payment.ReceiptDelivery
 import io.minimpos.app.payment.ReceiptOffer
 import io.minimpos.app.payment.SalePrint
+import io.minimpos.app.payment.SharedReceipt
 import io.minimpos.app.payment.TransactionLifecycle
 import io.minimpos.app.receipt.ActionResult
 import io.minimpos.app.refund.RefundStart
@@ -40,6 +43,9 @@ sealed interface ActionOutcome {
 
     /** The busy terminal was asked to cancel the transaction it is working on. */
     data object AbortSent : ActionOutcome
+
+    /** Adyen says the payment link has not been paid yet. */
+    data object LinkNotPaid : ActionOutcome
 
     /** A tip, capture or adjustment did not go through, see [CaptureResult.toState]. */
     sealed interface CaptureFailed : ActionOutcome
@@ -224,6 +230,9 @@ fun CaptureResult.toState(
  * @property canPrint Whether printing is offered (Settings › Receipts › Printer, and what the terminal reported).
  * @property canEmail Whether emailing the receipt is offered: email is set up and, on the result just after a payment,
  *   checkout captures emails at all.
+ * @property canShare Whether sharing the receipt through Android's share sheet is offered (on phones and tablets).
+ * @property share A receipt the screen should hand to the share sheet now, then report with
+ *   [TransactionActions.shared]; null while none is waiting.
  */
 data class TransactionActionsState(
     val print: ActionState = ActionState(),
@@ -234,13 +243,16 @@ data class TransactionActionsState(
     val receipt: ReceiptDocument? = null,
     val canPrint: Boolean = false,
     val canEmail: Boolean = false,
+    val canShare: Boolean = false,
+    val share: SharedReceipt? = null,
 )
 
 /**
- * The receipt and status of one stored sale ([forSale]) or refund ([forRefund]), as every result and detail screen
- * offers them: the receipt itself and whether it can be printed or emailed, printing, emailing and re-checking
- * (TransactionStatus), with their progress and outcome in [state]. For a transaction just made (`fresh`) it also
- * delivers the receipt automatically, once per transaction whatever screens are made for it (see [ReceiptDelivery]).
+ * The receipt and status of one stored sale ([forSale], or [forLink] for one paid through a payment link) or refund
+ * ([forRefund]), as every result and detail screen offers them: the receipt itself and whether it can be printed,
+ * emailed or shared, printing, emailing, sharing and re-checking (TransactionStatus, or asking Adyen about the link),
+ * with their progress and outcome in [state]. For a transaction just made (`fresh`) it also delivers the receipt
+ * automatically, once per transaction whatever screens are made for it (see [ReceiptDelivery]).
  *
  * A view model makes one with its `viewModelScope`; prints and status checks stop when the screen closes, but an email
  * always finishes (`persisting`), since a sent sale receipt records the address on the sale.
@@ -255,13 +267,24 @@ class TransactionActions private constructor(
 ) {
     private val _state = MutableStateFlow(TransactionActionsState())
 
+    /** The receipt to share when asked, as last offered. */
+    @Volatile private var shareable: SharedReceipt? = null
+
     /** Where the actions stand. */
     val state: StateFlow<TransactionActionsState> = _state.asStateFlow()
 
     init {
         scope.launch {
             offer.collect { offered ->
-                _state.update { it.copy(receipt = offered.receipt, canPrint = offered.canPrint, canEmail = offered.canEmail) }
+                shareable = offered.share
+                _state.update {
+                    it.copy(
+                        receipt = offered.receipt,
+                        canPrint = offered.canPrint,
+                        canEmail = offered.canEmail,
+                        canShare = offered.canShare,
+                    )
+                }
             }
         }
         automation?.let { deliver ->
@@ -306,6 +329,15 @@ class TransactionActions private constructor(
         }
     }
 
+    /** Asks for the receipt to be shared; the screen hands [TransactionActionsState.share] to the share sheet. */
+    fun share() {
+        val shared = shareable ?: return
+        _state.update { it.copy(share = shared) }
+    }
+
+    /** Reports that the screen handed the waiting receipt to the share sheet, so it is not shared twice. */
+    fun shared() = _state.update { it.copy(share = null) }
+
     /** The actions for a sale or a refund. */
     companion object {
         /**
@@ -326,6 +358,26 @@ class TransactionActions private constructor(
             printing = { receipts.printSale(saleId, it) },
             emailing = { receipts.emailSale(saleId, it) },
             rechecking = { payments.recheck(saleId) },
+        )
+
+        /**
+         * The actions on sale [saleId], paid through a payment link, in [scope]: as [forSale], except that emailing is
+         * offered whenever email is set up (it is how the link reaches the shopper), and re-checking asks Adyen about
+         * the link through [links] (true once the sale is settled: paid, expired or cancelled).
+         */
+        fun forLink(
+            scope: CoroutineScope,
+            saleId: String,
+            receipts: ReceiptDelivery,
+            links: PaymentLinks,
+            fresh: Boolean,
+        ) = TransactionActions(
+            scope,
+            offer = receipts.saleOffer(saleId, justPaid = false),
+            automation = if (fresh) ({ receipts.automationForSale(saleId) }) else null,
+            printing = { receipts.printSale(saleId, it) },
+            emailing = { receipts.emailSale(saleId, it) },
+            rechecking = { links.check(saleId) == LinkUpdate.Settled },
         )
 
         /**

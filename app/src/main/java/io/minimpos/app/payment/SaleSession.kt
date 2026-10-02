@@ -13,6 +13,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.update
 import java.util.UUID
 
@@ -58,17 +59,19 @@ class SaleSession(
     val form: StateFlow<CheckoutForm> = _form.asStateFlow()
 
     /**
-     * The checkout of this session's cart and form with [settings], charged in the [currency] the settings give and
-     * offering tipping on the receipt while [printerAvailable]; updated whenever any of them changes.
+     * The checkout of this session's cart and form with [settings], charged in the [currency] the settings give,
+     * offering tipping on the receipt while [printerAvailable] and payment links while [linksAvailable]; updated
+     * whenever any of them changes.
      */
     fun checkout(
         settings: Flow<AppSettings>,
         printerAvailable: Flow<Boolean>,
+        linksAvailable: Flow<Boolean> = flowOf(false),
         currency: (AppSettings) -> CurrencySpec,
     ): Flow<Checkout> =
-        combine(form, cart, settings, printerAvailable) { form, cart, appSettings, printer ->
+        combine(form, cart, settings, printerAvailable, linksAvailable) { form, cart, appSettings, printer, links ->
             val payment = appSettings.payment
-            Checkout(form, payment, cart.totals(payment.taxMode, payment.chargeTax), currency(appSettings), kind, printer)
+            Checkout(form, payment, cart.totals(payment.taxMode, payment.chargeTax), currency(appSettings), kind, printer, links)
         }
 
     /**

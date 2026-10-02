@@ -247,7 +247,7 @@ class ReceiptServicesTest {
         val receipts = container.receipts
         assertThat(
             await { receipts.saleOffer("s1", justPaid = false).first() },
-        ).isEqualTo(ReceiptOffer(null, canPrint = true, canEmail = false))
+        ).isEqualTo(ReceiptOffer(null, canPrint = true, canEmail = false, canShare = true))
         store()
         configureEmail()
         val later = await { receipts.saleOffer("s1", justPaid = false).first { it.canEmail } }
@@ -261,7 +261,7 @@ class ReceiptServicesTest {
             await {
                 receipts.refundOffer("missing").first { !it.canPrint }
             },
-        ).isEqualTo(ReceiptOffer(null, canPrint = false, canEmail = true))
+        ).isEqualTo(ReceiptOffer(null, canPrint = false, canEmail = true, canShare = true))
 
         val sample = container.sampleReceipt(AppSettings(receipt = ReceiptSettings(businessName = "Cafe")))
         val text = PlainTextReceiptRenderer(48).render(sample)
@@ -308,6 +308,92 @@ class ReceiptServicesTest {
         ).isEqualTo("shopper@example.com")
         assertThat(await { container.receipts.emailSale("missing", "a@b.co") }).isInstanceOf(ActionResult.Failure::class.java)
         assertThat(await { container.receipts.emailRefund("missing", "a@b.co") }).isInstanceOf(ActionResult.Failure::class.java)
+    }
+
+    @Test
+    fun `a sale awaiting its payment link is emailed, printed and shared as an unpaid receipt with the link`() {
+        configureEmail()
+        env.useSimulator()
+        val url = "https://test.adyen.link/PL1"
+        val link =
+            sale.copy(
+                status = SaleStatus.AWAITING_PAYMENT,
+                paymentLink = true,
+                paymentLinkUrl = url,
+                paymentLinkExpiresAt = 1_790_766_235_000,
+                poiTransactionId = null,
+                poiTimestamp = null,
+                customerReceiptJson = null,
+                cashierReceiptJson = null,
+                shopperEmail = "sam@example.com",
+            )
+        await { container.sales.createPending(link, lines) }
+        val receipts = container.receipts
+        assertThat(await { receipts.emailSale("s1", "sam@example.com") }).isEqualTo(ActionResult.Success)
+        val message = env.mail.sent.single()
+        assertThat(message.subject).isEqualTo("Payment request from Corner Cafe")
+        val text = message.allText()
+        assertThat(text).contains("Pay securely online with the link or the QR code below.")
+        assertThat(text).contains("<a href=\"$url\"")
+        assertThat(text).contains("UNPAID")
+        assertThat(text).contains("AMOUNT DUE")
+        assertThat((message.content as MimeMultipart).getBodyPart(1).getHeader("Content-ID").single()).isEqualTo("<qr0>")
+
+        // The slip to hand over has the link's QR code and address, and needs no merchant copy.
+        val printed = await { receipts.printSale("s1") }
+        assertThat(printed).isEqualTo(SalePrint(ActionResult.Success, merchantCopyDue = false))
+        val jobs = container.virtualPrinter.jobs.value
+        assertThat(jobs).contains(PrintJob.QrCode(url))
+        assertThat(jobs.filterIsInstance<PrintJob.Text>().flatMap { it.lines }).contains(PrintLine.Text(url, PrintAlign.CENTER))
+
+        val shared = await { receipts.saleOffer("s1", justPaid = false).first() }.share!!
+        assertThat(shared.paymentLink).isEqualTo(url)
+        assertThat(shared.reference).isEqualTo("MP-1")
+        assertThat(shared.amountMinor).isEqualTo(1_200)
+        assertThat(
+            shared.document.qrCodes
+                .single()
+                .content,
+        ).isEqualTo(url)
+
+        // Once paid it is a receipt like any other, with nothing left to pay.
+        await { container.database.saleDao().update(link.copy(status = SaleStatus.APPROVED)) }
+        val paid = await { receipts.saleOffer("s1", justPaid = false).first { it.share?.paymentLink == null } }.share!!
+        assertThat(paid.paymentLink).isNull()
+        assertThat(paid.document.elements).contains(ReceiptElement.Text("Paid online", Align.CENTER))
+        assertThat(paid.document.qrCodes).isEmpty()
+        assertThat(await { receipts.emailSale("s1", "sam@example.com") }).isEqualTo(ActionResult.Success)
+        assertThat(
+            env.mail.sent
+                .last()
+                .subject,
+        ).isEqualTo("Your receipt from Corner Cafe")
+        assertThat(await { receipts.saleOffer("missing", justPaid = false).first() }.share).isNull()
+    }
+
+    @Test
+    fun `refund receipts are shared as they are emailed`() {
+        val refund =
+            RefundEntity(
+                id = "r1",
+                saleId = null,
+                createdAt = 0,
+                merchantReference = "R-1",
+                originalTransactionId = "T.X",
+                originalTimestamp = "t",
+                originalReference = "MP-1",
+                currency = "AUD",
+                amountMinor = 500,
+                full = false,
+                status = RefundStatus.REQUESTED,
+            )
+        await { container.refundRecords.create(refund) }
+        val shared = await { container.receipts.refundOffer("r1").first() }.share!!
+        assertThat(shared.reference).isEqualTo("R-1")
+        assertThat(shared.amountMinor).isEqualTo(500)
+        assertThat(shared.paymentLink).isNull()
+        assertThat(shared.document.elements).contains(ReceiptElement.Text("REFUND", Align.CENTER, TextStyle.BOLD))
+        assertThat(await { container.receipts.refundOffer("missing").first() }.share).isNull()
     }
 
     @Test

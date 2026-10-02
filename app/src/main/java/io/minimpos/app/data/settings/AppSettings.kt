@@ -41,6 +41,7 @@ data class AppSettings(
     fun normalized(): AppSettings =
         copy(
             terminal = terminal.normalized(),
+            payment = payment.normalized(),
             receipt = receipt.normalized(),
             email = email.normalized(),
             security = security.normalized(),
@@ -242,6 +243,9 @@ enum class ShopperReferenceSource {
  * @property emailReferenceSalt Salt mixed into hashed email references. Terminals with the same salt give a shopper the
  *   same reference, so saved cards work on all of them; changing it gives every shopper a new reference.
  * @property sendShopperEmail Include `shopperEmail` in tokenization requests.
+ * @property paymentLinks Whether checkout offers an Adyen payment link instead of sending a sale to the terminal; it
+ *   also needs the Checkout API (see `io.minimpos.app.terminal.TerminalSetup.paymentLinks`).
+ * @property linkExpiryHours How long a payment link works, in hours within [LINK_EXPIRY_HOURS].
  */
 @Serializable
 data class PaymentSettings(
@@ -261,7 +265,12 @@ data class PaymentSettings(
     val emailReferenceMode: EmailReferenceMode = EmailReferenceMode.HASHED,
     val emailReferenceSalt: String = "",
     val sendShopperEmail: Boolean = true,
+    val paymentLinks: Boolean = false,
+    val linkExpiryHours: Int = DEFAULT_LINK_EXPIRY_HOURS,
 ) {
+    /** These settings with [linkExpiryHours] within its range. */
+    fun normalized(): PaymentSettings = copy(linkExpiryHours = linkExpiryHours.coerceIn(LINK_EXPIRY_HOURS))
+
     /**
      * When the email is the shopper reference for saved cards it must be known when the payment starts, so it is then
      * always asked for before payment (Never becomes Before, After becomes Before and after).
@@ -310,6 +319,12 @@ data class PaymentSettings(
 
         /** The values Adyen accepts for `recurringProcessingModel`. */
         val RECURRING_MODELS: List<String> = RecurringModel.entries.map { it.value }
+
+        /** How long a payment link works by default, in hours: Adyen's own default. */
+        const val DEFAULT_LINK_EXPIRY_HOURS = 24
+
+        /** The allowed range of [linkExpiryHours]: an hour to Adyen's longest, 70 days. */
+        val LINK_EXPIRY_HOURS = 1..70 * 24
     }
 }
 

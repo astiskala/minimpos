@@ -14,8 +14,8 @@ class PlainTextReceiptRenderer(
 
     /**
      * Renders [document] as newline-terminated lines. Long text is word-wrapped, a row that does not fit on one line
-     * becomes its wrapped label followed by the right-aligned value, and a QR code is shown only by its caption as
-     * `[QR] caption`.
+     * becomes its wrapped label followed by the right-aligned value, a QR code is shown only by its caption as
+     * `[QR] caption`, and a link is its address on a line of its own, however long, so mail clients can open it.
      */
     fun render(document: ReceiptDocument): String =
         buildString {
@@ -26,6 +26,7 @@ class PlainTextReceiptRenderer(
                     ReceiptElement.Divider -> appendLine("-".repeat(width))
                     ReceiptElement.Blank -> appendLine()
                     is ReceiptElement.Qr -> element.caption?.let { appendLine(align("[QR] $it", Align.CENTER)) }
+                    is ReceiptElement.Link -> appendLine(element.url)
                 }
             }
         }.trimEnd('\n') + "\n"
@@ -209,10 +210,27 @@ class HtmlReceiptRenderer(
                         }
                         append("</div>")
                     }
+
+                    is ReceiptElement.Link -> {
+                        link(element)
+                    }
                 }
             }
             append("</div></body></html>")
         }
+
+    /** A web link as a button with its address under it; anything but an `https`/`http` address is only text. */
+    private fun StringBuilder.link(element: ReceiptElement.Link) {
+        val url = escape(element.url)
+        append("<div style=\"text-align:center;margin:12px 0;\">")
+        if (WEB_ADDRESS.matches(element.url)) {
+            append("<a href=\"").append(url).append("\" style=\"display:inline-block;padding:10px 20px;background:#0abf53;")
+            append("color:#ffffff;border-radius:8px;text-decoration:none;font-weight:bold;\">")
+            append(escape(element.label ?: element.url)).append("</a>")
+        }
+        append("<div style=\"font-size:12px;color:#5c687c;margin-top:6px;word-break:break-all;\">").append(url).append("</div>")
+        append("</div>")
+    }
 
     private fun textAlign(align: Align) =
         when (align) {
@@ -230,6 +248,9 @@ class HtmlReceiptRenderer(
 
     /** HTML escaping, also used for the app's other HTML emails. */
     companion object {
+        /** The addresses a link button may open: web pages only, never `javascript:` or other schemes. */
+        private val WEB_ADDRESS = Regex("https?://\\S+", RegexOption.IGNORE_CASE)
+
         /** Escapes the HTML special characters `& < > " '` so [text] is safe in element content and attribute values. */
         fun escape(text: String): String =
             buildString(text.length) {

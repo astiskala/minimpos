@@ -86,6 +86,55 @@ class CheckoutTest {
     }
 
     @Test
+    fun `a payment link is offered for a sale that can be paid while links are available`() {
+        val links = Checkout(CheckoutForm(customerReference = "CUST-1"), PaymentSettings(), totals, aud, linksAvailable = true)
+        assertThat(links.canSendLink).isTrue()
+        assertThat(links.copy(linksAvailable = false).canSendLink).isFalse()
+        assertThat(links.copy(kind = SaleKind.PRE_AUTHORISATION).canSendLink).isFalse()
+        assertThat(links.copy(form = CheckoutForm(customerReference = "ab")).canSendLink).isFalse()
+        assertThat(links.copy(linksAvailable = false).linkStart(now, ZoneOffset.UTC)).isNull()
+    }
+
+    @Test
+    fun `a link is never taken for a tip, keeps the shopper reference and works as long as set, at most 70 days`() {
+        val start =
+            Checkout(
+                CheckoutForm(customerReference = "CUST-1", tipOnReceipt = true),
+                PaymentSettings(linkExpiryHours = 48),
+                totals,
+                aud,
+                printerAvailable = true,
+                linksAvailable = true,
+            ).linkStart(now, ZoneOffset.UTC)!!
+        assertThat(start.payment.tipOnReceipt).isFalse()
+        assertThat(start.payment.tokenization).isNull()
+        assertThat(start.shopperReference).isEqualTo("CUST-1")
+        assertThat(start.expiresAt).isEqualTo(now.plusSeconds(48 * 3600))
+        val longest =
+            Checkout(
+                CheckoutForm(),
+                PaymentSettings(linkExpiryHours = 70 * 24),
+                totals,
+                aud,
+                linksAvailable = true,
+            ).linkStart(now, ZoneOffset.UTC)!!
+        assertThat(longest.expiresAt).isEqualTo(now.plus(Checkout.MAX_LINK_LIFETIME))
+        assertThat(longest.shopperReference).isNull()
+        val sale = start.pendingSale("s1", 5)
+        assertThat(sale.paymentLink).isTrue()
+        assertThat(sale.shopperReference).isEqualTo("CUST-1")
+        assertThat(sale.paymentLinkExpiresAt).isEqualTo(start.expiresAt.toEpochMilli())
+        assertThat(sale.tipOnReceipt).isFalse()
+    }
+
+    @Test
+    fun `the link expiry is kept within Adyen's limits`() {
+        assertThat(PaymentSettings(linkExpiryHours = 0).normalized().linkExpiryHours).isEqualTo(1)
+        assertThat(PaymentSettings(linkExpiryHours = 99_999).normalized().linkExpiryHours).isEqualTo(1_680)
+        assertThat(AppSettings(payment = PaymentSettings(linkExpiryHours = -5)).normalized().payment.linkExpiryHours).isEqualTo(1)
+    }
+
+    @Test
     fun `the session's checkout follows its cart, form, settings and printer`() =
         runBlocking {
             val session = SaleSession { "line" }
@@ -98,6 +147,8 @@ class CheckoutTest {
             assertThat(ready.totals.amounts.gross).isEqualTo(440)
             assertThat(ready.customerReference).isEqualTo("CUST-9")
             assertThat(ready.printerAvailable).isFalse()
+            assertThat(ready.linksAvailable).isFalse()
             assertThat(ready.kind).isEqualTo(SaleKind.SALE)
+            assertThat(session.checkout(settings, flowOf(false), flowOf(true)) { CurrencySpec.of("AUD") }.first().canSendLink).isTrue()
         }
 }

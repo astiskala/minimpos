@@ -33,6 +33,7 @@ object PrintRenderer {
             is ReceiptElement.Row -> PrintLine.Columns(element.left, element.right, style(element.style))
             ReceiptElement.Divider -> PrintLine.Text("-".repeat(dividerWidth), PrintAlign.CENTER)
             ReceiptElement.Blank -> PrintLine.Text("")
+            is ReceiptElement.Link -> PrintLine.Text(element.url, PrintAlign.CENTER)
             is ReceiptElement.Qr -> null
         }
 

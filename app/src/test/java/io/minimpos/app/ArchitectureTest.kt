@@ -1,7 +1,9 @@
 package io.minimpos.app
 
+import android.content.Intent
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.internal.StabilityInferred
+import androidx.core.content.FileProvider
 import androidx.lifecycle.ViewModel
 import androidx.room.Dao
 import androidx.room.Database
@@ -47,6 +49,7 @@ import io.minimpos.app.data.settings.TerminalMode
 import io.minimpos.app.feature.ActionOutcome
 import io.minimpos.app.feature.TransactionActions
 import io.minimpos.app.payment.CaptureResult
+import io.minimpos.app.payment.PaymentLinks
 import io.minimpos.app.payment.ReceiptDelivery
 import io.minimpos.app.payment.SaleSession
 import io.minimpos.app.receipt.PrintRenderer
@@ -60,6 +63,8 @@ import io.minimpos.app.terminal.SimulatedTerminal
 import io.minimpos.app.terminal.TerminalGateway
 import io.minimpos.app.terminal.TerminalSetup
 import io.minimpos.app.terminal.TerminalSetupSource
+import io.minimpos.terminal.checkout.PaymentLink
+import io.minimpos.terminal.checkout.PaymentLinkApi
 import io.minimpos.terminal.client.PrintJob
 import io.minimpos.terminal.client.PrintLine
 import io.minimpos.terminal.client.TerminalClient
@@ -325,6 +330,42 @@ class ArchitectureTest {
     }
 
     @Test
+    fun `payment links reach Adyen only through PaymentLinks`() {
+        // PaymentLinks stores a link's sale PENDING first and serialises checks and cancellations, so a late answer
+        // never overwrites a newer one; AdyenApi only makes the client, and the container hands its target over.
+        noClasses()
+            .that()
+            .haveNameNotMatching(within(PaymentLinks::class.java.name))
+            .and()
+            .resideOutsideOfPackage(TERMINAL_PACKAGE)
+            .should()
+            .callMethodWhere(callToSubtypeOf(PaymentLinkApi::class.java, "create", "status", "expire"))
+            .check(app)
+        // Only it stores what Adyen says about a link, which SaleRepository.settle takes with the link's status.
+        noClasses()
+            .that()
+            .haveNameNotMatching(within(PaymentLinks::class.java.name, SaleRepository::class.java.name))
+            .should()
+            .dependOnClassesThat()
+            .belongToAnyOf(PaymentLink::class.java)
+            .check(app)
+    }
+
+    @Test
+    fun `only the share package hands files to other apps`() =
+        // A FileProvider grant exposes a file to whichever app the user picks; ShareSheet limits that to the receipt
+        // image it just wrote, in the one folder res/xml/shared_files.xml names.
+        noClasses()
+            .that()
+            .resideOutsideOfPackage("io.minimpos.app.share..")
+            .should()
+            .dependOnClassesThat()
+            .belongToAnyOf(FileProvider::class.java)
+            .orShould()
+            .accessField(Intent::class.java, "ACTION_SEND")
+            .check(app)
+
+    @Test
     fun `stored sales and refunds change only through their repositories`() {
         // After it is created, a sale changes only through SaleRepository's named transitions and a refund only through
         // RefundRepository.settle; HistoryRepository owns the housekeeping of whole tables.
@@ -385,7 +426,8 @@ class ArchitectureTest {
 
     @Test
     fun `decision rules stay pure`() =
-        // Checkout, refund and capture rules, the history search and the terminal setup are tested with plain JUnit.
+        // Checkout, payment link request, refund and capture rules, the history search and the terminal setup are tested
+        // with plain JUnit.
         noClasses()
             .that(pureDecisions)
             .should()
@@ -626,7 +668,14 @@ class ArchitectureTest {
         const val TRANSACTION_ACTIONS_FILE = "io.minimpos.app.feature.TransactionActionsKt"
         const val OUTCOME_MESSAGES_FILE = "io.minimpos.app.feature.OutcomeMessagesKt"
 
-        val UI_PACKAGES = arrayOf("io.minimpos.app.feature..", "io.minimpos.app.ui..", "io.minimpos.app.scan..", "io.minimpos.app.qr..")
+        val UI_PACKAGES =
+            arrayOf(
+                "io.minimpos.app.feature..",
+                "io.minimpos.app.ui..",
+                "io.minimpos.app.scan..",
+                "io.minimpos.app.qr..",
+                "io.minimpos.app.share..",
+            )
 
         val BUSINESS_PACKAGES =
             arrayOf(
@@ -647,6 +696,7 @@ class ArchitectureTest {
 
         val pureDecisions: DescribedPredicate<JavaClass> =
             declaredIn("io.minimpos.app.payment", "Checkout.kt")
+                .or(declaredIn("io.minimpos.app.payment", "PaymentLinkRequests.kt"))
                 .or(declaredIn("io.minimpos.app.refund", "PaymentStanding.kt"))
                 .or(declaredIn("io.minimpos.app.refund", "RefundablePayment.kt"))
                 .or(declaredIn("io.minimpos.app.feature.history", "HistorySearch.kt"))

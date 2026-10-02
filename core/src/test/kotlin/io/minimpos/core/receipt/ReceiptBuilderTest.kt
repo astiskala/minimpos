@@ -313,6 +313,42 @@ class ReceiptBuilderTest {
     }
 
     @Test
+    fun `a sale awaiting its payment link is unpaid, totalled as due, with the link as a QR code and an address`() {
+        val url = "https://test.adyen.link/PL123"
+        val doc =
+            builder().sale(
+                sale(approved = false).copy(cardReceipt = emptyList(), refundQr = null, unpaidLink = UnpaidLink(url, "03/10/2026 09:30")),
+            )
+        assertThat(doc.elements)
+            .containsAtLeast(
+                Row("AMOUNT DUE", "$12.00", TextStyle.BOLD),
+                Blank,
+                Text("UNPAID", Align.CENTER, TextStyle.BOLD),
+                Qr(url, "Scan to pay"),
+                Text("Or open this link:", Align.CENTER),
+                ReceiptElement.Link(url, "Pay now"),
+                Text("Link valid until 03/10/2026 09:30", Align.CENTER),
+                Text("Thank you!", Align.CENTER),
+            ).inOrder()
+        assertThat(
+            doc.elements,
+        ).containsNoneOf(Row("TOTAL", "$12.00", TextStyle.BOLD), Text("PAYMENT NOT COMPLETED", Align.CENTER, TextStyle.BOLD))
+        assertThat(doc.qrCodes).containsExactly(Qr(url, "Scan to pay"))
+        val noExpiry = builder().sale(sale(approved = false).copy(unpaidLink = UnpaidLink(url, null)))
+        assertThat(noExpiry.elements.filterIsInstance<Text>().map { it.text }).doesNotContain("Link valid until null")
+        assertThat(noExpiry.elements.last()).isEqualTo(Text("Come again", Align.CENTER))
+    }
+
+    @Test
+    fun `a sale paid through its payment link says so and has no card data`() {
+        val doc = builder().sale(sale().copy(cardReceipt = emptyList(), refundQr = null, paidOnline = true))
+        assertThat(doc.elements)
+            .containsAtLeast(Row("TOTAL", "$12.00", TextStyle.BOLD), Text("Paid online", Align.CENTER), Text("Thank you!", Align.CENTER))
+            .inOrder()
+        assertThat(doc.qrCodes).isEmpty()
+    }
+
+    @Test
     fun `tax labels include the rate unless already present`() {
         assertThat(AppliedTax("VAT", 20_000).label()).isEqualTo("VAT 20%")
         assertThat(AppliedTax("GST 10%", 10_000).label()).isEqualTo("GST 10%")

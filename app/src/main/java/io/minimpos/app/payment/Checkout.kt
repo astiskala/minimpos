@@ -9,6 +9,7 @@ import io.minimpos.core.ids.Ids
 import io.minimpos.core.money.CurrencySpec
 import io.minimpos.core.shopper.ShopperReferences
 import io.minimpos.core.tax.TaxMode
+import java.time.Duration
 import java.time.Instant
 import java.time.ZoneId
 
@@ -23,6 +24,8 @@ import java.time.ZoneId
  * @property currency The currency charged.
  * @property kind A sale, or a pre-authorisation that only holds the amount.
  * @property printerAvailable Whether printing is offered, which tipping on the receipt needs.
+ * @property linksAvailable Whether payment links can be created
+ *   ([io.minimpos.app.terminal.TerminalSetup.paymentLinks]).
  */
 data class Checkout(
     val form: CheckoutForm = CheckoutForm(),
@@ -31,6 +34,7 @@ data class Checkout(
     val currency: CurrencySpec = CurrencySpec("EUR", 2),
     val kind: SaleKind = SaleKind.SALE,
     val printerAvailable: Boolean = false,
+    val linksAvailable: Boolean = false,
 ) {
     /** Whether the amount is only held (a pre-authorisation) rather than charged. */
     val preAuthorisation: Boolean get() = kind == SaleKind.PRE_AUTHORISATION
@@ -111,9 +115,36 @@ data class Checkout(
         )
     }
 
+    /**
+     * Whether a payment link is offered instead of the terminal: for a sale (a pre-authorisation always goes to the
+     * terminal) that [canPay], while links are [linksAvailable].
+     */
+    val canSendLink: Boolean get() = !preAuthorisation && linksAvailable && canPay
+
+    /**
+     * The payment link to create, or null unless [canSendLink]: the [paymentStart] at [now] in [zone] without tipping on
+     * the receipt (there is no paper to write on), with the [shopperReference] whether or not the card is saved, working
+     * for [PaymentSettings.linkExpiryHours] but at most [MAX_LINK_LIFETIME].
+     */
+    fun linkStart(
+        now: Instant,
+        zone: ZoneId,
+    ): PaymentLinkStart? {
+        if (!canSendLink) return null
+        val start = paymentStart(now, zone)?.copy(tipOnReceipt = false) ?: return null
+        val lifetime = minOf(Duration.ofHours(payment.linkExpiryHours.toLong()), MAX_LINK_LIFETIME)
+        return PaymentLinkStart(start, shopperReference, now.plus(lifetime))
+    }
+
     /** Field limits. */
     companion object {
         /** Longest merchant reference accepted, in characters (Adyen's limit for `merchantReference`). */
         const val MAX_REFERENCE_LENGTH = 80
+
+        /**
+         * The longest a payment link may work: Adyen's 70 days, less a few minutes, so a clock slightly ahead of
+         * Adyen's cannot ask for more.
+         */
+        val MAX_LINK_LIFETIME: Duration = Duration.ofDays(70).minusMinutes(5)
     }
 }

@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- What the share sheet may hand to other apps: only the receipt images ShareSheet writes, nothing else in the cache. -->
+<paths>
+  <cache-path
+    name="shared"
+    path="shared/" />
+</paths>

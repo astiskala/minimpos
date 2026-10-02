@@ -29,6 +29,11 @@ the other.
   **abort** asks a busy terminal to stop one.
 - **Decline** (`client/Decline`): why a transaction was not approved (refused, cancelled, busy) and the retry advice;
   read only from the ErrorCondition. _Avoid_: error, rejection.
+- **Payment link** (`payment/PaymentLinks`, `PaymentLinkStart`, `SaleEntity.paymentLink`): a sale paid on Adyen's
+  payment page (Pay by Link) instead of on a terminal, through the Checkout API. Stored PENDING first, then **awaiting
+  payment** (`SaleStatus.AWAITING_PAYMENT`) once Adyen made the link, then paid (approved), **expired** or cancelled.
+  With no server for webhooks, the outcome is learnt by **checking** the link (`PaymentLinks.check`), and a paid link
+  has no PSP reference, so it is refunded in the Customer Area. Sales only. _Avoid_: invoice, pay-by-link (in code).
 - **References**: the **merchant reference** (Adyen's `reference`: an optional prefix, then `yyMMdd-HHmmss-XXXX`;
   refunds `R-…`, cancellations `C-…`); the **customer reference** typed at checkout, asked for exactly when it is the
   **shopper reference** (Adyen's `shopperReference` for saving a card, made from the customer reference or the email).
@@ -72,16 +77,19 @@ the other.
   messages.
 - **Boarding** (`TapToPaySetup`, `TerminalSetup.boarding`): registering the Payments app on this phone with the
   Payments app API key, so Tap to Pay works.
-- **Checkout API** (`ApiSetup`, `ApiTarget`, `AdyenApi`): Adyen's online API for captures and adjustments, set up or not
-  (then captures are left to the Customer Area).
+- **Checkout API** (`ApiSetup`, `ApiTarget`, `AdyenApi`): Adyen's online API for captures, adjustments and payment
+  links, set up or not (then captures are left to the Customer Area, and there are no payment links).
 
 ## Receipts and setup
 
 - **Receipt** (`ReceiptDocument`): one combined slip (header, items, tax, Adyen's card receipt lines, footer), plus the
   refund QR as a second print; the terminal's own receipt printing is suppressed. **Merchant copy**: the second copy,
   printed as `MerchantCopyPolicy` says.
-- **Receipt delivery** (`ReceiptDelivery`, `feature/TransactionActions`): offering, printing and emailing a
-  transaction's receipt, including the **automatic delivery** of a fresh one.
+- **Receipt delivery** (`ReceiptDelivery`, `feature/TransactionActions`): offering, printing, emailing and
+  **sharing** a transaction's receipt, including the **automatic delivery** of a fresh one. Sharing
+  (`share/ShareSheet`) hands the receipt as an image to Android's share sheet, on phones and tablets only.
+- **Unpaid receipt** (`SaleReceipt.unpaidLink`): the receipt of a sale awaiting its payment link: marked unpaid,
+  totalled as the amount due, with the link as a QR code and an address; emailed as a payment request.
 - **Outcome** (`ActionOutcome`, `ActionState`): what a finished action reports, typed, worded only by the screens
   (`feature/OutcomeMessages.kt`). _Avoid_: message, error string.
 - **Catalogue**: products, categories and tax rates (`CatalogRepository`); every product has a tax rate.

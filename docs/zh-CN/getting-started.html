@@ -171,7 +171,7 @@ cd minimpos
             <h2>8. 销售与退款</h2>
             <ul>
               <li><strong>新建销售：</strong>点击商品、扫描条形码或添加自定义金额，然后点击<strong>收款</strong>。在结账时填写识别号，并在取得购物者同意后选择保存卡片，再点击<strong>支付</strong>并按终端提示操作。</li>
-              <li><strong>收据</strong>将商家抬头、商品、税费、卡片收据和退款二维码整合打印，也可以通过电子邮件发送。</li>
+              <li><strong>收据</strong>将商家抬头、商品、税费、卡片收据和退款二维码整合打印，也可以通过电子邮件发送。在平板或手机上，<strong>分享收据</strong>会通过 Android 分享面板以图片形式发送，例如发到即时通讯应用。</li>
               <li><strong>退款：</strong>扫描收据上的二维码，或在<strong>交易记录</strong>中打开销售记录。可以全额退款、按商品退款或输入退款金额。Adyen 异步处理退款，因此应用显示为<em>已请求退款</em>；最终结果请在商户后台查看。</li>
               <li><strong>交易记录</strong>按日分组交易，并显示每日合计和小费。<em>需处理</em>会列出结果未确认的支付，您可以再次向终端查询结果。</li>
               <li><strong>查找交易：</strong>在交易记录的搜索框输入内容（小屏终端请先点击搜索图标）：商家识别号、PSP 识别号、授权码、客户识别号、购物者电子邮箱、卡号后 4 位，或金额，例如 <code>34</code> 或 <code>34.50</code>。每个搜索词都必须匹配，因此 <code>visa 34</code> 会找到金额为 $34.00 的 Visa 支付；搜索原销售的购物者或卡片信息也能找到对应退款。筛选栏开头的<strong>付款方式</strong>可按卡品牌或钱包（Apple Pay、Google Pay、Samsung Pay）缩小范围。</li>
@@ -188,6 +188,14 @@ cd minimpos
             </ol>
             <p>Adyen 异步确认扣款，因此应用会显示<em>已请求扣款</em>。Mini mPOS 没有接收 webhook 的后端，最终结果请在商户后台查看。结果未知的扣款可以从交易记录再次发送，不会重复扣款。</p>
             <p>没有 API 密钥时，应用会记录待扣款金额并显示<em>在商户后台扣款</em>。请在 <strong>Payments › Payment list</strong> 中选择交易记录所示的 PSP 识别号，然后点击 <strong>Capture payment</strong>。</p>
+            <h3 id="payment-links">支付链接</h3>
+            <p>设置好 Checkout API 后，销售还可以通过 Adyen <a href="https://docs.adyen.com/unified-commerce/pay-by-link">支付链接</a>收款，而不使用终端：顾客在自己的手机或电脑上通过 Adyen 支付页面付款。</p>
+            <ol>
+              <li>创建第一个 LIVE 链接之前，请在 LIVE 商户后台的 <strong>Payments › Payment link settings</strong> 中添加您的条款和条件。</li>
+              <li>在 Mini mPOS 中开启<strong>设置 › 支付 › 提供支付链接</strong>，并设置链接有效时长（默认 24 小时，最长 70 天）。</li>
+              <li>结账时点击“支付”下方的<strong>发送支付链接</strong>。顾客扫描屏幕上的二维码即可付款；您也可以<strong>通过邮件发送链接</strong>（附带未支付收据）、<strong>打印链接</strong>，或在平板或手机上<strong>分享链接</strong>。</li>
+            </ol>
+            <p>显示链接期间，应用每隔几秒查询一次是否已支付；点击<strong>查询支付状态</strong>也会立即查询。在链接被支付、过期或您<strong>取消链接</strong>之前，交易记录会将该销售显示为<em>待支付</em>。Adyen 只会把已支付链接的 PSP 识别号发送到 webhook，而 Mini mPOS 没有接收 webhook 的后端，因此已支付链接的退款请在商户后台（Payments › Payment list）中办理。支付链接仅适用于销售，模拟器不支持。</p>
           </section>
           <section id="tips">
             <h2>10. 收据小费</h2>

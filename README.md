@@ -1,9 +1,10 @@
 # Mini mPOS
 
 A free, open-source point-of-sale app for Adyen Android payment terminals. Sell products, take card and wallet
-payments, print or email receipts, and refund by scanning a receipt. Hold deposits and collect tips too, all on one
-device, with no extra tablet or app subscription. It also runs on Android tablets and phones, taking payments on a
-terminal over your network or the internet, or with Tap to Pay through the Adyen Payments app.
+payments or send a payment link, print, email or share receipts, and refund by scanning a receipt. Hold deposits and
+collect tips too, all on one device, with no extra tablet or app subscription. It also runs on Android tablets and
+phones, taking payments on a terminal over your network or the internet, or with Tap to Pay through the Adyen Payments
+app.
 
 [![CI](https://github.com/astiskala/minimpos/actions/workflows/ci.yml/badge.svg)](https://github.com/astiskala/minimpos/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-0abf53.svg)](LICENSE)
@@ -38,7 +39,14 @@ terminal over your network or the internet, or with Tap to Pay through the Adyen
   Cards are saved under the customer reference that checkout asks for, or instead under the shopper's email address
   (hashed by default), in which case no customer reference is asked for.
 - **Receipts** printed on terminals with a printer as one slip: your header, the items, tax, the card receipt and a
-  refund QR code. They can also be **emailed** over your own SMTP server.
+  refund QR code. They can also be **emailed** over your own SMTP server and, on tablets and phones, **shared** as an
+  image through Android's share sheet (to a messaging app, for example).
+- **Payment links** (Adyen [Pay by Link](https://docs.adyen.com/unified-commerce/pay-by-link)) instead of the terminal:
+  with the Checkout API set up, switch on Settings › Payments › **Offer payment links** and checkout gets **Send
+  payment link** under Pay. The link is shown as a QR code for the customer to scan, and can be emailed with an unpaid
+  receipt, printed with its QR code, or shared from a tablet or phone. While it is shown the app checks every few
+  seconds whether it was paid (and on request, from history too); a link can also be canceled. Links work for 24
+  hours by default (up to 70 days), and sales only.
 - **Referenced refunds**: scan the receipt's QR code, or start from history. Refund in full, by item, or an amount.
 - **History** by day with daily totals, filters (sales, awaiting tip, pre-auths, refunds, needs attention) and a
   **search** that finds a transaction by its merchant reference, PSP reference or auth code, the shopper (customer
@@ -117,14 +125,15 @@ The app has no backend: products, settings and sales history stay on the termina
 it only sees what Adyen returns, such as the brand, masked card number, PSP reference and (when tokenizing) the stored
 payment method ID. Only if you give it a Checkout API key does it also call Adyen's
 [Checkout API](https://docs.adyen.com/api-explorer/Checkout/latest/overview) (`/payments/{pspReference}/captures` and
-`/amountUpdates`) to capture tips and pre-authorizations; the key is stored encrypted with the Android Keystore.
+`/amountUpdates`) to capture tips and pre-authorizations, and `/paymentLinks` to create, check and expire payment
+links; the key is stored encrypted with the Android Keystore.
 
 The code is split into three modules, plus `website-test`, which checks the website in `docs/`:
 
 | Module | Contents |
 | --- | --- |
 | `core` | Plain Kotlin: money and tax math, cart, refunds, receipt layout, catalog and refund QR codes, Adyen's currency table. |
-| `terminal-api` | The Terminal API client on top of Adyen's Java library; local, cloud and Payments app transports (OkHttp); Checkout API captures; retry advice and the simulator. |
+| `terminal-api` | The Terminal API client on top of Adyen's Java library; local, cloud and Payments app transports (OkHttp); Checkout API captures and payment links; retry advice and the simulator. |
 | `app` | The Android app: Jetpack Compose (Material 3), Navigation 3, Room, DataStore, CameraX and ZXing, JavaMail. |
 
 ## Requirements
@@ -187,10 +196,12 @@ plus setting up your business, products and pre-authorizations. In short:
 5. **Set up your business:** Settings › Payments (currency), Tax, Receipts and optionally Email.
    Then set an admin PIN under Security. For each further terminal, open Settings › Data › **Share with another
    terminal** on this one and **Set up from another terminal** on the new one, and type the transfer code shown.
-6. **Optional, for tips on the receipt and pre-authorizations:** create an API credential (Customer Area, Developers ›
-   API credentials) with only the **Checkout webservice role**, and enter your merchant account and its API key under
-   Settings › Terminal › Checkout API, then tap **Save and test API key**. LIVE terminals also need your live URL prefix
-   (Developers › API URLs).
+6. **Optional, for tips on the receipt, pre-authorizations and payment links:** create an API credential (Customer
+   Area, Developers › API credentials) with only the **Checkout webservice role**, and enter your merchant account and
+   its API key under Settings › Terminal › Checkout API, then tap **Save and test API key**. LIVE terminals also need
+   your live URL prefix (Developers › API URLs). For payment links, also switch on Settings › Payments › **Offer
+   payment links**; before the first LIVE link, add your terms and conditions in the Customer Area (Payments › Payment
+   link settings).
 
 The app meets Adyen's [app requirements](https://docs.adyen.com/point-of-sale/android-terminals/app-requirements): it
 only asks for the internet, network state and camera permissions, and the build checks this on every run.
@@ -251,6 +262,12 @@ and official reference links.
 - Without a Checkout API key, captures are only recorded in the app: capture the amount shown in the Customer Area
   (Payments › Payment list). Holds expire, so capture tips and pre-authorizations promptly. Canceling one from history
   is a full reversal: Adyen refunds it in full if it was already captured.
+- Payment links: without a server for webhooks, the app learns that a link was paid only by asking Adyen (every few
+  seconds while the link is shown, or with **Check payment**), and Adyen's answer has no PSP reference. So a sale paid
+  through a link counts in the day's totals but is refunded in the Customer Area (Payments › Payment list), not from
+  the app. An unpaid link counts nowhere; it shows "Awaiting payment" in history until it is paid, expires or is
+  canceled. Payment links are not simulated: they need the Checkout API, with payments going to a terminal, the cloud
+  or Tap to Pay. Your account's risk and capture settings apply to them, as to any online payment.
 - History's wallet (Apple Pay, Google Pay, Samsung Pay) comes from the `paymentMethodVariant` the terminal returns,
   such as `visa_applepay`. Sales taken with earlier versions of the app did not store it, so they are found by their
   card brand only. Search and filters only cover transactions still on the terminal (Settings › Data › Keep

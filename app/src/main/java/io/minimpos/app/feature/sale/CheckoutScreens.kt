@@ -20,8 +20,10 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.EditNote
 import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Link
 import androidx.compose.material.icons.filled.Print
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
@@ -60,6 +62,7 @@ import io.minimpos.app.payment.CheckoutForm
 import io.minimpos.app.payment.TransactionState
 import io.minimpos.app.refund.PaymentAction
 import io.minimpos.app.refund.standing
+import io.minimpos.app.share.ShareEffect
 import io.minimpos.app.ui.components.ActionMessage
 import io.minimpos.app.ui.components.BottomActions
 import io.minimpos.app.ui.components.Card
@@ -93,8 +96,9 @@ import java.util.Locale
 
 /**
  * The last step before paying: the amount, the optional merchant reference, customer reference and email fields,
- * and saving the card, for a payment of [kind]. Pay starts the payment and opens [PaymentScreen]. For a
- * pre-authorisation the amount is only held, which the screen explains.
+ * and saving the card, for a payment of [kind]. Pay starts the payment and opens [PaymentScreen]; when payment links
+ * are offered, "Send payment link" creates one instead and opens [PaymentLinkScreen]. For a pre-authorisation the
+ * amount is only held, which the screen explains.
  */
 @Composable
 fun CheckoutScreen(
@@ -104,27 +108,20 @@ fun CheckoutScreen(
     vm: CheckoutViewModel = checkoutViewModel(kind),
 ) {
     val state by vm.state.collectAsStateWithLifecycle()
-    val preAuthorisation = state.preAuthorisation
-    val money = rememberMoneyFormatter(state.currency)
     val dimens = LocalDimens.current
+    val money = rememberMoneyFormatter(state.currency)
 
     MiniScaffold(
         title = stringResource(R.string.checkout_title),
         onBack = navigator::back,
         modifier = modifier,
         bottomBar = {
-            BottomActions {
-                PrimaryButton(
-                    text =
-                        stringResource(
-                            if (preAuthorisation) R.string.pre_auth_charge else R.string.checkout_pay,
-                            money.format(state.totals.amounts.gross),
-                        ),
-                    enabled = state.canPay,
-                    onClick = { if (vm.pay()) navigator.replace(Route.Payment(kind)) },
-                    modifier = Modifier.testTag("pay"),
-                )
-            }
+            CheckoutActions(
+                state,
+                money,
+                onPay = { if (vm.pay()) navigator.replace(Route.Payment(kind)) },
+                onSendLink = { vm.sendLink()?.let { navigator.replace(Route.PaymentLink(it, fresh = true)) } },
+            )
         },
     ) { padding ->
         Column(
@@ -142,7 +139,7 @@ fun CheckoutScreen(
                     textAlign = TextAlign.Center,
                     modifier = Modifier.fillMaxWidth().testTag("checkoutAmount"),
                 )
-                if (preAuthorisation) {
+                if (state.preAuthorisation) {
                     Text(
                         stringResource(R.string.checkout_pre_auth_note),
                         style = MaterialTheme.typography.bodySmall,
@@ -155,6 +152,36 @@ fun CheckoutScreen(
                 CheckoutFields(state, onUpdate = vm::update)
                 CheckoutSwitches(state, onUpdate = vm::update)
             }
+        }
+    }
+}
+
+/** Pay on the terminal and, when payment links are offered, "Send payment link" under it. */
+@Composable
+private fun CheckoutActions(
+    state: Checkout,
+    money: MoneyFormatter,
+    onPay: () -> Unit,
+    onSendLink: () -> Unit,
+) {
+    BottomActions {
+        PrimaryButton(
+            text =
+                stringResource(
+                    if (state.preAuthorisation) R.string.pre_auth_charge else R.string.checkout_pay,
+                    money.format(state.totals.amounts.gross),
+                ),
+            enabled = state.canPay,
+            onClick = onPay,
+            modifier = Modifier.testTag("pay"),
+        )
+        if (state.canSendLink) {
+            SecondaryButton(
+                stringResource(R.string.checkout_send_link),
+                onSendLink,
+                icon = Icons.Default.Link,
+                modifier = Modifier.testTag("sendLink"),
+            )
         }
     }
 }
@@ -299,6 +326,7 @@ private fun checkoutViewModel(kind: SaleKind): CheckoutViewModel {
             container.settingsState,
             container.terminalStatus.state,
             container::currency,
+            container.links,
         )
     }
 }
@@ -409,19 +437,16 @@ fun SaleResultScreen(
                         onPrintMerchantCopy = { vm.transaction.print(ReceiptCopy.MERCHANT) },
                         onEnterTip = { navigator.push(Route.Tip(saleId)) },
                         onEmail = vm.transaction::email,
+                        onShare = vm.transaction::share,
                         onToggleReceipt = { showReceipt = !showReceipt },
                     )
                 } else {
-                    UnapprovedSaleActions(
-                        state = state,
-                        onRecheck = vm.transaction::recheck,
-                        onAbortBusy = vm::abortBusyTransaction,
-                        onBackToSale = { done(ringUp) },
-                    )
+                    UnapprovedSaleActions(state, vm.transaction::recheck, vm::abortBusyTransaction) { done(ringUp) }
                 }
             }
         }
     }
+    ShareEffect(state.transaction.share, vm.transaction::shared)
 }
 
 /** The outcome badge and title, the amount, and for unsuccessful payments why and what to do next. */
@@ -548,9 +573,9 @@ private fun SalePaymentCard(sale: SaleEntity) {
 }
 
 /**
- * Printing (then the merchant copy, when one is due), entering the tip of a sale awaiting one, emailing and showing the
- * receipt of an approved sale ([receipt] is null while hidden). The email button asks for the address, starting with
- * the one captured at checkout.
+ * Printing (then the merchant copy, when one is due), entering the tip of a sale awaiting one, emailing, sharing (on
+ * phones and tablets) and showing the receipt of an approved sale ([receipt] is null while hidden). The email button
+ * asks for the address, starting with the one captured at checkout.
  */
 @Composable
 private fun ColumnScope.ApprovedSaleActions(
@@ -560,6 +585,7 @@ private fun ColumnScope.ApprovedSaleActions(
     onPrintMerchantCopy: () -> Unit,
     onEnterTip: () -> Unit,
     onEmail: (to: String) -> Unit,
+    onShare: () -> Unit,
     onToggleReceipt: () -> Unit,
 ) {
     var askEmail by remember { mutableStateOf(false) }
@@ -588,6 +614,7 @@ private fun ColumnScope.ApprovedSaleActions(
         )
         OutcomeMessage(state.transaction.email)
     }
+    if (state.transaction.canShare) ShareReceiptButton(onShare)
     ReceiptToggle(receipt, onToggleReceipt)
     if (askEmail) {
         EmailReceiptDialog(
@@ -604,6 +631,18 @@ private fun ColumnScope.ApprovedSaleActions(
         )
     }
 }
+
+/** Shares the receipt as an image through Android's share sheet (offered on phones and tablets only). */
+@Composable
+fun ShareReceiptButton(
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) = SecondaryButton(
+    stringResource(R.string.result_share),
+    onClick,
+    icon = Icons.Default.Share,
+    modifier = modifier.testTag("shareReceipt"),
+)
 
 /**
  * "Show receipt" / "Hide receipt" ([modifier] applies to this button) and, while shown, the [receipt] itself (null

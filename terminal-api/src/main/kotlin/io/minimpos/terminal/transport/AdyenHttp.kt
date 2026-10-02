@@ -94,6 +94,13 @@ internal class AdyenHttp(
             timeout,
         )
 
+    /** `PATCH [url]` with the JSON [json], waiting at most [timeout]. */
+    suspend fun patch(
+        url: HttpUrl,
+        json: String,
+        timeout: Duration,
+    ): AdyenReply = call(Request.Builder().url(url).patch(json.toRequestBody(JSON)), timeout)
+
     private suspend fun call(
         request: Request.Builder,
         timeout: Duration,

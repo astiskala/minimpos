@@ -24,6 +24,9 @@ import javax.mail.MessagingException
  * @property invalidAddress Error when the recipient address is not valid.
  * @property preAuthIntro Paragraph above a pre-authorisation receipt.
  * @property cancellationIntro Paragraph above the receipt of a cancelled payment that only held its amount.
+ * @property linkSubject Subject of a payment link email, with the `{business}` and `{reference}` placeholders of
+ *   [io.minimpos.app.data.settings.EmailSettings.subject].
+ * @property linkIntro Paragraph above the unpaid receipt in a payment link email.
  */
 data class EmailTexts(
     val appName: String,
@@ -35,6 +38,8 @@ data class EmailTexts(
     val invalidAddress: String,
     val preAuthIntro: String,
     val cancellationIntro: String,
+    val linkSubject: String = "Payment request from {business}",
+    val linkIntro: String = "Pay securely online with the link or the QR code below.",
 )
 
 /**
@@ -66,6 +71,16 @@ class ReceiptEmailer(
     ): ActionResult = send(settings.current(), to, document, if (preAuthorisation) texts.preAuthIntro else texts.intro, reference)
 
     /**
+     * Emails [document], the unpaid receipt (with the payment link) of the sale with merchant reference [reference], to
+     * [to], under the payment link subject rather than the receipt one.
+     */
+    suspend fun sendPaymentLink(
+        to: String,
+        document: ReceiptDocument,
+        reference: String,
+    ): ActionResult = send(settings.current(), to, document, texts.linkIntro, reference, texts.linkSubject)
+
+    /**
      * Emails [document], the receipt of the refund (or, with [cancellation], of the cancelled hold) with
      * merchant reference [reference], to [to].
      */
@@ -90,6 +105,7 @@ class ReceiptEmailer(
         document: ReceiptDocument,
         intro: String,
         reference: String,
+        subjectFormat: String = current.email.subject,
     ): ActionResult {
         validate(current, to)?.let { return it }
         val business =
@@ -97,7 +113,7 @@ class ReceiptEmailer(
                 .trim()
                 .ifEmpty { texts.appName }
         val subject =
-            current.email.subject
+            subjectFormat
                 .replace("{business}", business)
                 .replace("{reference}", reference)
         val images = document.qrCodes.mapIndexed { index, qr -> InlineImage("qr$index", qrPng(qr.content)) }

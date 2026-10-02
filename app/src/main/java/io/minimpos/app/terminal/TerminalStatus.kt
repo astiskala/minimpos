@@ -32,6 +32,7 @@ import kotlinx.coroutines.launch
  * @property printerAvailable Whether printing is offered, see [TerminalSetup.printerAvailable].
  * @property environment Where payments go, TEST or LIVE, as [TerminalSetup.environment] says.
  * @property apiSetup How far the Checkout API is set up, see [TerminalSetup.apiSetup]; captures follow the same decision.
+ * @property paymentLinks Whether checkout offers payment links, see [TerminalSetup.paymentLinks].
  */
 data class TerminalState(
     val loaded: Boolean = false,
@@ -43,7 +44,14 @@ data class TerminalState(
     val printerAvailable: Boolean = false,
     val environment: TerminalEnvironment? = null,
     val apiSetup: ApiSetup = ApiSetup.Simulated,
+    val paymentLinks: Boolean = false,
 ) {
+    /**
+     * Whether receipts and payment links can be shared through Android's share sheet: on phones and tablets, not on an
+     * Adyen terminal, which has no apps to share with (it emails instead).
+     */
+    val canShare: Boolean get() = !onTerminal
+
     /** How pre-authorisations and tips on the receipt are captured ([ApiSetup.mode]). */
     val captureMode: CaptureMode get() = apiSetup.mode
 
@@ -81,6 +89,7 @@ class TerminalStatus(
                 printerAvailable = setup.printerAvailable(printers),
                 environment = setup.environment,
                 apiSetup = setup.apiSetup,
+                paymentLinks = setup.paymentLinks,
             )
         }.stateIn(scope, SharingStarted.Eagerly, TerminalState())
 

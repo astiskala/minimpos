@@ -99,6 +99,13 @@ data class ReceiptOptions(
  * @property taxableGrossFormat Optional tax-rate total row on inclusive receipts; `%s` is the rate label. Null omits
  *   it. Japanese receipts use it to show the tax-inclusive amount subject to each rate.
  * @property taxableNetFormat The equivalent tax-exclusive row; null omits it.
+ * @property amountDue the label of the total of a sale still to be paid through a payment link, instead of [total].
+ * @property unpaid the heading that marks the receipt of a sale still to be paid through a payment link.
+ * @property payLinkCaption the caption over the payment link's QR code.
+ * @property payLinkIntro the line above the payment link's address.
+ * @property payNow the email button that opens the payment link.
+ * @property linkValidFormat the line under the payment link; `%s` is when it stops working, already formatted.
+ * @property paidOnline the note on the receipt of a sale paid through a payment link.
  */
 data class ReceiptLabels(
     val date: String = "Date",
@@ -132,6 +139,24 @@ data class ReceiptLabels(
     val captured: String = "CAPTURED",
     val taxableGrossFormat: String? = null,
     val taxableNetFormat: String? = null,
+    val amountDue: String = "AMOUNT DUE",
+    val unpaid: String = "UNPAID",
+    val payLinkCaption: String = "Scan to pay",
+    val payLinkIntro: String = "Or open this link:",
+    val payNow: String = "Pay now",
+    val linkValidFormat: String = "Link valid until %s",
+    val paidOnline: String = "Paid online",
+)
+
+/**
+ * The payment link of a sale that is still to be paid through it.
+ *
+ * @property url the link the shopper opens.
+ * @property validUntil when it stops working, already formatted for the locale; null when unknown.
+ */
+data class UnpaidLink(
+    val url: String,
+    val validUntil: String?,
 )
 
 /** The tip lines of a receipt for tipping on the receipt. */
@@ -198,6 +223,10 @@ enum class ReceiptCopy {
  * @property heldNow what a pre-authorisation holds after an adjustment, in minor units; null when it was not adjusted.
  * @property captured what was captured of a pre-authorisation, in minor units; null until it is captured, after which
  *   the note that nothing has been charged is left out.
+ * @property unpaidLink the payment link of a sale still to be paid through it, or null: the receipt is then marked
+ *   [ReceiptLabels.unpaid] (rather than not completed), totalled as [ReceiptLabels.amountDue], and shows the link and
+ *   its QR code.
+ * @property paidOnline whether the sale was paid through a payment link, which adds [ReceiptLabels.paidOnline].
  */
 data class SaleReceipt(
     val reference: String,
@@ -215,6 +244,8 @@ data class SaleReceipt(
     val tip: TipLines? = null,
     val heldNow: Long? = null,
     val captured: Long? = null,
+    val unpaidLink: UnpaidLink? = null,
+    val paidOnline: Boolean = false,
 )
 
 /**

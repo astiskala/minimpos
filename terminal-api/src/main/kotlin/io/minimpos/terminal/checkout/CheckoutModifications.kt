@@ -1,7 +1,6 @@
 package io.minimpos.terminal.checkout
 
 import com.google.gson.JsonObject
-import com.google.gson.JsonParser
 import io.minimpos.terminal.transport.AdyenHttp
 import io.minimpos.terminal.transport.AdyenReply
 import io.minimpos.terminal.transport.HTTP_FORBIDDEN
@@ -70,7 +69,7 @@ class CheckoutModifications(
             is AdyenReply.Answered if reply.ok -> null
             is AdyenReply.Answered if reply.code == HTTP_UNAUTHORIZED -> "Adyen did not accept the API key (HTTP 401)"
             is AdyenReply.Answered if reply.code == HTTP_FORBIDDEN -> forbidden()
-            is AdyenReply.Answered -> error(reply)
+            is AdyenReply.Answered -> adyenError(reply)
             is AdyenReply.Failed -> reply.message
         }
     }
@@ -86,12 +85,12 @@ class CheckoutModifications(
             is AdyenReply.Failed if reply.sent -> ModificationResult.Unknown(reply.message)
             is AdyenReply.Failed -> ModificationResult.NotProcessed(reply.message)
             is AdyenReply.Answered if reply.ok -> success(reply.body)
-            is AdyenReply.Answered if reply.code in RETRYABLE || reply.code >= HTTP_SERVER_ERROR -> ModificationResult.Unknown(error(reply))
-            is AdyenReply.Answered -> ModificationResult.NotProcessed(error(reply))
+            is AdyenReply.Answered if reply.outcomeUnknown() -> ModificationResult.Unknown(adyenError(reply))
+            is AdyenReply.Answered -> ModificationResult.NotProcessed(adyenError(reply))
         }
 
     private fun success(text: String): ModificationResult {
-        val json = parse(text) ?: return ModificationResult.Unknown("Unexpected response from Adyen")
+        val json = parseObject(text) ?: return ModificationResult.Unknown("Unexpected response from Adyen")
         val psp = json.string("pspReference")
         return when (json.string("status")?.lowercase()) {
             "received" -> ModificationResult.Received(psp)
@@ -99,14 +98,6 @@ class CheckoutModifications(
             "refused" -> ModificationResult.Refused(json.string("refusalReason") ?: "Refused by the card issuer")
             else -> ModificationResult.Unknown("Unexpected status from Adyen: ${json.string("status").orEmpty()}")
         }
-    }
-
-    /** Adyen's error message and code for a failed request, e.g. "Invalid amount (HTTP 422, code 137)". */
-    private fun error(reply: AdyenReply.Answered): String {
-        val json = parse(reply.body)
-        val message = json?.string("message") ?: "Adyen returned an error"
-        val code = json?.string("errorCode")?.let { ", code $it" }.orEmpty()
-        return "$message (HTTP ${reply.code}$code)"
     }
 
     private fun body(
@@ -131,15 +122,5 @@ class CheckoutModifications(
     ): AdyenReply {
         val url = baseUrl.newBuilder().apply { path.forEach { addPathSegment(it) } }.build()
         return http.post(url, body.toString(), timeout, idempotencyKey)
-    }
-
-    private fun parse(text: String): JsonObject? = runCatching { JsonParser.parseString(text).asJsonObject }.getOrNull()
-
-    private fun JsonObject.string(name: String): String? = get(name)?.takeIf { it.isJsonPrimitive }?.asString
-
-    private companion object {
-        /** Request timeout and rate limit, after which the request is sent again with the same idempotency key. */
-        val RETRYABLE = setOf(408, 429)
-        const val HTTP_SERVER_ERROR = 500
     }
 }

@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import io.minimpos.app.data.db.CategoryEntity
 import io.minimpos.app.data.db.ProductEntity
+import io.minimpos.app.data.db.SaleEntity
 import io.minimpos.app.data.db.SaleKind
 import io.minimpos.app.data.db.SaleStatus
 import io.minimpos.app.data.db.SaleWithLines
@@ -14,8 +15,11 @@ import io.minimpos.app.feature.ActionOutcome
 import io.minimpos.app.feature.ActionState
 import io.minimpos.app.feature.TransactionActions
 import io.minimpos.app.feature.TransactionActionsState
+import io.minimpos.app.feature.launchWrite
 import io.minimpos.app.payment.Checkout
 import io.minimpos.app.payment.CheckoutForm
+import io.minimpos.app.payment.LinkUpdate
+import io.minimpos.app.payment.PaymentLinks
 import io.minimpos.app.payment.PaymentStart
 import io.minimpos.app.payment.ReceiptDelivery
 import io.minimpos.app.payment.SaleSession
@@ -23,6 +27,7 @@ import io.minimpos.app.payment.TransactionLifecycle
 import io.minimpos.app.refund.PaymentAction
 import io.minimpos.app.refund.StoredPayment
 import io.minimpos.app.refund.StoredPayments
+import io.minimpos.app.refund.awaitsLinkPayment
 import io.minimpos.app.refund.decline
 import io.minimpos.app.terminal.TerminalState
 import io.minimpos.core.cart.Cart
@@ -30,10 +35,13 @@ import io.minimpos.core.cart.CartTotals
 import io.minimpos.core.money.CurrencySpec
 import io.minimpos.core.tax.TaxMode
 import io.minimpos.terminal.client.RetryAdvice
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
@@ -41,6 +49,8 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.time.Clock
 import java.time.ZoneId
+import kotlin.time.Duration
+import kotlin.time.Duration.Companion.seconds
 
 /**
  * What the sale screen shows: the product tiles and the cart.
@@ -190,14 +200,15 @@ class SaleViewModel(
 }
 
 /**
- * The checkout screen: references, email, saving the card and tipping on the receipt, then starting the payment. What
- * the entries make of the payment is the session's [Checkout].
+ * The checkout screen: references, email, saving the card and tipping on the receipt, then starting the payment on the
+ * terminal or creating a payment link instead. What the entries make of the payment is the session's [Checkout].
  *
  * @param session The cart (or pre-authorisation item) and the form; its [SaleSession.kind] is the kind of payment.
  * @param payments Runs the payment.
  * @param settings The current settings.
- * @param terminal Whether printing is offered, which tipping on the receipt needs.
+ * @param terminal Whether printing is offered, which tipping on the receipt needs, and whether payment links are.
  * @param currency The currency charged with the given settings.
+ * @param links Creates payment links; null offers none.
  * @param clock Stamps generated merchant references.
  * @param zone The time zone of generated merchant references.
  */
@@ -207,13 +218,14 @@ class CheckoutViewModel(
     settings: StateFlow<AppSettings>,
     terminal: StateFlow<TerminalState>,
     currency: (AppSettings) -> CurrencySpec,
+    private val links: PaymentLinks? = null,
     private val clock: Clock = Clock.systemDefaultZone(),
     private val zone: () -> ZoneId = { ZoneId.systemDefault() },
 ) : ViewModel() {
-    /** The screen state, updated whenever the form, cart, settings or printer change. */
+    /** The screen state, updated whenever the form, cart, settings, printer or payment link setup change. */
     val state: StateFlow<Checkout> =
         session
-            .checkout(settings, terminal.map { it.printerAvailable }, currency)
+            .checkout(settings, terminal.map { it.printerAvailable }, terminal.map { it.paymentLinks && links != null }, currency)
             .stateIn(viewModelScope, SharingStarted.Eagerly, Checkout(kind = session.kind))
 
     /** Updates the form (kept in the [SaleSession] so it survives going back to the cart). */
@@ -225,6 +237,105 @@ class CheckoutViewModel(
         payments.start(start)
         return true
     }
+
+    /**
+     * Starts creating a payment link instead ([Checkout.linkStart]) and returns its sale's ID; null when no link can be
+     * made (the form is not ready, or links are not offered).
+     */
+    fun sendLink(): String? {
+        val start = state.value.linkStart(clock.instant(), zone()) ?: return null
+        return links?.start(start)
+    }
+}
+
+/**
+ * What the payment link screen shows.
+ *
+ * @property payment The sale with what can be done with it now, or null until it has been stored.
+ * @property transaction The unpaid (or, once paid, the paid) receipt, sharing, emailing and printing it.
+ * @property check The latest check whether the link was paid (or, after an unknown outcome, whether it was created).
+ * @property cancel The latest cancellation of the link.
+ */
+data class PaymentLinkUiState(
+    val payment: StoredPayment? = null,
+    val transaction: TransactionActionsState = TransactionActionsState(),
+    val check: ActionState = ActionState(),
+    val cancel: ActionState = ActionState(),
+) {
+    /** The sale, or null until stored. */
+    val sale: SaleEntity? get() = payment?.sale
+
+    /** The link's address while the shopper can still pay with it; else null. */
+    val openLink: String? get() = sale?.takeIf { it.awaitsLinkPayment }?.paymentLinkUrl
+
+    /** Whether Adyen is still being asked for the link (the sale is not stored yet, or still PENDING). */
+    val creating: Boolean get() = sale == null || sale?.status == SaleStatus.PENDING
+}
+
+/**
+ * The payment link of a sale: the link as a QR code and an address to share, email or print (its unpaid receipt), and
+ * checking with Adyen whether it was paid, every [pollInterval] while it is open and on request, or cancelling it. Once
+ * paid, its receipt is delivered like any other.
+ *
+ * @param saleId The sale paid through the link.
+ * @param payments Follows it, with what can be done with it.
+ * @param receipts Prints, emails and shares its receipt.
+ * @param links Asks Adyen about the link, and cancels it.
+ * @param fresh Whether the link was just created at checkout, so its automatic delivery is due.
+ * @param pollInterval How often an open link is checked while the screen is shown.
+ */
+class PaymentLinkViewModel(
+    private val saleId: String,
+    payments: StoredPayments,
+    receipts: ReceiptDelivery,
+    private val links: PaymentLinks,
+    fresh: Boolean,
+    private val pollInterval: Duration = 10.seconds,
+) : ViewModel() {
+    private val local = MutableStateFlow(PaymentLinkUiState())
+
+    /** The receipt (unpaid, with the link, until it is paid), printing, emailing and sharing it. */
+    val transaction = TransactionActions.forLink(viewModelScope, saleId, receipts, links, fresh)
+
+    /** The screen state, updated whenever the sale or an action changes. */
+    val state: StateFlow<PaymentLinkUiState> =
+        combine(payments.observe(saleId), local, transaction.state) { payment, ui, actions ->
+            ui.copy(payment = payment, transaction = actions)
+        }.stateIn(viewModelScope, SharingStarted.Eagerly, PaymentLinkUiState())
+
+    init {
+        viewModelScope.launch {
+            // Checking is quiet: a failed poll leaves the last answer shown, and the next one tries again.
+            state.map { it.openLink != null }.distinctUntilChanged().collectLatest { open ->
+                while (open) {
+                    delay(pollInterval)
+                    links.check(saleId)
+                }
+            }
+        }
+    }
+
+    /** Asks Adyen now whether the link was paid (or, after an unknown outcome, creates it again). */
+    fun check() {
+        if (local.value.check.running) return
+        local.update { it.copy(check = ActionState(running = true)) }
+        launchWrite({ links.check(saleId) }) { update -> local.update { it.copy(check = update.toState(stillOpen = true)) } }
+    }
+
+    /** Expires the link, so the shopper can no longer pay with it. */
+    fun cancel() {
+        if (local.value.cancel.running) return
+        local.update { it.copy(cancel = ActionState(running = true)) }
+        launchWrite({ links.cancel(saleId) }) { update -> local.update { it.copy(cancel = update.toState(stillOpen = false)) } }
+    }
+
+    /** This update as a finished action: done once settled, a note that it is not paid yet, or the failure. */
+    private fun LinkUpdate.toState(stillOpen: Boolean): ActionState =
+        when (this) {
+            LinkUpdate.Settled -> ActionState(done = true)
+            LinkUpdate.StillOpen -> ActionState(outcome = ActionOutcome.LinkNotPaid.takeIf { stillOpen }, done = true)
+            is LinkUpdate.Failed -> ActionState(outcome = ActionOutcome.Failed(message), isError = true)
+        }
 }
 
 /**

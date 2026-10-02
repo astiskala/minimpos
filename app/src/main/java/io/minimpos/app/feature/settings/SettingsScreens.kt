@@ -966,6 +966,42 @@ private fun ColumnScope.PaymentsSection(
     )
     SectionHeader(stringResource(R.string.settings_email_receipts))
     EmailCaptureSettings(payment, ::update)
+    SectionHeader(stringResource(R.string.settings_payment_links))
+    PaymentLinkSettings(payment, ::update)
+}
+
+/**
+ * Offering payment links at checkout and how long they work, with what is missing while the Checkout API is not set up
+ * (links are never simulated).
+ */
+@Composable
+private fun ColumnScope.PaymentLinkSettings(
+    payment: PaymentSettings,
+    update: ((PaymentSettings) -> PaymentSettings) -> Unit,
+) {
+    val status by LocalAppContainer.current.terminalStatus.state
+        .collectAsStateWithLifecycle()
+    SettingSwitch(
+        stringResource(R.string.settings_links_enabled),
+        payment.paymentLinks,
+        { value -> update { it.copy(paymentLinks = value) } },
+        subtitle = stringResource(R.string.settings_links_hint),
+        tag = "paymentLinks",
+    )
+    if (!payment.paymentLinks) return
+    SettingNumberField(
+        stringResource(R.string.settings_link_expiry),
+        payment.linkExpiryHours,
+        PaymentSettings.LINK_EXPIRY_HOURS,
+        { hours -> update { it.copy(linkExpiryHours = hours) } },
+        supporting = stringResource(R.string.settings_link_expiry_hint),
+        tag = "linkExpiry",
+    )
+    if (status.loaded && !status.paymentLinks) {
+        Column(Modifier.padding(horizontal = 16.dp, vertical = LocalDimens.current.spacing)) {
+            ActionMessage(stringResource(R.string.settings_links_need_api), isError = true, modifier = Modifier.testTag("linksNeedApi"))
+        }
+    }
 }
 
 /** Saving cards: the defaults, the recurring model, and what the shopper reference is made from. */

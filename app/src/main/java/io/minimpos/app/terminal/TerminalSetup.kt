@@ -63,6 +63,12 @@ data class TerminalSetup(
      */
     val checksConnection: Boolean get() = mode != TerminalMode.SIMULATOR
 
+    /**
+     * Whether checkout offers payment links: switched on in Settings › Payments and the Checkout API is set up. They are
+     * never simulated, so not while payments go to the simulator.
+     */
+    val paymentLinks: Boolean get() = settings.payment.paymentLinks && apiSetup == ApiSetup.Complete
+
     /** Resolving the setup, and the fixed identities it uses. */
     companion object {
         /** The POIID the simulator reports, in the same `<model>-<serial>` form as a real one. */

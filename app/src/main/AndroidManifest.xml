@@ -52,5 +52,16 @@
           android:scheme="minimpos" />
       </intent-filter>
     </activity>
+    <!-- Shares receipt images with the app chosen in the share sheet (phones and tablets), one file at a time with a read
+         grant; not exported and needing no permission, so the same APK stays acceptable for Adyen terminals. -->
+    <provider
+      android:name="androidx.core.content.FileProvider"
+      android:authorities="${applicationId}.share"
+      android:exported="false"
+      android:grantUriPermissions="true">
+      <meta-data
+        android:name="android.support.FILE_PROVIDER_PATHS"
+        android:resource="@xml/shared_files" />
+    </provider>
   </application>
 </manifest>

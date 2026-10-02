@@ -114,6 +114,23 @@ class ReceiptRenderersTest {
     }
 
     @Test
+    fun `links are a button in html only for web addresses, and a whole line in plain text`() {
+        val url = "https://test.adyen.link/PL50C5F751CED39G71?x=1&y=2"
+        val links = ReceiptDocument(listOf(ReceiptElement.Link(url, "Pay <now>"), ReceiptElement.Link("javascript:alert(1)")))
+        val html = HtmlReceiptRenderer().render(links, "t")
+        assertThat(html).contains("<a href=\"https://test.adyen.link/PL50C5F751CED39G71?x=1&amp;y=2\"")
+        assertThat(html).contains(">Pay &lt;now&gt;</a>")
+        assertThat(html).doesNotContain("href=\"javascript")
+        assertThat(html).contains("javascript:alert(1)</div>")
+        assertThat(
+            HtmlReceiptRenderer().render(ReceiptDocument(listOf(ReceiptElement.Link("http://a.b"))), "t"),
+        ).contains(">http://a.b</a>")
+        val text = PlainTextReceiptRenderer(width = 16).render(links)
+        assertThat(text.lines()).containsAtLeast(url, "javascript:alert(1)").inOrder()
+        assertThat(links.segments()).containsExactly(ReceiptSegment.TextBlock(links.elements))
+    }
+
+    @Test
     fun `segments split text blocks around QR codes, with each caption printed above its code`() {
         val segments = document.segments()
         assertThat(segments).hasSize(3)

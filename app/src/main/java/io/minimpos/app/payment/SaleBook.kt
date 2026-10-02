@@ -78,27 +78,7 @@ class SaleBook(
         serviceId: String,
         createdAt: Long,
     ) {
-        val totals = request.totals
-        val sale =
-            SaleEntity(
-                id = id,
-                createdAt = createdAt,
-                currency = request.currency.code,
-                taxMode = totals.mode.name,
-                netMinor = totals.amounts.net,
-                taxMinor = totals.amounts.tax,
-                totalMinor = totals.amounts.gross,
-                status = SaleStatus.PENDING,
-                merchantReference = request.merchantReference,
-                customerReference = request.customerReference,
-                shopperReference = request.tokenization?.shopperReference,
-                shopperEmail = request.shopperEmail,
-                tokenizationRequested = request.tokenization != null,
-                serviceId = serviceId,
-                kind = request.kind,
-                tipOnReceipt = request.tipOnReceipt,
-            )
-        sales.createPending(sale, lines(id, totals))
+        sales.createPending(pendingSale(id, request, createdAt).copy(serviceId = serviceId), lines(id, request.totals))
     }
 
     override fun operation(request: PaymentStart): TerminalOperation {
@@ -148,34 +128,61 @@ class SaleBook(
             ?.takeIf { it.status == SaleStatus.UNKNOWN }
             ?.serviceId
 
-    private fun lines(
-        saleId: String,
-        totals: CartTotals,
-    ): List<SaleLineEntity> =
-        totals.lines.mapIndexed { index, priced ->
-            val line = priced.line
-            SaleLineEntity(
-                saleId = saleId,
-                position = index,
-                productId = line.productId,
-                name = line.name,
-                sku = line.sku,
-                unitPriceMinor = line.unitPrice,
-                quantity = line.quantity,
-                taxName = line.tax.name,
-                taxRateMilliPercent = line.tax.rateMilliPercent,
-                netMinor = priced.amounts.net,
-                taxMinor = priced.amounts.tax,
-                grossMinor = priced.amounts.gross,
-            )
-        }
-
-    /** Terminal API values and conversions shared with refunds. */
+    /** Terminal API values and conversions shared with refunds, and the stored form of a payment, shared with links. */
     companion object {
         /**
          * The `TenderOption` that makes the terminal leave receipt printing to the app, which prints one combined slip
          * with the card receipt lines instead.
          */
         const val RECEIPT_HANDLER = "ReceiptHandler"
+
+        /** [request] as the new PENDING sale [id], started at [createdAt] (epoch ms), before anything is sent. */
+        internal fun pendingSale(
+            id: String,
+            request: PaymentStart,
+            createdAt: Long,
+        ): SaleEntity {
+            val totals = request.totals
+            return SaleEntity(
+                id = id,
+                createdAt = createdAt,
+                currency = request.currency.code,
+                taxMode = totals.mode.name,
+                netMinor = totals.amounts.net,
+                taxMinor = totals.amounts.tax,
+                totalMinor = totals.amounts.gross,
+                status = SaleStatus.PENDING,
+                merchantReference = request.merchantReference,
+                customerReference = request.customerReference,
+                shopperReference = request.tokenization?.shopperReference,
+                shopperEmail = request.shopperEmail,
+                tokenizationRequested = request.tokenization != null,
+                kind = request.kind,
+                tipOnReceipt = request.tipOnReceipt,
+            )
+        }
+
+        /** The priced cart [totals] as the lines of sale [saleId], in cart order. */
+        internal fun lines(
+            saleId: String,
+            totals: CartTotals,
+        ): List<SaleLineEntity> =
+            totals.lines.mapIndexed { index, priced ->
+                val line = priced.line
+                SaleLineEntity(
+                    saleId = saleId,
+                    position = index,
+                    productId = line.productId,
+                    name = line.name,
+                    sku = line.sku,
+                    unitPriceMinor = line.unitPrice,
+                    quantity = line.quantity,
+                    taxName = line.tax.name,
+                    taxRateMilliPercent = line.tax.rateMilliPercent,
+                    netMinor = priced.amounts.net,
+                    taxMinor = priced.amounts.tax,
+                    grossMinor = priced.amounts.gross,
+                )
+            }
     }
 }

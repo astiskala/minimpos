@@ -10,6 +10,7 @@ import io.minimpos.app.data.db.SaleEntity
 import io.minimpos.app.data.db.SaleLineEntity
 import io.minimpos.app.data.db.SaleStatus
 import io.minimpos.app.data.db.SaleWithLines
+import io.minimpos.terminal.checkout.PaymentLink
 import io.minimpos.terminal.client.TransactionDetails
 import kotlinx.coroutines.flow.Flow
 
@@ -18,9 +19,10 @@ import kotlinx.coroutines.flow.Flow
  *
  * A sale is created as PENDING before the terminal is called ([createPending]); after that it only changes through the
  * named transitions here, which are the only writes to one sale and its lines: [markSending] and [settle] for the
- * payment itself, then, for a payment taken with manual capture, [recordAdjustment], [recordCapture] and
- * [modificationFailed]; [applyRefund] for an accepted refund or cancellation; [markEmailed]. Each transition reads and
- * writes the sale in one transaction and does nothing when the sale no longer exists (for example after pruning).
+ * payment itself (only [settle] for one paid through a payment link, with the link), then, for a payment taken with
+ * manual capture, [recordAdjustment], [recordCapture] and [modificationFailed]; [applyRefund] for an accepted refund
+ * or cancellation; [markEmailed]. Each transition reads and writes the sale in one transaction and does nothing when
+ * the sale no longer exists (for example after pruning).
  * Refunds are stored (and listed per sale) by [RefundRepository]; the history list and the housekeeping of whole tables
  * (settling interrupted transactions at startup, pruning and clearing) are in [HistoryRepository]. All functions are
  * main-safe (Room runs them on its own executor).
@@ -64,16 +66,35 @@ class SaleRepository(
     ) = change(id) { it.copy(poiId = poiId) }
 
     /**
-     * Stores how the payment [id] ended: its [status], the [message] shown when it did not succeed and, when the
-     * terminal answered, its [details] (transaction, card, receipts, saved card and the blob for synchronous
-     * adjustments).
+     * Stores how the payment [id] ended (or, for one paid through a payment link, where it stands: awaiting its payment
+     * too): its [status], the [message] shown when it did not succeed, when the terminal answered its [details]
+     * (transaction, card, receipts, saved card and the blob for synchronous adjustments) and, when Adyen answered about
+     * the sale's payment link, the [link]'s ID, address and expiry (an expiry Adyen did not send keeps the one chosen
+     * when the sale was opened).
      */
     suspend fun settle(
         id: String,
         status: SaleStatus,
         message: String?,
         details: TransactionDetails?,
-    ) = change(id) { sale ->
+        link: PaymentLink? = null,
+    ) = change(id) { sale -> settled(sale, status, message, details).withLink(link) }
+
+    private fun SaleEntity.withLink(link: PaymentLink?): SaleEntity =
+        link?.let {
+            copy(
+                paymentLinkId = it.id,
+                paymentLinkUrl = it.url,
+                paymentLinkExpiresAt = it.expiresAt?.toEpochMilli() ?: paymentLinkExpiresAt,
+            )
+        } ?: this
+
+    private fun settled(
+        sale: SaleEntity,
+        status: SaleStatus,
+        message: String?,
+        details: TransactionDetails?,
+    ): SaleEntity =
         if (details == null) {
             sale.copy(status = status, message = message)
         } else {
@@ -97,7 +118,6 @@ class SaleRepository(
                 adjustAuthorisationData = details.adjustAuthorisationData,
             )
         }
-    }
 
     /**
      * Records an adjustment of what sale [id] holds to [amountMinor] that went through: [AdjustmentStatus.AUTHORISED]

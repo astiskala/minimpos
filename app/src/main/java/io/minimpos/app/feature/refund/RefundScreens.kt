@@ -60,6 +60,7 @@ import io.minimpos.app.data.db.RefundStatus
 import io.minimpos.app.data.db.SaleLineEntity
 import io.minimpos.app.feature.OutcomeMessage
 import io.minimpos.app.feature.sale.ReceiptToggle
+import io.minimpos.app.feature.sale.ShareReceiptButton
 import io.minimpos.app.payment.TransactionState
 import io.minimpos.app.refund.RefundInvalidReason
 import io.minimpos.app.refund.Refundability
@@ -67,6 +68,7 @@ import io.minimpos.app.refund.RefundablePayment
 import io.minimpos.app.scan.ScanHint
 import io.minimpos.app.scan.ScanMode
 import io.minimpos.app.scan.ScannerView
+import io.minimpos.app.share.ShareEffect
 import io.minimpos.app.ui.components.ActionMessage
 import io.minimpos.app.ui.components.BottomActions
 import io.minimpos.app.ui.components.Card
@@ -504,6 +506,7 @@ fun RefundResultScreen(
                         receipt = state.transaction.receipt?.takeIf { showReceipt },
                         onPrint = vm.transaction::print,
                         onEmail = { askEmail = true },
+                        onShare = vm.transaction::share,
                         onToggleReceipt = { showReceipt = !showReceipt },
                     )
                 }
@@ -519,6 +522,7 @@ fun RefundResultScreen(
             onDismiss = { askEmail = false },
         )
     }
+    ShareEffect(state.transaction.share, vm.transaction::shared)
 }
 
 /** The result screen's title: a refund or a [cancellation], just made or opened [fromHistory]. */
@@ -612,13 +616,17 @@ private fun ColumnScope.RefundRecheck(
     }
 }
 
-/** Printing and emailing an accepted refund's receipt, and showing it ([receipt] is null while hidden). */
+/**
+ * Printing, emailing and sharing (on phones and tablets) an accepted refund's receipt, and showing it ([receipt] is
+ * null while hidden).
+ */
 @Composable
 private fun ColumnScope.RefundReceiptActions(
     state: RefundResultUiState,
     receipt: ReceiptDocument?,
     onPrint: () -> Unit,
     onEmail: () -> Unit,
+    onShare: () -> Unit,
     onToggleReceipt: () -> Unit,
 ) {
     if (state.transaction.canPrint) {
@@ -639,6 +647,7 @@ private fun ColumnScope.RefundReceiptActions(
         )
         OutcomeMessage(state.transaction.email)
     }
+    if (state.transaction.canShare) ShareReceiptButton(onShare)
     ReceiptToggle(receipt, onToggleReceipt)
 }
 

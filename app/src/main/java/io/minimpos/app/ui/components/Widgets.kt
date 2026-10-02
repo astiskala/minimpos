@@ -241,6 +241,10 @@ fun ReceiptPreview(
                     Spacer(Modifier.height(10.dp))
                 }
 
+                is ReceiptElement.Link -> {
+                    PaperText(element.url, Align.CENTER, TextStyle.NORMAL)
+                }
+
                 is ReceiptElement.Qr -> {
                     Column(Modifier.fillMaxWidth().padding(top = 8.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                         QrImage(element.content, Modifier.size(140.dp))

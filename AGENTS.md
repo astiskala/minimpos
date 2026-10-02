@@ -18,7 +18,8 @@ device API or the Adyen Payments app (Tap to Pay); anywhere through its built-in
   (`TransferCodec` `MPC1:`, refund `MPR1*`), Adyen currency table (Adyen's decimals win over ISO), `PaymentMethods`.
   There is deliberately no country/region setting (blank currency follows the device's country, else EUR).
 - `:terminal-api` – the Terminal API client on top of `com.adyen:adyen-java-api-library`: local, cloud and Payments app
-  transports, Checkout API calls, the in-process simulator. Knows neither Android nor `:core`.
+  transports, Checkout API calls (captures, payment links), the in-process simulator. Knows neither Android nor
+  `:core`.
 - `:app` – the Android app (Compose, Room, DataStore, manual DI in `AppContainer`).
 - `:website-test` – no app code: checks the `docs/` website, whose build files live here because GitHub Pages publishes
   `docs/` as is.
@@ -77,8 +78,9 @@ device API or the Adyen Payments app (Tap to Pay); anywhere through its built-in
 - Smallest target screen: AMS1, 4" 480×800 hdpi, ~320×460 dp usable, Android 10, no printer.
 - Terminals have no Google Play services: no dependency may need them (hence CameraX + ZXing for scanning).
 - On a terminal the POIID comes from `Settings.Global.DEVICE_NAME` and the host is `localhost`; only the shared key is
-  entered. The manifest's `<queries>` (the two Payments app packages) and the `minimpos://paymentsapp` VIEW filter on the
-  `singleTask` `MainActivity` add no permission, so the same APK stays acceptable for terminals.
+  entered. The manifest's `<queries>` (the two Payments app packages), the `minimpos://paymentsapp` VIEW filter on the
+  `singleTask` `MainActivity` and the unexported `FileProvider` for shared receipt images add no permission, so the
+  same APK stays acceptable for terminals.
 - `:core` and `:terminal-api` are JVM modules, so Android Lint does not check their API levels: `AndroidApiLevelTest`
   checks every Java/Android class, method and field they reach against the compile SDK's `api-versions.xml` at the
   app's minSdk, accepting what D8 backports (`listBackportedMethods`). E.g. `URLEncoder.encode(String, Charset)` is
@@ -104,6 +106,11 @@ device API or the Adyen Payments app (Tap to Pay); anywhere through its built-in
   outcome unknown. The Payments app API key (`PAYMENTS_APP_API_KEY`) boards and revokes it (`TapToPaySetup`).
 - Every sale is written as PENDING before the terminal is called; interrupted ones become UNKNOWN at startup. Without
   a response after the timeout (default 120 s) the client polls the status every 5 s while it is `InProgress`.
+- Payment links (`PaymentLinks`) skip the destination: the Checkout API's `/paymentLinks`, offered when Settings ›
+  Payments › Offer payment links is on and `ApiSetup.Complete` (`TerminalSetup.paymentLinks`; never simulated). Without
+  webhooks the outcome comes from `GET /paymentLinks/{id}` (every 10 s while the link screen is open, and on request)
+  and carries no PSP reference, so paid links are refunded in the Customer Area. The request is made from the stored
+  sale with the key `link-{saleId}`, so an unknown creation is sent again identically.
 - The terminal's own receipt printing is suppressed (`tenderOption=ReceiptHandler`): the app prints one combined slip
   (header, items, tax, Adyen's card receipt lines, footer), with the refund QR code as a second print request.
 
@@ -133,7 +140,8 @@ device API or the Adyen Payments app (Tap to Pay); anywhere through its built-in
   readers) is deliberately not integrated: it needs a backend for `/auth/certificate`, a private Maven repo, PCI MPoC and
   six-monthly updates.
 - Not verified against Adyen yet (no test account in CI): the cloud's event notifications for an offline or busy
-  terminal, and the Payments app's return URL encoding, `error` answers and size limits on a real phone.
+  terminal, the Payments app's return URL encoding, `error` answers and size limits on a real phone, and payment links'
+  answers on TEST (the `paid` status, the PATCH answer for an already paid link, line item validation).
 - No TEST banner (test terminals show TEST themselves); `ModeBanner` only for the simulator. No "settings not
   protected" warning and no terminal/printer status line on Home (they are in Settings › About); Products/Settings
   are slim grey buttons. Secret field placeholders stay one line ("Type to replace").
@@ -145,6 +153,10 @@ device API or the Adyen Payments app (Tap to Pay); anywhere through its built-in
   adjusted first, else overcaptured). Tip on the receipt is only offered with a printer; a refused adjustment leaves
   the tip unsaved. Idempotency keys (`capture-{saleId}-{amount}`, `adjust-{saleId}-{heldBefore}-{amount}`) make
   retries safe.
+- Payment links are for sales only (no pre-authorisations, no tip on the receipt) and send line items, the shopper's
+  email and reference, card saving (`askForConsent`), the device locale and country. An unpaid link counts nowhere in
+  day totals and needs no merchant copy; its receipt is the unpaid receipt. Sharing (receipts as PNG; links as text
+  with the unpaid receipt) is offered only off-terminal (`TerminalState.canShare`); terminals email instead.
 - History search: every word must match (case-insensitive) a reference, auth code, shopper data, card last 4, brand or
   wallet, or be exactly the amount; combined with the filter chips, and day totals cover only what is shown.
 - Setting up another terminal: one QR transfer with switches for catalogue, settings (minus the device fields of

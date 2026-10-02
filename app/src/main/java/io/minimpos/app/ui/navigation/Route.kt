@@ -50,6 +50,18 @@ sealed interface Route : NavKey {
     ) : Route
 
     /**
+     * The payment link of a sale: its QR code and address to share, email or print, whether it was paid, and cancelling
+     * it.
+     *
+     * @property saleId The sale paid through the link.
+     * @property fresh Whether the link was just created at checkout, so its automatic delivery is due.
+     */
+    @Serializable data class PaymentLink(
+        val saleId: String,
+        val fresh: Boolean = false,
+    ) : Route
+
+    /**
      * Entering the tip written on the receipt of a sale taken for tipping on the receipt, which captures it.
      *
      * @property saleId The sale awaiting its tip.

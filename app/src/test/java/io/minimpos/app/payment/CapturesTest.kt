@@ -1,6 +1,7 @@
 package io.minimpos.app.payment
 
 import com.google.common.truth.Truth.assertThat
+import io.minimpos.app.FakeLinkApi
 import io.minimpos.app.TestEnvironment
 import io.minimpos.app.await
 import io.minimpos.app.data.db.AdjustmentStatus
@@ -275,12 +276,13 @@ class CapturesTest {
     @Test
     fun `the API is used once anything of it is set up, and needs the environment and live prefix`() {
         val connected = mutableListOf<CheckoutCredentials>()
+        val links = FakeLinkApi()
         val setups = TerminalSetupSource(container.settings, container.secrets, container.device)
         val live =
             AdyenApi(setups, container.secrets, simulated = fake, connect = {
                 connected += it
                 fake
-            })
+            }, connectLinks = { links })
         env.updateSettings { it.copy(terminal = it.terminal.copy(mode = TerminalMode.TERMINAL)) }
         assertThat(await { live.target() }).isEqualTo(ApiTarget(ApiSetup.CustomerArea))
         assertThat(await { live.verify() }).isEqualTo(ApiCheck.NotSetUp(SetupProblem.API_REQUIRED))
@@ -292,7 +294,7 @@ class CapturesTest {
         assertThat(await { live.verify() }).isEqualTo(ApiCheck.NotSetUp(SetupProblem.LIVE_PREFIX))
         env.updateSettings { it.copy(terminal = it.terminal.copy(liveUrlPrefix = "abc-Company")) }
         assertThat(await { live.verify() }).isEqualTo(ApiCheck.Works)
-        assertThat(await { live.target() }).isEqualTo(ApiTarget(ApiSetup.Complete, fake))
+        assertThat(await { live.target() }).isEqualTo(ApiTarget(ApiSetup.Complete, fake, links))
         assertThat(connected.single()).isEqualTo(CheckoutCredentials("key", "Merchant", TerminalEnvironment.LIVE, "abc-Company"))
         await { container.terminalStatus.state.first { it.captureMode == CaptureMode.API && it.apiProblem == null } }
 

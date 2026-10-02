@@ -51,6 +51,38 @@ class PaymentStandingTest {
     }
 
     @Test
+    fun `a sale paid through a payment link is unpaid with its link until paid, then paid online and not refundable here`() {
+        val link =
+            sale.copy(
+                status = SaleStatus.AWAITING_PAYMENT,
+                paymentLink = true,
+                paymentLinkUrl = "https://test.adyen.link/PL1",
+                paymentLinkExpiresAt = 99,
+                poiTransactionId = null,
+                poiTimestamp = null,
+                pspReference = null,
+            )
+        val awaiting = ReceiptStanding.of(link)
+        assertThat(link.awaitsLinkPayment).isTrue()
+        assertThat(awaiting.unpaidLink).isEqualTo("https://test.adyen.link/PL1")
+        assertThat(awaiting.linkExpiresAt).isEqualTo(99)
+        assertThat(awaiting.approved).isFalse()
+        assertThat(awaiting.paidOnline).isFalse()
+        // Before Adyen made it there is no link to show yet.
+        assertThat(link.copy(paymentLinkUrl = null).awaitsLinkPayment).isFalse()
+        assertThat(ReceiptStanding.of(link.copy(paymentLinkUrl = null)).linkExpiresAt).isNull()
+        val paid = link.copy(status = SaleStatus.APPROVED)
+        assertThat(paid.awaitsLinkPayment).isFalse()
+        assertThat(ReceiptStanding.of(paid).paidOnline).isTrue()
+        assertThat(ReceiptStanding.of(paid).unpaidLink).isNull()
+        assertThat(paid.standing).isEqualTo(PaymentStanding.CHARGED)
+        assertThat(paid.totalsShare).isEqualTo(TotalsShare.SALE)
+        assertThat(paid.actions()).isEmpty()
+        assertThat(ReceiptStanding.of(link.copy(status = SaleStatus.EXPIRED)).unpaidLink).isNull()
+        assertThat(ReceiptStanding.of(sale).paidOnline).isFalse()
+    }
+
+    @Test
     fun `a stored decline gives advice only with the ErrorCondition the terminal sent`() {
         assertThat(sale.decline).isNull()
         val refused = sale.copy(status = SaleStatus.DECLINED, errorCondition = "Refusal", refusalReason = "Do Not Honor")

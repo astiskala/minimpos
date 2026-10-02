@@ -68,6 +68,19 @@ sealed interface ReceiptElement {
         val content: String,
         val caption: String? = null,
     ) : ReceiptElement
+
+    /**
+     * A web address, such as a payment link: printed and shown as the address itself on a line of its own (never
+     * wrapped at spaces, which it has none of), and a button labelled [label] in HTML email when it is an `https` or
+     * `http` address.
+     *
+     * @property url the address.
+     * @property label the text of the email's button, or null to show [url] there too.
+     */
+    data class Link(
+        val url: String,
+        val label: String? = null,
+    ) : ReceiptElement
 }
 
 /** A part of a [ReceiptDocument] that is printed with one Terminal API print request; see [ReceiptDocument.segments]. */

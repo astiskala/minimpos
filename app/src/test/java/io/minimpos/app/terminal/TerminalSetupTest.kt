@@ -5,6 +5,7 @@ import io.minimpos.app.FakeDevice
 import io.minimpos.app.data.security.Secret
 import io.minimpos.app.data.settings.AppSettings
 import io.minimpos.app.data.settings.CaptureMode
+import io.minimpos.app.data.settings.PaymentSettings
 import io.minimpos.app.data.settings.PrinterMode
 import io.minimpos.app.data.settings.TerminalMode
 import io.minimpos.app.data.settings.TerminalSettings
@@ -83,6 +84,17 @@ class TerminalSetupTest {
         assertThat(resolve(live, key).apiSetup.problem).isEqualTo(SetupProblem.LIVE_PREFIX)
         assertThat(resolve(live.copy(liveUrlPrefix = "abc-Company"), key).apiSetup).isEqualTo(ApiSetup.Complete)
         assertThat(resolve(merchant.copy(environment = TerminalEnvironment.TEST), key).apiSetup).isEqualTo(ApiSetup.Complete)
+    }
+
+    @Test
+    fun `payment links are offered once switched on with the Checkout API set up, never with the simulator`() {
+        val links = AppSettings(payment = PaymentSettings(paymentLinks = true))
+        val key = setOf(Secret.CHECKOUT_API_KEY)
+        val api = TerminalSettings(mode = TerminalMode.TERMINAL, merchantAccount = "Merchant", environment = TerminalEnvironment.TEST)
+        assertThat(resolve(api, key, settings = links).paymentLinks).isTrue()
+        assertThat(resolve(api, key).paymentLinks).isFalse()
+        assertThat(resolve(api, settings = links).paymentLinks).isFalse()
+        assertThat(resolve(api.copy(mode = TerminalMode.SIMULATOR), key, settings = links).paymentLinks).isFalse()
     }
 
     @Test

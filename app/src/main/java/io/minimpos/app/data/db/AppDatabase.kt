@@ -16,8 +16,9 @@ import io.minimpos.app.R
  * added tipping on the receipt and captures (`sales.tipOnReceipt`, `tipMinor`, `authorisedMinor`, `adjustment`,
  * `adjustAuthorisationData`, `capturedMinor`, `captureStatus`, `modificationMessage`); version 7 added
  * `sales.paymentMethodVariant`, which names the wallet of a card in one; version 8 added `sales.holdCancelled`
- * ([HoldCancelledMigration]). Versions 1 to 3 and 4 to 7 are Room auto-migrations. There is no destructive fallback,
- * so every schema change needs a migration.
+ * ([HoldCancelledMigration]); version 9 added payment links (`sales.paymentLink`, `paymentLinkId`, `paymentLinkUrl`,
+ * `paymentLinkExpiresAt`). Versions 1 to 3, 4 to 7 and 8 to 9 are Room auto-migrations. There is no destructive
+ * fallback, so every schema change needs a migration.
  */
 @Database(
     entities = [
@@ -28,7 +29,7 @@ import io.minimpos.app.R
         SaleLineEntity::class,
         RefundEntity::class,
     ],
-    version = 8,
+    version = 9,
     exportSchema = true,
     autoMigrations = [
         AutoMigration(from = 1, to = 2),
@@ -36,6 +37,7 @@ import io.minimpos.app.R
         AutoMigration(from = 4, to = 5),
         AutoMigration(from = 5, to = 6),
         AutoMigration(from = 6, to = 7),
+        AutoMigration(from = 8, to = 9),
     ],
 )
 abstract class AppDatabase : RoomDatabase() {

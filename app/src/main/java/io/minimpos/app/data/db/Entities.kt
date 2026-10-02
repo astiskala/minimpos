@@ -128,17 +128,24 @@ enum class SaleStatus {
 
     /**
      * The outcome could not be established: no answer even after the transaction status checks, or the app stopped
-     * mid-payment. Staff can check it again from history with a TransactionStatus request.
+     * mid-payment. Staff can check it again from history with a TransactionStatus request (for a payment link, by
+     * creating it again with the same idempotency key, which returns the link made the first time).
      */
     UNKNOWN,
+
+    /** A payment link was created for the sale ([SaleEntity.paymentLink]) and has not been paid yet. Added in version 9. */
+    AWAITING_PAYMENT,
+
+    /** The sale's payment link stopped working before it was paid, so nothing was charged. Added in version 9. */
+    EXPIRED,
 }
 
 /**
  * A card payment (table `sales`), with the cart totals as charged and what the terminal reported.
  *
- * The row is inserted as [SaleStatus.PENDING] before the terminal is called and updated with the outcome afterwards,
- * so every payment attempt can be traced. The items are in [SaleLineEntity]; refunds are in [RefundEntity]. All
- * amounts are in minor units of [currency].
+ * The row is inserted as [SaleStatus.PENDING] before the terminal (or, for a [paymentLink], Adyen's Checkout API) is
+ * called and updated with the outcome afterwards, so every payment attempt can be traced. The items are in
+ * [SaleLineEntity]; refunds are in [RefundEntity]. All amounts are in minor units of [currency].
  */
 @Entity(tableName = "sales", indices = [Index("createdAt"), Index("poiTransactionId")])
 data class SaleEntity(
@@ -165,7 +172,10 @@ data class SaleEntity(
      * reference; null when the email is the shopper reference.
      */
     val customerReference: String? = null,
-    /** The shopper reference sent to save the card, or null when no card was to be saved. */
+    /**
+     * The shopper reference sent to save the card (or, with a [paymentLink], sent with the link, which offers saving
+     * the card only when [tokenizationRequested]); null when none was sent.
+     */
     val shopperReference: String? = null,
     /** The shopper's email captured at checkout, if any. */
     val shopperEmail: String? = null,
@@ -257,6 +267,21 @@ data class SaleEntity(
      * A cancellation refunds nothing, so it leaves [refundedMinor] alone. Added in database version 8.
      */
     @ColumnInfo(defaultValue = "0") val holdCancelled: Boolean = false,
+    /**
+     * Whether the sale is paid through an Adyen payment link instead of on a terminal: no terminal details, no PSP
+     * reference (Adyen only sends that in a webhook, which this app has no server for), so it is refunded in the Customer
+     * Area. Added in database version 9.
+     */
+    @ColumnInfo(defaultValue = "0") val paymentLink: Boolean = false,
+    /** Adyen's ID of the [paymentLink], such as `PL50C5F751CED39G71`, once it was created. Added in database version 9. */
+    val paymentLinkId: String? = null,
+    /** The address of the [paymentLink] the shopper opens, once it was created. Added in database version 9. */
+    val paymentLinkUrl: String? = null,
+    /**
+     * When the [paymentLink] stops working, in epoch milliseconds; chosen when the sale is opened and sent with it.
+     * Added in database version 9.
+     */
+    val paymentLinkExpiresAt: Long? = null,
 ) {
     /** What the payment holds on the card: [authorisedMinor] after an adjustment, else [totalMinor]. */
     val heldMinor: Long get() = authorisedMinor ?: totalMinor

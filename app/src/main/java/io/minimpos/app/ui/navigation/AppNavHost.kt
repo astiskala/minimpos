@@ -23,6 +23,7 @@ import io.minimpos.app.feature.refund.RefundResultScreen
 import io.minimpos.app.feature.refund.RefundScanScreen
 import io.minimpos.app.feature.refund.RefundScreen
 import io.minimpos.app.feature.sale.CheckoutScreen
+import io.minimpos.app.feature.sale.PaymentLinkScreen
 import io.minimpos.app.feature.sale.PaymentScreen
 import io.minimpos.app.feature.sale.SaleResultScreen
 import io.minimpos.app.feature.sale.SaleScreen
@@ -61,6 +62,7 @@ fun AppNavHost() {
                 entry<Route.Checkout> { CheckoutScreen(navigator, it.kind) }
                 entry<Route.Payment> { PaymentScreen(navigator, it.kind) }
                 entry<Route.SaleResult> { SaleResultScreen(it.saleId, navigator) }
+                entry<Route.PaymentLink> { PaymentLinkScreen(it.saleId, it.fresh, navigator) }
                 entry<Route.Tip> { TipScreen(it.saleId, navigator) }
                 entry<Route.Capture> { CaptureScreen(it.saleId, it.adjustOnly, navigator) }
                 entry<Route.RefundScan> { RefundScanScreen(navigator) }

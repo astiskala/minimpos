@@ -3,9 +3,9 @@ package io.minimpos.terminal.checkout
 import io.minimpos.terminal.transport.TerminalEnvironment
 
 /**
- * An amount for a payment modification, as Adyen's Checkout API takes it.
+ * An amount as Adyen's Checkout API takes it, for a payment modification or a payment link.
  *
- * @property currency The ISO 4217 code of the original payment's currency.
+ * @property currency The ISO 4217 code of the payment's currency.
  * @property value The amount in minor units of [currency] with Adyen's decimals (e.g. 1250 for EUR 12.50).
  */
 data class ModificationAmount(

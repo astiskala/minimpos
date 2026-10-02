@@ -171,7 +171,7 @@ cd minimpos
             <h2>8. 販売と返金</h2>
             <ul>
               <li><strong>新規販売：</strong>商品をタップするか、バーコードをスキャンするか、任意の金額を追加して、<strong>…を会計</strong>ボタンをタップします。会計時に参照IDを入力し、購入者の同意を得てカードを保存できます。その後、<strong>…を決済</strong>ボタンをタップして端末の案内に従います。</li>
-              <li><strong>領収書</strong>には店舗のヘッダー、商品、税金、カード決済の領収書、返金用 QR コードをまとめて印刷できます。メール送信も可能です。</li>
+              <li><strong>領収書</strong>には店舗のヘッダー、商品、税金、カード決済の領収書、返金用 QR コードをまとめて印刷できます。メール送信も可能です。タブレットやスマートフォンでは、<strong>領収書を共有</strong>で Android の共有シートから画像として送れます（メッセージアプリなど）。</li>
               <li><strong>返金：</strong>領収書の QR コードをスキャンするか、<strong>取引履歴</strong>から販売を開きます。全額、商品単位、または指定金額で返金できます。Adyen は返金を非同期で処理するため、アプリでは<em>返金要求済み</em>と表示されます。最終結果は Customer Area で確認してください。</li>
               <li><strong>取引履歴</strong>は取引を日別にまとめ、日計とチップを表示します。<em>要確認</em>には結果が未確定の決済が表示され、端末に結果を再照会できます。</li>
               <li><strong>取引を検索：</strong>取引履歴の検索欄に入力します。小型端末では先に検索アイコンをタップしてください。加盟店参照ID、PSP参照ID、承認コード、顧客参照ID、購入者のメールアドレス、カード番号の下 4 桁、または <code>34</code> や <code>34.50</code> のような金額で検索できます。すべての検索語が一致する必要があるため、<code>visa 34</code> は $34.00 の Visa 決済を見つけます。元の販売の購入者やカード情報でも返金が見つかります。フィルターの先頭にある<strong>決済方法</strong>では、カードブランドやウォレット（Apple Pay、Google Pay、Samsung Pay）で絞り込めます。</li>
@@ -188,6 +188,14 @@ cd minimpos
             </ol>
             <p>Adyen はキャプチャを非同期で確定するため、アプリでは<em>キャプチャ要求済み</em>と表示されます。Mini mPOS には webhook を受信するバックエンドがないため、最終結果は Customer Area で確認してください。結果が不明なキャプチャは、取引履歴から再送しても二重にキャプチャされません。</p>
             <p>API キーがない場合、アプリはキャプチャする金額を記録し、<em>Customer Areaでキャプチャ</em>と表示します。<strong>Payments › Payment list</strong> で取引履歴に表示された PSP参照IDを選び、<strong>Capture payment</strong> を実行してください。</p>
+            <h3 id="payment-links">支払いリンク</h3>
+            <p>Checkout API を設定すると、端末の代わりに Adyen の<a href="https://docs.adyen.com/unified-commerce/pay-by-link">支払いリンク</a>で販売の代金を受け取れます。お客様はご自身のスマートフォンやパソコンで Adyen の決済ページから支払います。</p>
+            <ol>
+              <li>最初の LIVE リンクを作成する前に、LIVE の Customer Area の <strong>Payments › Payment link settings</strong> で利用規約を追加してください。</li>
+              <li>Mini mPOS の<strong>設定 › 決済 › 支払いリンクを使う</strong>をオンにし、リンクの有効時間を選びます（既定は 24 時間、最長 70 日）。</li>
+              <li>会計画面で、決済ボタンの下の<strong>支払いリンクを送信</strong>をタップします。お客様が表示された QR コードを読み取るか、<strong>リンクをメール送信</strong>（未払いの領収書付き）、<strong>リンクを印刷</strong>、またはタブレットやスマートフォンで<strong>リンクを共有</strong>します。</li>
+            </ol>
+            <p>リンクを表示している間、アプリは数秒ごとに支払い済みかどうかを確認します。<strong>支払いを確認</strong>をタップしても確認できます。支払われるか、期限が切れるか、<strong>リンクを取り消す</strong>まで、取引履歴では<em>支払い待ち</em>と表示されます。Adyen は支払い済みリンクの PSP参照IDを webhook にしか送らず、Mini mPOS には webhook を受信するバックエンドがないため、支払い済みリンクの返金は Customer Area（Payments › Payment list）で行ってください。支払いリンクは販売のみに使え、シミュレーターでは使えません。</p>
           </section>
           <section id="tips">
             <h2>10. 領収書のチップ</h2>

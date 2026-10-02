@@ -13,6 +13,7 @@ import io.minimpos.app.receipt.ActionResult
 import io.minimpos.app.receipt.PrintRenderer
 import io.minimpos.app.receipt.ReceiptFactory
 import io.minimpos.app.refund.PaymentStanding
+import io.minimpos.app.refund.awaitsLinkPayment
 import io.minimpos.app.refund.standing
 import io.minimpos.app.terminal.TerminalGateway
 import io.minimpos.app.terminal.TerminalStatus
@@ -40,11 +41,33 @@ data class SalePrint(
  * @property receipt The receipt as it prints now, with the current settings; null while the transaction is not stored.
  * @property canPrint Whether printing is offered.
  * @property canEmail Whether emailing it is offered.
+ * @property canShare Whether sharing it through Android's share sheet is offered (not on an Adyen terminal).
+ * @property share The receipt to share when asked, as it is emailed; null while the transaction is not stored.
  */
 data class ReceiptOffer(
     val receipt: ReceiptDocument?,
     val canPrint: Boolean,
     val canEmail: Boolean,
+    val canShare: Boolean = false,
+    val share: SharedReceipt? = null,
+)
+
+/**
+ * A receipt to share through Android's share sheet, see [ReceiptOffer.share]; the screen words the message.
+ *
+ * @property document The receipt as emailed (no lines to write a tip on).
+ * @property reference The transaction's merchant reference.
+ * @property amountMinor The transaction's amount, in minor units of [currency].
+ * @property currency The transaction's ISO 4217 currency code.
+ * @property paymentLink The payment link the sale still awaits its payment through, to share with the receipt; null
+ *   for a receipt.
+ */
+data class SharedReceipt(
+    val document: ReceiptDocument,
+    val reference: String,
+    val amountMinor: Long,
+    val currency: String,
+    val paymentLink: String? = null,
 )
 
 /**
@@ -59,8 +82,10 @@ data class AutoDelivery(
 )
 
 /**
- * Receipts of stored sales and refunds, delivered by printing on the terminal (or the simulator's on-screen printer)
- * and by email, with the current receipt settings, and what the screens offer for them ([saleOffer], [refundOffer]).
+ * Receipts of stored sales and refunds, delivered by printing on the terminal (or the simulator's on-screen printer),
+ * by email and, off-terminal, through Android's share sheet (the screen shares [ReceiptOffer.share]), with the current
+ * receipt settings, and what the screens offer for them ([saleOffer], [refundOffer]). The receipt of a sale
+ * still awaiting its payment link's payment is an unpaid one with the link, emailed as a payment request.
  * It decides what is delivered automatically after a transaction,
  * exactly once per transaction that succeeded while the app runs: the transaction lifecycles call [arm], and
  * [io.minimpos.app.feature.TransactionActions] claims the automation for a transaction just made with
@@ -106,16 +131,34 @@ class ReceiptDelivery(
                 receipt = record?.let { receipts.sale(it, current.receipt) },
                 canPrint = terminal.printerAvailable,
                 canEmail = current.email.isConfigured && captured,
+                canShare = terminal.canShare,
+                share =
+                    record?.let {
+                        val sale = it.sale
+                        SharedReceipt(
+                            document = receipts.sale(it, current.receipt, paper = false),
+                            reference = sale.merchantReference,
+                            amountMinor = sale.amountMinor,
+                            currency = sale.currency,
+                            paymentLink = sale.paymentLinkUrl?.takeIf { sale.awaitsLinkPayment },
+                        )
+                    },
             )
         }
 
     /** What the screens of refund [refundId] offer for its receipt, as [saleOffer] after the payment. */
     fun refundOffer(refundId: String): Flow<ReceiptOffer> =
         combine(refunds.observe(refundId), settings.settings, status.state) { refund, current, terminal ->
+            val receipt = refund?.let { receipts.refund(it, current.receipt) }
             ReceiptOffer(
-                receipt = refund?.let { receipts.refund(it, current.receipt) },
+                receipt = receipt,
                 canPrint = terminal.printerAvailable,
                 canEmail = current.email.isConfigured,
+                canShare = terminal.canShare,
+                share =
+                    refund?.let { stored ->
+                        receipt?.let { SharedReceipt(it, stored.merchantReference, stored.amountMinor, stored.currency) }
+                    },
             )
         }
 
@@ -163,17 +206,24 @@ class ReceiptDelivery(
     /** Prints [document], such as the sample receipt Settings prints to check the layout. */
     suspend fun printDocument(document: ReceiptDocument): ActionResult = print(document, settings.current())
 
-    /** Emails the receipt of sale [saleId] to [to] and, when it was sent, records the address on the sale. */
+    /**
+     * Emails the receipt of sale [saleId] to [to] (while it awaits its payment link's payment, the unpaid receipt as a
+     * payment request) and, when it was sent, records the address on the sale.
+     */
     suspend fun emailSale(
         saleId: String,
         to: String,
     ): ActionResult {
         val record = sales.get(saleId) ?: return ActionResult.Failure(notFound)
+        val sale = record.sale
         val document = receipts.sale(record, settings.current().receipt, paper = false)
-        val preAuthorisation = record.sale.kind == SaleKind.PRE_AUTHORISATION
-        return emailer.sendSale(to, document, record.sale.merchantReference, preAuthorisation).also {
-            if (it == ActionResult.Success) sales.markEmailed(saleId, to.trim())
-        }
+        val result =
+            if (sale.awaitsLinkPayment) {
+                emailer.sendPaymentLink(to, document, sale.merchantReference)
+            } else {
+                emailer.sendSale(to, document, sale.merchantReference, sale.kind == SaleKind.PRE_AUTHORISATION)
+            }
+        return result.also { if (it == ActionResult.Success) sales.markEmailed(saleId, to.trim()) }
     }
 
     /** Emails the receipt of refund [refundId] to [to]. */
@@ -196,14 +246,16 @@ class ReceiptDelivery(
         sale: SaleEntity,
         current: AppSettings,
     ): Boolean =
-        when (current.receipt.merchantCopy) {
-            MerchantCopyPolicy.NEVER -> false
+        // An unpaid slip with a payment link is the shopper's way to pay; there is nothing to keep a copy of yet.
+        !sale.awaitsLinkPayment &&
+            when (current.receipt.merchantCopy) {
+                MerchantCopyPolicy.NEVER -> false
 
-            // The shopper signs the merchant copy of a receipt awaiting a tip.
-            MerchantCopyPolicy.SIGNATURE_ONLY -> sale.signatureRequired || sale.standing == PaymentStanding.AWAITING_TIP
+                // The shopper signs the merchant copy of a receipt awaiting a tip.
+                MerchantCopyPolicy.SIGNATURE_ONLY -> sale.signatureRequired || sale.standing == PaymentStanding.AWAITING_TIP
 
-            MerchantCopyPolicy.ALWAYS -> true
-        }
+                MerchantCopyPolicy.ALWAYS -> true
+            }
 
     private suspend fun print(
         document: ReceiptDocument,

@@ -6,8 +6,9 @@ terminal constraints, where payments go and the conventions; `ArchitectureTest` 
 
 ## Architecture
 
-- \* Layers: UI (`feature`, `ui`, `scan`, `qr`) → `payment` → `email` → `receipt` → `refund`/`terminal` → `data`. Only
-  the UI reaches into `AppContainer`. View models live in `feature` and hold no Android UI types or display text.
+- \* Layers: UI (`feature`, `ui`, `scan`, `qr`, `share`) → `payment` → `email` → `receipt` → `refund`/`terminal` →
+  `data`. Only the UI reaches into `AppContainer`. View models live in `feature` and hold no Android UI types or display
+  text.
 - \* Only the `terminal` package talks to the terminal (and reaches the cloud and the Payments app): elsewhere (but the
   container) `:terminal-api`'s `transport`, `simulator` and `paymentsapp` are only the stored values
   `TerminalEnvironment`, `CloudRegion` and `SimulatedOutcome`, and `TerminalClient` only its companion helpers.
@@ -19,9 +20,10 @@ terminal constraints, where payments go and the conventions; `ArchitectureTest` 
   `holdCancelled`. What can be done with a payment is `StoredPayment.actions`
   (`container.storedPayments.observe(saleId)`); `Captures` checks against the same before sending.
 - \* Pure decision rules (plain JUnit tests, no Android, coroutines, repositories or clocks): `payment/Checkout`,
-  `refund/PaymentStanding`, `refund/RefundablePayment`, `feature/history/HistorySearch`, `terminal/TerminalSetup`.
-  Do not re-derive refundability, standing, checkout rules or terminal readiness elsewhere; what a sale's receipt says
-  about it (tip lines, held, captured) is `ReceiptStanding`, next to `PaymentStanding`.
+  `payment/PaymentLinkRequests`, `refund/PaymentStanding`, `refund/RefundablePayment`, `feature/history/HistorySearch`,
+  `terminal/TerminalSetup`. Do not re-derive refundability, standing, checkout rules or terminal readiness elsewhere;
+  what a sale's receipt says about it (tip lines, held, captured, unpaid link, paid online) is `ReceiptStanding`, next
+  to `PaymentStanding`.
 - \* `TerminalSetup.resolve` is the one reading of where payments go (mode, POIID, host, typed `SetupProblem`,
   `apiSetup`, printer availability, `checksConnection`), called only by `TerminalSetupSource`, which the container
   hands to `TerminalGateway`, `AdyenApi`, `TapToPaySetup` and `TerminalStatus`; whether Tap to Pay can be boarded is
@@ -40,6 +42,12 @@ terminal constraints, where payments go and the conventions; `ArchitectureTest` 
   `SimulatedTerminal`'s modifications from the container, not the gateway.
 - \* `TransactionLifecycle` (payments and refunds: PENDING first, one at a time, recheck, abort) stores only through a
   `TransactionBook` (`SaleBook`, `RefundBook`).
+- \* Payment links reach Adyen only through `payment/PaymentLinks` (PENDING first, checks and cancellations one at a
+  time so a late answer never overwrites a newer one), which takes `ApiTarget.links` like `Captures`; only it hands
+  `SaleRepository.settle` Adyen's `PaymentLink`. Whether links are offered is `TerminalSetup.paymentLinks`.
+- \* Only `share` hands files to other apps (`FileProvider`, `ACTION_SEND`): `ShareSheet` writes the one receipt image
+  to the cache folder `res/xml/shared_files.xml` names. Screens ask `TransactionActions.share()` and pass
+  `TransactionActionsState.share` to `ShareEffect`; sharing is offered only while `TerminalState.canShare`.
 - \* Screens get a transaction's receipt only through `feature/TransactionActions` (offer, print, email, recheck,
   automatic delivery for a fresh transaction), backed by `ReceiptDelivery`; only `ReceiptDelivery` uses
   `ReceiptFactory`, and only the container `arm`s automatic delivery. UI states other than Settings hold no
@@ -84,8 +92,10 @@ terminal constraints, where payments go and the conventions; `ArchitectureTest` 
 - `LocalizationTest` checks translation/format parity and receipt defaults and writes sample previews under
   `app/build/reports/localization/`; `LocalizedUiTest` checks Chinese/Japanese checkout at AMS1 size.
 - `TestEnvironment(device = FakeDevice(detectedPoiId = …), terminal = FakeTerminal())` plays a terminal; `FakeCloud`,
-  `FakePaymentsApp` (simulator behind encrypted App Links) and `FakeManagement` play the cloud, the Payments app
-  (`FakeDevice(paymentsApps = …)`) and its boarding. It is a rule declared `@get:Rule(order = 0)` before the compose rule
+  `FakePaymentsApp` (simulator behind encrypted App Links), `FakeManagement` and `FakeLinkApi` play the cloud, the
+  Payments app (`FakeDevice(paymentsApps = …)`), its boarding and payment links (`env.useLinks()` sets up the Checkout
+  API and switches links on). `FileProvider` caches its folders statically across Robolectric tests, so the
+  environment clears them (`forgetSharedFileRoots`). It is a rule declared `@get:Rule(order = 0)` before the compose rule
   (`order = 1`). Call `container.start()` for the background connection check. No network or DNS in tests (give
   `TerminalHttpClient` a fake `Dns`).
 - In Compose tests wait with `compose.awaitCondition`, never `await` (it blocks the main looper and deadlocks on CI);

@@ -232,6 +232,25 @@ class DatabaseMigrationTest {
     }
 
     @Test
+    fun `version 8 sales were taken on a terminal, not through a payment link`() {
+        val name = "migration-v8.db"
+        createDatabase(name, 8) {
+            execSQL(
+                "INSERT INTO sales (id, createdAt, currency, taxMode, netMinor, taxMinor, totalMinor, status, merchantReference, " +
+                    "tokenizationRequested, signatureRequired, refundedMinor, kind, tipOnReceipt, holdCancelled) VALUES ('s1', 1, " +
+                    "'AUD', 'INCLUSIVE', 91, 9, 100, 'APPROVED', 'MP-1', 0, 0, 0, 'SALE', 0, 0)",
+            )
+        }
+        migrated(name) { db ->
+            val sale = db.saleDao().sale("s1")!!.sale
+            assertThat(sale.paymentLink).isFalse()
+            assertThat(sale.paymentLinkId).isNull()
+            assertThat(sale.paymentLinkUrl).isNull()
+            assertThat(sale.paymentLinkExpiresAt).isNull()
+        }
+    }
+
+    @Test
     fun `version 3 untaxed products use an existing zero rate`() {
         val name = "migration-v3-existing.db"
         createDatabase(name, 3) {

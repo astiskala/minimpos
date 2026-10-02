@@ -57,6 +57,7 @@ import io.minimpos.app.data.db.SaleKind
 import io.minimpos.app.data.db.SaleStatus
 import io.minimpos.app.data.settings.ShopperReferenceSource
 import io.minimpos.app.feature.OutcomeMessage
+import io.minimpos.app.feature.outcomeNote
 import io.minimpos.app.payment.Checkout
 import io.minimpos.app.payment.CheckoutForm
 import io.minimpos.app.payment.TransactionState
@@ -457,7 +458,7 @@ private fun SaleOutcome(
 ) {
     val sale = state.record?.sale ?: return
     OutcomeHeader(statusKind(sale), statusTitle(sale), money.format(sale.amountMinor), titleTag = "resultStatus") {
-        sale.message?.takeIf { sale.status != SaleStatus.APPROVED }?.let { OutcomeNote(it) }
+        sale.outcomeNote()?.takeIf { sale.status != SaleStatus.APPROVED }?.let { OutcomeNote(it) }
         if (state.preAuthorisation && sale.standing.held) OutcomeNote(stringResource(R.string.checkout_pre_auth_note))
         HoldNotes(sale, money, afterPayment = true)
         state.advice?.let { advice ->

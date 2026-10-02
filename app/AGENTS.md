@@ -13,30 +13,41 @@ terminal constraints, where payments go and the conventions; `ArchitectureTest` 
   container) `:terminal-api`'s `transport`, `simulator` and `paymentsapp` are only the stored values
   `TerminalEnvironment`, `CloudRegion` and `SimulatedOutcome`, and `TerminalClient` only its companion helpers.
   `com.adyen` stays in `:terminal-api`; Room stays in `data`; crypto stays in `data.security`; nothing logs or prints.
-- \* Stored sales change only through `SaleRepository`'s named transitions (`markSending`, `settle`, `recordAdjustment`,
-  `recordCapture`, `modificationFailed`, `markEmailed`, `applyRefund`), refunds only through `RefundRepository.settle`;
-  `HistoryRepository` does whole-table housekeeping. Tests write a stored state with `container.database.saleDao()`.
-- \* Where a stored sale stands is `refund/PaymentStanding` (`sale.standing`); only it reads `captureStatus` and
-  `holdCancelled`. What can be done with a payment is `StoredPayment.actions`
+- \* Stored sales change only through `SaleRepository.record(id, SaleEvent)` and `applyRefund`, refunds only through
+  `RefundRepository.settle`; `HistoryRepository` does whole-table housekeeping (interrupted sales through
+  `SaleEvent.Interrupted`). Callers name what happened (`CaptureSending`, `CaptureAnswered`, `LinkAnswered`, …);
+  only `data/repo/SaleEvent.kt` decides the statuses and fields it writes (nothing else copies a stored
+  `SaleEntity`). Tests write a stored state with `container.database.saleDao()`.
+- \* Where a stored sale stands is `refund/PaymentStanding` (`sale.standing`); only it (and `SaleEvent`, which writes
+  them) reads `captureStatus` and `holdCancelled`. Which capture statuses count as captured is
+  `CaptureStatus.captured`. What can be done with a payment is `StoredPayment.actions`
   (`container.storedPayments.observe(saleId)`); `Captures` checks against the same before sending.
 - \* Pure decision rules (plain JUnit tests, no Android, coroutines, repositories or clocks): `payment/Checkout`,
-  `payment/PaymentLinkRequests`, `refund/PaymentStanding`, `refund/RefundablePayment`, `feature/history/HistorySearch`,
-  `terminal/TerminalSetup`. Do not re-derive refundability, standing, checkout rules or terminal readiness elsewhere;
-  what a sale's receipt says about it (tip lines, held, captured, unpaid link, paid online) is `ReceiptStanding`, next
-  to `PaymentStanding`.
-- \* `TerminalSetup.resolve` is the one reading of where payments go (mode, POIID, host, typed `SetupProblem`,
+  `payment/PaymentLinkRequests`, `data/repo/SaleEvent`, `refund/PaymentStanding`, `refund/RefundablePayment`,
+  `feature/history/HistorySearch`, `terminal/TerminalSetup`, `terminal/DestinationRules` (with the adapters'
+  companions that implement it). Do not re-derive refundability, standing, checkout rules or terminal readiness
+  elsewhere; what a sale's receipt says about it (tip lines, held, captured, unpaid link, paid online) is
+  `ReceiptStanding`, next to `PaymentStanding`.
+- \* `TerminalSetup.resolve` is the one reading of where payments go (destination, POIID, host, typed `SetupProblem`,
   `apiSetup`, printer availability, `checksConnection`), called only by `TerminalSetupSource`, which the container
   hands to `TerminalGateway`, `AdyenApi`, `TapToPaySetup` and `TerminalStatus`; whether Tap to Pay can be boarded is
-  `TerminalSetup.boarding`, read the same way. Missing setup is reported in outcomes, never thrown; screens word a
-  `SetupProblem` in `OutcomeMessages.kt`, and messages stored with a transaction or capture are worded by
-  `TerminalSetupSource.describe` (the container's resource lookup).
-- \* What a destination can do lives in its `terminal/Destination` adapter (`SimulatedTerminal`, `LocalTerminal`,
-  `CloudTerminal`, `PaymentsAppDestination`): opening its transport (reused with `Reused`), abort, diagnosis, recovery
-  policy and payment timeout; `Destination.connect` makes the `TerminalClient` as a `Connection` (`Open`, or `Blocked`
-  as `NotSetUp`/`Unreachable`), the one reading of whether requests can be sent (nothing else constructs a
-  `TerminalClient`). The gateway makes the destinations (the container the `SimulatedTerminal`) and is the only one
-  that asks them; it asks the destination, never the mode. Outside `TerminalSetup`, the gateway's choice of destination
-  and the settings (`data.settings`, `feature.settings`), nothing names `CLOUD` or `PAYMENTS_APP`.
+  `TerminalSetup.boarding`, read the same way. Missing setup is reported typed, never thrown (the gateway's
+  `Attempt.NotSetUp`, `CaptureResult.NotSetUp`, `LinkUpdate.NotSetUp`, `ActionResult.NotSetUp`), and screens word a
+  `SetupProblem` in `OutcomeMessages.kt`.
+- \* Only `TerminalSetupSource` reads the secrets the terminal, the cloud and the Payments app need: `unlocked()`
+  decrypts the destination's and the Checkout API key once per call (`TerminalSetup.unlock`, where a saved one that
+  no longer decrypts becomes the `UNREADABLE_*` problem) and hands them over as an `UnlockedSetup`; `boarding()` does
+  the same for the Payments app API key (`BoardingSetup.Ready`). Nothing else in `terminal` touches `SecretStore`.
+- \* Everything about one destination is in `terminal/Destinations.kt`: what it needs and can do is its
+  `DestinationRules`, on its adapter's companion (`SimulatedTerminal`, `LocalTerminal`, `CloudTerminal`,
+  `PaymentsAppDestination`; POIID, host, environment, setup problem, printer, secrets, abort, diagnosis, recovery
+  policy, payment timeout; pure, tested through `TerminalSetup`), and the adapter only opens its transport (reused
+  with `Reused`). `DestinationRules.of` picks one from the mode; `TerminalSetup` asks it. `Destination.connect` makes
+  the `TerminalClient` as a `Connection` (`Open`, or `Blocked` as `NotSetUp`/`Unreachable`), the one reading of
+  whether requests can be sent (nothing else constructs a `TerminalClient`). The gateway makes the adapters (the
+  container the `SimulatedTerminal`), picks the one whose rules the setup holds, and is the only one that opens them.
+  Outside `Destinations.kt`, `DestinationRules.kt` and the settings (`data.settings`, `feature.settings`), nothing
+  names `CLOUD` or `PAYMENTS_APP`.
 - \* `ApiSetup` is the one reading of the Checkout API (capture mode, problem); `AdyenApi.target()` pairs it with the
   client as an `ApiTarget`. `Captures` take a `suspend () -> ApiTarget`, not `AdyenApi`; `AdyenApi` takes the
   `SimulatedTerminal`'s modifications from the container, not the gateway.
@@ -44,18 +55,23 @@ terminal constraints, where payments go and the conventions; `ArchitectureTest` 
   `TransactionBook` (`SaleBook`, `RefundBook`).
 - \* Payment links reach Adyen only through `payment/PaymentLinks` (PENDING first, checks and cancellations one at a
   time so a late answer never overwrites a newer one), which takes `ApiTarget.links` like `Captures`; only it hands
-  `SaleRepository.settle` Adyen's `PaymentLink`. Whether links are offered is `TerminalSetup.paymentLinks`.
+  Adyen's `PaymentLink` to the stored sale (`SaleEvent.LinkAnswered`). Whether links are offered is
+  `TerminalSetup.paymentLinks`.
 - \* Only `share` hands files to other apps (`FileProvider`, `ACTION_SEND`): `ShareSheet` writes the one receipt image
   to the cache folder `res/xml/shared_files.xml` names. Screens ask `TransactionActions.share()` and pass
   `TransactionActionsState.share` to `ShareEffect`; sharing is offered only while `TerminalState.canShare`.
 - \* Screens get a transaction's receipt only through `feature/TransactionActions` (offer, print, email, recheck,
-  automatic delivery for a fresh transaction), backed by `ReceiptDelivery`; only `ReceiptDelivery` uses
+  automatic delivery for a fresh transaction), backed by `ReceiptDelivery`, whose operations take the
+  `StoredTransaction` (sale or refund) and decide what differs between them themselves; only `ReceiptDelivery` uses
   `ReceiptFactory`, and only the container `arm`s automatic delivery. UI states other than Settings hold no
   `AppSettings` or `printerAvailable`.
 - \* Outcomes are typed (`ActionOutcome`) and worded only in `feature/OutcomeMessages.kt` (in the UI only it names a
-  `SetupProblem`; `textRes` is for it and the container); tests assert outcomes, not strings. A tip, capture or
-  adjustment becomes an `ActionState` only through `CaptureResult.toState(CaptureStep, …)`: nothing else makes its
-  failure outcomes, and no other UI class reads `CaptureResult`'s cases.
+  `SetupProblem` or a `StoredReason`); tests assert outcomes, not strings. Why a stored transaction, capture or
+  adjustment failed is stored as Adyen's or the terminal's words (`message`) or, when the app says so, a typed
+  `StoredReason` (not set up, outcome unknown, interrupted); screens show both only through `outcomeNote()` /
+  `modificationNote()`, so it reads in the current language and nothing else hands the app's words to storage. A
+  tip, capture or adjustment becomes an `ActionState` only through `CaptureResult.toState(CaptureStep, …)`: nothing
+  else makes its failure outcomes, and no other UI class reads `CaptureResult`'s cases.
 - \* Terminal receipt fields become core receipt lines only in `ReceiptLinesJson`; print jobs are built only by
   `PrintRenderer` (a 1:1 map of `ReceiptDocument.segments()`).
 - \* One `SaleSession` per `SaleKind` (`container.session(kind)`; only the container makes them); the payments'

@@ -59,7 +59,7 @@ class RefundBook(
                 SettlementStatus.UNKNOWN -> RefundStatus.UNKNOWN
                 SettlementStatus.CANCELLED, SettlementStatus.DECLINED, SettlementStatus.FAILED -> RefundStatus.FAILED
             }
-        refunds.settle(id, status, settlement.message, settlement.details)
+        refunds.settle(id, status, settlement.message, settlement.details, settlement.reason)
     }
 
     override suspend fun unsettledServiceId(id: String): String? = refunds.get(id)?.takeIf { it.status == RefundStatus.UNKNOWN }?.serviceId

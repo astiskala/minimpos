@@ -1,8 +1,9 @@
 package io.minimpos.app.payment
 
-import io.minimpos.app.data.db.AdjustmentStatus
 import io.minimpos.app.data.db.CaptureStatus
 import io.minimpos.app.data.db.SaleEntity
+import io.minimpos.app.data.db.SetupProblem
+import io.minimpos.app.data.repo.SaleEvent
 import io.minimpos.app.data.repo.SaleRepository
 import io.minimpos.app.refund.PaymentAction
 import io.minimpos.app.refund.PaymentStanding
@@ -10,7 +11,6 @@ import io.minimpos.app.refund.StoredPayment
 import io.minimpos.app.terminal.AdyenApi
 import io.minimpos.app.terminal.ApiSetup
 import io.minimpos.app.terminal.ApiTarget
-import io.minimpos.app.terminal.SetupProblem
 import io.minimpos.terminal.checkout.ModificationAmount
 import io.minimpos.terminal.checkout.ModificationResult
 import io.minimpos.terminal.checkout.PaymentModifications
@@ -38,13 +38,21 @@ sealed interface CaptureResult {
     ) : CaptureResult
 
     /**
-     * Adyen did not take the request, its outcome is unknown (the capture can then be sent again safely), or the API is
-     * not set up.
+     * Adyen did not take the request, or its outcome is unknown (the capture can then be sent again safely).
      *
      * @property message Why, in English.
      */
     data class Failed(
         val message: String,
+    ) : CaptureResult
+
+    /**
+     * Nothing was sent, because the Checkout API is only partly set up.
+     *
+     * @property problem What is missing.
+     */
+    data class NotSetUp(
+        val problem: SetupProblem,
     ) : CaptureResult
 
     /** The payment no longer allows it (captured or cancelled meanwhile, or gone), or the amount is not valid. */
@@ -68,12 +76,10 @@ sealed interface CaptureResult {
  *
  * @param sales Where the payments are stored, and their capture recorded.
  * @param target Where captures and adjustments go now: [AdyenApi.target] in the app, a fixed target in tests.
- * @param describe Words what is missing when the API is only partly set up, for the message stored with the sale.
  */
 class Captures(
     private val sales: SaleRepository,
     private val target: suspend () -> ApiTarget,
-    private val describe: (SetupProblem) -> String = { it.name },
 ) {
     private val mutex = Mutex()
 
@@ -174,11 +180,12 @@ class Captures(
             }
 
             problem != null -> {
-                fail(sale, describe(problem))
+                sales.record(sale.id, SaleEvent.ModificationNotSetUp(problem))
+                CaptureResult.NotSetUp(problem)
             }
 
             else -> {
-                sales.recordCapture(sale.id, CaptureStatus.MANUAL, amount, tipMinor)
+                sales.record(sale.id, SaleEvent.CaptureLeftToStaff(amount, tipMinor))
                 CaptureResult.Recorded
             }
         }
@@ -212,29 +219,12 @@ class Captures(
                 sale.adjustAuthorisationData,
                 key,
             )
+        sales.record(sale.id, SaleEvent.AdjustmentAnswered(amount, result))
         return when (result) {
-            is ModificationResult.Authorised -> {
-                sales.recordAdjustment(sale.id, amount, AdjustmentStatus.AUTHORISED, result.adjustAuthorisationData)
-                CaptureResult.Adjusted
-            }
-
-            is ModificationResult.Received -> {
-                sales.recordAdjustment(sale.id, amount, AdjustmentStatus.REQUESTED)
-                CaptureResult.Adjusted
-            }
-
-            is ModificationResult.Refused -> {
-                sales.modificationFailed(sale.id, result.reason)
-                CaptureResult.Refused(result.reason)
-            }
-
-            is ModificationResult.NotProcessed -> {
-                fail(sale, result.message)
-            }
-
-            is ModificationResult.Unknown -> {
-                fail(sale, result.message)
-            }
+            is ModificationResult.Authorised, is ModificationResult.Received -> CaptureResult.Adjusted
+            is ModificationResult.Refused -> CaptureResult.Refused(result.reason)
+            is ModificationResult.NotProcessed -> CaptureResult.Failed(result.message)
+            is ModificationResult.Unknown -> CaptureResult.Failed(result.message)
         }
     }
 
@@ -245,7 +235,7 @@ class Captures(
         tipMinor: Long? = null,
     ): CaptureResult {
         val psp = sale.pspReference ?: return CaptureResult.NotAllowed
-        sales.recordCapture(sale.id, CaptureStatus.PENDING, amount, tipMinor)
+        sales.record(sale.id, SaleEvent.CaptureSending(amount, tipMinor))
         val result =
             modifications.capture(
                 psp,
@@ -253,22 +243,12 @@ class Captures(
                 sale.merchantReference,
                 "capture-${sale.id}-$amount",
             )
-        val (status, outcome) =
-            when (result) {
-                is ModificationResult.Received, is ModificationResult.Authorised -> CaptureStatus.REQUESTED to CaptureResult.Requested
-                is ModificationResult.Refused -> CaptureStatus.FAILED to CaptureResult.Failed(result.reason)
-                is ModificationResult.NotProcessed -> CaptureStatus.FAILED to CaptureResult.Failed(result.message)
-                is ModificationResult.Unknown -> CaptureStatus.UNKNOWN to CaptureResult.Failed(result.message)
-            }
-        sales.recordCapture(sale.id, status, message = (outcome as? CaptureResult.Failed)?.message)
-        return outcome
-    }
-
-    private suspend fun fail(
-        sale: SaleEntity,
-        message: String,
-    ): CaptureResult {
-        sales.modificationFailed(sale.id, message)
-        return CaptureResult.Failed(message)
+        sales.record(sale.id, SaleEvent.CaptureAnswered(result))
+        return when (result) {
+            is ModificationResult.Received, is ModificationResult.Authorised -> CaptureResult.Requested
+            is ModificationResult.Refused -> CaptureResult.Failed(result.reason)
+            is ModificationResult.NotProcessed -> CaptureResult.Failed(result.message)
+            is ModificationResult.Unknown -> CaptureResult.Failed(result.message)
+        }
     }
 }

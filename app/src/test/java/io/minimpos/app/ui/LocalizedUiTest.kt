@@ -1,5 +1,9 @@
 package io.minimpos.app.ui
 
+import androidx.compose.foundation.layout.Column
+import androidx.compose.material3.Text
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertTextContains
@@ -11,6 +15,11 @@ import io.minimpos.app.MiniMposApp
 import io.minimpos.app.R
 import io.minimpos.app.TestEnvironment
 import io.minimpos.app.await
+import io.minimpos.app.data.db.SaleEntity
+import io.minimpos.app.data.db.SaleStatus
+import io.minimpos.app.data.db.SetupProblem
+import io.minimpos.app.data.db.StoredReason
+import io.minimpos.app.feature.outcomeNote
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
@@ -36,6 +45,32 @@ class LocalizedUiTest {
 
     @Test
     fun `Japanese sale primary actions fit an AMS1`() = saleFits()
+
+    @Test
+    fun `why a stored payment failed is worded in the app's language when it is shown`() {
+        val failed =
+            SaleEntity(
+                id = "s1",
+                createdAt = 1,
+                currency = "JPY",
+                taxMode = "INCLUSIVE",
+                netMinor = 1_000,
+                taxMinor = 100,
+                totalMinor = 1_100,
+                status = SaleStatus.FAILED,
+                merchantReference = "MP-1",
+                reason = StoredReason.NotSetUp(SetupProblem.POI_ID),
+            )
+        val interrupted = failed.copy(reason = StoredReason.Interrupted, message = "EOF")
+        compose.setContent {
+            Column {
+                Text(failed.outcomeNote().orEmpty(), Modifier.testTag("notSetUp"))
+                Text(interrupted.outcomeNote().orEmpty(), Modifier.testTag("interrupted"))
+            }
+        }
+        compose.onNodeWithTag("notSetUp").assertTextContains("端末ID", substring = true)
+        compose.onNodeWithTag("interrupted").assertTextContains("${env.context.getString(R.string.payment_interrupted)} (EOF)")
+    }
 
     @Test
     @Config(qualifiers = "zh-rCN-w320dp-h460dp-hdpi")

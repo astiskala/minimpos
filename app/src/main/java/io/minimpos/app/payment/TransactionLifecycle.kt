@@ -1,6 +1,8 @@
 package io.minimpos.app.payment
 
 import android.database.SQLException
+import io.minimpos.app.data.db.StoredReason
+import io.minimpos.app.terminal.Attempt
 import io.minimpos.app.terminal.TerminalGateway
 import io.minimpos.terminal.client.PaymentParams
 import io.minimpos.terminal.client.RefundParams
@@ -68,13 +70,17 @@ enum class SettlementStatus {
  * The outcome of a transaction as it is stored.
  *
  * @property status How it ended.
- * @property message Why it did not succeed, for display; null when it succeeded.
+ * @property message Why it did not succeed, as the terminal (or what failed) worded it; null when it succeeded or
+ *   nothing was said.
  * @property details What the terminal answered; null when it did not answer.
+ * @property reason Why it did not succeed when the app says so (not set up, outcome unknown), which the screens word;
+ *   null otherwise.
  */
 data class Settlement(
     val status: SettlementStatus,
     val message: String?,
     val details: TransactionDetails? = null,
+    val reason: StoredReason? = null,
 )
 
 /** The Terminal API request a transaction sends. */
@@ -148,7 +154,6 @@ interface TransactionBook<R> {
  * @param scope Where transactions run.
  * @param gateway Sends the requests.
  * @param book How the records are stored.
- * @param unknownOutcome Stored as the message of a transaction whose outcome the terminal could not confirm.
  * @param onSucceeded Called with the record ID and the request when a transaction succeeds (not when a [recheck]
  *   settles one), before the state becomes [TransactionState.Finished].
  * @param clock Stamps the records.
@@ -159,7 +164,6 @@ class TransactionLifecycle<R>(
     private val scope: CoroutineScope,
     private val gateway: TerminalGateway,
     private val book: TransactionBook<R>,
-    private val unknownOutcome: String,
     private val onSucceeded: (id: String, request: R) -> Unit = { _, _ -> },
     private val clock: Clock = Clock.systemUTC(),
     private val newId: () -> String = { UUID.randomUUID().toString() },
@@ -190,7 +194,7 @@ class TransactionLifecycle<R>(
                 @Suppress("TooGenericExceptionCaught") e: Exception,
             ) {
                 try {
-                    book.settle(id, Settlement(SettlementStatus.UNKNOWN, e.message))
+                    book.settle(id, Settlement(SettlementStatus.UNKNOWN, e.message, reason = StoredReason.OutcomeUnknown))
                 } catch (ignored: SQLException) {
                     // It stays PENDING, which the next start turns into UNKNOWN.
                 }
@@ -252,12 +256,16 @@ class TransactionLifecycle<R>(
                 (current as? TransactionState.Processing)?.takeIf { it.id == id }?.copy(serviceId = serviceId) ?: current
             }
         }
-        val outcome =
+        val attempt =
             when (val operation = book.operation(request)) {
                 is TerminalOperation.Pay -> gateway.pay(operation.params, serviceId, onSending)
                 is TerminalOperation.Refund -> gateway.refund(operation.params, serviceId, onSending)
             }
-        val settlement = settle(id, outcome)
+        val settlement =
+            when (attempt) {
+                is Attempt.Made -> settle(id, attempt.result)
+                is Attempt.NotSetUp -> Settlement(SettlementStatus.FAILED, null, reason = StoredReason.NotSetUp(attempt.problem))
+            }
         book.settle(id, settlement)
         if (settlement.status == SettlementStatus.SUCCEEDED) onSucceeded(id, request)
         _state.value = TransactionState.Finished(id)
@@ -287,7 +295,7 @@ class TransactionLifecycle<R>(
             }
 
             is TransactionOutcome.Unknown -> {
-                Settlement(SettlementStatus.UNKNOWN, unknownOutcome)
+                Settlement(SettlementStatus.UNKNOWN, null, reason = StoredReason.OutcomeUnknown)
             }
         }
 }

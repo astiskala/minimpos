@@ -3,6 +3,7 @@ package io.minimpos.app.terminal
 import android.content.Context
 import android.os.Build
 import android.provider.Settings
+import io.minimpos.app.data.db.SetupProblem
 import io.minimpos.app.data.security.SecretStore
 import io.minimpos.app.data.settings.TerminalMode
 import io.minimpos.terminal.client.DiagnosisResult
@@ -150,6 +151,31 @@ data class DetectedEnvironment(
     val cloudRegion: CloudRegion? = null,
 )
 
+/**
+ * What [TerminalGateway] did with a request: sent it where payments go (or found that destination unreachable), with
+ * [T] what came of it, or sent nothing because something must be set up first.
+ */
+sealed interface Attempt<out T> {
+    /**
+     * It was sent, or the destination could not be reached.
+     *
+     * @param T What came of it.
+     * @property result The destination's answer, or why it could not be reached, as Adyen or the client worded it.
+     */
+    data class Made<out T>(
+        val result: T,
+    ) : Attempt<T>
+
+    /**
+     * Nothing was sent.
+     *
+     * @property problem What must be entered, installed or fixed first.
+     */
+    data class NotSetUp(
+        val problem: SetupProblem,
+    ) : Attempt<Nothing>
+}
+
 /** The terminals connected to the merchant account in the cloud, from [TerminalGateway.connectedTerminals]. */
 sealed interface ConnectedTerminals {
     /**
@@ -187,17 +213,15 @@ sealed interface ConnectedTerminals {
  * how long payments wait) is the destination's; the gateway asks it rather than the mode.
  *
  * Missing setup (no POIID, IP address or shared key, [TerminalSetup.problem]) never throws: every operation reports it
- * through its outcome, worded by [TerminalSetupSource.describe] where the outcome carries text. What terminals report
+ * typed, as [Attempt.NotSetUp] (or what a connection check or status check returns without one). What terminals report
  * about themselves (the environment and whether they have a printer) is remembered in [detectedEnvironment] and
  * [printers].
  */
 class TerminalGateway(
-    /** Where payments go now, and what is missing. */
+    /** Where payments go now, what is missing, and the secrets to reach it with. */
     private val setups: TerminalSetupSource,
-    /** Holds the shared key passphrase and the API key. */
-    secrets: SecretStore,
     /** The built-in simulator, whose Checkout API simulation [AdyenApi] shares. */
-    private val simulator: SimulatedTerminal,
+    simulator: SimulatedTerminal,
     /** Identifies Mini mPOS to Adyen on every payment and refund. */
     private val application: PosApplication,
     /** Reaches the Adyen Payments app of an environment with a shared key; the container plugs in its App Links. */
@@ -207,9 +231,9 @@ class TerminalGateway(
     /** Reaches terminals in the cloud with an API key; tests replace it. */
     cloud: (CloudCredentials) -> CloudDevices = { AdyenCloudDevices(it) },
 ) {
-    private val local = LocalTerminal(secrets, connect, ::environmentDetected)
-    private val cloudTerminal = CloudTerminal(secrets, cloud, setups.device, ::cloudDetected)
-    private val paymentsAppDestination = PaymentsAppDestination(secrets, paymentsApp)
+    private val cloudTerminal = CloudTerminal(cloud, setups.device, ::cloudDetected)
+    private val destinations =
+        listOf(simulator, LocalTerminal(connect, ::environmentDetected), cloudTerminal, PaymentsAppDestination(paymentsApp))
 
     private val _detectedEnvironment = MutableStateFlow<DetectedEnvironment?>(null)
 
@@ -226,23 +250,14 @@ class TerminalGateway(
 
     /**
      * Takes a card payment, see [TerminalClient.pay]. [onSending] is called with the terminal's POIID right before the
-     * request is sent; without complete setup nothing is sent and the outcome is [TransactionOutcome.NotProcessed].
+     * request is sent; without complete setup nothing is sent ([Attempt.NotSetUp]), and an unreachable destination is
+     * [TransactionOutcome.NotProcessed].
      */
     suspend fun pay(
         params: PaymentParams,
         serviceId: String,
         onSending: suspend (poiId: String) -> Unit = {},
-    ): TransactionOutcome =
-        when (val connection = connection()) {
-            is Connection.Open -> {
-                onSending(connection.client.identity.poiId)
-                connection.client.pay(params, serviceId)
-            }
-
-            is Connection.Blocked -> {
-                TransactionOutcome.NotProcessed(serviceId, connection.describe())
-            }
-        }
+    ): Attempt<TransactionOutcome> = send(serviceId, onSending) { it.pay(params, serviceId) }
 
     /**
      * Refunds an earlier payment, see [TerminalClient.refund]; [onSending] and missing setup are handled as for [pay].
@@ -253,17 +268,7 @@ class TerminalGateway(
         params: RefundParams,
         serviceId: String,
         onSending: suspend (poiId: String) -> Unit = {},
-    ): TransactionOutcome =
-        when (val connection = connection()) {
-            is Connection.Open -> {
-                onSending(connection.client.identity.poiId)
-                connection.client.refund(params, serviceId)
-            }
-
-            is Connection.Blocked -> {
-                TransactionOutcome.NotProcessed(serviceId, connection.describe())
-            }
-        }
+    ): Attempt<TransactionOutcome> = send(serviceId, onSending) { it.refund(params, serviceId) }
 
     /**
      * Asks the terminal once for the result of the [kind] of transaction sent with [serviceId], see
@@ -276,13 +281,14 @@ class TerminalGateway(
     ): TransactionOutcome =
         when (val connection = connection()) {
             is Connection.Open -> connection.client.status(serviceId, kind)
-            is Connection.Blocked -> TransactionOutcome.Unknown(serviceId, connection.describe())
+            is Connection.NotSetUp -> TransactionOutcome.Unknown(serviceId, connection.problem.name)
+            is Connection.Unreachable -> TransactionOutcome.Unknown(serviceId, connection.message)
         }
 
     /**
      * Asks the terminal to stop the [kind] of transaction sent with [serviceId], see [TerminalClient.abort]. Returns
      * whether the request was sent, which it is not without complete setup, nor to a destination that takes no abort
-     * ([Destination.aborts]).
+     * ([DestinationRules.aborts]).
      */
     suspend fun abort(
         serviceId: String,
@@ -295,25 +301,29 @@ class TerminalGateway(
     }
 
     /**
-     * Prints [jobs], see [TerminalClient.print]. Missing setup is a [PrintOutcome.Failed] that says what to enter; a
-     * refusal for want of a printer is remembered in [printers].
+     * Prints [jobs], see [TerminalClient.print]. Without complete setup nothing is sent ([Attempt.NotSetUp]); a refusal
+     * for want of a printer is remembered in [printers].
      */
-    suspend fun print(jobs: List<PrintJob>): PrintOutcome =
+    suspend fun print(jobs: List<PrintJob>): Attempt<PrintOutcome> =
         when (val connection = connection()) {
             is Connection.Open -> {
-                connection.client.print(jobs).also { outcome ->
-                    if (outcome is PrintOutcome.Failed && outcome.noPrinter) learnPrinter(connection.client, hasPrinter = false)
-                }
+                val outcome = connection.client.print(jobs)
+                if (outcome is PrintOutcome.Failed && outcome.noPrinter) learnPrinter(connection.client, hasPrinter = false)
+                Attempt.Made(outcome)
             }
 
-            is Connection.Blocked -> {
-                PrintOutcome.Failed(connection.describe(), noPrinter = false)
+            is Connection.NotSetUp -> {
+                Attempt.NotSetUp(connection.problem)
+            }
+
+            is Connection.Unreachable -> {
+                Attempt.Made(PrintOutcome.Failed(connection.message, noPrinter = false))
             }
         }
 
     /**
      * Checks the connection with a diagnosis request, see [TerminalClient.diagnose], and remembers whether the terminal
-     * has a printer. A destination that takes no diagnosis ([Destination.diagnoses]) only has its setup checked, without
+     * has a printer. A destination that takes no diagnosis ([DestinationRules.diagnoses]) only has its setup checked, without
      * being opened. Never [TerminalConnection.Unknown] or [TerminalConnection.Checking].
      */
     suspend fun diagnose(): TerminalConnection =
@@ -342,7 +352,7 @@ class TerminalGateway(
         }
 
     /** The terminals connected to the merchant account in the cloud, for choosing one, see [CloudTerminal.connectedTerminals]. */
-    suspend fun connectedTerminals(): ConnectedTerminals = cloudTerminal.connectedTerminals(setups.current().settings.terminal)
+    suspend fun connectedTerminals(): ConnectedTerminals = cloudTerminal.connectedTerminals(setups.unlocked())
 
     /** Called by [TerminalTls] with the environment of each verified terminal certificate. */
     internal fun environmentDetected(environment: TerminalEnvironment) {
@@ -358,25 +368,33 @@ class TerminalGateway(
         hasPrinter: Boolean,
     ) = _printers.update { it + (client.identity.poiId to hasPrinter) }
 
-    private fun destination(mode: TerminalMode): Destination =
-        when (mode) {
-            TerminalMode.SIMULATOR -> simulator
-            TerminalMode.CLOUD -> cloudTerminal
-            TerminalMode.PAYMENTS_APP -> paymentsAppDestination
-            TerminalMode.TERMINAL, TerminalMode.AUTO -> local
-        }
-
     /** The client for where payments go now with the stored settings, or why there is none. */
     private suspend fun connection(): Connection {
-        val setup = setups.current()
-        return setup.problem?.let(Connection::NotSetUp) ?: destination(setup.mode).connect(setup, application)
+        val unlocked = setups.unlocked()
+        val setup = unlocked.setup
+        return setup.problem?.let(Connection::NotSetUp)
+            ?: destinations.single { it.rules == setup.destination }.connect(unlocked, application)
     }
 
-    /** Why nothing can be sent, for outcomes that carry text. */
-    private fun Connection.Blocked.describe(): String =
-        when (this) {
-            is Connection.NotSetUp -> setups.describe(problem)
-            is Connection.Unreachable -> message
+    /** Sends a payment or refund with [call] once [onSending] was told the POIID, or says why nothing can be sent. */
+    private suspend fun send(
+        serviceId: String,
+        onSending: suspend (poiId: String) -> Unit,
+        call: suspend (TerminalClient) -> TransactionOutcome,
+    ): Attempt<TransactionOutcome> =
+        when (val connection = connection()) {
+            is Connection.Open -> {
+                onSending(connection.client.identity.poiId)
+                Attempt.Made(call(connection.client))
+            }
+
+            is Connection.NotSetUp -> {
+                Attempt.NotSetUp(connection.problem)
+            }
+
+            is Connection.Unreachable -> {
+                Attempt.Made(TransactionOutcome.NotProcessed(serviceId, connection.message))
+            }
         }
 
     /** Fixed identities. */

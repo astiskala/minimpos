@@ -2,13 +2,14 @@ package io.minimpos.app.payment
 
 import com.google.common.truth.Truth.assertThat
 import io.minimpos.app.FakeLinkApi
-import io.minimpos.app.R
 import io.minimpos.app.TestEnvironment
 import io.minimpos.app.await
 import io.minimpos.app.data.db.ProductEntity
 import io.minimpos.app.data.db.SaleEntity
 import io.minimpos.app.data.db.SaleKind
 import io.minimpos.app.data.db.SaleStatus
+import io.minimpos.app.data.db.SetupProblem
+import io.minimpos.app.data.db.StoredReason
 import io.minimpos.app.data.db.TaxRateEntity
 import io.minimpos.app.data.settings.CaptureMode
 import io.minimpos.app.data.settings.ShopperReferenceSource
@@ -207,7 +208,8 @@ class PaymentLinksTest {
         api.createResult = PaymentLinkResult.Unknown("timeout")
         val unknown = links.start(linkStart())
         val pending = saleWhen(unknown) { it.status == SaleStatus.UNKNOWN }
-        assertThat(pending.message).isEqualTo(env.context.getString(R.string.link_unknown_outcome))
+        assertThat(pending.reason).isEqualTo(StoredReason.OutcomeUnknown)
+        assertThat(pending.message).isNull()
         api.createResult = null
         assertThat(await { links.check(unknown) }).isEqualTo(LinkUpdate.StillOpen)
         assertThat(
@@ -228,10 +230,10 @@ class PaymentLinksTest {
         val id = links.start(linkStart())
         saleWhen(id) { it.status == SaleStatus.AWAITING_PAYMENT }
         env.useSimulator()
-        assertThat(await { links.check(id) }).isInstanceOf(LinkUpdate.Failed::class.java)
-        assertThat(await { links.cancel(id) }).isInstanceOf(LinkUpdate.Failed::class.java)
+        assertThat(await { links.check(id) }).isEqualTo(LinkUpdate.NotSetUp(SetupProblem.API_REQUIRED))
+        assertThat(await { links.cancel(id) }).isEqualTo(LinkUpdate.NotSetUp(SetupProblem.API_REQUIRED))
         val other = links.start(linkStart())
-        assertThat(saleWhen(other) { it.status == SaleStatus.FAILED }.message).isNotEmpty()
+        assertThat(saleWhen(other) { it.status == SaleStatus.FAILED }.reason).isEqualTo(StoredReason.NotSetUp(SetupProblem.API_REQUIRED))
         assertThat(api.created).hasSize(1)
     }
 }

@@ -1,5 +1,6 @@
 package io.minimpos.app.terminal
 
+import io.minimpos.app.data.db.SetupProblem
 import io.minimpos.app.data.security.Secret
 import io.minimpos.app.data.security.SecretStore
 import io.minimpos.app.data.settings.CaptureMode
@@ -13,8 +14,8 @@ import io.minimpos.terminal.transport.TerminalEnvironment
 
 /**
  * How far the Checkout API is set up, see [TerminalSetup.apiSetup]: the one decision behind both what the screens show
- * ([mode], [problem]) and where captures go ([AdyenApi.target], which also finds a saved API key that can no longer be
- * read).
+ * ([mode], [problem]) and where captures go ([AdyenApi.target], whose setup [TerminalSetup.unlock] also says when a saved
+ * API key can no longer be read).
  */
 sealed interface ApiSetup {
     /** How captures are made: in the Customer Area only for [CustomerArea], else through the API. */
@@ -87,13 +88,13 @@ sealed interface ApiCheck {
 /**
  * Adyen's Checkout API as the app uses it: for capturing payments taken with manual capture and adjusting what they
  * hold, and for payment links. It is optional and set up in Settings › Terminal (merchant account and live URL prefix in
- * [io.minimpos.app.data.settings.TerminalSettings], the API key in [SecretStore]); without it, staff capture in the
+ * [io.minimpos.app.data.settings.TerminalSettings], the API key in
+ * [io.minimpos.app.data.security.SecretStore]); without it, staff capture in the
  * Customer Area. How far it is set up is [TerminalSetup.apiSetup]. While payments go to the simulator the API is
  * simulated too. The environment (TEST or LIVE) is where payments go ([TerminalSetup.environment]): the terminal
  * certificate's, the cloud API key's or the installed Payments app's.
  *
- * @param setups Where payments go now, and how far the API is set up.
- * @param secrets Holds the API key.
+ * @param setups Where payments go now, how far the API is set up, and the API key.
  * @param simulated Answers while payments go to the simulator: in the app the [SimulatedTerminal]'s, which knows the
  *   simulator's payments.
  * @param connect Makes the client for real credentials; tests replace it.
@@ -101,7 +102,6 @@ sealed interface ApiCheck {
  */
 class AdyenApi(
     private val setups: TerminalSetupSource,
-    private val secrets: SecretStore,
     private val simulated: PaymentModifications,
     private val connect: (CheckoutCredentials) -> PaymentModifications = { CheckoutModifications(it) },
     private val connectLinks: (CheckoutCredentials) -> PaymentLinkApi = { CheckoutPaymentLinks(it) },
@@ -111,21 +111,22 @@ class AdyenApi(
 
     /** Where captures, adjustments and payment links go now with the stored settings, as [TerminalSetup.apiSetup] decides. */
     suspend fun target(): ApiTarget {
-        val setup = setups.current()
+        val unlocked = setups.unlocked()
+        val setup = unlocked.setup
         return when (val api = setup.apiSetup) {
             ApiSetup.Simulated -> ApiTarget(api, simulated)
-            ApiSetup.Complete -> connected(setup.settings.terminal, checkNotNull(setup.environment))
+            ApiSetup.Complete -> connected(setup.settings.terminal, checkNotNull(setup.environment), checkNotNull(unlocked.apiKey))
             ApiSetup.CustomerArea, is ApiSetup.Incomplete -> ApiTarget(api)
         }
     }
 
-    /** The client for [terminal]'s credentials in [environment], which are complete; reused while they stay the same. */
-    private suspend fun connected(
+    /** The client for [terminal]'s credentials with [apiKey] in [environment]; reused while they stay the same. */
+    private fun connected(
         terminal: TerminalSettings,
         environment: TerminalEnvironment,
+        apiKey: String,
     ): ApiTarget {
-        val key = secrets.get(Secret.CHECKOUT_API_KEY) ?: return ApiTarget(ApiSetup.Incomplete(SetupProblem.UNREADABLE_API_KEY))
-        val credentials = CheckoutCredentials(key, terminal.merchantAccount.trim(), environment, terminal.liveUrlPrefix.trim())
+        val credentials = CheckoutCredentials(apiKey, terminal.merchantAccount.trim(), environment, terminal.liveUrlPrefix.trim())
         return ApiTarget(ApiSetup.Complete, clients.get(credentials, connect), linkClients.get(credentials, connectLinks))
     }
 

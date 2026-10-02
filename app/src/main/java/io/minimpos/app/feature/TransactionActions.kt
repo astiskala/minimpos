@@ -1,18 +1,16 @@
 package io.minimpos.app.feature
 
-import io.minimpos.app.payment.AutoDelivery
+import io.minimpos.app.data.db.SetupProblem
 import io.minimpos.app.payment.CaptureResult
 import io.minimpos.app.payment.LinkUpdate
 import io.minimpos.app.payment.PaymentLinks
 import io.minimpos.app.payment.PaymentStart
 import io.minimpos.app.payment.ReceiptDelivery
-import io.minimpos.app.payment.ReceiptOffer
-import io.minimpos.app.payment.SalePrint
 import io.minimpos.app.payment.SharedReceipt
+import io.minimpos.app.payment.StoredTransaction
 import io.minimpos.app.payment.TransactionLifecycle
 import io.minimpos.app.receipt.ActionResult
 import io.minimpos.app.refund.RefundStart
-import io.minimpos.app.terminal.SetupProblem
 import io.minimpos.core.receipt.ReceiptCopy
 import io.minimpos.core.receipt.ReceiptDocument
 import kotlinx.coroutines.CoroutineScope
@@ -171,11 +169,12 @@ data class ActionState(
     val done: Boolean = false,
 )
 
-/** This result as a finished [ActionState]: [success] on success, else the failure's message as an error. */
+/** This result as a finished [ActionState]: [success] on success, else why not as an error. */
 fun ActionResult.toState(success: ActionOutcome) =
     when (this) {
         ActionResult.Success -> ActionState(outcome = success, done = true)
         is ActionResult.Failure -> ActionState(outcome = ActionOutcome.Failed(message), isError = true)
+        is ActionResult.NotSetUp -> ActionState(outcome = ActionOutcome.NotSetUp(problem), isError = true)
     }
 
 /** What a tip, capture or adjustment sent, which the wording of its failure names. */
@@ -210,6 +209,10 @@ fun CaptureResult.toState(
 
         is CaptureResult.Failed -> {
             ActionState(outcome = ActionOutcome.NotCaptured(message, step), isError = true)
+        }
+
+        is CaptureResult.NotSetUp -> {
+            ActionState(outcome = ActionOutcome.NotSetUp(problem), isError = true)
         }
 
         CaptureResult.NotAllowed -> {
@@ -259,10 +262,9 @@ data class TransactionActionsState(
  */
 class TransactionActions private constructor(
     private val scope: CoroutineScope,
-    offer: Flow<ReceiptOffer>,
-    automation: (suspend () -> AutoDelivery)?,
-    private val printing: suspend (ReceiptCopy) -> SalePrint,
-    private val emailing: suspend (to: String) -> ActionResult,
+    private val receipts: ReceiptDelivery,
+    private val transaction: StoredTransaction,
+    fresh: Boolean,
     private val rechecking: suspend () -> Boolean,
 ) {
     private val _state = MutableStateFlow(TransactionActionsState())
@@ -274,6 +276,7 @@ class TransactionActions private constructor(
     val state: StateFlow<TransactionActionsState> = _state.asStateFlow()
 
     init {
+        val offer = receipts.offer(transaction, fresh)
         scope.launch {
             offer.collect { offered ->
                 shareable = offered.share
@@ -287,10 +290,10 @@ class TransactionActions private constructor(
                 }
             }
         }
-        automation?.let { deliver ->
+        if (fresh) {
             scope.launch {
                 offer.first { it.receipt != null }
-                val automatic = deliver()
+                val automatic = receipts.automation(transaction)
                 if (automatic.print) print()
                 automatic.emailTo?.let(::email)
             }
@@ -304,7 +307,7 @@ class TransactionActions private constructor(
     fun print(copy: ReceiptCopy = ReceiptCopy.CUSTOMER) {
         _state.update { it.copy(print = ActionState(running = true), merchantCopyPending = false) }
         scope.launch {
-            val printed = printing(copy)
+            val printed = receipts.print(transaction, copy)
             _state.update {
                 it.copy(print = printed.result.toState(ActionOutcome.Printed), merchantCopyPending = printed.merchantCopyDue)
             }
@@ -315,7 +318,7 @@ class TransactionActions private constructor(
     fun email(to: String) {
         _state.update { it.copy(email = ActionState(running = true)) }
         scope.launch {
-            val result = persisting { emailing(to) }
+            val result = persisting { receipts.email(transaction, to) }
             _state.update { it.copy(email = result.toState(ActionOutcome.Emailed(to))) }
         }
     }
@@ -351,14 +354,7 @@ class TransactionActions private constructor(
             receipts: ReceiptDelivery,
             payments: TransactionLifecycle<PaymentStart>,
             fresh: Boolean,
-        ) = TransactionActions(
-            scope,
-            offer = receipts.saleOffer(saleId, justPaid = fresh),
-            automation = if (fresh) ({ receipts.automationForSale(saleId) }) else null,
-            printing = { receipts.printSale(saleId, it) },
-            emailing = { receipts.emailSale(saleId, it) },
-            rechecking = { payments.recheck(saleId) },
-        )
+        ) = TransactionActions(scope, receipts, StoredTransaction.Sale(saleId), fresh) { payments.recheck(saleId) }
 
         /**
          * The actions on sale [saleId], paid through a payment link, in [scope]: as [forSale], except that emailing is
@@ -371,14 +367,7 @@ class TransactionActions private constructor(
             receipts: ReceiptDelivery,
             links: PaymentLinks,
             fresh: Boolean,
-        ) = TransactionActions(
-            scope,
-            offer = receipts.saleOffer(saleId, justPaid = false),
-            automation = if (fresh) ({ receipts.automationForSale(saleId) }) else null,
-            printing = { receipts.printSale(saleId, it) },
-            emailing = { receipts.emailSale(saleId, it) },
-            rechecking = { links.check(saleId) == LinkUpdate.Settled },
-        )
+        ) = TransactionActions(scope, receipts, StoredTransaction.Sale(saleId), fresh) { links.check(saleId) == LinkUpdate.Settled }
 
         /**
          * The actions on refund [refundId], in [scope]: receipts through [receipts] (a refund has one copy only), status
@@ -390,13 +379,6 @@ class TransactionActions private constructor(
             receipts: ReceiptDelivery,
             refunds: TransactionLifecycle<RefundStart>,
             fresh: Boolean,
-        ) = TransactionActions(
-            scope,
-            offer = receipts.refundOffer(refundId),
-            automation = if (fresh) ({ receipts.automationForRefund(refundId) }) else null,
-            printing = { SalePrint(receipts.printRefund(refundId)) },
-            emailing = { receipts.emailRefund(refundId, it) },
-            rechecking = { refunds.recheck(refundId) },
-        )
+        ) = TransactionActions(scope, receipts, StoredTransaction.Refund(refundId), fresh) { refunds.recheck(refundId) }
     }
 }

@@ -64,6 +64,8 @@ import io.minimpos.app.data.repo.HistoryItem
 import io.minimpos.app.data.settings.CaptureMode
 import io.minimpos.app.feature.OutcomeMessage
 import io.minimpos.app.feature.TransactionActionsState
+import io.minimpos.app.feature.modificationNote
+import io.minimpos.app.feature.outcomeNote
 import io.minimpos.app.feature.refund.RefundResultScreen
 import io.minimpos.app.feature.refund.refundStatusKind
 import io.minimpos.app.feature.refund.refundStatusTitle
@@ -696,9 +698,9 @@ private fun PaymentDetailsCard(sale: SaleEntity) {
         LabeledValue(stringResource(R.string.detail_shopper_reference), sale.shopperReference)
         LabeledValue(stringResource(R.string.detail_token), sale.storedPaymentMethodId)
         LabeledValue(stringResource(R.string.detail_terminal), sale.poiId)
-        LabeledValue(stringResource(R.string.detail_message), sale.message)
+        LabeledValue(stringResource(R.string.detail_message), sale.outcomeNote())
         LabeledValue(stringResource(R.string.detail_error_condition), sale.errorCondition)
-        LabeledValue(stringResource(R.string.detail_modification_message), sale.modificationMessage)
+        LabeledValue(stringResource(R.string.detail_modification_message), sale.modificationNote())
         LabeledValue(stringResource(R.string.detail_emailed), sale.emailedTo)
     }
 }

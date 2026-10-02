@@ -2,7 +2,6 @@ package io.minimpos.app
 
 import com.google.common.truth.Truth.assertThat
 import com.google.common.truth.Truth.assertWithMessage
-import io.minimpos.app.data.settings.TerminalMode
 import io.minimpos.app.feature.settings.currencyOptions
 import io.minimpos.app.feature.settings.localName
 import io.minimpos.app.receipt.PrintRenderer
@@ -12,8 +11,6 @@ import io.minimpos.core.receipt.HtmlReceiptRenderer
 import io.minimpos.core.receipt.PlainTextReceiptRenderer
 import io.minimpos.core.receipt.ReceiptDocument
 import io.minimpos.core.receipt.ReceiptElement
-import io.minimpos.terminal.client.TransactionKind
-import io.minimpos.terminal.client.TransactionOutcome
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
@@ -67,10 +64,6 @@ class LocalizationTest {
             assertThat(text).doesNotContain(".00")
             assertThat(PrintRenderer.jobs(document, 32)).isNotEmpty()
             receiptPreview("ja", document)
-            env.updateSettings { it.copy(terminal = it.terminal.copy(mode = TerminalMode.TERMINAL)) }
-            // Messages stored with a transaction are worded in the app's language.
-            val unknown = await { env.container.gateway.status("S1", TransactionKind.PAYMENT) } as TransactionOutcome.Unknown
-            assertThat(unknown.reason).contains("端末ID")
             assertThat(AdyenCurrencies["JPY"]!!.localName(Locale.JAPAN)).isNotEqualTo("Japanese Yen")
         }
 

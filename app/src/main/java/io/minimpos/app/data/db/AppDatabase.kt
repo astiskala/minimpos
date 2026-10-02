@@ -5,6 +5,7 @@ import androidx.room.AutoMigration
 import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
+import androidx.room.TypeConverters
 import io.minimpos.app.R
 
 /**
@@ -17,9 +18,11 @@ import io.minimpos.app.R
  * `adjustAuthorisationData`, `capturedMinor`, `captureStatus`, `modificationMessage`); version 7 added
  * `sales.paymentMethodVariant`, which names the wallet of a card in one; version 8 added `sales.holdCancelled`
  * ([HoldCancelledMigration]); version 9 added payment links (`sales.paymentLink`, `paymentLinkId`, `paymentLinkUrl`,
- * `paymentLinkExpiresAt`). Versions 1 to 3, 4 to 7 and 8 to 9 are Room auto-migrations. There is no destructive
- * fallback, so every schema change needs a migration.
+ * `paymentLinkExpiresAt`); version 10 added the typed [StoredReason]s (`sales.reason`, `sales.modificationReason`,
+ * `refunds.reason`). Versions 1 to 3, 4 to 7 and 8 to 10 are Room auto-migrations. There is no destructive fallback,
+ * so every schema change needs a migration.
  */
+@TypeConverters(StoredReasonConverter::class)
 @Database(
     entities = [
         TaxRateEntity::class,
@@ -29,7 +32,7 @@ import io.minimpos.app.R
         SaleLineEntity::class,
         RefundEntity::class,
     ],
-    version = 9,
+    version = 10,
     exportSchema = true,
     autoMigrations = [
         AutoMigration(from = 1, to = 2),
@@ -38,6 +41,7 @@ import io.minimpos.app.R
         AutoMigration(from = 5, to = 6),
         AutoMigration(from = 6, to = 7),
         AutoMigration(from = 8, to = 9),
+        AutoMigration(from = 9, to = 10),
     ],
 )
 abstract class AppDatabase : RoomDatabase() {

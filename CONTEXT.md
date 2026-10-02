@@ -38,6 +38,10 @@ the other.
   refunds `R-…`, cancellations `C-…`); the **customer reference** typed at checkout, asked for exactly when it is the
   **shopper reference** (Adyen's `shopperReference` for saving a card, made from the customer reference or the email,
   or from nothing, `ShopperReferenceSource.NONE`, when no card is saved).
+- **Sale event** (`data/repo/SaleEvent`): something that happened to a stored sale after it was opened (sent, settled,
+  link answered, capture sending/answered/left to staff, adjustment answered, interrupted, emailed), which moves it on
+  (`SaleEntity.after`). The one place that decides which statuses and fields each happening writes. _Avoid_: update,
+  transition (for the event).
 
 ## After the payment
 
@@ -61,11 +65,13 @@ the other.
 
 - **Destination** (`terminal/Destination`, "Payments go to", `TerminalMode`): this terminal or one on the network
   (`LocalTerminal`), a terminal in the **cloud** (`CloudTerminal`), the **Payments app** on this phone for Tap to Pay
-  (`PaymentsAppDestination`), or the **simulator** (`SimulatedTerminal`). What each can do (abort, diagnose, recover a
-  missing answer, wait) is its adapter's. _Avoid_: backend, provider, channel.
-- **Terminal setup** (`TerminalSetup.resolve`, `TerminalSetupSource`): the one reading of where payments go now: mode,
-  POIID, host, environment, Checkout API setup, printer. **Setup problem** (`SetupProblem`): what must still be entered,
-  installed or fixed; reported in outcomes, never thrown.
+  (`PaymentsAppDestination`), or the **simulator** (`SimulatedTerminal`). What each needs and can do (POIID, setup
+  problem, printer, secrets, abort, diagnose, recover a missing answer, wait) are its **destination rules**
+  (`DestinationRules`, on its adapter's companion); the adapter only opens it. _Avoid_: backend, provider, channel.
+- **Terminal setup** (`TerminalSetup.resolve`, `TerminalSetupSource`): the one reading of where payments go now:
+  destination, POIID, host, environment, Checkout API setup, printer. **Unlocked** (`UnlockedSetup`), it carries the
+  secrets it needs, decrypted once. **Setup problem** (`SetupProblem`): what must still be entered, installed or fixed
+  (a saved secret that no longer decrypts included); reported in outcomes, never thrown.
 - **Connection** (`Connection`): a destination ready to send (`Open`, with the one `TerminalClient`) or **blocked**
   (`NotSetUp`, `Unreachable`). A **connection check** (`TerminalStatus`, diagnosis) also learns whether there is a
   printer.
@@ -87,12 +93,17 @@ the other.
   refund QR as a second print; the terminal's own receipt printing is suppressed. **Merchant copy**: the second copy,
   printed as `MerchantCopyPolicy` says.
 - **Receipt delivery** (`ReceiptDelivery`, `feature/TransactionActions`): offering, printing, emailing and
-  **sharing** a transaction's receipt, including the **automatic delivery** of a fresh one. Sharing
-  (`share/ShareSheet`) hands the receipt as an image to Android's share sheet, on phones and tablets only.
+  **sharing** a **stored transaction**'s receipt (`StoredTransaction`: a sale, whether taken on a terminal or through a
+  payment link, or a refund), including the **automatic delivery** of a fresh one. Sharing (`share/ShareSheet`) hands
+  the receipt as an image to Android's share sheet, on phones and tablets only.
 - **Unpaid receipt** (`SaleReceipt.unpaidLink`): the receipt of a sale awaiting its payment link: marked unpaid,
   totalled as the amount due, with the link as a QR code and an address; emailed as a payment request.
 - **Outcome** (`ActionOutcome`, `ActionState`): what a finished action reports, typed, worded only by the screens
   (`feature/OutcomeMessages.kt`). _Avoid_: message, error string.
+- **Stored reason** (`data/db/StoredReason`): why a stored transaction, capture or adjustment did not succeed when the
+  app itself says so (not set up, outcome unknown, interrupted), stored typed and worded by the screens in the current
+  language. What Adyen or the terminal said is stored as it came (`message`). _Avoid_: error message (for the stored
+  value).
 - **Catalogue**: products, categories and tax rates (`CatalogRepository`); every product has a tax rate.
 - **Starter tax** (`StarterTax`): the tax rates (the national standard rate where known, then 0%) and price style
   (tax included or added) a new installation starts with, from the device's country.

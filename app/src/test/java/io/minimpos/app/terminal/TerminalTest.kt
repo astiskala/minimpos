@@ -5,9 +5,11 @@ import io.minimpos.app.FakeDevice
 import io.minimpos.app.FakeTerminal
 import io.minimpos.app.TestEnvironment
 import io.minimpos.app.await
+import io.minimpos.app.data.db.SetupProblem
 import io.minimpos.app.data.security.Secret
 import io.minimpos.app.data.settings.PrinterMode
 import io.minimpos.app.data.settings.TerminalMode
+import io.minimpos.app.made
 import io.minimpos.terminal.client.PaymentParams
 import io.minimpos.terminal.client.PrintJob
 import io.minimpos.terminal.client.PrintLine
@@ -58,13 +60,13 @@ class TerminalTest {
         env.updateSettings { it.copy(terminal = it.terminal.copy(mode = TerminalMode.TERMINAL)) }
         val gateway = container.gateway
         var sending: String? = null
-        val paid = await { gateway.pay(payment, "S1") { sending = it } } as TransactionOutcome.NotProcessed
-        assertThat(paid.reason).contains("POIID")
+        assertThat(await { gateway.pay(payment, "S1") { sending = it } }).isEqualTo(Attempt.NotSetUp(SetupProblem.POI_ID))
         assertThat(sending).isNull()
         assertThat(await { gateway.status("S1", TransactionKind.REFUND) }).isInstanceOf(TransactionOutcome.Unknown::class.java)
         assertThat(await { gateway.abort("S1") }).isFalse()
-        val printed = await { gateway.print(listOf(PrintJob.Text(listOf(PrintLine.Text("x"))))) } as PrintOutcome.Failed
-        assertThat(printed.noPrinter).isFalse()
+        assertThat(
+            await { gateway.print(listOf(PrintJob.Text(listOf(PrintLine.Text("x"))))) },
+        ).isEqualTo(Attempt.NotSetUp(SetupProblem.POI_ID))
         assertThat((await { gateway.diagnose() } as TerminalConnection.NotSetUp).problem).isEqualTo(SetupProblem.POI_ID)
     }
 
@@ -78,7 +80,7 @@ class TerminalTest {
 
             await { terminal.container.secrets.set(Secret.TERMINAL_PASSPHRASE, "correct horse battery staple") }
             var sending: String? = null
-            val paid = await { gateway.pay(payment, "PAY1") { sending = it } }
+            val paid = await { gateway.pay(payment, "PAY1") { sending = it } }.made()
             assertThat((paid as TransactionOutcome.Completed).details.success).isTrue()
             assertThat(sending).isEqualTo("S1F2-000158213605014")
             assertThat(await { gateway.abort("PAY1", TransactionKind.PAYMENT) }).isTrue()
@@ -121,7 +123,7 @@ class TerminalTest {
         env.useSimulator { it.copy(simulator = it.simulator.copy(hasPrinter = false)) }
         assertThat(await { container.terminalStatus.state.first { !it.printerAvailable } }.mode).isEqualTo(TerminalMode.SIMULATOR)
         // A print refused for want of a printer is remembered for that terminal.
-        val failed = await { container.gateway.print(listOf(PrintJob.QrCode("x"))) } as PrintOutcome.Failed
+        val failed = await { container.gateway.print(listOf(PrintJob.QrCode("x"))) }.made() as PrintOutcome.Failed
         assertThat(failed.noPrinter).isTrue()
         assertThat(container.gateway.printers.value[TerminalSetup.SIMULATOR_POI_ID]).isFalse()
 

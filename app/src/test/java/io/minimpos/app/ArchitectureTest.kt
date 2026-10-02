@@ -36,8 +36,11 @@ import com.tngtech.archunit.library.GeneralCodingRules
 import com.tngtech.archunit.library.dependencies.SlicesRuleDefinition.slices
 import io.minimpos.app.data.db.AppDatabase
 import io.minimpos.app.data.db.RefundDao
+import io.minimpos.app.data.db.RefundEntity
 import io.minimpos.app.data.db.SaleDao
 import io.minimpos.app.data.db.SaleEntity
+import io.minimpos.app.data.db.SetupProblem
+import io.minimpos.app.data.db.StoredReason
 import io.minimpos.app.data.repo.HistoryRepository
 import io.minimpos.app.data.repo.ReceiptLinesJson
 import io.minimpos.app.data.repo.RefundRepository
@@ -49,8 +52,10 @@ import io.minimpos.app.data.settings.TerminalMode
 import io.minimpos.app.feature.ActionOutcome
 import io.minimpos.app.feature.TransactionActions
 import io.minimpos.app.payment.CaptureResult
+import io.minimpos.app.payment.PaymentLinkStart
 import io.minimpos.app.payment.PaymentLinks
 import io.minimpos.app.payment.ReceiptDelivery
+import io.minimpos.app.payment.SaleBook
 import io.minimpos.app.payment.SaleSession
 import io.minimpos.app.receipt.PrintRenderer
 import io.minimpos.app.receipt.ReceiptFactory
@@ -58,7 +63,7 @@ import io.minimpos.app.refund.PaymentStanding
 import io.minimpos.app.refund.StoredPayment
 import io.minimpos.app.terminal.AdyenApi
 import io.minimpos.app.terminal.Destination
-import io.minimpos.app.terminal.SetupProblem
+import io.minimpos.app.terminal.DestinationRules
 import io.minimpos.app.terminal.SimulatedTerminal
 import io.minimpos.app.terminal.TerminalGateway
 import io.minimpos.app.terminal.TerminalSetup
@@ -260,19 +265,47 @@ class ArchitectureTest {
             .and()
             .haveNameNotMatching(within(TerminalGateway::class.java.name))
             .should()
+            .callMethodWhere(callToSubtypeOf(Destination::class.java, "open", "connect", "connectedTerminals"))
+            .check(app)
+        // What a destination needs is read by the setup, and what it can do by the gateway and the client it connects.
+        noClasses()
+            .that(not(declaredIn("io.minimpos.app.terminal", "Destinations.kt")))
+            .and(not(declaredIn("io.minimpos.app.terminal", "DestinationRules.kt")))
+            .and()
+            .haveNameNotMatching(within(TerminalGateway::class.java.name, TerminalSetup::class.java.name))
+            .should()
             .callMethodWhere(
                 callToSubtypeOf(
-                    Destination::class.java,
-                    "open",
-                    "connect",
+                    DestinationRules::class.java,
                     "getAborts",
                     "getDiagnoses",
                     "getRecovery",
                     "transactionTimeout",
-                    "connectedTerminals",
+                    "getSecrets",
+                    "poiId",
+                    "host",
+                    "environment",
+                    "problem",
+                    "printer",
+                    "getChecksConnection",
+                    "getSimulatesApi",
                 ),
             ).check(app)
     }
+
+    @Test
+    fun `only the terminal setup source reads the secrets the terminal, the cloud and the Payments app need`() =
+        // It decrypts them once for each setup (UnlockedSetup, BoardingSetup.Ready), where an unreadable one is a setup
+        // problem; the destinations, the Checkout API and Tap to Pay are handed the values.
+        noClasses()
+            .that()
+            .resideInAPackage(TERMINAL_PACKAGE)
+            .and()
+            .haveNameNotMatching(within(TerminalSetupSource::class.java.name))
+            .should()
+            .dependOnClassesThat()
+            .belongToAnyOf(SecretStore::class.java)
+            .check(app)
 
     @Test
     fun `the terminal setup is resolved in one place`() {
@@ -295,14 +328,15 @@ class ArchitectureTest {
     }
 
     @Test
-    fun `only the setup and the gateway's choice of destination tell the remote destinations apart`() =
-        // What the cloud or the Payments app can do lives in their Destination; the rest of the logic asks it, not the mode.
-        // Only the settings (stored and on screen) offer the modes by name.
+    fun `only the destinations tell the remote destinations apart`() =
+        // What the cloud or the Payments app needs and can do lives in their DestinationRules, on their adapter's
+        // companion, and DestinationRules.of picks one from the mode; the rest of the logic asks it, not the mode. Only
+        // the settings (stored and on screen) offer the modes by name.
         noClasses()
             .that()
             .resideOutsideOfPackages("io.minimpos.app.data.settings..", "io.minimpos.app.feature.settings..")
-            .and()
-            .haveNameNotMatching(within(TerminalSetup::class.java.name, TerminalGateway::class.java.name))
+            .and(not(declaredIn("io.minimpos.app.terminal", "Destinations.kt")))
+            .and(not(declaredIn("io.minimpos.app.terminal", "DestinationRules.kt")))
             .should()
             .accessField(TerminalMode::class.java, TerminalMode.CLOUD.name)
             .orShould()
@@ -341,10 +375,11 @@ class ArchitectureTest {
             .should()
             .callMethodWhere(callToSubtypeOf(PaymentLinkApi::class.java, "create", "status", "expire"))
             .check(app)
-        // Only it stores what Adyen says about a link, which SaleRepository.settle takes with the link's status.
+        // Only it stores what Adyen says about a link, as the SaleEvent that decides the sale's status from it.
         noClasses()
-            .that()
-            .haveNameNotMatching(within(PaymentLinks::class.java.name, SaleRepository::class.java.name))
+            .that(not(declaredIn("io.minimpos.app.data.repo", "SaleEvent.kt")))
+            .and()
+            .haveNameNotMatching(within(PaymentLinks::class.java.name))
             .should()
             .dependOnClassesThat()
             .belongToAnyOf(PaymentLink::class.java)
@@ -367,8 +402,8 @@ class ArchitectureTest {
 
     @Test
     fun `stored sales and refunds change only through their repositories`() {
-        // After it is created, a sale changes only through SaleRepository's named transitions and a refund only through
-        // RefundRepository.settle; HistoryRepository owns the housekeeping of whole tables.
+        // After it is created, a sale changes only through SaleRepository.record (a SaleEvent) and applyRefund, and a
+        // refund only through RefundRepository.settle; HistoryRepository owns the housekeeping of whole tables.
         noClasses()
             .that()
             .resideOutsideOfPackage(DB)
@@ -390,10 +425,31 @@ class ArchitectureTest {
     }
 
     @Test
+    fun `a stored sale moves on only through what happened to it`() =
+        // SaleEvent decides which status and fields each happening writes, so callers name what happened instead of
+        // picking fields. Only a new sale is made by copying (before it is stored), and an accepted refund, which also
+        // changes the lines, is SaleRepository.applyRefund.
+        noClasses()
+            .that(not(declaredIn("io.minimpos.app.data.repo", "SaleEvent.kt")))
+            .and()
+            .haveNameNotMatching(
+                within(
+                    SaleEntity::class.java.name,
+                    SaleRepository::class.java.name,
+                    SaleBook::class.java.name,
+                    PaymentLinkStart::class.java.name,
+                ),
+            ).should()
+            .callMethodWhere(callTo(SaleEntity::class.java.name, "copy"))
+            .check(app)
+
+    @Test
     fun `only PaymentStanding reads how a capture or a hold ended`() =
+        // SaleEvent writes them, so it reads what it is about to change.
         noClasses()
             .that()
             .resideOutsideOfPackage(DB)
+            .and(not(declaredIn("io.minimpos.app.data.repo", "SaleEvent.kt")))
             .and()
             .haveNameNotMatching(within(PaymentStanding::class.java.name))
             .should()
@@ -426,8 +482,8 @@ class ArchitectureTest {
 
     @Test
     fun `decision rules stay pure`() =
-        // Checkout, payment link request, refund and capture rules, the history search and the terminal setup are tested
-        // with plain JUnit.
+        // Checkout, payment link request, refund and capture rules, what happens to a stored sale, the history search and
+        // the terminal setup are tested with plain JUnit.
         noClasses()
             .that(pureDecisions)
             .should()
@@ -448,32 +504,25 @@ class ArchitectureTest {
 
     @Test
     fun `the transaction lifecycle stores only through its book`() =
+        // It names why a transaction failed with the stored values (StoredReason, SetupProblem), which its book stores.
         noClasses()
             .that(declaredIn("io.minimpos.app.payment", "TransactionLifecycle.kt"))
             .should()
-            .dependOnClassesThat()
-            .resideInAPackage("io.minimpos.app.data..")
-            .check(app)
+            .dependOnClassesThat(
+                resideInAnyPackage("io.minimpos.app.data..")
+                    .and(not(assignableTo(StoredReason::class.java)))
+                    .and(not(type(SetupProblem::class.java))),
+            ).check(app)
 
     @Test
     fun `screens get a transaction's receipt through TransactionActions`() {
+        // ReceiptDelivery takes the StoredTransaction and decides what differs between sales and refunds itself.
         noClasses()
             .that()
             .haveNameNotMatching(within(TransactionActions::class.java.name, ReceiptDelivery::class.java.name))
             .should()
-            .callMethodWhere(
-                callTo(
-                    ReceiptDelivery::class.java.name,
-                    "saleOffer",
-                    "refundOffer",
-                    "printSale",
-                    "printRefund",
-                    "emailSale",
-                    "emailRefund",
-                    "automationForSale",
-                    "automationForRefund",
-                ),
-            ).check(app)
+            .callMethodWhere(callTo(ReceiptDelivery::class.java.name, "offer", "print", "email", "automation"))
+            .check(app)
         // The lifecycles arm the automatic delivery through the container.
         noClasses()
             .that()
@@ -552,16 +601,9 @@ class ArchitectureTest {
     }
 
     @Test
-    fun `setup problems are worded in one place`() {
-        // The screens word them through OutcomeMessages; the container words those stored with a transaction or capture.
-        noClasses()
-            .that()
-            .haveNameNotMatching(within(OUTCOME_MESSAGES_FILE))
-            .and()
-            .haveNameNotMatching(CONTAINER)
-            .should()
-            .callMethodWhere(callTo(OUTCOME_MESSAGES_FILE, "getTextRes"))
-            .check(app)
+    fun `setup problems and stored reasons are worded in one place`() {
+        // The screens word them through OutcomeMessages in the current language, also when they are stored with a
+        // transaction or capture (StoredReason), so nothing stores words the app chose.
         noClasses()
             .that()
             .resideInAnyPackage(*UI_PACKAGES)
@@ -570,7 +612,21 @@ class ArchitectureTest {
             .should()
             .accessFieldWhere(
                 DescribedPredicate.describe("an access to a SetupProblem") { it.targetOwner.isEquivalentTo(SetupProblem::class.java) },
-            ).check(app)
+            ).orShould()
+            .dependOnClassesThat()
+            .areAssignableTo(StoredReason::class.java)
+            .check(app)
+        // Why a stored transaction failed reaches the screens only with the stored reason worded next to it (outcomeNote).
+        noClasses()
+            .that()
+            .resideInAnyPackage(*UI_PACKAGES)
+            .and()
+            .haveNameNotMatching(within(OUTCOME_MESSAGES_FILE))
+            .should()
+            .callMethodWhere(callTo(SaleEntity::class.java.name, "getMessage", "getModificationMessage"))
+            .orShould()
+            .callMethodWhere(callTo(RefundEntity::class.java.name, "getMessage"))
+            .check(app)
     }
 
     @Test
@@ -697,11 +753,19 @@ class ArchitectureTest {
         val pureDecisions: DescribedPredicate<JavaClass> =
             declaredIn("io.minimpos.app.payment", "Checkout.kt")
                 .or(declaredIn("io.minimpos.app.payment", "PaymentLinkRequests.kt"))
+                .or(declaredIn("io.minimpos.app.data.repo", "SaleEvent.kt"))
                 .or(declaredIn("io.minimpos.app.refund", "PaymentStanding.kt"))
                 .or(declaredIn("io.minimpos.app.refund", "RefundablePayment.kt"))
                 .or(declaredIn("io.minimpos.app.feature.history", "HistorySearch.kt"))
                 // TerminalSetup.kt also holds TerminalSetupSource, which reads the stored settings and secrets.
                 .or(DescribedPredicate.describe("TerminalSetup") { it.name.matches(Regex(within(TerminalSetup::class.java.name))) })
+                // What each destination needs and can do, on its adapter's companion; the adapters open transports.
+                .or(declaredIn("io.minimpos.app.terminal", "DestinationRules.kt"))
+                .or(
+                    declaredIn("io.minimpos.app.terminal", "Destinations.kt").and(
+                        DescribedPredicate.describe("a companion") { it.name.contains("\$Companion") },
+                    ),
+                )
 
         /** A name pattern for the classes [names] and those Kotlin nests in them (companions, lambdas, continuations). */
         fun within(vararg names: String) = names.joinToString("|", "(", ")(\\$.*)?") { Regex.escape(it) }

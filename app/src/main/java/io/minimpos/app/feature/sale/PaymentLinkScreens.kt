@@ -37,6 +37,7 @@ import io.minimpos.app.data.db.SaleEntity
 import io.minimpos.app.data.db.SaleKind
 import io.minimpos.app.data.db.SaleStatus
 import io.minimpos.app.feature.OutcomeMessage
+import io.minimpos.app.feature.outcomeNote
 import io.minimpos.app.share.ShareEffect
 import io.minimpos.app.ui.components.BottomActions
 import io.minimpos.app.ui.components.ConfirmDialog
@@ -189,7 +190,7 @@ private fun LinkOutcome(
             }
 
             else -> {
-                sale.message?.let { OutcomeNote(it) }
+                sale.outcomeNote()?.let { OutcomeNote(it) }
             }
         }
     }

@@ -27,7 +27,6 @@ import io.minimpos.app.email.EmailTexts
 import io.minimpos.app.email.MailTransport
 import io.minimpos.app.email.ReceiptEmailer
 import io.minimpos.app.email.SmtpMailer
-import io.minimpos.app.feature.textRes
 import io.minimpos.app.payment.Captures
 import io.minimpos.app.payment.PaymentLinks
 import io.minimpos.app.payment.PaymentStart
@@ -178,7 +177,7 @@ class AppContainer(
             osVersion = device.osVersion,
         )
 
-    private val terminalSetup = TerminalSetupSource(settings, secrets, device, describe = { context.getString(it.textRes) })
+    private val terminalSetup = TerminalSetupSource(settings, secrets, device)
 
     /** The built-in simulator, which stands in for the terminal and the Checkout API alike. */
     private val simulator = SimulatedTerminal(virtualPrinter)
@@ -192,7 +191,6 @@ class AppContainer(
     val gateway =
         TerminalGateway(
             setups = terminalSetup,
-            secrets = secrets,
             simulator = simulator,
             application = application,
             paymentsApp = { key, environment -> PaymentsAppTransport(key, environment, paymentsAppLinks, PaymentsAppBridge.RETURN_URL) },
@@ -201,13 +199,13 @@ class AppContainer(
         )
 
     /** Boards (and revokes) the Adyen Payments app on this phone, for Tap to Pay. */
-    val tapToPay = TapToPaySetup(terminalSetup, secrets, settings, paymentsAppLinks, paymentsAppManagement)
+    val tapToPay = TapToPaySetup(terminalSetup, settings, paymentsAppLinks, paymentsAppManagement)
 
     /**
      * Adyen's Checkout API, for captures and authorisation adjustments (simulated with the simulator) and payment links
      * (never simulated).
      */
-    val api = AdyenApi(terminalSetup, secrets, simulated = simulator.modifications, connectLinks = paymentLinks)
+    val api = AdyenApi(terminalSetup, simulated = simulator.modifications, connectLinks = paymentLinks)
 
     /** Whether payments and printing can work, for Home, Settings and the receipt screens. */
     val terminalStatus = TerminalStatus(terminalSetup, gateway, settings, appScope)
@@ -280,7 +278,6 @@ class AppContainer(
             scope = appScope,
             gateway = gateway,
             book = SaleBook(sales),
-            unknownOutcome = context.getString(R.string.payment_unknown_outcome),
             onSucceeded = { id, start ->
                 receipts.arm(id)
                 // The cart has been paid for, so the next payment of its kind starts afresh.
@@ -289,7 +286,7 @@ class AppContainer(
         )
 
     /** Enters tips and captures and adjusts payments taken with manual capture. */
-    val captures = Captures(sales, api::target, terminalSetup.describe)
+    val captures = Captures(sales, api::target)
 
     /** Creates payment links for sales, asks Adyen whether they were paid, and cancels them. */
     val links =
@@ -298,8 +295,6 @@ class AppContainer(
             sales = sales,
             settings = settings,
             target = api::target,
-            unknownOutcome = context.getString(R.string.link_unknown_outcome),
-            describe = terminalSetup.describe,
             onCreated = { id, start ->
                 receipts.arm(id)
                 // The cart is now the link's to pay, so the next sale starts afresh.
@@ -313,7 +308,6 @@ class AppContainer(
             scope = appScope,
             gateway = gateway,
             book = RefundBook(refundRecords),
-            unknownOutcome = context.getString(R.string.refund_unknown_outcome),
             onSucceeded = { id, _ -> receipts.arm(id) },
         )
 
@@ -323,7 +317,7 @@ class AppContainer(
      */
     fun start() {
         appScope.launch {
-            history.settleInterrupted(context.getString(R.string.payment_interrupted), context.getString(R.string.capture_interrupted))
+            history.settleInterrupted()
             catalog.seedDefaults(starterTaxRates())
             history.prune(settings.current().history.retentionDays, System.currentTimeMillis())
         }

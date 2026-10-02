@@ -18,6 +18,7 @@ import io.minimpos.app.data.security.SecretCipher
 import io.minimpos.app.data.settings.AppSettings
 import io.minimpos.app.data.settings.TerminalMode
 import io.minimpos.app.email.MailTransport
+import io.minimpos.app.terminal.Attempt
 import io.minimpos.app.terminal.DeviceInfo
 import io.minimpos.terminal.checkout.PaymentLink
 import io.minimpos.terminal.checkout.PaymentLinkApi
@@ -434,6 +435,9 @@ val GST_RATES =
 
 /** Runs [block] to completion on the calling thread, failing the test after 10 seconds. */
 fun <T> await(block: suspend () -> T): T = runBlocking { withTimeout(10_000) { block() } }
+
+/** What came of a request the gateway sent; fails the test when nothing was sent. */
+fun <T> Attempt<T>.made(): T = (this as Attempt.Made).result
 
 /**
  * Waits until [condition] holds. Saves resume on the main looper, which Robolectric pauses, so each check drains it

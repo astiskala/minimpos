@@ -1,5 +1,6 @@
 package io.minimpos.app.receipt
 
+import io.minimpos.app.data.db.SetupProblem
 import io.minimpos.core.receipt.Align
 import io.minimpos.core.receipt.ReceiptDocument
 import io.minimpos.core.receipt.ReceiptElement
@@ -64,5 +65,14 @@ sealed interface ActionResult {
      */
     data class Failure(
         val message: String,
+    ) : ActionResult
+
+    /**
+     * Nothing was printed, because the terminal is not set up.
+     *
+     * @property problem What must be entered, installed or fixed first.
+     */
+    data class NotSetUp(
+        val problem: SetupProblem,
     ) : ActionResult
 }

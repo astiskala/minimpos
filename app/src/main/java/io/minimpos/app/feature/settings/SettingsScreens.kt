@@ -59,6 +59,7 @@ import io.minimpos.app.data.db.SaleEntity
 import io.minimpos.app.data.db.SaleLineEntity
 import io.minimpos.app.data.db.SaleStatus
 import io.minimpos.app.data.db.SaleWithLines
+import io.minimpos.app.data.db.SetupProblem
 import io.minimpos.app.data.db.TaxRateEntity
 import io.minimpos.app.data.security.Secret
 import io.minimpos.app.data.settings.AppSettings
@@ -76,7 +77,6 @@ import io.minimpos.app.data.settings.TerminalSettings
 import io.minimpos.app.feature.OutcomeMessage
 import io.minimpos.app.feature.lock.SetPinScreen
 import io.minimpos.app.feature.text
-import io.minimpos.app.terminal.SetupProblem
 import io.minimpos.app.terminal.TerminalConnection
 import io.minimpos.app.ui.components.ActionMessage
 import io.minimpos.app.ui.components.ConfirmDialog

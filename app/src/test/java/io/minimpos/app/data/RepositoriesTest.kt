@@ -18,6 +18,7 @@ import io.minimpos.app.data.repo.HistoryItem
 import io.minimpos.app.data.repo.ImportMode
 import io.minimpos.app.data.repo.ReceiptLinesJson
 import io.minimpos.app.data.repo.RefundedLine
+import io.minimpos.app.data.repo.SaleEvent
 import io.minimpos.core.catalogue.Catalogue
 import io.minimpos.core.catalogue.CatalogueCategory
 import io.minimpos.core.catalogue.CatalogueProduct
@@ -335,7 +336,7 @@ class RepositoriesTest {
         await {
             sales.createPending(sale("p", status = SaleStatus.PENDING), emptyList())
             refunds.create(refund("p", full = false, amount = 5, status = RefundStatus.PENDING))
-            history.settleInterrupted("stopped")
+            history.settleInterrupted()
             assertThat(
                 sales
                     .observe("p")
@@ -343,8 +344,8 @@ class RepositoriesTest {
                     .sale.status,
             ).isEqualTo(SaleStatus.UNKNOWN)
             assertThat(refunds.get("R5false2000")!!.status).isEqualTo(RefundStatus.UNKNOWN)
-            sales.markEmailed("p", "a@b.co")
-            sales.markEmailed("missing", "a@b.co")
+            sales.record("p", SaleEvent.Emailed("a@b.co"))
+            sales.record("missing", SaleEvent.Emailed("a@b.co"))
             assertThat(sales.get("p")!!.sale.emailedTo).isEqualTo("a@b.co")
         }
 

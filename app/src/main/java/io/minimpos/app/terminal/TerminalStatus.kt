@@ -1,5 +1,6 @@
 package io.minimpos.app.terminal
 
+import io.minimpos.app.data.db.SetupProblem
 import io.minimpos.app.data.settings.CaptureMode
 import io.minimpos.app.data.settings.SettingsRepository
 import io.minimpos.app.data.settings.TerminalMode

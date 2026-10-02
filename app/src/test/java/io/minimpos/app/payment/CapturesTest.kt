@@ -10,6 +10,8 @@ import io.minimpos.app.data.db.SaleEntity
 import io.minimpos.app.data.db.SaleKind
 import io.minimpos.app.data.db.SaleLineEntity
 import io.minimpos.app.data.db.SaleStatus
+import io.minimpos.app.data.db.SetupProblem
+import io.minimpos.app.data.db.StoredReason
 import io.minimpos.app.data.security.Secret
 import io.minimpos.app.data.settings.CaptureMode
 import io.minimpos.app.data.settings.TerminalMode
@@ -19,7 +21,6 @@ import io.minimpos.app.terminal.AdyenApi
 import io.minimpos.app.terminal.ApiCheck
 import io.minimpos.app.terminal.ApiSetup
 import io.minimpos.app.terminal.ApiTarget
-import io.minimpos.app.terminal.SetupProblem
 import io.minimpos.app.terminal.TerminalSetupSource
 import io.minimpos.core.cart.AppliedTax
 import io.minimpos.core.cart.Cart
@@ -87,7 +88,7 @@ class CapturesTest {
 
     /** Where captures go; each test sets what it needs, without touching settings or secrets. */
     private var target: ApiTarget = ApiTarget(ApiSetup.Complete, fake)
-    private val captures = Captures(container.sales, { target }, describe = { "Enter ${it.name}" })
+    private val captures = Captures(container.sales, { target })
 
     @After
     fun tearDown() = env.close()
@@ -220,9 +221,10 @@ class CapturesTest {
         target = ApiTarget(ApiSetup.Incomplete(SetupProblem.API_KEY))
         store()
         val result = await { captures.addTip("s1", 100) }
-        assertThat(result).isEqualTo(CaptureResult.Failed("Enter API_KEY"))
+        assertThat(result).isEqualTo(CaptureResult.NotSetUp(SetupProblem.API_KEY))
         assertThat(sale().tipMinor).isNull()
-        assertThat(sale().modificationMessage).isEqualTo("Enter API_KEY")
+        assertThat(sale().modificationReason).isEqualTo(StoredReason.NotSetUp(SetupProblem.API_KEY))
+        assertThat(sale().modificationMessage).isNull()
         assertThat(fake.keys).isEmpty()
     }
 
@@ -268,9 +270,9 @@ class CapturesTest {
     @Test
     fun `captures interrupted by the app stopping become unknown at the next start`() {
         store(bill.copy(tipMinor = 100, capturedMinor = 2_100, captureStatus = CaptureStatus.PENDING))
-        await { container.history.settleInterrupted("stopped", "capture stopped") }
+        await { container.history.settleInterrupted() }
         assertThat(sale().captureStatus).isEqualTo(CaptureStatus.UNKNOWN)
-        assertThat(sale().modificationMessage).isEqualTo("capture stopped")
+        assertThat(sale().modificationReason).isEqualTo(StoredReason.Interrupted)
     }
 
     @Test
@@ -279,7 +281,7 @@ class CapturesTest {
         val links = FakeLinkApi()
         val setups = TerminalSetupSource(container.settings, container.secrets, container.device)
         val live =
-            AdyenApi(setups, container.secrets, simulated = fake, connect = {
+            AdyenApi(setups, simulated = fake, connect = {
                 connected += it
                 fake
             }, connectLinks = { links })

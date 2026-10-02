@@ -9,6 +9,7 @@ import io.minimpos.app.await
 import io.minimpos.app.data.db.CategoryEntity
 import io.minimpos.app.data.db.ProductEntity
 import io.minimpos.app.data.db.SaleStatus
+import io.minimpos.app.data.db.SetupProblem
 import io.minimpos.app.data.db.TaxRateEntity
 import io.minimpos.app.data.repo.ImportMode
 import io.minimpos.app.data.security.Secret
@@ -34,7 +35,6 @@ import io.minimpos.app.payment.TransactionState
 import io.minimpos.app.refund.RefundInvalidReason
 import io.minimpos.app.refund.Refundability
 import io.minimpos.app.refund.RefundablePayment
-import io.minimpos.app.terminal.SetupProblem
 import io.minimpos.core.codec.RefundQrPayload
 import io.minimpos.core.receipt.PlainTextReceiptRenderer
 import io.minimpos.core.receipt.ReceiptElement

@@ -7,8 +7,10 @@ import io.minimpos.app.FakeManagement
 import io.minimpos.app.FakePaymentsApp
 import io.minimpos.app.TestEnvironment
 import io.minimpos.app.await
+import io.minimpos.app.data.db.SetupProblem
 import io.minimpos.app.data.security.Secret
 import io.minimpos.app.data.settings.TerminalMode
+import io.minimpos.app.made
 import io.minimpos.terminal.client.PaymentParams
 import io.minimpos.terminal.client.PrintJob
 import io.minimpos.terminal.client.PrintLine
@@ -62,14 +64,14 @@ class RemoteTerminalTest {
     fun `a terminal in the cloud takes payments with the API key, once its endpoint is found`() {
         useCloud()
         var sending: String? = null
-        val paid = await { gateway.pay(payment, "PAY1") { sending = it } } as TransactionOutcome.Completed
+        val paid = await { gateway.pay(payment, "PAY1") { sending = it } }.made() as TransactionOutcome.Completed
         assertThat(paid.details.success).isTrue()
         assertThat(sending).isEqualTo("S1F2-000158213605014")
         assertThat(cloud.credentials).containsExactly(CloudCredentials("cloud-key", "Merchant"))
         val refund = RefundParams(paid.details.poiTransactionId!!, paid.details.poiTimestamp!!, "R-1")
-        assertThat((await { gateway.refund(refund, "REF1") } as TransactionOutcome.Completed).details.success).isTrue()
+        assertThat((await { gateway.refund(refund, "REF1") }.made() as TransactionOutcome.Completed).details.success).isTrue()
         assertThat(await { gateway.status("PAY1", TransactionKind.PAYMENT) }).isInstanceOf(TransactionOutcome.Completed::class.java)
-        assertThat(await { gateway.print(listOf(PrintJob.Text(listOf(PrintLine.Text("x"))))) }).isEqualTo(PrintOutcome.Printed)
+        assertThat(await { gateway.print(listOf(PrintJob.Text(listOf(PrintLine.Text("x"))))) }.made()).isEqualTo(PrintOutcome.Printed)
         // The endpoint is found once per key and terminal.
         assertThat(cloud.detections).isEqualTo(1)
 
@@ -94,7 +96,7 @@ class RemoteTerminalTest {
         useCloud()
         cloud.detection = CloudDetection.Failed("Adyen accepted the API key neither for TEST nor for LIVE (HTTP 401)")
         assertThat((await { gateway.diagnose() } as TerminalConnection.Failed).message).contains("neither for TEST nor for LIVE")
-        assertThat((await { gateway.pay(payment, "PAY1") } as TransactionOutcome.NotProcessed).reason).contains("HTTP 401")
+        assertThat((await { gateway.pay(payment, "PAY1") }.made() as TransactionOutcome.NotProcessed).reason).contains("HTTP 401")
         assertThat((await { container.terminalStatus.connectedTerminals() } as ConnectedTerminals.Failed).message).contains("HTTP 401")
         // A key saved but no longer readable is reported as such.
         env.cipher.fail = true
@@ -129,14 +131,14 @@ class RemoteTerminalTest {
         assertThat(paymentsApp.opened).hasSize(opened)
 
         var sending: String? = null
-        val paid = await { gateway.pay(payment, "PAY1") { sending = it } } as TransactionOutcome.Completed
+        val paid = await { gateway.pay(payment, "PAY1") { sending = it } }.made() as TransactionOutcome.Completed
         assertThat(paid.details.success).isTrue()
         assertThat(sending).isEqualTo(FakePaymentsApp.INSTALLATION_ID)
         assertThat(paymentsApp.opened.last()).startsWith("https://www.adyen.com/test/nexo?request=")
         // It has no printer, and cannot be asked for a transaction's status.
         assertThat(await { container.terminalStatus.state.first { it.loaded } }.printerAvailable).isFalse()
         assertThat(
-            await { gateway.print(listOf(PrintJob.Text(listOf(PrintLine.Text("x"))))) },
+            await { gateway.print(listOf(PrintJob.Text(listOf(PrintLine.Text("x"))))) }.made(),
         ).isInstanceOf(PrintOutcome.Failed::class.java)
         assertThat(await { gateway.status("PAY1", TransactionKind.PAYMENT) }).isInstanceOf(TransactionOutcome.Unknown::class.java)
         assertThat(await { gateway.abort("PAY1") }).isFalse()

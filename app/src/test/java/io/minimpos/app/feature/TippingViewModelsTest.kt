@@ -6,6 +6,7 @@ import io.minimpos.app.await
 import io.minimpos.app.data.db.CaptureStatus
 import io.minimpos.app.data.db.ProductEntity
 import io.minimpos.app.data.db.SaleKind
+import io.minimpos.app.data.db.SetupProblem
 import io.minimpos.app.data.db.TaxRateEntity
 import io.minimpos.app.data.security.Secret
 import io.minimpos.app.data.settings.CaptureMode
@@ -24,7 +25,7 @@ import io.minimpos.app.feature.settings.SettingsViewModel
 import io.minimpos.app.payment.CaptureResult
 import io.minimpos.app.payment.TransactionState
 import io.minimpos.app.refund.PaymentAction
-import io.minimpos.app.terminal.SetupProblem
+import io.minimpos.app.refund.standing
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.first
@@ -139,7 +140,15 @@ class TippingViewModelsTest {
         tip.submit(state.tipMinor!!)
         await { tip.state.first { it.submission.done && it.sale?.captureStatus == CaptureStatus.REQUESTED } }
 
-        val captured = await { detail(id).state.first { it.record?.sale?.captured == true } }
+        val captured =
+            await {
+                detail(id).state.first {
+                    it.record
+                        ?.sale
+                        ?.standing
+                        ?.captured == true
+                }
+            }
         assertThat(captured.actions).doesNotContain(PaymentAction.ENTER_TIP)
         assertThat(captured.actions).doesNotContain(PaymentAction.CANCEL)
         assertThat(captured.actions).contains(PaymentAction.REFUND)
@@ -215,7 +224,7 @@ class TippingViewModelsTest {
             await {
                 vm.state.first { it.retry.isError }
             }.retry.outcome,
-        ).isEqualTo(ActionOutcome.NotCaptured("Enter the Checkout API key in Terminal settings", CaptureStep.CAPTURE))
+        ).isEqualTo(ActionOutcome.NotSetUp(SetupProblem.API_KEY))
         env.useSimulator()
         vm.retryCapture()
         await { vm.state.first { it.retry.done } }
@@ -263,7 +272,7 @@ class TippingViewModelsTest {
         await { capture.state.first { it.submission.done } }
         val captured = await { container.sales.get(id)!! }.sale
         assertThat(captured.capturedMinor).isEqualTo(24_000)
-        assertThat(captured.captured).isTrue()
+        assertThat(captured.standing.captured).isTrue()
         // Now it is captured, it can be neither captured nor adjusted again.
         capture.submit()
         assertThat(capture.state.value.canSubmit).isFalse()
@@ -307,6 +316,8 @@ class TippingViewModelsTest {
         assertThat(refused.done).isFalse()
         assertThat(CaptureResult.NotAllowed.toState(CaptureStep.TIP, 2_500, "AUD").outcome).isEqualTo(ActionOutcome.CaptureNotAllowed)
         assertThat(CaptureResult.Recorded.toState(CaptureStep.CAPTURE, 2_500, "AUD")).isEqualTo(ActionState(done = true))
+        assertThat(CaptureResult.NotSetUp(SetupProblem.LIVE_PREFIX).toState(CaptureStep.ADJUSTMENT, 2_500, "AUD"))
+            .isEqualTo(ActionState(outcome = ActionOutcome.NotSetUp(SetupProblem.LIVE_PREFIX), isError = true))
     }
 
     @Test

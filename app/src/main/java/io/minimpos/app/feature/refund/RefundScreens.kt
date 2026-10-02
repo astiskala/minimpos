@@ -59,6 +59,7 @@ import io.minimpos.app.data.db.RefundEntity
 import io.minimpos.app.data.db.RefundStatus
 import io.minimpos.app.data.db.SaleLineEntity
 import io.minimpos.app.feature.OutcomeMessage
+import io.minimpos.app.feature.outcomeNote
 import io.minimpos.app.feature.sale.ReceiptToggle
 import io.minimpos.app.feature.sale.ShareReceiptButton
 import io.minimpos.app.payment.TransactionState
@@ -551,7 +552,7 @@ private fun RefundOutcome(
     if (refund.status == RefundStatus.REQUESTED) {
         OutcomeNote(stringResource(if (refund.cancellation) R.string.cancellation_async_note else R.string.refund_async_note))
     }
-    refund.message?.let { OutcomeNote(it) }
+    refund.outcomeNote()?.let { OutcomeNote(it) }
 }
 
 /** How a refund in [status] is shown: accepted is a success, failed an error, and the rest warnings. */

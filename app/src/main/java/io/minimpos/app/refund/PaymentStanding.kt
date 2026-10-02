@@ -18,8 +18,13 @@ import io.minimpos.terminal.client.Decline
  * receipt) move from [AWAITING_TIP] or [HELD] through a capture ([CAPTURE_SENDING], then [CAPTURE_REQUESTED],
  * [CAPTURE_FAILED] or [CAPTURE_UNKNOWN]; or straight to [CAPTURED_MANUALLY]) or end in [HOLD_CANCELLED]. A plain sale is
  * [CHARGED] as soon as it is approved.
+ *
+ * @property capture The capture status a payment taken with manual capture stands here with; null for the standings
+ *   before (or without) a capture.
  */
-enum class PaymentStanding {
+enum class PaymentStanding(
+    val capture: CaptureStatus? = null,
+) {
     /** The payment was not approved (yet): pending, declined, cancelled, failed or unknown, as its [SaleStatus] says. */
     NOT_APPROVED,
 
@@ -33,19 +38,19 @@ enum class PaymentStanding {
     HELD,
 
     /** Holds its amount after Adyen did not take its capture ([CaptureStatus.FAILED]); it can be captured again. */
-    CAPTURE_FAILED,
+    CAPTURE_FAILED(CaptureStatus.FAILED),
 
     /** Its capture is being sent ([CaptureStatus.PENDING]). */
-    CAPTURE_SENDING,
+    CAPTURE_SENDING(CaptureStatus.PENDING),
 
     /** Whether Adyen received its capture is not known ([CaptureStatus.UNKNOWN]); it can be sent again safely. */
-    CAPTURE_UNKNOWN,
+    CAPTURE_UNKNOWN(CaptureStatus.UNKNOWN),
 
     /** Captured: Adyen received the capture ([CaptureStatus.REQUESTED]) and confirms it in the Customer Area. */
-    CAPTURE_REQUESTED,
+    CAPTURE_REQUESTED(CaptureStatus.REQUESTED),
 
     /** Captured: left to staff in the Customer Area ([CaptureStatus.MANUAL]), as no Checkout API is set up. */
-    CAPTURED_MANUALLY,
+    CAPTURED_MANUALLY(CaptureStatus.MANUAL),
 
     /** A held payment whose cancellation (a full reversal) was accepted, so nothing was charged. */
     HOLD_CANCELLED,
@@ -54,8 +59,11 @@ enum class PaymentStanding {
     /** Whether the payment still only holds its amount, so it can be cancelled: [AWAITING_TIP], [HELD] or [CAPTURE_FAILED]. */
     val held: Boolean get() = this == AWAITING_TIP || this == HELD || this == CAPTURE_FAILED
 
-    /** Whether it was captured, so it counts as charged and is refunded up to the capture: [CAPTURE_REQUESTED] or [CAPTURED_MANUALLY]. */
-    val captured: Boolean get() = this == CAPTURE_REQUESTED || this == CAPTURED_MANUALLY
+    /**
+     * Whether it was captured, so it counts as charged and is refunded up to the capture: its [capture] counts as made
+     * ([CaptureStatus.captured]), which is [CAPTURE_REQUESTED] or [CAPTURED_MANUALLY].
+     */
+    val captured: Boolean get() = capture?.captured == true
 
     /** Whether the payment counts as charged: [CHARGED] or [captured]. */
     val charged: Boolean get() = this == CHARGED || captured
@@ -85,15 +93,10 @@ enum class PaymentStanding {
             tipMinor: Long,
         ): Boolean = tipMinor * PERCENT > billMinor * TIP_ADJUSTMENT_PERCENT
 
-        private fun captureStanding(sale: SaleEntity): PaymentStanding =
-            when (sale.captureStatus) {
-                CaptureStatus.REQUESTED -> CAPTURE_REQUESTED
-                CaptureStatus.MANUAL -> CAPTURED_MANUALLY
-                CaptureStatus.PENDING -> CAPTURE_SENDING
-                CaptureStatus.UNKNOWN -> CAPTURE_UNKNOWN
-                CaptureStatus.FAILED -> CAPTURE_FAILED
-                null -> if (sale.tipOnReceipt && sale.tipMinor == null) AWAITING_TIP else HELD
-            }
+        private fun captureStanding(sale: SaleEntity): PaymentStanding {
+            val status = sale.captureStatus ?: return if (sale.tipOnReceipt && sale.tipMinor == null) AWAITING_TIP else HELD
+            return entries.single { it.capture == status }
+        }
     }
 }
 

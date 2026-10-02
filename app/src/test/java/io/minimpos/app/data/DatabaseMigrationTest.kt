@@ -8,6 +8,8 @@ import com.google.common.truth.Truth.assertThat
 import io.minimpos.app.data.db.AppDatabase
 import io.minimpos.app.data.db.ProductEntity
 import io.minimpos.app.data.db.SaleKind
+import io.minimpos.app.data.db.SetupProblem
+import io.minimpos.app.data.db.StoredReason
 import kotlinx.coroutines.runBlocking
 import org.json.JSONObject
 import org.junit.Test
@@ -247,6 +249,42 @@ class DatabaseMigrationTest {
             assertThat(sale.paymentLinkId).isNull()
             assertThat(sale.paymentLinkUrl).isNull()
             assertThat(sale.paymentLinkExpiresAt).isNull()
+        }
+    }
+
+    @Test
+    fun `version 9 messages are kept as they were worded, with no typed reason`() {
+        val name = "migration-v9.db"
+        createDatabase(name, 9) {
+            execSQL(
+                "INSERT INTO sales (id, createdAt, currency, taxMode, netMinor, taxMinor, totalMinor, status, merchantReference, " +
+                    "tokenizationRequested, signatureRequired, refundedMinor, kind, tipOnReceipt, holdCancelled, paymentLink, " +
+                    "message, modificationMessage) VALUES ('s1', 1, 'AUD', 'INCLUSIVE', 91, 9, 100, 'UNKNOWN', 'MP-1', 0, 0, 0, " +
+                    "'SALE', 0, 0, 0, 'The app stopped before the result was received.', 'Refused')",
+            )
+            execSQL(
+                "INSERT INTO refunds (id, saleId, createdAt, merchantReference, originalTransactionId, originalTimestamp, " +
+                    "currency, amountMinor, full, cancellation, status, message) VALUES ('r1', 's1', 2, 'R', 'T.P', " +
+                    "'2026-09-30T01:02:03.456Z', 'AUD', 100, 1, 0, 'FAILED', 'Enter the POIID')",
+            )
+        }
+        migrated(name) { db ->
+            val sale = db.saleDao().sale("s1")!!.sale
+            assertThat(sale.message).isEqualTo("The app stopped before the result was received.")
+            assertThat(sale.reason).isNull()
+            assertThat(sale.modificationMessage).isEqualTo("Refused")
+            assertThat(sale.modificationReason).isNull()
+            val refund = db.refundDao().refund("r1")!!
+            assertThat(refund.message).isEqualTo("Enter the POIID")
+            assertThat(refund.reason).isNull()
+            // A typed reason is stored and read back.
+            db.saleDao().update(sale.copy(reason = StoredReason.NotSetUp(SetupProblem.HOST)))
+            assertThat(
+                db
+                    .saleDao()
+                    .sale("s1")!!
+                    .sale.reason,
+            ).isEqualTo(StoredReason.NotSetUp(SetupProblem.HOST))
         }
     }
 

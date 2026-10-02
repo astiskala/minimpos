@@ -4,6 +4,7 @@ import androidx.room.withTransaction
 import io.minimpos.app.data.db.AppDatabase
 import io.minimpos.app.data.db.RefundEntity
 import io.minimpos.app.data.db.RefundStatus
+import io.minimpos.app.data.db.StoredReason
 import io.minimpos.terminal.client.TransactionDetails
 import kotlinx.coroutines.flow.Flow
 import kotlinx.serialization.Serializable
@@ -59,11 +60,11 @@ class RefundRepository(
     fun forSale(saleId: String): Flow<List<RefundEntity>> = dao.refundsForSale(saleId)
 
     /**
-     * Stores how refund [id] ended: its [status], the [message] shown when it was not accepted and, when the terminal
-     * answered, its [details] (PSP reference and the customer's card receipt; without an answer the stored ones are
-     * kept). When it was accepted ([RefundStatus.REQUESTED]) it is applied to its local sale
-     * ([SaleRepository.applyRefund]), so the same items or amount cannot be refunded twice from this terminal. This is
-     * the only change to a refund after [create]. Reads and writes in one transaction; does nothing when the refund no
+     * Stores how refund [id] ended: its [status], why it was not accepted (the terminal's [message], or the app's
+     * [reason]) and, when the terminal answered, its [details] (PSP reference and the customer's card receipt; without
+     * an answer the stored ones are kept). When it was accepted ([RefundStatus.REQUESTED]) it is applied to its local
+     * sale ([SaleRepository.applyRefund]), so the same items or amount cannot be refunded twice from this terminal. This
+     * is the only change to a refund after [create]. Reads and writes in one transaction; does nothing when the refund no
      * longer exists.
      */
     suspend fun settle(
@@ -71,12 +72,14 @@ class RefundRepository(
         status: RefundStatus,
         message: String?,
         details: TransactionDetails?,
+        reason: StoredReason? = null,
     ) = db.withTransaction {
         val stored = dao.refund(id) ?: return@withTransaction
         val refund =
             stored.copy(
                 status = status,
                 message = message,
+                reason = reason,
                 pspReference = details?.pspReference ?: stored.pspReference,
                 customerReceiptJson = details?.let { ReceiptLinesJson.encodeFields(it.customerReceipt) } ?: stored.customerReceiptJson,
             )

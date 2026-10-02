@@ -26,7 +26,8 @@ import io.minimpos.app.email.MailTransport
 import io.minimpos.app.email.SmtpMailer
 import io.minimpos.app.payment.AutoDelivery
 import io.minimpos.app.payment.ReceiptOffer
-import io.minimpos.app.payment.SalePrint
+import io.minimpos.app.payment.ReceiptPrint
+import io.minimpos.app.payment.StoredTransaction
 import io.minimpos.app.qr.QrCodes
 import io.minimpos.core.codec.RefundQrPayload
 import io.minimpos.core.receipt.Align
@@ -172,31 +173,35 @@ class ReceiptServicesTest {
         store()
         val receipts = container.receipts
         // The shopper signed, so the merchant copy is due after the customer copy.
-        assertThat(await { receipts.printSale("s1") }).isEqualTo(SalePrint(ActionResult.Success, merchantCopyDue = true))
+        assertThat(
+            await { receipts.print(StoredTransaction.Sale("s1")) },
+        ).isEqualTo(ReceiptPrint(ActionResult.Success, merchantCopyDue = true))
         assertThat(
             container.virtualPrinter.jobs.value
                 .filterIsInstance<PrintJob.QrCode>(),
         ).hasSize(1)
         container.virtualPrinter.clear()
-        assertThat(await { receipts.printSale("s1", ReceiptCopy.MERCHANT) }).isEqualTo(SalePrint(ActionResult.Success))
+        assertThat(
+            await { receipts.print(StoredTransaction.Sale("s1"), ReceiptCopy.MERCHANT) },
+        ).isEqualTo(ReceiptPrint(ActionResult.Success))
         assertThat(
             container.virtualPrinter.jobs.value
                 .filterIsInstance<PrintJob.QrCode>(),
         ).isEmpty()
-        assertThat(await { receipts.printSale("missing") }.result).isInstanceOf(ActionResult.Failure::class.java)
-        assertThat(await { receipts.printRefund("missing") }).isInstanceOf(ActionResult.Failure::class.java)
+        assertThat(await { receipts.print(StoredTransaction.Sale("missing")) }.result).isInstanceOf(ActionResult.Failure::class.java)
+        assertThat(await { receipts.print(StoredTransaction.Refund("missing")).result }).isInstanceOf(ActionResult.Failure::class.java)
         assertThat(await { receipts.printDocument(ReceiptDocument(listOf(ReceiptElement.Text("Test")))) }).isEqualTo(ActionResult.Success)
 
         env.updateSettings { it.copy(receipt = it.receipt.copy(merchantCopy = MerchantCopyPolicy.NEVER)) }
-        assertThat(await { receipts.printSale("s1") }.merchantCopyDue).isFalse()
+        assertThat(await { receipts.print(StoredTransaction.Sale("s1")) }.merchantCopyDue).isFalse()
         env.updateSettings { it.copy(receipt = it.receipt.copy(merchantCopy = MerchantCopyPolicy.ALWAYS)) }
         await { container.database.saleDao().update(sale.copy(signatureRequired = false)) }
-        assertThat(await { receipts.printSale("s1") }.merchantCopyDue).isTrue()
+        assertThat(await { receipts.print(StoredTransaction.Sale("s1")) }.merchantCopyDue).isTrue()
         env.updateSettings { it.copy(receipt = it.receipt.copy(merchantCopy = MerchantCopyPolicy.SIGNATURE_ONLY)) }
-        assertThat(await { receipts.printSale("s1") }.merchantCopyDue).isFalse()
+        assertThat(await { receipts.print(StoredTransaction.Sale("s1")) }.merchantCopyDue).isFalse()
 
         env.useSimulator { it.copy(simulator = it.simulator.copy(hasPrinter = false)) }
-        val failure = await { receipts.printSale("s1") }
+        val failure = await { receipts.print(StoredTransaction.Sale("s1")) }
         assertThat((failure.result as ActionResult.Failure).message).contains("no printer")
         assertThat(failure.merchantCopyDue).isFalse()
     }
@@ -213,15 +218,15 @@ class ReceiptServicesTest {
         await { container.sales.createPending(sale.copy(shopperEmail = "a@b.co"), lines) }
         val receipts = container.receipts
         // Nothing is delivered for a sale that did not just succeed.
-        assertThat(await { receipts.automationForSale("s1") }).isEqualTo(AutoDelivery())
+        assertThat(await { receipts.automation(StoredTransaction.Sale("s1")) }).isEqualTo(AutoDelivery())
         receipts.arm("s1")
-        assertThat(await { receipts.automationForSale("s1") }).isEqualTo(AutoDelivery(print = true, emailTo = "a@b.co"))
-        assertThat(await { receipts.automationForSale("s1") }).isEqualTo(AutoDelivery())
+        assertThat(await { receipts.automation(StoredTransaction.Sale("s1")) }).isEqualTo(AutoDelivery(print = true, emailTo = "a@b.co"))
+        assertThat(await { receipts.automation(StoredTransaction.Sale("s1")) }).isEqualTo(AutoDelivery())
 
         // The email is only sent automatically when it was asked for before payment and Send automatically is on.
         env.updateSettings { it.copy(payment = it.payment.copy(emailCapture = EmailCapture.AFTER_PAYMENT)) }
         receipts.arm("s1")
-        assertThat(await { receipts.automationForSale("s1") }).isEqualTo(AutoDelivery(print = true))
+        assertThat(await { receipts.automation(StoredTransaction.Sale("s1")) }).isEqualTo(AutoDelivery(print = true))
         env.updateSettings {
             it.copy(
                 payment = it.payment.copy(emailCapture = EmailCapture.BOTH, autoSendEmail = false),
@@ -229,15 +234,15 @@ class ReceiptServicesTest {
             )
         }
         receipts.arm("s1")
-        assertThat(await { receipts.automationForSale("s1") }).isEqualTo(AutoDelivery())
+        assertThat(await { receipts.automation(StoredTransaction.Sale("s1")) }).isEqualTo(AutoDelivery())
 
         // Without a printer nothing is printed automatically.
         env.useSimulator { it.copy(receipt = it.receipt.copy(autoPrint = true), simulator = it.simulator.copy(hasPrinter = false)) }
         await { container.terminalStatus.state.first { !it.printerAvailable } }
         receipts.arm("r1")
-        assertThat(await { receipts.automationForRefund("r1") }).isEqualTo(AutoDelivery())
+        assertThat(await { receipts.automation(StoredTransaction.Refund("r1")) }).isEqualTo(AutoDelivery())
         receipts.arm("missing")
-        assertThat(await { receipts.automationForSale("missing") }).isEqualTo(AutoDelivery())
+        assertThat(await { receipts.automation(StoredTransaction.Sale("missing")) }).isEqualTo(AutoDelivery())
     }
 
     @Test
@@ -246,20 +251,38 @@ class ReceiptServicesTest {
         await { container.terminalStatus.state.first { it.printerAvailable } }
         val receipts = container.receipts
         assertThat(
-            await { receipts.saleOffer("s1", justPaid = false).first() },
+            await { receipts.offer(StoredTransaction.Sale("s1"), fresh = false).first() },
         ).isEqualTo(ReceiptOffer(null, canPrint = true, canEmail = false, canShare = true))
         store()
         configureEmail()
-        val later = await { receipts.saleOffer("s1", justPaid = false).first { it.canEmail } }
+        val later = await { receipts.offer(StoredTransaction.Sale("s1"), fresh = false).first { it.canEmail } }
         assertThat(later.receipt!!.qrCodes).hasSize(1)
-        // Right after the payment email is offered only when checkout captures emails.
-        assertThat(await { receipts.saleOffer("s1", justPaid = true).first() }.canEmail).isFalse()
+        // Right after the payment email is offered only when checkout captures emails, except for a payment link, which
+        // reaches the shopper by email.
+        assertThat(await { receipts.offer(StoredTransaction.Sale("s1"), fresh = true).first() }.canEmail).isFalse()
+        await {
+            container.database.saleDao().update(
+                container.sales
+                    .get("s1")!!
+                    .sale
+                    .copy(paymentLink = true),
+            )
+        }
+        assertThat(await { receipts.offer(StoredTransaction.Sale("s1"), fresh = true).first { it.canEmail } }.canEmail).isTrue()
+        await {
+            container.database.saleDao().update(
+                container.sales
+                    .get("s1")!!
+                    .sale
+                    .copy(paymentLink = false),
+            )
+        }
         env.updateSettings { it.copy(payment = it.payment.copy(emailCapture = EmailCapture.AFTER_PAYMENT)) }
-        assertThat(await { receipts.saleOffer("s1", justPaid = true).first { it.canEmail } }.canEmail).isTrue()
+        assertThat(await { receipts.offer(StoredTransaction.Sale("s1"), fresh = true).first { it.canEmail } }.canEmail).isTrue()
         env.useSimulator { it.copy(simulator = it.simulator.copy(hasPrinter = false)) }
         assertThat(
             await {
-                receipts.refundOffer("missing").first { !it.canPrint }
+                receipts.offer(StoredTransaction.Refund("missing")).first { !it.canPrint }
             },
         ).isEqualTo(ReceiptOffer(null, canPrint = false, canEmail = true, canShare = true))
 
@@ -292,7 +315,7 @@ class ReceiptServicesTest {
     fun `emails receipts with inline QR codes`() {
         configureEmail()
         store()
-        assertThat(await { container.receipts.emailSale("s1", "shopper@example.com") }).isEqualTo(ActionResult.Success)
+        assertThat(await { container.receipts.email(StoredTransaction.Sale("s1"), "shopper@example.com") }).isEqualTo(ActionResult.Success)
         val message = env.mail.sent.single()
         assertThat(message.subject).isEqualTo("Your receipt from Corner Cafe")
         assertThat(message.allRecipients.map { it.toString() }).containsExactly("shopper@example.com", "copy@example.com")
@@ -306,8 +329,12 @@ class ReceiptServicesTest {
                     .sale.emailedTo
             },
         ).isEqualTo("shopper@example.com")
-        assertThat(await { container.receipts.emailSale("missing", "a@b.co") }).isInstanceOf(ActionResult.Failure::class.java)
-        assertThat(await { container.receipts.emailRefund("missing", "a@b.co") }).isInstanceOf(ActionResult.Failure::class.java)
+        assertThat(
+            await { container.receipts.email(StoredTransaction.Sale("missing"), "a@b.co") },
+        ).isInstanceOf(ActionResult.Failure::class.java)
+        assertThat(
+            await { container.receipts.email(StoredTransaction.Refund("missing"), "a@b.co") },
+        ).isInstanceOf(ActionResult.Failure::class.java)
     }
 
     @Test
@@ -329,7 +356,7 @@ class ReceiptServicesTest {
             )
         await { container.sales.createPending(link, lines) }
         val receipts = container.receipts
-        assertThat(await { receipts.emailSale("s1", "sam@example.com") }).isEqualTo(ActionResult.Success)
+        assertThat(await { receipts.email(StoredTransaction.Sale("s1"), "sam@example.com") }).isEqualTo(ActionResult.Success)
         val message = env.mail.sent.single()
         assertThat(message.subject).isEqualTo("Payment request from Corner Cafe")
         val text = message.allText()
@@ -340,13 +367,13 @@ class ReceiptServicesTest {
         assertThat((message.content as MimeMultipart).getBodyPart(1).getHeader("Content-ID").single()).isEqualTo("<qr0>")
 
         // The slip to hand over has the link's QR code and address, and needs no merchant copy.
-        val printed = await { receipts.printSale("s1") }
-        assertThat(printed).isEqualTo(SalePrint(ActionResult.Success, merchantCopyDue = false))
+        val printed = await { receipts.print(StoredTransaction.Sale("s1")) }
+        assertThat(printed).isEqualTo(ReceiptPrint(ActionResult.Success, merchantCopyDue = false))
         val jobs = container.virtualPrinter.jobs.value
         assertThat(jobs).contains(PrintJob.QrCode(url))
         assertThat(jobs.filterIsInstance<PrintJob.Text>().flatMap { it.lines }).contains(PrintLine.Text(url, PrintAlign.CENTER))
 
-        val shared = await { receipts.saleOffer("s1", justPaid = false).first() }.share!!
+        val shared = await { receipts.offer(StoredTransaction.Sale("s1"), fresh = false).first() }.share!!
         assertThat(shared.paymentLink).isEqualTo(url)
         assertThat(shared.reference).isEqualTo("MP-1")
         assertThat(shared.amountMinor).isEqualTo(1_200)
@@ -358,17 +385,17 @@ class ReceiptServicesTest {
 
         // Once paid it is a receipt like any other, with nothing left to pay.
         await { container.database.saleDao().update(link.copy(status = SaleStatus.APPROVED)) }
-        val paid = await { receipts.saleOffer("s1", justPaid = false).first { it.share?.paymentLink == null } }.share!!
+        val paid = await { receipts.offer(StoredTransaction.Sale("s1"), fresh = false).first { it.share?.paymentLink == null } }.share!!
         assertThat(paid.paymentLink).isNull()
         assertThat(paid.document.elements).contains(ReceiptElement.Text("Paid online", Align.CENTER))
         assertThat(paid.document.qrCodes).isEmpty()
-        assertThat(await { receipts.emailSale("s1", "sam@example.com") }).isEqualTo(ActionResult.Success)
+        assertThat(await { receipts.email(StoredTransaction.Sale("s1"), "sam@example.com") }).isEqualTo(ActionResult.Success)
         assertThat(
             env.mail.sent
                 .last()
                 .subject,
         ).isEqualTo("Your receipt from Corner Cafe")
-        assertThat(await { receipts.saleOffer("missing", justPaid = false).first() }.share).isNull()
+        assertThat(await { receipts.offer(StoredTransaction.Sale("missing"), fresh = false).first() }.share).isNull()
     }
 
     @Test
@@ -388,12 +415,12 @@ class ReceiptServicesTest {
                 status = RefundStatus.REQUESTED,
             )
         await { container.refundRecords.create(refund) }
-        val shared = await { container.receipts.refundOffer("r1").first() }.share!!
+        val shared = await { container.receipts.offer(StoredTransaction.Refund("r1")).first() }.share!!
         assertThat(shared.reference).isEqualTo("R-1")
         assertThat(shared.amountMinor).isEqualTo(500)
         assertThat(shared.paymentLink).isNull()
         assertThat(shared.document.elements).contains(ReceiptElement.Text("REFUND", Align.CENTER, TextStyle.BOLD))
-        assertThat(await { container.receipts.refundOffer("missing").first() }.share).isNull()
+        assertThat(await { container.receipts.offer(StoredTransaction.Refund("missing")).first() }.share).isNull()
     }
 
     @Test
@@ -405,7 +432,7 @@ class ReceiptServicesTest {
         assertThat(receipt.elements).contains(ReceiptElement.Text("PRE-AUTHORIZATION", Align.CENTER, TextStyle.BOLD))
         assertThat(receipt.elements.filterIsInstance<ReceiptElement.Row>().map { it.left }).contains("AMOUNT HELD")
         assertThat(receipt.qrCodes).isEmpty()
-        assertThat(await { container.receipts.emailSale("s1", "a@b.co") }).isEqualTo(ActionResult.Success)
+        assertThat(await { container.receipts.email(StoredTransaction.Sale("s1"), "a@b.co") }).isEqualTo(ActionResult.Success)
         assertThat(
             env.mail.sent
                 .last()
@@ -430,7 +457,7 @@ class ReceiptServicesTest {
         await { container.refundRecords.create(cancellation) }
         assertThat(container.receiptFactory.refund(cancellation, ReceiptSettings()).elements)
             .contains(ReceiptElement.Text("CANCELLATION", Align.CENTER, TextStyle.BOLD))
-        assertThat(await { container.receipts.emailRefund("c1", "a@b.co") }).isEqualTo(ActionResult.Success)
+        assertThat(await { container.receipts.email(StoredTransaction.Refund("c1"), "a@b.co") }).isEqualTo(ActionResult.Success)
         assertThat(
             env.mail.sent
                 .last()
@@ -450,7 +477,7 @@ class ReceiptServicesTest {
             blank.elements,
         ).containsAtLeast(ReceiptElement.Row("AMOUNT", "A$12.00", TextStyle.BOLD), ReceiptElement.Row("TIP", write))
         // The shopper signs for the tip, so the merchant copy is due even though the terminal asked for no signature.
-        assertThat(await { container.receipts.printSale("s1") }.merchantCopyDue).isTrue()
+        assertThat(await { container.receipts.print(StoredTransaction.Sale("s1")) }.merchantCopyDue).isTrue()
         val merchant = factory.sale(SaleWithLines(awaiting, lines), ReceiptSettings(), ReceiptCopy.MERCHANT)
         assertThat(merchant.elements.filterIsInstance<ReceiptElement.Row>().map { it.left }).contains("SIGNATURE")
 
@@ -461,7 +488,7 @@ class ReceiptServicesTest {
             .containsAtLeast(ReceiptElement.Row("TIP", "A$3.00"), ReceiptElement.Row("TOTAL", "A$15.00", TextStyle.BOLD))
             .inOrder()
         assertThat(RefundQrPayload.decode(entered.qrCodes.single().content)!!.amountMinor).isEqualTo(1_500)
-        assertThat(await { container.receipts.printSale("s1") }.merchantCopyDue).isFalse()
+        assertThat(await { container.receipts.print(StoredTransaction.Sale("s1")) }.merchantCopyDue).isFalse()
         // Nor does an emailed receipt.
         assertThat(
             factory
@@ -520,7 +547,13 @@ class ReceiptServicesTest {
         assertThat((await { container.receipts.sendTestEmail("nope") } as ActionResult.Failure).message).contains("valid email")
         assertThat(await { container.receipts.sendTestEmail("a@b.co") }).isEqualTo(ActionResult.Success)
         env.mail.failure = MessagingException("Connection refused")
-        assertThat((await { container.receipts.emailSale("s1", "a@b.co") } as ActionResult.Failure).message).isEqualTo("Connection refused")
+        assertThat(
+            (
+                await {
+                    container.receipts.email(StoredTransaction.Sale("s1"), "a@b.co")
+                } as ActionResult.Failure
+            ).message,
+        ).isEqualTo("Connection refused")
         assertThat(
             await {
                 container.sales

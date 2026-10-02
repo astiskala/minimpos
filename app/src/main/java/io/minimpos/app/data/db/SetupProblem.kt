@@ -1,10 +1,10 @@
-package io.minimpos.app.terminal
+package io.minimpos.app.data.db
 
 /**
  * What must be entered, installed or fixed before payments (or the Checkout API, or Tap to Pay) can work, as
- * [TerminalSetup.resolve] and the modules that read the saved secrets find it. Typed so that the screens word it (in
- * `feature/OutcomeMessages.kt`); messages that are stored with a transaction are worded by the container's
- * [TerminalSetupSource.describe].
+ * [io.minimpos.app.terminal.TerminalSetup.resolve] and the modules that read the saved secrets find it. Typed so that
+ * the screens word it (in `feature/OutcomeMessages.kt`), also when it is stored with a transaction or capture as a
+ * [StoredReason.NotSetUp], so it reads in the current language. Stored by name: never rename an entry.
  */
 enum class SetupProblem {
     /** No terminal ID (POIID) is entered. */

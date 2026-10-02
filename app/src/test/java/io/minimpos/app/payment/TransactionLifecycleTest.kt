@@ -8,11 +8,14 @@ import io.minimpos.app.data.db.RefundEntity
 import io.minimpos.app.data.db.RefundStatus
 import io.minimpos.app.data.db.SaleKind
 import io.minimpos.app.data.db.SaleStatus
+import io.minimpos.app.data.db.SetupProblem
+import io.minimpos.app.data.db.StoredReason
 import io.minimpos.app.data.db.TaxRateEntity
 import io.minimpos.app.data.repo.ReceiptLinesJson
 import io.minimpos.app.data.repo.RefundedLine
 import io.minimpos.app.data.settings.CaptureMode
 import io.minimpos.app.data.settings.TerminalMode
+import io.minimpos.app.payment.StoredTransaction
 import io.minimpos.app.refund.PaymentStanding
 import io.minimpos.app.refund.RefundStart
 import io.minimpos.app.refund.RefundablePayment
@@ -75,7 +78,7 @@ class TransactionLifecycleTest {
             container.sales.get(saleId)!!
         }
 
-    /** Automatic printing on, so [ReceiptDelivery.automationForSale] shows whether a transaction armed it. */
+    /** Automatic printing on, so [ReceiptDelivery.automation] shows whether a transaction armed it. */
     private fun useSimulatorWithAutoPrint(outcome: SimulatedOutcome = SimulatedOutcome.APPROVE) {
         env.useSimulator {
             it.copy(receipt = it.receipt.copy(autoPrint = true), simulator = it.simulator.copy(outcome = outcome))
@@ -100,8 +103,8 @@ class TransactionLifecycleTest {
         assertThat(sale.message).isNull()
         assertThat(ReceiptLinesJson.decode(sale.customerReceiptJson).map { it.name }).contains("APPROVED")
         assertThat(record.sortedLines.map { it.name to it.quantity }).containsExactly("Latte" to 2, "Custom" to 1).inOrder()
-        assertThat(await { container.receipts.automationForSale(saleId) }.print).isTrue()
-        assertThat(await { container.receipts.automationForSale(saleId) }).isEqualTo(AutoDelivery())
+        assertThat(await { container.receipts.automation(StoredTransaction.Sale(saleId)) }.print).isTrue()
+        assertThat(await { container.receipts.automation(StoredTransaction.Sale(saleId)) }).isEqualTo(AutoDelivery())
         payments.acknowledge()
         assertThat(payments.state.value).isEqualTo(TransactionState.Idle)
     }
@@ -114,7 +117,7 @@ class TransactionLifecycleTest {
         assertThat(declined.message).isEqualTo("Not enough balance")
         assertThat(declined.errorCondition).isEqualTo("Refusal")
         assertThat(declined.refusalReason).isEqualTo("Not enough balance")
-        assertThat(await { container.receipts.automationForSale(declined.id) }.print).isFalse()
+        assertThat(await { container.receipts.automation(StoredTransaction.Sale(declined.id)) }.print).isFalse()
         assertThat(payments.busyServiceId(declined.id)).isNull()
         payments.acknowledge()
 
@@ -153,7 +156,7 @@ class TransactionLifecycleTest {
         }
         val sale = finished(start()).sale
         assertThat(sale.status).isEqualTo(SaleStatus.FAILED)
-        assertThat(sale.message).contains("key identifier")
+        assertThat(sale.reason).isEqualTo(StoredReason.NotSetUp(SetupProblem.KEY_IDENTIFIER))
         assertThat(sale.poiId).isNull()
         await { assertThat(payments.recheck(sale.id)).isFalse() }
         await { assertThat(payments.recheck("missing")).isFalse() }
@@ -214,8 +217,8 @@ class TransactionLifecycleTest {
         assertThat(partial.pspReference).isNotNull()
         assertThat(partial.serviceId).matches("[0-9A-Z]{10}")
         assertThat(ReceiptLinesJson.decode(partial.customerReceiptJson).map { it.name }).contains("REFUND REQUESTED")
-        assertThat(await { container.receipts.automationForRefund(partial.id) }.print).isTrue()
-        assertThat(await { container.receipts.automationForRefund(partial.id) }.print).isFalse()
+        assertThat(await { container.receipts.automation(StoredTransaction.Refund(partial.id)) }.print).isTrue()
+        assertThat(await { container.receipts.automation(StoredTransaction.Refund(partial.id)) }.print).isFalse()
         refunds.acknowledge()
         assertThat(refunds.state.value).isEqualTo(TransactionState.Idle)
         val sale = await { container.sales.get(saleId)!! }
@@ -284,8 +287,8 @@ class TransactionLifecycleTest {
         }
         val refund = refundFinished(refunds.start(refundStart(null, 100, full = false)))
         assertThat(refund.status).isEqualTo(RefundStatus.FAILED)
-        assertThat(refund.message).contains("passphrase")
-        assertThat(await { container.receipts.automationForRefund(refund.id) }).isEqualTo(AutoDelivery())
+        assertThat(refund.reason).isEqualTo(StoredReason.NotSetUp(SetupProblem.PASSPHRASE))
+        assertThat(await { container.receipts.automation(StoredTransaction.Refund(refund.id)) }).isEqualTo(AutoDelivery())
         refunds.acknowledge()
 
         // A time stamp the terminal client cannot send makes the request fail inside the job.
@@ -293,6 +296,7 @@ class TransactionLifecycleTest {
         val broken = refundFinished(refunds.start(refundStart(null, 100, full = false, timestamp = "not a time")))
         assertThat(broken.status).isEqualTo(RefundStatus.UNKNOWN)
         assertThat(broken.message).isNotEmpty()
+        assertThat(broken.reason).isEqualTo(StoredReason.OutcomeUnknown)
         assertThrows(IllegalArgumentException::class.java) { refunds.start(refundStart(null, 0, full = true)) }
     }
 

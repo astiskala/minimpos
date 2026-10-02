@@ -3,15 +3,15 @@ package io.minimpos.app.payment
 import android.database.SQLException
 import io.minimpos.app.data.db.SaleStatus
 import io.minimpos.app.data.db.SaleWithLines
+import io.minimpos.app.data.db.SetupProblem
+import io.minimpos.app.data.repo.SaleEvent
 import io.minimpos.app.data.repo.SaleRepository
 import io.minimpos.app.data.settings.SettingsRepository
 import io.minimpos.app.terminal.AdyenApi
 import io.minimpos.app.terminal.ApiTarget
-import io.minimpos.app.terminal.SetupProblem
 import io.minimpos.terminal.checkout.PaymentLink
 import io.minimpos.terminal.checkout.PaymentLinkApi
 import io.minimpos.terminal.checkout.PaymentLinkResult
-import io.minimpos.terminal.checkout.PaymentLinkStatus
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
@@ -40,6 +40,15 @@ sealed interface LinkUpdate {
     data class Failed(
         val message: String,
     ) : LinkUpdate
+
+    /**
+     * Adyen could not be asked, because the Checkout API is not set up now, so nothing changed.
+     *
+     * @property problem What is missing.
+     */
+    data class NotSetUp(
+        val problem: SetupProblem,
+    ) : LinkUpdate
 }
 
 /**
@@ -57,8 +66,6 @@ sealed interface LinkUpdate {
  * @param sales Where the sales are stored.
  * @param settings The payment settings, for how a saved card will be used.
  * @param target Where payment links go now: [AdyenApi.target] in the app, a fixed target in tests.
- * @param unknownOutcome Stored as the message of a sale whose link may or may not have been created.
- * @param describe Words what is missing when the API is not set up, for the message stored with the sale.
  * @param onCreated Called with the sale ID and the request once its link was created by [start] (not by a [check]), to
  *   clear what the sale was rung up from and deliver it automatically.
  * @param clock Stamps the sales.
@@ -70,8 +77,6 @@ class PaymentLinks(
     private val sales: SaleRepository,
     private val settings: SettingsRepository,
     private val target: suspend () -> ApiTarget,
-    private val unknownOutcome: String,
-    private val describe: (SetupProblem) -> String = { it.name },
     private val onCreated: (id: String, start: PaymentLinkStart) -> Unit = { _, _ -> },
     private val clock: Clock = Clock.systemUTC(),
     private val newId: () -> String = { UUID.randomUUID().toString() },
@@ -107,7 +112,7 @@ class PaymentLinks(
         error: Exception,
     ) {
         try {
-            sales.settle(id, SaleStatus.UNKNOWN, error.message ?: unknownOutcome, null)
+            sales.record(id, SaleEvent.OutcomeUnknown(error.message))
         } catch (ignored: SQLException) {
             // It stays PENDING, which the next start turns into UNKNOWN.
         }
@@ -138,17 +143,22 @@ class PaymentLinks(
         mutex.withLock {
             val sale = sales.get(saleId)?.sale?.takeIf { it.status == SaleStatus.AWAITING_PAYMENT }
             val linkId = sale?.paymentLinkId ?: return@withLock LinkUpdate.Settled
-            withApi { stored(saleId, it.expire(linkId), expired = SaleStatus.CANCELLED) }
+            withApi { stored(saleId, it.expire(linkId), cancelling = true) }
         }
 
     /** Creates the link of [record] (again, after an unknown outcome) and stores how that went. */
     private suspend fun send(record: SaleWithLines): LinkUpdate {
         val id = record.sale.id
-        val api = target().let { it.links ?: return settleFailed(id, describe(it.setup.problem ?: SetupProblem.API_REQUIRED)) }
+        val target = target()
+        val api = target.links
+        if (api == null) {
+            sales.record(id, SaleEvent.NotSetUp(target.setup.problem ?: SetupProblem.API_REQUIRED))
+            return LinkUpdate.Settled
+        }
         val request = PaymentLinkRequests.request(record, settings.current().payment.recurringProcessingModel, locale())
         return when (val result = api.create(request, idempotencyKey(id))) {
             is PaymentLinkResult.Answered -> {
-                applied(id, result.link, SaleStatus.EXPIRED)
+                applied(id, result.link)
             }
 
             is PaymentLinkResult.NotProcessed -> {
@@ -156,7 +166,7 @@ class PaymentLinks(
             }
 
             is PaymentLinkResult.Unknown -> {
-                sales.settle(id, SaleStatus.UNKNOWN, unknownOutcome, null)
+                sales.record(id, SaleEvent.OutcomeUnknown())
                 LinkUpdate.Failed(result.message)
             }
         }
@@ -165,43 +175,38 @@ class PaymentLinks(
     /** Runs [call] with the payment link API, or fails (changing nothing) when it is not set up now. */
     private suspend fun withApi(call: suspend (PaymentLinkApi) -> LinkUpdate): LinkUpdate {
         val target = target()
-        val api = target.links ?: return LinkUpdate.Failed(describe(target.setup.problem ?: SetupProblem.API_REQUIRED))
+        val api = target.links ?: return LinkUpdate.NotSetUp(target.setup.problem ?: SetupProblem.API_REQUIRED)
         return call(api)
     }
 
-    /** Stores Adyen's answer [result] about the link of sale [id]; a link that ended counts as [expired]. */
+    /** Stores Adyen's answer [result] about the link of sale [id], which was being expired when [cancelling]. */
     private suspend fun stored(
         id: String,
         result: PaymentLinkResult,
-        expired: SaleStatus = SaleStatus.EXPIRED,
+        cancelling: Boolean = false,
     ): LinkUpdate =
         when (result) {
-            is PaymentLinkResult.Answered -> applied(id, result.link, expired)
+            is PaymentLinkResult.Answered -> applied(id, result.link, cancelling)
             is PaymentLinkResult.NotProcessed -> LinkUpdate.Failed(result.message)
             is PaymentLinkResult.Unknown -> LinkUpdate.Failed(result.message)
         }
 
-    /** Stores where [link], the link of sale [id], stands: still open, paid, or ended (as [expired]). */
+    /** Stores where [link], the link of sale [id], stands (see [SaleEvent.LinkAnswered]): still open, paid, or ended. */
     private suspend fun applied(
         id: String,
         link: PaymentLink,
-        expired: SaleStatus,
+        cancelling: Boolean = false,
     ): LinkUpdate {
-        val status =
-            when (link.status) {
-                PaymentLinkStatus.ACTIVE, PaymentLinkStatus.PAYMENT_PENDING -> SaleStatus.AWAITING_PAYMENT
-                PaymentLinkStatus.COMPLETED -> SaleStatus.APPROVED
-                PaymentLinkStatus.EXPIRED -> expired
-            }
-        sales.settle(id, status, null, null, link)
-        return if (status == SaleStatus.AWAITING_PAYMENT) LinkUpdate.StillOpen else LinkUpdate.Settled
+        val answered = SaleEvent.LinkAnswered(link, cancelling)
+        sales.record(id, answered)
+        return if (answered.stillOpen) LinkUpdate.StillOpen else LinkUpdate.Settled
     }
 
     private suspend fun settleFailed(
         id: String,
         message: String,
     ): LinkUpdate {
-        sales.settle(id, SaleStatus.FAILED, message, null)
+        sales.record(id, SaleEvent.NotSent(message))
         return LinkUpdate.Settled
     }
 

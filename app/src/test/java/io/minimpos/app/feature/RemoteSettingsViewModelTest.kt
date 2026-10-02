@@ -5,13 +5,13 @@ import io.minimpos.app.FakeDevice
 import io.minimpos.app.FakePaymentsApp
 import io.minimpos.app.TestEnvironment
 import io.minimpos.app.await
+import io.minimpos.app.data.db.SetupProblem
 import io.minimpos.app.data.security.Secret
 import io.minimpos.app.data.settings.TerminalMode
 import io.minimpos.app.feature.settings.SettingsChecks
 import io.minimpos.app.feature.settings.SettingsTest
 import io.minimpos.app.feature.settings.SettingsViewModel
 import io.minimpos.app.feature.settings.TerminalSetupViewModel
-import io.minimpos.app.terminal.SetupProblem
 import io.minimpos.terminal.transport.TerminalEnvironment
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi

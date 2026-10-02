@@ -2,6 +2,7 @@ package io.minimpos.app.terminal
 
 import com.google.common.truth.Truth.assertThat
 import io.minimpos.app.FakeDevice
+import io.minimpos.app.data.db.SetupProblem
 import io.minimpos.app.data.security.Secret
 import io.minimpos.app.data.settings.AppSettings
 import io.minimpos.app.data.settings.CaptureMode
@@ -11,6 +12,7 @@ import io.minimpos.app.data.settings.TerminalMode
 import io.minimpos.app.data.settings.TerminalSettings
 import io.minimpos.terminal.transport.TerminalEnvironment
 import org.junit.Test
+import kotlin.time.Duration.Companion.seconds
 
 /** Plain JUnit: where payments go and what is missing follows from the settings, the saved secrets and the device. */
 class TerminalSetupTest {
@@ -152,14 +154,87 @@ class TerminalSetupTest {
             device: DeviceInfo = phone,
             settings: AppSettings = merchant,
             saved: Set<Secret> = key,
-        ) = TerminalSetup.boarding(settings, saved, device)
-        assertThat(boarding()).isEqualTo(BoardingSetup.Ready(TerminalEnvironment.LIVE))
+            read: String? = "pa-key",
+        ) = TerminalSetup.boarding(settings, saved, device, read)
+        val ready = boarding()
+        assertThat(ready).isEqualTo(BoardingSetup.Ready(TerminalEnvironment.LIVE, "pa-key"))
+        assertThat(ready.toString()).doesNotContain("pa-key")
         assertThat(boarding(onTerminal)).isEqualTo(BoardingSetup.Blocked(SetupProblem.PAYMENTS_APP_ON_TERMINAL))
         assertThat(boarding(FakeDevice())).isEqualTo(BoardingSetup.Blocked(SetupProblem.PAYMENTS_APP_MISSING))
         val both = FakeDevice(paymentsApps = TerminalEnvironment.entries.toSet())
         assertThat(boarding(both)).isEqualTo(BoardingSetup.Blocked(SetupProblem.PAYMENTS_APP_AMBIGUOUS))
         assertThat(boarding(settings = AppSettings())).isEqualTo(BoardingSetup.Blocked(SetupProblem.MERCHANT_ACCOUNT))
-        assertThat(boarding(saved = passphrase)).isEqualTo(BoardingSetup.Blocked(SetupProblem.PAYMENTS_APP_API_KEY))
+        assertThat(boarding(saved = passphrase, read = null)).isEqualTo(BoardingSetup.Blocked(SetupProblem.PAYMENTS_APP_API_KEY))
+        // A key saved but no longer readable has to be entered again.
+        assertThat(boarding(read = null)).isEqualTo(BoardingSetup.Blocked(SetupProblem.UNREADABLE_PAYMENTS_APP_KEY))
+    }
+
+    @Test
+    fun `the secrets a setup needs are read once, and one that cannot be decrypted is what to enter again`() {
+        val local = TerminalSettings(mode = TerminalMode.TERMINAL, poiIdOverride = "S1U2-1", host = "10.0.0.9", keyIdentifier = "key")
+        val api = local.copy(merchantAccount = "Merchant", environment = TerminalEnvironment.TEST)
+        val both = passphrase + Secret.CHECKOUT_API_KEY
+        val setup = resolve(api, both)
+        assertThat(setup.secretsToRead(both)).containsExactly(Secret.TERMINAL_PASSPHRASE, Secret.CHECKOUT_API_KEY)
+        assertThat(setup.secretsToRead(passphrase)).containsExactly(Secret.TERMINAL_PASSPHRASE)
+        assertThat(resolve().secretsToRead(both)).containsExactly(Secret.CHECKOUT_API_KEY)
+
+        val unlocked = setup.unlock(mapOf(Secret.TERMINAL_PASSPHRASE to "correct horse", Secret.CHECKOUT_API_KEY to "api-key"))
+        assertThat(unlocked.setup).isEqualTo(setup)
+        assertThat(unlocked.terminalKey!!.keyIdentifier).isEqualTo("key")
+        assertThat(unlocked.apiKey).isEqualTo("api-key")
+        assertThat(unlocked.toString()).doesNotContain("correct horse")
+        assertThat(unlocked.toString()).doesNotContain("api-key")
+
+        val noPassphrase = setup.unlock(mapOf(Secret.TERMINAL_PASSPHRASE to null, Secret.CHECKOUT_API_KEY to "api-key"))
+        assertThat(noPassphrase.setup.problem).isEqualTo(SetupProblem.UNREADABLE_PASSPHRASE)
+        assertThat(noPassphrase.terminalKey).isNull()
+        assertThat(noPassphrase.setup.apiSetup).isEqualTo(ApiSetup.Complete)
+        val noApiKey = setup.unlock(mapOf(Secret.TERMINAL_PASSPHRASE to "correct horse", Secret.CHECKOUT_API_KEY to null))
+        assertThat(noApiKey.setup.problem).isNull()
+        assertThat(noApiKey.setup.apiSetup).isEqualTo(ApiSetup.Incomplete(SetupProblem.UNREADABLE_API_KEY))
+        // What is missing anyway comes first.
+        assertThat(resolve(local.copy(host = ""), both).unlock(mapOf(Secret.TERMINAL_PASSPHRASE to null)).setup.problem)
+            .isEqualTo(SetupProblem.HOST)
+        // In the cloud the API key is what reaches the terminal.
+        val cloud = TerminalSettings(mode = TerminalMode.CLOUD, merchantAccount = "Merchant", poiIdOverride = "S1F2-1")
+        val key = setOf(Secret.CHECKOUT_API_KEY)
+        assertThat(resolve(cloud, key).unlock(mapOf(Secret.CHECKOUT_API_KEY to null)).setup.problem)
+            .isEqualTo(SetupProblem.UNREADABLE_API_KEY)
+    }
+
+    @Test
+    fun `each destination says what it can do`() {
+        val tapToPay = FakeDevice(paymentsApps = setOf(TerminalEnvironment.TEST))
+        val destinations =
+            mapOf(
+                TerminalMode.SIMULATOR to resolve(),
+                TerminalMode.TERMINAL to resolve(TerminalSettings(mode = TerminalMode.TERMINAL)),
+                TerminalMode.CLOUD to resolve(TerminalSettings(mode = TerminalMode.CLOUD)),
+                TerminalMode.PAYMENTS_APP to resolve(TerminalSettings(mode = TerminalMode.PAYMENTS_APP), device = tapToPay),
+            ).mapValues { it.value.destination }
+        destinations.forEach { (mode, destination) -> assertThat(destination.mode).isEqualTo(mode) }
+        assertThat(resolve(TerminalSettings(mode = TerminalMode.AUTO), device = onTerminal).destination)
+            .isEqualTo(destinations[TerminalMode.TERMINAL])
+        // Only the Payments app takes no abort or diagnosis, and gives up on a missing answer sooner.
+        assertThat(destinations.filterValues { !it.aborts }.keys).containsExactly(TerminalMode.PAYMENTS_APP)
+        assertThat(destinations.filterValues { !it.diagnoses }.keys).containsExactly(TerminalMode.PAYMENTS_APP)
+        assertThat(destinations.getValue(TerminalMode.PAYMENTS_APP).recovery.attempts).isEqualTo(1)
+        // A cloud payment waits as long as Adyen requires.
+        assertThat(destinations.getValue(TerminalMode.CLOUD).transactionTimeout(30.seconds)).isEqualTo(160.seconds)
+        assertThat(destinations.getValue(TerminalMode.TERMINAL).transactionTimeout(30.seconds)).isEqualTo(30.seconds)
+        // Each is reached with its own secret.
+        assertThat(destinations.mapValues { it.value.secrets })
+            .containsExactly(
+                TerminalMode.SIMULATOR,
+                emptySet<Secret>(),
+                TerminalMode.TERMINAL,
+                setOf(Secret.TERMINAL_PASSPHRASE),
+                TerminalMode.CLOUD,
+                setOf(Secret.CHECKOUT_API_KEY),
+                TerminalMode.PAYMENTS_APP,
+                setOf(Secret.TERMINAL_PASSPHRASE),
+            )
     }
 
     @Test

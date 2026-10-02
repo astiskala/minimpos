@@ -1,5 +1,6 @@
 package io.minimpos.app.terminal
 
+import io.minimpos.app.data.db.SetupProblem
 import io.minimpos.app.data.security.Secret
 import io.minimpos.app.data.security.SecretStore
 import io.minimpos.app.data.settings.SettingsRepository
@@ -51,15 +52,14 @@ sealed interface TapToPayOutcome {
  * settings, with the Payments app API key ([Secret.PAYMENTS_APP_API_KEY]), and stores the installation ID it reports as
  * the POIID; or revokes it. The environment is the installed Payments app's.
  *
- * @param setups Whether it can be boarded ([TerminalSetupSource.boarding]), and the merchant account and store.
- * @param secrets Holds the Payments app API key.
+ * @param setups Whether it can be boarded, with the Payments app API key ([TerminalSetupSource.boarding]), and the
+ *   merchant account and store.
  * @param settings Where the installation ID is stored.
  * @param exchange Opens the Payments app.
  * @param management The Management API for an API key and environment; tests replace it.
  */
 class TapToPaySetup(
     private val setups: TerminalSetupSource,
-    private val secrets: SecretStore,
     private val settings: SettingsRepository,
     private val exchange: AppLinkExchange,
     private val management: (apiKey: String, environment: TerminalEnvironment) -> PaymentsAppManagement = { key, environment ->
@@ -138,8 +138,7 @@ class TapToPaySetup(
             }
 
             is BoardingSetup.Ready -> {
-                secrets.get(Secret.PAYMENTS_APP_API_KEY)?.let { Access.Granted(boarding.environment, management(it, boarding.environment)) }
-                    ?: Access.Denied(SetupProblem.UNREADABLE_PAYMENTS_APP_KEY)
+                Access.Granted(boarding.environment, management(boarding.apiKey, boarding.environment))
             }
         }
 

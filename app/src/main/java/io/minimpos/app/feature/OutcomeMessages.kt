@@ -6,7 +6,10 @@ import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import io.minimpos.app.R
-import io.minimpos.app.terminal.SetupProblem
+import io.minimpos.app.data.db.RefundEntity
+import io.minimpos.app.data.db.SaleEntity
+import io.minimpos.app.data.db.SetupProblem
+import io.minimpos.app.data.db.StoredReason
 import io.minimpos.app.ui.components.ActionMessage
 import io.minimpos.app.ui.components.currentLocale
 import io.minimpos.core.money.CurrencySpec
@@ -55,9 +58,56 @@ fun ActionOutcome.text(): String =
 @ReadOnlyComposable
 fun SetupProblem.text(): String = stringResource(textRes)
 
-/** The string resource that words this setup problem, also for the messages the container stores with transactions. */
+/**
+ * Why this sale's payment (or payment link) did not succeed, as the screens say it: the app's [SaleEntity.reason] in
+ * the current language, then what Adyen or the terminal said ([SaleEntity.message]); null when neither is stored.
+ */
+@Composable
+@ReadOnlyComposable
+fun SaleEntity.outcomeNote(): String? =
+    note(
+        reason?.text(if (paymentLink) R.string.link_unknown_outcome else R.string.payment_unknown_outcome, R.string.payment_interrupted),
+        message,
+    )
+
+/** Why this sale's latest capture or adjustment did not go through, worded as [outcomeNote]; null when it did. */
+@Composable
+@ReadOnlyComposable
+fun SaleEntity.modificationNote(): String? =
+    note(modificationReason?.text(R.string.capture_interrupted, R.string.capture_interrupted), modificationMessage)
+
+/** Why this refund was not accepted, worded as [SaleEntity.outcomeNote]; null when nothing is stored. */
+@Composable
+@ReadOnlyComposable
+fun RefundEntity.outcomeNote(): String? = note(reason?.text(R.string.refund_unknown_outcome, R.string.payment_interrupted), message)
+
+/** The app's [worded] reason, with what Adyen or the terminal said ([said]) in brackets after it. */
+private fun note(
+    worded: String?,
+    said: String?,
+): String? =
+    when {
+        worded == null -> said
+        said == null -> worded
+        else -> "$worded ($said)"
+    }
+
+/** This stored reason in the current language: an unknown outcome as [unknown], an interruption as [interrupted]. */
+@Composable
+@ReadOnlyComposable
+private fun StoredReason.text(
+    @StringRes unknown: Int,
+    @StringRes interrupted: Int,
+): String =
+    when (this) {
+        is StoredReason.NotSetUp -> problem.text()
+        StoredReason.OutcomeUnknown -> stringResource(unknown)
+        StoredReason.Interrupted -> stringResource(interrupted)
+    }
+
+/** The string resource that words this setup problem. */
 @get:StringRes
-val SetupProblem.textRes: Int
+private val SetupProblem.textRes: Int
     get() =
         when (this) {
             SetupProblem.POI_ID -> R.string.setup_poiid

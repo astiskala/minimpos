@@ -4,6 +4,7 @@ import io.minimpos.app.data.db.SaleEntity
 import io.minimpos.app.data.db.SaleKind
 import io.minimpos.app.data.db.SaleLineEntity
 import io.minimpos.app.data.db.SaleStatus
+import io.minimpos.app.data.repo.SaleEvent
 import io.minimpos.app.data.repo.SaleRepository
 import io.minimpos.core.cart.CartTotals
 import io.minimpos.core.money.CurrencySpec
@@ -104,7 +105,7 @@ class SaleBook(
     override suspend fun sending(
         id: String,
         poiId: String,
-    ) = sales.markSending(id, poiId)
+    ) = sales.record(id, SaleEvent.Sending(poiId))
 
     override suspend fun settle(
         id: String,
@@ -118,7 +119,7 @@ class SaleBook(
                 SettlementStatus.FAILED -> SaleStatus.FAILED
                 SettlementStatus.UNKNOWN -> SaleStatus.UNKNOWN
             }
-        sales.settle(id, status, settlement.message, settlement.details)
+        sales.record(id, SaleEvent.Settled(status, settlement.message, settlement.details, settlement.reason))
     }
 
     override suspend fun unsettledServiceId(id: String): String? =

@@ -205,7 +205,7 @@ data class SaleEntity(
     val entryMode: String? = null,
     /** The issuer's approval code. */
     val authCode: String? = null,
-    /** Why the sale did not succeed, for display; null for approved sales. */
+    /** Why the sale did not succeed, as Adyen or the terminal worded it, for display; null when they did not say. */
     val message: String? = null,
     /** JSON list of [io.minimpos.core.receipt.CardReceiptLine] for the customer's card receipt; null when none was sent. */
     val customerReceiptJson: String? = null,
@@ -253,8 +253,8 @@ data class SaleEntity(
     /** Where the capture of a payment taken with manual capture stands; null before any. Added in database version 6. */
     val captureStatus: CaptureStatus? = null,
     /**
-     * Why the latest capture or adjustment did not go through (for example the issuer refused a higher amount), for
-     * display; null when it did. Added in database version 6.
+     * Why the latest capture or adjustment did not go through as Adyen worded it (for example the issuer refused a
+     * higher amount), for display; null when it did, or Adyen did not say. Added in database version 6.
      */
     val modificationMessage: String? = null,
     /**
@@ -283,6 +283,16 @@ data class SaleEntity(
      * Added in database version 9.
      */
     val paymentLinkExpiresAt: Long? = null,
+    /**
+     * Why the sale did not succeed when the app itself says so (not set up, outcome unknown, interrupted), worded on
+     * screen in the current language next to [message]; null otherwise. Added in database version 10.
+     */
+    val reason: StoredReason? = null,
+    /**
+     * Why the latest capture or adjustment did not go through when the app itself says so, worded on screen next to
+     * [modificationMessage]; null otherwise. Added in database version 10.
+     */
+    val modificationReason: StoredReason? = null,
 ) {
     /** What the payment holds on the card: [authorisedMinor] after an adjustment, else [totalMinor]. */
     val heldMinor: Long get() = authorisedMinor ?: totalMinor
@@ -293,17 +303,14 @@ data class SaleEntity(
      */
     val manualCapture: Boolean get() = kind == SaleKind.PRE_AUTHORISATION || tipOnReceipt
 
-    /** Whether a capture was requested from Adyen or left to the Customer Area, so the payment counts as charged. */
-    val captured: Boolean get() = captureStatus == CaptureStatus.REQUESTED || captureStatus == CaptureStatus.MANUAL
-
     /**
-     * The payment's amount as it stands: the capture's once [captured], else the bill plus any tip entered, else what a
-     * pre-authorisation holds, else [totalMinor].
+     * The payment's amount as it stands: the capture's once captured ([CaptureStatus.captured]), else the bill plus any
+     * tip entered, else what a pre-authorisation holds, else [totalMinor].
      */
     val amountMinor: Long
         get() =
             when {
-                captured -> capturedMinor ?: totalMinor
+                captureStatus?.captured == true -> capturedMinor ?: totalMinor
                 tipMinor != null -> totalMinor + tipMinor
                 kind == SaleKind.PRE_AUTHORISATION -> heldMinor
                 else -> totalMinor
@@ -335,6 +342,14 @@ enum class CaptureStatus {
 
     /** It is not known whether Adyen received the request; sending it again is safe (same idempotency key). */
     UNKNOWN,
+    ;
+
+    /**
+     * Whether the capture counts as made, so the payment counts as charged: Adyen received it ([REQUESTED]) or staff were
+     * left to make it ([MANUAL]). The one rule behind [SaleEntity.amountMinor] and
+     * [io.minimpos.app.refund.PaymentStanding.captured].
+     */
+    val captured: Boolean get() = this == REQUESTED || this == MANUAL
 }
 
 /**
@@ -446,7 +461,7 @@ data class RefundEntity(
     val serviceId: String? = null,
     /** Adyen's PSP reference for the refund, when the terminal returned one. */
     val pspReference: String? = null,
-    /** Why the refund did not succeed, for display; null when it was accepted. */
+    /** Why the refund did not succeed, as the terminal worded it, for display; null when it did not say. */
     val message: String? = null,
     /** JSON list of [io.minimpos.core.receipt.CardReceiptLine] for the customer's card receipt; null when none was sent. */
     val customerReceiptJson: String? = null,
@@ -457,6 +472,11 @@ data class RefundEntity(
      * it was captured meanwhile) rather than refunding a sale. Added in database version 5.
      */
     @ColumnInfo(defaultValue = "0") val cancellation: Boolean = false,
+    /**
+     * Why the refund did not succeed when the app itself says so, worded on screen next to [message]; null otherwise.
+     * Added in database version 10.
+     */
+    val reason: StoredReason? = null,
 )
 
 /**

@@ -739,6 +739,9 @@
   <string name="settings_catalogue">Other devices</string>
   <string name="settings_export_hint">Show the catalog, settings, passwords and keys as QR codes</string>
   <string name="settings_import_hint">Scan the codes of another device or of the setup helper page to copy its setup</string>
+  <string name="settings_quick_setup">Quick setup</string>
+  <string name="settings_quick_setup_hint">Open astiskala.github.io/minimpos/setup.html on a computer to enter your connection details, then scan its QR codes here. You can also copy setup from another device.</string>
+  <string name="settings_quick_setup_import">Scan setup codes</string>
 
   <string name="about_version">Version</string>
   <string name="about_printer">Printer</string>

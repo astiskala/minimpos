@@ -56,6 +56,10 @@ device API or the Adyen Payments app (Tap to Pay); anywhere through its built-in
   `gh attestation verify`), and update the version and all four checksums together.
 - A new architectural decision gets its ArchUnit rule in the same change (a starred bullet in the module's
   `AGENTS.md`), with a comment saying why; check a new rule fails on a deliberate violation before relying on it.
+- Gradle 9.8 deprecates `Configuration.setVisible`; Kover 0.9.9, AGP 9.4.1, Dokka 2.2.0, detekt 2.0.0-alpha.6 and
+  KSP 2.3.12 still call it internally. Spotless 8.10.3 fixes its call. Trace configuration-time warnings with
+  `./gradlew qualityGate --no-configuration-cache --warning-mode all -Dorg.gradle.deprecation.trace=true`;
+  a reused configuration cache hides them. Do not suppress plugin warnings; update when upstream fixes are available.
 - Format with `./gradlew spotlessApply` (also runs `rumdl fmt`). After editing `.editorconfig`, run `./gradlew --stop`
   (ktlint caches it).
 - Fix findings instead of silencing them: no new `@Suppress`, lint ignores, baselines or rule exclusions. The existing
@@ -85,9 +89,11 @@ device API or the Adyen Payments app (Tap to Pay); anywhere through its built-in
   (INTERNET, ACCESS_NETWORK_STATE, CAMERA; `StripManifestPermissionsTask` removes androidx's
   `DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION`), and a PNG-only `android:icon` (the Customer Area cannot render adaptive
   icons; never add an adaptive `ic_launcher`; `MainActivity` has its own `ic_launcher_adaptive`).
-- `applicationId` is `io.github.astiskala.minimpos`; never change it or reuse the abandoned `io.minimpos.app` (the Kotlin
-  package/namespace). Each package is tied to the key of its first upload: always sign with the same key, and upload a
-  new `versionCode` each time. Unsigned APKs upload fine but fail to install on terminals.
+- `applicationId` is `io.github.astiskala.minimpos`; never change it or reuse the abandoned `io.minimpos.app` ID.
+  Kotlin packages use `io.github.astiskala.minimpos` with `app`, `core`, `terminal` and `website` subdivisions; the
+  Android namespace is `io.github.astiskala.minimpos.app`. Each application ID is tied to the key of its first upload:
+  always sign with the same key, and upload a new `versionCode` each time. Unsigned APKs upload fine but fail to install
+  on terminals.
 - Smallest target screen: AMS1, 4" 480×800 hdpi, ~320×460 dp usable, Android 10, no printer.
 - Terminals have no Google Play services: no dependency may need them (hence CameraX + ZXing for scanning).
 - On a terminal the POIID comes from `Settings.Global.DEVICE_NAME` and the host is `localhost`; only the shared key (and

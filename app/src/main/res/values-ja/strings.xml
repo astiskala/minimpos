@@ -694,6 +694,9 @@
   <string name="settings_catalogue">他のデバイス</string>
   <string name="settings_export_hint">カタログ、設定、パスワード、キーをQRコードで表示</string>
   <string name="settings_import_hint">別のデバイスまたはセットアップヘルパーのコードを読み取り、設定をコピー</string>
+  <string name="settings_quick_setup">かんたんセットアップ</string>
+  <string name="settings_quick_setup_hint">パソコンでastiskala.github.io/minimpos/ja/setup.htmlを開いて接続情報を入力し、ここでQRコードを読み取ってください。別のデバイスから設定をコピーすることもできます。</string>
+  <string name="settings_quick_setup_import">設定コードを読み取る</string>
   <string name="about_version">バージョン</string>
   <string name="about_printer">プリンター</string>
   <string name="about_printer_yes">あり</string>

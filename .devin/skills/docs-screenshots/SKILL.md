@@ -49,8 +49,8 @@ description: Re-capture the screenshots and social image of the docs/ website, o
 Seeded before the first launch (debug builds only), piped in with
 `adb shell "cat … | run-as io.github.astiskala.minimpos sh -c 'cat > …'"`:
 
-- A Room DB built from the latest `app/schemas/io.minimpos.app.data.db.AppDatabase/<version>.json` (Python sqlite3,
-  `PRAGMA user_version`).
+- A Room DB built from the latest `app/schemas/io.github.astiskala.minimpos.app.data.db.AppDatabase/<version>.json`
+  (Python sqlite3, `PRAGMA user_version`).
 - `files/datastore/settings.json`: auto-lock 10 min, simulator delay 6 s (so the "waiting" screen can be captured).
   The keys it leaves out take the constructor's defaults, not a new installation's
   (`AppSettings.forNewInstallation`): checkout asks for a transaction and a customer reference, offers Save card, and

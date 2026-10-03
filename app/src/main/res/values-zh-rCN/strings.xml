@@ -694,6 +694,9 @@
   <string name="settings_catalogue">其他设备</string>
   <string name="settings_export_hint">以二维码显示商品目录、设置、密码和密钥</string>
   <string name="settings_import_hint">扫描另一台设备或设置助手页面的二维码，复制其设置</string>
+  <string name="settings_quick_setup">快速设置</string>
+  <string name="settings_quick_setup_hint">在电脑上打开 astiskala.github.io/minimpos/zh-CN/setup.html，输入连接信息，然后在此扫描生成的二维码。也可以从另一台设备复制设置。</string>
+  <string name="settings_quick_setup_import">扫描设置二维码</string>
   <string name="about_version">版本</string>
   <string name="about_printer">打印机</string>
   <string name="about_printer_yes">可用</string>

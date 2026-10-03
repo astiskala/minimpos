@@ -33,7 +33,7 @@ val appVersion =
     }
 
 android {
-    namespace = "io.minimpos.app"
+    namespace = "io.github.astiskala.minimpos.app"
     compileSdk = 37
 
     defaultConfig {
@@ -233,12 +233,12 @@ kover {
                     "*_Impl",
                     "*_Impl\$*",
                     "*.BuildConfig",
-                    "io.minimpos.app.MainActivity*",
-                    "io.minimpos.app.MiniMposApplication*",
+                    "io.github.astiskala.minimpos.app.MainActivity*",
+                    "io.github.astiskala.minimpos.app.MiniMposApplication*",
                 )
                 packages(
-                    "io.minimpos.app.ui.theme",
-                    "io.minimpos.app.scan",
+                    "io.github.astiskala.minimpos.app.ui.theme",
+                    "io.github.astiskala.minimpos.app.scan",
                 )
             }
         }

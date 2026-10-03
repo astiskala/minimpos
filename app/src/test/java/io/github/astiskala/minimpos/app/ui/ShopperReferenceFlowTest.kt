@@ -1,6 +1,7 @@
 package io.github.astiskala.minimpos.app.ui
 
 import androidx.compose.ui.test.ExperimentalTestApi
+import androidx.compose.ui.test.assertIsOn
 import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
@@ -77,6 +78,18 @@ class ShopperReferenceFlowTest {
                 payment = it.payment.copy(shopperReferenceSource = ShopperReferenceSource.EMAIL, emailCapture = EmailCapture.AFTER_PAYMENT),
             )
         }
+
+    @Test
+    fun `checkout option labels toggle their switches`() {
+        ringUpCustomAmount(5, 0, 0)
+        compose.onNodeWithTag("charge").performClick()
+        waitForTag("pay")
+        compose.onNodeWithTag("customerReference").performTextInput("CUST-1042")
+        compose.onNodeWithText("Save card for future payments").performScrollTo().performClick()
+        compose.onNodeWithTag("tokenize").assertIsOn()
+        compose.onNodeWithText("Tip on the receipt").performScrollTo().performClick()
+        compose.onNodeWithTag("tipOnReceipt").assertIsOn()
+    }
 
     @Test
     fun `with the email as shopper reference checkout asks for the email and no customer reference`() {

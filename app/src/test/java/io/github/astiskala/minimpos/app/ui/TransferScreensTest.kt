@@ -92,7 +92,11 @@ class TransferScreensTest {
         compose.onNodeWithTag("shareCatalogue").assertIsOn()
         compose.onNodeWithTag("shareSettings").assertIsOn()
         // Nothing secret is set yet.
-        compose.onNodeWithTag("shareSecrets").performScrollTo().assertIsOff()
+        compose
+            .onNodeWithTag("shareSecrets")
+            .performScrollTo()
+            .assertIsOff()
+            .assertIsNotEnabled()
         compose.onNodeWithText("None set on this device").assertExists()
         compose.onNodeWithTag("shareCatalogue").performClick()
         compose.onNodeWithTag("shareSettings").performClick()

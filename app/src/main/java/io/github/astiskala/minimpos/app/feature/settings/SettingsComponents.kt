@@ -30,7 +30,6 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -53,6 +52,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import io.github.astiskala.minimpos.app.R
 import io.github.astiskala.minimpos.app.ui.components.LocalAppContainer
+import io.github.astiskala.minimpos.app.ui.components.SwitchRow
 import io.github.astiskala.minimpos.app.ui.theme.LocalDimens
 import io.github.astiskala.minimpos.app.ui.theme.LocalStatusColors
 
@@ -151,22 +151,16 @@ fun SettingSwitch(
     modifier: Modifier = Modifier,
     subtitle: String? = null,
     tag: String? = null,
+    enabled: Boolean = true,
 ) {
-    Row(
-        modifier.fillMaxWidth().clickable { onChange(!checked) }.padding(
-            horizontal = 16.dp,
-            vertical =
-                LocalDimens.current.rowPadding - 2.dp,
-        ),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Column(Modifier.weight(1f)) {
-            Text(title, style = MaterialTheme.typography.bodyLarge)
-            subtitle?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
-        }
-        Spacer(Modifier.width(12.dp))
-        Switch(checked = checked, onCheckedChange = onChange, modifier = Modifier.tagged(tag))
-    }
+    SwitchRow(
+        title = title,
+        checked = checked,
+        onChange = onChange,
+        subtitle = subtitle,
+        enabled = enabled,
+        modifier = modifier.padding(horizontal = 16.dp, vertical = LocalDimens.current.rowPadding - 2.dp).tagged(tag),
+    )
 }
 
 /** A single-choice setting: shows the current value, opens a radio list dialog. */

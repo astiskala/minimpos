@@ -56,7 +56,7 @@ class TaxRateFormTest {
 
         compose.onNodeWithTag("taxName").performTextReplacement(" Sales tax NYC ")
         compose.onNodeWithTag("taxRate").performTextReplacement("8.875")
-        compose.onNodeWithTag("taxDefault").performClick()
+        compose.onNodeWithText("Default for new products and custom items").performClick()
         assertThat(form.toEntity()).isEqualTo(TaxRateEntity(name = "Sales tax NYC", rateMilliPercent = 8_875, sortOrder = 3))
         assertThat(form.makeDefault).isTrue()
 

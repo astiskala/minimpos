@@ -24,7 +24,10 @@ import io.github.astiskala.minimpos.terminal.transport.CloudCredentials
 import io.github.astiskala.minimpos.terminal.transport.CloudDetection
 import io.github.astiskala.minimpos.terminal.transport.CloudRegion
 import io.github.astiskala.minimpos.terminal.transport.TerminalEnvironment
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.test.UnconfinedTestDispatcher
+import kotlinx.coroutines.test.advanceTimeBy
 import org.junit.After
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -32,13 +35,15 @@ import org.robolectric.RobolectricTestRunner
 import java.math.BigDecimal
 
 /** Payments that go to a terminal in the cloud, or to the Adyen Payments app on this phone (Tap to Pay). */
+@OptIn(ExperimentalCoroutinesApi::class)
 @RunWith(RobolectricTestRunner::class)
 class RemoteTerminalTest {
     private val cloud = FakeCloud()
     private val paymentsApp = FakePaymentsApp()
     private val management = FakeManagement()
     private val phone = FakeDevice(paymentsApps = setOf(TerminalEnvironment.TEST))
-    private val env = TestEnvironment(phone, cloud = cloud, paymentsApp = paymentsApp, management = management)
+    private val dispatcher = UnconfinedTestDispatcher()
+    private val env = TestEnvironment(phone, dispatcher = dispatcher, cloud = cloud, paymentsApp = paymentsApp, management = management)
     private val container = env.container
     private val gateway = container.gateway
     private val payment = PaymentParams(BigDecimal("1.00"), "AUD", "MP-1")
@@ -80,6 +85,7 @@ class RemoteTerminalTest {
         val saved = await { container.settings.settings.first { it.terminal.cloudRegion != null } }
         assertThat(saved.terminal.environment).isEqualTo(TerminalEnvironment.LIVE)
         assertThat(saved.terminal.cloudRegion).isEqualTo(CloudRegion.AU)
+        dispatcher.scheduler.advanceTimeBy(1_001)
         val status =
             await {
                 container.terminalStatus.state.first {

@@ -67,6 +67,7 @@ Starred rules below are enforced by `ArchitectureTest` (PIN rules also by `PinAr
 - `TestEnvironment` is rule order 0, Compose order 1. FakeDevice/FakeTerminal model terminals; FakeCloud,
   FakePaymentsApp, FakeManagement and FakeLinkApi model external services (`env.useLinks()` enables link setup).
   Call `container.start()` for background connection checks. Use fake DNS; no network in tests.
+  Startup tests inject `UnconfinedTestDispatcher` into `TestEnvironment`; advance its scheduler for debounced checks.
 - `FileProvider` caches roots across Robolectric tests; `forgetSharedFileRoots` clears them. Filesystem fixtures must
   also be isolated across the two worker JVMs.
 - Wait with `compose.awaitCondition`, not `await` (main-looper deadlock). After saving, wait for the editor to close.

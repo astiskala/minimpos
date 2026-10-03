@@ -6,6 +6,7 @@ import androidx.datastore.core.DataStoreFactory
 import androidx.datastore.core.handlers.ReplaceFileCorruptionHandler
 import androidx.datastore.dataStoreFile
 import io.minimpos.app.data.db.AppDatabase
+import io.minimpos.app.data.db.RefundStatus
 import io.minimpos.app.data.db.SaleKind
 import io.minimpos.app.data.db.TaxRateEntity
 import io.minimpos.app.data.repo.CatalogRepository
@@ -39,6 +40,7 @@ import io.minimpos.app.payment.TransactionLifecycle
 import io.minimpos.app.qr.QrCodes
 import io.minimpos.app.receipt.ReceiptFactory
 import io.minimpos.app.receipt.ReceiptSampleTexts
+import io.minimpos.app.refund.PaymentStanding
 import io.minimpos.app.refund.RefundStart
 import io.minimpos.app.refund.StoredPayments
 import io.minimpos.app.terminal.AdyenApi
@@ -230,32 +232,32 @@ class AppContainer(
             currentLabels = ::receiptLabels,
             standingText = { standing ->
                 when (standing) {
-                    io.minimpos.app.refund.PaymentStanding.CHARGED -> null
+                    PaymentStanding.CHARGED -> null
 
-                    io.minimpos.app.refund.PaymentStanding.NOT_APPROVED -> context.getString(R.string.receipt_not_completed)
+                    PaymentStanding.NOT_APPROVED -> context.getString(R.string.receipt_not_completed)
 
-                    io.minimpos.app.refund.PaymentStanding.AWAITING_TIP -> context.getString(R.string.detail_tip_awaiting)
+                    PaymentStanding.AWAITING_TIP -> context.getString(R.string.detail_tip_awaiting)
 
-                    io.minimpos.app.refund.PaymentStanding.HELD -> context.getString(R.string.receipt_pre_auth_note)
+                    PaymentStanding.HELD -> context.getString(R.string.receipt_pre_auth_note)
 
-                    io.minimpos.app.refund.PaymentStanding.CAPTURE_REQUESTED -> context.getString(R.string.status_capture_requested)
+                    PaymentStanding.CAPTURE_REQUESTED -> context.getString(R.string.status_capture_requested)
 
-                    io.minimpos.app.refund.PaymentStanding.CAPTURE_FAILED -> context.getString(R.string.status_capture_failed)
+                    PaymentStanding.CAPTURE_FAILED -> context.getString(R.string.status_capture_failed)
 
-                    io.minimpos.app.refund.PaymentStanding.CAPTURE_SENDING,
-                    io.minimpos.app.refund.PaymentStanding.CAPTURE_UNKNOWN,
+                    PaymentStanding.CAPTURE_SENDING,
+                    PaymentStanding.CAPTURE_UNKNOWN,
                     -> context.getString(R.string.status_capture_unknown)
 
-                    io.minimpos.app.refund.PaymentStanding.HOLD_CANCELLED -> context.getString(R.string.status_cancellation_requested)
+                    PaymentStanding.HOLD_CANCELLED -> context.getString(R.string.status_cancellation_requested)
                 }
             },
             refundText = { status ->
                 context.getString(
                     when (status) {
-                        io.minimpos.app.data.db.RefundStatus.REQUESTED -> R.string.refund_status_requested
-                        io.minimpos.app.data.db.RefundStatus.PENDING -> R.string.status_pending
-                        io.minimpos.app.data.db.RefundStatus.UNKNOWN -> R.string.status_unknown
-                        io.minimpos.app.data.db.RefundStatus.FAILED -> R.string.status_failed
+                        RefundStatus.REQUESTED -> R.string.refund_status_requested
+                        RefundStatus.PENDING -> R.string.status_pending
+                        RefundStatus.UNKNOWN -> R.string.status_unknown
+                        RefundStatus.FAILED -> R.string.status_failed
                     },
                 )
             },

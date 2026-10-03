@@ -5,6 +5,7 @@ import io.minimpos.app.data.db.RefundStatus
 import io.minimpos.app.data.repo.ReceiptLinesJson
 import io.minimpos.app.data.repo.RefundRepository
 import io.minimpos.app.refund.RefundStart
+import io.minimpos.core.money.PaymentContext
 import io.minimpos.terminal.client.TransactionKind
 
 /**
@@ -49,7 +50,7 @@ class RefundBook(
 
     override suspend fun recordContext(
         id: String,
-        context: io.minimpos.core.money.PaymentContext,
+        context: PaymentContext,
     ) = refunds.recordContext(id, context)
 
     override suspend fun context(id: String) = refunds.get(id)?.context

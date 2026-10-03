@@ -371,7 +371,7 @@ class SmallScreenTest {
     private fun tipFitsTheScreen() {
         // The simulator stands in for the Checkout API that captures the tip. The AMS1 has no printer of its own;
         // tipping on the receipt needs one.
-        env.useSimulator { it.copy(receipt = it.receipt.copy(printerMode = PrinterMode.ON)) }
+        env.useSimulator { it.copy(receipt = it.receipt.copy(printerMode = PrinterMode.ON, autoPrint = false)) }
         compose.setContent { MiniMposApp(container) }
         compose.onNodeWithTag("newSale").performClick()
         waitForTag("addCustom")

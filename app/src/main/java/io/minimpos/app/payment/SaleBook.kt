@@ -8,6 +8,7 @@ import io.minimpos.app.data.repo.SaleEvent
 import io.minimpos.app.data.repo.SaleRepository
 import io.minimpos.core.cart.CartTotals
 import io.minimpos.core.money.CurrencySpec
+import io.minimpos.core.money.PaymentContext
 import io.minimpos.terminal.client.PaymentParams
 import io.minimpos.terminal.client.RecurringModel
 import io.minimpos.terminal.client.TransactionKind
@@ -90,7 +91,7 @@ class SaleBook(
 
     override suspend fun recordContext(
         id: String,
-        context: io.minimpos.core.money.PaymentContext,
+        context: PaymentContext,
     ) = sales.record(id, SaleEvent.ContextRecorded(context))
 
     override suspend fun context(id: String) = sales.get(id)?.sale?.context

@@ -23,9 +23,8 @@ import io.minimpos.app.terminal.AdyenApi
 import io.minimpos.app.terminal.ApiCheck
 import io.minimpos.app.terminal.TerminalConnection
 import io.minimpos.app.terminal.TerminalStatus
+import io.minimpos.core.money.CurrencySpec
 import io.minimpos.core.receipt.ReceiptDocument
-import CurrencySpec
-import Locale
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -36,6 +35,7 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
+import java.util.Locale
 
 /**
  * What the settings screen shows.

@@ -1,9 +1,11 @@
 package io.minimpos.app.payment
 
 import android.database.SQLException
+import io.minimpos.app.data.db.SetupProblem
 import io.minimpos.app.data.db.StoredReason
 import io.minimpos.app.terminal.Attempt
 import io.minimpos.app.terminal.TerminalGateway
+import io.minimpos.core.money.PaymentContext
 import io.minimpos.terminal.client.PaymentParams
 import io.minimpos.terminal.client.RefundParams
 import io.minimpos.terminal.client.TerminalClient
@@ -17,6 +19,8 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import java.time.Clock
 import java.util.UUID
 
@@ -124,6 +128,9 @@ interface TransactionBook<R> {
     /** The request to send for [request]. */
     fun operation(request: R): TerminalOperation
 
+    /** Original destination required for a locally referenced refund; null for new payments or reviewed foreign receipts. */
+    fun expectedContext(request: R): PaymentContext? = null
+
     /** Records that record [id] is being sent to the terminal [poiId]; nothing by default. */
     suspend fun sending(
         id: String,
@@ -138,6 +145,15 @@ interface TransactionBook<R> {
 
     /** The ServiceID of record [id] when its outcome is still unknown, so it can be checked again; else null. */
     suspend fun unsettledServiceId(id: String): String?
+
+    /** Records the actual connection's non-secret context for [id]. */
+    suspend fun recordContext(
+        id: String,
+        context: PaymentContext,
+    ) = Unit
+
+    /** Original connection context for recovery; null when no request was sent. */
+    suspend fun context(id: String): PaymentContext? = null
 }
 
 /**
@@ -154,11 +170,12 @@ interface TransactionBook<R> {
  * @param scope Where transactions run.
  * @param gateway Sends the requests.
  * @param book How the records are stored.
- * @param onSucceeded Called with the record ID and the request when a transaction succeeds (not when a [recheck]
- *   settles one), before the state becomes [TransactionState.Finished].
+ * @param onSucceeded Called once with the record ID and its original request when a transaction succeeds, including
+ *   a [recheck] of one started in this process; an immediate success is reported before [TransactionState.Finished].
  * @param clock Stamps the records.
  * @param newId Generates record IDs.
  * @param newServiceId Generates the ServiceIDs of the requests.
+ * @param permits Whether the action is authorized now, checked again immediately before sending.
  */
 class TransactionLifecycle<R>(
     private val scope: CoroutineScope,
@@ -168,22 +185,27 @@ class TransactionLifecycle<R>(
     private val clock: Clock = Clock.systemUTC(),
     private val newId: () -> String = { UUID.randomUUID().toString() },
     private val newServiceId: () -> String = { TerminalClient.randomServiceId() },
+    private val permits: suspend (R) -> Boolean = { true },
 ) {
     private val _state = MutableStateFlow<TransactionState>(TransactionState.Idle)
 
     /** The current transaction; the waiting and result screens follow it. */
     val state: StateFlow<TransactionState> = _state.asStateFlow()
     private val busyServiceIds = mutableMapOf<String, String>()
+    private val unresolvedRequests = mutableMapOf<String, R>()
+    private val rechecks = Mutex()
 
     /**
      * Starts [request] in the background and returns the new record's ID straight away.
      *
      * @throws IllegalStateException if a transaction is already in progress.
      */
+    @Synchronized
     fun start(request: R): String {
         check(_state.value !is TransactionState.Processing) { "A ${book.kind.name.lowercase()} is already in progress" }
         val id = newId()
         _state.value = TransactionState.Processing(id)
+        synchronized(unresolvedRequests) { unresolvedRequests[id] = request }
         scope.launch {
             try {
                 run(id, request)
@@ -236,13 +258,16 @@ class TransactionLifecycle<R>(
      * Asks the terminal again (TransactionStatus) about record [id] whose outcome is unknown, and stores the answer.
      * Returns false when the outcome is still unknown, or the record is not unknown (or was never sent).
      */
-    suspend fun recheck(id: String): Boolean {
-        val serviceId = book.unsettledServiceId(id) ?: return false
-        val outcome = gateway.status(serviceId, book.kind)
-        if (outcome is TransactionOutcome.Unknown) return false
-        book.settle(id, settle(id, outcome))
-        return true
-    }
+    suspend fun recheck(id: String): Boolean =
+        rechecks.withLock {
+            val serviceId = book.unsettledServiceId(id) ?: return@withLock false
+            val outcome = gateway.status(serviceId, book.kind, book.context(id))
+            if (outcome is TransactionOutcome.Unknown) return@withLock false
+            val settlement = settle(id, outcome)
+            book.settle(id, settlement)
+            complete(id, settlement)
+            true
+        }
 
     private suspend fun run(
         id: String,
@@ -257,9 +282,25 @@ class TransactionLifecycle<R>(
             }
         }
         val attempt =
-            when (val operation = book.operation(request)) {
-                is TerminalOperation.Pay -> gateway.pay(operation.params, serviceId, onSending)
-                is TerminalOperation.Refund -> gateway.refund(operation.params, serviceId, onSending)
+            if (!permits(request)) {
+                Attempt.NotSetUp(SetupProblem.MANAGER_APPROVAL)
+            } else {
+                when (val operation = book.operation(request)) {
+                    is TerminalOperation.Pay -> {
+                        gateway.pay(
+                            operation.params,
+                            serviceId,
+                            onSending = onSending,
+                            onContext = { book.recordContext(id, it) },
+                        )
+                    }
+
+                    is TerminalOperation.Refund -> {
+                        gateway.refund(operation.params, serviceId, onSending = onSending, onContext = {
+                            book.recordContext(id, it)
+                        }, expected = book.expectedContext(request))
+                    }
+                }
             }
         val settlement =
             when (attempt) {
@@ -267,8 +308,17 @@ class TransactionLifecycle<R>(
                 is Attempt.NotSetUp -> Settlement(SettlementStatus.FAILED, null, reason = StoredReason.NotSetUp(attempt.problem))
             }
         book.settle(id, settlement)
-        if (settlement.status == SettlementStatus.SUCCEEDED) onSucceeded(id, request)
+        complete(id, settlement)
         _state.value = TransactionState.Finished(id)
+    }
+
+    private fun complete(
+        id: String,
+        settlement: Settlement,
+    ) {
+        if (settlement.status == SettlementStatus.UNKNOWN) return
+        val request = synchronized(unresolvedRequests) { unresolvedRequests.remove(id) } ?: return
+        if (settlement.status == SettlementStatus.SUCCEEDED) onSucceeded(id, request)
     }
 
     /** Classifies [outcome] and remembers the transaction a busy terminal names. */

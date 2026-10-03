@@ -73,7 +73,7 @@ class TerminalSetupTest {
     fun `the Checkout API needs the merchant account, key, environment and live prefix, and payments wait for it`() {
         assertThat(resolve().apiSetup).isEqualTo(ApiSetup.Simulated)
         val terminal = TerminalSettings(mode = TerminalMode.TERMINAL, poiIdOverride = "S1F2-1", host = "10.0.0.9", keyIdentifier = "key")
-        val key = setOf(Secret.CHECKOUT_API_KEY)
+        val key = setOf(Secret.ADYEN_API_KEY)
         val all = key + Secret.TERMINAL_PASSPHRASE
         assertThat(resolve(terminal).apiSetup.problem).isEqualTo(SetupProblem.MERCHANT_ACCOUNT)
         assertThat(resolve(terminal, key).apiSetup.problem).isEqualTo(SetupProblem.MERCHANT_ACCOUNT)
@@ -99,7 +99,7 @@ class TerminalSetupTest {
     @Test
     fun `payment links are offered once switched on with the Checkout API set up, never with the simulator`() {
         val links = AppSettings(payment = PaymentSettings(paymentLinks = true))
-        val key = setOf(Secret.CHECKOUT_API_KEY)
+        val key = setOf(Secret.ADYEN_API_KEY)
         val api = TerminalSettings(mode = TerminalMode.TERMINAL, merchantAccount = "Merchant", environment = TerminalEnvironment.TEST)
         assertThat(resolve(api, key, settings = links).paymentLinks).isTrue()
         assertThat(resolve(api, key).paymentLinks).isFalse()
@@ -110,7 +110,7 @@ class TerminalSetupTest {
     @Test
     fun `a terminal in the cloud needs the merchant account, the API key and its POIID, but no shared key or address`() {
         val cloud = TerminalSettings(mode = TerminalMode.CLOUD, host = "10.0.0.9")
-        val key = setOf(Secret.CHECKOUT_API_KEY)
+        val key = setOf(Secret.ADYEN_API_KEY)
         assertThat(resolve(cloud, key).connectionProblem).isEqualTo(SetupProblem.MERCHANT_ACCOUNT)
         val merchant = cloud.copy(merchantAccount = "Merchant")
         assertThat(resolve(merchant).connectionProblem).isEqualTo(SetupProblem.CLOUD_API_KEY)
@@ -154,7 +154,7 @@ class TerminalSetupTest {
         // The installed Payments app tells the environment, so captures need no connection first; there is no printer.
         assertThat(boarded.environment).isEqualTo(TerminalEnvironment.TEST)
         val api = keyed.copy(paymentsAppInstallationId = "INSTALLATION-1", merchantAccount = "Merchant")
-        assertThat(resolve(api, passphrase + Secret.CHECKOUT_API_KEY, phone).apiSetup).isEqualTo(ApiSetup.Complete)
+        assertThat(resolve(api, passphrase + Secret.ADYEN_API_KEY, phone).apiSetup).isEqualTo(ApiSetup.Complete)
         assertThat(boarded.printerAvailable(mapOf("INSTALLATION-1" to true))).isFalse()
     }
 
@@ -187,24 +187,24 @@ class TerminalSetupTest {
     fun `the secrets a setup needs are read once, and one that cannot be decrypted is what to enter again`() {
         val local = TerminalSettings(mode = TerminalMode.TERMINAL, poiIdOverride = "S1U2-1", host = "10.0.0.9", keyIdentifier = "key")
         val api = local.copy(merchantAccount = "Merchant", environment = TerminalEnvironment.TEST)
-        val both = passphrase + Secret.CHECKOUT_API_KEY
+        val both = passphrase + Secret.ADYEN_API_KEY
         val setup = resolve(api, both)
-        assertThat(setup.secretsToRead(both)).containsExactly(Secret.TERMINAL_PASSPHRASE, Secret.CHECKOUT_API_KEY)
+        assertThat(setup.secretsToRead(both)).containsExactly(Secret.TERMINAL_PASSPHRASE, Secret.ADYEN_API_KEY)
         assertThat(setup.secretsToRead(passphrase)).containsExactly(Secret.TERMINAL_PASSPHRASE)
-        assertThat(resolve().secretsToRead(both)).containsExactly(Secret.CHECKOUT_API_KEY)
+        assertThat(resolve().secretsToRead(both)).containsExactly(Secret.ADYEN_API_KEY)
 
-        val unlocked = setup.unlock(mapOf(Secret.TERMINAL_PASSPHRASE to "correct horse", Secret.CHECKOUT_API_KEY to "api-key"))
+        val unlocked = setup.unlock(mapOf(Secret.TERMINAL_PASSPHRASE to "correct horse", Secret.ADYEN_API_KEY to "api-key"))
         assertThat(unlocked.setup).isEqualTo(setup)
         assertThat(unlocked.terminalKey!!.keyIdentifier).isEqualTo("key")
         assertThat(unlocked.apiKey).isEqualTo("api-key")
         assertThat(unlocked.toString()).doesNotContain("correct horse")
         assertThat(unlocked.toString()).doesNotContain("api-key")
 
-        val noPassphrase = setup.unlock(mapOf(Secret.TERMINAL_PASSPHRASE to null, Secret.CHECKOUT_API_KEY to "api-key"))
+        val noPassphrase = setup.unlock(mapOf(Secret.TERMINAL_PASSPHRASE to null, Secret.ADYEN_API_KEY to "api-key"))
         assertThat(noPassphrase.setup.connectionProblem).isEqualTo(SetupProblem.UNREADABLE_PASSPHRASE)
         assertThat(noPassphrase.terminalKey).isNull()
         assertThat(noPassphrase.setup.apiSetup).isEqualTo(ApiSetup.Complete)
-        val noApiKey = setup.unlock(mapOf(Secret.TERMINAL_PASSPHRASE to "correct horse", Secret.CHECKOUT_API_KEY to null))
+        val noApiKey = setup.unlock(mapOf(Secret.TERMINAL_PASSPHRASE to "correct horse", Secret.ADYEN_API_KEY to null))
         assertThat(noApiKey.setup.connectionProblem).isNull()
         assertThat(noApiKey.setup.apiSetup).isEqualTo(ApiSetup.Incomplete(SetupProblem.UNREADABLE_API_KEY))
         // What is missing anyway comes first.
@@ -212,8 +212,8 @@ class TerminalSetupTest {
             .isEqualTo(SetupProblem.HOST)
         // In the cloud the API key is what reaches the terminal.
         val cloud = TerminalSettings(mode = TerminalMode.CLOUD, merchantAccount = "Merchant", poiIdOverride = "S1F2-1")
-        val key = setOf(Secret.CHECKOUT_API_KEY)
-        assertThat(resolve(cloud, key).unlock(mapOf(Secret.CHECKOUT_API_KEY to null)).setup.connectionProblem)
+        val key = setOf(Secret.ADYEN_API_KEY)
+        assertThat(resolve(cloud, key).unlock(mapOf(Secret.ADYEN_API_KEY to null)).setup.connectionProblem)
             .isEqualTo(SetupProblem.UNREADABLE_API_KEY)
     }
 
@@ -245,7 +245,7 @@ class TerminalSetupTest {
                 TerminalMode.TERMINAL,
                 setOf(Secret.TERMINAL_PASSPHRASE),
                 TerminalMode.CLOUD,
-                setOf(Secret.CHECKOUT_API_KEY),
+                setOf(Secret.ADYEN_API_KEY),
                 TerminalMode.PAYMENTS_APP,
                 setOf(Secret.TERMINAL_PASSPHRASE),
             )

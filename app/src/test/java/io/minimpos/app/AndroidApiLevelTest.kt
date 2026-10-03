@@ -16,7 +16,7 @@ import java.io.File
 import javax.xml.parsers.SAXParserFactory
 
 /**
- * :core and :terminal-api run on the terminals too, but they are JVM modules, so Android Lint never checks which
+ * :core and :adyen run on the terminals too, but they are JVM modules, so Android Lint never checks which
  * Android versions have the Java APIs they reach (such as `URLEncoder.encode(String, Charset)`, which needs API 33).
  * This checks them as Lint would at the app's minimum SDK: against the compile SDK's API database (`api-versions.xml`),
  * accepting what D8 backports; the build passes all three in (see `AndroidApiArguments` in `app/build.gradle.kts`).

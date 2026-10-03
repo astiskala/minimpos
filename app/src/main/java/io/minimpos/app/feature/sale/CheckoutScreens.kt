@@ -67,6 +67,7 @@ import io.minimpos.app.share.ShareEffect
 import io.minimpos.app.ui.components.ActionMessage
 import io.minimpos.app.ui.components.BottomActions
 import io.minimpos.app.ui.components.Card
+import io.minimpos.app.ui.components.ConfirmDialog
 import io.minimpos.app.ui.components.EmailReceiptDialog
 import io.minimpos.app.ui.components.LabeledValue
 import io.minimpos.app.ui.components.LocalAppContainer
@@ -98,7 +99,7 @@ import java.util.Locale
 /**
  * The last step before paying: the amount, the optional merchant reference, customer reference and email fields,
  * and saving the card, for a payment of [kind]. Pay starts the payment and opens [PaymentScreen]; when payment links
- * are offered, "Send payment link" creates one instead and opens [PaymentLinkScreen]. For a pre-authorisation the
+ * are offered, "Create payment link" creates one instead and opens [PaymentLinkScreen]. For a pre-authorisation the
  * amount is only held, which the screen explains.
  */
 @Composable
@@ -111,6 +112,15 @@ fun CheckoutScreen(
     val state by vm.state.collectAsStateWithLifecycle()
     val dimens = LocalDimens.current
     val money = rememberMoneyFormatter(state.currency)
+    var confirmLink by remember { mutableStateOf(false) }
+    val createLink = {
+        vm.sendLink()?.let { navigator.replace(Route.PaymentLink(it, fresh = true)) }
+        Unit
+    }
+    LinkTipConfirmation(confirmLink, onConfirm = {
+        confirmLink = false
+        createLink()
+    }, onDismiss = { confirmLink = false })
 
     MiniScaffold(
         title = stringResource(R.string.checkout_title),
@@ -121,7 +131,7 @@ fun CheckoutScreen(
                 state,
                 money,
                 onPay = { if (vm.pay()) navigator.replace(Route.Payment(kind)) },
-                onSendLink = { vm.sendLink()?.let { navigator.replace(Route.PaymentLink(it, fresh = true)) } },
+                onSendLink = { if (state.tipOnReceipt) confirmLink = true else createLink() },
             )
         },
     ) { padding ->
@@ -157,7 +167,24 @@ fun CheckoutScreen(
     }
 }
 
-/** Pay on the terminal and, when payment links are offered, "Send payment link" under it. */
+@Composable
+private fun LinkTipConfirmation(
+    visible: Boolean,
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    if (visible) {
+        ConfirmDialog(
+            title = stringResource(R.string.checkout_send_link),
+            message = stringResource(R.string.checkout_link_without_tip),
+            confirmLabel = stringResource(R.string.checkout_send_link),
+            onConfirm = onConfirm,
+            onDismiss = onDismiss,
+        )
+    }
+}
+
+/** Pay on the terminal and, when payment links are offered, "Create payment link" under it. */
 @Composable
 private fun CheckoutActions(
     state: Checkout,
@@ -492,7 +519,9 @@ private fun SaleResultBottomBar(
                     onNewSale,
                     modifier = Modifier.weight(1f).testTag("newSaleAfter"),
                 )
-            } else {
+            } else if (state.record?.sale?.status in setOf(SaleStatus.DECLINED, SaleStatus.CANCELLED, SaleStatus.FAILED) &&
+                state.advice != RetryAdvice.DO_NOT_RETRY
+            ) {
                 PrimaryButton(stringResource(R.string.result_try_again), onTryAgain, modifier = Modifier.weight(1f).testTag("tryAgain"))
             }
         }

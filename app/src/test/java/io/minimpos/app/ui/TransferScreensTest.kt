@@ -154,7 +154,7 @@ class TransferScreensTest {
     fun `the setup helper's codes set up the connection and its keys`() {
         val seal = TransferSeal(iterations = 1_000)
         val code = seal.newCode()
-        val sealed = SealedSecrets(seal.seal("""{"CHECKOUT_API_KEY":"AQE-key"}""".toByteArray(), code))
+        val sealed = SealedSecrets(seal.seal("""{"ADYEN_API_KEY":"AQE-key"}""".toByteArray(), code))
         val payload = TransferCodec.encode(Transfer(sealedSecrets = sealed, connection = """{"merchantAccount":"HarbourCoffeeCOM"}"""))
         val vm = TransferImportViewModel(container.setupTransfer, "AUD")
         QrChunks.split(payload, "WEB1").forEach { vm.onCode(it.encode()) }
@@ -172,10 +172,10 @@ class TransferScreensTest {
         compose.onNodeWithTag("import").performClick()
         waitForTag("importDone")
         compose.onNodeWithText("Connection").performScrollTo().assertIsDisplayed()
-        compose.onNodeWithText("Checkout API key").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("Adyen API key").performScrollTo().assertIsDisplayed()
         compose.awaitCondition("Applying the connection") { container.settingsState.value.terminal.merchantAccount == "HarbourCoffeeCOM" }
         // The other settings stay as they were.
         assertThat(container.settingsState.value.receipt.businessName).isEqualTo("Corner Cafe")
-        assertThat(await { container.secrets.get(Secret.CHECKOUT_API_KEY) }).isEqualTo("AQE-key")
+        assertThat(await { container.secrets.get(Secret.ADYEN_API_KEY) }).isEqualTo("AQE-key")
     }
 }

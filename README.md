@@ -205,7 +205,7 @@ Off a terminal, results and history also offer **Share receipt**, which sends th
 share sheet.
 
 > [!WARNING]
-> Mini mPOS stores Adyen API keys on the device (encrypted with the Android Keystore): the Checkout API key wherever
+> Mini mPOS stores Adyen API keys on the device (encrypted with the Android Keystore): the Adyen API key wherever
 > payments go, and with Tap to Pay also the Payments app API key. Adyen advises keeping API keys on a server; Mini mPOS
 > has none. Use a credential for that device only, with only the roles it needs, set an admin PIN, and revoke the key
 > in the Customer Area if the device is lost.
@@ -291,7 +291,7 @@ app asks the terminal for the transaction's status every few seconds until it is
 
 The app has no backend: products, settings and sales history stay on the device. Card details never reach the app;
 it only sees what Adyen returns, such as the brand, masked card number, PSP reference and (when tokenizing) the stored
-payment method ID. With its Checkout API key it also calls Adyen's
+payment method ID. With its Adyen API key it also calls Adyen's
 [Checkout API](https://docs.adyen.com/api-explorer/Checkout/latest/overview) (`/payments/{pspReference}/captures` and
 `/amountUpdates`) to capture tips and pre-authorizations, and `/paymentLinks` to create, check and expire payment
 links; the key is stored encrypted with the Android Keystore.
@@ -301,7 +301,7 @@ The code is split into three modules, plus `website-test`, which checks the webs
 | Module | Contents |
 | --- | --- |
 | `core` | Plain Kotlin: money and tax math, cart, refunds, receipt layout, catalog and refund QR codes, Adyen's currency table. |
-| `terminal-api` | The Terminal API client on top of Adyen's Java library; local, cloud and Payments app transports (OkHttp); Checkout API captures and payment links; retry advice and the simulator. |
+| `adyen` | Adyen integration: Terminal, Checkout, Cloud device and Management APIs; local and Payments app transports; retry advice and the simulator. |
 | `app` | The Android app: Jetpack Compose (Material 3), Navigation 3, Room, DataStore, CameraX and ZXing, JavaMail. |
 
 ## Contributing and security

@@ -87,6 +87,17 @@ class TransactionLifecycleTest {
     }
 
     @Test
+    fun `a configured Manager PIN also blocks direct refunds until approved`() {
+        env.useSimulator()
+        await { container.managerPin.setPin("2468") }
+        val id = refunds.start(refundStart(null, 100, full = false))
+        await { refunds.state.first { it == TransactionState.Finished(id) } }
+        val record = await { container.refundRecords.get(id)!! }
+        assertThat(record.status).isEqualTo(RefundStatus.FAILED)
+        assertThat(record.reason).isEqualTo(StoredReason.NotSetUp(SetupProblem.MANAGER_APPROVAL))
+    }
+
+    @Test
     fun `approved payments store card, receipts and token, and arm the automatic receipt once`() {
         useSimulatorWithAutoPrint()
         val saleId = start(tokenize = true, email = "a@b.co")

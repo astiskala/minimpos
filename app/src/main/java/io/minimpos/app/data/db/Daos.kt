@@ -171,6 +171,10 @@ interface SaleDao {
     @Query("DELETE FROM sales WHERE createdAt < :before")
     suspend fun deleteSalesBefore(before: Long): Int
 
+    /** Deletes sale [id] and its lines, after the history module checked retention eligibility; returns the row count. */
+    @Query("DELETE FROM sales WHERE id = :id")
+    suspend fun deleteSale(id: String): Int
+
     /** Deletes every sale and, by cascade, every sale line. */
     @Query("DELETE FROM sales")
     suspend fun deleteAllSales()
@@ -214,6 +218,10 @@ interface RefundDao {
     /** Deletes the refunds created before [before] (epoch milliseconds) and returns how many were deleted. */
     @Query("DELETE FROM refunds WHERE createdAt < :before")
     suspend fun deleteRefundsBefore(before: Long): Int
+
+    /** Deletes refund [id], after the history module checked retention eligibility; returns the row count. */
+    @Query("DELETE FROM refunds WHERE id = :id")
+    suspend fun deleteRefund(id: String): Int
 
     /** Deletes every refund. */
     @Query("DELETE FROM refunds")

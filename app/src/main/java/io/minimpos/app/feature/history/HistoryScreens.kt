@@ -63,6 +63,7 @@ import io.minimpos.app.data.db.SaleStatus
 import io.minimpos.app.data.repo.HistoryItem
 import io.minimpos.app.feature.OutcomeMessage
 import io.minimpos.app.feature.TransactionActionsState
+import io.minimpos.app.feature.lock.ManagerApproval
 import io.minimpos.app.feature.modificationNote
 import io.minimpos.app.feature.outcomeNote
 import io.minimpos.app.feature.refund.RefundResultScreen
@@ -107,6 +108,7 @@ import io.minimpos.core.money.CurrencySpec
 import io.minimpos.core.money.MoneyFormatter
 import io.minimpos.core.payment.PaymentMethods
 import io.minimpos.core.receipt.ReceiptCopy
+import io.minimpos.core.receipt.ReceiptDocument
 import io.minimpos.core.shopper.ShopperReferences
 import java.time.Instant
 import java.time.LocalDate
@@ -386,6 +388,13 @@ fun SaleDetailScreen(
     val container = LocalAppContainer.current
     val state by vm.state.collectAsStateWithLifecycle()
     var dialog by remember { mutableStateOf<DetailDialog?>(null) }
+    var approval by remember { mutableStateOf<(() -> Unit)?>(null) }
+    if (approval != null) {
+        return ManagerApproval(onApprove = {
+            approval?.invoke()
+            approval = null
+        }, onCancel = { approval = null })
+    }
     val dimens = LocalDimens.current
     val preAuth = state.record?.sale?.kind == SaleKind.PRE_AUTHORISATION
     MiniScaffold(
@@ -412,13 +421,13 @@ fun SaleDetailScreen(
                     onEnterTip = { navigator.push(Route.Tip(sale.id)) },
                     onCapture = { navigator.push(Route.Capture(sale.id)) },
                     onAdjust = { navigator.push(Route.Capture(sale.id, adjustOnly = true)) },
-                    onRetryCapture = vm::retryCapture,
+                    onRetryCapture = { approval = vm::retryCapture },
                 )
                 SaleDetailActions(
                     state = state,
                     onRecheck = vm.transaction::recheck,
                     onRefund = { navigator.push(Route.Refund(saleId = sale.id)) },
-                    onCancel = { dialog = DetailDialog.CANCEL },
+                    onCancel = { approval = { dialog = DetailDialog.CANCEL } },
                     onPrint = vm.transaction::print,
                     onEmail = { dialog = DetailDialog.EMAIL },
                     onShare = vm.transaction::share,
@@ -427,17 +436,23 @@ fun SaleDetailScreen(
                 SaleRefunds(state.refunds, money, preAuth, container::formatDateTime) {
                     navigator.push(Route.RefundDetail(it))
                 }
-                PaymentDetailsCard(sale)
-                state.transaction.receipt?.let { ReceiptPreview(it, Modifier.align(Alignment.CenterHorizontally)) }
+                SaleDetailsAndReceipt(sale, state.transaction.receipt)
             }
         }
     }
-    state.record?.sale?.let { sale ->
-        SaleDetailDialogs(sale, dialog, onEmail = vm.transaction::email, onDismiss = { dialog = null }) {
-            if (vm.cancel() != null) navigator.push(Route.RefundProcessing)
-        }
+    SaleDetailDialogs(state.record?.sale, dialog, onEmail = vm.transaction::email, onDismiss = { dialog = null }) {
+        if (vm.cancel() != null) navigator.push(Route.RefundProcessing)
     }
     ShareEffect(state.transaction.share, vm.transaction::shared)
+}
+
+@Composable
+private fun ColumnScope.SaleDetailsAndReceipt(
+    sale: SaleEntity,
+    receipt: ReceiptDocument?,
+) {
+    PaymentDetailsCard(sale)
+    receipt?.let { ReceiptPreview(it, Modifier.align(Alignment.CenterHorizontally)) }
 }
 
 /** The dialogs the sale detail screen opens. */
@@ -507,17 +522,18 @@ private fun ColumnScope.HoldActions(
 }
 
 /**
- * The [dialog] open over the detail of [sale], if any: the address to email the receipt to, or confirming the
+ * The [dialog] open over the detail of [stored], if any: the address to email the receipt to, or confirming the
  * cancellation of a pre-authorisation. Either closes ([onDismiss]) before [onEmail] or [onCancel] runs.
  */
 @Composable
 private fun SaleDetailDialogs(
-    sale: SaleEntity,
+    stored: SaleEntity?,
     dialog: DetailDialog?,
     onEmail: (to: String) -> Unit,
     onDismiss: () -> Unit,
     onCancel: () -> Unit,
 ) {
+    val sale = stored ?: return
     if (dialog == DetailDialog.EMAIL) {
         EmailReceiptDialog(
             onSend = {

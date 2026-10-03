@@ -139,7 +139,7 @@ cd minimpos
               <dd>お客様はこのスマートフォンの Adyen Payments アプリで、カードやスマートフォンをタッチして支払います。プリンターはないため、領収書はメールで送るか共有します。NFC 対応で Android 12 以降を搭載し、Google の認定を受けたスマートフォンが必要です。Adyen サポートに Tap to Pay on Android と Adyen Payments app role の有効化を依頼してから、次の手順で設定します。(1) Google Play から <strong>Adyen Payments Test</strong>（TEST）または <strong>Adyen Payments</strong>（LIVE）をインストールします（どちらも未インストールの間は、Mini mPOS にそれぞれのボタンが表示されます）。(2) <a href="#api">Checkout API</a> を接続します。スマートフォンはそのマーチャントアカウントに登録されます。(3) <strong>Tap to Pay</strong> で <strong>PaymentsアプリのAPIキー</strong>（Adyen Payments app role のみを持つ認証情報）と、1 店舗だけに設定する場合はその店舗 ID を入力し、<strong>Tap to Payを設定</strong>をタップします。Payments アプリが開いてスマートフォンを登録します。(4) <strong>共有キー</strong>を入力します。Payments アプリへの支払いリクエストはすべてこのキーで暗号化されます。以降、支払いのたびに Payments アプリが開き、Mini mPOS に戻ります。やめるときは<strong>このスマートフォンを削除</strong>をタップします。</dd>
             </dl>
             <p>すべての入力が終わるまで、ホームに<strong>決済の設定を完了</strong>と不足している項目が表示され、タップすると設定 › 端末が開きます。このガイドのほかの部分は、端末で使う場合と同じです。</p>
-            <p class="note">Adyen の APIキーはデバイスに保存されます（Android Keystore で暗号化）。決済先にかかわらず Checkout API キーが、Tap to Pay では PaymentsアプリのAPIキーも保存されます。Adyen は APIキーをサーバーで管理することを推奨していますが、Mini mPOS にはサーバーがありません。このデバイス専用の認証情報を使い、管理者 PIN を設定し、デバイスを紛失した場合は Customer Area でキーを無効にしてください。</p>
+            <p class="note">Adyen の APIキーはデバイスに保存されます（Android Keystore で暗号化）。決済先にかかわらず Adyen APIキーが、Tap to Pay では PaymentsアプリのAPIキーも保存されます。Adyen は APIキーをサーバーで管理することを推奨していますが、Mini mPOS にはサーバーがありません。このデバイス専用の認証情報を使い、管理者 PIN を設定し、デバイスを紛失した場合は Customer Area でキーを無効にしてください。</p>
           </section>
           <section id="business">
             <h2>7. 店舗情報を設定する</h2>
@@ -173,9 +173,9 @@ cd minimpos
                 </ul>
               </dd>
               <dt>セキュリティ</dt>
-              <dd>設定と商品管理を保護する<strong>管理者PIN</strong>と、再ロックまでの時間を設定します。デバイスをカウンターに置く前に PIN を設定してください。PIN を何度も間違えると、しばらく入力できなくなります。PIN を忘れた場合は、デバイスの設定からアプリのデータを消去するしかありません。</dd>
+              <dd>設定と商品管理を保護する<strong>管理者PIN</strong>と、再ロックまでの時間を設定します。デバイスをカウンターに置く前に PIN を設定してください。PIN を何度も間違えると、しばらく入力できなくなります。PIN を忘れた場合は、デバイスの設定からアプリのデータを消去するしかありません。任意の<strong>マネージャーPIN</strong>を別に設定し、返金、取消、キャプチャ、金額調整を保護できます。先に管理者PINを設定してください。管理者PINを削除すると、マネージャーPINも削除されます。</dd>
               <dt>データ</dt>
-              <dd>販売と返金の保存期間（初期状態は 90 日）の設定、取引履歴の消去、このデバイスを元にしたほかのデバイスの設定、セットアップヘルパーからのこのデバイスの設定（<a href="#more">デバイスを追加する</a>を参照）を行えます。</dd>
+              <dd>完了した販売と返金の保存期間（初期状態は 90 日）の設定、完了した履歴の消去、このデバイスを元にしたほかのデバイスの設定、セットアップヘルパーからのこのデバイスの設定（<a href="#more">デバイスを追加する</a>を参照）を行えます。</dd>
               <dt>アプリ情報</dt>
               <dd>アプリのバージョン、TEST／LIVE 環境、プリンターの有無、デバイスの情報、決済ごとにアプリが Adyen に送るアプリケーション情報を確認できます。</dd>
             </dl>
@@ -219,7 +219,7 @@ cd minimpos
             <ol>
               <li>最初の LIVE リンクを作成する前に、利用規約など、Adyen の Pay by Link がアカウントに求める設定を確認してください。</li>
               <li>Mini mPOS の<strong>設定 › 決済 › 支払いリンクを使う</strong>をオンにし、リンクの有効時間を選びます（既定は 24 時間、最長 70 日）。</li>
-              <li>会計画面で、決済ボタンの下の<strong>支払いリンクを送信</strong>をタップします。お客様が表示された QR コードを読み取るか、<strong>リンクをメール送信</strong>（未払いの領収書付き）、<strong>リンクを印刷</strong>、またはタブレットやスマートフォンで<strong>リンクを共有</strong>します。</li>
+              <li>会計画面で、決済ボタンの下の<strong>支払いリンクを作成</strong>をタップします。お客様が表示された QR コードを読み取るか、<strong>リンクをメール送信</strong>（未払いの領収書付き）、<strong>リンクを印刷</strong>、またはタブレットやスマートフォンで<strong>リンクを共有</strong>します。</li>
             </ol>
             <p>リンクには、商品、購入者のメールアドレスと参照ID、（カード保存をオンにした場合は）カード保存の選択肢が含まれます。リンクを表示している間、アプリは数秒ごとに支払い済みかどうかを確認します。<strong>支払いを確認</strong>をタップしても確認できます。支払われるか、期限が切れるか、<strong>リンクを取り消す</strong>まで、取引履歴では<em>支払い待ち</em>と表示され、未払いのリンクはどの日計にも含まれません。Adyen は支払い済みリンクの PSP参照IDを webhook にしか送らず、Mini mPOS には webhook を受信するバックエンドがないため、支払い済みリンクの返金は Customer Area（Payments › Payment list）で行ってください。支払いリンクは販売のみに使え、シミュレーターでは使えません。</p>
           </section>
@@ -268,7 +268,7 @@ cd minimpos
             <h2>14. デバイスを追加する</h2>
             <p>1 台の設定が済んだら、いくつかの QR コードでほかのデバイスを設定できます。同じ情報を再入力する必要はありません。</p>
             <ol>
-              <li>設定済みのデバイスで<strong>設定 › データ › 別のデバイスに共有</strong>、または<strong>商品</strong>のメニューを開きます。コピーする<strong>カタログ</strong>、<strong>設定</strong>、<strong>パスワードとキー</strong>（共有キーのパスフレーズ、Checkout API キー、PaymentsアプリのAPIキー、SMTP パスワード、管理者PIN）を選び、<strong>QRコードを表示</strong>をタップします。</li>
+              <li>設定済みのデバイスで<strong>設定 › データ › 別のデバイスに共有</strong>、または<strong>商品</strong>のメニューを開きます。コピーする<strong>カタログ</strong>、<strong>設定</strong>、<strong>パスワードとキー</strong>（共有キーのパスフレーズ、Adyen APIキー、PaymentsアプリのAPIキー、SMTP パスワード、管理者PIN）を選び、<strong>QRコードを表示</strong>をタップします。</li>
               <li>新しいデバイスで同じ場所から<strong>別のデバイスから設定</strong>を選び、カメラでコードを読み取ります。順番は問いません。</li>
               <li><strong>カタログに統合</strong>または<strong>カタログを置換</strong>を選びます。パスワードとキーも移すには、最初のデバイスのコード上部に表示される<strong>転送コード</strong>を入力してください。入力しない場合は、それらを除く情報だけが取り込まれます。<strong>インポート</strong>をタップします。</li>
               <li><strong>設定 › 端末</strong>の<strong>接続をテスト</strong>で接続を確認します。</li>
@@ -281,7 +281,7 @@ cd minimpos
             <ul>
               <li>TEST 端末で Adyen の<a href="https://docs.adyen.com/point-of-sale/testing-pos-payments">テストカード</a>を使い、販売、返金、利用する場合は支払いリンク、チップ、プリオーソリゼーションも何件か試してください。</li>
               <li><strong>設定 › 領収書 › テスト領収書を印刷</strong>でレイアウトを、<strong>テストメールを送信</strong>でメール設定を確認します。</li>
-              <li>管理者PIN を設定してから、アプリを LIVE 端末に配布し、それぞれの共有キー、LIVE の Checkout API キー、live URL prefix を入力します（<a href="setup.html">セットアップヘルパー</a>に LIVE の選択肢があります）。</li>
+              <li>管理者PIN を設定してから、アプリを LIVE 端末に配布し、それぞれの共有キー、LIVE の Adyen APIキー、live URL prefix を入力します（<a href="setup.html">セットアップヘルパー</a>に LIVE の選択肢があります）。</li>
               <li>設定 › アプリ情報に LIVE 環境と表示されることを確認します。</li>
             </ul>
           </section>
@@ -298,8 +298,8 @@ cd minimpos
               <dd>端末で進行中の操作（別の決済や管理メニュー）を終えるか、結果画面の<strong>端末の現在の取引をキャンセル</strong>をタップしてから、もう一度お試しください。</dd>
               <dt>キャプチャが失敗した、または結果が不明</dt>
               <dd>取引履歴に理由が表示されます。必要に応じて Checkout API の設定を修正し、<strong>キャプチャを再試行</strong>をタップします。再送しても二重にキャプチャされません。</dd>
-              <dt>会計画面に「支払いリンクを送信」がない</dt>
-              <dd>支払いリンクを使うには、設定 › 端末でマーチャントアカウントと Checkout API キーを入力し、設定 › 決済 › 支払いリンクを使うをオンにする必要があります。プリオーソリゼーションとシミュレーターでは使えません。</dd>
+              <dt>会計画面に「支払いリンクを作成」がない</dt>
+              <dd>支払いリンクを使うには、設定 › 端末でマーチャントアカウントと Adyen APIキーを入力し、設定 › 決済 › 支払いリンクを使うをオンにする必要があります。プリオーソリゼーションとシミュレーターでは使えません。</dd>
               <dt>Tap to Pay から結果なしで戻った</dt>
               <dd>この場合、決済結果は不明で、Payments アプリに再度問い合わせることはできません。お客様に再度請求する前に、Customer Area（Payments › Payment list）で確認してください。</dd>
               <dt>領収書が印刷されない</dt>

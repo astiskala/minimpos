@@ -58,34 +58,13 @@ class CodecTest {
     }
 
     @Test
-    fun `catalogues from the previous format, where every product had a tax rate, still decode`() {
-        // Encoded by the version 1 codec (before products could be untaxed).
-        val v1 = "E90YPP3\$N*P10ECS-E2%1XISZW2DKBF7M-XI0OI-RO+HP0 JU1JQPJA+OASIXJA3MFCIJGJIDAP6W6O45: MRHH+DG00"
-        assertThat(decodeCatalogue(v1))
-            .isEqualTo(
-                Catalogue(
-                    "AUD",
-                    listOf(CatalogueTaxRate("GST", 10_000), CatalogueTaxRate("Zero rated", 0)),
-                    listOf(CatalogueCategory("Coffee")),
-                    listOf(CatalogueProduct("Latte", 450, 0, 0, "L1"), CatalogueProduct("Water", 300, 1, null, null)),
-                ),
-            )
-        assertThat(Base45.decode(encodeCatalogue(catalogue))[0].toInt()).isEqualTo(3)
-    }
-
-    @Test
-    fun `catalogues from before pre-authorisation products decode as sale products`() {
-        // Encoded by the version 2 codec, which had no product kind.
-        val v2 = "SE0/ML-FF*P12ECS-E2%1XIS+HP0 JU1JQPJA+OASIXJA3MFSIJGJIDAPRZ6+P4S9NJMG+DG00"
-        assertThat(decodeCatalogue(v2))
-            .isEqualTo(
-                Catalogue(
-                    "AUD",
-                    listOf(CatalogueTaxRate("GST", 10_000)),
-                    listOf(CatalogueCategory("Coffee")),
-                    listOf(CatalogueProduct("Latte", 450, 0, 0, "L1"), CatalogueProduct("Stamp", 120, null, null, null)),
-                ),
-            )
+    fun `the codec accepts only its current format`() {
+        val packet = Base45.decode(encodeCatalogue(catalogue))
+        assertThat(packet[0].toInt()).isEqualTo(5)
+        (1..4).forEach { version ->
+            val unsupported = packet.copyOf().also { it[0] = version.toByte() }
+            assertFormatError("Unsupported transfer version") { TransferCodec.decode(Base45.encode(unsupported)) }
+        }
     }
 
     @Test
@@ -130,22 +109,22 @@ class CodecTest {
 
     @Test
     fun `catalogue decoding validates structure`() {
-        assertFormatError("tax rate") { decodeCatalogue(packetFor(body(taxRate = 200_000))) }
-        assertFormatError("missing tax rate") { decodeCatalogue(packetFor(body(taxIndex = 5))) }
-        assertFormatError("trailing") { decodeCatalogue(packetFor(body() + byteArrayOf(0))) }
-        assertFormatError("truncated") { decodeCatalogue(packetFor(body().copyOf(6))) }
-        assertFormatError("too many") { decodeCatalogue(packetFor("AUD".toByteArray() + varint(200_000))) }
+        assertFormatError("tax rate") { decodeCatalogue(cataloguePacketFor(body(taxRate = 200_000))) }
+        assertFormatError("missing tax rate") { decodeCatalogue(cataloguePacketFor(body(taxIndex = 5))) }
+        assertFormatError("trailing") { decodeCatalogue(cataloguePacketFor(body() + byteArrayOf(0))) }
+        assertFormatError("truncated") { decodeCatalogue(cataloguePacketFor(body().copyOf(6))) }
+        assertFormatError("too many") { decodeCatalogue(cataloguePacketFor("AUD".toByteArray() + varint(200_000))) }
         assertFormatError("Invalid text") {
             decodeCatalogue(
-                packetFor("AUD".toByteArray() + varint(1) + varint(5000)),
+                cataloguePacketFor("AUD".toByteArray() + varint(1) + varint(5000)),
             )
         }
         assertFormatError("Invalid number") {
             decodeCatalogue(
-                packetFor("AUD".toByteArray() + ByteArray(10) { 0xFF.toByte() }),
+                cataloguePacketFor("AUD".toByteArray() + ByteArray(10) { 0xFF.toByte() }),
             )
         }
-        assertFormatError("truncated") { decodeCatalogue(packetFor("AU".toByteArray())) }
+        assertFormatError("truncated") { decodeCatalogue(cataloguePacketFor("AU".toByteArray())) }
     }
 
     @Test
@@ -165,11 +144,11 @@ class CodecTest {
     }
 
     @Test
-    fun `transfers carry settings and sealed secrets in version 4, with or without a catalogue`() {
+    fun `transfers carry settings and sealed secrets in the current format, with or without a catalogue`() {
         val secrets = SealedSecrets(byteArrayOf(1, 2, 3, 0, -1))
         val full = Transfer(catalogue, """{"payment":{"currencyCode":"AUD"},"receipt":{"footer":"Ta ☕"}}""", secrets)
         val encoded = TransferCodec.encode(full)
-        assertThat(Base45.decode(encoded)[0].toInt()).isEqualTo(4)
+        assertThat(Base45.decode(encoded)[0].toInt()).isEqualTo(5)
         assertThat(TransferCodec.decode(encoded)).isEqualTo(full)
         val settingsOnly = Transfer(settings = "{}")
         assertThat(TransferCodec.decode(TransferCodec.encode(settingsOnly))).isEqualTo(settingsOnly)
@@ -201,17 +180,17 @@ class CodecTest {
     }
 
     @Test
-    fun `version 4 decoding validates its sections`() {
-        assertFormatError("sections") { TransferCodec.decode(packetFor(varint(0), version = 4)) }
-        assertFormatError("sections") { TransferCodec.decode(packetFor(varint(8), version = 4)) }
-        assertFormatError("Invalid data") { TransferCodec.decode(packetFor(varint(2) + varint(70_000), version = 4)) }
-        assertFormatError("Invalid data") { TransferCodec.decode(packetFor(varint(4) + varint(5) + byteArrayOf(1), version = 4)) }
+    fun `current decoding validates its sections`() {
+        assertFormatError("sections") { TransferCodec.decode(packetFor(varint(0), version = 5)) }
+        assertFormatError("sections") { TransferCodec.decode(packetFor(varint(16), version = 5)) }
+        assertFormatError("Invalid data") { TransferCodec.decode(packetFor(varint(2) + varint(70_000), version = 5)) }
+        assertFormatError("Invalid data") { TransferCodec.decode(packetFor(varint(4) + varint(5) + byteArrayOf(1), version = 5)) }
         assertFormatError(
             "trailing",
-        ) { TransferCodec.decode(packetFor(varint(2) + varint(1) + "x".toByteArray() + byteArrayOf(0), version = 4)) }
+        ) { TransferCodec.decode(packetFor(varint(2) + varint(1) + "x".toByteArray() + byteArrayOf(0), version = 5)) }
         assertThat(
             TransferCodec
-                .decode(packetFor(varint(1) + body() + varint(0), version = 4))
+                .decode(packetFor(varint(1) + body(), version = 5))
                 .catalogue!!
                 .products
                 .single()
@@ -221,7 +200,7 @@ class CodecTest {
     }
 
     @Test
-    fun `a connection is carried in version 5, which version 4 may not claim`() {
+    fun `a connection is carried in the current format`() {
         val secrets = SealedSecrets(byteArrayOf(7, 8, 9))
         val connection = """{"destination":"network","host":"192.168.1.20","poiId":"S1F2-000158213605014"}"""
         val setup = Transfer(sealedSecrets = secrets, connection = connection)
@@ -231,10 +210,7 @@ class CodecTest {
         val everything = Transfer(catalogue, "{}", secrets, connection)
         assertThat(TransferCodec.decode(TransferCodec.encode(everything))).isEqualTo(everything)
         assertThat(TransferCodec.decode(TransferCodec.encode(Transfer(connection = "{}")))).isEqualTo(Transfer(connection = "{}"))
-        // Without a connection, terminals still write version 4, which older builds read.
-        assertThat(Base45.decode(TransferCodec.encode(Transfer(settings = "{}")))[0].toInt()).isEqualTo(4)
-
-        assertFormatError("sections") { TransferCodec.decode(packetFor(varint(8) + varint(2) + "{}".toByteArray(), version = 4)) }
+        assertThat(Base45.decode(TransferCodec.encode(Transfer(settings = "{}")))[0].toInt()).isEqualTo(5)
         assertFormatError("sections") { TransferCodec.decode(packetFor(varint(16), version = 5)) }
         assertFormatError("Invalid data") { TransferCodec.decode(packetFor(varint(8) + varint(5_000), version = 5)) }
         assertThat(TransferCodec.decode(packetFor(varint(8) + varint(2) + "{}".toByteArray(), version = 5)).connection).isEqualTo("{}")
@@ -374,7 +350,9 @@ class CodecTest {
         taxIndex: Int = 0,
     ): ByteArray =
         "AUD".toByteArray() + varint(1) + varint(1) + "G".toByteArray() + varint(taxRate) + varint(0) +
-            varint(1) + varint(1) + "P".toByteArray() + varint(100) + varint(taxIndex) + varint(0) + varint(0)
+            varint(1) + varint(1) + "P".toByteArray() + varint(100) + varint(taxIndex + 1) + varint(0) + varint(0) + varint(0)
+
+    private fun cataloguePacketFor(body: ByteArray) = packetFor(varint(1) + body)
 
     private fun encodeCatalogue(catalogue: Catalogue) = TransferCodec.encode(Transfer(catalogue))
 
@@ -382,7 +360,7 @@ class CodecTest {
 
     private fun packetFor(
         body: ByteArray,
-        version: Byte = 1,
+        version: Byte = 5,
     ): String {
         val crc =
             java.util.zip

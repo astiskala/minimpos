@@ -224,8 +224,15 @@ class HistoryViewModel(
     /** Whether [item]'s outcome is still pending or unknown. */
     private fun needsAttention(item: HistoryItem): Boolean =
         when (item) {
-            is HistoryItem.Sale -> item.sale.status == SaleStatus.UNKNOWN || item.sale.status == SaleStatus.PENDING
-            is HistoryItem.Refund -> item.refund.status == RefundStatus.UNKNOWN || item.refund.status == RefundStatus.PENDING
+            is HistoryItem.Sale -> {
+                item.sale.status == SaleStatus.UNKNOWN || item.sale.status == SaleStatus.PENDING || item.sale.adjustmentPending ||
+                    item.sale.standing in
+                    setOf(PaymentStanding.CAPTURE_FAILED, PaymentStanding.CAPTURE_UNKNOWN, PaymentStanding.CAPTURE_SENDING)
+            }
+
+            is HistoryItem.Refund -> {
+                item.refund.status == RefundStatus.UNKNOWN || item.refund.status == RefundStatus.PENDING
+            }
         }
 
     private fun group(items: List<HistoryItem>): List<HistoryDay> =

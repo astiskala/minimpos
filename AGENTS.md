@@ -5,12 +5,19 @@ the same device (`https://localhost:8443/nexo`); on a tablet or phone through a 
 device API or the Adyen Payments app (Tap to Pay); anywhere through its built-in simulator.
 
 - This file holds what applies to the whole repository and what the code does not tell you. `app/AGENTS.md` and
-  `terminal-api/AGENTS.md` hold each module's architecture rules and test setup: read them before changing or
+  `adyen/AGENTS.md` hold each module's architecture rules and test setup: read them before changing or
   planning changes to that module.
 - `CONTEXT.md` is the domain glossary: use its terms (and code names) for new modules, tests and docs, and add a term
   there before naming a module after a new concept.
 - KDoc in the code is the detailed reference. `CONTRIBUTING.md` is the contributor guide; `README.md` and `docs/` are
   for users (see [Documentation](#documentation)).
+
+## Pre-launch design
+
+- There are no users yet. Prefer clean current names, formats and defaults over compatibility with earlier app builds.
+  Do not add legacy aliases, old-format readers, split defaults or migrations solely for those builds.
+- Keep compatibility with supported Android versions and Adyen's protocols. Keep transaction recovery, idempotency,
+  validation and encryption: these protect current payments and are not backward-compatibility features.
 
 ## Modules
 
@@ -18,9 +25,9 @@ device API or the Adyen Payments app (Tap to Pay); anywhere through its built-in
   (`TransferCodec` `MPC1:`, refund `MPR1*`), Adyen currency table (Adyen's decimals win over ISO), `PaymentMethods`.
   There is deliberately no country/region setting (blank currency follows the device's country, else EUR; a new
   installation's tax rates and price style too, `StarterTax`, whose table of standard rates needs keeping up to date).
-- `:terminal-api` – the Terminal API client on top of `com.adyen:adyen-java-api-library`: local, cloud and Payments app
-  transports, Checkout API calls (captures, payment links), the in-process simulator. Knows neither Android nor
-  `:core`.
+- `:adyen` – Adyen integration (sources in `adyen/`): Terminal API with `com.adyen:adyen-java-api-library`,
+  local, cloud and Payments app transports, Checkout API calls, Management API boarding and the in-process simulator.
+  Knows neither Android nor `:core`.
 - `:app` – the Android app (Compose, Room, DataStore, manual DI in `AppContainer`).
 - `:website-test` – no app code: checks the `docs/` website, whose build files live here because GitHub Pages publishes
   `docs/` as is.
@@ -29,7 +36,7 @@ device API or the Adyen Payments app (Tap to Pay); anywhere through its built-in
 
 - Run `./gradlew qualityGate` after every change: Spotless/ktlint, detekt (no baseline), Dokka with `failOnWarning`
   (every `[link]` in KDoc must resolve), Android Lint (warnings are errors), unit/Robolectric/Compose tests, ArchUnit
-  `ArchitectureTest` in each module, `AndroidApiLevelTest` (in `:app`), Kover thresholds (core 95/85 and terminal-api
+  `ArchitectureTest` in each module, `AndroidApiLevelTest` (in `:app`), Kover thresholds (core 95/85 and adyen
   90/75 line/branch %, app non-UI 80 % lines), and `verify{Debug,Release}TerminalManifest`. Kotlin warnings are errors;
   the build output stays warning-free.
 - The gate also checks the non-Kotlin files with nothing but the JDK: `markdownCheck` (rumdl, `.rumdl.toml`:
@@ -82,7 +89,7 @@ device API or the Adyen Payments app (Tap to Pay); anywhere through its built-in
   the Checkout API) is entered. The manifest's `<queries>` (the two Payments app packages), the
   `minimpos://paymentsapp` VIEW filter on the `singleTask` `MainActivity` and the unexported `FileProvider` for shared
   receipt images add no permission, so the same APK stays acceptable for terminals.
-- `:core` and `:terminal-api` are JVM modules, so Android Lint does not check their API levels: `AndroidApiLevelTest`
+- `:core` and `:adyen` are JVM modules, so Android Lint does not check their API levels: `AndroidApiLevelTest`
   checks every Java/Android class, method and field they reach against the compile SDK's `api-versions.xml` at the
   app's minSdk, accepting what D8 backports (`listBackportedMethods`). E.g. `URLEncoder.encode(String, Charset)` is
   API 33; use the charset name.
@@ -93,15 +100,15 @@ device API or the Adyen Payments app (Tap to Pay); anywhere through its built-in
 ## Where payments go
 
 - "Payments go to" (`TerminalMode`): this terminal or one on the network (local Terminal API, shared key), `CLOUD`
-  (Cloud device API `/sync` with the `CHECKOUT_API_KEY` secret, which also does captures; payment timeout at least
+  (Cloud device API `/sync` with the `ADYEN_API_KEY` secret, which also does captures; payment timeout at least
   160 s), `PAYMENTS_APP` (Tap to Pay through the Adyen Payments app, shared key; POIID is the boarded installation ID),
   or the simulator. Cloud and Payments app are only offered off-terminal; Automatic stays the simulator there. The
   Payments app needs the shared key too (Adyen's docs: requests are encrypted as for local communications).
 - The Checkout API is required wherever payments go but the simulator (a product decision: captures, adjustments and
   payment links all need it): payments wait for it (`TerminalSetup.problem`, the Home setup card) except for a not yet
   detected environment, which the first connection finds; connection checks, refunds and printing need only the
-  destination (`TerminalSetup.connectionProblem`). There is no Customer Area capture mode any more; `CaptureStatus.MANUAL`
-  stays only for sales stored by older versions.
+  destination (`TerminalSetup.connectionProblem`). Captures are requested through the Checkout API; there is no
+  separate stored state for handing an unrequested capture to staff.
 - The environment (TEST/LIVE) is never a setting: it comes from the terminal certificate, else the endpoint that accepts
   the cloud API key (`CloudDevices.detect`: TEST, then the device country's live data centre, then the others), else the
   installed Payments app package (both installed is a setup problem), and picks the Checkout API endpoint. Changing the
@@ -136,8 +143,8 @@ device API or the Adyen Payments app (Tap to Pay); anywhere through its built-in
   never restate the name. detekt's `OutdatedDocumentation` wants, once a class KDoc has constructor tags, one tag per
   constructor parameter in order: `@property` for public properties, `@param` for the rest (a `private val` is a
   `@param`). Check KDoc claims against the code.
-- QR formats (`TransferCodec`, refund QR) are read by terminals on older versions: a format change bumps its version
-  and keeps decoding the older ones.
+- QR formats (`TransferCodec`, refund QR) have one current contract during pre-launch. Change the app, setup helper
+  and format tests together; no earlier-app decoder is required.
 
 ## Product decisions (deliberate; do not "fix")
 

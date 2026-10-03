@@ -1,6 +1,7 @@
 package io.minimpos.app.data.repo
 
 import androidx.room.withTransaction
+import io.minimpos.core.money.PaymentContext
 import io.minimpos.app.data.db.AppDatabase
 import io.minimpos.app.data.db.RefundEntity
 import io.minimpos.app.data.db.RefundStatus
@@ -53,6 +54,15 @@ class RefundRepository(
     /** Returns the refund with ID [id], or null if there is none. */
     suspend fun get(id: String): RefundEntity? = dao.refund(id)
 
+    /** Records the actual connection before sending and its certificate environment after answering. */
+    suspend fun recordContext(
+        id: String,
+        context: PaymentContext,
+    ) = db.withTransaction {
+        dao.refund(id)?.let { dao.update(it.copy(context = context)) }
+        Unit
+    }
+
     /** Observes the refund with ID [id]; emits null while there is none. */
     fun observe(id: String): Flow<RefundEntity?> = dao.observeRefund(id)
 
@@ -75,6 +85,7 @@ class RefundRepository(
         reason: StoredReason? = null,
     ) = db.withTransaction {
         val stored = dao.refund(id) ?: return@withTransaction
+        if (stored.status == RefundStatus.REQUESTED && status != RefundStatus.REQUESTED) return@withTransaction
         val refund =
             stored.copy(
                 status = status,
@@ -84,6 +95,6 @@ class RefundRepository(
                 customerReceiptJson = details?.let { ReceiptLinesJson.encodeFields(it.customerReceipt) } ?: stored.customerReceiptJson,
             )
         dao.update(refund)
-        sales.applyRefund(refund)
+        if (stored.status != RefundStatus.REQUESTED) sales.applyRefund(refund)
     }
 }

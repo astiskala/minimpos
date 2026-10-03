@@ -15,7 +15,7 @@ import io.minimpos.terminal.client.Decline
  *
  * Payments taken with manual capture ([SaleEntity.manualCapture]: pre-authorisations and sales taken for tipping on the
  * receipt) move from [AWAITING_TIP] or [HELD] through a capture ([CAPTURE_SENDING], then [CAPTURE_REQUESTED],
- * [CAPTURE_FAILED] or [CAPTURE_UNKNOWN]; with older versions also [CAPTURED_MANUALLY]) or end in [HOLD_CANCELLED]. A
+ * [CAPTURE_FAILED] or [CAPTURE_UNKNOWN]) or end in [HOLD_CANCELLED]. A
  * plain sale is [CHARGED] as soon as it is approved.
  *
  * @property capture The capture status a payment taken with manual capture stands here with; null for the standings
@@ -48,9 +48,6 @@ enum class PaymentStanding(
     /** Captured: Adyen received the capture ([CaptureStatus.REQUESTED]) and confirms it in the Customer Area. */
     CAPTURE_REQUESTED(CaptureStatus.REQUESTED),
 
-    /** Captured: left to staff in the Customer Area ([CaptureStatus.MANUAL]) by an older version, without Checkout API. */
-    CAPTURED_MANUALLY(CaptureStatus.MANUAL),
-
     /** A held payment whose cancellation (a full reversal) was accepted, so nothing was charged. */
     HOLD_CANCELLED,
     ;
@@ -60,7 +57,7 @@ enum class PaymentStanding(
 
     /**
      * Whether it was captured, so it counts as charged and is refunded up to the capture: its [capture] counts as made
-     * ([CaptureStatus.captured]), which is [CAPTURE_REQUESTED] or [CAPTURED_MANUALLY].
+     * ([CaptureStatus.captured]), which is [CAPTURE_REQUESTED].
      */
     val captured: Boolean get() = capture?.captured == true
 
@@ -125,6 +122,7 @@ val SaleEntity.decline: Decline? get() = Decline.of(status == SaleStatus.APPROVE
  *   ([SaleStatus.AWAITING_PAYMENT]), so its receipt is an unpaid one with the link; else null.
  * @property linkExpiresAt When that link stops working, in epoch milliseconds; null without one.
  * @property paidOnline Whether it was paid through its payment link, which the receipt says.
+ * @property standing Full payment standing retained for receipt notes.
  */
 data class ReceiptStanding(
     val approved: Boolean,
@@ -136,6 +134,8 @@ data class ReceiptStanding(
     val unpaidLink: String? = null,
     val linkExpiresAt: Long? = null,
     val paidOnline: Boolean = false,
+    /** Current standing retained through receipt rendering. */
+    val standing: PaymentStanding = PaymentStanding.CHARGED,
 ) {
     /** Reading a sale. */
     companion object {
@@ -154,6 +154,7 @@ data class ReceiptStanding(
                 unpaidLink = unpaidLink,
                 linkExpiresAt = sale.paymentLinkExpiresAt?.takeIf { unpaidLink != null },
                 paidOnline = sale.paymentLink && standing.charged,
+                standing = standing,
             )
         }
     }

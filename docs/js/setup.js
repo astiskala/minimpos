@@ -29,7 +29,7 @@
   const STORED_BLOCK = 0xffff;
   const CUSTOMER_AREA = { test: "https://ca-test.adyen.com/ca/ui/", live: "https://ca-live.adyen.com/ca/ui/" };
   const CONNECTION_FIELDS = ["host", "poiId", "keyIdentifier", "merchantAccount", "liveUrlPrefix", "storeId"];
-  const SECRET_FIELDS = { passphrase: "TERMINAL_PASSPHRASE", apiKey: "CHECKOUT_API_KEY", paymentsAppApiKey: "PAYMENTS_APP_API_KEY" };
+  const SECRET_FIELDS = { passphrase: "TERMINAL_PASSPHRASE", apiKey: "ADYEN_API_KEY", paymentsAppApiKey: "PAYMENTS_APP_API_KEY" };
 
   const results = document.getElementById("setup-codes");
   const status = document.getElementById("setup-status");

@@ -7,6 +7,7 @@ import io.minimpos.app.data.settings.AppSettings
 import io.minimpos.app.data.settings.PrinterMode
 import io.minimpos.app.data.settings.SettingsRepository
 import io.minimpos.app.data.settings.TerminalMode
+import io.minimpos.core.money.PaymentContext
 import io.minimpos.terminal.transport.TerminalEnvironment
 import io.minimpos.terminal.transport.TerminalKey
 import kotlinx.coroutines.flow.Flow
@@ -86,8 +87,8 @@ data class TerminalSetup(
      */
     val paymentLinks: Boolean get() = settings.payment.paymentLinks && apiSetup == ApiSetup.Complete
 
-    /** The secrets to read for this setup, of those [saved]: the [destination]'s and the Checkout API key. */
-    fun secretsToRead(saved: Set<Secret>): Set<Secret> = (destination.secrets + Secret.CHECKOUT_API_KEY).intersect(saved)
+    /** The secrets to read for this setup, of those [saved]: the [destination]'s and the Adyen API key. */
+    fun secretsToRead(saved: Set<Secret>): Set<Secret> = (destination.secrets + Secret.ADYEN_API_KEY).intersect(saved)
 
     /**
      * This setup with the secrets [read] for it (see [secretsToRead]): each decrypted value, or null for one saved that
@@ -98,7 +99,7 @@ data class TerminalSetup(
         val unreadable = read.filterValues { it == null }.keys
         val problem = connectionProblem ?: destination.secrets.filter { it in unreadable }.firstNotNullOfOrNull(::unreadable)
         val api =
-            if (apiSetup == ApiSetup.Complete && Secret.CHECKOUT_API_KEY in unreadable) {
+            if (apiSetup == ApiSetup.Complete && Secret.ADYEN_API_KEY in unreadable) {
                 ApiSetup.Incomplete(SetupProblem.UNREADABLE_API_KEY)
             } else {
                 apiSetup
@@ -111,6 +112,21 @@ data class TerminalSetup(
                 }.toMap(),
         )
     }
+
+    /** Non-secret identity for this resolved setup, with [detected] from its actual transport when known. */
+    fun paymentContext(detected: TerminalEnvironment? = environment): PaymentContext =
+        PaymentContext(
+            destination = mode.name,
+            poiId = poiId.orEmpty(),
+            saleId =
+                settings.terminal.saleId
+                    .trim()
+                    .ifEmpty { TerminalGateway.DEFAULT_SALE_ID },
+            merchantAccount = settings.terminal.merchantAccount.trim(),
+            environment = detected?.name,
+            host = host,
+            simulated = destination.simulatesApi,
+        )
 
     /** Resolving the setup, and the fixed identities it uses. */
     companion object {
@@ -135,7 +151,7 @@ data class TerminalSetup(
             val host = destination.host(terminal, device)
             val environment = destination.environment(terminal, device)
             val problem = destination.problem(terminal, saved, device, poiId, host)
-            val api = apiSetup(settings, environment, destination.simulatesApi, keySaved = Secret.CHECKOUT_API_KEY in saved)
+            val api = apiSetup(settings, environment, destination.simulatesApi, keySaved = Secret.ADYEN_API_KEY in saved)
             return TerminalSetup(settings, destination, device.isAdyenTerminal, poiId, host, problem, api, environment, device.paymentsApps)
         }
 
@@ -167,9 +183,9 @@ data class TerminalSetup(
         private fun unreadable(secret: Secret): SetupProblem? =
             when (secret) {
                 Secret.TERMINAL_PASSPHRASE -> SetupProblem.UNREADABLE_PASSPHRASE
-                Secret.CHECKOUT_API_KEY -> SetupProblem.UNREADABLE_API_KEY
+                Secret.ADYEN_API_KEY -> SetupProblem.UNREADABLE_API_KEY
                 Secret.PAYMENTS_APP_API_KEY -> SetupProblem.UNREADABLE_PAYMENTS_APP_KEY
-                Secret.SMTP_PASSWORD, Secret.PIN_VERIFIER -> null
+                Secret.SMTP_PASSWORD, Secret.PIN_VERIFIER, Secret.MANAGER_PIN_VERIFIER -> null
             }
 
         /**
@@ -237,8 +253,8 @@ class UnlockedSetup(
             return TerminalKey(terminal.keyIdentifier.trim(), passphrase, terminal.keyVersion)
         }
 
-    /** The Checkout API key (also the cloud's); null when none could be read. */
-    val apiKey: String? get() = values[Secret.CHECKOUT_API_KEY]
+    /** The Adyen API key (also the cloud's); null when none could be read. */
+    val apiKey: String? get() = values[Secret.ADYEN_API_KEY]
 
     override fun toString() = "UnlockedSetup($setup, ${values.keys})"
 }

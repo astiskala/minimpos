@@ -48,6 +48,9 @@ fun AppNavHost() {
     // Leaving the admin area re-locks it.
     LaunchedEffect(top) {
         if (backStack.none { (it as? Route)?.isProtected == true }) container.sessionLock.lock()
+        if (backStack.none { (it as? Route)?.requiresManager == true }) {
+            container.managerLock.lock()
+        }
     }
 
     NavDisplay(
@@ -63,10 +66,10 @@ fun AppNavHost() {
                 entry<Route.Payment> { PaymentScreen(navigator, it.kind) }
                 entry<Route.SaleResult> { SaleResultScreen(it.saleId, navigator) }
                 entry<Route.PaymentLink> { PaymentLinkScreen(it.saleId, it.fresh, navigator) }
-                entry<Route.Tip> { TipScreen(it.saleId, navigator) }
-                entry<Route.Capture> { CaptureScreen(it.saleId, it.adjustOnly, navigator) }
-                entry<Route.RefundScan> { RefundScanScreen(navigator) }
-                entry<Route.Refund> { RefundScreen(it.payload, it.saleId, navigator) }
+                entry<Route.Tip> { PinGate(navigator, manager = true) { TipScreen(it.saleId, navigator) } }
+                entry<Route.Capture> { PinGate(navigator, manager = true) { CaptureScreen(it.saleId, it.adjustOnly, navigator) } }
+                entry<Route.RefundScan> { PinGate(navigator, manager = true) { RefundScanScreen(navigator) } }
+                entry<Route.Refund> { PinGate(navigator, manager = true) { RefundScreen(it.payload, it.saleId, navigator) } }
                 entry<Route.RefundProcessing> { RefundProcessingScreen(navigator) }
                 entry<Route.RefundResult> { RefundResultScreen(it.refundId, navigator) }
                 entry<Route.History> { HistoryScreen(navigator) }

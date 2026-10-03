@@ -179,7 +179,7 @@ room {
 
 dependencies {
     implementation(project(":core"))
-    implementation(project(":terminal-api"))
+    implementation(project(":adyen"))
 
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.activity.compose)
@@ -458,7 +458,7 @@ abstract class BackportedMethodsTask : DefaultTask() {
 
 /**
  * Points `AndroidApiLevelTest` at the compile SDK's API database, D8's backported methods and the minimum SDK: :core and
- * :terminal-api run on the terminals too, but as JVM modules Android Lint does not check which Android versions have
+ * :adyen run on the terminals too, but as JVM modules Android Lint does not check which Android versions have
  * the Java APIs they call.
  */
 abstract class AndroidApiArguments : CommandLineArgumentProvider {

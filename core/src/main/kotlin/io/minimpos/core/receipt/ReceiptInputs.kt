@@ -227,6 +227,8 @@ enum class ReceiptCopy {
  *   [ReceiptLabels.unpaid] (rather than not completed), totalled as [ReceiptLabels.amountDue], and shows the link and
  *   its QR code.
  * @property paidOnline whether the sale was paid through a payment link, which adds [ReceiptLabels.paidOnline].
+ * @property standingNote Current localized payment standing; null for a normal charged sale.
+ * @property holdCancelled The original amount is no longer held.
  */
 data class SaleReceipt(
     val reference: String,
@@ -246,6 +248,10 @@ data class SaleReceipt(
     val captured: Long? = null,
     val unpaidLink: UnpaidLink? = null,
     val paidOnline: Boolean = false,
+    /** Current localized payment standing, distinct from the terminal's original answer; null for a normal paid sale. */
+    val standingNote: String? = null,
+    /** The hold was canceled, so its original amount is no longer shown as held. */
+    val holdCancelled: Boolean = false,
 )
 
 /**
@@ -260,6 +266,8 @@ data class SaleReceipt(
  * @property cancellation whether this cancelled a payment that only held its amount (a pre-authorisation or a sale
  *   awaiting its tip) rather than refunding a sale, which the title, labels and [ReceiptLabels.cancellationNote]
  *   (instead of items) say.
+ * @property full Whether the whole local remaining amount was reversed.
+ * @property standingNote Current localized request outcome; null for none.
  */
 data class RefundReceipt(
     val reference: String,
@@ -269,6 +277,10 @@ data class RefundReceipt(
     val amount: Long,
     val cardReceipt: List<CardReceiptLine>,
     val cancellation: Boolean = false,
+    /** True when the whole locally known remaining payment was reversed. */
+    val full: Boolean = false,
+    /** Current localized request outcome; null for no additional note. */
+    val standingNote: String? = null,
 )
 
 /** "GST 10%" - or the name as-is when the merchant already put the rate in it. */

@@ -66,6 +66,8 @@ import io.minimpos.app.data.db.SetupProblem
 import io.minimpos.app.data.db.TaxRateEntity
 import io.minimpos.app.data.security.Secret
 import io.minimpos.app.data.settings.AppSettings
+import io.minimpos.app.data.settings.PricingChange
+import Processing
 import io.minimpos.app.data.settings.EmailCapture
 import io.minimpos.app.data.settings.EmailSettings
 import io.minimpos.app.data.settings.MerchantCopyPolicy
@@ -120,6 +122,16 @@ private fun settingsViewModel(): SettingsViewModel {
             history = container.history,
             catalog = container.catalog,
             sampleReceipt = container::sampleReceipt,
+            managerPins = container.managerPin,
+            currency = container::currency,
+            onRepriced = { from, to ->
+                io.minimpos.app.data.db.SaleKind.entries
+                    .forEach { container.session(it).reprice(from, to) }
+            },
+            activePayment = {
+                container.payments.state.value is Processing ||
+                    container.refunds.state.value is Processing
+            },
         )
     }
 }
@@ -189,6 +201,28 @@ internal interface TerminalSetupEvents {
 
     /** Removes this phone's Payments app instance ([TerminalSetupViewModel.removeTapToPay]). */
     fun onTapToPayRemove()
+}
+
+@Composable
+private fun PricingConfirmation(
+    change: PricingChange,
+    confirm: () -> Unit,
+    cancel: () -> Unit,
+) {
+    val to =
+        io.minimpos.core.money.CurrencySpec
+            .of(change.toCurrency)
+    val examples =
+        change.prices.values
+            .take(10)
+            .joinToString("\n", "\n") { to.toMajor(it).toPlainString() + " " + to.code }
+    ConfirmDialog(
+        title = stringResource(R.string.pricing_change_title),
+        message = stringResource(R.string.pricing_change_message, change.fromCurrency, change.toCurrency) + examples,
+        confirmLabel = stringResource(R.string.action_ok),
+        onConfirm = confirm,
+        onDismiss = cancel,
+    )
 }
 
 private fun settingsEvents(settings: SettingsViewModel): SettingsEvents =
@@ -364,14 +398,16 @@ fun SettingsSectionScreen(
     val actions by vm.actions.collectAsStateWithLifecycle()
     val setup = terminalSetupViewModel()
     val setupActions by setup.actions.collectAsStateWithLifecycle()
+    val pricing by vm.pricing.pending.collectAsStateWithLifecycle()
+    pricing?.let { PricingConfirmation(it, vm.pricing::confirm, vm.pricing::cancel) }
     val events = remember(vm) { settingsEvents(vm) }
     val setupEvents = remember(setup) { terminalSetupEvents(setup) }
-    var settingPin by remember { mutableStateOf(false) }
-    if (settingPin) {
+    var settingPin by remember { mutableStateOf<Boolean?>(null) }
+    if (settingPin != null) {
         SetPinScreen(onDone = {
-            vm.setPin(it)
-            settingPin = false
-        }, onCancel = { settingPin = false }, modifier = modifier)
+            vm.setPin(it, manager = settingPin == true)
+            settingPin = null
+        }, onCancel = { settingPin = null }, modifier = modifier, manager = settingPin == true)
         return
     }
     MiniScaffold(title = stringResource(sectionTitle(section)), onBack = navigator::back, modifier = modifier) { padding ->
@@ -408,7 +444,7 @@ fun SettingsSectionScreen(
                     }
 
                     SettingsSections.SECURITY -> {
-                        SecuritySection(state, actions, events) { settingPin = true }
+                        SecuritySection(state, actions, events) { settingPin = it }
                     }
 
                     SettingsSections.DATA -> {
@@ -719,7 +755,7 @@ private fun ColumnScope.PaymentsSection(
     SectionHeader(stringResource(R.string.settings_pricing))
     CurrencySetting(
         selectedCode = payment.currencyCode,
-        automatic = PaymentSettings().resolvedCurrency(currentLocale().country),
+        automatic = PaymentSettings().resolvedCurrency(LocalAppContainer.current.device.country),
         onSelect = { code -> update { it.copy(currencyCode = code) } },
     )
     SectionHeader(stringResource(R.string.settings_references))
@@ -935,7 +971,6 @@ private fun ColumnScope.EmailCaptureSettings(
                 (EmailCapture.OFF to stringResource(R.string.settings_capture_off)).takeUnless { emailIsReference },
                 EmailCapture.BEFORE_PAYMENT to stringResource(R.string.settings_capture_before),
                 (EmailCapture.AFTER_PAYMENT to stringResource(R.string.settings_capture_after)).takeUnless { emailIsReference },
-                EmailCapture.BOTH to stringResource(R.string.settings_capture_both),
             ),
         selected = payment.effectiveEmailCapture,
         onSelect = { capture -> update { it.copy(emailCapture = capture) } },
@@ -1126,13 +1161,13 @@ private fun SecuritySection(
     state: SettingsUiState,
     actions: SettingsActions,
     events: SettingsEvents,
-    onSetPin: () -> Unit,
+    onSetPin: (Boolean) -> Unit,
 ) {
     SettingNote(stringResource(R.string.settings_pin_hint))
     SettingActions {
         SecondaryButton(
             stringResource(if (state.pinSet) R.string.settings_change_pin else R.string.settings_set_pin),
-            onSetPin,
+            { onSetPin(false) },
             icon = Icons.Default.Lock,
             modifier = Modifier.testTag("setPin"),
         )
@@ -1162,7 +1197,38 @@ private fun SecuritySection(
         selected = state.settings.security.autoLockMinutes,
         onSelect = { minutes -> events.onUpdate { it.copy(security = it.security.copy(autoLockMinutes = minutes)) } },
     )
+    ManagerPinSettings(state, events) { onSetPin(true) }
     SettingNote(stringResource(R.string.settings_pin_forgotten))
+}
+
+@Composable
+private fun ManagerPinSettings(
+    state: SettingsUiState,
+    events: SettingsEvents,
+    onSet: () -> Unit,
+) {
+    val set = Secret.MANAGER_PIN_VERIFIER in state.secrets
+    SectionHeader(stringResource(R.string.manager_pin_title))
+    SettingNote(stringResource(R.string.manager_pin_hint))
+    SettingActions {
+        SecondaryButton(
+            stringResource(if (set) R.string.manager_pin_change else R.string.manager_pin_set),
+            onSet,
+            enabled = state.pinSet,
+            icon = Icons.Default.Lock,
+            modifier = Modifier.testTag("setManagerPin"),
+        )
+        if (set) {
+            ConfirmedRemoval(
+                text = stringResource(R.string.manager_pin_remove),
+                confirmTitle = stringResource(R.string.manager_pin_remove),
+                confirmMessage = stringResource(R.string.manager_pin_remove_message),
+                onConfirm = { events.onSecretChange(Secret.MANAGER_PIN_VERIFIER, null) },
+                icon = Icons.Default.LockOpen,
+                modifier = Modifier.testTag("removeManagerPin"),
+            )
+        }
+    }
 }
 
 @Composable

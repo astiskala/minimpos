@@ -4,6 +4,7 @@ import io.minimpos.app.data.db.SetupProblem
 import io.minimpos.app.data.security.Secret
 import io.minimpos.app.data.security.SecretStore
 import io.minimpos.app.data.settings.TerminalSettings
+import io.minimpos.core.money.PaymentContext
 import io.minimpos.terminal.checkout.CheckoutCredentials
 import io.minimpos.terminal.checkout.CheckoutModifications
 import io.minimpos.terminal.checkout.CheckoutPaymentLinks
@@ -46,11 +47,14 @@ sealed interface ApiSetup {
  *   ([ApiSetup.Incomplete]).
  * @property links Creates, checks and expires payment links; null unless the API is [ApiSetup.Complete] (payment links
  *   are never simulated).
+ * @property context Actual account and environment; isolated fake adapters may omit it.
  */
 data class ApiTarget(
     val setup: ApiSetup,
     val modifications: PaymentModifications? = null,
     val links: PaymentLinkApi? = null,
+    /** Actual account/environment; fixed fake targets may omit it. */
+    val context: PaymentContext? = null,
 )
 
 /** What [AdyenApi.verify] found. */
@@ -104,11 +108,13 @@ class AdyenApi(
     suspend fun target(): ApiTarget {
         val unlocked = setups.unlocked()
         val setup = unlocked.setup
-        return when (val api = setup.apiSetup) {
-            ApiSetup.Simulated -> ApiTarget(api, simulated)
-            ApiSetup.Complete -> connected(setup.settings.terminal, checkNotNull(setup.environment), checkNotNull(unlocked.apiKey))
-            is ApiSetup.Incomplete -> ApiTarget(api)
-        }
+        val target =
+            when (val api = setup.apiSetup) {
+                ApiSetup.Simulated -> ApiTarget(api, simulated)
+                ApiSetup.Complete -> connected(setup.settings.terminal, checkNotNull(setup.environment), checkNotNull(unlocked.apiKey))
+                is ApiSetup.Incomplete -> ApiTarget(api)
+            }
+        return target.copy(context = setup.paymentContext())
     }
 
     /** The client for [terminal]'s credentials with [apiKey] in [environment]; reused while they stay the same. */

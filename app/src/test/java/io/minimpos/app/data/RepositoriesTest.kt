@@ -256,6 +256,21 @@ class RepositoriesTest {
     )
 
     @Test
+    fun `settling an accepted partial refund twice applies it only once`() =
+        await {
+            sales.createPending(sale("s1"), lines("s1"))
+            val line = sales.get("s1")!!.sortedLines.first()
+            val partial = refund("s1", false, 300, listOf(RefundedLine(line.id, "A", 1, 300, 300)))
+            refunds.create(partial.copy(status = RefundStatus.UNKNOWN))
+            repeat(2) { refunds.settle(partial.id, RefundStatus.REQUESTED, null, null) }
+            val stored = sales.get("s1")!!
+            assertThat(stored.sale.refundedMinor).isEqualTo(300)
+            assertThat(stored.sortedLines.first().refundedQuantity).isEqualTo(1)
+            refunds.settle(partial.id, RefundStatus.FAILED, "late failure", null)
+            assertThat(refunds.get(partial.id)!!.status).isEqualTo(RefundStatus.REQUESTED)
+        }
+
+    @Test
     fun `stores sales and records refunded items`() =
         await {
             sales.createPending(sale("s1"), lines("s1"))
@@ -313,6 +328,21 @@ class RepositoriesTest {
             refunds.create(missing)
             refunds.settle(missing.id, RefundStatus.REQUESTED, null, null)
             assertThat(refunds.observe(foreign.id).first()!!.amountMinor).isEqualTo(50)
+        }
+
+    @Test
+    fun `retention and clearing preserve unresolved work and recent refund references`() =
+        await {
+            sales.createPending(sale("unknown", createdAt = 0, status = SaleStatus.UNKNOWN), emptyList())
+            sales.createPending(sale("held", createdAt = 0).copy(kind = SaleKind.PRE_AUTHORISATION), emptyList())
+            sales.createPending(sale("recent-refund", createdAt = 0), emptyList())
+            refunds.create(refund("recent-refund", false, 10, createdAt = 100_000_000))
+            assertThat(history.prune(1, 100_000_000)).isEqualTo(0)
+            assertThat(sales.get("recent-refund")).isNotNull()
+            history.clear()
+            assertThat(sales.get("unknown")).isNotNull()
+            assertThat(sales.get("held")).isNotNull()
+            assertThat(sales.get("recent-refund")).isNull()
         }
 
     @Test

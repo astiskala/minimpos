@@ -16,6 +16,7 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.update
 import java.util.UUID
+import java.util.concurrent.atomic.AtomicLong
 
 /**
  * What the operator has entered on the checkout screen, kept while going back to the cart and forward again.
@@ -48,6 +49,10 @@ class SaleSession(
     private val newKey: () -> String = { UUID.randomUUID().toString() },
 ) {
     private val singleItem = kind.singleItem
+    private val edits = AtomicLong()
+
+    /** The session's edit revision, used to avoid clearing newer work when a payment is recovered. */
+    val revision: Long get() = edits.get()
     private val _cart = MutableStateFlow(Cart())
 
     /** The current cart. */
@@ -71,7 +76,23 @@ class SaleSession(
     ): Flow<Checkout> =
         combine(form, cart, settings, printerAvailable, linksAvailable) { form, cart, appSettings, printer, links ->
             val payment = appSettings.payment
-            Checkout(form, payment, cart.totals(payment.taxMode, payment.chargeTax), currency(appSettings), kind, printer, links)
+            Checkout(
+                form,
+                payment,
+                (
+                    if (appSettings.pricingChange ==
+                        null
+                    ) {
+                        cart
+                    } else {
+                        Cart()
+                    }
+                ).totals(payment.taxMode, payment.chargeTax),
+                currency(appSettings),
+                kind,
+                printer,
+                links,
+            )
         }
 
     /**
@@ -82,7 +103,9 @@ class SaleSession(
     fun addProduct(
         product: ProductEntity,
         tax: TaxRateEntity,
-    ) = _cart.update { base(it).addProduct(CartProduct(product.id, product.name, product.sku, product.priceMinor, applied(tax)), newKey) }
+    ) = edited {
+        _cart.update { base(it).addProduct(CartProduct(product.id, product.name, product.sku, product.priceMinor, applied(tax)), newKey) }
+    }
 
     /**
      * Adds a custom item of [amountMinor] (minor units, positive) with [tax] as a new line (for a [SaleKind.singleItem]
@@ -94,7 +117,7 @@ class SaleSession(
         name: String,
         amountMinor: Long,
         tax: TaxRateEntity,
-    ) = _cart.update { base(it).addCustom(name, amountMinor, applied(tax), newKey()) }
+    ) = edited { _cart.update { base(it).addCustom(name, amountMinor, applied(tax), newKey()) } }
 
     private fun base(cart: Cart) = if (singleItem) Cart() else cart
 
@@ -107,17 +130,39 @@ class SaleSession(
     fun setQuantity(
         key: String,
         quantity: Int,
-    ) = _cart.update { it.setQuantity(key, if (singleItem) quantity.coerceAtMost(1) else quantity) }
+    ) = edited { _cart.update { it.setQuantity(key, if (singleItem) quantity.coerceAtMost(1) else quantity) } }
 
     /** Removes the line with [key]; an unknown key changes nothing. */
-    fun remove(key: String) = _cart.update { it.remove(key) }
+    fun remove(key: String) = edited { _cart.update { it.remove(key) } }
 
     /** Updates the checkout form atomically; [transform] must not have side effects, as it can run more than once. */
-    fun updateForm(transform: (CheckoutForm) -> CheckoutForm) = _form.update(transform)
+    fun updateForm(transform: (CheckoutForm) -> CheckoutForm) = edited { _form.update(transform) }
+
+    /** Preserves displayed unit prices when moving from [before] to [after]; increments the originating revision. */
+    fun reprice(
+        before: CurrencySpec,
+        after: CurrencySpec,
+    ) = edited {
+        _cart.update { cart -> cart.copy(lines = cart.lines.map { it.copy(unitPrice = after.toMinor(before.toMajor(it.unitPrice))) }) }
+    }
 
     /** Empties the cart and the checkout form, for the next sale. */
-    fun clear() {
-        _cart.value = Cart()
-        _form.value = CheckoutForm()
-    }
+    fun clear() =
+        edited {
+            _cart.value = Cart()
+            _form.value = CheckoutForm()
+        }
+
+    /** Clears only the session revision that made [start]; newer work is kept. */
+    fun complete(start: PaymentStart) =
+        synchronized(this) {
+            if (start.sessionRevision == null || start.sessionRevision == revision) clear()
+        }
+
+    private fun edited(change: () -> Unit) =
+        synchronized(this) {
+            change()
+            edits.incrementAndGet()
+            Unit
+        }
 }

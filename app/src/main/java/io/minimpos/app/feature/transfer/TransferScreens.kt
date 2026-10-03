@@ -393,9 +393,10 @@ private fun secretNames(secrets: Set<Secret>): String? {
             stringResource(
                 when (it) {
                     Secret.TERMINAL_PASSPHRASE -> R.string.transfer_secret_passphrase
-                    Secret.CHECKOUT_API_KEY -> R.string.transfer_secret_api_key
+                    Secret.ADYEN_API_KEY -> R.string.transfer_secret_api_key
                     Secret.SMTP_PASSWORD -> R.string.transfer_secret_smtp
                     Secret.PIN_VERIFIER -> R.string.transfer_secret_pin
+                    Secret.MANAGER_PIN_VERIFIER -> R.string.manager_pin_title
                     Secret.PAYMENTS_APP_API_KEY -> R.string.transfer_secret_payments_app_key
                 },
             )

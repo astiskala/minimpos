@@ -35,17 +35,30 @@ class CheckoutTest {
 
     private fun checkout(
         form: CheckoutForm = CheckoutForm(),
-        payment: PaymentSettings = PaymentSettings(),
+        payment: PaymentSettings = PaymentSettings(shopperReferenceSource = ShopperReferenceSource.CUSTOMER_REFERENCE),
         kind: SaleKind = SaleKind.SALE,
         printer: Boolean = true,
     ) = Checkout(form, payment, totals, aud, kind, printer)
+
+    @Test
+    fun `completing a payment clears only its originating session revision`() {
+        val session = SaleSession()
+        session.addProduct(ProductEntity(1, "Latte", 450, 1), TaxRateEntity(1, "GST", 10_000))
+        val start = checkout().paymentStart(now, ZoneOffset.UTC)!!.copy(sessionRevision = session.revision)
+        session.updateForm { it.copy(email = "new@example.com") }
+        session.complete(start)
+        assertThat(session.cart.value.lines).hasSize(1)
+        assertThat(session.form.value.email).isEqualTo("new@example.com")
+        session.complete(start.copy(sessionRevision = session.revision))
+        assertThat(session.cart.value.lines).isEmpty()
+    }
 
     @Test
     fun `a blank reference is generated with the prefix, and the card is saved under the customer reference`() {
         val start =
             checkout(
                 CheckoutForm(customerReference = " CUST-1 ", email = "a@b.co", tokenize = true),
-                PaymentSettings(referencePrefix = "MP"),
+                PaymentSettings(referencePrefix = "MP", shopperReferenceSource = ShopperReferenceSource.CUSTOMER_REFERENCE),
             ).paymentStart(now, ZoneOffset.UTC)!!
         assertThat(start.merchantReference).matches("MP-260930-145811-[0-9A-Z]{4}")
         assertThat(start.customerReference).isEqualTo("CUST-1")
@@ -95,7 +108,11 @@ class CheckoutTest {
         val start = preAuth.paymentStart(now, ZoneOffset.UTC)!!
         assertThat(start.shopperReference).isEqualTo("s@example.com")
         assertThat(start.tokenization).isNull()
-        val customer = checkout(CheckoutForm(customerReference = "CUST-1"), PaymentSettings(offerCardSaving = false))
+        val customer =
+            checkout(
+                CheckoutForm(customerReference = "CUST-1"),
+                PaymentSettings(offerCardSaving = false, shopperReferenceSource = ShopperReferenceSource.CUSTOMER_REFERENCE),
+            )
         assertThat(customer.showCustomerReference).isTrue()
         assertThat(customer.canTokenize).isFalse()
         assertThat(customer.paymentStart(now, ZoneOffset.UTC)!!.shopperReference).isEqualTo("CUST-1")
@@ -105,7 +122,7 @@ class CheckoutTest {
     fun `invalid entries or an empty cart start nothing`() {
         assertThat(checkout(CheckoutForm(customerReference = "ab")).paymentStart(now, ZoneOffset.UTC)).isNull()
         assertThat(checkout(CheckoutForm(transactionReference = "x".repeat(Checkout.MAX_REFERENCE_LENGTH + 1))).canPay).isFalse()
-        assertThat(checkout(CheckoutForm(email = "bad"), PaymentSettings(emailCapture = EmailCapture.BOTH)).canPay)
+        assertThat(checkout(CheckoutForm(email = "bad"), PaymentSettings(emailCapture = EmailCapture.BEFORE_PAYMENT)).canPay)
             .isFalse()
         assertThat(Checkout().paymentStart(now, ZoneOffset.UTC)).isNull()
     }
@@ -127,7 +144,14 @@ class CheckoutTest {
 
     @Test
     fun `a payment link is offered for a sale that can be paid while links are available`() {
-        val links = Checkout(CheckoutForm(customerReference = "CUST-1"), PaymentSettings(), totals, aud, linksAvailable = true)
+        val links =
+            Checkout(
+                CheckoutForm(customerReference = "CUST-1"),
+                PaymentSettings(shopperReferenceSource = ShopperReferenceSource.CUSTOMER_REFERENCE),
+                totals,
+                aud,
+                linksAvailable = true,
+            )
         assertThat(links.canSendLink).isTrue()
         assertThat(links.copy(linksAvailable = false).canSendLink).isFalse()
         assertThat(links.copy(kind = SaleKind.PRE_AUTHORISATION).canSendLink).isFalse()
@@ -140,7 +164,7 @@ class CheckoutTest {
         val start =
             Checkout(
                 CheckoutForm(customerReference = "CUST-1", tipOnReceipt = true),
-                PaymentSettings(linkExpiryHours = 48),
+                PaymentSettings(linkExpiryHours = 48, shopperReferenceSource = ShopperReferenceSource.CUSTOMER_REFERENCE),
                 totals,
                 aud,
                 printerAvailable = true,
@@ -178,7 +202,16 @@ class CheckoutTest {
     fun `the session's checkout follows its cart, form, settings and printer`() =
         runBlocking {
             val session = SaleSession { "line" }
-            val settings = MutableStateFlow(AppSettings(payment = PaymentSettings(taxMode = TaxMode.EXCLUSIVE)))
+            val settings =
+                MutableStateFlow(
+                    AppSettings(
+                        payment =
+                            PaymentSettings(
+                                taxMode = TaxMode.EXCLUSIVE,
+                                shopperReferenceSource = ShopperReferenceSource.CUSTOMER_REFERENCE,
+                            ),
+                    ),
+                )
             val checkouts = session.checkout(settings, flowOf(false)) { CurrencySpec.of("AUD") }
             assertThat(checkouts.first().canPay).isFalse()
             session.addProduct(ProductEntity(1, "Tea", 400, 1), TaxRateEntity(1, "GST", 10_000))

@@ -224,6 +224,42 @@ class PaymentLinksTest {
     }
 
     @Test
+    fun `recovering an unknown link clears its original session but preserves newer work`() {
+        env.useLinks()
+        repeat(2) { attempt ->
+            api.createResult = PaymentLinkResult.Unknown("timeout")
+            val initial = linkStart()
+            val start = initial.copy(payment = initial.payment.copy(sessionRevision = session.revision))
+            val id = links.start(start)
+            saleWhen(id) { it.status == SaleStatus.UNKNOWN }
+            if (attempt == 1) session.updateForm { it.copy(email = "new@example.com") }
+            api.createResult = null
+            assertThat(await { links.check(id) }).isEqualTo(LinkUpdate.StillOpen)
+            assertThat(
+                session.cart.value.lines
+                    .isEmpty(),
+            ).isEqualTo(attempt == 0)
+        }
+    }
+
+    @Test
+    fun `missing setup cannot turn an unknown link creation into a known failure`() {
+        env.useLinks()
+        api.createResult = PaymentLinkResult.Unknown("timeout")
+        val id = links.start(linkStart())
+        saleWhen(id) { it.status == SaleStatus.UNKNOWN }
+        env.useSimulator()
+        assertThat(await { links.check(id) }).isEqualTo(LinkUpdate.NotSetUp(SetupProblem.API_REQUIRED))
+        assertThat(
+            await {
+                container.sales
+                    .get(id)!!
+                    .sale.status
+            },
+        ).isEqualTo(SaleStatus.UNKNOWN)
+    }
+
+    @Test
     fun `without the Checkout API a link fails with what to enter, and checks change nothing`() {
         env.useLinks()
         val id = links.start(linkStart())

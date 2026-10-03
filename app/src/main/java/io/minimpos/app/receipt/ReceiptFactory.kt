@@ -57,6 +57,10 @@ class ReceiptFactory(
     private val currentLabels: () -> ReceiptLabels = { labels },
     /** Product and tax names for the sample receipt in the current language. */
     private val sampleTexts: () -> ReceiptSampleTexts = { ReceiptSampleTexts() },
+    /** Reads payment-standing labels in the current language at delivery. */
+    private val standingText: (io.minimpos.app.refund.PaymentStanding) -> String? = { it.name.takeUnless { name -> name == "CHARGED" } },
+    /** Reads refund-request outcome labels in the current language at delivery. */
+    private val refundText: (io.minimpos.app.data.db.RefundStatus) -> String? = { it.name },
 ) {
     /** [epochMillis] as a short localised date and time, as printed on receipts and shown in history. */
     fun formatDateTime(epochMillis: Long): String =
@@ -121,6 +125,8 @@ class ReceiptFactory(
                 captured = standing.capturedMinor,
                 unpaidLink = standing.unpaidLink?.let { UnpaidLink(it, standing.linkExpiresAt?.let(::formatDateTime)) },
                 paidOnline = standing.paidOnline,
+                standingNote = standingText(standing.standing),
+                holdCancelled = standing.standing == io.minimpos.app.refund.PaymentStanding.HOLD_CANCELLED,
             )
         return builder(settings, currency).sale(receipt, copy)
     }
@@ -145,6 +151,8 @@ class ReceiptFactory(
                 amount = refund.amountMinor,
                 cardReceipt = ReceiptLinesJson.decode(refund.customerReceiptJson),
                 cancellation = refund.cancellation,
+                full = refund.full,
+                standingNote = refundText(refund.status),
             )
         return builder(settings, CurrencySpec.of(refund.currency)).refund(receipt)
     }

@@ -66,7 +66,7 @@ class TerminalSetupViewModel(
         _actions.update { it.copy(terminals = ActionState(running = true), connectedTerminals = null, apiKeyStored = false) }
         viewModelScope.launch {
             val entered = apiKey?.trim()?.takeIf { it.isNotEmpty() }
-            val notStored = entered?.let { persisting { store(Secret.CHECKOUT_API_KEY, it) } }
+            val notStored = entered?.let { persisting { store(Secret.ADYEN_API_KEY, it) } }
             if (notStored != null) {
                 _actions.update { it.copy(terminals = ActionState(outcome = notStored, isError = true)) }
                 return@launch

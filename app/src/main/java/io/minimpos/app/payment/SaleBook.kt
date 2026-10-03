@@ -27,6 +27,7 @@ import io.minimpos.terminal.client.TransactionKind
  *   and captured with the tip once that is entered (see [Captures]).
  * @property shopperReference Adyen's `shopperReference`, sent with the payment whether or not the card is saved; null
  *   for none.
+ * @property sessionRevision Originating in-memory session revision; null when not started through a session.
  * @throws IllegalArgumentException if a pre-authorisation is taken for tipping on the receipt, or a card is to be saved
  *   without a [shopperReference].
  */
@@ -40,6 +41,7 @@ data class PaymentStart(
     val kind: SaleKind = SaleKind.SALE,
     val tipOnReceipt: Boolean = false,
     val shopperReference: String? = null,
+    val sessionRevision: Long? = null,
 ) {
     init {
         require(!tipOnReceipt || kind == SaleKind.SALE) { "Only a sale can be taken for tipping on the receipt" }
@@ -85,6 +87,13 @@ class SaleBook(
     ) {
         sales.createPending(pendingSale(id, request, createdAt).copy(serviceId = serviceId), lines(id, request.totals))
     }
+
+    override suspend fun recordContext(
+        id: String,
+        context: io.minimpos.core.money.PaymentContext,
+    ) = sales.record(id, SaleEvent.ContextRecorded(context))
+
+    override suspend fun context(id: String) = sales.get(id)?.sale?.context
 
     override fun operation(request: PaymentStart): TerminalOperation {
         val tokenization = request.tokenization

@@ -47,6 +47,15 @@ class RefundBook(
         )
     }
 
+    override suspend fun recordContext(
+        id: String,
+        context: io.minimpos.core.money.PaymentContext,
+    ) = refunds.recordContext(id, context)
+
+    override suspend fun context(id: String) = refunds.get(id)?.context
+
+    override fun expectedContext(request: RefundStart) = request.expectedContext
+
     override fun operation(request: RefundStart): TerminalOperation = TerminalOperation.Refund(request.params())
 
     override suspend fun settle(

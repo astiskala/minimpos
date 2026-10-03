@@ -26,6 +26,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -45,57 +46,97 @@ import io.minimpos.app.ui.components.MiniScaffold
 import io.minimpos.app.ui.components.currentLocale
 import io.minimpos.app.ui.navigation.Navigator
 import io.minimpos.app.ui.theme.LocalDimens
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.text.DateFormat
 import java.util.Date
+import kotlin.time.Duration.Companion.seconds
 
-/** Shows [content] when no PIN is set or the admin session is unlocked; otherwise asks for the PIN. */
+/** Shows [content] when the selected PIN is absent or unlocked; [manager] selects Manager rather than admin access. */
 @Composable
 fun PinGate(
     navigator: Navigator,
     modifier: Modifier = Modifier,
+    manager: Boolean = false,
     content: @Composable () -> Unit,
 ) {
     val container = LocalAppContainer.current
-    val pinSet by container.pinManager.pinConfigured.collectAsStateWithLifecycle(initialValue = null)
-    val unlocked by container.sessionLock.unlocked.collectAsStateWithLifecycle()
+    val pins = if (manager) container.managerPin else container.pinManager
+    val lock = if (manager) container.managerLock else container.sessionLock
+    val pinSet by pins.pinConfigured.collectAsStateWithLifecycle(initialValue = null)
+    val unlocked by lock.unlocked.collectAsStateWithLifecycle()
     val settings by container.settingsState.collectAsStateWithLifecycle()
-    LaunchedEffect(navigator.current) { container.sessionLock.touch(settings.security.autoLockMinutes * 60_000L) }
+    LaunchedEffect(navigator.current) { lock.touch(settings.security.autoLockMinutes * 60_000L) }
+    LaunchedEffect(unlocked, settings.security.autoLockMinutes) {
+        while (unlocked) {
+            delay(1.seconds)
+            lock.expire(settings.security.autoLockMinutes * 60_000L)
+        }
+    }
     Box(modifier) {
         when {
             pinSet == null -> Box(Modifier.fillMaxSize())
             pinSet == false || unlocked -> content()
-            else -> UnlockScreen(onUnlock = container.sessionLock::unlock, onCancel = navigator::back)
+            else -> UnlockScreen(onUnlock = lock::unlock, onCancel = navigator::back, manager = manager)
         }
     }
 }
 
-/** Asks for the admin PIN; [onUnlock] runs once it is accepted, and wrong attempts count towards a lockout. */
+/** Runs [onApprove] after the optional Manager PIN is accepted; [onCancel] abandons the pending action. */
+@Composable
+fun ManagerApproval(
+    onApprove: () -> Unit,
+    onCancel: () -> Unit,
+) {
+    val container = LocalAppContainer.current
+    val configured by container.managerPin.pinConfigured.collectAsStateWithLifecycle(initialValue = null)
+    val unlocked by container.managerLock.unlocked.collectAsStateWithLifecycle()
+    val approve by rememberUpdatedState(onApprove)
+    LaunchedEffect(configured, unlocked) {
+        if (configured != null && (configured == false || unlocked)) approve()
+    }
+    if (configured == true && !unlocked) {
+        UnlockScreen(onUnlock = container.managerLock::unlock, onCancel = onCancel, manager = true)
+    }
+}
+
+/** Asks for the Manager PIN when [manager], otherwise the admin PIN; wrong attempts count towards a lockout. */
 @Composable
 fun UnlockScreen(
     onUnlock: () -> Unit,
     onCancel: () -> Unit,
     modifier: Modifier = Modifier,
+    manager: Boolean = false,
 ) {
     val container = LocalAppContainer.current
+    val pins = if (manager) container.managerPin else container.pinManager
     val scope = rememberCoroutineScope()
     var error by remember { mutableStateOf<String?>(null) }
     var busy by remember { mutableStateOf(false) }
     val wrongPin = stringResource(R.string.pin_wrong)
     val lockedOut = stringResource(R.string.pin_locked_out)
+    val unreadable = stringResource(R.string.pin_unreadable)
     val locale = currentLocale()
-    MiniScaffold(title = stringResource(R.string.pin_title), onBack = onCancel, modifier = modifier) { padding ->
+    MiniScaffold(
+        title = stringResource(if (manager) R.string.manager_pin_title else R.string.pin_title),
+        onBack = onCancel,
+        modifier = modifier,
+    ) { padding ->
         PinPad(
-            title = stringResource(R.string.pin_enter),
+            title = stringResource(if (manager) R.string.manager_pin_enter else R.string.pin_enter),
             error = error,
             busy = busy,
             modifier = Modifier.padding(padding),
             onComplete = { pin ->
                 busy = true
                 scope.launch {
-                    when (val result = container.pinManager.verify(pin)) {
+                    when (val result = pins.verify(pin)) {
                         PinCheck.Accepted -> {
                             onUnlock()
+                        }
+
+                        PinCheck.Unreadable -> {
+                            error = unreadable
                         }
 
                         is PinCheck.Rejected -> {
@@ -117,17 +158,22 @@ fun UnlockScreen(
     }
 }
 
-/** Two-step "enter new PIN / confirm" flow. */
+/** Two-step "enter new PIN / confirm" flow, for the Manager PIN when [manager], otherwise the admin PIN. */
 @Composable
 fun SetPinScreen(
     onDone: (String) -> Unit,
     onCancel: () -> Unit,
     modifier: Modifier = Modifier,
+    manager: Boolean = false,
 ) {
     var first by remember { mutableStateOf<String?>(null) }
     var error by remember { mutableStateOf<String?>(null) }
     val mismatch = stringResource(R.string.pin_mismatch)
-    MiniScaffold(title = stringResource(R.string.pin_set_title), onBack = onCancel, modifier = modifier) { padding ->
+    MiniScaffold(
+        title = stringResource(if (manager) R.string.manager_pin_set else R.string.pin_set_title),
+        onBack = onCancel,
+        modifier = modifier,
+    ) { padding ->
         PinPad(
             title = if (first == null) stringResource(R.string.pin_new) else stringResource(R.string.pin_confirm),
             error = error,

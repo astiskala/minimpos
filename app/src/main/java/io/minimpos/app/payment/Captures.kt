@@ -71,10 +71,12 @@ sealed interface CaptureResult {
  *
  * @param sales Where the payments are stored, and their capture recorded.
  * @param target Where captures and adjustments go now: [AdyenApi.target] in the app, a fixed target in tests.
+ * @param permits Whether the money-moving action is authorized now, checked under the operation lock.
  */
 class Captures(
     private val sales: SaleRepository,
     private val target: suspend () -> ApiTarget,
+    private val permits: suspend () -> Boolean = { true },
 ) {
     private val mutex = Mutex()
 
@@ -148,11 +150,15 @@ class Captures(
         saleId: String,
         action: PaymentAction,
     ): SaleEntity? =
-        sales
-            .get(saleId)
-            ?.let(::StoredPayment)
-            ?.takeIf { action in it.actions }
-            ?.sale
+        if (!permits()) {
+            null
+        } else {
+            sales
+                .get(saleId)
+                ?.let(::StoredPayment)
+                ?.takeIf { action in it.actions }
+                ?.sale
+        }
 
     /** Runs [send] with the Checkout API when [target] has it; else nothing is sent, and [sale] records why. */
     private suspend fun withApi(
@@ -160,7 +166,18 @@ class Captures(
         sale: SaleEntity,
         send: suspend (PaymentModifications) -> CaptureResult,
     ): CaptureResult {
-        target.modifications?.let { return send(it) }
+        val modifications = target.modifications
+        if (modifications != null) {
+            val result =
+                if (target.context != null &&
+                    sale.context?.matchesApi(target.context) != true
+                ) {
+                    CaptureResult.NotSetUp(SetupProblem.PAYMENT_CONTEXT)
+                } else {
+                    send(modifications)
+                }
+            return result
+        }
         val problem = target.setup.problem ?: SetupProblem.API_REQUIRED
         sales.record(sale.id, SaleEvent.ModificationNotSetUp(problem))
         return CaptureResult.NotSetUp(problem)
@@ -184,8 +201,10 @@ class Captures(
         modifications: PaymentModifications,
     ): CaptureResult {
         val psp = sale.pspReference ?: return CaptureResult.NotAllowed
-        // The amount held before is part of the key, so adjusting back to an earlier amount is a new request.
-        val key = "adjust-${sale.id}-${sale.heldMinor}-$amount"
+        // An unresolved request keeps its identity; a separate renewal or amount change gets a new identity.
+        if (sale.adjustmentPending && sale.adjustmentAmountMinor != amount) return CaptureResult.NotAllowed
+        val key = if (sale.adjustmentPending) checkNotNull(sale.adjustmentKey) else "adjust-${java.util.UUID.randomUUID()}"
+        sales.record(sale.id, SaleEvent.AdjustmentSending(key, amount))
         val result =
             modifications.updateAmount(
                 psp,

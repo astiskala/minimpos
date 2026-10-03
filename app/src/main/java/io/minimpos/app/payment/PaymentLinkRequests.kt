@@ -7,7 +7,8 @@ import io.minimpos.terminal.checkout.ModificationAmount
 import io.minimpos.terminal.checkout.PaymentLinkLineItem
 import io.minimpos.terminal.checkout.PaymentLinkRequest
 import java.time.Instant
-import java.util.Locale
+import Locale
+import PaymentContext
 
 /**
  * A sale to be paid through an Adyen payment link instead of on the terminal, as [Checkout.linkStart] makes it.
@@ -24,10 +25,17 @@ data class PaymentLinkStart(
     fun pendingSale(
         id: String,
         createdAt: Long,
+        context: PaymentContext? = null,
+        locale: Locale = Locale.ROOT,
+        recurring: String? = null,
     ): SaleEntity =
         SaleBook.pendingSale(id, payment, createdAt).copy(
             paymentLink = true,
             paymentLinkExpiresAt = expiresAt.toEpochMilli(),
+            context = context,
+            linkLocale = locale.toLanguageTag().takeIf { locale.language.isNotEmpty() },
+            linkCountry = locale.country.takeIf { it.matches(Regex("[A-Z]{2}")) },
+            linkRecurringModel = recurring.takeIf { payment.tokenization != null },
         )
 }
 
@@ -40,20 +48,14 @@ object PaymentLinkRequests {
     /** Thousandths of a percent per basis point (hundredth of a percent), Adyen's unit for `taxPercentage`. */
     private const val MILLI_PER_BASIS_POINT = 10
 
-    private val COUNTRY = Regex("[A-Z]{2}")
-
     /**
      * The link request for [record], a sale opened for a payment link: its amount, reference, expiry and items, the
-     * shopper's email and reference, saving the card for [recurringProcessingModel] when the shopper asked for it, the
-     * customer reference as metadata, and the payment page's language and country from [locale].
+     * shopper's email and reference, the saved recurring model, the customer reference as metadata, and the frozen
+     * payment-page language and country.
      *
      * @throws IllegalArgumentException if [record] was not opened for a payment link.
      */
-    fun request(
-        record: SaleWithLines,
-        recurringProcessingModel: String,
-        locale: Locale,
-    ): PaymentLinkRequest {
+    fun request(record: SaleWithLines): PaymentLinkRequest {
         val sale = record.sale
         val expiresAt = requireNotNull(sale.paymentLinkExpiresAt?.takeIf { sale.paymentLink }) { "Not a payment link sale" }
         return PaymentLinkRequest(
@@ -63,9 +65,9 @@ object PaymentLinkRequests {
             lineItems = lineItems(record.sortedLines),
             shopperEmail = sale.shopperEmail,
             shopperReference = sale.shopperReference,
-            recurringProcessingModel = recurringProcessingModel.takeIf { sale.tokenizationRequested },
-            shopperLocale = locale.toLanguageTag().takeIf { locale.language.isNotEmpty() },
-            countryCode = locale.country.takeIf { COUNTRY.matches(it) },
+            recurringProcessingModel = sale.linkRecurringModel.takeIf { sale.tokenizationRequested },
+            shopperLocale = sale.linkLocale,
+            countryCode = sale.linkCountry,
             metadata = listOfNotNull(sale.customerReference?.let { "customerReference" to it }).toMap(),
         )
     }

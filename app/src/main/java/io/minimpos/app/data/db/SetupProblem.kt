@@ -25,7 +25,7 @@ enum class SetupProblem {
     /** No merchant account is entered. */
     MERCHANT_ACCOUNT,
 
-    /** No Checkout API key is saved, while the merchant account is entered. */
+    /** No Adyen API key is saved, while the merchant account is entered. */
     API_KEY,
 
     /** Whether payments go to TEST or LIVE is not known yet: no connection has found it. */
@@ -37,10 +37,10 @@ enum class SetupProblem {
     /** The saved shared key passphrase cannot be decrypted on this device. */
     UNREADABLE_PASSPHRASE,
 
-    /** The saved Checkout API key cannot be decrypted on this device. */
+    /** The saved Adyen API key cannot be decrypted on this device. */
     UNREADABLE_API_KEY,
 
-    /** Neither the merchant account nor the Checkout API key is entered, and the action needs them. */
+    /** Neither the merchant account nor the Adyen API key is entered, and the action needs them. */
     API_REQUIRED,
 
     /** No API key is saved for a terminal in the cloud. */
@@ -63,4 +63,10 @@ enum class SetupProblem {
 
     /** The saved Payments app API key cannot be decrypted on this device. */
     UNREADABLE_PAYMENTS_APP_KEY,
+
+    /** The optional Manager PIN is configured and approval has not been granted, or has expired. */
+    MANAGER_APPROVAL,
+
+    /** The current destination or Adyen account does not match the original operation. */
+    PAYMENT_CONTEXT,
 }

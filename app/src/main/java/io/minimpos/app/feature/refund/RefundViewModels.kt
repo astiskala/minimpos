@@ -47,12 +47,15 @@ enum class RefundOption {
  * @property option What to refund.
  * @property selection Units to refund per sale line ID, for [RefundOption.ITEMS].
  * @property amount The amount typed in, for [RefundOption.AMOUNT].
+ * @property remoteReviewed Explicit staff review of an independently verified foreign receipt.
  */
 data class RefundUiState(
     val load: Refundability? = null,
     val option: RefundOption = RefundOption.FULL,
     val selection: Map<Long, Int> = emptyMap(),
     val amount: AmountEntry = AmountEntry(),
+    /** Staff independently checked the payment, remaining amount and destination when no local sale is known. */
+    val remoteReviewed: Boolean = false,
 ) {
     /** The payment, when it can be refunded. */
     val original: RefundablePayment? get() = (load as? Refundability.Refundable)?.payment
@@ -70,7 +73,7 @@ data class RefundUiState(
     val refundMinor: Long get() = original?.amountFor(choice) ?: 0
 
     /** Whether [refundMinor] can be refunded: more than 0 and no more than what is left. */
-    val amountValid: Boolean get() = original?.isValid(choice) == true
+    val amountValid: Boolean get() = original?.isValid(choice) == true && (original?.local != null || remoteReviewed)
 }
 
 /**
@@ -103,6 +106,9 @@ class RefundViewModel(
         }
     }
 
+    /** Records explicit staff review of a receipt without local payment context. */
+    fun reviewRemote(reviewed: Boolean) = _state.update { it.copy(remoteReviewed = reviewed) }
+
     /** Chooses what to refund. */
     fun selectOption(option: RefundOption) = _state.update { it.copy(option = option) }
 
@@ -124,6 +130,7 @@ class RefundViewModel(
      */
     fun refund(): Boolean {
         val current = _state.value
+        if (!current.amountValid) return false
         val request =
             current.original?.request(current.choice, settings.value.payment.referencePrefix, clock.instant(), zone()) ?: return false
         return runCatching { refunds.start(request) }.isSuccess

@@ -64,8 +64,7 @@ sealed interface DeleteResult {
 class CatalogRepository(
     private val db: AppDatabase,
     /**
-     * Name for the 0% rate created when an imported catalogue has untaxed products (possible in format v2 from older
-     * builds) and no 0% rate exists.
+     * Name for the 0% rate created when an imported catalogue leaves a product's tax rate unspecified.
      */
     private val zeroRateName: String = "No tax",
 ) {
@@ -129,12 +128,21 @@ class CatalogRepository(
 
     /** Inserts [product] when its ID is 0, otherwise updates it; returns its ID. */
     suspend fun saveProduct(product: ProductEntity): Long =
-        if (product.id == 0L) {
-            dao.insert(product)
-        } else {
-            dao.update(product)
-            product.id
+        db.withTransaction {
+            val normalized = product.copy(sku = product.sku?.trim()?.takeIf { it.isNotEmpty() })
+            require(
+                normalized.sku == null || dao.productsOnce().all { it.id == normalized.id || it.sku != normalized.sku },
+            ) { "SKU already in use" }
+            if (normalized.id == 0L) {
+                dao.insert(normalized)
+            } else {
+                dao.update(normalized)
+                normalized.id
+            }
         }
+
+    /** Atomic unit-price application used by confirmed pricing journals. */
+    val pricing = CataloguePricing(db)
 
     /** Deletes [product]. Past sales keep their own copy of its details. */
     suspend fun deleteProduct(product: ProductEntity) = dao.delete(product)
@@ -234,12 +242,17 @@ class CatalogRepository(
         taxRates: ImportedTaxRates,
         categoryIds: List<Long>,
     ): ProductChanges {
-        val existing = dao.productsOnce()
+        val existing = dao.productsOnce().toMutableList()
         val changes = ProductChanges()
         products.forEachIndexed { index, product ->
             val match =
                 existing.firstOrNull {
-                    if (product.sku != null) it.sku == product.sku else it.name.equals(product.name, ignoreCase = true)
+                    if (!product.sku.isNullOrBlank()) {
+                        it.sku == product.sku?.trim()
+                    } else {
+                        it.sku == null && it.kind == (if (product.preAuthorisation) SaleKind.PRE_AUTHORISATION else SaleKind.SALE) &&
+                            it.name.equals(product.name, ignoreCase = true)
+                    }
                 }
             val entity =
                 ProductEntity(
@@ -248,22 +261,23 @@ class CatalogRepository(
                     priceMinor = product.priceMinor,
                     taxRateId = product.taxRateIndex?.let(taxRates.ids::get) ?: zeroRateId(taxRates),
                     categoryId = product.categoryIndex?.let(categoryIds::get),
-                    sku = product.sku,
+                    sku = product.sku?.trim()?.takeIf { it.isNotEmpty() },
                     sortOrder = match?.sortOrder ?: index,
                     kind = if (product.preAuthorisation) SaleKind.PRE_AUTHORISATION else SaleKind.SALE,
                 )
             if (match == null) {
-                dao.insert(entity)
+                existing.add(entity.copy(id = dao.insert(entity)))
                 changes.added++
             } else {
                 dao.update(entity)
+                existing[existing.indexOfFirst { it.id == entity.id }] = entity
                 changes.updated++
             }
         }
         return changes
     }
 
-    /** Catalogues from older versions can have untaxed products; they get a 0% rate, created if there is none. */
+    /** An unspecified imported tax rate becomes a 0% rate, created if there is none. */
     private suspend fun zeroRateId(taxRates: ImportedTaxRates): Long =
         taxRates.zeroRateId ?: (
             dao.taxRatesOnce().firstOrNull { it.rateMilliPercent == 0 }?.id

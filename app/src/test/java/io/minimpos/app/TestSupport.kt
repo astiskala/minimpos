@@ -367,7 +367,7 @@ class TestEnvironment(
      * it; whether it is complete also depends on the environment.
      */
     fun useCheckoutApi() {
-        await { container.secrets.set(Secret.CHECKOUT_API_KEY, "key") }
+        await { container.secrets.set(Secret.ADYEN_API_KEY, "key") }
         updateSettings { it.copy(terminal = it.terminal.copy(merchantAccount = "HarbourCoffeeCOM")) }
     }
 
@@ -376,7 +376,7 @@ class TestEnvironment(
      * environment, TEST, is detected), so the Checkout API is set up; [enabled] switches links on in Settings.
      */
     fun useLinks(enabled: Boolean = true) {
-        await { container.secrets.set(Secret.CHECKOUT_API_KEY, "key") }
+        await { container.secrets.set(Secret.ADYEN_API_KEY, "key") }
         updateSettings {
             it.copy(
                 terminal =

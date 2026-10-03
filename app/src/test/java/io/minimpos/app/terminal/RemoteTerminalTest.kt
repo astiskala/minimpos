@@ -50,7 +50,7 @@ class RemoteTerminalTest {
         env.updateSettings {
             it.copy(terminal = it.terminal.copy(mode = TerminalMode.CLOUD, merchantAccount = " Merchant ", poiIdOverride = poiId))
         }
-        await { container.secrets.set(Secret.CHECKOUT_API_KEY, "cloud-key") }
+        await { container.secrets.set(Secret.ADYEN_API_KEY, "cloud-key") }
     }
 
     private fun useTapToPay() {
@@ -132,7 +132,7 @@ class RemoteTerminalTest {
 
         // Payments wait for the Checkout API, whose merchant account boarding already had.
         assertThat(await { gateway.pay(payment, "PAY0") }).isEqualTo(Attempt.NotSetUp(SetupProblem.API_KEY))
-        await { container.secrets.set(Secret.CHECKOUT_API_KEY, "key") }
+        await { container.secrets.set(Secret.ADYEN_API_KEY, "key") }
         var sending: String? = null
         val paid = await { gateway.pay(payment, "PAY1") { sending = it } }.made() as TransactionOutcome.Completed
         assertThat(paid.details.success).isTrue()

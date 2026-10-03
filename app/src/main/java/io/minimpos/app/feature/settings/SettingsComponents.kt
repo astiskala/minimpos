@@ -52,6 +52,7 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import io.minimpos.app.R
+import io.minimpos.app.ui.components.LocalAppContainer
 import io.minimpos.app.ui.theme.LocalDimens
 import io.minimpos.app.ui.theme.LocalStatusColors
 
@@ -77,12 +78,14 @@ fun SettingTextField(
     imeAction: ImeAction = ImeAction.Default,
     tag: String? = null,
 ) {
+    val container = LocalAppContainer.current
     var text by remember { mutableStateOf(value) }
     val error = isError(text)
     Column(modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = if (LocalDimens.current.compact) 2.dp else 4.dp)) {
         OutlinedTextField(
             value = text,
             onValueChange = {
+                container.userActivity()
                 text = it
                 if (!isError(it)) onCommit(it)
             },
@@ -238,10 +241,14 @@ private fun PasswordField(
     modifier: Modifier = Modifier,
     placeholder: String? = null,
 ) {
+    val container = LocalAppContainer.current
     var visible by remember { mutableStateOf(false) }
     OutlinedTextField(
         value = value,
-        onValueChange = onValueChange,
+        onValueChange = {
+            container.userActivity()
+            onValueChange(it)
+        },
         label = { Text(label) },
         // On one line, so a long hint cannot make the field grow when it gets the focus.
         placeholder = placeholder?.let { { Text(it, maxLines = 1, overflow = TextOverflow.Ellipsis) } },

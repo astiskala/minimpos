@@ -1,7 +1,8 @@
-# `:terminal-api`
+# `:adyen`
 
-The Terminal API client: `com.adyen:adyen-java-api-library` (nexo models, `TerminalLocalAPI`, `NexoCrypto`) made to work
-on Android, with the local, cloud and Payments app transports, the Checkout API calls and the in-process simulator. The
+The Adyen integration module (sources in `adyen/`): `com.adyen:adyen-java-api-library` (nexo models,
+`TerminalLocalAPI`, `NexoCrypto`) made to work on Android, with the local, cloud and Payments app transports,
+Checkout API calls, Management API boarding and the in-process simulator. The
 root `AGENTS.md` has the build, the terminal constraints and the conventions; `ArchitectureTest` enforces the starred
 rules.
 

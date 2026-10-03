@@ -91,7 +91,7 @@
               <li><strong>运行 Android 9 或更高版本的 Adyen Android 支付终端</strong>，例如 S1F2、S1F4Pro、S1E4Pro、S1E2L、AMS1、S1U2 或 SFO1，用于运行 Mini mPOS。打印需要终端配备打印机；扫描收据、条形码和设置二维码需要摄像头。</li>
               <li>或者一台 <strong>Android 平板电脑或手机</strong>，用于通过本地网络或互联网在终端上收款，或使用 Tap to Pay 收款（见<a href="#tablet">在平板电脑或手机上使用</a>）。</li>
               <li>可选：如果要通过电子邮件发送收据，请准备一个 <strong>SMTP 邮件服务器</strong>，或常见邮件服务商的邮箱。</li>
-              <li>Adyen Checkout API 的 <strong>API 凭据</strong>，每笔付款都需要它：应用通过它为收据小费和预授权扣款并发送支付链接（参见<a href="#api">Checkout API 与扣款</a>）。</li>
+              <li>Adyen Checkout API 的 <strong>API 凭据</strong>，每笔付款都需要它：应用通过它为收据小费和预授权扣款并创建支付链接（参见<a href="#api">Checkout API 与扣款</a>）。</li>
             </ul>
             <p class="note">Mini mPOS 是独立项目，并非 Adyen 产品。在接受真实支付之前，请先在 TEST 终端上充分测试。本指南只介绍 Mini mPOS 需要的内容；Adyen 账户、商户后台和终端的使用方法请参阅链接中的 Adyen 官方文档，那里的内容会保持最新。</p>
           </section>
@@ -139,7 +139,7 @@ cd minimpos
               <dd>顾客在本手机上的 Adyen Payments 应用中轻触银行卡或手机付款；没有打印机，收据通过电子邮件发送或分享。手机需支持 NFC、运行 Android 12 或更高版本，并通过 Google 认证。请让 Adyen 支持团队开通 Tap to Pay on Android 和 Adyen Payments app role，然后：(1) 从 Google Play 安装 <strong>Adyen Payments Test</strong>（TEST）或 <strong>Adyen Payments</strong>（LIVE）（两者都未安装时，Mini mPOS 会为每个应用显示一个按钮）；(2) 连接 <a href="#api">Checkout API</a>，本手机将登记到其商家账户；(3) 在 <strong>Tap to Pay</strong> 下输入 <strong>Payments 应用 API 密钥</strong>（仅具有 Adyen Payments app role 的凭据），如只为一家门店设置，还需输入门店 ID，然后点击<strong>设置 Tap to Pay</strong>，Payments 应用会打开以注册本手机；(4) 输入<strong>共享密钥</strong>，发送给 Payments 应用的每个付款请求都用它加密。之后每笔付款都会打开 Payments 应用，再返回 Mini mPOS。如要停用，请点击<strong>移除本手机</strong>。</dd>
             </dl>
             <p>在全部信息填写完成之前，首页会显示<strong>完成收款设置</strong>并提示还缺少什么，点击即可打开设置 › 终端。本指南的其余部分与在终端上使用时相同。</p>
-            <p class="note">Adyen API 密钥会保存在设备上，并通过 Android Keystore 加密：无论支付目标为何都会保存 Checkout API 密钥，Tap to Pay 模式下还会保存 Payments 应用 API 密钥。Adyen 建议将 API 密钥保存在服务器上，而 Mini mPOS 没有服务器：请为本设备使用专用凭据，设置管理员 PIN，并在设备丢失时于商户后台撤销该密钥。</p>
+            <p class="note">Adyen API 密钥会保存在设备上，并通过 Android Keystore 加密：无论支付目标为何都会保存 Adyen API 密钥，Tap to Pay 模式下还会保存 Payments 应用 API 密钥。Adyen 建议将 API 密钥保存在服务器上，而 Mini mPOS 没有服务器：请为本设备使用专用凭据，设置管理员 PIN，并在设备丢失时于商户后台撤销该密钥。</p>
           </section>
           <section id="business">
             <h2>7. 设置您的业务</h2>
@@ -173,9 +173,9 @@ cd minimpos
                 </ul>
               </dd>
               <dt>安全</dt>
-              <dd>用于保护设置和商品管理的<strong>管理员 PIN</strong>，以及自动重新锁定的时间。请在把设备放到柜台上之前设置 PIN 码。多次输错 PIN 后会暂时锁定输入；忘记 PIN 时，只能在设备设置中清除应用数据。</dd>
+              <dd>用于保护设置和商品管理的<strong>管理员 PIN</strong>，以及自动重新锁定的时间。请在把设备放到柜台上之前设置 PIN 码。多次输错 PIN 后会暂时锁定输入；忘记 PIN 时，只能在设备设置中清除应用数据。可另设<strong>经理 PIN</strong>，用于批准退款、取消预授权、扣款和金额调整。请先设置管理员 PIN，以保护该选项；移除管理员 PIN 也会移除经理 PIN。</dd>
               <dt>数据</dt>
-              <dd>销售和退款记录的保留时间（初始为 90 天）、清空交易记录、用此设备设置其他设备，以及通过设置助手设置此设备（参见<a href="#more">更多设备</a>）。</dd>
+              <dd>已完成的销售和退款记录的保留时间（初始为 90 天）、清除已完成的交易记录、用此设备设置其他设备，以及通过设置助手设置此设备（参见<a href="#more">更多设备</a>）。</dd>
               <dt>关于</dt>
               <dd>应用版本、TEST 或 LIVE 环境、是否有打印机、设备信息，以及应用随每笔支付向 Adyen 提供的应用信息。</dd>
             </dl>
@@ -194,7 +194,7 @@ cd minimpos
           <section id="sell">
             <h2>9. 销售与退款</h2>
             <ul>
-              <li><strong>新建销售：</strong>点击商品、扫描条形码或添加自定义商品，然后点击<strong>收款</strong>。结账界面会显示商品和税费。根据设置 › 支付中的选项，还会要求输入交易识别号、客户识别号或购物者的电子邮箱，并提供保存卡片（需取得购物者同意）、在收据上填写小费和发送支付链接。点击<strong>支付</strong>并按终端提示操作。</li>
+              <li><strong>新建销售：</strong>点击商品、扫描条形码或添加自定义商品，然后点击<strong>收款</strong>。结账界面会显示商品和税费。根据设置 › 支付中的选项，还会要求输入交易识别号、客户识别号或购物者的电子邮箱，并提供保存卡片（需取得购物者同意）、在收据上填写小费和创建支付链接。点击<strong>支付</strong>并按终端提示操作。</li>
               <li><strong>收据</strong>将商家抬头、商品、税费、卡片收据和退款二维码整合打印：可自动打印，也可在结果界面点击<strong>打印收据</strong>。设置好电子邮件后，<strong>发送电子收据</strong>也可以发送收据。在平板或手机上，<strong>分享收据</strong>会通过 Android 分享面板以图片形式发送，例如发到即时通讯应用。</li>
               <li><strong>退款：</strong>点击首页的<strong>退款</strong>并扫描收据上的二维码，或在<strong>交易记录</strong>中打开销售记录。可以全额退款、按商品退款或输入退款金额（在其他设备上完成的销售只能全额退款或按金额退款）。Adyen 异步处理退款，因此应用显示为<em>已请求退款</em>；最终结果请在商户后台查看。</li>
               <li><strong>交易记录</strong>按日分组交易，并显示每日的销售、小费、退款和冻结金额合计。筛选可列出销售、待填写小费的交易、预授权、退款，以及<em>需处理</em>：结果未确认的支付，您可以再次向终端查询结果。</li>
@@ -219,7 +219,7 @@ cd minimpos
             <ol>
               <li>创建第一个 LIVE 链接之前，请确认 Adyen 的 Pay by Link 对您的账户有哪些要求，例如条款和条件。</li>
               <li>在 Mini mPOS 中开启<strong>设置 › 支付 › 提供支付链接</strong>，并设置链接有效时长（默认 24 小时，最长 70 天）。</li>
-              <li>结账时点击“支付”下方的<strong>发送支付链接</strong>。顾客扫描屏幕上的二维码即可付款；您也可以<strong>通过邮件发送链接</strong>（附带未支付收据）、<strong>打印链接</strong>，或在平板或手机上<strong>分享链接</strong>。</li>
+              <li>结账时点击“支付”下方的<strong>创建支付链接</strong>。顾客扫描屏幕上的二维码即可付款；您也可以<strong>通过邮件发送链接</strong>（附带未支付收据）、<strong>打印链接</strong>，或在平板或手机上<strong>分享链接</strong>。</li>
             </ol>
             <p>链接包含商品、购物者的电子邮箱和识别号，以及（开启保存卡片时）保存卡片的选项。显示链接期间，应用每隔几秒查询一次是否已支付；点击<strong>查询支付状态</strong>也会立即查询。在链接被支付、过期或您<strong>取消链接</strong>之前，交易记录会将该销售显示为<em>待支付</em>；未支付的链接不计入任何每日合计。Adyen 只会把已支付链接的 PSP 识别号发送到 webhook，而 Mini mPOS 没有接收 webhook 的后端，因此已支付链接的退款请在商户后台（Payments › Payment list）中办理。支付链接仅适用于销售，模拟器不支持。</p>
           </section>
@@ -268,7 +268,7 @@ cd minimpos
             <h2>14. 更多设备</h2>
             <p>配置好一台设备后，可以通过几个二维码设置其他设备，无需重复输入。</p>
             <ol>
-              <li>在已配置的设备上进入<strong>设置 › 数据 › 共享至另一台设备</strong>，或打开<strong>商品</strong>菜单。选择要复制的<strong>商品目录</strong>、<strong>设置</strong>以及<strong>密码和密钥</strong>（共享密钥口令、Checkout API 密钥、Payments 应用 API 密钥、SMTP 密码和管理员 PIN），然后点击<strong>显示二维码</strong>。</li>
+              <li>在已配置的设备上进入<strong>设置 › 数据 › 共享至另一台设备</strong>，或打开<strong>商品</strong>菜单。选择要复制的<strong>商品目录</strong>、<strong>设置</strong>以及<strong>密码和密钥</strong>（共享密钥口令、Adyen API 密钥、Payments 应用 API 密钥、SMTP 密码和管理员 PIN），然后点击<strong>显示二维码</strong>。</li>
               <li>在新设备的相同位置选择<strong>从另一台设备设置</strong>，用摄像头扫描二维码，顺序不限。</li>
               <li>选择<strong>合并到此商品目录</strong>或<strong>替换此商品目录</strong>。要导入密码和密钥，请输入第一台设备在二维码上方显示的<strong>传输码</strong>；不输入时会导入其他内容，但跳过密码和密钥。点击<strong>导入</strong>。</li>
               <li>在<strong>设置 › 终端</strong>中点击<strong>测试连接</strong>，检查连接。</li>
@@ -281,7 +281,7 @@ cd minimpos
             <ul>
               <li>在 TEST 终端上使用 Adyen 的<a href="https://docs.adyen.com/point-of-sale/testing-pos-payments">测试卡</a>进行几笔销售和退款；如果使用支付链接、小费或预授权，也请一并测试。</li>
               <li>在<strong>设置 › 收据 › 打印测试收据</strong>中检查收据布局，并用<strong>发送测试邮件</strong>检查电子邮件设置。</li>
-              <li>设置管理员 PIN，再将应用部署到 LIVE 终端，并输入它们的共享密钥、LIVE Checkout API 密钥和 live URL prefix（<a href="setup.html">设置助手</a>提供 LIVE 选项）。</li>
+              <li>设置管理员 PIN，再将应用部署到 LIVE 终端，并输入它们的共享密钥、LIVE Adyen API 密钥和 live URL prefix（<a href="setup.html">设置助手</a>提供 LIVE 选项）。</li>
               <li>确认设置 › 关于中显示的是 LIVE 环境。</li>
             </ul>
           </section>
@@ -298,8 +298,8 @@ cd minimpos
               <dd>先完成终端上正在进行的操作（另一笔支付或其管理菜单），或在结果界面点击<strong>取消终端当前交易</strong>，然后重试。</dd>
               <dt>扣款失败或结果未知</dt>
               <dd>交易记录会显示原因。如有需要，请修正 Checkout API 设置，再点击<strong>重试扣款</strong>：再次发送不会重复扣款。</dd>
-              <dt>结账时没有“发送支付链接”</dt>
-              <dd>支付链接需要在设置 › 终端中填写商家账户和 Checkout API 密钥，并开启设置 › 支付 › 提供支付链接。预授权和模拟器不提供支付链接。</dd>
+              <dt>结账时没有“创建支付链接”</dt>
+              <dd>支付链接需要在设置 › 终端中填写商家账户和 Adyen API 密钥，并开启设置 › 支付 › 提供支付链接。预授权和模拟器不提供支付链接。</dd>
               <dt>Tap to Pay 返回时没有结果</dt>
               <dd>此时付款结果未知，且无法再次向 Payments 应用查询：在再次向顾客收款前，请先在商户后台（Payments › Payment list）中确认。</dd>
               <dt>收据无法打印</dt>

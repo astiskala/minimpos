@@ -157,7 +157,8 @@ class CapturesTest {
         assertThat(captured.adjustment).isEqualTo(AdjustmentStatus.AUTHORISED)
         assertThat(captured.adjustAuthorisationData).isEqualTo("BQABAQnext")
         assertThat(captured.capturedMinor).isEqualTo(2_600)
-        assertThat(fake.keys).containsExactly("adjust-s1-2000-2600", "capture-s1-2600").inOrder()
+        assertThat(fake.keys.first()).startsWith("adjust-")
+        assertThat(fake.keys.last()).isEqualTo("capture-s1-2600")
     }
 
     @Test
@@ -277,11 +278,11 @@ class CapturesTest {
                 fake
             }, connectLinks = { links })
         env.updateSettings { it.copy(terminal = it.terminal.copy(mode = TerminalMode.TERMINAL)) }
-        assertThat(await { live.target() }).isEqualTo(ApiTarget(ApiSetup.Incomplete(SetupProblem.MERCHANT_ACCOUNT)))
+        assertThat(await { live.target() }.setup).isEqualTo(ApiSetup.Incomplete(SetupProblem.MERCHANT_ACCOUNT))
         assertThat(await { live.verify() }).isEqualTo(ApiCheck.NotSetUp(SetupProblem.MERCHANT_ACCOUNT))
 
         env.updateSettings { it.copy(terminal = it.terminal.copy(merchantAccount = "Merchant")) }
-        await { container.secrets.set(Secret.CHECKOUT_API_KEY, "key") }
+        await { container.secrets.set(Secret.ADYEN_API_KEY, "key") }
         assertThat(await { live.verify() }).isEqualTo(ApiCheck.NotSetUp(SetupProblem.ENVIRONMENT))
         env.updateSettings { it.copy(terminal = it.terminal.copy(environment = TerminalEnvironment.LIVE)) }
         assertThat(await { live.verify() }).isEqualTo(ApiCheck.NotSetUp(SetupProblem.LIVE_PREFIX))

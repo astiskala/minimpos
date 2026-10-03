@@ -13,6 +13,9 @@ sealed interface Route : NavKey {
     /** Protected routes need the admin PIN (when one is set). */
     val isProtected: Boolean get() = false
 
+    /** Whether this route exposes money-moving actions gated by the optional Manager PIN. */
+    val requiresManager: Boolean get() = false
+
     /** The start screen with a tile per area; always at the bottom of the back stack. */
     @Serializable data object Home : Route
 
@@ -68,7 +71,9 @@ sealed interface Route : NavKey {
      */
     @Serializable data class Tip(
         val saleId: String,
-    ) : Route
+    ) : Route {
+        override val requiresManager get() = true
+    }
 
     /**
      * Capturing a pre-authorisation, or adjusting what it holds.
@@ -79,10 +84,14 @@ sealed interface Route : NavKey {
     @Serializable data class Capture(
         val saleId: String,
         val adjustOnly: Boolean = false,
-    ) : Route
+    ) : Route {
+        override val requiresManager get() = true
+    }
 
     /** Scanning the refund QR code on a receipt. */
-    @Serializable data object RefundScan : Route
+    @Serializable data object RefundScan : Route {
+        override val requiresManager get() = true
+    }
 
     /**
      * Choosing what to refund; exactly one of the two is set.
@@ -93,10 +102,14 @@ sealed interface Route : NavKey {
     @Serializable data class Refund(
         val payload: String? = null,
         val saleId: String? = null,
-    ) : Route
+    ) : Route {
+        override val requiresManager get() = true
+    }
 
     /** Waiting for the terminal to accept the refund. */
-    @Serializable data object RefundProcessing : Route
+    @Serializable data object RefundProcessing : Route {
+        override val requiresManager get() = true
+    }
 
     /**
      * The outcome of a refund just made.
@@ -105,7 +118,9 @@ sealed interface Route : NavKey {
      */
     @Serializable data class RefundResult(
         val refundId: String,
-    ) : Route
+    ) : Route {
+        override val requiresManager get() = true
+    }
 
     /** Sales and refunds by day. */
     @Serializable data object History : Route

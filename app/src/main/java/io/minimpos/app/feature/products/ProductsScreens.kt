@@ -326,6 +326,7 @@ fun ProductEditScreen(
     modifier: Modifier = Modifier,
     vm: ProductEditViewModel = productEditViewModel(productId, sku),
 ) {
+    val container = LocalAppContainer.current
     val state by vm.state.collectAsStateWithLifecycle()
     var confirmDelete by remember { mutableStateOf(false) }
     var scan by remember { mutableStateOf(false) }
@@ -367,7 +368,10 @@ fun ProductEditScreen(
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             Column(Modifier.widthIn(max = 560.dp), verticalArrangement = Arrangement.spacedBy(dimens.spacing)) {
-                ProductFields(state, onUpdate = vm::update, onScan = { scan = true })
+                ProductFields(state, onUpdate = {
+                    container.userActivity()
+                    vm.update(it)
+                }, onScan = { scan = true })
             }
         }
     }

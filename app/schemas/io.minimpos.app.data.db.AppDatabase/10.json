@@ -2,7 +2,7 @@
   "formatVersion": 1,
   "database": {
     "version": 10,
-    "identityHash": "c336602289d54ad51fded20b4dabdeba",
+    "identityHash": "06c7bcb1e1b2116766db754dce62dcd1",
     "entities": [
       {
         "tableName": "tax_rates",
@@ -149,12 +149,12 @@
           },
           {
             "name": "index_products_sku",
-            "unique": false,
+            "unique": true,
             "columnNames": [
               "sku"
             ],
             "orders": [],
-            "createSql": "CREATE INDEX IF NOT EXISTS `index_products_sku` ON `${TABLE_NAME}` (`sku`)"
+            "createSql": "CREATE UNIQUE INDEX IF NOT EXISTS `index_products_sku` ON `${TABLE_NAME}` (`sku`)"
           }
         ],
         "foreignKeys": [
@@ -184,7 +184,7 @@
       },
       {
         "tableName": "sales",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `createdAt` INTEGER NOT NULL, `currency` TEXT NOT NULL, `taxMode` TEXT NOT NULL, `netMinor` INTEGER NOT NULL, `taxMinor` INTEGER NOT NULL, `totalMinor` INTEGER NOT NULL, `status` TEXT NOT NULL, `merchantReference` TEXT NOT NULL, `customerReference` TEXT, `shopperReference` TEXT, `shopperEmail` TEXT, `tokenizationRequested` INTEGER NOT NULL, `storedPaymentMethodId` TEXT, `serviceId` TEXT, `poiId` TEXT, `poiTransactionId` TEXT, `poiTimestamp` TEXT, `pspReference` TEXT, `paymentBrand` TEXT, `maskedPan` TEXT, `entryMode` TEXT, `authCode` TEXT, `message` TEXT, `customerReceiptJson` TEXT, `cashierReceiptJson` TEXT, `signatureRequired` INTEGER NOT NULL, `refundedMinor` INTEGER NOT NULL, `emailedTo` TEXT, `errorCondition` TEXT, `refusalReason` TEXT, `kind` TEXT NOT NULL DEFAULT 'SALE', `tipOnReceipt` INTEGER NOT NULL DEFAULT 0, `tipMinor` INTEGER, `authorisedMinor` INTEGER, `adjustment` TEXT, `adjustAuthorisationData` TEXT, `capturedMinor` INTEGER, `captureStatus` TEXT, `modificationMessage` TEXT, `paymentMethodVariant` TEXT, `holdCancelled` INTEGER NOT NULL DEFAULT 0, `paymentLink` INTEGER NOT NULL DEFAULT 0, `paymentLinkId` TEXT, `paymentLinkUrl` TEXT, `paymentLinkExpiresAt` INTEGER, `reason` TEXT, `modificationReason` TEXT, PRIMARY KEY(`id`))",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `createdAt` INTEGER NOT NULL, `currency` TEXT NOT NULL, `taxMode` TEXT NOT NULL, `netMinor` INTEGER NOT NULL, `taxMinor` INTEGER NOT NULL, `totalMinor` INTEGER NOT NULL, `status` TEXT NOT NULL, `merchantReference` TEXT NOT NULL, `customerReference` TEXT, `shopperReference` TEXT, `shopperEmail` TEXT, `tokenizationRequested` INTEGER NOT NULL, `storedPaymentMethodId` TEXT, `serviceId` TEXT, `poiId` TEXT, `poiTransactionId` TEXT, `poiTimestamp` TEXT, `pspReference` TEXT, `paymentBrand` TEXT, `maskedPan` TEXT, `entryMode` TEXT, `authCode` TEXT, `message` TEXT, `customerReceiptJson` TEXT, `cashierReceiptJson` TEXT, `signatureRequired` INTEGER NOT NULL, `refundedMinor` INTEGER NOT NULL, `emailedTo` TEXT, `errorCondition` TEXT, `refusalReason` TEXT, `kind` TEXT NOT NULL DEFAULT 'SALE', `tipOnReceipt` INTEGER NOT NULL DEFAULT 0, `tipMinor` INTEGER, `authorisedMinor` INTEGER, `adjustment` TEXT, `adjustAuthorisationData` TEXT, `capturedMinor` INTEGER, `captureStatus` TEXT, `modificationMessage` TEXT, `paymentMethodVariant` TEXT, `holdCancelled` INTEGER NOT NULL DEFAULT 0, `paymentLink` INTEGER NOT NULL DEFAULT 0, `paymentLinkId` TEXT, `paymentLinkUrl` TEXT, `paymentLinkExpiresAt` INTEGER, `reason` TEXT, `modificationReason` TEXT, `context` TEXT, `linkLocale` TEXT, `linkCountry` TEXT, `linkRecurringModel` TEXT, `adjustmentKey` TEXT, `adjustmentAmountMinor` INTEGER, `adjustmentPending` INTEGER NOT NULL, PRIMARY KEY(`id`))",
         "fields": [
           {
             "fieldPath": "id",
@@ -445,6 +445,42 @@
             "fieldPath": "modificationReason",
             "columnName": "modificationReason",
             "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "context",
+            "columnName": "context",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "linkLocale",
+            "columnName": "linkLocale",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "linkCountry",
+            "columnName": "linkCountry",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "linkRecurringModel",
+            "columnName": "linkRecurringModel",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "adjustmentKey",
+            "columnName": "adjustmentKey",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "adjustmentAmountMinor",
+            "columnName": "adjustmentAmountMinor",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "adjustmentPending",
+            "columnName": "adjustmentPending",
+            "affinity": "INTEGER",
+            "notNull": true
           }
         ],
         "primaryKey": {
@@ -594,7 +630,7 @@
       },
       {
         "tableName": "refunds",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `saleId` TEXT, `createdAt` INTEGER NOT NULL, `merchantReference` TEXT NOT NULL, `originalTransactionId` TEXT NOT NULL, `originalTimestamp` TEXT NOT NULL, `originalReference` TEXT, `currency` TEXT NOT NULL, `amountMinor` INTEGER NOT NULL, `full` INTEGER NOT NULL, `status` TEXT NOT NULL, `serviceId` TEXT, `pspReference` TEXT, `message` TEXT, `customerReceiptJson` TEXT, `linesJson` TEXT, `cancellation` INTEGER NOT NULL DEFAULT 0, `reason` TEXT, PRIMARY KEY(`id`))",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `saleId` TEXT, `createdAt` INTEGER NOT NULL, `merchantReference` TEXT NOT NULL, `originalTransactionId` TEXT NOT NULL, `originalTimestamp` TEXT NOT NULL, `originalReference` TEXT, `currency` TEXT NOT NULL, `amountMinor` INTEGER NOT NULL, `full` INTEGER NOT NULL, `status` TEXT NOT NULL, `serviceId` TEXT, `pspReference` TEXT, `message` TEXT, `customerReceiptJson` TEXT, `linesJson` TEXT, `cancellation` INTEGER NOT NULL DEFAULT 0, `reason` TEXT, `context` TEXT, PRIMARY KEY(`id`))",
         "fields": [
           {
             "fieldPath": "id",
@@ -696,6 +732,11 @@
             "fieldPath": "reason",
             "columnName": "reason",
             "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "context",
+            "columnName": "context",
+            "affinity": "TEXT"
           }
         ],
         "primaryKey": {
@@ -728,7 +769,7 @@
     ],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'c336602289d54ad51fded20b4dabdeba')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '06c7bcb1e1b2116766db754dce62dcd1')"
     ]
   }
 }

@@ -82,7 +82,7 @@ internal fun ColumnScope.TerminalSteps(
         ApiEntry(
             terminal = state.settings.terminal,
             environment = status.environment,
-            keySaved = Secret.CHECKOUT_API_KEY in state.secrets,
+            keySaved = Secret.ADYEN_API_KEY in state.secrets,
             key = apiKey,
             onKey = { apiKey = it },
             problem = status.apiProblem,
@@ -200,7 +200,7 @@ private fun ColumnScope.CloudSteps(
         onFindTerminals = { setupEvents.onTerminalsFind(api.key) },
         onChooseTerminal = setupEvents::onTerminalChoose,
         onTest = {
-            if (!actions.connection.running) events.onSaveAndTest(Secret.CHECKOUT_API_KEY, api.key, SettingsTest.CLOUD)
+            if (!actions.connection.running) events.onSaveAndTest(Secret.ADYEN_API_KEY, api.key, SettingsTest.CLOUD)
         },
     )
 }
@@ -314,7 +314,7 @@ private fun ColumnScope.CheckoutApiStep(
     update: TerminalUpdate,
 ) {
     fun saveAndTest() {
-        if (!actions.api.running) events.onSaveAndTest(Secret.CHECKOUT_API_KEY, api.key, SettingsTest.API)
+        if (!actions.api.running) events.onSaveAndTest(Secret.ADYEN_API_KEY, api.key, SettingsTest.API)
     }
     SetupStep(number, stringResource(R.string.settings_api))
     SettingNote(stringResource(R.string.settings_api_hint))
@@ -374,14 +374,14 @@ private fun ApiFields(
     }
 }
 
-/** Removing the saved Checkout API key, once confirmed. */
+/** Removing the saved Adyen API key, once confirmed. */
 @Composable
 private fun ForgetApiKey(events: SettingsEvents) =
     ConfirmedRemoval(
         text = stringResource(R.string.settings_forget_api_key),
         confirmTitle = stringResource(R.string.settings_forget_api_key_title),
         confirmMessage = stringResource(R.string.settings_forget_api_key_message),
-        onConfirm = { events.onSecretChange(Secret.CHECKOUT_API_KEY, null) },
+        onConfirm = { events.onSecretChange(Secret.ADYEN_API_KEY, null) },
         icon = Icons.Default.KeyOff,
         modifier = Modifier.testTag("forgetApiKey"),
     )

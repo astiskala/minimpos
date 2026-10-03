@@ -12,6 +12,7 @@ import io.minimpos.app.terminal.ApiTarget
 import io.minimpos.terminal.checkout.PaymentLink
 import io.minimpos.terminal.checkout.PaymentLinkApi
 import io.minimpos.terminal.checkout.PaymentLinkResult
+import io.minimpos.terminal.checkout.PaymentLinkStatus
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
@@ -66,11 +67,12 @@ sealed interface LinkUpdate {
  * @param sales Where the sales are stored.
  * @param settings The payment settings, for how a saved card will be used.
  * @param target Where payment links go now: [AdyenApi.target] in the app, a fixed target in tests.
- * @param onCreated Called with the sale ID and the request once its link was created by [start] (not by a [check]), to
- *   clear what the sale was rung up from and deliver it automatically.
+ * @param onCreated Called once with the sale ID and its original request when the link is created or recovered by
+ *   [check] in this process, to reconcile its originating session and arm automatic delivery.
  * @param clock Stamps the sales.
  * @param newId Generates sale IDs.
  * @param locale The device's locale, for the payment page's language and country.
+ * @param permits Whether cancellation is authorized now, checked under the operation lock.
  */
 class PaymentLinks(
     private val scope: CoroutineScope,
@@ -81,8 +83,10 @@ class PaymentLinks(
     private val clock: Clock = Clock.systemUTC(),
     private val newId: () -> String = { UUID.randomUUID().toString() },
     private val locale: () -> Locale = { Locale.getDefault() },
+    private val permits: suspend () -> Boolean = { true },
 ) {
     private val mutex = Mutex()
+    private val unresolvedStarts = mutableMapOf<String, PaymentLinkStart>()
 
     /**
      * Creates the payment link for [link] in the background and returns the new sale's ID straight away; the stored
@@ -90,11 +94,21 @@ class PaymentLinks(
      */
     fun start(link: PaymentLinkStart): String {
         val id = newId()
+        synchronized(unresolvedStarts) { unresolvedStarts[id] = link }
         scope.launch {
             try {
-                sales.createPending(link.pendingSale(id, clock.millis()), SaleBook.lines(id, link.payment.totals))
-                val created = mutex.withLock { sales.get(id)?.let { send(it) } }
-                if (created == LinkUpdate.StillOpen) onCreated(id, link)
+                val initial = target()
+                val language = locale()
+                val pending =
+                    link.pendingSale(
+                        id,
+                        clock.millis(),
+                        initial.context,
+                        language,
+                        settings.current().payment.recurringProcessingModel,
+                    )
+                sales.createPending(pending, SaleBook.lines(id, link.payment.totals))
+                mutex.withLock { sales.get(id)?.let { send(it) } }
             } catch (e: CancellationException) {
                 throw e
             } catch (e: SQLException) {
@@ -131,7 +145,7 @@ class PaymentLinks(
             when {
                 sale.status != SaleStatus.AWAITING_PAYMENT && sale.status != SaleStatus.UNKNOWN -> LinkUpdate.Settled
                 linkId == null -> send(record)
-                else -> withApi { stored(saleId, it.status(linkId)) }
+                else -> withApi(sale) { stored(saleId, it.status(linkId)) }
             }
         }
 
@@ -143,7 +157,8 @@ class PaymentLinks(
         mutex.withLock {
             val sale = sales.get(saleId)?.sale?.takeIf { it.status == SaleStatus.AWAITING_PAYMENT }
             val linkId = sale?.paymentLinkId ?: return@withLock LinkUpdate.Settled
-            withApi { stored(saleId, it.expire(linkId), cancelling = true) }
+            if (!permits()) return@withLock LinkUpdate.NotSetUp(SetupProblem.MANAGER_APPROVAL)
+            withApi(sale) { stored(saleId, it.expire(linkId), cancelling = true) }
         }
 
     /** Creates the link of [record] (again, after an unknown outcome) and stores how that went. */
@@ -152,10 +167,21 @@ class PaymentLinks(
         val target = target()
         val api = target.links
         if (api == null) {
-            sales.record(id, SaleEvent.NotSetUp(target.setup.problem ?: SetupProblem.API_REQUIRED))
-            return LinkUpdate.Settled
+            val problem = target.setup.problem ?: SetupProblem.API_REQUIRED
+            return if (record.sale.status == SaleStatus.UNKNOWN) {
+                LinkUpdate.NotSetUp(problem)
+            } else {
+                sales.record(id, SaleEvent.NotSetUp(problem))
+                synchronized(unresolvedStarts) { unresolvedStarts.remove(id) }
+                LinkUpdate.Settled
+            }
         }
-        val request = PaymentLinkRequests.request(record, settings.current().payment.recurringProcessingModel, locale())
+        if (target.context != null &&
+            record.sale.context?.matchesApi(target.context) != true
+        ) {
+            return LinkUpdate.NotSetUp(SetupProblem.PAYMENT_CONTEXT)
+        }
+        val request = PaymentLinkRequests.request(record)
         return when (val result = api.create(request, idempotencyKey(id))) {
             is PaymentLinkResult.Answered -> {
                 applied(id, result.link)
@@ -173,8 +199,16 @@ class PaymentLinks(
     }
 
     /** Runs [call] with the payment link API, or fails (changing nothing) when it is not set up now. */
-    private suspend fun withApi(call: suspend (PaymentLinkApi) -> LinkUpdate): LinkUpdate {
+    private suspend fun withApi(
+        sale: io.minimpos.app.data.db.SaleEntity,
+        call: suspend (PaymentLinkApi) -> LinkUpdate,
+    ): LinkUpdate {
         val target = target()
+        if (target.context != null &&
+            sale.context?.matchesApi(target.context) != true
+        ) {
+            return LinkUpdate.NotSetUp(SetupProblem.PAYMENT_CONTEXT)
+        }
         val api = target.links ?: return LinkUpdate.NotSetUp(target.setup.problem ?: SetupProblem.API_REQUIRED)
         return call(api)
     }
@@ -199,6 +233,8 @@ class PaymentLinks(
     ): LinkUpdate {
         val answered = SaleEvent.LinkAnswered(link, cancelling)
         sales.record(id, answered)
+        val start = synchronized(unresolvedStarts) { unresolvedStarts.remove(id) }
+        if (start != null && (answered.stillOpen || link.status == PaymentLinkStatus.COMPLETED)) onCreated(id, start)
         return if (answered.stillOpen) LinkUpdate.StillOpen else LinkUpdate.Settled
     }
 
@@ -207,6 +243,7 @@ class PaymentLinks(
         message: String,
     ): LinkUpdate {
         sales.record(id, SaleEvent.NotSent(message))
+        synchronized(unresolvedStarts) { unresolvedStarts.remove(id) }
         return LinkUpdate.Settled
     }
 

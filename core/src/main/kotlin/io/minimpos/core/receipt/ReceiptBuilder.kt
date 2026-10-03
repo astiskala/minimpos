@@ -71,11 +71,12 @@ class ReceiptBuilder(
         out += Divider
         when {
             cancellation -> out += Text(labels.cancellationNote)
-            receipt.items.isEmpty() -> out += Text(labels.partialRefund)
+            receipt.items.isEmpty() -> out += Text(if (receipt.full) labels.refundTitle else labels.partialRefund)
             else -> items(out, receipt.items)
         }
         out += Divider
         out += Row(if (cancellation) labels.released else labels.refundTotal, money.format(receipt.amount), TextStyle.BOLD)
+        receipt.standingNote?.let { out += Text(it, Align.CENTER, TextStyle.BOLD) }
         cardReceipt(out, receipt.cardReceipt)
         footer(out)
         return ReceiptDocument(out)
@@ -113,7 +114,7 @@ class ReceiptBuilder(
         val taxed = receipt.breakdown.filter { it.amounts.tax != 0L }
         val label =
             when {
-                receipt.preAuthorisation -> labels.amountHeld
+                receipt.preAuthorisation && !receipt.holdCancelled -> labels.amountHeld
                 receipt.tip != null -> labels.amount
                 receipt.unpaidLink != null -> labels.amountDue
                 else -> labels.total
@@ -209,10 +210,11 @@ class ReceiptBuilder(
                 out += Text(labels.notCompleted, Align.CENTER, TextStyle.BOLD)
             }
 
-            receipt.preAuthorisation && receipt.captured == null -> {
+            receipt.preAuthorisation && receipt.captured == null && !receipt.holdCancelled && receipt.standingNote == null -> {
                 out += Text(labels.preAuthNote, Align.CENTER)
             }
         }
+        receipt.standingNote?.let { out += Text(it, Align.CENTER, TextStyle.BOLD) }
         if (receipt.paidOnline) out += Text(labels.paidOnline, Align.CENTER)
     }
 

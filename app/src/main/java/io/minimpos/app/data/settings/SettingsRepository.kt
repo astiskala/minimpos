@@ -13,15 +13,13 @@ import java.io.InputStream
 import java.io.OutputStream
 
 /**
- * The JSON format of everything the app stores as text (settings, secrets file, receipt lines). Lenient so that files
- * written by other versions load: unknown keys are ignored, missing ones take their default, and a value that no
- * longer fits (such as a removed enum constant) is replaced by the default.
+ * The current JSON format for settings, secrets and receipt lines. All default values are written; omitted values
+ * take the current constructor baseline. Unknown fields are ignored, while malformed values remain corruption.
  */
 internal val StorageJson =
     Json {
         ignoreUnknownKeys = true
         encodeDefaults = true
-        coerceInputValues = true
     }
 
 /** DataStore serializer that stores [T] as JSON; unreadable files are reported as corruption so they get replaced. */

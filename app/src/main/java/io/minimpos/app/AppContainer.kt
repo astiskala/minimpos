@@ -14,6 +14,7 @@ import io.minimpos.app.data.repo.RefundRepository
 import io.minimpos.app.data.repo.SaleRepository
 import io.minimpos.app.data.security.KeystoreSecretCipher
 import io.minimpos.app.data.security.PinManager
+import io.minimpos.app.data.security.Secret
 import io.minimpos.app.data.security.SecretBlob
 import io.minimpos.app.data.security.SecretCipher
 import io.minimpos.app.data.security.SecretStore
@@ -76,12 +77,14 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.serializer
 import java.io.File
 import java.util.Locale
+import kotlin.time.Duration.Companion.minutes
 
 /**
  * Manual dependency injection: one instance per process, created by [MiniMposApplication]. Screens reach it through
@@ -143,6 +146,12 @@ class AppContainer(
 
     /** The admin PIN. */
     val pinManager = PinManager(secrets)
+
+    /** Optional Manager PIN, separate from configuration access. */
+    val managerPin = PinManager(secrets, verifierSecret = Secret.MANAGER_PIN_VERIFIER)
+
+    /** Whether money-moving actions are currently unlocked. */
+    val managerLock = SessionLock()
 
     /** Whether the admin area is unlocked. */
     val sessionLock = SessionLock()
@@ -219,6 +228,37 @@ class AppContainer(
         ReceiptFactory(
             receiptLabels(),
             currentLabels = ::receiptLabels,
+            standingText = { standing ->
+                when (standing) {
+                    io.minimpos.app.refund.PaymentStanding.CHARGED -> null
+
+                    io.minimpos.app.refund.PaymentStanding.NOT_APPROVED -> context.getString(R.string.receipt_not_completed)
+
+                    io.minimpos.app.refund.PaymentStanding.AWAITING_TIP -> context.getString(R.string.detail_tip_awaiting)
+
+                    io.minimpos.app.refund.PaymentStanding.HELD -> context.getString(R.string.receipt_pre_auth_note)
+
+                    io.minimpos.app.refund.PaymentStanding.CAPTURE_REQUESTED -> context.getString(R.string.status_capture_requested)
+
+                    io.minimpos.app.refund.PaymentStanding.CAPTURE_FAILED -> context.getString(R.string.status_capture_failed)
+
+                    io.minimpos.app.refund.PaymentStanding.CAPTURE_SENDING,
+                    io.minimpos.app.refund.PaymentStanding.CAPTURE_UNKNOWN,
+                    -> context.getString(R.string.status_capture_unknown)
+
+                    io.minimpos.app.refund.PaymentStanding.HOLD_CANCELLED -> context.getString(R.string.status_cancellation_requested)
+                }
+            },
+            refundText = { status ->
+                context.getString(
+                    when (status) {
+                        io.minimpos.app.data.db.RefundStatus.REQUESTED -> R.string.refund_status_requested
+                        io.minimpos.app.data.db.RefundStatus.PENDING -> R.string.status_pending
+                        io.minimpos.app.data.db.RefundStatus.UNKNOWN -> R.string.status_unknown
+                        io.minimpos.app.data.db.RefundStatus.FAILED -> R.string.status_failed
+                    },
+                )
+            },
             sampleTexts = {
                 ReceiptSampleTexts(
                     coffee = context.getString(R.string.receipt_sample_coffee),
@@ -279,12 +319,12 @@ class AppContainer(
             onSucceeded = { id, start ->
                 receipts.arm(id)
                 // The cart has been paid for, so the next payment of its kind starts afresh.
-                session(start.kind).clear()
+                session(start.kind).complete(start)
             },
         )
 
     /** Enters tips and captures and adjusts payments taken with manual capture. */
-    val captures = Captures(sales, api::target)
+    val captures = Captures(sales, api::target, ::managerPermits)
 
     /** Creates payment links for sales, asks Adyen whether they were paid, and cancels them. */
     val links =
@@ -296,8 +336,9 @@ class AppContainer(
             onCreated = { id, start ->
                 receipts.arm(id)
                 // The cart is now the link's to pay, so the next sale starts afresh.
-                session(start.payment.kind).clear()
+                session(start.payment.kind).complete(start.payment)
             },
+            permits = ::managerPermits,
         )
 
     /** Runs referenced refunds and keeps their progress. */
@@ -307,6 +348,7 @@ class AppContainer(
             gateway = gateway,
             book = RefundBook(refundRecords),
             onSucceeded = { id, _ -> receipts.arm(id) },
+            permits = { managerPermits() },
         )
 
     /**
@@ -315,6 +357,15 @@ class AppContainer(
      */
     fun start() {
         appScope.launch {
+            settings.current().pricingChange?.let { change ->
+                catalog.pricing.apply(change.prices)
+                settings.update {
+                    it.copy(
+                        payment = it.payment.copy(currencyCode = change.payment.currencyCode, taxMode = change.payment.taxMode),
+                        pricingChange = null,
+                    )
+                }
+            }
             history.settleInterrupted()
             catalog.seedDefaults(starterTaxRates())
             history.prune(settings.current().history.retentionDays, System.currentTimeMillis())
@@ -345,8 +396,24 @@ class AppContainer(
         )
     }
 
+    /** Records actual touch, key or text-entry activity for both PIN sessions; call on the main thread. */
+    fun userActivity() {
+        val timeout = settingsState.value.security.autoLockMinutes.minutes.inWholeMilliseconds
+        sessionLock.touch(timeout)
+        managerLock.touch(timeout)
+    }
+
     /** The currency payments are taken in with [appSettings] (by default the current ones). */
-    fun currency(appSettings: AppSettings = settingsState.value): CurrencySpec = resolveCurrency(appSettings.payment)
+    fun currency(appSettings: AppSettings = settingsState.value): CurrencySpec =
+        resolveCurrency(appSettings.payment, Locale.forLanguageTag("und-${device.country}"))
+
+    private suspend fun managerPermits(): Boolean =
+        !managerPin.pinConfigured.first() ||
+            managerLock.allows(
+                settings
+                    .current()
+                    .security.autoLockMinutes.minutes.inWholeMilliseconds,
+            )
 
     private fun <T> store(
         name: String,

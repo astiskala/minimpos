@@ -20,10 +20,10 @@ import okhttp3.Request
 import org.junit.Test
 import java.io.IOException
 
-/** :terminal-api wraps the Adyen Java library for the local Terminal API; it runs on Android but must not depend on it. */
+/** :adyen wraps the Adyen Java library for the local Terminal API; it runs on Android but must not depend on it. */
 class ArchitectureTest {
     @Test
-    fun `terminal-api is plain Kotlin and knows nothing of the app`() =
+    fun `adyen is plain Kotlin and knows nothing of the app`() =
         noClasses()
             .should()
             .dependOnClassesThat()
@@ -169,7 +169,7 @@ class ArchitectureTest {
             .check(terminal)
 
     @Test
-    fun `terminal-api never logs or prints`() {
+    fun `adyen never logs or prints`() {
         GeneralCodingRules.NO_CLASSES_SHOULD_ACCESS_STANDARD_STREAMS.check(terminal)
         GeneralCodingRules.NO_CLASSES_SHOULD_USE_JAVA_UTIL_LOGGING.check(terminal)
     }

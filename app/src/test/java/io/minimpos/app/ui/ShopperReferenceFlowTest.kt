@@ -95,7 +95,7 @@ class ShopperReferenceFlowTest {
         waitForTag("emailCapture")
         // There is no separate customer reference to ask for.
         compose.onNodeWithTag("referenceSource").assertTextContains("No separate customer reference", substring = true)
-        compose.onNodeWithTag("emailCapture").performScrollTo().assertTextContains("Before and after payment", substring = true)
+        compose.onNodeWithTag("emailCapture").performScrollTo().assertTextContains("Before payment", substring = true)
         compose.onNodeWithTag("emailCapture").assertTextContains("the email is the shopper reference", substring = true)
         compose.onNodeWithTag("emailCapture").performClick()
         waitForTag("emailCapture_BEFORE_PAYMENT")

@@ -75,7 +75,7 @@ class SetupTransferTest {
                         currencyCode = "EUR",
                         defaultTaxRateId = vat,
                         referencePrefix = "T1",
-                        emailCapture = EmailCapture.BOTH,
+                        emailCapture = EmailCapture.BEFORE_PAYMENT,
                         emailReferenceSalt = "pepper",
                         tipOnReceiptDefaultOn = true,
                     ),
@@ -96,7 +96,7 @@ class SetupTransferTest {
         await {
             source.container.secrets.set(Secret.TERMINAL_PASSPHRASE, "correct horse")
             source.container.secrets.set(Secret.SMTP_PASSWORD, "hunter2")
-            source.container.secrets.set(Secret.CHECKOUT_API_KEY, "AQE-key")
+            source.container.secrets.set(Secret.ADYEN_API_KEY, "AQE-key")
             PinManager(source.container.secrets, iterations = 1_000).setPin("2468")
         }
     }
@@ -108,7 +108,7 @@ class SetupTransferTest {
         assertThat(export.code).matches("[2-9A-HJKMNP-Z]{4}-[2-9A-HJKMNP-Z]{4}-[2-9A-HJKMNP-Z]{4}")
         assertThat(
             export.secrets,
-        ).containsExactly(Secret.TERMINAL_PASSPHRASE, Secret.SMTP_PASSWORD, Secret.CHECKOUT_API_KEY, Secret.PIN_VERIFIER)
+        ).containsExactly(Secret.TERMINAL_PASSPHRASE, Secret.SMTP_PASSWORD, Secret.ADYEN_API_KEY, Secret.PIN_VERIFIER)
         assertThat(export.settings).isTrue()
         // Nothing secret can be read from the codes.
         val transfer = TransferCodec.decode(export.payload)
@@ -166,7 +166,7 @@ class SetupTransferTest {
 
         assertThat(await { target.container.secrets.get(Secret.SMTP_PASSWORD) }).isEqualTo("hunter2")
         assertThat(await { target.container.secrets.get(Secret.TERMINAL_PASSPHRASE) }).isEqualTo("correct horse")
-        assertThat(await { target.container.secrets.get(Secret.CHECKOUT_API_KEY) }).isEqualTo("AQE-key")
+        assertThat(await { target.container.secrets.get(Secret.ADYEN_API_KEY) }).isEqualTo("AQE-key")
         // The same PIN works.
         assertThat(await { target.container.pinManager.verify("2468") }).isEqualTo(PinCheck.Accepted)
         assertThat(await { target.container.pinManager.verify("1111") }).isInstanceOf(PinCheck.Rejected::class.java)
@@ -183,9 +183,7 @@ class SetupTransferTest {
         val export = await { setup(source).export(TransferContents(catalogue = false, secrets = false), "AUD") }
         assertThat(export.catalogue).isNull()
         assertThat(export.code).isNull()
-        // Only what differs from the constructor's defaults is written: here a new installation's own choices.
-        assertThat(TransferCodec.decode(export.payload).settings)
-            .isEqualTo("""{"payment":{"askTransactionReference":false,"shopperReferenceSource":"NONE"},"receipt":{"autoPrint":true}}""")
+        assertThat(TransferCodec.decode(export.payload).settings).isEqualTo("{}")
         val outcome = await { setup(target).import(setup(target).receive(TransferCodec.decode(export.payload)), ImportMode.REPLACE) }
         assertThat((outcome as ImportOutcome.Imported).result.catalogue).isNull()
         assertThat(outcome.secretsSkipped).isFalse()
@@ -200,8 +198,7 @@ class SetupTransferTest {
         val none = await { setup(source).export(TransferContents(catalogue = true, settings = false), "AUD") }
         assertThat(none.code).isNull()
         assertThat(none.secrets).isEmpty()
-        // A catalogue alone is still written in the format older versions read.
-        assertThat(Base45.decode(none.payload)[0].toInt()).isEqualTo(3)
+        assertThat(Base45.decode(none.payload)[0].toInt()).isEqualTo(5)
         await { source.container.secrets.set(Secret.SMTP_PASSWORD, "pw") }
         val secretsOnly = await { setup(source).export(TransferContents(catalogue = false, settings = false), "AUD") }
         assertThat(secretsOnly.secrets).containsExactly(Secret.SMTP_PASSWORD)
@@ -256,7 +253,7 @@ class SetupTransferTest {
             )
         }
         val code = seal.newCode()
-        val secrets = """{"TERMINAL_PASSPHRASE":"correct horse","CHECKOUT_API_KEY":"AQE-key"}"""
+        val secrets = """{"TERMINAL_PASSPHRASE":"correct horse","ADYEN_API_KEY":"AQE-key"}"""
         val connection =
             """{"destination":"network","host":" 192.168.1.20 ","poiId":"S1F2-000158213605014","keyIdentifier":"store-key",""" +
                 """"keyVersion":2,"merchantAccount":"HarbourCoffeeCOM","liveUrlPrefix":"","future":true}"""
@@ -272,7 +269,7 @@ class SetupTransferTest {
         val outcome = await { setup(target).import(received, ImportMode.MERGE, code) } as ImportOutcome.Imported
         assertThat(outcome.result.connection).isTrue()
         assertThat(outcome.result.settings).isFalse()
-        assertThat(outcome.result.secrets).containsExactly(Secret.TERMINAL_PASSPHRASE, Secret.CHECKOUT_API_KEY)
+        assertThat(outcome.result.secrets).containsExactly(Secret.TERMINAL_PASSPHRASE, Secret.ADYEN_API_KEY)
         val copied = await { target.container.settings.current() }
         // Another destination forgets the environment found for the last one.
         assertThat(copied.terminal.mode).isEqualTo(TerminalMode.TERMINAL)
@@ -286,7 +283,7 @@ class SetupTransferTest {
         assertThat(copied.terminal.saleId).isEqualTo("Cafe")
         assertThat(copied.receipt.footer).isEqualTo("Keep me")
         assertThat(await { target.container.secrets.get(Secret.TERMINAL_PASSPHRASE) }).isEqualTo("correct horse")
-        assertThat(await { target.container.secrets.get(Secret.CHECKOUT_API_KEY) }).isEqualTo("AQE-key")
+        assertThat(await { target.container.secrets.get(Secret.ADYEN_API_KEY) }).isEqualTo("AQE-key")
 
         assertThrows(TransferFormatException::class.java) { setup(target).receive(Transfer(connection = "not json")) }
         assertThrows(TransferFormatException::class.java) { setup(target).receive(Transfer(connection = """{"keyVersion":"x"}""")) }
@@ -299,20 +296,19 @@ class SetupTransferTest {
         // Made by docs/js/setup.js (Settings: a terminal on the network), so the page and the app keep one format.
         val chunks =
             listOf(
-                "MPC1:JTKI:1/2:6X0X64QXAI0N.F9OQ1IB0200SF919TVVOHA4USFXJ5:-QHRLY-0HJG6XQCNH\$TRF5VLJOA321H8M\$P+3T:8PEI" +
-                    "0MAOWH8P827SB/AHC-AGIE9TR\$VPK*P *B/%A1631/MAIDC*3JKH7%8/A1JQHOVLM*BOC8-0CX8BKCND7S0%T\$5F72DRJN6PU8\$R" +
-                    "HRS\$BF4MO%KHQIL/B81VTT IFPDH 3DY0FYPPPU2BLGS0X7NNDCTCQ4PEATE8.92I936NF36DXUP0N2ENR-FCFBBKJPAGHYIV/T." +
-                    "2LJBHBQLM+Q3U4C46HU0J.J8*AA-NWRM%9B:1ARB673BQIP:0V%MD+*B\$:5R 3I3W0Y2N/0*XM*IBXOO\$MMQH3T*I6SRPLUVS6P*" +
-                    "50SUFZD-SUMUS1JE4T9U%6TPA/%DO.BCFH%9A1G2J%T0SM*/JMPF6VC QEZEDIEC EDO-DWF71/DPWE04ELOD3Q559D QE",
-                "MPC1:JTKI:2/2:WE4NE4HA7Z\$5K%6Z\$5 \$5\$363Q5S9E/DDTTCWF7CNAF*83W5646.96V47+96C%6QW6-96IE4 F4C\$CNC91\$CBW" +
-                    "ER.C5\$CWE4:F4HWEZKEHX5C\$CIE4%F45\$CNPCCECGVEIPC34EG/DWE41F4GEC:JC6%ESN8O.C\$ C-M8 X93Q5/PDCFF5\$CPQE-3E" +
-                    "WE4AH6",
+                "MPC1:VDB9:1/2:5T0UMN5%UGQ7:YOUQ1W50200SF9.2WXM1IXK9.16DD%Y8EDMTJPJIVC5VKMUTCRVT6TJHIYOB M281DD7W" +
+                    "3844DUK5N-Q116*32*XMS4302OPC3XKH\$3D\$F0HKBX%ISW4X/0S693%6DI1%D9FG6JJD+O7K LLSGWK9. D  MN0WQ 8D9F:" +
+                    "%K%QUM5WXCH+D8\$2DC7WU133IO9E73RSGA0-.KFW9LHCK76KW3Z\$9L%N5HIGWIGAMSJ9WY3*/JMPF6VC QEZEDIEC EDO-DW" +
+                    "F71/DPWE04ELOD3Q559D QEWE4NE4HA7Z\$5K%6Z\$5 \$5\$363Q5S9E/DDTTCWF7CNAF*83W5646.96V47+96C%6QW6-96IE4 " +
+                    "F4C\$CNC91\$CBWER.C5\$CWE4:F4HWEZKEHX5C\$CIE4%F45\$CNPCCECGVEIPC34EG/DWE41F4GEC:JC6%ESN8O.C\$ C-M8 X93" +
+                    "Q5/PDCFF5\$CPQE",
+                "MPC1:VDB9:2/2:-3EWE4AH6",
             )
         val assembler = QrChunkAssembler()
         chunks.forEach { assembler.add(checkNotNull(QrChunks.parse(it))) }
         val received = setup(target).receive(TransferCodec.decode(assembler.assemble()))
-        val outcome = await { setup(target).import(received, ImportMode.MERGE, "XF4V-CK7Y-MRDZ") } as ImportOutcome.Imported
-        assertThat(outcome.result.secrets).containsExactly(Secret.TERMINAL_PASSPHRASE, Secret.CHECKOUT_API_KEY)
+        val outcome = await { setup(target).import(received, ImportMode.MERGE, "Z7FW-2N9A-8XKG") } as ImportOutcome.Imported
+        assertThat(outcome.result.secrets).containsExactly(Secret.TERMINAL_PASSPHRASE, Secret.ADYEN_API_KEY)
         val terminal = await { target.container.settings.current() }.terminal
         assertThat(terminal.mode).isEqualTo(TerminalMode.TERMINAL)
         assertThat(terminal.host).isEqualTo("192.168.1.20")
@@ -321,7 +317,7 @@ class SetupTransferTest {
         assertThat(terminal.keyVersion).isEqualTo(2)
         assertThat(terminal.merchantAccount).isEqualTo("HarbourCoffeeCOM")
         assertThat(await { target.container.secrets.get(Secret.TERMINAL_PASSPHRASE) }).isEqualTo("correct horse battery")
-        assertThat(await { target.container.secrets.get(Secret.CHECKOUT_API_KEY) }).endsWith("-i1i}2s:=Eb,k7Zg%Yjz")
+        assertThat(await { target.container.secrets.get(Secret.ADYEN_API_KEY) }).endsWith("-i1i}2s:=Eb,k7Zg%Yjz")
     }
 
     @Test

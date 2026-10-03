@@ -186,6 +186,7 @@ fun RefundScreen(
             }
 
             is Refundability.Refundable -> {
+                RemoteRefundReview(load.payment.local == null && !state.remoteReviewed, { vm.reviewRemote(true) }, navigator::back)
                 RefundChoice(
                     state = state,
                     original = load.payment,
@@ -210,6 +211,23 @@ fun RefundScreen(
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun RemoteRefundReview(
+    required: Boolean,
+    confirm: () -> Unit,
+    cancel: () -> Unit,
+) {
+    if (required) {
+        ConfirmDialog(
+            title = stringResource(R.string.refund_review_title),
+            message = stringResource(R.string.refund_review_message),
+            confirmLabel = stringResource(R.string.refund_review_confirm),
+            onConfirm = confirm,
+            onDismiss = cancel,
+        )
     }
 }
 

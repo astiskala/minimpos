@@ -325,18 +325,18 @@ class TippingViewModelsTest {
                 container::sampleReceipt,
             )
         // The simulator stands in for the API.
-        vm.saveAndTest(Secret.CHECKOUT_API_KEY)
+        vm.saveAndTest(Secret.ADYEN_API_KEY)
         assertThat(await { vm.actions.first { it.api.done } }.api.outcome).isEqualTo(ActionOutcome.ApiWorks)
 
         env.updateSettings { it.copy(terminal = it.terminal.copy(mode = TerminalMode.TERMINAL, merchantAccount = "Merchant")) }
-        vm.saveAndTest(Secret.CHECKOUT_API_KEY, " secret-key ")
+        vm.saveAndTest(Secret.ADYEN_API_KEY, " secret-key ")
         val tested = await { vm.actions.first { it.apiKeyStored && !it.api.running } }
         assertThat(tested.api.isError).isTrue()
         assertThat(tested.api.outcome).isEqualTo(ActionOutcome.NotSetUp(SetupProblem.ENVIRONMENT))
-        assertThat(await { container.secrets.get(Secret.CHECKOUT_API_KEY) }).isEqualTo("secret-key")
+        assertThat(await { container.secrets.get(Secret.ADYEN_API_KEY) }).isEqualTo("secret-key")
 
         env.cipher.failEncrypt = true
-        vm.saveAndTest(Secret.CHECKOUT_API_KEY, "other")
+        vm.saveAndTest(Secret.ADYEN_API_KEY, "other")
         assertThat(await { vm.actions.first { it.api.isError && !it.apiKeyStored } }.api.outcome)
             .isInstanceOf(ActionOutcome.SecretNotStored::class.java)
         env.cipher.failEncrypt = false

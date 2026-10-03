@@ -207,8 +207,8 @@ class ArchitectureTest {
             .check(app)
 
     @Test
-    fun `the Adyen library stays behind terminal-api`() =
-        // terminal-api's interface has its own print model and enums, so nexo knowledge lives in one module.
+    fun `the Adyen library stays behind adyen`() =
+        // adyen's interface has its own print model and enums, so nexo knowledge lives in one module.
         noClasses()
             .should()
             .dependOnClassesThat()

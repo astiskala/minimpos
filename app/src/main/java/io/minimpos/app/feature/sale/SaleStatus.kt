@@ -69,8 +69,7 @@ fun statusKind(status: SaleStatus): StatusKind =
 
 /**
  * How [sale] is shown: as its status says ([statusKind]), except that a hold whose cancellation was accepted, and a
- * capture that is still to be made in the Customer Area or whose outcome is unknown, are warnings, and a capture Adyen
- * did not take is an error.
+ * capture that is being sent or whose outcome is unknown, are warnings, and a capture Adyen did not take is an error.
  */
 fun statusKind(sale: SaleEntity): StatusKind =
     when (sale.standing) {
@@ -88,7 +87,6 @@ fun statusKind(sale: SaleEntity): StatusKind =
 
         PaymentStanding.CAPTURE_SENDING,
         PaymentStanding.CAPTURE_UNKNOWN,
-        PaymentStanding.CAPTURED_MANUALLY,
         PaymentStanding.HOLD_CANCELLED,
         -> {
             StatusKind.WARNING
@@ -121,7 +119,6 @@ fun statusTitle(sale: SaleEntity): String =
         }
 
         PaymentStanding.CAPTURE_REQUESTED,
-        PaymentStanding.CAPTURED_MANUALLY,
         PaymentStanding.CAPTURE_FAILED,
         PaymentStanding.CAPTURE_SENDING,
         PaymentStanding.CAPTURE_UNKNOWN,
@@ -135,10 +132,6 @@ private fun captureStrings(standing: PaymentStanding): Pair<Int, Int>? =
     when (standing) {
         PaymentStanding.CAPTURE_REQUESTED -> {
             R.string.status_capture_requested to R.string.detail_capture_requested
-        }
-
-        PaymentStanding.CAPTURED_MANUALLY -> {
-            R.string.status_capture_manual to R.string.detail_capture_manual
         }
 
         PaymentStanding.CAPTURE_FAILED -> {

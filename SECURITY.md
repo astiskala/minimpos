@@ -62,17 +62,18 @@ this project. Report them to Adyen through its
   the app the user picks in Android's share sheet: the app writes the one receipt image to its cache and grants that
   app read access to it alone.
 - **API keys on the device are a trade-off.** Adyen advises keeping API keys on a server. Mini mPOS has no backend, so
-  the Checkout API key (which every setup needs) lives on the terminal, tablet or phone, and in the cloud and for Tap to
+  the Adyen API key (which every setup needs) lives on the terminal, tablet or phone, and in the cloud and for Tap to
   Pay so do the keys that reach the terminal or board the phone. A tablet or phone is less protected than a payment
   terminal.
 
 ## Recommendations for merchants
 
-- Set an **admin PIN** (Settings › Security), so staff and shoppers can't change settings or products.
+- Set an **admin PIN** (Settings › Security), so staff and shoppers can't change settings or products. Optionally set
+  a separate **Manager PIN** there to require approval for refunds, cancellations, captures and adjustments.
 - Keep TEST and LIVE shared keys separate. Before taking real payments, check that Settings › About shows LIVE as the
   environment (a TEST terminal also shows TEST in its status bar). Change the shared key if you think it has been
   exposed.
-- For the **Checkout API key**, use an API credential with only the Checkout webservice role, one per store or
+- For the **Adyen API key**, use an API credential with only the Checkout webservice role, one per store or
   terminal fleet, and revoke it in the Customer Area if a terminal is lost.
 - On a **tablet or phone**, prefer a terminal on your network. For the cloud or Tap to Pay, create an API credential
   for each device with only the roles it needs (Cloud Device API and Checkout webservice; or only the Adyen Payments

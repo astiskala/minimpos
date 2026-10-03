@@ -146,7 +146,7 @@ data class TransferResult(
  * detected TEST/LIVE environment and the simulator. Everything else travels, and on import replaces this terminal's
  * value (a setting at its default replaces it with the default). The default tax rate travels as its name and rate,
  * and is looked up among this terminal's rates after the catalogue import. The secrets (shared key passphrase,
- * Checkout API key, SMTP password and the admin PIN's verifier, so the same PIN works) are sealed with a transfer code
+ * Adyen API key, SMTP password and the admin PIN's verifier, so the same PIN works) are sealed with a transfer code
  * by [TransferSeal].
  *
  * @param catalog The catalogue exported and imported.
@@ -237,8 +237,10 @@ class SetupTransfer(
             }
         return values
             .mapNotNull { (name, value) -> Secret.entries.firstOrNull { it.name == name }?.let { it to value } }
-            .filter { (secret, value) -> value.isNotEmpty() && (secret != Secret.PIN_VERIFIER || PinManager.isValidVerifier(value)) }
-            .toMap()
+            .filter { (secret, value) ->
+                value.isNotEmpty() &&
+                    (secret !in setOf(Secret.PIN_VERIFIER, Secret.MANAGER_PIN_VERIFIER) || PinManager.isValidVerifier(value))
+            }.toMap()
     }
 
     /**

@@ -37,6 +37,7 @@ import io.minimpos.app.ui.theme.MiniMposTheme
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.launch
+import kotlin.time.Duration.Companion.minutes
 
 /**
  * The app's only activity: it draws edge to edge and hosts the whole Compose UI. It is also the Android side of the
@@ -66,13 +67,22 @@ class MainActivity : ComponentActivity() {
     override fun onResume() {
         super.onResume()
         // Back from Google Play, say, where the Payments app may just have been installed.
-        (application as MiniMposApplication).container.terminalStatus.readDevice()
+        val container = (application as MiniMposApplication).container
+        val timeout = container.settingsState.value.security.autoLockMinutes.minutes.inWholeMilliseconds
+        container.sessionLock.expire(timeout)
+        container.managerLock.expire(timeout)
+        container.terminalStatus.readDevice()
         // Back from the Payments app: an answer comes with onNewIntent before this; without one, it is not coming.
         val waiting = paymentsApp.awaitingAnswer ?: return
         lifecycleScope.launch {
             delay(ANSWER_GRACE_MILLIS)
             paymentsApp.abandon(waiting)
         }
+    }
+
+    override fun onUserInteraction() {
+        super.onUserInteraction()
+        (application as MiniMposApplication).container.userActivity()
     }
 
     private fun open(launch: PaymentsAppBridge.Launch) {

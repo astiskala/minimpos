@@ -303,7 +303,7 @@ tasks.register("qualityGate") {
         actionlint,
         zizmor,
         ":core:check",
-        ":terminal-api:check",
+        ":adyen:check",
         ":app:check",
         ":website-test:check",
     )

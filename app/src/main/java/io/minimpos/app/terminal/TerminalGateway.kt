@@ -1,11 +1,14 @@
 package io.minimpos.app.terminal
 
+import android.app.LocaleManager
 import android.content.Context
+import android.content.res.Resources
 import android.os.Build
 import android.provider.Settings
 import io.minimpos.app.data.db.SetupProblem
 import io.minimpos.app.data.security.SecretStore
 import io.minimpos.app.data.settings.TerminalMode
+import io.minimpos.core.money.PaymentContext
 import io.minimpos.terminal.client.DiagnosisResult
 import io.minimpos.terminal.client.PaymentParams
 import io.minimpos.terminal.client.PosApplication
@@ -73,6 +76,16 @@ class AndroidDeviceInfo(
             ?.takeIf { POI_ID.matches(it) }
     override val model: String = Build.MODEL.orEmpty()
     override val osVersion: String = Build.VERSION.RELEASE.orEmpty()
+    override val country: String
+        get() {
+            val locales =
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                    context.getSystemService(LocaleManager::class.java)?.systemLocales
+                } else {
+                    null
+                } ?: Resources.getSystem().configuration.locales
+            return locales.get(0)?.country.orEmpty()
+        }
 
     // The manifest's <queries> make the Payments apps visible.
     override val paymentsApps: Set<TerminalEnvironment>
@@ -257,8 +270,9 @@ class TerminalGateway(
     suspend fun pay(
         params: PaymentParams,
         serviceId: String,
+        onContext: suspend (PaymentContext) -> Unit = {},
         onSending: suspend (poiId: String) -> Unit = {},
-    ): Attempt<TransactionOutcome> = send(serviceId, paying = true, onSending) { it.pay(params, serviceId) }
+    ): Attempt<TransactionOutcome> = send(serviceId, paying = true, onSending, onContext) { it.pay(params, serviceId) }
 
     /**
      * Refunds an earlier payment, see [TerminalClient.refund]; [onSending] and missing setup are handled as for [pay],
@@ -269,8 +283,10 @@ class TerminalGateway(
     suspend fun refund(
         params: RefundParams,
         serviceId: String,
+        expected: PaymentContext? = null,
+        onContext: suspend (PaymentContext) -> Unit = {},
         onSending: suspend (poiId: String) -> Unit = {},
-    ): Attempt<TransactionOutcome> = send(serviceId, paying = false, onSending) { it.refund(params, serviceId) }
+    ): Attempt<TransactionOutcome> = send(serviceId, paying = false, onSending, onContext, expected) { it.refund(params, serviceId) }
 
     /**
      * Asks the terminal once for the result of the [kind] of transaction sent with [serviceId], see
@@ -280,11 +296,24 @@ class TerminalGateway(
     suspend fun status(
         serviceId: String,
         kind: TransactionKind,
+        expected: PaymentContext? = null,
     ): TransactionOutcome =
         when (val connection = connection()) {
-            is Connection.Open -> connection.client.status(serviceId, kind)
-            is Connection.NotSetUp -> TransactionOutcome.Unknown(serviceId, connection.problem.name)
-            is Connection.Unreachable -> TransactionOutcome.Unknown(serviceId, connection.message)
+            is Connection.Open -> {
+                if (expected == null || expected.matchesTerminal(connection.context())) {
+                    connection.client.status(serviceId, kind)
+                } else {
+                    TransactionOutcome.Unknown(serviceId, SetupProblem.PAYMENT_CONTEXT.name)
+                }
+            }
+
+            is Connection.NotSetUp -> {
+                TransactionOutcome.Unknown(serviceId, connection.problem.name)
+            }
+
+            is Connection.Unreachable -> {
+                TransactionOutcome.Unknown(serviceId, connection.message)
+            }
         }
 
     /**
@@ -389,12 +418,21 @@ class TerminalGateway(
         serviceId: String,
         paying: Boolean,
         onSending: suspend (poiId: String) -> Unit,
+        onContext: suspend (PaymentContext) -> Unit,
+        expected: PaymentContext? = null,
         call: suspend (TerminalClient) -> TransactionOutcome,
     ): Attempt<TransactionOutcome> =
         when (val connection = connection(paying)) {
             is Connection.Open -> {
-                onSending(connection.client.identity.poiId)
-                Attempt.Made(call(connection.client))
+                if (expected != null && !expected.matchesTerminal(connection.context())) {
+                    Attempt.NotSetUp(SetupProblem.PAYMENT_CONTEXT)
+                } else {
+                    onContext(connection.context())
+                    onSending(connection.client.identity.poiId)
+                    val outcome = call(connection.client)
+                    onContext(connection.context())
+                    Attempt.Made(outcome)
+                }
             }
 
             is Connection.NotSetUp -> {

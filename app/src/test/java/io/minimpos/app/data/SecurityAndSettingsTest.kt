@@ -1,5 +1,8 @@
 package io.minimpos.app.data
 
+import android.app.LocaleManager
+import android.os.Build
+import android.os.LocaleList
 import androidx.datastore.core.CorruptionException
 import com.google.common.truth.Truth.assertThat
 import io.minimpos.app.AppContainer
@@ -27,6 +30,7 @@ import org.junit.Assert.assertThrows
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import org.robolectric.RuntimeEnvironment
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
 import java.util.Locale
@@ -61,6 +65,33 @@ class SecurityAndSettingsTest {
         }
 
     @Test
+    fun `manager and admin PINs are independent and the Adyen key uses its own name`() =
+        await {
+            val admin = PinManager(secrets, iterations = 1_000)
+            val manager = PinManager(secrets, iterations = 1_000, verifierSecret = Secret.MANAGER_PIN_VERIFIER)
+            admin.setPin("1234")
+            manager.setPin("2468")
+            assertThat(manager.verify("1234")).isInstanceOf(PinCheck.Rejected::class.java)
+            assertThat(manager.verify("2468")).isEqualTo(PinCheck.Accepted)
+            assertThat(admin.verify("2468")).isInstanceOf(PinCheck.Rejected::class.java)
+            manager.clearPin()
+            assertThat(admin.pinConfigured.first()).isTrue()
+            secrets.set(Secret.ADYEN_API_KEY, "key")
+            assertThat(env.dir.resolve("secrets.json").readText()).contains("ADYEN_API_KEY")
+            assertThat(secrets.get(Secret.ADYEN_API_KEY)).isEqualTo("key")
+        }
+
+    @Test
+    fun `an unreadable configured PIN never grants access`() =
+        await {
+            val pins = PinManager(secrets, iterations = 1_000)
+            pins.setPin("1234")
+            env.cipher.fail = true
+            assertThat(pins.verify("0000")).isNotEqualTo(PinCheck.Accepted)
+            assertThat(pins.verify("1234")).isNotEqualTo(PinCheck.Accepted)
+        }
+
+    @Test
     fun `pins verify, reject and lock out`() =
         await {
             var now = 0L
@@ -80,12 +111,25 @@ class SecurityAndSettingsTest {
             now += 10 * PinManager.LOCKOUT_MILLIS
             assertThat(pins.verify("1234")).isEqualTo(PinCheck.Accepted)
             secrets.set(Secret.PIN_VERIFIER, "corrupt")
-            assertThat(pins.verify("1234")).isInstanceOf(PinCheck.Rejected::class.java)
+            assertThat(pins.verify("1234")).isEqualTo(PinCheck.Unreadable)
             pins.clearPin()
             assertThat(pins.pinConfigured.first()).isFalse()
             assertThat(PinManager.isValidPin("123a")).isFalse()
             assertThat(PinManager.isValidPin("123456789")).isFalse()
         }
+
+    @Test
+    fun `inactivity expiry does not refresh the last interaction`() {
+        var now = 0L
+        val lock = SessionLock { now }
+        lock.unlock()
+        now = 500
+        lock.expire(1_000)
+        assertThat(lock.unlocked.value).isTrue()
+        now = 1_000
+        lock.expire(1_000)
+        assertThat(lock.unlocked.value).isFalse()
+    }
 
     @Test
     fun `session lock expires without activity`() {
@@ -110,7 +154,7 @@ class SecurityAndSettingsTest {
     @Test
     fun `settings persist and derived flags follow`() =
         await {
-            env.container.settings.update { it.copy(payment = it.payment.copy(emailCapture = EmailCapture.BOTH)) }
+            env.container.settings.update { it.copy(payment = it.payment.copy(emailCapture = EmailCapture.BEFORE_PAYMENT)) }
             val current = env.container.settings.current()
             assertThat(current.payment.captureEmailBefore).isTrue()
             assertThat(PaymentSettings(emailCapture = EmailCapture.OFF).captureEmailBefore).isFalse()
@@ -119,7 +163,7 @@ class SecurityAndSettingsTest {
             fun byEmail(capture: EmailCapture) =
                 PaymentSettings(emailCapture = capture, shopperReferenceSource = ShopperReferenceSource.EMAIL).effectiveEmailCapture
             assertThat(EmailCapture.entries.map(::byEmail))
-                .containsExactly(EmailCapture.BEFORE_PAYMENT, EmailCapture.BEFORE_PAYMENT, EmailCapture.BOTH, EmailCapture.BOTH)
+                .containsExactly(EmailCapture.BEFORE_PAYMENT, EmailCapture.BEFORE_PAYMENT, EmailCapture.BEFORE_PAYMENT)
                 .inOrder()
             assertThat(
                 PaymentSettings(emailCapture = EmailCapture.OFF, shopperReferenceSource = ShopperReferenceSource.EMAIL).captureEmailBefore,
@@ -129,12 +173,32 @@ class SecurityAndSettingsTest {
             ).isEqualTo(EmailCapture.AFTER_PAYMENT)
 
             // A customer reference is asked for exactly when it is the shopper reference.
-            assertThat(PaymentSettings().asksCustomerReference).isTrue()
+            assertThat(PaymentSettings().asksCustomerReference).isFalse()
+            assertThat(PaymentSettings(shopperReferenceSource = ShopperReferenceSource.CUSTOMER_REFERENCE).asksCustomerReference).isTrue()
             assertThat(PaymentSettings(shopperReferenceSource = ShopperReferenceSource.EMAIL).asksCustomerReference).isFalse()
             assertThat(PaymentSettings().referencePrefix).isEmpty()
             assertThat(EmailSettings(host = "smtp", fromAddress = "a@b.co").isConfigured).isTrue()
             assertThat(EmailSettings().isConfigured).isFalse()
         }
+
+    @Test
+    fun `app language cannot change the device country used for automatic pricing`() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return
+        val application = RuntimeEnvironment.getApplication()
+        val manager = application.getSystemService(LocaleManager::class.java)
+        val originalLocales = manager.applicationLocales
+        val originalLocale = Locale.getDefault()
+        val device = AndroidDeviceInfo(application)
+        val country = device.country
+        try {
+            manager.applicationLocales = LocaleList.forLanguageTags("zh-CN")
+            Locale.setDefault(Locale.SIMPLIFIED_CHINESE)
+            assertThat(device.country).isEqualTo(country)
+        } finally {
+            manager.applicationLocales = originalLocales
+            Locale.setDefault(originalLocale)
+        }
+    }
 
     @Test
     fun `currency is the chosen one, else the device country's own`() {
@@ -167,17 +231,11 @@ class SecurityAndSettingsTest {
             serializer.writeTo(settings, out)
             assertThat(serializer.readFrom(ByteArrayInputStream(out.toByteArray()))).isEqualTo(settings)
             assertThat(serializer.readFrom(ByteArrayInputStream("{\"unknown\":1}".toByteArray()))).isEqualTo(AppSettings())
-            // Settings saved by earlier versions, which also had a country/region and a customer reference switch, still load.
-            val older = "{\"payment\":{\"region\":\"JP\",\"currencyCode\":\"USD\",\"askCustomerReference\":false}}"
-            val olderPayment = serializer.readFrom(ByteArrayInputStream(older.toByteArray())).payment
-            assertThat(olderPayment.currencyCode).isEqualTo("USD")
-            // The customer reference is the shopper reference there, so it is asked for whatever the old switch said.
-            assertThat(olderPayment.asksCustomerReference).isTrue()
-            // Earlier versions chose the environment and stored localhost; both still load.
-            val chosen = "{\"terminal\":{\"environment\":\"LIVE\",\"host\":\"localhost\"}}"
-            val terminal = serializer.readFrom(ByteArrayInputStream(chosen.toByteArray())).terminal
-            assertThat(terminal.environment).isEqualTo(TerminalEnvironment.LIVE)
-            assertThat(terminal.host).isEqualTo("localhost")
+            val minimal = "{\"payment\":{\"currencyCode\":\"USD\"}}"
+            val payment = serializer.readFrom(ByteArrayInputStream(minimal.toByteArray())).payment
+            assertThat(payment.currencyCode).isEqualTo("USD")
+            assertThat(payment.asksCustomerReference).isFalse()
+            assertThat(payment.askTransactionReference).isFalse()
             assertThat(AppSettings().terminal.environment).isNull()
             assertThat(AppSettings().terminal.host).isEmpty()
             assertThrows(CorruptionException::class.java) { runBlocking { serializer.readFrom(ByteArrayInputStream("{".toByteArray())) } }

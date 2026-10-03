@@ -234,7 +234,7 @@ class CheckoutViewModel(
     /** Starts the payment ([Checkout.paymentStart]); returns false when the form is not ready. */
     fun pay(): Boolean {
         val start = state.value.paymentStart(clock.instant(), zone()) ?: return false
-        payments.start(start)
+        payments.start(start.copy(sessionRevision = session.revision))
         return true
     }
 
@@ -244,7 +244,7 @@ class CheckoutViewModel(
      */
     fun sendLink(): String? {
         val start = state.value.linkStart(clock.instant(), zone()) ?: return null
-        return links?.start(start)
+        return links?.start(start.copy(payment = start.payment.copy(sessionRevision = session.revision)))
     }
 }
 

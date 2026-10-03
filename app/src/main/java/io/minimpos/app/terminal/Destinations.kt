@@ -5,6 +5,7 @@ import io.minimpos.app.data.security.Secret
 import io.minimpos.app.data.settings.AppSettings
 import io.minimpos.app.data.settings.TerminalMode
 import io.minimpos.app.data.settings.TerminalSettings
+import io.minimpos.core.money.PaymentContext
 import io.minimpos.terminal.checkout.PaymentModifications
 import io.minimpos.terminal.client.PosApplication
 import io.minimpos.terminal.client.RecoveryPolicy
@@ -33,10 +34,13 @@ sealed interface Connection {
      * @property client Sends them, with the setup's SaleID and POIID and the destination's timeout and recovery.
      * @property destination What it can do besides payments and refunds ([DestinationRules.aborts],
      *   [DestinationRules.diagnoses]).
+     * @property context Reads only the setup and certificate belonging to this connection.
      */
     class Open(
         val client: TerminalClient,
         val destination: DestinationRules,
+        /** Reads the identity and certificate environment of this connection, never a later setup. */
+        val context: () -> PaymentContext,
     ) : Connection
 
     /** Nothing can be sent; also what a [Destination.open] that found no transport returns. */
@@ -69,9 +73,12 @@ sealed interface Opening {
      * The destination can be reached.
      *
      * @property transport Sends the requests.
+     * @property environment Reads this transport's verified certificate or endpoint environment.
      */
     class Transport(
         val transport: TerminalTransport,
+        /** Certificate or endpoint environment learned by this transport; null until known. */
+        val environment: () -> TerminalEnvironment? = { null },
     ) : Opening
 }
 
@@ -120,7 +127,7 @@ sealed interface Destination {
                         transactionTimeout = rules.transactionTimeout(terminal.timeoutSeconds.seconds),
                         recovery = rules.recovery,
                     )
-                Connection.Open(client, rules)
+                Connection.Open(client, rules) { setup.paymentContext(opening.environment() ?: setup.environment) }
             }
         }
 }
@@ -218,17 +225,25 @@ class SimulatedTerminal(
  */
 internal class LocalTerminal(
     private val dial: (host: String, key: TerminalKey, tls: TerminalTls) -> TerminalTransport,
-    onEnvironment: (TerminalEnvironment) -> Unit,
+    private val onEnvironment: (TerminalEnvironment) -> Unit,
 ) : Destination {
-    private val tls by lazy { TerminalTls(onEnvironment = onEnvironment) }
-
-    private val transports = Reused<Pair<String, TerminalKey>, TerminalTransport>()
+    private val transports = Reused<Pair<String, TerminalKey>, Opening.Transport>()
 
     override val rules: DestinationRules get() = Companion
 
     override suspend fun open(unlocked: UnlockedSetup): Opening {
         val key = checkNotNull(unlocked.terminalKey)
-        return Opening.Transport(transports.get(checkNotNull(unlocked.setup.host) to key) { dial(it.first, key, tls) })
+        return transports.get(checkNotNull(unlocked.setup.host) to key) {
+            val detected =
+                java.util.concurrent.atomic
+                    .AtomicReference<TerminalEnvironment?>()
+            val tls =
+                TerminalTls(onEnvironment = { environment ->
+                    detected.set(environment)
+                    onEnvironment(environment)
+                })
+            Opening.Transport(dial(it.first, key, tls), detected::get)
+        }
     }
 
     /**
@@ -277,7 +292,7 @@ internal class CloudTerminal(
     private val device: DeviceInfo,
     private val onDetected: (CloudEndpoint) -> Unit,
 ) : Destination {
-    private val transports = Reused<Pair<CloudCredentials, String>, TerminalTransport>()
+    private val transports = Reused<Pair<CloudCredentials, String>, Opening.Transport>()
 
     override val rules: DestinationRules get() = Companion
 
@@ -289,12 +304,12 @@ internal class CloudTerminal(
                 unlocked.setup.settings.terminal.merchantAccount
                     .trim(),
             ) to poiId
-        transports.of(id)?.let { return Opening.Transport(it) }
+        transports.of(id)?.let { return it }
         val devices = cloud(id.first)
         return when (val detection = devices.detect(poiId, device.country)) {
             is CloudDetection.Found -> {
                 onDetected(detection.endpoint)
-                Opening.Transport(transports.keep(id, devices.transport(detection.endpoint)))
+                transports.keep(id, Opening.Transport(devices.transport(detection.endpoint)) { detection.endpoint.environment })
             }
 
             is CloudDetection.Failed -> {
@@ -330,7 +345,7 @@ internal class CloudTerminal(
      */
     companion object : DestinationRules {
         override val mode: TerminalMode get() = TerminalMode.CLOUD
-        override val secrets: Set<Secret> get() = setOf(Secret.CHECKOUT_API_KEY)
+        override val secrets: Set<Secret> get() = setOf(Secret.ADYEN_API_KEY)
 
         override fun transactionTimeout(configured: Duration): Duration = maxOf(configured, AdyenCloudDevices.MIN_TRANSACTION_TIMEOUT)
 
@@ -348,7 +363,7 @@ internal class CloudTerminal(
         ): SetupProblem? =
             when {
                 terminal.merchantAccount.isBlank() -> SetupProblem.MERCHANT_ACCOUNT
-                Secret.CHECKOUT_API_KEY !in saved -> SetupProblem.CLOUD_API_KEY
+                Secret.ADYEN_API_KEY !in saved -> SetupProblem.CLOUD_API_KEY
                 poiId == null -> SetupProblem.POI_ID
                 else -> null
             }

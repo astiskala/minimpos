@@ -10,9 +10,9 @@ terminal constraints, where payments go and the conventions; `ArchitectureTest` 
   `data`. Only the UI reaches into `AppContainer`. View models live in `feature` and hold no Android UI types or display
   text.
 - \* Only the `terminal` package talks to the terminal (and reaches the cloud and the Payments app): elsewhere (but the
-  container) `:terminal-api`'s `transport`, `simulator` and `paymentsapp` are only the stored values
+  container) `:adyen`'s `transport`, `simulator` and `paymentsapp` are only the stored values
   `TerminalEnvironment`, `CloudRegion` and `SimulatedOutcome`, and `TerminalClient` only its companion helpers.
-  `com.adyen` stays in `:terminal-api`; Room stays in `data`; crypto stays in `data.security`; nothing logs or prints.
+  `com.adyen` stays in `:adyen`; Room stays in `data`; crypto stays in `data.security`; nothing logs or prints.
 - \* Stored sales change only through `SaleRepository.record(id, SaleEvent)` and `applyRefund`, refunds only through
   `RefundRepository.settle`; `HistoryRepository` does whole-table housekeeping (interrupted sales through
   `SaleEvent.Interrupted`). Callers name what happened (`CaptureSending`, `CaptureAnswered`, `LinkAnswered`, …);
@@ -35,7 +35,7 @@ terminal constraints, where payments go and the conventions; `ArchitectureTest` 
   `Attempt.NotSetUp`, `CaptureResult.NotSetUp`, `LinkUpdate.NotSetUp`, `ActionResult.NotSetUp`), and screens word a
   `SetupProblem` in `OutcomeMessages.kt`.
 - \* Only `TerminalSetupSource` reads the secrets the terminal, the cloud and the Payments app need: `unlocked()`
-  decrypts the destination's and the Checkout API key once per call (`TerminalSetup.unlock`, where a saved one that
+  decrypts the destination's and the Adyen API key once per call (`TerminalSetup.unlock`, where a saved one that
   no longer decrypts becomes the `UNREADABLE_*` problem) and hands them over as an `UnlockedSetup`; `boarding()` does
   the same for the Payments app API key (`BoardingSetup.Ready`). Nothing else in `terminal` touches `SecretStore`.
 - \* Everything about one destination is in `terminal/Destinations.kt`: what it needs and can do is its
@@ -77,25 +77,25 @@ terminal constraints, where payments go and the conventions; `ArchitectureTest` 
 - \* One `SaleSession` per `SaleKind` (`container.session(kind)`; only the container makes them); the payments'
   lifecycle clears it once approved.
 - \* Settings ranges live on each settings section's companion; `SettingsRepository` normalises on every read and write
-  (only it and `AppSettings` call `normalized()`), so nothing downstream clamps again. New `AppSettings` fields need
-  defaults, so settings saved by older versions still load.
-- Never change a constructor default of the settings: a transfer leaves out values at their default, so it would change
-  what transfers from older versions mean. Change what a new installation starts with in
-  `AppSettings.forNewInstallation` instead (the container's `defaults`).
+  (only it and `AppSettings` call `normalized()`), so nothing downstream clamps again. Constructor defaults define the
+  current baseline; `AppSettings.forNewInstallation` adds country-specific tax defaults, not an older-build baseline.
 - \* Composables other than a screen (`…Screen`) and its `…ViewModel()` factories neither take nor get a view model:
   screens pass state and callbacks (Settings bundles its sections' callbacks per view model in `SettingsEvents` and
   `TerminalSetupEvents`).
 - Writes a screen starts go through `launchWrite`/`persisting` (`feature/ViewModelWrites.kt`), never a bare
   `viewModelScope.launch`, so leaving the screen cannot drop them. Never call suspending side effects inside
   `MutableStateFlow.update {}`.
-- Secrets (shared-key passphrase, the API key for Checkout and the cloud, the Payments app API key, SMTP password, PIN
-  verifier) live only in `SecretStore`; never log or persist them in plain text.
+- \* Only PIN entry (`feature.lock`) and `data.security` verify PINs (`PinArchitectureTest`): other screens ask for
+  approval instead of reading a verifier. An optional Manager PIN protects refunds, cancellations, captures and
+  adjustments independently of admin access; financial operations re-check authorization before sending.
+- Secrets (shared-key passphrase, the Adyen API key, the Payments app API key, SMTP password and PIN verifiers) live
+  only in `SecretStore`; never log or persist them in plain text.
 
 ## Code
 
 - detekt does not run compiler plugins: in main code use `serializer<T>()`, not `T.serializer()`.
-- Room: bump the version, commit the exported schema (`app/schemas/`), add an auto-migration or a hand-written one in
-  `AppDatabase.withMigrations`, and extend `DatabaseMigrationTest`.
+- Room: keep the exported current schema (`app/schemas/`) and its tests in step with the model. Earlier pre-launch
+  schemas need no migration support. Never add an automatic destructive fallback or reset local data without approval.
 - Compose: detekt's `LongMethod` (60 lines) and `CyclomaticComplexMethod` apply to composables; split into private
   composables and `ColumnScope`/`RowScope` extensions, and name event lambdas in the present tense (`onSkuScan`).
 - Sizes come from `LocalDimens` tiers (`Compact` < 360 dp wide or < 520 dp tall, `Medium` < 640 dp tall, else

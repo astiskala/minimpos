@@ -40,7 +40,7 @@ class PaymentStandingTest {
     @Test
     fun `payments that were not approved stand nowhere else and allow nothing`() {
         SaleStatus.entries.filter { it != SaleStatus.APPROVED }.forEach { status ->
-            listOf(sale, preAuth, tipSale.copy(holdCancelled = true, captureStatus = CaptureStatus.MANUAL)).forEach {
+            listOf(sale, preAuth, tipSale.copy(holdCancelled = true, captureStatus = CaptureStatus.REQUESTED)).forEach {
                 val stored = it.copy(status = status)
                 assertThat(stored.standing).isEqualTo(PaymentStanding.NOT_APPROVED)
                 assertThat(stored.actions()).isEmpty()
@@ -110,7 +110,6 @@ class PaymentStandingTest {
                 preAuth.copy(captureStatus = CaptureStatus.PENDING, capturedMinor = 800) to PaymentStanding.CAPTURE_SENDING,
                 preAuth.copy(captureStatus = CaptureStatus.UNKNOWN, capturedMinor = 800) to PaymentStanding.CAPTURE_UNKNOWN,
                 preAuth.copy(captureStatus = CaptureStatus.REQUESTED, capturedMinor = 800) to PaymentStanding.CAPTURE_REQUESTED,
-                preAuth.copy(captureStatus = CaptureStatus.MANUAL, capturedMinor = 800) to PaymentStanding.CAPTURED_MANUALLY,
                 preAuth.copy(holdCancelled = true) to PaymentStanding.HOLD_CANCELLED,
                 // A cancellation accepted after a capture whose outcome was unknown still released the hold.
                 preAuth.copy(holdCancelled = true, captureStatus = CaptureStatus.UNKNOWN) to PaymentStanding.HOLD_CANCELLED,
@@ -118,8 +117,8 @@ class PaymentStandingTest {
                 preAuth.copy(refundedMinor = 500, captureStatus = CaptureStatus.REQUESTED) to PaymentStanding.CAPTURE_REQUESTED,
                 tipSale to PaymentStanding.AWAITING_TIP,
                 tipSale.copy(tipMinor = 200, captureStatus = CaptureStatus.FAILED, capturedMinor = 1_200) to PaymentStanding.CAPTURE_FAILED,
-                tipSale.copy(tipMinor = 200, captureStatus = CaptureStatus.MANUAL, capturedMinor = 1_200) to
-                    PaymentStanding.CAPTURED_MANUALLY,
+                tipSale.copy(tipMinor = 200, captureStatus = CaptureStatus.REQUESTED, capturedMinor = 1_200) to
+                    PaymentStanding.CAPTURE_REQUESTED,
                 tipSale.copy(holdCancelled = true) to PaymentStanding.HOLD_CANCELLED,
             )
         table.forEach { (stored, expected) -> assertThat(stored.standing).isEqualTo(expected) }
@@ -130,9 +129,9 @@ class PaymentStandingTest {
         assertThat(PaymentStanding.entries.filter { it.held })
             .containsExactly(PaymentStanding.AWAITING_TIP, PaymentStanding.HELD, PaymentStanding.CAPTURE_FAILED)
         assertThat(PaymentStanding.entries.filter { it.captured })
-            .containsExactly(PaymentStanding.CAPTURE_REQUESTED, PaymentStanding.CAPTURED_MANUALLY)
+            .containsExactly(PaymentStanding.CAPTURE_REQUESTED)
         assertThat(PaymentStanding.entries.filter { it.charged })
-            .containsExactly(PaymentStanding.CHARGED, PaymentStanding.CAPTURE_REQUESTED, PaymentStanding.CAPTURED_MANUALLY)
+            .containsExactly(PaymentStanding.CHARGED, PaymentStanding.CAPTURE_REQUESTED)
     }
 
     @Test
@@ -147,7 +146,7 @@ class PaymentStandingTest {
             .containsExactly(CANCEL, CAPTURE, ADJUST)
         assertThat(preAuth.copy(captureStatus = CaptureStatus.PENDING, capturedMinor = 800).actions()).isEmpty()
         assertThat(preAuth.copy(captureStatus = CaptureStatus.UNKNOWN, capturedMinor = 800).actions()).containsExactly(RETRY_CAPTURE)
-        assertThat(preAuth.copy(captureStatus = CaptureStatus.MANUAL, capturedMinor = 800).actions()).containsExactly(REFUND)
+        assertThat(preAuth.copy(captureStatus = CaptureStatus.REQUESTED, capturedMinor = 800).actions()).containsExactly(REFUND)
         assertThat(preAuth.copy(holdCancelled = true).actions()).isEmpty()
     }
 
@@ -166,7 +165,7 @@ class PaymentStandingTest {
     fun `day totals count pre-authorisations as held until they are captured, and cancelled holds not at all`() {
         assertThat(preAuth.totalsShare).isEqualTo(TotalsShare.HELD)
         assertThat(preAuth.copy(captureStatus = CaptureStatus.UNKNOWN).totalsShare).isEqualTo(TotalsShare.HELD)
-        assertThat(preAuth.copy(captureStatus = CaptureStatus.MANUAL).totalsShare).isEqualTo(TotalsShare.SALE)
+        assertThat(preAuth.copy(captureStatus = CaptureStatus.REQUESTED).totalsShare).isEqualTo(TotalsShare.SALE)
         assertThat(preAuth.copy(holdCancelled = true).totalsShare).isEqualTo(TotalsShare.NONE)
         assertThat(tipSale.totalsShare).isEqualTo(TotalsShare.SALE)
         assertThat(tipSale.copy(holdCancelled = true).totalsShare).isEqualTo(TotalsShare.NONE)
@@ -191,7 +190,9 @@ class PaymentStandingTest {
         assertThat(adjusted.preAuthorisation).isTrue()
         assertThat(adjusted.heldNowMinor).isEqualTo(1_500)
         assertThat(ReceiptStanding.of(preAuth.copy(captureStatus = CaptureStatus.UNKNOWN, capturedMinor = 800)).capturedMinor).isNull()
-        assertThat(ReceiptStanding.of(preAuth.copy(captureStatus = CaptureStatus.MANUAL, capturedMinor = 800)).capturedMinor).isEqualTo(800)
+        assertThat(
+            ReceiptStanding.of(preAuth.copy(captureStatus = CaptureStatus.REQUESTED, capturedMinor = 800)).capturedMinor,
+        ).isEqualTo(800)
     }
 
     @Test

@@ -1,9 +1,11 @@
 package io.minimpos.app.data.security
 
+import android.os.SystemClock
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import java.security.MessageDigest
 import java.security.SecureRandom
@@ -15,6 +17,9 @@ import javax.crypto.spec.PBEKeySpec
 sealed interface PinCheck {
     /** The PIN is correct, or no PIN is set. */
     data object Accepted : PinCheck
+
+    /** Protection is configured but its saved verifier cannot be read or validated; access stays locked. */
+    data object Unreadable : PinCheck
 
     /**
      * The PIN is wrong.
@@ -47,9 +52,10 @@ class PinManager(
     private val random: SecureRandom = SecureRandom(),
     /** PBKDF2 iterations for new PINs; stored verifiers carry their own count. Tests use fewer to run faster. */
     private val iterations: Int = DEFAULT_ITERATIONS,
+    private val verifierSecret: Secret = Secret.PIN_VERIFIER,
 ) {
     /** Whether a PIN is set, emitted again whenever that changes. */
-    val pinConfigured: Flow<Boolean> = secrets.configured.map { Secret.PIN_VERIFIER in it }
+    val pinConfigured: Flow<Boolean> = secrets.configured.map { verifierSecret in it }
 
     private var failures = 0
     private var lockedUntil = 0L
@@ -65,7 +71,7 @@ class PinManager(
         val salt = ByteArray(SALT_BYTES).also(random::nextBytes)
         val encoder = Base64.getEncoder()
         secrets.set(
-            Secret.PIN_VERIFIER,
+            verifierSecret,
             "v1:$iterations:${encoder.encodeToString(salt)}:${encoder.encodeToString(hash(pin, salt, iterations))}",
         )
         failures = 0
@@ -73,7 +79,7 @@ class PinManager(
     }
 
     /** Removes the PIN, which leaves the admin area unprotected. */
-    suspend fun clearPin() = secrets.set(Secret.PIN_VERIFIER, null)
+    suspend fun clearPin() = secrets.set(verifierSecret, null)
 
     /**
      * Checks [pin] against the stored verifier, comparing the hashes in constant time. Accepts any PIN when none is
@@ -82,7 +88,8 @@ class PinManager(
     suspend fun verify(pin: String): PinCheck {
         val now = clock()
         if (now < lockedUntil) return PinCheck.LockedOut(lockedUntil)
-        val stored = secrets.get(Secret.PIN_VERIFIER) ?: return PinCheck.Accepted
+        if (verifierSecret !in secrets.configured.first()) return PinCheck.Accepted
+        val stored = secrets.get(verifierSecret)?.takeIf(::isValidVerifier) ?: return PinCheck.Unreadable
         val parts = stored.split(':')
         val decoder = Base64.getDecoder()
         val matches =
@@ -157,17 +164,18 @@ class PinManager(
 }
 
 /**
- * Tracks whether the admin area is unlocked. It re-locks on [lock] (when the admin screens are left) or when [touch]
- * finds no activity within its time-out. Starts locked; call from the main thread.
+ * Tracks a PIN session using monotonic elapsed time by default. [touch] records real activity and [expire] checks
+ * inactivity without refreshing it; [lock] closes the session on leaving its area. Starts locked; call on the main thread.
  */
 class SessionLock(
-    private val clock: () -> Long = System::currentTimeMillis,
+    private val clock: () -> Long = SystemClock::elapsedRealtime,
 ) {
     private val _unlocked = MutableStateFlow(false)
 
     /** Whether the admin area is unlocked now. */
     val unlocked: StateFlow<Boolean> = _unlocked.asStateFlow()
-    private var lastActivity = 0L
+
+    @Volatile private var lastActivity = 0L
 
     /** Unlocks the admin area (after the PIN was accepted or set) and starts the inactivity time-out. */
     fun unlock() {
@@ -187,11 +195,17 @@ class SessionLock(
     fun touch(autoLockMillis: Long): Boolean {
         if (!_unlocked.value) return false
         val now = clock()
-        if (autoLockMillis > 0 && now - lastActivity > autoLockMillis) {
-            lock()
-            return false
-        }
+        expire(autoLockMillis)
+        if (!_unlocked.value) return false
         lastActivity = now
         return true
+    }
+
+    /** Whether the session is unlocked and unexpired; a thread-safe check that does not refresh activity. */
+    fun allows(autoLockMillis: Long): Boolean = _unlocked.value && (autoLockMillis <= 0 || clock() - lastActivity < autoLockMillis)
+
+    /** Locks an expired session without refreshing activity; 0 or less disables inactivity expiry. */
+    fun expire(autoLockMillis: Long) {
+        if (_unlocked.value && autoLockMillis > 0 && clock() - lastActivity >= autoLockMillis) lock()
     }
 }

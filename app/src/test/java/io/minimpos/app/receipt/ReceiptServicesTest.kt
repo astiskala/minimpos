@@ -229,7 +229,7 @@ class ReceiptServicesTest {
         assertThat(await { receipts.automation(StoredTransaction.Sale("s1")) }).isEqualTo(AutoDelivery(print = true))
         env.updateSettings {
             it.copy(
-                payment = it.payment.copy(emailCapture = EmailCapture.BOTH, autoSendEmail = false),
+                payment = it.payment.copy(emailCapture = EmailCapture.BEFORE_PAYMENT, autoSendEmail = false),
                 receipt = it.receipt.copy(autoPrint = false),
             )
         }
@@ -462,7 +462,7 @@ class ReceiptServicesTest {
             env.mail.sent
                 .last()
                 .allText(),
-        ).contains("Your payment has been canceled")
+        ).contains("Cancellation of the held payment was requested")
     }
 
     @Test
@@ -514,7 +514,7 @@ class ReceiptServicesTest {
                 kind = SaleKind.PRE_AUTHORISATION,
                 authorisedMinor = 1_500,
                 capturedMinor = 1_450,
-                captureStatus = CaptureStatus.MANUAL,
+                captureStatus = CaptureStatus.REQUESTED,
             )
         val rows =
             container.receiptFactory

@@ -115,14 +115,6 @@ class SaleEventTest {
     }
 
     @Test
-    fun `a capture an older version left to staff still counts as captured`() {
-        val manual = preAuth.copy(captureStatus = CaptureStatus.MANUAL, capturedMinor = 1_500)
-        assertThat(manual.standing).isEqualTo(PaymentStanding.CAPTURED_MANUALLY)
-        assertThat(manual.amountMinor).isEqualTo(1_500)
-        assertThat(manual.standing.captured).isTrue()
-    }
-
-    @Test
     fun `adjustments change what is held only when they went through`() {
         val authorised = preAuth.after(SaleEvent.AdjustmentAnswered(2_500, ModificationResult.Authorised("ADJ", "BQABAQnext")))
         assertThat(authorised.heldMinor).isEqualTo(2_500)

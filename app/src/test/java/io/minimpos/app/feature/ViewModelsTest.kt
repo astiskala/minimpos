@@ -224,7 +224,7 @@ class ViewModelsTest {
         state = await { vm.state.first { it.form.email == "S@Example.com" && it.payment.tokenizeDefaultOn } }
         // The email is the shopper reference, so it is asked for before payment even though "After payment" was chosen.
         assertThat(state.showEmail).isTrue()
-        assertThat(state.payment.effectiveEmailCapture).isEqualTo(EmailCapture.BOTH)
+        assertThat(state.payment.effectiveEmailCapture).isEqualTo(EmailCapture.BEFORE_PAYMENT)
         // ...and there is no separate customer reference: the one left in the form is neither sent nor stored.
         assertThat(state.showCustomerReference).isFalse()
         assertThat(state.customerReference).isNull()
@@ -252,7 +252,7 @@ class ViewModelsTest {
         env.useSimulator {
             it.copy(
                 receipt = it.receipt.copy(autoPrint = true, merchantCopy = MerchantCopyPolicy.ALWAYS),
-                payment = it.payment.copy(emailCapture = EmailCapture.BOTH, autoSendEmail = true),
+                payment = it.payment.copy(emailCapture = EmailCapture.BEFORE_PAYMENT, autoSendEmail = true),
                 email = it.email.copy(host = "smtp", fromAddress = "shop@example.com"),
             )
         }
@@ -431,6 +431,8 @@ class ViewModelsTest {
         val ready = await { vm.state.first { it.load is Refundability.Refundable } }
         assertThat(ready.original!!.local).isNull()
         assertThat(ready.original!!.timestamp).isEqualTo("2026-01-01T00:00:00.000Z")
+        assertThat(vm.refund()).isFalse()
+        vm.reviewRemote(true)
         assertThat(vm.refund()).isTrue()
         await { container.refunds.state.first { it is TransactionState.Finished } }
         assertThat(vm.refund()).isTrue()

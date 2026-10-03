@@ -1,7 +1,7 @@
 # Mini mPOS: domain language
 
 The words the code, tests, docs and reviews use for Mini mPOS's domain, and the one place each concept is decided.
-The `AGENTS.md` files (the root one, `app/AGENTS.md`, `terminal-api/AGENTS.md`) hold the rules and how they are
+The `AGENTS.md` files (the root one, `app/AGENTS.md`, `adyen/AGENTS.md`) hold the rules and how they are
 enforced; KDoc holds the details. When code names a concept, use the term here (and its code name); add a term before
 naming a new module after it.
 
@@ -53,8 +53,7 @@ the other.
 - **Receipt standing** (`ReceiptStanding`): what a sale's receipt says about it (tip lines, held now, captured).
 - **Actions** (`StoredPayment.actions`, `PaymentAction`): what the operator can do with a stored payment now: refund,
   cancel, enter tip, capture, adjust.
-- **Capture** (`payment/Captures`): taking a held amount, through the Checkout API (older versions without it left it
-  to staff in the Customer Area: `CaptureStatus.MANUAL`, still counted as captured). An **adjustment** changes what a
+- **Capture** (`payment/Captures`): taking a held amount through the Checkout API. An **adjustment** changes what a
   pre-authorisation holds before capture; a tip over 20% of the bill is adjusted first, a smaller one **overcaptured**.
 - **Cancellation** (of a hold): a full reversal of a held payment, so nothing is charged. _Avoid_: void, refund.
 - **Refund** (`RefundablePayment`, `RefundStart`): a referenced refund of a charged (or captured) payment: everything
@@ -65,6 +64,14 @@ the other.
 
 ## Where payments go
 
+- **Payment context** (`PaymentContext`): non-secret destination, terminal identity, merchant account and environment
+  captured from the connection that sent an operation. Historical actions validate current credentials against it.
+- **Operation identity**: a persisted key and request facts for one logical capture, adjustment or link creation.
+  Retrying reuses them; another operation, including a same-amount renewal, has a new identity.
+- **Adyen integration** (`:adyen`, sources in `adyen/`): the Android-free integration with Adyen's Terminal,
+  Checkout, Cloud device and Management APIs, and their simulator.
+- **Adyen API key** (`ADYEN_API_KEY`): the shared credential for Checkout and Cloud device operations. The Payments app
+  API key is a separate credential for boarding and revoking a phone.
 - **Destination** (`terminal/Destination`, "Payments go to", `TerminalMode`): this terminal or one on the network
   (`LocalTerminal`), a terminal in the **cloud** (`CloudTerminal`), the **Payments app** on this phone for Tap to Pay
   (`PaymentsAppDestination`), or the **simulator** (`SimulatedTerminal`). What each needs and can do (POIID, setup
@@ -109,18 +116,23 @@ the other.
   language. What Adyen or the terminal said is stored as it came (`message`). _Avoid_: error message (for the stored
   value).
 - **Catalogue**: products, categories and tax rates (`CatalogRepository`); every product has a tax rate.
+- **Pricing change**: an explicitly confirmed currency or tax-style change. Major-unit unit prices are preserved,
+  rounded to the new currency precision; a durable journal completes an interrupted catalogue/settings update.
 - **Starter tax** (`StarterTax`): the tax rates (the national standard rate where known, then 0%) and price style
   (tax included or added) a new installation starts with, from the device's country.
-- **New-installation settings** (`AppSettings.forNewInstallation`): what a new installation starts with, which may
-  differ from the constructor's defaults; those keep meaning what a value left out of a transfer means.
+- **New-installation settings** (`AppSettings.forNewInstallation`): the constructor baseline with the device country's
+  starter tax mode. Receipt and email text defaults are localized at installation.
 - **Transfer** (`SetupTransfer`, `TransferCodec` `MPC1:`): copying the catalogue, settings and secrets to another
   device as QR codes, sealed with a 12-character **transfer code** (`TransferSeal`). **Device fields**
   (`AppSettings.withDeviceFieldsOf`) stay behind.
 - **Setup helper** (`docs/setup.html`): the web page that makes a transfer on a computer, holding a **connection**
   (`ConnectionSetup`: where payments go, address, POIID, shared key, Checkout API, store) and its secrets; importing it
   sets only what it holds. _Avoid_: wizard, provisioning.
-- **Secrets** (`SecretStore`): the shared-key passphrase, API keys, SMTP password and PIN verifier; encrypted, never
+- **Secrets** (`SecretStore`): the shared-key passphrase, API keys, SMTP password and PIN verifiers; encrypted, never
   logged.
+- **Manager approval** (`Manager PIN`, `managerPin`, `managerLock`): optional access to refunds, cancellations,
+  captures and adjustments, separate from the admin PIN that protects configuration. An admin PIN must be set before
+  configuring the Manager PIN.
 
 ## Ambiguities to keep apart
 
@@ -130,6 +142,5 @@ the other.
   another device, stored on this device) and "terminal" only for the one that takes the card.
 - "Held" is a standing (`PaymentStanding.held`); "hold" is what a pre-authorisation does. A sale awaiting its tip is
   held too.
-- "Captured" means Adyen received the capture (or an older version left it to staff); Adyen confirms it only in the
-  Customer Area.
+- "Captured" means Adyen received the capture request; Adyen confirms the outcome only in the Customer Area.
 - "Refund" never covers a cancellation: held payments are cancelled, charged ones refunded.

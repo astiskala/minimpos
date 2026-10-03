@@ -53,10 +53,9 @@ class AppSettingsTest {
         assertThat(australia.receipt.autoPrint).isTrue()
         assertThat(australia.payment.taxMode).isEqualTo(TaxMode.INCLUSIVE)
         assertThat(AppSettings.forNewInstallation("US").payment.taxMode).isEqualTo(TaxMode.EXCLUSIVE)
-        // The constructor's defaults are what a value left out of a transfer means, so they keep their old meaning.
-        assertThat(AppSettings().payment.askTransactionReference).isTrue()
-        assertThat(AppSettings().payment.shopperReferenceSource).isEqualTo(ShopperReferenceSource.CUSTOMER_REFERENCE)
-        assertThat(AppSettings().receipt.autoPrint).isFalse()
+        assertThat(AppSettings().payment.askTransactionReference).isFalse()
+        assertThat(AppSettings().payment.shopperReferenceSource).isEqualTo(ShopperReferenceSource.NONE)
+        assertThat(AppSettings().receipt.autoPrint).isTrue()
         assertThat(australia.copy(payment = PaymentSettings(), receipt = ReceiptSettings())).isEqualTo(AppSettings())
     }
 

@@ -15,10 +15,9 @@ import kotlinx.serialization.Serializable
  * All non-secret configuration, stored as JSON in DataStore (`settings.json`) and edited in Settings. Secrets (shared
  * key passphrase, SMTP password, PIN verifier) live in [io.minimpos.app.data.security.SecretStore].
  *
- * Every field has a default, so settings files from older versions keep loading: missing keys take the default and
- * unknown keys are ignored. Each section knows the limits of its numbers ([normalized]); [SettingsRepository] applies
- * them to whatever it reads or writes, so a value out of range (from an old file, a transfer or a bug) never reaches the
- * rest of the app, and the Settings fields offer the same ranges.
+ * Constructor defaults define the current baseline; omitted settings take those defaults. Each section knows the
+ * limits of its numbers ([normalized]); [SettingsRepository] applies them on every read and write, so a value out of
+ * range never reaches the rest of the app, and the Settings fields offer the same ranges.
  *
  * @property terminal Where payments are sent and how the terminal is reached.
  * @property payment Currency, tax, references and what checkout asks for.
@@ -27,6 +26,7 @@ import kotlinx.serialization.Serializable
  * @property security Admin area locking.
  * @property simulator How the built-in terminal simulator behaves.
  * @property history How long sales and refunds are kept.
+ * @property pricingChange Local recoverable pricing journal; null when stable, never shared.
  */
 @Serializable
 data class AppSettings(
@@ -37,6 +37,8 @@ data class AppSettings(
     val security: SecuritySettings = SecuritySettings(),
     val simulator: SimulatorSettings = SimulatorSettings(),
     val history: HistorySettings = HistorySettings(),
+    /** Local confirmed pricing transition being committed; null when stable, never transferred to another device. */
+    val pricingChange: PricingChange? = null,
 ) {
     /** These settings with every number brought within its section's limits. */
     fun normalized(): AppSettings =
@@ -61,6 +63,7 @@ data class AppSettings(
             terminal = terminal.withDeviceFieldsOf(device.terminal),
             payment = payment.withDeviceFieldsOf(device.payment),
             simulator = device.simulator,
+            pricingChange = device.pricingChange,
         )
 
     /**
@@ -83,23 +86,11 @@ data class AppSettings(
         /**
          * The settings a new installation starts with on a device in [country] (ISO 3166-1 alpha-2, possibly empty), for
          * a quick start: prices include tax or not as is usual there ([StarterTax]), checkout asks for no reference and
-         * saves no cards, and receipts print as soon as a payment is approved wherever there is a printer. These differ
-         * from the constructor's defaults on purpose: those are what a value left out of a settings file or a transfer
-         * means (a transfer leaves out values at their default, also one from an older version), so they keep their
-         * meaning.
+         * saves no cards, and receipts print as soon as a payment is approved wherever there is a printer. Only the
+         * country-specific tax mode differs from the constructor baseline.
          */
         fun forNewInstallation(country: String): AppSettings =
-            AppSettings().let {
-                it.copy(
-                    payment =
-                        it.payment.copy(
-                            taxMode = StarterTax.forCountry(country).mode,
-                            askTransactionReference = false,
-                            shopperReferenceSource = ShopperReferenceSource.NONE,
-                        ),
-                    receipt = it.receipt.copy(autoPrint = true),
-                )
-            }
+            AppSettings(payment = PaymentSettings(taxMode = StarterTax.forCountry(country).mode))
     }
 }
 
@@ -147,8 +138,7 @@ enum class TerminalMode {
  * @property timeoutSeconds How long to wait for a payment response before checking the transaction status, within
  *   [TIMEOUT_SECONDS]. Adyen advises 120 seconds for local integrations.
  * @property merchantAccount The Adyen merchant account the terminal takes payments for, for captures and authorisation
- *   adjustments through the Checkout API (its API key is a secret). Blank, together with no API key, leaves captures to
- *   the Customer Area.
+ *   adjustments through the Checkout API (its API key is a secret). It is required before real payments can start.
  * @property liveUrlPrefix The company's live endpoint prefix for the Checkout API (Customer Area: Developers › API
  *   URLs); only used when [environment] is LIVE.
  */
@@ -216,9 +206,6 @@ enum class EmailCapture {
 
     /** Only with the "Email receipt" button on the result screen, after the payment. */
     AFTER_PAYMENT,
-
-    /** Both the checkout field and the result screen's button. */
-    BOTH,
 }
 
 /**
@@ -266,8 +253,7 @@ enum class ShopperReferenceSource {
  *   [ShopperReferenceSource.EMAIL].
  * @property emailReferenceSalt Salt mixed into hashed email references. Terminals with the same salt give a shopper the
  *   same reference, so saved cards work on all of them; changing it gives every shopper a new reference.
- * @property offerCardSaving Whether checkout offers "Save card" while there is a shopper reference. On by default, as
- *   settings from before it existed offered it with every shopper reference.
+ * @property offerCardSaving Whether checkout offers "Save card" while a shopper reference is available.
  * @property sendShopperEmail Include `shopperEmail` in tokenization requests.
  * @property paymentLinks Whether checkout offers an Adyen payment link instead of sending a sale to the terminal; it
  *   also needs the Checkout API (see `io.minimpos.app.terminal.TerminalSetup.paymentLinks`).
@@ -280,14 +266,14 @@ data class PaymentSettings(
     val taxMode: TaxMode = TaxMode.INCLUSIVE,
     val defaultTaxRateId: Long? = null,
     val referencePrefix: String = "",
-    val askTransactionReference: Boolean = true,
+    val askTransactionReference: Boolean = false,
     val tokenizeDefaultOn: Boolean = false,
     val preAuthTokenizeDefaultOn: Boolean = true,
     val tipOnReceiptDefaultOn: Boolean = false,
     val recurringProcessingModel: String = "UnscheduledCardOnFile",
     val emailCapture: EmailCapture = EmailCapture.AFTER_PAYMENT,
     val autoSendEmail: Boolean = true,
-    val shopperReferenceSource: ShopperReferenceSource = ShopperReferenceSource.CUSTOMER_REFERENCE,
+    val shopperReferenceSource: ShopperReferenceSource = ShopperReferenceSource.NONE,
     val emailReferenceMode: EmailReferenceMode = EmailReferenceMode.HASHED,
     val emailReferenceSalt: String = "",
     val offerCardSaving: Boolean = true,
@@ -300,20 +286,13 @@ data class PaymentSettings(
 
     /**
      * When the email is the shopper reference for saved cards it must be known when the payment starts, so it is then
-     * always asked for before payment (Never becomes Before, After becomes Before and after).
+     * always asked for before payment, regardless of the receipt email capture choice.
      */
     val effectiveEmailCapture: EmailCapture
-        get() =
-            when {
-                shopperReferenceSource != ShopperReferenceSource.EMAIL -> emailCapture
-                emailCapture == EmailCapture.AFTER_PAYMENT || emailCapture == EmailCapture.BOTH -> EmailCapture.BOTH
-                else -> EmailCapture.BEFORE_PAYMENT
-            }
+        get() = if (shopperReferenceSource == ShopperReferenceSource.EMAIL) EmailCapture.BEFORE_PAYMENT else emailCapture
 
     /** Whether checkout asks for the email before payment, according to [effectiveEmailCapture]. */
-    val captureEmailBefore: Boolean get() =
-        effectiveEmailCapture == EmailCapture.BEFORE_PAYMENT ||
-            effectiveEmailCapture == EmailCapture.BOTH
+    val captureEmailBefore: Boolean get() = effectiveEmailCapture == EmailCapture.BEFORE_PAYMENT
 
     /**
      * Checkout asks for a customer reference exactly when it is the shopper reference. With the email as shopper
@@ -409,7 +388,7 @@ data class ReceiptSettings(
     val title: String = "RECEIPT",
     val footer: String = "Thank you!",
     val printerMode: PrinterMode = PrinterMode.AUTO,
-    val autoPrint: Boolean = false,
+    val autoPrint: Boolean = true,
     val merchantCopy: MerchantCopyPolicy = MerchantCopyPolicy.SIGNATURE_ONLY,
     val showTaxBreakdown: Boolean = true,
     val showReferences: Boolean = true,

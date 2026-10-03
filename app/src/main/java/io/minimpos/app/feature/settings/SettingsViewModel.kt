@@ -24,6 +24,8 @@ import io.minimpos.app.terminal.ApiCheck
 import io.minimpos.app.terminal.TerminalConnection
 import io.minimpos.app.terminal.TerminalStatus
 import io.minimpos.core.receipt.ReceiptDocument
+import CurrencySpec
+import Locale
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -93,7 +95,7 @@ enum class SettingsTest {
     /** The connection to where payments go, shown in a dialog. */
     CONNECTION,
 
-    /** The Checkout API key. */
+    /** The Adyen API key. */
     API,
 
     /**
@@ -108,7 +110,7 @@ enum class SettingsTest {
  *
  * @property status Tests the connection to the terminal, which also tells whether it has a printer.
  * @property receipts Prints the test receipt and sends the test email.
- * @property api Tests the Checkout API key.
+ * @property api Tests the Adyen API key.
  */
 class SettingsChecks(
     val status: TerminalStatus,
@@ -128,6 +130,10 @@ class SettingsChecks(
  * @param history Cleared from here.
  * @param catalog The tax rates.
  * @param sampleReceipt The sample receipt with the given settings.
+ * @param managerPins The Manager PIN instance, so resetting it also clears its live lockout.
+ * @param currency Resolves the current device-country currency.
+ * @param onRepriced Reprices active sessions after a confirmed change.
+ * @param activePayment Whether a financial request is still running.
  */
 class SettingsViewModel(
     private val settings: SettingsRepository,
@@ -138,6 +144,21 @@ class SettingsViewModel(
     private val history: HistoryRepository,
     private val catalog: CatalogRepository,
     sampleReceipt: (AppSettings) -> ReceiptDocument,
+    private val managerPins: PinManager = PinManager(secrets, verifierSecret = Secret.MANAGER_PIN_VERIFIER),
+    currency: (
+        AppSettings,
+    ) -> CurrencySpec = {
+        CurrencySpec
+            .of(
+                it.payment.resolvedCurrency(
+                    Locale
+                        .getDefault()
+                        .country,
+                ),
+            )
+    },
+    onRepriced: (CurrencySpec, CurrencySpec) -> Unit = { _, _ -> },
+    activePayment: () -> Boolean = { false },
 ) : ViewModel() {
     /** The screen state, updated whenever settings, secrets or the catalogue change. */
     val state: StateFlow<SettingsUiState> =
@@ -161,10 +182,13 @@ class SettingsViewModel(
     /** Outcomes of the latest actions. */
     val actions: StateFlow<SettingsActions> = _actions.asStateFlow()
 
-    /** Stores the settings with [transform] applied; [transform] must not have side effects. */
-    fun update(transform: (AppSettings) -> AppSettings) {
-        launchWrite({ settings.update(transform) })
-    }
+    private val pricingChanges = PricingChanges(this, settings, catalog, currency, onRepriced, activePayment)
+
+    /** Stores ordinary settings; currency and tax-style changes require confirmation. */
+    fun update(transform: (AppSettings) -> AppSettings) = pricingChanges.update(state.value.settings, transform)
+
+    /** Preview state and confirmation actions for pricing changes. */
+    internal val pricing = pricingChanges
 
     /** Adds (ID 0) or updates [taxRate], trimming its name, and makes it the default rate when [makeDefault]. */
     fun saveTaxRate(
@@ -197,14 +221,22 @@ class SettingsViewModel(
         launchWrite({ storeSecret { secrets.set(secret, value) } })
     }
 
-    /** Sets the admin PIN and keeps the admin area unlocked; [pin] must be [PinManager.isValidPin]. */
-    fun setPin(pin: String) {
-        launchWrite({ if (storeSecret { pins.setPin(pin) }) sessionLock.unlock() })
+    /** Sets [pin], which must be [PinManager.isValidPin]; [manager] selects the Manager PIN and requires an admin PIN. */
+    fun setPin(
+        pin: String,
+        manager: Boolean = false,
+    ) {
+        if (manager && !state.value.pinSet) return
+        val target = if (manager) managerPins else pins
+        launchWrite({ if (storeSecret { target.setPin(pin) } && !manager) sessionLock.unlock() })
     }
 
-    /** Removes the admin PIN. */
+    /** Removes admin protection and the Manager PIN it protects, after the screen confirms both removals. */
     fun clearPin() {
-        launchWrite({ pins.clearPin() })
+        launchWrite({
+            pins.clearPin()
+            secrets.set(Secret.MANAGER_PIN_VERIFIER, null)
+        })
     }
 
     /** Runs [store], reporting (instead of crashing on) a device that cannot encrypt secrets. Returns whether it worked. */
@@ -221,7 +253,7 @@ class SettingsViewModel(
     /**
      * Saves [value] as [secret] if one was entered (an API key without surrounding spaces) and verifies that it reads
      * back, then runs [test]: by default the terminal connection for [Secret.TERMINAL_PASSPHRASE] and the Checkout API
-     * for [Secret.CHECKOUT_API_KEY] (which also reaches terminals in the cloud, so its test can be both,
+     * for [Secret.ADYEN_API_KEY] (which also reaches terminals in the cloud, so its test can be both,
      * [SettingsTest.CLOUD]). No test charges anything. The connection's outcome is shown until
      * [dismissConnectionResult].
      *
@@ -230,11 +262,11 @@ class SettingsViewModel(
     fun saveAndTest(
         secret: Secret,
         value: String? = null,
-        test: SettingsTest = if (secret == Secret.CHECKOUT_API_KEY) SettingsTest.API else SettingsTest.CONNECTION,
+        test: SettingsTest = if (secret == Secret.ADYEN_API_KEY) SettingsTest.API else SettingsTest.CONNECTION,
     ) {
-        require(secret == Secret.TERMINAL_PASSPHRASE || secret == Secret.CHECKOUT_API_KEY) { "$secret cannot be tested" }
+        require(secret == Secret.TERMINAL_PASSPHRASE || secret == Secret.ADYEN_API_KEY) { "$secret cannot be tested" }
         val api = test == SettingsTest.API
-        val apiKey = secret == Secret.CHECKOUT_API_KEY
+        val apiKey = secret == Secret.ADYEN_API_KEY
 
         fun SettingsActions.with(state: ActionState) = if (api) copy(api = state) else copy(connection = state)
         _actions.update {

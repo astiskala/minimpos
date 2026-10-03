@@ -37,6 +37,7 @@ import io.minimpos.app.data.db.SaleEntity
 import io.minimpos.app.data.db.SaleKind
 import io.minimpos.app.data.db.SaleStatus
 import io.minimpos.app.feature.OutcomeMessage
+import io.minimpos.app.feature.lock.ManagerApproval
 import io.minimpos.app.feature.outcomeNote
 import io.minimpos.app.share.ShareEffect
 import io.minimpos.app.ui.components.BottomActions
@@ -73,6 +74,13 @@ fun PaymentLinkScreen(
 ) {
     val state by vm.state.collectAsStateWithLifecycle()
     var dialog by remember { mutableStateOf<LinkDialog?>(null) }
+    var approval by remember { mutableStateOf(false) }
+    if (approval) {
+        return ManagerApproval(onApprove = {
+            approval = false
+            dialog = LinkDialog.CANCEL
+        }, onCancel = { approval = false })
+    }
     val leave = { if (fresh) navigator.popTo(Route.Sale) else navigator.back() }
     BackHandler { leave() }
     MiniScaffold(
@@ -107,7 +115,7 @@ fun PaymentLinkScreen(
                 onEmail = { dialog = LinkDialog.EMAIL },
                 onPrint = { vm.transaction.print() },
                 onCheck = vm::check,
-                onCancel = { dialog = LinkDialog.CANCEL },
+                onCancel = { approval = true },
             ),
             Modifier.padding(padding),
         )

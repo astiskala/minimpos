@@ -11,7 +11,6 @@ import io.minimpos.terminal.checkout.PaymentLinkLineItem
 import org.junit.Assert.assertThrows
 import org.junit.Test
 import java.time.Instant
-import java.util.Locale
 
 /** What Adyen is sent for a payment link, made from the stored sale alone. */
 class PaymentLinkRequestsTest {
@@ -60,7 +59,10 @@ class PaymentLinkRequestsTest {
 
     @Test
     fun `the request carries the amount, expiry, items, shopper, metadata and the page's language`() {
-        val request = PaymentLinkRequests.request(SaleWithLines(sale, lines), "CardOnFile", Locale.forLanguageTag("en-AU"))
+        val request =
+            PaymentLinkRequests.request(
+                SaleWithLines(sale.copy(linkLocale = "en-AU", linkCountry = "AU", linkRecurringModel = "CardOnFile"), lines),
+            )
         assertThat(request.reference).isEqualTo("261002-093000-AB12")
         assertThat(request.amount).isEqualTo(ModificationAmount("AUD", 1_200))
         assertThat(request.expiresAt).isEqualTo(expiresAt)
@@ -75,14 +77,12 @@ class PaymentLinkRequestsTest {
 
         val saving =
             PaymentLinkRequests.request(
-                SaleWithLines(sale.copy(tokenizationRequested = true), lines),
-                "CardOnFile",
-                Locale.JAPANESE,
+                SaleWithLines(sale.copy(tokenizationRequested = true, linkRecurringModel = "CardOnFile", linkLocale = "ja"), lines),
             )
         assertThat(saving.recurringProcessingModel).isEqualTo("CardOnFile")
         assertThat(saving.shopperLocale).isEqualTo("ja")
         assertThat(saving.countryCode).isNull()
-        val bare = PaymentLinkRequests.request(SaleWithLines(sale.copy(customerReference = null), emptyList()), "CardOnFile", Locale.ROOT)
+        val bare = PaymentLinkRequests.request(SaleWithLines(sale.copy(customerReference = null), emptyList()))
         assertThat(bare.metadata).isEmpty()
         assertThat(bare.shopperLocale).isNull()
         assertThat(bare.lineItems).isEmpty()
@@ -110,7 +110,7 @@ class PaymentLinkRequestsTest {
     @Test
     fun `a sale not opened for a payment link has no request`() {
         assertThrows(IllegalArgumentException::class.java) {
-            PaymentLinkRequests.request(SaleWithLines(sale.copy(paymentLink = false), lines), "CardOnFile", Locale.ROOT)
+            PaymentLinkRequests.request(SaleWithLines(sale.copy(paymentLink = false), lines))
         }
     }
 }

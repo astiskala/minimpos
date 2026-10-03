@@ -102,6 +102,7 @@ sealed interface Refundability {
  * @property lines The items refunded, for an item refund; empty for an amount or full refund.
  * @property cancellation Whether this full reversal cancels a pre-authorisation ([RefundablePayment.cancellation])
  *   rather than refunding a sale.
+ * @property expectedContext Original locally recorded destination; null for a reviewed foreign receipt.
  * @throws IllegalArgumentException if [amountMinor] is not positive.
  */
 data class RefundStart(
@@ -115,6 +116,8 @@ data class RefundStart(
     val merchantReference: String,
     val lines: List<RefundedLine> = emptyList(),
     val cancellation: Boolean = false,
+    /** Original locally recorded destination; null for an independently reviewed foreign receipt. */
+    val expectedContext: io.minimpos.core.money.PaymentContext? = null,
 ) {
     init {
         require(amountMinor > 0) { "Refund amount must be positive" }
@@ -214,9 +217,10 @@ class RefundablePayment private constructor(
             originalReference = reference,
             currency = currency,
             amountMinor = amountFor(choice),
-            full = choice == RefundChoice.Everything && refundedMinor == 0L,
+            full = choice == RefundChoice.Everything && refundedMinor == 0L && local != null,
             merchantReference = Ids.transactionReference(prefix, now, zone),
             lines = (choice as? RefundChoice.Items)?.let(::refundedLines).orEmpty(),
+            expectedContext = local?.sale?.context,
         )
     }
 
@@ -327,7 +331,7 @@ class RefundablePayment private constructor(
          * left to refund.
          */
         fun qrCode(record: SaleWithLines): String? {
-            if (record.sale.kind == SaleKind.PRE_AUTHORISATION) return null
+            if (record.sale.kind == SaleKind.PRE_AUTHORISATION || !record.sale.standing.charged) return null
             val payment = eligible(record) ?: return null
             // Eligibility already requires a time stamp with a time zone, so it is one instant.
             val instant = checkNotNull(TerminalClient.instantOf(payment.timestamp))

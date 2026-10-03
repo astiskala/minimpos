@@ -131,7 +131,7 @@ class SmallScreenTest {
             .performScrollTo()
             .assertTextContains("Save and test API key")
             .performClick()
-        compose.awaitCondition("Saving the API key") { await { container.secrets.get(Secret.CHECKOUT_API_KEY) } == "AQE-secret" }
+        compose.awaitCondition("Saving the API key") { await { container.secrets.get(Secret.ADYEN_API_KEY) } == "AQE-secret" }
 
         compose.onNodeWithTag("back").performClick()
         waitForTag("newSale")
@@ -426,7 +426,7 @@ class SmallScreenTest {
             hasTestTag("apiResult") and hasText("Test the connection to the terminal first", substring = true),
             15_000,
         )
-        assertThat(await { container.secrets.get(Secret.CHECKOUT_API_KEY) }).isEqualTo("AQE-secret")
+        assertThat(await { container.secrets.get(Secret.ADYEN_API_KEY) }).isEqualTo("AQE-secret")
         // The live URL prefix is only asked for once the terminal is known to be LIVE.
         compose.onNodeWithTag("livePrefix").assertDoesNotExist()
         env.updateSettings { it.copy(terminal = it.terminal.copy(environment = TerminalEnvironment.LIVE)) }
@@ -435,7 +435,7 @@ class SmallScreenTest {
         compose.onNodeWithTag("forgetApiKey").performScrollTo().performClick()
         compose.onNodeWithText("Remove the saved API key?").assertIsDisplayed()
         compose.onNodeWithTag("confirm").performClick()
-        compose.awaitCondition("Removing the API key") { await { container.secrets.get(Secret.CHECKOUT_API_KEY) } == null }
+        compose.awaitCondition("Removing the API key") { await { container.secrets.get(Secret.ADYEN_API_KEY) } == null }
     }
 
     @Test

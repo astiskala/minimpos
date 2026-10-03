@@ -3,6 +3,7 @@ package io.minimpos.app.data.repo
 import io.minimpos.app.data.db.AdjustmentStatus
 import io.minimpos.app.data.db.CaptureStatus
 import io.minimpos.app.data.db.SaleEntity
+import io.minimpos.core.money.PaymentContext
 import io.minimpos.app.data.db.SaleStatus
 import io.minimpos.app.data.db.SetupProblem
 import io.minimpos.app.data.db.StoredReason
@@ -147,23 +148,111 @@ sealed interface SaleEvent {
      * a PENDING capture, which can then be sent again, both for [StoredReason.Interrupted]. Anything else is left alone.
      */
     data object Interrupted : SaleEvent
+
+    /**
+     * Records the non-secret connection before sending, then its certificate environment once answered.
+     * @property context Actual original connection facts.
+     */
+    data class ContextRecorded(
+        val context: PaymentContext,
+    ) : SaleEvent
+
+    /**
+     * Persists adjustment identity and amount before it can take effect.
+     * @property key Logical operation identity reused until its outcome is known.
+     * @property amountMinor Frozen adjustment amount, in minor units.
+     */
+    data class AdjustmentSending(
+        val key: String,
+        val amountMinor: Long,
+    ) : SaleEvent
 }
+
+/** Whether this record is settled enough to remove; unresolved transactions, links and held amounts remain actionable. */
+val SaleEntity.retentionEligible: Boolean
+    get() =
+        when (status) {
+            SaleStatus.PENDING, SaleStatus.UNKNOWN, SaleStatus.AWAITING_PAYMENT -> false
+            SaleStatus.APPROVED -> !adjustmentPending && (!manualCapture || holdCancelled || captureStatus?.captured == true)
+            SaleStatus.DECLINED, SaleStatus.CANCELLED, SaleStatus.FAILED, SaleStatus.EXPIRED -> true
+        }
 
 /** This sale after [event] happened to it. */
 fun SaleEntity.after(event: SaleEvent): SaleEntity =
     when (event) {
-        is SaleEvent.Sending -> copy(poiId = event.poiId)
-        is SaleEvent.Settled -> settled(event)
-        is SaleEvent.LinkAnswered -> linkAnswered(event)
-        is SaleEvent.NotSent -> ended(SaleStatus.FAILED, event.message, null)
-        is SaleEvent.NotSetUp -> ended(SaleStatus.FAILED, null, StoredReason.NotSetUp(event.problem))
-        is SaleEvent.OutcomeUnknown -> ended(SaleStatus.UNKNOWN, event.message, StoredReason.OutcomeUnknown)
-        is SaleEvent.Emailed -> copy(emailedTo = event.to)
-        is SaleEvent.AdjustmentAnswered -> adjustmentAnswered(event.amountMinor, event.result)
-        is SaleEvent.CaptureSending -> captureRecorded(CaptureStatus.PENDING, event.amountMinor, event.tipMinor)
-        is SaleEvent.CaptureAnswered -> captureAnswered(event.result)
-        is SaleEvent.ModificationNotSetUp -> modificationFailed(null, StoredReason.NotSetUp(event.problem))
-        SaleEvent.Interrupted -> interrupted()
+        is SaleEvent.Sending -> {
+            copy(poiId = event.poiId)
+        }
+
+        is SaleEvent.Settled -> {
+            settled(event)
+        }
+
+        is SaleEvent.LinkAnswered -> {
+            linkAnswered(event)
+        }
+
+        is SaleEvent.NotSent -> {
+            ended(SaleStatus.FAILED, event.message, null)
+        }
+
+        is SaleEvent.NotSetUp -> {
+            ended(SaleStatus.FAILED, null, StoredReason.NotSetUp(event.problem))
+        }
+
+        is SaleEvent.OutcomeUnknown -> {
+            ended(SaleStatus.UNKNOWN, event.message, StoredReason.OutcomeUnknown)
+        }
+
+        is SaleEvent.Emailed -> {
+            copy(emailedTo = event.to)
+        }
+
+        is SaleEvent.AdjustmentAnswered -> {
+            adjustmentAnswered(
+                event.amountMinor,
+                event.result,
+            ).copy(adjustmentPending = event.result is ModificationResult.Unknown)
+        }
+
+        is SaleEvent.CaptureSending -> {
+            captureRecorded(CaptureStatus.PENDING, event.amountMinor, event.tipMinor)
+        }
+
+        is SaleEvent.CaptureAnswered -> {
+            captureAnswered(event.result)
+        }
+
+        is SaleEvent.ModificationNotSetUp -> {
+            modificationFailed(null, StoredReason.NotSetUp(event.problem))
+        }
+
+        SaleEvent.Interrupted -> {
+            interrupted()
+        }
+
+        is SaleEvent.ContextRecorded, is SaleEvent.AdjustmentSending -> {
+            prepared(event)
+        }
+    }
+
+private fun SaleEntity.prepared(event: SaleEvent): SaleEntity =
+    when (event) {
+        is SaleEvent.ContextRecorded -> {
+            copy(context = event.context)
+        }
+
+        is SaleEvent.AdjustmentSending -> {
+            copy(
+                adjustmentKey = event.key,
+                adjustmentAmountMinor = event.amountMinor,
+                adjustmentPending = true,
+            )
+        }
+
+        else -> {
+            this
+        }
     }
 
 private fun SaleEntity.ended(

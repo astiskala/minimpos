@@ -8,6 +8,7 @@ import io.minimpos.app.data.db.SaleEntity
 import io.minimpos.app.data.db.StoredReason
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
 
 /** One entry of the transaction history: a sale or a refund. */
 sealed interface HistoryItem {
@@ -77,9 +78,9 @@ class HistoryRepository(
     }
 
     /**
-     * Deletes sales (with their lines) and refunds created more than [retentionDays] days before [now] (epoch
-     * milliseconds) and returns how many sales and refunds were deleted. A [retentionDays] of 0 or less keeps
-     * everything.
+     * Deletes eligible settled sales and refunds older than [retentionDays] days before [now] (epoch milliseconds).
+     * Unresolved payments and sales referenced by retained refunds remain. Returns the deleted record count;
+     * [retentionDays] of 0 or less keeps everything.
      */
     suspend fun prune(
         retentionDays: Int,
@@ -87,14 +88,26 @@ class HistoryRepository(
     ): Int {
         if (retentionDays <= 0) return 0
         val before = now - retentionDays * DAY_MILLIS
-        return db.withTransaction { refundDao.deleteRefundsBefore(before) + saleDao.deleteSalesBefore(before) }
+        return deleteSettledBefore(before)
     }
 
-    /** Deletes every sale, sale line and refund. The catalogue is kept. */
-    suspend fun clear() =
+    /** Deletes settled history only; active or unresolved payments and their related refunds remain. The catalogue is kept. */
+    suspend fun clear() {
+        deleteSettledBefore(Long.MAX_VALUE)
+    }
+
+    private suspend fun deleteSettledBefore(before: Long): Int =
         db.withTransaction {
-            refundDao.deleteAllRefunds()
-            saleDao.deleteAllSales()
+            val sales = saleDao.sales().first()
+            val refunds = refundDao.refunds().first()
+            val protectedSales = sales.filterNot { it.retentionEligible }.map { it.id }.toSet()
+            val removableRefunds =
+                refunds.filter {
+                    it.createdAt < before && it.status in setOf(RefundStatus.REQUESTED, RefundStatus.FAILED) && it.saleId !in protectedSales
+                }
+            val retainedReferences = (refunds - removableRefunds.toSet()).mapNotNull { it.saleId }.toSet()
+            val removableSales = sales.filter { it.createdAt < before && it.retentionEligible && it.id !in retainedReferences }
+            removableRefunds.sumOf { refundDao.deleteRefund(it.id) } + removableSales.sumOf { saleDao.deleteSale(it.id) }
         }
 
     private companion object {

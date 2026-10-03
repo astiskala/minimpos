@@ -201,8 +201,7 @@ class RefundablePaymentTest {
         val cancel = RefundablePayment.cancellation(awaiting, "", now, ZoneOffset.UTC)!!
         assertThat(cancel.amountMinor).isEqualTo(1_000)
         assertThat(cancel.merchantReference).startsWith("C-")
-        // The receipt printed for the tip carries the bill.
-        assertThat(RefundQrPayload.decode(RefundablePayment.qrCode(awaiting)!!)!!.amountMinor).isEqualTo(1_000)
+        assertThat(RefundablePayment.qrCode(awaiting)).isNull()
 
         // A capture Adyen did not take leaves it held; one whose outcome is unknown neither held nor refundable.
         val failed = awaiting.copy(sale = awaiting.sale.copy(tipMinor = 250, capturedMinor = 1_250, captureStatus = CaptureStatus.FAILED))
@@ -228,7 +227,7 @@ class RefundablePaymentTest {
         assertThat(adjusted.amountMinor).isEqualTo(1_500)
         assertThat(RefundablePayment.cancellation(preAuth.copy(sale = adjusted), "", now, ZoneOffset.UTC)!!.amountMinor).isEqualTo(1_500)
 
-        val captured = preAuth.copy(sale = adjusted.copy(capturedMinor = 1_400, captureStatus = CaptureStatus.MANUAL))
+        val captured = preAuth.copy(sale = adjusted.copy(capturedMinor = 1_400, captureStatus = CaptureStatus.REQUESTED))
         assertThat(RefundablePayment.cancellation(captured, "", now, ZoneOffset.UTC)).isNull()
         val payment = refundable(captured)
         assertThat(payment.amountMinor).isEqualTo(1_400)

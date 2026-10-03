@@ -20,7 +20,7 @@ import javax.crypto.KeyGenerator
 import javax.crypto.SecretKey
 import javax.crypto.spec.GCMParameterSpec
 
-/** The credentials the app keeps; each is stored under its name in [SecretBlob]. */
+/** The credentials the app keeps; each is stored under its enum name in [SecretBlob]. */
 enum class Secret {
     /** Passphrase of the terminal's shared key, which encrypts Terminal API messages (NexoCrypto). */
     TERMINAL_PASSPHRASE,
@@ -31,11 +31,14 @@ enum class Secret {
     /** The admin PIN's salted hash, written by [PinManager]; the PIN itself is never stored. */
     PIN_VERIFIER,
 
+    /** Optional Manager PIN verifier, independent of the admin PIN; protects money-moving actions. */
+    MANAGER_PIN_VERIFIER,
+
     /**
      * API key for Adyen's Checkout API, for captures and authorisation adjustments (see `TerminalSettings`), and for the
-     * Cloud device API when payments go to a terminal in the cloud (the stored name predates that).
+     * Cloud device API when payments go to a terminal in the cloud.
      */
-    CHECKOUT_API_KEY,
+    ADYEN_API_KEY,
 
     /** API key with the Adyen Payments app role, for boarding and revoking the Payments app on this phone. */
     PAYMENTS_APP_API_KEY,
@@ -104,7 +107,7 @@ class KeystoreSecretCipher(
 /**
  * The stored form of all secrets (DataStore file `secrets.json`).
  *
- * @property values Base64 of each secret's ciphertext, keyed by [Secret] name; a secret that is not set has no entry.
+ * @property values Base64 of each secret's ciphertext, keyed by [Secret.name]; a secret that is not set has no entry.
  */
 @Serializable
 data class SecretBlob(

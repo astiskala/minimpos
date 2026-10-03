@@ -54,15 +54,15 @@ It runs:
 - Android Lint in every module, with all checks enabled (including the ones that are off by default), test sources
   included and warnings treated as errors.
 - Unit tests, Robolectric tests and Compose UI tests.
-- Architecture tests (`ArchitectureTest` in each module, using ArchUnit). They keep `core` and `terminal-api` free of
+- Architecture tests (`ArchitectureTest` in each module, using ArchUnit). They keep `core` and `adyen` free of
   Android and dependency cycles, keep the app's layers apart (business logic free of Compose, Room only in `data`,
   secrets encrypted only in `data.security`), keep money out of floating-point types, stop anything from using the
   Adyen library's Apache HTTP client or its unencrypted TEST-only API, and forbid logging. They also give each
   decision one home (where a payment stands, where payments go, how outcomes are worded, …), as
-  [`app/AGENTS.md`](app/AGENTS.md) and [`terminal-api/AGENTS.md`](terminal-api/AGENTS.md) list.
-- An API level check (`AndroidApiLevelTest`): `core` and `terminal-api` run on Android 9 terminals, but Lint doesn't
+  [`app/AGENTS.md`](app/AGENTS.md) and [`adyen/AGENTS.md`](adyen/AGENTS.md) list.
+- An API level check (`AndroidApiLevelTest`): `core` and `adyen` run on Android 9 terminals, but Lint doesn't
   check JVM modules, so the test checks every Java API they use against the Android SDK's API database.
-- Kover coverage thresholds: `core` 95% lines and 85% branches, `terminal-api` 90% and 75%, `app` (non-UI) 80% lines.
+- Kover coverage thresholds: `core` 95% lines and 85% branches, `adyen` 90% and 75%, `app` (non-UI) 80% lines.
 - A manifest check against Adyen's app requirements (minimum Android version, allowed permissions, no home-screen or
   test-only flags).
 
@@ -82,11 +82,11 @@ each one has a comment explaining why. If you think a rule is wrong for your cas
 
 - **Use the project's words.** `CONTEXT.md` defines the domain terms (sale, pre-authorization, standing, destination,
   delivery, …) and where each is decided; name new code after them.
-- **Keep the modules pure.** `core` and `terminal-api` are plain Kotlin with no Android dependencies, so they stay fast
+- **Keep the modules pure.** `core` and `adyen` are plain Kotlin with no Android dependencies, so they stay fast
   to test. Android code lives in `app`.
 - **Money is `Long` minor units** with `CurrencySpec`, never `Double`. Tax rates are thousandths of a percent.
 - **Use Adyen's library** for anything the Terminal API needs (models, encryption, certificate checks) instead of
-  writing it yourself. [`terminal-api/AGENTS.md`](terminal-api/AGENTS.md) lists what it takes to make that library
+  writing it yourself. [`adyen/AGENTS.md`](adyen/AGENTS.md) lists what it takes to make that library
   work on Android. The Checkout API calls (captures, authorization adjustments and payment links) and the
   cloud transport are the exception: they post plain JSON with OkHttp, because the library's Checkout and cloud models
   need Jackson and keep rules for hundreds of classes.
@@ -113,7 +113,7 @@ each one has a comment explaining why. If you think a rule is wrong for your cas
 
 ## Tests
 
-- `core` and `terminal-api` have plain JUnit tests. The Terminal API tests cover encryption against independently
+- `core` and `adyen` have plain JUnit tests. The Terminal API tests cover encryption against independently
   generated test vectors, TLS against a fake Adyen root certificate, and the simulator.
 - `app` uses Robolectric for data, view model and Compose UI tests (`app/src/test`). UI tests run with the
   `en-rAU` locale, so amounts show as `$4.50`.
@@ -125,13 +125,15 @@ each one has a comment explaining why. If you think a rule is wrong for your cas
 
 ## Changing stored data
 
-- **Database:** raise the version in `AppDatabase`, add an `AutoMigration` (or a manual migration), and commit the new
-  schema file that the build writes to `app/schemas/`. Extend `DatabaseMigrationTest` so existing data is checked.
-- **Settings:** new fields in `AppSettings` need default values, so settings saved by older versions still load.
-- **QR formats:** the catalog and refund QR codes are read by other devices, which may run an older version. If
-  you change a format, bump its version number and keep decoding the older versions. The setup helper page
-  (`docs/js/setup.js`) writes transfer codes too: keep it in step with `TransferCodec`, `QrChunks` and `TransferSeal`,
-  and regenerate the codes in `SetupTransferTest`'s setup helper test when its output changes.
+- **Database:** keep the current model, exported schema (`app/schemas/`) and schema tests in step. Earlier pre-launch
+  schemas need no migration support. Do not add an automatic destructive fallback or reset local data without approval.
+- **Pre-launch:** there are no users yet. Do not preserve earlier app formats, names or defaults with compatibility
+  branches; change the current model and its tests together. Supported Android versions and Adyen protocols still apply.
+- **Settings:** constructor defaults define the current baseline; device-country and localized defaults are applied
+  at installation.
+- **QR formats:** the app and setup helper page (`docs/js/setup.js`) implement the same current contract. Keep it in
+  step with `TransferCodec`, `QrChunks` and `TransferSeal`, and regenerate the codes in `SetupTransferTest`'s setup
+  helper test when its output changes.
 
 ## Screenshots
 

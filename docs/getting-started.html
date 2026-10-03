@@ -279,9 +279,11 @@ cd minimpos
             <dt>Security</dt>
             <dd>An <strong>admin PIN</strong> for Settings and Products, and how soon they lock again. Set one before
               the device goes on the counter. Repeated wrong PINs lock entry for a while; a forgotten PIN can only be
-              cleared with the app's data, from the device's settings.</dd>
+              cleared with the app's data, from the device's settings. An optional <strong>Manager PIN</strong>,
+              separate from the admin PIN, gates refunds, cancellations, captures and adjustments. Set the admin PIN
+              first so staff cannot change this protection. Removing the admin PIN also removes the Manager PIN.</dd>
             <dt>Data</dt>
-            <dd>How long sales and refunds are kept (90 days at first), clearing the history, setting up other devices
+            <dd>How long settled sales and refunds are kept (90 days at first), clearing settled history, setting up other devices
               from this one and this one from the setup helper (see <a href="#more">More devices</a>).</dd>
             <dt>About</dt>
             <dd>The app version, the TEST or LIVE environment, whether there is a printer, the device, and what the app
@@ -323,7 +325,7 @@ cd minimpos
             <li><strong>New sale:</strong> tap products, scan a barcode or add a custom item, then
               <strong>Charge</strong>. Checkout shows the items and tax. Depending on Settings › Payments, it also asks
               for a transaction or customer reference or the shopper's email, and offers Save card (with the shopper's
-              consent), Tip on the receipt and Send payment link. Tap <strong>Pay</strong> and follow the terminal.</li>
+              consent), Tip on the receipt and Create payment link. Tap <strong>Pay</strong> and follow the terminal.</li>
             <li><strong>Receipts</strong> print as one slip with your header, the items, tax, the card receipt and a
               refund QR code: automatically, or with <strong>Print receipt</strong> on the result screen. With email set
               up, <strong>Email receipt</strong> sends it too. On a tablet or phone, <strong>Share receipt</strong> sends
@@ -386,7 +388,7 @@ cd minimpos
               conditions.</li>
             <li>In Mini mPOS, switch on <strong>Settings › Payments › Offer payment links</strong> and choose how long
               links work (24 hours by default, up to 70 days).</li>
-            <li>At checkout, tap <strong>Send payment link</strong> under Pay. The customer scans the QR code shown, or
+            <li>At checkout, tap <strong>Create payment link</strong> under Pay. The customer scans the QR code shown, or
               you <strong>Email link</strong> (with an unpaid receipt), <strong>Print link</strong> or, on a tablet or
               phone, <strong>Share link</strong>.</li>
           </ol>
@@ -515,7 +517,7 @@ cd minimpos
             <li>Check the receipt layout with <strong>Settings › Receipts › Print test receipt</strong>, and the email
               settings with <strong>Send test email</strong>.</li>
             <li>Set an admin PIN, then deploy the app to your LIVE terminals and enter their shared key, a live
-              Checkout API key and your live URL prefix (the <a href="setup.html">setup helper</a> has a LIVE
+              Adyen API key and your live URL prefix (the <a href="setup.html">setup helper</a> has a LIVE
               choice).</li>
             <li>Check that Settings › About shows the LIVE environment.</li>
           </ul>
@@ -540,8 +542,8 @@ cd minimpos
             <dt>A capture failed or its result is unknown</dt>
             <dd>History shows why. Fix the Checkout API settings if needed, then tap <strong>Retry capture</strong>:
               sending it again cannot capture twice.</dd>
-            <dt>Checkout has no Send payment link</dt>
-            <dd>Payment links need the merchant account and Checkout API key in Settings › Terminal, and Settings ›
+            <dt>Checkout has no Create payment link</dt>
+            <dd>Payment links need the merchant account and Adyen API key in Settings › Terminal, and Settings ›
               Payments › Offer payment links switched on. They are not offered for pre-authorizations or with the
               simulator.</dd>
             <dt>Tap to Pay comes back without a result</dt>

@@ -146,6 +146,8 @@ private val SetupProblem.textRes: Int
             SetupProblem.PAYMENTS_APP_ON_TERMINAL -> R.string.setup_payments_app_on_terminal
             SetupProblem.PAYMENTS_APP_API_KEY -> R.string.setup_payments_app_api_key
             SetupProblem.UNREADABLE_PAYMENTS_APP_KEY -> R.string.setup_unreadable_payments_app_key
+            SetupProblem.MANAGER_APPROVAL -> R.string.manager_pin_enter
+            SetupProblem.PAYMENT_CONTEXT -> R.string.payment_context_mismatch
         }
 
 /** Why a tip, capture or adjustment did not go through, named after what was sent; a refusal says the amount. */

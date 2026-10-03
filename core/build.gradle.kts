@@ -72,5 +72,6 @@ kover {
 }
 
 tasks.named("check") {
+    setDependsOn(dependsOn - tasks.named("detekt"))
     dependsOn("koverVerify", "detektMain", "detektTest", "dokkaGeneratePublicationHtml")
 }

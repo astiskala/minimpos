@@ -79,7 +79,10 @@ android {
     testOptions {
         unitTests {
             isIncludeAndroidResources = true
-            all { it.maxHeapSize = "3g" }
+            all {
+                it.maxHeapSize = "3g"
+                it.maxParallelForks = 2
+            }
         }
     }
 
@@ -237,6 +240,11 @@ kover {
                     "io.minimpos.app.ui.theme",
                     "io.minimpos.app.scan",
                 )
+            }
+        }
+        total {
+            verify {
+                onCheck.set(false)
             }
         }
         variant("debug") {
@@ -501,5 +509,6 @@ tasks.withType<Test>().configureEach {
 
 // The app has no variant-specific sources, so analysing the release variant too would only repeat the debug findings.
 tasks.named("check") {
+    setDependsOn(dependsOn - tasks.named("detekt"))
     dependsOn("koverVerifyDebug", "detektDebug", "detektDebugUnitTest", "dokkaGeneratePublicationHtml")
 }

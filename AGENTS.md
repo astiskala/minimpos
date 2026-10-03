@@ -39,6 +39,11 @@ device API or the Adyen Payments app (Tap to Pay); anywhere through its built-in
   `ArchitectureTest` in each module, `AndroidApiLevelTest` (in `:app`), Kover thresholds (core 95/85 and adyen
   90/75 line/branch %, app non-UI 80 % lines), and `verify{Debug,Release}TerminalManifest`. Kotlin warnings are errors;
   the build output stays warning-free.
+- `check` runs type-resolved detekt on main and test sources, not the overlapping plain `detekt` task. When adding
+  source sets, keep every Kotlin file covered by a type-resolved task. App coverage uses `koverVerifyDebug`; aggregate
+  verification has no bounds and must not pull release compilation into the gate. Both manifest variants remain
+  checked; CI still builds the release APK with R8. App tests run in two worker JVMs: keep filesystem fixtures isolated
+  between processes, not just between test methods.
 - The gate also checks the non-Kotlin files with nothing but the JDK: `markdownCheck` (rumdl, `.rumdl.toml`:
   markdownlint's rules, 120-column lines outside tables/code, relative links must exist; line breaks are kept, so wrap
   prose by hand), `actionlint` (shellcheck on `run:` scripts) and `zizmor` (offline), all `ToolCheck`s in the root

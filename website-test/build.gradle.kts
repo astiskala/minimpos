@@ -106,5 +106,6 @@ val htmlCheck =
     }
 
 tasks.named("check") {
+    setDependsOn(dependsOn - tasks.named("detekt"))
     dependsOn(htmlCheck, "detektTest")
 }

@@ -50,15 +50,23 @@ data class ReceiptBranding(
 /**
  * Which optional parts receipts include, from the receipt settings.
  *
- * @property showTaxBreakdown list the tax per rate and any localised per-rate taxable amount rows; when off,
- *   tax-exclusive receipts show one tax line and tax-inclusive receipts none.
+ * @property showTaxBreakdown List tax amounts per rate; when off, tax-exclusive receipts show one tax line if
+ *   [showTaxAmounts], and tax-inclusive receipts none. Taxable totals are controlled by [showTaxRateTotals].
  * @property showReferences print the merchant reference and, on sale receipts, the customer reference.
  * @property showRefundQr print the refund QR code on approved sales' customer copies.
+ * @property showTaxAmounts Print tax amounts without changing payment totals.
+ * @property markedTaxRateMilliPercent Rate whose items get a mark, in thousandths of a percent; null marks none.
+ * @property showTaxRateTotals Print taxable totals grouped by numeric rate, independently of tax amounts.
+ * @property markedTaxRateMarker Text appended to marked item names.
  */
 data class ReceiptOptions(
     val showTaxBreakdown: Boolean = true,
     val showReferences: Boolean = true,
     val showRefundQr: Boolean = true,
+    val showTaxAmounts: Boolean = true,
+    val markedTaxRateMilliPercent: Int? = null,
+    val showTaxRateTotals: Boolean = false,
+    val markedTaxRateMarker: String = "※",
 )
 
 /**
@@ -96,9 +104,8 @@ data class ReceiptOptions(
  * @property signature the label of the line the shopper signs on the merchant copy of a receipt awaiting a tip.
  * @property heldNow the label of the amount a pre-authorisation holds after an adjustment.
  * @property captured the label of the amount captured of a pre-authorisation.
- * @property taxableGrossFormat Optional tax-rate total row on inclusive receipts; `%s` is the rate label. Null omits
- *   it. Japanese receipts use it to show the tax-inclusive amount subject to each rate.
- * @property taxableNetFormat The equivalent tax-exclusive row; null omits it.
+ * @property taxableGrossFormat Taxable total row on inclusive receipts; `%s` is the numeric tax rate with a percent sign.
+ * @property taxableNetFormat The equivalent tax-exclusive row.
  * @property amountDue the label of the total of a sale still to be paid through a payment link, instead of [total].
  * @property unpaid the heading that marks the receipt of a sale still to be paid through a payment link.
  * @property payLinkCaption the caption over the payment link's QR code.
@@ -106,6 +113,7 @@ data class ReceiptOptions(
  * @property payNow the email button that opens the payment link.
  * @property linkValidFormat the line under the payment link; `%s` is when it stops working, already formatted.
  * @property paidOnline the note on the receipt of a sale paid through a payment link.
+ * @property markedTaxRateNote Explanation of marked items, printed after them; blank omits the explanation.
  */
 data class ReceiptLabels(
     val date: String = "Date",
@@ -137,8 +145,8 @@ data class ReceiptLabels(
     val signature: String = "SIGNATURE",
     val heldNow: String = "HELD NOW",
     val captured: String = "CAPTURED",
-    val taxableGrossFormat: String? = null,
-    val taxableNetFormat: String? = null,
+    val taxableGrossFormat: String = "%s taxable (incl. tax)",
+    val taxableNetFormat: String = "%s taxable (excl. tax)",
     val amountDue: String = "AMOUNT DUE",
     val unpaid: String = "UNPAID",
     val payLinkCaption: String = "Scan to pay",
@@ -146,6 +154,7 @@ data class ReceiptLabels(
     val payNow: String = "Pay now",
     val linkValidFormat: String = "Link valid until %s",
     val paidOnline: String = "Paid online",
+    val markedTaxRateNote: String = "※ Items at the marked tax rate",
 )
 
 /**
@@ -184,12 +193,14 @@ sealed interface TipLines {
  * @property quantity the number of units; a quantity line is added when it is not one.
  * @property unitPrice the price of one unit, shown on the quantity line.
  * @property gross the tax-inclusive amount for the whole line, shown next to the name.
+ * @property taxRateMilliPercent Applied rate in thousandths of a percent; 0 for items with no tax.
  */
 data class ReceiptItem(
     val name: String,
     val quantity: Int,
     val unitPrice: Long,
     val gross: Long,
+    val taxRateMilliPercent: Int = 0,
 )
 
 /** Which copy of a sale receipt to build; they differ in the Adyen card receipt data and the refund QR code. */

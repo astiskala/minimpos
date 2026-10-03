@@ -5,6 +5,7 @@ import io.github.astiskala.minimpos.core.money.AdyenCurrencies
 import io.github.astiskala.minimpos.core.shopper.EmailReferenceMode
 import io.github.astiskala.minimpos.core.tax.StarterTax
 import io.github.astiskala.minimpos.core.tax.TaxMode
+import io.github.astiskala.minimpos.core.tax.TaxRates
 import io.github.astiskala.minimpos.terminal.client.RecurringModel
 import io.github.astiskala.minimpos.terminal.simulator.SimulatedOutcome
 import io.github.astiskala.minimpos.terminal.transport.CloudRegion
@@ -83,14 +84,67 @@ data class AppSettings(
 
     /** The settings a new installation starts with. */
     companion object {
+        internal val VAT_COUNTRIES =
+            setOf(
+                "AT",
+                "BE",
+                "BG",
+                "CY",
+                "CZ",
+                "DE",
+                "DK",
+                "EE",
+                "ES",
+                "FI",
+                "FR",
+                "GB",
+                "GR",
+                "HR",
+                "HU",
+                "IE",
+                "IT",
+                "LT",
+                "LU",
+                "LV",
+                "MT",
+                "NL",
+                "PL",
+                "PT",
+                "RO",
+                "SE",
+                "SI",
+                "SK",
+            )
+
         /**
-         * The settings a new installation starts with on a device in [country] (ISO 3166-1 alpha-2, possibly empty), for
-         * a quick start: prices include tax or not as is usual there ([StarterTax]), checkout asks for no reference and
-         * saves no cards, and receipts print as soon as a payment is approved wherever there is a printer. Only the
-         * country-specific tax mode differs from the constructor baseline.
+         * The settings a new installation starts with in [country] (ISO 3166-1 alpha-2, possibly empty), using
+         * [language] (ISO 639-1, empty for the baseline receipt style): regional pricing and receipt display choices,
+         * no extra checkout references or card saving, and automatic receipts wherever there is a printer.
+         * These are initial values only; saved and transferred settings are used as written.
          */
-        fun forNewInstallation(country: String): AppSettings =
-            AppSettings(payment = PaymentSettings(taxMode = StarterTax.forCountry(country).mode))
+        fun forNewInstallation(
+            country: String,
+            language: String = "",
+        ): AppSettings {
+            val code = country.trim().uppercase()
+            val japanese = language.equals("ja", ignoreCase = true)
+            val receipt = ReceiptSettings()
+            return AppSettings(
+                payment = PaymentSettings(taxMode = StarterTax.forCountry(code).mode, chargeTax = code != "HK"),
+                receipt =
+                    receipt.copy(
+                        showTaxAmounts = !japanese && code != "HK",
+                        showTaxRateTotals = japanese || code in VAT_COUNTRIES,
+                        markedTaxRateMilliPercent =
+                            when {
+                                japanese -> StarterTax.forCountry("JP").reducedMilliPercent
+                                code == "AU" -> 0
+                                else -> null
+                            },
+                        markedTaxRateNote = if (code == "AU" && !japanese) "※ No GST charged" else receipt.markedTaxRateNote,
+                    ),
+            )
+        }
     }
 }
 
@@ -377,6 +431,11 @@ enum class MerchantCopyPolicy {
  * @property showRefundQr Print the refund QR code on approved sales' customer copies.
  * @property charsPerLine Characters per printed line (32 fits a 58 mm roll), within [CHARS_PER_LINE]; plain-text
  *   emails use it too.
+ * @property showTaxAmounts Print tax amounts without changing the payment's calculation.
+ * @property showTaxRateTotals Print taxable totals grouped by numeric rate, independently of tax amounts.
+ * @property markedTaxRateMilliPercent Rate whose items are marked, in thousandths of a percent; null disables marking.
+ * @property markedTaxRateMarker Text appended to marked item names; blank normalizes to ※.
+ * @property markedTaxRateNote Explanation below marked items; blank omits the explanation.
  */
 @Serializable
 data class ReceiptSettings(
@@ -394,9 +453,20 @@ data class ReceiptSettings(
     val showReferences: Boolean = true,
     val showRefundQr: Boolean = true,
     val charsPerLine: Int = 32,
+    val showTaxAmounts: Boolean = true,
+    val showTaxRateTotals: Boolean = false,
+    val markedTaxRateMilliPercent: Int? = null,
+    val markedTaxRateMarker: String = "※",
+    val markedTaxRateNote: String = "※ Items at the marked tax rate",
 ) {
-    /** These settings with [charsPerLine] within [CHARS_PER_LINE]. */
-    fun normalized(): ReceiptSettings = copy(charsPerLine = charsPerLine.coerceIn(CHARS_PER_LINE))
+    /** These settings with line width and the marked rate within their limits, and a nonblank trimmed marker. */
+    fun normalized(): ReceiptSettings =
+        copy(
+            charsPerLine = charsPerLine.coerceIn(CHARS_PER_LINE),
+            markedTaxRateMilliPercent = markedTaxRateMilliPercent?.coerceIn(0, TaxRates.MAX),
+            markedTaxRateMarker = markedTaxRateMarker.trim().ifBlank { "※" },
+            markedTaxRateNote = markedTaxRateNote.trim(),
+        )
 
     /** The limits of the numbers. */
     companion object {

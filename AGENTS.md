@@ -147,9 +147,12 @@ device API or the Adyen Payments app (Tap to Pay); anywhere through its built-in
   per-app language choices on Android 13+. Keep resource keys and format arguments covered in both translations
   (Chinese/Japanese plurals use only `other`). Localize new-install receipt/email defaults, never stored merchant text
   or imported catalogues. Receipt/email labels are read again at delivery; Adyen receipt fields stay verbatim.
-  Japanese receipts add per-rate taxable totals; plain-text receipts count wide CJK glyphs as two columns. Customer
-  Area menu paths (Devices › Device settings, Payments › Payment list, …) stay in English in strings and docs; zh-CN
-  quotes UI names with “”, ja with 「」.
+  Receipt tax amounts, taxable totals by numeric rate, the marked rate and its marker/explanation are stored settings
+  usable in any language/currency. Only new-install defaults depend on device country and language; neither overrides
+  saved settings (item refunds keep the rate snapshot). User-facing docs describe ordinary receipt customization,
+  without country-specific defaults or notes about settings persisting across language changes.
+  Plain-text receipts count wide CJK glyphs as two columns. Customer Area menu paths (Devices › Device settings,
+  Payments › Payment list, …) stay in English in strings and docs; zh-CN quotes UI names with “”, ja with 「」.
 - KDoc on every public or protected declaration (tests exempt): units, `null` meaning, threading, `@throws`, formats;
   never restate the name. detekt's `OutdatedDocumentation` wants, once a class KDoc has constructor tags, one tag per
   constructor parameter in order: `@property` for public properties, `@param` for the rest (a `private val` is a
@@ -238,5 +241,5 @@ device API or the Adyen Payments app (Tap to Pay); anywhere through its built-in
 - Screenshots are English demo screens on the simulator, visibly disclosed, shown in original AMS1/S1F2-style SVG
   frames (bottom bezels blank, no NFC symbol on the AMS1's top); each matches its frame's screen (S1F2 9:16 at 540×960,
   AMS1 3:5 at 480×800). Re-capture them, and `social.png`, with the `docs-screenshots` skill.
-- The guides explain receipt-language settings, the physical-printer check and the limits: not Chinese tax invoices or
-  guaranteed Japanese qualified invoices.
+- The guides explain receipt-language settings and the physical-printer check; do not discuss country-specific tax
+  compliance or invoice requirements.

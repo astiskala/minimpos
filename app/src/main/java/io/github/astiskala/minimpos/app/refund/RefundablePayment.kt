@@ -233,7 +233,7 @@ class RefundablePayment private constructor(
                     RefundableLine(line.id, line.quantity, line.refundedQuantity, line.grossMinor),
                     quantity,
                 )
-            RefundedLine(line.id, line.name, quantity, line.unitPriceMinor, share)
+            RefundedLine(line.id, line.name, quantity, line.unitPriceMinor, share, line.taxRateMilliPercent)
         }
 
     /** Deciding whether payments can be refunded, and pre-authorisations cancelled. */

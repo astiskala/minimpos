@@ -64,7 +64,7 @@ class RepositoriesTest {
                 other.close()
             }
         }
-        assertThat(rates("DE")).containsExactly("Standard" to 19_000, "No tax" to 0).inOrder()
+        assertThat(rates("DE")).containsExactly("VAT" to 19_000, "No tax" to 0).inOrder()
         assertThat(rates("JP")).containsExactly("Standard" to 10_000, "Reduced" to 8_000, "No tax" to 0).inOrder()
         // No national rate, or an unknown country: no tax until the merchant sets a rate.
         assertThat(rates("US")).containsExactly("No tax" to 0)

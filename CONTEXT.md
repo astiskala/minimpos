@@ -102,7 +102,9 @@ the other.
 
 - **Receipt** (`ReceiptDocument`): one combined slip (header, items, tax, Adyen's card receipt lines, footer), plus the
   refund QR as a second print; the terminal's own receipt printing is suppressed. **Merchant copy**: the second copy,
-  printed as `MerchantCopyPolicy` says.
+  printed as `MerchantCopyPolicy` says. **Receipt tax display** (`ReceiptSettings`): independent tax amounts and
+  taxable totals by numeric rate, plus a **marked tax rate** (`markedTaxRateMilliPercent`) whose items carry a
+  configurable marker and explanation. Country and language select new-install defaults, not rendering behavior.
 - **Receipt delivery** (`ReceiptDelivery`, `feature/TransactionActions`): offering, printing, emailing and
   **sharing** a **stored transaction**'s receipt (`StoredTransaction`: a sale, whether taken on a terminal or through a
   payment link, or a refund), including the **automatic delivery** of a fresh one. Sharing (`share/ShareSheet`) hands
@@ -120,8 +122,9 @@ the other.
   rounded to the new currency precision; a durable journal completes an interrupted catalogue/settings update.
 - **Starter tax** (`StarterTax`): the tax rates (the national standard rate where known, then 0%) and price style
   (tax included or added) a new installation starts with, from the device's country.
-- **New-installation settings** (`AppSettings.forNewInstallation`): the constructor baseline with the device country's
-  starter tax mode. Receipt and email text defaults are localized at installation.
+- **New-installation settings** (`AppSettings.forNewInstallation`): the constructor baseline with initial pricing,
+  tax charging and receipt display choices from the device's country and language. Receipt, tax and email text defaults
+  are localized at installation.
 - **Transfer** (`SetupTransfer`, `TransferCodec` `MPC1:`): copying the catalogue, settings and secrets to another
   device as QR codes, sealed with a 12-character **transfer code** (`TransferSeal`). **Device fields**
   (`AppSettings.withDeviceFieldsOf`) stay behind.

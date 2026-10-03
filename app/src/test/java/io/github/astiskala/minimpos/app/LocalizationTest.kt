@@ -35,13 +35,7 @@ class LocalizationTest {
                 // Japanese and Chinese both use only the CLDR "other" plural form.
                 assertThat(localized.size).isEqualTo(if (name.startsWith("plurals:")) 1 else texts.size)
                 localized.zip(if (name.startsWith("plurals:")) listOf(texts.last()) else texts).forEach { (actual, source) ->
-                    if (name in setOf("string:receipt_taxable_gross_format", "string:receipt_taxable_net_format")) {
-                        assertWithMessage("$folder/$name").that(arguments(actual)).isEqualTo(
-                            if (actual.isEmpty()) emptyList() else listOf("%1\$s"),
-                        )
-                    } else {
-                        assertWithMessage("$folder/$name").that(arguments(actual)).isEqualTo(arguments(source))
-                    }
+                    assertWithMessage("$folder/$name").that(arguments(actual)).isEqualTo(arguments(source))
                     assertThat(actual).doesNotContain("\uFFFD")
                 }
             }
@@ -50,16 +44,21 @@ class LocalizationTest {
 
     @Test
     fun `Japanese defaults receipts and setup errors use localized resources`() =
-        TestEnvironment().use { env ->
+        TestEnvironment(device = FakeDevice(country = "JP")).use { env ->
             val settings = await { env.container.settings.current() }
             assertThat(settings.receipt.title).isEqualTo("領収書")
             assertThat(settings.receipt.taxIdLabel).isEqualTo("登録番号")
+            assertThat(settings.receipt.showTaxAmounts).isFalse()
+            assertThat(settings.receipt.showTaxRateTotals).isTrue()
+            assertThat(settings.receipt.markedTaxRateMilliPercent).isEqualTo(8_000)
             assertThat(settings.email.subject).isEqualTo("{business}の領収書")
             val document = env.container.sampleReceipt(settings.copy(payment = settings.payment.copy(currencyCode = "JPY")))
             val text = PlainTextReceiptRenderer().render(document)
             assertThat(text).contains("領収書")
-            assertThat(text).contains("消費税 10%対象（税込）")
-            assertThat(text).contains("内税（消費税 10%）")
+            assertThat(text).contains("10%対象（税込）")
+            assertThat(text).contains("8%対象（税込）")
+            assertThat(text).contains("※は軽減税率対象商品")
+            assertThat(text).doesNotContain("内税（消費税 10%）")
             assertThat(text).contains("合計")
             assertThat(text).doesNotContain(".00")
             assertThat(PrintRenderer.jobs(document, 32)).isNotEmpty()
@@ -70,10 +69,13 @@ class LocalizationTest {
     @Test
     @Config(qualifiers = "zh-rCN")
     fun `Chinese defaults use a receipt not a tax invoice`() =
-        TestEnvironment().use { env ->
+        TestEnvironment(device = FakeDevice(country = "CN")).use { env ->
             val settings = await { env.container.settings.current() }
             assertThat(settings.receipt.title).isEqualTo("收据")
             assertThat(settings.receipt.footer).isEqualTo("谢谢惠顾！")
+            assertThat(settings.receipt.showTaxAmounts).isTrue()
+            assertThat(settings.receipt.showTaxRateTotals).isFalse()
+            assertThat(settings.receipt.markedTaxRateMilliPercent).isNull()
             val document = env.container.sampleReceipt(settings.copy(payment = settings.payment.copy(currencyCode = "CNY")))
             val text = PlainTextReceiptRenderer().render(document)
             assertThat(text).contains("收据")
@@ -105,9 +107,68 @@ class LocalizationTest {
             assertThat(text).contains("My footer")
             assertThat(text).contains("合计")
             assertThat(text).contains("自定义商品")
-            assertThat(await { env.container.settings.current() }.receipt.title).isEqualTo("My receipt")
+            assertThat(await { env.container.settings.current() }.receipt).isEqualTo(settings.receipt)
+            assertThat(text).contains("8%应税金额（含税）")
+            assertThat(text).contains("※は軽減税率対象商品")
             assertThat(await { env.container.api.verify() }).isEqualTo(ApiCheck.Works)
         }
+
+    @Test
+    @Config(qualifiers = "en-rAU")
+    fun `regional tax identifiers and rate names are initial merchant-editable labels`() {
+        val labels =
+            mapOf(
+                "AU" to "ABN",
+                "NZ" to "GST No.",
+                "SG" to "GST Registration No.",
+                "MY" to "SST Registration No.",
+                "HK" to "Tax ID",
+                "US" to "Tax ID",
+                "CA" to "GST/HST No.",
+                "MX" to "RFC",
+                "BR" to "CPF/CNPJ",
+                "GB" to "VAT No.",
+                "DE" to "VAT No.",
+                "RO" to "VAT No.",
+                "SE" to "VAT No.",
+                "" to "Tax ID",
+            )
+        labels.forEach { (country, label) ->
+            TestEnvironment(device = FakeDevice(country = country)).use { env ->
+                val settings = await { env.container.settings.current() }
+                assertWithMessage(country).that(settings.receipt.taxIdLabel).isEqualTo(label)
+                assertThat(settings.receipt.title).isEqualTo("RECEIPT")
+                assertThat(env.container.sampleReceipt(settings).elements).isNotEmpty()
+                val rates = env.container.starterTaxRates()
+                when (country) {
+                    "AU", "NZ", "SG" -> assertThat(rates.first().name).isEqualTo("GST")
+                    "MX" -> assertThat(rates.first().name).isEqualTo("IVA")
+                    "GB", "DE", "RO", "SE" -> assertThat(rates.first().name).isEqualTo("VAT")
+                    else -> assertThat(rates.single().rateMilliPercent).isEqualTo(0)
+                }
+                if (country == "AU") assertThat(settings.receipt.markedTaxRateNote).isEqualTo("※ No GST charged")
+                env.updateSettings { it.copy(receipt = it.receipt.copy(taxIdLabel = "Merchant ID")) }
+                assertThat(await { env.container.settings.current() }.receipt.taxIdLabel).isEqualTo("Merchant ID")
+            }
+        }
+    }
+
+    @Test
+    @Config(qualifiers = "zh-rCN")
+    fun `regional labels use localized resources rather than the language's country`() {
+        TestEnvironment(device = FakeDevice(country = "GB")).use { env ->
+            assertThat(await { env.container.settings.current() }.receipt.taxIdLabel).isEqualTo("增值税税号")
+            assertThat(
+                env.container
+                    .starterTaxRates()
+                    .first()
+                    .name,
+            ).isEqualTo("增值税")
+        }
+        TestEnvironment(device = FakeDevice(country = "AU")).use { env ->
+            assertThat(await { env.container.settings.current() }.receipt.markedTaxRateNote).isEqualTo("※ 未收取GST的商品")
+        }
+    }
 
     @Test
     fun `currency names retain Adyen names in English and unknown-code fallback`() {

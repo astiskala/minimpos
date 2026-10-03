@@ -15,6 +15,7 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performImeAction
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextInput
+import androidx.compose.ui.test.performTextReplacement
 import androidx.compose.ui.text.AnnotatedString
 import com.google.common.truth.Truth.assertThat
 import io.github.astiskala.minimpos.app.FakeDevice
@@ -31,6 +32,7 @@ import io.github.astiskala.minimpos.app.data.db.SaleKind
 import io.github.astiskala.minimpos.app.data.db.SaleStatus
 import io.github.astiskala.minimpos.app.data.security.Secret
 import io.github.astiskala.minimpos.app.data.settings.PrinterMode
+import io.github.astiskala.minimpos.core.receipt.ReceiptElement
 import io.github.astiskala.minimpos.terminal.transport.TerminalEnvironment
 import kotlinx.coroutines.flow.first
 import org.junit.Before
@@ -74,6 +76,45 @@ class SmallScreenTest {
         env.updateSettings { it.copy(terminal = it.terminal.copy(keyIdentifier = "mini-key")) }
         await { container.secrets.set(Secret.TERMINAL_PASSPHRASE, "correct horse battery staple") }
         env.useCheckoutApi()
+    }
+
+    @Test
+    fun `receipt tax display and item marks are configurable on the smallest terminal`() {
+        compose.setContent { MiniMposApp(container) }
+        compose.onNodeWithTag("settings").performClick()
+        waitForTag("section_receipts")
+        compose.onNodeWithTag("section_receipts").performScrollTo().performClick()
+        waitForTag("showTaxAmounts")
+        compose.onNodeWithTag("showTaxAmounts").performScrollTo().performClick()
+        compose.awaitCondition("tax amounts are hidden") { !container.settingsState.value.receipt.showTaxAmounts }
+        compose.onNodeWithTag("showTaxBreakdown").assertDoesNotExist()
+        compose.onNodeWithTag("showTaxRateTotals").performScrollTo().performClick()
+        compose.awaitCondition("taxable totals are enabled") { container.settingsState.value.receipt.showTaxRateTotals }
+        compose.onNodeWithTag("markedTaxRate").performScrollTo().performTextReplacement("5.5")
+        compose.awaitCondition("the marked rate is saved") { container.settingsState.value.receipt.markedTaxRateMilliPercent == 5_500 }
+        compose.onNodeWithTag("markedTaxRate").performTextReplacement("101")
+        assertThat(container.settingsState.value.receipt.markedTaxRateMilliPercent).isEqualTo(5_500)
+        compose.onNodeWithTag("markedTaxRate").performTextReplacement("5.5")
+        compose.onNodeWithTag("taxMarker").performScrollTo().performTextReplacement("*")
+        compose.awaitCondition("the marker is saved") { container.settingsState.value.receipt.markedTaxRateMarker == "*" }
+        compose.onNodeWithTag("taxMarkerNote").performScrollTo().performTextReplacement("* Reduced rate")
+        compose.awaitCondition("the marker explanation is saved") {
+            container.settingsState.value.receipt.markedTaxRateNote ==
+                "* Reduced rate"
+        }
+        val document = container.sampleReceipt(container.settingsState.value)
+        assertThat(document.elements).containsAtLeast(
+            ReceiptElement.Row("Custom item *", "$3.00"),
+            ReceiptElement.Text("* Reduced rate"),
+            ReceiptElement.Row("5.5% taxable (incl. tax)", "$3.00"),
+        )
+        compose.onNodeWithTag("markedTaxRate").performScrollTo().performTextReplacement("")
+        compose.awaitCondition("item marking is disabled") { container.settingsState.value.receipt.markedTaxRateMilliPercent == null }
+        compose.onNodeWithTag("taxMarker").assertDoesNotExist()
+        compose.onNodeWithTag("showTaxAmounts").performScrollTo().performClick()
+        compose.awaitCondition("tax amounts are enabled") { container.settingsState.value.receipt.showTaxAmounts }
+        compose.onNodeWithTag("showTaxBreakdown").performScrollTo().performClick()
+        compose.awaitCondition("the tax breakdown is hidden") { !container.settingsState.value.receipt.showTaxBreakdown }
     }
 
     @Test

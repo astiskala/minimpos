@@ -21,6 +21,7 @@ import kotlinx.serialization.Serializable
  * @property grossMinor The share of the line's gross total refunded for [quantity] units, apportioned by
  * [io.github.astiskala.minimpos.core.refund.RefundCalculator.lineAmount] so that refunding every unit, over one or more refunds,
  * returns exactly the line's gross total.
+ * @property taxRateMilliPercent Applied rate as sold, in thousandths of a percent; 0 for items with no tax.
  */
 @Serializable
 data class RefundedLine(
@@ -29,6 +30,7 @@ data class RefundedLine(
     val quantity: Int,
     val unitPriceMinor: Long,
     val grossMinor: Long,
+    val taxRateMilliPercent: Int = 0,
 )
 
 /**

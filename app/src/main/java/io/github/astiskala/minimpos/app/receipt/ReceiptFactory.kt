@@ -26,6 +26,7 @@ import io.github.astiskala.minimpos.core.receipt.TipLines
 import io.github.astiskala.minimpos.core.receipt.UnpaidLink
 import io.github.astiskala.minimpos.core.tax.TaxAmounts
 import io.github.astiskala.minimpos.core.tax.TaxMode
+import io.github.astiskala.minimpos.core.tax.TaxRates
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -102,7 +103,7 @@ class ReceiptFactory(
                 customerReference = sale.customerReference,
                 dateTime = formatDateTime(sale.createdAt),
                 mode = runCatching { TaxMode.valueOf(sale.taxMode) }.getOrDefault(TaxMode.INCLUSIVE),
-                items = lines.map { ReceiptItem(it.name, it.quantity, it.unitPriceMinor, it.grossMinor) },
+                items = lines.map { ReceiptItem(it.name, it.quantity, it.unitPriceMinor, it.grossMinor, it.taxRateMilliPercent) },
                 amounts = TaxAmounts(sale.netMinor, sale.taxMinor, sale.totalMinor),
                 breakdown = breakdown,
                 approved = standing.approved,
@@ -148,7 +149,7 @@ class ReceiptFactory(
                 dateTime = formatDateTime(refund.createdAt),
                 items =
                     ReceiptLinesJson.decodeRefunded(refund.linesJson).map {
-                        ReceiptItem(it.name, it.quantity, it.unitPriceMinor, it.grossMinor)
+                        ReceiptItem(it.name, it.quantity, it.unitPriceMinor, it.grossMinor, it.taxRateMilliPercent)
                     },
                 amount = refund.amountMinor,
                 cardReceipt = ReceiptLinesJson.decode(refund.customerReceiptJson),
@@ -161,8 +162,9 @@ class ReceiptFactory(
 
     /**
      * A sample receipt with [settings] in [currency], as Settings previews and test-prints it: two items (one taxed at
-     * 10%, one tax-free), totals in tax [mode], a customer reference when [withCustomerReference] (checkout asks for
-     * one) and a refund QR code, dated now. The amounts are fixed, whatever the [mode].
+     * 10%, one at the configured marked rate or tax-free), totals in tax [mode], a customer reference when
+     * [withCustomerReference] (checkout asks for one) and a refund QR code, dated now. Gross amounts are fixed,
+     * whatever the [mode]; the second item demonstrates the configured marker and explanation.
      */
     fun sample(
         settings: ReceiptSettings,
@@ -171,18 +173,20 @@ class ReceiptFactory(
         withCustomerReference: Boolean,
     ): ReceiptDocument {
         val texts = sampleTexts()
+        val markedRate = settings.markedTaxRateMilliPercent ?: 0
+        val customAmounts = TaxRates.apply(300, markedRate, TaxMode.INCLUSIVE)
         val receipt =
             SaleReceipt(
                 reference = SAMPLE_REFERENCE,
                 customerReference = SAMPLE_CUSTOMER.takeIf { withCustomerReference },
                 dateTime = formatDateTime(System.currentTimeMillis()),
                 mode = mode,
-                items = listOf(ReceiptItem(texts.coffee, 2, 450, 900), ReceiptItem(texts.custom, 1, 300, 300)),
-                amounts = SAMPLE_TOTALS,
+                items = listOf(ReceiptItem(texts.coffee, 2, 450, 900, 10_000), ReceiptItem(texts.custom, 1, 300, 300, markedRate)),
+                amounts = TaxAmounts(818, 82, 900) + customAmounts,
                 breakdown =
                     listOf(
                         TaxBreakdown(AppliedTax(texts.taxed, 10_000), TaxAmounts(818, 82, 900)),
-                        TaxBreakdown(AppliedTax(texts.zero, 0), TaxAmounts(300, 0, 300)),
+                        TaxBreakdown(AppliedTax(if (markedRate == 0) texts.zero else texts.taxed, markedRate), customAmounts),
                     ),
                 approved = true,
                 cardReceipt = emptyList(),
@@ -207,8 +211,17 @@ class ReceiptFactory(
                 title = settings.title.trim(),
                 footer = settings.footer,
             ),
-        options = ReceiptOptions(settings.showTaxBreakdown, settings.showReferences, settings.showRefundQr),
-        labels = currentLabels(),
+        options =
+            ReceiptOptions(
+                showTaxBreakdown = settings.showTaxBreakdown,
+                showReferences = settings.showReferences,
+                showRefundQr = settings.showRefundQr,
+                showTaxAmounts = settings.showTaxAmounts,
+                showTaxRateTotals = settings.showTaxRateTotals,
+                markedTaxRateMilliPercent = settings.markedTaxRateMilliPercent,
+                markedTaxRateMarker = settings.markedTaxRateMarker,
+            ),
+        labels = currentLabels().copy(markedTaxRateNote = settings.markedTaxRateNote),
         money = MoneyFormatter(currency, locale()),
     )
 

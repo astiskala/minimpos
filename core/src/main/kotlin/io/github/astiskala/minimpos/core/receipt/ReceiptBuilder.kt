@@ -7,6 +7,7 @@ import io.github.astiskala.minimpos.core.receipt.ReceiptElement.Qr
 import io.github.astiskala.minimpos.core.receipt.ReceiptElement.Row
 import io.github.astiskala.minimpos.core.receipt.ReceiptElement.Text
 import io.github.astiskala.minimpos.core.tax.TaxMode
+import io.github.astiskala.minimpos.core.tax.TaxRates
 
 /**
  * Builds combined receipts: merchant header, line items and tax, then the Adyen card receipt data verbatim
@@ -100,10 +101,21 @@ class ReceiptBuilder(
         items: List<ReceiptItem>,
     ) {
         for (item in items) {
-            out += Row(item.name, money.format(item.gross))
+            val name =
+                if (item.taxRateMilliPercent ==
+                    options.markedTaxRateMilliPercent
+                ) {
+                    "${item.name} ${options.markedTaxRateMarker}"
+                } else {
+                    item.name
+                }
+            out += Row(name, money.format(item.gross))
             if (item.quantity != 1) {
                 out += Text(labels.quantityFormat.format(money.locale, item.quantity, money.format(item.unitPrice)))
             }
+        }
+        if (labels.markedTaxRateNote.isNotBlank() && items.any { it.taxRateMilliPercent == options.markedTaxRateMilliPercent }) {
+            out += Text(labels.markedTaxRateNote)
         }
     }
 
@@ -123,9 +135,9 @@ class ReceiptBuilder(
         when (receipt.mode) {
             TaxMode.EXCLUSIVE -> {
                 out += Row(labels.subtotal, money.format(receipt.amounts.net))
-                if (options.showTaxBreakdown) {
+                if (options.showTaxBreakdown && options.showTaxAmounts) {
                     taxed.forEach { out += Row(it.tax.label(), money.format(it.amounts.tax)) }
-                } else if (receipt.amounts.tax != 0L) {
+                } else if (options.showTaxAmounts && receipt.amounts.tax != 0L) {
                     out += Row(labels.tax, money.format(receipt.amounts.tax))
                 }
                 out += total
@@ -133,7 +145,7 @@ class ReceiptBuilder(
 
             TaxMode.INCLUSIVE -> {
                 out += total
-                if (options.showTaxBreakdown) {
+                if (options.showTaxBreakdown && options.showTaxAmounts) {
                     taxed.forEach {
                         out +=
                             Row(labels.includesTaxFormat.format(money.locale, it.tax.label()), money.format(it.amounts.tax))
@@ -148,14 +160,14 @@ class ReceiptBuilder(
         out: MutableList<ReceiptElement>,
         receipt: SaleReceipt,
     ) {
-        if (!options.showTaxBreakdown) return
+        if (!options.showTaxRateTotals) return
         val inclusive = receipt.mode == TaxMode.INCLUSIVE
-        val format = (if (inclusive) labels.taxableGrossFormat else labels.taxableNetFormat) ?: return
-        receipt.breakdown.forEach {
+        val format = if (inclusive) labels.taxableGrossFormat else labels.taxableNetFormat
+        receipt.breakdown.groupBy { it.tax.rateMilliPercent }.toSortedMap(compareByDescending { it }).forEach { (rate, groups) ->
             out +=
                 Row(
-                    format.format(money.locale, it.tax.label()),
-                    money.format(if (inclusive) it.amounts.gross else it.amounts.net),
+                    format.format(money.locale, "${TaxRates.format(rate)}%"),
+                    money.format(groups.sumOf { if (inclusive) it.amounts.gross else it.amounts.net }),
                 )
         }
     }

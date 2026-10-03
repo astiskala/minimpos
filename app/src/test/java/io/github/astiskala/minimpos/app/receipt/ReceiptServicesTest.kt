@@ -30,6 +30,7 @@ import io.github.astiskala.minimpos.app.payment.ReceiptPrint
 import io.github.astiskala.minimpos.app.payment.StoredTransaction
 import io.github.astiskala.minimpos.app.qr.QrCodes
 import io.github.astiskala.minimpos.core.codec.RefundQrPayload
+import io.github.astiskala.minimpos.core.money.CurrencySpec
 import io.github.astiskala.minimpos.core.receipt.Align
 import io.github.astiskala.minimpos.core.receipt.CardReceiptLine
 import io.github.astiskala.minimpos.core.receipt.PlainTextReceiptRenderer
@@ -38,6 +39,7 @@ import io.github.astiskala.minimpos.core.receipt.ReceiptDocument
 import io.github.astiskala.minimpos.core.receipt.ReceiptElement
 import io.github.astiskala.minimpos.core.receipt.ReceiptLabels
 import io.github.astiskala.minimpos.core.receipt.TextStyle
+import io.github.astiskala.minimpos.core.tax.TaxMode
 import io.github.astiskala.minimpos.terminal.client.PrintAlign
 import io.github.astiskala.minimpos.terminal.client.PrintJob
 import io.github.astiskala.minimpos.terminal.client.PrintLine
@@ -47,6 +49,7 @@ import org.junit.After
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import org.robolectric.annotation.Config
 import java.io.ByteArrayOutputStream
 import java.time.ZoneOffset
 import java.util.Locale
@@ -111,6 +114,90 @@ class ReceiptServicesTest {
         // A sale that could not be refunded gets no refund QR code (see RefundablePaymentTest for the rules).
         assertThat(factory.sale(record.copy(sale = sale.copy(poiTimestamp = "not a time")), ReceiptSettings()).qrCodes).isEmpty()
         assertThat(factory.formatDateTime(0)).contains("70")
+    }
+
+    @Test
+    @Config(qualifiers = "ja-rJP")
+    fun `Japanese yen rendering does not override explicit receipt settings`() {
+        val record = SaleWithLines(sale.copy(currency = "JPY"), lines)
+        val document = container.receiptFactory.sale(record, ReceiptSettings())
+        assertThat(document.elements).contains(ReceiptElement.Row("内税（GST 10%）", "￥82"))
+    }
+
+    @Test
+    @Config(qualifiers = "ja-rJP")
+    fun `Japanese yen receipts use stored rates without changing the charged amount`() {
+        val record =
+            SaleWithLines(
+                sale.copy(currency = "JPY"),
+                listOf(
+                    lines[0].copy(name = "食品", taxRateMilliPercent = 8_000),
+                    lines[1].copy(name = "商品", taxRateMilliPercent = 10_000),
+                ),
+            )
+        val settings = await { container.settings.current() }.receipt
+        val document = container.receiptFactory.sale(record, settings)
+        assertThat(document.elements).containsAtLeast(
+            ReceiptElement.Row("食品 ※", "￥900"),
+            ReceiptElement.Text("※は軽減税率対象商品"),
+            ReceiptElement.Row("8%対象（税込）", "￥900"),
+            ReceiptElement.Row("10%対象（税込）", "￥300"),
+            ReceiptElement.Row("合計", "￥1,200", TextStyle.BOLD),
+        )
+        assertThat(document.elements.filterIsInstance<ReceiptElement.Row>().map { it.left }).doesNotContain("内税（GST 8%）")
+        val qr = RefundQrPayload.decode(document.qrCodes.single().content)!!
+        assertThat(qr.amountMinor).isEqualTo(sale.totalMinor)
+        val otherCurrency = container.receiptFactory.sale(record.copy(sale = sale), settings)
+        assertThat(otherCurrency.elements.filterIsInstance<ReceiptElement.Row>().map { it.left }).contains("食品 ※")
+        assertThat(otherCurrency.elements).contains(ReceiptElement.Text("※は軽減税率対象商品"))
+    }
+
+    @Test
+    @Config(qualifiers = "ja-rJP")
+    fun `Japanese item refunds retain their reduced-rate mark`() {
+        val refund =
+            RefundEntity(
+                id = "r1",
+                saleId = "s1",
+                createdAt = 0,
+                merchantReference = "MP-R",
+                originalTransactionId = "T.X",
+                originalTimestamp = "t",
+                originalReference = "MP-1",
+                currency = "JPY",
+                amountMinor = 450,
+                full = false,
+                status = RefundStatus.REQUESTED,
+                linesJson = ReceiptLinesJson.encodeRefunded(listOf(RefundedLine(1, "食品", 1, 450, 450, 8_000))),
+            )
+        val document = container.receiptFactory.refund(refund, await { container.settings.current() }.receipt)
+        assertThat(document.elements).containsAtLeast(
+            ReceiptElement.Row("食品 ※", "￥450"),
+            ReceiptElement.Text("※は軽減税率対象商品"),
+        )
+    }
+
+    @Test
+    fun `English receipts can use rate-only totals and a custom marked rate`() {
+        val settings =
+            ReceiptSettings(
+                showTaxAmounts = false,
+                showTaxRateTotals = true,
+                markedTaxRateMilliPercent = 5_500,
+                markedTaxRateMarker = "*",
+                markedTaxRateNote = "* Reduced rate",
+            )
+        val record = SaleWithLines(sale, lines.map { it.copy(taxRateMilliPercent = 5_500) })
+        val factory = ReceiptFactory(ReceiptLabels(), { Locale.forLanguageTag("en-AU") })
+        val document = factory.sale(record, settings)
+        assertThat(document.elements).containsAtLeast(
+            ReceiptElement.Row("Latte *", "$9.00"),
+            ReceiptElement.Text("* Reduced rate"),
+            ReceiptElement.Row("5.5% taxable (incl. tax)", "$12.00"),
+        )
+        assertThat(document.elements.filterIsInstance<ReceiptElement.Row>().map { it.left }).doesNotContain("Includes GST 5.5%")
+        val sample = factory.sample(settings, CurrencySpec.of("AUD"), TaxMode.INCLUSIVE, false)
+        assertThat(sample.elements).contains(ReceiptElement.Row("Custom item *", "$3.00"))
     }
 
     @Test

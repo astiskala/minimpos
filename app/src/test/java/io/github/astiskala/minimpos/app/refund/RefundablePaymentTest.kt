@@ -141,12 +141,21 @@ class RefundablePaymentTest {
         val request = refundable().request(RefundChoice.Items(mapOf(1L to 1, 2L to 0, 99L to 1)), "", now, ZoneOffset.UTC)!!
         assertThat(request.full).isFalse()
         assertThat(request.amountMinor).isEqualTo(300)
-        assertThat(request.lines).containsExactly(RefundedLine(1, "Latte", 1, 300, 300))
+        assertThat(request.lines).containsExactly(RefundedLine(1, "Latte", 1, 300, 300, 10_000))
 
         // Refunding everything item by item returns exactly what was paid.
         val all = refundable().request(RefundChoice.Items(mapOf(1L to 3, 2L to 1)), "", now, ZoneOffset.UTC)!!
         assertThat(all.amountMinor).isEqualTo(1_000)
         assertThat(all.lines.map { it.lineId to it.grossMinor }).containsExactly(1L to 900L, 2L to 100L).inOrder()
+        assertThat(all.lines.map { it.taxRateMilliPercent }).containsExactly(10_000, 0).inOrder()
+        val reduced = refundable(record.copy(lines = lines.map { it.copy(taxRateMilliPercent = 8_000) }))
+        assertThat(
+            reduced
+                .request(RefundChoice.Items(mapOf(1L to 1)), "", now, ZoneOffset.UTC)!!
+                .lines
+                .single()
+                .taxRateMilliPercent,
+        ).isEqualTo(8_000)
     }
 
     @Test

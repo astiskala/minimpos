@@ -46,6 +46,7 @@ import io.github.astiskala.minimpos.core.tax.TaxRates
 import io.github.astiskala.minimpos.terminal.client.RetryAdvice
 import io.github.astiskala.minimpos.terminal.simulator.SimulatedOutcome
 import io.github.astiskala.minimpos.terminal.simulator.TerminalSimulator
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -521,15 +522,15 @@ class ViewModelsTest {
         // Hold the save on a queue, so the second tap certainly comes while the first save is under way.
         val queued = StandardTestDispatcher()
         Dispatchers.setMain(queued)
-        var saved = false
-        edit.save { saved = true }
+        val saved = CompletableDeferred<Unit>()
+        edit.save { saved.complete(Unit) }
         assertThat(edit.state.value.saving).isTrue()
         edit.save { error("a second save must be ignored") }
         Dispatchers.setMain(UnconfinedTestDispatcher())
         queued.scheduler.advanceUntilIdle()
 
-        await { edit.state.first { !it.saving } }
-        assertThat(saved).isTrue()
+        await { saved.await() }
+        assertThat(edit.state.value.saving).isFalse()
         val products = await { container.catalog.products.first { it.any { p -> p.name == "Scone" } } }
         assertThat(products.count { it.name == "Scone" }).isEqualTo(1)
     }
@@ -555,10 +556,10 @@ class ViewModelsTest {
         assertThat(edit.state.value.priceMinor).isNull()
         edit.update { it.copy(price = "4,50") }
         assertThat(edit.state.value.priceMinor).isEqualTo(450)
-        var saved = false
-        edit.save { saved = true }
-        await { container.catalog.products.first { it.any { p -> p.name == "Scone" } } }
-        assertThat(saved).isTrue()
+        val saved = CompletableDeferred<Unit>()
+        edit.save { saved.complete(Unit) }
+        await { saved.await() }
+        assertThat(await { container.catalog.products.first { it.any { p -> p.name == "Scone" } } }).isNotEmpty()
 
         val scone = await { container.catalog.productBySku("NEW1")!! }
         assertThat(scone.taxRateId).isEqualTo(tax.id)
@@ -588,10 +589,11 @@ class ViewModelsTest {
         val other = ProductEditViewModel(null, "NEW1", container.catalog, container.settingsState, container::currency)
         assertThat(await { other.state.first { it.loaded && it.skuInUse } }.valid).isFalse()
         other.save { error("must not save") }
-        var deleted = false
-        existing.delete { deleted = true }
-        await { container.catalog.products.first { it.none { p -> p.name == "Scone" } } }
-        assertThat(deleted).isTrue()
+        val deleted = CompletableDeferred<Unit>()
+        existing.delete { deleted.complete(Unit) }
+        await { deleted.await() }
+        val remaining = await { container.catalog.products.first { it.none { p -> p.name == "Scone" } } }
+        assertThat(remaining.map { it.name }).doesNotContain("Scone")
         other.delete { error("new products cannot be deleted") }
     }
 }

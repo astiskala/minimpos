@@ -33,11 +33,13 @@ import io.github.astiskala.minimpos.app.email.SmtpMailer
 import io.github.astiskala.minimpos.app.payment.Captures
 import io.github.astiskala.minimpos.app.payment.PaymentLinks
 import io.github.astiskala.minimpos.app.payment.PaymentStart
+import io.github.astiskala.minimpos.app.payment.PricingChanges
 import io.github.astiskala.minimpos.app.payment.ReceiptDelivery
 import io.github.astiskala.minimpos.app.payment.RefundBook
 import io.github.astiskala.minimpos.app.payment.SaleBook
 import io.github.astiskala.minimpos.app.payment.SaleSession
 import io.github.astiskala.minimpos.app.payment.TransactionLifecycle
+import io.github.astiskala.minimpos.app.payment.TransactionState
 import io.github.astiskala.minimpos.app.qr.QrCodes
 import io.github.astiskala.minimpos.app.receipt.ReceiptFactory
 import io.github.astiskala.minimpos.app.receipt.ReceiptSampleTexts
@@ -337,9 +339,8 @@ class AppContainer(
             gateway = gateway,
             book = SaleBook(sales),
             onSucceeded = { id, start ->
-                receipts.arm(id)
                 // The cart has been paid for, so the next payment of its kind starts afresh.
-                session(start.kind).complete(start)
+                completeSale(id, start)
             },
         )
 
@@ -354,9 +355,8 @@ class AppContainer(
             settings = settings,
             target = api::target,
             onCreated = { id, start ->
-                receipts.arm(id)
                 // The cart is now the link's to pay, so the next sale starts afresh.
-                session(start.payment.kind).complete(start.payment)
+                completeSale(id, start.payment)
             },
             permits = ::managerPermits,
         )
@@ -371,21 +371,27 @@ class AppContainer(
             permits = { managerPermits() },
         )
 
+    private fun completeSale(
+        id: String,
+        start: PaymentStart,
+    ) {
+        receipts.arm(id)
+        session(start.kind).complete(start)
+    }
+
+    /** Confirmed pricing changes and their recovery, including both payment kinds' sessions. */
+    val pricingChanges =
+        PricingChanges(settings, catalog, ::currency, sessions.values) {
+            payments.state.value is TransactionState.Processing || refunds.state.value is TransactionState.Processing
+        }
+
     /**
      * Starts the background work, once per process: marks transactions and captures interrupted by the last shutdown as UNKNOWN,
      * seeds the [starterTaxRates] on first launch, prunes old history, and starts the [terminalStatus] checks.
      */
     fun start() {
         appScope.launch {
-            settings.current().pricingChange?.let { change ->
-                catalog.pricing.apply(change.prices)
-                settings.update {
-                    it.copy(
-                        payment = it.payment.copy(currencyCode = change.payment.currencyCode, taxMode = change.payment.taxMode),
-                        pricingChange = null,
-                    )
-                }
-            }
+            pricingChanges.recover()
             history.settleInterrupted()
             catalog.seedDefaults(starterTaxRates())
             history.prune(settings.current().history.retentionDays, System.currentTimeMillis())

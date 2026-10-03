@@ -41,21 +41,68 @@ sealed interface ApiSetup {
 /**
  * Where captures, adjustments and payment links go now, see [AdyenApi.target].
  *
- * @property setup How far the API is set up, which decides, when nothing can be sent, why ([ApiSetup.problem]);
+ * @param setup How far the API is set up, which decides, when nothing can be sent, why ([ApiSetup.problem]);
  *   [ApiSetup.Incomplete] with [SetupProblem.UNREADABLE_API_KEY] when the saved key cannot be decrypted.
- * @property modifications Sends the captures and adjustments; null when the API cannot be called
+ * @param modifications Sends the captures and adjustments; null when the API cannot be called
  *   ([ApiSetup.Incomplete]).
- * @property links Creates, checks and expires payment links; null unless the API is [ApiSetup.Complete] (payment links
+ * @param links Creates, checks and expires payment links; null unless the API is [ApiSetup.Complete] (payment links
  *   are never simulated).
  * @property context Actual account and environment; isolated fake adapters may omit it.
  */
 data class ApiTarget(
-    val setup: ApiSetup,
-    val modifications: PaymentModifications? = null,
-    val links: PaymentLinkApi? = null,
+    private val setup: ApiSetup,
+    private val modifications: PaymentModifications? = null,
+    private val links: PaymentLinkApi? = null,
     /** Actual account/environment; fixed fake targets may omit it. */
     val context: PaymentContext? = null,
-)
+) {
+    /** Capture/adjustment access for [expected]; missing stored context is blocked unless this is a context-free fake. */
+    fun modifications(expected: PaymentContext?): ApiAccess<PaymentModifications> = access(modifications, expected)
+
+    /** Link access for [expected]; simulated targets have no link adapter, even when modifications are available. */
+    fun links(expected: PaymentContext?): ApiAccess<PaymentLinkApi> = access(links, expected)
+
+    private fun <T : Any> access(
+        client: T?,
+        expected: PaymentContext?,
+    ): ApiAccess<T> =
+        when {
+            client == null -> ApiAccess.Unavailable(setup.problem ?: SetupProblem.API_REQUIRED)
+            context != null && expected?.matchesApi(context) != true -> ApiAccess.ContextMismatch
+            else -> ApiAccess.Ready(client)
+        }
+}
+
+/** Eligibility at the current target, before any stored operation is sent; adapters are exposed only when ready. */
+sealed interface ApiAccess<out T> {
+    /**
+     * The adapter may send the operation for its stored context.
+     * @param T The eligible adapter type.
+     * @property client The eligible adapter.
+     */
+    data class Ready<T>(
+        val client: T,
+    ) : ApiAccess<T>
+
+    /** Nothing may be sent; callers decide whether the operation's sale event should record this failure. */
+    sealed interface Blocked : ApiAccess<Nothing> {
+        /** Missing setup or a different payment context; worded only by screens. */
+        val problem: SetupProblem
+    }
+
+    /**
+     * No adapter is available. A pending creation may record this as known failure, but an unknown creation may not.
+     * @property problem Missing or unreadable setup.
+     */
+    data class Unavailable(
+        override val problem: SetupProblem,
+    ) : Blocked
+
+    /** Current credentials do not match the stored operation; its record must remain unchanged. */
+    data object ContextMismatch : Blocked {
+        override val problem: SetupProblem = SetupProblem.PAYMENT_CONTEXT
+    }
+}
 
 /** What [AdyenApi.verify] found. */
 sealed interface ApiCheck {
@@ -130,7 +177,9 @@ class AdyenApi(
     /** Checks that the API can be used with the stored settings, without changing anything. */
     suspend fun verify(): ApiCheck {
         val target = target()
-        val modifications = target.modifications ?: return ApiCheck.NotSetUp(target.setup.problem ?: SetupProblem.API_REQUIRED)
-        return modifications.verify()?.let(ApiCheck::Failed) ?: ApiCheck.Works
+        return when (val access = target.modifications(target.context)) {
+            is ApiAccess.Ready -> access.client.verify()?.let(ApiCheck::Failed) ?: ApiCheck.Works
+            is ApiAccess.Blocked -> ApiCheck.NotSetUp(access.problem)
+        }
     }
 }

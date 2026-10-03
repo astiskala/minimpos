@@ -9,6 +9,7 @@ import io.github.astiskala.minimpos.app.data.repo.SaleEvent
 import io.github.astiskala.minimpos.app.data.repo.SaleRepository
 import io.github.astiskala.minimpos.app.data.settings.SettingsRepository
 import io.github.astiskala.minimpos.app.terminal.AdyenApi
+import io.github.astiskala.minimpos.app.terminal.ApiAccess
 import io.github.astiskala.minimpos.app.terminal.ApiTarget
 import io.github.astiskala.minimpos.terminal.checkout.PaymentLink
 import io.github.astiskala.minimpos.terminal.checkout.PaymentLinkApi
@@ -165,23 +166,22 @@ class PaymentLinks(
     /** Creates the link of [record] (again, after an unknown outcome) and stores how that went. */
     private suspend fun send(record: SaleWithLines): LinkUpdate {
         val id = record.sale.id
-        val target = target()
-        val api = target.links
-        if (api == null) {
-            val problem = target.setup.problem ?: SetupProblem.API_REQUIRED
-            return if (record.sale.status == SaleStatus.UNKNOWN) {
-                LinkUpdate.NotSetUp(problem)
-            } else {
-                sales.record(id, SaleEvent.NotSetUp(problem))
-                synchronized(unresolvedStarts) { unresolvedStarts.remove(id) }
-                LinkUpdate.Settled
+        val api =
+            when (val access = target().links(record.sale.context)) {
+                is ApiAccess.Ready -> {
+                    access.client
+                }
+
+                is ApiAccess.Blocked -> {
+                    return if (access is ApiAccess.Unavailable && record.sale.status != SaleStatus.UNKNOWN) {
+                        sales.record(id, SaleEvent.NotSetUp(access.problem))
+                        synchronized(unresolvedStarts) { unresolvedStarts.remove(id) }
+                        LinkUpdate.Settled
+                    } else {
+                        LinkUpdate.NotSetUp(access.problem)
+                    }
+                }
             }
-        }
-        if (target.context != null &&
-            record.sale.context?.matchesApi(target.context) != true
-        ) {
-            return LinkUpdate.NotSetUp(SetupProblem.PAYMENT_CONTEXT)
-        }
         val request = PaymentLinkRequests.request(record)
         return when (val result = api.create(request, idempotencyKey(id))) {
             is PaymentLinkResult.Answered -> {
@@ -203,16 +203,11 @@ class PaymentLinks(
     private suspend fun withApi(
         sale: SaleEntity,
         call: suspend (PaymentLinkApi) -> LinkUpdate,
-    ): LinkUpdate {
-        val target = target()
-        val api = target.links ?: return LinkUpdate.NotSetUp(target.setup.problem ?: SetupProblem.API_REQUIRED)
-        if (target.context != null &&
-            sale.context?.matchesApi(target.context) != true
-        ) {
-            return LinkUpdate.NotSetUp(SetupProblem.PAYMENT_CONTEXT)
+    ): LinkUpdate =
+        when (val access = target().links(sale.context)) {
+            is ApiAccess.Ready -> call(access.client)
+            is ApiAccess.Blocked -> LinkUpdate.NotSetUp(access.problem)
         }
-        return call(api)
-    }
 
     /** Stores Adyen's answer [result] about the link of sale [id], which was being expired when [cancelling]. */
     private suspend fun stored(

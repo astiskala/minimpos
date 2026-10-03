@@ -26,6 +26,7 @@ import java.time.ZoneId
  * @property printerAvailable Whether printing is offered, which tipping on the receipt needs.
  * @property linksAvailable Whether payment links can be created
  *   ([io.github.astiskala.minimpos.app.terminal.TerminalSetup.paymentLinks]).
+ * @property sessionRevision Revision of the coherent session snapshot; null for a checkout made without a session.
  */
 data class Checkout(
     val form: CheckoutForm = CheckoutForm(),
@@ -35,6 +36,7 @@ data class Checkout(
     val kind: SaleKind = SaleKind.SALE,
     val printerAvailable: Boolean = false,
     val linksAvailable: Boolean = false,
+    internal val sessionRevision: Long? = null,
 ) {
     /** Whether the amount is only held (a pre-authorisation) rather than charged. */
     val preAuthorisation: Boolean get() = kind == SaleKind.PRE_AUTHORISATION
@@ -120,6 +122,7 @@ data class Checkout(
             kind = kind,
             tipOnReceipt = tipOnReceipt,
             shopperReference = shopperReference,
+            sessionRevision = sessionRevision,
         )
     }
 

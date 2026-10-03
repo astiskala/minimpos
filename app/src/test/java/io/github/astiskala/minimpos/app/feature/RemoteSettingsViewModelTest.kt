@@ -47,7 +47,7 @@ class RemoteSettingsViewModelTest {
 
     private fun settingsViewModel() =
         SettingsViewModel(
-            container.settings,
+            container.pricingChanges,
             container.secrets,
             container.pinManager,
             container.sessionLock,

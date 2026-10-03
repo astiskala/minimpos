@@ -24,6 +24,7 @@ import io.github.astiskala.minimpos.terminal.checkout.ModificationAmount
 import io.github.astiskala.minimpos.terminal.checkout.PaymentLinkResult
 import io.github.astiskala.minimpos.terminal.checkout.PaymentLinkStatus
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flowOf
 import org.junit.After
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -51,16 +52,11 @@ class PaymentLinksTest {
         session.addProduct(ProductEntity(1, "Flat white", 450, 1), TaxRateEntity(1, "GST", 10_000))
         session.addProduct(ProductEntity(1, "Flat white", 450, 1), TaxRateEntity(1, "GST", 10_000))
         session.updateForm { it.copy(customerReference = customerReference, email = "sam@example.com", tokenize = tokenize) }
-        val settings = container.settingsState.value
         val checkout =
-            Checkout(
-                session.form.value,
-                settings.payment,
-                session.cart.value.totals(settings.payment.taxMode),
-                CurrencySpec.of("AUD"),
-                linksAvailable = true,
-            )
-        return checkNotNull(checkout.linkStart(now, ZoneOffset.UTC))
+            await {
+                session.checkout(container.settingsState, flowOf(false), flowOf(true)) { CurrencySpec.of("AUD") }.first()
+            }
+        return checkNotNull(session.linkStart(checkout, now, ZoneOffset.UTC))
     }
 
     private fun savingCardsUnderCustomerReference() =
@@ -228,8 +224,7 @@ class PaymentLinksTest {
         env.useLinks()
         repeat(2) { attempt ->
             api.createResult = PaymentLinkResult.Unknown("timeout")
-            val initial = linkStart()
-            val start = initial.copy(payment = initial.payment.copy(sessionRevision = session.revision))
+            val start = linkStart()
             val id = links.start(start)
             saleWhen(id) { it.status == SaleStatus.UNKNOWN }
             if (attempt == 1) session.updateForm { it.copy(email = "new@example.com") }

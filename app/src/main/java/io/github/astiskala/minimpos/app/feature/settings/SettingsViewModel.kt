@@ -12,7 +12,6 @@ import io.github.astiskala.minimpos.app.data.security.SecretStore
 import io.github.astiskala.minimpos.app.data.security.SecretStoreException
 import io.github.astiskala.minimpos.app.data.security.SessionLock
 import io.github.astiskala.minimpos.app.data.settings.AppSettings
-import io.github.astiskala.minimpos.app.data.settings.SettingsRepository
 import io.github.astiskala.minimpos.app.feature.ActionOutcome
 import io.github.astiskala.minimpos.app.feature.ActionState
 import io.github.astiskala.minimpos.app.feature.launchWrite
@@ -23,7 +22,6 @@ import io.github.astiskala.minimpos.app.terminal.AdyenApi
 import io.github.astiskala.minimpos.app.terminal.ApiCheck
 import io.github.astiskala.minimpos.app.terminal.TerminalConnection
 import io.github.astiskala.minimpos.app.terminal.TerminalStatus
-import io.github.astiskala.minimpos.core.money.CurrencySpec
 import io.github.astiskala.minimpos.core.receipt.ReceiptDocument
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -35,7 +33,7 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
-import java.util.Locale
+import io.github.astiskala.minimpos.app.payment.PricingChanges as PricingChangeOperations
 
 /**
  * What the settings screen shows.
@@ -122,7 +120,7 @@ class SettingsChecks(
  * All of Settings: stored settings, secrets and the PIN, tax rates, the connection, email and print tests, and
  * clearing history. Secrets are only ever written and checked for presence here, never shown.
  *
- * @param settings The stored settings.
+ * @param pricingChanges Owns settings writes, pricing confirmation, session repricing and recovery.
  * @param secrets The stored secrets.
  * @param pins The admin PIN.
  * @param sessionLock Kept unlocked when a PIN is set here.
@@ -131,12 +129,9 @@ class SettingsChecks(
  * @param catalog The tax rates.
  * @param sampleReceipt The sample receipt with the given settings.
  * @param managerPins The Manager PIN instance, so resetting it also clears its live lockout.
- * @param currency Resolves the current device-country currency.
- * @param onRepriced Reprices active sessions after a confirmed change.
- * @param activePayment Whether a financial request is still running.
  */
 class SettingsViewModel(
-    private val settings: SettingsRepository,
+    private val pricingChanges: PricingChangeOperations,
     private val secrets: SecretStore,
     private val pins: PinManager,
     private val sessionLock: SessionLock,
@@ -145,24 +140,15 @@ class SettingsViewModel(
     private val catalog: CatalogRepository,
     sampleReceipt: (AppSettings) -> ReceiptDocument,
     private val managerPins: PinManager = PinManager(secrets, verifierSecret = Secret.MANAGER_PIN_VERIFIER),
-    currency: (
-        AppSettings,
-    ) -> CurrencySpec = {
-        CurrencySpec
-            .of(
-                it.payment.resolvedCurrency(
-                    Locale
-                        .getDefault()
-                        .country,
-                ),
-            )
-    },
-    onRepriced: (CurrencySpec, CurrencySpec) -> Unit = { _, _ -> },
-    activePayment: () -> Boolean = { false },
 ) : ViewModel() {
     /** The screen state, updated whenever settings, secrets or the catalogue change. */
     val state: StateFlow<SettingsUiState> =
-        combine(settings.settings, secrets.configured, catalog.taxRates, catalog.products) { appSettings, configured, taxRates, products ->
+        combine(
+            pricingChanges.changes,
+            secrets.configured,
+            catalog.taxRates,
+            catalog.products,
+        ) { appSettings, configured, taxRates, products ->
             SettingsUiState(
                 appSettings,
                 configured,
@@ -182,13 +168,13 @@ class SettingsViewModel(
     /** Outcomes of the latest actions. */
     val actions: StateFlow<SettingsActions> = _actions.asStateFlow()
 
-    private val pricingChanges = PricingChanges(this, settings, catalog, currency, onRepriced, activePayment)
+    private val pricingConfirmation = PricingChanges(this, pricingChanges)
 
     /** Stores ordinary settings; currency and tax-style changes require confirmation. */
-    fun update(transform: (AppSettings) -> AppSettings) = pricingChanges.update(state.value.settings, transform)
+    fun update(transform: (AppSettings) -> AppSettings) = pricingConfirmation.update(transform)
 
     /** Preview state and confirmation actions for pricing changes. */
-    internal val pricing = pricingChanges
+    internal val pricing = pricingConfirmation
 
     /** Adds (ID 0) or updates [taxRate], trimming its name, and makes it the default rate when [makeDefault]. */
     fun saveTaxRate(
@@ -198,7 +184,7 @@ class SettingsViewModel(
         _actions.update { it.copy(taxRateInUse = null) }
         launchWrite({
             val id = catalog.saveTaxRate(taxRate.copy(name = taxRate.name.trim()))
-            if (makeDefault) settings.update { it.copy(payment = it.payment.copy(defaultTaxRateId = id)) }
+            if (makeDefault) pricingChanges.update { it.copy(payment = it.payment.copy(defaultTaxRateId = id)) }
         })
     }
 
@@ -312,7 +298,7 @@ class SettingsViewModel(
      * saved (at most [ENVIRONMENT_WAIT_MILLIS] later), as the Checkout API needs it.
      */
     private suspend fun detectedApiResult(): ActionState {
-        withTimeoutOrNull(ENVIRONMENT_WAIT_MILLIS) { settings.settings.first { it.terminal.environment != null } }
+        withTimeoutOrNull(ENVIRONMENT_WAIT_MILLIS) { pricingChanges.changes.first { it.terminal.environment != null } }
         return apiResult()
     }
 

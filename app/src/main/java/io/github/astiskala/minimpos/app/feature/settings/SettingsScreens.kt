@@ -116,7 +116,7 @@ private fun settingsViewModel(): SettingsViewModel {
     val container = LocalAppContainer.current
     return viewModel {
         SettingsViewModel(
-            settings = container.settings,
+            pricingChanges = container.pricingChanges,
             secrets = container.secrets,
             pins = container.pinManager,
             sessionLock = container.sessionLock,
@@ -125,15 +125,6 @@ private fun settingsViewModel(): SettingsViewModel {
             catalog = container.catalog,
             sampleReceipt = container::sampleReceipt,
             managerPins = container.managerPin,
-            currency = container::currency,
-            onRepriced = { from, to ->
-                io.github.astiskala.minimpos.app.data.db.SaleKind.entries
-                    .forEach { container.session(it).reprice(from, to) }
-            },
-            activePayment = {
-                container.payments.state.value is Processing ||
-                    container.refunds.state.value is Processing
-            },
         )
     }
 }

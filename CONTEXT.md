@@ -17,7 +17,9 @@ the other.
   is captured or cancelled; refunded only once captured. _Avoid_: auth, hold (as a noun for the payment).
 - **Payment kind** (`SaleKind`): sale or pre-authorisation; each kind has its own products and its own session.
 - **Session** (`SaleSession`, `container.session(kind)`): the cart and checkout form being rung up for one kind,
-  kept while navigating and cleared once its payment is approved. _Avoid_: basket, draft.
+  kept while navigating and cleared once its payment is approved or its link is created, but only if its originating
+  checkout snapshot is still current. The session binds the cart, form and revision together; callers never stamp a
+  revision onto a start. _Avoid_: basket, draft.
 - **Checkout** (`payment/Checkout`): the rules for what payment a session becomes (`PaymentStart`): references, saving
   the card, tip on the receipt, whether it can be paid at all.
 - **Tip on the receipt** (`tipOnReceipt`): a sale sent as a pre-authorisation (manual capture) with blank tip lines
@@ -65,7 +67,8 @@ the other.
 ## Where payments go
 
 - **Payment context** (`PaymentContext`): non-secret destination, terminal identity, merchant account and environment
-  captured from the connection that sent an operation. Historical actions validate current credentials against it.
+  captured from the connection that sent an operation. Historical actions validate current credentials against it;
+  the Checkout API target (`ApiTarget`, `ApiAccess`) decides eligible adapter access, not the capture or link caller.
 - **Operation identity**: a persisted key and request facts for one logical capture, adjustment or link creation.
   Retrying reuses them; another operation, including a same-amount renewal, has a new identity.
 - **Adyen integration** (`:adyen`, sources in `adyen/`): the Android-free integration with Adyen's Terminal,
@@ -118,8 +121,9 @@ the other.
   language. What Adyen or the terminal said is stored as it came (`message`). _Avoid_: error message (for the stored
   value).
 - **Catalogue**: products, categories and tax rates (`CatalogRepository`); every product has a tax rate.
-- **Pricing change**: an explicitly confirmed currency or tax-style change. Major-unit unit prices are preserved,
-  rounded to the new currency precision; a durable journal completes an interrupted catalogue/settings update.
+- **Pricing change** (`payment/PricingChanges`): an explicitly confirmed currency or tax-style change. Major-unit unit
+  prices are preserved, rounded to the new currency precision; one module owns preview, commit, checkout readiness,
+  session repricing and replay of the durable journal after an interrupted catalogue/settings update.
 - **Starter tax** (`StarterTax`): the tax rates (the national standard rate where known, then 0%) and price style
   (tax included or added) a new installation starts with, from the device's country.
 - **New-installation settings** (`AppSettings.forNewInstallation`): the constructor baseline with initial pricing,

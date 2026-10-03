@@ -8,6 +8,8 @@ import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
@@ -34,6 +36,7 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringArrayResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
@@ -225,8 +228,17 @@ internal fun TaxRateForm(form: TaxRateFormState) {
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
             modifier = Modifier.fillMaxWidth().testTag("taxRate"),
         )
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Checkbox(checked = form.makeDefault, onCheckedChange = { form.makeDefault = it }, modifier = Modifier.testTag("taxDefault"))
+        Row(
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .toggleable(form.makeDefault, role = Role.Checkbox, onValueChange = {
+                        form.makeDefault = it
+                    })
+                    .testTag("taxDefault"),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Checkbox(checked = form.makeDefault, onCheckedChange = null, modifier = Modifier.size(48.dp))
             Text(stringResource(R.string.settings_tax_default))
         }
         form.parsedRate?.takeIf { form.name.isNotBlank() }?.let {

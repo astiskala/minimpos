@@ -1,0 +1,46 @@
+package io.github.astiskala.minimpos.app.ui
+
+import androidx.compose.foundation.layout.Column
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.performClick
+import io.github.astiskala.minimpos.app.feature.sale.ReceiptToggle
+import io.github.astiskala.minimpos.app.ui.theme.MiniMposTheme
+import io.github.astiskala.minimpos.core.receipt.ReceiptDocument
+import io.github.astiskala.minimpos.core.receipt.ReceiptElement
+import org.junit.Rule
+import org.junit.Test
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
+import org.robolectric.annotation.Config
+
+@RunWith(RobolectricTestRunner::class)
+@Config(qualifiers = "en-rAU-w320dp-h460dp-hdpi")
+class ReceiptToggleTest {
+    @get:Rule
+    val compose = createComposeRule()
+
+    @Test
+    fun `the receipt action shows and hides the preview on the smallest screen`() {
+        val receipt = ReceiptDocument(listOf(ReceiptElement.Text("Receipt preview")))
+        compose.setContent {
+            MiniMposTheme {
+                var shown by remember { mutableStateOf(false) }
+                Column { ReceiptToggle(receipt.takeIf { shown }, { shown = !shown }) }
+            }
+        }
+        compose.onNodeWithText("Receipt preview").assertDoesNotExist()
+        compose.onNodeWithText("Show receipt").assertIsDisplayed().performClick()
+        compose.onNodeWithText("Receipt preview").assertIsDisplayed()
+        compose.onNodeWithText("Hide receipt").assertIsDisplayed()
+        compose.onNodeWithTag("toggleReceipt").performClick()
+        compose.onNodeWithText("Receipt preview").assertDoesNotExist()
+        compose.onNodeWithText("Show receipt").assertIsDisplayed()
+    }
+}

@@ -17,6 +17,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ReceiptLong
 import androidx.compose.material.icons.filled.EditNote
 import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.Home
@@ -28,7 +29,6 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -80,7 +80,7 @@ import io.github.astiskala.minimpos.app.ui.components.ReceiptPreview
 import io.github.astiskala.minimpos.app.ui.components.SecondaryButton
 import io.github.astiskala.minimpos.app.ui.components.StatusBadge
 import io.github.astiskala.minimpos.app.ui.components.StatusKind
-import io.github.astiskala.minimpos.app.ui.components.TertiaryButton
+import io.github.astiskala.minimpos.app.ui.components.SwitchRow
 import io.github.astiskala.minimpos.app.ui.components.TextInputDialog
 import io.github.astiskala.minimpos.app.ui.components.currentLocale
 import io.github.astiskala.minimpos.app.ui.components.rememberMoneyFormatter
@@ -335,13 +335,7 @@ private fun LabeledSwitch(
     onChange: (Boolean) -> Unit,
     tag: String,
 ) {
-    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
-        Column(Modifier.weight(1f)) {
-            Text(title, style = MaterialTheme.typography.bodyLarge)
-            Text(hint, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        }
-        Switch(checked = checked, onCheckedChange = onChange, modifier = Modifier.testTag(tag))
-    }
+    SwitchRow(title, checked, onChange, subtitle = hint, modifier = Modifier.testTag(tag))
 }
 
 @Composable
@@ -629,7 +623,12 @@ private fun ColumnScope.ApprovedSaleActions(
         )
         if (state.transaction.merchantCopyPending) {
             Text(stringResource(R.string.result_tear_off), textAlign = TextAlign.Center)
-            SecondaryButton(stringResource(R.string.result_print_merchant), onPrintMerchantCopy, icon = Icons.Default.Print)
+            SecondaryButton(
+                stringResource(R.string.result_print_merchant),
+                onPrintMerchantCopy,
+                loading = state.transaction.print.running,
+                icon = Icons.Default.Print,
+            )
         }
         OutcomeMessage(state.transaction.print)
     }
@@ -684,9 +683,10 @@ fun ColumnScope.ReceiptToggle(
     onToggle: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    TertiaryButton(
+    SecondaryButton(
         stringResource(if (receipt != null) R.string.result_hide_receipt else R.string.result_show_receipt),
         onToggle,
+        icon = Icons.AutoMirrored.Filled.ReceiptLong,
         modifier = modifier.testTag("toggleReceipt"),
     )
     receipt?.let { ReceiptPreview(it, Modifier.align(Alignment.CenterHorizontally)) }

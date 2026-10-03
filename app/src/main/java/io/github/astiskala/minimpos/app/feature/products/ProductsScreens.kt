@@ -14,7 +14,6 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -40,7 +39,6 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.PrimaryTabRow
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -55,7 +53,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
@@ -74,6 +71,7 @@ import io.github.astiskala.minimpos.app.ui.components.EmptyState
 import io.github.astiskala.minimpos.app.ui.components.LocalAppContainer
 import io.github.astiskala.minimpos.app.ui.components.MiniScaffold
 import io.github.astiskala.minimpos.app.ui.components.PrimaryButton
+import io.github.astiskala.minimpos.app.ui.components.SwitchRow
 import io.github.astiskala.minimpos.app.ui.components.currentLocale
 import io.github.astiskala.minimpos.app.ui.components.rememberMoneyFormatter
 import io.github.astiskala.minimpos.app.ui.navigation.Navigator
@@ -467,20 +465,13 @@ private fun PreAuthorisationSwitch(
     checked: Boolean,
     onChange: (Boolean) -> Unit,
 ) {
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier.fillMaxWidth().toggleable(checked, role = Role.Switch, onValueChange = onChange).testTag("productPreAuth"),
-    ) {
-        Column(Modifier.weight(1f)) {
-            Text(stringResource(R.string.products_pre_auth), style = MaterialTheme.typography.bodyLarge)
-            Text(
-                stringResource(R.string.products_pre_auth_hint),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
-        Switch(checked = checked, onCheckedChange = null)
-    }
+    SwitchRow(
+        title = stringResource(R.string.products_pre_auth),
+        checked = checked,
+        onChange = onChange,
+        subtitle = stringResource(R.string.products_pre_auth_hint),
+        modifier = Modifier.testTag("productPreAuth"),
+    )
 }
 
 @OptIn(ExperimentalMaterial3Api::class)

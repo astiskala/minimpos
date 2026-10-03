@@ -12,7 +12,7 @@ class Navigator(
 
     /** Opens [route] on top of the current screen. */
     fun push(route: Route) {
-        backStack.add(route)
+        if (current != route) backStack.add(route)
     }
 
     /** Closes the current screen; the last one (Home) is never removed. */

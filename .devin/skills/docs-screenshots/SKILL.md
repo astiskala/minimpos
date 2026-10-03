@@ -52,9 +52,9 @@ Seeded before the first launch (debug builds only), piped in with
 - A Room DB built from the latest `app/schemas/io.github.astiskala.minimpos.app.data.db.AppDatabase/<version>.json`
   (Python sqlite3, `PRAGMA user_version`).
 - `files/datastore/settings.json`: auto-lock 10 min, simulator delay 6 s (so the "waiting" screen can be captured).
-  The keys it leaves out take the constructor's defaults, not a new installation's
-  (`AppSettings.forNewInstallation`): checkout asks for a transaction and a customer reference, offers Save card, and
-  receipts print only when asked, as the flows below need.
+  Explicitly set `payment.askTransactionReference = true`, `payment.shopperReferenceSource = CUSTOMER_REFERENCE`,
+  `payment.offerCardSaving = true` and `receipt.autoPrint = false` for these demos. Omitted keys take the current
+  constructor defaults, which do not ask for references, so checkout does not offer card saving.
 - Café "Harbour Coffee Co.", 1 Wharf Street Fremantle, ABN; GST 10% default and GST-free; AUD; 10 products in
   Coffee/Food/Retail, the beans GST-free with a barcode; plus "Catering deposit" $200.00 GST 10% in a Bookings category
   as a pre-authorisation product.

@@ -22,6 +22,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ReceiptLong
 import androidx.compose.material.icons.automirrored.filled.Undo
 import androidx.compose.material.icons.filled.ArrowDropDown
+import androidx.compose.material.icons.filled.EditNote
 import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.Link
 import androidx.compose.material.icons.filled.LockOpen
@@ -94,7 +95,6 @@ import io.github.astiskala.minimpos.app.ui.components.SearchMode
 import io.github.astiskala.minimpos.app.ui.components.SearchToggle
 import io.github.astiskala.minimpos.app.ui.components.SecondaryButton
 import io.github.astiskala.minimpos.app.ui.components.StatusKind
-import io.github.astiskala.minimpos.app.ui.components.TertiaryButton
 import io.github.astiskala.minimpos.app.ui.components.TextInputDialog
 import io.github.astiskala.minimpos.app.ui.components.TransactionRow
 import io.github.astiskala.minimpos.app.ui.components.currentLocale
@@ -507,7 +507,12 @@ private fun ColumnScope.HoldActions(
     if (PaymentAction.ADJUST in
         state.actions
     ) {
-        TertiaryButton(stringResource(R.string.detail_adjust), onAdjust, modifier = Modifier.testTag("adjust"))
+        SecondaryButton(
+            stringResource(R.string.detail_adjust),
+            onAdjust,
+            icon = Icons.Default.EditNote,
+            modifier = Modifier.testTag("adjust"),
+        )
     }
     if (PaymentAction.RETRY_CAPTURE in state.actions) {
         SecondaryButton(
@@ -640,7 +645,12 @@ private fun ColumnScope.SaleReceiptActions(
         SecondaryButton(stringResource(R.string.detail_reprint), {
             onPrint(ReceiptCopy.CUSTOMER)
         }, loading = transaction.print.running, icon = Icons.Default.Print)
-        TertiaryButton(stringResource(R.string.result_print_merchant), { onPrint(ReceiptCopy.MERCHANT) })
+        SecondaryButton(
+            stringResource(R.string.result_print_merchant),
+            { onPrint(ReceiptCopy.MERCHANT) },
+            loading = transaction.print.running,
+            icon = Icons.Default.Print,
+        )
         OutcomeMessage(transaction.print)
     }
     if (transaction.canEmail) {

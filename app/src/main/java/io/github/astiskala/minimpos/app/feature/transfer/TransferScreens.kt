@@ -4,6 +4,7 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -17,13 +18,12 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.NavigateBefore
 import androidx.compose.material.icons.automirrored.filled.NavigateNext
-import androidx.compose.material.icons.filled.Pause
-import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Text
@@ -146,9 +146,10 @@ private fun ExportChoice(
             SettingSwitch(
                 stringResource(R.string.transfer_part_secrets),
                 state.sharesSecrets,
-                { checked -> if (!noSecrets) onChange { it.copy(secrets = checked) } },
+                { checked -> onChange { it.copy(secrets = checked) } },
                 subtitle = stringResource(if (noSecrets) R.string.transfer_part_secrets_none else R.string.transfer_part_secrets_hint),
                 tag = "shareSecrets",
+                enabled = !noSecrets,
             )
         }
     }
@@ -333,7 +334,7 @@ private fun ImportBottomBar(
 
 /** Previous, "code n of m", next and play/pause; stepping pauses the automatic advance. */
 @Composable
-private fun CodeControls(
+internal fun CodeControls(
     index: Int,
     count: Int,
     playing: Boolean,
@@ -348,11 +349,12 @@ private fun CodeControls(
         IconButton(onClick = { onStep(1) }) {
             Icon(Icons.AutoMirrored.Filled.NavigateNext, contentDescription = stringResource(R.string.action_next))
         }
-        IconButton(onClick = onTogglePlay) {
-            Icon(
-                if (playing) Icons.Default.Pause else Icons.Default.PlayArrow,
-                contentDescription = stringResource(if (playing) R.string.action_pause else R.string.action_play),
-            )
+        OutlinedButton(
+            onClick = onTogglePlay,
+            shape = MaterialTheme.shapes.medium,
+            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
+        ) {
+            Text(stringResource(if (playing) R.string.action_pause else R.string.action_play))
         }
     }
 }

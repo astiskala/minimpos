@@ -14,9 +14,11 @@ import io.github.astiskala.minimpos.app.data.settings.PricingChange
 import io.github.astiskala.minimpos.app.data.settings.SettingsRepository
 import io.github.astiskala.minimpos.core.money.CurrencySpec
 import io.github.astiskala.minimpos.core.tax.TaxMode
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import org.junit.After
 import org.junit.Assert.assertThrows
 import org.junit.Test
@@ -24,9 +26,10 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import java.io.IOException
 
+@OptIn(ExperimentalCoroutinesApi::class)
 @RunWith(RobolectricTestRunner::class)
 class PricingChangesTest {
-    private val env = TestEnvironment()
+    private val env = TestEnvironment(dispatcher = UnconfinedTestDispatcher())
     private val container = env.container
     private val store = FailingSettings()
     private val settings = SettingsRepository(store)

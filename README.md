@@ -213,16 +213,13 @@ share sheet.
 ## Language and receipts
 
 The app supports English, Simplified Chinese and Japanese. On Android 12 or earlier it follows the device language;
-on Android 13 or later, choose a language in the system's app-language settings. New installations use localized
-receipt defaults and sample labels. Existing receipt titles, footers, tax names, email subjects and transferred
-catalogs stay as written: review them in Settings › Receipts, Tax and Email (SMTP), and in Products.
+on Android 13 or later, choose a language in the system's app-language settings.
 
 Adyen-generated payment receipt data stays verbatim and follows the terminal's own receipt-language setting.
-Plain-text receipts account for wide Chinese and Japanese characters, and Japanese receipts show taxable amounts
-by rate (税込 / 税抜). This does **not** make them official Chinese 发票 or guarantee Japanese qualified-invoice
-compliance; reduced-rate item marking, rounding and registration requirements need separate verification. See the
-[language and receipt guidance](https://astiskala.github.io/minimpos/getting-started.html#language-receipts) for details
-and official reference links.
+Plain-text receipts account for wide Chinese and Japanese characters. Settings › Receipts lets you show or hide tax
+amounts and taxable totals by rate, and choose a marked tax rate, its item marker and explanation, in any language or
+currency. See the
+[language and receipt guidance](https://astiskala.github.io/minimpos/getting-started.html#language-receipts) for details.
 
 ## Good to know
 

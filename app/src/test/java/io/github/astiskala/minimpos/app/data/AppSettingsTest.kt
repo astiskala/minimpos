@@ -25,7 +25,13 @@ class AppSettingsTest {
         val wild =
             AppSettings(
                 terminal = TerminalSettings(keyVersion = 0, timeoutSeconds = 5_000),
-                receipt = ReceiptSettings(charsPerLine = 10),
+                receipt =
+                    ReceiptSettings(
+                        charsPerLine = 10,
+                        markedTaxRateMilliPercent = -1,
+                        markedTaxRateMarker = " ",
+                        markedTaxRateNote = " note ",
+                    ),
                 email = EmailSettings(port = 70_000),
                 security = SecuritySettings(autoLockMinutes = -1),
                 simulator = SimulatorSettings(delayMillis = -5),
@@ -34,6 +40,12 @@ class AppSettingsTest {
         assertThat(wild.terminal.keyVersion).isEqualTo(TerminalSettings.KEY_VERSIONS.first)
         assertThat(wild.terminal.timeoutSeconds).isEqualTo(TerminalSettings.MAX_TIMEOUT_SECONDS)
         assertThat(wild.receipt.charsPerLine).isEqualTo(ReceiptSettings.CHARS_PER_LINE.first)
+        assertThat(wild.receipt.markedTaxRateMilliPercent).isEqualTo(0)
+        assertThat(wild.receipt.markedTaxRateMarker).isEqualTo("※")
+        assertThat(wild.receipt.markedTaxRateNote).isEqualTo("note")
+        assertThat(ReceiptSettings(markedTaxRateMilliPercent = 100_001, markedTaxRateMarker = " * ").normalized().markedTaxRateMilliPercent)
+            .isEqualTo(100_000)
+        assertThat(ReceiptSettings(markedTaxRateMarker = " * ").normalized().markedTaxRateMarker).isEqualTo("*")
         assertThat(wild.email.port).isEqualTo(EmailSettings.PORTS.last)
         assertThat(wild.security.autoLockMinutes).isEqualTo(0)
         assertThat(wild.simulator.delayMillis).isEqualTo(0)
@@ -57,6 +69,80 @@ class AppSettingsTest {
         assertThat(AppSettings().payment.shopperReferenceSource).isEqualTo(ShopperReferenceSource.NONE)
         assertThat(AppSettings().receipt.autoPrint).isTrue()
         assertThat(australia.copy(payment = PaymentSettings(), receipt = ReceiptSettings())).isEqualTo(AppSettings())
+    }
+
+    @Test
+    fun `regional receipt defaults remain ordinary configurable settings`() {
+        val australia = AppSettings.forNewInstallation("AU")
+        assertThat(australia.receipt.markedTaxRateMilliPercent).isEqualTo(0)
+        assertThat(australia.receipt.showTaxAmounts).isTrue()
+        val hongKong = AppSettings.forNewInstallation("HK")
+        assertThat(hongKong.payment.chargeTax).isFalse()
+        assertThat(hongKong.receipt.showTaxAmounts).isFalse()
+        assertThat(hongKong.receipt.showTaxRateTotals).isFalse()
+        listOf("GB", "DE", "RO", "SE").forEach { country ->
+            val settings = AppSettings.forNewInstallation(country)
+            assertThat(settings.receipt.showTaxRateTotals).isTrue()
+            assertThat(settings.receipt.showTaxAmounts).isTrue()
+            assertThat(settings.receipt.markedTaxRateMilliPercent).isNull()
+        }
+        listOf("NZ", "SG", "MY", "US", "CA", "MX", "BR", "").forEach { country ->
+            val settings = AppSettings.forNewInstallation(country)
+            assertThat(settings.receipt.showTaxRateTotals).isFalse()
+            assertThat(settings.receipt.showTaxAmounts).isTrue()
+            assertThat(settings.receipt.markedTaxRateMilliPercent).isNull()
+        }
+    }
+
+    @Test
+    fun `Japanese language selects initial receipt style without changing regional pricing`() {
+        val japanese = AppSettings.forNewInstallation("AU", "ja")
+        assertThat(japanese.receipt.showTaxAmounts).isFalse()
+        assertThat(japanese.receipt.showTaxRateTotals).isTrue()
+        assertThat(japanese.receipt.markedTaxRateMilliPercent).isEqualTo(8_000)
+        assertThat(japanese.payment.taxMode).isEqualTo(TaxMode.INCLUSIVE)
+        assertThat(AppSettings.forNewInstallation("US", "ja").payment.taxMode).isEqualTo(TaxMode.EXCLUSIVE)
+        assertThat(AppSettings.forNewInstallation("HK", "ja").payment.chargeTax).isFalse()
+        assertThat(AppSettings.forNewInstallation(" gb ").receipt.showTaxRateTotals).isTrue()
+    }
+
+    @Test
+    fun `every EU country and the UK starts with taxable totals by rate`() {
+        val countries =
+            listOf(
+                "AT",
+                "BE",
+                "BG",
+                "CY",
+                "CZ",
+                "DE",
+                "DK",
+                "EE",
+                "ES",
+                "FI",
+                "FR",
+                "GB",
+                "GR",
+                "HR",
+                "HU",
+                "IE",
+                "IT",
+                "LT",
+                "LU",
+                "LV",
+                "MT",
+                "NL",
+                "PL",
+                "PT",
+                "RO",
+                "SE",
+                "SI",
+                "SK",
+            )
+        countries.forEach { country ->
+            assertThat(AppSettings.forNewInstallation(country).receipt.showTaxRateTotals).isTrue()
+        }
+        assertThat(AppSettings.forNewInstallation("CH").receipt.showTaxRateTotals).isFalse()
     }
 
     @Test
@@ -106,7 +192,15 @@ class AppSettingsTest {
             AppSettings(
                 terminal = TerminalSettings(mode = TerminalMode.TERMINAL, host = "192.168.1.20", merchantAccount = "Merchant"),
                 payment = PaymentSettings(defaultTaxRateId = 7, referencePrefix = "SHOP"),
-                receipt = ReceiptSettings(title = "Harbour Coffee Co."),
+                receipt =
+                    ReceiptSettings(
+                        title = "Harbour Coffee Co.",
+                        showTaxAmounts = false,
+                        showTaxRateTotals = true,
+                        markedTaxRateMilliPercent = 5_500,
+                        markedTaxRateMarker = "*",
+                        markedTaxRateNote = "* Reduced rate",
+                    ),
                 simulator = SimulatorSettings(hasPrinter = false),
                 history = HistorySettings(retentionDays = 30),
             )

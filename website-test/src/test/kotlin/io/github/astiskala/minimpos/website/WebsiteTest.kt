@@ -130,16 +130,19 @@ class WebsiteTest {
     }
 
     @Test
-    fun `guides explain receipt languages and their limits`() {
-        val references =
-            listOf("https://www.nta.go.jp/english/taxes/consumption_tax/pdf/2023/general_04.pdf", "https://inv-veri.chinatax.gov.cn/")
+    fun `guides explain languages and receipt customization`() {
+        val labels =
+            mapOf(
+                "en" to listOf("Show tax amounts", "Show taxable totals by rate", "Marked tax rate (%)"),
+                "zh-CN" to listOf("显示税额", "按税率显示应税金额", "标记的税率（%）"),
+                "ja" to listOf("税額を表示", "税率別の対象金額を表示", "印を付ける税率（%）"),
+            )
         LANGUAGES.forEach { language ->
             val page = pages.getValue(language to Kind.GUIDE)
             assertWithMessage(page.name).that(page.ids).contains("language-receipts")
-            listOf("Android 12", "Android 13", "税込", "税抜", "適格請求書").forEach { assertWithMessage(page.name).that(page.text).contains(it) }
-            references.forEach { assertWithMessage("${page.name} $it").that(page.matching("a", "href" to it)).isNotEmpty() }
-            // Regulatory caveats belong in the guide, not the marketing page.
-            assertWithMessage(page.name).that(pages.getValue(language to Kind.LANDING).text).doesNotContain("適格請求書")
+            (listOf("Android 12", "Android 13") + labels.getValue(language)).forEach {
+                assertWithMessage(page.name).that(page.text).contains(it)
+            }
         }
     }
 
@@ -161,7 +164,7 @@ class WebsiteTest {
                         "保存并测试 API 密钥",
                         "重新查询结果",
                         "需处理",
-                        "设置 › 税",
+                        "设置 › 收据",
                     ),
                 "ja" to
                     listOf(
@@ -175,7 +178,7 @@ class WebsiteTest {
                         "別のデバイスに共有",
                         "決済先",
                         "アプリ情報",
-                        "設定 › 税",
+                        "設定 › 領収書",
                     ),
             )
         val forbidden =

@@ -107,6 +107,7 @@ import io.github.astiskala.minimpos.core.receipt.label
 import io.github.astiskala.minimpos.core.shopper.EmailReferenceMode
 import io.github.astiskala.minimpos.core.shopper.ShopperReferences
 import io.github.astiskala.minimpos.core.tax.TaxMode
+import io.github.astiskala.minimpos.core.tax.TaxRates
 import io.github.astiskala.minimpos.terminal.simulator.SimulatedOutcome
 import io.github.astiskala.minimpos.terminal.transport.TerminalEnvironment
 
@@ -1001,6 +1002,41 @@ private fun ColumnScope.EmailCaptureSettings(
 }
 
 @Composable
+private fun ColumnScope.ReceiptTaxSettings(
+    receipt: ReceiptSettings,
+    update: ((ReceiptSettings) -> ReceiptSettings) -> Unit,
+) {
+    SettingSwitch(stringResource(R.string.settings_show_tax_amounts), receipt.showTaxAmounts, { value ->
+        update { it.copy(showTaxAmounts = value) }
+    }, tag = "showTaxAmounts")
+    if (receipt.showTaxAmounts) {
+        SettingSwitch(stringResource(R.string.settings_show_tax), receipt.showTaxBreakdown, { value ->
+            update { it.copy(showTaxBreakdown = value) }
+        }, tag = "showTaxBreakdown")
+    }
+    SettingSwitch(stringResource(R.string.settings_show_tax_rate_totals), receipt.showTaxRateTotals, { value ->
+        update { it.copy(showTaxRateTotals = value) }
+    }, tag = "showTaxRateTotals")
+    SettingTextField(
+        label = stringResource(R.string.settings_marked_tax_rate),
+        value = receipt.markedTaxRateMilliPercent?.let(TaxRates::format).orEmpty(),
+        onCommit = { value -> update { it.copy(markedTaxRateMilliPercent = TaxRates.parse(value)) } },
+        supporting = stringResource(R.string.settings_marked_tax_rate_hint),
+        isError = { it.isNotBlank() && TaxRates.parse(it) == null },
+        keyboardType = KeyboardType.Decimal,
+        tag = "markedTaxRate",
+    )
+    if (receipt.markedTaxRateMilliPercent != null) {
+        SettingTextField(stringResource(R.string.settings_tax_marker), receipt.markedTaxRateMarker, { value ->
+            update { it.copy(markedTaxRateMarker = value) }
+        }, isError = { it.isBlank() }, tag = "taxMarker")
+        SettingTextField(stringResource(R.string.settings_tax_marker_note), receipt.markedTaxRateNote, { value ->
+            update { it.copy(markedTaxRateNote = value) }
+        }, tag = "taxMarkerNote")
+    }
+}
+
+@Composable
 private fun ColumnScope.ReceiptsSection(
     state: SettingsUiState,
     actions: SettingsActions,
@@ -1011,9 +1047,7 @@ private fun ColumnScope.ReceiptsSection(
     fun update(transform: (ReceiptSettings) -> ReceiptSettings) = events.onUpdate { it.copy(receipt = transform(it.receipt)) }
     ReceiptTextSettings(receipt, ::update)
     SectionHeader(stringResource(R.string.settings_content))
-    SettingSwitch(stringResource(R.string.settings_show_tax), receipt.showTaxBreakdown, { value ->
-        update { it.copy(showTaxBreakdown = value) }
-    })
+    ReceiptTaxSettings(receipt, ::update)
     SettingSwitch(stringResource(R.string.settings_show_references), receipt.showReferences, { value ->
         update { it.copy(showReferences = value) }
     })

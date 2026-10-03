@@ -18,6 +18,7 @@ import io.github.astiskala.minimpos.app.data.settings.EmailCapture
 import io.github.astiskala.minimpos.app.data.settings.EmailSettings
 import io.github.astiskala.minimpos.app.data.settings.JsonDataStoreSerializer
 import io.github.astiskala.minimpos.app.data.settings.PaymentSettings
+import io.github.astiskala.minimpos.app.data.settings.ReceiptSettings
 import io.github.astiskala.minimpos.app.data.settings.ShopperReferenceSource
 import io.github.astiskala.minimpos.app.terminal.AndroidDeviceInfo
 import io.github.astiskala.minimpos.core.money.CurrencySpec
@@ -227,7 +228,18 @@ class SecurityAndSettingsTest {
         await {
             val serializer = JsonDataStoreSerializer(AppSettings.serializer(), AppSettings())
             val out = ByteArrayOutputStream()
-            val settings = AppSettings(payment = PaymentSettings(currencyCode = "NZD"))
+            val settings =
+                AppSettings(
+                    payment = PaymentSettings(currencyCode = "NZD"),
+                    receipt =
+                        ReceiptSettings(
+                            showTaxAmounts = false,
+                            showTaxRateTotals = true,
+                            markedTaxRateMilliPercent = 5_500,
+                            markedTaxRateMarker = "*",
+                            markedTaxRateNote = "* Reduced rate",
+                        ),
+                )
             serializer.writeTo(settings, out)
             assertThat(serializer.readFrom(ByteArrayInputStream(out.toByteArray()))).isEqualTo(settings)
             assertThat(serializer.readFrom(ByteArrayInputStream("{\"unknown\":1}".toByteArray()))).isEqualTo(AppSettings())

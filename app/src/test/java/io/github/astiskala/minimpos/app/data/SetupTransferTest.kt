@@ -86,6 +86,11 @@ class SetupTransferTest {
                         printerMode = PrinterMode.ON,
                         merchantCopy = MerchantCopyPolicy.ALWAYS,
                         charsPerLine = 42,
+                        showTaxAmounts = false,
+                        showTaxRateTotals = true,
+                        markedTaxRateMilliPercent = 5_500,
+                        markedTaxRateMarker = "*",
+                        markedTaxRateNote = "* Reduced rate",
                     ),
                 email = it.email.copy(host = "smtp.example.com", port = 465, security = SmtpSecurity.SSL, fromAddress = "shop@example.com"),
                 security = it.security.copy(autoLockMinutes = 10),
@@ -183,14 +188,17 @@ class SetupTransferTest {
         val export = await { setup(source).export(TransferContents(catalogue = false, secrets = false), "AUD") }
         assertThat(export.catalogue).isNull()
         assertThat(export.code).isNull()
-        assertThat(TransferCodec.decode(export.payload).settings).isEqualTo("{}")
-        val outcome = await { setup(target).import(setup(target).receive(TransferCodec.decode(export.payload)), ImportMode.REPLACE) }
+        val transfer = TransferCodec.decode(export.payload)
+        assertThat(transfer.settings).contains("\"taxIdLabel\":\"ABN\"")
+        assertThat(transfer.settings).contains("\"markedTaxRateMilliPercent\":0")
+        val outcome = await { setup(target).import(setup(target).receive(transfer), ImportMode.REPLACE) }
         assertThat((outcome as ImportOutcome.Imported).result.catalogue).isNull()
         assertThat(outcome.secretsSkipped).isFalse()
         val copied = await { target.container.settings.current() }
         assertThat(copied.payment.referencePrefix).isEmpty()
         assertThat(copied.payment.defaultTaxRateId).isNull()
         assertThat(copied.receipt.footer).isEqualTo("Thank you!")
+        assertThat(copied.receipt).isEqualTo(await { source.container.settings.current() }.receipt)
     }
 
     @Test

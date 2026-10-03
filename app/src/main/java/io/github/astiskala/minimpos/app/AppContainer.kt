@@ -1,6 +1,7 @@
 package io.github.astiskala.minimpos.app
 
 import android.content.Context
+import androidx.annotation.StringRes
 import androidx.datastore.core.DataStore
 import androidx.datastore.core.DataStoreFactory
 import androidx.datastore.core.handlers.ReplaceFileCorruptionHandler
@@ -124,18 +125,32 @@ class AppContainer(
     },
     paymentLinks: (CheckoutCredentials) -> PaymentLinkApi = { CheckoutPaymentLinks(it) },
 ) {
+    private val country = device.country.trim().uppercase(Locale.ROOT)
     private val defaults =
-        AppSettings.forNewInstallation(device.country).let {
-            it.copy(
-                receipt =
-                    it.receipt.copy(
-                        title = context.getString(R.string.receipt_default_title),
-                        footer = context.getString(R.string.receipt_default_footer),
-                        taxIdLabel = context.getString(R.string.receipt_default_tax_id),
-                    ),
-                email = it.email.copy(subject = context.getString(R.string.email_default_subject)),
-            )
-        }
+        AppSettings
+            .forNewInstallation(
+                country,
+                context.resources.configuration.locales[0]
+                    .language,
+            ).let {
+                it.copy(
+                    receipt =
+                        it.receipt.copy(
+                            title = context.getString(R.string.receipt_default_title),
+                            footer = context.getString(R.string.receipt_default_footer),
+                            taxIdLabel = context.getString(taxIdLabelResource()),
+                            markedTaxRateNote =
+                                context.getString(
+                                    if (country == "AU" && it.receipt.markedTaxRateMilliPercent == 0) {
+                                        R.string.receipt_default_no_gst_note
+                                    } else {
+                                        R.string.receipt_default_tax_marker_note
+                                    },
+                                ),
+                        ),
+                    email = it.email.copy(subject = context.getString(R.string.email_default_subject)),
+                )
+            }
 
     /** Non-secret settings (`settings.json`). */
     val settings = SettingsRepository(store("settings.json", serializer<AppSettings>(), defaults))
@@ -265,7 +280,10 @@ class AppContainer(
                 ReceiptSampleTexts(
                     coffee = context.getString(R.string.receipt_sample_coffee),
                     custom = context.getString(R.string.receipt_sample_item),
-                    taxed = context.getString(R.string.receipt_sample_tax),
+                    taxed =
+                        context.getString(
+                            standardTaxNameResource().takeUnless { it == R.string.tax_default_standard } ?: R.string.receipt_sample_tax,
+                        ),
                     zero = context.getString(R.string.receipt_sample_zero_tax),
                 )
             },
@@ -384,7 +402,7 @@ class AppContainer(
         return listOfNotNull(
             starter.standardMilliPercent?.let {
                 TaxRateEntity(
-                    name = context.getString(R.string.tax_default_standard),
+                    name = context.getString(standardTaxNameResource()),
                     rateMilliPercent = it,
                 )
             },
@@ -429,6 +447,28 @@ class AppContainer(
             produceFile = { storageDir(name) },
         )
 
+    @StringRes
+    private fun taxIdLabelResource(): Int =
+        when (country) {
+            "AU" -> R.string.receipt_tax_id_abn
+            "NZ" -> R.string.receipt_tax_id_gst
+            "SG" -> R.string.receipt_tax_id_gst_registration
+            "MY" -> R.string.receipt_tax_id_sst_registration
+            "CA" -> R.string.receipt_tax_id_gst_hst
+            "MX" -> R.string.receipt_tax_id_rfc
+            "BR" -> R.string.receipt_tax_id_cpf_cnpj
+            else -> if (country in AppSettings.VAT_COUNTRIES) R.string.receipt_tax_id_vat else R.string.receipt_default_tax_id
+        }
+
+    @StringRes
+    private fun standardTaxNameResource(): Int =
+        when (country) {
+            "AU", "NZ", "SG" -> R.string.tax_name_gst
+            "MY" -> R.string.tax_name_sst
+            "MX" -> R.string.tax_name_iva
+            else -> if (country in AppSettings.VAT_COUNTRIES) R.string.tax_name_vat else R.string.tax_default_standard
+        }
+
     private fun receiptLabels() =
         ReceiptLabels(
             date = context.getString(R.string.receipt_date),
@@ -460,8 +500,8 @@ class AppContainer(
             signature = context.getString(R.string.receipt_signature),
             heldNow = context.getString(R.string.receipt_held_now),
             captured = context.getString(R.string.receipt_captured),
-            taxableGrossFormat = context.getString(R.string.receipt_taxable_gross_format).ifEmpty { null },
-            taxableNetFormat = context.getString(R.string.receipt_taxable_net_format).ifEmpty { null },
+            taxableGrossFormat = context.getString(R.string.receipt_taxable_gross_format),
+            taxableNetFormat = context.getString(R.string.receipt_taxable_net_format),
             amountDue = context.getString(R.string.receipt_amount_due),
             unpaid = context.getString(R.string.receipt_unpaid),
             payLinkCaption = context.getString(R.string.receipt_pay_link_caption),

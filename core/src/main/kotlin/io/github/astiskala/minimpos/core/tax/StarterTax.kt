@@ -9,8 +9,8 @@ import java.util.Locale
  * Rates change now and then: keep the table up to date.
  *
  * @property standardMilliPercent The national standard VAT or GST rate, in thousandths of a percent ([TaxRates]); null
- *   where there is none to start with: no national rate (the US and Canada, where it depends on the state or province)
- *   or a country not in the table.
+ *   where none is safe to start with: US sales tax and Canada's combined taxes depend on the state or province,
+ *   or the country is not in the table.
  * @property reducedMilliPercent A reduced rate to start with as well: only Japan's 8% (food and drink), which Japanese
  *   receipts total separately; null elsewhere.
  * @property mode Whether prices include tax: tax is added on top in the US and Canada, included elsewhere.

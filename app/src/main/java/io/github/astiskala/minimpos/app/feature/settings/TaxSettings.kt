@@ -239,39 +239,61 @@ internal fun TaxRateForm(form: TaxRateFormState) {
     }
 }
 
-/** Common tax names as chips; the one matching [name] is shown selected. */
+/** Common tax names and Other: clears a preset for typing, but preserves a custom [name] when chosen again. */
 @Composable
 private fun TaxNameSuggestions(
     name: String,
     onPick: (String) -> Unit,
 ) {
+    val suggestions = stringArrayResource(R.array.tax_name_suggestions)
+    val matching = suggestions.firstOrNull { name.trim() == it }
+    var otherChosen by remember { mutableStateOf(false) }
     FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        stringArrayResource(R.array.tax_name_suggestions).forEach { suggestion ->
-            val selected = name.trim() == suggestion
-            FilterChip(
-                selected = selected,
-                onClick = { onPick(suggestion) },
-                label = { Text(suggestion) },
-                leadingIcon = if (selected) ({ Icon(Icons.Default.Check, contentDescription = null) }) else null,
-                // The default selected colour matches the dialog background.
-                colors =
-                    FilterChipDefaults.filterChipColors(
-                        selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
-                        selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                        selectedLeadingIconColor = MaterialTheme.colorScheme.primary,
-                    ),
-                border =
-                    FilterChipDefaults.filterChipBorder(
-                        enabled = true,
-                        selected = selected,
-                        selectedBorderColor = MaterialTheme.colorScheme.primary,
-                        selectedBorderWidth = 1.dp,
-                    ),
-                modifier = Modifier.testTag("taxSuggestion_$suggestion"),
-            )
+        suggestions.forEach { suggestion ->
+            TaxNameChip(suggestion, matching == suggestion, {
+                otherChosen = false
+                onPick(suggestion)
+            }, "taxSuggestion_$suggestion")
         }
+        TaxNameChip(
+            stringResource(R.string.settings_tax_other),
+            matching == null && (otherChosen || name.isNotBlank()),
+            {
+                otherChosen = true
+                if (matching != null) onPick("")
+            },
+            "taxSuggestion_OTHER",
+        )
     }
 }
+
+@Composable
+private fun TaxNameChip(
+    label: String,
+    selected: Boolean,
+    onClick: () -> Unit,
+    tag: String,
+) = FilterChip(
+    selected = selected,
+    onClick = onClick,
+    label = { Text(label) },
+    leadingIcon = if (selected) ({ Icon(Icons.Default.Check, contentDescription = null) }) else null,
+    // The default selected colour matches the dialog background.
+    colors =
+        FilterChipDefaults.filterChipColors(
+            selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+            selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer,
+            selectedLeadingIconColor = MaterialTheme.colorScheme.primary,
+        ),
+    border =
+        FilterChipDefaults.filterChipBorder(
+            enabled = true,
+            selected = selected,
+            selectedBorderColor = MaterialTheme.colorScheme.primary,
+            selectedBorderWidth = 1.dp,
+        ),
+    modifier = Modifier.testTag(tag),
+)
 
 private const val MAX_NAME_LENGTH = 30
 private const val MAX_RATE_LENGTH = 8

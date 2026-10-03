@@ -252,15 +252,19 @@ cd minimpos
             </dd>
             <dt>Tax</dt>
             <dd>Your named <strong>tax rates</strong> (such as GST 10% and GST-free 0%), whether prices include tax, the
-              default rate for new products, and a <strong>Charge tax</strong> switch. A new installation starts with
+              default rate for new products, and a <strong>Charge tax</strong> switch. Choose a suggested tax label or
+              <strong>Other</strong> to enter your own. A new installation starts with
               the standard rate of the device's country where the app knows it (in Japan also the reduced 8% rate), and
               a 0% rate; in the US and Canada only the 0% rate, with tax added on top of prices. Check them before you
               add products.</dd>
             <dt>Receipts</dt>
-            <dd>Business name, address, tax ID, phone, title and footer; what the receipt shows (tax breakdown,
-              references, refund QR code); whether there is a printer (detected automatically), printing automatically
-              after payment (on at first), the merchant copy and the characters per line. A preview shows the result,
-              and <strong>Print test receipt</strong> prints it.</dd>
+            <dd>Customize the business name, address, tax ID, phone, title, footer, references and refund QR code.
+              <strong>Show tax amounts</strong> and <strong>Show taxable totals by rate</strong> are independent switches;
+              taxable totals follow whether prices include tax. <strong>Marked tax rate (%)</strong> selects items to
+              label with your <strong>Item marker</strong> and <strong>Marker explanation</strong>; leave the rate blank
+              to mark no items. These options work in any language or currency. Configure printer availability
+              (detected automatically), automatic printing after payment (on at first), the merchant copy and line width.
+              A preview shows your customization, and <strong>Print test receipt</strong> prints it.</dd>
             <dt>Email (SMTP)</dt>
             <dd>Your mail server, sender, an optional blind copy and the subject, with a test email. Buttons fill in the
               server for these providers (or <strong>Other</strong>, to type your own) and say what password they need
@@ -292,21 +296,9 @@ cd minimpos
           <h3 id="language-receipts">Language and receipts</h3>
           <p>Mini mPOS supports English, Simplified Chinese and Japanese. On Android 12 or earlier, it follows the
             device language. On Android 13 or later, choose a language in Android's system app-language settings.</p>
-          <p>New installations use localized receipt defaults and sample labels. Changing language does not translate
-            existing receipt titles, footers, tax names, email subjects or transferred product catalogs. Review them in
-            <strong>Settings › Receipts</strong>, <strong>Settings › Tax</strong>, <strong>Settings › Email (SMTP)</strong>
-            and <strong>Products</strong>, especially if you already have settings or import them from another device.</p>
-          <p>Adyen-generated payment receipt data is kept verbatim and follows the payment terminal's own configured
-            receipt language. Wide Chinese and Japanese characters use two columns in plain-text receipt layout.
-            Japanese receipts also show taxable amounts by tax rate, marked 税込 (tax-inclusive) or 税抜 (tax-exclusive).
+          <p>Adyen-generated payment receipt data follows the payment terminal's own configured receipt language.
+            Wide Chinese and Japanese characters use two columns in plain-text receipt layout.
             Check the printed layout with <strong>Settings › Receipts › Print test receipt</strong>.</p>
-          <p class="note">Mini mPOS receipts are not official Chinese 发票 and are not guaranteed to qualify as Japanese
-            適格請求書 (qualified invoices) or 適格簡易請求書 (qualified simplified invoices). Per-rate totals alone are not
-            a complete invoice system. Separately verify reduced-rate item marking, tax rounding, registration and all
-            other applicable requirements. For context, see the
-            <a href="https://www.nta.go.jp/english/taxes/consumption_tax/pdf/2023/general_04.pdf">Japan National Tax Agency's qualified simplified invoice guidance</a>
-            and the <a href="https://inv-veri.chinatax.gov.cn/">China State Taxation Administration's VAT invoice verification service</a>.
-            These links are reference material, not a claim of compliance or legal advice.</p>
         </section>
 
         <section id="products">

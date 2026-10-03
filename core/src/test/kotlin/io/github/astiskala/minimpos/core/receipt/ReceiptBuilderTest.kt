@@ -107,7 +107,7 @@ class ReceiptBuilderTest {
     }
 
     @Test
-    fun `Japanese receipts can show per-rate taxable totals without changing their amounts`() {
+    fun `taxable totals can be enabled independently of tax amounts and breakdown`() {
         val labels = ReceiptLabels(taxableGrossFormat = "%s対象（税込）", taxableNetFormat = "%s対象（税抜）")
         val taxed =
             sale().copy(
@@ -119,29 +119,93 @@ class ReceiptBuilderTest {
                     ),
                 amounts = TaxAmounts(2300, 180, 2480),
             )
-        val builder = ReceiptBuilder(branding, ReceiptOptions(), labels, money)
+        val builder = ReceiptBuilder(branding, ReceiptOptions(showTaxRateTotals = true, showTaxBreakdown = false), labels, money)
         assertThat(builder.sale(taxed).elements)
             .containsAtLeast(
-                Row("消費税 10%対象（税込）", "$11.00"),
-                Row("消費税 8%対象（税込）", "$10.80"),
-                Row("税率0%対象（税込）", "$3.00"),
+                Row("10%対象（税込）", "$11.00"),
+                Row("8%対象（税込）", "$10.80"),
+                Row("0%対象（税込）", "$3.00"),
             ).inOrder()
         assertThat(builder.sale(taxed.copy(mode = TaxMode.EXCLUSIVE)).elements)
             .containsAtLeast(
-                Row("消費税 10%対象（税抜）", "$10.00"),
-                Row("消費税 8%対象（税抜）", "$10.00"),
-                Row("税率0%対象（税抜）", "$3.00"),
+                Row("10%対象（税抜）", "$10.00"),
+                Row("8%対象（税抜）", "$10.00"),
+                Row("0%対象（税抜）", "$3.00"),
             ).inOrder()
         val hidden = ReceiptBuilder(branding, ReceiptOptions(showTaxBreakdown = false), labels, money).sale(taxed)
-        assertThat(hidden.elements.filterIsInstance<Row>().map { it.left }).doesNotContain("消費税 10%対象（税込）")
-        val withoutNetFormat = ReceiptBuilder(branding, ReceiptOptions(), labels.copy(taxableNetFormat = null), money)
-        assertThat(
-            withoutNetFormat
-                .sale(taxed.copy(mode = TaxMode.EXCLUSIVE))
-                .elements
-                .filterIsInstance<Row>()
-                .map { it.left },
-        ).doesNotContain("消費税 10%対象（税抜）")
+        assertThat(hidden.elements.filterIsInstance<Row>().map { it.left }).doesNotContain("10%対象（税込）")
+        val hiddenNet = ReceiptBuilder(branding, ReceiptOptions(), labels, money).sale(taxed.copy(mode = TaxMode.EXCLUSIVE))
+        assertThat(hiddenNet.elements.filterIsInstance<Row>().map { it.left }).doesNotContain("10%対象（税抜）")
+    }
+
+    @Test
+    fun `rate-only receipts combine numeric rates and omit tax amounts in both price styles`() {
+        val labels = ReceiptLabels(taxableGrossFormat = "%s対象（税込）", taxableNetFormat = "%s対象（税抜）")
+        val receipt =
+            sale().copy(
+                items = listOf(ReceiptItem("A", 1, 50, 50, 10_000), ReceiptItem("B", 1, 50, 50, 10_000)),
+                amounts = TaxAmounts(90, 10, 100),
+                breakdown =
+                    listOf(
+                        TaxBreakdown(AppliedTax("Wrong 8% label", 10_000), TaxAmounts(45, 5, 50)),
+                        TaxBreakdown(AppliedTax("Another name", 10_000), TaxAmounts(45, 5, 50)),
+                        TaxBreakdown(free, TaxAmounts(0, 0, 0)),
+                    ),
+            )
+        val options = ReceiptOptions(showTaxAmounts = false, showTaxRateTotals = true)
+        val builder = ReceiptBuilder(branding, options, labels, money)
+        val inclusive = builder.sale(receipt).elements.filterIsInstance<Row>()
+        assertThat(inclusive).containsAtLeast(Row("TOTAL", "$1.00", TextStyle.BOLD), Row("10%対象（税込）", "$1.00"))
+        assertThat(inclusive.count { it.left == "10%対象（税込）" }).isEqualTo(1)
+        assertThat(inclusive.map { it.left }).containsNoneOf("Includes Wrong 8% label", "Includes Another name 10%", "Tax")
+        val exclusive = builder.sale(receipt.copy(mode = TaxMode.EXCLUSIVE)).elements.filterIsInstance<Row>()
+        assertThat(exclusive).containsAtLeast(Row("Subtotal", "$0.90"), Row("10%対象（税抜）", "$0.90"))
+        assertThat(exclusive.map { it.left }).containsNoneOf("Tax", "Wrong 8% label", "Another name 10%")
+        TaxMode.entries.forEach { mode ->
+            val hidden = ReceiptBuilder(branding, options.copy(showTaxRateTotals = false), labels, money).sale(receipt.copy(mode = mode))
+            assertThat(hidden.elements.filterIsInstance<Row>().map { it.left })
+                .containsNoneOf("Tax", "10%対象（税込）", "10%対象（税抜）")
+        }
+    }
+
+    @Test
+    fun `reduced-rate items have a mark and one legend on sales and refunds`() {
+        val labels = ReceiptLabels(markedTaxRateNote = "※は軽減税率対象商品")
+        val items =
+            listOf(
+                ReceiptItem("Food", 2, 100, 200, 8_000),
+                ReceiptItem("Drink", 1, 100, 100, 8_000),
+                ReceiptItem("Standard", 1, 100, 100, 10_000),
+                ReceiptItem("Free", 1, 100, 100),
+            )
+        val builder = ReceiptBuilder(branding, ReceiptOptions(markedTaxRateMilliPercent = 8_000), labels, money)
+        val sale = builder.sale(sale().copy(items = items))
+        val refund = builder.refund(RefundReceipt("R-1", "MP-1", "date", items, 500, emptyList()))
+        listOf(sale, refund).forEach { document ->
+            assertThat(document.elements).containsAtLeast(
+                Row("Food ※", "$2.00"),
+                Row("Drink ※", "$1.00"),
+                Row("Standard", "$1.00"),
+                Row("Free", "$1.00"),
+            )
+            assertThat(document.elements.filterIsInstance<Text>().count { it.text == labels.markedTaxRateNote }).isEqualTo(1)
+        }
+        val unmarked = builder.sale(sale().copy(items = items.drop(2)))
+        assertThat(unmarked.elements).doesNotContain(Text(labels.markedTaxRateNote))
+        val disabled = this.builder().sale(sale().copy(items = items))
+        assertThat(disabled.elements.filterIsInstance<Row>().map { it.left }).containsAtLeast("Food", "Drink")
+    }
+
+    @Test
+    fun `any configured rate can use a custom marker and an optional explanation`() {
+        val items = listOf(ReceiptItem("Reduced", 1, 100, 100, 5_500), ReceiptItem("Other", 1, 100, 100, 8_000))
+        val options = ReceiptOptions(markedTaxRateMilliPercent = 5_500, markedTaxRateMarker = "*")
+        val labels = ReceiptLabels(markedTaxRateNote = "* Reduced rate")
+        val document = ReceiptBuilder(branding, options, labels, money).sale(sale().copy(items = items))
+        assertThat(document.elements).containsAtLeast(Row("Reduced *", "$1.00"), Row("Other", "$1.00"), Text("* Reduced rate"))
+        val noLegend = ReceiptBuilder(branding, options, labels.copy(markedTaxRateNote = ""), money).sale(sale().copy(items = items))
+        assertThat(noLegend.elements).contains(Row("Reduced *", "$1.00"))
+        assertThat(noLegend.elements).doesNotContain(Text(""))
     }
 
     @Test

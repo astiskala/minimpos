@@ -82,6 +82,20 @@
   <string name="tax_default_standard">标准税率</string>
   <string name="tax_default_reduced">低税率</string>
   <string name="tax_default_zero">不计税</string>
+  <string name="tax_name_gst">GST</string>
+  <string name="tax_name_vat">增值税</string>
+  <string name="tax_name_sst">SST</string>
+  <string name="tax_name_iva">IVA</string>
+  <string name="settings_tax_other">其他</string>
+  <string name="receipt_default_no_gst_note">※ 未收取GST的商品</string>
+  <string name="receipt_tax_id_abn">ABN</string>
+  <string name="receipt_tax_id_gst">GST税号</string>
+  <string name="receipt_tax_id_gst_registration">GST登记号</string>
+  <string name="receipt_tax_id_sst_registration">SST登记号</string>
+  <string name="receipt_tax_id_gst_hst">GST/HST税号</string>
+  <string name="receipt_tax_id_rfc">RFC</string>
+  <string name="receipt_tax_id_cpf_cnpj">CPF/CNPJ</string>
+  <string name="receipt_tax_id_vat">增值税税号</string>
   <string name="checkout_title">结账</string>
   <string name="checkout_tax">税额</string>
   <string name="checkout_total">合计</string>
@@ -388,8 +402,9 @@
   <string name="receipt_sample_item">自定义商品</string>
   <string name="receipt_sample_tax">增值税</string>
   <string name="receipt_sample_zero_tax">零税率</string>
-  <string name="receipt_taxable_gross_format"></string>
-  <string name="receipt_taxable_net_format"></string>
+  <string name="receipt_taxable_gross_format">%1$s应税金额（含税）</string>
+  <string name="receipt_taxable_net_format">%1$s应税金额（不含税）</string>
+  <string name="receipt_default_tax_marker_note">※ 适用标记税率的商品</string>
   <string name="email_intro">感谢您的购买。以下是您的收据。</string>
   <string name="email_refund_intro">已提交您的退款请求。详情如下。</string>
   <string name="email_pre_auth_intro">谢谢。此金额已在您的卡内冻结，稍后才会扣款；最终金额可能有所不同。详情如下。</string>
@@ -569,9 +584,10 @@
     <item quantity="other">仍有 %d 件商品使用此税率。请先为其设置其他税率。</item>
   </plurals>
   <string-array name="tax_name_suggestions">
-    <item>GST</item>
-    <item>增值税</item>
-    <item>SST</item>
+    <item>@string/tax_name_gst</item>
+    <item>@string/tax_name_vat</item>
+    <item>@string/tax_name_sst</item>
+    <item>@string/tax_name_iva</item>
     <item>消费税</item>
     <item>销售税</item>
   </string-array>
@@ -628,6 +644,12 @@
   <string name="settings_footer">页脚</string>
   <string name="settings_content">内容</string>
   <string name="settings_show_tax">显示税额明细</string>
+  <string name="settings_show_tax_amounts">显示税额</string>
+  <string name="settings_show_tax_rate_totals">按税率显示应税金额</string>
+  <string name="settings_marked_tax_rate">标记的税率（%）</string>
+  <string name="settings_marked_tax_rate_hint">留空则不标记商品。请输入 0 至 100，最多 3 位小数。</string>
+  <string name="settings_tax_marker">商品标记</string>
+  <string name="settings_tax_marker_note">标记说明</string>
   <string name="settings_show_references">显示识别号</string>
   <string name="settings_show_qr">显示退款二维码</string>
   <string name="settings_show_qr_hint">工作人员可扫描收据，发起关联原支付的退款。</string>

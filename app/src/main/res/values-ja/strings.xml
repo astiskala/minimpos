@@ -82,6 +82,20 @@
   <string name="tax_default_standard">標準税率</string>
   <string name="tax_default_reduced">軽減税率</string>
   <string name="tax_default_zero">税率0%</string>
+  <string name="tax_name_gst">GST</string>
+  <string name="tax_name_vat">VAT</string>
+  <string name="tax_name_sst">SST</string>
+  <string name="tax_name_iva">IVA</string>
+  <string name="settings_tax_other">その他</string>
+  <string name="receipt_default_no_gst_note">※はGSTが課されない商品</string>
+  <string name="receipt_tax_id_abn">ABN</string>
+  <string name="receipt_tax_id_gst">GST番号</string>
+  <string name="receipt_tax_id_gst_registration">GST登録番号</string>
+  <string name="receipt_tax_id_sst_registration">SST登録番号</string>
+  <string name="receipt_tax_id_gst_hst">GST/HST番号</string>
+  <string name="receipt_tax_id_rfc">RFC</string>
+  <string name="receipt_tax_id_cpf_cnpj">CPF/CNPJ</string>
+  <string name="receipt_tax_id_vat">VAT登録番号</string>
   <string name="checkout_title">チェックアウト</string>
   <string name="checkout_tax">税額</string>
   <string name="checkout_total">合計</string>
@@ -390,6 +404,7 @@
   <string name="receipt_sample_zero_tax">税率0%</string>
   <string name="receipt_taxable_gross_format">%1$s対象（税込）</string>
   <string name="receipt_taxable_net_format">%1$s対象（税抜）</string>
+  <string name="receipt_default_tax_marker_note">※は軽減税率対象商品</string>
   <string name="email_intro">お買い上げありがとうございます。領収書は以下のとおりです。</string>
   <string name="email_refund_intro">返金を要求しました。詳細は以下のとおりです。</string>
   <string name="email_pre_auth_intro">ありがとうございます。カードの利用枠を確保しました。請求は後で行われ、最終金額は変わる場合があります。詳細は以下のとおりです。</string>
@@ -569,9 +584,10 @@
     <item quantity="other">%d商品が使用中です。先に別の税率を設定してください。</item>
   </plurals>
   <string-array name="tax_name_suggestions">
-    <item>GST</item>
-    <item>VAT</item>
-    <item>SST</item>
+    <item>@string/tax_name_gst</item>
+    <item>@string/tax_name_vat</item>
+    <item>@string/tax_name_sst</item>
+    <item>@string/tax_name_iva</item>
     <item>消費税</item>
     <item>売上税</item>
   </string-array>
@@ -628,6 +644,12 @@
   <string name="settings_footer">フッター</string>
   <string name="settings_content">表示内容</string>
   <string name="settings_show_tax">税率別の内訳を表示</string>
+  <string name="settings_show_tax_amounts">税額を表示</string>
+  <string name="settings_show_tax_rate_totals">税率別の対象金額を表示</string>
+  <string name="settings_marked_tax_rate">印を付ける税率（%）</string>
+  <string name="settings_marked_tax_rate_hint">空欄にすると印を付けません。0〜100を小数点以下3桁以内で入力してください。</string>
+  <string name="settings_tax_marker">商品の印</string>
+  <string name="settings_tax_marker_note">印の説明</string>
   <string name="settings_show_references">参照IDを表示</string>
   <string name="settings_show_qr">返金用QRコードを表示</string>
   <string name="settings_show_qr_hint">領収書をスキャンして、元の決済に紐付いた返金を開始できます。</string>

@@ -7,6 +7,7 @@ import io.minimpos.app.data.repo.RefundedLine
 import io.minimpos.core.codec.RefundQrPayload
 import io.minimpos.core.ids.Ids
 import io.minimpos.core.money.CurrencySpec
+import io.minimpos.core.money.PaymentContext
 import io.minimpos.core.refund.RefundCalculator
 import io.minimpos.core.refund.RefundableLine
 import io.minimpos.terminal.client.RefundParams
@@ -117,7 +118,7 @@ data class RefundStart(
     val lines: List<RefundedLine> = emptyList(),
     val cancellation: Boolean = false,
     /** Original locally recorded destination; null for an independently reviewed foreign receipt. */
-    val expectedContext: io.minimpos.core.money.PaymentContext? = null,
+    val expectedContext: PaymentContext? = null,
 ) {
     init {
         require(amountMinor > 0) { "Refund amount must be positive" }

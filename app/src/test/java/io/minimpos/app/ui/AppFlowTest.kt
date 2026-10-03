@@ -470,6 +470,7 @@ class AppFlowTest {
         compose.onNodeWithTag("detailRefund").assertDoesNotExist()
         compose.onNodeWithTag("cancelPreAuth").performClick()
         // The way out of the dialog is not also called "Cancel".
+        waitForText("Keep it")
         compose.onNodeWithText("Keep it").assertIsDisplayed()
         compose.onNodeWithTag("confirm").performClick()
         waitForText("Cancellation requested")
@@ -580,6 +581,9 @@ class AppFlowTest {
         compose.waitForTag("currency_BRL")
         compose.onNodeWithTag("currency_auto").assertDoesNotExist()
         compose.onNodeWithTag("currency_BRL").performClick()
+        compose.waitForTag("confirm")
+        assertThat(container.settingsState.value.payment.currencyCode).isEqualTo("AUD")
+        compose.onNodeWithTag("confirm").performClick()
         awaitSetting("BRL") { container.settingsState.value.payment.currencyCode == "BRL" }
         compose.onNodeWithTag("currency").assertTextContains("BRL – Brazilian Real", substring = true)
 
@@ -590,6 +594,9 @@ class AppFlowTest {
         compose.onNodeWithTag("currencySearch").performTextReplacement("")
         compose.waitForTag("currency_auto")
         compose.onNodeWithTag("currency_auto").performScrollTo().performClick()
+        compose.waitForTag("confirm")
+        assertThat(container.settingsState.value.payment.currencyCode).isEqualTo("BRL")
+        compose.onNodeWithTag("confirm").performClick()
         awaitSetting("Automatic") {
             container.settingsState.value.payment.currencyCode
                 .isEmpty()

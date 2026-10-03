@@ -66,12 +66,11 @@ import io.minimpos.app.data.db.SetupProblem
 import io.minimpos.app.data.db.TaxRateEntity
 import io.minimpos.app.data.security.Secret
 import io.minimpos.app.data.settings.AppSettings
-import io.minimpos.app.data.settings.PricingChange
-import Processing
 import io.minimpos.app.data.settings.EmailCapture
 import io.minimpos.app.data.settings.EmailSettings
 import io.minimpos.app.data.settings.MerchantCopyPolicy
 import io.minimpos.app.data.settings.PaymentSettings
+import io.minimpos.app.data.settings.PricingChange
 import io.minimpos.app.data.settings.PrinterMode
 import io.minimpos.app.data.settings.ReceiptSettings
 import io.minimpos.app.data.settings.ShopperReferenceSource
@@ -81,6 +80,7 @@ import io.minimpos.app.data.settings.TerminalSettings
 import io.minimpos.app.feature.OutcomeMessage
 import io.minimpos.app.feature.lock.SetPinScreen
 import io.minimpos.app.feature.text
+import io.minimpos.app.payment.TransactionState.Processing
 import io.minimpos.app.terminal.TerminalConnection
 import io.minimpos.app.ui.components.ActionMessage
 import io.minimpos.app.ui.components.ConfirmDialog
@@ -102,6 +102,7 @@ import io.minimpos.app.ui.theme.LocalDimens
 import io.minimpos.app.ui.theme.LocalStatusColors
 import io.minimpos.core.cart.AppliedTax
 import io.minimpos.core.money.AdyenCurrencies
+import io.minimpos.core.money.CurrencySpec
 import io.minimpos.core.receipt.label
 import io.minimpos.core.shopper.EmailReferenceMode
 import io.minimpos.core.shopper.ShopperReferences
@@ -209,9 +210,7 @@ private fun PricingConfirmation(
     confirm: () -> Unit,
     cancel: () -> Unit,
 ) {
-    val to =
-        io.minimpos.core.money.CurrencySpec
-            .of(change.toCurrency)
+    val to = CurrencySpec.of(change.toCurrency)
     val examples =
         change.prices.values
             .take(10)

@@ -1,6 +1,7 @@
 package io.minimpos.app.payment
 
 import android.database.SQLException
+import io.minimpos.app.data.db.SaleEntity
 import io.minimpos.app.data.db.SaleStatus
 import io.minimpos.app.data.db.SaleWithLines
 import io.minimpos.app.data.db.SetupProblem
@@ -200,16 +201,16 @@ class PaymentLinks(
 
     /** Runs [call] with the payment link API, or fails (changing nothing) when it is not set up now. */
     private suspend fun withApi(
-        sale: io.minimpos.app.data.db.SaleEntity,
+        sale: SaleEntity,
         call: suspend (PaymentLinkApi) -> LinkUpdate,
     ): LinkUpdate {
         val target = target()
+        val api = target.links ?: return LinkUpdate.NotSetUp(target.setup.problem ?: SetupProblem.API_REQUIRED)
         if (target.context != null &&
             sale.context?.matchesApi(target.context) != true
         ) {
             return LinkUpdate.NotSetUp(SetupProblem.PAYMENT_CONTEXT)
         }
-        val api = target.links ?: return LinkUpdate.NotSetUp(target.setup.problem ?: SetupProblem.API_REQUIRED)
         return call(api)
     }
 

@@ -3,10 +3,10 @@ package io.minimpos.app.data.repo
 import io.minimpos.app.data.db.AdjustmentStatus
 import io.minimpos.app.data.db.CaptureStatus
 import io.minimpos.app.data.db.SaleEntity
-import io.minimpos.core.money.PaymentContext
 import io.minimpos.app.data.db.SaleStatus
 import io.minimpos.app.data.db.SetupProblem
 import io.minimpos.app.data.db.StoredReason
+import io.minimpos.core.money.PaymentContext
 import io.minimpos.terminal.checkout.ModificationResult
 import io.minimpos.terminal.checkout.PaymentLink
 import io.minimpos.terminal.checkout.PaymentLinkStatus
@@ -209,10 +209,7 @@ fun SaleEntity.after(event: SaleEvent): SaleEntity =
         }
 
         is SaleEvent.AdjustmentAnswered -> {
-            adjustmentAnswered(
-                event.amountMinor,
-                event.result,
-            ).copy(adjustmentPending = event.result is ModificationResult.Unknown)
+            adjustmentAnswered(event.amountMinor, event.result).copy(adjustmentPending = event.result is ModificationResult.Unknown)
         }
 
         is SaleEvent.CaptureSending -> {
@@ -237,22 +234,11 @@ fun SaleEntity.after(event: SaleEvent): SaleEntity =
     }
 
 private fun SaleEntity.prepared(event: SaleEvent): SaleEntity =
-    when (event) {
-        is SaleEvent.ContextRecorded -> {
-            copy(context = event.context)
-        }
-
-        is SaleEvent.AdjustmentSending -> {
-            copy(
-                adjustmentKey = event.key,
-                adjustmentAmountMinor = event.amountMinor,
-                adjustmentPending = true,
-            )
-        }
-
-        else -> {
-            this
-        }
+    if (event is SaleEvent.ContextRecorded) {
+        copy(context = event.context)
+    } else {
+        check(event is SaleEvent.AdjustmentSending)
+        copy(adjustmentKey = event.key, adjustmentAmountMinor = event.amountMinor, adjustmentPending = true)
     }
 
 private fun SaleEntity.ended(

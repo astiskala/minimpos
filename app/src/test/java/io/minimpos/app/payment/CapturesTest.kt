@@ -25,6 +25,7 @@ import io.minimpos.core.cart.AppliedTax
 import io.minimpos.core.cart.Cart
 import io.minimpos.core.cart.CartProduct
 import io.minimpos.core.money.CurrencySpec
+import io.minimpos.core.money.PaymentContext
 import io.minimpos.core.tax.TaxMode
 import io.minimpos.terminal.checkout.CheckoutCredentials
 import io.minimpos.terminal.checkout.ModificationAmount
@@ -288,7 +289,14 @@ class CapturesTest {
         assertThat(await { live.verify() }).isEqualTo(ApiCheck.NotSetUp(SetupProblem.LIVE_PREFIX))
         env.updateSettings { it.copy(terminal = it.terminal.copy(liveUrlPrefix = "abc-Company")) }
         assertThat(await { live.verify() }).isEqualTo(ApiCheck.Works)
-        assertThat(await { live.target() }).isEqualTo(ApiTarget(ApiSetup.Complete, fake, links))
+        assertThat(await { live.target() }).isEqualTo(
+            ApiTarget(
+                ApiSetup.Complete,
+                fake,
+                links,
+                PaymentContext("TERMINAL", "", "MiniMPOS", "Merchant", "LIVE"),
+            ),
+        )
         assertThat(connected.single()).isEqualTo(CheckoutCredentials("key", "Merchant", TerminalEnvironment.LIVE, "abc-Company"))
         await { container.terminalStatus.state.first { it.apiSetup == ApiSetup.Complete && it.apiProblem == null } }
 
@@ -297,7 +305,13 @@ class CapturesTest {
         assertThat(await { live.verify() }).isEqualTo(ApiCheck.NotSetUp(SetupProblem.UNREADABLE_API_KEY))
         env.cipher.fail = false
         env.useSimulator()
-        assertThat(await { live.target() }).isEqualTo(ApiTarget(ApiSetup.Simulated, fake))
+        assertThat(await { live.target() }).isEqualTo(
+            ApiTarget(
+                ApiSetup.Simulated,
+                fake,
+                context = PaymentContext("SIMULATOR", "SIMULATOR-000000001", "MiniMPOS", "Merchant", null, simulated = true),
+            ),
+        )
     }
 
     @Test

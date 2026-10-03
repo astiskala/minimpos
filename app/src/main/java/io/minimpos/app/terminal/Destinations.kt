@@ -23,6 +23,7 @@ import io.minimpos.terminal.transport.TerminalEnvironment
 import io.minimpos.terminal.transport.TerminalKey
 import io.minimpos.terminal.transport.TerminalTls
 import io.minimpos.terminal.transport.TerminalTransport
+import java.util.concurrent.atomic.AtomicReference
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.seconds
 
@@ -234,9 +235,7 @@ internal class LocalTerminal(
     override suspend fun open(unlocked: UnlockedSetup): Opening {
         val key = checkNotNull(unlocked.terminalKey)
         return transports.get(checkNotNull(unlocked.setup.host) to key) {
-            val detected =
-                java.util.concurrent.atomic
-                    .AtomicReference<TerminalEnvironment?>()
+            val detected = AtomicReference<TerminalEnvironment?>()
             val tls =
                 TerminalTls(onEnvironment = { environment ->
                     detected.set(environment)

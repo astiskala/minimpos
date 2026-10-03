@@ -1,9 +1,11 @@
 package io.minimpos.app.receipt
 
 import io.minimpos.app.data.db.RefundEntity
+import io.minimpos.app.data.db.RefundStatus
 import io.minimpos.app.data.db.SaleWithLines
 import io.minimpos.app.data.repo.ReceiptLinesJson
 import io.minimpos.app.data.settings.ReceiptSettings
+import io.minimpos.app.refund.PaymentStanding
 import io.minimpos.app.refund.ReceiptStanding
 import io.minimpos.app.refund.RefundablePayment
 import io.minimpos.core.cart.AppliedTax
@@ -58,9 +60,9 @@ class ReceiptFactory(
     /** Product and tax names for the sample receipt in the current language. */
     private val sampleTexts: () -> ReceiptSampleTexts = { ReceiptSampleTexts() },
     /** Reads payment-standing labels in the current language at delivery. */
-    private val standingText: (io.minimpos.app.refund.PaymentStanding) -> String? = { it.name.takeUnless { name -> name == "CHARGED" } },
+    private val standingText: (PaymentStanding) -> String? = { it.name.takeUnless { name -> name == "CHARGED" } },
     /** Reads refund-request outcome labels in the current language at delivery. */
-    private val refundText: (io.minimpos.app.data.db.RefundStatus) -> String? = { it.name },
+    private val refundText: (RefundStatus) -> String? = { it.name },
 ) {
     /** [epochMillis] as a short localised date and time, as printed on receipts and shown in history. */
     fun formatDateTime(epochMillis: Long): String =
@@ -126,7 +128,7 @@ class ReceiptFactory(
                 unpaidLink = standing.unpaidLink?.let { UnpaidLink(it, standing.linkExpiresAt?.let(::formatDateTime)) },
                 paidOnline = standing.paidOnline,
                 standingNote = standingText(standing.standing),
-                holdCancelled = standing.standing == io.minimpos.app.refund.PaymentStanding.HOLD_CANCELLED,
+                holdCancelled = standing.standing == PaymentStanding.HOLD_CANCELLED,
             )
         return builder(settings, currency).sale(receipt, copy)
     }

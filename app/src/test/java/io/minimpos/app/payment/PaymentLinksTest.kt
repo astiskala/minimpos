@@ -260,6 +260,19 @@ class PaymentLinksTest {
     }
 
     @Test
+    fun `configured credentials for another merchant cannot check or cancel an existing link`() {
+        env.useLinks()
+        val id = links.start(linkStart())
+        val original = saleWhen(id) { it.status == SaleStatus.AWAITING_PAYMENT }
+        env.updateSettings { it.copy(terminal = it.terminal.copy(merchantAccount = "OtherMerchant")) }
+        assertThat(await { links.check(id) }).isEqualTo(LinkUpdate.NotSetUp(SetupProblem.PAYMENT_CONTEXT))
+        assertThat(await { links.cancel(id) }).isEqualTo(LinkUpdate.NotSetUp(SetupProblem.PAYMENT_CONTEXT))
+        assertThat(api.asked).isEmpty()
+        assertThat(api.expired).isEmpty()
+        assertThat(await { container.sales.get(id)!!.sale }).isEqualTo(original)
+    }
+
+    @Test
     fun `without the Checkout API a link fails with what to enter, and checks change nothing`() {
         env.useLinks()
         val id = links.start(linkStart())

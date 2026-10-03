@@ -3,12 +3,12 @@ package io.minimpos.app.payment
 import io.minimpos.app.data.db.SaleEntity
 import io.minimpos.app.data.db.SaleLineEntity
 import io.minimpos.app.data.db.SaleWithLines
+import io.minimpos.core.money.PaymentContext
 import io.minimpos.terminal.checkout.ModificationAmount
 import io.minimpos.terminal.checkout.PaymentLinkLineItem
 import io.minimpos.terminal.checkout.PaymentLinkRequest
 import java.time.Instant
-import Locale
-import PaymentContext
+import java.util.Locale
 
 /**
  * A sale to be paid through an Adyen payment link instead of on the terminal, as [Checkout.linkStart] makes it.

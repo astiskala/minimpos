@@ -17,6 +17,7 @@ import io.github.astiskala.minimpos.app.data.settings.TerminalMode
 import io.github.astiskala.minimpos.app.refund.PaymentStanding
 import io.github.astiskala.minimpos.app.refund.standing
 import io.github.astiskala.minimpos.app.terminal.AdyenApi
+import io.github.astiskala.minimpos.app.terminal.ApiAccess
 import io.github.astiskala.minimpos.app.terminal.ApiCheck
 import io.github.astiskala.minimpos.app.terminal.ApiSetup
 import io.github.astiskala.minimpos.app.terminal.ApiTarget
@@ -261,6 +262,17 @@ class CapturesTest {
     }
 
     @Test
+    fun `a different payment context sends nothing and leaves the capture record unchanged`() {
+        val context = PaymentContext("TERMINAL", "AMS1-1", "POS", "Merchant", "TEST")
+        store(bill.copy(context = context))
+        target = ApiTarget(ApiSetup.Complete, fake, context = context.copy(merchantAccount = "Other"))
+        assertThat(await { captures.addTip("s1", 100) }).isEqualTo(CaptureResult.NotSetUp(SetupProblem.PAYMENT_CONTEXT))
+        assertThat(fake.captures).isEmpty()
+        assertThat(fake.adjustments).isEmpty()
+        assertThat(sale()).isEqualTo(bill.copy(context = context))
+    }
+
+    @Test
     fun `captures interrupted by the app stopping become unknown at the next start`() {
         store(bill.copy(tipMinor = 100, capturedMinor = 2_100, captureStatus = CaptureStatus.PENDING))
         await { container.history.settleInterrupted() }
@@ -279,7 +291,7 @@ class CapturesTest {
                 fake
             }, connectLinks = { links })
         env.updateSettings { it.copy(terminal = it.terminal.copy(mode = TerminalMode.TERMINAL)) }
-        assertThat(await { live.target() }.setup).isEqualTo(ApiSetup.Incomplete(SetupProblem.MERCHANT_ACCOUNT))
+        assertThat(await { live.target() }.modifications(null)).isEqualTo(ApiAccess.Unavailable(SetupProblem.MERCHANT_ACCOUNT))
         assertThat(await { live.verify() }).isEqualTo(ApiCheck.NotSetUp(SetupProblem.MERCHANT_ACCOUNT))
 
         env.updateSettings { it.copy(terminal = it.terminal.copy(merchantAccount = "Merchant")) }

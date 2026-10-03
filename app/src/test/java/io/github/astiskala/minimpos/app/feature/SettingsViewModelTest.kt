@@ -8,6 +8,7 @@ import io.github.astiskala.minimpos.app.TestEnvironment
 import io.github.astiskala.minimpos.app.await
 import io.github.astiskala.minimpos.app.data.db.CategoryEntity
 import io.github.astiskala.minimpos.app.data.db.ProductEntity
+import io.github.astiskala.minimpos.app.data.db.SaleKind
 import io.github.astiskala.minimpos.app.data.db.SaleStatus
 import io.github.astiskala.minimpos.app.data.db.SetupProblem
 import io.github.astiskala.minimpos.app.data.db.TaxRateEntity
@@ -89,7 +90,7 @@ class SettingsViewModelTest {
 
     private fun settingsViewModel(target: AppContainer = container) =
         SettingsViewModel(
-            target.settings,
+            target.pricingChanges,
             target.secrets,
             target.pinManager,
             target.sessionLock,
@@ -98,6 +99,37 @@ class SettingsViewModelTest {
             target.catalog,
             target::sampleReceipt,
         )
+
+    @Test
+    fun `settings presents pricing confirmation without owning the commit sequence`() {
+        env.useSimulator { it.copy(payment = it.payment.copy(currencyCode = "AUD")) }
+        val (tax, product) = seedCatalogue()
+        val session = container.session(SaleKind.SALE)
+        session.addProduct(product, tax)
+        val vm = settingsViewModel()
+        vm.update { it.copy(payment = it.payment.copy(currencyCode = "JPY")) }
+        await { vm.pricing.pending.first { it != null } }
+        assertThat(await { container.settings.current() }.payment.currencyCode).isEqualTo("AUD")
+        vm.pricing.cancel()
+        assertThat(vm.pricing.pending.value).isNull()
+        assertThat(
+            session.cart.value.lines
+                .single()
+                .unitPrice,
+        ).isEqualTo(450)
+        vm.update { it.copy(payment = it.payment.copy(currencyCode = "JPY")) }
+        await { vm.pricing.pending.first { it != null } }
+        vm.pricing.confirm()
+        await { vm.pricing.pending.first { it == null } }
+        val saved = await { vm.state.first { it.settings.payment.currencyCode == "JPY" && it.settings.pricingChange == null } }
+        assertThat(saved.settings.payment.currencyCode).isEqualTo("JPY")
+        assertThat(await { container.catalog.product(product.id) }!!.priceMinor).isEqualTo(5)
+        assertThat(
+            session.cart.value.lines
+                .single()
+                .unitPrice,
+        ).isEqualTo(5)
+    }
 
     @Test
     fun `settings view model saves the passphrase before testing, and reports what went wrong`() {

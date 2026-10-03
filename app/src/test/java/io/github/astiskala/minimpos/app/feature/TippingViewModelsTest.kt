@@ -315,7 +315,7 @@ class TippingViewModelsTest {
     fun `settings save the API key before testing it`() {
         val vm =
             SettingsViewModel(
-                container.settings,
+                container.pricingChanges,
                 container.secrets,
                 container.pinManager,
                 container.sessionLock,

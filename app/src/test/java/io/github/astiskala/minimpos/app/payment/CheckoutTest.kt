@@ -7,6 +7,7 @@ import io.github.astiskala.minimpos.app.data.db.TaxRateEntity
 import io.github.astiskala.minimpos.app.data.settings.AppSettings
 import io.github.astiskala.minimpos.app.data.settings.EmailCapture
 import io.github.astiskala.minimpos.app.data.settings.PaymentSettings
+import io.github.astiskala.minimpos.app.data.settings.PricingChange
 import io.github.astiskala.minimpos.app.data.settings.ShopperReferenceSource
 import io.github.astiskala.minimpos.core.cart.AppliedTax
 import io.github.astiskala.minimpos.core.cart.Cart
@@ -41,17 +42,75 @@ class CheckoutTest {
     ) = Checkout(form, payment, totals, aud, kind, printer)
 
     @Test
-    fun `completing a payment clears only its originating session revision`() {
-        val session = SaleSession()
-        session.addProduct(ProductEntity(1, "Latte", 450, 1), TaxRateEntity(1, "GST", 10_000))
-        val start = checkout().paymentStart(now, ZoneOffset.UTC)!!.copy(sessionRevision = session.revision)
-        session.updateForm { it.copy(email = "new@example.com") }
-        session.complete(start)
-        assertThat(session.cart.value.lines).hasSize(1)
-        assertThat(session.form.value.email).isEqualTo("new@example.com")
-        session.complete(start.copy(sessionRevision = session.revision))
-        assertThat(session.cart.value.lines).isEmpty()
-    }
+    fun `completing a payment clears only its originating session revision`() =
+        runBlocking {
+            val session = SaleSession()
+            val checkouts = session.checkout(flowOf(AppSettings()), flowOf(false)) { aud }
+            session.addProduct(ProductEntity(1, "Latte", 450, 1), TaxRateEntity(1, "GST", 10_000))
+            val start = checkNotNull(session.paymentStart(checkouts.first(), now, ZoneOffset.UTC))
+            assertThat(start.sessionRevision).isNotNull()
+            session.updateForm { it.copy(email = "new@example.com") }
+            session.complete(start)
+            assertThat(session.cart.value.lines).hasSize(1)
+            assertThat(session.form.value.email).isEqualTo("new@example.com")
+            session.complete(checkNotNull(session.paymentStart(checkouts.first(), now, ZoneOffset.UTC)))
+            assertThat(session.cart.value.lines).isEmpty()
+        }
+
+    @Test
+    fun `session starts reject a stale displayed checkout for payments and links`() =
+        runBlocking {
+            val session = SaleSession()
+            val checkouts = session.checkout(flowOf(AppSettings()), flowOf(false), flowOf(true)) { aud }
+            session.addProduct(ProductEntity(1, "Latte", 450, 1), TaxRateEntity(1, "GST", 10_000))
+            val displayed = checkouts.first()
+            session.updateForm { it.copy(email = "new@example.com") }
+            assertThat(session.paymentStart(displayed, now, ZoneOffset.UTC)).isNull()
+            assertThat(session.linkStart(displayed, now, ZoneOffset.UTC)).isNull()
+            val current = checkouts.first()
+            val payment = checkNotNull(session.paymentStart(current, now, ZoneOffset.UTC))
+            val link = checkNotNull(session.linkStart(current, now, ZoneOffset.UTC))
+            assertThat(payment.shopperEmail).isEqualTo("new@example.com")
+            assertThat(link.payment.sessionRevision).isEqualTo(payment.sessionRevision)
+            session.complete(link.payment)
+            assertThat(session.cart.value.lines).isEmpty()
+            assertThat(session.form.value).isEqualTo(CheckoutForm())
+        }
+
+    @Test
+    fun `checkout follows pricing journal readiness without losing its session contents`() =
+        runBlocking {
+            val session = SaleSession()
+            session.addProduct(ProductEntity(1, "Tea", 450, 1), TaxRateEntity(1, "GST", 10_000))
+            session.updateForm { it.copy(email = "sam@example.com") }
+            val settings = MutableStateFlow(AppSettings())
+            val checkouts = session.checkout(settings, flowOf(false), flowOf(true)) { aud }
+            settings.value = settings.value.copy(pricingChange = PricingChange("AUD", "JPY", PaymentSettings(), emptyMap()))
+            val blocked = checkouts.first()
+            assertThat(session.paymentStart(blocked, now, ZoneOffset.UTC)).isNull()
+            assertThat(session.linkStart(blocked, now, ZoneOffset.UTC)).isNull()
+            assertThat(session.cart.value.lines).hasSize(1)
+            assertThat(session.form.value.email).isEqualTo("sam@example.com")
+            settings.value = settings.value.copy(pricingChange = null)
+            assertThat(session.paymentStart(checkouts.first(), now, ZoneOffset.UTC)).isNotNull()
+        }
+
+    @Test
+    fun `unrelated starts never clear a session and each payment kind keeps its own snapshot`() =
+        runBlocking {
+            val sale = SaleSession()
+            val preAuth = SaleSession(SaleKind.PRE_AUTHORISATION)
+            listOf(sale, preAuth).forEach { it.addProduct(ProductEntity(1, "Tea", 450, 1), TaxRateEntity(1, "GST", 10_000)) }
+            val checkout = preAuth.checkout(flowOf(AppSettings()), flowOf(false), flowOf(true)) { aud }.first()
+            assertThat(sale.paymentStart(checkout, now, ZoneOffset.UTC)).isNull()
+            assertThat(preAuth.linkStart(checkout, now, ZoneOffset.UTC)).isNull()
+            val start = checkNotNull(preAuth.paymentStart(checkout, now, ZoneOffset.UTC))
+            sale.complete(start)
+            sale.complete(start.copy(kind = SaleKind.SALE, sessionRevision = null))
+            assertThat(sale.cart.value.lines).hasSize(1)
+            preAuth.complete(start)
+            assertThat(preAuth.cart.value.lines).isEmpty()
+        }
 
     @Test
     fun `a blank reference is generated with the prefix, and the card is saved under the customer reference`() {

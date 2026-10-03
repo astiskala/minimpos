@@ -9,6 +9,7 @@ import io.github.astiskala.minimpos.app.refund.PaymentAction
 import io.github.astiskala.minimpos.app.refund.PaymentStanding
 import io.github.astiskala.minimpos.app.refund.StoredPayment
 import io.github.astiskala.minimpos.app.terminal.AdyenApi
+import io.github.astiskala.minimpos.app.terminal.ApiAccess
 import io.github.astiskala.minimpos.app.terminal.ApiTarget
 import io.github.astiskala.minimpos.terminal.checkout.ModificationAmount
 import io.github.astiskala.minimpos.terminal.checkout.ModificationResult
@@ -165,23 +166,17 @@ class Captures(
         target: ApiTarget,
         sale: SaleEntity,
         send: suspend (PaymentModifications) -> CaptureResult,
-    ): CaptureResult {
-        val modifications = target.modifications
-        if (modifications != null) {
-            val result =
-                if (target.context != null &&
-                    sale.context?.matchesApi(target.context) != true
-                ) {
-                    CaptureResult.NotSetUp(SetupProblem.PAYMENT_CONTEXT)
-                } else {
-                    send(modifications)
-                }
-            return result
+    ): CaptureResult =
+        when (val access = target.modifications(sale.context)) {
+            is ApiAccess.Ready -> {
+                send(access.client)
+            }
+
+            is ApiAccess.Blocked -> {
+                if (access is ApiAccess.Unavailable) sales.record(sale.id, SaleEvent.ModificationNotSetUp(access.problem))
+                CaptureResult.NotSetUp(access.problem)
+            }
         }
-        val problem = target.setup.problem ?: SetupProblem.API_REQUIRED
-        sales.record(sale.id, SaleEvent.ModificationNotSetUp(problem))
-        return CaptureResult.NotSetUp(problem)
-    }
 
     /** Adjusts [sale] to [amount] and, once that went through, runs [then] with the adjusted sale. */
     private suspend fun adjusted(

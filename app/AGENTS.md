@@ -51,10 +51,14 @@ terminal constraints, where payments go and the conventions; `ArchitectureTest` 
 - \* `ApiSetup` is the one reading of the Checkout API (problem); `AdyenApi.target()` pairs it with the
   client as an `ApiTarget`. `Captures` take a `suspend () -> ApiTarget`, not `AdyenApi`; `AdyenApi` takes the
   `SimulatedTerminal`'s modifications from the container, not the gateway.
+- \* Only `ApiTarget` decides adapter availability and stored payment-context eligibility (`ApiAccess`); its raw adapters
+  are private. Capture and link modules keep their own sale events: unavailable setup may fail a pending creation, but
+  an unknown creation stays unknown, and a context mismatch changes nothing. Only the target constructs ready access;
+  only `AdyenApi` constructs or copies targets, so callers cannot replace their context or adapters.
 - \* `TransactionLifecycle` (payments and refunds: PENDING first, one at a time, recheck, abort) stores only through a
   `TransactionBook` (`SaleBook`, `RefundBook`).
 - \* Payment links reach Adyen only through `payment/PaymentLinks` (PENDING first, checks and cancellations one at a
-  time so a late answer never overwrites a newer one), which takes `ApiTarget.links` like `Captures`; only it hands
+  time so a late answer never overwrites a newer one), which asks `ApiTarget.links` for eligible access; only it hands
   Adyen's `PaymentLink` to the stored sale (`SaleEvent.LinkAnswered`). Whether links are offered is
   `TerminalSetup.paymentLinks`.
 - \* Only `share` hands files to other apps (`FileProvider`, `ACTION_SEND`): `ShareSheet` writes the one receipt image
@@ -74,8 +78,15 @@ terminal constraints, where payments go and the conventions; `ArchitectureTest` 
   else makes its failure outcomes, and no other UI class reads `CaptureResult`'s cases.
 - \* Terminal receipt fields become core receipt lines only in `ReceiptLinesJson`; print jobs are built only by
   `PrintRenderer` (a 1:1 map of `ReceiptDocument.segments()`).
-- \* One `SaleSession` per `SaleKind` (`container.session(kind)`; only the container makes them); the payments'
-  lifecycle clears it once approved.
+- \* One `SaleSession` per `SaleKind` (`container.session(kind)`; only the container makes them). Checkout observes one
+  atomic cart/form/revision snapshot; callers start through the session, never stamp or copy `PaymentStart` themselves.
+  Only the session reads a start's revision; only the container completes it, through shared `completeSale` wiring for
+  terminal approval and link creation. A stale checkout cannot start, and an unrelated or late start clears no newer work.
+- \* Only `payment/PricingChanges` reads the pricing journal (apart from its stored settings model), constructs it,
+  applies absolute catalogue prices and reprices sessions. Settings owns confirmation presentation only; startup uses
+  the same recovery implementation. Checkout readiness follows this module's journal reading, not a second decision.
+  Operations are serialized, a stale catalogue preview cannot commit, and sessions are repriced before the journal
+  clears; replay after a failed settings write does not reprice an in-memory session twice.
 - \* Settings ranges live on each settings section's companion; `SettingsRepository` normalises on every read and write
   (only it and `AppSettings` call `normalized()`), so nothing downstream clamps again. Constructor defaults define the
   current baseline; `AppSettings.forNewInstallation` adds country-specific tax defaults, not an older-build baseline.

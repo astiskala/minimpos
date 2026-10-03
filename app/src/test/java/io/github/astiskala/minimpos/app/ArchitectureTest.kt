@@ -25,6 +25,7 @@ import com.tngtech.archunit.core.domain.properties.HasOwner.Predicates.With.owne
 import com.tngtech.archunit.core.importer.ClassFileImporter
 import com.tngtech.archunit.core.importer.ImportOption
 import com.tngtech.archunit.lang.ArchCondition
+import com.tngtech.archunit.lang.ArchRule
 import com.tngtech.archunit.lang.ConditionEvents
 import com.tngtech.archunit.lang.SimpleConditionEvent
 import com.tngtech.archunit.lang.syntax.ArchRuleDefinition.classes
@@ -41,19 +42,25 @@ import io.github.astiskala.minimpos.app.data.db.SaleDao
 import io.github.astiskala.minimpos.app.data.db.SaleEntity
 import io.github.astiskala.minimpos.app.data.db.SetupProblem
 import io.github.astiskala.minimpos.app.data.db.StoredReason
+import io.github.astiskala.minimpos.app.data.repo.CatalogRepository
+import io.github.astiskala.minimpos.app.data.repo.CataloguePricing
 import io.github.astiskala.minimpos.app.data.repo.HistoryRepository
 import io.github.astiskala.minimpos.app.data.repo.ReceiptLinesJson
 import io.github.astiskala.minimpos.app.data.repo.RefundRepository
 import io.github.astiskala.minimpos.app.data.repo.SaleRepository
 import io.github.astiskala.minimpos.app.data.security.SecretStore
 import io.github.astiskala.minimpos.app.data.settings.AppSettings
+import io.github.astiskala.minimpos.app.data.settings.PricingChange
 import io.github.astiskala.minimpos.app.data.settings.SettingsRepository
 import io.github.astiskala.minimpos.app.data.settings.TerminalMode
 import io.github.astiskala.minimpos.app.feature.ActionOutcome
 import io.github.astiskala.minimpos.app.feature.TransactionActions
 import io.github.astiskala.minimpos.app.payment.CaptureResult
+import io.github.astiskala.minimpos.app.payment.Checkout
 import io.github.astiskala.minimpos.app.payment.PaymentLinkStart
 import io.github.astiskala.minimpos.app.payment.PaymentLinks
+import io.github.astiskala.minimpos.app.payment.PaymentStart
+import io.github.astiskala.minimpos.app.payment.PricingChanges
 import io.github.astiskala.minimpos.app.payment.ReceiptDelivery
 import io.github.astiskala.minimpos.app.payment.SaleBook
 import io.github.astiskala.minimpos.app.payment.SaleSession
@@ -62,14 +69,20 @@ import io.github.astiskala.minimpos.app.receipt.ReceiptFactory
 import io.github.astiskala.minimpos.app.refund.PaymentStanding
 import io.github.astiskala.minimpos.app.refund.StoredPayment
 import io.github.astiskala.minimpos.app.terminal.AdyenApi
+import io.github.astiskala.minimpos.app.terminal.ApiAccess
+import io.github.astiskala.minimpos.app.terminal.ApiSetup
+import io.github.astiskala.minimpos.app.terminal.ApiTarget
 import io.github.astiskala.minimpos.app.terminal.Destination
 import io.github.astiskala.minimpos.app.terminal.DestinationRules
 import io.github.astiskala.minimpos.app.terminal.SimulatedTerminal
 import io.github.astiskala.minimpos.app.terminal.TerminalGateway
 import io.github.astiskala.minimpos.app.terminal.TerminalSetup
 import io.github.astiskala.minimpos.app.terminal.TerminalSetupSource
+import io.github.astiskala.minimpos.core.money.CurrencySpec
+import io.github.astiskala.minimpos.core.money.PaymentContext
 import io.github.astiskala.minimpos.terminal.checkout.PaymentLink
 import io.github.astiskala.minimpos.terminal.checkout.PaymentLinkApi
+import io.github.astiskala.minimpos.terminal.checkout.PaymentModifications
 import io.github.astiskala.minimpos.terminal.client.PrintJob
 import io.github.astiskala.minimpos.terminal.client.PrintLine
 import io.github.astiskala.minimpos.terminal.client.TerminalClient
@@ -78,8 +91,11 @@ import io.github.astiskala.minimpos.terminal.parse.ReceiptField
 import io.github.astiskala.minimpos.terminal.simulator.SimulatedOutcome
 import io.github.astiskala.minimpos.terminal.transport.CloudRegion
 import io.github.astiskala.minimpos.terminal.transport.TerminalEnvironment
+import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.time.Clock
+import java.time.Instant
+import java.time.ZoneOffset
 
 class ArchitectureTest {
     @Test
@@ -646,6 +662,78 @@ class ArchitectureTest {
             .check(app)
 
     @Test
+    fun `pricing changes own journal recovery and session repricing`() = pricingOwnership.forEach { it.check(app) }
+
+    @Test
+    fun `only the target decides stored operation eligibility`() = targetOwnership.forEach { it.check(app) }
+
+    @Test
+    fun `checkout callers use session snapshots and completion stays in the container`() = sessionOwnership.forEach { it.check(app) }
+
+    @Test
+    fun `pricing ownership rejects deliberate violations`() = reject(pricingOwnership, PricingViolation::class.java)
+
+    @Test
+    fun `target ownership rejects deliberate violations`() = reject(targetOwnership, TargetViolation::class.java)
+
+    @Test
+    fun `session ownership rejects deliberate violations`() = reject(sessionOwnership, SessionViolation::class.java)
+
+    private fun reject(
+        rules: List<ArchRule>,
+        violation: Class<*>,
+    ) {
+        val imported = ClassFileImporter().importClasses(violation)
+        rules.forEach { assertTrue(it.description, it.evaluate(imported).hasViolation()) }
+    }
+
+    private class PricingViolation {
+        fun journal(settings: AppSettings) = settings.pricingChange
+
+        suspend fun prices(
+            catalog: CatalogRepository,
+            change: PricingChange,
+        ) = catalog.pricing.apply(change.prices)
+
+        fun reprice(session: SaleSession) = session.reprice(CurrencySpec.of("USD"), CurrencySpec.of("JPY"))
+
+        fun make() = PricingChange("USD", "JPY", AppSettings().payment, emptyMap())
+    }
+
+    private class TargetViolation {
+        fun matches(
+            expected: PaymentContext,
+            current: PaymentContext,
+        ) = expected.matchesApi(current)
+
+        fun forge(client: PaymentModifications) = ApiAccess.Ready(client)
+
+        fun replace(
+            ready: ApiAccess.Ready<PaymentModifications>,
+            client: PaymentModifications,
+        ) = ready.copy(client = client)
+
+        fun makeTarget(client: PaymentModifications) = ApiTarget(ApiSetup.Complete, client)
+
+        fun changeContext(target: ApiTarget) = target.copy(context = null)
+    }
+
+    private class SessionViolation {
+        fun payment(checkout: Checkout) = checkout.paymentStart(Instant.EPOCH, ZoneOffset.UTC)
+
+        fun stamp(start: PaymentStart) = start.copy(sessionRevision = 1)
+
+        fun forge(start: PaymentStart) = PaymentStart(start.totals, start.currency, "forged", null, null, null, sessionRevision = 1)
+
+        fun revision(start: PaymentStart) = start.sessionRevision
+
+        fun complete(
+            session: SaleSession,
+            start: PaymentStart,
+        ) = session.complete(start)
+    }
+
+    @Test
     fun `settings are normalized only where they are read and written`() =
         // Each section's ranges live on its companion; SettingsRepository normalizes on every read and write.
         noClasses()
@@ -772,6 +860,106 @@ class ArchitectureTest {
                     ),
                 )
 
+        // One implementation owns the journal ordering for confirmation and recovery; screens cannot reprice sessions.
+        val pricingOwnership: List<ArchRule> =
+            listOf(
+                noClasses()
+                    .that()
+                    .haveNameNotMatching(within(PricingChanges::class.java.name, AppSettings::class.java.name))
+                    .should()
+                    .callMethodWhere(callTo(AppSettings::class.java.name, "getPricingChange")),
+                noClasses()
+                    .that()
+                    .haveNameNotMatching(within(PricingChanges::class.java.name))
+                    .should()
+                    .callMethodWhere(callTo(CataloguePricing::class.java.name, "apply")),
+                noClasses()
+                    .that()
+                    .haveNameNotMatching(within(PricingChanges::class.java.name, SaleSession::class.java.name))
+                    .should()
+                    .callMethodWhere(callTo(SaleSession::class.java.name, "reprice")),
+                noClasses()
+                    .that()
+                    .haveNameNotMatching(within(PricingChanges::class.java.name, PricingChange::class.java.name))
+                    .should()
+                    .callConstructorWhere(target(owner(type(PricingChange::class.java)))),
+            )
+
+        // Availability and stored-context matching must be decided before a caller receives an eligible adapter.
+        val targetOwnership: List<ArchRule> =
+            listOf(
+                noClasses()
+                    .that()
+                    .haveNameNotMatching(within(ApiTarget::class.java.name))
+                    .should()
+                    .callMethodWhere(callTo(PaymentContext::class.java.name, "matchesApi")),
+                noClasses()
+                    .that()
+                    .haveNameNotMatching(within(ApiTarget::class.java.name, ApiAccess.Ready::class.java.name))
+                    .should()
+                    .callConstructorWhere(target(owner(type(ApiAccess.Ready::class.java)))),
+                noClasses()
+                    .that()
+                    .haveNameNotMatching(within(ApiTarget::class.java.name, ApiAccess.Ready::class.java.name))
+                    .should()
+                    .callMethodWhere(callTo(ApiAccess.Ready::class.java.name, "copy")),
+                noClasses()
+                    .that()
+                    .haveNameNotMatching(within(AdyenApi::class.java.name, ApiTarget::class.java.name))
+                    .should()
+                    .callConstructorWhere(target(owner(type(ApiTarget::class.java)))),
+                noClasses()
+                    .that()
+                    .haveNameNotMatching(within(AdyenApi::class.java.name, ApiTarget::class.java.name))
+                    .should()
+                    .callMethodWhere(callTo(ApiTarget::class.java.name, "copy")),
+            )
+
+        // A caller may not attach a newer revision to older checkout facts, or clear a session outside completion wiring.
+        val sessionOwnership: List<ArchRule> =
+            listOf(
+                noClasses()
+                    .that()
+                    .haveNameNotMatching(within(Checkout::class.java.name, SaleSession::class.java.name))
+                    .should()
+                    .callMethodWhere(callTo(Checkout::class.java.name, "paymentStart", "linkStart")),
+                noClasses()
+                    .that()
+                    .haveNameNotMatching(within(Checkout::class.java.name, PaymentStart::class.java.name))
+                    .should()
+                    .callMethodWhere(callTo(PaymentStart::class.java.name, "copy")),
+                noClasses()
+                    .that()
+                    .haveNameNotMatching(within(SaleSession::class.java.name))
+                    .should()
+                    .callMethodWhere(callTo(PaymentStart::class.java.name, "getSessionRevision")),
+                noClasses()
+                    .that()
+                    .haveNameNotMatching(within(Checkout::class.java.name, PaymentStart::class.java.name))
+                    .should()
+                    .callConstructorWhere(target(owner(type(PaymentStart::class.java)))),
+                classes().should(
+                    object : ArchCondition<JavaClass>("complete sessions through the container's shared completeSale wiring") {
+                        override fun check(
+                            javaClass: JavaClass,
+                            events: ConditionEvents,
+                        ) {
+                            javaClass.methodCallsFromSelf
+                                .filter { callTo(SaleSession::class.java.name, "complete").test(it) }
+                                .forEach { call ->
+                                    events.add(
+                                        SimpleConditionEvent(
+                                            call,
+                                            call.originOwner.isEquivalentTo(AppContainer::class.java) && call.origin.name == "completeSale",
+                                            call.description,
+                                        ),
+                                    )
+                                }
+                        }
+                    },
+                ),
+            )
+
         /** A name pattern for the classes [names] and those Kotlin nests in them (companions, lambdas, continuations). */
         fun within(vararg names: String) = names.joinToString("|", "(", ")(\\$.*)?") { Regex.escape(it) }
 
@@ -790,7 +978,7 @@ class ArchitectureTest {
             vararg methods: String,
         ): DescribedPredicate<JavaMethodCall> =
             DescribedPredicate.describe("a call to $owner.${methods.joinToString("/")}") { call ->
-                call.targetOwner.name == owner && call.name.removeSuffix("\$default") in methods
+                call.targetOwner.name == owner && call.name.substringBefore('\$') in methods
             }
 
         /** A call to one of [methods] (or its default-arguments bridge) of [type] or one of its subtypes. */
@@ -799,7 +987,7 @@ class ArchitectureTest {
             vararg methods: String,
         ): DescribedPredicate<JavaMethodCall> =
             DescribedPredicate.describe("a call to ${type.simpleName}.${methods.joinToString("/")}") { call ->
-                call.targetOwner.isAssignableTo(type) && call.name.removeSuffix("\$default") in methods
+                call.targetOwner.isAssignableTo(type) && call.name.substringBefore('\$') in methods
             }
     }
 }

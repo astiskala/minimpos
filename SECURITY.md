@@ -1,87 +1,83 @@
 # Security policy
 
-Mini mPOS takes card payments, so security reports are taken seriously, even though it is a small, independent
-project maintained on a best-effort basis.
+Mini mPOS is an independent payment app maintained on a best-effort basis. Only the
+[latest release](https://github.com/astiskala/minimpos/releases/latest) receives security fixes; fixes land on `main`
+and ship in the next release.
 
-## Supported versions
+## Report a vulnerability privately
 
-Only the [latest release](https://github.com/astiskala/minimpos/releases/latest) gets security fixes. Fixes land on
-`main` and ship in the next release, so keep every terminal and device on the latest version.
+Do not open a public issue for a security problem. Use GitHub's
+[private vulnerability report](https://github.com/astiskala/minimpos/security/advisories/new), also available from the
+repository's [Security tab](https://github.com/astiskala/minimpos/security).
 
-## Reporting a vulnerability
+Include the impact, reproduction steps, version or commit, and whether it reproduces with the simulator or needs a
+real terminal. Do not include live credentials or customer data. Expect an acknowledgement within a week; after
+confirmation, we'll agree on a fix, disclosure and credit if desired.
 
-Please **do not open a public issue** for a security problem. Report it privately through GitHub instead:
+Adyen platform, terminal, Payments app, Customer Area or Adyen Java library vulnerabilities belong with
+[Adyen's responsible disclosure process](https://www.adyen.com/policies-and-disclaimer/responsible-disclosure).
 
-1. Go to the repository's [Security tab](https://github.com/astiskala/minimpos/security).
-2. Choose **Report a vulnerability** (or go straight to the
-   [new advisory form](https://github.com/astiskala/minimpos/security/advisories/new)).
+## Data and trust boundaries
 
-Please include:
+### Payment processing
 
-- what the problem is, and what an attacker could do with it;
-- the steps or code needed to reproduce it, and the version or commit you tested;
-- whether it needs a real terminal, or also shows with the built-in simulator.
+Adyen's terminal or Payments app reads the card, not Mini mPOS. The app receives payment results and receipt data,
+including brand, masked card number, references and, when tokenizing, the stored payment-method ID—not raw card data.
 
-You can expect an acknowledgement within a week. Once the issue is confirmed, we'll agree on a fix and on when to
-publish the advisory, and credit you if you'd like.
+- **Local Terminal API:** on the same terminal or your network, Adyen's library encrypts and authenticates messages
+  with the shared key. TLS certificates must chain to an Adyen TEST/LIVE terminal root and have a terminal name in
+  that environment.
+- **Cloud:** HTTPS requests to Adyen's Cloud device API use the Adyen API key, not shared-key message encryption.
+- **Tap to Pay:** App Links to the Payments app are encrypted and authenticated with the shared key. Unverifiable
+  answers or answers for a different request are rejected.
+- **Other Adyen services:** Checkout handles captures, adjustments and payment links; Management boards/revokes the
+  Payments app. These HTTPS calls use API credentials.
 
-### Adyen's own systems
+A missing answer does not prove a request failed. Operations are persisted before sending; unknown outcomes need
+reconciliation, not a fresh charge. Merchant recovery instructions are in
+[Troubleshooting](docs/troubleshooting.html#unknown).
 
-Problems in Adyen's platform, payment terminals, payment app, Customer Area or the Adyen Java API library are outside
-this project. Report them to Adyen through its
-[responsible disclosure policy](https://www.adyen.com/policies-and-disclaimer/responsible-disclosure).
+### Local storage
 
-## How Mini mPOS protects data
+Products, settings and history stay on the device. History includes references, masked payment details and any
+collected shopper email/reference. Mini mPOS has no backend, analytics or tracking, and no automatic cross-device
+synchronization. QR setup transfers do not back up transaction history.
 
-- **Card data never reaches the app.** The terminal's Adyen payment app reads the card. Mini mPOS only receives what
-  Adyen returns: card brand, masked card number, PSP reference, receipt lines and, when tokenizing, the stored payment
-  method ID.
-- **Terminal communication is encrypted and authenticated.** Requests go to the terminal's local Terminal API (on the
-  terminal itself, or over your network from a tablet or phone) through Adyen's Java API library. Messages are
-  encrypted and signed with the shared key from your Customer Area. The terminal's TLS certificate must chain to one
-  of Adyen's terminal root certificates (TEST or LIVE), and its name must be an Adyen terminal name for that same
-  environment. The environment the app shows comes from this certificate.
-- **In the cloud and with Tap to Pay**, requests to a terminal in the cloud go to Adyen's Cloud device API over TLS,
-  authenticated with an API key (they are not also encrypted with the shared key). Requests to the Adyen Payments app
-  (Tap to Pay) travel as App Links encrypted and signed with the shared key; answers that cannot be verified with it,
-  or that answer another request, are rejected.
-- **Secrets are encrypted on the device.** The shared-key passphrase, the API key (Checkout and Cloud device API), the
-  Payments app API key and the SMTP password are encrypted with AES-256-GCM, using a key kept in the Android Keystore.
-  The admin PIN is stored only as a salted PBKDF2 hash, and repeated wrong PINs lock entry for increasing periods.
-- **Setting up another device protects the secrets.** The QR codes that copy a device's setup carry the secrets only
-  encrypted (AES-256-GCM, with a key derived by PBKDF2 from a one-time 12-character transfer code). The code is shown
-  only on the sending device and typed on the receiving one; both screens are behind the admin PIN.
-- **The setup helper web page sends nothing.** It makes the same kind of codes in the browser (`docs/js/setup.js`,
-  with the QR library vendored next to it), sealing the keys the same way with a transfer code it shows only on the
-  page. It loads no third-party resources, stores nothing, and its Content Security Policy forbids network requests and
-  form submission (`connect-src 'none'`, `form-action 'none'`). Use it on a computer you trust, and close it when done.
-- **No backend and no tracking.** Products, settings and sales history stay on the device. The app sends nothing
-  anywhere except to the payment terminal (or the Adyen Payments app), Adyen's Checkout API (to capture tips and
-  pre-authorizations and for payment links) and, if you set them up, Cloud device API (terminals in the cloud),
-  Management API (boarding the Payments app) and your SMTP server. A receipt shared from a tablet or phone goes only to
-  the app the user picks in Android's share sheet: the app writes the one receipt image to its cache and grants that
-  app read access to it alone.
-- **API keys on the device are a trade-off.** Adyen advises keeping API keys on a server. Mini mPOS has no backend, so
-  the Adyen API key (which every setup needs) lives on the terminal, tablet or phone, and in the cloud and for Tap to
-  Pay so do the keys that reach the terminal or board the phone. A tablet or phone is less protected than a payment
-  terminal.
+Shared-key passphrases, API keys, SMTP passwords and PIN verifiers are encrypted with AES-256-GCM using an Android
+Keystore key. Admin and Manager PINs use salted PBKDF2 verifiers, not stored PIN text. Incorrect attempts lead to
+increasing lockout periods. The two PINs protect separate actions; neither replaces the device's own security.
 
-## Recommendations for merchants
+### Transfers and the setup helper
 
-- Set an **admin PIN** (Settings › Security), so staff and shoppers can't change settings or products. Optionally set
-  a separate **Manager PIN** there to require approval for refunds, cancellations, captures and adjustments.
-- Keep TEST and LIVE shared keys separate. Before taking real payments, check that Settings › About shows LIVE as the
-  environment (a TEST terminal also shows TEST in its status bar). Change the shared key if you think it has been
-  exposed.
-- For the **Adyen API key**, use an API credential with only the Checkout webservice role, one per store or
-  terminal fleet, and revoke it in the Customer Area if a terminal is lost.
-- On a **tablet or phone**, prefer a terminal on your network. For the cloud or Tap to Pay, create an API credential
-  for each device with only the roles it needs (Cloud Device API and Checkout webservice; or only the Adyen Payments
-  app role for boarding), keep the device's screen lock and Android security updates on, set an admin
-  PIN, and revoke the credential (and, for Tap to Pay, remove the phone in Settings › Terminal) if the device is lost.
-- Send receipt email over **STARTTLS or SSL**. The "None" option sends email and your SMTP password unencrypted.
-- Choose a sensible **history retention** period (Settings › Data). Sales history includes customer references and
-  shopper email addresses.
-- A **payment link** can be paid by whoever has it until it expires: send it only to the customer, keep its lifetime
-  (Settings › Payments) short, and cancel a link you no longer need.
-- Keep the app up to date (see [Supported versions](#supported-versions)).
+Secrets in QR transfers are encrypted with AES-256-GCM using a PBKDF2-derived key from a 12-character transfer code.
+The code is displayed separately; the QR images alone do not reveal the secrets. Anyone with both can decrypt them,
+so keep the code private and generate a fresh transfer when needed. Transfers are protected by admin access when an
+admin PIN is configured; they are not a remote revocation mechanism.
+
+The [setup helper](docs/setup.html) generates connection codes locally in a trusted browser. It loads no third-party
+resources, sends no form data, and stores no entered credentials. Its Content Security Policy blocks network requests
+and form submission. Close the page when finished. Device-to-device copying and browser setup have different import
+scopes; see [devices and data](docs/using.html#more).
+
+Receipts shared through Android are written as a single cached image. The selected app receives read access to that
+file, not the app's private database. Email sends receipt/customer information through the configured SMTP service.
+
+## Deployment trade-offs and safeguards
+
+**API keys live on the device.** Adyen recommends server-side storage, but Mini mPOS deliberately has no server.
+Encryption at rest does not make a compromised or unlocked device safe. Tablets and phones offer less protection than
+payment terminals; prefer a network terminal where practical.
+
+- Use dedicated, least-privilege API credentials. Local/Tap to Pay Checkout needs the Checkout webservice role;
+  cloud adds Cloud Device API on the same credential. Boarding uses a separate Adyen Payments app credential.
+- Set an admin PIN; optionally require a Manager PIN for financial follow-up actions. Keep phone/tablet screen locks
+  and Android security updates enabled. Review [staff access](docs/using.html#business).
+- Keep TEST and LIVE credentials separate. Verify the detected environment in Settings › About before live payments.
+- For a lost or compromised device, revoke its API credentials in the Customer Area and rotate exposed shared keys.
+  For Tap to Pay, deregister the installation as well; when you still have the phone, use Remove this phone.
+- Use STARTTLS or SSL for SMTP. The None option exposes the email and SMTP password in transit.
+- Choose a sensible local history-retention period and avoid sending customer data in public issue reports.
+- Payment links are payable by anyone who holds them until expiration. Share them only with the customer, choose an
+  appropriate lifetime and cancel unneeded links.
+- Keep every device on the latest release. A setup transfer is not a substitute for preserving financial records;
+  clearing Android app data permanently removes local history and configuration.

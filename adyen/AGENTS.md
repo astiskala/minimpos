@@ -1,49 +1,34 @@
 # `:adyen`
 
-The Adyen integration module (sources in `adyen/`): `com.adyen:adyen-java-api-library` (nexo models,
-`TerminalLocalAPI`, `NexoCrypto`) made to work on Android, with the local, cloud and Payments app transports,
-Checkout API calls, Management API boarding and the in-process simulator. The
-root `AGENTS.md` has the build, the terminal constraints and the conventions; `ArchitectureTest` enforces the starred
-rules.
+Android-free Adyen integration. Root `AGENTS.md` has shared constraints; `CONTEXT.md` has vocabulary.
+Starred rules are enforced by `ArchitectureTest`. KDoc is the detailed API/protocol reference.
 
-## Packages
+## Architecture boundaries
 
-- \* Layered downwards: `simulator` → `client` (`TerminalClient`), `checkout` (Checkout API v72: captures and
-  adjustments, payment links with `CheckoutPaymentLinks`), `paymentsapp` (Adyen Payments app: App Links,
-  `PaymentsAppTransport`, Management API boarding; only the app plugs it in) → `transport` (`TerminalTls`, the local
-  and Cloud device API transports) → `parse`. No cycles; every class is in a layer.
-- \* Plain Kotlin: no Android, no `:core`, no `:app`. The module's interface uses only its own types (`PrintJob`,
-  `ReceiptField`, …). It never logs or prints.
-- `checkout` posts JSON with OkHttp + Gson, and the cloud transport uses OkHttp instead of the library's `CloudDeviceApi`:
-  the library's Checkout and `tapi` models need Jackson, and keep rules for hundreds of classes.
-- The `TerminalSimulator` mirrors Adyen's behaviour (pre-auth blobs, `InProgress` status, cancellations) and shares a
-  ledger with its `SimulatedModifications`, so it stands in for both the Terminal API and the Checkout API.
+- \* Layers go downwards: `simulator` → `client`/`checkout`/`paymentsapp` → `transport` → `parse`, with no cycles.
+  No Android, `:core` or `:app` dependencies; public interfaces use this module's types. Nothing logs or prints.
+- \* Every Adyen HTTPS API call (cloud, Checkout, Management) uses `transport/AdyenHttp`: per-call timeout, no silent
+  retries, typed sent/not-sent failures. Only `transport` builds OkHttp requests; only `AdyenHttp` and
+  `TerminalHttpClient` execute calls.
+- \* `TerminalTransport.send` returns `Delivery` (answered/not sent/maybe sent), never throws. Each transport decides
+  delivery uncertainty once. Convert transport exceptions there; client/checkout code must not see them.
+- \* Only `client/Decline` interprets ErrorCondition and retry advice. Do not compare its strings elsewhere.
+- \* Always install our `TerminalHttpClient` on the Adyen `Client`. The default Apache client crashes on Android;
+  even a bare `httpClient` inside `Client.apply` calls its getter and creates it. The getter and unencrypted TEST-only
+  `TerminalLocalAPIUnencrypted` are forbidden.
 
-## Sending requests
+## Integration pitfalls
 
-- \* Every call to Adyen's HTTPS APIs (cloud, Checkout, Management) goes through `transport/AdyenHttp`: no silent
-  retries, a per-call timeout, failures typed as sent or not sent. OkHttp requests are built only in `transport`, and
-  only `AdyenHttp` and the library's `TerminalHttpClient` make calls.
-- \* `TerminalTransport.send` returns a `Delivery` (`Answered`, `NotSent`, `MaybeSent`) and never throws: each transport
-  works out once whether a request can have taken effect. Exceptions stay inside the library's HTTP client and the App
-  Link exchanges, turned into a `Delivery` with `toDelivery`; `client` and `checkout` never see them.
-- Transports that answer status requests themselves (simulator, Payments app) repeat responses from
-  `CompletedTransactions`.
-- \* Why a transaction was not approved (cancelled, busy, retry advice) is `client/Decline` (`TransactionDetails.decline`,
-  and `SaleEntity.decline` in the app); nothing else compares ErrorCondition strings, in either module.
-
-## Adyen Java library on Android
-
-- \* Always set our `TerminalHttpClient` on the `Client`; the library's default Apache client crashes on Android. Inside
-  `Client(...).apply { }` a bare `httpClient` calls `Client.getHttpClient()`, which creates it (ArchUnit forbids that
-  call, and the library's unencrypted TEST-only `TerminalLocalAPIUnencrypted`).
-- `TerminalLocalAPI` always posts to `<endpoint>:8443/nexo/`. `xerces:xercesImpl` supplies `DatatypeFactory`.
-- Unknown enum values deserialise to null.
-- Application info (`PosApplication`) goes on every payment and refund, formatted identically.
-- Upgrading the library: see "Build and verify" in the root `AGENTS.md` (R8 keep rules, release dex).
+- Use Adyen's library for nexo models, encryption and certificate checks. Checkout/cloud calls deliberately use
+  plain JSON with OkHttp: the library's Checkout and `tapi` models pull Jackson and extensive keep rules.
+- `TerminalLocalAPI` posts to `<endpoint>:8443/nexo/`; `xerces:xercesImpl` supplies `DatatypeFactory` on Android.
+  Unknown enum values deserialize to null. Keep application info identical on every payment/refund.
+- `TerminalSimulator` and `SimulatedModifications` share a ledger; changes must agree across Terminal and Checkout
+  operations. Transports answering status themselves use `CompletedTransactions`.
+- For library upgrades and release R8 checks, follow `CONTRIBUTING.md` rather than adding Android dependencies here.
 
 ## Tests
 
-- Encryption is tested against independently generated vectors, TLS against a fake Adyen root certificate.
-- `FakePaymentsApp` plays the Payments app (the simulator behind encrypted App Links). No network or DNS in tests: give
-  `TerminalHttpClient` a fake `Dns`, and use `mockwebserver` for HTTP.
+Use plain JUnit and existing fakes. Encryption vectors are independently generated; TLS uses a fake Adyen root.
+`FakePaymentsApp` exercises encrypted App Links with the simulator. Use fake DNS and MockWebServer; no real network
+or DNS in tests. JVM code must remain usable at Android API 28; the app's API-level test verifies it.

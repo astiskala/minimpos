@@ -121,7 +121,7 @@
             </article>
             <article class="feature">
               <svg aria-hidden="true" viewbox="0 0 24 24"><path d="M12 2a10 10 0 1 1 0 20 10 10 0 0 1 0-20zm1 4h-2v1.1A3 3 0 0 0 8.5 10c0 1.7 1.3 2.4 3 2.8 1.2.3 1.5.6 1.5 1.1s-.5.9-1.3.9c-.9 0-1.5-.4-1.6-1.1H8.2c.1 1.6 1.2 2.6 2.8 2.9V18h2v-1.4c1.6-.3 2.8-1.3 2.8-2.8 0-1.8-1.4-2.5-3.1-2.9-1.1-.3-1.4-.5-1.4-1 0-.4.4-.8 1.1-.8.8 0 1.2.4 1.3.9h1.9A2.9 2.9 0 0 0 13 7.1z"></path></svg>
-              <h3>收据小费</h3>
+              <h3>在收据上填写小费</h3>
               <p>让顾客在打印的收据上填写小费，准备好后再将小费加入账单。</p>
             </article>
             <article class="feature">
@@ -131,13 +131,13 @@
             </article>
             <article class="feature">
               <svg aria-hidden="true" viewbox="0 0 24 24"><path d="M4 4h10v6H4zm6 10h10v6H10zM16 5h3a1 1 0 0 1 1 1v5h2l-3 3-3-3h2V7h-2zM8 19H5a1 1 0 0 1-1-1v-5H2l3-3 3 3H6v4h2z"></path></svg>
-              <h3>几分钟完成设置</h3>
+              <h3>扫码导入设置</h3>
               <p>在电脑上用设置助手填写密钥，再扫码导入设备。还可以通过二维码把商品和设置复制到更多设备，密钥也可一并传输，并由传输码保护。</p>
             </article>
             <article class="feature">
               <svg aria-hidden="true" viewbox="0 0 24 24"><path d="M12 2a5 5 0 0 1 5 5v3h1a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-8a2 2 0 0 1 2-2h1V7a5 5 0 0 1 5-5zm0 2a3 3 0 0 0-3 3v3h6V7a3 3 0 0 0-3-3z"></path></svg>
               <h3>安全保护</h3>
-              <p>使用管理员 PIN保护商品和设置。密码和密钥均加密存储。</p>
+              <p>管理员 PIN 保护设置，独立的经理 PIN 保护付款后续操作。密码和密钥均加密存储。</p>
             </article>
           </div>
         </div>
@@ -234,6 +234,7 @@
               <p><a href="getting-started.html">阅读设置指南</a> · <a href="setup.html">打开设置助手</a> · <a href="https://github.com/astiskala/minimpos/releases/latest">下载应用</a></p>
             </article>
           </div>
+          <p><a href="using.html">使用 Mini mPOS</a> · <a href="troubleshooting.html">故障排查</a></p>
         </div>
       </section>
       <section aria-labelledby="faq-title" class="section">
@@ -241,40 +242,24 @@
           <h2 id="faq-title">常见问题</h2>
           <div class="faq">
             <details>
-              <summary>支持哪些设备？</summary>
-              <p>支持运行 Android 9 或更高版本的 Adyen Android 支付终端，例如 S1F2、S1F4Pro、S1E4Pro、S1E2L、AMS1、S1U2 和 SFO1，以及 Android 平板电脑和手机。打印需要带打印机的终端，扫描二维码需要摄像头。</p>
-            </details>
-            <details>
-              <summary>能在平板电脑或手机上使用吗？</summary>
-              <p>可以。在 Android 平板电脑或手机上，它可以通过本地网络或互联网使用 Adyen 终端收款，也可以通过 Adyen Payments 应用使用 Tap to Pay 收款。请参阅指南中的<a href="getting-started.html#tablet">在平板电脑或手机上使用</a>。</p>
+              <summary>哪种配置适合我？</summary>
+              <p>直接在 Adyen Android 终端完成整个收银流程，或用 Android 平板、手机搭配网络终端、云端终端或 Tap to Pay。参阅<a href="getting-started.html#choose">要求和配置选择</a>。打印需要打印机，扫描需要摄像头。</p>
             </details>
             <details>
               <summary>费用是多少？</summary>
-              <p>应用免费，采用 MIT 许可证开源。您仍需照常向 Adyen 支付交易处理费用。</p>
+              <p>应用免费，采用 MIT 许可证开源。Adyen 的支付处理费用仍适用。</p>
             </details>
             <details>
               <summary>这是 Adyen 的产品吗？</summary>
-              <p>不是。这是为 Adyen 终端开发的独立项目，并非由 Adyen 制作、背书或提供支持。正式上线前，请在 Adyen TEST 环境中测试。Adyen 账户、付款方式和结算问题请联系 Adyen；应用问题请<a href="https://github.com/astiskala/minimpos/issues">在 GitHub 上提交 issue</a>。</p>
+              <p>不是。Mini mPOS 并非 Adyen 制作、背书或支持的产品。正式上线前请在 Adyen TEST 环境测试。应用和 Adyen 问题参见<a href="troubleshooting.html#help">获取帮助</a>。</p>
             </details>
             <details>
-              <summary>能收取订金或进行预授权吗？</summary>
-              <p>可以。先在卡上冻结订金，稍后收款或解除冻结。设置步骤和付款方式要求请参见指南中的<a href="getting-started.html#preauth">预授权</a>。</p>
+              <summary>设备共享后台吗？</summary>
+              <p>不共享。商品、设置和交易记录保存在各设备上。二维码传输复制商品和设置，不复制交易记录或持续同步更改。参见<a href="using.html#more">设备和数据</a>。</p>
             </details>
             <details>
-              <summary>顾客能添加小费吗？</summary>
-              <p>可以，在有打印机的终端上使用<strong>在收据上填写小费</strong>功能，客户写下小费后，您可将其加入账单。请参见指南中的<a href="getting-started.html#tips">收据小费</a>。</p>
-            </details>
-            <details>
-              <summary>顾客能通过链接付款吗？</summary>
-              <p>可以，需先设置 Adyen Checkout API。结账时可<strong>发送支付链接</strong>代替终端收款，并显示二维码、通过邮件发送、打印或分享链接。请参见指南中的<a href="getting-started.html#payment-links">支付链接</a>。</p>
-            </details>
-            <details>
-              <summary>数据存储在哪里？</summary>
-              <p>商品、设置和交易记录保存在运行 Mini mPOS 的设备上。您可以选择与另一台设备分享，或通过自己的邮件服务器发送收据。支付由 Adyen 处理。</p>
-            </details>
-            <details>
-              <summary>需要服务器或 Adyen API 密钥吗？</summary>
-              <p>不需要服务器。在终端上，需要商户后台中的共享密钥，以及用于扣款和支付链接的 Adyen API 密钥；可以通过<a href="setup.html">设置助手</a>在电脑上输入。请参阅指南中的<a href="getting-started.html#api">Checkout API 与扣款</a>。</p>
+              <summary>需要服务器或 API 密钥吗？</summary>
+              <p>无需服务器，但所有真实付款配置都需要 Checkout API 凭据。其他密钥取决于支付目标。密钥加密保存在设备上，这与 Adyen 的服务器端建议存在取舍。请按<a href="getting-started.html#connect">连接设置</a>及其中的安全建议操作。</p>
             </details>
           </div>
         </div>

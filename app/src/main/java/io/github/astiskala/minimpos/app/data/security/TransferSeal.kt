@@ -10,8 +10,9 @@ import javax.crypto.spec.PBEKeySpec
 import javax.crypto.spec.SecretKeySpec
 
 /**
- * Seals secrets for a transfer to another terminal with a one-time transfer code, which the sending terminal shows and
- * the operator types on the receiving one; the QR codes alone do not reveal them.
+ * Seals secrets for a transfer to another device with a freshly generated transfer code, displayed separately from
+ * the QR codes and typed on the receiving device. The QR codes alone do not reveal secrets; possession of both the
+ * codes and the transfer code permits decryption again, without expiration or a single-use check.
  *
  * A code is [CODE_LENGTH] characters from an alphabet without look-alikes (no 0, O, 1, I or L), about 59 bits, shown in
  * groups of four. The key is PBKDF2-HMAC-SHA256 of the code with a random salt, and the secrets are encrypted with

@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>故障排查 – Mini mPOS</title>
+  <meta name="description" content="恢复未知付款结果，解决 Mini mPOS 的连接、扣款、支付链接、收据和安装问题。">
+  <link rel="icon" href="../favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="../styles.css">
+  <link rel="canonical" href="https://astiskala.github.io/minimpos/zh-CN/troubleshooting.html">
+  <link rel="alternate" hreflang="en" href="https://astiskala.github.io/minimpos/troubleshooting.html">
+  <link rel="alternate" hreflang="zh-CN" href="https://astiskala.github.io/minimpos/zh-CN/troubleshooting.html">
+  <link rel="alternate" hreflang="ja" href="https://astiskala.github.io/minimpos/ja/troubleshooting.html">
+  <link rel="alternate" hreflang="x-default" href="https://astiskala.github.io/minimpos/troubleshooting.html">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="Mini mPOS 故障排查">
+  <meta property="og:description" content="安全查询不确定的付款，并找出问题后的下一步。">
+  <meta property="og:url" content="https://astiskala.github.io/minimpos/zh-CN/troubleshooting.html">
+  <meta property="og:image" content="https://astiskala.github.io/minimpos/images/social.png">
+  <meta property="og:image:alt" content="Adyen 终端示意图中的 Mini mPOS，展示英文模拟器演示。">
+  <meta property="og:locale" content="zh_CN">
+  <meta property="og:locale:alternate" content="en_US">
+  <meta property="og:locale:alternate" content="ja_JP">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Mini mPOS 故障排查">
+  <meta name="twitter:description" content="安全查询不确定的付款，并找出问题后的下一步。">
+  <meta name="twitter:image" content="https://astiskala.github.io/minimpos/images/social.png">
+  <meta name="twitter:image:alt" content="Adyen 终端示意图中的 Mini mPOS，展示英文模拟器演示。">
+  <meta name="theme-color" content="#00112C">
+</head>
+<body>
+  <a class="skip" href="#main">跳到正文</a>
+  <header class="site-header"><div class="wrap header-row">
+    <a class="brand" href="./" aria-label="Mini mPOS 首页"><img src="../favicon.svg" alt="" width="36" height="36"><span>Mini mPOS</span></a>
+    <nav aria-label="主导航"><ul class="nav"><li><a href="./#features">功能</a></li><li><a href="getting-started.html">快速入门</a></li><li><a href="setup.html">设置助手</a></li><li><a class="button button-small" href="https://github.com/astiskala/minimpos">GitHub</a></li></ul></nav>
+    <details class="language-menu"><summary aria-label="语言：简体中文" title="语言"><svg aria-hidden="true" class="globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 2.7 3.8 5.7 3.8 9s-1.3 6.3-3.8 9c-2.5-2.7-3.8-5.7-3.8-9S9.5 5.7 12 3z"/></svg><span class="language-current">简体中文</span></summary><nav aria-label="语言"><ul><li><a href="../troubleshooting.html" hreflang="en" lang="en">English</a></li><li><a href="troubleshooting.html" hreflang="zh-CN" lang="zh-CN" aria-current="page">简体中文</a></li><li><a href="../ja/troubleshooting.html" hreflang="ja" lang="ja">日本語</a></li></ul></nav></details>
+  </div></header>
+  <main id="main">
+    <section class="guide-hero"><div class="wrap"><p class="eyebrow">指南</p><h1>故障排查</h1><p class="lead">先确认付款结果。修复连接并不能说明之前的付款是否成功。</p></div></section>
+    <div class="wrap guide">
+      <nav class="toc" aria-label="指南导航"><p class="toc-title">指南</p><p><a href="getting-started.html">快速入门</a><br><a href="using.html">使用 Mini mPOS</a><br><a href="troubleshooting.html" aria-current="page">故障排查</a></p><p class="toc-title">本页目录</p><ol><li><a href="#unknown">付款未知</a></li><li><a href="#connection">设置和连接</a></li><li><a href="#modifications">扣款和调整</a></li><li><a href="#links">支付链接</a></li><li><a href="#receipts">收据和邮件</a></li><li><a href="#access">PIN 和传输</a></li><li><a href="#install">安装</a></li><li><a href="#help">获取帮助</a></li></ol></nav>
+      <div class="guide-body">
+        <section id="unknown">
+          <h2>付款或退款的结果未知</h2>
+          <p class="note"><strong>不要仅因应用没有响应就再次收款或退款。</strong>请求可能已到达 Adyen，请先查询原操作。</p>
+          <ol><li>打开<strong>交易记录 › 需处理</strong>，选择原付款或退款。</li><li>点击<strong>重新查询结果</strong>。对于本地或云端终端，应用会查询原交易的结果。</li><li>仍未知时，按识别号、时间和金额检查<strong>商户后台 › Payments › Payment list</strong>，再决定下一步。</li></ol>
+          <p>崩溃或重启后，中断的操作仍以未知状态保留。不要通过清除应用数据解决此问题。</p>
+          <h3>Tap to Pay 返回时没有响应</h3>
+          <p>Payments 应用无法查询交易状态。<strong>重新查询结果</strong>可使用迟到的响应，但不能远程获取。若没有响应，再次收款前请检查商户后台。</p>
+          <h3>终端忙碌</h3>
+          <p>完成终端上的其他付款或退出管理菜单。若结果界面提供<strong>取消终端当前交易</strong>，仅在确实要停止该交易时使用，再查询结果后重试。Tap to Pay 不支持此命令。</p>
+        </section>
+        <section id="connection">
+          <h2>付款未配置或无法连接终端</h2>
+          <p>先看首页设置提示，再打开<strong>设置 › 终端</strong>，完成编号步骤并运行连接和 API 测试。必要时参阅<a href="getting-started.html#connect">对应配置的连接说明</a>。</p>
+          <dl class="settings-list"><dt>本终端或同一网络中的终端</dt><dd>将共享密钥的标识符、口令和版本与商户后台核对。网络模式下还需检查终端当前 IP 地址和 POIID，以及同一网络中的两台设备能否相互连接。</dd><dt>云端</dt><dd>检查商家账户、终端 POIID，以及凭据的 Cloud Device API 和 Checkout webservice 角色。确认终端在线；断线终端无法处理云端付款。</dd><dt>Tap to Pay</dt><dd>安装对应环境的 Payments 应用，不要同时安装 TEST 和 LIVE。完成注册并输入共享密钥。成功的配置检查并不测试银行卡付款。</dd><dt>Checkout API</dt><dd>所有真实付款配置都需要它。核对商家账户和密钥；LIVE 还需要 live URL prefix。保存的密钥无法读取时请重新输入。</dd><dt>环境错误</dt><dd>TEST/LIVE 由终端、云端 API 密钥或已安装的 Payments 应用检测，不是在设置中选择。使用正确环境的设备和凭据，再检查“设置 › 关于”。</dd></dl>
+          <p>更换商家账户、环境或终端后，旧付款的操作可能被阻止。恢复处理该付款时的配置，或在商户后台处理，不要尝试用另一个账户处理。</p>
+        </section>
+        <section id="modifications">
+          <h2>扣款或调整失败或结果未知</h2>
+          <p>从<strong>交易记录</strong>打开原记录并查看原因。补全 Checkout API 设置，或恢复付款的原账户和环境。</p>
+          <ul><li><strong>重试扣款</strong>使用相同标识再次发送已存储的扣款。使用此操作，而不是创建新的付款。</li><li>未解决的金额调整应重试原金额；不同金额是独立操作，可能需先解决原操作。</li><li>若发卡行拒绝小费增额，选择较少小费或无小费。增额被拒时小费不会保存。</li><li><strong>已请求扣款</strong>、<strong>已请求退款</strong>及异步调整被接受都不是最终确认。请检查商户后台；Mini mPOS 无法接收确认 webhook。</li></ul>
+          <p>流程要求参见<a href="using.html#preauth">订金</a>和<a href="using.html#tips">收据小费</a>。冻结金额会到期，请及时处理。</p>
+        </section>
+        <section id="links">
+          <h2>支付链接未显示或不更新</h2>
+          <p>结账没有<strong>创建支付链接</strong>时，开启<strong>设置 › 支付 › 提供支付链接</strong>并完成 Checkout API 设置。链接仅用于真实付款配置下的销售，不用于预授权、收据小费或模拟器。</p>
+          <p>应用仅在链接界面打开时查询，不会持续后台查询。从交易记录重新打开并点击<strong>查询支付状态</strong>。待支付记录不计入合计。</p>
+          <p>创建链接中断且结果未知时，打开原记录并点击<strong>查询支付状态</strong>，会使用原请求重试创建。不要仅为获取链接创建另一笔销售。已支付链接必须在<strong>商户后台 › Payments › Payment list</strong>退款。</p>
+        </section>
+        <section id="receipts">
+          <h2>收据无法打印或发送邮件</h2>
+          <p><strong>打印：</strong>确认连接的终端确有打印机，查看<strong>设置 › 关于</strong>并测试连接。在<strong>设置 › 收据</strong>中检查打印机检测和自动打印，再<strong>打印测试收据</strong>。手动设置打印机可用并不能为 AMS1 或 Tap to Pay 手机添加打印机。</p>
+          <p><strong>邮件：</strong>从<strong>设置 › 电子邮件</strong>发送测试，检查服务器、端口、STARTTLS/SSL、用户名和服务商要求的密码。服务商可能要求开通 SMTP、使用应用密码，或禁止密码认证。另行检查“设置 › 支付”的自动发送和邮箱采集。参见<a href="using.html#receipts">邮件设置及服务商说明</a>。</p>
+        </section>
+        <section id="access">
+          <h2>PIN 和设置传输问题</h2>
+          <p><strong>经理 PIN：</strong>管理员可在“设置 › 安全”更换或移除。管理员 PIN 和经理 PIN 保护不同操作，其中一个不会自动解锁另一个。</p>
+          <p><strong>忘记管理员 PIN：</strong>没有 PIN 恢复功能。清除 Android 应用数据会移除 PIN，也会删除<strong>全部本地商品、设置、秘密信息和交易记录</strong>。先解决未完成付款并保留所需记录。设置传输不能恢复交易记录。仅在接受数据丢失时重置。</p>
+          <p><strong>传输码：</strong>使用与这些二维码一起显示的码，而不是新生成的码。错误码不会导入任何内容，留空仅导入非秘密内容。检查秘密信息存储失败提示，重新输入缺少的密钥。复制后检查接收设备的支付目标及凭据，参见<a href="using.html#more">设备和数据</a>。</p>
+        </section>
+        <section id="install">
+          <h2>终端无法安装应用</h2>
+          <dl class="settings-list"><dt><code>INSTALL_PARSE_FAILED_NO_CERTIFICATES</code></dt><dd>APK 未签名。请上传<a href="https://github.com/astiskala/minimpos/releases/latest">最新版本</a>中维护者签名的 <code>minimpos-&lt;version&gt;.apk</code>。</dd><dt><code>INVALID_SIGNING_CERTIFICATE_MISMATCH</code></dt><dd>本次上传的签名密钥与之前不同。保持原签名来源；确需更换时向 Adyen 支持团队咨询移除旧版本。</dd><dt>不支持的 Android 版本</dt><dd>Mini mPOS 需要 Android 9 或更高版本，不支持旧 S1E 的 Android 7.1。</dd></dl>
+        </section>
+        <section id="help">
+          <h2>仍需帮助？</h2>
+          <p>Adyen 账户、终端部署、付款方式开通或最终付款结果请联系 Adyen。应用问题请<a href="https://github.com/astiskala/minimpos/issues">提交 GitHub issue</a>，提供应用版本、设备型号、付款配置、TEST/LIVE 环境和复现步骤。</p>
+          <p>不要包含密钥、密码、PIN 或顾客数据。疑似漏洞请按<a href="https://github.com/astiskala/minimpos/blob/main/SECURITY.md">安全政策</a>私下报告。</p>
+        </section>
+      </div>
+    </div>
+  </main>
+  <footer class="site-footer"><div class="wrap footer-row"><p><img src="../favicon.svg" alt="" width="24" height="24"> Mini mPOS · MIT 许可证 · <a href="https://github.com/astiskala/minimpos">GitHub</a> · <a href="https://github.com/astiskala/minimpos/blob/main/SECURITY.md">安全</a></p><p class="fine">Adyen 是 Adyen N.V. 的商标。Mini mPOS 是独立项目，与 Adyen 无关联，未获其背书，也不由其提供支持。</p></div></footer>
+</body>
+</html>

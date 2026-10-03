@@ -1,173 +1,179 @@
 # Contributing to Mini mPOS
 
-Thanks for helping out! Mini mPOS is a small project, so the process is light. For anything bigger than a bug fix,
-please open an issue first so we can agree on the approach before you spend time on it.
+For a substantial change, open an issue first to agree on the approach. Keep pull requests focused, describe how you
+tested them, and include before/after screenshots for UI changes. Contributions are licensed under [MIT](LICENSE).
 
-## Set up
+## Build and run
 
-You need:
-
-- JDK 17 or later to start Gradle. The build then downloads and uses JDK 21 itself
-  (`gradle/gradle-daemon-jvm.properties`).
-- The Android SDK with platform 37 and recent build tools. Android Studio installs these for you; otherwise point
-  `sdk.dir` in `local.properties` at your SDK.
-- macOS or Linux for the full quality gate: it downloads the release binaries of the Markdown and workflow linters
-  (checked against pinned SHA-256 checksums), which are built for those systems only.
-- An emulator or Android phone (Android 9 or later) to run the app. Without an Adyen terminal the app uses its
-  built-in simulator.
+You need JDK 17+ to start Gradle (the build downloads JDK 21), Android SDK platform 37 and recent build tools.
+Android Studio can install the SDK; otherwise set `sdk.dir` in an untracked `local.properties`. The full gate supports
+macOS and Linux; its pinned Markdown/workflow linter binaries are not available for Windows.
 
 ```sh
-./gradlew :app:installDebug   # build and install on the connected device or emulator
+./gradlew :app:installDebug
 ```
 
-Android Studio is the easiest editor. In VS Code, the project's settings turn off the Java extension's Gradle import:
-there is no Java code, and the import fails on this build with errors in every `build.gradle.kts`.
+Run on an Android 9+ phone or emulator. Away from a terminal, the app defaults to the simulator. Set its outcomes,
+delay and printer in Settings › Simulator. Adyen terminals have no adb: use the simulator for debugging or configure
+a terminal on your network for integration testing. Follow the merchant [setup guide](docs/getting-started.html).
 
-You can't debug over USB on Adyen terminals, so all development happens against the simulator. To test with a real
-terminal, set Settings › Terminal › Payments go to › A terminal on your network, then enter the terminal's IP address,
-its terminal ID (POIID) and its shared key. On a terminal itself only the shared key is asked for.
+Android Studio is the simplest editor. The repository's VS Code settings disable the Java extension's Gradle import;
+there is no Java code, and that importer cannot handle this build.
 
-## Check your change
+## Find the right code
 
-Run the full quality gate before you open a pull request:
+| Module | Responsibility |
+| --- | --- |
+| `core` | Android-free money/tax, cart, refunds, receipt model/renderers, QR formats, currencies and payment methods. |
+| `adyen` | Android-free Terminal, Checkout, Cloud device and Management API integration, transports and simulator. |
+| `app` | Compose UI, Room, DataStore, Keystore, email, camera scanning and manual DI in `AppContainer`. |
+| `website-test` | Tests and validation for the static website in `docs/`; no app code. |
+
+[CONTEXT.md](CONTEXT.md) defines domain terms and decision owners. Read the relevant
+[module rules](app/AGENTS.md) ([Adyen module](adyen/AGENTS.md)) before changing a module. Their starred architectural
+rules are enforced by ArchUnit. Detailed contracts belong in KDoc, not a parallel architecture manual.
+
+On a terminal, the app sends encrypted Terminal API requests to `https://localhost:8443/nexo`. Network setups reach
+the same API on another terminal; cloud setups use Adyen's HTTPS device API; Tap to Pay uses encrypted App Links to
+the Payments app. Checkout handles captures, adjustments and links; Management boards the Payments app.
+There is no backend. These are distinct transports, not interchangeable recovery policies.
+
+## Verify a change
 
 ```sh
+./gradlew spotlessApply
 ./gradlew qualityGate
 ```
 
-It runs:
+The gate checks:
 
-- Spotless with ktlint (formatting), and trailing whitespace and final newlines in the other text files. Fix
-  formatting with `./gradlew spotlessApply`, which also fixes what it can in the Markdown files. ktlint caches
-  `.editorconfig` inside the Gradle daemon, so after editing it run `./gradlew --stop` before checking again.
-- [rumdl](https://rumdl.dev) (`.rumdl.toml`) on every Markdown file: markdownlint's rules, lines of at most 120
-  characters outside tables and code, and relative links that point at existing files. It keeps your line breaks, so
-  wrap prose yourself.
-- The website's checks (`website-test`): tests of its links, languages, metadata, quoted app labels and screenshots,
-  and the [W3C Nu Html Checker](https://validator.github.io/validator/) on its HTML and CSS.
-- The GitHub workflows' checks: actionlint (with shellcheck on their scripts) and zizmor's security audit.
-- detekt with the Compose rules (`config/detekt/`), including the documentation rules described below. There is no
-  baseline: every finding must be fixed.
-- A KDoc link check: Dokka builds each module's documentation (`dokkaGeneratePublicationHtml`, part of `check`) and
-  fails on any `[link]` that does not resolve, in public and private code alike. The generated pages are in
-  `<module>/build/dokka/html` if you want to read them.
-- Android Lint in every module, with all checks enabled (including the ones that are off by default), test sources
-  included and warnings treated as errors.
-- Unit tests, Robolectric tests and Compose UI tests.
-- Architecture tests (`ArchitectureTest` in each module, using ArchUnit). They keep `core` and `adyen` free of
-  Android and dependency cycles, keep the app's layers apart (business logic free of Compose, Room only in `data`,
-  secrets encrypted only in `data.security`), keep money out of floating-point types, stop anything from using the
-  Adyen library's Apache HTTP client or its unencrypted TEST-only API, and forbid logging. They also give each
-  decision one home (where a payment stands, where payments go, how outcomes are worded, …), as
-  [`app/AGENTS.md`](app/AGENTS.md) and [`adyen/AGENTS.md`](adyen/AGENTS.md) list.
-- An API level check (`AndroidApiLevelTest`): `core` and `adyen` run on Android 9 terminals, but Lint doesn't
-  check JVM modules, so the test checks every Java API they use against the Android SDK's API database.
-- Kover coverage thresholds: `core` 95% lines and 85% branches, `adyen` 90% and 75%, `app` (non-UI) 80% lines.
-- A manifest check against Adyen's app requirements (minimum Android version, allowed permissions, no home-screen or
-  test-only flags).
+| Check | Contract |
+| --- | --- |
+| Spotless/ktlint | Kotlin formatting; whitespace and final newlines in other text files. Restart Gradle after changing `.editorconfig`. |
+| rumdl | Markdown rules and relative links; 120 columns outside tables/code. Wrap prose by hand; formatting keeps line breaks. |
+| Website | Local links/fragments/assets, language and metadata parity, UI labels, screenshots, setup-helper fields; W3C Nu HTML/CSS validation with no messages. |
+| Workflows | actionlint with shellcheck, and offline zizmor. |
+| detekt | Type-resolved checks of main/test sources, including Compose and documentation rules; no baseline. |
+| Dokka | All KDoc links resolve, including private code; generated HTML is in `<module>/build/dokka/html`. |
+| Android Lint | All checks, including normally disabled checks and test sources; warnings fail. |
+| Tests | JVM, Robolectric, Compose, ArchUnit and Android API-level tests. |
+| Kover | Core 95/85%, Adyen 90/75% line/branch coverage; app non-UI 80% lines via `koverVerifyDebug`. |
+| Manifest | Debug and release satisfy Adyen's constraints, including a PNG-only application icon and allowed permissions. |
 
-Kotlin warnings are errors in every module. It's also worth building the release APK
-(`./gradlew :app:assembleRelease`) when you add a dependency, because R8 may need keep rules for it. GitHub Actions
-runs the quality gate and the release build on every pull request (`.github/workflows/ci.yml`), and Dependabot proposes
-dependency updates (Gradle and GitHub Actions) once they are a week old. Each push to `main` also submits the
-resolved Gradle dependency graph, so Dependabot alerts cover transitive dependencies too.
+Kotlin warnings are errors. Fix findings instead of adding suppressions, exclusions, ignores or baselines. Existing
+exceptions have reasons. A new architectural decision needs a rule, a reason comment, and a check that a deliberate
+violation fails. Keep new source sets covered by type-resolved detekt; don't add the overlapping plain `detekt` task.
+Aggregate app coverage has no bounds and must not pull release compilation into the gate.
 
-### Rules are fixed, not silenced
+Build `./gradlew :app:assembleRelease` after dependency changes: R8 may need keep rules. CI runs the gate and release
+build on pull requests. JVM modules aren't checked by Android Lint for API availability; `AndroidApiLevelTest` checks
+reachable Java/Android APIs against minSdk 28 and accepts D8 backports. For example, use the charset-name overload of
+`URLEncoder.encode`, not the API-33 `Charset` overload.
 
-Don't add `@Suppress`, lint ignores, detekt baselines or rule exclusions to get a change through. The few that exist
-are there because the rule can't be satisfied (third-party or generated code, or a rule that doesn't fit Compose), and
-each one has a comment explaining why. If you think a rule is wrong for your case, say so in the pull request.
+### Test setup
 
-## Guidelines
+- `core` and `adyen`: plain JUnit. Crypto uses independent vectors; TLS tests use a fake Adyen root.
+- `app`: Robolectric SDK 33, `TestApplication`, Compose v2 rules and `en-rAU` amounts. See
+  [app test pitfalls](app/AGENTS.md#tests). Two worker JVMs run app tests; isolate filesystem fixtures across processes.
+- `LocalizationTest` checks resource/format parity and writes receipt samples under
+  `app/build/reports/localization/`. `LocalizedUiTest` checks Chinese/Japanese checkout at AMS1 size.
+- No real network or DNS in unit tests. Use the existing fake terminal, cloud, Payments app, Management and link APIs.
 
-- **Use the project's words.** `CONTEXT.md` defines the domain terms (sale, pre-authorization, standing, destination,
-  delivery, …) and where each is decided; name new code after them.
-- **Keep the modules pure.** `core` and `adyen` are plain Kotlin with no Android dependencies, so they stay fast
-  to test. Android code lives in `app`.
-- **Money is `Long` minor units** with `CurrencySpec`, never `Double`. Tax rates are thousandths of a percent.
-- **Use Adyen's library** for anything the Terminal API needs (models, encryption, certificate checks) instead of
-  writing it yourself. [`adyen/AGENTS.md`](adyen/AGENTS.md) lists what it takes to make that library
-  work on Android. The Checkout API calls (captures, authorization adjustments and payment links) and the
-  cloud transport are the exception: they post plain JSON with OkHttp, because the library's Checkout and cloud models
-  need Jackson and keep rules for hundreds of classes.
-- **Respect the terminal's rules.** Don't add permissions (only internet, network state and camera are allowed), don't
-  raise `minSdk` above 28, and don't depend on Google Play services, which Adyen terminals don't have.
-- **Add dependencies through `gradle/libs.versions.toml`**, pin exact versions, and prefer releases that are at least a
-  week old.
-- **Never log or store secrets in plain text.** Passphrases, API keys and passwords go through `SecretStore`, which
-  encrypts them with the Android Keystore.
-- **Put user-facing text in `strings.xml`**, in short plain US English sentences, and add the Simplified Chinese
-  (`values-zh-rCN`) and Japanese (`values-ja`) translations in the same change. Chinese and Japanese plurals only use
-  `other`. Keep Adyen's Customer Area menu paths (such as Devices › Device settings) in English in every language.
-- **Document the code.** Every public or protected class, object (companion objects too), function, property and
-  enum entry needs a KDoc comment (detekt checks this). Say what it's for, and include units (minor units, thousandths
-  of a percent), what `null` means, threading, errors (`@throws`) and Adyen or format details a maintainer would
-  otherwise have to look up. Don't repeat the name ("The name."). For data classes, use `@property` tags or document
-  each property. If a class's KDoc has tags for its constructor, it needs one for every constructor parameter, in
-  declaration order: `@property` for public properties, `@param` for everything else (private `val`s included), or
-  document parameters with their own KDoc instead of tags. Refer to other code with `[links]`, which the build checks.
-  In private code, add a comment only where the reason isn't obvious from the code.
-- **Keep composables small.** detekt's length and complexity limits apply to Compose code too. Split a long screen
-  into private composables: make them `ColumnScope` or `RowScope` extensions when they emit several siblings, so the
-  parent's spacing still applies, and pass state and callbacks rather than the view model.
+### Known integration verification gaps
 
-## Tests
+There is no real Adyen test account in CI. Still needing real-device/API verification: cloud offline/busy event
+notifications; Payments app return-URL encoding, error answers and size limits; TEST payment-link paid/PATCH answers
+and line-item validation; whether a shopper reference without `recurringProcessingModel` stores no card.
+Do not describe simulator coverage as proof of these behaviors. Mobile SDK card readers are intentionally absent:
+they require a backend for certificates, a private Maven repository, PCI MPoC and six-monthly updates.
 
-- `core` and `adyen` have plain JUnit tests. The Terminal API tests cover encryption against independently
-  generated test vectors, TLS against a fake Adyen root certificate, and the simulator.
-- `app` uses Robolectric for data, view model and Compose UI tests (`app/src/test`). UI tests run with the
-  `en-rAU` locale, so amounts show as `$4.50`.
-- `LocalizationTest` checks that every string has its translations with the same format arguments, and writes sample
-  receipts in each language to `app/build/reports/localization/`. `LocalizedUiTest` runs checkout in Chinese and
-  Japanese at the AMS1's screen size.
-- [`app/AGENTS.md`](app/AGENTS.md) describes the test helpers (`TestEnvironment` and the fake terminal, cloud and
-  Payments app) and the Robolectric pitfalls to avoid, such as text fields in an `AlertDialog`.
+## Make changes that fit
 
-## Changing stored data
+- Follow [repository constraints](AGENTS.md) and existing module patterns. Use `Long` minor units and Adyen's decimals,
+  never floating-point money; tax rates are thousandths of a percent.
+- Use the Adyen library for Terminal API models, crypto and certificate checks. The Android adaptations and exceptions
+  for plain JSON Checkout/cloud calls are in [the Adyen rules](adyen/AGENTS.md).
+- Every public/protected declaration needs KDoc (tests exempt): useful contracts, units, null meaning, threading,
+  formats and errors. Constructor tags, when used, cover every parameter in order: public properties use `@property`,
+  others `@param`. Don't merely repeat a declaration's name.
+- Keep Compose components small. Pass state/callbacks rather than view models below screen level, reuse components,
+  and use `ColumnScope`/`RowScope` extensions for siblings that need parent spacing.
+- Put user text in resources, in short US English, with Chinese/Japanese translations and matching format arguments.
+  CJK plurals use `other`. Preserve identifiers, stored spelling and Adyen text; keep Customer Area paths English.
+- Pre-launch schemas and QR formats have one current contract. Update models, exported Room schema, tests and setup
+  helper together, without earlier-build compatibility. Never add destructive fallback or reset local data silently.
+- New-install localized/regional defaults must not overwrite stored text or imported settings.
 
-- **Database:** keep the current model, exported schema (`app/schemas/`) and schema tests in step. Earlier pre-launch
-  schemas need no migration support. Do not add an automatic destructive fallback or reset local data without approval.
-- **Pre-launch:** there are no users yet. Do not preserve earlier app formats, names or defaults with compatibility
-  branches; change the current model and its tests together. Supported Android versions and Adyen protocols still apply.
-- **Settings:** constructor defaults define the current baseline; device-country and localized defaults are applied
-  at installation.
-- **QR formats:** the app and setup helper page (`docs/js/setup.js`) implement the same current contract. Keep it in
-  step with `TransferCodec`, `QrChunks` and `TransferSeal`, and regenerate the codes in `SetupTransferTest`'s setup
-  helper test when its output changes.
+## Website and screenshots
 
-## Screenshots
+GitHub Pages publishes `docs/` unchanged. Keep the existing visual design and script-free guides; only the setup
+helper runs `docs/js/setup.js` and the vendored `qrcodegen.js`. Preserve the helper's no-network policy and update its
+format alongside `TransferCodec`, `QrChunks`, `TransferSeal` and the helper vectors in `SetupTransferTest`.
 
-The screenshots in `docs/images/` come from an emulator running Android 13 in English (Australia), with a demo café
-catalog and the simulator. The status bar was cleaned up with Android's system UI demo mode. The website shows them in
-S1F2 and AMS1 frames, so capture them at those screens' sizes: 720×1280 (S1F2, resized to 540×960) and 480×800 (AMS1,
-only `sale-ams1.png`). Keep the demo data consistent, so the README and the website match. The full recipe (emulators,
-demo data, the flows behind each screenshot, the social image) is in
-[`.devin/skills/docs-screenshots/SKILL.md`](.devin/skills/docs-screenshots/SKILL.md).
+The merchant documentation has three guides: setup, using the app, troubleshooting. Each fact has one home, with
+links from elsewhere. Update English, Chinese and Japanese together, including metadata and reciprocal language
+switches. Website tests protect workflow coverage and translation parity, not a fixed count of pages or headings.
+For a quick check, run `./gradlew :website-test:check`; the full gate remains required.
 
-The website in `docs/` has English, Simplified Chinese (`docs/zh-CN/`) and Japanese (`docs/ja/`) pages, which all use
-the English screenshots. Change all three languages together and check them with `./gradlew :website-test:check` (part
-of the quality gate): links, language switches, metadata, the app labels the guides quote, and valid HTML and CSS
-(void elements such as `<img ...>` take no trailing slash). Only the setup helper pages run scripts, and only the two
-in `docs/js/`: `setup.js` and `qrcodegen.js`, a vendored copy of Project Nayuki's QR Code generator (its header says
-which release and how it was compiled; replace the whole file to upgrade it).
+Use [the screenshot skill](.devin/skills/docs-screenshots/SKILL.md) to capture English simulator demos and the social
+image. Screenshots must match their original terminal frames: S1F2 540×960, AMS1 480×800. Do not crop or stretch to fit,
+label screenshots as demos, and keep demo data consistent. The guides' SMTP links must match
+`SmtpProvider.helpUrl`; verify provider requirements when changing the list.
 
-## Releases
+## Dependency and build maintenance
 
-The version lives in `version.properties`; don't change it in pull requests. To release, the maintainer runs
-**Actions › Release › Run workflow** on `main` and picks which part of the version to raise (patch, minor or major; the
-`versionCode` always goes up by one, as the Customer Area needs). The workflow runs the quality gate, builds the APK
-signed with the upload key, commits and tags the new version (`vX.Y.Z`) and publishes a GitHub Release with the APK and
-generated release notes.
+- Add dependencies via `gradle/libs.versions.toml`, pin versions at least seven days old, and check the release build.
+  Never weaken security policies or minimum-release-age controls to make a build pass.
+- For transitive advisories, pin a patched version in `settings.gradle.kts`'s `patched` table, check
+  `./gradlew <module>:dependencies buildEnvironment`, then run the gate and signed release build. Remove overrides
+  when upstream catches up. Dependency submission sends the resolved graph to GitHub.
+- Adyen's library ships no R8 rules. Keep its model/serialization rules in `app/proguard-rules.pro` and inspect release
+  dex after upgrades: the `TrustAllX509TrustManager` lint exception depends on stripping the TEST-only API.
+- rumdl, actionlint, shellcheck and zizmor use official archives with pinned hashes in `registerDownload`. Upgrade to a
+  release at least seven days old; update all four platform checksums together, using release checksum files or
+  verified archives (`gh attestation verify`). Dependabot cannot update these binaries.
+- Pin workflow actions by SHA; checkout with `persist-credentials: false`; pass expressions into scripts via `env`.
+  Keep caches out of release jobs and expose its push token only to the push step.
+- For a dead-code audit, build release and inspect `app/build/outputs/mapping/release/usage.txt`. The block before the
+  first `androidx.*` entry shows public members production never reaches; review serialization/Room members by hand.
 
-The signing key is kept in the repository's `release` environment, which only `main` can use, as two secrets:
-`RELEASE_KEYSTORE` (the keystore, base64-encoded) and `RELEASE_SIGNING_PROPERTIES` (the `storePassword`, `keyAlias`
-and `keyPassword` lines of `keystore.properties`).
+Gradle 9.8 deprecates `Configuration.setVisible`; several current plugins still call it. Do not suppress warnings.
+To see configuration-time warnings hidden by a reused configuration cache:
 
-## Pull requests
+```sh
+./gradlew qualityGate --no-configuration-cache --warning-mode all -Dorg.gradle.deprecation.trace=true
+```
 
-- Keep each pull request focused on one change, and describe what you changed and how you tested it.
-- Include before-and-after screenshots for UI changes.
-- Make sure `./gradlew qualityGate` passes.
-- Don't commit secrets, keystores, `keystore.properties` or `local.properties`.
+## Signing your own APK
 
-By contributing, you agree that your contributions are licensed under the project's [MIT license](LICENSE).
+Prefer the maintainer-signed APK for merchant installations. If you maintain a fork, create a signing key once and
+keep it safe, outside the repository:
+
+```sh
+keytool -genkeypair -keystore ~/.android/minimpos-release.jks -alias minimpos -keyalg RSA -keysize 4096 \
+  -validity 10000 -dname "CN=Mini mPOS"
+```
+
+Set `storeFile`, `storePassword`, `keyAlias` and `keyPassword` in an untracked `keystore.properties`, then build:
+
+```sh
+./gradlew :app:assembleRelease
+```
+
+The signed output is `app/build/outputs/apk/release/app-release.apk`. Without signing properties the build produces
+an unsigned APK, which Adyen accepts as an upload but terminals cannot install. The application ID is
+`io.github.astiskala.minimpos`; each ID is tied to the key used for its first upload. Keep the same key and use a higher
+version code for each deployment. A signing-key mismatch requires Adyen Support to remove earlier uploads.
+
+Do not bump this repository's version by hand. Use the release workflow for releases; forks must maintain their own
+release process, credentials and signing history.
+
+## Release the app
+
+`version.properties` is managed by **Actions › Release › Run workflow** on `main`. Choose patch/minor/major;
+the workflow raises `versionCode`, runs verification, signs, commits/tags `vX.Y.Z`, and publishes the APK and notes.
+Only the latest release is maintained.
+
+The repository's `release` environment is restricted to `main`. Its secrets are `RELEASE_KEYSTORE` (base64 keystore)
+and `RELEASE_SIGNING_PROPERTIES` (`storePassword`, `keyAlias`, `keyPassword`). Never commit them or local SDK/signing
+files. See [SECURITY.md](SECURITY.md) for private vulnerability reporting.

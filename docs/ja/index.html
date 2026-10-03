@@ -121,7 +121,7 @@
             </article>
             <article class="feature">
               <svg aria-hidden="true" viewbox="0 0 24 24"><path d="M12 2a10 10 0 1 1 0 20 10 10 0 0 1 0-20zm1 4h-2v1.1A3 3 0 0 0 8.5 10c0 1.7 1.3 2.4 3 2.8 1.2.3 1.5.6 1.5 1.1s-.5.9-1.3.9c-.9 0-1.5-.4-1.6-1.1H8.2c.1 1.6 1.2 2.6 2.8 2.9V18h2v-1.4c1.6-.3 2.8-1.3 2.8-2.8 0-1.8-1.4-2.5-3.1-2.9-1.1-.3-1.4-.5-1.4-1 0-.4.4-.8 1.1-.8.8 0 1.2.4 1.3.9h1.9A2.9 2.9 0 0 0 13 7.1z"></path></svg>
-              <h3>領収書でチップ</h3>
+              <h3>領収書にチップを記入</h3>
               <p>お客様が印刷した領収書にチップを記入。準備ができたら、請求額に追加できます。</p>
             </article>
             <article class="feature">
@@ -131,13 +131,13 @@
             </article>
             <article class="feature">
               <svg aria-hidden="true" viewbox="0 0 24 24"><path d="M4 4h10v6H4zm6 10h10v6H10zM16 5h3a1 1 0 0 1 1 1v5h2l-3 3-3-3h2V7h-2zM8 19H5a1 1 0 0 1-1-1v-5H2l3-3 3 3H6v4h2z"></path></svg>
-              <h3>数分でセットアップ</h3>
+              <h3>設定をスキャン</h3>
               <p>セットアップヘルパーでパソコンからキーを入力し、デバイスで読み取るだけ。商品と設定も QR コードで別のデバイスにコピーでき、キーは転送コードで保護して移せます。</p>
             </article>
             <article class="feature">
               <svg aria-hidden="true" viewbox="0 0 24 24"><path d="M12 2a5 5 0 0 1 5 5v3h1a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-8a2 2 0 0 1 2-2h1V7a5 5 0 0 1 5-5zm0 2a3 3 0 0 0-3 3v3h6V7a3 3 0 0 0-3-3z"></path></svg>
               <h3>しっかり保護</h3>
-              <p>管理者PIN で商品と設定を保護。パスワードとキーは暗号化して保存します。</p>
+              <p>管理者PINで設定を、別のマネージャーPINで決済後の操作を保護します。パスワードとキーは暗号化します。</p>
             </article>
           </div>
         </div>
@@ -234,6 +234,7 @@
               <p><a href="getting-started.html">設定ガイドを読む</a> · <a href="setup.html">セットアップヘルパーを開く</a> · <a href="https://github.com/astiskala/minimpos/releases/latest">アプリをダウンロード</a></p>
             </article>
           </div>
+          <p><a href="using.html">Mini mPOS の使い方</a> · <a href="troubleshooting.html">トラブルシューティング</a></p>
         </div>
       </section>
       <section aria-labelledby="faq-title" class="section">
@@ -241,40 +242,24 @@
           <h2 id="faq-title">よくある質問</h2>
           <div class="faq">
             <details>
-              <summary>どのデバイスで使えますか？</summary>
-              <p>Android 9 以降を搭載した Adyen Android 決済端末（例：S1F2、S1F4Pro、S1E4Pro、S1E2L、AMS1、S1U2、SFO1）と、Android のタブレットやスマートフォンで使えます。印刷にはプリンター搭載端末、QR コードの読み取りにはカメラが必要です。</p>
-            </details>
-            <details>
-              <summary>タブレットやスマートフォンでも使えますか？</summary>
-              <p>はい。Android のタブレットやスマートフォンから、ネットワークやインターネット経由で Adyen 端末を使って支払いを受け付けられます。Adyen Payments アプリを使った Tap to Pay にも対応しています。ガイドの<a href="getting-started.html#tablet">タブレットやスマートフォンで使う</a>をご覧ください。</p>
+              <summary>どの構成を選べばよいですか？</summary>
+              <p>Adyen Android 端末で会計を完結するか、タブレットやスマートフォンでネットワーク端末、クラウド端末、Tap to Pay を使えます。<a href="getting-started.html#choose">要件と構成の選択</a>を参照してください。印刷にはプリンター、スキャンにはカメラが必要です。</p>
             </details>
             <details>
               <summary>料金はいくらですか？</summary>
-              <p>無料です。Mini mPOS は MIT ライセンスのオープンソースです。Adyen の決済手数料は通常どおりかかります。</p>
+              <p>アプリは無料で、MIT ライセンスのオープンソースです。Adyen の決済手数料は別途かかります。</p>
             </details>
             <details>
               <summary>Adyen の製品ですか？</summary>
-              <p>いいえ。Adyen 端末向けの独立したプロジェクトです。Adyen が開発、推奨、サポートするものではありません。本番運用前に Adyen の TEST 環境で試してください。Adyen のアカウント、決済方法、入金については Adyen に、アプリについては <a href="https://github.com/astiskala/minimpos/issues">GitHub の issue</a> でお問い合わせください。</p>
+              <p>いいえ。Adyen が開発、推奨、サポートするものではありません。本番運用前に Adyen TEST 環境で確認してください。アプリと Adyen の質問の窓口は<a href="troubleshooting.html#help">問い合わせ</a>をご覧ください。</p>
             </details>
             <details>
-              <summary>予約金やプリオーソリゼーションに使えますか？</summary>
-              <p>はい。カードに予約金を確保し、後から回収または解除できます。設定と決済方法の要件は、ガイドの<a href="getting-started.html#preauth">プリオーソリゼーション</a>を参照してください。</p>
+              <summary>デバイスでバックオフィスを共有しますか？</summary>
+              <p>しません。商品、設定、取引履歴は各デバイスに残ります。QR 転送は商品と設定のコピーで、履歴の転送や変更の継続同期ではありません。<a href="using.html#more">デバイスとデータ</a>を参照してください。</p>
             </details>
             <details>
-              <summary>お客様はチップを追加できますか？</summary>
-              <p>はい。プリンター搭載端末の<strong>領収書にチップを記入</strong>機能で、お客様が書いたチップを請求額に追加できます。ガイドの<a href="getting-started.html#tips">領収書のチップ</a>を参照してください。</p>
-            </details>
-            <details>
-              <summary>リンクで支払ってもらえますか？</summary>
-              <p>はい。Adyen の Checkout API を設定すると、会計時に端末の代わりに<strong>支払いリンクを送信</strong>できます。QR コードの表示、メール送信、印刷、共有が可能です。ガイドの<a href="getting-started.html#payment-links">支払いリンク</a>を参照してください。</p>
-            </details>
-            <details>
-              <summary>データはどこに保存されますか？</summary>
-              <p>商品、設定、取引履歴は Mini mPOS を動かしているデバイスに保存されます。別のデバイスに共有したり、自分のメールサーバーで領収書を送ったりすることもできます。決済は Adyen が処理します。</p>
-            </details>
-            <details>
-              <summary>サーバーや Adyen の APIキーは必要ですか？</summary>
-              <p>サーバーは不要です。端末では、Customer Area の共有キーと、キャプチャと支払いリンクに使う Adyen APIキーが必要です。<a href="setup.html">セットアップヘルパー</a>を使えばパソコンから入力できます。ガイドの<a href="getting-started.html#api">Checkout API とキャプチャ</a>を参照してください。</p>
+              <summary>サーバーや APIキーは必要ですか？</summary>
+              <p>サーバーは不要ですが、すべての実決済構成に Checkout API の認証情報が必要です。他のキーは決済先によります。デバイスに暗号化して保存するため、Adyen のサーバー保管の推奨とのトレードオフがあります。<a href="getting-started.html#connect">接続設定</a>とそこでの安全上の案内に従ってください。</p>
             </details>
           </div>
         </div>

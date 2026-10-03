@@ -142,12 +142,11 @@ data class TransferResult(
  * catalogue, the settings and the secrets. It also imports the codes of the setup helper web page: a connection
  * ([ConnectionSetup], which only sets what it holds) and its secrets.
  *
- * The settings leave out what belongs to the device: where payments go, the terminal's address and POIID, its
- * detected TEST/LIVE environment and the simulator. Everything else travels, and on import replaces this terminal's
- * value (a setting at its default replaces it with the default). The default tax rate travels as its name and rate,
- * and is looked up among this terminal's rates after the catalogue import. The secrets (shared key passphrase,
- * Adyen API key, SMTP password and the admin PIN's verifier, so the same PIN works) are sealed with a transfer code
- * by [TransferSeal].
+ * Shared settings omit device-bound fields as defined by [AppSettings.withDeviceFieldsOf]; imported shared values
+ * replace this device's values, including defaults. The default tax rate travels as its name and rate and is matched
+ * to a local rate after catalogue import. All configured secrets, including both API credentials, the shared-key
+ * passphrase, SMTP password and both PIN verifiers, are sealed separately with a transfer code by [TransferSeal].
+ * Transfers do not include transaction history or synchronize subsequent changes.
  *
  * @param catalog The catalogue exported and imported.
  * @param settings The settings exported and replaced.

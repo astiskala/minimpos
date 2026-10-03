@@ -1,153 +1,98 @@
 # Mini mPOS: domain language
 
-The words the code, tests, docs and reviews use for Mini mPOS's domain, and the one place each concept is decided.
-The `AGENTS.md` files (the root one, `app/AGENTS.md`, `adyen/AGENTS.md`) hold the rules and how they are
-enforced; KDoc holds the details. When code names a concept, use the term here (and its code name); add a term before
-naming a new module after it.
+Use these terms in code, tests and reviews. The owner column is a navigation aid, not a substitute for KDoc contracts.
+Architecture rules live in the module `AGENTS.md` files; development procedures are in [CONTRIBUTING.md](CONTRIBUTING.md).
+Add a new concept here before naming a module after it.
 
-Spelling: user-facing text is US English ("pre-authorization"), but identifiers and stored values keep their
-original spelling (`preAuthorisation`, `SaleKind.PRE_AUTHORISATION`, `authorisedMinor`). Don't rename either to match
-the other.
+User text uses US English, including **pre-authorization** and **catalog**. Identifiers and stored values keep their
+existing spelling (`preAuthorisation`, `SaleKind.PRE_AUTHORISATION`, `authorisedMinor`).
 
-## Taking payments
+## Taking a payment
 
-- **Sale** (`SaleKind.SALE`, `SaleEntity`): a payment for products and custom items, charged straight away. A stored
-  sale is any payment the app sent, whatever its kind. _Avoid_: order, transaction (for the stored record).
-- **Pre-authorisation** (`SaleKind.PRE_AUTHORISATION`): a payment that only **holds** one amount on the card until it
-  is captured or cancelled; refunded only once captured. _Avoid_: auth, hold (as a noun for the payment).
-- **Payment kind** (`SaleKind`): sale or pre-authorisation; each kind has its own products and its own session.
-- **Session** (`SaleSession`, `container.session(kind)`): the cart and checkout form being rung up for one kind,
-  kept while navigating and cleared once its payment is approved or its link is created, but only if its originating
-  checkout snapshot is still current. The session binds the cart, form and revision together; callers never stamp a
-  revision onto a start. _Avoid_: basket, draft.
-- **Checkout** (`payment/Checkout`): the rules for what payment a session becomes (`PaymentStart`): references, saving
-  the card, tip on the receipt, whether it can be paid at all.
-- **Tip on the receipt** (`tipOnReceipt`): a sale sent as a pre-authorisation (manual capture) with blank tip lines
-  printed; the tip written on paper is entered later and captured with the bill. _Avoid_: gratuity, tipping on the
-  terminal.
-- **Transaction** (`TransactionLifecycle`, `TransactionBook`): one payment or refund sent to the terminal: written
-  PENDING first, at most one at a time, then **settled** (`Settlement`) as succeeded, cancelled, declined, failed (it
-  never took effect) or unknown. A **status check** (recheck) asks the terminal for the outcome of one sent earlier; an
-  **abort** asks a busy terminal to stop one.
-- **Decline** (`client/Decline`): why a transaction was not approved (refused, cancelled, busy) and the retry advice;
-  read only from the ErrorCondition. _Avoid_: error, rejection.
-- **Payment link** (`payment/PaymentLinks`, `PaymentLinkStart`, `SaleEntity.paymentLink`): a sale paid on Adyen's
-  payment page (Pay by Link) instead of on a terminal, through the Checkout API. Stored PENDING first, then **awaiting
-  payment** (`SaleStatus.AWAITING_PAYMENT`) once Adyen made the link, then paid (approved), **expired** or cancelled.
-  With no server for webhooks, the outcome is learnt by **checking** the link (`PaymentLinks.check`), and a paid link
-  has no PSP reference, so it is refunded in the Customer Area. Sales only. _Avoid_: invoice, pay-by-link (in code).
-- **References**: the **merchant reference** (Adyen's `reference`: an optional prefix, then `yyMMdd-HHmmss-XXXX`;
-  refunds `R-…`, cancellations `C-…`); the **customer reference** typed at checkout, asked for exactly when it is the
-  **shopper reference** (Adyen's `shopperReference`, sent with every payment whether or not the card is saved, made
-  from the customer reference or the email, or none, `ShopperReferenceSource.NONE`, which also means no card can be
-  saved). **Saving a card** (tokenization) files it under the shopper reference, offered at checkout while
-  `PaymentSettings.offerCardSaving` is on.
-- **Sale event** (`data/repo/SaleEvent`): something that happened to a stored sale after it was opened (sent, settled,
-  link answered, capture sending/answered/left to staff, adjustment answered, interrupted, emailed), which moves it on
-  (`SaleEntity.after`). The one place that decides which statuses and fields each happening writes. _Avoid_: update,
-  transition (for the event).
+| Term | Meaning | Owner / code name |
+| --- | --- | --- |
+| Sale | Ordinary payment for products/custom items. A stored sale record also represents other payment kinds. | `SaleKind.SALE`, `SaleEntity` |
+| Pre-authorisation | A payment that holds an amount until capture or cancellation; refunded only after capture. | `SaleKind.PRE_AUTHORISATION` |
+| Payment kind | Sale or pre-authorisation, each with its own products and session. | `SaleKind` |
+| Session | Cart, checkout form and revision for one payment kind, kept across navigation. | `SaleSession`, `container.session(kind)` |
+| Checkout | Decides what a session may become: readiness, references, card saving and receipt tipping. | `payment/Checkout`, `PaymentStart` |
+| Transaction | A payment/refund sent to the terminal: persisted pending, then settled as succeeded, cancelled, declined, failed or unknown. | `TransactionLifecycle`, `TransactionBook`, `Settlement` |
+| Status check / recheck | Requests the original transaction's outcome; not a new payment. | `TransactionLifecycle` |
+| Abort | Asks the terminal to stop a current transaction; does not establish its outcome. | `TerminalClient` |
+| Decline | Terminal refusal/cancellation/busy reason and retry advice, derived from ErrorCondition. | `client/Decline` |
+| Payment link | Sale paid on Adyen's payment page instead of a terminal; awaiting payment after creation, then paid, expired or cancelled. | `payment/PaymentLinks`, `PaymentLinkStart` |
+| Merchant reference | Generated payment identifier: optional prefix plus `yyMMdd-HHmmss-XXXX`; refunds `R-…`, cancellations `C-…`. | Adyen `reference` |
+| Transaction reference | Optional operator-entered reference, separate from the shopper reference. | `CheckoutForm`, `PaymentSettings` |
+| Customer reference | Operator-entered identifier requested when it is the shopper reference. | `ShopperReferenceSource.CUSTOMER_REFERENCE` |
+| Shopper reference | Identifier sent with every payment: customer reference, email-derived reference, or none. | `ShopperReferenceSource`, Adyen `shopperReference` |
+| Saving a card | Tokenization under a shopper reference with consent; an offer at checkout, not a saved-card charging workflow. | `offerCardSaving` |
+| Sale event | A happening that changes a stored sale; the sole decision of which statuses/fields it writes. | `data/repo/SaleEvent`, `SaleEntity.after` |
 
-## After the payment
+## Following up
 
-- **Standing** (`refund/PaymentStanding`, `sale.standing`): where a stored payment stands (charged, awaiting tip, held,
-  capture sending/failed/unknown/requested, captured manually, hold cancelled). The one reading of capture status and
-  cancellation. _Avoid_: state, phase.
-- **Receipt standing** (`ReceiptStanding`): what a sale's receipt says about it (tip lines, held now, captured).
-- **Actions** (`StoredPayment.actions`, `PaymentAction`): what the operator can do with a stored payment now: refund,
-  cancel, enter tip, capture, adjust.
-- **Capture** (`payment/Captures`): taking a held amount through the Checkout API. An **adjustment** changes what a
-  pre-authorisation holds before capture; a tip over 20% of the bill is adjusted first, a smaller one **overcaptured**.
-- **Cancellation** (of a hold): a full reversal of a held payment, so nothing is charged. _Avoid_: void, refund.
-- **Refund** (`RefundablePayment`, `RefundStart`): a referenced refund of a charged (or captured) payment: everything
-  left, an amount, or items of a sale taken on this terminal; found from history or its **refund QR** (`MPR1…`).
-  **Refundability** is decided only by `RefundablePayment`.
-- **Day totals** and **history search** (`feature/history/HistorySearch`): what the history shows and sums; held
-  payments count as "Held".
+| Term | Meaning | Owner / code name |
+| --- | --- | --- |
+| Standing | Where a payment stands: charged, awaiting tip, held, capture requested/failed/unknown, or cancelled. | `refund/PaymentStanding`, `sale.standing` |
+| Actions | Operations permitted on a stored payment now. | `StoredPayment.actions`, `PaymentAction` |
+| Capture | Collects a held amount through Checkout; accepted requests still need Adyen's final confirmation. | `payment/Captures` |
+| Adjustment | Changes or renews an authorization before capture; an unresolved request retains its identity. | `Captures.adjust` |
+| Tip on the receipt | Sale held with manual capture; customer writes a tip on paper, then staff enter and capture it. Tips above 20% require adjustment first. | `tipOnReceipt`, `PaymentStanding` |
+| Cancellation | Full reversal of a held payment; if already captured externally, Adyen refunds it instead. | `PaymentAction.CANCEL` |
+| Refund | Referenced return of a charged payment, full/by amount/by item. Item refunds need the stored original sale. | `RefundablePayment`, `RefundStart`, refund QR `MPR1*` |
+| Day totals / history search | Aggregation and matching of retained records currently shown; held funds stay separate from sales. | `feature/history/HistorySearch` |
+| Operation identity | Persisted key and request facts for one logical operation; retries reuse them, separate renewals get new ones. | Stored capture, adjustment and link requests |
+| Payment context | Non-secret original destination, identity, account and environment used to validate later actions. | `PaymentContext`, `ApiTarget`, `ApiAccess` |
 
-## Where payments go
+## Connecting to Adyen
 
-- **Payment context** (`PaymentContext`): non-secret destination, terminal identity, merchant account and environment
-  captured from the connection that sent an operation. Historical actions validate current credentials against it;
-  the Checkout API target (`ApiTarget`, `ApiAccess`) decides eligible adapter access, not the capture or link caller.
-- **Operation identity**: a persisted key and request facts for one logical capture, adjustment or link creation.
-  Retrying reuses them; another operation, including a same-amount renewal, has a new identity.
-- **Adyen integration** (`:adyen`, sources in `adyen/`): the Android-free integration with Adyen's Terminal,
-  Checkout, Cloud device and Management APIs, and their simulator.
-- **Adyen API key** (`ADYEN_API_KEY`): the shared credential for Checkout and Cloud device operations. The Payments app
-  API key is a separate credential for boarding and revoking a phone.
-- **Destination** (`terminal/Destination`, "Payments go to", `TerminalMode`): this terminal or one on the network
-  (`LocalTerminal`), a terminal in the **cloud** (`CloudTerminal`), the **Payments app** on this phone for Tap to Pay
-  (`PaymentsAppDestination`), or the **simulator** (`SimulatedTerminal`). What each needs and can do (POIID, setup
-  problem, printer, secrets, abort, diagnose, recover a missing answer, wait) are its **destination rules**
-  (`DestinationRules`, on its adapter's companion); the adapter only opens it. _Avoid_: backend, provider, channel.
-- **Terminal setup** (`TerminalSetup.resolve`, `TerminalSetupSource`): the one reading of where payments go now:
-  destination, POIID, host, environment, Checkout API setup, printer. **Unlocked** (`UnlockedSetup`), it carries the
-  secrets it needs, decrypted once. **Setup problem** (`SetupProblem`): what must still be entered, installed or fixed
-  (a saved secret that no longer decrypts included); reported in outcomes, never thrown.
-- **Connection** (`Connection`): a destination ready to send (`Open`, with the one `TerminalClient`) or **blocked**
-  (`NotSetUp`, `Unreachable`). A **connection check** (`TerminalStatus`, diagnosis) also learns whether there is a
-  printer.
-- **Delivery** (`transport/Delivery`): what became of one message: answered, **not sent** (it took no effect) or
-  **maybe sent** (its outcome must be checked). _Avoid_: result, response (for the failure).
-- **Environment** (`TerminalEnvironment`): TEST or LIVE; never a setting: read from the terminal certificate, the
-  endpoint that accepts the cloud API key, or the installed Payments app.
-- **POIID**: the terminal's ID (`<model>-<serial>`); on a terminal its device name, with the Payments app the boarded
-  installation ID. **Shared key**: the key identifier, passphrase and version that encrypt local and Payments app
-  messages.
-- **Boarding** (`TapToPaySetup`, `TerminalSetup.boarding`): registering the Payments app on this phone with the
-  Payments app API key, so Tap to Pay works.
-- **Checkout API** (`ApiSetup`, `ApiTarget`, `AdyenApi`): Adyen's online API for captures, adjustments and payment
-  links. Required wherever payments go (simulated with the simulator): until it is set up, payments wait for it
-  (`TerminalSetup.problem`; only a not yet detected environment does not hold them back), while the destination can
-  already be reached (`TerminalSetup.connectionProblem`).
+| Term | Meaning | Owner / code name |
+| --- | --- | --- |
+| Device | Runs Mini mPOS: terminal, tablet or phone. | `DeviceInfo` |
+| Terminal | Takes the card; may be the same device, a network terminal or a cloud terminal. | POIID identifies it |
+| Adyen integration | Android-free Terminal, Checkout, Cloud device and Management APIs and simulator. | `:adyen` |
+| Destination | Where payments go: local terminal, cloud terminal, Payments app or simulator. | `terminal/Destination`, `TerminalMode` |
+| Destination rules | Pure requirements/capabilities: setup, printer, secrets, recovery, timeouts, abort/diagnosis. | `DestinationRules`, adapter companions in `Destinations.kt` |
+| Terminal setup | One resolved reading of destination, identity, environment, API setup and printer. | `TerminalSetup.resolve`, `TerminalSetupSource` |
+| Unlocked setup | Resolved setup with required secrets decrypted once. | `UnlockedSetup` |
+| Setup problem | Missing/unreadable information or other condition blocking setup, reported typed rather than thrown. | `SetupProblem` |
+| Connection | Open with a client, or blocked as not set up/unreachable. | `Connection`, `Destination.connect` |
+| Connection check | Checks reachability/setup and learns printer availability when supported. | `TerminalStatus` |
+| Delivery | One message was answered, not sent, or maybe sent; maybe sent requires recovery. | `transport/Delivery` |
+| Environment | TEST/LIVE detected from certificate, cloud key or installed Payments app; never a setting. | `TerminalEnvironment` |
+| POIID | Terminal ID (`<model>-<serial>`), device name on terminals, boarded installation ID for Tap to Pay. | `poiId` |
+| Shared key | Identifier, passphrase and version encrypting local and Payments app messages. | Terminal settings + `SecretStore` |
+| Adyen API key | Credential shared by Checkout/cloud operations; distinct from the boarding credential. | `ADYEN_API_KEY` |
+| Boarding | Registers/revokes the Payments app installation for Tap to Pay. | `TapToPaySetup`, `PAYMENTS_APP_API_KEY` |
+| Checkout API | Captures, adjustments and links, required before real payments; access eligibility belongs to the target. | `ApiSetup`, `AdyenApi`, `ApiTarget` |
 
-## Receipts and setup
+## Receipts, configuration and access
 
-- **Receipt** (`ReceiptDocument`): one combined slip (header, items, tax, Adyen's card receipt lines, footer), plus the
-  refund QR as a second print; the terminal's own receipt printing is suppressed. **Merchant copy**: the second copy,
-  printed as `MerchantCopyPolicy` says. **Receipt tax display** (`ReceiptSettings`): independent tax amounts and
-  taxable totals by numeric rate, plus a **marked tax rate** (`markedTaxRateMilliPercent`) whose items carry a
-  configurable marker and explanation. Country and language select new-install defaults, not rendering behavior.
-- **Receipt delivery** (`ReceiptDelivery`, `feature/TransactionActions`): offering, printing, emailing and
-  **sharing** a **stored transaction**'s receipt (`StoredTransaction`: a sale, whether taken on a terminal or through a
-  payment link, or a refund), including the **automatic delivery** of a fresh one. Sharing (`share/ShareSheet`) hands
-  the receipt as an image to Android's share sheet, on phones and tablets only.
-- **Unpaid receipt** (`SaleReceipt.unpaidLink`): the receipt of a sale awaiting its payment link: marked unpaid,
-  totalled as the amount due, with the link as a QR code and an address; emailed as a payment request.
-- **Outcome** (`ActionOutcome`, `ActionState`): what a finished action reports, typed, worded only by the screens
-  (`feature/OutcomeMessages.kt`). _Avoid_: message, error string.
-- **Stored reason** (`data/db/StoredReason`): why a stored transaction, capture or adjustment did not succeed when the
-  app itself says so (not set up, outcome unknown, interrupted), stored typed and worded by the screens in the current
-  language. What Adyen or the terminal said is stored as it came (`message`). _Avoid_: error message (for the stored
-  value).
-- **Catalogue**: products, categories and tax rates (`CatalogRepository`); every product has a tax rate.
-- **Pricing change** (`payment/PricingChanges`): an explicitly confirmed currency or tax-style change. Major-unit unit
-  prices are preserved, rounded to the new currency precision; one module owns preview, commit, checkout readiness,
-  session repricing and replay of the durable journal after an interrupted catalogue/settings update.
-- **Starter tax** (`StarterTax`): the tax rates (the national standard rate where known, then 0%) and price style
-  (tax included or added) a new installation starts with, from the device's country.
-- **New-installation settings** (`AppSettings.forNewInstallation`): the constructor baseline with initial pricing,
-  tax charging and receipt display choices from the device's country and language. Receipt, tax and email text defaults
-  are localized at installation.
-- **Transfer** (`SetupTransfer`, `TransferCodec` `MPC1:`): copying the catalogue, settings and secrets to another
-  device as QR codes, sealed with a 12-character **transfer code** (`TransferSeal`). **Device fields**
-  (`AppSettings.withDeviceFieldsOf`) stay behind.
-- **Setup helper** (`docs/setup.html`): the web page that makes a transfer on a computer, holding a **connection**
-  (`ConnectionSetup`: where payments go, address, POIID, shared key, Checkout API, store) and its secrets; importing it
-  sets only what it holds. _Avoid_: wizard, provisioning.
-- **Secrets** (`SecretStore`): the shared-key passphrase, API keys, SMTP password and PIN verifiers; encrypted, never
-  logged.
-- **Manager approval** (`Manager PIN`, `managerPin`, `managerLock`): optional access to refunds, cancellations,
-  captures and adjustments, separate from the admin PIN that protects configuration. An admin PIN must be set before
-  configuring the Manager PIN.
+| Term | Meaning | Owner / code name |
+| --- | --- | --- |
+| Receipt | Combined merchant details, items, tax and Adyen receipt lines; refund QR printed as a second request. | `ReceiptDocument` |
+| Receipt standing | What the receipt says: held, tip lines, captured, unpaid link or paid online. | `ReceiptStanding` |
+| Merchant copy | Additional receipt copy under the configured policy. | `MerchantCopyPolicy` |
+| Receipt tax display | Independent amounts/totals by rate, optional marked rate, marker and explanation. | `ReceiptSettings` |
+| Receipt delivery | Offers/prints/emails/shares a stored sale or refund; automatic delivery uses the same path. | `ReceiptDelivery`, `TransactionActions`, `StoredTransaction` |
+| Unpaid receipt | Link payment request with amount due, QR and address, not proof of payment. | `SaleReceipt.unpaidLink` |
+| Outcome | Typed result presented in the current language, worded only at the UI boundary. | `ActionOutcome`, `ActionState`, `OutcomeMessages.kt` |
+| Stored reason | Typed app-origin reason; Adyen/terminal messages remain verbatim. | `StoredReason` |
+| Catalogue | Products, categories and tax rates. | `CatalogRepository` |
+| Pricing change | Confirmed currency/tax-style transition, including durable recovery; numeric prices are preserved and rounded, not FX-converted. | `payment/PricingChanges` |
+| Starter tax | Initial country-based rates and price style, not an ongoing regional override. | `StarterTax` |
+| New-installation settings | Baseline plus initial country/language choices; never overrides saved settings. | `AppSettings.forNewInstallation` |
+| Transfer | Copies catalog, shared settings and sealed secrets by QR; not history or synchronization. | `SetupTransfer`, `TransferCodec` (`MPC1:`) |
+| Device fields | Configuration that stays local when shared settings are imported. | `AppSettings.withDeviceFieldsOf` |
+| Transfer code | Separate 12-character code for decrypting transferred secrets. | `TransferSeal` |
+| Setup helper | Browser tool importing only connection fields and secrets it holds. | `docs/setup.html`, `ConnectionSetup` |
+| Secrets | Shared-key passphrase, API keys, SMTP password and PIN verifiers; encrypted and never logged. | `SecretStore` |
+| Admin PIN | Access to configuration and products, separate from financial approval. | `pinManager`, `sessionLock` |
+| Manager approval | Optional financial-action access, configured only after admin PIN; rechecked before sending. | `managerPin`, `managerLock`, Manager PIN |
 
-## Ambiguities to keep apart
+## Avoid ambiguous substitutions
 
-- "Terminal" is the payment device; "Payments go to" names the **destination**, which may be no terminal at all
-  (Payments app, simulator). Code says `Destination` for the latter.
-- The **device** is what runs Mini mPOS: a terminal, or a tablet or phone. User text says "device" for it (setting up
-  another device, stored on this device) and "terminal" only for the one that takes the card.
-- "Held" is a standing (`PaymentStanding.held`); "hold" is what a pre-authorisation does. A sale awaiting its tip is
-  held too.
-- "Captured" means Adyen received the capture request; Adyen confirms the outcome only in the Customer Area.
-- "Refund" never covers a cancellation: held payments are cancelled, charged ones refunded.
+- A stored record is a **sale**, not an order or draft. A **session** is not a basket.
+- Use **standing** for the domain reading, **delivery** for whether a request may have taken effect, and **outcome**
+  for what a completed action reports; generic state/result/error should not replace these distinct concepts.
+- A held payment is **cancelled**, not refunded. **Held** is an amount/standing, not another payment kind.
+- A payment link is not an invoice. Receipt delivery **sharing** is not device **transfer** or synchronization.

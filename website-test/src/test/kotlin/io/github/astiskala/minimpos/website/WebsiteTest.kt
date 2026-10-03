@@ -16,8 +16,8 @@ import kotlin.io.path.readBytes
 import kotlin.io.path.readText
 
 /**
- * The standalone localized website in docs/: its nine pages (landing page, guide and setup helper in English,
- * Simplified Chinese and Japanese), their links, language switches and metadata, the app labels the guides quote, the
+ * The standalone localized website in docs/: its landing page, three guides and setup helper in English,
+ * Simplified Chinese and Japanese, their links, language switches and metadata, the app labels the guides quote, the
  * screenshots, and that only the setup helper runs scripts, its own.
  */
 class WebsiteTest {
@@ -99,16 +99,28 @@ class WebsiteTest {
     }
 
     @Test
-    fun `complete guides keep the operational links and code`() {
-        val english = pages.getValue("en" to Kind.GUIDE)
+    fun `localized guides cover the workflows and keep the operational links and code`() {
+        GUIDE_TOPICS.forEach { (kind, topics) ->
+            val english = pages.getValue("en" to kind)
+            LANGUAGES.forEach { language ->
+                val page = pages.getValue(language to kind)
+                assertWithMessage(page.name).that(page.sections).containsAtLeastElementsIn(topics)
+                assertWithMessage(page.name).that(page.sections).containsExactlyElementsIn(english.sections).inOrder()
+                assertWithMessage(page.name).that(page.code).isEqualTo(english.code)
+                assertWithMessage(page.name).that(page.externalLinks).isEqualTo(english.externalLinks)
+                page.sections.forEach {
+                    assertWithMessage("${page.name} #$it").that(page.matching("a", "href" to "#$it")).isNotEmpty()
+                }
+                GUIDE_TOPICS.keys.forEach { target ->
+                    assertWithMessage("${page.name} → $target")
+                        .that(page.document.select("nav.toc a[href='${target.file}']"))
+                        .isNotEmpty()
+                }
+            }
+        }
         LANGUAGES.forEach { language ->
-            val page = pages.getValue(language to Kind.GUIDE)
-            assertWithMessage(page.name).that(page.sections.toSet()).isEqualTo(GUIDE_SECTIONS)
-            assertWithMessage(page.name).that(page.code).isEqualTo(english.code)
-            assertWithMessage(page.name).that(page.externalLinks).isEqualTo(english.externalLinks)
-            assertThat(page.text).contains("Checkout webservice role")
-            assertThat(page.text).contains("Return adjust authorisation data")
-            GUIDE_SECTIONS.forEach { assertWithMessage("${page.name} #$it").that(page.matching("a", "href" to "#$it")).isNotEmpty() }
+            assertThat(pages.getValue(language to Kind.GUIDE).text).contains("Checkout webservice role")
+            assertThat(pages.getValue(language to Kind.USING).text).contains("Return adjust authorisation data")
         }
     }
 
@@ -138,7 +150,7 @@ class WebsiteTest {
                 "ja" to listOf("税額を表示", "税率別の対象金額を表示", "印を付ける税率（%）"),
             )
         LANGUAGES.forEach { language ->
-            val page = pages.getValue(language to Kind.GUIDE)
+            val page = pages.getValue(language to Kind.USING)
             assertWithMessage(page.name).that(page.ids).contains("language-receipts")
             (listOf("Android 12", "Android 13") + labels.getValue(language)).forEach {
                 assertWithMessage(page.name).that(page.text).contains(it)
@@ -187,7 +199,7 @@ class WebsiteTest {
                 "ja" to listOf("チップ待ち", "キャプチャ申請済み", "別の端末と共有", "別の端末に共有", "アプリについて"),
             )
         labels.forEach { (language, expected) ->
-            val guide = pages.getValue(language to Kind.GUIDE).text
+            val guide = GUIDE_TOPICS.keys.joinToString(" ") { pages.getValue(language to it).text }
             expected.forEach { assertWithMessage(language).that(guide).contains(it) }
             forbidden.getValue(language).forEach { assertWithMessage(language).that(guide).doesNotContain(it) }
             val landing = pages.getValue(language to Kind.LANDING).text
@@ -308,24 +320,11 @@ private const val FRAME_TOLERANCE = 0.005
 private const val CUSTOMER_AREA_TEST = "https://ca-test.adyen.com/ca/ui/"
 private const val CUSTOMER_AREA_LIVE = "https://ca-live.adyen.com/ca/ui/"
 private val LANGUAGES = listOf("en", "zh-CN", "ja")
-private val GUIDE_SECTIONS =
-    setOf(
-        "before",
-        "try",
-        "key",
-        "install",
-        "connect",
-        "tablet",
-        "business",
-        "products",
-        "sell",
-        "api",
-        "payment-links",
-        "tips",
-        "preauth",
-        "more",
-        "live",
-        "trouble",
+private val GUIDE_TOPICS =
+    mapOf(
+        Kind.GUIDE to setOf("try", "choose", "install", "connect", "first-payment", "live"),
+        Kind.USING to setOf("business", "sell", "refund", "history", "receipts", "shoppers", "payment-links", "preauth", "tips", "more"),
+        Kind.TROUBLE to setOf("unknown", "connection", "modifications", "links", "receipts", "access", "install", "help"),
     )
 
 private val docs: Path =
@@ -338,6 +337,8 @@ private enum class Kind(
 ) {
     LANDING("index.html"),
     GUIDE("getting-started.html"),
+    USING("using.html"),
+    TROUBLE("troubleshooting.html"),
     SETUP("setup.html"),
 }
 

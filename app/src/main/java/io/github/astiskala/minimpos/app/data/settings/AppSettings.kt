@@ -13,8 +13,9 @@ import io.github.astiskala.minimpos.terminal.transport.TerminalEnvironment
 import kotlinx.serialization.Serializable
 
 /**
- * All non-secret configuration, stored as JSON in DataStore (`settings.json`) and edited in Settings. Secrets (shared
- * key passphrase, SMTP password, PIN verifier) live in [io.github.astiskala.minimpos.app.data.security.SecretStore].
+ * All non-secret configuration, stored as JSON in DataStore (`settings.json`) and edited in Settings. Shared-key
+ * passphrases, API keys, SMTP passwords and both PIN verifiers live in
+ * [io.github.astiskala.minimpos.app.data.security.SecretStore].
  *
  * Constructor defaults define the current baseline; omitted settings take those defaults. Each section knows the
  * limits of its numbers ([normalized]); [SettingsRepository] applies them on every read and write, so a value out of

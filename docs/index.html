@@ -131,13 +131,13 @@
             </article>
             <article class="feature">
               <svg aria-hidden="true" viewbox="0 0 24 24"><path d="M4 4h10v6H4zm6 10h10v6H10zM16 5h3a1 1 0 0 1 1 1v5h2l-3 3-3-3h2V7h-2zM8 19H5a1 1 0 0 1-1-1v-5H2l3-3 3 3H6v4h2z"></path></svg>
-              <h3>Set up in minutes</h3>
+              <h3>Scan in your setup</h3>
               <p>Fill in your keys on a computer with the setup helper and scan them in. Copy products and settings to more devices by QR code, keys included, protected by a transfer code.</p>
             </article>
             <article class="feature">
               <svg aria-hidden="true" viewbox="0 0 24 24"><path d="M12 2a5 5 0 0 1 5 5v3h1a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-8a2 2 0 0 1 2-2h1V7a5 5 0 0 1 5-5zm0 2a3 3 0 0 0-3 3v3h6V7a3 3 0 0 0-3-3z"></path></svg>
               <h3>Locked down</h3>
-              <p>Protect products and settings with an admin PIN. Passwords and keys are stored encrypted.</p>
+              <p>Protect setup with an admin PIN and financial follow-up actions with a separate Manager PIN. Passwords and keys stay encrypted.</p>
             </article>
           </div>
         </div>
@@ -234,6 +234,7 @@
               <p><a href="getting-started.html">Read the setup guide</a> · <a href="setup.html">Open the setup helper</a> · <a href="https://github.com/astiskala/minimpos/releases/latest">Download the app</a></p>
             </article>
           </div>
+          <p><a href="using.html">Using Mini mPOS</a> · <a href="troubleshooting.html">Troubleshooting</a></p>
         </div>
       </section>
       <section aria-labelledby="faq-title" class="section">
@@ -241,40 +242,24 @@
           <h2 id="faq-title">Questions</h2>
           <div class="faq">
             <details>
-              <summary>Which devices does it run on?</summary>
-              <p>Adyen Android payment terminals running Android 9 or later, such as the S1F2, S1F4Pro, S1E4Pro, S1E2L, AMS1, S1U2 and SFO1, and Android tablets and phones. Printing needs a terminal with a printer, and QR scanning needs a camera.</p>
-            </details>
-            <details>
-              <summary>Can I use it on a tablet or phone?</summary>
-              <p>Yes. On an Android tablet or phone it takes payments on an Adyen terminal over your network or the internet, or with Tap to Pay through the Adyen Payments app. See <a href="getting-started.html#tablet">On a tablet or phone</a> in the guide.</p>
+              <summary>Which setup is right for me?</summary>
+              <p>Run directly on an Adyen Android terminal for an all-in-one checkout, or use an Android tablet or phone with a network terminal, cloud terminal or Tap to Pay. See <a href="getting-started.html#choose">requirements and setup choices</a>. Printing needs a printer; scanning needs a camera.</p>
             </details>
             <details>
               <summary>What does it cost?</summary>
-              <p>Nothing. Mini mPOS is free and open source under the MIT license. You pay Adyen for payments as usual.</p>
+              <p>The app is free and open source under the MIT license. Adyen's payment processing fees still apply.</p>
             </details>
             <details>
               <summary>Is it an Adyen product?</summary>
-              <p>No. It is an independent project built for Adyen terminals. It isn't made, endorsed or supported by Adyen, so test it in your Adyen TEST environment before going live. For your Adyen account, payment methods and payouts, Adyen is your contact; for the app, <a href="https://github.com/astiskala/minimpos/issues">open an issue on GitHub</a>.</p>
+              <p>No. Mini mPOS is not made, endorsed or supported by Adyen. Test your setup in Adyen's TEST environment before going live. See <a href="troubleshooting.html#help">where to get help</a> for app and Adyen questions.</p>
             </details>
             <details>
-              <summary>Can it take deposits or pre-authorizations?</summary>
-              <p>Yes. Hold a deposit on a card, then collect it later or release it. See <a href="getting-started.html#preauth">Pre-authorizations</a> in the guide for setup and payment method requirements.</p>
+              <summary>Do devices share a back office?</summary>
+              <p>No. Products, settings and history stay on each device. QR transfers copy products and setup, not payment history or ongoing changes. See <a href="using.html#more">devices and data</a>.</p>
             </details>
             <details>
-              <summary>Can customers add a tip?</summary>
-              <p>Yes, on terminals with a printer. Customers write a tip on the receipt and you add it to the bill. See <a href="getting-started.html#tips">Tips on the receipt</a> in the guide.</p>
-            </details>
-            <details>
-              <summary>Can customers pay with a link?</summary>
-              <p>Yes, with Adyen's Checkout API set up. At checkout, send a payment link instead of using the terminal; show its QR code, email it, print it or share it. See <a href="getting-started.html#payment-links">Payment links</a> in the guide.</p>
-            </details>
-            <details>
-              <summary>Where is my data stored?</summary>
-              <p>Products, settings and history are stored on the device that runs Mini mPOS. You can choose to share them with another device or email receipts through your own mail server. Payments are processed by Adyen.</p>
-            </details>
-            <details>
-              <summary>Do I need a server or an Adyen API key?</summary>
-              <p>No server. On a terminal, it needs the shared key from your Customer Area and an Adyen API key, for captures and payment links; the <a href="setup.html">setup helper</a> lets you enter them on a computer. See <a href="getting-started.html#api">The Checkout API and captures</a> in the guide.</p>
+              <summary>Do I need a server or API keys?</summary>
+              <p>No server, but every real-payment setup needs Checkout API credentials. Other keys depend on where payments go. They are encrypted on the device, a trade-off against Adyen's server-side recommendation. Follow <a href="getting-started.html#connect">connection setup</a> and the security guidance there.</p>
             </details>
           </div>
         </div>

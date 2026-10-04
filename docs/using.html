@@ -32,7 +32,14 @@
   <a class="skip" href="#main">Skip to content</a>
   <header class="site-header"><div class="wrap header-row">
     <a class="brand" href="./" aria-label="Mini mPOS home"><img src="favicon.svg" alt="" width="36" height="36"><span>Mini mPOS</span></a>
-    <nav aria-label="Main"><ul class="nav"><li><a href="./#features">Features</a></li><li><a href="getting-started.html">Getting started</a></li><li><a href="setup.html">Setup helper</a></li><li><a class="button button-small" href="https://github.com/astiskala/minimpos">GitHub</a></li></ul></nav>
+    <nav class="desktop-nav" aria-label="Main"><ul class="nav">
+      <li><a href="getting-started.html">Getting started</a></li><li><a href="using.html" aria-current="page">Using Mini mPOS</a></li>
+      <li><a href="troubleshooting.html">Troubleshooting</a></li><li><a href="setup.html">Setup helper</a></li>
+    </ul></nav>
+    <details class="mobile-menu"><summary>Menu</summary><nav aria-label="Main"><ul class="nav">
+      <li><a href="getting-started.html">Getting started</a></li><li><a href="using.html" aria-current="page">Using Mini mPOS</a></li>
+      <li><a href="troubleshooting.html">Troubleshooting</a></li><li><a href="setup.html">Setup helper</a></li>
+    </ul></nav></details>
     <details class="language-menu">
       <summary aria-label="Language: English" title="Language"><svg aria-hidden="true" class="globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 2.7 3.8 5.7 3.8 9s-1.3 6.3-3.8 9c-2.5-2.7-3.8-5.7-3.8-9S9.5 5.7 12 3z"/></svg><span class="language-current">English</span></summary>
       <nav aria-label="Language"><ul><li><a href="using.html" hreflang="en" lang="en" aria-current="page">English</a></li><li><a href="zh-CN/using.html" hreflang="zh-CN" lang="zh-CN">简体中文</a></li><li><a href="ja/using.html" hreflang="ja" lang="ja">日本語</a></li></ul></nav>
@@ -41,23 +48,44 @@
   <main id="main">
     <section class="guide-hero"><div class="wrap"><p class="eyebrow">Guide</p><h1>Using Mini mPOS</h1><p class="lead">Set up your business and handle everyday payments. Add the optional workflows you need, without making every checkout more complicated.</p></div></section>
     <div class="wrap guide">
-      <nav class="toc" aria-label="Guide navigation">
+      <nav class="toc" id="contents" aria-label="Guide navigation">
         <p class="toc-title">Guides</p><p><a href="getting-started.html">Getting started</a><br><a href="using.html" aria-current="page">Using Mini mPOS</a><br><a href="troubleshooting.html">Troubleshooting</a></p>
-        <p class="toc-title">On this page</p><ol>
-          <li><a href="#business">Products, pricing and staff</a></li><li><a href="#sell">Take a sale</a></li><li><a href="#refund">Refund a payment</a></li><li><a href="#history">Find payments and totals</a></li><li><a href="#receipts">Deliver receipts</a></li><li><a href="#shoppers">References and saved cards</a></li><li><a href="#payment-links">Payment links</a></li><li><a href="#preauth">Deposits</a></li><li><a href="#tips">Tips on the receipt</a></li><li><a href="#more">Devices and data</a></li>
-        </ol>
+        <div class="desktop-contents"><p class="toc-title">On this page</p><ol>
+          <li><a href="#business">Products, pricing and staff</a><ul>
+            <li><a href="#pricing">Currency and tax</a></li><li><a href="#products">Add products</a></li><li><a href="#staff">Staff PINs</a></li>
+          </ul></li>
+          <li><a href="#sell">Take a sale</a></li><li><a href="#refund">Refund a payment</a></li><li><a href="#history">Find payments and totals</a></li>
+          <li><a href="#receipts">Deliver receipts</a><ul>
+            <li><a href="#customize-receipts">Customize receipts</a></li><li><a href="#language-receipts">Receipt language</a></li><li><a href="#email">Set up email</a></li>
+          </ul></li>
+          <li><a href="#shoppers">References and saved cards</a></li><li><a href="#payment-links">Payment links</a></li>
+          <li><a href="#preauth">Deposits and pre-authorizations</a></li><li><a href="#tips">Tips on the receipt</a></li><li><a href="#more">Devices and data</a></li>
+        </ol></div>
+        <details class="mobile-contents"><summary class="toc-title">On this page</summary><ol>
+          <li><a href="#business">Products, pricing and staff</a><ul>
+            <li><a href="#pricing">Currency and tax</a></li><li><a href="#products">Add products</a></li><li><a href="#staff">Staff PINs</a></li>
+          </ul></li>
+          <li><a href="#sell">Take a sale</a></li><li><a href="#refund">Refund a payment</a></li><li><a href="#history">Find payments and totals</a></li>
+          <li><a href="#receipts">Deliver receipts</a><ul>
+            <li><a href="#customize-receipts">Customize receipts</a></li><li><a href="#language-receipts">Receipt language</a></li><li><a href="#email">Set up email</a></li>
+          </ul></li>
+          <li><a href="#shoppers">References and saved cards</a></li><li><a href="#payment-links">Payment links</a></li>
+          <li><a href="#preauth">Deposits and pre-authorizations</a></li><li><a href="#tips">Tips on the receipt</a></li><li><a href="#more">Devices and data</a></li>
+        </ol></details>
       </nav>
       <div class="guide-body">
         <section id="business">
           <h2>Prepare products, pricing and staff access</h2>
           <p>Connect payments first with <a href="getting-started.html">Getting started</a>. Then check these before adding your catalog.</p>
-          <h3>Prices and tax</h3>
+          <h3 id="pricing">Currency and tax</h3>
           <p>In <strong>Settings › Payments</strong>, choose a currency your Adyen account accepts; Automatic follows the device's region. In <strong>Settings › Tax</strong>, check the rates, whether prices include tax or add it at checkout, and the default rate for new products and custom items. Every product has a rate; use 0% for untaxed items. Switching off <strong>Charge tax</strong> stops charging tax but keeps the rates.</p>
           <p>Changing currency or tax style asks for confirmation. A currency change keeps numeric prices, rounded to the new currency's precision—it does not perform an exchange-rate conversion. Review the preview and check product prices afterward.</p>
-          <h3>Add products</h3>
+          <h3 id="products">Add products</h3>
           <p>Open <strong>Products</strong>, tap <strong>+</strong> and enter a name, price and tax rate. Add a category or barcode if useful; barcodes can be typed or scanned. The Categories tab groups the sale grid. Mark deposits as <strong>Pre-authorization products</strong> to keep them separate from ordinary sales.</p>
-          <h3>Control staff access</h3>
+          <h3 id="staff">Control staff access</h3>
           <p>In <strong>Settings › Security</strong>, set an <strong>admin PIN</strong> to protect Settings and Products, and choose the automatic re-lock time. Optionally set a separate <strong>Manager PIN</strong> for refunds, cancellations, captures and adjustments, including entering tips. Set the admin PIN first; removing it also removes the Manager PIN. Repeated incorrect attempts temporarily lock PIN entry.</p>
+          <p>For PIN problems, see <a href="troubleshooting.html#access">access troubleshooting</a>.</p>
+          <p class="back-to-contents"><a href="#contents">Back to contents</a></p>
         </section>
         <section id="sell">
           <h2>Take a sale</h2>
@@ -69,6 +97,7 @@
           </ol>
           <p>A new setup asks only for payment; references, saved cards and tips are optional. Use a <a href="#payment-links">payment link</a> if the customer should pay on their own phone instead.</p>
           <p class="note">An unknown result does not mean the payment failed. <a href="troubleshooting.html#unknown">Check the original payment</a> before charging again.</p>
+          <p class="back-to-contents"><a href="#contents">Back to contents</a></p>
         </section>
         <section id="refund">
           <h2>Refund a payment</h2>
@@ -79,22 +108,25 @@
           </ol>
           <p>Refunds are always linked to an original payment; unreferenced refunds are not supported. Refund a charged payment, but <a href="#preauth">cancel an uncaptured deposit</a>. Paid payment links must be refunded in the Customer Area.</p>
           <p class="note"><strong>Refund requested</strong> means Adyen received the request, not that the shopper has received the money. Check the final outcome in the Customer Area; Mini mPOS has no server to receive webhooks.</p>
+          <p>If a refund's result is unknown, <a href="troubleshooting.html#unknown">check the original refund before retrying</a>.</p>
+          <p class="back-to-contents"><a href="#contents">Back to contents</a></p>
         </section>
         <section id="history">
           <h2>Find a payment and review totals</h2>
           <p><strong>History</strong> groups payments and refunds by day. Use the filter chips for sales, <strong>Awaiting tip</strong>, pre-authorizations, refunds or <strong>Needs attention</strong>, and the <strong>Payment method</strong> menu for a card brand or wallet.</p>
           <p>Search by merchant or PSP reference, authorization code, shopper reference or email, card last four digits, brand, wallet or exact amount. On a small screen, tap the search icon first. Every word must match: <code>visa 34</code> finds Visa payments for 34 in the displayed currency. Refunds can also match their sale's shopper and card details.</p>
           <p>Daily totals cover the transactions currently shown, including your search and filters. Unpaid links count nowhere; uncaptured deposits are <strong>Held</strong>, not sales revenue. History covers only records retained on this device, not your whole Adyen account.</p>
+          <p class="back-to-contents"><a href="#contents">Back to contents</a></p>
         </section>
         <section id="receipts">
           <h2>Print, email or share receipts</h2>
           <p>From a result or History entry, use <strong>Print receipt</strong> or <strong>Email receipt</strong>. Tablets and phones also offer <strong>Share receipt</strong>, an image sent through Android's share sheet. Printing requires a connected terminal with a physical printer; Tap to Pay has none.</p>
-          <h3>Customize and test</h3>
+          <h3 id="customize-receipts">Customize and test</h3>
           <p>In <strong>Settings › Receipts</strong>, set your business details, header and footer, references and refund QR code. Choose automatic printing and when to print a merchant copy. The preview helps with layout; always use <strong>Print test receipt</strong> to check the actual printer.</p>
           <p><strong>Show tax amounts</strong> and <strong>Show taxable totals by rate</strong> are independent. To identify items at a particular rate, set <strong>Marked tax rate (%)</strong>, an <strong>Item marker</strong> and its explanation. Leave the rate blank for no marking. These options work in every language and currency.</p>
           <h3 id="language-receipts">Language and receipt text</h3>
           <p>The app supports English, Simplified Chinese and Japanese. On Android 12 or earlier it follows the device language; on Android 13 or later use Android's per-app language setting. Adyen's payment receipt lines follow the terminal's own receipt-language setting and stay as supplied. Test the printed layout, especially for Chinese and Japanese text.</p>
-          <h3>Set up email</h3>
+          <h3 id="email">Set up email</h3>
           <p>Open <strong>Settings › Email</strong>. Choose a provider or enter your SMTP server, sender and credentials. Use STARTTLS or SSL, and send a test email. In <strong>Settings › Payments › Email receipts</strong>, choose when to ask for the customer's email and whether to send automatically.</p>
           <p>Provider buttons fill in server details, not account authorization. Follow your provider's instructions for SMTP access and the required password:</p>
           <ul>
@@ -107,11 +139,14 @@
             <li><a href="https://proton.me/support/smtp-submission">Proton Mail</a></li>
           </ul>
           <p>The app uses password-based SMTP, not OAuth. Provider or organization policy may prevent a connection even with the correct server details.</p>
+          <p>For delivery problems, see <a href="troubleshooting.html#receipts">receipt and email troubleshooting</a>.</p>
+          <p class="back-to-contents"><a href="#contents">Back to contents</a></p>
         </section>
         <section id="shoppers">
           <h2>References and saved cards</h2>
           <p>Use <strong>Settings › Payments</strong> to enable a transaction reference if staff need to record a booking or order number. Separately, choose a <strong>shopper reference</strong>: none, a customer reference typed at checkout, or the customer's email. That shopper reference goes to Adyen with every payment, whether or not the card is saved. Email references are hashed by default; use the same salt across devices for consistent identifiers.</p>
           <p>With a shopper reference configured, <strong>Offer to save cards</strong> makes card saving available at checkout. Obtain the shopper's consent and choose the recurring processing model appropriate to your Adyen integration. Saving a card does not provide a saved-card charging screen in Mini mPOS.</p>
+          <p class="back-to-contents"><a href="#contents">Back to contents</a></p>
         </section>
         <section id="payment-links">
           <h2>Let the customer pay with a link</h2>
@@ -123,6 +158,8 @@
           </ol>
           <p>History shows <strong>Awaiting payment</strong> until the link is paid, expires or is canceled. A paid link counts in totals; an unpaid one does not. Links include the items and any shopper details/card-saving choice. Your Adyen account's online risk and capture settings apply.</p>
           <p class="note">Links are for sales only, not deposits or tips on the receipt, and require the real Checkout API. They are not simulated. Anyone with the link can pay until it expires. Refund paid links in <strong>Customer Area › Payments › Payment list</strong>: the app cannot retrieve their PSP reference.</p>
+          <p>If a link is missing or not updating, see <a href="troubleshooting.html#links">payment-link troubleshooting</a>.</p>
+          <p class="back-to-contents"><a href="#contents">Back to contents</a></p>
         </section>
         <section id="preauth">
           <h2>Hold and collect a deposit</h2>
@@ -139,6 +176,7 @@
           </dl>
           <p>Captures and adjustments use the Checkout API. <strong>Capture requested</strong> is not final confirmation; check the Customer Area. To receive immediate authorization-adjustment answers, enable <strong>Return adjust authorisation data</strong> as described in Adyen's <a href="https://docs.adyen.com/online-payments/adjust-authorisation">adjustment guide</a>; otherwise confirmation is asynchronous.</p>
           <p class="note">Holds expire. Review the pre-authorization filter and capture or cancel promptly. For failed or unknown operations, use <a href="troubleshooting.html#modifications">the recovery instructions</a>.</p>
+          <p class="back-to-contents"><a href="#contents">Back to contents</a></p>
         </section>
         <section id="tips">
           <h2>Collect a tip written on the receipt</h2>
@@ -150,6 +188,8 @@
           </ol>
           <p>The app requests capture of bill plus tip. Tips up to 20% use overcapture; larger tips first raise the authorization. If the issuer refuses that increase, the tip is not saved and you can enter a smaller one or none. Once saved, a tip cannot be changed. Before entering it, cancel the held payment rather than refund it; afterward refunds include the tip.</p>
           <p class="note">Enter tips promptly, including zero tips, so the bills are captured before their holds expire. A capture request still needs final confirmation in the Customer Area.</p>
+          <p>For failed or unknown captures, see <a href="troubleshooting.html#modifications">capture and adjustment recovery</a>.</p>
+          <p class="back-to-contents"><a href="#contents">Back to contents</a></p>
         </section>
         <section id="more">
           <h2>Set up more devices and manage local data</h2>
@@ -163,10 +203,18 @@
           <p>Check the import's currency warning: catalog prices are not exchange-rate converted. The <a href="setup.html">setup helper</a> is different: it imports only the connection fields you filled in, leaving unrelated settings alone.</p>
           <p><strong>This is a copy, not synchronization or a transaction-history backup.</strong> Future changes and each device's payments stay local. In Settings › Data, choose history retention and clear settled history when appropriate. Unresolved payments are protected from routine cleanup. Clearing Android app data removes all local products, settings and history.</p>
           <p>Keep the app on the <a href="https://github.com/astiskala/minimpos/releases/latest">latest release</a>. Install updates through the same route and signing source as the original installation; see <a href="getting-started.html#install">installation</a>.</p>
+          <p>For import problems, see <a href="troubleshooting.html#access">PIN and transfer troubleshooting</a>.</p>
+          <p class="back-to-contents"><a href="#contents">Back to contents</a></p>
         </section>
       </div>
     </div>
   </main>
-  <footer class="site-footer"><div class="wrap footer-row"><p><img src="favicon.svg" alt="" width="24" height="24"> Mini mPOS · MIT license · <a href="https://github.com/astiskala/minimpos">GitHub</a> · <a href="https://github.com/astiskala/minimpos/blob/main/SECURITY.md">Security</a></p><p class="fine">Adyen is a trademark of Adyen N.V. Mini mPOS is independent and is not affiliated with, endorsed by or supported by Adyen.</p></div></footer>
+  <footer class="site-footer"><div class="wrap footer-row">
+    <nav aria-label="Guides and setup"><ul class="footer-nav">
+      <li><a href="getting-started.html">Getting started</a></li><li><a href="using.html" aria-current="page">Using Mini mPOS</a></li>
+      <li><a href="troubleshooting.html">Troubleshooting</a></li><li><a href="setup.html">Setup helper</a></li>
+    </ul></nav>
+    <p><img src="favicon.svg" alt="" width="24" height="24"> Mini mPOS · MIT license · <a href="https://github.com/astiskala/minimpos">GitHub</a> · <a href="https://github.com/astiskala/minimpos/blob/main/SECURITY.md">Security</a></p><p class="fine">Adyen is a trademark of Adyen N.V. Mini mPOS is independent and is not affiliated with, endorsed by or supported by Adyen.</p>
+  </div></footer>
 </body>
 </html>

@@ -31,7 +31,7 @@ body {
 
 img { max-width: 100%; height: auto; }
 
-p, li, dd { overflow-wrap: anywhere; }
+p, li, dt, dd { overflow-wrap: anywhere; }
 
 :lang(zh-CN), :lang(ja) { line-break: strict; }
 
@@ -74,7 +74,11 @@ h3 { font-size: 1.15rem; }
 
 .header-row { display: flex; align-items: center; justify-content: space-between; min-height: 64px; gap: 20px; }
 
-.header-row .brand { margin-right: auto; }
+.header-row .brand { margin-right: auto; flex-shrink: 0; }
+
+.mobile-menu { display: none; }
+
+.mobile-menu, .language-menu { flex-shrink: 0; }
 
 /* Language menu: a native <details> dropdown, so the site needs no script. */
 .language-menu { position: relative; }
@@ -148,6 +152,30 @@ h3 { font-size: 1.15rem; }
 .nav a:not(.button) { color: var(--navy); text-decoration: none; font-weight: 500; }
 
 .nav a:not(.button):hover { color: var(--green-dark); }
+
+.mobile-menu summary {
+  padding: 7px 10px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  cursor: pointer;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.mobile-menu .nav {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  display: block;
+  padding: 12px 24px;
+  background: #fff;
+  border-bottom: 1px solid var(--border);
+  max-height: calc(100vh - 80px);
+  overflow-y: auto;
+}
+
+.mobile-menu .nav a { display: block; padding: 10px 0; }
 
 /* Buttons */
 
@@ -261,6 +289,18 @@ a:focus-visible, summary:focus-visible { outline: 3px solid var(--green); outlin
 
 .feature p { margin: 0; color: var(--grey); font-size: 0.97rem; }
 
+.feature .feature-link { margin-top: 12px; }
+
+.guide-start { padding: 24px 0 40px; }
+
+.guide-cards { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px; }
+
+.guide-card { padding: 24px; border: 1px solid var(--border); border-radius: var(--radius); }
+
+.guide-card h3 { font-size: 1.15rem; }
+
+.guide-card p { margin: 0; color: var(--grey); }
+
 .flow {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
@@ -373,6 +413,8 @@ pre {
 .toc {
   position: sticky;
   top: 88px;
+  max-height: calc(100vh - 112px);
+  overflow-y: auto;
   padding: 20px;
   border: 1px solid var(--border);
   border-radius: var(--radius);
@@ -381,13 +423,25 @@ pre {
 
 .toc-title { margin: 0 0 8px; font-weight: 700; }
 
-.toc ol { margin: 0; padding-left: 1.2em; }
+.toc ol, .toc ul { margin: 0; padding-left: 1.2em; }
 
 .toc li { margin: 4px 0; }
+
+.toc li ul { margin: 8px 0; }
 
 .toc a { color: var(--navy); text-decoration: none; }
 
 .toc a:hover { color: var(--green-dark); }
+
+.toc a[aria-current="page"] { color: var(--green-dark); font-weight: 700; }
+
+.mobile-contents { display: none; }
+
+.mobile-contents summary { cursor: pointer; }
+
+.mobile-contents[open] summary { margin-bottom: 12px; }
+
+.back-to-contents { font-size: 0.9rem; }
 
 .guide-body { max-width: 760px; min-width: 0; }
 
@@ -424,12 +478,18 @@ pre {
 
 .fine { font-size: 0.85rem; }
 
+.footer-nav { display: flex; flex-wrap: wrap; gap: 8px 24px; list-style: none; margin: 0 0 20px; padding: 0; }
+
+.footer-nav a[aria-current="page"] { font-weight: 700; }
+
 /* Smaller screens */
 
 @media (max-width: 900px) {
-  .hero-grid, .split, .steps, .guide { grid-template-columns: minmax(0, 1fr); }
+  .hero-grid, .split, .steps, .guide, .guide-cards { grid-template-columns: minmax(0, 1fr); }
   .guide { gap: 24px; }
-  .toc { position: static; }
+  .toc { position: static; max-height: none; overflow-y: visible; }
+  .desktop-contents { display: none; }
+  .mobile-contents { display: block; }
   .hero { padding-top: 48px; }
   .hero-visual { max-width: 440px; margin: 0 auto; width: 100%; }
   .hero-shots { height: 480px; }
@@ -441,9 +501,14 @@ pre {
   .shot-pair { max-width: 520px; }
 }
 
+/* Switch before translated navigation can crowd the brand or language menu. */
+@media (max-width: 1100px) {
+  .desktop-nav { display: none; }
+  .mobile-menu { display: block; }
+}
+
 @media (max-width: 600px) {
   body { font-size: 16px; }
-  .nav li:not(:last-child) { display: none; }
   .section { padding: 64px 0; }
   .wrap { padding-left: 20px; padding-right: 20px; }
   .hero-shots { height: 370px; }
@@ -451,7 +516,9 @@ pre {
   .terminal-front { left: 4px; top: 55px; }
   .terminal-back { right: 4px; }
   .language-current { display: none; }
-  .header-row { gap: 12px; }
+  .header-row { gap: 8px; }
+  .header-row .brand { gap: 6px; font-size: 1rem; }
+  .brand img { width: 28px; height: 28px; }
   .step { padding: 22px; }
   .flow { gap: 20px; }
 }

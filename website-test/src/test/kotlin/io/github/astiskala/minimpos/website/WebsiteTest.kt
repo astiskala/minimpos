@@ -75,6 +75,145 @@ class WebsiteTest {
     }
 
     @Test
+    fun `every page exposes the guides and helper in desktop mobile and footer navigation`() {
+        val destinations = listOf(Kind.GUIDE, Kind.USING, Kind.TROUBLE, Kind.SETUP).map { it.file }
+        pages.forEach { (key, page) ->
+            val (language, kind) = key
+            val labels =
+                pages
+                    .getValue(language to Kind.LANDING)
+                    .document
+                    .select(".desktop-nav a")
+                    .map { it.text() }
+            listOf(".desktop-nav", ".mobile-menu nav", ".site-footer nav").forEach { selector ->
+                val links = page.document.select("$selector a")
+                assertWithMessage("${page.name} $selector").that(links.map { it.attr("href") }).isEqualTo(destinations)
+                assertWithMessage("${page.name} $selector labels").that(links.map { it.text() }).isEqualTo(labels)
+                links.forEach { link ->
+                    assertWithMessage("${page.name} $selector ${link.attr("href")}")
+                        .that(link.attr("aria-current"))
+                        .isEqualTo(if (link.attr("href") == kind.file) "page" else "")
+                }
+            }
+            val menu = page.document.select("details.mobile-menu").single()
+            assertWithMessage(page.name).that(menu.hasAttr("open")).isFalse()
+            assertWithMessage(page.name).that(menu.selectFirst("summary")!!.text()).isNotEmpty()
+        }
+    }
+
+    @Test
+    fun `localized pages keep all navigation destinations in the same order`() {
+        pages.forEach { (key, page) ->
+            val english = pages.getValue("en" to key.second)
+
+            fun Page.destinations() = document.select("a[href]:not([hreflang])").map { it.attr("href") }
+            assertWithMessage(page.name).that(page.destinations()).isEqualTo(english.destinations())
+        }
+    }
+
+    @Test
+    fun `landing pages lead directly to guides and link every feature to its task`() {
+        LANGUAGES.forEach { language ->
+            val page = pages.getValue(language to Kind.LANDING)
+            val sections = page.document.select("main > section")
+            val guides = sections.single { it.hasClass("guide-start") }
+            assertWithMessage(page.name).that(sections.indexOf(guides)).isLessThan(sections.indexOfFirst { it.id() == "features" })
+            assertWithMessage(page.name)
+                .that(guides.select(".guide-card a").map { it.attr("href") })
+                .containsExactly(Kind.GUIDE.file, Kind.USING.file, Kind.TROUBLE.file)
+                .inOrder()
+            assertWithMessage(page.name)
+                .that(
+                    page.document
+                        .select(".hero .actions a")
+                        .first()!!
+                        .attr("href"),
+                ).isEqualTo(Kind.GUIDE.file)
+            page.document.select(".feature").forEach { feature ->
+                val link = feature.select(".feature-link a").single()
+                assertWithMessage(page.name).that(hasScheme(link.attr("href"))).isFalse()
+                assertWithMessage(page.name).that(link.text()).isNotEmpty()
+            }
+        }
+    }
+
+    @Test
+    fun `guide contents expose every task in both layouts with a return route`() {
+        GUIDE_TOPICS.keys.forEach { kind ->
+            LANGUAGES.forEach { language ->
+                val page = pages.getValue(language to kind)
+                val tasks = page.document.select(".guide-body section[id], .guide-body h3[id]").map { "#${it.id()}" }
+                listOf(".desktop-contents", ".mobile-contents").forEach { selector ->
+                    assertWithMessage("${page.name} $selector")
+                        .that(page.document.select("$selector a").map { it.attr("href") })
+                        .isEqualTo(tasks)
+                }
+                val contents = page.document.select("nav.toc").single()
+                assertWithMessage(page.name).that(contents.id()).isEqualTo("contents")
+                val mobile = contents.select("details.mobile-contents").single()
+                assertWithMessage(page.name).that(mobile.hasAttr("open")).isFalse()
+                assertWithMessage(page.name).that(mobile.selectFirst("summary")!!.text()).isNotEmpty()
+                page.document.select(".guide-body section").forEach { section ->
+                    assertWithMessage("${page.name} #${section.id()}")
+                        .that(section.select(".back-to-contents a[href='#contents']"))
+                        .hasSize(1)
+                }
+            }
+        }
+    }
+
+    @Test
+    fun `setup shortcuts keep prerequisites and the next payment step reachable`() {
+        LANGUAGES.forEach { language ->
+            val guide = pages.getValue(language to Kind.GUIDE)
+            listOf("on-terminal", "network", "cloud", "tap-to-pay").forEach { destination ->
+                val prerequisites = guide.document.getElementById(destination)!!.nextElementSibling()!!
+                assertWithMessage("${guide.name} #$destination")
+                    .that(prerequisites.select("a").map { it.attr("href") })
+                    .containsExactly("#install", "#credentials")
+                    .inOrder()
+            }
+            val helper = pages.getValue(language to Kind.SETUP)
+            assertWithMessage(helper.name)
+                .that(helper.document.select(".setup-main > p a").map { it.attr("href") })
+                .containsAtLeast("getting-started.html#choose", "getting-started.html#credentials")
+            assertWithMessage(helper.name)
+                .that(helper.document.select("#setup-codes a").map { it.attr("href") })
+                .containsAtLeast("getting-started.html#first-payment", "troubleshooting.html#access", "troubleshooting.html#connection")
+            val notice = helper.document.getElementById("customer-area-note")!!
+            assertWithMessage(helper.name).that(notice.text()).isNotEmpty()
+            helper.document.select("a[href^='https://ca-']").forEach { link ->
+                assertWithMessage(helper.name).that(link.attr("target")).isEqualTo("_blank")
+                assertWithMessage(helper.name).that(link.attr("rel").split(" ")).containsAtLeast("noopener", "noreferrer")
+                assertWithMessage(helper.name).that(link.attr("aria-describedby")).isEqualTo(notice.id())
+            }
+        }
+    }
+
+    @Test
+    fun `normal workflows link directly to their recovery instructions`() {
+        val routes =
+            mapOf(
+                "business" to "access",
+                "sell" to "unknown",
+                "refund" to "unknown",
+                "receipts" to "receipts",
+                "payment-links" to "links",
+                "preauth" to "modifications",
+                "tips" to "modifications",
+                "more" to "access",
+            )
+        LANGUAGES.forEach { language ->
+            val page = pages.getValue(language to Kind.USING)
+            routes.forEach { (task, recovery) ->
+                assertWithMessage("${page.name} #$task")
+                    .that(page.document.select("#$task a[href='troubleshooting.html#$recovery']"))
+                    .isNotEmpty()
+            }
+        }
+    }
+
+    @Test
     fun `local links, fragments and assets exist`() {
         pages.values.forEach { page ->
             assertWithMessage("${page.name} has duplicate IDs").that(page.ids).containsNoDuplicates()

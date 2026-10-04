@@ -32,15 +32,33 @@
   <a class="skip" href="#main">Skip to content</a>
   <header class="site-header"><div class="wrap header-row">
     <a class="brand" href="./" aria-label="Mini mPOS home"><img src="favicon.svg" alt="" width="36" height="36"><span>Mini mPOS</span></a>
-    <nav aria-label="Main"><ul class="nav"><li><a href="./#features">Features</a></li><li><a href="getting-started.html">Getting started</a></li><li><a href="setup.html">Setup helper</a></li><li><a class="button button-small" href="https://github.com/astiskala/minimpos">GitHub</a></li></ul></nav>
+    <nav class="desktop-nav" aria-label="Main"><ul class="nav">
+      <li><a href="getting-started.html">Getting started</a></li><li><a href="using.html">Using Mini mPOS</a></li>
+      <li><a href="troubleshooting.html" aria-current="page">Troubleshooting</a></li><li><a href="setup.html">Setup helper</a></li>
+    </ul></nav>
+    <details class="mobile-menu"><summary>Menu</summary><nav aria-label="Main"><ul class="nav">
+      <li><a href="getting-started.html">Getting started</a></li><li><a href="using.html">Using Mini mPOS</a></li>
+      <li><a href="troubleshooting.html" aria-current="page">Troubleshooting</a></li><li><a href="setup.html">Setup helper</a></li>
+    </ul></nav></details>
     <details class="language-menu"><summary aria-label="Language: English" title="Language"><svg aria-hidden="true" class="globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 2.7 3.8 5.7 3.8 9s-1.3 6.3-3.8 9c-2.5-2.7-3.8-5.7-3.8-9S9.5 5.7 12 3z"/></svg><span class="language-current">English</span></summary><nav aria-label="Language"><ul><li><a href="troubleshooting.html" hreflang="en" lang="en" aria-current="page">English</a></li><li><a href="zh-CN/troubleshooting.html" hreflang="zh-CN" lang="zh-CN">简体中文</a></li><li><a href="ja/troubleshooting.html" hreflang="ja" lang="ja">日本語</a></li></ul></nav></details>
   </div></header>
   <main id="main">
     <section class="guide-hero"><div class="wrap"><p class="eyebrow">Guide</p><h1>Troubleshooting</h1><p class="lead">Start with the payment's outcome. Fixing a connection does not tell you whether an earlier payment went through.</p></div></section>
     <div class="wrap guide">
-      <nav class="toc" aria-label="Guide navigation">
+      <nav class="toc" id="contents" aria-label="Guide navigation">
         <p class="toc-title">Guides</p><p><a href="getting-started.html">Getting started</a><br><a href="using.html">Using Mini mPOS</a><br><a href="troubleshooting.html" aria-current="page">Troubleshooting</a></p>
-        <p class="toc-title">On this page</p><ol><li><a href="#unknown">Unknown payment</a></li><li><a href="#connection">Setup and connection</a></li><li><a href="#modifications">Captures and adjustments</a></li><li><a href="#links">Payment links</a></li><li><a href="#receipts">Receipts and email</a></li><li><a href="#access">PINs and transfers</a></li><li><a href="#install">Installation</a></li><li><a href="#help">Get help</a></li></ol>
+        <div class="desktop-contents"><p class="toc-title">On this page</p><ol>
+          <li><a href="#unknown">Unknown payment or refund</a></li><li><a href="#connection">Setup and connection</a></li>
+          <li><a href="#modifications">Captures and adjustments</a></li><li><a href="#links">Payment links</a></li>
+          <li><a href="#receipts">Receipts and email</a></li><li><a href="#access">PINs and transfers</a></li>
+          <li><a href="#install">Installation</a></li><li><a href="#help">Get help</a></li>
+        </ol></div>
+        <details class="mobile-contents"><summary class="toc-title">On this page</summary><ol>
+          <li><a href="#unknown">Unknown payment or refund</a></li><li><a href="#connection">Setup and connection</a></li>
+          <li><a href="#modifications">Captures and adjustments</a></li><li><a href="#links">Payment links</a></li>
+          <li><a href="#receipts">Receipts and email</a></li><li><a href="#access">PINs and transfers</a></li>
+          <li><a href="#install">Installation</a></li><li><a href="#help">Get help</a></li>
+        </ol></details>
       </nav>
       <div class="guide-body">
         <section id="unknown">
@@ -56,6 +74,7 @@
           <p>The Payments app cannot be asked for a transaction's status. <strong>Check result again</strong> can use an answer that arrived late, but it cannot fetch one remotely. If none is available, check the Customer Area before charging again.</p>
           <h3>The terminal is busy</h3>
           <p>Finish the terminal's other payment or leave its admin menu. If the result screen offers <strong>Cancel the terminal’s current transaction</strong>, use it only when you intend to stop that transaction, then check its outcome before retrying. Tap to Pay does not support this command.</p>
+          <p class="back-to-contents"><a href="#contents">Back to contents</a></p>
         </section>
         <section id="connection">
           <h2>Payments are not set up or cannot reach the terminal</h2>
@@ -68,6 +87,7 @@
             <dt>Wrong environment</dt><dd>TEST/LIVE is detected from the terminal, cloud API key or installed Payments app, not selected in Settings. Use the correct environment's device and credentials, then check Settings › About.</dd>
           </dl>
           <p>After changing merchant account, environment or terminal, actions on an old payment may be blocked. Restore the setup that took that payment or handle it in the Customer Area; do not try to process it under another account.</p>
+          <p class="back-to-contents"><a href="#contents">Back to contents</a></p>
         </section>
         <section id="modifications">
           <h2>A capture or adjustment failed or is unknown</h2>
@@ -79,23 +99,29 @@
             <li><strong>Capture requested</strong>, <strong>Refund requested</strong> and asynchronous adjustment acceptance are not final confirmation. Check the Customer Area; Mini mPOS cannot receive the confirming webhooks.</li>
           </ul>
           <p>For workflow requirements, see <a href="using.html#preauth">deposits</a> and <a href="using.html#tips">tips on the receipt</a>. Holds expire, so resolve them promptly.</p>
+          <p class="back-to-contents"><a href="#contents">Back to contents</a></p>
         </section>
         <section id="links">
           <h2>Payment links are missing or not updating</h2>
           <p>If checkout has no <strong>Create payment link</strong>, enable <strong>Settings › Payments › Offer payment links</strong> and complete Checkout API setup. Links are available only for sales on a real-payment setup, not pre-authorizations, tips on the receipt or the simulator.</p>
           <p>The app checks while the link screen is open, not continuously in the background. Reopen it from History and tap <strong>Check payment</strong>. An awaiting-payment entry does not contribute to totals.</p>
           <p>If link creation was interrupted and its result is unknown, open the original entry and tap <strong>Check payment</strong>. It retries creation with the original request; do not create another sale merely to get a link. Paid links must be refunded in <strong>Customer Area › Payments › Payment list</strong>.</p>
+          <p>See <a href="using.html#payment-links">how to create and manage payment links</a> for the normal workflow.</p>
+          <p class="back-to-contents"><a href="#contents">Back to contents</a></p>
         </section>
         <section id="receipts">
           <h2>Receipts do not print or email</h2>
           <p><strong>Printing:</strong> check that the connected terminal actually has a printer. Look in <strong>Settings › About</strong> and run a connection test. Review <strong>Settings › Receipts</strong> for printer detection and automatic printing, then try <strong>Print test receipt</strong>. Setting printer availability manually cannot add a printer to an AMS1 or Tap to Pay phone.</p>
-          <p><strong>Email:</strong> send a test from <strong>Settings › Email</strong>. Check the server, port, STARTTLS/SSL, username and provider-required password. Your provider may require SMTP access or an app password, or block password authentication. Check automatic delivery and email capture in Settings › Payments separately. See <a href="using.html#receipts">email setup and provider instructions</a>.</p>
+          <p><strong>Email:</strong> send a test from <strong>Settings › Email</strong>. Check the server, port, STARTTLS/SSL, username and provider-required password. Your provider may require SMTP access or an app password, or block password authentication. Check automatic delivery and email capture in Settings › Payments separately. See <a href="using.html#email">email setup and provider instructions</a>.</p>
+          <p class="back-to-contents"><a href="#contents">Back to contents</a></p>
         </section>
         <section id="access">
           <h2>PIN and setup-transfer problems</h2>
           <p><strong>Manager PIN:</strong> an administrator can replace or remove it in Settings › Security. The admin PIN and Manager PIN protect different actions; one does not automatically unlock the other.</p>
           <p><strong>Forgotten admin PIN:</strong> there is no PIN recovery. Clearing Android app data removes the PIN, but also <strong>all local products, settings, secrets and payment history</strong>. Resolve outstanding payments and preserve needed records first. A setup transfer does not restore transaction history. Reset only if you accept that loss.</p>
           <p><strong>Transfer code:</strong> use the code shown with those QR codes, not a newly generated one. A wrong code imports nothing; leaving it blank imports non-secret content only. Review any reported secret-storage failure and enter missing keys again. After copying setup, check the receiving device's destination and credentials; see <a href="using.html#more">devices and data</a>.</p>
+          <p>See <a href="using.html#staff">staff PIN setup</a> to review which actions each PIN protects.</p>
+          <p class="back-to-contents"><a href="#contents">Back to contents</a></p>
         </section>
         <section id="install">
           <h2>The app will not install on a terminal</h2>
@@ -104,15 +130,24 @@
             <dt><code>INVALID_SIGNING_CERTIFICATE_MISMATCH</code></dt><dd>The upload uses a different signing key from earlier uploads. Keep the original signing source; ask Adyen Support about removing earlier versions if you intentionally need to change it.</dd>
             <dt>Unsupported Android version</dt><dd>Mini mPOS needs Android 9 or later. The older S1E's Android 7.1 is not supported.</dd>
           </dl>
+          <p>Follow <a href="getting-started.html#install">the installation instructions</a> for your device.</p>
+          <p class="back-to-contents"><a href="#contents">Back to contents</a></p>
         </section>
         <section id="help">
           <h2>Still need help?</h2>
           <p>For Adyen accounts, terminal deployment, payment-method enablement or final payment outcomes, contact Adyen. For an app problem, <a href="https://github.com/astiskala/minimpos/issues">open a GitHub issue</a> with the app version, device model, payment setup, TEST/LIVE environment and steps to reproduce.</p>
           <p>Do not include keys, passwords, PINs or customer data. Report suspected vulnerabilities privately under the <a href="https://github.com/astiskala/minimpos/blob/main/SECURITY.md">security policy</a>.</p>
+          <p class="back-to-contents"><a href="#contents">Back to contents</a></p>
         </section>
       </div>
     </div>
   </main>
-  <footer class="site-footer"><div class="wrap footer-row"><p><img src="favicon.svg" alt="" width="24" height="24"> Mini mPOS · MIT license · <a href="https://github.com/astiskala/minimpos">GitHub</a> · <a href="https://github.com/astiskala/minimpos/blob/main/SECURITY.md">Security</a></p><p class="fine">Adyen is a trademark of Adyen N.V. Mini mPOS is independent and is not affiliated with, endorsed by or supported by Adyen.</p></div></footer>
+  <footer class="site-footer"><div class="wrap footer-row">
+    <nav aria-label="Guides and setup"><ul class="footer-nav">
+      <li><a href="getting-started.html">Getting started</a></li><li><a href="using.html">Using Mini mPOS</a></li>
+      <li><a href="troubleshooting.html" aria-current="page">Troubleshooting</a></li><li><a href="setup.html">Setup helper</a></li>
+    </ul></nav>
+    <p><img src="favicon.svg" alt="" width="24" height="24"> Mini mPOS · MIT license · <a href="https://github.com/astiskala/minimpos">GitHub</a> · <a href="https://github.com/astiskala/minimpos/blob/main/SECURITY.md">Security</a></p><p class="fine">Adyen is a trademark of Adyen N.V. Mini mPOS is independent and is not affiliated with, endorsed by or supported by Adyen.</p>
+  </div></footer>
 </body>
 </html>

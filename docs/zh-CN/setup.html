@@ -41,14 +41,18 @@
         <img src="../favicon.svg" alt="" width="36" height="36">
         <span>Mini mPOS</span>
       </a>
-      <nav aria-label="主导航">
+      <nav class="desktop-nav" aria-label="主导航">
         <ul class="nav">
-          <li><a href="./#features">功能</a></li>
           <li><a href="getting-started.html">快速入门</a></li>
+          <li><a href="using.html">使用 Mini mPOS</a></li>
+          <li><a href="troubleshooting.html">故障排查</a></li>
           <li><a href="setup.html" aria-current="page">设置助手</a></li>
-          <li><a class="button button-small" href="https://github.com/astiskala/minimpos">GitHub</a></li>
         </ul>
       </nav>
+      <details class="mobile-menu"><summary>菜单</summary><nav aria-label="主导航"><ul class="nav">
+        <li><a href="getting-started.html">快速入门</a></li><li><a href="using.html">使用 Mini mPOS</a></li>
+        <li><a href="troubleshooting.html">故障排查</a></li><li><a href="setup.html" aria-current="page">设置助手</a></li>
+      </ul></nav></details>
       <details class="language-menu">
         <summary aria-label="语言：简体中文" title="语言"><svg aria-hidden="true" class="globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 2.7 3.8 5.7 3.8 9s-1.3 6.3-3.8 9c-2.5-2.7-3.8-5.7-3.8-9S9.5 5.7 12 3z"/></svg><span class="language-current">简体中文</span></summary>
         <nav aria-label="语言">
@@ -75,6 +79,8 @@
 
     <div class="wrap setup">
       <div class="setup-main">
+        <p>初次使用 Mini mPOS？填写前请先<a href="getting-started.html#choose">选择配置方式</a>并<a href="getting-started.html#credentials">准备凭据</a>。</p>
+        <p class="hint" id="customer-area-note">商户后台链接会在新标签页中打开，方便保留此表单。</p>
         <p class="note" id="setup-noscript">设置助手需要 JavaScript。请为此页面启用 JavaScript，或按照<a href="getting-started.html#connect">快速入门指南</a>在应用中输入。</p>
 
         <form id="setup-form" class="setup-form" hidden autocomplete="off"
@@ -117,7 +123,7 @@
 
           <fieldset data-for="thisTerminal network tapToPay">
             <legend>共享密钥</legend>
-            <p class="hint">在商户后台的 <a data-ca="devices/device-settings?categoryId=tapi" href="https://ca-test.adyen.com/ca/ui/devices/device-settings?categoryId=tapi">Devices › Device settings › Terminal API</a> 中的 Encryption key 下（点击铅笔图标查看）。</p>
+            <p class="hint">在商户后台的 <a data-ca="devices/device-settings?categoryId=tapi" href="https://ca-test.adyen.com/ca/ui/devices/device-settings?categoryId=tapi" target="_blank" rel="noopener noreferrer" aria-describedby="customer-area-note">Devices › Device settings › Terminal API</a> 中的 Encryption key 下（点击铅笔图标查看）。</p>
             <label for="keyIdentifier">密钥标识符</label>
             <input id="keyIdentifier" name="keyIdentifier" type="text" required spellcheck="false">
             <label for="passphrase">密钥口令</label>
@@ -128,7 +134,7 @@
 
           <fieldset data-for="thisTerminal network cloud tapToPay">
             <legend>Checkout API</legend>
-            <p class="hint">在 <a data-ca="developers/api-credentials/" href="https://ca-test.adyen.com/ca/ui/developers/api-credentials/">Developers › API credentials</a> 中创建<span data-only="thisTerminal network tapToPay">具有 Checkout webservice role 的</span><span data-only="cloud" hidden>具有 Cloud Device API role 和 Checkout webservice role 的</span> API 凭据，并生成其 API 密钥。</p>
+            <p class="hint">在 <a data-ca="developers/api-credentials/" href="https://ca-test.adyen.com/ca/ui/developers/api-credentials/" target="_blank" rel="noopener noreferrer" aria-describedby="customer-area-note">Developers › API credentials</a> 中创建<span data-only="thisTerminal network tapToPay">具有 Checkout webservice role 的</span><span data-only="cloud" hidden>具有 Cloud Device API role 和 Checkout webservice role 的</span> API 凭据，并生成其 API 密钥。</p>
             <label for="merchantAccount">商家账户</label>
             <input id="merchantAccount" name="merchantAccount" type="text" required spellcheck="false">
             <label for="apiKey">API 密钥</label>
@@ -137,7 +143,7 @@
 
           <fieldset data-for="thisTerminal network cloud tapToPay" data-env="live">
             <legend>LIVE URL 前缀</legend>
-            <p class="hint">见 <a data-ca="developers/api-urls" href="https://ca-live.adyen.com/ca/ui/developers/api-urls">Developers › API URLs</a>。</p>
+            <p class="hint">见 <a data-ca="developers/api-urls" href="https://ca-live.adyen.com/ca/ui/developers/api-urls" target="_blank" rel="noopener noreferrer" aria-describedby="customer-area-note">Developers › API URLs</a>。</p>
             <label for="liveUrlPrefix">前缀</label>
             <input id="liveUrlPrefix" name="liveUrlPrefix" type="text" required spellcheck="false" placeholder="1797a841fbb37ca7-AdyenDemo">
           </fieldset>
@@ -149,7 +155,7 @@
             <input id="paymentsAppApiKey" name="paymentsAppApiKey" type="password" required spellcheck="false">
             <label for="storeId">门店 ID（可选）</label>
             <input id="storeId" name="storeId" type="text" spellcheck="false">
-            <p class="hint">如只为一家门店设置本手机：填写 <a data-ca="devices/stores/" href="https://ca-test.adyen.com/ca/ui/devices/stores/">Devices › Stores</a> 中该门店的 ID（不是其 reference）。</p>
+            <p class="hint">如只为一家门店设置本手机：填写 <a data-ca="devices/stores/" href="https://ca-test.adyen.com/ca/ui/devices/stores/" target="_blank" rel="noopener noreferrer" aria-describedby="customer-area-note">Devices › Stores</a> 中该门店的 ID（不是其 reference）。</p>
           </fieldset>
 
           <div class="setup-actions">
@@ -167,6 +173,8 @@
             <li>输入<strong>传输码</strong>，然后点击<strong>导入</strong>。设备上只会更改您在这里填写的内容。</li>
             <li>在<strong>设置 › 终端</strong>中检查连接。使用 Tap to Pay 时，请在那里点击<strong>设置 Tap to Pay</strong>。</li>
           </ol>
+          <p>导入后请<a href="getting-started.html#first-payment">完成第一笔 TEST 付款</a>。</p>
+          <p><a href="troubleshooting.html#access">导入问题？</a> · <a href="troubleshooting.html#connection">连接问题？</a></p>
           <div class="setup-code-card" id="setup-code-card">
             <p>传输码</p>
             <p class="setup-code" id="setup-code"></p>
@@ -191,17 +199,18 @@
           <li><strong>需要完整说明？</strong>参阅<a href="getting-started.html">快速入门</a>；导入或连接问题参见<a href="troubleshooting.html">故障排查</a>。</li>
         </ul>
         <h2>商户后台快捷链接</h2>
+        <p class="hint">这些链接也会在新标签页中打开。</p>
         <table class="setup-links">
           <thead>
             <tr><th scope="col">页面</th><th scope="col">TEST</th><th scope="col">LIVE</th></tr>
           </thead>
           <tbody>
-            <tr><th scope="row">登录</th><td><a href="https://ca-test.adyen.com/ca/ui/">TEST</a></td><td><a href="https://ca-live.adyen.com/ca/ui/">LIVE</a></td></tr>
-            <tr><th scope="row">Terminal apps（上传 APK）</th><td><a href="https://ca-test.adyen.com/ca/ui/devices/terminal-apps/">TEST</a></td><td><a href="https://ca-live.adyen.com/ca/ui/devices/terminal-apps/">LIVE</a></td></tr>
-            <tr><th scope="row">API credentials</th><td><a href="https://ca-test.adyen.com/ca/ui/developers/api-credentials/">TEST</a></td><td><a href="https://ca-live.adyen.com/ca/ui/developers/api-credentials/">LIVE</a></td></tr>
-            <tr><th scope="row">Terminal API（共享密钥）</th><td><a href="https://ca-test.adyen.com/ca/ui/devices/device-settings?categoryId=tapi">TEST</a></td><td><a href="https://ca-live.adyen.com/ca/ui/devices/device-settings?categoryId=tapi">LIVE</a></td></tr>
-            <tr><th scope="row">Stores（门店）</th><td><a href="https://ca-test.adyen.com/ca/ui/devices/stores/">TEST</a></td><td><a href="https://ca-live.adyen.com/ca/ui/devices/stores/">LIVE</a></td></tr>
-            <tr><th scope="row">API URLs（LIVE 前缀）</th><td>–</td><td><a href="https://ca-live.adyen.com/ca/ui/developers/api-urls">LIVE</a></td></tr>
+            <tr><th scope="row">登录</th><td><a href="https://ca-test.adyen.com/ca/ui/" target="_blank" rel="noopener noreferrer" aria-describedby="customer-area-note">TEST</a></td><td><a href="https://ca-live.adyen.com/ca/ui/" target="_blank" rel="noopener noreferrer" aria-describedby="customer-area-note">LIVE</a></td></tr>
+            <tr><th scope="row">Terminal apps（上传 APK）</th><td><a href="https://ca-test.adyen.com/ca/ui/devices/terminal-apps/" target="_blank" rel="noopener noreferrer" aria-describedby="customer-area-note">TEST</a></td><td><a href="https://ca-live.adyen.com/ca/ui/devices/terminal-apps/" target="_blank" rel="noopener noreferrer" aria-describedby="customer-area-note">LIVE</a></td></tr>
+            <tr><th scope="row">API credentials</th><td><a href="https://ca-test.adyen.com/ca/ui/developers/api-credentials/" target="_blank" rel="noopener noreferrer" aria-describedby="customer-area-note">TEST</a></td><td><a href="https://ca-live.adyen.com/ca/ui/developers/api-credentials/" target="_blank" rel="noopener noreferrer" aria-describedby="customer-area-note">LIVE</a></td></tr>
+            <tr><th scope="row">Terminal API（共享密钥）</th><td><a href="https://ca-test.adyen.com/ca/ui/devices/device-settings?categoryId=tapi" target="_blank" rel="noopener noreferrer" aria-describedby="customer-area-note">TEST</a></td><td><a href="https://ca-live.adyen.com/ca/ui/devices/device-settings?categoryId=tapi" target="_blank" rel="noopener noreferrer" aria-describedby="customer-area-note">LIVE</a></td></tr>
+            <tr><th scope="row">Stores（门店）</th><td><a href="https://ca-test.adyen.com/ca/ui/devices/stores/" target="_blank" rel="noopener noreferrer" aria-describedby="customer-area-note">TEST</a></td><td><a href="https://ca-live.adyen.com/ca/ui/devices/stores/" target="_blank" rel="noopener noreferrer" aria-describedby="customer-area-note">LIVE</a></td></tr>
+            <tr><th scope="row">API URLs（LIVE 前缀）</th><td>–</td><td><a href="https://ca-live.adyen.com/ca/ui/developers/api-urls" target="_blank" rel="noopener noreferrer" aria-describedby="customer-area-note">LIVE</a></td></tr>
           </tbody>
         </table>
       </aside>
@@ -210,6 +219,10 @@
 
   <footer class="site-footer">
     <div class="wrap footer-row">
+      <nav aria-label="指南和设置"><ul class="footer-nav">
+        <li><a href="getting-started.html">快速入门</a></li><li><a href="using.html">使用 Mini mPOS</a></li>
+        <li><a href="troubleshooting.html">故障排查</a></li><li><a href="setup.html" aria-current="page">设置助手</a></li>
+      </ul></nav>
       <p>
         <img src="../favicon.svg" alt="" width="24" height="24"> Mini mPOS · MIT 许可证 ·
         <a href="https://github.com/astiskala/minimpos">GitHub</a> ·

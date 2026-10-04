@@ -41,14 +41,18 @@
         <img src="favicon.svg" alt="" width="36" height="36">
         <span>Mini mPOS</span>
       </a>
-      <nav aria-label="Main">
+      <nav class="desktop-nav" aria-label="Main">
         <ul class="nav">
-          <li><a href="./#features">Features</a></li>
           <li><a href="getting-started.html">Getting started</a></li>
+          <li><a href="using.html">Using Mini mPOS</a></li>
+          <li><a href="troubleshooting.html">Troubleshooting</a></li>
           <li><a href="setup.html" aria-current="page">Setup helper</a></li>
-          <li><a class="button button-small" href="https://github.com/astiskala/minimpos">GitHub</a></li>
         </ul>
       </nav>
+      <details class="mobile-menu"><summary>Menu</summary><nav aria-label="Main"><ul class="nav">
+        <li><a href="getting-started.html">Getting started</a></li><li><a href="using.html">Using Mini mPOS</a></li>
+        <li><a href="troubleshooting.html">Troubleshooting</a></li><li><a href="setup.html" aria-current="page">Setup helper</a></li>
+      </ul></nav></details>
       <details class="language-menu">
         <summary aria-label="Language: English" title="Language"><svg aria-hidden="true" class="globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 2.7 3.8 5.7 3.8 9s-1.3 6.3-3.8 9c-2.5-2.7-3.8-5.7-3.8-9S9.5 5.7 12 3z"/></svg><span class="language-current">English</span></summary>
         <nav aria-label="Language">
@@ -76,6 +80,9 @@
 
     <div class="wrap setup">
       <div class="setup-main">
+        <p>New to Mini mPOS? <a href="getting-started.html#choose">Choose your setup</a> and
+          <a href="getting-started.html#credentials">prepare your credentials</a> before filling in this form.</p>
+        <p class="hint" id="customer-area-note">Customer Area links open in a new tab so you can keep this form open.</p>
         <p class="note" id="setup-noscript">The setup helper needs JavaScript. Switch it on for this page, or enter the
           details in the app as the <a href="getting-started.html#connect">getting started guide</a> describes.</p>
 
@@ -120,7 +127,7 @@
 
           <fieldset data-for="thisTerminal network tapToPay">
             <legend>Shared key</legend>
-            <p class="hint">In the Customer Area: <a data-ca="devices/device-settings?categoryId=tapi" href="https://ca-test.adyen.com/ca/ui/devices/device-settings?categoryId=tapi">Devices › Device settings › Terminal API</a>,
+            <p class="hint">In the Customer Area: <a data-ca="devices/device-settings?categoryId=tapi" href="https://ca-test.adyen.com/ca/ui/devices/device-settings?categoryId=tapi" target="_blank" rel="noopener noreferrer" aria-describedby="customer-area-note">Devices › Device settings › Terminal API</a>,
               under Encryption key (select the pencil icon to see it).</p>
             <label for="keyIdentifier">Key identifier</label>
             <input id="keyIdentifier" name="keyIdentifier" type="text" required spellcheck="false">
@@ -132,7 +139,7 @@
 
           <fieldset data-for="thisTerminal network cloud tapToPay">
             <legend>Checkout API</legend>
-            <p class="hint">Create an API credential in <a data-ca="developers/api-credentials/" href="https://ca-test.adyen.com/ca/ui/developers/api-credentials/">Developers › API credentials</a>,
+            <p class="hint">Create an API credential in <a data-ca="developers/api-credentials/" href="https://ca-test.adyen.com/ca/ui/developers/api-credentials/" target="_blank" rel="noopener noreferrer" aria-describedby="customer-area-note">Developers › API credentials</a>,
               <span data-only="thisTerminal network tapToPay">with the Checkout webservice role,</span><span data-only="cloud" hidden>with the Cloud Device API and Checkout webservice roles,</span>
               and generate its API key.</p>
             <label for="merchantAccount">Merchant account</label>
@@ -143,7 +150,7 @@
 
           <fieldset data-for="thisTerminal network cloud tapToPay" data-env="live">
             <legend>Live URL prefix</legend>
-            <p class="hint">In <a data-ca="developers/api-urls" href="https://ca-live.adyen.com/ca/ui/developers/api-urls">Developers › API URLs</a>.</p>
+            <p class="hint">In <a data-ca="developers/api-urls" href="https://ca-live.adyen.com/ca/ui/developers/api-urls" target="_blank" rel="noopener noreferrer" aria-describedby="customer-area-note">Developers › API URLs</a>.</p>
             <label for="liveUrlPrefix">Prefix</label>
             <input id="liveUrlPrefix" name="liveUrlPrefix" type="text" required spellcheck="false" placeholder="1797a841fbb37ca7-AdyenDemo">
           </fieldset>
@@ -156,7 +163,7 @@
             <input id="paymentsAppApiKey" name="paymentsAppApiKey" type="password" required spellcheck="false">
             <label for="storeId">Store ID, optional</label>
             <input id="storeId" name="storeId" type="text" spellcheck="false">
-            <p class="hint">To set up the phone for one store: its ID (not its reference) from <a data-ca="devices/stores/" href="https://ca-test.adyen.com/ca/ui/devices/stores/">Devices › Stores</a>.</p>
+            <p class="hint">To set up the phone for one store: its ID (not its reference) from <a data-ca="devices/stores/" href="https://ca-test.adyen.com/ca/ui/devices/stores/" target="_blank" rel="noopener noreferrer" aria-describedby="customer-area-note">Devices › Stores</a>.</p>
           </fieldset>
 
           <div class="setup-actions">
@@ -177,6 +184,8 @@
             <li>Check the connection under <strong>Settings › Terminal</strong>. With Tap to Pay, tap <strong>Set up Tap
               to Pay</strong> there.</li>
           </ol>
+          <p>After importing, <a href="getting-started.html#first-payment">make your first TEST payment</a>.</p>
+          <p><a href="troubleshooting.html#access">Import problem?</a> · <a href="troubleshooting.html#connection">Connection problem?</a></p>
           <div class="setup-code-card" id="setup-code-card">
             <p>Transfer code</p>
             <p class="setup-code" id="setup-code"></p>
@@ -206,17 +215,18 @@
             for an import or connection problem, see <a href="troubleshooting.html">Troubleshooting</a>.</li>
         </ul>
         <h2>Customer Area shortcuts</h2>
+        <p class="hint">These links also open in a new tab.</p>
         <table class="setup-links">
           <thead>
             <tr><th scope="col">Page</th><th scope="col">TEST</th><th scope="col">LIVE</th></tr>
           </thead>
           <tbody>
-            <tr><th scope="row">Sign in</th><td><a href="https://ca-test.adyen.com/ca/ui/">TEST</a></td><td><a href="https://ca-live.adyen.com/ca/ui/">LIVE</a></td></tr>
-            <tr><th scope="row">Terminal apps (upload the APK)</th><td><a href="https://ca-test.adyen.com/ca/ui/devices/terminal-apps/">TEST</a></td><td><a href="https://ca-live.adyen.com/ca/ui/devices/terminal-apps/">LIVE</a></td></tr>
-            <tr><th scope="row">API credentials</th><td><a href="https://ca-test.adyen.com/ca/ui/developers/api-credentials/">TEST</a></td><td><a href="https://ca-live.adyen.com/ca/ui/developers/api-credentials/">LIVE</a></td></tr>
-            <tr><th scope="row">Terminal API (shared key)</th><td><a href="https://ca-test.adyen.com/ca/ui/devices/device-settings?categoryId=tapi">TEST</a></td><td><a href="https://ca-live.adyen.com/ca/ui/devices/device-settings?categoryId=tapi">LIVE</a></td></tr>
-            <tr><th scope="row">Stores</th><td><a href="https://ca-test.adyen.com/ca/ui/devices/stores/">TEST</a></td><td><a href="https://ca-live.adyen.com/ca/ui/devices/stores/">LIVE</a></td></tr>
-            <tr><th scope="row">API URLs (live prefix)</th><td>–</td><td><a href="https://ca-live.adyen.com/ca/ui/developers/api-urls">LIVE</a></td></tr>
+            <tr><th scope="row">Sign in</th><td><a href="https://ca-test.adyen.com/ca/ui/" target="_blank" rel="noopener noreferrer" aria-describedby="customer-area-note">TEST</a></td><td><a href="https://ca-live.adyen.com/ca/ui/" target="_blank" rel="noopener noreferrer" aria-describedby="customer-area-note">LIVE</a></td></tr>
+            <tr><th scope="row">Terminal apps (upload the APK)</th><td><a href="https://ca-test.adyen.com/ca/ui/devices/terminal-apps/" target="_blank" rel="noopener noreferrer" aria-describedby="customer-area-note">TEST</a></td><td><a href="https://ca-live.adyen.com/ca/ui/devices/terminal-apps/" target="_blank" rel="noopener noreferrer" aria-describedby="customer-area-note">LIVE</a></td></tr>
+            <tr><th scope="row">API credentials</th><td><a href="https://ca-test.adyen.com/ca/ui/developers/api-credentials/" target="_blank" rel="noopener noreferrer" aria-describedby="customer-area-note">TEST</a></td><td><a href="https://ca-live.adyen.com/ca/ui/developers/api-credentials/" target="_blank" rel="noopener noreferrer" aria-describedby="customer-area-note">LIVE</a></td></tr>
+            <tr><th scope="row">Terminal API (shared key)</th><td><a href="https://ca-test.adyen.com/ca/ui/devices/device-settings?categoryId=tapi" target="_blank" rel="noopener noreferrer" aria-describedby="customer-area-note">TEST</a></td><td><a href="https://ca-live.adyen.com/ca/ui/devices/device-settings?categoryId=tapi" target="_blank" rel="noopener noreferrer" aria-describedby="customer-area-note">LIVE</a></td></tr>
+            <tr><th scope="row">Stores</th><td><a href="https://ca-test.adyen.com/ca/ui/devices/stores/" target="_blank" rel="noopener noreferrer" aria-describedby="customer-area-note">TEST</a></td><td><a href="https://ca-live.adyen.com/ca/ui/devices/stores/" target="_blank" rel="noopener noreferrer" aria-describedby="customer-area-note">LIVE</a></td></tr>
+            <tr><th scope="row">API URLs (live prefix)</th><td>–</td><td><a href="https://ca-live.adyen.com/ca/ui/developers/api-urls" target="_blank" rel="noopener noreferrer" aria-describedby="customer-area-note">LIVE</a></td></tr>
           </tbody>
         </table>
       </aside>
@@ -225,6 +235,10 @@
 
   <footer class="site-footer">
     <div class="wrap footer-row">
+      <nav aria-label="Guides and setup"><ul class="footer-nav">
+        <li><a href="getting-started.html">Getting started</a></li><li><a href="using.html">Using Mini mPOS</a></li>
+        <li><a href="troubleshooting.html">Troubleshooting</a></li><li><a href="setup.html" aria-current="page">Setup helper</a></li>
+      </ul></nav>
       <p>
         <img src="favicon.svg" alt="" width="24" height="24"> Mini mPOS · MIT license ·
         <a href="https://github.com/astiskala/minimpos">GitHub</a> ·

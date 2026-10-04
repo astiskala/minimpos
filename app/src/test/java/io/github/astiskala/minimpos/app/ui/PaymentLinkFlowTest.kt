@@ -8,6 +8,7 @@ import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -105,6 +106,8 @@ class PaymentLinkFlowTest {
         waitForText("Approved")
         compose.onNodeWithText("Approved", useUnmergedTree = true).performClick()
         waitForText(FakeLinkApi.URL)
+        compose.onNodeWithText("Paid online with the payment link", substring = true).assertExists()
+        compose.onNodeWithText("Simulation only. No money moved.").assertDoesNotExist()
         compose.onNodeWithTag("showLink").assertDoesNotExist()
         compose.onNodeWithTag("detailRefund").assertDoesNotExist()
     }
@@ -156,5 +159,16 @@ class PaymentLinkFlowTest {
         compose.onNodeWithText("Paid online with the payment link", substring = true).assertDoesNotExist()
         assertThat(links.created).isEmpty()
         assertThat(links.asked).isEmpty()
+
+        // The stored demo warning remains after changing destination and reopening the payment from history.
+        compose.onNodeWithTag("home").performClick()
+        env.useLinks()
+        waitForTag("history")
+        compose.onNodeWithTag("history").performClick()
+        waitForText("Approved")
+        compose.onNodeWithText("Approved", useUnmergedTree = true).performClick()
+        waitForTag("detailStatus")
+        compose.onAllNodesWithText("Simulation only. No money moved.")[0].assertExists()
+        compose.onNodeWithText("Paid online with the payment link", substring = true).assertDoesNotExist()
     }
 }

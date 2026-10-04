@@ -7,7 +7,6 @@ import io.github.astiskala.minimpos.app.data.db.SaleWithLines
 import io.github.astiskala.minimpos.app.data.db.SetupProblem
 import io.github.astiskala.minimpos.app.data.repo.SaleEvent
 import io.github.astiskala.minimpos.app.data.repo.SaleRepository
-import io.github.astiskala.minimpos.app.data.settings.SettingsRepository
 import io.github.astiskala.minimpos.app.refund.simulatedLink
 import io.github.astiskala.minimpos.app.terminal.AdyenApi
 import io.github.astiskala.minimpos.app.terminal.ApiAccess
@@ -68,7 +67,6 @@ sealed interface LinkUpdate {
  *
  * @param scope Where links are created, so a creation survives leaving the screen.
  * @param sales Where the sales are stored.
- * @param settings The payment settings, for how a saved card will be used.
  * @param target Where payment links go now: [AdyenApi.target] in the app, a fixed target in tests.
  * @param onCreated Called once with the sale ID and its original request when the link is created or recovered by
  *   [check] in this process, to reconcile its originating session and arm automatic delivery.
@@ -80,7 +78,6 @@ sealed interface LinkUpdate {
 class PaymentLinks(
     private val scope: CoroutineScope,
     private val sales: SaleRepository,
-    private val settings: SettingsRepository,
     private val target: suspend () -> ApiTarget,
     private val onCreated: (id: String, start: PaymentLinkStart) -> Unit = { _, _ -> },
     private val clock: Clock = Clock.systemUTC(),
@@ -108,7 +105,6 @@ class PaymentLinks(
                         clock.millis(),
                         initial.context,
                         language,
-                        settings.current().payment.recurringProcessingModel,
                     )
                 sales.createPending(pending, SaleBook.lines(id, link.payment.totals))
                 mutex.withLock { sales.get(id)?.let { send(it) } }

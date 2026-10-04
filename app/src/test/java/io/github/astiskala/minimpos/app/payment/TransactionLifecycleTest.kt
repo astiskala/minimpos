@@ -6,6 +6,7 @@ import io.github.astiskala.minimpos.app.await
 import io.github.astiskala.minimpos.app.data.db.ProductEntity
 import io.github.astiskala.minimpos.app.data.db.RefundEntity
 import io.github.astiskala.minimpos.app.data.db.RefundStatus
+import io.github.astiskala.minimpos.app.data.db.SaleEntity
 import io.github.astiskala.minimpos.app.data.db.SaleKind
 import io.github.astiskala.minimpos.app.data.db.SaleStatus
 import io.github.astiskala.minimpos.app.data.db.SetupProblem
@@ -340,6 +341,63 @@ class TransactionLifecycleTest {
         assertThat(broken.message).isNotEmpty()
         assertThat(broken.reason).isEqualTo(StoredReason.OutcomeUnknown)
         assertThrows(IllegalArgumentException::class.java) { refunds.start(refundStart(null, 0, full = true)) }
+    }
+
+    @Test
+    fun `hold cancellation rejects changed destinations and environments without releasing the stored hold`() {
+        env.useCheckoutApi()
+        env.updateSettings {
+            it.copy(
+                terminal =
+                    it.terminal.copy(
+                        mode = TerminalMode.CLOUD,
+                        poiIdOverride = "S1F2-000158213605014",
+                    ),
+            )
+        }
+        val context = checkNotNull(await { container.api.target() }.context)
+        val held =
+            SaleEntity(
+                id = "held",
+                createdAt = 1,
+                currency = "AUD",
+                taxMode = "INCLUSIVE",
+                netMinor = 1_000,
+                taxMinor = 0,
+                totalMinor = 1_000,
+                status = SaleStatus.APPROVED,
+                merchantReference = "HOLD-1",
+                poiTransactionId = "T.PSP1",
+                poiTimestamp = "2026-01-01T00:00:00.000Z",
+                context = context,
+            )
+        listOf(
+            held.copy(id = "preauth", kind = SaleKind.PRE_AUTHORISATION),
+            held.copy(id = "tip", tipOnReceipt = true),
+        ).forEach { sale ->
+            await { container.sales.createPending(sale, emptyList()) }
+            listOf(TerminalMode.CLOUD, TerminalMode.SIMULATOR).forEach { mode ->
+                env.updateSettings {
+                    it.copy(
+                        terminal =
+                            it.terminal.copy(
+                                mode = mode,
+                                environment = TerminalEnvironment.LIVE,
+                                liveUrlPrefix = "abc-Merchant",
+                                cloudRegion = null,
+                            ),
+                    )
+                }
+                val record = await { container.sales.get(sale.id)!! }
+                val request = RefundablePayment.cancellation(record, "", Instant.now(), ZoneOffset.UTC)!!
+                val failed = refundFinished(refunds.start(request))
+                assertThat(failed.status).isEqualTo(RefundStatus.FAILED)
+                assertThat(failed.reason).isEqualTo(StoredReason.NotSetUp(SetupProblem.PAYMENT_CONTEXT))
+                assertThat(failed.pspReference).isNull()
+                assertThat(await { container.sales.get(sale.id)!! }.sale).isEqualTo(sale)
+                refunds.acknowledge()
+            }
+        }
     }
 
     @Test

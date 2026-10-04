@@ -552,6 +552,10 @@ class ViewModelsTest {
         var form = await { edit.state.first { it.loaded } }
         assertThat(form.form.sku).isEqualTo("NEW1")
         assertThat(form.form.taxRateId).isEqualTo(tax.id)
+        edit.update { it.copy(name = "Scone", price = "1e17") }
+        assertThat(edit.state.value.priceMinor).isNull()
+        assertThat(edit.state.value.valid).isFalse()
+        edit.save { error("must not save an overflowing price") }
         edit.update { it.copy(name = "Scone", price = "4.505") }
         assertThat(edit.state.value.priceMinor).isNull()
         edit.update { it.copy(price = "4,50") }

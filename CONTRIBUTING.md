@@ -5,7 +5,8 @@ tested them, and include before/after screenshots for UI changes. Contributions 
 
 ## Build and run
 
-You need JDK 17+ to start Gradle (the build downloads JDK 21), Android SDK platform 37 and recent build tools.
+You need JDK 17+ to start Gradle (the build downloads JDK 21), Node.js 22+ for setup-helper tests, Android SDK platform
+37 and recent build tools.
 Android Studio can install the SDK; otherwise set `sdk.dir` in an untracked `local.properties`. The full gate supports
 macOS and Linux; its pinned Markdown/workflow linter binaries are not available for Windows.
 
@@ -51,7 +52,7 @@ The gate checks:
 | --- | --- |
 | Spotless/ktlint | Kotlin formatting; whitespace and final newlines in other text files. Restart Gradle after changing `.editorconfig`. |
 | rumdl | Markdown rules and relative links; 120 columns outside tables/code. Wrap prose by hand; formatting keeps line breaks. |
-| Website | Local links/fragments/assets, language and metadata parity, UI labels, screenshots, setup-helper fields; W3C Nu HTML/CSS validation with no messages. |
+| Website | Local links/fragments/assets, language and metadata parity, UI labels, screenshots, setup-helper fields and async generation; W3C Nu HTML/CSS validation with no messages. |
 | Workflows | actionlint with shellcheck, and offline zizmor. |
 | detekt | Type-resolved checks of main/test sources, including Compose and documentation rules; no baseline. |
 | Dokka | All KDoc links resolve, including private code; generated HTML is in `<module>/build/dokka/html`. |

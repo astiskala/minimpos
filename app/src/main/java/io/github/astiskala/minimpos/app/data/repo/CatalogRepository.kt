@@ -142,9 +142,8 @@ class CatalogRepository(
     suspend fun saveProduct(product: ProductEntity): Long =
         db.withTransaction {
             val normalized = product.copy(sku = product.sku?.trim()?.takeIf { it.isNotEmpty() })
-            require(
-                normalized.sku == null || dao.productsOnce().all { it.id == normalized.id || it.sku != normalized.sku },
-            ) { "SKU already in use" }
+            val existing = normalized.sku?.let { dao.productBySku(it) }
+            require(existing == null || existing.id == normalized.id) { "SKU already in use" }
             if (normalized.id == 0L) {
                 dao.insert(normalized)
             } else {
@@ -204,7 +203,7 @@ class CatalogRepository(
      * Tax rates are reused when one with the same name (ignoring case) and rate exists, categories when one with the same
      * name exists; the rest are added in the catalogue's order. Products are matched as described for [ImportMode.MERGE]
      * (in [ImportMode.REPLACE] everything was deleted first, so all are added); a matched product keeps its sort order and
-     * takes the incoming kind (sale or pre-authorisation). Untaxed products from older catalogues get the first 0% rate,
+     * takes the incoming kind (sale or pre-authorisation). Products with an unspecified tax rate get the first 0% rate,
      * which is created if there is none. The currency is not checked here; prices are taken as they are.
      */
     suspend fun import(

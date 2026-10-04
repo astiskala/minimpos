@@ -44,10 +44,13 @@ import org.junit.After
 import org.junit.Assert.assertThrows
 import org.junit.Test
 import java.io.IOException
+import java.net.ConnectException
 import java.net.UnknownHostException
 import java.security.MessageDigest
 import java.util.Locale
 import java.util.concurrent.TimeUnit
+import javax.net.ssl.SSLHandshakeException
+import javax.net.ssl.SSLPeerUnverifiedException
 import kotlin.time.Duration.Companion.seconds
 
 class LocalTransportTest {
@@ -433,6 +436,33 @@ class LocalTransportTest {
                 .build()
         assertThrows(TerminalUntrustedException::class.java) { http(TerminalEnvironment.LIVE).post(ipv4) }
         assertThrows(TerminalUntrustedException::class.java) { http(trusted = stranger).post(ipv4) }
+    }
+
+    @Test(timeout = 5_000)
+    fun `TLS classification preserves cause and suppressed precedence without following cyclic causes`() {
+        fun thrown(error: IOException): IOException {
+            val failing = OkHttpClient.Builder().addInterceptor { throw error }.build()
+            return assertThrows(IOException::class.java) {
+                TerminalHttpClient(tls(), terminalCrypto, failing).request("https://terminal.invalid:8443/nexo/", "{}", config)
+            }
+        }
+        val cycle = ConnectException("refused")
+        val nested = IOException("nested")
+        cycle.initCause(nested)
+        nested.initCause(cycle)
+        assertThat(thrown(cycle)).isInstanceOf(TerminalUnreachableException::class.java)
+
+        val cause = SSLHandshakeException("cause")
+        val suppressed = SSLPeerUnverifiedException("suppressed")
+        val error =
+            ConnectException("refused").apply {
+                initCause(cause)
+                addSuppressed(suppressed)
+            }
+        assertThat(thrown(error).cause).isSameInstanceAs(suppressed)
+        assertThat(thrown(ConnectException("refused").apply { initCause(cause) }).cause).isSameInstanceAs(cause)
+        val outerTls = SSLHandshakeException("outer").apply { addSuppressed(suppressed) }
+        assertThat(thrown(ConnectException("refused").apply { initCause(outerTls) }).cause).isSameInstanceAs(outerTls)
     }
 
     @Test

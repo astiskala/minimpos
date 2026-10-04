@@ -109,6 +109,37 @@ class PaymentLinksTest {
     }
 
     @Test
+    fun `link card-saving facts come from checkout even after settings change`() {
+        env.useLinks()
+        savingCardsUnderCustomerReference()
+        env.updateSettings { it.copy(payment = it.payment.copy(recurringProcessingModel = "CardOnFile")) }
+        val start = linkStart(tokenize = true)
+        env.updateSettings { it.copy(payment = it.payment.copy(recurringProcessingModel = "Subscription")) }
+        val id = links.start(start)
+        saleWhen(id) { it.status == SaleStatus.AWAITING_PAYMENT }
+        assertThat(
+            api.created
+                .single()
+                .first.recurringProcessingModel,
+        ).isEqualTo("CardOnFile")
+    }
+
+    @Test
+    fun `link card-saving facts use the normalized checkout model`() {
+        env.useLinks()
+        savingCardsUnderCustomerReference()
+        env.updateSettings { it.copy(payment = it.payment.copy(recurringProcessingModel = "Unknown")) }
+        val id = links.start(linkStart(tokenize = true))
+        val sale = saleWhen(id) { it.status == SaleStatus.AWAITING_PAYMENT }
+        assertThat(sale.linkRecurringModel).isEqualTo("UnscheduledCardOnFile")
+        assertThat(
+            api.created
+                .single()
+                .first.recurringProcessingModel,
+        ).isEqualTo("UnscheduledCardOnFile")
+    }
+
+    @Test
     fun `checking finds a link open, then paid, which is charged but refunded in the Customer Area`() {
         env.useLinks()
         savingCardsUnderCustomerReference()
@@ -296,7 +327,7 @@ class PaymentLinksTest {
         assertThat(open.context?.simulated).isTrue()
         assertThat(await { links.check(id) }).isEqualTo(LinkUpdate.StillOpen)
         assertThat(api.created).isEmpty()
-        val restarted = PaymentLinks(env.scope, container.sales, container.settings, container.api::target)
+        val restarted = PaymentLinks(env.scope, container.sales, container.api::target)
         assertThat(await { restarted.check(id) }).isEqualTo(LinkUpdate.StillOpen)
         assertThat(await { restarted.simulate(id) }).isEqualTo(LinkUpdate.Settled)
         val paid = saleWhen(id) { it.status == SaleStatus.APPROVED }

@@ -61,15 +61,17 @@ class WebsiteTest {
     fun `language switches keep the page type`() {
         pages.forEach { (key, page) ->
             val (language, kind) = key
-            val links = page.document.select("a[hreflang]")
-            assertWithMessage(page.name).that(links).hasSize(LANGUAGES.size)
-            links.forEach { link ->
-                val target = link.attr("hreflang")
-                assertThat(link.attr("lang")).isEqualTo(target)
-                assertThat(resolveLocal(page, link.attr("href"))).isEqualTo(docs.resolve(relativePage(target, kind)))
-                assertWithMessage("${page.name} → $target")
-                    .that(if (link.hasAttr("aria-current")) link.attr("aria-current") else null)
-                    .isEqualTo(if (target == language) "page" else null)
+            listOf(".language-menu", ".mobile-languages").forEach { selector ->
+                val links = page.document.select("$selector a[hreflang]")
+                assertWithMessage("${page.name} $selector").that(links).hasSize(LANGUAGES.size)
+                links.forEach { link ->
+                    val target = link.attr("hreflang")
+                    assertThat(link.attr("lang")).isEqualTo(target)
+                    assertThat(resolveLocal(page, link.attr("href"))).isEqualTo(docs.resolve(relativePage(target, kind)))
+                    assertWithMessage("${page.name} $selector → $target")
+                        .that(if (link.hasAttr("aria-current")) link.attr("aria-current") else null)
+                        .isEqualTo(if (target == language) "page" else null)
+                }
             }
         }
     }
@@ -85,7 +87,7 @@ class WebsiteTest {
                     .document
                     .select(".desktop-nav a")
                     .map { it.text() }
-            listOf(".desktop-nav", ".mobile-menu nav", ".site-footer nav").forEach { selector ->
+            listOf(".desktop-nav", ".mobile-menu .nav", ".site-footer nav").forEach { selector ->
                 val links = page.document.select("$selector a")
                 assertWithMessage("${page.name} $selector").that(links.map { it.attr("href") }).isEqualTo(destinations)
                 assertWithMessage("${page.name} $selector labels").that(links.map { it.text() }).isEqualTo(labels)
@@ -98,6 +100,8 @@ class WebsiteTest {
             val menu = page.document.select("details.mobile-menu").single()
             assertWithMessage(page.name).that(menu.hasAttr("open")).isFalse()
             assertWithMessage(page.name).that(menu.selectFirst("summary")!!.text()).isNotEmpty()
+            assertWithMessage(page.name).that(menu.select(".mobile-panel > nav")).hasSize(2)
+            assertWithMessage(page.name).that(menu.select(".mobile-languages").single().attr("aria-label")).isNotEmpty()
         }
     }
 
@@ -191,8 +195,9 @@ class WebsiteTest {
     }
 
     @Test
-    fun `real destination guides save the Adyen API key first and keep discovery optional`() {
-        val labels = mapOf("en" to "Adyen API key", "zh-CN" to "Adyen API 密钥", "ja" to "Adyen APIキー")
+    fun `destination guides start with their environment source and keep discovery optional`() {
+        val keys = mapOf("en" to "Adyen API key", "zh-CN" to "Adyen API 密钥", "ja" to "Adyen APIキー")
+        val environments = mapOf("en" to "Environment", "zh-CN" to "环境", "ja" to "環境")
         LANGUAGES.forEach { language ->
             val guide = pages.getValue(language to Kind.GUIDE)
             listOf("on-terminal", "network", "cloud", "tap-to-pay").forEach { destination ->
@@ -201,12 +206,29 @@ class WebsiteTest {
                         .getElementById(destination)!!
                         .nextElementSibling()!!
                         .nextElementSibling()!!
-                assertWithMessage("${guide.name} #$destination first step")
-                    .that(steps.select("li").first()!!.text())
-                    .contains(labels.getValue(language))
+                val first = steps.select("li").first()!!.text()
+                val label =
+                    when (destination) {
+                        "network", "cloud" -> environments.getValue(language)
+                        "tap-to-pay" -> "Adyen Payments"
+                        else -> keys.getValue(language)
+                    }
+                assertWithMessage("${guide.name} #$destination first step").that(first).contains(label)
+                assertThat(steps.text()).contains(keys.getValue(language))
+                if (destination == "network" || destination == "cloud") {
+                    assertThat(first).contains("TEST")
+                    assertThat(first).contains("LIVE")
+                }
             }
             assertThat(guide.text).contains("Management API — Terminal actions read")
             assertThat(guide.text).contains("Management API — Terminal settings Advanced read and write")
+            assertThat(guide.document.select("#connect ul li strong").map { it.text() })
+                .containsExactly(
+                    "Cloud Device API role",
+                    "Management API — Terminal actions read",
+                    "Management API — Terminal settings read",
+                    "Management API — Terminal settings Advanced read and write",
+                ).inOrder()
         }
     }
 
@@ -462,26 +484,26 @@ class WebsiteTest {
 
         fun Page.fields() = document.select("#setup-form input").map { listOf(it.id(), it.attr("name"), it.attr("type"), it.attr("value")) }
 
-        fun Page.groups() = document.select("#setup-form [data-for]").map { it.attr("data-for") + "|" + it.attr("data-env") }
+        fun Page.groups() =
+            document.select("#setup-form [data-for]").map { listOf(it.attr("data-for"), it.attr("data-env"), it.attr("data-mode")) }
 
         fun Page.messages() = document.selectFirst("#setup-form")!!.attributes().filter { it.key.startsWith("data-msg-") }
 
         fun Page.shortcuts() = document.select("a[data-ca]").map { it.attr("data-ca") to it.attr("href") }
         assertThat(
             english.fields().map { it[1] },
-        ).containsAtLeast("destination", "passphrase", "apiKey", "paymentsAppApiKey", "liveUrlPrefix")
+        ).containsAtLeast("destination", "setupMode", "passphrase", "apiKey", "paymentsAppApiKey", "liveUrlPrefix")
         LANGUAGES.forEach { language ->
             val page = pages.getValue(language to Kind.SETUP)
             assertWithMessage(page.name).that(page.fields()).isEqualTo(english.fields())
             assertWithMessage("${page.name} API key comes first")
                 .that(
                     page.document
-                        .select("#setup-form fieldset[data-for]")
-                        .first()!!
+                        .select("#api-key-fields")
+                        .single()
                         .select("input")
                         .map { it.id() },
-                ).containsExactly("apiKey", "merchantAccount")
-                .inOrder()
+                ).containsExactly("apiKey")
             assertWithMessage(page.name).that(page.groups()).isEqualTo(english.groups())
             assertWithMessage(page.name).that(page.shortcuts()).isEqualTo(english.shortcuts())
             assertWithMessage(page.name).that(page.externalLinks).isEqualTo(english.externalLinks)
@@ -502,6 +524,35 @@ class WebsiteTest {
                 val other = pages.getValue(language to kind)
                 assertWithMessage(other.name).that(other.document.select("ul.nav a[href$=setup.html]")).isNotEmpty()
             }
+        }
+    }
+
+    @Test
+    fun `Automatic needs only the API key and LIVE prefix while Manual holds destination details`() {
+        LANGUAGES.forEach { language ->
+            val page = pages.getValue(language to Kind.SETUP)
+            val modes = page.document.select("input[name=setupMode]")
+            assertWithMessage(page.name).that(modes.map { it.attr("value") }).containsExactly("automatic", "manual").inOrder()
+            assertThat(modes.first()!!.hasAttr("checked")).isTrue()
+            assertThat(
+                modes
+                    .first()!!
+                    .parent()!!
+                    .parent()!!
+                    .attr("data-for"),
+            ).isEqualTo("thisTerminal network cloud")
+            listOf("merchantAccount", "host", "poiId", "cloudPoiId", "keyIdentifier", "keyVersion", "passphrase").forEach { id ->
+                val field = page.document.getElementById(id)!!
+                assertWithMessage("$language: $id").that(field.parent()!!.attr("data-mode")).isEqualTo("manual")
+                assertWithMessage("$language: $id").that(field.hasAttr("required")).isTrue()
+            }
+            val prefix = page.document.getElementById("liveUrlPrefix")!!
+            assertThat(prefix.hasAttr("required")).isTrue()
+            assertThat(prefix.parent()!!.attr("data-env")).isEqualTo("live")
+            assertThat(prefix.parent()!!.hasAttr("data-mode")).isFalse()
+            val apiKey = page.document.getElementById("apiKey")!!
+            assertThat(apiKey.hasAttr("required")).isTrue()
+            assertThat(apiKey.parent()!!.hasAttr("data-mode")).isFalse()
         }
     }
 

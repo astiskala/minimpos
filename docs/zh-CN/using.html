@@ -36,10 +36,16 @@
       <li><a href="getting-started.html">快速入门</a></li><li><a href="using.html" aria-current="page">使用 Mini mPOS</a></li>
       <li><a href="troubleshooting.html">故障排查</a></li><li><a href="setup.html">设置助手</a></li>
     </ul></nav>
-    <details class="mobile-menu"><summary>菜单</summary><nav aria-label="主导航"><ul class="nav">
+    <details class="mobile-menu"><summary>菜单</summary><div class="mobile-panel"><nav aria-label="主导航"><ul class="nav">
       <li><a href="getting-started.html">快速入门</a></li><li><a href="using.html" aria-current="page">使用 Mini mPOS</a></li>
       <li><a href="troubleshooting.html">故障排查</a></li><li><a href="setup.html">设置助手</a></li>
-    </ul></nav></details>
+    </ul></nav>
+      <nav class="mobile-languages" aria-label="语言"><p>语言</p><ul>
+        <li><a href="../using.html" hreflang="en" lang="en">English</a></li>
+        <li><a aria-current="page" href="using.html" hreflang="zh-CN" lang="zh-CN">简体中文</a></li>
+        <li><a href="../ja/using.html" hreflang="ja" lang="ja">日本語</a></li>
+      </ul></nav>
+    </div></details>
     <details class="language-menu"><summary aria-label="语言：简体中文" title="语言"><svg aria-hidden="true" class="globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 2.7 3.8 5.7 3.8 9s-1.3 6.3-3.8 9c-2.5-2.7-3.8-5.7-3.8-9S9.5 5.7 12 3z"/></svg><span class="language-current">简体中文</span></summary><nav aria-label="语言"><ul><li><a href="../using.html" hreflang="en" lang="en">English</a></li><li><a href="using.html" hreflang="zh-CN" lang="zh-CN" aria-current="page">简体中文</a></li><li><a href="../ja/using.html" hreflang="ja" lang="ja">日本語</a></li></ul></nav></details>
   </div></header>
   <main id="main">
@@ -163,7 +169,7 @@
         <section id="more">
           <h2>设置更多设备并管理本地数据</h2>
           <ol><li>在已配置设备打开<strong>设置 › 数据 › 共享至另一台设备</strong>或商品菜单，选择商品目录、设置和／或密码与密钥，点击<strong>显示二维码</strong>。</li><li>接收设备选择<strong>从另一台设备设置</strong>，按任意顺序扫描所有二维码，选择合并或替换商品目录。</li><li>要导入秘密信息，请输入发送设备的传输码。留空会跳过秘密信息，错误的传输码不会导入任何内容。点击<strong>导入</strong>。</li><li>检查价格和税费，在<strong>设置 › 终端</strong>测试连接，并测试收据。</li></ol>
-          <p>设置会替换接收设备的共享设置，但支付目标、终端地址和 ID、Tap to Pay 安装、检测环境和模拟器仍保留本地值。秘密信息包括 API 密钥、共享密钥口令、SMTP 密码及两种 PIN。共享密钥只有在 Adyen 为另一终端分配相同密钥时才可用；设备专用凭据可能需要替换。</p>
+          <p>设置会替换接收设备的共享设置，但支付目标、终端地址和 ID、Tap to Pay 安装、环境和模拟器仍保留本地值。秘密信息包括 API 密钥、共享密钥口令、SMTP 密码及两种 PIN。共享密钥只有在 Adyen 为另一终端分配相同密钥时才可用；设备专用凭据可能需要替换。</p>
           <p>检查导入的币种警告：商品价格不会按汇率换算。<a href="setup.html">设置助手</a>有所不同，仅导入填写的连接字段，不更改无关设置。</p>
           <p><strong>这是复制，不是同步，也不是交易记录备份。</strong>未来更改和各设备的付款仍留在本地。在“设置 › 数据”选择交易保留时长，并按需清除已完成记录。常规清理保护未解决付款。清除 Android 应用数据会删除全部本地商品、设置和交易记录。</p>
           <p>保持使用<a href="https://github.com/astiskala/minimpos/releases/latest">最新版本</a>。更新时使用原安装方式和签名来源，参见<a href="getting-started.html#install">安装</a>。</p>

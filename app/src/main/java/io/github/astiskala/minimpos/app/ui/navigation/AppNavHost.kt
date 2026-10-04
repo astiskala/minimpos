@@ -80,7 +80,9 @@ fun AppNavHost() {
                 entry<Route.TransferExport> { PinGate(navigator) { TransferExportScreen(navigator) } }
                 entry<Route.TransferImport> { PinGate(navigator) { TransferImportScreen(navigator) } }
                 entry<Route.Settings> { PinGate(navigator) { SettingsScreen(navigator) } }
-                entry<Route.SettingsSection> { PinGate(navigator) { SettingsSectionScreen(it.section, navigator) } }
+                entry<Route.SettingsSection> {
+                    PinGate(navigator) { SettingsSectionScreen(it.section, navigator, discoverTerminals = it.discoverTerminals) }
+                }
             },
     )
 }

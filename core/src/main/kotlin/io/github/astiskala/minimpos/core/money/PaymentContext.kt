@@ -8,7 +8,7 @@ import kotlinx.serialization.Serializable
  * @property poiId Original terminal identity.
  * @property saleId Original nexo SaleID.
  * @property merchantAccount Original Adyen merchant account.
- * @property environment TEST or LIVE; null until a certificate or endpoint establishes it.
+ * @property environment TEST or LIVE; null until selected or established by the device.
  * @property host Original network address; null for other transports.
  * @property simulated Whether no real payment took place.
  */

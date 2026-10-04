@@ -59,7 +59,7 @@ existing spelling (`preAuthorisation`, `SaleKind.PRE_AUTHORISATION`, `authorised
 | Connection | Open with a client, or blocked as not set up/unreachable. | `Connection`, `Destination.connect` |
 | Connection check | Checks reachability/setup and learns printer availability when supported. | `TerminalStatus` |
 | Delivery | One message was answered, not sent, or maybe sent; maybe sent requires recovery. | `transport/Delivery` |
-| Environment | TEST/LIVE detected from certificate, cloud key or installed Payments app; never a setting. | `TerminalEnvironment` |
+| Environment | TEST/LIVE selected for network/cloud terminals, otherwise read from this device's certificate or installed Payments app. | `TerminalEnvironment` |
 | POIID | Terminal ID (`<model>-<serial>`), device name on terminals, boarded installation ID for Tap to Pay. | `poiId` |
 | Shared key | Identifier, passphrase and version encrypting local and Payments app messages. | Terminal settings + `SecretStore` |
 | Adyen API key | Credential shared by Checkout/cloud operations and optional Management reads; distinct from the boarding credential. | `ADYEN_API_KEY` |
@@ -86,7 +86,7 @@ existing spelling (`preAuthorisation`, `SaleKind.PRE_AUTHORISATION`, `authorised
 | Transfer | Copies catalog, shared settings and sealed secrets by QR; not history or synchronization. | `SetupTransfer`, `TransferCodec` (`MPC1:`) |
 | Device fields | Configuration that stays local when shared settings are imported. | `AppSettings.withDeviceFieldsOf` |
 | Transfer code | Separate 12-character code for decrypting transferred secrets. | `TransferSeal` |
-| Setup helper | Browser tool importing only connection fields and secrets it holds. | `docs/setup.html`, `ConnectionSetup` |
+| Setup helper | Offline browser tool: Automatic transfers the API key and LIVE prefix for device-side discovery; Manual transfers all connection details. Tap to Pay stays manual. | `docs/setup.html`, `ConnectionSetup` |
 | Secrets | Shared-key passphrase, API keys, SMTP password and PIN verifiers; encrypted and never logged. | `SecretStore` |
 | Admin PIN | Access to configuration and products, separate from financial approval. | `pinManager`, `sessionLock` |
 | Manager approval | Optional financial-action access, configured only after admin PIN; rechecked before sending. | `managerPin`, `managerLock`, Manager PIN |

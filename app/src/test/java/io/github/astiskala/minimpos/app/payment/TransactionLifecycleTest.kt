@@ -29,6 +29,7 @@ import io.github.astiskala.minimpos.terminal.client.RecurringModel
 import io.github.astiskala.minimpos.terminal.client.RefundParams
 import io.github.astiskala.minimpos.terminal.simulator.SimulatedOutcome
 import io.github.astiskala.minimpos.terminal.simulator.TerminalSimulator
+import io.github.astiskala.minimpos.terminal.transport.TerminalEnvironment
 import kotlinx.coroutines.flow.first
 import org.junit.After
 import org.junit.Assert.assertThrows
@@ -196,7 +197,7 @@ class TransactionLifecycleTest {
         }
         val sale = finished(start()).sale
         assertThat(sale.status).isEqualTo(SaleStatus.FAILED)
-        assertThat(sale.reason).isEqualTo(StoredReason.NotSetUp(SetupProblem.KEY_IDENTIFIER))
+        assertThat(sale.reason).isEqualTo(StoredReason.NotSetUp(SetupProblem.ENVIRONMENT))
         assertThat(sale.poiId).isNull()
         await { assertThat(payments.recheck(sale.id)).isFalse() }
         await { assertThat(payments.recheck("missing")).isFalse() }
@@ -322,6 +323,7 @@ class TransactionLifecycleTest {
                         poiIdOverride = "S1F2-000158213605014",
                         host = "10.0.0.2",
                         keyIdentifier = "k",
+                        environment = TerminalEnvironment.TEST,
                     ),
             )
         }

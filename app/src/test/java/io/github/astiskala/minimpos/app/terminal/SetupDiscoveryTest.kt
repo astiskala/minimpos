@@ -25,9 +25,14 @@ class SetupDiscoveryTest {
         )
     private var sharedKey: DiscoveredKey? = DiscoveredKey("key", 2, " secret passphrase ")
     private var reads = 0
+    private val environments = mutableListOf<TerminalEnvironment>()
     private val api =
         object : TerminalDetailsApi {
-            override suspend fun terminals(): TerminalListing = listing.also { reads++ }
+            override suspend fun terminals(environment: TerminalEnvironment): TerminalListing =
+                listing.also {
+                    reads++
+                    environments += environment
+                }
 
             override suspend fun sharedKey(
                 id: String,
@@ -38,12 +43,35 @@ class SetupDiscoveryTest {
     private val container get() = env.container
 
     private fun ready(mode: TerminalMode = TerminalMode.TERMINAL) {
-        env.updateSettings { it.copy(terminal = it.terminal.copy(mode = mode)) }
+        env.updateSettings { it.copy(terminal = it.terminal.copy(mode = mode, environment = TerminalEnvironment.TEST)) }
         await { container.secrets.set(Secret.ADYEN_API_KEY, "key") }
     }
 
     @After
     fun tearDown() = env.close()
+
+    @Test
+    fun `discovery never guesses an unknown environment and uses the merchant's choice`() {
+        ready()
+        env.updateSettings { it.copy(terminal = it.terminal.copy(environment = null)) }
+        assertThat(await { container.setupDiscovery.find() }).isNull()
+        assertThat(reads).isEqualTo(0)
+        env.updateSettings { it.copy(terminal = it.terminal.copy(environment = TerminalEnvironment.LIVE)) }
+        listing = (listing as TerminalListing.Listed).copy(environment = TerminalEnvironment.LIVE)
+        assertThat(await { container.setupDiscovery.find() }).isNotNull()
+        assertThat(environments).containsExactly(TerminalEnvironment.LIVE)
+    }
+
+    @Test
+    fun `an on-device terminal reads its certificate before discovery without a shared key`() {
+        env.close()
+        env = TestEnvironment(FakeDevice(detectedPoiId = "S1F2-123456789"), terminalDetails = api)
+        await { container.secrets.set(Secret.ADYEN_API_KEY, "key") }
+        assertThat(await { container.setupDiscovery.find() }).containsExactly("S1F2-123456789")
+        assertThat(await { container.settings.current() }.terminal.environment).isEqualTo(TerminalEnvironment.TEST)
+        assertThat(await { container.secrets.get(Secret.TERMINAL_PASSPHRASE) }).isNull()
+        assertThat(environments).containsExactly(TerminalEnvironment.TEST)
+    }
 
     @Test
     fun `saving an API key enables discovery without a merchant account or working terminal connection`() {
@@ -57,7 +85,7 @@ class SetupDiscoveryTest {
         assertThat(saved.poiIdOverride).isEqualTo("S1F2-123456789")
         assertThat(saved.keyIdentifier).isEqualTo("key")
         assertThat(saved.keyVersion).isEqualTo(2)
-        assertThat(saved.environment).isNull()
+        assertThat(saved.environment).isEqualTo(TerminalEnvironment.TEST)
         assertThat(await { container.secrets.get(Secret.TERMINAL_PASSPHRASE) }).isEqualTo(" secret passphrase ")
     }
 

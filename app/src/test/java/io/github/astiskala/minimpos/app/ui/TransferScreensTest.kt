@@ -29,6 +29,7 @@ import io.github.astiskala.minimpos.app.data.db.ProductEntity
 import io.github.astiskala.minimpos.app.data.security.Secret
 import io.github.astiskala.minimpos.app.data.security.TransferSeal
 import io.github.astiskala.minimpos.app.data.transfer.TransferContents
+import io.github.astiskala.minimpos.app.feature.settings.SettingsSections
 import io.github.astiskala.minimpos.app.feature.transfer.TransferImportScreen
 import io.github.astiskala.minimpos.app.feature.transfer.TransferImportViewModel
 import io.github.astiskala.minimpos.app.ui.components.LocalAppContainer
@@ -162,10 +163,11 @@ class TransferScreensTest {
         val payload = TransferCodec.encode(Transfer(sealedSecrets = sealed, connection = """{"merchantAccount":"HarbourCoffeeCOM"}"""))
         val vm = TransferImportViewModel(container.setupTransfer, "AUD")
         QrChunks.split(payload, "WEB1").forEach { vm.onCode(it.encode()) }
+        val navigator = Navigator(NavBackStack<NavKey>(Route.Home, Route.TransferImport))
         compose.setContent {
             MiniMposTheme {
                 CompositionLocalProvider(LocalAppContainer provides container) {
-                    TransferImportScreen(Navigator(NavBackStack<NavKey>(Route.Home)), vm = vm)
+                    TransferImportScreen(navigator, vm = vm)
                 }
             }
         }
@@ -181,5 +183,7 @@ class TransferScreensTest {
         // The other settings stay as they were.
         assertThat(container.settingsState.value.receipt.businessName).isEqualTo("Corner Cafe")
         assertThat(await { container.secrets.get(Secret.ADYEN_API_KEY) }).isEqualTo("AQE-key")
+        compose.onNodeWithTag("importFinished").assertTextContains("Review setup").performClick()
+        assertThat(navigator.current).isEqualTo(Route.SettingsSection(SettingsSections.TERMINAL))
     }
 }

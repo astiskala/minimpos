@@ -36,10 +36,16 @@
       <li><a href="getting-started.html">はじめに</a></li><li><a href="using.html" aria-current="page">Mini mPOS の使い方</a></li>
       <li><a href="troubleshooting.html">トラブルシューティング</a></li><li><a href="setup.html">セットアップヘルパー</a></li>
     </ul></nav>
-    <details class="mobile-menu"><summary>メニュー</summary><nav aria-label="メインナビゲーション"><ul class="nav">
+    <details class="mobile-menu"><summary>メニュー</summary><div class="mobile-panel"><nav aria-label="メインナビゲーション"><ul class="nav">
       <li><a href="getting-started.html">はじめに</a></li><li><a href="using.html" aria-current="page">Mini mPOS の使い方</a></li>
       <li><a href="troubleshooting.html">トラブルシューティング</a></li><li><a href="setup.html">セットアップヘルパー</a></li>
-    </ul></nav></details>
+    </ul></nav>
+      <nav class="mobile-languages" aria-label="言語"><p>言語</p><ul>
+        <li><a href="../using.html" hreflang="en" lang="en">English</a></li>
+        <li><a href="../zh-CN/using.html" hreflang="zh-CN" lang="zh-CN">简体中文</a></li>
+        <li><a aria-current="page" href="using.html" hreflang="ja" lang="ja">日本語</a></li>
+      </ul></nav>
+    </div></details>
     <details class="language-menu"><summary aria-label="言語：日本語" title="言語"><svg aria-hidden="true" class="globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 2.7 3.8 5.7 3.8 9s-1.3 6.3-3.8 9c-2.5-2.7-3.8-5.7-3.8-9S9.5 5.7 12 3z"/></svg><span class="language-current">日本語</span></summary><nav aria-label="言語"><ul><li><a href="../using.html" hreflang="en" lang="en">English</a></li><li><a href="../zh-CN/using.html" hreflang="zh-CN" lang="zh-CN">简体中文</a></li><li><a href="using.html" hreflang="ja" lang="ja" aria-current="page">日本語</a></li></ul></nav></details>
   </div></header>
   <main id="main">
@@ -163,7 +169,7 @@
         <section id="more">
           <h2>追加デバイスとローカルデータを管理する</h2>
           <ol><li>設定済みデバイスで<strong>設定 › データ › 別のデバイスに共有</strong>か商品メニューを開きます。カタログ、設定、パスワードとキーから選び、<strong>QRコードを表示</strong>します。</li><li>受信側で<strong>別のデバイスから設定</strong>を選び、全コードを任意の順で読み取ります。カタログの統合か置換を選びます。</li><li>秘密情報を移すには送信側の転送コードを入力します。空欄なら秘密情報を省き、誤ったコードなら何も取り込みません。<strong>インポート</strong>します。</li><li>価格と税を確認し、<strong>設定 › 端末</strong>で接続をテストして、領収書も確認します。</li></ol>
-          <p>共有設定は受信側の設定を置き換えます。決済先、端末のアドレスと ID、Tap to Pay のインストール、検出環境、シミュレーターはそのデバイスのままです。秘密情報には APIキー、共有キーのパスフレーズ、SMTP パスワード、両方の PIN が含まれます。共有キーは Adyen が同じキーを別端末に割り当てた場合のみ使えます。デバイス専用認証情報は入れ直す必要があります。</p>
+          <p>共有設定は受信側の設定を置き換えます。決済先、端末のアドレスと ID、Tap to Pay のインストール、環境、シミュレーターはそのデバイスのままです。秘密情報には APIキー、共有キーのパスフレーズ、SMTP パスワード、両方の PIN が含まれます。共有キーは Adyen が同じキーを別端末に割り当てた場合のみ使えます。デバイス専用認証情報は入れ直す必要があります。</p>
           <p>取り込みの通貨警告を確認してください。カタログ価格は為替換算されません。<a href="setup.html">セットアップヘルパー</a>は入力した接続欄だけを取り込み、関係ない設定を変えません。</p>
           <p><strong>これはコピーであり、同期や取引履歴のバックアップではありません。</strong>後の変更と各デバイスの決済はローカルに残ります。設定 › データで保存期間を選び、必要なら完了した履歴を消去します。未解決の決済は通常の整理から保護されます。Android のアプリデータ消去は全商品・設定・履歴を削除します。</p>
           <p><a href="https://github.com/astiskala/minimpos/releases/latest">最新リリース</a>を使い、元のインストールと同じ方法・署名元で更新してください。<a href="getting-started.html#install">インストール</a>を参照してください。</p>

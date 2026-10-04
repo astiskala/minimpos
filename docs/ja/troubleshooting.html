@@ -36,10 +36,16 @@
       <li><a href="getting-started.html">はじめに</a></li><li><a href="using.html">Mini mPOS の使い方</a></li>
       <li><a href="troubleshooting.html" aria-current="page">トラブルシューティング</a></li><li><a href="setup.html">セットアップヘルパー</a></li>
     </ul></nav>
-    <details class="mobile-menu"><summary>メニュー</summary><nav aria-label="メインナビゲーション"><ul class="nav">
+    <details class="mobile-menu"><summary>メニュー</summary><div class="mobile-panel"><nav aria-label="メインナビゲーション"><ul class="nav">
       <li><a href="getting-started.html">はじめに</a></li><li><a href="using.html">Mini mPOS の使い方</a></li>
       <li><a href="troubleshooting.html" aria-current="page">トラブルシューティング</a></li><li><a href="setup.html">セットアップヘルパー</a></li>
-    </ul></nav></details>
+    </ul></nav>
+      <nav class="mobile-languages" aria-label="言語"><p>言語</p><ul>
+        <li><a href="../troubleshooting.html" hreflang="en" lang="en">English</a></li>
+        <li><a href="../zh-CN/troubleshooting.html" hreflang="zh-CN" lang="zh-CN">简体中文</a></li>
+        <li><a aria-current="page" href="troubleshooting.html" hreflang="ja" lang="ja">日本語</a></li>
+      </ul></nav>
+    </div></details>
     <details class="language-menu"><summary aria-label="言語：日本語" title="言語"><svg aria-hidden="true" class="globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 2.7 3.8 5.7 3.8 9s-1.3 6.3-3.8 9c-2.5-2.7-3.8-5.7-3.8-9S9.5 5.7 12 3z"/></svg><span class="language-current">日本語</span></summary><nav aria-label="言語"><ul><li><a href="../troubleshooting.html" hreflang="en" lang="en">English</a></li><li><a href="../zh-CN/troubleshooting.html" hreflang="zh-CN" lang="zh-CN">简体中文</a></li><li><a href="troubleshooting.html" hreflang="ja" lang="ja" aria-current="page">日本語</a></li></ul></nav></details>
   </div></header>
   <main id="main">
@@ -75,7 +81,7 @@
         <section id="connection">
           <h2>決済の設定が未完了、または端末に接続できない</h2>
           <p>ホームの設定メッセージから<strong>設定 › 端末</strong>を開き、番号付き手順を完了して接続と API をテストします。必要なら<a href="getting-started.html#connect">構成別の接続手順</a>を参照してください。</p>
-          <dl class="settings-list"><dt>この端末、またはネットワーク上の端末</dt><dd>共有キーの識別子、パスフレーズ、バージョンを Customer Area と照合します。ネットワークでは現在の IP アドレス、POIID、同じネットワークで相互接続できることも確認します。</dd><dt>クラウド</dt><dd>マーチャントアカウント、POIID、認証情報の Cloud Device API と Checkout webservice ロールを確認します。端末がオフラインならクラウド決済はできません。</dd><dt>Tap to Pay</dt><dd>対象環境の Payments アプリを入れ、TEST と LIVE の両方は入れないでください。登録と共有キーの入力を完了します。設定チェックの成功はカード決済のテストではありません。</dd><dt>Checkout API</dt><dd>すべての実決済構成で必要です。アカウントとキーを確認し、LIVE では live URL prefix も入力します。保存キーを読み取れなければ再入力します。</dd><dt>環境が違う</dt><dd>TEST／LIVE は端末、クラウド APIキー、Payments アプリから検出し、設定で選びません。正しい環境のデバイスと認証情報を使い、設定 › アプリ情報を確認します。</dd></dl>
+          <dl class="settings-list"><dt>この端末、またはネットワーク上の端末</dt><dd>共有キーの識別子、パスフレーズ、バージョンを Customer Area と照合します。ネットワークでは現在の IP アドレス、POIID、同じネットワークで相互接続できることも確認します。</dd><dt>クラウド</dt><dd>マーチャントアカウント、POIID、認証情報の Cloud Device API と Checkout webservice ロールを確認します。端末がオフラインならクラウド決済はできません。</dd><dt>Tap to Pay</dt><dd>対象環境のPaymentsアプリを入れ、TESTとLIVEの両方は入れないでください。登録と共有キーの入力を完了します。設定チェックの成功はカード決済のテストではありません。</dd><dt>Checkout API</dt><dd>すべての実決済構成で必要です。アカウントとキーを確認し、LIVEではlive URL prefixも入力します。保存キーを読み取れなければ再入力します。</dd><dt>環境が違う</dt><dd>ネットワークやクラウドの端末では設定 › 端末の手順1で環境を確認し、同じ環境の端末、アカウント、APIキーを使います。証明書が一致しなければ接続を拒否し、API呼び出しは環境を自動変更しません。Adyen端末やTap to Payでは正しいデバイスまたはPaymentsアプリを使います。<a href="getting-started.html#connect">設定手順</a>を参照してください。</dd></dl>
           <p>アカウント、環境、端末を変えると、以前の決済の操作がブロックされる場合があります。その決済時の設定に戻すか Customer Area で処理してください。別アカウントで処理しようとしないでください。</p>
           <p class="back-to-contents"><a href="#contents">目次に戻る</a></p>
         </section>

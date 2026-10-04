@@ -172,9 +172,27 @@ class FakeCloud(
     fun connect(credentials: CloudCredentials): CloudDevices = also { this.credentials += credentials }
 
     override suspend fun detect(
+        environment: TerminalEnvironment,
         poiId: String?,
         country: String,
-    ): CloudDetection = detection.also { detections++ }
+    ): CloudDetection =
+        detection.let {
+            detections++
+            if (it is CloudDetection.Found && it.endpoint.environment != environment) {
+                it.copy(
+                    endpoint =
+                        if (environment ==
+                            TerminalEnvironment.TEST
+                        ) {
+                            CloudEndpoint.TEST
+                        } else {
+                            CloudEndpoint(environment, CloudRegion.AU)
+                        },
+                )
+            } else {
+                it
+            }
+        }
 
     override fun transport(endpoint: CloudEndpoint): TerminalTransport = simulator
 }
@@ -333,10 +351,10 @@ class TestEnvironment(
     stores: StoreDetailsApi = StoreDetailsApi { StoreListing.Listed(emptyList()) },
     terminalDetails: TerminalDetailsApi =
         object : TerminalDetailsApi {
-            override suspend fun terminals() =
+            override suspend fun terminals(environment: TerminalEnvironment) =
                 TerminalListing.Listed(
                     listOf("AMS1-000168223606144", "S1F2-000158213605014").map { TerminalDetails(it, "Merchant", "192.168.1.42") },
-                    TerminalEnvironment.TEST,
+                    environment,
                 )
 
             override suspend fun sharedKey(
@@ -344,6 +362,7 @@ class TestEnvironment(
                 environment: TerminalEnvironment,
             ): DiscoveredKey? = null
         },
+    terminalEnvironment: suspend () -> TerminalEnvironment? = { TerminalEnvironment.TEST },
 ) : ExternalResource() {
     /** Robolectric's application context. */
     val context: Context = ApplicationProvider.getApplicationContext()
@@ -382,6 +401,7 @@ class TestEnvironment(
             paymentLinks = { links },
             storeDetails = { _, _ -> stores },
             terminalDetails = { terminalDetails },
+            terminalEnvironment = terminalEnvironment,
         )
 
     /**
@@ -390,7 +410,11 @@ class TestEnvironment(
      */
     fun useCheckoutApi() {
         await { container.secrets.set(Secret.ADYEN_API_KEY, "key") }
-        updateSettings { it.copy(terminal = it.terminal.copy(merchantAccount = "HarbourCoffeeCOM")) }
+        updateSettings {
+            it.copy(
+                terminal = it.terminal.copy(merchantAccount = "HarbourCoffeeCOM", environment = TerminalEnvironment.TEST),
+            )
+        }
     }
 
     /**

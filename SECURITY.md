@@ -26,7 +26,7 @@ including brand, masked card number, references and, when tokenizing, the stored
 
 - **Local Terminal API:** on the same terminal or your network, Adyen's library encrypts and authenticates messages
   with the shared key. TLS certificates must chain to an Adyen TEST/LIVE terminal root and have a terminal name in
-  that environment.
+  that environment. Network certificates must also match the environment selected in setup.
 - **Cloud:** HTTPS requests to Adyen's Cloud device API use the Adyen API key, not shared-key message encryption.
 - **Tap to Pay:** App Links to the Payments app are encrypted and authenticated with the shared key. Unverifiable
   answers or answers for a different request are rejected.
@@ -72,7 +72,8 @@ payment terminals; prefer a network terminal where practical.
   cloud adds Cloud Device API on the same credential. Boarding uses a separate Adyen Payments app credential.
 - Set an admin PIN; optionally require a Manager PIN for financial follow-up actions. Keep phone/tablet screen locks
   and Android security updates enabled. Review [staff access](docs/using.html#business).
-- Keep TEST and LIVE credentials separate. Verify the detected environment in Settings › About before live payments.
+- Keep TEST and LIVE credentials separate. Verify the selected or detected environment in Settings › Terminal before
+  live payments.
 - For a lost or compromised device, revoke its API credentials in the Customer Area and rotate exposed shared keys.
   For Tap to Pay, deregister the installation as well; when you still have the phone, use Remove this phone.
 - Use STARTTLS or SSL for SMTP. The None option exposes the email and SMTP password in transit.

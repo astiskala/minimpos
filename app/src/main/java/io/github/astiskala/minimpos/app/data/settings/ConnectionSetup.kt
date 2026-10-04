@@ -1,5 +1,6 @@
 package io.github.astiskala.minimpos.app.data.settings
 
+import io.github.astiskala.minimpos.terminal.transport.TerminalEnvironment
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
@@ -30,6 +31,7 @@ enum class ConnectionDestination {
  * sealed beside it, as in any transfer. The page leaves out what was not typed; a blank value counts as left out too.
  *
  * @property destination Where payments go; null leaves it as it is.
+ * @property environment Selected environment for a network or cloud terminal; ignored on Adyen terminals and Tap to Pay.
  * @property host The IP address or host name of a terminal on the network.
  * @property poiId The terminal's POIID, for a terminal on the network or in the cloud.
  * @property keyIdentifier The shared key's identifier.
@@ -37,10 +39,12 @@ enum class ConnectionDestination {
  * @property merchantAccount The merchant account the Checkout API (and the cloud) takes payments for.
  * @property liveUrlPrefix The live endpoint prefix for the Checkout API.
  * @property storeId The store Tap to Pay is set up for.
+ * @property automatic Whether to offer read-only terminal discovery after importing the API key; never boards Tap to Pay.
  */
 @Serializable
 data class ConnectionSetup(
     val destination: ConnectionDestination? = null,
+    val environment: TerminalEnvironment? = null,
     val host: String? = null,
     val poiId: String? = null,
     val keyIdentifier: String? = null,
@@ -48,12 +52,22 @@ data class ConnectionSetup(
     val merchantAccount: String? = null,
     val liveUrlPrefix: String? = null,
     val storeId: String? = null,
+    val automatic: Boolean = false,
 ) {
+    /** Whether this helper requests discovery for a physical terminal destination supported by this device. */
+    fun requestsDiscovery(onTerminal: Boolean): Boolean =
+        automatic &&
+            when (destination) {
+                ConnectionDestination.THIS_TERMINAL -> onTerminal
+                ConnectionDestination.NETWORK, ConnectionDestination.CLOUD -> !onTerminal
+                ConnectionDestination.TAP_TO_PAY, null -> false
+            }
+
     /**
      * [terminal] with what this setup holds, on a device that is an Adyen terminal when [onTerminal]. A terminal only
      * ever takes payments itself, so there only [ConnectionDestination.THIS_TERMINAL] changes where payments go (to
      * Automatic, which is this terminal); elsewhere that one leaves it, and the others choose theirs. Choosing another
-     * destination forgets the detected environment, as Settings does.
+     * destination forgets its environment, as Settings does; a supplied network/cloud environment then sets it.
      */
     fun appliedTo(
         terminal: TerminalSettings,
@@ -70,7 +84,13 @@ data class ConnectionSetup(
 
         fun String?.or(current: String) = this?.trim()?.ifEmpty { null } ?: current
         val moved = mode?.let { terminal.copy(mode = it, environment = null, cloudRegion = null) } ?: terminal
+        val selected =
+            environment.takeIf {
+                !onTerminal && (moved.mode == TerminalMode.TERMINAL || moved.mode == TerminalMode.CLOUD)
+            }
         return moved.copy(
+            environment = selected ?: moved.environment,
+            cloudRegion = moved.cloudRegion.takeIf { selected == null || selected == moved.environment },
             host = host.or(terminal.host),
             poiIdOverride = poiId.or(terminal.poiIdOverride),
             keyIdentifier = keyIdentifier.or(terminal.keyIdentifier),

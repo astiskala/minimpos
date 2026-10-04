@@ -57,7 +57,7 @@ class TerminalTest {
 
     @Test
     fun `without complete setup nothing is sent, and every operation says what to enter`() {
-        env.updateSettings { it.copy(terminal = it.terminal.copy(mode = TerminalMode.TERMINAL)) }
+        env.updateSettings { it.copy(terminal = it.terminal.copy(mode = TerminalMode.TERMINAL, environment = TerminalEnvironment.TEST)) }
         val gateway = container.gateway
         var sending: String? = null
         assertThat(await { gateway.pay(payment, "S1") { sending = it } }).isEqualTo(Attempt.NotSetUp(SetupProblem.POI_ID))

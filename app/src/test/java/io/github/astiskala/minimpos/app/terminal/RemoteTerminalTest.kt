@@ -53,7 +53,16 @@ class RemoteTerminalTest {
 
     private fun useCloud(poiId: String = "S1F2-000158213605014") {
         env.updateSettings {
-            it.copy(terminal = it.terminal.copy(mode = TerminalMode.CLOUD, merchantAccount = " Merchant ", poiIdOverride = poiId))
+            it.copy(
+                terminal =
+                    it.terminal.copy(
+                        mode = TerminalMode.CLOUD,
+                        merchantAccount = " Merchant ",
+                        poiIdOverride = poiId,
+                        environment = TerminalEnvironment.LIVE,
+                        liveUrlPrefix = "abc-Merchant",
+                    ),
+            )
         }
         await { container.secrets.set(Secret.ADYEN_API_KEY, "cloud-key") }
     }
@@ -63,6 +72,28 @@ class RemoteTerminalTest {
             it.copy(terminal = it.terminal.copy(mode = TerminalMode.PAYMENTS_APP, keyIdentifier = "key", merchantAccount = "Merchant"))
         }
         await { container.secrets.set(Secret.TERMINAL_PASSPHRASE, "correct horse battery staple") }
+    }
+
+    @Test
+    fun `changing the selected cloud environment opens a new transport without changing credentials`() {
+        useCloud()
+        assertThat(await { gateway.diagnose() }).isInstanceOf(TerminalConnection.Connected::class.java)
+        assertThat(cloud.detections).isEqualTo(1)
+        env.updateSettings { it.copy(terminal = it.terminal.copy(environment = TerminalEnvironment.TEST, cloudRegion = null)) }
+        assertThat(await { gateway.diagnose() }).isInstanceOf(TerminalConnection.Connected::class.java)
+        assertThat(cloud.detections).isEqualTo(2)
+        assertThat(gateway.detectedEnvironment.value?.environment).isEqualTo(TerminalEnvironment.TEST)
+        assertThat(await { container.settings.current() }.terminal.environment).isEqualTo(TerminalEnvironment.TEST)
+    }
+
+    @Test
+    fun `cloud requests wait for an explicit environment even with credentials and a terminal`() {
+        useCloud()
+        env.updateSettings { it.copy(terminal = it.terminal.copy(environment = null)) }
+        assertThat(await { gateway.diagnose() }).isEqualTo(TerminalConnection.NotSetUp(SetupProblem.ENVIRONMENT))
+        assertThat(await { gateway.pay(payment, "PAY1") }).isEqualTo(Attempt.NotSetUp(SetupProblem.ENVIRONMENT))
+        assertThat(await { gateway.connectedTerminals() }).isEqualTo(ConnectedTerminals.NotSetUp(SetupProblem.ENVIRONMENT))
+        assertThat(cloud.detections).isEqualTo(0)
     }
 
     @Test
@@ -92,14 +123,14 @@ class RemoteTerminalTest {
                 }
             assertThat(status.mode).isEqualTo(TerminalMode.CLOUD)
             assertThat(status.environment).isEqualTo(TerminalEnvironment.LIVE)
-            assertThat(status.apiProblem).isEqualTo(SetupProblem.LIVE_PREFIX)
+            assertThat(status.apiProblem).isNull()
         }
 
     @Test
     fun `an API key no endpoint takes is a failed connection, and nothing is sent`() {
         useCloud()
-        cloud.detection = CloudDetection.Failed("Adyen accepted the API key neither for TEST nor for LIVE (HTTP 401)")
-        assertThat((await { gateway.diagnose() } as TerminalConnection.Failed).message).contains("neither for TEST nor for LIVE")
+        cloud.detection = CloudDetection.Failed("Adyen did not accept the API key for LIVE (HTTP 401)")
+        assertThat((await { gateway.diagnose() } as TerminalConnection.Failed).message).contains("for LIVE")
         assertThat((await { gateway.pay(payment, "PAY1") }.made() as TransactionOutcome.NotProcessed).reason).contains("HTTP 401")
         assertThat((await { container.terminalStatus.connectedTerminals() } as ConnectedTerminals.Failed).message).contains("HTTP 401")
         // A key saved but no longer readable is reported as such.
@@ -109,7 +140,7 @@ class RemoteTerminalTest {
 
     @Test
     fun `the terminals connected in the cloud can be listed before one is chosen`() {
-        assertThat(await { gateway.connectedTerminals() }).isEqualTo(ConnectedTerminals.NotSetUp(SetupProblem.API_REQUIRED))
+        assertThat(await { gateway.connectedTerminals() }).isEqualTo(ConnectedTerminals.NotSetUp(SetupProblem.ENVIRONMENT))
         useCloud(poiId = "")
         assertThat((await { gateway.diagnose() } as TerminalConnection.NotSetUp).problem).isEqualTo(SetupProblem.POI_ID)
         val listed = await { gateway.connectedTerminals() } as ConnectedTerminals.Listed

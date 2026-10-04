@@ -34,6 +34,7 @@ import kotlinx.coroutines.launch
  * @property apiSetup How far the Checkout API is set up, see [TerminalSetup.apiSetup]; captures follow the same decision.
  * @property paymentLinks Whether checkout offers payment links, see [TerminalSetup.paymentLinks].
  * @property paymentsApps The Adyen Payments apps installed, by environment, see [TerminalSetup.paymentsApps].
+ * @property selectsEnvironment Whether setup asks for TEST or LIVE before credentials.
  */
 data class TerminalState(
     val loaded: Boolean = false,
@@ -47,6 +48,7 @@ data class TerminalState(
     val apiSetup: ApiSetup = ApiSetup.Simulated,
     val paymentLinks: Boolean = false,
     val paymentsApps: Set<TerminalEnvironment> = emptySet(),
+    val selectsEnvironment: Boolean = false,
 ) {
     /**
      * Whether receipts and payment links can be shared through Android's share sheet: on phones and tablets, not on an
@@ -90,6 +92,7 @@ class TerminalStatus(
                 apiSetup = setup.apiSetup,
                 paymentLinks = setup.paymentLinks,
                 paymentsApps = setup.paymentsApps,
+                selectsEnvironment = setup.selectsEnvironment,
             )
         }.stateIn(scope, SharingStarted.Eagerly, TerminalState())
 
@@ -107,7 +110,10 @@ class TerminalStatus(
             setups.changes
                 .map { setup ->
                     Triple(
-                        setup.settings.terminal.copy(environment = null, cloudRegion = null),
+                        setup.settings.terminal.copy(
+                            environment = setup.environment.takeIf { setup.selectsEnvironment },
+                            cloudRegion = null,
+                        ),
                         setup.checksConnection,
                         setup.connectionProblem,
                     )
@@ -117,8 +123,17 @@ class TerminalStatus(
         }
         scope.launch {
             gateway.detectedEnvironment.filterNotNull().collect { detected ->
+                val setup = setups.current()
                 settings.update {
-                    it.copy(terminal = it.terminal.copy(environment = detected.environment, cloudRegion = detected.cloudRegion))
+                    if (it.terminal != setup.settings.terminal) {
+                        it
+                    } else if (setup.destination == LocalTerminal && setup.onTerminal) {
+                        it.copy(terminal = it.terminal.copy(environment = detected.environment))
+                    } else if (setup.destination == CloudTerminal && setup.environment == detected.environment) {
+                        it.copy(terminal = it.terminal.copy(cloudRegion = detected.cloudRegion))
+                    } else {
+                        it
+                    }
                 }
             }
         }

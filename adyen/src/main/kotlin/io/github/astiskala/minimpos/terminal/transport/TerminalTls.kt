@@ -1,12 +1,19 @@
 package io.github.astiskala.minimpos.terminal.transport
 
 import com.adyen.terminal.security.TerminalCommonNameValidator
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.runInterruptible
+import java.io.IOException
+import java.net.InetSocketAddress
+import java.net.Socket
 import java.security.KeyStore
 import java.security.cert.CertificateFactory
 import java.security.cert.X509Certificate
 import javax.net.ssl.HostnameVerifier
 import javax.net.ssl.SSLContext
 import javax.net.ssl.SSLSession
+import javax.net.ssl.SSLSocket
 import javax.net.ssl.SSLSocketFactory
 import javax.net.ssl.TrustManagerFactory
 import javax.net.ssl.X509TrustManager
@@ -15,14 +22,18 @@ import javax.net.ssl.X509TrustManager
  * TLS for local Terminal API calls, as described in Adyen's "Protect local communications": only certificates chaining
  * to one of Adyen's terminal fleet roots are trusted, and the leaf's common name must be a terminal name of that root's
  * environment, checked with Adyen's [TerminalCommonNameValidator] (the host itself, localhost or an IP, is not in the
- * certificate). The environment is therefore not configured but read from the terminal's certificate, and reported to
- * [onEnvironment] on every verified connection.
+ * certificate). Reads the certificate's environment, enforcing [expectedEnvironment] when supplied for a network
+ * terminal, and reports it to [onEnvironment] on every verified connection.
  */
 class TerminalTls(
     /** The trusted root per environment; by default Adyen's terminal fleet roots bundled with this module. */
     private val roots: Map<TerminalEnvironment, X509Certificate> = TerminalEnvironment.entries.associateWith(::loadRoot),
     /** Told the environment of each verified connection, on the thread making the connection. */
     private val onEnvironment: (TerminalEnvironment) -> Unit = {},
+    /** Required environment for a network terminal; null accepts either for the terminal running Mini mPOS. */
+    private val expectedEnvironment: TerminalEnvironment? = null,
+    /** Runs the blocking certificate-only TLS handshake. */
+    private val dispatcher: CoroutineDispatcher = Dispatchers.IO,
 ) {
     /** Validates certificate chains against the Adyen roots only, ignoring the device's certificate authorities. */
     val trustManager: X509TrustManager
@@ -34,7 +45,7 @@ class TerminalTls(
      * Stands in for host name verification: accepts a connection only if [environmentOf] finds an environment for the
      * peer's certificate chain, and reports that environment.
      */
-    val hostnameVerifier = HostnameVerifier { _, session -> accept(session) }
+    val hostnameVerifier = HostnameVerifier { _, session -> verifiedEnvironment(session) != null }
 
     init {
         val keyStore = KeyStore.getInstance(KeyStore.getDefaultType()).apply { load(null, null) }
@@ -57,9 +68,35 @@ class TerminalTls(
         return environment?.takeIf { TerminalCommonNameValidator.validateCertificate(leaf, it.adyen) }
     }
 
-    private fun accept(session: SSLSession): Boolean {
+    /**
+     * Reads a verified terminal certificate without sending an API request or needing a shared key. Safe on any
+     * thread. Null means unreachable, untrusted or not in [expectedEnvironment]; cancellation propagates.
+     *
+     * @param host Terminal address, normally localhost for the device running Mini mPOS.
+     * @param port TLS port, 8443 for Adyen terminals; tests use an isolated server.
+     */
+    suspend fun readEnvironment(
+        host: String,
+        port: Int = 8443,
+    ): TerminalEnvironment? =
+        runInterruptible(dispatcher) {
+            try {
+                Socket().use { socket ->
+                    socket.connect(InetSocketAddress(host, port), PROBE_TIMEOUT_MILLIS)
+                    (socketFactory.createSocket(socket, host, port, true) as SSLSocket).use { tls ->
+                        tls.soTimeout = PROBE_TIMEOUT_MILLIS
+                        tls.startHandshake()
+                        verifiedEnvironment(tls.session)
+                    }
+                }
+            } catch (_: IOException) {
+                null
+            }
+        }
+
+    private fun verifiedEnvironment(session: SSLSession): TerminalEnvironment? {
         val chain = runCatching { session.peerCertificates.filterIsInstance<X509Certificate>() }.getOrDefault(emptyList())
-        return environmentOf(chain)?.also(onEnvironment) != null
+        return environmentOf(chain)?.takeIf { expectedEnvironment == null || it == expectedEnvironment }?.also(onEnvironment)
     }
 
     private fun X509Certificate.isSignedBy(issuer: X509Certificate) =
@@ -67,6 +104,8 @@ class TerminalTls(
 
     /** Access to the bundled root certificates. */
     companion object {
+        private const val PROBE_TIMEOUT_MILLIS = 5_000
+
         /**
          * Reads the terminal fleet root certificate of [environment] from this module's resources.
          *

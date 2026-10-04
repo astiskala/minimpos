@@ -46,7 +46,7 @@ sealed interface ReceiptBusinesses {
 
     /**
      * Lookup needs setup first; no API call was made.
-     * @property problem Missing account, key or detected environment, or simulator destination.
+     * @property problem Missing account, key or selected/detected environment, or simulator destination.
      */
     data class NotSetUp(
         val problem: SetupProblem,
@@ -82,7 +82,7 @@ class ReceiptBusinessDetails(
                 setup.apiSetup == ApiSetup.Simulated -> SetupProblem.API_REQUIRED
                 merchant.isBlank() -> SetupProblem.MERCHANT_ACCOUNT
                 unlocked.apiKey == null -> setup.apiSetup.problem ?: SetupProblem.API_KEY
-                setup.environment == null -> SetupProblem.ENVIRONMENT
+                setup.environment == null -> setup.apiSetup.problem ?: SetupProblem.ENVIRONMENT
                 else -> null
             }
         if (problem != null) return ReceiptBusinesses.NotSetUp(problem)

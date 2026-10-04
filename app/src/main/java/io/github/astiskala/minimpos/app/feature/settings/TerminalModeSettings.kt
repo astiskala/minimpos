@@ -5,9 +5,15 @@ import android.content.Intent
 import androidx.annotation.StringRes
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Api
@@ -19,6 +25,7 @@ import androidx.compose.material.icons.filled.PhonelinkErase
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -28,11 +35,13 @@ import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
@@ -58,11 +67,12 @@ private typealias TerminalUpdate = ((TerminalSettings) -> TerminalSettings) -> U
 
 /**
  * What Settings › Terminal asks for wherever payments go but the simulator, as numbered steps in the order they are
- * done. Every real destination starts with the Adyen API key and optional setup discovery:
- * - this terminal: 2. the shared key, 3. the Checkout account;
- * - a terminal on the network: 2. its address and POIID, 3. the shared key, 4. the Checkout account;
- * - a terminal in the cloud: 2. the Adyen account, 3. the terminal, with one test of both;
- * - Tap to Pay: 2. the Adyen Payments app, 3. the Checkout account, 4. boarding, 5. the shared key.
+ * done. Network and cloud destinations first ask for the environment, before API access. On-device terminals read
+ * their certificate; Tap to Pay starts with the Payments app whose installation determines the environment:
+ * - this terminal: 1. API key, 2. shared key, 3. Checkout account;
+ * - a terminal on the network: 1. environment, 2. API key, 3. address and POIID, 4. shared key, 5. account;
+ * - a terminal in the cloud: 1. environment, 2. API key, 3. account, 4. terminal, with one test of both;
+ * - Tap to Pay: 1. Payments app, 2. API key, 3. account, 4. boarding, 5. shared key.
  *
  * The API key typed is kept here only in memory and cleared once stored. Discovery resets field editing state after
  * its saved settings have reached the screen, without resetting fields during ordinary typing.
@@ -88,8 +98,22 @@ internal fun ColumnScope.TerminalSteps(
             problem = status.apiProblem,
         )
     val update: TerminalUpdate = { transform -> events.onUpdate { it.copy(terminal = transform(it.terminal)) } }
+    if (status.selectsEnvironment) {
+        EnvironmentStep(status.environment, update)
+        if (status.environment == null) return
+    }
+    if (status.mode == TerminalMode.PAYMENTS_APP) PaymentsAppStep(1, status.paymentsApps)
     if (status.mode != TerminalMode.SIMULATOR && status.mode != TerminalMode.AUTO) {
-        AdyenKeyStep(api, setup, events, setupEvents)
+        AdyenKeyStep(
+            number = if (status.selectsEnvironment || status.mode == TerminalMode.PAYMENTS_APP) 2 else 1,
+            cloud = status.mode == TerminalMode.CLOUD,
+            discovers = status.mode != TerminalMode.PAYMENTS_APP,
+            api = api,
+            actions = actions,
+            setup = setup,
+            events = events,
+            setupEvents = setupEvents,
+        )
     }
     key(setup.revision) {
         when (status.mode) {
@@ -102,10 +126,40 @@ internal fun ColumnScope.TerminalSteps(
             }
 
             TerminalMode.PAYMENTS_APP -> {
-                TapToPaySteps(status, state, actions, setup, events, setupEvents, api, update)
+                TapToPaySteps(state, actions, setup, events, setupEvents, api, update)
             }
 
             TerminalMode.SIMULATOR, TerminalMode.AUTO -> {}
+        }
+    }
+}
+
+/** The environment chosen before using a network or cloud terminal; no default silently opts into real payments. */
+@Composable
+private fun ColumnScope.EnvironmentStep(
+    environment: TerminalEnvironment?,
+    update: TerminalUpdate,
+) {
+    SetupStep(1, stringResource(R.string.settings_environment))
+    SettingNote(stringResource(R.string.settings_environment_hint), Modifier.testTag("environmentHint"))
+    Column(Modifier.selectableGroup().testTag("environment")) {
+        TerminalEnvironment.entries.forEach { value ->
+            Row(
+                Modifier
+                    .fillMaxWidth()
+                    .selectable(
+                        selected = environment == value,
+                        role = Role.RadioButton,
+                        onClick = { update { it.copy(environment = value, cloudRegion = null) } },
+                    ).heightIn(min = 48.dp)
+                    .padding(horizontal = 16.dp)
+                    .testTag("environment_$value"),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                RadioButton(selected = environment == value, onClick = null)
+                Spacer(Modifier.width(12.dp))
+                Text(stringResource(if (value == TerminalEnvironment.TEST) R.string.settings_env_test else R.string.settings_env_live))
+            }
         }
     }
 }
@@ -139,8 +193,8 @@ private fun ColumnScope.LocalTerminalSteps(
     api: ApiEntry,
     update: TerminalUpdate,
 ) {
-    val first = if (onTerminal) 2 else 3
-    if (!onTerminal) NetworkTerminalStep(2, state.settings.terminal, update)
+    val first = if (onTerminal) 2 else 4
+    if (!onTerminal) NetworkTerminalStep(3, state.settings.terminal, update)
     SharedKeyStep(first, state, actions, events, update)
     CheckoutApiStep(first + 1, api, actions, events, update)
 }
@@ -148,7 +202,6 @@ private fun ColumnScope.LocalTerminalSteps(
 /** Tap to Pay with the Adyen Payments app on this phone: the app, the Checkout API, setting it up, the shared key. */
 @Composable
 private fun ColumnScope.TapToPaySteps(
-    status: TerminalState,
     state: SettingsUiState,
     actions: SettingsActions,
     setup: TerminalSetupActions,
@@ -158,7 +211,6 @@ private fun ColumnScope.TapToPaySteps(
     update: TerminalUpdate,
 ) {
     val terminal = state.settings.terminal
-    PaymentsAppStep(2, status.paymentsApps)
     CheckoutApiStep(3, api, actions, events, update)
     TapToPayStep(
         number = 4,
@@ -185,7 +237,7 @@ private fun ColumnScope.CloudSteps(
     api: ApiEntry,
     update: TerminalUpdate,
 ) {
-    SetupStep(2, stringResource(R.string.settings_api_cloud))
+    SetupStep(3, stringResource(R.string.settings_api_cloud))
     SettingNote(stringResource(R.string.settings_api_cloud_hint))
     // The terminal's buttons, next, save the key.
     ApiFields(api, update)
@@ -195,7 +247,7 @@ private fun ColumnScope.CloudSteps(
         }
     }
     CloudTerminalStep(
-        number = 3,
+        number = 4,
         poiId = state.settings.terminal.poiIdOverride,
         setup = setup,
         keyTyped = api.key.isNotBlank(),
@@ -216,12 +268,13 @@ private fun ColumnScope.NetworkTerminalStep(
     update: TerminalUpdate,
 ) {
     SetupStep(number, stringResource(R.string.settings_step_terminal))
+    SettingNote(stringResource(R.string.settings_host_hint))
+    SettingNote(stringResource(R.string.settings_poiid_help))
     SettingTextField(
         stringResource(R.string.settings_host),
         terminal.host,
         { value -> update { it.copy(host = value.trim()) } },
         placeholder = stringResource(R.string.settings_host_placeholder),
-        supporting = stringResource(R.string.settings_host_hint),
         keyboardType = KeyboardType.Uri,
         autoCorrect = false,
         imeAction = ImeAction.Next,
@@ -232,7 +285,6 @@ private fun ColumnScope.NetworkTerminalStep(
         value = terminal.poiIdOverride,
         onCommit = { value -> update { it.copy(poiIdOverride = value.trim()) } },
         placeholder = stringResource(R.string.settings_poiid_hint),
-        supporting = stringResource(R.string.settings_poiid_help),
         autoCorrect = false,
         imeAction = ImeAction.Next,
         tag = "poiId",
@@ -370,38 +422,93 @@ private fun ApiFields(
 
 @Composable
 private fun ColumnScope.AdyenKeyStep(
+    number: Int,
+    cloud: Boolean,
+    discovers: Boolean,
     api: ApiEntry,
+    actions: SettingsActions,
     setup: TerminalSetupActions,
     events: SettingsEvents,
     setupEvents: TerminalSetupEvents,
 ) {
-    SetupStep(1, stringResource(R.string.settings_adyen_key))
-    SettingNote(stringResource(R.string.settings_discovery_hint))
+    SetupStep(number, stringResource(R.string.settings_adyen_key))
+    SettingNote(stringResource(R.string.settings_adyen_key_hint))
+    ApiKeyRoles(cloud, discovers)
+
+    fun save() {
+        if (discovers) {
+            setupEvents.onTerminalsFind(api.key)
+        } else if (api.key.isNotBlank()) {
+            events.onSecretChange(Secret.ADYEN_API_KEY, api.key.trim())
+        }
+    }
     SecretField(
         label = stringResource(R.string.settings_api_key),
         isSet = api.keySaved,
         value = api.key,
         onValueChange = api.onKey,
-        onSubmit = { setupEvents.onTerminalsFind(api.key) },
+        onSubmit = ::save,
         tag = "apiKey",
     )
     SettingActions {
-        TestButton(
-            typed = api.key.isNotBlank(),
-            save = R.string.settings_save_and_discover,
-            test = R.string.settings_discover,
-            running = setup.terminals.running,
-            onClick = { setupEvents.onTerminalsFind(api.key) },
-            tag = "discoverSetup",
-            icon = Icons.Default.Search,
-        )
-        if (api.keySaved) ForgetApiKey(events)
-        if (setup.terminals.done || setup.terminals.isError || setup.manualDetails) {
-            SettingNote(stringResource(R.string.settings_discovery_manual))
+        if (discovers) {
+            KeyDiscoveryActions(api, setup, ::save)
+        } else if (api.key.isNotBlank()) {
+            PrimaryButton(
+                stringResource(R.string.settings_save_api_key),
+                ::save,
+                modifier = Modifier.testTag("saveApiKey"),
+                icon = Icons.Default.Api,
+            )
         }
-        OutcomeMessage(setup.terminals, Modifier.testTag("terminalsResult"))
+        if (api.keySaved) ForgetApiKey(events)
+        actions.secretError?.let { ActionMessage(it.text(), isError = true) }
     }
     setup.connectedTerminals?.let { TerminalChoiceDialog(it, setupEvents::onTerminalChoose) }
+}
+
+/** Only roles that must be added beyond default Checkout access, for this destination and optional discovery. */
+@Composable
+private fun ColumnScope.ApiKeyRoles(
+    cloud: Boolean,
+    discovers: Boolean,
+) {
+    if (cloud) {
+        SettingNote(stringResource(R.string.settings_adyen_roles_hint))
+        SettingNote("• " + stringResource(R.string.settings_adyen_role_cloud), Modifier.testTag("roleCloud"))
+    }
+    if (!discovers) return
+    SettingNote(stringResource(R.string.settings_discovery_roles_hint))
+    val roles =
+        if (cloud) {
+            listOf(R.string.settings_adyen_role_terminals)
+        } else {
+            listOf(R.string.settings_adyen_role_terminals, R.string.settings_adyen_role_settings, R.string.settings_adyen_role_shared_key)
+        }
+    roles.forEach { SettingNote("• " + stringResource(it)) }
+    SettingNote(stringResource(R.string.settings_discovery_hint))
+}
+
+/** Optional terminal discovery, with its manual-entry fallback kept beside the API-key action. */
+@Composable
+private fun ColumnScope.KeyDiscoveryActions(
+    api: ApiEntry,
+    setup: TerminalSetupActions,
+    onSave: () -> Unit,
+) {
+    TestButton(
+        typed = api.key.isNotBlank(),
+        save = R.string.settings_save_and_discover,
+        test = R.string.settings_discover,
+        running = setup.terminals.running,
+        onClick = onSave,
+        tag = "discoverSetup",
+        icon = Icons.Default.Search,
+    )
+    if (setup.terminals.done || setup.terminals.isError || setup.manualDetails) {
+        SettingNote(stringResource(R.string.settings_discovery_manual))
+    }
+    OutcomeMessage(setup.terminals, Modifier.testTag("terminalsResult"))
 }
 
 /** Removing the saved Adyen API key, once confirmed. */
@@ -455,12 +562,12 @@ private fun ColumnScope.CloudTerminalStep(
     onTest: () -> Unit,
 ) {
     SetupStep(number, stringResource(R.string.settings_step_terminal))
+    SettingNote(stringResource(R.string.settings_cloud_poiid_help))
     SettingTextField(
         label = stringResource(R.string.settings_poiid),
         value = poiId,
         onCommit = { onPoiId(it.trim()) },
         placeholder = stringResource(R.string.settings_poiid_hint),
-        supporting = stringResource(R.string.settings_cloud_poiid_help),
         autoCorrect = false,
         imeAction = ImeAction.Done,
         tag = "poiId",
@@ -580,6 +687,7 @@ private fun ColumnScope.TapToPayStep(
     val boarded = installationId.isNotBlank()
     SetupStep(number, stringResource(R.string.settings_tap_to_pay))
     SettingNote(stringResource(R.string.settings_tap_to_pay_hint))
+    SettingNote(stringResource(R.string.settings_payments_app_key_hint))
     Column(Modifier.padding(horizontal = 16.dp)) {
         LabeledValue(
             stringResource(R.string.settings_installation_id),
@@ -603,7 +711,6 @@ private fun ColumnScope.TapToPayStep(
         onSubmit = { onSetUp(apiKey, boarded) },
         tag = "paymentsAppKey",
     )
-    SettingNote(stringResource(R.string.settings_payments_app_key_hint))
     TapToPayButtons(boarded, apiKeySaved, setup.tapToPay, { again -> onSetUp(apiKey, again) }, onRemove, onForgetApiKey)
 }
 

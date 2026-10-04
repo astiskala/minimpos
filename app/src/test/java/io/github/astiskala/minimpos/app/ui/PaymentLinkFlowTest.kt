@@ -110,7 +110,7 @@ class PaymentLinkFlowTest {
     }
 
     @Test
-    fun `payment link settings always offer expiry and say when the Checkout API is missing`() {
+    fun `payment link settings offer expiry without a redundant API setup warning`() {
         compose.onNodeWithTag("settings").performClick()
         waitForTag("section_payments")
         compose.onNodeWithTag("section_payments").performClick()
@@ -119,8 +119,8 @@ class PaymentLinkFlowTest {
         waitForTag("linkExpiry")
         compose.onNodeWithTag("linkExpiry").performScrollTo().assertIsDisplayed()
         // Payments go to the simulator, which has no payment links.
-        waitForTag("linksNeedApi")
-        compose.onNodeWithTag("linksNeedApi").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("linksNeedApi").assertDoesNotExist()
+        compose.onNodeWithText("Payment links are not available with the simulator.", substring = true).assertExists()
         compose.onNodeWithTag("back").performClick()
         compose.onNodeWithTag("back").performClick()
         ringUpCustomAmount(5, 0, 0)

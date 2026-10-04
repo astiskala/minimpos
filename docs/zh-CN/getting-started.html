@@ -36,10 +36,16 @@
       <li><a href="getting-started.html" aria-current="page">快速入门</a></li><li><a href="using.html">使用 Mini mPOS</a></li>
       <li><a href="troubleshooting.html">故障排查</a></li><li><a href="setup.html">设置助手</a></li>
     </ul></nav>
-    <details class="mobile-menu"><summary>菜单</summary><nav aria-label="主导航"><ul class="nav">
+    <details class="mobile-menu"><summary>菜单</summary><div class="mobile-panel"><nav aria-label="主导航"><ul class="nav">
       <li><a href="getting-started.html" aria-current="page">快速入门</a></li><li><a href="using.html">使用 Mini mPOS</a></li>
       <li><a href="troubleshooting.html">故障排查</a></li><li><a href="setup.html">设置助手</a></li>
-    </ul></nav></details>
+    </ul></nav>
+      <nav class="mobile-languages" aria-label="语言"><p>语言</p><ul>
+        <li><a href="../getting-started.html" hreflang="en" lang="en">English</a></li>
+        <li><a aria-current="page" href="getting-started.html" hreflang="zh-CN" lang="zh-CN">简体中文</a></li>
+        <li><a href="../ja/getting-started.html" hreflang="ja" lang="ja">日本語</a></li>
+      </ul></nav>
+    </div></details>
     <details class="language-menu"><summary aria-label="语言：简体中文" title="语言"><svg aria-hidden="true" class="globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 2.7 3.8 5.7 3.8 9s-1.3 6.3-3.8 9c-2.5-2.7-3.8-5.7-3.8-9S9.5 5.7 12 3z"/></svg><span class="language-current">简体中文</span></summary><nav aria-label="语言"><ul><li><a href="../getting-started.html" hreflang="en" lang="en">English</a></li><li><a href="getting-started.html" hreflang="zh-CN" lang="zh-CN" aria-current="page">简体中文</a></li><li><a href="../ja/getting-started.html" hreflang="ja" lang="ja">日本語</a></li></ul></nav></details>
   </div></header>
   <main id="main">
@@ -98,43 +104,52 @@
           <h2>连接 Adyen</h2>
           <p>只需遵循下方与您对应的配置步骤。在平板或手机上，先选择<strong>设置 › 终端 › 支付目标</strong>。应用中的编号步骤会列出所需信息，首页会提示缺少的项目。</p>
           <h3 id="credentials">准备凭据</h3>
-          <p><strong>所有真实付款配置都需要 Checkout API</strong>，普通销售也不例外。在 <strong>Developers › API credentials</strong> 中创建具有 <strong>Checkout webservice role</strong> 的凭据并生成 API 密钥；参见 Adyen 的<a href="https://docs.adyen.com/development-resources/api-credentials">凭据指南</a>。云端配置还需要在同一凭据上添加 <strong>Cloud Device API</strong> 角色。</p>
+          <p>在 <strong>Developers › API credentials</strong> 中创建凭据并生成 API 密钥；参见 Adyen 的<a href="https://docs.adyen.com/development-resources/api-credentials">凭据指南</a>。<strong>Checkout webservice role</strong> 默认分配。仅添加配置所需的额外角色：</p>
+          <ul>
+            <li><strong>Cloud Device API role</strong>：云端付款必需。</li>
+            <li><strong>Management API — Terminal actions read</strong>：可选的自动终端查询，包括账户和最近上报的网络地址。</li>
+            <li><strong>Management API — Terminal settings read</strong>：本终端或同一网络中终端的可选自动共享密钥设置查询。</li>
+            <li><strong>Management API — Terminal settings Advanced read and write</strong>：本终端或同一网络中终端的可选自动共享密钥口令查询。</li>
+          </ul>
           <p>本终端、同一网络中的终端和 Tap to Pay 还需要<strong>共享密钥</strong>：在 <strong>Devices › Device settings › Integrations › Terminal API › Encryption key</strong> 中获取标识符、口令和版本。参见 Adyen 的<a href="https://docs.adyen.com/point-of-sale/design-your-integration/choose-your-architecture/local">本地集成指南</a>。云端配置不使用此密钥。</p>
-          <p>所有真实支付目标都从<strong>Adyen API 密钥</strong>开始。点击<strong>保存并获取设置</strong>，加密保存密钥并查询终端。可选的 <strong>Management API — Terminal actions read</strong> 权限可获取 POIID、已分配的商家账户及最近上报的 Ethernet/Wi-Fi 地址。读取共享密钥还需要终端设置读取权限及 <strong>Management API — Terminal settings Advanced read and write</strong>。应用只读取信息，不会修改 Adyen 的设置或密钥。参阅 Adyen 的<a href="https://docs.adyen.com/api-explorer/Management/3/get/terminals">终端列表</a>与<a href="https://docs.adyen.com/api-explorer/Management/latest/get/terminals/(terminalId)/terminalSettings">终端设置</a> API 文档。查询被拒绝、不可用或信息不完整时，密钥仍保持已保存，可手动补充缺失项。手动设置无需这些权限。查询到的地址可能过时，请先检查。</p>
+          <p>同一网络中的终端和云端终端以<strong>环境</strong>为步骤 1：测试卡选择 <strong>TEST</strong>，真实付款选择 <strong>LIVE</strong>。终端、账户和凭据必须属于同一环境。Mini mPOS 不会在另一环境尝试 API 密钥。在 Adyen 终端上运行时，应用读取本设备经过验证的证书；Tap to Pay 则使用已安装的 Payments 应用的环境。</p>
+          <p>实体终端可在<strong>Adyen API 密钥</strong>下点击<strong>保存并获取设置</strong>，加密保存密钥并在该环境查询终端。应用只读取信息，不会修改 Adyen 的设置或密钥。参阅 Adyen 的<a href="https://docs.adyen.com/api-explorer/Management/3/get/terminals">终端列表</a>与<a href="https://docs.adyen.com/api-explorer/Management/latest/get/terminals/(terminalId)/terminalSettings">终端设置</a> API 文档。查询被拒绝、不可用或信息不完整时，密钥仍保持已保存，可手动补充缺失项。手动设置无需 Management 权限。查询到的地址可能过时，请先检查。Tap to Pay 只保存密钥，不查询实体终端。</p>
           <figure class="guide-shot">
             <div class="terminal terminal-s1f2">
-              <img alt="终端设置中 Adyen API 密钥为步骤 1，共享密钥为步骤 2" height="960" loading="lazy" src="../images/terminal-setup.png" width="540">
+              <img alt="终端设置中环境为步骤 1，Adyen API 密钥为步骤 2" height="960" loading="lazy" src="../images/terminal-setup.png" width="540">
             </div>
             <figcaption class="fine">英文模拟设备设置演示，无真实付款。</figcaption>
           </figure>
           <h3 id="helper">从电脑输入密钥</h3>
-          <p>在可信电脑上打开<a href="setup.html">设置助手</a>，选择配置方式并填写字段，点击<strong>生成二维码</strong>。在应用中打开<strong>设置 › 数据 › 从另一台设备设置</strong>，扫描所有二维码，输入显示的传输码，再点击<strong>导入</strong>。随后按下方步骤完成连接并测试。也可直接在“设置 › 终端”中输入所有信息。</p>
+          <p>在可信电脑上打开<a href="setup.html">设置助手</a>，选择支付目标及 TEST/LIVE。<strong>自动（推荐）</strong>仅需输入 API 密钥；具有查询权限时，设备会查找终端的商家账户、地址及共享密钥。在手机或平板电脑上选择终端并检查结果。<strong>手动</strong>需在电脑上输入全部连接信息。LIVE 环境下两种方式都需要 <strong>live URL prefix</strong>。Tap to Pay 使用手动方式；安装与手机注册仍在设备上完成。</p>
+          <p>点击<strong>生成二维码</strong>。在应用中打开<strong>设置 › 数据 › 从另一台设备设置</strong>，扫描所有二维码，输入传输码，再点击<strong>导入</strong>。自动方式点击<strong>继续设置</strong>，手动方式点击<strong>检查设置</strong>。补充缺失信息后，按下方说明测试连接及 API 密钥。无法查询时，导入的密钥仍会保存，可在设备上填写信息，或使用设置助手的手动方式。也可直接在“设置 › 终端”中输入所有信息。</p>
           <h3 id="on-terminal">在 Adyen 终端上运行</h3>
           <p>请先<a href="#install">安装应用</a>并<a href="#credentials">准备凭据</a>。</p>
-          <ol><li>在<strong>设置 › 终端 › Adyen API 密钥</strong>中保存密钥。具有查询权限时，应用会匹配本终端并填写商家账户和共享密钥。</li><li>检查或输入共享密钥，点击<strong>测试连接</strong>（输入口令时点击<strong>保存并测试</strong>）。地址与 POIID 从设备检测，连接时检测 TEST/LIVE。</li><li>检查或输入 <strong>Checkout API</strong> 中的商家账户，然后点击<strong>测试 API 密钥</strong>。</li></ol>
+          <ol><li>在<strong>设置 › 终端 › Adyen API 密钥</strong>中保存密钥。应用无需共享密钥即可读取本设备证书，确定 TEST/LIVE。具有查询权限时，应用会匹配本终端并填写商家账户和共享密钥。</li><li>检查或输入共享密钥，点击<strong>测试连接</strong>（输入口令时点击<strong>保存并测试</strong>）。地址与 POIID 从设备检测。</li><li>检查或输入 <strong>Checkout API</strong> 中的商家账户，然后点击<strong>测试 API 密钥</strong>。</li></ol>
           <h3 id="network">搭配同一网络中的终端</h3>
           <p>请先<a href="#install">安装应用</a>并<a href="#credentials">准备凭据</a>。</p>
-          <ol><li>选择<strong>同一网络中的终端</strong>，先保存<strong>Adyen API 密钥</strong>。查询可用时，从列表中选择终端。</li><li>检查 POIID、商家账户、IP 地址及共享密钥，手动补充缺失项。终端的“Device info”界面显示当前地址与 POIID。</li><li>使用共享密钥测试连接，再检查 <strong>Checkout API</strong> 中的商家账户并点击<strong>测试 API 密钥</strong>。</li></ol>
+          <ol><li>选择<strong>同一网络中的终端</strong>，在步骤 1 的<strong>环境</strong>中选择与终端一致的 TEST 或 LIVE。</li><li>保存该环境的<strong>Adyen API 密钥</strong>。查询可用时，从列表中选择终端。</li><li>检查 POIID、商家账户、IP 地址及共享密钥，手动补充缺失项。终端的“Device info”界面显示当前地址与 POIID。</li><li>使用共享密钥测试连接，再检查 <strong>Checkout API</strong> 中的商家账户并点击<strong>测试 API 密钥</strong>。</li></ol>
+          <p>连接会验证终端证书是否与所选环境一致。不一致时会拒绝连接，而不会自动更改环境。</p>
           <h3 id="cloud">通过互联网连接终端</h3>
           <p>请先<a href="#install">安装应用</a>并<a href="#credentials">准备凭据</a>。</p>
-          <ol><li>选择云端支付目标，先保存具有两个所需角色的<strong>Adyen API 密钥</strong>。从可选查询中选择终端，或手动输入 POIID。</li><li>检查或输入<strong>Adyen 账户</strong>中的商家账户，点击<strong>测试连接</strong>，同时测试终端和 Checkout API。</li></ol>
-          <p>环境和数据中心会根据密钥自动检测。云端付款等待终端响应的时间可能比本地付款更长。</p>
+          <ol><li>选择云端支付目标，在步骤 1 的<strong>环境</strong>中选择与终端一致的 TEST 或 LIVE。</li><li>保存该环境中具有 Cloud Device API role 的<strong>Adyen API 密钥</strong>。查询可用时，从列表中选择终端。</li><li>检查或输入<strong>Adyen 账户</strong>中的商家账户。LIVE 环境还需输入 Checkout 实时 URL 前缀。</li><li>检查或输入终端 POIID，点击<strong>测试连接</strong>，同时测试终端和 Checkout API。</li></ol>
+          <p>应用会在所选环境中查找数据中心。云端付款等待终端响应的时间可能比本地付款更长。</p>
           <h3 id="tap-to-pay">使用 Tap to Pay</h3>
           <p>请先<a href="#install">安装应用</a>并<a href="#credentials">准备凭据</a>。</p>
-          <ol><li>选择<strong>在本手机上使用 Tap to Pay</strong>，先保存<strong>Adyen API 密钥</strong>。终端查询不会配置 Payments 应用；请手动输入此配置的商家账户及共享密钥。</li><li>请 Adyen 支持团队开通 Tap to Pay on Android 和 <strong>Adyen Payments app role</strong>。安装 TEST 用的 <strong>Adyen Payments Test</strong> 或 LIVE 用的 <strong>Adyen Payments</strong>，不要同时安装。应用提供 Google Play 链接。为手机要注册到的商家账户连接 <strong>Checkout API</strong>。</li><li>在 <strong>Tap to Pay</strong> 下输入独立的<strong>Payments 应用 API 密钥</strong>（仅有 Adyen Payments app role），可选填门店 ID。点击<strong>设置 Tap to Pay</strong>，在 Payments 应用中完成注册。</li><li>输入<strong>共享密钥</strong>，用于加密向 Payments 应用发送的付款。遵循 Adyen 的<a href="https://docs.adyen.com/point-of-sale/mobile-android/build/payments-app">Payments 应用指南</a>。</li></ol>
+          <ol><li>选择<strong>在本手机上使用 Tap to Pay</strong>。步骤 1 为 <strong>Adyen Payments 应用</strong>：请 Adyen 支持团队开通 Tap to Pay on Android 和 <strong>Adyen Payments app role</strong>，然后安装 TEST 用的 <strong>Adyen Payments Test</strong> 或 LIVE 用的 <strong>Adyen Payments</strong>，不要同时安装。应用提供 Google Play 链接。</li><li>保存已安装应用所属环境的<strong>Adyen API 密钥</strong>。无需查询实体终端。</li><li>在 <strong>Checkout API</strong> 中输入商家账户，LIVE 环境还需输入实时 URL 前缀，然后点击<strong>测试 API 密钥</strong>。注册手机时使用同一账户。</li><li>在 <strong>Tap to Pay</strong> 下输入独立的<strong>Payments 应用 API 密钥</strong>（仅有 Adyen Payments app role），可选填门店 ID。点击<strong>设置 Tap to Pay</strong>，在 Payments 应用中完成注册。</li><li>输入<strong>共享密钥</strong>，用于加密向 Payments 应用发送的付款。遵循 Adyen 的<a href="https://docs.adyen.com/point-of-sale/mobile-android/build/payments-app">Payments 应用指南</a>。</li></ol>
           <p>付款会打开 Payments 应用，再返回 Mini mPOS。已安装的应用决定 TEST 或 LIVE 环境。以后要注销手机，请使用<strong>移除本手机</strong>。</p>
           <p class="note">API 密钥会加密保存在本设备上。Adyen 建议将其保存在服务器上，但 Mini mPOS 没有服务器。使用仅具所需权限、专用于本设备或终端群的凭据，设置管理员 PIN，并撤销泄露或丢失设备的凭据。请阅读<a href="https://github.com/astiskala/minimpos/blob/main/SECURITY.md">安全政策</a>。</p>
           <p class="back-to-contents"><a href="#contents">返回目录</a></p>
         </section>
         <section id="first-payment">
           <h2>完成第一笔 TEST 付款</h2>
-          <ol><li>检查<strong>设置 › 关于</strong>，检测到的环境应为 <strong>TEST</strong>。</li><li>在<strong>设置 › 支付</strong>中确认 Adyen 账户接受的币种，在<strong>设置 › 税</strong>中确认税率和价格是否含税。</li><li>点击<strong>新建销售</strong>，输入自定义金额并进入结账。点击<strong>支付</strong>，使用 Adyen 的<a href="https://docs.adyen.com/point-of-sale/testing-pos-payments">测试卡</a>。</li><li>检查结果、收据和交易记录，也测试退款。如果结果未知，请先按<a href="troubleshooting.html#unknown">恢复说明</a>处理，再尝试其他付款。</li></ol>
+          <ol><li>检查<strong>设置 › 终端</strong>，所选或检测到的环境应为 <strong>TEST</strong>。完成连接与 API 测试。</li><li>在<strong>设置 › 支付</strong>中确认 Adyen 账户接受的币种，在<strong>设置 › 税</strong>中确认税率和价格是否含税。</li><li>点击<strong>新建销售</strong>，输入自定义金额并进入结账。点击<strong>支付</strong>，使用 Adyen 的<a href="https://docs.adyen.com/point-of-sale/testing-pos-payments">测试卡</a>。</li><li>检查结果、收据和交易记录，也测试退款。如果结果未知，请先按<a href="troubleshooting.html#unknown">恢复说明</a>处理，再尝试其他付款。</li></ol>
           <p>接下来参阅<a href="using.html">使用 Mini mPOS</a>，添加商品、自定义收据、设置员工权限并启用所需流程。</p>
           <p class="back-to-contents"><a href="#contents">返回目录</a></p>
         </section>
         <section id="live">
           <h2>接受真实付款之前</h2>
-          <ul><li>测试所有计划使用的流程，包括订金、小费和支付链接。模拟器测试不能替代 Adyen 测试。</li><li>有打印机时打印实体测试收据；使用电子收据时发送测试邮件。</li><li>设置管理员 PIN，需要时另设经理 PIN。检查<a href="using.html#business">业务设置</a>。</li><li>在 LIVE 设备上安装并使用其 LIVE 凭据。Checkout 需要 <strong>Developers › API URLs</strong> 中的 <strong>live URL prefix</strong>，参见 Adyen 的<a href="https://docs.adyen.com/development-resources/live-endpoints">LIVE 端点</a>。应用检测到 LIVE 后才显示该字段。</li><li>运行连接和 API 测试，确认“设置 › 关于”中显示 <strong>LIVE</strong>。设置助手的 TEST/LIVE 选择仅控制字段和商户后台链接，不能更改应用检测到的环境。</li></ul>
+          <ul><li>测试所有计划使用的流程，包括订金、小费和支付链接。模拟器测试不能替代 Adyen 测试。</li><li>有打印机时打印实体测试收据；使用电子收据时发送测试邮件。</li><li>设置管理员 PIN，需要时另设经理 PIN。检查<a href="using.html#business">业务设置</a>。</li><li>使用 LIVE 终端或 Payments 应用及其 LIVE 凭据。同一网络中的终端或云端终端需在步骤 1 选择 <strong>LIVE</strong>。Checkout 需要 <strong>Developers › API URLs</strong> 中的 <strong>live URL prefix</strong>，参见 Adyen 的<a href="https://docs.adyen.com/development-resources/live-endpoints">LIVE 端点</a>。选择或检测到 LIVE 后显示该字段。</li><li>运行连接和 API 测试，确认“设置 › 终端”中显示 <strong>LIVE</strong>。设置助手会为网络和云端终端导入环境选择，但不能覆盖 Adyen 终端的证书或已安装的 Payments 应用的环境。</li></ul>
           <p>需要帮助？请参阅<a href="troubleshooting.html">故障排查</a>。</p>
           <p class="back-to-contents"><a href="#contents">返回目录</a></p>
         </section>

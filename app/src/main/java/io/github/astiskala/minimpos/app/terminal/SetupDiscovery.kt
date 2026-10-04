@@ -16,12 +16,14 @@ import kotlinx.coroutines.sync.withLock
  * @param settings Saves selected connection fields.
  * @param savePassphrase Encrypts a retrieved passphrase through the container's secret-store writer.
  * @param connect Builds read-only Management access; tests inject a fake.
+ * @param readEnvironment Reads this device's certificate before using Management.
  */
 class SetupDiscovery(
     private val setups: TerminalSetupSource,
     private val settings: SettingsRepository,
     private val savePassphrase: suspend (String) -> Unit,
     private val connect: (String) -> TerminalDetailsApi = { AdyenTerminalDetails(it) },
+    private val readEnvironment: suspend () -> Unit = {},
 ) {
     private var selection: Selection? = null
     private val mutex = Mutex()
@@ -30,12 +32,14 @@ class SetupDiscovery(
     suspend fun find(): List<String>? =
         mutex.withLock {
             selection = null
+            readEnvironment()
             val unlocked = setups.unlocked()
             val key = unlocked.apiKey ?: return@withLock null
             val setup = unlocked.setup
             if (!setup.destination.discoversTerminals) return@withLock null
+            val environment = setup.environment ?: return@withLock null
             val api = connect(key)
-            val found = api.terminals() as? TerminalListing.Listed ?: return@withLock null
+            val found = api.terminals(environment) as? TerminalListing.Listed ?: return@withLock null
             val terminals =
                 if (setup.onTerminal &&
                     setup.mode == TerminalMode.TERMINAL

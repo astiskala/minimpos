@@ -64,9 +64,19 @@ class TerminalSetupViewModel(
     private val observedSettings: StateFlow<SettingsUiState>,
 ) : ViewModel() {
     private val _actions = MutableStateFlow(TerminalSetupActions())
+    private var automaticStarted = false
 
     /** Outcomes of the latest actions. */
     val actions: StateFlow<TerminalSetupActions> = _actions.asStateFlow()
+
+    /** When [requested], waits for imported settings and starts read-only discovery once per screen view model; never boards. */
+    suspend fun startAutomaticSetup(requested: Boolean) {
+        if (!requested) return
+        observedSettings.first { it.loaded }
+        if (automaticStarted) return
+        automaticStarted = true
+        findTerminals()
+    }
 
     /**
      * Looks for the terminals connected to the merchant account in the cloud, to offer them in [actions], first saving
@@ -74,7 +84,14 @@ class TerminalSetupViewModel(
      */
     fun findTerminals(apiKey: String? = null) {
         if (_actions.value.terminals.running) return
-        _actions.update { it.copy(terminals = ActionState(running = true), connectedTerminals = null, apiKeyStored = false) }
+        _actions.update {
+            it.copy(
+                terminals = ActionState(running = true),
+                connectedTerminals = null,
+                apiKeyStored = false,
+                manualDetails = false,
+            )
+        }
         launchWrite({
             val entered = apiKey?.trim()?.takeIf { it.isNotEmpty() }
             val notStored = entered?.let { persisting { store(Secret.ADYEN_API_KEY, it) } }
@@ -84,7 +101,7 @@ class TerminalSetupViewModel(
             }
             if (entered != null) _actions.update { it.copy(apiKeyStored = true) }
             val discovered = discovery.find()
-            if (discovered != null) {
+            if (!discovered.isNullOrEmpty()) {
                 _actions.update { it.copy(terminals = ActionState(done = true), connectedTerminals = discovered) }
                 val current = status.state.value
                 if (current.onTerminal && current.mode == TerminalMode.TERMINAL && discovered.size == 1) chooseTerminal(discovered.single())

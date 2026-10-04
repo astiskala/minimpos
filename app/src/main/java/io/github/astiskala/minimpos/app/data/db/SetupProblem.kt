@@ -28,8 +28,11 @@ enum class SetupProblem {
     /** No Adyen API key is saved, while the merchant account is entered. */
     API_KEY,
 
-    /** Whether payments go to TEST or LIVE is not known yet: no connection has found it. */
+    /** TEST or LIVE has not been selected for a network or cloud terminal. */
     ENVIRONMENT,
+
+    /** This device's terminal certificate could not yet supply its environment. */
+    TERMINAL_ENVIRONMENT,
 
     /** The live URL prefix the Checkout API needs in LIVE is not entered. */
     LIVE_PREFIX,

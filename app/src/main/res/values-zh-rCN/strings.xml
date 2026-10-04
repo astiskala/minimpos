@@ -38,8 +38,16 @@
   <string name="home_setup_text">输入商户后台中的共享密钥，即可开始收款。</string>
   <string name="home_setup_title_remote">完成收款设置</string>
   <string name="home_connection_failed">无法连接支付终端</string>
+  <string name="manager_pin_title">经理 PIN</string>
+  <string name="manager_pin_enter">输入经理 PIN</string>
+  <string name="manager_pin_set">设置经理 PIN</string>
+  <string name="manager_pin_change">更改经理 PIN</string>
+  <string name="manager_pin_remove">移除经理 PIN</string>
+  <string name="manager_pin_remove_message">退款、取消预授权、扣款和金额调整将不再需要经理批准。</string>
+  <string name="manager_pin_hint">可选：退款、取消预授权、扣款和金额调整需要经理批准。请先设置管理员 PIN，以保护这些设置。</string>
   <string name="pin_title">管理员 PIN</string>
   <string name="pin_enter">输入管理员 PIN</string>
+  <string name="pin_unreadable">无法读取已保存的 PIN，访问仍被锁定。请联系管理员。重置应用数据会删除配置和交易记录。</string>
   <string name="pin_wrong">PIN 错误（剩余尝试次数：%1$d）</string>
   <string name="pin_locked_out">尝试次数过多。请在 %1$s 后重试。</string>
   <string name="pin_set_title">设置管理员 PIN</string>
@@ -74,18 +82,32 @@
   <string name="tax_default_standard">标准税率</string>
   <string name="tax_default_reduced">低税率</string>
   <string name="tax_default_zero">不计税</string>
+  <string name="tax_name_gst">GST</string>
+  <string name="tax_name_vat">增值税</string>
+  <string name="tax_name_sst">SST</string>
+  <string name="tax_name_iva">IVA</string>
+  <string name="settings_tax_other">其他</string>
+  <string name="receipt_default_no_gst_note">※ 未收取GST的商品</string>
+  <string name="receipt_tax_id_abn">ABN</string>
+  <string name="receipt_tax_id_gst">GST税号</string>
+  <string name="receipt_tax_id_gst_registration">GST登记号</string>
+  <string name="receipt_tax_id_sst_registration">SST登记号</string>
+  <string name="receipt_tax_id_gst_hst">GST/HST税号</string>
+  <string name="receipt_tax_id_rfc">RFC</string>
+  <string name="receipt_tax_id_cpf_cnpj">CPF/CNPJ</string>
+  <string name="receipt_tax_id_vat">增值税税号</string>
   <string name="checkout_title">结账</string>
   <string name="checkout_tax">税额</string>
   <string name="checkout_total">合计</string>
-  <string name="checkout_transaction_reference">交易识别号</string>
+  <string name="checkout_transaction_reference">商家交易识别号</string>
   <string name="checkout_auto">自动生成</string>
   <string name="checkout_customer_reference">客户识别号</string>
   <string name="checkout_customer_reference_short">至少 %1$d 个字符</string>
-  <string name="checkout_email">购物者电子邮件地址</string>
+  <string name="checkout_email">客户电子邮件地址</string>
   <string name="checkout_email_hint">支付获批后，收据将通过电子邮件发送。</string>
   <string name="checkout_save_card">保存卡片以供今后支付</string>
-  <string name="checkout_save_card_hint">将卡片令牌化并关联至此客户识别号。请先征得购物者同意。</string>
-  <string name="checkout_save_card_email_hint">将卡片令牌化并关联至此电子邮件地址。请先征得购物者同意。</string>
+  <string name="checkout_save_card_hint">将卡片令牌化并关联至此客户识别号。请先征得客户同意。Mini mPOS 仅保存令牌；使用保存的卡片收款需要您自己的集成。</string>
+  <string name="checkout_save_card_email_hint">将卡片令牌化并关联至此电子邮件地址。请先征得客户同意。Mini mPOS 仅保存令牌；使用保存的卡片收款需要您自己的集成。</string>
   <string name="checkout_pay">支付 %1$s</string>
   <string name="checkout_pre_auth_note">仅冻结卡内金额。稍后可在“交易记录”中扣款或取消。</string>
   <string name="checkout_tip_on_receipt">在收据上填写小费</string>
@@ -129,7 +151,6 @@
   <string name="status_cancellation_requested">已请求取消</string>
   <string name="status_awaiting_tip">待填写小费</string>
   <string name="status_capture_requested">已请求扣款</string>
-  <string name="status_capture_manual">在商户后台扣款</string>
   <string name="status_capture_failed">扣款失败</string>
   <string name="status_capture_unknown">扣款结果未知</string>
   <string name="result_tip_note">请打印收据，让客户填写小费并签名，然后输入小费。</string>
@@ -162,7 +183,6 @@
   <string name="detail_tip_awaiting">等待输入收据上填写的小费。</string>
   <string name="detail_tip">账单 %1$s + 小费 %2$s</string>
   <string name="detail_capture_requested">已请求扣款 %1$s。结果由 Adyen 确认，可在商户后台查看。</string>
-  <string name="detail_capture_manual">请在商户后台的 Payments › Payment list 中按 PSP 识别号找到支付，扣款 %1$s。</string>
   <string name="detail_capture_failed">Adyen 未接受 %1$s 的扣款请求。</string>
   <string name="detail_capture_unknown">无法确定 Adyen 是否已收到 %1$s 的扣款请求。可以安全地重试。</string>
   <string name="detail_held_now">当前冻结 %1$s</string>
@@ -309,6 +329,9 @@
   <string name="transfer_replace_confirm">此设备上的所有商品、分类和税率都将被删除并替换。</string>
   <string name="transfer_scan_again">重新扫描</string>
   <string name="transfer_done">导入完成</string>
+  <string name="transfer_continue_setup">继续设置</string>
+  <string name="transfer_review_setup">检查设置</string>
+  <string name="transfer_automatic_note">“继续设置”会在本设备上匹配本终端或提供终端列表。请检查信息并补充缺失项，然后测试连接及 API 密钥。查询需要导入的 API 密钥及 Management 权限。</string>
   <string name="transfer_added">已添加商品</string>
   <string name="transfer_updated">已更新商品</string>
   <string name="transfer_new_categories">新增分类</string>
@@ -319,7 +342,7 @@
   <string name="transfer_part_settings">设置</string>
   <string name="transfer_part_settings_hint">支付、税、收据、电子邮件、安全、交易记录、共享密钥标识符和 Checkout API。不会复制支付目标及其所用终端的地址和 ID。</string>
   <string name="transfer_part_secrets">密码和密钥</string>
-  <string name="transfer_part_secrets_hint">共享密钥口令、Checkout API 密钥、Payments 应用 API 密钥、SMTP 密码和管理员 PIN，均由传输码保护</string>
+  <string name="transfer_part_secrets_hint">共享密钥口令、Adyen API 密钥、Payments 应用 API 密钥、SMTP 密码和管理员 PIN，均由传输码保护</string>
   <string name="transfer_part_secrets_none">此设备尚未设置</string>
   <string name="transfer_show_codes">显示二维码</string>
   <string name="transfer_code_title">传输码</string>
@@ -330,7 +353,7 @@
   <string name="transfer_not_included">未包含</string>
   <string name="transfer_secrets_sealed">已包含，需传输码</string>
   <string name="transfer_secret_passphrase">共享密钥口令</string>
-  <string name="transfer_secret_api_key">Checkout API 密钥</string>
+  <string name="transfer_secret_api_key">Adyen API 密钥</string>
   <string name="transfer_secret_payments_app_key">Payments 应用 API 密钥</string>
   <string name="transfer_secret_smtp">SMTP 密码</string>
   <string name="transfer_secret_pin">管理员 PIN</string>
@@ -382,12 +405,13 @@
   <string name="receipt_sample_item">自定义商品</string>
   <string name="receipt_sample_tax">增值税</string>
   <string name="receipt_sample_zero_tax">零税率</string>
-  <string name="receipt_taxable_gross_format"></string>
-  <string name="receipt_taxable_net_format"></string>
+  <string name="receipt_taxable_gross_format">%1$s应税金额（含税）</string>
+  <string name="receipt_taxable_net_format">%1$s应税金额（不含税）</string>
+  <string name="receipt_default_tax_marker_note">※ 适用标记税率的商品</string>
   <string name="email_intro">感谢您的购买。以下是您的收据。</string>
   <string name="email_refund_intro">已提交您的退款请求。详情如下。</string>
   <string name="email_pre_auth_intro">谢谢。此金额已在您的卡内冻结，稍后才会扣款；最终金额可能有所不同。详情如下。</string>
-  <string name="email_cancellation_intro">您的支付已取消，卡内冻结金额已解冻。详情如下。</string>
+  <string name="email_cancellation_intro">已请求取消冻结的支付。结果由Adyen确认，可在Customer Area查看。详情如下。</string>
   <string name="email_test_subject">Mini mPOS 测试邮件</string>
   <string name="email_test_body">您的 SMTP 设置有效。现在可通过 Mini mPOS 发送电子收据。</string>
   <string name="email_not_configured">尚未设置电子邮件。请在“设置 › 电子邮件”中配置 SMTP。</string>
@@ -423,12 +447,13 @@
   <string name="setup_passphrase">请在终端设置中输入共享密钥口令</string>
   <string name="setup_key_version">请在终端设置中输入共享密钥版本</string>
   <string name="setup_merchant_account">请在终端设置中输入商家账户</string>
-  <string name="setup_api_key">请在终端设置中输入 Checkout API 密钥</string>
-  <string name="setup_environment">请先测试终端连接，以确定终端处于 TEST 还是 LIVE 环境</string>
+  <string name="setup_api_key">请在终端设置中输入 Adyen API 密钥</string>
+  <string name="setup_environment">请在终端设置中选择 TEST 或 LIVE</string>
+  <string name="setup_terminal_environment">请检查终端连接，以读取其 TEST 或 LIVE 环境</string>
   <string name="setup_live_prefix">请在终端设置中输入 LIVE URL 前缀</string>
   <string name="setup_unreadable_passphrase">此设备无法读取已保存的共享密钥口令；请在终端设置中重新输入</string>
-  <string name="setup_unreadable_api_key">此设备无法读取已保存的 Checkout API 密钥；请在终端设置中重新输入</string>
-  <string name="setup_api_required">请先输入商家账户和 Checkout API 密钥</string>
+  <string name="setup_unreadable_api_key">此设备无法读取已保存的 Adyen API 密钥；请在终端设置中重新输入</string>
+  <string name="setup_api_required">请先输入商家账户和 Adyen API 密钥</string>
   <string name="setup_no_response">终端未响应</string>
   <string name="setup_cloud_api_key">请在终端设置中输入 API 密钥</string>
   <string name="setup_payments_app_missing">请从 Google Play 安装 Adyen Payments 应用</string>
@@ -444,6 +469,15 @@
   <string name="settings_mode_cloud">通过互联网连接的终端（云端）</string>
   <string name="settings_mode_payments_app">在本手机上使用 Tap to Pay</string>
   <string name="settings_environment">环境</string>
+  <string name="settings_environment_hint">测试卡请选择 TEST，真实付款请选择 LIVE。终端、商家账户和 API 密钥必须属于同一环境。</string>
+  <string name="settings_adyen_key_hint">请在对应环境的商户后台“Developers › API credentials”中创建凭据并生成 API 密钥。请为本设备使用专用密钥，密钥会加密保存；设备丢失时请撤销。</string>
+  <string name="settings_adyen_roles_hint">请为凭据添加此角色：</string>
+  <string name="settings_adyen_role_cloud">Cloud Device API role（发送云端付款）</string>
+  <string name="settings_discovery_roles_hint">使用自动设置时，还需添加：</string>
+  <string name="settings_adyen_role_terminals">Management API - Terminal actions read（查询终端信息）</string>
+  <string name="settings_adyen_role_settings">Management API - Terminal settings read（查询共享密钥设置）</string>
+  <string name="settings_adyen_role_shared_key">Management API - Terminal settings Advanced read and write（读取共享密钥口令）</string>
+  <string name="settings_save_api_key">保存 API 密钥</string>
   <string name="settings_env_test">TEST 测试环境</string>
   <string name="settings_env_live">LIVE 正式环境</string>
   <string name="settings_poiid">终端 ID（POIID）</string>
@@ -476,9 +510,14 @@
   <string name="settings_status_not_set_up_hint">请在下方输入共享密钥，然后点击“保存并测试”。</string>
   <string name="settings_status_failed">未连接</string>
   <string name="settings_api">Checkout API</string>
-  <string name="settings_api_hint">每笔付款都需要它：应用通过它为收据小费和预授权扣款、调整冻结金额并发送付款链接。请在商户后台的 Developers › API credentials 中创建具有 Checkout webservice role 的 API 凭据，并在此输入其 API 密钥和商家账户。</string>
+  <string name="settings_api_hint">请输入分配给终端或 Payments 应用的商家账户。已保存的 API 密钥必须有权访问该账户。LIVE 环境还需输入“Developers › API URLs”中的 Checkout 实时 URL 前缀。收款前请测试密钥。</string>
   <string name="settings_merchant_account">商家账户</string>
   <string name="settings_api_key">API 密钥</string>
+  <string name="settings_adyen_key">Adyen API 密钥</string>
+  <string name="settings_discovery_hint">“保存并查找设置”可通过可选的 Management API 权限填入终端信息。无法查询时，密钥仍会保存，请手动输入信息。</string>
+  <string name="settings_save_and_discover">保存并获取设置</string>
+  <string name="settings_discover">获取设置</string>
+  <string name="settings_discovery_manual">请检查下方信息，手动补充缺失项，然后测试连接及 API 密钥。查询权限并非必需。</string>
   <string name="settings_live_prefix">LIVE URL 前缀</string>
   <string name="settings_live_prefix_hint">仅用于 LIVE 终端：见 Developers › API URLs，例如 1797a841fbb37ca7-AdyenDemo。</string>
   <string name="settings_test_api">测试 API 密钥</string>
@@ -490,12 +529,12 @@
   <string name="settings_connection_api_ok">Checkout API 可使用此 API 密钥。</string>
   <string name="settings_connection_api_failed">Checkout API 无法使用：%1$s</string>
   <string name="settings_api_cloud">Adyen 账户</string>
-  <string name="settings_api_cloud_hint">云端终端通过 API 密钥连接，密钥加密保存在本设备上，也用于 Checkout API（扣款和付款链接）。请在 Developers › API credentials 中为本设备单独创建 API 凭据，赋予 Cloud Device API role 和 Checkout webservice role。设备丢失时请在那里删除该密钥。</string>
+  <string name="settings_api_cloud_hint">请输入分配给终端的商家账户。已保存的 API 密钥必须有权访问该账户。LIVE 环境还需输入“Developers › API URLs”中的 Checkout 实时 URL 前缀。终端的“测试连接”按钮会检查终端和 API 密钥。</string>
   <string name="settings_step_terminal">终端</string>
   <string name="settings_cloud_poiid_help">终端的型号和序列号。终端必须在线，并已分配给此商家账户。</string>
-  <string name="settings_find_terminals">查找已连接的终端</string>
+  <string name="settings_find_terminals">查找终端</string>
   <string name="settings_choose_terminal">选择终端</string>
-  <string name="settings_no_terminals">此商家账户下没有已连接的终端。</string>
+  <string name="settings_no_terminals">没有可用的匹配终端。请手动输入信息。</string>
   <string name="settings_tap_to_pay">Tap to Pay</string>
   <string name="settings_tap_to_pay_hint">请 Adyen 支持团队开通 Tap to Pay on Android 和 Adyen Payments app role。设置后，本手机将在 Payments 应用中登记到上方的商家账户（或其某个门店）。之后顾客在本手机上轻触银行卡或手机付款；本机没有打印机，收据将通过电子邮件发送。</string>
   <string name="settings_payments_app">Adyen Payments 应用</string>
@@ -563,9 +602,10 @@
     <item quantity="other">仍有 %d 件商品使用此税率。请先为其设置其他税率。</item>
   </plurals>
   <string-array name="tax_name_suggestions">
-    <item>GST</item>
-    <item>增值税</item>
-    <item>SST</item>
+    <item>@string/tax_name_gst</item>
+    <item>@string/tax_name_vat</item>
+    <item>@string/tax_name_sst</item>
+    <item>@string/tax_name_iva</item>
     <item>消费税</item>
     <item>销售税</item>
   </string-array>
@@ -575,14 +615,15 @@
   <string name="settings_references">识别号</string>
   <string name="settings_reference_prefix">识别号前缀</string>
   <string name="settings_reference_prefix_hint">可选。添加到自动生成的识别号开头，并以连字符分隔。</string>
-  <string name="settings_ask_transaction_reference">要求输入交易识别号</string>
+  <string name="settings_ask_transaction_reference">要求输入商家交易识别号</string>
+  <string name="settings_ask_transaction_reference_hint">输入订单号或预订号，以便在 Adyen 中识别付款。留空则自动生成。</string>
   <string name="settings_tokenization">购物者与保存卡片</string>
   <string name="settings_offer_card_saving">提供保存卡片选项</string>
-  <string name="settings_offer_card_saving_hint">有购物者识别号时，结账会显示“保存卡片以供今后支付”。请先征得购物者同意。</string>
+  <string name="settings_offer_card_saving_hint">有购物者识别号时，结账会显示“保存卡片以供今后支付”。请先征得客户同意。Mini mPOS 仅保存令牌；使用保存的卡片收款需要您自己的集成。</string>
   <string name="settings_tokenize_default">默认启用保存卡片</string>
   <string name="settings_tokenize_default_hint">仅在有购物者识别号时显示。</string>
   <string name="settings_pre_auth_tokenize_default">预授权默认保存卡片</string>
-  <string name="settings_pre_auth_tokenize_default_hint">保存卡片后，可在预授权扣款完成后收取延迟产生的费用。</string>
+  <string name="settings_pre_auth_tokenize_default_hint">预授权扣款完成后，可通过您自己的集成使用保存的卡片收取延迟产生的费用。Mini mPOS 无法使用保存的卡片收款。</string>
   <string name="settings_recurring_model">循环扣款模式</string>
   <string name="recurring_card_on_file">在档卡</string>
   <string name="recurring_subscription">订阅</string>
@@ -600,20 +641,27 @@
   <string name="settings_email_reference_hint">Adyen 建议不要在 shopperReference 中使用电子邮件地址等个人数据。</string>
   <string name="settings_email_salt">哈希盐值</string>
   <string name="settings_email_salt_hint">所有设备请使用相同盐值，使同一电子邮件地址对应同一令牌。</string>
-  <string name="settings_send_shopper_email">保存卡片时发送购物者电子邮件地址</string>
-  <string name="settings_send_shopper_email_hint">在终端保存卡片时，结账时输入的电子邮件地址也会发送给 Adyen，并与购物者信息一起保存。支付链接始终会发送该地址。</string>
+  <string name="settings_shopper_email_hint">支付前收集的邮箱始终会发送给 Adyen，支付链接也一样。支付后收集的邮箱仅用于发送收据。</string>
   <string name="settings_email_receipts">电子收据</string>
   <string name="settings_tipping">小费</string>
-  <string name="settings_tip_default">默认启用在收据上填写小费</string>
+  <string name="settings_tip_disabled">禁用</string>
+  <string name="settings_tip_default_off">启用（默认关闭）</string>
+  <string name="settings_tip_default_on">启用（默认开启）</string>
   <string name="settings_tip_default_hint">打印机可用时，销售结账界面会显示此选项。金额将先预授权，输入小费后再扣取总额。</string>
   <string name="settings_email_capture">询问购物者的电子邮件地址</string>
   <string name="settings_capture_off">从不</string>
   <string name="settings_capture_before">支付前</string>
   <string name="settings_capture_after">支付后</string>
-  <string name="settings_capture_both">支付前后</string>
   <string name="settings_email_capture_reference">始终在支付前询问：电子邮件是保存卡片时的购物者识别号。</string>
   <string name="settings_auto_send">自动发送电子收据</string>
   <string name="settings_header_footer">页眉和页脚</string>
+  <string name="settings_business_import">从 Adyen 导入商家信息</string>
+  <string name="settings_business_import_hint">选择 Adyen 门店并核对收据名称、地址和电话。Adyen API 密钥需要 Management API—Stores read 权限。</string>
+  <string name="settings_business_choose">选择门店</string>
+  <string name="settings_business_review">核对商家信息</string>
+  <string name="settings_business_review_hint">仅替换已提供的商家名称、地址和电话。空白字段保留原文本，税号、标题和页脚不变。</string>
+  <string name="settings_business_none">此商家账户下未找到门店。</string>
+  <string name="settings_business_unavailable">此门店没有可导入的商家信息。</string>
   <string name="settings_business_name">商家名称</string>
   <string name="settings_address">地址（每行一条）</string>
   <string name="settings_tax_id_label">税号标签</string>
@@ -623,7 +671,17 @@
   <string name="settings_footer">页脚</string>
   <string name="settings_content">内容</string>
   <string name="settings_show_tax">显示税额明细</string>
+  <string name="settings_show_tax_hint">分别列出各税率的税额。使用含税价格时，开启此选项以显示所含税额。</string>
+  <string name="settings_show_tax_amounts">显示税额</string>
+  <string name="settings_show_tax_amounts_hint">显示总额中包含或另行加收的税额，不改变实际收取的税额。</string>
+  <string name="settings_show_tax_rate_totals">按税率显示应税金额</string>
+  <string name="settings_show_tax_rate_totals_hint">按税率汇总商品金额，包括 0%。含税价格显示含税金额，否则显示不含税金额。</string>
+  <string name="settings_marked_tax_rate">标记的税率（%）</string>
+  <string name="settings_marked_tax_rate_hint">留空则不标记商品。请输入 0 至 100，最多 3 位小数。</string>
+  <string name="settings_tax_marker">商品标记</string>
+  <string name="settings_tax_marker_note">标记说明</string>
   <string name="settings_show_references">显示识别号</string>
+  <string name="settings_show_references_hint">打印商家识别号及已输入的客户识别号，便于将收据与付款或客户对应。</string>
   <string name="settings_show_qr">显示退款二维码</string>
   <string name="settings_show_qr_hint">工作人员可扫描收据，发起关联原支付的退款。</string>
   <string name="settings_printing">打印</string>
@@ -668,9 +726,9 @@
   <string name="settings_test_email_sent">测试邮件已发送至 %1$s</string>
   <string name="settings_pin_hint">管理员 PIN 保护设置和商品管理。</string>
   <string name="settings_set_pin">设置 PIN</string>
-  <string name="settings_change_pin">更改 PIN</string>
-  <string name="settings_remove_pin">移除 PIN</string>
-  <string name="settings_remove_pin_message">设置和商品将不再受到保护。</string>
+  <string name="settings_change_pin">更改管理员 PIN</string>
+  <string name="settings_remove_pin">移除管理员 PIN</string>
+  <string name="settings_remove_pin_message">设置和商品将不再受到保护。已设置的经理 PIN 也会被移除。</string>
   <string name="settings_auto_lock">重新锁定时间</string>
   <string name="settings_auto_lock_never">仅在离开时</string>
   <plurals name="settings_minutes">
@@ -683,12 +741,15 @@
   <plurals name="settings_days">
     <item quantity="other">%1$d 天</item>
   </plurals>
-  <string name="settings_clear_history">清空交易记录</string>
-  <string name="settings_clear_history_message">此设备保存的所有销售和退款记录都将被删除。已进行的支付不受影响。</string>
+  <string name="settings_clear_history">清除已完成的交易记录</string>
+  <string name="settings_clear_history_message">将删除已完成的销售和退款记录。进行中的支付、结果不明的交易和冻结金额会被保留。Adyen 中的支付不受影响。</string>
   <string name="settings_history_cleared">交易记录已清空</string>
   <string name="settings_catalogue">其他设备</string>
   <string name="settings_export_hint">以二维码显示商品目录、设置、密码和密钥</string>
   <string name="settings_import_hint">扫描另一台设备或设置助手页面的二维码，复制其设置</string>
+  <string name="settings_quick_setup">快速设置</string>
+  <string name="settings_quick_setup_hint">在电脑上打开 astiskala.github.io/minimpos/zh-CN/setup.html。选择自动，在本设备上查询终端信息；或选择手动，在电脑上输入全部信息。LIVE 环境下两种方式都需要 LIVE URL 前缀。在此扫描二维码，也可从另一台设备复制设置。</string>
+  <string name="settings_quick_setup_import">扫描设置二维码</string>
   <string name="about_version">版本</string>
   <string name="about_printer">打印机</string>
   <string name="about_printer_yes">可用</string>
@@ -703,7 +764,8 @@
   <string name="about_app_info_library">Adyen 程序库</string>
   <string name="about_text">Mini mPOS 通过 Adyen Terminal API 收款：在其所在终端上、通过同一网络中或互联网（云端）连接的终端，或在 Adyen Payments 应用中使用 Tap to Pay。它使用 Adyen Java API 程序库。发往终端或 Payments 应用的消息使用共享密钥加密；云端请求通过您的 API 密钥进行验证。</string>
   <!-- Payment links (Pay by Link) and sharing -->
-  <string name="checkout_send_link">发送支付链接</string>
+  <string name="checkout_send_link">创建支付链接</string>
+  <string name="checkout_link_without_tip">支付链接不支持收据小费。是否不使用该选项创建链接？</string>
   <string name="link_title">支付链接</string>
   <string name="link_creating">正在创建支付链接…</string>
   <string name="link_unknown_outcome">Adyen 未确认支付链接。请重新查询以获取链接。</string>
@@ -738,9 +800,13 @@
   <string name="email_link_subject">来自 {business} 的付款请求</string>
   <string name="email_link_intro">请通过下方链接或二维码在线安全支付。</string>
   <string name="settings_payment_links">支付链接</string>
-  <string name="settings_links_enabled">提供支付链接</string>
-  <string name="settings_links_hint">结账时可创建 Adyen 支付链接，而不将销售发送到终端，由顾客在线支付。使用终端设置中的 Checkout API。</string>
+  <string name="settings_links_hint">结账时可创建 Adyen 支付链接，而不将销售发送到终端，由顾客在线支付。模拟器不支持支付链接。</string>
   <string name="settings_link_expiry">链接有效时长（小时）</string>
   <string name="settings_link_expiry_hint">1 至 1680 小时（70 天）；Adyen 默认为 24 小时</string>
-  <string name="settings_links_need_api">请在终端设置中输入商家账户和 Checkout API 密钥后再创建支付链接。模拟器不支持支付链接。</string>
+  <string name="payment_context_mismatch">当前设置与原支付的终端、Adyen账户或环境不一致。请恢复原设置后继续。</string>
+  <string name="refund_review_title">核对原支付</string>
+  <string name="refund_review_message">本设备没有原销售记录。二维码不能证明支付已扣款，也不反映后续小费、退款或支付终端。请在Customer Area核对支付和剩余可退金额，并确认当前终端及环境正确。只会退还核对的金额，不会执行不限金额的整笔撤销。</string>
+  <string name="refund_review_confirm">已核对支付和设置</string>
+  <string name="pricing_change_title">确认价格变更</string>
+  <string name="pricing_change_message">%1$s → %2$s。保留显示的单价，并按新币种精度四舍五入。下方列出部分转换后的价格。切换含税或不含税价格会改变税费的计算方式。已保存的销售记录不变。</string>
 </resources>

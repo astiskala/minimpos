@@ -32,8 +32,13 @@ val appVersion =
         rootProject.file("version.properties").inputStream().use { load(it) }
     }
 
+val qualityGatePassed = providers.gradleProperty("qualityGatePassed").map(String::toBooleanStrict).getOrElse(false)
+require(!qualityGatePassed || providers.environmentVariable("CI").orNull == "true") {
+    "-PqualityGatePassed=true requires CI=true and a successful qualityGate for the unchanged checkout."
+}
+
 android {
-    namespace = "io.minimpos.app"
+    namespace = "io.github.astiskala.minimpos.app"
     compileSdk = 37
 
     defaultConfig {
@@ -79,7 +84,10 @@ android {
     testOptions {
         unitTests {
             isIncludeAndroidResources = true
-            all { it.maxHeapSize = "3g" }
+            all {
+                it.maxHeapSize = "3g"
+                it.maxParallelForks = 2
+            }
         }
     }
 
@@ -89,6 +97,7 @@ android {
         checkDependencies = true
         checkAllWarnings = true
         checkTestSources = true
+        checkReleaseBuilds = !qualityGatePassed
         // These compare versions with the latest online releases, so an unchanged build would start failing whenever
         // anything is released. Dependabot proposes updates instead.
         disable +=
@@ -179,7 +188,7 @@ room {
 
 dependencies {
     implementation(project(":core"))
-    implementation(project(":terminal-api"))
+    implementation(project(":adyen"))
 
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.activity.compose)
@@ -230,13 +239,18 @@ kover {
                     "*_Impl",
                     "*_Impl\$*",
                     "*.BuildConfig",
-                    "io.minimpos.app.MainActivity*",
-                    "io.minimpos.app.MiniMposApplication*",
+                    "io.github.astiskala.minimpos.app.MainActivity*",
+                    "io.github.astiskala.minimpos.app.MiniMposApplication*",
                 )
                 packages(
-                    "io.minimpos.app.ui.theme",
-                    "io.minimpos.app.scan",
+                    "io.github.astiskala.minimpos.app.ui.theme",
+                    "io.github.astiskala.minimpos.app.scan",
                 )
+            }
+        }
+        total {
+            verify {
+                onCheck.set(false)
             }
         }
         variant("debug") {
@@ -458,7 +472,7 @@ abstract class BackportedMethodsTask : DefaultTask() {
 
 /**
  * Points `AndroidApiLevelTest` at the compile SDK's API database, D8's backported methods and the minimum SDK: :core and
- * :terminal-api run on the terminals too, but as JVM modules Android Lint does not check which Android versions have
+ * :adyen run on the terminals too, but as JVM modules Android Lint does not check which Android versions have
  * the Java APIs they call.
  */
 abstract class AndroidApiArguments : CommandLineArgumentProvider {
@@ -501,5 +515,6 @@ tasks.withType<Test>().configureEach {
 
 // The app has no variant-specific sources, so analysing the release variant too would only repeat the debug findings.
 tasks.named("check") {
+    setDependsOn(dependsOn - tasks.named("detekt"))
     dependsOn("koverVerifyDebug", "detektDebug", "detektDebugUnitTest", "dokkaGeneratePublicationHtml")
 }

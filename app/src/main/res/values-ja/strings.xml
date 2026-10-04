@@ -38,8 +38,16 @@
   <string name="home_setup_text">Customer Areaの共有キーを入力すると、決済を受け付けられます。</string>
   <string name="home_setup_title_remote">決済の設定を完了</string>
   <string name="home_connection_failed">決済端末に接続できません</string>
+  <string name="manager_pin_title">マネージャーPIN</string>
+  <string name="manager_pin_enter">マネージャーPINを入力</string>
+  <string name="manager_pin_set">マネージャーPINを設定</string>
+  <string name="manager_pin_change">マネージャーPINを変更</string>
+  <string name="manager_pin_remove">マネージャーPINを削除</string>
+  <string name="manager_pin_remove_message">返金、取消、キャプチャ、金額調整にマネージャーの承認が不要になります。</string>
+  <string name="manager_pin_hint">任意：返金、取消、キャプチャ、金額調整にマネージャーの承認を求めます。この設定を保護するため、先に管理者PINを設定してください。</string>
   <string name="pin_title">管理者PIN</string>
   <string name="pin_enter">管理者PINを入力</string>
+  <string name="pin_unreadable">保存したPINを読み取れないため、アクセスはロックされたままです。管理者にお問い合わせください。アプリのデータをリセットすると、設定と取引履歴が削除されます。</string>
   <string name="pin_wrong">PINが違います（残り%1$d回）</string>
   <string name="pin_locked_out">試行回数の上限に達しました。%1$s以降に再試行してください。</string>
   <string name="pin_set_title">管理者PINを設定</string>
@@ -74,18 +82,32 @@
   <string name="tax_default_standard">標準税率</string>
   <string name="tax_default_reduced">軽減税率</string>
   <string name="tax_default_zero">税率0%</string>
+  <string name="tax_name_gst">GST</string>
+  <string name="tax_name_vat">VAT</string>
+  <string name="tax_name_sst">SST</string>
+  <string name="tax_name_iva">IVA</string>
+  <string name="settings_tax_other">その他</string>
+  <string name="receipt_default_no_gst_note">※はGSTが課されない商品</string>
+  <string name="receipt_tax_id_abn">ABN</string>
+  <string name="receipt_tax_id_gst">GST番号</string>
+  <string name="receipt_tax_id_gst_registration">GST登録番号</string>
+  <string name="receipt_tax_id_sst_registration">SST登録番号</string>
+  <string name="receipt_tax_id_gst_hst">GST/HST番号</string>
+  <string name="receipt_tax_id_rfc">RFC</string>
+  <string name="receipt_tax_id_cpf_cnpj">CPF/CNPJ</string>
+  <string name="receipt_tax_id_vat">VAT登録番号</string>
   <string name="checkout_title">チェックアウト</string>
   <string name="checkout_tax">税額</string>
   <string name="checkout_total">合計</string>
-  <string name="checkout_transaction_reference">取引参照ID</string>
+  <string name="checkout_transaction_reference">加盟店参照ID</string>
   <string name="checkout_auto">自動生成</string>
   <string name="checkout_customer_reference">顧客参照ID</string>
   <string name="checkout_customer_reference_short">%1$d文字以上</string>
-  <string name="checkout_email">購入者のメールアドレス</string>
+  <string name="checkout_email">お客様のメールアドレス</string>
   <string name="checkout_email_hint">決済が承認されると、領収書がメールで送信されます。</string>
   <string name="checkout_save_card">次回の決済用にカードを保存</string>
-  <string name="checkout_save_card_hint">カードをトークン化し、この顧客参照IDに紐付けます。購入者の同意を得てください。</string>
-  <string name="checkout_save_card_email_hint">カードをトークン化し、このメールアドレスに紐付けます。購入者の同意を得てください。</string>
+  <string name="checkout_save_card_hint">カードをトークン化し、この顧客参照IDに紐付けます。お客様の同意を得てください。Mini mPOSはトークンを保存します。保存済みカードへの請求には別途独自の連携が必要です。</string>
+  <string name="checkout_save_card_email_hint">カードをトークン化し、このメールアドレスに紐付けます。お客様の同意を得てください。Mini mPOSはトークンを保存します。保存済みカードへの請求には別途独自の連携が必要です。</string>
   <string name="checkout_pay">%1$sを決済</string>
   <string name="checkout_pre_auth_note">カードの利用枠を確保するだけです。後で「取引履歴」からキャプチャまたはキャンセルしてください。</string>
   <string name="checkout_tip_on_receipt">領収書にチップを記入</string>
@@ -129,7 +151,6 @@
   <string name="status_cancellation_requested">キャンセル要求済み</string>
   <string name="status_awaiting_tip">チップ入力待ち</string>
   <string name="status_capture_requested">キャプチャ要求済み</string>
-  <string name="status_capture_manual">Customer Areaでキャプチャ</string>
   <string name="status_capture_failed">キャプチャ失敗</string>
   <string name="status_capture_unknown">キャプチャ結果不明</string>
   <string name="result_tip_note">領収書を印刷し、購入者にチップの記入と署名をお願いしてから、チップを入力してください。</string>
@@ -162,7 +183,6 @@
   <string name="detail_tip_awaiting">領収書に記入されたチップの入力待ちです。</string>
   <string name="detail_tip">会計 %1$s + チップ %2$s</string>
   <string name="detail_capture_requested">%1$sのキャプチャを要求しました。結果はAdyenが確定し、Customer Areaで確認できます。</string>
-  <string name="detail_capture_manual">Customer AreaのPayments › Payment listでPSP参照IDを選び、%1$sをキャプチャしてください。</string>
   <string name="detail_capture_failed">Adyenが%1$sのキャプチャ要求を受け付けませんでした。</string>
   <string name="detail_capture_unknown">Adyenが%1$sのキャプチャ要求を受信したか不明です。安全に再試行できます。</string>
   <string name="detail_held_now">現在の確保額 %1$s</string>
@@ -309,6 +329,9 @@
   <string name="transfer_replace_confirm">このデバイスの商品、カテゴリー、税率をすべて削除して置き換えます。</string>
   <string name="transfer_scan_again">再スキャン</string>
   <string name="transfer_done">インポート完了</string>
+  <string name="transfer_continue_setup">設定を続ける</string>
+  <string name="transfer_review_setup">設定を確認</string>
+  <string name="transfer_automatic_note">「設定を続ける」で、このデバイスが端末を見つけるか、選択用の一覧を表示します。情報を確認し、不足を補ってから接続とAPIキーをテストしてください。取得にはインポートしたAPIキーとManagement権限が必要です。</string>
   <string name="transfer_added">追加した商品</string>
   <string name="transfer_updated">更新した商品</string>
   <string name="transfer_new_categories">新しいカテゴリー</string>
@@ -319,7 +342,7 @@
   <string name="transfer_part_settings">設定</string>
   <string name="transfer_part_settings_hint">決済、税、領収書、メール、セキュリティ、履歴、共有キーの識別子、Checkout API。決済先と、その端末のアドレス・IDはコピーしません。</string>
   <string name="transfer_part_secrets">パスワードとキー</string>
-  <string name="transfer_part_secrets_hint">共有キーのパスフレーズ、Checkout APIキー、PaymentsアプリのAPIキー、SMTPパスワード、管理者PINを転送コードで保護します</string>
+  <string name="transfer_part_secrets_hint">共有キーのパスフレーズ、Adyen APIキー、PaymentsアプリのAPIキー、SMTPパスワード、管理者PINを転送コードで保護します</string>
   <string name="transfer_part_secrets_none">このデバイスでは未設定</string>
   <string name="transfer_show_codes">QRコードを表示</string>
   <string name="transfer_code_title">転送コード</string>
@@ -330,7 +353,7 @@
   <string name="transfer_not_included">含まれません</string>
   <string name="transfer_secrets_sealed">転送コード付きで含まれます</string>
   <string name="transfer_secret_passphrase">共有キーのパスフレーズ</string>
-  <string name="transfer_secret_api_key">Checkout APIキー</string>
+  <string name="transfer_secret_api_key">Adyen APIキー</string>
   <string name="transfer_secret_payments_app_key">PaymentsアプリのAPIキー</string>
   <string name="transfer_secret_smtp">SMTPパスワード</string>
   <string name="transfer_secret_pin">管理者PIN</string>
@@ -384,10 +407,11 @@
   <string name="receipt_sample_zero_tax">税率0%</string>
   <string name="receipt_taxable_gross_format">%1$s対象（税込）</string>
   <string name="receipt_taxable_net_format">%1$s対象（税抜）</string>
+  <string name="receipt_default_tax_marker_note">※は軽減税率対象商品</string>
   <string name="email_intro">お買い上げありがとうございます。領収書は以下のとおりです。</string>
   <string name="email_refund_intro">返金を要求しました。詳細は以下のとおりです。</string>
   <string name="email_pre_auth_intro">ありがとうございます。カードの利用枠を確保しました。請求は後で行われ、最終金額は変わる場合があります。詳細は以下のとおりです。</string>
-  <string name="email_cancellation_intro">決済がキャンセルされ、カードに確保していた利用枠が解放されました。詳細は以下のとおりです。</string>
+  <string name="email_cancellation_intro">保留中の決済のキャンセルを要求しました。結果はAdyenが確定し、Customer Areaで確認できます。詳細は以下のとおりです。</string>
   <string name="email_test_subject">Mini mPOS テストメール</string>
   <string name="email_test_body">SMTP設定は正常です。Mini mPOSから領収書をメールで送信できます。</string>
   <string name="email_not_configured">メールが未設定です。「設定 › メール」でSMTPを設定してください。</string>
@@ -423,12 +447,13 @@
   <string name="setup_passphrase">端末設定に共有キーのパスフレーズを入力してください</string>
   <string name="setup_key_version">端末設定に共有キーのバージョンを入力してください</string>
   <string name="setup_merchant_account">端末設定にマーチャントアカウントを入力してください</string>
-  <string name="setup_api_key">端末設定にCheckout APIキーを入力してください</string>
-  <string name="setup_environment">TESTとLIVEを判別するため、先に端末への接続をテストしてください</string>
+  <string name="setup_api_key">端末設定にAdyen APIキーを入力してください</string>
+  <string name="setup_environment">端末設定でTESTまたはLIVEを選択してください</string>
+  <string name="setup_terminal_environment">端末の接続を確認してTESTまたはLIVEの環境を読み取ってください</string>
   <string name="setup_live_prefix">端末設定にLIVE URLプレフィックスを入力してください</string>
   <string name="setup_unreadable_passphrase">このデバイスで保存した共有キーのパスフレーズを読み取れません。端末設定で再入力してください</string>
-  <string name="setup_unreadable_api_key">このデバイスで保存したCheckout APIキーを読み取れません。端末設定で再入力してください</string>
-  <string name="setup_api_required">先にマーチャントアカウントとCheckout APIキーを入力してください</string>
+  <string name="setup_unreadable_api_key">このデバイスで保存したAdyen APIキーを読み取れません。端末設定で再入力してください</string>
+  <string name="setup_api_required">先にマーチャントアカウントとAdyen APIキーを入力してください</string>
   <string name="setup_no_response">端末から応答がありませんでした</string>
   <string name="setup_cloud_api_key">端末設定にAPIキーを入力してください</string>
   <string name="setup_payments_app_missing">Google PlayからAdyen Paymentsアプリをインストールしてください</string>
@@ -444,6 +469,15 @@
   <string name="settings_mode_cloud">インターネット経由の端末（クラウド）</string>
   <string name="settings_mode_payments_app">このスマートフォンでTap to Pay</string>
   <string name="settings_environment">環境</string>
+  <string name="settings_environment_hint">テストカードにはTEST、実際の支払いにはLIVEを選択します。端末、マーチャントアカウント、APIキーは同じ環境のものを使用してください。</string>
+  <string name="settings_adyen_key_hint">対応する環境のCustomer Areaの「Developers › API credentials」で資格情報を作成し、APIキーを生成してください。このデバイス専用のキーを使います。キーは暗号化して保存されます。紛失した場合は失効させてください。</string>
+  <string name="settings_adyen_roles_hint">資格情報にこのロールを追加してください：</string>
+  <string name="settings_adyen_role_cloud">Cloud Device API role（クラウド決済の送信）</string>
+  <string name="settings_discovery_roles_hint">自動設定には、次のロールも追加してください：</string>
+  <string name="settings_adyen_role_terminals">Management API - Terminal actions read（端末情報の取得）</string>
+  <string name="settings_adyen_role_settings">Management API - Terminal settings read（共有キー設定の取得）</string>
+  <string name="settings_adyen_role_shared_key">Management API - Terminal settings Advanced read and write（共有キーのパスフレーズの取得）</string>
+  <string name="settings_save_api_key">APIキーを保存</string>
   <string name="settings_env_test">TEST環境</string>
   <string name="settings_env_live">LIVE環境</string>
   <string name="settings_poiid">端末ID（POIID）</string>
@@ -476,9 +510,14 @@
   <string name="settings_status_not_set_up_hint">下に共有キーを入力し、「保存してテスト」をタップしてください。</string>
   <string name="settings_status_failed">未接続</string>
   <string name="settings_api">Checkout API</string>
-  <string name="settings_api_hint">すべての支払いに必要です。アプリはこれを通じて領収書のチップとプリオーソリをキャプチャし、確保額を調整し、支払いリンクを送ります。Customer AreaのDevelopers › API credentialsでCheckout webservice roleを持つAPI資格情報を作成し、そのAPIキーとマーチャントアカウントを入力してください。</string>
+  <string name="settings_api_hint">端末またはPaymentsアプリに割り当てられたマーチャントアカウントを入力してください。保存したAPIキーにはアクセス権限が必要です。LIVEでは「Developers › API URLs」のCheckoutライブURLプレフィックスも入力します。支払い前にキーをテストしてください。</string>
   <string name="settings_merchant_account">マーチャントアカウント</string>
   <string name="settings_api_key">APIキー</string>
+  <string name="settings_adyen_key">Adyen APIキー</string>
+  <string name="settings_discovery_hint">「保存して設定を検索」は任意のManagement APIアクセス権限で端末情報を入力します。取得できなくてもキーは保存されます。情報を手動で入力してください。</string>
+  <string name="settings_save_and_discover">保存して設定を取得</string>
+  <string name="settings_discover">設定を取得</string>
+  <string name="settings_discovery_manual">下の情報を確認し、不足する項目を手動で入力してから、接続とAPIキーをテストしてください。取得用の権限は任意です。</string>
   <string name="settings_live_prefix">LIVE URLプレフィックス</string>
   <string name="settings_live_prefix_hint">LIVE端末のみ：Developers › API URLsで確認します。例：1797a841fbb37ca7-AdyenDemo。</string>
   <string name="settings_test_api">APIキーをテスト</string>
@@ -490,12 +529,12 @@
   <string name="settings_connection_api_ok">このAPIキーでCheckout APIを利用できます。</string>
   <string name="settings_connection_api_failed">Checkout APIを利用できませんでした：%1$s</string>
   <string name="settings_api_cloud">Adyenアカウント</string>
-  <string name="settings_api_cloud_hint">クラウドの端末にはAPIキーで接続します。キーはこのデバイスに暗号化して保存され、Checkout API（キャプチャと支払いリンク）にも使われます。Developers › API credentialsで、このデバイス専用にCloud Device API roleとCheckout webservice roleを持つAPI資格情報を作成してください。デバイスを紛失した場合は、そこでキーを削除してください。</string>
+  <string name="settings_api_cloud_hint">端末に割り当てられたマーチャントアカウントを入力してください。保存したAPIキーにはアクセス権限が必要です。LIVEでは「Developers › API URLs」のCheckoutライブURLプレフィックスも入力します。端末の「接続をテスト」で端末とAPIキーの両方を確認します。</string>
   <string name="settings_step_terminal">端末</string>
   <string name="settings_cloud_poiid_help">端末のモデルとシリアル番号です。端末がオンラインで、このマーチャントアカウントに割り当てられている必要があります。</string>
-  <string name="settings_find_terminals">接続中の端末を検索</string>
+  <string name="settings_find_terminals">端末を検索</string>
   <string name="settings_choose_terminal">端末を選択</string>
-  <string name="settings_no_terminals">このマーチャントアカウントに接続中の端末はありません。</string>
+  <string name="settings_no_terminals">一致する端末がありません。情報を手動で入力してください。</string>
   <string name="settings_tap_to_pay">Tap to Pay</string>
   <string name="settings_tap_to_pay_hint">AdyenサポートにTap to Pay on AndroidとAdyen Payments app roleの有効化を依頼してください。設定すると、このスマートフォンがPaymentsアプリで上のマーチャントアカウント（またはその店舗）に登録されます。その後、お客様はこのスマートフォンにカードやスマートフォンをタッチして支払います。プリンターはないため、領収書はメールで送ります。</string>
   <string name="settings_payments_app">Adyen Paymentsアプリ</string>
@@ -563,9 +602,10 @@
     <item quantity="other">%d商品が使用中です。先に別の税率を設定してください。</item>
   </plurals>
   <string-array name="tax_name_suggestions">
-    <item>GST</item>
-    <item>VAT</item>
-    <item>SST</item>
+    <item>@string/tax_name_gst</item>
+    <item>@string/tax_name_vat</item>
+    <item>@string/tax_name_sst</item>
+    <item>@string/tax_name_iva</item>
     <item>消費税</item>
     <item>売上税</item>
   </string-array>
@@ -575,14 +615,15 @@
   <string name="settings_references">参照ID</string>
   <string name="settings_reference_prefix">参照IDプレフィックス</string>
   <string name="settings_reference_prefix_hint">任意。自動生成する参照IDの先頭に、ハイフンで区切って追加します。</string>
-  <string name="settings_ask_transaction_reference">取引参照IDの入力を求める</string>
+  <string name="settings_ask_transaction_reference">加盟店参照IDの入力を求める</string>
+  <string name="settings_ask_transaction_reference_hint">注文番号や予約番号を入力して、Adyenで決済を識別します。空欄なら自動生成します。</string>
   <string name="settings_tokenization">購入者とカードの保存</string>
   <string name="settings_offer_card_saving">カード保存の選択肢を表示</string>
-  <string name="settings_offer_card_saving_hint">購入者参照IDがある場合、会計時に「次回の決済用にカードを保存」を表示します。購入者の同意を得てください。</string>
+  <string name="settings_offer_card_saving_hint">購入者参照IDがある場合、会計時に「次回の決済用にカードを保存」を表示します。お客様の同意を得てください。Mini mPOSはトークンを保存します。保存済みカードへの請求には別途独自の連携が必要です。</string>
   <string name="settings_tokenize_default">カード保存をデフォルトでオン</string>
   <string name="settings_tokenize_default_hint">購入者参照IDがある場合のみ表示します。</string>
   <string name="settings_pre_auth_tokenize_default">プリオーソリでもカード保存をデフォルトでオン</string>
-  <string name="settings_pre_auth_tokenize_default_hint">カードを保存すると、プリオーソリのキャプチャ後に遅れて発生した費用を請求できます。</string>
+  <string name="settings_pre_auth_tokenize_default_hint">キャプチャ後の追加費用は、独自の連携から保存済みカードに請求できます。Mini mPOSから保存済みカードに請求することはできません。</string>
   <string name="settings_recurring_model">継続課金モデル</string>
   <string name="recurring_card_on_file">カードオンファイル</string>
   <string name="recurring_subscription">サブスクリプション</string>
@@ -600,20 +641,27 @@
   <string name="settings_email_reference_hint">AdyenはshopperReferenceにメールアドレスなどの個人情報を使用しないことを推奨しています。</string>
   <string name="settings_email_salt">ハッシュのソルト</string>
   <string name="settings_email_salt_hint">同じメールを同じトークンに対応させるため、すべてのデバイスで同じソルトを使用してください。</string>
-  <string name="settings_send_shopper_email">カード保存時に購入者のメールを送信</string>
-  <string name="settings_send_shopper_email_hint">端末でカードを保存するとき、会計時に入力したメールアドレスもAdyenに送信し、購入者の情報と一緒に保管します。支払いリンクでは常に送信されます。</string>
+  <string name="settings_shopper_email_hint">決済前に入力したメールは、支払いリンクでも必ずAdyenに送信します。決済後に入力したメールは領収書の送信にのみ使います。</string>
   <string name="settings_email_receipts">領収書のメール送信</string>
   <string name="settings_tipping">チップ</string>
-  <string name="settings_tip_default">領収書へのチップ記入をデフォルトでオン</string>
+  <string name="settings_tip_disabled">無効</string>
+  <string name="settings_tip_default_off">有効（初期値オフ）</string>
+  <string name="settings_tip_default_on">有効（初期値オン）</string>
   <string name="settings_tip_default_hint">プリンターがある場合、販売の会計時に表示されます。金額をプリオーソリし、チップ入力後に合計額をキャプチャします。</string>
   <string name="settings_email_capture">購入者にメールアドレスを尋ねる</string>
   <string name="settings_capture_off">入力しない</string>
   <string name="settings_capture_before">決済前</string>
   <string name="settings_capture_after">決済後</string>
-  <string name="settings_capture_both">決済前と決済後</string>
   <string name="settings_email_capture_reference">必ず決済前に入力します。メールが保存カードの購入者参照IDになります。</string>
   <string name="settings_auto_send">領収書を自動でメール送信</string>
   <string name="settings_header_footer">ヘッダーとフッター</string>
+  <string name="settings_business_import">Adyenから店舗情報をインポート</string>
+  <string name="settings_business_import_hint">Adyenの店舗を選び、領収書の店舗名、住所、電話番号を確認します。Adyen APIキーにManagement API—Stores read権限が必要です。</string>
+  <string name="settings_business_choose">店舗を選択</string>
+  <string name="settings_business_review">店舗情報を確認</string>
+  <string name="settings_business_review_hint">提供された店舗名、住所、電話番号だけを置き換えます。空欄は現在の文字を保持し、税務番号、タイトル、フッターは変更しません。</string>
+  <string name="settings_business_none">このマーチャントアカウントに店舗が見つかりません。</string>
+  <string name="settings_business_unavailable">この店舗にはインポートできる情報がありません。</string>
   <string name="settings_business_name">店舗名</string>
   <string name="settings_address">住所（1行ずつ入力）</string>
   <string name="settings_tax_id_label">税務番号のラベル</string>
@@ -623,7 +671,17 @@
   <string name="settings_footer">フッター</string>
   <string name="settings_content">表示内容</string>
   <string name="settings_show_tax">税率別の内訳を表示</string>
+  <string name="settings_show_tax_hint">税率ごとの税額を表示します。税込価格の場合、含まれる税額を表示するにはオンにしてください。</string>
+  <string name="settings_show_tax_amounts">税額を表示</string>
+  <string name="settings_show_tax_amounts_hint">合計に含まれる税額、または加算する税額を表示します。課税額は変わりません。</string>
+  <string name="settings_show_tax_rate_totals">税率別の対象金額を表示</string>
+  <string name="settings_show_tax_rate_totals_hint">0%を含む税率ごとに商品金額を集計します。税込価格なら税込合計、それ以外は税抜合計を表示します。</string>
+  <string name="settings_marked_tax_rate">印を付ける税率（%）</string>
+  <string name="settings_marked_tax_rate_hint">空欄にすると印を付けません。0〜100を小数点以下3桁以内で入力してください。</string>
+  <string name="settings_tax_marker">商品の印</string>
+  <string name="settings_tax_marker_note">印の説明</string>
   <string name="settings_show_references">参照IDを表示</string>
+  <string name="settings_show_references_hint">加盟店参照IDと、入力済みの顧客参照IDを印刷し、領収書を決済や顧客と照合しやすくします。</string>
   <string name="settings_show_qr">返金用QRコードを表示</string>
   <string name="settings_show_qr_hint">領収書をスキャンして、元の決済に紐付いた返金を開始できます。</string>
   <string name="settings_printing">印刷</string>
@@ -668,9 +726,9 @@
   <string name="settings_test_email_sent">%1$sにテストメールを送信しました</string>
   <string name="settings_pin_hint">管理者PINで設定と商品管理を保護します。</string>
   <string name="settings_set_pin">PINを設定</string>
-  <string name="settings_change_pin">PINを変更</string>
-  <string name="settings_remove_pin">PINを削除</string>
-  <string name="settings_remove_pin_message">設定と商品が保護されなくなります。</string>
+  <string name="settings_change_pin">管理者PINを変更</string>
+  <string name="settings_remove_pin">管理者PINを削除</string>
+  <string name="settings_remove_pin_message">設定と商品が保護されなくなります。マネージャーPINも設定されている場合は削除されます。</string>
   <string name="settings_auto_lock">再ロックまでの時間</string>
   <string name="settings_auto_lock_never">画面を離れたときのみ</string>
   <plurals name="settings_minutes">
@@ -683,12 +741,15 @@
   <plurals name="settings_days">
     <item quantity="other">%1$d日</item>
   </plurals>
-  <string name="settings_clear_history">履歴を消去</string>
-  <string name="settings_clear_history_message">このデバイスに保存された販売と返金をすべて削除します。決済自体には影響しません。</string>
+  <string name="settings_clear_history">完了した履歴を消去</string>
+  <string name="settings_clear_history_message">完了した販売と返金の履歴を削除します。進行中の決済、結果不明の取引、確保中の金額は残ります。Adyenでの決済には影響しません。</string>
   <string name="settings_history_cleared">履歴を消去しました</string>
   <string name="settings_catalogue">他のデバイス</string>
   <string name="settings_export_hint">カタログ、設定、パスワード、キーをQRコードで表示</string>
   <string name="settings_import_hint">別のデバイスまたはセットアップヘルパーのコードを読み取り、設定をコピー</string>
+  <string name="settings_quick_setup">かんたんセットアップ</string>
+  <string name="settings_quick_setup_hint">パソコンでastiskala.github.io/minimpos/ja/setup.htmlを開きます。自動ではこのデバイスで端末情報を取得し、手動ではパソコンですべて入力します。LIVEではどちらもLIVE URLプレフィックスが必要です。ここでQRコードを読み取るか、別のデバイスから設定をコピーしてください。</string>
+  <string name="settings_quick_setup_import">設定コードを読み取る</string>
   <string name="about_version">バージョン</string>
   <string name="about_printer">プリンター</string>
   <string name="about_printer_yes">あり</string>
@@ -703,7 +764,8 @@
   <string name="about_app_info_library">Adyenライブラリ</string>
   <string name="about_text">Mini mPOSはAdyen Terminal APIで決済を受け付けます。アプリが動作している端末、ネットワーク上またはインターネット経由（クラウド）の端末、またはAdyen PaymentsアプリのTap to Payに対応しています。AdyenのJava APIライブラリを使用し、端末やPaymentsアプリへのメッセージは共有キーで暗号化します。クラウドへのリクエストはAPIキーで認証します。</string>
   <!-- Payment links (Pay by Link) and sharing -->
-  <string name="checkout_send_link">支払いリンクを送信</string>
+  <string name="checkout_send_link">支払いリンクを作成</string>
+  <string name="checkout_link_without_tip">支払いリンクは領収書のチップに対応していません。このオプションなしでリンクを作成しますか？</string>
   <string name="link_title">支払いリンク</string>
   <string name="link_creating">支払いリンクを作成しています…</string>
   <string name="link_unknown_outcome">Adyenが支払いリンクを確認できませんでした。再確認してリンクを取得してください。</string>
@@ -738,9 +800,13 @@
   <string name="email_link_subject">{business}からのお支払いのお願い</string>
   <string name="email_link_intro">以下のリンクまたはQRコードから、オンラインで安全にお支払いください。</string>
   <string name="settings_payment_links">支払いリンク</string>
-  <string name="settings_links_enabled">支払いリンクを使う</string>
-  <string name="settings_links_hint">会計時に、販売を端末に送る代わりにAdyenの支払いリンクを作成し、お客様にオンラインで支払ってもらえます。端末設定のCheckout APIを使います。</string>
+  <string name="settings_links_hint">会計時に、販売を端末に送る代わりにAdyenの支払いリンクを作成し、お客様にオンラインで支払ってもらえます。シミュレーターでは利用できません。</string>
   <string name="settings_link_expiry">リンクの有効時間（時間）</string>
   <string name="settings_link_expiry_hint">1〜1680時間（70日）。Adyenの既定は24時間です</string>
-  <string name="settings_links_need_api">支払いリンクを作成するには、端末設定でマーチャントアカウントとCheckout APIキーを入力してください。シミュレーターでは使えません。</string>
+  <string name="payment_context_mismatch">現在の設定は元の決済の端末、Adyenアカウント、または環境と一致しません。元の設定に戻してから続行してください。</string>
+  <string name="refund_review_title">元の決済を確認</string>
+  <string name="refund_review_message">このデバイスには元の販売記録がありません。QRコードではキャプチャ完了、後のチップや返金、元の端末を確認できません。Customer Areaで決済と返金可能な残額を確認し、選択した端末と環境が正しいことを確認してください。確認した金額のみを返金し、金額無制限の全額取消は行いません。</string>
+  <string name="refund_review_confirm">決済と設定を確認しました</string>
+  <string name="pricing_change_title">価格変更を確認</string>
+  <string name="pricing_change_message">%1$s → %2$s。表示単価を維持し、新しい通貨の精度に四捨五入します。変換後の価格の一部を以下に示します。税込・税抜価格の切り替えは税額の計算方法を変更します。保存済みの販売記録は変更しません。</string>
 </resources>

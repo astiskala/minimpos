@@ -45,8 +45,16 @@
   <string name="home_connection_failed">Payments cannot reach the terminal</string>
 
   <!-- PIN -->
+  <string name="manager_pin_title">Manager PIN</string>
+  <string name="manager_pin_enter">Enter the Manager PIN</string>
+  <string name="manager_pin_set">Set Manager PIN</string>
+  <string name="manager_pin_change">Change Manager PIN</string>
+  <string name="manager_pin_remove">Remove Manager PIN</string>
+  <string name="manager_pin_remove_message">Refunds, cancellations, captures and adjustments will no longer require manager approval.</string>
+  <string name="manager_pin_hint">Optional: require manager approval for refunds, cancellations, captures and adjustments. Set an Admin PIN first to protect these settings.</string>
   <string name="pin_title">Admin PIN</string>
   <string name="pin_enter">Enter the admin PIN</string>
+  <string name="pin_unreadable">The saved PIN cannot be read. Access stays locked. Ask your administrator for help. Resetting the app’s data removes configuration and history.</string>
   <string name="pin_wrong">Wrong PIN (attempts left: %1$d)</string>
   <string name="pin_locked_out">Too many attempts. Try again at %1$s.</string>
   <string name="pin_set_title">Set admin PIN</string>
@@ -84,20 +92,34 @@
   <string name="tax_default_standard">Standard</string>
   <string name="tax_default_reduced">Reduced</string>
   <string name="tax_default_zero">No tax</string>
+  <string name="tax_name_gst">GST</string>
+  <string name="tax_name_vat">VAT</string>
+  <string name="tax_name_sst">SST</string>
+  <string name="tax_name_iva">IVA</string>
+  <string name="settings_tax_other">Other</string>
+  <string name="receipt_default_no_gst_note">※ No GST charged</string>
+  <string name="receipt_tax_id_abn">ABN</string>
+  <string name="receipt_tax_id_gst">GST No.</string>
+  <string name="receipt_tax_id_gst_registration">GST Registration No.</string>
+  <string name="receipt_tax_id_sst_registration">SST Registration No.</string>
+  <string name="receipt_tax_id_gst_hst">GST/HST No.</string>
+  <string name="receipt_tax_id_rfc">RFC</string>
+  <string name="receipt_tax_id_cpf_cnpj">CPF/CNPJ</string>
+  <string name="receipt_tax_id_vat">VAT No.</string>
 
   <!-- Checkout and payment -->
   <string name="checkout_title">Checkout</string>
   <string name="checkout_tax">Tax</string>
   <string name="checkout_total">Total</string>
-  <string name="checkout_transaction_reference">Transaction reference</string>
+  <string name="checkout_transaction_reference">Merchant reference</string>
   <string name="checkout_auto">Generated automatically</string>
   <string name="checkout_customer_reference">Customer reference</string>
   <string name="checkout_customer_reference_short">Minimum length: %1$d</string>
-  <string name="checkout_email">Shopper email</string>
+  <string name="checkout_email">Customer email</string>
   <string name="checkout_email_hint">The receipt is emailed once the payment is approved.</string>
   <string name="checkout_save_card">Save card for future payments</string>
-  <string name="checkout_save_card_hint">Tokenizes the card for this customer reference. Ask the shopper for consent.</string>
-  <string name="checkout_save_card_email_hint">Tokenizes the card for this email address. Ask the shopper for consent.</string>
+  <string name="checkout_save_card_hint">Tokenizes the card for this customer reference. Ask the customer for consent. Mini mPOS saves a token; charging saved cards needs your own integration.</string>
+  <string name="checkout_save_card_email_hint">Tokenizes the card for this email address. Ask the customer for consent. Mini mPOS saves a token; charging saved cards needs your own integration.</string>
   <string name="checkout_pay">Pay %1$s</string>
   <string name="checkout_pre_auth_note">This only holds the amount on the card. Capture or cancel it later from History.</string>
   <string name="checkout_tip_on_receipt">Tip on the receipt</string>
@@ -143,7 +165,6 @@
   <string name="status_cancellation_requested">Cancellation requested</string>
   <string name="status_awaiting_tip">Awaiting tip</string>
   <string name="status_capture_requested">Capture requested</string>
-  <string name="status_capture_manual">Capture in Customer Area</string>
   <string name="status_capture_failed">Capture failed</string>
   <string name="status_capture_unknown">Capture result unknown</string>
   <string name="result_tip_note">Print the receipt so the customer can add a tip and sign it, then enter the tip.</string>
@@ -178,7 +199,6 @@
   <string name="detail_tip_awaiting">Waiting for the tip written on the receipt.</string>
   <string name="detail_tip">Bill %1$s + tip %2$s</string>
   <string name="detail_capture_requested">Capture of %1$s requested. Adyen confirms it in your Customer Area.</string>
-  <string name="detail_capture_manual">Capture %1$s in your Customer Area under Payments › Payment list, by its PSP reference.</string>
   <string name="detail_capture_failed">Adyen did not take the capture of %1$s.</string>
   <string name="detail_capture_unknown">It is not known whether Adyen received the capture of %1$s. Retrying is safe.</string>
   <string name="detail_held_now">Now holds %1$s</string>
@@ -335,6 +355,9 @@
   <string name="transfer_replace_confirm">All products, categories and tax rates on this device will be deleted and replaced.</string>
   <string name="transfer_scan_again">Scan again</string>
   <string name="transfer_done">Import complete</string>
+  <string name="transfer_continue_setup">Continue setup</string>
+  <string name="transfer_review_setup">Review setup</string>
+  <string name="transfer_automatic_note">Continue setup finds this terminal or offers a list on this device. Review the details and enter anything missing, then test the connection and API key. Lookup needs the imported API key and Management permissions.</string>
   <string name="transfer_added">Products added</string>
   <string name="transfer_updated">Products updated</string>
   <string name="transfer_new_categories">New categories</string>
@@ -345,7 +368,7 @@
   <string name="transfer_part_settings">Settings</string>
   <string name="transfer_part_settings_hint">Payments, tax, receipts, email, security, history, the shared key’s identifier and the Checkout API. Where payments go, and the address and ID of the terminal they go to, are not copied.</string>
   <string name="transfer_part_secrets">Passwords and keys</string>
-  <string name="transfer_part_secrets_hint">Shared key passphrase, Checkout API key, Payments app API key, SMTP password and admin PIN, protected by a transfer code</string>
+  <string name="transfer_part_secrets_hint">Shared key passphrase, Adyen API key, Payments app API key, SMTP password and admin PIN, protected by a transfer code</string>
   <string name="transfer_part_secrets_none">None set on this device</string>
   <string name="transfer_show_codes">Show QR codes</string>
   <string name="transfer_code_title">Transfer code</string>
@@ -356,7 +379,7 @@
   <string name="transfer_not_included">Not included</string>
   <string name="transfer_secrets_sealed">Included, with a transfer code</string>
   <string name="transfer_secret_passphrase">Shared key passphrase</string>
-  <string name="transfer_secret_api_key">Checkout API key</string>
+  <string name="transfer_secret_api_key">Adyen API key</string>
   <string name="transfer_secret_payments_app_key">Payments app API key</string>
   <string name="transfer_secret_smtp">SMTP password</string>
   <string name="transfer_secret_pin">Admin PIN</string>
@@ -412,14 +435,15 @@
   <string name="receipt_sample_item">Custom item</string>
   <string name="receipt_sample_tax">GST</string>
   <string name="receipt_sample_zero_tax">GST-free</string>
-  <string name="receipt_taxable_gross_format"></string>
-  <string name="receipt_taxable_net_format"></string>
+  <string name="receipt_taxable_gross_format">%1$s taxable (incl. tax)</string>
+  <string name="receipt_taxable_net_format">%1$s taxable (excl. tax)</string>
+  <string name="receipt_default_tax_marker_note">※ Items at the marked tax rate</string>
 
   <!-- Email -->
   <string name="email_intro">Thank you for your purchase. Your receipt is below.</string>
   <string name="email_refund_intro">Your refund has been requested. The details are below.</string>
   <string name="email_pre_auth_intro">Thank you. The amount is held on your card and only charged later; the final amount may differ. The details are below.</string>
-  <string name="email_cancellation_intro">Your payment has been canceled and the amount held on your card released. The details are below.</string>
+  <string name="email_cancellation_intro">Cancellation of the held payment was requested. Adyen confirms the outcome in Customer Area. The details are below.</string>
   <string name="email_test_subject">Mini mPOS test email</string>
   <string name="email_test_body">Your SMTP settings work. Receipts can now be emailed from Mini mPOS.</string>
   <string name="email_not_configured">Email is not set up. Configure SMTP in Settings › Email.</string>
@@ -457,12 +481,13 @@
   <string name="setup_passphrase">Enter the shared key passphrase in Terminal settings</string>
   <string name="setup_key_version">Enter the shared key version in Terminal settings</string>
   <string name="setup_merchant_account">Enter the merchant account in Terminal settings</string>
-  <string name="setup_api_key">Enter the Checkout API key in Terminal settings</string>
-  <string name="setup_environment">Test the connection to the terminal first, so the app knows whether it is TEST or LIVE</string>
+  <string name="setup_api_key">Enter the Adyen API key in Terminal settings</string>
+  <string name="setup_environment">Select TEST or LIVE in Terminal settings</string>
+  <string name="setup_terminal_environment">Check the terminal connection to read its TEST or LIVE environment</string>
   <string name="setup_live_prefix">Enter the live URL prefix in Terminal settings</string>
   <string name="setup_unreadable_passphrase">The saved shared key passphrase could not be read on this device; enter it again in Terminal settings</string>
-  <string name="setup_unreadable_api_key">The saved Checkout API key could not be read on this device; enter it again in Terminal settings</string>
-  <string name="setup_api_required">Enter the merchant account and the Checkout API key first</string>
+  <string name="setup_unreadable_api_key">The saved Adyen API key could not be read on this device; enter it again in Terminal settings</string>
+  <string name="setup_api_required">Enter the merchant account and the Adyen API key first</string>
   <string name="setup_no_response">The terminal did not answer</string>
   <string name="setup_cloud_api_key">Enter the API key in Terminal settings</string>
   <string name="setup_payments_app_missing">Install the Adyen Payments app from Google Play</string>
@@ -479,6 +504,15 @@
   <string name="settings_mode_cloud">A terminal over the internet (cloud)</string>
   <string name="settings_mode_payments_app">Tap to Pay on this phone</string>
   <string name="settings_environment">Environment</string>
+  <string name="settings_environment_hint">Choose TEST for test cards or LIVE for real payments. Use a terminal, merchant account and API key from the same environment.</string>
+  <string name="settings_adyen_key_hint">In the matching Customer Area, create a credential under Developers › API credentials and generate its API key. Use a dedicated key for this device; it is stored encrypted here. Revoke it if the device is lost.</string>
+  <string name="settings_adyen_roles_hint">Add this role to the credential:</string>
+  <string name="settings_adyen_role_cloud">Cloud Device API role (send cloud payments)</string>
+  <string name="settings_discovery_roles_hint">For automatic setup, also add:</string>
+  <string name="settings_adyen_role_terminals">Management API - Terminal actions read (find terminal details)</string>
+  <string name="settings_adyen_role_settings">Management API - Terminal settings read (find shared-key settings)</string>
+  <string name="settings_adyen_role_shared_key">Management API - Terminal settings Advanced read and write (read the shared-key passphrase)</string>
+  <string name="settings_save_api_key">Save API key</string>
   <string name="settings_env_test">TEST environment</string>
   <string name="settings_env_live">LIVE environment</string>
   <string name="settings_poiid">Terminal ID (POIID)</string>
@@ -511,9 +545,14 @@
   <string name="settings_status_not_set_up_hint">Enter the shared key below, then tap Save and test.</string>
   <string name="settings_status_failed">Not connected</string>
   <string name="settings_api">Checkout API</string>
-  <string name="settings_api_hint">Every payment needs it: through it the app captures tips on the receipt and pre-authorizations, adjusts what they hold and sends payment links. In your Customer Area, create an API credential under Developers › API credentials with the Checkout webservice role, and enter its API key with your merchant account.</string>
+  <string name="settings_api_hint">Enter the merchant account assigned to the terminal or Payments app. The saved API key must have access to it. For LIVE, also enter the Checkout live URL prefix from Developers › API URLs. Test the key before taking payments.</string>
   <string name="settings_merchant_account">Merchant account</string>
   <string name="settings_api_key">API key</string>
+  <string name="settings_adyen_key">Adyen API key</string>
+  <string name="settings_discovery_hint">Save and find setup can fill in terminal details with optional Management API access. If lookup is unavailable, the key stays saved; enter the details manually.</string>
+  <string name="settings_save_and_discover">Save and find setup</string>
+  <string name="settings_discover">Find setup</string>
+  <string name="settings_discovery_manual">Review the details below. Enter anything missing manually, then test the connection and API key. Lookup permissions are optional.</string>
   <string name="settings_live_prefix">Live URL prefix</string>
   <string name="settings_live_prefix_hint">LIVE terminals only: Developers › API URLs, e.g. 1797a841fbb37ca7-AdyenDemo.</string>
   <string name="settings_test_api">Test API key</string>
@@ -525,12 +564,12 @@
   <string name="settings_connection_api_ok">The Checkout API works with this API key.</string>
   <string name="settings_connection_api_failed">The Checkout API did not work: %1$s</string>
   <string name="settings_api_cloud">Adyen account</string>
-  <string name="settings_api_cloud_hint">Terminals in the cloud are reached with an API key, which is stored encrypted on this device and also used for the Checkout API (captures and payment links). Create an API credential under Developers › API credentials for this device only, with the Cloud Device API and Checkout webservice roles. Remove the key there if the device is lost.</string>
+  <string name="settings_api_cloud_hint">Enter the merchant account assigned to the terminal. The saved API key must have access to it. For LIVE, also enter the Checkout live URL prefix from Developers › API URLs. The terminal’s Test connection button checks both the terminal and the API key.</string>
   <string name="settings_step_terminal">Terminal</string>
   <string name="settings_cloud_poiid_help">The terminal’s model and serial number. It must be online and assigned to this merchant account.</string>
-  <string name="settings_find_terminals">Find connected terminals</string>
+  <string name="settings_find_terminals">Find terminals</string>
   <string name="settings_choose_terminal">Choose a terminal</string>
-  <string name="settings_no_terminals">No terminals are connected to this merchant account.</string>
+  <string name="settings_no_terminals">No matching terminals are available. Enter the details manually.</string>
   <string name="settings_tap_to_pay">Tap to Pay</string>
   <string name="settings_tap_to_pay_hint">Ask Adyen Support to enable Tap to Pay on Android and the Adyen Payments app role. Setting up registers this phone in the Payments app for the merchant account above, or one of its stores. Shoppers then tap their card or phone on this phone; there is no printer, so receipts are emailed.</string>
   <string name="settings_payments_app">Adyen Payments app</string>
@@ -602,9 +641,10 @@
     <item quantity="other">Still used by %d products. Give them another tax rate first.</item>
   </plurals>
   <string-array name="tax_name_suggestions">
-    <item>GST</item>
-    <item>VAT</item>
-    <item>SST</item>
+    <item>@string/tax_name_gst</item>
+    <item>@string/tax_name_vat</item>
+    <item>@string/tax_name_sst</item>
+    <item>@string/tax_name_iva</item>
     <item>Consumption tax</item>
     <item>Sales tax</item>
   </string-array>
@@ -614,14 +654,15 @@
   <string name="settings_references">References</string>
   <string name="settings_reference_prefix">Reference prefix</string>
   <string name="settings_reference_prefix_hint">Optional. Added, with a hyphen, to the start of generated references.</string>
-  <string name="settings_ask_transaction_reference">Ask for a transaction reference</string>
+  <string name="settings_ask_transaction_reference">Ask for a merchant reference</string>
+  <string name="settings_ask_transaction_reference_hint">Enter an order or booking number to identify the payment in Adyen. Leave blank to generate one.</string>
   <string name="settings_tokenization">Shoppers and saved cards</string>
   <string name="settings_offer_card_saving">Offer to save cards</string>
-  <string name="settings_offer_card_saving_hint">Checkout offers to save the card when there is a shopper reference. Ask the shopper for consent.</string>
+  <string name="settings_offer_card_saving_hint">Checkout offers to save the card when there is a shopper reference. Ask the customer for consent. Mini mPOS saves a token; charging saved cards needs your own integration.</string>
   <string name="settings_tokenize_default">Save card switch on by default</string>
   <string name="settings_tokenize_default_hint">Only shown when a shopper reference is available.</string>
   <string name="settings_pre_auth_tokenize_default">Save card on by default for pre-authorizations</string>
-  <string name="settings_pre_auth_tokenize_default_hint">A saved card lets you charge late costs once the pre-authorization has been captured.</string>
+  <string name="settings_pre_auth_tokenize_default_hint">A saved card can be charged through your own integration for late costs after capture. Mini mPOS cannot charge saved cards.</string>
   <string name="settings_recurring_model">Recurring processing model</string>
   <string name="recurring_card_on_file">Card on file</string>
   <string name="recurring_subscription">Subscription</string>
@@ -639,21 +680,28 @@
   <string name="settings_email_reference_hint">Adyen advises against personal data such as email addresses in shopperReference.</string>
   <string name="settings_email_salt">Hash salt</string>
   <string name="settings_email_salt_hint">Use the same salt on every device so the same email maps to the same token.</string>
-  <string name="settings_send_shopper_email">Send shopper email with saved cards</string>
-  <string name="settings_send_shopper_email_hint">When a card is saved at the terminal, the email typed at checkout goes to Adyen too and is kept with the shopper’s details. Payment links always send it.</string>
+  <string name="settings_shopper_email_hint">Emails collected before payment are always sent to Adyen, including for payment links. Emails collected afterward are only used for receipts.</string>
   <string name="settings_email_receipts">Email receipts</string>
   <string name="settings_tipping">Tipping</string>
-  <string name="settings_tip_default">Tip on the receipt on by default</string>
+  <string name="settings_tip_disabled">Disabled</string>
+  <string name="settings_tip_default_off">Enabled (default off)</string>
+  <string name="settings_tip_default_on">Enabled (default on)</string>
   <string name="settings_tip_default_hint">Checkout offers it for sales while a printer is available. The amount is pre-authorized and captured with the tip once you enter it.</string>
   <string name="settings_email_capture">Ask for the shopper’s email</string>
   <string name="settings_capture_off">Never</string>
   <string name="settings_capture_before">Before payment</string>
   <string name="settings_capture_after">After payment</string>
-  <string name="settings_capture_both">Before and after payment</string>
   <string name="settings_email_capture_reference">Always before payment: the email is the shopper reference for saved cards.</string>
   <string name="settings_auto_send">Email the receipt automatically</string>
 
   <string name="settings_header_footer">Header and footer</string>
+  <string name="settings_business_import">Import business details from Adyen</string>
+  <string name="settings_business_import_hint">Choose an Adyen store and review its receipt name, address and phone. Requires Management API—Stores read access on your Adyen API key.</string>
+  <string name="settings_business_choose">Choose a store</string>
+  <string name="settings_business_review">Review business details</string>
+  <string name="settings_business_review_hint">Import replaces only the supplied business name, address and phone. Blank fields keep your text. Tax ID, title and footer stay unchanged.</string>
+  <string name="settings_business_none">No stores were found for this merchant account.</string>
+  <string name="settings_business_unavailable">This store has no business details to import.</string>
   <string name="settings_business_name">Business name</string>
   <string name="settings_address">Address (one line per row)</string>
   <string name="settings_tax_id_label">Tax ID label</string>
@@ -663,7 +711,17 @@
   <string name="settings_footer">Footer</string>
   <string name="settings_content">Content</string>
   <string name="settings_show_tax">Show tax breakdown</string>
+  <string name="settings_show_tax_hint">List the tax amount for each tax rate. For tax-inclusive prices, turn this on to show the included tax.</string>
+  <string name="settings_show_tax_amounts">Show tax amounts</string>
+  <string name="settings_show_tax_amounts_hint">Show how much tax is included in or added to the total. Does not change the tax charged.</string>
+  <string name="settings_show_tax_rate_totals">Show taxable totals by rate</string>
+  <string name="settings_show_tax_rate_totals_hint">Group item totals by tax rate, including 0%. Totals include tax for tax-inclusive prices and exclude it otherwise.</string>
+  <string name="settings_marked_tax_rate">Marked tax rate (%)</string>
+  <string name="settings_marked_tax_rate_hint">Leave blank to mark no items. Enter 0 to 100, with at most 3 decimals.</string>
+  <string name="settings_tax_marker">Item marker</string>
+  <string name="settings_tax_marker_note">Marker explanation</string>
   <string name="settings_show_references">Show references</string>
+  <string name="settings_show_references_hint">Print the merchant reference and customer reference, when entered, to help match the receipt to a payment or customer.</string>
   <string name="settings_show_qr">Show refund QR code</string>
   <string name="settings_show_qr_hint">Lets staff start a referenced refund by scanning the receipt.</string>
   <string name="settings_printing">Printing</string>
@@ -710,9 +768,9 @@
 
   <string name="settings_pin_hint">The admin PIN protects settings and product management.</string>
   <string name="settings_set_pin">Set PIN</string>
-  <string name="settings_change_pin">Change PIN</string>
-  <string name="settings_remove_pin">Remove PIN</string>
-  <string name="settings_remove_pin_message">Settings and products will no longer be protected.</string>
+  <string name="settings_change_pin">Change Admin PIN</string>
+  <string name="settings_remove_pin">Remove Admin PIN</string>
+  <string name="settings_remove_pin_message">Settings and products will no longer be protected. The Manager PIN, if set, will also be removed.</string>
   <string name="settings_auto_lock">Lock again after</string>
   <string name="settings_auto_lock_never">Only when leaving</string>
   <plurals name="settings_minutes">
@@ -728,12 +786,15 @@
     <item quantity="one">%1$d day</item>
     <item quantity="other">%1$d days</item>
   </plurals>
-  <string name="settings_clear_history">Clear history</string>
-  <string name="settings_clear_history_message">All sales and refunds stored on this device will be deleted. Payments are not affected.</string>
+  <string name="settings_clear_history">Clear settled history</string>
+  <string name="settings_clear_history_message">Settled sales and refunds will be deleted. Active payments, unresolved results and held amounts will be kept. Payments at Adyen are not affected.</string>
   <string name="settings_history_cleared">History cleared</string>
   <string name="settings_catalogue">Other devices</string>
   <string name="settings_export_hint">Show the catalog, settings, passwords and keys as QR codes</string>
   <string name="settings_import_hint">Scan the codes of another device or of the setup helper page to copy its setup</string>
+  <string name="settings_quick_setup">Quick setup</string>
+  <string name="settings_quick_setup_hint">Open astiskala.github.io/minimpos/setup.html on a computer. Choose Automatic to find terminal details on this device, or Manual to enter everything there. Both ask for the LIVE URL prefix for LIVE. Scan its QR codes here, or copy setup from another device.</string>
+  <string name="settings_quick_setup_import">Scan setup codes</string>
 
   <string name="about_version">Version</string>
   <string name="about_printer">Printer</string>
@@ -749,7 +810,8 @@
   <string name="about_app_info_library">Adyen library</string>
   <string name="about_text">Mini mPOS takes payments with the Adyen Terminal API: on the terminal it runs on, on a terminal on your network or over the internet (cloud), or with Tap to Pay in the Adyen Payments app. It uses Adyen’s Java API library. Messages to a terminal or the Payments app are encrypted with the shared key; cloud requests are authenticated with your API key.</string>
   <!-- Payment links (Pay by Link) and sharing -->
-  <string name="checkout_send_link">Send payment link</string>
+  <string name="checkout_send_link">Create payment link</string>
+  <string name="checkout_link_without_tip">Payment links do not support tips on the receipt. Create this link without that option?</string>
   <string name="link_title">Payment link</string>
   <string name="link_creating">Creating the payment link…</string>
   <string name="link_unknown_outcome">Adyen did not confirm the payment link. Check again to get it.</string>
@@ -784,9 +846,13 @@
   <string name="email_link_subject">Payment request from {business}</string>
   <string name="email_link_intro">Pay securely online with the link or the QR code below.</string>
   <string name="settings_payment_links">Payment links</string>
-  <string name="settings_links_enabled">Offer payment links</string>
-  <string name="settings_links_hint">Checkout can create an Adyen payment link instead of sending the sale to the terminal, for the customer to pay online. Uses the Checkout API in Terminal settings.</string>
+  <string name="settings_links_hint">Checkout can create an Adyen payment link instead of sending the sale to the terminal, for the customer to pay online. Payment links are not available with the simulator.</string>
   <string name="settings_link_expiry">Links work for (hours)</string>
   <string name="settings_link_expiry_hint">1 to 1680 hours (70 days); Adyen’s default is 24</string>
-  <string name="settings_links_need_api">Enter the merchant account and the Checkout API key in Terminal settings to create payment links. They are not available with the simulator.</string>
+  <string name="payment_context_mismatch">This setup does not match the original payment’s terminal, Adyen account or environment. Restore the original setup before continuing.</string>
+  <string name="refund_review_title">Review the original payment</string>
+  <string name="refund_review_message">This device has no local sale context. The QR code cannot prove the payment was captured, reveal later tips or refunds, or verify the destination. Check the original payment and remaining refundable amount in Customer Area and confirm that the selected terminal and environment are correct. This refund sends only the reviewed amount, not an unrestricted full reversal.</string>
+  <string name="refund_review_confirm">I verified the payment and setup</string>
+  <string name="pricing_change_title">Confirm pricing change</string>
+  <string name="pricing_change_message">%1$s → %2$s. Keep displayed unit prices, rounding half up to the new currency’s precision. The first converted prices are shown below. Switching tax-inclusive or tax-exclusive pricing changes how tax is added to those prices. Existing stored sales are unchanged.</string>
 </resources>

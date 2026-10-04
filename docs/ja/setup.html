@@ -41,14 +41,24 @@
         <img src="../favicon.svg" alt="" width="36" height="36">
         <span>Mini mPOS</span>
       </a>
-      <nav aria-label="メインナビゲーション">
+      <nav class="desktop-nav" aria-label="メインナビゲーション">
         <ul class="nav">
-          <li><a href="./#features">機能</a></li>
           <li><a href="getting-started.html">はじめに</a></li>
+          <li><a href="using.html">Mini mPOS の使い方</a></li>
+          <li><a href="troubleshooting.html">トラブルシューティング</a></li>
           <li><a href="setup.html" aria-current="page">セットアップヘルパー</a></li>
-          <li><a class="button button-small" href="https://github.com/astiskala/minimpos">GitHub</a></li>
         </ul>
       </nav>
+      <details class="mobile-menu"><summary>メニュー</summary><div class="mobile-panel"><nav aria-label="メインナビゲーション"><ul class="nav">
+        <li><a href="getting-started.html">はじめに</a></li><li><a href="using.html">Mini mPOS の使い方</a></li>
+        <li><a href="troubleshooting.html">トラブルシューティング</a></li><li><a href="setup.html" aria-current="page">セットアップヘルパー</a></li>
+      </ul></nav>
+        <nav class="mobile-languages" aria-label="言語"><p>言語</p><ul>
+          <li><a href="../setup.html" hreflang="en" lang="en">English</a></li>
+          <li><a href="../zh-CN/setup.html" hreflang="zh-CN" lang="zh-CN">简体中文</a></li>
+          <li><a aria-current="page" href="setup.html" hreflang="ja" lang="ja">日本語</a></li>
+        </ul></nav>
+      </div></details>
       <details class="language-menu">
         <summary aria-label="言語：日本語" title="言語"><svg aria-hidden="true" class="globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 2.7 3.8 5.7 3.8 9s-1.3 6.3-3.8 9c-2.5-2.7-3.8-5.7-3.8-9S9.5 5.7 12 3z"/></svg><span class="language-current">日本語</span></summary>
         <nav aria-label="言語">
@@ -75,6 +85,8 @@
 
     <div class="wrap setup">
       <div class="setup-main">
+        <p>初めて使う場合は、入力前に<a href="getting-started.html#choose">構成を選び</a>、<a href="getting-started.html#credentials">認証情報を用意</a>してください。</p>
+        <p class="hint" id="customer-area-note">Customer Area のリンクは新しいタブで開くので、このフォームを開いたままにできます。</p>
         <p class="note" id="setup-noscript">セットアップヘルパーには JavaScript が必要です。このページで有効にするか、<a href="getting-started.html#connect">はじめにガイド</a>のとおりアプリで入力してください。</p>
 
         <form id="setup-form" class="setup-form" hidden autocomplete="off"
@@ -96,10 +108,32 @@
             <legend>2. どの Adyen 環境ですか？</legend>
             <label class="choice"><input type="radio" name="environment" value="test" checked> <span><strong>TEST</strong>：テスト端末とテストカード</span></label>
             <label class="choice"><input type="radio" name="environment" value="live"> <span><strong>LIVE</strong>：本番の決済</span></label>
-            <p class="hint">環境はアプリが接続時に自動で判別します。この選択は、下のリンクで開く Customer Area と、LIVE URLプレフィックスの入力欄にだけ影響します。</p>
+            <p class="hint">ネットワークやクラウドの端末では、この選択をアプリの環境としてインポートします。Adyen端末やTap to Payでは、デバイスまたはインストールしたPaymentsアプリが環境を決めます。同じ環境の認証情報を使ってください。この選択でCustomer AreaのリンクとLIVE URLプレフィックス欄も切り替わります。</p>
           </fieldset>
 
-          <fieldset data-for="network">
+          <fieldset data-for="thisTerminal network cloud">
+            <legend>3. どの方法で設定しますか？</legend>
+            <label class="choice"><input type="radio" name="setupMode" value="automatic" checked> <span><strong>自動（推奨）</strong>：ここではAPIキーを入力し、デバイスで端末を選んで設定を確認します</span></label>
+            <label class="choice"><input type="radio" name="setupMode" value="manual"> <span><strong>手動</strong>：接続情報をすべてパソコンで入力します</span></label>
+            <p class="hint">LIVEではどちらもLIVE URLプレフィックスが必要です。自動取得ができない場合や情報が不足する場合は、デバイスで補うか、ここで手動を選んでください。</p>
+          </fieldset>
+
+          <p class="hint" data-only="tapToPay" hidden>Tap to Payはここで手動設定します。インポート後にPaymentsアプリをインストールし、アプリでスマートフォンを登録してください。物理端末の検索は使いません。</p>
+
+          <fieldset data-for="thisTerminal network cloud tapToPay" id="api-key-fields">
+            <legend>Adyen APIキー</legend>
+            <p class="hint"><a data-ca="developers/api-credentials/" href="https://ca-test.adyen.com/ca/ui/developers/api-credentials/" target="_blank" rel="noopener noreferrer" aria-describedby="customer-area-note">Developers › API credentials</a>で認証情報を作成し、APIキーを生成してください。<span data-only="cloud" hidden>クラウド決済にはCloud Device API roleを追加します。</span>自動設定には<a href="getting-started.html#connect">設定ガイド</a>の取得用ロールが必要です。このヘルパーはオフラインです。情報取得はインポート後にデバイスで行います。</p>
+            <label for="apiKey">APIキー</label>
+            <input id="apiKey" name="apiKey" type="password" required spellcheck="false">
+          </fieldset>
+
+          <fieldset data-for="thisTerminal network cloud tapToPay" data-mode="manual">
+            <legend>Adyenアカウント</legend>
+            <label for="merchantAccount">マーチャントアカウント</label>
+            <input id="merchantAccount" name="merchantAccount" type="text" required spellcheck="false">
+          </fieldset>
+
+          <fieldset data-for="network" data-mode="manual">
             <legend>ネットワーク上の端末</legend>
             <label for="host">端末のIPアドレス</label>
             <input id="host" name="host" type="text" inputmode="url" required spellcheck="false" placeholder="192.168.1.20">
@@ -108,16 +142,16 @@
             <p class="hint">どちらも端末の Device info 画面に表示されます。</p>
           </fieldset>
 
-          <fieldset data-for="cloud">
+          <fieldset data-for="cloud" data-mode="manual">
             <legend>クラウドの端末</legend>
-            <label for="cloudPoiId">端末ID（POIID、任意）</label>
-            <input id="cloudPoiId" name="poiId" type="text" spellcheck="false" placeholder="S1F2-000158213605014">
-            <p class="hint">空欄にすると、アプリで接続中の端末から選べます。</p>
+            <label for="cloudPoiId">端末ID（POIID）</label>
+            <input id="cloudPoiId" name="poiId" type="text" required spellcheck="false" placeholder="S1F2-000158213605014">
+            <p class="hint">端末のDevice info画面またはCustomer AreaのDevices › Terminalsで確認できます。</p>
           </fieldset>
 
-          <fieldset data-for="thisTerminal network tapToPay">
+          <fieldset data-for="thisTerminal network tapToPay" data-mode="manual">
             <legend>共有キー</legend>
-            <p class="hint">Customer Area の <a data-ca="devices/device-settings?categoryId=tapi" href="https://ca-test.adyen.com/ca/ui/devices/device-settings?categoryId=tapi">Devices › Device settings › Terminal API</a> の Encryption key にあります（鉛筆アイコンで表示）。</p>
+            <p class="hint">Customer Area の <a data-ca="devices/device-settings?categoryId=tapi" href="https://ca-test.adyen.com/ca/ui/devices/device-settings?categoryId=tapi" target="_blank" rel="noopener noreferrer" aria-describedby="customer-area-note">Devices › Device settings › Terminal API</a> の Encryption key にあります（鉛筆アイコンで表示）。</p>
             <label for="keyIdentifier">キー識別子</label>
             <input id="keyIdentifier" name="keyIdentifier" type="text" required spellcheck="false">
             <label for="passphrase">キーのパスフレーズ</label>
@@ -126,18 +160,9 @@
             <input id="keyVersion" name="keyVersion" type="number" min="1" max="9999" value="1" required>
           </fieldset>
 
-          <fieldset data-for="thisTerminal network cloud tapToPay">
-            <legend>Checkout API</legend>
-            <p class="hint"><a data-ca="developers/api-credentials/" href="https://ca-test.adyen.com/ca/ui/developers/api-credentials/">Developers › API credentials</a> で<span data-only="thisTerminal network tapToPay"> Checkout webservice role を持つ</span><span data-only="cloud" hidden> Cloud Device API role と Checkout webservice role を持つ</span> API 認証情報を作成し、APIキーを生成してください。</p>
-            <label for="merchantAccount">マーチャントアカウント</label>
-            <input id="merchantAccount" name="merchantAccount" type="text" required spellcheck="false">
-            <label for="apiKey">APIキー</label>
-            <input id="apiKey" name="apiKey" type="password" required spellcheck="false">
-          </fieldset>
-
           <fieldset data-for="thisTerminal network cloud tapToPay" data-env="live">
             <legend>LIVE URLプレフィックス</legend>
-            <p class="hint"><a data-ca="developers/api-urls" href="https://ca-live.adyen.com/ca/ui/developers/api-urls">Developers › API URLs</a> にあります。</p>
+            <p class="hint"><a data-ca="developers/api-urls" href="https://ca-live.adyen.com/ca/ui/developers/api-urls" target="_blank" rel="noopener noreferrer" aria-describedby="customer-area-note">Developers › API URLs</a> にあります。</p>
             <label for="liveUrlPrefix">プレフィックス</label>
             <input id="liveUrlPrefix" name="liveUrlPrefix" type="text" required spellcheck="false" placeholder="1797a841fbb37ca7-AdyenDemo">
           </fieldset>
@@ -149,7 +174,7 @@
             <input id="paymentsAppApiKey" name="paymentsAppApiKey" type="password" required spellcheck="false">
             <label for="storeId">店舗ID（任意）</label>
             <input id="storeId" name="storeId" type="text" spellcheck="false">
-            <p class="hint">スマートフォンを 1 店舗用に設定する場合：<a data-ca="devices/stores/" href="https://ca-test.adyen.com/ca/ui/devices/stores/">Devices › Stores</a> にあるその店舗の ID（reference ではありません）。</p>
+            <p class="hint">スマートフォンを 1 店舗用に設定する場合：<a data-ca="devices/stores/" href="https://ca-test.adyen.com/ca/ui/devices/stores/" target="_blank" rel="noopener noreferrer" aria-describedby="customer-area-note">Devices › Stores</a> にあるその店舗の ID（reference ではありません）。</p>
           </fieldset>
 
           <div class="setup-actions">
@@ -165,8 +190,10 @@
             <li>デバイスの Mini mPOS で<strong>設定 › データ › 別のデバイスから設定</strong>を開きます。</li>
             <li>カメラで下のコードを読み取ります。複数ある場合は自動で切り替わります。</li>
             <li><strong>転送コード</strong>を入力し、<strong>インポート</strong>をタップします。デバイスでは、ここで入力した項目だけが変わります。</li>
-            <li><strong>設定 › 端末</strong>で接続を確認します。Tap to Pay の場合は、そこで<strong>Tap to Payを設定</strong>をタップします。</li>
+            <li>自動では<strong>設定を続ける</strong>をタップします。デバイスがこの端末を見つけるか、選択用の一覧を表示します。情報を確認し、不足を補ってください。手動では<strong>設定を確認</strong>をタップします。<strong>設定 › 端末</strong>で接続とAPIキーをテストします。Tap to Payでは、そこで<strong>Tap to Payを設定</strong>をタップします。</li>
           </ol>
+          <p>取り込み後は<a href="getting-started.html#first-payment">最初の TEST 決済</a>を行ってください。</p>
+          <p><a href="troubleshooting.html#access">取り込みの問題</a> · <a href="troubleshooting.html#connection">接続の問題</a></p>
           <div class="setup-code-card" id="setup-code-card">
             <p>転送コード</p>
             <p class="setup-code" id="setup-code"></p>
@@ -186,21 +213,23 @@
         <ul>
           <li><strong>入力内容はこのページの外に出ません。</strong>コードはブラウザー内で作成され、このページは何も送信・保存しません。終わったらページを閉じてください。</li>
           <li><strong>キーは暗号化されます。</strong>コード内のパスワードとキーは、ここにだけ表示される転送コードで暗号化されるため、コードの写真だけでは読み取れません。</li>
-          <li><strong>コードは一度だけ使います。</strong>作成するたびに新しい転送コードになります。</li>
-          <li><strong>設定をまるごとコピーするには？</strong>商品と設定を別のデバイスにコピーするには、アプリの<a href="getting-started.html#more">別のデバイスに共有</a>を使ってください。</li>
+          <li><strong>転送コードは秘密にしてください。</strong>QR コードと転送コードの両方があればキーを復号できます。必要に応じて新しい転送を作り、終わったら閉じてください。</li>
+          <li><strong>接続だけを設定します。</strong>商品、領収書やほかの店舗設定はコピーしません。それらはアプリの<a href="using.html#more">別のデバイスに共有</a>を使います。</li>
+          <li><strong>全体の手順は？</strong><a href="getting-started.html">はじめに</a>を参照し、取り込みや接続の問題は<a href="troubleshooting.html">トラブルシューティング</a>で確認してください。</li>
         </ul>
         <h2>Customer Area へのリンク</h2>
+        <p class="hint">こちらのリンクも新しいタブで開きます。</p>
         <table class="setup-links">
           <thead>
             <tr><th scope="col">ページ</th><th scope="col">TEST</th><th scope="col">LIVE</th></tr>
           </thead>
           <tbody>
-            <tr><th scope="row">ログイン</th><td><a href="https://ca-test.adyen.com/ca/ui/">TEST</a></td><td><a href="https://ca-live.adyen.com/ca/ui/">LIVE</a></td></tr>
-            <tr><th scope="row">Terminal apps（APK のアップロード）</th><td><a href="https://ca-test.adyen.com/ca/ui/devices/terminal-apps/">TEST</a></td><td><a href="https://ca-live.adyen.com/ca/ui/devices/terminal-apps/">LIVE</a></td></tr>
-            <tr><th scope="row">API credentials</th><td><a href="https://ca-test.adyen.com/ca/ui/developers/api-credentials/">TEST</a></td><td><a href="https://ca-live.adyen.com/ca/ui/developers/api-credentials/">LIVE</a></td></tr>
-            <tr><th scope="row">Terminal API（共有キー）</th><td><a href="https://ca-test.adyen.com/ca/ui/devices/device-settings?categoryId=tapi">TEST</a></td><td><a href="https://ca-live.adyen.com/ca/ui/devices/device-settings?categoryId=tapi">LIVE</a></td></tr>
-            <tr><th scope="row">Stores（店舗）</th><td><a href="https://ca-test.adyen.com/ca/ui/devices/stores/">TEST</a></td><td><a href="https://ca-live.adyen.com/ca/ui/devices/stores/">LIVE</a></td></tr>
-            <tr><th scope="row">API URLs（LIVE プレフィックス）</th><td>–</td><td><a href="https://ca-live.adyen.com/ca/ui/developers/api-urls">LIVE</a></td></tr>
+            <tr><th scope="row">ログイン</th><td><a href="https://ca-test.adyen.com/ca/ui/" target="_blank" rel="noopener noreferrer" aria-describedby="customer-area-note">TEST</a></td><td><a href="https://ca-live.adyen.com/ca/ui/" target="_blank" rel="noopener noreferrer" aria-describedby="customer-area-note">LIVE</a></td></tr>
+            <tr><th scope="row">Terminal apps（APK のアップロード）</th><td><a href="https://ca-test.adyen.com/ca/ui/devices/terminal-apps/" target="_blank" rel="noopener noreferrer" aria-describedby="customer-area-note">TEST</a></td><td><a href="https://ca-live.adyen.com/ca/ui/devices/terminal-apps/" target="_blank" rel="noopener noreferrer" aria-describedby="customer-area-note">LIVE</a></td></tr>
+            <tr><th scope="row">API credentials</th><td><a href="https://ca-test.adyen.com/ca/ui/developers/api-credentials/" target="_blank" rel="noopener noreferrer" aria-describedby="customer-area-note">TEST</a></td><td><a href="https://ca-live.adyen.com/ca/ui/developers/api-credentials/" target="_blank" rel="noopener noreferrer" aria-describedby="customer-area-note">LIVE</a></td></tr>
+            <tr><th scope="row">Terminal API（共有キー）</th><td><a href="https://ca-test.adyen.com/ca/ui/devices/device-settings?categoryId=tapi" target="_blank" rel="noopener noreferrer" aria-describedby="customer-area-note">TEST</a></td><td><a href="https://ca-live.adyen.com/ca/ui/devices/device-settings?categoryId=tapi" target="_blank" rel="noopener noreferrer" aria-describedby="customer-area-note">LIVE</a></td></tr>
+            <tr><th scope="row">Stores（店舗）</th><td><a href="https://ca-test.adyen.com/ca/ui/devices/stores/" target="_blank" rel="noopener noreferrer" aria-describedby="customer-area-note">TEST</a></td><td><a href="https://ca-live.adyen.com/ca/ui/devices/stores/" target="_blank" rel="noopener noreferrer" aria-describedby="customer-area-note">LIVE</a></td></tr>
+            <tr><th scope="row">API URLs（LIVE プレフィックス）</th><td>–</td><td><a href="https://ca-live.adyen.com/ca/ui/developers/api-urls" target="_blank" rel="noopener noreferrer" aria-describedby="customer-area-note">LIVE</a></td></tr>
           </tbody>
         </table>
       </aside>
@@ -209,6 +238,10 @@
 
   <footer class="site-footer">
     <div class="wrap footer-row">
+      <nav aria-label="ガイドと設定"><ul class="footer-nav">
+        <li><a href="getting-started.html">はじめに</a></li><li><a href="using.html">Mini mPOS の使い方</a></li>
+        <li><a href="troubleshooting.html">トラブルシューティング</a></li><li><a href="setup.html" aria-current="page">セットアップヘルパー</a></li>
+      </ul></nav>
       <p>
         <img src="../favicon.svg" alt="" width="24" height="24"> Mini mPOS · MIT ライセンス ·
         <a href="https://github.com/astiskala/minimpos">GitHub</a> ·

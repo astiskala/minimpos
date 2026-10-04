@@ -29,7 +29,7 @@
   const STORED_BLOCK = 0xffff;
   const CUSTOMER_AREA = { test: "https://ca-test.adyen.com/ca/ui/", live: "https://ca-live.adyen.com/ca/ui/" };
   const CONNECTION_FIELDS = ["host", "poiId", "keyIdentifier", "merchantAccount", "liveUrlPrefix", "storeId"];
-  const SECRET_FIELDS = { passphrase: "TERMINAL_PASSPHRASE", apiKey: "CHECKOUT_API_KEY", paymentsAppApiKey: "PAYMENTS_APP_API_KEY" };
+  const SECRET_FIELDS = { passphrase: "TERMINAL_PASSPHRASE", apiKey: "ADYEN_API_KEY", paymentsAppApiKey: "PAYMENTS_APP_API_KEY" };
 
   const results = document.getElementById("setup-codes");
   const status = document.getElementById("setup-status");
@@ -179,11 +179,14 @@
 
   const destination = () => form.elements.destination.value;
   const environment = () => form.elements.environment.value;
+  const setupMode = () => destination() === "tapToPay" ? "manual" : form.elements.setupMode.value;
 
-  /** Shows the fields the destination and environment need; hidden ones are disabled, so they are neither checked nor read. */
+  /** Hidden destination, environment and mode fields are disabled, so they are neither checked nor read. */
   const refresh = () => {
-    for (const group of form.querySelectorAll("[data-for]")) {
-      const wanted = group.dataset.for.split(" ").includes(destination()) && (!group.dataset.env || group.dataset.env === environment());
+    for (const group of form.querySelectorAll("fieldset[data-for], fieldset[data-mode]")) {
+      const wanted = (!group.dataset.for || group.dataset.for.split(" ").includes(destination())) &&
+        (!group.dataset.env || group.dataset.env === environment()) &&
+        (!group.dataset.mode || group.dataset.mode === setupMode());
       group.hidden = !wanted;
       group.disabled = !wanted;
     }
@@ -241,6 +244,8 @@
     status.textContent = message("msgMaking");
     const data = new FormData(form);
     const connection = { destination: destination() };
+    if (setupMode() === "automatic") connection.automatic = true;
+    if (["network", "cloud"].includes(destination())) connection.environment = environment().toUpperCase();
     for (const name of CONNECTION_FIELDS) {
       const value = (data.get(name) || "").trim();
       if (value) connection[name] = value;

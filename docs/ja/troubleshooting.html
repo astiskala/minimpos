@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>トラブルシューティング – Mini mPOS</title>
+  <meta name="description" content="不明な決済結果を確認し、Mini mPOS の接続、キャプチャ、支払いリンク、領収書、インストールの問題を解決します。">
+  <link rel="icon" href="../favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="../styles.css">
+  <link rel="canonical" href="https://astiskala.github.io/minimpos/ja/troubleshooting.html">
+  <link rel="alternate" hreflang="en" href="https://astiskala.github.io/minimpos/troubleshooting.html">
+  <link rel="alternate" hreflang="zh-CN" href="https://astiskala.github.io/minimpos/zh-CN/troubleshooting.html">
+  <link rel="alternate" hreflang="ja" href="https://astiskala.github.io/minimpos/ja/troubleshooting.html">
+  <link rel="alternate" hreflang="x-default" href="https://astiskala.github.io/minimpos/troubleshooting.html">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="Mini mPOS のトラブルシューティング">
+  <meta property="og:description" content="不確かな決済を安全に確認し、問題が起きたときの次の手順を探します。">
+  <meta property="og:url" content="https://astiskala.github.io/minimpos/ja/troubleshooting.html">
+  <meta property="og:image" content="https://astiskala.github.io/minimpos/images/social.png">
+  <meta property="og:image:alt" content="Adyen 端末をイメージした Mini mPOS のイラストと英語のシミュレーターデモ。">
+  <meta property="og:locale" content="ja_JP">
+  <meta property="og:locale:alternate" content="en_US">
+  <meta property="og:locale:alternate" content="zh_CN">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Mini mPOS のトラブルシューティング">
+  <meta name="twitter:description" content="不確かな決済を安全に確認し、問題が起きたときの次の手順を探します。">
+  <meta name="twitter:image" content="https://astiskala.github.io/minimpos/images/social.png">
+  <meta name="twitter:image:alt" content="Adyen 端末をイメージした Mini mPOS のイラストと英語のシミュレーターデモ。">
+  <meta name="theme-color" content="#00112C">
+</head>
+<body>
+  <a class="skip" href="#main">本文へ移動</a>
+  <header class="site-header"><div class="wrap header-row">
+    <a class="brand" href="./" aria-label="Mini mPOS ホーム"><img src="../favicon.svg" alt="" width="36" height="36"><span>Mini mPOS</span></a>
+    <nav class="desktop-nav" aria-label="メインナビゲーション"><ul class="nav">
+      <li><a href="getting-started.html">はじめに</a></li><li><a href="using.html">Mini mPOS の使い方</a></li>
+      <li><a href="troubleshooting.html" aria-current="page">トラブルシューティング</a></li><li><a href="setup.html">セットアップヘルパー</a></li>
+    </ul></nav>
+    <details class="mobile-menu"><summary>メニュー</summary><div class="mobile-panel"><nav aria-label="メインナビゲーション"><ul class="nav">
+      <li><a href="getting-started.html">はじめに</a></li><li><a href="using.html">Mini mPOS の使い方</a></li>
+      <li><a href="troubleshooting.html" aria-current="page">トラブルシューティング</a></li><li><a href="setup.html">セットアップヘルパー</a></li>
+    </ul></nav>
+      <nav class="mobile-languages" aria-label="言語"><p>言語</p><ul>
+        <li><a href="../troubleshooting.html" hreflang="en" lang="en">English</a></li>
+        <li><a href="../zh-CN/troubleshooting.html" hreflang="zh-CN" lang="zh-CN">简体中文</a></li>
+        <li><a aria-current="page" href="troubleshooting.html" hreflang="ja" lang="ja">日本語</a></li>
+      </ul></nav>
+    </div></details>
+    <details class="language-menu"><summary aria-label="言語：日本語" title="言語"><svg aria-hidden="true" class="globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 2.7 3.8 5.7 3.8 9s-1.3 6.3-3.8 9c-2.5-2.7-3.8-5.7-3.8-9S9.5 5.7 12 3z"/></svg><span class="language-current">日本語</span></summary><nav aria-label="言語"><ul><li><a href="../troubleshooting.html" hreflang="en" lang="en">English</a></li><li><a href="../zh-CN/troubleshooting.html" hreflang="zh-CN" lang="zh-CN">简体中文</a></li><li><a href="troubleshooting.html" hreflang="ja" lang="ja" aria-current="page">日本語</a></li></ul></nav></details>
+  </div></header>
+  <main id="main">
+    <section class="guide-hero"><div class="wrap"><p class="eyebrow">ガイド</p><h1>トラブルシューティング</h1><p class="lead">まず決済結果を確認してください。接続を直しても、前の決済が成立したかどうかはわかりません。</p></div></section>
+    <div class="wrap guide">
+      <nav class="toc" id="contents" aria-label="ガイドナビゲーション">
+        <p class="toc-title">ガイド</p><p><a href="getting-started.html">はじめに</a><br><a href="using.html">Mini mPOS の使い方</a><br><a href="troubleshooting.html" aria-current="page">トラブルシューティング</a></p>
+        <div class="desktop-contents"><p class="toc-title">このページの内容</p><ol>
+          <li><a href="#unknown">決済・返金の結果が不明</a></li><li><a href="#connection">設定と接続</a></li>
+          <li><a href="#modifications">キャプチャと調整</a></li><li><a href="#links">支払いリンク</a></li>
+          <li><a href="#receipts">領収書とメール</a></li><li><a href="#access">PIN と転送</a></li>
+          <li><a href="#install">インストール</a></li><li><a href="#help">問い合わせ</a></li>
+        </ol></div>
+        <details class="mobile-contents"><summary class="toc-title">このページの内容</summary><ol>
+          <li><a href="#unknown">決済・返金の結果が不明</a></li><li><a href="#connection">設定と接続</a></li>
+          <li><a href="#modifications">キャプチャと調整</a></li><li><a href="#links">支払いリンク</a></li>
+          <li><a href="#receipts">領収書とメール</a></li><li><a href="#access">PIN と転送</a></li>
+          <li><a href="#install">インストール</a></li><li><a href="#help">問い合わせ</a></li>
+        </ol></details>
+      </nav>
+      <div class="guide-body">
+        <section id="unknown">
+          <h2>決済や返金の結果が不明</h2>
+          <p class="note"><strong>応答がないという理由だけで、もう一度請求・返金しないでください。</strong>リクエストは Adyen に届いている可能性があります。元の操作を確認します。</p>
+          <ol><li><strong>取引履歴 › 要確認</strong>で元の決済・返金を開きます。</li><li><strong>結果を再確認</strong>をタップします。ローカルやクラウド端末では元の取引結果を問い合わせます。</li><li>不明のままなら、参照ID、時刻、金額で<strong>Customer Area › Payments › Payment list</strong>を確認してから次の操作を決めます。</li></ol>
+          <p>クラッシュや再起動で中断した操作は、不明として残ります。アプリデータを消去して解決しようとしないでください。</p>
+          <h3>Tap to Pay から応答なしで戻った</h3>
+          <p>Payments アプリには取引状態を問い合わせられません。<strong>結果を再確認</strong>は遅れて届いた応答を使えますが、リモートで取得はできません。応答がなければ再請求前に Customer Area を確認します。</p>
+          <h3>端末が使用中</h3>
+          <p>ほかの決済を終えるか管理メニューを閉じます。結果画面に<strong>端末の現在の取引をキャンセル</strong>がある場合、その取引を止める意図があるときだけ使い、結果を確認してから再試行します。Tap to Pay はこの操作に対応しません。</p>
+          <p class="back-to-contents"><a href="#contents">目次に戻る</a></p>
+        </section>
+        <section id="connection">
+          <h2>決済の設定が未完了、または端末に接続できない</h2>
+          <p>ホームの設定メッセージから<strong>設定 › 端末</strong>を開き、番号付き手順を完了して接続と API をテストします。必要なら<a href="getting-started.html#connect">構成別の接続手順</a>を参照してください。</p>
+          <dl class="settings-list"><dt>この端末、またはネットワーク上の端末</dt><dd>共有キーの識別子、パスフレーズ、バージョンを Customer Area と照合します。ネットワークでは現在の IP アドレス、POIID、同じネットワークで相互接続できることも確認します。</dd><dt>クラウド</dt><dd>マーチャントアカウント、POIID、認証情報の Cloud Device API と Checkout webservice ロールを確認します。端末がオフラインならクラウド決済はできません。</dd><dt>Tap to Pay</dt><dd>対象環境のPaymentsアプリを入れ、TESTとLIVEの両方は入れないでください。登録と共有キーの入力を完了します。設定チェックの成功はカード決済のテストではありません。</dd><dt>Checkout API</dt><dd>すべての実決済構成で必要です。アカウントとキーを確認し、LIVEではlive URL prefixも入力します。保存キーを読み取れなければ再入力します。</dd><dt>環境が違う</dt><dd>ネットワークやクラウドの端末では設定 › 端末の手順1で環境を確認し、同じ環境の端末、アカウント、APIキーを使います。証明書が一致しなければ接続を拒否し、API呼び出しは環境を自動変更しません。Adyen端末やTap to Payでは正しいデバイスまたはPaymentsアプリを使います。<a href="getting-started.html#connect">設定手順</a>を参照してください。</dd></dl>
+          <p>アカウント、環境、端末を変えると、以前の決済の操作がブロックされる場合があります。その決済時の設定に戻すか Customer Area で処理してください。別アカウントで処理しようとしないでください。</p>
+          <p class="back-to-contents"><a href="#contents">目次に戻る</a></p>
+        </section>
+        <section id="modifications">
+          <h2>キャプチャや調整が失敗、または結果が不明</h2>
+          <p><strong>取引履歴</strong>の元の項目で理由を確認します。不足する Checkout API 設定を直すか、元のアカウント・環境に戻します。</p>
+          <ul><li><strong>キャプチャを再試行</strong>は保存した同じ要求を同じ識別子で送ります。新しい決済を作らず、この操作を使ってください。</li><li>未解決の調整は元の金額で再試行します。別の金額は別操作であり、先の操作を解決するまでブロックされる場合があります。</li><li>発行会社がチップ増額を拒否した場合は少額かゼロを選びます。拒否された増額ではチップは保存されません。</li><li><strong>キャプチャ要求済み</strong>、<strong>返金要求済み</strong>、非同期調整の受理は最終確認ではありません。Customer Area で確認してください。アプリは確認 webhook を受信できません。</li></ul>
+          <p>要件は<a href="using.html#preauth">予約金</a>と<a href="using.html#tips">領収書のチップ</a>を参照してください。確保には期限があるので、速やかに解決します。</p>
+          <p class="back-to-contents"><a href="#contents">目次に戻る</a></p>
+        </section>
+        <section id="links">
+          <h2>支払いリンクが表示されない、更新されない</h2>
+          <p>会計に<strong>支払いリンクを作成</strong>がない場合は<strong>設定 › 端末</strong>でCheckout APIの設定を完了します。リンクは自動で表示されます。実決済構成の販売専用で、プリオーソリ、領収書のチップ、シミュレーターでは使えません。</p>
+          <p>リンク画面が開いている間だけ確認し、バックグラウンドでは継続確認しません。取引履歴から開き直して<strong>支払いを確認</strong>します。支払い待ちは日計に含まれません。</p>
+          <p>リンク作成が中断し結果が不明な場合は元の項目を開き、<strong>支払いを確認</strong>をタップします。元の要求で作成を再試行します。リンクを得るためだけに別の販売を作らないでください。支払済みリンクの返金は<strong>Customer Area › Payments › Payment list</strong>で行います。</p>
+          <p>通常の手順は<a href="using.html#payment-links">支払いリンクの作成と管理</a>を参照してください。</p>
+          <p class="back-to-contents"><a href="#contents">目次に戻る</a></p>
+        </section>
+        <section id="receipts">
+          <h2>領収書が印刷・メール送信できない</h2>
+          <p><strong>印刷：</strong>接続先に実際のプリンターがあるか確認します。<strong>設定 › アプリ情報</strong>を見て接続をテストし、<strong>設定 › 領収書</strong>の検出と自動印刷を確認して<strong>テスト領収書を印刷</strong>します。手動で使用可能に設定しても AMS1 や Tap to Pay のスマートフォンにプリンターは追加されません。</p>
+          <p><strong>メール：</strong><strong>設定 › メール</strong>からテストし、サーバー、ポート、STARTTLS/SSL、ユーザー名、指定パスワードを確認します。SMTP 有効化やアプリパスワードが必要、またはパスワード認証が禁止されている場合があります。設定 › 決済の自動送信とメール取得は別に確認します。<a href="using.html#email">メール設定と各社の説明</a>を参照してください。</p>
+          <p class="back-to-contents"><a href="#contents">目次に戻る</a></p>
+        </section>
+        <section id="access">
+          <h2>PIN や設定転送の問題</h2>
+          <p><strong>マネージャーPIN：</strong>管理者が設定 › セキュリティで変更・削除できます。管理者PINとは保護対象が異なり、一方で他方が自動解除されることはありません。</p>
+          <p><strong>管理者PINを忘れた場合：</strong>PIN の復旧機能はありません。Android のアプリデータ消去で PIN を削除できますが、<strong>全ローカル商品、設定、秘密情報、決済履歴も失います</strong>。未完了の決済を解決し、必要な記録を確保してください。設定転送は取引履歴を復元しません。この損失を受け入れる場合だけリセットします。</p>
+          <p><strong>転送コード：</strong>その QR コードと一緒に表示されたコードを使います。新しく生成したコードは使えません。誤ったコードでは何も取り込まず、空欄では非秘密情報だけを取り込みます。保存失敗の表示を確認し、不足キーを再入力します。コピー後は受信側の決済先と認証情報を確認します。<a href="using.html#more">デバイスとデータ</a>を参照してください。</p>
+          <p>各 PIN の保護対象は<a href="using.html#staff">スタッフの PIN 設定</a>を参照してください。</p>
+          <p class="back-to-contents"><a href="#contents">目次に戻る</a></p>
+        </section>
+        <section id="install">
+          <h2>端末にインストールできない</h2>
+          <dl class="settings-list"><dt><code>INSTALL_PARSE_FAILED_NO_CERTIFICATES</code></dt><dd>APK が未署名です。<a href="https://github.com/astiskala/minimpos/releases/latest">最新リリース</a>のメンテナー署名済み <code>minimpos-&lt;version&gt;.apk</code> をアップロードします。</dd><dt><code>INVALID_SIGNING_CERTIFICATE_MISMATCH</code></dt><dd>以前と署名キーが異なります。元の署名元を使い、意図的に変える場合は Adyen サポートに旧バージョン削除を相談します。</dd><dt>Android のバージョンが非対応</dt><dd>Android 9 以降が必要です。旧 S1E の Android 7.1 は非対応です。</dd></dl>
+          <p>デバイスに合った<a href="getting-started.html#install">インストール手順</a>に従ってください。</p>
+          <p class="back-to-contents"><a href="#contents">目次に戻る</a></p>
+        </section>
+        <section id="help">
+          <h2>まだ解決しない場合</h2>
+          <p>Adyen アカウント、端末配布、決済方法の有効化、最終結果は Adyen に問い合わせます。アプリの問題は<a href="https://github.com/astiskala/minimpos/issues">GitHub issue</a>で、アプリのバージョン、モデル、決済構成、TEST／LIVE、再現手順を知らせてください。</p>
+          <p>キー、パスワード、PIN、顧客情報を含めないでください。脆弱性の疑いは<a href="https://github.com/astiskala/minimpos/blob/main/SECURITY.md">セキュリティポリシー</a>に従って非公開で報告します。</p>
+          <p class="back-to-contents"><a href="#contents">目次に戻る</a></p>
+        </section>
+      </div>
+    </div>
+  </main>
+  <footer class="site-footer"><div class="wrap footer-row">
+    <nav aria-label="ガイドと設定"><ul class="footer-nav">
+      <li><a href="getting-started.html">はじめに</a></li><li><a href="using.html">Mini mPOS の使い方</a></li>
+      <li><a href="troubleshooting.html" aria-current="page">トラブルシューティング</a></li><li><a href="setup.html">セットアップヘルパー</a></li>
+    </ul></nav>
+    <p><img src="../favicon.svg" alt="" width="24" height="24"> Mini mPOS · MIT ライセンス · <a href="https://github.com/astiskala/minimpos">GitHub</a> · <a href="https://github.com/astiskala/minimpos/blob/main/SECURITY.md">セキュリティ</a></p><p class="fine">Adyen は Adyen N.V. の商標です。Mini mPOS は独立したプロジェクトであり、Adyen との提携関係はなく、推奨やサポートもありません。</p>
+  </div></footer>
+</body>
+</html>

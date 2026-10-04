@@ -49,12 +49,12 @@ description: Re-capture the screenshots and social image of the docs/ website, o
 Seeded before the first launch (debug builds only), piped in with
 `adb shell "cat … | run-as io.github.astiskala.minimpos sh -c 'cat > …'"`:
 
-- A Room DB built from the latest `app/schemas/io.minimpos.app.data.db.AppDatabase/<version>.json` (Python sqlite3,
-  `PRAGMA user_version`).
+- A Room DB built from the latest `app/schemas/io.github.astiskala.minimpos.app.data.db.AppDatabase/<version>.json`
+  (Python sqlite3, `PRAGMA user_version`).
 - `files/datastore/settings.json`: auto-lock 10 min, simulator delay 6 s (so the "waiting" screen can be captured).
-  The keys it leaves out take the constructor's defaults, not a new installation's
-  (`AppSettings.forNewInstallation`): checkout asks for a transaction and a customer reference, offers Save card, and
-  receipts print only when asked, as the flows below need.
+  Explicitly set `payment.askTransactionReference = true`, `payment.shopperReferenceSource = CUSTOMER_REFERENCE`,
+  `payment.offerCardSaving = true` and `receipt.autoPrint = false` for these demos. Omitted keys take the current
+  constructor defaults, which do not ask for references, so checkout does not offer card saving.
 - Café "Harbour Coffee Co.", 1 Wharf Street Fremantle, ABN; GST 10% default and GST-free; AUD; 10 products in
   Coffee/Food/Retail, the beans GST-free with a barcode; plus "Catering deposit" $200.00 GST 10% in a Bookings category
   as a pre-authorisation product.
@@ -62,8 +62,9 @@ Seeded before the first launch (debug builds only), piped in with
 
 ## Flows
 
-1. Sale of 2 flat whites, banana bread and beans ($34.00, CUST-1042, save card; `checkout.png` shows Save card on and
-   Tip on the receipt off) → printed receipt (simulated printer sheet, expanded and scrolled to the items) → `refund.png`
+1. Sale of 2 flat whites, banana bread and beans ($34.00, CUST-1042, save card; `checkout.png` shows Save card on,
+   with `payment.receiptTipping = DISABLED`, the default, so there is no tipping switch) → printed receipt (simulated
+   printer sheet, expanded and scrolled to the items) → `refund.png`
    from that sale's history detail (Refund › Items, one flat white and the banana bread, $11.00). The same cart on the
    AMS1-sized screen is `sale-ams1.png`.
 2. Sales of $11.50 and $29.50, then an item refund of the first sale ($11.00). These four can also be seeded into the
@@ -72,7 +73,9 @@ Seeded before the first launch (debug builds only), piped in with
    "MC Google Pay".
 3. `history-search.png`: History searched for `CUST-1042` (typed with `adb shell input text`, keyboard closed with
    Back), showing that sale and its refund.
-4. Tip on the receipt sale of 2 avocado toast and 2 flat whites ($38.00): `tip-receipt.png` is its merchant copy with
+4. In Settings › Payments, set Tip on the receipt to Enabled (default off) (`payment.receiptTipping = DEFAULT_OFF`)
+   before this flow; restore Disabled afterward. Tip on the receipt sale of 2 avocado toast and 2 flat whites ($38.00):
+   `tip-receipt.png` is its merchant copy with
    the blank TIP, TOTAL and SIGNATURE lines in the expanded printer sheet, `tip.png` the Enter tip screen with Total
    $45.00 typed; confirmed, so History shows Capture requested and Tips $7.00.
 5. Pre-authorisation of the catering deposit (CUST-2077): `pre-auth.png` is its checkout (tapping the deposit opens it)

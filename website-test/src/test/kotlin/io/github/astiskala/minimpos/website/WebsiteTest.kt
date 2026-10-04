@@ -496,6 +496,10 @@ class WebsiteTest {
         LANGUAGES.forEach { language ->
             val page = pages.getValue(language to Kind.SETUP)
             assertWithMessage(page.name).that(page.fields()).isEqualTo(english.fields())
+            assertWithMessage("${page.name} keeps Customer Area links in context")
+                .that(page.document.select(".setup-links, .setup-side a[href*=ca-test], .setup-side a[href*=ca-live]"))
+                .isEmpty()
+            assertWithMessage("${page.name} keeps inline credential links").that(page.document.select("#setup-form a[data-ca]")).hasSize(4)
             assertWithMessage("${page.name} API key comes first")
                 .that(
                     page.document

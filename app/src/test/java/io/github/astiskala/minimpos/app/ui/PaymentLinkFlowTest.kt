@@ -118,14 +118,43 @@ class PaymentLinkFlowTest {
         // The screen recomposes with the stored settings a moment after they change.
         waitForTag("linkExpiry")
         compose.onNodeWithTag("linkExpiry").performScrollTo().assertIsDisplayed()
-        // Payments go to the simulator, which has no payment links.
+        // Simulator links are offline demos rather than real payment pages.
         compose.onNodeWithTag("linksNeedApi").assertDoesNotExist()
-        compose.onNodeWithText("Payment links are not available with the simulator.", substring = true).assertExists()
+        compose.onNodeWithText("In simulator mode, try a demo link", substring = true).assertExists()
         compose.onNodeWithTag("back").performClick()
         compose.onNodeWithTag("back").performClick()
         ringUpCustomAmount(5, 0, 0)
         compose.onNodeWithTag("charge").performClick()
         waitForTag("pay")
-        compose.onNodeWithTag("sendLink").assertDoesNotExist()
+        compose.onNodeWithTag("sendLink").assertExists()
+    }
+
+    @Test
+    fun `simulator creates a clearly marked link and waits for explicit demo payment`() {
+        env.useSimulator { it.copy(receipt = it.receipt.copy(autoPrint = false)) }
+        ringUpCustomAmount(5, 0, 0)
+        compose.onNodeWithTag("charge").performClick()
+        waitForTag("sendLink")
+        compose.onNodeWithTag("sendLink").performClick()
+        compose.waitUntilAtLeastOneExists(hasTestTag("linkStatus") and hasText("Awaiting payment"), 15_000)
+        compose.onNodeWithText("Simulation only. No money moved.").assertExists()
+        compose.onNodeWithTag("checkLink").performScrollTo().performClick()
+        compose.onNodeWithTag("linkStatus").assertTextEquals("Awaiting payment")
+        compose.onNodeWithTag("shareLink").performScrollTo().performClick()
+        val application = ApplicationProvider.getApplicationContext<Application>()
+        var chooser: Intent? = null
+        compose.awaitCondition("the demo share sheet opens") {
+            chooser = shadowOf(application).nextStartedActivity
+            chooser != null
+        }
+        val send = IntentCompat.getParcelableExtra(checkNotNull(chooser), Intent.EXTRA_INTENT, Intent::class.java)!!
+        assertThat(send.getStringExtra(Intent.EXTRA_TEXT)).contains("Simulation only. No money moved.")
+        assertThat(send.getStringExtra(Intent.EXTRA_SUBJECT)).isEqualTo("Demo link")
+        compose.onNodeWithTag("simulateLink").performScrollTo().performClick()
+        compose.waitUntilAtLeastOneExists(hasTestTag("linkStatus") and hasText("Approved"), 15_000)
+        compose.onNodeWithText("Simulation only. No money moved.").assertExists()
+        compose.onNodeWithText("Paid online with the payment link", substring = true).assertDoesNotExist()
+        assertThat(links.created).isEmpty()
+        assertThat(links.asked).isEmpty()
     }
 }

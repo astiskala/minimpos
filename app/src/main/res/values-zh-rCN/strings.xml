@@ -748,7 +748,13 @@
   <string name="settings_export_hint">以二维码显示商品目录、设置、密码和密钥</string>
   <string name="settings_import_hint">扫描另一台设备或设置助手页面的二维码，复制其设置</string>
   <string name="settings_quick_setup">快速设置</string>
-  <string name="settings_quick_setup_hint">在电脑上打开 astiskala.github.io/minimpos/zh-CN/setup.html。选择自动，在本设备上查询终端信息；或选择手动，在电脑上输入全部信息。LIVE 环境下两种方式都需要 LIVE URL 前缀。在此扫描二维码，也可从另一台设备复制设置。</string>
+  <string name="settings_quick_setup_hint">在电脑上打开 astiskala.github.io/minimpos/zh-CN/setup.html，然后在此扫描二维码。无需先选择支付目标或环境。</string>
+  <string name="settings_manual_setup">或在此设备上设置</string>
+  <string name="settings_scan_discard_drafts">打开扫描器将丢弃未保存的密钥。在导入之前，已保存的设置不会改变。</string>
+  <string name="settings_scan_discard_confirm">丢弃并扫描</string>
+  <string name="transfer_unchanged">保持不变</string>
+  <string name="transfer_environment_device">由此设备或 Payments app 决定</string>
+  <string name="transfer_live_warning">LIVE 用于真实收款。导入前请确认这是您需要的环境。</string>
   <string name="settings_quick_setup_import">扫描设置二维码</string>
   <string name="about_version">版本</string>
   <string name="about_printer">打印机</string>
@@ -800,7 +806,11 @@
   <string name="email_link_subject">来自 {business} 的付款请求</string>
   <string name="email_link_intro">请通过下方链接或二维码在线安全支付。</string>
   <string name="settings_payment_links">支付链接</string>
-  <string name="settings_links_hint">结账时可创建 Adyen 支付链接，而不将销售发送到终端，由顾客在线支付。模拟器不支持支付链接。</string>
+  <string name="settings_links_hint">结账时可创建 Adyen 支付链接，供顾客在线支付。模拟器模式可试用演示链接，不会收款。</string>
+  <string name="link_simulate">模拟支付</string>
+  <string name="link_simulation_note">仅供模拟。没有资金转移。</string>
+  <string name="link_demo_hint">仅为演示二维码，无法收款。点按“模拟支付”完成演示。</string>
+  <string name="link_demo_label">演示链接</string>
   <string name="settings_link_expiry">链接有效时长（小时）</string>
   <string name="settings_link_expiry_hint">1 至 1680 小时（70 天）；Adyen 默认为 24 小时</string>
   <string name="payment_context_mismatch">当前设置与原支付的终端、Adyen账户或环境不一致。请恢复原设置后继续。</string>

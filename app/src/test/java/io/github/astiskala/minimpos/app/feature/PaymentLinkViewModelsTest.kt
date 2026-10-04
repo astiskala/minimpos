@@ -9,6 +9,7 @@ import io.github.astiskala.minimpos.app.data.db.SaleKind
 import io.github.astiskala.minimpos.app.data.db.SaleStatus
 import io.github.astiskala.minimpos.app.data.db.TaxRateEntity
 import io.github.astiskala.minimpos.app.data.settings.EmailCapture
+import io.github.astiskala.minimpos.app.data.settings.TerminalMode
 import io.github.astiskala.minimpos.app.feature.sale.CheckoutViewModel
 import io.github.astiskala.minimpos.app.feature.sale.PaymentLinkViewModel
 import io.github.astiskala.minimpos.terminal.checkout.PaymentLinkResult
@@ -76,6 +77,7 @@ class PaymentLinkViewModelsTest {
 
     @Test
     fun `checkout offers a link only while links are set up, and sends the cart as one`() {
+        env.updateSettings { it.copy(terminal = it.terminal.copy(mode = TerminalMode.TERMINAL)) }
         container.session(SaleKind.SALE).addProduct(ProductEntity(1, "Latte", 450, 1), TaxRateEntity(1, "GST", 10_000))
         val offline = checkout()
         await { offline.state.first { !it.totals.isEmpty } }

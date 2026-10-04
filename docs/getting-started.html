@@ -87,7 +87,7 @@
         <section id="try">
           <h2>Try it first—no account needed</h2>
           <p>Download <code>minimpos-&lt;version&gt;.apk</code> from the <a href="https://github.com/astiskala/minimpos/releases/latest">latest release</a> and open it on an Android phone or emulator (Android 9 or later). Allow installation from your browser or file manager when Android asks.</p>
-          <p>Away from an Adyen terminal, Mini mPOS starts with the <strong>simulator</strong>. No card is charged. In <strong>Settings › Simulator</strong>, choose approved, declined, busy or timed-out results, the delay and whether a printer is available. Simulated receipts appear on screen; deposits, tips and captures can be tried too. Payment links are not simulated.</p>
+          <p>Away from an Adyen terminal, Mini mPOS starts with the <strong>simulator</strong>. No card is charged. In <strong>Settings › Simulator</strong>, choose approved, declined, busy or timed-out results, the delay and whether a printer is available. Simulated receipts appear on screen; deposits, tips and captures can be tried too. For offline demo links, see <a href="using.html#payment-links">payment links</a>.</p>
           <p>Building from source? Follow the <a href="https://github.com/astiskala/minimpos/blob/main/CONTRIBUTING.md">contributor guide</a>.</p>
           <p class="back-to-contents"><a href="#contents">Back to contents</a></p>
         </section>
@@ -116,7 +116,9 @@
         </section>
         <section id="connect">
           <h2>Connect to Adyen</h2>
-          <p>Follow only your setup below. On a tablet or phone, first choose <strong>Settings › Terminal › Payments go to</strong>. The numbered steps in the app show what you need; Home lists anything still missing.</p>
+          <p>Follow only your setup below. Open <strong>Settings › Terminal</strong> for Quick setup by QR code.
+            For manual entry on a tablet or phone, choose <strong>Payments go to</strong>. The numbered steps in the
+            app show what you need; Home lists anything still missing.</p>
           <h3 id="credentials">Prepare the credentials</h3>
           <p>In <strong>Developers › API credentials</strong>, create a credential and generate its API key; see Adyen's <a href="https://docs.adyen.com/development-resources/api-credentials">credential guide</a>. The <strong>Checkout webservice role</strong> is assigned by default. Add only the extra roles your setup uses:</p>
           <ul>
@@ -141,8 +143,10 @@
             the result. <strong>Manual</strong> asks for all connection details on the computer.
             Both modes require the <strong>live URL prefix</strong> for LIVE. Tap to Pay uses Manual;
             installation and phone registration still happen on the device.</p>
-          <p>Click <strong>Make QR codes</strong>. In the app, open <strong>Settings › Data › Set up from another device</strong>,
-            scan all codes, enter the transfer code and tap <strong>Import</strong>.
+          <p>Click <strong>Make QR codes</strong>. In the app, open <strong>Settings › Terminal</strong> and tap
+            <strong>Scan setup codes</strong> or the top-right QR scan icon. No destination or environment choice is
+            needed first. Scan all codes, review the destination and environment, enter the transfer code and tap
+            <strong>Import</strong>.
             Tap <strong>Continue setup</strong> for Automatic, or <strong>Review setup</strong> for Manual.
             Enter anything missing and test the connection and API key below. If lookup is unavailable, the imported
             key stays saved; use the device's fields or Manual in the helper. You can also enter everything directly

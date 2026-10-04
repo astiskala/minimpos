@@ -289,7 +289,7 @@ class CapturesTest {
             AdyenApi(setups, simulated = fake, connect = {
                 connected += it
                 fake
-            }, connectLinks = { links })
+            }, connectLinks = { links }, simulatedLinks = links)
         env.updateSettings { it.copy(terminal = it.terminal.copy(mode = TerminalMode.TERMINAL)) }
         assertThat(await { live.target() }.modifications(null)).isEqualTo(ApiAccess.Unavailable(SetupProblem.MERCHANT_ACCOUNT))
         assertThat(await { live.verify() }).isEqualTo(ApiCheck.NotSetUp(SetupProblem.MERCHANT_ACCOUNT))
@@ -321,6 +321,7 @@ class CapturesTest {
             ApiTarget(
                 ApiSetup.Simulated,
                 fake,
+                links,
                 context = PaymentContext("SIMULATOR", "SIMULATOR-000000001", "MiniMPOS", "Merchant", null, simulated = true),
             ),
         )

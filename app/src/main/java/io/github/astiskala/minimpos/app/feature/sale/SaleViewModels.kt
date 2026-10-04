@@ -255,12 +255,14 @@ class CheckoutViewModel(
  * @property transaction The unpaid (or, once paid, the paid) receipt, sharing, emailing and printing it.
  * @property check The latest check whether the link was paid (or, after an unknown outcome, whether it was created).
  * @property cancel The latest cancellation of the link.
+ * @property simulation The latest explicit completion of a demo link.
  */
 data class PaymentLinkUiState(
     val payment: StoredPayment? = null,
     val transaction: TransactionActionsState = TransactionActionsState(),
     val check: ActionState = ActionState(),
     val cancel: ActionState = ActionState(),
+    val simulation: ActionState = ActionState(),
 ) {
     /** The sale, or null until stored. */
     val sale: SaleEntity? get() = payment?.sale
@@ -270,6 +272,9 @@ data class PaymentLinkUiState(
 
     /** Whether Adyen is still being asked for the link (the sale is not stored yet, or still PENDING). */
     val creating: Boolean get() = sale == null || sale?.status == SaleStatus.PENDING
+
+    /** Whether this link was created without a real payment service, regardless of the current destination. */
+    val simulated: Boolean get() = sale?.context?.simulated == true
 }
 
 /**
@@ -327,6 +332,15 @@ class PaymentLinkViewModel(
         if (local.value.cancel.running) return
         local.update { it.copy(cancel = ActionState(running = true)) }
         launchWrite({ links.cancel(saleId) }) { update -> local.update { it.copy(cancel = update.toState(stillOpen = false)) } }
+    }
+
+    /** Completes a demo link after the screen's Manager approval; the operation checks approval again before writing. */
+    fun simulate() {
+        if (local.value.simulation.running) return
+        local.update { it.copy(simulation = ActionState(running = true)) }
+        launchWrite({ links.simulate(saleId) }) { update ->
+            local.update { it.copy(simulation = update.toState(stillOpen = false)) }
+        }
     }
 
     /** This update as a finished action: done once settled, a note that it is not paid yet, or the failure. */

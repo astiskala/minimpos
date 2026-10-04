@@ -16,6 +16,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.Print
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Science
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -74,12 +75,12 @@ fun PaymentLinkScreen(
 ) {
     val state by vm.state.collectAsStateWithLifecycle()
     var dialog by remember { mutableStateOf<LinkDialog?>(null) }
-    var approval by remember { mutableStateOf(false) }
-    if (approval) {
+    var approval by remember { mutableStateOf<LinkApproval?>(null) }
+    if (approval != null) {
         return ManagerApproval(onApprove = {
-            approval = false
-            dialog = LinkDialog.CANCEL
-        }, onCancel = { approval = false })
+            if (approval == LinkApproval.SIMULATE) vm.simulate() else dialog = LinkDialog.CANCEL
+            approval = null
+        }, onCancel = { approval = null })
     }
     val leave = { if (fresh) navigator.popTo(Route.Sale) else navigator.back() }
     BackHandler { leave() }
@@ -115,7 +116,8 @@ fun PaymentLinkScreen(
                 onEmail = { dialog = LinkDialog.EMAIL },
                 onPrint = { vm.transaction.print() },
                 onCheck = vm::check,
-                onCancel = { approval = true },
+                onCancel = { approval = LinkApproval.CANCEL },
+                onSimulate = { approval = LinkApproval.SIMULATE },
             ),
             Modifier.padding(padding),
         )
@@ -129,6 +131,9 @@ fun PaymentLinkScreen(
 /** The dialogs the payment link screen opens. */
 private enum class LinkDialog { EMAIL, CANCEL }
 
+/** Manager approval remains separate for cancelling a link and completing a local demo. */
+private enum class LinkApproval { CANCEL, SIMULATE }
+
 /**
  * What the payment link screen's buttons do.
  *
@@ -137,6 +142,7 @@ private enum class LinkDialog { EMAIL, CANCEL }
  * @property onPrint Prints it.
  * @property onCheck Asks Adyen whether it was paid.
  * @property onCancel Asks to confirm cancelling it.
+ * @property onSimulate Completes an offline demo after Manager approval.
  */
 private class LinkEvents(
     val onShare: () -> Unit,
@@ -144,6 +150,7 @@ private class LinkEvents(
     val onPrint: () -> Unit,
     val onCheck: () -> Unit,
     val onCancel: () -> Unit,
+    val onSimulate: () -> Unit,
 )
 
 /** The outcome, then the link to scan or what can be done with the sale now. */
@@ -171,7 +178,7 @@ private fun PaymentLinkContent(
             LinkOutcome(sale, money)
             val link = state.openLink
             if (link != null) {
-                OpenLink(link)
+                OpenLink(link, state.simulated)
                 OpenLinkActions(state, events)
             } else {
                 SettledLinkActions(state, events)
@@ -188,13 +195,14 @@ private fun LinkOutcome(
 ) {
     val formatDateTime = LocalAppContainer.current::formatDateTime
     OutcomeHeader(statusKind(sale), statusTitle(sale), money.format(sale.amountMinor), titleTag = "linkStatus") {
+        if (sale.context?.simulated == true) OutcomeNote(stringResource(R.string.link_simulation_note))
         when {
             sale.status == SaleStatus.AWAITING_PAYMENT -> {
                 sale.paymentLinkExpiresAt?.let { OutcomeNote(stringResource(R.string.link_valid_until, formatDateTime(it))) }
             }
 
             sale.status == SaleStatus.APPROVED -> {
-                OutcomeNote(stringResource(R.string.link_paid_note))
+                if (sale.context?.simulated != true) OutcomeNote(stringResource(R.string.link_paid_note))
             }
 
             else -> {
@@ -206,9 +214,12 @@ private fun LinkOutcome(
 
 /** The link as a QR code the shopper scans with their phone, and its address, which can be selected and copied. */
 @Composable
-private fun ColumnScope.OpenLink(link: String) {
+private fun ColumnScope.OpenLink(
+    link: String,
+    simulated: Boolean,
+) {
     Text(
-        stringResource(R.string.link_scan_hint),
+        stringResource(if (simulated) R.string.link_demo_hint else R.string.link_scan_hint),
         style = MaterialTheme.typography.bodyMedium,
         textAlign = TextAlign.Center,
         modifier = Modifier.fillMaxWidth(),
@@ -232,6 +243,16 @@ private fun ColumnScope.OpenLinkActions(
     events: LinkEvents,
 ) {
     val transaction = state.transaction
+    if (state.simulated) {
+        SecondaryButton(
+            stringResource(R.string.link_simulate),
+            events.onSimulate,
+            loading = state.simulation.running,
+            icon = Icons.Default.Science,
+            modifier = Modifier.testTag("simulateLink"),
+        )
+        OutcomeMessage(state.simulation)
+    }
     if (transaction.canShare) {
         SecondaryButton(
             stringResource(R.string.link_share),

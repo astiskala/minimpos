@@ -662,14 +662,6 @@ button.button { font: inherit; font-weight: 700; cursor: pointer; }
 
 .setup-side li strong { color: var(--navy); }
 
-.setup-links { width: 100%; border-collapse: collapse; }
-
-.setup-links th, .setup-links td { padding: 6px 4px; border-bottom: 1px solid var(--border); text-align: left; vertical-align: top; }
-
-.setup-links thead th { font-size: 0.85rem; color: var(--grey); }
-
-.setup-links tbody th { font-weight: 500; }
-
 @media (max-width: 900px) {
   .setup { grid-template-columns: minmax(0, 1fr); gap: 24px; }
   .setup-side { position: static; }

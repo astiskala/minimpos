@@ -28,6 +28,7 @@ import androidx.compose.material.icons.filled.Payments
 import androidx.compose.material.icons.filled.Percent
 import androidx.compose.material.icons.filled.PhonelinkSetup
 import androidx.compose.material.icons.filled.Print
+import androidx.compose.material.icons.filled.QrCodeScanner
 import androidx.compose.material.icons.filled.Receipt
 import androidx.compose.material.icons.filled.Science
 import androidx.compose.material.icons.filled.Storage
@@ -35,6 +36,7 @@ import androidx.compose.material.icons.filled.Sync
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -45,6 +47,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -204,6 +207,12 @@ internal interface ReceiptBusinessEvents {
 
 /** What Settings › Terminal asks [TerminalSetupViewModel] to do, as [SettingsEvents] does for [SettingsViewModel]. */
 internal interface TerminalSetupEvents {
+    /** Tracks whether [secret] has unsaved visible text, without passing or storing its value. */
+    fun onSecretDraft(
+        secret: Secret,
+        present: Boolean,
+    )
+
     /** Lists the terminals connected in the cloud, saving [apiKey] first ([TerminalSetupViewModel.findTerminals]). */
     fun onTerminalsFind(apiKey: String)
 
@@ -282,6 +291,11 @@ private fun settingsEvents(settings: SettingsViewModel): SettingsEvents =
 
 private fun terminalSetupEvents(setup: TerminalSetupViewModel): TerminalSetupEvents =
     object : TerminalSetupEvents {
+        override fun onSecretDraft(
+            secret: Secret,
+            present: Boolean,
+        ) = setup.secretDraft(secret, present)
+
         override fun onTerminalsFind(apiKey: String) = setup.findTerminals(apiKey)
 
         override fun onTerminalChoose(poiId: String?) = setup.chooseTerminal(poiId)
@@ -439,7 +453,16 @@ fun SettingsSectionScreen(
         }, onCancel = { settingPin = null }, modifier = modifier, manager = settingPin == true)
         return
     }
-    MiniScaffold(title = stringResource(sectionTitle(section)), onBack = navigator::back, modifier = modifier) { padding ->
+    MiniScaffold(
+        title = stringResource(sectionTitle(section)),
+        onBack = navigator::back,
+        modifier = modifier,
+        actions = {
+            if (section == SettingsSections.TERMINAL) {
+                SetupScannerAction(state.loaded, setupActions.unsavedSecrets.isNotEmpty()) { navigator.push(Route.TransferImport) }
+            }
+        },
+    ) { padding ->
         if (!state.loaded) return@MiniScaffold
         Column(
             Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState()),
@@ -452,6 +475,35 @@ fun SettingsSectionScreen(
                 }
             }
         }
+    }
+}
+
+/** Header shortcut available throughout setup, with an explicit choice before leaving unsaved secret drafts. */
+@Composable
+private fun SetupScannerAction(
+    enabled: Boolean,
+    hasDrafts: Boolean,
+    onScan: () -> Unit,
+) {
+    var confirm by remember { mutableStateOf(false) }
+    IconButton(
+        onClick = { if (hasDrafts) confirm = true else onScan() },
+        enabled = enabled,
+        modifier = Modifier.testTag("scanSetup"),
+    ) {
+        Icon(Icons.Default.QrCodeScanner, contentDescription = stringResource(R.string.settings_quick_setup_import))
+    }
+    if (confirm) {
+        ConfirmDialog(
+            title = stringResource(R.string.settings_quick_setup_import),
+            message = stringResource(R.string.settings_scan_discard_drafts),
+            confirmLabel = stringResource(R.string.settings_scan_discard_confirm),
+            onConfirm = {
+                confirm = false
+                onScan()
+            },
+            onDismiss = { confirm = false },
+        )
     }
 }
 
@@ -539,14 +591,32 @@ private fun ColumnScope.TerminalSection(
     val terminalStatus = LocalAppContainer.current.terminalStatus
     val status by terminalStatus.state.collectAsStateWithLifecycle()
     val mode = status.mode
-    val quickSetup = status.loaded && (mode == TerminalMode.SIMULATOR || status.setupProblem != null)
-    if (quickSetup && mode == TerminalMode.SIMULATOR) {
+    var manualSetup by rememberSaveable { mutableStateOf(false) }
+    val terminal = state.settings.terminal
+    // Initial setup is about saved work, not reachability or missing fields: a partially configured destination
+    // must not regrow the full Quick setup section after a connection error.
+    val untouched =
+        terminal.mode in setOf(TerminalMode.AUTO, TerminalMode.SIMULATOR) &&
+            listOf(
+                terminal.host,
+                terminal.poiIdOverride,
+                terminal.merchantAccount,
+                terminal.keyIdentifier,
+                terminal.paymentsAppInstallationId,
+                terminal.storeId,
+                terminal.liveUrlPrefix,
+            ).all { it.isBlank() } &&
+            state.secrets.none { it in setOf(Secret.ADYEN_API_KEY, Secret.TERMINAL_PASSPHRASE, Secret.PAYMENTS_APP_API_KEY) }
+    val quickSetup = status.loaded && untouched && !manualSetup && setup.unsavedSecrets.isEmpty()
+    if (quickSetup) {
         QuickSetup { navigator.push(Route.TransferImport) }
+        SectionHeader(stringResource(R.string.settings_manual_setup))
     }
     if (mode != TerminalMode.SIMULATOR) {
         ConnectionStatus(status.connection, status.poiId, status.environment, status.setupProblem)
     }
     TerminalModeChoice(mode, status.onTerminal) { choice ->
+        manualSetup = true
         // The device's own default is stored as Automatic, so the app keeps following it. Another destination has its
         // own environment, selected or read from the device again.
         val stored = if (choice == terminalStatus.automaticMode) TerminalMode.AUTO else choice
@@ -562,7 +632,6 @@ private fun ColumnScope.TerminalSection(
     } else {
         TerminalSteps(status, state, actions, setup, events, setupEvents)
     }
-    if (quickSetup && mode != TerminalMode.SIMULATOR) QuickSetup { navigator.push(Route.TransferImport) }
 }
 
 /** The advanced terminal settings (SaleID and timeout), and the outcome of the last connection test. */

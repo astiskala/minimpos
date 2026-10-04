@@ -40,7 +40,8 @@ Adyen Payments app (Tap to Pay). The built-in simulator needs no Adyen account.
 - No backend by design. Refund/capture requests and asynchronous adjustments are not final confirmation; the Customer
   Area is authoritative. Paid links have no PSP reference available to the app and are refunded there.
 - Tap to Pay uses an encrypted shared key too. The Payments app has no printer, abort, diagnosis or remote status
-  lookup; only an already received late reply can resolve a missing answer. Payment links are never simulated.
+  lookup; only an already received late reply can resolve a missing answer. Simulated payment links stay offline and
+  clearly label their screen and delivered receipts as demos; their QR codes cannot take payments.
 - Optional Manager PIN approval is separate from admin access and must be checked again before financial operations.
 - Keep deliberate UI choices: no TEST banner (only simulator), no Home terminal-status line or unprotected-settings
   warning. Home keeps both full-width sale/pre-authorization tiles, half-width Refund/History, slim Products/Settings.

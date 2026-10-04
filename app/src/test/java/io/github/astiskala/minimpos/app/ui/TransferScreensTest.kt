@@ -40,6 +40,7 @@ import io.github.astiskala.minimpos.core.codec.QrChunks
 import io.github.astiskala.minimpos.core.codec.SealedSecrets
 import io.github.astiskala.minimpos.core.codec.Transfer
 import io.github.astiskala.minimpos.core.codec.TransferCodec
+import io.github.astiskala.minimpos.terminal.transport.TerminalEnvironment
 import kotlinx.coroutines.flow.first
 import org.junit.Before
 import org.junit.Rule
@@ -185,5 +186,29 @@ class TransferScreensTest {
         assertThat(await { container.secrets.get(Secret.ADYEN_API_KEY) }).isEqualTo("AQE-key")
         compose.onNodeWithTag("importFinished").assertTextContains("Review setup").performClick()
         assertThat(navigator.current).isEqualTo(Route.SettingsSection(SettingsSections.TERMINAL))
+    }
+
+    @Test
+    fun `LIVE destination is reviewed before import and scanning alone changes nothing`() {
+        val payload = TransferCodec.encode(Transfer(connection = """{"destination":"cloud","environment":"LIVE"}"""))
+        val vm = TransferImportViewModel(container.setupTransfer, "AUD")
+        QrChunks.split(payload, "LIVE").forEach { vm.onCode(it.encode()) }
+        val before = await { container.settings.current() }
+        compose.setContent {
+            MiniMposTheme {
+                CompositionLocalProvider(LocalAppContainer provides container) {
+                    TransferImportScreen(Navigator(NavBackStack<NavKey>(Route.Home, Route.TransferImport)), vm = vm)
+                }
+            }
+        }
+        waitForTag("connectionPreview")
+        compose.onNodeWithText("A terminal over the internet (cloud)").assertExists()
+        compose.onNodeWithText("LIVE environment").assertExists()
+        compose.onNodeWithTag("importLiveWarning").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("import").assertIsDisplayed()
+        assertThat(await { container.settings.current() }).isEqualTo(before)
+        compose.onNodeWithTag("import").performClick()
+        waitForTag("importDone")
+        assertThat(await { container.settings.current() }.terminal.environment).isEqualTo(TerminalEnvironment.LIVE)
     }
 }

@@ -11,6 +11,7 @@ import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.isEnabled
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onAllNodesWithText
@@ -143,10 +144,9 @@ class AppFlowTest {
             .assertTextContains("Finish setting up payments", substring = true)
             .assertTextContains("Select TEST or LIVE", substring = true)
             .performClick()
-        compose.waitForTag("quickSetupImport")
+        compose.waitUntilAtLeastOneExists(hasTestTag("scanSetup") and isEnabled(), 15_000)
         compose
-            .onNodeWithTag("quickSetupImport")
-            .performScrollTo()
+            .onNodeWithTag("scanSetup")
             .assertIsDisplayed()
             .performClick()
         waitForText("Point the camera at the QR codes shown on the other device or on the setup helper page.")
@@ -162,6 +162,7 @@ class AppFlowTest {
         compose.waitForTag("quickSetupImport")
         compose.onNodeWithText("Quick setup", ignoreCase = true).assertIsDisplayed()
         compose.onNodeWithTag("quickSetupImport").assertIsDisplayed()
+        compose.onNodeWithTag("scanSetup").assertIsDisplayed()
     }
 
     @Test

@@ -87,6 +87,7 @@ data class ReceiptOffer(
  * @property currency The transaction's ISO 4217 currency code.
  * @property paymentLink The payment link the sale still awaits its payment through, to share with the receipt; null
  *   for a receipt.
+ * @property simulatedLink Whether the underlying sale is a demo link, including after completion or cancellation.
  */
 data class SharedReceipt(
     val document: ReceiptDocument,
@@ -94,6 +95,7 @@ data class SharedReceipt(
     val amountMinor: Long,
     val currency: String,
     val paymentLink: String? = null,
+    val simulatedLink: Boolean = false,
 )
 
 /**
@@ -211,6 +213,7 @@ class ReceiptDelivery(
                             amountMinor = sale.amountMinor,
                             currency = sale.currency,
                             paymentLink = sale.paymentLinkUrl?.takeIf { sale.awaitsLinkPayment },
+                            simulatedLink = sale.paymentLink && sale.context?.simulated == true,
                         )
                     },
             )
@@ -271,11 +274,12 @@ class ReceiptDelivery(
         val record = sales.get(saleId) ?: return ActionResult.Failure(notFound)
         val sale = record.sale
         val document = receipts.sale(record, settings.current().receipt, paper = false)
+        val simulated = sale.paymentLink && sale.context?.simulated == true
         val result =
             if (sale.awaitsLinkPayment) {
-                emailer.sendPaymentLink(to, document, sale.merchantReference)
+                emailer.sendPaymentLink(to, document, sale.merchantReference, simulated)
             } else {
-                emailer.sendSale(to, document, sale.merchantReference, sale.kind == SaleKind.PRE_AUTHORISATION)
+                emailer.sendSale(to, document, sale.merchantReference, sale.kind == SaleKind.PRE_AUTHORISATION, simulated)
             }
         return result.also { if (it == ActionResult.Success) sales.record(saleId, SaleEvent.Emailed(to.trim())) }
     }

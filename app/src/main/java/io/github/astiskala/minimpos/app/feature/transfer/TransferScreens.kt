@@ -53,6 +53,8 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import io.github.astiskala.minimpos.app.R
 import io.github.astiskala.minimpos.app.data.repo.ImportMode
 import io.github.astiskala.minimpos.app.data.security.Secret
+import io.github.astiskala.minimpos.app.data.settings.ConnectionDestination
+import io.github.astiskala.minimpos.app.data.transfer.ReceivedTransfer
 import io.github.astiskala.minimpos.app.data.transfer.TransferContents
 import io.github.astiskala.minimpos.app.data.transfer.TransferExport
 import io.github.astiskala.minimpos.app.feature.settings.SettingSwitch
@@ -75,6 +77,7 @@ import io.github.astiskala.minimpos.app.ui.navigation.Navigator
 import io.github.astiskala.minimpos.app.ui.navigation.Route
 import io.github.astiskala.minimpos.app.ui.theme.LocalDimens
 import io.github.astiskala.minimpos.core.catalogue.Catalogue
+import io.github.astiskala.minimpos.terminal.transport.TerminalEnvironment
 import kotlinx.coroutines.delay
 
 /**
@@ -482,6 +485,7 @@ private fun ImportReady(
     ) {
         Column(Modifier.widthIn(max = 560.dp), verticalArrangement = Arrangement.spacedBy(dimens.spacing)) {
             Text(stringResource(R.string.transfer_ready), style = MaterialTheme.typography.titleLarge)
+            if (received.hasConnection) ConnectionPreview(received)
             val secrets = if (received.hasSecrets) stringResource(R.string.transfer_secrets_sealed) else null
             TransferSummary(received.catalogue, received.hasSettings, secrets, connection = received.hasConnection)
             received.catalogue?.let { catalogue ->
@@ -502,6 +506,52 @@ private fun ImportReady(
             if (received.automatic) Note(stringResource(R.string.transfer_automatic_note))
             if (received.hasSecrets) TransferCodeField(state.code, state.wrongCode, onCode)
             SecondaryButton(stringResource(R.string.transfer_scan_again), onScanAgain)
+        }
+    }
+}
+
+/** Non-secret destination and environment from the helper, reviewed before any saved settings or secrets change. */
+@Composable
+private fun ConnectionPreview(received: ReceivedTransfer) {
+    val destination = received.connectionDestination
+    val environment = received.connectionEnvironment
+    Card(Modifier.fillMaxWidth().testTag("connectionPreview")) {
+        LabeledValue(
+            stringResource(R.string.settings_mode),
+            stringResource(
+                when (destination) {
+                    ConnectionDestination.THIS_TERMINAL -> R.string.settings_mode_terminal
+                    ConnectionDestination.NETWORK -> R.string.settings_mode_network
+                    ConnectionDestination.CLOUD -> R.string.settings_mode_cloud
+                    ConnectionDestination.TAP_TO_PAY -> R.string.settings_mode_payments_app
+                    null -> R.string.transfer_unchanged
+                },
+            ),
+        )
+        LabeledValue(
+            stringResource(R.string.settings_environment),
+            stringResource(
+                when {
+                    environment == TerminalEnvironment.LIVE -> {
+                        R.string.settings_env_live
+                    }
+
+                    environment == TerminalEnvironment.TEST -> {
+                        R.string.settings_env_test
+                    }
+
+                    destination == ConnectionDestination.THIS_TERMINAL || destination == ConnectionDestination.TAP_TO_PAY -> {
+                        R.string.transfer_environment_device
+                    }
+
+                    else -> {
+                        R.string.transfer_unchanged
+                    }
+                },
+            ),
+        )
+        if (environment == TerminalEnvironment.LIVE) {
+            ActionMessage(stringResource(R.string.transfer_live_warning), isError = true, modifier = Modifier.testTag("importLiveWarning"))
         }
     }
 }

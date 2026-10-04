@@ -12,6 +12,8 @@ import io.github.astiskala.minimpos.app.data.db.SetupProblem
 import io.github.astiskala.minimpos.app.data.db.StoredReason
 import io.github.astiskala.minimpos.app.data.db.TaxRateEntity
 import io.github.astiskala.minimpos.app.data.settings.ShopperReferenceSource
+import io.github.astiskala.minimpos.app.data.settings.TerminalMode
+import io.github.astiskala.minimpos.app.payment.StoredTransaction
 import io.github.astiskala.minimpos.app.refund.PaymentAction
 import io.github.astiskala.minimpos.app.refund.PaymentStanding
 import io.github.astiskala.minimpos.app.refund.ReceiptStanding
@@ -20,6 +22,7 @@ import io.github.astiskala.minimpos.app.refund.TotalsShare
 import io.github.astiskala.minimpos.app.refund.standing
 import io.github.astiskala.minimpos.app.refund.totalsShare
 import io.github.astiskala.minimpos.core.money.CurrencySpec
+import io.github.astiskala.minimpos.core.receipt.PlainTextReceiptRenderer
 import io.github.astiskala.minimpos.terminal.checkout.ModificationAmount
 import io.github.astiskala.minimpos.terminal.checkout.PaymentLinkResult
 import io.github.astiskala.minimpos.terminal.checkout.PaymentLinkStatus
@@ -31,6 +34,8 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import java.time.Instant
 import java.time.ZoneOffset
+import javax.mail.Multipart
+import javax.mail.Part
 
 @RunWith(RobolectricTestRunner::class)
 class PaymentLinksTest {
@@ -48,6 +53,7 @@ class PaymentLinksTest {
     private fun linkStart(
         customerReference: String = "CUST-1",
         tokenize: Boolean = false,
+        instant: Instant = now,
     ): PaymentLinkStart {
         session.addProduct(ProductEntity(1, "Flat white", 450, 1), TaxRateEntity(1, "GST", 10_000))
         session.addProduct(ProductEntity(1, "Flat white", 450, 1), TaxRateEntity(1, "GST", 10_000))
@@ -56,7 +62,7 @@ class PaymentLinksTest {
             await {
                 session.checkout(container.settingsState, flowOf(false), flowOf(true)) { CurrencySpec.of("AUD") }.first()
             }
-        return checkNotNull(session.linkStart(checkout, now, ZoneOffset.UTC))
+        return checkNotNull(session.linkStart(checkout, instant, ZoneOffset.UTC))
     }
 
     private fun savingCardsUnderCustomerReference() =
@@ -244,7 +250,7 @@ class PaymentLinksTest {
         val id = links.start(linkStart())
         saleWhen(id) { it.status == SaleStatus.UNKNOWN }
         env.useSimulator()
-        assertThat(await { links.check(id) }).isEqualTo(LinkUpdate.NotSetUp(SetupProblem.API_REQUIRED))
+        assertThat(await { links.check(id) }).isEqualTo(LinkUpdate.NotSetUp(SetupProblem.PAYMENT_CONTEXT))
         assertThat(
             await {
                 container.sales
@@ -272,11 +278,117 @@ class PaymentLinksTest {
         env.useLinks()
         val id = links.start(linkStart())
         saleWhen(id) { it.status == SaleStatus.AWAITING_PAYMENT }
-        env.useSimulator()
-        assertThat(await { links.check(id) }).isEqualTo(LinkUpdate.NotSetUp(SetupProblem.API_REQUIRED))
-        assertThat(await { links.cancel(id) }).isEqualTo(LinkUpdate.NotSetUp(SetupProblem.API_REQUIRED))
+        env.updateSettings { it.copy(terminal = it.terminal.copy(mode = TerminalMode.TERMINAL, merchantAccount = "")) }
+        assertThat(await { links.check(id) }).isEqualTo(LinkUpdate.NotSetUp(SetupProblem.MERCHANT_ACCOUNT))
+        assertThat(await { links.cancel(id) }).isEqualTo(LinkUpdate.NotSetUp(SetupProblem.MERCHANT_ACCOUNT))
         val other = links.start(linkStart())
-        assertThat(saleWhen(other) { it.status == SaleStatus.FAILED }.reason).isEqualTo(StoredReason.NotSetUp(SetupProblem.API_REQUIRED))
+        assertThat(
+            saleWhen(other) { it.status == SaleStatus.FAILED }.reason,
+        ).isEqualTo(StoredReason.NotSetUp(SetupProblem.MERCHANT_ACCOUNT))
         assertThat(api.created).hasSize(1)
     }
+
+    @Test
+    fun `demo links stay open until explicitly paid and retain their outcome in a fresh service`() {
+        env.useSimulator()
+        val id = links.start(linkStart(instant = Instant.now()))
+        val open = saleWhen(id) { it.status == SaleStatus.AWAITING_PAYMENT }
+        assertThat(open.context?.simulated).isTrue()
+        assertThat(await { links.check(id) }).isEqualTo(LinkUpdate.StillOpen)
+        assertThat(api.created).isEmpty()
+        val restarted = PaymentLinks(env.scope, container.sales, container.settings, container.api::target)
+        assertThat(await { restarted.check(id) }).isEqualTo(LinkUpdate.StillOpen)
+        assertThat(await { restarted.simulate(id) }).isEqualTo(LinkUpdate.Settled)
+        val paid = saleWhen(id) { it.status == SaleStatus.APPROVED }
+        assertThat(await { restarted.cancel(id) }).isEqualTo(LinkUpdate.Settled)
+        assertThat(await { links.check(id) }).isEqualTo(LinkUpdate.Settled)
+        assertThat(await { container.sales.get(id)!!.sale }).isEqualTo(paid)
+        val receipt = container.receiptFactory.sale(await { container.sales.get(id)!! }, await { container.settings.current() }.receipt)
+        assertThat(PlainTextReceiptRenderer().render(receipt)).contains("Simulation only.")
+    }
+
+    @Test
+    fun `demo cancellation and expiry persist and simulation cannot complete real or mismatched links`() {
+        env.useSimulator()
+        val id = links.start(linkStart(instant = Instant.now()))
+        saleWhen(id) { it.status == SaleStatus.AWAITING_PAYMENT }
+        assertThat(await { links.cancel(id) }).isEqualTo(LinkUpdate.Settled)
+        assertThat(saleWhen(id) { it.status == SaleStatus.CANCELLED }.context?.simulated).isTrue()
+        assertThat(await { links.simulate(id) }).isEqualTo(LinkUpdate.Settled)
+        val expired = links.start(linkStart(instant = Instant.now().minusSeconds(25 * 3600)))
+        saleWhen(expired) { it.status == SaleStatus.EXPIRED }
+        assertThat(await { links.simulate(expired) }).isEqualTo(LinkUpdate.Settled)
+        val open = links.start(linkStart(instant = Instant.now()))
+        val original = saleWhen(open) { it.status == SaleStatus.AWAITING_PAYMENT }
+        env.useLinks()
+        assertThat(await { links.simulate(open) }).isEqualTo(LinkUpdate.NotSetUp(SetupProblem.PAYMENT_CONTEXT))
+        assertThat(await { container.sales.get(open)!!.sale }).isEqualTo(original)
+        val real = links.start(linkStart())
+        saleWhen(real) { it.status == SaleStatus.AWAITING_PAYMENT }
+        assertThat(await { links.simulate(real) }).isEqualTo(LinkUpdate.NotSetUp(SetupProblem.PAYMENT_CONTEXT))
+        assertThat(api.asked).isEmpty()
+    }
+
+    @Test
+    fun `demo payment rechecks Manager approval without changing the link`() {
+        env.useSimulator()
+        val id = links.start(linkStart(instant = Instant.now()))
+        val original = saleWhen(id) { it.status == SaleStatus.AWAITING_PAYMENT }
+        await {
+            container.pinManager.setPin("1234")
+            container.managerPin.setPin("2468")
+        }
+        assertThat(await { links.simulate(id) }).isEqualTo(LinkUpdate.NotSetUp(SetupProblem.MANAGER_APPROVAL))
+        assertThat(await { container.sales.get(id)!!.sale }).isEqualTo(original)
+    }
+
+    @Test
+    fun `unpaid and completed demo receipts and emails stay labeled after changing destination`() {
+        env.useSimulator()
+        env.updateSettings {
+            it.copy(email = it.email.copy(host = "smtp.example.com", fromAddress = "shop@example.com"))
+        }
+        val id = links.start(linkStart(instant = Instant.now()))
+        saleWhen(id) { it.status == SaleStatus.AWAITING_PAYMENT }
+        val transaction = StoredTransaction.Sale(id)
+        val open = await { container.receipts.offer(transaction).first { it.receipt != null } }
+        assertThat(open.share?.simulatedLink).isTrue()
+        assertThat(PlainTextReceiptRenderer().render(checkNotNull(open.receipt))).contains("Demo link")
+        await { container.receipts.email(transaction, "sam@example.com") }
+        assertThat(
+            env.mail.sent
+                .single()
+                .subject,
+        ).isEqualTo("Demo link")
+        assertThat(
+            env.mail.sent
+                .single()
+                .allText(),
+        ).contains("Simulation only. No money moved.")
+        assertThat(
+            env.mail.sent
+                .single()
+                .allText(),
+        ).doesNotContain("Pay securely")
+        await { links.simulate(id) }
+        env.useLinks()
+        await { container.receipts.email(transaction, "sam@example.com") }
+        assertThat(
+            env.mail.sent
+                .last()
+                .subject,
+        ).isEqualTo("Demo link")
+        assertThat(
+            env.mail.sent
+                .last()
+                .allText(),
+        ).contains("Simulation only. No money moved.")
+    }
+
+    private fun Part.allText(): String =
+        when (val content = content) {
+            is String -> content
+            is Multipart -> (0 until content.count).joinToString("\n") { content.getBodyPart(it).allText() }
+            else -> ""
+        }
 }

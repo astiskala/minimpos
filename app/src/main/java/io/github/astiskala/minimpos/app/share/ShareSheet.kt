@@ -100,7 +100,15 @@ fun ShareEffect(
         } else {
             stringResource(R.string.share_receipt_subject, request.reference)
         }
-    val text = if (link != null) stringResource(R.string.share_link_text, amount, link) else subject
+    val text =
+        if (request.simulatedLink) {
+            listOfNotNull(stringResource(R.string.link_simulation_note), amount, link).joinToString("\n")
+        } else if (link != null) {
+            stringResource(R.string.share_link_text, amount, link)
+        } else {
+            subject
+        }
+    val shareSubject = if (request.simulatedLink) stringResource(R.string.link_demo_label) else subject
     val chooser = stringResource(R.string.share_chooser)
     LaunchedEffect(request) {
         try {
@@ -109,7 +117,7 @@ fun ShareEffect(
                     val image = ReceiptImage.render(request.document)
                     ShareSheet.write(context, image, request.reference).also { image.recycle() }
                 }
-            ShareSheet.open(context, file, subject, text, chooser)
+            ShareSheet.open(context, file, shareSubject, text, chooser)
         } catch (ignored: IOException) {
             // The cache is full or gone: the share sheet does not open, and the button can be tapped again.
         } finally {

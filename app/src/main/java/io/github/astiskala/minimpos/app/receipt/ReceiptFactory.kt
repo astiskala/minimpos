@@ -13,15 +13,18 @@ import io.github.astiskala.minimpos.core.cart.TaxBreakdown
 import io.github.astiskala.minimpos.core.codec.RefundQrPayload
 import io.github.astiskala.minimpos.core.money.CurrencySpec
 import io.github.astiskala.minimpos.core.money.MoneyFormatter
+import io.github.astiskala.minimpos.core.receipt.Align
 import io.github.astiskala.minimpos.core.receipt.ReceiptBranding
 import io.github.astiskala.minimpos.core.receipt.ReceiptBuilder
 import io.github.astiskala.minimpos.core.receipt.ReceiptCopy
 import io.github.astiskala.minimpos.core.receipt.ReceiptDocument
+import io.github.astiskala.minimpos.core.receipt.ReceiptElement
 import io.github.astiskala.minimpos.core.receipt.ReceiptItem
 import io.github.astiskala.minimpos.core.receipt.ReceiptLabels
 import io.github.astiskala.minimpos.core.receipt.ReceiptOptions
 import io.github.astiskala.minimpos.core.receipt.RefundReceipt
 import io.github.astiskala.minimpos.core.receipt.SaleReceipt
+import io.github.astiskala.minimpos.core.receipt.TextStyle
 import io.github.astiskala.minimpos.core.receipt.TipLines
 import io.github.astiskala.minimpos.core.receipt.UnpaidLink
 import io.github.astiskala.minimpos.core.tax.TaxAmounts
@@ -64,6 +67,10 @@ class ReceiptFactory(
     private val standingText: (PaymentStanding) -> String? = { it.name.takeUnless { name -> name == "CHARGED" } },
     /** Reads refund-request outcome labels in the current language at delivery. */
     private val refundText: (RefundStatus) -> String? = { it.name },
+    /** Reads the permanent demo warning for simulated links in the current language at delivery. */
+    private val simulationText: () -> String = { "Simulation only. No money moved." },
+    /** Labels a demo QR/address without inviting the shopper to pay. */
+    private val demoLinkText: () -> String = { "Demo link" },
 ) {
     /** [epochMillis] as a short localised date and time, as printed on receipts and shown in history. */
     fun formatDateTime(epochMillis: Long): String =
@@ -131,7 +138,13 @@ class ReceiptFactory(
                 standingNote = standingText(standing.standing),
                 holdCancelled = standing.standing == PaymentStanding.HOLD_CANCELLED,
             )
-        return builder(settings, currency).sale(receipt, copy)
+        val simulated = sale.paymentLink && sale.context?.simulated == true
+        val document = builder(settings, currency, simulated).sale(receipt, copy)
+        return if (simulated) {
+            ReceiptDocument(listOf(ReceiptElement.Text(simulationText(), Align.CENTER, TextStyle.BOLD)) + document.elements)
+        } else {
+            document
+        }
     }
 
     /**
@@ -200,6 +213,7 @@ class ReceiptFactory(
     private fun builder(
         settings: ReceiptSettings,
         currency: CurrencySpec,
+        simulated: Boolean = false,
     ) = ReceiptBuilder(
         branding =
             ReceiptBranding(
@@ -221,7 +235,19 @@ class ReceiptFactory(
                 markedTaxRateMilliPercent = settings.markedTaxRateMilliPercent,
                 markedTaxRateMarker = settings.markedTaxRateMarker,
             ),
-        labels = currentLabels().copy(markedTaxRateNote = settings.markedTaxRateNote),
+        labels =
+            currentLabels().copy(markedTaxRateNote = settings.markedTaxRateNote).let {
+                if (simulated) {
+                    it.copy(
+                        payLinkCaption = demoLinkText(),
+                        payLinkIntro = demoLinkText(),
+                        payNow = demoLinkText(),
+                        paidOnline = simulationText(),
+                    )
+                } else {
+                    it
+                }
+            },
         money = MoneyFormatter(currency, locale()),
     )
 

@@ -32,10 +32,14 @@
   <a class="skip" href="#main">Skip to content</a>
   <header class="site-header"><div class="wrap header-row">
     <a class="brand" href="./" aria-label="Mini mPOS home"><img src="favicon.svg" alt="" width="36" height="36"><span>Mini mPOS</span></a>
-    <nav aria-label="Main"><ul class="nav">
-      <li><a href="./#features">Features</a></li><li><a href="getting-started.html" aria-current="page">Getting started</a></li>
-      <li><a href="setup.html">Setup helper</a></li><li><a class="button button-small" href="https://github.com/astiskala/minimpos">GitHub</a></li>
+    <nav class="desktop-nav" aria-label="Main"><ul class="nav">
+      <li><a href="getting-started.html" aria-current="page">Getting started</a></li><li><a href="using.html">Using Mini mPOS</a></li>
+      <li><a href="troubleshooting.html">Troubleshooting</a></li><li><a href="setup.html">Setup helper</a></li>
     </ul></nav>
+    <details class="mobile-menu"><summary>Menu</summary><nav aria-label="Main"><ul class="nav">
+      <li><a href="getting-started.html" aria-current="page">Getting started</a></li><li><a href="using.html">Using Mini mPOS</a></li>
+      <li><a href="troubleshooting.html">Troubleshooting</a></li><li><a href="setup.html">Setup helper</a></li>
+    </ul></nav></details>
     <details class="language-menu">
       <summary aria-label="Language: English" title="Language"><svg aria-hidden="true" class="globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 2.7 3.8 5.7 3.8 9s-1.3 6.3-3.8 9c-2.5-2.7-3.8-5.7-3.8-9S9.5 5.7 12 3z"/></svg><span class="language-current">English</span></summary>
       <nav aria-label="Language"><ul>
@@ -51,13 +55,27 @@
       <p class="lead">Choose your setup, install the app and connect to Adyen. Start in TEST, then check your setup before taking real payments.</p>
     </div></section>
     <div class="wrap guide">
-      <nav class="toc" aria-label="Guide navigation">
+      <nav class="toc" id="contents" aria-label="Guide navigation">
         <p class="toc-title">Guides</p>
         <p><a href="getting-started.html" aria-current="page">Getting started</a><br><a href="using.html">Using Mini mPOS</a><br><a href="troubleshooting.html">Troubleshooting</a></p>
-        <p class="toc-title">On this page</p><ol>
+        <div class="desktop-contents"><p class="toc-title">On this page</p><ol>
           <li><a href="#try">Try it first</a></li><li><a href="#choose">Choose your setup</a></li><li><a href="#install">Install</a></li>
-          <li><a href="#connect">Connect to Adyen</a></li><li><a href="#first-payment">Make a TEST payment</a></li><li><a href="#live">Go live</a></li>
-        </ol>
+          <li><a href="#connect">Connect to Adyen</a><ul>
+            <li><a href="#credentials">Prepare credentials</a></li><li><a href="#helper">Enter keys from a computer</a></li>
+            <li><a href="#on-terminal">On an Adyen terminal</a></li><li><a href="#network">With a network terminal</a></li>
+            <li><a href="#cloud">With a cloud terminal</a></li><li><a href="#tap-to-pay">With Tap to Pay</a></li>
+          </ul></li>
+          <li><a href="#first-payment">Make a TEST payment</a></li><li><a href="#live">Go live</a></li>
+        </ol></div>
+        <details class="mobile-contents"><summary class="toc-title">On this page</summary><ol>
+          <li><a href="#try">Try it first</a></li><li><a href="#choose">Choose your setup</a></li><li><a href="#install">Install</a></li>
+          <li><a href="#connect">Connect to Adyen</a><ul>
+            <li><a href="#credentials">Prepare credentials</a></li><li><a href="#helper">Enter keys from a computer</a></li>
+            <li><a href="#on-terminal">On an Adyen terminal</a></li><li><a href="#network">With a network terminal</a></li>
+            <li><a href="#cloud">With a cloud terminal</a></li><li><a href="#tap-to-pay">With Tap to Pay</a></li>
+          </ul></li>
+          <li><a href="#first-payment">Make a TEST payment</a></li><li><a href="#live">Go live</a></li>
+        </ol></details>
       </nav>
       <div class="guide-body">
         <section id="try">
@@ -65,6 +83,7 @@
           <p>Download <code>minimpos-&lt;version&gt;.apk</code> from the <a href="https://github.com/astiskala/minimpos/releases/latest">latest release</a> and open it on an Android phone or emulator (Android 9 or later). Allow installation from your browser or file manager when Android asks.</p>
           <p>Away from an Adyen terminal, Mini mPOS starts with the <strong>simulator</strong>. No card is charged. In <strong>Settings › Simulator</strong>, choose approved, declined, busy or timed-out results, the delay and whether a printer is available. Simulated receipts appear on screen; deposits, tips and captures can be tried too. Payment links are not simulated.</p>
           <p>Building from source? Follow the <a href="https://github.com/astiskala/minimpos/blob/main/CONTRIBUTING.md">contributor guide</a>.</p>
+          <p class="back-to-contents"><a href="#contents">Back to contents</a></p>
         </section>
         <section id="choose">
           <h2>Choose your setup</h2>
@@ -77,6 +96,7 @@
           </dl>
           <p>Printing needs a terminal with a printer. Scanning barcodes, receipts or setup codes needs a camera. Tap to Pay has no printer; email or share receipts instead.</p>
           <p class="note">Mini mPOS is independent, not made, endorsed or supported by Adyen. For real payments you need an Adyen account with the relevant payment services enabled, Customer Area access and Checkout API credentials. Follow Adyen's linked documentation for account and platform procedures.</p>
+          <p class="back-to-contents"><a href="#contents">Back to contents</a></p>
         </section>
         <section id="install">
           <h2>Install the app</h2>
@@ -86,6 +106,7 @@
             <li><strong>Tablet or phone:</strong> open the APK on the device and allow installation. There is nothing to deploy through Adyen.</li>
           </ul>
           <p>Keep the same signing source for updates: a terminal accepts later versions only when signed with the same key. To build and sign your own, see <a href="https://github.com/astiskala/minimpos/blob/main/CONTRIBUTING.md#signing-your-own-apk">the contributor guide</a>.</p>
+          <p class="back-to-contents"><a href="#contents">Back to contents</a></p>
         </section>
         <section id="connect">
           <h2>Connect to Adyen</h2>
@@ -96,23 +117,27 @@
           <h3 id="helper">Enter keys from a computer</h3>
           <p>To avoid typing long keys, open the <a href="setup.html">setup helper</a> on a trusted computer, choose your setup and fill in its fields. Click <strong>Make QR codes</strong>. In the app, open <strong>Settings › Data › Set up from another device</strong>, scan all codes, enter the displayed transfer code and tap <strong>Import</strong>. Then finish and test the connection below. You can also enter everything directly in Settings › Terminal.</p>
           <h3 id="on-terminal">On an Adyen terminal</h3>
+          <p>First <a href="#install">install the app</a> and <a href="#credentials">prepare the credentials</a>.</p>
           <ol>
             <li>Enter the shared key in <strong>Settings › Terminal</strong> and tap <strong>Save and test</strong>. The address, terminal ID (POIID) and TEST/LIVE environment are detected automatically.</li>
             <li>In the <strong>Checkout API</strong> step, enter the merchant account and API key, then <strong>Save and test API key</strong>.</li>
           </ol>
           <h3 id="network">With a terminal on your network</h3>
+          <p>First <a href="#install">install the app</a> and <a href="#credentials">prepare the credentials</a>.</p>
           <ol>
             <li>Select <strong>A terminal on your network</strong>. Enter its IP address and POIID from the terminal's Device info screen.</li>
             <li>Enter its shared key and test the connection.</li>
             <li>Enter the merchant account and API key in the <strong>Checkout API</strong> step and tap <strong>Save and test API key</strong>.</li>
           </ol>
           <h3 id="cloud">With a terminal over the internet</h3>
+          <p>First <a href="#install">install the app</a> and <a href="#credentials">prepare the credentials</a>.</p>
           <ol>
             <li>Select the cloud destination. Under <strong>Adyen account</strong>, enter your merchant account and the API key with both required roles.</li>
             <li>Tap <strong>Find connected terminals</strong> and choose one, or type its POIID. Tap <strong>Test connection</strong> to test both the terminal and Checkout API.</li>
           </ol>
           <p>The environment and data center are detected from the key. Cloud payments can wait longer for the terminal than local payments.</p>
           <h3 id="tap-to-pay">With Tap to Pay</h3>
+          <p>First <a href="#install">install the app</a> and <a href="#credentials">prepare the credentials</a>.</p>
           <ol>
             <li>Ask Adyen Support to enable Tap to Pay on Android and the <strong>Adyen Payments app role</strong>. Install <strong>Adyen Payments Test</strong> for TEST or <strong>Adyen Payments</strong> for LIVE, not both. The app links to Google Play.</li>
             <li>Select <strong>Tap to Pay on this phone</strong>. Connect the <strong>Checkout API</strong> for the merchant account you will register the phone to.</li>
@@ -121,6 +146,7 @@
           </ol>
           <p>Payments open the Payments app and return to Mini mPOS. The installed app determines TEST or LIVE. To deregister the phone later, use <strong>Remove this phone</strong>.</p>
           <p class="note">API keys are encrypted on this device. Adyen recommends keeping them on a server; Mini mPOS has none. Use narrowly scoped credentials dedicated to the device or terminal fleet, set an admin PIN and revoke exposed or lost-device credentials. Read the <a href="https://github.com/astiskala/minimpos/blob/main/SECURITY.md">security policy</a>.</p>
+          <p class="back-to-contents"><a href="#contents">Back to contents</a></p>
         </section>
         <section id="first-payment">
           <h2>Make your first TEST payment</h2>
@@ -131,6 +157,7 @@
             <li>Check the result, receipt and History entry. Try a refund too. If the result is unknown, follow <a href="troubleshooting.html#unknown">the recovery instructions</a> before trying another payment.</li>
           </ol>
           <p>Next, use <a href="using.html">Using Mini mPOS</a> to add products, customize receipts, set staff permissions and enable the workflows you need.</p>
+          <p class="back-to-contents"><a href="#contents">Back to contents</a></p>
         </section>
         <section id="live">
           <h2>Before taking live payments</h2>
@@ -142,11 +169,16 @@
             <li>Run the connection and API checks, then confirm <strong>LIVE</strong> in Settings › About. The setup helper's TEST/LIVE choice only selects the relevant fields and Customer Area links; it cannot change the app's detected environment.</li>
           </ul>
           <p>Need help? Go to <a href="troubleshooting.html">Troubleshooting</a>.</p>
+          <p class="back-to-contents"><a href="#contents">Back to contents</a></p>
         </section>
       </div>
     </div>
   </main>
   <footer class="site-footer"><div class="wrap footer-row">
+    <nav aria-label="Guides and setup"><ul class="footer-nav">
+      <li><a href="getting-started.html" aria-current="page">Getting started</a></li><li><a href="using.html">Using Mini mPOS</a></li>
+      <li><a href="troubleshooting.html">Troubleshooting</a></li><li><a href="setup.html">Setup helper</a></li>
+    </ul></nav>
     <p><img src="favicon.svg" alt="" width="24" height="24"> Mini mPOS · MIT license · <a href="https://github.com/astiskala/minimpos">GitHub</a> · <a href="https://github.com/astiskala/minimpos/blob/main/SECURITY.md">Security</a></p>
     <p class="fine">Adyen is a trademark of Adyen N.V. Mini mPOS is independent and is not affiliated with, endorsed by or supported by Adyen.</p>
   </div></footer>

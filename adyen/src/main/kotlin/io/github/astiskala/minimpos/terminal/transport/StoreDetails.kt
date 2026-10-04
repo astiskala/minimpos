@@ -164,14 +164,6 @@ class AdyenStoreDetails(
         return "$message (HTTP $code)"
     }
 
-    private fun JsonObject.text(key: String): String =
-        get(key)
-            ?.takeIf {
-                it.isJsonPrimitive && it.asJsonPrimitive.isString
-            }?.asString
-            ?.trim()
-            .orEmpty()
-
     /** Endpoint and bounded read policy. */
     companion object {
         private val TIMEOUT = 30.seconds

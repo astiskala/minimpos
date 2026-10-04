@@ -47,12 +47,17 @@ class SaleRepository(
      */
     suspend fun findByTransactionId(transactionId: String): SaleWithLines? = dao.saleByTransactionId(transactionId)
 
-    /** Records that [event] happened to sale [id] (see [SaleEvent], which decides what changes). */
+    /** Records [event] for sale [id] (see [SaleEvent]), without writing or invalidating observers when nothing changes. */
     suspend fun record(
         id: String,
         event: SaleEvent,
     ) {
-        db.withTransaction { dao.sale(id)?.let { dao.update(it.sale.after(event)) } }
+        db.withTransaction {
+            dao.sale(id)?.sale?.let { sale ->
+                val updated = sale.after(event)
+                if (updated != sale) dao.update(updated)
+            }
+        }
     }
 
     /**

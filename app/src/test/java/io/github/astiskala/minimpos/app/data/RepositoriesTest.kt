@@ -24,18 +24,24 @@ import io.github.astiskala.minimpos.core.catalogue.CatalogueCategory
 import io.github.astiskala.minimpos.core.catalogue.CatalogueProduct
 import io.github.astiskala.minimpos.core.catalogue.CatalogueTaxRate
 import io.github.astiskala.minimpos.core.receipt.CardReceiptLine
+import io.github.astiskala.minimpos.terminal.checkout.PaymentLink
+import io.github.astiskala.minimpos.terminal.checkout.PaymentLinkStatus
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.first
 import org.junit.After
+import org.junit.Assert.assertThrows
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import java.time.Instant
+import java.util.concurrent.ConcurrentLinkedQueue
 
 @RunWith(RobolectricTestRunner::class)
 class RepositoriesTest {
-    private val env = TestEnvironment()
+    private val queries = ConcurrentLinkedQueue<String>()
+    private val env = TestEnvironment(queryCallback = { queries.add(it) })
     private val catalog = env.container.catalog
     private val sales = env.container.sales
     private val refunds = env.container.refundRecords
@@ -91,6 +97,24 @@ class RepositoriesTest {
             val results = coroutineScope { rates.map { async { catalog.deleteTaxRate(it) } }.awaitAll() }
             assertThat(results).containsExactly(DeleteResult.Deleted, DeleteResult.LastRate)
             assertThat(catalog.taxRates.first()).hasSize(1)
+        }
+
+    @Test
+    fun `SKU saves use a single indexed lookup and preserve global case-sensitive uniqueness`() =
+        await<Unit> {
+            val tax = catalog.saveTaxRate(TaxRateEntity(name = "Zero", rateMilliPercent = 0))
+            val product = ProductEntity(name = "One", priceMinor = 100, taxRateId = tax, sku = " AbC ")
+            val id = catalog.saveProduct(product)
+            queries.clear()
+            catalog.saveProduct(product.copy(id = id, name = "Edited"))
+            assertThat(queries).contains("SELECT * FROM products WHERE sku = ? LIMIT 1")
+            assertThat(queries).doesNotContain("SELECT * FROM products ORDER BY sortOrder, name COLLATE NOCASE")
+            assertThrows(IllegalArgumentException::class.java) {
+                await { catalog.saveProduct(product.copy(kind = SaleKind.PRE_AUTHORISATION)) }
+            }
+            catalog.saveProduct(product.copy(sku = "abc"))
+            listOf(null, "", " ").forEach { sku -> catalog.saveProduct(product.copy(sku = sku)) }
+            assertThat(catalog.products.first().map { it.sku }).containsExactly("AbC", "abc", null, null, null)
         }
 
     @Test
@@ -189,9 +213,9 @@ class RepositoriesTest {
         }
 
     @Test
-    fun `untaxed products from older catalogues get a zero rate`() =
+    fun `imported products with unspecified tax rates get a zero rate`() =
         await {
-            val older =
+            val unspecified =
                 Catalogue(
                     currencyCode = "AUD",
                     taxRates = listOf(CatalogueTaxRate("GST", 10_000)),
@@ -199,14 +223,14 @@ class RepositoriesTest {
                     products = listOf(CatalogueProduct("Stamp", 120, null, null, "S1"), CatalogueProduct("Card", 300, null, null, "C1")),
                 )
             // Without a 0% rate one is created, once.
-            val summary = catalog.import(older, ImportMode.REPLACE)
+            val summary = catalog.import(unspecified, ImportMode.REPLACE)
             assertThat(summary.taxRatesAdded).isEqualTo(2)
             val zero = catalog.taxRates.first().single { it.rateMilliPercent == 0 }
             assertThat(zero.name).isEqualTo("No tax")
             assertThat(catalog.products.first().map { it.taxRateId }).containsExactly(zero.id, zero.id)
             // An existing 0% rate is used, whatever its name.
             catalog.saveTaxRate(zero.copy(name = "GST-free"))
-            catalog.import(older, ImportMode.MERGE)
+            catalog.import(unspecified, ImportMode.MERGE)
             assertThat(
                 catalog.taxRates
                     .first()
@@ -392,6 +416,31 @@ class RepositoriesTest {
             assertThat(history.items().first()).hasSize(2)
             history.clear()
             assertThat(history.items().first()).isEmpty()
+        }
+
+    @Test
+    fun `unchanged link answers do not write but changed facts and settlement persist`() =
+        await {
+            sales.createPending(sale("link", status = SaleStatus.PENDING).copy(paymentLink = true), emptyList())
+            val link =
+                PaymentLink(
+                    id = "L1",
+                    url = "https://example.com/pay",
+                    status = PaymentLinkStatus.ACTIVE,
+                    expiresAt = Instant.ofEpochMilli(2_000),
+                )
+            sales.record("link", SaleEvent.LinkAnswered(link))
+            queries.clear()
+            repeat(2) { sales.record("link", SaleEvent.LinkAnswered(link)) }
+            sales.record("missing", SaleEvent.LinkAnswered(link))
+            assertThat(queries.filter { it.startsWith("UPDATE") && it.contains("`sales`") }).isEmpty()
+            val changed = link.copy(url = "https://example.com/changed", expiresAt = Instant.ofEpochMilli(3_000))
+            sales.record("link", SaleEvent.LinkAnswered(changed))
+            assertThat(sales.get("link")!!.sale.paymentLinkUrl).isEqualTo(changed.url)
+            assertThat(sales.get("link")!!.sale.paymentLinkExpiresAt).isEqualTo(3_000)
+            sales.record("link", SaleEvent.LinkAnswered(changed.copy(status = PaymentLinkStatus.COMPLETED)))
+            assertThat(sales.get("link")!!.sale.status).isEqualTo(SaleStatus.APPROVED)
+            assertThat(queries.filter { it.startsWith("UPDATE") && it.contains("`sales`") }).hasSize(2)
         }
 
     @Test

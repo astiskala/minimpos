@@ -96,7 +96,7 @@ data class TerminalSetup(
     /**
      * Whether checkout offers payment links: whenever the Checkout API is set up or simulated.
      */
-    val paymentLinks: Boolean get() = apiSetup == ApiSetup.Complete || apiSetup == ApiSetup.Simulated
+    val paymentLinks: Boolean get() = apiSetup.problem == null
 
     /** The secrets to read for this setup, of those [saved]: the [destination]'s and the Adyen API key. */
     fun secretsToRead(saved: Set<Secret>): Set<Secret> = (destination.secrets + Secret.ADYEN_API_KEY).intersect(saved)

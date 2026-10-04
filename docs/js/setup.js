@@ -42,6 +42,7 @@
   let codes = [];
   let shown = 0;
   let timer = null;
+  let generation = 0;
 
   /** The text of the form's data-[key] attribute, with {name} placeholders filled in from values. */
   const message = (key, values = {}) => form.dataset[key].replace(/\{(\w+)\}/g, (_, name) => String(values[name]));
@@ -207,10 +208,12 @@
   };
 
   const clear = () => {
+    generation++;
     play(false);
     codes = [];
     qrBox.replaceChildren();
     codeText.textContent = "";
+    status.textContent = "";
     results.hidden = true;
   };
 
@@ -221,7 +224,6 @@
   form.addEventListener("input", clear);
   form.addEventListener("reset", () => {
     clear();
-    status.textContent = "";
     setTimeout(refresh);
   });
   document.getElementById("setup-previous").addEventListener("click", () => {
@@ -241,6 +243,7 @@
       return;
     }
     clear();
+    const started = generation;
     status.textContent = message("msgMaking");
     const data = new FormData(form);
     const connection = { destination: destination() };
@@ -260,9 +263,10 @@
     const code = Object.keys(secrets).length ? randomString(CODE_ALPHABET, CODE_LENGTH).match(/.{4}/g).join("-") : null;
     try {
       const sealed = code ? await seal(encoder.encode(JSON.stringify(secrets)), code) : null;
+      if (started !== generation) return;
       codes = chunks(transfer(sealed, connection));
     } catch (error) {
-      status.textContent = message("msgUnsupported");
+      if (started === generation) status.textContent = message("msgUnsupported");
       return;
     }
     codeCard.hidden = !code;

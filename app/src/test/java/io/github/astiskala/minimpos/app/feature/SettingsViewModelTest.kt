@@ -6,6 +6,7 @@ import io.github.astiskala.minimpos.app.FakeDevice
 import io.github.astiskala.minimpos.app.FakeTerminal
 import io.github.astiskala.minimpos.app.TestEnvironment
 import io.github.astiskala.minimpos.app.await
+import io.github.astiskala.minimpos.app.closeViewModels
 import io.github.astiskala.minimpos.app.data.db.CategoryEntity
 import io.github.astiskala.minimpos.app.data.db.ProductEntity
 import io.github.astiskala.minimpos.app.data.db.SaleKind
@@ -31,12 +32,15 @@ import io.github.astiskala.minimpos.app.feature.sale.CheckoutViewModel
 import io.github.astiskala.minimpos.app.feature.sale.SaleResultViewModel
 import io.github.astiskala.minimpos.app.feature.sale.SaleViewModel
 import io.github.astiskala.minimpos.app.feature.settings.SettingsChecks
+import io.github.astiskala.minimpos.app.feature.settings.SettingsTest
 import io.github.astiskala.minimpos.app.feature.settings.SettingsViewModel
 import io.github.astiskala.minimpos.app.payment.TransactionState
 import io.github.astiskala.minimpos.app.refund.RefundInvalidReason
 import io.github.astiskala.minimpos.app.refund.Refundability
 import io.github.astiskala.minimpos.app.refund.RefundablePayment
+import io.github.astiskala.minimpos.app.terminal.AdyenApi
 import io.github.astiskala.minimpos.app.terminal.ReceiptBusiness
+import io.github.astiskala.minimpos.app.terminal.TerminalSetupSource
 import io.github.astiskala.minimpos.core.codec.RefundQrPayload
 import io.github.astiskala.minimpos.core.receipt.PlainTextReceiptRenderer
 import io.github.astiskala.minimpos.core.receipt.ReceiptElement
@@ -44,12 +48,15 @@ import io.github.astiskala.minimpos.core.shopper.EmailReferenceMode
 import io.github.astiskala.minimpos.core.shopper.ShopperReferences
 import io.github.astiskala.minimpos.core.tax.TaxMode
 import io.github.astiskala.minimpos.core.tax.TaxRates
+import io.github.astiskala.minimpos.terminal.checkout.PaymentModifications
 import io.github.astiskala.minimpos.terminal.client.RetryAdvice
+import io.github.astiskala.minimpos.terminal.simulator.SimulatedModifications
 import io.github.astiskala.minimpos.terminal.simulator.SimulatedOutcome
 import io.github.astiskala.minimpos.terminal.simulator.TerminalSimulator
 import io.github.astiskala.minimpos.terminal.transport.StoreDetailsApi
 import io.github.astiskala.minimpos.terminal.transport.StoreListing
 import io.github.astiskala.minimpos.terminal.transport.TerminalEnvironment
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.first
@@ -70,14 +77,16 @@ import java.time.Instant
 class SettingsViewModelTest {
     private val env = TestEnvironment()
     private val container = env.container
+    private val viewModels = mutableListOf<SettingsViewModel>()
 
     @Before
     fun setUp() = Dispatchers.setMain(UnconfinedTestDispatcher())
 
     @After
     fun tearDown() {
-        Dispatchers.resetMain()
+        closeViewModels(viewModels)
         env.close()
+        Dispatchers.resetMain()
     }
 
     private fun seedCatalogue(): Pair<TaxRateEntity, ProductEntity> =
@@ -92,17 +101,76 @@ class SettingsViewModelTest {
             TaxRateEntity(taxId, "GST", 10_000) to container.catalog.product(productId)!!
         }
 
-    private fun settingsViewModel(target: AppContainer = container) =
-        SettingsViewModel(
-            target.pricingChanges,
-            target.secrets,
-            target.pinManager,
-            target.sessionLock,
-            SettingsChecks(target.terminalStatus, target.receipts, target.api, target.receiptBusinessDetails),
-            target.history,
-            target.catalog,
-            target::sampleReceipt,
-        )
+    private fun settingsViewModel(
+        target: AppContainer = container,
+        api: AdyenApi = target.api,
+    ) = SettingsViewModel(
+        target.pricingChanges,
+        target.secrets,
+        target.pinManager,
+        target.sessionLock,
+        SettingsChecks(target.terminalStatus, target.receipts, api, target.receiptBusinessDetails),
+        target.history,
+        target.catalog,
+        target::sampleReceipt,
+    ).also(viewModels::add)
+
+    @Test
+    fun `an API check runs once when another action finishes while it waits`() {
+        env.useSimulator()
+        val entered = CompletableDeferred<Unit>()
+        val release = CompletableDeferred<Unit>()
+        var calls = 0
+        val modifications =
+            object : PaymentModifications by SimulatedModifications() {
+                override suspend fun verify(): String? {
+                    calls++
+                    entered.complete(Unit)
+                    release.await()
+                    return null
+                }
+            }
+        val api = AdyenApi(TerminalSetupSource(container.settings, container.secrets, container.device), modifications)
+        val vm = settingsViewModel(api = api)
+        vm.saveAndTest(Secret.ADYEN_API_KEY)
+        await { entered.await() }
+        vm.saveAndTest(Secret.TERMINAL_PASSPHRASE)
+        await { vm.actions.first { it.connection.done } }
+        release.complete(Unit)
+        val finished = await { vm.actions.first { it.api.done } }
+        assertThat(calls).isEqualTo(1)
+        assertThat(finished.connection.done).isTrue()
+    }
+
+    @Test
+    fun `a connection check runs once when another action finishes while it waits`() {
+        val entered = CompletableDeferred<Unit>()
+        val release = CompletableDeferred<Unit>()
+        var calls = 0
+        val terminal =
+            FakeTerminal(beforeSend = {
+                calls++
+                entered.complete(Unit)
+                release.await()
+            })
+        val onTerminal = TestEnvironment(FakeDevice(detectedPoiId = "AMS1-000168223606144"), terminal)
+        try {
+            onTerminal.useCheckoutApi()
+            onTerminal.updateSettings { it.copy(terminal = it.terminal.copy(keyIdentifier = "key")) }
+            await { onTerminal.container.secrets.set(Secret.TERMINAL_PASSPHRASE, "correct horse battery staple") }
+            val vm = settingsViewModel(onTerminal.container)
+            vm.saveAndTest(Secret.TERMINAL_PASSPHRASE)
+            await { entered.await() }
+            vm.sendTestEmail("shopper@example.com")
+            await { vm.actions.first { it.email.isError } }
+            release.complete(Unit)
+            val finished = await { vm.actions.first { it.connection.done } }
+            assertThat(calls).isEqualTo(1)
+            assertThat(finished.email.isError).isTrue()
+        } finally {
+            onTerminal.close()
+        }
+    }
 
     @Test
     fun `receipt import reports setup problems and rejects unoffered proposals`() {

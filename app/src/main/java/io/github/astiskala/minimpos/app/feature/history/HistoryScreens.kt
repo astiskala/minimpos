@@ -78,6 +78,7 @@ import io.github.astiskala.minimpos.app.feature.sale.statusKind
 import io.github.astiskala.minimpos.app.feature.sale.statusTitle
 import io.github.astiskala.minimpos.app.refund.PaymentAction
 import io.github.astiskala.minimpos.app.refund.decline
+import io.github.astiskala.minimpos.app.refund.simulatedLink
 import io.github.astiskala.minimpos.app.share.ShareEffect
 import io.github.astiskala.minimpos.app.ui.components.ActionMessage
 import io.github.astiskala.minimpos.app.ui.components.Card
@@ -479,7 +480,11 @@ private fun SaleDetailOutcome(
             ).joinToString(" · "),
         )
         HoldNotes(sale, money)
-        if (sale.paymentLink && sale.status == SaleStatus.APPROVED) OutcomeNote(stringResource(R.string.link_paid_note))
+        if (sale.simulatedLink) {
+            OutcomeNote(stringResource(R.string.link_simulation_note))
+        } else if (sale.paymentLink && sale.status == SaleStatus.APPROVED) {
+            OutcomeNote(stringResource(R.string.link_paid_note))
+        }
     }
 }
 

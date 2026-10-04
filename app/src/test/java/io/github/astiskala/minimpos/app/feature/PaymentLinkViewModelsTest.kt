@@ -1,9 +1,11 @@
 package io.github.astiskala.minimpos.app.feature
 
+import androidx.lifecycle.ViewModel
 import com.google.common.truth.Truth.assertThat
 import io.github.astiskala.minimpos.app.FakeLinkApi
 import io.github.astiskala.minimpos.app.TestEnvironment
 import io.github.astiskala.minimpos.app.await
+import io.github.astiskala.minimpos.app.closeViewModels
 import io.github.astiskala.minimpos.app.data.db.ProductEntity
 import io.github.astiskala.minimpos.app.data.db.SaleKind
 import io.github.astiskala.minimpos.app.data.db.SaleStatus
@@ -36,6 +38,7 @@ class PaymentLinkViewModelsTest {
     private val api = FakeLinkApi()
     private val env = TestEnvironment(links = api)
     private val container = env.container
+    private val viewModels = mutableListOf<ViewModel>()
 
     /** The main dispatcher, whose virtual clock the polls wait on. */
     private val main = UnconfinedTestDispatcher()
@@ -45,8 +48,9 @@ class PaymentLinkViewModelsTest {
 
     @After
     fun tearDown() {
-        Dispatchers.resetMain()
+        closeViewModels(viewModels)
         env.close()
+        Dispatchers.resetMain()
     }
 
     private fun checkout() =
@@ -57,7 +61,7 @@ class PaymentLinkViewModelsTest {
             container.terminalStatus.state,
             container::currency,
             container.links,
-        )
+        ).also(viewModels::add)
 
     /** Rings up a coffee and sends it as a payment link from checkout; returns the sale's ID once the link exists. */
     private fun sendLink(): String {
@@ -73,7 +77,7 @@ class PaymentLinkViewModelsTest {
         id: String,
         fresh: Boolean = false,
         poll: Duration = 1.hours,
-    ) = PaymentLinkViewModel(id, container.storedPayments, container.receipts, container.links, fresh, poll)
+    ) = PaymentLinkViewModel(id, container.storedPayments, container.receipts, container.links, fresh, poll).also(viewModels::add)
 
     @Test
     fun `checkout offers a link only while links are set up, and sends the cart as one`() {
@@ -90,7 +94,7 @@ class PaymentLinkViewModelsTest {
                 container.settingsState,
                 container.terminalStatus.state,
                 container::currency,
-            )
+            ).also(viewModels::add)
         env.useLinks()
         await { noLinks.state.first { !it.totals.isEmpty } }
         assertThat(noLinks.state.value.canSendLink).isFalse()

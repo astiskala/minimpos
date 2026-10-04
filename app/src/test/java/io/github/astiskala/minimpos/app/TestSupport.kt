@@ -4,6 +4,8 @@ import android.app.Application
 import android.content.Context
 import androidx.compose.ui.test.junit4.ComposeTestRule
 import androidx.core.content.FileProvider
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import com.adyen.model.terminal.TerminalAPIRequest
@@ -52,9 +54,11 @@ import io.github.astiskala.minimpos.terminal.transport.TerminalTransport
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.joinAll
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
 import org.junit.rules.ExternalResource
@@ -129,6 +133,7 @@ class RecordingTransport : MailTransport {
  */
 class FakeTerminal(
     private val passphrase: String = "correct horse battery staple",
+    private val beforeSend: suspend () -> Unit = {},
 ) {
     /** Every host a transport was created for, in order (`localhost` when the app runs on the terminal). */
     val hosts = mutableListOf<String>()
@@ -141,7 +146,10 @@ class FakeTerminal(
     ): TerminalTransport {
         hosts += host
         return if (key.passphrase == passphrase) {
-            simulator
+            TerminalTransport { request, timeout ->
+                beforeSend()
+                simulator.send(request, timeout)
+            }
         } else {
             TerminalTransport { _, _ ->
                 Delivery.NotSent("Terminal rejected the request: Crypto error. ${TerminalHttpClient.KEY_ADVICE}")
@@ -365,6 +373,7 @@ class TestEnvironment(
             ): DiscoveredKey? = null
         },
     terminalEnvironment: suspend () -> TerminalEnvironment? = { TerminalEnvironment.TEST },
+    queryCallback: ((String) -> Unit)? = null,
 ) : ExternalResource() {
     /** Robolectric's application context. */
     val context: Context = ApplicationProvider.getApplicationContext()
@@ -390,7 +399,13 @@ class TestEnvironment(
         AppContainer(
             context = context,
             // Main-thread queries are allowed so tests can read the database directly.
-            database = Room.inMemoryDatabaseBuilder(context, AppDatabase::class.java).allowMainThreadQueries().build(),
+            database =
+                Room
+                    .inMemoryDatabaseBuilder(context, AppDatabase::class.java)
+                    .allowMainThreadQueries()
+                    .apply {
+                        if (queryCallback != null) setQueryCallback({ sql, _ -> queryCallback(sql) }, { it.run() })
+                    }.build(),
             cipher = cipher,
             device = device,
             mailTransport = mail,
@@ -491,6 +506,13 @@ val GST_RATES =
 
 /** Runs [block] to completion on the calling thread, failing the test after 10 seconds. */
 fun <T> await(block: suspend () -> T): T = runBlocking { withTimeout(10_000) { block() } }
+
+/** Cancels [models]' scopes and joins them before a test closes Room or resets the main dispatcher. */
+fun closeViewModels(models: List<ViewModel>) {
+    val jobs = models.mapNotNull { it.viewModelScope.coroutineContext[Job] }
+    models.forEach { it.viewModelScope.cancel() }
+    await { jobs.joinAll() }
+}
 
 /** What came of a request the gateway sent; fails the test when nothing was sent. */
 fun <T> Attempt<T>.made(): T = (this as Attempt.Made).result

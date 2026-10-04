@@ -19,7 +19,6 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import java.math.BigDecimal
 
 /**
  * What the product list shows.
@@ -107,7 +106,7 @@ data class ProductEditUiState(
     val chargeTax: Boolean = true,
     val saving: Boolean = false,
 ) {
-    /** The typed price in minor units; null unless it is positive with no more decimals than the currency has. */
+    /** The typed price in minor units; null on overflow, nonpositive values or too many decimals for the currency. */
     val priceMinor: Long?
         get() =
             form.price
@@ -115,7 +114,7 @@ data class ProductEditUiState(
                 .replace(',', '.')
                 .toBigDecimalOrNull()
                 ?.takeIf { it.signum() > 0 && it.scale() <= currency.fractionDigits }
-                ?.let(currency::toMinor)
+                ?.let { runCatching { currency.toMinor(it) }.getOrNull() }
 
     /** Whether the product can be saved: a name, a valid price, a tax rate and a SKU no other product has. */
     val valid: Boolean
@@ -156,7 +155,7 @@ class ProductEditViewModel(
                     ProductForm(
                         id = it.id,
                         name = it.name,
-                        price = BigDecimal.valueOf(it.priceMinor, spec.fractionDigits).toPlainString(),
+                        price = spec.toMajor(it.priceMinor).toPlainString(),
                         taxRateId = it.taxRateId,
                         categoryId = it.categoryId,
                         sku = it.sku.orEmpty(),

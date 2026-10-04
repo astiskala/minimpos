@@ -286,11 +286,13 @@ class SettingsViewModel(
     private suspend fun run(test: SettingsTest) {
         when (test) {
             SettingsTest.API -> {
-                _actions.update { it.copy(api = apiResult()) }
+                val result = apiResult()
+                _actions.update { it.copy(api = result) }
             }
 
             SettingsTest.CONNECTION -> {
-                _actions.update { it.copy(connection = connectionResult()) }
+                val result = connectionResult()
+                _actions.update { it.copy(connection = result) }
             }
 
             SettingsTest.CLOUD -> {

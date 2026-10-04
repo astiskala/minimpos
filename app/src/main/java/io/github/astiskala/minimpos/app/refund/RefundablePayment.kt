@@ -284,6 +284,7 @@ class RefundablePayment private constructor(
                 full = true,
                 merchantReference = Ids.transactionReference(prefix, now, zone),
                 cancellation = true,
+                expectedContext = record.sale.context,
             )
         }
 

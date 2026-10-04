@@ -21,6 +21,8 @@ import okhttp3.RequestBody.Companion.toRequestBody
 import java.net.ConnectException
 import java.net.NoRouteToHostException
 import java.net.UnknownHostException
+import java.util.Collections
+import java.util.IdentityHashMap
 import java.util.concurrent.TimeUnit
 import javax.net.ssl.SSLHandshakeException
 import javax.net.ssl.SSLPeerUnverifiedException
@@ -186,10 +188,13 @@ class TerminalHttpClient(
 
     private fun JsonObject.objectAt(name: String): JsonObject? = get(name)?.takeIf { it.isJsonObject }?.asJsonObject
 
-    private fun tlsFailure(error: Throwable): Throwable? =
-        generateSequence(error) { it.cause }
+    private fun tlsFailure(error: Throwable): Throwable? {
+        val seen = Collections.newSetFromMap(IdentityHashMap<Throwable, Boolean>())
+        return generateSequence(error) { it.cause }
+            .takeWhile { seen.add(it) }
             .flatMap { sequenceOf(it) + it.suppressed.asSequence() }
             .firstOrNull { it is SSLHandshakeException || it is SSLPeerUnverifiedException }
+    }
 
     private fun untrusted(cause: Throwable) =
         TerminalUntrustedException("The device did not present a valid Adyen terminal certificate, so it is not trusted", cause)

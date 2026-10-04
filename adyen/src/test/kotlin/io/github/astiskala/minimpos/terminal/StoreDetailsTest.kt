@@ -83,6 +83,17 @@ class StoreDetailsTest {
     }
 
     @Test
+    fun `Management strings are trimmed without coercing non-string fields`() {
+        reply(
+            """{"data":[{"id":" ST1 ","reference":12,"shopperStatement":" Shop ","phoneNumber":true,""" +
+                """"address":{"line1":" Main St ","city":123,"postalCode":[]}}]}""",
+        )
+        assertThat(stores()).isEqualTo(StoreListing.Listed(listOf(StoreDetails("ST1", "", "Shop", "Main St", ""))))
+        reply("""{"data":[{"id":123}]}""")
+        assertThat(stores()).isInstanceOf(StoreListing.Failed::class.java)
+    }
+
+    @Test
     fun `unreadable successful replies do not offer partial imports`() {
         listOf("not json", "[]", "{}", """{"data":[{"id":""}]}""", """{"data":[1]}""").forEach { body ->
             reply(body)

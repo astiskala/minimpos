@@ -375,7 +375,6 @@ class AppContainer(
         PaymentLinks(
             scope = appScope,
             sales = sales,
-            settings = settings,
             target = api::target,
             onCreated = { id, start ->
                 // The cart is now the link's to pay, so the next sale starts afresh.

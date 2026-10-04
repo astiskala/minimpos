@@ -27,7 +27,6 @@ data class PaymentLinkStart(
         createdAt: Long,
         context: PaymentContext? = null,
         locale: Locale = Locale.ROOT,
-        recurring: String? = null,
     ): SaleEntity =
         SaleBook.pendingSale(id, payment, createdAt).copy(
             paymentLink = true,
@@ -35,7 +34,7 @@ data class PaymentLinkStart(
             context = context,
             linkLocale = locale.toLanguageTag().takeIf { locale.language.isNotEmpty() },
             linkCountry = locale.country.takeIf { it.matches(Regex("[A-Z]{2}")) },
-            linkRecurringModel = recurring.takeIf { payment.tokenization != null },
+            linkRecurringModel = payment.tokenization?.recurringProcessingModel?.value,
         )
 }
 

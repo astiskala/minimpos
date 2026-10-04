@@ -44,11 +44,11 @@ interface CatalogDao {
     @Query("SELECT * FROM products WHERE id = :id")
     suspend fun product(id: Long): ProductEntity?
 
-    /** Returns a product whose SKU equals [sku] exactly (SKUs are not unique, so any one of them), or null. */
+    /** Returns the product whose unique SKU equals [sku] exactly, or null. */
     @Query("SELECT * FROM products WHERE sku = :sku LIMIT 1")
     suspend fun productBySku(sku: String): ProductEntity?
 
-    /** Returns a product of [kind] whose SKU equals [sku] exactly (any one of them), or null. */
+    /** Returns the product of [kind] whose unique SKU equals [sku] exactly, or null. */
     @Query("SELECT * FROM products WHERE sku = :sku AND kind = :kind LIMIT 1")
     suspend fun productBySku(
         sku: String,

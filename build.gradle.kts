@@ -46,6 +46,7 @@ spotless {
             "docs/**/*.html",
             "docs/**/*.css",
             "docs/**/*.js",
+            "website-test/src/test/js/**/*.js",
             "docs/**/*.svg",
         )
         trimTrailingWhitespace()

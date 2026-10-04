@@ -161,16 +161,6 @@ class AdyenTerminalDetails(
         return TerminalDetails(id, json.getAsJsonObject("assignment")?.text("merchantId").orEmpty(), ethernet.ifBlank { wifi })
     }
 
-    private fun JsonObject.text(
-        name: String,
-        trim: Boolean = true,
-    ): String =
-        get(name)
-            ?.takeIf { it.isJsonPrimitive && it.asJsonPrimitive.isString }
-            ?.asString
-            ?.let { if (trim) it.trim() else it }
-            .orEmpty()
-
     private companion object {
         val TIMEOUT = 15.seconds
         const val PAGE_SIZE = 100

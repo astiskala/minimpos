@@ -9,6 +9,7 @@ import io.github.astiskala.minimpos.app.data.db.SaleStatus
 import io.github.astiskala.minimpos.app.data.db.SaleWithLines
 import io.github.astiskala.minimpos.app.data.repo.RefundedLine
 import io.github.astiskala.minimpos.core.codec.RefundQrPayload
+import io.github.astiskala.minimpos.core.money.PaymentContext
 import org.junit.Assert.assertThrows
 import org.junit.Test
 import java.math.BigDecimal
@@ -170,6 +171,18 @@ class RefundablePaymentTest {
         assertThat(RefundablePayment.qrCode(record.copy(sale = sale.copy(status = SaleStatus.UNKNOWN)))).isNull()
         // Transaction IDs the code cannot carry.
         assertThat(RefundablePayment.qrCode(record.copy(sale = sale.copy(poiTransactionId = "A B")))).isNull()
+    }
+
+    @Test
+    fun `both kinds of hold cancellation retain their original payment context`() {
+        val context = PaymentContext("CLOUD", "S1F2-123", "POS1", "Merchant", "LIVE")
+        listOf(
+            sale.copy(kind = SaleKind.PRE_AUTHORISATION, context = context),
+            sale.copy(tipOnReceipt = true, context = context),
+        ).forEach { held ->
+            val cancellation = RefundablePayment.cancellation(record.copy(sale = held), "", now, ZoneOffset.UTC)!!
+            assertThat(cancellation.expectedContext).isEqualTo(context)
+        }
     }
 
     @Test

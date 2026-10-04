@@ -20,7 +20,46 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  ci:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    permissions:
+      actions: read
+    steps:
+      - name: Require successful CI for this commit
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPOSITORY: ${{ github.repository }}
+          COMMIT: ${{ github.sha }}
+        run: |
+          for attempt in $(seq 1 120); do
+            run=$(gh api --method GET "repos/$REPOSITORY/actions/workflows/ci.yml/runs" \
+              -f head_sha="$COMMIT" -f branch=main -f per_page=100 \
+              --jq '.workflow_runs | map(select(.event == "push" or .event == "workflow_dispatch")) | first')
+            if [ -z "$run" ] || [ "$run" = null ]; then
+              echo "::error::No CI run exists for $COMMIT. Run CI on main before releasing."
+              exit 1
+            fi
+            url=$(jq -r '.html_url' <<< "$run")
+            status=$(jq -r '.status' <<< "$run")
+            if [ "$status" = completed ]; then
+              conclusion=$(jq -r '.conclusion' <<< "$run")
+              if [ "$conclusion" != success ]; then
+                echo "::error::CI for $COMMIT concluded $conclusion: $url"
+                exit 1
+              fi
+              echo "CI passed for $COMMIT: $url" >> "$GITHUB_STEP_SUMMARY"
+              exit 0
+            fi
+            echo "Waiting for CI ($status): $url (attempt $attempt/120)"
+            sleep 15
+          done
+          echo "::error::Timed out waiting for CI for $COMMIT"
+          exit 1
+
   release:
+    needs: ci
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     timeout-minutes: 45

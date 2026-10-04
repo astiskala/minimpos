@@ -178,8 +178,11 @@ release process, credentials and signing history.
 ## Release the app
 
 `version.properties` is managed by **Actions › Release › Run workflow** on `main`. Choose patch/minor/major;
-the workflow raises `versionCode`, runs verification, signs, commits/tags `vX.Y.Z`, and publishes the APK and notes.
-Only the latest release is maintained.
+the workflow waits up to 30 minutes for the latest push or manually started CI run on the exact selected commit.
+Missing, failed or cancelled CI blocks the release; run **Actions › CI › Run workflow** on `main` if there is no run
+(for example, after the workflow's version commit). Only successful CI allows the release job to access the signing
+environment, raise `versionCode`, run verification again with the new version, sign, commit/tag `vX.Y.Z`, and publish
+the APK and notes. Only the latest release is maintained.
 
 The repository's `release` environment is restricted to `main`. Its secrets are `RELEASE_KEYSTORE` (base64 keystore)
 and `RELEASE_SIGNING_PROPERTIES` (`storePassword`, `keyAlias`, `keyPassword`). Never commit them or local SDK/signing

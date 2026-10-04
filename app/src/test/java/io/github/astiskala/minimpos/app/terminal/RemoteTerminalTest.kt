@@ -27,7 +27,7 @@ import io.github.astiskala.minimpos.terminal.transport.TerminalEnvironment
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
-import kotlinx.coroutines.test.advanceTimeBy
+import kotlinx.coroutines.test.runTest
 import org.junit.After
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -66,36 +66,34 @@ class RemoteTerminalTest {
     }
 
     @Test
-    fun `a terminal in the cloud takes payments with the API key, once its endpoint is found`() {
-        useCloud()
-        var sending: String? = null
-        val paid = await { gateway.pay(payment, "PAY1") { sending = it } }.made() as TransactionOutcome.Completed
-        assertThat(paid.details.success).isTrue()
-        assertThat(sending).isEqualTo("S1F2-000158213605014")
-        assertThat(cloud.credentials).containsExactly(CloudCredentials("cloud-key", "Merchant"))
-        val refund = RefundParams(paid.details.poiTransactionId!!, paid.details.poiTimestamp!!, "R-1")
-        assertThat((await { gateway.refund(refund, "REF1") }.made() as TransactionOutcome.Completed).details.success).isTrue()
-        assertThat(await { gateway.status("PAY1", TransactionKind.PAYMENT) }).isInstanceOf(TransactionOutcome.Completed::class.java)
-        assertThat(await { gateway.print(listOf(PrintJob.Text(listOf(PrintLine.Text("x"))))) }.made()).isEqualTo(PrintOutcome.Printed)
-        // The endpoint is found once per key and terminal.
-        assertThat(cloud.detections).isEqualTo(1)
+    fun `a terminal in the cloud takes payments with the API key, once its endpoint is found`() =
+        runTest(dispatcher) {
+            useCloud()
+            var sending: String? = null
+            val paid = gateway.pay(payment, "PAY1") { sending = it }.made() as TransactionOutcome.Completed
+            assertThat(paid.details.success).isTrue()
+            assertThat(sending).isEqualTo("S1F2-000158213605014")
+            assertThat(cloud.credentials).containsExactly(CloudCredentials("cloud-key", "Merchant"))
+            val refund = RefundParams(paid.details.poiTransactionId!!, paid.details.poiTimestamp!!, "R-1")
+            assertThat((gateway.refund(refund, "REF1").made() as TransactionOutcome.Completed).details.success).isTrue()
+            assertThat(gateway.status("PAY1", TransactionKind.PAYMENT)).isInstanceOf(TransactionOutcome.Completed::class.java)
+            assertThat(gateway.print(listOf(PrintJob.Text(listOf(PrintLine.Text("x"))))).made()).isEqualTo(PrintOutcome.Printed)
+            // The endpoint is found once per key and terminal.
+            assertThat(cloud.detections).isEqualTo(1)
 
-        // The key's environment and data centre are what the Checkout API and Settings go by.
-        container.terminalStatus.start()
-        val saved = await { container.settings.settings.first { it.terminal.cloudRegion != null } }
-        assertThat(saved.terminal.environment).isEqualTo(TerminalEnvironment.LIVE)
-        assertThat(saved.terminal.cloudRegion).isEqualTo(CloudRegion.AU)
-        dispatcher.scheduler.advanceTimeBy(1_001)
-        val status =
-            await {
+            // The key's environment and data centre are what the Checkout API and Settings go by.
+            container.terminalStatus.start()
+            val saved = container.settings.settings.first { it.terminal.cloudRegion != null }
+            assertThat(saved.terminal.environment).isEqualTo(TerminalEnvironment.LIVE)
+            assertThat(saved.terminal.cloudRegion).isEqualTo(CloudRegion.AU)
+            val status =
                 container.terminalStatus.state.first {
                     it.connection is TerminalConnection.Connected && it.environment == TerminalEnvironment.LIVE
                 }
-            }
-        assertThat(status.mode).isEqualTo(TerminalMode.CLOUD)
-        assertThat(status.environment).isEqualTo(TerminalEnvironment.LIVE)
-        assertThat(status.apiProblem).isEqualTo(SetupProblem.LIVE_PREFIX)
-    }
+            assertThat(status.mode).isEqualTo(TerminalMode.CLOUD)
+            assertThat(status.environment).isEqualTo(TerminalEnvironment.LIVE)
+            assertThat(status.apiProblem).isEqualTo(SetupProblem.LIVE_PREFIX)
+        }
 
     @Test
     fun `an API key no endpoint takes is a failed connection, and nothing is sent`() {

@@ -117,6 +117,7 @@ class RemoteTerminalTest {
             val saved = container.settings.settings.first { it.terminal.cloudRegion != null }
             assertThat(saved.terminal.environment).isEqualTo(TerminalEnvironment.LIVE)
             assertThat(saved.terminal.cloudRegion).isEqualTo(CloudRegion.AU)
+            assertThat(container.terminalStatus.check()).isInstanceOf(TerminalConnection.Connected::class.java)
             val status =
                 container.terminalStatus.state.first {
                     it.connection is TerminalConnection.Connected && it.environment == TerminalEnvironment.LIVE

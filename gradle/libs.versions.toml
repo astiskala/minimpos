@@ -7,7 +7,7 @@ spotless = "8.10.3"
 ktlint = "1.8.0"
 # detekt 1.x is built on Kotlin 2.0 and cannot analyse this project's Kotlin 2.4 code; 2.0 is built on Kotlin 2.4.
 detekt = "2.0.0-alpha.6"
-composeRules = "0.6.6"
+composeRules = "0.6.7"
 # Only used to check KDoc: every module's check fails when a [link] does not resolve.
 dokka = "2.2.0"
 
@@ -32,7 +32,7 @@ junit = "4.13.2"
 truth = "1.4.5"
 robolectric = "4.17"
 androidxTestCore = "1.7.0"
-archunit = "1.5.0"
+archunit = "1.5.1"
 jsoup = "1.23.2"
 # The W3C Nu Html Checker (validator.w3.org/nu), run on the website by :website-test.
 nuValidator = "26.9.16"

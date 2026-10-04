@@ -42,6 +42,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -73,6 +74,7 @@ import io.github.astiskala.minimpos.app.data.settings.PaymentSettings
 import io.github.astiskala.minimpos.app.data.settings.PricingChange
 import io.github.astiskala.minimpos.app.data.settings.PrinterMode
 import io.github.astiskala.minimpos.app.data.settings.ReceiptSettings
+import io.github.astiskala.minimpos.app.data.settings.ReceiptTipping
 import io.github.astiskala.minimpos.app.data.settings.ShopperReferenceSource
 import io.github.astiskala.minimpos.app.data.settings.SimulatorSettings
 import io.github.astiskala.minimpos.app.data.settings.TerminalMode
@@ -81,6 +83,7 @@ import io.github.astiskala.minimpos.app.feature.OutcomeMessage
 import io.github.astiskala.minimpos.app.feature.lock.SetPinScreen
 import io.github.astiskala.minimpos.app.feature.text
 import io.github.astiskala.minimpos.app.payment.TransactionState.Processing
+import io.github.astiskala.minimpos.app.terminal.ReceiptBusiness
 import io.github.astiskala.minimpos.app.terminal.TerminalConnection
 import io.github.astiskala.minimpos.app.ui.components.ActionMessage
 import io.github.astiskala.minimpos.app.ui.components.ConfirmDialog
@@ -120,7 +123,7 @@ private fun settingsViewModel(): SettingsViewModel {
             secrets = container.secrets,
             pins = container.pinManager,
             sessionLock = container.sessionLock,
-            checks = SettingsChecks(container.terminalStatus, container.receipts, container.api),
+            checks = SettingsChecks(container.terminalStatus, container.receipts, container.api, container.receiptBusinessDetails),
             history = container.history,
             catalog = container.catalog,
             sampleReceipt = container::sampleReceipt,
@@ -130,9 +133,18 @@ private fun settingsViewModel(): SettingsViewModel {
 }
 
 @Composable
-private fun terminalSetupViewModel(): TerminalSetupViewModel {
+private fun terminalSetupViewModel(settings: SettingsViewModel): TerminalSetupViewModel {
     val container = LocalAppContainer.current
-    return viewModel { TerminalSetupViewModel(container.settings, container.secrets, container.terminalStatus, container.tapToPay) }
+    return viewModel {
+        TerminalSetupViewModel(
+            container.secrets,
+            container.terminalStatus,
+            container.tapToPay,
+            container.setupDiscovery,
+            container.settings,
+            settings.state,
+        )
+    }
 }
 
 /** What the settings sections ask [SettingsViewModel] to do, so that they get callbacks rather than the view model. */
@@ -156,6 +168,9 @@ internal interface SettingsEvents {
     /** Closes the connection test's result ([SettingsViewModel.dismissConnectionResult]). */
     fun onConnectionResultDismiss()
 
+    /** Store selection and receipt-business confirmation callbacks. */
+    val businessImport: ReceiptBusinessEvents
+
     /** Prints the sample receipt ([SettingsViewModel.printTest]). */
     fun onTestPrint()
 
@@ -176,6 +191,15 @@ internal interface SettingsEvents {
 
     /** Deletes [taxRate] unless products still use it ([SettingsViewModel.deleteTaxRate]). */
     fun onTaxRateDelete(taxRate: TaxRateEntity)
+}
+
+/** Callbacks for the receipt-business lookup and reviewed import. */
+internal interface ReceiptBusinessEvents {
+    /** Loads stores without changing saved receipt details. */
+    fun onFind()
+
+    /** Confirms a currently offered proposal, or dismisses the selection for null. */
+    fun onChoose(business: ReceiptBusiness?)
 }
 
 /** What Settings › Terminal asks [TerminalSetupViewModel] to do, as [SettingsEvents] does for [SettingsViewModel]. */
@@ -232,6 +256,13 @@ private fun settingsEvents(settings: SettingsViewModel): SettingsEvents =
         ) = settings.saveAndTest(secret, value, test)
 
         override fun onConnectionResultDismiss() = settings.dismissConnectionResult()
+
+        override val businessImport =
+            object : ReceiptBusinessEvents {
+                override fun onFind() = settings.businessImport.find()
+
+                override fun onChoose(business: ReceiptBusiness?) = settings.businessImport.choose(business)
+            }
 
         override fun onTestPrint() = settings.printTest()
 
@@ -387,7 +418,7 @@ fun SettingsSectionScreen(
     val vm = settingsViewModel()
     val state by vm.state.collectAsStateWithLifecycle()
     val actions by vm.actions.collectAsStateWithLifecycle()
-    val setup = terminalSetupViewModel()
+    val setup = terminalSetupViewModel(vm)
     val setupActions by setup.actions.collectAsStateWithLifecycle()
     val pricing by vm.pricing.pending.collectAsStateWithLifecycle()
     pricing?.let { PricingConfirmation(it, vm.pricing::confirm, vm.pricing::cancel) }
@@ -427,7 +458,8 @@ fun SettingsSectionScreen(
                     }
 
                     SettingsSections.RECEIPTS -> {
-                        ReceiptsSection(state, actions, events)
+                        val businessImport by vm.businessImport.state.collectAsStateWithLifecycle()
+                        ReceiptsSection(state, actions, businessImport, events)
                     }
 
                     SettingsSections.EMAIL -> {
@@ -776,16 +808,22 @@ private fun ColumnScope.PaymentsSection(
     )
     SettingSwitch(stringResource(R.string.settings_ask_transaction_reference), payment.askTransactionReference, { value ->
         update { it.copy(askTransactionReference = value) }
-    })
+    }, subtitle = stringResource(R.string.settings_ask_transaction_reference_hint))
     SectionHeader(stringResource(R.string.settings_tokenization))
     ShopperReferenceSettings(payment, ::update)
     SectionHeader(stringResource(R.string.settings_tipping))
-    SettingSwitch(
-        stringResource(R.string.settings_tip_default),
-        payment.tipOnReceiptDefaultOn,
-        { value -> update { it.copy(tipOnReceiptDefaultOn = value) } },
+    SettingChoice(
+        title = stringResource(R.string.checkout_tip_on_receipt),
+        options =
+            listOf(
+                ReceiptTipping.DISABLED to stringResource(R.string.settings_tip_disabled),
+                ReceiptTipping.DEFAULT_OFF to stringResource(R.string.settings_tip_default_off),
+                ReceiptTipping.DEFAULT_ON to stringResource(R.string.settings_tip_default_on),
+            ),
+        selected = payment.receiptTipping,
+        onSelect = { value -> update { it.copy(receiptTipping = value) } },
         subtitle = stringResource(R.string.settings_tip_default_hint),
-        tag = "tipDefault",
+        tag = "receiptTipping",
     )
     SectionHeader(stringResource(R.string.settings_email_receipts))
     EmailCaptureSettings(payment, ::update)
@@ -804,14 +842,7 @@ private fun ColumnScope.PaymentLinkSettings(
 ) {
     val status by LocalAppContainer.current.terminalStatus.state
         .collectAsStateWithLifecycle()
-    SettingSwitch(
-        stringResource(R.string.settings_links_enabled),
-        payment.paymentLinks,
-        { value -> update { it.copy(paymentLinks = value) } },
-        subtitle = stringResource(R.string.settings_links_hint),
-        tag = "paymentLinks",
-    )
-    if (!payment.paymentLinks) return
+    SettingNote(stringResource(R.string.settings_links_hint))
     SettingNumberField(
         stringResource(R.string.settings_link_expiry),
         payment.linkExpiryHours,
@@ -904,13 +935,6 @@ private fun ColumnScope.CardSavingSettings(
         selected = payment.recurringProcessingModel,
         onSelect = { model -> update { it.copy(recurringProcessingModel = model) } },
     )
-    SettingSwitch(
-        stringResource(R.string.settings_send_shopper_email),
-        payment.sendShopperEmail,
-        { value -> update { it.copy(sendShopperEmail = value) } },
-        subtitle = stringResource(R.string.settings_send_shopper_email_hint),
-        tag = "sendShopperEmail",
-    )
 }
 
 /**
@@ -971,6 +995,7 @@ private fun ColumnScope.EmailCaptureSettings(
     update: ((PaymentSettings) -> PaymentSettings) -> Unit,
 ) {
     val emailIsReference = payment.shopperReferenceSource == ShopperReferenceSource.EMAIL
+    SettingNote(stringResource(R.string.settings_shopper_email_hint))
     // With the email as shopper reference it is needed when the payment starts, so only "before" choices are offered.
     SettingChoice(
         title = stringResource(R.string.settings_email_capture),
@@ -999,15 +1024,15 @@ private fun ColumnScope.ReceiptTaxSettings(
 ) {
     SettingSwitch(stringResource(R.string.settings_show_tax_amounts), receipt.showTaxAmounts, { value ->
         update { it.copy(showTaxAmounts = value) }
-    }, tag = "showTaxAmounts")
+    }, subtitle = stringResource(R.string.settings_show_tax_amounts_hint), tag = "showTaxAmounts")
     if (receipt.showTaxAmounts) {
         SettingSwitch(stringResource(R.string.settings_show_tax), receipt.showTaxBreakdown, { value ->
             update { it.copy(showTaxBreakdown = value) }
-        }, tag = "showTaxBreakdown")
+        }, subtitle = stringResource(R.string.settings_show_tax_hint), tag = "showTaxBreakdown")
     }
     SettingSwitch(stringResource(R.string.settings_show_tax_rate_totals), receipt.showTaxRateTotals, { value ->
         update { it.copy(showTaxRateTotals = value) }
-    }, tag = "showTaxRateTotals")
+    }, subtitle = stringResource(R.string.settings_show_tax_rate_totals_hint), tag = "showTaxRateTotals")
     SettingTextField(
         label = stringResource(R.string.settings_marked_tax_rate),
         value = receipt.markedTaxRateMilliPercent?.let(TaxRates::format).orEmpty(),
@@ -1031,17 +1056,19 @@ private fun ColumnScope.ReceiptTaxSettings(
 private fun ColumnScope.ReceiptsSection(
     state: SettingsUiState,
     actions: SettingsActions,
+    businessImport: ReceiptBusinessImportState,
     events: SettingsEvents,
 ) {
     val receipt = state.settings.receipt
 
     fun update(transform: (ReceiptSettings) -> ReceiptSettings) = events.onUpdate { it.copy(receipt = transform(it.receipt)) }
-    ReceiptTextSettings(receipt, ::update)
+    ReceiptBusinessImport(businessImport, events.businessImport)
+    key(businessImport.revision) { ReceiptTextSettings(receipt, ::update) }
     SectionHeader(stringResource(R.string.settings_content))
     ReceiptTaxSettings(receipt, ::update)
     SettingSwitch(stringResource(R.string.settings_show_references), receipt.showReferences, { value ->
         update { it.copy(showReferences = value) }
-    })
+    }, subtitle = stringResource(R.string.settings_show_references_hint))
     SettingSwitch(
         stringResource(R.string.settings_show_qr),
         receipt.showRefundQr,

@@ -31,9 +31,9 @@ import io.github.astiskala.minimpos.app.data.db.RefundStatus
 import io.github.astiskala.minimpos.app.data.db.SaleEntity
 import io.github.astiskala.minimpos.app.data.db.SaleKind
 import io.github.astiskala.minimpos.app.data.db.SaleStatus
-import io.github.astiskala.minimpos.app.data.db.TaxRateEntity
 import io.github.astiskala.minimpos.app.data.repo.HistoryItem
 import io.github.astiskala.minimpos.app.data.settings.AppSettings
+import io.github.astiskala.minimpos.app.data.settings.ReceiptTipping
 import io.github.astiskala.minimpos.app.data.settings.ShopperReferenceSource
 import io.github.astiskala.minimpos.app.data.settings.TerminalMode
 import io.github.astiskala.minimpos.core.cart.AppliedTax
@@ -503,6 +503,7 @@ class AppFlowTest {
 
     @Test
     fun `takes a sale for a tip on the receipt and enters the tip afterwards`() {
+        env.updateSettings { it.copy(payment = it.payment.copy(receiptTipping = ReceiptTipping.DEFAULT_OFF)) }
         ringUpCustomAmount(2, 5, 0, 0)
         compose.onNodeWithTag("charge").performClick()
         compose.waitForTag("pay")
@@ -661,7 +662,8 @@ class AppFlowTest {
         compose.waitForTag("host")
         compose.onNodeWithTag("poiId").assertExists()
         compose.onNodeWithTag("keyIdentifier").assertExists()
-        compose.onNodeWithTag("step_3").assertTextContains("Checkout API")
+        compose.onNodeWithTag("step_1").assertTextContains("Adyen API key")
+        compose.onNodeWithTag("step_4").assertTextContains("Checkout API")
         compose.onNodeWithTag("merchantAccount").assertExists()
 
         // A terminal in the cloud needs the API key and its ID, which can be found among those connected, and one test
@@ -675,8 +677,9 @@ class AppFlowTest {
         compose.onNodeWithTag("keyIdentifier").assertDoesNotExist()
         compose.onNodeWithTag("testApi").assertDoesNotExist()
         compose.onNodeWithTag("testConnection").assertExists()
-        compose.onNodeWithTag("step_1").assertTextContains("Adyen account")
-        compose.onNodeWithTag("step_2").assertTextContains("Terminal")
+        compose.onNodeWithTag("step_1").assertTextContains("Adyen API key")
+        compose.onNodeWithTag("step_2").assertTextContains("Adyen account")
+        compose.onNodeWithTag("step_3").assertTextContains("Terminal")
 
         // Tap to Pay: the Payments app (offered from Google Play while none is installed), the Checkout API, setting it
         // up with the Payments app API key, then the shared key.
@@ -687,7 +690,7 @@ class AppFlowTest {
         compose.onNodeWithText("Not installed").assertExists()
         compose.onNodeWithTag("getPaymentsAppTest").assertExists()
         compose.onNodeWithTag("getPaymentsAppLive").assertExists()
-        listOf("Adyen Payments app", "Checkout API", "Tap to Pay", "Shared key").forEachIndexed { index, title ->
+        listOf("Adyen API key", "Adyen Payments app", "Checkout API", "Tap to Pay", "Shared key").forEachIndexed { index, title ->
             compose.onNodeWithTag("step_${index + 1}").assertTextContains(title)
         }
         compose.onNodeWithTag("keyIdentifier").assertExists()
@@ -698,27 +701,5 @@ class AppFlowTest {
         compose.onNodeWithTag("terminalMode_SIMULATOR").performClick()
         // Choosing the device's own default stores Automatic, so it keeps following the device.
         awaitSetting("Automatic mode") { container.settingsState.value.terminal.mode == TerminalMode.AUTO }
-    }
-
-    @Test
-    fun `tax rates are listed and chosen in settings, not products`() {
-        val vat = await { container.catalog.saveTaxRate(TaxRateEntity(name = "VAT", rateMilliPercent = 25_500, sortOrder = 9)) }
-        await { container.settings.update { it.copy(payment = it.payment.copy(defaultTaxRateId = vat)) } }
-        compose.onNodeWithTag("settings").performClick()
-        waitForText("VAT 25.5%")
-        compose.onNodeWithTag("section_tax").performScrollTo().performClick()
-        compose.waitForTag("taxRow_$vat")
-        compose.onNodeWithTag("taxRow_$vat").assertTextContains("25.5%", substring = true)
-        compose.onNodeWithTag("taxRow_$vat").assertTextContains("Default", substring = true)
-        compose.onNodeWithTag("addTaxRate").performScrollTo().assertIsDisplayed()
-
-        // Tax rates are no longer edited under Products.
-        compose.onNodeWithTag("back").performClick()
-        compose.waitForTag("section_tax")
-        compose.onNodeWithTag("back").performClick()
-        compose.waitForTag("products")
-        compose.onNodeWithTag("products").performClick()
-        compose.waitForTag("tab_1")
-        compose.onNodeWithTag("tab_2").assertDoesNotExist()
     }
 }

@@ -13,6 +13,7 @@ import io.github.astiskala.minimpos.app.data.security.TransferSeal
 import io.github.astiskala.minimpos.app.data.settings.EmailCapture
 import io.github.astiskala.minimpos.app.data.settings.MerchantCopyPolicy
 import io.github.astiskala.minimpos.app.data.settings.PrinterMode
+import io.github.astiskala.minimpos.app.data.settings.ReceiptTipping
 import io.github.astiskala.minimpos.app.data.settings.SmtpSecurity
 import io.github.astiskala.minimpos.app.data.settings.TerminalMode
 import io.github.astiskala.minimpos.app.data.transfer.ImportOutcome
@@ -77,7 +78,7 @@ class SetupTransferTest {
                         referencePrefix = "T1",
                         emailCapture = EmailCapture.BEFORE_PAYMENT,
                         emailReferenceSalt = "pepper",
-                        tipOnReceiptDefaultOn = true,
+                        receiptTipping = ReceiptTipping.DEFAULT_ON,
                     ),
                 receipt =
                     it.receipt.copy(

@@ -110,14 +110,11 @@ class PaymentLinkFlowTest {
     }
 
     @Test
-    fun `payment links are switched on in Payments settings and say when the Checkout API is missing`() {
+    fun `payment link settings always offer expiry and say when the Checkout API is missing`() {
         compose.onNodeWithTag("settings").performClick()
         waitForTag("section_payments")
         compose.onNodeWithTag("section_payments").performClick()
-        waitForTag("paymentLinks")
-        compose.onNodeWithTag("linkExpiry").assertDoesNotExist()
-        compose.onNodeWithTag("paymentLinks").performScrollTo().performClick()
-        compose.awaitCondition("links switched on") { container.settingsState.value.payment.paymentLinks }
+        compose.onNodeWithTag("paymentLinks").assertDoesNotExist()
         // The screen recomposes with the stored settings a moment after they change.
         waitForTag("linkExpiry")
         compose.onNodeWithTag("linkExpiry").performScrollTo().assertIsDisplayed()

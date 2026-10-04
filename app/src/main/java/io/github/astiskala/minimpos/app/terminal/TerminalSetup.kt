@@ -82,10 +82,10 @@ data class TerminalSetup(
     val checksConnection: Boolean get() = destination.checksConnection
 
     /**
-     * Whether checkout offers payment links: switched on in Settings › Payments and the Checkout API is set up. They are
+     * Whether checkout offers payment links: whenever the Checkout API is set up. They are
      * never simulated, so not while payments go to the simulator.
      */
-    val paymentLinks: Boolean get() = settings.payment.paymentLinks && apiSetup == ApiSetup.Complete
+    val paymentLinks: Boolean get() = apiSetup == ApiSetup.Complete
 
     /** The secrets to read for this setup, of those [saved]: the [destination]'s and the Adyen API key. */
     fun secretsToRead(saved: Set<Secret>): Set<Secret> = (destination.secrets + Secret.ADYEN_API_KEY).intersect(saved)

@@ -20,7 +20,7 @@ import io.github.astiskala.minimpos.terminal.client.TransactionKind
  * @property currency The currency charged.
  * @property merchantReference Adyen's merchant reference for the payment, such as `260930-145811-VQ45`.
  * @property customerReference Sent as payment metadata when set; only when it is also the shopper reference.
- * @property shopperEmail The shopper's email, for the receipt; sent to Adyen only with [tokenization] that includes it.
+ * @property shopperEmail The shopper's email collected before payment, sent to Adyen and used for the receipt; null if absent.
  * @property tokenization Set only when the shopper opted in to saving their card (under [shopperReference]).
  * @property kind A sale, or a pre-authorisation that only holds the amount (sent with `authorisationType=PreAuth` and
  *   manual capture).
@@ -61,11 +61,9 @@ data class PaymentStart(
  * [PaymentStart.shopperReference].
  *
  * @property recurringProcessingModel How the saved card will be used later.
- * @property includeEmail Whether to send `shopperEmail` with the request.
  */
 data class TokenizationRequest(
     val recurringProcessingModel: RecurringModel,
-    val includeEmail: Boolean,
 )
 
 /**
@@ -104,7 +102,7 @@ class SaleBook(
                 currency = request.currency.code,
                 merchantReference = request.merchantReference,
                 shopperReference = request.shopperReference,
-                shopperEmail = request.shopperEmail?.takeIf { tokenization?.includeEmail == true },
+                shopperEmail = request.shopperEmail,
                 recurringProcessingModel = tokenization?.recurringProcessingModel,
                 // The app prints its own combined receipt, including the card details.
                 tenderOptions = listOf(RECEIPT_HANDLER),

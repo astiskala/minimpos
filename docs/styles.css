@@ -451,6 +451,10 @@ pre {
 
 .guide-body h3 { margin-top: 1.4em; }
 
+.guide-shot { width: 100%; max-width: 240px; margin: 24px auto; text-align: center; }
+
+.guide-shot figcaption { margin-top: 16px; }
+
 .guide-body li { margin-bottom: 6px; }
 
 .guide-body code { font-family: var(--mono); font-size: 0.9em; background: var(--grey-light); padding: 1px 5px; border-radius: 4px; }

@@ -80,7 +80,7 @@
           <h3 id="products">添加商品</h3>
           <p>打开<strong>商品</strong>，点击 <strong>+</strong>，输入名称、价格和税率。按需添加分类或条形码，条形码可输入或扫描。分类标签页用于对销售界面分组。将订金标为<strong>预授权商品</strong>，与普通销售分开。</p>
           <h3 id="staff">控制员工权限</h3>
-          <p>在<strong>设置 › 安全</strong>中设置<strong>管理员 PIN</strong>，保护设置和商品管理，并选择自动重新锁定时间。可另设<strong>经理 PIN</strong>，用于批准退款、取消、扣款、金额调整和小费录入。请先设置管理员 PIN；移除它也会移除经理 PIN。多次输错会暂时锁定 PIN 输入。</p>
+          <p>在<strong>设置 › 安全</strong>中设置<strong>管理员 PIN</strong>，保护设置和商品管理，并选择自动重新锁定时间。可另设<strong>经理 PIN</strong>，用于批准退款、取消、扣款、金额调整和小费录入。请先设置管理员 PIN。在同一界面使用<strong>更改管理员 PIN</strong>或<strong>移除管理员 PIN</strong>进行更改或移除；移除它也会移除经理 PIN。多次输错会暂时锁定 PIN 输入。</p>
           <p>PIN 问题请参阅<a href="troubleshooting.html#access">权限故障排查</a>。</p>
           <p class="back-to-contents"><a href="#contents">返回目录</a></p>
         </section>
@@ -111,11 +111,15 @@
           <p>从结果或交易记录使用<strong>打印收据</strong>或<strong>发送电子收据</strong>。平板和手机还可<strong>分享收据</strong>，通过 Android 分享面板发送图片。打印需要已连接、配有实体打印机的终端；Tap to Pay 没有打印机。</p>
           <h3 id="customize-receipts">自定义和测试</h3>
           <p>在<strong>设置 › 收据</strong>中填写商家信息、抬头、页脚、识别号和退款二维码，选择自动打印及商家联打印时机。预览可辅助排版，仍请用<strong>打印测试收据</strong>检查实体打印效果。</p>
-          <p><strong>显示税额</strong>与<strong>按税率显示应税金额</strong>可分别开关。要标记特定税率的商品，设置<strong>标记的税率（%）</strong>、<strong>商品标记</strong>及说明；税率留空则不标记。这些选项适用于所有语言和币种。</p>
+          <p><strong>显示税额</strong>显示总额中包含或另行加收的税额，不改变实际收取的税额。<strong>显示税额明细</strong>按税率列出税额；使用含税价格时，显示所含税额需要开启此项。<strong>按税率显示应税金额</strong>可独立开启，按税率汇总商品金额，包括0%：含税价格显示含税合计，否则显示税前合计。</p>
+          <p><strong>显示识别号</strong>默认开启，打印商家识别号及已输入的客户识别号，便于将收据与付款或客户对应。要标记特定税率的商品，设置<strong>标记的税率（%）</strong>、<strong>商品标记</strong>及说明；税率留空则不标记。</p>
+          <p><strong>每行字符宽度</strong>默认为32，适用于较窄的收据纸卷。它控制打印分隔线和纯文本收据的宽度；屏幕预览按可用宽度显示。请通过测试打印选择适合打印机的宽度。</p>
+          <p><strong>从 Adyen 导入商家信息</strong>可选择门店，核对收据名称、地址和电话后再导入。Adyen API 密钥需要<a href="https://docs.adyen.com/api-explorer/Management/latest/get/merchants/(merchantId)/stores"><strong>Management API—Stores read</strong>权限</a>。仅替换已提供的信息，税号、标题和页脚不变。</p>
           <h3 id="language-receipts">语言和收据文字</h3>
           <p>应用支持英语、简体中文和日语。Android 12 及更早版本跟随设备语言；Android 13 及更高版本使用系统的单应用语言设置。Adyen 的付款收据行跟随终端的收据语言，并按原样保留。请测试打印布局，特别是中日文文字。</p>
           <h3 id="email">设置电子邮件</h3>
           <p>打开<strong>设置 › 电子邮件</strong>，选择服务商或填写 SMTP 服务器、发件人和凭据。使用 STARTTLS 或 SSL，并发送测试邮件。在<strong>设置 › 支付 › 电子收据</strong>中选择询问邮箱的时机以及是否自动发送。</p>
+          <p>支付前收集的邮箱始终会发送给 Adyen，终端支付和支付链接均如此，与是否保存卡片无关。支付后收集的邮箱仅用于收据。</p>
           <p>服务商按钮只填写服务器信息，不会授权账户。SMTP 访问和所需密码请遵循服务商说明：</p>
           <ul><li><a href="https://support.google.com/mail/answer/185833">Gmail</a></li><li><a href="https://learn.microsoft.com/en-us/exchange/mail-flow-best-practices/how-to-set-up-a-multifunction-device-or-application-to-send-email-using-microsoft-365-or-office-365">Microsoft 365</a></li><li><a href="https://support.apple.com/en-us/102525">iCloud Mail</a></li><li><a href="https://help.yahoo.com/kb/pop-smtp-settings-article-sln4724.html">Yahoo Mail</a></li><li><a href="https://www.fastmail.help/hc/en-us/articles/1500000278342-Server-names-and-ports">Fastmail</a></li><li><a href="https://www.zoho.com/mail/help/zoho-smtp.html">Zoho Mail</a></li><li><a href="https://proton.me/support/smtp-submission">Proton Mail</a></li></ul>
           <p>应用使用基于密码的 SMTP，不支持 OAuth。即使服务器信息正确，服务商或组织政策也可能阻止连接。</p>
@@ -124,14 +128,14 @@
         </section>
         <section id="shoppers">
           <h2>识别号和保存卡片</h2>
-          <p>员工需记录预订或订单号时，在<strong>设置 › 支付</strong>启用交易识别号。另行选择<strong>购物者识别号</strong>：无、结账输入的客户识别号或顾客邮箱。无论是否保存卡片，每笔付款都会向 Adyen 发送该购物者识别号。邮箱默认经过哈希处理；跨设备使用相同盐值以保持识别号一致。</p>
+          <p>员工需记录预订或订单号时，开启<strong>设置 › 支付 › 要求输入商家交易识别号</strong>。此号码用于在Adyen中识别付款，留空则生成唯一识别号。另行选择<strong>购物者识别号</strong>：无、结账输入的客户识别号或顾客邮箱。无论是否保存卡片，每笔付款都会向 Adyen 发送该购物者识别号。邮箱默认经过哈希处理；跨设备使用相同盐值以保持识别号一致。</p>
           <p>配置购物者识别号后，<strong>提供保存卡片选项</strong>可在结账时提供保存卡片。取得顾客同意，并选择符合 Adyen 集成的循环扣款模式。保存卡片不会在 Mini mPOS 中提供使用已保存卡片扣款的界面。</p>
           <p class="back-to-contents"><a href="#contents">返回目录</a></p>
         </section>
         <section id="payment-links">
           <h2>让顾客通过链接付款</h2>
           <p>Adyen <a href="https://docs.adyen.com/unified-commerce/pay-by-link">Pay by Link</a>让顾客在 Adyen 支付页面付款，而不使用终端。LIVE 使用前请检查账户的 Pay by Link 要求，包括条款和条件。</p>
-          <ol><li>开启<strong>设置 › 支付 › 提供支付链接</strong>并选择有效期。</li><li>销售结账时点击<strong>创建支付链接</strong>。展示二维码、<strong>通过邮件发送链接</strong>并附上未支付收据、<strong>打印链接</strong>，或在平板和手机上<strong>分享链接</strong>。</li><li>保持链接界面打开以自动查询，或以后从交易记录点击<strong>查询支付状态</strong>。不再需要时使用<strong>取消链接</strong>。</li></ol>
+          <ol><li>完成 Checkout API 设置后，自动提供支付链接。在<strong>设置 › 支付 › 支付链接</strong>中选择有效期。</li><li>销售结账时点击<strong>创建支付链接</strong>。展示二维码、<strong>通过邮件发送链接</strong>并附上未支付收据、<strong>打印链接</strong>，或在平板和手机上<strong>分享链接</strong>。</li><li>保持链接界面打开以自动查询，或以后从交易记录点击<strong>查询支付状态</strong>。不再需要时使用<strong>取消链接</strong>。</li></ol>
           <p>链接被支付、过期或取消前，交易记录显示<strong>待支付</strong>。已支付链接计入合计，未支付链接不计入。链接包含商品及已填写的购物者信息、保存卡片选择，适用 Adyen 账户的线上风险和扣款设置。</p>
           <p class="note">链接仅用于销售，不用于订金或收据小费，需要真实 Checkout API，不支持模拟。有效期内任何持有链接的人均可付款。请在<strong>商户后台 › Payments › Payment list</strong>为已支付链接退款；应用无法获取其 PSP 识别号。</p>
           <p>链接未显示或不更新时，请参阅<a href="troubleshooting.html#links">支付链接故障排查</a>。</p>
@@ -149,6 +153,7 @@
         <section id="tips">
           <h2>收取顾客在收据上填写的小费</h2>
           <p>此流程需要实体打印机和 Adyen 的<a href="https://docs.adyen.com/point-of-sale/tipping/tipping-on-receipt">收据小费</a>配置。请 Adyen 支持团队为付款方式启用预授权和超额扣款（overcapture）。部分借记卡和钱包不支持。</p>
+          <p>在<strong>设置 › 支付 › 在收据上填写小费</strong>中选择<strong>启用（默认关闭）</strong>或<strong>启用（默认开启）</strong>。默认的<strong>禁用</strong>会隐藏结账开关。两种启用选项决定开关最初为关闭还是开启。</p>
           <ol><li>销售结账时开启<strong>在收据上填写小费</strong>并支付。账单金额只冻结，不扣款。</li><li>打印带空白小费及合计栏的收据，商家联包含签名栏。</li><li>顾客填写后，从结果或交易记录的<strong>待填写小费</strong>筛选选择<strong>输入小费</strong>。输入小费或合计，或选择<strong>无小费</strong>并确认。</li></ol>
           <p>应用请求扣款账单加小费的总额。不超过 20% 的小费使用超额扣款，较大的小费先增加授权。若发卡行拒绝增加授权，小费不会保存，可填写较少金额或无小费。保存后不能更改小费。录入前应取消冻结付款，而不是退款；录入后的退款包括小费。</p>
           <p class="note">及时录入小费，包括零小费，以便在冻结到期前扣款。扣款请求仍需在商户后台确认最终结果。</p>

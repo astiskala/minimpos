@@ -8,6 +8,7 @@ import io.github.astiskala.minimpos.app.data.settings.EmailSettings
 import io.github.astiskala.minimpos.app.data.settings.HistorySettings
 import io.github.astiskala.minimpos.app.data.settings.PaymentSettings
 import io.github.astiskala.minimpos.app.data.settings.ReceiptSettings
+import io.github.astiskala.minimpos.app.data.settings.ReceiptTipping
 import io.github.astiskala.minimpos.app.data.settings.SecuritySettings
 import io.github.astiskala.minimpos.app.data.settings.ShopperReferenceSource
 import io.github.astiskala.minimpos.app.data.settings.SimulatorSettings
@@ -63,6 +64,12 @@ class AppSettingsTest {
         assertThat(australia.payment.shopperReferenceSource).isEqualTo(ShopperReferenceSource.NONE)
         assertThat(australia.payment.asksCustomerReference).isFalse()
         assertThat(australia.receipt.autoPrint).isTrue()
+        assertThat(australia.payment.receiptTipping).isEqualTo(ReceiptTipping.DISABLED)
+        listOf("", "AU", "HK", "JP", "US").forEach { country ->
+            listOf("en", "zh", "ja").forEach { language ->
+                assertThat(AppSettings.forNewInstallation(country, language).receipt.showReferences).isTrue()
+            }
+        }
         assertThat(australia.payment.taxMode).isEqualTo(TaxMode.INCLUSIVE)
         assertThat(AppSettings.forNewInstallation("US").payment.taxMode).isEqualTo(TaxMode.EXCLUSIVE)
         assertThat(AppSettings().payment.askTransactionReference).isFalse()

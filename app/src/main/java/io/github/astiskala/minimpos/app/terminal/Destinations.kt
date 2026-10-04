@@ -252,6 +252,7 @@ internal class LocalTerminal(
     companion object : DestinationRules {
         override val mode: TerminalMode get() = TerminalMode.TERMINAL
         override val secrets: Set<Secret> get() = setOf(Secret.TERMINAL_PASSPHRASE)
+        override val discoversTerminals: Boolean get() = true
 
         override fun poiId(
             terminal: TerminalSettings,
@@ -345,6 +346,7 @@ internal class CloudTerminal(
     companion object : DestinationRules {
         override val mode: TerminalMode get() = TerminalMode.CLOUD
         override val secrets: Set<Secret> get() = setOf(Secret.ADYEN_API_KEY)
+        override val discoversTerminals: Boolean get() = true
 
         override fun transactionTimeout(configured: Duration): Duration = maxOf(configured, AdyenCloudDevices.MIN_TRANSACTION_TIMEOUT)
 

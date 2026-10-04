@@ -32,6 +32,7 @@ import io.github.astiskala.minimpos.app.data.db.SaleKind
 import io.github.astiskala.minimpos.app.data.db.SaleStatus
 import io.github.astiskala.minimpos.app.data.security.Secret
 import io.github.astiskala.minimpos.app.data.settings.PrinterMode
+import io.github.astiskala.minimpos.app.data.settings.ReceiptTipping
 import io.github.astiskala.minimpos.core.receipt.ReceiptElement
 import io.github.astiskala.minimpos.terminal.transport.TerminalEnvironment
 import kotlinx.coroutines.flow.first
@@ -434,7 +435,12 @@ class SmallScreenTest {
     private fun tipFitsTheScreen() {
         // The simulator stands in for the Checkout API that captures the tip. The AMS1 has no printer of its own;
         // tipping on the receipt needs one.
-        env.useSimulator { it.copy(receipt = it.receipt.copy(printerMode = PrinterMode.ON, autoPrint = false)) }
+        env.useSimulator {
+            it.copy(
+                receipt = it.receipt.copy(printerMode = PrinterMode.ON, autoPrint = false),
+                payment = it.payment.copy(receiptTipping = ReceiptTipping.DEFAULT_OFF),
+            )
+        }
         compose.setContent { MiniMposApp(container) }
         compose.onNodeWithTag("newSale").performClick()
         waitForTag("addCustom")
@@ -471,8 +477,9 @@ class SmallScreenTest {
         compose.onNodeWithTag("section_terminal").performClick()
         // Every payment needs it, so it is the step after the shared key, open from the start.
         waitForTag("step_2")
-        compose.onNodeWithTag("step_1").assertTextContains("Shared key")
-        compose.onNodeWithTag("step_2").assertTextContains("Checkout API")
+        compose.onNodeWithTag("step_1").assertTextContains("Adyen API key")
+        compose.onNodeWithTag("step_2").assertTextContains("Shared key")
+        compose.onNodeWithTag("step_3").assertTextContains("Checkout API")
         compose.onNodeWithTag("apiProblem").performScrollTo().assertTextContains("Enter the merchant account", substring = true)
         compose.onNodeWithTag("merchantAccount").performScrollTo().performTextInput("HarbourCoffeeCOM")
         compose.awaitCondition(

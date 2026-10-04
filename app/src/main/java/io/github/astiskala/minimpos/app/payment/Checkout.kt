@@ -2,6 +2,7 @@ package io.github.astiskala.minimpos.app.payment
 
 import io.github.astiskala.minimpos.app.data.db.SaleKind
 import io.github.astiskala.minimpos.app.data.settings.PaymentSettings
+import io.github.astiskala.minimpos.app.data.settings.ReceiptTipping
 import io.github.astiskala.minimpos.app.data.settings.ShopperReferenceSource
 import io.github.astiskala.minimpos.core.cart.Cart
 import io.github.astiskala.minimpos.core.cart.CartTotals
@@ -95,10 +96,10 @@ data class Checkout(
         get() = canTokenize && (form.tokenize ?: if (preAuthorisation) payment.preAuthTokenizeDefaultOn else payment.tokenizeDefaultOn)
 
     /** Whether "Tip on the receipt" is offered: for a sale, while a printer is available to print the receipt. */
-    val canTipOnReceipt: Boolean get() = !preAuthorisation && printerAvailable
+    val canTipOnReceipt: Boolean get() = payment.receiptTipping != ReceiptTipping.DISABLED && !preAuthorisation && printerAvailable
 
     /** Whether the sale is taken for tipping on the receipt: the operator's choice, else the settings default. */
-    val tipOnReceipt: Boolean get() = canTipOnReceipt && (form.tipOnReceipt ?: payment.tipOnReceiptDefaultOn)
+    val tipOnReceipt: Boolean get() = canTipOnReceipt && (form.tipOnReceipt ?: (payment.receiptTipping == ReceiptTipping.DEFAULT_ON))
 
     /** Whether "Pay" is enabled: something to charge and every entered field valid. */
     val canPay: Boolean get() = !totals.isEmpty && totals.amounts.gross > 0 && emailValid && referenceValid && customerReferenceValid
@@ -118,7 +119,7 @@ data class Checkout(
             merchantReference = form.transactionReference.trim().ifEmpty { Ids.transactionReference(payment.referencePrefix, now, zone) },
             customerReference = customerReference,
             shopperEmail = form.email.trim().takeIf { it.isNotEmpty() },
-            tokenization = TokenizationRequest(payment.recurringModel(), payment.sendShopperEmail).takeIf { tokenize },
+            tokenization = TokenizationRequest(payment.recurringModel()).takeIf { tokenize },
             kind = kind,
             tipOnReceipt = tipOnReceipt,
             shopperReference = shopperReference,

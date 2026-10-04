@@ -20,6 +20,7 @@ import io.github.astiskala.minimpos.app.feature.toState
 import io.github.astiskala.minimpos.app.payment.ReceiptDelivery
 import io.github.astiskala.minimpos.app.terminal.AdyenApi
 import io.github.astiskala.minimpos.app.terminal.ApiCheck
+import io.github.astiskala.minimpos.app.terminal.ReceiptBusinessDetails
 import io.github.astiskala.minimpos.app.terminal.TerminalConnection
 import io.github.astiskala.minimpos.app.terminal.TerminalStatus
 import io.github.astiskala.minimpos.core.receipt.ReceiptDocument
@@ -109,11 +110,13 @@ enum class SettingsTest {
  * @property status Tests the connection to the terminal, which also tells whether it has a printer.
  * @property receipts Prints the test receipt and sends the test email.
  * @property api Tests the Adyen API key.
+ * @property businessDetails Reads store receipt fields for reviewed import.
  */
 class SettingsChecks(
     val status: TerminalStatus,
     val receipts: ReceiptDelivery,
     val api: AdyenApi,
+    val businessDetails: ReceiptBusinessDetails,
 )
 
 /**
@@ -169,6 +172,9 @@ class SettingsViewModel(
     val actions: StateFlow<SettingsActions> = _actions.asStateFlow()
 
     private val pricingConfirmation = PricingChanges(this, pricingChanges)
+
+    /** Store receipt proposals and confirmation actions, without automatic replacement of merchant text. */
+    internal val businessImport = ReceiptBusinessImports(this, checks.businessDetails, pricingChanges, state)
 
     /** Stores ordinary settings; currency and tax-style changes require confirmation. */
     fun update(transform: (AppSettings) -> AppSettings) = pricingConfirmation.update(transform)

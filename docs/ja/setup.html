@@ -105,6 +105,15 @@
             <p class="hint">環境はアプリが接続時に自動で判別します。この選択は、下のリンクで開く Customer Area と、LIVE URLプレフィックスの入力欄にだけ影響します。</p>
           </fieldset>
 
+          <fieldset data-for="thisTerminal network cloud tapToPay">
+            <legend>Adyen APIキー</legend>
+            <p class="hint"><a data-ca="developers/api-credentials/" href="https://ca-test.adyen.com/ca/ui/developers/api-credentials/" target="_blank" rel="noopener noreferrer" aria-describedby="customer-area-note">Developers › API credentials</a> で<span data-only="thisTerminal network tapToPay"> Checkout webservice role を持つ</span><span data-only="cloud" hidden> Cloud Device API role と Checkout webservice role を持つ</span> API 認証情報を作成し、APIキーを生成してください。このヘルパーはオフラインです。任意の情報取得はインポート後にアプリで行います。</p>
+            <label for="apiKey">APIキー</label>
+            <input id="apiKey" name="apiKey" type="password" required spellcheck="false">
+            <label for="merchantAccount">マーチャントアカウント</label>
+            <input id="merchantAccount" name="merchantAccount" type="text" required spellcheck="false">
+          </fieldset>
+
           <fieldset data-for="network">
             <legend>ネットワーク上の端末</legend>
             <label for="host">端末のIPアドレス</label>
@@ -118,7 +127,7 @@
             <legend>クラウドの端末</legend>
             <label for="cloudPoiId">端末ID（POIID、任意）</label>
             <input id="cloudPoiId" name="poiId" type="text" spellcheck="false" placeholder="S1F2-000158213605014">
-            <p class="hint">空欄にすると、アプリで接続中の端末から選べます。</p>
+            <p class="hint">空欄にすると、任意の取得権限がある場合にアプリで端末を選べます。</p>
           </fieldset>
 
           <fieldset data-for="thisTerminal network tapToPay">
@@ -130,15 +139,6 @@
             <input id="passphrase" name="passphrase" type="password" required spellcheck="false">
             <label for="keyVersion">キーバージョン</label>
             <input id="keyVersion" name="keyVersion" type="number" min="1" max="9999" value="1" required>
-          </fieldset>
-
-          <fieldset data-for="thisTerminal network cloud tapToPay">
-            <legend>Checkout API</legend>
-            <p class="hint"><a data-ca="developers/api-credentials/" href="https://ca-test.adyen.com/ca/ui/developers/api-credentials/" target="_blank" rel="noopener noreferrer" aria-describedby="customer-area-note">Developers › API credentials</a> で<span data-only="thisTerminal network tapToPay"> Checkout webservice role を持つ</span><span data-only="cloud" hidden> Cloud Device API role と Checkout webservice role を持つ</span> API 認証情報を作成し、APIキーを生成してください。</p>
-            <label for="merchantAccount">マーチャントアカウント</label>
-            <input id="merchantAccount" name="merchantAccount" type="text" required spellcheck="false">
-            <label for="apiKey">APIキー</label>
-            <input id="apiKey" name="apiKey" type="password" required spellcheck="false">
           </fieldset>
 
           <fieldset data-for="thisTerminal network cloud tapToPay" data-env="live">

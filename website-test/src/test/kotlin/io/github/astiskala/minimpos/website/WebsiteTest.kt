@@ -191,6 +191,26 @@ class WebsiteTest {
     }
 
     @Test
+    fun `real destination guides save the Adyen API key first and keep discovery optional`() {
+        val labels = mapOf("en" to "Adyen API key", "zh-CN" to "Adyen API 密钥", "ja" to "Adyen APIキー")
+        LANGUAGES.forEach { language ->
+            val guide = pages.getValue(language to Kind.GUIDE)
+            listOf("on-terminal", "network", "cloud", "tap-to-pay").forEach { destination ->
+                val steps =
+                    guide.document
+                        .getElementById(destination)!!
+                        .nextElementSibling()!!
+                        .nextElementSibling()!!
+                assertWithMessage("${guide.name} #$destination first step")
+                    .that(steps.select("li").first()!!.text())
+                    .contains(labels.getValue(language))
+            }
+            assertThat(guide.text).contains("Management API — Terminal actions read")
+            assertThat(guide.text).contains("Management API — Terminal settings Advanced read and write")
+        }
+    }
+
+    @Test
     fun `normal workflows link directly to their recovery instructions`() {
         val routes =
             mapOf(
@@ -284,15 +304,75 @@ class WebsiteTest {
     fun `guides explain languages and receipt customization`() {
         val labels =
             mapOf(
-                "en" to listOf("Show tax amounts", "Show taxable totals by rate", "Marked tax rate (%)"),
-                "zh-CN" to listOf("显示税额", "按税率显示应税金额", "标记的税率（%）"),
-                "ja" to listOf("税額を表示", "税率別の対象金額を表示", "印を付ける税率（%）"),
+                "en" to
+                    listOf(
+                        "Show tax amounts",
+                        "Show tax breakdown",
+                        "Show taxable totals by rate",
+                        "Show references",
+                        "Characters per line",
+                        "Marked tax rate (%)",
+                    ),
+                "zh-CN" to listOf("显示税额", "显示税额明细", "按税率显示应税金额", "显示识别号", "每行字符宽度", "标记的税率（%）"),
+                "ja" to listOf("税額を表示", "税率別の内訳を表示", "税率別の対象金額を表示", "参照IDを表示", "1行の文字幅", "印を付ける税率（%）"),
             )
         LANGUAGES.forEach { language ->
             val page = pages.getValue(language to Kind.USING)
             assertWithMessage(page.name).that(page.ids).contains("language-receipts")
             (listOf("Android 12", "Android 13") + labels.getValue(language)).forEach {
                 assertWithMessage(page.name).that(page.text).contains(it)
+            }
+        }
+    }
+
+    @Test
+    fun `guides explain automatic links, receipt tipping modes and reviewed business import`() {
+        val wording =
+            mapOf(
+                "en" to
+                    listOf(
+                        "Import business details from Adyen",
+                        "Enabled (default off)",
+                        "Enabled (default on)",
+                        "Emails collected afterward are receipt-only",
+                        "Ask for a merchant reference",
+                        "Change Admin PIN",
+                        "Remove Admin PIN",
+                        "Disabled",
+                    ),
+                "zh-CN" to
+                    listOf(
+                        "从 Adyen 导入商家信息",
+                        "启用（默认关闭）",
+                        "启用（默认开启）",
+                        "支付后收集的邮箱仅用于收据",
+                        "要求输入商家交易识别号",
+                        "更改管理员 PIN",
+                        "移除管理员 PIN",
+                        "禁用",
+                    ),
+                "ja" to
+                    listOf(
+                        "Adyenから店舗情報をインポート",
+                        "有効（初期値オフ）",
+                        "有効（初期値オン）",
+                        "決済後のメールは領収書専用",
+                        "加盟店参照IDの入力を求める",
+                        "管理者PINを変更",
+                        "管理者PINを削除",
+                        "無効",
+                    ),
+            )
+        LANGUAGES.forEach { language ->
+            val using = pages.getValue(language to Kind.USING)
+            (wording.getValue(language) + "Management API—Stores read").forEach { assertThat(using.text).contains(it) }
+            assertThat(using.externalLinks).contains(
+                "https://docs.adyen.com/api-explorer/Management/latest/get/merchants/(merchantId)/stores",
+            )
+            val troubleshooting = pages.getValue(language to Kind.TROUBLE)
+            listOf("Settings › Payments › Offer payment links", "设置 › 支付 › 提供支付链接", "設定 › 決済 › 支払いリンクを使う").forEach { obsolete ->
+                assertThat(using.text).doesNotContain(obsolete)
+                assertThat(troubleshooting.text).doesNotContain(obsolete)
             }
         }
     }
@@ -312,7 +392,8 @@ class WebsiteTest {
                         "支付目标",
                         "同一网络中的终端",
                         "共享至另一台设备",
-                        "保存并测试 API 密钥",
+                        "Adyen API 密钥",
+                        "保存并获取设置",
                         "重新查询结果",
                         "需处理",
                         "设置 › 收据",
@@ -325,7 +406,8 @@ class WebsiteTest {
                         "キャプチャ要求済み",
                         "プリオーソリ商品",
                         "プリオーソリをキャンセル",
-                        "APIキーを保存してテスト",
+                        "Adyen APIキー",
+                        "保存して設定を取得",
                         "別のデバイスに共有",
                         "決済先",
                         "アプリ情報",
@@ -391,6 +473,15 @@ class WebsiteTest {
         LANGUAGES.forEach { language ->
             val page = pages.getValue(language to Kind.SETUP)
             assertWithMessage(page.name).that(page.fields()).isEqualTo(english.fields())
+            assertWithMessage("${page.name} API key comes first")
+                .that(
+                    page.document
+                        .select("#setup-form fieldset[data-for]")
+                        .first()!!
+                        .select("input")
+                        .map { it.id() },
+                ).containsExactly("apiKey", "merchantAccount")
+                .inOrder()
             assertWithMessage(page.name).that(page.groups()).isEqualTo(english.groups())
             assertWithMessage(page.name).that(page.shortcuts()).isEqualTo(english.shortcuts())
             assertWithMessage(page.name).that(page.externalLinks).isEqualTo(english.externalLinks)
@@ -429,10 +520,9 @@ class WebsiteTest {
                 screen.groupValues[1].toDouble() / screen.groupValues[2].toDouble()
             }
         val shot = Regex("""class="terminal terminal-(ams1|s1f2)[^"]*">\s*<img ([^>]*)>""")
-        LANGUAGES.forEach { language ->
-            val page = pages.getValue(language to Kind.LANDING)
+        pages.forEach { (key, page) ->
             val found = shot.findAll(page.source).toList()
-            assertWithMessage(page.name).that(found).isNotEmpty()
+            if (key.second == Kind.LANDING || key.second == Kind.GUIDE) assertWithMessage(page.name).that(found).isNotEmpty()
             found.forEach { match ->
                 val attributes =
                     Regex("""(\w+)="([^"]*)"""").findAll(match.groupValues[2]).associate {

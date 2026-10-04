@@ -109,6 +109,17 @@
               right Customer Area below, and asks for the live URL prefix.</p>
           </fieldset>
 
+          <fieldset data-for="thisTerminal network cloud tapToPay">
+            <legend>Adyen API key</legend>
+            <p class="hint">Create an API credential in <a data-ca="developers/api-credentials/" href="https://ca-test.adyen.com/ca/ui/developers/api-credentials/" target="_blank" rel="noopener noreferrer" aria-describedby="customer-area-note">Developers › API credentials</a>,
+              <span data-only="thisTerminal network tapToPay">with the Checkout webservice role,</span><span data-only="cloud" hidden>with the Cloud Device API and Checkout webservice roles,</span>
+              and generate its API key. This helper stays offline; optional discovery runs in the app after import.</p>
+            <label for="apiKey">API key</label>
+            <input id="apiKey" name="apiKey" type="password" required spellcheck="false">
+            <label for="merchantAccount">Merchant account</label>
+            <input id="merchantAccount" name="merchantAccount" type="text" required spellcheck="false">
+          </fieldset>
+
           <fieldset data-for="network">
             <legend>The terminal on your network</legend>
             <label for="host">IP address</label>
@@ -122,7 +133,7 @@
             <legend>The terminal in the cloud</legend>
             <label for="cloudPoiId">Terminal ID (POIID), optional</label>
             <input id="cloudPoiId" name="poiId" type="text" spellcheck="false" placeholder="S1F2-000158213605014">
-            <p class="hint">Leave it empty to choose from the connected terminals in the app.</p>
+            <p class="hint">Leave it empty to choose a terminal in the app when optional lookup access is available.</p>
           </fieldset>
 
           <fieldset data-for="thisTerminal network tapToPay">
@@ -135,17 +146,6 @@
             <input id="passphrase" name="passphrase" type="password" required spellcheck="false">
             <label for="keyVersion">Version</label>
             <input id="keyVersion" name="keyVersion" type="number" min="1" max="9999" value="1" required>
-          </fieldset>
-
-          <fieldset data-for="thisTerminal network cloud tapToPay">
-            <legend>Checkout API</legend>
-            <p class="hint">Create an API credential in <a data-ca="developers/api-credentials/" href="https://ca-test.adyen.com/ca/ui/developers/api-credentials/" target="_blank" rel="noopener noreferrer" aria-describedby="customer-area-note">Developers › API credentials</a>,
-              <span data-only="thisTerminal network tapToPay">with the Checkout webservice role,</span><span data-only="cloud" hidden>with the Cloud Device API and Checkout webservice roles,</span>
-              and generate its API key.</p>
-            <label for="merchantAccount">Merchant account</label>
-            <input id="merchantAccount" name="merchantAccount" type="text" required spellcheck="false">
-            <label for="apiKey">API key</label>
-            <input id="apiKey" name="apiKey" type="password" required spellcheck="false">
           </fieldset>
 
           <fieldset data-for="thisTerminal network cloud tapToPay" data-env="live">

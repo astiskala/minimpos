@@ -30,6 +30,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
@@ -657,6 +658,7 @@ private fun ColumnScope.PaymentsAppStep(
 
 /** Which Adyen Payments app is installed, for display. */
 @Composable
+@ReadOnlyComposable
 private fun paymentsAppLabel(paymentsApps: Set<TerminalEnvironment>): String =
     when (paymentsApps.singleOrNull()) {
         TerminalEnvironment.TEST -> stringResource(R.string.settings_payments_app_test)

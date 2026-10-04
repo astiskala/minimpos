@@ -49,6 +49,7 @@ import io.github.astiskala.minimpos.terminal.simulator.SimulatedOutcome
 import io.github.astiskala.minimpos.terminal.simulator.TerminalSimulator
 import io.github.astiskala.minimpos.terminal.transport.StoreDetailsApi
 import io.github.astiskala.minimpos.terminal.transport.StoreListing
+import io.github.astiskala.minimpos.terminal.transport.TerminalEnvironment
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.first
@@ -273,9 +274,17 @@ class SettingsViewModelTest {
         env.updateSettings { it.copy(terminal = it.terminal.copy(mode = TerminalMode.TERMINAL)) }
         vm.saveAndTest(Secret.TERMINAL_PASSPHRASE)
         assertThat(await { vm.actions.first { it.connection.isError } }.connection.outcome)
-            .isEqualTo(ActionOutcome.NotSetUp(SetupProblem.POI_ID))
+            .isEqualTo(ActionOutcome.NotSetUp(SetupProblem.ENVIRONMENT))
         env.updateSettings {
-            it.copy(terminal = it.terminal.copy(poiIdOverride = "S1F2-000000001", keyIdentifier = "k", host = "127.0.0.1"))
+            it.copy(
+                terminal =
+                    it.terminal.copy(
+                        poiIdOverride = "S1F2-000000001",
+                        keyIdentifier = "k",
+                        host = "127.0.0.1",
+                        environment = TerminalEnvironment.TEST,
+                    ),
+            )
         }
         vm.saveAndTest(Secret.TERMINAL_PASSPHRASE)
         assertThat(

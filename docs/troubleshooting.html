@@ -36,10 +36,16 @@
       <li><a href="getting-started.html">Getting started</a></li><li><a href="using.html">Using Mini mPOS</a></li>
       <li><a href="troubleshooting.html" aria-current="page">Troubleshooting</a></li><li><a href="setup.html">Setup helper</a></li>
     </ul></nav>
-    <details class="mobile-menu"><summary>Menu</summary><nav aria-label="Main"><ul class="nav">
+    <details class="mobile-menu"><summary>Menu</summary><div class="mobile-panel"><nav aria-label="Main"><ul class="nav">
       <li><a href="getting-started.html">Getting started</a></li><li><a href="using.html">Using Mini mPOS</a></li>
       <li><a href="troubleshooting.html" aria-current="page">Troubleshooting</a></li><li><a href="setup.html">Setup helper</a></li>
-    </ul></nav></details>
+    </ul></nav>
+      <nav class="mobile-languages" aria-label="Language"><p>Language</p><ul>
+        <li><a aria-current="page" href="troubleshooting.html" hreflang="en" lang="en">English</a></li>
+        <li><a href="zh-CN/troubleshooting.html" hreflang="zh-CN" lang="zh-CN">简体中文</a></li>
+        <li><a href="ja/troubleshooting.html" hreflang="ja" lang="ja">日本語</a></li>
+      </ul></nav>
+    </div></details>
     <details class="language-menu"><summary aria-label="Language: English" title="Language"><svg aria-hidden="true" class="globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 2.7 3.8 5.7 3.8 9s-1.3 6.3-3.8 9c-2.5-2.7-3.8-5.7-3.8-9S9.5 5.7 12 3z"/></svg><span class="language-current">English</span></summary><nav aria-label="Language"><ul><li><a href="troubleshooting.html" hreflang="en" lang="en" aria-current="page">English</a></li><li><a href="zh-CN/troubleshooting.html" hreflang="zh-CN" lang="zh-CN">简体中文</a></li><li><a href="ja/troubleshooting.html" hreflang="ja" lang="ja">日本語</a></li></ul></nav></details>
   </div></header>
   <main id="main">
@@ -84,7 +90,7 @@
             <dt>Cloud</dt><dd>Check the merchant account, terminal POIID and API credential's Cloud Device API and Checkout webservice roles. Confirm the terminal is online; a disconnected terminal cannot take a cloud payment.</dd>
             <dt>Tap to Pay</dt><dd>Install the Payments app for the intended environment, not both TEST and LIVE apps. Complete registration and enter its shared key. A successful setup check does not test a card payment.</dd>
             <dt>Checkout API</dt><dd>Every real-payment setup needs it. Verify the merchant account and key; LIVE also needs the live URL prefix. If a stored key cannot be read, enter it again.</dd>
-            <dt>Wrong environment</dt><dd>TEST/LIVE is detected from the terminal, cloud API key or installed Payments app, not selected in Settings. Use the correct environment's device and credentials, then check Settings › About.</dd>
+            <dt>Wrong environment</dt><dd>For a network or cloud terminal, check step 1, Environment, in Settings › Terminal. Use a matching terminal, merchant account and API key; a network certificate mismatch is rejected and API calls never switch environments automatically. On an Adyen terminal or with Tap to Pay, use the correct device or installed Payments app. See the <a href="getting-started.html#connect">setup steps</a>.</dd>
           </dl>
           <p>After changing merchant account, environment or terminal, actions on an old payment may be blocked. Restore the setup that took that payment or handle it in the Customer Area; do not try to process it under another account.</p>
           <p class="back-to-contents"><a href="#contents">Back to contents</a></p>

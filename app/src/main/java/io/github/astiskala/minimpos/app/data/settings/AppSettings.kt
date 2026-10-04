@@ -175,8 +175,8 @@ enum class TerminalMode {
  * uses `localhost` and the device's own POIID.
  *
  * @property mode Where payments go; see [TerminalMode].
- * @property environment Not a choice: the environment of the terminal's certificate, or of the API key in
- *   [TerminalMode.CLOUD], remembered from the last connection (null until then); it picks the Checkout API endpoint.
+ * @property environment Selected for network/cloud terminals; read from this device's verified certificate on an
+ *   Adyen terminal. Null until selected or read; it picks the Checkout API endpoint.
  *   With [TerminalMode.PAYMENTS_APP] the installed Payments app decides instead.
  * @property cloudRegion Not a choice: the Cloud device API's live data centre found for the API key in
  *   [TerminalMode.CLOUD]; null for TEST or until found.
@@ -219,7 +219,7 @@ data class TerminalSettings(
 
     /**
      * These settings with the fields that belong to one device taken from [device]: where payments go ([mode]), the
-     * detected [environment] and [cloudRegion], the [host], the [poiIdOverride] and the [paymentsAppInstallationId].
+     * selected or detected [environment] and [cloudRegion], the [host], the [poiIdOverride] and the [paymentsAppInstallationId].
      * Everything else is shared by the terminals of a merchant account, so it travels when one terminal sets up another.
      */
     fun withDeviceFieldsOf(device: TerminalSettings): TerminalSettings =

@@ -117,6 +117,7 @@ import kotlin.time.Duration.Companion.minutes
  * @param paymentLinks Creates, checks and expires payment links with Checkout API credentials.
  * @param storeDetails Reads Management API stores for reviewed receipt-business import.
  * @param terminalDetails Reads optional Management terminal setup details.
+ * @param terminalEnvironment Reads the local terminal certificate without credentials.
  */
 class AppContainer(
     private val context: Context,
@@ -138,6 +139,7 @@ class AppContainer(
         AdyenStoreDetails(key, environment)
     },
     terminalDetails: (String) -> TerminalDetailsApi = { AdyenTerminalDetails(it) },
+    terminalEnvironment: suspend () -> TerminalEnvironment? = { TerminalTls().readEnvironment("localhost") },
 ) {
     private val country = device.country.trim().uppercase(Locale.ROOT)
     private val defaults =
@@ -217,9 +219,6 @@ class AppContainer(
 
     private val terminalSetup = TerminalSetupSource(settings, secrets, device)
 
-    /** Optional read-only discovery of terminal connection fields. */
-    val setupDiscovery = SetupDiscovery(terminalSetup, settings, { secrets.set(Secret.TERMINAL_PASSPHRASE, it) }, terminalDetails)
-
     /** Read-only Management store lookup for manually importing receipt business details. */
     val receiptBusinessDetails = ReceiptBusinessDetails(terminalSetup, storeDetails)
 
@@ -240,7 +239,12 @@ class AppContainer(
             paymentsApp = { key, environment -> PaymentsAppTransport(key, environment, paymentsAppLinks, PaymentsAppBridge.RETURN_URL) },
             connect = terminalTransport,
             cloud = cloudDevices,
+            localEnvironment = terminalEnvironment,
         )
+
+    /** Optional read-only discovery of terminal connection fields, within the destination's environment. */
+    val setupDiscovery =
+        SetupDiscovery(terminalSetup, settings, { secrets.set(Secret.TERMINAL_PASSPHRASE, it) }, terminalDetails, gateway::readEnvironment)
 
     /** Boards (and revokes) the Adyen Payments app on this phone, for Tap to Pay. */
     val tapToPay = TapToPaySetup(terminalSetup, settings, paymentsAppLinks, paymentsAppManagement)

@@ -176,7 +176,7 @@ class CloudDevicesTest {
     @Test
     fun `a TEST key is found on the TEST endpoint`() {
         listings["/test"] = 200 to """{"uniqueDeviceIds":["S1F2-000158213605014","AMS1-000168223606144"]}"""
-        val detection = runBlocking { devices.detect("S1F2-000158213605014", "AU") }
+        val detection = runBlocking { devices.detect(TerminalEnvironment.TEST, "S1F2-000158213605014", "AU") }
         assertThat(detection).isEqualTo(CloudDetection.Found(CloudEndpoint.TEST, listOf("S1F2-000158213605014", "AMS1-000168223606144")))
         assertThat(server.takeRequest().headers["x-api-key"]).isEqualTo("cloud-api-key")
     }
@@ -184,23 +184,42 @@ class CloudDevicesTest {
     @Test
     fun `a LIVE key is tried in the country's data centre first, then where the terminal is connected`() {
         listings["/live-au"] = 200 to """{"uniqueDeviceIds":["S1F2-000158213605014"]}"""
-        assertThat(runBlocking { devices.detect("S1F2-000158213605014", "AU") })
+        assertThat(runBlocking { devices.detect(TerminalEnvironment.LIVE, "S1F2-000158213605014", "AU") })
             .isEqualTo(CloudDetection.Found(CloudEndpoint(TerminalEnvironment.LIVE, CloudRegion.AU), listOf("S1F2-000158213605014")))
         // In Europe the Australian data centre lists the terminal, so it is chosen over the country's.
         listings["/live"] = 200 to """{"uniqueDeviceIds":[]}"""
-        val elsewhere = runBlocking { devices.detect("S1F2-000158213605014", "NL") }
+        val elsewhere = runBlocking { devices.detect(TerminalEnvironment.LIVE, "S1F2-000158213605014", "NL") }
         assertThat((elsewhere as CloudDetection.Found).endpoint.region).isEqualTo(CloudRegion.AU)
         // Without the terminal anywhere (or without a POIID), the country's data centre is used.
-        assertThat((runBlocking { devices.detect("S1U2-1", "NL") } as CloudDetection.Found).endpoint.region).isEqualTo(CloudRegion.EU)
-        assertThat((runBlocking { devices.detect(null, "NL") } as CloudDetection.Found).endpoint.region).isEqualTo(CloudRegion.EU)
+        assertThat(
+            (
+                runBlocking {
+                    devices.detect(TerminalEnvironment.LIVE, "S1U2-1", "NL")
+                } as CloudDetection.Found
+            ).endpoint.region,
+        ).isEqualTo(CloudRegion.EU)
+        assertThat(
+            (
+                runBlocking {
+                    devices.detect(TerminalEnvironment.LIVE, null, "NL")
+                } as CloudDetection.Found
+            ).endpoint.region,
+        ).isEqualTo(CloudRegion.EU)
     }
 
     @Test
     fun `a key that no endpoint accepts, or a refused merchant account, is reported`() {
-        val unknown = runBlocking { devices.detect(null, "AU") }
-        assertThat((unknown as CloudDetection.Failed).message).contains("neither for TEST nor for LIVE")
+        val unknown = runBlocking { devices.detect(TerminalEnvironment.TEST, null, "AU") }
+        assertThat((unknown as CloudDetection.Failed).message).contains("for TEST")
+        assertThat(server.requestCount).isEqualTo(1)
         listings["/test"] = 403 to ""
-        assertThat((runBlocking { devices.detect(null, "AU") } as CloudDetection.Failed).message).contains("HarbourCoffeeCOM")
+        assertThat(
+            (
+                runBlocking {
+                    devices.detect(TerminalEnvironment.TEST, null, "AU")
+                } as CloudDetection.Failed
+            ).message,
+        ).contains("HarbourCoffeeCOM")
         listings["/test"] = 200 to "not json"
         assertThat(
             runBlocking { devices.connectedDevices(CloudEndpoint.TEST) },
@@ -210,7 +229,13 @@ class CloudDevicesTest {
     @Test
     fun `an unreachable Adyen is reported without sending anything`() {
         val offline = AdyenCloudDevices(credentials, baseUrl = { "http://127.0.0.1:1".toHttpUrl() })
-        assertThat((runBlocking { offline.detect(null, "AU") } as CloudDetection.Failed).message).contains("Cannot connect")
+        assertThat(
+            (
+                runBlocking {
+                    offline.detect(TerminalEnvironment.TEST, null, "AU")
+                } as CloudDetection.Failed
+            ).message,
+        ).contains("Cannot connect")
         val transport = offline.transport(CloudEndpoint.TEST)
         val request =
             header(

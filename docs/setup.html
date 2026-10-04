@@ -49,10 +49,16 @@
           <li><a href="setup.html" aria-current="page">Setup helper</a></li>
         </ul>
       </nav>
-      <details class="mobile-menu"><summary>Menu</summary><nav aria-label="Main"><ul class="nav">
+      <details class="mobile-menu"><summary>Menu</summary><div class="mobile-panel"><nav aria-label="Main"><ul class="nav">
         <li><a href="getting-started.html">Getting started</a></li><li><a href="using.html">Using Mini mPOS</a></li>
         <li><a href="troubleshooting.html">Troubleshooting</a></li><li><a href="setup.html" aria-current="page">Setup helper</a></li>
-      </ul></nav></details>
+      </ul></nav>
+        <nav class="mobile-languages" aria-label="Language"><p>Language</p><ul>
+          <li><a aria-current="page" href="setup.html" hreflang="en" lang="en">English</a></li>
+          <li><a href="zh-CN/setup.html" hreflang="zh-CN" lang="zh-CN">简体中文</a></li>
+          <li><a href="ja/setup.html" hreflang="ja" lang="ja">日本語</a></li>
+        </ul></nav>
+      </div></details>
       <details class="language-menu">
         <summary aria-label="Language: English" title="Language"><svg aria-hidden="true" class="globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 2.7 3.8 5.7 3.8 9s-1.3 6.3-3.8 9c-2.5-2.7-3.8-5.7-3.8-9S9.5 5.7 12 3z"/></svg><span class="language-current">English</span></summary>
         <nav aria-label="Language">
@@ -105,22 +111,37 @@
             <legend>2. Which Adyen environment?</legend>
             <label class="choice"><input type="radio" name="environment" value="test" checked> <span><strong>TEST</strong>: test terminals and test cards</span></label>
             <label class="choice"><input type="radio" name="environment" value="live"> <span><strong>LIVE</strong>: real payments</span></label>
-            <p class="hint">The app finds out the environment by itself when it connects; this choice only opens the
-              right Customer Area below, and asks for the live URL prefix.</p>
+            <p class="hint">For a network or cloud terminal, this choice is imported as the app’s environment.
+              On an Adyen terminal or with Tap to Pay, the device or installed Payments app determines it instead.
+              Use matching credentials; this choice also selects Customer Area links and the live URL prefix field.</p>
           </fieldset>
 
-          <fieldset data-for="thisTerminal network cloud tapToPay">
+          <fieldset data-for="thisTerminal network cloud">
+            <legend>3. How do you want to set up?</legend>
+            <label class="choice"><input type="radio" name="setupMode" value="automatic" checked> <span><strong>Automatic (recommended)</strong>: enter your API key here; choose and review the terminal setup on the device</span></label>
+            <label class="choice"><input type="radio" name="setupMode" value="manual"> <span><strong>Manual</strong>: enter all connection details on this computer</span></label>
+            <p class="hint">Both modes need the LIVE URL prefix for LIVE. If automatic lookup is unavailable or incomplete, enter the missing details on the device or use Manual here.</p>
+          </fieldset>
+
+          <p class="hint" data-only="tapToPay" hidden>Tap to Pay uses Manual setup here. Install the Payments app and register the phone in the app after importing; physical-terminal discovery does not apply.</p>
+
+          <fieldset data-for="thisTerminal network cloud tapToPay" id="api-key-fields">
             <legend>Adyen API key</legend>
-            <p class="hint">Create an API credential in <a data-ca="developers/api-credentials/" href="https://ca-test.adyen.com/ca/ui/developers/api-credentials/" target="_blank" rel="noopener noreferrer" aria-describedby="customer-area-note">Developers › API credentials</a>,
-              <span data-only="thisTerminal network tapToPay">with the Checkout webservice role,</span><span data-only="cloud" hidden>with the Cloud Device API and Checkout webservice roles,</span>
-              and generate its API key. This helper stays offline; optional discovery runs in the app after import.</p>
+            <p class="hint">Create a credential in <a data-ca="developers/api-credentials/" href="https://ca-test.adyen.com/ca/ui/developers/api-credentials/" target="_blank" rel="noopener noreferrer" aria-describedby="customer-area-note">Developers › API credentials</a> and generate its API key.
+              <span data-only="cloud" hidden>Add the Cloud Device API role for cloud payments.</span>
+              Automatic setup needs the lookup roles in the <a href="getting-started.html#connect">setup guide</a>.
+              This helper stays offline; discovery runs on the device after import.</p>
             <label for="apiKey">API key</label>
             <input id="apiKey" name="apiKey" type="password" required spellcheck="false">
+          </fieldset>
+
+          <fieldset data-for="thisTerminal network cloud tapToPay" data-mode="manual">
+            <legend>Adyen account</legend>
             <label for="merchantAccount">Merchant account</label>
             <input id="merchantAccount" name="merchantAccount" type="text" required spellcheck="false">
           </fieldset>
 
-          <fieldset data-for="network">
+          <fieldset data-for="network" data-mode="manual">
             <legend>The terminal on your network</legend>
             <label for="host">IP address</label>
             <input id="host" name="host" type="text" inputmode="url" required spellcheck="false" placeholder="192.168.1.20">
@@ -129,14 +150,14 @@
             <p class="hint">Both are on the terminal's Device info screen.</p>
           </fieldset>
 
-          <fieldset data-for="cloud">
+          <fieldset data-for="cloud" data-mode="manual">
             <legend>The terminal in the cloud</legend>
-            <label for="cloudPoiId">Terminal ID (POIID), optional</label>
-            <input id="cloudPoiId" name="poiId" type="text" spellcheck="false" placeholder="S1F2-000158213605014">
-            <p class="hint">Leave it empty to choose a terminal in the app when optional lookup access is available.</p>
+            <label for="cloudPoiId">Terminal ID (POIID)</label>
+            <input id="cloudPoiId" name="poiId" type="text" required spellcheck="false" placeholder="S1F2-000158213605014">
+            <p class="hint">Find it on the terminal's Device info screen or in Devices › Terminals in the Customer Area.</p>
           </fieldset>
 
-          <fieldset data-for="thisTerminal network tapToPay">
+          <fieldset data-for="thisTerminal network tapToPay" data-mode="manual">
             <legend>Shared key</legend>
             <p class="hint">In the Customer Area: <a data-ca="devices/device-settings?categoryId=tapi" href="https://ca-test.adyen.com/ca/ui/devices/device-settings?categoryId=tapi" target="_blank" rel="noopener noreferrer" aria-describedby="customer-area-note">Devices › Device settings › Terminal API</a>,
               under Encryption key (select the pencil icon to see it).</p>
@@ -181,8 +202,10 @@
             <li>Point its camera at the codes below. With more than one, they change by themselves.</li>
             <li>Type the <strong>transfer code</strong> and tap <strong>Import</strong>. Only what you filled in here
               changes on the device.</li>
-            <li>Check the connection under <strong>Settings › Terminal</strong>. With Tap to Pay, tap <strong>Set up Tap
-              to Pay</strong> there.</li>
+            <li>Tap <strong>Continue setup</strong> for Automatic: the device finds this terminal or offers a list to choose from.
+              Review the details and enter anything missing. For Manual, tap <strong>Review setup</strong>.
+              Test the connection and API key under <strong>Settings › Terminal</strong>.
+              With Tap to Pay, tap <strong>Set up Tap to Pay</strong> there.</li>
           </ol>
           <p>After importing, <a href="getting-started.html#first-payment">make your first TEST payment</a>.</p>
           <p><a href="troubleshooting.html#access">Import problem?</a> · <a href="troubleshooting.html#connection">Connection problem?</a></p>

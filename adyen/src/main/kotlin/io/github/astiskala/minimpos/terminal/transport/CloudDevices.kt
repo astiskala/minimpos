@@ -154,18 +154,20 @@ sealed interface CloudListing {
 
 /**
  * Terminals reached over the internet through Adyen's Cloud device API, for one merchant account and API key. Unlike
- * the local Terminal API, the environment is not read from a certificate: [detect] finds the endpoint that accepts the
- * key. All functions are safe to call from any thread.
+ * the local Terminal API, the environment is supplied by the merchant: [detect] only finds its data centre.
+ * All functions are safe to call from any thread.
  */
 interface CloudDevices {
     /**
-     * Finds the endpoint the API key belongs to: TEST if it accepts the key, else the LIVE data centre for [country],
-     * then the others, preferring one where [poiId] is connected. Never throws; failures are [CloudDetection.Failed].
+     * Finds an endpoint in [environment], never trying the other environment. For LIVE, tries the data centre for
+     * [country], then the others, preferring one where [poiId] is connected. Never throws; failures are [CloudDetection.Failed].
      *
+     * @param environment The selected TEST or LIVE environment.
      * @param poiId The terminal that will be used, or null when none is chosen yet.
      * @param country The device's country (ISO 3166-1 alpha-2), which picks the first live data centre to try.
      */
     suspend fun detect(
+        environment: TerminalEnvironment,
         poiId: String?,
         country: String,
     ): CloudDetection
@@ -191,14 +193,13 @@ class AdyenCloudDevices(
     private val http = AdyenHttp(credentials.apiKey, baseClient, dispatcher)
 
     override suspend fun detect(
+        environment: TerminalEnvironment,
         poiId: String?,
         country: String,
     ): CloudDetection =
-        when (val test = connectedDevices(CloudEndpoint.TEST)) {
-            is CloudListing.Listed -> CloudDetection.Found(CloudEndpoint.TEST, test.devices)
-            is CloudListing.Refused if test.code == HTTP_UNAUTHORIZED -> detectLive(poiId, CloudRegion.forCountry(country))
-            is CloudListing.Refused -> CloudDetection.Failed(test.message)
-            is CloudListing.Failed -> CloudDetection.Failed(test.message)
+        when (environment) {
+            TerminalEnvironment.TEST -> listingAt(CloudEndpoint.TEST)
+            TerminalEnvironment.LIVE -> detectLive(poiId, CloudRegion.forCountry(country))
         }
 
     /**
@@ -213,7 +214,7 @@ class AdyenCloudDevices(
         var done = false
         val regions = (listOf(first) + (CloudRegion.entries - first)).iterator()
         while (!done && regions.hasNext()) {
-            val attempt = live(CloudEndpoint(TerminalEnvironment.LIVE, regions.next()))
+            val attempt = listingAt(CloudEndpoint(TerminalEnvironment.LIVE, regions.next()))
             val connected = attempt is CloudDetection.Found && (poiId == null || poiId in attempt.devices)
             if (connected || result == null) result = attempt
             done = connected || result is CloudDetection.Failed
@@ -221,14 +222,14 @@ class AdyenCloudDevices(
         return checkNotNull(result)
     }
 
-    private suspend fun live(endpoint: CloudEndpoint): CloudDetection =
+    private suspend fun listingAt(endpoint: CloudEndpoint): CloudDetection =
         when (val live = connectedDevices(endpoint)) {
             is CloudListing.Listed -> {
                 CloudDetection.Found(endpoint, live.devices)
             }
 
             is CloudListing.Refused if live.code == HTTP_UNAUTHORIZED -> {
-                CloudDetection.Failed("Adyen accepted the API key neither for TEST nor for LIVE (HTTP 401)")
+                CloudDetection.Failed("Adyen did not accept the API key for ${endpoint.environment.name} (HTTP 401)")
             }
 
             is CloudListing.Refused -> {

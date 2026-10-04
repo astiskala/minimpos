@@ -154,28 +154,70 @@ h3 { font-size: 1.15rem; }
 .nav a:not(.button):hover { color: var(--green-dark); }
 
 .mobile-menu summary {
-  padding: 7px 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 8px 12px;
   border: 1px solid var(--border);
   border-radius: 10px;
   cursor: pointer;
   font-weight: 600;
+  list-style: none;
   white-space: nowrap;
 }
 
-.mobile-menu .nav {
+.mobile-menu summary::-webkit-details-marker { display: none; }
+
+.mobile-menu summary::before {
+  content: "";
+  width: 18px;
+  height: 14px;
+  background: linear-gradient(currentColor, currentColor) top / 100% 2px no-repeat,
+    linear-gradient(currentColor, currentColor) center / 100% 2px no-repeat,
+    linear-gradient(currentColor, currentColor) bottom / 100% 2px no-repeat;
+}
+
+.mobile-menu summary:hover, .mobile-menu[open] summary { background: var(--grey-light); }
+
+.mobile-panel {
   position: absolute;
   top: 100%;
   left: 0;
   right: 0;
-  display: block;
-  padding: 12px 24px;
+  padding: 12px max(20px, calc((100% - var(--wrap)) / 2 + 24px)) 20px;
   background: #fff;
   border-bottom: 1px solid var(--border);
-  max-height: calc(100vh - 80px);
+  box-shadow: 0 14px 30px rgba(0, 17, 44, 0.1);
+  max-height: calc(100vh - 64px);
+  max-height: calc(100dvh - 64px);
   overflow-y: auto;
 }
 
-.mobile-menu .nav a { display: block; padding: 10px 0; }
+.mobile-menu .nav { display: block; font-size: 1rem; }
+
+.mobile-menu .nav a { display: block; min-height: 44px; padding: 10px 0; }
+
+.mobile-languages { margin-top: 8px; padding-top: 12px; border-top: 1px solid var(--border); }
+
+.mobile-languages p { margin: 0 0 8px; color: var(--grey); font-size: 0.9rem; }
+
+.mobile-languages ul { display: flex; flex-wrap: wrap; gap: 8px; list-style: none; margin: 0; padding: 0; }
+
+.mobile-languages a {
+  display: block;
+  min-height: 44px;
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  color: var(--navy);
+  text-decoration: none;
+}
+
+.mobile-languages a:hover { background: var(--grey-light); }
+
+.mobile-languages a[aria-current="page"] { background: var(--green-light); border-color: var(--green); font-weight: 700; }
 
 /* Buttons */
 
@@ -507,7 +549,7 @@ pre {
 
 /* Switch before translated navigation can crowd the brand or language menu. */
 @media (max-width: 1100px) {
-  .desktop-nav { display: none; }
+  .desktop-nav, .language-menu { display: none; }
   .mobile-menu { display: block; }
 }
 

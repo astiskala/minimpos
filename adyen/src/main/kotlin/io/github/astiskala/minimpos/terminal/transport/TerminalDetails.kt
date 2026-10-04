@@ -35,7 +35,7 @@ class DiscoveredKey(
 sealed interface TerminalListing {
     /** Terminals visible to the credential.
      * @property terminals All pages, deduplicated by POIID.
-     * @property environment Endpoint that accepted the key.
+     * @property environment Environment requested by the caller.
      */
     data class Listed(
         val terminals: List<TerminalDetails>,
@@ -52,8 +52,8 @@ sealed interface TerminalListing {
 
 /** Optional Management reads; safe to call from any thread, with no Adyen configuration mutations. */
 interface TerminalDetailsApi {
-    /** Detects the key's environment and reads all visible terminals without requiring a merchant account. */
-    suspend fun terminals(): TerminalListing
+    /** Reads all visible terminals in [environment], without a merchant account or cross-environment fallback. */
+    suspend fun terminals(environment: TerminalEnvironment): TerminalListing
 
     /** Reads the terminal's effective encryption key; null on denied, absent or malformed settings. */
     suspend fun sharedKey(
@@ -76,13 +76,8 @@ class AdyenTerminalDetails(
 ) : TerminalDetailsApi {
     private val http = AdyenHttp(apiKey, baseClient, dispatcher)
 
-    override suspend fun terminals(): TerminalListing {
-        var environment = TerminalEnvironment.TEST
+    override suspend fun terminals(environment: TerminalEnvironment): TerminalListing {
         var reply = page(environment, 1)
-        if (reply is AdyenReply.Answered && reply.code == HTTP_UNAUTHORIZED) {
-            environment = TerminalEnvironment.LIVE
-            reply = page(environment, 1)
-        }
         val terminals = mutableListOf<TerminalDetails>()
         var number = 1
         var next = true

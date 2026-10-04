@@ -211,6 +211,40 @@ class LocalTransportTest {
     }
 
     @Test
+    fun `the certificate environment can be read before any encrypted API request`() =
+        runBlocking {
+            val server = server()
+            val observed = mutableListOf<TerminalEnvironment>()
+            val tls = TerminalTls(mapOf(TerminalEnvironment.TEST to root.certificate), onEnvironment = { observed += it })
+            assertThat(tls.readEnvironment("localhost", server.port)).isEqualTo(TerminalEnvironment.TEST)
+            assertThat(observed).containsExactly(TerminalEnvironment.TEST)
+            assertThat(server.requestCount).isEqualTo(0)
+            assertThat(tls.readEnvironment("127.0.0.1", 1)).isNull()
+            assertThat(tls.readEnvironment("localhost", server(commonName = "not-a-terminal").port)).isNull()
+            assertThat(TerminalTls().readEnvironment("localhost", server.port)).isNull()
+        }
+
+    @Test
+    fun `a network terminal certificate must match the selected environment before any request is sent`() =
+        runBlocking {
+            val server = server()
+            val observed = mutableListOf<TerminalEnvironment>()
+            val tls =
+                TerminalTls(
+                    mapOf(TerminalEnvironment.TEST to root.certificate),
+                    onEnvironment = { observed += it },
+                    expectedEnvironment = TerminalEnvironment.LIVE,
+                )
+            assertThat(tls.readEnvironment("localhost", server.port)).isNull()
+            assertThat(observed).isEmpty()
+            assertThat(server.requestCount).isEqualTo(0)
+            assertThrows(TerminalUntrustedException::class.java) {
+                TerminalHttpClient(tls, terminalCrypto).post(server.url("/nexo/"))
+            }
+            assertThat(server.requestCount).isEqualTo(0)
+        }
+
+    @Test
     fun `Adyen TerminalLocalAPI encrypts requests and decrypts replies over OkHttp`() {
         val server = server()
         server.reply(securedResponse(diagnosisOk()))

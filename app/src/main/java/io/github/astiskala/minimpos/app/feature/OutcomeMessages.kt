@@ -135,6 +135,7 @@ private val SetupProblem.textRes: Int
             SetupProblem.MERCHANT_ACCOUNT -> R.string.setup_merchant_account
             SetupProblem.API_KEY -> R.string.setup_api_key
             SetupProblem.ENVIRONMENT -> R.string.setup_environment
+            SetupProblem.TERMINAL_ENVIRONMENT -> R.string.setup_terminal_environment
             SetupProblem.LIVE_PREFIX -> R.string.setup_live_prefix
             SetupProblem.UNREADABLE_PASSPHRASE -> R.string.setup_unreadable_passphrase
             SetupProblem.UNREADABLE_API_KEY -> R.string.setup_unreadable_api_key

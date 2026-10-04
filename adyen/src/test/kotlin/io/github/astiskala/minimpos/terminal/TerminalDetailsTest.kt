@@ -12,7 +12,7 @@ import org.junit.Test
 
 class TerminalDetailsTest {
     private val server = MockWebServer().apply { start() }
-    private val api = AdyenTerminalDetails("secret", baseUrl = { server.url("/v3/") })
+    private val api = AdyenTerminalDetails("secret", baseUrl = { server.url("/${it.name.lowercase()}/v3/") })
 
     private fun reply(
         body: String,
@@ -39,7 +39,7 @@ class TerminalDetailsTest {
                 """.trimIndent(),
             )
             reply("""{"data":[{"id":"AMS1-123456789","connectivity":{"wifi":{"ipAddress":"192.168.1.4"}}}]}""")
-            val listed = api.terminals() as TerminalListing.Listed
+            val listed = api.terminals(TerminalEnvironment.TEST) as TerminalListing.Listed
             assertThat(listed.environment).isEqualTo(TerminalEnvironment.TEST)
             assertThat(listed.terminals.map { it.host }).containsExactly("192.168.1.2", "192.168.1.4").inOrder()
             assertThat(listed.terminals.first().merchantAccount).isEqualTo("Merchant")
@@ -50,14 +50,18 @@ class TerminalDetailsTest {
         }
 
     @Test
-    fun `only authentication rejection tries LIVE and permission rejection remains optional`() =
+    fun `authentication and permission rejection never try the other environment`() =
         runBlocking {
             reply("{}", 401)
-            reply("""{"data":[]}""")
-            assertThat((api.terminals() as TerminalListing.Listed).environment).isEqualTo(TerminalEnvironment.LIVE)
+            assertThat(api.terminals(TerminalEnvironment.TEST)).isInstanceOf(TerminalListing.Failed::class.java)
             reply("{}", 403)
-            assertThat(api.terminals()).isInstanceOf(TerminalListing.Failed::class.java)
+            assertThat(api.terminals(TerminalEnvironment.LIVE)).isInstanceOf(TerminalListing.Failed::class.java)
+            reply("""{"data":[]}""")
+            assertThat((api.terminals(TerminalEnvironment.LIVE) as TerminalListing.Listed).environment).isEqualTo(TerminalEnvironment.LIVE)
             assertThat(server.requestCount).isEqualTo(3)
+            assertThat(server.takeRequest().url.encodedPath).startsWith("/test/")
+            assertThat(server.takeRequest().url.encodedPath).startsWith("/live/")
+            assertThat(server.takeRequest().url.encodedPath).startsWith("/live/")
         }
 
     @Test
@@ -65,7 +69,7 @@ class TerminalDetailsTest {
         runBlocking {
             listOf("not json", "{}", "[]", """{"data":[{"id":""}]}""").forEach {
                 reply(it)
-                assertThat(api.terminals()).isInstanceOf(TerminalListing.Failed::class.java)
+                assertThat(api.terminals(TerminalEnvironment.TEST)).isInstanceOf(TerminalListing.Failed::class.java)
             }
         }
 
@@ -73,22 +77,22 @@ class TerminalDetailsTest {
     fun `pagination is bounded and a failed later page never returns a partial selection`() =
         runBlocking {
             repeat(100) { reply("""{"data":[],"_links":{"next":{"href":"next"}}}""") }
-            assertThat(api.terminals()).isInstanceOf(TerminalListing.Failed::class.java)
+            assertThat(api.terminals(TerminalEnvironment.TEST)).isInstanceOf(TerminalListing.Failed::class.java)
             assertThat(server.requestCount).isEqualTo(100)
             reply("""{"data":[{"id":"ID"}],"_links":{"next":{"href":"next"}}}""")
             reply("{}", 503)
-            assertThat(api.terminals()).isInstanceOf(TerminalListing.Failed::class.java)
+            assertThat(api.terminals(TerminalEnvironment.TEST)).isInstanceOf(TerminalListing.Failed::class.java)
         }
 
     @Test
     fun `optional fields may be blank and unexpected JSON types reject the list`() =
         runBlocking {
             reply("""{"data":[{"id":"ID"},{"id":"ID"}]}""")
-            val listed = api.terminals() as TerminalListing.Listed
+            val listed = api.terminals(TerminalEnvironment.TEST) as TerminalListing.Listed
             assertThat(listed.terminals).hasSize(1)
             assertThat(listed.terminals.single().host).isEmpty()
             reply("""{"data":[{"id":123}]}""")
-            assertThat(api.terminals()).isInstanceOf(TerminalListing.Failed::class.java)
+            assertThat(api.terminals(TerminalEnvironment.TEST)).isInstanceOf(TerminalListing.Failed::class.java)
         }
 
     @Test
@@ -100,7 +104,7 @@ class TerminalDetailsTest {
             assertThat(key.version).isEqualTo(2)
             assertThat(key.passphrase).isEqualTo(" secret passphrase ")
             assertThat(key.toString()).doesNotContain("secret passphrase")
-            assertThat(server.takeRequest().url.encodedPath).isEqualTo("/v3/terminals/Terminal%2FID/terminalSettings")
+            assertThat(server.takeRequest().url.encodedPath).isEqualTo("/test/v3/terminals/Terminal%2FID/terminalSettings")
             listOf(
                 "{}",
                 "[]",

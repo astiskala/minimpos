@@ -134,7 +134,7 @@ sealed interface ApiCheck {
  * and live URL prefix in [io.github.astiskala.minimpos.app.data.settings.TerminalSettings], the API key in
  * [io.github.astiskala.minimpos.app.data.security.SecretStore]). How far it is set up is [TerminalSetup.apiSetup]. While payments go to
  * the simulator the API is simulated too. The environment (TEST or LIVE) is where payments go
- * ([TerminalSetup.environment]): the terminal certificate's, the cloud API key's or the installed Payments app's.
+ * ([TerminalSetup.environment]): selected for network/cloud terminals, or read from this device or the installed Payments app.
  *
  * @param setups Where payments go now, how far the API is set up, and the API key.
  * @param simulated Answers while payments go to the simulator: in the app the [SimulatedTerminal]'s, which knows the

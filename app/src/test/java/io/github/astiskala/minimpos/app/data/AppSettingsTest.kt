@@ -232,6 +232,20 @@ class AppSettingsTest {
     }
 
     @Test
+    fun `the helper imports an environment only for a network or cloud terminal`() {
+        val network = TerminalSettings(mode = TerminalMode.TERMINAL, environment = TerminalEnvironment.TEST)
+        assertThat(ConnectionSetup(environment = TerminalEnvironment.LIVE).appliedTo(network, onTerminal = false).environment)
+            .isEqualTo(TerminalEnvironment.LIVE)
+        val cloud = network.copy(mode = TerminalMode.CLOUD, cloudRegion = CloudRegion.AU)
+        val imported = ConnectionSetup(environment = TerminalEnvironment.LIVE).appliedTo(cloud, onTerminal = false)
+        assertThat(imported.environment).isEqualTo(TerminalEnvironment.LIVE)
+        assertThat(imported.cloudRegion).isNull()
+        assertThat(ConnectionSetup(environment = TerminalEnvironment.LIVE).appliedTo(network, onTerminal = true)).isEqualTo(network)
+        val app = network.copy(mode = TerminalMode.PAYMENTS_APP)
+        assertThat(ConnectionSetup(environment = TerminalEnvironment.LIVE).appliedTo(app, onTerminal = false)).isEqualTo(app)
+    }
+
+    @Test
     fun `a connection chooses where payments go only where the device can take them that way`() {
         val simulated =
             TerminalSettings(mode = TerminalMode.SIMULATOR, environment = TerminalEnvironment.TEST, cloudRegion = CloudRegion.AU)

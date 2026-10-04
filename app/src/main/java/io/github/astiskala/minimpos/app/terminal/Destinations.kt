@@ -228,16 +228,17 @@ internal class LocalTerminal(
     private val dial: (host: String, key: TerminalKey, tls: TerminalTls) -> TerminalTransport,
     private val onEnvironment: (TerminalEnvironment) -> Unit,
 ) : Destination {
-    private val transports = Reused<Pair<String, TerminalKey>, Opening.Transport>()
+    private val transports = Reused<Triple<String, TerminalKey, TerminalEnvironment?>, Opening.Transport>()
 
     override val rules: DestinationRules get() = Companion
 
     override suspend fun open(unlocked: UnlockedSetup): Opening {
         val key = checkNotNull(unlocked.terminalKey)
-        return transports.get(checkNotNull(unlocked.setup.host) to key) {
+        val expected = unlocked.setup.environment.takeUnless { unlocked.setup.onTerminal }
+        return transports.get(Triple(checkNotNull(unlocked.setup.host), key, expected)) {
             val detected = AtomicReference<TerminalEnvironment?>()
             val tls =
-                TerminalTls(onEnvironment = { environment ->
+                TerminalTls(expectedEnvironment = expected, onEnvironment = { environment ->
                     detected.set(environment)
                     onEnvironment(environment)
                 })
@@ -253,6 +254,8 @@ internal class LocalTerminal(
         override val mode: TerminalMode get() = TerminalMode.TERMINAL
         override val secrets: Set<Secret> get() = setOf(Secret.TERMINAL_PASSPHRASE)
         override val discoversTerminals: Boolean get() = true
+
+        override fun selectsEnvironment(onTerminal: Boolean): Boolean = !onTerminal
 
         override fun poiId(
             terminal: TerminalSettings,
@@ -272,6 +275,7 @@ internal class LocalTerminal(
             host: String?,
         ): SetupProblem? =
             when {
+                selectsEnvironment(device.isAdyenTerminal) && terminal.environment == null -> SetupProblem.ENVIRONMENT
                 poiId == null -> SetupProblem.POI_ID
                 host == null -> SetupProblem.HOST
                 else -> sharedKeyProblem(terminal, saved)
@@ -281,7 +285,7 @@ internal class LocalTerminal(
 
 /**
  * A terminal in the cloud, reached through the Cloud device API with the API key: its endpoint is found once per API key
- * and terminal ([CloudDevices.detect]), which also tells the environment.
+ * and terminal ([CloudDevices.detect]), within the selected environment.
  *
  * @param cloud Reaches terminals in the cloud with an API key; tests replace it.
  * @param device Its country picks the first live data centre to try.
@@ -292,21 +296,25 @@ internal class CloudTerminal(
     private val device: DeviceInfo,
     private val onDetected: (CloudEndpoint) -> Unit,
 ) : Destination {
-    private val transports = Reused<Pair<CloudCredentials, String>, Opening.Transport>()
+    private val transports = Reused<Triple<CloudCredentials, String, TerminalEnvironment>, Opening.Transport>()
 
     override val rules: DestinationRules get() = Companion
 
     override suspend fun open(unlocked: UnlockedSetup): Opening {
         val poiId = checkNotNull(unlocked.setup.poiId)
         val id =
-            CloudCredentials(
-                checkNotNull(unlocked.apiKey),
-                unlocked.setup.settings.terminal.merchantAccount
-                    .trim(),
-            ) to poiId
+            Triple(
+                CloudCredentials(
+                    checkNotNull(unlocked.apiKey),
+                    unlocked.setup.settings.terminal.merchantAccount
+                        .trim(),
+                ),
+                poiId,
+                checkNotNull(unlocked.setup.environment),
+            )
         transports.of(id)?.let { return it }
         val devices = cloud(id.first)
-        return when (val detection = devices.detect(poiId, device.country)) {
+        return when (val detection = devices.detect(id.third, poiId, device.country)) {
             is CloudDetection.Found -> {
                 onDetected(detection.endpoint)
                 transports.keep(id, Opening.Transport(devices.transport(detection.endpoint)) { detection.endpoint.environment })
@@ -320,13 +328,14 @@ internal class CloudTerminal(
 
     /**
      * The terminals connected to the merchant account of [unlocked], for choosing one: it needs only the merchant account
-     * and API key (no POIID yet), and also finds the API key's environment.
+     * and API key (no POIID yet), in the selected environment.
      */
     suspend fun connectedTerminals(unlocked: UnlockedSetup): ConnectedTerminals {
         val merchantAccount = unlocked.setup.settings.terminal.merchantAccount
         val apiKey = unlocked.apiKey
+        val environment = unlocked.setup.environment ?: return ConnectedTerminals.NotSetUp(SetupProblem.ENVIRONMENT)
         if (merchantAccount.isBlank() || apiKey == null) return ConnectedTerminals.NotSetUp(SetupProblem.API_REQUIRED)
-        return when (val detection = cloud(CloudCredentials(apiKey, merchantAccount.trim())).detect(null, device.country)) {
+        return when (val detection = cloud(CloudCredentials(apiKey, merchantAccount.trim())).detect(environment, null, device.country)) {
             is CloudDetection.Found -> {
                 onDetected(detection.endpoint)
                 ConnectedTerminals.Listed(detection.devices.sorted())
@@ -348,6 +357,8 @@ internal class CloudTerminal(
         override val secrets: Set<Secret> get() = setOf(Secret.ADYEN_API_KEY)
         override val discoversTerminals: Boolean get() = true
 
+        override fun selectsEnvironment(onTerminal: Boolean): Boolean = true
+
         override fun transactionTimeout(configured: Duration): Duration = maxOf(configured, AdyenCloudDevices.MIN_TRANSACTION_TIMEOUT)
 
         override fun poiId(
@@ -363,6 +374,7 @@ internal class CloudTerminal(
             host: String?,
         ): SetupProblem? =
             when {
+                terminal.environment == null -> SetupProblem.ENVIRONMENT
                 terminal.merchantAccount.isBlank() -> SetupProblem.MERCHANT_ACCOUNT
                 Secret.ADYEN_API_KEY !in saved -> SetupProblem.CLOUD_API_KEY
                 poiId == null -> SetupProblem.POI_ID

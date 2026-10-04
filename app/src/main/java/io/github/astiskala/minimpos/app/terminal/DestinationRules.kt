@@ -32,6 +32,9 @@ sealed interface DestinationRules {
     /** Whether Management terminal discovery can propose connection fields for this destination. */
     val discoversTerminals: Boolean get() = false
 
+    /** Whether the merchant must choose TEST or LIVE instead of reading it from this device or the Payments app. */
+    fun selectsEnvironment(onTerminal: Boolean): Boolean = false
+
     /** Whether it takes an AbortRequest. */
     val aborts: Boolean get() = true
 
@@ -56,7 +59,7 @@ sealed interface DestinationRules {
         device: DeviceInfo,
     ): String? = null
 
-    /** Whether payments go to TEST or LIVE, as [TerminalSetup.environment] describes it; by default the detected one. */
+    /** Whether payments go to TEST or LIVE, as [TerminalSetup.environment] describes it; by default the stored one. */
     fun environment(
         terminal: TerminalSettings,
         device: DeviceInfo,

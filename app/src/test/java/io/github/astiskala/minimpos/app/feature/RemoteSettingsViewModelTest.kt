@@ -78,7 +78,16 @@ class RemoteSettingsViewModelTest {
 
     @Test
     fun `the API key is saved and tested on the terminal in the cloud, which can be chosen from those connected`() {
-        env.updateSettings { it.copy(terminal = it.terminal.copy(mode = TerminalMode.CLOUD, merchantAccount = "Merchant")) }
+        env.updateSettings {
+            it.copy(
+                terminal =
+                    it.terminal.copy(
+                        mode = TerminalMode.CLOUD,
+                        merchantAccount = "Merchant",
+                        environment = TerminalEnvironment.LIVE,
+                    ),
+            )
+        }
         val vm = settingsViewModel()
         val setup = setupViewModel()
         setup.findTerminals()
@@ -111,7 +120,16 @@ class RemoteSettingsViewModelTest {
     @Test
     fun `in the cloud finding terminals saves the key typed, and one test checks the terminal, then the Checkout API`() {
         container.start()
-        env.updateSettings { it.copy(terminal = it.terminal.copy(mode = TerminalMode.CLOUD, merchantAccount = "Merchant")) }
+        env.updateSettings {
+            it.copy(
+                terminal =
+                    it.terminal.copy(
+                        mode = TerminalMode.CLOUD,
+                        merchantAccount = "Merchant",
+                        environment = TerminalEnvironment.LIVE,
+                    ),
+            )
+        }
         val vm = settingsViewModel()
         val setup = setupViewModel()
         setup.findTerminals(" cloud-key ")

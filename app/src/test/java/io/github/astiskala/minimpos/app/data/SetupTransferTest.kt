@@ -264,7 +264,8 @@ class SetupTransferTest {
         val code = seal.newCode()
         val secrets = """{"TERMINAL_PASSPHRASE":"correct horse","ADYEN_API_KEY":"AQE-key"}"""
         val connection =
-            """{"destination":"network","host":" 192.168.1.20 ","poiId":"S1F2-000158213605014","keyIdentifier":"store-key",""" +
+            """{"destination":"network","environment":"LIVE","host":" 192.168.1.20 ","poiId":"S1F2-000158213605014",""" +
+                """"keyIdentifier":"store-key",""" +
                 """"keyVersion":2,"merchantAccount":"HarbourCoffeeCOM","liveUrlPrefix":"","future":true}"""
         val payload =
             TransferCodec.encode(
@@ -280,9 +281,9 @@ class SetupTransferTest {
         assertThat(outcome.result.settings).isFalse()
         assertThat(outcome.result.secrets).containsExactly(Secret.TERMINAL_PASSPHRASE, Secret.ADYEN_API_KEY)
         val copied = await { target.container.settings.current() }
-        // Another destination forgets the environment found for the last one.
+        // The helper's explicit environment applies to the new network destination.
         assertThat(copied.terminal.mode).isEqualTo(TerminalMode.TERMINAL)
-        assertThat(copied.terminal.environment).isNull()
+        assertThat(copied.terminal.environment).isEqualTo(TerminalEnvironment.LIVE)
         assertThat(copied.terminal.host).isEqualTo("192.168.1.20")
         assertThat(copied.terminal.poiIdOverride).isEqualTo("S1F2-000158213605014")
         assertThat(copied.terminal.keyIdentifier).isEqualTo("store-key")
@@ -305,28 +306,29 @@ class SetupTransferTest {
         // Made by docs/js/setup.js (Settings: a terminal on the network), so the page and the app keep one format.
         val chunks =
             listOf(
-                "MPC1:VDB9:1/2:5T0UMN5%UGQ7:YOUQ1W50200SF9.2WXM1IXK9.16DD%Y8EDMTJPJIVC5VKMUTCRVT6TJHIYOB M281DD7W" +
-                    "3844DUK5N-Q116*32*XMS4302OPC3XKH\$3D\$F0HKBX%ISW4X/0S693%6DI1%D9FG6JJD+O7K LLSGWK9. D  MN0WQ 8D9F:" +
-                    "%K%QUM5WXCH+D8\$2DC7WU133IO9E73RSGA0-.KFW9LHCK76KW3Z\$9L%N5HIGWIGAMSJ9WY3*/JMPF6VC QEZEDIEC EDO-DW" +
-                    "F71/DPWE04ELOD3Q559D QEWE4NE4HA7Z\$5K%6Z\$5 \$5\$363Q5S9E/DDTTCWF7CNAF*83W5646.96V47+96C%6QW6-96IE4 " +
-                    "F4C\$CNC91\$CBWER.C5\$CWE4:F4HWEZKEHX5C\$CIE4%F45\$CNPCCECGVEIPC34EG/DWE41F4GEC:JC6%ESN8O.C\$ C-M8 X93" +
-                    "Q5/PDCFF5\$CPQE",
-                "MPC1:VDB9:2/2:-3EWE4AH6",
+                "MPC1:0000:1/2:.X0 KU0U3GQ7:YO9Q1W50200SF9000000000000000000000000000000000000000000L-S939+\$5+MP-%14" +
+                    "+3UX88BV3CN7\$SXG92L8U0H\$XR:MRQ*JXRM6LS1.EEW5IKGZQDSLC8\$UAWV5CF1H2*F8L66P+MYP92QS\$\$ECQ3PLS:IN" +
+                    "827I7AN/62W1ZFV\$ACYH4%XVO.OLKB-9H5FI95QL\$LJ80TF46\$CBWE..DBWE-3EWE4*F47\$CK4F-KEIE4UF4I/D*ED-3EF" +
+                    "\$DG/DWE4DF4HY8SSA3Q559D QEWE4NE4HA7Z\$5K%6Z\$5 \$5\$363Q5S9E/DDTTCWF7CNAF*83W5646.96V47+96C%6QW6-96" +
+                    "IE4 F4C\$CNC91\$CBWER.C5\$CWE4:F4HWEZKEHX5C\$CIE4%F45\$CNPCCECGVEIPC34EG/DWE41F4GEC:JC6%ESN8O.C\$ C-M8 X" +
+                    "93Q5/PDCFF5\$CPQE",
+                "MPC1:0000:2/2:-3EWE4AH6",
             )
         val assembler = QrChunkAssembler()
         chunks.forEach { assembler.add(checkNotNull(QrChunks.parse(it))) }
         val received = setup(target).receive(TransferCodec.decode(assembler.assemble()))
-        val outcome = await { setup(target).import(received, ImportMode.MERGE, "Z7FW-2N9A-8XKG") } as ImportOutcome.Imported
+        val outcome = await { setup(target).import(received, ImportMode.MERGE, "2222-2222-2222") } as ImportOutcome.Imported
         assertThat(outcome.result.secrets).containsExactly(Secret.TERMINAL_PASSPHRASE, Secret.ADYEN_API_KEY)
         val terminal = await { target.container.settings.current() }.terminal
         assertThat(terminal.mode).isEqualTo(TerminalMode.TERMINAL)
+        assertThat(terminal.environment).isEqualTo(TerminalEnvironment.TEST)
         assertThat(terminal.host).isEqualTo("192.168.1.20")
         assertThat(terminal.poiIdOverride).isEqualTo("S1F2-000158213605014")
         assertThat(terminal.keyIdentifier).isEqualTo("store-key")
         assertThat(terminal.keyVersion).isEqualTo(2)
         assertThat(terminal.merchantAccount).isEqualTo("HarbourCoffeeCOM")
         assertThat(await { target.container.secrets.get(Secret.TERMINAL_PASSPHRASE) }).isEqualTo("correct horse battery")
-        assertThat(await { target.container.secrets.get(Secret.ADYEN_API_KEY) }).endsWith("-i1i}2s:=Eb,k7Zg%Yjz")
+        assertThat(await { target.container.secrets.get(Secret.ADYEN_API_KEY) }).isEqualTo("demo-checkout-key")
     }
 
     @Test

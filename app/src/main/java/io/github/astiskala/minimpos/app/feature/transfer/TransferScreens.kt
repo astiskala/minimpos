@@ -55,6 +55,7 @@ import io.github.astiskala.minimpos.app.data.security.Secret
 import io.github.astiskala.minimpos.app.data.transfer.TransferContents
 import io.github.astiskala.minimpos.app.data.transfer.TransferExport
 import io.github.astiskala.minimpos.app.feature.settings.SettingSwitch
+import io.github.astiskala.minimpos.app.feature.settings.SettingsSections
 import io.github.astiskala.minimpos.app.scan.ScanMode
 import io.github.astiskala.minimpos.app.scan.ScannerView
 import io.github.astiskala.minimpos.app.ui.components.ActionMessage
@@ -70,6 +71,7 @@ import io.github.astiskala.minimpos.app.ui.components.SecondaryButton
 import io.github.astiskala.minimpos.app.ui.components.StatusBadge
 import io.github.astiskala.minimpos.app.ui.components.StatusKind
 import io.github.astiskala.minimpos.app.ui.navigation.Navigator
+import io.github.astiskala.minimpos.app.ui.navigation.Route
 import io.github.astiskala.minimpos.app.ui.theme.LocalDimens
 import io.github.astiskala.minimpos.core.catalogue.Catalogue
 import kotlinx.coroutines.delay
@@ -257,7 +259,16 @@ fun TransferImportScreen(
         title = stringResource(R.string.transfer_import),
         onBack = navigator::back,
         modifier = modifier,
-        bottomBar = { ImportBottomBar(state, onImport = { if (it) confirmReplace = true else vm.import() }, onDone = navigator::back) },
+        bottomBar = {
+            ImportBottomBar(state, onImport = { if (it) confirmReplace = true else vm.import() }, onDone = {
+                val result = (state as? ImportUiState.Done)?.result
+                if (result?.connection == true) {
+                    navigator.replace(Route.SettingsSection(SettingsSections.TERMINAL, discoverTerminals = result.discoverTerminals))
+                } else {
+                    navigator.back()
+                }
+            })
+        },
     ) { padding ->
         when (val current = state) {
             is ImportUiState.Scanning -> {
@@ -324,7 +335,13 @@ private fun ImportBottomBar(
 
         is ImportUiState.Done -> {
             BottomActions {
-                PrimaryButton(stringResource(R.string.action_done), onDone, modifier = Modifier.testTag("importFinished"))
+                val label =
+                    when {
+                        state.result.discoverTerminals -> R.string.transfer_continue_setup
+                        state.result.connection -> R.string.transfer_review_setup
+                        else -> R.string.action_done
+                    }
+                PrimaryButton(stringResource(label), onDone, modifier = Modifier.testTag("importFinished"))
             }
         }
 
@@ -480,6 +497,7 @@ private fun ImportReady(
             }
             if (received.hasSettings) Note(stringResource(R.string.transfer_settings_note))
             if (received.hasConnection) Note(stringResource(R.string.transfer_connection_note))
+            if (received.automatic) Note(stringResource(R.string.transfer_automatic_note))
             if (received.hasSecrets) TransferCodeField(state.code, state.wrongCode, onCode)
             SecondaryButton(stringResource(R.string.transfer_scan_again), onScanAgain)
         }
@@ -580,6 +598,7 @@ private fun ImportDone(
             LabeledValue(stringResource(R.string.transfer_part_secrets), secrets)
         }
         result.secretsError?.let { ActionMessage(stringResource(R.string.transfer_secrets_failed, it), isError = true) }
+        if (result.discoverTerminals) Note(stringResource(R.string.transfer_automatic_note))
     }
 }
 

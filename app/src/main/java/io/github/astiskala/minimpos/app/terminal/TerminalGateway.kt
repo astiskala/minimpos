@@ -156,7 +156,7 @@ class VirtualPrinter {
 /**
  * Where a connection found that payments go.
  *
- * @property environment TEST or LIVE: from the terminal's certificate, or the endpoint that accepted the cloud API key.
+ * @property environment TEST or LIVE: from this device's certificate, or the cloud's selected environment.
  * @property cloudRegion The Cloud device API's live data centre; null for TEST and for a terminal on the network.
  */
 data class DetectedEnvironment(
@@ -244,6 +244,8 @@ class TerminalGateway(
     connect: (host: String, key: TerminalKey, tls: TerminalTls) -> TerminalTransport = ::AdyenLocalTransport,
     /** Reaches terminals in the cloud with an API key; tests replace it. */
     cloud: (CloudCredentials) -> CloudDevices = { AdyenCloudDevices(it) },
+    /** Reads this device's terminal certificate before credentials are entered; tests replace the TLS connection. */
+    private val localEnvironment: suspend () -> TerminalEnvironment? = { TerminalTls().readEnvironment(TerminalSetup.LOCALHOST) },
 ) {
     private val cloudTerminal = CloudTerminal(cloud, setups.device, ::cloudDetected)
     private val destinations =
@@ -251,7 +253,7 @@ class TerminalGateway(
 
     private val _detectedEnvironment = MutableStateFlow<DetectedEnvironment?>(null)
 
-    /** Where the last connection found payments go: the terminal certificate's or the cloud API key's environment. */
+    /** Certificate environment or selected cloud endpoint from the last connection. */
     val detectedEnvironment: StateFlow<DetectedEnvironment?> = _detectedEnvironment.asStateFlow()
 
     private val _printers = MutableStateFlow<Map<String, Boolean>>(emptyMap())
@@ -385,6 +387,9 @@ class TerminalGateway(
     /** The terminals connected to the merchant account in the cloud, for choosing one, see [CloudTerminal.connectedTerminals]. */
     suspend fun connectedTerminals(): ConnectedTerminals = cloudTerminal.connectedTerminals(setups.unlocked())
 
+    /** Reads and saves this device's certificate environment before setup discovery or a connection check. */
+    suspend fun readEnvironment() = setups.readLocalEnvironment(localEnvironment)
+
     /** Called by [TerminalTls] with the environment of each verified terminal certificate. */
     internal fun environmentDetected(environment: TerminalEnvironment) {
         _detectedEnvironment.value = DetectedEnvironment(environment)
@@ -404,6 +409,7 @@ class TerminalGateway(
      * whole [TerminalSetup.problem], Checkout API included, else the [TerminalSetup.connectionProblem].
      */
     private suspend fun connection(paying: Boolean = false): Connection {
+        readEnvironment()
         val unlocked = setups.unlocked()
         val setup = unlocked.setup
         return (if (paying) setup.problem else setup.connectionProblem)?.let(Connection::NotSetUp)

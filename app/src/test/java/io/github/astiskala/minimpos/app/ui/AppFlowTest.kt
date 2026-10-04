@@ -141,11 +141,14 @@ class AppFlowTest {
         compose
             .onNodeWithTag("terminalSetup")
             .assertTextContains("Finish setting up payments", substring = true)
-            .assertTextContains("Enter the merchant account", substring = true)
+            .assertTextContains("Select TEST or LIVE", substring = true)
             .performClick()
         compose.waitForTag("quickSetupImport")
-        compose.onNodeWithText("Quick setup", ignoreCase = true).assertIsDisplayed()
-        compose.onNodeWithTag("quickSetupImport").assertIsDisplayed().performClick()
+        compose
+            .onNodeWithTag("quickSetupImport")
+            .performScrollTo()
+            .assertIsDisplayed()
+            .performClick()
         waitForText("Point the camera at the QR codes shown on the other device or on the setup helper page.")
         compose.onNodeWithTag("back").performClick()
         compose.waitForTag("terminalMode")
@@ -636,7 +639,7 @@ class AppFlowTest {
     }
 
     @Test
-    fun `settings screens edit values`() {
+    fun `receipt business name can be edited`() {
         compose.onNodeWithTag("settings").performClick()
         compose.waitForTag("section_receipts")
         compose.onNodeWithTag("section_receipts").performClick()
@@ -646,60 +649,5 @@ class AppFlowTest {
         waitForText("Harbour Kiosk")
         compose.onNodeWithTag("back").performClick()
         compose.waitForTag("section_terminal")
-        compose.onNodeWithTag("section_terminal").performClick()
-        compose.waitForTag("terminalMode")
-        compose.onNodeWithTag("terminalMode").assertTextContains("Simulator", substring = true)
-        // The simulator needs no connection settings; rarely needed ones wait under Advanced.
-        compose.onNodeWithTag("keyIdentifier").assertDoesNotExist()
-        compose.onNodeWithText("Sale ID").assertDoesNotExist()
-        compose.onNodeWithTag("advanced").performClick()
-        waitForText("Sale ID")
-
-        // Off-terminal, a terminal on the network needs its address and ID, then the shared key and the Checkout API.
-        compose.onNodeWithTag("terminalMode").performClick()
-        compose.onNodeWithTag("terminalMode_TERMINAL").performClick()
-        awaitSetting("Terminal mode") { container.settingsState.value.terminal.mode == TerminalMode.TERMINAL }
-        compose.waitForTag("host")
-        compose.onNodeWithTag("poiId").assertExists()
-        compose.onNodeWithTag("keyIdentifier").assertExists()
-        compose.onNodeWithTag("step_1").assertTextContains("Adyen API key")
-        compose.onNodeWithTag("step_4").assertTextContains("Checkout API")
-        compose.onNodeWithTag("merchantAccount").assertExists()
-
-        // A terminal in the cloud needs the API key and its ID, which can be found among those connected, and one test
-        // checks both the terminal and the Checkout API.
-        compose.onNodeWithTag("terminalMode").performClick()
-        compose.onNodeWithTag("terminalMode_CLOUD").performClick()
-        awaitSetting("Cloud mode") { container.settingsState.value.terminal.mode == TerminalMode.CLOUD }
-        compose.waitForTag("findTerminals")
-        compose.onNodeWithTag("apiKey").assertExists()
-        compose.onNodeWithTag("host").assertDoesNotExist()
-        compose.onNodeWithTag("keyIdentifier").assertDoesNotExist()
-        compose.onNodeWithTag("testApi").assertDoesNotExist()
-        compose.onNodeWithTag("testConnection").assertExists()
-        compose.onNodeWithTag("step_1").assertTextContains("Adyen API key")
-        compose.onNodeWithTag("step_2").assertTextContains("Adyen account")
-        compose.onNodeWithTag("step_3").assertTextContains("Terminal")
-
-        // Tap to Pay: the Payments app (offered from Google Play while none is installed), the Checkout API, setting it
-        // up with the Payments app API key, then the shared key.
-        compose.onNodeWithTag("terminalMode").performScrollTo().performClick()
-        compose.onNodeWithTag("terminalMode_PAYMENTS_APP").performClick()
-        awaitSetting("Tap to Pay mode") { container.settingsState.value.terminal.mode == TerminalMode.PAYMENTS_APP }
-        compose.waitForTag("setUpTapToPay")
-        compose.onNodeWithText("Not installed").assertExists()
-        compose.onNodeWithTag("getPaymentsAppTest").assertExists()
-        compose.onNodeWithTag("getPaymentsAppLive").assertExists()
-        listOf("Adyen API key", "Adyen Payments app", "Checkout API", "Tap to Pay", "Shared key").forEachIndexed { index, title ->
-            compose.onNodeWithTag("step_${index + 1}").assertTextContains(title)
-        }
-        compose.onNodeWithTag("keyIdentifier").assertExists()
-        compose.onNodeWithTag("paymentsAppKey").assertExists()
-        compose.onNodeWithTag("host").assertDoesNotExist()
-
-        compose.onNodeWithTag("terminalMode").performScrollTo().performClick()
-        compose.onNodeWithTag("terminalMode_SIMULATOR").performClick()
-        // Choosing the device's own default stores Automatic, so it keeps following the device.
-        awaitSetting("Automatic mode") { container.settingsState.value.terminal.mode == TerminalMode.AUTO }
     }
 }

@@ -49,10 +49,16 @@
           <li><a href="setup.html" aria-current="page">设置助手</a></li>
         </ul>
       </nav>
-      <details class="mobile-menu"><summary>菜单</summary><nav aria-label="主导航"><ul class="nav">
+      <details class="mobile-menu"><summary>菜单</summary><div class="mobile-panel"><nav aria-label="主导航"><ul class="nav">
         <li><a href="getting-started.html">快速入门</a></li><li><a href="using.html">使用 Mini mPOS</a></li>
         <li><a href="troubleshooting.html">故障排查</a></li><li><a href="setup.html" aria-current="page">设置助手</a></li>
-      </ul></nav></details>
+      </ul></nav>
+        <nav class="mobile-languages" aria-label="语言"><p>语言</p><ul>
+          <li><a href="../setup.html" hreflang="en" lang="en">English</a></li>
+          <li><a aria-current="page" href="setup.html" hreflang="zh-CN" lang="zh-CN">简体中文</a></li>
+          <li><a href="../ja/setup.html" hreflang="ja" lang="ja">日本語</a></li>
+        </ul></nav>
+      </div></details>
       <details class="language-menu">
         <summary aria-label="语言：简体中文" title="语言"><svg aria-hidden="true" class="globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 2.7 3.8 5.7 3.8 9s-1.3 6.3-3.8 9c-2.5-2.7-3.8-5.7-3.8-9S9.5 5.7 12 3z"/></svg><span class="language-current">简体中文</span></summary>
         <nav aria-label="语言">
@@ -102,19 +108,32 @@
             <legend>2. 使用哪个 Adyen 环境？</legend>
             <label class="choice"><input type="radio" name="environment" value="test" checked> <span><strong>TEST</strong>：测试终端和测试卡</span></label>
             <label class="choice"><input type="radio" name="environment" value="live"> <span><strong>LIVE</strong>：真实支付</span></label>
-            <p class="hint">应用连接时会自动判断环境；此选项只用于打开下方对应的商户后台，并决定是否要求填写 LIVE URL 前缀。</p>
+            <p class="hint">对于网络或云端终端，此选项会作为应用环境导入。在 Adyen 终端上运行或使用 Tap to Pay 时，环境由本设备或已安装的 Payments 应用决定。请使用对应环境的凭据；此选项也会切换商户后台链接和 LIVE URL 前缀字段。</p>
           </fieldset>
 
-          <fieldset data-for="thisTerminal network cloud tapToPay">
+          <fieldset data-for="thisTerminal network cloud">
+            <legend>3. 如何设置？</legend>
+            <label class="choice"><input type="radio" name="setupMode" value="automatic" checked> <span><strong>自动（推荐）</strong>：在此输入 API 密钥，在设备上选择并检查终端设置</span></label>
+            <label class="choice"><input type="radio" name="setupMode" value="manual"> <span><strong>手动</strong>：在电脑上输入全部连接信息</span></label>
+            <p class="hint">LIVE 环境下两种方式都需要 LIVE URL 前缀。无法自动查询或结果不完整时，可在设备上补充信息，或在此选择手动。</p>
+          </fieldset>
+
+          <p class="hint" data-only="tapToPay" hidden>Tap to Pay 在此使用手动设置。导入后请安装 Payments 应用，并在应用中注册手机；实体终端查询不适用。</p>
+
+          <fieldset data-for="thisTerminal network cloud tapToPay" id="api-key-fields">
             <legend>Adyen API 密钥</legend>
-            <p class="hint">在 <a data-ca="developers/api-credentials/" href="https://ca-test.adyen.com/ca/ui/developers/api-credentials/" target="_blank" rel="noopener noreferrer" aria-describedby="customer-area-note">Developers › API credentials</a> 中创建<span data-only="thisTerminal network tapToPay">具有 Checkout webservice role 的</span><span data-only="cloud" hidden>具有 Cloud Device API role 和 Checkout webservice role 的</span> API 凭据，并生成其 API 密钥。设置助手保持离线；可选查询在导入后的应用中执行。</p>
+            <p class="hint">在 <a data-ca="developers/api-credentials/" href="https://ca-test.adyen.com/ca/ui/developers/api-credentials/" target="_blank" rel="noopener noreferrer" aria-describedby="customer-area-note">Developers › API credentials</a> 中创建凭据并生成 API 密钥。<span data-only="cloud" hidden>云端付款需添加 Cloud Device API role。</span>自动设置需要<a href="getting-started.html#connect">设置指南</a>中的查询角色。设置助手保持离线；查询在导入后的设备上执行。</p>
             <label for="apiKey">API 密钥</label>
             <input id="apiKey" name="apiKey" type="password" required spellcheck="false">
+          </fieldset>
+
+          <fieldset data-for="thisTerminal network cloud tapToPay" data-mode="manual">
+            <legend>Adyen 账户</legend>
             <label for="merchantAccount">商家账户</label>
             <input id="merchantAccount" name="merchantAccount" type="text" required spellcheck="false">
           </fieldset>
 
-          <fieldset data-for="network">
+          <fieldset data-for="network" data-mode="manual">
             <legend>同一网络中的终端</legend>
             <label for="host">终端 IP 地址</label>
             <input id="host" name="host" type="text" inputmode="url" required spellcheck="false" placeholder="192.168.1.20">
@@ -123,14 +142,14 @@
             <p class="hint">两者都可在终端的 Device info（设备信息）界面查看。</p>
           </fieldset>
 
-          <fieldset data-for="cloud">
+          <fieldset data-for="cloud" data-mode="manual">
             <legend>云端终端</legend>
-            <label for="cloudPoiId">终端 ID（POIID，可选）</label>
-            <input id="cloudPoiId" name="poiId" type="text" spellcheck="false" placeholder="S1F2-000158213605014">
-            <p class="hint">留空时，可在具有可选查询权限的应用中选择终端。</p>
+            <label for="cloudPoiId">终端 ID（POIID）</label>
+            <input id="cloudPoiId" name="poiId" type="text" required spellcheck="false" placeholder="S1F2-000158213605014">
+            <p class="hint">可在终端的 Device info 界面或商户后台的 Devices › Terminals 中查看。</p>
           </fieldset>
 
-          <fieldset data-for="thisTerminal network tapToPay">
+          <fieldset data-for="thisTerminal network tapToPay" data-mode="manual">
             <legend>共享密钥</legend>
             <p class="hint">在商户后台的 <a data-ca="devices/device-settings?categoryId=tapi" href="https://ca-test.adyen.com/ca/ui/devices/device-settings?categoryId=tapi" target="_blank" rel="noopener noreferrer" aria-describedby="customer-area-note">Devices › Device settings › Terminal API</a> 中的 Encryption key 下（点击铅笔图标查看）。</p>
             <label for="keyIdentifier">密钥标识符</label>
@@ -171,7 +190,7 @@
             <li>在设备上的 Mini mPOS 中打开<strong>设置 › 数据 › 从另一台设备设置</strong>。</li>
             <li>用摄像头扫描下方的二维码。有多个二维码时会自动轮换。</li>
             <li>输入<strong>传输码</strong>，然后点击<strong>导入</strong>。设备上只会更改您在这里填写的内容。</li>
-            <li>在<strong>设置 › 终端</strong>中检查连接。使用 Tap to Pay 时，请在那里点击<strong>设置 Tap to Pay</strong>。</li>
+            <li>自动设置时点击<strong>继续设置</strong>：设备会匹配本终端或提供终端列表供选择。请检查信息并补充缺失项。手动设置时点击<strong>检查设置</strong>。在<strong>设置 › 终端</strong>中测试连接及 API 密钥。使用 Tap to Pay 时，请在那里点击<strong>设置 Tap to Pay</strong>。</li>
           </ol>
           <p>导入后请<a href="getting-started.html#first-payment">完成第一笔 TEST 付款</a>。</p>
           <p><a href="troubleshooting.html#access">导入问题？</a> · <a href="troubleshooting.html#connection">连接问题？</a></p>

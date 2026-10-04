@@ -35,7 +35,8 @@ import kotlinx.coroutines.flow.update
  *   refunds, status checks, printing); null when nothing is missing (always for the simulator).
  * @property apiSetup How far the Checkout API is set up, which decides where captures go.
  * @property environment Where payments go: the installed Payments app's environment with [TerminalMode.PAYMENTS_APP],
- *   else the one detected at the last connection ([io.github.astiskala.minimpos.app.data.settings.TerminalSettings.environment]); null
+ *   else the selected environment or this device's verified certificate
+ *   ([io.github.astiskala.minimpos.app.data.settings.TerminalSettings.environment]); null
  *   for the simulator and until known.
  * @property paymentsApps The environments of the Adyen Payments apps installed on the device when it was resolved.
  */
@@ -58,11 +59,13 @@ data class TerminalSetup(
 
     /**
      * What must still be entered before payments can be taken; null when nothing is missing (always for the simulator):
-     * the [connectionProblem], else what the Checkout API is missing, which every destination needs. Only an unknown
-     * environment ([SetupProblem.ENVIRONMENT]) does not hold payments back, since the first connection finds it.
+     * the [connectionProblem], else what the Checkout API is missing, which every destination needs.
      */
     val problem: SetupProblem?
-        get() = connectionProblem ?: apiSetup.problem?.takeUnless { it == SetupProblem.ENVIRONMENT }
+        get() = connectionProblem ?: apiSetup.problem
+
+    /** Whether Settings must ask the merchant for TEST or LIVE before API credentials or terminal details. */
+    val selectsEnvironment: Boolean get() = destination.selectsEnvironment(onTerminal)
 
     /**
      * Whether printing is offered, as Settings › Receipts › Printer says: always, never, or detected, which the
@@ -151,7 +154,21 @@ data class TerminalSetup(
             val host = destination.host(terminal, device)
             val environment = destination.environment(terminal, device)
             val problem = destination.problem(terminal, saved, device, poiId, host)
-            val api = apiSetup(settings, environment, destination.simulatesApi, keySaved = Secret.ADYEN_API_KEY in saved)
+            val api =
+                apiSetup(
+                    settings,
+                    environment,
+                    destination.simulatesApi,
+                    keySaved = Secret.ADYEN_API_KEY in saved,
+                    environmentProblem =
+                        if (device.isAdyenTerminal &&
+                            destination == LocalTerminal
+                        ) {
+                            SetupProblem.TERMINAL_ENVIRONMENT
+                        } else {
+                            SetupProblem.ENVIRONMENT
+                        },
+                )
             return TerminalSetup(settings, destination, device.isAdyenTerminal, poiId, host, problem, api, environment, device.paymentsApps)
         }
 
@@ -190,13 +207,14 @@ data class TerminalSetup(
 
         /**
          * How far the Checkout API is set up: simulated in simulator mode; else complete or what is missing (including
-         * the [environment], until detected).
+         * the [environment], until selected or read from the device).
          */
         private fun apiSetup(
             settings: AppSettings,
             environment: TerminalEnvironment?,
             simulator: Boolean,
             keySaved: Boolean,
+            environmentProblem: SetupProblem,
         ): ApiSetup {
             val terminal = settings.terminal
             return when {
@@ -213,7 +231,7 @@ data class TerminalSetup(
                 }
 
                 environment == null -> {
-                    ApiSetup.Incomplete(SetupProblem.ENVIRONMENT)
+                    ApiSetup.Incomplete(environmentProblem)
                 }
 
                 environment == TerminalEnvironment.LIVE && terminal.liveUrlPrefix.isBlank() -> {
@@ -299,6 +317,19 @@ class TerminalSetupSource(
 ) {
     /** The setup with the stored settings now, without reading any secret. */
     suspend fun current(): TerminalSetup = TerminalSetup.resolve(settings.current(), secrets.configured.first(), device)
+
+    /**
+     * Reads this device's verified terminal certificate through [read], without a shared key. Only needed on an Adyen
+     * terminal in local mode whose environment is unknown. A changed setup cannot receive a stale result.
+     */
+    suspend fun readLocalEnvironment(read: suspend () -> TerminalEnvironment?) {
+        val setup = current()
+        if (!setup.onTerminal || setup.destination != LocalTerminal || setup.environment != null) return
+        val environment = read() ?: return
+        settings.update {
+            if (it.terminal == setup.settings.terminal) it.copy(terminal = it.terminal.copy(environment = environment)) else it
+        }
+    }
 
     /** The setup now, with the secrets it needs decrypted ([TerminalSetup.unlock]). */
     suspend fun unlocked(): UnlockedSetup {

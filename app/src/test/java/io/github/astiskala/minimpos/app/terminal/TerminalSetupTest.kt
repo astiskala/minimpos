@@ -27,6 +27,29 @@ class TerminalSetupTest {
     ) = TerminalSetup.resolve(settings.copy(terminal = terminal), saved, device)
 
     @Test
+    fun `environment selection is required only for network and cloud destinations on phones and tablets`() {
+        listOf(phone, FakeDevice(model = "Tablet")).forEach { device ->
+            listOf(TerminalMode.TERMINAL, TerminalMode.CLOUD).forEach { mode ->
+                val setup = resolve(TerminalSettings(mode = mode), device = device)
+                assertThat(setup.selectsEnvironment).isTrue()
+                assertThat(setup.environment).isNull()
+                assertThat(setup.connectionProblem).isEqualTo(SetupProblem.ENVIRONMENT)
+                assertThat(setup.problem).isEqualTo(SetupProblem.ENVIRONMENT)
+            }
+        }
+        assertThat(resolve(device = onTerminal).selectsEnvironment).isFalse()
+        assertThat(resolve().selectsEnvironment).isFalse()
+        val paymentsApp = FakeDevice(paymentsApps = setOf(TerminalEnvironment.LIVE))
+        val setup =
+            resolve(
+                TerminalSettings(mode = TerminalMode.PAYMENTS_APP, environment = TerminalEnvironment.TEST),
+                device = paymentsApp,
+            )
+        assertThat(setup.selectsEnvironment).isFalse()
+        assertThat(setup.environment).isEqualTo(TerminalEnvironment.LIVE)
+    }
+
+    @Test
     fun `off a terminal payments go to the simulator, or a terminal with its address, POIID and key`() {
         assertThat(TerminalSetup.automaticMode(phone)).isEqualTo(TerminalMode.SIMULATOR)
         val simulator = resolve()
@@ -38,7 +61,7 @@ class TerminalSetupTest {
         assertThat(simulator.onTerminal).isFalse()
         assertThat(simulator.checksConnection).isFalse()
 
-        val network = TerminalSettings(mode = TerminalMode.TERMINAL)
+        val network = TerminalSettings(mode = TerminalMode.TERMINAL, environment = TerminalEnvironment.TEST)
         assertThat(resolve(network).poiId).isNull()
         assertThat(resolve(network.copy(poiIdOverride = " S1U2-1 ")).poiId).isEqualTo("S1U2-1")
         assertThat(resolve(network, passphrase).connectionProblem).isEqualTo(SetupProblem.POI_ID)
@@ -87,12 +110,15 @@ class TerminalSetupTest {
 
         // The terminal can be reached without it, but payments wait for it, after what the terminal itself needs.
         val passphrase = setOf(Secret.TERMINAL_PASSPHRASE)
-        assertThat(resolve(terminal, passphrase).connectionProblem).isNull()
-        assertThat(resolve(terminal, passphrase).problem).isEqualTo(SetupProblem.MERCHANT_ACCOUNT)
-        assertThat(resolve(merchant, passphrase).problem).isEqualTo(SetupProblem.API_KEY)
-        assertThat(resolve(merchant.copy(host = ""), passphrase).problem).isEqualTo(SetupProblem.HOST)
-        // Only the environment, which the first connection finds, does not hold payments back.
-        assertThat(resolve(merchant, all).problem).isNull()
+        assertThat(resolve(terminal, passphrase).connectionProblem).isEqualTo(SetupProblem.ENVIRONMENT)
+        assertThat(
+            resolve(terminal.copy(environment = TerminalEnvironment.TEST), passphrase).problem,
+        ).isEqualTo(SetupProblem.MERCHANT_ACCOUNT)
+        assertThat(resolve(merchant.copy(environment = TerminalEnvironment.TEST), passphrase).problem).isEqualTo(SetupProblem.API_KEY)
+        assertThat(
+            resolve(merchant.copy(host = "", environment = TerminalEnvironment.TEST), passphrase).problem,
+        ).isEqualTo(SetupProblem.HOST)
+        assertThat(resolve(merchant, all).problem).isEqualTo(SetupProblem.ENVIRONMENT)
         assertThat(resolve(live, all).problem).isEqualTo(SetupProblem.LIVE_PREFIX)
     }
 
@@ -109,7 +135,7 @@ class TerminalSetupTest {
 
     @Test
     fun `a terminal in the cloud needs the merchant account, the API key and its POIID, but no shared key or address`() {
-        val cloud = TerminalSettings(mode = TerminalMode.CLOUD, host = "10.0.0.9")
+        val cloud = TerminalSettings(mode = TerminalMode.CLOUD, host = "10.0.0.9", environment = TerminalEnvironment.TEST)
         val key = setOf(Secret.ADYEN_API_KEY)
         assertThat(resolve(cloud, key).connectionProblem).isEqualTo(SetupProblem.MERCHANT_ACCOUNT)
         val merchant = cloud.copy(merchantAccount = "Merchant")
@@ -120,7 +146,7 @@ class TerminalSetupTest {
         assertThat(ready.poiId).isEqualTo("S1F2-000158213605014")
         assertThat(ready.host).isNull()
         // The same key does the captures, once its environment is known.
-        assertThat(ready.apiSetup.problem).isEqualTo(SetupProblem.ENVIRONMENT)
+        assertThat(ready.apiSetup).isEqualTo(ApiSetup.Complete)
         val live = resolve(merchant.copy(poiIdOverride = "S1F2-1", environment = TerminalEnvironment.LIVE, liveUrlPrefix = "abc"), key)
         assertThat(live.environment).isEqualTo(TerminalEnvironment.LIVE)
         assertThat(live.apiSetup).isEqualTo(ApiSetup.Complete)
@@ -185,7 +211,14 @@ class TerminalSetupTest {
 
     @Test
     fun `the secrets a setup needs are read once, and one that cannot be decrypted is what to enter again`() {
-        val local = TerminalSettings(mode = TerminalMode.TERMINAL, poiIdOverride = "S1U2-1", host = "10.0.0.9", keyIdentifier = "key")
+        val local =
+            TerminalSettings(
+                mode = TerminalMode.TERMINAL,
+                poiIdOverride = "S1U2-1",
+                host = "10.0.0.9",
+                keyIdentifier = "key",
+                environment = TerminalEnvironment.TEST,
+            )
         val api = local.copy(merchantAccount = "Merchant", environment = TerminalEnvironment.TEST)
         val both = passphrase + Secret.ADYEN_API_KEY
         val setup = resolve(api, both)
@@ -211,7 +244,13 @@ class TerminalSetupTest {
         assertThat(resolve(local.copy(host = ""), both).unlock(mapOf(Secret.TERMINAL_PASSPHRASE to null)).setup.connectionProblem)
             .isEqualTo(SetupProblem.HOST)
         // In the cloud the API key is what reaches the terminal.
-        val cloud = TerminalSettings(mode = TerminalMode.CLOUD, merchantAccount = "Merchant", poiIdOverride = "S1F2-1")
+        val cloud =
+            TerminalSettings(
+                mode = TerminalMode.CLOUD,
+                merchantAccount = "Merchant",
+                poiIdOverride = "S1F2-1",
+                environment = TerminalEnvironment.TEST,
+            )
         val key = setOf(Secret.ADYEN_API_KEY)
         assertThat(resolve(cloud, key).unlock(mapOf(Secret.ADYEN_API_KEY to null)).setup.connectionProblem)
             .isEqualTo(SetupProblem.UNREADABLE_API_KEY)

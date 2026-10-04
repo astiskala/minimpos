@@ -408,12 +408,16 @@ private fun ColumnScope.OtherSectionRows(
     }, tag = "section_about")
 }
 
-/** One settings section, chosen by [section] (one of the [SettingsSections] keys; unknown keys show About). */
+/**
+ * One settings [section] (a [SettingsSections] key; unknown keys show About).
+ * With [discoverTerminals], Terminal starts read-only discovery once after its imported settings have loaded.
+ */
 @Composable
 fun SettingsSectionScreen(
     section: String,
     navigator: Navigator,
     modifier: Modifier = Modifier,
+    discoverTerminals: Boolean = false,
 ) {
     val vm = settingsViewModel()
     val state by vm.state.collectAsStateWithLifecycle()
@@ -424,6 +428,9 @@ fun SettingsSectionScreen(
     pricing?.let { PricingConfirmation(it, vm.pricing::confirm, vm.pricing::cancel) }
     val events = remember(vm) { settingsEvents(vm) }
     val setupEvents = remember(setup) { terminalSetupEvents(setup) }
+    LaunchedEffect(section, discoverTerminals) {
+        setup.startAutomaticSetup(discoverTerminals && section == SettingsSections.TERMINAL)
+    }
     var settingPin by remember { mutableStateOf<Boolean?>(null) }
     if (settingPin != null) {
         SetPinScreen(onDone = {
@@ -439,46 +446,64 @@ fun SettingsSectionScreen(
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             Column(Modifier.widthIn(max = 640.dp).padding(bottom = 32.dp)) {
-                when (section) {
-                    SettingsSections.TERMINAL -> {
-                        TerminalSection(state, actions, setupActions, events, setupEvents, navigator)
-                        TerminalAdvancedSection(state, actions, events)
-                    }
-
-                    SettingsSections.SIMULATOR -> {
-                        SimulatorSection(state, events)
-                    }
-
-                    SettingsSections.PAYMENTS -> {
-                        PaymentsSection(state, events)
-                    }
-
-                    SettingsSections.TAX -> {
-                        TaxSection(state, actions, events)
-                    }
-
-                    SettingsSections.RECEIPTS -> {
-                        val businessImport by vm.businessImport.state.collectAsStateWithLifecycle()
-                        ReceiptsSection(state, actions, businessImport, events)
-                    }
-
-                    SettingsSections.EMAIL -> {
-                        EmailSection(state, actions, events)
-                    }
-
-                    SettingsSections.SECURITY -> {
-                        SecuritySection(state, actions, events) { settingPin = it }
-                    }
-
-                    SettingsSections.DATA -> {
-                        DataSection(state, actions, events, navigator)
-                    }
-
-                    else -> {
-                        AboutSection(state)
-                    }
+                SettingsContent(section, state, actions, setupActions, events, setupEvents, navigator, { settingPin = it }) {
+                    val businessImport by vm.businessImport.state.collectAsStateWithLifecycle()
+                    ReceiptsSection(state, actions, businessImport, events)
                 }
             }
+        }
+    }
+}
+
+/** Section-specific rows; receipt content and PIN navigation stay owned by the screen. */
+@Composable
+private fun ColumnScope.SettingsContent(
+    section: String,
+    state: SettingsUiState,
+    actions: SettingsActions,
+    setup: TerminalSetupActions,
+    events: SettingsEvents,
+    setupEvents: TerminalSetupEvents,
+    navigator: Navigator,
+    onSetPin: (Boolean) -> Unit,
+    content: @Composable ColumnScope.() -> Unit,
+) {
+    when (section) {
+        SettingsSections.TERMINAL -> {
+            TerminalSection(state, actions, setup, events, setupEvents, navigator)
+            TerminalAdvancedSection(state, actions, events)
+        }
+
+        SettingsSections.SIMULATOR -> {
+            SimulatorSection(state, events)
+        }
+
+        SettingsSections.PAYMENTS -> {
+            PaymentsSection(state, events)
+        }
+
+        SettingsSections.TAX -> {
+            TaxSection(state, actions, events)
+        }
+
+        SettingsSections.RECEIPTS -> {
+            content()
+        }
+
+        SettingsSections.EMAIL -> {
+            EmailSection(state, actions, events)
+        }
+
+        SettingsSections.SECURITY -> {
+            SecuritySection(state, actions, events, onSetPin)
+        }
+
+        SettingsSections.DATA -> {
+            DataSection(state, actions, events, navigator)
+        }
+
+        else -> {
+            AboutSection(state)
         }
     }
 }
@@ -514,15 +539,16 @@ private fun ColumnScope.TerminalSection(
     val terminalStatus = LocalAppContainer.current.terminalStatus
     val status by terminalStatus.state.collectAsStateWithLifecycle()
     val mode = status.mode
-    if (status.loaded && (mode == TerminalMode.SIMULATOR || status.setupProblem != null)) {
+    val quickSetup = status.loaded && (mode == TerminalMode.SIMULATOR || status.setupProblem != null)
+    if (quickSetup && mode == TerminalMode.SIMULATOR) {
         QuickSetup { navigator.push(Route.TransferImport) }
     }
     if (mode != TerminalMode.SIMULATOR) {
-        ConnectionStatus(status.connection, status.poiId, status.environment, status.setupProblem?.takeIf { mode != TerminalMode.TERMINAL })
+        ConnectionStatus(status.connection, status.poiId, status.environment, status.setupProblem)
     }
     TerminalModeChoice(mode, status.onTerminal) { choice ->
         // The device's own default is stored as Automatic, so the app keeps following it. Another destination has its
-        // own environment, found again at its first connection.
+        // own environment, selected or read from the device again.
         val stored = if (choice == terminalStatus.automaticMode) TerminalMode.AUTO else choice
         if (choice != mode) events.onUpdate { it.copy(terminal = it.terminal.copy(mode = stored, environment = null, cloudRegion = null)) }
     }
@@ -536,6 +562,7 @@ private fun ColumnScope.TerminalSection(
     } else {
         TerminalSteps(status, state, actions, setup, events, setupEvents)
     }
+    if (quickSetup && mode != TerminalMode.SIMULATOR) QuickSetup { navigator.push(Route.TransferImport) }
 }
 
 /** The advanced terminal settings (SaleID and timeout), and the outcome of the last connection test. */
@@ -832,16 +859,13 @@ private fun ColumnScope.PaymentsSection(
 }
 
 /**
- * Offering payment links at checkout and how long they work, with what is missing while the Checkout API is not set up
- * (links are never simulated).
+ * How payment links work and how long they remain payable. API readiness belongs to Terminal settings.
  */
 @Composable
 private fun ColumnScope.PaymentLinkSettings(
     payment: PaymentSettings,
     update: ((PaymentSettings) -> PaymentSettings) -> Unit,
 ) {
-    val status by LocalAppContainer.current.terminalStatus.state
-        .collectAsStateWithLifecycle()
     SettingNote(stringResource(R.string.settings_links_hint))
     SettingNumberField(
         stringResource(R.string.settings_link_expiry),
@@ -851,11 +875,6 @@ private fun ColumnScope.PaymentLinkSettings(
         supporting = stringResource(R.string.settings_link_expiry_hint),
         tag = "linkExpiry",
     )
-    if (status.loaded && !status.paymentLinks) {
-        SettingActions {
-            ActionMessage(stringResource(R.string.settings_links_need_api), isError = true, modifier = Modifier.testTag("linksNeedApi"))
-        }
-    }
 }
 
 /**

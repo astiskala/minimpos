@@ -119,12 +119,16 @@ class SmallScreenTest {
     }
 
     @Test
-    fun `quick setup is visible on the smallest terminal and opens the import screen`() {
+    fun `quick setup is available after the steps on the smallest terminal and opens the import screen`() {
         compose.setContent { MiniMposApp(container) }
         compose.onNodeWithTag("terminalSetup").performClick()
         waitForTag("quickSetupImport")
-        compose.onNodeWithText("Quick setup", ignoreCase = true).assertIsDisplayed()
-        compose.onNodeWithTag("quickSetupImport").assertIsDisplayed().performClick()
+        compose.onNodeWithTag("step_1").assertIsDisplayed().assertTextContains("Adyen API key")
+        compose
+            .onNodeWithTag("quickSetupImport")
+            .performScrollTo()
+            .assertIsDisplayed()
+            .performClick()
         waitForText("Point the camera")
         compose.onNodeWithText("Set up from another device").assertIsDisplayed()
     }
@@ -491,9 +495,9 @@ class SmallScreenTest {
             .performScrollTo()
             .assertTextContains("Save and test API key")
             .performClick()
-        // The terminal's environment is not known until a connection has been made over TLS.
+        // Without a verified certificate the app cannot choose an API endpoint, even on the terminal itself.
         compose.waitUntilAtLeastOneExists(
-            hasTestTag("apiResult") and hasText("Test the connection to the terminal first", substring = true),
+            hasTestTag("apiResult") and hasText("Check the terminal connection", substring = true),
             15_000,
         )
         assertThat(await { container.secrets.get(Secret.ADYEN_API_KEY) }).isEqualTo("AQE-secret")

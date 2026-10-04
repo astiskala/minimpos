@@ -355,6 +355,9 @@
   <string name="transfer_replace_confirm">All products, categories and tax rates on this device will be deleted and replaced.</string>
   <string name="transfer_scan_again">Scan again</string>
   <string name="transfer_done">Import complete</string>
+  <string name="transfer_continue_setup">Continue setup</string>
+  <string name="transfer_review_setup">Review setup</string>
+  <string name="transfer_automatic_note">Continue setup finds this terminal or offers a list on this device. Review the details and enter anything missing, then test the connection and API key. Lookup needs the imported API key and Management permissions.</string>
   <string name="transfer_added">Products added</string>
   <string name="transfer_updated">Products updated</string>
   <string name="transfer_new_categories">New categories</string>
@@ -479,7 +482,8 @@
   <string name="setup_key_version">Enter the shared key version in Terminal settings</string>
   <string name="setup_merchant_account">Enter the merchant account in Terminal settings</string>
   <string name="setup_api_key">Enter the Adyen API key in Terminal settings</string>
-  <string name="setup_environment">Test the connection to the terminal first, so the app knows whether it is TEST or LIVE</string>
+  <string name="setup_environment">Select TEST or LIVE in Terminal settings</string>
+  <string name="setup_terminal_environment">Check the terminal connection to read its TEST or LIVE environment</string>
   <string name="setup_live_prefix">Enter the live URL prefix in Terminal settings</string>
   <string name="setup_unreadable_passphrase">The saved shared key passphrase could not be read on this device; enter it again in Terminal settings</string>
   <string name="setup_unreadable_api_key">The saved Adyen API key could not be read on this device; enter it again in Terminal settings</string>
@@ -500,6 +504,15 @@
   <string name="settings_mode_cloud">A terminal over the internet (cloud)</string>
   <string name="settings_mode_payments_app">Tap to Pay on this phone</string>
   <string name="settings_environment">Environment</string>
+  <string name="settings_environment_hint">Choose TEST for test cards or LIVE for real payments. Use a terminal, merchant account and API key from the same environment.</string>
+  <string name="settings_adyen_key_hint">In the matching Customer Area, create a credential under Developers › API credentials and generate its API key. Use a dedicated key for this device; it is stored encrypted here. Revoke it if the device is lost.</string>
+  <string name="settings_adyen_roles_hint">Add this role to the credential:</string>
+  <string name="settings_adyen_role_cloud">Cloud Device API role (send cloud payments)</string>
+  <string name="settings_discovery_roles_hint">For automatic setup, also add:</string>
+  <string name="settings_adyen_role_terminals">Management API - Terminal actions read (find terminal details)</string>
+  <string name="settings_adyen_role_settings">Management API - Terminal settings read (find shared-key settings)</string>
+  <string name="settings_adyen_role_shared_key">Management API - Terminal settings Advanced read and write (read the shared-key passphrase)</string>
+  <string name="settings_save_api_key">Save API key</string>
   <string name="settings_env_test">TEST environment</string>
   <string name="settings_env_live">LIVE environment</string>
   <string name="settings_poiid">Terminal ID (POIID)</string>
@@ -532,11 +545,11 @@
   <string name="settings_status_not_set_up_hint">Enter the shared key below, then tap Save and test.</string>
   <string name="settings_status_failed">Not connected</string>
   <string name="settings_api">Checkout API</string>
-  <string name="settings_api_hint">Every payment needs it: through it the app captures tips on the receipt and pre-authorizations, adjusts what they hold and sends payment links. In your Customer Area, create an API credential under Developers › API credentials with the Checkout webservice role, and enter its API key with your merchant account.</string>
+  <string name="settings_api_hint">Enter the merchant account assigned to the terminal or Payments app. The saved API key must have access to it. For LIVE, also enter the Checkout live URL prefix from Developers › API URLs. Test the key before taking payments.</string>
   <string name="settings_merchant_account">Merchant account</string>
   <string name="settings_api_key">API key</string>
   <string name="settings_adyen_key">Adyen API key</string>
-  <string name="settings_discovery_hint">Required for real payments. Save the key first; the app can look up terminals and connection details when it has Management API access. You can also enter the details manually.</string>
+  <string name="settings_discovery_hint">Save and find setup can fill in terminal details with optional Management API access. If lookup is unavailable, the key stays saved; enter the details manually.</string>
   <string name="settings_save_and_discover">Save and find setup</string>
   <string name="settings_discover">Find setup</string>
   <string name="settings_discovery_manual">Review the details below. Enter anything missing manually, then test the connection and API key. Lookup permissions are optional.</string>
@@ -551,7 +564,7 @@
   <string name="settings_connection_api_ok">The Checkout API works with this API key.</string>
   <string name="settings_connection_api_failed">The Checkout API did not work: %1$s</string>
   <string name="settings_api_cloud">Adyen account</string>
-  <string name="settings_api_cloud_hint">Terminals in the cloud are reached with an API key, which is stored encrypted on this device and also used for the Checkout API (captures and payment links). Create an API credential under Developers › API credentials for this device only, with the Cloud Device API and Checkout webservice roles. Remove the key there if the device is lost.</string>
+  <string name="settings_api_cloud_hint">Enter the merchant account assigned to the terminal. The saved API key must have access to it. For LIVE, also enter the Checkout live URL prefix from Developers › API URLs. The terminal’s Test connection button checks both the terminal and the API key.</string>
   <string name="settings_step_terminal">Terminal</string>
   <string name="settings_cloud_poiid_help">The terminal’s model and serial number. It must be online and assigned to this merchant account.</string>
   <string name="settings_find_terminals">Find terminals</string>
@@ -780,7 +793,7 @@
   <string name="settings_export_hint">Show the catalog, settings, passwords and keys as QR codes</string>
   <string name="settings_import_hint">Scan the codes of another device or of the setup helper page to copy its setup</string>
   <string name="settings_quick_setup">Quick setup</string>
-  <string name="settings_quick_setup_hint">Open astiskala.github.io/minimpos/setup.html on a computer to enter your connection details, then scan its QR codes here. You can also copy setup from another device.</string>
+  <string name="settings_quick_setup_hint">Open astiskala.github.io/minimpos/setup.html on a computer. Choose Automatic to find terminal details on this device, or Manual to enter everything there. Both ask for the LIVE URL prefix for LIVE. Scan its QR codes here, or copy setup from another device.</string>
   <string name="settings_quick_setup_import">Scan setup codes</string>
 
   <string name="about_version">Version</string>
@@ -833,10 +846,9 @@
   <string name="email_link_subject">Payment request from {business}</string>
   <string name="email_link_intro">Pay securely online with the link or the QR code below.</string>
   <string name="settings_payment_links">Payment links</string>
-  <string name="settings_links_hint">Checkout can create an Adyen payment link instead of sending the sale to the terminal, for the customer to pay online. Uses the Checkout API in Terminal settings.</string>
+  <string name="settings_links_hint">Checkout can create an Adyen payment link instead of sending the sale to the terminal, for the customer to pay online. Payment links are not available with the simulator.</string>
   <string name="settings_link_expiry">Links work for (hours)</string>
   <string name="settings_link_expiry_hint">1 to 1680 hours (70 days); Adyen’s default is 24</string>
-  <string name="settings_links_need_api">Enter the merchant account and the Adyen API key in Terminal settings to create payment links. They are not available with the simulator.</string>
   <string name="payment_context_mismatch">This setup does not match the original payment’s terminal, Adyen account or environment. Restore the original setup before continuing.</string>
   <string name="refund_review_title">Review the original payment</string>
   <string name="refund_review_message">This device has no local sale context. The QR code cannot prove the payment was captured, reveal later tips or refunds, or verify the destination. Check the original payment and remaining refundable amount in Customer Area and confirm that the selected terminal and environment are correct. This refund sends only the reviewed amount, not an unrestricted full reversal.</string>

@@ -78,6 +78,9 @@ class ReceivedTransfer internal constructor(
     /** Whether a connection (from the setup helper web page) was transferred. */
     val hasConnection: Boolean get() = connection != null
 
+    /** Whether the helper chose Automatic setup; discovery still requires a supported destination and a stored API key. */
+    val automatic: Boolean get() = connection?.automatic == true
+
     /** Whether sealed secrets were transferred, which need the transfer code. */
     val hasSecrets: Boolean get() = transfer.sealedSecrets != null
 
@@ -128,6 +131,7 @@ sealed interface ImportOutcome {
  * @property secrets The secrets stored.
  * @property secretsError Why secrets could not be stored on this device; null when they were (or there were none).
  * @property connection Whether a connection was applied.
+ * @property discoverTerminals Whether to offer discovery next, only for a supported Automatic setup whose API key was stored.
  */
 data class TransferResult(
     val catalogue: ImportSummary?,
@@ -135,6 +139,7 @@ data class TransferResult(
     val secrets: Set<Secret>,
     val secretsError: String? = null,
     val connection: Boolean = false,
+    val discoverTerminals: Boolean = false,
 )
 
 /**
@@ -271,7 +276,14 @@ class SetupTransfer(
                 e.message ?: "Secrets could not be stored"
             }
         return ImportOutcome.Imported(
-            TransferResult(summary, received.hasSettings, stored, error, received.hasConnection),
+            TransferResult(
+                summary,
+                received.hasSettings,
+                stored,
+                error,
+                received.hasConnection,
+                received.connection?.requestsDiscovery(onTerminal) == true && Secret.ADYEN_API_KEY in stored,
+            ),
             received.hasSecrets && !withSecrets,
         )
     }

@@ -29,11 +29,9 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withTimeoutOrNull
 import io.github.astiskala.minimpos.app.payment.PricingChanges as PricingChangeOperations
 
 /**
@@ -210,7 +208,12 @@ class SettingsViewModel(
         secret: Secret,
         value: String?,
     ) {
-        launchWrite({ storeSecret { secrets.set(secret, value) } })
+        if (secret == Secret.ADYEN_API_KEY) _actions.update { it.copy(apiKeyStored = false) }
+        launchWrite({
+            if (storeSecret { secrets.set(secret, value) } && secret == Secret.ADYEN_API_KEY && !value.isNullOrBlank()) {
+                _actions.update { it.copy(apiKeyStored = true) }
+            }
+        })
     }
 
     /** Sets [pin], which must be [PinManager.isValidPin]; [manager] selects the Manager PIN and requires an admin PIN. */
@@ -293,19 +296,10 @@ class SettingsViewModel(
 
             SettingsTest.CLOUD -> {
                 val connection = connectionResult()
-                val checked = if (connection.done) detectedApiResult() else ActionState()
+                val checked = if (connection.done) apiResult() else ActionState()
                 _actions.update { it.copy(connection = connection, api = checked) }
             }
         }
-    }
-
-    /**
-     * The Checkout API test right after a connection that found where payments go: once the environment it detected is
-     * saved (at most [ENVIRONMENT_WAIT_MILLIS] later), as the Checkout API needs it.
-     */
-    private suspend fun detectedApiResult(): ActionState {
-        withTimeoutOrNull(ENVIRONMENT_WAIT_MILLIS) { pricingChanges.changes.first { it.terminal.environment != null } }
-        return apiResult()
     }
 
     private suspend fun connectionResult(): ActionState =
@@ -362,10 +356,5 @@ class SettingsViewModel(
     /** Deletes every sale and refund; the catalogue and settings stay. */
     fun clearHistory() {
         launchWrite({ history.clear() }) { _ -> _actions.update { it.copy(cleared = true) } }
-    }
-
-    private companion object {
-        /** How long the cloud's test waits for the detected environment to be saved before testing the Checkout API. */
-        const val ENVIRONMENT_WAIT_MILLIS = 2_000L
     }
 }

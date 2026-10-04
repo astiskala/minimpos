@@ -5,12 +5,15 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.test.assertHeightIsEqualTo
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.unit.dp
 import io.github.astiskala.minimpos.app.feature.sale.ReceiptToggle
+import io.github.astiskala.minimpos.app.ui.components.ReceiptPreview
 import io.github.astiskala.minimpos.app.ui.theme.MiniMposTheme
 import io.github.astiskala.minimpos.core.receipt.ReceiptDocument
 import io.github.astiskala.minimpos.core.receipt.ReceiptElement
@@ -25,6 +28,12 @@ import org.robolectric.annotation.Config
 class ReceiptToggleTest {
     @get:Rule
     val compose = createComposeRule()
+
+    @Test
+    fun `preview dividers stay a single row on the smallest screen`() {
+        compose.setContent { MiniMposTheme { ReceiptPreview(ReceiptDocument(listOf(ReceiptElement.Divider))) } }
+        compose.onNodeWithTag("receiptDivider").assertIsDisplayed().assertHeightIsEqualTo(16.dp)
+    }
 
     @Test
     fun `the receipt action shows and hides the preview on the smallest screen`() {

@@ -62,8 +62,9 @@ Seeded before the first launch (debug builds only), piped in with
 
 ## Flows
 
-1. Sale of 2 flat whites, banana bread and beans ($34.00, CUST-1042, save card; `checkout.png` shows Save card on and
-   Tip on the receipt off) → printed receipt (simulated printer sheet, expanded and scrolled to the items) → `refund.png`
+1. Sale of 2 flat whites, banana bread and beans ($34.00, CUST-1042, save card; `checkout.png` shows Save card on,
+   with `payment.receiptTipping = DISABLED`, the default, so there is no tipping switch) → printed receipt (simulated
+   printer sheet, expanded and scrolled to the items) → `refund.png`
    from that sale's history detail (Refund › Items, one flat white and the banana bread, $11.00). The same cart on the
    AMS1-sized screen is `sale-ams1.png`.
 2. Sales of $11.50 and $29.50, then an item refund of the first sale ($11.00). These four can also be seeded into the
@@ -72,7 +73,9 @@ Seeded before the first launch (debug builds only), piped in with
    "MC Google Pay".
 3. `history-search.png`: History searched for `CUST-1042` (typed with `adb shell input text`, keyboard closed with
    Back), showing that sale and its refund.
-4. Tip on the receipt sale of 2 avocado toast and 2 flat whites ($38.00): `tip-receipt.png` is its merchant copy with
+4. In Settings › Payments, set Tip on the receipt to Enabled (default off) (`payment.receiptTipping = DEFAULT_OFF`)
+   before this flow; restore Disabled afterward. Tip on the receipt sale of 2 avocado toast and 2 flat whites ($38.00):
+   `tip-receipt.png` is its merchant copy with
    the blank TIP, TOTAL and SIGNATURE lines in the expanded printer sheet, `tip.png` the Enter tip screen with Total
    $45.00 typed; confirmed, so History shows Capture requested and Tips $7.00.
 5. Pre-authorisation of the catering deposit (CUST-2077): `pre-auth.png` is its checkout (tapping the deposit opens it)

@@ -50,6 +50,8 @@ import io.github.astiskala.minimpos.app.terminal.AdyenApi
 import io.github.astiskala.minimpos.app.terminal.AndroidDeviceInfo
 import io.github.astiskala.minimpos.app.terminal.DeviceInfo
 import io.github.astiskala.minimpos.app.terminal.PaymentsAppBridge
+import io.github.astiskala.minimpos.app.terminal.ReceiptBusinessDetails
+import io.github.astiskala.minimpos.app.terminal.SetupDiscovery
 import io.github.astiskala.minimpos.app.terminal.SimulatedTerminal
 import io.github.astiskala.minimpos.app.terminal.TapToPaySetup
 import io.github.astiskala.minimpos.app.terminal.TerminalGateway
@@ -70,8 +72,12 @@ import io.github.astiskala.minimpos.terminal.paymentsapp.PaymentsAppManagement
 import io.github.astiskala.minimpos.terminal.paymentsapp.PaymentsAppTransport
 import io.github.astiskala.minimpos.terminal.transport.AdyenCloudDevices
 import io.github.astiskala.minimpos.terminal.transport.AdyenLocalTransport
+import io.github.astiskala.minimpos.terminal.transport.AdyenStoreDetails
+import io.github.astiskala.minimpos.terminal.transport.AdyenTerminalDetails
 import io.github.astiskala.minimpos.terminal.transport.CloudCredentials
 import io.github.astiskala.minimpos.terminal.transport.CloudDevices
+import io.github.astiskala.minimpos.terminal.transport.StoreDetailsApi
+import io.github.astiskala.minimpos.terminal.transport.TerminalDetailsApi
 import io.github.astiskala.minimpos.terminal.transport.TerminalEnvironment
 import io.github.astiskala.minimpos.terminal.transport.TerminalKey
 import io.github.astiskala.minimpos.terminal.transport.TerminalTls
@@ -109,6 +115,8 @@ import kotlin.time.Duration.Companion.minutes
  * @param paymentsAppExchange Opens the Adyen Payments app; null uses [paymentsApp], which the activity serves.
  * @param paymentsAppManagement Boards and revokes the Payments app with an API key, in an environment.
  * @param paymentLinks Creates, checks and expires payment links with Checkout API credentials.
+ * @param storeDetails Reads Management API stores for reviewed receipt-business import.
+ * @param terminalDetails Reads optional Management terminal setup details.
  */
 class AppContainer(
     private val context: Context,
@@ -126,6 +134,10 @@ class AppContainer(
         AdyenPaymentsAppManagement(key, environment)
     },
     paymentLinks: (CheckoutCredentials) -> PaymentLinkApi = { CheckoutPaymentLinks(it) },
+    storeDetails: (String, TerminalEnvironment) -> StoreDetailsApi = { key, environment ->
+        AdyenStoreDetails(key, environment)
+    },
+    terminalDetails: (String) -> TerminalDetailsApi = { AdyenTerminalDetails(it) },
 ) {
     private val country = device.country.trim().uppercase(Locale.ROOT)
     private val defaults =
@@ -204,6 +216,12 @@ class AppContainer(
         )
 
     private val terminalSetup = TerminalSetupSource(settings, secrets, device)
+
+    /** Optional read-only discovery of terminal connection fields. */
+    val setupDiscovery = SetupDiscovery(terminalSetup, settings, { secrets.set(Secret.TERMINAL_PASSPHRASE, it) }, terminalDetails)
+
+    /** Read-only Management store lookup for manually importing receipt business details. */
+    val receiptBusinessDetails = ReceiptBusinessDetails(terminalSetup, storeDetails)
 
     /** The built-in simulator, which stands in for the terminal and the Checkout API alike. */
     private val simulator = SimulatedTerminal(virtualPrinter)

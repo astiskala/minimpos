@@ -105,6 +105,15 @@
             <p class="hint">应用连接时会自动判断环境；此选项只用于打开下方对应的商户后台，并决定是否要求填写 LIVE URL 前缀。</p>
           </fieldset>
 
+          <fieldset data-for="thisTerminal network cloud tapToPay">
+            <legend>Adyen API 密钥</legend>
+            <p class="hint">在 <a data-ca="developers/api-credentials/" href="https://ca-test.adyen.com/ca/ui/developers/api-credentials/" target="_blank" rel="noopener noreferrer" aria-describedby="customer-area-note">Developers › API credentials</a> 中创建<span data-only="thisTerminal network tapToPay">具有 Checkout webservice role 的</span><span data-only="cloud" hidden>具有 Cloud Device API role 和 Checkout webservice role 的</span> API 凭据，并生成其 API 密钥。设置助手保持离线；可选查询在导入后的应用中执行。</p>
+            <label for="apiKey">API 密钥</label>
+            <input id="apiKey" name="apiKey" type="password" required spellcheck="false">
+            <label for="merchantAccount">商家账户</label>
+            <input id="merchantAccount" name="merchantAccount" type="text" required spellcheck="false">
+          </fieldset>
+
           <fieldset data-for="network">
             <legend>同一网络中的终端</legend>
             <label for="host">终端 IP 地址</label>
@@ -118,7 +127,7 @@
             <legend>云端终端</legend>
             <label for="cloudPoiId">终端 ID（POIID，可选）</label>
             <input id="cloudPoiId" name="poiId" type="text" spellcheck="false" placeholder="S1F2-000158213605014">
-            <p class="hint">留空则可在应用中从已连接的终端中选择。</p>
+            <p class="hint">留空时，可在具有可选查询权限的应用中选择终端。</p>
           </fieldset>
 
           <fieldset data-for="thisTerminal network tapToPay">
@@ -130,15 +139,6 @@
             <input id="passphrase" name="passphrase" type="password" required spellcheck="false">
             <label for="keyVersion">密钥版本</label>
             <input id="keyVersion" name="keyVersion" type="number" min="1" max="9999" value="1" required>
-          </fieldset>
-
-          <fieldset data-for="thisTerminal network cloud tapToPay">
-            <legend>Checkout API</legend>
-            <p class="hint">在 <a data-ca="developers/api-credentials/" href="https://ca-test.adyen.com/ca/ui/developers/api-credentials/" target="_blank" rel="noopener noreferrer" aria-describedby="customer-area-note">Developers › API credentials</a> 中创建<span data-only="thisTerminal network tapToPay">具有 Checkout webservice role 的</span><span data-only="cloud" hidden>具有 Cloud Device API role 和 Checkout webservice role 的</span> API 凭据，并生成其 API 密钥。</p>
-            <label for="merchantAccount">商家账户</label>
-            <input id="merchantAccount" name="merchantAccount" type="text" required spellcheck="false">
-            <label for="apiKey">API 密钥</label>
-            <input id="apiKey" name="apiKey" type="password" required spellcheck="false">
           </fieldset>
 
           <fieldset data-for="thisTerminal network cloud tapToPay" data-env="live">

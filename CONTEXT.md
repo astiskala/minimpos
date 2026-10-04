@@ -53,6 +53,7 @@ existing spelling (`preAuthorisation`, `SaleKind.PRE_AUTHORISATION`, `authorised
 | Destination | Where payments go: local terminal, cloud terminal, Payments app or simulator. | `terminal/Destination`, `TerminalMode` |
 | Destination rules | Pure requirements/capabilities: setup, printer, secrets, recovery, timeouts, abort/diagnosis. | `DestinationRules`, adapter companions in `Destinations.kt` |
 | Terminal setup | One resolved reading of destination, identity, environment, API setup and printer. | `TerminalSetup.resolve`, `TerminalSetupSource` |
+| Setup discovery | Optional read-only terminal and shared-key lookup after saving the Adyen API key; manual setup remains available. | `terminal/SetupDiscovery` |
 | Unlocked setup | Resolved setup with required secrets decrypted once. | `UnlockedSetup` |
 | Setup problem | Missing/unreadable information or other condition blocking setup, reported typed rather than thrown. | `SetupProblem` |
 | Connection | Open with a client, or blocked as not set up/unreachable. | `Connection`, `Destination.connect` |
@@ -61,7 +62,7 @@ existing spelling (`preAuthorisation`, `SaleKind.PRE_AUTHORISATION`, `authorised
 | Environment | TEST/LIVE detected from certificate, cloud key or installed Payments app; never a setting. | `TerminalEnvironment` |
 | POIID | Terminal ID (`<model>-<serial>`), device name on terminals, boarded installation ID for Tap to Pay. | `poiId` |
 | Shared key | Identifier, passphrase and version encrypting local and Payments app messages. | Terminal settings + `SecretStore` |
-| Adyen API key | Credential shared by Checkout/cloud operations; distinct from the boarding credential. | `ADYEN_API_KEY` |
+| Adyen API key | Credential shared by Checkout/cloud operations and optional Management reads; distinct from the boarding credential. | `ADYEN_API_KEY` |
 | Boarding | Registers/revokes the Payments app installation for Tap to Pay. | `TapToPaySetup`, `PAYMENTS_APP_API_KEY` |
 | Checkout API | Captures, adjustments and links, required before real payments; access eligibility belongs to the target. | `ApiSetup`, `AdyenApi`, `ApiTarget` |
 
@@ -73,6 +74,7 @@ existing spelling (`preAuthorisation`, `SaleKind.PRE_AUTHORISATION`, `authorised
 | Receipt standing | What the receipt says: held, tip lines, captured, unpaid link or paid online. | `ReceiptStanding` |
 | Merchant copy | Additional receipt copy under the configured policy. | `MerchantCopyPolicy` |
 | Receipt tax display | Independent amounts/totals by rate, optional marked rate, marker and explanation. | `ReceiptSettings` |
+| Receipt business details | Store receipt name, address and phone read from Management, reviewed before replacing receipt fields. | `terminal/ReceiptBusinessDetails` |
 | Receipt delivery | Offers/prints/emails/shares a stored sale or refund; automatic delivery uses the same path. | `ReceiptDelivery`, `TransactionActions`, `StoredTransaction` |
 | Unpaid receipt | Link payment request with amount due, QR and address, not proof of payment. | `SaleReceipt.unpaidLink` |
 | Outcome | Typed result presented in the current language, worded only at the UI boundary. | `ActionOutcome`, `ActionState`, `OutcomeMessages.kt` |

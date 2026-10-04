@@ -172,6 +172,22 @@ class TerminalClientTest {
         )
 
     @Test
+    fun `ordinary payments carry shopper email and references without saving a card`() =
+        runTest {
+            client { respond { paymentResponse = approval() } }.pay(params.copy(recurringProcessingModel = null, requestCardAlias = false))
+            val saleData =
+                sent
+                    .single()
+                    .saleToPOIRequest.paymentRequest.saleData
+            assertThat(saleData.saleTransactionID.transactionID).isEqualTo("MP-1")
+            assertThat(saleData.saleToAcquirerData.shopperReference).isEqualTo("CUST-1")
+            assertThat(saleData.saleToAcquirerData.shopperEmail).isEqualTo("a@b.co")
+            assertThat(saleData.saleToAcquirerData.metadata).containsExactly("customerReference", "C1")
+            assertThat(saleData.saleToAcquirerData.recurringProcessingModel).isNull()
+            assertThat(saleData.tokenRequestedType).isNull()
+        }
+
+    @Test
     fun `builds the payment request and maps an approval`() =
         runTest {
             var started: String? = null

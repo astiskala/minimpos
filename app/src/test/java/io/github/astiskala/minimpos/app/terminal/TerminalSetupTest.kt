@@ -97,12 +97,12 @@ class TerminalSetupTest {
     }
 
     @Test
-    fun `payment links are offered once switched on with the Checkout API set up, never with the simulator`() {
-        val links = AppSettings(payment = PaymentSettings(paymentLinks = true))
+    fun `payment links are always offered with the Checkout API set up, never with the simulator`() {
+        val links = AppSettings()
         val key = setOf(Secret.ADYEN_API_KEY)
         val api = TerminalSettings(mode = TerminalMode.TERMINAL, merchantAccount = "Merchant", environment = TerminalEnvironment.TEST)
         assertThat(resolve(api, key, settings = links).paymentLinks).isTrue()
-        assertThat(resolve(api, key).paymentLinks).isFalse()
+        assertThat(resolve(api, key).paymentLinks).isTrue()
         assertThat(resolve(api, settings = links).paymentLinks).isFalse()
         assertThat(resolve(api.copy(mode = TerminalMode.SIMULATOR), key, settings = links).paymentLinks).isFalse()
     }

@@ -66,7 +66,7 @@ class TransactionLifecycleTest {
                 merchantReference = "MP-1",
                 customerReference = "CUST-1",
                 shopperEmail = email,
-                tokenization = TokenizationRequest(RecurringModel.CARD_ON_FILE, includeEmail = true).takeIf { tokenize },
+                tokenization = TokenizationRequest(RecurringModel.CARD_ON_FILE).takeIf { tokenize },
                 shopperReference = "CUST-1",
             ),
         )
@@ -121,7 +121,7 @@ class TransactionLifecycleTest {
     }
 
     @Test
-    fun `the shopper reference goes with every payment, and only saving the card adds the recurring model and email`() {
+    fun `shopper details go with every payment, and only saving the card adds the recurring model`() {
         env.useSimulator()
         val plain = finished(start(email = "a@b.co")).sale
         assertThat(plain.status).isEqualTo(SaleStatus.APPROVED)
@@ -136,9 +136,11 @@ class TransactionLifecycleTest {
         val params = (book.operation(start) as TerminalOperation.Pay).params
         assertThat(params.shopperReference).isEqualTo("CUST-1")
         assertThat(params.recurringProcessingModel).isNull()
-        assertThat(params.shopperEmail).isNull()
+        assertThat(params.shopperEmail).isEqualTo("a@b.co")
+        assertThat(params.merchantReference).isEqualTo("MP-3")
+        assertThat(params.metadata).containsEntry("customerReference", "CUST-1")
         assertThat(params.requestCardAlias).isFalse()
-        val saving = TokenizationRequest(RecurringModel.CARD_ON_FILE, includeEmail = true)
+        val saving = TokenizationRequest(RecurringModel.CARD_ON_FILE)
         val saved = (book.operation(start.copy(tokenization = saving)) as TerminalOperation.Pay).params
         assertThat(saved.shopperReference).isEqualTo("CUST-1")
         assertThat(saved.recurringProcessingModel).isEqualTo(RecurringModel.CARD_ON_FILE)

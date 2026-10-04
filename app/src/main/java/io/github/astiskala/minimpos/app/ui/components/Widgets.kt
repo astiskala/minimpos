@@ -35,6 +35,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
@@ -234,7 +235,15 @@ fun ReceiptPreview(
                 }
 
                 ReceiptElement.Divider -> {
-                    PaperText("- ".repeat(20).trim(), Align.CENTER, TextStyle.NORMAL)
+                    Canvas(Modifier.fillMaxWidth().height(16.dp).testTag("receiptDivider")) {
+                        drawLine(
+                            Color.Black,
+                            Offset(0f, size.height / 2),
+                            Offset(size.width, size.height / 2),
+                            strokeWidth = 1.dp.toPx(),
+                            pathEffect = PathEffect.dashPathEffect(floatArrayOf(4.dp.toPx(), 4.dp.toPx())),
+                        )
+                    }
                 }
 
                 ReceiptElement.Blank -> {

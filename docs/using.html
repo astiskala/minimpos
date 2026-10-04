@@ -83,7 +83,7 @@
           <h3 id="products">Add products</h3>
           <p>Open <strong>Products</strong>, tap <strong>+</strong> and enter a name, price and tax rate. Add a category or barcode if useful; barcodes can be typed or scanned. The Categories tab groups the sale grid. Mark deposits as <strong>Pre-authorization products</strong> to keep them separate from ordinary sales.</p>
           <h3 id="staff">Control staff access</h3>
-          <p>In <strong>Settings › Security</strong>, set an <strong>admin PIN</strong> to protect Settings and Products, and choose the automatic re-lock time. Optionally set a separate <strong>Manager PIN</strong> for refunds, cancellations, captures and adjustments, including entering tips. Set the admin PIN first; removing it also removes the Manager PIN. Repeated incorrect attempts temporarily lock PIN entry.</p>
+          <p>In <strong>Settings › Security</strong>, set an <strong>admin PIN</strong> to protect Settings and Products, and choose the automatic re-lock time. Optionally set a separate <strong>Manager PIN</strong> for refunds, cancellations, captures and adjustments, including entering tips. Set the admin PIN first. To replace or remove it, use <strong>Change Admin PIN</strong> or <strong>Remove Admin PIN</strong> in the same section; removing it also removes the Manager PIN. Repeated incorrect attempts temporarily lock PIN entry.</p>
           <p>For PIN problems, see <a href="troubleshooting.html#access">access troubleshooting</a>.</p>
           <p class="back-to-contents"><a href="#contents">Back to contents</a></p>
         </section>
@@ -123,11 +123,15 @@
           <p>From a result or History entry, use <strong>Print receipt</strong> or <strong>Email receipt</strong>. Tablets and phones also offer <strong>Share receipt</strong>, an image sent through Android's share sheet. Printing requires a connected terminal with a physical printer; Tap to Pay has none.</p>
           <h3 id="customize-receipts">Customize and test</h3>
           <p>In <strong>Settings › Receipts</strong>, set your business details, header and footer, references and refund QR code. Choose automatic printing and when to print a merchant copy. The preview helps with layout; always use <strong>Print test receipt</strong> to check the actual printer.</p>
-          <p><strong>Show tax amounts</strong> and <strong>Show taxable totals by rate</strong> are independent. To identify items at a particular rate, set <strong>Marked tax rate (%)</strong>, an <strong>Item marker</strong> and its explanation. Leave the rate blank for no marking. These options work in every language and currency.</p>
+          <p><strong>Show tax amounts</strong> displays the tax included in or added to the total; it does not change the tax charged. <strong>Show tax breakdown</strong> lists the tax amount for each rate and is needed to display included tax with tax-inclusive prices. Independently, <strong>Show taxable totals by rate</strong> groups item totals by rate, including 0%: tax-inclusive totals for tax-inclusive prices, otherwise totals before tax.</p>
+          <p><strong>Show references</strong> is on by default. It prints the merchant reference and any entered customer reference so a receipt can be matched to a payment or customer. To identify items at a particular tax rate, set <strong>Marked tax rate (%)</strong>, an <strong>Item marker</strong> and its explanation. Leave the rate blank for no marking.</p>
+          <p><strong>Characters per line</strong> defaults to 32 for narrow receipt rolls. It controls printed dividers and plain-text receipts; the on-screen preview fits the available screen width. Use a test print to choose the width for your printer.</p>
+          <p><strong>Import business details from Adyen</strong> lets you choose a store and review its receipt name, address and phone before importing. Your Adyen API key needs <a href="https://docs.adyen.com/api-explorer/Management/latest/get/merchants/(merchantId)/stores"><strong>Management API—Stores read</strong> access</a>. Only supplied business fields replace your text; tax ID, title and footer stay unchanged.</p>
           <h3 id="language-receipts">Language and receipt text</h3>
           <p>The app supports English, Simplified Chinese and Japanese. On Android 12 or earlier it follows the device language; on Android 13 or later use Android's per-app language setting. Adyen's payment receipt lines follow the terminal's own receipt-language setting and stay as supplied. Test the printed layout, especially for Chinese and Japanese text.</p>
           <h3 id="email">Set up email</h3>
           <p>Open <strong>Settings › Email</strong>. Choose a provider or enter your SMTP server, sender and credentials. Use STARTTLS or SSL, and send a test email. In <strong>Settings › Payments › Email receipts</strong>, choose when to ask for the customer's email and whether to send automatically.</p>
+          <p>Emails collected before payment are always sent to Adyen for terminal payments and payment links, even when no card is saved. Emails collected afterward are receipt-only.</p>
           <p>Provider buttons fill in server details, not account authorization. Follow your provider's instructions for SMTP access and the required password:</p>
           <ul>
             <li><a href="https://support.google.com/mail/answer/185833">Gmail</a></li>
@@ -144,7 +148,7 @@
         </section>
         <section id="shoppers">
           <h2>References and saved cards</h2>
-          <p>Use <strong>Settings › Payments</strong> to enable a transaction reference if staff need to record a booking or order number. Separately, choose a <strong>shopper reference</strong>: none, a customer reference typed at checkout, or the customer's email. That shopper reference goes to Adyen with every payment, whether or not the card is saved. Email references are hashed by default; use the same salt across devices for consistent identifiers.</p>
+          <p>Turn on <strong>Settings › Payments › Ask for a merchant reference</strong> if staff need to record a booking or order number. That number identifies the payment in Adyen; leaving it blank generates a unique reference. Separately, choose a <strong>shopper reference</strong>: none, a customer reference typed at checkout, or the customer's email. That shopper reference goes to Adyen with every payment, whether or not the card is saved. Email references are hashed by default; use the same salt across devices for consistent identifiers.</p>
           <p>With a shopper reference configured, <strong>Offer to save cards</strong> makes card saving available at checkout. Obtain the shopper's consent and choose the recurring processing model appropriate to your Adyen integration. Saving a card does not provide a saved-card charging screen in Mini mPOS.</p>
           <p class="back-to-contents"><a href="#contents">Back to contents</a></p>
         </section>
@@ -152,7 +156,7 @@
           <h2>Let the customer pay with a link</h2>
           <p>Adyen <a href="https://docs.adyen.com/unified-commerce/pay-by-link">Pay by Link</a> lets the customer pay on Adyen's payment page instead of the terminal. Check your account's Pay by Link requirements, including terms and conditions, before LIVE use.</p>
           <ol>
-            <li>Enable <strong>Settings › Payments › Offer payment links</strong> and choose the lifetime.</li>
+            <li>Complete Checkout API setup. Links are offered automatically; choose their lifetime in <strong>Settings › Payments › Payment links</strong>.</li>
             <li>At a sale's checkout, tap <strong>Create payment link</strong>. Show the QR code, <strong>Email link</strong> with the unpaid receipt, <strong>Print link</strong>, or <strong>Share link</strong> from a tablet or phone.</li>
             <li>Keep the link screen open for automatic checks, or tap <strong>Check payment</strong> later from its History entry. Use <strong>Cancel link</strong> when it is no longer needed.</li>
           </ol>
@@ -181,6 +185,7 @@
         <section id="tips">
           <h2>Collect a tip written on the receipt</h2>
           <p>This needs a physical printer and Adyen's <a href="https://docs.adyen.com/point-of-sale/tipping/tipping-on-receipt">tipping-on-the-receipt</a> setup. Ask Adyen Support to enable pre-authorization and overcapture for your payment methods. Some debit cards and wallets do not support this flow.</p>
+          <p>In <strong>Settings › Payments › Tip on the receipt</strong>, choose <strong>Enabled (default off)</strong> or <strong>Enabled (default on)</strong>. <strong>Disabled</strong>, the default, hides the checkout switch. The two enabled choices decide whether that switch starts off or on.</p>
           <ol>
             <li>At a sale's checkout, switch on <strong>Tip on the receipt</strong> and tap Pay. The bill is held, not captured.</li>
             <li>Print the receipt with blank Tip and Total lines. The merchant copy includes a signature line.</li>

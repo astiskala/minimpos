@@ -80,7 +80,7 @@
           <h3 id="products">商品を追加する</h3>
           <p><strong>商品</strong>で <strong>+</strong> をタップし、名前、価格、税率を入力します。必要ならカテゴリーやバーコードを追加します。バーコードは入力・スキャンできます。カテゴリータブで販売画面をグループ化します。予約金を<strong>プリオーソリ商品</strong>にすると通常の販売と分けられます。</p>
           <h3 id="staff">スタッフの権限を管理する</h3>
-          <p><strong>設定 › セキュリティ</strong>の<strong>管理者PIN</strong>で設定と商品を保護し、再ロック時間を選びます。別の<strong>マネージャーPIN</strong>で返金、取消、キャプチャ、金額調整、チップ入力を保護できます。管理者PINを先に設定してください。削除するとマネージャーPINも削除されます。誤入力を繰り返すと一時的に入力がロックされます。</p>
+          <p><strong>設定 › セキュリティ</strong>の<strong>管理者PIN</strong>で設定と商品を保護し、再ロック時間を選びます。別の<strong>マネージャーPIN</strong>で返金、取消、キャプチャ、金額調整、チップ入力を保護できます。管理者PINを先に設定してください。同じ画面の<strong>管理者PINを変更</strong>または<strong>管理者PINを削除</strong>で変更・削除できます。削除するとマネージャーPINも削除されます。誤入力を繰り返すと一時的に入力がロックされます。</p>
           <p>PIN の問題は<a href="troubleshooting.html#access">権限のトラブルシューティング</a>を参照してください。</p>
           <p class="back-to-contents"><a href="#contents">目次に戻る</a></p>
         </section>
@@ -111,11 +111,15 @@
           <p>結果や取引履歴から<strong>領収書を印刷</strong>、<strong>領収書をメール送信</strong>を使います。タブレットやスマートフォンでは<strong>領収書を共有</strong>で Android の共有シートに画像を渡せます。印刷には接続した端末の実際のプリンターが必要です。Tap to Pay にはありません。</p>
           <h3 id="customize-receipts">カスタマイズしてテストする</h3>
           <p><strong>設定 › 領収書</strong>で店舗情報、ヘッダー、フッター、参照ID、返金用 QR コードを設定します。自動印刷や加盟店控えの条件も選べます。プレビューに加え、必ず<strong>テスト領収書を印刷</strong>して実際の印字を確認してください。</p>
-          <p><strong>税額を表示</strong>と<strong>税率別の対象金額を表示</strong>は独立しています。特定税率の商品を示すには<strong>印を付ける税率（%）</strong>、<strong>商品の印</strong>、説明を設定します。税率が空欄なら印を付けません。すべての言語・通貨で使えます。</p>
+          <p><strong>税額を表示</strong>は合計に含まれる税額、または加算する税額を表示し、課税額は変えません。<strong>税率別の内訳を表示</strong>は税率ごとの税額を表示し、税込価格で含まれる税額を表示するには必要です。別に<strong>税率別の対象金額を表示</strong>は0%を含む税率ごとの商品合計を表示します。税込価格なら税込合計、それ以外は税抜合計です。</p>
+          <p><strong>参照IDを表示</strong>は初期設定でオンです。加盟店参照IDと入力済みの顧客参照IDを印刷し、領収書を決済や顧客と照合できます。特定税率の商品を示すには<strong>印を付ける税率（%）</strong>、<strong>商品の印</strong>、説明を設定します。税率が空欄なら印を付けません。</p>
+          <p><strong>1行の文字幅</strong>は細い領収書ロール向けに32が初期値です。印刷する区切り線とプレーンテキスト領収書の幅を決めます。画面のプレビューは表示幅に合わせます。テスト印刷でプリンターに合う幅を選んでください。</p>
+          <p><strong>Adyenから店舗情報をインポート</strong>で店舗を選び、領収書の店舗名、住所、電話番号を確認してから取り込めます。Adyen APIキーに<a href="https://docs.adyen.com/api-explorer/Management/latest/get/merchants/(merchantId)/stores"><strong>Management API—Stores read</strong>権限</a>が必要です。提供された情報だけを置き換え、税務番号、タイトル、フッターは変更しません。</p>
           <h3 id="language-receipts">言語と領収書の文字</h3>
           <p>英語、簡体字中国語、日本語に対応しています。Android 12 以前ではデバイスの言語に従い、Android 13 以降ではシステムのアプリ言語設定を使います。Adyen の決済領収書行は端末の領収書言語に従い、提供されたまま表示します。特に中国語・日本語では印字レイアウトをテストしてください。</p>
           <h3 id="email">メールを設定する</h3>
           <p><strong>設定 › メール</strong>でプロバイダーを選ぶか、SMTP サーバー、差出人、認証情報を入力します。STARTTLS または SSL を使い、テストメールを送ります。<strong>設定 › 決済 › 領収書のメール送信</strong>でメールを尋ねるタイミングと自動送信を設定します。</p>
+          <p>決済前に入力したメールは、カード保存の有無にかかわらず、端末決済でも支払いリンクでもAdyenに送信します。決済後のメールは領収書専用です。</p>
           <p>プロバイダーボタンはサーバー情報を入力するだけで、アカウントを認証しません。SMTP アクセスとパスワードは各社の説明に従ってください。</p>
           <ul><li><a href="https://support.google.com/mail/answer/185833">Gmail</a></li><li><a href="https://learn.microsoft.com/en-us/exchange/mail-flow-best-practices/how-to-set-up-a-multifunction-device-or-application-to-send-email-using-microsoft-365-or-office-365">Microsoft 365</a></li><li><a href="https://support.apple.com/en-us/102525">iCloud Mail</a></li><li><a href="https://help.yahoo.com/kb/pop-smtp-settings-article-sln4724.html">Yahoo Mail</a></li><li><a href="https://www.fastmail.help/hc/en-us/articles/1500000278342-Server-names-and-ports">Fastmail</a></li><li><a href="https://www.zoho.com/mail/help/zoho-smtp.html">Zoho Mail</a></li><li><a href="https://proton.me/support/smtp-submission">Proton Mail</a></li></ul>
           <p>パスワード認証の SMTP を使い、OAuth は使いません。サーバー情報が正しくても、プロバイダーや組織のポリシーで接続できない場合があります。</p>
@@ -124,14 +128,14 @@
         </section>
         <section id="shoppers">
           <h2>参照IDとカード保存</h2>
-          <p>予約・注文番号を記録する場合は<strong>設定 › 決済</strong>で取引参照IDを有効にします。別に<strong>購入者参照ID</strong>を、なし、会計で入力する顧客参照ID、メールから選びます。カードを保存しなくても、すべての決済で Adyen に送ります。メール参照IDは初期設定でハッシュ化され、デバイス間で同じソルトを使うと一貫した識別子になります。</p>
+          <p>予約・注文番号を記録する場合は<strong>設定 › 決済 › 加盟店参照IDの入力を求める</strong>をオンにします。この番号はAdyenで決済を識別し、空欄なら一意の参照IDを生成します。別に<strong>購入者参照ID</strong>を、なし、会計で入力する顧客参照ID、メールから選びます。カードを保存しなくても、すべての決済で Adyen に送ります。メール参照IDは初期設定でハッシュ化され、デバイス間で同じソルトを使うと一貫した識別子になります。</p>
           <p>購入者参照IDを設定し、<strong>カード保存の選択肢を表示</strong>を有効にすると会計で保存を選べます。お客様の同意を得て、Adyen の統合に合った継続課金モデルを選んでください。カードを保存しても、Mini mPOS に保存カードで請求する画面は追加されません。</p>
           <p class="back-to-contents"><a href="#contents">目次に戻る</a></p>
         </section>
         <section id="payment-links">
           <h2>リンクで支払ってもらう</h2>
           <p>Adyen <a href="https://docs.adyen.com/unified-commerce/pay-by-link">Pay by Link</a>では端末の代わりに Adyen の決済ページで払えます。LIVE で使う前に、利用規約などアカウントの要件を確認してください。</p>
-          <ol><li><strong>設定 › 決済 › 支払いリンクを使う</strong>を有効にし、有効期間を選びます。</li><li>販売の会計で<strong>支払いリンクを作成</strong>します。QR コードを見せる、未払い領収書を添えて<strong>リンクをメール送信</strong>する、<strong>リンクを印刷</strong>する、タブレットやスマートフォンから<strong>リンクを共有</strong>する方法があります。</li><li>画面を開いたままにして自動確認するか、後で取引履歴から<strong>支払いを確認</strong>します。不要になったら<strong>リンクをキャンセル</strong>します。</li></ol>
+          <ol><li>Checkout APIの設定を完了するとリンクが自動で表示されます。<strong>設定 › 決済 › 支払いリンク</strong>で有効期間を選びます。</li><li>販売の会計で<strong>支払いリンクを作成</strong>します。QR コードを見せる、未払い領収書を添えて<strong>リンクをメール送信</strong>する、<strong>リンクを印刷</strong>する、タブレットやスマートフォンから<strong>リンクを共有</strong>する方法があります。</li><li>画面を開いたままにして自動確認するか、後で取引履歴から<strong>支払いを確認</strong>します。不要になったら<strong>リンクをキャンセル</strong>します。</li></ol>
           <p>支払い、期限切れ、キャンセルまでは<strong>支払い待ち</strong>です。支払済みは日計に含まれ、未払いは含まれません。リンクには商品、入力済みの購入者情報、カード保存の選択が含まれ、Adyen アカウントのオンラインリスク・キャプチャ設定が適用されます。</p>
           <p class="note">販売専用で、予約金や領収書のチップには使えません。実際の Checkout API が必要で、シミュレーションできません。有効期間中はリンクを持つ人が支払えます。支払済みリンクの返金は<strong>Customer Area › Payments › Payment list</strong>で行います。アプリは PSP参照IDを取得できません。</p>
           <p>リンクが表示されない、更新されない場合は<a href="troubleshooting.html#links">支払いリンクのトラブルシューティング</a>を参照してください。</p>
@@ -149,6 +153,7 @@
         <section id="tips">
           <h2>領収書に書かれたチップを回収する</h2>
           <p>実際のプリンターと Adyen の<a href="https://docs.adyen.com/point-of-sale/tipping/tipping-on-receipt">領収書のチップ</a>設定が必要です。Adyen サポートにプリオーソリゼーションと overcapture の有効化を依頼してください。一部のデビットカードやウォレットは非対応です。</p>
+          <p><strong>設定 › 決済 › 領収書にチップを記入</strong>で<strong>有効（初期値オフ）</strong>か<strong>有効（初期値オン）</strong>を選びます。初期設定の<strong>無効</strong>では会計のスイッチを非表示にします。有効の2つの選択肢で、スイッチの初期値をオフかオンにできます。</p>
           <ol><li>販売の会計で<strong>領収書にチップを記入</strong>をオンにして決済します。請求せずに代金を確保します。</li><li>チップと合計の空欄付き領収書を印刷します。加盟店控えには署名欄があります。</li><li>記入後、結果画面や取引履歴の<strong>チップ入力待ち</strong>から<strong>チップを入力</strong>します。チップ・合計を入力するか、チップなしを選んで確認します。</li></ol>
           <p>代金とチップのキャプチャを要求します。20% 以下は overcapture、それを超える場合は先に増額を求めます。発行会社が増額を拒否した場合、チップは保存されず、少額やゼロを入力できます。保存後は変更できません。入力前は返金ではなく確保をキャンセルし、入力後の返金はチップを含みます。</p>
           <p class="note">ゼロのチップも含めて速やかに入力し、確保の期限前にキャプチャしてください。要求の最終結果は Customer Area で確認します。</p>

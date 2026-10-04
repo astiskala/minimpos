@@ -281,6 +281,19 @@ enum class ShopperReferenceSource {
     NONE,
 }
 
+/** Whether sales offer tipping on a printed receipt, and the checkout switch's initial choice. */
+@Serializable
+enum class ReceiptTipping {
+    /** Checkout never offers receipt tipping. */
+    DISABLED,
+
+    /** Checkout offers receipt tipping with its switch initially off. */
+    DEFAULT_OFF,
+
+    /** Checkout offers receipt tipping with its switch initially on. */
+    DEFAULT_ON,
+}
+
 /**
  * How payments are taken: currency, tax, references and saving cards (tokenization).
  *
@@ -296,8 +309,7 @@ enum class ShopperReferenceSource {
  * @property tokenizeDefaultOn Whether "Save card" starts switched on at checkout of a sale.
  * @property preAuthTokenizeDefaultOn Whether "Save card" starts switched on at checkout of a pre-authorisation, where a
  *   saved card allows charging late costs after the pre-authorisation has been captured.
- * @property tipOnReceiptDefaultOn Whether "Tip on the receipt" starts switched on at checkout of a sale (it is only
- *   offered while a printer is available).
+ * @property receiptTipping Whether receipt tipping is offered for sales with a printer, and its initial choice.
  * @property recurringProcessingModel Adyen's `recurringProcessingModel` for saved cards, one of [RECURRING_MODELS].
  * @property emailCapture When checkout asks for an email; [effectiveEmailCapture] is what applies.
  * @property autoSendEmail When the email was captured before payment, send the receipt as soon as the payment is
@@ -309,9 +321,6 @@ enum class ShopperReferenceSource {
  * @property emailReferenceSalt Salt mixed into hashed email references. Terminals with the same salt give a shopper the
  *   same reference, so saved cards work on all of them; changing it gives every shopper a new reference.
  * @property offerCardSaving Whether checkout offers "Save card" while a shopper reference is available.
- * @property sendShopperEmail Include `shopperEmail` in tokenization requests.
- * @property paymentLinks Whether checkout offers an Adyen payment link instead of sending a sale to the terminal; it
- *   also needs the Checkout API (see `io.github.astiskala.minimpos.app.terminal.TerminalSetup.paymentLinks`).
  * @property linkExpiryHours How long a payment link works, in hours within [LINK_EXPIRY_HOURS].
  */
 @Serializable
@@ -324,7 +333,7 @@ data class PaymentSettings(
     val askTransactionReference: Boolean = false,
     val tokenizeDefaultOn: Boolean = false,
     val preAuthTokenizeDefaultOn: Boolean = true,
-    val tipOnReceiptDefaultOn: Boolean = false,
+    val receiptTipping: ReceiptTipping = ReceiptTipping.DISABLED,
     val recurringProcessingModel: String = "UnscheduledCardOnFile",
     val emailCapture: EmailCapture = EmailCapture.AFTER_PAYMENT,
     val autoSendEmail: Boolean = true,
@@ -332,8 +341,6 @@ data class PaymentSettings(
     val emailReferenceMode: EmailReferenceMode = EmailReferenceMode.HASHED,
     val emailReferenceSalt: String = "",
     val offerCardSaving: Boolean = true,
-    val sendShopperEmail: Boolean = true,
-    val paymentLinks: Boolean = false,
     val linkExpiryHours: Int = DEFAULT_LINK_EXPIRY_HOURS,
 ) {
     /** These settings with [linkExpiryHours] within its range. */

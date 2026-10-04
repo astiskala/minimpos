@@ -100,21 +100,28 @@
           <h3 id="credentials">認証情報を用意する</h3>
           <p>通常の販売を含め、<strong>すべての実決済構成で Checkout API が必要です</strong>。<strong>Developers › API credentials</strong> で <strong>Checkout webservice role</strong> の認証情報を作成し、APIキーを生成します。Adyen の<a href="https://docs.adyen.com/development-resources/api-credentials">認証情報ガイド</a>を参照してください。クラウドでは、同じ認証情報に <strong>Cloud Device API</strong> ロールも必要です。</p>
           <p>この端末、ネットワーク上の端末、Tap to Pay では<strong>共有キー</strong>も用意します。<strong>Devices › Device settings › Integrations › Terminal API › Encryption key</strong> から識別子、パスフレーズ、バージョンを取得します。Adyen の<a href="https://docs.adyen.com/point-of-sale/design-your-integration/choose-your-architecture/local">ローカル統合ガイド</a>を参照してください。クラウドではこのキーは使いません。</p>
+          <p>実決済の構成はすべて<strong>Adyen APIキー</strong>から始まります。<strong>保存して設定を取得</strong>でキーを暗号化して保存し、端末を取得します。任意の <strong>Management API — Terminal actions read</strong> 権限があれば POIID、割当先のマーチャントアカウント、最後に報告された Ethernet／Wi-Fi アドレスを取得できます。共有キーの取得には端末設定の読み取り権限と <strong>Management API — Terminal settings Advanced read and write</strong> も必要です。アプリは Adyen の設定やキーを変更しません。Adyen の<a href="https://docs.adyen.com/api-explorer/Management/3/get/terminals">端末一覧</a>と<a href="https://docs.adyen.com/api-explorer/Management/latest/get/terminals/(terminalId)/terminalSettings">端末設定</a>の API リファレンスを参照してください。取得できない項目は手動で入力できます。キーは保存されたままで、手動設定に取得用の権限は不要です。アドレスが古い可能性があるため確認してください。</p>
+          <figure class="guide-shot">
+            <div class="terminal terminal-s1f2">
+              <img alt="端末設定の手順1はAdyen APIキー、手順2は共有キー" height="960" loading="lazy" src="../images/terminal-setup.png" width="540">
+            </div>
+            <figcaption class="fine">英語のエミュレーター設定デモです。実際の決済はありません。</figcaption>
+          </figure>
           <h3 id="helper">パソコンからキーを入力する</h3>
           <p>信頼できるパソコンで<a href="setup.html">セットアップヘルパー</a>を開き、構成を選んで入力し、<strong>QRコードを作成</strong>をクリックします。アプリの<strong>設定 › データ › 別のデバイスから設定</strong>で全コードを読み取り、表示された転送コードを入力して<strong>インポート</strong>します。その後、下の手順で接続を完了し、テストします。設定 › 端末に直接入力しても構いません。</p>
           <h3 id="on-terminal">Adyen 端末で動かす</h3>
           <p>先に<a href="#install">アプリをインストール</a>し、<a href="#credentials">認証情報を用意</a>してください。</p>
-          <ol><li><strong>設定 › 端末</strong>に共有キーを入力し、<strong>保存してテスト</strong>をタップします。アドレス、端末 ID（POIID）、TEST／LIVE 環境は自動検出されます。</li><li><strong>Checkout API</strong> の手順にマーチャントアカウントと APIキーを入力し、<strong>APIキーを保存してテスト</strong>をタップします。</li></ol>
+          <ol><li><strong>設定 › 端末 › Adyen APIキー</strong>でキーを保存します。取得権限があれば、この端末に一致するマーチャントアカウントと共有キーを入力します。</li><li>共有キーを確認または入力し、<strong>接続をテスト</strong>（パスフレーズを入力した場合は<strong>保存してテスト</strong>）をタップします。アドレスと POIID はデバイスから検出し、接続時に TEST／LIVE を検出します。</li><li><strong>Checkout API</strong> のマーチャントアカウントを確認または入力し、<strong>APIキーをテスト</strong>をタップします。</li></ol>
           <h3 id="network">ネットワーク上の端末を使う</h3>
           <p>先に<a href="#install">アプリをインストール</a>し、<a href="#credentials">認証情報を用意</a>してください。</p>
-          <ol><li><strong>ネットワーク上の端末</strong>を選び、端末の Device info 画面にある IP アドレスと POIID を入力します。</li><li>共有キーを入力し、接続をテストします。</li><li><strong>Checkout API</strong> の手順にマーチャントアカウントと APIキーを入力し、<strong>APIキーを保存してテスト</strong>をタップします。</li></ol>
+          <ol><li><strong>ネットワーク上の端末</strong>を選び、まず<strong>Adyen APIキー</strong>を保存します。取得できれば一覧から端末を選びます。</li><li>POIID、マーチャントアカウント、IP アドレス、共有キーを確認し、不足項目は手動で入力します。端末の「Device info」に現在のアドレスと POIID が表示されます。</li><li>共有キーで接続をテストし、<strong>Checkout API</strong> のマーチャントアカウントを確認して<strong>APIキーをテスト</strong>をタップします。</li></ol>
           <h3 id="cloud">インターネット経由で端末を使う</h3>
           <p>先に<a href="#install">アプリをインストール</a>し、<a href="#credentials">認証情報を用意</a>してください。</p>
-          <ol><li>クラウドの決済先を選び、<strong>Adyenアカウント</strong>にマーチャントアカウントと必要な両ロールを持つ APIキーを入力します。</li><li><strong>接続中の端末を検索</strong>から端末を選ぶか、POIID を入力します。<strong>接続をテスト</strong>で端末と Checkout API を確認します。</li></ol>
+          <ol><li>クラウドの決済先を選び、必要な両ロールを持つ<strong>Adyen APIキー</strong>を保存します。取得できれば端末を選び、できなければ POIID を手動入力します。</li><li><strong>Adyenアカウント</strong>のマーチャントアカウントを確認または入力し、<strong>接続をテスト</strong>で端末と Checkout API を確認します。</li></ol>
           <p>キーから環境とデータセンターを自動検出します。クラウド決済はローカル決済より端末の応答を長く待つ場合があります。</p>
           <h3 id="tap-to-pay">Tap to Pay を使う</h3>
           <p>先に<a href="#install">アプリをインストール</a>し、<a href="#credentials">認証情報を用意</a>してください。</p>
-          <ol><li>Adyen サポートに Tap to Pay on Android と <strong>Adyen Payments app role</strong> の有効化を依頼します。TEST では <strong>Adyen Payments Test</strong>、LIVE では <strong>Adyen Payments</strong> をインストールし、両方は入れないでください。アプリに Google Play へのリンクがあります。</li><li><strong>このスマートフォンでTap to Pay</strong>を選び、スマートフォンを登録するマーチャントアカウントの <strong>Checkout API</strong> を接続します。</li><li><strong>Tap to Pay</strong> に別の<strong>PaymentsアプリのAPIキー</strong>（Adyen Payments app role のみ）と、任意の店舗 ID を入力します。<strong>Tap to Payを設定</strong>から Payments アプリで登録を完了します。</li><li>Payments アプリへの決済を暗号化する<strong>共有キー</strong>を入力します。Adyen の<a href="https://docs.adyen.com/point-of-sale/mobile-android/build/payments-app">Payments アプリガイド</a>に従ってください。</li></ol>
+          <ol><li><strong>このスマートフォンでTap to Pay</strong>を選び、まず<strong>Adyen APIキー</strong>を保存します。端末の取得では Payments アプリを設定できないため、この構成のマーチャントアカウントと共有キーは手動入力します。</li><li>Adyen サポートに Tap to Pay on Android と <strong>Adyen Payments app role</strong> の有効化を依頼します。TEST では <strong>Adyen Payments Test</strong>、LIVE では <strong>Adyen Payments</strong> をインストールし、両方は入れないでください。アプリに Google Play へのリンクがあります。スマートフォンを登録するマーチャントアカウントの <strong>Checkout API</strong> を接続します。</li><li><strong>Tap to Pay</strong> に別の<strong>PaymentsアプリのAPIキー</strong>（Adyen Payments app role のみ）と、任意の店舗 ID を入力します。<strong>Tap to Payを設定</strong>から Payments アプリで登録を完了します。</li><li>Payments アプリへの決済を暗号化する<strong>共有キー</strong>を入力します。Adyen の<a href="https://docs.adyen.com/point-of-sale/mobile-android/build/payments-app">Payments アプリガイド</a>に従ってください。</li></ol>
           <p>決済時は Payments アプリが開き、Mini mPOS に戻ります。インストールしたアプリが TEST／LIVE を決めます。後で登録を解除するには<strong>このスマートフォンを削除</strong>を使います。</p>
           <p class="note">APIキーはこのデバイスに暗号化して保存します。Adyen はサーバーでの保管を推奨していますが、Mini mPOS にはサーバーがありません。必要最小限の権限を持つ、このデバイスや端末群専用の認証情報を使い、管理者PINを設定してください。漏えいや紛失時は認証情報を無効にします。<a href="https://github.com/astiskala/minimpos/blob/main/SECURITY.md">セキュリティポリシー</a>も確認してください。</p>
           <p class="back-to-contents"><a href="#contents">目次に戻る</a></p>

@@ -51,7 +51,7 @@ class RemoteSettingsViewModelTest {
             container.secrets,
             container.pinManager,
             container.sessionLock,
-            SettingsChecks(container.terminalStatus, container.receipts, container.api),
+            SettingsChecks(container.terminalStatus, container.receipts, container.api, container.receiptBusinessDetails),
             container.history,
             container.catalog,
             container::sampleReceipt,
@@ -67,7 +67,14 @@ class RemoteSettingsViewModelTest {
         }
 
     private fun setupViewModel() =
-        TerminalSetupViewModel(container.settings, container.secrets, container.terminalStatus, container.tapToPay)
+        TerminalSetupViewModel(
+            container.secrets,
+            container.terminalStatus,
+            container.tapToPay,
+            container.setupDiscovery,
+            container.settings,
+            settingsViewModel().state,
+        )
 
     @Test
     fun `the API key is saved and tested on the terminal in the cloud, which can be chosen from those connected`() {
@@ -75,8 +82,9 @@ class RemoteSettingsViewModelTest {
         val vm = settingsViewModel()
         val setup = setupViewModel()
         setup.findTerminals()
-        val missing = await { setup.actions.first { it.terminals.isError } }
-        assertThat(missing.terminals.outcome).isEqualTo(ActionOutcome.NotSetUp(SetupProblem.API_REQUIRED))
+        val missing = await { setup.actions.first { it.terminals.done } }
+        assertThat(missing.manualDetails).isTrue()
+        assertThat(missing.connectedTerminals).isNull()
 
         vm.saveAndTest(Secret.ADYEN_API_KEY, " cloud-key ", SettingsTest.CONNECTION)
         val tested = await { vm.actions.first { it.connection.isError } }

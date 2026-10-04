@@ -18,6 +18,7 @@ import io.github.astiskala.minimpos.app.TestEnvironment
 import io.github.astiskala.minimpos.app.await
 import io.github.astiskala.minimpos.app.awaitCondition
 import io.github.astiskala.minimpos.app.data.settings.EmailCapture
+import io.github.astiskala.minimpos.app.data.settings.ReceiptTipping
 import io.github.astiskala.minimpos.app.data.settings.ShopperReferenceSource
 import kotlinx.coroutines.flow.first
 import org.junit.Before
@@ -81,6 +82,7 @@ class ShopperReferenceFlowTest {
 
     @Test
     fun `checkout option labels toggle their switches`() {
+        env.updateSettings { it.copy(payment = it.payment.copy(receiptTipping = ReceiptTipping.DEFAULT_OFF)) }
         ringUpCustomAmount(5, 0, 0)
         compose.onNodeWithTag("charge").performClick()
         waitForTag("pay")

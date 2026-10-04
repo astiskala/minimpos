@@ -36,6 +36,7 @@ import io.github.astiskala.minimpos.app.payment.TransactionState
 import io.github.astiskala.minimpos.app.refund.RefundInvalidReason
 import io.github.astiskala.minimpos.app.refund.Refundability
 import io.github.astiskala.minimpos.app.refund.RefundablePayment
+import io.github.astiskala.minimpos.app.terminal.ReceiptBusiness
 import io.github.astiskala.minimpos.core.codec.RefundQrPayload
 import io.github.astiskala.minimpos.core.receipt.PlainTextReceiptRenderer
 import io.github.astiskala.minimpos.core.receipt.ReceiptElement
@@ -46,6 +47,8 @@ import io.github.astiskala.minimpos.core.tax.TaxRates
 import io.github.astiskala.minimpos.terminal.client.RetryAdvice
 import io.github.astiskala.minimpos.terminal.simulator.SimulatedOutcome
 import io.github.astiskala.minimpos.terminal.simulator.TerminalSimulator
+import io.github.astiskala.minimpos.terminal.transport.StoreDetailsApi
+import io.github.astiskala.minimpos.terminal.transport.StoreListing
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.first
@@ -94,11 +97,45 @@ class SettingsViewModelTest {
             target.secrets,
             target.pinManager,
             target.sessionLock,
-            SettingsChecks(target.terminalStatus, target.receipts, target.api),
+            SettingsChecks(target.terminalStatus, target.receipts, target.api, target.receiptBusinessDetails),
             target.history,
             target.catalog,
             target::sampleReceipt,
         )
+
+    @Test
+    fun `receipt import reports setup problems and rejects unoffered proposals`() {
+        env.useSimulator()
+        val vm = settingsViewModel()
+        vm.businessImport.find()
+        assertThat(await { vm.businessImport.state.first { it.lookup.isError } }.lookup.outcome)
+            .isEqualTo(ActionOutcome.NotSetUp(SetupProblem.API_REQUIRED))
+        env.useLinks()
+        vm.businessImport.find()
+        assertThat(await { vm.businessImport.state.first { it.stores != null } }.stores).isEmpty()
+        val before = await { container.settings.current() }
+        vm.businessImport.choose(ReceiptBusiness("ST1", "cafe", "Not offered", "", ""))
+        assertThat(await { container.settings.current() }).isEqualTo(before)
+        vm.businessImport.choose(null)
+        assertThat(vm.businessImport.state.value.stores).isNull()
+    }
+
+    @Test
+    fun `receipt lookup failures leave receipt settings unchanged`() {
+        val failed = TestEnvironment(stores = StoreDetailsApi { StoreListing.Failed("Missing store permission") })
+        try {
+            failed.useLinks()
+            val vm = settingsViewModel(failed.container)
+            val before = await { failed.container.settings.current() }
+            vm.businessImport.find()
+            assertThat(await { vm.businessImport.state.first { it.lookup.isError } }.lookup.outcome)
+                .isEqualTo(ActionOutcome.Failed("Missing store permission"))
+            assertThat(await { failed.container.settings.current() }).isEqualTo(before)
+            assertThat(vm.businessImport.state.value.stores).isNull()
+        } finally {
+            failed.close()
+        }
+    }
 
     @Test
     fun `settings presents pricing confirmation without owning the commit sequence`() {

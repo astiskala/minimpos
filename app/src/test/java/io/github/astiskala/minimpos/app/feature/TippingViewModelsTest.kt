@@ -10,6 +10,7 @@ import io.github.astiskala.minimpos.app.data.db.SetupProblem
 import io.github.astiskala.minimpos.app.data.db.TaxRateEntity
 import io.github.astiskala.minimpos.app.data.security.Secret
 import io.github.astiskala.minimpos.app.data.settings.PrinterMode
+import io.github.astiskala.minimpos.app.data.settings.ReceiptTipping
 import io.github.astiskala.minimpos.app.data.settings.TerminalMode
 import io.github.astiskala.minimpos.app.feature.capture.CaptureViewModel
 import io.github.astiskala.minimpos.app.feature.capture.TipInput
@@ -47,7 +48,7 @@ class TippingViewModelsTest {
     @Before
     fun setUp() {
         Dispatchers.setMain(UnconfinedTestDispatcher())
-        env.useSimulator { it.copy(payment = it.payment.copy(currencyCode = "AUD")) }
+        env.useSimulator { it.copy(payment = it.payment.copy(currencyCode = "AUD", receiptTipping = ReceiptTipping.DEFAULT_OFF)) }
     }
 
     @After
@@ -100,9 +101,11 @@ class TippingViewModelsTest {
         val sale = await { checkout().state.first { it.printerAvailable } }
         assertThat(sale.canTipOnReceipt).isTrue()
         assertThat(sale.tipOnReceipt).isFalse()
-        env.useSimulator { it.copy(payment = it.payment.copy(tipOnReceiptDefaultOn = true)) }
+        env.useSimulator { it.copy(payment = it.payment.copy(receiptTipping = ReceiptTipping.DEFAULT_ON)) }
         val vm = checkout()
-        assertThat(await { vm.state.first { it.payment.tipOnReceiptDefaultOn && it.printerAvailable } }.tipOnReceipt).isTrue()
+        assertThat(
+            await { vm.state.first { it.payment.receiptTipping == ReceiptTipping.DEFAULT_ON && it.printerAvailable } }.tipOnReceipt,
+        ).isTrue()
         vm.update { it.copy(tipOnReceipt = false) }
         assertThat(await { vm.state.first { it.form.tipOnReceipt == false } }.tipOnReceipt).isFalse()
         // Not for pre-authorisations, nor without a printer.
@@ -319,7 +322,7 @@ class TippingViewModelsTest {
                 container.secrets,
                 container.pinManager,
                 container.sessionLock,
-                SettingsChecks(container.terminalStatus, container.receipts, container.api),
+                SettingsChecks(container.terminalStatus, container.receipts, container.api, container.receiptBusinessDetails),
                 container.history,
                 container.catalog,
                 container::sampleReceipt,

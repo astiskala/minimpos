@@ -6,17 +6,19 @@ import io.github.astiskala.minimpos.app.data.security.Secret
 import io.github.astiskala.minimpos.app.data.security.SecretStore
 import io.github.astiskala.minimpos.app.data.security.SecretStoreException
 import io.github.astiskala.minimpos.app.data.settings.SettingsRepository
+import io.github.astiskala.minimpos.app.data.settings.TerminalMode
 import io.github.astiskala.minimpos.app.feature.ActionOutcome
 import io.github.astiskala.minimpos.app.feature.ActionState
 import io.github.astiskala.minimpos.app.feature.launchWrite
 import io.github.astiskala.minimpos.app.feature.persisting
-import io.github.astiskala.minimpos.app.terminal.ConnectedTerminals
+import io.github.astiskala.minimpos.app.terminal.SetupDiscovery
 import io.github.astiskala.minimpos.app.terminal.TapToPayOutcome
 import io.github.astiskala.minimpos.app.terminal.TapToPaySetup
 import io.github.astiskala.minimpos.app.terminal.TerminalStatus
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
@@ -29,6 +31,8 @@ import kotlinx.coroutines.launch
  * @property paymentsAppKeyStored Whether the Payments app API key given to the latest setup was stored (so the field
  *   can be cleared).
  * @property apiKeyStored Whether the API key given to the latest search was stored (so the field can be cleared).
+ * @property manualDetails Whether optional details need manual entry.
+ * @property revision Completed discovery imports, used to refresh field editing state.
  */
 data class TerminalSetupActions(
     val terminals: ActionState = ActionState(),
@@ -36,22 +40,28 @@ data class TerminalSetupActions(
     val tapToPay: ActionState = ActionState(),
     val paymentsAppKeyStored: Boolean = false,
     val apiKeyStored: Boolean = false,
+    val manualDetails: Boolean = false,
+    val revision: Int = 0,
 )
 
 /**
  * Settings › Terminal's setup of where payments go off-terminal: choosing a terminal in the cloud from those connected,
  * and setting up (or removing) Tap to Pay with the Adyen Payments app.
  *
- * @param settings Where the chosen terminal is stored.
  * @param secrets Where the Payments app API key and the API key for the cloud are stored.
  * @param status Lists the terminals connected in the cloud.
  * @param tapToPay Boards and removes the Payments app.
+ * @param discovery Reads optional terminal setup details.
+ * @param settings Reads the fields after a discovered setup is saved.
+ * @param observedSettings Screen state to synchronize before resetting field editing state.
  */
 class TerminalSetupViewModel(
-    private val settings: SettingsRepository,
     private val secrets: SecretStore,
     private val status: TerminalStatus,
     private val tapToPay: TapToPaySetup,
+    private val discovery: SetupDiscovery,
+    private val settings: SettingsRepository,
+    private val observedSettings: StateFlow<SettingsUiState>,
 ) : ViewModel() {
     private val _actions = MutableStateFlow(TerminalSetupActions())
 
@@ -63,38 +73,38 @@ class TerminalSetupViewModel(
      * [apiKey] as the API key if one was entered.
      */
     fun findTerminals(apiKey: String? = null) {
+        if (_actions.value.terminals.running) return
         _actions.update { it.copy(terminals = ActionState(running = true), connectedTerminals = null, apiKeyStored = false) }
-        viewModelScope.launch {
+        launchWrite({
             val entered = apiKey?.trim()?.takeIf { it.isNotEmpty() }
             val notStored = entered?.let { persisting { store(Secret.ADYEN_API_KEY, it) } }
             if (notStored != null) {
                 _actions.update { it.copy(terminals = ActionState(outcome = notStored, isError = true)) }
-                return@launch
+                return@launchWrite
             }
             if (entered != null) _actions.update { it.copy(apiKeyStored = true) }
-            val found = status.connectedTerminals()
-            _actions.update {
-                when (found) {
-                    is ConnectedTerminals.Listed -> {
-                        it.copy(terminals = ActionState(done = true), connectedTerminals = found.poiIds)
-                    }
-
-                    is ConnectedTerminals.NotSetUp -> {
-                        it.copy(terminals = ActionState(outcome = ActionOutcome.NotSetUp(found.problem), isError = true))
-                    }
-
-                    is ConnectedTerminals.Failed -> {
-                        it.copy(terminals = ActionState(outcome = ActionOutcome.Failed(found.message), isError = true))
-                    }
-                }
+            val discovered = discovery.find()
+            if (discovered != null) {
+                _actions.update { it.copy(terminals = ActionState(done = true), connectedTerminals = discovered) }
+                val current = status.state.value
+                if (current.onTerminal && current.mode == TerminalMode.TERMINAL && discovered.size == 1) chooseTerminal(discovered.single())
+                return@launchWrite
             }
-        }
+            _actions.update { it.copy(terminals = ActionState(done = true), manualDetails = true) }
+        })
     }
 
     /** Takes [poiId] (one of [TerminalSetupActions.connectedTerminals]) as the terminal in the cloud; null only closes the list. */
     fun chooseTerminal(poiId: String?) {
         _actions.update { it.copy(connectedTerminals = null, terminals = ActionState()) }
-        if (poiId != null) launchWrite({ settings.update { it.copy(terminal = it.terminal.copy(poiIdOverride = poiId)) } })
+        launchWrite({
+            val result = discovery.choose(poiId)
+            if (poiId != null) {
+                val terminal = settings.current().terminal
+                observedSettings.first { it.settings.terminal == terminal }
+                _actions.update { it.copy(manualDetails = result != true, revision = it.revision + 1) }
+            }
+        })
     }
 
     /**

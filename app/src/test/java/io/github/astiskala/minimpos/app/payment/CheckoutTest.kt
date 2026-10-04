@@ -8,6 +8,7 @@ import io.github.astiskala.minimpos.app.data.settings.AppSettings
 import io.github.astiskala.minimpos.app.data.settings.EmailCapture
 import io.github.astiskala.minimpos.app.data.settings.PaymentSettings
 import io.github.astiskala.minimpos.app.data.settings.PricingChange
+import io.github.astiskala.minimpos.app.data.settings.ReceiptTipping
 import io.github.astiskala.minimpos.app.data.settings.ShopperReferenceSource
 import io.github.astiskala.minimpos.core.cart.AppliedTax
 import io.github.astiskala.minimpos.core.cart.Cart
@@ -36,7 +37,11 @@ class CheckoutTest {
 
     private fun checkout(
         form: CheckoutForm = CheckoutForm(),
-        payment: PaymentSettings = PaymentSettings(shopperReferenceSource = ShopperReferenceSource.CUSTOMER_REFERENCE),
+        payment: PaymentSettings =
+            PaymentSettings(
+                shopperReferenceSource = ShopperReferenceSource.CUSTOMER_REFERENCE,
+                receiptTipping = ReceiptTipping.DEFAULT_OFF,
+            ),
         kind: SaleKind = SaleKind.SALE,
         printer: Boolean = true,
     ) = Checkout(form, payment, totals, aud, kind, printer)
@@ -123,7 +128,7 @@ class CheckoutTest {
         assertThat(start.customerReference).isEqualTo("CUST-1")
         assertThat(start.shopperEmail).isEqualTo("a@b.co")
         assertThat(start.shopperReference).isEqualTo("CUST-1")
-        assertThat(start.tokenization).isEqualTo(TokenizationRequest(RecurringModel.UNSCHEDULED_CARD_ON_FILE, includeEmail = true))
+        assertThat(start.tokenization).isEqualTo(TokenizationRequest(RecurringModel.UNSCHEDULED_CARD_ON_FILE))
         assertThat(start.manualCapture).isFalse()
         // A typed reference is kept; without the switch the settings default (off for sales) applies.
         val typed =
@@ -184,6 +189,21 @@ class CheckoutTest {
         assertThat(checkout(CheckoutForm(email = "bad"), PaymentSettings(emailCapture = EmailCapture.BEFORE_PAYMENT)).canPay)
             .isFalse()
         assertThat(Checkout().paymentStart(now, ZoneOffset.UTC)).isNull()
+    }
+
+    @Test
+    fun `receipt tipping has three modes and disabled ignores an earlier operator choice`() {
+        ReceiptTipping.entries.forEach { mode ->
+            val checkout = checkout(payment = PaymentSettings(receiptTipping = mode))
+            assertThat(checkout.canTipOnReceipt).isEqualTo(mode != ReceiptTipping.DISABLED)
+            assertThat(checkout.tipOnReceipt).isEqualTo(mode == ReceiptTipping.DEFAULT_ON)
+            assertThat(checkout.copy(form = CheckoutForm(tipOnReceipt = true)).tipOnReceipt)
+                .isEqualTo(mode != ReceiptTipping.DISABLED)
+            assertThat(checkout.copy(form = CheckoutForm(tipOnReceipt = false)).tipOnReceipt).isFalse()
+            assertThat(checkout.copy(printerAvailable = false).canTipOnReceipt).isFalse()
+            assertThat(checkout.copy(kind = SaleKind.PRE_AUTHORISATION).canTipOnReceipt).isFalse()
+        }
+        assertThat(checkout(payment = PaymentSettings()).canTipOnReceipt).isFalse()
     }
 
     @Test

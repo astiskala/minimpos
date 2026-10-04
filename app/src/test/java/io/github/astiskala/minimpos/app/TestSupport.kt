@@ -39,9 +39,15 @@ import io.github.astiskala.minimpos.terminal.transport.CloudDevices
 import io.github.astiskala.minimpos.terminal.transport.CloudEndpoint
 import io.github.astiskala.minimpos.terminal.transport.CloudRegion
 import io.github.astiskala.minimpos.terminal.transport.Delivery
+import io.github.astiskala.minimpos.terminal.transport.DiscoveredKey
+import io.github.astiskala.minimpos.terminal.transport.StoreDetailsApi
+import io.github.astiskala.minimpos.terminal.transport.StoreListing
+import io.github.astiskala.minimpos.terminal.transport.TerminalDetails
+import io.github.astiskala.minimpos.terminal.transport.TerminalDetailsApi
 import io.github.astiskala.minimpos.terminal.transport.TerminalEnvironment
 import io.github.astiskala.minimpos.terminal.transport.TerminalHttpClient
 import io.github.astiskala.minimpos.terminal.transport.TerminalKey
+import io.github.astiskala.minimpos.terminal.transport.TerminalListing
 import io.github.astiskala.minimpos.terminal.transport.TerminalTransport
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
@@ -324,6 +330,20 @@ class TestEnvironment(
     management: FakeManagement = FakeManagement(),
     /** Replaces Adyen's payment links. */
     links: FakeLinkApi = FakeLinkApi(),
+    stores: StoreDetailsApi = StoreDetailsApi { StoreListing.Listed(emptyList()) },
+    terminalDetails: TerminalDetailsApi =
+        object : TerminalDetailsApi {
+            override suspend fun terminals() =
+                TerminalListing.Listed(
+                    listOf("AMS1-000168223606144", "S1F2-000158213605014").map { TerminalDetails(it, "Merchant", "192.168.1.42") },
+                    TerminalEnvironment.TEST,
+                )
+
+            override suspend fun sharedKey(
+                id: String,
+                environment: TerminalEnvironment,
+            ): DiscoveredKey? = null
+        },
 ) : ExternalResource() {
     /** Robolectric's application context. */
     val context: Context = ApplicationProvider.getApplicationContext()
@@ -360,6 +380,8 @@ class TestEnvironment(
             paymentsAppExchange = paymentsApp,
             paymentsAppManagement = { _, _ -> management },
             paymentLinks = { links },
+            storeDetails = { _, _ -> stores },
+            terminalDetails = { terminalDetails },
         )
 
     /**
@@ -373,9 +395,9 @@ class TestEnvironment(
 
     /**
      * Payment links work: the merchant account and API key are saved, and payments go to this terminal (whose
-     * environment, TEST, is detected), so the Checkout API is set up; [enabled] switches links on in Settings.
+     * environment, TEST, is detected), so the Checkout API is set up.
      */
-    fun useLinks(enabled: Boolean = true) {
+    fun useLinks() {
         await { container.secrets.set(Secret.ADYEN_API_KEY, "key") }
         updateSettings {
             it.copy(
@@ -385,10 +407,9 @@ class TestEnvironment(
                         merchantAccount = "HarbourCoffeeCOM",
                         environment = TerminalEnvironment.TEST,
                     ),
-                payment = it.payment.copy(paymentLinks = enabled),
             )
         }
-        runBlocking { withTimeout(5_000) { container.terminalStatus.state.first { it.paymentLinks == enabled } } }
+        runBlocking { withTimeout(5_000) { container.terminalStatus.state.first { it.paymentLinks } } }
     }
 
     /** Simulator with no delay, and settings loaded into the container's state. */

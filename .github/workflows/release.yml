@@ -73,8 +73,11 @@ jobs:
           printf '%s' "$RELEASE_KEYSTORE" | base64 --decode > "$RUNNER_TEMP/release.jks"
           printf 'storeFile=%s\n%s\n' "$RUNNER_TEMP/release.jks" "$RELEASE_SIGNING_PROPERTIES" > keystore.properties
 
-      - name: Quality gate and signed release build
-        run: ./gradlew qualityGate :app:assembleRelease
+      - name: Quality gate
+        run: ./gradlew qualityGate --continue
+
+      - name: Signed release build (R8)
+        run: ./gradlew :app:assembleRelease -PqualityGatePassed=true
 
       - name: Check the signature
         env:

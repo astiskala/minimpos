@@ -1,7 +1,6 @@
 package io.github.astiskala.minimpos.app.terminal
 
 import io.github.astiskala.minimpos.app.data.db.SetupProblem
-import io.github.astiskala.minimpos.app.data.settings.SettingsRepository
 import io.github.astiskala.minimpos.app.data.settings.TerminalMode
 import io.github.astiskala.minimpos.terminal.transport.TerminalEnvironment
 import kotlinx.coroutines.CoroutineScope
@@ -66,13 +65,11 @@ data class TerminalState(
  *
  * @param setups Where payments go and what is missing, as the settings and secrets change.
  * @param gateway Checks the connection, and tells which terminals have a printer and which environment they are in.
- * @param settings The stored settings; a detected environment is saved into them.
- * @param scope Keeps [state] up to date and runs the background checks started by [start].
+ * @param scope Keeps [state] up to date, runs background checks and forwards detections to [TerminalSetupSource.remember].
  */
 class TerminalStatus(
     private val setups: TerminalSetupSource,
     private val gateway: TerminalGateway,
-    private val settings: SettingsRepository,
     private val scope: CoroutineScope,
 ) {
     private val connection = MutableStateFlow<TerminalConnection>(TerminalConnection.Unknown)
@@ -110,10 +107,7 @@ class TerminalStatus(
             setups.changes
                 .map { setup ->
                     Triple(
-                        setup.settings.terminal.copy(
-                            environment = setup.environment.takeIf { setup.selectsEnvironment },
-                            cloudRegion = null,
-                        ),
+                        setup.settings.terminal.selectEnvironment(setup.environment.takeIf { setup.selectsEnvironment }),
                         setup.checksConnection,
                         setup.connectionProblem,
                     )
@@ -122,20 +116,7 @@ class TerminalStatus(
                 .collectLatest { (_, checked) -> if (checked) check() }
         }
         scope.launch {
-            gateway.detectedEnvironment.filterNotNull().collect { detected ->
-                val setup = setups.current()
-                settings.update {
-                    if (it.terminal != setup.settings.terminal) {
-                        it
-                    } else if (setup.destination == LocalTerminal && setup.onTerminal) {
-                        it.copy(terminal = it.terminal.copy(environment = detected.environment))
-                    } else if (setup.destination == CloudTerminal && setup.environment == detected.environment) {
-                        it.copy(terminal = it.terminal.copy(cloudRegion = detected.cloudRegion))
-                    } else {
-                        it
-                    }
-                }
-            }
+            gateway.detectedEnvironment.filterNotNull().collect(setups::remember)
         }
     }
 

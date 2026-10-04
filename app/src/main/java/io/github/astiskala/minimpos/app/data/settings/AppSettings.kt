@@ -213,6 +213,35 @@ data class TerminalSettings(
     val merchantAccount: String = "",
     val liveUrlPrefix: String = "",
 ) {
+    /**
+     * Selects [choice], storing the device's [automaticMode] as [TerminalMode.AUTO]. An unchanged effective destination
+     * keeps its learned fields; changing it clears its environment and cloud region.
+     */
+    fun selectDestination(
+        choice: TerminalMode,
+        automaticMode: TerminalMode,
+    ): TerminalSettings =
+        if (choice == (if (mode == TerminalMode.AUTO) automaticMode else mode)) {
+            this
+        } else {
+            withConnection(mode = if (choice == automaticMode) TerminalMode.AUTO else choice)
+        }
+
+    /** Selects [selected], clearing the learned cloud region even on reselection; null leaves the environment unknown. */
+    fun selectEnvironment(selected: TerminalEnvironment?): TerminalSettings = copy(environment = selected, cloudRegion = null)
+
+    /**
+     * Imports a connection choice: null arguments retain the corresponding choice, a changed [mode] clears learned
+     * fields, and the same supplied [environment] preserves the cloud region. Other device fields remain unchanged.
+     */
+    fun withConnection(
+        mode: TerminalMode? = null,
+        environment: TerminalEnvironment? = null,
+    ): TerminalSettings {
+        val moved = if (mode != null && mode != this.mode) copy(mode = mode, environment = null, cloudRegion = null) else this
+        return if (environment != null && environment != moved.environment) moved.selectEnvironment(environment) else moved
+    }
+
     /** These settings with [keyVersion] and [timeoutSeconds] within their ranges. */
     fun normalized(): TerminalSettings =
         copy(keyVersion = keyVersion.coerceIn(KEY_VERSIONS), timeoutSeconds = timeoutSeconds.coerceIn(TIMEOUT_SECONDS))

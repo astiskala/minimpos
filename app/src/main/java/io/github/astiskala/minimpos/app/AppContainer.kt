@@ -255,7 +255,7 @@ class AppContainer(
     val api = AdyenApi(terminalSetup, simulated = simulator.modifications, connectLinks = paymentLinks)
 
     /** Whether payments and printing can work, for Home, Settings and the receipt screens. */
-    val terminalStatus = TerminalStatus(terminalSetup, gateway, settings, appScope)
+    val terminalStatus = TerminalStatus(terminalSetup, gateway, appScope)
 
     /** Stored sales with what can be done with them now, for the screens that show one. */
     val storedPayments = StoredPayments(sales)

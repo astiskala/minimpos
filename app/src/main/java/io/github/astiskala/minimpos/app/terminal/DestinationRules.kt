@@ -65,6 +65,12 @@ sealed interface DestinationRules {
         device: DeviceInfo,
     ): TerminalEnvironment? = terminal.environment
 
+    /** The terminal settings after accepting [detected] for [setup]; by default this destination learns nothing. */
+    fun learnedEnvironment(
+        setup: TerminalSetup,
+        detected: DetectedEnvironment,
+    ): TerminalSettings = setup.settings.terminal
+
     /**
      * What must still be entered (or installed or fixed) with [terminal] and the [saved] secrets on [device], given the
      * [poiId] and [host] it resolved to; null when nothing is missing.

@@ -24,6 +24,9 @@ import io.github.astiskala.minimpos.core.catalogue.CatalogueCategory
 import io.github.astiskala.minimpos.core.catalogue.CatalogueProduct
 import io.github.astiskala.minimpos.core.catalogue.CatalogueTaxRate
 import io.github.astiskala.minimpos.core.receipt.CardReceiptLine
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.first
 import org.junit.After
 import org.junit.Test
@@ -72,6 +75,25 @@ class RepositoriesTest {
     }
 
     @Test
+    fun `tax-rate deletion retains the last rate without caller prechecks`() =
+        await {
+            catalog.seedDefaults(STARTER)
+            val rates = catalog.taxRates.first()
+            rates.forEach { catalog.deleteTaxRate(it) }
+            assertThat(catalog.taxRates.first()).hasSize(1)
+        }
+
+    @Test
+    fun `concurrent tax-rate deletions cannot remove every rate`() =
+        await {
+            catalog.seedDefaults(STARTER)
+            val rates = catalog.taxRates.first()
+            val results = coroutineScope { rates.map { async { catalog.deleteTaxRate(it) } }.awaitAll() }
+            assertThat(results).containsExactly(DeleteResult.Deleted, DeleteResult.LastRate)
+            assertThat(catalog.taxRates.first()).hasSize(1)
+        }
+
+    @Test
     fun `saves, updates and deletes catalogue entries`() =
         await {
             val taxId = catalog.saveTaxRate(TaxRateEntity(name = "GST", rateMilliPercent = 10_000))
@@ -96,7 +118,8 @@ class RepositoriesTest {
             catalog.deleteCategory(catalog.categories.first().single())
             assertThat(catalog.product(productId)!!.categoryId).isNull()
             catalog.deleteProduct(catalog.product(productId)!!)
-            assertThat(catalog.deleteTaxRate(tax)).isEqualTo(DeleteResult.Deleted)
+            assertThat(catalog.deleteTaxRate(tax)).isEqualTo(DeleteResult.LastRate)
+            assertThat(catalog.taxRates.first()).containsExactly(tax)
             assertThat(catalog.products.first()).isEmpty()
         }
 
@@ -112,6 +135,16 @@ class RepositoriesTest {
                     CatalogueProduct("Catering deposit", 20_000, 0, null, "CD", preAuthorisation = true),
                 ),
         )
+
+    @Test
+    fun `an empty replacement catalogue retains a zero rate for custom items`() =
+        await {
+            catalog.seedDefaults(STARTER)
+            val summary = catalog.import(Catalogue("AUD", emptyList(), emptyList(), emptyList()), ImportMode.REPLACE)
+            assertThat(catalog.taxRates.first().map { it.rateMilliPercent }).containsExactly(0)
+            assertThat(summary.taxRatesAdded).isEqualTo(1)
+            assertThat(catalog.products.first()).isEmpty()
+        }
 
     @Test
     fun `exports and replaces catalogues`() =

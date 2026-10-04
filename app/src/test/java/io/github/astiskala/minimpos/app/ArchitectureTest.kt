@@ -36,12 +36,15 @@ import com.tngtech.archunit.library.Architectures.layeredArchitecture
 import com.tngtech.archunit.library.GeneralCodingRules
 import com.tngtech.archunit.library.dependencies.SlicesRuleDefinition.slices
 import io.github.astiskala.minimpos.app.data.db.AppDatabase
+import io.github.astiskala.minimpos.app.data.db.CatalogDao
 import io.github.astiskala.minimpos.app.data.db.RefundDao
 import io.github.astiskala.minimpos.app.data.db.RefundEntity
 import io.github.astiskala.minimpos.app.data.db.SaleDao
 import io.github.astiskala.minimpos.app.data.db.SaleEntity
+import io.github.astiskala.minimpos.app.data.db.SaleWithLines
 import io.github.astiskala.minimpos.app.data.db.SetupProblem
 import io.github.astiskala.minimpos.app.data.db.StoredReason
+import io.github.astiskala.minimpos.app.data.db.TaxRateEntity
 import io.github.astiskala.minimpos.app.data.repo.CatalogRepository
 import io.github.astiskala.minimpos.app.data.repo.CataloguePricing
 import io.github.astiskala.minimpos.app.data.repo.HistoryRepository
@@ -50,9 +53,11 @@ import io.github.astiskala.minimpos.app.data.repo.RefundRepository
 import io.github.astiskala.minimpos.app.data.repo.SaleRepository
 import io.github.astiskala.minimpos.app.data.security.SecretStore
 import io.github.astiskala.minimpos.app.data.settings.AppSettings
+import io.github.astiskala.minimpos.app.data.settings.ConnectionSetup
 import io.github.astiskala.minimpos.app.data.settings.PricingChange
 import io.github.astiskala.minimpos.app.data.settings.SettingsRepository
 import io.github.astiskala.minimpos.app.data.settings.TerminalMode
+import io.github.astiskala.minimpos.app.data.settings.TerminalSettings
 import io.github.astiskala.minimpos.app.feature.ActionOutcome
 import io.github.astiskala.minimpos.app.feature.TransactionActions
 import io.github.astiskala.minimpos.app.payment.CaptureResult
@@ -67,13 +72,16 @@ import io.github.astiskala.minimpos.app.payment.SaleSession
 import io.github.astiskala.minimpos.app.receipt.PrintRenderer
 import io.github.astiskala.minimpos.app.receipt.ReceiptFactory
 import io.github.astiskala.minimpos.app.refund.PaymentStanding
+import io.github.astiskala.minimpos.app.refund.ReceiptStanding
 import io.github.astiskala.minimpos.app.refund.StoredPayment
+import io.github.astiskala.minimpos.app.refund.actions
 import io.github.astiskala.minimpos.app.terminal.AdyenApi
 import io.github.astiskala.minimpos.app.terminal.ApiAccess
 import io.github.astiskala.minimpos.app.terminal.ApiSetup
 import io.github.astiskala.minimpos.app.terminal.ApiTarget
 import io.github.astiskala.minimpos.app.terminal.Destination
 import io.github.astiskala.minimpos.app.terminal.DestinationRules
+import io.github.astiskala.minimpos.app.terminal.DetectedEnvironment
 import io.github.astiskala.minimpos.app.terminal.SimulatedTerminal
 import io.github.astiskala.minimpos.app.terminal.TerminalGateway
 import io.github.astiskala.minimpos.app.terminal.TerminalSetup
@@ -96,6 +104,8 @@ import org.junit.Test
 import java.time.Clock
 import java.time.Instant
 import java.time.ZoneOffset
+import java.util.Calendar
+import java.util.Date
 
 class ArchitectureTest {
     @Test
@@ -287,29 +297,7 @@ class ArchitectureTest {
             .callMethodWhere(callToSubtypeOf(Destination::class.java, "open", "connect", "connectedTerminals"))
             .check(app)
         // What a destination needs is read by the setup, and what it can do by the gateway and the client it connects.
-        noClasses()
-            .that(not(declaredIn("io.github.astiskala.minimpos.app.terminal", "Destinations.kt")))
-            .and(not(declaredIn("io.github.astiskala.minimpos.app.terminal", "DestinationRules.kt")))
-            .and()
-            .haveNameNotMatching(within(TerminalGateway::class.java.name, TerminalSetup::class.java.name))
-            .should()
-            .callMethodWhere(
-                callToSubtypeOf(
-                    DestinationRules::class.java,
-                    "getAborts",
-                    "getDiagnoses",
-                    "getRecovery",
-                    "transactionTimeout",
-                    "getSecrets",
-                    "poiId",
-                    "host",
-                    "environment",
-                    "problem",
-                    "printer",
-                    "getChecksConnection",
-                    "getSimulatesApi",
-                ),
-            ).check(app)
+        destinationCapabilityOwnership.check(app)
     }
 
     @Test
@@ -493,35 +481,21 @@ class ArchitectureTest {
             .check(app)
 
     @Test
-    fun `only StoredPayment works out what can be done with a payment`() =
-        noClasses()
-            .that()
-            .haveNameNotMatching(within(StoredPayment::class.java.name))
-            .should()
-            .callMethodWhere(callTo(PAYMENT_STANDING_FILE, "actions"))
-            .check(app)
+    fun `only StoredPayment works out what can be done with a payment`() = storedPaymentOwnership.check(app)
+
+    @Test
+    fun `stored payment ownership rejects a direct actions reading`() =
+        reject(listOf(storedPaymentOwnership), StandingViolation::class.java)
+
+    private class StandingViolation {
+        fun actions(record: SaleWithLines) = record.actions
+    }
 
     @Test
     fun `decision rules stay pure`() =
         // Checkout, payment link request, refund and capture rules, what happens to a stored sale, the history search and
         // the terminal setup are tested with plain JUnit.
-        noClasses()
-            .that(pureDecisions)
-            .should()
-            .dependOnClassesThat(
-                resideInAnyPackage("android..", "androidx..", "kotlinx.coroutines..")
-                    .or(simpleNameEndingWith("Repository"))
-                    .or(annotatedWith(Dao::class.java))
-                    .or(
-                        belongToAnyOf(
-                            AppDatabase::class.java,
-                            SecretStore::class.java,
-                            TerminalGateway::class.java,
-                            AdyenApi::class.java,
-                            Clock::class.java,
-                        ),
-                    ).and(not(type(StabilityInferred::class.java))),
-            ).check(app)
+        purity(pureDecisions).forEach { it.check(app) }
 
     @Test
     fun `the transaction lifecycle stores only through its book`() =
@@ -660,6 +634,103 @@ class ArchitectureTest {
             .should()
             .callConstructorWhere(target(owner(type(SaleSession::class.java))))
             .check(app)
+
+    @Test
+    fun `catalogue storage belongs to its repository and pricing implementation`() = catalogueOwnership.forEach { it.check(app) }
+
+    @Test
+    fun `catalogue ownership rejects direct tax-rate deletion`() = reject(catalogueOwnership, CatalogueViolation::class.java)
+
+    @Test
+    fun `learned environment decisions and original detection identities have one owner`() = learnedOwnership.forEach { it.check(app) }
+
+    @Test
+    fun `learned environment ownership rejects direct decisions and forged origins`() =
+        reject(learnedOwnership, LearningViolation::class.java)
+
+    @Test
+    fun `demo meaning is read only by the stored payment decision module`() = demoOwnership.check(app)
+
+    @Test
+    fun `demo ownership rejects raw simulator context readings`() = reject(listOf(demoOwnership), DemoViolation::class.java)
+
+    @Test
+    fun `every production class belongs to a declared module`() = moduleMembership.check(app)
+
+    @Test
+    fun `module membership rejects an unassigned root class`() = reject(listOf(moduleMembership), UnassignedViolation::class.java)
+
+    @Test
+    fun `pure decisions reject implicit clocks and stored settings access`() =
+        reject(purity(type(PureViolation::class.java)), PureViolation::class.java)
+
+    @Test
+    fun `pure contract selection includes the current domain owners`() {
+        listOf(
+            Checkout::class.java,
+            PaymentLinkStart::class.java,
+            PaymentStanding::class.java,
+            ReceiptStanding::class.java,
+            TerminalSetup::class.java,
+            DestinationRules::class.java,
+            AppSettings::class.java,
+            TerminalSettings::class.java,
+            ConnectionSetup::class.java,
+            PricingChange::class.java,
+        ).forEach { contract -> assertTrue(contract.name, pureDecisions.test(app.get(contract))) }
+        assertTrue(app.none { it.isEquivalentTo(ArchitectureTest::class.java) })
+    }
+
+    @Test
+    fun `destination capability ownership rejects discovery reads outside setup`() =
+        reject(listOf(destinationCapabilityOwnership), CapabilityViolation::class.java)
+
+    private class CapabilityViolation {
+        fun discover(rules: DestinationRules) = rules.discoversTerminals
+    }
+
+    private class CatalogueViolation {
+        suspend fun delete(
+            dao: CatalogDao,
+            rate: TaxRateEntity,
+        ) = dao.delete(rate)
+    }
+
+    private class LearningViolation {
+        fun apply(
+            setup: TerminalSetup,
+            detected: DetectedEnvironment,
+        ) = setup.learnedEnvironment(detected)
+
+        fun decide(
+            rules: DestinationRules,
+            setup: TerminalSetup,
+            detected: DetectedEnvironment,
+        ) = rules.learnedEnvironment(setup, detected)
+
+        fun forge(setup: TerminalSetup) = DetectedEnvironment(setup, TerminalEnvironment.LIVE)
+
+        fun replace(
+            detected: DetectedEnvironment,
+            setup: TerminalSetup,
+        ) = detected.copy(setup = setup)
+    }
+
+    private class DemoViolation {
+        fun reads(context: PaymentContext) = context.simulated
+    }
+
+    private class UnassignedViolation
+
+    private class PureViolation {
+        suspend fun settings(repository: SettingsRepository) = repository.current()
+
+        fun instant(): Instant = Instant.now()
+
+        fun wallTime() = System.currentTimeMillis()
+
+        fun date() = Date()
+    }
 
     @Test
     fun `pricing changes own journal recovery and session repricing`() = pricingOwnership.forEach { it.check(app) }
@@ -847,6 +918,9 @@ class ArchitectureTest {
             declaredIn("io.github.astiskala.minimpos.app.payment", "Checkout.kt")
                 .or(declaredIn("io.github.astiskala.minimpos.app.payment", "PaymentLinkRequests.kt"))
                 .or(declaredIn("io.github.astiskala.minimpos.app.data.repo", "SaleEvent.kt"))
+                .or(declaredIn("io.github.astiskala.minimpos.app.data.settings", "AppSettings.kt"))
+                .or(declaredIn("io.github.astiskala.minimpos.app.data.settings", "ConnectionSetup.kt"))
+                .or(declaredIn("io.github.astiskala.minimpos.app.data.settings", "PricingChange.kt"))
                 .or(declaredIn("io.github.astiskala.minimpos.app.refund", "PaymentStanding.kt"))
                 .or(declaredIn("io.github.astiskala.minimpos.app.refund", "RefundablePayment.kt"))
                 .or(declaredIn("io.github.astiskala.minimpos.app.feature.history", "HistorySearch.kt"))
@@ -859,6 +933,172 @@ class ArchitectureTest {
                         DescribedPredicate.describe("a companion") { it.name.contains("\$Companion") },
                     ),
                 )
+
+        val destinationCapabilityOwnership: ArchRule =
+            noClasses()
+                .that(not(declaredIn("io.github.astiskala.minimpos.app.terminal", "Destinations.kt")))
+                .and(not(declaredIn("io.github.astiskala.minimpos.app.terminal", "DestinationRules.kt")))
+                .and()
+                .haveNameNotMatching(within(TerminalGateway::class.java.name, TerminalSetup::class.java.name))
+                .should()
+                .callMethodWhere(
+                    callToSubtypeOf(
+                        DestinationRules::class.java,
+                        "getMode",
+                        "getAborts",
+                        "getDiagnoses",
+                        "getRecovery",
+                        "transactionTimeout",
+                        "getSecrets",
+                        "poiId",
+                        "host",
+                        "environment",
+                        "problem",
+                        "printer",
+                        "getChecksConnection",
+                        "getSimulatesApi",
+                        "getDiscoversTerminals",
+                        "selectsEnvironment",
+                    ),
+                )
+
+        // Catalogue invariants must survive direct callers and concurrent writes, not just the Settings UI.
+        val catalogueOwnership: List<ArchRule> =
+            listOf(
+                noClasses()
+                    .that()
+                    .resideOutsideOfPackage(DB)
+                    .and()
+                    .haveNameNotMatching(within(CatalogRepository::class.java.name, CataloguePricing::class.java.name))
+                    .should()
+                    .dependOnClassesThat()
+                    .belongToAnyOf(CatalogDao::class.java),
+                noClasses()
+                    .that()
+                    .resideOutsideOfPackage(DB)
+                    .and()
+                    .haveNameNotMatching(within(CatalogRepository::class.java.name))
+                    .should()
+                    .callMethodWhere(
+                        DescribedPredicate.describe("a tax-rate mutation or eligibility read") { call ->
+                            call.targetOwner.isAssignableTo(CatalogDao::class.java) &&
+                                (
+                                    call.name in setOf("taxRateCount", "productCountForTaxRate", "deleteAllTaxRates") ||
+                                        (
+                                            call.name in setOf("insert", "update", "delete") &&
+                                                call.target.rawParameterTypes
+                                                    .firstOrNull()
+                                                    ?.isEquivalentTo(TaxRateEntity::class.java) == true
+                                        )
+                                )
+                        },
+                    ),
+            )
+
+        // Learned facts keep their original identity until the setup source accepts and persists them atomically.
+        val learnedOwnership: List<ArchRule> =
+            listOf(
+                noClasses()
+                    .that()
+                    .haveNameNotMatching(within(TerminalSetupSource::class.java.name))
+                    .should()
+                    .callMethodWhere(callTo(TerminalSetup::class.java.name, "learnedEnvironment")),
+                noClasses()
+                    .that()
+                    .haveNameNotMatching(within(TerminalSetup::class.java.name))
+                    .and()
+                    .areNotAssignableTo(DestinationRules::class.java)
+                    .should()
+                    .callMethodWhere(callToSubtypeOf(DestinationRules::class.java, "learnedEnvironment"))
+                    .because("pure rule implementations may delegate internally, but callers must use the resolved terminal setup"),
+                noClasses()
+                    .that()
+                    .haveNameNotMatching(
+                        within(
+                            TerminalGateway::class.java.name,
+                            TerminalSetupSource::class.java.name,
+                            DetectedEnvironment::class.java.name,
+                        ),
+                    ).should()
+                    .callConstructorWhere(target(owner(type(DetectedEnvironment::class.java)))),
+                noClasses()
+                    .that()
+                    .haveNameNotMatching(within(DetectedEnvironment::class.java.name))
+                    .should()
+                    .callMethodWhere(callTo(DetectedEnvironment::class.java.name, "copy")),
+            )
+
+        // A demo's stored meaning survives later destination changes and payment-link settlement.
+        val demoOwnership: ArchRule =
+            noClasses()
+                .that(not(declaredIn("io.github.astiskala.minimpos.app.refund", "PaymentStanding.kt")))
+                .should()
+                .callMethodWhere(callTo(PaymentContext::class.java.name, "getSimulated", "component7"))
+
+        val moduleMembership: ArchRule =
+            classes()
+                .should(
+                    object : ArchCondition<JavaClass>("belong to a declared module or the application bootstrap") {
+                        override fun check(
+                            item: JavaClass,
+                            events: ConditionEvents,
+                        ) {
+                            val bootstrap =
+                                listOf("AppContainer.kt", "MainActivity.kt", "MiniMposApplication.kt")
+                                    .any { declaredIn("io.github.astiskala.minimpos.app", it).test(item) } ||
+                                    item.name.matches(Regex(within(R::class.java.name, BuildConfig::class.java.name)))
+                            val assigned = resideInAnyPackage(*UI_PACKAGES, *BUSINESS_PACKAGES).test(item) || bootstrap
+                            events.add(SimpleConditionEvent(item, assigned, "${item.name} is not assigned to an architectural module"))
+                        }
+                    },
+                ).because("unassigned packages must not bypass the dependency rules")
+
+        fun purity(selected: DescribedPredicate<JavaClass>): List<ArchRule> =
+            listOf(
+                noClasses()
+                    .that(selected)
+                    .should()
+                    .dependOnClassesThat(
+                        resideInAnyPackage("android..", "androidx..", "kotlinx.coroutines..")
+                            .or(simpleNameEndingWith("Repository"))
+                            .or(annotatedWith(Dao::class.java))
+                            .or(DescribedPredicate.describe("a Kotlin clock") { it.name.startsWith("kotlin.time.Clock") })
+                            .or(
+                                belongToAnyOf(
+                                    AppDatabase::class.java,
+                                    SecretStore::class.java,
+                                    TerminalGateway::class.java,
+                                    AdyenApi::class.java,
+                                    Clock::class.java,
+                                ),
+                            ).and(not(type(StabilityInferred::class.java))),
+                    ),
+                noClasses()
+                    .that(selected)
+                    .should()
+                    .callMethodWhere(
+                        DescribedPredicate.describe("an implicit clock read") { call ->
+                            callTo(System::class.java.name, "currentTimeMillis", "nanoTime").test(call) ||
+                                (call.targetOwner.packageName.startsWith("java.time") && call.name == "now") ||
+                                callTo(Calendar::class.java.name, "getInstance").test(call)
+                        },
+                    ),
+                noClasses()
+                    .that(selected)
+                    .should()
+                    .callConstructorWhere(
+                        DescribedPredicate.describe("a current-time Date constructor") { call ->
+                            call.targetOwner.isEquivalentTo(Date::class.java) && call.target.rawParameterTypes.isEmpty()
+                        },
+                    ),
+            )
+
+        val storedPaymentOwnership: ArchRule =
+            noClasses()
+                .that()
+                .haveNameNotMatching(within(StoredPayment::class.java.name))
+                .should()
+                .callMethodWhere(callTo(PAYMENT_STANDING_FILE, "getActions"))
 
         // One implementation owns the journal ordering for confirmation and recovery; screens cannot reprice sessions.
         val pricingOwnership: List<ArchRule> =

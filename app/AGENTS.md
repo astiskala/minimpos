@@ -1,24 +1,30 @@
 # `:app`
 
 Read root `AGENTS.md` for repository constraints. Domain names/owners are in `CONTEXT.md`, code contracts in KDoc.
-Starred rules below are enforced by `ArchitectureTest` (PIN rules also by `PinArchitectureTest`).
+Starred rules below are enforced by `ArchitectureTest`, `SettingsArchitectureTest` and `PinArchitectureTest`.
 
 ## Architecture boundaries
 
 - \* Dependencies go downwards: UI (`feature`, `ui`, `scan`, `qr`, `share`) → `payment` → `email` → `receipt` →
-  `refund`/`terminal` → `data`. Only UI reaches `AppContainer`; view models hold no UI types or display text.
+  `refund`/`terminal` → `data`. Every production class belongs to a listed module or the application bootstrap.
+  Only UI reaches `AppContainer`; view models hold no UI types or display text.
 - \* Only `terminal` integrates `:adyen` transports/simulator/Payments app, with the container wiring them. Elsewhere
   only stored environment/region/outcome values and `TerminalClient` companion helpers are allowed. `com.adyen` stays
   in `:adyen`, Room in `data`, crypto in `data.security`. Nothing logs or prints.
 - \* Stored mutations use `SaleRepository.record(id, SaleEvent)`/`applyRefund` and `RefundRepository.settle`.
   `HistoryRepository` owns housekeeping; only `SaleEvent` picks sale statuses/fields. Tests may seed via DAOs.
+- \* Only `CatalogRepository` and `CataloguePricing` use the catalogue DAO outside `db`; tax-rate writes belong only
+  to the repository. Deletion atomically protects referenced rates and the last rate; caller eligibility is presentation.
 - \* `PaymentStanding` alone reads capture/hold status (apart from `SaleEvent` writing it); `CaptureStatus.captured`
   defines captured statuses. `StoredPayment.actions` owns allowed actions and is checked by capture operations too.
 - \* Decision rules stay pure: Checkout, PaymentLinkRequests, SaleEvent, PaymentStanding, RefundablePayment,
-  HistorySearch, TerminalSetup and DestinationRules. No Android, coroutines, repositories or clocks; do not rederive
-  their decisions elsewhere. `ReceiptStanding` owns receipt meaning.
+  HistorySearch, TerminalSetup, DestinationRules and settings models. No Android, coroutines, repositories or clocks;
+  do not rederive their decisions elsewhere. `ReceiptStanding` owns receipt meaning; only the stored-payment reading
+  interprets the original payment context's simulator flag for demo links.
 - \* Only `TerminalSetupSource` calls `TerminalSetup.resolve` and reads destination/API secrets. Unlock once per call;
   unreadable secrets become typed setup problems. `boarding()` does the same for the Payments app credential.
+  Only this source applies learned environment/region facts, atomically against their originating terminal settings;
+  pure destination rules decide what can be learned. Detection origins cannot be copied by callers.
 - \* Destination requirements/capabilities belong to adapter companions in `Destinations.kt`; `DestinationRules.of`
   selects rules. Adapters open transports; only `Destination.connect` constructs clients, only the gateway opens
   adapters. Outside destination/rules/settings code, don't branch on CLOUD or PAYMENTS_APP.
@@ -44,7 +50,8 @@ Starred rules below are enforced by `ArchitectureTest` (PIN rules also by `PinAr
   repricing. Settings only presents confirmation. Block checkout until repricing finishes; replay must be idempotent,
   including session repricing after failed settings writes. Serialize operations and reject stale previews.
 - \* Settings ranges live on section companions; only `SettingsRepository` and `AppSettings` normalize. Do not clamp
-  downstream. Constructor defaults are current; installation applies country/language defaults.
+  downstream. Constructor defaults are current; installation applies country/language defaults. `TerminalSettings`
+  owns destination/environment choices and their coupled fields; destination companions may copy only learned facts.
 - \* Below screens and their view-model factories, composables take state/callbacks, not view models. Settings bundles
   callbacks in `SettingsEvents`/`TerminalSetupEvents`.
 - \* Only PIN-entry UI and `data.security` verify PINs. Financial actions request Manager approval and recheck it before

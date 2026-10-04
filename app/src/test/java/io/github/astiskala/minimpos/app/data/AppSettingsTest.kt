@@ -232,6 +232,29 @@ class AppSettingsTest {
     }
 
     @Test
+    fun `destination selection follows Automatic and preserves an unchanged effective destination`() {
+        val terminal = TerminalSettings(environment = TerminalEnvironment.LIVE, cloudRegion = CloudRegion.AU)
+        assertThat(terminal.selectDestination(TerminalMode.TERMINAL, TerminalMode.TERMINAL)).isEqualTo(terminal)
+        val cloud = terminal.selectDestination(TerminalMode.CLOUD, TerminalMode.TERMINAL)
+        assertThat(cloud.mode).isEqualTo(TerminalMode.CLOUD)
+        assertThat(cloud.environment).isNull()
+        assertThat(cloud.cloudRegion).isNull()
+        assertThat(cloud.selectDestination(TerminalMode.TERMINAL, TerminalMode.TERMINAL).mode).isEqualTo(TerminalMode.AUTO)
+        assertThat(cloud.selectDestination(TerminalMode.SIMULATOR, TerminalMode.SIMULATOR).mode).isEqualTo(TerminalMode.AUTO)
+    }
+
+    @Test
+    fun `environment reselection clears a learned region while identical connection imports retain it`() {
+        val cloud = TerminalSettings(mode = TerminalMode.CLOUD, environment = TerminalEnvironment.LIVE, cloudRegion = CloudRegion.AU)
+        assertThat(cloud.selectEnvironment(TerminalEnvironment.LIVE)).isEqualTo(cloud.copy(cloudRegion = null))
+        assertThat(cloud.withConnection(TerminalMode.CLOUD, TerminalEnvironment.LIVE)).isEqualTo(cloud)
+        assertThat(ConnectionSetup(ConnectionDestination.CLOUD, TerminalEnvironment.LIVE).appliedTo(cloud, onTerminal = false))
+            .isEqualTo(cloud)
+        assertThat(cloud.withConnection(environment = TerminalEnvironment.TEST))
+            .isEqualTo(cloud.copy(environment = TerminalEnvironment.TEST, cloudRegion = null))
+    }
+
+    @Test
     fun `the helper imports an environment only for a network or cloud terminal`() {
         val network = TerminalSettings(mode = TerminalMode.TERMINAL, environment = TerminalEnvironment.TEST)
         assertThat(ConnectionSetup(environment = TerminalEnvironment.LIVE).appliedTo(network, onTerminal = false).environment)

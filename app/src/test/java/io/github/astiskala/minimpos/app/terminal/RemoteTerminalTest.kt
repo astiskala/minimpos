@@ -87,6 +87,20 @@ class RemoteTerminalTest {
     }
 
     @Test
+    fun `a late cloud endpoint cannot update a different merchant's setup`() {
+        useCloud()
+        cloud.beforeDetection = {
+            cloud.beforeDetection = {}
+            container.settings.update { it.copy(terminal = it.terminal.copy(merchantAccount = "Other")) }
+        }
+        container.terminalStatus.start()
+        assertThat(await { gateway.connectedTerminals() }).isInstanceOf(ConnectedTerminals.Listed::class.java)
+        val current = await { container.settings.current() }.terminal
+        assertThat(current.merchantAccount).isEqualTo("Other")
+        assertThat(current.cloudRegion).isNull()
+    }
+
+    @Test
     fun `cloud requests wait for an explicit environment even with credentials and a terminal`() {
         useCloud()
         env.updateSettings { it.copy(terminal = it.terminal.copy(environment = null)) }
@@ -146,7 +160,8 @@ class RemoteTerminalTest {
         assertThat((await { gateway.diagnose() } as TerminalConnection.NotSetUp).problem).isEqualTo(SetupProblem.POI_ID)
         val listed = await { gateway.connectedTerminals() } as ConnectedTerminals.Listed
         assertThat(listed.poiIds).containsExactly("AMS1-000168223606144", "S1F2-000158213605014").inOrder()
-        assertThat(gateway.detectedEnvironment.value).isEqualTo(DetectedEnvironment(TerminalEnvironment.LIVE, CloudRegion.AU))
+        assertThat(gateway.detectedEnvironment.value?.environment).isEqualTo(TerminalEnvironment.LIVE)
+        assertThat(gateway.detectedEnvironment.value?.cloudRegion).isEqualTo(CloudRegion.AU)
     }
 
     @Test

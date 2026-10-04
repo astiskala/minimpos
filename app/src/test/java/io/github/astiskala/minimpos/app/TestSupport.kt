@@ -166,6 +166,7 @@ class FakeCloud(
 
     /** How often [detect] was called. */
     var detections = 0
+    var beforeDetection: suspend () -> Unit = {}
     private val simulator = TerminalSimulator(config = { SimulatorConfig(delayMillis = 0) })
 
     /** Stands in for `AdyenCloudDevices`. */
@@ -177,6 +178,7 @@ class FakeCloud(
         country: String,
     ): CloudDetection =
         detection.let {
+            beforeDetection()
             detections++
             if (it is CloudDetection.Found && it.endpoint.environment != environment) {
                 it.copy(

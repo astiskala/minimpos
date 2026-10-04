@@ -12,6 +12,7 @@ import io.github.astiskala.minimpos.app.refund.PaymentAction.CAPTURE
 import io.github.astiskala.minimpos.app.refund.PaymentAction.ENTER_TIP
 import io.github.astiskala.minimpos.app.refund.PaymentAction.REFUND
 import io.github.astiskala.minimpos.app.refund.PaymentAction.RETRY_CAPTURE
+import io.github.astiskala.minimpos.core.money.PaymentContext
 import io.github.astiskala.minimpos.terminal.client.RetryAdvice
 import org.junit.Test
 
@@ -79,6 +80,19 @@ class PaymentStandingTest {
         assertThat(paid.actions()).isEmpty()
         assertThat(ReceiptStanding.of(link.copy(status = SaleStatus.EXPIRED)).unpaidLink).isNull()
         assertThat(ReceiptStanding.of(sale).paidOnline).isFalse()
+    }
+
+    @Test
+    fun `demo-link meaning follows the original context through every status, never an ordinary simulated sale`() {
+        val context = PaymentContext("SIMULATOR", "SIM-1", "POS", "Merchant", null, simulated = true)
+        SaleStatus.entries.forEach { status ->
+            val demo = sale.copy(status = status, paymentLink = true, context = context)
+            assertThat(demo.simulatedLink).isTrue()
+            assertThat(ReceiptStanding.of(demo).simulatedLink).isTrue()
+            assertThat(demo.copy(paymentLink = false).simulatedLink).isFalse()
+            assertThat(demo.copy(context = context.copy(simulated = false)).simulatedLink).isFalse()
+            assertThat(demo.copy(context = null).simulatedLink).isFalse()
+        }
     }
 
     @Test

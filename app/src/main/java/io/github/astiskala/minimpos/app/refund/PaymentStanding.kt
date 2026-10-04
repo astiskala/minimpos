@@ -122,6 +122,7 @@ val SaleEntity.decline: Decline? get() = Decline.of(status == SaleStatus.APPROVE
  *   ([SaleStatus.AWAITING_PAYMENT]), so its receipt is an unpaid one with the link; else null.
  * @property linkExpiresAt When that link stops working, in epoch milliseconds; null without one.
  * @property paidOnline Whether it was paid through its payment link, which the receipt says.
+ * @property simulatedLink Whether this is an offline demo link, including after completion or cancellation.
  * @property standing Full payment standing retained for receipt notes.
  */
 data class ReceiptStanding(
@@ -134,6 +135,7 @@ data class ReceiptStanding(
     val unpaidLink: String? = null,
     val linkExpiresAt: Long? = null,
     val paidOnline: Boolean = false,
+    val simulatedLink: Boolean = false,
     /** Current standing retained through receipt rendering. */
     val standing: PaymentStanding = PaymentStanding.CHARGED,
 ) {
@@ -154,6 +156,7 @@ data class ReceiptStanding(
                 unpaidLink = unpaidLink,
                 linkExpiresAt = sale.paymentLinkExpiresAt?.takeIf { unpaidLink != null },
                 paidOnline = sale.paymentLink && standing.charged,
+                simulatedLink = sale.simulatedLink,
                 standing = standing,
             )
         }
@@ -162,6 +165,9 @@ data class ReceiptStanding(
 
 /** Whether this sale's payment link has been created and not paid yet, so the shopper can still pay with it. */
 val SaleEntity.awaitsLinkPayment: Boolean get() = paymentLink && status == SaleStatus.AWAITING_PAYMENT && paymentLinkUrl != null
+
+/** Whether this sale is an offline demo link, regardless of its status or the device's current destination. */
+val SaleEntity.simulatedLink: Boolean get() = paymentLink && context?.simulated == true
 
 /** What the operator can do with a stored payment now, see [actions]. */
 enum class PaymentAction {

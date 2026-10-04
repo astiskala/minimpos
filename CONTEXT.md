@@ -59,7 +59,7 @@ existing spelling (`preAuthorisation`, `SaleKind.PRE_AUTHORISATION`, `authorised
 | Connection | Open with a client, or blocked as not set up/unreachable. | `Connection`, `Destination.connect` |
 | Connection check | Checks reachability/setup and learns printer availability when supported. | `TerminalStatus` |
 | Delivery | One message was answered, not sent, or maybe sent; maybe sent requires recovery. | `transport/Delivery` |
-| Environment | TEST/LIVE selected for network/cloud terminals, otherwise read from this device's certificate or installed Payments app. | `TerminalEnvironment` |
+| Environment | TEST/LIVE selected for network/cloud terminals, otherwise read from this device's certificate or installed Payments app. Learned facts retain their original terminal setup and cannot update changed connection settings. | `TerminalEnvironment`, `TerminalSetupSource.remember` |
 | POIID | Terminal ID (`<model>-<serial>`), device name on terminals, boarded installation ID for Tap to Pay. | `poiId` |
 | Shared key | Identifier, passphrase and version encrypting local and Payments app messages. | Terminal settings + `SecretStore` |
 | Adyen API key | Credential shared by Checkout/cloud operations and optional Management reads; distinct from the boarding credential. | `ADYEN_API_KEY` |
@@ -71,7 +71,7 @@ existing spelling (`preAuthorisation`, `SaleKind.PRE_AUTHORISATION`, `authorised
 | Term | Meaning | Owner / code name |
 | --- | --- | --- |
 | Receipt | Combined merchant details, items, tax and Adyen receipt lines; refund QR printed as a second request. | `ReceiptDocument` |
-| Receipt standing | What the receipt says: held, tip lines, captured, unpaid link or paid online. | `ReceiptStanding` |
+| Receipt standing | What the receipt says: held, tip lines, captured, unpaid link, paid online or offline demo. Demo meaning follows the stored payment context even after settlement or a destination change. | `ReceiptStanding`, `sale.simulatedLink` |
 | Merchant copy | Additional receipt copy under the configured policy. | `MerchantCopyPolicy` |
 | Receipt tax display | Independent amounts/totals by rate, optional marked rate, marker and explanation. | `ReceiptSettings` |
 | Receipt business details | Store receipt name, address and phone read from Management, reviewed before replacing receipt fields. | `terminal/ReceiptBusinessDetails` |

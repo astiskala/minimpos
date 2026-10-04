@@ -1,7 +1,6 @@
 package io.github.astiskala.minimpos.app.payment
 
 import io.github.astiskala.minimpos.app.data.db.SaleEntity
-import io.github.astiskala.minimpos.app.data.db.SaleKind
 import io.github.astiskala.minimpos.app.data.repo.RefundRepository
 import io.github.astiskala.minimpos.app.data.repo.SaleEvent
 import io.github.astiskala.minimpos.app.data.repo.SaleRepository
@@ -14,6 +13,7 @@ import io.github.astiskala.minimpos.app.receipt.ActionResult
 import io.github.astiskala.minimpos.app.receipt.PrintRenderer
 import io.github.astiskala.minimpos.app.receipt.ReceiptFactory
 import io.github.astiskala.minimpos.app.refund.PaymentStanding
+import io.github.astiskala.minimpos.app.refund.ReceiptStanding
 import io.github.astiskala.minimpos.app.refund.awaitsLinkPayment
 import io.github.astiskala.minimpos.app.refund.standing
 import io.github.astiskala.minimpos.app.terminal.Attempt
@@ -207,13 +207,14 @@ class ReceiptDelivery(
                 share =
                     record?.let {
                         val sale = it.sale
+                        val standing = ReceiptStanding.of(sale)
                         SharedReceipt(
                             document = receipts.sale(it, current.receipt, paper = false),
                             reference = sale.merchantReference,
                             amountMinor = sale.amountMinor,
                             currency = sale.currency,
-                            paymentLink = sale.paymentLinkUrl?.takeIf { sale.awaitsLinkPayment },
-                            simulatedLink = sale.paymentLink && sale.context?.simulated == true,
+                            paymentLink = standing.unpaidLink,
+                            simulatedLink = standing.simulatedLink,
                         )
                     },
             )
@@ -274,12 +275,12 @@ class ReceiptDelivery(
         val record = sales.get(saleId) ?: return ActionResult.Failure(notFound)
         val sale = record.sale
         val document = receipts.sale(record, settings.current().receipt, paper = false)
-        val simulated = sale.paymentLink && sale.context?.simulated == true
+        val standing = ReceiptStanding.of(sale)
         val result =
-            if (sale.awaitsLinkPayment) {
-                emailer.sendPaymentLink(to, document, sale.merchantReference, simulated)
+            if (standing.unpaidLink != null) {
+                emailer.sendPaymentLink(to, document, sale.merchantReference, standing.simulatedLink)
             } else {
-                emailer.sendSale(to, document, sale.merchantReference, sale.kind == SaleKind.PRE_AUTHORISATION, simulated)
+                emailer.sendSale(to, document, sale.merchantReference, standing.preAuthorisation, standing.simulatedLink)
             }
         return result.also { if (it == ActionResult.Success) sales.record(saleId, SaleEvent.Emailed(to.trim())) }
     }

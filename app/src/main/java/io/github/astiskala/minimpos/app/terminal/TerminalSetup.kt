@@ -64,8 +64,17 @@ data class TerminalSetup(
     val problem: SetupProblem?
         get() = connectionProblem ?: apiSetup.problem
 
+    /** Whether read-only terminal discovery can propose connection fields for this destination. */
+    val discoversTerminals: Boolean get() = destination.discoversTerminals
+
     /** Whether Settings must ask the merchant for TEST or LIVE before API credentials or terminal details. */
     val selectsEnvironment: Boolean get() = destination.selectsEnvironment(onTerminal)
+
+    /** Whether this device's verified terminal certificate must supply the still-unknown local environment. */
+    val readsLocalEnvironment: Boolean get() = onTerminal && destination == LocalTerminal && environment == null
+
+    /** The terminal settings after this destination accepts [detected]; persistence validates its original setup. */
+    fun learnedEnvironment(detected: DetectedEnvironment) = destination.learnedEnvironment(this, detected)
 
     /**
      * Whether printing is offered, as Settings › Receipts › Printer says: always, never, or detected, which the
@@ -323,10 +332,22 @@ class TerminalSetupSource(
      */
     suspend fun readLocalEnvironment(read: suspend () -> TerminalEnvironment?) {
         val setup = current()
-        if (!setup.onTerminal || setup.destination != LocalTerminal || setup.environment != null) return
+        if (!setup.readsLocalEnvironment) return
         val environment = read() ?: return
+        remember(DetectedEnvironment(setup, environment))
+    }
+
+    /**
+     * Persists [detected] only while its originating terminal settings remain current. Destination rules decide which
+     * fields may be learned; unrelated settings writes are preserved. Main-safe and atomic with the staleness check.
+     */
+    suspend fun remember(detected: DetectedEnvironment) {
         settings.update {
-            if (it.terminal == setup.settings.terminal) it.copy(terminal = it.terminal.copy(environment = environment)) else it
+            if (it.terminal == detected.setup.settings.terminal) {
+                it.copy(terminal = detected.setup.learnedEnvironment(detected))
+            } else {
+                it
+            }
         }
     }
 

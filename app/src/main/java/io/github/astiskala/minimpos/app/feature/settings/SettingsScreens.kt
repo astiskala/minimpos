@@ -619,8 +619,7 @@ private fun ColumnScope.TerminalSection(
         manualSetup = true
         // The device's own default is stored as Automatic, so the app keeps following it. Another destination has its
         // own environment, selected or read from the device again.
-        val stored = if (choice == terminalStatus.automaticMode) TerminalMode.AUTO else choice
-        if (choice != mode) events.onUpdate { it.copy(terminal = it.terminal.copy(mode = stored, environment = null, cloudRegion = null)) }
+        events.onUpdate { it.copy(terminal = it.terminal.selectDestination(choice, terminalStatus.automaticMode)) }
     }
     if (mode == TerminalMode.SIMULATOR) {
         SettingNavRow(

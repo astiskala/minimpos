@@ -194,10 +194,9 @@ class SettingsViewModel(
 
     /** Deletes [taxRate] unless products still use it or it is the last one (products and custom items need a rate). */
     fun deleteTaxRate(taxRate: TaxRateEntity) {
-        if (state.value.taxRates.size <= 1) return
         launchWrite({ catalog.deleteTaxRate(taxRate) }) { result ->
             when (result) {
-                DeleteResult.Deleted -> _actions.update { it.copy(taxRateInUse = null) }
+                DeleteResult.Deleted, DeleteResult.LastRate -> _actions.update { it.copy(taxRateInUse = null) }
                 is DeleteResult.InUse -> _actions.update { it.copy(taxRateInUse = result.productCount) }
             }
         }

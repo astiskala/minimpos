@@ -45,6 +45,9 @@ sealed interface DeleteResult {
     /** The tax rate was deleted. */
     data object Deleted : DeleteResult
 
+    /** The last tax rate was kept so products and custom items still have a rate. */
+    data object LastRate : DeleteResult
+
     /**
      * The tax rate was kept because products still use it.
      *
@@ -103,16 +106,25 @@ class CatalogRepository(
             taxRate.id
         }
 
-    /**
-     * Deletes [taxRate] unless products use it. The caller is responsible for keeping at least one rate (Settings does
-     * not offer to delete the last one).
-     */
-    suspend fun deleteTaxRate(taxRate: TaxRateEntity): DeleteResult {
-        val used = dao.productCountForTaxRate(taxRate.id)
-        if (used > 0) return DeleteResult.InUse(used)
-        dao.delete(taxRate)
-        return DeleteResult.Deleted
-    }
+    /** Deletes [taxRate] unless products use it or it is the last rate; checks and deletion are atomic. */
+    suspend fun deleteTaxRate(taxRate: TaxRateEntity): DeleteResult =
+        db.withTransaction {
+            val used = dao.productCountForTaxRate(taxRate.id)
+            when {
+                used > 0 -> {
+                    DeleteResult.InUse(used)
+                }
+
+                dao.taxRateCount() <= 1 -> {
+                    DeleteResult.LastRate
+                }
+
+                else -> {
+                    dao.delete(taxRate)
+                    DeleteResult.Deleted
+                }
+            }
+        }
 
     /** Inserts [category] when its ID is 0, otherwise updates it; returns its ID. */
     suspend fun saveCategory(category: CategoryEntity): Long =
@@ -208,6 +220,7 @@ class CatalogRepository(
             val taxRates = importTaxRates(catalogue.taxRates)
             val categories = importCategories(catalogue.categories)
             val products = importProducts(catalogue.products, taxRates, categories.ids)
+            if (dao.taxRateCount() == 0) zeroRateId(taxRates)
             ImportSummary(products.added, products.updated, taxRates.added, categories.added)
         }
 

@@ -8,6 +8,7 @@ import io.github.astiskala.minimpos.app.data.db.SetupProblem
 import io.github.astiskala.minimpos.app.data.repo.SaleEvent
 import io.github.astiskala.minimpos.app.data.repo.SaleRepository
 import io.github.astiskala.minimpos.app.data.settings.SettingsRepository
+import io.github.astiskala.minimpos.app.refund.simulatedLink
 import io.github.astiskala.minimpos.app.terminal.AdyenApi
 import io.github.astiskala.minimpos.app.terminal.ApiAccess
 import io.github.astiskala.minimpos.app.terminal.ApiTarget
@@ -171,7 +172,7 @@ class PaymentLinks(
     suspend fun simulate(saleId: String): LinkUpdate =
         mutex.withLock {
             val sale = sales.get(saleId)?.sale ?: return@withLock LinkUpdate.Settled
-            if (!sale.paymentLink || sale.context?.simulated != true) return@withLock LinkUpdate.NotSetUp(SetupProblem.PAYMENT_CONTEXT)
+            if (!sale.simulatedLink) return@withLock LinkUpdate.NotSetUp(SetupProblem.PAYMENT_CONTEXT)
             if (sale.status != SaleStatus.AWAITING_PAYMENT) return@withLock LinkUpdate.Settled
             val linkId = sale.paymentLinkId ?: return@withLock LinkUpdate.Settled
             if (!permits()) return@withLock LinkUpdate.NotSetUp(SetupProblem.MANAGER_APPROVAL)

@@ -222,11 +222,11 @@ class SimulatedTerminal(
  * its Adyen certificate, which also tells the environment.
  *
  * @param dial Opens the transport; tests replace it.
- * @param onEnvironment Told the environment of each verified terminal certificate.
+ * @param onEnvironment Told the originating setup and environment of each verified terminal certificate.
  */
 internal class LocalTerminal(
     private val dial: (host: String, key: TerminalKey, tls: TerminalTls) -> TerminalTransport,
-    private val onEnvironment: (TerminalEnvironment) -> Unit,
+    private val onEnvironment: (TerminalSetup, TerminalEnvironment) -> Unit,
 ) : Destination {
     private val transports = Reused<Triple<String, TerminalKey, TerminalEnvironment?>, Opening.Transport>()
 
@@ -240,7 +240,7 @@ internal class LocalTerminal(
             val tls =
                 TerminalTls(expectedEnvironment = expected, onEnvironment = { environment ->
                     detected.set(environment)
-                    onEnvironment(environment)
+                    onEnvironment(unlocked.setup, environment)
                 })
             Opening.Transport(dial(it.first, key, tls), detected::get)
         }
@@ -256,6 +256,12 @@ internal class LocalTerminal(
         override val discoversTerminals: Boolean get() = true
 
         override fun selectsEnvironment(onTerminal: Boolean): Boolean = !onTerminal
+
+        override fun learnedEnvironment(
+            setup: TerminalSetup,
+            detected: DetectedEnvironment,
+        ): TerminalSettings =
+            if (setup.onTerminal) setup.settings.terminal.copy(environment = detected.environment) else setup.settings.terminal
 
         override fun poiId(
             terminal: TerminalSettings,
@@ -289,14 +295,14 @@ internal class LocalTerminal(
  *
  * @param cloud Reaches terminals in the cloud with an API key; tests replace it.
  * @param device Its country picks the first live data centre to try.
- * @param onDetected Told the endpoint the API key was found at.
+ * @param onDetected Told the originating setup and endpoint the API key was found at.
  */
 internal class CloudTerminal(
     private val cloud: (CloudCredentials) -> CloudDevices,
     private val device: DeviceInfo,
-    private val onDetected: (CloudEndpoint) -> Unit,
+    private val onDetected: (TerminalSetup, CloudEndpoint) -> Unit,
 ) : Destination {
-    private val transports = Reused<Triple<CloudCredentials, String, TerminalEnvironment>, Opening.Transport>()
+    private val transports = Reused<Triple<CloudCredentials, String, TerminalEnvironment>, Pair<CloudEndpoint, Opening.Transport>>()
 
     override val rules: DestinationRules get() = Companion
 
@@ -312,12 +318,16 @@ internal class CloudTerminal(
                 poiId,
                 checkNotNull(unlocked.setup.environment),
             )
-        transports.of(id)?.let { return it }
+        transports.of(id)?.let { (endpoint, transport) ->
+            onDetected(unlocked.setup, endpoint)
+            return transport
+        }
         val devices = cloud(id.first)
         return when (val detection = devices.detect(id.third, poiId, device.country)) {
             is CloudDetection.Found -> {
-                onDetected(detection.endpoint)
-                transports.keep(id, Opening.Transport(devices.transport(detection.endpoint)) { detection.endpoint.environment })
+                onDetected(unlocked.setup, detection.endpoint)
+                val transport = Opening.Transport(devices.transport(detection.endpoint)) { detection.endpoint.environment }
+                transports.keep(id, detection.endpoint to transport).second
             }
 
             is CloudDetection.Failed -> {
@@ -337,7 +347,7 @@ internal class CloudTerminal(
         if (merchantAccount.isBlank() || apiKey == null) return ConnectedTerminals.NotSetUp(SetupProblem.API_REQUIRED)
         return when (val detection = cloud(CloudCredentials(apiKey, merchantAccount.trim())).detect(environment, null, device.country)) {
             is CloudDetection.Found -> {
-                onDetected(detection.endpoint)
+                onDetected(unlocked.setup, detection.endpoint)
                 ConnectedTerminals.Listed(detection.devices.sorted())
             }
 
@@ -358,6 +368,16 @@ internal class CloudTerminal(
         override val discoversTerminals: Boolean get() = true
 
         override fun selectsEnvironment(onTerminal: Boolean): Boolean = true
+
+        override fun learnedEnvironment(
+            setup: TerminalSetup,
+            detected: DetectedEnvironment,
+        ): TerminalSettings =
+            if (setup.environment == detected.environment) {
+                setup.settings.terminal.copy(cloudRegion = detected.cloudRegion)
+            } else {
+                setup.settings.terminal
+            }
 
         override fun transactionTimeout(configured: Duration): Duration = maxOf(configured, AdyenCloudDevices.MIN_TRANSACTION_TIMEOUT)
 

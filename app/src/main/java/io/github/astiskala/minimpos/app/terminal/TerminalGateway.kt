@@ -156,10 +156,12 @@ class VirtualPrinter {
 /**
  * Where a connection found that payments go.
  *
+ * @property setup The original setup that opened the connection; never a later reading of the settings.
  * @property environment TEST or LIVE: from this device's certificate, or the cloud's selected environment.
  * @property cloudRegion The Cloud device API's live data centre; null for TEST and for a terminal on the network.
  */
 data class DetectedEnvironment(
+    val setup: TerminalSetup,
     val environment: TerminalEnvironment,
     val cloudRegion: CloudRegion? = null,
 )
@@ -391,12 +393,18 @@ class TerminalGateway(
     suspend fun readEnvironment() = setups.readLocalEnvironment(localEnvironment)
 
     /** Called by [TerminalTls] with the environment of each verified terminal certificate. */
-    internal fun environmentDetected(environment: TerminalEnvironment) {
-        _detectedEnvironment.value = DetectedEnvironment(environment)
+    internal fun environmentDetected(
+        setup: TerminalSetup,
+        environment: TerminalEnvironment,
+    ) {
+        _detectedEnvironment.value = DetectedEnvironment(setup, environment)
     }
 
-    private fun cloudDetected(endpoint: CloudEndpoint) {
-        _detectedEnvironment.value = DetectedEnvironment(endpoint.environment, endpoint.region)
+    private fun cloudDetected(
+        setup: TerminalSetup,
+        endpoint: CloudEndpoint,
+    ) {
+        _detectedEnvironment.value = DetectedEnvironment(setup, endpoint.environment, endpoint.region)
     }
 
     private fun learnPrinter(

@@ -29,6 +29,7 @@ import io.github.astiskala.minimpos.app.refund.StoredPayment
 import io.github.astiskala.minimpos.app.refund.StoredPayments
 import io.github.astiskala.minimpos.app.refund.awaitsLinkPayment
 import io.github.astiskala.minimpos.app.refund.decline
+import io.github.astiskala.minimpos.app.refund.simulatedLink
 import io.github.astiskala.minimpos.app.terminal.TerminalState
 import io.github.astiskala.minimpos.core.cart.Cart
 import io.github.astiskala.minimpos.core.cart.CartTotals
@@ -274,7 +275,7 @@ data class PaymentLinkUiState(
     val creating: Boolean get() = sale == null || sale?.status == SaleStatus.PENDING
 
     /** Whether this link was created without a real payment service, regardless of the current destination. */
-    val simulated: Boolean get() = sale?.context?.simulated == true
+    val simulated: Boolean get() = sale?.simulatedLink == true
 }
 
 /**

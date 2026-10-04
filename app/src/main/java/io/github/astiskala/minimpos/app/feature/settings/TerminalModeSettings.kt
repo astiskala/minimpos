@@ -151,7 +151,7 @@ private fun ColumnScope.EnvironmentStep(
                     .selectable(
                         selected = environment == value,
                         role = Role.RadioButton,
-                        onClick = { update { it.copy(environment = value, cloudRegion = null) } },
+                        onClick = { update { it.selectEnvironment(value) } },
                     ).heightIn(min = 48.dp)
                     .padding(horizontal = 16.dp)
                     .testTag("environment_$value"),

@@ -1,11 +1,15 @@
 package io.github.astiskala.minimpos.terminal
 
 import com.adyen.Client
+import com.tngtech.archunit.base.DescribedPredicate
+import com.tngtech.archunit.core.domain.JavaClass
 import com.tngtech.archunit.core.domain.JavaClass.Predicates.assignableTo
-import com.tngtech.archunit.core.domain.JavaClass.Predicates.resideInAPackage
+import com.tngtech.archunit.core.domain.JavaClass.Predicates.resideInAnyPackage
+import com.tngtech.archunit.core.domain.JavaClass.Predicates.type
 import com.tngtech.archunit.core.domain.JavaClasses
 import com.tngtech.archunit.core.importer.ClassFileImporter
 import com.tngtech.archunit.core.importer.ImportOption
+import com.tngtech.archunit.lang.ArchRule
 import com.tngtech.archunit.lang.syntax.ArchRuleDefinition.classes
 import com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses
 import com.tngtech.archunit.library.Architectures.layeredArchitecture
@@ -17,6 +21,7 @@ import io.github.astiskala.minimpos.terminal.transport.AdyenHttp
 import io.github.astiskala.minimpos.terminal.transport.TerminalHttpClient
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.io.IOException
 
@@ -94,13 +99,20 @@ class ArchitectureTest {
     @Test
     fun `transport failures reach the clients only as deliveries`() =
         // Each transport works out once whether a request can have taken effect (Delivery); the clients never catch.
-        noClasses()
-            .that()
-            .resideInAnyPackage("io.github.astiskala.minimpos.terminal.client..", "io.github.astiskala.minimpos.terminal.checkout..")
-            .should()
-            .dependOnClassesThat(
-                resideInAPackage("io.github.astiskala.minimpos.terminal.transport..").and(assignableTo(IOException::class.java)),
-            ).check(terminal)
+        deliveryOwnership(
+            resideInAnyPackage("io.github.astiskala.minimpos.terminal.client..", "io.github.astiskala.minimpos.terminal.checkout.."),
+        ).check(terminal)
+
+    @Test
+    fun `delivery ownership rejects standard IO exceptions as well as transport subclasses`() {
+        val violation = ClassFileImporter().importClasses(DeliveryViolation::class.java)
+        val rule = deliveryOwnership(type(DeliveryViolation::class.java))
+        assertTrue(rule.description, rule.evaluate(violation).hasViolation())
+    }
+
+    private class DeliveryViolation {
+        fun exception() = IOException("not a delivery")
+    }
 
     @Test
     fun `only the decline reads why a transaction was not approved`() =
@@ -175,6 +187,9 @@ class ArchitectureTest {
     }
 
     private companion object {
+        fun deliveryOwnership(selected: DescribedPredicate<JavaClass>): ArchRule =
+            noClasses().that(selected).should().dependOnClassesThat(assignableTo(IOException::class.java))
+
         const val SIMULATOR = "Simulator"
         const val CLIENT = "Client"
         const val CHECKOUT = "Checkout"

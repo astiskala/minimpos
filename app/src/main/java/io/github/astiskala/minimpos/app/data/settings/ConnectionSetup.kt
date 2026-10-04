@@ -80,17 +80,11 @@ data class ConnectionSetup(
                 ConnectionDestination.NETWORK -> TerminalMode.TERMINAL.takeUnless { onTerminal }
                 ConnectionDestination.CLOUD -> TerminalMode.CLOUD.takeUnless { onTerminal }
                 ConnectionDestination.TAP_TO_PAY -> TerminalMode.PAYMENTS_APP.takeUnless { onTerminal }
-            }?.takeIf { it != terminal.mode }
+            }
 
         fun String?.or(current: String) = this?.trim()?.ifEmpty { null } ?: current
-        val moved = mode?.let { terminal.copy(mode = it, environment = null, cloudRegion = null) } ?: terminal
-        val selected =
-            environment.takeIf {
-                !onTerminal && (moved.mode == TerminalMode.TERMINAL || moved.mode == TerminalMode.CLOUD)
-            }
-        return moved.copy(
-            environment = selected ?: moved.environment,
-            cloudRegion = moved.cloudRegion.takeIf { selected == null || selected == moved.environment },
+        val selected = environment.takeIf { !onTerminal && (mode ?: terminal.mode) in setOf(TerminalMode.TERMINAL, TerminalMode.CLOUD) }
+        return terminal.withConnection(mode, selected).copy(
             host = host.or(terminal.host),
             poiIdOverride = poiId.or(terminal.poiIdOverride),
             keyIdentifier = keyIdentifier.or(terminal.keyIdentifier),

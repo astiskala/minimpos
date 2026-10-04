@@ -40,6 +40,7 @@ import io.github.astiskala.minimpos.app.data.db.SaleStatus
 import io.github.astiskala.minimpos.app.feature.OutcomeMessage
 import io.github.astiskala.minimpos.app.feature.lock.ManagerApproval
 import io.github.astiskala.minimpos.app.feature.outcomeNote
+import io.github.astiskala.minimpos.app.refund.simulatedLink
 import io.github.astiskala.minimpos.app.share.ShareEffect
 import io.github.astiskala.minimpos.app.ui.components.BottomActions
 import io.github.astiskala.minimpos.app.ui.components.ConfirmDialog
@@ -195,14 +196,14 @@ private fun LinkOutcome(
 ) {
     val formatDateTime = LocalAppContainer.current::formatDateTime
     OutcomeHeader(statusKind(sale), statusTitle(sale), money.format(sale.amountMinor), titleTag = "linkStatus") {
-        if (sale.context?.simulated == true) OutcomeNote(stringResource(R.string.link_simulation_note))
+        if (sale.simulatedLink) OutcomeNote(stringResource(R.string.link_simulation_note))
         when {
             sale.status == SaleStatus.AWAITING_PAYMENT -> {
                 sale.paymentLinkExpiresAt?.let { OutcomeNote(stringResource(R.string.link_valid_until, formatDateTime(it))) }
             }
 
             sale.status == SaleStatus.APPROVED -> {
-                if (sale.context?.simulated != true) OutcomeNote(stringResource(R.string.link_paid_note))
+                if (!sale.simulatedLink) OutcomeNote(stringResource(R.string.link_paid_note))
             }
 
             else -> {

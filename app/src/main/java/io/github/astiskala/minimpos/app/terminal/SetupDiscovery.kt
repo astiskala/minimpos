@@ -36,7 +36,7 @@ class SetupDiscovery(
             val unlocked = setups.unlocked()
             val key = unlocked.apiKey ?: return@withLock null
             val setup = unlocked.setup
-            if (!setup.destination.discoversTerminals) return@withLock null
+            if (!setup.discoversTerminals) return@withLock null
             val environment = setup.environment ?: return@withLock null
             val api = connect(key)
             val found = api.terminals(environment) as? TerminalListing.Listed ?: return@withLock null

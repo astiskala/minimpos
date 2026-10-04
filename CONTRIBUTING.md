@@ -70,6 +70,11 @@ build on pull requests. JVM modules aren't checked by Android Lint for API avail
 reachable Java/Android APIs against minSdk 28 and accepts D8 backports. For example, use the charset-name overload of
 `URLEncoder.encode`, not the API-33 `Charset` overload.
 
+CI/CD runs the gate first, then builds with `./gradlew :app:assembleRelease -PqualityGatePassed=true` to skip the
+build's automatic fatal-only release lint pass. The flag requires `CI=true` and asserts that the gate passed for
+this unchanged checkout; it does not record or verify a previous run. Explicit lint checks remain enabled, and
+standalone release builds retain release lint by default. R8, signing and packaging checks are never skipped.
+
 ### Test setup
 
 - `core` and `adyen`: plain JUnit. Crypto uses independent vectors; TLS tests use a fake Adyen root.

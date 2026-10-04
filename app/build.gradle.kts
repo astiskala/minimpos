@@ -32,6 +32,11 @@ val appVersion =
         rootProject.file("version.properties").inputStream().use { load(it) }
     }
 
+val qualityGatePassed = providers.gradleProperty("qualityGatePassed").map(String::toBooleanStrict).getOrElse(false)
+require(!qualityGatePassed || providers.environmentVariable("CI").orNull == "true") {
+    "-PqualityGatePassed=true requires CI=true and a successful qualityGate for the unchanged checkout."
+}
+
 android {
     namespace = "io.github.astiskala.minimpos.app"
     compileSdk = 37
@@ -92,6 +97,7 @@ android {
         checkDependencies = true
         checkAllWarnings = true
         checkTestSources = true
+        checkReleaseBuilds = !qualityGatePassed
         // These compare versions with the latest online releases, so an unchanged build would start failing whenever
         // anything is released. Dependabot proposes updates instead.
         disable +=

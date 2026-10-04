@@ -143,7 +143,8 @@
           <p>Adyen <a href="https://docs.adyen.com/unified-commerce/pay-by-link">Pay by Link</a>では端末の代わりに Adyen の決済ページで払えます。LIVE で使う前に、利用規約などアカウントの要件を確認してください。</p>
           <ol><li>Checkout APIの設定を完了するとリンクが自動で表示されます。<strong>設定 › 決済 › 支払いリンク</strong>で有効期間を選びます。</li><li>販売の会計で<strong>支払いリンクを作成</strong>します。QR コードを見せる、未払い領収書を添えて<strong>リンクをメール送信</strong>する、<strong>リンクを印刷</strong>する、タブレットやスマートフォンから<strong>リンクを共有</strong>する方法があります。</li><li>画面を開いたままにして自動確認するか、後で取引履歴から<strong>支払いを確認</strong>します。不要になったら<strong>リンクをキャンセル</strong>します。</li></ol>
           <p>支払い、期限切れ、キャンセルまでは<strong>支払い待ち</strong>です。支払済みは日計に含まれ、未払いは含まれません。リンクには商品、入力済みの購入者情報、カード保存の選択が含まれ、Adyen アカウントのオンラインリスク・キャプチャ設定が適用されます。</p>
-          <p class="note">販売専用で、予約金や領収書のチップには使えません。実際の Checkout API が必要で、シミュレーションできません。有効期間中はリンクを持つ人が支払えます。支払済みリンクの返金は<strong>Customer Area › Payments › Payment list</strong>で行います。アプリは PSP参照IDを取得できません。</p>
+          <p class="note">販売専用で、予約金や領収書のチップには使えません。実際のリンクにはCheckout APIの設定が必要です。有効期間中は実際のリンクを持つ人が支払えます。支払済みリンクの返金は<strong>Customer Area › Payments › Payment list</strong>で行います。アプリは PSP参照IDを取得できません。</p>
+          <p>シミュレーターモードでは認証情報は不要です。デモリンクを作成し、<strong>支払いをシミュレート</strong>で完了するか、キャンセルや期限切れを試します。確認だけでは支払済みになりません。QRコードで支払いはできず、共有・メール・印刷する領収書はデモと明記されます。アプリを再起動しても結果は取引履歴に残ります。</p>
           <p>リンクが表示されない、更新されない場合は<a href="troubleshooting.html#links">支払いリンクのトラブルシューティング</a>を参照してください。</p>
           <p class="back-to-contents"><a href="#contents">目次に戻る</a></p>
         </section>

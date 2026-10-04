@@ -163,6 +163,33 @@ class PaymentLinks(
             withApi(sale) { stored(saleId, it.expire(linkId), cancelling = true) }
         }
 
+    /**
+     * Completes an open demo link explicitly, never a real link. Rechecks Manager approval and the original simulator
+     * context under the operation lock. An already expired link expires instead; settled records stay unchanged.
+     * The sale retains the outcome across restarts without relying on a simulator ledger.
+     */
+    suspend fun simulate(saleId: String): LinkUpdate =
+        mutex.withLock {
+            val sale = sales.get(saleId)?.sale ?: return@withLock LinkUpdate.Settled
+            if (!sale.paymentLink || sale.context?.simulated != true) return@withLock LinkUpdate.NotSetUp(SetupProblem.PAYMENT_CONTEXT)
+            if (sale.status != SaleStatus.AWAITING_PAYMENT) return@withLock LinkUpdate.Settled
+            val linkId = sale.paymentLinkId ?: return@withLock LinkUpdate.Settled
+            if (!permits()) return@withLock LinkUpdate.NotSetUp(SetupProblem.MANAGER_APPROVAL)
+            withApi(sale) { api ->
+                when (val result = api.status(linkId)) {
+                    is PaymentLinkResult.Answered -> {
+                        val link = result.link
+                        val paid = if (link.status == PaymentLinkStatus.ACTIVE) link.copy(status = PaymentLinkStatus.COMPLETED) else link
+                        applied(saleId, paid)
+                    }
+
+                    else -> {
+                        stored(saleId, result)
+                    }
+                }
+            }
+        }
+
     /** Creates the link of [record] (again, after an unknown outcome) and stores how that went. */
     private suspend fun send(record: SaleWithLines): LinkUpdate {
         val id = record.sale.id

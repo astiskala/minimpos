@@ -57,14 +57,15 @@ class ApiTargetTest {
     }
 
     @Test
-    fun `context-free fake adapters remain usable while simulation never offers links`() {
+    fun `context-free fake adapters remain usable while simulated links reject real payment contexts`() {
         val fake = ApiTarget(ApiSetup.Complete, modifications, links)
         assertThat(fake.modifications(null)).isEqualTo(ApiAccess.Ready(modifications))
         assertThat(fake.links(context.copy(merchantAccount = "Other"))).isEqualTo(ApiAccess.Ready(links))
         val simulatedContext = context.copy(simulated = true, environment = null)
-        val simulated = ApiTarget(ApiSetup.Simulated, modifications, context = simulatedContext)
+        val simulated = ApiTarget(ApiSetup.Simulated, modifications, links, simulatedContext)
         assertThat(simulated.modifications(simulatedContext)).isEqualTo(ApiAccess.Ready(modifications))
         assertThat(simulated.modifications(context)).isEqualTo(ApiAccess.ContextMismatch)
-        assertThat(simulated.links(simulatedContext)).isEqualTo(ApiAccess.Unavailable(SetupProblem.API_REQUIRED))
+        assertThat(simulated.links(simulatedContext)).isEqualTo(ApiAccess.Ready(links))
+        assertThat(simulated.links(context)).isEqualTo(ApiAccess.ContextMismatch)
     }
 }

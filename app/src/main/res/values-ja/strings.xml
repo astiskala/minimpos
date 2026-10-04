@@ -748,7 +748,13 @@
   <string name="settings_export_hint">カタログ、設定、パスワード、キーをQRコードで表示</string>
   <string name="settings_import_hint">別のデバイスまたはセットアップヘルパーのコードを読み取り、設定をコピー</string>
   <string name="settings_quick_setup">かんたんセットアップ</string>
-  <string name="settings_quick_setup_hint">パソコンでastiskala.github.io/minimpos/ja/setup.htmlを開きます。自動ではこのデバイスで端末情報を取得し、手動ではパソコンですべて入力します。LIVEではどちらもLIVE URLプレフィックスが必要です。ここでQRコードを読み取るか、別のデバイスから設定をコピーしてください。</string>
+  <string name="settings_quick_setup_hint">パソコンでastiskala.github.io/minimpos/ja/setup.htmlを開き、ここでコードを読み取ります。決済先や環境を先に選ぶ必要はありません。</string>
+  <string name="settings_manual_setup">またはこのデバイスで設定</string>
+  <string name="settings_scan_discard_drafts">スキャナーを開くと、未保存のキーは破棄されます。インポートするまで保存済みの設定は変わりません。</string>
+  <string name="settings_scan_discard_confirm">破棄して読み取る</string>
+  <string name="transfer_unchanged">変更なし</string>
+  <string name="transfer_environment_device">このデバイスまたはPayments appが決定</string>
+  <string name="transfer_live_warning">LIVEは実際の決済を行います。インポート前に、意図した環境か確認してください。</string>
   <string name="settings_quick_setup_import">設定コードを読み取る</string>
   <string name="about_version">バージョン</string>
   <string name="about_printer">プリンター</string>
@@ -800,7 +806,11 @@
   <string name="email_link_subject">{business}からのお支払いのお願い</string>
   <string name="email_link_intro">以下のリンクまたはQRコードから、オンラインで安全にお支払いください。</string>
   <string name="settings_payment_links">支払いリンク</string>
-  <string name="settings_links_hint">会計時に、販売を端末に送る代わりにAdyenの支払いリンクを作成し、お客様にオンラインで支払ってもらえます。シミュレーターでは利用できません。</string>
+  <string name="settings_links_hint">会計時にAdyenの支払いリンクを作成し、お客様にオンラインで支払ってもらえます。シミュレーターモードでは、お金を動かさずにデモリンクを試せます。</string>
+  <string name="link_simulate">支払いをシミュレート</string>
+  <string name="link_simulation_note">シミュレーションのみです。お金は動いていません。</string>
+  <string name="link_demo_hint">デモ用QRコードです。支払いはできません。「支払いをシミュレート」でデモを完了します。</string>
+  <string name="link_demo_label">デモリンク</string>
   <string name="settings_link_expiry">リンクの有効時間（時間）</string>
   <string name="settings_link_expiry_hint">1〜1680時間（70日）。Adyenの既定は24時間です</string>
   <string name="payment_context_mismatch">現在の設定は元の決済の端末、Adyenアカウント、または環境と一致しません。元の設定に戻してから続行してください。</string>

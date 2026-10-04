@@ -119,7 +119,7 @@ internal fun ColumnScope.TerminalSteps(
     key(setup.revision) {
         when (status.mode) {
             TerminalMode.TERMINAL -> {
-                LocalTerminalSteps(status.onTerminal, state, actions, events, api, update)
+                LocalTerminalSteps(status.onTerminal, state, actions, events, setupEvents, api, update)
             }
 
             TerminalMode.CLOUD -> {
@@ -191,12 +191,13 @@ private fun ColumnScope.LocalTerminalSteps(
     state: SettingsUiState,
     actions: SettingsActions,
     events: SettingsEvents,
+    setupEvents: TerminalSetupEvents,
     api: ApiEntry,
     update: TerminalUpdate,
 ) {
     val first = if (onTerminal) 2 else 4
     if (!onTerminal) NetworkTerminalStep(3, state.settings.terminal, update)
-    SharedKeyStep(first, state, actions, events, update)
+    SharedKeyStep(first, state, actions, events, setupEvents, update)
     CheckoutApiStep(first + 1, api, actions, events, update)
 }
 
@@ -223,8 +224,9 @@ private fun ColumnScope.TapToPaySteps(
         onSetUp = setupEvents::onTapToPaySetUp,
         onRemove = setupEvents::onTapToPayRemove,
         onForgetApiKey = { events.onSecretChange(Secret.PAYMENTS_APP_API_KEY, null) },
+        onDraft = { setupEvents.onSecretDraft(Secret.PAYMENTS_APP_API_KEY, it) },
     )
-    SharedKeyStep(5, state, actions, events, update)
+    SharedKeyStep(5, state, actions, events, setupEvents, update)
 }
 
 /** A terminal in the cloud: the Adyen account its API key belongs to, then the terminal, tested together. */
@@ -302,6 +304,7 @@ private fun ColumnScope.SharedKeyStep(
     state: SettingsUiState,
     actions: SettingsActions,
     events: SettingsEvents,
+    setupEvents: TerminalSetupEvents,
     update: TerminalUpdate,
 ) {
     val terminal = state.settings.terminal
@@ -330,6 +333,7 @@ private fun ColumnScope.SharedKeyStep(
         onValueChange = { passphrase = it },
         onSubmit = ::saveAndTest,
         tag = "passphrase",
+        onDraft = { setupEvents.onSecretDraft(Secret.TERMINAL_PASSPHRASE, it) },
     )
     SettingNumberField(stringResource(R.string.settings_key_version), terminal.keyVersion, TerminalSettings.KEY_VERSIONS, { version ->
         update { it.copy(keyVersion = version) }
@@ -450,6 +454,7 @@ private fun ColumnScope.AdyenKeyStep(
         onValueChange = api.onKey,
         onSubmit = ::save,
         tag = "apiKey",
+        onDraft = { setupEvents.onSecretDraft(Secret.ADYEN_API_KEY, it) },
     )
     SettingActions {
         if (discovers) {
@@ -683,6 +688,7 @@ private fun ColumnScope.TapToPayStep(
     onSetUp: (apiKey: String, again: Boolean) -> Unit,
     onRemove: () -> Unit,
     onForgetApiKey: () -> Unit,
+    onDraft: (Boolean) -> Unit,
 ) {
     var apiKey by remember { mutableStateOf("") }
     LaunchedEffect(setup.paymentsAppKeyStored) { if (setup.paymentsAppKeyStored) apiKey = "" }
@@ -712,6 +718,7 @@ private fun ColumnScope.TapToPayStep(
         onValueChange = { apiKey = it },
         onSubmit = { onSetUp(apiKey, boarded) },
         tag = "paymentsAppKey",
+        onDraft = onDraft,
     )
     TapToPayButtons(boarded, apiKeySaved, setup.tapToPay, { again -> onSetUp(apiKey, again) }, onRemove, onForgetApiKey)
 }

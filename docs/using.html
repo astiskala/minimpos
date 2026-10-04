@@ -167,7 +167,11 @@
             <li>Keep the link screen open for automatic checks, or tap <strong>Check payment</strong> later from its History entry. Use <strong>Cancel link</strong> when it is no longer needed.</li>
           </ol>
           <p>History shows <strong>Awaiting payment</strong> until the link is paid, expires or is canceled. A paid link counts in totals; an unpaid one does not. Links include the items and any shopper details/card-saving choice. Your Adyen account's online risk and capture settings apply.</p>
-          <p class="note">Links are for sales only, not deposits or tips on the receipt, and require the real Checkout API. They are not simulated. Anyone with the link can pay until it expires. Refund paid links in <strong>Customer Area › Payments › Payment list</strong>: the app cannot retrieve their PSP reference.</p>
+          <p class="note">Links are for sales only, not deposits or tips on the receipt. Real links require Checkout API setup. Anyone with a real link can pay until it expires. Refund paid links in <strong>Customer Area › Payments › Payment list</strong>: the app cannot retrieve their PSP reference.</p>
+          <p>In simulator mode, no credentials are needed. Create a demo link, then tap <strong>Simulate payment</strong>
+            to complete it, or cancel it or let it expire. Checks alone never pay a demo link. Its QR code cannot take
+            payments, and its shared, emailed and printed receipts are labeled as demos. Outcomes remain in History
+            after restarting the app.</p>
           <p>If a link is missing or not updating, see <a href="troubleshooting.html#links">payment-link troubleshooting</a>.</p>
           <p class="back-to-contents"><a href="#contents">Back to contents</a></p>
         </section>

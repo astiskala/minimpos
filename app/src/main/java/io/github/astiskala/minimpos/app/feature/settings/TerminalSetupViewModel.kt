@@ -33,6 +33,7 @@ import kotlinx.coroutines.launch
  * @property apiKeyStored Whether the API key given to the latest search was stored (so the field can be cleared).
  * @property manualDetails Whether optional details need manual entry.
  * @property revision Completed discovery imports, used to refresh field editing state.
+ * @property unsavedSecrets Which visible secret fields have unsaved text; never stores their values.
  */
 data class TerminalSetupActions(
     val terminals: ActionState = ActionState(),
@@ -42,6 +43,7 @@ data class TerminalSetupActions(
     val apiKeyStored: Boolean = false,
     val manualDetails: Boolean = false,
     val revision: Int = 0,
+    val unsavedSecrets: Set<Secret> = emptySet(),
 )
 
 /**
@@ -68,6 +70,14 @@ class TerminalSetupViewModel(
 
     /** Outcomes of the latest actions. */
     val actions: StateFlow<TerminalSetupActions> = _actions.asStateFlow()
+
+    /** Tracks only whether [secret] has a visible unsaved draft, so scanner navigation can warn before discarding it. */
+    fun secretDraft(
+        secret: Secret,
+        present: Boolean,
+    ) {
+        _actions.update { it.copy(unsavedSecrets = if (present) it.unsavedSecrets + secret else it.unsavedSecrets - secret) }
+    }
 
     /** When [requested], waits for imported settings and starts read-only discovery once per screen view model; never boards. */
     suspend fun startAutomaticSetup(requested: Boolean) {

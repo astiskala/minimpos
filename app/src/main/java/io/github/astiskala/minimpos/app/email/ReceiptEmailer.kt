@@ -27,6 +27,8 @@ import javax.mail.MessagingException
  * @property linkSubject Subject of a payment link email, with the `{business}` and `{reference}` placeholders of
  *   [io.github.astiskala.minimpos.app.data.settings.EmailSettings.subject].
  * @property linkIntro Paragraph above the unpaid receipt in a payment link email.
+ * @property demoSubject Subject of an offline demo link or its receipt.
+ * @property simulationNote Intro identifying a simulated link as non-payable.
  */
 data class EmailTexts(
     val appName: String,
@@ -40,6 +42,8 @@ data class EmailTexts(
     val cancellationIntro: String,
     val linkSubject: String = "Payment request from {business}",
     val linkIntro: String = "Pay securely online with the link or the QR code below.",
+    val demoSubject: String = "Demo link",
+    val simulationNote: String = "Simulation only. No money moved.",
 )
 
 /**
@@ -61,24 +65,45 @@ class ReceiptEmailer(
 
     /**
      * Emails [document], the receipt of the sale (or, with [preAuthorisation], the pre-authorisation) with merchant
-     * reference [reference], to [to].
+     * reference [reference], to [to]. [simulatedLink] uses a demo subject and intro, even after completion.
      */
     suspend fun sendSale(
         to: String,
         document: ReceiptDocument,
         reference: String,
         preAuthorisation: Boolean = false,
-    ): ActionResult = send(settings.current(), to, document, if (preAuthorisation) texts.preAuthIntro else texts.intro, reference)
+        simulatedLink: Boolean = false,
+    ): ActionResult {
+        val current = settings.current()
+        val intro =
+            if (simulatedLink) {
+                texts.simulationNote
+            } else if (preAuthorisation) {
+                texts.preAuthIntro
+            } else {
+                texts.intro
+            }
+        return send(current, to, document, intro, reference, if (simulatedLink) texts.demoSubject else current.email.subject)
+    }
 
     /**
      * Emails [document], the unpaid receipt (with the payment link) of the sale with merchant reference [reference], to
-     * [to], under the payment link subject rather than the receipt one.
+     * [to], under the payment link subject rather than the receipt one. [simulated] identifies a non-payable demo.
      */
     suspend fun sendPaymentLink(
         to: String,
         document: ReceiptDocument,
         reference: String,
-    ): ActionResult = send(settings.current(), to, document, texts.linkIntro, reference, texts.linkSubject)
+        simulated: Boolean = false,
+    ): ActionResult =
+        send(
+            settings.current(),
+            to,
+            document,
+            if (simulated) texts.simulationNote else texts.linkIntro,
+            reference,
+            if (simulated) texts.demoSubject else texts.linkSubject,
+        )
 
     /**
      * Emails [document], the receipt of the refund (or, with [cancellation], of the cancelled hold) with

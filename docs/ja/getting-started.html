@@ -76,7 +76,7 @@
         <section id="try">
           <h2>アカウントなしで、まず試す</h2>
           <p><a href="https://github.com/astiskala/minimpos/releases/latest">最新リリース</a>から <code>minimpos-&lt;version&gt;.apk</code> をダウンロードし、Android 9 以降のスマートフォンやエミュレーターで開きます。Android の案内に従い、ブラウザーやファイルマネージャーからのインストールを許可してください。</p>
-          <p>Adyen 端末以外では、初期状態で<strong>シミュレーター</strong>を使い、カードに請求しません。<strong>設定 › シミュレーター</strong>で承認、拒否、使用中、タイムアウトの結果、待ち時間、プリンターの有無を選べます。領収書は画面に表示され、予約金、チップ、キャプチャも試せます。支払いリンクはシミュレーションできません。</p>
+          <p>Adyen 端末以外では、初期状態で<strong>シミュレーター</strong>を使い、カードに請求しません。<strong>設定 › シミュレーター</strong>で承認、拒否、使用中、タイムアウトの結果、待ち時間、プリンターの有無を選べます。領収書は画面に表示され、予約金、チップ、キャプチャも試せます。オフラインのデモリンクは<a href="using.html#payment-links">支払いリンク</a>を参照してください。</p>
           <p>ソースからビルドする場合は、<a href="https://github.com/astiskala/minimpos/blob/main/CONTRIBUTING.md">貢献者向けガイド</a>を参照してください。</p>
           <p class="back-to-contents"><a href="#contents">目次に戻る</a></p>
         </section>
@@ -102,7 +102,7 @@
         </section>
         <section id="connect">
           <h2>Adyen に接続する</h2>
-          <p>該当する構成の手順だけを進めます。タブレットやスマートフォンでは、まず<strong>設定 › 端末 › 決済先</strong>を選びます。アプリの番号付き手順に必要事項が表示され、ホームには不足項目が表示されます。</p>
+          <p>該当する構成の手順だけを進めます。<strong>設定 › 端末</strong>でQRコードによるかんたんセットアップを使えます。タブレットやスマートフォンで手入力する場合は<strong>決済先</strong>を選びます。アプリの番号付き手順に必要事項が表示され、ホームには不足項目が表示されます。</p>
           <h3 id="credentials">認証情報を用意する</h3>
           <p><strong>Developers › API credentials</strong> で認証情報を作成し、APIキーを生成します。Adyen の<a href="https://docs.adyen.com/development-resources/api-credentials">認証情報ガイド</a>を参照してください。<strong>Checkout webservice role</strong> は初期設定で付与されます。構成に必要な追加ロールだけを設定してください：</p>
           <ul>
@@ -122,7 +122,7 @@
           </figure>
           <h3 id="helper">パソコンからキーを入力する</h3>
           <p>信頼できるパソコンで<a href="setup.html">セットアップヘルパー</a>を開き、決済先とTEST/LIVEを選びます。<strong>自動（推奨）</strong>ではAPIキーを入力します。取得権限があればデバイスが端末のアカウント、アドレス、共有キーを調べます。スマートフォンやタブレットでは端末を選んで結果を確認してください。<strong>手動</strong>では接続情報をすべてパソコンで入力します。LIVEではどちらも<strong>live URL prefix</strong>が必要です。Tap to Payは手動を使い、インストールとスマートフォンの登録はデバイスで行います。</p>
-          <p><strong>QRコードを作成</strong>をクリックします。アプリの<strong>設定 › データ › 別のデバイスから設定</strong>で全コードを読み取り、転送コードを入力して<strong>インポート</strong>します。自動では<strong>設定を続ける</strong>、手動では<strong>設定を確認</strong>をタップします。不足する情報を補い、下の手順で接続とAPIキーをテストしてください。取得できなくてもインポートしたキーは保存されます。デバイスで入力するか、ヘルパーの手動を使ってください。設定 › 端末ですべて直接入力することもできます。</p>
+          <p><strong>QRコードを作成</strong>をクリックします。アプリの<strong>設定 › 端末</strong>で<strong>設定コードを読み取る</strong>か右上のQRスキャンアイコンをタップします。決済先や環境を先に選ぶ必要はありません。全コードを読み取り、決済先と環境を確認し、転送コードを入力して<strong>インポート</strong>します。自動では<strong>設定を続ける</strong>、手動では<strong>設定を確認</strong>をタップします。不足する情報を補い、下の手順で接続とAPIキーをテストしてください。取得できなくてもインポートしたキーは保存されます。デバイスで入力するか、ヘルパーの手動を使ってください。設定 › 端末ですべて直接入力することもできます。</p>
           <h3 id="on-terminal">Adyen 端末で動かす</h3>
           <p>先に<a href="#install">アプリをインストール</a>し、<a href="#credentials">認証情報を用意</a>してください。</p>
           <ol><li><strong>設定 › 端末 › Adyen APIキー</strong>でキーを保存します。共有キーなしでこのデバイスの証明書を読み、TEST／LIVEを判別します。取得権限があれば、この端末に一致するマーチャントアカウントと共有キーを入力します。</li><li>共有キーを確認または入力し、<strong>接続をテスト</strong>（パスフレーズを入力した場合は<strong>保存してテスト</strong>）をタップします。アドレスと POIID はデバイスから検出します。</li><li><strong>Checkout API</strong> のマーチャントアカウントを確認または入力し、<strong>APIキーをテスト</strong>をタップします。</li></ol>

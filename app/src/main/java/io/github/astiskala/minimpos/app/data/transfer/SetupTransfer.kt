@@ -9,6 +9,7 @@ import io.github.astiskala.minimpos.app.data.security.SecretStore
 import io.github.astiskala.minimpos.app.data.security.SecretStoreException
 import io.github.astiskala.minimpos.app.data.security.TransferSeal
 import io.github.astiskala.minimpos.app.data.settings.AppSettings
+import io.github.astiskala.minimpos.app.data.settings.ConnectionDestination
 import io.github.astiskala.minimpos.app.data.settings.ConnectionSetup
 import io.github.astiskala.minimpos.app.data.settings.SettingsRepository
 import io.github.astiskala.minimpos.core.catalogue.Catalogue
@@ -16,6 +17,7 @@ import io.github.astiskala.minimpos.core.codec.SealedSecrets
 import io.github.astiskala.minimpos.core.codec.Transfer
 import io.github.astiskala.minimpos.core.codec.TransferCodec
 import io.github.astiskala.minimpos.core.codec.TransferFormatException
+import io.github.astiskala.minimpos.terminal.transport.TerminalEnvironment
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
@@ -77,6 +79,12 @@ class ReceivedTransfer internal constructor(
 
     /** Whether a connection (from the setup helper web page) was transferred. */
     val hasConnection: Boolean get() = connection != null
+
+    /** The helper's requested destination for review before import; null leaves the saved destination unchanged. */
+    val connectionDestination: ConnectionDestination? get() = connection?.destination
+
+    /** The helper's selected network/cloud environment; null leaves it unchanged or lets the device determine it. */
+    val connectionEnvironment: TerminalEnvironment? get() = connection?.environment
 
     /** Whether the helper chose Automatic setup; discovery still requires a supported destination and a stored API key. */
     val automatic: Boolean get() = connection?.automatic == true

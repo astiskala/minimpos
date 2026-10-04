@@ -143,7 +143,8 @@
           <p>Adyen <a href="https://docs.adyen.com/unified-commerce/pay-by-link">Pay by Link</a>让顾客在 Adyen 支付页面付款，而不使用终端。LIVE 使用前请检查账户的 Pay by Link 要求，包括条款和条件。</p>
           <ol><li>完成 Checkout API 设置后，自动提供支付链接。在<strong>设置 › 支付 › 支付链接</strong>中选择有效期。</li><li>销售结账时点击<strong>创建支付链接</strong>。展示二维码、<strong>通过邮件发送链接</strong>并附上未支付收据、<strong>打印链接</strong>，或在平板和手机上<strong>分享链接</strong>。</li><li>保持链接界面打开以自动查询，或以后从交易记录点击<strong>查询支付状态</strong>。不再需要时使用<strong>取消链接</strong>。</li></ol>
           <p>链接被支付、过期或取消前，交易记录显示<strong>待支付</strong>。已支付链接计入合计，未支付链接不计入。链接包含商品及已填写的购物者信息、保存卡片选择，适用 Adyen 账户的线上风险和扣款设置。</p>
-          <p class="note">链接仅用于销售，不用于订金或收据小费，需要真实 Checkout API，不支持模拟。有效期内任何持有链接的人均可付款。请在<strong>商户后台 › Payments › Payment list</strong>为已支付链接退款；应用无法获取其 PSP 识别号。</p>
+          <p class="note">链接仅用于销售，不用于订金或收据小费。真实链接需要 Checkout API 设置。有效期内任何持有真实链接的人均可付款。请在<strong>商户后台 › Payments › Payment list</strong>为已支付链接退款；应用无法获取其 PSP 识别号。</p>
+          <p>模拟器模式无需凭据。创建演示链接后，点按<strong>模拟支付</strong>完成，也可取消或等待过期。仅查询不会支付演示链接。其二维码无法收款，共享、邮件和打印收据均标为演示。应用重启后，结果仍保存在交易记录中。</p>
           <p>链接未显示或不更新时，请参阅<a href="troubleshooting.html#links">支付链接故障排查</a>。</p>
           <p class="back-to-contents"><a href="#contents">返回目录</a></p>
         </section>

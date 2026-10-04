@@ -10,6 +10,7 @@ import io.github.astiskala.minimpos.terminal.checkout.CheckoutModifications
 import io.github.astiskala.minimpos.terminal.checkout.CheckoutPaymentLinks
 import io.github.astiskala.minimpos.terminal.checkout.PaymentLinkApi
 import io.github.astiskala.minimpos.terminal.checkout.PaymentModifications
+import io.github.astiskala.minimpos.terminal.simulator.SimulatedPaymentLinks
 import io.github.astiskala.minimpos.terminal.transport.TerminalEnvironment
 
 /**
@@ -45,8 +46,7 @@ sealed interface ApiSetup {
  *   [ApiSetup.Incomplete] with [SetupProblem.UNREADABLE_API_KEY] when the saved key cannot be decrypted.
  * @param modifications Sends the captures and adjustments; null when the API cannot be called
  *   ([ApiSetup.Incomplete]).
- * @param links Creates, checks and expires payment links; null unless the API is [ApiSetup.Complete] (payment links
- *   are never simulated).
+ * @param links Creates, checks and expires real or simulated payment links; null when setup is incomplete.
  * @property context Actual account and environment; isolated fake adapters may omit it.
  */
 data class ApiTarget(
@@ -59,7 +59,7 @@ data class ApiTarget(
     /** Capture/adjustment access for [expected]; missing stored context is blocked unless this is a context-free fake. */
     fun modifications(expected: PaymentContext?): ApiAccess<PaymentModifications> = access(modifications, expected)
 
-    /** Link access for [expected]; simulated targets have no link adapter, even when modifications are available. */
+    /** Link access for [expected]; real and simulated payment contexts must never be mixed. */
     fun links(expected: PaymentContext?): ApiAccess<PaymentLinkApi> = access(links, expected)
 
     private fun <T : Any> access(
@@ -141,12 +141,14 @@ sealed interface ApiCheck {
  *   simulator's payments.
  * @param connect Makes the client for real credentials; tests replace it.
  * @param connectLinks Makes the payment link client for real credentials; tests replace it.
+ * @param simulatedLinks Answers offline demo links; their final outcomes remain in stored sales.
  */
 class AdyenApi(
     private val setups: TerminalSetupSource,
     private val simulated: PaymentModifications,
     private val connect: (CheckoutCredentials) -> PaymentModifications = { CheckoutModifications(it) },
     private val connectLinks: (CheckoutCredentials) -> PaymentLinkApi = { CheckoutPaymentLinks(it) },
+    private val simulatedLinks: PaymentLinkApi = SimulatedPaymentLinks(),
 ) {
     private val clients = Reused<CheckoutCredentials, PaymentModifications>()
     private val linkClients = Reused<CheckoutCredentials, PaymentLinkApi>()
@@ -157,7 +159,7 @@ class AdyenApi(
         val setup = unlocked.setup
         val target =
             when (val api = setup.apiSetup) {
-                ApiSetup.Simulated -> ApiTarget(api, simulated)
+                ApiSetup.Simulated -> ApiTarget(api, simulated, simulatedLinks)
                 ApiSetup.Complete -> connected(setup.settings.terminal, checkNotNull(setup.environment), checkNotNull(unlocked.apiKey))
                 is ApiSetup.Incomplete -> ApiTarget(api)
             }

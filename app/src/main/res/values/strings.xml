@@ -793,7 +793,13 @@
   <string name="settings_export_hint">Show the catalog, settings, passwords and keys as QR codes</string>
   <string name="settings_import_hint">Scan the codes of another device or of the setup helper page to copy its setup</string>
   <string name="settings_quick_setup">Quick setup</string>
-  <string name="settings_quick_setup_hint">Open astiskala.github.io/minimpos/setup.html on a computer. Choose Automatic to find terminal details on this device, or Manual to enter everything there. Both ask for the LIVE URL prefix for LIVE. Scan its QR codes here, or copy setup from another device.</string>
+  <string name="settings_quick_setup_hint">Open astiskala.github.io/minimpos/setup.html on a computer, then scan its codes here. No destination or environment choice is needed first.</string>
+  <string name="settings_manual_setup">Or set up on this device</string>
+  <string name="settings_scan_discard_drafts">Unsaved keys will be discarded when you open the scanner. Saved settings will not change until you import.</string>
+  <string name="settings_scan_discard_confirm">Discard and scan</string>
+  <string name="transfer_unchanged">Unchanged</string>
+  <string name="transfer_environment_device">Determined by this device or the Payments app</string>
+  <string name="transfer_live_warning">LIVE takes real payments. Check that this is the intended environment before importing.</string>
   <string name="settings_quick_setup_import">Scan setup codes</string>
 
   <string name="about_version">Version</string>
@@ -846,7 +852,11 @@
   <string name="email_link_subject">Payment request from {business}</string>
   <string name="email_link_intro">Pay securely online with the link or the QR code below.</string>
   <string name="settings_payment_links">Payment links</string>
-  <string name="settings_links_hint">Checkout can create an Adyen payment link instead of sending the sale to the terminal, for the customer to pay online. Payment links are not available with the simulator.</string>
+  <string name="settings_links_hint">Checkout can create an Adyen payment link for the customer to pay online. In simulator mode, try a demo link without moving money.</string>
+  <string name="link_simulate">Simulate payment</string>
+  <string name="link_simulation_note">Simulation only. No money moved.</string>
+  <string name="link_demo_hint">Demo QR only. This code cannot take a payment. Tap Simulate payment to finish the demo.</string>
+  <string name="link_demo_label">Demo link</string>
   <string name="settings_link_expiry">Links work for (hours)</string>
   <string name="settings_link_expiry_hint">1 to 1680 hours (70 days); Adyen’s default is 24</string>
   <string name="payment_context_mismatch">This setup does not match the original payment’s terminal, Adyen account or environment. Restore the original setup before continuing.</string>

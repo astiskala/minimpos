@@ -250,8 +250,7 @@ class AppContainer(
     val tapToPay = TapToPaySetup(terminalSetup, settings, paymentsAppLinks, paymentsAppManagement)
 
     /**
-     * Adyen's Checkout API, for captures and authorisation adjustments (simulated with the simulator) and payment links
-     * (never simulated).
+     * Adyen's Checkout API, for captures, authorisation adjustments and payment links, all simulated in simulator mode.
      */
     val api = AdyenApi(terminalSetup, simulated = simulator.modifications, connectLinks = paymentLinks)
 
@@ -269,6 +268,8 @@ class AppContainer(
         ReceiptFactory(
             receiptLabels(),
             currentLabels = ::receiptLabels,
+            simulationText = { context.getString(R.string.link_simulation_note) },
+            demoLinkText = { context.getString(R.string.link_demo_label) },
             standingText = { standing ->
                 when (standing) {
                     PaymentStanding.CHARGED -> null
@@ -541,6 +542,8 @@ class AppContainer(
 
     private fun emailTexts() =
         EmailTexts(
+            demoSubject = context.getString(R.string.link_demo_label),
+            simulationNote = context.getString(R.string.link_simulation_note),
             appName = context.getString(R.string.app_name),
             intro = context.getString(R.string.email_intro),
             refundIntro = context.getString(R.string.email_refund_intro),

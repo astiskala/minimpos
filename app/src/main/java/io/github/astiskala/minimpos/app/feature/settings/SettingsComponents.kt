@@ -33,9 +33,12 @@ import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -264,7 +267,8 @@ private fun PasswordField(
 
 /**
  * A secret typed straight into the screen (no dialog whose buttons the keyboard could hide): never displayed once
- * saved. The keyboard's Done key calls [onSubmit], as does the caller's own button.
+ * saved. The keyboard's Done key calls [onSubmit], as does the caller's own button. [onDraft] reports only whether
+ * text is unsaved, then false when the field leaves composition; never reports the secret itself.
  */
 @Composable
 fun SecretField(
@@ -275,7 +279,11 @@ fun SecretField(
     onSubmit: () -> Unit,
     modifier: Modifier = Modifier,
     tag: String? = null,
+    onDraft: ((Boolean) -> Unit)? = null,
 ) {
+    val reportDraft by rememberUpdatedState(onDraft)
+    LaunchedEffect(value) { reportDraft?.invoke(value.isNotEmpty()) }
+    DisposableEffect(Unit) { onDispose { reportDraft?.invoke(false) } }
     val colors = LocalStatusColors.current
     val compact = LocalDimens.current.compact
     Column(modifier.fillMaxWidth()) {

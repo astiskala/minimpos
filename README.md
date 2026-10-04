@@ -44,7 +44,7 @@ there is no backend, tracking or automatic synchronization between devices.
 **Just exploring?** Install `minimpos-<version>.apk` from the
 [latest release](https://github.com/astiskala/minimpos/releases/latest) on an Android phone (Android 9+) or emulator.
 Away from an Adyen terminal, the default is the simulator: no account, keys or real card needed. Choose outcomes and
-printer behavior in Settings › Simulator. Payment links are not simulated.
+printer behavior in Settings › Simulator. Offline demo links let you try the payment-link workflow too.
 
 **Ready to connect to Adyen?** Follow [Getting started](https://astiskala.github.io/minimpos/getting-started.html).
 It covers supported devices, deployment and all four payment setups. Every real-payment setup needs the Checkout API;

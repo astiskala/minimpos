@@ -69,6 +69,7 @@
   <string name="sale_search_close">Close the search</string>
   <string name="sale_all">All</string>
   <string name="sale_custom_item">Custom item</string>
+  <string name="sale_custom_default_name">Item</string>
   <string name="sale_custom_description">Description (optional)</string>
   <string name="sale_no_products">No products yet. Add them under Products, or use a custom item.</string>
   <string name="sale_cart">Current sale</string>

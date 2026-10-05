@@ -142,12 +142,12 @@ fun SaleScreen(
     val snackbar = remember { SnackbarHostState() }
     val addScannedSku = rememberSkuHandler(snackbar, vm::addBySku, onAdd = onChosen)
 
-    // With no products to choose from, a new sale goes straight to the custom item keypad (once per visit, so
-    // cancelling it or coming back from checkout doesn't reopen it).
+    // With no products of this kind to choose from, offer the keypad once per visit, not again after cancelling or
+    // returning from checkout. A pre-authorisation replaces its item, so an unfinished amount must not block the offer.
     LaunchedEffect(state.loaded) {
         if (state.loaded && !customOffered) {
             customOffered = true
-            if (state.products.isEmpty() && state.cart.lines.isEmpty()) overlay = SaleOverlay.CUSTOM_ITEM
+            if (state.products.isEmpty() && (kind.singleItem || state.cart.lines.isEmpty())) overlay = SaleOverlay.CUSTOM_ITEM
         }
     }
 
@@ -652,7 +652,7 @@ private fun CustomItemDialog(
     var name by remember { mutableStateOf("") }
     // Items without tax get a 0% rate from the same list; with tax switched off the rate is kept but not shown.
     var taxRate by remember { mutableStateOf(defaultTaxRate) }
-    val defaultName = stringResource(R.string.sale_custom_item)
+    val defaultName = stringResource(R.string.sale_custom_default_name)
     val dimens = LocalDimens.current
     Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
         // On small screens the keypad takes the whole screen, its keys sharing whatever height is left, so nothing scrolls.

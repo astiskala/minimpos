@@ -10,12 +10,15 @@ import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import com.google.common.truth.Truth.assertThat
 import io.github.astiskala.minimpos.app.MiniMposApp
 import io.github.astiskala.minimpos.app.R
 import io.github.astiskala.minimpos.app.TestEnvironment
 import io.github.astiskala.minimpos.app.await
 import io.github.astiskala.minimpos.app.data.db.SaleEntity
+import io.github.astiskala.minimpos.app.data.db.SaleKind
 import io.github.astiskala.minimpos.app.data.db.SaleStatus
 import io.github.astiskala.minimpos.app.data.db.SetupProblem
 import io.github.astiskala.minimpos.app.data.db.StoredReason
@@ -84,9 +87,17 @@ class LocalizedUiTest {
         }
         compose.onNodeWithTag("newSale").assertTextContains(context.getString(R.string.home_new_sale)).performClick()
         compose.waitUntilAtLeastOneExists(hasTestTag("addCustom"), 15_000)
+        compose.onNodeWithText(context.getString(R.string.sale_custom_default_name)).assertIsDisplayed()
         compose.onNodeWithTag("key_1").assertIsDisplayed().performClick()
         compose.onNodeWithTag("key_2").performClick()
         compose.onNodeWithTag("addCustom").assertIsDisplayed().performClick()
+        assertThat(
+            env.container
+                .session(SaleKind.SALE)
+                .cart.value.lines
+                .single()
+                .name,
+        ).isEqualTo(context.getString(R.string.sale_custom_default_name))
         compose.onNodeWithTag("charge").assertIsDisplayed().performClick()
         compose.waitUntilAtLeastOneExists(hasTestTag("pay"), 15_000)
         compose.onNodeWithTag("pay").assertIsDisplayed().performClick()

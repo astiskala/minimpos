@@ -114,6 +114,7 @@ class AppFlowTest {
         assertThat(record.sale.status).isEqualTo(SaleStatus.APPROVED)
         assertThat(record.sale.storedPaymentMethodId).isNotNull()
         assertThat(record.sale.customerReference).isEqualTo("CUST-42")
+        assertThat(record.lines.single().name).isEqualTo("Item")
         assertThat(
             container
                 .session(SaleKind.SALE)
@@ -234,6 +235,28 @@ class AppFlowTest {
         // Back from checkout, the sale carries on without reopening the keypad.
         waitForText("Charge $3.00")
         compose.onNodeWithTag("addCustom").assertDoesNotExist()
+    }
+
+    @Test
+    fun `custom item descriptions default to Item only when blank`() {
+        compose.onNodeWithTag("newSale").performClick()
+        compose.waitForTag("addCustom")
+        compose.onNodeWithText("Item").assertIsDisplayed()
+        listOf("   " to "Item", "  Delivery  " to "Delivery").forEach { (description, expected) ->
+            compose.onNodeWithText("Description (optional)").performTextReplacement(description)
+            compose.onNodeWithTag("key_1").performClick()
+            compose.onNodeWithTag("addCustom").performClick()
+            assertThat(
+                container
+                    .session(SaleKind.SALE)
+                    .cart.value.lines
+                    .last()
+                    .name,
+            ).isEqualTo(expected)
+            compose.onNodeWithTag("customItem").performClick()
+            compose.waitForTag("addCustom")
+        }
+        compose.onNodeWithText("Cancel").performClick()
     }
 
     @Test
@@ -426,9 +449,37 @@ class AppFlowTest {
 
     @Test
     fun `takes a pre-authorisation of a custom amount without pre-authorisation products`() {
+        // Ordinary sale products must not prevent the empty pre-authorisation catalogue's shortcut.
+        await {
+            val rate =
+                container.catalog.taxRates
+                    .first()
+                    .first()
+            container.catalog.saveProduct(ProductEntity(name = "Coffee", priceMinor = 500, taxRateId = rate.id))
+        }
         compose.waitForTag("preAuth")
         compose.onNodeWithTag("preAuth").assertIsDisplayed().performClick()
         // With nothing to choose from, the custom amount keypad opens straight away.
+        compose.waitForTag("addCustom")
+        compose.onNodeWithText("Cancel").performClick()
+        waitForText("No pre-authorization products yet. Mark products as pre-authorization under Products, or use a custom amount.")
+        compose.onNodeWithTag("addCustom").assertDoesNotExist()
+        compose.onNodeWithTag("customItem").performClick()
+        compose.waitForTag("addCustom")
+        listOf(7, 5, 0, 0).forEach { compose.onNodeWithTag("key_$it").performClick() }
+        compose.onNodeWithTag("addCustom").performClick()
+        compose.waitForTag("pay")
+        assertThat(
+            container
+                .session(SaleKind.PRE_AUTHORISATION)
+                .cart.value.lines
+                .single()
+                .name,
+        ).isEqualTo("Item")
+        compose.onNodeWithTag("back").performClick()
+        compose.waitForTag("customItem")
+        compose.onNodeWithTag("addCustom").assertDoesNotExist()
+        compose.onNodeWithTag("customItem").performClick()
         compose.waitForTag("addCustom")
         listOf(7, 5, 0, 0).forEach { compose.onNodeWithTag("key_$it").performClick() }
         compose.onNodeWithTag("addCustom").performClick()

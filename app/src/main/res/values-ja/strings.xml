@@ -60,6 +60,7 @@
   <string name="sale_search_close">検索を閉じる</string>
   <string name="sale_all">すべて</string>
   <string name="sale_custom_item">任意の商品</string>
+  <string name="sale_custom_default_name">商品</string>
   <string name="sale_custom_description">説明（任意）</string>
   <string name="sale_no_products">商品がありません。「商品」で追加するか、任意の商品を使用してください。</string>
   <string name="sale_cart">現在の販売</string>

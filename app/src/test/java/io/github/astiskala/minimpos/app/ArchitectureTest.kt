@@ -86,6 +86,9 @@ import io.github.astiskala.minimpos.app.terminal.SimulatedTerminal
 import io.github.astiskala.minimpos.app.terminal.TerminalGateway
 import io.github.astiskala.minimpos.app.terminal.TerminalSetup
 import io.github.astiskala.minimpos.app.terminal.TerminalSetupSource
+import io.github.astiskala.minimpos.app.update.AppUpdate
+import io.github.astiskala.minimpos.app.update.GitHubReleases
+import io.github.astiskala.minimpos.app.update.UpdateCheck
 import io.github.astiskala.minimpos.core.money.CurrencySpec
 import io.github.astiskala.minimpos.core.money.PaymentContext
 import io.github.astiskala.minimpos.terminal.checkout.PaymentLink
@@ -124,6 +127,8 @@ class ArchitectureTest {
             .definedBy("io.github.astiskala.minimpos.app.refund..")
             .layer(TERMINAL)
             .definedBy("io.github.astiskala.minimpos.app.terminal..")
+            .layer(UPDATE)
+            .definedBy("io.github.astiskala.minimpos.app.update..")
             .layer(DATA)
             .definedBy("io.github.astiskala.minimpos.app.data..")
             .whereLayer(UI)
@@ -138,6 +143,8 @@ class ArchitectureTest {
             .mayOnlyBeAccessedByLayers(RECEIPT, PAYMENT, UI)
             .whereLayer(TERMINAL)
             .mayOnlyBeAccessedByLayers(RECEIPT, PAYMENT, UI)
+            .whereLayer(UPDATE)
+            .mayOnlyBeAccessedByLayers(UI)
             .whereLayer(DATA)
             .mayOnlyBeAccessedByLayers(TERMINAL, REFUND, RECEIPT, EMAIL, PAYMENT, UI)
             .check(app)
@@ -655,6 +662,14 @@ class ArchitectureTest {
     fun `demo ownership rejects raw simulator context readings`() = reject(listOf(demoOwnership), DemoViolation::class.java)
 
     @Test
+    fun `self-update reads, arms and offers stay with the update package, the container and Home`() =
+        updateOwnership.forEach { it.check(app) }
+
+    @Test
+    fun `update ownership rejects an outside reader, an out-of-package check and an outside arming`() =
+        reject(updateOwnership, UpdateViolation::class.java)
+
+    @Test
     fun `every production class belongs to a declared module`() = moduleMembership.check(app)
 
     @Test
@@ -718,6 +733,14 @@ class ArchitectureTest {
 
     private class DemoViolation {
         fun reads(context: PaymentContext) = context.simulated
+    }
+
+    private class UpdateViolation {
+        fun reads(update: AppUpdate) = update.state.value
+
+        suspend fun releases() = GitHubReleases().latest(0)
+
+        fun arms(update: AppUpdate) = update.start()
     }
 
     private class UnassignedViolation
@@ -879,11 +902,13 @@ class ArchitectureTest {
         const val RECEIPT = "Receipt"
         const val REFUND = "Refund"
         const val TERMINAL = "Terminal"
+        const val UPDATE = "Update"
         const val DATA = "Data"
 
         const val CONTAINER = "io\\.github\\.astiskala\\.minimpos\\.app\\.AppContainer\\b.*"
         const val DB = "io.github.astiskala.minimpos.app.data.db.."
         const val TERMINAL_PACKAGE = "io.github.astiskala.minimpos.app.terminal.."
+        const val UPDATE_PACKAGE = "io.github.astiskala.minimpos.app.update.."
         const val PAYMENT_STANDING_FILE = "io.github.astiskala.minimpos.app.refund.PaymentStandingKt"
         const val TRANSACTION_ACTIONS_FILE = "io.github.astiskala.minimpos.app.feature.TransactionActionsKt"
         const val OUTCOME_MESSAGES_FILE = "io.github.astiskala.minimpos.app.feature.OutcomeMessagesKt"
@@ -901,6 +926,7 @@ class ArchitectureTest {
             arrayOf(
                 "io.github.astiskala.minimpos.app.data..",
                 "io.github.astiskala.minimpos.app.terminal..",
+                "io.github.astiskala.minimpos.app.update..",
                 "io.github.astiskala.minimpos.app.receipt..",
                 "io.github.astiskala.minimpos.app.refund..",
                 "io.github.astiskala.minimpos.app.email..",
@@ -1034,6 +1060,34 @@ class ArchitectureTest {
                 .that(not(declaredIn("io.github.astiskala.minimpos.app.refund", "PaymentStanding.kt")))
                 .should()
                 .callMethodWhere(callTo(PaymentContext::class.java.name, "getSimulated", "component7"))
+
+        // Self-update is one isolated concern: only `update` reads GitHub Releases, only the container wires and arms
+        // the startup check, and only Home shows and dismisses the offer.
+        val updateOwnership: List<ArchRule> =
+            listOf(
+                noClasses()
+                    .that()
+                    .resideOutsideOfPackage(UPDATE_PACKAGE)
+                    .and()
+                    .haveNameNotMatching(within(AppContainer::class.java.name))
+                    .should()
+                    .dependOnClassesThat()
+                    .belongToAnyOf(GitHubReleases::class.java),
+                noClasses()
+                    .that()
+                    .resideOutsideOfPackage(UPDATE_PACKAGE)
+                    .and()
+                    .haveNameNotMatching(within(AppContainer::class.java.name))
+                    .and(not(declaredIn("io.github.astiskala.minimpos.app.feature.home", "HomeScreen.kt")))
+                    .should()
+                    .dependOnClassesThat()
+                    .belongToAnyOf(AppUpdate::class.java, UpdateCheck::class.java),
+                noClasses()
+                    .that()
+                    .haveNameNotMatching(within(AppContainer::class.java.name))
+                    .should()
+                    .callMethodWhere(callTo(AppUpdate::class.java.name, "start")),
+            )
 
         val moduleMembership: ArchRule =
             classes()

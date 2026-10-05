@@ -1,7 +1,5 @@
 package io.github.astiskala.minimpos.app.feature.settings
 
-import android.content.ActivityNotFoundException
-import android.content.Intent
 import androidx.annotation.StringRes
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
@@ -46,7 +44,6 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
-import androidx.core.net.toUri
 import io.github.astiskala.minimpos.app.R
 import io.github.astiskala.minimpos.app.data.db.SetupProblem
 import io.github.astiskala.minimpos.app.data.security.Secret
@@ -61,6 +58,7 @@ import io.github.astiskala.minimpos.app.ui.components.ActionMessage
 import io.github.astiskala.minimpos.app.ui.components.LabeledValue
 import io.github.astiskala.minimpos.app.ui.components.PrimaryButton
 import io.github.astiskala.minimpos.app.ui.components.SecondaryButton
+import io.github.astiskala.minimpos.app.ui.components.openUrl
 import io.github.astiskala.minimpos.terminal.transport.TerminalEnvironment
 
 /** Changes the terminal settings with a transform of the stored ones. */
@@ -715,10 +713,7 @@ private fun ColumnScope.PaymentsAppStep(
             val context = LocalContext.current
 
             fun open(environment: TerminalEnvironment) {
-                try {
-                    context.startActivity(Intent(Intent.ACTION_VIEW, PaymentsAppDestination.storeUrl(environment).toUri()))
-                } catch (ignored: ActivityNotFoundException) {
-                }
+                context.openUrl(PaymentsAppDestination.storeUrl(environment))
             }
             SettingActions {
                 SecondaryButton(

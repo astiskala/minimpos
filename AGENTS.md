@@ -68,6 +68,8 @@ Adyen Payments app (Tap to Pay). The built-in simulator needs no Adyen account.
   Receipt labels are read at delivery, Adyen receipt fields stay verbatim. Keep `StarterTax`'s rates current.
 - QR contracts have one current format. Change the app, setup helper, format tests and helper test vectors together.
   `docs/js/setup.js` mirrors `TransferCodec`, `QrChunks` and `TransferSeal`; retain its no-network CSP.
+- The release's `update.json` asset has one current format. Change the app, the Release workflow and their tests
+  together; it is read only on devices that are not Adyen terminals.
 
 ## Documentation changes
 

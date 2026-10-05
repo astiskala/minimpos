@@ -82,6 +82,7 @@ existing spelling (`preAuthorisation`, `SaleKind.PRE_AUTHORISATION`, `authorised
 | Catalogue | Products, categories and tax rates. | `CatalogRepository` |
 | Sample data | Optional demo products, categories and read-only simulated history, tracked separately for scoped removal. Never replaces merchant data or credentials. | `data/repo/SampleData`, `sample` on stored rows |
 | Onboarding | First-run choice of simulator with sample data, setup import or terminal settings; completion stays local. | `feature/settings/OnboardingScreen`, `AppSettings.onboardingCompleted` |
+| Self-update | Startup check for a newer version on a device that is not an Adyen terminal; the offer opens the release's APK in the browser, which downloads it. Terminals update through the Customer Area. | `update/AppUpdate`, `update/GitHubReleases` |
 | Pricing change | Confirmed currency/tax-style transition, including durable recovery; numeric prices are preserved and rounded, not FX-converted. | `payment/PricingChanges` |
 | Starter tax | Initial country-based rates and price style, not an ongoing regional override. | `StarterTax` |
 | New-installation settings | Baseline plus initial country/language choices; never overrides saved settings. | `AppSettings.forNewInstallation` |

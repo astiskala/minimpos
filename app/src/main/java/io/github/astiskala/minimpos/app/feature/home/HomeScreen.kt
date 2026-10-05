@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.automirrored.filled.ReceiptLong
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.ErrorOutline
 import androidx.compose.material.icons.filled.Inventory2
 import androidx.compose.material.icons.filled.Key
@@ -27,8 +28,11 @@ import androidx.compose.material.icons.filled.LockClock
 import androidx.compose.material.icons.filled.PointOfSale
 import androidx.compose.material.icons.filled.QrCodeScanner
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.SystemUpdate
+import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
@@ -40,6 +44,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
@@ -53,10 +58,12 @@ import io.github.astiskala.minimpos.app.terminal.TerminalConnection
 import io.github.astiskala.minimpos.app.terminal.TerminalState
 import io.github.astiskala.minimpos.app.ui.components.LocalAppContainer
 import io.github.astiskala.minimpos.app.ui.components.MiniScaffold
+import io.github.astiskala.minimpos.app.ui.components.openUrl
 import io.github.astiskala.minimpos.app.ui.navigation.Navigator
 import io.github.astiskala.minimpos.app.ui.navigation.Route
 import io.github.astiskala.minimpos.app.ui.theme.LocalDimens
 import io.github.astiskala.minimpos.app.ui.theme.LocalStatusColors
+import io.github.astiskala.minimpos.app.update.UpdateCheck
 
 /** The home screen fills the available height rather than scrolling, so everything fits on a 4" terminal screen. */
 @Composable
@@ -69,6 +76,7 @@ fun HomeScreen(
     val settings by container.settingsState.collectAsStateWithLifecycle()
     val pinSet by container.pinManager.pinConfigured.collectAsStateWithLifecycle(initialValue = false)
     val terminal by container.terminalStatus.state.collectAsStateWithLifecycle()
+    val update by container.update.state.collectAsStateWithLifecycle()
     // A failed check is retried whenever Home is shown, so its warning clears once the terminal answers again.
     LaunchedEffect(Unit) { container.terminalStatus.recheckIfFailed() }
 
@@ -89,6 +97,9 @@ fun HomeScreen(
                 // Wherever payments go but the simulator: this terminal, one on the network or in the cloud, or Tap to Pay.
                 if (terminal.loaded && terminal.mode != TerminalMode.SIMULATOR) {
                     ConnectionProblem(terminal) { navigator.push(Route.SettingsSection(SettingsSections.TERMINAL)) }
+                }
+                (update as? UpdateCheck.Available)?.let { offered ->
+                    UpdateCard(offered, container.update::dismiss)
                 }
                 PaymentTiles(onOpen = navigator::push)
                 AreaTiles(locked = pinSet, onOpen = navigator::push)
@@ -151,6 +162,47 @@ private fun ConnectionProblem(
                 error = true,
                 onClick = onClick,
             )
+        }
+    }
+}
+
+/**
+ * Offers a newer version (the update's version name) as a dismissible card, never shown on an Adyen terminal (the
+ * container does not check there): Update opens the release's APK in the browser, which downloads it, and Android then
+ * asks for its installation. Closing hides the offer for the rest of this session.
+ */
+@Composable
+private fun UpdateCard(
+    update: UpdateCheck.Available,
+    onDismiss: () -> Unit,
+) {
+    val context = LocalContext.current
+    val dimens = LocalDimens.current
+    Surface(
+        color = MaterialTheme.colorScheme.secondaryContainer,
+        contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+        shape = MaterialTheme.shapes.medium,
+        modifier = Modifier.fillMaxWidth().testTag("update"),
+    ) {
+        Row(Modifier.padding(dimens.cardPadding), verticalAlignment = Alignment.CenterVertically) {
+            Icon(Icons.Default.SystemUpdate, contentDescription = null)
+            Spacer(Modifier.width(dimens.spacing))
+            Text(
+                stringResource(R.string.update_available, update.versionName),
+                style = MaterialTheme.typography.titleSmall,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f),
+            )
+            Spacer(Modifier.width(dimens.spacing))
+            Button(
+                onClick = { context.openUrl(update.apkUrl) },
+                contentPadding = PaddingValues(horizontal = 12.dp),
+                modifier = Modifier.testTag("updateDownload"),
+            ) { Text(stringResource(R.string.update_download)) }
+            IconButton(onClick = onDismiss, modifier = Modifier.testTag("updateDismiss")) {
+                Icon(Icons.Default.Close, contentDescription = stringResource(R.string.action_close))
+            }
         }
     }
 }

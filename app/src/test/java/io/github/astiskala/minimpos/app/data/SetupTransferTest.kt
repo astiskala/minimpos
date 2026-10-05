@@ -10,7 +10,9 @@ import io.github.astiskala.minimpos.app.data.security.PinCheck
 import io.github.astiskala.minimpos.app.data.security.PinManager
 import io.github.astiskala.minimpos.app.data.security.Secret
 import io.github.astiskala.minimpos.app.data.security.TransferSeal
+import io.github.astiskala.minimpos.app.data.settings.ConnectionSetup
 import io.github.astiskala.minimpos.app.data.settings.EmailCapture
+import io.github.astiskala.minimpos.app.data.settings.EmailSettings
 import io.github.astiskala.minimpos.app.data.settings.MerchantCopyPolicy
 import io.github.astiskala.minimpos.app.data.settings.PrinterMode
 import io.github.astiskala.minimpos.app.data.settings.ReceiptTipping
@@ -302,24 +304,78 @@ class SetupTransferTest {
     }
 
     @Test
+    fun `helper SMTP fields preserve omitted values and unrelated settings`() {
+        val saved =
+            EmailSettings(
+                host = "old.example.com",
+                port = 465,
+                security = SmtpSecurity.SSL,
+                username = "saved-user",
+                fromAddress = "old@example.com",
+                fromName = "Saved name",
+                bcc = "archive@example.com",
+                subject = "Saved subject",
+            )
+        assertThat(ConnectionSetup().emailAppliedTo(saved)).isEqualTo(saved)
+        assertThat(
+            ConnectionSetup(smtpHost = " ", smtpUsername = "", smtpFromAddress = "", smtpFromName = " ").emailAppliedTo(saved),
+        ).isEqualTo(saved)
+        target.updateSettings { it.copy(email = saved, receipt = it.receipt.copy(footer = "Keep me")) }
+        await { target.container.secrets.set(Secret.SMTP_PASSWORD, "saved-password") }
+        val received =
+            setup(target).receive(
+                Transfer(
+                    connection =
+                        """{"smtpHost":" smtp.example.com ","smtpPort":587,"smtpSecurity":"STARTTLS",""" +
+                            """"smtpFromAddress":" shop@example.com ","smtpFromName":" Shop "}""",
+                ),
+            )
+        val result = await { setup(target).import(received, ImportMode.MERGE) } as ImportOutcome.Imported
+        assertThat(result.result.connection).isTrue()
+        assertThat(result.result.secrets).isEmpty()
+        val settings = await { target.container.settings.current() }
+        assertThat(settings.email)
+            .isEqualTo(
+                saved.copy(
+                    host = "smtp.example.com",
+                    port = 587,
+                    security = SmtpSecurity.STARTTLS,
+                    fromAddress = "shop@example.com",
+                    fromName = "Shop",
+                ),
+            )
+        assertThat(settings.receipt.footer).isEqualTo("Keep me")
+        assertThat(settings.terminal).isEqualTo(await { source.container.settings.current() }.terminal)
+        assertThat(await { target.container.secrets.get(Secret.SMTP_PASSWORD) }).isEqualTo("saved-password")
+        assertThat(ConnectionSetup(smtpUsername = " new-user ").emailAppliedTo(saved).username).isEqualTo("new-user")
+        val invalidPort = setup(target).receive(Transfer(connection = """{"smtpPort":0}"""))
+        await { setup(target).import(invalidPort, ImportMode.MERGE) }
+        assertThat(await { target.container.settings.current() }.email.port).isEqualTo(1)
+    }
+
+    @Test
     fun `codes made by the setup helper web page import`() {
         // Made by docs/js/setup.js (Settings: a terminal on the network), so the page and the app keep one format.
         val chunks =
             listOf(
-                "MPC1:0000:1/2:.X0 KU0U3GQ7:YO9Q1W50200SF9000000000000000000000000000000000000000000L-S939+\$5+MP-%14" +
+                "MPC1:0000:1/2: S0YCOISBVY1TQU3R1W50200SF9000000000000000000000000000000000000000000L-S939+\$5+MP-%14" +
                     "+3UX88BV3CN7\$SXG92L8U0H\$XR:MRQ*JXRM6LS1.EEW5IKGZQDSLC8\$UAWV5CF1H2*F8L66P+MYP92QS\$\$ECQ3PLS:IN" +
-                    "827I7AN/62W1ZFV\$ACYH4%XVO.OLKB-9H5FI95QL\$LJ80TF46\$CBWE..DBWE-3EWE4*F47\$CK4F-KEIE4UF4I/D*ED-3EF" +
-                    "\$DG/DWE4DF4HY8SSA3Q559D QEWE4NE4HA7Z\$5K%6Z\$5 \$5\$363Q5S9E/DDTTCWF7CNAF*83W5646.96V47+96C%6QW6-96" +
-                    "IE4 F4C\$CNC91\$CBWER.C5\$CWE4:F4HWEZKEHX5C\$CIE4%F45\$CNPCCECGVEIPC34EG/DWE41F4GEC:JC6%ESN8O.C\$ C-M8 X" +
-                    "93Q5/PDCFF5\$CPQE",
-                "MPC1:0000:2/2:-3EWE4AH6",
+                    "827I7AN/62W1ZFV9C6F2QY/OSG22UAT9MZ10DWALC8E-0SM4MDS60E.Q4087F.U**FY2VDERE2H:UP+K06PQ/AS1*C-TF1 " +
+                    "PF5W:2SMPF6VC QEZEDIEC EDO-DWF71/DPWE04ELOD3Q51\$CS/E0LE9/D1\$CUUEWF7ITA2OAIE4XF414EUUEWF71A6LF6/96" +
+                    "R47Z96NF6IE4-F4 3ENC9WE4CF4EA6KF6646746YW6OF6FL6B46746QQ63Q5/PD:EF6VCG/DREDQEDDJEWF7 QE04EQZC/PD5EF3Q" +
+                    "5F\$DXKE 8D",
+                "MPC1:0000:2/2:G/D:B8UPC2%EUUEWF7Y69WKE34E1KEX3EN.C3 C61AIE4:F4U\$DY8E14EUUEWF7TQEIWE.%5\$9FQ\$DTVD+%5" +
+                    "+3EIE4:F4U\$D09EZ C6%E-ED5EFWF71OA5S93Q5TQEIWE5 A5\$C..DF\$DWE4:F459DQ8EB\$CBECP9ERZCUPC%ZD3Q5TQEIWE" +
+                    "Y+8+3E0C8JVC6\$C:OEWF7ZKEKPC\$EDLWEF68\$9FQ\$DTVD+%5+3EIE4:F4U\$DW8E0LE\$ DBECFZCWF79Z8BECP9EDZCOQE/3" +
+                    "EIE4 F4C\$CM-A4LE EDO-D3G73Q5TQEIWEQ7A5LEWE41R6DY6",
             )
         val assembler = QrChunkAssembler()
         chunks.forEach { assembler.add(checkNotNull(QrChunks.parse(it))) }
         val received = setup(target).receive(TransferCodec.decode(assembler.assemble()))
         val outcome = await { setup(target).import(received, ImportMode.MERGE, "2222-2222-2222") } as ImportOutcome.Imported
-        assertThat(outcome.result.secrets).containsExactly(Secret.TERMINAL_PASSPHRASE, Secret.ADYEN_API_KEY)
-        val terminal = await { target.container.settings.current() }.terminal
+        assertThat(outcome.result.secrets).containsExactly(Secret.TERMINAL_PASSPHRASE, Secret.ADYEN_API_KEY, Secret.SMTP_PASSWORD)
+        val settings = await { target.container.settings.current() }
+        val terminal = settings.terminal
         assertThat(terminal.mode).isEqualTo(TerminalMode.TERMINAL)
         assertThat(terminal.environment).isEqualTo(TerminalEnvironment.TEST)
         assertThat(terminal.host).isEqualTo("192.168.1.20")
@@ -329,6 +385,18 @@ class SetupTransferTest {
         assertThat(terminal.merchantAccount).isEqualTo("HarbourCoffeeCOM")
         assertThat(await { target.container.secrets.get(Secret.TERMINAL_PASSPHRASE) }).isEqualTo("correct horse battery")
         assertThat(await { target.container.secrets.get(Secret.ADYEN_API_KEY) }).isEqualTo("demo-checkout-key")
+        assertThat(settings.email)
+            .isEqualTo(
+                EmailSettings(
+                    host = "smtp.example.com",
+                    port = 465,
+                    security = SmtpSecurity.SSL,
+                    username = "shop@example.com",
+                    fromAddress = "receipts@example.com",
+                    fromName = "Example shop",
+                ),
+            )
+        assertThat(await { target.container.secrets.get(Secret.SMTP_PASSWORD) }).isEqualTo(" demo-smtp-password ")
     }
 
     @Test

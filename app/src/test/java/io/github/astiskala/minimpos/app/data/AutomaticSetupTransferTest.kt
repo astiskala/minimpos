@@ -48,7 +48,7 @@ class AutomaticSetupTransferTest {
         val received = setup.receive(transfer())
         assertThat(received.automatic).isTrue()
         val result = (await { setup.import(received, ImportMode.MERGE, code) } as ImportOutcome.Imported).result
-        assertThat(result.discoverTerminals).isTrue()
+        assertThat(result.automaticSetup).isTrue()
         assertThat(result.secrets).containsExactly(Secret.ADYEN_API_KEY)
         val terminal = await { env.container.settings.current() }.terminal
         assertThat(terminal.environment).isEqualTo(TerminalEnvironment.LIVE)
@@ -59,19 +59,19 @@ class AutomaticSetupTransferTest {
     }
 
     @Test
-    fun `discovery is offered only for a physical terminal destination supported by this device`() {
+    fun `automatic setup is offered only for a destination supported by this device`() {
         listOf(false, true).forEach { onTerminal ->
             val setup = setup(onTerminal)
             listOf("thisTerminal", "network", "cloud", "tapToPay").forEach { destination ->
                 val received = setup.receive(transfer(destination))
                 val result = (await { setup.import(received, ImportMode.MERGE, code) } as ImportOutcome.Imported).result
-                val supported = if (onTerminal) destination == "thisTerminal" else destination in listOf("network", "cloud")
-                assertThat(result.discoverTerminals).isEqualTo(supported)
+                val supported = if (onTerminal) destination == "thisTerminal" else destination in listOf("network", "cloud", "tapToPay")
+                assertThat(result.automaticSetup).isEqualTo(supported)
             }
         }
         val setup = setup()
         val unspecified = setup.receive(Transfer(connection = """{"automatic":true}"""))
-        assertThat((await { setup.import(unspecified, ImportMode.MERGE) } as ImportOutcome.Imported).result.discoverTerminals).isFalse()
+        assertThat((await { setup.import(unspecified, ImportMode.MERGE) } as ImportOutcome.Imported).result.automaticSetup).isFalse()
     }
 
     @Test
@@ -80,11 +80,11 @@ class AutomaticSetupTransferTest {
         val setup = setup()
         val skipped = await { setup.import(setup.receive(transfer()), ImportMode.MERGE) } as ImportOutcome.Imported
         assertThat(skipped.secretsSkipped).isTrue()
-        assertThat(skipped.result.discoverTerminals).isFalse()
+        assertThat(skipped.result.automaticSetup).isFalse()
         listOf(null, """{"TERMINAL_PASSPHRASE":"other-secret"}""").forEach { secrets ->
             val received = setup.receive(transfer(secrets = secrets))
             val result = (await { setup.import(received, ImportMode.MERGE, code) } as ImportOutcome.Imported).result
-            assertThat(result.discoverTerminals).isFalse()
+            assertThat(result.automaticSetup).isFalse()
         }
         assertThat(await { env.container.secrets.get(Secret.ADYEN_API_KEY) }).isEqualTo("old-key")
     }
@@ -95,7 +95,7 @@ class AutomaticSetupTransferTest {
         val received = setup.receive(transfer())
         env.cipher.failEncrypt = true
         val result = (await { setup.import(received, ImportMode.MERGE, code) } as ImportOutcome.Imported).result
-        assertThat(result.discoverTerminals).isFalse()
+        assertThat(result.automaticSetup).isFalse()
         assertThat(result.secrets).isEmpty()
         assertThat(result.secretsError).contains("Keystore")
         assertThat(result.connection).isTrue()
@@ -112,7 +112,7 @@ class AutomaticSetupTransferTest {
         val setup = setup()
         val received = setup.receive(TransferCodec.decode(checkNotNull(QrChunks.parse(chunk)).data))
         val result = (await { setup.import(received, ImportMode.MERGE, "2222-2222-2222") } as ImportOutcome.Imported).result
-        assertThat(result.discoverTerminals).isTrue()
+        assertThat(result.automaticSetup).isTrue()
         assertThat(result.secrets).containsExactly(Secret.ADYEN_API_KEY)
         assertThat(await { env.container.secrets.get(Secret.ADYEN_API_KEY) }).isEqualTo("demo-checkout-key")
         val terminal = await { env.container.settings.current() }.terminal

@@ -67,6 +67,12 @@ data class TerminalSetup(
     /** Whether read-only terminal discovery can propose connection fields for this destination. */
     val discoversTerminals: Boolean get() = destination.discoversTerminals
 
+    /** Whether this boarded phone is ready for optional merchant or store shared-key lookup, independent of payment readiness. */
+    val discoversAccountKey: Boolean
+        get() =
+            destination.discoversAccountKey && !onTerminal && environment != null &&
+                settings.terminal.paymentsAppInstallationId.isNotBlank() && settings.terminal.merchantAccount.isNotBlank()
+
     /** Whether Settings must ask the merchant for TEST or LIVE before API credentials or terminal details. */
     val selectsEnvironment: Boolean get() = destination.selectsEnvironment(onTerminal)
 

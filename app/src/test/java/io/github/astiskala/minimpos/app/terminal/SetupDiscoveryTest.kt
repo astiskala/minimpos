@@ -38,6 +38,12 @@ class SetupDiscoveryTest {
                 id: String,
                 environment: TerminalEnvironment,
             ): DiscoveredKey? = sharedKey
+
+            override suspend fun accountSharedKey(
+                merchantAccount: String,
+                storeId: String?,
+                environment: TerminalEnvironment,
+            ): DiscoveredKey? = sharedKey
         }
     private var env = TestEnvironment(terminalDetails = api)
     private val container get() = env.container

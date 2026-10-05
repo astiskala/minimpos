@@ -11,16 +11,21 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.performTextInput
 import androidx.test.core.app.ApplicationProvider
 import com.google.common.truth.Truth.assertThat
 import io.github.astiskala.minimpos.app.FakeDevice
+import io.github.astiskala.minimpos.app.FakePaymentsApp
 import io.github.astiskala.minimpos.app.MiniMposApp
 import io.github.astiskala.minimpos.app.TestEnvironment
 import io.github.astiskala.minimpos.app.await
 import io.github.astiskala.minimpos.app.awaitCondition
 import io.github.astiskala.minimpos.app.data.security.Secret
 import io.github.astiskala.minimpos.app.data.settings.TerminalMode
+import io.github.astiskala.minimpos.terminal.transport.DiscoveredKey
+import io.github.astiskala.minimpos.terminal.transport.TerminalDetailsApi
 import io.github.astiskala.minimpos.terminal.transport.TerminalEnvironment
+import io.github.astiskala.minimpos.terminal.transport.TerminalListing
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
@@ -35,9 +40,27 @@ import org.robolectric.annotation.Config
 @Config(qualifiers = "en-rAU")
 class TapToPaySettingsTest {
     private val device = FakeDevice()
+    private val paymentsApp = FakePaymentsApp()
+    private var foundKey: DiscoveredKey? = null
+    private var reads = 0
+    private val details =
+        object : TerminalDetailsApi {
+            override suspend fun terminals(environment: TerminalEnvironment): TerminalListing = error("No terminal listing")
+
+            override suspend fun sharedKey(
+                id: String,
+                environment: TerminalEnvironment,
+            ): DiscoveredKey? = error("No terminal key lookup")
+
+            override suspend fun accountSharedKey(
+                merchantAccount: String,
+                storeId: String?,
+                environment: TerminalEnvironment,
+            ): DiscoveredKey? = foundKey.also { reads++ }
+        }
 
     @get:Rule(order = 0)
-    val env = TestEnvironment(device)
+    val env = TestEnvironment(device, paymentsApp = paymentsApp, terminalDetails = details)
 
     @get:Rule(order = 1)
     val compose = createComposeRule()
@@ -92,5 +115,55 @@ class TapToPaySettingsTest {
         compose.onNodeWithTag("forgetPaymentsAppKey").performScrollTo().performClick()
         compose.onNodeWithTag("confirm").performClick()
         compose.awaitCondition("Removing the key") { await { container.secrets.get(Secret.PAYMENTS_APP_API_KEY) } == null }
+    }
+
+    private fun boardPhone() {
+        device.paymentsApps = setOf(TerminalEnvironment.TEST)
+        env.updateSettings { it.copy(terminal = it.terminal.copy(merchantAccount = "Merchant")) }
+        await {
+            container.secrets.set(Secret.ADYEN_API_KEY, "checkout-key")
+            container.secrets.set(Secret.PAYMENTS_APP_API_KEY, "boarding-key")
+        }
+        openTerminalSettings()
+        waitForTag("setUpTapToPay")
+        compose.onNodeWithTag("setUpTapToPay").performScrollTo().performClick()
+        compose.awaitCondition("phone registration completes") {
+            container.settingsState.value.terminal.paymentsAppInstallationId == FakePaymentsApp.INSTALLATION_ID
+        }
+        waitForTag("findSharedKey")
+    }
+
+    @Test
+    @Config(qualifiers = "en-rAU-w320dp-h460dp-hdpi")
+    fun `boarding fills shared-key fields and permits a read-only retry on the smallest screen`() {
+        foundKey = DiscoveredKey("discovered-key", 2, "discovered secret")
+        boardPhone()
+        compose.awaitCondition("lookup fields reach the screen") {
+            container.settingsState.value.terminal.keyIdentifier == "discovered-key"
+        }
+        compose.onNodeWithTag("keyIdentifier").performScrollTo().assertTextContains("discovered-key", substring = true)
+        compose.onNodeWithTag("sharedKeyManual").assertDoesNotExist()
+        val opened = paymentsApp.opened.size
+        compose.onNodeWithTag("findSharedKey").performScrollTo().performClick()
+        compose.awaitCondition("lookup retry finishes") { reads == 2 }
+        assertThat(paymentsApp.opened).hasSize(opened)
+        assertThat(await { container.secrets.get(Secret.TERMINAL_PASSPHRASE) }).isEqualTo("discovered secret")
+    }
+
+    @Test
+    @Config(qualifiers = "ja-w320dp-h460dp-hdpi")
+    fun `missing permissions show manual entry while registration and a retry remain available`() {
+        boardPhone()
+        waitForTag("sharedKeyManual")
+        compose.onNodeWithTag("keyIdentifier").performScrollTo().performTextInput("manual-key")
+        compose.onNodeWithTag("passphrase").performScrollTo().assertExists()
+        compose.onNodeWithTag("keyVersion").assertExists()
+        foundKey = DiscoveredKey("retried-key", 3, "retried secret")
+        val opened = paymentsApp.opened.size
+        compose.onNodeWithTag("findSharedKey").performScrollTo().performClick()
+        compose.awaitCondition("retry fills the key") { container.settingsState.value.terminal.keyIdentifier == "retried-key" }
+        compose.onNodeWithTag("keyIdentifier").performScrollTo().assertTextContains("retried-key", substring = true)
+        compose.onNodeWithTag("sharedKeyManual").assertDoesNotExist()
+        assertThat(paymentsApp.opened).hasSize(opened)
     }
 }

@@ -25,8 +25,8 @@ enum class ConnectionDestination {
 }
 
 /**
- * The connection the setup helper web page sends in a transfer: where payments go and what reaches them, typed on a
- * computer instead of the device. Only what it holds is set, so the device's other settings stay as they are; unlike a
+ * The connection and optional SMTP fields the setup helper web page sends in a transfer, typed on a computer instead
+ * of the device. Only what it holds is set, so the device's other settings stay as they are; unlike a
  * transfer between terminals it may set the device fields ([TerminalSettings.withDeviceFieldsOf]). Its secrets travel
  * sealed beside it, as in any transfer. The page leaves out what was not typed; a blank value counts as left out too.
  *
@@ -39,7 +39,13 @@ enum class ConnectionDestination {
  * @property merchantAccount The merchant account the Checkout API (and the cloud) takes payments for.
  * @property liveUrlPrefix The live endpoint prefix for the Checkout API.
  * @property storeId The store Tap to Pay is set up for.
- * @property automatic Whether to offer read-only terminal discovery after importing the API key; never boards Tap to Pay.
+ * @property automatic Whether to continue optional setup lookup after importing the API key; never boards Tap to Pay.
+ * @property smtpHost SMTP server name; null or blank keeps the saved server.
+ * @property smtpPort SMTP server port; null keeps the saved port, normalized by [SettingsRepository].
+ * @property smtpSecurity SMTP connection security; null keeps the saved choice.
+ * @property smtpUsername SMTP login name; null or blank keeps the saved login.
+ * @property smtpFromAddress Receipt sender address; null or blank keeps the saved address.
+ * @property smtpFromName Receipt sender display name; null or blank keeps the saved name.
  */
 @Serializable
 data class ConnectionSetup(
@@ -53,14 +59,31 @@ data class ConnectionSetup(
     val liveUrlPrefix: String? = null,
     val storeId: String? = null,
     val automatic: Boolean = false,
+    val smtpHost: String? = null,
+    val smtpPort: Int? = null,
+    val smtpSecurity: SmtpSecurity? = null,
+    val smtpUsername: String? = null,
+    val smtpFromAddress: String? = null,
+    val smtpFromName: String? = null,
 ) {
-    /** Whether this helper requests discovery for a physical terminal destination supported by this device. */
-    fun requestsDiscovery(onTerminal: Boolean): Boolean =
+    /** [email] with supplied SMTP fields; omitted or blank text and unrelated receipt email settings stay unchanged. */
+    fun emailAppliedTo(email: EmailSettings): EmailSettings =
+        email.copy(
+            host = smtpHost.or(email.host),
+            port = smtpPort ?: email.port,
+            security = smtpSecurity ?: email.security,
+            username = smtpUsername.or(email.username),
+            fromAddress = smtpFromAddress.or(email.fromAddress),
+            fromName = smtpFromName.or(email.fromName),
+        )
+
+    /** Whether this helper requests optional automatic setup for a destination supported by this device; never boards. */
+    fun requestsAutomaticSetup(onTerminal: Boolean): Boolean =
         automatic &&
             when (destination) {
                 ConnectionDestination.THIS_TERMINAL -> onTerminal
-                ConnectionDestination.NETWORK, ConnectionDestination.CLOUD -> !onTerminal
-                ConnectionDestination.TAP_TO_PAY, null -> false
+                ConnectionDestination.NETWORK, ConnectionDestination.CLOUD, ConnectionDestination.TAP_TO_PAY -> !onTerminal
+                null -> false
             }
 
     /**
@@ -82,7 +105,6 @@ data class ConnectionSetup(
                 ConnectionDestination.TAP_TO_PAY -> TerminalMode.PAYMENTS_APP.takeUnless { onTerminal }
             }
 
-        fun String?.or(current: String) = this?.trim()?.ifEmpty { null } ?: current
         val selected = environment.takeIf { !onTerminal && (mode ?: terminal.mode) in setOf(TerminalMode.TERMINAL, TerminalMode.CLOUD) }
         return terminal.withConnection(mode, selected).copy(
             host = host.or(terminal.host),
@@ -94,4 +116,7 @@ data class ConnectionSetup(
             storeId = storeId.or(terminal.storeId),
         )
     }
+
+    /** A supplied nonblank setup value, trimmed, or the saved [current] value when omitted. */
+    private fun String?.or(current: String): String = this?.trim()?.ifEmpty { null } ?: current
 }

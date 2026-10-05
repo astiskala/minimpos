@@ -171,7 +171,11 @@ class WebsiteTest {
         LANGUAGES.forEach { language ->
             val guide = pages.getValue(language to Kind.GUIDE)
             listOf("on-terminal", "network", "cloud", "tap-to-pay").forEach { destination ->
-                val prerequisites = guide.document.getElementById(destination)!!.nextElementSibling()!!
+                val prerequisites =
+                    guide.document
+                        .getElementById(destination)!!
+                        .nextElementSiblings()
+                        .first { it.tagName() == "p" && !it.hasClass("note") }
                 assertWithMessage("${guide.name} #$destination")
                     .that(prerequisites.select("a").map { it.attr("href") })
                     .containsExactly("#install", "#credentials")
@@ -201,11 +205,17 @@ class WebsiteTest {
         LANGUAGES.forEach { language ->
             val guide = pages.getValue(language to Kind.GUIDE)
             listOf("on-terminal", "network", "cloud", "tap-to-pay").forEach { destination ->
-                val steps =
+                val following =
                     guide.document
                         .getElementById(destination)!!
-                        .nextElementSibling()!!
-                        .nextElementSibling()!!
+                        .nextElementSiblings()
+                        .takeWhile { it.tagName() != "h3" }
+                val steps =
+                    if (destination == "tap-to-pay") {
+                        following.first { it.tagName() == "ol" }
+                    } else {
+                        following.single { it.hasClass("manual-setup") }.select("ol").single()
+                    }
                 val first = steps.select("li").first()!!.text()
                 val label =
                     when (destination) {
@@ -214,7 +224,7 @@ class WebsiteTest {
                         else -> keys.getValue(language)
                     }
                 assertWithMessage("${guide.name} #$destination first step").that(first).contains(label)
-                assertThat(steps.text()).contains(keys.getValue(language))
+                if (destination != "tap-to-pay") assertThat(steps.text()).contains(keys.getValue(language))
                 if (destination == "network" || destination == "cloud") {
                     assertThat(first).contains("TEST")
                     assertThat(first).contains("LIVE")
@@ -485,7 +495,9 @@ class WebsiteTest {
         fun Page.fields() = document.select("#setup-form input").map { listOf(it.id(), it.attr("name"), it.attr("type"), it.attr("value")) }
 
         fun Page.groups() =
-            document.select("#setup-form [data-for]").map { listOf(it.attr("data-for"), it.attr("data-env"), it.attr("data-mode")) }
+            document.select("#setup-form [data-for]").map {
+                listOf(it.attr("data-for"), it.attr("data-env"), it.attr("data-mode"), it.attr("data-automatic-for"))
+            }
 
         fun Page.messages() = document.selectFirst("#setup-form")!!.attributes().filter { it.key.startsWith("data-msg-") }
 
@@ -544,7 +556,7 @@ class WebsiteTest {
                     .parent()!!
                     .parent()!!
                     .attr("data-for"),
-            ).isEqualTo("thisTerminal network cloud")
+            ).isEqualTo("thisTerminal network cloud tapToPay")
             listOf("merchantAccount", "host", "poiId", "cloudPoiId", "keyIdentifier", "keyVersion", "passphrase").forEach { id ->
                 val field = page.document.getElementById(id)!!
                 assertWithMessage("$language: $id").that(field.parent()!!.attr("data-mode")).isEqualTo("manual")
@@ -557,6 +569,18 @@ class WebsiteTest {
             val apiKey = page.document.getElementById("apiKey")!!
             assertThat(apiKey.hasAttr("required")).isTrue()
             assertThat(apiKey.parent()!!.hasAttr("data-mode")).isFalse()
+            assertThat(
+                page.document
+                    .getElementById("merchantAccount")!!
+                    .parent()!!
+                    .attr("data-automatic-for"),
+            ).isEqualTo("tapToPay")
+            assertThat(
+                page.document
+                    .getElementById("passphrase")!!
+                    .parent()!!
+                    .hasAttr("data-automatic-for"),
+            ).isFalse()
         }
     }
 
@@ -596,6 +620,110 @@ class WebsiteTest {
     fun `terminal frames have no model labels`() {
         listOf("ams1", "s1f2").forEach { assertThat(docs.resolve("images/terminal-$it.svg").readText()).doesNotContain("<text") }
         assertThat(docs.resolve("images/terminal-ams1.svg").readText()).doesNotContain("M62 28")
+    }
+}
+
+/** Destination setup instructions and optional email fields share the website's localized page fixtures. */
+class SetupGuideTest {
+    @Test
+    fun `Tap to Pay separates activation installation credential options and boarding`() {
+        LANGUAGES.forEach { language ->
+            val guide = pages.getValue(language to Kind.GUIDE)
+            val heading = guide.document.getElementById("tap-to-pay")!!
+            val notice = heading.nextElementSibling()!!
+            assertWithMessage(guide.name).that(notice.hasClass("note")).isTrue()
+            assertThat(notice.text()).contains("Adyen Payments app role")
+            assertThat(notice.select("a").map { it.attr("href") }).containsExactly("https://help.adyen.com/contact")
+            val following = heading.nextElementSiblings()
+            val steps = following.first { it.tagName() == "ol" }.select("li")
+            assertThat(steps).hasSize(2)
+            assertThat(steps.first()!!.select("a").map { it.attr("href") })
+                .containsExactly(
+                    "https://play.google.com/store/apps/details?id=com.adyen.ipp.mobile.companion.test",
+                    "https://play.google.com/store/apps/details?id=com.adyen.ipp.mobile.companion.live",
+                ).inOrder()
+            val options = following.first { it.tagName() == "dl" }
+            assertThat(options.select("dt")).hasSize(1)
+            assertThat(options.select("dd")).hasSize(1)
+            assertThat(options.select("a").map { it.attr("href") }).containsExactly("setup.html", "#helper").inOrder()
+            assertThat(following.single { it.hasClass("manual-setup") }.text()).contains("Adyen Payments app role")
+        }
+        val english = pages.getValue("en" to Kind.GUIDE).text
+        assertThat(english).contains("You do not need to copy boarding tokens")
+        assertThat(english).contains("boarding does not replace it")
+    }
+
+    @Test
+    fun `every integration shows helper guidance and keeps Manual collapsed without scripts`() {
+        val helperLabels = mapOf("en" to "Setup helper (recommended)", "zh-CN" to "设置助手（推荐）", "ja" to "セットアップヘルパー（推奨）")
+        val manualLabels = mapOf("en" to "Manual", "zh-CN" to "手动", "ja" to "手動")
+        val automaticLabels = mapOf("en" to "Automatic", "zh-CN" to "自动", "ja" to "自動")
+        val continueLabels = mapOf("en" to "Continue setup", "zh-CN" to "继续设置", "ja" to "設定を続ける")
+        LANGUAGES.forEach { language ->
+            val guide = pages.getValue(language to Kind.GUIDE)
+            assertThat(guide.document.select("#connect details.manual-setup")).hasSize(4)
+            assertThat(guide.document.select("script")).isEmpty()
+            listOf("on-terminal", "network", "cloud", "tap-to-pay").forEach { destination ->
+                val following =
+                    guide.document
+                        .getElementById(destination)!!
+                        .nextElementSiblings()
+                        .takeWhile { it.tagName() != "h3" }
+                val helper = following.single { it.hasClass("settings-list") }
+                assertWithMessage("${guide.name} #$destination helper")
+                    .that(helper.select("dt").single().text())
+                    .isEqualTo(helperLabels.getValue(language))
+                assertThat(helper.select("dd")).hasSize(1)
+                assertThat(helper.parents().any { it.tagName() == "details" }).isFalse()
+                assertThat(helper.select("a").map { it.attr("href") }).containsExactly("setup.html", "#helper").inOrder()
+                listOf("TEST", "LIVE", automaticLabels.getValue(language), continueLabels.getValue(language)).forEach {
+                    assertThat(helper.text()).contains(it)
+                }
+                if (destination == "cloud") assertThat(helper.text()).contains("Cloud Device API role")
+                val manual = following.single { it.hasClass("manual-setup") }
+                assertThat(helper.nextElementSibling()).isEqualTo(manual)
+                assertThat(manual.tagName()).isEqualTo("details")
+                assertWithMessage("${guide.name} #$destination Manual default").that(manual.hasAttr("open")).isFalse()
+                assertThat(manual.hasAttr("hidden")).isFalse()
+                assertThat(manual.children().first()!!.tagName()).isEqualTo("summary")
+                assertThat(manual.select("summary").single().text()).isEqualTo(manualLabels.getValue(language))
+                if (destination == "tap-to-pay") {
+                    assertThat(manual.select("p")).hasSize(1)
+                } else {
+                    assertThat(manual.select("ol > li")).hasSize(if (destination == "on-terminal") 3 else 4)
+                }
+            }
+        }
+    }
+
+    @Test
+    fun `SMTP setup is optional secured and links to email testing in every language`() {
+        LANGUAGES.forEach { language ->
+            val helper = pages.getValue(language to Kind.SETUP)
+            val choices = helper.document.select("input[name=includeSmtp]")
+            assertThat(choices.map { it.attr("value") }).containsExactly("no", "yes").inOrder()
+            assertThat(choices.first()!!.hasAttr("checked")).isTrue()
+            val fields = helper.document.getElementById("smtp-fields")!!
+            assertThat(fields.hasAttr("hidden")).isTrue()
+            assertThat(fields.hasAttr("disabled")).isTrue()
+            assertThat(fields.hasAttr("data-for")).isFalse()
+            assertThat(fields.hasAttr("data-mode")).isFalse()
+            assertThat(fields.attr("data-email")).isEqualTo("true")
+            listOf("smtpHost", "smtpPort", "smtpFromAddress").forEach { id ->
+                assertWithMessage("$language: $id").that(fields.select("#$id").single().hasAttr("required")).isTrue()
+            }
+            listOf("smtpUsername", "smtpPassword", "smtpFromName").forEach { id ->
+                assertWithMessage("$language: $id").that(fields.select("#$id").single().hasAttr("required")).isFalse()
+            }
+            assertThat(fields.select("#smtpPassword").single().attr("type")).isEqualTo("password")
+            val security = fields.select("input[name=smtpSecurity]")
+            assertThat(security.map { it.attr("value") }).containsExactly("STARTTLS", "SSL", "NONE").inOrder()
+            assertThat(security.first()!!.hasAttr("checked")).isTrue()
+            assertThat(fields.select("#smtpPort").single().attr("value")).isEqualTo("587")
+            assertThat(helper.document.select("#setup-codes a[href='using.html#email']")).isNotEmpty()
+            val using = pages.getValue(language to Kind.USING)
+            assertThat(using.document.select("#receipts a[href='getting-started.html#helper']")).isNotEmpty()
+        }
     }
 }
 

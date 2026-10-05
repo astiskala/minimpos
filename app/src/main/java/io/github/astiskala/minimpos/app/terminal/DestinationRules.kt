@@ -32,6 +32,9 @@ sealed interface DestinationRules {
     /** Whether Management terminal discovery can propose connection fields for this destination. */
     val discoversTerminals: Boolean get() = false
 
+    /** Whether Management merchant or store settings can supply this destination's shared key after boarding. */
+    val discoversAccountKey: Boolean get() = false
+
     /** Whether the merchant must choose TEST or LIVE instead of reading it from this device or the Payments app. */
     fun selectsEnvironment(onTerminal: Boolean): Boolean = false
 

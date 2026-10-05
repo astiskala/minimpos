@@ -357,7 +357,7 @@
   <string name="transfer_done">Import complete</string>
   <string name="transfer_continue_setup">Continue setup</string>
   <string name="transfer_review_setup">Review setup</string>
-  <string name="transfer_automatic_note">Continue setup finds this terminal or offers a list on this device. Review the details and enter anything missing, then test the connection and API key. Lookup needs the imported API key and Management permissions.</string>
+  <string name="transfer_automatic_note">Continue setup finds a physical terminal or opens Tap to Pay setup. Register this phone to look up its shared key. Review the details and enter anything missing, then test the connection and API key. Lookup needs the imported API key and Management permissions.</string>
   <string name="transfer_added">Products added</string>
   <string name="transfer_updated">Products updated</string>
   <string name="transfer_new_categories">New categories</string>
@@ -527,6 +527,8 @@
   <string name="settings_timeout_hint">Without a response by then, the app checks the transaction status (Adyen advises 120 seconds).</string>
   <string name="settings_shared_key">Shared key</string>
   <string name="settings_shared_key_hint">Copy these from your Customer Area: Devices › Device settings › Integrations › Terminal API › Encryption key (select the pencil icon to see them).</string>
+  <string name="settings_payments_app_shared_key_hint">After phone registration, Mini mPOS uses the Adyen API key to look up the merchant or store shared key. If lookup is unavailable, enter it manually below.</string>
+  <string name="settings_find_shared_key">Find shared key</string>
   <string name="settings_key_identifier">Key identifier</string>
   <string name="settings_key_version">Key version</string>
   <string name="settings_passphrase">Key passphrase</string>

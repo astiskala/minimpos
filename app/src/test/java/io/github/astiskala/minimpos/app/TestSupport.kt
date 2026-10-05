@@ -371,6 +371,12 @@ class TestEnvironment(
                 id: String,
                 environment: TerminalEnvironment,
             ): DiscoveredKey? = null
+
+            override suspend fun accountSharedKey(
+                merchantAccount: String,
+                storeId: String?,
+                environment: TerminalEnvironment,
+            ): DiscoveredKey? = null
         },
     terminalEnvironment: suspend () -> TerminalEnvironment? = { TerminalEnvironment.TEST },
     queryCallback: ((String) -> Unit)? = null,

@@ -86,7 +86,7 @@ existing spelling (`preAuthorisation`, `SaleKind.PRE_AUTHORISATION`, `authorised
 | Transfer | Copies catalog, shared settings and sealed secrets by QR; not history or synchronization. | `SetupTransfer`, `TransferCodec` (`MPC1:`) |
 | Device fields | Configuration that stays local when shared settings are imported. | `AppSettings.withDeviceFieldsOf` |
 | Transfer code | Separate 12-character code for decrypting transferred secrets. | `TransferSeal` |
-| Setup helper | Offline browser tool: Automatic transfers the API key and LIVE prefix for device-side discovery; Manual transfers all connection details. Tap to Pay stays manual. | `docs/setup.html`, `ConnectionSetup` |
+| Setup helper | Offline browser tool: Automatic transfers credentials for device-side lookup; Manual transfers all connection details. Tap to Pay needs its merchant account and separate boarding credential in both modes; shared-key lookup follows registration. Both can include optional SMTP settings. | `docs/setup.html`, `ConnectionSetup` |
 | Secrets | Shared-key passphrase, API keys, SMTP password and PIN verifiers; encrypted and never logged. | `SecretStore` |
 | Admin PIN | Access to configuration and products, separate from financial approval. | `pinManager`, `sessionLock` |
 | Manager approval | Optional financial-action access, configured only after admin PIN; rechecked before sending. | `managerPin`, `managerLock`, Manager PIN |

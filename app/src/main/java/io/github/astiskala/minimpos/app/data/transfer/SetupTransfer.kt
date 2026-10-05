@@ -139,7 +139,7 @@ sealed interface ImportOutcome {
  * @property secrets The secrets stored.
  * @property secretsError Why secrets could not be stored on this device; null when they were (or there were none).
  * @property connection Whether a connection was applied.
- * @property discoverTerminals Whether to offer discovery next, only for a supported Automatic setup whose API key was stored.
+ * @property automaticSetup Whether to continue optional lookup next, only for a supported Automatic setup whose API key was stored.
  */
 data class TransferResult(
     val catalogue: ImportSummary?,
@@ -147,13 +147,13 @@ data class TransferResult(
     val secrets: Set<Secret>,
     val secretsError: String? = null,
     val connection: Boolean = false,
-    val discoverTerminals: Boolean = false,
+    val automaticSetup: Boolean = false,
 )
 
 /**
  * Sets up another terminal of the same merchant account like this one, through QR codes ([TransferCodec]): the
  * catalogue, the settings and the secrets. It also imports the codes of the setup helper web page: a connection
- * ([ConnectionSetup], which only sets what it holds) and its secrets.
+ * ([ConnectionSetup], which only sets the connection and optional SMTP fields it holds) and its secrets.
  *
  * Shared settings omit device-bound fields as defined by [AppSettings.withDeviceFieldsOf]; imported shared values
  * replace this device's values, including defaults. The default tax rate travels as its name and rate and is matched
@@ -271,7 +271,11 @@ class SetupTransfer(
         val unlocked = (if (withSecrets) unlock(received, code) else emptyMap()) ?: return ImportOutcome.WrongCode
         val summary = received.catalogue?.let { catalog.import(it, mode) }
         received.settings?.let { apply(it) }
-        received.connection?.let { connection -> settings.update { it.copy(terminal = connection.appliedTo(it.terminal, onTerminal)) } }
+        received.connection?.let { connection ->
+            settings.update {
+                it.copy(terminal = connection.appliedTo(it.terminal, onTerminal), email = connection.emailAppliedTo(it.email))
+            }
+        }
         val stored = mutableSetOf<Secret>()
         val error =
             try {
@@ -290,7 +294,7 @@ class SetupTransfer(
                 stored,
                 error,
                 received.hasConnection,
-                received.connection?.requestsDiscovery(onTerminal) == true && Secret.ADYEN_API_KEY in stored,
+                received.connection?.requestsAutomaticSetup(onTerminal) == true && Secret.ADYEN_API_KEY in stored,
             ),
             received.hasSecrets && !withSecrets,
         )

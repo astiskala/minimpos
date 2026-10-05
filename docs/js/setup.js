@@ -1,5 +1,5 @@
 /*
- * The setup helper: turns what is typed into the form into the QR codes Mini mPOS reads under
+ * The setup helper: turns connection and optional SMTP details typed into the form into the QR codes Mini mPOS reads under
  * "Set up from another device", entirely in the browser. The format is the app's (see TransferCodec, QrChunks and
  * TransferSeal in the repository): a version 5 transfer with the connection (JSON) and the secrets, sealed with a
  * 12-character transfer code that the page shows and the operator types on the device.
@@ -28,8 +28,14 @@
   const SECTION_CONNECTION = 8;
   const STORED_BLOCK = 0xffff;
   const CUSTOMER_AREA = { test: "https://ca-test.adyen.com/ca/ui/", live: "https://ca-live.adyen.com/ca/ui/" };
-  const CONNECTION_FIELDS = ["host", "poiId", "keyIdentifier", "merchantAccount", "liveUrlPrefix", "storeId"];
-  const SECRET_FIELDS = { passphrase: "TERMINAL_PASSPHRASE", apiKey: "ADYEN_API_KEY", paymentsAppApiKey: "PAYMENTS_APP_API_KEY" };
+  const CONNECTION_FIELDS = [
+    "host", "poiId", "keyIdentifier", "merchantAccount", "liveUrlPrefix", "storeId",
+    "smtpHost", "smtpSecurity", "smtpUsername", "smtpFromAddress", "smtpFromName",
+  ];
+  const SECRET_FIELDS = {
+    passphrase: "TERMINAL_PASSPHRASE", apiKey: "ADYEN_API_KEY",
+    paymentsAppApiKey: "PAYMENTS_APP_API_KEY", smtpPassword: "SMTP_PASSWORD",
+  };
 
   const results = document.getElementById("setup-codes");
   const status = document.getElementById("setup-status");
@@ -180,14 +186,15 @@
 
   const destination = () => form.elements.destination.value;
   const environment = () => form.elements.environment.value;
-  const setupMode = () => destination() === "tapToPay" ? "manual" : form.elements.setupMode.value;
+  const setupMode = () => form.elements.setupMode.value;
 
   /** Hidden destination, environment and mode fields are disabled, so they are neither checked nor read. */
   const refresh = () => {
-    for (const group of form.querySelectorAll("fieldset[data-for], fieldset[data-mode]")) {
+    for (const group of form.querySelectorAll("fieldset[data-for], fieldset[data-mode], fieldset[data-email]")) {
       const wanted = (!group.dataset.for || group.dataset.for.split(" ").includes(destination())) &&
         (!group.dataset.env || group.dataset.env === environment()) &&
-        (!group.dataset.mode || group.dataset.mode === setupMode());
+        (!group.dataset.mode || group.dataset.mode === setupMode() || group.dataset.automaticFor?.split(" ").includes(destination())) &&
+        (!group.dataset.email || form.elements.includeSmtp.value === "yes");
       group.hidden = !wanted;
       group.disabled = !wanted;
     }
@@ -255,10 +262,12 @@
     }
     const version = Number.parseInt(data.get("keyVersion") || "", 10);
     if (Number.isInteger(version)) connection.keyVersion = version;
+    const port = Number.parseInt(data.get("smtpPort") || "", 10);
+    if (Number.isInteger(port)) connection.smtpPort = port;
     const secrets = {};
     for (const [name, secret] of Object.entries(SECRET_FIELDS)) {
       const value = data.get(name) || "";
-      if (value.trim()) secrets[secret] = name === "passphrase" ? value : value.trim();
+      if (value.trim()) secrets[secret] = ["passphrase", "smtpPassword"].includes(name) ? value : value.trim();
     }
     const code = Object.keys(secrets).length ? randomString(CODE_ALPHABET, CODE_LENGTH).match(/.{4}/g).join("-") : null;
     try {

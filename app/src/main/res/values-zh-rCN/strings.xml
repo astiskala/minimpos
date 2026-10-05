@@ -460,7 +460,6 @@
   <string name="settings_secret_show">显示</string>
   <string name="settings_secret_hide">隐藏</string>
   <string name="settings_secret_not_stored">此设备无法安全保存（%1$s）。请重试或重启设备。</string>
-  <string name="settings_advanced">高级</string>
   <string name="setup_poiid">请在终端设置中输入终端 ID（POIID）</string>
   <string name="setup_host">请在终端设置中输入终端 IP 地址</string>
   <string name="setup_key_identifier">请在终端设置中输入共享密钥标识符</string>
@@ -507,9 +506,6 @@
   <string name="settings_host_placeholder">例如 192.168.1.20</string>
   <string name="settings_host_hint">终端必须与此设备处于同一网络。</string>
   <string name="settings_port">端口</string>
-  <string name="settings_sale_id">销售系统 ID（Sale ID）</string>
-  <string name="settings_timeout">支付超时（秒）</string>
-  <string name="settings_timeout_hint">若在此时间内未收到响应，应用将查询交易状态（Adyen 建议 120 秒）。</string>
   <string name="settings_shared_key">共享密钥</string>
   <string name="settings_shared_key_hint">从商户后台复制：Devices › Device settings › Integrations › Terminal API › Encryption key（点击铅笔图标查看）。</string>
   <string name="settings_payments_app_shared_key_hint">请在此输入共享密钥，或在设置助手中填写。手机注册不会获取共享密钥。</string>

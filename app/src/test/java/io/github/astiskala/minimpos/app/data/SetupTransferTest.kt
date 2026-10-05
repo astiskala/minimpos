@@ -66,10 +66,8 @@ class SetupTransferTest {
                         environment = TerminalEnvironment.LIVE,
                         host = "192.168.1.20",
                         poiIdOverride = "S1F2-000158200000001",
-                        saleId = "Cafe",
                         keyIdentifier = "store-key",
                         keyVersion = 3,
-                        timeoutSeconds = 180,
                         merchantAccount = "HarbourCoffeeCOM",
                         liveUrlPrefix = "abc123-Harbour",
                     ),
@@ -234,14 +232,13 @@ class SetupTransferTest {
                 Transfer(
                     settings =
                         """{"receipt":{"charsPerLine":500},"email":{"port":0},""" +
-                            """"terminal":{"timeoutSeconds":5,"keyVersion":0},"future":1}""",
+                            """"terminal":{"keyVersion":0},"future":1}""",
                 ),
             )
         await { setup(target).import(odd, ImportMode.MERGE) }
         val copied = await { target.container.settings.current() }
         assertThat(copied.receipt.charsPerLine).isEqualTo(64)
         assertThat(copied.email.port).isEqualTo(1)
-        assertThat(copied.terminal.timeoutSeconds).isEqualTo(120)
         assertThat(copied.terminal.keyVersion).isEqualTo(1)
 
         val code = seal.newCode()
@@ -259,7 +256,7 @@ class SetupTransferTest {
     fun `the setup helper's connection sets only what it holds, and its secrets open with its code`() {
         target.updateSettings {
             it.copy(
-                terminal = it.terminal.copy(mode = TerminalMode.SIMULATOR, environment = TerminalEnvironment.TEST, saleId = "Cafe"),
+                terminal = it.terminal.copy(mode = TerminalMode.SIMULATOR, environment = TerminalEnvironment.TEST),
                 receipt = it.receipt.copy(footer = "Keep me"),
             )
         }
@@ -292,7 +289,6 @@ class SetupTransferTest {
         assertThat(copied.terminal.keyVersion).isEqualTo(2)
         assertThat(copied.terminal.merchantAccount).isEqualTo("HarbourCoffeeCOM")
         // What it does not hold stays as it was.
-        assertThat(copied.terminal.saleId).isEqualTo("Cafe")
         assertThat(copied.receipt.footer).isEqualTo("Keep me")
         assertThat(await { target.container.secrets.get(Secret.TERMINAL_PASSPHRASE) }).isEqualTo("correct horse")
         assertThat(await { target.container.secrets.get(Secret.ADYEN_API_KEY) }).isEqualTo("AQE-key")

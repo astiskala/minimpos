@@ -460,7 +460,6 @@
   <string name="settings_secret_show">表示</string>
   <string name="settings_secret_hide">非表示</string>
   <string name="settings_secret_not_stored">このデバイスに安全に保存できませんでした（%1$s）。再試行するか、デバイスを再起動してください。</string>
-  <string name="settings_advanced">詳細設定</string>
   <string name="setup_poiid">端末設定に端末ID（POIID）を入力してください</string>
   <string name="setup_host">端末設定に端末のIPアドレスを入力してください</string>
   <string name="setup_key_identifier">端末設定に共有キーの識別子を入力してください</string>
@@ -507,9 +506,6 @@
   <string name="settings_host_placeholder">例：192.168.1.20</string>
   <string name="settings_host_hint">端末はこのデバイスと同じネットワークに接続してください。</string>
   <string name="settings_port">ポート</string>
-  <string name="settings_sale_id">Sale ID</string>
-  <string name="settings_timeout">決済タイムアウト（秒）</string>
-  <string name="settings_timeout_hint">この時間までに応答がなければ取引状況を確認します（Adyenの推奨は120秒）。</string>
   <string name="settings_shared_key">共有キー</string>
   <string name="settings_shared_key_hint">Customer AreaのDevices › Device settings › Integrations › Terminal API › Encryption keyからコピーしてください（鉛筆アイコンで表示）。</string>
   <string name="settings_payments_app_shared_key_hint">共有キーはここで入力するか、セットアップヘルパーに含めてください。スマートフォンの登録では取得しません。</string>

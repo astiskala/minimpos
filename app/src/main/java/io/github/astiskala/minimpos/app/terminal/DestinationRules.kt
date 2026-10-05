@@ -6,6 +6,7 @@ import io.github.astiskala.minimpos.app.data.settings.AppSettings
 import io.github.astiskala.minimpos.app.data.settings.TerminalMode
 import io.github.astiskala.minimpos.app.data.settings.TerminalSettings
 import io.github.astiskala.minimpos.terminal.client.RecoveryPolicy
+import io.github.astiskala.minimpos.terminal.client.TerminalClient
 import io.github.astiskala.minimpos.terminal.transport.TerminalEnvironment
 import kotlin.time.Duration
 
@@ -44,8 +45,8 @@ sealed interface DestinationRules {
     /** How a transaction whose answer is missing is recovered with status checks. */
     val recovery: RecoveryPolicy get() = RecoveryPolicy()
 
-    /** How long to wait for a payment or refund, with [configured] as Settings say. */
-    fun transactionTimeout(configured: Duration): Duration = configured
+    /** How long to wait for a payment or refund response before checking its status, as Adyen advises. */
+    val transactionTimeout: Duration get() = TerminalClient.DEFAULT_TRANSACTION_TIMEOUT
 
     /** The POIID requests go to with [terminal] on [device], as [TerminalSetup.poiId] describes it. */
     fun poiId(

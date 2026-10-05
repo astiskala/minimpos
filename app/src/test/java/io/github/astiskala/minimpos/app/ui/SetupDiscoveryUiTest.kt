@@ -65,9 +65,7 @@ class SetupDiscoveryUiTest {
         waitForTag("terminalMode")
         compose.onNodeWithTag("terminalMode").assertTextContains("Simulator", substring = true)
         compose.onNodeWithTag("keyIdentifier").assertDoesNotExist()
-        compose.onNodeWithText("Sale ID").assertDoesNotExist()
-        compose.onNodeWithTag("advanced").performScrollTo().performClick()
-        compose.waitUntilAtLeastOneExists(hasText("Sale ID"), 15_000)
+        compose.onNodeWithTag("advanced").assertDoesNotExist()
 
         chooseMode(TerminalMode.TERMINAL)
         waitForTag("environment_TEST")

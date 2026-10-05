@@ -25,14 +25,13 @@ import io.github.astiskala.minimpos.terminal.transport.TerminalTls
 import io.github.astiskala.minimpos.terminal.transport.TerminalTransport
 import java.util.concurrent.atomic.AtomicReference
 import kotlin.time.Duration
-import kotlin.time.Duration.Companion.seconds
 
 /** Where payments go now, ready to send ([Open]) or why nothing can be sent ([Blocked]), see [Destination.connect]. */
 sealed interface Connection {
     /**
      * Requests can be sent.
      *
-     * @property client Sends them, with the setup's SaleID and POIID and the destination's timeout and recovery.
+     * @property client Sends them, with the app's SaleID and POIID and the destination's timeout and recovery.
      * @property destination What it can do besides payments and refunds ([DestinationRules.aborts],
      *   [DestinationRules.diagnoses]).
      * @property context Reads only the setup and certificate belonging to this connection.
@@ -100,8 +99,8 @@ sealed interface Destination {
 
     /**
      * The client for [unlocked], which has no [TerminalSetup.problem] and goes here, identifying the POS as
-     * [application]: the transport ([open]) with the setup's SaleID ([TerminalGateway.DEFAULT_SALE_ID] when blank) and
-     * POIID, and the [rules]' transaction timeout and recovery. Or why there is none.
+     * [application]: the transport ([open]) with the app's SaleID ([TerminalGateway.DEFAULT_SALE_ID]) and POIID, and
+     * the [rules]' transaction timeout and recovery. Or why there is none.
      */
     suspend fun connect(
         unlocked: UnlockedSetup,
@@ -114,18 +113,12 @@ sealed interface Destination {
 
             is Opening.Transport -> {
                 val setup = unlocked.setup
-                val terminal = setup.settings.terminal
                 val client =
                     TerminalClient(
                         transport = opening.transport,
-                        identity =
-                            TerminalIdentity(
-                                terminal.saleId.trim().ifEmpty { TerminalGateway.DEFAULT_SALE_ID },
-                                checkNotNull(setup.poiId),
-                            ),
+                        identity = TerminalIdentity(TerminalGateway.DEFAULT_SALE_ID, checkNotNull(setup.poiId)),
                         application = application,
-                        // Stored settings are normalized, so the timeout is within its range.
-                        transactionTimeout = rules.transactionTimeout(terminal.timeoutSeconds.seconds),
+                        transactionTimeout = rules.transactionTimeout,
                         recovery = rules.recovery,
                     )
                 Connection.Open(client, rules) { setup.paymentContext(opening.environment() ?: setup.environment) }
@@ -359,8 +352,7 @@ internal class CloudTerminal(
 
     /**
      * The rules of a terminal in the cloud ([TerminalMode.CLOUD]): the merchant account, the API key and its configured
-     * POIID, no shared key or address; payments wait at least [AdyenCloudDevices.MIN_TRANSACTION_TIMEOUT], as Adyen
-     * requires.
+     * POIID, no shared key or address; payments wait [AdyenCloudDevices.MIN_TRANSACTION_TIMEOUT], as Adyen requires.
      */
     companion object : DestinationRules {
         override val mode: TerminalMode get() = TerminalMode.CLOUD
@@ -379,7 +371,7 @@ internal class CloudTerminal(
                 setup.settings.terminal
             }
 
-        override fun transactionTimeout(configured: Duration): Duration = maxOf(configured, AdyenCloudDevices.MIN_TRANSACTION_TIMEOUT)
+        override val transactionTimeout: Duration get() = AdyenCloudDevices.MIN_TRANSACTION_TIMEOUT
 
         override fun poiId(
             terminal: TerminalSettings,

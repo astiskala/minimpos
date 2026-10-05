@@ -948,7 +948,7 @@ class ArchitectureTest {
                         "getAborts",
                         "getDiagnoses",
                         "getRecovery",
-                        "transactionTimeout",
+                        "getTransactionTimeout",
                         "getSecrets",
                         "poiId",
                         "host",

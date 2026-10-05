@@ -375,13 +375,6 @@ fun SettingSecret(
     }
 }
 
-/** Rarely needed settings, collapsed until opened. */
-@Composable
-fun AdvancedSettings(
-    modifier: Modifier = Modifier,
-    content: @Composable () -> Unit,
-) = CollapsibleSettings(stringResource(R.string.settings_advanced), tag = "advanced", modifier = modifier) { content() }
-
 /**
  * Settings under an upper-case [title] that opens and closes them; they start open when [initiallyOpen]. The title is
  * tagged [tag] for tests.

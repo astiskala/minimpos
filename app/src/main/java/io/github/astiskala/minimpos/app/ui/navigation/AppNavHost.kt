@@ -3,6 +3,8 @@ package io.github.astiskala.minimpos.app.ui.navigation
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.navigation3.rememberViewModelStoreNavEntryDecorator
 import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.runtime.rememberNavBackStack
@@ -27,6 +29,7 @@ import io.github.astiskala.minimpos.app.feature.sale.PaymentLinkScreen
 import io.github.astiskala.minimpos.app.feature.sale.PaymentScreen
 import io.github.astiskala.minimpos.app.feature.sale.SaleResultScreen
 import io.github.astiskala.minimpos.app.feature.sale.SaleScreen
+import io.github.astiskala.minimpos.app.feature.settings.OnboardingScreen
 import io.github.astiskala.minimpos.app.feature.settings.SettingsScreen
 import io.github.astiskala.minimpos.app.feature.settings.SettingsSectionScreen
 import io.github.astiskala.minimpos.app.feature.transfer.TransferExportScreen
@@ -34,14 +37,23 @@ import io.github.astiskala.minimpos.app.feature.transfer.TransferImportScreen
 import io.github.astiskala.minimpos.app.ui.components.LocalAppContainer
 
 /**
- * Maps every [Route] to its screen, starting at [Route.Home]. Admin routes are wrapped in [PinGate], and the admin
+ * Maps every [Route] to its screen, starting at [Route.Home] or first-run [Route.Onboarding] above Home.
+ * Onboarding stays below setup screens so Back can change the initial choice. Admin routes are wrapped in [PinGate], and the admin
  * area locks again once no protected route is left on the back stack. Each entry gets its own saved state and view
  * models, which are cleared when it leaves the stack.
  */
 @Composable
 fun AppNavHost() {
     val container = LocalAppContainer.current
-    val backStack = rememberNavBackStack(Route.Home)
+    val completed = container.onboardingState.collectAsStateWithLifecycle()
+    if (completed.value == null) return
+    val startWithOnboarding = rememberSaveable { completed.value == false }
+    val backStack =
+        if (startWithOnboarding) {
+            rememberNavBackStack(Route.Home, Route.Onboarding)
+        } else {
+            rememberNavBackStack(Route.Home)
+        }
     val navigator = remember(backStack) { Navigator(backStack) }
     val top = backStack.lastOrNull()
 
@@ -60,6 +72,7 @@ fun AppNavHost() {
         entryProvider =
             entryProvider {
                 entry<Route.Home> { HomeScreen(navigator) }
+                entry<Route.Onboarding> { OnboardingScreen(navigator) }
                 entry<Route.Sale> { SaleScreen(navigator, SaleKind.SALE) }
                 entry<Route.PreAuth> { SaleScreen(navigator, SaleKind.PRE_AUTHORISATION) }
                 entry<Route.Checkout> { CheckoutScreen(navigator, it.kind) }
@@ -81,7 +94,9 @@ fun AppNavHost() {
                 entry<Route.TransferImport> { PinGate(navigator) { TransferImportScreen(navigator) } }
                 entry<Route.Settings> { PinGate(navigator) { SettingsScreen(navigator) } }
                 entry<Route.SettingsSection> {
-                    PinGate(navigator) { SettingsSectionScreen(it.section, navigator, automaticSetup = it.automaticSetup) }
+                    PinGate(navigator) {
+                        SettingsSectionScreen(it.section, navigator, automaticSetup = it.automaticSetup, helperSetup = it.helperSetup)
+                    }
                 }
             },
     )

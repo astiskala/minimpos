@@ -86,6 +86,8 @@
       <div class="guide-body">
         <section id="try">
           <h2>Try it first—no account needed</h2>
+          <p>On first launch, choose <strong>Try simulator with samples</strong>, <strong>Set up from another device</strong> to import a setup QR code, or <strong>Set up a terminal</strong>. The simulator choice adds example products and read-only demo history without an Adyen account. Sample history and its receipts are labeled as demos and do not count in day totals.</p>
+          <p>In <strong>Settings › Data</strong>, use <strong>Add sample data</strong> or <strong>Remove sample data</strong>. Removal includes edited sample products, but keeps your own products, history, tax rates and settings, and any sample category your products use. Adding samples here does not change the payment destination.</p>
           <p>Download <code>minimpos-&lt;version&gt;.apk</code> from the <a href="https://github.com/astiskala/minimpos/releases/latest">latest release</a> and open it on an Android phone or emulator (Android 9 or later). Allow installation from your browser or file manager when Android asks.</p>
           <p>Away from an Adyen terminal, Mini mPOS starts with the <strong>simulator</strong>. No card is charged. In <strong>Settings › Simulator</strong>, choose approved, declined, busy or timed-out results, the delay and whether a printer is available. Simulated receipts appear on screen; deposits, tips and captures can be tried too. For offline demo links, see <a href="using.html#payment-links">payment links</a>.</p>
           <p>Building from source? Follow the <a href="https://github.com/astiskala/minimpos/blob/main/CONTRIBUTING.md">contributor guide</a>.</p>
@@ -124,7 +126,7 @@
           <ul>
             <li><strong>Cloud Device API role</strong>: required for cloud payments.</li>
             <li><strong>Management API — Terminal actions read</strong>: optional automatic terminal lookup, including the account and last reported network addresses.</li>
-            <li><strong>Management API — Terminal settings read</strong>: optional shared-key settings lookup for this terminal, a network terminal or Tap to Pay.</li>
+            <li><strong>Management API — Terminal settings read</strong>: optional shared-key settings lookup for this terminal or a network terminal.</li>
             <li><strong>Management API — Terminal settings Advanced read and write</strong>: optional shared-key passphrase lookup for those destinations.</li>
           </ul>
           <p>For this terminal, a network terminal or Tap to Pay, also prepare a <strong>shared key</strong>: identifier, passphrase and version, from <strong>Devices › Device settings › Integrations › Terminal API › Encryption key</strong>. See Adyen's <a href="https://docs.adyen.com/point-of-sale/design-your-integration/choose-your-architecture/local">local integration guide</a>. Cloud setups do not use this key.</p>
@@ -141,7 +143,7 @@
             <strong>Automatic (recommended)</strong> asks for the API key; the device finds the terminal's account,
             address and shared key when lookup permissions allow. Choose a terminal on a phone or tablet and review
             the result. <strong>Manual</strong> asks for all connection details on the computer.
-            Both modes require the <strong>live URL prefix</strong> for LIVE. Tap to Pay supports both modes;
+            Both modes require the <strong>live URL prefix</strong> for LIVE. Tap to Pay uses manual shared-key entry;
             installation and phone registration still happen on the device. See <a href="#tap-to-pay">its setup steps</a>.</p>
           <p>You can also include optional SMTP settings for email receipts. See <a href="using.html#email">email setup</a> for provider requirements. After importing, review <strong>Settings › Email</strong> and send a test email.</p>
           <p>Click <strong>Make QR codes</strong>. In the app, open <strong>Settings › Terminal</strong> and tap
@@ -149,7 +151,7 @@
             needed first. Scan all codes, review the destination and environment, enter the transfer code and tap
             <strong>Import</strong>.
             Tap <strong>Continue setup</strong> for Automatic, or <strong>Review setup</strong> for Manual.
-            Enter anything missing and test the connection and API key below. If lookup is unavailable, the imported
+            Supplied details start collapsed; tap a step to review or edit them. Enter anything missing and test the connection and API key below. If lookup is unavailable, the imported
             key stays saved; use the device's fields or Manual in the helper. You can also enter everything directly
             in Settings › Terminal.</p>
           <h3 id="on-terminal">On an Adyen terminal</h3>
@@ -208,15 +210,15 @@
           <p>Choose how to enter the credentials from the installed Payments app's environment:</p>
           <dl class="settings-list">
             <dt>Setup helper (recommended)</dt>
-            <dd>On a trusted computer, open the <a href="setup.html">setup helper</a> and choose Tap to Pay, the matching TEST/LIVE environment and <strong>Automatic</strong>. Fill in the Adyen API key, merchant account and separate Payments app API key. For LIVE, include the live URL prefix; optionally include a store ID. Follow <a href="#helper">the QR import steps</a>, then tap <strong>Continue setup</strong> on the phone. Choose <strong>Manual</strong> in the helper to include the shared key yourself.</dd>
+            <dd>On a trusted computer, open the <a href="setup.html">setup helper</a> and choose Tap to Pay and the matching TEST/LIVE environment. Fill in the Adyen API key, merchant account and separate Payments app API key. Enter the shared key here or later on the phone. For LIVE, include the live URL prefix; optionally include a store ID. Follow <a href="#helper">the QR import steps</a>, then tap <strong>Review setup</strong> on the phone.</dd>
           </dl>
           <details class="manual-setup">
             <summary>Manual</summary>
-            <p>In <strong>Settings › Terminal</strong>, save the <strong>Adyen API key</strong>. Under <strong>Checkout API</strong>, enter the merchant account and, for LIVE, the live URL prefix. Under <strong>Tap to Pay</strong>, save a separate <strong>Payments app API key</strong> with only the Adyen Payments app role and optionally enter a store ID (not its reference). You can enter the shared key's identifier, passphrase and version yourself.</p>
+            <p>In <strong>Settings › Terminal</strong>, save the <strong>Adyen API key</strong>. Under <strong>Checkout API</strong>, enter the merchant account and, for LIVE, the live URL prefix. Under <strong>Tap to Pay</strong>, save a separate <strong>Payments app API key</strong> with only the Adyen Payments app role and optionally enter a store ID (not its reference). Enter the shared key's identifier, passphrase and version under <strong>Shared key</strong>.</p>
           </details>
           <p>For either option, tap <strong>Test API key</strong>, then <strong>Set up Tap to Pay</strong> and complete registration in the Payments app. Use the same merchant account for Checkout and phone registration.</p>
-          <p>After registration, Mini mPOS tries to read the shared key using your Adyen API key and the <a href="#credentials">optional settings roles</a>, in the installed Payments app's environment. It reads <a href="https://docs.adyen.com/api-explorer/Management/3/get/stores/(storeId)/terminalSettings">store settings</a> when you enter a store ID, otherwise <a href="https://docs.adyen.com/api-explorer/Management/3/get/merchants/(merchantId)/terminalSettings">merchant settings</a>; it does not look up physical terminals. Review the retrieved key, then test the connection. If permissions or settings are unavailable, registration stays complete and saved manual values stay unchanged. Enter the missing details manually or tap <strong>Find shared key</strong> to retry without reboarding.</p>
-          <p>Mini mPOS performs the boarding flow in Adyen's <a href="https://docs.adyen.com/point-of-sale/mobile-android/build/payments-app">Payments app guide</a>: it checks registration, requests a one-time boarding token and sends it to the Payments app. You do not need to copy boarding tokens. The Payments app API key authorizes registration; the separate Adyen API key supports Checkout operations and optional settings lookup. The shared key encrypts payment messages, as Adyen requires; boarding does not replace it.</p>
+          <p>Mini mPOS does not look up the Tap to Pay shared key. Enter it in the helper or on the phone, then test the connection. Saved details start collapsed during helper-guided setup; tap a step to review or edit them.</p>
+          <p>Mini mPOS performs the boarding flow in Adyen's <a href="https://docs.adyen.com/point-of-sale/mobile-android/build/payments-app">Payments app guide</a>: it checks registration, requests a one-time boarding token and sends it to the Payments app. You do not need to copy boarding tokens. The Payments app API key authorizes registration; the separate Adyen API key supports Checkout operations. The shared key encrypts payment messages, as Adyen requires; boarding does not replace it.</p>
           <p>Payments open the Payments app and return to Mini mPOS. The installed app determines TEST or LIVE. To deregister the phone later, use <strong>Remove this phone</strong>.</p>
           <p class="note">API keys are encrypted on this device. Adyen recommends keeping them on a server; Mini mPOS has none. Use narrowly scoped credentials dedicated to the device or terminal fleet, set an admin PIN and revoke exposed or lost-device credentials. Read the <a href="https://github.com/astiskala/minimpos/blob/main/SECURITY.md">security policy</a>.</p>
           <p class="back-to-contents"><a href="#contents">Back to contents</a></p>

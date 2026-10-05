@@ -80,13 +80,15 @@ existing spelling (`preAuthorisation`, `SaleKind.PRE_AUTHORISATION`, `authorised
 | Outcome | Typed result presented in the current language, worded only at the UI boundary. | `ActionOutcome`, `ActionState`, `OutcomeMessages.kt` |
 | Stored reason | Typed app-origin reason; Adyen/terminal messages remain verbatim. | `StoredReason` |
 | Catalogue | Products, categories and tax rates. | `CatalogRepository` |
+| Sample data | Optional demo products, categories and read-only simulated history, tracked separately for scoped removal. Never replaces merchant data or credentials. | `data/repo/SampleData`, `sample` on stored rows |
+| Onboarding | First-run choice of simulator with sample data, setup import or terminal settings; completion stays local. | `feature/settings/OnboardingScreen`, `AppSettings.onboardingCompleted` |
 | Pricing change | Confirmed currency/tax-style transition, including durable recovery; numeric prices are preserved and rounded, not FX-converted. | `payment/PricingChanges` |
 | Starter tax | Initial country-based rates and price style, not an ongoing regional override. | `StarterTax` |
 | New-installation settings | Baseline plus initial country/language choices; never overrides saved settings. | `AppSettings.forNewInstallation` |
 | Transfer | Copies catalog, shared settings and sealed secrets by QR; not history or synchronization. | `SetupTransfer`, `TransferCodec` (`MPC1:`) |
 | Device fields | Configuration that stays local when shared settings are imported. | `AppSettings.withDeviceFieldsOf` |
 | Transfer code | Separate 12-character code for decrypting transferred secrets. | `TransferSeal` |
-| Setup helper | Offline browser tool: Automatic transfers credentials for device-side lookup; Manual transfers all connection details. Tap to Pay needs its merchant account and separate boarding credential in both modes; shared-key lookup follows registration. Both can include optional SMTP settings. | `docs/setup.html`, `ConnectionSetup` |
+| Setup helper | Offline browser tool: Automatic transfers credentials for physical-terminal lookup; Manual transfers connection details. Tap to Pay uses manual shared-key entry in the helper or on the phone. Imported setup collapses supplied details without treating them as tested. Optional SMTP settings can be included. | `docs/setup.html`, `ConnectionSetup` |
 | Secrets | Shared-key passphrase, API keys, SMTP password and PIN verifiers; encrypted and never logged. | `SecretStore` |
 | Admin PIN | Access to configuration and products, separate from financial approval. | `pinManager`, `sessionLock` |
 | Manager approval | Optional financial-action access, configured only after admin PIN; rechecked before sending. | `managerPin`, `managerLock`, Manager PIN |

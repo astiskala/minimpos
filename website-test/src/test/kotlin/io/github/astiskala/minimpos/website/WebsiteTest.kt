@@ -22,6 +22,32 @@ import kotlin.io.path.readText
  */
 class WebsiteTest {
     @Test
+    fun `every getting started guide explains onboarding and scoped sample removal`() {
+        val labels =
+            mapOf(
+                "en" to
+                    listOf(
+                        "Try simulator with samples",
+                        "Set up from another device",
+                        "Set up a terminal",
+                        "Add sample data",
+                        "Remove sample data",
+                    ),
+                "zh-CN" to listOf("使用示例数据试用模拟器", "从另一台设备设置", "设置终端", "添加示例数据", "删除示例数据"),
+                "ja" to listOf("サンプルでシミュレーターを試す", "別のデバイスから設定", "端末を設定", "サンプルデータを追加", "サンプルデータを削除"),
+            )
+        labels.forEach { (language, actions) ->
+            val text =
+                pages
+                    .getValue(language to Kind.GUIDE)
+                    .document
+                    .select("#try")
+                    .text()
+            actions.forEach { assertWithMessage("$language onboarding: $it").that(text).contains(it) }
+        }
+    }
+
+    @Test
     fun `pages declare their language and metadata`() {
         val locales = mapOf("en" to "en_US", "zh-CN" to "zh_CN", "ja" to "ja_JP")
         pages.forEach { (key, page) ->
@@ -556,7 +582,7 @@ class WebsiteTest {
                     .parent()!!
                     .parent()!!
                     .attr("data-for"),
-            ).isEqualTo("thisTerminal network cloud tapToPay")
+            ).isEqualTo("thisTerminal network cloud")
             listOf("merchantAccount", "host", "poiId", "cloudPoiId", "keyIdentifier", "keyVersion", "passphrase").forEach { id ->
                 val field = page.document.getElementById(id)!!
                 assertWithMessage("$language: $id").that(field.parent()!!.attr("data-mode")).isEqualTo("manual")
@@ -569,18 +595,13 @@ class WebsiteTest {
             val apiKey = page.document.getElementById("apiKey")!!
             assertThat(apiKey.hasAttr("required")).isTrue()
             assertThat(apiKey.parent()!!.hasAttr("data-mode")).isFalse()
-            assertThat(
-                page.document
-                    .getElementById("merchantAccount")!!
-                    .parent()!!
-                    .attr("data-automatic-for"),
-            ).isEqualTo("tapToPay")
-            assertThat(
-                page.document
-                    .getElementById("passphrase")!!
-                    .parent()!!
-                    .hasAttr("data-automatic-for"),
-            ).isFalse()
+            assertThat(page.document.select("[data-automatic-for]")).isEmpty()
+            listOf("keyIdentifier", "passphrase", "keyVersion").forEach { id ->
+                assertThat(page.document.getElementById(id)!!.attr("data-required-for")).isEqualTo("thisTerminal network")
+            }
+            assertThat(page.externalLinks).doesNotContain(
+                "https://docs.adyen.com/api-explorer/Management/3/get/merchants/(merchantId)/terminalSettings",
+            )
         }
     }
 
@@ -659,6 +680,7 @@ class SetupGuideTest {
         val manualLabels = mapOf("en" to "Manual", "zh-CN" to "手动", "ja" to "手動")
         val automaticLabels = mapOf("en" to "Automatic", "zh-CN" to "自动", "ja" to "自動")
         val continueLabels = mapOf("en" to "Continue setup", "zh-CN" to "继续设置", "ja" to "設定を続ける")
+        val reviewLabels = mapOf("en" to "Review setup", "zh-CN" to "检查设置", "ja" to "設定を確認")
         LANGUAGES.forEach { language ->
             val guide = pages.getValue(language to Kind.GUIDE)
             assertThat(guide.document.select("#connect details.manual-setup")).hasSize(4)
@@ -676,7 +698,13 @@ class SetupGuideTest {
                 assertThat(helper.select("dd")).hasSize(1)
                 assertThat(helper.parents().any { it.tagName() == "details" }).isFalse()
                 assertThat(helper.select("a").map { it.attr("href") }).containsExactly("setup.html", "#helper").inOrder()
-                listOf("TEST", "LIVE", automaticLabels.getValue(language), continueLabels.getValue(language)).forEach {
+                val flowLabels =
+                    if (destination == "tap-to-pay") {
+                        listOf(reviewLabels.getValue(language))
+                    } else {
+                        listOf(automaticLabels.getValue(language), continueLabels.getValue(language))
+                    }
+                (listOf("TEST", "LIVE") + flowLabels).forEach {
                     assertThat(helper.text()).contains(it)
                 }
                 if (destination == "cloud") assertThat(helper.text()).contains("Cloud Device API role")

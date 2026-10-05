@@ -200,6 +200,7 @@ enum class PaymentAction {
 val SaleWithLines.actions: Set<PaymentAction>
     get() =
         buildSet {
+            if (sale.sample) return@buildSet
             if (RefundablePayment.check(this@actions) is Refundability.Refundable) add(PaymentAction.REFUND)
             if (RefundablePayment.cancellable(this@actions)) add(PaymentAction.CANCEL)
             if (sale.pspReference != null) addAll(captureActions(sale))
@@ -232,6 +233,7 @@ enum class TotalsShare {
 /** How this sale counts in the day's totals: a pre-authorisation counts as a sale only once it is captured. */
 val SaleEntity.totalsShare: TotalsShare
     get() {
+        if (sample) return TotalsShare.NONE
         val standing = standing
         return when {
             standing == PaymentStanding.NOT_APPROVED || standing == PaymentStanding.HOLD_CANCELLED -> TotalsShare.NONE

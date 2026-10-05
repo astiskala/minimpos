@@ -19,6 +19,9 @@ sealed interface Route : NavKey {
     /** The start screen with a tile per area; always at the bottom of the back stack. */
     @Serializable data object Home : Route
 
+    /** First-run setup choices, kept below import and terminal settings so Back can choose a different path. */
+    @Serializable data object Onboarding : Route
+
     /** Ringing up a sale: product tiles, custom items and the cart. */
     @Serializable data object Sale : Route
 
@@ -181,10 +184,12 @@ sealed interface Route : NavKey {
      *
      * @property section One of the [io.github.astiskala.minimpos.app.feature.settings.SettingsSections] keys.
      * @property automaticSetup Start optional read-only lookup when opening Terminal after an Automatic helper import; never boards.
+     * @property helperSetup Collapse supplied details while completing an imported helper setup.
      */
     @Serializable data class SettingsSection(
         val section: String,
         val automaticSetup: Boolean = false,
+        val helperSetup: Boolean = false,
     ) : Route {
         override val isProtected get() = true
     }

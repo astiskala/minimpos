@@ -71,10 +71,11 @@ class DatabaseSchemaTest {
             withDatabase(name) { db ->
                 runBlocking {
                     val taxId = db.catalogDao().insert(TaxRateEntity(name = "No tax", rateMilliPercent = 0))
-                    db.catalogDao().insert(ProductEntity(name = "Item", priceMinor = 400, taxRateId = taxId))
+                    db.catalogDao().insert(ProductEntity(name = "Item", priceMinor = 400, taxRateId = taxId, sample = true))
                     db.saleDao().insert(
                         SaleEntity(
                             id = "sale",
+                            sample = true,
                             createdAt = 1,
                             currency = "AUD",
                             taxMode = "INCLUSIVE",
@@ -90,6 +91,19 @@ class DatabaseSchemaTest {
             }
             withDatabase(name) { db ->
                 runBlocking {
+                    assertThat(
+                        db
+                            .catalogDao()
+                            .productsOnce()
+                            .single()
+                            .sample,
+                    ).isTrue()
+                    assertThat(
+                        db
+                            .saleDao()
+                            .sale("sale")!!
+                            .sale.sample,
+                    ).isTrue()
                     assertThat(
                         db
                             .catalogDao()

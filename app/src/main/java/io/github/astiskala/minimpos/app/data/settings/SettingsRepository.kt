@@ -53,31 +53,14 @@ class SettingsRepository(
     /** The stored settings, emitted now and after every change. */
     val settings: Flow<AppSettings> = store.data.map { it.normalized() }
 
+    /** This device's persisted first-run choice, emitted only after storage has loaded. */
+    val onboardingCompleted: Flow<Boolean> = settings.map { it.onboardingCompleted }
+
     /** The settings as stored now; suspends only until the file has been read once. */
     suspend fun current(): AppSettings = settings.first()
 
     /** Atomically replaces the settings with [transform] applied to the stored ones; [transform] must not have side effects. */
     suspend fun update(transform: (AppSettings) -> AppSettings) {
         store.updateData { transform(it.normalized()).normalized() }
-    }
-
-    /**
-     * Applies [prepare] only while the terminal settings equal [expected], serializing terminal edits while dependent
-     * secrets are stored. Returns false for a stale snapshot or null preparation result. [prepare] must not update
-     * settings recursively; exceptions propagate without changing settings.
-     */
-    suspend fun updateTerminal(
-        expected: TerminalSettings,
-        prepare: suspend () -> TerminalSettings?,
-    ): Boolean {
-        var applied = false
-        store.updateData { stored ->
-            val current = stored.normalized()
-            if (current.terminal != expected) return@updateData stored
-            val terminal = prepare() ?: return@updateData stored
-            applied = true
-            current.copy(terminal = terminal).normalized()
-        }
-        return applied
     }
 }

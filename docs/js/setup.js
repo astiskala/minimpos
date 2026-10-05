@@ -186,17 +186,20 @@
 
   const destination = () => form.elements.destination.value;
   const environment = () => form.elements.environment.value;
-  const setupMode = () => form.elements.setupMode.value;
+  const setupMode = () => destination() === "tapToPay" ? "manual" : form.elements.setupMode.value;
 
   /** Hidden destination, environment and mode fields are disabled, so they are neither checked nor read. */
   const refresh = () => {
     for (const group of form.querySelectorAll("fieldset[data-for], fieldset[data-mode], fieldset[data-email]")) {
       const wanted = (!group.dataset.for || group.dataset.for.split(" ").includes(destination())) &&
         (!group.dataset.env || group.dataset.env === environment()) &&
-        (!group.dataset.mode || group.dataset.mode === setupMode() || group.dataset.automaticFor?.split(" ").includes(destination())) &&
+        (!group.dataset.mode || group.dataset.mode === setupMode()) &&
         (!group.dataset.email || form.elements.includeSmtp.value === "yes");
       group.hidden = !wanted;
       group.disabled = !wanted;
+    }
+    for (const input of form.querySelectorAll("[data-required-for]")) {
+      input.required = input.dataset.requiredFor.split(" ").includes(destination());
     }
     for (const text of form.querySelectorAll("[data-only]")) text.hidden = !text.dataset.only.split(" ").includes(destination());
     for (const link of document.querySelectorAll("a[data-ca]")) link.href = CUSTOMER_AREA[environment()] + link.dataset.ca;
@@ -261,7 +264,9 @@
       if (value) connection[name] = value;
     }
     const version = Number.parseInt(data.get("keyVersion") || "", 10);
-    if (Number.isInteger(version)) connection.keyVersion = version;
+    if (Number.isInteger(version) && (connection.keyIdentifier || (data.get("passphrase") || "").trim())) {
+      connection.keyVersion = version;
+    }
     const port = Number.parseInt(data.get("smtpPort") || "", 10);
     if (Number.isInteger(port)) connection.smtpPort = port;
     const secrets = {};

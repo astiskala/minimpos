@@ -26,7 +26,7 @@ import kotlinx.coroutines.flow.update
  * @property terminals The latest search for terminals connected in the cloud.
  * @property connectedTerminals The POIIDs that search found, to choose from; null while none is offered.
  * @property tapToPay The latest setup or removal of Tap to Pay.
- * @property sharedKey The latest optional Tap to Pay shared-key lookup.
+ * @property guided Whether an imported helper setup should collapse already supplied details.
  * @property paymentsAppKeyStored Whether the Payments app API key given to the latest setup was stored (so the field
  *   can be cleared).
  * @property apiKeyStored Whether the API key given to the latest search was stored (so the field can be cleared).
@@ -38,7 +38,7 @@ data class TerminalSetupActions(
     val terminals: ActionState = ActionState(),
     val connectedTerminals: List<String>? = null,
     val tapToPay: ActionState = ActionState(),
-    val sharedKey: ActionState = ActionState(),
+    val guided: Boolean = false,
     val paymentsAppKeyStored: Boolean = false,
     val apiKeyStored: Boolean = false,
     val manualDetails: Boolean = false,
@@ -79,19 +79,17 @@ class TerminalSetupViewModel(
         _actions.update { it.copy(unsavedSecrets = if (present) it.unsavedSecrets + secret else it.unsavedSecrets - secret) }
     }
 
-    /** When [requested], waits for imported settings and starts read-only discovery once per screen view model; never boards. */
-    suspend fun startAutomaticSetup(requested: Boolean) {
-        if (!requested) return
+    /** Sets [helperSetup]'s guided presentation; [requested] starts optional physical-terminal discovery once, never boarding. */
+    suspend fun startAutomaticSetup(
+        requested: Boolean,
+        helperSetup: Boolean = false,
+    ) {
+        if (!requested && !helperSetup) return
         observedSettings.first { it.loaded }
-        if (automaticStarted) return
+        _actions.update { it.copy(guided = helperSetup) }
+        if (!requested || automaticStarted) return
         automaticStarted = true
-        if (observedSettings.value.settings.terminal.mode == TerminalMode.PAYMENTS_APP) {
-            if (observedSettings.value.settings.terminal.paymentsAppInstallationId
-                    .isNotBlank()
-            ) {
-                findSharedKey()
-            }
-        } else {
+        if (observedSettings.value.settings.terminal.mode != TerminalMode.PAYMENTS_APP) {
             findTerminals()
         }
     }
@@ -154,23 +152,12 @@ class TerminalSetupViewModel(
     /** Removes this phone's Payments app instance (see [TapToPaySetup.unregister]). */
     fun removeTapToPay() = run(null) { tapToPay.unregister() }
 
-    /** Retries optional shared-key lookup for this boarded phone, leaving all manual fields editable on failure. */
-    fun findSharedKey() {
-        if (_actions.value.sharedKey.running || _actions.value.tapToPay.running) return
-        _actions.update { it.copy(sharedKey = ActionState(running = true), manualDetails = false) }
-        launchWrite({
-            val result = discovery.findPaymentsAppKey()
-            refreshFields()
-            _actions.update { it.copy(sharedKey = ActionState(done = true), manualDetails = result != true) }
-        })
-    }
-
     private fun run(
         apiKey: String?,
         action: suspend () -> TapToPayOutcome,
     ) {
-        if (_actions.value.tapToPay.running || _actions.value.sharedKey.running) return
-        _actions.update { it.copy(tapToPay = ActionState(running = true), paymentsAppKeyStored = false, sharedKey = ActionState()) }
+        if (_actions.value.tapToPay.running) return
+        _actions.update { it.copy(tapToPay = ActionState(running = true), paymentsAppKeyStored = false) }
         launchWrite({
             val entered = apiKey?.trim()?.takeIf { it.isNotEmpty() }
             val notStored = entered?.let { persisting { store(Secret.PAYMENTS_APP_API_KEY, it) } }
@@ -182,8 +169,7 @@ class TerminalSetupViewModel(
             val result =
                 when (val outcome = persisting { action() }) {
                     is TapToPayOutcome.Boarded -> {
-                        refreshFields()
-                        _actions.update { it.copy(manualDetails = !outcome.sharedKeyFound) }
+                        // Registration does not change editable key/account fields or discard unsaved secret drafts.
                         ActionState(outcome = ActionOutcome.TapToPayReady(outcome.installationId), done = true)
                     }
 
@@ -204,12 +190,6 @@ class TerminalSetupViewModel(
                 }
             _actions.update { it.copy(tapToPay = result) }
         })
-    }
-
-    private suspend fun refreshFields() {
-        val terminal = settings.current().terminal
-        observedSettings.first { it.settings.terminal == terminal }
-        _actions.update { it.copy(revision = it.revision + 1) }
     }
 
     /** Stores [apiKey] as [secret]; null when it was stored, else why not. */

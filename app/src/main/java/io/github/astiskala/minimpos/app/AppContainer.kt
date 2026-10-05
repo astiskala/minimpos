@@ -14,6 +14,7 @@ import io.github.astiskala.minimpos.app.data.repo.CatalogRepository
 import io.github.astiskala.minimpos.app.data.repo.HistoryRepository
 import io.github.astiskala.minimpos.app.data.repo.RefundRepository
 import io.github.astiskala.minimpos.app.data.repo.SaleRepository
+import io.github.astiskala.minimpos.app.data.repo.SampleData
 import io.github.astiskala.minimpos.app.data.security.KeystoreSecretCipher
 import io.github.astiskala.minimpos.app.data.security.PinManager
 import io.github.astiskala.minimpos.app.data.security.Secret
@@ -118,6 +119,7 @@ import kotlin.time.Duration.Companion.minutes
  * @param storeDetails Reads Management API stores for reviewed receipt-business import.
  * @param terminalDetails Reads optional Management terminal setup details.
  * @param terminalEnvironment Reads the local terminal certificate without credentials.
+ * @param onboardingCompleted Initial setup completion for isolated tests; production installations start incomplete.
  */
 class AppContainer(
     private val context: Context,
@@ -140,6 +142,7 @@ class AppContainer(
     },
     terminalDetails: (String) -> TerminalDetailsApi = { AdyenTerminalDetails(it) },
     terminalEnvironment: suspend () -> TerminalEnvironment? = { TerminalTls().readEnvironment("localhost") },
+    onboardingCompleted: Boolean = false,
 ) {
     private val country = device.country.trim().uppercase(Locale.ROOT)
     private val defaults =
@@ -165,6 +168,7 @@ class AppContainer(
                                 ),
                         ),
                     email = it.email.copy(subject = context.getString(R.string.email_default_subject)),
+                    onboardingCompleted = onboardingCompleted,
                 )
             }
 
@@ -173,6 +177,10 @@ class AppContainer(
 
     /** [settings] as a state that is always available; it holds the defaults until the file has been read. */
     val settingsState: StateFlow<AppSettings> = settings.settings.stateIn(appScope, SharingStarted.Eagerly, defaults)
+
+    /** First-run choice after storage has loaded; null prevents briefly showing either Home or onboarding too early. */
+    val onboardingState: StateFlow<Boolean?> =
+        settings.onboardingCompleted.stateIn(appScope, SharingStarted.Eagerly, true.takeIf { onboardingCompleted })
 
     /** Encrypted credentials (`secrets.json`). */
     val secrets = SecretStore(store("secrets.json", serializer<SecretBlob>(), SecretBlob()), cipher, ioDispatcher)
@@ -203,6 +211,26 @@ class AppContainer(
 
     /** The combined transaction history and its housekeeping. */
     val history = HistoryRepository(database)
+
+    /** Optional offline catalog and read-only history examples, with scoped removal. */
+    val sampleData =
+        SampleData(
+            database,
+            catalog,
+            sales,
+            history,
+            texts = {
+                listOf(
+                    R.string.sample_coffee,
+                    R.string.sample_tea,
+                    R.string.sample_cake,
+                    R.string.sample_deposit,
+                    R.string.sample_category,
+                ).map(context::getString)
+            },
+            starterRates = ::starterTaxRates,
+            country = device.country,
+        )
 
     /** What the simulator prints, shown on screen instead of paper. */
     val virtualPrinter = VirtualPrinter()
@@ -247,7 +275,7 @@ class AppContainer(
         SetupDiscovery(terminalSetup, settings, { secrets.set(Secret.TERMINAL_PASSPHRASE, it) }, terminalDetails, gateway::readEnvironment)
 
     /** Boards (and revokes) the Adyen Payments app on this phone, for Tap to Pay. */
-    val tapToPay = TapToPaySetup(terminalSetup, settings, paymentsAppLinks, paymentsAppManagement, setupDiscovery)
+    val tapToPay = TapToPaySetup(terminalSetup, settings, paymentsAppLinks, paymentsAppManagement)
 
     /**
      * Adyen's Checkout API, for captures, authorisation adjustments and payment links, all simulated in simulator mode.

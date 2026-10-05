@@ -267,9 +267,12 @@ fun TransferImportScreen(
             ImportBottomBar(state, onImport = { if (it) confirmReplace = true else vm.import() }, onDone = {
                 val result = (state as? ImportUiState.Done)?.result
                 if (result?.connection == true) {
-                    navigator.replace(Route.SettingsSection(SettingsSections.TERMINAL, automaticSetup = result.automaticSetup))
+                    navigator.replace(
+                        Route.SettingsSection(SettingsSections.TERMINAL, automaticSetup = result.automaticSetup, helperSetup = true),
+                    )
                 } else {
                     navigator.back()
+                    if (navigator.current == Route.Onboarding) navigator.home()
                 }
             })
         },

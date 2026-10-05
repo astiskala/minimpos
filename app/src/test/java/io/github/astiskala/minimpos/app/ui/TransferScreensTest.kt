@@ -135,10 +135,11 @@ class TransferScreensTest {
             )
         val vm = TransferImportViewModel(container.setupTransfer, "AUD")
         QrChunks.split(payload, "TEST").forEach { vm.onCode(it.encode()) }
+        val navigator = Navigator(NavBackStack<NavKey>(Route.Home, Route.SettingsSection(SettingsSections.DATA), Route.TransferImport))
         compose.setContent {
             MiniMposTheme {
                 CompositionLocalProvider(LocalAppContainer provides container) {
-                    TransferImportScreen(Navigator(NavBackStack<NavKey>(Route.Home)), vm = vm)
+                    TransferImportScreen(navigator, vm = vm)
                 }
             }
         }
@@ -157,6 +158,30 @@ class TransferScreensTest {
         compose.awaitCondition("Applying the settings") { container.settingsState.value.receipt.businessName == "Harbour Coffee Co." }
         assertThat(container.settingsState.value.receipt.footer).isEqualTo("Ta!")
         assertThat(await { container.secrets.get(Secret.TERMINAL_PASSPHRASE) }).isEqualTo("correct horse")
+        compose.onNodeWithTag("importFinished").performClick()
+        assertThat(navigator.current).isEqualTo(Route.SettingsSection(SettingsSections.DATA))
+    }
+
+    @Test
+    fun `finishing a first-run settings import leaves onboarding and opens Home`() {
+        val payload = TransferCodec.encode(Transfer(settings = TransferredSettings(AppSettings().shared(), null).encode()))
+        val vm = TransferImportViewModel(container.setupTransfer, "AUD")
+        QrChunks.split(payload, "INIT").forEach { vm.onCode(it.encode()) }
+        val stack = NavBackStack<NavKey>(Route.Home, Route.Onboarding, Route.TransferImport)
+        val navigator = Navigator(stack)
+        compose.setContent {
+            MiniMposTheme {
+                CompositionLocalProvider(LocalAppContainer provides container) {
+                    TransferImportScreen(navigator, vm = vm)
+                }
+            }
+        }
+        waitForTag("import")
+        compose.onNodeWithTag("import").performClick()
+        waitForTag("importFinished")
+        compose.onNodeWithTag("importFinished").performClick()
+        assertThat(navigator.current).isEqualTo(Route.Home)
+        assertThat(stack).containsExactly(Route.Home)
     }
 
     @Test
@@ -188,7 +213,7 @@ class TransferScreensTest {
         assertThat(container.settingsState.value.receipt.businessName).isEqualTo("Corner Cafe")
         assertThat(await { container.secrets.get(Secret.ADYEN_API_KEY) }).isEqualTo("AQE-key")
         compose.onNodeWithTag("importFinished").assertTextContains("Review setup").performClick()
-        assertThat(navigator.current).isEqualTo(Route.SettingsSection(SettingsSections.TERMINAL))
+        assertThat(navigator.current).isEqualTo(Route.SettingsSection(SettingsSections.TERMINAL, helperSetup = true))
     }
 
     @Test

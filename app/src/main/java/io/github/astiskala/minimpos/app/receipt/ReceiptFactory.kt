@@ -138,7 +138,7 @@ class ReceiptFactory(
                 standingNote = standingText(standing.standing),
                 holdCancelled = standing.standing == PaymentStanding.HOLD_CANCELLED,
             )
-        val simulated = standing.simulatedLink
+        val simulated = standing.simulatedLink || sale.sample
         val document = builder(settings, currency, simulated).sale(receipt, copy)
         return if (simulated) {
             ReceiptDocument(listOf(ReceiptElement.Text(simulationText(), Align.CENTER, TextStyle.BOLD)) + document.elements)

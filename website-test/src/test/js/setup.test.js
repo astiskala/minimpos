@@ -37,7 +37,7 @@ const helper = ({ realCrypto = false } = {}) => {
   const smtp = { ...element(), dataset: { email: "true" }, disabled: true };
   smtp.names = ["smtpHost", "smtpPort", "smtpSecurity", "smtpUsername", "smtpPassword", "smtpFromAddress", "smtpFromName"];
   const account = {
-    ...element(), dataset: { for: "thisTerminal network cloud tapToPay", mode: "manual", automaticFor: "tapToPay" },
+    ...element(), dataset: { for: "thisTerminal network cloud tapToPay", mode: "manual" },
     names: ["merchantAccount"],
   };
   const sharedKey = {
@@ -45,8 +45,13 @@ const helper = ({ realCrypto = false } = {}) => {
     names: ["keyIdentifier", "keyVersion", "passphrase"],
   };
   const boarding = { ...element(), dataset: { for: "tapToPay" }, names: ["paymentsAppApiKey", "storeId"] };
-  const groups = [smtp, account, sharedKey, boarding];
-  form.querySelectorAll = (selector) => selector.includes("fieldset") ? groups : [];
+  const mode = { ...element(), dataset: { for: "thisTerminal network cloud" }, names: ["setupMode"] };
+  const groups = [smtp, account, sharedKey, boarding, mode];
+  const requiredFields = sharedKey.names.map((name) => ({
+    name, required: true, dataset: { requiredFor: "thisTerminal network" },
+  }));
+  form.querySelectorAll = (selector) => selector.includes("fieldset") ? groups :
+    selector === "[data-required-for]" ? requiredFields : [];
   form.dataset = {
     msgCodeOf: "{n}/{total}", msgPause: "Pause", msgPlay: "Play",
     msgMaking: "Making", msgReady: "Ready {total}", msgUnsupported: "Unsupported",
@@ -96,7 +101,7 @@ const helper = ({ realCrypto = false } = {}) => {
     clearInterval() {},
   });
   return {
-    form, pending, drawn, smtp, account, sharedKey,
+    form, pending, drawn, smtp, account, sharedKey, mode, requiredFields,
     results: nodes["setup-codes"],
     status: nodes["setup-status"],
     code: nodes["setup-code"],
@@ -258,7 +263,7 @@ for (const destination of ["thisTerminal", "network", "cloud", "tapToPay"]) {
       const { connection, secrets } = readTransfer(page);
       assert.deepEqual(connection, {
         destination,
-        ...(mode === "automatic" ? { automatic: true } : {}),
+        ...(mode === "automatic" && destination !== "tapToPay" ? { automatic: true } : {}),
         ...(["network", "cloud"].includes(destination) ? { environment: "TEST" } : {}),
         smtpHost: "smtp.example.com", smtpPort: 465, smtpSecurity: "SSL",
         smtpUsername: "shop@example.com", smtpFromAddress: "receipts@example.com", smtpFromName: "Example shop",
@@ -281,13 +286,15 @@ test("blank optional SMTP fields are omitted rather than clearing saved values",
 });
 
 for (const mode of ["automatic", "manual"]) {
-  test(`Tap to Pay ${mode} keeps boarding credentials and account, but only Manual transfers a shared key`, async () => {
+  test(`Tap to Pay always uses manual key entry even with ${mode} selected before switching destination`, async () => {
     const page = helper({ realCrypto: true });
     page.form.elements.destination.value = "tapToPay";
     page.form.elements.setupMode.value = mode;
     page.invalidate("change");
     assert.equal(page.account.disabled, false);
-    assert.equal(page.sharedKey.disabled, mode === "automatic");
+    assert.equal(page.sharedKey.disabled, false);
+    assert.equal(page.mode.hidden, true);
+    assert.equal(page.requiredFields.every((field) => !field.required), true);
     for (const [name, value] of Object.entries({
       merchantAccount: " Merchant ", paymentsAppApiKey: " boarding-key ", storeId: " ST1 ",
       keyIdentifier: "manual-key", keyVersion: "2", passphrase: " manual secret ",
@@ -295,13 +302,29 @@ for (const mode of ["automatic", "manual"]) {
     await page.submit();
     const { connection, secrets } = readTransfer(page);
     assert.deepEqual(connection, {
-      destination: "tapToPay", ...(mode === "automatic" ? { automatic: true } : {}),
+      destination: "tapToPay",
       merchantAccount: "Merchant", storeId: "ST1",
-      ...(mode === "manual" ? { keyIdentifier: "manual-key", keyVersion: 2 } : {}),
+      keyIdentifier: "manual-key", keyVersion: 2,
     });
     assert.deepEqual(secrets, {
       ADYEN_API_KEY: "demo-key", PAYMENTS_APP_API_KEY: "boarding-key",
-      ...(mode === "manual" ? { TERMINAL_PASSPHRASE: " manual secret " } : {}),
+      TERMINAL_PASSPHRASE: " manual secret ",
     });
   });
 }
+
+test("Tap to Pay can omit the key for device entry; physical Manual setup still requires it", async () => {
+  const page = helper({ realCrypto: true });
+  page.form.elements.destination.value = "tapToPay";
+  page.form.values.set("keyVersion", "1");
+  page.invalidate("change");
+  await page.submit();
+  const { connection, secrets } = readTransfer(page);
+  assert.deepEqual(connection, { destination: "tapToPay" });
+  assert.deepEqual(secrets, { ADYEN_API_KEY: "demo-key" });
+  assert.equal(page.requiredFields.every((field) => !field.required), true);
+  page.form.elements.destination.value = "network";
+  page.invalidate("change");
+  assert.equal(page.requiredFields.every((field) => field.required), true);
+  assert.equal(page.mode.hidden, false);
+});

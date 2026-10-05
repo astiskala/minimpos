@@ -345,7 +345,12 @@ private fun historyRowText(
             val sale = item.sale
             HistoryRowText(
                 sale.merchantReference,
-                listOfNotNull(time, paymentMethodText(sale), sale.customerReference).joinToString(" · "),
+                listOfNotNull(
+                    time,
+                    stringResource(R.string.sample_label).takeIf { sale.sample },
+                    paymentMethodText(sale),
+                    sale.customerReference,
+                ).joinToString(" · "),
                 MoneyFormatter(CurrencySpec.of(sale.currency), locale).format(sale.amountMinor),
                 statusTitle(sale),
                 statusKind(sale),
@@ -470,6 +475,7 @@ private fun SaleDetailOutcome(
     formatDateTime: (Long) -> String,
 ) {
     val sale = state.record?.sale ?: return
+    if (sale.sample) Text(stringResource(R.string.sample_history_hint), style = MaterialTheme.typography.bodySmall)
     OutcomeHeader(statusKind(sale), statusTitle(sale), money.format(sale.amountMinor), titleTag = "detailStatus") {
         OutcomeNote(
             listOfNotNull(

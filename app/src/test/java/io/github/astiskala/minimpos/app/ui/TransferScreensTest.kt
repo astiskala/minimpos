@@ -28,7 +28,8 @@ import io.github.astiskala.minimpos.app.awaitCondition
 import io.github.astiskala.minimpos.app.data.db.ProductEntity
 import io.github.astiskala.minimpos.app.data.security.Secret
 import io.github.astiskala.minimpos.app.data.security.TransferSeal
-import io.github.astiskala.minimpos.app.data.transfer.TransferContents
+import io.github.astiskala.minimpos.app.data.settings.AppSettings
+import io.github.astiskala.minimpos.app.data.transfer.TransferredSettings
 import io.github.astiskala.minimpos.app.feature.settings.SettingsSections
 import io.github.astiskala.minimpos.app.feature.transfer.TransferImportScreen
 import io.github.astiskala.minimpos.app.feature.transfer.TransferImportViewModel
@@ -123,37 +124,39 @@ class TransferScreensTest {
 
     @Test
     fun `the import shows what was scanned, asks for the transfer code and imports`() {
-        val source = TestEnvironment()
-        try {
-            source.useSimulator { it.copy(receipt = it.receipt.copy(businessName = "Harbour Coffee Co.", footer = "Ta!")) }
-            await { source.container.secrets.set(Secret.TERMINAL_PASSPHRASE, "correct horse") }
-            val export = await { source.container.setupTransfer.export(TransferContents(catalogue = false), "AUD") }
-            val vm = TransferImportViewModel(container.setupTransfer, "AUD")
-            QrChunks.split(export.payload, "TEST").forEach { vm.onCode(it.encode()) }
-            compose.setContent {
-                MiniMposTheme {
-                    CompositionLocalProvider(LocalAppContainer provides container) {
-                        TransferImportScreen(Navigator(NavBackStack<NavKey>(Route.Home)), vm = vm)
-                    }
+        // Export/import round trips belong to SetupTransferTest; this UI fixture needs no second database or DataStore.
+        val settings = AppSettings().let { it.copy(receipt = it.receipt.copy(businessName = "Harbour Coffee Co.", footer = "Ta!")) }
+        val seal = TransferSeal(iterations = 1_000)
+        val code = seal.newCode()
+        val sealed = SealedSecrets(seal.seal("""{"TERMINAL_PASSPHRASE":"correct horse"}""".toByteArray(), code))
+        val payload =
+            TransferCodec.encode(
+                Transfer(settings = TransferredSettings(settings.shared(), null).encode(), sealedSecrets = sealed),
+            )
+        val vm = TransferImportViewModel(container.setupTransfer, "AUD")
+        QrChunks.split(payload, "TEST").forEach { vm.onCode(it.encode()) }
+        compose.setContent {
+            MiniMposTheme {
+                CompositionLocalProvider(LocalAppContainer provides container) {
+                    TransferImportScreen(Navigator(NavBackStack<NavKey>(Route.Home)), vm = vm)
                 }
             }
-            waitForTag("import")
-            compose.onNodeWithText("Ready to import").assertIsDisplayed()
-            compose.onNodeWithTag("merge").assertDoesNotExist()
-            compose.onNodeWithTag("import").assertIsDisplayed()
-            compose.onNodeWithTag("transferCodeInput").performScrollTo().performTextInput("2222 2222 2222")
-            compose.onNodeWithTag("import").performClick()
-            compose.waitUntilAtLeastOneExists(hasText("That transfer code is wrong", substring = true), 15_000)
-            compose.onNodeWithTag("transferCodeInput").performTextReplacement(export.code!!.lowercase())
-            compose.onNodeWithTag("import").performClick()
-            waitForTag("importDone")
-            compose.onNodeWithText("Shared key passphrase").assertIsDisplayed()
-            compose.onNodeWithTag("importFinished").assertIsDisplayed()
-            compose.awaitCondition("Applying the settings") { container.settingsState.value.receipt.businessName == "Harbour Coffee Co." }
-            assertThat(container.settingsState.value.receipt.footer).isEqualTo("Ta!")
-        } finally {
-            source.close()
         }
+        waitForTag("import")
+        compose.onNodeWithText("Ready to import").assertIsDisplayed()
+        compose.onNodeWithTag("merge").assertDoesNotExist()
+        compose.onNodeWithTag("import").assertIsDisplayed()
+        compose.onNodeWithTag("transferCodeInput").performScrollTo().performTextInput("2222 2222 2222")
+        compose.onNodeWithTag("import").performClick()
+        compose.waitUntilAtLeastOneExists(hasText("That transfer code is wrong", substring = true), 15_000)
+        compose.onNodeWithTag("transferCodeInput").performTextReplacement(code.lowercase())
+        compose.onNodeWithTag("import").performClick()
+        waitForTag("importDone")
+        compose.onNodeWithText("Shared key passphrase").assertIsDisplayed()
+        compose.onNodeWithTag("importFinished").assertIsDisplayed()
+        compose.awaitCondition("Applying the settings") { container.settingsState.value.receipt.businessName == "Harbour Coffee Co." }
+        assertThat(container.settingsState.value.receipt.footer).isEqualTo("Ta!")
+        assertThat(await { container.secrets.get(Secret.TERMINAL_PASSPHRASE) }).isEqualTo("correct horse")
     }
 
     @Test

@@ -494,7 +494,6 @@
   <string name="settings_secret_show">Show</string>
   <string name="settings_secret_hide">Hide</string>
   <string name="settings_secret_not_stored">This device could not store it securely (%1$s). Try again, or restart the device.</string>
-  <string name="settings_advanced">Advanced</string>
   <string name="setup_poiid">Enter the terminal ID (POIID) in Terminal settings</string>
   <string name="setup_host">Enter the terminal’s IP address in Terminal settings</string>
   <string name="setup_key_identifier">Enter the shared key identifier in Terminal settings</string>
@@ -542,9 +541,6 @@
   <string name="settings_host_placeholder">e.g. 192.168.1.20</string>
   <string name="settings_host_hint">The terminal must be on the same network as this device.</string>
   <string name="settings_port">Port</string>
-  <string name="settings_sale_id">Sale ID</string>
-  <string name="settings_timeout">Payment timeout (seconds)</string>
-  <string name="settings_timeout_hint">Without a response by then, the app checks the transaction status (Adyen advises 120 seconds).</string>
   <string name="settings_shared_key">Shared key</string>
   <string name="settings_shared_key_hint">Copy these from your Customer Area: Devices › Device settings › Integrations › Terminal API › Encryption key (select the pencil icon to see them).</string>
   <string name="settings_payments_app_shared_key_hint">Enter the shared key here or include it in the setup helper. Phone registration does not retrieve it.</string>

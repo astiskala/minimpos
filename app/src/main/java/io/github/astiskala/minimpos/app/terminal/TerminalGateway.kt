@@ -460,7 +460,7 @@ class TerminalGateway(
 
     /** Fixed identities. */
     companion object {
-        /** The nexo SaleID used when none is configured. */
+        /** The nexo SaleID the app identifies itself with in every request. */
         const val DEFAULT_SALE_ID = "MiniMPOS"
     }
 }

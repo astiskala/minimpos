@@ -75,7 +75,7 @@ class TerminalTest {
         onTerminal { terminal, fake ->
             val gateway = terminal.container.gateway
             assertThat(terminal.container.terminalStatus.automaticMode).isEqualTo(TerminalMode.TERMINAL)
-            terminal.updateSettings { it.copy(terminal = it.terminal.copy(keyIdentifier = "key", saleId = " ", host = "10.0.0.9")) }
+            terminal.updateSettings { it.copy(terminal = it.terminal.copy(keyIdentifier = "key", host = "10.0.0.9")) }
             assertThat((await { gateway.diagnose() } as TerminalConnection.NotSetUp).problem).isEqualTo(SetupProblem.PASSPHRASE)
 
             await { terminal.container.secrets.set(Secret.TERMINAL_PASSPHRASE, "correct horse battery staple") }

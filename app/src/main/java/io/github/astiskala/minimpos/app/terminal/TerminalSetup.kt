@@ -129,10 +129,7 @@ data class TerminalSetup(
         PaymentContext(
             destination = mode.name,
             poiId = poiId.orEmpty(),
-            saleId =
-                settings.terminal.saleId
-                    .trim()
-                    .ifEmpty { TerminalGateway.DEFAULT_SALE_ID },
+            saleId = TerminalGateway.DEFAULT_SALE_ID,
             merchantAccount = settings.terminal.merchantAccount.trim(),
             environment = detected?.name,
             host = host,

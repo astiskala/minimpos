@@ -25,7 +25,7 @@ class AppSettingsTest {
     fun `every number is brought within its section's limits`() {
         val wild =
             AppSettings(
-                terminal = TerminalSettings(keyVersion = 0, timeoutSeconds = 5_000),
+                terminal = TerminalSettings(keyVersion = 0),
                 receipt =
                     ReceiptSettings(
                         charsPerLine = 10,
@@ -39,7 +39,6 @@ class AppSettingsTest {
                 history = HistorySettings(retentionDays = -3),
             ).normalized()
         assertThat(wild.terminal.keyVersion).isEqualTo(TerminalSettings.KEY_VERSIONS.first)
-        assertThat(wild.terminal.timeoutSeconds).isEqualTo(TerminalSettings.MAX_TIMEOUT_SECONDS)
         assertThat(wild.receipt.charsPerLine).isEqualTo(ReceiptSettings.CHARS_PER_LINE.first)
         assertThat(wild.receipt.markedTaxRateMilliPercent).isEqualTo(0)
         assertThat(wild.receipt.markedTaxRateMarker).isEqualTo("※")
@@ -163,10 +162,8 @@ class AppSettingsTest {
                 poiIdOverride = "S1F2-000158",
                 paymentsAppInstallationId = "INSTALLATION-1",
                 storeId = "ST1",
-                saleId = "Shop",
                 keyIdentifier = "KEY",
                 keyVersion = 3,
-                timeoutSeconds = 180,
                 merchantAccount = "Merchant",
                 liveUrlPrefix = "abc",
             )

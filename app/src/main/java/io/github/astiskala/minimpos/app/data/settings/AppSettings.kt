@@ -190,11 +190,8 @@ enum class TerminalMode {
  *   [TerminalMode.PAYMENTS_APP]; blank until boarded.
  * @property storeId The ID of the store the Payments app is boarded for (not its reference); blank boards it for the
  *   merchant account.
- * @property saleId The nexo SaleID the app identifies itself with in every request; blank uses "MiniMPOS".
  * @property keyIdentifier Identifier of the shared key configured for the terminal in the Customer Area.
  * @property keyVersion Version of that shared key, within [KEY_VERSIONS].
- * @property timeoutSeconds How long to wait for a payment response before checking the transaction status, within
- *   [TIMEOUT_SECONDS]. Adyen advises 120 seconds for local integrations.
  * @property merchantAccount The Adyen merchant account the terminal takes payments for, for captures and authorisation
  *   adjustments through the Checkout API (its API key is a secret). It is required before real payments can start.
  * @property liveUrlPrefix The company's live endpoint prefix for the Checkout API (Customer Area: Developers › API
@@ -209,10 +206,8 @@ data class TerminalSettings(
     val poiIdOverride: String = "",
     val paymentsAppInstallationId: String = "",
     val storeId: String = "",
-    val saleId: String = "MiniMPOS",
     val keyIdentifier: String = "",
     val keyVersion: Int = 1,
-    val timeoutSeconds: Int = MIN_TIMEOUT_SECONDS,
     val merchantAccount: String = "",
     val liveUrlPrefix: String = "",
 ) {
@@ -245,9 +240,8 @@ data class TerminalSettings(
         return if (environment != null && environment != moved.environment) moved.selectEnvironment(environment) else moved
     }
 
-    /** These settings with [keyVersion] and [timeoutSeconds] within their ranges. */
-    fun normalized(): TerminalSettings =
-        copy(keyVersion = keyVersion.coerceIn(KEY_VERSIONS), timeoutSeconds = timeoutSeconds.coerceIn(TIMEOUT_SECONDS))
+    /** These settings with [keyVersion] within its range. */
+    fun normalized(): TerminalSettings = copy(keyVersion = keyVersion.coerceIn(KEY_VERSIONS))
 
     /**
      * These settings with the fields that belong to one device taken from [device]: where payments go ([mode]), the
@@ -266,15 +260,6 @@ data class TerminalSettings(
 
     /** The limits of the numbers. */
     companion object {
-        /** The shortest payment timeout, and the default. */
-        const val MIN_TIMEOUT_SECONDS = 120
-
-        /** The longest payment timeout. */
-        const val MAX_TIMEOUT_SECONDS = 600
-
-        /** The allowed range of [timeoutSeconds]. */
-        val TIMEOUT_SECONDS = MIN_TIMEOUT_SECONDS..MAX_TIMEOUT_SECONDS
-
         /** The allowed range of [keyVersion]. */
         val KEY_VERSIONS = 1..9_999
     }

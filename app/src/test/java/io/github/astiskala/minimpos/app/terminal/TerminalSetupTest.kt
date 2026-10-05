@@ -9,6 +9,7 @@ import io.github.astiskala.minimpos.app.data.settings.PaymentSettings
 import io.github.astiskala.minimpos.app.data.settings.PrinterMode
 import io.github.astiskala.minimpos.app.data.settings.TerminalMode
 import io.github.astiskala.minimpos.app.data.settings.TerminalSettings
+import io.github.astiskala.minimpos.terminal.client.TerminalClient
 import io.github.astiskala.minimpos.terminal.transport.TerminalEnvironment
 import org.junit.Test
 import kotlin.time.Duration.Companion.seconds
@@ -273,9 +274,9 @@ class TerminalSetupTest {
         assertThat(destinations.filterValues { !it.aborts }.keys).containsExactly(TerminalMode.PAYMENTS_APP)
         assertThat(destinations.filterValues { !it.diagnoses }.keys).containsExactly(TerminalMode.PAYMENTS_APP)
         assertThat(destinations.getValue(TerminalMode.PAYMENTS_APP).recovery.attempts).isEqualTo(1)
-        // A cloud payment waits as long as Adyen requires.
-        assertThat(destinations.getValue(TerminalMode.CLOUD).transactionTimeout(30.seconds)).isEqualTo(160.seconds)
-        assertThat(destinations.getValue(TerminalMode.TERMINAL).transactionTimeout(30.seconds)).isEqualTo(30.seconds)
+        // A cloud payment waits as long as Adyen requires, every other destination as long as Adyen advises.
+        assertThat(destinations.getValue(TerminalMode.CLOUD).transactionTimeout).isEqualTo(160.seconds)
+        assertThat(destinations.getValue(TerminalMode.TERMINAL).transactionTimeout).isEqualTo(TerminalClient.DEFAULT_TRANSACTION_TIMEOUT)
         // Each is reached with its own secret.
         assertThat(destinations.mapValues { it.value.secrets })
             .containsExactly(

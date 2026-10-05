@@ -81,7 +81,6 @@ import io.github.astiskala.minimpos.app.data.settings.ReceiptTipping
 import io.github.astiskala.minimpos.app.data.settings.ShopperReferenceSource
 import io.github.astiskala.minimpos.app.data.settings.SimulatorSettings
 import io.github.astiskala.minimpos.app.data.settings.TerminalMode
-import io.github.astiskala.minimpos.app.data.settings.TerminalSettings
 import io.github.astiskala.minimpos.app.feature.OutcomeMessage
 import io.github.astiskala.minimpos.app.feature.lock.SetPinScreen
 import io.github.astiskala.minimpos.app.feature.text
@@ -549,7 +548,7 @@ private fun ColumnScope.SettingsContent(
     when (section) {
         SettingsSections.TERMINAL -> {
             TerminalSection(state, actions, setup, events, setupEvents, navigator)
-            TerminalAdvancedSection(state, actions, events)
+            ConnectionResultSection(state, actions, events)
         }
 
         SettingsSections.SIMULATOR -> {
@@ -667,30 +666,18 @@ private fun ColumnScope.TerminalSection(
     }
 }
 
-/** The advanced terminal settings (SaleID and timeout), and the outcome of the last connection test. */
+/** The outcome of the last connection test. */
 @Composable
-private fun ColumnScope.TerminalAdvancedSection(
+private fun ConnectionResultSection(
     state: SettingsUiState,
     actions: SettingsActions,
     events: SettingsEvents,
 ) {
     val container = LocalAppContainer.current
     val status by container.terminalStatus.state.collectAsStateWithLifecycle()
-    val terminal = state.settings.terminal
     // A currency that follows the device's region may not be the merchant's, so a successful test names it.
     val automaticCurrency = container.currency(state.settings).code.takeIf { AdyenCurrencies[state.settings.payment.currencyCode] == null }
 
-    fun update(transform: (TerminalSettings) -> TerminalSettings) = events.onUpdate { it.copy(terminal = transform(it.terminal)) }
-    AdvancedSettings {
-        SettingTextField(stringResource(R.string.settings_sale_id), terminal.saleId, { value -> update { it.copy(saleId = value.trim()) } })
-        SettingNumberField(
-            stringResource(R.string.settings_timeout),
-            terminal.timeoutSeconds,
-            TerminalSettings.TIMEOUT_SECONDS,
-            { seconds -> update { it.copy(timeoutSeconds = seconds) } },
-            supporting = stringResource(R.string.settings_timeout_hint),
-        )
-    }
     actions.connection.outcome?.let { outcome ->
         // In the cloud the same test checks the Checkout API too (SettingsTest.CLOUD).
         val api = actions.api.outcome?.takeIf { status.mode == TerminalMode.CLOUD }

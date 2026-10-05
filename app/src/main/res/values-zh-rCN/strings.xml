@@ -1,5 +1,24 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="onboarding_title">欢迎使用 Mini mPOS</string>
+    <string name="onboarding_hint">无需 Adyen 账户即可试用模拟器，也可导入设置二维码或连接终端。</string>
+    <string name="onboarding_simulator">使用示例数据试用模拟器</string>
+    <string name="onboarding_terminal">设置终端</string>
+    <string name="sample_data">示例数据</string>
+    <string name="sample_data_hint">添加示例商品和只读演示记录。您的数据和支付目标不会改变。示例记录不计入每日总额。</string>
+    <string name="sample_add">添加示例数据</string>
+    <string name="sample_remove">删除示例数据</string>
+    <string name="sample_remove_message">删除示例商品（包括已编辑的商品）和演示记录？您自己的商品、记录、税率和设置将保留。您的商品使用的分类也将保留。</string>
+    <string name="sample_added">示例数据已就绪。现有示例已保留。</string>
+    <string name="sample_removed">示例数据已删除。</string>
+    <string name="sample_write_failed">无法保存更改。请重试。</string>
+    <string name="sample_history_hint">仅为示例记录，未发生资金交易。无法执行资金操作。</string>
+    <string name="sample_label">示例</string>
+    <string name="sample_category">示例商品</string>
+    <string name="sample_coffee">示例咖啡</string>
+    <string name="sample_tea">示例茶</string>
+    <string name="sample_cake">示例蛋糕</string>
+    <string name="sample_deposit">示例押金</string>
   <string name="app_name">Mini mPOS</string>
   <string name="locked">已锁定</string>
   <string name="action_add">添加</string>
@@ -332,7 +351,7 @@
   <string name="transfer_done">导入完成</string>
   <string name="transfer_continue_setup">继续设置</string>
   <string name="transfer_review_setup">检查设置</string>
-  <string name="transfer_automatic_note">“继续设置”会查找实体终端或打开 Tap to Pay 设置。注册本手机后可查询共享密钥。请检查信息并补充缺失项，然后测试连接及 API 密钥。查询需要导入的 API 密钥及 Management 权限。</string>
+  <string name="transfer_automatic_note">“继续设置”使用导入的 API 密钥及 Management 权限查找实体终端。请检查信息并补充缺失项，然后测试连接及 API 密钥。</string>
   <string name="transfer_added">已添加商品</string>
   <string name="transfer_updated">已更新商品</string>
   <string name="transfer_new_categories">新增分类</string>
@@ -493,8 +512,11 @@
   <string name="settings_timeout_hint">若在此时间内未收到响应，应用将查询交易状态（Adyen 建议 120 秒）。</string>
   <string name="settings_shared_key">共享密钥</string>
   <string name="settings_shared_key_hint">从商户后台复制：Devices › Device settings › Integrations › Terminal API › Encryption key（点击铅笔图标查看）。</string>
-  <string name="settings_payments_app_shared_key_hint">手机注册后，Mini mPOS 会使用 Adyen API 密钥查询商家或门店的共享密钥。无法查询时，请在下方手动输入。</string>
-  <string name="settings_find_shared_key">查询共享密钥</string>
+  <string name="settings_payments_app_shared_key_hint">请在此输入共享密钥，或在设置助手中填写。手机注册不会获取共享密钥。</string>
+  <string name="settings_setup_review">检查或编辑信息</string>
+  <string name="settings_setup_hide">隐藏信息</string>
+  <string name="settings_setup_supplied">信息已填写</string>
+  <string name="settings_setup_guided">已保存的信息已折叠。点击步骤即可检查或编辑。请完成缺失步骤，再测试连接及 API 密钥。</string>
   <string name="settings_key_identifier">密钥标识符</string>
   <string name="settings_key_version">密钥版本</string>
   <string name="settings_passphrase">密钥口令</string>

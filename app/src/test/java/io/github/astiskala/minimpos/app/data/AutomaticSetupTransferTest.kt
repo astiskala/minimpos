@@ -65,7 +65,7 @@ class AutomaticSetupTransferTest {
             listOf("thisTerminal", "network", "cloud", "tapToPay").forEach { destination ->
                 val received = setup.receive(transfer(destination))
                 val result = (await { setup.import(received, ImportMode.MERGE, code) } as ImportOutcome.Imported).result
-                val supported = if (onTerminal) destination == "thisTerminal" else destination in listOf("network", "cloud", "tapToPay")
+                val supported = if (onTerminal) destination == "thisTerminal" else destination in listOf("network", "cloud")
                 assertThat(result.automaticSetup).isEqualTo(supported)
             }
         }

@@ -35,6 +35,18 @@ class PricingChanges(
     private val mutex = Mutex()
     private var repriced: PricingChange? = null
 
+    /**
+     * Runs [write] with stable current settings while excluding pricing confirmation and ordinary settings writes.
+     * Used when creating sample prices so they cannot race a currency/tax-style transition.
+     * @throws IllegalStateException while a pricing journal still needs recovery.
+     */
+    suspend fun <T> withStableSettings(write: suspend (AppSettings) -> T): T =
+        mutex.withLock {
+            val current = settings.current()
+            check(current.pricingChange == null) { "Pricing change in progress" }
+            write(current)
+        }
+
     /** Stores ordinary settings, or previews a pricing change; null when stored, blocked, or rounding would erase a price. */
     suspend fun update(transform: (AppSettings) -> AppSettings): PricingChange? =
         mutex.withLock {

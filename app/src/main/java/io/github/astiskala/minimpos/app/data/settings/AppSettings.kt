@@ -29,6 +29,7 @@ import kotlinx.serialization.Serializable
  * @property simulator How the built-in terminal simulator behaves.
  * @property history How long sales and refunds are kept.
  * @property pricingChange Local recoverable pricing journal; null when stable, never shared.
+ * @property onboardingCompleted Whether this device has chosen its first-run setup path; never shared.
  */
 @Serializable
 data class AppSettings(
@@ -41,6 +42,7 @@ data class AppSettings(
     val history: HistorySettings = HistorySettings(),
     /** Local confirmed pricing transition being committed; null when stable, never transferred to another device. */
     val pricingChange: PricingChange? = null,
+    val onboardingCompleted: Boolean = false,
 ) {
     /** These settings with every number brought within its section's limits. */
     fun normalized(): AppSettings =
@@ -66,6 +68,7 @@ data class AppSettings(
             payment = payment.withDeviceFieldsOf(device.payment),
             simulator = device.simulator,
             pricingChange = device.pricingChange,
+            onboardingCompleted = device.onboardingCompleted,
         )
 
     /**

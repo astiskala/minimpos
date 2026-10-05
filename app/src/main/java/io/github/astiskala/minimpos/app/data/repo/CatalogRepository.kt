@@ -128,11 +128,14 @@ class CatalogRepository(
 
     /** Inserts [category] when its ID is 0, otherwise updates it; returns its ID. */
     suspend fun saveCategory(category: CategoryEntity): Long =
-        if (category.id == 0L) {
-            dao.insert(category)
-        } else {
-            dao.update(category)
-            category.id
+        db.withTransaction {
+            if (category.id == 0L) {
+                dao.insert(category)
+            } else {
+                val stored = dao.categoriesOnce().firstOrNull { it.id == category.id }
+                dao.update(category.copy(sample = stored?.sample ?: category.sample))
+                category.id
+            }
         }
 
     /** Deletes [category]; its products stay and become uncategorised. */
@@ -141,7 +144,11 @@ class CatalogRepository(
     /** Inserts [product] when its ID is 0, otherwise updates it; returns its ID. */
     suspend fun saveProduct(product: ProductEntity): Long =
         db.withTransaction {
-            val normalized = product.copy(sku = product.sku?.trim()?.takeIf { it.isNotEmpty() })
+            val normalized =
+                product.copy(
+                    sku = product.sku?.trim()?.takeIf { it.isNotEmpty() },
+                    sample = if (product.id == 0L) product.sample else dao.product(product.id)?.sample ?: product.sample,
+                )
             val existing = normalized.sku?.let { dao.productBySku(it) }
             require(existing == null || existing.id == normalized.id) { "SKU already in use" }
             if (normalized.id == 0L) {
@@ -160,6 +167,46 @@ class CatalogRepository(
 
     /** Returns the product with row ID [id], or null if there is none. */
     suspend fun product(id: Long): ProductEntity? = dao.product(id)
+
+    /** Scoped sample catalog writes, used inside [SampleData]'s database transaction. */
+    internal val samples = Samples()
+
+    /** Catalog examples share the repository's DAO ownership, without expanding ordinary catalog operations. */
+    internal inner class Samples {
+        /** Whether any tracked sample catalog rows remain. */
+        suspend fun exists(): Boolean = dao.productsOnce().any { it.sample } || dao.categoriesOnce().any { it.sample }
+
+        /** Adds a separate sample category and products without matching or overwriting merchant rows. */
+        suspend fun add(
+            names: List<String>,
+            categoryName: String,
+            prices: List<Long>,
+            taxRateId: Long,
+        ): List<ProductEntity> {
+            val categoryId = dao.insert(CategoryEntity(name = categoryName, sample = true))
+            return names.mapIndexed { index, name ->
+                val product =
+                    ProductEntity(
+                        name = name,
+                        priceMinor = prices[index],
+                        taxRateId = taxRateId,
+                        categoryId = categoryId,
+                        kind = if (index == names.lastIndex) SaleKind.PRE_AUTHORISATION else SaleKind.SALE,
+                        sample = true,
+                    )
+                product.copy(id = dao.insert(product))
+            }
+        }
+
+        /** Removes tracked sample products; sample categories used by merchant products are kept. Tax rates are untouched. */
+        suspend fun remove() {
+            dao.productsOnce().filter { it.sample }.forEach { dao.delete(it) }
+            val used = dao.productsOnce().mapNotNull { it.categoryId }.toSet()
+            dao.categoriesOnce().filter { it.sample }.forEach {
+                if (it.id in used) dao.update(it.copy(sample = false)) else dao.delete(it)
+            }
+        }
+    }
 
     /**
      * Returns a product with the scanned or typed [sku] (surrounding whitespace ignored), of [kind] when one is given

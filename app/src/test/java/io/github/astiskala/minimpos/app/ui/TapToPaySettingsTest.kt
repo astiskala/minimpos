@@ -41,8 +41,6 @@ import org.robolectric.annotation.Config
 class TapToPaySettingsTest {
     private val device = FakeDevice()
     private val paymentsApp = FakePaymentsApp()
-    private var foundKey: DiscoveredKey? = null
-    private var reads = 0
     private val details =
         object : TerminalDetailsApi {
             override suspend fun terminals(environment: TerminalEnvironment): TerminalListing = error("No terminal listing")
@@ -51,12 +49,6 @@ class TapToPaySettingsTest {
                 id: String,
                 environment: TerminalEnvironment,
             ): DiscoveredKey? = error("No terminal key lookup")
-
-            override suspend fun accountSharedKey(
-                merchantAccount: String,
-                storeId: String?,
-                environment: TerminalEnvironment,
-            ): DiscoveredKey? = foundKey.also { reads++ }
         }
 
     @get:Rule(order = 0)
@@ -130,40 +122,29 @@ class TapToPaySettingsTest {
         compose.awaitCondition("phone registration completes") {
             container.settingsState.value.terminal.paymentsAppInstallationId == FakePaymentsApp.INSTALLATION_ID
         }
-        waitForTag("findSharedKey")
+        waitForTag("keyIdentifier")
     }
 
     @Test
     @Config(qualifiers = "en-rAU-w320dp-h460dp-hdpi")
-    fun `boarding fills shared-key fields and permits a read-only retry on the smallest screen`() {
-        foundKey = DiscoveredKey("discovered-key", 2, "discovered secret")
+    fun `boarding preserves the manual shared key without any settings lookup on the smallest screen`() {
+        env.updateSettings { it.copy(terminal = it.terminal.copy(keyIdentifier = "manual-key", keyVersion = 2)) }
+        await { container.secrets.set(Secret.TERMINAL_PASSPHRASE, "manual secret") }
         boardPhone()
-        compose.awaitCondition("lookup fields reach the screen") {
-            container.settingsState.value.terminal.keyIdentifier == "discovered-key"
-        }
-        compose.onNodeWithTag("keyIdentifier").performScrollTo().assertTextContains("discovered-key", substring = true)
-        compose.onNodeWithTag("sharedKeyManual").assertDoesNotExist()
-        val opened = paymentsApp.opened.size
-        compose.onNodeWithTag("findSharedKey").performScrollTo().performClick()
-        compose.awaitCondition("lookup retry finishes") { reads == 2 }
-        assertThat(paymentsApp.opened).hasSize(opened)
-        assertThat(await { container.secrets.get(Secret.TERMINAL_PASSPHRASE) }).isEqualTo("discovered secret")
+        compose.onNodeWithTag("keyIdentifier").performScrollTo().assertTextContains("manual-key", substring = true)
+        compose.onNodeWithTag("findSharedKey").assertDoesNotExist()
+        assertThat(container.settingsState.value.terminal.keyVersion).isEqualTo(2)
+        assertThat(await { container.secrets.get(Secret.TERMINAL_PASSPHRASE) }).isEqualTo("manual secret")
     }
 
     @Test
     @Config(qualifiers = "ja-w320dp-h460dp-hdpi")
-    fun `missing permissions show manual entry while registration and a retry remain available`() {
+    fun `boarding without a shared key leaves manual entry available and never queries settings`() {
         boardPhone()
-        waitForTag("sharedKeyManual")
         compose.onNodeWithTag("keyIdentifier").performScrollTo().performTextInput("manual-key")
         compose.onNodeWithTag("passphrase").performScrollTo().assertExists()
         compose.onNodeWithTag("keyVersion").assertExists()
-        foundKey = DiscoveredKey("retried-key", 3, "retried secret")
-        val opened = paymentsApp.opened.size
-        compose.onNodeWithTag("findSharedKey").performScrollTo().performClick()
-        compose.awaitCondition("retry fills the key") { container.settingsState.value.terminal.keyIdentifier == "retried-key" }
-        compose.onNodeWithTag("keyIdentifier").performScrollTo().assertTextContains("retried-key", substring = true)
-        compose.onNodeWithTag("sharedKeyManual").assertDoesNotExist()
-        assertThat(paymentsApp.opened).hasSize(opened)
+        compose.onNodeWithTag("findSharedKey").assertDoesNotExist()
+        assertThat(await { container.secrets.get(Secret.TERMINAL_PASSPHRASE) }).isNull()
     }
 }

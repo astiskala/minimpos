@@ -186,6 +186,9 @@ internal interface SettingsEvents {
     /** Deletes every sale and refund ([SettingsViewModel.clearHistory]). */
     fun onHistoryClear()
 
+    /** Tracked sample creation and scoped removal callbacks. */
+    val samples: SampleDataEvents
+
     /** Adds or updates [taxRate], making it the default when [makeDefault] ([SettingsViewModel.saveTaxRate]). */
     fun onTaxRateSave(
         taxRate: TaxRateEntity,
@@ -227,9 +230,6 @@ internal interface TerminalSetupEvents {
 
     /** Removes this phone's Payments app instance ([TerminalSetupViewModel.removeTapToPay]). */
     fun onTapToPayRemove()
-
-    /** Retries the boarded phone's shared-key lookup ([TerminalSetupViewModel.findSharedKey]). */
-    fun onSharedKeyFind()
 }
 
 @Composable
@@ -252,7 +252,10 @@ private fun PricingConfirmation(
     )
 }
 
-private fun settingsEvents(settings: SettingsViewModel): SettingsEvents =
+private fun settingsEvents(
+    settings: SettingsViewModel,
+    sampleData: SampleDataViewModel,
+): SettingsEvents =
     object : SettingsEvents {
         override fun onUpdate(transform: (AppSettings) -> AppSettings) = settings.update(transform)
 
@@ -284,6 +287,13 @@ private fun settingsEvents(settings: SettingsViewModel): SettingsEvents =
 
         override fun onHistoryClear() = settings.clearHistory()
 
+        override val samples =
+            object : SampleDataEvents {
+                override fun onAdd() = sampleData.populate()
+
+                override fun onPurge() = sampleData.purge()
+            }
+
         override fun onTaxRateSave(
             taxRate: TaxRateEntity,
             makeDefault: Boolean,
@@ -302,8 +312,6 @@ private fun terminalSetupEvents(setup: TerminalSetupViewModel): TerminalSetupEve
         override fun onTerminalsFind(apiKey: String) = setup.findTerminals(apiKey)
 
         override fun onTerminalChoose(poiId: String?) = setup.chooseTerminal(poiId)
-
-        override fun onSharedKeyFind() = setup.findSharedKey()
 
         override fun onTapToPaySetUp(
             apiKey: String,
@@ -421,7 +429,13 @@ private fun ColumnScope.OtherSectionRows(
         { onOpen(SettingsSections.SECURITY) },
         tag = "section_security",
     )
-    SettingNavRow(Icons.Default.Storage, stringResource(R.string.settings_data), null, { onOpen(SettingsSections.DATA) })
+    SettingNavRow(
+        Icons.Default.Storage,
+        stringResource(R.string.settings_data),
+        null,
+        { onOpen(SettingsSections.DATA) },
+        tag = "section_data",
+    )
     SettingNavRow(Icons.Default.Info, stringResource(R.string.settings_about), BuildConfig.VERSION_NAME, {
         onOpen(SettingsSections.ABOUT)
     }, tag = "section_about")
@@ -430,6 +444,7 @@ private fun ColumnScope.OtherSectionRows(
 /**
  * One settings [section] (a [SettingsSections] key; unknown keys show About).
  * With [automaticSetup], Terminal starts optional read-only lookup once after imported settings have loaded; never boards.
+ * [helperSetup] collapses supplied details during guided setup, including Manual helper imports.
  */
 @Composable
 fun SettingsSectionScreen(
@@ -437,18 +452,20 @@ fun SettingsSectionScreen(
     navigator: Navigator,
     modifier: Modifier = Modifier,
     automaticSetup: Boolean = false,
+    helperSetup: Boolean = false,
 ) {
     val vm = settingsViewModel()
+    val sampleData = sampleDataViewModel()
     val state by vm.state.collectAsStateWithLifecycle()
     val actions by vm.actions.collectAsStateWithLifecycle()
     val setup = terminalSetupViewModel(vm)
     val setupActions by setup.actions.collectAsStateWithLifecycle()
     val pricing by vm.pricing.pending.collectAsStateWithLifecycle()
     pricing?.let { PricingConfirmation(it, vm.pricing::confirm, vm.pricing::cancel) }
-    val events = remember(vm) { settingsEvents(vm) }
+    val events = remember(vm, sampleData) { settingsEvents(vm, sampleData) }
     val setupEvents = remember(setup) { terminalSetupEvents(setup) }
-    LaunchedEffect(section, automaticSetup) {
-        setup.startAutomaticSetup(automaticSetup && section == SettingsSections.TERMINAL)
+    LaunchedEffect(section, automaticSetup, helperSetup) {
+        setup.startAutomaticSetup(automaticSetup && section == SettingsSections.TERMINAL, helperSetup)
     }
     var settingPin by remember { mutableStateOf<Boolean?>(null) }
     if (settingPin != null) {
@@ -474,6 +491,10 @@ fun SettingsSectionScreen(
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             Column(Modifier.widthIn(max = 640.dp).padding(bottom = 32.dp)) {
+                if (section == SettingsSections.DATA) {
+                    val samples by sampleData.state.collectAsStateWithLifecycle()
+                    SampleDataSection(samples, events.samples)
+                }
                 SettingsContent(section, state, actions, setupActions, events, setupEvents, navigator, { settingPin = it }) {
                     val businessImport by vm.businessImport.state.collectAsStateWithLifecycle()
                     ReceiptsSection(state, actions, businessImport, events)
@@ -620,11 +641,19 @@ private fun ColumnScope.TerminalSection(
     if (mode != TerminalMode.SIMULATOR) {
         ConnectionStatus(status.connection, status.poiId, status.environment, status.setupProblem)
     }
-    TerminalModeChoice(mode, status.onTerminal) { choice ->
+    val selectMode: (TerminalMode) -> Unit = { choice ->
         manualSetup = true
         // The device's own default is stored as Automatic, so the app keeps following it. Another destination has its
         // own environment, selected or read from the device again.
         events.onUpdate { it.copy(terminal = it.terminal.selectDestination(choice, terminalStatus.automaticMode)) }
+    }
+    if (setup.guided) {
+        SettingNote(stringResource(R.string.settings_setup_guided))
+        CollapsibleSettings(stringResource(R.string.settings_mode), tag = "destinationDetails") {
+            TerminalModeChoice(mode, status.onTerminal, selectMode)
+        }
+    } else {
+        TerminalModeChoice(mode, status.onTerminal, selectMode)
     }
     if (mode == TerminalMode.SIMULATOR) {
         SettingNavRow(

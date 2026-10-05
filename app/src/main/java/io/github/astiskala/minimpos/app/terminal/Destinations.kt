@@ -432,7 +432,6 @@ internal class PaymentsAppDestination(
 
         override val mode: TerminalMode get() = TerminalMode.PAYMENTS_APP
         override val secrets: Set<Secret> get() = setOf(Secret.TERMINAL_PASSPHRASE)
-        override val discoversAccountKey: Boolean get() = true
         override val aborts: Boolean get() = false
         override val diagnoses: Boolean get() = false
         override val recovery: RecoveryPolicy get() = RECOVERY

@@ -344,6 +344,7 @@ class RefundablePayment private constructor(
 
         private fun eligible(record: SaleWithLines): RefundablePayment? {
             val sale = record.sale
+            if (sale.sample) return null
             val transactionId = sale.poiTransactionId
             val timestamp = sale.poiTimestamp?.takeIf { TerminalClient.instantOf(it) != null }
             if (sale.status != SaleStatus.APPROVED || transactionId == null || timestamp == null) return null

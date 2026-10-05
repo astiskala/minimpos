@@ -1,5 +1,24 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="onboarding_title">Mini mPOS へようこそ</string>
+    <string name="onboarding_hint">Adyen アカウントなしでシミュレーターを試す、設定 QR コードを読み込む、または端末を接続できます。</string>
+    <string name="onboarding_simulator">サンプルでシミュレーターを試す</string>
+    <string name="onboarding_terminal">端末を設定</string>
+    <string name="sample_data">サンプルデータ</string>
+    <string name="sample_data_hint">サンプル商品と読み取り専用のデモ履歴を追加します。データや支払先は変更されません。サンプル履歴は日次合計に含まれません。</string>
+    <string name="sample_add">サンプルデータを追加</string>
+    <string name="sample_remove">サンプルデータを削除</string>
+    <string name="sample_remove_message">サンプル商品（編集済みを含む）とデモ履歴を削除しますか？ご自身の商品、履歴、税率、設定は残ります。ご自身の商品が使うカテゴリも残ります。</string>
+    <string name="sample_added">サンプルデータを用意しました。既存のサンプルは保持されます。</string>
+    <string name="sample_removed">サンプルデータを削除しました。</string>
+    <string name="sample_write_failed">変更を保存できませんでした。もう一度お試しください。</string>
+    <string name="sample_history_hint">サンプル履歴です。資金移動はありません。決済操作はできません。</string>
+    <string name="sample_label">サンプル</string>
+    <string name="sample_category">サンプル商品</string>
+    <string name="sample_coffee">サンプルコーヒー</string>
+    <string name="sample_tea">サンプルティー</string>
+    <string name="sample_cake">サンプルケーキ</string>
+    <string name="sample_deposit">サンプル保証金</string>
   <string name="app_name">Mini mPOS</string>
   <string name="locked">ロック中</string>
   <string name="action_add">追加</string>
@@ -332,7 +351,7 @@
   <string name="transfer_done">インポート完了</string>
   <string name="transfer_continue_setup">設定を続ける</string>
   <string name="transfer_review_setup">設定を確認</string>
-  <string name="transfer_automatic_note">「設定を続ける」で物理端末を検索するか、Tap to Pay設定を開きます。スマートフォン登録後に共有キーを取得します。情報を確認し、不足を補ってから接続とAPIキーをテストしてください。取得にはインポートしたAPIキーとManagement権限が必要です。</string>
+  <string name="transfer_automatic_note">「設定を続ける」でインポートしたAPIキーとManagement権限を使い、物理端末を検索します。情報を確認し、不足を補ってから接続とAPIキーをテストしてください。</string>
   <string name="transfer_added">追加した商品</string>
   <string name="transfer_updated">更新した商品</string>
   <string name="transfer_new_categories">新しいカテゴリー</string>
@@ -493,8 +512,11 @@
   <string name="settings_timeout_hint">この時間までに応答がなければ取引状況を確認します（Adyenの推奨は120秒）。</string>
   <string name="settings_shared_key">共有キー</string>
   <string name="settings_shared_key_hint">Customer AreaのDevices › Device settings › Integrations › Terminal API › Encryption keyからコピーしてください（鉛筆アイコンで表示）。</string>
-  <string name="settings_payments_app_shared_key_hint">スマートフォン登録後、Mini mPOSがAdyen APIキーでマーチャントまたは店舗の共有キーを取得します。取得できない場合は下で手動入力してください。</string>
-  <string name="settings_find_shared_key">共有キーを取得</string>
+  <string name="settings_payments_app_shared_key_hint">共有キーはここで入力するか、セットアップヘルパーに含めてください。スマートフォンの登録では取得しません。</string>
+  <string name="settings_setup_review">情報を確認・編集</string>
+  <string name="settings_setup_hide">情報を隠す</string>
+  <string name="settings_setup_supplied">情報は入力済み</string>
+  <string name="settings_setup_guided">保存済みの情報は折りたたまれています。手順をタップすると確認・編集できます。不足する手順を完了し、接続とAPIキーをテストしてください。</string>
   <string name="settings_key_identifier">キー識別子</string>
   <string name="settings_key_version">キーバージョン</string>
   <string name="settings_passphrase">キーのパスフレーズ</string>

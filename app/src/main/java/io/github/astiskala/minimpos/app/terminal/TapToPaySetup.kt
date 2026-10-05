@@ -21,11 +21,9 @@ sealed interface TapToPayOutcome {
      * terminal settings are still selected.
      *
      * @property installationId The instance's installation ID.
-     * @property sharedKeyFound Whether optional Management lookup stored the shared key; false allows manual entry.
      */
     data class Boarded(
         val installationId: String,
-        val sharedKeyFound: Boolean = false,
     ) : TapToPayOutcome
 
     /** The instance was revoked at Adyen and forgotten here. */
@@ -60,7 +58,6 @@ sealed interface TapToPayOutcome {
  * @param settings Where the installation ID is stored.
  * @param exchange Opens the Payments app.
  * @param management The Management API for an API key and environment; tests replace it.
- * @param discovery Reads optional shared-key settings after registration using the separate Adyen API key.
  */
 class TapToPaySetup(
     private val setups: TerminalSetupSource,
@@ -69,12 +66,11 @@ class TapToPaySetup(
     private val management: (apiKey: String, environment: TerminalEnvironment) -> PaymentsAppManagement = { key, environment ->
         AdyenPaymentsAppManagement(key, environment)
     },
-    private val discovery: SetupDiscovery,
 ) {
     /**
      * Boards the Payments app (or confirms that it is boarded); [reboard] boards it again, e.g. for another store. It
-     * opens the Payments app up to twice and calls the Management API in between. Afterwards, optional shared-key
-     * lookup cannot turn successful registration into failure; manual setup remains available.
+     * opens the Payments app up to twice and calls the Management API in between. The shared key is entered separately
+     * through the setup helper or on this device; boarding never retrieves or replaces it.
      */
     suspend fun board(reboard: Boolean = false): TapToPayOutcome {
         val access =
@@ -95,7 +91,7 @@ class TapToPaySetup(
             is Onboarding.Boarded -> {
                 val boarded = terminal.copy(paymentsAppInstallationId = result.installationId)
                 settings.update { if (it.terminal == terminal) it.copy(terminal = boarded) else it }
-                TapToPayOutcome.Boarded(result.installationId, discovery.findPaymentsAppKey(boarded) == true)
+                TapToPayOutcome.Boarded(result.installationId)
             }
 
             is Onboarding.Failed -> {

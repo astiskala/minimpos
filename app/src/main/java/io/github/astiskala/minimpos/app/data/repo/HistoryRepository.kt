@@ -96,6 +96,24 @@ class HistoryRepository(
         deleteSettledBefore(Long.MAX_VALUE)
     }
 
+    /** Whether tracked sample sales remain; called inside sample setup's database transaction. */
+    internal suspend fun hasSamples(): Boolean = saleDao.sales().first().any { it.sample }
+
+    /** Removes only seeded demo history, retaining any sale referenced by a refund. */
+    internal suspend fun removeSamples() {
+        val referenced =
+            refundDao
+                .refunds()
+                .first()
+                .mapNotNull { it.saleId }
+                .toSet()
+        saleDao
+            .sales()
+            .first()
+            .filter { it.sample && it.id !in referenced }
+            .forEach { saleDao.deleteSale(it.id) }
+    }
+
     private suspend fun deleteSettledBefore(before: Long): Int =
         db.withTransaction {
             val sales = saleDao.sales().first()

@@ -82,8 +82,8 @@ data class ConnectionSetup(
         automatic &&
             when (destination) {
                 ConnectionDestination.THIS_TERMINAL -> onTerminal
-                ConnectionDestination.NETWORK, ConnectionDestination.CLOUD, ConnectionDestination.TAP_TO_PAY -> !onTerminal
-                null -> false
+                ConnectionDestination.NETWORK, ConnectionDestination.CLOUD -> !onTerminal
+                ConnectionDestination.TAP_TO_PAY, null -> false
             }
 
     /**

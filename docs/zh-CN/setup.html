@@ -111,14 +111,14 @@
             <p class="hint">对于网络或云端终端，此选项会作为应用环境导入。在 Adyen 终端上运行或使用 Tap to Pay 时，环境由本设备或已安装的 Payments 应用决定。请使用对应环境的凭据；此选项也会切换商户后台链接和 LIVE URL 前缀字段。</p>
           </fieldset>
 
-          <fieldset data-for="thisTerminal network cloud tapToPay">
+          <fieldset data-for="thisTerminal network cloud">
             <legend>3. 如何设置？</legend>
-            <label class="choice"><input type="radio" name="setupMode" value="automatic" checked> <span><strong>自动（推荐）</strong>：在设备上查询设置；Tap to Pay 会在手机注册后查询共享密钥</span></label>
+            <label class="choice"><input type="radio" name="setupMode" value="automatic" checked> <span><strong>自动（推荐）</strong>：在设备上查询终端设置</span></label>
             <label class="choice"><input type="radio" name="setupMode" value="manual"> <span><strong>手动</strong>：在电脑上输入全部连接信息</span></label>
             <p class="hint">LIVE 环境下两种方式都需要 LIVE URL 前缀。无法自动查询或结果不完整时，可在设备上补充信息，或在此选择手动。</p>
           </fieldset>
 
-          <p class="hint" data-only="tapToPay" hidden>请先遵循<a href="getting-started.html#tap-to-pay">Tap to Pay 准备步骤</a>并安装 Payments 应用。两种方式都需商家账户和独立的 Payments 应用 API 密钥进行注册。自动方式在注册后使用 Adyen API 密钥查询共享密钥，手动方式在此填写。无需复制注册令牌。</p>
+          <p class="hint" data-only="tapToPay" hidden>请先遵循<a href="getting-started.html#tap-to-pay">Tap to Pay 准备步骤</a>并安装 Payments 应用。输入商家账户和独立的 Payments 应用 API 密钥进行注册。共享密钥可在此输入，也可稍后在手机上输入；Mini mPOS 不会查询共享密钥。无需复制注册令牌。</p>
 
           <fieldset data-for="thisTerminal network cloud tapToPay" id="api-key-fields">
             <legend>Adyen API 密钥</legend>
@@ -127,7 +127,7 @@
             <input id="apiKey" name="apiKey" type="password" required spellcheck="false">
           </fieldset>
 
-          <fieldset data-for="thisTerminal network cloud tapToPay" data-mode="manual" data-automatic-for="tapToPay">
+          <fieldset data-for="thisTerminal network cloud tapToPay" data-mode="manual">
             <legend>Adyen 账户</legend>
             <label for="merchantAccount">商家账户</label>
             <input id="merchantAccount" name="merchantAccount" type="text" required spellcheck="false">
@@ -153,11 +153,11 @@
             <legend>共享密钥</legend>
             <p class="hint">在商户后台的 <a data-ca="devices/device-settings?categoryId=tapi" href="https://ca-test.adyen.com/ca/ui/devices/device-settings?categoryId=tapi" target="_blank" rel="noopener noreferrer" aria-describedby="customer-area-note">Devices › Device settings › Terminal API</a> 中的 Encryption key 下（点击铅笔图标查看）。</p>
             <label for="keyIdentifier">密钥标识符</label>
-            <input id="keyIdentifier" name="keyIdentifier" type="text" required spellcheck="false">
+            <input id="keyIdentifier" name="keyIdentifier" type="text" required data-required-for="thisTerminal network" spellcheck="false">
             <label for="passphrase">密钥口令</label>
-            <input id="passphrase" name="passphrase" type="password" required spellcheck="false">
+            <input id="passphrase" name="passphrase" type="password" required data-required-for="thisTerminal network" spellcheck="false">
             <label for="keyVersion">密钥版本</label>
-            <input id="keyVersion" name="keyVersion" type="number" min="1" max="9999" value="1" required>
+            <input id="keyVersion" name="keyVersion" type="number" min="1" max="9999" value="1" required data-required-for="thisTerminal network">
           </fieldset>
 
           <fieldset data-for="thisTerminal network cloud tapToPay" data-env="live">
@@ -217,7 +217,7 @@
             <li>在 Mini mPOS 中打开<strong>设置 › 终端</strong>，点按快速设置下的<strong>扫描设置二维码</strong>，或右上角的二维码扫描图标。无需先选择支付目标或环境。</li>
             <li>用摄像头扫描下方的二维码。有多个二维码时会自动轮换。</li>
             <li>检查支付目标和环境，尤其是 LIVE。输入<strong>传输码</strong>，然后点击<strong>导入</strong>。设备上只会更改您在这里填写的内容。</li>
-            <li>自动设置时点击<strong>继续设置</strong>：设备会匹配本终端或提供终端列表供选择。请检查信息并补充缺失项。手动设置时点击<strong>检查设置</strong>。在<strong>设置 › 终端</strong>中测试连接及 API 密钥。使用 Tap to Pay 时，请在那里点击<strong>设置 Tap to Pay</strong>，应用随后查询商家或门店的共享密钥。无法查询时可手动输入；<strong>查询共享密钥</strong>可重试查询，无需重新注册。</li>
+            <li>自动设置时点击<strong>继续设置</strong>：设备会匹配本终端或提供终端列表供选择。请检查信息并补充缺失项。手动设置时点击<strong>检查设置</strong>。已保存的信息已折叠，点击步骤即可检查或编辑。在<strong>设置 › 终端</strong>中测试连接及 API 密钥。使用 Tap to Pay 时，补充缺失的共享密钥字段，再点击<strong>设置 Tap to Pay</strong>注册手机。注册不会获取共享密钥。</li>
           </ol>
           <p>如包含 SMTP 设置，请检查<strong>设置 › 电子邮件</strong>并发送测试邮件。邮箱采集与自动发送需单独配置，参见<a href="using.html#email">邮件设置</a>。</p>
           <p>导入后请<a href="getting-started.html#first-payment">完成第一笔 TEST 付款</a>。</p>

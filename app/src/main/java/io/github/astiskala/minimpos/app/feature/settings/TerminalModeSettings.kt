@@ -97,19 +97,37 @@ internal fun ColumnScope.TerminalSteps(
             key = apiKey,
             onKey = { apiKey = it },
             problem = status.apiProblem,
+            guided = setup.guided,
         )
     val update: TerminalUpdate = { transform -> events.onUpdate { it.copy(terminal = transform(it.terminal)) } }
-    if (status.selectsEnvironment) {
-        EnvironmentStep(status.environment, update)
-        if (status.environment == null) return
+    key(setup.revision) {
+        if (status.selectsEnvironment) {
+            EnvironmentStep(status.environment, update, setup.guided)
+        }
+        if (!status.selectsEnvironment || status.environment != null) {
+            DestinationSteps(status, state, actions, setup, events, setupEvents, api, update)
+        }
     }
-    if (status.mode == TerminalMode.PAYMENTS_APP) PaymentsAppStep(1, status.paymentsApps)
+}
+
+/** Destination-specific steps after the selected or device-supplied environment is available. */
+@Composable
+private fun ColumnScope.DestinationSteps(
+    status: TerminalState,
+    state: SettingsUiState,
+    actions: SettingsActions,
+    setup: TerminalSetupActions,
+    events: SettingsEvents,
+    setupEvents: TerminalSetupEvents,
+    api: ApiEntry,
+    update: TerminalUpdate,
+) {
+    if (status.mode == TerminalMode.PAYMENTS_APP) PaymentsAppStep(1, status.paymentsApps, setup.guided)
     if (status.mode != TerminalMode.SIMULATOR && status.mode != TerminalMode.AUTO) {
         AdyenKeyStep(
             number = if (status.selectsEnvironment || status.mode == TerminalMode.PAYMENTS_APP) 2 else 1,
             cloud = status.mode == TerminalMode.CLOUD,
             discovers = status.mode != TerminalMode.PAYMENTS_APP,
-            paymentsApp = status.mode == TerminalMode.PAYMENTS_APP,
             api = api,
             actions = actions,
             setup = setup,
@@ -117,22 +135,20 @@ internal fun ColumnScope.TerminalSteps(
             setupEvents = setupEvents,
         )
     }
-    key(setup.revision) {
-        when (status.mode) {
-            TerminalMode.TERMINAL -> {
-                LocalTerminalSteps(status.onTerminal, state, actions, events, setupEvents, api, update)
-            }
-
-            TerminalMode.CLOUD -> {
-                CloudSteps(state, actions, setup, events, setupEvents, api, update)
-            }
-
-            TerminalMode.PAYMENTS_APP -> {
-                TapToPaySteps(state, actions, setup, events, setupEvents, api, update)
-            }
-
-            TerminalMode.SIMULATOR, TerminalMode.AUTO -> {}
+    when (status.mode) {
+        TerminalMode.TERMINAL -> {
+            LocalTerminalSteps(status.onTerminal, state, actions, events, setupEvents, api, update)
         }
+
+        TerminalMode.CLOUD -> {
+            CloudSteps(state, actions, setup, events, setupEvents, api, update)
+        }
+
+        TerminalMode.PAYMENTS_APP -> {
+            TapToPaySteps(state, actions, setup, events, setupEvents, api, update)
+        }
+
+        TerminalMode.SIMULATOR, TerminalMode.AUTO -> {}
     }
 }
 
@@ -141,26 +157,34 @@ internal fun ColumnScope.TerminalSteps(
 private fun ColumnScope.EnvironmentStep(
     environment: TerminalEnvironment?,
     update: TerminalUpdate,
+    guided: Boolean,
 ) {
-    SetupStep(1, stringResource(R.string.settings_environment))
-    SettingNote(stringResource(R.string.settings_environment_hint), Modifier.testTag("environmentHint"))
-    Column(Modifier.selectableGroup().testTag("environment")) {
-        TerminalEnvironment.entries.forEach { value ->
-            Row(
-                Modifier
-                    .fillMaxWidth()
-                    .selectable(
-                        selected = environment == value,
-                        role = Role.RadioButton,
-                        onClick = { update { it.selectEnvironment(value) } },
-                    ).heightIn(min = 48.dp)
-                    .padding(horizontal = 16.dp)
-                    .testTag("environment_$value"),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                RadioButton(selected = environment == value, onClick = null)
-                Spacer(Modifier.width(12.dp))
-                Text(stringResource(if (value == TerminalEnvironment.TEST) R.string.settings_env_test else R.string.settings_env_live))
+    SetupDetails(
+        1,
+        stringResource(R.string.settings_environment),
+        guided,
+        environment != null,
+        summary = environment?.name.orEmpty(),
+    ) {
+        SettingNote(stringResource(R.string.settings_environment_hint), Modifier.testTag("environmentHint"))
+        Column(Modifier.selectableGroup().testTag("environment")) {
+            TerminalEnvironment.entries.forEach { value ->
+                Row(
+                    Modifier
+                        .fillMaxWidth()
+                        .selectable(
+                            selected = environment == value,
+                            role = Role.RadioButton,
+                            onClick = { update { it.selectEnvironment(value) } },
+                        ).heightIn(min = 48.dp)
+                        .padding(horizontal = 16.dp)
+                        .testTag("environment_$value"),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    RadioButton(selected = environment == value, onClick = null)
+                    Spacer(Modifier.width(12.dp))
+                    Text(stringResource(if (value == TerminalEnvironment.TEST) R.string.settings_env_test else R.string.settings_env_live))
+                }
             }
         }
     }
@@ -175,6 +199,7 @@ private fun ColumnScope.EnvironmentStep(
  * @property key The API key typed and not saved yet; empty when none is.
  * @property onKey Takes what is typed into the API key field.
  * @property problem What the Checkout API is still missing; null once it is set up.
+ * @property guided Whether supplied helper details should start collapsed.
  */
 private class ApiEntry(
     val terminal: TerminalSettings,
@@ -183,6 +208,7 @@ private class ApiEntry(
     val key: String,
     val onKey: (String) -> Unit,
     val problem: SetupProblem?,
+    val guided: Boolean,
 )
 
 /** A terminal reached by the local Terminal API: this one ([onTerminal]), or one on the network. */
@@ -197,8 +223,8 @@ private fun ColumnScope.LocalTerminalSteps(
     update: TerminalUpdate,
 ) {
     val first = if (onTerminal) 2 else 4
-    if (!onTerminal) NetworkTerminalStep(3, state.settings.terminal, update)
-    SharedKeyStep(first, state, actions, events, setupEvents, update)
+    if (!onTerminal) NetworkTerminalStep(3, state.settings.terminal, update, api.guided)
+    SharedKeyStep(first, state, actions, events, setupEvents, update, api.guided)
     CheckoutApiStep(first + 1, api, actions, events, update)
 }
 
@@ -227,7 +253,7 @@ private fun ColumnScope.TapToPaySteps(
         onForgetApiKey = { events.onSecretChange(Secret.PAYMENTS_APP_API_KEY, null) },
         onDraft = { setupEvents.onSecretDraft(Secret.PAYMENTS_APP_API_KEY, it) },
     )
-    SharedKeyStep(5, state, actions, events, setupEvents, update, setup)
+    SharedKeyStep(5, state, actions, events, setupEvents, update, api.guided)
 }
 
 /** A terminal in the cloud: the Adyen account its API key belongs to, then the terminal, tested together. */
@@ -241,10 +267,11 @@ private fun ColumnScope.CloudSteps(
     api: ApiEntry,
     update: TerminalUpdate,
 ) {
-    SetupStep(3, stringResource(R.string.settings_api_cloud))
-    SettingNote(stringResource(R.string.settings_api_cloud_hint))
-    // The terminal's buttons, next, save the key.
-    ApiFields(api, update)
+    SetupDetails(3, stringResource(R.string.settings_api_cloud), api.guided, api.problem == null && !actions.api.isError) {
+        SettingNote(stringResource(R.string.settings_api_cloud_hint))
+        // The terminal's buttons, next, save the key.
+        ApiFields(api, update)
+    }
     if (api.problem != null || api.keySaved) {
         SettingActions {
             api.problem?.let { ActionMessage(it.text(), isError = true, modifier = Modifier.testTag("apiProblem")) }
@@ -270,35 +297,42 @@ private fun ColumnScope.NetworkTerminalStep(
     number: Int,
     terminal: TerminalSettings,
     update: TerminalUpdate,
+    guided: Boolean,
 ) {
-    SetupStep(number, stringResource(R.string.settings_step_terminal))
-    SettingNote(stringResource(R.string.settings_host_hint))
-    SettingNote(stringResource(R.string.settings_poiid_help))
-    SettingTextField(
-        stringResource(R.string.settings_host),
-        terminal.host,
-        { value -> update { it.copy(host = value.trim()) } },
-        placeholder = stringResource(R.string.settings_host_placeholder),
-        keyboardType = KeyboardType.Uri,
-        autoCorrect = false,
-        imeAction = ImeAction.Next,
-        tag = "host",
-    )
-    SettingTextField(
-        label = stringResource(R.string.settings_poiid),
-        value = terminal.poiIdOverride,
-        onCommit = { value -> update { it.copy(poiIdOverride = value.trim()) } },
-        placeholder = stringResource(R.string.settings_poiid_hint),
-        autoCorrect = false,
-        imeAction = ImeAction.Next,
-        tag = "poiId",
-    )
+    SetupDetails(
+        number,
+        stringResource(R.string.settings_step_terminal),
+        guided,
+        terminal.host.isNotBlank() && terminal.poiIdOverride.isNotBlank(),
+    ) {
+        SettingNote(stringResource(R.string.settings_host_hint))
+        SettingNote(stringResource(R.string.settings_poiid_help))
+        SettingTextField(
+            stringResource(R.string.settings_host),
+            terminal.host,
+            { value -> update { it.copy(host = value.trim()) } },
+            placeholder = stringResource(R.string.settings_host_placeholder),
+            keyboardType = KeyboardType.Uri,
+            autoCorrect = false,
+            imeAction = ImeAction.Next,
+            tag = "host",
+        )
+        SettingTextField(
+            label = stringResource(R.string.settings_poiid),
+            value = terminal.poiIdOverride,
+            onCommit = { value -> update { it.copy(poiIdOverride = value.trim()) } },
+            placeholder = stringResource(R.string.settings_poiid_hint),
+            autoCorrect = false,
+            imeAction = ImeAction.Next,
+            tag = "poiId",
+        )
+    }
 }
 
 /**
  * The shared key: identifier, passphrase (only kept in memory while typed, and cleared once stored) and version, the
- * button that saves the passphrase typed and tests the connection, and removing the saved passphrase. With [setup],
- * also offers a read-only lookup for a boarded Payments app, keeping manual fields available.
+ * button that saves the passphrase typed and tests the connection, and removing the saved passphrase.
+ * Supplied fields start collapsed during [guided] setup; connection testing remains outside the disclosure.
  */
 @Composable
 private fun ColumnScope.SharedKeyStep(
@@ -308,7 +342,7 @@ private fun ColumnScope.SharedKeyStep(
     events: SettingsEvents,
     setupEvents: TerminalSetupEvents,
     update: TerminalUpdate,
-    setup: TerminalSetupActions? = null,
+    guided: Boolean,
 ) {
     val terminal = state.settings.terminal
     val saved = Secret.TERMINAL_PASSPHRASE in state.secrets
@@ -318,33 +352,42 @@ private fun ColumnScope.SharedKeyStep(
     fun saveAndTest() {
         if (!actions.connection.running) events.onSaveAndTest(Secret.TERMINAL_PASSPHRASE, passphrase, SettingsTest.CONNECTION)
     }
-    SetupStep(number, stringResource(R.string.settings_shared_key))
-    if (setup != null) {
-        SettingNote(stringResource(R.string.settings_payments_app_shared_key_hint))
-        if (terminal.paymentsAppInstallationId.isNotBlank()) SharedKeyLookup(setup, setupEvents)
+    SetupDetails(
+        number,
+        stringResource(R.string.settings_shared_key),
+        guided,
+        saved && terminal.keyIdentifier.isNotBlank() && !actions.connection.isError && actions.secretError == null,
+        hasDraft = passphrase.isNotEmpty(),
+    ) {
+        if (terminal.mode == TerminalMode.PAYMENTS_APP) {
+            SettingNote(stringResource(R.string.settings_payments_app_shared_key_hint))
+        }
+        SettingNote(stringResource(R.string.settings_shared_key_hint))
+        // Next moves on to the passphrase, whose Done key saves and tests.
+        SettingTextField(
+            stringResource(R.string.settings_key_identifier),
+            terminal.keyIdentifier,
+            { value -> update { it.copy(keyIdentifier = value.trim()) } },
+            autoCorrect = false,
+            imeAction = ImeAction.Next,
+            tag = "keyIdentifier",
+        )
+        SecretField(
+            label = stringResource(R.string.settings_passphrase),
+            isSet = saved,
+            value = passphrase,
+            onValueChange = { passphrase = it },
+            onSubmit = ::saveAndTest,
+            tag = "passphrase",
+            onDraft = { setupEvents.onSecretDraft(Secret.TERMINAL_PASSPHRASE, it) },
+        )
+        SettingNumberField(stringResource(R.string.settings_key_version), terminal.keyVersion, TerminalSettings.KEY_VERSIONS, { version ->
+            update { it.copy(keyVersion = version) }
+        }, tag = "keyVersion")
+        if (saved) {
+            SettingActions { ForgetPassphrase(events) }
+        }
     }
-    SettingNote(stringResource(R.string.settings_shared_key_hint))
-    // Next moves on to the passphrase, whose Done key saves and tests.
-    SettingTextField(
-        stringResource(R.string.settings_key_identifier),
-        terminal.keyIdentifier,
-        { value -> update { it.copy(keyIdentifier = value.trim()) } },
-        autoCorrect = false,
-        imeAction = ImeAction.Next,
-        tag = "keyIdentifier",
-    )
-    SecretField(
-        label = stringResource(R.string.settings_passphrase),
-        isSet = saved,
-        value = passphrase,
-        onValueChange = { passphrase = it },
-        onSubmit = ::saveAndTest,
-        tag = "passphrase",
-        onDraft = { setupEvents.onSecretDraft(Secret.TERMINAL_PASSPHRASE, it) },
-    )
-    SettingNumberField(stringResource(R.string.settings_key_version), terminal.keyVersion, TerminalSettings.KEY_VERSIONS, { version ->
-        update { it.copy(keyVersion = version) }
-    }, tag = "keyVersion")
     SettingActions {
         TestButton(
             typed = passphrase.isNotEmpty(),
@@ -354,39 +397,21 @@ private fun ColumnScope.SharedKeyStep(
             onClick = ::saveAndTest,
             tag = "testConnection",
         )
-        if (saved) {
-            ConfirmedRemoval(
-                text = stringResource(R.string.settings_forget_passphrase),
-                confirmTitle = stringResource(R.string.settings_forget_passphrase_title),
-                confirmMessage = stringResource(R.string.settings_forget_passphrase_message),
-                onConfirm = { events.onSecretChange(Secret.TERMINAL_PASSPHRASE, null) },
-                icon = Icons.Default.KeyOff,
-                modifier = Modifier.testTag("forgetPassphrase"),
-            )
-        }
         actions.secretError?.let { ActionMessage(it.text(), isError = true) }
     }
 }
 
-/** Read-only retry and manual fallback for an already boarded phone; the editable shared-key fields remain below. */
+/** Removing a supplied shared-key passphrase, only after opening its details and confirming. */
 @Composable
-private fun ColumnScope.SharedKeyLookup(
-    setup: TerminalSetupActions,
-    setupEvents: TerminalSetupEvents,
-) {
-    SettingActions {
-        SecondaryButton(
-            stringResource(R.string.settings_find_shared_key),
-            setupEvents::onSharedKeyFind,
-            loading = setup.sharedKey.running || setup.tapToPay.running,
-            icon = Icons.Default.Search,
-            modifier = Modifier.testTag("findSharedKey"),
-        )
-        if (setup.manualDetails) {
-            SettingNote(stringResource(R.string.settings_discovery_manual), Modifier.testTag("sharedKeyManual"))
-        }
-    }
-}
+private fun ForgetPassphrase(events: SettingsEvents) =
+    ConfirmedRemoval(
+        text = stringResource(R.string.settings_forget_passphrase),
+        confirmTitle = stringResource(R.string.settings_forget_passphrase_title),
+        confirmMessage = stringResource(R.string.settings_forget_passphrase_message),
+        onConfirm = { events.onSecretChange(Secret.TERMINAL_PASSPHRASE, null) },
+        icon = Icons.Default.KeyOff,
+        modifier = Modifier.testTag("forgetPassphrase"),
+    )
 
 /**
  * The Checkout API, which every destination needs (captures, adjustments and payment links): its fields, what is still
@@ -403,9 +428,10 @@ private fun ColumnScope.CheckoutApiStep(
     fun saveAndTest() {
         if (!actions.api.running) events.onSaveAndTest(Secret.ADYEN_API_KEY, api.key, SettingsTest.API)
     }
-    SetupStep(number, stringResource(R.string.settings_api))
-    SettingNote(stringResource(R.string.settings_api_hint))
-    ApiFields(api, update)
+    SetupDetails(number, stringResource(R.string.settings_api), api.guided, api.problem == null && !actions.api.isError) {
+        SettingNote(stringResource(R.string.settings_api_hint))
+        ApiFields(api, update)
+    }
     SettingActions {
         api.problem?.let { ActionMessage(it.text(), isError = true, modifier = Modifier.testTag("apiProblem")) }
         TestButton(
@@ -457,17 +483,12 @@ private fun ColumnScope.AdyenKeyStep(
     number: Int,
     cloud: Boolean,
     discovers: Boolean,
-    paymentsApp: Boolean,
     api: ApiEntry,
     actions: SettingsActions,
     setup: TerminalSetupActions,
     events: SettingsEvents,
     setupEvents: TerminalSetupEvents,
 ) {
-    SetupStep(number, stringResource(R.string.settings_adyen_key))
-    SettingNote(stringResource(R.string.settings_adyen_key_hint))
-    ApiKeyRoles(cloud, discovers, paymentsApp)
-
     fun save() {
         if (discovers) {
             setupEvents.onTerminalsFind(api.key)
@@ -475,28 +496,39 @@ private fun ColumnScope.AdyenKeyStep(
             events.onSecretChange(Secret.ADYEN_API_KEY, api.key.trim())
         }
     }
-    SecretField(
-        label = stringResource(R.string.settings_api_key),
-        isSet = api.keySaved,
-        value = api.key,
-        onValueChange = api.onKey,
-        onSubmit = ::save,
-        tag = "apiKey",
-        onDraft = { setupEvents.onSecretDraft(Secret.ADYEN_API_KEY, it) },
-    )
-    SettingActions {
-        if (discovers) {
-            KeyDiscoveryActions(api, setup, ::save)
-        } else if (api.key.isNotBlank()) {
-            PrimaryButton(
-                stringResource(R.string.settings_save_api_key),
-                ::save,
-                modifier = Modifier.testTag("saveApiKey"),
-                icon = Icons.Default.Api,
-            )
+    SetupDetails(
+        number,
+        stringResource(R.string.settings_adyen_key),
+        setup.guided,
+        api.keySaved && !setup.manualDetails && !setup.terminals.running && !setup.terminals.isError,
+        hasDraft = api.key.isNotEmpty(),
+    ) {
+        SettingNote(stringResource(R.string.settings_adyen_key_hint))
+        ApiKeyRoles(cloud, discovers)
+
+        SecretField(
+            label = stringResource(R.string.settings_api_key),
+            isSet = api.keySaved,
+            value = api.key,
+            onValueChange = api.onKey,
+            onSubmit = ::save,
+            tag = "apiKey",
+            onDraft = { setupEvents.onSecretDraft(Secret.ADYEN_API_KEY, it) },
+        )
+        SettingActions {
+            if (discovers) {
+                KeyDiscoveryActions(api, setup, ::save)
+            } else if (api.key.isNotBlank()) {
+                PrimaryButton(
+                    stringResource(R.string.settings_save_api_key),
+                    ::save,
+                    modifier = Modifier.testTag("saveApiKey"),
+                    icon = Icons.Default.Api,
+                )
+            }
+            if (api.keySaved) ForgetApiKey(events)
+            actions.secretError?.let { ActionMessage(it.text(), isError = true) }
         }
-        if (api.keySaved) ForgetApiKey(events)
-        actions.secretError?.let { ActionMessage(it.text(), isError = true) }
     }
     setup.connectedTerminals?.let { TerminalChoiceDialog(it, setupEvents::onTerminalChoose) }
 }
@@ -506,20 +538,15 @@ private fun ColumnScope.AdyenKeyStep(
 private fun ColumnScope.ApiKeyRoles(
     cloud: Boolean,
     discovers: Boolean,
-    paymentsApp: Boolean,
 ) {
     if (cloud) {
         SettingNote(stringResource(R.string.settings_adyen_roles_hint))
         SettingNote("• " + stringResource(R.string.settings_adyen_role_cloud), Modifier.testTag("roleCloud"))
     }
-    if (!discovers && !paymentsApp) return
+    if (!discovers) return
     SettingNote(stringResource(R.string.settings_discovery_roles_hint))
     val roles =
         when {
-            paymentsApp -> {
-                listOf(R.string.settings_adyen_role_settings, R.string.settings_adyen_role_shared_key)
-            }
-
             cloud -> {
                 listOf(R.string.settings_adyen_role_terminals)
             }
@@ -608,17 +635,18 @@ private fun ColumnScope.CloudTerminalStep(
     onFindTerminals: () -> Unit,
     onTest: () -> Unit,
 ) {
-    SetupStep(number, stringResource(R.string.settings_step_terminal))
-    SettingNote(stringResource(R.string.settings_cloud_poiid_help))
-    SettingTextField(
-        label = stringResource(R.string.settings_poiid),
-        value = poiId,
-        onCommit = { onPoiId(it.trim()) },
-        placeholder = stringResource(R.string.settings_poiid_hint),
-        autoCorrect = false,
-        imeAction = ImeAction.Done,
-        tag = "poiId",
-    )
+    SetupDetails(number, stringResource(R.string.settings_step_terminal), setup.guided, poiId.isNotBlank()) {
+        SettingNote(stringResource(R.string.settings_cloud_poiid_help))
+        SettingTextField(
+            label = stringResource(R.string.settings_poiid),
+            value = poiId,
+            onCommit = { onPoiId(it.trim()) },
+            placeholder = stringResource(R.string.settings_poiid_hint),
+            autoCorrect = false,
+            imeAction = ImeAction.Done,
+            tag = "poiId",
+        )
+    }
     SettingActions {
         SecondaryButton(
             stringResource(R.string.settings_find_terminals),
@@ -668,36 +696,44 @@ private fun TerminalChoiceDialog(
 private fun ColumnScope.PaymentsAppStep(
     number: Int,
     paymentsApps: Set<TerminalEnvironment>,
+    guided: Boolean,
 ) {
-    SetupStep(number, stringResource(R.string.settings_payments_app))
-    SettingNote(stringResource(R.string.settings_payments_app_hint))
-    Column(Modifier.padding(horizontal = 16.dp)) {
-        LabeledValue(stringResource(R.string.settings_payments_app_installed), paymentsAppLabel(paymentsApps))
-    }
-    if (paymentsApps.size > 1) {
-        SettingActions { ActionMessage(stringResource(R.string.setup_payments_app_ambiguous), isError = true) }
-    } else if (paymentsApps.isEmpty()) {
-        val context = LocalContext.current
-
-        fun open(environment: TerminalEnvironment) {
-            try {
-                context.startActivity(Intent(Intent.ACTION_VIEW, PaymentsAppDestination.storeUrl(environment).toUri()))
-            } catch (ignored: ActivityNotFoundException) {
-            }
+    SetupDetails(
+        number,
+        stringResource(R.string.settings_payments_app),
+        guided,
+        paymentsApps.size == 1,
+        summary = paymentsAppLabel(paymentsApps),
+    ) {
+        SettingNote(stringResource(R.string.settings_payments_app_hint))
+        Column(Modifier.padding(horizontal = 16.dp)) {
+            LabeledValue(stringResource(R.string.settings_payments_app_installed), paymentsAppLabel(paymentsApps))
         }
-        SettingActions {
-            SecondaryButton(
-                stringResource(R.string.settings_get_payments_app_test),
-                { open(TerminalEnvironment.TEST) },
-                icon = Icons.Default.Download,
-                modifier = Modifier.testTag("getPaymentsAppTest"),
-            )
-            SecondaryButton(
-                stringResource(R.string.settings_get_payments_app_live),
-                { open(TerminalEnvironment.LIVE) },
-                icon = Icons.Default.Download,
-                modifier = Modifier.testTag("getPaymentsAppLive"),
-            )
+        if (paymentsApps.size > 1) {
+            SettingActions { ActionMessage(stringResource(R.string.setup_payments_app_ambiguous), isError = true) }
+        } else if (paymentsApps.isEmpty()) {
+            val context = LocalContext.current
+
+            fun open(environment: TerminalEnvironment) {
+                try {
+                    context.startActivity(Intent(Intent.ACTION_VIEW, PaymentsAppDestination.storeUrl(environment).toUri()))
+                } catch (ignored: ActivityNotFoundException) {
+                }
+            }
+            SettingActions {
+                SecondaryButton(
+                    stringResource(R.string.settings_get_payments_app_test),
+                    { open(TerminalEnvironment.TEST) },
+                    icon = Icons.Default.Download,
+                    modifier = Modifier.testTag("getPaymentsAppTest"),
+                )
+                SecondaryButton(
+                    stringResource(R.string.settings_get_payments_app_live),
+                    { open(TerminalEnvironment.LIVE) },
+                    icon = Icons.Default.Download,
+                    modifier = Modifier.testTag("getPaymentsAppLive"),
+                )
+            }
         }
     }
 }
@@ -734,33 +770,40 @@ private fun ColumnScope.TapToPayStep(
     var apiKey by remember { mutableStateOf("") }
     LaunchedEffect(setup.paymentsAppKeyStored) { if (setup.paymentsAppKeyStored) apiKey = "" }
     val boarded = installationId.isNotBlank()
-    SetupStep(number, stringResource(R.string.settings_tap_to_pay))
-    SettingNote(stringResource(R.string.settings_tap_to_pay_hint))
-    SettingNote(stringResource(R.string.settings_payments_app_key_hint))
-    Column(Modifier.padding(horizontal = 16.dp)) {
-        LabeledValue(
-            stringResource(R.string.settings_installation_id),
-            installationId.ifBlank { stringResource(R.string.settings_not_boarded) },
+    SetupDetails(
+        number,
+        stringResource(R.string.settings_tap_to_pay),
+        setup.guided,
+        apiKeySaved && !setup.tapToPay.isError,
+        hasDraft = apiKey.isNotEmpty(),
+    ) {
+        SettingNote(stringResource(R.string.settings_tap_to_pay_hint))
+        SettingNote(stringResource(R.string.settings_payments_app_key_hint))
+        Column(Modifier.padding(horizontal = 16.dp)) {
+            LabeledValue(
+                stringResource(R.string.settings_installation_id),
+                installationId.ifBlank { stringResource(R.string.settings_not_boarded) },
+            )
+        }
+        SettingTextField(
+            label = stringResource(R.string.settings_store_id),
+            value = storeId,
+            onCommit = { onStoreId(it.trim()) },
+            supporting = stringResource(R.string.settings_store_id_hint),
+            autoCorrect = false,
+            imeAction = ImeAction.Next,
+            tag = "storeId",
+        )
+        SecretField(
+            label = stringResource(R.string.settings_payments_app_key),
+            isSet = apiKeySaved,
+            value = apiKey,
+            onValueChange = { apiKey = it },
+            onSubmit = { onSetUp(apiKey, boarded) },
+            tag = "paymentsAppKey",
+            onDraft = onDraft,
         )
     }
-    SettingTextField(
-        label = stringResource(R.string.settings_store_id),
-        value = storeId,
-        onCommit = { onStoreId(it.trim()) },
-        supporting = stringResource(R.string.settings_store_id_hint),
-        autoCorrect = false,
-        imeAction = ImeAction.Next,
-        tag = "storeId",
-    )
-    SecretField(
-        label = stringResource(R.string.settings_payments_app_key),
-        isSet = apiKeySaved,
-        value = apiKey,
-        onValueChange = { apiKey = it },
-        onSubmit = { onSetUp(apiKey, boarded) },
-        tag = "paymentsAppKey",
-        onDraft = onDraft,
-    )
     TapToPayButtons(boarded, apiKeySaved, setup.tapToPay, { again -> onSetUp(apiKey, again) }, onRemove, onForgetApiKey)
 }
 

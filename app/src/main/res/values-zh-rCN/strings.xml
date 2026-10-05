@@ -60,6 +60,7 @@
   <string name="sale_search_close">关闭搜索</string>
   <string name="sale_all">全部</string>
   <string name="sale_custom_item">自定义商品</string>
+  <string name="sale_custom_default_name">商品</string>
   <string name="sale_custom_description">描述（可选）</string>
   <string name="sale_no_products">暂无商品。请在“商品”中添加，或使用自定义商品。</string>
   <string name="sale_cart">当前销售</string>

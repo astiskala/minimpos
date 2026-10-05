@@ -48,10 +48,12 @@ class JsonDataStoreSerializer<T>(
  * concurrent [update]s never lose each other's changes.
  */
 class SettingsRepository(
-    private val store: DataStore<AppSettings>,
+    store: DataStore<AppSettings>,
 ) {
+    private val store = ObservedStore(store)
+
     /** The stored settings, emitted now and after every change. */
-    val settings: Flow<AppSettings> = store.data.map { it.normalized() }
+    val settings: Flow<AppSettings> = this.store.data.map { it.normalized() }
 
     /** This device's persisted first-run choice, emitted only after storage has loaded. */
     val onboardingCompleted: Flow<Boolean> = settings.map { it.onboardingCompleted }
@@ -61,6 +63,6 @@ class SettingsRepository(
 
     /** Atomically replaces the settings with [transform] applied to the stored ones; [transform] must not have side effects. */
     suspend fun update(transform: (AppSettings) -> AppSettings) {
-        store.updateData { transform(it.normalized()).normalized() }
+        store.update { transform(it.normalized()).normalized() }
     }
 }

@@ -3,6 +3,7 @@ package io.github.astiskala.minimpos.app.data.security
 import android.security.keystore.KeyGenParameterSpec
 import android.security.keystore.KeyProperties
 import androidx.datastore.core.DataStore
+import io.github.astiskala.minimpos.app.data.settings.ObservedStore
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
@@ -124,16 +125,18 @@ class SecretStoreException(
  * operations can be slow on terminals, so they run off the main thread.
  */
 class SecretStore(
-    private val store: DataStore<SecretBlob>,
+    store: DataStore<SecretBlob>,
     private val cipher: SecretCipher,
     private val io: CoroutineDispatcher = Dispatchers.IO,
 ) {
+    private val store = ObservedStore(store)
+
     /**
      * The secrets that are stored, emitted again after every change. A stored secret may still fail to decrypt (see
      * [get]), which callers report as "could not be read" rather than "not set".
      */
     val configured: Flow<Set<Secret>> =
-        store.data.map { blob -> Secret.entries.filter { it.name in blob.values }.toSet() }
+        this.store.data.map { blob -> Secret.entries.filter { it.name in blob.values }.toSet() }
 
     /** The secret, or null when it is not stored or can no longer be decrypted. */
     suspend fun get(secret: Secret): String? {
@@ -159,7 +162,7 @@ class SecretStore(
         value: String?,
     ) {
         val encrypted = value?.takeIf { it.isNotEmpty() }?.let { encrypt(it) }
-        store.updateData { blob ->
+        store.update { blob ->
             SecretBlob(if (encrypted == null) blob.values - secret.name else blob.values + (secret.name to encrypted))
         }
     }

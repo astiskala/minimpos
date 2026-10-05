@@ -62,6 +62,7 @@ class TerminalSetupEntryTest {
         compose.onNodeWithTag("quickSetupImport").assertDoesNotExist()
         compose.onNodeWithTag("scanSetup").assertIsDisplayed().performClick()
         compose.onNodeWithTag("back").performClick()
+        compose.waitUntilAtLeastOneExists(hasTestTag("scanSetup"), 15_000)
         compose.onNodeWithTag("scanSetup").assertIsDisplayed()
         assertThat(await { env.container.settings.current() }.terminal.merchantAccount).isEqualTo("Merchant")
     }
@@ -79,6 +80,7 @@ class TerminalSetupEntryTest {
         compose.onNodeWithTag("scanSetup").performClick()
         compose.onNodeWithText("Discard and scan").performClick()
         compose.onNodeWithTag("back").performClick()
+        compose.waitUntilAtLeastOneExists(hasTestTag("apiKey"), 15_000)
         val field = compose.onNodeWithTag("apiKey").performScrollTo().fetchSemanticsNode()
         assertThat(field.config[SemanticsProperties.EditableText].text).isEmpty()
         assertThat(await { env.container.secrets.get(Secret.ADYEN_API_KEY) }).isNull()

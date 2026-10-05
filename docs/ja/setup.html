@@ -111,23 +111,23 @@
             <p class="hint">ネットワークやクラウドの端末では、この選択をアプリの環境としてインポートします。Adyen端末やTap to Payでは、デバイスまたはインストールしたPaymentsアプリが環境を決めます。同じ環境の認証情報を使ってください。この選択でCustomer AreaのリンクとLIVE URLプレフィックス欄も切り替わります。</p>
           </fieldset>
 
-          <fieldset data-for="thisTerminal network cloud">
+          <fieldset data-for="thisTerminal network cloud tapToPay">
             <legend>3. どの方法で設定しますか？</legend>
-            <label class="choice"><input type="radio" name="setupMode" value="automatic" checked> <span><strong>自動（推奨）</strong>：ここではAPIキーを入力し、デバイスで端末を選んで設定を確認します</span></label>
+            <label class="choice"><input type="radio" name="setupMode" value="automatic" checked> <span><strong>自動（推奨）</strong>：デバイスで設定を取得。Tap to Payではスマートフォン登録後に共有キーを取得</span></label>
             <label class="choice"><input type="radio" name="setupMode" value="manual"> <span><strong>手動</strong>：接続情報をすべてパソコンで入力します</span></label>
             <p class="hint">LIVEではどちらもLIVE URLプレフィックスが必要です。自動取得ができない場合や情報が不足する場合は、デバイスで補うか、ここで手動を選んでください。</p>
           </fieldset>
 
-          <p class="hint" data-only="tapToPay" hidden>Tap to Payはここで手動設定します。インポート後にPaymentsアプリをインストールし、アプリでスマートフォンを登録してください。物理端末の検索は使いません。</p>
+          <p class="hint" data-only="tapToPay" hidden>先に<a href="getting-started.html#tap-to-pay">Tap to Payの準備手順</a>に従い、Paymentsアプリをインストールしてください。どちらも登録用のマーチャントアカウントと別のPaymentsアプリのAPIキーが必要です。自動では登録後にAdyen APIキーで共有キーを取得し、手動ではここで入力します。登録トークンをコピーする必要はありません。</p>
 
           <fieldset data-for="thisTerminal network cloud tapToPay" id="api-key-fields">
             <legend>Adyen APIキー</legend>
-            <p class="hint"><a data-ca="developers/api-credentials/" href="https://ca-test.adyen.com/ca/ui/developers/api-credentials/" target="_blank" rel="noopener noreferrer" aria-describedby="customer-area-note">Developers › API credentials</a>で認証情報を作成し、APIキーを生成してください。<span data-only="cloud" hidden>クラウド決済にはCloud Device API roleを追加します。</span>自動設定には<a href="getting-started.html#connect">設定ガイド</a>の取得用ロールが必要です。このヘルパーはオフラインです。情報取得はインポート後にデバイスで行います。</p>
+            <p class="hint"><a data-ca="developers/api-credentials/" href="https://ca-test.adyen.com/ca/ui/developers/api-credentials/" target="_blank" rel="noopener noreferrer" aria-describedby="customer-area-note">Developers › API credentials</a>で認証情報を作成し、APIキーを生成してください。<span data-only="cloud" hidden>クラウド決済にはCloud Device API roleを追加します。</span><span data-only="tapToPay" hidden>このキーはCheckout操作用で、Paymentsアプリの登録用ではありません。</span>自動設定には<a href="getting-started.html#connect">設定ガイド</a>の取得用ロールが必要です。このヘルパーはオフラインです。情報取得はインポート後にデバイスで行います。</p>
             <label for="apiKey">APIキー</label>
             <input id="apiKey" name="apiKey" type="password" required spellcheck="false">
           </fieldset>
 
-          <fieldset data-for="thisTerminal network cloud tapToPay" data-mode="manual">
+          <fieldset data-for="thisTerminal network cloud tapToPay" data-mode="manual" data-automatic-for="tapToPay">
             <legend>Adyenアカウント</legend>
             <label for="merchantAccount">マーチャントアカウント</label>
             <input id="merchantAccount" name="merchantAccount" type="text" required spellcheck="false">
@@ -169,12 +169,39 @@
 
           <fieldset data-for="tapToPay">
             <legend>Tap to Pay</legend>
-            <p class="hint">Adyen Payments app role のみを持つ API 認証情報です。このロールは Adyen サポートが有効にします。Adyen の <a href="https://docs.adyen.com/point-of-sale/mobile-android/build/payments-app">Payments アプリガイド</a>を参照してください。</p>
+            <p class="hint">スマートフォン登録用の別のAPI認証情報で、Adyen Payments app roleのみを持ちます。Adyenの<a href="https://docs.adyen.com/point-of-sale/mobile-android/build/payments-app">Paymentsアプリガイド</a>を参照してください。</p>
             <label for="paymentsAppApiKey">PaymentsアプリのAPIキー</label>
             <input id="paymentsAppApiKey" name="paymentsAppApiKey" type="password" required spellcheck="false">
             <label for="storeId">店舗ID（任意）</label>
             <input id="storeId" name="storeId" type="text" spellcheck="false">
             <p class="hint">スマートフォンを 1 店舗用に設定する場合：<a data-ca="devices/stores/" href="https://ca-test.adyen.com/ca/ui/devices/stores/" target="_blank" rel="noopener noreferrer" aria-describedby="customer-area-note">Devices › Stores</a> にあるその店舗の ID（reference ではありません）。</p>
+          </fieldset>
+
+          <fieldset>
+            <legend>領収書メール（任意）</legend>
+            <label class="choice"><input type="radio" name="includeSmtp" value="no" checked> <span>メール設定を変更しない</span></label>
+            <label class="choice"><input type="radio" name="includeSmtp" value="yes"> <span>SMTP設定を含める</span></label>
+            <p class="hint">どちらの設定モードでも使えます。先に<a href="using.html#email">メール設定とプロバイダーの要件</a>を確認してください。ヘルパーからサーバーはテストできません。</p>
+          </fieldset>
+
+          <fieldset id="smtp-fields" data-email="true" hidden disabled>
+            <legend>SMTPサーバー</legend>
+            <label for="smtpHost">サーバー名</label>
+            <input id="smtpHost" name="smtpHost" type="text" required spellcheck="false" placeholder="smtp.example.com">
+            <label for="smtpPort">ポート</label>
+            <input id="smtpPort" name="smtpPort" type="number" min="1" max="65535" value="587" required>
+            <label class="choice"><input type="radio" name="smtpSecurity" value="STARTTLS" checked> <span>STARTTLS（通常はポート587）</span></label>
+            <label class="choice"><input type="radio" name="smtpSecurity" value="SSL"> <span>SSL/TLS（通常はポート465）</span></label>
+            <label class="choice"><input type="radio" name="smtpSecurity" value="NONE"> <span>なし（暗号化なし、非推奨）</span></label>
+            <label for="smtpUsername">ユーザー名（任意）</label>
+            <input id="smtpUsername" name="smtpUsername" type="text" spellcheck="false">
+            <label for="smtpPassword">パスワードまたはアプリパスワード（任意）</label>
+            <input id="smtpPassword" name="smtpPassword" type="password" spellcheck="false">
+            <label for="smtpFromAddress">差出人メールアドレス</label>
+            <input id="smtpFromAddress" name="smtpFromAddress" type="email" required spellcheck="false">
+            <label for="smtpFromName">差出人名（任意）</label>
+            <input id="smtpFromName" name="smtpFromName" type="text">
+            <p class="hint">入力した欄だけが変わります。空の任意欄は保存済みの値を残します。削除が必要なら設定 › メールで行ってください。パスワードはほかの秘密情報とともに暗号化します。</p>
           </fieldset>
 
           <div class="setup-actions">
@@ -190,8 +217,9 @@
             <li>Mini mPOS の<strong>設定 › 端末</strong>を開き、かんたんセットアップの<strong>設定コードを読み取る</strong>か右上のQRスキャンアイコンをタップします。決済先や環境を先に選ぶ必要はありません。</li>
             <li>カメラで下のコードを読み取ります。複数ある場合は自動で切り替わります。</li>
             <li>決済先と環境、特にLIVEを確認します。<strong>転送コード</strong>を入力し、<strong>インポート</strong>をタップします。デバイスでは、ここで入力した項目だけが変わります。</li>
-            <li>自動では<strong>設定を続ける</strong>をタップします。デバイスがこの端末を見つけるか、選択用の一覧を表示します。情報を確認し、不足を補ってください。手動では<strong>設定を確認</strong>をタップします。<strong>設定 › 端末</strong>で接続とAPIキーをテストします。Tap to Payでは、そこで<strong>Tap to Payを設定</strong>をタップします。</li>
+            <li>自動では<strong>設定を続ける</strong>をタップします。デバイスがこの端末を見つけるか、選択用の一覧を表示します。情報を確認し、不足を補ってください。手動では<strong>設定を確認</strong>をタップします。<strong>設定 › 端末</strong>で接続とAPIキーをテストします。Tap to Payでは、そこで<strong>Tap to Payを設定</strong>をタップするとマーチャントまたは店舗の共有キーを取得します。取得できなければ手動入力します。<strong>共有キーを取得</strong>で再登録せずに取得をやり直せます。</li>
           </ol>
+          <p>SMTP設定を含めた場合は<strong>設定 › メール</strong>を確認し、テストメールを送ります。メール取得と自動送信は別の設定です。<a href="using.html#email">メール設定</a>を参照してください。</p>
           <p>取り込み後は<a href="getting-started.html#first-payment">最初の TEST 決済</a>を行ってください。</p>
           <p><a href="troubleshooting.html#access">取り込みの問題</a> · <a href="troubleshooting.html#connection">接続の問題</a></p>
           <div class="setup-code-card" id="setup-code-card">
@@ -214,7 +242,7 @@
           <li><strong>入力内容はこのページの外に出ません。</strong>コードはブラウザー内で作成され、このページは何も送信・保存しません。終わったらページを閉じてください。</li>
           <li><strong>キーは暗号化されます。</strong>コード内のパスワードとキーは、ここにだけ表示される転送コードで暗号化されるため、コードの写真だけでは読み取れません。</li>
           <li><strong>転送コードは秘密にしてください。</strong>QR コードと転送コードの両方があればキーを復号できます。必要に応じて新しい転送を作り、終わったら閉じてください。</li>
-          <li><strong>接続だけを設定します。</strong>商品、領収書やほかの店舗設定はコピーしません。それらはアプリの<a href="using.html#more">別のデバイスに共有</a>を使います。</li>
+          <li><strong>接続と任意のSMTP欄だけを設定します。</strong>商品、領収書のレイアウトやほかの店舗設定はコピーしません。それらはアプリの<a href="using.html#more">別のデバイスに共有</a>を使います。</li>
           <li><strong>全体の手順は？</strong><a href="getting-started.html">はじめに</a>を参照し、取り込みや接続の問題は<a href="troubleshooting.html">トラブルシューティング</a>で確認してください。</li>
         </ul>
       </aside>

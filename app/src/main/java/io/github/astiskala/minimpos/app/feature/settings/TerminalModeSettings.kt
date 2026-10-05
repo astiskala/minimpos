@@ -109,6 +109,7 @@ internal fun ColumnScope.TerminalSteps(
             number = if (status.selectsEnvironment || status.mode == TerminalMode.PAYMENTS_APP) 2 else 1,
             cloud = status.mode == TerminalMode.CLOUD,
             discovers = status.mode != TerminalMode.PAYMENTS_APP,
+            paymentsApp = status.mode == TerminalMode.PAYMENTS_APP,
             api = api,
             actions = actions,
             setup = setup,
@@ -226,7 +227,7 @@ private fun ColumnScope.TapToPaySteps(
         onForgetApiKey = { events.onSecretChange(Secret.PAYMENTS_APP_API_KEY, null) },
         onDraft = { setupEvents.onSecretDraft(Secret.PAYMENTS_APP_API_KEY, it) },
     )
-    SharedKeyStep(5, state, actions, events, setupEvents, update)
+    SharedKeyStep(5, state, actions, events, setupEvents, update, setup)
 }
 
 /** A terminal in the cloud: the Adyen account its API key belongs to, then the terminal, tested together. */
@@ -296,7 +297,8 @@ private fun ColumnScope.NetworkTerminalStep(
 
 /**
  * The shared key: identifier, passphrase (only kept in memory while typed, and cleared once stored) and version, the
- * button that saves the passphrase typed and tests the connection, and removing the saved passphrase.
+ * button that saves the passphrase typed and tests the connection, and removing the saved passphrase. With [setup],
+ * also offers a read-only lookup for a boarded Payments app, keeping manual fields available.
  */
 @Composable
 private fun ColumnScope.SharedKeyStep(
@@ -306,6 +308,7 @@ private fun ColumnScope.SharedKeyStep(
     events: SettingsEvents,
     setupEvents: TerminalSetupEvents,
     update: TerminalUpdate,
+    setup: TerminalSetupActions? = null,
 ) {
     val terminal = state.settings.terminal
     val saved = Secret.TERMINAL_PASSPHRASE in state.secrets
@@ -316,6 +319,10 @@ private fun ColumnScope.SharedKeyStep(
         if (!actions.connection.running) events.onSaveAndTest(Secret.TERMINAL_PASSPHRASE, passphrase, SettingsTest.CONNECTION)
     }
     SetupStep(number, stringResource(R.string.settings_shared_key))
+    if (setup != null) {
+        SettingNote(stringResource(R.string.settings_payments_app_shared_key_hint))
+        if (terminal.paymentsAppInstallationId.isNotBlank()) SharedKeyLookup(setup, setupEvents)
+    }
     SettingNote(stringResource(R.string.settings_shared_key_hint))
     // Next moves on to the passphrase, whose Done key saves and tests.
     SettingTextField(
@@ -358,6 +365,26 @@ private fun ColumnScope.SharedKeyStep(
             )
         }
         actions.secretError?.let { ActionMessage(it.text(), isError = true) }
+    }
+}
+
+/** Read-only retry and manual fallback for an already boarded phone; the editable shared-key fields remain below. */
+@Composable
+private fun ColumnScope.SharedKeyLookup(
+    setup: TerminalSetupActions,
+    setupEvents: TerminalSetupEvents,
+) {
+    SettingActions {
+        SecondaryButton(
+            stringResource(R.string.settings_find_shared_key),
+            setupEvents::onSharedKeyFind,
+            loading = setup.sharedKey.running || setup.tapToPay.running,
+            icon = Icons.Default.Search,
+            modifier = Modifier.testTag("findSharedKey"),
+        )
+        if (setup.manualDetails) {
+            SettingNote(stringResource(R.string.settings_discovery_manual), Modifier.testTag("sharedKeyManual"))
+        }
     }
 }
 
@@ -430,6 +457,7 @@ private fun ColumnScope.AdyenKeyStep(
     number: Int,
     cloud: Boolean,
     discovers: Boolean,
+    paymentsApp: Boolean,
     api: ApiEntry,
     actions: SettingsActions,
     setup: TerminalSetupActions,
@@ -438,7 +466,7 @@ private fun ColumnScope.AdyenKeyStep(
 ) {
     SetupStep(number, stringResource(R.string.settings_adyen_key))
     SettingNote(stringResource(R.string.settings_adyen_key_hint))
-    ApiKeyRoles(cloud, discovers)
+    ApiKeyRoles(cloud, discovers, paymentsApp)
 
     fun save() {
         if (discovers) {
@@ -478,21 +506,34 @@ private fun ColumnScope.AdyenKeyStep(
 private fun ColumnScope.ApiKeyRoles(
     cloud: Boolean,
     discovers: Boolean,
+    paymentsApp: Boolean,
 ) {
     if (cloud) {
         SettingNote(stringResource(R.string.settings_adyen_roles_hint))
         SettingNote("• " + stringResource(R.string.settings_adyen_role_cloud), Modifier.testTag("roleCloud"))
     }
-    if (!discovers) return
+    if (!discovers && !paymentsApp) return
     SettingNote(stringResource(R.string.settings_discovery_roles_hint))
     val roles =
-        if (cloud) {
-            listOf(R.string.settings_adyen_role_terminals)
-        } else {
-            listOf(R.string.settings_adyen_role_terminals, R.string.settings_adyen_role_settings, R.string.settings_adyen_role_shared_key)
+        when {
+            paymentsApp -> {
+                listOf(R.string.settings_adyen_role_settings, R.string.settings_adyen_role_shared_key)
+            }
+
+            cloud -> {
+                listOf(R.string.settings_adyen_role_terminals)
+            }
+
+            else -> {
+                listOf(
+                    R.string.settings_adyen_role_terminals,
+                    R.string.settings_adyen_role_settings,
+                    R.string.settings_adyen_role_shared_key,
+                )
+            }
         }
     roles.forEach { SettingNote("• " + stringResource(it)) }
-    SettingNote(stringResource(R.string.settings_discovery_hint))
+    if (discovers) SettingNote(stringResource(R.string.settings_discovery_hint))
 }
 
 /** Optional terminal discovery, with its manual-entry fallback kept beside the API-key action. */

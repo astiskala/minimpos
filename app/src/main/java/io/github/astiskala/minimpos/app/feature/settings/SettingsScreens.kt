@@ -227,6 +227,9 @@ internal interface TerminalSetupEvents {
 
     /** Removes this phone's Payments app instance ([TerminalSetupViewModel.removeTapToPay]). */
     fun onTapToPayRemove()
+
+    /** Retries the boarded phone's shared-key lookup ([TerminalSetupViewModel.findSharedKey]). */
+    fun onSharedKeyFind()
 }
 
 @Composable
@@ -299,6 +302,8 @@ private fun terminalSetupEvents(setup: TerminalSetupViewModel): TerminalSetupEve
         override fun onTerminalsFind(apiKey: String) = setup.findTerminals(apiKey)
 
         override fun onTerminalChoose(poiId: String?) = setup.chooseTerminal(poiId)
+
+        override fun onSharedKeyFind() = setup.findSharedKey()
 
         override fun onTapToPaySetUp(
             apiKey: String,
@@ -424,14 +429,14 @@ private fun ColumnScope.OtherSectionRows(
 
 /**
  * One settings [section] (a [SettingsSections] key; unknown keys show About).
- * With [discoverTerminals], Terminal starts read-only discovery once after its imported settings have loaded.
+ * With [automaticSetup], Terminal starts optional read-only lookup once after imported settings have loaded; never boards.
  */
 @Composable
 fun SettingsSectionScreen(
     section: String,
     navigator: Navigator,
     modifier: Modifier = Modifier,
-    discoverTerminals: Boolean = false,
+    automaticSetup: Boolean = false,
 ) {
     val vm = settingsViewModel()
     val state by vm.state.collectAsStateWithLifecycle()
@@ -442,8 +447,8 @@ fun SettingsSectionScreen(
     pricing?.let { PricingConfirmation(it, vm.pricing::confirm, vm.pricing::cancel) }
     val events = remember(vm) { settingsEvents(vm) }
     val setupEvents = remember(setup) { terminalSetupEvents(setup) }
-    LaunchedEffect(section, discoverTerminals) {
-        setup.startAutomaticSetup(discoverTerminals && section == SettingsSections.TERMINAL)
+    LaunchedEffect(section, automaticSetup) {
+        setup.startAutomaticSetup(automaticSetup && section == SettingsSections.TERMINAL)
     }
     var settingPin by remember { mutableStateOf<Boolean?>(null) }
     if (settingPin != null) {

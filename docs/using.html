@@ -136,6 +136,7 @@
           <h3 id="language-receipts">Language and receipt text</h3>
           <p>The app supports English, Simplified Chinese and Japanese. On Android 12 or earlier it follows the device language; on Android 13 or later use Android's per-app language setting. Adyen's payment receipt lines follow the terminal's own receipt-language setting and stay as supplied. Test the printed layout, especially for Chinese and Japanese text.</p>
           <h3 id="email">Set up email</h3>
+          <p>To enter SMTP details on a computer, include them in the <a href="setup.html">setup helper</a> and follow the <a href="getting-started.html#helper">QR import steps</a>. This is optional and does not enable automatic email delivery.</p>
           <p>Open <strong>Settings › Email</strong>. Choose a provider or enter your SMTP server, sender and credentials. Use STARTTLS or SSL, and send a test email. In <strong>Settings › Payments › Email receipts</strong>, choose when to ask for the customer's email and whether to send automatically.</p>
           <p>Emails collected before payment are always sent to Adyen for terminal payments and payment links, even when no card is saved. Emails collected afterward are receipt-only.</p>
           <p>Provider buttons fill in server details, not account authorization. Follow your provider's instructions for SMTP access and the required password:</p>
@@ -215,7 +216,7 @@
             <li>Review prices and tax, check the connection in <strong>Settings › Terminal</strong>, and test a receipt.</li>
           </ol>
           <p>Settings replace the receiving device's shared settings. Its payment destination, terminal address and ID, Tap to Pay installation, environment and simulator remain local. Included secrets cover API keys, the shared-key passphrase, SMTP password and both PINs. A shared key works for another terminal only if Adyen assigns it the same key; device-specific credentials may need replacing.</p>
-          <p>Check the import's currency warning: catalog prices are not exchange-rate converted. The <a href="setup.html">setup helper</a> is different: it imports only the connection fields you filled in, leaving unrelated settings alone.</p>
+          <p>Check the import's currency warning: catalog prices are not exchange-rate converted. The <a href="setup.html">setup helper</a> is different: it imports only the connection and optional SMTP fields you filled in, leaving unrelated settings alone.</p>
           <p><strong>This is a copy, not synchronization or a transaction-history backup.</strong> Future changes and each device's payments stay local. In Settings › Data, choose history retention and clear settled history when appropriate. Unresolved payments are protected from routine cleanup. Clearing Android app data removes all local products, settings and history.</p>
           <p>Keep the app on the <a href="https://github.com/astiskala/minimpos/releases/latest">latest release</a>. Install updates through the same route and signing source as the original installation; see <a href="getting-started.html#install">installation</a>.</p>
           <p>For import problems, see <a href="troubleshooting.html#access">PIN and transfer troubleshooting</a>.</p>

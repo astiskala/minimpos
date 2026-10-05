@@ -331,7 +331,7 @@
   <string name="transfer_done">导入完成</string>
   <string name="transfer_continue_setup">继续设置</string>
   <string name="transfer_review_setup">检查设置</string>
-  <string name="transfer_automatic_note">“继续设置”会在本设备上匹配本终端或提供终端列表。请检查信息并补充缺失项，然后测试连接及 API 密钥。查询需要导入的 API 密钥及 Management 权限。</string>
+  <string name="transfer_automatic_note">“继续设置”会查找实体终端或打开 Tap to Pay 设置。注册本手机后可查询共享密钥。请检查信息并补充缺失项，然后测试连接及 API 密钥。查询需要导入的 API 密钥及 Management 权限。</string>
   <string name="transfer_added">已添加商品</string>
   <string name="transfer_updated">已更新商品</string>
   <string name="transfer_new_categories">新增分类</string>
@@ -492,6 +492,8 @@
   <string name="settings_timeout_hint">若在此时间内未收到响应，应用将查询交易状态（Adyen 建议 120 秒）。</string>
   <string name="settings_shared_key">共享密钥</string>
   <string name="settings_shared_key_hint">从商户后台复制：Devices › Device settings › Integrations › Terminal API › Encryption key（点击铅笔图标查看）。</string>
+  <string name="settings_payments_app_shared_key_hint">手机注册后，Mini mPOS 会使用 Adyen API 密钥查询商家或门店的共享密钥。无法查询时，请在下方手动输入。</string>
+  <string name="settings_find_shared_key">查询共享密钥</string>
   <string name="settings_key_identifier">密钥标识符</string>
   <string name="settings_key_version">密钥版本</string>
   <string name="settings_passphrase">密钥口令</string>

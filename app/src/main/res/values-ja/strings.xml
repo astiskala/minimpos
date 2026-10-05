@@ -331,7 +331,7 @@
   <string name="transfer_done">インポート完了</string>
   <string name="transfer_continue_setup">設定を続ける</string>
   <string name="transfer_review_setup">設定を確認</string>
-  <string name="transfer_automatic_note">「設定を続ける」で、このデバイスが端末を見つけるか、選択用の一覧を表示します。情報を確認し、不足を補ってから接続とAPIキーをテストしてください。取得にはインポートしたAPIキーとManagement権限が必要です。</string>
+  <string name="transfer_automatic_note">「設定を続ける」で物理端末を検索するか、Tap to Pay設定を開きます。スマートフォン登録後に共有キーを取得します。情報を確認し、不足を補ってから接続とAPIキーをテストしてください。取得にはインポートしたAPIキーとManagement権限が必要です。</string>
   <string name="transfer_added">追加した商品</string>
   <string name="transfer_updated">更新した商品</string>
   <string name="transfer_new_categories">新しいカテゴリー</string>
@@ -492,6 +492,8 @@
   <string name="settings_timeout_hint">この時間までに応答がなければ取引状況を確認します（Adyenの推奨は120秒）。</string>
   <string name="settings_shared_key">共有キー</string>
   <string name="settings_shared_key_hint">Customer AreaのDevices › Device settings › Integrations › Terminal API › Encryption keyからコピーしてください（鉛筆アイコンで表示）。</string>
+  <string name="settings_payments_app_shared_key_hint">スマートフォン登録後、Mini mPOSがAdyen APIキーでマーチャントまたは店舗の共有キーを取得します。取得できない場合は下で手動入力してください。</string>
+  <string name="settings_find_shared_key">共有キーを取得</string>
   <string name="settings_key_identifier">キー識別子</string>
   <string name="settings_key_version">キーバージョン</string>
   <string name="settings_passphrase">キーのパスフレーズ</string>

@@ -3,6 +3,7 @@ package io.github.astiskala.minimpos.app.terminal
 import io.github.astiskala.minimpos.app.data.security.SecretStoreException
 import io.github.astiskala.minimpos.app.data.settings.SettingsRepository
 import io.github.astiskala.minimpos.app.data.settings.TerminalMode
+import io.github.astiskala.minimpos.app.data.settings.TerminalSettings
 import io.github.astiskala.minimpos.terminal.transport.AdyenTerminalDetails
 import io.github.astiskala.minimpos.terminal.transport.DiscoveredKey
 import io.github.astiskala.minimpos.terminal.transport.TerminalDetails
@@ -10,6 +11,7 @@ import io.github.astiskala.minimpos.terminal.transport.TerminalDetailsApi
 import io.github.astiskala.minimpos.terminal.transport.TerminalListing
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import java.io.IOException
 
 /** Optional setup discovery through Management, independent of payment readiness.
  * @param setups Unlocks the API key through the existing setup boundary.
@@ -27,6 +29,60 @@ class SetupDiscovery(
 ) {
     private var selection: Selection? = null
     private val mutex = Mutex()
+
+    /**
+     * Reads the shared key for a boarded Payments app's merchant or store, using the Adyen API key in its installed
+     * environment. [expected] rejects a boarding whose settings changed meanwhile. Null means not ready or stale;
+     * false means unavailable lookup or storage. Unavailable lookup leaves saved manual fields intact.
+     * Never lists or modifies terminals; storage I/O failures are nonfatal.
+     */
+    suspend fun findPaymentsAppKey(expected: TerminalSettings? = null): Boolean? =
+        try {
+            mutex.withLock {
+                val unlocked = setups.unlocked()
+                val setup = unlocked.setup
+                val terminal = setup.settings.terminal
+                if (!setup.discoversAccountKey || (expected != null && terminal != expected)) {
+                    return@withLock null
+                }
+                val environment = setup.environment ?: return@withLock null
+                val apiKey = unlocked.apiKey ?: return@withLock false
+                val found =
+                    connect(apiKey).accountSharedKey(
+                        terminal.merchantAccount.trim(),
+                        terminal.storeId.trim().ifEmpty { null },
+                        environment,
+                    )
+                if (!sameOrigin(unlocked, setups.unlocked())) return@withLock null
+                val key = found ?: return@withLock false
+                var failed = false
+                val applied =
+                    settings.updateTerminal(terminal) {
+                        val stored = store(key)
+                        failed = !stored
+                        if (stored) terminal.copy(keyIdentifier = key.identifier, keyVersion = key.version) else null
+                    }
+                if (applied) {
+                    true
+                } else if (failed) {
+                    false
+                } else {
+                    null
+                }
+            }
+        } catch (_: IOException) {
+            false
+        }
+
+    private fun sameOrigin(
+        origin: UnlockedSetup,
+        current: UnlockedSetup,
+    ): Boolean {
+        if (current.apiKey != origin.apiKey || current.setup.settings.terminal != origin.setup.settings.terminal) return false
+        return current.setup.environment == origin.setup.environment &&
+            current.setup.onTerminal == origin.setup.onTerminal &&
+            current.terminalKey?.passphrase == origin.terminalKey?.passphrase
+    }
 
     /** Lists terminal IDs without changing saved connection fields; null means unavailable and manual setup can continue. */
     suspend fun find(): List<String>? =

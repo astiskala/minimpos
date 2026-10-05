@@ -247,7 +247,7 @@ class AppContainer(
         SetupDiscovery(terminalSetup, settings, { secrets.set(Secret.TERMINAL_PASSPHRASE, it) }, terminalDetails, gateway::readEnvironment)
 
     /** Boards (and revokes) the Adyen Payments app on this phone, for Tap to Pay. */
-    val tapToPay = TapToPaySetup(terminalSetup, settings, paymentsAppLinks, paymentsAppManagement)
+    val tapToPay = TapToPaySetup(terminalSetup, settings, paymentsAppLinks, paymentsAppManagement, setupDiscovery)
 
     /**
      * Adyen's Checkout API, for captures, authorisation adjustments and payment links, all simulated in simulator mode.

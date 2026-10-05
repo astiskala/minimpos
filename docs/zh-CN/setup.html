@@ -111,23 +111,23 @@
             <p class="hint">对于网络或云端终端，此选项会作为应用环境导入。在 Adyen 终端上运行或使用 Tap to Pay 时，环境由本设备或已安装的 Payments 应用决定。请使用对应环境的凭据；此选项也会切换商户后台链接和 LIVE URL 前缀字段。</p>
           </fieldset>
 
-          <fieldset data-for="thisTerminal network cloud">
+          <fieldset data-for="thisTerminal network cloud tapToPay">
             <legend>3. 如何设置？</legend>
-            <label class="choice"><input type="radio" name="setupMode" value="automatic" checked> <span><strong>自动（推荐）</strong>：在此输入 API 密钥，在设备上选择并检查终端设置</span></label>
+            <label class="choice"><input type="radio" name="setupMode" value="automatic" checked> <span><strong>自动（推荐）</strong>：在设备上查询设置；Tap to Pay 会在手机注册后查询共享密钥</span></label>
             <label class="choice"><input type="radio" name="setupMode" value="manual"> <span><strong>手动</strong>：在电脑上输入全部连接信息</span></label>
             <p class="hint">LIVE 环境下两种方式都需要 LIVE URL 前缀。无法自动查询或结果不完整时，可在设备上补充信息，或在此选择手动。</p>
           </fieldset>
 
-          <p class="hint" data-only="tapToPay" hidden>Tap to Pay 在此使用手动设置。导入后请安装 Payments 应用，并在应用中注册手机；实体终端查询不适用。</p>
+          <p class="hint" data-only="tapToPay" hidden>请先遵循<a href="getting-started.html#tap-to-pay">Tap to Pay 准备步骤</a>并安装 Payments 应用。两种方式都需商家账户和独立的 Payments 应用 API 密钥进行注册。自动方式在注册后使用 Adyen API 密钥查询共享密钥，手动方式在此填写。无需复制注册令牌。</p>
 
           <fieldset data-for="thisTerminal network cloud tapToPay" id="api-key-fields">
             <legend>Adyen API 密钥</legend>
-            <p class="hint">在 <a data-ca="developers/api-credentials/" href="https://ca-test.adyen.com/ca/ui/developers/api-credentials/" target="_blank" rel="noopener noreferrer" aria-describedby="customer-area-note">Developers › API credentials</a> 中创建凭据并生成 API 密钥。<span data-only="cloud" hidden>云端付款需添加 Cloud Device API role。</span>自动设置需要<a href="getting-started.html#connect">设置指南</a>中的查询角色。设置助手保持离线；查询在导入后的设备上执行。</p>
+            <p class="hint">在 <a data-ca="developers/api-credentials/" href="https://ca-test.adyen.com/ca/ui/developers/api-credentials/" target="_blank" rel="noopener noreferrer" aria-describedby="customer-area-note">Developers › API credentials</a> 中创建凭据并生成 API 密钥。<span data-only="cloud" hidden>云端付款需添加 Cloud Device API role。</span><span data-only="tapToPay" hidden>此密钥用于 Checkout 操作，而非 Payments 应用注册。</span>自动设置需要<a href="getting-started.html#connect">设置指南</a>中的查询角色。设置助手保持离线；查询在导入后的设备上执行。</p>
             <label for="apiKey">API 密钥</label>
             <input id="apiKey" name="apiKey" type="password" required spellcheck="false">
           </fieldset>
 
-          <fieldset data-for="thisTerminal network cloud tapToPay" data-mode="manual">
+          <fieldset data-for="thisTerminal network cloud tapToPay" data-mode="manual" data-automatic-for="tapToPay">
             <legend>Adyen 账户</legend>
             <label for="merchantAccount">商家账户</label>
             <input id="merchantAccount" name="merchantAccount" type="text" required spellcheck="false">
@@ -169,12 +169,39 @@
 
           <fieldset data-for="tapToPay">
             <legend>Tap to Pay</legend>
-            <p class="hint">仅具有 Adyen Payments app role 的 API 凭据，该角色需由 Adyen 支持团队开通；参见 Adyen 的 <a href="https://docs.adyen.com/point-of-sale/mobile-android/build/payments-app">Payments 应用指南</a>。</p>
+            <p class="hint">用于手机注册的独立 API 凭据，仅具有 Adyen Payments app role；参见 Adyen 的 <a href="https://docs.adyen.com/point-of-sale/mobile-android/build/payments-app">Payments 应用指南</a>。</p>
             <label for="paymentsAppApiKey">Payments 应用 API 密钥</label>
             <input id="paymentsAppApiKey" name="paymentsAppApiKey" type="password" required spellcheck="false">
             <label for="storeId">门店 ID（可选）</label>
             <input id="storeId" name="storeId" type="text" spellcheck="false">
             <p class="hint">如只为一家门店设置本手机：填写 <a data-ca="devices/stores/" href="https://ca-test.adyen.com/ca/ui/devices/stores/" target="_blank" rel="noopener noreferrer" aria-describedby="customer-area-note">Devices › Stores</a> 中该门店的 ID（不是其 reference）。</p>
+          </fieldset>
+
+          <fieldset>
+            <legend>电子收据（可选）</legend>
+            <label class="choice"><input type="radio" name="includeSmtp" value="no" checked> <span>保留现有邮件设置</span></label>
+            <label class="choice"><input type="radio" name="includeSmtp" value="yes"> <span>包含 SMTP 设置</span></label>
+            <p class="hint">两种设置方式均可使用。请先检查<a href="using.html#email">邮件设置及服务商要求</a>；设置助手无法测试服务器。</p>
+          </fieldset>
+
+          <fieldset id="smtp-fields" data-email="true" hidden disabled>
+            <legend>SMTP 服务器</legend>
+            <label for="smtpHost">服务器名称</label>
+            <input id="smtpHost" name="smtpHost" type="text" required spellcheck="false" placeholder="smtp.example.com">
+            <label for="smtpPort">端口</label>
+            <input id="smtpPort" name="smtpPort" type="number" min="1" max="65535" value="587" required>
+            <label class="choice"><input type="radio" name="smtpSecurity" value="STARTTLS" checked> <span>STARTTLS（通常为端口 587）</span></label>
+            <label class="choice"><input type="radio" name="smtpSecurity" value="SSL"> <span>SSL/TLS（通常为端口 465）</span></label>
+            <label class="choice"><input type="radio" name="smtpSecurity" value="NONE"> <span>无（不加密，不推荐）</span></label>
+            <label for="smtpUsername">用户名（可选）</label>
+            <input id="smtpUsername" name="smtpUsername" type="text" spellcheck="false">
+            <label for="smtpPassword">密码或应用密码（可选）</label>
+            <input id="smtpPassword" name="smtpPassword" type="password" spellcheck="false">
+            <label for="smtpFromAddress">发件人邮箱</label>
+            <input id="smtpFromAddress" name="smtpFromAddress" type="email" required spellcheck="false">
+            <label for="smtpFromName">发件人名称（可选）</label>
+            <input id="smtpFromName" name="smtpFromName" type="text">
+            <p class="hint">只更改已填写字段。可选项留空会保留已保存值；如需清除，请在“设置 › 电子邮件”中操作。密码与其他秘密信息一同加密。</p>
           </fieldset>
 
           <div class="setup-actions">
@@ -190,8 +217,9 @@
             <li>在 Mini mPOS 中打开<strong>设置 › 终端</strong>，点按快速设置下的<strong>扫描设置二维码</strong>，或右上角的二维码扫描图标。无需先选择支付目标或环境。</li>
             <li>用摄像头扫描下方的二维码。有多个二维码时会自动轮换。</li>
             <li>检查支付目标和环境，尤其是 LIVE。输入<strong>传输码</strong>，然后点击<strong>导入</strong>。设备上只会更改您在这里填写的内容。</li>
-            <li>自动设置时点击<strong>继续设置</strong>：设备会匹配本终端或提供终端列表供选择。请检查信息并补充缺失项。手动设置时点击<strong>检查设置</strong>。在<strong>设置 › 终端</strong>中测试连接及 API 密钥。使用 Tap to Pay 时，请在那里点击<strong>设置 Tap to Pay</strong>。</li>
+            <li>自动设置时点击<strong>继续设置</strong>：设备会匹配本终端或提供终端列表供选择。请检查信息并补充缺失项。手动设置时点击<strong>检查设置</strong>。在<strong>设置 › 终端</strong>中测试连接及 API 密钥。使用 Tap to Pay 时，请在那里点击<strong>设置 Tap to Pay</strong>，应用随后查询商家或门店的共享密钥。无法查询时可手动输入；<strong>查询共享密钥</strong>可重试查询，无需重新注册。</li>
           </ol>
+          <p>如包含 SMTP 设置，请检查<strong>设置 › 电子邮件</strong>并发送测试邮件。邮箱采集与自动发送需单独配置，参见<a href="using.html#email">邮件设置</a>。</p>
           <p>导入后请<a href="getting-started.html#first-payment">完成第一笔 TEST 付款</a>。</p>
           <p><a href="troubleshooting.html#access">导入问题？</a> · <a href="troubleshooting.html#connection">连接问题？</a></p>
           <div class="setup-code-card" id="setup-code-card">
@@ -214,7 +242,7 @@
           <li><strong>数据不会离开此页面。</strong>二维码在您的浏览器中生成；页面不会发送或保存任何内容。完成后请关闭页面。</li>
           <li><strong>密钥经过加密。</strong>二维码中的密码和密钥使用传输码加密，传输码只在这里显示，因此仅拍摄二维码不会泄露它们。</li>
           <li><strong>请保密传输码。</strong>同时持有二维码和传输码的人可解密密钥。按需生成新传输，完成后关闭页面。</li>
-          <li><strong>仅设置连接。</strong>不复制商品、收据或其他业务设置。请用应用中的<a href="using.html#more">共享至另一台设备</a>复制这些设置。</li>
+          <li><strong>仅设置连接及可选 SMTP 字段。</strong>不复制商品、收据布局或其他业务设置。请用应用中的<a href="using.html#more">共享至另一台设备</a>复制这些设置。</li>
           <li><strong>需要完整说明？</strong>参阅<a href="getting-started.html">快速入门</a>；导入或连接问题参见<a href="troubleshooting.html">故障排查</a>。</li>
         </ul>
       </aside>

@@ -96,6 +96,28 @@ class TerminalDetailsTest {
         }
 
     @Test
+    fun `Tap to Pay reads merchant or store shared keys without terminal discovery or cross-level fallback`() =
+        runBlocking {
+            val json = """{"nexo":{"encryptionKey":{"identifier":"key","version":2,"passphrase":" secret "}}}"""
+            reply(json)
+            val merchant = checkNotNull(api.accountSharedKey("Merchant/Name", null, TerminalEnvironment.TEST))
+            assertThat(merchant.passphrase).isEqualTo(" secret ")
+            val request = server.takeRequest()
+            assertThat(request.url.encodedPath).isEqualTo("/test/v3/merchants/Merchant%2FName/terminalSettings")
+            assertThat(request.method).isEqualTo("GET")
+            assertThat(request.headers["x-api-key"]).isEqualTo("secret")
+            reply(json)
+            assertThat(api.accountSharedKey("Merchant", "ST/ID", TerminalEnvironment.LIVE)?.identifier).isEqualTo("key")
+            assertThat(server.takeRequest().url.encodedPath).isEqualTo("/live/v3/stores/ST%2FID/terminalSettings")
+            reply("{}", 403)
+            assertThat(api.accountSharedKey("Merchant", "Store", TerminalEnvironment.TEST)).isNull()
+            assertThat(server.takeRequest().url.encodedPath).isEqualTo("/test/v3/stores/Store/terminalSettings")
+            reply("{}")
+            assertThat(api.accountSharedKey("Merchant", null, TerminalEnvironment.TEST)).isNull()
+            assertThat(server.requestCount).isEqualTo(4)
+        }
+
+    @Test
     fun `shared keys are optional and secret whitespace is preserved`() =
         runBlocking {
             reply("""{"nexo":{"encryptionKey":{"identifier":"key","version":2,"passphrase":" secret passphrase "}}}""")

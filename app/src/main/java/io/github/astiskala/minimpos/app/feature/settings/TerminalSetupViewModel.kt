@@ -1,7 +1,6 @@
 package io.github.astiskala.minimpos.app.feature.settings
 
 import androidx.lifecycle.ViewModel
-import androidx.lifecycle.viewModelScope
 import io.github.astiskala.minimpos.app.data.security.Secret
 import io.github.astiskala.minimpos.app.data.security.SecretStore
 import io.github.astiskala.minimpos.app.data.security.SecretStoreException
@@ -20,7 +19,6 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
-import kotlinx.coroutines.launch
 
 /**
  * Where the search for terminals in the cloud and the Tap to Pay setup stand.
@@ -28,6 +26,7 @@ import kotlinx.coroutines.launch
  * @property terminals The latest search for terminals connected in the cloud.
  * @property connectedTerminals The POIIDs that search found, to choose from; null while none is offered.
  * @property tapToPay The latest setup or removal of Tap to Pay.
+ * @property sharedKey The latest optional Tap to Pay shared-key lookup.
  * @property paymentsAppKeyStored Whether the Payments app API key given to the latest setup was stored (so the field
  *   can be cleared).
  * @property apiKeyStored Whether the API key given to the latest search was stored (so the field can be cleared).
@@ -39,6 +38,7 @@ data class TerminalSetupActions(
     val terminals: ActionState = ActionState(),
     val connectedTerminals: List<String>? = null,
     val tapToPay: ActionState = ActionState(),
+    val sharedKey: ActionState = ActionState(),
     val paymentsAppKeyStored: Boolean = false,
     val apiKeyStored: Boolean = false,
     val manualDetails: Boolean = false,
@@ -85,7 +85,15 @@ class TerminalSetupViewModel(
         observedSettings.first { it.loaded }
         if (automaticStarted) return
         automaticStarted = true
-        findTerminals()
+        if (observedSettings.value.settings.terminal.mode == TerminalMode.PAYMENTS_APP) {
+            if (observedSettings.value.settings.terminal.paymentsAppInstallationId
+                    .isNotBlank()
+            ) {
+                findSharedKey()
+            }
+        } else {
+            findTerminals()
+        }
     }
 
     /**
@@ -146,22 +154,36 @@ class TerminalSetupViewModel(
     /** Removes this phone's Payments app instance (see [TapToPaySetup.unregister]). */
     fun removeTapToPay() = run(null) { tapToPay.unregister() }
 
+    /** Retries optional shared-key lookup for this boarded phone, leaving all manual fields editable on failure. */
+    fun findSharedKey() {
+        if (_actions.value.sharedKey.running || _actions.value.tapToPay.running) return
+        _actions.update { it.copy(sharedKey = ActionState(running = true), manualDetails = false) }
+        launchWrite({
+            val result = discovery.findPaymentsAppKey()
+            refreshFields()
+            _actions.update { it.copy(sharedKey = ActionState(done = true), manualDetails = result != true) }
+        })
+    }
+
     private fun run(
         apiKey: String?,
         action: suspend () -> TapToPayOutcome,
     ) {
-        _actions.update { it.copy(tapToPay = ActionState(running = true), paymentsAppKeyStored = false) }
-        viewModelScope.launch {
+        if (_actions.value.tapToPay.running || _actions.value.sharedKey.running) return
+        _actions.update { it.copy(tapToPay = ActionState(running = true), paymentsAppKeyStored = false, sharedKey = ActionState()) }
+        launchWrite({
             val entered = apiKey?.trim()?.takeIf { it.isNotEmpty() }
             val notStored = entered?.let { persisting { store(Secret.PAYMENTS_APP_API_KEY, it) } }
             if (notStored != null) {
                 _actions.update { it.copy(tapToPay = ActionState(outcome = notStored, isError = true)) }
-                return@launch
+                return@launchWrite
             }
             if (entered != null) _actions.update { it.copy(paymentsAppKeyStored = true) }
             val result =
                 when (val outcome = persisting { action() }) {
                     is TapToPayOutcome.Boarded -> {
+                        refreshFields()
+                        _actions.update { it.copy(manualDetails = !outcome.sharedKeyFound) }
                         ActionState(outcome = ActionOutcome.TapToPayReady(outcome.installationId), done = true)
                     }
 
@@ -181,7 +203,13 @@ class TerminalSetupViewModel(
                     }
                 }
             _actions.update { it.copy(tapToPay = result) }
-        }
+        })
+    }
+
+    private suspend fun refreshFields() {
+        val terminal = settings.current().terminal
+        observedSettings.first { it.settings.terminal == terminal }
+        _actions.update { it.copy(revision = it.revision + 1) }
     }
 
     /** Stores [apiKey] as [secret]; null when it was stored, else why not. */

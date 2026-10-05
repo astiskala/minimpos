@@ -514,6 +514,10 @@ pre {
 
 .settings-list dd { margin: 4px 0 0; color: var(--grey); }
 
+.manual-setup { margin: 14px 0; }
+
+.manual-setup > summary { cursor: pointer; font-weight: 700; }
+
 /* Footer */
 
 .site-footer { padding: 40px 0; border-top: 1px solid var(--border); color: var(--grey); font-size: 0.95rem; }

@@ -60,6 +60,17 @@ interface TerminalDetailsApi {
         id: String,
         environment: TerminalEnvironment,
     ): DiscoveredKey?
+
+    /**
+     * Reads the merchant's or store's encryption key for Tap to Pay, without physical-terminal discovery.
+     * [storeId] is the store ID, not its reference; null reads [merchantAccount]'s settings. Denied, absent or
+     * malformed settings return null, without trying another account, level or environment.
+     */
+    suspend fun accountSharedKey(
+        merchantAccount: String,
+        storeId: String?,
+        environment: TerminalEnvironment,
+    ): DiscoveredKey?
 }
 
 /** Management v3 terminal discovery with bounded pagination and no automatic request retries.
@@ -102,11 +113,24 @@ class AdyenTerminalDetails(
     override suspend fun sharedKey(
         id: String,
         environment: TerminalEnvironment,
+    ): DiscoveredKey? = readKey(listOf("terminals", id), environment)
+
+    override suspend fun accountSharedKey(
+        merchantAccount: String,
+        storeId: String?,
+        environment: TerminalEnvironment,
+    ): DiscoveredKey? = readKey(if (storeId == null) listOf("merchants", merchantAccount) else listOf("stores", storeId), environment)
+
+    private suspend fun readKey(
+        path: List<String>,
+        environment: TerminalEnvironment,
     ): DiscoveredKey? {
         val url =
-            baseUrl(
-                environment,
-            ).newBuilder().addPathSegment("terminals").addPathSegment(id).addPathSegment("terminalSettings").build()
+            baseUrl(environment)
+                .newBuilder()
+                .apply { path.forEach { addPathSegment(it) } }
+                .addPathSegment("terminalSettings")
+                .build()
         val reply = http.get(url, TIMEOUT)
         if (reply !is AdyenReply.Answered || !reply.ok) return null
         return runCatching {

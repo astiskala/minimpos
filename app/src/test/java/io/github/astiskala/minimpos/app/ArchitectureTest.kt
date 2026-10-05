@@ -687,6 +687,8 @@ class ArchitectureTest {
 
     private class CapabilityViolation {
         fun discover(rules: DestinationRules) = rules.discoversTerminals
+
+        fun accountKey(rules: DestinationRules) = rules.discoversAccountKey
     }
 
     private class CatalogueViolation {
@@ -958,6 +960,7 @@ class ArchitectureTest {
                         "getChecksConnection",
                         "getSimulatesApi",
                         "getDiscoversTerminals",
+                        "getDiscoversAccountKey",
                         "selectsEnvironment",
                     ),
                 )

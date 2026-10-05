@@ -15,6 +15,8 @@ import androidx.compose.ui.test.performTextInput
 import androidx.navigation3.runtime.NavBackStack
 import androidx.navigation3.runtime.NavKey
 import com.google.common.truth.Truth.assertThat
+import io.github.astiskala.minimpos.app.FakeDevice
+import io.github.astiskala.minimpos.app.FakePaymentsApp
 import io.github.astiskala.minimpos.app.FakeTerminal
 import io.github.astiskala.minimpos.app.R
 import io.github.astiskala.minimpos.app.TestEnvironment
@@ -51,6 +53,9 @@ class AutomaticSetupUiTest {
     private var lookupAvailable = true
     private var sharedKeyAvailable = true
     private var emptyListing = false
+    private val device = FakeDevice()
+    private val paymentsApp = FakePaymentsApp()
+    private var accountReads = 0
     private val searches = mutableListOf<TerminalEnvironment>()
     private val details =
         object : TerminalDetailsApi {
@@ -70,10 +75,16 @@ class AutomaticSetupUiTest {
                 id: String,
                 environment: TerminalEnvironment,
             ): DiscoveredKey? = if (sharedKeyAvailable) DiscoveredKey("store-key", 2, "correct horse battery staple") else null
+
+            override suspend fun accountSharedKey(
+                merchantAccount: String,
+                storeId: String?,
+                environment: TerminalEnvironment,
+            ): DiscoveredKey? = DiscoveredKey("phone-key", 2, "phone secret").also { accountReads++ }
         }
 
     @get:Rule(order = 0)
-    val env = TestEnvironment(terminal = FakeTerminal(), terminalDetails = details)
+    val env = TestEnvironment(device, terminal = FakeTerminal(), paymentsApp = paymentsApp, terminalDetails = details)
 
     @get:Rule(order = 1)
     val compose = createComposeRule()
@@ -89,8 +100,9 @@ class AutomaticSetupUiTest {
         val seal = TransferSeal(iterations = 1_000)
         val code = seal.newCode()
         val sealed = SealedSecrets(seal.seal("""{"ADYEN_API_KEY":"imported-key"}""".toByteArray(), code))
+        val account = if (destination == "tapToPay") """"merchantAccount":"Merchant",""" else ""
         val connection =
-            """{"destination":"$destination","environment":"$environment","automatic":true,"liveUrlPrefix":"1797a841fbb37ca7-AdyenDemo"}"""
+            """{"destination":"$destination","environment":"$environment","automatic":true,$account"liveUrlPrefix":"1797a841fbb37ca7-AdyenDemo"}"""
         val vm = TransferImportViewModel(container.setupTransfer, "AUD")
         QrChunks
             .split(
@@ -106,7 +118,7 @@ class AutomaticSetupUiTest {
                             SettingsSectionScreen(
                                 route.section,
                                 navigator,
-                                discoverTerminals = route.discoverTerminals,
+                                automaticSetup = route.automaticSetup,
                             )
                         }
 
@@ -205,6 +217,33 @@ class AutomaticSetupUiTest {
             .assertIsDisplayed()
         assertThat(await { env.container.secrets.get(Secret.TERMINAL_PASSPHRASE) }).isNull()
         assertThat(env.container.settingsState.value.terminal.host).isEqualTo("192.168.1.42")
+    }
+
+    @Test
+    fun `Automatic Tap to Pay import does not board or list physical terminals`() {
+        device.paymentsApps = setOf(TerminalEnvironment.TEST)
+        importAutomatic("tapToPay")
+        waitForTag("setUpTapToPay")
+        compose.onNodeWithTag("merchantAccount").performScrollTo().assertTextContains("Merchant", substring = true)
+        assertThat(searches).isEmpty()
+        assertThat(accountReads).isEqualTo(0)
+        assertThat(paymentsApp.opened).isEmpty()
+        compose.onNodeWithTag("keyIdentifier").assertExists()
+        compose.onNodeWithTag("findSharedKey").assertDoesNotExist()
+    }
+
+    @Test
+    fun `Automatic Tap to Pay import finds a key only for an already boarded phone`() {
+        device.paymentsApps = setOf(TerminalEnvironment.TEST)
+        env.updateSettings { it.copy(terminal = it.terminal.copy(paymentsAppInstallationId = FakePaymentsApp.INSTALLATION_ID)) }
+        importAutomatic("tapToPay")
+        compose.awaitCondition("shared-key fields reach Settings") {
+            env.container.settingsState.value.terminal.keyIdentifier == "phone-key"
+        }
+        compose.onNodeWithTag("keyIdentifier").performScrollTo().assertTextContains("phone-key", substring = true)
+        assertThat(accountReads).isEqualTo(1)
+        assertThat(searches).isEmpty()
+        assertThat(paymentsApp.opened).isEmpty()
     }
 
     private companion object {

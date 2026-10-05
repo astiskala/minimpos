@@ -267,7 +267,7 @@ fun TransferImportScreen(
             ImportBottomBar(state, onImport = { if (it) confirmReplace = true else vm.import() }, onDone = {
                 val result = (state as? ImportUiState.Done)?.result
                 if (result?.connection == true) {
-                    navigator.replace(Route.SettingsSection(SettingsSections.TERMINAL, discoverTerminals = result.discoverTerminals))
+                    navigator.replace(Route.SettingsSection(SettingsSections.TERMINAL, automaticSetup = result.automaticSetup))
                 } else {
                     navigator.back()
                 }
@@ -341,7 +341,7 @@ private fun ImportBottomBar(
             BottomActions {
                 val label =
                     when {
-                        state.result.discoverTerminals -> R.string.transfer_continue_setup
+                        state.result.automaticSetup -> R.string.transfer_continue_setup
                         state.result.connection -> R.string.transfer_review_setup
                         else -> R.string.action_done
                     }
@@ -650,7 +650,7 @@ private fun ImportDone(
             LabeledValue(stringResource(R.string.transfer_part_secrets), secrets)
         }
         result.secretsError?.let { ActionMessage(stringResource(R.string.transfer_secrets_failed, it), isError = true) }
-        if (result.discoverTerminals) Note(stringResource(R.string.transfer_automatic_note))
+        if (result.automaticSetup) Note(stringResource(R.string.transfer_automatic_note))
     }
 }
 

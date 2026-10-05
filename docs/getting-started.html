@@ -124,8 +124,8 @@
           <ul>
             <li><strong>Cloud Device API role</strong>: required for cloud payments.</li>
             <li><strong>Management API — Terminal actions read</strong>: optional automatic terminal lookup, including the account and last reported network addresses.</li>
-            <li><strong>Management API — Terminal settings read</strong>: optional automatic shared-key settings lookup for this terminal or a network terminal.</li>
-            <li><strong>Management API — Terminal settings Advanced read and write</strong>: optional automatic shared-key passphrase lookup for this terminal or a network terminal.</li>
+            <li><strong>Management API — Terminal settings read</strong>: optional shared-key settings lookup for this terminal, a network terminal or Tap to Pay.</li>
+            <li><strong>Management API — Terminal settings Advanced read and write</strong>: optional shared-key passphrase lookup for those destinations.</li>
           </ul>
           <p>For this terminal, a network terminal or Tap to Pay, also prepare a <strong>shared key</strong>: identifier, passphrase and version, from <strong>Devices › Device settings › Integrations › Terminal API › Encryption key</strong>. See Adyen's <a href="https://docs.adyen.com/point-of-sale/design-your-integration/choose-your-architecture/local">local integration guide</a>. Cloud setups do not use this key.</p>
           <p>For a network or cloud terminal, <strong>Environment</strong> is step 1: choose <strong>TEST</strong> for test cards or <strong>LIVE</strong> for real payments. Use a terminal, account and credentials from that environment. Mini mPOS does not try an API key in the other environment. On an Adyen terminal it reads the device's verified certificate instead; with Tap to Pay it uses the installed Payments app.</p>
@@ -141,8 +141,9 @@
             <strong>Automatic (recommended)</strong> asks for the API key; the device finds the terminal's account,
             address and shared key when lookup permissions allow. Choose a terminal on a phone or tablet and review
             the result. <strong>Manual</strong> asks for all connection details on the computer.
-            Both modes require the <strong>live URL prefix</strong> for LIVE. Tap to Pay uses Manual;
-            installation and phone registration still happen on the device.</p>
+            Both modes require the <strong>live URL prefix</strong> for LIVE. Tap to Pay supports both modes;
+            installation and phone registration still happen on the device. See <a href="#tap-to-pay">its setup steps</a>.</p>
+          <p>You can also include optional SMTP settings for email receipts. See <a href="using.html#email">email setup</a> for provider requirements. After importing, review <strong>Settings › Email</strong> and send a test email.</p>
           <p>Click <strong>Make QR codes</strong>. In the app, open <strong>Settings › Terminal</strong> and tap
             <strong>Scan setup codes</strong> or the top-right QR scan icon. No destination or environment choice is
             needed first. Scan all codes, review the destination and environment, enter the transfer code and tap
@@ -153,38 +154,69 @@
             in Settings › Terminal.</p>
           <h3 id="on-terminal">On an Adyen terminal</h3>
           <p>First <a href="#install">install the app</a> and <a href="#credentials">prepare the credentials</a>.</p>
-          <ol>
-            <li>In <strong>Settings › Terminal › Adyen API key</strong>, save your key. The app reads this device's certificate to determine TEST/LIVE without a shared key. When lookup access is available, it matches this terminal and fills its merchant account and shared-key details.</li>
-            <li>Review or enter the shared key and tap <strong>Test connection</strong> (or <strong>Save and test</strong> for a typed passphrase). The address and POIID are detected on the device.</li>
-            <li>Review or enter the merchant account under <strong>Checkout API</strong>, then tap <strong>Test API key</strong>.</li>
-          </ol>
+          <dl class="settings-list">
+            <dt>Setup helper (recommended)</dt>
+            <dd>On a trusted computer, open the <a href="setup.html">setup helper</a> and choose <strong>On an Adyen terminal</strong>, the terminal's TEST/LIVE environment and <strong>Automatic</strong>. Fill in the Adyen API key and, for LIVE, the live URL prefix. Follow <a href="#helper">the QR import steps</a>, then tap <strong>Continue setup</strong> on the terminal. Mini mPOS matches this terminal and looks up its merchant account and shared key when permissions allow. Review the details, enter anything missing, then test the connection and API key. Choose <strong>Manual</strong> in the helper to fill in the details yourself.</dd>
+          </dl>
+          <details class="manual-setup">
+            <summary>Manual</summary>
+            <ol>
+              <li>In <strong>Settings › Terminal › Adyen API key</strong>, save your key. The app reads this device's certificate to determine TEST/LIVE without a shared key. When lookup access is available, it matches this terminal and fills its merchant account and shared-key details.</li>
+              <li>Review or enter the shared key and tap <strong>Test connection</strong> (or <strong>Save and test</strong> for a typed passphrase). The address and POIID are detected on the device.</li>
+              <li>Review or enter the merchant account under <strong>Checkout API</strong>, then tap <strong>Test API key</strong>.</li>
+            </ol>
+          </details>
           <h3 id="network">With a terminal on your network</h3>
           <p>First <a href="#install">install the app</a> and <a href="#credentials">prepare the credentials</a>.</p>
-          <ol>
-            <li>Select <strong>A terminal on your network</strong>. In step 1, <strong>Environment</strong>, choose TEST or LIVE to match the terminal.</li>
-            <li>Save the <strong>Adyen API key</strong> from that environment and choose a terminal from the lookup, when available.</li>
-            <li>Review its POIID, merchant account, IP address and shared key. Enter any missing details manually; the terminal's Device info screen shows its current address and POIID.</li>
-            <li>Test the shared-key connection, then review the merchant account under <strong>Checkout API</strong> and tap <strong>Test API key</strong>.</li>
-          </ol>
+          <dl class="settings-list">
+            <dt>Setup helper (recommended)</dt>
+            <dd>On a trusted computer, open the <a href="setup.html">setup helper</a> and choose a tablet or phone with a terminal on the same network, the terminal's TEST/LIVE environment and <strong>Automatic</strong>. Fill in the Adyen API key and, for LIVE, the live URL prefix. Follow <a href="#helper">the QR import steps</a>, then tap <strong>Continue setup</strong> and choose a terminal on the device. Review its POIID, merchant account, IP address and shared key, enter anything missing, then test the connection and API key. Choose <strong>Manual</strong> in the helper if lookup is unavailable or you prefer to fill in the details yourself.</dd>
+          </dl>
+          <details class="manual-setup">
+            <summary>Manual</summary>
+            <ol>
+              <li>Select <strong>A terminal on your network</strong>. In step 1, <strong>Environment</strong>, choose TEST or LIVE to match the terminal.</li>
+              <li>Save the <strong>Adyen API key</strong> from that environment and choose a terminal from the lookup, when available.</li>
+              <li>Review its POIID, merchant account, IP address and shared key. Enter any missing details manually; the terminal's Device info screen shows its current address and POIID.</li>
+              <li>Test the shared-key connection, then review the merchant account under <strong>Checkout API</strong> and tap <strong>Test API key</strong>.</li>
+            </ol>
+          </details>
           <p>The connection verifies that the terminal's certificate matches your choice. A mismatch is rejected, not changed automatically.</p>
           <h3 id="cloud">With a terminal over the internet</h3>
           <p>First <a href="#install">install the app</a> and <a href="#credentials">prepare the credentials</a>.</p>
-          <ol>
-            <li>Select the cloud destination. In step 1, <strong>Environment</strong>, choose TEST or LIVE to match the terminal.</li>
-            <li>Save the <strong>Adyen API key</strong> from that environment with the Cloud Device API role. Choose a terminal from the optional lookup, when available.</li>
-            <li>Review or enter the merchant account under <strong>Adyen account</strong>. For LIVE, also enter the Checkout live URL prefix.</li>
-            <li>Review or enter the terminal's POIID and tap <strong>Test connection</strong> to test both the terminal and Checkout API.</li>
-          </ol>
+          <dl class="settings-list">
+            <dt>Setup helper (recommended)</dt>
+            <dd>On a trusted computer, open the <a href="setup.html">setup helper</a> and choose a tablet or phone with a terminal over the internet (cloud), the terminal's TEST/LIVE environment and <strong>Automatic</strong>. Fill in the Adyen API key with the Cloud Device API role and, for LIVE, the live URL prefix. Follow <a href="#helper">the QR import steps</a>, then tap <strong>Continue setup</strong> and choose a terminal on the device. Review the merchant account and POIID, enter anything missing, then tap <strong>Test connection</strong> to test both the terminal and Checkout API. Choose <strong>Manual</strong> in the helper to fill in the details yourself.</dd>
+          </dl>
+          <details class="manual-setup">
+            <summary>Manual</summary>
+            <ol>
+              <li>Select the cloud destination. In step 1, <strong>Environment</strong>, choose TEST or LIVE to match the terminal.</li>
+              <li>Save the <strong>Adyen API key</strong> from that environment with the Cloud Device API role. Choose a terminal from the optional lookup, when available.</li>
+              <li>Review or enter the merchant account under <strong>Adyen account</strong>. For LIVE, also enter the Checkout live URL prefix.</li>
+              <li>Review or enter the terminal's POIID and tap <strong>Test connection</strong> to test both the terminal and Checkout API.</li>
+            </ol>
+          </details>
           <p>The app finds the data center within the selected environment. Cloud payments can wait longer for the terminal than local payments.</p>
           <h3 id="tap-to-pay">With Tap to Pay</h3>
+          <p class="note">Tap to Pay on Android requires Adyen to enable the service and the <strong>Adyen Payments app role</strong> for your company. <a href="https://help.adyen.com/contact">Contact Adyen Support</a> before proceeding.</p>
           <p>First <a href="#install">install the app</a> and <a href="#credentials">prepare the credentials</a>.</p>
           <ol>
-            <li>Select <strong>Tap to Pay on this phone</strong>. Step 1 is the <strong>Adyen Payments app</strong>: ask Adyen Support to enable Tap to Pay on Android and the <strong>Adyen Payments app role</strong>, then install <strong>Adyen Payments Test</strong> for TEST or <strong>Adyen Payments</strong> for LIVE, not both. The app links to Google Play.</li>
-            <li>Save the <strong>Adyen API key</strong> from the installed app's environment. No physical-terminal discovery is needed.</li>
-            <li>Enter the merchant account under <strong>Checkout API</strong>, including the live URL prefix for LIVE, and tap <strong>Test API key</strong>. Use the same account when registering the phone.</li>
-            <li>Under <strong>Tap to Pay</strong>, enter a separate <strong>Payments app API key</strong> with only the Adyen Payments app role, and optionally a store ID. Tap <strong>Set up Tap to Pay</strong> and complete registration in the Payments app.</li>
-            <li>Enter the <strong>shared key</strong>, which encrypts payments to the Payments app. Follow Adyen's <a href="https://docs.adyen.com/point-of-sale/mobile-android/build/payments-app">Payments app guide</a>.</li>
+            <li>From Google Play, install <a href="https://play.google.com/store/apps/details?id=com.adyen.ipp.mobile.companion.test">Adyen Payments Test</a> for TEST or <a href="https://play.google.com/store/apps/details?id=com.adyen.ipp.mobile.companion.live">Adyen Payments</a> for LIVE, not both.</li>
+            <li>In Mini mPOS, open <strong>Settings › Terminal</strong> and select <strong>Tap to Pay on this phone</strong>.</li>
           </ol>
+          <p>Choose how to enter the credentials from the installed Payments app's environment:</p>
+          <dl class="settings-list">
+            <dt>Setup helper (recommended)</dt>
+            <dd>On a trusted computer, open the <a href="setup.html">setup helper</a> and choose Tap to Pay, the matching TEST/LIVE environment and <strong>Automatic</strong>. Fill in the Adyen API key, merchant account and separate Payments app API key. For LIVE, include the live URL prefix; optionally include a store ID. Follow <a href="#helper">the QR import steps</a>, then tap <strong>Continue setup</strong> on the phone. Choose <strong>Manual</strong> in the helper to include the shared key yourself.</dd>
+          </dl>
+          <details class="manual-setup">
+            <summary>Manual</summary>
+            <p>In <strong>Settings › Terminal</strong>, save the <strong>Adyen API key</strong>. Under <strong>Checkout API</strong>, enter the merchant account and, for LIVE, the live URL prefix. Under <strong>Tap to Pay</strong>, save a separate <strong>Payments app API key</strong> with only the Adyen Payments app role and optionally enter a store ID (not its reference). You can enter the shared key's identifier, passphrase and version yourself.</p>
+          </details>
+          <p>For either option, tap <strong>Test API key</strong>, then <strong>Set up Tap to Pay</strong> and complete registration in the Payments app. Use the same merchant account for Checkout and phone registration.</p>
+          <p>After registration, Mini mPOS tries to read the shared key using your Adyen API key and the <a href="#credentials">optional settings roles</a>, in the installed Payments app's environment. It reads <a href="https://docs.adyen.com/api-explorer/Management/3/get/stores/(storeId)/terminalSettings">store settings</a> when you enter a store ID, otherwise <a href="https://docs.adyen.com/api-explorer/Management/3/get/merchants/(merchantId)/terminalSettings">merchant settings</a>; it does not look up physical terminals. Review the retrieved key, then test the connection. If permissions or settings are unavailable, registration stays complete and saved manual values stay unchanged. Enter the missing details manually or tap <strong>Find shared key</strong> to retry without reboarding.</p>
+          <p>Mini mPOS performs the boarding flow in Adyen's <a href="https://docs.adyen.com/point-of-sale/mobile-android/build/payments-app">Payments app guide</a>: it checks registration, requests a one-time boarding token and sends it to the Payments app. You do not need to copy boarding tokens. The Payments app API key authorizes registration; the separate Adyen API key supports Checkout operations and optional settings lookup. The shared key encrypts payment messages, as Adyen requires; boarding does not replace it.</p>
           <p>Payments open the Payments app and return to Mini mPOS. The installed app determines TEST or LIVE. To deregister the phone later, use <strong>Remove this phone</strong>.</p>
           <p class="note">API keys are encrypted on this device. Adyen recommends keeping them on a server; Mini mPOS has none. Use narrowly scoped credentials dedicated to the device or terminal fleet, set an admin PIN and revoke exposed or lost-device credentials. Read the <a href="https://github.com/astiskala/minimpos/blob/main/SECURITY.md">security policy</a>.</p>
           <p class="back-to-contents"><a href="#contents">Back to contents</a></p>

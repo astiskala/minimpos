@@ -60,4 +60,24 @@ class SettingsRepository(
     suspend fun update(transform: (AppSettings) -> AppSettings) {
         store.updateData { transform(it.normalized()).normalized() }
     }
+
+    /**
+     * Applies [prepare] only while the terminal settings equal [expected], serializing terminal edits while dependent
+     * secrets are stored. Returns false for a stale snapshot or null preparation result. [prepare] must not update
+     * settings recursively; exceptions propagate without changing settings.
+     */
+    suspend fun updateTerminal(
+        expected: TerminalSettings,
+        prepare: suspend () -> TerminalSettings?,
+    ): Boolean {
+        var applied = false
+        store.updateData { stored ->
+            val current = stored.normalized()
+            if (current.terminal != expected) return@updateData stored
+            val terminal = prepare() ?: return@updateData stored
+            applied = true
+            current.copy(terminal = terminal).normalized()
+        }
+        return applied
+    }
 }

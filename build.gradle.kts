@@ -40,6 +40,8 @@ spotless {
             "gradle/*.properties",
             ".vscode/*.json",
             ".github/**/*.yml",
+            ".github/scripts/*.mjs",
+            ".github/scripts/*.java",
             "config/**/*.yml",
             "*/src/**/*.xml",
             "*/lint.xml",
@@ -294,6 +296,12 @@ val zizmor =
         command.set(listOf(tool("zizmor"), "--offline", "--no-progress", ".github"))
     }
 
+val releaseCheck =
+    registerCheck("releaseCheck", "Tests release version preparation and CI artifact integrity checks.") {
+        sources.from(fileTree(".github/scripts") { include("*.mjs", "*.java") })
+        command.set(listOf("node", "--test", ".github/scripts/release.test.mjs"))
+    }
+
 tasks.register("qualityGate") {
     group = "verification"
     description = "Runs formatting checks, lint, unit tests and coverage verification for every module, and checks the " +
@@ -303,6 +311,7 @@ tasks.register("qualityGate") {
         markdownCheck,
         actionlint,
         zizmor,
+        releaseCheck,
         ":core:check",
         ":adyen:check",
         ":app:check",

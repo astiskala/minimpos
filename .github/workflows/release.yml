@@ -1,15 +1,13 @@
 name: Release
 
-# Run from the Actions tab (Release › Run workflow) on main. It raises the version in version.properties, runs the
-# quality gate, builds the APK signed with the upload key, then commits the new version, tags it and publishes a GitHub
-# Release with the APK.
+# Prepare a version-only commit, verify it in CI, then sign and promote CI's APK without rebuilding it.
 on:
   workflow_dispatch:
     inputs:
       bump:
-        description: Part of the version to raise (the versionCode always goes up by one)
+        description: Version component to raise, or resume an unpublished version commit
         type: choice
-        options: [patch, minor, major]
+        options: [patch, minor, major, resume]
         default: patch
 
 permissions:
@@ -20,56 +18,148 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  ci:
+  prepare:
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
-    timeout-minutes: 35
+    timeout-minutes: 5
+    permissions:
+      contents: write
+      actions: write
+    outputs:
+      commit: ${{ steps.version.outputs.commit }}
+      name: ${{ steps.version.outputs.name }}
+      code: ${{ steps.version.outputs.code }}
+      dispatch: ${{ steps.version.outputs.dispatch }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 22
+
+      - name: Prepare the version commit
+        id: version
+        env:
+          BUMP: ${{ inputs.bump }}
+          GH_TOKEN: ${{ github.token }}
+          REPOSITORY: ${{ github.repository }}
+        run: |
+          if [ "$(git ls-remote origin refs/heads/main | cut -f1)" != "$(git rev-parse HEAD)" ]; then
+            echo "::error::Main advanced after this workflow was selected. Run Release on current main."
+            exit 1
+          fi
+          name=$(sed -n 's/^versionName=//p' version.properties)
+          version_commit=$(git log -1 --format=%H -- version.properties)
+          subject=$(git log -1 --format=%s "$version_commit")
+          files=$(git diff-tree --no-commit-id --name-only -r "$version_commit")
+          if [ "$BUMP" = resume ]; then
+            node .github/scripts/release.mjs candidate --subject "$subject" --files "$files"
+          else
+            if node .github/scripts/release.mjs candidate --subject "$subject" --files "$files" 2>/dev/null \
+              && [ -z "$(git ls-remote --tags origin "refs/tags/v$name")" ]; then
+              echo "::error::An unpublished version commit exists. Select resume instead of raising the version again."
+              exit 1
+            fi
+            node .github/scripts/release.mjs bump "$BUMP"
+            name=$(sed -n 's/^versionName=//p' version.properties)
+          fi
+          if [ -n "$(git ls-remote --tags origin "refs/tags/v$name")" ]; then
+            echo "::error::Tag v$name already exists"
+            exit 1
+          fi
+          if [ "$BUMP" != resume ]; then
+            git config user.name "Adam Stiskala"
+            git config user.email "github@adamstiskala.com"
+            git diff --check
+            git diff -- version.properties
+            test "$(git diff --name-only)" = version.properties
+            git commit --quiet --message "Release $name" version.properties
+            auth=$(printf 'x-access-token:%s' "$GH_TOKEN" | base64 -w0)
+            echo "::add-mask::$auth"
+            git -c "http.https://github.com/.extraheader=AUTHORIZATION: basic $auth" push origin HEAD:main
+          fi
+          {
+            echo "commit=$(git rev-parse HEAD)"
+            echo "name=$name"
+            echo "code=$(sed -n 's/^versionCode=//p' version.properties)"
+            echo "dispatch=$(date -u '+%Y-%m-%dT%H:%M:%SZ')"
+          } >> "$GITHUB_OUTPUT"
+          echo "Prepared $name at $(git rev-parse HEAD)" >> "$GITHUB_STEP_SUMMARY"
+          # GITHUB_TOKEN pushes do not trigger push workflows. Dispatch CI explicitly for the prepared commit.
+          gh workflow run ci.yml --repo "$REPOSITORY" --ref main
+
+  ci:
+    needs: prepare
+    runs-on: ubuntu-latest
+    timeout-minutes: 50
     permissions:
       actions: read
+    outputs:
+      run: ${{ steps.ci.outputs.run }}
+      attempt: ${{ steps.ci.outputs.attempt }}
     steps:
-      - name: Require successful CI for this commit
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ needs.prepare.outputs.commit }}
+          persist-credentials: false
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 22
+
+      - name: Require successful CI for the version commit
+        id: ci
         env:
           GH_TOKEN: ${{ github.token }}
           REPOSITORY: ${{ github.repository }}
-          COMMIT: ${{ github.sha }}
+          COMMIT: ${{ needs.prepare.outputs.commit }}
+          DISPATCH: ${{ needs.prepare.outputs.dispatch }}
         run: |
-          for attempt in $(seq 1 120); do
-            run=$(gh api --method GET "repos/$REPOSITORY/actions/workflows/ci.yml/runs" \
-              -f head_sha="$COMMIT" -f branch=main -f per_page=100 \
-              --jq '.workflow_runs | map(select(.event == "push" or .event == "workflow_dispatch")) | first')
-            if [ -z "$run" ] || [ "$run" = null ]; then
-              echo "::error::No CI run exists for $COMMIT. Run CI on main before releasing."
-              exit 1
-            fi
-            url=$(jq -r '.html_url' <<< "$run")
-            status=$(jq -r '.status' <<< "$run")
-            if [ "$status" = completed ]; then
-              conclusion=$(jq -r '.conclusion' <<< "$run")
-              if [ "$conclusion" != success ]; then
-                echo "::error::CI for $COMMIT concluded $conclusion: $url"
-                exit 1
+          for attempt in $(seq 1 180); do
+            gh api --method GET "repos/$REPOSITORY/actions/workflows/ci.yml/runs" \
+              -f head_sha="$COMMIT" -f branch=main -f per_page=100 > "$RUNNER_TEMP/ci-runs.json"
+            run=$(node .github/scripts/release.mjs ci --runs "$RUNNER_TEMP/ci-runs.json" \
+              --commit "$COMMIT" --not-before "$DISPATCH")
+            if [ -n "$run" ] && [ "$run" != null ]; then
+              test "$(jq -r '.head_sha' <<< "$run")" = "$COMMIT"
+              url=$(jq -r '.html_url' <<< "$run")
+              status=$(jq -r '.status' <<< "$run")
+              if [ "$status" = completed ]; then
+                conclusion=$(jq -r '.conclusion' <<< "$run")
+                if [ "$conclusion" != success ]; then
+                  echo "::error::CI for $COMMIT concluded $conclusion: $url. Fix CI before publishing."
+                  exit 1
+                fi
+                echo "run=$(jq -r '.id' <<< "$run")" >> "$GITHUB_OUTPUT"
+                echo "attempt=$(jq -r '.run_attempt' <<< "$run")" >> "$GITHUB_OUTPUT"
+                echo "CI passed for $COMMIT: $url" >> "$GITHUB_STEP_SUMMARY"
+                exit 0
               fi
-              echo "CI passed for $COMMIT: $url" >> "$GITHUB_STEP_SUMMARY"
-              exit 0
+              echo "Waiting for CI ($status): $url (attempt $attempt/180)"
+            else
+              echo "Waiting for CI to appear for $COMMIT (attempt $attempt/180)"
             fi
-            echo "Waiting for CI ($status): $url (attempt $attempt/120)"
             sleep 15
           done
           echo "::error::Timed out waiting for CI for $COMMIT"
           exit 1
 
   release:
-    needs: ci
-    if: github.ref == 'refs/heads/main'
+    needs: [prepare, ci]
     runs-on: ubuntu-latest
-    timeout-minutes: 45
-    # The signing secrets live in this environment, which only main can use.
+    timeout-minutes: 10
+    # Only this job receives signing secrets; no Gradle plugins or dependencies execute here.
     environment: release
     permissions:
       contents: write
+      actions: read
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          ref: ${{ needs.prepare.outputs.commit }}
           persist-credentials: false
 
       - uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
@@ -81,79 +171,72 @@ jobs:
         with:
           node-version: 22
 
-      - uses: gradle/actions/setup-gradle@3f5f9adaf7d9fecd50b5935e54106014257a94e6 # v6.4.0
-
-      - name: Raise the version
-        id: version
+      - name: Download and verify the exact CI artifact
         env:
-          BUMP: ${{ inputs.bump }}
+          GH_TOKEN: ${{ github.token }}
+          REPOSITORY: ${{ github.repository }}
+          COMMIT: ${{ needs.prepare.outputs.commit }}
+          RUN_ID: ${{ needs.ci.outputs.run }}
+          RUN_ATTEMPT: ${{ needs.ci.outputs.attempt }}
         run: |
-          IFS=. read -r major minor patch <<< "$(sed -n 's/^versionName=//p' version.properties)"
-          code=$(( $(sed -n 's/^versionCode=//p' version.properties) + 1 ))
-          case "$BUMP" in
-            major) major=$((major + 1)); minor=0; patch=0 ;;
-            minor) minor=$((minor + 1)); patch=0 ;;
-            patch) patch=$((patch + 1)) ;;
-          esac
-          name="$major.$minor.$patch"
-          if [ -n "$(git ls-remote --tags origin "refs/tags/v$name")" ]; then
-            echo "::error::Tag v$name already exists"
-            exit 1
-          fi
-          sed -i -e "s/^versionName=.*/versionName=$name/" -e "s/^versionCode=.*/versionCode=$code/" version.properties
-          echo "name=$name" >> "$GITHUB_OUTPUT"
-          echo "Releasing $name (versionCode $code)" >> "$GITHUB_STEP_SUMMARY"
+          gh run download "$RUN_ID" --repo "$REPOSITORY" --name "release-$COMMIT-$RUN_ATTEMPT" \
+            --dir "$RUNNER_TEMP/release-artifact"
+          node .github/scripts/release.mjs verify --artifact "$RUNNER_TEMP/release-artifact" \
+            --commit "$COMMIT" --run-id "$RUN_ID" --run-attempt "$RUN_ATTEMPT"
+          test "$(git ls-remote origin refs/heads/main | cut -f1)" = "$COMMIT"
 
-      - name: Set up signing
+      - name: Sign and verify the CI-built APK
         env:
           RELEASE_KEYSTORE: ${{ secrets.RELEASE_KEYSTORE }}
           RELEASE_SIGNING_PROPERTIES: ${{ secrets.RELEASE_SIGNING_PROPERTIES }}
+          VERSION: ${{ needs.prepare.outputs.name }}
+          CODE: ${{ needs.prepare.outputs.code }}
         run: |
+          umask 077
           if [ -z "$RELEASE_KEYSTORE" ] || [ -z "$RELEASE_SIGNING_PROPERTIES" ]; then
             echo "::error::The release environment needs the RELEASE_KEYSTORE and RELEASE_SIGNING_PROPERTIES secrets"
             exit 1
           fi
+          tools=$(printf '%s\n' "$ANDROID_HOME"/build-tools/* | sort -V | tail -n 1)
+          apk="$RUNNER_TEMP/release-artifact/app-release-unsigned.apk"
+          "$tools/aapt" dump badging "$apk" \
+            | grep -F "package: name='io.github.astiskala.minimpos' versionCode='$CODE' versionName='$VERSION'"
           printf '%s' "$RELEASE_KEYSTORE" | base64 --decode > "$RUNNER_TEMP/release.jks"
-          printf 'storeFile=%s\n%s\n' "$RUNNER_TEMP/release.jks" "$RELEASE_SIGNING_PROPERTIES" > keystore.properties
+          printf '%s' "$RELEASE_SIGNING_PROPERTIES" > "$RUNNER_TEMP/signing.properties"
+          # Use Java's same .properties parser as Gradle; never print or shell-evaluate secret values.
+          java .github/scripts/SigningProperties.java "$RUNNER_TEMP"
+          "$tools/zipalign" -c -P 16 -v 4 "$apk"
+          "$tools/apksigner" sign --ks "$RUNNER_TEMP/release.jks" \
+            --ks-key-alias "$(cat "$RUNNER_TEMP/keyAlias")" \
+            --ks-pass "file:$RUNNER_TEMP/storePassword" --key-pass "file:$RUNNER_TEMP/keyPassword" \
+            --out "$RUNNER_TEMP/minimpos-$VERSION.apk" "$apk"
+          "$tools/apksigner" verify --verbose --print-certs "$RUNNER_TEMP/minimpos-$VERSION.apk" | grep -v '^WARNING'
+          "$tools/zipalign" -c -P 16 -v 4 "$RUNNER_TEMP/minimpos-$VERSION.apk"
 
-      - name: Quality gate
-        run: ./gradlew qualityGate --continue
-
-      - name: Signed release build (R8)
-        run: ./gradlew :app:assembleRelease -PqualityGatePassed=true
-
-      - name: Check the signature
-        env:
-          VERSION: ${{ steps.version.outputs.name }}
-        run: |
-          apksigner=$(printf '%s\n' "$ANDROID_HOME"/build-tools/* | sort -V | tail -n 1)/apksigner
-          "$apksigner" verify --print-certs app/build/outputs/apk/release/app-release.apk | grep -v '^WARNING'
-          cp app/build/outputs/apk/release/app-release.apk "$RUNNER_TEMP/minimpos-$VERSION.apk"
-
-      # The checkout does not keep the token in .git/config, where the build (third-party Gradle plugins and
-      # dependencies) could read it; only this step gets it, the way actions/checkout passes it to git.
-      - name: Commit and tag the version
+      - name: Tag the verified version commit
         env:
           GH_TOKEN: ${{ github.token }}
-          VERSION: ${{ steps.version.outputs.name }}
+          VERSION: ${{ needs.prepare.outputs.name }}
+          COMMIT: ${{ needs.prepare.outputs.commit }}
         run: |
+          test "$(git ls-remote origin refs/heads/main | cut -f1)" = "$COMMIT"
           git config user.name "Adam Stiskala"
           git config user.email "github@adamstiskala.com"
-          git commit --quiet --message "Release $VERSION" version.properties
           git tag --annotate "v$VERSION" --message "Mini mPOS $VERSION"
           auth=$(printf 'x-access-token:%s' "$GH_TOKEN" | base64 -w0)
           echo "::add-mask::$auth"
-          git -c "http.https://github.com/.extraheader=AUTHORIZATION: basic $auth" \
-            push --atomic origin HEAD:main "refs/tags/v$VERSION"
+          git -c "http.https://github.com/.extraheader=AUTHORIZATION: basic $auth" push origin "refs/tags/v$VERSION"
 
       - name: Publish the GitHub Release
         env:
           GH_TOKEN: ${{ github.token }}
-          VERSION: ${{ steps.version.outputs.name }}
+          VERSION: ${{ needs.prepare.outputs.name }}
         run: |
           gh release create "v$VERSION" "$RUNNER_TEMP/minimpos-$VERSION.apk" \
             --verify-tag --title "Mini mPOS $VERSION" --generate-notes
 
-      - name: Remove the signing key
+      - name: Remove signing material
         if: ${{ always() }}
-        run: rm -f "$RUNNER_TEMP/release.jks" keystore.properties
+        run: |
+          rm -f "$RUNNER_TEMP/release.jks" "$RUNNER_TEMP/signing.properties" \
+            "$RUNNER_TEMP/storePassword" "$RUNNER_TEMP/keyAlias" "$RUNNER_TEMP/keyPassword"

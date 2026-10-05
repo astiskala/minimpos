@@ -5,7 +5,8 @@ tested them, and include before/after screenshots for UI changes. Contributions 
 
 ## Build and run
 
-You need JDK 17+ to start Gradle (the build downloads JDK 21), Node.js 22+ for setup-helper tests, Android SDK platform
+You need JDK 17+ to start Gradle (the build downloads JDK 21), Node.js 22+ for setup-helper and release workflow tests,
+Android SDK platform
 37 and recent build tools.
 Android Studio can install the SDK; otherwise set `sdk.dir` in an untracked `local.properties`. The full gate supports
 macOS and Linux; its pinned Markdown/workflow linter binaries are not available for Windows.
@@ -54,6 +55,7 @@ The gate checks:
 | rumdl | Markdown rules and relative links; 120 columns outside tables/code. Wrap prose by hand; formatting keeps line breaks. |
 | Website | Local links/fragments/assets, language and metadata parity, UI labels, screenshots, setup-helper fields and async generation; W3C Nu HTML/CSS validation with no messages. |
 | Workflows | actionlint with shellcheck, and offline zizmor. |
+| Release | Offline version preparation and exact-commit APK artifact integrity tests. |
 | detekt | Type-resolved checks of main/test sources, including Compose and documentation rules; no baseline. |
 | Dokka | All KDoc links resolve, including private code; generated HTML is in `<module>/build/dokka/html`. |
 | Android Lint | All checks, including normally disabled checks and test sources; warnings fail. |
@@ -71,7 +73,7 @@ build on pull requests. JVM modules aren't checked by Android Lint for API avail
 reachable Java/Android APIs against minSdk 28 and accepts D8 backports. For example, use the charset-name overload of
 `URLEncoder.encode`, not the API-33 `Charset` overload.
 
-CI/CD runs the gate first, then builds with `./gradlew :app:assembleRelease -PqualityGatePassed=true` to skip the
+CI runs the gate first, then builds with `./gradlew :app:assembleRelease -PqualityGatePassed=true` to skip the
 build's automatic fatal-only release lint pass. The flag requires `CI=true` and asserts that the gate passed for
 this unchanged checkout; it does not record or verify a previous run. Explicit lint checks remain enabled, and
 standalone release builds retain release lint by default. R8, signing and packaging checks are never skipped.
@@ -179,11 +181,20 @@ release process, credentials and signing history.
 ## Release the app
 
 `version.properties` is managed by **Actions › Release › Run workflow** on `main`. Choose patch/minor/major;
-the workflow waits up to 30 minutes for the latest push or manually started CI run on the exact selected commit.
-Missing, failed or cancelled CI blocks the release; run **Actions › CI › Run workflow** on `main` if there is no run
-(for example, after the workflow's version commit). Only successful CI allows the release job to access the signing
-environment, raise `versionCode`, run verification again with the new version, sign, commit/tag `vX.Y.Z`, and publish
-the APK and notes. Only the latest release is maintained.
+the workflow commits the new version first and explicitly starts CI on it. CI runs the full quality gate and R8
+build, then saves the unsigned APK with its commit, version, run attempt and SHA-256. Release waits up to 45 minutes
+for successful CI on that exact version commit. Missing, failed or cancelled CI blocks publication.
+
+Only successful CI allows the release job to access the signing environment. It verifies the artifact's provenance,
+checksum, application ID and version, signs CI's APK without rebuilding it, checks its signature and alignment, tags
+the verified commit as `vX.Y.Z`, and publishes the APK and notes. The full quality gate runs once, in CI; no Gradle
+plugins execute with signing secrets. Main must still point to the verified commit before tagging.
+
+A failed attempt can leave an unpublished version commit on main. Choose **resume** to rerun CI and publish it
+without another bump; the version must come from a version-only `Release X.Y.Z` commit without an existing tag.
+Later fixes can follow that commit before resuming. If tagging
+succeeded but publication failed, finish publication for that existing tag rather than bumping again. CI artifacts
+expire after 14 days; resume produces a fresh one. Only the latest release is maintained.
 
 The repository's `release` environment is restricted to `main`. Its secrets are `RELEASE_KEYSTORE` (base64 keystore)
 and `RELEASE_SIGNING_PROPERTIES` (`storePassword`, `keyAlias`, `keyPassword`). Never commit them or local SDK/signing

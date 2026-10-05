@@ -232,7 +232,9 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           VERSION: ${{ needs.prepare.outputs.name }}
         run: |
-          gh release create "v$VERSION" "$RUNNER_TEMP/minimpos-$VERSION.apk" \
+          # The app reads this small metadata asset to compare the release's versionCode with its own.
+          node .github/scripts/release.mjs update --out "$RUNNER_TEMP/update.json"
+          gh release create "v$VERSION" "$RUNNER_TEMP/minimpos-$VERSION.apk" "$RUNNER_TEMP/update.json" \
             --verify-tag --title "Mini mPOS $VERSION" --generate-notes
 
       - name: Remove signing material

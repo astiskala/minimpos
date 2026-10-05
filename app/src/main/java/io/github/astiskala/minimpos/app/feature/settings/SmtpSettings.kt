@@ -1,7 +1,5 @@
 package io.github.astiskala.minimpos.app.feature.settings
 
-import android.content.ActivityNotFoundException
-import android.content.Intent
 import androidx.annotation.StringRes
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -29,7 +27,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
-import androidx.core.net.toUri
 import io.github.astiskala.minimpos.app.R
 import io.github.astiskala.minimpos.app.data.settings.EmailSettings
 import io.github.astiskala.minimpos.app.data.settings.SmtpSecurity
@@ -37,6 +34,7 @@ import io.github.astiskala.minimpos.app.email.SmtpProvider
 import io.github.astiskala.minimpos.app.ui.components.ActionMessage
 import io.github.astiskala.minimpos.app.ui.components.SectionHeader
 import io.github.astiskala.minimpos.app.ui.components.TertiaryButton
+import io.github.astiskala.minimpos.app.ui.components.openUrl
 
 /**
  * The SMTP server, login and password ([onPassword] with null forgets it); the providers' help pages are linked only
@@ -188,12 +186,7 @@ private fun SmtpProviderHelp(
         if (canOpenLinks) {
             TertiaryButton(
                 stringResource(R.string.settings_smtp_help, provider.label),
-                {
-                    try {
-                        context.startActivity(Intent(Intent.ACTION_VIEW, provider.helpUrl.toUri()))
-                    } catch (ignored: ActivityNotFoundException) {
-                    }
-                },
+                { context.openUrl(provider.helpUrl) },
                 icon = Icons.AutoMirrored.Filled.OpenInNew,
                 modifier = Modifier.testTag("smtpHelp"),
             )

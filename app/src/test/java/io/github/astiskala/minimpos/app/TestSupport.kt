@@ -22,6 +22,7 @@ import io.github.astiskala.minimpos.app.data.settings.TerminalMode
 import io.github.astiskala.minimpos.app.email.MailTransport
 import io.github.astiskala.minimpos.app.terminal.Attempt
 import io.github.astiskala.minimpos.app.terminal.DeviceInfo
+import io.github.astiskala.minimpos.app.update.UpdateCheck
 import io.github.astiskala.minimpos.terminal.checkout.PaymentLink
 import io.github.astiskala.minimpos.terminal.checkout.PaymentLinkApi
 import io.github.astiskala.minimpos.terminal.checkout.PaymentLinkRequest
@@ -112,6 +113,23 @@ class FakeDevice(
     override val country: String = "AU",
     override var paymentsApps: Set<TerminalEnvironment> = emptySet(),
 ) : DeviceInfo
+
+/**
+ * Answers [result] instead of reaching GitHub, and records every check. The default answers [UpdateCheck.Current],
+ * so Home offers nothing; a test can change [result] before the check runs.
+ */
+class FakeUpdateCheck(
+    var result: UpdateCheck = UpdateCheck.Current,
+) {
+    /** How often the app checked for an update. */
+    var checks = 0
+
+    /** The answer the container's startup update check reads. */
+    fun check(): UpdateCheck {
+        checks++
+        return result
+    }
+}
 
 /** Collects the emails the app sends instead of delivering them. */
 class RecordingTransport : MailTransport {
@@ -358,6 +376,8 @@ class TestEnvironment(
     management: FakeManagement = FakeManagement(),
     /** Replaces Adyen's payment links. */
     links: FakeLinkApi = FakeLinkApi(),
+    /** Replaces the GitHub update check; the default answers that no update is available. */
+    updates: FakeUpdateCheck = FakeUpdateCheck(),
     stores: StoreDetailsApi = StoreDetailsApi { StoreListing.Listed(emptyList()) },
     terminalDetails: TerminalDetailsApi =
         object : TerminalDetailsApi {
@@ -421,6 +441,7 @@ class TestEnvironment(
             storeDetails = { _, _ -> stores },
             terminalDetails = { terminalDetails },
             terminalEnvironment = terminalEnvironment,
+            updateCheck = updates::check,
             onboardingCompleted = onboardingCompleted,
         )
 

@@ -6,11 +6,14 @@ Starred rules below are enforced by `ArchitectureTest`, `SettingsArchitectureTes
 ## Architecture boundaries
 
 - \* Dependencies go downwards: UI (`feature`, `ui`, `scan`, `qr`, `share`) → `payment` → `email` → `receipt` →
-  `refund`/`terminal` → `data`. Every production class belongs to a listed module or the application bootstrap.
-  Only UI reaches `AppContainer`; view models hold no UI types or display text.
+  `refund`/`terminal` → `data`, beside the isolated `update` package. Every production class belongs to a listed
+  module or the application bootstrap. Only UI reaches `AppContainer`; view models hold no UI types or display text.
 - \* Only `terminal` integrates `:adyen` transports/simulator/Payments app, with the container wiring them. Elsewhere
   only stored environment/region/outcome values and `TerminalClient` companion helpers are allowed. `com.adyen` stays
   in `:adyen`, Room in `data`, crypto in `data.security`. Nothing logs or prints.
+- \* Self-update is isolated in `update`: only it reads GitHub Releases, only the container arms its one startup check
+  on a device that is not an Adyen terminal, and only Home offers the newer version for the browser to download
+  (terminals update through the Customer Area). Checks stay silent unless they offer something.
 - \* Stored mutations use `SaleRepository.record(id, SaleEvent)`/`applyRefund` and `RefundRepository.settle`.
   `HistoryRepository` owns housekeeping; only `SaleEvent` picks sale statuses/fields. Tests may seed via DAOs.
 - \* Only `CatalogRepository` and `CataloguePricing` use the catalogue DAO outside `db`; tax-rate writes belong only

@@ -59,6 +59,9 @@ import io.github.astiskala.minimpos.app.terminal.TerminalGateway
 import io.github.astiskala.minimpos.app.terminal.TerminalSetupSource
 import io.github.astiskala.minimpos.app.terminal.TerminalStatus
 import io.github.astiskala.minimpos.app.terminal.VirtualPrinter
+import io.github.astiskala.minimpos.app.update.AppUpdate
+import io.github.astiskala.minimpos.app.update.GitHubReleases
+import io.github.astiskala.minimpos.app.update.UpdateCheck
 import io.github.astiskala.minimpos.core.money.CurrencySpec
 import io.github.astiskala.minimpos.core.receipt.ReceiptDocument
 import io.github.astiskala.minimpos.core.receipt.ReceiptLabels
@@ -119,6 +122,8 @@ import kotlin.time.Duration.Companion.minutes
  * @param storeDetails Reads Management API stores for reviewed receipt-business import.
  * @param terminalDetails Reads optional Management terminal setup details.
  * @param terminalEnvironment Reads the local terminal certificate without credentials.
+ * @param updateCheck Reads the latest GitHub release for the installed version, on devices that are not Adyen
+ *   terminals; the default reaches GitHub, tests answer directly.
  * @param onboardingCompleted Initial setup completion for isolated tests; production installations start incomplete.
  */
 class AppContainer(
@@ -142,6 +147,7 @@ class AppContainer(
     },
     terminalDetails: (String) -> TerminalDetailsApi = { AdyenTerminalDetails(it) },
     terminalEnvironment: suspend () -> TerminalEnvironment? = { TerminalTls().readEnvironment("localhost") },
+    updateCheck: suspend () -> UpdateCheck = { GitHubReleases().latest(BuildConfig.VERSION_CODE.toLong()) },
     onboardingCompleted: Boolean = false,
 ) {
     private val country = device.country.trim().uppercase(Locale.ROOT)
@@ -284,6 +290,12 @@ class AppContainer(
 
     /** Whether payments and printing can work, for Home, Settings and the receipt screens. */
     val terminalStatus = TerminalStatus(terminalSetup, gateway, appScope)
+
+    /**
+     * The startup check for a newer GitHub release, which Home offers to download in the browser; never started on an
+     * Adyen terminal, which updates through the Customer Area.
+     */
+    val update = AppUpdate(updateCheck, appScope)
 
     /** Stored sales with what can be done with them now, for the screens that show one. */
     val storedPayments = StoredPayments(sales)
@@ -437,7 +449,8 @@ class AppContainer(
 
     /**
      * Starts the background work, once per process: marks transactions and captures interrupted by the last shutdown as UNKNOWN,
-     * seeds the [starterTaxRates] on first launch, prunes old history, and starts the [terminalStatus] checks.
+     * seeds the [starterTaxRates] on first launch, prunes old history, and starts the [terminalStatus] checks. On a
+     * device that is not an Adyen terminal it also starts the [update] check, once.
      */
     fun start() {
         appScope.launch {
@@ -447,6 +460,8 @@ class AppContainer(
             history.prune(settings.current().history.retentionDays, System.currentTimeMillis())
         }
         terminalStatus.start()
+        // Adyen terminals update through the Customer Area; only other devices check GitHub Releases for a newer one.
+        if (!device.isAdyenTerminal) update.start()
     }
 
     /**

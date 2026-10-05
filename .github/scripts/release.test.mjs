@@ -6,7 +6,7 @@ import { join } from "node:path";
 import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { test } from "node:test";
-import { APK, MANIFEST, MAX_CODE, bumpVersion, checkManifest, isCandidate, metadata, readVersion, selectCiRun } from "./release.mjs";
+import { APK, MANIFEST, MAX_CODE, bumpVersion, checkManifest, isCandidate, metadata, readVersion, selectCiRun, updateMetadata } from "./release.mjs";
 
 function fixture(t) {
   const root = mkdtempSync(join(tmpdir(), "minimpos-release-"));
@@ -125,6 +125,11 @@ test("invalid provenance is rejected", (t) => {
   }
 });
 
+test("update metadata matches the version and names the APK asset", (t) => {
+  const { version } = fixture(t);
+  assert.deepEqual(updateMetadata(version), { versionName: "0.6.2", versionCode: 14, apk: "minimpos-0.6.2.apk" });
+});
+
 test("the CLI writes and verifies manifests and prepares versions", (t) => {
   const f = fixture(t);
   const script = fileURLToPath(new URL("./release.mjs", import.meta.url));
@@ -136,6 +141,11 @@ test("the CLI writes and verifies manifests and prepares versions", (t) => {
   assert.equal(run("verify", ...args).status, 0);
   assert.equal(run("candidate", "--subject", "Release 0.6.3", "--files", "version.properties").status, 0);
   assert.notEqual(run("candidate", "--subject", "Other", "--files", "version.properties").status, 0);
+  assert.equal(run("update", "--out", join(f.root, "update.json")).status, 0);
+  assert.equal(
+    readFileSync(join(f.root, "update.json"), "utf8"),
+    '{"versionName":"0.6.3","versionCode":15,"apk":"minimpos-0.6.3.apk"}\n',
+  );
 });
 
 test("signing uses Java properties without logging values", (t) => {

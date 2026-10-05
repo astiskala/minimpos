@@ -62,6 +62,8 @@
   <string name="home_setup_text">Enter the shared key from your Customer Area to start taking payments.</string>
   <string name="home_setup_title_remote">Finish setting up payments</string>
   <string name="home_connection_failed">Payments cannot reach the terminal</string>
+  <string name="update_available">Version %1$s is available</string>
+  <string name="update_download">Update</string>
 
   <!-- PIN -->
   <string name="manager_pin_title">Manager PIN</string>

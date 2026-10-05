@@ -7,6 +7,7 @@ import { pathToFileURL } from "node:url";
 
 export const APK = "app-release-unsigned.apk";
 export const MANIFEST = "release.json";
+export const UPDATE_ASSET = "update.json";
 export const MAX_CODE = 2_100_000_000;
 
 /** Read the current Android version, rejecting ambiguous properties. */
@@ -81,6 +82,12 @@ export function metadata(version, artifact, commit, runId, attempt) {
   };
 }
 
+/** The release's update metadata asset, which the app reads to compare version codes; one current format. */
+export function updateMetadata(version) {
+  const { name, code } = readVersion(version);
+  return { versionName: name, versionCode: code, apk: `minimpos-${name}.apk` };
+}
+
 /** Reject missing, corrupt, wrong-commit or wrong-attempt artifacts. */
 export function checkManifest(version, artifact, commit, runId, attempt) {
   const actual = JSON.parse(readFileSync(join(artifact, MANIFEST), "utf8"));
@@ -98,7 +105,7 @@ function main() {
   const { values, positionals } = parseArgs({
     allowPositionals: true,
     options: Object.fromEntries(
-      ["version", "artifact", "commit", "run-id", "run-attempt", "subject", "files", "runs", "not-before"].map((key) => [
+      ["version", "artifact", "commit", "run-id", "run-attempt", "subject", "files", "runs", "not-before", "out"].map((key) => [
         key,
         { type: "string" },
       ]),
@@ -122,8 +129,10 @@ function main() {
   } else if (command === "ci") {
     const runs = JSON.parse(readFileSync(values.runs, "utf8")).workflow_runs;
     console.log(JSON.stringify(selectCiRun(runs, values.commit, values["not-before"])));
+  } else if (command === "update") {
+    writeFileSync(values.out ?? UPDATE_ASSET, `${JSON.stringify(updateMetadata(version))}\n`);
   } else {
-    throw new Error("Expected bump, candidate, manifest, verify or ci");
+    throw new Error("Expected bump, candidate, manifest, verify, ci or update");
   }
 }
 

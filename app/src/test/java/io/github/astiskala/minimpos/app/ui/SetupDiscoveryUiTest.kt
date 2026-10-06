@@ -11,6 +11,7 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextInput
+import androidx.compose.ui.test.performTextReplacement
 import com.google.common.truth.Truth.assertThat
 import io.github.astiskala.minimpos.app.FakeDevice
 import io.github.astiskala.minimpos.app.MiniMposApp
@@ -20,7 +21,10 @@ import io.github.astiskala.minimpos.app.await
 import io.github.astiskala.minimpos.app.awaitCondition
 import io.github.astiskala.minimpos.app.data.security.Secret
 import io.github.astiskala.minimpos.app.data.settings.TerminalMode
+import io.github.astiskala.minimpos.terminal.checkout.PaymentModifications
+import io.github.astiskala.minimpos.terminal.simulator.SimulatedModifications
 import io.github.astiskala.minimpos.terminal.transport.TerminalEnvironment
+import kotlinx.coroutines.CompletableDeferred
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -32,9 +36,20 @@ import org.robolectric.annotation.Config
 @Config(qualifiers = "en-rAU-w320dp-h460dp-hdpi")
 class SetupDiscoveryUiTest {
     private val phone = FakeDevice()
+    private var apiFailure: String? = null
+    private var apiRelease: CompletableDeferred<Unit>? = null
+    private val apiEntered = CompletableDeferred<Unit>()
+    private val modifications =
+        object : PaymentModifications by SimulatedModifications() {
+            override suspend fun verify(): String? {
+                apiEntered.complete(Unit)
+                apiRelease?.await()
+                return apiFailure
+            }
+        }
 
     @get:Rule(order = 0)
-    val env = TestEnvironment(phone)
+    val env = TestEnvironment(phone, modifications = modifications)
 
     @get:Rule(order = 1)
     val compose = createComposeRule()
@@ -67,50 +82,83 @@ class SetupDiscoveryUiTest {
         compose.onNodeWithTag("keyIdentifier").assertDoesNotExist()
         compose.onNodeWithTag("advanced").assertDoesNotExist()
 
+        assertNetworkSteps()
+        assertCloudSteps()
+        assertTapToPaySteps()
+        // Choosing the device's own default stores Automatic, so it keeps following the device.
+        chooseMode(TerminalMode.SIMULATOR, TerminalMode.AUTO)
+    }
+
+    private fun assertNetworkSteps() {
         chooseMode(TerminalMode.TERMINAL)
         waitForTag("environment_TEST")
         compose.onNodeWithTag("host").assertDoesNotExist()
         compose.onNodeWithTag("environment_TEST").performScrollTo().performClick()
         compose.awaitCondition("the TEST environment is saved") {
-            container.settingsState.value.terminal.environment ==
+            env.container.settingsState.value.terminal.environment ==
                 TerminalEnvironment.TEST
         }
+        waitForTag("apiKey")
+        assertSteps("Environment", "Adyen API")
+        compose.onNodeWithTag("step_3").assertDoesNotExist()
+        compose.onNodeWithTag("merchantAccount").performScrollTo().performTextInput("Merchant")
+        compose.onNodeWithTag("apiKey").performScrollTo().performTextInput("key")
+        compose.onNodeWithTag("testApi").performScrollTo().performClick()
         waitForTag("host")
-        compose.onNodeWithTag("poiId").assertExists()
-        compose.onNodeWithTag("keyIdentifier").assertExists()
-        assertSteps("Environment", "Adyen API key", "Terminal", "Shared key", "Checkout API")
-        compose.onNodeWithTag("merchantAccount").assertExists()
+        compose.onNodeWithTag("keyIdentifier").assertDoesNotExist()
+        compose.onNodeWithTag("host").performScrollTo().performTextInput("192.168.1.42")
+        compose.onNodeWithTag("keyIdentifier").assertDoesNotExist()
+        compose.onNodeWithTag("poiId").performScrollTo().performTextInput("S1F2-000158213605014")
+        waitForTag("keyIdentifier")
+        assertSteps("Environment", "Adyen API", "Terminal", "Shared key")
+        compose.onNodeWithTag("step_5").assertDoesNotExist()
+    }
 
+    private fun assertCloudSteps() {
         chooseMode(TerminalMode.CLOUD)
         waitForTag("environment_LIVE")
         compose.onNodeWithTag("apiKey").assertDoesNotExist()
         compose.onNodeWithTag("environment_LIVE").performScrollTo().performClick()
         compose.awaitCondition("the LIVE environment is saved") {
-            container.settingsState.value.terminal.environment ==
+            env.container.settingsState.value.terminal.environment ==
                 TerminalEnvironment.LIVE
         }
-        waitForTag("findTerminals")
+        waitForTag("apiKey")
         compose.onNodeWithTag("apiKey").assertExists()
         compose.onNodeWithTag("host").assertDoesNotExist()
         compose.onNodeWithTag("keyIdentifier").assertDoesNotExist()
-        compose.onNodeWithTag("testApi").assertDoesNotExist()
+        compose.onNodeWithTag("step_3").assertDoesNotExist()
+        compose.onNodeWithTag("testApi").assertExists()
+        compose.onNodeWithTag("livePrefix").performScrollTo().performTextInput("prefix")
+        compose.onNodeWithTag("testApi").performScrollTo().performClick()
+        waitForTag("findTerminals")
         compose.onNodeWithTag("testConnection").assertExists()
-        assertSteps("Environment", "Adyen API key", "Adyen account", "Terminal")
+        assertSteps("Environment", "Adyen API", "Terminal")
+        compose.onNodeWithTag("step_4").assertDoesNotExist()
         compose.onNodeWithTag("livePrefix").assertExists()
+    }
 
+    private fun assertTapToPaySteps() {
         chooseMode(TerminalMode.PAYMENTS_APP)
-        waitForTag("setUpTapToPay")
+        waitForTag("getPaymentsAppTest")
         compose.onNodeWithText("Not installed").assertExists()
         compose.onNodeWithTag("getPaymentsAppTest").assertExists()
         compose.onNodeWithTag("getPaymentsAppLive").assertExists()
-        assertSteps("Adyen Payments app", "Adyen API key", "Checkout API", "Tap to Pay", "Shared key")
+        assertSteps("Adyen Payments app")
+        compose.onNodeWithTag("step_2").assertDoesNotExist()
+        phone.paymentsApps = setOf(TerminalEnvironment.TEST)
+        env.container.terminalStatus.readDevice()
+        waitForTag("apiKey")
+        assertSteps("Adyen Payments app", "Adyen API")
+        compose.onNodeWithTag("step_3").assertDoesNotExist()
+        compose.onNodeWithTag("testApi").performScrollTo().performClick()
+        waitForTag("setUpTapToPay")
+        assertSteps("Adyen Payments app", "Adyen API", "Tap to Pay")
         compose.onNodeWithTag("environment").assertDoesNotExist()
         compose.onNodeWithTag("discoverSetup").assertDoesNotExist()
-        compose.onNodeWithTag("keyIdentifier").assertExists()
+        compose.onNodeWithTag("keyIdentifier").assertDoesNotExist()
         compose.onNodeWithTag("paymentsAppKey").assertExists()
         compose.onNodeWithTag("host").assertDoesNotExist()
-        // Choosing the device's own default stores Automatic, so it keeps following the device.
-        chooseMode(TerminalMode.SIMULATOR, TerminalMode.AUTO)
     }
 
     @Test
@@ -154,10 +202,9 @@ class SetupDiscoveryUiTest {
         )
         compose.onNodeWithTag("environment_$environment").assertIsDisplayed().performClick()
         waitForTag("apiKey")
-        compose.onNodeWithTag("step_2").assertTextContains(env.context.getString(R.string.settings_adyen_key))
-        compose.onNodeWithTag("step_3").assertTextContains(
-            env.context.getString(if (mode == TerminalMode.CLOUD) R.string.settings_api_cloud else R.string.settings_step_terminal),
-        )
+        compose.onNodeWithTag("step_2").assertTextContains(env.context.getString(R.string.settings_api))
+        compose.onNodeWithTag("merchantAccount").assertExists()
+        compose.onNodeWithTag("step_3").assertDoesNotExist()
         compose.awaitCondition("the selected environment is saved") {
             container.settingsState.value.terminal.environment == environment
         }
@@ -167,7 +214,6 @@ class SetupDiscoveryUiTest {
         } else {
             compose.onNodeWithTag("livePrefix").assertDoesNotExist()
         }
-        assertThat(env.context.getString(R.string.settings_api_cloud_hint)).doesNotContain("API credentials")
         assertThat(env.context.getString(R.string.settings_api_hint)).doesNotContain("API credentials")
     }
 
@@ -194,7 +240,7 @@ class SetupDiscoveryUiTest {
     }
 
     @Test
-    fun `Tap to Pay installs the Payments app first and saves its key without terminal discovery`() {
+    fun `Tap to Pay keeps boarding hidden until its API test succeeds without terminal discovery`() {
         phone.paymentsApps = setOf(TerminalEnvironment.TEST)
         val container = env.container
         env.updateSettings { it.copy(terminal = it.terminal.copy(mode = TerminalMode.PAYMENTS_APP)) }
@@ -209,18 +255,32 @@ class SetupDiscoveryUiTest {
         compose.onNodeWithText(env.context.getString(R.string.settings_adyen_role_terminals), substring = true).assertDoesNotExist()
         compose.onNodeWithTag("environment").assertDoesNotExist()
         compose.onNodeWithTag("discoverSetup").assertDoesNotExist()
+        compose.onNodeWithTag("merchantAccount").performScrollTo().performTextInput("Merchant")
+        compose.awaitCondition("the account is saved") { container.settingsState.value.terminal.merchantAccount == "Merchant" }
+        apiFailure = "Invalid API key"
         compose.onNodeWithTag("apiKey").performScrollTo().performTextInput(" demo-key ")
         compose
-            .onNodeWithTag("saveApiKey")
+            .onNodeWithTag("testApi")
             .performScrollTo()
             .assertIsDisplayed()
             .performClick()
         compose.awaitCondition("the API key is saved without discovery") {
             await { container.secrets.get(Secret.ADYEN_API_KEY) } == "demo-key"
         }
-        compose.waitUntilDoesNotExist(hasTestTag("saveApiKey"), 15_000)
+        compose.waitUntilAtLeastOneExists(hasTestTag("apiResult") and hasText("Invalid API key", substring = true), 15_000)
+        compose.onNodeWithTag("step_3").assertDoesNotExist()
+        apiFailure = null
+        compose.onNodeWithTag("testApi").performScrollTo().performClick()
+        waitForTag("setUpTapToPay")
         compose.onNodeWithTag("terminalsResult").assertDoesNotExist()
         compose.onNodeWithTag("step_3").assertExists()
+        compose.onNodeWithTag("step_4").assertDoesNotExist()
+        // Once unlocked, retesting cannot discard a secret draft in a later step.
+        compose.onNodeWithTag("paymentsAppKey").performScrollTo().performTextInput("boarding-draft")
+        apiFailure = "Temporarily unavailable"
+        compose.onNodeWithTag("testApi").performScrollTo().performClick()
+        compose.waitUntilAtLeastOneExists(hasTestTag("apiResult") and hasText("Temporarily unavailable", substring = true), 15_000)
+        compose.onNodeWithTag("paymentsAppKey").performScrollTo().assertTextContains("boarding-draft", substring = true)
     }
 
     @Test
@@ -240,8 +300,50 @@ class SetupDiscoveryUiTest {
             container.settingsState.value.terminal.merchantAccount ==
                 "Merchant"
         }
+        compose.onNodeWithTag("host").assertDoesNotExist()
+        compose.onNodeWithTag("testApi").performScrollTo().performClick()
+        waitForTag("host")
         compose.onNodeWithTag("host").performScrollTo().assertTextContains("192.168.1.42", substring = true)
         compose.onNodeWithTag("poiId").assertTextContains("S1F2-000158213605014", substring = true)
         compose.onNodeWithTag("merchantAccount").performScrollTo().assertTextContains("Merchant", substring = true)
+    }
+
+    @Test
+    fun `an API test still running or completed for a changed account cannot unlock terminal setup`() {
+        env.updateSettings {
+            it.copy(terminal = it.terminal.copy(mode = TerminalMode.TERMINAL, environment = TerminalEnvironment.TEST))
+        }
+        env.useCheckoutApi()
+        apiRelease = CompletableDeferred()
+        compose.setContent { MiniMposApp(env.container) }
+        compose.onNodeWithTag("settings").performClick()
+        waitForTag("section_terminal")
+        compose.onNodeWithTag("section_terminal").performClick()
+        waitForTag("testApi")
+        compose.onNodeWithTag("testApi").performScrollTo().performClick()
+        compose.awaitCondition("API check starts") { apiEntered.isCompleted }
+        compose.onNodeWithTag("step_3").assertDoesNotExist()
+        compose.onNodeWithTag("merchantAccount").performScrollTo().performTextReplacement("ChangedMerchant")
+        compose.awaitCondition("changed account reaches settings") {
+            env.container.settingsState.value.terminal.merchantAccount == "ChangedMerchant"
+        }
+        apiRelease?.complete(Unit)
+        compose.waitUntilAtLeastOneExists(hasTestTag("apiResult") and hasText(env.context.getString(R.string.settings_api_ok)), 15_000)
+        compose.onNodeWithTag("step_3").assertDoesNotExist()
+        compose.onNodeWithTag("testApi").performScrollTo().performClick()
+        waitForTag("host")
+    }
+
+    @Test
+    fun `installing both Payments apps leaves only the first step visible`() {
+        phone.paymentsApps = TerminalEnvironment.entries.toSet()
+        env.updateSettings { it.copy(terminal = it.terminal.copy(mode = TerminalMode.PAYMENTS_APP)) }
+        compose.setContent { MiniMposApp(env.container) }
+        compose.onNodeWithTag("settings").performClick()
+        waitForTag("section_terminal")
+        compose.onNodeWithTag("section_terminal").performClick()
+        waitForTag("step_1")
+        compose.onNodeWithTag("step_2").assertDoesNotExist()
+        compose.onNodeWithTag("apiKey").assertDoesNotExist()
     }
 }

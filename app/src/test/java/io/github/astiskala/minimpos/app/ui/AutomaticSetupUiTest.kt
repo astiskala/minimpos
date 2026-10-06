@@ -84,6 +84,13 @@ class AutomaticSetupUiTest {
 
     private fun waitForTag(tag: String) = compose.waitUntilAtLeastOneExists(hasTestTag(tag), 15_000)
 
+    private fun testApi() {
+        waitForTag("testApi")
+        compose.onNodeWithTag("step_3").assertDoesNotExist()
+        compose.onNodeWithTag("testApi").performScrollTo().performClick()
+        waitForTag("step_3")
+    }
+
     private fun importAutomatic(
         destination: String = "network",
         environment: TerminalEnvironment = TerminalEnvironment.TEST,
@@ -146,6 +153,7 @@ class AutomaticSetupUiTest {
     fun `Automatic import offers device-side terminal selection and refreshes all discovered fields`() {
         importAutomatic()
         chooseTerminal()
+        testApi()
         waitForTag("step_3_summary")
         compose.onNodeWithTag("host").assertDoesNotExist()
         compose.onNodeWithTag("apiKey").assertDoesNotExist()
@@ -154,7 +162,7 @@ class AutomaticSetupUiTest {
         compose.onNodeWithTag("testApi").assertExists()
         compose.onNodeWithTag("step_3").performScrollTo().performClick()
         compose.onNodeWithTag("host").performScrollTo().assertTextContains("192.168.1.42", substring = true)
-        compose.onNodeWithTag("step_5").performScrollTo().performClick()
+        compose.onNodeWithTag("step_2").performScrollTo().performClick()
         compose.onNodeWithTag("merchantAccount").performScrollTo().assertTextContains("Merchant", substring = true)
         assertThat(await { env.container.secrets.get(Secret.TERMINAL_PASSPHRASE) }).isEqualTo("correct horse battery staple")
         assertThat(searches).containsExactly(TerminalEnvironment.TEST)
@@ -164,11 +172,12 @@ class AutomaticSetupUiTest {
     fun `Automatic LIVE cloud setup keeps the required imported prefix and selected environment`() {
         importAutomatic("cloud", TerminalEnvironment.LIVE)
         chooseTerminal()
+        testApi()
         waitForTag("step_3_summary")
         compose.onNodeWithTag("livePrefix").assertDoesNotExist()
         compose.onNodeWithTag("poiId").assertDoesNotExist()
         compose.onNodeWithTag("testConnection").performScrollTo().assertIsDisplayed()
-        compose.onNodeWithTag("step_3").performScrollTo().performClick()
+        compose.onNodeWithTag("step_2").performScrollTo().performClick()
         compose.onNodeWithTag("livePrefix").performScrollTo().assertTextContains("1797a841fbb37ca7-AdyenDemo", substring = true)
         assertThat(env.container.settingsState.value.terminal.environment).isEqualTo(TerminalEnvironment.LIVE)
         assertThat(searches).containsExactly(TerminalEnvironment.LIVE)
@@ -211,8 +220,14 @@ class AutomaticSetupUiTest {
                 useUnmergedTree = true,
             ).performScrollTo()
             .assertIsDisplayed()
-        compose.onNodeWithTag("host").assertExists()
+        compose.onNodeWithTag("host").assertDoesNotExist()
         compose.onNodeWithTag("merchantAccount").assertExists()
+        compose.onNodeWithTag("merchantAccount").performScrollTo().performTextInput("Merchant")
+        compose.awaitCondition("the manual account is saved") {
+            env.container.settingsState.value.terminal.merchantAccount == "Merchant"
+        }
+        testApi()
+        compose.onNodeWithTag("host").assertExists()
         assertThat(await { env.container.secrets.get(Secret.ADYEN_API_KEY) }).isEqualTo("imported-key")
         assertThat(searches).containsExactly(TerminalEnvironment.TEST)
     }
@@ -233,18 +248,20 @@ class AutomaticSetupUiTest {
     }
 
     @Test
-    fun `Tap to Pay import collapses supplied account and installation but keeps manual key and boarding visible`() {
+    fun `Tap to Pay import requires API testing before boarding and registration before shared-key entry`() {
         device.paymentsApps = setOf(TerminalEnvironment.TEST)
         importAutomatic("tapToPay")
+        waitForTag("step_2_summary")
+        compose.onNodeWithTag("setUpTapToPay").assertDoesNotExist()
+        testApi()
         waitForTag("setUpTapToPay")
-        waitForTag("step_3_summary")
         compose.onNodeWithTag("merchantAccount").assertDoesNotExist()
         compose.onNodeWithTag("getPaymentsAppTest").assertDoesNotExist()
-        compose.onNodeWithTag("step_3").performScrollTo().performClick()
+        compose.onNodeWithTag("step_2").performScrollTo().performClick()
         compose.onNodeWithTag("merchantAccount").performScrollTo().assertTextContains("Merchant", substring = true)
         assertThat(searches).isEmpty()
         assertThat(paymentsApp.opened).isEmpty()
-        compose.onNodeWithTag("keyIdentifier").assertExists()
+        compose.onNodeWithTag("keyIdentifier").assertDoesNotExist()
         compose.onNodeWithTag("findSharedKey").assertDoesNotExist()
     }
 
@@ -253,6 +270,7 @@ class AutomaticSetupUiTest {
         device.paymentsApps = setOf(TerminalEnvironment.TEST)
         env.updateSettings { it.copy(terminal = it.terminal.copy(paymentsAppInstallationId = FakePaymentsApp.INSTALLATION_ID)) }
         importAutomatic("tapToPay")
+        testApi()
         waitForTag("keyIdentifier")
         compose.onNodeWithTag("keyIdentifier").performScrollTo().assertExists()
         assertThat(await { env.container.secrets.get(Secret.TERMINAL_PASSPHRASE) }).isNull()
@@ -267,6 +285,7 @@ class AutomaticSetupUiTest {
             manualDetails = """"merchantAccount":"Merchant","host":"192.168.1.42","poiId":"$POI_ID","keyIdentifier":"manual-key",""",
             secrets = """{"ADYEN_API_KEY":"imported-key","TERMINAL_PASSPHRASE":"manual secret"}""",
         )
+        testApi()
         waitForTag("step_4_summary")
         compose.onNodeWithTag("passphrase").assertDoesNotExist()
         compose.onNodeWithTag("host").assertDoesNotExist()
@@ -281,18 +300,20 @@ class AutomaticSetupUiTest {
     @Test
     fun `Tap to Pay helper key stays saved and a secret draft prevents collapsing its editor`() {
         device.paymentsApps = setOf(TerminalEnvironment.TEST)
+        env.updateSettings { it.copy(terminal = it.terminal.copy(paymentsAppInstallationId = FakePaymentsApp.INSTALLATION_ID)) }
         importAutomatic(
             destination = "tapToPay",
             automatic = false,
             manualDetails = """"keyIdentifier":"manual-key","keyVersion":3,""",
             secrets = """{"ADYEN_API_KEY":"imported-key","TERMINAL_PASSPHRASE":"manual secret","PAYMENTS_APP_API_KEY":"boarding-key"}""",
         )
-        waitForTag("step_5_summary")
+        testApi()
+        waitForTag("step_4_summary")
         compose.onNodeWithTag("paymentsAppKey").assertDoesNotExist()
         compose.onNodeWithTag("setUpTapToPay").assertExists()
-        compose.onNodeWithTag("step_5").performScrollTo().performClick()
+        compose.onNodeWithTag("step_4").performScrollTo().performClick()
         compose.onNodeWithTag("passphrase").performScrollTo().performTextInput("unsaved secret")
-        compose.onNodeWithTag("step_5").performScrollTo().performClick()
+        compose.onNodeWithTag("step_4").performScrollTo().performClick()
         compose.onNodeWithTag("passphrase").performScrollTo().assertTextContains("unsaved secret", substring = true)
         assertThat(await { env.container.secrets.get(Secret.TERMINAL_PASSPHRASE) }).isEqualTo("manual secret")
         assertThat(env.container.settingsState.value.terminal.keyVersion).isEqualTo(3)

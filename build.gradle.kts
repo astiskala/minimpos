@@ -42,6 +42,7 @@ spotless {
             ".github/**/*.yml",
             ".github/scripts/*.mjs",
             ".github/scripts/*.java",
+            "scripts/*.mjs",
             "config/**/*.yml",
             "*/src/**/*.xml",
             "*/lint.xml",
@@ -299,7 +300,13 @@ val zizmor =
 val releaseCheck =
     registerCheck("releaseCheck", "Tests release version preparation and CI artifact integrity checks.") {
         sources.from(fileTree(".github/scripts") { include("*.mjs", "*.java") })
-        command.set(listOf("node", "--test", ".github/scripts/release.test.mjs"))
+        command.set(listOf("node", "--test", "--test-reporter=spec", ".github/scripts/release.test.mjs"))
+    }
+
+val buildOutputCheck =
+    registerCheck("buildOutputCheck", "Tests concise Gradle output, full logs and exit status with an offline fake wrapper.") {
+        sources.from(fileTree("scripts") { include("*.mjs") })
+        command.set(listOf("node", "--test", "--test-reporter=spec", "scripts/gradle.test.mjs"))
     }
 
 tasks.register("qualityGate") {
@@ -312,6 +319,7 @@ tasks.register("qualityGate") {
         actionlint,
         zizmor,
         releaseCheck,
+        buildOutputCheck,
         ":core:check",
         ":adyen:check",
         ":app:check",

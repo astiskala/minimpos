@@ -68,11 +68,13 @@ private typealias TerminalUpdate = ((TerminalSettings) -> TerminalSettings) -> U
  * What Settings › Terminal asks for wherever payments go but the simulator, as numbered steps in the order they are
  * done. Network and cloud destinations first ask for the environment, before API access. On-device terminals read
  * their certificate; Tap to Pay starts with the Payments app whose installation determines the environment:
- * - this terminal: 1. API key, 2. shared key, 3. Checkout account;
- * - a terminal on the network: 1. environment, 2. API key, 3. address and POIID, 4. shared key, 5. account;
- * - a terminal in the cloud: 1. environment, 2. API key, 3. account, 4. terminal, with one test of both;
- * - Tap to Pay: 1. Payments app, 2. API key, 3. account, 4. boarding, 5. shared key.
+ * - this terminal: 1. Adyen API, 2. shared key;
+ * - a terminal on the network: 1. environment, 2. Adyen API, 3. address and POIID, 4. shared key;
+ * - a terminal in the cloud: 1. environment, 2. Adyen API, 3. terminal;
+ * - Tap to Pay: 1. Payments app, 2. Adyen API, 3. boarding, 4. shared key.
  *
+ * API testing unlocks subsequent steps in this visit. Revealed steps stay available for editing, so retesting or
+ * clearing an earlier field cannot discard an unsaved secret in a later step. Supplied helper details are not tested.
  * The API key typed is kept here only in memory and cleared once stored. Discovery resets field editing state after
  * its saved settings have reached the screen, without resetting fields during ordinary typing.
  */
@@ -98,7 +100,7 @@ internal fun ColumnScope.TerminalSteps(
             guided = setup.guided,
         )
     val update: TerminalUpdate = { transform -> events.onUpdate { it.copy(terminal = transform(it.terminal)) } }
-    key(setup.revision) {
+    key(status.mode, status.environment, setup.revision) {
         if (status.selectsEnvironment) {
             EnvironmentStep(status.environment, update, setup.guided)
         }
@@ -120,26 +122,48 @@ private fun ColumnScope.DestinationSteps(
     api: ApiEntry,
     update: TerminalUpdate,
 ) {
-    if (status.mode == TerminalMode.PAYMENTS_APP) PaymentsAppStep(1, status.paymentsApps, setup.guided)
-    if (status.mode != TerminalMode.SIMULATOR && status.mode != TerminalMode.AUTO) {
-        AdyenKeyStep(
-            number = if (status.selectsEnvironment || status.mode == TerminalMode.PAYMENTS_APP) 2 else 1,
-            cloud = status.mode == TerminalMode.CLOUD,
-            discovers = status.mode != TerminalMode.PAYMENTS_APP,
-            api = api,
-            actions = actions,
-            setup = setup,
-            events = events,
-            setupEvents = setupEvents,
-        )
+    var testedFields by remember { mutableStateOf<Pair<String, String>?>(null) }
+    var apiComplete by remember { mutableStateOf(false) }
+    LaunchedEffect(actions.api, api.problem, api.key) {
+        if (api.testCompleted(actions.api, testedFields)) apiComplete = true
     }
+    if (status.mode == TerminalMode.PAYMENTS_APP) {
+        PaymentsAppStep(1, status.paymentsApps, setup.guided)
+        if (status.paymentsApps.size != 1) return
+    }
+    AdyenApiStep(
+        number = if (status.selectsEnvironment || status.mode == TerminalMode.PAYMENTS_APP) 2 else 1,
+        cloud = status.mode == TerminalMode.CLOUD,
+        discovers = status.mode != TerminalMode.PAYMENTS_APP,
+        api = api,
+        actions = actions,
+        setup = setup,
+        events = events,
+        setupEvents = setupEvents,
+        update = update,
+        onTest = {
+            testedFields = api.terminal.merchantAccount to api.terminal.liveUrlPrefix
+            events.onSaveAndTest(Secret.ADYEN_API_KEY, api.key, SettingsTest.API)
+        },
+    )
+    if (!apiComplete) return
     when (status.mode) {
         TerminalMode.TERMINAL -> {
             LocalTerminalSteps(status.onTerminal, state, actions, events, setupEvents, api, update)
         }
 
         TerminalMode.CLOUD -> {
-            CloudSteps(state, actions, setup, events, setupEvents, api, update)
+            CloudTerminalStep(
+                number = 3,
+                poiId = state.settings.terminal.poiIdOverride,
+                setup = setup,
+                testing = actions.connection.running,
+                onPoiId = { id -> update { it.copy(poiIdOverride = id) } },
+                onFindTerminals = { setupEvents.onTerminalsFind(api.key) },
+                onTest = {
+                    if (!actions.connection.running) events.onSaveAndTest(Secret.ADYEN_API_KEY, api.key, SettingsTest.CLOUD)
+                },
+            )
         }
 
         TerminalMode.PAYMENTS_APP -> {
@@ -209,6 +233,16 @@ private class ApiEntry(
     val guided: Boolean,
 )
 
+/** A successful test of the current account fields, with no missing setup or unsaved replacement key. */
+private fun ApiEntry.testCompleted(
+    result: ActionState,
+    testedFields: Pair<String, String>?,
+): Boolean {
+    val matches = testedFields == (terminal.merchantAccount to terminal.liveUrlPrefix)
+    val settled = result.done && problem == null && key.isBlank()
+    return matches && settled
+}
+
 /** A terminal reached by the local Terminal API: this one ([onTerminal]), or one on the network. */
 @Composable
 private fun ColumnScope.LocalTerminalSteps(
@@ -221,9 +255,16 @@ private fun ColumnScope.LocalTerminalSteps(
     update: TerminalUpdate,
 ) {
     val first = if (onTerminal) 2 else 4
-    if (!onTerminal) NetworkTerminalStep(3, state.settings.terminal, update, api.guided)
+    if (!onTerminal) {
+        NetworkTerminalStep(3, state.settings.terminal, update, api.guided)
+        var terminalComplete by remember { mutableStateOf(false) }
+        val terminal = state.settings.terminal
+        LaunchedEffect(terminal.host, terminal.poiIdOverride) {
+            if (terminal.host.isNotBlank() && terminal.poiIdOverride.isNotBlank()) terminalComplete = true
+        }
+        if (!terminalComplete) return
+    }
     SharedKeyStep(first, state, actions, events, setupEvents, update, api.guided)
-    CheckoutApiStep(first + 1, api, actions, events, update)
 }
 
 /** Tap to Pay with the Adyen Payments app on this phone: the app, the Checkout API, setting it up, the shared key. */
@@ -238,9 +279,8 @@ private fun ColumnScope.TapToPaySteps(
     update: TerminalUpdate,
 ) {
     val terminal = state.settings.terminal
-    CheckoutApiStep(3, api, actions, events, update)
     TapToPayStep(
-        number = 4,
+        number = 3,
         installationId = terminal.paymentsAppInstallationId,
         storeId = terminal.storeId,
         apiKeySaved = Secret.PAYMENTS_APP_API_KEY in state.secrets,
@@ -251,42 +291,11 @@ private fun ColumnScope.TapToPaySteps(
         onForgetApiKey = { events.onSecretChange(Secret.PAYMENTS_APP_API_KEY, null) },
         onDraft = { setupEvents.onSecretDraft(Secret.PAYMENTS_APP_API_KEY, it) },
     )
-    SharedKeyStep(5, state, actions, events, setupEvents, update, api.guided)
-}
-
-/** A terminal in the cloud: the Adyen account its API key belongs to, then the terminal, tested together. */
-@Composable
-private fun ColumnScope.CloudSteps(
-    state: SettingsUiState,
-    actions: SettingsActions,
-    setup: TerminalSetupActions,
-    events: SettingsEvents,
-    setupEvents: TerminalSetupEvents,
-    api: ApiEntry,
-    update: TerminalUpdate,
-) {
-    SetupDetails(3, stringResource(R.string.settings_api_cloud), api.guided, api.problem == null && !actions.api.isError) {
-        SettingNote(stringResource(R.string.settings_api_cloud_hint))
-        // The terminal's buttons, next, save the key.
-        ApiFields(api, update)
+    var boarded by remember { mutableStateOf(false) }
+    LaunchedEffect(terminal.paymentsAppInstallationId) {
+        if (terminal.paymentsAppInstallationId.isNotBlank()) boarded = true
     }
-    if (api.problem != null || api.keySaved) {
-        SettingActions {
-            api.problem?.let { ActionMessage(it.text(), isError = true, modifier = Modifier.testTag("apiProblem")) }
-        }
-    }
-    CloudTerminalStep(
-        number = 4,
-        poiId = state.settings.terminal.poiIdOverride,
-        setup = setup,
-        keyTyped = api.key.isNotBlank(),
-        testing = actions.connection.running,
-        onPoiId = { id -> update { it.copy(poiIdOverride = id) } },
-        onFindTerminals = { setupEvents.onTerminalsFind(api.key) },
-        onTest = {
-            if (!actions.connection.running) events.onSaveAndTest(Secret.ADYEN_API_KEY, api.key, SettingsTest.CLOUD)
-        },
-    )
+    if (boarded) SharedKeyStep(4, state, actions, events, setupEvents, update, api.guided)
 }
 
 /** The IP address and POIID of a terminal on the network; a terminal running the app knows both itself. */
@@ -412,40 +421,6 @@ private fun ForgetPassphrase(events: SettingsEvents) =
     )
 
 /**
- * The Checkout API, which every destination needs (captures, adjustments and payment links): its fields, what is still
- * missing, the button that saves the key typed and tests it, removing the saved key, and the outcome of the last test.
- */
-@Composable
-private fun ColumnScope.CheckoutApiStep(
-    number: Int,
-    api: ApiEntry,
-    actions: SettingsActions,
-    events: SettingsEvents,
-    update: TerminalUpdate,
-) {
-    fun saveAndTest() {
-        if (!actions.api.running) events.onSaveAndTest(Secret.ADYEN_API_KEY, api.key, SettingsTest.API)
-    }
-    SetupDetails(number, stringResource(R.string.settings_api), api.guided, api.problem == null && !actions.api.isError) {
-        SettingNote(stringResource(R.string.settings_api_hint))
-        ApiFields(api, update)
-    }
-    SettingActions {
-        api.problem?.let { ActionMessage(it.text(), isError = true, modifier = Modifier.testTag("apiProblem")) }
-        TestButton(
-            typed = api.key.isNotBlank(),
-            save = R.string.settings_save_and_test_api,
-            test = R.string.settings_test_api,
-            running = actions.api.running,
-            onClick = ::saveAndTest,
-            tag = "testApi",
-            icon = Icons.Default.Api,
-        )
-        OutcomeMessage(actions.api, Modifier.testTag("apiResult"))
-    }
-}
-
-/**
  * The merchant account used with the saved Adyen API key and, once payments are known to go to LIVE, the live URL
  * prefix. These fields remain editable when discovery is unavailable.
  */
@@ -476,8 +451,12 @@ private fun ApiFields(
     }
 }
 
+/**
+ * One Adyen API step for every real destination: key and account together, then [onTest] and its outcome. Optional
+ * terminal discovery can fill the account before testing; saved helper fields start collapsed, never marked tested.
+ */
 @Composable
-private fun ColumnScope.AdyenKeyStep(
+private fun ColumnScope.AdyenApiStep(
     number: Int,
     cloud: Boolean,
     discovers: Boolean,
@@ -486,47 +465,50 @@ private fun ColumnScope.AdyenKeyStep(
     setup: TerminalSetupActions,
     events: SettingsEvents,
     setupEvents: TerminalSetupEvents,
+    update: TerminalUpdate,
+    onTest: () -> Unit,
 ) {
-    fun save() {
-        if (discovers) {
-            setupEvents.onTerminalsFind(api.key)
-        } else if (api.key.isNotBlank()) {
-            events.onSecretChange(Secret.ADYEN_API_KEY, api.key.trim())
-        }
+    fun saveAndTest() {
+        if (!actions.api.running) onTest()
     }
     SetupDetails(
         number,
-        stringResource(R.string.settings_adyen_key),
+        stringResource(R.string.settings_api),
         setup.guided,
-        api.keySaved && !setup.manualDetails && !setup.terminals.running && !setup.terminals.isError,
+        api.problem == null && !actions.api.isError && !setup.manualDetails && !setup.terminals.running,
         hasDraft = api.key.isNotEmpty(),
     ) {
         SettingNote(stringResource(R.string.settings_adyen_key_hint))
         ApiKeyRoles(cloud, discovers)
+        SettingNote(stringResource(R.string.settings_api_hint))
 
         SecretField(
             label = stringResource(R.string.settings_api_key),
             isSet = api.keySaved,
             value = api.key,
             onValueChange = api.onKey,
-            onSubmit = ::save,
+            onSubmit = ::saveAndTest,
             tag = "apiKey",
             onDraft = { setupEvents.onSecretDraft(Secret.ADYEN_API_KEY, it) },
         )
+        ApiFields(api, update)
         SettingActions {
-            if (discovers) {
-                KeyDiscoveryActions(api, setup, ::save)
-            } else if (api.key.isNotBlank()) {
-                PrimaryButton(
-                    stringResource(R.string.settings_save_api_key),
-                    ::save,
-                    modifier = Modifier.testTag("saveApiKey"),
-                    icon = Icons.Default.Api,
-                )
-            }
             if (api.keySaved) ForgetApiKey(events)
             actions.secretError?.let { ActionMessage(it.text(), isError = true) }
         }
+    }
+    SettingActions {
+        TestButton(
+            typed = api.key.isNotBlank(),
+            save = R.string.settings_save_and_test_api,
+            test = R.string.settings_test_api,
+            running = actions.api.running,
+            onClick = ::saveAndTest,
+            tag = "testApi",
+            icon = Icons.Default.Api,
+        )
+        OutcomeMessage(actions.api, Modifier.testTag("apiResult"))
+        if (discovers) KeyDiscoveryActions(api, setup) { setupEvents.onTerminalsFind(api.key) }
     }
     setup.connectedTerminals?.let { TerminalChoiceDialog(it, setupEvents::onTerminalChoose) }
 }
@@ -619,15 +601,13 @@ private fun TestButton(
 
 /**
  * The terminal in the cloud: its POIID, typed or chosen using [onFindTerminals] and [TerminalChoiceDialog], and the
- * one test ([testing] while it runs) of both the terminal and the Checkout API. Testing first saves the API key when
- * one is [keyTyped].
+ * connection test ([testing] while it runs), which also rechecks the Checkout API.
  */
 @Composable
 private fun ColumnScope.CloudTerminalStep(
     number: Int,
     poiId: String,
     setup: TerminalSetupActions,
-    keyTyped: Boolean,
     testing: Boolean,
     onPoiId: (String) -> Unit,
     onFindTerminals: () -> Unit,
@@ -654,7 +634,7 @@ private fun ColumnScope.CloudTerminalStep(
             modifier = Modifier.testTag("findTerminals"),
         )
         TestButton(
-            typed = keyTyped,
+            typed = false,
             save = R.string.settings_save_and_test,
             test = R.string.settings_test_connection,
             running = testing,
@@ -769,7 +749,7 @@ private fun ColumnScope.TapToPayStep(
         number,
         stringResource(R.string.settings_tap_to_pay),
         setup.guided,
-        apiKeySaved && !setup.tapToPay.isError,
+        boarded && apiKeySaved && !setup.tapToPay.isError,
         hasDraft = apiKey.isNotEmpty(),
     ) {
         SettingNote(stringResource(R.string.settings_tap_to_pay_hint))

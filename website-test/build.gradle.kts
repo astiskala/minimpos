@@ -56,7 +56,7 @@ val setupHelperTest =
         description = "Tests setup-helper async generation and invalidation without a browser or network."
         val tests = layout.projectDirectory.file("src/test/js/setup.test.js")
         inputs.files(tests, website.file("js/setup.js"))
-        commandLine("node", "--test", tests.asFile.absolutePath)
+        commandLine("node", "--test", "--test-reporter=spec", tests.asFile.absolutePath)
     }
 
 tasks.test {

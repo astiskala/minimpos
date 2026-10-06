@@ -96,8 +96,10 @@ class TapToPaySettingsTest {
     @Test
     fun `removing a saved key asks first`() {
         device.paymentsApps = setOf(TerminalEnvironment.TEST)
+        env.useCheckoutApi()
         await { container.secrets.set(Secret.PAYMENTS_APP_API_KEY, "pa-key") }
         openTerminalSettings()
+        testApi()
         waitForTag("forgetPaymentsAppKey")
         compose.onNodeWithTag("forgetPaymentsAppKey").performScrollTo().performClick()
         compose.onNodeWithText("Remove the saved Payments app API key?").assertExists()
@@ -117,12 +119,19 @@ class TapToPaySettingsTest {
             container.secrets.set(Secret.PAYMENTS_APP_API_KEY, "boarding-key")
         }
         openTerminalSettings()
+        testApi()
         waitForTag("setUpTapToPay")
         compose.onNodeWithTag("setUpTapToPay").performScrollTo().performClick()
         compose.awaitCondition("phone registration completes") {
             container.settingsState.value.terminal.paymentsAppInstallationId == FakePaymentsApp.INSTALLATION_ID
         }
         waitForTag("keyIdentifier")
+    }
+
+    private fun testApi() {
+        waitForTag("testApi")
+        compose.onNodeWithTag("testApi").performScrollTo().performClick()
+        waitForTag("setUpTapToPay")
     }
 
     @Test

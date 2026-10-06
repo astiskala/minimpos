@@ -54,6 +54,7 @@ class CheckoutModificationsTest {
         assertThat(body["amount"].asJsonObject["currency"].asString).isEqualTo("AUD")
         assertThat(body["amount"].asJsonObject["value"].asLong).isEqualTo(3_900)
         assertThat(body.has("reason")).isFalse()
+        assertThat(body.has("industryUsage")).isFalse()
     }
 
     @Test
@@ -62,10 +63,24 @@ class CheckoutModificationsTest {
         val result = runBlocking { api.updateAmount("PSP1", amount, "ref", "BQABAQfirst", "adjust-1") }
         assertThat(result).isEqualTo(ModificationResult.Authorised("ADJ1", "BQABAQnext"))
         val request = server.takeRequest()
+        assertThat(request.method).isEqualTo("POST")
         assertThat(request.url.encodedPath).isEqualTo("/v72/payments/PSP1/amountUpdates")
+        assertThat(request.headers["x-api-key"]).isEqualTo("secret-api-key")
+        assertThat(request.headers["Idempotency-Key"]).isEqualTo("adjust-1")
         val body = JsonParser.parseString(request.body!!.utf8()).asJsonObject
-        assertThat(body["reason"].asString).isEqualTo("DelayedCharge")
-        assertThat(body["adjustAuthorisationData"].asString).isEqualTo("BQABAQfirst")
+        assertThat(body).isEqualTo(
+            JsonParser.parseString(
+                """
+                {
+                    "merchantAccount":"HarbourCoffeeCOM",
+                    "amount":{"currency":"AUD","value":3900},
+                    "reference":"ref",
+                    "industryUsage":"delayedCharge",
+                    "adjustAuthorisationData":"BQABAQfirst"
+                }
+                """.trimIndent(),
+            ),
+        )
     }
 
     @Test
@@ -75,7 +90,21 @@ class CheckoutModificationsTest {
         reply("""{"status":"refused"}""")
         runBlocking {
             assertThat(api.updateAmount("PSP1", amount, "ref", null, "a")).isEqualTo(ModificationResult.Received("ADJ2"))
-            assertThat(JsonParser.parseString(server.takeRequest().body!!.utf8()).asJsonObject.has("adjustAuthorisationData")).isFalse()
+            val request = server.takeRequest()
+            assertThat(request.url.encodedPath).isEqualTo("/v72/payments/PSP1/amountUpdates")
+            assertThat(request.headers["Idempotency-Key"]).isEqualTo("a")
+            assertThat(JsonParser.parseString(request.body!!.utf8())).isEqualTo(
+                JsonParser.parseString(
+                    """
+                    {
+                        "merchantAccount":"HarbourCoffeeCOM",
+                        "amount":{"currency":"AUD","value":3900},
+                        "reference":"ref",
+                        "industryUsage":"delayedCharge"
+                    }
+                    """.trimIndent(),
+                ),
+            )
             assertThat(api.updateAmount("PSP1", amount, "ref", "blob", "b")).isEqualTo(ModificationResult.Refused("Not enough balance"))
             assertThat(
                 api.updateAmount("PSP1", amount, "ref", "blob", "c"),

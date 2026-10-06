@@ -123,7 +123,7 @@ class SmallScreenTest {
         compose.setContent { MiniMposApp(container) }
         compose.onNodeWithTag("terminalSetup").performClick()
         waitForTag("quickSetupImport")
-        compose.onNodeWithTag("step_1").assertIsDisplayed().assertTextContains("Adyen API key")
+        compose.onNodeWithTag("step_1").assertIsDisplayed().assertTextContains("Adyen API")
         compose
             .onNodeWithTag("quickSetupImport")
             .performScrollTo()
@@ -145,19 +145,31 @@ class SmallScreenTest {
     }
 
     @Test
-    fun `home guides the terminal setup, which asks for the shared key, then the Checkout API`() {
+    fun `home guides terminal setup through the Adyen API test before the shared key`() {
+        env.updateSettings { it.copy(terminal = it.terminal.copy(environment = TerminalEnvironment.TEST)) }
         compose.setContent { MiniMposApp(container) }
         // Beside the setup card, every tile still fits.
         listOf("newSale", "preAuth", "refund", "history", "products", "settings").forEach { compose.onNodeWithTag(it).assertIsDisplayed() }
         compose.onNodeWithTag("terminalSetup").assertIsDisplayed().performClick()
+        waitForTag("apiKey")
+        compose.onNodeWithTag("keyIdentifier").assertDoesNotExist()
+        compose.onNodeWithTag("merchantAccount").performScrollTo().performTextInput("HarbourCoffeeCOM")
+        compose.awaitCondition("Saving the merchant account") {
+            container.settingsState.value.terminal.merchantAccount == "HarbourCoffeeCOM"
+        }
+        compose.onNodeWithTag("apiKey").performScrollTo().performTextInput("AQE-secret")
+        compose
+            .onNodeWithTag("testApi")
+            .performScrollTo()
+            .assertTextContains("Save and test API")
+            .performClick()
         waitForTag("keyIdentifier")
         // On the terminal itself its ID, address and environment are known, so they are not asked for.
         compose.onNodeWithTag("host").assertDoesNotExist()
         compose.onNodeWithTag("poiId").assertDoesNotExist()
         compose.onNodeWithText("Environment").assertDoesNotExist()
-        compose.onNodeWithTag("connectionStatus").assertTextContains("Checking", substring = true)
 
-        compose.onNodeWithTag("keyIdentifier").performTextInput("mini-key")
+        compose.onNodeWithTag("keyIdentifier").performScrollTo().performTextInput("mini-key")
         compose.awaitCondition("Saving the key identifier") { container.settingsState.value.terminal.keyIdentifier == "mini-key" }
         compose.onNodeWithTag("passphrase").performTextInput("wrong passphrase")
         compose
@@ -179,27 +191,8 @@ class SmallScreenTest {
         compose.onNodeWithTag("connectionResultOk").performClick()
         compose.onNodeWithTag("connectionStatus").assertTextContains("AMS1-000168223606144", substring = true)
         assertThat(await { container.secrets.get(Secret.TERMINAL_PASSPHRASE) }).isEqualTo("correct horse battery staple")
-        compose.onNodeWithText("Saved", useUnmergedTree = true).assertExists()
         compose.onNodeWithTag("testConnection").assertTextContains("Test connection")
         assertThat(terminal.hosts.distinct()).containsExactly("localhost")
-
-        // Payments still wait for the Checkout API, the next step.
-        compose.onNodeWithTag("back").performClick()
-        waitForTag("newSale")
-        compose.onNodeWithTag("terminalSetup").assertTextContains("Enter the merchant account", substring = true).performClick()
-        waitForTag("step_2")
-        compose.onNodeWithTag("merchantAccount").performScrollTo().performTextInput("HarbourCoffeeCOM")
-        compose.awaitCondition("Saving the merchant account") {
-            container.settingsState.value.terminal.merchantAccount
-                .isNotEmpty()
-        }
-        compose.onNodeWithTag("apiKey").performScrollTo().performTextInput("AQE-secret")
-        compose
-            .onNodeWithTag("testApi")
-            .performScrollTo()
-            .assertTextContains("Save and test API key")
-            .performClick()
-        compose.awaitCondition("Saving the API key") { await { container.secrets.get(Secret.ADYEN_API_KEY) } == "AQE-secret" }
 
         compose.onNodeWithTag("back").performClick()
         waitForTag("newSale")
@@ -214,6 +207,8 @@ class SmallScreenTest {
         compose.onNodeWithTag("settings").performClick()
         waitForTag("section_terminal")
         compose.onNodeWithTag("section_terminal").performClick()
+        waitForTag("testApi")
+        compose.onNodeWithTag("testApi").performScrollTo().performClick()
         waitForTag("testConnection")
         compose.onNodeWithTag("testConnection").performScrollTo().performClick()
         waitForText("Connected (OK")
@@ -479,12 +474,9 @@ class SmallScreenTest {
         compose.onNodeWithTag("settings").performClick()
         waitForTag("section_terminal")
         compose.onNodeWithTag("section_terminal").performClick()
-        // Every payment needs it, so it is the step after the shared key, open from the start.
-        waitForTag("step_2")
-        compose.onNodeWithTag("step_1").assertTextContains("Adyen API key")
-        compose.onNodeWithTag("step_2").assertTextContains("Shared key")
-        compose.onNodeWithTag("step_3").assertTextContains("Checkout API")
-        compose.onNodeWithTag("apiProblem").performScrollTo().assertTextContains("Enter the merchant account", substring = true)
+        waitForTag("step_1")
+        compose.onNodeWithTag("step_1").assertTextContains("Adyen API")
+        compose.onNodeWithTag("step_2").assertDoesNotExist()
         compose.onNodeWithTag("merchantAccount").performScrollTo().performTextInput("HarbourCoffeeCOM")
         compose.awaitCondition(
             "Saving the merchant account",
@@ -493,7 +485,7 @@ class SmallScreenTest {
         compose
             .onNodeWithTag("testApi")
             .performScrollTo()
-            .assertTextContains("Save and test API key")
+            .assertTextContains("Save and test API")
             .performClick()
         // Without a verified certificate the app cannot choose an API endpoint, even on the terminal itself.
         compose.waitUntilAtLeastOneExists(

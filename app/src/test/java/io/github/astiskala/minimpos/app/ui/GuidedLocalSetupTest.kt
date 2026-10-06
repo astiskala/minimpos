@@ -64,6 +64,9 @@ class GuidedLocalSetupTest {
                 }
             }
         }
+        compose.waitUntilAtLeastOneExists(hasTestTag("step_1_summary"), 15_000)
+        compose.onNodeWithTag("step_2").assertDoesNotExist()
+        compose.onNodeWithTag("testApi").performScrollTo().performClick()
         compose.waitUntilAtLeastOneExists(hasTestTag("step_2_summary"), 15_000)
         compose.onNodeWithTag("keyIdentifier").assertDoesNotExist()
         compose.onNodeWithTag("merchantAccount").assertDoesNotExist()

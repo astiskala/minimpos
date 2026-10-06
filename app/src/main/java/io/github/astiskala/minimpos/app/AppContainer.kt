@@ -67,8 +67,10 @@ import io.github.astiskala.minimpos.core.receipt.ReceiptDocument
 import io.github.astiskala.minimpos.core.receipt.ReceiptLabels
 import io.github.astiskala.minimpos.core.tax.StarterTax
 import io.github.astiskala.minimpos.terminal.checkout.CheckoutCredentials
+import io.github.astiskala.minimpos.terminal.checkout.CheckoutModifications
 import io.github.astiskala.minimpos.terminal.checkout.CheckoutPaymentLinks
 import io.github.astiskala.minimpos.terminal.checkout.PaymentLinkApi
+import io.github.astiskala.minimpos.terminal.checkout.PaymentModifications
 import io.github.astiskala.minimpos.terminal.client.PosApplication
 import io.github.astiskala.minimpos.terminal.paymentsapp.AdyenPaymentsAppManagement
 import io.github.astiskala.minimpos.terminal.paymentsapp.AppLinkExchange
@@ -119,6 +121,7 @@ import kotlin.time.Duration.Companion.minutes
  * @param paymentsAppExchange Opens the Adyen Payments app; null uses [paymentsApp], which the activity serves.
  * @param paymentsAppManagement Boards and revokes the Payments app with an API key, in an environment.
  * @param paymentLinks Creates, checks and expires payment links with Checkout API credentials.
+ * @param paymentModifications Verifies API access and modifies payments with Checkout API credentials.
  * @param storeDetails Reads Management API stores for reviewed receipt-business import.
  * @param terminalDetails Reads optional Management terminal setup details.
  * @param terminalEnvironment Reads the local terminal certificate without credentials.
@@ -142,6 +145,7 @@ class AppContainer(
         AdyenPaymentsAppManagement(key, environment)
     },
     paymentLinks: (CheckoutCredentials) -> PaymentLinkApi = { CheckoutPaymentLinks(it) },
+    paymentModifications: (CheckoutCredentials) -> PaymentModifications = { CheckoutModifications(it) },
     storeDetails: (String, TerminalEnvironment) -> StoreDetailsApi = { key, environment ->
         AdyenStoreDetails(key, environment)
     },
@@ -286,7 +290,7 @@ class AppContainer(
     /**
      * Adyen's Checkout API, for captures, authorisation adjustments and payment links, all simulated in simulator mode.
      */
-    val api = AdyenApi(terminalSetup, simulated = simulator.modifications, connectLinks = paymentLinks)
+    val api = AdyenApi(terminalSetup, simulated = simulator.modifications, connect = paymentModifications, connectLinks = paymentLinks)
 
     /** Whether payments and printing can work, for Home, Settings and the receipt screens. */
     val terminalStatus = TerminalStatus(terminalSetup, gateway, appScope)

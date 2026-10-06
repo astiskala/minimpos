@@ -647,6 +647,28 @@ class WebsiteTest {
 /** Destination setup instructions and optional email fields share the website's localized page fixtures. */
 class SetupGuideTest {
     @Test
+    fun `setup guides combine API credentials and explain progressive steps in every language`() {
+        val progress =
+            mapOf(
+                "en" to "a successful test unlocks the next step",
+                "zh-CN" to "测试成功后显示下一步",
+                "ja" to "成功すると次に進めます",
+            )
+        val tests = mapOf("en" to "Test API", "zh-CN" to "测试 API", "ja" to "APIをテスト")
+        LANGUAGES.forEach { language ->
+            val guide = pages.getValue(language to Kind.GUIDE)
+            assertWithMessage(guide.name).that(guide.text).contains(progress.getValue(language))
+            assertWithMessage(guide.name)
+                .that(guide.document.select("#connect strong").map { it.text() })
+                .contains("Adyen API")
+            assertWithMessage(guide.name).that(guide.text).contains(tests.getValue(language))
+            val manual = guide.document.select(".manual-setup").map { it.text() }
+            assertThat(manual).hasSize(4)
+            manual.forEach { assertWithMessage(guide.name).that(it).contains("Adyen API") }
+        }
+    }
+
+    @Test
     fun `Tap to Pay separates activation installation credential options and boarding`() {
         LANGUAGES.forEach { language ->
             val guide = pages.getValue(language to Kind.GUIDE)
@@ -718,7 +740,13 @@ class SetupGuideTest {
                 if (destination == "tap-to-pay") {
                     assertThat(manual.select("p")).hasSize(1)
                 } else {
-                    assertThat(manual.select("ol > li")).hasSize(if (destination == "on-terminal") 3 else 4)
+                    val steps =
+                        when (destination) {
+                            "on-terminal" -> 2
+                            "cloud" -> 3
+                            else -> 4
+                        }
+                    assertThat(manual.select("ol > li")).hasSize(steps)
                 }
             }
         }

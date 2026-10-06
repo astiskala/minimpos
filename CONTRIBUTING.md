@@ -47,6 +47,19 @@ There is no backend. These are distinct transports, not interchangeable recovery
 ./gradlew qualityGate
 ```
 
+For concise local or agent output, use the optional runner with the same Gradle tasks and flags:
+
+```sh
+node scripts/gradle.mjs :core:test --tests '*MoneyTest'
+node scripts/gradle.mjs qualityGate
+```
+
+It overrides console mode to plain and removes only known task/cache progress and passing Node test lines. Warnings,
+unknown output, failure diagnostics and the exit status survive. Every run saves complete stdout/stderr in a separate
+private log under ignored `build/gradle-logs/`; the runner prints its path. It does not use `--quiet`, disable checks or
+truncate failures. Signals are forwarded to Gradle and return a nonzero status. Use regular `./gradlew` for interactive
+progress or detailed logging (`--info`, `--stacktrace`). Build/test speed is unchanged; the runner reduces console noise.
+
 The gate checks:
 
 | Check | Contract |

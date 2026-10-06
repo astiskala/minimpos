@@ -28,11 +28,13 @@ import io.github.astiskala.minimpos.terminal.checkout.PaymentLinkApi
 import io.github.astiskala.minimpos.terminal.checkout.PaymentLinkRequest
 import io.github.astiskala.minimpos.terminal.checkout.PaymentLinkResult
 import io.github.astiskala.minimpos.terminal.checkout.PaymentLinkStatus
+import io.github.astiskala.minimpos.terminal.checkout.PaymentModifications
 import io.github.astiskala.minimpos.terminal.parse.FormEncoding
 import io.github.astiskala.minimpos.terminal.paymentsapp.AppLinkExchange
 import io.github.astiskala.minimpos.terminal.paymentsapp.BoardingTarget
 import io.github.astiskala.minimpos.terminal.paymentsapp.ManagementResult
 import io.github.astiskala.minimpos.terminal.paymentsapp.PaymentsAppManagement
+import io.github.astiskala.minimpos.terminal.simulator.SimulatedModifications
 import io.github.astiskala.minimpos.terminal.simulator.SimulatorConfig
 import io.github.astiskala.minimpos.terminal.simulator.TerminalSimulator
 import io.github.astiskala.minimpos.terminal.transport.AdyenLocalTransport
@@ -376,6 +378,8 @@ class TestEnvironment(
     management: FakeManagement = FakeManagement(),
     /** Replaces Adyen's payment links. */
     links: FakeLinkApi = FakeLinkApi(),
+    /** Replaces Checkout API access checks and payment modifications; never reaches Adyen. */
+    modifications: PaymentModifications = SimulatedModifications(),
     /** Replaces the GitHub update check; the default answers that no update is available. */
     updates: FakeUpdateCheck = FakeUpdateCheck(),
     stores: StoreDetailsApi = StoreDetailsApi { StoreListing.Listed(emptyList()) },
@@ -438,6 +442,7 @@ class TestEnvironment(
             paymentsAppExchange = paymentsApp,
             paymentsAppManagement = { _, _ -> management },
             paymentLinks = { links },
+            paymentModifications = { modifications },
             storeDetails = { _, _ -> stores },
             terminalDetails = { terminalDetails },
             terminalEnvironment = terminalEnvironment,

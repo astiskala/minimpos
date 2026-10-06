@@ -72,4 +72,31 @@ enum class SetupProblem {
 
     /** The current destination or Adyen account does not match the original operation. */
     PAYMENT_CONTEXT,
+
+    /** Setup has not passed credential and connection checks for its current fields and secrets. */
+    SETUP_NOT_VERIFIED,
+
+    /** A verified import is still being committed; retry its durable recovery before taking payments. */
+    TRANSFER_PENDING,
+
+    /** Credential cannot access the selected terminal; its Company account or terminal access must be corrected. */
+    TERMINAL_ACCESS,
+
+    /** Explicit account conflicts with the terminal's current assignment. */
+    MERCHANT_MISMATCH,
+
+    /** Credential lacks the terminal-access role required for every real setup. */
+    MANAGEMENT_PERMISSION,
+
+    /** API credential is rejected in the device's selected or detected environment. */
+    MANAGEMENT_AUTHENTICATION,
+
+    /** Management lookup failed temporarily or returned an unreadable answer. */
+    MANAGEMENT_UNAVAILABLE,
+
+    /** The assigned receipt store could not be retrieved; another store must not be substituted. */
+    STORE_ACCESS,
+
+    /** Configuration changed while a candidate was being verified. */
+    SETUP_CHANGED,
 }

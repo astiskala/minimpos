@@ -3,6 +3,7 @@ package io.github.astiskala.minimpos.app.data.db
 import androidx.room.Dao
 import androidx.room.Delete
 import androidx.room.Insert
+import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Transaction
 import androidx.room.Update
@@ -102,6 +103,14 @@ interface CatalogDao {
     /** Deletes the product with the same `id`. Past sale lines keep their copy of the product's details. */
     @Delete
     suspend fun delete(product: ProductEntity)
+
+    /** Latest committed import receipt, or null before the first catalog transfer. */
+    @Query("SELECT * FROM catalog_import WHERE id = 1")
+    suspend fun importReceipt(): CatalogImportEntity?
+
+    /** Records [receipt] inside the catalog import transaction, replacing only the previous recovery receipt. */
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun rememberImport(receipt: CatalogImportEntity)
 
     /** Deletes every product. */
     @Query("DELETE FROM products")

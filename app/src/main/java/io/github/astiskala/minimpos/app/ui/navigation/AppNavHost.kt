@@ -54,7 +54,11 @@ fun AppNavHost() {
         } else {
             rememberNavBackStack(Route.Home)
         }
-    val navigator = remember(backStack) { Navigator(backStack) }
+    val navigator =
+        remember(backStack) {
+            if (completed.value == true) backStack.removeAll { it == Route.Onboarding }
+            Navigator(backStack)
+        }
     val top = backStack.lastOrNull()
 
     // Leaving the admin area re-locks it.

@@ -14,6 +14,7 @@ import kotlinx.serialization.Serializable
 import java.io.IOException
 import java.security.GeneralSecurityException
 import java.security.KeyStore
+import java.security.MessageDigest
 import java.security.ProviderException
 import java.util.Base64
 import javax.crypto.Cipher
@@ -109,10 +110,21 @@ class KeystoreSecretCipher(
  * The stored form of all secrets (DataStore file `secrets.json`).
  *
  * @property values Base64 of each secret's ciphertext, keyed by [Secret.name]; a secret that is not set has no entry.
+ * @property pendingImport Encrypted verified import journal; null when no commit needs recovery.
+ * @property boardingRecovery Encrypted phone registration recovery facts; never transferred.
  */
 @Serializable
 data class SecretBlob(
     val values: Map<String, String> = emptyMap(),
+    val pendingImport: String? = null,
+    val boardingRecovery: String? = null,
+)
+
+internal class SetupSecrets(
+    val configured: Set<Secret>,
+    val values: Map<Secret, String?>,
+    val identity: String,
+    val pending: Boolean,
 )
 
 /** The device could not encrypt a secret (e.g. the Android Keystore failed), so it was not stored. */
@@ -141,7 +153,11 @@ class SecretStore(
     /** The secret, or null when it is not stored or can no longer be decrypted. */
     suspend fun get(secret: Secret): String? {
         val stored = store.data.first().values[secret.name] ?: return null
-        return withContext(io) {
+        return decrypt(stored)
+    }
+
+    private suspend fun decrypt(stored: String): String? =
+        withContext(io) {
             try {
                 cipher.decrypt(Base64.getDecoder().decode(stored)).decodeToString()
             } catch (ignored: GeneralSecurityException) {
@@ -154,6 +170,67 @@ class SecretStore(
                 null
             }
         }
+
+    internal val pendingImport: Flow<Boolean> = store.data.map { it.pendingImport != null }
+
+    internal suspend fun setupSecrets(
+        tag: String,
+        requested: Set<Secret>,
+        read: Boolean,
+    ): SetupSecrets {
+        val blob = store.data.first()
+        val configured = Secret.entries.filter { it.name in blob.values }.toSet()
+        val identity =
+            withContext(io) {
+                val text =
+                    buildString {
+                        append(tag.length).append(':').append(tag)
+                        requested.sortedBy { it.name }.forEach { secret ->
+                            val value = blob.values[secret.name].orEmpty()
+                            append(secret.name)
+                                .append(':')
+                                .append(value.length)
+                                .append(':')
+                                .append(value)
+                        }
+                    }
+                Base64.getEncoder().encodeToString(
+                    MessageDigest
+                        .getInstance("SHA-256")
+                        .digest(text.toByteArray()),
+                )
+            }
+        val values = if (read) requested.intersect(configured).associateWith { decrypt(checkNotNull(blob.values[it.name])) } else emptyMap()
+        return SetupSecrets(configured, values, identity, blob.pendingImport != null)
+    }
+
+    internal suspend fun setAll(values: Map<Secret, String>) {
+        val encrypted = values.mapKeys { it.key.name }.mapValues { encrypt(it.value) }
+        store.update { it.copy(values = it.values + encrypted) }
+    }
+
+    internal suspend fun readImport(): String? =
+        store.data
+            .first()
+            .pendingImport
+            ?.let { decrypt(it) }
+
+    internal suspend fun writeImport(value: String?) {
+        val encrypted = value?.let { encrypt(it) }
+        store.update { it.copy(pendingImport = encrypted) }
+    }
+
+    internal suspend fun readBoarding(): String? =
+        store.data
+            .first()
+            .boardingRecovery
+            ?.let { decrypt(it) }
+
+    internal suspend fun hasBoarding(): Boolean = store.data.first().boardingRecovery != null
+
+    internal suspend fun writeBoarding(value: String?) {
+        val encrypted = value?.let { encrypt(it) }
+        store.update { it.copy(boardingRecovery = encrypted) }
     }
 
     /** Stores [value], or clears the secret when it is null or empty. Throws [SecretStoreException] if it cannot be encrypted. */
@@ -163,7 +240,7 @@ class SecretStore(
     ) {
         val encrypted = value?.takeIf { it.isNotEmpty() }?.let { encrypt(it) }
         store.update { blob ->
-            SecretBlob(if (encrypted == null) blob.values - secret.name else blob.values + (secret.name to encrypted))
+            blob.copy(values = if (encrypted == null) blob.values - secret.name else blob.values + (secret.name to encrypted))
         }
     }
 

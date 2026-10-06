@@ -7,8 +7,10 @@
  * Transfer: Base45(version 5 | CRC-32 of the body | raw DEFLATE of the body), where the body is a varint of the
  * sections (4: sealed secrets, 8: connection) followed by each as a varint length and its bytes. The body is stored
  * in uncompressed DEFLATE blocks: sealed secrets do not compress, and any inflater reads stored blocks.
- * Sealed secrets: version 1 | PBKDF2 iterations (4) | salt (16) | IV (12) | AES-256-GCM ciphertext and tag, with the
- * key PBKDF2-HMAC-SHA256 of the code without separators. QR codes: "MPC1:<set>:<n>/<total>:<data>".
+ * Sealed secrets: version 2 | PBKDF2 iterations (4) | salt (16) | IV (12) | AES-256-GCM ciphertext and tag, with the
+ * key PBKDF2-HMAC-SHA256 of the code without separators. Every transfer has a code and seal, even without secrets.
+ * GCM authenticates the uncompressed public body: connection section flag, varint JSON length, exact UTF-8 JSON.
+ * QR codes: "MPC1:<set>:<n>/<total>:<data>".
  */
 "use strict";
 (() => {
@@ -23,7 +25,7 @@
   const CHUNK_CHARS = 480;
   const ADVANCE_MILLIS = 1800;
   const TRANSFER_VERSION = 5;
-  const SEAL_VERSION = 1;
+  const SEAL_VERSION = 2;
   const SECTION_SECRETS = 4;
   const SECTION_CONNECTION = 8;
   const STORED_BLOCK = 0xffff;
@@ -129,7 +131,9 @@
     return out;
   };
 
-  const seal = async (plaintext, code) => {
+  const seal = async (plaintext, code, connection) => {
+    const json = encoder.encode(JSON.stringify(connection));
+    const additionalData = concat(varint(SECTION_CONNECTION), varint(json.length), json);
     const salt = crypto.getRandomValues(new Uint8Array(16));
     const iv = crypto.getRandomValues(new Uint8Array(12));
     const material = await crypto.subtle.importKey("raw", encoder.encode(code.replace(/-/g, "")), "PBKDF2", false, ["deriveKey"]);
@@ -140,7 +144,7 @@
       false,
       ["encrypt"],
     );
-    const ciphertext = new Uint8Array(await crypto.subtle.encrypt({ name: "AES-GCM", iv, tagLength: 128 }, key, plaintext));
+    const ciphertext = new Uint8Array(await crypto.subtle.encrypt({ name: "AES-GCM", iv, additionalData, tagLength: 128 }, key, plaintext));
     return concat(Uint8Array.of(SEAL_VERSION), uint32(ITERATIONS), salt, iv, ciphertext);
   };
 
@@ -274,9 +278,9 @@
       const value = data.get(name) || "";
       if (value.trim()) secrets[secret] = ["passphrase", "smtpPassword"].includes(name) ? value : value.trim();
     }
-    const code = Object.keys(secrets).length ? randomString(CODE_ALPHABET, CODE_LENGTH).match(/.{4}/g).join("-") : null;
+    const code = randomString(CODE_ALPHABET, CODE_LENGTH).match(/.{4}/g).join("-");
     try {
-      const sealed = code ? await seal(encoder.encode(JSON.stringify(secrets)), code) : null;
+      const sealed = await seal(encoder.encode(JSON.stringify(secrets)), code, connection);
       if (started !== generation) return;
       codes = chunks(transfer(sealed, connection));
     } catch (error) {

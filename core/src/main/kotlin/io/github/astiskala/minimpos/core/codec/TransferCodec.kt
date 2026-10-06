@@ -72,19 +72,35 @@ object TransferCodec {
      *   negative, or the settings, secrets or connection are longer than [MAX_SETTINGS_BYTES], [MAX_SECRETS_BYTES] or
      *   [MAX_CONNECTION_BYTES].
      */
-    fun encode(transfer: Transfer): String {
+    fun encode(transfer: Transfer): String = pack(VERSION, body(transfer, includeSecrets = true))
+
+    /** Canonical uncompressed public sections, used as authenticated data when sealing a transfer.
+     * Settings and connection retain their exact UTF-8 JSON text. A secrets-only transfer has empty public data.
+     * The seal is omitted, so it cannot authenticate itself. Size and value limits match [encode].
+     */
+    fun authenticationData(transfer: Transfer): ByteArray =
+        if (transfer.catalogue == null && transfer.settings == null && transfer.connection == null) {
+            byteArrayOf()
+        } else {
+            body(transfer, includeSecrets = false)
+        }
+
+    private fun body(
+        transfer: Transfer,
+        includeSecrets: Boolean,
+    ): ByteArray {
         val body = BinaryWriter()
         var sections = 0L
         if (transfer.catalogue != null) sections = sections or SECTION_CATALOGUE
         if (transfer.settings != null) sections = sections or SECTION_SETTINGS
-        if (transfer.sealedSecrets != null) sections = sections or SECTION_SECRETS
+        if (includeSecrets && transfer.sealedSecrets != null) sections = sections or SECTION_SECRETS
         if (transfer.connection != null) sections = sections or SECTION_CONNECTION
         body.writeVarint(sections)
         transfer.catalogue?.let { writeCatalogue(body, it) }
         transfer.settings?.let { body.writeBytes(it.toByteArray(Charsets.UTF_8), MAX_SETTINGS_BYTES) }
-        transfer.sealedSecrets?.let { body.writeBytes(it.toByteArray(), MAX_SECRETS_BYTES) }
+        if (includeSecrets) transfer.sealedSecrets?.let { body.writeBytes(it.toByteArray(), MAX_SECRETS_BYTES) }
         transfer.connection?.let { body.writeBytes(it.toByteArray(Charsets.UTF_8), MAX_CONNECTION_BYTES) }
-        return pack(VERSION, body.toByteArray())
+        return body.toByteArray()
     }
 
     private fun writeCatalogue(

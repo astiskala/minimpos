@@ -156,6 +156,7 @@ class RemoteSettingsViewModelTest {
 
     @Test
     fun `Tap to Pay is set up with the Payments app API key typed, and the phone can be removed again`() {
+        await { container.secrets.set(Secret.ADYEN_API_KEY, "key") }
         env.updateSettings {
             it.copy(terminal = it.terminal.copy(mode = TerminalMode.PAYMENTS_APP, keyIdentifier = "key", merchantAccount = "Merchant"))
         }

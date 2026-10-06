@@ -149,6 +149,15 @@ private val SetupProblem.textRes: Int
             SetupProblem.UNREADABLE_PAYMENTS_APP_KEY -> R.string.setup_unreadable_payments_app_key
             SetupProblem.MANAGER_APPROVAL -> R.string.manager_pin_enter
             SetupProblem.PAYMENT_CONTEXT -> R.string.payment_context_mismatch
+            SetupProblem.SETUP_NOT_VERIFIED -> R.string.setup_not_verified
+            SetupProblem.TRANSFER_PENDING -> R.string.setup_transfer_pending
+            SetupProblem.TERMINAL_ACCESS -> R.string.setup_terminal_access
+            SetupProblem.MERCHANT_MISMATCH -> R.string.setup_merchant_mismatch
+            SetupProblem.MANAGEMENT_PERMISSION -> R.string.setup_management_permission
+            SetupProblem.MANAGEMENT_AUTHENTICATION -> R.string.setup_management_authentication
+            SetupProblem.MANAGEMENT_UNAVAILABLE -> R.string.setup_management_unavailable
+            SetupProblem.STORE_ACCESS -> R.string.setup_store_access
+            SetupProblem.SETUP_CHANGED -> R.string.setup_changed
         }
 
 /** Why a tip, capture or adjustment did not go through, named after what was sent; a refusal says the amount. */
@@ -174,6 +183,7 @@ private fun ActionOutcome.CaptureFailed.captureText(): String =
 @Composable
 @ReadOnlyComposable
 private fun ActionOutcome.Connected.connectedText(): String {
+    if (setupOnly) return stringResource(R.string.settings_payments_app_setup_checked)
     val printer = stringResource(if (hasPrinter) R.string.home_printer_yes else R.string.home_printer_no)
     return "${stringResource(R.string.settings_connection_ok)} (${globalStatus ?: "OK"}, $printer)"
 }

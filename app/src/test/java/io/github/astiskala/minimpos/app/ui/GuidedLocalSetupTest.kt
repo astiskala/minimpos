@@ -36,6 +36,9 @@ import org.robolectric.annotation.Config
 class GuidedLocalSetupTest {
     private val details =
         object : TerminalDetailsApi {
+            override suspend fun credential(environment: TerminalEnvironment) =
+                io.github.astiskala.minimpos.terminal.transport.CredentialLookup.Allowed
+
             override suspend fun terminals(environment: TerminalEnvironment): TerminalListing =
                 TerminalListing.Listed(listOf(TerminalDetails(POI_ID, "Merchant", "")), environment)
 
@@ -64,15 +67,11 @@ class GuidedLocalSetupTest {
                 }
             }
         }
-        compose.waitUntilAtLeastOneExists(hasTestTag("step_1_summary"), 15_000)
-        compose.onNodeWithTag("step_2").assertDoesNotExist()
-        compose.onNodeWithTag("testApi").performScrollTo().performClick()
-        compose.waitUntilAtLeastOneExists(hasTestTag("step_2_summary"), 15_000)
-        compose.onNodeWithTag("keyIdentifier").assertDoesNotExist()
-        compose.onNodeWithTag("merchantAccount").assertDoesNotExist()
+        compose.waitUntilAtLeastOneExists(hasTestTag("keyIdentifier"), 15_000)
+        compose.onNodeWithTag("step_2").assertExists()
+        compose.onNodeWithTag("merchantAccount").assertExists()
         compose.onNodeWithTag("testConnection").assertExists()
         compose.onNodeWithTag("testApi").assertExists()
-        compose.onNodeWithTag("step_2").performScrollTo().performClick()
         compose.onNodeWithTag("keyIdentifier").performScrollTo().assertTextContains("terminal-key", substring = true)
     }
 

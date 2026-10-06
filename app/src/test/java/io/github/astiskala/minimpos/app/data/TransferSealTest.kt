@@ -42,10 +42,27 @@ class TransferSealTest {
         assertThat(seal.open(sealed, "short")).isNull()
         assertThat(seal.open(sealed.copyOf(10), code)).isNull()
         assertThat(seal.open(sealed.copyOf().also { it[it.size - 1] = (it.last() + 1).toByte() }, code)).isNull()
-        assertThat(seal.open(sealed.copyOf().also { it[0] = 2 }, code)).isNull()
+        assertThat(seal.open(sealed.copyOf().also { it[0] = 1 }, code)).isNull()
         // An iteration count meant to keep the terminal busy is refused.
         assertThat(seal.open(sealed.copyOf().also { it[1] = 0x7F }, code)).isNull()
         assertThrows(IllegalArgumentException::class.java) { seal.seal(byteArrayOf(1), "nope") }
+    }
+
+    @Test
+    fun `public transfer data must match exactly when opening a seal`() {
+        val code = seal.newCode()
+        val publicData = "connection metadata".toByteArray()
+        val sealed = seal.seal("{}".toByteArray(), code, publicData)
+        assertThat(seal.open(sealed, code, publicData)).isEqualTo("{}".toByteArray())
+        assertThat(seal.open(sealed, code)).isNull()
+        assertThat(seal.open(sealed, code, "changed metadata".toByteArray())).isNull()
+    }
+
+    @Test
+    fun `code normalization does not silently discard punctuation or expand Unicode letters`() {
+        listOf("K7PQ/8Z3D/2RXM", "K7PQ_8Z3D_2RXM", "K7PQ8Z3D2RXM!", "K7PQ8Z3D2Rß").forEach {
+            assertThat(TransferSeal.isValidCode(it)).isFalse()
+        }
     }
 
     @Test

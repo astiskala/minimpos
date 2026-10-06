@@ -28,6 +28,9 @@ Starred rules below are enforced by `ArchitectureTest`, `SettingsArchitectureTes
   unreadable secrets become typed setup problems. `boarding()` does the same for the Payments app credential.
   Only this source applies learned environment/region facts, atomically against their originating terminal settings;
   pure destination rules decide what can be learned. Detection origins cannot be copied by callers.
+- \* Only `terminal/SetupImport` activates QR candidates through `SetupTransfer`; code, account/access and supported
+  connection verification precede all writes. Its encrypted journal resumes commits without replaying catalog replacement
+  or phone registration. Only it and `TerminalStatus` record verified identities through `TerminalSetupSource`.
 - \* Destination requirements/capabilities belong to adapter companions in `Destinations.kt`; `DestinationRules.of`
   selects rules. Adapters open transports; only `Destination.connect` constructs clients, only the gateway opens
   adapters. Outside destination/rules/settings code, don't branch on CLOUD or PAYMENTS_APP.

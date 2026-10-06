@@ -476,7 +476,7 @@ class SmallScreenTest {
         compose.onNodeWithTag("section_terminal").performClick()
         waitForTag("step_1")
         compose.onNodeWithTag("step_1").assertTextContains("Adyen API")
-        compose.onNodeWithTag("step_2").assertDoesNotExist()
+        compose.onNodeWithTag("step_2").assertExists()
         compose.onNodeWithTag("merchantAccount").performScrollTo().performTextInput("HarbourCoffeeCOM")
         compose.awaitCondition(
             "Saving the merchant account",
@@ -487,9 +487,9 @@ class SmallScreenTest {
             .performScrollTo()
             .assertTextContains("Save and test API")
             .performClick()
-        // Without a verified certificate the app cannot choose an API endpoint, even on the terminal itself.
+        // The device certificate supplies TEST before credential validation, without a shared-key probe.
         compose.waitUntilAtLeastOneExists(
-            hasTestTag("apiResult") and hasText("Check the terminal connection", substring = true),
+            hasTestTag("apiResult") and hasText("API key works", substring = true),
             15_000,
         )
         assertThat(await { container.secrets.get(Secret.ADYEN_API_KEY) }).isEqualTo("AQE-secret")

@@ -307,7 +307,14 @@ class SettingsViewModel(
         when (val connection = checks.status.check()) {
             is TerminalConnection.Connected -> {
                 val diagnosis = connection.diagnosis
-                ActionState(outcome = ActionOutcome.Connected(diagnosis.globalStatus, diagnosis.hasPrinter), done = true)
+                val target = checks.api.target()
+                if (target.realAndReady) {
+                    businessImport.find(automatic = true)
+                }
+                ActionState(
+                    outcome = ActionOutcome.Connected(diagnosis.globalStatus, diagnosis.hasPrinter, connection.setupOnly),
+                    done = true,
+                )
             }
 
             is TerminalConnection.NotSetUp -> {

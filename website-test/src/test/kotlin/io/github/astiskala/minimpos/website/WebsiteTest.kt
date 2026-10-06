@@ -597,7 +597,7 @@ class WebsiteTest {
             assertThat(apiKey.parent()!!.hasAttr("data-mode")).isFalse()
             assertThat(page.document.select("[data-automatic-for]")).isEmpty()
             listOf("keyIdentifier", "passphrase", "keyVersion").forEach { id ->
-                assertThat(page.document.getElementById(id)!!.attr("data-required-for")).isEqualTo("thisTerminal network")
+                assertThat(page.document.getElementById(id)!!.attr("data-required-for")).isEqualTo("thisTerminal network tapToPay")
             }
             assertThat(page.externalLinks).doesNotContain(
                 "https://docs.adyen.com/api-explorer/Management/3/get/merchants/(merchantId)/terminalSettings",
@@ -701,8 +701,7 @@ class SetupGuideTest {
         val helperLabels = mapOf("en" to "Setup helper (recommended)", "zh-CN" to "设置助手（推荐）", "ja" to "セットアップヘルパー（推奨）")
         val manualLabels = mapOf("en" to "Manual", "zh-CN" to "手动", "ja" to "手動")
         val automaticLabels = mapOf("en" to "Automatic", "zh-CN" to "自动", "ja" to "自動")
-        val continueLabels = mapOf("en" to "Continue setup", "zh-CN" to "继续设置", "ja" to "設定を続ける")
-        val reviewLabels = mapOf("en" to "Review setup", "zh-CN" to "检查设置", "ja" to "設定を確認")
+        val registrationLabels = mapOf("en" to "register the phone", "zh-CN" to "注册手机", "ja" to "スマートフォンを登録")
         LANGUAGES.forEach { language ->
             val guide = pages.getValue(language to Kind.GUIDE)
             assertThat(guide.document.select("#connect details.manual-setup")).hasSize(4)
@@ -722,9 +721,9 @@ class SetupGuideTest {
                 assertThat(helper.select("a").map { it.attr("href") }).containsExactly("setup.html", "#helper").inOrder()
                 val flowLabels =
                     if (destination == "tap-to-pay") {
-                        listOf(reviewLabels.getValue(language))
+                        listOf(registrationLabels.getValue(language))
                     } else {
-                        listOf(automaticLabels.getValue(language), continueLabels.getValue(language))
+                        listOf(automaticLabels.getValue(language))
                     }
                 (listOf("TEST", "LIVE") + flowLabels).forEach {
                     assertThat(helper.text()).contains(it)

@@ -2,6 +2,7 @@ package io.github.astiskala.minimpos.app.feature.settings
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import io.github.astiskala.minimpos.app.data.settings.TerminalSettings
 import io.github.astiskala.minimpos.app.feature.ActionOutcome
 import io.github.astiskala.minimpos.app.feature.ActionState
 import io.github.astiskala.minimpos.app.feature.launchWrite
@@ -37,12 +38,27 @@ internal class ReceiptBusinessImports(
 ) {
     private val _state = MutableStateFlow(ReceiptBusinessImportState())
     val state: StateFlow<ReceiptBusinessImportState> = _state.asStateFlow()
+    private var origin: TerminalSettings? = null
 
-    fun find() {
+    fun find(automatic: Boolean = false) {
         if (_state.value.lookup.running) return
         _state.update { it.copy(lookup = ActionState(running = true), stores = null) }
         owner.viewModelScope.launch {
+            origin = operations.changes.first().terminal
             val result = details.stores()
+            val changed = details.validateOrigin(checkNotNull(origin))
+            if (changed != null) {
+                _state.update {
+                    it.copy(
+                        lookup =
+                            ActionState(
+                                outcome = ActionOutcome.NotSetUp(changed),
+                                isError = true,
+                            ),
+                    )
+                }
+                return@launch
+            }
             _state.update {
                 when (result) {
                     is ReceiptBusinesses.Listed -> {
@@ -62,6 +78,12 @@ internal class ReceiptBusinessImports(
                     }
                 }
             }
+            if (automatic && result is ReceiptBusinesses.Listed) {
+                result.stores
+                    .singleOrNull()
+                    ?.takeIf { it.available }
+                    ?.let(::choose)
+            }
         }
     }
 
@@ -70,7 +92,7 @@ internal class ReceiptBusinessImports(
         _state.update { it.copy(stores = null, lookup = ActionState()) }
         if (business != null) {
             owner.launchWrite({
-                operations.update { it.copy(receipt = business.applyTo(it.receipt)) }
+                operations.update { if (it.terminal == origin) it.copy(receipt = business.applyTo(it.receipt)) else it }
                 val receipt = operations.changes.first().receipt
                 settings.first { it.settings.receipt == receipt }
             }) { _ ->

@@ -34,6 +34,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import java.util.Locale
+import java.util.concurrent.atomic.AtomicReference
 
 /** Facts about the device the app runs on; tests supply their own. */
 interface DeviceInfo {
@@ -113,9 +114,11 @@ sealed interface TerminalConnection {
      * The terminal (or the simulator) answered a diagnosis request.
      *
      * @property diagnosis What it reported, including whether it has a printer.
+     * @property setupOnly True when only required fields were checked because no diagnostic request is supported.
      */
     data class Connected(
         val diagnosis: DiagnosisResult,
+        val setupOnly: Boolean = false,
     ) : TerminalConnection
 
     /**
@@ -237,15 +240,15 @@ class TerminalGateway(
     /** Where payments go now, what is missing, and the secrets to reach it with. */
     private val setups: TerminalSetupSource,
     /** The built-in simulator, whose Checkout API simulation [AdyenApi] shares. */
-    simulator: SimulatedTerminal,
+    private val simulator: SimulatedTerminal,
     /** Identifies Mini mPOS to Adyen on every payment and refund. */
     private val application: PosApplication,
     /** Reaches the Adyen Payments app of an environment with a shared key; the container plugs in its App Links. */
-    paymentsApp: (key: TerminalKey, environment: TerminalEnvironment) -> TerminalTransport,
+    private val paymentsApp: (key: TerminalKey, environment: TerminalEnvironment) -> TerminalTransport,
     /** Connects to a real terminal; tests replace it. */
-    connect: (host: String, key: TerminalKey, tls: TerminalTls) -> TerminalTransport = ::AdyenLocalTransport,
+    private val connect: (host: String, key: TerminalKey, tls: TerminalTls) -> TerminalTransport = ::AdyenLocalTransport,
     /** Reaches terminals in the cloud with an API key; tests replace it. */
-    cloud: (CloudCredentials) -> CloudDevices = { AdyenCloudDevices(it) },
+    private val cloud: (CloudCredentials) -> CloudDevices = { AdyenCloudDevices(it) },
     /** Reads this device's terminal certificate before credentials are entered; tests replace the TLS connection. */
     private val localEnvironment: suspend () -> TerminalEnvironment? = { TerminalTls().readEnvironment(TerminalSetup.LOCALHOST) },
 ) {
@@ -372,7 +375,7 @@ class TerminalGateway(
             }
 
             is Connection.Open if !connection.destination.diagnoses -> {
-                TerminalConnection.Connected(DiagnosisResult(reachable = true, message = null))
+                TerminalConnection.Connected(DiagnosisResult(reachable = true, message = null), setupOnly = true)
             }
 
             is Connection.Open -> {
@@ -385,6 +388,59 @@ class TerminalGateway(
                 }
             }
         }
+
+    internal suspend fun refreshEnvironment() {
+        val setup = setups.current()
+        if (setup.suppliesCertificateEnvironment) {
+            localEnvironment()?.let { setups.remember(DetectedEnvironment(setup, it)) }
+        }
+    }
+
+    internal val candidates = CandidateChecks()
+
+    internal inner class CandidateChecks {
+        suspend fun environment(): TerminalEnvironment? = localEnvironment()
+
+        suspend fun check(unlocked: UnlockedSetup): Pair<TerminalConnection, DetectedEnvironment?> {
+            val setup = unlocked.setup
+            setup.connectionProblem?.let { return TerminalConnection.NotSetUp(it) to null }
+            val detected = AtomicReference<DetectedEnvironment?>()
+            val candidates =
+                listOf(
+                    simulator,
+                    LocalTerminal(connect) { origin, environment -> detected.set(DetectedEnvironment(origin, environment)) },
+                    CloudTerminal(
+                        cloud,
+                        setups.device,
+                    ) { origin, endpoint -> detected.set(DetectedEnvironment(origin, endpoint.environment, endpoint.region)) },
+                    PaymentsAppDestination(paymentsApp),
+                )
+            val result =
+                when (val connection = candidates.single { it.rules == setup.destination }.connect(unlocked, application)) {
+                    is Connection.NotSetUp -> {
+                        TerminalConnection.NotSetUp(connection.problem)
+                    }
+
+                    is Connection.Unreachable -> {
+                        TerminalConnection.Failed(connection.message)
+                    }
+
+                    is Connection.Open -> {
+                        if (!connection.destination.diagnoses) {
+                            TerminalConnection.Connected(DiagnosisResult(reachable = true, message = null), setupOnly = true)
+                        } else {
+                            val diagnosis = connection.client.diagnose()
+                            if (diagnosis.reachable) {
+                                TerminalConnection.Connected(diagnosis)
+                            } else {
+                                TerminalConnection.Failed(diagnosis.message)
+                            }
+                        }
+                    }
+                }
+            return result to detected.get()
+        }
+    }
 
     /** The terminals connected to the merchant account in the cloud, for choosing one, see [CloudTerminal.connectedTerminals]. */
     suspend fun connectedTerminals(): ConnectedTerminals = cloudTerminal.connectedTerminals(setups.unlocked())

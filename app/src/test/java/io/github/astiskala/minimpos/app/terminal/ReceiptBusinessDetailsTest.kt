@@ -83,11 +83,11 @@ class ReceiptBusinessDetailsTest {
             )
         val proposal = ReceiptBusiness("ST1", "cafe", "New name", "", "")
         assertThat(proposal.available).isTrue()
-        assertThat(proposal.applyTo(receipt)).isEqualTo(receipt.copy(businessName = "New name"))
+        assertThat(proposal.applyTo(receipt)).isEqualTo(receipt)
         val full = proposal.copy(address = "New address", phone = "New phone")
-        assertThat(
-            full.applyTo(receipt),
-        ).isEqualTo(receipt.copy(businessName = "New name", addressLines = "New address", phone = "New phone"))
+        assertThat(full.applyTo(receipt)).isEqualTo(receipt)
+        assertThat(full.applyTo(receipt.copy(businessName = "", addressLines = "", phone = "")))
+            .isEqualTo(receipt.copy(businessName = "New name", addressLines = "New address", phone = "New phone"))
         val empty = proposal.copy(name = " ")
         assertThat(empty.available).isFalse()
         assertThat(empty.applyTo(receipt)).isEqualTo(receipt)

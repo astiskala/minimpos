@@ -123,7 +123,20 @@ class TerminalSetupViewModel(
                 if (current.onTerminal && current.mode == TerminalMode.TERMINAL && discovered.size == 1) chooseTerminal(discovered.single())
                 return@launchWrite
             }
-            _actions.update { it.copy(terminals = ActionState(done = true), manualDetails = true) }
+            val problem = discovery.problem
+            _actions.update {
+                it.copy(
+                    terminals =
+                        if (problem ==
+                            null
+                        ) {
+                            ActionState(done = true)
+                        } else {
+                            ActionState(outcome = ActionOutcome.NotSetUp(problem), isError = true)
+                        },
+                    manualDetails = problem == null,
+                )
+            }
         })
     }
 
@@ -135,7 +148,21 @@ class TerminalSetupViewModel(
             if (poiId != null) {
                 val terminal = settings.current().terminal
                 observedSettings.first { it.settings.terminal == terminal }
-                _actions.update { it.copy(manualDetails = result != true, revision = it.revision + 1) }
+                val problem = discovery.problem
+                _actions.update {
+                    it.copy(
+                        manualDetails = result != true && problem == null,
+                        terminals =
+                            if (problem ==
+                                null
+                            ) {
+                                ActionState()
+                            } else {
+                                ActionState(outcome = ActionOutcome.NotSetUp(problem), isError = true)
+                            },
+                        revision = it.revision + 1,
+                    )
+                }
             }
         })
     }

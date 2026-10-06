@@ -18,6 +18,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.NavigateBefore
 import androidx.compose.material.icons.automirrored.filled.NavigateNext
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -27,6 +28,7 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -42,10 +44,14 @@ import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.OffsetMapping
+import androidx.compose.ui.text.input.TransformedText
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -53,12 +59,14 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import io.github.astiskala.minimpos.app.R
 import io.github.astiskala.minimpos.app.data.repo.ImportMode
 import io.github.astiskala.minimpos.app.data.security.Secret
+import io.github.astiskala.minimpos.app.data.security.TransferSeal
 import io.github.astiskala.minimpos.app.data.settings.ConnectionDestination
 import io.github.astiskala.minimpos.app.data.transfer.ReceivedTransfer
 import io.github.astiskala.minimpos.app.data.transfer.TransferContents
 import io.github.astiskala.minimpos.app.data.transfer.TransferExport
 import io.github.astiskala.minimpos.app.feature.settings.SettingSwitch
 import io.github.astiskala.minimpos.app.feature.settings.SettingsSections
+import io.github.astiskala.minimpos.app.feature.text
 import io.github.astiskala.minimpos.app.scan.ScanMode
 import io.github.astiskala.minimpos.app.scan.ScannerView
 import io.github.astiskala.minimpos.app.ui.components.ActionMessage
@@ -191,7 +199,7 @@ private fun ExportCodes(
             textAlign = TextAlign.Center,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
-        export.code?.let { TransferCodeCard(it, Modifier.widthIn(max = 420.dp)) }
+        TransferCodeCard(export.code, Modifier.widthIn(max = 420.dp))
         val code = codes[index.coerceIn(0, codes.lastIndex)]
         QrImage(code, Modifier.widthIn(max = 420.dp).fillMaxWidth().testTag("exportQr"))
         if (codes.size > 1) {
@@ -242,7 +250,7 @@ private fun transferExportViewModel(): TransferExportViewModel {
 private fun transferImportViewModel(): TransferImportViewModel {
     val container = LocalAppContainer.current
     val currency = container.currency().code
-    return viewModel { TransferImportViewModel(container.setupTransfer, currency) }
+    return viewModel { TransferImportViewModel(container.setupTransfer, currency, container.setupImport) }
 }
 
 /**
@@ -259,51 +267,35 @@ fun TransferImportScreen(
     val currency = LocalAppContainer.current.currency().code
     val state by vm.state.collectAsStateWithLifecycle()
     var confirmReplace by remember { mutableStateOf(false) }
+    BackHandler(enabled = state == ImportUiState.Importing) {}
     MiniScaffold(
         title = stringResource(R.string.transfer_import),
-        onBack = navigator::back,
+        onBack = { if (state != ImportUiState.Importing) navigator.back() },
         modifier = modifier,
         bottomBar = {
-            ImportBottomBar(state, onImport = { if (it) confirmReplace = true else vm.import() }, onDone = {
-                val result = (state as? ImportUiState.Done)?.result
-                if (result?.connection == true) {
-                    navigator.replace(
-                        Route.SettingsSection(SettingsSections.TERMINAL, automaticSetup = result.automaticSetup, helperSetup = true),
-                    )
-                } else {
-                    navigator.back()
-                    if (navigator.current == Route.Onboarding) navigator.home()
-                }
-            })
+            ImportBottomBar(
+                state,
+                onImport = { if (it) confirmReplace = true else vm.import() },
+                onBoard = vm::setUpTapToPay,
+                onRetry = vm::retryRecovery,
+                onDone = {
+                    val result = (state as? ImportUiState.Done)?.result
+                    if (result?.connection == true) {
+                        navigator.replace(
+                            Route.SettingsSection(SettingsSections.TERMINAL, helperSetup = true),
+                        )
+                    } else {
+                        navigator.back()
+                        if (navigator.current == Route.Onboarding) navigator.home()
+                    }
+                },
+            )
         },
     ) { padding ->
-        when (val current = state) {
-            is ImportUiState.Scanning -> {
-                ImportScanning(current, onCode = vm::onCode, modifier = Modifier.padding(padding))
-            }
-
-            is ImportUiState.Ready -> {
-                ImportReady(
-                    state = current,
-                    currency = currency,
-                    onMode = vm::setMode,
-                    onCode = vm::setCode,
-                    onScanAgain = vm::restart,
-                    modifier = Modifier.padding(padding),
-                )
-            }
-
-            ImportUiState.Importing -> {
-                Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator()
-                }
-            }
-
-            is ImportUiState.Done -> {
-                ImportDone(current, modifier = Modifier.padding(padding))
-            }
-        }
+        val callbacks = remember(vm) { ImportContentEvents(vm::onCode, vm::setMode, vm::setCode, vm::restart) }
+        ImportContent(state, currency, callbacks, Modifier.padding(padding))
     }
+    ImportSelectionDialogs(state as? ImportUiState.Ready, vm::chooseTerminal, vm::chooseBusiness, vm::skipBusinessDetails)
     if (confirmReplace) {
         ConfirmDialog(
             title = stringResource(R.string.transfer_replace),
@@ -312,10 +304,84 @@ fun TransferImportScreen(
             destructive = true,
             onConfirm = {
                 confirmReplace = false
-                vm.import()
+                if ((state as? ImportUiState.Ready)?.boardingRequired == true) vm.setUpTapToPay() else vm.import()
             },
             onDismiss = { confirmReplace = false },
         )
+    }
+}
+
+@Composable
+private fun ImportSelectionDialogs(
+    ready: ImportUiState.Ready?,
+    onTerminal: (String?) -> Unit,
+    onBusiness: (String?) -> Unit,
+    onSkip: () -> Unit,
+) {
+    ready?.terminalChoices?.let { ids ->
+        ImportChoiceDialog(
+            stringResource(R.string.settings_choose_terminal),
+            ids.map { it to it },
+            onTerminal,
+            onDismiss = { onTerminal(null) },
+        )
+    }
+    ready?.businessChoices?.let { stores ->
+        val choices = stores.map { it.id to listOf(it.name, it.reference, it.id).filter(String::isNotBlank).joinToString("\n") }
+        ImportChoiceDialog(
+            stringResource(R.string.settings_business_choose),
+            choices,
+            onBusiness,
+            onDismiss = { onBusiness(null) },
+            onSkip = onSkip,
+        )
+    }
+}
+
+private class ImportContentEvents(
+    val scan: (String) -> Unit,
+    val mode: (ImportMode) -> Unit,
+    val code: (String) -> Unit,
+    val restart: () -> Unit,
+)
+
+@Composable
+private fun ImportContent(
+    state: ImportUiState,
+    currency: String,
+    events: ImportContentEvents,
+    modifier: Modifier = Modifier,
+) {
+    when (state) {
+        is ImportUiState.Scanning -> {
+            ImportScanning(state, events.scan, modifier)
+        }
+
+        is ImportUiState.Ready -> {
+            ImportReady(state, currency, events.mode, events.code, events.restart, modifier)
+        }
+
+        ImportUiState.Importing -> {
+            Column(
+                modifier.fillMaxSize(),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center,
+            ) {
+                CircularProgressIndicator()
+                Text(stringResource(R.string.transfer_verifying))
+            }
+        }
+
+        is ImportUiState.RecoveryFailed -> {
+            Column(modifier.padding(LocalDimens.current.screenPadding)) {
+                ActionMessage(state.outcome.text(), isError = true)
+                Text(stringResource(R.string.setup_transfer_pending))
+            }
+        }
+
+        is ImportUiState.Done -> {
+            ImportDone(state, modifier)
+        }
     }
 }
 
@@ -327,14 +393,20 @@ fun TransferImportScreen(
 private fun ImportBottomBar(
     state: ImportUiState,
     onImport: (replaces: Boolean) -> Unit,
+    onBoard: () -> Unit,
+    onRetry: () -> Unit,
     onDone: () -> Unit,
 ) {
     when (state) {
         is ImportUiState.Ready -> {
             BottomActions {
                 PrimaryButton(
-                    stringResource(R.string.transfer_import_action),
-                    { onImport(state.received.catalogue != null && state.mode == ImportMode.REPLACE) },
+                    stringResource(if (state.boardingRequired) R.string.settings_set_up_tap_to_pay else R.string.transfer_verify),
+                    {
+                        val replaces = state.received.catalogue != null && state.mode == ImportMode.REPLACE
+                        if (state.boardingRequired && !replaces) onBoard() else onImport(replaces)
+                    },
+                    enabled = state.received.accepts(state.code),
                     modifier = Modifier.testTag("import"),
                 )
             }
@@ -344,7 +416,6 @@ private fun ImportBottomBar(
             BottomActions {
                 val label =
                     when {
-                        state.result.automaticSetup -> R.string.transfer_continue_setup
                         state.result.connection -> R.string.transfer_review_setup
                         else -> R.string.action_done
                     }
@@ -352,8 +423,37 @@ private fun ImportBottomBar(
             }
         }
 
+        is ImportUiState.RecoveryFailed -> {
+            BottomActions {
+                PrimaryButton(stringResource(R.string.result_try_again), onRetry, modifier = Modifier.testTag("resumeImport"))
+            }
+        }
+
         is ImportUiState.Scanning, ImportUiState.Importing -> {}
     }
+}
+
+@Composable
+private fun ImportChoiceDialog(
+    title: String,
+    choices: List<Pair<String, String>>,
+    onChoose: (String) -> Unit,
+    onDismiss: () -> Unit,
+    onSkip: (() -> Unit)? = null,
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(title) },
+        text = {
+            Column(Modifier.verticalScroll(rememberScrollState())) {
+                choices.forEach { (id, label) ->
+                    TextButton(onClick = { onChoose(id) }, modifier = Modifier.fillMaxWidth().testTag("importChoice_$id")) { Text(label) }
+                }
+            }
+        },
+        confirmButton = { onSkip?.let { TextButton(onClick = it) { Text(stringResource(R.string.transfer_skip_business)) } } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) } },
+    )
 }
 
 /** Previous, "code n of m", next and play/pause; stepping pauses the automatic advance. */
@@ -507,7 +607,10 @@ private fun ImportReady(
             if (received.hasSettings) Note(stringResource(R.string.transfer_settings_note))
             if (received.hasConnection) Note(stringResource(R.string.transfer_connection_note))
             if (received.automatic) Note(stringResource(R.string.transfer_automatic_note))
-            if (received.hasSecrets) TransferCodeField(state.code, state.wrongCode, onCode)
+            TransferCodeField(state.code, state.wrongCode, onCode)
+            state.outcome?.let { ActionMessage(it.text(), isError = true) }
+            if (state.incomplete) ActionMessage(stringResource(R.string.transfer_missing_fields), isError = true)
+            if (state.boardingRequired) Text(stringResource(R.string.transfer_board_first))
             SecondaryButton(stringResource(R.string.transfer_scan_again), onScanAgain)
         }
     }
@@ -598,8 +701,12 @@ private fun TransferCodeField(
     value = code,
     onValueChange = onChange,
     label = { Text(stringResource(R.string.transfer_code_title)) },
-    supportingText = { Text(stringResource(if (wrong) R.string.transfer_code_wrong else R.string.transfer_code_import_hint)) },
-    isError = wrong,
+    supportingText = {
+        val hint = if (wrong) R.string.transfer_code_wrong else R.string.transfer_code_import_hint
+        Text(stringResource(hint))
+    },
+    isError = wrong || (code.isNotEmpty() && !TransferSeal.isValidCode(code)),
+    visualTransformation = TransferCodeTransformation,
     singleLine = true,
     keyboardOptions =
         KeyboardOptions(
@@ -611,9 +718,31 @@ private fun TransferCodeField(
     modifier = Modifier.fillMaxWidth().testTag("transferCodeInput"),
 )
 
+internal object TransferCodeTransformation : VisualTransformation {
+    override fun filter(text: AnnotatedString): TransformedText {
+        val grouped = text.text.chunked(4).joinToString("-")
+        val offsets =
+            object : OffsetMapping {
+                override fun originalToTransformed(offset: Int): Int {
+                    val separators = (offset - 1).coerceAtLeast(0) / 4
+                    return (offset + separators).coerceAtMost(grouped.length)
+                }
+
+                override fun transformedToOriginal(offset: Int): Int = (offset - offset / 5).coerceAtMost(text.length)
+            }
+        return TransformedText(AnnotatedString(grouped), offsets)
+    }
+}
+
 /** Small secondary text. */
 @Composable
-private fun Note(text: String) = Text(text, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+private fun Note(text: String) {
+    Text(
+        text = text,
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+    )
+}
 
 /** What the import added and updated, under a success badge like the other results. */
 @Composable
@@ -642,18 +771,23 @@ private fun ImportDone(
                 LabeledValue(stringResource(R.string.transfer_new_categories), summary.categoriesAdded.toString())
                 LabeledValue(stringResource(R.string.transfer_new_tax_rates), summary.taxRatesAdded.toString())
             }
-            if (result.settings) LabeledValue(stringResource(R.string.transfer_part_settings), stringResource(R.string.transfer_imported))
+            if (result.settings) {
+                LabeledValue(
+                    stringResource(R.string.transfer_part_settings),
+                    stringResource(R.string.transfer_imported),
+                )
+            }
             if (result.connection) {
                 LabeledValue(
                     stringResource(R.string.transfer_part_connection),
                     stringResource(R.string.transfer_imported),
                 )
             }
-            val secrets = secretNames(result.secrets) ?: stringResource(R.string.transfer_skipped).takeIf { state.secretsSkipped }
+            val secrets = secretNames(result.secrets)
             LabeledValue(stringResource(R.string.transfer_part_secrets), secrets)
         }
-        result.secretsError?.let { ActionMessage(stringResource(R.string.transfer_secrets_failed, it), isError = true) }
-        if (result.automaticSetup) Note(stringResource(R.string.transfer_automatic_note))
+        if (result.businessWarning) ActionMessage(stringResource(R.string.transfer_business_failed), isError = true)
+        if (result.paymentsAppChecked) Note(stringResource(R.string.transfer_tap_checked))
     }
 }
 

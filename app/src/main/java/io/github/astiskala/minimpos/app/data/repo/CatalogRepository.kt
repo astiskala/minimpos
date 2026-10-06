@@ -3,6 +3,7 @@ package io.github.astiskala.minimpos.app.data.repo
 import androidx.room.withTransaction
 import io.github.astiskala.minimpos.app.data.db.AppDatabase
 import io.github.astiskala.minimpos.app.data.db.CatalogDao
+import io.github.astiskala.minimpos.app.data.db.CatalogImportEntity
 import io.github.astiskala.minimpos.app.data.db.CategoryEntity
 import io.github.astiskala.minimpos.app.data.db.ProductEntity
 import io.github.astiskala.minimpos.app.data.db.SaleKind
@@ -256,8 +257,20 @@ class CatalogRepository(
     suspend fun import(
         catalogue: Catalogue,
         mode: ImportMode,
+        transferId: String? = null,
     ): ImportSummary =
         db.withTransaction {
+            val previous = dao.importReceipt()?.takeIf { transferId != null && it.transferId == transferId }
+            if (previous !=
+                null
+            ) {
+                return@withTransaction ImportSummary(
+                    previous.productsAdded,
+                    previous.productsUpdated,
+                    previous.taxRatesAdded,
+                    previous.categoriesAdded,
+                )
+            }
             if (mode == ImportMode.REPLACE) {
                 dao.deleteAllProducts()
                 dao.deleteAllCategories()
@@ -267,7 +280,21 @@ class CatalogRepository(
             val categories = importCategories(catalogue.categories)
             val products = importProducts(catalogue.products, taxRates, categories.ids)
             if (dao.taxRateCount() == 0) zeroRateId(taxRates)
-            ImportSummary(products.added, products.updated, taxRates.added, categories.added)
+            val summary = ImportSummary(products.added, products.updated, taxRates.added, categories.added)
+            if (transferId !=
+                null
+            ) {
+                dao.rememberImport(
+                    CatalogImportEntity(
+                        transferId = transferId,
+                        productsAdded = summary.productsAdded,
+                        productsUpdated = summary.productsUpdated,
+                        taxRatesAdded = summary.taxRatesAdded,
+                        categoriesAdded = summary.categoriesAdded,
+                    ),
+                )
+            }
+            summary
         }
 
     private suspend fun importTaxRates(rates: List<CatalogueTaxRate>): ImportedTaxRates {

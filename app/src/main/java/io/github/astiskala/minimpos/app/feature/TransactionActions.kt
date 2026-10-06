@@ -84,10 +84,12 @@ sealed interface ActionOutcome {
      *
      * @property globalStatus The terminal's overall status as it reported it; null when it reported none.
      * @property hasPrinter Whether it has a printer.
+     * @property setupOnly Whether only required fields were checked because this destination has no diagnosis API.
      */
     data class Connected(
         val globalStatus: String?,
         val hasPrinter: Boolean,
+        val setupOnly: Boolean = false,
     ) : ActionOutcome
 
     /**

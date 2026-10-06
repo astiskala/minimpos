@@ -28,6 +28,9 @@ class SetupDiscoveryTest {
     private val environments = mutableListOf<TerminalEnvironment>()
     private val api =
         object : TerminalDetailsApi {
+            override suspend fun credential(environment: TerminalEnvironment) =
+                io.github.astiskala.minimpos.terminal.transport.CredentialLookup.Allowed
+
             override suspend fun terminals(environment: TerminalEnvironment): TerminalListing =
                 listing.also {
                     reads++

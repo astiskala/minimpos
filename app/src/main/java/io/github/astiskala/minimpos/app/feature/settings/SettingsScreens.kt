@@ -494,12 +494,37 @@ fun SettingsSectionScreen(
                     val samples by sampleData.state.collectAsStateWithLifecycle()
                     SampleDataSection(samples, events.samples)
                 }
+                val businessImport by vm.businessImport.state.collectAsStateWithLifecycle()
                 SettingsContent(section, state, actions, setupActions, events, setupEvents, navigator, { settingPin = it }) {
-                    val businessImport by vm.businessImport.state.collectAsStateWithLifecycle()
                     ReceiptsSection(state, actions, businessImport, events)
+                }
+                if (section == SettingsSections.TERMINAL) {
+                    val terminal by LocalAppContainer.current.terminalStatus.state
+                        .collectAsStateWithLifecycle()
+                    SetupImportFeedback(terminal.importPending, businessImport, events.businessImport, navigator)
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun ColumnScope.SetupImportFeedback(
+    pending: Boolean,
+    business: ReceiptBusinessImportState,
+    events: ReceiptBusinessEvents,
+    navigator: Navigator,
+) {
+    if (pending) {
+        SettingActions {
+            SecondaryButton(stringResource(R.string.result_try_again), {
+                navigator.push(Route.TransferImport)
+            }, modifier = Modifier.testTag("resumeSetupImport"))
+        }
+    }
+    if (business.stores != null || business.lookup.isError) {
+        ReceiptBusinessImport(business, events)
+        SecondaryButton(stringResource(R.string.settings_receipts), { navigator.push(Route.SettingsSection(SettingsSections.RECEIPTS)) })
     }
 }
 

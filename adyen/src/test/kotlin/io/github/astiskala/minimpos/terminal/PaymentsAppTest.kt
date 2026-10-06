@@ -270,6 +270,59 @@ class PaymentsAppTest {
         assertThat(AdyenPaymentsAppManagement.endpoint(TerminalEnvironment.LIVE)).isEqualTo("https://management-live.adyen.com/v1")
     }
 
+    @Test
+    fun `registration checks the intended merchant and store without boarding mutations`() =
+        runBlocking {
+            MockWebServer().use { server ->
+                server.start()
+                val api = AdyenPaymentsAppManagement("dummy-key", TerminalEnvironment.TEST, baseUrl = server.url("/v1/"))
+                val target = BoardingTarget("Merchant", "ST1")
+                server.enqueue(
+                    MockResponse
+                        .Builder()
+                        .body(
+                            """{"paymentsApps":[{"installationId":"I1","merchantAccountCode":"Merchant","status":"BOARDED"}]}""",
+                        ).build(),
+                )
+                assertThat(api.registration(target, "I1")).isEqualTo(ManagementResult.Done())
+                val request = server.takeRequest()
+                assertThat(request.method).isEqualTo("GET")
+                assertThat(request.url.encodedPath).isEqualTo("/v1/merchants/Merchant/stores/ST1/paymentsApps")
+                assertThat(request.url.queryParameter("statuses")).isEqualTo("BOARDED")
+                server.enqueue(
+                    MockResponse
+                        .Builder()
+                        .body(
+                            """{"paymentsApps":[{"installationId":"I1","merchantAccountCode":"Other","status":"BOARDED"}]}""",
+                        ).build(),
+                )
+                assertThat(api.registration(target, "I1")).isInstanceOf(ManagementResult.Failed::class.java)
+                listOf("{}", "not json", """{"paymentsApps":[{"installationId":{}}]}""").forEach { body ->
+                    server.enqueue(MockResponse.Builder().body(body).build())
+                    assertThat(api.registration(target, "I1")).isInstanceOf(ManagementResult.Failed::class.java)
+                }
+                server.enqueue(MockResponse.Builder().code(403).build())
+                assertThat(api.registration(target, "I1")).isInstanceOf(ManagementResult.Failed::class.java)
+            }
+        }
+
+    @Test
+    fun `registration pagination is bounded and never follows server-provided links`() =
+        runBlocking {
+            MockWebServer().use { server ->
+                server.start()
+                val api = AdyenPaymentsAppManagement("dummy-key", TerminalEnvironment.TEST, baseUrl = server.url("/v1/"))
+                val full = """{"paymentsApps":[${List(
+                    100,
+                ) { """{"installationId":"Other","merchantAccountCode":"Merchant","status":"BOARDED"}""" }.joinToString(",")}]}"""
+                repeat(100) { server.enqueue(MockResponse.Builder().body(full).build()) }
+                assertThat(api.registration(BoardingTarget("Merchant"), "I1")).isInstanceOf(ManagementResult.Failed::class.java)
+                assertThat(server.requestCount).isEqualTo(100)
+                assertThat(server.takeRequest().url.queryParameter("offset")).isEqualTo("0")
+                assertThat(server.takeRequest().url.queryParameter("offset")).isEqualTo("100")
+            }
+        }
+
     /** One link the fake Payments app was asked to open. */
     private data class Opened(
         val link: String,

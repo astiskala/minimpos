@@ -4,13 +4,18 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import io.github.astiskala.minimpos.app.data.repo.ImportMode
 import io.github.astiskala.minimpos.app.data.security.Secret
+import io.github.astiskala.minimpos.app.data.security.TransferSeal
 import io.github.astiskala.minimpos.app.data.transfer.ImportOutcome
 import io.github.astiskala.minimpos.app.data.transfer.ReceivedTransfer
 import io.github.astiskala.minimpos.app.data.transfer.SetupTransfer
 import io.github.astiskala.minimpos.app.data.transfer.TransferContents
 import io.github.astiskala.minimpos.app.data.transfer.TransferExport
 import io.github.astiskala.minimpos.app.data.transfer.TransferResult
+import io.github.astiskala.minimpos.app.feature.ActionOutcome
 import io.github.astiskala.minimpos.app.feature.launchWrite
+import io.github.astiskala.minimpos.app.terminal.ReceiptBusiness
+import io.github.astiskala.minimpos.app.terminal.SetupImport
+import io.github.astiskala.minimpos.app.terminal.SetupImportOutcome
 import io.github.astiskala.minimpos.core.codec.QrChunkAssembler
 import io.github.astiskala.minimpos.core.codec.QrChunks
 import io.github.astiskala.minimpos.core.codec.TransferCodec
@@ -120,7 +125,12 @@ sealed interface ImportUiState {
      *   [ReceivedTransfer.currencyMatches].
      * @property mode How the catalogue is combined with this one.
      * @property code The transfer code typed so far, for the secrets.
-     * @property wrongCode Whether the last code tried did not open the secrets.
+     * @property wrongCode Whether the last code tried did not authenticate this transfer.
+     * @property outcome Current typed validation or storage error; null before checking or after correction.
+     * @property incomplete Whether required connection fields are missing and the helper must generate complete codes.
+     * @property terminalChoices Eligible IDs offered only for an ambiguous destination; null when not selecting.
+     * @property businessChoices Optional store proposals offered only when ambiguous; null when not selecting.
+     * @property boardingRequired Whether explicit phone registration must run before this import can commit.
      */
     data class Ready(
         val received: ReceivedTransfer,
@@ -128,20 +138,30 @@ sealed interface ImportUiState {
         val mode: ImportMode = ImportMode.MERGE,
         val code: String = "",
         val wrongCode: Boolean = false,
+        val outcome: ActionOutcome? = null,
+        val incomplete: Boolean = false,
+        val terminalChoices: List<String>? = null,
+        val businessChoices: List<ReceiptBusiness>? = null,
+        val boardingRequired: Boolean = false,
     ) : ImportUiState
 
     /** Opening the secrets and writing everything. */
     data object Importing : ImportUiState
 
+    /** A durable import still needs recovery; no new QR or code is required.
+     * @property outcome Localized setup problem or non-secret storage failure.
+     */
+    data class RecoveryFailed(
+        val outcome: ActionOutcome,
+    ) : ImportUiState
+
     /**
      * The import finished.
      *
-     * @property result What was imported.
-     * @property secretsSkipped Whether secrets were transferred but not imported, because no code was typed.
+     * @property result What was verified and durably imported; its secrets are never skipped.
      */
     data class Done(
         val result: TransferResult,
-        val secretsSkipped: Boolean = false,
     ) : ImportUiState
 }
 
@@ -157,15 +177,24 @@ enum class ImportError {
 /**
  * Scans another terminal's transfer codes, in any order, then imports them (see [SetupTransfer]).
  *
- * @param setup Reads and imports the transfer.
+ * @param setup Reads the authenticated transfer and builds read-only previews.
  * @param currencyCode This terminal's currency, to warn when the catalogue's differs.
+ * @param importer Verifies candidate setup before activation and resumes encrypted interrupted commits.
  */
 class TransferImportViewModel(
     private val setup: SetupTransfer,
     private val currencyCode: String,
+    private val importer: SetupImport,
 ) : ViewModel() {
     private val assembler = QrChunkAssembler()
-    private val _state = MutableStateFlow<ImportUiState>(ImportUiState.Scanning())
+    private val _state = MutableStateFlow<ImportUiState>(ImportUiState.Importing)
+    private var selectedTerminal: String? = null
+    private var selectedBusiness: String? = null
+    private var skipBusiness = false
+
+    init {
+        retryRecovery()
+    }
 
     /** The import state. */
     val state: StateFlow<ImportUiState> = _state.asStateFlow()
@@ -197,32 +226,150 @@ class TransferImportViewModel(
     fun setMode(mode: ImportMode) = updateReady { it.copy(mode = mode) }
 
     /** Updates the typed transfer code; ignored unless [ImportUiState.Ready]. */
-    fun setCode(code: String) = updateReady { it.copy(code = code, wrongCode = false) }
+    fun setCode(code: String) =
+        updateReady {
+            it.copy(
+                code = TransferSeal.normalize(code),
+                wrongCode = false,
+                outcome = null,
+                incomplete = false,
+            )
+        }
 
     /**
-     * Imports what was scanned; ignored unless [ImportUiState.Ready]. Secrets are imported when a transfer code was
-     * typed; a wrong one goes back to [ImportUiState.Ready] with [ImportUiState.Ready.wrongCode] before anything is
-     * written. Without a code the rest is imported and the secrets skipped.
+     * Verifies what was scanned before import; ignored unless [ImportUiState.Ready]. Every transfer requires its code.
+     * A missing or incorrect code returns to [ImportUiState.Ready] with [ImportUiState.Ready.wrongCode] before any writes.
+     * Required setup checks must also pass before the encrypted commit begins.
      */
-    fun import() {
+    fun import() = verify(board = false)
+
+    /** Explicitly opens phone registration for the currently authenticated candidate; never called by scanning. */
+    fun setUpTapToPay() {
+        if ((_state.value as? ImportUiState.Ready)?.boardingRequired == true) verify(board = true)
+    }
+
+    /** Chooses only an offered terminal, or dismisses the selector for null; no fields have been imported yet. */
+    fun chooseTerminal(id: String?) {
+        val ready = _state.value as? ImportUiState.Ready ?: return
+        if (id != null && id !in ready.terminalChoices.orEmpty()) return
+        updateReady { it.copy(terminalChoices = null) }
+        if (id != null) {
+            selectedTerminal = id
+            import()
+        }
+    }
+
+    /** Chooses only an offered receipt store; null skips optional business import without changing receipt text. */
+    fun chooseBusiness(id: String?) {
+        val ready = _state.value as? ImportUiState.Ready ?: return
+        if (id != null && ready.businessChoices.orEmpty().none { it.id == id }) return
+        updateReady { it.copy(businessChoices = null) }
+        if (id != null) {
+            selectedBusiness = id
+            import()
+        }
+    }
+
+    /** Explicitly skips optional receipt-business lookup; never called by dismissing the selector. */
+    fun skipBusinessDetails() {
+        skipBusiness = true
+        updateReady { it.copy(businessChoices = null) }
+        import()
+    }
+
+    /** Resumes an encrypted verified commit, without requiring its transfer code again or repeating remote registration. */
+    fun retryRecovery() {
+        _state.value = ImportUiState.Importing
+        launchWrite({ importer.recover() }) { result ->
+            _state.value =
+                when (result) {
+                    null -> ImportUiState.Scanning()
+                    is ImportOutcome.Imported -> ImportUiState.Done(result.result)
+                    is ImportOutcome.StorageFailed -> ImportUiState.RecoveryFailed(ActionOutcome.SecretNotStored(result.reason))
+                    is ImportOutcome.Rejected -> ImportUiState.RecoveryFailed(ActionOutcome.NotSetUp(result.problem))
+                    ImportOutcome.WrongCode -> ImportUiState.RecoveryFailed(ActionOutcome.NoAnswer)
+                }
+        }
+    }
+
+    private fun verify(board: Boolean) {
         val ready = _state.value as? ImportUiState.Ready ?: return
         if (!ready.received.accepts(ready.code)) {
             _state.value = ready.copy(wrongCode = true)
             return
         }
         _state.value = ImportUiState.Importing
-        launchWrite({ setup.import(ready.received, ready.mode, ready.code) }) { outcome ->
-            _state.value =
-                when (outcome) {
-                    ImportOutcome.WrongCode -> ready.copy(wrongCode = true)
-                    is ImportOutcome.Imported -> ImportUiState.Done(outcome.result, outcome.secretsSkipped)
-                }
+        launchWrite({
+            importer.import(ready.received, ready.mode, ready.code, selectedTerminal, selectedBusiness, skipBusiness, board)
+        }) { result ->
+            _state.value = finished(ready, result)
         }
     }
+
+    private fun finished(
+        ready: ImportUiState.Ready,
+        result: SetupImportOutcome,
+    ): ImportUiState =
+        when (result) {
+            is SetupImportOutcome.Committed -> {
+                committed(ready, result.outcome)
+            }
+
+            is SetupImportOutcome.Terminals -> {
+                ready.copy(terminalChoices = result.ids, outcome = null)
+            }
+
+            is SetupImportOutcome.Businesses -> {
+                ready.copy(businessChoices = result.stores, outcome = null)
+            }
+
+            SetupImportOutcome.BoardingRequired -> {
+                ready.copy(boardingRequired = true, outcome = null)
+            }
+
+            is SetupImportOutcome.Failed -> {
+                ready.copy(
+                    outcome =
+                        result.problem?.let(ActionOutcome::NotSetUp)
+                            ?: result.message?.let(ActionOutcome::Failed)
+                            ?: ActionOutcome.NoAnswer,
+                    incomplete = result.incomplete,
+                )
+            }
+        }
+
+    private fun committed(
+        ready: ImportUiState.Ready,
+        result: ImportOutcome,
+    ): ImportUiState =
+        when (result) {
+            ImportOutcome.WrongCode -> {
+                ready.copy(wrongCode = true)
+            }
+
+            is ImportOutcome.Imported -> {
+                ImportUiState.Done(result.result)
+            }
+
+            is ImportOutcome.Rejected -> {
+                ready.copy(outcome = ActionOutcome.NotSetUp(result.problem))
+            }
+
+            is ImportOutcome.StorageFailed -> {
+                if (result.pending) {
+                    ImportUiState.RecoveryFailed(ActionOutcome.SecretNotStored(result.reason))
+                } else {
+                    ready.copy(outcome = ActionOutcome.SecretNotStored(result.reason))
+                }
+            }
+        }
 
     /** Forgets the scanned codes and starts scanning again. */
     fun restart() {
         assembler.reset()
+        selectedTerminal = null
+        selectedBusiness = null
+        skipBusiness = false
         _state.value = ImportUiState.Scanning()
     }
 

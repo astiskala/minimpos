@@ -64,14 +64,27 @@ data class TerminalSetup(
     val problem: SetupProblem?
         get() = connectionProblem ?: apiSetup.problem
 
+    internal fun importProblem(saved: Set<Secret>): SetupProblem? =
+        connectionProblem?.takeUnless { it == SetupProblem.PAYMENTS_APP_NOT_BOARDED }
+            ?: sharedKeyProblem(settings.terminal, saved).takeIf { connectionProblem == SetupProblem.PAYMENTS_APP_NOT_BOARDED }
+            ?: apiSetup.problem
+
     /** Whether read-only terminal discovery can propose connection fields for this destination. */
     val discoversTerminals: Boolean get() = destination.discoversTerminals
+
+    internal val needsSharedKey: Boolean get() = Secret.TERMINAL_PASSPHRASE in destination.secrets
+
+    internal val boardsPhone: Boolean get() = destination.boardsPhone
+
+    internal val importPending: Boolean get() = apiSetup.problem == SetupProblem.TRANSFER_PENDING
 
     /** Whether Settings must ask the merchant for TEST or LIVE before API credentials or terminal details. */
     val selectsEnvironment: Boolean get() = destination.selectsEnvironment(onTerminal)
 
+    internal val suppliesCertificateEnvironment: Boolean get() = onTerminal && destination == LocalTerminal
+
     /** Whether this device's verified terminal certificate must supply the still-unknown local environment. */
-    val readsLocalEnvironment: Boolean get() = onTerminal && destination == LocalTerminal && environment == null
+    val readsLocalEnvironment: Boolean get() = suppliesCertificateEnvironment && environment == null
 
     /** The terminal settings after this destination accepts [detected]; persistence validates its original setup. */
     fun learnedEnvironment(detected: DetectedEnvironment) = destination.learnedEnvironment(this, detected)
@@ -106,11 +119,16 @@ data class TerminalSetup(
      * can no longer be decrypted, which becomes the [connectionProblem] (when the [destination] needs it and nothing
      * else is missing) or makes a complete [apiSetup] incomplete.
      */
-    fun unlock(read: Map<Secret, String?>): UnlockedSetup {
+    fun unlock(
+        read: Map<Secret, String?>,
+        identity: String? = null,
+    ): UnlockedSetup {
         val unreadable = read.filterValues { it == null }.keys
         val problem = connectionProblem ?: destination.secrets.filter { it in unreadable }.firstNotNullOfOrNull(::unreadable)
         val api =
-            if (apiSetup == ApiSetup.Complete && Secret.ADYEN_API_KEY in unreadable) {
+            if ((apiSetup == ApiSetup.Complete || apiSetup.problem == SetupProblem.SETUP_NOT_VERIFIED) &&
+                Secret.ADYEN_API_KEY in unreadable
+            ) {
                 ApiSetup.Incomplete(SetupProblem.UNREADABLE_API_KEY)
             } else {
                 apiSetup
@@ -121,6 +139,7 @@ data class TerminalSetup(
                 .mapNotNull { (secret, value) ->
                     value?.let { secret to it }
                 }.toMap(),
+            identity,
         )
     }
 
@@ -152,6 +171,8 @@ data class TerminalSetup(
             settings: AppSettings,
             saved: Set<Secret>,
             device: DeviceInfo,
+            verified: Boolean,
+            pendingImport: Boolean,
         ): TerminalSetup {
             val terminal = settings.terminal
             val destination = DestinationRules.of(terminal.mode, device)
@@ -174,7 +195,23 @@ data class TerminalSetup(
                             SetupProblem.ENVIRONMENT
                         },
                 )
-            return TerminalSetup(settings, destination, device.isAdyenTerminal, poiId, host, problem, api, environment, device.paymentsApps)
+            val gated =
+                when {
+                    pendingImport -> ApiSetup.Incomplete(SetupProblem.TRANSFER_PENDING)
+                    api == ApiSetup.Complete && !verified -> ApiSetup.Incomplete(SetupProblem.SETUP_NOT_VERIFIED)
+                    else -> api
+                }
+            return TerminalSetup(
+                settings,
+                destination,
+                device.isAdyenTerminal,
+                poiId,
+                host,
+                problem,
+                gated,
+                environment,
+                device.paymentsApps,
+            )
         }
 
         /**
@@ -259,10 +296,12 @@ data class TerminalSetup(
  * @property setup The setup, whose [TerminalSetup.problem] and [TerminalSetup.apiSetup] already say when a secret it
  *   needs can no longer be decrypted.
  * @param values The decrypted secrets, by which secret they are.
+ * @property validationIdentity Fingerprint of the exact stored secret snapshot and connection fields; null for unsaved candidates.
  */
 class UnlockedSetup(
     val setup: TerminalSetup,
     private val values: Map<Secret, String>,
+    internal val validationIdentity: String? = null,
 ) {
     /**
      * The shared key with the saved passphrase; null when none could be read, or the key identifier or version is not
@@ -321,7 +360,66 @@ class TerminalSetupSource(
     val device: DeviceInfo,
 ) {
     /** The setup with the stored settings now, without reading any secret. */
-    suspend fun current(): TerminalSetup = TerminalSetup.resolve(settings.current(), secrets.configured.first(), device)
+    suspend fun current(): TerminalSetup = reading(settings.current(), read = false).setup
+
+    private suspend fun reading(
+        current: AppSettings,
+        read: Boolean,
+        forValidation: Boolean = false,
+    ): UnlockedSetup {
+        val raw = TerminalSetup.resolve(current, secrets.configured.first(), device, verified = true, pendingImport = false)
+        val requested = raw.secretsToRead(Secret.entries.toSet())
+        val snapshot = secrets.setupSecrets(current.terminal.verificationKey(raw.poiId, raw.environment, raw.mode), requested, read)
+        val setup =
+            TerminalSetup.resolve(
+                current,
+                snapshot.configured,
+                device,
+                verified = forValidation || current.verifiedSetup == snapshot.identity,
+                pendingImport = snapshot.pending && !forValidation,
+            )
+        return setup.unlock(snapshot.values, snapshot.identity)
+    }
+
+    internal fun candidate(
+        current: AppSettings,
+        values: Map<Secret, String>,
+    ): UnlockedSetup = TerminalSetup.resolve(current, values.keys, device, verified = true, pendingImport = false).unlock(values)
+
+    internal val registrations = RegistrationRecovery()
+
+    internal inner class RegistrationRecovery {
+        fun access(
+            current: AppSettings,
+            values: Map<Secret, String>,
+        ): BoardingSetup = TerminalSetup.boarding(current, values.keys, device, values[Secret.PAYMENTS_APP_API_KEY])
+
+        suspend fun read(): String? = secrets.readBoarding()
+
+        suspend fun exists(): Boolean = secrets.hasBoarding()
+
+        suspend fun write(value: String?) = secrets.writeBoarding(value)
+    }
+
+    internal fun learnedCandidate(detected: DetectedEnvironment): AppSettings =
+        detected.setup.settings.copy(terminal = detected.setup.learnedEnvironment(detected))
+
+    internal suspend fun rememberVerified(tested: UnlockedSetup): Boolean {
+        val current = reading(settings.current(), read = false, forValidation = true)
+        val identity = tested.validationIdentity ?: return false
+        if (identity != current.validationIdentity) return false
+        settings.update { saved ->
+            if (saved.terminal.verificationKey(current.setup.poiId, current.setup.environment, current.setup.mode) ==
+                tested.setup.settings.terminal
+                    .verificationKey(tested.setup.poiId, tested.setup.environment, tested.setup.mode)
+            ) {
+                saved.copy(verifiedSetup = identity)
+            } else {
+                saved
+            }
+        }
+        return settings.current().verifiedSetup == identity && reading(settings.current(), read = false).validationIdentity == identity
+    }
 
     /**
      * Reads this device's verified terminal certificate through [read], without a shared key. Only needed on an Adyen
@@ -349,11 +447,8 @@ class TerminalSetupSource(
     }
 
     /** The setup now, with the secrets it needs decrypted ([TerminalSetup.unlock]). */
-    suspend fun unlocked(): UnlockedSetup {
-        val saved = secrets.configured.first()
-        val setup = TerminalSetup.resolve(settings.current(), saved, device)
-        return setup.unlock(setup.secretsToRead(saved).associateWith { secrets.get(it) })
-    }
+    suspend fun unlocked(forValidation: Boolean = false): UnlockedSetup =
+        reading(settings.current(), read = true, forValidation = forValidation)
 
     /** Whether Tap to Pay can be set up now with the stored settings, see [TerminalSetup.boarding]. */
     suspend fun boarding(): BoardingSetup {
@@ -369,7 +464,7 @@ class TerminalSetupSource(
      * reading any secret.
      */
     val changes: Flow<TerminalSetup> =
-        combine(settings.settings, secrets.configured, deviceReads) { current, saved, _ -> TerminalSetup.resolve(current, saved, device) }
+        combine(settings.settings, secrets.configured, deviceReads) { current, _, _ -> reading(current, read = false).setup }
 
     /** Resolves [changes] again with what the device says now: an Adyen Payments app may have been installed or removed. */
     fun readDevice() = deviceReads.update { it + 1 }

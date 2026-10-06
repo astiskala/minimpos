@@ -13,11 +13,13 @@ import kotlin.time.Duration.Companion.seconds
  * @property id Terminal POIID.
  * @property merchantAccount Assigned merchant account, never the reassignment target.
  * @property host Last reported Ethernet address, otherwise Wi-Fi address; possibly stale or blank.
+ * @property storeId Currently assigned store ID, never the pending reassignment target; blank when not assigned to a store.
  */
 data class TerminalDetails(
     val id: String,
     val merchantAccount: String,
     val host: String,
+    val storeId: String = "",
 )
 
 /** A discovered encryption key, kept only in memory until encrypted storage; string conversion never reveals it.
@@ -44,14 +46,47 @@ sealed interface TerminalListing {
 
     /** Lookup could not complete; manual setup remains possible.
      * @property message Non-secret explanation.
+     * @property reason Typed setup failure for localized presentation.
      */
     data class Failed(
         val message: String,
+        val reason: ManagementFailure = ManagementFailure.UNAVAILABLE,
     ) : TerminalListing
+}
+
+/** Non-secret reason a Management setup check could not complete. */
+enum class ManagementFailure {
+    /** API key rejected by the selected environment. */
+    AUTHENTICATION,
+
+    /** Credential lacks the required Management role or resource access. */
+    PERMISSION,
+
+    /** Network or server failure; retry in the same environment. */
+    UNAVAILABLE,
+
+    /** Successful answer did not contain the required fields. */
+    UNREADABLE,
+}
+
+/** Read-only credential-role check; no secrets or raw API responses are exposed. */
+sealed interface CredentialLookup {
+    /** Credential has the required terminal-access role. */
+    data object Allowed : CredentialLookup
+
+    /** Credential could not be verified.
+     * @property reason Authentication, permission, temporary failure or malformed answer.
+     */
+    data class Failed(
+        val reason: ManagementFailure,
+    ) : CredentialLookup
 }
 
 /** Optional Management reads; safe to call from any thread, with no Adyen configuration mutations. */
 interface TerminalDetailsApi {
+    /** Checks the required terminal-access role in [environment], without cross-environment fallback. */
+    suspend fun credential(environment: TerminalEnvironment): CredentialLookup = CredentialLookup.Failed(ManagementFailure.UNAVAILABLE)
+
     /** Reads all visible terminals in [environment], without a merchant account or cross-environment fallback. */
     suspend fun terminals(environment: TerminalEnvironment): TerminalListing
 
@@ -76,6 +111,24 @@ class AdyenTerminalDetails(
 ) : TerminalDetailsApi {
     private val http = AdyenHttp(apiKey, baseClient, dispatcher)
 
+    override suspend fun credential(environment: TerminalEnvironment): CredentialLookup {
+        val reply = http.get(baseUrl(environment).newBuilder().addPathSegment("me").build(), TIMEOUT)
+        if (reply !is AdyenReply.Answered || !reply.ok) return CredentialLookup.Failed(reason(reply))
+        val roles =
+            runCatching {
+                JsonParser
+                    .parseString(reply.body)
+                    .asJsonObject
+                    .getAsJsonArray("roles")
+                    .map { it.asString }
+            }.getOrNull() ?: return CredentialLookup.Failed(ManagementFailure.UNREADABLE)
+        return if (roles.any { it.replace("—", "-").replace("–", "-").replace(" ", "") == "ManagementAPI-Terminalactionsread" }) {
+            CredentialLookup.Allowed
+        } else {
+            CredentialLookup.Failed(ManagementFailure.PERMISSION)
+        }
+    }
+
     override suspend fun terminals(environment: TerminalEnvironment): TerminalListing {
         var reply = page(environment, 1)
         val terminals = mutableListOf<TerminalDetails>()
@@ -93,7 +146,7 @@ class AdyenTerminalDetails(
             }
         }
         return when {
-            failure != null -> TerminalListing.Failed(failure)
+            failure != null -> TerminalListing.Failed(failure, reason(reply))
             next -> TerminalListing.Failed("The terminal list is too large; enter the details manually")
             else -> TerminalListing.Listed(terminals.distinctBy { it.id }, environment)
         }
@@ -156,12 +209,27 @@ class AdyenTerminalDetails(
         }.getOrNull()
     }
 
+    private fun reason(reply: AdyenReply): ManagementFailure =
+        when {
+            reply !is AdyenReply.Answered -> ManagementFailure.UNAVAILABLE
+            reply.code == HTTP_UNAUTHORIZED -> ManagementFailure.AUTHENTICATION
+            reply.code == HTTP_FORBIDDEN -> ManagementFailure.PERMISSION
+            reply.ok -> ManagementFailure.UNREADABLE
+            else -> ManagementFailure.UNAVAILABLE
+        }
+
     private fun terminal(json: JsonObject): TerminalDetails {
         val id = json.text("id").also { require(it.isNotBlank()) }
         val connectivity = json.getAsJsonObject("connectivity")
         val ethernet = connectivity?.getAsJsonObject("ethernet")?.text("ipAddress").orEmpty()
         val wifi = connectivity?.getAsJsonObject("wifi")?.text("ipAddress").orEmpty()
-        return TerminalDetails(id, json.getAsJsonObject("assignment")?.text("merchantId").orEmpty(), ethernet.ifBlank { wifi })
+        val assignment = json.getAsJsonObject("assignment")
+        return TerminalDetails(
+            id,
+            assignment?.text("merchantId").orEmpty(),
+            ethernet.ifBlank { wifi },
+            assignment?.text("storeId").orEmpty(),
+        )
     }
 
     private companion object {

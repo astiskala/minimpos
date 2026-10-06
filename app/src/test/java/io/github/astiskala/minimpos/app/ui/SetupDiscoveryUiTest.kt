@@ -117,7 +117,7 @@ class SetupDiscoveryUiTest {
     private fun assertCloudSteps() {
         chooseMode(TerminalMode.CLOUD)
         waitForTag("environment_LIVE")
-        compose.onNodeWithTag("apiKey").assertDoesNotExist()
+        compose.onNodeWithTag("apiKey").assertExists()
         compose.onNodeWithTag("environment_LIVE").performScrollTo().performClick()
         compose.awaitCondition("the LIVE environment is saved") {
             env.container.settingsState.value.terminal.environment ==
@@ -127,7 +127,7 @@ class SetupDiscoveryUiTest {
         compose.onNodeWithTag("apiKey").assertExists()
         compose.onNodeWithTag("host").assertDoesNotExist()
         compose.onNodeWithTag("keyIdentifier").assertDoesNotExist()
-        compose.onNodeWithTag("step_3").assertDoesNotExist()
+        compose.onNodeWithTag("step_3").assertExists()
         compose.onNodeWithTag("testApi").assertExists()
         compose.onNodeWithTag("livePrefix").performScrollTo().performTextInput("prefix")
         compose.onNodeWithTag("testApi").performScrollTo().performClick()
@@ -144,8 +144,8 @@ class SetupDiscoveryUiTest {
         compose.onNodeWithText("Not installed").assertExists()
         compose.onNodeWithTag("getPaymentsAppTest").assertExists()
         compose.onNodeWithTag("getPaymentsAppLive").assertExists()
-        assertSteps("Adyen Payments app")
-        compose.onNodeWithTag("step_2").assertDoesNotExist()
+        assertSteps("Adyen Payments app", "Adyen API")
+        compose.onNodeWithTag("step_2").assertExists()
         phone.paymentsApps = setOf(TerminalEnvironment.TEST)
         env.container.terminalStatus.readDevice()
         waitForTag("apiKey")
@@ -252,7 +252,7 @@ class SetupDiscoveryUiTest {
         compose.onNodeWithTag("step_1").assertIsDisplayed().assertTextContains("Adyen Payments app")
         compose.onNodeWithText(env.context.getString(R.string.settings_adyen_role_settings), substring = true).assertDoesNotExist()
         compose.onNodeWithText(env.context.getString(R.string.settings_adyen_role_shared_key), substring = true).assertDoesNotExist()
-        compose.onNodeWithText(env.context.getString(R.string.settings_adyen_role_terminals), substring = true).assertDoesNotExist()
+        compose.onNodeWithText(env.context.getString(R.string.settings_adyen_role_terminals), substring = true).assertExists()
         compose.onNodeWithTag("environment").assertDoesNotExist()
         compose.onNodeWithTag("discoverSetup").assertDoesNotExist()
         compose.onNodeWithTag("merchantAccount").performScrollTo().performTextInput("Merchant")
@@ -300,7 +300,7 @@ class SetupDiscoveryUiTest {
             container.settingsState.value.terminal.merchantAccount ==
                 "Merchant"
         }
-        compose.onNodeWithTag("host").assertDoesNotExist()
+        compose.onNodeWithTag("host").assertExists()
         compose.onNodeWithTag("testApi").performScrollTo().performClick()
         waitForTag("host")
         compose.onNodeWithTag("host").performScrollTo().assertTextContains("192.168.1.42", substring = true)

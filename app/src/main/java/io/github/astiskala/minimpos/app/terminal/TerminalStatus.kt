@@ -34,6 +34,7 @@ import kotlinx.coroutines.launch
  * @property paymentLinks Whether checkout offers payment links, see [TerminalSetup.paymentLinks].
  * @property paymentsApps The Adyen Payments apps installed, by environment, see [TerminalSetup.paymentsApps].
  * @property selectsEnvironment Whether setup asks for TEST or LIVE before credentials.
+ * @property importPending Whether a verified import journal still blocks new financial operations until saving resumes.
  */
 data class TerminalState(
     val loaded: Boolean = false,
@@ -48,6 +49,7 @@ data class TerminalState(
     val paymentLinks: Boolean = false,
     val paymentsApps: Set<TerminalEnvironment> = emptySet(),
     val selectsEnvironment: Boolean = false,
+    val importPending: Boolean = false,
 ) {
     /**
      * Whether receipts and payment links can be shared through Android's share sheet: on phones and tablets, not on an
@@ -66,11 +68,15 @@ data class TerminalState(
  * @param setups Where payments go and what is missing, as the settings and secrets change.
  * @param gateway Checks the connection, and tells which terminals have a printer and which environment they are in.
  * @param scope Keeps [state] up to date, runs background checks and forwards detections to [TerminalSetupSource.remember].
+ * @param verifyApi Checks the exact unlocked candidate's credential and account when its cached verification is invalid.
+ * @param verifyPhone Confirms existing phone registration against the candidate account/store; never registers automatically.
  */
 class TerminalStatus(
     private val setups: TerminalSetupSource,
     private val gateway: TerminalGateway,
     private val scope: CoroutineScope,
+    private val verifyApi: suspend (UnlockedSetup) -> ApiCheck,
+    private val verifyPhone: suspend (TerminalSetup) -> TapToPayOutcome,
 ) {
     private val connection = MutableStateFlow<TerminalConnection>(TerminalConnection.Unknown)
 
@@ -90,6 +96,7 @@ class TerminalStatus(
                 paymentLinks = setup.paymentLinks,
                 paymentsApps = setup.paymentsApps,
                 selectsEnvironment = setup.selectsEnvironment,
+                importPending = setup.importPending,
             )
         }.stateIn(scope, SharingStarted.Eagerly, TerminalState())
 
@@ -123,8 +130,36 @@ class TerminalStatus(
     /** Checks the connection now with the stored settings, publishes the result in [state] and returns it. */
     suspend fun check(): TerminalConnection {
         connection.value = TerminalConnection.Checking
-        return gateway.diagnose().also { connection.value = it }
+        val result = if (setups.current().importPending) TerminalConnection.NotSetUp(SetupProblem.TRANSFER_PENDING) else checkActive()
+        connection.value = result
+        return result
     }
+
+    private suspend fun checkActive(): TerminalConnection {
+        gateway.refreshEnvironment()
+        val actual = setups.current()
+        val candidate = setups.unlocked(forValidation = true)
+        val complete = candidate.setup.apiSetup == ApiSetup.Complete
+        val blocked = if (complete && actual.apiSetup != ApiSetup.Complete) credentialCheck(candidate) else null
+        val result = blocked ?: gateway.diagnose()
+        if (result is TerminalConnection.Connected && complete) setups.rememberVerified(candidate)
+        return result
+    }
+
+    private suspend fun credentialCheck(candidate: UnlockedSetup): TerminalConnection? =
+        when (val checked = verifyApi(candidate)) {
+            is ApiCheck.NotSetUp -> TerminalConnection.NotSetUp(checked.problem)
+            is ApiCheck.Failed -> TerminalConnection.Failed(checked.message)
+            ApiCheck.Works -> if (candidate.setup.boardsPhone) phoneCheck(candidate.setup) else null
+        }
+
+    private suspend fun phoneCheck(setup: TerminalSetup): TerminalConnection? =
+        when (val phone = verifyPhone(setup)) {
+            is TapToPayOutcome.Boarded -> null
+            is TapToPayOutcome.NotSetUp -> TerminalConnection.NotSetUp(phone.problem)
+            is TapToPayOutcome.Failed -> TerminalConnection.Failed(phone.message)
+            TapToPayOutcome.Unregistered -> TerminalConnection.NotSetUp(SetupProblem.PAYMENTS_APP_NOT_BOARDED)
+        }
 
     /** Checks again when the last check failed while payments go to a terminal, so a warning clears once it answers. */
     suspend fun recheckIfFailed() {

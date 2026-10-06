@@ -104,10 +104,34 @@ internal fun ColumnScope.TerminalSteps(
         if (status.selectsEnvironment) {
             EnvironmentStep(status.environment, update, setup.guided)
         }
-        if (!status.selectsEnvironment || status.environment != null) {
+        if (!status.selectsEnvironment || status.environment != null || state.hasSavedConnectionDetails()) {
             DestinationSteps(status, state, actions, setup, events, setupEvents, api, update)
         }
     }
+}
+
+private fun SettingsUiState.hasSavedConnectionDetails(): Boolean {
+    val terminal = settings.terminal
+    val values = listOf(terminal.merchantAccount, terminal.keyIdentifier, terminal.host, terminal.poiIdOverride)
+    return values.any(String::isNotBlank) || secrets.any { it in setOf(Secret.ADYEN_API_KEY, Secret.TERMINAL_PASSPHRASE) }
+}
+
+private fun TerminalState.needsPaymentsApp(
+    suppliedDetails: Boolean,
+    apiSaved: Boolean,
+): Boolean = paymentsApps.size != 1 && !suppliedDetails && !apiSaved
+
+private fun SettingsUiState.suppliedDestinationDetails(mode: TerminalMode): Boolean {
+    val terminal = settings.terminal
+    val fields =
+        when (mode) {
+            TerminalMode.TERMINAL -> listOf(terminal.host, terminal.poiIdOverride, terminal.keyIdentifier)
+            TerminalMode.CLOUD -> listOf(terminal.poiIdOverride)
+            TerminalMode.PAYMENTS_APP -> listOf(terminal.paymentsAppInstallationId, terminal.keyIdentifier)
+            TerminalMode.AUTO, TerminalMode.SIMULATOR -> emptyList()
+        }
+    val passphraseSupplied = mode != TerminalMode.CLOUD && Secret.TERMINAL_PASSPHRASE in secrets
+    return fields.any(String::isNotBlank) || passphraseSupplied
 }
 
 /** Destination-specific steps after the selected or device-supplied environment is available. */
@@ -122,6 +146,7 @@ private fun ColumnScope.DestinationSteps(
     api: ApiEntry,
     update: TerminalUpdate,
 ) {
+    val suppliedDetails = state.suppliedDestinationDetails(status.mode)
     var testedFields by remember { mutableStateOf<Pair<String, String>?>(null) }
     var apiComplete by remember { mutableStateOf(false) }
     // An immediate retest can conflate running and success; new tested fields must still recheck completion.
@@ -130,7 +155,7 @@ private fun ColumnScope.DestinationSteps(
     }
     if (status.mode == TerminalMode.PAYMENTS_APP) {
         PaymentsAppStep(1, status.paymentsApps, setup.guided)
-        if (status.paymentsApps.size != 1) return
+        if (status.needsPaymentsApp(suppliedDetails, api.keySaved)) return
     }
     AdyenApiStep(
         number = if (status.selectsEnvironment || status.mode == TerminalMode.PAYMENTS_APP) 2 else 1,
@@ -147,7 +172,7 @@ private fun ColumnScope.DestinationSteps(
             events.onSaveAndTest(Secret.ADYEN_API_KEY, api.key, SettingsTest.API)
         },
     )
-    if (!apiComplete) return
+    if (!apiComplete && !suppliedDetails) return
     when (status.mode) {
         TerminalMode.TERMINAL -> {
             LocalTerminalSteps(status.onTerminal, state, actions, events, setupEvents, api, update)
@@ -240,7 +265,7 @@ private fun ApiEntry.testCompleted(
     testedFields: Pair<String, String>?,
 ): Boolean {
     val matches = testedFields == (terminal.merchantAccount to terminal.liveUrlPrefix)
-    val settled = result.done && problem == null && key.isBlank()
+    val settled = result.done && key.isBlank()
     return matches && settled
 }
 
@@ -263,7 +288,7 @@ private fun ColumnScope.LocalTerminalSteps(
         LaunchedEffect(terminal.host, terminal.poiIdOverride) {
             if (terminal.host.isNotBlank() && terminal.poiIdOverride.isNotBlank()) terminalComplete = true
         }
-        if (!terminalComplete) return
+        if (!terminalComplete && terminal.keyIdentifier.isBlank() && Secret.TERMINAL_PASSPHRASE !in state.secrets) return
     }
     SharedKeyStep(first, state, actions, events, setupEvents, update, api.guided)
 }
@@ -296,7 +321,9 @@ private fun ColumnScope.TapToPaySteps(
     LaunchedEffect(terminal.paymentsAppInstallationId) {
         if (terminal.paymentsAppInstallationId.isNotBlank()) boarded = true
     }
-    if (boarded) SharedKeyStep(4, state, actions, events, setupEvents, update, api.guided)
+    if (boarded || terminal.keyIdentifier.isNotBlank() || Secret.TERMINAL_PASSPHRASE in state.secrets) {
+        SharedKeyStep(4, state, actions, events, setupEvents, update, api.guided)
+    }
 }
 
 /** The IP address and POIID of a terminal on the network; a terminal running the app knows both itself. */
@@ -440,7 +467,7 @@ private fun ApiFields(
     )
 
     // Until the environment is known, the Checkout API cannot be used anyway (SetupProblem.ENVIRONMENT).
-    if (api.environment == TerminalEnvironment.LIVE) {
+    if (api.environment == TerminalEnvironment.LIVE || (api.environment == null && api.terminal.liveUrlPrefix.isNotBlank())) {
         SettingTextField(
             stringResource(R.string.settings_live_prefix),
             api.terminal.liveUrlPrefix,
@@ -524,24 +551,16 @@ private fun ColumnScope.ApiKeyRoles(
         SettingNote(stringResource(R.string.settings_adyen_roles_hint))
         SettingNote("• " + stringResource(R.string.settings_adyen_role_cloud), Modifier.testTag("roleCloud"))
     }
+    SettingNote(stringResource(R.string.setup_management_permission))
+    SettingNote("• " + stringResource(R.string.settings_adyen_role_terminals), Modifier.testTag("roleTerminals"))
     if (!discovers) return
-    SettingNote(stringResource(R.string.settings_discovery_roles_hint))
-    val roles =
-        when {
-            cloud -> {
-                listOf(R.string.settings_adyen_role_terminals)
-            }
-
-            else -> {
-                listOf(
-                    R.string.settings_adyen_role_terminals,
-                    R.string.settings_adyen_role_settings,
-                    R.string.settings_adyen_role_shared_key,
-                )
-            }
+    if (!cloud) {
+        SettingNote(stringResource(R.string.settings_discovery_roles_hint))
+        listOf(R.string.settings_adyen_role_settings, R.string.settings_adyen_role_shared_key).forEach {
+            SettingNote("• " + stringResource(it))
         }
-    roles.forEach { SettingNote("• " + stringResource(it)) }
-    if (discovers) SettingNote(stringResource(R.string.settings_discovery_hint))
+    }
+    SettingNote(stringResource(R.string.settings_discovery_hint))
 }
 
 /** Optional terminal discovery, with its manual-entry fallback kept beside the API-key action. */

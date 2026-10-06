@@ -109,14 +109,14 @@
           <p>在 <strong>Developers › API credentials</strong> 中创建凭据并生成 API 密钥；参见 Adyen 的<a href="https://docs.adyen.com/development-resources/api-credentials">凭据指南</a>。<strong>Checkout webservice role</strong> 默认分配。仅添加配置所需的额外角色：</p>
           <ul>
             <li><strong>Cloud Device API role</strong>：云端付款必需。</li>
-            <li><strong>Management API — Terminal actions read</strong>：可选的自动终端查询，包括账户和最近上报的网络地址。</li>
+            <li><strong>Management API — Terminal actions read</strong>：所有真实付款设置的主 Adyen API 凭据都必须具有此权限，包括手动方式和 Tap to Pay。凭据须属于终端的 Company 账户，并能访问对应商家账户和终端。</li>
             <li><strong>Management API — Terminal settings read</strong>：本终端或同一网络中的终端的可选共享密钥设置查询。</li>
             <li><strong>Management API — Terminal settings Advanced read and write</strong>：上述目标的可选共享密钥口令查询。</li>
           </ul>
           <p>本终端、同一网络中的终端和 Tap to Pay 还需要<strong>共享密钥</strong>：在 <strong>Devices › Device settings › Integrations › Terminal API › Encryption key</strong> 中获取标识符、口令和版本。参见 Adyen 的<a href="https://docs.adyen.com/point-of-sale/design-your-integration/choose-your-architecture/local">本地集成指南</a>。云端配置不使用此密钥。</p>
           <p>同一网络中的终端和云端终端以<strong>环境</strong>为步骤 1：测试卡选择 <strong>TEST</strong>，真实付款选择 <strong>LIVE</strong>。终端、账户和凭据必须属于同一环境。Mini mPOS 不会在另一环境尝试 API 密钥。在 Adyen 终端上运行时，应用读取本设备经过验证的证书；Tap to Pay 则使用已安装的 Payments 应用的环境。</p>
-          <p>完成当前步骤后才显示下一步。在 <strong>Adyen API</strong> 中一起输入 API 密钥和商家账户；LIVE 还需输入实时 URL 前缀。点击<strong>测试 API</strong>（输入密钥时点击<strong>保存并测试 API</strong>），测试成功后显示下一步。本次访问中，已显示的步骤会保持可编辑。</p>
-          <p>实体终端可在 <strong>Adyen API</strong> 下点击<strong>保存并获取设置</strong>，加密保存密钥并在该环境查询终端；也可在输入账户前查询。应用只读取信息，不会修改 Adyen 的设置或密钥。参阅 Adyen 的<a href="https://docs.adyen.com/api-explorer/Management/3/get/terminals">终端列表</a>与<a href="https://docs.adyen.com/api-explorer/Management/latest/get/terminals/(terminalId)/terminalSettings">终端设置</a> API 文档。查询被拒绝、不可用或信息不完整时，密钥仍保持已保存，可手动补充缺失项。手动设置无需 Management 权限。查询到的地址可能过时，请先检查。Tap to Pay 不查询实体终端。</p>
+          <p>完成当前步骤后才显示下一步。在 <strong>Adyen API</strong> 中一起输入 API 密钥和商家账户；LIVE 还需输入实时 URL 前缀。点击<strong>测试 API</strong>（输入密钥时点击<strong>保存并测试 API</strong>），测试成功后显示下一步。已获取的信息会保持可见、可编辑，再次打开设置时也一样；部分填写的设置也会显示。</p>
+          <p>实体终端可在 <strong>Adyen API</strong> 下点击<strong>保存并获取设置</strong>，加密保存密钥并在该环境查询终端；也可在输入账户前查询。应用只读取信息，不会修改 Adyen 的设置或密钥。参阅 Adyen 的<a href="https://docs.adyen.com/api-explorer/Management/3/get/terminals">终端列表</a>与<a href="https://docs.adyen.com/api-explorer/Management/latest/get/terminals/(terminalId)/terminalSettings">终端设置</a> API 文档。终端访问验证失败时不能继续设置；请更正凭据的 Company 账户、权限或访问范围后重试。仅共享密钥查询是可选的：访问验证通过后，可手动输入共享密钥并测试连接。查询到的地址可能过时，请先检查。Tap to Pay 会检查主凭据所需角色，但不查询实体终端。</p>
           <figure class="guide-shot">
             <div class="terminal terminal-s1f2">
               <img alt="带二维码扫描快捷入口和 Adyen API 步骤的终端设置" height="960" loading="lazy" src="../images/terminal-setup.png" width="540">
@@ -126,12 +126,14 @@
           <h3 id="helper">从电脑输入密钥</h3>
           <p>在可信电脑上打开<a href="setup.html">设置助手</a>，选择支付目标及 TEST/LIVE。<strong>自动（推荐）</strong>需输入 API 密钥；具有查询权限时，设备会查找终端的商家账户、地址及共享密钥。在手机或平板电脑上选择终端并检查结果。<strong>手动</strong>需在电脑上输入全部连接信息。LIVE 环境下两种方式都需要 <strong>live URL prefix</strong>。Tap to Pay 需手动输入共享密钥；安装与手机注册仍在设备上完成。请参阅<a href="#tap-to-pay">其设置步骤</a>。</p>
           <p>还可选填电子收据的 SMTP 设置。服务商要求请参阅<a href="using.html#email">邮件设置</a>。导入后检查<strong>设置 › 电子邮件</strong>并发送测试邮件。</p>
-          <p>点击<strong>生成二维码</strong>。在应用中打开<strong>设置 › 终端</strong>，点按<strong>扫描设置二维码</strong>或右上角的二维码扫描图标。无需先选择支付目标或环境。扫描所有二维码，检查支付目标和环境，输入传输码，再点击<strong>导入</strong>。自动方式点击<strong>继续设置</strong>，手动方式点击<strong>检查设置</strong>。已保存的信息已折叠，点击步骤即可检查或编辑。导入信息不代表已测试；先完成 Adyen API 测试，再按显示的步骤继续。无法查询时，导入的密钥仍会保存，可在设备上填写信息，或使用设置助手的手动方式。也可直接在“设置 › 终端”中输入所有信息。</p>
+          <p>点击<strong>生成二维码</strong>。在应用的<strong>设置 › 终端</strong>点按<strong>扫描设置二维码</strong>或右上角的扫描图标。扫描全部二维码，检查支付目标和环境，再输入单独显示的 12 位传输码；连字符会自动插入。每次传输都必须输入传输码，包括只传输商品目录或设置时。</p>
+          <p>点击<strong>验证并导入</strong>。自动查询可补全连接信息，仅有多个合适终端时才需选择。凭据、账户和连接验证通过后才会导入。仍缺少必需信息时，请在助手中选择<strong>手动</strong>并生成完整的新二维码。被拒绝的导入不会更改当前设置或商品目录。Tap to Pay 会明确提示注册手机，并使用其支持的检查而非诊断测试。</p>
+          <p>验证后的导入可在保存中断后继续，不会重复替换商品目录或注册手机。已获取的设置默认展开，可再次编辑。新设置会从已分配门店补充空白的收据商家信息，已有文本保持不变；参见<a href="using.html#receipts">收据设置</a>。返回会进入首页，不再显示首次设置选项。也可直接在“设置 › 终端”中配置。</p>
           <h3 id="on-terminal">在 Adyen 终端上运行</h3>
           <p>请先<a href="#install">安装应用</a>并<a href="#credentials">准备凭据</a>。</p>
           <dl class="settings-list">
             <dt>设置助手（推荐）</dt>
-            <dd>在可信电脑上打开<a href="setup.html">设置助手</a>，选择<strong>在 Adyen 终端上运行</strong>、终端的 TEST/LIVE 环境及<strong>自动</strong>。填写 Adyen API 密钥，LIVE 还需填写实时 URL 前缀。按照<a href="#helper">二维码导入步骤</a>操作，再在终端上点击<strong>继续设置</strong>。具有查询权限时，Mini mPOS 会匹配本终端并查找商家账户和共享密钥。检查 Adyen API 信息、补充缺失项并测试 API，再检查共享密钥并测试连接。在助手中选择<strong>手动</strong>即可自行填写详细信息。</dd>
+            <dd>在可信电脑上打开<a href="setup.html">设置助手</a>，选择<strong>在 Adyen 终端上运行</strong>、终端的 TEST/LIVE 环境及<strong>自动</strong>。填写 Adyen API 密钥，LIVE 还需填写实时 URL 前缀。按照<a href="#helper">验证后导入二维码的步骤</a>操作。Mini mPOS 会匹配本终端，获取商家账户和共享密钥，在保存前完成测试。无法获取完整必需信息时，请在助手中选择<strong>手动</strong>并生成完整二维码。</dd>
           </dl>
           <details class="manual-setup">
             <summary>手动</summary>
@@ -141,7 +143,7 @@
           <p>请先<a href="#install">安装应用</a>并<a href="#credentials">准备凭据</a>。</p>
           <dl class="settings-list">
             <dt>设置助手（推荐）</dt>
-            <dd>在可信电脑上打开<a href="setup.html">设置助手</a>，选择平板或手机搭配同一网络中的终端、终端的 TEST/LIVE 环境及<strong>自动</strong>。填写 Adyen API 密钥，LIVE 还需填写实时 URL 前缀。按照<a href="#helper">二维码导入步骤</a>操作，再在设备上点击<strong>继续设置</strong>并选择终端。检查 Adyen API 信息、补充缺失项并测试 API，再检查终端地址和 POIID，最后检查共享密钥并测试连接。查询不可用或希望自行填写时，在助手中选择<strong>手动</strong>。</dd>
+            <dd>在可信电脑上打开<a href="setup.html">设置助手</a>，选择平板或手机搭配同一网络中的终端、终端的 TEST/LIVE 环境及<strong>自动</strong>。填写 Adyen API 密钥，LIVE 还需填写实时 URL 前缀。按照<a href="#helper">验证后导入二维码的步骤</a>操作。仅有多个合适候选时选择终端；账户分配、地址、共享密钥和连接会在保存前检查。查询无法提供完整信息时，在助手中选择<strong>手动</strong>。</dd>
           </dl>
           <details class="manual-setup">
             <summary>手动</summary>
@@ -152,7 +154,7 @@
           <p>请先<a href="#install">安装应用</a>并<a href="#credentials">准备凭据</a>。</p>
           <dl class="settings-list">
             <dt>设置助手（推荐）</dt>
-            <dd>在可信电脑上打开<a href="setup.html">设置助手</a>，选择平板或手机通过互联网连接终端（云端）、终端的 TEST/LIVE 环境及<strong>自动</strong>。填写具有 Cloud Device API role 的 Adyen API 密钥，LIVE 还需填写实时 URL 前缀。按照<a href="#helper">二维码导入步骤</a>操作，再在设备上点击<strong>继续设置</strong>并选择终端。检查 Adyen API 信息并测试 API，成功后显示终端步骤。检查 POIID，点击<strong>测试连接</strong>，同时重新测试 API。在助手中选择<strong>手动</strong>即可自行填写详细信息。</dd>
+            <dd>在可信电脑上打开<a href="setup.html">设置助手</a>，选择平板或手机通过互联网连接终端（云端）、终端的 TEST/LIVE 环境及<strong>自动</strong>。填写具有 Cloud Device API role 的 Adyen API 密钥，LIVE 还需填写实时 URL 前缀。按照<a href="#helper">验证后导入二维码的步骤</a>操作。仅在必要时选择终端；账户、POIID、API 访问和连接会在保存前检查。在助手中选择<strong>手动</strong>可自行填写信息。</dd>
           </dl>
           <details class="manual-setup">
             <summary>手动</summary>
@@ -169,14 +171,14 @@
           <p>选择如何输入已安装 Payments 应用所属环境的凭据：</p>
           <dl class="settings-list">
             <dt>设置助手（推荐）</dt>
-            <dd>在可信电脑上打开<a href="setup.html">设置助手</a>，选择 Tap to Pay 和匹配的 TEST/LIVE 环境。填写 Adyen API 密钥、商家账户及独立的 Payments 应用 API 密钥。共享密钥可在此输入，也可稍后在手机上输入。LIVE 还需填写实时 URL 前缀，可选填门店 ID。按照<a href="#helper">二维码导入步骤</a>操作，再在手机上点击<strong>检查设置</strong>。</dd>
+            <dd>在可信电脑上打开<a href="setup.html">设置助手</a>，选择 Tap to Pay 和匹配的 TEST/LIVE 环境。填写 Adyen API 密钥、商家账户及独立的 Payments 应用 API 密钥。请在此输入完整共享密钥。LIVE 还需填写实时 URL 前缀，可选填门店 ID。按照<a href="#helper">验证后导入二维码的步骤</a>操作，在导入完成前按明确提示注册手机。</dd>
           </dl>
           <details class="manual-setup">
             <summary>手动</summary>
             <p>在<strong>设置 › 终端 › Adyen API</strong>中一起输入 Adyen API 密钥和商家账户，LIVE 还需输入实时 URL 前缀。API 测试成功后显示 <strong>Tap to Pay</strong>。输入独立的<strong>Payments 应用 API 密钥</strong>（仅有 Adyen Payments app role），可选填门店 ID（不是 reference）。</p>
           </details>
           <p>两种方式都需先测试 API，再点击<strong>设置 Tap to Pay</strong>，在 Payments 应用中完成注册。Checkout 与手机注册使用同一商家账户。注册后显示<strong>共享密钥</strong>步骤。</p>
-          <p>Mini mPOS 不会查询 Tap to Pay 共享密钥。请在助手或手机上输入标识符、口令和版本，再测试连接。使用助手设置时，已保存的信息已折叠，点击步骤即可检查或编辑。</p>
+          <p>Mini mPOS 不会查询 Tap to Pay 共享密钥。请在助手中输入标识符、口令和版本；直接在设备上手动设置时，也可在设置中输入。Payments 应用不支持诊断连接测试：Mini mPOS 会验证注册、账户访问和必需字段，但无法对共享密钥进行诊断测试。已获取的字段会保持可见、可编辑。</p>
           <p>Mini mPOS 会执行 Adyen <a href="https://docs.adyen.com/point-of-sale/mobile-android/build/payments-app">Payments 应用指南</a>中的注册流程：检查注册状态、请求一次性注册令牌，再将其发送到 Payments 应用。无需手动复制注册令牌。Payments 应用 API 密钥用于授权注册，独立的 Adyen API 密钥用于 Checkout 操作。共享密钥按 Adyen 要求加密支付消息，注册不能替代它。</p>
           <p>付款会打开 Payments 应用，再返回 Mini mPOS。已安装的应用决定 TEST 或 LIVE 环境。以后要注销手机，请使用<strong>移除本手机</strong>。</p>
           <p class="note">API 密钥会加密保存在本设备上。Adyen 建议将其保存在服务器上，但 Mini mPOS 没有服务器。使用仅具所需权限、专用于 Mini mPOS 的凭据，设置管理员 PIN，并撤销泄露或丢失设备的凭据。请阅读<a href="https://github.com/astiskala/minimpos/blob/main/SECURITY.md">安全政策</a>。</p>

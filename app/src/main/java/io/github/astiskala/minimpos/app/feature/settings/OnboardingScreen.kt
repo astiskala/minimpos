@@ -42,8 +42,8 @@ fun OnboardingScreen(
         vm.choose(choice) {
             when (it) {
                 OnboardingChoice.SIMULATOR -> navigator.home()
-                OnboardingChoice.IMPORT -> navigator.push(Route.TransferImport)
-                OnboardingChoice.TERMINAL -> navigator.push(Route.SettingsSection(SettingsSections.TERMINAL))
+                OnboardingChoice.IMPORT -> navigator.replace(Route.TransferImport)
+                OnboardingChoice.TERMINAL -> navigator.replace(Route.SettingsSection(SettingsSections.TERMINAL))
             }
         }
     }

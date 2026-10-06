@@ -2,7 +2,7 @@
   "formatVersion": 1,
   "database": {
     "version": 10,
-    "identityHash": "e9672f9cd053c54bb3b24c833692e178",
+    "identityHash": "aa352372e62656ab33c9825b6dc00b08",
     "entities": [
       {
         "tableName": "tax_rates",
@@ -195,6 +195,54 @@
             ]
           }
         ]
+      },
+      {
+        "tableName": "catalog_import",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER NOT NULL, `transferId` TEXT NOT NULL, `productsAdded` INTEGER NOT NULL, `productsUpdated` INTEGER NOT NULL, `taxRatesAdded` INTEGER NOT NULL, `categoriesAdded` INTEGER NOT NULL, PRIMARY KEY(`id`))",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "transferId",
+            "columnName": "transferId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "productsAdded",
+            "columnName": "productsAdded",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "productsUpdated",
+            "columnName": "productsUpdated",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "taxRatesAdded",
+            "columnName": "taxRatesAdded",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "categoriesAdded",
+            "columnName": "categoriesAdded",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        }
       },
       {
         "tableName": "sales",
@@ -790,7 +838,7 @@
     ],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'e9672f9cd053c54bb3b24c833692e178')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'aa352372e62656ab33c9825b6dc00b08')"
     ]
   }
 }

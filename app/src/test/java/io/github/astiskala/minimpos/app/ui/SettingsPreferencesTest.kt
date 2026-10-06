@@ -83,21 +83,20 @@ class SettingsPreferencesTest {
         }
         open("receipts")
         findStores()
-        compose.waitUntilAtLeastOneExists(hasTestTag("receiptBusiness_ST1"), 15_000)
-        compose.onNodeWithTag("receiptBusiness_ST1").performClick()
+        compose.waitUntilAtLeastOneExists(hasTestTag("confirmReceiptBusiness"), 15_000)
+        compose.onNodeWithTag("receiptBusiness_ST1").assertDoesNotExist()
         compose.onNodeWithTag("confirmReceiptBusiness").assertIsDisplayed()
         assertThat(container.settingsState.value.receipt.businessName).isEqualTo("My cafe")
         compose.onNodeWithText("Cancel").performClick()
         assertThat(container.settingsState.value.receipt.businessName).isEqualTo("My cafe")
         findStores()
-        compose.waitUntilAtLeastOneExists(hasTestTag("receiptBusiness_ST1"), 15_000)
-        compose.onNodeWithTag("receiptBusiness_ST1").performClick()
+        compose.waitUntilAtLeastOneExists(hasTestTag("confirmReceiptBusiness"), 15_000)
+        compose.onNodeWithTag("receiptBusiness_ST1").assertDoesNotExist()
         compose.onNodeWithTag("confirmReceiptBusiness").performClick()
-        compose.awaitCondition("business details saved") { container.settingsState.value.receipt.businessName == "Adyen Cafe" }
         compose.waitUntilDoesNotExist(hasTestTag("confirmReceiptBusiness"), 15_000)
-        compose.onNodeWithTag("businessName").performScrollTo().assertTextContains("Adyen Cafe")
+        compose.onNodeWithTag("businessName").performScrollTo().assertTextContains("My cafe")
         val receipt = container.settingsState.value.receipt
-        assertThat(receipt.addressLines).isEqualTo("1 Main St\nSydney")
+        assertThat(receipt.addressLines).isEqualTo("Old address")
         assertThat(receipt.phone).isEqualTo("Original phone")
         assertThat(receipt.taxId).isEqualTo("123")
         assertThat(receipt.footer).isEqualTo("Custom footer")
@@ -109,8 +108,8 @@ class SettingsPreferencesTest {
         listing = StoreListing.Listed(listOf(StoreDetails("ST2", "empty", "", "", "")))
         open("receipts")
         findStores()
-        compose.waitUntilAtLeastOneExists(hasTestTag("receiptBusiness_ST2"), 15_000)
-        compose.onNodeWithTag("receiptBusiness_ST2").performClick()
+        compose.waitUntilAtLeastOneExists(hasTestTag("confirmReceiptBusiness"), 15_000)
+        compose.onNodeWithTag("receiptBusiness_ST2").assertDoesNotExist()
         compose.onNodeWithTag("confirmReceiptBusiness").assertIsDisplayed().assertIsNotEnabled()
     }
 

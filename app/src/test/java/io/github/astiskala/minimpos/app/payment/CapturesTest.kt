@@ -289,7 +289,7 @@ class CapturesTest {
             AdyenApi(setups, simulated = fake, connect = {
                 connected += it
                 fake
-            }, connectLinks = { links }, simulatedLinks = links)
+            }, connectLinks = { links }, simulatedLinks = links, verifyAccess = { null })
         env.updateSettings { it.copy(terminal = it.terminal.copy(mode = TerminalMode.TERMINAL)) }
         assertThat(await { live.target() }.modifications(null)).isEqualTo(ApiAccess.Unavailable(SetupProblem.MERCHANT_ACCOUNT))
         assertThat(await { live.verify() }).isEqualTo(ApiCheck.NotSetUp(SetupProblem.MERCHANT_ACCOUNT))

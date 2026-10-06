@@ -108,6 +108,24 @@ data class ProductEntity(
     @ColumnInfo(defaultValue = "0") val sample: Boolean = false,
 )
 
+/** Latest catalog import receipt, written in the same transaction as the imported rows.
+ * @property id Singleton row ID; always 1.
+ * @property transferId Verified import journal identity, used to avoid replaying a completed catalog write.
+ * @property productsAdded Count of inserted products.
+ * @property productsUpdated Count of updated products.
+ * @property taxRatesAdded Count of inserted tax rates.
+ * @property categoriesAdded Count of inserted categories.
+ */
+@Entity(tableName = "catalog_import")
+data class CatalogImportEntity(
+    @PrimaryKey val id: Int = 1,
+    val transferId: String,
+    val productsAdded: Int,
+    val productsUpdated: Int,
+    val taxRatesAdded: Int,
+    val categoriesAdded: Int,
+)
+
 /** Where a sale is in its lifecycle; stored by name in `sales.status`. */
 enum class SaleStatus {
     /** Written before the terminal is called. A sale still PENDING at the next app start was interrupted. */

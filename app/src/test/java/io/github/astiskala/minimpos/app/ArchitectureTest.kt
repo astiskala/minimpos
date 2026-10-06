@@ -48,6 +48,7 @@ import io.github.astiskala.minimpos.app.data.db.TaxRateEntity
 import io.github.astiskala.minimpos.app.data.repo.CatalogRepository
 import io.github.astiskala.minimpos.app.data.repo.CataloguePricing
 import io.github.astiskala.minimpos.app.data.repo.HistoryRepository
+import io.github.astiskala.minimpos.app.data.repo.ImportMode
 import io.github.astiskala.minimpos.app.data.repo.ReceiptLinesJson
 import io.github.astiskala.minimpos.app.data.repo.RefundRepository
 import io.github.astiskala.minimpos.app.data.repo.SaleRepository
@@ -58,6 +59,8 @@ import io.github.astiskala.minimpos.app.data.settings.PricingChange
 import io.github.astiskala.minimpos.app.data.settings.SettingsRepository
 import io.github.astiskala.minimpos.app.data.settings.TerminalMode
 import io.github.astiskala.minimpos.app.data.settings.TerminalSettings
+import io.github.astiskala.minimpos.app.data.transfer.ReceivedTransfer
+import io.github.astiskala.minimpos.app.data.transfer.SetupTransfer
 import io.github.astiskala.minimpos.app.feature.ActionOutcome
 import io.github.astiskala.minimpos.app.feature.TransactionActions
 import io.github.astiskala.minimpos.app.payment.CaptureResult
@@ -86,6 +89,7 @@ import io.github.astiskala.minimpos.app.terminal.SimulatedTerminal
 import io.github.astiskala.minimpos.app.terminal.TerminalGateway
 import io.github.astiskala.minimpos.app.terminal.TerminalSetup
 import io.github.astiskala.minimpos.app.terminal.TerminalSetupSource
+import io.github.astiskala.minimpos.app.terminal.UnlockedSetup
 import io.github.astiskala.minimpos.app.update.AppUpdate
 import io.github.astiskala.minimpos.app.update.GitHubReleases
 import io.github.astiskala.minimpos.app.update.UpdateCheck
@@ -670,6 +674,25 @@ class ArchitectureTest {
         reject(updateOwnership, UpdateViolation::class.java)
 
     @Test
+    fun `setup imports and verification records cannot bypass their orchestration`() = setupVerificationOwnership.forEach { it.check(app) }
+
+    @Test
+    fun `setup verification ownership rejects import and verified-record bypasses`() =
+        reject(setupVerificationOwnership, SetupVerificationViolation::class.java)
+
+    private class SetupVerificationViolation {
+        suspend fun import(
+            transfer: SetupTransfer,
+            received: ReceivedTransfer,
+        ) = transfer.import(received, ImportMode.MERGE, "2222-2222-2222")
+
+        suspend fun trust(
+            source: TerminalSetupSource,
+            setup: UnlockedSetup,
+        ) = source.rememberVerified(setup)
+    }
+
+    @Test
     fun `every production class belongs to a declared module`() = moduleMembership.check(app)
 
     @Test
@@ -896,6 +919,40 @@ class ArchitectureTest {
     }
 
     private companion object {
+        // A QR code proves possession, not payment readiness; only verified orchestration may activate its configuration.
+        val setupVerificationOwnership: List<ArchRule> =
+            listOf(
+                noClasses()
+                    .that()
+                    .haveNameNotMatching(
+                        within(
+                            "io.github.astiskala.minimpos.app.data.transfer.SetupTransfer",
+                            "io.github.astiskala.minimpos.app.terminal.SetupImport",
+                        ),
+                    ).should()
+                    .callMethodWhere(
+                        DescribedPredicate.describe("raw setup import or commit") { call ->
+                            call.target.owner.name == "io.github.astiskala.minimpos.app.data.transfer.SetupTransfer" &&
+                                (call.target.name.startsWith("import") || call.target.name.startsWith("commit"))
+                        },
+                    ),
+                noClasses()
+                    .that()
+                    .haveNameNotMatching(
+                        within(
+                            TerminalSetupSource::class.java.name,
+                            "io.github.astiskala.minimpos.app.terminal.SetupImport",
+                            "io.github.astiskala.minimpos.app.terminal.TerminalStatus",
+                        ),
+                    ).should()
+                    .callMethodWhere(
+                        DescribedPredicate.describe("writing a verified setup identity") { call ->
+                            call.target.owner.name == TerminalSetupSource::class.java.name &&
+                                call.target.name.startsWith("rememberVerified")
+                        },
+                    ),
+            )
+
         const val UI = "UI"
         const val PAYMENT = "Payment"
         const val EMAIL = "Email"
@@ -984,6 +1041,7 @@ class ArchitectureTest {
                         "getChecksConnection",
                         "getSimulatesApi",
                         "getDiscoversTerminals",
+                        "getBoardsPhone",
                         "selectsEnvironment",
                     ),
                 )

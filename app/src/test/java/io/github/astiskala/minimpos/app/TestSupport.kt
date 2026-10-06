@@ -20,8 +20,10 @@ import io.github.astiskala.minimpos.app.data.security.SecretCipher
 import io.github.astiskala.minimpos.app.data.settings.AppSettings
 import io.github.astiskala.minimpos.app.data.settings.TerminalMode
 import io.github.astiskala.minimpos.app.email.MailTransport
+import io.github.astiskala.minimpos.app.terminal.ApiSetup
 import io.github.astiskala.minimpos.app.terminal.Attempt
 import io.github.astiskala.minimpos.app.terminal.DeviceInfo
+import io.github.astiskala.minimpos.app.terminal.TerminalSetupSource
 import io.github.astiskala.minimpos.app.update.UpdateCheck
 import io.github.astiskala.minimpos.terminal.checkout.PaymentLink
 import io.github.astiskala.minimpos.terminal.checkout.PaymentLinkApi
@@ -43,6 +45,7 @@ import io.github.astiskala.minimpos.terminal.transport.CloudDetection
 import io.github.astiskala.minimpos.terminal.transport.CloudDevices
 import io.github.astiskala.minimpos.terminal.transport.CloudEndpoint
 import io.github.astiskala.minimpos.terminal.transport.CloudRegion
+import io.github.astiskala.minimpos.terminal.transport.CredentialLookup
 import io.github.astiskala.minimpos.terminal.transport.Delivery
 import io.github.astiskala.minimpos.terminal.transport.DiscoveredKey
 import io.github.astiskala.minimpos.terminal.transport.StoreDetailsApi
@@ -291,6 +294,13 @@ class FakeManagement(
     /** Every revoked installation ID, in order. */
     val revoked = mutableListOf<String>()
 
+    var registrationResult: ManagementResult = ManagementResult.Done()
+
+    override suspend fun registration(
+        target: BoardingTarget,
+        installationId: String,
+    ): ManagementResult = registrationResult
+
     override suspend fun boardingToken(
         target: BoardingTarget,
         boardingRequestToken: String,
@@ -365,7 +375,7 @@ class FakeLinkApi(
  * it.
  */
 class TestEnvironment(
-    device: DeviceInfo = FakeDevice(),
+    private val device: DeviceInfo = FakeDevice(),
     /** Replaces the real (network) terminal connection. */
     terminal: FakeTerminal? = null,
     /** Runs the container's application scope (payments, refunds and connection checks). */
@@ -383,23 +393,12 @@ class TestEnvironment(
     /** Replaces the GitHub update check; the default answers that no update is available. */
     updates: FakeUpdateCheck = FakeUpdateCheck(),
     stores: StoreDetailsApi = StoreDetailsApi { StoreListing.Listed(emptyList()) },
-    terminalDetails: TerminalDetailsApi =
-        object : TerminalDetailsApi {
-            override suspend fun terminals(environment: TerminalEnvironment) =
-                TerminalListing.Listed(
-                    listOf("AMS1-000168223606144", "S1F2-000158213605014").map { TerminalDetails(it, "Merchant", "192.168.1.42") },
-                    environment,
-                )
-
-            override suspend fun sharedKey(
-                id: String,
-                environment: TerminalEnvironment,
-            ): DiscoveredKey? = null
-        },
+    terminalDetails: TerminalDetailsApi? = null,
     terminalEnvironment: suspend () -> TerminalEnvironment? = { TerminalEnvironment.TEST },
     queryCallback: ((String) -> Unit)? = null,
     /** Most tests begin after first-run setup; onboarding tests opt into a fresh installation. */
     onboardingCompleted: Boolean = true,
+    private val verifiedSetup: Boolean = true,
 ) : ExternalResource() {
     /** Robolectric's application context. */
     val context: Context = ApplicationProvider.getApplicationContext()
@@ -421,7 +420,7 @@ class TestEnvironment(
     val scope = CoroutineScope(SupervisorJob() + dispatcher)
 
     /** The container under test. */
-    val container =
+    val container: AppContainer =
         AppContainer(
             context = context,
             // Main-thread queries are allowed so tests can read the database directly.
@@ -444,11 +443,33 @@ class TestEnvironment(
             paymentLinks = { links },
             paymentModifications = { modifications },
             storeDetails = { _, _ -> stores },
-            terminalDetails = { terminalDetails },
+            terminalDetails = { terminalDetails ?: defaultTerminalDetails() },
             terminalEnvironment = terminalEnvironment,
             updateCheck = updates::check,
             onboardingCompleted = onboardingCompleted,
         )
+
+    private fun defaultTerminalDetails(): TerminalDetailsApi =
+        object : TerminalDetailsApi {
+            override suspend fun credential(environment: TerminalEnvironment) = CredentialLookup.Allowed
+
+            override suspend fun terminals(environment: TerminalEnvironment): TerminalListing {
+                val terminalSettings = container.settings.current().terminal
+                val configuredId = terminalSettings.poiIdOverride.takeIf { value -> value.isNotBlank() }
+                val ids = listOfNotNull(device.detectedPoiId, configuredId) + listOf("AMS1-000168223606144", "S1F2-000158213605014")
+                return TerminalListing.Listed(
+                    ids.distinct().map { id ->
+                        TerminalDetails(id, terminalSettings.merchantAccount.ifBlank { "Merchant" }, "192.168.1.42")
+                    },
+                    environment,
+                )
+            }
+
+            override suspend fun sharedKey(
+                id: String,
+                environment: TerminalEnvironment,
+            ): DiscoveredKey? = null
+        }
 
     /**
      * The Checkout API is entered (merchant account and API key), so payments to a real destination no longer wait for
@@ -497,6 +518,16 @@ class TestEnvironment(
     fun updateSettings(transform: (AppSettings) -> AppSettings) =
         runBlocking {
             container.settings.update(transform)
+            if (verifiedSetup) {
+                val source =
+                    TerminalSetupSource(container.settings, container.secrets, device)
+                val candidate = source.unlocked(forValidation = true)
+                if (candidate.setup.apiSetup ==
+                    ApiSetup.Complete
+                ) {
+                    source.rememberVerified(candidate)
+                }
+            }
             val expected = container.settings.current()
             withTimeout(5_000) { container.settingsState.first { it == expected } }
         }

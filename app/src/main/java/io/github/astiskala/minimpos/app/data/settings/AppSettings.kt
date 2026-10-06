@@ -11,6 +11,7 @@ import io.github.astiskala.minimpos.terminal.simulator.SimulatedOutcome
 import io.github.astiskala.minimpos.terminal.transport.CloudRegion
 import io.github.astiskala.minimpos.terminal.transport.TerminalEnvironment
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.serializer
 
 /**
  * All non-secret configuration, stored as JSON in DataStore (`settings.json`) and edited in Settings. Shared-key
@@ -30,6 +31,7 @@ import kotlinx.serialization.Serializable
  * @property history How long sales and refunds are kept.
  * @property pricingChange Local recoverable pricing journal; null when stable, never shared.
  * @property onboardingCompleted Whether this device has chosen its first-run setup path; never shared.
+ * @property verifiedSetup Opaque fingerprint of locally verified connection fields and encrypted payment secrets; null until verified.
  */
 @Serializable
 data class AppSettings(
@@ -43,7 +45,10 @@ data class AppSettings(
     /** Local confirmed pricing transition being committed; null when stable, never transferred to another device. */
     val pricingChange: PricingChange? = null,
     val onboardingCompleted: Boolean = false,
+    val verifiedSetup: String? = null,
 ) {
+    internal val acceptsSetupImport: Boolean get() = pricingChange == null
+
     /** These settings with every number brought within its section's limits. */
     fun normalized(): AppSettings =
         copy(
@@ -69,6 +74,7 @@ data class AppSettings(
             simulator = device.simulator,
             pricingChange = device.pricingChange,
             onboardingCompleted = device.onboardingCompleted,
+            verifiedSetup = device.verifiedSetup,
         )
 
     /**
@@ -80,11 +86,20 @@ data class AppSettings(
     /**
      * [other]'s [shared] settings in place of these, keeping what belongs to this device ([withDeviceFieldsOf]), except
      * that the default tax rate is [defaultTaxRateId], the row of this device that matches the one [other] named.
+     * Receipt business name, address and phone only fill blank fields; saved merchant text remains unchanged.
      */
     fun takingOver(
         other: AppSettings,
         defaultTaxRateId: Long?,
-    ): AppSettings = other.withDeviceFieldsOf(copy(payment = payment.copy(defaultTaxRateId = defaultTaxRateId)))
+    ): AppSettings =
+        other.withDeviceFieldsOf(copy(payment = payment.copy(defaultTaxRateId = defaultTaxRateId))).copy(
+            receipt =
+                other.receipt.copy(
+                    businessName = receipt.businessName.ifBlank { other.receipt.businessName },
+                    addressLines = receipt.addressLines.ifBlank { other.receipt.addressLines },
+                    phone = receipt.phone.ifBlank { other.receipt.phone },
+                ),
+        )
 
     /** The settings a new installation starts with. */
     companion object {
@@ -256,7 +271,16 @@ data class TerminalSettings(
             host = device.host,
             poiIdOverride = device.poiIdOverride,
             paymentsAppInstallationId = device.paymentsAppInstallationId,
+            storeId = device.storeId,
         )
+
+    internal fun verificationKey(
+        poiId: String?,
+        environment: TerminalEnvironment?,
+        destination: TerminalMode,
+    ): String =
+        StorageJson.encodeToString(serializer<TerminalSettings>(), copy(cloudRegion = null)) +
+            ":${destination.name}:${poiId.orEmpty()}:${environment?.name.orEmpty()}"
 
     /** The limits of the numbers. */
     companion object {

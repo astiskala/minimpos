@@ -13,6 +13,7 @@ import androidx.room.TypeConverters
         TaxRateEntity::class,
         CategoryEntity::class,
         ProductEntity::class,
+        CatalogImportEntity::class,
         SaleEntity::class,
         SaleLineEntity::class,
         RefundEntity::class,

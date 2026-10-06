@@ -351,9 +351,8 @@
   <string name="transfer_replace_confirm">このデバイスの商品、カテゴリー、税率をすべて削除して置き換えます。</string>
   <string name="transfer_scan_again">再スキャン</string>
   <string name="transfer_done">インポート完了</string>
-  <string name="transfer_continue_setup">設定を続ける</string>
   <string name="transfer_review_setup">設定を確認</string>
-  <string name="transfer_automatic_note">「設定を続ける」でインポートしたAPIキーとManagement権限を使い、物理端末を検索します。情報を確認し、不足を補ってから接続とAPIキーをテストしてください。</string>
+  <string name="transfer_automatic_note">確認前に自動取得で端末情報を解決します。必須項目が不足する場合は拒否します。手動ヘルパーで完全なコードを作成してください。</string>
   <string name="transfer_added">追加した商品</string>
   <string name="transfer_updated">更新した商品</string>
   <string name="transfer_new_categories">新しいカテゴリー</string>
@@ -368,9 +367,9 @@
   <string name="transfer_part_secrets_none">このデバイスでは未設定</string>
   <string name="transfer_show_codes">QRコードを表示</string>
   <string name="transfer_code_title">転送コード</string>
-  <string name="transfer_code_hint">別のデバイスにこのコードを入力すると、パスワードとキーをインポートできます。コードはここにだけ表示されます。</string>
-  <string name="transfer_code_import_hint">別のデバイスまたはセットアップヘルパーのページに表示されています。空欄ならパスワードとキー以外をインポートします。</string>
-  <string name="transfer_code_wrong">転送コードが違います。別のデバイスまたはセットアップヘルパーのページで確認するか、空欄にしてください。</string>
+  <string name="transfer_code_hint">すべての転送で別のデバイスにこのコードを入力します。QRコードとは別に保管してください。</string>
+  <string name="transfer_code_import_hint">別のデバイスまたはヘルパーに表示される12文字のコードを入力します。ハイフンは自動挿入されます。</string>
+  <string name="transfer_code_wrong">転送コードが違うか、内容が変更されています。送信元のコードを確認するか、再度読み取ってください。何もインポートされていません。</string>
   <string name="transfer_included">含まれます</string>
   <string name="transfer_not_included">含まれません</string>
   <string name="transfer_secrets_sealed">転送コード付きで含まれます</string>
@@ -384,8 +383,6 @@
   <string name="transfer_connection_note">セットアップヘルパーから：含まれる決済先と接続情報でこのデバイスの設定を置き換えます。その他の設定は変わりません。</string>
   <string name="transfer_import_action">インポート</string>
   <string name="transfer_imported">インポート済み</string>
-  <string name="transfer_skipped">スキップ（転送コードなし）</string>
-  <string name="transfer_secrets_failed">このデバイスにパスワードとキーを保存できませんでした：%1$s</string>
   <string name="scan_hint_qr">QRコードにカメラを向けてください</string>
   <string name="scan_hint_barcode">バーコードにカメラを向けてください</string>
   <string name="scan_permission">コードのスキャンにはカメラの許可が必要です。</string>
@@ -678,7 +675,7 @@
   <string name="settings_business_import_hint">Adyenの店舗を選び、領収書の店舗名、住所、電話番号を確認します。Adyen APIキーにManagement API—Stores read権限が必要です。</string>
   <string name="settings_business_choose">店舗を選択</string>
   <string name="settings_business_review">店舗情報を確認</string>
-  <string name="settings_business_review_hint">提供された店舗名、住所、電話番号だけを置き換えます。空欄は現在の文字を保持し、税務番号、タイトル、フッターは変更しません。</string>
+  <string name="settings_business_review_hint">店舗名、住所、電話番号の空欄だけを補完します。既存の文面は置き換えません。税務番号、タイトル、フッターは変更しません。</string>
   <string name="settings_business_none">このマーチャントアカウントに店舗が見つかりません。</string>
   <string name="settings_business_unavailable">この店舗にはインポートできる情報がありません。</string>
   <string name="settings_business_name">店舗名</string>
@@ -838,4 +835,21 @@
   <string name="refund_review_confirm">決済と設定を確認しました</string>
   <string name="pricing_change_title">価格変更を確認</string>
   <string name="pricing_change_message">%1$s → %2$s。表示単価を維持し、新しい通貨の精度に四捨五入します。変換後の価格の一部を以下に示します。税込・税抜価格の切り替えは税額の計算方法を変更します。保存済みの販売記録は変更しません。</string>
+    <string name="setup_not_verified">決済前に API アクセスと接続をテストしてください。</string>
+    <string name="setup_transfer_pending">設定のインポートは保存途中です。再試行して続行してください。</string>
+    <string name="setup_terminal_access">この API キーは端末にアクセスできません。端末の Company アカウントに属し、この端末へのアクセス権があることを確認してください。</string>
+    <string name="setup_merchant_mismatch">加盟店アカウントが端末の現在の割り当てと一致しません。アカウントまたは端末登録を修正してから続行してください。</string>
+    <string name="setup_management_permission">すべての実決済設定には API キーの Management API — Terminal actions read 権限が必要です。</string>
+    <string name="setup_management_authentication">選択した環境で Adyen が API キーを受け付けませんでした。キーを変更して再試行してください。</string>
+    <string name="setup_management_unavailable">Adyen 設定のアクセス権を確認できませんでした。接続を確認して再試行してください。</string>
+    <string name="setup_store_access">割り当てられた店舗を読み取れませんでした。店舗へのアクセス権を確認してください。他の店舗は使用しません。</string>
+    <string name="setup_changed">確認中に設定が変更されました。現在の設定で再試行してください。</string>
+    <string name="transfer_verify">確認してインポート</string>
+    <string name="transfer_verifying">認証情報と接続を確認中…</string>
+    <string name="transfer_board_first">このインポートを確認するため Tap to Pay を設定してください。確認成功まで他の内容は保存しません。</string>
+    <string name="transfer_business_failed">店舗情報をインポートできませんでした。再試行するか、「設定 › 領収書」で入力してください。</string>
+    <string name="transfer_missing_fields">設定が不完全です。手動設定ヘルパーで不足する情報を追加し、新しいコードを読み取ってください。</string>
+    <string name="transfer_tap_checked">Payments app の登録と設定を確認しました。このアプリは共有キーの診断テストに対応していません。</string>
+    <string name="transfer_skip_business">店舗情報をスキップ</string>
+    <string name="settings_payments_app_setup_checked">設定項目を確認しました。Payments app は共有キーの診断テストに対応していません。</string>
 </resources>

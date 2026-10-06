@@ -53,7 +53,9 @@ existing spelling (`preAuthorisation`, `SaleKind.PRE_AUTHORISATION`, `authorised
 | Destination | Where payments go: local terminal, cloud terminal, Payments app or simulator. | `terminal/Destination`, `TerminalMode` |
 | Destination rules | Pure requirements/capabilities: setup, printer, secrets, recovery, timeouts, abort/diagnosis. | `DestinationRules`, adapter companions in `Destinations.kt` |
 | Terminal setup | One resolved reading of destination, identity, environment, API setup and printer. | `TerminalSetup.resolve`, `TerminalSetupSource` |
-| Setup discovery | Optional read-only terminal and shared-key lookup after saving the Adyen API key; manual setup remains available. | `terminal/SetupDiscovery` |
+| Setup discovery | Read-only terminal assignment and optional shared-key lookup; terminal access and the main credential's required Management role are verified for every real setup. | `terminal/SetupDiscovery`, `SetupAccess` |
+| Verified setup | Local fingerprint of checked connection fields and encrypted payment secrets; changed facts invalidate it, not a process restart. | `TerminalSetupSource`, `AppSettings.verifiedSetup` |
+| Verified setup import | Authenticated QR candidate checked before activation; encrypted commit journal resumes interrupted saves, with an atomic catalog import receipt. | `terminal/SetupImport`, `data/transfer/SetupTransfer` |
 | Unlocked setup | Resolved setup with required secrets decrypted once. | `UnlockedSetup` |
 | Setup problem | Missing/unreadable information or other condition blocking setup, reported typed rather than thrown. | `SetupProblem` |
 | Connection | Open with a client, or blocked as not set up/unreachable. | `Connection`, `Destination.connect` |
@@ -74,7 +76,7 @@ existing spelling (`preAuthorisation`, `SaleKind.PRE_AUTHORISATION`, `authorised
 | Receipt standing | What the receipt says: held, tip lines, captured, unpaid link, paid online or offline demo. Demo meaning follows the stored payment context even after settlement or a destination change. | `ReceiptStanding`, `sale.simulatedLink` |
 | Merchant copy | Additional receipt copy under the configured policy. | `MerchantCopyPolicy` |
 | Receipt tax display | Independent amounts/totals by rate, optional marked rate, marker and explanation. | `ReceiptSettings` |
-| Receipt business details | Store receipt name, address and phone read from Management, reviewed before replacing receipt fields. | `terminal/ReceiptBusinessDetails` |
+| Receipt business details | Store receipt name, address and phone read from Management; imports fill blank receipt fields without replacing merchant text. | `terminal/ReceiptBusinessDetails` |
 | Receipt delivery | Offers/prints/emails/shares a stored sale or refund; automatic delivery uses the same path. | `ReceiptDelivery`, `TransactionActions`, `StoredTransaction` |
 | Unpaid receipt | Link payment request with amount due, QR and address, not proof of payment. | `SaleReceipt.unpaidLink` |
 | Outcome | Typed result presented in the current language, worded only at the UI boundary. | `ActionOutcome`, `ActionState`, `OutcomeMessages.kt` |
@@ -89,7 +91,7 @@ existing spelling (`preAuthorisation`, `SaleKind.PRE_AUTHORISATION`, `authorised
 | Transfer | Copies catalog, shared settings and sealed secrets by QR; not history or synchronization. | `SetupTransfer`, `TransferCodec` (`MPC1:`) |
 | Device fields | Configuration that stays local when shared settings are imported. | `AppSettings.withDeviceFieldsOf` |
 | Transfer code | Separate 12-character code for decrypting transferred secrets. | `TransferSeal` |
-| Setup helper | Offline browser tool: Automatic transfers credentials for physical-terminal lookup; Manual transfers connection details. Tap to Pay uses manual shared-key entry in the helper or on the phone. Imported setup collapses supplied details without treating them as tested. Optional SMTP settings can be included. | `docs/setup.html`, `ConnectionSetup` |
+| Setup helper | Offline browser tool: Automatic transfers credentials for physical-terminal lookup; Manual transfers complete connection details. Every transfer requires its code and verification before activation. Tap to Pay requires explicit registration and a supplied shared key. Obtained setup stays visible; optional SMTP settings can be included. | `docs/setup.html`, `ConnectionSetup` |
 | Secrets | Shared-key passphrase, API keys, SMTP password and PIN verifiers; encrypted and never logged. | `SecretStore` |
 | Repository tooling | Kotlin/JVM release integrity and signing-property parsing, plus a Bash runner with private build logs; not device application code. | `:tooling`, `scripts/gradle` |
 | Admin PIN | Access to configuration and products, separate from financial approval. | `pinManager`, `sessionLock` |

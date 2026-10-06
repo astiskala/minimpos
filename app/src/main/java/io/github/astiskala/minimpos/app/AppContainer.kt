@@ -52,7 +52,9 @@ import io.github.astiskala.minimpos.app.terminal.AndroidDeviceInfo
 import io.github.astiskala.minimpos.app.terminal.DeviceInfo
 import io.github.astiskala.minimpos.app.terminal.PaymentsAppBridge
 import io.github.astiskala.minimpos.app.terminal.ReceiptBusinessDetails
+import io.github.astiskala.minimpos.app.terminal.SetupAccess
 import io.github.astiskala.minimpos.app.terminal.SetupDiscovery
+import io.github.astiskala.minimpos.app.terminal.SetupImport
 import io.github.astiskala.minimpos.app.terminal.SimulatedTerminal
 import io.github.astiskala.minimpos.app.terminal.TapToPaySetup
 import io.github.astiskala.minimpos.app.terminal.TerminalGateway
@@ -258,7 +260,7 @@ class AppContainer(
     private val terminalSetup = TerminalSetupSource(settings, secrets, device)
 
     /** Read-only Management store lookup for manually importing receipt business details. */
-    val receiptBusinessDetails = ReceiptBusinessDetails(terminalSetup, storeDetails)
+    val receiptBusinessDetails = ReceiptBusinessDetails(terminalSetup, storeDetails, terminalDetails)
 
     /** The built-in simulator, which stands in for the terminal and the Checkout API alike. */
     private val simulator = SimulatedTerminal(virtualPrinter)
@@ -284,16 +286,24 @@ class AppContainer(
     val setupDiscovery =
         SetupDiscovery(terminalSetup, settings, { secrets.set(Secret.TERMINAL_PASSPHRASE, it) }, terminalDetails, gateway::readEnvironment)
 
-    /** Boards (and revokes) the Adyen Payments app on this phone, for Tap to Pay. */
-    val tapToPay = TapToPaySetup(terminalSetup, settings, paymentsAppLinks, paymentsAppManagement)
-
     /**
      * Adyen's Checkout API, for captures, authorisation adjustments and payment links, all simulated in simulator mode.
      */
-    val api = AdyenApi(terminalSetup, simulated = simulator.modifications, connect = paymentModifications, connectLinks = paymentLinks)
+    val api =
+        AdyenApi(
+            terminalSetup,
+            simulated = simulator.modifications,
+            connect = paymentModifications,
+            connectLinks = paymentLinks,
+            verifyAccess = SetupAccess(terminalDetails)::verify,
+            readEnvironment = gateway::refreshEnvironment,
+        )
+
+    /** Boards (and revokes) the Adyen Payments app on this phone, for Tap to Pay. */
+    val tapToPay = TapToPaySetup(terminalSetup, settings, paymentsAppLinks, paymentsAppManagement) { api.verify() }
 
     /** Whether payments and printing can work, for Home, Settings and the receipt screens. */
-    val terminalStatus = TerminalStatus(terminalSetup, gateway, appScope)
+    val terminalStatus = TerminalStatus(terminalSetup, gateway, appScope, api::verify, tapToPay::checkSaved)
 
     /**
      * The startup check for a newer GitHub release, which Home offers to download in the browser; never started on an
@@ -445,6 +455,11 @@ class AppContainer(
         session(start.kind).complete(start)
     }
 
+    internal val setupImport =
+        SetupImport(setupTransfer, terminalSetup, gateway, api, tapToPay, receiptBusinessDetails, terminalDetails) {
+            payments.state.value is TransactionState.Processing || refunds.state.value is TransactionState.Processing
+        }
+
     /** Confirmed pricing changes and their recovery, including both payment kinds' sessions. */
     val pricingChanges =
         PricingChanges(settings, catalog, ::currency, sessions.values) {
@@ -459,6 +474,7 @@ class AppContainer(
     fun start() {
         appScope.launch {
             pricingChanges.recover()
+            setupImport.recover()
             history.settleInterrupted()
             catalog.seedDefaults(starterTaxRates())
             history.prune(settings.current().history.retentionDays, System.currentTimeMillis())

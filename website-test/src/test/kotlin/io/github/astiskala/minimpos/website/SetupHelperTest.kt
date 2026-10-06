@@ -43,6 +43,32 @@ class SetupHelperTest {
     }
 
     @Test
+    fun `current deterministic helper vector authenticates its connection metadata`() {
+        script.executeScript("crypto.getRandomValues = array => { array.fill(0); return array; };")
+        mapOf(
+            "keyIdentifier" to "store-key",
+            "keyVersion" to "2",
+            "passphrase" to "correct horse battery",
+            "merchantAccount" to "HarbourCoffeeCOM",
+            "host" to "192.168.1.20",
+            "poiId" to "S1F2-000158213605014",
+            "apiKey" to "demo-checkout-key",
+            "includeSmtp" to "yes",
+            "smtpHost" to "smtp.example.com",
+            "smtpPort" to "465",
+            "smtpSecurity" to "SSL",
+            "smtpUsername" to "shop@example.com",
+            "smtpPassword" to " demo-smtp-password ",
+            "smtpFromAddress" to "receipts@example.com",
+            "smtpFromName" to "Example shop",
+        ).forEach(::field)
+        submit()
+        ready()
+        readTransfer()
+        assertThat(codes().distinct()).containsExactlyElementsIn(HELPER_VECTOR).inOrder()
+    }
+
+    @Test
     fun `input change and reset discard in-flight codes and their transfer code`() {
         for (event in listOf("input", "change", "reset")) {
             openPage()
@@ -208,7 +234,7 @@ class SetupHelperTest {
         ready()
         assertThat(readTransfer())
             .isEqualTo(json("""{"destination":"tapToPay"}""") to json("""{"ADYEN_API_KEY":"demo-key"}"""))
-        assertRequired(false)
+        assertRequired(true)
         field("destination", "network")
         assertRequired(true)
     }
@@ -238,7 +264,10 @@ class SetupHelperTest {
         script.executeScript(
             """
             const form = document.getElementById('setup-form');
-            form.elements[arguments[0]].value = arguments[1];
+            const [name, value] = arguments;
+            const controls = Array.from(form.elements).filter(control => control.name === name);
+            if (controls.some(control => control.type === 'radio')) form.elements[name].value = value;
+            else controls.filter(control => !control.disabled).forEach(control => { control.value = value; });
             form.dispatchEvent(new Event('change'));
             """.trimIndent(),
             name,
@@ -323,7 +352,7 @@ class SetupHelperTest {
         val sealed = requireNotNull(transfer.sealedSecrets).toByteArray()
         assertThat(String(sealed, Charsets.ISO_8859_1)).doesNotContain("demo-smtp-password")
         val buffer = ByteBuffer.wrap(sealed)
-        assertThat(buffer.get().toInt()).isEqualTo(1)
+        assertThat(buffer.get().toInt()).isEqualTo(2)
         val rounds = buffer.int
         assertThat(rounds).isEqualTo(150_000)
         val salt = ByteArray(16).also(buffer::get)
@@ -339,6 +368,7 @@ class SetupHelperTest {
             }
         val cipher = Cipher.getInstance("AES/GCM/NoPadding")
         cipher.init(Cipher.DECRYPT_MODE, SecretKeySpec(key, "AES"), GCMParameterSpec(128, iv))
+        cipher.updateAAD(TransferCodec.authenticationData(transfer))
         val secrets = cipher.doFinal(sealed, buffer.position(), sealed.size - buffer.position())
         return json(requireNotNull(transfer.connection)) to json(String(secrets, Charsets.UTF_8))
     }
@@ -346,6 +376,19 @@ class SetupHelperTest {
     private fun json(text: String) = Json.parseToJsonElement(text) as JsonObject
 
     companion object {
+        private val HELPER_VECTOR =
+            listOf(
+                "MPC1:0000:1/2:FW0T08K:9VY1TQU3R1X50200SF9000000000000000000000000000000000000000000L-S939+\$5+MP-%14" +
+                    "+3UX88BV3CN7\$SXG92L8U0H\$XR:MRQ*JXRM6LS1.EEW5IKGZQDSLC8\$UAWV5CF1H2*F8L66P+MYP92QS\$\$ECQ3PLS:IN" +
+                    "827I7AN/62W1ZFV9C6F2QY/OSG22UAT9MZ10DWALC8E-0SM4MDS60E.Q4087F.U**FY2VDERE2H8XFCH7I9WOAMX/DANI8XTZ" +
+                    "FO:2SMPF6VC QEZEDIEC EDO-DWF71/DPWE04ELOD3Q51\$CS/E0LE9/D1\$CUUEWF7ITA2OAIE4XF414EUUEWF71A6LF6/96" +
+                    "R47Z96NF6IE4-F4 3ENC9WE4CF4EA6KF6646746YW6OF6FL6B46746QQ63Q5/PD:EF6VCG/DREDQEDDJEWF7 QE04EQZC/PD5EF3Q" +
+                    "5F\$DXKE 8D",
+                "MPC1:0000:2/2:G/D:B8UPC2%EUUEWF7Y69WKE34E1KEX3EN.C3 C61AIE4:F4U\$DY8E14EUUEWF7TQEIWE.%5\$9FQ\$DTVD+%5" +
+                    "+3EIE4:F4U\$D09EZ C6%E-ED5EFWF71OA5S93Q5TQEIWE5 A5\$C..DF\$DWE4:F459DQ8EB\$CBECP9ERZCUPC%ZD3Q5TQEIWE" +
+                    "Y+8+3E0C8JVC6\$C:OEWF7ZKEKPC\$EDLWEF68\$9FQ\$DTVD+%5+3EIE4:F4U\$DW8E0LE\$ DBECFZCWF79Z8BECP9EDZCOQE/3" +
+                    "EIE4 F4C\$CM-A4LE EDO-D3G73Q5TQEIWEQ7A5LEWE41R6DY6",
+            )
         private lateinit var browser: HelperBrowser
 
         @BeforeClass

@@ -1,10 +1,13 @@
 package io.github.astiskala.minimpos.app.terminal
 
+import io.github.astiskala.minimpos.app.data.db.SetupProblem
 import io.github.astiskala.minimpos.app.data.security.SecretStoreException
 import io.github.astiskala.minimpos.app.data.settings.SettingsRepository
 import io.github.astiskala.minimpos.app.data.settings.TerminalMode
 import io.github.astiskala.minimpos.terminal.transport.AdyenTerminalDetails
+import io.github.astiskala.minimpos.terminal.transport.CredentialLookup
 import io.github.astiskala.minimpos.terminal.transport.DiscoveredKey
+import io.github.astiskala.minimpos.terminal.transport.ManagementFailure
 import io.github.astiskala.minimpos.terminal.transport.TerminalDetails
 import io.github.astiskala.minimpos.terminal.transport.TerminalDetailsApi
 import io.github.astiskala.minimpos.terminal.transport.TerminalListing
@@ -27,11 +30,14 @@ class SetupDiscovery(
 ) {
     private var selection: Selection? = null
     private val mutex = Mutex()
+    internal var problem: SetupProblem? = null
+        private set
 
     /** Lists terminal IDs without changing saved connection fields; null means unavailable and manual setup can continue. */
     suspend fun find(): List<String>? =
         mutex.withLock {
             selection = null
+            problem = null
             readEnvironment()
             val unlocked = setups.unlocked()
             val key = unlocked.apiKey ?: return@withLock null
@@ -39,7 +45,17 @@ class SetupDiscovery(
             if (!setup.discoversTerminals) return@withLock null
             val environment = setup.environment ?: return@withLock null
             val api = connect(key)
-            val found = api.terminals(environment) as? TerminalListing.Listed ?: return@withLock null
+            val found =
+                when (val result = api.terminals(environment)) {
+                    is TerminalListing.Listed -> {
+                        result
+                    }
+
+                    is TerminalListing.Failed -> {
+                        problem = result.reason.setupProblem()
+                        return@withLock null
+                    }
+                }
             val terminals =
                 if (setup.onTerminal &&
                     setup.mode == TerminalMode.TERMINAL
@@ -48,6 +64,10 @@ class SetupDiscovery(
                 } else {
                     found.terminals
                 }
+            if (terminals.isEmpty()) {
+                problem = SetupProblem.TERMINAL_ACCESS
+                return@withLock emptyList()
+            }
             selection = Selection(key, setup, api, found.copy(terminals = terminals))
             terminals.map { it.id }
         }
@@ -61,6 +81,13 @@ class SetupDiscovery(
             val selected = selection ?: return@withLock null
             selection = null
             val terminal = selected.list.terminals.firstOrNull { it.id == id } ?: return@withLock null
+            val account =
+                selected.setup.settings.terminal.merchantAccount
+                    .trim()
+            if (account.isNotBlank() && account != terminal.merchantAccount) {
+                problem = SetupProblem.MERCHANT_MISMATCH
+                return@withLock false
+            }
             val local = selected.setup.mode == TerminalMode.TERMINAL
             val foundKey = if (local) selected.api.sharedKey(terminal.id, selected.list.environment) else null
             val current = setups.unlocked()
@@ -99,6 +126,7 @@ class SetupDiscovery(
                                     terminal.id
                                 },
                             merchantAccount = terminal.merchantAccount.ifBlank { it.terminal.merchantAccount },
+                            storeId = terminal.storeId,
                             host =
                                 if (selected.setup.mode == TerminalMode.TERMINAL &&
                                     !selected.setup.onTerminal
@@ -121,4 +149,68 @@ class SetupDiscovery(
         val api: TerminalDetailsApi,
         val list: TerminalListing.Listed,
     )
+}
+
+internal fun ManagementFailure.setupProblem(): SetupProblem =
+    when (this) {
+        ManagementFailure.AUTHENTICATION -> SetupProblem.MANAGEMENT_AUTHENTICATION
+        ManagementFailure.PERMISSION -> SetupProblem.MANAGEMENT_PERMISSION
+        ManagementFailure.UNAVAILABLE, ManagementFailure.UNREADABLE -> SetupProblem.MANAGEMENT_UNAVAILABLE
+    }
+
+internal class SetupAccess(
+    private val connect: (String) -> TerminalDetailsApi = { AdyenTerminalDetails(it) },
+) {
+    suspend fun verify(unlocked: UnlockedSetup): SetupProblem? {
+        val setup = unlocked.setup
+        val key = unlocked.apiKey
+        val environment = setup.environment
+        return when {
+            setup.apiSetup == ApiSetup.Simulated -> {
+                null
+            }
+
+            key == null -> {
+                setup.apiSetup.problem ?: SetupProblem.API_KEY
+            }
+
+            environment == null -> {
+                SetupProblem.ENVIRONMENT
+            }
+
+            else -> {
+                val api = connect(key)
+                when (val credential = api.credential(environment)) {
+                    is CredentialLookup.Failed -> credential.reason.setupProblem()
+                    CredentialLookup.Allowed -> if (setup.discoversTerminals && setup.poiId != null) assignment(api, setup) else null
+                }
+            }
+        }
+    }
+
+    private suspend fun assignment(
+        api: TerminalDetailsApi,
+        setup: TerminalSetup,
+    ): SetupProblem? =
+        when (val listing = api.terminals(checkNotNull(setup.environment))) {
+            is TerminalListing.Failed -> {
+                listing.reason.setupProblem()
+            }
+
+            is TerminalListing.Listed -> {
+                val terminal = listing.terminals.firstOrNull { it.id == setup.poiId }
+                when {
+                    terminal == null -> SetupProblem.TERMINAL_ACCESS
+
+                    terminal.merchantAccount.isBlank() -> SetupProblem.MERCHANT_ACCOUNT
+
+                    terminal.merchantAccount !=
+                        setup.settings.terminal.merchantAccount
+                            .trim()
+                    -> SetupProblem.MERCHANT_MISMATCH
+
+                    else -> null
+                }
+            }
+        }
 }

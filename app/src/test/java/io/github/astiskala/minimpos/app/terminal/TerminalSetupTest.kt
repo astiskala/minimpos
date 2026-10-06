@@ -25,7 +25,7 @@ class TerminalSetupTest {
         saved: Set<Secret> = emptySet(),
         device: DeviceInfo = phone,
         settings: AppSettings = AppSettings(),
-    ) = TerminalSetup.resolve(settings.copy(terminal = terminal), saved, device)
+    ) = TerminalSetup.resolve(settings.copy(terminal = terminal), saved, device, verified = true, pendingImport = false)
 
     @Test
     fun `environment selection is required only for network and cloud destinations on phones and tablets`() {

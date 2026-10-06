@@ -102,20 +102,15 @@ class OnboardingUiTest {
             },
         ).isEmpty()
         compose.onNodeWithTag("back").performClick()
-        waitFor("onboardingImport")
-        compose.onNodeWithTag("onboardingSimulator").assertIsDisplayed()
-        compose.onNodeWithTag("onboardingTerminal").performClick()
-        waitFor("scanSetup")
-        compose.onNodeWithTag("back").performClick()
-        waitFor("onboardingSimulator")
-        compose.onNodeWithTag("onboardingSimulator").performClick()
         waitFor("settings")
+        compose.onNodeWithTag("onboardingImport").assertDoesNotExist()
+        compose.onNodeWithTag("onboardingSimulator").assertDoesNotExist()
         assertThat(
             await {
                 env.container.catalog.products
                     .first()
             },
-        ).hasSize(4)
+        ).isEmpty()
     }
 
     @Test
@@ -140,11 +135,9 @@ class OnboardingUiTest {
             },
         ).isEmpty()
         compose.onNodeWithTag("back").performClick()
-        waitFor("onboardingTerminal")
-        compose.onNodeWithTag("onboardingImport").performClick()
-        compose.waitUntilAtLeastOneExists(hasText("Set up from another device"), 15_000)
-        waitFor("back")
-        compose.onNodeWithTag("back").performClick()
-        waitFor("onboardingSimulator")
+        waitFor("settings")
+        compose.onNodeWithTag("onboardingTerminal").assertDoesNotExist()
+        compose.onNodeWithTag("onboardingImport").assertDoesNotExist()
+        compose.onNodeWithTag("onboardingSimulator").assertDoesNotExist()
     }
 }

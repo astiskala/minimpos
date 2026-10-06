@@ -130,7 +130,8 @@ class SettingsViewModelTest {
                     return null
                 }
             }
-        val api = AdyenApi(TerminalSetupSource(container.settings, container.secrets, container.device), modifications)
+        val api =
+            AdyenApi(TerminalSetupSource(container.settings, container.secrets, container.device), modifications, verifyAccess = { null })
         val vm = settingsViewModel(api = api)
         vm.saveAndTest(Secret.ADYEN_API_KEY)
         await { entered.await() }

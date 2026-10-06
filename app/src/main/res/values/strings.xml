@@ -377,9 +377,8 @@
   <string name="transfer_replace_confirm">All products, categories and tax rates on this device will be deleted and replaced.</string>
   <string name="transfer_scan_again">Scan again</string>
   <string name="transfer_done">Import complete</string>
-  <string name="transfer_continue_setup">Continue setup</string>
   <string name="transfer_review_setup">Review setup</string>
-  <string name="transfer_automatic_note">Continue setup finds a physical terminal using the imported API key and Management permissions. Review the details and enter anything missing, then test the connection and API key.</string>
+  <string name="transfer_automatic_note">Automatic lookup resolves terminal details before verification. Unresolved required fields reject the import; use complete codes from the Manual helper.</string>
   <string name="transfer_added">Products added</string>
   <string name="transfer_updated">Products updated</string>
   <string name="transfer_new_categories">New categories</string>
@@ -394,9 +393,9 @@
   <string name="transfer_part_secrets_none">None set on this device</string>
   <string name="transfer_show_codes">Show QR codes</string>
   <string name="transfer_code_title">Transfer code</string>
-  <string name="transfer_code_hint">Type this code on the other device to import the passwords and keys. It is only shown here.</string>
-  <string name="transfer_code_import_hint">Shown on the other device or on the setup helper page. Leave it empty to import without the passwords and keys.</string>
-  <string name="transfer_code_wrong">That transfer code is wrong. Check it on the other device or the setup helper page, or leave it empty.</string>
+  <string name="transfer_code_hint">Every transfer needs this code on the other device. Keep it separate from the QR codes.</string>
+  <string name="transfer_code_import_hint">Enter the 12-character code shown on the other device or setup helper. Dashes are automatic.</string>
+  <string name="transfer_code_wrong">That transfer code is wrong or the transfer changed. Check the source code or scan again. Nothing was imported.</string>
   <string name="transfer_included">Included</string>
   <string name="transfer_not_included">Not included</string>
   <string name="transfer_secrets_sealed">Included, with a transfer code</string>
@@ -410,8 +409,6 @@
   <string name="transfer_connection_note">From the setup helper: where payments go and the connection details it holds replace this device’s. Other settings stay as they are.</string>
   <string name="transfer_import_action">Import</string>
   <string name="transfer_imported">Imported</string>
-  <string name="transfer_skipped">Skipped (no transfer code)</string>
-  <string name="transfer_secrets_failed">Passwords and keys could not be stored on this device: %1$s</string>
 
   <!-- Scanner -->
   <string name="scan_hint_qr">Point the camera at the QR code</string>
@@ -718,7 +715,7 @@
   <string name="settings_business_import_hint">Choose an Adyen store and review its receipt name, address and phone. Requires Management API—Stores read access on your Adyen API key.</string>
   <string name="settings_business_choose">Choose a store</string>
   <string name="settings_business_review">Review business details</string>
-  <string name="settings_business_review_hint">Import replaces only the supplied business name, address and phone. Blank fields keep your text. Tax ID, title and footer stay unchanged.</string>
+  <string name="settings_business_review_hint">Import fills only blank business name, address and phone fields. Existing text is never replaced. Tax ID, title and footer stay unchanged.</string>
   <string name="settings_business_none">No stores were found for this merchant account.</string>
   <string name="settings_business_unavailable">This store has no business details to import.</string>
   <string name="settings_business_name">Business name</string>
@@ -884,4 +881,21 @@
   <string name="refund_review_confirm">I verified the payment and setup</string>
   <string name="pricing_change_title">Confirm pricing change</string>
   <string name="pricing_change_message">%1$s → %2$s. Keep displayed unit prices, rounding half up to the new currency’s precision. The first converted prices are shown below. Switching tax-inclusive or tax-exclusive pricing changes how tax is added to those prices. Existing stored sales are unchanged.</string>
+  <string name="setup_not_verified">Test API access and the connection before taking payments.</string>
+  <string name="setup_transfer_pending">Setup import needs to finish saving. Retry to resume.</string>
+  <string name="setup_terminal_access">This API key cannot access this terminal. Check that it belongs to the terminal’s Company account and has access to this terminal.</string>
+  <string name="setup_merchant_mismatch">The merchant account does not match this terminal’s current assignment. Correct the account or boarding before continuing.</string>
+  <string name="setup_management_permission">This API key needs Management API — Terminal actions read for every real setup.</string>
+  <string name="setup_management_authentication">Adyen did not accept this API key in the selected environment. Replace the key and retry.</string>
+  <string name="setup_management_unavailable">Adyen setup access could not be verified. Check the connection and retry.</string>
+  <string name="setup_store_access">The assigned store could not be read. Check store access; another store will not be used.</string>
+  <string name="setup_changed">Settings changed during verification. Retry with the current setup.</string>
+  <string name="transfer_verify">Verify and import</string>
+  <string name="transfer_verifying">Checking credentials and connection…</string>
+  <string name="transfer_board_first">Set up Tap to Pay to verify this import. Nothing else is saved until verification succeeds.</string>
+  <string name="transfer_business_failed">Business details could not be imported. Retry or enter them in Settings › Receipts.</string>
+  <string name="transfer_missing_fields">Setup is incomplete. Add the missing details in the Manual setup helper and scan the new codes.</string>
+  <string name="transfer_tap_checked">Payments app registration and setup checked. The app does not support a diagnostic shared-key test.</string>
+  <string name="transfer_skip_business">Skip business details</string>
+  <string name="settings_payments_app_setup_checked">Setup fields checked. The Payments app cannot diagnostically test the shared key.</string>
 </resources>

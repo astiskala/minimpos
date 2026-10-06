@@ -33,6 +33,9 @@ sealed interface DestinationRules {
     /** Whether Management terminal discovery can propose connection fields for this destination. */
     val discoversTerminals: Boolean get() = false
 
+    /** Whether this destination needs explicit phone registration before connection verification. */
+    val boardsPhone: Boolean get() = false
+
     /** Whether the merchant must choose TEST or LIVE instead of reading it from this device or the Payments app. */
     fun selectsEnvironment(onTerminal: Boolean): Boolean = false
 
@@ -125,7 +128,7 @@ internal fun sharedKeyProblem(
     when {
         terminal.keyIdentifier.isBlank() -> SetupProblem.KEY_IDENTIFIER
         Secret.TERMINAL_PASSPHRASE !in saved -> SetupProblem.PASSPHRASE
-        terminal.keyVersion < 1 -> SetupProblem.KEY_VERSION
+        terminal.keyVersion !in TerminalSettings.KEY_VERSIONS -> SetupProblem.KEY_VERSION
         else -> null
     }
 

@@ -56,6 +56,8 @@ data class ApiTarget(
     /** Actual account/environment; fixed fake targets may omit it. */
     val context: PaymentContext? = null,
 ) {
+    internal val realAndReady: Boolean get() = setup == ApiSetup.Complete
+
     /** Capture/adjustment access for [expected]; missing stored context is blocked unless this is a context-free fake. */
     fun modifications(expected: PaymentContext?): ApiAccess<PaymentModifications> = access(modifications, expected)
 
@@ -142,6 +144,8 @@ sealed interface ApiCheck {
  * @param connect Makes the client for real credentials; tests replace it.
  * @param connectLinks Makes the payment link client for real credentials; tests replace it.
  * @param simulatedLinks Answers offline demo links; their final outcomes remain in stored sales.
+ * @param verifyAccess Checks the required Management role and current terminal assignment before Checkout verification.
+ * @param readEnvironment Refreshes the device certificate before checking saved credentials, without cross-environment probes.
  */
 class AdyenApi(
     private val setups: TerminalSetupSource,
@@ -149,6 +153,8 @@ class AdyenApi(
     private val connect: (CheckoutCredentials) -> PaymentModifications = { CheckoutModifications(it) },
     private val connectLinks: (CheckoutCredentials) -> PaymentLinkApi = { CheckoutPaymentLinks(it) },
     private val simulatedLinks: PaymentLinkApi = SimulatedPaymentLinks(),
+    private val verifyAccess: suspend (UnlockedSetup) -> SetupProblem?,
+    private val readEnvironment: suspend () -> Unit = {},
 ) {
     private val clients = Reused<CheckoutCredentials, PaymentModifications>()
     private val linkClients = Reused<CheckoutCredentials, PaymentLinkApi>()
@@ -178,8 +184,21 @@ class AdyenApi(
 
     /** Checks that the API can be used with the stored settings, without changing anything. */
     suspend fun verify(): ApiCheck {
-        val target = target()
-        return when (val access = target.modifications(target.context)) {
+        readEnvironment()
+        return verify(setups.unlocked(forValidation = true))
+    }
+
+    internal suspend fun verify(unlocked: UnlockedSetup): ApiCheck {
+        val setup = unlocked.setup
+        if (setup.apiSetup == ApiSetup.Simulated) return simulated.verify()?.let(ApiCheck::Failed) ?: ApiCheck.Works
+        val problem = setup.apiSetup.problem ?: verifyAccess(unlocked)
+        return if (problem != null) ApiCheck.NotSetUp(problem) else verifyCheckout(unlocked)
+    }
+
+    private suspend fun verifyCheckout(unlocked: UnlockedSetup): ApiCheck {
+        val setup = unlocked.setup
+        val target = connected(setup.settings.terminal, checkNotNull(setup.environment), checkNotNull(unlocked.apiKey))
+        return when (val access = target.modifications(null)) {
             is ApiAccess.Ready -> access.client.verify()?.let(ApiCheck::Failed) ?: ApiCheck.Works
             is ApiAccess.Blocked -> ApiCheck.NotSetUp(access.problem)
         }

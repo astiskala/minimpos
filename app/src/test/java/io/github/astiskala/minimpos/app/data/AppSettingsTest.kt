@@ -175,8 +175,8 @@ class AppSettingsTest {
         assertThat(shared.poiIdOverride).isEmpty()
         assertThat(shared.cloudRegion).isNull()
         assertThat(shared.paymentsAppInstallationId).isEmpty()
-        // The store is shared by the merchant account's devices.
-        assertThat(shared.storeId).isEqualTo("ST1")
+        // The store follows the receiving device's assignment, not the sending device's store.
+        assertThat(shared.storeId).isEmpty()
         assertThat(shared.withDeviceFieldsOf(receiver))
             .isEqualTo(
                 sender.copy(
@@ -186,6 +186,7 @@ class AppSettingsTest {
                     host = "10.0.0.2",
                     poiIdOverride = "",
                     paymentsAppInstallationId = "",
+                    storeId = "",
                 ),
             )
     }

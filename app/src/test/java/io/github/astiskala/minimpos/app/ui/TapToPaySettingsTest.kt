@@ -43,6 +43,9 @@ class TapToPaySettingsTest {
     private val paymentsApp = FakePaymentsApp()
     private val details =
         object : TerminalDetailsApi {
+            override suspend fun credential(environment: TerminalEnvironment) =
+                io.github.astiskala.minimpos.terminal.transport.CredentialLookup.Allowed
+
             override suspend fun terminals(environment: TerminalEnvironment): TerminalListing = error("No terminal listing")
 
             override suspend fun sharedKey(

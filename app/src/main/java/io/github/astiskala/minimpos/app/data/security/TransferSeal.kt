@@ -16,7 +16,8 @@ import javax.crypto.spec.SecretKeySpec
  *
  * A code is [CODE_LENGTH] characters from an alphabet without look-alikes (no 0, O, 1, I or L), about 59 bits, shown in
  * groups of four. The key is PBKDF2-HMAC-SHA256 of the code with a random salt, and the secrets are encrypted with
- * AES-256-GCM. Sealed format: `version(1) | iterations(4) | salt(16) | iv(12) | ciphertext and tag`.
+ * AES-256-GCM with the canonical public transfer sections as authenticated data. Sealed format version 2:
+ * `version(1) | iterations(4) | salt(16) | iv(12) | ciphertext and tag`.
  *
  * Key derivation is deliberately slow: call [seal] and [open] off the main thread.
  *
@@ -41,12 +42,14 @@ class TransferSeal(
     fun seal(
         plaintext: ByteArray,
         code: String,
+        publicData: ByteArray = byteArrayOf(),
     ): ByteArray {
         require(isValidCode(code)) { "Invalid transfer code" }
         val salt = ByteArray(SALT_BYTES).also(random::nextBytes)
         val iv = ByteArray(IV_BYTES).also(random::nextBytes)
         val cipher = Cipher.getInstance(TRANSFORMATION)
         cipher.init(Cipher.ENCRYPT_MODE, key(normalize(code), salt, iterations), GCMParameterSpec(TAG_BITS, iv))
+        cipher.updateAAD(publicData)
         val ciphertext = cipher.doFinal(plaintext)
         return ByteBuffer
             .allocate(HEADER_BYTES + ciphertext.size)
@@ -62,6 +65,7 @@ class TransferSeal(
     fun open(
         sealed: ByteArray,
         code: String,
+        publicData: ByteArray = byteArrayOf(),
     ): ByteArray? {
         if (!isValidCode(code) || sealed.size < HEADER_BYTES || sealed[0] != VERSION) return null
         val buffer = ByteBuffer.wrap(sealed)
@@ -73,6 +77,7 @@ class TransferSeal(
         return try {
             val cipher = Cipher.getInstance(TRANSFORMATION)
             cipher.init(Cipher.DECRYPT_MODE, key(normalize(code), salt, rounds), GCMParameterSpec(TAG_BITS, iv))
+            cipher.updateAAD(publicData)
             cipher.doFinal(sealed, HEADER_BYTES, sealed.size - HEADER_BYTES)
         } catch (ignored: GeneralSecurityException) {
             null
@@ -100,7 +105,7 @@ class TransferSeal(
         /** Codes use digits and upper-case letters that cannot be mistaken for one another. */
         const val ALPHABET = "23456789ABCDEFGHJKMNPQRSTUVWXYZ"
         private const val GROUP = 4
-        private const val VERSION: Byte = 1
+        private const val VERSION: Byte = 2
         private const val DEFAULT_ITERATIONS = 150_000
 
         /** Sealed data asking for more is rejected, so a crafted code cannot keep the terminal busy for long. */
@@ -114,7 +119,18 @@ class TransferSeal(
         private const val TRANSFORMATION = "AES/GCM/NoPadding"
 
         /** [code] as typed, in upper case without spaces, hyphens or other separators. */
-        fun normalize(code: String): String = code.uppercase().filter { it.isLetterOrDigit() }
+        fun normalize(code: String): String =
+            code
+                .map {
+                    if (it in
+                        'a'..'z'
+                    ) {
+                        it.uppercaseChar()
+                    } else {
+                        it
+                    }
+                }.filterNot { it == '-' || it.isWhitespace() }
+                .joinToString("")
 
         /** Whether [code], once [normalize]d, has [CODE_LENGTH] characters of [ALPHABET]. */
         fun isValidCode(code: String): Boolean = normalize(code).let { it.length == CODE_LENGTH && it.all(ALPHABET::contains) }

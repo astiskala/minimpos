@@ -1,5 +1,7 @@
 package io.github.astiskala.minimpos.app.data.transfer
 
+import android.database.sqlite.SQLiteException
+import io.github.astiskala.minimpos.app.data.db.SetupProblem
 import io.github.astiskala.minimpos.app.data.repo.CatalogRepository
 import io.github.astiskala.minimpos.app.data.repo.ImportMode
 import io.github.astiskala.minimpos.app.data.repo.ImportSummary
@@ -21,6 +23,8 @@ import io.github.astiskala.minimpos.terminal.transport.TerminalEnvironment
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.SerializationException
@@ -28,6 +32,8 @@ import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.serializer
+import java.io.IOException
+import java.util.UUID
 
 /**
  * What an export includes.
@@ -46,14 +52,14 @@ data class TransferContents(
  * An export, ready to be shown as QR codes.
  *
  * @property payload The encoded transfer, to split into QR codes.
- * @property code The transfer code the other terminal needs for the secrets; null when there are none.
+ * @property code Required 12-character code, shown as three groups of four; authenticates every transferred section.
  * @property catalogue The exported catalogue, for its counts; null when not included.
  * @property settings Whether the settings are included.
  * @property secrets The secrets included.
  */
 data class TransferExport(
     val payload: String,
-    val code: String?,
+    val code: String,
     val catalogue: Catalogue?,
     val settings: Boolean,
     val secrets: Set<Secret>,
@@ -108,10 +114,10 @@ class ReceivedTransfer internal constructor(
             ?.takeIf { it.isNotBlank() } ?: localCurrency
 
     /**
-     * Whether [code] can be tried on the secrets: always without secrets or with no code typed (the secrets are then
-     * skipped), else only when it has the form of a transfer code ([TransferSeal.isValidCode]).
+     * Whether [code] has the required 12-character transfer-code format ([TransferSeal.isValidCode]) and this
+     * transfer contains code protection. Authentication still happens before any persisted writes.
      */
-    fun accepts(code: String): Boolean = !hasSecrets || code.isBlank() || TransferSeal.isValidCode(code)
+    fun accepts(code: String): Boolean = hasSecrets && TransferSeal.isValidCode(code)
 }
 
 /** What [SetupTransfer.import] did. */
@@ -119,17 +125,58 @@ sealed interface ImportOutcome {
     /**
      * Everything was imported.
      *
-     * @property result What was imported.
-     * @property secretsSkipped Whether secrets were transferred but not imported, because no code was typed.
+     * @property result What was durably imported after code authentication and any required setup checks.
      */
     data class Imported(
         val result: TransferResult,
-        val secretsSkipped: Boolean,
     ) : ImportOutcome
 
     /** The transfer code did not open the secrets, so nothing was written. */
     data object WrongCode : ImportOutcome
+
+    /** Nothing was imported because the preview no longer matches the saved configuration.
+     * @property problem Typed reason to retry verification.
+     */
+    data class Rejected(
+        val problem: SetupProblem,
+    ) : ImportOutcome
+
+    /** Saving failed; an encrypted journal, when already written, remains available for recovery.
+     * @property reason Non-secret storage failure explanation.
+     * @property pending Whether an encrypted verified journal was written and must be resumed before a new import.
+     */
+    data class StorageFailed(
+        val reason: String,
+        val pending: Boolean = false,
+    ) : ImportOutcome
 }
+
+internal class PreparedTransfer(
+    val received: ReceivedTransfer,
+    val original: AppSettings,
+    val originalSecrets: Map<Secret, String?>,
+    var settings: AppSettings,
+    val secrets: MutableMap<Secret, String>,
+    val importedSecrets: MutableMap<Secret, String>,
+) {
+    var businessWarning = false
+    var paymentsAppChecked = false
+    val changesSetup: Boolean get() =
+        received.hasConnection || settings.terminal != original.terminal ||
+            importedSecrets.keys.any { it in setOf(Secret.ADYEN_API_KEY, Secret.TERMINAL_PASSPHRASE, Secret.PAYMENTS_APP_API_KEY) }
+}
+
+@Serializable
+private class PendingSetupImport(
+    val id: String,
+    val payload: String,
+    val mode: ImportMode,
+    val settings: AppSettings,
+    val secrets: Map<Secret, String>,
+    val changesSetup: Boolean,
+    val businessWarning: Boolean,
+    val paymentsAppChecked: Boolean,
+)
 
 /**
  * What an import changed.
@@ -137,17 +184,17 @@ sealed interface ImportOutcome {
  * @property catalogue What the catalogue import added and updated; null when no catalogue was imported.
  * @property settings Whether the settings were applied.
  * @property secrets The secrets stored.
- * @property secretsError Why secrets could not be stored on this device; null when they were (or there were none).
- * @property connection Whether a connection was applied.
- * @property automaticSetup Whether to continue optional lookup next, only for a supported Automatic setup whose API key was stored.
+ * @property connection Whether a verified connection was applied.
+ * @property businessWarning Whether optional receipt-business lookup failed; existing text remains unchanged.
+ * @property paymentsAppChecked Whether phone registration and supported setup checks passed, without a diagnostic key test.
  */
 data class TransferResult(
     val catalogue: ImportSummary?,
     val settings: Boolean,
     val secrets: Set<Secret>,
-    val secretsError: String? = null,
     val connection: Boolean = false,
-    val automaticSetup: Boolean = false,
+    val businessWarning: Boolean = false,
+    val paymentsAppChecked: Boolean = false,
 )
 
 /**
@@ -176,6 +223,42 @@ class SetupTransfer(
     private val cpu: CoroutineDispatcher = Dispatchers.Default,
     private val onTerminal: Boolean = false,
 ) {
+    private val importing = Mutex()
+
+    internal val pending = secrets.pendingImport
+
+    internal suspend fun prepare(
+        received: ReceivedTransfer,
+        code: String,
+    ): PreparedTransfer? {
+        if (!received.accepts(code)) return null
+        val incoming = unlock(received, code) ?: return null
+        val current = settings.current()
+        val existing = secrets.configured.first().associateWith { secrets.get(it) }
+        var candidate = received.settings?.let { current.takingOver(it.settings, current.payment.defaultTaxRateId) } ?: current
+        received.connection?.let { connection ->
+            candidate =
+                candidate.copy(
+                    terminal = connection.appliedTo(candidate.terminal, onTerminal),
+                    email = connection.emailAppliedTo(candidate.email),
+                )
+        }
+        return PreparedTransfer(
+            received,
+            current,
+            existing,
+            candidate,
+            (
+                existing.filterValues { it != null }.mapValues { checkNotNull(it.value) } +
+                    incoming
+            ).toMutableMap(),
+            incoming.toMutableMap(),
+        )
+    }
+
+    internal suspend fun unchanged(prepared: PreparedTransfer): Boolean =
+        settings.current() == prepared.original && secrets.configured.first().associateWith { secrets.get(it) } == prepared.originalSecrets
+
     /** The secrets set on this terminal, which an export can include. */
     suspend fun configuredSecrets(): Set<Secret> = secrets.configured.first()
 
@@ -191,18 +274,18 @@ class SetupTransfer(
         val catalogue = if (contents.catalogue) catalog.export(currencyCode) else null
         val settingsText = if (contents.settings) snapshot(settings.current()) else null
         val values = if (contents.secrets) configuredSecrets().associateWith { secrets.get(it) }.filterValues { it != null } else emptyMap()
-        val code = if (values.isEmpty()) null else seal.newCode()
-        val sealed =
-            code?.let {
-                val plaintext =
-                    TransferJson.encodeToString(
-                        SECRETS,
-                        values.entries.associate { (key, value) ->
-                            key.name to value.orEmpty()
-                        },
-                    )
-                withContext(cpu) { SealedSecrets(seal.seal(plaintext.toByteArray(), it)) }
+        require(catalogue != null || settingsText != null || values.isNotEmpty()) { "Nothing to transfer" }
+        val code = seal.newCode()
+        val plaintext = TransferJson.encodeToString(SECRETS, values.entries.associate { (key, value) -> key.name to value.orEmpty() })
+        val publicData =
+            if (catalogue == null &&
+                settingsText == null
+            ) {
+                byteArrayOf()
+            } else {
+                TransferCodec.authenticationData(Transfer(catalogue, settingsText))
             }
+        val sealed = withContext(cpu) { SealedSecrets(seal.seal(plaintext.toByteArray(), code, publicData)) }
         val payload = TransferCodec.encode(Transfer(catalogue, settingsText, sealed))
         return TransferExport(payload, code, catalogue, settingsText != null, values.keys)
     }
@@ -240,7 +323,8 @@ class SetupTransfer(
         code: String,
     ): Map<Secret, String>? {
         val sealed = received.transfer.sealedSecrets ?: return null
-        val plaintext = withContext(cpu) { seal.open(sealed.toByteArray(), code) } ?: return null
+        val plaintext =
+            withContext(cpu) { seal.open(sealed.toByteArray(), code, TransferCodec.authenticationData(received.transfer)) } ?: return null
         val values =
             try {
                 TransferJson.decodeFromString(SECRETS, plaintext.decodeToString())
@@ -256,56 +340,98 @@ class SetupTransfer(
     }
 
     /**
-     * Imports [received]: its catalogue with [mode], then its settings and its connection, then its secrets when a
-     * transfer [code] was typed. A code that does not open the secrets ([ReceivedTransfer.accepts], then [unlock]) is
-     * [ImportOutcome.WrongCode] before anything is written; without a code the secrets are skipped. The catalogue
-     * import is one transaction; a secret this device cannot store is reported, not thrown.
+     * Imports [received] with [mode] after authenticating every section with the required transfer [code]. A missing
+     * or incorrect code ([ReceivedTransfer.accepts], then [unlock]) returns [ImportOutcome.WrongCode] before any writes.
+     * The encrypted journal resumes interrupted saves, and the catalogue receipt prevents replaying its transaction.
+     * Production callers use verified setup orchestration; storage failures are reported rather than thrown.
      */
-    suspend fun import(
+    internal suspend fun import(
         received: ReceivedTransfer,
         mode: ImportMode,
         code: String = "",
     ): ImportOutcome {
-        val withSecrets = received.hasSecrets && code.isNotBlank()
-        if (!received.accepts(code)) return ImportOutcome.WrongCode
-        val unlocked = (if (withSecrets) unlock(received, code) else emptyMap()) ?: return ImportOutcome.WrongCode
-        val summary = received.catalogue?.let { catalog.import(it, mode) }
-        received.settings?.let { apply(it) }
-        received.connection?.let { connection ->
-            settings.update {
-                it.copy(terminal = connection.appliedTo(it.terminal, onTerminal), email = connection.emailAppliedTo(it.email))
+        val prepared = prepare(received, code) ?: return ImportOutcome.WrongCode
+        return commit(prepared, mode)
+    }
+
+    internal suspend fun commit(
+        prepared: PreparedTransfer,
+        mode: ImportMode,
+        verified: suspend () -> Boolean = { true },
+    ): ImportOutcome =
+        importing.withLock {
+            if (pending.first()) return@withLock ImportOutcome.Rejected(SetupProblem.TRANSFER_PENDING)
+            if (!unchanged(prepared)) return@withLock ImportOutcome.Rejected(SetupProblem.SETUP_CHANGED)
+            saving {
+                val journal =
+                    PendingSetupImport(
+                        UUID.randomUUID().toString(),
+                        TransferCodec.encode(prepared.received.transfer),
+                        mode,
+                        prepared.settings,
+                        prepared.importedSecrets.toMap(),
+                        prepared.changesSetup,
+                        prepared.businessWarning,
+                        prepared.paymentsAppChecked,
+                    )
+                secrets.writeImport(TransferJson.encodeToString(serializer<PendingSetupImport>(), journal))
+                resume(journal, verified)
             }
         }
-        val stored = mutableSetOf<Secret>()
-        val error =
-            try {
-                unlocked.forEach { (secret, value) ->
-                    secrets.set(secret, value)
-                    stored += secret
-                }
-                null
-            } catch (e: SecretStoreException) {
-                e.message ?: "Secrets could not be stored"
+
+    internal suspend fun recover(verified: suspend () -> Boolean = { true }): ImportOutcome? =
+        importing.withLock {
+            if (!pending.first()) return@withLock null
+            saving {
+                val journal = secrets.readImport() ?: return@saving ImportOutcome.Rejected(SetupProblem.TRANSFER_PENDING)
+                resume(TransferJson.decodeFromString(serializer<PendingSetupImport>(), journal), verified)
             }
+        }
+
+    private suspend fun resume(
+        journal: PendingSetupImport,
+        verified: suspend () -> Boolean,
+    ): ImportOutcome {
+        val received = receive(TransferCodec.decode(journal.payload))
+        val summary = received.catalogue?.let { catalog.import(it, journal.mode, journal.id) }
+        secrets.setAll(journal.secrets)
+        if (received.settings != null) apply(received.settings, journal.settings) else settings.update { journal.settings }
+        if (journal.changesSetup && !verified()) return ImportOutcome.Rejected(SetupProblem.SETUP_CHANGED)
+        secrets.writeImport(null)
         return ImportOutcome.Imported(
             TransferResult(
                 summary,
                 received.hasSettings,
-                stored,
-                error,
-                received.hasConnection,
-                received.connection?.requestsAutomaticSetup(onTerminal) == true && Secret.ADYEN_API_KEY in stored,
+                journal.secrets.keys,
+                connection = received.hasConnection,
+                businessWarning = journal.businessWarning,
+                paymentsAppChecked = journal.paymentsAppChecked,
             ),
-            received.hasSecrets && !withSecrets,
         )
     }
+
+    private suspend fun saving(write: suspend () -> ImportOutcome): ImportOutcome =
+        try {
+            write()
+        } catch (e: SecretStoreException) {
+            ImportOutcome.StorageFailed(e.message.orEmpty(), pending.first())
+        } catch (e: IOException) {
+            ImportOutcome.StorageFailed(e.message.orEmpty(), pending.first())
+        } catch (e: SQLiteException) {
+            ImportOutcome.StorageFailed(e.message.orEmpty(), pending.first())
+        } catch (ignored: SerializationException) {
+            ImportOutcome.Rejected(SetupProblem.TRANSFER_PENDING)
+        }
 
     private suspend fun snapshot(current: AppSettings): String {
         val default = catalog.taxRates.first().firstOrNull { it.id == current.payment.defaultTaxRateId }
         return TransferredSettings(current.shared(), default?.let { TaxRateRef(it.name, it.rateMilliPercent) }).encode()
     }
 
-    private suspend fun apply(transferred: TransferredSettings) {
+    private suspend fun apply(
+        transferred: TransferredSettings,
+        candidate: AppSettings,
+    ) {
         val rate =
             transferred.defaultTaxRate?.let { wanted ->
                 catalog.taxRates.first().firstOrNull {
@@ -314,7 +440,7 @@ class SetupTransfer(
                 }
             }
         // The repository brings every number within its limits.
-        settings.update { it.takingOver(transferred.settings, rate?.id) }
+        settings.update { candidate.copy(payment = candidate.payment.copy(defaultTaxRateId = rate?.id)) }
     }
 
     private companion object {

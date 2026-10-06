@@ -120,18 +120,18 @@
             <legend>3. How do you want to set up?</legend>
             <label class="choice"><input type="radio" name="setupMode" value="automatic" checked> <span><strong>Automatic (recommended)</strong>: look up terminal setup on the device</span></label>
             <label class="choice"><input type="radio" name="setupMode" value="manual"> <span><strong>Manual</strong>: enter all connection details on this computer</span></label>
-            <p class="hint">Both modes need the LIVE URL prefix for LIVE. If automatic lookup is unavailable or incomplete, enter the missing details on the device or use Manual here.</p>
+            <p class="hint">Both modes need the LIVE URL prefix for LIVE. If automatic lookup cannot complete the required fields, use Manual here and generate new codes. Credential or terminal-access errors must be corrected first.</p>
           </fieldset>
 
-          <p class="hint" data-only="tapToPay" hidden>Follow the <a href="getting-started.html#tap-to-pay">Tap to Pay prerequisites</a> and install the Payments app first. Enter the merchant account and separate Payments app API key for registration. Enter the shared key here or later on the phone; Mini mPOS does not look it up. You do not need to copy boarding tokens.</p>
+          <p class="hint" data-only="tapToPay" hidden>Follow the <a href="getting-started.html#tap-to-pay">Tap to Pay prerequisites</a> and install the Payments app first. Enter the merchant account and separate Payments app API key for registration. Enter the shared key here; Mini mPOS does not look it up. Registration is an explicit action on the phone before import finishes. You do not need to copy boarding tokens.</p>
 
           <fieldset data-for="thisTerminal network cloud tapToPay" id="api-key-fields">
             <legend>Adyen API key</legend>
             <p class="hint">Create a credential in <a data-ca="developers/api-credentials/" href="https://ca-test.adyen.com/ca/ui/developers/api-credentials/" target="_blank" rel="noopener noreferrer" aria-describedby="customer-area-note">Developers › API credentials</a> and generate its API key.
               <span data-only="cloud" hidden>Add the Cloud Device API role for cloud payments.</span>
               <span data-only="tapToPay" hidden>This key is for Checkout operations, not Payments app registration.</span>
-              Automatic setup needs the lookup roles in the <a href="getting-started.html#connect">setup guide</a>.
-              This helper stays offline; discovery runs on the device after import.</p>
+              Every real setup needs Management API — Terminal actions read on this main credential; see the <a href="getting-started.html#credentials">credential requirements</a>.
+              This helper stays offline; discovery and verification run on the device before import.</p>
             <label for="apiKey">API key</label>
             <input id="apiKey" name="apiKey" type="password" required spellcheck="false">
           </fieldset>
@@ -163,11 +163,11 @@
             <p class="hint">In the Customer Area: <a data-ca="devices/device-settings?categoryId=tapi" href="https://ca-test.adyen.com/ca/ui/devices/device-settings?categoryId=tapi" target="_blank" rel="noopener noreferrer" aria-describedby="customer-area-note">Devices › Device settings › Terminal API</a>,
               under Encryption key (select the pencil icon to see it).</p>
             <label for="keyIdentifier">Key identifier</label>
-            <input id="keyIdentifier" name="keyIdentifier" type="text" required data-required-for="thisTerminal network" spellcheck="false">
+            <input id="keyIdentifier" name="keyIdentifier" type="text" required data-required-for="thisTerminal network tapToPay" spellcheck="false">
             <label for="passphrase">Passphrase</label>
-            <input id="passphrase" name="passphrase" type="password" required data-required-for="thisTerminal network" spellcheck="false">
+            <input id="passphrase" name="passphrase" type="password" required data-required-for="thisTerminal network tapToPay" spellcheck="false">
             <label for="keyVersion">Version</label>
-            <input id="keyVersion" name="keyVersion" type="number" min="1" max="9999" value="1" required data-required-for="thisTerminal network">
+            <input id="keyVersion" name="keyVersion" type="number" min="1" max="9999" value="1" required data-required-for="thisTerminal network tapToPay">
           </fieldset>
 
           <fieldset data-for="thisTerminal network cloud tapToPay" data-env="live">
@@ -229,15 +229,11 @@
               under Quick setup, or the QR scan icon at the top right. You do not need to choose a destination or
               environment first.</li>
             <li>Point its camera at the codes below. With more than one, they change by themselves.</li>
-            <li>Review the destination and environment, especially LIVE. Type the <strong>transfer code</strong>
-              and tap <strong>Import</strong>. Only what you filled in here
-              changes on the device.</li>
-            <li>Tap <strong>Continue setup</strong> for Automatic: the device finds this terminal or offers a list to choose from.
-              Review the details and enter anything missing. For Manual, tap <strong>Review setup</strong>.
-              Test <strong>Adyen API</strong> under <strong>Settings › Terminal</strong>, then follow the revealed steps.
-              Saved details start collapsed; tap a step to review or edit them.
-              With Tap to Pay, tap <strong>Set up Tap to Pay</strong> to register the phone, then enter any missing shared-key fields and test the connection.
-              Registration does not retrieve the shared key.</li>
+            <li>Review the destination and environment, especially LIVE. Enter the required <strong>transfer code</strong>
+              and tap <strong>Verify and import</strong>. Dashes are inserted automatically.</li>
+            <li>Follow the <a href="getting-started.html#helper">verified import steps</a>. Automatic lookup completes
+              details where possible; unresolved required fields reject the import unchanged. Tap to Pay asks for
+              explicit registration. Obtained settings remain visible after successful import.</li>
           </ol>
           <p>If you included SMTP settings, review <strong>Settings › Email</strong> and send a test email.
             Email collection and automatic delivery are configured separately; see <a href="using.html#email">email setup</a>.</p>

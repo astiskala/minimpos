@@ -56,6 +56,12 @@ sealed interface ManagementResult {
 
 /** Adyen's Management API for Payments app instances, which needs an API key with the Adyen Payments app role. */
 interface PaymentsAppManagement {
+    /** Verifies that [installationId] is currently boarded for [target], without changing registration. */
+    suspend fun registration(
+        target: BoardingTarget,
+        installationId: String,
+    ): ManagementResult = ManagementResult.Failed("Payments app registration could not be verified")
+
     /** Asks for a boarding token for the instance that sent [boardingRequestToken], to board it at [target]. */
     suspend fun boardingToken(
         target: BoardingTarget,
@@ -87,6 +93,63 @@ class AdyenPaymentsAppManagement(
     dispatcher: CoroutineDispatcher = Dispatchers.IO,
 ) : PaymentsAppManagement {
     private val http = AdyenHttp(apiKey, baseClient, dispatcher)
+
+    override suspend fun registration(
+        target: BoardingTarget,
+        installationId: String,
+    ): ManagementResult {
+        val path = listOf("merchants", target.merchantAccount) + target.storeId?.let { listOf("stores", it) }.orEmpty() + "paymentsApps"
+        var page = 0
+        var found: ManagementResult? = null
+        while (page < MAX_PAGES && found == null) {
+            val url =
+                baseUrl
+                    .newBuilder()
+                    .apply { path.forEach { addPathSegment(it) } }
+                    .addQueryParameter("limit", PAGE_SIZE.toString())
+                    .addQueryParameter("offset", (page++ * PAGE_SIZE).toString())
+                    .addQueryParameter("statuses", "BOARDED")
+                    .build()
+            found =
+                when (val reply = http.get(url, TIMEOUT)) {
+                    is AdyenReply.Failed -> ManagementResult.Failed(reply.message)
+                    is AdyenReply.Answered -> if (reply.ok) registrationPage(reply.body, target, installationId) else result(reply)
+                }
+        }
+        return found ?: ManagementResult.Failed("The Payments app list is too large to verify")
+    }
+
+    private fun registrationPage(
+        body: String,
+        target: BoardingTarget,
+        installationId: String,
+    ): ManagementResult? {
+        val apps =
+            runCatching {
+                JsonParser.parseString(body).asJsonObject.getAsJsonArray("paymentsApps").map {
+                    val app = it.asJsonObject
+                    Triple(app.get("installationId")?.asString, app.get("merchantAccountCode")?.asString, app.get("status")?.asString)
+                }
+            }.getOrNull()
+        return when {
+            apps == null -> {
+                ManagementResult.Failed("Adyen sent an unreadable Payments app list")
+            }
+
+            apps.any { it.first == installationId && it.second == target.merchantAccount && it.third == "BOARDED" } -> {
+                ManagementResult
+                    .Done()
+            }
+
+            apps.size < PAGE_SIZE -> {
+                ManagementResult.Failed("The Payments app is not boarded for this merchant account or store")
+            }
+
+            else -> {
+                null
+            }
+        }
+    }
 
     override suspend fun boardingToken(
         target: BoardingTarget,
@@ -131,6 +194,8 @@ class AdyenPaymentsAppManagement(
     /** The Management API's endpoints. */
     companion object {
         private val TIMEOUT = 30.seconds
+        private const val PAGE_SIZE = 100
+        private const val MAX_PAGES = 100
 
         /** The Management API's base URL for [environment], with its version and without a trailing slash. */
         fun endpoint(environment: TerminalEnvironment): String =

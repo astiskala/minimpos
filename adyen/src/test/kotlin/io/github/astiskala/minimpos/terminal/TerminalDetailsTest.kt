@@ -2,6 +2,8 @@ package io.github.astiskala.minimpos.terminal
 
 import com.google.common.truth.Truth.assertThat
 import io.github.astiskala.minimpos.terminal.transport.AdyenTerminalDetails
+import io.github.astiskala.minimpos.terminal.transport.CredentialLookup
+import io.github.astiskala.minimpos.terminal.transport.ManagementFailure
 import io.github.astiskala.minimpos.terminal.transport.TerminalEnvironment
 import io.github.astiskala.minimpos.terminal.transport.TerminalListing
 import kotlinx.coroutines.runBlocking
@@ -29,11 +31,29 @@ class TerminalDetailsTest {
     fun tearDown() = server.close()
 
     @Test
+    fun `credential role checks are bounded to one environment and return typed failures`() =
+        runBlocking {
+            reply("""{"roles":["Management API - Terminal actions read"]}""")
+            assertThat(api.credential(TerminalEnvironment.TEST)).isEqualTo(CredentialLookup.Allowed)
+            assertThat(server.takeRequest().url.encodedPath).isEqualTo("/test/v3/me")
+            reply("""{"roles":["Checkout webservice role"]}""")
+            assertThat(api.credential(TerminalEnvironment.TEST)).isEqualTo(CredentialLookup.Failed(ManagementFailure.PERMISSION))
+            listOf(401, 403, 503).forEach { status ->
+                reply("{}", status)
+                assertThat(api.credential(TerminalEnvironment.TEST)).isInstanceOf(CredentialLookup.Failed::class.java)
+            }
+            listOf("{}", "not json").forEach { body ->
+                reply(body)
+                assertThat(api.credential(TerminalEnvironment.TEST)).isEqualTo(CredentialLookup.Failed(ManagementFailure.UNREADABLE))
+            }
+        }
+
+    @Test
     fun `reads assignments and network addresses across pages without following untrusted URLs`() =
         runBlocking {
             reply(
                 """
-                {"data":[{"id":"S1F2-123456789","assignment":{"merchantId":"Merchant", "reassignmentTarget":{"merchantId":"Wrong"}},
+                {"data":[{"id":"S1F2-123456789","assignment":{"merchantId":"Merchant","storeId":"ST1", "reassignmentTarget":{"merchantId":"Wrong","storeId":"ST2"}},
                 "connectivity":{"ethernet":{"ipAddress":"192.168.1.2"},"wifi":{"ipAddress":"192.168.1.3"}}}],
                 "_links":{"next":{"href":"https://untrusted.example/"}}}
                 """.trimIndent(),
@@ -43,6 +63,7 @@ class TerminalDetailsTest {
             assertThat(listed.environment).isEqualTo(TerminalEnvironment.TEST)
             assertThat(listed.terminals.map { it.host }).containsExactly("192.168.1.2", "192.168.1.4").inOrder()
             assertThat(listed.terminals.first().merchantAccount).isEqualTo("Merchant")
+            assertThat(listed.terminals.first().storeId).isEqualTo("ST1")
             val first = server.takeRequest()
             assertThat(first.headers["x-api-key"]).isEqualTo("secret")
             assertThat(first.method).isEqualTo("GET")

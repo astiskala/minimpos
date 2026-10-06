@@ -113,7 +113,8 @@ class TransferViewModelsTest {
     fun `the import scans codes in any order and imports the catalogue, settings and secrets`() {
         await { source.container.secrets.set(Secret.SMTP_PASSWORD, "pw") }
         val (codes, code) = exportCodes()
-        val import = TransferImportViewModel(target.container.setupTransfer, "NZD")
+        val import = TransferImportViewModel(target.container.setupTransfer, "NZD", target.container.setupImport)
+        settled(import) { it is ImportUiState.Scanning }
         import.onCode("hello")
         assertThat((import.state.value as ImportUiState.Scanning).error).isEqualTo(ImportError.NOT_A_TRANSFER)
         codes.reversed().dropLast(1).forEach(import::onCode)
@@ -141,7 +142,6 @@ class TransferViewModelsTest {
         assertThat(done.result.catalogue!!.productsAdded).isEqualTo(2)
         assertThat(done.result.settings).isTrue()
         assertThat(done.result.secrets).containsExactly(Secret.SMTP_PASSWORD)
-        assertThat(done.secretsSkipped).isFalse()
         assertThat(await { target.container.settings.current() }.receipt.businessName).isEqualTo("Cafe")
         assertThat(await { target.container.secrets.get(Secret.SMTP_PASSWORD) }).isEqualTo("pw")
         import.import()
@@ -155,23 +155,41 @@ class TransferViewModelsTest {
     }
 
     @Test
-    fun `without the code the rest is imported, and a catalogue alone warns about its currency`() {
+    fun `without the code nothing imports and catalogue-only transfers still need a code`() {
         await { source.container.secrets.set(Secret.SMTP_PASSWORD, "pw") }
-        val (codes, _) = exportCodes()
-        val import = TransferImportViewModel(target.container.setupTransfer, "NZD")
+        val (codes, code) = exportCodes()
+        val import = TransferImportViewModel(target.container.setupTransfer, "NZD", target.container.setupImport)
+        settled(import) { it is ImportUiState.Scanning }
         codes.forEach(import::onCode)
         import.import()
-        val done = settled(import) { it is ImportUiState.Done } as ImportUiState.Done
-        assertThat(done.secretsSkipped).isTrue()
-        assertThat(done.result.secrets).isEmpty()
+        assertThat((import.state.value as ImportUiState.Ready).wrongCode).isTrue()
         assertThat(await { target.container.secrets.get(Secret.SMTP_PASSWORD) }).isNull()
+        assertThat(
+            await {
+                target.container.catalog.products
+                    .first()
+            },
+        ).isEmpty()
+        import.setCode(checkNotNull(code))
+        import.import()
+        val done = settled(import) { it is ImportUiState.Done } as ImportUiState.Done
+        assertThat(done.result.secrets).containsExactly(Secret.SMTP_PASSWORD)
 
-        val (catalogueCodes, code) = exportCodes { it.setContents { contents -> contents.copy(settings = false, secrets = false) } }
-        assertThat(code).isNull()
-        val catalogueOnly = TransferImportViewModel(target.container.setupTransfer, "NZD")
+        val (catalogueCodes, catalogueCode) =
+            exportCodes {
+                it.setContents { contents ->
+                    contents.copy(
+                        settings = false,
+                        secrets = false,
+                    )
+                }
+            }
+        assertThat(catalogueCode).isNotEmpty()
+        val catalogueOnly = TransferImportViewModel(target.container.setupTransfer, "NZD", target.container.setupImport)
+        settled(catalogueOnly) { it is ImportUiState.Scanning }
         catalogueCodes.forEach(catalogueOnly::onCode)
         val ready = catalogueOnly.state.value as ImportUiState.Ready
         assertThat(ready.currencyMatches).isFalse()
-        assertThat(ready.received.hasSecrets).isFalse()
+        assertThat(ready.received.accepts("")).isFalse()
     }
 }

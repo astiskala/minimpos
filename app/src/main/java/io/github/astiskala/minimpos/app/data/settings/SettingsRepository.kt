@@ -63,6 +63,12 @@ class SettingsRepository(
 
     /** Atomically replaces the settings with [transform] applied to the stored ones; [transform] must not have side effects. */
     suspend fun update(transform: (AppSettings) -> AppSettings) {
-        store.update { transform(it.normalized()).normalized() }
+        store.update { stored ->
+            val current = stored.normalized()
+            val next = transform(current).normalized()
+            val before = current.terminal.verificationKey(null, null, current.terminal.mode)
+            val after = next.terminal.verificationKey(null, null, next.terminal.mode)
+            if (before != after) next.copy(verifiedSetup = null) else next
+        }
     }
 }

@@ -22,6 +22,7 @@ import androidx.navigation3.runtime.NavKey
 import com.google.common.truth.Truth.assertThat
 import io.github.astiskala.minimpos.app.GST_RATES
 import io.github.astiskala.minimpos.app.MiniMposApp
+import io.github.astiskala.minimpos.app.R
 import io.github.astiskala.minimpos.app.TestEnvironment
 import io.github.astiskala.minimpos.app.await
 import io.github.astiskala.minimpos.app.awaitCondition
@@ -31,6 +32,7 @@ import io.github.astiskala.minimpos.app.data.security.TransferSeal
 import io.github.astiskala.minimpos.app.data.settings.AppSettings
 import io.github.astiskala.minimpos.app.data.transfer.TransferredSettings
 import io.github.astiskala.minimpos.app.feature.settings.SettingsSections
+import io.github.astiskala.minimpos.app.feature.transfer.ImportUiState
 import io.github.astiskala.minimpos.app.feature.transfer.TransferImportScreen
 import io.github.astiskala.minimpos.app.feature.transfer.TransferImportViewModel
 import io.github.astiskala.minimpos.app.ui.components.LocalAppContainer
@@ -62,6 +64,19 @@ class TransferScreensTest {
     val compose = createComposeRule()
 
     private val container = env.container
+    private val fixtureCode = "K7PQ-8Z3D-2RXM"
+
+    private fun protect(
+        transfer: Transfer,
+        values: String = "{}",
+        code: String = fixtureCode,
+    ): Transfer =
+        transfer.copy(
+            sealedSecrets =
+                SealedSecrets(
+                    TransferSeal(iterations = 1_000).seal(values.toByteArray(), code, TransferCodec.authenticationData(transfer)),
+                ),
+        )
 
     @Before
     fun setUp() {
@@ -129,12 +144,18 @@ class TransferScreensTest {
         val settings = AppSettings().let { it.copy(receipt = it.receipt.copy(businessName = "Harbour Coffee Co.", footer = "Ta!")) }
         val seal = TransferSeal(iterations = 1_000)
         val code = seal.newCode()
-        val sealed = SealedSecrets(seal.seal("""{"TERMINAL_PASSPHRASE":"correct horse"}""".toByteArray(), code))
         val payload =
             TransferCodec.encode(
-                Transfer(settings = TransferredSettings(settings.shared(), null).encode(), sealedSecrets = sealed),
+                protect(
+                    Transfer(settings = TransferredSettings(settings.shared(), null).encode()),
+                    """{"TERMINAL_PASSPHRASE":"correct horse"}""",
+                    code,
+                ),
             )
-        val vm = TransferImportViewModel(container.setupTransfer, "AUD")
+        val vm = TransferImportViewModel(container.setupTransfer, "AUD", container.setupImport)
+        compose.awaitCondition(
+            "Opening scanner",
+        ) { vm.state.value is ImportUiState.Scanning }
         QrChunks.split(payload, "TEST").forEach { vm.onCode(it.encode()) }
         val navigator = Navigator(NavBackStack<NavKey>(Route.Home, Route.SettingsSection(SettingsSections.DATA), Route.TransferImport))
         compose.setContent {
@@ -156,7 +177,7 @@ class TransferScreensTest {
         waitForTag("importDone")
         compose.onNodeWithText("Shared key passphrase").assertIsDisplayed()
         compose.onNodeWithTag("importFinished").assertIsDisplayed()
-        compose.awaitCondition("Applying the settings") { container.settingsState.value.receipt.businessName == "Harbour Coffee Co." }
+        compose.awaitCondition("Applying the settings") { container.settingsState.value.receipt.businessName == "Corner Cafe" }
         assertThat(container.settingsState.value.receipt.footer).isEqualTo("Ta!")
         assertThat(await { container.secrets.get(Secret.TERMINAL_PASSPHRASE) }).isEqualTo("correct horse")
         compose.onNodeWithTag("importFinished").performClick()
@@ -165,9 +186,13 @@ class TransferScreensTest {
 
     @Test
     fun `finishing a first-run settings import leaves onboarding and opens Home`() {
-        val payload = TransferCodec.encode(Transfer(settings = TransferredSettings(AppSettings().shared(), null).encode()))
-        val vm = TransferImportViewModel(container.setupTransfer, "AUD")
+        val payload = TransferCodec.encode(protect(Transfer(settings = TransferredSettings(AppSettings().shared(), null).encode())))
+        val vm = TransferImportViewModel(container.setupTransfer, "AUD", container.setupImport)
+        compose.awaitCondition(
+            "Opening scanner",
+        ) { vm.state.value is ImportUiState.Scanning }
         QrChunks.split(payload, "INIT").forEach { vm.onCode(it.encode()) }
+        vm.setCode(fixtureCode)
         val stack = NavBackStack<NavKey>(Route.Home, Route.Onboarding, Route.TransferImport)
         val navigator = Navigator(stack)
         compose.setContent {
@@ -189,9 +214,18 @@ class TransferScreensTest {
     fun `the setup helper's codes set up the connection and its keys`() {
         val seal = TransferSeal(iterations = 1_000)
         val code = seal.newCode()
-        val sealed = SealedSecrets(seal.seal("""{"ADYEN_API_KEY":"AQE-key"}""".toByteArray(), code))
-        val payload = TransferCodec.encode(Transfer(sealedSecrets = sealed, connection = """{"merchantAccount":"HarbourCoffeeCOM"}"""))
-        val vm = TransferImportViewModel(container.setupTransfer, "AUD")
+        val payload =
+            TransferCodec.encode(
+                protect(
+                    Transfer(connection = """{"merchantAccount":"HarbourCoffeeCOM"}"""),
+                    """{"ADYEN_API_KEY":"AQE-key"}""",
+                    code,
+                ),
+            )
+        val vm = TransferImportViewModel(container.setupTransfer, "AUD", container.setupImport)
+        compose.awaitCondition(
+            "Opening scanner",
+        ) { vm.state.value is ImportUiState.Scanning }
         QrChunks.split(payload, "WEB1").forEach { vm.onCode(it.encode()) }
         val navigator = Navigator(NavBackStack<NavKey>(Route.Home, Route.TransferImport))
         compose.setContent {
@@ -219,9 +253,13 @@ class TransferScreensTest {
 
     @Test
     fun `LIVE destination is reviewed before import and scanning alone changes nothing`() {
-        val payload = TransferCodec.encode(Transfer(connection = """{"destination":"cloud","environment":"LIVE"}"""))
-        val vm = TransferImportViewModel(container.setupTransfer, "AUD")
+        val payload = TransferCodec.encode(protect(Transfer(connection = """{"destination":"cloud","environment":"LIVE"}""")))
+        val vm = TransferImportViewModel(container.setupTransfer, "AUD", container.setupImport)
+        compose.awaitCondition(
+            "Opening scanner",
+        ) { vm.state.value is ImportUiState.Scanning }
         QrChunks.split(payload, "LIVE").forEach { vm.onCode(it.encode()) }
+        vm.setCode(fixtureCode)
         val before = await { container.settings.current() }
         compose.setContent {
             MiniMposTheme {
@@ -237,7 +275,10 @@ class TransferScreensTest {
         compose.onNodeWithTag("import").assertIsDisplayed()
         assertThat(await { container.settings.current() }).isEqualTo(before)
         compose.onNodeWithTag("import").performClick()
-        waitForTag("importDone")
-        assertThat(await { container.settings.current() }.terminal.environment).isEqualTo(TerminalEnvironment.LIVE)
+        compose.waitUntilAtLeastOneExists(
+            hasText(env.context.getString(R.string.transfer_missing_fields)),
+            15_000,
+        )
+        assertThat(await { container.settings.current() }).isEqualTo(before)
     }
 }

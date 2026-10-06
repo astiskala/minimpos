@@ -65,6 +65,7 @@ class RemoteTerminalTest {
             )
         }
         await { container.secrets.set(Secret.ADYEN_API_KEY, "cloud-key") }
+        env.updateSettings { it }
     }
 
     private fun useTapToPay() {
@@ -167,6 +168,7 @@ class RemoteTerminalTest {
     @Test
     fun `Tap to Pay is set up by boarding the Payments app, then takes payments through it`() {
         useTapToPay()
+        await { container.secrets.set(Secret.ADYEN_API_KEY, "key") }
         assertThat(await { gateway.diagnose() }).isEqualTo(TerminalConnection.NotSetUp(SetupProblem.PAYMENTS_APP_NOT_BOARDED))
         assertThat(await { container.tapToPay.board() }).isEqualTo(TapToPayOutcome.NotSetUp(SetupProblem.PAYMENTS_APP_API_KEY))
         await { container.secrets.set(Secret.PAYMENTS_APP_API_KEY, "pa-key") }
@@ -181,9 +183,9 @@ class RemoteTerminalTest {
         assertThat(await { gateway.diagnose() }).isInstanceOf(TerminalConnection.Connected::class.java)
         assertThat(paymentsApp.opened).hasSize(opened)
 
-        // Payments wait for the Checkout API, whose merchant account boarding already had.
-        assertThat(await { gateway.pay(payment, "PAY0") }).isEqualTo(Attempt.NotSetUp(SetupProblem.API_KEY))
-        await { container.secrets.set(Secret.ADYEN_API_KEY, "key") }
+        // Payments wait for the stored setup's connection verification, not merely entered credentials.
+        assertThat(await { gateway.pay(payment, "PAY0") }).isEqualTo(Attempt.NotSetUp(SetupProblem.SETUP_NOT_VERIFIED))
+        assertThat(await { container.terminalStatus.check() }).isInstanceOf(TerminalConnection.Connected::class.java)
         var sending: String? = null
         val paid = await { gateway.pay(payment, "PAY1") { sending = it } }.made() as TransactionOutcome.Completed
         assertThat(paid.details.success).isTrue()
@@ -201,6 +203,7 @@ class RemoteTerminalTest {
     @Test
     fun `this phone can be removed, and Tap to Pay explains what is missing`() {
         useTapToPay()
+        await { container.secrets.set(Secret.ADYEN_API_KEY, "key") }
         await { container.secrets.set(Secret.PAYMENTS_APP_API_KEY, "pa-key") }
         paymentsApp.boarded = true
         assertThat(await { container.tapToPay.board() }).isEqualTo(TapToPayOutcome.Boarded(FakePaymentsApp.INSTALLATION_ID))

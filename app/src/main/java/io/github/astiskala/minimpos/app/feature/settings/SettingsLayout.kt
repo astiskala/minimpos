@@ -108,7 +108,7 @@ internal fun ColumnScope.SetupDetails(
     hasDraft: Boolean = false,
     content: @Composable ColumnScope.() -> Unit,
 ) {
-    var expanded by remember(guided) { mutableStateOf(!guided || !supplied) }
+    var expanded by remember(guided) { mutableStateOf(true) }
     val open = expanded || !supplied || hasDraft
     SetupStep(
         number,

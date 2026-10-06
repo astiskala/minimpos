@@ -43,8 +43,9 @@ internal fun ReceiptBusinessImport(
         )
         OutcomeMessage(state.lookup)
     }
-    state.stores?.let { stores ->
-        var selected by remember(stores) { mutableStateOf<ReceiptBusiness?>(null) }
+    if (state.stores?.isEmpty() == true) SettingNote(stringResource(R.string.settings_business_none))
+    state.stores?.takeIf { it.isNotEmpty() }?.let { stores ->
+        var selected by remember(stores) { mutableStateOf(stores.singleOrNull()) }
         val title = if (selected == null) R.string.settings_business_choose else R.string.settings_business_review
         AlertDialog(
             onDismissRequest = { events.onChoose(null) },

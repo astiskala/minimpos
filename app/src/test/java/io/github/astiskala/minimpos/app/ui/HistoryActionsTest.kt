@@ -11,12 +11,16 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
+import com.google.common.truth.Truth.assertThat
 import io.github.astiskala.minimpos.app.GST_RATES
 import io.github.astiskala.minimpos.app.MiniMposApp
 import io.github.astiskala.minimpos.app.TestEnvironment
 import io.github.astiskala.minimpos.app.await
 import io.github.astiskala.minimpos.app.data.db.ProductEntity
+import io.github.astiskala.minimpos.app.data.db.RefundEntity
+import io.github.astiskala.minimpos.app.data.db.RefundStatus
 import io.github.astiskala.minimpos.app.data.db.SaleKind
+import io.github.astiskala.minimpos.core.money.PaymentContext
 import kotlinx.coroutines.flow.first
 import org.junit.Before
 import org.junit.Rule
@@ -24,6 +28,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
+import java.time.LocalDate
 import io.github.astiskala.minimpos.app.createRecordingComposeRule as createComposeRule
 
 @OptIn(ExperimentalTestApi::class)
@@ -102,5 +107,47 @@ class HistoryActionsTest {
         compose.runOnIdle { container.virtualPrinter.clear() }
         compose.onNodeWithTag("virtualPrinter").assertDoesNotExist()
         compose.onNodeWithTag("cancelPreAuth").performScrollTo().assertIsDisplayed()
+    }
+
+    @Test
+    fun `day header prints hidden refunds and demo sales despite active sales filter at AMS1 size`() {
+        await {
+            container.sampleData.populate(container.settings.current())
+            val now = System.currentTimeMillis()
+            container.refundRecords.create(
+                RefundEntity(
+                    id = "refund",
+                    saleId = null,
+                    createdAt = now,
+                    processedAt = now,
+                    merchantReference = "R-DEMO",
+                    originalTransactionId = "EXTERNAL",
+                    originalTimestamp = "2026-10-06T12:00:00Z",
+                    originalReference = null,
+                    currency = "AUD",
+                    amountMinor = 100,
+                    full = false,
+                    status = RefundStatus.REQUESTED,
+                    context = PaymentContext("SIMULATOR", "SIM", "POS", "", null, simulated = true),
+                ),
+            )
+        }
+        compose.onNodeWithTag("history").performClick()
+        compose.waitUntilAtLeastOneExists(hasText("Sales"), 15_000)
+        compose.onNodeWithText("Sales").performClick()
+        val date = LocalDate.now()
+        waitForTag("printDay_$date")
+        compose.onNodeWithTag("printDay_$date").assertIsDisplayed().performClick()
+        waitForTag("virtualPrinter")
+        compose.waitUntilAtLeastOneExists(hasText("Local daily summary"), 15_000)
+        compose.runOnIdle {
+            val printed =
+                container.virtualPrinter.jobs.value
+                    .toString()
+            assertThat(printed).contains("DEMO")
+            assertThat(printed).contains("Sales (1)")
+            assertThat(printed).contains("Accepted refunds (1)")
+            assertThat(printed).doesNotContain("DEMO-1")
+        }
     }
 }

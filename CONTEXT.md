@@ -39,7 +39,9 @@ existing spelling (`preAuthorisation`, `SaleKind.PRE_AUTHORISATION`, `authorised
 | Tip on the receipt | Sale held with manual capture; customer writes a tip on paper, then staff enter and capture it. Tips above 20% require adjustment first. | `tipOnReceipt`, `PaymentStanding` |
 | Cancellation | Full reversal of a held payment; if already captured externally, Adyen refunds it instead. | `PaymentAction.CANCEL` |
 | Refund | Referenced return of a charged payment, full/by amount/by item. Item refunds need the stored original sale. | `RefundablePayment`, `RefundStart`, refund QR `MPR1*` |
-| Day totals / history search | Aggregation and matching of retained records currently shown; held funds stay separate from sales. | `feature/history/HistorySearch` |
+| Day totals / history search | Processing-day aggregation of retained activity currently shown; capture and tip count on acceptance day, new holds stay separate. | `refund/HistoryAccounting`, `feature/history/HistorySearch` |
+| Daily report | Unfiltered whole-day local summary; currencies/environments separate, undated links/captures excluded from dated net. Seeded samples count as demos and disappear with sample purge. | `HistoryAccounting`, `ReceiptDelivery` |
+| History environment switch | Explicitly confirmed LIVE/TEST/simulator transition deletes all local operations, including unfinished ones; durable non-secret journal completes destination settings. | `terminal/HistorySwitches` |
 | Operation identity | Persisted key and request facts for one logical operation; retries reuse them, separate renewals get new ones. | Stored capture, adjustment and link requests |
 | Payment context | Non-secret original destination, identity, account and environment used to validate later actions. | `PaymentContext`, `ApiTarget`, `ApiAccess` |
 

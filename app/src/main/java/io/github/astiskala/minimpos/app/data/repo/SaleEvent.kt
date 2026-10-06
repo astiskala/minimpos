@@ -40,12 +40,15 @@ sealed interface SaleEvent {
      * @property details What the terminal answered (transaction, card, receipts, saved card and the blob for
      *   synchronous adjustments); null when it did not answer, which keeps what is stored.
      * @property reason Why it did not succeed, when the app says so; null otherwise.
+     * @property processedAt Approval time in epoch milliseconds; null without a known approval date.
      */
     data class Settled(
         val status: SaleStatus,
         val message: String?,
         val details: TransactionDetails?,
         val reason: StoredReason? = null,
+        /** Terminal approval time in epoch milliseconds; null when unavailable. */
+        val processedAt: Long? = null,
     ) : SaleEvent
 
     /**
@@ -118,10 +121,13 @@ sealed interface SaleEvent {
      *
      * @property amountMinor The amount to capture.
      * @property tipMinor The tip written on the receipt; null keeps the stored one.
+     * @property startedAt Send time in epoch milliseconds; null without a known time.
      */
     data class CaptureSending(
         val amountMinor: Long,
         val tipMinor: Long? = null,
+        /** Persisted send time in epoch milliseconds; null only without a known time. */
+        val startedAt: Long? = null,
     ) : SaleEvent
 
     /**
@@ -129,9 +135,12 @@ sealed interface SaleEvent {
      * again safely).
      *
      * @property result Adyen's answer.
+     * @property processedAt Time acceptance was observed in epoch milliseconds; null when unavailable.
      */
     data class CaptureAnswered(
         val result: ModificationResult,
+        /** Time acceptance was observed in epoch milliseconds; null when unavailable. */
+        val processedAt: Long? = null,
     ) : SaleEvent
 
     /**
@@ -213,11 +222,11 @@ fun SaleEntity.after(event: SaleEvent): SaleEntity =
         }
 
         is SaleEvent.CaptureSending -> {
-            captureRecorded(CaptureStatus.PENDING, event.amountMinor, event.tipMinor)
+            captureSending(event)
         }
 
         is SaleEvent.CaptureAnswered -> {
-            captureAnswered(event.result)
+            captureAccepted(event)
         }
 
         is SaleEvent.ModificationNotSetUp -> {
@@ -232,6 +241,18 @@ fun SaleEntity.after(event: SaleEvent): SaleEntity =
             prepared(event)
         }
     }
+
+private fun SaleEntity.captureSending(event: SaleEvent.CaptureSending): SaleEntity {
+    if (captureStatus?.captured == true) return this
+    val startedAt = if (capturedMinor == event.amountMinor && captureStartedAt != null) captureStartedAt else event.startedAt
+    return captureRecorded(CaptureStatus.PENDING, event.amountMinor, event.tipMinor).copy(captureStartedAt = startedAt)
+}
+
+private fun SaleEntity.captureAccepted(event: SaleEvent.CaptureAnswered): SaleEntity {
+    if (captureStatus?.captured == true) return this
+    val answered = captureAnswered(event.result)
+    return answered.copy(captureProcessedAt = if (answered.captureStatus?.captured == true) event.processedAt else null)
+}
 
 private fun SaleEntity.prepared(event: SaleEvent): SaleEntity =
     if (event is SaleEvent.ContextRecorded) {
@@ -248,7 +269,10 @@ private fun SaleEntity.ended(
 ): SaleEntity = copy(status = status, message = message, reason = reason)
 
 private fun SaleEntity.settled(event: SaleEvent.Settled): SaleEntity {
-    val ended = ended(event.status, event.message, event.reason)
+    val ended =
+        ended(event.status, event.message, event.reason).copy(
+            processedAt = processedAt ?: event.processedAt.takeIf { event.status == SaleStatus.APPROVED && !paymentLink },
+        )
     val details = event.details ?: return ended
     return ended.copy(
         poiTransactionId = details.poiTransactionId,

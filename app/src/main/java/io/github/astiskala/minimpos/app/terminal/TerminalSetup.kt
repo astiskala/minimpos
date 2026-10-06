@@ -14,6 +14,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.update
 
 /**
@@ -353,11 +354,14 @@ sealed interface BoardingSetup {
  * @param settings The stored settings.
  * @param secrets Tells which secrets are saved, and decrypts them.
  * @property device The device the app runs on.
+ * @param historySwitchPending Confirmed deletion journal that must finish before new operations.
  */
 class TerminalSetupSource(
     private val settings: SettingsRepository,
     private val secrets: SecretStore,
     val device: DeviceInfo,
+    /** Pending confirmed history-switch journal, blocking new operations until destination recovery completes. */
+    private val historySwitchPending: Flow<Boolean> = flowOf(false),
 ) {
     /** The setup with the stored settings now, without reading any secret. */
     suspend fun current(): TerminalSetup = reading(settings.current(), read = false).setup
@@ -376,7 +380,7 @@ class TerminalSetupSource(
                 snapshot.configured,
                 device,
                 verified = forValidation || current.verifiedSetup == snapshot.identity,
-                pendingImport = snapshot.pending && !forValidation,
+                pendingImport = (snapshot.pending || historySwitchPending.first()) && !forValidation,
             )
         return setup.unlock(snapshot.values, snapshot.identity)
     }
@@ -464,7 +468,9 @@ class TerminalSetupSource(
      * reading any secret.
      */
     val changes: Flow<TerminalSetup> =
-        combine(settings.settings, secrets.configured, deviceReads) { current, _, _ -> reading(current, read = false).setup }
+        combine(settings.settings, secrets.configured, deviceReads, historySwitchPending) { current, _, _, _ ->
+            reading(current, read = false).setup
+        }
 
     /** Resolves [changes] again with what the device says now: an Adyen Payments app may have been installed or removed. */
     fun readDevice() = deviceReads.update { it + 1 }

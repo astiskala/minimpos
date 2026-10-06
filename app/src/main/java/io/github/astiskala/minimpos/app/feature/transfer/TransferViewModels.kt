@@ -13,6 +13,7 @@ import io.github.astiskala.minimpos.app.data.transfer.TransferExport
 import io.github.astiskala.minimpos.app.data.transfer.TransferResult
 import io.github.astiskala.minimpos.app.feature.ActionOutcome
 import io.github.astiskala.minimpos.app.feature.launchWrite
+import io.github.astiskala.minimpos.app.terminal.HistorySwitchPlan
 import io.github.astiskala.minimpos.app.terminal.ReceiptBusiness
 import io.github.astiskala.minimpos.app.terminal.SetupImport
 import io.github.astiskala.minimpos.app.terminal.SetupImportOutcome
@@ -131,6 +132,7 @@ sealed interface ImportUiState {
      * @property terminalChoices Eligible IDs offered only for an ambiguous destination; null when not selecting.
      * @property businessChoices Optional store proposals offered only when ambiguous; null when not selecting.
      * @property boardingRequired Whether explicit phone registration must run before this import can commit.
+     * @property historySwitch Destructive history confirmation for this exact candidate; null before verification.
      */
     data class Ready(
         val received: ReceivedTransfer,
@@ -143,6 +145,8 @@ sealed interface ImportUiState {
         val terminalChoices: List<String>? = null,
         val businessChoices: List<ReceiptBusiness>? = null,
         val boardingRequired: Boolean = false,
+        /** Destructive environment-change confirmation; null until authenticated setup validation succeeds. */
+        val historySwitch: HistorySwitchPlan? = null,
     ) : ImportUiState
 
     /** Opening the secrets and writing everything. */
@@ -292,7 +296,17 @@ class TransferImportViewModel(
         }
     }
 
-    private fun verify(board: Boolean) {
+    /** Reviews permanent history loss for this import; cancellation leaves current settings and history untouched. */
+    fun reviewHistorySwitch(confirm: Boolean) {
+        val ready = _state.value as? ImportUiState.Ready ?: return
+        val plan = ready.historySwitch ?: return
+        if (confirm) verify(board = false, confirmedHistorySwitch = plan) else updateReady { it.copy(historySwitch = null) }
+    }
+
+    private fun verify(
+        board: Boolean,
+        confirmedHistorySwitch: HistorySwitchPlan? = null,
+    ) {
         val ready = _state.value as? ImportUiState.Ready ?: return
         if (!ready.received.accepts(ready.code)) {
             _state.value = ready.copy(wrongCode = true)
@@ -300,7 +314,16 @@ class TransferImportViewModel(
         }
         _state.value = ImportUiState.Importing
         launchWrite({
-            importer.import(ready.received, ready.mode, ready.code, selectedTerminal, selectedBusiness, skipBusiness, board)
+            importer.import(
+                ready.received,
+                ready.mode,
+                ready.code,
+                selectedTerminal,
+                selectedBusiness,
+                skipBusiness,
+                board,
+                confirmedHistorySwitch,
+            )
         }) { result ->
             _state.value = finished(ready, result)
         }
@@ -321,6 +344,10 @@ class TransferImportViewModel(
 
             is SetupImportOutcome.Businesses -> {
                 ready.copy(businessChoices = result.stores, outcome = null)
+            }
+
+            is SetupImportOutcome.HistoryConfirmation -> {
+                ready.copy(historySwitch = result.plan)
             }
 
             SetupImportOutcome.BoardingRequired -> {

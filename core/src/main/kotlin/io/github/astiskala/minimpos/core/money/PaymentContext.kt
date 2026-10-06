@@ -22,6 +22,9 @@ data class PaymentContext(
     val host: String? = null,
     val simulated: Boolean = false,
 ) {
+    /** Original accounting environment: SIMULATOR when no money moved, TEST/LIVE otherwise, or null while unknown. */
+    val historyEnvironment: String? get() = if (simulated) "SIMULATOR" else environment
+
     /** Whether [current] addresses the original Adyen account/environment, or the same simulator. */
     fun matchesApi(current: PaymentContext): Boolean =
         simulated == current.simulated &&

@@ -7,6 +7,8 @@ import io.github.astiskala.minimpos.app.FakePaymentsApp
 import io.github.astiskala.minimpos.app.FakeTerminal
 import io.github.astiskala.minimpos.app.TestEnvironment
 import io.github.astiskala.minimpos.app.await
+import io.github.astiskala.minimpos.app.data.db.SaleEntity
+import io.github.astiskala.minimpos.app.data.db.SaleStatus
 import io.github.astiskala.minimpos.app.data.db.SetupProblem
 import io.github.astiskala.minimpos.app.data.repo.ImportMode
 import io.github.astiskala.minimpos.app.data.security.Secret
@@ -19,6 +21,7 @@ import io.github.astiskala.minimpos.app.terminal.TerminalConnection
 import io.github.astiskala.minimpos.core.codec.SealedSecrets
 import io.github.astiskala.minimpos.core.codec.Transfer
 import io.github.astiskala.minimpos.core.codec.TransferCodec
+import io.github.astiskala.minimpos.core.money.PaymentContext
 import io.github.astiskala.minimpos.terminal.paymentsapp.ManagementResult
 import io.github.astiskala.minimpos.terminal.transport.CredentialLookup
 import io.github.astiskala.minimpos.terminal.transport.DiscoveredKey
@@ -90,6 +93,57 @@ class AutomaticSetupTransferTest {
 
     @After
     fun tearDown() = env.close()
+
+    @Test
+    fun `authenticated import requires history loss confirmation before replacing environment`() {
+        await {
+            env.container.sales.createPending(
+                SaleEntity(
+                    id = "unknown",
+                    createdAt = 1,
+                    currency = "AUD",
+                    taxMode = "INCLUSIVE",
+                    netMinor = 1000,
+                    taxMinor = 0,
+                    totalMinor = 1000,
+                    status = SaleStatus.UNKNOWN,
+                    merchantReference = "OLD-LIVE",
+                    context = PaymentContext("TERMINAL", poiId, "POS", "Merchant", "LIVE"),
+                ),
+                emptyList(),
+            )
+        }
+        val before = await { env.container.settings.current() }
+        val warning = import() as SetupImportOutcome.HistoryConfirmation
+        assertThat(warning.plan.unfinished).isTrue()
+        assertThat(await { env.container.settings.current() }).isEqualTo(before)
+        assertThat(
+            await {
+                env.container.history
+                    .items()
+                    .first()
+            },
+        ).hasSize(1)
+        val imported =
+            await {
+                env.container.setupImport.import(received(), ImportMode.MERGE, code, confirmedHistorySwitch = warning.plan)
+            } as SetupImportOutcome.Committed
+        assertThat(imported.outcome).isInstanceOf(ImportOutcome.Imported::class.java)
+        assertThat(
+            await {
+                env.container.history
+                    .items()
+                    .first()
+            },
+        ).isEmpty()
+        assertThat(await { env.container.settings.current() }.terminal.environment).isEqualTo(TerminalEnvironment.TEST)
+        assertThat(
+            await {
+                env.container.history.pendingSwitch
+                    .first()
+            },
+        ).isNull()
+    }
 
     @Test
     fun `wrong company terminal access blocks the whole import without writes`() {

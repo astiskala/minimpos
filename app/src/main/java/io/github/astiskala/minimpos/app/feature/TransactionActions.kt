@@ -21,6 +21,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import java.time.LocalDate
 
 /**
  * What a finished action reports, for the screen to word (see [OutcomeMessage]). View models never hold display text:
@@ -345,6 +346,15 @@ class TransactionActions private constructor(
 
     /** The actions for a sale or a refund. */
     companion object {
+        /** Prints a whole-day local summary; History filters never enter receipt delivery. */
+        suspend fun printReport(
+            receipts: ReceiptDelivery,
+            date: LocalDate,
+        ): ActionState = receipts.printReport(date).toState(ActionOutcome.Printed)
+
+        /** Whether History offers report printing, following current printer capability. */
+        fun canPrintReports(receipts: ReceiptDelivery): Flow<Boolean> = receipts.canPrintReports
+
         /**
          * The actions on sale [saleId], in [scope]: receipts through [receipts], status checks through [payments]. A
          * [fresh] sale (on the result just after its payment) gets its automatic receipt, and email is offered only

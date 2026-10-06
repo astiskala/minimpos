@@ -225,7 +225,7 @@ class PreAuthorisationViewModelsTest {
             after.days
                 .single()
                 .totals.preAuthCount,
-        ).isEqualTo(0)
+        ).isEqualTo(1)
         assertThat(
             after.days
                 .single()

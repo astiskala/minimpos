@@ -5,6 +5,7 @@ import io.github.astiskala.minimpos.app.data.db.RefundStatus
 import io.github.astiskala.minimpos.app.data.db.SaleWithLines
 import io.github.astiskala.minimpos.app.data.repo.ReceiptLinesJson
 import io.github.astiskala.minimpos.app.data.settings.ReceiptSettings
+import io.github.astiskala.minimpos.app.refund.HistoryReport
 import io.github.astiskala.minimpos.app.refund.PaymentStanding
 import io.github.astiskala.minimpos.app.refund.ReceiptStanding
 import io.github.astiskala.minimpos.app.refund.RefundablePayment
@@ -71,7 +72,15 @@ class ReceiptFactory(
     private val simulationText: () -> String = { "Simulation only. No money moved." },
     /** Labels a demo QR/address without inviting the shopper to pay. */
     private val demoLinkText: () -> String = { "Demo link" },
+    /** Daily-summary labels in the current language at printing. */
+    private val reportText: (ReportText) -> String = { it.name },
 ) {
+    /** Summary of retained processing-day activity; no payment receipt, QR, or settlement claim. */
+    fun dailyReport(
+        report: HistoryReport,
+        settings: ReceiptSettings,
+    ): ReceiptDocument = DailyReport.document(report, settings, locale(), reportText)
+
     /** [epochMillis] as a short localised date and time, as printed on receipts and shown in history. */
     fun formatDateTime(epochMillis: Long): String =
         DateTimeFormatter

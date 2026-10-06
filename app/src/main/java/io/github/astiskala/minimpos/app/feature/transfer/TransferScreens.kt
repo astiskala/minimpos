@@ -73,6 +73,7 @@ import io.github.astiskala.minimpos.app.ui.components.ActionMessage
 import io.github.astiskala.minimpos.app.ui.components.BottomActions
 import io.github.astiskala.minimpos.app.ui.components.Card
 import io.github.astiskala.minimpos.app.ui.components.ConfirmDialog
+import io.github.astiskala.minimpos.app.ui.components.HistorySwitchDialog
 import io.github.astiskala.minimpos.app.ui.components.LabeledValue
 import io.github.astiskala.minimpos.app.ui.components.LocalAppContainer
 import io.github.astiskala.minimpos.app.ui.components.MiniScaffold
@@ -296,6 +297,9 @@ fun TransferImportScreen(
         ImportContent(state, currency, callbacks, Modifier.padding(padding))
     }
     ImportSelectionDialogs(state as? ImportUiState.Ready, vm::chooseTerminal, vm::chooseBusiness, vm::skipBusinessDetails)
+    (state as? ImportUiState.Ready)?.historySwitch?.let {
+        HistorySwitchDialog(it.unfinished, { vm.reviewHistorySwitch(true) }, { vm.reviewHistorySwitch(false) })
+    }
     if (confirmReplace) {
         ConfirmDialog(
             title = stringResource(R.string.transfer_replace),

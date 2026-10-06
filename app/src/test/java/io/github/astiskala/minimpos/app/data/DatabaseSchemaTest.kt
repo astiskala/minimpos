@@ -85,38 +85,24 @@ class DatabaseSchemaTest {
                             status = SaleStatus.UNKNOWN,
                             merchantReference = "schema-sale",
                             reason = StoredReason.NotSetUp(SetupProblem.API_KEY),
+                            processedAt = 10,
+                            captureStartedAt = 20,
+                            captureProcessedAt = 30,
                         ),
                     )
                 }
             }
             withDatabase(name) { db ->
                 runBlocking {
-                    assertThat(
-                        db
-                            .catalogDao()
-                            .productsOnce()
-                            .single()
-                            .sample,
-                    ).isTrue()
-                    assertThat(
-                        db
-                            .saleDao()
-                            .sale("sale")!!
-                            .sale.sample,
-                    ).isTrue()
-                    assertThat(
-                        db
-                            .catalogDao()
-                            .productsOnce()
-                            .single()
-                            .name,
-                    ).isEqualTo("Item")
-                    assertThat(
-                        db
-                            .saleDao()
-                            .sale("sale")!!
-                            .sale.reason,
-                    ).isEqualTo(StoredReason.NotSetUp(SetupProblem.API_KEY))
+                    val product = db.catalogDao().productsOnce().single()
+                    val sale = checkNotNull(db.saleDao().sale("sale")).sale
+                    assertThat(product.sample).isTrue()
+                    assertThat(product.name).isEqualTo("Item")
+                    assertThat(sale.sample).isTrue()
+                    assertThat(sale.reason).isEqualTo(StoredReason.NotSetUp(SetupProblem.API_KEY))
+                    assertThat(sale.processedAt).isEqualTo(10)
+                    assertThat(sale.captureStartedAt).isEqualTo(20)
+                    assertThat(sale.captureProcessedAt).isEqualTo(30)
                     assertThat(db.openHelper.readableDatabase.version).isEqualTo(exportedSchema().getInt("version"))
                 }
             }

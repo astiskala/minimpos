@@ -21,39 +21,41 @@ import io.github.astiskala.minimpos.app.payment.Captures
 import io.github.astiskala.minimpos.app.payment.PaymentStart
 import io.github.astiskala.minimpos.app.payment.ReceiptDelivery
 import io.github.astiskala.minimpos.app.payment.TransactionLifecycle
+import io.github.astiskala.minimpos.app.refund.HistoryAccounting
+import io.github.astiskala.minimpos.app.refund.HistoryActivityKind
 import io.github.astiskala.minimpos.app.refund.PaymentAction
 import io.github.astiskala.minimpos.app.refund.PaymentStanding
 import io.github.astiskala.minimpos.app.refund.RefundStart
 import io.github.astiskala.minimpos.app.refund.RefundablePayment
 import io.github.astiskala.minimpos.app.refund.StoredPayment
 import io.github.astiskala.minimpos.app.refund.StoredPayments
-import io.github.astiskala.minimpos.app.refund.TotalsShare
 import io.github.astiskala.minimpos.app.refund.standing
-import io.github.astiskala.minimpos.app.refund.totalsShare
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
 import java.time.Clock
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
 
 /**
- * Totals per currency for one day, of the items the filter shows: approved sales (with their tips), accepted refunds
- * and the pre-authorisations still held. A pre-authorisation counts as a sale only once it is captured, and
- * cancellations of payments that only held their amount are neither sales nor refunds.
+ * Processing-day totals per currency for the activities the filter shows: approved sales, accepted captures with
+ * their tips, accepted refunds and newly authorized holds. Later capture or cancellation does not erase original
+ * hold activity. Manual-capture bills count as sales only on dated capture acceptance.
  *
  * @property salesMinor Approved sales' amounts (with tips, or what a pre-authorisation captured) by ISO 4217 currency
  *   code, in minor units.
  * @property saleCount Number of approved sales.
  * @property refundsMinor Accepted refunds' amounts by currency code, in minor units.
  * @property refundCount Number of accepted refunds.
- * @property preAuthsMinor Amounts held by approved pre-authorisations that were neither cancelled nor captured, by
- *   currency code, in minor units.
- * @property preAuthCount Number of those pre-authorisations.
+ * @property preAuthsMinor Newly authorized manual-capture amounts by currency code, in minor units;
+ *   unchanged by later capture or cancellation.
+ * @property preAuthCount Number of newly authorized holds.
  * @property tipsMinor The tips included in [salesMinor], by currency code, in minor units; only currencies with tips.
  */
 data class DayTotals(
@@ -71,12 +73,18 @@ data class DayTotals(
  *
  * @property date The local date.
  * @property totals The day's totals.
- * @property items The day's sales and refunds, newest first.
+ * @property items Original transactions with dated activity on this day, newest activity first.
+ * @property captures Sale IDs whose accepted capture occurred on this day.
+ * @property times Most recent activity per original transaction, in epoch milliseconds.
  */
 data class HistoryDay(
     val date: LocalDate,
     val totals: DayTotals,
     val items: List<HistoryItem>,
+    /** Sales whose accepted capture occurred on this day. */
+    val captures: Set<String> = emptySet(),
+    /** Most recent dated activity per original transaction, in epoch milliseconds. */
+    val times: Map<String, Long> = emptyMap(),
 )
 
 /** Which transactions the history list shows. */
@@ -110,6 +118,8 @@ enum class HistoryFilter {
  * @property method The payment method chosen, or null for any.
  * @property methods The payment methods to choose from: those of the sales in history.
  * @property hasHistory Whether history holds any transaction at all, matching or not.
+ * @property canPrint Whether daily reports can print on the current destination.
+ * @property print Latest whole-day print outcome.
  */
 data class HistoryUiState(
     val loaded: Boolean = false,
@@ -119,6 +129,10 @@ data class HistoryUiState(
     val method: PaymentMethodFilter? = null,
     val methods: List<PaymentMethodFilter> = emptyList(),
     val hasHistory: Boolean = false,
+    /** Whether daily reports can print on the current destination. */
+    val canPrint: Boolean = false,
+    /** Latest whole-day print outcome. */
+    val print: ActionState = ActionState(),
 ) {
     /** Whether the filter, the search or the payment method leaves transactions out. */
     val narrowed: Boolean get() = filter != HistoryFilter.ALL || HistorySearch(query, method).isActive
@@ -129,7 +143,11 @@ class HistoryViewModel(
     history: HistoryRepository,
     /** The time zone days are counted in; read for each update, so it follows the device's setting. */
     private val zone: () -> ZoneId = { ZoneId.systemDefault() },
+    /** Report delivery, absent only in list-only tests. */
+    private val receipts: ReceiptDelivery? = null,
 ) : ViewModel() {
+    private val print = MutableStateFlow(ActionState())
+    private val canPrint = receipts?.let(TransactionActions::canPrintReports) ?: flowOf(false)
     private val filter = MutableStateFlow(HistoryFilter.ALL)
     private val query = MutableStateFlow("")
     private val method = MutableStateFlow<PaymentMethodFilter?>(null)
@@ -162,7 +180,17 @@ class HistoryViewModel(
                 methods = PaymentMethodFilter.available(sales.values.toList()),
                 hasHistory = items.isNotEmpty(),
             )
+        }.combine(combine(canPrint, print) { available, action -> available to action }) { list, (available, action) ->
+            list.copy(canPrint = available, print = action)
         }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), HistoryUiState())
+
+    /** Prints every retained activity for [date], irrespective of active list filters; duplicate taps are ignored. */
+    fun printDay(date: LocalDate) {
+        val delivery = receipts ?: return
+        if (!state.value.canPrint || print.value.running) return
+        print.value = ActionState(running = true)
+        viewModelScope.launch { print.value = TransactionActions.printReport(delivery, date) }
+    }
 
     /** Shows the transactions matching [value]. */
     fun setFilter(value: HistoryFilter) {
@@ -235,34 +263,33 @@ class HistoryViewModel(
             }
         }
 
-    private fun group(items: List<HistoryItem>): List<HistoryDay> =
-        items
-            .groupBy { Instant.ofEpochMilli(it.createdAt).atZone(zone()).toLocalDate() }
-            .map { (date, dayItems) ->
-                val shares = dayItems.filterIsInstance<HistoryItem.Sale>().map { it.sale }.groupBy { it.totalsShare }
-                val sales = shares[TotalsShare.SALE].orEmpty()
-                val held = shares[TotalsShare.HELD].orEmpty()
-                val tipped = sales.filter { (it.tipMinor ?: 0) > 0 }
-                val refunds =
-                    dayItems
-                        .filterIsInstance<HistoryItem.Refund>()
-                        .map { it.refund }
-                        .filter { it.status == RefundStatus.REQUESTED && !it.cancellation }
+    private fun group(items: List<HistoryItem>): List<HistoryDay> {
+        val currentZone = zone()
+        return HistoryAccounting
+            .activities(items)
+            .filter { it.at != null }
+            .groupBy { Instant.ofEpochMilli(checkNotNull(it.at)).atZone(currentZone).toLocalDate() }
+            .map { (date, activities) ->
+                val totals = HistoryAccounting.totals(activities)
+                val sorted = activities.sortedByDescending { it.at }
                 HistoryDay(
                     date = date,
                     totals =
                         DayTotals(
-                            salesMinor = sales.groupBy { it.currency }.mapValues { (_, list) -> list.sumOf { it.amountMinor } },
-                            saleCount = sales.size,
-                            refundsMinor = refunds.groupBy { it.currency }.mapValues { (_, list) -> list.sumOf { it.amountMinor } },
-                            refundCount = refunds.size,
-                            preAuthsMinor = held.groupBy { it.currency }.mapValues { (_, list) -> list.sumOf { it.heldMinor } },
-                            preAuthCount = held.size,
-                            tipsMinor = tipped.groupBy { it.currency }.mapValues { (_, list) -> list.sumOf { it.tipMinor ?: 0 } },
+                            salesMinor = totals.filterValues { it.saleCount > 0 }.mapValues { it.value.salesMinor },
+                            saleCount = totals.values.sumOf { it.saleCount },
+                            refundsMinor = totals.filterValues { it.refundCount > 0 }.mapValues { it.value.refundsMinor },
+                            refundCount = totals.values.sumOf { it.refundCount },
+                            preAuthsMinor = totals.filterValues { it.holdCount > 0 }.mapValues { it.value.heldMinor },
+                            preAuthCount = totals.values.sumOf { it.holdCount },
+                            tipsMinor = totals.filterValues { it.tipsMinor > 0 }.mapValues { it.value.tipsMinor },
                         ),
-                    items = dayItems,
+                    items = sorted.map { it.item }.distinctBy { it.id },
+                    captures = activities.filter { it.kind == HistoryActivityKind.CAPTURE }.map { it.item.id }.toSet(),
+                    times = sorted.distinctBy { it.item.id }.associate { it.item.id to checkNotNull(it.at) },
                 )
             }.sortedByDescending { it.date }
+    }
 }
 
 /**

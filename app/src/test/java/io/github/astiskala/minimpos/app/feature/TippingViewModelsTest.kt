@@ -171,7 +171,7 @@ class TippingViewModelsTest {
         assertThat(
             history.state.value.days
                 .single()
-                .totals.salesMinor,
+                .totals.preAuthsMinor,
         ).containsExactly("AUD", 2_000L)
 
         await { container.captures.addTip(id, 400) }

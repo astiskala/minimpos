@@ -55,7 +55,7 @@ class SampleDataTest {
                 assertThat(it.sample).isTrue()
                 assertThat(it.context!!.simulated).isTrue()
                 assertThat(it.currency).isEqualTo("AUD")
-                assertThat(it.totalsShare).isEqualTo(TotalsShare.NONE)
+                assertThat(it.totalsShare).isEqualTo(if (it.status == SaleStatus.APPROVED) TotalsShare.SALE else TotalsShare.NONE)
                 val record = container.sales.get(it.id)!!
                 assertThat(record.lines).hasSize(1)
                 assertThat(StoredPayment(record).actions).isEmpty()

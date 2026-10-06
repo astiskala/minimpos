@@ -16,14 +16,16 @@ Starred rules below are enforced by `ArchitectureTest`, `SettingsArchitectureTes
   (terminals update through the Customer Area). Checks stay silent unless they offer something.
 - \* Stored mutations use `SaleRepository.record(id, SaleEvent)`/`applyRefund` and `RefundRepository.settle`.
   `HistoryRepository` owns housekeeping; only `SaleEvent` picks sale statuses/fields. Tests may seed via DAOs.
+- \* Only `HistorySwitches` and the confirmed setup-import journal request full history purge; its non-secret
+  destination journal blocks new financial operations until settings recovery completes. Ordinary clearing stays safe.
 - \* Only `CatalogRepository` and `CataloguePricing` use the catalogue DAO outside `db`; tax-rate writes belong only
   to the repository. Deletion atomically protects referenced rates and the last rate; caller eligibility is presentation.
 - \* `PaymentStanding` alone reads capture/hold status (apart from `SaleEvent` writing it); `CaptureStatus.captured`
   defines captured statuses. `StoredPayment.actions` owns allowed actions and is checked by capture operations too.
 - \* Decision rules stay pure: Checkout, PaymentLinkRequests, SaleEvent, PaymentStanding, RefundablePayment,
-  HistorySearch, TerminalSetup, DestinationRules and settings models. No Android, coroutines, repositories or clocks;
-  do not rederive their decisions elsewhere. `ReceiptStanding` owns receipt meaning; only the stored-payment reading
-  interprets the original payment context's simulator flag for demo links.
+  HistorySearch, HistoryAccounting, TerminalSetup, DestinationRules and settings models. No Android, coroutines,
+  repositories or clocks; do not rederive their decisions elsewhere. `ReceiptStanding` owns receipt meaning;
+  only the stored-payment reading interprets the original payment context's simulator flag for demo links.
 - \* Only `TerminalSetupSource` calls `TerminalSetup.resolve` and reads destination/API secrets. Unlock once per call;
   unreadable secrets become typed setup problems. `boarding()` does the same for the Payments app credential.
   Only this source applies learned environment/region facts, atomically against their originating terminal settings;

@@ -26,6 +26,7 @@ import io.github.astiskala.minimpos.app.data.settings.AppSettings
 import io.github.astiskala.minimpos.app.data.settings.JsonDataStoreSerializer
 import io.github.astiskala.minimpos.app.data.settings.PaymentSettings
 import io.github.astiskala.minimpos.app.data.settings.SettingsRepository
+import io.github.astiskala.minimpos.app.data.settings.TerminalMode
 import io.github.astiskala.minimpos.app.data.transfer.SetupTransfer
 import io.github.astiskala.minimpos.app.email.EmailTexts
 import io.github.astiskala.minimpos.app.email.MailTransport
@@ -36,6 +37,7 @@ import io.github.astiskala.minimpos.app.payment.PaymentLinks
 import io.github.astiskala.minimpos.app.payment.PaymentStart
 import io.github.astiskala.minimpos.app.payment.PricingChanges
 import io.github.astiskala.minimpos.app.payment.ReceiptDelivery
+import io.github.astiskala.minimpos.app.payment.ReceiptRecords
 import io.github.astiskala.minimpos.app.payment.RefundBook
 import io.github.astiskala.minimpos.app.payment.SaleBook
 import io.github.astiskala.minimpos.app.payment.SaleSession
@@ -44,17 +46,20 @@ import io.github.astiskala.minimpos.app.payment.TransactionState
 import io.github.astiskala.minimpos.app.qr.QrCodes
 import io.github.astiskala.minimpos.app.receipt.ReceiptFactory
 import io.github.astiskala.minimpos.app.receipt.ReceiptSampleTexts
+import io.github.astiskala.minimpos.app.receipt.ReportText
 import io.github.astiskala.minimpos.app.refund.PaymentStanding
 import io.github.astiskala.minimpos.app.refund.RefundStart
 import io.github.astiskala.minimpos.app.refund.StoredPayments
 import io.github.astiskala.minimpos.app.terminal.AdyenApi
 import io.github.astiskala.minimpos.app.terminal.AndroidDeviceInfo
 import io.github.astiskala.minimpos.app.terminal.DeviceInfo
+import io.github.astiskala.minimpos.app.terminal.HistorySwitches
 import io.github.astiskala.minimpos.app.terminal.PaymentsAppBridge
 import io.github.astiskala.minimpos.app.terminal.ReceiptBusinessDetails
 import io.github.astiskala.minimpos.app.terminal.SetupAccess
 import io.github.astiskala.minimpos.app.terminal.SetupDiscovery
 import io.github.astiskala.minimpos.app.terminal.SetupImport
+import io.github.astiskala.minimpos.app.terminal.SetupImportChecks
 import io.github.astiskala.minimpos.app.terminal.SimulatedTerminal
 import io.github.astiskala.minimpos.app.terminal.TapToPaySetup
 import io.github.astiskala.minimpos.app.terminal.TerminalGateway
@@ -212,9 +217,6 @@ class AppContainer(
     /** Tax rates, categories and products. */
     val catalog = CatalogRepository(database, context.getString(R.string.tax_default_zero))
 
-    /** Copies the catalogue, settings and secrets to another device by QR code, and imports the setup helper's codes. */
-    val setupTransfer = SetupTransfer(catalog, settings, secrets, onTerminal = device.isAdyenTerminal)
-
     /** Stored sales. */
     val sales = SaleRepository(database)
 
@@ -223,6 +225,21 @@ class AppContainer(
 
     /** The combined transaction history and its housekeeping. */
     val history = HistoryRepository(database)
+
+    /** Copies the catalogue, settings and secrets to another device by QR code, and imports the setup helper's codes. */
+    val setupTransfer = SetupTransfer(catalog, settings, secrets, onTerminal = device.isAdyenTerminal, history = history)
+
+    /** Explicit environment-switch history deletion and recovery; unrelated merchant configuration remains. */
+    val historySwitches =
+        HistorySwitches(
+            settings,
+            history,
+            if (device.isAdyenTerminal) {
+                TerminalMode.TERMINAL
+            } else {
+                TerminalMode.SIMULATOR
+            },
+        )
 
     /** Optional offline catalog and read-only history examples, with scoped removal. */
     val sampleData =
@@ -257,7 +274,7 @@ class AppContainer(
             osVersion = device.osVersion,
         )
 
-    private val terminalSetup = TerminalSetupSource(settings, secrets, device)
+    private val terminalSetup = TerminalSetupSource(settings, secrets, device, history.switchPending)
 
     /** Read-only Management store lookup for manually importing receipt business details. */
     val receiptBusinessDetails = ReceiptBusinessDetails(terminalSetup, storeDetails, terminalDetails)
@@ -324,6 +341,27 @@ class AppContainer(
             currentLabels = ::receiptLabels,
             simulationText = { context.getString(R.string.link_simulation_note) },
             demoLinkText = { context.getString(R.string.link_demo_label) },
+            reportText = { label ->
+                context.getString(
+                    when (label) {
+                        ReportText.TITLE -> R.string.report_title
+                        ReportText.GENERATED -> R.string.report_generated
+                        ReportText.SALES -> R.string.report_sales
+                        ReportText.TIPS -> R.string.report_tips
+                        ReportText.REFUNDS -> R.string.report_refunds
+                        ReportText.NET -> R.string.report_net
+                        ReportText.HOLDS -> R.string.report_holds
+                        ReportText.UNRESOLVED -> R.string.report_unresolved
+                        ReportText.ONLINE -> R.string.report_online
+                        ReportText.UNDATED -> R.string.report_undated
+                        ReportText.UNDATED_NOTE -> R.string.report_undated_note
+                        ReportText.NOTE -> R.string.report_note
+                        ReportText.ISSUE_NOTE -> R.string.report_issue_note
+                        ReportText.DEMO -> R.string.report_demo
+                        ReportText.UNKNOWN -> R.string.report_unknown
+                    },
+                )
+            },
             standingText = { standing ->
                 when (standing) {
                     PaymentStanding.CHARGED -> null
@@ -384,8 +422,7 @@ class AppContainer(
     val receipts =
         ReceiptDelivery(
             settings = settings,
-            sales = sales,
-            refunds = refundRecords,
+            records = ReceiptRecords(sales, refundRecords, history),
             receipts = receiptFactory,
             gateway = gateway,
             status = terminalStatus,
@@ -456,7 +493,15 @@ class AppContainer(
     }
 
     internal val setupImport =
-        SetupImport(setupTransfer, terminalSetup, gateway, api, tapToPay, receiptBusinessDetails, terminalDetails) {
+        SetupImport(
+            setupTransfer,
+            terminalSetup,
+            gateway,
+            api,
+            tapToPay,
+            SetupImportChecks(receiptBusinessDetails, terminalDetails),
+            historySwitches,
+        ) {
             payments.state.value is TransactionState.Processing || refunds.state.value is TransactionState.Processing
         }
 
@@ -475,6 +520,7 @@ class AppContainer(
         appScope.launch {
             pricingChanges.recover()
             setupImport.recover()
+            historySwitches.recover()
             history.settleInterrupted()
             catalog.seedDefaults(starterTaxRates())
             history.prune(settings.current().history.retentionDays, System.currentTimeMillis())

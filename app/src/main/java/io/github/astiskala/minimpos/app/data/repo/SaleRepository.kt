@@ -8,6 +8,7 @@ import io.github.astiskala.minimpos.app.data.db.SaleEntity
 import io.github.astiskala.minimpos.app.data.db.SaleLineEntity
 import io.github.astiskala.minimpos.app.data.db.SaleWithLines
 import kotlinx.coroutines.flow.Flow
+import java.time.Instant
 
 /**
  * Stored card payments ([SaleEntity] with its [SaleLineEntity] items), and every change to them after they were opened.
@@ -23,6 +24,8 @@ import kotlinx.coroutines.flow.Flow
  */
 class SaleRepository(
     private val db: AppDatabase,
+    /** Epoch milliseconds stamped at persistence; tests can supply a fixed clock. */
+    private val now: () -> Long = System::currentTimeMillis,
 ) {
     private val dao = db.saleDao()
 
@@ -54,7 +57,38 @@ class SaleRepository(
     ) {
         db.withTransaction {
             dao.sale(id)?.sale?.let { sale ->
-                val updated = sale.after(event)
+                val stamped =
+                    when (event) {
+                        is SaleEvent.Settled -> {
+                            event.copy(
+                                processedAt =
+                                    event.processedAt ?: event.details?.poiTimestamp?.let {
+                                        runCatching {
+                                            Instant
+                                                .parse(it)
+                                                .toEpochMilli()
+                                        }.getOrNull()
+                                    } ?: now(),
+                            )
+                        }
+
+                        is SaleEvent.CaptureSending -> {
+                            event.copy(startedAt = event.startedAt ?: now())
+                        }
+
+                        is SaleEvent.CaptureAnswered -> {
+                            event.copy(processedAt = event.processedAt ?: now())
+                        }
+
+                        is SaleEvent.Sending, is SaleEvent.LinkAnswered, is SaleEvent.NotSent, is SaleEvent.NotSetUp,
+                        is SaleEvent.OutcomeUnknown, is SaleEvent.Emailed, is SaleEvent.AdjustmentAnswered,
+                        is SaleEvent.ModificationNotSetUp, SaleEvent.Interrupted, is SaleEvent.ContextRecorded,
+                        is SaleEvent.AdjustmentSending,
+                        -> {
+                            event
+                        }
+                    }
+                val updated = sale.after(stamped)
                 if (updated != sale) dao.update(updated)
             }
         }

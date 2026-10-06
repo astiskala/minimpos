@@ -37,6 +37,8 @@ Adyen Payments app (Tap to Pay). The built-in simulator needs no Adyen account.
 - Persist each financial operation before sending. A missing answer means unknown, not failed. Retry the same logical
   operation with its stored identity and request facts; a distinct authorization renewal needs a new identity.
   Historical actions must validate the original payment context against current credentials.
+- Explicit LIVE/TEST/simulator switch confirmation purges all local history, even unfinished operations; warn about
+  lost recovery again when any exist. Ordinary history clearing still preserves unfinished operations.
 - No backend by design. Refund/capture requests and asynchronous adjustments are not final confirmation; the Customer
   Area is authoritative. Paid links have no PSP reference available to the app and are refunded there.
 - Tap to Pay uses an encrypted shared key too. The Payments app has no printer, abort, diagnosis or remote status

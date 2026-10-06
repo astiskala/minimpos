@@ -5,7 +5,7 @@
     <string name="onboarding_simulator">サンプルでシミュレーターを試す</string>
     <string name="onboarding_terminal">端末を設定</string>
     <string name="sample_data">サンプルデータ</string>
-    <string name="sample_data_hint">サンプル商品と読み取り専用のデモ履歴を追加します。データや支払先は変更されません。サンプル履歴は日次合計に含まれません。</string>
+    <string name="sample_data_hint">サンプル商品と読み取り専用のデモ履歴を追加します。データや支払先は変更されません。サンプルはデモの日次合計とレポートに含まれます。</string>
     <string name="sample_add">サンプルデータを追加</string>
     <string name="sample_remove">サンプルデータを削除</string>
     <string name="sample_remove_message">サンプル商品（編集済みを含む）とデモ履歴を削除しますか？ご自身の商品、履歴、税率、設定は残ります。ご自身の商品が使うカテゴリも残ります。</string>
@@ -852,4 +852,25 @@
     <string name="transfer_tap_checked">Payments app の登録と設定を確認しました。このアプリは共有キーの診断テストに対応していません。</string>
     <string name="transfer_skip_business">店舗情報をスキップ</string>
     <string name="settings_payments_app_setup_checked">設定項目を確認しました。Payments app は共有キーの診断テストに対応していません。</string>
+  <string name="history_print_day">一日全体の集計を印刷</string>
+  <string name="history_capture_activity">売上確定 / チップ</string>
+  <string name="report_title">ローカル日次集計</string>
+  <string name="report_generated">作成日時</string>
+  <string name="report_sales">売上</string>
+  <string name="report_tips">含まれるチップ</string>
+  <string name="report_refunds">受理済み返金</string>
+  <string name="report_net">差引額</string>
+  <string name="report_holds">新規確保額</string>
+  <string name="report_unresolved">未解決の操作</string>
+  <string name="report_online">オンライン支払い — 支払日不明</string>
+  <string name="report_undated">売上確定 — 処理日不明</string>
+  <string name="report_undated_note">保持された日付不明の全活動。当日の売上と差引額には含めません。</string>
+  <string name="report_note">保持されたローカル活動のみ。売上確定や返金の受理は最終決済ではありません。Adyen Customer Area を正とします。</string>
+  <string name="report_issue_note">未解決の結果により合計が変わる場合があります。</string>
+  <string name="report_demo">デモ — 資金移動なし</string>
+  <string name="report_unknown">環境不明</string>
+  <string name="history_switch_title">履歴を削除して切り替えますか？</string>
+  <string name="history_switch_message">LIVE、TEST、シミュレーター間の切替は、すべてのローカル支払履歴と日次レポートデータを永久に削除します。商品とその他の設定は残ります。Adyen の記録は削除されません。</string>
+  <string name="history_switch_unfinished">未完了の支払いがあります。Adyen の支払い、オーソリゼーション、リンクは取り消されません。ローカルの復旧と安全な再試行データが失われます。</string>
+  <string name="history_switch_confirm">履歴を削除して切替</string>
 </resources>

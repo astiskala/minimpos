@@ -9,6 +9,15 @@ import androidx.room.PrimaryKey
 import androidx.room.Relation
 import io.github.astiskala.minimpos.core.money.PaymentContext
 
+/** Confirmed history purge awaiting its non-secret destination settings write; singleton recovery journal. */
+@Entity(tableName = "history_switch")
+data class HistorySwitchEntity(
+    /** Singleton key, always 1. */
+    @PrimaryKey val id: Int = 1,
+    /** Current TerminalSettings JSON with no credentials. */
+    val terminalJson: String,
+)
+
 /**
  * A tax rate products can use (table `tax_rates`), managed in Settings › Tax.
  *
@@ -337,6 +346,12 @@ data class SaleEntity(
     val adjustmentAmountMinor: Long? = null,
     /** An adjustment was sent but its outcome remains unresolved. */
     val adjustmentPending: Boolean = false,
+    /** Original terminal approval time in epoch milliseconds; null when not approved or its date is unavailable. */
+    val processedAt: Long? = null,
+    /** First send time of the current logical capture in epoch milliseconds; retained across retries. */
+    val captureStartedAt: Long? = null,
+    /** Time capture acceptance was recorded, in epoch milliseconds; null without dated acceptance. */
+    val captureProcessedAt: Long? = null,
 ) {
     /** What the payment holds on the card: [authorisedMinor] after an adjustment, else [totalMinor]. */
     val heldMinor: Long get() = authorisedMinor ?: totalMinor
@@ -523,6 +538,8 @@ data class RefundEntity(
     val reason: StoredReason? = null,
     /** Actual refund connection, persisted before sending; null before sending. */
     val context: PaymentContext? = null,
+    /** Terminal acceptance time in epoch milliseconds; null before acceptance or when unavailable. */
+    val processedAt: Long? = null,
 )
 
 /**

@@ -32,6 +32,10 @@ internal sealed interface SetupImportOutcome {
 
     data object BoardingRequired : SetupImportOutcome
 
+    data class HistoryConfirmation(
+        val plan: HistorySwitchPlan,
+    ) : SetupImportOutcome
+
     data class Failed(
         val problem: SetupProblem? = null,
         val message: String? = null,
@@ -39,14 +43,22 @@ internal sealed interface SetupImportOutcome {
     ) : SetupImportOutcome
 }
 
+/** Read-only Management services used while verifying an import candidate. */
+class SetupImportChecks(
+    /** Proposes store receipt fields without replacing saved merchant text. */
+    val businessDetails: ReceiptBusinessDetails,
+    /** Creates a read-only terminal-management client for the candidate credential. */
+    val terminals: (String) -> TerminalDetailsApi,
+)
+
 /** Verifies a scanned setup without replacing active configuration, then commits it with durable recovery.
  * @param transfer Authenticates transfer codes and owns encrypted commit persistence.
  * @param setups Resolves candidates and records local verification fingerprints.
  * @param gateway Tests candidate connections without publishing learned facts into active settings.
  * @param api Verifies Checkout access for the candidate account and environment.
  * @param tapToPay Performs only explicitly requested phone registration, retaining its recovery identity.
- * @param businessDetails Reads proposed receipt fields; failures do not invalidate financial setup.
- * @param terminals Read-only Management client factory; tests supply a fake.
+ * @param checks Reads Management terminal facts and proposed receipt fields without modifying active setup.
+ * @param historySwitches Requires explicit confirmation before an import purges another environment’s history.
  * @param busy Whether a financial operation is running, so its configuration cannot be replaced.
  */
 class SetupImport internal constructor(
@@ -55,8 +67,8 @@ class SetupImport internal constructor(
     private val gateway: TerminalGateway,
     private val api: AdyenApi,
     private val tapToPay: TapToPaySetup,
-    private val businessDetails: ReceiptBusinessDetails,
-    private val terminals: (String) -> TerminalDetailsApi,
+    private val checks: SetupImportChecks,
+    private val historySwitches: HistorySwitches,
     private val busy: () -> Boolean,
 ) {
     private val mutex = Mutex()
@@ -69,6 +81,7 @@ class SetupImport internal constructor(
         businessId: String? = null,
         skipBusiness: Boolean = false,
         board: Boolean = false,
+        confirmedHistorySwitch: HistorySwitchPlan? = null,
     ): SetupImportOutcome =
         mutex.withLock {
             if (busy()) return@withLock SetupImportOutcome.Failed(SetupProblem.SETUP_CHANGED)
@@ -76,8 +89,13 @@ class SetupImport internal constructor(
             val prepared = transfer.prepare(received, code) ?: return@withLock SetupImportOutcome.Committed(ImportOutcome.WrongCode)
             if (!prepared.original.acceptsSetupImport) return@withLock SetupImportOutcome.Failed(SetupProblem.SETUP_CHANGED)
             try {
-                verify(prepared, terminalId, businessId, skipBusiness, board)
-                    ?: SetupImportOutcome.Committed(transfer.commit(prepared, mode, ::remember))
+                val problem = verify(prepared, terminalId, businessId, skipBusiness, board)
+                if (problem != null) return@withLock problem
+                val switch = historySwitches.preview(prepared.settings.terminal)
+                if (switch != null && !switch.wasConfirmedBy(confirmedHistorySwitch)) {
+                    return@withLock SetupImportOutcome.HistoryConfirmation(switch)
+                }
+                SetupImportOutcome.Committed(transfer.commit(prepared, mode, purgeHistory = switch != null, verified = ::remember))
             } catch (e: SecretStoreException) {
                 SetupImportOutcome.Committed(ImportOutcome.StorageFailed(e.message.orEmpty()))
             }
@@ -125,7 +143,7 @@ class SetupImport internal constructor(
         val unlocked = candidate(prepared)
         val key = unlocked.apiKey ?: return SetupImportOutcome.Failed(SetupProblem.API_KEY, incomplete = true)
         val environment = unlocked.setup.environment ?: return SetupImportOutcome.Failed(SetupProblem.ENVIRONMENT, incomplete = true)
-        return when (val result = terminals(key).credential(environment)) {
+        return when (val result = checks.terminals(key).credential(environment)) {
             CredentialLookup.Allowed -> null
             is CredentialLookup.Failed -> SetupImportOutcome.Failed(result.reason.setupProblem())
         }
@@ -137,7 +155,7 @@ class SetupImport internal constructor(
     ): SetupImportOutcome? {
         val unlocked = candidate(prepared)
         if (!unlocked.setup.discoversTerminals) return null
-        val management = terminals(checkNotNull(unlocked.apiKey))
+        val management = checks.terminals(checkNotNull(unlocked.apiKey))
         return when (val result = management.terminals(checkNotNull(unlocked.setup.environment))) {
             is TerminalListing.Failed -> SetupImportOutcome.Failed(result.reason.setupProblem())
             is TerminalListing.Listed -> chooseTerminal(prepared, unlocked.setup, management, result, selected)
@@ -287,7 +305,7 @@ class SetupImport internal constructor(
         skip: Boolean,
     ): SetupImportOutcome? {
         if (skip || !prepared.settings.receipt.needsBusinessDetails()) return null
-        return when (val result = businessDetails.stores(candidate(prepared))) {
+        return when (val result = checks.businessDetails.stores(candidate(prepared))) {
             is ReceiptBusinesses.Listed -> {
                 chooseBusiness(prepared, result.stores, selected)
             }

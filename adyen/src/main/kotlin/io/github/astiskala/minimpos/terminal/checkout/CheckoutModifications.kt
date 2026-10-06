@@ -57,7 +57,7 @@ class CheckoutModifications(
         modify(
             listOf("payments", paymentPspReference, "amountUpdates"),
             body(amount, reference).apply {
-                addProperty("reason", "DelayedCharge")
+                addProperty("industryUsage", "delayedCharge")
                 adjustAuthorisationData?.let { addProperty("adjustAuthorisationData", it) }
             },
             idempotencyKey,

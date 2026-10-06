@@ -97,7 +97,7 @@ interface PaymentModifications {
 
     /**
      * Changes the amount the pre-authorisation [paymentPspReference] holds to [amount], the new total (not the
-     * difference), with reason `DelayedCharge` (`POST /payments/{paymentPspReference}/amountUpdates`). With
+     * difference), with `industryUsage=delayedCharge` (`POST /payments/{paymentPspReference}/amountUpdates`). With
      * [adjustAuthorisationData] (the blob from the payment or the previous adjustment) the adjustment is synchronous
      * and answers [ModificationResult.Authorised] or [ModificationResult.Refused]; without it Adyen answers
      * [ModificationResult.Received] and decides later. The same amount as before extends the authorisation.

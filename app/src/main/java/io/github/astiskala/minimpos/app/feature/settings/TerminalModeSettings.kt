@@ -124,7 +124,8 @@ private fun ColumnScope.DestinationSteps(
 ) {
     var testedFields by remember { mutableStateOf<Pair<String, String>?>(null) }
     var apiComplete by remember { mutableStateOf(false) }
-    LaunchedEffect(actions.api, api.problem, api.key) {
+    // An immediate retest can conflate running and success; new tested fields must still recheck completion.
+    LaunchedEffect(actions.api, api.problem, api.key, testedFields) {
         if (api.testCompleted(actions.api, testedFields)) apiComplete = true
     }
     if (status.mode == TerminalMode.PAYMENTS_APP) {

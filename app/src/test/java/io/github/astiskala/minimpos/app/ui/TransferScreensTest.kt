@@ -105,6 +105,7 @@ class TransferScreensTest {
         compose.onNodeWithTag("shareSettings").performClick()
         compose.onNodeWithTag("showCodes").assertIsDisplayed().assertIsNotEnabled()
         compose.onNodeWithTag("back").performClick()
+        waitForTag("shareToTerminal")
 
         await { container.secrets.set(Secret.SMTP_PASSWORD, "pw") }
         compose.onNodeWithTag("shareToTerminal").performScrollTo().performClick()

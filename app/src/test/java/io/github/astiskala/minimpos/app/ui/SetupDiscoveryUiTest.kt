@@ -38,7 +38,7 @@ class SetupDiscoveryUiTest {
     private val phone = FakeDevice()
     private var apiFailure: String? = null
     private var apiRelease: CompletableDeferred<Unit>? = null
-    private val apiEntered = CompletableDeferred<Unit>()
+    private var apiEntered = CompletableDeferred<Unit>()
     private val modifications =
         object : PaymentModifications by SimulatedModifications() {
             override suspend fun verify(): String? {
@@ -309,7 +309,13 @@ class SetupDiscoveryUiTest {
     }
 
     @Test
-    fun `an API test still running or completed for a changed account cannot unlock terminal setup`() {
+    fun `an API test still running or completed for a changed account cannot unlock terminal setup`() =
+        verifyChangedAccount(holdRetest = false)
+
+    @Test
+    fun `a running retest cannot reuse success for the previous account`() = verifyChangedAccount(holdRetest = true)
+
+    private fun verifyChangedAccount(holdRetest: Boolean) {
         env.updateSettings {
             it.copy(terminal = it.terminal.copy(mode = TerminalMode.TERMINAL, environment = TerminalEnvironment.TEST))
         }
@@ -330,7 +336,16 @@ class SetupDiscoveryUiTest {
         apiRelease?.complete(Unit)
         compose.waitUntilAtLeastOneExists(hasTestTag("apiResult") and hasText(env.context.getString(R.string.settings_api_ok)), 15_000)
         compose.onNodeWithTag("step_3").assertDoesNotExist()
+        if (holdRetest) {
+            apiEntered = CompletableDeferred()
+            apiRelease = CompletableDeferred()
+        }
         compose.onNodeWithTag("testApi").performScrollTo().performClick()
+        if (holdRetest) {
+            compose.awaitCondition("the new account test starts") { apiEntered.isCompleted }
+            compose.onNodeWithTag("step_3").assertDoesNotExist()
+            apiRelease?.complete(Unit)
+        }
         waitForTag("host")
     }
 

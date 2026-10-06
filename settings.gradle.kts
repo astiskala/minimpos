@@ -41,9 +41,19 @@ gradle.lifecycle.beforeProject {
             "org.bouncycastle:bcpkix-jdk18on" to listOf("1.85"),
             "org.bouncycastle:bcprov-jdk18on" to listOf("1.85"),
             "org.bouncycastle:bcutil-jdk18on" to listOf("1.85"),
+            // The HTML checker's Jetty modules share one patch level; 12.0.36 fixes the server/security advisories.
+            "org.eclipse.jetty:jetty-alpn-client" to listOf("12.0.36"),
+            "org.eclipse.jetty:jetty-client" to listOf("12.0.36"),
+            "org.eclipse.jetty:jetty-http" to listOf("12.0.36"),
+            "org.eclipse.jetty:jetty-io" to listOf("12.0.36"),
+            "org.eclipse.jetty:jetty-security" to listOf("12.0.36"),
+            "org.eclipse.jetty:jetty-server" to listOf("12.0.36"),
+            "org.eclipse.jetty:jetty-session" to listOf("12.0.36"),
+            "org.eclipse.jetty:jetty-util" to listOf("12.0.36"),
+            "org.eclipse.jetty.ee10:jetty-ee10-servlets" to listOf("12.0.36"),
             "org.freemarker:freemarker" to listOf("2.3.35"),
             "org.jdom:jdom2" to listOf("2.0.6.1"),
-            "org.jsoup:jsoup" to listOf("1.23.1"),
+            "org.jsoup:jsoup" to listOf("1.23.2"),
         )
 
     fun parts(version: String) = version.split('.', '-').map { it.toIntOrNull() ?: 0 }

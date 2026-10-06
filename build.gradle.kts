@@ -40,16 +40,13 @@ spotless {
             "gradle/*.properties",
             ".vscode/*.json",
             ".github/**/*.yml",
-            ".github/scripts/*.mjs",
-            ".github/scripts/*.java",
-            "scripts/*.mjs",
+            "scripts/gradle",
             "config/**/*.yml",
             "*/src/**/*.xml",
             "*/lint.xml",
             "docs/**/*.html",
             "docs/**/*.css",
             "docs/**/*.js",
-            "website-test/src/test/js/**/*.js",
             "docs/**/*.svg",
         )
         trimTrailingWhitespace()
@@ -289,24 +286,19 @@ val actionlint =
         command.set(listOf(tool("actionlint"), "-shellcheck", tool("shellcheck"), "-pyflakes="))
     }
 
+val shellCheck =
+    registerCheck("shellCheck", "Checks the concise Bash Gradle runner with shellcheck.") {
+        sources.from("scripts/gradle")
+        tools.from(shellcheckDownload)
+        command.set(listOf(tool("shellcheck"), "scripts/gradle"))
+    }
+
 val zizmor =
     registerCheck("zizmor", "Audits the GitHub workflows for security problems with zizmor.") {
         sources.from(workflows)
         tools.from(zizmorDownload)
         // Offline: the online audits need a GitHub token and would make the result depend on the network.
         command.set(listOf(tool("zizmor"), "--offline", "--no-progress", ".github"))
-    }
-
-val releaseCheck =
-    registerCheck("releaseCheck", "Tests release version preparation and CI artifact integrity checks.") {
-        sources.from(fileTree(".github/scripts") { include("*.mjs", "*.java") })
-        command.set(listOf("node", "--test", "--test-reporter=spec", ".github/scripts/release.test.mjs"))
-    }
-
-val buildOutputCheck =
-    registerCheck("buildOutputCheck", "Tests concise Gradle output, full logs and exit status with an offline fake wrapper.") {
-        sources.from(fileTree("scripts") { include("*.mjs") })
-        command.set(listOf("node", "--test", "--test-reporter=spec", "scripts/gradle.test.mjs"))
     }
 
 tasks.register("qualityGate") {
@@ -317,9 +309,9 @@ tasks.register("qualityGate") {
         "spotlessCheck",
         markdownCheck,
         actionlint,
+        shellCheck,
         zizmor,
-        releaseCheck,
-        buildOutputCheck,
+        ":tooling:check",
         ":core:check",
         ":adyen:check",
         ":app:check",

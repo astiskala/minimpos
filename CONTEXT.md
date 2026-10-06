@@ -91,6 +91,7 @@ existing spelling (`preAuthorisation`, `SaleKind.PRE_AUTHORISATION`, `authorised
 | Transfer code | Separate 12-character code for decrypting transferred secrets. | `TransferSeal` |
 | Setup helper | Offline browser tool: Automatic transfers credentials for physical-terminal lookup; Manual transfers connection details. Tap to Pay uses manual shared-key entry in the helper or on the phone. Imported setup collapses supplied details without treating them as tested. Optional SMTP settings can be included. | `docs/setup.html`, `ConnectionSetup` |
 | Secrets | Shared-key passphrase, API keys, SMTP password and PIN verifiers; encrypted and never logged. | `SecretStore` |
+| Repository tooling | Kotlin/JVM release integrity and signing-property parsing, plus a Bash runner with private build logs; not device application code. | `:tooling`, `scripts/gradle` |
 | Admin PIN | Access to configuration and products, separate from financial approval. | `pinManager`, `sessionLock` |
 | Manager approval | Optional financial-action access, configured only after admin PIN; rechecked before sending. | `managerPin`, `managerLock`, Manager PIN |
 

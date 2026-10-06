@@ -46,18 +46,11 @@ dependencies {
     testImplementation(libs.junit)
     testImplementation(libs.truth)
     testImplementation(libs.jsoup)
+    testImplementation(project(":core"))
+    testImplementation(libs.kotlinx.serialization.json)
 }
 
 val website = isolated.rootProject.projectDirectory.dir("docs")
-
-val setupHelperTest =
-    tasks.register<Exec>("setupHelperTest") {
-        group = "verification"
-        description = "Tests setup-helper async generation and invalidation without a browser or network."
-        val tests = layout.projectDirectory.file("src/test/js/setup.test.js")
-        inputs.files(tests, website.file("js/setup.js"))
-        commandLine("node", "--test", "--test-reporter=spec", tests.asFile.absolutePath)
-    }
 
 tasks.test {
     inputs
@@ -65,6 +58,8 @@ tasks.test {
         .withPathSensitivity(PathSensitivity.RELATIVE)
         .withPropertyName("website")
     systemProperty("minimpos.website", website.asFile.absolutePath)
+    // Browser paths affect helper integration tests even when the published website has not changed.
+    inputs.property("chrome", providers.environmentVariable("MINIMPOS_CHROME").orElse(""))
 }
 
 /**
@@ -116,5 +111,5 @@ val htmlCheck =
 
 tasks.named("check") {
     setDependsOn(dependsOn - tasks.named("detekt"))
-    dependsOn(htmlCheck, setupHelperTest, "detektTest")
+    dependsOn(htmlCheck, "detektTest")
 }

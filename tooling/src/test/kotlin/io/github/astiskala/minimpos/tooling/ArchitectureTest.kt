@@ -31,6 +31,9 @@ class ArchitectureTest {
                 .resideInAnyPackage(
                     "io.github.astiskala.minimpos.tooling..",
                     "java..",
+                    "javax.xml..",
+                    "org.w3c.dom..",
+                    "org.xml.sax..",
                     "kotlin..",
                     "kotlinx.serialization..",
                     "org.jetbrains.annotations..",

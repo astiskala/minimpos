@@ -3,7 +3,6 @@ package io.github.astiskala.minimpos.app.ui
 import android.app.Application
 import android.content.Intent
 import androidx.compose.ui.test.hasTestTag
-import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -24,6 +23,7 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.Config
+import io.github.astiskala.minimpos.app.createRecordingComposeRule as createComposeRule
 
 /** Home offers an available release at the smallest screen, where the payment tiles remain beside it. */
 @OptIn(ExperimentalCoroutinesApi::class)

@@ -59,7 +59,52 @@ unknown output, failure diagnostics and the exit status survive. Every run saves
 private log under ignored `build/gradle-logs/`; the runner prints its path. It does not use `--quiet`, disable checks or
 truncate failures. Signals are forwarded to Gradle and return a nonzero status. Use regular `./gradlew` for interactive
 progress or detailed logging (`--info`, `--stacktrace`). The runner uses Bash and standard system tools, without a
-bootstrap build, an installed Kotlin compiler or Node.
+bootstrap build, an installed Kotlin compiler or Node. Failed runs also save a private `repair.txt` beside the log:
+exit status, shell-quoted rerun, failed tasks, assertions and source frames extracted from that run. This is navigation,
+not a replacement for the full diagnostics.
+
+### Fast iteration
+
+`scripts/dev` selects existing tasks; it never changes the final gate. Run one Gradle invocation at a time per checkout.
+Format after a coherent edit batch, not after every file write; never race formatting against edits.
+
+```sh
+scripts/dev preflight
+scripts/dev test app '*CheckoutTest'
+scripts/dev format
+scripts/dev check architecture
+scripts/dev finish
+```
+
+| Command | Use |
+| --- | --- |
+| `format` | Existing `spotlessApply`: ktlint and fixable Markdown, plus text whitespace. Review the diff. |
+| `test MODULE PATTERN` | Matching tests in `core`, `adyen`, `app`, `website-test` or `tooling`; quote the pattern. |
+| `check AREA` | Module `check` for `core`/`adyen`/`app`; focused `website`, `workflows`, `markdown`, `architecture`, `localization`, `ui`, `qr`, `db` or `payment` lanes. |
+| `finish` | Format, then full `qualityGate --continue`; formatting failure stops the gate, gate failure stays nonzero. |
+| `preflight` | Read-only check of JDK 17+, SDK 37/build tools and Chrome; reports missing cached linters without failing for them. |
+| `warm` | Preflight, then compiler/test/browser/pinned-tool warmup; does not install SDKs or change config. |
+| `report` | Build current tooling, then summarize existing JUnit XML: exact assertions, first project frame, quoted reruns and slowest suites. |
+| `profile WORKERS [PATTERN]` | Rerun only the app test task with 1–4 workers and Gradle `--profile`; default pattern `*ui.*`. |
+
+Except `preflight`/`report`, commands accept trailing Gradle flags. `scripts/dev help` shows syntax.
+Fast lanes deliberately omit unrelated checks. Passing one never replaces `finish`; dependency edits still need a
+release build. For structural edits, run architecture tests and the affected type-resolved detekt task early
+(`:app:detektDebug`, `:core:detektMain` or `:adyen:detektMain`).
+
+On failure, read the repair packet and full log; `scripts/dev report` adds JUnit details. Group findings by root cause,
+fix a batch, rerun affected checks, then finish on the final unchanged checkout. Reports are historical snapshots:
+check their timestamps, especially after filtered tests or compilation failures. Missing reports are not success.
+
+Compare repeated `scripts/dev profile 1 'PATTERN'` and `scripts/dev profile 2 'PATTERN'` runs on the same checkout
+without concurrent builds. Gradle writes wall-time profiles under `build/reports/profile/`; summed suite times overlap
+under parallel workers. `-PappTestWorkers=1` through `4` overrides the default two workers for experiments, not CI policy.
+Keep the default unless repeated measurements justify a change. Inspect fixture startup/navigation/polling before
+adding workers. For small filtered suites, try one worker: duplicated Robolectric/native startup can outweigh parallelism.
+Reuse the daemon and caches; do not routinely run `clean` or `--rerun-tasks`.
+
+Agent task recipes live in [minimpos-iteration](.devin/skills/minimpos-iteration/SKILL.md); concrete test starters in
+[minimpos-tests](.devin/skills/minimpos-tests/SKILL.md). These point to existing owners and tests, not a second rulebook.
 
 The gate checks:
 
@@ -97,6 +142,12 @@ standalone release builds retain release lint by default. R8, signing and packag
 - `core` and `adyen`: plain JUnit. Crypto uses independent vectors; TLS tests use a fake Adyen root.
 - `app`: Robolectric SDK 33, `TestApplication`, Compose v2 rules and `en-rAU` amounts. See
   [app test pitfalls](app/AGENTS.md#tests). Two worker JVMs run app tests; isolate filesystem fixtures across processes.
+- Robolectric uses native graphics so captured PNGs contain rendered pixels, not legacy-renderer blank images.
+- Compose tests use `createRecordingComposeRule`, wrapping the v2 rule. Failed test bodies capture unmerged trees,
+  root PNGs and test/locale/dimension/timestamp metadata before Compose teardown under
+  `app/build/reports/ui-failures/<test-task>/`. Passing tests do not capture; directories are unique across workers.
+  Capture errors never replace the original assertion. These contain synthetic test data, not merchant screenshots;
+  CI includes them in its existing reports artifact. Check timestamps: old failure artifacts may remain.
 - `LocalizationTest` checks resource/format parity and writes receipt samples under
   `app/build/reports/localization/`. `LocalizedUiTest` checks Chinese/Japanese checkout at AMS1 size.
 - No real network or DNS in unit tests. Use the existing fake terminal, cloud, Payments app, Management and link APIs.

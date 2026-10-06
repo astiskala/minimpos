@@ -56,6 +56,7 @@ tasks.test {
     val repository = isolated.rootProject.projectDirectory
     inputs.files(
         repository.file("scripts/gradle"),
+        repository.file("scripts/dev"),
         repository.file(".github/workflows/ci.yml"),
         repository.file(".github/workflows/release.yml"),
     )

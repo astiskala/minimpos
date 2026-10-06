@@ -35,8 +35,13 @@ internal object Tooling {
                 SigningProperties.extract(Path.of(args[1]))
             }
 
+            "report" -> {
+                require(args.size == 2) { "Expected report and a repository directory" }
+                System.out.print(BuildReports.render(Path.of(args[1])))
+            }
+
             else -> {
-                throw IllegalArgumentException("Expected release or signing")
+                throw IllegalArgumentException("Expected release, signing or report")
             }
         }
         return 0

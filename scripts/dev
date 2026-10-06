@@ -1,0 +1,151 @@
+#!/bin/bash
+set -u -o pipefail
+root=$(CDPATH='' cd -- "$(dirname -- "$0")/.." && pwd) || exit "$?"
+runner=(bash "$root/scripts/gradle")
+java_command=${JAVA_HOME:+$JAVA_HOME/bin/}java
+javac_command=${JAVA_HOME:+$JAVA_HOME/bin/}javac
+usage() {
+  printf '%s\n' \
+    'Usage: scripts/dev COMMAND [ARGS] [GRADLE FLAGS]' \
+    '  format                         Fix formatting at an edit checkpoint' \
+    '  test MODULE PATTERN             Run matching tests (core, adyen, app, website-test, tooling)' \
+    '  check AREA                      core, adyen, app, website, workflows, markdown, architecture,' \
+    '                                  localization, ui, qr, db, payment' \
+    '  finish                          Format, then full qualityGate --continue' \
+    '  preflight                       Check local JDK, SDK 37, Chrome; no downloads or writes' \
+    '  warm                            Warm compiler, Robolectric, browser and pinned tool caches' \
+    '  report                          Build tooling, summarize existing JUnit failures and timings' \
+    '  profile WORKERS [PATTERN]        Rerun app tests only; workers 1-4, default pattern *ui.*'
+}
+invalid() {
+  printf '%s\n' "$1" >&2
+  usage >&2
+  exit 2
+}
+test_task() {
+  case "$1" in
+    app) task=:app:testDebugUnitTest ;;
+    core|adyen|website-test|tooling) task=":$1:test" ;;
+    *) invalid "Unknown test module: $1" ;;
+  esac
+}
+preflight() {
+  local status=0 java_output major sdk chrome found binary
+  if java_output=$("$java_command" -version 2>&1); then
+    printf '%s\n' "$java_output"
+    major=$(printf '%s\n' "$java_output" | awk -F '"' '/version "/ { split($2, v, "."); print (v[1] == 1 ? v[2] : v[1]); exit }')
+    if [[ "$major" =~ ^[0-9]+$ ]] && [ "$major" -ge 17 ] && command -v "$javac_command" >/dev/null; then
+      printf 'JDK: OK (Gradle provisions its pinned daemon JDK separately)\n'
+    else
+      printf 'JDK: need JDK 17+ with javac; JAVA_HOME takes precedence over PATH\n' >&2
+      status=1
+    fi
+  else
+    printf '%s\nJDK: java unavailable\n' "$java_output" >&2
+    status=1
+  fi
+  sdk=${ANDROID_HOME:-${ANDROID_SDK_ROOT:-}}
+  if [ -f "$root/local.properties" ]; then
+    local configured
+    configured=$(awk '/^sdk.dir[[:space:]]*=/ { sub(/^sdk.dir[[:space:]]*=[[:space:]]*/, ""); gsub(/\\ /, " "); sub(/\r$/, ""); print; exit }' "$root/local.properties")
+    [ -z "$configured" ] || sdk=$configured
+  fi
+  if [ -n "$sdk" ] && { [ -f "$sdk/platforms/android-37/android.jar" ] || [ -f "$sdk/platforms/android-37.0/android.jar" ]; }; then
+    printf 'SDK 37: OK\n'
+  else
+    printf 'SDK: install platform 37; set sdk.dir or ANDROID_HOME\n' >&2
+    status=1
+  fi
+  found=0
+  for binary in "$sdk"/build-tools/*/aapt2; do
+    if [ -x "$binary" ]; then found=1; break; fi
+  done
+  if [ "$found" -eq 1 ]; then
+    printf 'Android build tools: OK\n'
+  else
+    printf 'Android build tools: missing aapt2\n' >&2
+    status=1
+  fi
+  chrome=${MINIMPOS_CHROME:-}
+  if [ -z "$chrome" ]; then
+    case "$(uname -s)" in
+      Darwin) chrome='/Applications/Google Chrome.app/Contents/MacOS/Google Chrome' ;;
+      *) chrome=$(command -v google-chrome || true) ;;
+    esac
+  fi
+  if [ -x "$chrome" ]; then
+    printf 'Chrome: OK\n'
+  else
+    printf 'Chrome: install Chrome/Chromium or set MINIMPOS_CHROME to its executable\n' >&2
+    status=1
+  fi
+  for binary in rumdl actionlint shellcheck zizmor; do
+    if [ -x "$root/build/tools/$binary/$binary" ]; then
+      printf '%s: cached\n' "$binary"
+    else
+      printf '%s: not cached; scripts/dev warm downloads pinned binary\n' "$binary"
+    fi
+  done
+  return "$status"
+}
+command=${1:-help}
+[ "$#" -eq 0 ] || shift
+case "$command" in
+  help|--help|-h) usage ;;
+  format) exec "${runner[@]}" spotlessApply "$@" ;;
+  test)
+    [ "$#" -ge 2 ] || invalid 'test requires MODULE and PATTERN'
+    test_task "$1"
+    pattern=$2
+    [ -n "$pattern" ] || invalid 'test requires a nonempty PATTERN'
+    shift 2
+    exec "${runner[@]}" "$task" --tests "$pattern" "$@"
+    ;;
+  check)
+    [ "$#" -ge 1 ] || invalid 'check requires AREA'
+    area=$1
+    shift
+    case "$area" in
+      core|adyen|app) tasks=(":$area:check") ;;
+      website) tasks=(:website-test:check markdownCheck) ;;
+      workflows) tasks=(actionlint shellCheck zizmor :tooling:test --tests '*WorkflowTest' --tests '*RunnerTest') ;;
+      markdown) tasks=(markdownCheck) ;;
+      architecture) tasks=(:core:test --tests '*ArchitectureTest' :adyen:test --tests '*ArchitectureTest' :app:testDebugUnitTest --tests '*ArchitectureTest' :tooling:test --tests '*ArchitectureTest') ;;
+      localization) tasks=(:app:testDebugUnitTest --tests '*LocalizationTest' --tests '*LocalizedUiTest') ;;
+      ui) tasks=(:app:testDebugUnitTest --tests '*ui.*' --tests '*ComposeFailureArtifactsTest' :app:detektDebug :app:detektDebugUnitTest) ;;
+      qr) tasks=(:core:test --tests '*CodecTest' :app:testDebugUnitTest --tests '*SetupTransferTest' --tests '*TransferSealTest' :website-test:test --tests '*SetupHelperTest') ;;
+      db) tasks=(:app:testDebugUnitTest --tests '*DatabaseSchemaTest' --tests '*RepositoriesTest' :app:detektDebug) ;;
+      payment) tasks=(:app:testDebugUnitTest --tests '*payment.*' --tests '*refund.*' :app:detektDebug) ;;
+      *) invalid "Unknown check area: $area" ;;
+    esac
+    exec "${runner[@]}" "${tasks[@]}" "$@"
+    ;;
+  finish)
+    "${runner[@]}" spotlessApply "$@" || exit "$?"
+    exec "${runner[@]}" qualityGate --continue "$@"
+    ;;
+  preflight)
+    [ "$#" -eq 0 ] || invalid 'preflight takes no arguments'
+    preflight
+    ;;
+  warm)
+    preflight || exit "$?"
+    exec "${runner[@]}" :core:compileTestKotlin :adyen:compileTestKotlin :app:testDebugUnitTest --tests '*CheckoutTest' \
+      :website-test:check :tooling:cliJar spotlessCheck markdownCheck actionlint shellCheck zizmor "$@"
+    ;;
+  report)
+    [ "$#" -eq 0 ] || invalid 'report takes no arguments'
+    "${runner[@]}" :tooling:cliJar || exit "$?"
+    exec "$java_command" -jar "$root/tooling/build/libs/minimpos-tooling.jar" report "$root"
+    ;;
+  profile)
+    [ "$#" -ge 1 ] || invalid 'profile requires WORKERS (1-4)'
+    workers=$1
+    case "$workers" in 1|2|3|4) ;; *) invalid 'profile WORKERS must be 1-4' ;; esac
+    shift
+    pattern='*ui.*'
+    if [ "$#" -gt 0 ] && [[ "$1" != -* ]]; then pattern=$1; shift; fi
+    exec "${runner[@]}" :app:testDebugUnitTest --rerun --tests "$pattern" "-PappTestWorkers=$workers" --profile "$@"
+    ;;
+  *) invalid "Unknown command: $command" ;;
+esac

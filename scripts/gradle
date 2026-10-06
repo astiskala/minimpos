@@ -57,4 +57,25 @@ filtered=$?
 trap - INT TERM
 [ "$status" -ne 0 ] || status="$filtered"
 printf 'Gradle exit %s. Full log: %s\n' "$status" "$log"
+if [ "$status" -ne 0 ]; then
+  packet="$directory/repair.txt"
+  if {
+    printf 'Exit: %s\nFull log: %s\nRerun: cd ' "$status" "$log"
+    printf '%q' "$root"
+    printf ' && scripts/gradle '
+    printf '%q ' "${args[@]}"
+    printf '\nJUnit assertions, reruns and historical suite timings: scripts/dev report\n'
+    printf 'Reports: */build/reports/ and */build/test-results/\nUI artifacts: app/build/reports/ui-failures/\n'
+    awk '
+      /^> Task .* FAILED$/ || / > .* FAILED$/ { print; frame = 0; next }
+      /AssertionError|ComparisonFailure|expected:|but was:|^Execution failed for task/ { print; next }
+      /io\.github\.astiskala\.minimpos.*\([^)]*:[0-9]+\)/ && !frame { print; frame = 1; next }
+      /^[ew]: .*\.(kt|kts):[0-9]+/ || /^[^[:space:]]+\.(kt|kts|xml|html|md):[0-9]+/ { print }
+    ' "$log"
+  } > "$packet"; then
+    printf 'Repair packet: %s\n' "$packet"
+  else
+    printf 'Cannot write repair packet. Use full log: %s\n' "$log" >&2
+  fi
+fi
 exit "$status"

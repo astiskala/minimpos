@@ -77,7 +77,8 @@ Starred rules below are enforced by `ArchitectureTest`, `SettingsArchitectureTes
 
 - Robolectric SDK 33, `TestApplication`, Compose v2, `en-rAU`. `SmallScreenTest` checks visible primary actions at AMS1
   `w320dp-h460dp-hdpi`, P630 and S1F2 sizes. Localization tests cover resource parity and CJK checkout.
-- `TestEnvironment` is rule order 0, Compose order 1. FakeDevice/FakeTerminal model terminals; FakeCloud,
+- `TestEnvironment` is rule order 0, `createRecordingComposeRule` order 1 (v2 rule with pre-teardown failure artifacts;
+  CONTRIBUTING owns paths and usage). FakeDevice/FakeTerminal model terminals; FakeCloud,
   FakePaymentsApp, FakeManagement and FakeLinkApi model external services (`env.useLinks()` enables link setup).
   Call `container.start()` for background connection checks. Use fake DNS; no network in tests.
   Startup tests inject `UnconfinedTestDispatcher` into `TestEnvironment` and use `runTest` with that dispatcher;

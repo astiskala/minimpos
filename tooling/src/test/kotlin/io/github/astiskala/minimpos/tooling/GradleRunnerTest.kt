@@ -156,6 +156,33 @@ class GradleRunnerTest {
         assertThat(raw).contains("error\n")
     }
 
+    @Test
+    fun `failure packet preserves exact rerun arguments and points to full diagnostics`() {
+        val root =
+            fixture(
+                """
+                cat <<'OUTPUT'
+                > Task :core:test FAILED
+                    java.lang.AssertionError: expected 100 but was 90
+                        at io.github.astiskala.minimpos.core.ExampleTest.check(ExampleTest.kt:42)
+                        at io.github.astiskala.minimpos.core.SecondFrame.run(SecondFrame.kt:9)
+                OUTPUT
+                exit 37
+                """.trimIndent(),
+            )
+        val result = run(root, ":core:test", "--tests", "*ExampleTest.shopper's amount")
+        assertThat(result.code).isEqualTo(37)
+        val packet = Files.readString(result.log.parent.resolve("repair.txt"))
+        assertThat(packet).contains(":core:test FAILED")
+        assertThat(packet).contains("expected 100 but was 90")
+        assertThat(packet).contains("ExampleTest.kt:42")
+        assertThat(packet).doesNotContain("SecondFrame.kt:9")
+        assertThat(packet).contains(result.log.toString())
+        assertThat(packet).contains("Rerun:")
+        assertThat(packet).contains("scripts/dev report")
+        assertThat(result.output).contains("Repair packet:")
+    }
+
     private fun fixture(body: String? = null): Path {
         val root = temporary.newFolder().toPath()
         if (body != null) {

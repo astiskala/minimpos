@@ -57,6 +57,7 @@ Adyen Payments app (Tap to Pay). The built-in simulator needs no Adyen account.
   After changing `.editorconfig`, stop the Gradle daemon so ktlint reloads it. Build release after dependency changes.
 - For agent build/test runs, use `scripts/gradle <tasks/flags>` (see `CONTRIBUTING.md`): concise output,
   full private logs and unchanged exit status. Read relevant log sections on failure; never suppress warnings.
+  `scripts/dev` adds fast lanes and `finish` (format + full gate); see CONTRIBUTING's Fast iteration section.
 - Kotlin warnings, Android Lint warnings, detekt findings, unresolved KDoc links and HTML checker messages fail the
   gate. Do not suppress plugin deprecations either; investigate with the command in `CONTRIBUTING.md`.
 - A new architectural decision needs its ArchUnit rule in the same change, a reason comment and a deliberate-violation

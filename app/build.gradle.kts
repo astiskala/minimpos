@@ -27,6 +27,9 @@ val keystoreProperties =
         if (file.exists()) file.inputStream().use { load(it) }
     }
 
+val appTestWorkers = providers.gradleProperty("appTestWorkers").map(String::toInt).getOrElse(2)
+require(appTestWorkers in 1..4) { "appTestWorkers must be 1-4" }
+
 val appVersion =
     Properties().apply {
         rootProject.file("version.properties").inputStream().use { load(it) }
@@ -86,7 +89,7 @@ android {
             isIncludeAndroidResources = true
             all {
                 it.maxHeapSize = "3g"
-                it.maxParallelForks = 2
+                it.maxParallelForks = appTestWorkers
             }
         }
     }
@@ -487,11 +490,15 @@ abstract class AndroidApiArguments : CommandLineArgumentProvider {
     @get:Input
     abstract val minSdk: Property<Int>
 
+    @get:Internal
+    abstract val uiFailureDirectory: DirectoryProperty
+
     override fun asArguments() =
         listOf(
             "-Dminimpos.apiDatabase=${apiDatabase.get().asFile.absolutePath}",
             "-Dminimpos.backportedMethods=${backportedMethods.get().asFile.absolutePath}",
             "-Dminimpos.minSdk=${minSdk.get()}",
+            "-Dminimpos.uiFailureDirectory=${uiFailureDirectory.get().asFile.absolutePath}",
         )
 }
 
@@ -505,11 +512,14 @@ val listBackportedMethods =
     }
 
 tasks.withType<Test>().configureEach {
+    val uiFailures = layout.buildDirectory.dir("reports/ui-failures/$name")
+    outputs.dir(uiFailures).withPropertyName("uiFailures")
     jvmArgumentProviders +=
         objects.newInstance<AndroidApiArguments>().apply {
             apiDatabase.set(layout.file(sdkAndroidJar.map { it.resolveSibling("data/api-versions.xml") }))
             backportedMethods.set(listBackportedMethods.flatMap { it.list })
             minSdk.set(android.defaultConfig.minSdk)
+            uiFailureDirectory.set(uiFailures)
         }
 }
 

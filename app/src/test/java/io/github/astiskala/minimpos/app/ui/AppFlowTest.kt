@@ -12,7 +12,6 @@ import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.isEnabled
-import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithTag
@@ -47,6 +46,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
+import io.github.astiskala.minimpos.app.createRecordingComposeRule as createComposeRule
 
 @OptIn(ExperimentalTestApi::class)
 @RunWith(RobolectricTestRunner::class)
@@ -241,6 +241,7 @@ class AppFlowTest {
     fun `custom item descriptions default to Item only when blank`() {
         compose.onNodeWithTag("newSale").performClick()
         compose.waitForTag("addCustom")
+        compose.onNodeWithText("Description (optional)").performClick()
         compose.onNodeWithText("Item").assertIsDisplayed()
         listOf("   " to "Item", "  Delivery  " to "Delivery").forEach { (description, expected) ->
             compose.onNodeWithText("Description (optional)").performTextReplacement(description)

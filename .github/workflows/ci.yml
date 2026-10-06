@@ -28,15 +28,15 @@ jobs:
           distribution: temurin
           java-version: 21
 
-      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
-        with:
-          node-version: 22
-
       # Also validates the Gradle wrapper checksum.
       - uses: gradle/actions/setup-gradle@3f5f9adaf7d9fecd50b5935e54106014257a94e6 # v6.4.0
 
       - name: Quality gate
-        run: ./gradlew qualityGate --continue
+        run: |
+          # Use the runner image's browser; helper pages themselves make no network requests.
+          MINIMPOS_CHROME="$(command -v google-chrome)"
+          export MINIMPOS_CHROME
+          ./gradlew qualityGate --continue
 
       - name: Release build (R8)
         run: ./gradlew :app:assembleRelease -PqualityGatePassed=true
@@ -51,7 +51,8 @@ jobs:
         run: |
           mkdir -p build/release-artifact
           cp app/build/outputs/apk/release/app-release-unsigned.apk build/release-artifact/
-          node .github/scripts/release.mjs manifest --artifact build/release-artifact \
+          cp tooling/build/libs/minimpos-tooling.jar build/release-artifact/
+          java -jar tooling/build/libs/minimpos-tooling.jar release manifest --artifact build/release-artifact \
             --commit "$COMMIT" --run-id "$RUN_ID" --run-attempt "$RUN_ATTEMPT"
 
       - name: Upload unsigned release artifact

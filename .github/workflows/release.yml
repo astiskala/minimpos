@@ -21,7 +21,7 @@ jobs:
   prepare:
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 10
     permissions:
       contents: write
       actions: write
@@ -36,9 +36,13 @@ jobs:
           persist-credentials: false
           fetch-depth: 0
 
-      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+      - uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
         with:
-          node-version: 22
+          distribution: temurin
+          java-version: 21
+
+      - name: Build release tooling without signing credentials
+        run: ./gradlew :tooling:cliJar --console=plain
 
       - name: Prepare the version commit
         id: version
@@ -56,14 +60,14 @@ jobs:
           subject=$(git log -1 --format=%s "$version_commit")
           files=$(git diff-tree --no-commit-id --name-only -r "$version_commit")
           if [ "$BUMP" = resume ]; then
-            node .github/scripts/release.mjs candidate --subject "$subject" --files "$files"
+            java -jar tooling/build/libs/minimpos-tooling.jar release candidate --subject "$subject" --files "$files"
           else
-            if node .github/scripts/release.mjs candidate --subject "$subject" --files "$files" 2>/dev/null \
+            if java -jar tooling/build/libs/minimpos-tooling.jar release candidate --subject "$subject" --files "$files" 2>/dev/null \
               && [ -z "$(git ls-remote --tags origin "refs/tags/v$name")" ]; then
               echo "::error::An unpublished version commit exists. Select resume instead of raising the version again."
               exit 1
             fi
-            node .github/scripts/release.mjs bump "$BUMP"
+            java -jar tooling/build/libs/minimpos-tooling.jar release bump "$BUMP"
             name=$(sed -n 's/^versionName=//p' version.properties)
           fi
           if [ -n "$(git ls-remote --tags origin "refs/tags/v$name")" ]; then
@@ -106,9 +110,13 @@ jobs:
           ref: ${{ needs.prepare.outputs.commit }}
           persist-credentials: false
 
-      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+      - uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
         with:
-          node-version: 22
+          distribution: temurin
+          java-version: 21
+
+      - name: Build release tooling without signing credentials
+        run: ./gradlew :tooling:cliJar --console=plain
 
       - name: Require successful CI for the version commit
         id: ci
@@ -121,7 +129,7 @@ jobs:
           for attempt in $(seq 1 180); do
             gh api --method GET "repos/$REPOSITORY/actions/workflows/ci.yml/runs" \
               -f head_sha="$COMMIT" -f branch=main -f per_page=100 > "$RUNNER_TEMP/ci-runs.json"
-            run=$(node .github/scripts/release.mjs ci --runs "$RUNNER_TEMP/ci-runs.json" \
+            run=$(java -jar tooling/build/libs/minimpos-tooling.jar release ci --runs "$RUNNER_TEMP/ci-runs.json" \
               --commit "$COMMIT" --not-before "$DISPATCH")
             if [ -n "$run" ] && [ "$run" != null ]; then
               test "$(jq -r '.head_sha' <<< "$run")" = "$COMMIT"
@@ -167,10 +175,6 @@ jobs:
           distribution: temurin
           java-version: 21
 
-      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
-        with:
-          node-version: 22
-
       - name: Download and verify the exact CI artifact
         env:
           GH_TOKEN: ${{ github.token }}
@@ -181,7 +185,7 @@ jobs:
         run: |
           gh run download "$RUN_ID" --repo "$REPOSITORY" --name "release-$COMMIT-$RUN_ATTEMPT" \
             --dir "$RUNNER_TEMP/release-artifact"
-          node .github/scripts/release.mjs verify --artifact "$RUNNER_TEMP/release-artifact" \
+          java -jar "$RUNNER_TEMP/release-artifact/minimpos-tooling.jar" release verify --artifact "$RUNNER_TEMP/release-artifact" \
             --commit "$COMMIT" --run-id "$RUN_ID" --run-attempt "$RUN_ATTEMPT"
           test "$(git ls-remote origin refs/heads/main | cut -f1)" = "$COMMIT"
 
@@ -204,7 +208,7 @@ jobs:
           printf '%s' "$RELEASE_KEYSTORE" | base64 --decode > "$RUNNER_TEMP/release.jks"
           printf '%s' "$RELEASE_SIGNING_PROPERTIES" > "$RUNNER_TEMP/signing.properties"
           # Use Java's same .properties parser as Gradle; never print or shell-evaluate secret values.
-          java .github/scripts/SigningProperties.java "$RUNNER_TEMP"
+          java -jar "$RUNNER_TEMP/release-artifact/minimpos-tooling.jar" signing "$RUNNER_TEMP"
           "$tools/zipalign" -c -P 16 -v 4 "$apk"
           "$tools/apksigner" sign --ks "$RUNNER_TEMP/release.jks" \
             --ks-key-alias "$(cat "$RUNNER_TEMP/keyAlias")" \
@@ -233,7 +237,7 @@ jobs:
           VERSION: ${{ needs.prepare.outputs.name }}
         run: |
           # The app reads this small metadata asset to compare the release's versionCode with its own.
-          node .github/scripts/release.mjs update --out "$RUNNER_TEMP/update.json"
+          java -jar "$RUNNER_TEMP/release-artifact/minimpos-tooling.jar" release update --out "$RUNNER_TEMP/update.json"
           gh release create "v$VERSION" "$RUNNER_TEMP/minimpos-$VERSION.apk" "$RUNNER_TEMP/update.json" \
             --verify-tag --title "Mini mPOS $VERSION" --generate-notes
 

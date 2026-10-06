@@ -1,0 +1,60 @@
+#!/bin/bash
+# Bash and standard POSIX tools only: stream concise output, retain every raw byte and Gradle's exit status.
+set -u -o pipefail
+root=$(CDPATH='' cd -- "$(dirname -- "$0")/.." && pwd) || exit "$?"
+umask 077
+mkdir -p "$root/build/gradle-logs" || exit "$?"
+directory=$(mktemp -d "$root/build/gradle-logs/run-XXXXXX") || exit "$?"
+log="$directory/output.log"
+fifo="$directory/output.pipe"
+: > "$log"
+printf 'Gradle running. Full log: %s\n' "$log"
+if [ ! -x "$root/gradlew" ]; then
+  printf 'Cannot run Gradle: no executable wrapper at %s\n' "$root/gradlew" | tee -a "$log"
+  exit 1
+fi
+mkfifo "$fifo" || exit "$?"
+trap 'rm -f "$fifo"' EXIT
+
+args=(--console=plain)
+while [ "$#" -gt 0 ]; do
+  case "$1" in
+    --) args+=("$@"); break ;;
+    --console) shift; [ "$#" -eq 0 ] || shift ;;
+    --console=*) shift ;;
+    *) args+=("$1"); shift ;;
+  esac
+done
+
+# Job control gives the wrapper its own process group and leaves INT enabled in background children.
+set -m
+tee "$log" < "$fifo" | awk '
+  { sub(/\r$/, "") }
+  /^[[:space:]]*$/ { next }
+  /^> Task :[[:alnum:]_:.-]+( (UP-TO-DATE|FROM-CACHE|NO-SOURCE|SKIPPED))?$/ { next }
+  /^[0-9]+ actionable tasks?: [0-9]+ (executed|up-to-date)(, [0-9]+ (executed|from cache|up-to-date))*$/ { next }
+  /^(Reusing configuration cache\.|Configuration cache entry (stored|reused)\.)$/ { next }
+  { print; fflush() }
+' &
+reader=$!
+(
+  cd "$root" || exit "$?"
+  exec "$root/gradlew" "${args[@]}" < /dev/null
+) > "$fifo" 2>&1 &
+child=$!
+set +m
+interrupted=0
+trap 'interrupted=130; if kill -0 "$child" 2>/dev/null; then kill -INT -- "-$child"; fi' INT
+trap 'interrupted=143; if kill -0 "$child" 2>/dev/null; then kill -TERM -- "-$child"; fi' TERM
+wait "$child"
+status=$?
+if [ "$interrupted" -ne 0 ]; then
+  wait "$child"
+  status="$interrupted"
+fi
+wait "$reader"
+filtered=$?
+trap - INT TERM
+[ "$status" -ne 0 ] || status="$filtered"
+printf 'Gradle exit %s. Full log: %s\n' "$status" "$log"
+exit "$status"

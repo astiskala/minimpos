@@ -60,7 +60,7 @@ private data class Asset(
     @SerialName("browser_download_url") val url: String,
 )
 
-/** The release's update metadata asset (`.github/scripts/release.mjs` writes it); one current format, no earlier ones. */
+/** The release's update metadata asset (`:tooling` writes it); one current format, no earlier ones. */
 @Serializable
 private data class ReleaseUpdate(
     val versionCode: Long,

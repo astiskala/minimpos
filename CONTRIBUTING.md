@@ -5,9 +5,8 @@ tested them, and include before/after screenshots for UI changes. Contributions 
 
 ## Build and run
 
-You need JDK 17+ to start Gradle (the build downloads JDK 21), Node.js 22+ for setup-helper and release workflow tests,
-Android SDK platform
-37 and recent build tools.
+You need JDK 17+ to start Gradle (the build downloads JDK 21), Chrome/Chromium for setup-helper browser tests,
+Android SDK platform 37 and recent build tools.
 Android Studio can install the SDK; otherwise set `sdk.dir` in an untracked `local.properties`. The full gate supports
 macOS and Linux; its pinned Markdown/workflow linter binaries are not available for Windows.
 
@@ -30,6 +29,7 @@ there is no Java code, and that importer cannot handle this build.
 | `adyen` | Android-free Terminal, Checkout, Cloud device and Management API integration, transports and simulator. |
 | `app` | Compose UI, Room, DataStore, Keystore, email, camera scanning and manual DI in `AppContainer`. |
 | `website-test` | Tests and validation for the static website in `docs/`; no app code. |
+| `tooling` | Kotlin/JVM release CLI, signing-property extraction and shell-runner regression tests; no app dependencies. |
 
 [CONTEXT.md](CONTEXT.md) defines domain terms and decision owners. Read the relevant
 [module rules](app/AGENTS.md) ([Adyen module](adyen/AGENTS.md)) before changing a module. Their starred architectural
@@ -50,15 +50,16 @@ There is no backend. These are distinct transports, not interchangeable recovery
 For concise local or agent output, use the optional runner with the same Gradle tasks and flags:
 
 ```sh
-node scripts/gradle.mjs :core:test --tests '*MoneyTest'
-node scripts/gradle.mjs qualityGate
+scripts/gradle :core:test --tests '*MoneyTest'
+scripts/gradle qualityGate
 ```
 
-It overrides console mode to plain and removes only known task/cache progress and passing Node test lines. Warnings,
+It overrides console mode to plain and removes only known task/cache progress. Warnings,
 unknown output, failure diagnostics and the exit status survive. Every run saves complete stdout/stderr in a separate
 private log under ignored `build/gradle-logs/`; the runner prints its path. It does not use `--quiet`, disable checks or
 truncate failures. Signals are forwarded to Gradle and return a nonzero status. Use regular `./gradlew` for interactive
-progress or detailed logging (`--info`, `--stacktrace`). Build/test speed is unchanged; the runner reduces console noise.
+progress or detailed logging (`--info`, `--stacktrace`). The runner uses Bash and standard system tools, without a
+bootstrap build, an installed Kotlin compiler or Node.
 
 The gate checks:
 
@@ -67,8 +68,8 @@ The gate checks:
 | Spotless/ktlint | Kotlin formatting; whitespace and final newlines in other text files. Restart Gradle after changing `.editorconfig`. |
 | rumdl | Markdown rules and relative links; 120 columns outside tables/code. Wrap prose by hand; formatting keeps line breaks. |
 | Website | Local links/fragments/assets, language and metadata parity, UI labels, screenshots, setup-helper fields and async generation; W3C Nu HTML/CSS validation with no messages. |
-| Workflows | actionlint with shellcheck, and offline zizmor. |
-| Release | Offline version preparation and exact-commit APK artifact integrity tests. |
+| Workflows and scripts | actionlint, shellcheck and offline zizmor. |
+| Release | Offline version preparation and exact-commit APK/tooling artifact integrity tests. |
 | detekt | Type-resolved checks of main/test sources, including Compose and documentation rules; no baseline. |
 | Dokka | All KDoc links resolve, including private code; generated HTML is in `<module>/build/dokka/html`. |
 | Android Lint | All checks, including normally disabled checks and test sources; warnings fail. |
@@ -99,6 +100,11 @@ standalone release builds retain release lint by default. R8, signing and packag
 - `LocalizationTest` checks resource/format parity and writes receipt samples under
   `app/build/reports/localization/`. `LocalizedUiTest` checks Chinese/Japanese checkout at AMS1 size.
 - No real network or DNS in unit tests. Use the existing fake terminal, cloud, Payments app, Management and link APIs.
+- Website helper integration tests use JDK HTTP/WebSocket APIs to drive Chromium's DevTools protocol. They load the
+  actual localized pages from disk in a disposable profile with loopback-only debugging and outbound DNS blocked,
+  exercise WebCrypto and async invalidation, and decode generated transfers with JVM implementations. No Node,
+  browser-driver library or ChromeDriver is needed. Set `MINIMPOS_CHROME` to a Chrome/Chromium executable to override
+  Google Chrome's standard macOS path or `google-chrome` on Linux. CI uses the browser already on its runner image.
 
 ### Known integration verification gaps
 
@@ -195,10 +201,12 @@ release process, credentials and signing history.
 
 `version.properties` is managed by **Actions › Release › Run workflow** on `main`. Choose patch/minor/major;
 the workflow commits the new version first and explicitly starts CI on it. CI runs the full quality gate and R8
-build, then saves the unsigned APK with its commit, version, run attempt and SHA-256. Release waits up to 45 minutes
-for successful CI on that exact version commit. Missing, failed or cancelled CI blocks publication.
+build, then saves the unsigned APK and tested executable tooling JAR with their SHA-256 hashes, commit, version and
+run attempt. Release waits up to 45 minutes for successful CI on that exact version commit.
+Missing, failed or cancelled CI blocks publication.
 
-Only successful CI allows the release job to access the signing environment. It verifies the artifact's provenance,
+Only successful CI allows the release job to access the signing environment. It runs CI's tooling JAR with Java,
+without rebuilding tooling, Gradle plugins or dependency resolution. It verifies the artifact's provenance,
 checksum, application ID and version, signs CI's APK without rebuilding it, checks its signature and alignment, tags
 the verified commit as `vX.Y.Z`, and publishes the APK and notes. The full quality gate runs once, in CI; no Gradle
 plugins execute with signing secrets. Main must still point to the verified commit before tagging.

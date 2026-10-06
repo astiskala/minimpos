@@ -50,6 +50,23 @@ fun ConfirmDialog(
     )
 }
 
+/** Confirms permanent history loss, adding loss-of-recovery details when [unfinished] operations exist. */
+@Composable
+fun HistorySwitchDialog(
+    unfinished: Boolean,
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit,
+) = ConfirmDialog(
+    title = stringResource(R.string.history_switch_title),
+    message =
+        stringResource(R.string.history_switch_message) +
+            if (unfinished) "\n\n" + stringResource(R.string.history_switch_unfinished) else "",
+    confirmLabel = stringResource(R.string.history_switch_confirm),
+    onConfirm = onConfirm,
+    onDismiss = onDismiss,
+    destructive = true,
+)
+
 /**
  * A one-field input dialog (e.g. an email address to send a receipt to). [onConfirm] gets the trimmed text, and is
  * only possible while [validate] accepts it.

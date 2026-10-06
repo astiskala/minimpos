@@ -35,6 +35,7 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -147,11 +148,12 @@ fun HistoryScreen(
                 )
             }
             HistoryFilters(state.filter, vm::setFilter, state.methods, state.method, vm::setMethod)
+            OutcomeMessage(state.print)
             when {
                 !state.loaded -> {}
 
                 state.days.isNotEmpty() -> {
-                    HistoryList(state.days) { item ->
+                    HistoryList(state.days, state.canPrint, state.print.running, vm::printDay) { item ->
                         when (item) {
                             is HistoryItem.Sale -> navigator.push(Route.SaleDetail(item.sale.id))
                             is HistoryItem.Refund -> navigator.push(Route.RefundDetail(item.refund.id))
@@ -184,6 +186,9 @@ fun HistoryScreen(
 @Composable
 private fun HistoryList(
     days: List<HistoryDay>,
+    canPrint: Boolean,
+    printing: Boolean,
+    onPrint: (LocalDate) -> Unit,
     onOpen: (HistoryItem) -> Unit,
 ) {
     val timeFormat = remember { DateTimeFormatter.ofLocalizedTime(FormatStyle.SHORT) }
@@ -198,10 +203,13 @@ private fun HistoryList(
                     } else {
                         dateFormat.format(day.date)
                     },
+                    canPrint,
+                    printing,
+                    { onPrint(day.date) },
                 )
             }
-            items(day.items, key = { it.id }) { item ->
-                HistoryRow(item, timeFormat) { onOpen(item) }
+            items(day.items, key = { "${day.date}-${it.id}" }) { item ->
+                HistoryRow(item, timeFormat, day.times[item.id] ?: item.createdAt, item.id in day.captures) { onOpen(item) }
                 HorizontalDivider()
             }
         }
@@ -286,6 +294,9 @@ private fun PaymentMethodChip(
 private fun DayHeader(
     day: HistoryDay,
     title: String,
+    canPrint: Boolean,
+    printing: Boolean,
+    onPrint: () -> Unit,
 ) {
     val locale = currentLocale()
 
@@ -294,7 +305,18 @@ private fun DayHeader(
             MoneyFormatter(CurrencySpec.of(currency), locale).format(minor)
         }
     Column(Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.surfaceVariant).padding(horizontal = 16.dp, vertical = 8.dp)) {
-        Text(title, style = MaterialTheme.typography.titleSmall)
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            Text(title, Modifier.weight(1f), style = MaterialTheme.typography.titleSmall)
+            if (canPrint) {
+                IconButton(
+                    onClick = onPrint,
+                    enabled = !printing,
+                    modifier = Modifier.testTag("printDay_${day.date}"),
+                ) {
+                    Icon(Icons.Default.Print, stringResource(R.string.history_print_day))
+                }
+            }
+        }
         val parts =
             buildList {
                 if (day.totals.saleCount > 0) {
@@ -318,9 +340,12 @@ private fun DayHeader(
 private fun HistoryRow(
     item: HistoryItem,
     timeFormat: DateTimeFormatter,
+    at: Long,
+    captured: Boolean,
     onClick: () -> Unit,
 ) {
-    val time = timeFormat.format(Instant.ofEpochMilli(item.createdAt).atZone(ZoneId.systemDefault()))
+    val stamp = timeFormat.format(Instant.ofEpochMilli(at).atZone(ZoneId.systemDefault()))
+    val time = if (captured) "$stamp · ${stringResource(R.string.history_capture_activity)}" else stamp
     val row = historyRowText(item, time, currentLocale())
     TransactionRow(row.title, row.subtitle, row.amount, row.status, row.kind, onClick)
 }
@@ -739,7 +764,7 @@ private fun PaymentDetailsCard(sale: SaleEntity) {
 @Composable
 private fun historyViewModel(): HistoryViewModel {
     val container = LocalAppContainer.current
-    return viewModel { HistoryViewModel(container.history) }
+    return viewModel { HistoryViewModel(container.history, receipts = container.receipts) }
 }
 
 @Composable

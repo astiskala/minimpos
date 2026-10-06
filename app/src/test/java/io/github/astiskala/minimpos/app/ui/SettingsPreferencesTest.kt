@@ -13,11 +13,16 @@ import androidx.compose.ui.test.performScrollTo
 import com.google.common.truth.Truth.assertThat
 import io.github.astiskala.minimpos.app.MiniMposApp
 import io.github.astiskala.minimpos.app.TestEnvironment
+import io.github.astiskala.minimpos.app.await
 import io.github.astiskala.minimpos.app.awaitCondition
+import io.github.astiskala.minimpos.app.data.db.SaleEntity
+import io.github.astiskala.minimpos.app.data.db.SaleStatus
 import io.github.astiskala.minimpos.app.data.settings.ReceiptTipping
+import io.github.astiskala.minimpos.app.data.settings.TerminalMode
 import io.github.astiskala.minimpos.terminal.transport.StoreDetails
 import io.github.astiskala.minimpos.terminal.transport.StoreDetailsApi
 import io.github.astiskala.minimpos.terminal.transport.StoreListing
+import kotlinx.coroutines.flow.first
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -49,6 +54,42 @@ class SettingsPreferencesTest {
     private fun findStores() {
         compose.waitUntilAtLeastOneExists(hasTestTag("findReceiptBusinesses"), 15_000)
         compose.onNodeWithTag("findReceiptBusinesses").performScrollTo().performClick()
+    }
+
+    @Test
+    fun `environment switch warns about unfinished payments and cancellation preserves history`() {
+        env.useSimulator()
+        await {
+            container.sales.createPending(
+                SaleEntity(
+                    id = "pending",
+                    createdAt = 1,
+                    currency = "AUD",
+                    taxMode = "INCLUSIVE",
+                    netMinor = 1000,
+                    taxMinor = 0,
+                    totalMinor = 1000,
+                    status = SaleStatus.UNKNOWN,
+                    merchantReference = "PENDING",
+                ),
+                emptyList(),
+            )
+        }
+        open("terminal")
+        compose.waitUntilAtLeastOneExists(hasTestTag("terminalMode"), 15_000)
+        compose.onNodeWithTag("terminalMode").performScrollTo().performClick()
+        compose.onNodeWithTag("terminalMode_CLOUD").performClick()
+        compose.waitUntilAtLeastOneExists(hasText("Delete history and switch?"), 15_000)
+        compose.onNodeWithText("Unfinished payments exist.", substring = true).assertIsDisplayed()
+        compose.onNodeWithText("Cancel").performClick()
+        assertThat(await { container.history.items().first() }).hasSize(1)
+        assertThat(container.settingsState.value.terminal.mode).isEqualTo(TerminalMode.SIMULATOR)
+        compose.onNodeWithTag("terminalMode").performScrollTo().performClick()
+        compose.onNodeWithTag("terminalMode_CLOUD").performClick()
+        compose.waitUntilAtLeastOneExists(hasText("Delete history and switch?"), 15_000)
+        compose.onNodeWithTag("confirm").performClick()
+        compose.awaitCondition("environment switched") { container.settingsState.value.terminal.mode == TerminalMode.CLOUD }
+        assertThat(await { container.history.items().first() }).isEmpty()
     }
 
     @Test

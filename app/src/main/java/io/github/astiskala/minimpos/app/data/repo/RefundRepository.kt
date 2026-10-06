@@ -9,6 +9,7 @@ import io.github.astiskala.minimpos.core.money.PaymentContext
 import io.github.astiskala.minimpos.terminal.client.TransactionDetails
 import kotlinx.coroutines.flow.Flow
 import kotlinx.serialization.Serializable
+import java.time.Instant
 
 /**
  * One item of an item refund, stored as JSON in `refunds.linesJson` (see [ReceiptLinesJson]) and printed on the refund
@@ -43,10 +44,13 @@ data class RefundedLine(
  *
  * @param db The database.
  * @param sales Records accepted refunds on their sales.
+ * @param now Epoch milliseconds used when acceptance has no terminal timestamp.
  */
 class RefundRepository(
     private val db: AppDatabase,
     private val sales: SaleRepository,
+    /** Epoch milliseconds used when the terminal provides no acceptance timestamp. */
+    private val now: () -> Long = System::currentTimeMillis,
 ) {
     private val dao = db.refundDao()
 
@@ -91,6 +95,18 @@ class RefundRepository(
         val refund =
             stored.copy(
                 status = status,
+                processedAt =
+                    stored.processedAt ?: if (status == RefundStatus.REQUESTED) {
+                        details?.poiTimestamp?.let {
+                            runCatching {
+                                Instant
+                                    .parse(it)
+                                    .toEpochMilli()
+                            }.getOrNull()
+                        } ?: now()
+                    } else {
+                        null
+                    },
                 message = message,
                 reason = reason,
                 pspReference = details?.pspReference ?: stored.pspReference,

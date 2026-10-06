@@ -181,7 +181,7 @@ class PaymentStandingTest {
         assertThat(preAuth.copy(captureStatus = CaptureStatus.UNKNOWN).totalsShare).isEqualTo(TotalsShare.HELD)
         assertThat(preAuth.copy(captureStatus = CaptureStatus.REQUESTED).totalsShare).isEqualTo(TotalsShare.SALE)
         assertThat(preAuth.copy(holdCancelled = true).totalsShare).isEqualTo(TotalsShare.NONE)
-        assertThat(tipSale.totalsShare).isEqualTo(TotalsShare.SALE)
+        assertThat(tipSale.totalsShare).isEqualTo(TotalsShare.HELD)
         assertThat(tipSale.copy(holdCancelled = true).totalsShare).isEqualTo(TotalsShare.NONE)
     }
 

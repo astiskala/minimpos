@@ -223,21 +223,20 @@ enum class TotalsShare {
     /** Not at all: it was not approved, or it held its amount and was cancelled, so nothing was charged. */
     NONE,
 
-    /** As a sale, at [SaleEntity.amountMinor]: a sale (one awaiting its tip at its bill), or a captured pre-authorisation. */
+    /** As a sale at [SaleEntity.amountMinor]: an ordinary approved sale or an accepted manual capture. */
     SALE,
 
-    /** As held, at [SaleEntity.heldMinor]: a pre-authorisation that has not been captured. */
+    /** As held at [SaleEntity.heldMinor]: manual-capture payments awaiting an accepted capture. */
     HELD,
 }
 
 /** How this sale counts in the day's totals: a pre-authorisation counts as a sale only once it is captured. */
 val SaleEntity.totalsShare: TotalsShare
     get() {
-        if (sample) return TotalsShare.NONE
         val standing = standing
         return when {
             standing == PaymentStanding.NOT_APPROVED || standing == PaymentStanding.HOLD_CANCELLED -> TotalsShare.NONE
-            kind == SaleKind.SALE || standing.charged -> TotalsShare.SALE
+            standing.charged -> TotalsShare.SALE
             else -> TotalsShare.HELD
         }
     }

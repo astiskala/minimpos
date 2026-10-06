@@ -255,6 +255,10 @@ data class TerminalSettings(
         return if (environment != null && environment != moved.environment) moved.selectEnvironment(environment) else moved
     }
 
+    /** History accounting environment; null while a real destination has not established TEST or LIVE. */
+    fun historyEnvironment(automaticMode: TerminalMode): String? =
+        if ((if (mode == TerminalMode.AUTO) automaticMode else mode) == TerminalMode.SIMULATOR) "SIMULATOR" else environment?.name
+
     /** These settings with [keyVersion] within its range. */
     fun normalized(): TerminalSettings = copy(keyVersion = keyVersion.coerceIn(KEY_VERSIONS))
 

@@ -5,7 +5,7 @@
   <string name="onboarding_simulator">Try simulator with samples</string>
   <string name="onboarding_terminal">Set up a terminal</string>
   <string name="sample_data">Sample data</string>
-  <string name="sample_data_hint">Add example products and read-only demo history. Your data and payment destination stay unchanged. Sample history is excluded from day totals.</string>
+  <string name="sample_data_hint">Add example products and read-only demo history. Your data and payment destination stay unchanged. Samples count in demo day totals and reports.</string>
   <string name="sample_add">Add sample data</string>
   <string name="sample_remove">Remove sample data</string>
   <string name="sample_remove_message">Remove sample products (including edits) and demo history? Your own products, history, tax rates, and settings stay. Categories used by your products stay too.</string>
@@ -898,4 +898,25 @@
   <string name="transfer_tap_checked">Payments app registration and setup checked. The app does not support a diagnostic shared-key test.</string>
   <string name="transfer_skip_business">Skip business details</string>
   <string name="settings_payments_app_setup_checked">Setup fields checked. The Payments app cannot diagnostically test the shared key.</string>
+  <string name="history_print_day">Print whole-day summary</string>
+  <string name="history_capture_activity">Capture / tip</string>
+  <string name="report_title">Local daily summary</string>
+  <string name="report_generated">Generated</string>
+  <string name="report_sales">Sales</string>
+  <string name="report_tips">Tips included</string>
+  <string name="report_refunds">Accepted refunds</string>
+  <string name="report_net">Net</string>
+  <string name="report_holds">New holds</string>
+  <string name="report_unresolved">Unresolved operations</string>
+  <string name="report_online">Online payments — payment date unavailable</string>
+  <string name="report_undated">Captures — processing date unavailable</string>
+  <string name="report_undated_note">All retained undated activity. Excluded from this day’s sales and net.</string>
+  <string name="report_note">Retained local activity only. Capture and refund acceptance is not final settlement. Adyen Customer Area is authoritative.</string>
+  <string name="report_issue_note">Unresolved outcomes may change these totals.</string>
+  <string name="report_demo">DEMO — no money moved</string>
+  <string name="report_unknown">Environment unavailable</string>
+  <string name="history_switch_title">Delete history and switch?</string>
+  <string name="history_switch_message">Switching between LIVE, TEST, and simulator permanently deletes all local payment history and daily report data. Products and other settings stay. Adyen records are not deleted.</string>
+  <string name="history_switch_unfinished">Unfinished payments exist. This does not cancel payments, authorizations, or links at Adyen. Local recovery and safe retry data will be lost.</string>
+  <string name="history_switch_confirm">Delete history and switch</string>
 </resources>

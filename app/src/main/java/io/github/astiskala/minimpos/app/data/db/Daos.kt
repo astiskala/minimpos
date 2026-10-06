@@ -133,6 +133,18 @@ interface CatalogDao {
  */
 @Dao
 interface SaleDao {
+    /** Observes a confirmed purge still awaiting its settings write. */
+    @Query("SELECT * FROM history_switch WHERE id = 1")
+    fun historySwitch(): Flow<HistorySwitchEntity?>
+
+    /** Stores the confirmed non-secret switch target in the same transaction as history deletion. */
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun rememberHistorySwitch(switch: HistorySwitchEntity)
+
+    /** Clears the journal only after destination settings were saved. */
+    @Query("DELETE FROM history_switch")
+    suspend fun finishHistorySwitch()
+
     /** Inserts a new sale. */
     @Insert
     suspend fun insert(sale: SaleEntity)

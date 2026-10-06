@@ -74,6 +74,7 @@ import io.github.astiskala.minimpos.app.payment.SaleBook
 import io.github.astiskala.minimpos.app.payment.SaleSession
 import io.github.astiskala.minimpos.app.receipt.PrintRenderer
 import io.github.astiskala.minimpos.app.receipt.ReceiptFactory
+import io.github.astiskala.minimpos.app.refund.HistoryAccounting
 import io.github.astiskala.minimpos.app.refund.PaymentStanding
 import io.github.astiskala.minimpos.app.refund.ReceiptStanding
 import io.github.astiskala.minimpos.app.refund.StoredPayment
@@ -421,6 +422,19 @@ class ArchitectureTest {
             .check(app)
 
     @Test
+    fun `only confirmed switch owners can purge unfinished history`() = historyPurgeOwnership.check(app)
+
+    @Test
+    fun `history purge ownership rejects unconfirmed deletion`() = reject(listOf(historyPurgeOwnership), HistoryPurgeViolation::class.java)
+
+    private class HistoryPurgeViolation {
+        suspend fun purge(
+            history: HistoryRepository,
+            target: TerminalSettings,
+        ) = history.purgeForEnvironmentSwitch(target)
+    }
+
+    @Test
     fun `stored sales and refunds change only through their repositories`() {
         // After it is created, a sale changes only through SaleRepository.record (a SaleEvent) and applyRefund, and a
         // refund only through RefundRepository.settle; HistoryRepository owns the housekeeping of whole tables.
@@ -715,6 +729,7 @@ class ArchitectureTest {
             TerminalSettings::class.java,
             ConnectionSetup::class.java,
             PricingChange::class.java,
+            HistoryAccounting::class.java,
         ).forEach { contract -> assertTrue(contract.name, pureDecisions.test(app.get(contract))) }
         assertTrue(app.none { it.isEquivalentTo(ArchitectureTest::class.java) })
     }
@@ -997,6 +1012,19 @@ class ArchitectureTest {
                 .withImportOption { location -> !location.contains("UnitTest") }
                 .importPackages("io.github.astiskala.minimpos.app")
 
+        // Only explicit switch confirmation and its authenticated import journal may discard recovery identities.
+        val historyPurgeOwnership: ArchRule =
+            noClasses()
+                .that()
+                .haveNameNotMatching(
+                    within(
+                        HistoryRepository::class.java.name,
+                        "io.github.astiskala.minimpos.app.terminal.HistorySwitches",
+                        "io.github.astiskala.minimpos.app.data.transfer.SetupTransfer",
+                    ),
+                ).should()
+                .callMethodWhere(callTo(HistoryRepository::class.java.name, "purgeForEnvironmentSwitch"))
+
         val pureDecisions: DescribedPredicate<JavaClass> =
             declaredIn("io.github.astiskala.minimpos.app.payment", "Checkout.kt")
                 .or(declaredIn("io.github.astiskala.minimpos.app.payment", "PaymentLinkRequests.kt"))
@@ -1006,6 +1034,7 @@ class ArchitectureTest {
                 .or(declaredIn("io.github.astiskala.minimpos.app.data.settings", "PricingChange.kt"))
                 .or(declaredIn("io.github.astiskala.minimpos.app.refund", "PaymentStanding.kt"))
                 .or(declaredIn("io.github.astiskala.minimpos.app.refund", "RefundablePayment.kt"))
+                .or(declaredIn("io.github.astiskala.minimpos.app.refund", "HistoryAccounting.kt"))
                 .or(declaredIn("io.github.astiskala.minimpos.app.feature.history", "HistorySearch.kt"))
                 // TerminalSetup.kt also holds TerminalSetupSource, which reads the stored settings and secrets.
                 .or(DescribedPredicate.describe("TerminalSetup") { it.name.matches(Regex(within(TerminalSetup::class.java.name))) })

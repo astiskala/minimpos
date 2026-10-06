@@ -8,6 +8,15 @@ import java.util.Locale
 
 class MoneyTest {
     @Test
+    fun `accounting environment follows original simulation flag rather than current destination`() {
+        val context = PaymentContext("TERMINAL", "POI", "POS", "Merchant", "LIVE")
+        assertThat(context.historyEnvironment).isEqualTo("LIVE")
+        assertThat(context.copy(environment = "TEST").historyEnvironment).isEqualTo("TEST")
+        assertThat(context.copy(environment = null).historyEnvironment).isNull()
+        assertThat(context.copy(simulated = true).historyEnvironment).isEqualTo("SIMULATOR")
+    }
+
+    @Test
     fun `currency spec uses Adyen's decimals`() {
         assertThat(CurrencySpec.of(" aud ")).isEqualTo(CurrencySpec("AUD", 2))
         assertThat(CurrencySpec.of("JPY")).isEqualTo(CurrencySpec("JPY", 0))

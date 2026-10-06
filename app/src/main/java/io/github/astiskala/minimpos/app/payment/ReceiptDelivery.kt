@@ -1,6 +1,7 @@
 package io.github.astiskala.minimpos.app.payment
 
 import io.github.astiskala.minimpos.app.data.db.SaleEntity
+import io.github.astiskala.minimpos.app.data.repo.HistoryRepository
 import io.github.astiskala.minimpos.app.data.repo.RefundRepository
 import io.github.astiskala.minimpos.app.data.repo.SaleEvent
 import io.github.astiskala.minimpos.app.data.repo.SaleRepository
@@ -12,6 +13,7 @@ import io.github.astiskala.minimpos.app.email.ReceiptEmailer
 import io.github.astiskala.minimpos.app.receipt.ActionResult
 import io.github.astiskala.minimpos.app.receipt.PrintRenderer
 import io.github.astiskala.minimpos.app.receipt.ReceiptFactory
+import io.github.astiskala.minimpos.app.refund.HistoryAccounting
 import io.github.astiskala.minimpos.app.refund.PaymentStanding
 import io.github.astiskala.minimpos.app.refund.ReceiptStanding
 import io.github.astiskala.minimpos.app.refund.awaitsLinkPayment
@@ -24,6 +26,10 @@ import io.github.astiskala.minimpos.core.receipt.ReceiptDocument
 import io.github.astiskala.minimpos.terminal.client.PrintOutcome
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
+import java.time.LocalDate
+import java.time.ZoneId
 
 /**
  * A stored transaction whose receipt is delivered, see [ReceiptDelivery]: a sale (taken on a terminal or through a
@@ -109,6 +115,16 @@ data class AutoDelivery(
     val emailTo: String? = null,
 )
 
+/** Stored transaction sources shared by receipt and whole-day delivery. */
+class ReceiptRecords(
+    /** Stored sales; an emailed receipt updates its address here. */
+    val sales: SaleRepository,
+    /** Stored refunds and their receipt data. */
+    val refunds: RefundRepository,
+    /** All retained records; reports never use UI filters. */
+    val history: HistoryRepository,
+)
+
 /**
  * Receipts of stored sales and refunds, delivered by printing on the terminal (or the simulator's on-screen printer),
  * by email and, off-terminal, through Android's share sheet (the screen shares [ReceiptOffer.share]), with the current
@@ -123,8 +139,7 @@ data class AutoDelivery(
  * [ActionResult.Failure] with a message to show; missing terminal setup as [ActionResult.NotSetUp].
  *
  * @param settings The receipt, payment and email settings, read for each call.
- * @param sales Stored sales; an emailed sale records the address.
- * @param refunds Stored refunds.
+ * @param records Stored sales, refunds and unfiltered daily activity.
  * @param receipts Builds the receipt documents.
  * @param gateway Prints them.
  * @param status Tells whether printing is offered.
@@ -133,14 +148,29 @@ data class AutoDelivery(
  */
 class ReceiptDelivery(
     private val settings: SettingsRepository,
-    private val sales: SaleRepository,
-    private val refunds: RefundRepository,
+    private val records: ReceiptRecords,
     private val receipts: ReceiptFactory,
     private val gateway: TerminalGateway,
     private val status: TerminalStatus,
     private val emailer: ReceiptEmailer,
     private val notFound: String,
 ) {
+    /** Whether a daily summary can be printed with the current destination and receipt settings. */
+    val canPrintReports: Flow<Boolean> = status.state.map { it.printerAvailable }
+
+    /** Prints an unfiltered local summary for [date], using one time zone and generation timestamp. */
+    suspend fun printReport(date: LocalDate): ActionResult {
+        val current = settings.current()
+        val report =
+            HistoryAccounting.report(
+                records.history.snapshot(),
+                date,
+                ZoneId.systemDefault(),
+                System.currentTimeMillis(),
+            )
+        return print(receipts.dailyReport(report, current.receipt), current)
+    }
+
     private val armed = mutableSetOf<String>()
 
     /**
@@ -196,7 +226,7 @@ class ReceiptDelivery(
         saleId: String,
         fresh: Boolean,
     ): Flow<ReceiptOffer> =
-        combine(sales.observe(saleId), settings.settings, status.state) { record, current, terminal ->
+        combine(records.sales.observe(saleId), settings.settings, status.state) { record, current, terminal ->
             val link = record?.sale?.paymentLink == true
             val captured = !fresh || link || current.payment.effectiveEmailCapture != EmailCapture.OFF
             ReceiptOffer(
@@ -221,7 +251,7 @@ class ReceiptDelivery(
         }
 
     private fun refundOffer(refundId: String): Flow<ReceiptOffer> =
-        combine(refunds.observe(refundId), settings.settings, status.state) { refund, current, terminal ->
+        combine(records.refunds.observe(refundId), settings.settings, status.state) { refund, current, terminal ->
             val receipt = refund?.let { receipts.refund(it, current.receipt) }
             ReceiptOffer(
                 receipt = receipt,
@@ -239,7 +269,7 @@ class ReceiptDelivery(
     fun arm(id: String) = synchronized(armed) { armed += id }
 
     private suspend fun automationForSale(saleId: String): AutoDelivery {
-        val sale = (if (claim(saleId)) sales.get(saleId)?.sale else null) ?: return AutoDelivery()
+        val sale = (if (claim(saleId)) records.sales.get(saleId)?.sale else null) ?: return AutoDelivery()
         val current = settings.current()
         val payment = current.payment
         return AutoDelivery(
@@ -253,7 +283,7 @@ class ReceiptDelivery(
         copy: ReceiptCopy,
     ): ReceiptPrint {
         val current = settings.current()
-        val record = sales.get(saleId) ?: return ReceiptPrint(ActionResult.Failure(notFound))
+        val record = records.sales.get(saleId) ?: return ReceiptPrint(ActionResult.Failure(notFound))
         val result = print(receipts.sale(record, current.receipt, copy), current)
         val due = copy == ReceiptCopy.CUSTOMER && result == ActionResult.Success && merchantCopyWanted(record.sale, current)
         return ReceiptPrint(result, due)
@@ -261,7 +291,7 @@ class ReceiptDelivery(
 
     private suspend fun printRefund(refundId: String): ActionResult {
         val current = settings.current()
-        val refund = refunds.get(refundId) ?: return ActionResult.Failure(notFound)
+        val refund = records.refunds.get(refundId) ?: return ActionResult.Failure(notFound)
         return print(receipts.refund(refund, current.receipt), current)
     }
 
@@ -272,7 +302,7 @@ class ReceiptDelivery(
         saleId: String,
         to: String,
     ): ActionResult {
-        val record = sales.get(saleId) ?: return ActionResult.Failure(notFound)
+        val record = records.sales.get(saleId) ?: return ActionResult.Failure(notFound)
         val sale = record.sale
         val document = receipts.sale(record, settings.current().receipt, paper = false)
         val standing = ReceiptStanding.of(sale)
@@ -282,14 +312,14 @@ class ReceiptDelivery(
             } else {
                 emailer.sendSale(to, document, sale.merchantReference, standing.preAuthorisation, standing.simulatedLink)
             }
-        return result.also { if (it == ActionResult.Success) sales.record(saleId, SaleEvent.Emailed(to.trim())) }
+        return result.also { if (it == ActionResult.Success) records.sales.record(saleId, SaleEvent.Emailed(to.trim())) }
     }
 
     private suspend fun emailRefund(
         refundId: String,
         to: String,
     ): ActionResult {
-        val refund = refunds.get(refundId) ?: return ActionResult.Failure(notFound)
+        val refund = records.refunds.get(refundId) ?: return ActionResult.Failure(notFound)
         return emailer.sendRefund(to, receipts.refund(refund, settings.current().receipt), refund.merchantReference, refund.cancellation)
     }
 

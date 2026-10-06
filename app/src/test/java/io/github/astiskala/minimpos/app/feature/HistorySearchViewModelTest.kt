@@ -3,6 +3,7 @@ package io.github.astiskala.minimpos.app.feature
 import com.google.common.truth.Truth.assertThat
 import io.github.astiskala.minimpos.app.TestEnvironment
 import io.github.astiskala.minimpos.app.closeViewModels
+import io.github.astiskala.minimpos.app.data.db.CaptureStatus
 import io.github.astiskala.minimpos.app.data.db.RefundEntity
 import io.github.astiskala.minimpos.app.data.db.RefundStatus
 import io.github.astiskala.minimpos.app.data.db.SaleEntity
@@ -24,6 +25,8 @@ import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import java.time.Instant
+import java.time.ZoneOffset
 
 @OptIn(ExperimentalCoroutinesApi::class)
 @RunWith(RobolectricTestRunner::class)
@@ -125,6 +128,38 @@ class HistorySearchViewModelTest {
             vm.showAll()
             val again = vm.state.first { it.query.isEmpty() && it.method == null && it.filter == HistoryFilter.ALL }
             assertThat(again.days.flatMap { it.items }).hasSize(4)
+        }
+
+    @Test
+    fun `capture-only processing day links to original sale without moving original hold`() =
+        runTest(dispatcher) {
+            val monday = Instant.parse("2026-10-05T12:00:00Z").toEpochMilli()
+            val tuesday = monday + 86_400_000
+            db.saleDao().insert(
+                sale("tip", 2000, "visa", "visa").copy(
+                    createdAt = monday,
+                    processedAt = monday,
+                    tipOnReceipt = true,
+                    tipMinor = 400,
+                    capturedMinor = 2400,
+                    captureStatus = CaptureStatus.REQUESTED,
+                    captureProcessedAt = tuesday,
+                ),
+            )
+            val vm = HistoryViewModel(env.container.history, zone = { ZoneOffset.UTC }).also(viewModels::add)
+            val days = vm.state.first { it.loaded }.days
+            assertThat(days.map { it.date.toString() }).containsExactly("2026-10-06", "2026-10-05").inOrder()
+            assertThat(days.first().captures).containsExactly("tip")
+            assertThat(
+                days
+                    .first()
+                    .items
+                    .single()
+                    .id,
+            ).isEqualTo("tip")
+            assertThat(days.first().totals.salesMinor).containsExactly("AUD", 2400L)
+            assertThat(days.last().totals.salesMinor).isEmpty()
+            assertThat(days.last().totals.preAuthsMinor).containsExactly("AUD", 2000L)
         }
 
     @Test

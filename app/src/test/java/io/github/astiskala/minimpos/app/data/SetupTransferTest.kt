@@ -56,7 +56,8 @@ class SetupTransferTest {
             },
         )
 
-    private fun setup(env: TestEnvironment) = SetupTransfer(env.container.catalog, env.container.settings, env.container.secrets, seal)
+    private fun setup(env: TestEnvironment) =
+        SetupTransfer(env.container.catalog, env.container.settings, env.container.secrets, seal, history = env.container.history)
 
     @After
     fun tearDown() {
@@ -118,6 +119,51 @@ class SetupTransferTest {
             source.container.secrets.set(Secret.ADYEN_API_KEY, "AQE-key")
             PinManager(source.container.secrets, iterations = 1_000).setPin("2468")
         }
+    }
+
+    @Test
+    fun `confirmed import purge stays authorized through encrypted journal recovery`() {
+        configureSource()
+        val export = await { setup(source).export(TransferContents(), "EUR") }
+        await { target.container.sampleData.populate(target.container.settings.current()) }
+        val receiving = setup(target)
+        val received = receiving.receive(TransferCodec.decode(export.payload))
+        val prepared = checkNotNull(await { receiving.prepare(received, export.code) })
+        val failed =
+            await {
+                receiving.commit(prepared, ImportMode.MERGE, purgeHistory = true) { throw IOException("Interrupted save") }
+            }
+        assertThat(failed).isInstanceOf(ImportOutcome.StorageFailed::class.java)
+        assertThat(await { receiving.pending.first() }).isTrue()
+        assertThat(
+            await {
+                target.container.history
+                    .items()
+                    .first()
+            },
+        ).isEmpty()
+        assertThat(
+            await {
+                target.container.history.pendingSwitch
+                    .first()
+            },
+        ).isNotNull()
+        val result = await { setup(target).recover() }
+        assertThat(result).isInstanceOf(ImportOutcome.Imported::class.java)
+        assertThat(
+            await {
+                target.container.history.pendingSwitch
+                    .first()
+            },
+        ).isNull()
+        assertThat(await { receiving.pending.first() }).isFalse()
+        assertThat(
+            await {
+                target.container.history
+                    .items()
+                    .first()
+            },
+        ).isEmpty()
     }
 
     @Test

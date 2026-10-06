@@ -3,6 +3,7 @@ package io.github.astiskala.minimpos.app.data.transfer
 import android.database.sqlite.SQLiteException
 import io.github.astiskala.minimpos.app.data.db.SetupProblem
 import io.github.astiskala.minimpos.app.data.repo.CatalogRepository
+import io.github.astiskala.minimpos.app.data.repo.HistoryRepository
 import io.github.astiskala.minimpos.app.data.repo.ImportMode
 import io.github.astiskala.minimpos.app.data.repo.ImportSummary
 import io.github.astiskala.minimpos.app.data.security.PinManager
@@ -176,6 +177,7 @@ private class PendingSetupImport(
     val changesSetup: Boolean,
     val businessWarning: Boolean,
     val paymentsAppChecked: Boolean,
+    val purgeHistory: Boolean = false,
 )
 
 /**
@@ -214,6 +216,7 @@ data class TransferResult(
  * @param seal Seals and opens the secrets.
  * @param cpu Where the slow key derivation runs.
  * @param onTerminal Whether this device is an Adyen terminal, which decides what a connection's destination does.
+ * @param history Owns deletion only when an environment-changing import was explicitly confirmed.
  */
 class SetupTransfer(
     private val catalog: CatalogRepository,
@@ -222,6 +225,8 @@ class SetupTransfer(
     private val seal: TransferSeal = TransferSeal(),
     private val cpu: CoroutineDispatcher = Dispatchers.Default,
     private val onTerminal: Boolean = false,
+    /** History purge owner; only used by explicitly confirmed environment-changing imports. */
+    private val history: HistoryRepository? = null,
 ) {
     private val importing = Mutex()
 
@@ -357,6 +362,7 @@ class SetupTransfer(
     internal suspend fun commit(
         prepared: PreparedTransfer,
         mode: ImportMode,
+        purgeHistory: Boolean = false,
         verified: suspend () -> Boolean = { true },
     ): ImportOutcome =
         importing.withLock {
@@ -373,6 +379,7 @@ class SetupTransfer(
                         prepared.changesSetup,
                         prepared.businessWarning,
                         prepared.paymentsAppChecked,
+                        purgeHistory,
                     )
                 secrets.writeImport(TransferJson.encodeToString(serializer<PendingSetupImport>(), journal))
                 resume(journal, verified)
@@ -395,8 +402,10 @@ class SetupTransfer(
         val received = receive(TransferCodec.decode(journal.payload))
         val summary = received.catalogue?.let { catalog.import(it, journal.mode, journal.id) }
         secrets.setAll(journal.secrets)
+        if (journal.purgeHistory) checkNotNull(history).purgeForEnvironmentSwitch(journal.settings.terminal)
         if (received.settings != null) apply(received.settings, journal.settings) else settings.update { journal.settings }
         if (journal.changesSetup && !verified()) return ImportOutcome.Rejected(SetupProblem.SETUP_CHANGED)
+        if (journal.purgeHistory) checkNotNull(history).finishSwitch()
         secrets.writeImport(null)
         return ImportOutcome.Imported(
             TransferResult(

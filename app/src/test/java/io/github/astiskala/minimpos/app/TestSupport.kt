@@ -63,6 +63,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.joinAll
 import kotlinx.coroutines.runBlocking
@@ -534,7 +535,7 @@ class TestEnvironment(
 
     /** Stops the container's background work, closes the database and deletes the temporary files. */
     fun close() {
-        scope.cancel()
+        runBlocking { scope.coroutineContext[Job]?.cancelAndJoin() }
         container.database.close()
         dir.deleteRecursively()
     }

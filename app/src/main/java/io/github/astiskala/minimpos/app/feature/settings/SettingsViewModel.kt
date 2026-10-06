@@ -20,6 +20,7 @@ import io.github.astiskala.minimpos.app.feature.toState
 import io.github.astiskala.minimpos.app.payment.ReceiptDelivery
 import io.github.astiskala.minimpos.app.terminal.AdyenApi
 import io.github.astiskala.minimpos.app.terminal.ApiCheck
+import io.github.astiskala.minimpos.app.terminal.HistorySwitches
 import io.github.astiskala.minimpos.app.terminal.ReceiptBusinessDetails
 import io.github.astiskala.minimpos.app.terminal.TerminalConnection
 import io.github.astiskala.minimpos.app.terminal.TerminalStatus
@@ -130,6 +131,7 @@ class SettingsChecks(
  * @param catalog The tax rates.
  * @param sampleReceipt The sample receipt with the given settings.
  * @param managerPins The Manager PIN instance, so resetting it also clears its live lockout.
+ * @param historySwitches Owns explicitly confirmed environment-change deletion and recovery.
  */
 class SettingsViewModel(
     private val pricingChanges: PricingChangeOperations,
@@ -141,6 +143,8 @@ class SettingsViewModel(
     private val catalog: CatalogRepository,
     sampleReceipt: (AppSettings) -> ReceiptDocument,
     private val managerPins: PinManager = PinManager(secrets, verifierSecret = Secret.MANAGER_PIN_VERIFIER),
+    /** Confirmed history deletion on LIVE/TEST/simulator changes. */
+    historySwitches: HistorySwitches? = null,
 ) : ViewModel() {
     /** The screen state, updated whenever settings, secrets or the catalogue change. */
     val state: StateFlow<SettingsUiState> =
@@ -174,8 +178,11 @@ class SettingsViewModel(
     /** Store receipt proposals and confirmation actions, without automatic replacement of merchant text. */
     internal val businessImport = ReceiptBusinessImports(this, checks.businessDetails, pricingChanges, state)
 
-    /** Stores ordinary settings; currency and tax-style changes require confirmation. */
-    fun update(transform: (AppSettings) -> AppSettings) = pricingConfirmation.update(transform)
+    /** Explicit environment-change confirmation, separate from pricing confirmation. */
+    internal val environment = HistorySwitchConfirmation(this, historySwitches, pricingChanges.changes)
+
+    /** Stores ordinary settings; pricing and history-destructive environment changes require confirmation. */
+    fun update(transform: (AppSettings) -> AppSettings) = environment.update(transform) { pricingConfirmation.update(transform) }
 
     /** Preview state and confirmation actions for pricing changes. */
     internal val pricing = pricingConfirmation

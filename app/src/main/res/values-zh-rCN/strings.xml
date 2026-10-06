@@ -5,7 +5,7 @@
     <string name="onboarding_simulator">使用示例数据试用模拟器</string>
     <string name="onboarding_terminal">设置终端</string>
     <string name="sample_data">示例数据</string>
-    <string name="sample_data_hint">添加示例商品和只读演示记录。您的数据和支付目标不会改变。示例记录不计入每日总额。</string>
+    <string name="sample_data_hint">添加示例商品和只读演示记录。您的数据和支付目标不会改变。示例计入演示每日总额和报告。</string>
     <string name="sample_add">添加示例数据</string>
     <string name="sample_remove">删除示例数据</string>
     <string name="sample_remove_message">删除示例商品（包括已编辑的商品）和演示记录？您自己的商品、记录、税率和设置将保留。您的商品使用的分类也将保留。</string>
@@ -852,4 +852,25 @@
     <string name="transfer_tap_checked">已检查 Payments app 注册和设置。该应用不支持共享密钥诊断测试。</string>
     <string name="transfer_skip_business">跳过商家信息</string>
     <string name="settings_payments_app_setup_checked">已检查设置字段。Payments app 无法对共享密钥进行诊断测试。</string>
+  <string name="history_print_day">打印整日汇总</string>
+  <string name="history_capture_activity">请款 / 小费</string>
+  <string name="report_title">本地每日汇总</string>
+  <string name="report_generated">生成时间</string>
+  <string name="report_sales">销售</string>
+  <string name="report_tips">已含小费</string>
+  <string name="report_refunds">已受理退款</string>
+  <string name="report_net">净额</string>
+  <string name="report_holds">新增冻结</string>
+  <string name="report_unresolved">未解决操作</string>
+  <string name="report_online">在线支付 — 支付日期未知</string>
+  <string name="report_undated">请款 — 处理日期未知</string>
+  <string name="report_undated_note">所有保留的无日期活动。不计入当日销售和净额。</string>
+  <string name="report_note">仅汇总保留的本地活动。请款和退款受理不代表最终结算。以 Adyen Customer Area 为准。</string>
+  <string name="report_issue_note">未解决的结果可能改变这些总额。</string>
+  <string name="report_demo">演示 — 未发生资金交易</string>
+  <string name="report_unknown">环境未知</string>
+  <string name="history_switch_title">删除记录并切换？</string>
+  <string name="history_switch_message">在 LIVE、TEST 和模拟器之间切换将永久删除所有本地支付记录和每日报告数据。商品和其他设置将保留。Adyen 记录不会删除。</string>
+  <string name="history_switch_unfinished">存在未完成的支付。此操作不会取消 Adyen 的支付、授权或支付链接。本地恢复和安全重试数据将丢失。</string>
+  <string name="history_switch_confirm">删除记录并切换</string>
 </resources>

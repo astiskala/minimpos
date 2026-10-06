@@ -17,6 +17,7 @@ import androidx.room.TypeConverters
         SaleEntity::class,
         SaleLineEntity::class,
         RefundEntity::class,
+        HistorySwitchEntity::class,
     ],
     version = 10,
     exportSchema = true,

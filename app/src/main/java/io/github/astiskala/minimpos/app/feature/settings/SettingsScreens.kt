@@ -89,6 +89,7 @@ import io.github.astiskala.minimpos.app.terminal.ReceiptBusiness
 import io.github.astiskala.minimpos.app.terminal.TerminalConnection
 import io.github.astiskala.minimpos.app.ui.components.ActionMessage
 import io.github.astiskala.minimpos.app.ui.components.ConfirmDialog
+import io.github.astiskala.minimpos.app.ui.components.HistorySwitchDialog
 import io.github.astiskala.minimpos.app.ui.components.LabeledValue
 import io.github.astiskala.minimpos.app.ui.components.LocalAppContainer
 import io.github.astiskala.minimpos.app.ui.components.MiniScaffold
@@ -130,6 +131,7 @@ private fun settingsViewModel(): SettingsViewModel {
             catalog = container.catalog,
             sampleReceipt = container::sampleReceipt,
             managerPins = container.managerPin,
+            historySwitches = container.historySwitches,
         )
     }
 }
@@ -461,6 +463,10 @@ fun SettingsSectionScreen(
     val setupActions by setup.actions.collectAsStateWithLifecycle()
     val pricing by vm.pricing.pending.collectAsStateWithLifecycle()
     pricing?.let { PricingConfirmation(it, vm.pricing::confirm, vm.pricing::cancel) }
+    val historySwitch by vm.environment.pending.collectAsStateWithLifecycle()
+    historySwitch?.let {
+        HistorySwitchDialog(it.unfinished, { vm.environment.review(true) }, { vm.environment.review(false) })
+    }
     val events = remember(vm, sampleData) { settingsEvents(vm, sampleData) }
     val setupEvents = remember(setup) { terminalSetupEvents(setup) }
     LaunchedEffect(section, automaticSetup, helperSetup) {

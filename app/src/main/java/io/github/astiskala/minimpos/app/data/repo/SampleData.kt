@@ -106,7 +106,7 @@ class SampleData(
             ),
         )
         val status = listOf(SaleStatus.APPROVED, SaleStatus.DECLINED, SaleStatus.CANCELLED)[index]
-        sales.record(id, SaleEvent.Settled(status, null, null))
+        sales.record(id, SaleEvent.Settled(status, null, null, processedAt = now() - index * HOUR_MILLIS))
     }
 
     private companion object {

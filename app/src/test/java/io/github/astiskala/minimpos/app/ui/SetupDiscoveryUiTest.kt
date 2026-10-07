@@ -102,6 +102,9 @@ class SetupDiscoveryUiTest {
         assertSteps("Environment", "Adyen API")
         compose.onNodeWithTag("step_3").assertDoesNotExist()
         compose.onNodeWithTag("merchantAccount").performScrollTo().performTextInput("Merchant")
+        compose.awaitCondition("the network account is saved") {
+            env.container.settingsState.value.terminal.merchantAccount == "Merchant"
+        }
         compose.onNodeWithTag("apiKey").performScrollTo().performTextInput("key")
         compose.onNodeWithTag("testApi").performScrollTo().performClick()
         waitForTag("host")
@@ -130,6 +133,9 @@ class SetupDiscoveryUiTest {
         compose.onNodeWithTag("step_3").assertExists()
         compose.onNodeWithTag("testApi").assertExists()
         compose.onNodeWithTag("livePrefix").performScrollTo().performTextInput("prefix")
+        compose.awaitCondition("the cloud prefix is saved") {
+            env.container.settingsState.value.terminal.liveUrlPrefix == "prefix"
+        }
         compose.onNodeWithTag("testApi").performScrollTo().performClick()
         waitForTag("findTerminals")
         compose.onNodeWithTag("testConnection").assertExists()
@@ -148,6 +154,10 @@ class SetupDiscoveryUiTest {
         compose.onNodeWithTag("step_2").assertExists()
         phone.paymentsApps = setOf(TerminalEnvironment.TEST)
         env.container.terminalStatus.readDevice()
+        compose.awaitCondition("the TEST Payments app is detected") {
+            env.container.terminalStatus.state.value.environment == TerminalEnvironment.TEST
+        }
+        compose.waitUntilAtLeastOneExists(hasText("Adyen Payments Test (TEST)"), 15_000)
         waitForTag("apiKey")
         assertSteps("Adyen Payments app", "Adyen API")
         compose.onNodeWithTag("step_3").assertDoesNotExist()

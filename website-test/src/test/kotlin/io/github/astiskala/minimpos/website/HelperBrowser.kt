@@ -64,11 +64,18 @@ internal class HelperBrowser : AutoCloseable {
         vararg args: Any,
     ): Any? = evaluate("new Promise(done => (function(){ $source }).apply(null, [...${arguments(args)}, done]))")
 
-    fun await(ready: () -> Boolean) {
-        val deadline = System.nanoTime() + TIMEOUT.toNanos()
+    fun await(ready: () -> Boolean) = await(TIMEOUT, ready)
+
+    private fun await(
+        timeout: Duration,
+        ready: () -> Boolean,
+    ) {
+        val deadline = System.nanoTime() + timeout.toNanos()
         while (!ready()) {
-            check(process.isAlive) { "Chromium exited; see $profile/browser.log" }
-            check(System.nanoTime() < deadline) { "Browser condition timed out" }
+            check(process.isAlive) { "Chromium exited:\n${Files.readString(profile.resolve("browser.log"))}" }
+            check(
+                System.nanoTime() < deadline,
+            ) { "Browser condition timed out after $timeout:\n${Files.readString(profile.resolve("browser.log"))}" }
             LockSupport.parkNanos(TimeUnit.MILLISECONDS.toNanos(POLL_MILLIS))
         }
     }
@@ -109,7 +116,7 @@ internal class HelperBrowser : AutoCloseable {
         var connected = false
         try {
             val portFile = profile.resolve("DevToolsActivePort")
-            await { Files.exists(portFile) && Files.readAllLines(portFile).size >= 2 }
+            await(STARTUP_TIMEOUT) { Files.exists(portFile) && Files.readAllLines(portFile).size >= 2 }
             val port = Files.readAllLines(portFile).first().toInt()
             val request =
                 HttpRequest
@@ -229,6 +236,7 @@ internal class HelperBrowser : AutoCloseable {
 
     private companion object {
         val TIMEOUT: Duration = Duration.ofSeconds(15)
+        val STARTUP_TIMEOUT: Duration = Duration.ofSeconds(60)
         const val POLL_MILLIS = 10L
     }
 }

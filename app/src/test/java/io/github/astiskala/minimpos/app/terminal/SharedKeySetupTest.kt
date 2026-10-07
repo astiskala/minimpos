@@ -198,10 +198,16 @@ class SharedKeySetupTest {
     @Test
     fun `failed reads and unreadable recovery never become key absence`() {
         val owner = owner()
-        found = SharedKeyLookup.Failed(ManagementFailure.PERMISSION)
-        assertThat(await { owner.resolve(unlocked()) }).isEqualTo(SharedKeySetupOutcome.Failed(SetupProblem.MANAGEMENT_PERMISSION))
-        found = SharedKeyLookup.Failed(ManagementFailure.UNREADABLE)
-        assertThat(await { owner.resolve(unlocked()) }).isEqualTo(SharedKeySetupOutcome.Failed(SetupProblem.MANAGEMENT_UNAVAILABLE))
+        listOf(
+            ManagementFailure.PERMISSION to SetupProblem.MANAGEMENT_PERMISSION,
+            ManagementFailure.UNREADABLE to SetupProblem.MANAGEMENT_UNREADABLE,
+            ManagementFailure.SETTINGS_UNREADABLE to SetupProblem.TERMINAL_SETTINGS_UNREADABLE,
+            ManagementFailure.KEY_INCOMPLETE to SetupProblem.SHARED_KEY_INCOMPLETE,
+            ManagementFailure.KEY_INVALID to SetupProblem.SHARED_KEY_INVALID,
+        ).forEach { (reason, problem) ->
+            found = SharedKeyLookup.Failed(reason)
+            assertThat(await { owner.resolve(unlocked()) }).isEqualTo(SharedKeySetupOutcome.Failed(problem))
+        }
         found = SharedKeyLookup.Missing
         await {
             env.container.secrets.writeKeyCreation("not json")

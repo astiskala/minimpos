@@ -149,17 +149,20 @@ class TerminalDetailsTest {
             assertThat(key.passphrase).isEqualTo(" secret passphrase ")
             assertThat(key.toString()).doesNotContain("secret passphrase")
             assertThat(server.takeRequest().url.encodedPath).isEqualTo("/test/v3/terminals/Terminal%2FID/terminalSettings")
-            reply("{}")
-            assertThat(api.sharedKey("ID", TerminalEnvironment.TEST)).isEqualTo(SharedKeyLookup.Missing)
+            listOf("{}", """{"nexo":null}""", """{"nexo":{}}""", """{"nexo":{"encryptionKey":null}}""").forEach { body ->
+                reply(body)
+                assertThat(api.sharedKey("ID", TerminalEnvironment.TEST)).isEqualTo(SharedKeyLookup.Missing)
+            }
             listOf(
-                "[]",
-                """{"nexo":{"encryptionKey":{"identifier":"key","version":0,"passphrase":"secret"}}}""",
-                """{"nexo":{"encryptionKey":{"identifier":"","version":2,"passphrase":"secret"}}}""",
-                """{"nexo":{"encryptionKey":{"identifier":"key","version":2,"passphrase":""}}}""",
-                """{"nexo":{"encryptionKey":{"identifier":"key","version":2.5,"passphrase":"secret"}}}""",
-            ).forEach {
-                reply(it)
-                assertThat(api.sharedKey("ID", TerminalEnvironment.TEST)).isEqualTo(SharedKeyLookup.Failed(ManagementFailure.UNREADABLE))
+                "[]" to ManagementFailure.SETTINGS_UNREADABLE,
+                """{"nexo":{"encryptionKey":{"identifier":"key","version":0,"passphrase":"secret"}}}""" to ManagementFailure.KEY_INVALID,
+                """{"nexo":{"encryptionKey":{"identifier":"","version":2,"passphrase":"secret"}}}""" to ManagementFailure.KEY_INCOMPLETE,
+                """{"nexo":{"encryptionKey":{"identifier":"key","version":2,"passphrase":""}}}""" to ManagementFailure.KEY_INCOMPLETE,
+                """{"nexo":{"encryptionKey":{"identifier":"key","version":2.5,"passphrase":"secret"}}}""" to
+                    ManagementFailure.SETTINGS_UNREADABLE,
+            ).forEach { (body, reason) ->
+                reply(body)
+                assertThat(api.sharedKey("ID", TerminalEnvironment.TEST)).isEqualTo(SharedKeyLookup.Failed(reason))
             }
             reply("{}", 403)
             assertThat(api.sharedKey("ID", TerminalEnvironment.TEST)).isEqualTo(SharedKeyLookup.Failed(ManagementFailure.PERMISSION))
@@ -177,6 +180,43 @@ class TerminalDetailsTest {
             assertThat(server.requestCount).isEqualTo(1)
             reply("""{"data":[{"id":"ID-other"}]}""")
             assertThat((api.terminals(TerminalEnvironment.TEST, "ID") as TerminalListing.Listed).terminals).isEmpty()
+        }
+
+    @Test
+    fun `unmodeled unrelated settings do not block lookup or enter the shared key PATCH`() =
+        runBlocking {
+            val settings =
+                """
+                {"nexo":{"notification":{"category":"","details":"","enabled":false,"showButton":true,"title":""}},
+                "tapToPay":{"enableTapToPayOnIOS":true,"enableTapToPayOnAndroid":true},
+                "terminalInstructions":{"adyenAppRestart":false},
+                "homeScreen":{"showPaymentsMenu":true,"showSettingsMenu":true},
+                "futureSection":{"setting":true}}
+                """.trimIndent()
+            reply(settings)
+            assertThat(api.sharedKey("ID", TerminalEnvironment.TEST)).isEqualTo(SharedKeyLookup.Missing)
+            assertThat(server.takeRequest().method).isEqualTo("GET")
+            reply(settings)
+            reply("{}")
+            reply("""{"nexo":{"encryptionKey":{"identifier":"new","version":1,"passphrase":"NewStrongSecret123!"}}}""")
+            val result =
+                api.createSharedKey(
+                    "ID",
+                    TerminalEnvironment.TEST,
+                    DiscoveredKey("new", 1, "NewStrongSecret123!"),
+                ) as SharedKeyUpdate.Ready
+            assertThat(result.created).isTrue()
+            assertThat(server.takeRequest().method).isEqualTo("GET")
+            val patch = server.takeRequest()
+            assertThat(patch.method).isEqualTo("PATCH")
+            val body = checkNotNull(patch.body).utf8()
+            listOf("tapToPay", "terminalInstructions", "homeScreen", "futureSection").forEach { assertThat(body).doesNotContain(it) }
+            val sent = TerminalSettings.fromJson(body)
+            assertThat(sent.nexo.notification.showButton).isTrue()
+            assertThat(sent.nexo.notification.enabled).isFalse()
+            assertThat(sent.nexo.encryptionKey.passphrase).isEqualTo("NewStrongSecret123!")
+            assertThat(server.takeRequest().method).isEqualTo("GET")
+            assertThat(server.requestCount).isEqualTo(4)
         }
 
     @Test
@@ -230,22 +270,28 @@ class TerminalDetailsTest {
     fun `failed or unmodeled settings never permit creation`() =
         runBlocking {
             listOf(
-                "not json",
-                "[]",
-                """{"nexo":{"encryptionKey":{}}}""",
-                """{"nexo":{"unknownSetting":true}}""",
-                """{"nexo":{"notification":{"title":123}}}""",
-                """{"nexo":{"notification":{"enabled":"false"}}}""",
-                """{"nexo":{"notification":{"showButton":1}}}""",
-            ).forEach { body ->
+                "not json" to ManagementFailure.SETTINGS_UNREADABLE,
+                "[]" to ManagementFailure.SETTINGS_UNREADABLE,
+                """{"nexo":{"encryptionKey":{}}}""" to ManagementFailure.KEY_INCOMPLETE,
+                """{"nexo":{"encryptionKey":{"identifier":"existing","version":2}}}""" to ManagementFailure.KEY_INCOMPLETE,
+                """{"nexo":{"encryptionKey":{"identifier":"existing","passphrase":"secret"}}}""" to ManagementFailure.KEY_INCOMPLETE,
+                """{"nexo":{"encryptionKey":{"identifier":"existing","version":10000,"passphrase":"secret"}}}""" to
+                    ManagementFailure.KEY_INVALID,
+                """{"nexo":{"unknownSetting":true}}""" to ManagementFailure.SETTINGS_UNREADABLE,
+                """{"nexo":{"notification":{"title":123}}}""" to ManagementFailure.SETTINGS_UNREADABLE,
+                """{"nexo":{"notification":{"enabled":"false"}}}""" to ManagementFailure.SETTINGS_UNREADABLE,
+                """{"nexo":{"notification":{"showButton":1}}}""" to ManagementFailure.SETTINGS_UNREADABLE,
+            ).forEach { (body, reason) ->
+                reply(body)
+                assertThat(api.sharedKey("ID", TerminalEnvironment.TEST)).isEqualTo(SharedKeyLookup.Failed(reason))
                 reply(body)
                 assertThat(api.createSharedKey("ID", TerminalEnvironment.TEST, DiscoveredKey("new", 1, "NewStrongSecret123!")))
-                    .isEqualTo(SharedKeyUpdate.Failed(ManagementFailure.UNREADABLE))
+                    .isEqualTo(SharedKeyUpdate.Failed(reason))
             }
             reply("{}", 403)
             assertThat(api.createSharedKey("ID", TerminalEnvironment.TEST, DiscoveredKey("new", 1, "NewStrongSecret123!")))
                 .isEqualTo(SharedKeyUpdate.Failed(ManagementFailure.PERMISSION))
-            assertThat(server.requestCount).isEqualTo(8)
+            assertThat(server.requestCount).isEqualTo(21)
         }
 
     @Test

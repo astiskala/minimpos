@@ -839,7 +839,11 @@
     <string name="setup_merchant_mismatch">加盟店アカウントが端末の現在の割り当てと一致しません。アカウントまたは端末登録を修正してから続行してください。</string>
     <string name="setup_management_permission">すべての実決済設定で、API キーに Management API — Terminal actions read、Management API — Terminal settings read and write、Management API — Terminal settings Advanced read and write の権限が必要です。</string>
     <string name="setup_management_authentication">選択した環境で Adyen が API キーを受け付けませんでした。キーを変更して再試行してください。</string>
-    <string name="setup_management_unavailable">Adyen 設定のアクセス権を確認できませんでした。接続を確認して再試行してください。</string>
+    <string name="setup_management_unavailable">Adyen Management API に接続できないか、API がエラーを返しました。インターネット接続と Adyen API ログを確認して再試行してください。</string>
+    <string name="setup_management_unreadable">Adyen の設定レスポンスが無効か、必須フィールドがありません。Management API レスポンスを確認して再試行してください。</string>
+    <string name="setup_terminal_settings_unreadable">Adyen の端末設定に未対応のフィールドまたは無効な値があり、Mini mPOS で読み取れません。共有キーの作成は停止しています。Adyen API ログの端末設定レスポンスを確認してください。</string>
+    <string name="setup_shared_key_incomplete">Adyen の共有キーが不完全です。識別子、バージョン、またはパスフレーズがありません。Customer Area で暗号化キーと Advanced 設定の権限を確認してください。Mini mPOS は未確認のキーを置き換えません。</string>
+    <string name="setup_shared_key_invalid">Adyen の共有キーバージョンが 1–9999 の範囲外です。Customer Area で暗号化キーを確認してください。Mini mPOS はこのキーを置き換えません。</string>
     <string name="setup_store_access">割り当てられた店舗を読み取れませんでした。店舗へのアクセス権を確認してください。他の店舗は使用しません。</string>
     <string name="setup_changed">確認中に設定が変更されました。現在の設定で再試行してください。</string>
     <string name="transfer_verify">確認してインポート</string>

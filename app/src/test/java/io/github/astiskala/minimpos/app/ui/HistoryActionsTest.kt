@@ -14,12 +14,15 @@ import androidx.compose.ui.test.performScrollTo
 import com.google.common.truth.Truth.assertThat
 import io.github.astiskala.minimpos.app.GST_RATES
 import io.github.astiskala.minimpos.app.MiniMposApp
+import io.github.astiskala.minimpos.app.R
 import io.github.astiskala.minimpos.app.TestEnvironment
 import io.github.astiskala.minimpos.app.await
 import io.github.astiskala.minimpos.app.data.db.ProductEntity
 import io.github.astiskala.minimpos.app.data.db.RefundEntity
 import io.github.astiskala.minimpos.app.data.db.RefundStatus
 import io.github.astiskala.minimpos.app.data.db.SaleKind
+import io.github.astiskala.minimpos.core.money.CurrencySpec
+import io.github.astiskala.minimpos.core.money.MoneyFormatter
 import io.github.astiskala.minimpos.core.money.PaymentContext
 import kotlinx.coroutines.flow.first
 import org.junit.Before
@@ -110,7 +113,40 @@ class HistoryActionsTest {
     }
 
     @Test
-    fun `day header prints hidden refunds and demo sales despite active sales filter at AMS1 size`() {
+    fun `day totals wrap beside the print action at AMS1 size`() = assertDayTotalsBesidePrint()
+
+    @Test
+    @Config(qualifiers = "zh-rCN-w320dp-h460dp-hdpi")
+    fun `Chinese day totals stay beside the print action at AMS1 size`() = assertDayTotalsBesidePrint()
+
+    @Test
+    @Config(qualifiers = "ja-w320dp-h460dp-hdpi")
+    fun `Japanese day totals stay beside the print action at AMS1 size`() = assertDayTotalsBesidePrint()
+
+    private fun assertDayTotalsBesidePrint() {
+        seedReportHistory()
+        compose.onNodeWithTag("history").performClick()
+        val date = LocalDate.now()
+        waitForTag("printDay_$date")
+        val amount = MoneyFormatter(CurrencySpec.of("AUD"), env.context.resources.configuration.locales[0]).format(450)
+        val sales = env.context.getString(R.string.history_day_sales, amount, 1)
+        val totals =
+            compose
+                .onNode(hasText(sales, substring = true))
+                .assertIsDisplayed()
+                .fetchSemanticsNode()
+                .boundsInRoot
+        val print =
+            compose
+                .onNodeWithTag("printDay_$date")
+                .assertIsDisplayed()
+                .fetchSemanticsNode()
+                .boundsInRoot
+        assertThat(totals.right).isAtMost(print.left)
+        assertThat(totals.top).isLessThan(print.bottom)
+    }
+
+    private fun seedReportHistory() =
         await {
             container.sampleData.populate(container.settings.current())
             val now = System.currentTimeMillis()
@@ -132,6 +168,10 @@ class HistoryActionsTest {
                 ),
             )
         }
+
+    @Test
+    fun `day header prints hidden refunds and demo sales despite active sales filter at AMS1 size`() {
+        seedReportHistory()
         compose.onNodeWithTag("history").performClick()
         compose.waitUntilAtLeastOneExists(hasText("Sales"), 15_000)
         compose.onNodeWithText("Sales").performClick()

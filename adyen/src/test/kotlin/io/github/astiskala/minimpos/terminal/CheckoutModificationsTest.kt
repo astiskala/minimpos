@@ -1,11 +1,13 @@
 package io.github.astiskala.minimpos.terminal
 
+import com.adyen.terminal.serialization.TerminalAPIGsonBuilder
 import com.google.common.truth.Truth.assertThat
 import com.google.gson.JsonParser
 import io.github.astiskala.minimpos.terminal.checkout.CheckoutCredentials
 import io.github.astiskala.minimpos.terminal.checkout.CheckoutModifications
 import io.github.astiskala.minimpos.terminal.checkout.ModificationAmount
 import io.github.astiskala.minimpos.terminal.checkout.ModificationResult
+import io.github.astiskala.minimpos.terminal.client.PosApplication
 import io.github.astiskala.minimpos.terminal.simulator.SimulatedModifications
 import io.github.astiskala.minimpos.terminal.transport.TerminalEnvironment
 import kotlinx.coroutines.runBlocking
@@ -39,6 +41,25 @@ class CheckoutModificationsTest {
     )
 
     @Test
+    fun `captures and both adjustment modes send identical sanitized Terminal API application info`() =
+        runBlocking {
+            val application = PosApplication(" (Mini) mPOS! ", "1.2.0-beta_1", "!!!", "Android", "13").toApplicationInfo()
+            val identified = CheckoutModifications(credentials, baseUrl = server.url("/v72/"), application = application)
+            val expected = JsonParser.parseString(TerminalAPIGsonBuilder.create().toJson(application))
+            repeat(3) { reply("""{"status":"received"}""") }
+            identified.capture("PSP1", amount, "ref", "capture")
+            identified.updateAmount("PSP1", amount, "ref", "blob", "sync")
+            identified.updateAmount("PSP1", amount, "ref", null, "async")
+            repeat(3) {
+                val body = JsonParser.parseString(server.takeRequest().body!!.utf8()).asJsonObject
+                assertThat(body["applicationInfo"]).isEqualTo(expected)
+            }
+            reply("""{"paymentMethods":[]}""")
+            assertThat(identified.verify()).isNull()
+            assertThat(JsonParser.parseString(server.takeRequest().body!!.utf8()).asJsonObject.has("applicationInfo")).isFalse()
+        }
+
+    @Test
     fun `a capture posts the amount with the API key and idempotency key, and is received`() {
         reply("""{"pspReference":"CAP123","status":"received","paymentPspReference":"PSP1"}""", code = 201)
         val result = runBlocking { api.capture("PSP1", amount, "260930-1", "capture-sale-3900") }
@@ -49,12 +70,17 @@ class CheckoutModificationsTest {
         assertThat(request.headers["x-api-key"]).isEqualTo("secret-api-key")
         assertThat(request.headers["Idempotency-Key"]).isEqualTo("capture-sale-3900")
         val body = JsonParser.parseString(request.body!!.utf8()).asJsonObject
-        assertThat(body["merchantAccount"].asString).isEqualTo("HarbourCoffeeCOM")
-        assertThat(body["reference"].asString).isEqualTo("260930-1")
-        assertThat(body["amount"].asJsonObject["currency"].asString).isEqualTo("AUD")
-        assertThat(body["amount"].asJsonObject["value"].asLong).isEqualTo(3_900)
-        assertThat(body.has("reason")).isFalse()
-        assertThat(body.has("industryUsage")).isFalse()
+        assertThat(body).isEqualTo(
+            JsonParser.parseString(
+                """
+                {
+                    "merchantAccount":"HarbourCoffeeCOM",
+                    "amount":{"currency":"AUD","value":3900},
+                    "reference":"260930-1"
+                }
+                """.trimIndent(),
+            ),
+        )
     }
 
     @Test
@@ -170,6 +196,22 @@ class CheckoutModificationsTest {
             assertThat(api.verify()).isEqualTo("Invalid merchant account (HTTP 422, code 901)")
         }
     }
+
+    @Test
+    fun `typed replies ignore extra fields but never infer success from unknown or malformed statuses`() =
+        runBlocking {
+            listOf("authorised", "Authorised", "AUTHORISED").forEach { status ->
+                reply("""{"status":"$status","pspReference":"ADJ","adjustAuthorisationData":"next","futureField":{}}""")
+                assertThat(api.updateAmount("PSP", amount, "r", "blob", "k"))
+                    .isEqualTo(ModificationResult.Authorised("ADJ", "next"))
+            }
+            listOf("""{"status":"future"}""", """{"status":true}""", """{"status":"received"} {}""").forEach { body ->
+                reply(body)
+                assertThat(api.updateAmount("PSP", amount, "r", "blob", "k")).isInstanceOf(ModificationResult.Unknown::class.java)
+            }
+            reply("""{"status":"received","pspReference":"CAP","futureField":{}}""")
+            assertThat(api.capture("PSP", amount, "r", "k")).isEqualTo(ModificationResult.Received("CAP"))
+        }
 
     @Test
     fun `credentials pick the endpoint for the environment and keep the key out of their text`() {

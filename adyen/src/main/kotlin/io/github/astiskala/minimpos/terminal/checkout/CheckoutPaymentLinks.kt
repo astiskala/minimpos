@@ -1,24 +1,27 @@
 package io.github.astiskala.minimpos.terminal.checkout
 
-import com.google.gson.JsonArray
-import com.google.gson.JsonObject
+import com.adyen.model.applicationinfo.ApplicationInfo
+import com.adyen.model.checkout.Amount
+import com.adyen.model.checkout.LineItem
+import com.adyen.model.checkout.PaymentLinkResponse
+import com.adyen.model.checkout.UpdatePaymentLinkRequest
 import io.github.astiskala.minimpos.terminal.transport.AdyenHttp
 import io.github.astiskala.minimpos.terminal.transport.AdyenReply
+import io.github.astiskala.minimpos.terminal.transport.decodeAdyenModel
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import okhttp3.HttpUrl
 import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.OkHttpClient
-import java.time.OffsetDateTime
 import java.time.ZoneOffset
-import java.time.format.DateTimeFormatter
 import java.time.temporal.ChronoUnit
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.seconds
+import com.adyen.model.checkout.PaymentLinkRequest as AdyenPaymentLinkRequest
 
 /**
- * [PaymentLinkApi] over HTTPS with OkHttp, posting the Checkout API's JSON directly, like [CheckoutModifications]. The
- * API key goes in the `x-api-key` header and is never part of an error message.
+ * [PaymentLinkApi] over HTTPS with OkHttp, using the Adyen library's typed Checkout models, like [CheckoutModifications].
+ * The API key goes in the `x-api-key` header and is never part of an error message.
  *
  * Blocking calls run on [dispatcher]; cancelling the coroutine interrupts them. A request that could not be sent at
  * all and HTTP 4xx answers other than 408 and 429 are [PaymentLinkResult.NotProcessed]; timeouts, 408, 429, 5xx and
@@ -34,19 +37,20 @@ class CheckoutPaymentLinks(
     private val timeout: Duration = 30.seconds,
     /** Where the blocking calls run. */
     dispatcher: CoroutineDispatcher = Dispatchers.IO,
+    private val application: ApplicationInfo? = null,
 ) : PaymentLinkApi {
     private val http = AdyenHttp(credentials.apiKey, baseClient, dispatcher, "check the internet connection and the live URL prefix")
 
     override suspend fun create(
         request: PaymentLinkRequest,
         idempotencyKey: String,
-    ): PaymentLinkResult = result(http.post(url(), body(request).toString(), timeout, idempotencyKey))
+    ): PaymentLinkResult = result(http.post(url(), body(request).toJson(), timeout, idempotencyKey))
 
     override suspend fun status(linkId: String): PaymentLinkResult = result(http.get(url(linkId), timeout))
 
     override suspend fun expire(linkId: String): PaymentLinkResult {
-        val body = JsonObject().apply { addProperty("status", "expired") }
-        return result(http.patch(url(linkId), body.toString(), timeout))
+        val body = UpdatePaymentLinkRequest().status(UpdatePaymentLinkRequest.StatusEnum.EXPIRED)
+        return result(http.patch(url(linkId), body.toJson(), timeout))
     }
 
     private fun url(linkId: String? = null): HttpUrl =
@@ -66,67 +70,53 @@ class CheckoutPaymentLinks(
         }
 
     private fun link(text: String): PaymentLinkResult {
-        val json = parseObject(text)
-        val id = json?.string("id")
-        val url = json?.string("url")
+        val response = decodeAdyenModel(text, PaymentLinkResponse::class.java)
+        val id = response?.id
+        val url = response?.url
         if (id == null || url == null) return PaymentLinkResult.Unknown("Unexpected response from Adyen")
         val status =
-            when (json.string("status")) {
-                "active" -> PaymentLinkStatus.ACTIVE
-                "paymentPending" -> PaymentLinkStatus.PAYMENT_PENDING
-                "completed", "paid" -> PaymentLinkStatus.COMPLETED
-                "expired" -> PaymentLinkStatus.EXPIRED
-                else -> return PaymentLinkResult.Unknown("Unexpected status from Adyen: ${json.string("status").orEmpty()}")
+            when (response.status) {
+                PaymentLinkResponse.StatusEnum.ACTIVE -> PaymentLinkStatus.ACTIVE
+                PaymentLinkResponse.StatusEnum.PAYMENTPENDING -> PaymentLinkStatus.PAYMENT_PENDING
+                PaymentLinkResponse.StatusEnum.COMPLETED, PaymentLinkResponse.StatusEnum.PAID -> PaymentLinkStatus.COMPLETED
+                PaymentLinkResponse.StatusEnum.EXPIRED -> PaymentLinkStatus.EXPIRED
+                else -> return PaymentLinkResult.Unknown(unexpectedStatus(text))
             }
-        val expiresAt = json.string("expiresAt")?.let { runCatching { OffsetDateTime.parse(it).toInstant() }.getOrNull() }
-        return PaymentLinkResult.Answered(PaymentLink(id, url, status, expiresAt))
+        return PaymentLinkResult.Answered(PaymentLink(id, url, status, response.expiresAt?.toInstant()))
     }
 
-    private fun body(request: PaymentLinkRequest) =
-        JsonObject().apply {
-            addProperty("merchantAccount", credentials.merchantAccount)
-            addProperty("reference", request.reference)
-            add(
-                "amount",
-                JsonObject().apply {
-                    addProperty("currency", request.amount.currency)
-                    addProperty("value", request.amount.value)
-                },
-            )
-            addProperty("expiresAt", EXPIRY_FORMAT.format(request.expiresAt.truncatedTo(ChronoUnit.SECONDS).atOffset(ZoneOffset.UTC)))
-            if (request.lineItems.isNotEmpty()) add("lineItems", lineItems(request.lineItems))
-            request.shopperEmail?.let { addProperty("shopperEmail", it) }
-            request.shopperReference?.let { addProperty("shopperReference", it) }
-            request.recurringProcessingModel?.takeIf { request.shopperReference != null }?.let {
-                addProperty("storePaymentMethodMode", "askForConsent")
-                addProperty("recurringProcessingModel", it)
+    private fun body(request: PaymentLinkRequest): AdyenPaymentLinkRequest =
+        AdyenPaymentLinkRequest()
+            .merchantAccount(credentials.merchantAccount)
+            .reference(request.reference)
+            .amount(Amount().currency(request.amount.currency).value(request.amount.value))
+            .applicationInfo(application?.checkoutInfo())
+            .expiresAt(request.expiresAt.truncatedTo(EXPIRY_PRECISION).atOffset(ZoneOffset.UTC))
+            .shopperEmail(request.shopperEmail)
+            .shopperReference(request.shopperReference)
+            .shopperLocale(request.shopperLocale)
+            .countryCode(request.countryCode)
+            .apply {
+                if (request.lineItems.isNotEmpty()) lineItems(request.lineItems.map(::lineItem))
+                if (request.metadata.isNotEmpty()) metadata(request.metadata)
+                request.recurringProcessingModel?.takeIf { request.shopperReference != null }?.let {
+                    storePaymentMethodMode(AdyenPaymentLinkRequest.StorePaymentMethodModeEnum.ASKFORCONSENT)
+                    recurringProcessingModel(AdyenPaymentLinkRequest.RecurringProcessingModelEnum.fromValue(it))
+                }
             }
-            request.shopperLocale?.let { addProperty("shopperLocale", it) }
-            request.countryCode?.let { addProperty("countryCode", it) }
-            if (request.metadata.isNotEmpty()) {
-                add("metadata", JsonObject().apply { request.metadata.forEach { (key, value) -> addProperty(key, value) } })
-            }
-        }
 
-    private fun lineItems(items: List<PaymentLinkLineItem>) =
-        JsonArray().apply {
-            items.forEach { item ->
-                add(
-                    JsonObject().apply {
-                        addProperty("id", item.id)
-                        addProperty("description", item.description)
-                        addProperty("quantity", item.quantity)
-                        addProperty("amountIncludingTax", item.amountIncludingTax)
-                        addProperty("amountExcludingTax", item.amountExcludingTax)
-                        addProperty("taxAmount", item.taxAmount)
-                        addProperty("taxPercentage", item.taxPercentage)
-                    },
-                )
-            }
-        }
+    private fun lineItem(item: PaymentLinkLineItem): LineItem =
+        LineItem()
+            .id(item.id)
+            .description(item.description)
+            .quantity(item.quantity.toLong())
+            .amountIncludingTax(item.amountIncludingTax)
+            .amountExcludingTax(item.amountExcludingTax)
+            .taxAmount(item.taxAmount)
+            .taxPercentage(item.taxPercentage)
 
     private companion object {
-        /** ISO 8601 with seconds and the offset, as Adyen's examples show it (`2026-10-03T09:30:00Z`). */
-        val EXPIRY_FORMAT: DateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ssXXX")
+        /** Expiry timestamps use whole seconds, as Adyen's examples show (`2026-10-03T09:30:00Z`). */
+        val EXPIRY_PRECISION: ChronoUnit = ChronoUnit.SECONDS
     }
 }

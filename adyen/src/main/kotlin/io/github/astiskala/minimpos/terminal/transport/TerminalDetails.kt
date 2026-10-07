@@ -1,7 +1,9 @@
 package io.github.astiskala.minimpos.terminal.transport
 
-import com.google.gson.JsonObject
-import com.google.gson.JsonParser
+import com.adyen.model.management.ListTerminalsResponse
+import com.adyen.model.management.MeApiCredential
+import com.adyen.model.management.Terminal
+import com.adyen.model.management.TerminalSettings
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import okhttp3.HttpUrl
@@ -116,11 +118,7 @@ class AdyenTerminalDetails(
         if (reply !is AdyenReply.Answered || !reply.ok) return CredentialLookup.Failed(reason(reply))
         val roles =
             runCatching {
-                JsonParser
-                    .parseString(reply.body)
-                    .asJsonObject
-                    .getAsJsonArray("roles")
-                    .map { it.asString }
+                requireNotNull(decodeAdyenModel(reply.body, MeApiCredential::class.java)?.roles).map { requireNotNull(it) }
             }.getOrNull() ?: return CredentialLookup.Failed(ManagementFailure.UNREADABLE)
         return if (roles.any { it.replace("—", "-").replace("–", "-").replace(" ", "") == "ManagementAPI-Terminalactionsread" }) {
             CredentialLookup.Allowed
@@ -166,15 +164,10 @@ class AdyenTerminalDetails(
         val reply = http.get(url, TIMEOUT)
         if (reply !is AdyenReply.Answered || !reply.ok) return null
         return runCatching {
-            val key =
-                JsonParser
-                    .parseString(reply.body)
-                    .asJsonObject
-                    .getAsJsonObject("nexo")
-                    .getAsJsonObject("encryptionKey")
-            val identifier = key.text("identifier")
-            val passphrase = key.text("passphrase", trim = false)
-            val version = requireNotNull(key.get("version")?.asString?.toIntOrNull())
+            val key = requireNotNull(decodeAdyenModel(reply.body, TerminalSettings::class.java)?.nexo?.encryptionKey)
+            val identifier = key.identifier?.trim().orEmpty()
+            val passphrase = key.passphrase.orEmpty()
+            val version = requireNotNull(key.version)
             if (identifier.isBlank() || passphrase.isBlank() ||
                 version !in KEY_VERSIONS
             ) {
@@ -202,9 +195,9 @@ class AdyenTerminalDetails(
     private fun parsePage(reply: AdyenReply): Pair<List<TerminalDetails>, Boolean>? {
         if (reply !is AdyenReply.Answered || !reply.ok) return null
         return runCatching {
-            val json = JsonParser.parseString(reply.body).asJsonObject
-            val terminals = requireNotNull(json.getAsJsonArray("data")).map { terminal(it.asJsonObject) }
-            val next = json.getAsJsonObject("_links")?.getAsJsonObject("next")?.text("href")
+            val response = requireNotNull(decodeAdyenModel(reply.body, ListTerminalsResponse::class.java))
+            val terminals = requireNotNull(response.data).map(::terminal)
+            val next = response.links?.next?.href
             terminals to !next.isNullOrBlank()
         }.getOrNull()
     }
@@ -218,17 +211,35 @@ class AdyenTerminalDetails(
             else -> ManagementFailure.UNAVAILABLE
         }
 
-    private fun terminal(json: JsonObject): TerminalDetails {
-        val id = json.text("id").also { require(it.isNotBlank()) }
-        val connectivity = json.getAsJsonObject("connectivity")
-        val ethernet = connectivity?.getAsJsonObject("ethernet")?.text("ipAddress").orEmpty()
-        val wifi = connectivity?.getAsJsonObject("wifi")?.text("ipAddress").orEmpty()
-        val assignment = json.getAsJsonObject("assignment")
+    private fun terminal(terminal: Terminal): TerminalDetails {
+        val id =
+            terminal.id
+                ?.trim()
+                .orEmpty()
+                .also { require(it.isNotBlank()) }
+        val ethernet =
+            terminal.connectivity
+                ?.ethernet
+                ?.ipAddress
+                ?.trim()
+                .orEmpty()
+        val wifi =
+            terminal.connectivity
+                ?.wifi
+                ?.ipAddress
+                ?.trim()
+                .orEmpty()
         return TerminalDetails(
             id,
-            assignment?.text("merchantId").orEmpty(),
+            terminal.assignment
+                ?.merchantId
+                ?.trim()
+                .orEmpty(),
             ethernet.ifBlank { wifi },
-            assignment?.text("storeId").orEmpty(),
+            terminal.assignment
+                ?.storeId
+                ?.trim()
+                .orEmpty(),
         )
     }
 

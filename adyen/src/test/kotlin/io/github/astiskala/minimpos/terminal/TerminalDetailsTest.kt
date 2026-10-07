@@ -42,7 +42,7 @@ class TerminalDetailsTest {
                 reply("{}", status)
                 assertThat(api.credential(TerminalEnvironment.TEST)).isInstanceOf(CredentialLookup.Failed::class.java)
             }
-            listOf("{}", "not json").forEach { body ->
+            listOf("{}", "not json", """{"roles":[null]}""", """{"roles":[123]}""").forEach { body ->
                 reply(body)
                 assertThat(api.credential(TerminalEnvironment.TEST)).isEqualTo(CredentialLookup.Failed(ManagementFailure.UNREADABLE))
             }

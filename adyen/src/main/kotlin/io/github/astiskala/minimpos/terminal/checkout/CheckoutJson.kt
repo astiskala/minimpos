@@ -1,20 +1,23 @@
 package io.github.astiskala.minimpos.terminal.checkout
 
-import com.google.gson.JsonObject
-import com.google.gson.JsonParser
+import com.adyen.model.applicationinfo.ApplicationInfo
+import com.adyen.model.checkout.JSON
+import com.adyen.model.checkout.ServiceError
 import io.github.astiskala.minimpos.terminal.transport.AdyenReply
+import io.github.astiskala.minimpos.terminal.transport.adyenField
+import io.github.astiskala.minimpos.terminal.transport.decodeAdyenModel
 
-/** [text] as a JSON object; null when it is not one. */
-internal fun parseObject(text: String): JsonObject? = runCatching { JsonParser.parseString(text).asJsonObject }.getOrNull()
+/** [text] as the official Checkout error model; null when it is not readable. */
+internal fun parseError(text: String): ServiceError? = decodeAdyenModel(text, ServiceError::class.java)
 
-/** The string (or number, as text) under [name]; null when it is missing or not a primitive. */
-internal fun JsonObject.string(name: String): String? = get(name)?.takeIf { it.isJsonPrimitive }?.asString
+/** The original status text for diagnostics when the library cannot map it to a known enum. */
+internal fun unexpectedStatus(text: String): String = "Unexpected status from Adyen: ${adyenField(text, "status").orEmpty()}"
 
 /** Adyen's error message and code for a failed request, e.g. "Invalid amount (HTTP 422, code 137)". */
 internal fun adyenError(reply: AdyenReply.Answered): String {
-    val json = parseObject(reply.body)
-    val message = json?.string("message") ?: "Adyen returned an error"
-    val code = json?.string("errorCode")?.let { ", code $it" }.orEmpty()
+    val error = parseError(reply.body)
+    val message = error?.message ?: "Adyen returned an error"
+    val code = error?.errorCode?.let { ", code $it" }.orEmpty()
     return "$message (HTTP ${reply.code}$code)"
 }
 
@@ -25,3 +28,6 @@ internal fun AdyenReply.Answered.outcomeUnknown(): Boolean = code in RETRYABLE |
 private val RETRYABLE = setOf(408, 429)
 
 private const val HTTP_SERVER_ERROR = 500
+
+internal fun ApplicationInfo.checkoutInfo(): com.adyen.model.checkout.ApplicationInfo =
+    JSON.getMapper().convertValue(this, com.adyen.model.checkout.ApplicationInfo::class.java)

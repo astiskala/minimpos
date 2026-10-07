@@ -151,8 +151,8 @@ class AppContainer(
     paymentsAppManagement: (apiKey: String, environment: TerminalEnvironment) -> PaymentsAppManagement = { key, environment ->
         AdyenPaymentsAppManagement(key, environment)
     },
-    paymentLinks: (CheckoutCredentials) -> PaymentLinkApi = { CheckoutPaymentLinks(it) },
-    paymentModifications: (CheckoutCredentials) -> PaymentModifications = { CheckoutModifications(it) },
+    paymentLinks: ((CheckoutCredentials) -> PaymentLinkApi)? = null,
+    paymentModifications: ((CheckoutCredentials) -> PaymentModifications)? = null,
     storeDetails: (String, TerminalEnvironment) -> StoreDetailsApi = { key, environment ->
         AdyenStoreDetails(key, environment)
     },
@@ -310,8 +310,8 @@ class AppContainer(
         AdyenApi(
             terminalSetup,
             simulated = simulator.modifications,
-            connect = paymentModifications,
-            connectLinks = paymentLinks,
+            connect = paymentModifications ?: { CheckoutModifications(it, application = application.toApplicationInfo()) },
+            connectLinks = paymentLinks ?: { CheckoutPaymentLinks(it, application = application.toApplicationInfo()) },
             verifyAccess = SetupAccess(terminalDetails)::verify,
             readEnvironment = gateway::refreshEnvironment,
         )

@@ -1,5 +1,6 @@
 package io.github.astiskala.minimpos.terminal
 
+import com.adyen.terminal.serialization.TerminalAPIGsonBuilder
 import com.google.common.truth.Truth.assertThat
 import com.google.gson.JsonParser
 import io.github.astiskala.minimpos.terminal.checkout.CheckoutCredentials
@@ -10,6 +11,7 @@ import io.github.astiskala.minimpos.terminal.checkout.PaymentLinkLineItem
 import io.github.astiskala.minimpos.terminal.checkout.PaymentLinkRequest
 import io.github.astiskala.minimpos.terminal.checkout.PaymentLinkResult
 import io.github.astiskala.minimpos.terminal.checkout.PaymentLinkStatus
+import io.github.astiskala.minimpos.terminal.client.PosApplication
 import io.github.astiskala.minimpos.terminal.transport.TerminalEnvironment
 import kotlinx.coroutines.runBlocking
 import mockwebserver3.MockResponse
@@ -48,6 +50,23 @@ class CheckoutPaymentLinksTest {
 
     private fun link(status: String) =
         """{"id":"PL123","url":"https://test.adyen.link/PL123","status":"$status","expiresAt":"2026-10-03T09:30:00Z"}"""
+
+    @Test
+    fun `link creation sends identical sanitized Terminal API application info but expiration does not`() =
+        runBlocking {
+            val application =
+                PosApplication("Mini mPOS", "1.2.0", "Acme POS", "Android", "13", platformName = "Acme", platformVersion = "2.0")
+                    .toApplicationInfo()
+            val identified = CheckoutPaymentLinks(credentials, baseUrl = server.url("/v72/"), application = application)
+            reply(link("active"), code = 201)
+            identified.create(request, "link")
+            val body = JsonParser.parseString(server.takeRequest().body!!.utf8()).asJsonObject
+            assertThat(body["applicationInfo"]).isEqualTo(JsonParser.parseString(TerminalAPIGsonBuilder.create().toJson(application)))
+            reply(link("expired"))
+            identified.expire("PL123")
+            assertThat(JsonParser.parseString(server.takeRequest().body!!.utf8()))
+                .isEqualTo(JsonParser.parseString("""{"status":"expired"}"""))
+        }
 
     @Test
     fun `creating a link posts the amount, expiry and idempotency key with the API key`() {
@@ -154,6 +173,22 @@ class CheckoutPaymentLinksTest {
             assertThat((api.status("PL1") as PaymentLinkResult.Answered).link.expiresAt).isNull()
         }
     }
+
+    @Test
+    fun `typed links reject malformed required fields while ignoring extra fields`() =
+        runBlocking {
+            reply(link("active").dropLast(1) + """, "futureField":{}}""")
+            assertThat(api.status("PL123")).isInstanceOf(PaymentLinkResult.Answered::class.java)
+            listOf(
+                """{"id":123,"url":"https://test.adyen.link/PL123","status":"active"}""",
+                """{"id":"PL123","url":false,"status":"active"}""",
+                """{"id":"PL123","url":"https://test.adyen.link/PL123","status":{}}""",
+                link("active") + " {}",
+            ).forEach { body ->
+                reply(body)
+                assertThat(api.status("PL123")).isInstanceOf(PaymentLinkResult.Unknown::class.java)
+            }
+        }
 
     @Test
     fun `a request that never arrives is not processed, and a timeout is unknown`() {

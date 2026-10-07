@@ -1,12 +1,15 @@
 package io.github.astiskala.minimpos.terminal.paymentsapp
 
-import com.google.gson.JsonObject
-import com.google.gson.JsonParser
+import com.adyen.model.paymentsapp.BoardingTokenRequest
+import com.adyen.model.paymentsapp.BoardingTokenResponse
+import com.adyen.model.paymentsapp.DefaultErrorResponseEntity
+import com.adyen.model.paymentsapp.PaymentsAppResponse
 import io.github.astiskala.minimpos.terminal.transport.AdyenHttp
 import io.github.astiskala.minimpos.terminal.transport.AdyenReply
 import io.github.astiskala.minimpos.terminal.transport.HTTP_FORBIDDEN
 import io.github.astiskala.minimpos.terminal.transport.HTTP_UNAUTHORIZED
 import io.github.astiskala.minimpos.terminal.transport.TerminalEnvironment
+import io.github.astiskala.minimpos.terminal.transport.decodeAdyenModel
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import okhttp3.HttpUrl
@@ -126,17 +129,16 @@ class AdyenPaymentsAppManagement(
     ): ManagementResult? {
         val apps =
             runCatching {
-                JsonParser.parseString(body).asJsonObject.getAsJsonArray("paymentsApps").map {
-                    val app = it.asJsonObject
-                    Triple(app.get("installationId")?.asString, app.get("merchantAccountCode")?.asString, app.get("status")?.asString)
-                }
+                requireNotNull(decodeAdyenModel(body, PaymentsAppResponse::class.java)?.paymentsApps).map { requireNotNull(it) }
             }.getOrNull()
         return when {
             apps == null -> {
                 ManagementResult.Failed("Adyen sent an unreadable Payments app list")
             }
 
-            apps.any { it.first == installationId && it.second == target.merchantAccount && it.third == "BOARDED" } -> {
+            apps.any {
+                it.installationId == installationId && it.merchantAccountCode == target.merchantAccount && it.status == "BOARDED"
+            } -> {
                 ManagementResult
                     .Done()
             }
@@ -157,19 +159,19 @@ class AdyenPaymentsAppManagement(
     ): ManagementResult {
         val store = target.storeId?.let { listOf("stores", it) }.orEmpty()
         val path = listOf("merchants", target.merchantAccount) + store + "generatePaymentsAppBoardingToken"
-        return post(path, JsonObject().apply { addProperty("boardingRequestToken", boardingRequestToken) })
+        return post(path, BoardingTokenRequest().boardingRequestToken(boardingRequestToken).toJson())
     }
 
     override suspend fun revoke(
         merchantAccount: String,
         installationId: String,
-    ): ManagementResult = post(listOf("merchants", merchantAccount, "paymentsApps", installationId, "revoke"), JsonObject())
+    ): ManagementResult = post(listOf("merchants", merchantAccount, "paymentsApps", installationId, "revoke"), "{}")
 
     private suspend fun post(
         path: List<String>,
-        body: JsonObject,
+        body: String,
     ): ManagementResult =
-        when (val reply = http.post(baseUrl.newBuilder().apply { path.forEach { addPathSegment(it) } }.build(), body.toString(), TIMEOUT)) {
+        when (val reply = http.post(baseUrl.newBuilder().apply { path.forEach { addPathSegment(it) } }.build(), body, TIMEOUT)) {
             is AdyenReply.Answered -> result(reply)
 
             // Boarding tokens and revocations can be asked for again, so a request that may have arrived needs no special care.
@@ -178,11 +180,10 @@ class AdyenPaymentsAppManagement(
 
     private fun result(reply: AdyenReply.Answered): ManagementResult {
         val code = reply.code
-        val json = runCatching { JsonParser.parseString(reply.body).asJsonObject }.getOrNull()
-        if (reply.ok) return ManagementResult.Done(json?.get("boardingToken")?.takeIf { it.isJsonPrimitive }?.asString)
-        val detail = json?.get("detail") ?: json?.get("title")
+        if (reply.ok) return ManagementResult.Done(decodeAdyenModel(reply.body, BoardingTokenResponse::class.java)?.boardingToken)
+        val error = decodeAdyenModel(reply.body, DefaultErrorResponseEntity::class.java)
         val message =
-            detail?.takeIf { it.isJsonPrimitive }?.asString
+            error?.detail ?: error?.title
                 ?: when (code) {
                     HTTP_UNAUTHORIZED -> "Adyen did not accept the Payments app API key"
                     HTTP_FORBIDDEN -> "The API key lacks the Adyen Payments app role, or may not use this merchant account"

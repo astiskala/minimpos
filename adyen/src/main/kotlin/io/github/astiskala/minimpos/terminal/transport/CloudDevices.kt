@@ -1,11 +1,11 @@
 package io.github.astiskala.minimpos.terminal.transport
 
+import com.adyen.model.ApiError
+import com.adyen.model.clouddevice.ConnectedDevicesResponse
 import com.adyen.model.terminal.TerminalAPIRequest
 import com.adyen.model.terminal.TerminalAPIResponse
 import com.adyen.terminal.serialization.TerminalAPIGsonBuilder
-import com.google.gson.JsonObject
 import com.google.gson.JsonParseException
-import com.google.gson.JsonParser
 import io.github.astiskala.minimpos.terminal.parse.FormEncoding
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
@@ -257,12 +257,10 @@ class AdyenCloudDevices(
         if (code !in HTTP_OK) return CloudListing.Refused(code, httpError(code, body, credentials.merchantAccount))
         val devices =
             runCatching {
-                JsonParser
-                    .parseString(body)
-                    .asJsonObject
-                    .getAsJsonArray("uniqueDeviceIds")
-                    ?.map { it.asString }
+                requireNotNull(decodeAdyenModel(body, ConnectedDevicesResponse::class.java))
+                    .uniqueDeviceIds
                     .orEmpty()
+                    .map { requireNotNull(it) }
             }.getOrNull() ?: return CloudListing.Failed("Unexpected response from Adyen")
         return CloudListing.Listed(devices)
     }
@@ -337,14 +335,14 @@ class CloudTransport internal constructor(
         poiId: String,
     ): Delivery {
         // An abort is acknowledged with a bare "ok".
-        val root =
+        val response =
             try {
-                JsonParser.parseString(body).takeIf { it.isJsonObject }?.asJsonObject
+                gson.fromJson(body, TerminalAPIResponse::class.java)
             } catch (ignored: JsonParseException) {
                 null
             } ?: return Delivery.Answered(null)
-        if (root.has("SaleToPOIResponse")) return Delivery.Answered(gson.fromJson(root, TerminalAPIResponse::class.java))
-        val details = eventDetails(root) ?: return Delivery.MaybeSent("Unexpected response from Adyen")
+        if (response.saleToPOIResponse != null) return Delivery.Answered(response)
+        val details = eventDetails(body) ?: return Delivery.MaybeSent("Unexpected response from Adyen")
         val message = FormEncoding.decode(details)["message"] ?: details
         return if (NOT_CONNECTED.any { message.contains(it, ignoreCase = true) }) {
             Delivery.NotSent("Terminal $poiId is not connected to Adyen: $message")
@@ -353,10 +351,10 @@ class CloudTransport internal constructor(
         }
     }
 
-    private fun eventDetails(root: JsonObject): String? =
+    private fun eventDetails(body: String): String? =
         runCatching {
             gson
-                .fromJson(root, TerminalAPIRequest::class.java)
+                .fromJson(body, TerminalAPIRequest::class.java)
                 .saleToPOIRequest
                 ?.eventNotification
                 ?.eventDetails
@@ -379,7 +377,7 @@ internal fun httpError(
     merchantAccount: String,
     poiId: String? = null,
 ): String {
-    val message = runCatching { JsonParser.parseString(body).asJsonObject["message"]?.asString }.getOrNull()
+    val message = decodeAdyenModel(body, ApiError::class.java)?.message
     val fallback =
         when (code) {
             HTTP_UNAUTHORIZED -> "Adyen did not accept the API key"

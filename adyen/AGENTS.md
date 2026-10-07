@@ -19,8 +19,11 @@ Starred rules are enforced by `ArchitectureTest`. KDoc is the detailed API/proto
 
 ## Integration pitfalls
 
-- Use Adyen's library for nexo models, encryption and certificate checks. Checkout/cloud calls deliberately use
-  plain JSON with OkHttp: the library's Checkout and `tapi` models pull Jackson and extensive keep rules.
+- \* Use Adyen's library for all API wire models, encryption and certificate checks; app-facing domain types stay local.
+  Checkout, Management, boarding and cloud listings use Jackson; nexo uses the library's Gson builder. Preserve
+  Jackson annotations/methods/constructors in release R8 rules. HTTP still goes through `AdyenHttp`.
+  Raw fields are only for unmodeled `refusalReason`, unknown-status diagnostics, extensible `AdditionalResponse`
+  data and unstructured terminal rejections.
 - `TerminalLocalAPI` posts to `<endpoint>:8443/nexo/`; `xerces:xercesImpl` supplies `DatatypeFactory` on Android.
   Unknown enum values deserialize to null. Keep application info identical on every payment/refund.
 - `TerminalSimulator` and `SimulatedModifications` share a ledger; changes must agree across Terminal and Checkout

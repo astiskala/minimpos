@@ -7,6 +7,8 @@ import io.github.astiskala.minimpos.app.await
 import io.github.astiskala.minimpos.app.data.security.Secret
 import io.github.astiskala.minimpos.app.data.settings.TerminalMode
 import io.github.astiskala.minimpos.terminal.transport.DiscoveredKey
+import io.github.astiskala.minimpos.terminal.transport.ManagementFailure
+import io.github.astiskala.minimpos.terminal.transport.SharedKeyLookup
 import io.github.astiskala.minimpos.terminal.transport.TerminalDetails
 import io.github.astiskala.minimpos.terminal.transport.TerminalDetailsApi
 import io.github.astiskala.minimpos.terminal.transport.TerminalEnvironment
@@ -26,21 +28,26 @@ class SetupDiscoveryTest {
     private var sharedKey: DiscoveredKey? = DiscoveredKey("key", 2, " secret passphrase ")
     private var reads = 0
     private val environments = mutableListOf<TerminalEnvironment>()
+    private val queries = mutableListOf<String?>()
     private val api =
         object : TerminalDetailsApi {
             override suspend fun credential(environment: TerminalEnvironment) =
                 io.github.astiskala.minimpos.terminal.transport.CredentialLookup.Allowed
 
-            override suspend fun terminals(environment: TerminalEnvironment): TerminalListing =
+            override suspend fun terminals(
+                environment: TerminalEnvironment,
+                id: String?,
+            ): TerminalListing =
                 listing.also {
                     reads++
                     environments += environment
+                    queries += id
                 }
 
             override suspend fun sharedKey(
                 id: String,
                 environment: TerminalEnvironment,
-            ): DiscoveredKey? = sharedKey
+            ): SharedKeyLookup = sharedKey?.let(SharedKeyLookup::Found) ?: SharedKeyLookup.Failed(ManagementFailure.PERMISSION)
         }
     private var env = TestEnvironment(terminalDetails = api)
     private val container get() = env.container
@@ -74,6 +81,7 @@ class SetupDiscoveryTest {
         assertThat(await { container.settings.current() }.terminal.environment).isEqualTo(TerminalEnvironment.TEST)
         assertThat(await { container.secrets.get(Secret.TERMINAL_PASSPHRASE) }).isNull()
         assertThat(environments).containsExactly(TerminalEnvironment.TEST)
+        assertThat(queries).containsExactly("S1F2-123456789")
     }
 
     @Test

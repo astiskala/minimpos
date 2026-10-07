@@ -130,7 +130,7 @@
             <p class="hint">Create a credential in <a data-ca="developers/api-credentials/" href="https://ca-test.adyen.com/ca/ui/developers/api-credentials/" target="_blank" rel="noopener noreferrer" aria-describedby="customer-area-note">Developers › API credentials</a> and generate its API key.
               <span data-only="cloud" hidden>Add the Cloud Device API role for cloud payments.</span>
               <span data-only="tapToPay" hidden>This key is for Checkout operations, not Payments app registration.</span>
-              Every real setup needs Management API — Terminal actions read on this main credential; see the <a href="getting-started.html#credentials">credential requirements</a>.
+              Every real setup needs the required Management roles on this main credential, including terminal-settings write and Advanced access; see the <a href="getting-started.html#credentials">credential requirements</a>.
               This helper stays offline; discovery and verification run on the device before import.</p>
             <label for="apiKey">API key</label>
             <input id="apiKey" name="apiKey" type="password" required spellcheck="false">

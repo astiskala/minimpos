@@ -527,7 +527,7 @@
   <string name="settings_adyen_roles_hint">In addition to the default roles, this API key needs the following additional roles:</string>
   <string name="settings_adyen_role_cloud">Cloud Device API role</string>
   <string name="settings_adyen_role_terminals">Management API - Terminal actions read</string>
-  <string name="settings_adyen_role_settings">Management API - Terminal settings read</string>
+  <string name="settings_adyen_role_settings">Management API - Terminal settings read and write</string>
   <string name="settings_adyen_role_shared_key">Management API - Terminal settings Advanced read and write</string>
   <string name="settings_env_test">TEST environment</string>
   <string name="settings_env_live">LIVE environment</string>
@@ -568,7 +568,7 @@
   <string name="settings_api_key">API key</string>
   <string name="settings_save_and_discover">Save and find setup</string>
   <string name="settings_discover">Find setup</string>
-  <string name="settings_discovery_manual">Review the details below. Enter anything missing manually, then test the connection and API key. Lookup permissions are optional.</string>
+  <string name="settings_discovery_manual">Review the details below. Enter anything missing manually, then test the connection and API key. All required API roles must be present.</string>
   <string name="settings_live_prefix">Live URL prefix</string>
   <string name="settings_live_prefix_hint">Enter the Checkout live URL prefix. This can be found under Developers › API URLs.</string>
   <string name="settings_test_api">Test API</string>
@@ -883,7 +883,7 @@
   <string name="setup_transfer_pending">Setup import needs to finish saving. Retry to resume.</string>
   <string name="setup_terminal_access">This API key cannot access this terminal. Check that it belongs to the terminal’s Company account and has access to this terminal.</string>
   <string name="setup_merchant_mismatch">The merchant account does not match this terminal’s current assignment. Correct the account or boarding before continuing.</string>
-  <string name="setup_management_permission">This API key needs Management API — Terminal actions read for every real setup.</string>
+  <string name="setup_management_permission">Every real setup requires Management API — Terminal actions read, Management API — Terminal settings read and write, and Management API — Terminal settings Advanced read and write.</string>
   <string name="setup_management_authentication">Adyen did not accept this API key in the selected environment. Replace the key and retry.</string>
   <string name="setup_management_unavailable">Adyen setup access could not be verified. Check the connection and retry.</string>
   <string name="setup_store_access">The assigned store could not be read. Check store access; another store will not be used.</string>
@@ -917,4 +917,14 @@
   <string name="history_switch_message">Switching between LIVE, TEST, and simulator permanently deletes all local payment history and daily report data. Products and other settings stay. Adyen records are not deleted.</string>
   <string name="history_switch_unfinished">Unfinished payments exist. This does not cancel payments, authorizations, or links at Adyen. Local recovery and safe retry data will be lost.</string>
   <string name="history_switch_confirm">Delete history and switch</string>
+  <string name="settings_create_shared_key">Create encryption key</string>
+  <string name="settings_resume_shared_key">Resume key setup</string>
+  <string name="settings_shared_key_confirm">%1$s · %2$s\nCreate a new key for this terminal only. Existing keys at Adyen are reused. Do not edit this terminal’s settings elsewhere during creation.</string>
+  <string name="settings_shared_key_replace">This replaces any locally supplied key values. The passphrase is stored encrypted.</string>
+  <string name="settings_shared_key_resume_confirm">%1$s · %2$s\nRead Adyen settings first. If creation needs retrying, use the same saved key.</string>
+  <string name="settings_shared_key_check_again">Check again</string>
+  <string name="setup_key_connection_pending">Key created; terminal connection not verified. On the terminal, open Admin menu › Config › Update, then check again.</string>
+  <string name="setup_key_recovery_unreadable">Pending key setup could not be read. Retrieve an existing key or contact support before creating another.</string>
+  <string name="setup_key_creation_unconfirmed">Key creation is unconfirmed. Resume key setup to read Adyen settings before retrying.</string>
+  <string name="transfer_key_not_imported">The key was created for the terminal. Setup was not imported. Retry, or rescan the same setup codes later. Cancelling does not remove the key at Adyen.</string>
 </resources>

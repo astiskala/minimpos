@@ -254,7 +254,7 @@ class SetupDiscoveryUiTest {
         compose.onNodeWithText("Required for real payments.", substring = true).assertDoesNotExist()
         if (mode == TerminalMode.CLOUD) {
             compose.onNodeWithTag("roleCloud").assertExists()
-            compose.onNodeWithText(env.context.getString(R.string.settings_adyen_role_shared_key), substring = true).assertDoesNotExist()
+            compose.onNodeWithText(env.context.getString(R.string.settings_adyen_role_shared_key), substring = true).assertExists()
         } else {
             compose.onNodeWithTag("roleCloud").assertDoesNotExist()
             compose.onNodeWithText(env.context.getString(R.string.settings_adyen_role_settings), substring = true).assertExists()
@@ -273,8 +273,8 @@ class SetupDiscoveryUiTest {
         compose.onNodeWithTag("section_terminal").performClick()
         waitForTag("step_1")
         compose.onNodeWithTag("step_1").assertIsDisplayed().assertTextContains("Adyen Payments app")
-        compose.onNodeWithText(env.context.getString(R.string.settings_adyen_role_settings), substring = true).assertDoesNotExist()
-        compose.onNodeWithText(env.context.getString(R.string.settings_adyen_role_shared_key), substring = true).assertDoesNotExist()
+        compose.onNodeWithText(env.context.getString(R.string.settings_adyen_role_settings), substring = true).assertExists()
+        compose.onNodeWithText(env.context.getString(R.string.settings_adyen_role_shared_key), substring = true).assertExists()
         compose.onNodeWithText(env.context.getString(R.string.settings_adyen_role_terminals), substring = true).assertExists()
         compose.onNodeWithTag("environment").assertDoesNotExist()
         compose.onNodeWithTag("discoverSetup").assertDoesNotExist()

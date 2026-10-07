@@ -1,7 +1,9 @@
 package io.github.astiskala.minimpos.terminal.transport
 
+import com.adyen.model.management.Key
 import com.adyen.model.management.ListTerminalsResponse
 import com.adyen.model.management.MeApiCredential
+import com.adyen.model.management.Nexo
 import com.adyen.model.management.Terminal
 import com.adyen.model.management.TerminalSettings
 import kotlinx.coroutines.CoroutineDispatcher
@@ -84,19 +86,73 @@ sealed interface CredentialLookup {
     ) : CredentialLookup
 }
 
-/** Optional Management reads; safe to call from any thread, with no Adyen configuration mutations. */
+/** Effective shared-key lookup; absence is distinct from denied, malformed or unavailable settings. */
+sealed interface SharedKeyLookup {
+    /** Valid key, possibly inherited from a higher account level.
+     * @property key Secret values held only until encrypted storage.
+     */
+    class Found(
+        val key: DiscoveredKey,
+    ) : SharedKeyLookup
+
+    /** Readable settings contain no encryption key. */
+    data object Missing : SharedKeyLookup
+
+    /** Settings could not be read; never grants permission to create or replace a key.
+     * @property reason Non-secret typed failure.
+     */
+    data class Failed(
+        val reason: ManagementFailure,
+    ) : SharedKeyLookup
+}
+
+/** Result of an explicitly requested terminal-specific key creation. */
+sealed interface SharedKeyUpdate {
+    /** Read-back key after PATCH, or an existing key reused without PATCH.
+     * @property key Effective secret values.
+     * @property created Whether a PATCH was sent successfully.
+     */
+    class Ready(
+        val key: DiscoveredKey,
+        val created: Boolean,
+    ) : SharedKeyUpdate
+
+    /** Creation or verification failed; the caller retains its encrypted recovery record.
+     * @property reason Non-secret failure.
+     * @property uncertain Whether a PATCH may have taken effect without verified read-back.
+     */
+    data class Failed(
+        val reason: ManagementFailure,
+        val uncertain: Boolean = false,
+    ) : SharedKeyUpdate
+}
+
+/** Management discovery and explicit key creation; main-safe, without silent retries or environment fallback. */
 interface TerminalDetailsApi {
-    /** Checks the required terminal-access role in [environment], without cross-environment fallback. */
+    /** Checks terminal-access, terminal-settings write and Advanced roles in [environment]. */
     suspend fun credential(environment: TerminalEnvironment): CredentialLookup = CredentialLookup.Failed(ManagementFailure.UNAVAILABLE)
 
-    /** Reads all visible terminals in [environment], without a merchant account or cross-environment fallback. */
-    suspend fun terminals(environment: TerminalEnvironment): TerminalListing
+    /** Reads all visible terminals, or only the exact [id] using a targeted substring search followed by exact matching. */
+    suspend fun terminals(
+        environment: TerminalEnvironment,
+        id: String? = null,
+    ): TerminalListing
 
-    /** Reads the terminal's effective encryption key; null on denied, absent or malformed settings. */
+    /** Reads the effective key, distinguishing verified absence from failed reads. */
     suspend fun sharedKey(
         id: String,
         environment: TerminalEnvironment,
-    ): DiscoveredKey?
+    ): SharedKeyLookup
+
+    /** Creates [key] only after a fresh settings read finds no existing key; preserves the complete nexo object.
+     * The caller must confirm the terminal/environment and persist recovery before calling. No atomic compare-and-set
+     * is available, so another administrator must not edit the same settings concurrently.
+     */
+    suspend fun createSharedKey(
+        id: String,
+        environment: TerminalEnvironment,
+        key: DiscoveredKey,
+    ): SharedKeyUpdate = SharedKeyUpdate.Failed(ManagementFailure.UNAVAILABLE)
 }
 
 /** Management v3 terminal discovery with bounded pagination and no automatic request retries.
@@ -120,14 +176,31 @@ class AdyenTerminalDetails(
             runCatching {
                 requireNotNull(decodeAdyenModel(reply.body, MeApiCredential::class.java)?.roles).map { requireNotNull(it) }
             }.getOrNull() ?: return CredentialLookup.Failed(ManagementFailure.UNREADABLE)
-        return if (roles.any { it.replace("—", "-").replace("–", "-").replace(" ", "") == "ManagementAPI-Terminalactionsread" }) {
+        val normalized = roles.map { it.replace("—", "-").replace("–", "-").replace(" ", "") }.toSet()
+        return if (normalized.containsAll(REQUIRED_ROLES)) {
             CredentialLookup.Allowed
         } else {
             CredentialLookup.Failed(ManagementFailure.PERMISSION)
         }
     }
 
-    override suspend fun terminals(environment: TerminalEnvironment): TerminalListing {
+    override suspend fun terminals(
+        environment: TerminalEnvironment,
+        id: String?,
+    ): TerminalListing {
+        if (id != null) {
+            val reply =
+                http.get(
+                    baseUrl(environment)
+                        .newBuilder()
+                        .addPathSegment("terminals")
+                        .addQueryParameter("searchQuery", id)
+                        .build(),
+                    TIMEOUT,
+                )
+            val parsed = parsePage(reply) ?: return TerminalListing.Failed("Terminal lookup is unavailable", reason(reply))
+            return TerminalListing.Listed(parsed.first.filter { it.id == id }.distinctBy { it.id }, environment)
+        }
         var reply = page(environment, 1)
         val terminals = mutableListOf<TerminalDetails>()
         var number = 1
@@ -153,29 +226,99 @@ class AdyenTerminalDetails(
     override suspend fun sharedKey(
         id: String,
         environment: TerminalEnvironment,
-    ): DiscoveredKey? {
-        val url =
-            baseUrl(environment)
-                .newBuilder()
-                .addPathSegment("terminals")
-                .addPathSegment(id)
-                .addPathSegment("terminalSettings")
-                .build()
-        val reply = http.get(url, TIMEOUT)
-        if (reply !is AdyenReply.Answered || !reply.ok) return null
-        return runCatching {
-            val key = requireNotNull(decodeAdyenModel(reply.body, TerminalSettings::class.java)?.nexo?.encryptionKey)
-            val identifier = key.identifier?.trim().orEmpty()
-            val passphrase = key.passphrase.orEmpty()
-            val version = requireNotNull(key.version)
-            if (identifier.isBlank() || passphrase.isBlank() ||
-                version !in KEY_VERSIONS
-            ) {
-                null
-            } else {
-                DiscoveredKey(identifier, version, passphrase)
+    ): SharedKeyLookup {
+        val reply = http.get(settingsUrl(id, environment), TIMEOUT)
+        if (reply !is AdyenReply.Answered || !reply.ok) return SharedKeyLookup.Failed(reason(reply))
+        val settings = decodeTerminalSettings(reply.body) ?: return SharedKeyLookup.Failed(ManagementFailure.UNREADABLE)
+        return lookup(settings)
+    }
+
+    override suspend fun createSharedKey(
+        id: String,
+        environment: TerminalEnvironment,
+        key: DiscoveredKey,
+    ): SharedKeyUpdate {
+        val url = settingsUrl(id, environment)
+        val before = http.get(url, TIMEOUT)
+        if (before !is AdyenReply.Answered || !before.ok) return SharedKeyUpdate.Failed(reason(before))
+        val settings = decodeTerminalSettings(before.body) ?: return SharedKeyUpdate.Failed(ManagementFailure.UNREADABLE)
+        return when (val existing = lookup(settings)) {
+            is SharedKeyLookup.Found -> SharedKeyUpdate.Ready(existing.key, created = false)
+            is SharedKeyLookup.Failed -> SharedKeyUpdate.Failed(existing.reason)
+            SharedKeyLookup.Missing -> patchKey(id, environment, key, settings)
+        }
+    }
+
+    private suspend fun patchKey(
+        id: String,
+        environment: TerminalEnvironment,
+        key: DiscoveredKey,
+        settings: TerminalSettings,
+    ): SharedKeyUpdate {
+        val nexo = (settings.nexo ?: Nexo()).encryptionKey(Key().identifier(key.identifier).version(key.version).passphrase(key.passphrase))
+        val json = TerminalSettings().nexo(nexo).toJson()
+        val reply = http.patch(settingsUrl(id, environment), json, TIMEOUT)
+        if (reply !is AdyenReply.Answered || !reply.ok) {
+            val uncertain =
+                when (reply) {
+                    is AdyenReply.Failed -> reply.sent
+                    is AdyenReply.Answered -> reply.code >= HTTP_SERVER_ERROR || reply.code in UNCERTAIN_HTTP
+                }
+            return SharedKeyUpdate.Failed(reason(reply), uncertain)
+        }
+        return verifyKey(id, environment, key)
+    }
+
+    private suspend fun verifyKey(
+        id: String,
+        environment: TerminalEnvironment,
+        key: DiscoveredKey,
+    ): SharedKeyUpdate =
+        when (val verified = sharedKey(id, environment)) {
+            is SharedKeyLookup.Found -> {
+                val same =
+                    verified.key.identifier == key.identifier && verified.key.version == key.version &&
+                        verified.key.passphrase == key.passphrase
+                if (same) {
+                    SharedKeyUpdate.Ready(
+                        verified.key,
+                        created = true,
+                    )
+                } else {
+                    SharedKeyUpdate.Failed(ManagementFailure.UNREADABLE, uncertain = true)
+                }
             }
-        }.getOrNull()
+
+            is SharedKeyLookup.Failed -> {
+                SharedKeyUpdate.Failed(verified.reason, uncertain = true)
+            }
+
+            SharedKeyLookup.Missing -> {
+                SharedKeyUpdate.Failed(ManagementFailure.UNREADABLE, uncertain = true)
+            }
+        }
+
+    private fun settingsUrl(
+        id: String,
+        environment: TerminalEnvironment,
+    ): HttpUrl =
+        baseUrl(environment)
+            .newBuilder()
+            .addPathSegment("terminals")
+            .addPathSegment(id)
+            .addPathSegment("terminalSettings")
+            .build()
+
+    private fun lookup(settings: TerminalSettings): SharedKeyLookup {
+        val key = settings.nexo?.encryptionKey ?: return SharedKeyLookup.Missing
+        val identifier = key.identifier?.trim().orEmpty()
+        val passphrase = key.passphrase.orEmpty()
+        val version = key.version ?: return SharedKeyLookup.Failed(ManagementFailure.UNREADABLE)
+        return if (identifier.isBlank() || passphrase.isBlank() || version !in KEY_VERSIONS) {
+            SharedKeyLookup.Failed(ManagementFailure.UNREADABLE)
+        } else {
+            SharedKeyLookup.Found(DiscoveredKey(identifier, version, passphrase))
+        }
     }
 
     private suspend fun page(
@@ -248,5 +391,13 @@ class AdyenTerminalDetails(
         const val PAGE_SIZE = 100
         const val MAX_PAGES = 100
         val KEY_VERSIONS = 1..9_999
+        const val HTTP_SERVER_ERROR = 500
+        val UNCERTAIN_HTTP = setOf(408, 429)
+        val REQUIRED_ROLES =
+            setOf(
+                "ManagementAPI-Terminalactionsread",
+                "ManagementAPI-Terminalsettingsreadandwrite",
+                "ManagementAPI-TerminalsettingsAdvancedreadandwrite",
+            )
     }
 }

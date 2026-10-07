@@ -31,8 +31,10 @@ Starred rules below are enforced by `ArchitectureTest`, `SettingsArchitectureTes
   Only this source applies learned environment/region facts, atomically against their originating terminal settings;
   pure destination rules decide what can be learned. Detection origins cannot be copied by callers.
 - \* Only `terminal/SetupImport` activates QR candidates through `SetupTransfer`; code, account/access and supported
-  connection verification precede all writes. Its encrypted journal resumes commits without replaying catalog replacement
-  or phone registration. Only it and `TerminalStatus` record verified identities through `TerminalSetupSource`.
+  connection verification precede activation writes. Its encrypted journal resumes commits without replaying catalog
+  replacement or phone registration. Only it and `TerminalStatus` record verified identities through `TerminalSetupSource`.
+- \* Only `SharedKeySetup` creates terminal-specific keys at Adyen, after explicit confirmation and encrypted recovery
+  persistence. Discovery stays read-only; existing effective keys are reused, never deliberately replaced.
 - \* Destination requirements/capabilities belong to adapter companions in `Destinations.kt`; `DestinationRules.of`
   selects rules. Adapters open transports; only `Destination.connect` constructs clients, only the gateway opens
   adapters. Outside destination/rules/settings code, don't branch on CLOUD or PAYMENTS_APP.

@@ -3,6 +3,8 @@ package io.github.astiskala.minimpos.app.terminal
 import io.github.astiskala.minimpos.app.data.db.SetupProblem
 import io.github.astiskala.minimpos.app.data.security.Secret
 import io.github.astiskala.minimpos.app.data.security.SecretStore
+import io.github.astiskala.minimpos.app.data.security.SharedKeyGenerator
+import io.github.astiskala.minimpos.app.data.security.SharedKeyMaterial
 import io.github.astiskala.minimpos.app.data.settings.AppSettings
 import io.github.astiskala.minimpos.app.data.settings.PrinterMode
 import io.github.astiskala.minimpos.app.data.settings.SettingsRepository
@@ -316,6 +318,8 @@ class UnlockedSetup(
             return TerminalKey(terminal.keyIdentifier.trim(), passphrase, terminal.keyVersion)
         }
 
+    internal val hasSharedPassphrase: Boolean get() = Secret.TERMINAL_PASSPHRASE in values
+
     /** The Adyen API key (also the cloud's); null when none could be read. */
     val apiKey: String? get() = values[Secret.ADYEN_API_KEY]
 
@@ -389,6 +393,22 @@ class TerminalSetupSource(
         current: AppSettings,
         values: Map<Secret, String>,
     ): UnlockedSetup = TerminalSetup.resolve(current, values.keys, device, verified = true, pendingImport = false).unlock(values)
+
+    internal val keyRecovery = KeyCreationRecovery()
+
+    internal inner class KeyCreationRecovery {
+        private val generator = SharedKeyGenerator()
+
+        fun generate(): SharedKeyMaterial = generator.generate()
+
+        fun identity(key: String): String = generator.identity(key)
+
+        suspend fun read(): String? = secrets.readKeyCreation()
+
+        suspend fun exists(): Boolean = secrets.keyCreationExists.first()
+
+        suspend fun write(value: String?) = secrets.writeKeyCreation(value)
+    }
 
     internal val registrations = RegistrationRecovery()
 

@@ -122,7 +122,7 @@
 
           <fieldset data-for="thisTerminal network cloud tapToPay" id="api-key-fields">
             <legend>Adyen APIキー</legend>
-            <p class="hint"><a data-ca="developers/api-credentials/" href="https://ca-test.adyen.com/ca/ui/developers/api-credentials/" target="_blank" rel="noopener noreferrer" aria-describedby="customer-area-note">Developers › API credentials</a>で認証情報を作成し、APIキーを生成してください。<span data-only="cloud" hidden>クラウド決済にはCloud Device API roleを追加します。</span><span data-only="tapToPay" hidden>このキーはCheckout操作用で、Paymentsアプリの登録用ではありません。</span>すべての実決済設定で主認証情報に Management API — Terminal actions read が必要です。<a href="getting-started.html#credentials">認証情報の要件</a>を参照してください。このヘルパーはオフラインで、取得と確認はインポート前にデバイスで行います。</p>
+            <p class="hint"><a data-ca="developers/api-credentials/" href="https://ca-test.adyen.com/ca/ui/developers/api-credentials/" target="_blank" rel="noopener noreferrer" aria-describedby="customer-area-note">Developers › API credentials</a>で認証情報を作成し、APIキーを生成してください。<span data-only="cloud" hidden>クラウド決済にはCloud Device API roleを追加します。</span><span data-only="tapToPay" hidden>このキーはCheckout操作用で、Paymentsアプリの登録用ではありません。</span>すべての実決済設定で、端末設定の書き込みと Advanced アクセスを含む必須の Management ロールが主認証情報に必要です。<a href="getting-started.html#credentials">認証情報の要件</a>を参照してください。このヘルパーはオフラインで、取得と確認はインポート前にデバイスで行います。</p>
             <label for="apiKey">APIキー</label>
             <input id="apiKey" name="apiKey" type="password" required spellcheck="false">
           </fieldset>

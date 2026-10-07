@@ -58,6 +58,7 @@ import io.github.astiskala.minimpos.app.ui.components.ActionMessage
 import io.github.astiskala.minimpos.app.ui.components.LabeledValue
 import io.github.astiskala.minimpos.app.ui.components.PrimaryButton
 import io.github.astiskala.minimpos.app.ui.components.SecondaryButton
+import io.github.astiskala.minimpos.app.ui.components.SharedKeyDialog
 import io.github.astiskala.minimpos.app.ui.components.openUrl
 import io.github.astiskala.minimpos.terminal.transport.TerminalEnvironment
 
@@ -106,6 +107,43 @@ internal fun ColumnScope.TerminalSteps(
         }
         if (!status.selectsEnvironment || status.environment != null || state.hasSavedConnectionDetails()) {
             DestinationSteps(status, state, actions, setup, events, setupEvents, api, update)
+        }
+    }
+    SharedKeyActions(setup, setupEvents)
+}
+
+@Composable
+private fun ColumnScope.SharedKeyActions(
+    setup: TerminalSetupActions,
+    events: TerminalSetupEvents,
+) {
+    val offer = setup.sharedKeyOffer
+    var review by remember(offer) { mutableStateOf(false) }
+    offer?.let {
+        SettingActions {
+            SecondaryButton(
+                stringResource(if (it.resume) R.string.settings_resume_shared_key else R.string.settings_create_shared_key),
+                { review = true },
+                loading = setup.keyResult.running,
+                modifier = Modifier.testTag("createSharedKey"),
+            )
+        }
+        if (review) {
+            SharedKeyDialog(it, {
+                review = false
+                events.onSharedKeyConfirm(it)
+            }, { review = false })
+        }
+    }
+    OutcomeMessage(setup.keyResult, Modifier.testTag("sharedKeyResult"))
+    if (setup.keyPending) {
+        SettingActions {
+            SecondaryButton(
+                stringResource(R.string.settings_shared_key_check_again),
+                events::onSharedKeyCheck,
+                loading = setup.keyResult.running,
+                modifier = Modifier.testTag("checkSharedKey"),
+            )
         }
     }
 }
@@ -510,7 +548,7 @@ private fun ColumnScope.AdyenApiStep(
         hasDraft = api.key.isNotEmpty(),
     ) {
         SettingNote(stringResource(R.string.settings_adyen_key_hint))
-        ApiKeyRoles(cloud, discovers)
+        ApiKeyRoles(cloud)
 
         SecretField(
             label = stringResource(R.string.settings_api_key),
@@ -543,19 +581,14 @@ private fun ColumnScope.AdyenApiStep(
     setup.connectedTerminals?.let { TerminalChoiceDialog(it, setupEvents::onTerminalChoose) }
 }
 
-/** Only roles that must be added beyond default Checkout access, for this destination and optional discovery. */
+/** Mandatory Management roles beyond default Checkout access; cloud adds its transport role. */
 @Composable
-private fun ColumnScope.ApiKeyRoles(
-    cloud: Boolean,
-    discovers: Boolean,
-) {
+private fun ColumnScope.ApiKeyRoles(cloud: Boolean) {
     SettingNote(stringResource(R.string.settings_adyen_roles_hint))
     if (cloud) SettingNote("• " + stringResource(R.string.settings_adyen_role_cloud), Modifier.testTag("roleCloud"))
     SettingNote("• " + stringResource(R.string.settings_adyen_role_terminals), Modifier.testTag("roleTerminals"))
-    if (discovers && !cloud) {
-        listOf(R.string.settings_adyen_role_settings, R.string.settings_adyen_role_shared_key).forEach {
-            SettingNote("• " + stringResource(it))
-        }
+    listOf(R.string.settings_adyen_role_settings, R.string.settings_adyen_role_shared_key).forEach {
+        SettingNote("• " + stringResource(it))
     }
 }
 

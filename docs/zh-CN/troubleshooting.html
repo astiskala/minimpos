@@ -82,6 +82,7 @@
           <h2>付款未配置或无法连接终端</h2>
           <p>先看首页设置提示，再打开<strong>设置 › 终端</strong>，完成编号步骤并运行连接和 API 测试。必要时参阅<a href="getting-started.html#connect">对应配置的连接说明</a>。</p>
           <dl class="settings-list"><dt>本终端或同一网络中的终端</dt><dd>将共享密钥的标识符、口令和版本与商户后台核对。网络模式下还需检查终端当前 IP 地址和 POIID，以及同一网络中的两台设备能否相互连接。</dd><dt>云端</dt><dd>检查商家账户、终端 POIID，以及凭据的 Cloud Device API 和 Checkout webservice 角色。确认终端在线；断线终端无法处理云端付款。</dd><dt>Tap to Pay</dt><dd>安装对应环境的 Payments 应用，不要同时安装 TEST 和 LIVE。完成注册并输入共享密钥。成功的配置检查并不测试银行卡付款。</dd><dt>Checkout API</dt><dd>所有真实付款配置都需要它。核对商家账户和密钥；LIVE 还需要 live URL prefix。保存的密钥无法读取时请重新输入。</dd><dt>环境错误</dt><dd>网络或云端终端请检查“设置 › 终端”步骤 1 的环境，使用匹配的终端、商家账户和 API 密钥。网络证书不匹配时会拒绝连接，API 调用不会自动切换环境。在 Adyen 终端上运行或使用 Tap to Pay 时，请使用正确的设备或 Payments 应用。参阅<a href="getting-started.html#connect">设置步骤</a>。</dd></dl>
+          <p id="key-setup">密钥已创建但连接未验证时，请在实体终端打开 <strong>Admin menu › Config › Update</strong> 更新配置，再点击<strong>再次检查</strong>。Adyen 接受设置不代表终端已应用。应用不会安排重启或更改重启策略。创建中断后请使用<strong>继续密钥设置</strong>，先读取设置，不会生成其他密钥。取消二维码导入会保留 Adyen 的密钥，当前设置和记录不变。参阅<a href="getting-started.html#shared-key-creation">密钥创建</a>及 Adyen 的<a href="https://docs.adyen.com/point-of-sale/managing-terminals/maintain-performance">配置更新说明</a>。</p>
           <p>更换商家账户、环境或终端后，旧付款的操作可能被阻止。恢复处理该付款时的配置，或在商户后台处理，不要尝试用另一个账户处理。</p>
           <p class="back-to-contents"><a href="#contents">返回目录</a></p>
         </section>

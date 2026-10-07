@@ -158,6 +158,9 @@ private val SetupProblem.textRes: Int
             SetupProblem.MANAGEMENT_UNAVAILABLE -> R.string.setup_management_unavailable
             SetupProblem.STORE_ACCESS -> R.string.setup_store_access
             SetupProblem.SETUP_CHANGED -> R.string.setup_changed
+            SetupProblem.KEY_CONNECTION_PENDING -> R.string.setup_key_connection_pending
+            SetupProblem.KEY_RECOVERY_UNREADABLE -> R.string.setup_key_recovery_unreadable
+            SetupProblem.KEY_CREATION_UNCONFIRMED -> R.string.setup_key_creation_unconfirmed
         }
 
 /** Why a tip, capture or adjustment did not go through, named after what was sent; a refusal says the amount. */

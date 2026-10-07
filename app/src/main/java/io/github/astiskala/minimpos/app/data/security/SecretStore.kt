@@ -112,12 +112,14 @@ class KeystoreSecretCipher(
  * @property values Base64 of each secret's ciphertext, keyed by [Secret.name]; a secret that is not set has no entry.
  * @property pendingImport Encrypted verified import journal; null when no commit needs recovery.
  * @property boardingRecovery Encrypted phone registration recovery facts; never transferred.
+ * @property keyCreationRecovery Encrypted terminal-key creation records; never transferred.
  */
 @Serializable
 data class SecretBlob(
     val values: Map<String, String> = emptyMap(),
     val pendingImport: String? = null,
     val boardingRecovery: String? = null,
+    val keyCreationRecovery: String? = null,
 )
 
 internal class SetupSecrets(
@@ -231,6 +233,19 @@ class SecretStore(
     internal suspend fun writeBoarding(value: String?) {
         val encrypted = value?.let { encrypt(it) }
         store.update { it.copy(boardingRecovery = encrypted) }
+    }
+
+    internal val keyCreationExists: Flow<Boolean> = store.data.map { it.keyCreationRecovery != null }
+
+    internal suspend fun readKeyCreation(): String? =
+        store.data
+            .first()
+            .keyCreationRecovery
+            ?.let { decrypt(it) }
+
+    internal suspend fun writeKeyCreation(value: String?) {
+        val encrypted = value?.let { encrypt(it) }
+        store.update { it.copy(keyCreationRecovery = encrypted) }
     }
 
     /** Stores [value], or clears the secret when it is null or empty. Throws [SecretStoreException] if it cannot be encrypted. */

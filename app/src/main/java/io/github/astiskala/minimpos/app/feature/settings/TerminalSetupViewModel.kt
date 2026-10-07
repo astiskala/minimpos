@@ -11,8 +11,11 @@ import io.github.astiskala.minimpos.app.feature.ActionState
 import io.github.astiskala.minimpos.app.feature.launchWrite
 import io.github.astiskala.minimpos.app.feature.persisting
 import io.github.astiskala.minimpos.app.terminal.SetupDiscovery
+import io.github.astiskala.minimpos.app.terminal.SharedKeyOffer
+import io.github.astiskala.minimpos.app.terminal.SharedKeySetupOutcome
 import io.github.astiskala.minimpos.app.terminal.TapToPayOutcome
 import io.github.astiskala.minimpos.app.terminal.TapToPaySetup
+import io.github.astiskala.minimpos.app.terminal.TerminalConnection
 import io.github.astiskala.minimpos.app.terminal.TerminalStatus
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -33,6 +36,9 @@ import kotlinx.coroutines.flow.update
  * @property manualDetails Whether optional details need manual entry.
  * @property revision Completed discovery imports, used to refresh field editing state.
  * @property unsavedSecrets Which visible secret fields have unsaved text; never stores their values.
+ * @property sharedKeyOffer Non-secret creation/recovery confirmation; null when not offered.
+ * @property keyPending Whether a remote key is created but its terminal connection has not verified.
+ * @property keyResult Latest explicitly requested key setup or connection check.
  */
 data class TerminalSetupActions(
     val terminals: ActionState = ActionState(),
@@ -44,6 +50,9 @@ data class TerminalSetupActions(
     val manualDetails: Boolean = false,
     val revision: Int = 0,
     val unsavedSecrets: Set<Secret> = emptySet(),
+    val sharedKeyOffer: SharedKeyOffer? = null,
+    val keyPending: Boolean = false,
+    val keyResult: ActionState = ActionState(),
 )
 
 /**
@@ -67,6 +76,12 @@ class TerminalSetupViewModel(
 ) : ViewModel() {
     private val _actions = MutableStateFlow(TerminalSetupActions())
     private var automaticStarted = false
+
+    init {
+        launchWrite({ discovery.pendingKey() }) { offer ->
+            _actions.update { if (!automaticStarted && !it.terminals.running && it.revision == 0) it.copy(sharedKeyOffer = offer) else it }
+        }
+    }
 
     /** Outcomes of the latest actions. */
     val actions: StateFlow<TerminalSetupActions> = _actions.asStateFlow()
@@ -118,9 +133,12 @@ class TerminalSetupViewModel(
             if (entered != null) _actions.update { it.copy(apiKeyStored = true) }
             val discovered = discovery.find()
             if (!discovered.isNullOrEmpty()) {
-                _actions.update { it.copy(terminals = ActionState(done = true), connectedTerminals = discovered) }
                 val current = status.state.value
-                if (current.onTerminal && current.mode == TerminalMode.TERMINAL && discovered.size == 1) chooseTerminal(discovered.single())
+                if (current.onTerminal && current.mode == TerminalMode.TERMINAL && discovered.size == 1) {
+                    chooseTerminal(discovered.single())
+                } else {
+                    _actions.update { it.copy(terminals = ActionState(done = true), connectedTerminals = discovered) }
+                }
                 return@launchWrite
             }
             val problem = discovery.problem
@@ -163,8 +181,77 @@ class TerminalSetupViewModel(
                         revision = it.revision + 1,
                     )
                 }
+                if (discovery.keyMissing || discovery.pendingKey() != null) keyAction(null)
             }
         })
+    }
+
+    /** Confirms only the currently offered terminal/environment; never triggered by discovery or startup. */
+    fun createSharedKey(offer: SharedKeyOffer) {
+        if (_actions.value.sharedKeyOffer?.matches(offer) != true) return
+        keyAction(offer)
+    }
+
+    /** Reads existing settings and checks communication again; any required PATCH needs a new explicit confirmation. */
+    fun checkSharedKey() = keyAction(null)
+
+    private fun keyAction(confirmed: SharedKeyOffer?) {
+        if (_actions.value.terminals.running || _actions.value.keyResult.running) return
+        _actions.update { it.copy(keyResult = ActionState(running = true)) }
+        launchWrite({
+            try {
+                keyOutcome(discovery.setupKey(confirmed))
+            } catch (error: SecretStoreException) {
+                _actions.update { it.copy(keyResult = ActionState(outcome = ActionOutcome.SecretNotStored(error.message), isError = true)) }
+            }
+        })
+    }
+
+    private suspend fun keyOutcome(result: SharedKeySetupOutcome) {
+        when (result) {
+            is SharedKeySetupOutcome.Confirmation -> {
+                _actions.update {
+                    it.copy(sharedKeyOffer = result.offer, keyResult = ActionState(), manualDetails = false)
+                }
+            }
+
+            is SharedKeySetupOutcome.Failed -> {
+                val offer = discovery.pendingKey()
+                val outcome =
+                    result.problem?.let(ActionOutcome::NotSetUp) ?: result.message?.let(ActionOutcome::Failed) ?: ActionOutcome.NoAnswer
+                _actions.update { it.copy(sharedKeyOffer = offer, keyResult = ActionState(outcome = outcome, isError = true)) }
+            }
+
+            is SharedKeySetupOutcome.Ready -> {
+                checkedKey(result)
+            }
+        }
+    }
+
+    private suspend fun checkedKey(ready: SharedKeySetupOutcome.Ready) {
+        val pending = ready.pending
+        val current = settings.current().terminal
+        observedSettings.first { it.settings.terminal == current }
+        val connected = status.check() is TerminalConnection.Connected
+        if (connected) discovery.completeKey()
+        val result =
+            if (connected) {
+                ActionState(done = true)
+            } else {
+                ActionState(
+                    outcome = ActionOutcome.NotSetUp(ready.unverifiedProblem),
+                    isError = true,
+                )
+            }
+        _actions.update {
+            it.copy(
+                sharedKeyOffer = null,
+                keyPending = !connected && pending,
+                manualDetails = false,
+                revision = it.revision + 1,
+                keyResult = result,
+            )
+        }
     }
 
     /**

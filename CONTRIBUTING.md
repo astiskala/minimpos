@@ -163,7 +163,8 @@ There is no real Adyen test account in CI. Still needing real-device/API verific
 notifications; Payments app return-URL encoding, error answers and size limits; TEST payment-link paid/PATCH answers
 and line-item validation; whether a shopper reference without `recurringProcessingModel` stores no card;
 Management store receipt details and read permissions; terminal discovery, reported network addresses and shared-key
-settings (including inherited settings and sensitive-field permissions).
+settings (including inherited settings, sensitive-field permissions, targeted POIID search, full-object PATCH
+preservation and propagation of newly created keys to terminals).
 Do not describe simulator coverage as proof of these behaviors. Mobile SDK card readers are intentionally absent:
 they require a backend for certificates, a private Maven repository, PCI MPoC and six-monthly updates.
 

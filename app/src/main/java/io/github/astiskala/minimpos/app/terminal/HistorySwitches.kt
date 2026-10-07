@@ -20,10 +20,14 @@ data class HistorySwitchPlan(
     /** Whether the extra loss-of-recovery warning is required. */
     val unfinished: Boolean,
 ) {
-    /** Whether [confirmed] covers this exact destination and every currently required warning. */
+    /** Whether [confirmed] covers this destination and every warning; key creation does not change history's environment. */
     fun wasConfirmedBy(confirmed: HistorySwitchPlan?): Boolean {
         if (confirmed == null) return false
-        if (original != confirmed.original || target != confirmed.target) return false
+        if (original != confirmed.original ||
+            target.copy(keyIdentifier = confirmed.target.keyIdentifier, keyVersion = confirmed.target.keyVersion) != confirmed.target
+        ) {
+            return false
+        }
         return !unfinished || confirmed.unfinished
     }
 }

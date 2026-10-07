@@ -110,7 +110,7 @@ class ReceiptBusinessDetails(
     private suspend fun assignedStore(unlocked: UnlockedSetup): StoreScope {
         val setup = unlocked.setup
         if (!setup.discoversTerminals || setup.poiId == null) return StoreScope.Assigned(setup.settings.terminal.storeId)
-        return when (val listing = terminals(checkNotNull(unlocked.apiKey)).terminals(checkNotNull(setup.environment))) {
+        return when (val listing = terminals(checkNotNull(unlocked.apiKey)).terminals(checkNotNull(setup.environment), setup.poiId)) {
             is TerminalListing.Failed -> {
                 StoreScope.Blocked(listing.reason.setupProblem())
             }

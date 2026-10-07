@@ -207,7 +207,14 @@ class PaymentLinkViewModelsTest {
         assertThat(await { vm.state.first { it.cancel.isError } }.cancel.outcome).isEqualTo(ActionOutcome.Failed("Not allowed (HTTP 403)"))
         api.expireResult = null
         vm.cancel()
-        val cancelled = await { vm.state.first { it.sale?.status == SaleStatus.CANCELLED } }
+        val cancelled =
+            await {
+                vm.state.first {
+                    it.sale?.status == SaleStatus.CANCELLED && it.cancel.done && it.transaction.receipt
+                        ?.qrCodes
+                        ?.isEmpty() == true
+                }
+            }
         assertThat(cancelled.cancel.done).isTrue()
         assertThat(cancelled.cancel.outcome).isNull()
         assertThat(cancelled.openLink).isNull()
@@ -216,6 +223,6 @@ class PaymentLinkViewModelsTest {
         val shared = await { vm.state.first { it.transaction.share != null } }.transaction.share!!
         assertThat(shared.paymentLink).isNull()
         vm.transaction.shared()
-        assertThat(vm.state.value.transaction.share).isNull()
+        assertThat(await { vm.state.first { it.transaction.share == null } }.transaction.share).isNull()
     }
 }

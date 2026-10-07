@@ -1,9 +1,13 @@
 package io.github.astiskala.minimpos.terminal
 
+import com.adyen.model.management.TerminalSettings
 import com.google.common.truth.Truth.assertThat
 import io.github.astiskala.minimpos.terminal.transport.AdyenTerminalDetails
 import io.github.astiskala.minimpos.terminal.transport.CredentialLookup
+import io.github.astiskala.minimpos.terminal.transport.DiscoveredKey
 import io.github.astiskala.minimpos.terminal.transport.ManagementFailure
+import io.github.astiskala.minimpos.terminal.transport.SharedKeyLookup
+import io.github.astiskala.minimpos.terminal.transport.SharedKeyUpdate
 import io.github.astiskala.minimpos.terminal.transport.TerminalEnvironment
 import io.github.astiskala.minimpos.terminal.transport.TerminalListing
 import kotlinx.coroutines.runBlocking
@@ -33,7 +37,12 @@ class TerminalDetailsTest {
     @Test
     fun `credential role checks are bounded to one environment and return typed failures`() =
         runBlocking {
-            reply("""{"roles":["Management API - Terminal actions read"]}""")
+            reply(
+                """
+                {"roles":["Management API — Terminal actions read","Management API – Terminal settings read and write",
+                "Management API - Terminal settings Advanced read and write"]}
+                """.trimIndent(),
+            )
             assertThat(api.credential(TerminalEnvironment.TEST)).isEqualTo(CredentialLookup.Allowed)
             assertThat(server.takeRequest().url.encodedPath).isEqualTo("/test/v3/me")
             reply("""{"roles":["Checkout webservice role"]}""")
@@ -46,6 +55,20 @@ class TerminalDetailsTest {
                 reply(body)
                 assertThat(api.credential(TerminalEnvironment.TEST)).isEqualTo(CredentialLookup.Failed(ManagementFailure.UNREADABLE))
             }
+        }
+
+    @Test
+    fun `real setup requires terminal settings write and advanced roles even when unused`() =
+        runBlocking {
+            reply("""{"roles":["Management API - Terminal actions read"]}""")
+            assertThat(api.credential(TerminalEnvironment.TEST)).isEqualTo(CredentialLookup.Failed(ManagementFailure.PERMISSION))
+            reply(
+                """
+                {"roles":["Management API - Terminal actions read",
+                "Management API - Terminal settings read and write","Management API - Terminal settings Advanced read and write"]}
+                """.trimIndent(),
+            )
+            assertThat(api.credential(TerminalEnvironment.TEST)).isEqualTo(CredentialLookup.Allowed)
         }
 
     @Test
@@ -120,14 +143,15 @@ class TerminalDetailsTest {
     fun `shared keys are optional and secret whitespace is preserved`() =
         runBlocking {
             reply("""{"nexo":{"encryptionKey":{"identifier":"key","version":2,"passphrase":" secret passphrase "}}}""")
-            val key = checkNotNull(api.sharedKey("Terminal/ID", TerminalEnvironment.TEST))
+            val key = (api.sharedKey("Terminal/ID", TerminalEnvironment.TEST) as SharedKeyLookup.Found).key
             assertThat(key.identifier).isEqualTo("key")
             assertThat(key.version).isEqualTo(2)
             assertThat(key.passphrase).isEqualTo(" secret passphrase ")
             assertThat(key.toString()).doesNotContain("secret passphrase")
             assertThat(server.takeRequest().url.encodedPath).isEqualTo("/test/v3/terminals/Terminal%2FID/terminalSettings")
+            reply("{}")
+            assertThat(api.sharedKey("ID", TerminalEnvironment.TEST)).isEqualTo(SharedKeyLookup.Missing)
             listOf(
-                "{}",
                 "[]",
                 """{"nexo":{"encryptionKey":{"identifier":"key","version":0,"passphrase":"secret"}}}""",
                 """{"nexo":{"encryptionKey":{"identifier":"","version":2,"passphrase":"secret"}}}""",
@@ -135,9 +159,107 @@ class TerminalDetailsTest {
                 """{"nexo":{"encryptionKey":{"identifier":"key","version":2.5,"passphrase":"secret"}}}""",
             ).forEach {
                 reply(it)
-                assertThat(api.sharedKey("ID", TerminalEnvironment.TEST)).isNull()
+                assertThat(api.sharedKey("ID", TerminalEnvironment.TEST)).isEqualTo(SharedKeyLookup.Failed(ManagementFailure.UNREADABLE))
             }
             reply("{}", 403)
-            assertThat(api.sharedKey("ID", TerminalEnvironment.TEST)).isNull()
+            assertThat(api.sharedKey("ID", TerminalEnvironment.TEST)).isEqualTo(SharedKeyLookup.Failed(ManagementFailure.PERMISSION))
+        }
+
+    @Test
+    fun `known POIID uses one search request and never accepts substring neighbours`() =
+        runBlocking {
+            reply("""{"data":[{"id":"ID-other"},{"id":"ID"}],"_links":{"next":{"href":"next"}}}""")
+            val result = api.terminals(TerminalEnvironment.TEST, "ID") as TerminalListing.Listed
+            assertThat(result.terminals.map { it.id }).containsExactly("ID")
+            val request = server.takeRequest()
+            assertThat(request.url.queryParameter("searchQuery")).isEqualTo("ID")
+            assertThat(request.url.queryParameter("pageNumber")).isNull()
+            assertThat(server.requestCount).isEqualTo(1)
+            reply("""{"data":[{"id":"ID-other"}]}""")
+            assertThat((api.terminals(TerminalEnvironment.TEST, "ID") as TerminalListing.Listed).terminals).isEmpty()
+        }
+
+    @Test
+    fun `creation preserves nexo fields and leaves all other settings untouched`() =
+        runBlocking {
+            reply(
+                """
+                {"cardholderReceipt":{"headerForAuthorizedReceipt":"header1,header2,filler"},
+                "nexo":{"notification":{"category":"","details":"","enabled":false,"showButton":true,"title":""}},
+                "opi":{"enablePayAtTable":false}}
+                """.trimIndent(),
+            )
+            reply("{}")
+            reply("""{"nexo":{"encryptionKey":{"identifier":"new","version":1,"passphrase":"NewStrongSecret123!"}}}""")
+            val result =
+                api.createSharedKey(
+                    "ID",
+                    TerminalEnvironment.TEST,
+                    DiscoveredKey("new", 1, "NewStrongSecret123!"),
+                ) as SharedKeyUpdate.Ready
+            assertThat(result.created).isTrue()
+            assertThat(server.takeRequest().method).isEqualTo("GET")
+            val patch = server.takeRequest()
+            assertThat(patch.method).isEqualTo("PATCH")
+            assertThat(patch.url.encodedPath).isEqualTo("/test/v3/terminals/ID/terminalSettings")
+            val sent = TerminalSettings.fromJson(checkNotNull(patch.body).utf8())
+            assertThat(sent.nexo.notification.showButton).isTrue()
+            assertThat(sent.nexo.notification.enabled).isFalse()
+            assertThat(sent.nexo.encryptionKey.passphrase).isEqualTo("NewStrongSecret123!")
+            assertThat(sent.cardholderReceipt).isNull()
+            assertThat(sent.opi).isNull()
+            assertThat(server.takeRequest().method).isEqualTo("GET")
+        }
+
+    @Test
+    fun `fresh existing keys are reused without PATCH`() =
+        runBlocking {
+            reply("""{"nexo":{"encryptionKey":{"identifier":"existing","version":3,"passphrase":"ExistingSecret"}}}""")
+            val result =
+                api.createSharedKey(
+                    "ID",
+                    TerminalEnvironment.TEST,
+                    DiscoveredKey("new", 1, "NewStrongSecret123!"),
+                ) as SharedKeyUpdate.Ready
+            assertThat(result.created).isFalse()
+            assertThat(result.key.identifier).isEqualTo("existing")
+            assertThat(server.requestCount).isEqualTo(1)
+        }
+
+    @Test
+    fun `failed or unmodeled settings never permit creation`() =
+        runBlocking {
+            listOf(
+                "not json",
+                "[]",
+                """{"nexo":{"encryptionKey":{}}}""",
+                """{"nexo":{"unknownSetting":true}}""",
+                """{"nexo":{"notification":{"title":123}}}""",
+                """{"nexo":{"notification":{"enabled":"false"}}}""",
+                """{"nexo":{"notification":{"showButton":1}}}""",
+            ).forEach { body ->
+                reply(body)
+                assertThat(api.createSharedKey("ID", TerminalEnvironment.TEST, DiscoveredKey("new", 1, "NewStrongSecret123!")))
+                    .isEqualTo(SharedKeyUpdate.Failed(ManagementFailure.UNREADABLE))
+            }
+            reply("{}", 403)
+            assertThat(api.createSharedKey("ID", TerminalEnvironment.TEST, DiscoveredKey("new", 1, "NewStrongSecret123!")))
+                .isEqualTo(SharedKeyUpdate.Failed(ManagementFailure.PERMISSION))
+            assertThat(server.requestCount).isEqualTo(8)
+        }
+
+    @Test
+    fun `unverified PATCH outcomes remain uncertain without automatic retries`() =
+        runBlocking {
+            reply("{}")
+            reply("{}", 503)
+            assertThat(api.createSharedKey("ID", TerminalEnvironment.TEST, DiscoveredKey("new", 1, "NewStrongSecret123!")))
+                .isEqualTo(SharedKeyUpdate.Failed(ManagementFailure.UNAVAILABLE, uncertain = true))
+            reply("{}")
+            reply("{}")
+            reply("{}")
+            assertThat(api.createSharedKey("ID", TerminalEnvironment.TEST, DiscoveredKey("new", 1, "NewStrongSecret123!")))
+                .isEqualTo(SharedKeyUpdate.Failed(ManagementFailure.UNREADABLE, uncertain = true))
+            assertThat(server.requestCount).isEqualTo(5)
         }
 }

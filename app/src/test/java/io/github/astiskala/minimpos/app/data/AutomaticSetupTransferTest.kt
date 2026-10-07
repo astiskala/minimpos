@@ -26,6 +26,8 @@ import io.github.astiskala.minimpos.terminal.paymentsapp.ManagementResult
 import io.github.astiskala.minimpos.terminal.transport.CredentialLookup
 import io.github.astiskala.minimpos.terminal.transport.DiscoveredKey
 import io.github.astiskala.minimpos.terminal.transport.ManagementFailure
+import io.github.astiskala.minimpos.terminal.transport.SharedKeyLookup
+import io.github.astiskala.minimpos.terminal.transport.SharedKeyUpdate
 import io.github.astiskala.minimpos.terminal.transport.StoreDetails
 import io.github.astiskala.minimpos.terminal.transport.StoreDetailsApi
 import io.github.astiskala.minimpos.terminal.transport.StoreListing
@@ -45,36 +47,79 @@ class AutomaticSetupTransferTest {
     private var credential: CredentialLookup = CredentialLookup.Allowed
     private var available = listOf(TerminalDetails(poiId, "Merchant", "192.168.1.42", "ST1"))
     private var key: DiscoveredKey? = DiscoveredKey("store-key", 2, "correct horse battery staple")
+    private val terminal = FakeTerminal()
+    private val createdKeys = mutableListOf<DiscoveredKey>()
+    private var activateKey = true
     private var stores: StoreListing =
         StoreListing.Listed(
             listOf(StoreDetails("ST1", "cafe", "Cafe", "1 Main St", "+61212345678")),
         )
     private var credentialReads = 0
-    private val details =
+    private val details: TerminalDetailsApi =
         object : TerminalDetailsApi {
             override suspend fun credential(environment: TerminalEnvironment): CredentialLookup {
                 credentialReads++
                 return credential
             }
 
-            override suspend fun terminals(environment: TerminalEnvironment): TerminalListing =
-                TerminalListing.Listed(available, environment)
+            override suspend fun terminals(
+                environment: TerminalEnvironment,
+                id: String?,
+            ): TerminalListing = TerminalListing.Listed(available, environment)
 
             override suspend fun sharedKey(
                 id: String,
                 environment: TerminalEnvironment,
-            ): DiscoveredKey? = key
+            ): SharedKeyLookup = key?.let(SharedKeyLookup::Found) ?: SharedKeyLookup.Missing
+
+            override suspend fun createSharedKey(
+                id: String,
+                environment: TerminalEnvironment,
+                key: DiscoveredKey,
+            ): SharedKeyUpdate {
+                assertCreationPersisted()
+                createdKeys += key
+                this@AutomaticSetupTransferTest.key = key
+                if (activateKey) terminal.passphrase = key.passphrase
+                return SharedKeyUpdate.Ready(key, created = true)
+            }
         }
     private val management = FakeManagement()
     private val phone = FakePaymentsApp()
-    private var env =
+    private var env: TestEnvironment =
         TestEnvironment(
             FakeDevice(detectedPoiId = poiId),
-            terminal = FakeTerminal(),
+            terminal = terminal,
             terminalDetails = details,
             stores = StoreDetailsApi { stores },
             verifiedSetup = false,
         )
+
+    internal suspend fun assertCreationPersisted() =
+        assertThat(
+            env.container.secrets.keyCreationExists
+                .first(),
+        ).isTrue()
+
+    private fun unfinishedLiveSale() =
+        await {
+            env.container.sales.createPending(
+                SaleEntity(
+                    id = "unknown",
+                    createdAt = 1,
+                    currency = "AUD",
+                    taxMode = "INCLUSIVE",
+                    netMinor = 1000,
+                    taxMinor = 0,
+                    totalMinor = 1000,
+                    status = SaleStatus.UNKNOWN,
+                    merchantReference = "LIVE",
+                    context = PaymentContext("TERMINAL", poiId, "POS", "Merchant", "LIVE"),
+                ),
+                emptyList(),
+            )
+        }
+
     private val seal = TransferSeal(iterations = 1_000)
     private val code = seal.newCode()
 
@@ -222,13 +267,200 @@ class AutomaticSetupTransferTest {
     @Test
     fun `unresolved automatic fields reject rather than offering an entry wizard`() {
         key = null
-        assertThat(import()).isEqualTo(SetupImportOutcome.Failed(SetupProblem.KEY_IDENTIFIER, incomplete = true))
+        assertThat(import()).isInstanceOf(SetupImportOutcome.KeyConfirmation::class.java)
         assertThat(
             await {
                 env.container.secrets.configured
                     .first()
             },
         ).isEmpty()
+    }
+
+    @Test
+    fun `missing key is created only after confirmation and verified before import`() {
+        key = null
+        val received = received()
+        val before = await { env.container.settings.current() }
+        val offer =
+            (
+                await {
+                    env.container.setupImport.import(
+                        received,
+                        ImportMode.MERGE,
+                        code,
+                    )
+                } as SetupImportOutcome.KeyConfirmation
+            ).offer
+        assertThat(createdKeys).isEmpty()
+        assertThat(
+            await {
+                env.container.secrets.keyCreationExists
+                    .first()
+            },
+        ).isFalse()
+        assertThat(await { env.container.settings.current() }).isEqualTo(before)
+        val result =
+            await {
+                env.container.setupImport.import(received, ImportMode.MERGE, code, confirmedKey = offer)
+            } as SetupImportOutcome.Committed
+        assertThat(result.outcome).isInstanceOf(ImportOutcome.Imported::class.java)
+        val generated = createdKeys.single()
+        assertThat(await { env.container.settings.current() }.terminal.keyIdentifier).isEqualTo(generated.identifier)
+        assertThat(await { env.container.secrets.get(Secret.TERMINAL_PASSPHRASE) }).isEqualTo(generated.passphrase)
+        assertThat(
+            await {
+                env.container.secrets.keyCreationExists
+                    .first()
+            },
+        ).isFalse()
+    }
+
+    @Test
+    fun `delayed terminal activation keeps import inactive and retry never PATCHes again`() {
+        key = null
+        activateKey = false
+        val received = received()
+        val before = await { env.container.settings.current() }
+        val offer =
+            (
+                await {
+                    env.container.setupImport.import(
+                        received,
+                        ImportMode.MERGE,
+                        code,
+                    )
+                } as SetupImportOutcome.KeyConfirmation
+            ).offer
+        val result = await { env.container.setupImport.import(received, ImportMode.MERGE, code, confirmedKey = offer) }
+        assertThat(result).isEqualTo(SetupImportOutcome.Failed(SetupProblem.KEY_CONNECTION_PENDING))
+        assertThat(await { env.container.settings.current() }).isEqualTo(before)
+        assertThat(await { env.container.secrets.get(Secret.TERMINAL_PASSPHRASE) }).isNull()
+        assertThat(
+            await {
+                env.container.secrets.keyCreationExists
+                    .first()
+            },
+        ).isTrue()
+        terminal.passphrase = createdKeys.single().passphrase
+        val resumed = await { env.container.setupImport.import(received, ImportMode.MERGE, code) }
+        assertThat(resumed).isInstanceOf(SetupImportOutcome.Committed::class.java)
+        assertThat(createdKeys).hasSize(1)
+        assertThat(
+            await {
+                env.container.secrets.keyCreationExists
+                    .first()
+            },
+        ).isFalse()
+    }
+
+    @Test
+    fun `history confirmation precedes key creation and remains valid after generated key fields change`() {
+        key = null
+        activateKey = false
+        unfinishedLiveSale()
+        val received = received()
+        val history =
+            (
+                await {
+                    env.container.setupImport.import(
+                        received,
+                        ImportMode.MERGE,
+                        code,
+                    )
+                } as SetupImportOutcome.HistoryConfirmation
+            ).plan
+        assertThat(history.unfinished).isTrue()
+        assertThat(createdKeys).isEmpty()
+        val offer =
+            (
+                await { env.container.setupImport.import(received, ImportMode.MERGE, code, confirmedHistorySwitch = history) }
+                    as SetupImportOutcome.KeyConfirmation
+            ).offer
+        val pending =
+            await {
+                env.container.setupImport.import(
+                    received,
+                    ImportMode.MERGE,
+                    code,
+                    confirmedHistorySwitch = history,
+                    confirmedKey = offer,
+                )
+            }
+        assertThat(pending).isEqualTo(SetupImportOutcome.Failed(SetupProblem.KEY_CONNECTION_PENDING))
+        assertThat(
+            await {
+                env.container.history
+                    .items()
+                    .first()
+            },
+        ).hasSize(1)
+        terminal.passphrase = createdKeys.single().passphrase
+        val done = await { env.container.setupImport.import(received, ImportMode.MERGE, code, confirmedHistorySwitch = history) }
+        assertThat(done).isInstanceOf(SetupImportOutcome.Committed::class.java)
+        assertThat(
+            await {
+                env.container.history
+                    .items()
+                    .first()
+            },
+        ).isEmpty()
+        assertThat(createdKeys).hasSize(1)
+    }
+
+    @Test
+    fun `key storage failure prevents PATCH and preserves active setup`() {
+        key = null
+        val received = received()
+        val before = await { env.container.settings.current() }
+        val offer =
+            (
+                await {
+                    env.container.setupImport.import(
+                        received,
+                        ImportMode.MERGE,
+                        code,
+                    )
+                } as SetupImportOutcome.KeyConfirmation
+            ).offer
+        env.cipher.failEncrypt = true
+        val result =
+            await {
+                env.container.setupImport.import(received, ImportMode.MERGE, code, confirmedKey = offer)
+            } as SetupImportOutcome.Committed
+        assertThat(result.outcome).isInstanceOf(ImportOutcome.StorageFailed::class.java)
+        assertThat(createdKeys).isEmpty()
+        assertThat(await { env.container.settings.current() }).isEqualTo(before)
+    }
+
+    @Test
+    fun `a key added by another administrator is reused instead of created`() {
+        key = null
+        val received = received()
+        val offer =
+            (
+                await {
+                    env.container.setupImport.import(
+                        received,
+                        ImportMode.MERGE,
+                        code,
+                    )
+                } as SetupImportOutcome.KeyConfirmation
+            ).offer
+        key = DiscoveredKey("other-admin", 7, terminal.passphrase)
+        val result = await { env.container.setupImport.import(received, ImportMode.MERGE, code, confirmedKey = offer) }
+        assertThat(result).isInstanceOf(SetupImportOutcome.Committed::class.java)
+        assertThat(createdKeys).isEmpty()
+        assertThat(await { env.container.settings.current() }.terminal.keyIdentifier).isEqualTo("other-admin")
+    }
+
+    @Test
+    fun `changed imported credential cannot reuse key creation consent`() {
+        key = null
+        val offer = (import() as SetupImportOutcome.KeyConfirmation).offer
+        val changed = received(secrets = """{"ADYEN_API_KEY":"replacement"}""")
+        val result = await { env.container.setupImport.import(changed, ImportMode.MERGE, code, confirmedKey = offer) }
+        assertThat(result).isEqualTo(SetupImportOutcome.Failed(SetupProblem.SETUP_CHANGED))
+        assertThat(createdKeys).isEmpty()
     }
 
     @Test

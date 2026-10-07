@@ -67,7 +67,7 @@
         <div class="desktop-contents"><p class="toc-title">On this page</p><ol>
           <li><a href="#try">Try it first</a></li><li><a href="#choose">Choose your setup</a></li><li><a href="#install">Install</a></li>
           <li><a href="#connect">Connect to Adyen</a><ul>
-            <li><a href="#credentials">Prepare credentials</a></li><li><a href="#helper">Enter keys from a computer</a></li>
+            <li><a href="#credentials">Prepare credentials</a></li><li><a href="#shared-key-creation">Create a missing encryption key</a></li><li><a href="#helper">Enter keys from a computer</a></li>
             <li><a href="#on-terminal">On an Adyen terminal</a></li><li><a href="#network">With a network terminal</a></li>
             <li><a href="#cloud">With a cloud terminal</a></li><li><a href="#tap-to-pay">With Tap to Pay</a></li>
           </ul></li>
@@ -76,7 +76,7 @@
         <details class="mobile-contents"><summary class="toc-title">On this page</summary><ol>
           <li><a href="#try">Try it first</a></li><li><a href="#choose">Choose your setup</a></li><li><a href="#install">Install</a></li>
           <li><a href="#connect">Connect to Adyen</a><ul>
-            <li><a href="#credentials">Prepare credentials</a></li><li><a href="#helper">Enter keys from a computer</a></li>
+            <li><a href="#credentials">Prepare credentials</a></li><li><a href="#shared-key-creation">Create a missing encryption key</a></li><li><a href="#helper">Enter keys from a computer</a></li>
             <li><a href="#on-terminal">On an Adyen terminal</a></li><li><a href="#network">With a network terminal</a></li>
             <li><a href="#cloud">With a cloud terminal</a></li><li><a href="#tap-to-pay">With Tap to Pay</a></li>
           </ul></li>
@@ -126,13 +126,16 @@
           <ul>
             <li><strong>Cloud Device API role</strong>: required for cloud payments.</li>
             <li><strong>Management API — Terminal actions read</strong>: required on the main Adyen API credential for every real setup, including Manual and Tap to Pay. The credential must belong to the terminal’s Company account and have access to its merchant account and terminal.</li>
-            <li><strong>Management API — Terminal settings read</strong>: optional shared-key settings lookup for this terminal or a network terminal.</li>
-            <li><strong>Management API — Terminal settings Advanced read and write</strong>: optional shared-key passphrase lookup for those destinations.</li>
+            <li><strong>Management API — Terminal settings read and write</strong>: required on the main credential for every real setup, even when key lookup or creation is unused.</li>
+            <li><strong>Management API — Terminal settings Advanced read and write</strong>: also required for every real setup; permits reading and creating sensitive shared-key settings.</li>
           </ul>
           <p>For this terminal, a network terminal or Tap to Pay, also prepare a <strong>shared key</strong>: identifier, passphrase and version, from <strong>Devices › Device settings › Integrations › Terminal API › Encryption key</strong>. See Adyen's <a href="https://docs.adyen.com/point-of-sale/design-your-integration/choose-your-architecture/local">local integration guide</a>. Cloud setups do not use this key.</p>
           <p>For a network or cloud terminal, <strong>Environment</strong> is step 1: choose <strong>TEST</strong> for test cards or <strong>LIVE</strong> for real payments. Use a terminal, account and credentials from that environment. Mini mPOS does not try an API key in the other environment. On an Adyen terminal it reads the device's verified certificate instead; with Tap to Pay it uses the installed Payments app.</p>
           <p>Each setup reveals the next step as you complete the current one. Under <strong>Adyen API</strong>, enter the API key and merchant account together, plus the live URL prefix for LIVE. Tap <strong>Test API</strong> (or <strong>Save and test API</strong> for a typed key); a successful test unlocks the next step. Obtained details stay visible and editable when you return, including partially completed sections.</p>
-          <p>For physical terminals, <strong>Find setup</strong> appears under <strong>Adyen API</strong> only after the API test succeeds for the entered key, merchant account and live URL prefix. It looks up terminal details in that environment. Mini mPOS only reads settings; it never creates or changes keys at Adyen. See Adyen's <a href="https://docs.adyen.com/api-explorer/Management/3/get/terminals">terminal list</a> and <a href="https://docs.adyen.com/api-explorer/Management/latest/get/terminals/(terminalId)/terminalSettings">terminal settings</a> API references. Terminal-access failures block setup; correct the credential’s Company account, permissions or scope and retry. Shared-key lookup alone is optional: after access checks pass, you can enter that key manually and test the connection. Review retrieved addresses because they may be stale. Tap to Pay checks the required main-credential role without looking up physical terminals.</p>
+          <p>For physical terminals, <strong>Find setup</strong> appears under <strong>Adyen API</strong> only after the API test succeeds for the entered key, merchant account and live URL prefix. Discovery reads terminal details in that environment. On an Adyen terminal, Mini mPOS uses its detected POIID without a selection step. Network and cloud setup can offer a terminal picker; checks with a known POIID search only for that ID. See Adyen's <a href="https://docs.adyen.com/api-explorer/Management/3/get/terminals">terminal list</a> and <a href="https://docs.adyen.com/api-explorer/Management/latest/get/terminals/(terminalId)/terminalSettings">terminal settings</a> API references. Access failures block setup; correct the credential’s Company account, permissions or scope and retry. Manual shared-key entry remains available, but does not bypass the required roles. Review retrieved addresses because they may be stale. Tap to Pay checks the required main-credential roles without looking up physical terminals.</p>
+          <h3 id="shared-key-creation">Create a missing encryption key</h3>
+          <p>For a physical terminal using local communication, Settings discovery and Automatic QR import can offer <strong>Create encryption key</strong> after credential, account, required-field and Checkout checks pass. Confirm the POIID and TEST/LIVE environment. Mini mPOS generates a random key for that terminal only, starting at version 1, and stores its passphrase encrypted. Creation replaces locally supplied key values, but existing keys at Adyen are reused, including inherited keys. Do not edit the same terminal settings elsewhere during creation. Cloud and Tap to Pay do not offer this action.</p>
+          <p>If creation is interrupted, <strong>Resume key setup</strong> reads Adyen settings first and reuses the same saved key if a retry is needed. For QR setup, rescan the same codes and enter their transfer code. Cancelling leaves the remote key in place; an import does not activate until verification succeeds. See <a href="troubleshooting.html#key-setup">key setup recovery</a> if the terminal has not applied the key yet.</p>
           <figure class="guide-shot">
             <div class="terminal terminal-s1f2">
               <img alt="Terminal setup with a QR scan shortcut and an Adyen API step" height="960" loading="lazy" src="images/terminal-setup.png" width="540">

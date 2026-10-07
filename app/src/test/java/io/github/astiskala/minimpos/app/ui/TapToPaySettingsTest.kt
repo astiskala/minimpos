@@ -21,7 +21,7 @@ import io.github.astiskala.minimpos.app.await
 import io.github.astiskala.minimpos.app.awaitCondition
 import io.github.astiskala.minimpos.app.data.security.Secret
 import io.github.astiskala.minimpos.app.data.settings.TerminalMode
-import io.github.astiskala.minimpos.terminal.transport.DiscoveredKey
+import io.github.astiskala.minimpos.terminal.transport.SharedKeyLookup
 import io.github.astiskala.minimpos.terminal.transport.TerminalDetailsApi
 import io.github.astiskala.minimpos.terminal.transport.TerminalEnvironment
 import io.github.astiskala.minimpos.terminal.transport.TerminalListing
@@ -46,12 +46,15 @@ class TapToPaySettingsTest {
             override suspend fun credential(environment: TerminalEnvironment) =
                 io.github.astiskala.minimpos.terminal.transport.CredentialLookup.Allowed
 
-            override suspend fun terminals(environment: TerminalEnvironment): TerminalListing = error("No terminal listing")
+            override suspend fun terminals(
+                environment: TerminalEnvironment,
+                id: String?,
+            ): TerminalListing = error("No terminal listing")
 
             override suspend fun sharedKey(
                 id: String,
                 environment: TerminalEnvironment,
-            ): DiscoveredKey? = error("No terminal key lookup")
+            ): SharedKeyLookup = error("No terminal key lookup")
         }
 
     @get:Rule(order = 0)

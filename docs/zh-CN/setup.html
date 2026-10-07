@@ -122,7 +122,7 @@
 
           <fieldset data-for="thisTerminal network cloud tapToPay" id="api-key-fields">
             <legend>Adyen API 密钥</legend>
-            <p class="hint">在 <a data-ca="developers/api-credentials/" href="https://ca-test.adyen.com/ca/ui/developers/api-credentials/" target="_blank" rel="noopener noreferrer" aria-describedby="customer-area-note">Developers › API credentials</a> 中创建凭据并生成 API 密钥。<span data-only="cloud" hidden>云端付款需添加 Cloud Device API role。</span><span data-only="tapToPay" hidden>此密钥用于 Checkout 操作，而非 Payments 应用注册。</span>所有真实付款设置的主凭据都必须具有 Management API — Terminal actions read；参见<a href="getting-started.html#credentials">凭据要求</a>。设置助手保持离线；查询和验证在设备上执行，成功后才导入。</p>
+            <p class="hint">在 <a data-ca="developers/api-credentials/" href="https://ca-test.adyen.com/ca/ui/developers/api-credentials/" target="_blank" rel="noopener noreferrer" aria-describedby="customer-area-note">Developers › API credentials</a> 中创建凭据并生成 API 密钥。<span data-only="cloud" hidden>云端付款需添加 Cloud Device API role。</span><span data-only="tapToPay" hidden>此密钥用于 Checkout 操作，而非 Payments 应用注册。</span>所有真实付款设置的主凭据都必须具有所需的 Management 权限，包括终端设置写入和 Advanced 权限；参见<a href="getting-started.html#credentials">凭据要求</a>。设置助手保持离线；查询和验证在设备上执行，成功后才导入。</p>
             <label for="apiKey">API 密钥</label>
             <input id="apiKey" name="apiKey" type="password" required spellcheck="false">
           </fieldset>

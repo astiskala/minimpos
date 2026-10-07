@@ -492,7 +492,7 @@
   <string name="settings_adyen_roles_hint">除默认角色外，此 API 密钥还需添加以下角色：</string>
   <string name="settings_adyen_role_cloud">Cloud Device API role</string>
   <string name="settings_adyen_role_terminals">Management API - Terminal actions read</string>
-  <string name="settings_adyen_role_settings">Management API - Terminal settings read</string>
+  <string name="settings_adyen_role_settings">Management API - Terminal settings read and write</string>
   <string name="settings_adyen_role_shared_key">Management API - Terminal settings Advanced read and write</string>
   <string name="settings_env_test">TEST 测试环境</string>
   <string name="settings_env_live">LIVE 正式环境</string>
@@ -533,7 +533,7 @@
   <string name="settings_api_key">API 密钥</string>
   <string name="settings_save_and_discover">保存并获取设置</string>
   <string name="settings_discover">获取设置</string>
-  <string name="settings_discovery_manual">请检查下方信息，手动补充缺失项，然后测试连接及 API 密钥。查询权限并非必需。</string>
+  <string name="settings_discovery_manual">请检查下方信息，手动补充缺失项，然后测试连接及 API 密钥。必须具有所有必需的 API 权限。</string>
   <string name="settings_live_prefix">LIVE URL 前缀</string>
   <string name="settings_live_prefix_hint">请输入 Checkout 实时 URL 前缀，可在“Developers › API URLs”中找到。</string>
   <string name="settings_test_api">测试 API</string>
@@ -837,7 +837,7 @@
     <string name="setup_transfer_pending">设置导入尚未保存完成。请重试以继续。</string>
     <string name="setup_terminal_access">此 API 密钥无法访问本终端。请确认密钥属于终端的 Company 账户，并具有访问本终端的权限。</string>
     <string name="setup_merchant_mismatch">商家账户与终端当前分配的账户不一致。请更正账户或终端注册后再继续。</string>
-    <string name="setup_management_permission">所有真实付款设置都需要 API 密钥具有 Management API — Terminal actions read 权限。</string>
+    <string name="setup_management_permission">所有真实付款设置的 API 密钥都必须具有 Management API — Terminal actions read、Management API — Terminal settings read and write 和 Management API — Terminal settings Advanced read and write 权限。</string>
     <string name="setup_management_authentication">Adyen 未接受所选环境中的 API 密钥。请更换密钥后重试。</string>
     <string name="setup_management_unavailable">无法验证 Adyen 设置访问权限。请检查连接后重试。</string>
     <string name="setup_store_access">无法读取已分配的门店。请检查门店访问权限；不会使用其他门店。</string>
@@ -871,4 +871,14 @@
   <string name="history_switch_message">在 LIVE、TEST 和模拟器之间切换将永久删除所有本地支付记录和每日报告数据。商品和其他设置将保留。Adyen 记录不会删除。</string>
   <string name="history_switch_unfinished">存在未完成的支付。此操作不会取消 Adyen 的支付、授权或支付链接。本地恢复和安全重试数据将丢失。</string>
   <string name="history_switch_confirm">删除记录并切换</string>
+  <string name="settings_create_shared_key">创建加密密钥</string>
+  <string name="settings_resume_shared_key">继续密钥设置</string>
+  <string name="settings_shared_key_confirm">%1$s · %2$s\n仅为此终端创建新密钥。若 Adyen 已有密钥，则使用现有密钥。创建期间，请勿在其他位置更改此终端的设置。</string>
+  <string name="settings_shared_key_replace">这将替换本地已提供的密钥值。口令会加密保存。</string>
+  <string name="settings_shared_key_resume_confirm">%1$s · %2$s\n先读取 Adyen 设置。如需重试创建，将使用已保存的同一密钥。</string>
+  <string name="settings_shared_key_check_again">再次检查</string>
+  <string name="setup_key_connection_pending">密钥已创建，但终端连接尚未验证。请在终端打开 Admin menu › Config › Update，然后再次检查。</string>
+  <string name="setup_key_recovery_unreadable">无法读取待完成的密钥设置。创建其他密钥前，请获取现有密钥或联系支持。</string>
+  <string name="setup_key_creation_unconfirmed">尚未确认密钥创建结果。请继续密钥设置，先读取 Adyen 设置再重试。</string>
+  <string name="transfer_key_not_imported">已为终端创建密钥，但设置尚未导入。请重试，或稍后重新扫描同一组设置二维码。取消不会删除 Adyen 的密钥。</string>
 </resources>

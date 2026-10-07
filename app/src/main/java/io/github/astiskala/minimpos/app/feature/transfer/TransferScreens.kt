@@ -80,6 +80,7 @@ import io.github.astiskala.minimpos.app.ui.components.MiniScaffold
 import io.github.astiskala.minimpos.app.ui.components.PrimaryButton
 import io.github.astiskala.minimpos.app.ui.components.QrImage
 import io.github.astiskala.minimpos.app.ui.components.SecondaryButton
+import io.github.astiskala.minimpos.app.ui.components.SharedKeyDialog
 import io.github.astiskala.minimpos.app.ui.components.StatusBadge
 import io.github.astiskala.minimpos.app.ui.components.StatusKind
 import io.github.astiskala.minimpos.app.ui.navigation.Navigator
@@ -298,7 +299,10 @@ fun TransferImportScreen(
     }
     ImportSelectionDialogs(state as? ImportUiState.Ready, vm::chooseTerminal, vm::chooseBusiness, vm::skipBusinessDetails)
     (state as? ImportUiState.Ready)?.historySwitch?.let {
-        HistorySwitchDialog(it.unfinished, { vm.reviewHistorySwitch(true) }, { vm.reviewHistorySwitch(false) })
+        HistorySwitchDialog(it.unfinished, { vm.reviewSetup(true) }, { vm.reviewSetup(false) })
+    }
+    (state as? ImportUiState.Ready)?.sharedKeyOffer?.let {
+        SharedKeyDialog(it, { vm.reviewSetup(true) }, { vm.reviewSetup(false) })
     }
     if (confirmReplace) {
         ConfirmDialog(
@@ -405,7 +409,13 @@ private fun ImportBottomBar(
         is ImportUiState.Ready -> {
             BottomActions {
                 PrimaryButton(
-                    stringResource(if (state.boardingRequired) R.string.settings_set_up_tap_to_pay else R.string.transfer_verify),
+                    stringResource(
+                        when {
+                            state.keyPending -> R.string.settings_shared_key_check_again
+                            state.boardingRequired -> R.string.settings_set_up_tap_to_pay
+                            else -> R.string.transfer_verify
+                        },
+                    ),
                     {
                         val replaces = state.received.catalogue != null && state.mode == ImportMode.REPLACE
                         if (state.boardingRequired && !replaces) onBoard() else onImport(replaces)
@@ -615,6 +625,7 @@ private fun ImportReady(
             state.outcome?.let { ActionMessage(it.text(), isError = true) }
             if (state.incomplete) ActionMessage(stringResource(R.string.transfer_missing_fields), isError = true)
             if (state.boardingRequired) Text(stringResource(R.string.transfer_board_first))
+            if (state.keyPending) Note(stringResource(R.string.transfer_key_not_imported))
             SecondaryButton(stringResource(R.string.transfer_scan_again), onScanAgain)
         }
     }

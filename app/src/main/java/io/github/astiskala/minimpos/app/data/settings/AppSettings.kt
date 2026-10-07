@@ -284,7 +284,7 @@ data class TerminalSettings(
         destination: TerminalMode,
     ): String =
         StorageJson.encodeToString(serializer<TerminalSettings>(), copy(cloudRegion = null)) +
-            ":${destination.name}:${poiId.orEmpty()}:${environment?.name.orEmpty()}"
+            ":terminal-settings-write:${destination.name}:${poiId.orEmpty()}:${environment?.name.orEmpty()}"
 
     /** The limits of the numbers. */
     companion object {

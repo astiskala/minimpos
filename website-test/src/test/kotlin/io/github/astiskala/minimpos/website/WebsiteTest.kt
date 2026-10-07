@@ -262,7 +262,7 @@ class WebsiteTest {
                 .containsExactly(
                     "Cloud Device API role",
                     "Management API — Terminal actions read",
-                    "Management API — Terminal settings read",
+                    "Management API — Terminal settings read and write",
                     "Management API — Terminal settings Advanced read and write",
                 ).inOrder()
         }
@@ -655,6 +655,23 @@ class SetupGuideTest {
             val using = pages.getValue(language to Kind.USING)
             assertThat(using.document.select("#shoppers").text()).contains(defaults.getValue(language))
             assertThat(using.document.select("#sell a[href='#shoppers']")).isNotEmpty()
+        }
+    }
+
+    @Test
+    fun `every language describes confirmed key creation and links delayed activation recovery`() {
+        val create = mapOf("en" to "Create encryption key", "zh-CN" to "创建加密密钥", "ja" to "暗号化キーを作成")
+        val resume = mapOf("en" to "Resume key setup", "zh-CN" to "继续密钥设置", "ja" to "キー設定を再開")
+        LANGUAGES.forEach { language ->
+            val guide = pages.getValue(language to Kind.GUIDE)
+            assertThat(guide.document.getElementById("shared-key-creation")).isNotNull()
+            assertThat(guide.text).contains(create.getValue(language))
+            assertThat(guide.text).contains(resume.getValue(language))
+            assertThat(guide.document.select("a[href='troubleshooting.html#key-setup']")).isNotEmpty()
+            val recovery = pages.getValue(language to Kind.TROUBLE).document.getElementById("key-setup")!!
+            assertThat(recovery.text()).contains("Admin menu › Config › Update")
+            assertThat(recovery.text()).contains(resume.getValue(language))
+            assertThat(recovery.select("a[href='getting-started.html#shared-key-creation']")).isNotEmpty()
         }
     }
 

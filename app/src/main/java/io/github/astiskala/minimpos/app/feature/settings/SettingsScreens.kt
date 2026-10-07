@@ -86,6 +86,7 @@ import io.github.astiskala.minimpos.app.feature.lock.SetPinScreen
 import io.github.astiskala.minimpos.app.feature.text
 import io.github.astiskala.minimpos.app.payment.TransactionState.Processing
 import io.github.astiskala.minimpos.app.terminal.ReceiptBusiness
+import io.github.astiskala.minimpos.app.terminal.SharedKeyOffer
 import io.github.astiskala.minimpos.app.terminal.TerminalConnection
 import io.github.astiskala.minimpos.app.ui.components.ActionMessage
 import io.github.astiskala.minimpos.app.ui.components.ConfirmDialog
@@ -223,6 +224,12 @@ internal interface TerminalSetupEvents {
     /** Takes [poiId] as the terminal in the cloud; null only closes the list ([TerminalSetupViewModel.chooseTerminal]). */
     fun onTerminalChoose(poiId: String?)
 
+    /** Confirms the displayed non-secret key offer; stale context never grants permission to write. */
+    fun onSharedKeyConfirm(offer: SharedKeyOffer)
+
+    /** Reads key settings and retries connection verification without granting permission to PATCH. */
+    fun onSharedKeyCheck()
+
     /** Sets up Tap to Pay, saving [apiKey] first ([TerminalSetupViewModel.setUpTapToPay]). */
     fun onTapToPaySetUp(
         apiKey: String,
@@ -313,6 +320,10 @@ private fun terminalSetupEvents(setup: TerminalSetupViewModel): TerminalSetupEve
         override fun onTerminalsFind(apiKey: String) = setup.findTerminals(apiKey)
 
         override fun onTerminalChoose(poiId: String?) = setup.chooseTerminal(poiId)
+
+        override fun onSharedKeyConfirm(offer: SharedKeyOffer) = setup.createSharedKey(offer)
+
+        override fun onSharedKeyCheck() = setup.checkSharedKey()
 
         override fun onTapToPaySetUp(
             apiKey: String,

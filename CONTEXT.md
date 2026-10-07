@@ -66,6 +66,7 @@ existing spelling (`preAuthorisation`, `SaleKind.PRE_AUTHORISATION`, `authorised
 | Environment | TEST/LIVE selected for network/cloud terminals, otherwise read from this device's certificate or installed Payments app. Learned facts retain their original terminal setup and cannot update changed connection settings. | `TerminalEnvironment`, `TerminalSetupSource.remember` |
 | POIID | Terminal ID (`<model>-<serial>`), device name on terminals, boarded installation ID for Tap to Pay. | `poiId` |
 | Shared key | Identifier, passphrase and version encrypting local and Payments app messages. | Terminal settings + `SecretStore` |
+| Shared-key creation | Confirmed terminal-specific creation after read-only checks; encrypted recovery retains one generated key per context until setup verifies. Never replaces an existing effective key. | `terminal/SharedKeySetup` |
 | Adyen API key | Credential shared by Checkout/cloud operations and optional Management reads; distinct from the boarding credential. | `ADYEN_API_KEY` |
 | Boarding | Registers/revokes the Payments app installation for Tap to Pay. | `TapToPaySetup`, `PAYMENTS_APP_API_KEY` |
 | Checkout API | Captures, adjustments and links, required before real payments; access eligibility belongs to the target. | `ApiSetup`, `AdyenApi`, `ApiTarget` |

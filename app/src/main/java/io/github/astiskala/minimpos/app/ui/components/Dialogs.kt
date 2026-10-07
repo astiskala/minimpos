@@ -1,8 +1,10 @@
 package io.github.astiskala.minimpos.app.ui.components
 
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -20,6 +22,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import io.github.astiskala.minimpos.app.R
+import io.github.astiskala.minimpos.app.terminal.SharedKeyOffer
 import io.github.astiskala.minimpos.core.shopper.ShopperReferences
 
 /**
@@ -47,6 +50,29 @@ fun ConfirmDialog(
             }
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text(dismissLabel ?: stringResource(R.string.action_cancel)) } },
+    )
+}
+
+/** Confirms [offer]'s exact terminal and environment without exposing secrets; body scrolls on small screens. */
+@Composable
+fun SharedKeyDialog(
+    offer: SharedKeyOffer,
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    val label = stringResource(if (offer.resume) R.string.settings_resume_shared_key else R.string.settings_create_shared_key)
+    val message =
+        stringResource(
+            if (offer.resume) R.string.settings_shared_key_resume_confirm else R.string.settings_shared_key_confirm,
+            offer.poiId,
+            offer.environment.name,
+        ) + if (offer.replacesLocalKey) "\n\n" + stringResource(R.string.settings_shared_key_replace) else ""
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(label) },
+        text = { Text(message, Modifier.verticalScroll(rememberScrollState()).testTag("sharedKeyConfirmation")) },
+        confirmButton = { TextButton(onClick = onConfirm, modifier = Modifier.testTag("confirmSharedKey")) { Text(label) } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) } },
     )
 }
 

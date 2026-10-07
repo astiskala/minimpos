@@ -60,6 +60,7 @@ import io.github.astiskala.minimpos.app.terminal.SetupAccess
 import io.github.astiskala.minimpos.app.terminal.SetupDiscovery
 import io.github.astiskala.minimpos.app.terminal.SetupImport
 import io.github.astiskala.minimpos.app.terminal.SetupImportChecks
+import io.github.astiskala.minimpos.app.terminal.SharedKeySetup
 import io.github.astiskala.minimpos.app.terminal.SimulatedTerminal
 import io.github.astiskala.minimpos.app.terminal.TapToPaySetup
 import io.github.astiskala.minimpos.app.terminal.TerminalGateway
@@ -299,10 +300,6 @@ class AppContainer(
             localEnvironment = terminalEnvironment,
         )
 
-    /** Optional read-only discovery of terminal connection fields, within the destination's environment. */
-    val setupDiscovery =
-        SetupDiscovery(terminalSetup, settings, { secrets.set(Secret.TERMINAL_PASSPHRASE, it) }, terminalDetails, gateway::readEnvironment)
-
     /**
      * Adyen's Checkout API, for captures, authorisation adjustments and payment links, all simulated in simulator mode.
      */
@@ -315,6 +312,14 @@ class AppContainer(
             verifyAccess = SetupAccess(terminalDetails)::verify,
             readEnvironment = gateway::refreshEnvironment,
         )
+
+    private val sharedKeys = SharedKeySetup(terminalSetup, terminalDetails, api::verify, ::financialOperationRunning)
+
+    /** Optional read-only discovery of terminal connection fields, within the destination's environment. */
+    val setupDiscovery =
+        SetupDiscovery(terminalSetup, settings, {
+            secrets.set(Secret.TERMINAL_PASSPHRASE, it)
+        }, terminalDetails, gateway::readEnvironment, sharedKeys)
 
     /** Boards (and revokes) the Adyen Payments app on this phone, for Tap to Pay. */
     val tapToPay = TapToPaySetup(terminalSetup, settings, paymentsAppLinks, paymentsAppManagement) { api.verify() }
@@ -492,6 +497,9 @@ class AppContainer(
         session(start.kind).complete(start)
     }
 
+    private fun financialOperationRunning(): Boolean =
+        payments.state.value is TransactionState.Processing || refunds.state.value is TransactionState.Processing
+
     internal val setupImport =
         SetupImport(
             setupTransfer,
@@ -499,7 +507,7 @@ class AppContainer(
             gateway,
             api,
             tapToPay,
-            SetupImportChecks(receiptBusinessDetails, terminalDetails),
+            SetupImportChecks(receiptBusinessDetails, terminalDetails, sharedKeys),
             historySwitches,
         ) {
             payments.state.value is TransactionState.Processing || refunds.state.value is TransactionState.Processing

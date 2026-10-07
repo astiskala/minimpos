@@ -99,4 +99,13 @@ enum class SetupProblem {
 
     /** Configuration changed while a candidate was being verified. */
     SETUP_CHANGED,
+
+    /** A created key is available at Adyen, but encrypted terminal communication has not been verified. */
+    KEY_CONNECTION_PENDING,
+
+    /** The encrypted key-creation record cannot be read; never replace it or generate another key. */
+    KEY_RECOVERY_UNREADABLE,
+
+    /** Key creation may have reached Adyen without confirmed read-back; explicit recovery must read first. */
+    KEY_CREATION_UNCONFIRMED,
 }

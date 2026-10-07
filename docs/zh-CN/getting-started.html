@@ -56,7 +56,7 @@
         <div class="desktop-contents"><p class="toc-title">本页目录</p><ol>
           <li><a href="#try">先体验</a></li><li><a href="#choose">选择配置方式</a></li><li><a href="#install">安装</a></li>
           <li><a href="#connect">连接 Adyen</a><ul>
-            <li><a href="#credentials">准备凭据</a></li><li><a href="#helper">从电脑输入密钥</a></li>
+            <li><a href="#credentials">准备凭据</a></li><li><a href="#shared-key-creation">创建缺失的加密密钥</a></li><li><a href="#helper">从电脑输入密钥</a></li>
             <li><a href="#on-terminal">在 Adyen 终端上运行</a></li><li><a href="#network">搭配同一网络中的终端</a></li>
             <li><a href="#cloud">搭配云端终端</a></li><li><a href="#tap-to-pay">使用 Tap to Pay</a></li>
           </ul></li>
@@ -65,7 +65,7 @@
         <details class="mobile-contents"><summary class="toc-title">本页目录</summary><ol>
           <li><a href="#try">先体验</a></li><li><a href="#choose">选择配置方式</a></li><li><a href="#install">安装</a></li>
           <li><a href="#connect">连接 Adyen</a><ul>
-            <li><a href="#credentials">准备凭据</a></li><li><a href="#helper">从电脑输入密钥</a></li>
+            <li><a href="#credentials">准备凭据</a></li><li><a href="#shared-key-creation">创建缺失的加密密钥</a></li><li><a href="#helper">从电脑输入密钥</a></li>
             <li><a href="#on-terminal">在 Adyen 终端上运行</a></li><li><a href="#network">搭配同一网络中的终端</a></li>
             <li><a href="#cloud">搭配云端终端</a></li><li><a href="#tap-to-pay">使用 Tap to Pay</a></li>
           </ul></li>
@@ -110,13 +110,16 @@
           <ul>
             <li><strong>Cloud Device API role</strong>：云端付款必需。</li>
             <li><strong>Management API — Terminal actions read</strong>：所有真实付款设置的主 Adyen API 凭据都必须具有此权限，包括手动方式和 Tap to Pay。凭据须属于终端的 Company 账户，并能访问对应商家账户和终端。</li>
-            <li><strong>Management API — Terminal settings read</strong>：本终端或同一网络中的终端的可选共享密钥设置查询。</li>
-            <li><strong>Management API — Terminal settings Advanced read and write</strong>：上述目标的可选共享密钥口令查询。</li>
+            <li><strong>Management API — Terminal settings read and write</strong>：所有真实付款设置的主凭据都必须具有此权限，即使不查询或创建密钥。</li>
+            <li><strong>Management API — Terminal settings Advanced read and write</strong>：所有真实付款设置也必须具有此权限，用于读取和创建敏感共享密钥设置。</li>
           </ul>
           <p>本终端、同一网络中的终端和 Tap to Pay 还需要<strong>共享密钥</strong>：在 <strong>Devices › Device settings › Integrations › Terminal API › Encryption key</strong> 中获取标识符、口令和版本。参见 Adyen 的<a href="https://docs.adyen.com/point-of-sale/design-your-integration/choose-your-architecture/local">本地集成指南</a>。云端配置不使用此密钥。</p>
           <p>同一网络中的终端和云端终端以<strong>环境</strong>为步骤 1：测试卡选择 <strong>TEST</strong>，真实付款选择 <strong>LIVE</strong>。终端、账户和凭据必须属于同一环境。Mini mPOS 不会在另一环境尝试 API 密钥。在 Adyen 终端上运行时，应用读取本设备经过验证的证书；Tap to Pay 则使用已安装的 Payments 应用的环境。</p>
           <p>完成当前步骤后才显示下一步。在 <strong>Adyen API</strong> 中一起输入 API 密钥和商家账户；LIVE 还需输入实时 URL 前缀。点击<strong>测试 API</strong>（输入密钥时点击<strong>保存并测试 API</strong>），测试成功后显示下一步。已获取的信息会保持可见、可编辑，再次打开设置时也一样；部分填写的设置也会显示。</p>
-          <p>实体终端在输入的密钥、商家账户及实时 URL 前缀通过 API 测试后，才会在 <strong>Adyen API</strong> 下显示<strong>获取设置</strong>，用于查询该环境的终端信息。应用只读取信息，不会修改 Adyen 的设置或密钥。参阅 Adyen 的<a href="https://docs.adyen.com/api-explorer/Management/3/get/terminals">终端列表</a>与<a href="https://docs.adyen.com/api-explorer/Management/latest/get/terminals/(terminalId)/terminalSettings">终端设置</a> API 文档。终端访问验证失败时不能继续设置；请更正凭据的 Company 账户、权限或访问范围后重试。仅共享密钥查询是可选的：访问验证通过后，可手动输入共享密钥并测试连接。查询到的地址可能过时，请先检查。Tap to Pay 会检查主凭据所需角色，但不查询实体终端。</p>
+          <p>实体终端在输入的密钥、商家账户及实时 URL 前缀通过 API 测试后，才会在 <strong>Adyen API</strong> 下显示<strong>获取设置</strong>。查询会读取该环境的终端信息。在 Adyen 终端上运行时，应用使用检测到的 POIID，无需选择终端。网络和云端设置可以显示终端选择列表；已知 POIID 的检查只查询该 ID。参阅 Adyen 的<a href="https://docs.adyen.com/api-explorer/Management/3/get/terminals">终端列表</a>与<a href="https://docs.adyen.com/api-explorer/Management/latest/get/terminals/(terminalId)/terminalSettings">终端设置</a> API 文档。访问验证失败时不能继续设置；请更正凭据的 Company 账户、权限或访问范围后重试。仍可手动输入共享密钥，但不能绕过必需权限。查询到的地址可能过时，请先检查。Tap to Pay 会检查主凭据所需角色，但不查询实体终端。</p>
+          <h3 id="shared-key-creation">创建缺失的加密密钥</h3>
+          <p>实体终端使用本地通信时，设置查询和自动二维码导入可在凭据、账户、必需字段及 Checkout 检查通过后，提供<strong>创建加密密钥</strong>。请确认 POIID 和 TEST/LIVE 环境。应用仅为此终端生成随机密钥，版本从 1 开始，口令加密保存。创建会替换本地提供的密钥值，但会使用 Adyen 已有的密钥，包括继承的密钥。创建期间，请勿在其他位置更改同一终端的设置。云端和 Tap to Pay 不提供此操作。</p>
+          <p>若创建中断，<strong>继续密钥设置</strong>会先读取 Adyen 设置，如需重试则使用已保存的同一密钥。二维码设置请重新扫描同一组二维码并输入其传输码。取消会保留远端密钥；导入验证成功前不会启用新设置。终端尚未应用密钥时，请参阅<a href="troubleshooting.html#key-setup">密钥设置恢复</a>。</p>
           <figure class="guide-shot">
             <div class="terminal terminal-s1f2">
               <img alt="带二维码扫描快捷入口和 Adyen API 步骤的终端设置" height="960" loading="lazy" src="../images/terminal-setup.png" width="540">

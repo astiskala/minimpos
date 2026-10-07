@@ -17,6 +17,7 @@ import io.github.astiskala.minimpos.app.terminal.HistorySwitchPlan
 import io.github.astiskala.minimpos.app.terminal.ReceiptBusiness
 import io.github.astiskala.minimpos.app.terminal.SetupImport
 import io.github.astiskala.minimpos.app.terminal.SetupImportOutcome
+import io.github.astiskala.minimpos.app.terminal.SharedKeyOffer
 import io.github.astiskala.minimpos.core.codec.QrChunkAssembler
 import io.github.astiskala.minimpos.core.codec.QrChunks
 import io.github.astiskala.minimpos.core.codec.TransferCodec
@@ -133,6 +134,8 @@ sealed interface ImportUiState {
      * @property businessChoices Optional store proposals offered only when ambiguous; null when not selecting.
      * @property boardingRequired Whether explicit phone registration must run before this import can commit.
      * @property historySwitch Destructive history confirmation for this exact candidate; null before verification.
+     * @property sharedKeyOffer Explicit key-creation/recovery confirmation; null when not offered.
+     * @property keyPending Whether the remote key exists but this import still needs connection verification.
      */
     data class Ready(
         val received: ReceivedTransfer,
@@ -147,6 +150,8 @@ sealed interface ImportUiState {
         val boardingRequired: Boolean = false,
         /** Destructive environment-change confirmation; null until authenticated setup validation succeeds. */
         val historySwitch: HistorySwitchPlan? = null,
+        val sharedKeyOffer: SharedKeyOffer? = null,
+        val keyPending: Boolean = false,
     ) : ImportUiState
 
     /** Opening the secrets and writing everything. */
@@ -195,6 +200,7 @@ class TransferImportViewModel(
     private var selectedTerminal: String? = null
     private var selectedBusiness: String? = null
     private var skipBusiness = false
+    private var confirmedHistory: HistorySwitchPlan? = null
 
     init {
         retryRecovery()
@@ -297,15 +303,27 @@ class TransferImportViewModel(
     }
 
     /** Reviews permanent history loss for this import; cancellation leaves current settings and history untouched. */
-    fun reviewHistorySwitch(confirm: Boolean) {
+    fun reviewSetup(confirm: Boolean) {
         val ready = _state.value as? ImportUiState.Ready ?: return
-        val plan = ready.historySwitch ?: return
-        if (confirm) verify(board = false, confirmedHistorySwitch = plan) else updateReady { it.copy(historySwitch = null) }
+        val offer = ready.sharedKeyOffer
+        if (offer != null) {
+            if (confirm) verify(board = false, confirmedKey = offer) else updateReady { it.copy(sharedKeyOffer = null) }
+        } else {
+            val plan = ready.historySwitch ?: return
+            if (confirm) {
+                confirmedHistory = plan
+                verify(board = false, confirmedHistorySwitch = plan)
+            } else {
+                confirmedHistory = null
+                updateReady { it.copy(historySwitch = null) }
+            }
+        }
     }
 
     private fun verify(
         board: Boolean,
         confirmedHistorySwitch: HistorySwitchPlan? = null,
+        confirmedKey: SharedKeyOffer? = null,
     ) {
         val ready = _state.value as? ImportUiState.Ready ?: return
         if (!ready.received.accepts(ready.code)) {
@@ -322,7 +340,8 @@ class TransferImportViewModel(
                 selectedBusiness,
                 skipBusiness,
                 board,
-                confirmedHistorySwitch,
+                confirmedHistorySwitch ?: confirmedHistory,
+                confirmedKey,
             )
         }) { result ->
             _state.value = finished(ready, result)
@@ -347,7 +366,11 @@ class TransferImportViewModel(
             }
 
             is SetupImportOutcome.HistoryConfirmation -> {
-                ready.copy(historySwitch = result.plan)
+                ready.copy(historySwitch = result.plan, sharedKeyOffer = null)
+            }
+
+            is SetupImportOutcome.KeyConfirmation -> {
+                ready.copy(sharedKeyOffer = result.offer, historySwitch = null, outcome = null, incomplete = false)
             }
 
             SetupImportOutcome.BoardingRequired -> {
@@ -361,6 +384,9 @@ class TransferImportViewModel(
                             ?: result.message?.let(ActionOutcome::Failed)
                             ?: ActionOutcome.NoAnswer,
                     incomplete = result.incomplete,
+                    sharedKeyOffer = null,
+                    historySwitch = null,
+                    keyPending = result.keyPending,
                 )
             }
         }
@@ -397,6 +423,7 @@ class TransferImportViewModel(
         selectedTerminal = null
         selectedBusiness = null
         skipBusiness = false
+        confirmedHistory = null
         _state.value = ImportUiState.Scanning()
     }
 

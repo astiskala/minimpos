@@ -47,7 +47,7 @@ import io.github.astiskala.minimpos.terminal.transport.CloudEndpoint
 import io.github.astiskala.minimpos.terminal.transport.CloudRegion
 import io.github.astiskala.minimpos.terminal.transport.CredentialLookup
 import io.github.astiskala.minimpos.terminal.transport.Delivery
-import io.github.astiskala.minimpos.terminal.transport.DiscoveredKey
+import io.github.astiskala.minimpos.terminal.transport.SharedKeyLookup
 import io.github.astiskala.minimpos.terminal.transport.StoreDetailsApi
 import io.github.astiskala.minimpos.terminal.transport.StoreListing
 import io.github.astiskala.minimpos.terminal.transport.TerminalDetails
@@ -156,7 +156,7 @@ class RecordingTransport : MailTransport {
  * [passphrase]; other keys are rejected the way a terminal rejects them. Records the hosts it was reached on.
  */
 class FakeTerminal(
-    private val passphrase: String = "correct horse battery staple",
+    var passphrase: String = "correct horse battery staple",
     private val beforeSend: suspend () -> Unit = {},
 ) {
     /** Every host a transport was created for, in order (`localhost` when the app runs on the terminal). */
@@ -454,13 +454,16 @@ class TestEnvironment(
         object : TerminalDetailsApi {
             override suspend fun credential(environment: TerminalEnvironment) = CredentialLookup.Allowed
 
-            override suspend fun terminals(environment: TerminalEnvironment): TerminalListing {
+            override suspend fun terminals(
+                environment: TerminalEnvironment,
+                id: String?,
+            ): TerminalListing {
                 val terminalSettings = container.settings.current().terminal
                 val configuredId = terminalSettings.poiIdOverride.takeIf { value -> value.isNotBlank() }
                 val ids = listOfNotNull(device.detectedPoiId, configuredId) + listOf("AMS1-000168223606144", "S1F2-000158213605014")
                 return TerminalListing.Listed(
-                    ids.distinct().map { id ->
-                        TerminalDetails(id, terminalSettings.merchantAccount.ifBlank { "Merchant" }, "192.168.1.42")
+                    ids.distinct().filter { id == null || it == id }.map { terminalId ->
+                        TerminalDetails(terminalId, terminalSettings.merchantAccount.ifBlank { "Merchant" }, "192.168.1.42")
                     },
                     environment,
                 )
@@ -469,7 +472,7 @@ class TestEnvironment(
             override suspend fun sharedKey(
                 id: String,
                 environment: TerminalEnvironment,
-            ): DiscoveredKey? = null
+            ): SharedKeyLookup = SharedKeyLookup.Missing
         }
 
     /**

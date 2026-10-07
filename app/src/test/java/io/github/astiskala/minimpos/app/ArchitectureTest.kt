@@ -106,6 +106,8 @@ import io.github.astiskala.minimpos.terminal.client.TransactionDetails
 import io.github.astiskala.minimpos.terminal.parse.ReceiptField
 import io.github.astiskala.minimpos.terminal.simulator.SimulatedOutcome
 import io.github.astiskala.minimpos.terminal.transport.CloudRegion
+import io.github.astiskala.minimpos.terminal.transport.DiscoveredKey
+import io.github.astiskala.minimpos.terminal.transport.TerminalDetailsApi
 import io.github.astiskala.minimpos.terminal.transport.TerminalEnvironment
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -420,6 +422,19 @@ class ArchitectureTest {
             .orShould()
             .accessField(Intent::class.java, "ACTION_SEND")
             .check(app)
+
+    @Test
+    fun `only shared key setup can change remote encryption settings`() = sharedKeyOwnership.check(app)
+
+    @Test
+    fun `shared key ownership rejects unconfirmed remote writes`() = reject(listOf(sharedKeyOwnership), SharedKeyViolation::class.java)
+
+    private class SharedKeyViolation {
+        suspend fun create(
+            api: TerminalDetailsApi,
+            key: DiscoveredKey,
+        ) = api.createSharedKey("ID", TerminalEnvironment.TEST, key)
+    }
 
     @Test
     fun `only confirmed switch owners can purge unfinished history`() = historyPurgeOwnership.check(app)
@@ -1011,6 +1026,16 @@ class ArchitectureTest {
                 .withImportOption(ImportOption.Predefined.DO_NOT_INCLUDE_TESTS)
                 .withImportOption { location -> !location.contains("UnitTest") }
                 .importPackages("io.github.astiskala.minimpos.app")
+
+        // Remote key writes require shared-key confirmation and encrypted recovery, never read-only discovery.
+        val sharedKeyOwnership: ArchRule =
+            noClasses()
+                .that()
+                .haveNameNotMatching(within("io.github.astiskala.minimpos.app.terminal.SharedKeySetup"))
+                .should()
+                .callMethodWhere(
+                    callToSubtypeOf(TerminalDetailsApi::class.java, "createSharedKey"),
+                )
 
         // Only explicit switch confirmation and its authenticated import journal may discard recovery identities.
         val historyPurgeOwnership: ArchRule =

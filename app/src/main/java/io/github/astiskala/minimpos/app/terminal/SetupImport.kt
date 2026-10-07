@@ -10,6 +10,8 @@ import io.github.astiskala.minimpos.app.data.transfer.PreparedTransfer
 import io.github.astiskala.minimpos.app.data.transfer.ReceivedTransfer
 import io.github.astiskala.minimpos.app.data.transfer.SetupTransfer
 import io.github.astiskala.minimpos.terminal.transport.CredentialLookup
+import io.github.astiskala.minimpos.terminal.transport.DiscoveredKey
+import io.github.astiskala.minimpos.terminal.transport.SharedKeyLookup
 import io.github.astiskala.minimpos.terminal.transport.TerminalDetails
 import io.github.astiskala.minimpos.terminal.transport.TerminalDetailsApi
 import io.github.astiskala.minimpos.terminal.transport.TerminalListing
@@ -30,6 +32,10 @@ internal sealed interface SetupImportOutcome {
         val stores: List<ReceiptBusiness>,
     ) : SetupImportOutcome
 
+    data class KeyConfirmation(
+        val offer: SharedKeyOffer,
+    ) : SetupImportOutcome
+
     data object BoardingRequired : SetupImportOutcome
 
     data class HistoryConfirmation(
@@ -40,15 +46,19 @@ internal sealed interface SetupImportOutcome {
         val problem: SetupProblem? = null,
         val message: String? = null,
         val incomplete: Boolean = false,
-    ) : SetupImportOutcome
+    ) : SetupImportOutcome {
+        val keyPending: Boolean get() = problem == SetupProblem.KEY_CONNECTION_PENDING
+    }
 }
 
-/** Read-only Management services used while verifying an import candidate. */
+/** Management checks and separately confirmed key setup used before activating an import candidate. */
 class SetupImportChecks(
     /** Proposes store receipt fields without replacing saved merchant text. */
     val businessDetails: ReceiptBusinessDetails,
     /** Creates a read-only terminal-management client for the candidate credential. */
     val terminals: (String) -> TerminalDetailsApi,
+    /** Owns key creation only after explicit consent, without changing active import configuration. */
+    val sharedKeys: SharedKeySetup,
 )
 
 /** Verifies a scanned setup without replacing active configuration, then commits it with durable recovery.
@@ -71,7 +81,9 @@ class SetupImport internal constructor(
     private val historySwitches: HistorySwitches,
     private val busy: () -> Boolean,
 ) {
+    private val sharedKeys get() = checks.sharedKeys
     private val mutex = Mutex()
+    private var missingKey = false
 
     internal suspend fun import(
         received: ReceivedTransfer,
@@ -82,6 +94,7 @@ class SetupImport internal constructor(
         skipBusiness: Boolean = false,
         board: Boolean = false,
         confirmedHistorySwitch: HistorySwitchPlan? = null,
+        confirmedKey: SharedKeyOffer? = null,
     ): SetupImportOutcome =
         mutex.withLock {
             if (busy()) return@withLock SetupImportOutcome.Failed(SetupProblem.SETUP_CHANGED)
@@ -89,7 +102,8 @@ class SetupImport internal constructor(
             val prepared = transfer.prepare(received, code) ?: return@withLock SetupImportOutcome.Committed(ImportOutcome.WrongCode)
             if (!prepared.original.acceptsSetupImport) return@withLock SetupImportOutcome.Failed(SetupProblem.SETUP_CHANGED)
             try {
-                val problem = verify(prepared, terminalId, businessId, skipBusiness, board)
+                val choices = Choices(terminalId, businessId, skipBusiness, board, confirmedHistorySwitch, confirmedKey)
+                val problem = verify(prepared, choices)
                 if (problem != null) return@withLock problem
                 val switch = historySwitches.preview(prepared.settings.terminal)
                 if (switch != null && !switch.wasConfirmedBy(confirmedHistorySwitch)) {
@@ -110,26 +124,40 @@ class SetupImport internal constructor(
     private suspend fun recoverResult(): SetupImportOutcome =
         SetupImportOutcome.Committed(transfer.recover(::remember) ?: ImportOutcome.Rejected(SetupProblem.TRANSFER_PENDING))
 
-    private suspend fun remember(): Boolean = setups.rememberVerified(setups.unlocked(forValidation = true))
+    private suspend fun remember(): Boolean {
+        val unlocked = setups.unlocked(forValidation = true)
+        val remembered = setups.rememberVerified(unlocked)
+        if (remembered) sharedKeys.complete(unlocked)
+        return remembered
+    }
 
     private fun candidate(prepared: PreparedTransfer): UnlockedSetup = setups.candidate(prepared.settings, prepared.secrets)
 
+    private class Choices(
+        val terminalId: String?,
+        val businessId: String?,
+        val skipBusiness: Boolean,
+        val board: Boolean,
+        val confirmedHistory: HistorySwitchPlan?,
+        val confirmedKey: SharedKeyOffer?,
+    )
+
     private suspend fun verify(
         prepared: PreparedTransfer,
-        terminalId: String?,
-        businessId: String?,
-        skipBusiness: Boolean,
-        board: Boolean,
+        choices: Choices,
     ): SetupImportOutcome? {
+        missingKey = false
         if (!prepared.changesSetup || candidate(prepared).setup.apiSetup == ApiSetup.Simulated) return null
         return environment(prepared)
             ?: credential(prepared)
-            ?: discovery(prepared, terminalId)
-            ?: requiredFields(prepared)
+            ?: discovery(prepared, choices.terminalId)
+            ?: requiredFields(prepared, allowMissingKey = missingKey)
             ?: checkout(prepared)
-            ?: phone(prepared, board)
+            ?: phone(prepared, choices.board)
+            ?: sharedKey(prepared, choices.confirmedHistory, choices.confirmedKey)
+            ?: requiredFields(prepared)
             ?: connection(prepared)
-            ?: business(prepared, businessId, skipBusiness)
+            ?: business(prepared, choices.businessId, choices.skipBusiness)
     }
 
     private suspend fun environment(prepared: PreparedTransfer): SetupImportOutcome? {
@@ -156,7 +184,7 @@ class SetupImport internal constructor(
         val unlocked = candidate(prepared)
         if (!unlocked.setup.discoversTerminals) return null
         val management = checks.terminals(checkNotNull(unlocked.apiKey))
-        return when (val result = management.terminals(checkNotNull(unlocked.setup.environment))) {
+        return when (val result = management.terminals(checkNotNull(unlocked.setup.environment), unlocked.setup.poiId ?: selected)) {
             is TerminalListing.Failed -> SetupImportOutcome.Failed(result.reason.setupProblem())
             is TerminalListing.Listed -> chooseTerminal(prepared, unlocked.setup, management, result, selected)
         }
@@ -191,13 +219,10 @@ class SetupImport internal constructor(
             else -> {
                 applyAssignment(prepared, setup, terminal)
                 if (prepared.received.automatic && setup.needsSharedKey) {
-                    management.sharedKey(terminal.id, listing.environment)?.let { key ->
-                        prepared.settings =
-                            prepared.settings.copy(
-                                terminal = prepared.settings.terminal.copy(keyIdentifier = key.identifier, keyVersion = key.version),
-                            )
-                        prepared.secrets[Secret.TERMINAL_PASSPHRASE] = key.passphrase
-                        prepared.importedSecrets[Secret.TERMINAL_PASSPHRASE] = key.passphrase
+                    when (val found = management.sharedKey(terminal.id, listing.environment)) {
+                        is SharedKeyLookup.Found -> applyKey(prepared, found.key)
+                        SharedKeyLookup.Missing -> missingKey = true
+                        is SharedKeyLookup.Failed -> return SetupImportOutcome.Failed(found.reason.setupProblem())
                     }
                 }
                 null
@@ -230,8 +255,58 @@ class SetupImport internal constructor(
             )
     }
 
-    private fun requiredFields(prepared: PreparedTransfer): SetupImportOutcome? =
-        candidate(prepared).setup.importProblem(prepared.secrets.keys)?.let { SetupImportOutcome.Failed(it, incomplete = true) }
+    private fun applyKey(
+        prepared: PreparedTransfer,
+        key: DiscoveredKey,
+    ) {
+        prepared.settings =
+            prepared.settings.copy(terminal = prepared.settings.terminal.copy(keyIdentifier = key.identifier, keyVersion = key.version))
+        prepared.secrets[Secret.TERMINAL_PASSPHRASE] = key.passphrase
+        prepared.importedSecrets[Secret.TERMINAL_PASSPHRASE] = key.passphrase
+    }
+
+    private suspend fun sharedKey(
+        prepared: PreparedTransfer,
+        confirmedHistory: HistorySwitchPlan?,
+        confirmedKey: SharedKeyOffer?,
+    ): SetupImportOutcome? {
+        val unlocked = candidate(prepared)
+        if (!missingKey && sharedKeys.pendingOffer(unlocked) == null) return null
+        val switch = historySwitches.preview(prepared.settings.terminal)
+        if (switch != null && !switch.wasConfirmedBy(confirmedHistory)) return SetupImportOutcome.HistoryConfirmation(switch)
+        return when (val result = sharedKeys.resolve(unlocked, confirmedKey) { transfer.unchanged(prepared) }) {
+            is SharedKeySetupOutcome.Confirmation -> {
+                SetupImportOutcome.KeyConfirmation(result.offer)
+            }
+
+            is SharedKeySetupOutcome.Ready -> {
+                applyKey(prepared, result.key)
+                null
+            }
+
+            is SharedKeySetupOutcome.Failed -> {
+                SetupImportOutcome.Failed(result.problem, result.message)
+            }
+        }
+    }
+
+    private fun requiredFields(
+        prepared: PreparedTransfer,
+        allowMissingKey: Boolean = false,
+    ): SetupImportOutcome? =
+        candidate(prepared)
+            .setup
+            .importProblem(prepared.secrets.keys)
+            ?.takeUnless {
+                allowMissingKey &&
+                    it in
+                    setOf(
+                        SetupProblem.KEY_IDENTIFIER,
+                        SetupProblem.KEY_VERSION,
+                        SetupProblem.PASSPHRASE,
+                        SetupProblem.UNREADABLE_PASSPHRASE,
+                    )
+            }?.let { SetupImportOutcome.Failed(it, incomplete = true) }
 
     private suspend fun checkout(prepared: PreparedTransfer): SetupImportOutcome? =
         when (val result = api.verify(candidate(prepared))) {
@@ -275,6 +350,9 @@ class SetupImport internal constructor(
         if (!transfer.unchanged(prepared)) return SetupImportOutcome.Failed(SetupProblem.SETUP_CHANGED)
         val unlocked = candidate(prepared)
         val (connection, detected) = gateway.candidates.check(unlocked)
+        if (connection !is TerminalConnection.Connected && sharedKeys.pendingOffer(unlocked) != null) {
+            return SetupImportOutcome.Failed(SetupProblem.KEY_CONNECTION_PENDING)
+        }
         return when (connection) {
             is TerminalConnection.Connected -> {
                 if (detected != null && detected.environment != unlocked.setup.environment) {

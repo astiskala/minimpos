@@ -37,10 +37,13 @@ import io.github.astiskala.minimpos.core.codec.Transfer
 import io.github.astiskala.minimpos.core.codec.TransferCodec
 import io.github.astiskala.minimpos.terminal.transport.CredentialLookup
 import io.github.astiskala.minimpos.terminal.transport.DiscoveredKey
+import io.github.astiskala.minimpos.terminal.transport.SharedKeyLookup
+import io.github.astiskala.minimpos.terminal.transport.SharedKeyUpdate
 import io.github.astiskala.minimpos.terminal.transport.TerminalDetails
 import io.github.astiskala.minimpos.terminal.transport.TerminalDetailsApi
 import io.github.astiskala.minimpos.terminal.transport.TerminalEnvironment
 import io.github.astiskala.minimpos.terminal.transport.TerminalListing
+import kotlinx.coroutines.flow.first
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -59,11 +62,18 @@ class AutomaticSetupUiTest {
     private val paymentsApp = FakePaymentsApp()
     private val searches = mutableListOf<TerminalEnvironment>()
     private var keyLookups = 0
-    private val details =
+    private val terminal = FakeTerminal()
+    private var generatedKey: DiscoveredKey? = null
+    private var activateKey = true
+    private var creations = 0
+    private val details: TerminalDetailsApi =
         object : TerminalDetailsApi {
             override suspend fun credential(environment: TerminalEnvironment) = CredentialLookup.Allowed
 
-            override suspend fun terminals(environment: TerminalEnvironment): TerminalListing {
+            override suspend fun terminals(
+                environment: TerminalEnvironment,
+                id: String?,
+            ): TerminalListing {
                 searches += environment
                 return if (lookupAvailable) {
                     TerminalListing.Listed(
@@ -78,14 +88,32 @@ class AutomaticSetupUiTest {
             override suspend fun sharedKey(
                 id: String,
                 environment: TerminalEnvironment,
-            ): DiscoveredKey? {
+            ): SharedKeyLookup {
                 keyLookups++
-                return if (sharedKeyAvailable) DiscoveredKey("store-key", 2, "correct horse battery staple") else null
+                generatedKey?.let { return SharedKeyLookup.Found(it) }
+                return if (sharedKeyAvailable) {
+                    SharedKeyLookup.Found(
+                        DiscoveredKey("store-key", 2, "correct horse battery staple"),
+                    )
+                } else {
+                    SharedKeyLookup.Missing
+                }
+            }
+
+            override suspend fun createSharedKey(
+                id: String,
+                environment: TerminalEnvironment,
+                key: DiscoveredKey,
+            ): SharedKeyUpdate {
+                creations++
+                generatedKey = key
+                if (activateKey) terminal.passphrase = key.passphrase
+                return SharedKeyUpdate.Ready(key, created = true)
             }
         }
 
     @get:Rule(order = 0)
-    val env = TestEnvironment(device, terminal = FakeTerminal(), paymentsApp = paymentsApp, terminalDetails = details)
+    val env = TestEnvironment(device, terminal = terminal, paymentsApp = paymentsApp, terminalDetails = details)
 
     @get:Rule(order = 1)
     val compose = createComposeRule()
@@ -100,7 +128,8 @@ class AutomaticSetupUiTest {
         secrets: String = """{"ADYEN_API_KEY":"imported-key"}""",
         succeeds: Boolean = true,
         register: Boolean = false,
-    ) {
+        awaitKey: Boolean = false,
+    ): TransferImportViewModel {
         val container = env.container
         container.start()
         val seal = TransferSeal(iterations = 1_000)
@@ -129,10 +158,21 @@ class AutomaticSetupUiTest {
         waitForTag("import")
         compose.onNodeWithTag("transferCodeInput").performScrollTo().performTextInput(code)
         compose.onNodeWithTag("import").performClick()
-        if (!succeeds) {
+        if (awaitKey) {
+            compose.awaitCondition("Explicit key creation is offered") { (vm.state.value as? ImportUiState.Ready)?.sharedKeyOffer != null }
+            waitForTag("confirmSharedKey")
+        } else if (!succeeds) {
             compose.awaitCondition("Rejected candidate remains editable") { (vm.state.value as? ImportUiState.Ready)?.outcome != null }
-            return
+        } else {
+            finishImport(vm, register)
         }
+        return vm
+    }
+
+    private fun finishImport(
+        vm: TransferImportViewModel,
+        register: Boolean,
+    ) {
         if (register) {
             compose.awaitCondition("Explicit registration is offered") {
                 val ready = vm.state.value as? ImportUiState.Ready
@@ -188,12 +228,71 @@ class AutomaticSetupUiTest {
     }
 
     @Test
-    fun `missing automatic shared key rejects with Manual helper guidance and zero writes`() {
+    fun `missing automatic key requires visible terminal confirmation and cancellation writes nothing`() = cancelMissingKey()
+
+    @Test
+    @Config(qualifiers = "zh-rCN-w320dp-h460dp-hdpi")
+    fun `Chinese missing key confirmation fits AMS1 and cancellation writes nothing`() = cancelMissingKey()
+
+    @Test
+    @Config(qualifiers = "ja-w320dp-h460dp-hdpi")
+    fun `Japanese missing key confirmation fits AMS1 and cancellation writes nothing`() = cancelMissingKey()
+
+    private fun cancelMissingKey() {
         sharedKeyAvailable = false
-        importAutomatic(succeeds = false)
-        compose.onNodeWithText(env.context.getString(R.string.transfer_missing_fields)).performScrollTo().assertIsDisplayed()
+        val vm = importAutomatic(awaitKey = true)
+        compose
+            .onNodeWithTag(
+                "sharedKeyConfirmation",
+            ).assertTextContains(POI_ID, substring = true)
+            .assertTextContains("TEST", substring = true)
+        compose.onNodeWithTag("confirmSharedKey").assertIsDisplayed()
+        assertThat(creations).isEqualTo(0)
+        assertThat(
+            await {
+                env.container.secrets.keyCreationExists
+                    .first()
+            },
+        ).isFalse()
+        compose.onNodeWithText(env.context.getString(R.string.action_cancel)).performClick()
+        compose.awaitCondition("Confirmation dismissed") { (vm.state.value as? ImportUiState.Ready)?.sharedKeyOffer == null }
         assertThat(await { env.container.secrets.get(Secret.TERMINAL_PASSPHRASE) }).isNull()
         assertThat(env.container.settingsState.value.terminal.host).isEmpty()
+        assertThat(creations).isEqualTo(0)
+    }
+
+    @Test
+    fun `created key remains recoverable until terminal activation and Check again completes import`() {
+        sharedKeyAvailable = false
+        activateKey = false
+        val vm = importAutomatic(awaitKey = true)
+        compose.onNodeWithTag("confirmSharedKey").assertIsDisplayed().performClick()
+        compose.awaitCondition("Created key awaits terminal activation") { (vm.state.value as? ImportUiState.Ready)?.keyPending == true }
+        compose
+            .onNodeWithTag(
+                "import",
+            ).assertIsDisplayed()
+            .assertTextContains(env.context.getString(R.string.settings_shared_key_check_again))
+        compose.onNodeWithText(env.context.getString(R.string.transfer_key_not_imported)).performScrollTo().assertIsDisplayed()
+        assertThat(creations).isEqualTo(1)
+        assertThat(await { env.container.secrets.get(Secret.ADYEN_API_KEY) }).isNull()
+        assertThat(
+            await {
+                env.container.secrets.keyCreationExists
+                    .first()
+            },
+        ).isTrue()
+        terminal.passphrase = checkNotNull(generatedKey).passphrase
+        compose.onNodeWithTag("import").performClick()
+        waitForTag("importDone")
+        assertThat(creations).isEqualTo(1)
+        assertThat(
+            await {
+                env.container.secrets.keyCreationExists
+                    .first()
+            },
+        ).isFalse()
+        assertThat(await { env.container.secrets.get(Secret.TERMINAL_PASSPHRASE) }).isEqualTo(checkNotNull(generatedKey).passphrase)
     }
 
     @Test

@@ -56,7 +56,7 @@
         <div class="desktop-contents"><p class="toc-title">このページの内容</p><ol>
           <li><a href="#try">まず試す</a></li><li><a href="#choose">構成を選ぶ</a></li><li><a href="#install">インストール</a></li>
           <li><a href="#connect">Adyen に接続</a><ul>
-            <li><a href="#credentials">認証情報を用意する</a></li><li><a href="#helper">パソコンからキーを入力</a></li>
+            <li><a href="#credentials">認証情報を用意する</a></li><li><a href="#shared-key-creation">不足している暗号化キーを作成</a></li><li><a href="#helper">パソコンからキーを入力</a></li>
             <li><a href="#on-terminal">Adyen 端末で動かす</a></li><li><a href="#network">ネットワーク上の端末</a></li>
             <li><a href="#cloud">クラウドの端末</a></li><li><a href="#tap-to-pay">Tap to Pay</a></li>
           </ul></li>
@@ -65,7 +65,7 @@
         <details class="mobile-contents"><summary class="toc-title">このページの内容</summary><ol>
           <li><a href="#try">まず試す</a></li><li><a href="#choose">構成を選ぶ</a></li><li><a href="#install">インストール</a></li>
           <li><a href="#connect">Adyen に接続</a><ul>
-            <li><a href="#credentials">認証情報を用意する</a></li><li><a href="#helper">パソコンからキーを入力</a></li>
+            <li><a href="#credentials">認証情報を用意する</a></li><li><a href="#shared-key-creation">不足している暗号化キーを作成</a></li><li><a href="#helper">パソコンからキーを入力</a></li>
             <li><a href="#on-terminal">Adyen 端末で動かす</a></li><li><a href="#network">ネットワーク上の端末</a></li>
             <li><a href="#cloud">クラウドの端末</a></li><li><a href="#tap-to-pay">Tap to Pay</a></li>
           </ul></li>
@@ -110,13 +110,16 @@
           <ul>
             <li><strong>Cloud Device API role</strong>：クラウド決済に必要です。</li>
             <li><strong>Management API — Terminal actions read</strong>：手動と Tap to Pay を含む、すべての実決済設定で主 Adyen API 認証情報に必要です。端末の Company アカウントに属し、加盟店アカウントと端末へのアクセス権が必要です。</li>
-            <li><strong>Management API — Terminal settings read</strong>：この端末やネットワーク上の端末の共有キー設定の任意の取得。</li>
-            <li><strong>Management API — Terminal settings Advanced read and write</strong>：これらの決済先の共有キーパスフレーズの任意の取得。</li>
+            <li><strong>Management API — Terminal settings read and write</strong>：キーの取得や作成を使わない場合も、すべての実決済設定で主認証情報に必要です。</li>
+            <li><strong>Management API — Terminal settings Advanced read and write</strong>：すべての実決済設定で必要です。機密性の高い共有キー設定の読み取りと作成に使います。</li>
           </ul>
           <p>この端末、ネットワーク上の端末、Tap to Pay では<strong>共有キー</strong>も用意します。<strong>Devices › Device settings › Integrations › Terminal API › Encryption key</strong> から識別子、パスフレーズ、バージョンを取得します。Adyen の<a href="https://docs.adyen.com/point-of-sale/design-your-integration/choose-your-architecture/local">ローカル統合ガイド</a>を参照してください。クラウドではこのキーは使いません。</p>
           <p>ネットワークやクラウドの端末では、手順1は<strong>環境</strong>です。テストカードには<strong>TEST</strong>、実際の決済には<strong>LIVE</strong>を選びます。同じ環境の端末、アカウント、認証情報を使用してください。Mini mPOSは別の環境でAPIキーを試しません。Adyen端末で動く場合はデバイスの検証済み証明書を読み、Tap to PayではインストールしたPaymentsアプリの環境を使います。</p>
           <p>現在の手順を完了すると次の手順が表示されます。<strong>Adyen API</strong>でAPIキーとマーチャントアカウントを一緒に入力し、LIVEではライブURLプレフィックスも入力します。<strong>APIをテスト</strong>（キーを入力した場合は<strong>APIを保存してテスト</strong>）が成功すると次に進めます。取得済み情報は、設定を開き直しても表示・編集できます。部分的に入力した項目も表示されます。</p>
-          <p>物理端末では、入力したキー、マーチャントアカウント、ライブURLプレフィックスのAPIテストが成功した後にだけ、<strong>Adyen API</strong>に<strong>設定を取得</strong>が表示されます。その環境の端末情報を取得します。アプリは Adyen の設定やキーを変更しません。Adyen の<a href="https://docs.adyen.com/api-explorer/Management/3/get/terminals">端末一覧</a>と<a href="https://docs.adyen.com/api-explorer/Management/latest/get/terminals/(terminalId)/terminalSettings">端末設定</a>の API リファレンスを参照してください。端末へのアクセス確認に失敗すると設定を続行できません。認証情報の Company アカウント、権限、アクセス範囲を修正して再試行してください。共有キーの取得だけは任意です。アクセス確認後に手入力し、接続をテストできます。取得したアドレスが古い可能性があるため確認してください。Tap to Pay は主認証情報の必要ロールを確認しますが、物理端末を検索しません。</p>
+          <p>物理端末では、入力したキー、マーチャントアカウント、ライブURLプレフィックスのAPIテストが成功した後にだけ、<strong>Adyen API</strong>に<strong>設定を取得</strong>が表示されます。取得はその環境の端末情報を読み取ります。Adyen 端末上では検出した POIID を使い、端末の選択は不要です。ネットワークやクラウドの設定では端末一覧から選択でき、POIID が既知の確認はその ID だけを検索します。Adyen の<a href="https://docs.adyen.com/api-explorer/Management/3/get/terminals">端末一覧</a>と<a href="https://docs.adyen.com/api-explorer/Management/latest/get/terminals/(terminalId)/terminalSettings">端末設定</a>の API リファレンスを参照してください。アクセス確認に失敗すると設定を続行できません。認証情報の Company アカウント、権限、アクセス範囲を修正して再試行してください。共有キーは手入力もできますが、必須ロールの確認は省略できません。取得したアドレスが古い可能性があるため確認してください。Tap to Pay は主認証情報の必要ロールを確認しますが、物理端末を検索しません。</p>
+          <h3 id="shared-key-creation">不足している暗号化キーを作成</h3>
+          <p>ローカル通信を使う物理端末では、認証情報、アカウント、必須項目、Checkout の確認後に、設定の取得と自動 QR インポートで<strong>暗号化キーを作成</strong>を選べます。POIID と TEST/LIVE 環境を確認してください。この端末専用のランダムなキーをバージョン 1 で生成し、パスフレーズを暗号化して保存します。ローカルで指定した値は置き換えますが、継承したキーを含む Adyen の既存キーは再利用します。作成中は他の場所で同じ端末の設定を変更しないでください。クラウドと Tap to Pay ではこの操作は表示されません。</p>
+          <p>作成が中断した場合、<strong>キー設定を再開</strong>はまず Adyen の設定を読み、再試行が必要なら保存済みの同じキーを使います。QR 設定では同じコードを再読み取りし、その転送コードを入力してください。キャンセルしてもリモートのキーは残り、確認成功まで設定を有効にしません。端末がキーを適用していない場合は<a href="troubleshooting.html#key-setup">キー設定の復旧</a>を参照してください。</p>
           <figure class="guide-shot">
             <div class="terminal terminal-s1f2">
               <img alt="QRスキャンのショートカットとAdyen APIの手順がある端末設定" height="960" loading="lazy" src="../images/terminal-setup.png" width="540">

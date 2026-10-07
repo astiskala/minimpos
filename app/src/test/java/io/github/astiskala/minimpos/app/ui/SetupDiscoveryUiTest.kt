@@ -3,6 +3,7 @@ package io.github.astiskala.minimpos.app.ui
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertTextContains
+import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.onNodeWithTag
@@ -219,12 +220,24 @@ class SetupDiscoveryUiTest {
             container.settingsState.value.terminal.environment == environment
         }
         assertRoleHelp(mode)
+        assertHintBeforeField("merchantAccountHint", "merchantAccount")
         if (environment == TerminalEnvironment.LIVE) {
+            assertHintBeforeField("livePrefixHint", "livePrefix")
             compose.onNodeWithTag("livePrefix").performScrollTo().assertIsDisplayed()
         } else {
             compose.onNodeWithTag("livePrefix").assertDoesNotExist()
         }
         assertThat(env.context.getString(R.string.settings_api_hint)).doesNotContain("API credentials")
+    }
+
+    private fun assertHintBeforeField(
+        hintTag: String,
+        fieldTag: String,
+    ) {
+        compose.onNodeWithTag(hintTag).performScrollTo()
+        val hint = compose.onNodeWithTag(hintTag).getUnclippedBoundsInRoot()
+        val field = compose.onNodeWithTag(fieldTag).getUnclippedBoundsInRoot()
+        assertThat(hint.bottom).isAtMost(field.top)
     }
 
     private fun assertEnvironmentHelpOrder(environment: TerminalEnvironment) {
@@ -294,7 +307,7 @@ class SetupDiscoveryUiTest {
     }
 
     @Test
-    fun `discovery refreshes manual fields after saving the API key without an account`() {
+    fun `discovery stays hidden until API testing succeeds then refreshes manual fields`() {
         val container = env.container
         env.updateSettings { it.copy(terminal = it.terminal.copy(mode = TerminalMode.TERMINAL, environment = TerminalEnvironment.TEST)) }
         compose.setContent { MiniMposApp(container) }
@@ -302,7 +315,17 @@ class SetupDiscoveryUiTest {
         waitForTag("section_terminal")
         compose.onNodeWithTag("section_terminal").performClick()
         waitForTag("apiKey")
+        compose.onNodeWithTag("discoverSetup").assertDoesNotExist()
+        compose.onNodeWithTag("merchantAccount").performScrollTo().performTextInput("Merchant")
+        compose.awaitCondition("the account is saved") { container.settingsState.value.terminal.merchantAccount == "Merchant" }
         compose.onNodeWithTag("apiKey").performScrollTo().performTextInput("discovery-key")
+        apiFailure = "Invalid API key"
+        compose.onNodeWithTag("testApi").performScrollTo().performClick()
+        compose.waitUntilAtLeastOneExists(hasTestTag("apiResult") and hasText("Invalid API key", substring = true), 15_000)
+        compose.onNodeWithTag("discoverSetup").assertDoesNotExist()
+        apiFailure = null
+        compose.onNodeWithTag("testApi").performScrollTo().performClick()
+        waitForTag("discoverSetup")
         compose.onNodeWithTag("discoverSetup").performScrollTo().performClick()
         waitForTag("terminal_S1F2-000158213605014")
         compose.onNodeWithTag("terminal_S1F2-000158213605014").performClick()
@@ -346,6 +369,7 @@ class SetupDiscoveryUiTest {
         apiRelease?.complete(Unit)
         compose.waitUntilAtLeastOneExists(hasTestTag("apiResult") and hasText(env.context.getString(R.string.settings_api_ok)), 15_000)
         compose.onNodeWithTag("step_3").assertDoesNotExist()
+        compose.onNodeWithTag("discoverSetup").assertDoesNotExist()
         if (holdRetest) {
             apiEntered = CompletableDeferred()
             apiRelease = CompletableDeferred()

@@ -93,7 +93,7 @@
         <section id="sell">
           <h2>销售收款</h2>
           <ol><li>在首页点击<strong>新建销售</strong>，选择商品、扫描条形码或添加自定义商品。</li><li>点击<strong>收款</strong>，核对商品、税费和合计，填写业务已启用的识别号或邮箱字段。</li><li>点击<strong>支付</strong>并遵循终端或 Payments 应用提示。等待结果后再开始其他付款。</li><li>在结果界面发送收据，或使用自动打印或邮件发送。</li></ol>
-          <p>新安装的应用只要求付款；识别号、保存卡片和小费均可选。顾客要在自己的手机上付款时，可使用<a href="#payment-links">支付链接</a>。</p>
+          <p>客户识别号、保存卡片和小费均可选；参见<a href="#shoppers">识别号设置</a>。顾客要在自己的手机上付款时，可使用<a href="#payment-links">支付链接</a>。</p>
           <p class="note">结果未知不表示付款失败。再次收款前，请<a href="troubleshooting.html#unknown">查询原付款</a>。</p>
           <p class="back-to-contents"><a href="#contents">返回目录</a></p>
         </section>
@@ -139,7 +139,7 @@
         </section>
         <section id="shoppers">
           <h2>识别号和保存卡片</h2>
-          <p>员工需记录预订或订单号时，开启<strong>设置 › 支付 › 要求输入商家交易识别号</strong>。此号码用于在Adyen中识别付款，留空则生成唯一识别号。另行选择<strong>购物者识别号</strong>：无、结账输入的客户识别号或顾客邮箱。无论是否保存卡片，每笔付款都会向 Adyen 发送该购物者识别号。邮箱默认经过哈希处理；跨设备使用相同盐值以保持识别号一致。</p>
+          <p>员工需记录预订或订单号时，开启<strong>设置 › 支付 › 要求输入商家交易识别号</strong>。此号码用于在Adyen中识别付款，留空则生成唯一识别号。另行选择<strong>购物者识别号</strong>：结账输入的客户识别号（默认）、顾客邮箱或无。不需要客户识别号时可留空；选择“无”可隐藏该字段。无论是否保存卡片，每笔付款都会向 Adyen 发送该购物者识别号。邮箱默认经过哈希处理；跨设备使用相同盐值以保持识别号一致。</p>
           <p>配置购物者识别号后，<strong>提供保存卡片选项</strong>可在结账时提供保存卡片。取得顾客同意，并选择符合 Adyen 集成的循环扣款模式。保存卡片不会在 Mini mPOS 中提供使用已保存卡片扣款的界面。</p>
           <p class="back-to-contents"><a href="#contents">返回目录</a></p>
         </section>

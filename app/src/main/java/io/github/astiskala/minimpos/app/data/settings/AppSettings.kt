@@ -360,7 +360,8 @@ enum class ReceiptTipping {
  * @property autoSendEmail When the email was captured before payment, send the receipt as soon as the payment is
  *   approved.
  * @property shopperReferenceSource What the shopper reference sent with every payment is made from, whether or not the
- *   card is saved; [ShopperReferenceSource.NONE] (what a new installation starts with) sends none and saves no cards.
+ *   card is saved; new installations use [ShopperReferenceSource.CUSTOMER_REFERENCE]. [ShopperReferenceSource.NONE]
+ *   sends none and saves no cards.
  * @property emailReferenceMode How an email becomes a shopper reference, when [shopperReferenceSource] is
  *   [ShopperReferenceSource.EMAIL].
  * @property emailReferenceSalt Salt mixed into hashed email references. Terminals with the same salt give a shopper the
@@ -382,7 +383,7 @@ data class PaymentSettings(
     val recurringProcessingModel: String = "UnscheduledCardOnFile",
     val emailCapture: EmailCapture = EmailCapture.AFTER_PAYMENT,
     val autoSendEmail: Boolean = true,
-    val shopperReferenceSource: ShopperReferenceSource = ShopperReferenceSource.NONE,
+    val shopperReferenceSource: ShopperReferenceSource = ShopperReferenceSource.CUSTOMER_REFERENCE,
     val emailReferenceMode: EmailReferenceMode = EmailReferenceMode.HASHED,
     val emailReferenceSalt: String = "",
     val offerCardSaving: Boolean = true,

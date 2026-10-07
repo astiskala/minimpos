@@ -57,11 +57,11 @@ class AppSettingsTest {
     }
 
     @Test
-    fun `a new installation asks for nothing extra at checkout, prints automatically and taxes as is usual there`() {
+    fun `a new installation asks for a customer reference, prints automatically and taxes as is usual there`() {
         val australia = AppSettings.forNewInstallation("AU")
         assertThat(australia.payment.askTransactionReference).isFalse()
-        assertThat(australia.payment.shopperReferenceSource).isEqualTo(ShopperReferenceSource.NONE)
-        assertThat(australia.payment.asksCustomerReference).isFalse()
+        assertThat(australia.payment.shopperReferenceSource).isEqualTo(ShopperReferenceSource.CUSTOMER_REFERENCE)
+        assertThat(australia.payment.asksCustomerReference).isTrue()
         assertThat(australia.receipt.autoPrint).isTrue()
         assertThat(australia.payment.receiptTipping).isEqualTo(ReceiptTipping.DISABLED)
         listOf("", "AU", "HK", "JP", "US").forEach { country ->
@@ -72,7 +72,7 @@ class AppSettingsTest {
         assertThat(australia.payment.taxMode).isEqualTo(TaxMode.INCLUSIVE)
         assertThat(AppSettings.forNewInstallation("US").payment.taxMode).isEqualTo(TaxMode.EXCLUSIVE)
         assertThat(AppSettings().payment.askTransactionReference).isFalse()
-        assertThat(AppSettings().payment.shopperReferenceSource).isEqualTo(ShopperReferenceSource.NONE)
+        assertThat(AppSettings().payment.shopperReferenceSource).isEqualTo(ShopperReferenceSource.CUSTOMER_REFERENCE)
         assertThat(AppSettings().receipt.autoPrint).isTrue()
         assertThat(australia.copy(payment = PaymentSettings(), receipt = ReceiptSettings())).isEqualTo(AppSettings())
     }

@@ -161,6 +161,7 @@ private fun ColumnScope.DestinationSteps(
         number = if (status.selectsEnvironment || status.mode == TerminalMode.PAYMENTS_APP) 2 else 1,
         cloud = status.mode == TerminalMode.CLOUD,
         discovers = status.mode != TerminalMode.PAYMENTS_APP,
+        discoveryReady = api.testCompleted(actions.api, testedFields),
         api = api,
         actions = actions,
         setup = setup,
@@ -453,10 +454,11 @@ private fun ForgetPassphrase(events: SettingsEvents) =
  * prefix. These fields remain editable when discovery is unavailable.
  */
 @Composable
-private fun ApiFields(
+private fun ColumnScope.ApiFields(
     api: ApiEntry,
     update: TerminalUpdate,
 ) {
+    SettingNote(stringResource(R.string.settings_api_hint), Modifier.testTag("merchantAccountHint"))
     SettingTextField(
         stringResource(R.string.settings_merchant_account),
         api.terminal.merchantAccount,
@@ -468,11 +470,11 @@ private fun ApiFields(
 
     // Until the environment is known, the Checkout API cannot be used anyway (SetupProblem.ENVIRONMENT).
     if (api.environment == TerminalEnvironment.LIVE || (api.environment == null && api.terminal.liveUrlPrefix.isNotBlank())) {
+        SettingNote(stringResource(R.string.settings_live_prefix_hint), Modifier.testTag("livePrefixHint"))
         SettingTextField(
             stringResource(R.string.settings_live_prefix),
             api.terminal.liveUrlPrefix,
             { value -> update { it.copy(liveUrlPrefix = value.trim()) } },
-            supporting = stringResource(R.string.settings_live_prefix_hint),
             autoCorrect = false,
             tag = "livePrefix",
         )
@@ -481,13 +483,14 @@ private fun ApiFields(
 
 /**
  * One Adyen API step for every real destination: key and account together, then [onTest] and its outcome. Optional
- * terminal discovery can fill the account before testing; saved helper fields start collapsed, never marked tested.
+ * terminal discovery appears after successful API testing; saved helper fields start collapsed, never marked tested.
  */
 @Composable
 private fun ColumnScope.AdyenApiStep(
     number: Int,
     cloud: Boolean,
     discovers: Boolean,
+    discoveryReady: Boolean,
     api: ApiEntry,
     actions: SettingsActions,
     setup: TerminalSetupActions,
@@ -508,7 +511,6 @@ private fun ColumnScope.AdyenApiStep(
     ) {
         SettingNote(stringResource(R.string.settings_adyen_key_hint))
         ApiKeyRoles(cloud, discovers)
-        SettingNote(stringResource(R.string.settings_api_hint))
 
         SecretField(
             label = stringResource(R.string.settings_api_key),
@@ -536,7 +538,7 @@ private fun ColumnScope.AdyenApiStep(
             icon = Icons.Default.Api,
         )
         OutcomeMessage(actions.api, Modifier.testTag("apiResult"))
-        if (discovers) KeyDiscoveryActions(api, setup) { setupEvents.onTerminalsFind(api.key) }
+        if (discovers && discoveryReady) KeyDiscoveryActions(api, setup) { setupEvents.onTerminalsFind(api.key) }
     }
     setup.connectedTerminals?.let { TerminalChoiceDialog(it, setupEvents::onTerminalChoose) }
 }
@@ -547,20 +549,14 @@ private fun ColumnScope.ApiKeyRoles(
     cloud: Boolean,
     discovers: Boolean,
 ) {
-    if (cloud) {
-        SettingNote(stringResource(R.string.settings_adyen_roles_hint))
-        SettingNote("• " + stringResource(R.string.settings_adyen_role_cloud), Modifier.testTag("roleCloud"))
-    }
-    SettingNote(stringResource(R.string.setup_management_permission))
+    SettingNote(stringResource(R.string.settings_adyen_roles_hint))
+    if (cloud) SettingNote("• " + stringResource(R.string.settings_adyen_role_cloud), Modifier.testTag("roleCloud"))
     SettingNote("• " + stringResource(R.string.settings_adyen_role_terminals), Modifier.testTag("roleTerminals"))
-    if (!discovers) return
-    if (!cloud) {
-        SettingNote(stringResource(R.string.settings_discovery_roles_hint))
+    if (discovers && !cloud) {
         listOf(R.string.settings_adyen_role_settings, R.string.settings_adyen_role_shared_key).forEach {
             SettingNote("• " + stringResource(it))
         }
     }
-    SettingNote(stringResource(R.string.settings_discovery_hint))
 }
 
 /** Optional terminal discovery, with its manual-entry fallback kept beside the API-key action. */

@@ -132,7 +132,7 @@
           <p>For this terminal, a network terminal or Tap to Pay, also prepare a <strong>shared key</strong>: identifier, passphrase and version, from <strong>Devices › Device settings › Integrations › Terminal API › Encryption key</strong>. See Adyen's <a href="https://docs.adyen.com/point-of-sale/design-your-integration/choose-your-architecture/local">local integration guide</a>. Cloud setups do not use this key.</p>
           <p>For a network or cloud terminal, <strong>Environment</strong> is step 1: choose <strong>TEST</strong> for test cards or <strong>LIVE</strong> for real payments. Use a terminal, account and credentials from that environment. Mini mPOS does not try an API key in the other environment. On an Adyen terminal it reads the device's verified certificate instead; with Tap to Pay it uses the installed Payments app.</p>
           <p>Each setup reveals the next step as you complete the current one. Under <strong>Adyen API</strong>, enter the API key and merchant account together, plus the live URL prefix for LIVE. Tap <strong>Test API</strong> (or <strong>Save and test API</strong> for a typed key); a successful test unlocks the next step. Obtained details stay visible and editable when you return, including partially completed sections.</p>
-          <p>For physical terminals, <strong>Save and find setup</strong> under <strong>Adyen API</strong> optionally saves the key encrypted and looks up terminals in that environment, even before entering the account. Mini mPOS only reads settings; it never creates or changes keys at Adyen. See Adyen's <a href="https://docs.adyen.com/api-explorer/Management/3/get/terminals">terminal list</a> and <a href="https://docs.adyen.com/api-explorer/Management/latest/get/terminals/(terminalId)/terminalSettings">terminal settings</a> API references. Terminal-access failures block setup; correct the credential’s Company account, permissions or scope and retry. Shared-key lookup alone is optional: after access checks pass, you can enter that key manually and test the connection. Review retrieved addresses because they may be stale. Tap to Pay checks the required main-credential role without looking up physical terminals.</p>
+          <p>For physical terminals, <strong>Find setup</strong> appears under <strong>Adyen API</strong> only after the API test succeeds for the entered key, merchant account and live URL prefix. It looks up terminal details in that environment. Mini mPOS only reads settings; it never creates or changes keys at Adyen. See Adyen's <a href="https://docs.adyen.com/api-explorer/Management/3/get/terminals">terminal list</a> and <a href="https://docs.adyen.com/api-explorer/Management/latest/get/terminals/(terminalId)/terminalSettings">terminal settings</a> API references. Terminal-access failures block setup; correct the credential’s Company account, permissions or scope and retry. Shared-key lookup alone is optional: after access checks pass, you can enter that key manually and test the connection. Review retrieved addresses because they may be stale. Tap to Pay checks the required main-credential role without looking up physical terminals.</p>
           <figure class="guide-shot">
             <div class="terminal terminal-s1f2">
               <img alt="Terminal setup with a QR scan shortcut and an Adyen API step" height="960" loading="lazy" src="images/terminal-setup.png" width="540">
@@ -169,7 +169,7 @@
           <details class="manual-setup">
             <summary>Manual</summary>
             <ol>
-              <li>In <strong>Settings › Terminal › Adyen API</strong>, enter the Adyen API key and merchant account, plus the live URL prefix for LIVE. Optionally find setup first to fill discovered details. The app reads this device's certificate to determine TEST/LIVE without a shared key. Test the API to reveal the shared-key step.</li>
+              <li>In <strong>Settings › Terminal › Adyen API</strong>, enter the Adyen API key and merchant account, plus the live URL prefix for LIVE. After the API test succeeds, optionally tap <strong>Find setup</strong> to fill terminal details. The app reads this device's certificate to determine TEST/LIVE without a shared key. Test the API to reveal the shared-key step.</li>
               <li>Review or enter the shared key and tap <strong>Test connection</strong> (or <strong>Save and test</strong> for a typed passphrase). The address and POIID are detected on the device.</li>
             </ol>
           </details>
@@ -183,7 +183,7 @@
             <summary>Manual</summary>
             <ol>
               <li>Select <strong>A terminal on your network</strong>. In step 1, <strong>Environment</strong>, choose TEST or LIVE to match the terminal.</li>
-              <li>Under <strong>Adyen API</strong>, enter the Adyen API key and merchant account, plus the live URL prefix for LIVE. Optionally choose a terminal from the lookup. Test the API to reveal the terminal step.</li>
+              <li>Under <strong>Adyen API</strong>, enter the Adyen API key and merchant account, plus the live URL prefix for LIVE. Test the API to reveal the terminal step and <strong>Find setup</strong>, then optionally choose a terminal from the lookup.</li>
               <li>Review or enter the IP address and POIID; the terminal's Device info screen shows both. Completing these fields reveals the shared-key step.</li>
               <li>Review or enter the shared key and test the connection.</li>
             </ol>
@@ -199,7 +199,7 @@
             <summary>Manual</summary>
             <ol>
               <li>Select the cloud destination. In step 1, <strong>Environment</strong>, choose TEST or LIVE to match the terminal.</li>
-              <li>Under <strong>Adyen API</strong>, enter the Adyen API key with the Cloud Device API role and merchant account, plus the live URL prefix for LIVE. Optionally choose a terminal from the lookup. Test the API to reveal the terminal step.</li>
+              <li>Under <strong>Adyen API</strong>, enter the Adyen API key with the Cloud Device API role and merchant account, plus the live URL prefix for LIVE. Test the API to reveal the terminal step and <strong>Find setup</strong>, then optionally choose a terminal from the lookup.</li>
               <li>Review or enter the terminal's POIID and tap <strong>Test connection</strong>, which also rechecks the API.</li>
             </ol>
           </details>

@@ -123,13 +123,14 @@ class AppFlowTest {
     }
 
     @Test
-    fun `a new installation's checkout asks for nothing but payment, and prints the receipt by itself`() {
+    fun `a new installation offers an optional customer reference and prints the receipt by itself`() {
         val fresh = AppSettings.forNewInstallation("AU")
         env.updateSettings { it.copy(payment = fresh.payment.copy(currencyCode = "AUD"), receipt = fresh.receipt) }
         ringUpCustomAmount(9, 5, 0)
         compose.onNodeWithTag("charge").performClick()
         compose.waitForTag("pay")
-        listOf("transactionReference", "customerReference", "email", "tokenize").forEach { compose.onNodeWithTag(it).assertDoesNotExist() }
+        compose.onNodeWithTag("customerReference").assertExists()
+        listOf("transactionReference", "email", "tokenize").forEach { compose.onNodeWithTag(it).assertDoesNotExist() }
         compose.onNodeWithTag("pay").performClick()
         waitForText("Approved")
         compose.waitForTag("virtualPrinter")

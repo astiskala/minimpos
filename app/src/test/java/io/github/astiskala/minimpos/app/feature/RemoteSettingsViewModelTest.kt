@@ -1,11 +1,13 @@
 package io.github.astiskala.minimpos.app.feature
 
 import android.os.Looper
+import androidx.lifecycle.ViewModel
 import com.google.common.truth.Truth.assertThat
 import io.github.astiskala.minimpos.app.FakeDevice
 import io.github.astiskala.minimpos.app.FakePaymentsApp
 import io.github.astiskala.minimpos.app.TestEnvironment
 import io.github.astiskala.minimpos.app.await
+import io.github.astiskala.minimpos.app.closeViewModels
 import io.github.astiskala.minimpos.app.data.db.SetupProblem
 import io.github.astiskala.minimpos.app.data.security.Secret
 import io.github.astiskala.minimpos.app.data.settings.TerminalMode
@@ -35,14 +37,16 @@ class RemoteSettingsViewModelTest {
     private val env = TestEnvironment(FakeDevice(paymentsApps = setOf(TerminalEnvironment.TEST)))
     private val container = env.container
     private val main = UnconfinedTestDispatcher()
+    private val viewModels = mutableListOf<ViewModel>()
 
     @Before
     fun setUp() = Dispatchers.setMain(main)
 
     @After
     fun tearDown() {
-        Dispatchers.resetMain()
+        closeViewModels(viewModels)
         env.close()
+        Dispatchers.resetMain()
     }
 
     private fun settingsViewModel() =
@@ -55,7 +59,7 @@ class RemoteSettingsViewModelTest {
             container.history,
             container.catalog,
             container::sampleReceipt,
-        )
+        ).also(viewModels::add)
 
     private fun awaitTerminalSelection(poiId: String) =
         await {
@@ -74,7 +78,7 @@ class RemoteSettingsViewModelTest {
             container.setupDiscovery,
             container.settings,
             settingsViewModel().state,
-        )
+        ).also(viewModels::add)
 
     @Test
     fun `the API key is saved and tested on the terminal in the cloud, which can be chosen from those connected`() {

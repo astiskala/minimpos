@@ -174,7 +174,7 @@ class SecurityAndSettingsTest {
             ).isEqualTo(EmailCapture.AFTER_PAYMENT)
 
             // A customer reference is asked for exactly when it is the shopper reference.
-            assertThat(PaymentSettings().asksCustomerReference).isFalse()
+            assertThat(PaymentSettings().asksCustomerReference).isTrue()
             assertThat(PaymentSettings(shopperReferenceSource = ShopperReferenceSource.CUSTOMER_REFERENCE).asksCustomerReference).isTrue()
             assertThat(PaymentSettings(shopperReferenceSource = ShopperReferenceSource.EMAIL).asksCustomerReference).isFalse()
             assertThat(PaymentSettings().referencePrefix).isEmpty()
@@ -246,7 +246,15 @@ class SecurityAndSettingsTest {
             val minimal = "{\"payment\":{\"currencyCode\":\"USD\"}}"
             val payment = serializer.readFrom(ByteArrayInputStream(minimal.toByteArray())).payment
             assertThat(payment.currencyCode).isEqualTo("USD")
-            assertThat(payment.asksCustomerReference).isFalse()
+            assertThat(payment.asksCustomerReference).isTrue()
+            ShopperReferenceSource.entries.forEach { source ->
+                val saved = """{"payment":{"shopperReferenceSource":"$source"}}"""
+                val restored = serializer.readFrom(ByteArrayInputStream(saved.toByteArray()))
+                assertThat(restored.payment.shopperReferenceSource).isEqualTo(source)
+                val stored = ByteArrayOutputStream()
+                serializer.writeTo(restored, stored)
+                assertThat(serializer.readFrom(ByteArrayInputStream(stored.toByteArray()))).isEqualTo(restored)
+            }
             assertThat(payment.askTransactionReference).isFalse()
             assertThat(AppSettings().terminal.environment).isNull()
             assertThat(AppSettings().terminal.host).isEmpty()

@@ -1,8 +1,10 @@
 package io.github.astiskala.minimpos.app.feature
 
+import androidx.lifecycle.ViewModel
 import com.google.common.truth.Truth.assertThat
 import io.github.astiskala.minimpos.app.TestEnvironment
 import io.github.astiskala.minimpos.app.await
+import io.github.astiskala.minimpos.app.closeViewModels
 import io.github.astiskala.minimpos.app.data.db.CategoryEntity
 import io.github.astiskala.minimpos.app.data.db.ProductEntity
 import io.github.astiskala.minimpos.app.data.db.SaleKind
@@ -35,6 +37,7 @@ import org.robolectric.RobolectricTestRunner
 class PreAuthorisationViewModelsTest {
     private val env = TestEnvironment()
     private val container = env.container
+    private val viewModels = mutableListOf<ViewModel>()
 
     @Before
     fun setUp() {
@@ -53,8 +56,9 @@ class PreAuthorisationViewModelsTest {
 
     @After
     fun tearDown() {
-        Dispatchers.resetMain()
+        closeViewModels(viewModels)
         env.close()
+        Dispatchers.resetMain()
     }
 
     private fun seed(): Triple<TaxRateEntity, ProductEntity, ProductEntity> =
@@ -76,6 +80,7 @@ class PreAuthorisationViewModelsTest {
 
     private fun preAuthViewModel() =
         SaleViewModel(container.catalog, container.session(SaleKind.PRE_AUTHORISATION), container.settingsState, container::currency)
+            .also(viewModels::add)
 
     /** Takes a pre-authorisation of [deposit] (taxed at [tax]) for customer CUST-1 and returns its sale ID. */
     private fun preAuthorise(
@@ -90,7 +95,7 @@ class PreAuthorisationViewModelsTest {
                 container.settingsState,
                 container.terminalStatus.state,
                 container::currency,
-            )
+            ).also(viewModels::add)
         checkout.update { it.copy(customerReference = "CUST-1") }
         await { checkout.state.first { it.form.customerReference == "CUST-1" && !it.totals.isEmpty } }
         assertThat(checkout.pay()).isTrue()
@@ -108,7 +113,13 @@ class PreAuthorisationViewModelsTest {
             container.catalog.saveProduct(ProductEntity(name = "Tea", priceMinor = 400, taxRateId = tax.id, categoryId = coffee))
             container.catalog.saveProduct(deposit.copy(categoryId = bookings))
         }
-        val sale = SaleViewModel(container.catalog, container.session(SaleKind.SALE), container.settingsState, container::currency)
+        val sale =
+            SaleViewModel(
+                container.catalog,
+                container.session(SaleKind.SALE),
+                container.settingsState,
+                container::currency,
+            ).also(viewModels::add)
         // A sale keeps categories that have no products yet, as before.
         assertThat(await { sale.state.first { it.categories.isNotEmpty() } }.categories.map { it.id }).containsExactly(coffee, empty)
         assertThat(await { preAuthViewModel().state.first { it.categories.isNotEmpty() } }.categories.map { it.id })
@@ -118,7 +129,13 @@ class PreAuthorisationViewModelsTest {
     @Test
     fun `the pre-authorise screen offers only pre-authorisation products, one at a time`() {
         val (_, _, deposit) = seed()
-        val sale = SaleViewModel(container.catalog, container.session(SaleKind.SALE), container.settingsState, container::currency)
+        val sale =
+            SaleViewModel(
+                container.catalog,
+                container.session(SaleKind.SALE),
+                container.settingsState,
+                container::currency,
+            ).also(viewModels::add)
         assertThat(await { sale.state.first { it.products.isNotEmpty() } }.products.map { it.name }).containsExactly("Latte")
         assertThat(await { sale.addBySku("CD") }).isNull()
 
@@ -147,7 +164,7 @@ class PreAuthorisationViewModelsTest {
                 container.settingsState,
                 container.terminalStatus.state,
                 container::currency,
-            )
+            ).also(viewModels::add)
         checkout.update { it.copy(customerReference = "CUST-1") }
         val form = await { checkout.state.first { it.form.customerReference == "CUST-1" } }
         assertThat(form.preAuthorisation).isTrue()
@@ -166,7 +183,7 @@ class PreAuthorisationViewModelsTest {
                 .cart.value.lines,
         ).isEmpty()
 
-        val result = SaleResultViewModel(id, container.storedPayments, container.receipts, container.payments)
+        val result = SaleResultViewModel(id, container.storedPayments, container.receipts, container.payments).also(viewModels::add)
         assertThat(await { result.state.first { it.record != null } }.preAuthorisation).isTrue()
         assertThat(
             container
@@ -180,7 +197,7 @@ class PreAuthorisationViewModelsTest {
         val (tax, _, deposit) = seed()
         val id = preAuthorise(deposit, tax)
         container.payments.acknowledge()
-        val history = HistoryViewModel(container.history)
+        val history = HistoryViewModel(container.history).also(viewModels::add)
         val day = await { history.state.first { it.days.isNotEmpty() } }.days.single()
         assertThat(day.totals.saleCount).isEqualTo(0)
         assertThat(day.totals.preAuthCount).isEqualTo(1)
@@ -196,7 +213,7 @@ class PreAuthorisationViewModelsTest {
                 container.receipts,
                 SaleOperations(container.payments, container.refunds, container.captures),
                 container.settingsState,
-            )
+            ).also(viewModels::add)
         val loaded = await { detail.state.first { it.record != null } }
         assertThat(loaded.actions).doesNotContain(PaymentAction.REFUND)
         assertThat(loaded.actions).contains(PaymentAction.CANCEL)

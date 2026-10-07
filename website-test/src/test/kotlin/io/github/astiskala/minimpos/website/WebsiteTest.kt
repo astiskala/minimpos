@@ -451,7 +451,7 @@ class WebsiteTest {
                         "同一网络中的终端",
                         "共享至另一台设备",
                         "Adyen API 密钥",
-                        "保存并获取设置",
+                        "获取设置",
                         "重新查询结果",
                         "需处理",
                         "设置 › 收据",
@@ -465,7 +465,7 @@ class WebsiteTest {
                         "プリオーソリ商品",
                         "プリオーソリをキャンセル",
                         "Adyen APIキー",
-                        "保存して設定を取得",
+                        "設定を取得",
                         "別のデバイスに共有",
                         "決済先",
                         "アプリ情報",
@@ -646,6 +646,18 @@ class WebsiteTest {
 
 /** Destination setup instructions and optional email fields share the website's localized page fixtures. */
 class SetupGuideTest {
+    @Test
+    fun `guides describe API gated discovery and the customer reference default`() {
+        val discovery = mapOf("en" to "only after the API test succeeds", "zh-CN" to "通过 API 测试后", "ja" to "APIテストが成功した後にだけ")
+        val defaults = mapOf("en" to "a customer reference typed at checkout (the default)", "zh-CN" to "客户识别号（默认）", "ja" to "顧客参照ID（初期設定）")
+        LANGUAGES.forEach { language ->
+            assertThat(pages.getValue(language to Kind.GUIDE).text).contains(discovery.getValue(language))
+            val using = pages.getValue(language to Kind.USING)
+            assertThat(using.document.select("#shoppers").text()).contains(defaults.getValue(language))
+            assertThat(using.document.select("#sell a[href='#shoppers']")).isNotEmpty()
+        }
+    }
+
     @Test
     fun `setup guides combine API credentials and explain progressive steps in every language`() {
         val progress =

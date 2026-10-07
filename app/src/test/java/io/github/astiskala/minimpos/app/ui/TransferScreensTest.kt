@@ -252,7 +252,17 @@ class TransferScreensTest {
     }
 
     @Test
-    fun `LIVE destination is reviewed before import and scanning alone changes nothing`() {
+    fun `LIVE destination is reviewed before import and scanning alone changes nothing`() = reviewLiveDestination()
+
+    @Test
+    @Config(qualifiers = "zh-rCN-w320dp-h460dp-hdpi")
+    fun `Chinese QR preview gives destination text full width`() = reviewLiveDestination()
+
+    @Test
+    @Config(qualifiers = "ja-w320dp-h460dp-hdpi")
+    fun `Japanese QR preview gives destination text full width`() = reviewLiveDestination()
+
+    private fun reviewLiveDestination() {
         val payload = TransferCodec.encode(protect(Transfer(connection = """{"destination":"cloud","environment":"LIVE"}""")))
         val vm = TransferImportViewModel(container.setupTransfer, "AUD", container.setupImport)
         compose.awaitCondition(
@@ -269,8 +279,11 @@ class TransferScreensTest {
             }
         }
         waitForTag("connectionPreview")
-        compose.onNodeWithText("A terminal over the internet (cloud)").assertExists()
-        compose.onNodeWithText("LIVE environment").assertExists()
+        val label = compose.onNodeWithText(env.context.getString(R.string.settings_mode)).fetchSemanticsNode().boundsInRoot
+        val destination = compose.onNodeWithText(env.context.getString(R.string.settings_mode_cloud)).fetchSemanticsNode().boundsInRoot
+        assertThat(destination.top).isAtLeast(label.bottom)
+        assertThat(destination.width).isAtLeast(label.width)
+        compose.onNodeWithText(env.context.getString(R.string.settings_env_live)).assertExists()
         compose.onNodeWithTag("importLiveWarning").performScrollTo().assertIsDisplayed()
         compose.onNodeWithTag("import").assertIsDisplayed()
         assertThat(await { container.settings.current() }).isEqualTo(before)

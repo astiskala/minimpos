@@ -116,7 +116,7 @@
           <p>この端末、ネットワーク上の端末、Tap to Pay では<strong>共有キー</strong>も用意します。<strong>Devices › Device settings › Integrations › Terminal API › Encryption key</strong> から識別子、パスフレーズ、バージョンを取得します。Adyen の<a href="https://docs.adyen.com/point-of-sale/design-your-integration/choose-your-architecture/local">ローカル統合ガイド</a>を参照してください。クラウドではこのキーは使いません。</p>
           <p>ネットワークやクラウドの端末では、手順1は<strong>環境</strong>です。テストカードには<strong>TEST</strong>、実際の決済には<strong>LIVE</strong>を選びます。同じ環境の端末、アカウント、認証情報を使用してください。Mini mPOSは別の環境でAPIキーを試しません。Adyen端末で動く場合はデバイスの検証済み証明書を読み、Tap to PayではインストールしたPaymentsアプリの環境を使います。</p>
           <p>現在の手順を完了すると次の手順が表示されます。<strong>Adyen API</strong>でAPIキーとマーチャントアカウントを一緒に入力し、LIVEではライブURLプレフィックスも入力します。<strong>APIをテスト</strong>（キーを入力した場合は<strong>APIを保存してテスト</strong>）が成功すると次に進めます。取得済み情報は、設定を開き直しても表示・編集できます。部分的に入力した項目も表示されます。</p>
-          <p>物理端末では<strong>Adyen API</strong>の<strong>保存して設定を取得</strong>でキーを暗号化して保存し、その環境の端末を取得できます。アカウントの入力前でも取得できます。アプリは Adyen の設定やキーを変更しません。Adyen の<a href="https://docs.adyen.com/api-explorer/Management/3/get/terminals">端末一覧</a>と<a href="https://docs.adyen.com/api-explorer/Management/latest/get/terminals/(terminalId)/terminalSettings">端末設定</a>の API リファレンスを参照してください。端末へのアクセス確認に失敗すると設定を続行できません。認証情報の Company アカウント、権限、アクセス範囲を修正して再試行してください。共有キーの取得だけは任意です。アクセス確認後に手入力し、接続をテストできます。取得したアドレスが古い可能性があるため確認してください。Tap to Pay は主認証情報の必要ロールを確認しますが、物理端末を検索しません。</p>
+          <p>物理端末では、入力したキー、マーチャントアカウント、ライブURLプレフィックスのAPIテストが成功した後にだけ、<strong>Adyen API</strong>に<strong>設定を取得</strong>が表示されます。その環境の端末情報を取得します。アプリは Adyen の設定やキーを変更しません。Adyen の<a href="https://docs.adyen.com/api-explorer/Management/3/get/terminals">端末一覧</a>と<a href="https://docs.adyen.com/api-explorer/Management/latest/get/terminals/(terminalId)/terminalSettings">端末設定</a>の API リファレンスを参照してください。端末へのアクセス確認に失敗すると設定を続行できません。認証情報の Company アカウント、権限、アクセス範囲を修正して再試行してください。共有キーの取得だけは任意です。アクセス確認後に手入力し、接続をテストできます。取得したアドレスが古い可能性があるため確認してください。Tap to Pay は主認証情報の必要ロールを確認しますが、物理端末を検索しません。</p>
           <figure class="guide-shot">
             <div class="terminal terminal-s1f2">
               <img alt="QRスキャンのショートカットとAdyen APIの手順がある端末設定" height="960" loading="lazy" src="../images/terminal-setup.png" width="540">
@@ -137,7 +137,7 @@
           </dl>
           <details class="manual-setup">
             <summary>手動</summary>
-            <ol><li><strong>設定 › 端末 › Adyen API</strong>でAdyen APIキーとマーチャントアカウントを入力し、LIVEではライブURLプレフィックスも入力します。任意で先に設定を取得できます。共有キーなしでこのデバイスの証明書を読み、TEST／LIVEを判別します。APIをテストすると共有キーの手順が表示されます。</li><li>共有キーを確認または入力し、<strong>接続をテスト</strong>（パスフレーズを入力した場合は<strong>保存してテスト</strong>）をタップします。アドレスと POIID はデバイスから検出します。</li></ol>
+            <ol><li><strong>設定 › 端末 › Adyen API</strong>でAdyen APIキーとマーチャントアカウントを入力し、LIVEではライブURLプレフィックスも入力します。APIテスト成功後、任意で<strong>設定を取得</strong>をタップして端末情報を補完できます。共有キーなしでこのデバイスの証明書を読み、TEST／LIVEを判別します。APIをテストすると共有キーの手順が表示されます。</li><li>共有キーを確認または入力し、<strong>接続をテスト</strong>（パスフレーズを入力した場合は<strong>保存してテスト</strong>）をタップします。アドレスと POIID はデバイスから検出します。</li></ol>
           </details>
           <h3 id="network">ネットワーク上の端末を使う</h3>
           <p>先に<a href="#install">アプリをインストール</a>し、<a href="#credentials">認証情報を用意</a>してください。</p>
@@ -147,7 +147,7 @@
           </dl>
           <details class="manual-setup">
             <summary>手動</summary>
-            <ol><li><strong>ネットワーク上の端末</strong>を選び、手順1の<strong>環境</strong>で端末に合うTESTまたはLIVEを選びます。</li><li><strong>Adyen API</strong>でAdyen APIキーとマーチャントアカウントを入力し、LIVEではライブURLプレフィックスも入力します。任意で取得した一覧から端末を選びます。APIをテストすると端末の手順が表示されます。</li><li>IPアドレスとPOIIDを確認または入力します。端末の「Device info」に両方が表示されます。入力が完了すると共有キーの手順が表示されます。</li><li>共有キーを確認または入力し、接続をテストします。</li></ol>
+            <ol><li><strong>ネットワーク上の端末</strong>を選び、手順1の<strong>環境</strong>で端末に合うTESTまたはLIVEを選びます。</li><li><strong>Adyen API</strong>でAdyen APIキーとマーチャントアカウントを入力し、LIVEではライブURLプレフィックスも入力します。APIテスト成功後に端末の手順と<strong>設定を取得</strong>が表示され、任意で取得した一覧から端末を選べます。</li><li>IPアドレスとPOIIDを確認または入力します。端末の「Device info」に両方が表示されます。入力が完了すると共有キーの手順が表示されます。</li><li>共有キーを確認または入力し、接続をテストします。</li></ol>
           </details>
           <p>接続時に端末の証明書が選択した環境と一致するか検証します。一致しなければ接続を拒否し、環境は自動変更しません。</p>
           <h3 id="cloud">インターネット経由で端末を使う</h3>
@@ -158,7 +158,7 @@
           </dl>
           <details class="manual-setup">
             <summary>手動</summary>
-            <ol><li>クラウドの決済先を選び、手順1の<strong>環境</strong>で端末に合うTESTまたはLIVEを選びます。</li><li><strong>Adyen API</strong>でCloud Device API roleを持つAdyen APIキーとマーチャントアカウントを入力し、LIVEではライブURLプレフィックスも入力します。任意で取得した一覧から端末を選びます。APIをテストすると端末の手順が表示されます。</li><li>端末のPOIIDを確認または入力し、<strong>接続をテスト</strong>をタップします。APIも再確認します。</li></ol>
+            <ol><li>クラウドの決済先を選び、手順1の<strong>環境</strong>で端末に合うTESTまたはLIVEを選びます。</li><li><strong>Adyen API</strong>でCloud Device API roleを持つAdyen APIキーとマーチャントアカウントを入力し、LIVEではライブURLプレフィックスも入力します。APIテスト成功後に端末の手順と<strong>設定を取得</strong>が表示され、任意で取得した一覧から端末を選べます。</li><li>端末のPOIIDを確認または入力し、<strong>接続をテスト</strong>をタップします。APIも再確認します。</li></ol>
           </details>
           <p>選択した環境内でデータセンターを検索します。クラウド決済はローカル決済より端末の応答を長く待つ場合があります。</p>
           <h3 id="tap-to-pay">Tap to Pay を使う</h3>

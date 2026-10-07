@@ -101,7 +101,7 @@
             <li>Tap <strong>Pay</strong> and follow the terminal or Payments app. Wait for the result before starting another payment.</li>
             <li>Deliver the receipt from the result screen, or let automatic printing/emailing handle it.</li>
           </ol>
-          <p>A new setup asks only for payment; references, saved cards and tips are optional. Use a <a href="#payment-links">payment link</a> if the customer should pay on their own phone instead.</p>
+          <p>Customer references, saved cards and tips are optional; see <a href="#shoppers">reference settings</a>. Use a <a href="#payment-links">payment link</a> if the customer should pay on their own phone instead.</p>
           <p class="note">An unknown result does not mean the payment failed. <a href="troubleshooting.html#unknown">Check the original payment</a> before charging again.</p>
           <p class="back-to-contents"><a href="#contents">Back to contents</a></p>
         </section>
@@ -159,7 +159,7 @@
         </section>
         <section id="shoppers">
           <h2>References and saved cards</h2>
-          <p>Turn on <strong>Settings › Payments › Ask for a merchant reference</strong> if staff need to record a booking or order number. That number identifies the payment in Adyen; leaving it blank generates a unique reference. Separately, choose a <strong>shopper reference</strong>: none, a customer reference typed at checkout, or the customer's email. That shopper reference goes to Adyen with every payment, whether or not the card is saved. Email references are hashed by default; use the same salt across devices for consistent identifiers.</p>
+          <p>Turn on <strong>Settings › Payments › Ask for a merchant reference</strong> if staff need to record a booking or order number. That number identifies the payment in Adyen; leaving it blank generates a unique reference. Separately, choose a <strong>shopper reference</strong>: a customer reference typed at checkout (the default), the customer's email, or none. Leave the customer reference blank when it is not needed; choose None to hide the field. That shopper reference goes to Adyen with every payment, whether or not the card is saved. Email references are hashed by default; use the same salt across devices for consistent identifiers.</p>
           <p>With a shopper reference configured, <strong>Offer to save cards</strong> makes card saving available at checkout. Obtain the shopper's consent and choose the recurring processing model appropriate to your Adyen integration. Saving a card does not provide a saved-card charging screen in Mini mPOS.</p>
           <p class="back-to-contents"><a href="#contents">Back to contents</a></p>
         </section>

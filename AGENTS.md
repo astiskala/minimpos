@@ -49,7 +49,8 @@ Adyen Payments app (Tap to Pay). The built-in simulator needs no Adyen account.
   warning. Home keeps both full-width sale/pre-authorization tiles, half-width Refund/History, slim Products/Settings.
 - Every product has a tax rate; use 0% for untaxed items. Turning tax off keeps rates. The last rate cannot be deleted.
 - Customer reference is asked for only as the shopper reference. Card saving needs a shopper reference and consent.
-  No shopper reference, extra transaction reference or card saving on a new installation; automatic printing is on.
+  New installations use Customer reference as the shopper reference, no extra transaction reference; automatic printing
+  is on.
 - API keys on the device are a documented trade-off, not a bug to solve by adding a backend. Mobile SDK card readers
   are deliberately not integrated. Real-Adyen verification gaps are listed in `CONTRIBUTING.md`.
 

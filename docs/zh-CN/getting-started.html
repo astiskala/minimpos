@@ -116,7 +116,7 @@
           <p>本终端、同一网络中的终端和 Tap to Pay 还需要<strong>共享密钥</strong>：在 <strong>Devices › Device settings › Integrations › Terminal API › Encryption key</strong> 中获取标识符、口令和版本。参见 Adyen 的<a href="https://docs.adyen.com/point-of-sale/design-your-integration/choose-your-architecture/local">本地集成指南</a>。云端配置不使用此密钥。</p>
           <p>同一网络中的终端和云端终端以<strong>环境</strong>为步骤 1：测试卡选择 <strong>TEST</strong>，真实付款选择 <strong>LIVE</strong>。终端、账户和凭据必须属于同一环境。Mini mPOS 不会在另一环境尝试 API 密钥。在 Adyen 终端上运行时，应用读取本设备经过验证的证书；Tap to Pay 则使用已安装的 Payments 应用的环境。</p>
           <p>完成当前步骤后才显示下一步。在 <strong>Adyen API</strong> 中一起输入 API 密钥和商家账户；LIVE 还需输入实时 URL 前缀。点击<strong>测试 API</strong>（输入密钥时点击<strong>保存并测试 API</strong>），测试成功后显示下一步。已获取的信息会保持可见、可编辑，再次打开设置时也一样；部分填写的设置也会显示。</p>
-          <p>实体终端可在 <strong>Adyen API</strong> 下点击<strong>保存并获取设置</strong>，加密保存密钥并在该环境查询终端；也可在输入账户前查询。应用只读取信息，不会修改 Adyen 的设置或密钥。参阅 Adyen 的<a href="https://docs.adyen.com/api-explorer/Management/3/get/terminals">终端列表</a>与<a href="https://docs.adyen.com/api-explorer/Management/latest/get/terminals/(terminalId)/terminalSettings">终端设置</a> API 文档。终端访问验证失败时不能继续设置；请更正凭据的 Company 账户、权限或访问范围后重试。仅共享密钥查询是可选的：访问验证通过后，可手动输入共享密钥并测试连接。查询到的地址可能过时，请先检查。Tap to Pay 会检查主凭据所需角色，但不查询实体终端。</p>
+          <p>实体终端在输入的密钥、商家账户及实时 URL 前缀通过 API 测试后，才会在 <strong>Adyen API</strong> 下显示<strong>获取设置</strong>，用于查询该环境的终端信息。应用只读取信息，不会修改 Adyen 的设置或密钥。参阅 Adyen 的<a href="https://docs.adyen.com/api-explorer/Management/3/get/terminals">终端列表</a>与<a href="https://docs.adyen.com/api-explorer/Management/latest/get/terminals/(terminalId)/terminalSettings">终端设置</a> API 文档。终端访问验证失败时不能继续设置；请更正凭据的 Company 账户、权限或访问范围后重试。仅共享密钥查询是可选的：访问验证通过后，可手动输入共享密钥并测试连接。查询到的地址可能过时，请先检查。Tap to Pay 会检查主凭据所需角色，但不查询实体终端。</p>
           <figure class="guide-shot">
             <div class="terminal terminal-s1f2">
               <img alt="带二维码扫描快捷入口和 Adyen API 步骤的终端设置" height="960" loading="lazy" src="../images/terminal-setup.png" width="540">
@@ -137,7 +137,7 @@
           </dl>
           <details class="manual-setup">
             <summary>手动</summary>
-            <ol><li>在<strong>设置 › 终端 › Adyen API</strong>中输入 Adyen API 密钥和商家账户，LIVE 还需输入实时 URL 前缀。可先查询设置以填写获取的信息。应用无需共享密钥即可读取本设备证书，确定 TEST/LIVE。测试 API 后显示共享密钥步骤。</li><li>检查或输入共享密钥，点击<strong>测试连接</strong>（输入口令时点击<strong>保存并测试</strong>）。地址与 POIID 从设备检测。</li></ol>
+            <ol><li>在<strong>设置 › 终端 › Adyen API</strong>中输入 Adyen API 密钥和商家账户，LIVE 还需输入实时 URL 前缀。API 测试成功后，可点击<strong>获取设置</strong>补充终端信息。应用无需共享密钥即可读取本设备证书，确定 TEST/LIVE。测试 API 后显示共享密钥步骤。</li><li>检查或输入共享密钥，点击<strong>测试连接</strong>（输入口令时点击<strong>保存并测试</strong>）。地址与 POIID 从设备检测。</li></ol>
           </details>
           <h3 id="network">搭配同一网络中的终端</h3>
           <p>请先<a href="#install">安装应用</a>并<a href="#credentials">准备凭据</a>。</p>
@@ -147,7 +147,7 @@
           </dl>
           <details class="manual-setup">
             <summary>手动</summary>
-            <ol><li>选择<strong>同一网络中的终端</strong>，在步骤 1 的<strong>环境</strong>中选择与终端一致的 TEST 或 LIVE。</li><li>在 <strong>Adyen API</strong> 中输入 Adyen API 密钥和商家账户，LIVE 还需输入实时 URL 前缀。可从查询列表选择终端。测试 API 后显示终端步骤。</li><li>检查或输入 IP 地址和 POIID；终端的“Device info”界面显示这两项。填写完整后显示共享密钥步骤。</li><li>检查或输入共享密钥并测试连接。</li></ol>
+            <ol><li>选择<strong>同一网络中的终端</strong>，在步骤 1 的<strong>环境</strong>中选择与终端一致的 TEST 或 LIVE。</li><li>在 <strong>Adyen API</strong> 中输入 Adyen API 密钥和商家账户，LIVE 还需输入实时 URL 前缀。API 测试成功后显示终端步骤及<strong>获取设置</strong>，可从查询列表选择终端。</li><li>检查或输入 IP 地址和 POIID；终端的“Device info”界面显示这两项。填写完整后显示共享密钥步骤。</li><li>检查或输入共享密钥并测试连接。</li></ol>
           </details>
           <p>连接会验证终端证书是否与所选环境一致。不一致时会拒绝连接，而不会自动更改环境。</p>
           <h3 id="cloud">通过互联网连接终端</h3>
@@ -158,7 +158,7 @@
           </dl>
           <details class="manual-setup">
             <summary>手动</summary>
-            <ol><li>选择云端支付目标，在步骤 1 的<strong>环境</strong>中选择与终端一致的 TEST 或 LIVE。</li><li>在 <strong>Adyen API</strong> 中输入具有 Cloud Device API role 的 Adyen API 密钥和商家账户，LIVE 还需输入实时 URL 前缀。可从查询列表选择终端。测试 API 后显示终端步骤。</li><li>检查或输入终端 POIID，点击<strong>测试连接</strong>，同时重新测试 API。</li></ol>
+            <ol><li>选择云端支付目标，在步骤 1 的<strong>环境</strong>中选择与终端一致的 TEST 或 LIVE。</li><li>在 <strong>Adyen API</strong> 中输入具有 Cloud Device API role 的 Adyen API 密钥和商家账户，LIVE 还需输入实时 URL 前缀。API 测试成功后显示终端步骤及<strong>获取设置</strong>，可从查询列表选择终端。</li><li>检查或输入终端 POIID，点击<strong>测试连接</strong>，同时重新测试 API。</li></ol>
           </details>
           <p>应用会在所选环境中查找数据中心。云端付款等待终端响应的时间可能比本地付款更长。</p>
           <h3 id="tap-to-pay">使用 Tap to Pay</h3>

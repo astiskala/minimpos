@@ -510,7 +510,7 @@ private fun TransferSummary(
             LabeledValue(stringResource(R.string.transfer_currency), catalogue.currencyCode)
         }
         LabeledValue(stringResource(R.string.transfer_part_settings), if (settings) stringResource(R.string.transfer_included) else none)
-        LabeledValue(stringResource(R.string.transfer_part_secrets), secrets ?: none)
+        TransferDetail(stringResource(R.string.transfer_part_secrets), secrets ?: none)
         if (connection) LabeledValue(stringResource(R.string.transfer_part_connection), stringResource(R.string.transfer_included))
     }
 }
@@ -626,7 +626,7 @@ private fun ConnectionPreview(received: ReceivedTransfer) {
     val destination = received.connectionDestination
     val environment = received.connectionEnvironment
     Card(Modifier.fillMaxWidth().testTag("connectionPreview")) {
-        LabeledValue(
+        TransferDetail(
             stringResource(R.string.settings_mode),
             stringResource(
                 when (destination) {
@@ -638,7 +638,7 @@ private fun ConnectionPreview(received: ReceivedTransfer) {
                 },
             ),
         )
-        LabeledValue(
+        TransferDetail(
             stringResource(R.string.settings_environment),
             stringResource(
                 when {
@@ -788,10 +788,21 @@ private fun ImportDone(
                 )
             }
             val secrets = secretNames(result.secrets)
-            LabeledValue(stringResource(R.string.transfer_part_secrets), secrets)
+            secrets?.let { TransferDetail(stringResource(R.string.transfer_part_secrets), it) }
         }
         if (result.businessWarning) ActionMessage(stringResource(R.string.transfer_business_failed), isError = true)
         if (result.paymentsAppChecked) Note(stringResource(R.string.transfer_tap_checked))
+    }
+}
+
+@Composable
+private fun TransferDetail(
+    label: String,
+    value: String,
+) {
+    Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Text(label, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(value, modifier = Modifier.fillMaxWidth())
     }
 }
 

@@ -54,7 +54,8 @@ Seeded before the first launch (debug builds only), piped in with
 - `files/datastore/settings.json`: auto-lock 10 min, simulator delay 6 s (so the "waiting" screen can be captured).
   Explicitly set `payment.askTransactionReference = true`, `payment.shopperReferenceSource = CUSTOMER_REFERENCE`,
   `payment.offerCardSaving = true` and `receipt.autoPrint = false` for these demos. Omitted keys take the current
-  constructor defaults, which do not ask for references, so checkout does not offer card saving.
+  constructor defaults: customer reference on, extra merchant reference off, automatic printing on. Card saving still
+  needs an entered shopper reference and consent.
 - Café "Harbour Coffee Co.", 1 Wharf Street Fremantle, ABN; GST 10% default and GST-free; AUD; 10 products in
   Coffee/Food/Retail, the beans GST-free with a barcode; plus "Catering deposit" $200.00 GST 10% in a Bookings category
   as a pre-authorisation product.

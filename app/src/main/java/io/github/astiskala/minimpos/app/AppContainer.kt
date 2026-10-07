@@ -41,6 +41,7 @@ import io.github.astiskala.minimpos.app.payment.ReceiptRecords
 import io.github.astiskala.minimpos.app.payment.RefundBook
 import io.github.astiskala.minimpos.app.payment.SaleBook
 import io.github.astiskala.minimpos.app.payment.SaleSession
+import io.github.astiskala.minimpos.app.payment.StoredPaymentActions
 import io.github.astiskala.minimpos.app.payment.TransactionLifecycle
 import io.github.astiskala.minimpos.app.payment.TransactionState
 import io.github.astiskala.minimpos.app.qr.QrCodes
@@ -488,6 +489,9 @@ class AppContainer(
             onSucceeded = { id, _ -> receipts.arm(id) },
             permits = { managerPermits() },
         )
+
+    /** Refund/cancellation initiation and capture retries, keeping reference facts out of screens. */
+    val storedPaymentActions = StoredPaymentActions(refunds, captures, settingsState)
 
     private fun completeSale(
         id: String,

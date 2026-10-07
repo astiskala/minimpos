@@ -11,6 +11,7 @@ import io.github.astiskala.minimpos.app.feature.ActionState
 import io.github.astiskala.minimpos.app.feature.launchWrite
 import io.github.astiskala.minimpos.app.feature.persisting
 import io.github.astiskala.minimpos.app.terminal.SetupDiscovery
+import io.github.astiskala.minimpos.app.terminal.SetupDiscoverySearch
 import io.github.astiskala.minimpos.app.terminal.SharedKeyOffer
 import io.github.astiskala.minimpos.app.terminal.SharedKeySetupOutcome
 import io.github.astiskala.minimpos.app.terminal.TapToPayOutcome
@@ -131,29 +132,27 @@ class TerminalSetupViewModel(
                 return@launchWrite
             }
             if (entered != null) _actions.update { it.copy(apiKeyStored = true) }
-            val discovered = discovery.find()
-            if (!discovered.isNullOrEmpty()) {
-                val current = status.state.value
-                if (current.onTerminal && current.mode == TerminalMode.TERMINAL && discovered.size == 1) {
-                    chooseTerminal(discovered.single())
-                } else {
-                    _actions.update { it.copy(terminals = ActionState(done = true), connectedTerminals = discovered) }
+            when (val discovered = discovery.find()) {
+                is SetupDiscoverySearch.Found -> {
+                    val current = status.state.value
+                    if (current.onTerminal && current.mode == TerminalMode.TERMINAL && discovered.ids.size == 1) {
+                        chooseTerminal(discovered.ids.single())
+                    } else {
+                        _actions.update { it.copy(terminals = ActionState(done = true), connectedTerminals = discovered.ids) }
+                    }
                 }
-                return@launchWrite
-            }
-            val problem = discovery.problem
-            _actions.update {
-                it.copy(
-                    terminals =
-                        if (problem ==
-                            null
-                        ) {
-                            ActionState(done = true)
-                        } else {
-                            ActionState(outcome = ActionOutcome.NotSetUp(problem), isError = true)
-                        },
-                    manualDetails = problem == null,
-                )
+
+                SetupDiscoverySearch.Unavailable -> {
+                    _actions.update { it.copy(terminals = ActionState(done = true), manualDetails = true) }
+                }
+
+                is SetupDiscoverySearch.Failed -> {
+                    _actions.update {
+                        it.copy(
+                            terminals = ActionState(outcome = ActionOutcome.NotSetUp(discovered.problem), isError = true),
+                        )
+                    }
+                }
             }
         })
     }
@@ -166,22 +165,16 @@ class TerminalSetupViewModel(
             if (poiId != null) {
                 val terminal = settings.current().terminal
                 observedSettings.first { it.settings.terminal == terminal }
-                val problem = discovery.problem
                 _actions.update {
                     it.copy(
-                        manualDetails = result != true && problem == null,
+                        manualDetails = result.manualDetails,
                         terminals =
-                            if (problem ==
-                                null
-                            ) {
-                                ActionState()
-                            } else {
-                                ActionState(outcome = ActionOutcome.NotSetUp(problem), isError = true)
-                            },
+                            result.problem?.let { problem -> ActionState(outcome = ActionOutcome.NotSetUp(problem), isError = true) }
+                                ?: ActionState(),
                         revision = it.revision + 1,
                     )
                 }
-                if (discovery.keyMissing || discovery.pendingKey() != null) keyAction(null)
+                if (result.keyMissing || discovery.pendingKey() != null) keyAction(null)
             }
         })
     }

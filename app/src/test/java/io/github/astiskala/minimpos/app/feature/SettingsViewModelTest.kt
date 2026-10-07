@@ -22,7 +22,6 @@ import io.github.astiskala.minimpos.app.data.settings.TerminalMode
 import io.github.astiskala.minimpos.app.feature.history.HistoryFilter
 import io.github.astiskala.minimpos.app.feature.history.HistoryViewModel
 import io.github.astiskala.minimpos.app.feature.history.SaleDetailViewModel
-import io.github.astiskala.minimpos.app.feature.history.SaleOperations
 import io.github.astiskala.minimpos.app.feature.products.ProductEditViewModel
 import io.github.astiskala.minimpos.app.feature.products.ProductsViewModel
 import io.github.astiskala.minimpos.app.feature.refund.RefundOption

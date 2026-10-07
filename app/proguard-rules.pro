@@ -10,8 +10,9 @@
 -keep class com.adyen.model.applicationinfo.** { *; }
 -keep class com.adyen.terminal.serialization.** { *; }
 -keep class com.adyen.serializer.SaleToAcquirerDataSerializer { *; }
--keepclassmembers,allowoptimization class com.adyen.model.checkout.**,
+-keepclassmembers class com.adyen.model.checkout.**,
     com.adyen.model.management.**,com.adyen.model.paymentsapp.**,com.adyen.model.clouddevice.**,com.adyen.model.ApiError {
+    <fields>;
     public <init>();
     @com.fasterxml.jackson.annotation.* <methods>;
 }

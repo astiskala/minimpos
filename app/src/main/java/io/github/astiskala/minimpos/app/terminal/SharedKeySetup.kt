@@ -137,21 +137,9 @@ class SharedKeySetup internal constructor(
             }
 
             is TerminalListing.Listed -> {
-                val terminal = listing.terminals.singleOrNull { it.id == attempt.id }
-                val original = attempt.unlocked.setup.settings.terminal
-                when {
-                    terminal == null -> {
-                        SharedKeySetupOutcome.Failed(SetupProblem.TERMINAL_ACCESS)
-                    }
-
-                    terminal.merchantAccount != original.merchantAccount.trim() || terminal.storeId != original.storeId -> {
-                        SharedKeySetupOutcome.Failed(SetupProblem.SETUP_CHANGED)
-                    }
-
-                    else -> {
-                        null
-                    }
-                }
+                TerminalAssignments
+                    .unchanged(listing.terminals, attempt.id, attempt.unlocked.setup.settings.terminal)
+                    ?.let { SharedKeySetupOutcome.Failed(it) }
             }
         }
 

@@ -147,11 +147,17 @@ class TransferViewModelsTest {
         import.import()
         import.setCode("x")
         assertThat(import.state.value).isInstanceOf(ImportUiState.Done::class.java)
+    }
 
-        import.restart()
-        assertThat(import.state.value).isEqualTo(ImportUiState.Scanning())
+    @Test
+    fun `corrupt transfer data clears scanned chunks and allows another transfer`() {
+        val import = TransferImportViewModel(target.container.setupTransfer, "NZD", target.container.setupImport)
+        settled(import) { it is ImportUiState.Scanning }
         import.onCode("MPC1:ABCD:1/1:AAAA")
         assertThat((import.state.value as ImportUiState.Scanning).error).isEqualTo(ImportError.CORRUPT)
+        val (codes, _) = exportCodes()
+        codes.forEach(import::onCode)
+        assertThat(import.state.value).isInstanceOf(ImportUiState.Ready::class.java)
     }
 
     @Test

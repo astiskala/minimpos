@@ -3,29 +3,25 @@ package io.github.astiskala.minimpos.app.feature.history
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import io.github.astiskala.minimpos.app.data.db.RefundEntity
-import io.github.astiskala.minimpos.app.data.db.RefundStatus
 import io.github.astiskala.minimpos.app.data.db.SaleKind
-import io.github.astiskala.minimpos.app.data.db.SaleStatus
 import io.github.astiskala.minimpos.app.data.db.SaleWithLines
 import io.github.astiskala.minimpos.app.data.repo.HistoryItem
 import io.github.astiskala.minimpos.app.data.repo.HistoryRepository
 import io.github.astiskala.minimpos.app.data.repo.RefundRepository
-import io.github.astiskala.minimpos.app.data.settings.AppSettings
 import io.github.astiskala.minimpos.app.feature.ActionState
 import io.github.astiskala.minimpos.app.feature.CaptureStep
 import io.github.astiskala.minimpos.app.feature.TransactionActions
 import io.github.astiskala.minimpos.app.feature.TransactionActionsState
 import io.github.astiskala.minimpos.app.feature.launchWrite
 import io.github.astiskala.minimpos.app.feature.toState
-import io.github.astiskala.minimpos.app.payment.Captures
 import io.github.astiskala.minimpos.app.payment.PaymentStart
 import io.github.astiskala.minimpos.app.payment.ReceiptDelivery
+import io.github.astiskala.minimpos.app.payment.StoredPaymentActions
 import io.github.astiskala.minimpos.app.payment.TransactionLifecycle
 import io.github.astiskala.minimpos.app.refund.HistoryAccounting
 import io.github.astiskala.minimpos.app.refund.HistoryActivityKind
 import io.github.astiskala.minimpos.app.refund.PaymentAction
 import io.github.astiskala.minimpos.app.refund.PaymentStanding
-import io.github.astiskala.minimpos.app.refund.RefundStart
 import io.github.astiskala.minimpos.app.refund.RefundablePayment
 import io.github.astiskala.minimpos.app.refund.StoredPayment
 import io.github.astiskala.minimpos.app.refund.StoredPayments
@@ -38,7 +34,6 @@ import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import java.time.Clock
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
@@ -245,21 +240,7 @@ class HistoryViewModel(
             }
 
             HistoryFilter.ISSUES -> {
-                needsAttention(item)
-            }
-        }
-
-    /** Whether [item]'s outcome is still pending or unknown. */
-    private fun needsAttention(item: HistoryItem): Boolean =
-        when (item) {
-            is HistoryItem.Sale -> {
-                item.sale.status == SaleStatus.UNKNOWN || item.sale.status == SaleStatus.PENDING || item.sale.adjustmentPending ||
-                    item.sale.standing in
-                    setOf(PaymentStanding.CAPTURE_FAILED, PaymentStanding.CAPTURE_UNKNOWN, PaymentStanding.CAPTURE_SENDING)
-            }
-
-            is HistoryItem.Refund -> {
-                item.refund.status == RefundStatus.UNKNOWN || item.refund.status == RefundStatus.PENDING
+                HistoryAccounting.needsAttention(item)
             }
         }
 
@@ -314,19 +295,6 @@ data class SaleDetailUiState(
 }
 
 /**
- * What the sale detail screen can do to a stored sale besides delivering its receipt.
- *
- * @property payments The payments' lifecycle, for re-checking an unknown outcome.
- * @property refunds The refunds' lifecycle, which also runs cancellations of payments that only hold their amount.
- * @property captures Sends a capture again.
- */
-class SaleOperations(
-    val payments: TransactionLifecycle<PaymentStart>,
-    val refunds: TransactionLifecycle<RefundStart>,
-    val captures: Captures,
-)
-
-/**
  * One sale (or pre-authorisation) from history: its receipt, refunds, reprinting and emailing and re-checking an
  * unknown outcome ([transaction]), cancelling a payment that only holds its amount, and sending a capture again.
  *
@@ -334,25 +302,21 @@ class SaleOperations(
  * @param payments Follows it, with what can be done with it.
  * @param refunds Where its refunds and cancellations are stored.
  * @param receipts Prints and emails its receipt.
- * @param operations Re-checks, cancels and captures.
- * @param settings The current settings, for the reference prefix of a cancellation.
- * @param clock Stamps the merchant reference of a cancellation.
- * @param zone The time zone of that reference.
+ * @param operations Cancels holds and retries captures.
+ * @param lifecycle The payments' lifecycle, for re-checking an unknown outcome.
  */
 class SaleDetailViewModel(
     private val saleId: String,
     payments: StoredPayments,
     refunds: RefundRepository,
     receipts: ReceiptDelivery,
-    private val operations: SaleOperations,
-    private val settings: StateFlow<AppSettings>,
-    private val clock: Clock = Clock.systemDefaultZone(),
-    private val zone: () -> ZoneId = { ZoneId.systemDefault() },
+    private val operations: StoredPaymentActions,
+    lifecycle: TransactionLifecycle<PaymentStart>,
 ) : ViewModel() {
     private val local = MutableStateFlow(SaleDetailUiState())
 
     /** The receipt, reprinting and emailing it, and re-checking an unknown outcome. */
-    val transaction = TransactionActions.forSale(viewModelScope, saleId, receipts, operations.payments, fresh = false)
+    val transaction = TransactionActions.forSale(viewModelScope, saleId, receipts, lifecycle, fresh = false)
 
     /** The screen state, updated whenever the sale, its refunds, the capture mode or an action changes. */
     val state: StateFlow<SaleDetailUiState> =
@@ -364,20 +328,14 @@ class SaleDetailViewModel(
      * Starts cancelling the pre-authorisation (a full reversal, see [RefundablePayment.cancellation]) and returns the
      * cancellation's ID, to follow it like a refund; null when it cannot be cancelled or a refund is already running.
      */
-    fun cancel(): String? {
-        val request =
-            state.value.record?.let {
-                RefundablePayment.cancellation(it, settings.value.payment.referencePrefix, clock.instant(), zone())
-            } ?: return null
-        return runCatching { operations.refunds.start(request) }.getOrNull()
-    }
+    fun cancel(): String? = state.value.record?.let(operations::cancel)
 
     /** Sends the capture again as it was (same amount and idempotency key); the sale updates with the outcome. */
     fun retryCapture() {
         val sale = state.value.record?.sale ?: return
         if (local.value.retry.running) return
         local.update { it.copy(retry = ActionState(running = true)) }
-        launchWrite({ operations.captures.retryCapture(saleId) }) { result ->
+        launchWrite({ operations.retryCapture(saleId) }) { result ->
             local.update { it.copy(retry = result.toState(CaptureStep.CAPTURE, sale.capturedMinor ?: 0, sale.currency)) }
         }
     }

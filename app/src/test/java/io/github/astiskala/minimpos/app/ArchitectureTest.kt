@@ -63,6 +63,7 @@ import io.github.astiskala.minimpos.app.data.transfer.ReceivedTransfer
 import io.github.astiskala.minimpos.app.data.transfer.SetupTransfer
 import io.github.astiskala.minimpos.app.feature.ActionOutcome
 import io.github.astiskala.minimpos.app.feature.TransactionActions
+import io.github.astiskala.minimpos.app.feature.history.HistoryViewModel
 import io.github.astiskala.minimpos.app.payment.CaptureResult
 import io.github.astiskala.minimpos.app.payment.Checkout
 import io.github.astiskala.minimpos.app.payment.PaymentLinkStart
@@ -77,6 +78,8 @@ import io.github.astiskala.minimpos.app.receipt.ReceiptFactory
 import io.github.astiskala.minimpos.app.refund.HistoryAccounting
 import io.github.astiskala.minimpos.app.refund.PaymentStanding
 import io.github.astiskala.minimpos.app.refund.ReceiptStanding
+import io.github.astiskala.minimpos.app.refund.RefundChoice
+import io.github.astiskala.minimpos.app.refund.RefundablePayment
 import io.github.astiskala.minimpos.app.refund.StoredPayment
 import io.github.astiskala.minimpos.app.refund.actions
 import io.github.astiskala.minimpos.app.terminal.AdyenApi
@@ -86,7 +89,13 @@ import io.github.astiskala.minimpos.app.terminal.ApiTarget
 import io.github.astiskala.minimpos.app.terminal.Destination
 import io.github.astiskala.minimpos.app.terminal.DestinationRules
 import io.github.astiskala.minimpos.app.terminal.DetectedEnvironment
+import io.github.astiskala.minimpos.app.terminal.ReceiptBusinessDetails
+import io.github.astiskala.minimpos.app.terminal.SetupAccess
+import io.github.astiskala.minimpos.app.terminal.SetupDiscovery
+import io.github.astiskala.minimpos.app.terminal.SetupImport
+import io.github.astiskala.minimpos.app.terminal.SharedKeySetup
 import io.github.astiskala.minimpos.app.terminal.SimulatedTerminal
+import io.github.astiskala.minimpos.app.terminal.TerminalAssignments
 import io.github.astiskala.minimpos.app.terminal.TerminalGateway
 import io.github.astiskala.minimpos.app.terminal.TerminalSetup
 import io.github.astiskala.minimpos.app.terminal.TerminalSetupSource
@@ -107,6 +116,7 @@ import io.github.astiskala.minimpos.terminal.parse.ReceiptField
 import io.github.astiskala.minimpos.terminal.simulator.SimulatedOutcome
 import io.github.astiskala.minimpos.terminal.transport.CloudRegion
 import io.github.astiskala.minimpos.terminal.transport.DiscoveredKey
+import io.github.astiskala.minimpos.terminal.transport.TerminalDetails
 import io.github.astiskala.minimpos.terminal.transport.TerminalDetailsApi
 import io.github.astiskala.minimpos.terminal.transport.TerminalEnvironment
 import org.junit.Assert.assertTrue
@@ -538,6 +548,50 @@ class ArchitectureTest {
         purity(pureDecisions).forEach { it.check(app) }
 
     @Test
+    fun `setup discovery outcomes have no ambient result getters`() = discoveryOutcomes.check(app)
+
+    @Test
+    fun `setup discovery rejects ambient result getters`() = reject(listOf(discoveryOutcomes), DiscoveryProtocolViolation::class.java)
+
+    private class DiscoveryProtocolViolation {
+        val problem: SetupProblem? = null
+        val keyMissing = false
+    }
+
+    @Test
+    fun `history filters consume accounting issue decisions`() = historyIssues.check(app)
+
+    @Test
+    fun `history issue ownership rejects raw financial status interpretation`() =
+        reject(listOf(historyIssues), HistoryIssueViolation::class.java)
+
+    private class HistoryIssueViolation {
+        fun issue(sale: SaleEntity) = sale.adjustmentPending
+    }
+
+    @Test
+    fun `setup tasks share the pure terminal assignment reading`() = assignmentReading.check(app)
+
+    @Test
+    fun `assignment reading rejects an independent matching module`() =
+        reject(listOf(assignmentReading), AssignmentReadingViolation::class.java)
+
+    private class AssignmentReadingViolation {
+        fun match(terminal: TerminalDetails) = terminal.merchantAccount
+    }
+
+    @Test
+    fun `screens delegate reversal initiation instead of constructing requests`() = reversalInitiation.check(app)
+
+    @Test
+    fun `reversal initiation rejects screen request construction`() =
+        reject(listOf(reversalInitiation), ReversalInitiationViolation::class.java)
+
+    private class ReversalInitiationViolation {
+        fun request(payment: RefundablePayment) = payment.request(RefundChoice.Everything, "P", Instant.EPOCH, ZoneOffset.UTC)
+    }
+
+    @Test
     fun `the transaction lifecycle stores only through its book`() =
         // It names why a transaction failed with the stored values (StoredReason, SetupProblem), which its book stores.
         noClasses()
@@ -739,6 +793,7 @@ class ArchitectureTest {
             PaymentStanding::class.java,
             ReceiptStanding::class.java,
             TerminalSetup::class.java,
+            TerminalAssignments::class.java,
             DestinationRules::class.java,
             AppSettings::class.java,
             TerminalSettings::class.java,
@@ -1050,6 +1105,54 @@ class ArchitectureTest {
                 ).should()
                 .callMethodWhere(callTo(HistoryRepository::class.java.name, "purgeForEnvironmentSwitch"))
 
+        // Discovery result facts belong to immutable outcomes, not a call-then-read protocol on the module.
+        val discoveryOutcomes: ArchRule =
+            noMethods()
+                .that()
+                .areDeclaredInClassesThat()
+                .belongToAnyOf(SetupDiscovery::class.java, DiscoveryProtocolViolation::class.java)
+                .should()
+                .haveNameMatching("get(Problem|KeyMissing).*")
+
+        // Filtering and reports must share issue meaning rather than maintaining parallel status lists.
+        val historyIssues: ArchRule =
+            noClasses()
+                .that()
+                .haveNameMatching(within(HistoryViewModel::class.java.name, HistoryIssueViolation::class.java.name))
+                .should()
+                .callMethodWhere(
+                    callTo(SaleEntity::class.java.name, "getStatus", "getAdjustmentPending")
+                        .or(callTo(RefundEntity::class.java.name, "getStatus")),
+                ).orShould()
+                .accessField(PaymentStanding::class.java, PaymentStanding.CAPTURE_FAILED.name)
+                .orShould()
+                .accessField(PaymentStanding::class.java, PaymentStanding.CAPTURE_UNKNOWN.name)
+                .orShould()
+                .accessField(PaymentStanding::class.java, PaymentStanding.CAPTURE_SENDING.name)
+
+        // Each setup task uses the same pure matching owner while its required strictness stays explicit there.
+        val assignmentReading: ArchRule =
+            classes()
+                .that(
+                    type(SetupDiscovery::class.java)
+                        .or(type(SetupAccess::class.java))
+                        .or(type(SetupImport::class.java))
+                        .or(type(SharedKeySetup::class.java))
+                        .or(type(ReceiptBusinessDetails::class.java))
+                        .or(type(AssignmentReadingViolation::class.java)),
+                ).should()
+                .dependOnClassesThat(type(TerminalAssignments::class.java))
+
+        // Reference facts and busy-start handling belong to stored-payment actions, not financial screens.
+        val reversalInitiation: ArchRule =
+            noClasses()
+                .that(resideInAnyPackage(*UI_PACKAGES).or(type(ReversalInitiationViolation::class.java)))
+                .should()
+                .callMethodWhere(
+                    callTo(RefundablePayment::class.java.name, "request")
+                        .or(callTo("${RefundablePayment::class.java.name}\$Companion", "cancellation")),
+                )
+
         val pureDecisions: DescribedPredicate<JavaClass> =
             declaredIn("io.github.astiskala.minimpos.app.payment", "Checkout.kt")
                 .or(declaredIn("io.github.astiskala.minimpos.app.payment", "PaymentLinkRequests.kt"))
@@ -1061,6 +1164,7 @@ class ArchitectureTest {
                 .or(declaredIn("io.github.astiskala.minimpos.app.refund", "RefundablePayment.kt"))
                 .or(declaredIn("io.github.astiskala.minimpos.app.refund", "HistoryAccounting.kt"))
                 .or(declaredIn("io.github.astiskala.minimpos.app.feature.history", "HistorySearch.kt"))
+                .or(declaredIn("io.github.astiskala.minimpos.app.terminal", "TerminalAssignments.kt"))
                 // TerminalSetup.kt also holds TerminalSetupSource, which reads the stored settings and secrets.
                 .or(DescribedPredicate.describe("TerminalSetup") { it.name.matches(Regex(within(TerminalSetup::class.java.name))) })
                 // What each destination needs and can do, on its adapter's companion; the adapters open transports.

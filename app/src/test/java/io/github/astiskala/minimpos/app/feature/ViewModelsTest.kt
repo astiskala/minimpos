@@ -21,7 +21,6 @@ import io.github.astiskala.minimpos.app.data.settings.TerminalMode
 import io.github.astiskala.minimpos.app.feature.history.HistoryFilter
 import io.github.astiskala.minimpos.app.feature.history.HistoryViewModel
 import io.github.astiskala.minimpos.app.feature.history.SaleDetailViewModel
-import io.github.astiskala.minimpos.app.feature.history.SaleOperations
 import io.github.astiskala.minimpos.app.feature.products.ProductEditViewModel
 import io.github.astiskala.minimpos.app.feature.products.ProductsViewModel
 import io.github.astiskala.minimpos.app.feature.refund.RefundOption
@@ -346,7 +345,7 @@ class ViewModelsTest {
         container.payments.acknowledge()
         val record = await { container.sales.get(saleId)!! }
 
-        val vm = RefundViewModel(null, saleId, container.sales, container.refunds, container.settingsState)
+        val vm = RefundViewModel(null, saleId, container.sales, container.storedPaymentActions)
         val ready = await { vm.state.first { it.load is Refundability.Refundable } }
         assertThat(ready.refundMinor).isEqualTo(900)
         assertThat(ready.amountValid).isTrue()
@@ -396,7 +395,7 @@ class ViewModelsTest {
         val saleId = payAndWait()
         container.payments.acknowledge()
         val lineId = await { container.sales.get(saleId)!! }.sortedLines.single().id
-        val vm = RefundViewModel(null, saleId, container.sales, container.refunds, container.settingsState)
+        val vm = RefundViewModel(null, saleId, container.sales, container.storedPaymentActions)
         await { vm.state.first { it.load is Refundability.Refundable } }
         vm.selectOption(RefundOption.ITEMS)
         vm.setQuantity(lineId, 1)
@@ -418,7 +417,7 @@ class ViewModelsTest {
 
         // Scanning the same receipt again knows what is left.
         val qr = RefundablePayment.qrCode(await { container.sales.get(saleId)!! })!!
-        val again = RefundViewModel(qr, null, container.sales, container.refunds, container.settingsState)
+        val again = RefundViewModel(qr, null, container.sales, container.storedPaymentActions)
         val original = await { again.state.first { it.load is Refundability.Refundable } }.original!!
         assertThat(original.remainingMinor).isEqualTo(450)
         assertThat(original.local).isNotNull()
@@ -428,7 +427,7 @@ class ViewModelsTest {
     fun `refund view model handles foreign and invalid receipts`() {
         env.useSimulator()
         val foreign = RefundQrPayload("TENDER.PSPX", Instant.parse("2026-01-01T00:00:00Z"), 1_000, "AUD", "MP-9").encode()
-        val vm = RefundViewModel(foreign, null, container.sales, container.refunds, container.settingsState)
+        val vm = RefundViewModel(foreign, null, container.sales, container.storedPaymentActions)
         val ready = await { vm.state.first { it.load is Refundability.Refundable } }
         assertThat(ready.original!!.local).isNull()
         assertThat(ready.original!!.timestamp).isEqualTo("2026-01-01T00:00:00.000Z")
@@ -445,7 +444,7 @@ class ViewModelsTest {
         ) = (
             checkNotNull(
                 await {
-                    RefundViewModel(payload, saleId, container.sales, container.refunds, container.settingsState).state.first {
+                    RefundViewModel(payload, saleId, container.sales, container.storedPaymentActions).state.first {
                         it.load != null
                     }
                 }.load,
@@ -494,8 +493,8 @@ class ViewModelsTest {
                 container.storedPayments,
                 container.refundRecords,
                 container.receipts,
-                SaleOperations(container.payments, container.refunds, container.captures),
-                container.settingsState,
+                container.storedPaymentActions,
+                container.payments,
             )
         val state = await { detail.state.first { it.record != null } }
         assertThat(state.actions).contains(PaymentAction.REFUND)

@@ -209,8 +209,13 @@ class SmallScreenTest {
         compose.onNodeWithTag("section_terminal").performClick()
         waitForTag("testApi")
         compose.onNodeWithTag("testApi").performScrollTo().performClick()
+        waitForTag("apiResult")
         waitForTag("testConnection")
-        compose.onNodeWithTag("testConnection").performScrollTo().performClick()
+        compose
+            .onNodeWithTag("testConnection")
+            .performScrollTo()
+            .assertIsDisplayed()
+            .performClick()
         waitForText("Connected (OK")
         compose.onNodeWithTag("connectionResult").assertTextContains("Payments are taken in AUD", substring = true)
     }

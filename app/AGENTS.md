@@ -23,8 +23,9 @@ Starred rules below are enforced by `ArchitectureTest`, `SettingsArchitectureTes
 - \* `PaymentStanding` alone reads capture/hold status (apart from `SaleEvent` writing it); `CaptureStatus.captured`
   defines captured statuses. `StoredPayment.actions` owns allowed actions and is checked by capture operations too.
 - \* Decision rules stay pure: Checkout, PaymentLinkRequests, SaleEvent, PaymentStanding, RefundablePayment,
-  HistorySearch, HistoryAccounting, TerminalSetup, DestinationRules and settings models. No Android, coroutines,
-  repositories or clocks; do not rederive their decisions elsewhere. `ReceiptStanding` owns receipt meaning;
+  HistorySearch, HistoryAccounting, TerminalAssignments, TerminalSetup, DestinationRules and settings models. No Android,
+  coroutines, repositories or clocks; do not rederive their decisions elsewhere. History filters reuse accounting's issue
+  meaning rather than reading pending/unknown status fields. `ReceiptStanding` owns receipt meaning;
   only the stored-payment reading interprets the original payment context's simulator flag for demo links.
 - \* Only `TerminalSetupSource` calls `TerminalSetup.resolve` and reads destination/API secrets. Unlock once per call;
   unreadable secrets become typed setup problems. `boarding()` does the same for the Payments app credential.
@@ -35,6 +36,8 @@ Starred rules below are enforced by `ArchitectureTest`, `SettingsArchitectureTes
   replacement or phone registration. Only it and `TerminalStatus` record verified identities through `TerminalSetupSource`.
 - \* Only `SharedKeySetup` creates terminal-specific keys at Adyen, after explicit confirmation and encrypted recovery
   persistence. Discovery stays read-only; existing effective keys are reused, never deliberately replaced.
+- \* Setup tasks share `TerminalAssignments`' pure account/identity/store reading, preserving their distinct strictness.
+  `SetupDiscovery` returns immutable operation outcomes, not ambient problem/key-missing getters.
 - \* Destination requirements/capabilities belong to adapter companions in `Destinations.kt`; `DestinationRules.of`
   selects rules. Adapters open transports; only `Destination.connect` constructs clients, only the gateway opens
   adapters. Outside destination/rules/settings code, don't branch on CLOUD or PAYMENTS_APP.
@@ -46,6 +49,9 @@ Starred rules below are enforced by `ArchitectureTest`, `SettingsArchitectureTes
   stays unknown when setup is unavailable; a context mismatch must change nothing. `TerminalSetup` decides link offers.
 - \* Only `share` hands files to other apps; `ShareSheet` exposes one cached image under `shared_files.xml`.
   Screens use `TransactionActions.share` and `ShareEffect`; offer only when `TerminalState.canShare`.
+- \* Financial screens initiate refunds/cancellations through `StoredPaymentActions`, not pure request construction.
+  It owns reference facts and busy-start handling; eligibility, foreign-receipt review and financial rechecks stay with
+  their existing owners.
 - \* Screens access receipts through `TransactionActions`, backed by `ReceiptDelivery` for `StoredTransaction`.
   Only delivery uses `ReceiptFactory`; only the container arms automatic delivery. UI state outside Settings must
   not hold `AppSettings` or `printerAvailable`.

@@ -1,6 +1,7 @@
 package io.github.astiskala.minimpos.app.refund
 
 import io.github.astiskala.minimpos.app.data.db.RefundStatus
+import io.github.astiskala.minimpos.app.data.db.SaleEntity
 import io.github.astiskala.minimpos.app.data.db.SaleStatus
 import io.github.astiskala.minimpos.app.data.repo.HistoryItem
 import java.time.Instant
@@ -131,6 +132,21 @@ data class HistoryReport(
 
 /** Pure processing-day accounting shared by filtered History and unfiltered reports; no clock or storage access. */
 object HistoryAccounting {
+    /** Whether [item] has any issue activity; multiple unresolved operations still select its record only once. */
+    fun needsAttention(item: HistoryItem): Boolean =
+        when (item) {
+            is HistoryItem.Sale -> item.sale.hasOperationIssue() || item.sale.hasCaptureIssue()
+            is HistoryItem.Refund -> item.refund.status.unresolved
+        }
+
+    private fun SaleEntity.hasOperationIssue(): Boolean = status == SaleStatus.PENDING || status == SaleStatus.UNKNOWN || adjustmentPending
+
+    private fun SaleEntity.hasCaptureIssue(): Boolean {
+        val standing = standing
+        return standing == PaymentStanding.CAPTURE_FAILED || standing == PaymentStanding.CAPTURE_UNKNOWN ||
+            standing == PaymentStanding.CAPTURE_SENDING
+    }
+
     /** Original attempts plus monetary activities; missing capture/link dates stay null rather than being guessed. */
     fun activities(items: List<HistoryItem>): List<HistoryActivity> =
         items.flatMap { item ->
@@ -153,7 +169,7 @@ object HistoryAccounting {
                                 ),
                             )
                         }
-                        if (refund.status == RefundStatus.PENDING || refund.status == RefundStatus.UNKNOWN) {
+                        if (refund.status.unresolved) {
                             add(HistoryActivity(item, refund.createdAt, HistoryActivityKind.ISSUE))
                         }
                     }
@@ -190,10 +206,10 @@ object HistoryAccounting {
                     }
                 }
             }
-            if (sale.status == SaleStatus.PENDING || sale.status == SaleStatus.UNKNOWN || sale.adjustmentPending) {
+            if (sale.hasOperationIssue()) {
                 add(HistoryActivity(item, sale.createdAt, HistoryActivityKind.ISSUE))
             }
-            if (sale.standing in setOf(PaymentStanding.CAPTURE_FAILED, PaymentStanding.CAPTURE_UNKNOWN, PaymentStanding.CAPTURE_SENDING)) {
+            if (sale.hasCaptureIssue()) {
                 add(HistoryActivity(item, sale.captureStartedAt ?: sale.createdAt, HistoryActivityKind.ISSUE))
             }
         }

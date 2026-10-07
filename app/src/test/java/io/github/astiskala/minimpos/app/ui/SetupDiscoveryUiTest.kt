@@ -21,6 +21,7 @@ import io.github.astiskala.minimpos.app.await
 import io.github.astiskala.minimpos.app.awaitCondition
 import io.github.astiskala.minimpos.app.data.security.Secret
 import io.github.astiskala.minimpos.app.data.settings.TerminalMode
+import io.github.astiskala.minimpos.app.terminal.TerminalConnection
 import io.github.astiskala.minimpos.terminal.checkout.PaymentModifications
 import io.github.astiskala.minimpos.terminal.simulator.SimulatedModifications
 import io.github.astiskala.minimpos.terminal.transport.TerminalEnvironment
@@ -201,16 +202,16 @@ class SetupDiscoveryUiTest {
         container.start()
         compose.setContent { MiniMposApp(container) }
         compose.onNodeWithTag("settings").performClick()
-        waitForTag("section_terminal")
+        compose.waitUntilAtLeastOneExists(
+            hasTestTag("section_terminal") and hasText(env.context.getString(R.string.settings_status_not_set_up), substring = true),
+            15_000,
+        )
         compose.onNodeWithTag("section_terminal").performClick()
         waitForTag("step_1")
         compose.onNodeWithTag("step_1").assertTextContains(env.context.getString(R.string.settings_environment))
         assertEnvironmentHelpOrder(environment)
         compose.onNodeWithTag("apiKey").assertDoesNotExist()
-        compose.waitUntilAtLeastOneExists(
-            hasTestTag("connectionStatus") and hasText(env.context.getString(R.string.setup_environment), substring = true),
-            15_000,
-        )
+        compose.onNodeWithTag("connectionStatus").assertDoesNotExist()
         compose.onNodeWithTag("environment_$environment").assertIsDisplayed().performClick()
         waitForTag("apiKey")
         compose.onNodeWithTag("step_2").assertTextContains(env.context.getString(R.string.settings_api))
@@ -267,6 +268,7 @@ class SetupDiscoveryUiTest {
         phone.paymentsApps = setOf(TerminalEnvironment.TEST)
         val container = env.container
         env.updateSettings { it.copy(terminal = it.terminal.copy(mode = TerminalMode.PAYMENTS_APP)) }
+        container.start()
         compose.setContent { MiniMposApp(container) }
         compose.onNodeWithTag("settings").performClick()
         waitForTag("section_terminal")
@@ -295,6 +297,11 @@ class SetupDiscoveryUiTest {
         apiFailure = null
         compose.onNodeWithTag("testApi").performScrollTo().performClick()
         waitForTag("setUpTapToPay")
+        compose.awaitCondition("the unregistered phone needs setup") {
+            container.terminalStatus.state.value.connection is TerminalConnection.NotSetUp
+        }
+        compose.onNodeWithTag("connectionStatus").assertDoesNotExist()
+        compose.onNodeWithText(env.context.getString(R.string.settings_not_boarded)).assertExists()
         compose.onNodeWithTag("terminalsResult").assertDoesNotExist()
         compose.onNodeWithTag("step_3").assertExists()
         compose.onNodeWithTag("step_4").assertDoesNotExist()
@@ -329,13 +336,13 @@ class SetupDiscoveryUiTest {
         compose.onNodeWithTag("discoverSetup").performScrollTo().performClick()
         waitForTag("terminal_S1F2-000158213605014")
         compose.onNodeWithTag("terminal_S1F2-000158213605014").performClick()
-        compose.awaitCondition("discovered settings reach the screen") {
-            container.settingsState.value.terminal.merchantAccount ==
-                "Merchant"
+        compose.awaitCondition("discovered connection details are saved") {
+            val terminal = container.settingsState.value.terminal
+            terminal.host == "192.168.1.42" && terminal.poiIdOverride == "S1F2-000158213605014"
         }
-        compose.onNodeWithTag("host").assertExists()
+        compose.waitUntilAtLeastOneExists(hasTestTag("host") and hasText("192.168.1.42", substring = true), 15_000)
         compose.onNodeWithTag("testApi").performScrollTo().performClick()
-        waitForTag("host")
+        compose.waitUntilAtLeastOneExists(hasTestTag("apiResult") and hasText("API key works", substring = true), 15_000)
         compose.onNodeWithTag("host").performScrollTo().assertTextContains("192.168.1.42", substring = true)
         compose.onNodeWithTag("poiId").assertTextContains("S1F2-000158213605014", substring = true)
         compose.onNodeWithTag("merchantAccount").performScrollTo().assertTextContains("Merchant", substring = true)

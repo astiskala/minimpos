@@ -7,6 +7,7 @@ import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertIsOff
 import androidx.compose.ui.test.assertIsOn
 import androidx.compose.ui.test.assertTextContains
+import androidx.compose.ui.test.hasAnySibling
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.isOn
@@ -172,6 +173,7 @@ class TransferScreensTest {
         compose.onNodeWithTag("transferCodeInput").performScrollTo().performTextInput("2222 2222 2222")
         compose.onNodeWithTag("import").performClick()
         compose.waitUntilAtLeastOneExists(hasText("That transfer code is wrong", substring = true), 15_000)
+        compose.onNodeWithText("Scan again").assertDoesNotExist()
         compose.onNodeWithTag("transferCodeInput").performTextReplacement(code.lowercase())
         compose.onNodeWithTag("import").performClick()
         waitForTag("importDone")
@@ -237,7 +239,12 @@ class TransferScreensTest {
         }
         waitForTag("import")
         compose.onNodeWithText("Connection").performScrollTo().assertIsDisplayed()
-        compose.onNodeWithText("From the setup helper", substring = true).performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("From the setup helper", substring = true).assertDoesNotExist()
+        compose.onNodeWithText("Automatic lookup resolves", substring = true).assertDoesNotExist()
+        compose.onNodeWithText("Included, with a transfer code").assertDoesNotExist()
+        compose.onNodeWithText("Dashes are automatic.", substring = true).assertDoesNotExist()
+        compose.onNodeWithText("Scan again").assertDoesNotExist()
+        assertImportSummary()
         compose.onNodeWithTag("transferCodeInput").performScrollTo().performTextInput(code)
         compose.onNodeWithTag("import").performClick()
         waitForTag("importDone")
@@ -262,6 +269,19 @@ class TransferScreensTest {
     @Config(qualifiers = "ja-w320dp-h460dp-hdpi")
     fun `Japanese QR preview gives destination text full width`() = reviewLiveDestination()
 
+    private fun assertImportSummary() {
+        compose.onNodeWithTag("transferCodeInput").performScrollTo()
+        val summary = compose.onNodeWithTag("transferSummary").fetchSemanticsNode().boundsInRoot
+        val input = compose.onNodeWithTag("transferCodeInput").fetchSemanticsNode().boundsInRoot
+        assertThat(input.top - summary.bottom).isAtLeast(0f)
+        assertThat(input.top - summary.bottom).isLessThan(32f)
+        compose
+            .onNode(
+                hasText(env.context.getString(R.string.transfer_part_secrets)) and
+                    hasAnySibling(hasText(env.context.getString(R.string.transfer_included))),
+            ).assertExists()
+    }
+
     private fun reviewLiveDestination() {
         val payload = TransferCodec.encode(protect(Transfer(connection = """{"destination":"cloud","environment":"LIVE"}""")))
         val vm = TransferImportViewModel(container.setupTransfer, "AUD", container.setupImport)
@@ -271,10 +291,11 @@ class TransferScreensTest {
         QrChunks.split(payload, "LIVE").forEach { vm.onCode(it.encode()) }
         vm.setCode(fixtureCode)
         val before = await { container.settings.current() }
+        val navigator = Navigator(NavBackStack<NavKey>(Route.Home, Route.TransferImport))
         compose.setContent {
             MiniMposTheme {
                 CompositionLocalProvider(LocalAppContainer provides container) {
-                    TransferImportScreen(Navigator(NavBackStack<NavKey>(Route.Home, Route.TransferImport)), vm = vm)
+                    TransferImportScreen(navigator, vm = vm)
                 }
             }
         }
@@ -285,6 +306,7 @@ class TransferScreensTest {
         assertThat(destination.width).isAtLeast(label.width)
         compose.onNodeWithText(env.context.getString(R.string.settings_env_live)).assertExists()
         compose.onNodeWithTag("importLiveWarning").performScrollTo().assertIsDisplayed()
+        assertImportSummary()
         compose.onNodeWithTag("import").assertIsDisplayed()
         assertThat(await { container.settings.current() }).isEqualTo(before)
         compose.onNodeWithTag("import").performClick()
@@ -292,6 +314,8 @@ class TransferScreensTest {
             hasText(env.context.getString(R.string.transfer_missing_fields)),
             15_000,
         )
+        compose.onNodeWithTag("back").performClick()
+        assertThat(navigator.current).isEqualTo(Route.Home)
         assertThat(await { container.settings.current() }).isEqualTo(before)
     }
 }

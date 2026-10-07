@@ -33,13 +33,13 @@ existing spelling (`preAuthorisation`, `SaleKind.PRE_AUTHORISATION`, `authorised
 | Term | Meaning | Owner / code name |
 | --- | --- | --- |
 | Standing | Where a payment stands: charged, awaiting tip, held, capture requested/failed/unknown, or cancelled. | `refund/PaymentStanding`, `sale.standing` |
-| Actions | Operations permitted on a stored payment now. | `StoredPayment.actions`, `PaymentAction` |
+| Actions | Operations permitted on a stored payment now; refund/cancellation initiation and capture retry keep reference facts out of screens. | `StoredPayment.actions`, `PaymentAction`, `payment/StoredPaymentActions` |
 | Capture | Collects a held amount through Checkout; accepted requests still need Adyen's final confirmation. | `payment/Captures` |
 | Adjustment | Changes or renews an authorization before capture; an unresolved request retains its identity. | `Captures.adjust` |
 | Tip on the receipt | Sale held with manual capture; customer writes a tip on paper, then staff enter and capture it. Tips above 20% require adjustment first. | `tipOnReceipt`, `PaymentStanding` |
 | Cancellation | Full reversal of a held payment; if already captured externally, Adyen refunds it instead. | `PaymentAction.CANCEL` |
 | Refund | Referenced return of a charged payment, full/by amount/by item. Item refunds need the stored original sale. | `RefundablePayment`, `RefundStart`, refund QR `MPR1*` |
-| Day totals / history search | Processing-day aggregation of retained activity currently shown; capture and tip count on acceptance day, new holds stay separate. | `refund/HistoryAccounting`, `feature/history/HistorySearch` |
+| Day totals / history search | Processing-day aggregation of retained activity currently shown; capture and tip count on acceptance day, new holds stay separate. Issue filtering uses the same accounting activity reading. | `refund/HistoryAccounting`, `feature/history/HistorySearch` |
 | Daily report | Unfiltered whole-day local summary; currencies/environments separate, undated links/captures excluded from dated net. Seeded samples count as demos and disappear with sample purge. | `HistoryAccounting`, `ReceiptDelivery` |
 | History environment switch | Explicitly confirmed LIVE/TEST/simulator transition deletes all local operations, including unfinished ones; durable non-secret journal completes destination settings. | `terminal/HistorySwitches` |
 | Operation identity | Persisted key and request facts for one logical operation; retries reuse them, separate renewals get new ones. | Stored capture, adjustment and link requests |
@@ -55,7 +55,8 @@ existing spelling (`preAuthorisation`, `SaleKind.PRE_AUTHORISATION`, `authorised
 | Destination | Where payments go: local terminal, cloud terminal, Payments app or simulator. | `terminal/Destination`, `TerminalMode` |
 | Destination rules | Pure requirements/capabilities: setup, printer, secrets, recovery, timeouts, abort/diagnosis. | `DestinationRules`, adapter companions in `Destinations.kt` |
 | Terminal setup | One resolved reading of destination, identity, environment, API setup and printer. | `TerminalSetup.resolve`, `TerminalSetupSource` |
-| Setup discovery | Read-only terminal assignment and optional shared-key lookup; terminal access and the main credential's required Management role are verified for every real setup. | `terminal/SetupDiscovery`, `SetupAccess` |
+| Setup discovery | Read-only terminal assignment and optional shared-key lookup; immutable operation outcomes distinguish unavailable discovery, failures and manual completion. Terminal access and the main credential's required Management role are verified for every real setup. | `terminal/SetupDiscovery`, `SetupAccess` |
+| Terminal assignment | Pure reading of listed POIIDs, merchant accounts and stores; discovery may fill a blank account, access requires an exact account, and shared-key creation also requires an unchanged store and unique identity. | `terminal/TerminalAssignments` |
 | Verified setup | Local fingerprint of checked connection fields and encrypted payment secrets; changed facts invalidate it, not a process restart. | `TerminalSetupSource`, `AppSettings.verifiedSetup` |
 | Verified setup import | Authenticated QR candidate checked before activation; encrypted commit journal resumes interrupted saves, with an atomic catalog import receipt. | `terminal/SetupImport`, `data/transfer/SetupTransfer` |
 | Unlocked setup | Resolved setup with required secrets decrypted once. | `UnlockedSetup` |

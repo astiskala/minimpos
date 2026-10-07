@@ -191,6 +191,9 @@ class CheckoutModificationsTest {
             val request = server.takeRequest()
             assertThat(request.url.encodedPath).isEqualTo("/v72/paymentMethods")
             assertThat(request.headers["Idempotency-Key"]).isNull()
+            assertThat(JsonParser.parseString(request.body!!.utf8())).isEqualTo(
+                JsonParser.parseString("""{"merchantAccount":"HarbourCoffeeCOM"}"""),
+            )
             assertThat(api.verify()).isEqualTo("Adyen did not accept the API key (HTTP 401)")
             assertThat(api.verify()).isEqualTo("The API key may not use merchant account HarbourCoffeeCOM (HTTP 403)")
             assertThat(api.verify()).isEqualTo("Invalid merchant account (HTTP 422, code 901)")

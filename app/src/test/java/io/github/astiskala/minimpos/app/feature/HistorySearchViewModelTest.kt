@@ -8,10 +8,13 @@ import io.github.astiskala.minimpos.app.data.db.RefundEntity
 import io.github.astiskala.minimpos.app.data.db.RefundStatus
 import io.github.astiskala.minimpos.app.data.db.SaleEntity
 import io.github.astiskala.minimpos.app.data.db.SaleStatus
+import io.github.astiskala.minimpos.app.data.repo.HistoryItem
 import io.github.astiskala.minimpos.app.feature.history.HistoryFilter
 import io.github.astiskala.minimpos.app.feature.history.HistoryUiState
 import io.github.astiskala.minimpos.app.feature.history.HistoryViewModel
 import io.github.astiskala.minimpos.app.feature.history.PaymentMethodFilter
+import io.github.astiskala.minimpos.app.refund.HistoryAccounting
+import io.github.astiskala.minimpos.app.refund.HistoryActivityKind
 import io.github.astiskala.minimpos.core.payment.Wallet
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -160,6 +163,59 @@ class HistorySearchViewModelTest {
             assertThat(days.first().totals.salesMinor).containsExactly("AUD", 2400L)
             assertThat(days.last().totals.salesMinor).isEmpty()
             assertThat(days.last().totals.preAuthsMinor).containsExactly("AUD", 2000L)
+        }
+
+    @Test
+    fun `issues filter agrees with accounting across sale refund and capture outcomes`() =
+        runTest(dispatcher) {
+            val sales =
+                SaleStatus.entries.map { sale("sale-$it", 1000, "visa", "visa").copy(status = it) } +
+                    CaptureStatus.entries.map {
+                        sale("capture-$it", 1000, "visa", "visa").copy(tipOnReceipt = true, captureStatus = it, capturedMinor = 1000)
+                    } +
+                    listOf(
+                        sale(
+                            "adjustment",
+                            1000,
+                            "visa",
+                            "visa",
+                        ).copy(adjustmentPending = true, adjustmentKey = "adjust", adjustmentAmountMinor = 1100),
+                        sale("two-issues", 1000, "visa", "visa").copy(
+                            tipOnReceipt = true,
+                            captureStatus = CaptureStatus.UNKNOWN,
+                            adjustmentPending = true,
+                            adjustmentKey = "adjust-both",
+                            adjustmentAmountMinor = 1100,
+                        ),
+                    )
+            val refunds =
+                RefundStatus.entries.map {
+                    RefundEntity(
+                        id = "refund-$it",
+                        saleId = null,
+                        createdAt = 1000,
+                        merchantReference = "R-$it",
+                        originalTransactionId = "T",
+                        originalTimestamp = "2026-10-01T00:00:00Z",
+                        originalReference = null,
+                        currency = "AUD",
+                        amountMinor = 100,
+                        full = false,
+                        status = it,
+                    )
+                }
+            sales.forEach { db.saleDao().insert(it) }
+            refunds.forEach { db.refundDao().insert(it) }
+            val items = sales.map { HistoryItem.Sale(it) } + refunds.map { HistoryItem.Refund(it) }
+            val expected =
+                HistoryAccounting
+                    .activities(items)
+                    .filter { it.kind == HistoryActivityKind.ISSUE }
+                    .map { it.item.id }
+                    .distinct()
+            val vm = historyViewModel()
+            vm.setFilter(HistoryFilter.ISSUES)
+            assertThat(vm.ids { it.filter == HistoryFilter.ISSUES }.distinct()).containsExactlyElementsIn(expected)
         }
 
     @Test

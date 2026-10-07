@@ -197,26 +197,24 @@ class SetupImport internal constructor(
         listing: TerminalListing.Listed,
         selected: String?,
     ): SetupImportOutcome? {
-        val id = setup.poiId ?: selected
-        val account =
-            prepared.settings.terminal.merchantAccount
-                .trim()
-        val eligible = listing.terminals.filter { it.merchantAccount.isNotBlank() && (account.isBlank() || it.merchantAccount == account) }
-        val terminal = if (id != null) listing.terminals.firstOrNull { it.id == id } else eligible.singleOrNull()
-        return when {
-            terminal == null -> {
-                if (id == null && eligible.size > 1) {
-                    SetupImportOutcome.Terminals(eligible.map { it.id })
-                } else {
-                    SetupImportOutcome.Failed(SetupProblem.TERMINAL_ACCESS)
-                }
+        return when (
+            val assignment =
+                TerminalAssignments.discover(
+                    listing.terminals,
+                    setup.poiId ?: selected,
+                    prepared.settings.terminal.merchantAccount,
+                )
+        ) {
+            is TerminalAssignment.Choices -> {
+                SetupImportOutcome.Terminals(assignment.ids)
             }
 
-            account.isNotBlank() && account != terminal.merchantAccount -> {
-                SetupImportOutcome.Failed(SetupProblem.MERCHANT_MISMATCH)
+            is TerminalAssignment.Blocked -> {
+                SetupImportOutcome.Failed(assignment.problem)
             }
 
-            else -> {
+            is TerminalAssignment.Assigned -> {
+                val terminal = assignment.terminal
                 applyAssignment(prepared, setup, terminal)
                 if (prepared.received.automatic && setup.needsSharedKey) {
                     when (val found = management.sharedKey(terminal.id, listing.environment)) {

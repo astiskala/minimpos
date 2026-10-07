@@ -375,10 +375,8 @@
   <string name="transfer_replace">Replace this catalog</string>
   <string name="transfer_replace_hint">Deletes all products, categories and tax rates here first.</string>
   <string name="transfer_replace_confirm">All products, categories and tax rates on this device will be deleted and replaced.</string>
-  <string name="transfer_scan_again">Scan again</string>
   <string name="transfer_done">Import complete</string>
   <string name="transfer_review_setup">Review setup</string>
-  <string name="transfer_automatic_note">Automatic lookup resolves terminal details before verification. Unresolved required fields reject the import; use complete codes from the Manual helper.</string>
   <string name="transfer_added">Products added</string>
   <string name="transfer_updated">Products updated</string>
   <string name="transfer_new_categories">New categories</string>
@@ -394,11 +392,10 @@
   <string name="transfer_show_codes">Show QR codes</string>
   <string name="transfer_code_title">Transfer code</string>
   <string name="transfer_code_hint">Every transfer needs this code on the other device. Keep it separate from the QR codes.</string>
-  <string name="transfer_code_import_hint">Enter the 12-character code shown on the other device or setup helper. Dashes are automatic.</string>
-  <string name="transfer_code_wrong">That transfer code is wrong or the transfer changed. Check the source code or scan again. Nothing was imported.</string>
+  <string name="transfer_code_import_hint">Enter the 12-character code shown on the other device or setup helper.</string>
+  <string name="transfer_code_wrong">That transfer code is wrong or the transfer changed. Check the code on the other device or setup helper, or go back and scan the QR codes again. Nothing was imported.</string>
   <string name="transfer_included">Included</string>
   <string name="transfer_not_included">Not included</string>
-  <string name="transfer_secrets_sealed">Included, with a transfer code</string>
   <string name="transfer_secret_passphrase">Shared key passphrase</string>
   <string name="transfer_secret_api_key">Adyen API key</string>
   <string name="transfer_secret_payments_app_key">Payments app API key</string>
@@ -406,7 +403,6 @@
   <string name="transfer_secret_pin">Admin PIN</string>
   <string name="transfer_settings_note">The settings replace this device’s. Where payments go, and the address and ID of the terminal they go to, stay as they are.</string>
   <string name="transfer_part_connection">Connection</string>
-  <string name="transfer_connection_note">From the setup helper: where payments go and the connection details it holds replace this device’s. Other settings stay as they are.</string>
   <string name="transfer_import_action">Import</string>
   <string name="transfer_imported">Imported</string>
 

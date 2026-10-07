@@ -116,24 +116,16 @@ class ReceiptBusinessDetails(
             }
 
             is TerminalListing.Listed -> {
-                val terminal = listing.terminals.firstOrNull { it.id == setup.poiId }
-                when {
-                    terminal == null -> {
-                        StoreScope.Blocked(SetupProblem.TERMINAL_ACCESS)
-                    }
-
-                    terminal.merchantAccount !=
-                        setup.settings.terminal.merchantAccount
-                            .trim()
-                    -> {
-                        StoreScope.Blocked(
-                            SetupProblem.MERCHANT_MISMATCH,
+                when (
+                    val assignment =
+                        TerminalAssignments.receipt(
+                            listing.terminals,
+                            setup.poiId,
+                            setup.settings.terminal.merchantAccount,
                         )
-                    }
-
-                    else -> {
-                        StoreScope.Assigned(terminal.storeId)
-                    }
+                ) {
+                    is TerminalAssignment.Assigned -> StoreScope.Assigned(assignment.terminal.storeId)
+                    is TerminalAssignment.Blocked -> StoreScope.Blocked(assignment.problem)
                 }
             }
         }

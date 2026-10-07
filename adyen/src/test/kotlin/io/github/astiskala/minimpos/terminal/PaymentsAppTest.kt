@@ -297,7 +297,12 @@ class PaymentsAppTest {
                         ).build(),
                 )
                 assertThat(api.registration(target, "I1")).isInstanceOf(ManagementResult.Failed::class.java)
-                listOf("{}", "not json", """{"paymentsApps":[{"installationId":{}}]}""").forEach { body ->
+                listOf(
+                    "{}",
+                    "not json",
+                    """{"paymentsApps":[{"installationId":{}}]}""",
+                    """{"paymentsApps":[null]}""",
+                ).forEach { body ->
                     server.enqueue(MockResponse.Builder().body(body).build())
                     assertThat(api.registration(target, "I1")).isInstanceOf(ManagementResult.Failed::class.java)
                 }

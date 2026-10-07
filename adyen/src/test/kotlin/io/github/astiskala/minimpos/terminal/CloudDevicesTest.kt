@@ -227,6 +227,17 @@ class CloudDevicesTest {
     }
 
     @Test
+    fun `typed cloud listings reject null and non-string device IDs`() =
+        runBlocking {
+            listOf("""{"uniqueDeviceIds":[null]}""", """{"uniqueDeviceIds":[123]}""").forEach { body ->
+                listings["/test"] = 200 to body
+                assertThat(devices.connectedDevices(CloudEndpoint.TEST)).isEqualTo(CloudListing.Failed("Unexpected response from Adyen"))
+            }
+            listings["/test"] = 200 to """{"uniqueDeviceIds":["AMS1-1"],"futureField":{}}"""
+            assertThat(devices.connectedDevices(CloudEndpoint.TEST)).isEqualTo(CloudListing.Listed(listOf("AMS1-1")))
+        }
+
+    @Test
     fun `an unreachable Adyen is reported without sending anything`() {
         val offline = AdyenCloudDevices(credentials, baseUrl = { "http://127.0.0.1:1".toHttpUrl() })
         assertThat(

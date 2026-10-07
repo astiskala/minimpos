@@ -1,7 +1,8 @@
 package io.github.astiskala.minimpos.terminal.transport
 
-import com.google.gson.JsonObject
-import com.google.gson.JsonParser
+import com.adyen.model.management.DefaultErrorResponseEntity
+import com.adyen.model.management.ListStoresResponse
+import com.adyen.model.management.Store
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import okhttp3.HttpUrl
@@ -112,17 +113,22 @@ class AdyenStoreDetails(
             }
 
             is AdyenReply.Answered -> {
-                val json = runCatching { JsonParser.parseString(reply.body).asJsonObject }.getOrNull()
-                if (!reply.ok) Page.Failed(error(reply.code, json)) else parsePage(json)
+                if (!reply.ok) Page.Failed(error(reply.code, reply.body)) else parsePage(reply.body)
             }
         }
     }
 
-    private fun parsePage(json: JsonObject?): Page =
+    private fun parsePage(text: String): Page =
         runCatching {
-            val stores = requireNotNull(json?.getAsJsonArray("data")).map { store(it.asJsonObject) }
-            val next = json.getAsJsonObject("_links")?.getAsJsonObject("next")?.text("href")
-            Page.Listed(stores, !next.isNullOrBlank())
+            val response = requireNotNull(decodeAdyenModel(text, ListStoresResponse::class.java))
+            val stores = requireNotNull(response.data).map(::store)
+            Page.Listed(
+                stores,
+                !response.links
+                    ?.next
+                    ?.href
+                    .isNullOrBlank(),
+            )
         }.getOrElse { Page.Failed("Adyen sent an unreadable store list") }
 
     private sealed interface Page {
@@ -136,30 +142,54 @@ class AdyenStoreDetails(
         ) : Page
     }
 
-    private fun store(json: JsonObject): StoreDetails {
-        val id = json.text("id").also { require(it.isNotBlank()) }
-        val address = json.getAsJsonObject("address")
+    private fun store(store: Store): StoreDetails {
+        val id =
+            store.id
+                ?.trim()
+                .orEmpty()
+                .also { require(it.isNotBlank()) }
+        val address = store.address
         return StoreDetails(
             id = id,
-            reference = json.text("reference"),
-            name = json.text("shopperStatement"),
+            reference = store.reference?.trim().orEmpty(),
+            name = store.shopperStatement?.trim().orEmpty(),
             address =
-                listOf("line1", "line2", "line3", "city", "stateOrProvince", "postalCode", "country")
-                    .mapNotNull { address?.text(it)?.takeIf(String::isNotBlank) }
-                    .joinToString("\n"),
-            phone = json.text("phoneNumber"),
+                listOf(
+                    address?.line1,
+                    address?.line2,
+                    address?.line3,
+                    address?.city,
+                    address?.stateOrProvince,
+                    address?.postalCode,
+                    address?.country,
+                ).mapNotNull { it?.trim()?.takeIf(String::isNotBlank) }.joinToString("\n"),
+            phone = store.phoneNumber?.trim().orEmpty(),
         )
     }
 
     private fun error(
         code: Int,
-        json: JsonObject?,
+        text: String,
     ): String {
+        val error = decodeAdyenModel(text, DefaultErrorResponseEntity::class.java)
         val message =
             when (code) {
-                HTTP_UNAUTHORIZED -> "Adyen did not accept the API key"
-                HTTP_FORBIDDEN -> "The API key needs Management API—Stores read access to this merchant account"
-                else -> json?.text("detail")?.ifBlank { json.text("title") }?.ifBlank { null } ?: "Adyen returned an error"
+                HTTP_UNAUTHORIZED -> {
+                    "Adyen did not accept the API key"
+                }
+
+                HTTP_FORBIDDEN -> {
+                    "The API key needs Management API—Stores read access to this merchant account"
+                }
+
+                else -> {
+                    error
+                        ?.detail
+                        ?.trim()
+                        ?.ifBlank { error.title?.trim() }
+                        ?.ifBlank { null }
+                        ?: error?.title?.trim()?.ifBlank { null } ?: "Adyen returned an error"
+                }
             }
         return "$message (HTTP $code)"
     }

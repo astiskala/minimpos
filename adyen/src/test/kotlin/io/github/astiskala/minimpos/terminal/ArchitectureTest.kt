@@ -1,6 +1,7 @@
 package io.github.astiskala.minimpos.terminal
 
 import com.adyen.Client
+import com.google.gson.JsonObject
 import com.tngtech.archunit.base.DescribedPredicate
 import com.tngtech.archunit.core.domain.JavaClass
 import com.tngtech.archunit.core.domain.JavaClass.Predicates.assignableTo
@@ -17,7 +18,11 @@ import com.tngtech.archunit.library.GeneralCodingRules
 import com.tngtech.archunit.library.dependencies.SlicesRuleDefinition.slices
 import io.github.astiskala.minimpos.terminal.client.Decline
 import io.github.astiskala.minimpos.terminal.client.TransactionDetails
+import io.github.astiskala.minimpos.terminal.paymentsapp.AdyenPaymentsAppManagement
+import io.github.astiskala.minimpos.terminal.transport.AdyenCloudDevices
 import io.github.astiskala.minimpos.terminal.transport.AdyenHttp
+import io.github.astiskala.minimpos.terminal.transport.AdyenStoreDetails
+import io.github.astiskala.minimpos.terminal.transport.AdyenTerminalDetails
 import io.github.astiskala.minimpos.terminal.transport.TerminalHttpClient
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -25,7 +30,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.io.IOException
 
-/** :adyen wraps the Adyen Java library for the local Terminal API; it runs on Android but must not depend on it. */
+/** :adyen stays Android-free and uses official wire models to prevent hand-written API fields from drifting. */
 class ArchitectureTest {
     @Test
     fun `adyen is plain Kotlin and knows nothing of the app`() =
@@ -34,6 +39,27 @@ class ArchitectureTest {
             .dependOnClassesThat()
             .resideInAnyPackage("android..", "androidx..", "io.github.astiskala.minimpos.app..", "io.github.astiskala.minimpos.core..")
             .check(terminal)
+
+    @Test
+    fun `API clients use official models instead of manual Gson objects`() =
+        apiModelOwnership(
+            resideInAnyPackage("io.github.astiskala.minimpos.terminal.checkout..")
+                .or(type(AdyenStoreDetails::class.java))
+                .or(type(AdyenTerminalDetails::class.java))
+                .or(type(AdyenCloudDevices::class.java))
+                .or(type(AdyenPaymentsAppManagement::class.java)),
+        ).check(terminal)
+
+    @Test
+    fun `API model ownership rejects a hand-written request`() {
+        val violation = ClassFileImporter().importClasses(RawApiModelViolation::class.java)
+        val rule = apiModelOwnership(type(RawApiModelViolation::class.java))
+        assertTrue(rule.description, rule.evaluate(violation).hasViolation())
+    }
+
+    private class RawApiModelViolation {
+        fun body() = JsonObject()
+    }
 
     @Test
     fun `the Adyen library's Apache HTTP client is never used`() {
@@ -187,6 +213,13 @@ class ArchitectureTest {
     }
 
     private companion object {
+        fun apiModelOwnership(selected: DescribedPredicate<JavaClass>): ArchRule =
+            noClasses()
+                .that(selected)
+                .should()
+                .dependOnClassesThat()
+                .resideInAnyPackage("com.google.gson..")
+
         fun deliveryOwnership(selected: DescribedPredicate<JavaClass>): ArchRule =
             noClasses().that(selected).should().dependOnClassesThat(assignableTo(IOException::class.java))
 

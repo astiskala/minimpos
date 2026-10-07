@@ -202,6 +202,35 @@ class HistoryAccountingTest {
     }
 
     @Test
+    fun `only pending and unknown refunds are unresolved`() {
+        assertThat(RefundStatus.entries.filter { it.unresolved }).containsExactly(RefundStatus.PENDING, RefundStatus.UNKNOWN)
+    }
+
+    @Test
+    fun `issue eligibility shares activity meaning without collapsing unresolved operation counts`() {
+        val unresolved = HistoryItem.Sale(sale.copy(tipOnReceipt = true, captureStatus = CaptureStatus.UNKNOWN, adjustmentPending = true))
+        assertThat(HistoryAccounting.needsAttention(unresolved)).isTrue()
+        assertThat(HistoryAccounting.activities(listOf(unresolved)).count { it.kind == HistoryActivityKind.ISSUE }).isEqualTo(2)
+        val resolved = HistoryItem.Sale(unresolved.sale.copy(captureStatus = CaptureStatus.REQUESTED, adjustmentPending = false))
+        assertThat(HistoryAccounting.needsAttention(resolved)).isFalse()
+        assertThat(HistoryAccounting.activities(listOf(resolved)).none { it.kind == HistoryActivityKind.ISSUE }).isTrue()
+    }
+
+    @Test
+    fun `capture issue eligibility follows payment standing rather than raw capture status`() {
+        val pending = sale.copy(tipOnReceipt = true, captureStatus = CaptureStatus.UNKNOWN)
+        listOf(
+            pending.copy(tipOnReceipt = false),
+            pending.copy(holdCancelled = true),
+            pending.copy(status = SaleStatus.DECLINED),
+        ).forEach { record ->
+            val item = HistoryItem.Sale(record)
+            assertThat(HistoryAccounting.needsAttention(item)).isFalse()
+            assertThat(HistoryAccounting.activities(listOf(item)).none { it.kind == HistoryActivityKind.ISSUE }).isTrue()
+        }
+    }
+
+    @Test
     fun `timezone defines processing day across midnight`() {
         val nearMidnight = sale.copy(processedAt = Instant.parse("2026-10-06T00:30:00Z").toEpochMilli())
         val report = report(listOf(nearMidnight), "2026-10-05", ZoneId.of("America/Los_Angeles"))

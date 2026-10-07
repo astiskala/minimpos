@@ -152,7 +152,7 @@ class HistoryRepository(
             val protectedSales = sales.filterNot { it.retentionEligible }.map { it.id }.toSet()
             val removableRefunds =
                 refunds.filter {
-                    maxOf(it.createdAt, it.processedAt ?: 0) < before && it.status in setOf(RefundStatus.REQUESTED, RefundStatus.FAILED) &&
+                    maxOf(it.createdAt, it.processedAt ?: 0) < before && !it.status.unresolved &&
                         it.saleId !in protectedSales
                 }
             val retainedReferences = (refunds - removableRefunds.toSet()).mapNotNull { it.saleId }.toSet()

@@ -13,7 +13,6 @@ import io.github.astiskala.minimpos.app.data.settings.ShopperReferenceSource
 import io.github.astiskala.minimpos.app.feature.history.HistoryFilter
 import io.github.astiskala.minimpos.app.feature.history.HistoryViewModel
 import io.github.astiskala.minimpos.app.feature.history.SaleDetailViewModel
-import io.github.astiskala.minimpos.app.feature.history.SaleOperations
 import io.github.astiskala.minimpos.app.feature.sale.CheckoutViewModel
 import io.github.astiskala.minimpos.app.feature.sale.SaleResultViewModel
 import io.github.astiskala.minimpos.app.feature.sale.SaleViewModel
@@ -211,8 +210,8 @@ class PreAuthorisationViewModelsTest {
                 container.storedPayments,
                 container.refundRecords,
                 container.receipts,
-                SaleOperations(container.payments, container.refunds, container.captures),
-                container.settingsState,
+                container.storedPaymentActions,
+                container.payments,
             ).also(viewModels::add)
         val loaded = await { detail.state.first { it.record != null } }
         assertThat(loaded.actions).doesNotContain(PaymentAction.REFUND)

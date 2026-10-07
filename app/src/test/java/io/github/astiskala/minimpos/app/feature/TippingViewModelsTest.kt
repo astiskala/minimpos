@@ -18,7 +18,6 @@ import io.github.astiskala.minimpos.app.feature.capture.TipViewModel
 import io.github.astiskala.minimpos.app.feature.history.HistoryFilter
 import io.github.astiskala.minimpos.app.feature.history.HistoryViewModel
 import io.github.astiskala.minimpos.app.feature.history.SaleDetailViewModel
-import io.github.astiskala.minimpos.app.feature.history.SaleOperations
 import io.github.astiskala.minimpos.app.feature.sale.CheckoutViewModel
 import io.github.astiskala.minimpos.app.feature.settings.SettingsChecks
 import io.github.astiskala.minimpos.app.feature.settings.SettingsViewModel
@@ -92,8 +91,8 @@ class TippingViewModelsTest {
             container.storedPayments,
             container.refundRecords,
             container.receipts,
-            SaleOperations(container.payments, container.refunds, container.captures),
-            container.settingsState,
+            container.storedPaymentActions,
+            container.payments,
         )
 
     @Test

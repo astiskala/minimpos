@@ -1,6 +1,5 @@
 package io.github.astiskala.minimpos.app.terminal
 
-import io.github.astiskala.minimpos.app.data.db.RefundStatus
 import io.github.astiskala.minimpos.app.data.repo.HistoryItem
 import io.github.astiskala.minimpos.app.data.repo.HistoryRepository
 import io.github.astiskala.minimpos.app.data.repo.retentionEligible
@@ -71,7 +70,7 @@ class HistorySwitches(
     private fun unfinished(item: HistoryItem): Boolean =
         when (item) {
             is HistoryItem.Sale -> !item.sale.retentionEligible && !item.sale.sample
-            is HistoryItem.Refund -> item.refund.status == RefundStatus.PENDING || item.refund.status == RefundStatus.UNKNOWN
+            is HistoryItem.Refund -> item.refund.status.unresolved
         }
 
     /** Commits an explicit [plan]; false if destination or required warnings changed since preview. Main-safe. */

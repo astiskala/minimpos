@@ -6,10 +6,10 @@ import io.github.astiskala.minimpos.app.data.db.RefundEntity
 import io.github.astiskala.minimpos.app.data.db.RefundStatus
 import io.github.astiskala.minimpos.app.data.repo.RefundRepository
 import io.github.astiskala.minimpos.app.data.repo.SaleRepository
-import io.github.astiskala.minimpos.app.data.settings.AppSettings
 import io.github.astiskala.minimpos.app.feature.TransactionActions
 import io.github.astiskala.minimpos.app.feature.TransactionActionsState
 import io.github.astiskala.minimpos.app.payment.ReceiptDelivery
+import io.github.astiskala.minimpos.app.payment.StoredPaymentActions
 import io.github.astiskala.minimpos.app.payment.TransactionLifecycle
 import io.github.astiskala.minimpos.app.refund.RefundChoice
 import io.github.astiskala.minimpos.app.refund.RefundStart
@@ -25,8 +25,6 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import java.time.Clock
-import java.time.ZoneId
 
 /** What to refund, as offered on the refund screen. */
 enum class RefundOption {
@@ -87,10 +85,7 @@ class RefundViewModel(
     /** The sale to refund from history, or null when scanning. */
     private val saleId: String?,
     private val sales: SaleRepository,
-    private val refunds: TransactionLifecycle<RefundStart>,
-    private val settings: StateFlow<AppSettings>,
-    private val clock: Clock = Clock.systemDefaultZone(),
-    private val zone: () -> ZoneId = { ZoneId.systemDefault() },
+    private val operations: StoredPaymentActions,
 ) : ViewModel() {
     private val _state = MutableStateFlow(RefundUiState())
 
@@ -131,9 +126,7 @@ class RefundViewModel(
     fun refund(): Boolean {
         val current = _state.value
         if (!current.amountValid) return false
-        val request =
-            current.original?.request(current.choice, settings.value.payment.referencePrefix, clock.instant(), zone()) ?: return false
-        return runCatching { refunds.start(request) }.isSuccess
+        return current.original?.let { operations.refund(it, current.choice) } == true
     }
 }
 

@@ -474,6 +474,13 @@ enum class RefundStatus {
 
     /** The outcome could not be established, for example because the app stopped mid-request. */
     UNKNOWN,
+    ;
+
+    /**
+     * Whether the outcome is still open ([PENDING] or [UNKNOWN]), so the refund needs attention and is kept by
+     * routine history clearing. The one rule behind History issues, retention and environment-switch warnings.
+     */
+    val unresolved: Boolean get() = this == PENDING || this == UNKNOWN
 }
 
 /**

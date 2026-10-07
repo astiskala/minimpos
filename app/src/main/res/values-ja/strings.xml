@@ -349,10 +349,8 @@
   <string name="transfer_replace">カタログを置換</string>
   <string name="transfer_replace_hint">先にこの端末の商品、カテゴリー、税率をすべて削除します。</string>
   <string name="transfer_replace_confirm">このデバイスの商品、カテゴリー、税率をすべて削除して置き換えます。</string>
-  <string name="transfer_scan_again">再スキャン</string>
   <string name="transfer_done">インポート完了</string>
   <string name="transfer_review_setup">設定を確認</string>
-  <string name="transfer_automatic_note">確認前に自動取得で端末情報を解決します。必須項目が不足する場合は拒否します。手動ヘルパーで完全なコードを作成してください。</string>
   <string name="transfer_added">追加した商品</string>
   <string name="transfer_updated">更新した商品</string>
   <string name="transfer_new_categories">新しいカテゴリー</string>
@@ -368,11 +366,10 @@
   <string name="transfer_show_codes">QRコードを表示</string>
   <string name="transfer_code_title">転送コード</string>
   <string name="transfer_code_hint">すべての転送で別のデバイスにこのコードを入力します。QRコードとは別に保管してください。</string>
-  <string name="transfer_code_import_hint">別のデバイスまたはヘルパーに表示される12文字のコードを入力します。ハイフンは自動挿入されます。</string>
-  <string name="transfer_code_wrong">転送コードが違うか、内容が変更されています。送信元のコードを確認するか、再度読み取ってください。何もインポートされていません。</string>
+  <string name="transfer_code_import_hint">別のデバイスまたはヘルパーに表示される12文字のコードを入力します。</string>
+  <string name="transfer_code_wrong">転送コードが違うか、内容が変更されています。送信元のコードを確認するか、戻ってQRコードをもう一度読み取ってください。何もインポートされていません。</string>
   <string name="transfer_included">含まれます</string>
   <string name="transfer_not_included">含まれません</string>
-  <string name="transfer_secrets_sealed">転送コード付きで含まれます</string>
   <string name="transfer_secret_passphrase">共有キーのパスフレーズ</string>
   <string name="transfer_secret_api_key">Adyen APIキー</string>
   <string name="transfer_secret_payments_app_key">PaymentsアプリのAPIキー</string>
@@ -380,7 +377,6 @@
   <string name="transfer_secret_pin">管理者PIN</string>
   <string name="transfer_settings_note">このデバイスの設定を置き換えます。決済先と、その端末のアドレス・IDは変更しません。</string>
   <string name="transfer_part_connection">接続</string>
-  <string name="transfer_connection_note">セットアップヘルパーから：含まれる決済先と接続情報でこのデバイスの設定を置き換えます。その他の設定は変わりません。</string>
   <string name="transfer_import_action">インポート</string>
   <string name="transfer_imported">インポート済み</string>
   <string name="scan_hint_qr">QRコードにカメラを向けてください</string>

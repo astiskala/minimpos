@@ -679,7 +679,7 @@ private fun ColumnScope.TerminalSection(
         QuickSetup { navigator.push(Route.TransferImport) }
         SectionHeader(stringResource(R.string.settings_manual_setup))
     }
-    if (mode != TerminalMode.SIMULATOR) {
+    if (mode != TerminalMode.SIMULATOR && status.connection !is TerminalConnection.NotSetUp) {
         ConnectionStatus(status.connection, status.poiId, status.environment, status.setupProblem)
     }
     val selectMode: (TerminalMode) -> Unit = { choice ->

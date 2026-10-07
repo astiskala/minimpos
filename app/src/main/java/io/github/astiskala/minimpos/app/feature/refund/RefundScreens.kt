@@ -427,7 +427,7 @@ private fun refundViewModel(
 ): RefundViewModel {
     val container = LocalAppContainer.current
     return viewModel(key = "${payload.orEmpty()}|${saleId.orEmpty()}") {
-        RefundViewModel(payload, saleId, container.sales, container.refunds, container.settingsState)
+        RefundViewModel(payload, saleId, container.sales, container.storedPaymentActions)
     }
 }
 

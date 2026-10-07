@@ -79,7 +79,6 @@ import io.github.astiskala.minimpos.app.ui.components.MiniScaffold
 import io.github.astiskala.minimpos.app.ui.components.PrimaryButton
 import io.github.astiskala.minimpos.app.ui.components.ProcessingContent
 import io.github.astiskala.minimpos.app.ui.components.QrImage
-import io.github.astiskala.minimpos.app.ui.components.SecondaryButton
 import io.github.astiskala.minimpos.app.ui.components.SharedKeyDialog
 import io.github.astiskala.minimpos.app.ui.components.StatusBadge
 import io.github.astiskala.minimpos.app.ui.components.StatusKind
@@ -216,7 +215,13 @@ private fun ExportCodes(
                 onTogglePlay = { playing = !playing },
             )
         }
-        TransferSummary(export.catalogue, export.settings, secretNames(export.secrets), Modifier.widthIn(max = 420.dp))
+        TransferSummary(
+            export.catalogue,
+            export.settings,
+            export.secrets.isNotEmpty(),
+            Modifier.widthIn(max = 420.dp),
+            secretDetails = secretNames(export.secrets),
+        )
     }
 }
 
@@ -294,7 +299,7 @@ fun TransferImportScreen(
             )
         },
     ) { padding ->
-        val callbacks = remember(vm) { ImportContentEvents(vm::onCode, vm::setMode, vm::setCode, vm::restart) }
+        val callbacks = remember(vm) { ImportContentEvents(vm::onCode, vm::setMode, vm::setCode) }
         ImportContent(state, currency, callbacks, Modifier.padding(padding))
     }
     ImportSelectionDialogs(state as? ImportUiState.Ready, vm::chooseTerminal, vm::chooseBusiness, vm::skipBusinessDetails)
@@ -350,7 +355,6 @@ private class ImportContentEvents(
     val scan: (String) -> Unit,
     val mode: (ImportMode) -> Unit,
     val code: (String) -> Unit,
-    val restart: () -> Unit,
 )
 
 @Composable
@@ -366,7 +370,7 @@ private fun ImportContent(
         }
 
         is ImportUiState.Ready -> {
-            ImportReady(state, currency, events.mode, events.code, events.restart, modifier)
+            ImportReady(state, currency, events.mode, events.code, modifier)
         }
 
         ImportUiState.Importing -> {
@@ -491,19 +495,21 @@ internal fun CodeControls(
 }
 
 /**
- * What a transfer holds: the catalogue's counts and currency, whether settings are included, and which secrets; and a
- * [connection] when it has one (only the setup helper's codes do).
+ * What a transfer holds: the catalogue's counts and currency, whether settings and [secrets] are included, and a
+ * [connection] when it has one (only the setup helper's codes do). [secretDetails] names the secrets when the sender
+ * knows them; a received transfer's secrets stay sealed, so only their presence is shown.
  */
 @Composable
 private fun TransferSummary(
     catalogue: Catalogue?,
     settings: Boolean,
-    secrets: String?,
+    secrets: Boolean,
     modifier: Modifier = Modifier,
     connection: Boolean = false,
+    secretDetails: String? = null,
 ) {
     val none = stringResource(R.string.transfer_not_included)
-    Card(modifier) {
+    Card(modifier.testTag("transferSummary")) {
         if (catalogue == null) {
             LabeledValue(stringResource(R.string.transfer_part_catalogue), none)
         } else {
@@ -513,7 +519,11 @@ private fun TransferSummary(
             LabeledValue(stringResource(R.string.transfer_currency), catalogue.currencyCode)
         }
         LabeledValue(stringResource(R.string.transfer_part_settings), if (settings) stringResource(R.string.transfer_included) else none)
-        TransferDetail(stringResource(R.string.transfer_part_secrets), secrets ?: none)
+        if (secretDetails != null) {
+            TransferDetail(stringResource(R.string.transfer_part_secrets), secretDetails)
+        } else {
+            LabeledValue(stringResource(R.string.transfer_part_secrets), if (secrets) stringResource(R.string.transfer_included) else none)
+        }
         if (connection) LabeledValue(stringResource(R.string.transfer_part_connection), stringResource(R.string.transfer_included))
     }
 }
@@ -581,7 +591,6 @@ private fun ImportReady(
     currency: String,
     onMode: (ImportMode) -> Unit,
     onCode: (String) -> Unit,
-    onScanAgain: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val dimens = LocalDimens.current
@@ -596,8 +605,8 @@ private fun ImportReady(
         Column(Modifier.widthIn(max = 560.dp), verticalArrangement = Arrangement.spacedBy(dimens.spacing)) {
             Text(stringResource(R.string.transfer_ready), style = MaterialTheme.typography.titleLarge)
             if (received.hasConnection) ConnectionPreview(received)
-            val secrets = if (received.hasSecrets) stringResource(R.string.transfer_secrets_sealed) else null
-            TransferSummary(received.catalogue, received.hasSettings, secrets, connection = received.hasConnection)
+            TransferSummary(received.catalogue, received.hasSettings, received.hasSecrets, connection = received.hasConnection)
+            TransferCodeField(state.code, state.wrongCode, onCode)
             received.catalogue?.let { catalogue ->
                 if (!state.currencyMatches) {
                     Text(
@@ -612,14 +621,10 @@ private fun ImportReady(
                 CatalogueModeChoice(state.mode, onMode)
             }
             if (received.hasSettings) Note(stringResource(R.string.transfer_settings_note))
-            if (received.hasConnection) Note(stringResource(R.string.transfer_connection_note))
-            if (received.automatic) Note(stringResource(R.string.transfer_automatic_note))
-            TransferCodeField(state.code, state.wrongCode, onCode)
             state.outcome?.let { ActionMessage(it.text(), isError = true) }
             if (state.incomplete) ActionMessage(stringResource(R.string.transfer_missing_fields), isError = true)
             if (state.boardingRequired) Text(stringResource(R.string.transfer_board_first))
             if (state.keyPending) Note(stringResource(R.string.transfer_key_not_imported))
-            SecondaryButton(stringResource(R.string.transfer_scan_again), onScanAgain)
         }
     }
 }

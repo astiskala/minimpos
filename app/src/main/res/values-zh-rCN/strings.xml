@@ -349,10 +349,8 @@
   <string name="transfer_replace">替换此商品目录</string>
   <string name="transfer_replace_hint">先删除此处所有商品、分类和税率。</string>
   <string name="transfer_replace_confirm">此设备上的所有商品、分类和税率都将被删除并替换。</string>
-  <string name="transfer_scan_again">重新扫描</string>
   <string name="transfer_done">导入完成</string>
   <string name="transfer_review_setup">检查设置</string>
-  <string name="transfer_automatic_note">自动查询会在验证前获取终端信息。必需字段仍缺失时会拒绝导入；请使用手动助手生成完整二维码。</string>
   <string name="transfer_added">已添加商品</string>
   <string name="transfer_updated">已更新商品</string>
   <string name="transfer_new_categories">新增分类</string>
@@ -368,11 +366,10 @@
   <string name="transfer_show_codes">显示二维码</string>
   <string name="transfer_code_title">传输码</string>
   <string name="transfer_code_hint">每次传输都需在另一台设备上输入此码。请与二维码分开保管。</string>
-  <string name="transfer_code_import_hint">输入另一台设备或设置助手显示的 12 位传输码，连字符会自动插入。</string>
-  <string name="transfer_code_wrong">传输码错误或传输内容已更改。请核对来源的传输码或重新扫描。未导入任何内容。</string>
+  <string name="transfer_code_import_hint">输入另一台设备或设置助手显示的 12 位传输码。</string>
+  <string name="transfer_code_wrong">传输码错误或传输内容已更改。请核对来源的传输码，或返回后重新扫描二维码。未导入任何内容。</string>
   <string name="transfer_included">已包含</string>
   <string name="transfer_not_included">未包含</string>
-  <string name="transfer_secrets_sealed">已包含，需传输码</string>
   <string name="transfer_secret_passphrase">共享密钥口令</string>
   <string name="transfer_secret_api_key">Adyen API 密钥</string>
   <string name="transfer_secret_payments_app_key">Payments 应用 API 密钥</string>
@@ -380,7 +377,6 @@
   <string name="transfer_secret_pin">管理员 PIN</string>
   <string name="transfer_settings_note">这些设置将替换此设备的设置。支付目标及其所用终端的地址和 ID 保持不变。</string>
   <string name="transfer_part_connection">连接</string>
-  <string name="transfer_connection_note">来自设置助手：其中的支付目标和连接信息将替换此设备上的设置，其他设置保持不变。</string>
   <string name="transfer_import_action">导入</string>
   <string name="transfer_imported">已导入</string>
   <string name="scan_hint_qr">将摄像头对准二维码</string>

@@ -417,16 +417,6 @@ class TransferImportViewModel(
             }
         }
 
-    /** Forgets the scanned codes and starts scanning again. */
-    fun restart() {
-        assembler.reset()
-        selectedTerminal = null
-        selectedBusiness = null
-        skipBusiness = false
-        confirmedHistory = null
-        _state.value = ImportUiState.Scanning()
-    }
-
     private fun updateReady(transform: (ImportUiState.Ready) -> ImportUiState.Ready) =
         _state.update { if (it is ImportUiState.Ready) transform(it) else it }
 }

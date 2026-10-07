@@ -228,6 +228,7 @@ dependencies {
     testImplementation(libs.androidx.compose.ui.test.junit4)
     testImplementation(libs.okhttp.mockwebserver)
     testImplementation(libs.archunit)
+    testImplementation(files(com.android.tools.r8.R8::class.java.protectionDomain.codeSource.location))
 
     detektPlugins(libs.compose.rules.detekt)
 }
@@ -490,6 +491,10 @@ abstract class AndroidApiArguments : CommandLineArgumentProvider {
     @get:Input
     abstract val minSdk: Property<Int>
 
+    @get:InputFile
+    @get:PathSensitive(PathSensitivity.NONE)
+    abstract val adyenModelRules: RegularFileProperty
+
     @get:Internal
     abstract val uiFailureDirectory: DirectoryProperty
 
@@ -499,6 +504,7 @@ abstract class AndroidApiArguments : CommandLineArgumentProvider {
             "-Dminimpos.backportedMethods=${backportedMethods.get().asFile.absolutePath}",
             "-Dminimpos.minSdk=${minSdk.get()}",
             "-Dminimpos.uiFailureDirectory=${uiFailureDirectory.get().asFile.absolutePath}",
+            "-Dminimpos.adyenModelRules=${adyenModelRules.get().asFile.absolutePath}",
         )
 }
 
@@ -520,6 +526,7 @@ tasks.withType<Test>().configureEach {
             backportedMethods.set(listBackportedMethods.flatMap { it.list })
             minSdk.set(android.defaultConfig.minSdk)
             uiFailureDirectory.set(uiFailures)
+            adyenModelRules.set(layout.projectDirectory.file("proguard-rules.pro"))
         }
 }
 

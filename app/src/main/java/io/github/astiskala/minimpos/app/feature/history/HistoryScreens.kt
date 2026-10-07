@@ -783,8 +783,8 @@ private fun saleDetailViewModel(saleId: String): SaleDetailViewModel {
             container.storedPayments,
             container.refundRecords,
             container.receipts,
-            SaleOperations(container.payments, container.refunds, container.captures),
-            container.settingsState,
+            container.storedPaymentActions,
+            container.payments,
         )
     }
 }

@@ -1,16 +1,20 @@
 package io.github.astiskala.minimpos.app.ui
 
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.ExperimentalTestApi
+import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextInput
+import androidx.compose.ui.unit.dp
 import androidx.navigation3.runtime.NavBackStack
 import androidx.navigation3.runtime.NavKey
 import com.google.common.truth.Truth.assertThat
@@ -37,12 +41,14 @@ import io.github.astiskala.minimpos.core.codec.Transfer
 import io.github.astiskala.minimpos.core.codec.TransferCodec
 import io.github.astiskala.minimpos.terminal.transport.CredentialLookup
 import io.github.astiskala.minimpos.terminal.transport.DiscoveredKey
+import io.github.astiskala.minimpos.terminal.transport.ManagementFailure
 import io.github.astiskala.minimpos.terminal.transport.SharedKeyLookup
 import io.github.astiskala.minimpos.terminal.transport.SharedKeyUpdate
 import io.github.astiskala.minimpos.terminal.transport.TerminalDetails
 import io.github.astiskala.minimpos.terminal.transport.TerminalDetailsApi
 import io.github.astiskala.minimpos.terminal.transport.TerminalEnvironment
 import io.github.astiskala.minimpos.terminal.transport.TerminalListing
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.flow.first
 import org.junit.Rule
 import org.junit.Test
@@ -57,6 +63,7 @@ import io.github.astiskala.minimpos.app.createRecordingComposeRule as createComp
 class AutomaticSetupUiTest {
     private var lookupAvailable = true
     private var sharedKeyAvailable = true
+    private var sharedKeyFailure: ManagementFailure? = null
     private var emptyListing = false
     private val device = FakeDevice()
     private val paymentsApp = FakePaymentsApp()
@@ -66,9 +73,13 @@ class AutomaticSetupUiTest {
     private var generatedKey: DiscoveredKey? = null
     private var activateKey = true
     private var creations = 0
+    private var verificationRelease: CompletableDeferred<Unit>? = null
     private val details: TerminalDetailsApi =
         object : TerminalDetailsApi {
-            override suspend fun credential(environment: TerminalEnvironment) = CredentialLookup.Allowed
+            override suspend fun credential(environment: TerminalEnvironment): CredentialLookup {
+                verificationRelease?.await()
+                return CredentialLookup.Allowed
+            }
 
             override suspend fun terminals(
                 environment: TerminalEnvironment,
@@ -90,14 +101,14 @@ class AutomaticSetupUiTest {
                 environment: TerminalEnvironment,
             ): SharedKeyLookup {
                 keyLookups++
-                generatedKey?.let { return SharedKeyLookup.Found(it) }
-                return if (sharedKeyAvailable) {
-                    SharedKeyLookup.Found(
-                        DiscoveredKey("store-key", 2, "correct horse battery staple"),
-                    )
-                } else {
-                    SharedKeyLookup.Missing
-                }
+                return sharedKeyFailure?.let(SharedKeyLookup::Failed) ?: generatedKey?.let(SharedKeyLookup::Found)
+                    ?: if (sharedKeyAvailable) {
+                        SharedKeyLookup.Found(
+                            DiscoveredKey("store-key", 2, "correct horse battery staple"),
+                        )
+                    } else {
+                        SharedKeyLookup.Missing
+                    }
             }
 
             override suspend fun createSharedKey(
@@ -158,7 +169,9 @@ class AutomaticSetupUiTest {
         waitForTag("import")
         compose.onNodeWithTag("transferCodeInput").performScrollTo().performTextInput(code)
         compose.onNodeWithTag("import").performClick()
-        if (awaitKey) {
+        if (verificationRelease != null) {
+            compose.awaitCondition("Candidate verification is running") { vm.state.value == ImportUiState.Importing }
+        } else if (awaitKey) {
             compose.awaitCondition("Explicit key creation is offered") { (vm.state.value as? ImportUiState.Ready)?.sharedKeyOffer != null }
             waitForTag("confirmSharedKey")
         } else if (!succeeds) {
@@ -183,6 +196,35 @@ class AutomaticSetupUiTest {
         }
         waitForTag("importDone")
         compose.onNodeWithTag("importFinished").assertIsDisplayed().performClick()
+    }
+
+    @Test
+    fun `verification spinner and message have breathing room on AMS1`() = verificationSpacing()
+
+    @Test
+    @Config(qualifiers = "zh-rCN-w320dp-h460dp-hdpi")
+    fun `Chinese verification message has breathing room on AMS1`() = verificationSpacing()
+
+    @Test
+    @Config(qualifiers = "ja-w320dp-h460dp-hdpi")
+    fun `Japanese verification message has breathing room on AMS1`() = verificationSpacing()
+
+    private fun verificationSpacing() {
+        verificationRelease = CompletableDeferred()
+        val vm = importAutomatic()
+        val message = compose.onNodeWithText(env.context.getString(R.string.transfer_verifying)).assertIsDisplayed().fetchSemanticsNode()
+        val spinner = compose.onNode(SemanticsMatcher.keyIsDefined(SemanticsProperties.ProgressBarRangeInfo)).fetchSemanticsNode()
+        val root = compose.onRoot().fetchSemanticsNode().boundsInRoot
+        val sidePadding = with(compose.density) { 24.dp.toPx() }
+        val gap = with(compose.density) { 16.dp.toPx() }
+        try {
+            assertThat(message.boundsInRoot.top - spinner.boundsInRoot.bottom).isAtLeast(gap)
+            assertThat(message.boundsInRoot.left - root.left).isAtLeast(sidePadding)
+            assertThat(root.right - message.boundsInRoot.right).isAtLeast(sidePadding)
+        } finally {
+            checkNotNull(verificationRelease).complete(Unit)
+        }
+        finishImport(vm, register = false)
     }
 
     @Test
@@ -225,6 +267,44 @@ class AutomaticSetupUiTest {
         importAutomatic(succeeds = false)
         compose.onNodeWithText(env.context.getString(R.string.setup_terminal_access)).performScrollTo().assertIsDisplayed()
         assertThat(await { env.container.secrets.get(Secret.ADYEN_API_KEY) }).isNull()
+    }
+
+    @Test
+    fun `unreadable terminal settings explain why key creation is blocked`() =
+        sharedKeyError(ManagementFailure.SETTINGS_UNREADABLE, R.string.setup_terminal_settings_unreadable)
+
+    @Test
+    fun `invalid key version explains why import cannot replace the key`() =
+        sharedKeyError(ManagementFailure.KEY_INVALID, R.string.setup_shared_key_invalid)
+
+    @Test
+    fun `incomplete shared key is not presented as missing or a network failure`() =
+        sharedKeyError(ManagementFailure.KEY_INCOMPLETE, R.string.setup_shared_key_incomplete)
+
+    @Test
+    @Config(qualifiers = "zh-rCN-w320dp-h460dp-hdpi")
+    fun `Chinese incomplete key error is readable on AMS1`() =
+        sharedKeyError(ManagementFailure.KEY_INCOMPLETE, R.string.setup_shared_key_incomplete)
+
+    @Test
+    @Config(qualifiers = "ja-w320dp-h460dp-hdpi")
+    fun `Japanese incomplete key error is readable on AMS1`() =
+        sharedKeyError(ManagementFailure.KEY_INCOMPLETE, R.string.setup_shared_key_incomplete)
+
+    private fun sharedKeyError(
+        reason: ManagementFailure,
+        message: Int,
+    ) {
+        sharedKeyFailure = reason
+        val before = await { env.container.settings.current() }
+        importAutomatic(succeeds = false)
+        compose.onNodeWithText(env.context.getString(message)).performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText(env.context.getString(R.string.setup_management_unavailable)).assertDoesNotExist()
+        compose.onNodeWithTag("confirmSharedKey").assertDoesNotExist()
+        assertThat(await { env.container.settings.current() }).isEqualTo(before)
+        assertThat(await { env.container.secrets.get(Secret.ADYEN_API_KEY) }).isNull()
+        assertThat(await { env.container.secrets.get(Secret.TERMINAL_PASSPHRASE) }).isNull()
+        assertThat(creations).isEqualTo(0)
     }
 
     @Test

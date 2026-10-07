@@ -94,6 +94,18 @@ enum class SetupProblem {
     /** Management lookup failed temporarily or returned an unreadable answer. */
     MANAGEMENT_UNAVAILABLE,
 
+    /** A successful Management answer lacks required fields or contains malformed data. */
+    MANAGEMENT_UNREADABLE,
+
+    /** Terminal settings contain unsupported fields or invalid values, preventing safe shared-key lookup or creation. */
+    TERMINAL_SETTINGS_UNREADABLE,
+
+    /** Adyen returned an encryption-key object without all required fields; never treat it as key absence. */
+    SHARED_KEY_INCOMPLETE,
+
+    /** Adyen returned an encryption-key version outside the supported range. */
+    SHARED_KEY_INVALID,
+
     /** The assigned receipt store could not be retrieved; another store must not be substituted. */
     STORE_ACCESS,
 

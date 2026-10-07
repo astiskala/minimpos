@@ -19,7 +19,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.NavigateBefore
 import androidx.compose.material.icons.automirrored.filled.NavigateNext
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
@@ -78,6 +77,7 @@ import io.github.astiskala.minimpos.app.ui.components.LabeledValue
 import io.github.astiskala.minimpos.app.ui.components.LocalAppContainer
 import io.github.astiskala.minimpos.app.ui.components.MiniScaffold
 import io.github.astiskala.minimpos.app.ui.components.PrimaryButton
+import io.github.astiskala.minimpos.app.ui.components.ProcessingContent
 import io.github.astiskala.minimpos.app.ui.components.QrImage
 import io.github.astiskala.minimpos.app.ui.components.SecondaryButton
 import io.github.astiskala.minimpos.app.ui.components.SharedKeyDialog
@@ -370,14 +370,7 @@ private fun ImportContent(
         }
 
         ImportUiState.Importing -> {
-            Column(
-                modifier.fillMaxSize(),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center,
-            ) {
-                CircularProgressIndicator()
-                Text(stringResource(R.string.transfer_verifying))
-            }
+            ProcessingContent(amount = null, message = stringResource(R.string.transfer_verifying), modifier = modifier)
         }
 
         is ImportUiState.RecoveryFailed -> {

@@ -216,7 +216,11 @@ internal fun ManagementFailure.setupProblem(): SetupProblem =
     when (this) {
         ManagementFailure.AUTHENTICATION -> SetupProblem.MANAGEMENT_AUTHENTICATION
         ManagementFailure.PERMISSION -> SetupProblem.MANAGEMENT_PERMISSION
-        ManagementFailure.UNAVAILABLE, ManagementFailure.UNREADABLE -> SetupProblem.MANAGEMENT_UNAVAILABLE
+        ManagementFailure.UNAVAILABLE -> SetupProblem.MANAGEMENT_UNAVAILABLE
+        ManagementFailure.UNREADABLE -> SetupProblem.MANAGEMENT_UNREADABLE
+        ManagementFailure.SETTINGS_UNREADABLE -> SetupProblem.TERMINAL_SETTINGS_UNREADABLE
+        ManagementFailure.KEY_INCOMPLETE -> SetupProblem.SHARED_KEY_INCOMPLETE
+        ManagementFailure.KEY_INVALID -> SetupProblem.SHARED_KEY_INVALID
     }
 
 internal class SetupAccess(

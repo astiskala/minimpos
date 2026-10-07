@@ -885,7 +885,11 @@
   <string name="setup_merchant_mismatch">The merchant account does not match this terminal’s current assignment. Correct the account or boarding before continuing.</string>
   <string name="setup_management_permission">Every real setup requires Management API — Terminal actions read, Management API — Terminal settings read and write, and Management API — Terminal settings Advanced read and write.</string>
   <string name="setup_management_authentication">Adyen did not accept this API key in the selected environment. Replace the key and retry.</string>
-  <string name="setup_management_unavailable">Adyen setup access could not be verified. Check the connection and retry.</string>
+  <string name="setup_management_unavailable">The Adyen Management API could not be reached or returned an error. Check the internet connection and Adyen API logs, then retry.</string>
+  <string name="setup_management_unreadable">Adyen returned an invalid setup response or omitted required fields. Check the Management API response and retry.</string>
+  <string name="setup_terminal_settings_unreadable">Adyen returned terminal settings Mini mPOS cannot read: unsupported fields or invalid values. Shared-key creation is blocked. Check the terminal settings response in Adyen API logs.</string>
+  <string name="setup_shared_key_incomplete">Adyen returned an incomplete shared key: identifier, version or passphrase is missing. Check the encryption key and Advanced settings permission in Customer Area. Mini mPOS will not replace an unverified key.</string>
+  <string name="setup_shared_key_invalid">Adyen returned a shared-key version outside 1–9999. Check the encryption key in Customer Area. Mini mPOS will not replace it.</string>
   <string name="setup_store_access">The assigned store could not be read. Check store access; another store will not be used.</string>
   <string name="setup_changed">Settings changed during verification. Retry with the current setup.</string>
   <string name="transfer_verify">Verify and import</string>

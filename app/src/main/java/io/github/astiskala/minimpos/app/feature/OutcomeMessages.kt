@@ -156,6 +156,10 @@ private val SetupProblem.textRes: Int
             SetupProblem.MANAGEMENT_PERMISSION -> R.string.setup_management_permission
             SetupProblem.MANAGEMENT_AUTHENTICATION -> R.string.setup_management_authentication
             SetupProblem.MANAGEMENT_UNAVAILABLE -> R.string.setup_management_unavailable
+            SetupProblem.MANAGEMENT_UNREADABLE -> R.string.setup_management_unreadable
+            SetupProblem.TERMINAL_SETTINGS_UNREADABLE -> R.string.setup_terminal_settings_unreadable
+            SetupProblem.SHARED_KEY_INCOMPLETE -> R.string.setup_shared_key_incomplete
+            SetupProblem.SHARED_KEY_INVALID -> R.string.setup_shared_key_invalid
             SetupProblem.STORE_ACCESS -> R.string.setup_store_access
             SetupProblem.SETUP_CHANGED -> R.string.setup_changed
             SetupProblem.KEY_CONNECTION_PENDING -> R.string.setup_key_connection_pending

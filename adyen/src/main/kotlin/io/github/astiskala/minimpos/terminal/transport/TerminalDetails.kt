@@ -71,6 +71,15 @@ enum class ManagementFailure {
 
     /** Successful answer did not contain the required fields. */
     UNREADABLE,
+
+    /** Terminal settings contain unsupported fields or values that cannot be safely preserved in a PATCH. */
+    SETTINGS_UNREADABLE,
+
+    /** An encryption-key object is present but lacks an identifier, version or passphrase; absence is not verified. */
+    KEY_INCOMPLETE,
+
+    /** An encryption-key object has a version outside the supported range. */
+    KEY_INVALID,
 }
 
 /** Read-only credential-role check; no secrets or raw API responses are exposed. */
@@ -229,7 +238,7 @@ class AdyenTerminalDetails(
     ): SharedKeyLookup {
         val reply = http.get(settingsUrl(id, environment), TIMEOUT)
         if (reply !is AdyenReply.Answered || !reply.ok) return SharedKeyLookup.Failed(reason(reply))
-        val settings = decodeTerminalSettings(reply.body) ?: return SharedKeyLookup.Failed(ManagementFailure.UNREADABLE)
+        val settings = decodeTerminalSettings(reply.body) ?: return SharedKeyLookup.Failed(ManagementFailure.SETTINGS_UNREADABLE)
         return lookup(settings)
     }
 
@@ -241,7 +250,7 @@ class AdyenTerminalDetails(
         val url = settingsUrl(id, environment)
         val before = http.get(url, TIMEOUT)
         if (before !is AdyenReply.Answered || !before.ok) return SharedKeyUpdate.Failed(reason(before))
-        val settings = decodeTerminalSettings(before.body) ?: return SharedKeyUpdate.Failed(ManagementFailure.UNREADABLE)
+        val settings = decodeTerminalSettings(before.body) ?: return SharedKeyUpdate.Failed(ManagementFailure.SETTINGS_UNREADABLE)
         return when (val existing = lookup(settings)) {
             is SharedKeyLookup.Found -> SharedKeyUpdate.Ready(existing.key, created = false)
             is SharedKeyLookup.Failed -> SharedKeyUpdate.Failed(existing.reason)
@@ -313,11 +322,11 @@ class AdyenTerminalDetails(
         val key = settings.nexo?.encryptionKey ?: return SharedKeyLookup.Missing
         val identifier = key.identifier?.trim().orEmpty()
         val passphrase = key.passphrase.orEmpty()
-        val version = key.version ?: return SharedKeyLookup.Failed(ManagementFailure.UNREADABLE)
-        return if (identifier.isBlank() || passphrase.isBlank() || version !in KEY_VERSIONS) {
-            SharedKeyLookup.Failed(ManagementFailure.UNREADABLE)
-        } else {
-            SharedKeyLookup.Found(DiscoveredKey(identifier, version, passphrase))
+        val version = key.version
+        return when {
+            identifier.isBlank() || passphrase.isBlank() || version == null -> SharedKeyLookup.Failed(ManagementFailure.KEY_INCOMPLETE)
+            version !in KEY_VERSIONS -> SharedKeyLookup.Failed(ManagementFailure.KEY_INVALID)
+            else -> SharedKeyLookup.Found(DiscoveredKey(identifier, version, passphrase))
         }
     }
 

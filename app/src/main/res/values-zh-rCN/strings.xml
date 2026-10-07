@@ -839,7 +839,11 @@
     <string name="setup_merchant_mismatch">商家账户与终端当前分配的账户不一致。请更正账户或终端注册后再继续。</string>
     <string name="setup_management_permission">所有真实付款设置的 API 密钥都必须具有 Management API — Terminal actions read、Management API — Terminal settings read and write 和 Management API — Terminal settings Advanced read and write 权限。</string>
     <string name="setup_management_authentication">Adyen 未接受所选环境中的 API 密钥。请更换密钥后重试。</string>
-    <string name="setup_management_unavailable">无法验证 Adyen 设置访问权限。请检查连接后重试。</string>
+    <string name="setup_management_unavailable">无法连接 Adyen Management API，或 API 返回了错误。请检查网络连接及 Adyen API 日志后重试。</string>
+    <string name="setup_management_unreadable">Adyen 返回的设置响应无效，或缺少必需字段。请检查 Management API 响应后重试。</string>
+    <string name="setup_terminal_settings_unreadable">Adyen 返回的终端设置包含不支持的字段或无效值，Mini mPOS 无法读取。已阻止创建共享密钥。请检查 Adyen API 日志中的终端设置响应。</string>
+    <string name="setup_shared_key_incomplete">Adyen 返回的共享密钥不完整：缺少标识符、版本或口令。请在 Customer Area 检查加密密钥及高级设置权限。Mini mPOS 不会替换未经验证的密钥。</string>
+    <string name="setup_shared_key_invalid">Adyen 返回的共享密钥版本不在 1–9999 范围内。请在 Customer Area 检查加密密钥。Mini mPOS 不会替换此密钥。</string>
     <string name="setup_store_access">无法读取已分配的门店。请检查门店访问权限；不会使用其他门店。</string>
     <string name="setup_changed">验证期间设置已更改。请使用当前设置重试。</string>
     <string name="transfer_verify">验证并导入</string>

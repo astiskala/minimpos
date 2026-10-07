@@ -2,6 +2,7 @@ package io.github.astiskala.minimpos.terminal.transport
 
 import com.adyen.model.checkout.JSON
 import com.adyen.model.management.TerminalSettings
+import com.fasterxml.jackson.annotation.JsonIncludeProperties
 import com.fasterxml.jackson.core.JsonParser
 import com.fasterxml.jackson.core.JsonToken
 import com.fasterxml.jackson.databind.BeanDescription
@@ -78,8 +79,12 @@ internal fun <T> decodeAdyenModel(
     type: Class<T>,
 ): T? = runCatching { apiMapper.readValue(text, type) }.getOrNull()
 
+@JsonIncludeProperties("nexo")
+private interface NexoSettings
+
 private val settingsMapper =
     apiMapper.copy().apply {
+        addMixIn(TerminalSettings::class.java, NexoSettings::class.java)
         enable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES)
         coercionConfigFor(LogicalType.Integer).setCoercion(CoercionInputShape.String, CoercionAction.Fail)
         coercionConfigFor(LogicalType.Boolean)
@@ -103,7 +108,7 @@ private val settingsMapper =
         )
     }
 
-/** Reads complete official settings strictly, so a PATCH never silently drops unknown or malformed fields. */
+/** Reads official nexo settings strictly; unrelated sections are never sent in the shared-key PATCH. */
 internal fun decodeTerminalSettings(text: String): TerminalSettings? =
     runCatching { settingsMapper.readValue(text, TerminalSettings::class.java) }.getOrNull()
 

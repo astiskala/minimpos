@@ -220,6 +220,8 @@ class AutomaticSetupTransferTest {
         assertThat(import()).isEqualTo(SetupImportOutcome.Failed(SetupProblem.MANAGEMENT_AUTHENTICATION))
         credential = CredentialLookup.Failed(ManagementFailure.UNAVAILABLE)
         assertThat(import()).isEqualTo(SetupImportOutcome.Failed(SetupProblem.MANAGEMENT_UNAVAILABLE))
+        credential = CredentialLookup.Failed(ManagementFailure.UNREADABLE)
+        assertThat(import()).isEqualTo(SetupImportOutcome.Failed(SetupProblem.MANAGEMENT_UNREADABLE))
     }
 
     @Test

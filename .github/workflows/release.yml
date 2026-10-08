@@ -1,6 +1,6 @@
 name: Release
 
-# Prepare a version-only commit, verify it in CI, then sign and promote CI's APK without rebuilding it.
+# Prepare a version-only commit, run CI (or reuse exact successful main CI), then sign its APK without rebuilding it.
 on:
   workflow_dispatch:
     inputs:
@@ -24,12 +24,13 @@ jobs:
     timeout-minutes: 10
     permissions:
       contents: write
-      actions: write
+      actions: read
     outputs:
       commit: ${{ steps.version.outputs.commit }}
       name: ${{ steps.version.outputs.name }}
       code: ${{ steps.version.outputs.code }}
-      dispatch: ${{ steps.version.outputs.dispatch }}
+      run: ${{ steps.reuse.outputs.run }}
+      attempt: ${{ steps.reuse.outputs.attempt }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -89,74 +90,116 @@ jobs:
             echo "commit=$(git rev-parse HEAD)"
             echo "name=$name"
             echo "code=$(sed -n 's/^versionCode=//p' version.properties)"
-            echo "dispatch=$(date -u '+%Y-%m-%dT%H:%M:%SZ')"
           } >> "$GITHUB_OUTPUT"
           echo "Prepared $name at $(git rev-parse HEAD)" >> "$GITHUB_STEP_SUMMARY"
-          # GITHUB_TOKEN pushes do not trigger push workflows. Dispatch CI explicitly for the prepared commit.
-          gh workflow run ci.yml --repo "$REPOSITORY" --ref main
+      - name: Reuse successful exact-commit CI when available
+        id: reuse
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPOSITORY: ${{ github.repository }}
+          COMMIT: ${{ steps.version.outputs.commit }}
+        run: |
+          gh api --method GET "repos/$REPOSITORY/actions/workflows/ci.yml/runs" \
+            -f head_sha="$COMMIT" -f branch=main -f per_page=100 > "$RUNNER_TEMP/ci-runs.json"
+          # Try successful runs newest first. Missing/expired artifacts require fresh CI, never unverified reuse.
+          while :; do
+            run=$(java -jar tooling/build/libs/minimpos-tooling.jar release ci --runs "$RUNNER_TEMP/ci-runs.json" \
+              --commit "$COMMIT")
+            if [ "$run" = null ]; then break; fi
+            id=$(jq -r '.id' <<< "$run")
+            attempt=$(jq -r '.run_attempt' <<< "$run")
+            artifact="$RUNNER_TEMP/reuse-$id-$attempt"
+            if gh run download "$id" --repo "$REPOSITORY" --name "release-$COMMIT-$attempt" --dir "$artifact"; then
+              # Verification runs the current checkout's tooling, not the downloaded executable.
+              java -jar tooling/build/libs/minimpos-tooling.jar release verify --artifact "$artifact" \
+                --commit "$COMMIT" --run-id "$id" --run-attempt "$attempt"
+              {
+                echo "run=$id"
+                echo "attempt=$attempt"
+              } >> "$GITHUB_OUTPUT"
+              echo "Reusing exact successful CI: $(jq -r '.html_url' <<< "$run")" >> "$GITHUB_STEP_SUMMARY"
+              exit 0
+            fi
+            jq --arg id "$id" '.workflow_runs |= map(select((.id | tostring) != $id))' \
+              "$RUNNER_TEMP/ci-runs.json" > "$RUNNER_TEMP/remaining-runs.json"
+            mv "$RUNNER_TEMP/remaining-runs.json" "$RUNNER_TEMP/ci-runs.json"
+          done
+          echo "No reusable exact-commit artifact; the full CI workflow will run." >> "$GITHUB_STEP_SUMMARY"
 
   ci:
     needs: prepare
+    if: needs.prepare.outputs.run == ''
     runs-on: ubuntu-latest
-    timeout-minutes: 50
-    permissions:
-      actions: read
+    timeout-minutes: 45
     outputs:
-      run: ${{ steps.ci.outputs.run }}
-      attempt: ${{ steps.ci.outputs.attempt }}
+      run: ${{ steps.artifact.outputs.run }}
+      attempt: ${{ steps.artifact.outputs.attempt }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ needs.prepare.outputs.commit }}
           persist-credentials: false
 
+      - name: Verify the checkout
+        env:
+          COMMIT: ${{ needs.prepare.outputs.commit }}
+        run: test "$(git rev-parse HEAD)" = "$COMMIT"
+
       - uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
         with:
           distribution: temurin
           java-version: 21
 
-      - name: Build release tooling without signing credentials
-        run: ./gradlew :tooling:cliJar --console=plain
+      - uses: gradle/actions/setup-gradle@3f5f9adaf7d9fecd50b5935e54106014257a94e6 # v6.4.0
+        with:
+          cache-encryption-key: ${{ secrets.GRADLE_ENCRYPTION_KEY }}
 
-      - name: Require successful CI for the version commit
-        id: ci
-        env:
-          GH_TOKEN: ${{ github.token }}
-          REPOSITORY: ${{ github.repository }}
-          COMMIT: ${{ needs.prepare.outputs.commit }}
-          DISPATCH: ${{ needs.prepare.outputs.dispatch }}
+      - name: Quality gate and release build
         run: |
-          for attempt in $(seq 1 180); do
-            gh api --method GET "repos/$REPOSITORY/actions/workflows/ci.yml/runs" \
-              -f head_sha="$COMMIT" -f branch=main -f per_page=100 > "$RUNNER_TEMP/ci-runs.json"
-            run=$(java -jar tooling/build/libs/minimpos-tooling.jar release ci --runs "$RUNNER_TEMP/ci-runs.json" \
-              --commit "$COMMIT" --not-before "$DISPATCH")
-            if [ -n "$run" ] && [ "$run" != null ]; then
-              test "$(jq -r '.head_sha' <<< "$run")" = "$COMMIT"
-              url=$(jq -r '.html_url' <<< "$run")
-              status=$(jq -r '.status' <<< "$run")
-              if [ "$status" = completed ]; then
-                conclusion=$(jq -r '.conclusion' <<< "$run")
-                if [ "$conclusion" != success ]; then
-                  echo "::error::CI for $COMMIT concluded $conclusion: $url. Fix CI before publishing."
-                  exit 1
-                fi
-                echo "run=$(jq -r '.id' <<< "$run")" >> "$GITHUB_OUTPUT"
-                echo "attempt=$(jq -r '.run_attempt' <<< "$run")" >> "$GITHUB_OUTPUT"
-                echo "CI passed for $COMMIT: $url" >> "$GITHUB_STEP_SUMMARY"
-                exit 0
-              fi
-              echo "Waiting for CI ($status): $url (attempt $attempt/180)"
-            else
-              echo "Waiting for CI to appear for $COMMIT (attempt $attempt/180)"
-            fi
-            sleep 15
-          done
-          echo "::error::Timed out waiting for CI for $COMMIT"
-          exit 1
+          MINIMPOS_CHROME="$(command -v google-chrome)"
+          export MINIMPOS_CHROME
+          scripts/ci
+
+      - name: Prepare unsigned release artifact
+        id: artifact
+        env:
+          COMMIT: ${{ needs.prepare.outputs.commit }}
+          RUN_ID: ${{ github.run_id }}
+          RUN_ATTEMPT: ${{ github.run_attempt }}
+        run: |
+          mkdir -p build/release-artifact
+          cp app/build/outputs/apk/release/app-release-unsigned.apk build/release-artifact/
+          cp tooling/build/libs/minimpos-tooling.jar build/release-artifact/
+          java -jar tooling/build/libs/minimpos-tooling.jar release manifest --artifact build/release-artifact \
+            --commit "$COMMIT" --run-id "$RUN_ID" --run-attempt "$RUN_ATTEMPT"
+          {
+            echo "run=$RUN_ID"
+            echo "attempt=$RUN_ATTEMPT"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Upload unsigned release artifact
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: release-${{ needs.prepare.outputs.commit }}-${{ github.run_attempt }}
+          path: build/release-artifact/
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Upload reports
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: reports
+          path: |
+            */build/reports/
+            */build/test-results/
+          retention-days: 14
 
   release:
     needs: [prepare, ci]
+    if: >-
+      ${{ !cancelled() && needs.prepare.result == 'success' &&
+          (needs.ci.result == 'success' || (needs.ci.result == 'skipped' && needs.prepare.outputs.run != '')) }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
     # Only this job receives signing secrets; no Gradle plugins or dependencies execute here.
@@ -180,8 +223,8 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           REPOSITORY: ${{ github.repository }}
           COMMIT: ${{ needs.prepare.outputs.commit }}
-          RUN_ID: ${{ needs.ci.outputs.run }}
-          RUN_ATTEMPT: ${{ needs.ci.outputs.attempt }}
+          RUN_ID: ${{ needs.prepare.outputs.run || needs.ci.outputs.run }}
+          RUN_ATTEMPT: ${{ needs.prepare.outputs.attempt || needs.ci.outputs.attempt }}
         run: |
           gh run download "$RUN_ID" --repo "$REPOSITORY" --name "release-$COMMIT-$RUN_ATTEMPT" \
             --dir "$RUNNER_TEMP/release-artifact"

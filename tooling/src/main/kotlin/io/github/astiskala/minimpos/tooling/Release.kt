@@ -7,6 +7,7 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.contentOrNull
+import kotlinx.serialization.json.longOrNull
 import kotlinx.serialization.json.put
 import java.math.BigInteger
 import java.nio.file.Files
@@ -85,16 +86,18 @@ internal object Release {
     fun selectCiRun(
         runs: JsonArray,
         commit: String,
-        notBefore: String,
     ): JsonObject? =
         runs
             .filterIsInstance<JsonObject>()
-            .firstOrNull {
+            .filter {
                 it.string("head_sha") == commit &&
                     it.string("head_branch") == "main" &&
-                    it.string("event") == "workflow_dispatch" &&
-                    it.string("created_at")?.let { created -> created >= notBefore } == true
-            }
+                    it.string("event") in setOf("push", "workflow_dispatch") &&
+                    it.string("status") == "completed" &&
+                    it.string("conclusion") == "success" &&
+                    it.positiveInteger("id") != null &&
+                    it.positiveInteger("run_attempt") != null
+            }.maxByOrNull { requireNotNull(it.positiveInteger("id")) }
 
     fun metadata(
         version: Path,
@@ -161,4 +164,7 @@ internal object Release {
     }
 
     private fun JsonObject.string(key: String): String? = (get(key) as? JsonPrimitive)?.takeIf { it.isString }?.contentOrNull
+
+    private fun JsonObject.positiveInteger(key: String): Long? =
+        (get(key) as? JsonPrimitive)?.takeUnless { it.isString }?.longOrNull?.takeIf { it > 0 }
 }

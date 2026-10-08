@@ -132,9 +132,10 @@ build on pull requests. JVM modules aren't checked by Android Lint for API avail
 reachable Java/Android APIs against minSdk 28 and accepts D8 backports. For example, use the charset-name overload of
 `URLEncoder.encode`, not the API-33 `Charset` overload.
 
-CI runs the gate first, then builds with `./gradlew :app:assembleRelease -PqualityGatePassed=true` to skip the
-build's automatic fatal-only release lint pass. The flag requires `CI=true` and asserts that the gate passed for
-this unchanged checkout; it does not record or verify a previous run. Explicit lint checks remain enabled, and
+Ordinary CI and Release's direct CI job both use `scripts/ci`. It requires `CI=true`, runs the full
+`qualityGate --continue`, stops on failure, then builds with `./gradlew :app:assembleRelease -PqualityGatePassed=true`
+to skip the build's automatic fatal-only release lint pass. The flag requires `CI=true` and asserts that the gate
+passed for this unchanged checkout; it does not record or verify a previous run. Explicit lint checks remain enabled, and
 standalone release builds retain release lint by default. R8, signing and packaging checks are never skipped.
 
 ### Test setup
@@ -187,7 +188,9 @@ they require a backend for certificates, a private Maven repository, PCI MPoC an
 
 ## Website and screenshots
 
-GitHub Pages publishes `docs/` unchanged. Keep the existing visual design and script-free guides; only the setup
+The Pages workflow validates the website before publishing `docs/` unchanged. It runs on website, helper-contract,
+website-test and relevant build changes, or manually; app-only and version-only commits do not redeploy the site.
+Keep the existing visual design and script-free guides; only the setup
 helper runs `docs/js/setup.js` and the vendored `qrcodegen.js`. Preserve the helper's no-network policy and update its
 format alongside `TransferCodec`, `QrChunks`, `TransferSeal` and the helper vectors in `SetupTransferTest`.
 
@@ -214,7 +217,7 @@ label screenshots as demos, and keep demo data consistent. The guides' SMTP link
   release at least seven days old; update all four platform checksums together, using release checksum files or
   verified archives (`gh attestation verify`). Dependabot cannot update these binaries.
 - Pin workflow actions by SHA; checkout with `persist-credentials: false`; pass expressions into scripts via `env`.
-  Keep caches out of release jobs and expose its push token only to the push step.
+  Keep caches out of the signing job and expose its push token only to the push step.
 - For a dead-code audit, build release and inspect `app/build/outputs/mapping/release/usage.txt`. The block before the
   first `androidx.*` entry shows public members production never reaches; review serialization/Room members by hand.
 
@@ -224,6 +227,31 @@ To see configuration-time warnings hidden by a reused configuration cache:
 ```sh
 ./gradlew qualityGate --no-configuration-cache --warning-mode all -Dorg.gradle.deprecation.trace=true
 ```
+
+### GitHub workflow setup
+
+CI retains every quality check and the R8 build. Release runs that same policy directly without a polling runner;
+both use the tested `scripts/ci` script. Current actionlint and zizmor releases disagree on same-repository reusable
+workflow syntax, so no reusable-workflow call or linter exception is needed.
+
+- Set the repository Actions secret `GRADLE_ENCRYPTION_KEY` to a base64-encoded random 16-byte AES key. The pinned
+  `setup-gradle` action needs it to persist encrypted configuration-cache entries. Do not print or commit the key.
+  Ordinary build-cache reuse still works without it; forks receive no secrets. Gradle caches remain read-only outside
+  main, and the signing job never restores a cache.
+- After deploying `codeql.yml`, switch CodeQL from default setup to advanced setup. Keep the default query suite,
+  `actions` and `java-kotlin` analyses, PR/main scans and the weekly scan. The manual Kotlin build compiles every
+  production module without APK packaging, D8 or R8. It disables compilation and configuration-cache reuse and
+  forces compiler execution for extraction. Check the first analysis's source coverage before retiring default setup.
+- After deploying `pages.yml`, set Settings › Pages › Build and deployment › Source to **GitHub Actions**, then run
+  Pages manually for the first verified deployment. Keep the `github-pages` environment restricted to main.
+- Dependency submission runs when Gradle scripts, properties, wrapper/catalog or its workflow change, weekly, and
+  manually. After a successful explicit submission, verify its resolved transitive snapshot, including the security
+  floors in `settings.gradle.kts`, then disable Settings › Advanced Security › Automatic dependency submission.
+  Keep the dependency graph, Dependabot alerts and security updates enabled. Do not disable automatic submission
+  before confirming the explicit workflow's graph.
+
+Repository settings are not part of a Git commit. Deploy the workflows before changing these settings; disabling the
+existing scanners or publication before their replacements exist creates a verification or deployment gap.
 
 ## Signing your own APK
 
@@ -252,19 +280,24 @@ release process, credentials and signing history.
 ## Release the app
 
 `version.properties` is managed by **Actions › Release › Run workflow** on `main`. Choose patch/minor/major;
-the workflow commits the new version first and explicitly starts CI on it. CI runs the full quality gate and R8
+the workflow commits the new version first. It reuses a successful main push/manual CI run for that exact commit
+only when its retained artifact passes current commit, version, run-attempt and SHA-256 verification. Missing or
+expired artifacts require fresh CI; changed or invalid artifacts block release. Pending, failed, cancelled and PR
+runs are never reused. Otherwise, a direct CI job runs the full quality gate and R8
 build, then saves the unsigned APK and tested executable tooling JAR with their SHA-256 hashes, commit, version and
-run attempt. Release waits up to 45 minutes for successful CI on that exact version commit.
-Missing, failed or cancelled CI blocks publication.
+run attempt. There is no dispatched duplicate CI or runner waiting for another workflow.
+Failed or cancelled verification blocks publication.
 
 Only successful CI allows the release job to access the signing environment. It runs CI's tooling JAR with Java,
 without rebuilding tooling, Gradle plugins or dependency resolution. It verifies the artifact's provenance,
 checksum, application ID and version, signs CI's APK without rebuilding it, checks its signature and alignment, tags
-the verified commit as `vX.Y.Z`, and publishes the APK and notes. The full quality gate runs once, in CI; no Gradle
+the verified commit as `vX.Y.Z`, and publishes the APK and notes. The full quality gate runs once, in the direct CI
+job or reused successful CI; no Gradle
 plugins execute with signing secrets. Main must still point to the verified commit before tagging.
 
-A failed attempt can leave an unpublished version commit on main. Choose **resume** to rerun CI and publish it
-without another bump; the version must come from a version-only `Release X.Y.Z` commit without an existing tag.
+A failed attempt can leave an unpublished version commit on main. Choose **resume** to reuse valid exact-commit CI
+or run fresh CI and publish it without another bump; the version must come from a version-only `Release X.Y.Z`
+commit without an existing tag.
 Later fixes can follow that commit before resuming. If tagging
 succeeded but publication failed, finish publication for that existing tag rather than bumping again. CI artifacts
 expire after 14 days; resume produces a fresh one. Only the latest release is maintained.

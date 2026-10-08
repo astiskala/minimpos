@@ -167,7 +167,7 @@
   <string name="payment_cancelling">正在取消…</string>
   <string name="payment_unknown_outcome">终端未确认支付结果。再次收款前，请先在商户后台核实。</string>
   <string name="payment_interrupted">应用在收到结果前已停止运行。</string>
-  <string name="capture_interrupted">应用在收到 Adyen 的扣款响应前已停止运行。可以安全地重新发送。</string>
+  <string name="capture_interrupted">应用在收到 Adyen 的扣款响应前已停止运行。可以安全地重试同一扣款请求。</string>
   <string name="result_title">结果</string>
   <string name="result_print">打印收据</string>
   <string name="result_print_merchant">打印商家联</string>
@@ -234,7 +234,7 @@
   <string name="detail_tip">账单 %1$s + 小费 %2$s</string>
   <string name="detail_capture_requested">已请求扣款 %1$s。结果由 Adyen 确认，可在商户后台查看。</string>
   <string name="detail_capture_failed">Adyen 未接受 %1$s 的扣款请求。</string>
-  <string name="detail_capture_unknown">无法确定 Adyen 是否已收到 %1$s 的扣款请求。可以安全地重试。</string>
+  <string name="detail_capture_unknown">Adyen 未确认收到 %1$s 的扣款请求。可以安全地重试同一扣款请求。</string>
   <string name="detail_held_now">当前冻结 %1$s</string>
   <string name="detail_adjustment_requested">已请求将金额调整为 %1$s。结果由 Adyen 确认，可在商户后台查看。</string>
   <string name="detail_modification_message">扣款或金额调整问题</string>
@@ -266,7 +266,7 @@
   <string name="refund_confirm_title">退还此次支付？</string>
   <string name="refund_confirm_message">%1$s 将退回购物者的卡片。</string>
   <string name="refund_confirm">退款</string>
-  <string name="refund_processing">正在请求退款…</string>
+  <string name="refund_processing">正在发送退款请求…</string>
   <string name="refund_status_requested">已请求退款</string>
   <string name="refund_status_failed">退款失败</string>
   <string name="refund_status_unknown">退款结果未知</string>
@@ -277,7 +277,7 @@
   <string name="refund_awaiting_tip">此次支付正在等待添加小费并扣款。请在“交易记录”中输入小费或取消支付。</string>
   <string name="cancellation_title">取消</string>
   <string name="cancellation_detail_title">取消详情</string>
-  <string name="cancellation_processing">正在请求取消…</string>
+  <string name="cancellation_processing">正在发送取消请求…</string>
   <string name="cancellation_status_requested">已请求取消</string>
   <string name="cancellation_status_failed">取消失败</string>
   <string name="cancellation_status_unknown">取消结果未知</string>
@@ -511,7 +511,7 @@
   <string name="settings_mode_payments_app">在本手机上使用 Tap to Pay</string>
   <string name="settings_environment">环境</string>
   <string name="settings_environment_hint">测试卡请选择 TEST，真实付款请选择 LIVE。终端、商家账户和 API 密钥必须属于同一环境。</string>
-  <string name="settings_adyen_key_hint">在 Adyen 商户后台“Developers › API credentials”中创建凭据并生成 API 密钥。</string>
+  <string name="settings_adyen_key_hint">在商户后台打开“Developers › API credentials”。创建凭据并生成 API 密钥。</string>
   <string name="settings_adyen_roles_hint">除默认角色外，此 API 密钥还需添加以下角色：</string>
   <string name="settings_adyen_role_cloud">Cloud Device API role</string>
   <string name="settings_adyen_role_terminals">Management API - Terminal actions read</string>
@@ -523,7 +523,7 @@
   <string name="settings_poiid_hint">例如 S1F2-…</string>
   <string name="settings_poiid_help">终端的型号和序列号，可在其 Device info（设备信息）界面查看。</string>
   <string name="settings_host">终端 IP 地址</string>
-  <string name="settings_host_placeholder">例如 192.168.1.20</string>
+  <string name="settings_host_placeholder">例如 192.0.2.1</string>
   <string name="settings_host_hint">终端必须与此设备处于同一网络。</string>
   <string name="settings_port">端口</string>
   <string name="settings_shared_key">共享密钥</string>
@@ -569,7 +569,7 @@
   <string name="settings_choose_terminal">选择终端</string>
   <string name="settings_no_terminals">没有可用的匹配终端。请手动输入信息。</string>
   <string name="settings_tap_to_pay">Tap to Pay</string>
-  <string name="settings_tap_to_pay_hint">请 Adyen 支持团队开通 Tap to Pay on Android 和 Adyen Payments app role。设置后，本手机将在 Payments 应用中登记到上方的商家账户（或其某个门店）。之后顾客在本手机上轻触银行卡或手机付款；本机没有打印机，收据将通过电子邮件发送。</string>
+  <string name="settings_tap_to_pay_hint">请 Adyen 支持团队开通 Tap to Pay on Android 和 Adyen Payments app role。设置会将本手机注册到您的商家账户或其某个门店。顾客在本手机上轻触银行卡或手机付款。本机没有打印机，请发送电子收据或分享收据。</string>
   <string name="settings_payments_app">Adyen Payments 应用</string>
   <string name="settings_payments_app_hint">Tap to Pay 在 Adyen Payments 应用中运行：测试账户使用 Adyen Payments Test，正式账户使用 Adyen Payments。请从 Google Play 安装。</string>
   <string name="settings_payments_app_installed">已安装</string>
@@ -609,7 +609,7 @@
   <string name="settings_pricing">定价</string>
   <string name="settings_currency">币种</string>
   <string name="settings_currency_auto">自动（%1$s）</string>
-  <string name="settings_currency_hint">可使用 Adyen 支持的任何币种。请确认您的 Adyen 账户支持使用该币种进行线下支付。</string>
+  <string name="settings_currency_hint">可使用 Adyen 支持的任何币种。请确认您的商家账户支持使用该币种进行线下支付。</string>
   <string name="settings_currency_search">按代码或名称搜索</string>
   <string name="settings_currency_none">无匹配币种</string>
   <string name="settings_tax">税</string>
@@ -799,7 +799,7 @@
   <string name="about_app_info_integrator">集成方</string>
   <string name="about_app_info_device">设备</string>
   <string name="about_app_info_library">Adyen 程序库</string>
-  <string name="about_text">Mini mPOS 通过 Adyen Terminal API 收款：在其所在终端上、通过同一网络中或互联网（云端）连接的终端，或在 Adyen Payments 应用中使用 Tap to Pay。它使用 Adyen Java API 程序库。发往终端或 Payments 应用的消息使用共享密钥加密；云端请求通过您的 API 密钥进行验证。</string>
+  <string name="about_text">Mini mPOS 使用 Adyen Terminal API 和 Adyen Java API 程序库收款。它可在支付终端上运行，或使用同一网络中或互联网（云端）连接的终端。手机上的 Tap to Pay 使用 Adyen Payments 应用。Mini mPOS 通过共享密钥加密发往终端或 Payments 应用的消息。云端请求使用您的 API 密钥进行身份验证。</string>
   <!-- Payment links (Pay by Link) and sharing -->
   <string name="checkout_send_link">创建支付链接</string>
   <string name="checkout_link_without_tip">支付链接不支持收据小费。是否不使用该选项创建链接？</string>
@@ -844,9 +844,9 @@
   <string name="link_demo_label">演示链接</string>
   <string name="settings_link_expiry">链接有效时长（小时）</string>
   <string name="settings_link_expiry_hint">1 至 1680 小时（70 天）；Adyen 默认为 24 小时</string>
-  <string name="payment_context_mismatch">当前设置与原支付的终端、Adyen账户或环境不一致。请恢复原设置后继续。</string>
+  <string name="payment_context_mismatch">当前设置与原支付的终端、商家账户或环境不一致。请恢复原设置后继续。</string>
   <string name="refund_review_title">核对原支付</string>
-  <string name="refund_review_message">本设备没有原销售记录。二维码不能证明支付已扣款，也不反映后续小费、退款或支付终端。请在Customer Area核对支付和剩余可退金额，并确认当前终端及环境正确。只会退还核对的金额，不会执行不限金额的整笔撤销。</string>
+  <string name="refund_review_message">本设备没有原销售记录。二维码不能确认扣款、后续小费或退款，也不能确认支付目标。请在商户后台核对原支付和剩余可退金额。确认所选终端及环境正确。本次退款只发送核对的金额，不会执行不限金额的整笔撤销。</string>
   <string name="refund_review_confirm">已核对支付和设置</string>
   <string name="pricing_change_title">确认价格变更</string>
   <string name="pricing_change_message">%1$s → %2$s。保留显示的单价，并按新币种精度四舍五入。下方列出部分转换后的价格。切换含税或不含税价格会改变税费的计算方式。已保存的销售记录不变。</string>
@@ -868,8 +868,8 @@
     <string name="transfer_board_first">请设置 Tap to Pay 以验证本次导入。验证成功前不会保存其他内容。</string>
     <string name="transfer_business_failed">无法导入商家信息。请重试，或在“设置 › 收据”中输入。</string>
     <string name="transfer_missing_fields">设置不完整。请在手动设置助手中补充缺失信息，再扫描新二维码。</string>
-    <string name="transfer_tap_checked">已检查 Payments app 注册和设置。该应用不支持共享密钥诊断测试。</string>
-    <string name="settings_payments_app_setup_checked">已检查设置字段。Payments app 无法对共享密钥进行诊断测试。</string>
+    <string name="transfer_tap_checked">已检查 Payments 应用注册和设置。该应用无法通过连接检查测试共享密钥。</string>
+    <string name="settings_payments_app_setup_checked">已检查设置字段。Payments 应用无法通过连接检查测试共享密钥。</string>
   <string name="history_print_day">打印整日汇总</string>
   <string name="history_capture_activity">请款 / 小费</string>
   <string name="report_title">本地每日汇总</string>
@@ -883,7 +883,7 @@
   <string name="report_online">在线支付 — 支付日期未知</string>
   <string name="report_undated">请款 — 处理日期未知</string>
   <string name="report_undated_note">所有保留的无日期活动。不计入当日销售和净额。</string>
-  <string name="report_note">仅汇总保留的本地活动。请款和退款受理不代表最终结算。以 Adyen Customer Area 为准。</string>
+  <string name="report_note">仅汇总保存在本设备上的活动。扣款和退款请求获受理不代表最终结算。请在商户后台核对最终结果。</string>
   <string name="report_issue_note">未解决的结果可能改变这些总额。</string>
   <string name="report_demo">演示 — 未发生资金交易</string>
   <string name="report_unknown">环境未知</string>

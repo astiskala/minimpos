@@ -14,11 +14,14 @@ class DailyReportGuideTest {
         listOf("", "zh-CN", "ja").forEach { language ->
             val directory = docs.resolve(language)
             val using = Jsoup.parse(directory.resolve("using.html").readText()).select("#wallets")
-            listOf("Alipay", "WeChat Pay", "PayPal", "Venmo", "GCash", "DANA", "Kakao Pay", "TrueMoney", "PayMe", "TEST")
+            listOf("Alipay", "WeChat Pay", "PayPal", "Venmo", "GCash", "DANA", "Kakao Pay", "TrueMoney", "PayMe")
                 .forEach { assertWithMessage("$language wallet contract: $it").that(using.text()).contains(it) }
+            assertWithMessage(
+                "$language wallet verification",
+            ).that(using.text()).contains(if (language.isEmpty()) "test behavior" else "TEST")
             assertThat(using.select("a[href$=\"#unknown\"]")).isNotEmpty()
             assertThat(using.select("img")).hasSize(2)
-            val setup = Jsoup.parse(directory.resolve("getting-started.html").readText()).select("#choose").text()
+            val setup = Jsoup.parse(directory.resolve("quick-start.html").readText()).select("#choose").text()
             assertThat(setup).contains("Management API — Payment methods read")
             val troubleshooting = Jsoup.parse(directory.resolve("troubleshooting.html").readText()).select("#wallets")
             assertThat(troubleshooting.select("a[href=\"#unknown\"]")).isNotEmpty()

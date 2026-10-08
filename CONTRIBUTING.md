@@ -16,7 +16,7 @@ macOS and Linux; its pinned Markdown/workflow linter binaries are not available 
 
 Run on an Android 9+ phone or emulator. Away from a terminal, the app defaults to the simulator. Set its outcomes,
 delay and printer in Settings › Simulator. Adyen terminals have no adb: use the simulator for debugging or configure
-a terminal on your network for integration testing. Follow the merchant [setup guide](docs/getting-started.html).
+a terminal on your network for integration testing. Follow the merchant [Quick start guide](docs/quick-start.html).
 
 Android Studio is the simplest editor. The repository's VS Code settings disable the Java extension's Gradle import;
 there is no Java code, and that importer cannot handle this build.
@@ -191,6 +191,10 @@ they require a backend for certificates, a private Maven repository, PCI MPoC an
   and use `ColumnScope`/`RowScope` extensions for siblings that need parent spacing.
 - Put user text in resources, in short US English, with Chinese/Japanese translations and matching format arguments.
   CJK plurals use `other`. Preserve identifiers, stored spelling and Adyen text; keep Customer Area paths English.
+  Follow the [Adyen partner style guide](https://docs.adyen.com/development-resources/partner-style-guide) for app copy
+  and merchant guides: short active sentences, consistent terms and numbered instructions. Name Adyen in documentation
+  link text and link to pages, not fragments. Use reserved example domains and IP addresses. Keep exact UI labels,
+  localized money formatting and explicit uncertainty in payment outcomes; do not apply prose rules to protocol values.
 - Pre-launch schemas and QR formats have one current contract. Update models, exported Room schema, tests and setup
   helper together, without earlier-build compatibility. Never add destructive fallback or reset local data silently.
 - New-install localized/regional defaults must not overwrite stored text or imported settings.

@@ -33,11 +33,11 @@
   <header class="site-header"><div class="wrap header-row">
     <a class="brand" href="./" aria-label="Mini mPOS ホーム"><img src="../favicon.svg" alt="" width="36" height="36"><span>Mini mPOS</span></a>
     <nav class="desktop-nav" aria-label="メインナビゲーション"><ul class="nav">
-      <li><a href="getting-started.html">はじめに</a></li><li><a href="using.html">Mini mPOS の使い方</a></li>
+      <li><a href="quick-start.html">クイックスタート</a></li><li><a href="using.html">Mini mPOS の使い方</a></li>
       <li><a href="troubleshooting.html" aria-current="page">トラブルシューティング</a></li><li><a href="setup.html">セットアップヘルパー</a></li>
     </ul></nav>
     <details class="mobile-menu"><summary>メニュー</summary><div class="mobile-panel"><nav aria-label="メインナビゲーション"><ul class="nav">
-      <li><a href="getting-started.html">はじめに</a></li><li><a href="using.html">Mini mPOS の使い方</a></li>
+      <li><a href="quick-start.html">クイックスタート</a></li><li><a href="using.html">Mini mPOS の使い方</a></li>
       <li><a href="troubleshooting.html" aria-current="page">トラブルシューティング</a></li><li><a href="setup.html">セットアップヘルパー</a></li>
     </ul></nav>
       <nav class="mobile-languages" aria-label="言語"><p>言語</p><ul>
@@ -52,7 +52,7 @@
     <section class="guide-hero"><div class="wrap"><p class="eyebrow">ガイド</p><h1>トラブルシューティング</h1><p class="lead">表示されている症状を探し、考えられる原因を確認して、対処方法に従います。決済の途中だった場合は、まずその結果を確認してください。接続を直しても、前の決済が成立したかどうかはわかりません。</p></div></section>
     <div class="wrap guide">
       <nav class="toc" id="contents" aria-label="ガイドナビゲーション">
-        <p class="toc-title">ガイド</p><p><a href="getting-started.html">はじめに</a><br><a href="using.html">Mini mPOS の使い方</a><br><a href="troubleshooting.html" aria-current="page">トラブルシューティング</a></p>
+        <p class="toc-title">ガイド</p><p><a href="quick-start.html">クイックスタート</a><br><a href="using.html">Mini mPOS の使い方</a><br><a href="troubleshooting.html" aria-current="page">トラブルシューティング</a></p>
         <div class="desktop-contents"><p class="toc-title">このページの内容</p><ol>
           <li><a href="#unknown">結果不明</a></li><li><a href="#declines">拒否された決済</a></li>
           <li><a href="#wallets">ウォレットスキャン</a></li><li><a href="#connection">端末ペアリングと設定</a></li><li><a href="#network-dropouts">ネットワークの切断</a></li>
@@ -90,7 +90,7 @@
           <dl class="fixes">
             <div><dt>「このカードで再試行しないでください。別のカードまたは決済方法を購入者にお願いしてください。」</dt>
               <dd><p><span class="fix-label">原因</span>カード発行会社が、変わることのない理由（カードの停止や制限、不正の疑いなど）でこのカードを拒否したか、このカードはこの決済に使えません。</p>
-                <p><span class="fix-label">対処</span>別のカードか決済方法をお願いします。拒否の理由はお客様の銀行が説明できます。表示された理由は Adyen の<a href="https://docs.adyen.com/point-of-sale/error-scenarios/refusal-reasons-pos">拒否理由</a>で確認できます。</p></dd></div>
+                <p><span class="fix-label">対処</span>別のカードか決済方法をお願いします。拒否の理由はお客様の銀行が説明できます。表示された理由は <a href="https://docs.adyen.com/point-of-sale/error-scenarios/refusal-reasons-pos">Adyen の拒否理由</a>で確認できます。</p></dd></div>
             <div><dt>「再試行できます。」</dt>
               <dd><p><span class="fix-label">原因</span>決済がキャンセルされた、PIN が誤っていた、または残高不足など繰り返さない可能性のある理由でカードが拒否されました。</p>
                 <p><span class="fix-label">対処</span><strong>再試行</strong>をタップするか、別のカードをお願いします。</p></dd></div>
@@ -112,7 +112,7 @@
         <section id="wallets">
           <h2>ウォレットスキャンが表示されない、または失敗する</h2>
           <dl class="fixes">
-            <div><dt>ウォレットをスキャンがない</dt><dd><p><strong>設定 › 端末</strong>で<strong>ウォレットを更新</strong>をタップします。照会が成功しても対象 POS ウォレットがなければ、ボタンは表示しません。端末の店舗、現在の通貨、<a href="getting-started.html#credentials">任意の照会権限</a>を確認します。Tap to Pay とプリオーソリでは使えません。</p></dd></div>
+            <div><dt>ウォレットをスキャンがない</dt><dd><p><strong>設定 › 端末</strong>で<strong>ウォレットを更新</strong>をタップします。照会が成功しても対象 POS ウォレットがなければ、ボタンは表示しません。端末の店舗、現在の通貨、<a href="quick-start.html#credentials">任意の照会権限</a>を確認します。Tap to Pay とプリオーソリでは使えません。</p></dd></div>
             <div><dt>ウォレット照会のエラー</dt><dd><p>エラーは設定だけに表示し、通常の支払いを妨げません。認証情報、環境、読み取り権限を確認してください。設定が同じなら、一時的な更新失敗では最後に確認した一覧を維持します。正常な空の結果やアクセス失敗では削除します。起動、設定変更、手動更新だけで照会し、毎回の販売前には照会しません。</p></dd></div>
             <div><dt>コードが無効、または受信できない</dt><dd><p>プロフィール、設定転送、領収書 QR ではなく、お客様の支払いコードと正しいウォレットを選びます。端末スキャンは最大 30 秒です。<strong>再スキャン</strong>または<strong>カメラを使用</strong>を選び、求められたカメラ権限を許可してください。バックグラウンドから戻った場合も明示的な再開が必要です。</p></dd></div>
             <div><dt>保存が拒否された、またはトークンがない</dt><dd><p>決済結果に従ってください。保存トークンがなくても承認済みの支払いは承認済みです。明確な拒否が確認された場合だけ、必要に応じて会計に戻り、<strong>カードを保存</strong>をオフにして新しいスキャンを始めます。自動で代替決済はしません。<strong>結果不明</strong>なら<a href="#unknown">元の取引を確認</a>します。</p></dd></div>
@@ -123,14 +123,14 @@
         </section>
         <section id="connection">
           <h2>端末ペアリングや設定がうまくいかない</h2>
-          <p>まずホームのメッセージを確認し、<strong>設定 › 端末</strong>で<strong>APIをテスト</strong>と<strong>接続をテスト</strong>を実行します。詳しい手順は<a href="getting-started.html#connect">Adyen に接続する</a>を参照してください。</p>
+          <p>まずホームのメッセージを確認し、<strong>設定 › 端末</strong>で<strong>APIをテスト</strong>を実行します。物理端末では<strong>接続をテスト</strong>も実行します。Tap to Pay では Payments アプリの登録状態を確認します。詳しい手順は<a href="quick-start.html#connect">Adyen に接続する</a>を参照してください。</p>
           <dl class="fixes">
             <div><dt>ホームに「端末設定に…を入力してください」と表示される</dt>
               <dd><p><span class="fix-label">原因</span>必須項目が空であるか、保存したキーをこのデバイスで読み取れません。</p>
                 <p><span class="fix-label">対処</span><strong>設定 › 端末</strong>で不足している項目を入力するか、キーを入力し直します。</p></dd></div>
             <div><dt>API のテストに失敗する、またはアクセスの問題が表示される</dt>
               <dd><p><span class="fix-label">原因</span>APIキー、マーチャントアカウント、LIVE URLプレフィックスが誤っている、ロールが不足している、または認証情報が別の Company アカウントや環境のものです。</p>
-                <p><span class="fix-label">対処</span><a href="getting-started.html#credentials">認証情報の要件</a>に照らしてロールとアクセス範囲を確認します。LIVE では <strong>LIVE URLプレフィックス</strong>を確認します。</p></dd></div>
+                <p><span class="fix-label">対処</span><a href="quick-start.html#credentials">認証情報の要件</a>に照らしてロールとアクセス範囲を確認します。LIVE では <strong>LIVE URLプレフィックス</strong>を確認します。</p></dd></div>
             <div><dt>「加盟店アカウントが端末の現在の割り当てと一致しません。」</dt>
               <dd><p><span class="fix-label">原因</span>端末は Adyen で別のマーチャントアカウントに割り当てられています。</p>
                 <p><span class="fix-label">対処</span>端末が割り当てられているマーチャントアカウントを入力するか、Customer Area で端末を割り当て直します。</p></dd></div>
@@ -148,7 +148,7 @@
                 <p><span class="fix-label">対処</span>使わない方をアンインストールし、登録を完了して共有キーを入力します。設定チェックの成功はカード決済のテストではないため、TEST 決済を行ってください。</p></dd></div>
             <div id="key-setup"><dt>「新しいキーを保存しました。この端末で…設定を更新してください」</dt>
               <dd><p><span class="fix-label">原因</span>暗号化キーは Adyen で作成されましたが、端末がまだ読み込んでいません。</p>
-                <p><span class="fix-label">対処</span>端末で <strong>Admin menu › Config › Update</strong> を開き、Mini mPOS に戻って<strong>もう一度確認</strong>をタップします。作成が中断した場合は<strong>キー設定を再開</strong>をタップします。2 つ目のキーは作成されません。<a href="getting-started.html#shared-key-creation">キーの作成</a>と Adyen の<a href="https://docs.adyen.com/point-of-sale/managing-terminals/maintain-performance">設定の更新</a>を参照してください。</p></dd></div>
+                <p><span class="fix-label">対処</span>端末で <strong>Admin menu › Config › Update</strong> を開き、Mini mPOS に戻って<strong>もう一度確認</strong>をタップします。作成が中断した場合は<strong>キー設定を再開</strong>をタップします。2 つ目のキーは作成されません。<a href="quick-start.html#shared-key-creation">キーの作成</a>と <a href="https://docs.adyen.com/point-of-sale/managing-terminals/maintain-performance">Adyen の設定更新ガイド</a>を参照してください。</p></dd></div>
             <div><dt>以前の決済の操作がブロックされる</dt>
               <dd><p><span class="fix-label">原因</span>その決済の後で、マーチャントアカウント、環境、端末が変わりました。</p>
                 <p><span class="fix-label">対処</span>その決済を受け付けたときの設定に戻すか、Customer Area で処理します。別のアカウントで処理しないでください。</p></dd></div>
@@ -168,7 +168,7 @@
                 <ol>
                   <li>端末の「Device info」画面で IP アドレスを確認し、<strong>設定 › 端末</strong>で更新します。</li>
                   <li>デバイスと端末を同じネットワークに接続します。デバイスを分離することが多いゲスト Wi-Fi は避けてください。</li>
-                  <li>両者間の TCP 8443 の許可と、端末の IP アドレスの予約をネットワーク管理者に依頼します。<a href="getting-started.html#network-requirements">ネットワークの要件</a>を参照してください。</li>
+                  <li>両者間の TCP 8443 の許可と、端末の IP アドレスの予約をネットワーク管理者に依頼します。<a href="quick-start.html#network-requirements">ネットワークの要件</a>を参照してください。</li>
                 </ol></dd></div>
             <div><dt>どの構成でも決済や API のテストに失敗する</dt>
               <dd><p><span class="fix-label">原因</span>デバイスや端末がインターネットに接続できないか、ファイアウォールが Adyen への通信を遮断しています。</p>
@@ -247,7 +247,7 @@
                 </div></dd></div>
             <div><dt>転送コードが拒否される、またはインポート後にキーがない</dt>
               <dd><p><span class="fix-label">原因</span>コードがこの QR コードのものではないか、空欄でした。</p>
-                <p><span class="fix-label">対処</span>新しく生成したコードではなく、この QR コードと一緒に表示されたコードを使います。誤ったコードでは何も取り込まず、空欄ではパスワードとキーを省きます。コピー後は、新しいデバイスの決済先と認証情報を確認します。<a href="using.html#more">追加デバイス</a>を参照してください。</p></dd></div>
+                <p><span class="fix-label">対処</span>新しく生成したコードではなく、この QR コードと一緒に表示されたコードを使います。すべての転送にコードが必要です。誤ったコードでも空欄でも何も取り込みません。コピー後は、新しいデバイスの決済先と認証情報を確認します。<a href="using.html#more">追加デバイス</a>を参照してください。</p></dd></div>
           </dl>
           <p>各 PIN が保護する操作は<a href="using.html#staff">スタッフの PIN</a>を参照してください。</p>
           <p class="back-to-contents"><a href="#contents">目次に戻る</a></p>
@@ -263,7 +263,7 @@
                 <p><span class="fix-label">対処</span>元の署名元を使います。変更が必要な場合は、旧バージョンの削除を Adyen サポートに相談してください。</p></dd></div>
             <div><dt>Android のバージョンが非対応</dt>
               <dd><p><span class="fix-label">原因</span>Mini mPOS には Android 9 以降が必要です。旧 S1E は Android 7.1 です。</p>
-                <p><span class="fix-label">対処</span>対応する端末を使います。<a href="getting-started.html#install">インストール</a>を参照してください。</p></dd></div>
+                <p><span class="fix-label">対処</span>対応する端末を使います。<a href="quick-start.html#install">インストール</a>を参照してください。</p></dd></div>
           </dl>
           <p class="back-to-contents"><a href="#contents">目次に戻る</a></p>
         </section>
@@ -281,7 +281,7 @@
   </main>
   <footer class="site-footer"><div class="wrap footer-row">
     <nav aria-label="ガイドと設定"><ul class="footer-nav">
-      <li><a href="getting-started.html">はじめに</a></li><li><a href="using.html">Mini mPOS の使い方</a></li>
+      <li><a href="quick-start.html">クイックスタート</a></li><li><a href="using.html">Mini mPOS の使い方</a></li>
       <li><a href="troubleshooting.html" aria-current="page">トラブルシューティング</a></li><li><a href="setup.html">セットアップヘルパー</a></li>
     </ul></nav>
     <p><img src="../favicon.svg" alt="" width="24" height="24"> Mini mPOS · MIT ライセンス · <a href="https://github.com/astiskala/minimpos">GitHub</a> · <a href="https://github.com/astiskala/minimpos/blob/main/SECURITY.md">セキュリティ</a></p><p class="fine">Adyen は Adyen N.V. の商標です。Mini mPOS は独立したプロジェクトであり、Adyen との提携関係はなく、推奨やサポートもありません。</p>

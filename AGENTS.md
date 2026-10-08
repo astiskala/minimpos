@@ -79,7 +79,7 @@ Adyen Payments app (Tap to Pay). The built-in simulator needs no Adyen account.
 
 ## Documentation changes
 
-- Give each fact one authoritative home for its reader; link instead of copying. Merchant guides are Getting started,
+- Give each fact one authoritative home for its reader; link instead of copying. Merchant guides are Quick start,
   Using Mini mPOS and Troubleshooting. Setup guides branch by destination; operations describe tasks, not every field.
 - Preserve the site's visual design. Update all three languages, reciprocal switches, canonical/hreflang metadata and
   website tests together. Only setup helpers run scripts; all assets are local. HTML void elements have no trailing slash.

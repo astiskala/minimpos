@@ -15,6 +15,119 @@ import kotlin.io.path.isRegularFile
 import kotlin.io.path.readBytes
 import kotlin.io.path.readText
 
+class QuickStartGuideTest {
+    @Test
+    fun `credentials separate required API roles user permissions and optional link tokenization`() {
+        val optional = mapOf("en" to "Optional", "zh-CN" to "可选", "ja" to "任意")
+        LANGUAGES.forEach { language ->
+            val guide = pages.getValue(language to Kind.GUIDE)
+            val credentials = guide.document.getElementById("credentials")!!.untilNextTask()
+            val text = credentials.joinToString(" ") { it.text() }
+            listOf("Manage API credentials", "Merchant admin").forEach { assertThat(text).contains(it) }
+            val steps = credentials.single { it.tagName() == "ol" }
+            assertThat(steps.select("ul.roles li strong").map { it.text() })
+                .containsExactly(
+                    "Merchant PAL webservice role",
+                    "Checkout webservice role",
+                    "Management API — Terminal actions read",
+                    "Management API — Terminal settings read and write",
+                    "Management API — Terminal settings Advanced read and write",
+                    "Cloud Device API role",
+                ).inOrder()
+            val cardSaving = steps.children().single { it.text().contains("Merchant Recurring role") }
+            assertThat(cardSaving.text()).contains(optional.getValue(language))
+            assertThat(cardSaving.select("a[href='using.html#shoppers']")).hasSize(1)
+            assertThat(cardSaving.select("a[href='https://docs.adyen.com/online-payments/tokenization/create-tokens']")).hasSize(1)
+            assertThat(
+                pages.getValue(language to Kind.USING).document.select("#shoppers a[href='quick-start.html#credentials']"),
+            ).hasSize(1)
+            assertThat(text).doesNotContain("API tokenise payment details")
+            assertThat(text).doesNotContain("Management API — API credentials read and write")
+        }
+    }
+
+    @Test
+    fun `quick start guides name their outcome and offer the simulator before prerequisites`() {
+        val titles = mapOf("en" to "Quick start", "zh-CN" to "快速入门", "ja" to "クイックスタート")
+        LANGUAGES.forEach { language ->
+            val guide = pages.getValue(language to Kind.GUIDE)
+            val title = titles.getValue(language)
+            assertThat(
+                guide.document
+                    .select("h1")
+                    .single()
+                    .text(),
+            ).isEqualTo(title)
+            assertThat(guide.document.title()).contains(title)
+            listOf("og:title", "twitter:title").forEach { name ->
+                assertThat(
+                    guide.document
+                        .select("meta[property='$name'], meta[name='$name']")
+                        .single()
+                        .attr("content"),
+                ).contains(title)
+            }
+            assertThat(guide.document.select(".guide-hero .lead").text()).contains("TEST")
+            assertThat(guide.document.select(".guide-hero a[href='#try']")).hasSize(1)
+            assertThat(
+                guide.document
+                    .select("#credentials")
+                    .single()
+                    .nextElementSibling()!!
+                    .text(),
+            ).contains("TEST")
+        }
+    }
+
+    @Test
+    fun `test and live validation distinguish physical connection checks from Payments app registration`() {
+        val connection = mapOf("en" to "Test connection", "zh-CN" to "测试连接", "ja" to "接続をテスト")
+        val api = mapOf("en" to "Test API", "zh-CN" to "测试 API", "ja" to "APIをテスト")
+        val unavailable = mapOf("en" to "no connection test", "zh-CN" to "没有连接测试", "ja" to "接続テストはありません")
+        LANGUAGES.forEach { language ->
+            val guide = pages.getValue(language to Kind.GUIDE)
+            listOf("first-payment" to "TEST", "live" to "LIVE").forEach { (id, environment) ->
+                val steps = guide.document.select("#$id > ol > li")
+                val check = if (id == "first-payment") steps.first()!! else steps.last()!!
+                assertWithMessage("${guide.name} #$id API check").that(check.text()).contains(api.getValue(language))
+                assertThat(check.text()).contains(environment)
+                val destinations = check.select("ul > li")
+                assertWithMessage("${guide.name} #$id destination checks").that(destinations).hasSize(2)
+                assertThat(destinations.first()!!.text()).contains(connection.getValue(language))
+                val tapToPay = destinations.last()!!.text()
+                assertThat(tapToPay).contains("Tap to Pay")
+                assertThat(tapToPay).contains(if (id == "first-payment") "Adyen Payments Test" else "Adyen Payments")
+                assertThat(tapToPay).contains(unavailable.getValue(language))
+                assertThat(tapToPay).doesNotContain(connection.getValue(language))
+            }
+        }
+    }
+
+    @Test
+    fun `quick start validation verifies Adyen outcomes and links optional workflows to their owners`() {
+        val references = mapOf("en" to "PSP reference", "zh-CN" to "PSP 识别号", "ja" to "PSP参照ID")
+        val pending = mapOf("en" to "Refund requested", "zh-CN" to "已请求退款", "ja" to "返金要求済み")
+        LANGUAGES.forEach { language ->
+            val guide = pages.getValue(language to Kind.GUIDE)
+            val validation = guide.document.select("#first-payment")
+            assertThat(validation.text()).contains(references.getValue(language))
+            assertThat(validation.text()).contains(pending.getValue(language))
+            assertThat(validation.select("a[href='https://docs.adyen.com/point-of-sale/testing-pos-payments']")).hasSize(2)
+            assertThat(validation.select("a[href='using.html#refund']")).hasSize(1)
+            assertThat(validation.select("a[href='troubleshooting.html#declines']")).hasSize(1)
+            assertThat(validation.select("a[href='troubleshooting.html#unknown']")).hasSize(1)
+            listOf("preauth", "tips", "payment-links", "wallets").forEach { workflow ->
+                assertWithMessage("${guide.name} optional $workflow")
+                    .that(guide.document.select("#live a[href='using.html#$workflow']"))
+                    .hasSize(1)
+            }
+            listOf("using.html#close-day", "troubleshooting.html#help").forEach { owner ->
+                assertThat(guide.document.select("#live a[href='$owner']")).hasSize(1)
+            }
+        }
+    }
+}
+
 /**
  * The standalone localized website in docs/: its landing page, three guides and setup helper in English,
  * Simplified Chinese and Japanese, their links, language switches and metadata, the app labels the guides quote, the
@@ -22,7 +135,7 @@ import kotlin.io.path.readText
  */
 class WebsiteTest {
     @Test
-    fun `every getting started guide explains onboarding and scoped sample removal`() {
+    fun `every quick start guide explains onboarding and scoped sample removal`() {
         val labels =
             mapOf(
                 "en" to
@@ -207,10 +320,10 @@ class WebsiteTest {
             val helper = pages.getValue(language to Kind.SETUP)
             assertWithMessage(helper.name)
                 .that(helper.document.select(".setup-main > p a").map { it.attr("href") })
-                .containsAtLeast("getting-started.html#choose", "getting-started.html#credentials")
+                .containsAtLeast("quick-start.html#choose", "quick-start.html#credentials")
             assertWithMessage(helper.name)
                 .that(helper.document.select("#setup-codes a").map { it.attr("href") })
-                .containsAtLeast("getting-started.html#first-payment", "troubleshooting.html#access", "troubleshooting.html#connection")
+                .containsAtLeast("quick-start.html#first-payment", "troubleshooting.html#access", "troubleshooting.html#connection")
             val notice = helper.document.getElementById("customer-area-note")!!
             assertWithMessage(helper.name).that(notice.text()).isNotEmpty()
             helper.document.select("a[href^='https://ca-']").forEach { link ->
@@ -253,6 +366,8 @@ class WebsiteTest {
             assertThat(guide.text).contains("Management API — Terminal settings Advanced read and write")
             assertThat(guide.document.select("#choose ul.roles li strong").map { it.text() })
                 .containsExactly(
+                    "Merchant PAL webservice role",
+                    "Checkout webservice role",
                     "Management API — Terminal actions read",
                     "Management API — Terminal settings read and write",
                     "Management API — Terminal settings Advanced read and write",
@@ -421,7 +536,7 @@ class WebsiteTest {
             val using = pages.getValue(language to Kind.USING)
             val roles = listOf("Management API — Stores read", "Account read")
             (wording.getValue(language) + roles).forEach { assertThat(using.text).contains(it) }
-            assertThat(using.document.select("#receipts a[href='getting-started.html#credentials']")).isNotEmpty()
+            assertThat(using.document.select("#receipts a[href='quick-start.html#credentials']")).isNotEmpty()
             val troubleshooting = pages.getValue(language to Kind.TROUBLE)
             listOf("Settings › Payments › Offer payment links", "设置 › 支付 › 提供支付链接", "設定 › 決済 › 支払いリンクを使う").forEach { obsolete ->
                 assertThat(using.text).doesNotContain(obsolete)
@@ -642,6 +757,80 @@ class WebsiteTest {
     }
 }
 
+class PartnerStyleGuideTest {
+    @Test
+    fun `Adyen documentation links name Adyen and use stable page URLs`() {
+        pages.values.forEach { page ->
+            page.document.select("a[href^='https://docs.adyen.com/']").forEach { link ->
+                val href = link.attr("href")
+                assertWithMessage("${page.name}: $href").that(link.text()).contains("Adyen")
+                assertWithMessage("${page.name}: $href").that(href).doesNotContain("#")
+                assertWithMessage("${page.name}: $href").that(href).doesNotContain("+")
+            }
+        }
+    }
+
+    @Test
+    fun `setup examples use reserved addresses and distinguish merchant accounts`() {
+        LANGUAGES.forEach { language ->
+            val helper = pages.getValue(language to Kind.SETUP)
+            assertWithMessage(helper.name).that(helper.document.getElementById("host")!!.attr("placeholder")).isEqualTo("192.0.2.1")
+            assertWithMessage(helper.name)
+                .that(
+                    helper.document
+                        .getElementById("merchantAccount")!!
+                        .parent()!!
+                        .select("legend")
+                        .text(),
+                ).isEqualTo(helper.document.select("label[for=merchantAccount]").text())
+        }
+    }
+
+    @Test
+    fun `all manual connection procedures use numbered steps`() {
+        LANGUAGES.forEach { language ->
+            val guide = pages.getValue(language to Kind.GUIDE)
+            guide.document.select(".manual-setup").forEach { manual ->
+                assertWithMessage(guide.name).that(manual.select("ol > li").size).isAtLeast(2)
+            }
+        }
+    }
+
+    @Test
+    fun `guides count sample activity in demo totals and require every transfer code`() {
+        val sampleTotals =
+            mapOf(
+                "en" to "Samples count in demo day totals and reports",
+                "zh-CN" to "示例计入演示每日合计和报告",
+                "ja" to "サンプルはデモの日次合計とレポートに含まれます",
+            )
+        val transferCodes =
+            mapOf(
+                "en" to "A wrong or blank code imports nothing",
+                "zh-CN" to "错误的码或留空都不会导入任何内容",
+                "ja" to "誤ったコードでも空欄でも何も取り込みません",
+            )
+        LANGUAGES.forEach { language ->
+            assertWithMessage(language)
+                .that(
+                    pages
+                        .getValue(language to Kind.GUIDE)
+                        .document
+                        .select("#try")
+                        .text(),
+                ).contains(sampleTotals.getValue(language))
+            assertWithMessage(language)
+                .that(
+                    pages
+                        .getValue(language to Kind.TROUBLE)
+                        .document
+                        .select("#access")
+                        .text(),
+                ).contains(transferCodes.getValue(language))
+        }
+    }
+}
+
 /** Destination setup instructions and optional email fields share the website's localized page fixtures. */
 class SetupGuideTest {
     @Test
@@ -680,7 +869,7 @@ class SetupGuideTest {
             val recovery = pages.getValue(language to Kind.TROUBLE).document.getElementById("key-setup")!!
             assertThat(recovery.text()).contains("Admin menu › Config › Update")
             assertThat(recovery.text()).contains(resume.getValue(language))
-            assertThat(recovery.select("a[href='getting-started.html#shared-key-creation']")).isNotEmpty()
+            assertThat(recovery.select("a[href='quick-start.html#shared-key-creation']")).isNotEmpty()
         }
     }
 
@@ -770,17 +959,13 @@ class SetupGuideTest {
                 assertThat(manual.hasAttr("hidden")).isFalse()
                 assertThat(manual.children().first()!!.tagName()).isEqualTo("summary")
                 assertThat(manual.select("summary").single().text()).isEqualTo(manualLabels.getValue(language))
-                if (destination == "tap-to-pay") {
-                    assertThat(manual.select("p")).hasSize(1)
-                } else {
-                    val steps =
-                        when (destination) {
-                            "on-terminal" -> 2
-                            "cloud" -> 3
-                            else -> 4
-                        }
-                    assertThat(manual.select("ol > li")).hasSize(steps)
-                }
+                val steps =
+                    when (destination) {
+                        "on-terminal" -> 2
+                        "cloud" -> 3
+                        else -> 4
+                    }
+                assertThat(manual.select("ol > li")).hasSize(steps)
             }
         }
     }
@@ -811,7 +996,7 @@ class SetupGuideTest {
             assertThat(fields.select("#smtpPort").single().attr("value")).isEqualTo("587")
             assertThat(helper.document.select("#setup-codes a[href='using.html#email']")).isNotEmpty()
             val using = pages.getValue(language to Kind.USING)
-            assertThat(using.document.select("#receipts a[href='getting-started.html#helper']")).isNotEmpty()
+            assertThat(using.document.select("#receipts a[href='quick-start.html#helper']")).isNotEmpty()
         }
     }
 }
@@ -849,7 +1034,7 @@ private enum class Kind(
     val file: String,
 ) {
     LANDING("index.html"),
-    GUIDE("getting-started.html"),
+    GUIDE("quick-start.html"),
     USING("using.html"),
     TROUBLE("troubleshooting.html"),
     SETUP("setup.html"),

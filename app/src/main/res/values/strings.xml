@@ -10,7 +10,7 @@
   <string name="wallet_change">Change wallet</string>
   <string name="wallet_demo">Use demo code</string>
   <string name="wallet_demo_source">Use offline demo</string>
-  <string name="wallet_demo_note">Offline demo. No real payment will be made.</string>
+  <string name="wallet_demo_note">Offline demo. No real payments.</string>
   <string name="wallet_saving_note">Saving requested. Availability depends on the wallet.</string>
   <string name="wallet_payme_note">PayMe scanning is unverified and may be rejected.</string>
   <string name="wallet_without_tip">Pay without tip on the receipt? This wallet sale charges the total immediately.</string>
@@ -99,7 +99,7 @@
   <string name="manager_pin_set">Set Manager PIN</string>
   <string name="manager_pin_change">Change Manager PIN</string>
   <string name="manager_pin_remove">Remove Manager PIN</string>
-  <string name="manager_pin_remove_message">Refunds, cancellations, captures and adjustments will no longer require manager approval.</string>
+  <string name="manager_pin_remove_message">Refunds, cancellations, captures and adjustments no longer need manager approval.</string>
   <string name="manager_pin_hint">Optional: require manager approval for refunds, cancellations, captures and adjustments. Set an Admin PIN first to protect these settings.</string>
   <string name="pin_title">Admin PIN</string>
   <string name="pin_enter">Enter the admin PIN</string>
@@ -127,7 +127,7 @@
   <string name="sale_charge">Charge %1$s</string>
   <string name="sale_clear">Clear sale</string>
   <string name="sale_clear_title">Clear this sale?</string>
-  <string name="sale_clear_message">All items will be removed.</string>
+  <string name="sale_clear_message">This removes all items from the sale.</string>
   <string name="sale_scan_barcode">Scan barcode</string>
   <string name="sale_sku_added">Added %1$s</string>
   <string name="sale_sku_not_found">No product with barcode %1$s</string>
@@ -179,7 +179,7 @@
   <string name="payment_cancelling">Canceling…</string>
   <string name="payment_unknown_outcome">The terminal did not confirm the result. Check the payment in your Customer Area before charging again.</string>
   <string name="payment_interrupted">The app stopped before the result was received.</string>
-  <string name="capture_interrupted">The app stopped before Adyen answered the capture. Sending it again is safe.</string>
+  <string name="capture_interrupted">The app stopped before Adyen answered the capture request. Retry the same capture safely.</string>
 
   <!-- Results -->
   <string name="result_title">Result</string>
@@ -250,7 +250,7 @@
   <string name="detail_tip">Bill %1$s + tip %2$s</string>
   <string name="detail_capture_requested">Capture of %1$s requested. Adyen confirms it in your Customer Area.</string>
   <string name="detail_capture_failed">Adyen did not take the capture of %1$s.</string>
-  <string name="detail_capture_unknown">It is not known whether Adyen received the capture of %1$s. Retrying is safe.</string>
+  <string name="detail_capture_unknown">Adyen did not confirm receipt of the capture request for %1$s. Retry the same capture safely.</string>
   <string name="detail_held_now">Now holds %1$s</string>
   <string name="detail_adjustment_requested">Adjustment to %1$s requested. Adyen confirms it in your Customer Area.</string>
   <string name="detail_modification_message">Capture or adjustment issue</string>
@@ -284,7 +284,7 @@
   <string name="refund_confirm_title">Refund this payment?</string>
   <string name="refund_confirm_message">%1$s will be returned to the shopper’s card.</string>
   <string name="refund_confirm">Refund</string>
-  <string name="refund_processing">Requesting the refund…</string>
+  <string name="refund_processing">Sending the refund request…</string>
   <string name="refund_status_requested">Refund requested</string>
   <string name="refund_status_failed">Refund failed</string>
   <string name="refund_status_unknown">Refund result unknown</string>
@@ -295,7 +295,7 @@
   <string name="refund_awaiting_tip">This payment is waiting for its tip to be captured. Enter the tip from History, or cancel the payment there.</string>
   <string name="cancellation_title">Cancellation</string>
   <string name="cancellation_detail_title">Cancellation details</string>
-  <string name="cancellation_processing">Requesting the cancellation…</string>
+  <string name="cancellation_processing">Sending the cancellation request…</string>
   <string name="cancellation_status_requested">Cancellation requested</string>
   <string name="cancellation_status_failed">Cancellation failed</string>
   <string name="cancellation_status_unknown">Cancellation result unknown</string>
@@ -408,7 +408,7 @@
   <string name="transfer_updated">Products updated</string>
   <string name="transfer_new_categories">New categories</string>
   <string name="transfer_new_tax_rates">New tax rates</string>
-  <string name="transfer_choose_hint">Choose what to copy to the other device. It should take payments for the same merchant account.</string>
+  <string name="transfer_choose_hint">Choose what to copy to the other device. Use it for the same merchant account.</string>
   <string name="transfer_part_catalogue">Catalog</string>
   <string name="transfer_part_catalogue_hint">Products, categories and tax rates</string>
   <string name="transfer_part_settings">Settings</string>
@@ -428,7 +428,7 @@
   <string name="transfer_secret_payments_app_key">Payments app API key</string>
   <string name="transfer_secret_smtp">SMTP password</string>
   <string name="transfer_secret_pin">Admin PIN</string>
-  <string name="transfer_settings_note">The settings replace this device’s. Where payments go, and the address and ID of the terminal they go to, stay as they are.</string>
+  <string name="transfer_settings_note">This replaces the settings on this device. Its payment destination, terminal address and terminal ID stay unchanged.</string>
   <string name="transfer_part_connection">Connection</string>
   <string name="transfer_import_action">Import</string>
   <string name="transfer_imported">Imported</string>
@@ -515,7 +515,7 @@
   <string name="settings_secret_enter">As in the Customer Area</string>
   <string name="settings_secret_show">Show</string>
   <string name="settings_secret_hide">Hide</string>
-  <string name="settings_secret_not_stored">This device could not store it securely (%1$s). Try again, or restart the device.</string>
+  <string name="settings_secret_not_stored">This device could not save it securely (%1$s). Try again, or restart the device.</string>
   <string name="setup_poiid">Enter the terminal ID (POIID) in Terminal settings</string>
   <string name="setup_host">Enter the terminal’s IP address in Terminal settings</string>
   <string name="setup_key_identifier">Enter the shared key identifier in Terminal settings</string>
@@ -546,7 +546,7 @@
   <string name="settings_mode_payments_app">Tap to Pay on this phone</string>
   <string name="settings_environment">Environment</string>
   <string name="settings_environment_hint">Choose TEST for test cards or LIVE for real payments. Use a terminal, merchant account and API key from the same environment.</string>
-  <string name="settings_adyen_key_hint">In Adyen Customer Area, create a credential under Developers › API credentials and generate its API key.</string>
+  <string name="settings_adyen_key_hint">In your Customer Area, open Developers › API credentials. Create a credential and generate its API key.</string>
   <string name="settings_adyen_roles_hint">In addition to the default roles, this API key needs the following additional roles:</string>
   <string name="settings_adyen_role_cloud">Cloud Device API role</string>
   <string name="settings_adyen_role_terminals">Management API - Terminal actions read</string>
@@ -555,10 +555,10 @@
   <string name="settings_env_test">TEST environment</string>
   <string name="settings_env_live">LIVE environment</string>
   <string name="settings_poiid">Terminal ID (POIID)</string>
-  <string name="settings_poiid_hint" tools:ignore="TypographyDashes">e.g. S1F2-000158213605014</string>
+  <string name="settings_poiid_hint" tools:ignore="TypographyDashes">For example, S1F2-000158213605014</string>
   <string name="settings_poiid_help">The terminal’s model and serial number, as on its Device info screen.</string>
   <string name="settings_host">Terminal IP address</string>
-  <string name="settings_host_placeholder">e.g. 192.168.1.20</string>
+  <string name="settings_host_placeholder">For example, 192.0.2.1</string>
   <string name="settings_host_hint">The terminal must be on the same network as this device.</string>
   <string name="settings_port">Port</string>
   <string name="settings_shared_key">Shared key</string>
@@ -604,7 +604,7 @@
   <string name="settings_choose_terminal">Choose a terminal</string>
   <string name="settings_no_terminals">No matching terminals are available. Enter the details manually.</string>
   <string name="settings_tap_to_pay">Tap to Pay</string>
-  <string name="settings_tap_to_pay_hint">Ask Adyen Support to enable Tap to Pay on Android and the Adyen Payments app role. Setting up registers this phone in the Payments app for the merchant account above, or one of its stores. Shoppers then tap their card or phone on this phone; there is no printer, so receipts are emailed.</string>
+  <string name="settings_tap_to_pay_hint">Ask Adyen Support to enable Tap to Pay on Android and the Adyen Payments app role. Setup registers this phone for your merchant account or one of its stores. Shoppers tap their card or phone on this phone. There is no printer; email or share receipts instead.</string>
   <string name="settings_payments_app">Adyen Payments app</string>
   <string name="settings_payments_app_hint">Tap to Pay runs in the Adyen Payments app: Adyen Payments Test for test accounts, Adyen Payments for live ones. Install it from Google Play.</string>
   <string name="settings_payments_app_installed">Installed</string>
@@ -631,7 +631,7 @@
   <string name="result_tap_to_pay_ready">Tap to Pay is set up (installation %1$s).</string>
   <string name="result_tap_to_pay_removed">This phone was removed. Also select Unregister in the Adyen Payments app’s settings.</string>
 
-  <string name="settings_simulator_hint">The simulator answers payments, refunds and print requests without a terminal, and stands in for the Checkout API, so every screen can be tried on an emulator or phone.</string>
+  <string name="settings_simulator_hint">The simulator answers payment, refund and print requests without a terminal. It also simulates the Checkout API. Try every screen on an emulator or phone.</string>
   <string name="settings_sim_outcome">Payment outcome</string>
   <string name="settings_sim_approve">Approve</string>
   <string name="settings_sim_decline">Decline</string>
@@ -646,7 +646,7 @@
   <string name="settings_pricing">Pricing</string>
   <string name="settings_currency">Currency</string>
   <string name="settings_currency_auto">Automatic (%1$s)</string>
-  <string name="settings_currency_hint">Any currency Adyen processes. Check that your Adyen account accepts it for in-person payments.</string>
+  <string name="settings_currency_hint">Any currency Adyen processes. Check that your merchant account accepts it for in-person payments.</string>
   <string name="settings_currency_search">Search by code or name</string>
   <string name="settings_currency_none">No matching currency</string>
   <string name="settings_tax">Tax</string>
@@ -660,7 +660,7 @@
   <string name="settings_tax_edit">Edit tax rate</string>
   <string name="settings_tax_name">Name</string>
   <string name="settings_tax_rate">Rate</string>
-  <string name="settings_tax_rate_hint">e.g. 5, 8.1 or 25.5</string>
+  <string name="settings_tax_rate_hint">For example, 5, 8.1 or 25.5</string>
   <string name="settings_tax_rate_invalid">Enter 0 to 100, with at most 3 decimals</string>
   <string name="settings_tax_default">Default for new products and custom items</string>
   <string name="settings_tax_preview">Shown as “%1$s” on receipts</string>
@@ -801,7 +801,7 @@
   <string name="settings_set_pin">Set PIN</string>
   <string name="settings_change_pin">Change Admin PIN</string>
   <string name="settings_remove_pin">Remove Admin PIN</string>
-  <string name="settings_remove_pin_message">Settings and products will no longer be protected. The Manager PIN, if set, will also be removed.</string>
+  <string name="settings_remove_pin_message">This removes protection from settings and products. It also removes the Manager PIN if one is set.</string>
   <string name="settings_auto_lock">Lock again after</string>
   <string name="settings_auto_lock_never">Only when leaving</string>
   <plurals name="settings_minutes">
@@ -845,7 +845,7 @@
   <string name="about_app_info_integrator">Integrator</string>
   <string name="about_app_info_device">Device</string>
   <string name="about_app_info_library">Adyen library</string>
-  <string name="about_text">Mini mPOS takes payments with the Adyen Terminal API: on the terminal it runs on, on a terminal on your network or over the internet (cloud), or with Tap to Pay in the Adyen Payments app. It uses Adyen’s Java API library. Messages to a terminal or the Payments app are encrypted with the shared key; cloud requests are authenticated with your API key.</string>
+  <string name="about_text">Mini mPOS takes payments with the Adyen Terminal API and the Adyen Java API library. It can run on the payment terminal, or use a terminal on your network or over the internet (cloud). Tap to Pay uses the Adyen Payments app on a phone. Mini mPOS encrypts messages to a terminal or the Payments app with the shared key. Cloud requests use your API key for authentication.</string>
   <!-- Payment links (Pay by Link) and sharing -->
   <string name="checkout_send_link">Create payment link</string>
   <string name="checkout_link_without_tip">Payment links do not support tips on the receipt. Create this link without that option?</string>
@@ -890,15 +890,15 @@
   <string name="link_demo_label">Demo link</string>
   <string name="settings_link_expiry">Links work for (hours)</string>
   <string name="settings_link_expiry_hint">1 to 1680 hours (70 days); Adyen’s default is 24</string>
-  <string name="payment_context_mismatch">This setup does not match the original payment’s terminal, Adyen account or environment. Restore the original setup before continuing.</string>
+  <string name="payment_context_mismatch">This setup does not match the original payment’s terminal, merchant account or environment. Restore the original setup before you continue.</string>
   <string name="refund_review_title">Review the original payment</string>
-  <string name="refund_review_message">This device has no local sale context. The QR code cannot prove the payment was captured, reveal later tips or refunds, or verify the destination. Check the original payment and remaining refundable amount in Customer Area and confirm that the selected terminal and environment are correct. This refund sends only the reviewed amount, not an unrestricted full reversal.</string>
+  <string name="refund_review_message">This device has no original sale record. The QR code cannot confirm capture, later tips or refunds, or the payment destination. In your Customer Area, check the original payment and remaining refundable amount. Confirm that the selected terminal and environment are correct. This refund sends only the amount you checked, not a full reversal without an amount limit.</string>
   <string name="refund_review_confirm">I verified the payment and setup</string>
   <string name="pricing_change_title">Confirm pricing change</string>
   <string name="pricing_change_message">%1$s → %2$s. Keep displayed unit prices, rounding half up to the new currency’s precision. The first converted prices are shown below. Switching tax-inclusive or tax-exclusive pricing changes how tax is added to those prices. Existing stored sales are unchanged.</string>
   <string name="setup_not_verified">Test API access and the connection before taking payments.</string>
   <string name="setup_transfer_pending">Setup import needs to finish saving. Retry to resume.</string>
-  <string name="setup_terminal_access">This API key cannot access this terminal. Check that it belongs to the terminal’s Company account and has access to this terminal.</string>
+  <string name="setup_terminal_access">This API key cannot access this terminal. Check that it belongs to the terminal’s company account and has access to this terminal.</string>
   <string name="setup_merchant_mismatch">The merchant account does not match this terminal’s current assignment. Correct the account or boarding before continuing.</string>
   <string name="setup_management_permission">Every real setup requires Management API — Terminal actions read, Management API — Terminal settings read and write, and Management API — Terminal settings Advanced read and write.</string>
   <string name="setup_management_authentication">Adyen did not accept this API key in the selected environment. Replace the key and retry.</string>
@@ -914,8 +914,8 @@
   <string name="transfer_board_first">Set up Tap to Pay to verify this import. Nothing else is saved until verification succeeds.</string>
   <string name="transfer_business_failed">Business details could not be imported. Retry or enter them in Settings › Receipts.</string>
   <string name="transfer_missing_fields">Setup is incomplete. Add the missing details in the Manual setup helper and scan the new codes.</string>
-  <string name="transfer_tap_checked">Payments app registration and setup checked. The app does not support a diagnostic shared-key test.</string>
-  <string name="settings_payments_app_setup_checked">Setup fields checked. The Payments app cannot diagnostically test the shared key.</string>
+  <string name="transfer_tap_checked">Payments app registration and setup checked. The app cannot test the shared key with a connection check.</string>
+  <string name="settings_payments_app_setup_checked">Setup fields checked. The Payments app cannot test the shared key with a connection check.</string>
   <string name="history_print_day">Print whole-day summary</string>
   <string name="history_capture_activity">Capture / tip</string>
   <string name="report_title">Local daily summary</string>
@@ -929,7 +929,7 @@
   <string name="report_online">Online payments — payment date unavailable</string>
   <string name="report_undated">Captures — processing date unavailable</string>
   <string name="report_undated_note">All retained undated activity. Excluded from this day’s sales and net.</string>
-  <string name="report_note">Retained local activity only. Capture and refund acceptance is not final settlement. Adyen Customer Area is authoritative.</string>
+  <string name="report_note">Only activity saved on this device. Accepted capture and refund requests do not confirm final settlement. Check the final outcome in your Customer Area.</string>
   <string name="report_issue_note">Unresolved outcomes may change these totals.</string>
   <string name="report_demo">DEMO — no money moved</string>
   <string name="report_unknown">Environment unavailable</string>
@@ -940,12 +940,12 @@
   <string name="settings_create_shared_key">Create encryption key</string>
   <string name="settings_resume_shared_key">Resume key setup</string>
   <string name="settings_shared_key_confirm">%1$s · %2$s\nThis terminal does not yet have an encryption key. Generate and save a new key? Existing keys at Adyen are reused. Do not edit this terminal’s settings elsewhere during creation.</string>
-  <string name="settings_shared_key_replace">This replaces any locally supplied key values. The passphrase is stored encrypted.</string>
+  <string name="settings_shared_key_replace">This replaces any key values you entered on this device. Mini mPOS saves the passphrase encrypted.</string>
   <string name="settings_shared_key_resume_confirm">%1$s · %2$s\nRead Adyen settings first. If creation needs retrying, use the same saved key.</string>
   <string name="settings_shared_key_check_again">Check again</string>
   <string name="setup_key_update_title">Update terminal config</string>
   <string name="setup_key_connection_pending">The new key is saved. Update this terminal’s config: open Admin menu › Config › Update. When finished, return to Mini mPOS and tap Check again to complete setup.</string>
   <string name="setup_key_recovery_unreadable">Pending key setup could not be read. Retrieve an existing key or contact support before creating another.</string>
   <string name="setup_key_creation_unconfirmed">Key creation is unconfirmed. Resume key setup to read Adyen settings before retrying.</string>
-  <string name="transfer_key_not_imported">The key was created for the terminal. Setup was not imported. Retry, or rescan the same setup codes later. Cancelling does not remove the key at Adyen.</string>
+  <string name="transfer_key_not_imported">The key was created for the terminal. Setup was not imported. Retry, or rescan the same setup codes later. Canceling does not remove the key at Adyen.</string>
 </resources>

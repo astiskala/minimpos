@@ -228,11 +228,7 @@ class WebsiteTest {
         LANGUAGES.forEach { language ->
             val guide = pages.getValue(language to Kind.GUIDE)
             listOf("on-terminal", "network", "cloud", "tap-to-pay").forEach { destination ->
-                val following =
-                    guide.document
-                        .getElementById(destination)!!
-                        .nextElementSiblings()
-                        .takeWhile { it.tagName() != "h3" }
+                val following = guide.document.getElementById(destination)!!.untilNextTask()
                 val steps =
                     if (destination == "tap-to-pay") {
                         following.first { it.tagName() == "ol" }
@@ -423,7 +419,8 @@ class WebsiteTest {
             )
         LANGUAGES.forEach { language ->
             val using = pages.getValue(language to Kind.USING)
-            (wording.getValue(language) + "Management API — Stores read").forEach { assertThat(using.text).contains(it) }
+            val roles = listOf("Management API — Stores read", "Account read")
+            (wording.getValue(language) + roles).forEach { assertThat(using.text).contains(it) }
             assertThat(using.document.select("#receipts a[href='getting-started.html#credentials']")).isNotEmpty()
             val troubleshooting = pages.getValue(language to Kind.TROUBLE)
             listOf("Settings › Payments › Offer payment links", "设置 › 支付 › 提供支付链接", "設定 › 決済 › 支払いリンクを使う").forEach { obsolete ->
@@ -663,7 +660,7 @@ class SetupGuideTest {
     fun `prerequisites name the network ports and Adyen domains in every language`() {
         LANGUAGES.forEach { language ->
             val heading = pages.getValue(language to Kind.GUIDE).document.getElementById("network-requirements")!!
-            val text = heading.nextElementSiblings().takeWhile { it.tagName() != "h3" }.joinToString(" ") { it.text() }
+            val text = heading.untilNextTask().joinToString(" ") { it.text() }
             listOf("443", "8443", "*.adyen.com", "*.adyenpayments.com").forEach {
                 assertWithMessage("$language network prerequisites: $it").that(text).contains(it)
             }
@@ -748,11 +745,7 @@ class SetupGuideTest {
             assertThat(guide.document.select("#connect details.manual-setup")).hasSize(4)
             assertThat(guide.document.select("script")).isEmpty()
             listOf("on-terminal", "network", "cloud", "tap-to-pay").forEach { destination ->
-                val following =
-                    guide.document
-                        .getElementById(destination)!!
-                        .nextElementSiblings()
-                        .takeWhile { it.tagName() != "h3" }
+                val following = guide.document.getElementById(destination)!!.untilNextTask()
                 val helper = following.single { it.hasClass("settings-list") }
                 assertWithMessage("${guide.name} #$destination helper")
                     .that(helper.select("dt").single().text())
@@ -880,6 +873,9 @@ private fun publicUrl(
 private fun hasScheme(href: String) = Regex("^[A-Za-z][A-Za-z0-9+.-]*:").containsMatchIn(href) || href.startsWith("//")
 
 private fun decode(part: String) = URLDecoder.decode(part.replace("+", "%2B"), Charsets.UTF_8)
+
+/** The elements after this task heading, up to the next one. */
+private fun Element.untilNextTask(): List<Element> = nextElementSiblings().takeWhile { it.tagName() != "h3" }
 
 /** The file a local link on [page] points at (checking it exists, as does its fragment), or null for external links. */
 private fun resolveLocal(

@@ -8,9 +8,11 @@ import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.hasTestTag
+import androidx.compose.ui.test.isEnabled
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import com.google.common.truth.Truth.assertThat
 import io.github.astiskala.minimpos.app.MiniMposApp
 import io.github.astiskala.minimpos.app.R
@@ -21,6 +23,7 @@ import io.github.astiskala.minimpos.app.data.db.SaleKind
 import io.github.astiskala.minimpos.app.data.db.SaleStatus
 import io.github.astiskala.minimpos.app.data.db.SetupProblem
 import io.github.astiskala.minimpos.app.data.db.StoredReason
+import io.github.astiskala.minimpos.app.data.db.TaxRateEntity
 import io.github.astiskala.minimpos.app.feature.outcomeNote
 import org.junit.Before
 import org.junit.Rule
@@ -78,6 +81,30 @@ class LocalizedUiTest {
     @Test
     @Config(qualifiers = "zh-rCN-w320dp-h460dp-hdpi")
     fun `Chinese sale primary actions fit an AMS1`() = saleFits()
+
+    @Test
+    fun `Japanese wallet checkout and demo scan fit AMS1`() = walletFits()
+
+    @Test
+    @Config(qualifiers = "zh-rCN-w320dp-h460dp-hdpi")
+    fun `Chinese wallet checkout and demo scan fit AMS1`() = walletFits()
+
+    private fun walletFits() {
+        await {
+            env.container.session(SaleKind.SALE).addCustom("Demo", 1_200, TaxRateEntity(1, "No tax", 0))
+            env.container.walletDiscovery.refresh()
+        }
+        compose.setContent { MiniMposApp(env.container) }
+        compose.onNodeWithTag("newSale").performClick()
+        compose.waitUntilAtLeastOneExists(hasTestTag("charge") and isEnabled(), 15_000)
+        compose.onNodeWithTag("charge").performClick()
+        compose.waitUntilAtLeastOneExists(hasTestTag("scanWallet"), 15_000)
+        compose.onNodeWithTag("scanWallet").assertIsDisplayed().performClick()
+        compose.waitUntilAtLeastOneExists(hasTestTag("wallet_pick_wechatpay_pos"), 15_000)
+        compose.onNodeWithTag("wallet_pick_wechatpay_pos").performScrollTo().performClick()
+        compose.onNodeWithTag("walletDemo").assertIsDisplayed()
+        compose.onNodeWithText(env.context.getString(R.string.wallet_demo_note)).assertIsDisplayed()
+    }
 
     private fun saleFits() {
         val context = env.context

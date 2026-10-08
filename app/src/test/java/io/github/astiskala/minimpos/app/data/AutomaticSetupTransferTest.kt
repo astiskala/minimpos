@@ -27,10 +27,11 @@ import io.github.astiskala.minimpos.terminal.paymentsapp.ManagementResult
 import io.github.astiskala.minimpos.terminal.transport.CredentialLookup
 import io.github.astiskala.minimpos.terminal.transport.DiscoveredKey
 import io.github.astiskala.minimpos.terminal.transport.ManagementFailure
+import io.github.astiskala.minimpos.terminal.transport.MerchantLookup
 import io.github.astiskala.minimpos.terminal.transport.SharedKeyLookup
 import io.github.astiskala.minimpos.terminal.transport.SharedKeyUpdate
 import io.github.astiskala.minimpos.terminal.transport.StoreDetails
-import io.github.astiskala.minimpos.terminal.transport.StoreListing
+import io.github.astiskala.minimpos.terminal.transport.StoreLookup
 import io.github.astiskala.minimpos.terminal.transport.TerminalDetails
 import io.github.astiskala.minimpos.terminal.transport.TerminalDetailsApi
 import io.github.astiskala.minimpos.terminal.transport.TerminalEnvironment
@@ -51,9 +52,7 @@ class AutomaticSetupTransferTest {
     private val createdKeys = mutableListOf<DiscoveredKey>()
     private var activateKey = true
     private val storeDetails =
-        FakeStoreDetails(
-            StoreListing.Listed(listOf(StoreDetails("ST1", "cafe", "Cafe", "1 Main St", "+61212345678"))),
-        )
+        FakeStoreDetails(StoreLookup.Found(StoreDetails("Cafe", "1 Main St", "+61212345678")))
     private var credentialReads = 0
     private val details: TerminalDetailsApi =
         object : TerminalDetailsApi {
@@ -191,15 +190,24 @@ class AutomaticSetupTransferTest {
     }
 
     @Test
-    fun `merchant-assigned terminal imports the merchant legal name instead of unrelated stores`() {
+    fun `merchant-assigned terminal imports only the legal name without warning about store-only fields`() {
         available = listOf(TerminalDetails(poiId, "Merchant", "192.168.1.42"))
-        storeDetails.storeList = StoreListing.Listed(listOf(StoreDetails("ST1", "", "Other store", "", "")))
-        storeDetails.merchantDetails = StoreListing.Listed(listOf(StoreDetails("Merchant", "", "Legal Shop", "", "")))
+        storeDetails.merchantAnswer = MerchantLookup.Found("Legal Shop")
         val result = import() as SetupImportOutcome.Committed
-        assertThat((result.outcome as ImportOutcome.Imported).result.businessWarning).isTrue()
+        assertThat((result.outcome as ImportOutcome.Imported).result.businessWarning).isFalse()
+        assertThat(storeDetails.calls).containsExactly("merchant:Merchant")
         val receipt = await { env.container.settings.current() }.receipt
         assertThat(receipt.businessName).isEqualTo("Legal Shop")
         assertThat(receipt.addressLines).isEmpty()
+        assertThat(receipt.phone).isEmpty()
+    }
+
+    @Test
+    fun `merchant-assigned terminal without a legal name warns about the name`() {
+        available = listOf(TerminalDetails(poiId, "Merchant", "192.168.1.42"))
+        val result = import() as SetupImportOutcome.Committed
+        assertThat((result.outcome as ImportOutcome.Imported).result.businessWarning).isTrue()
+        assertThat(await { env.container.settings.current() }.receipt.businessName).isEmpty()
     }
 
     @Test
@@ -498,7 +506,7 @@ class AutomaticSetupTransferTest {
 
     @Test
     fun `unavailable selected Adyen field warns without importing unselected fields`() {
-        storeDetails.storeList = StoreListing.Listed(listOf(StoreDetails("ST1", "", "Unselected name", "", "")))
+        storeDetails.storeAnswer = StoreLookup.Found(StoreDetails("Unselected name", "", ""))
         val result =
             import(
                 """{"destination":"thisTerminal","automatic":true,"importReceiptName":false,"importReceiptPhone":false}""",
@@ -512,7 +520,7 @@ class AutomaticSetupTransferTest {
 
     @Test
     fun `manual blank receipt fields do not trigger Adyen lookup or erase saved text`() {
-        storeDetails.storeList = StoreListing.Failed("Lookup must not run")
+        storeDetails.storeAnswer = StoreLookup.Failed("Lookup must not run")
         env.updateSettings { it.copy(receipt = it.receipt.copy(businessName = "Saved", addressLines = "Saved address")) }
         val result =
             import(
@@ -521,6 +529,7 @@ class AutomaticSetupTransferTest {
                 """.trimMargin(),
             ) as SetupImportOutcome.Committed
         assertThat((result.outcome as ImportOutcome.Imported).result.businessWarning).isFalse()
+        assertThat(storeDetails.calls).isEmpty()
         val receipt = await { env.container.settings.current() }.receipt
         assertThat(receipt.businessName).isEqualTo("Saved")
         assertThat(receipt.addressLines).isEqualTo("Saved address")
@@ -530,7 +539,7 @@ class AutomaticSetupTransferTest {
     @Test
     fun `receipt lookup failures do not block verified setup or overwrite existing business text`() {
         env.updateSettings { it.copy(receipt = it.receipt.copy(businessName = "Saved shop", phone = "Saved phone")) }
-        storeDetails.storeList = StoreListing.Failed("Access denied")
+        storeDetails.storeAnswer = StoreLookup.Failed("Access denied")
         val result = (import() as SetupImportOutcome.Committed).outcome as ImportOutcome.Imported
         assertThat(result.result.businessWarning).isTrue()
         assertThat(await { env.container.settings.current() }.receipt.businessName).isEqualTo("Saved shop")

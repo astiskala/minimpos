@@ -52,9 +52,10 @@ enum class ConnectionDestination {
  * @property receiptTaxId Explicit receipt tax identifier; null or blank keeps saved text.
  * @property receiptTitle Explicit receipt heading; null or blank keeps saved text.
  * @property receiptFooter Explicit receipt footer; null or blank keeps saved text.
- * @property importReceiptName Whether Adyen lookup may fill a blank business name.
- * @property importReceiptAddress Whether Adyen lookup may fill a blank address.
- * @property importReceiptPhone Whether Adyen lookup may fill a blank phone number.
+ * @property importReceiptName Whether Adyen lookup may fill a blank business name; omitted means allowed, as for setup
+ *   moved from another device, which carries no setup helper choices.
+ * @property importReceiptAddress Whether Adyen lookup may fill a blank address; omitted means allowed.
+ * @property importReceiptPhone Whether Adyen lookup may fill a blank phone number; omitted means allowed.
  */
 @Serializable
 data class ConnectionSetup(
@@ -95,11 +96,17 @@ data class ConnectionSetup(
             footer = receiptFooter.or(receipt.footer),
         )
 
-    /** Whether a selected automatic receipt field remains blank and needs read-only Adyen lookup. */
-    fun needsReceiptDetails(receipt: ReceiptSettings): Boolean =
+    /**
+     * Whether a selected automatic receipt field remains blank and needs read-only Adyen lookup. Without
+     * [addressAndPhone], as for a merchant account, which has no receipt address or phone, only the name counts.
+     */
+    fun needsReceiptDetails(
+        receipt: ReceiptSettings,
+        addressAndPhone: Boolean,
+    ): Boolean =
         (importReceiptName && receipt.businessName.isBlank()) ||
-            (importReceiptAddress && receipt.addressLines.isBlank()) ||
-            (importReceiptPhone && receipt.phone.isBlank())
+            (addressAndPhone && importReceiptAddress && receipt.addressLines.isBlank()) ||
+            (addressAndPhone && importReceiptPhone && receipt.phone.isBlank())
 
     /** [email] with supplied SMTP fields; omitted or blank text and unrelated receipt email settings stay unchanged. */
     fun emailAppliedTo(email: EmailSettings): EmailSettings =

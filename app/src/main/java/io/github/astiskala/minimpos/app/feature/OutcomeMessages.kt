@@ -10,6 +10,8 @@ import io.github.astiskala.minimpos.app.data.db.RefundEntity
 import io.github.astiskala.minimpos.app.data.db.SaleEntity
 import io.github.astiskala.minimpos.app.data.db.SetupProblem
 import io.github.astiskala.minimpos.app.data.db.StoredReason
+import io.github.astiskala.minimpos.app.payment.WalletScanProblem
+import io.github.astiskala.minimpos.app.terminal.WalletDiscoveryFailure
 import io.github.astiskala.minimpos.app.ui.components.ActionMessage
 import io.github.astiskala.minimpos.app.ui.components.currentLocale
 import io.github.astiskala.minimpos.core.money.CurrencySpec
@@ -52,6 +54,32 @@ fun ActionOutcome.text(): String =
 
         is ActionOutcome.Failed -> message
     }
+
+/** Local scan failures, containing no scanned data or provider payload. */
+@Composable
+@ReadOnlyComposable
+internal fun WalletScanProblem.text(): String =
+    stringResource(
+        when (this) {
+            WalletScanProblem.INVALID_CODE -> R.string.wallet_invalid_code
+            WalletScanProblem.SCAN_FAILED -> R.string.wallet_scan_failed
+            WalletScanProblem.CHECKOUT_CHANGED -> R.string.wallet_checkout_changed
+            WalletScanProblem.BUSY -> R.string.wallet_busy
+        },
+    )
+
+/** Optional wallet discovery diagnostics; only Settings displays these failures. */
+@Composable
+@ReadOnlyComposable
+internal fun WalletDiscoveryFailure.text(): String =
+    stringResource(
+        when (this) {
+            WalletDiscoveryFailure.AUTHENTICATION -> R.string.wallet_discovery_auth
+            WalletDiscoveryFailure.PERMISSION -> R.string.wallet_discovery_permission
+            WalletDiscoveryFailure.UNAVAILABLE -> R.string.wallet_discovery_unavailable
+            WalletDiscoveryFailure.UNREADABLE -> R.string.wallet_discovery_unreadable
+        },
+    )
 
 /** How the screens word this setup problem: what to enter, install or fix. */
 @Composable

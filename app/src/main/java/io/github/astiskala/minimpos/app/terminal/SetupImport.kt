@@ -368,8 +368,8 @@ class SetupImport internal constructor(
     }
 
     private suspend fun business(prepared: PreparedTransfer): SetupImportOutcome? {
-        val choices = prepared.received.connection ?: ConnectionSetup()
-        if (!choices.needsReceiptDetails(prepared.settings.receipt)) return null
+        val choices = prepared.received.connection ?: transferredSetup
+        if (!choices.needsReceiptDetails(prepared.settings.receipt, addressAndPhone = true)) return null
         val result = checks.businessDetails.lookup(candidate(prepared))
         if (result is ReceiptBusinesses.Found) {
             val business = result.business
@@ -381,7 +381,11 @@ class SetupImport internal constructor(
                 )
             prepared.settings = prepared.settings.copy(receipt = selected.applyTo(prepared.settings.receipt))
         }
-        prepared.businessWarning = choices.needsReceiptDetails(prepared.settings.receipt)
+        val fromStore = (result as? ReceiptBusinesses.Found)?.fromStore != false
+        prepared.businessWarning = choices.needsReceiptDetails(prepared.settings.receipt, addressAndPhone = fromStore)
         return null
     }
 }
+
+/** Setup moved from another device carries no setup helper choices, so it may look up every blank receipt field. */
+private val transferredSetup = ConnectionSetup()

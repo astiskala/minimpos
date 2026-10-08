@@ -23,6 +23,9 @@ Adyen platform, terminal, Payments app, Customer Area or Adyen Java library vuln
 
 Adyen's terminal or Payments app reads the card, not Mini mPOS. The app receives payment results and receipt data,
 including brand, masked card number, references and, when tokenizing, the stored payment-method ID—not raw card data.
+Merchant-scanned wallet payments additionally handle the shopper's payment code transiently in memory. Codes are never
+logged, persisted in Room, put in navigation arguments or saved UI state. History stores only the requested wallet and
+ordinary transaction facts; missing answers are recovered by transaction status, not by replaying the code.
 
 - **Local Terminal API:** on the same terminal or your network, Adyen's library encrypts and authenticates messages
   with the shared key. TLS certificates must chain to an Adyen TEST/LIVE terminal root and have a terminal name in
@@ -31,7 +34,7 @@ including brand, masked card number, references and, when tokenizing, the stored
 - **Tap to Pay:** App Links to the Payments app are encrypted and authenticated with the shared key. Unverifiable
   answers or answers for a different request are rejected.
 - **Other Adyen services:** Checkout handles captures, adjustments and payment links; Management boards/revokes the
-  Payments app. These HTTPS calls use API credentials.
+  Payments app and reads optional wallet configuration. These HTTPS calls use API credentials.
 
 A missing answer does not prove a request failed. Operations are persisted before sending; unknown outcomes need
 reconciliation, not a fresh charge. Merchant recovery instructions are in

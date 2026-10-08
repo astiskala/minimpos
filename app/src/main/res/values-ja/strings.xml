@@ -1,5 +1,33 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="checkout_scan_wallet">ウォレットをスキャン</string>
+    <string name="wallet_choose">ウォレットを選択</string>
+    <string name="wallet_scan_hint">お客様の %1$s 支払いコードをスキャンしてください</string>
+    <string name="wallet_native_hint">決済端末 %1$s のスキャンボタンを押してください</string>
+    <string name="wallet_camera">カメラを使用</string>
+    <string name="wallet_native">端末スキャナーを使用</string>
+    <string name="wallet_again">再スキャン</string>
+    <string name="wallet_change">ウォレットを変更</string>
+    <string name="wallet_demo">デモコードを使用</string>
+    <string name="wallet_demo_source">オフラインデモを使用</string>
+    <string name="wallet_demo_note">オフラインデモです。実際の支払いは行われません。</string>
+    <string name="wallet_saving_note">保存をリクエストしました。対応状況はウォレットによります。</string>
+    <string name="wallet_payme_note">PayMe のスキャンは未検証で、拒否される場合があります。</string>
+    <string name="wallet_without_tip">領収書でのチップなしで支払いますか？このウォレット決済は合計額を直ちに請求します。</string>
+    <string name="wallet_invalid_code">このウォレットの有効な支払いコードではありません。再スキャンするかウォレットを変更してください。</string>
+    <string name="wallet_scan_failed">コードを受信できませんでした。再スキャンするかカメラを使用してください。</string>
+    <string name="wallet_checkout_changed">会計または端末設定が変わりました。会計に戻って確認してください。</string>
+    <string name="wallet_busy">別の支払いが進行中です。会計に戻ってください。</string>
+    <string name="wallet_requested">リクエストしたウォレット</string>
+    <string name="wallet_methods">スキャン対応ウォレット</string>
+    <string name="wallet_refresh">ウォレットを更新</string>
+    <string name="wallet_role_hint">任意の権限：Management API—Payment methods read。照会エラーは通常の支払いを妨げません。</string>
+    <string name="wallet_none">%1$s に対応するスキャン用ウォレットはありません。</string>
+    <string name="wallet_available">%1$s 対応：%2$s</string>
+    <string name="wallet_discovery_auth">ウォレット確認失敗：この環境で API キーが拒否されました。</string>
+    <string name="wallet_discovery_permission">ウォレット確認失敗：端末へのアクセス権限と Management API—Payment methods read ロールを確認してください。</string>
+    <string name="wallet_discovery_unavailable">ウォレットを更新できませんでした。接続を確認して再試行してください。</string>
+    <string name="wallet_discovery_unreadable">Adyen のウォレット設定が不完全です。再試行してください。</string>
     <string name="onboarding_title">Mini mPOS へようこそ</string>
     <string name="onboarding_hint">Adyen アカウントなしでシミュレーターを試す、設定 QR コードを読み込む、または端末を接続できます。</string>
     <string name="onboarding_simulator">サンプルでシミュレーターを試す</string>
@@ -664,7 +692,7 @@
   <string name="settings_business_import_hint">割り当て店舗（Management API—Stores read）またはマーチャントアカウント（Management API—Account read）の領収書情報を確認します。アカウントからは法人名のみ取得できます。</string>
   <string name="settings_business_review">店舗情報を確認</string>
   <string name="settings_business_review_hint">店舗名、住所、電話番号の空欄だけを補完します。既存の文面は置き換えません。税務番号、タイトル、フッターは変更しません。</string>
-  <string name="settings_business_unavailable">インポートできる事業者情報はありません。</string>
+  <string name="settings_business_unavailable">インポートできる店舗情報はありません。</string>
   <string name="settings_business_name">店舗名</string>
   <string name="settings_address">住所（1行ずつ入力）</string>
   <string name="settings_tax_id_label">税務番号のラベル</string>

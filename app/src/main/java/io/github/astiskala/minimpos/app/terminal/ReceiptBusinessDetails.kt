@@ -5,8 +5,9 @@ import io.github.astiskala.minimpos.app.data.settings.ReceiptSettings
 import io.github.astiskala.minimpos.app.data.settings.TerminalSettings
 import io.github.astiskala.minimpos.terminal.transport.AdyenStoreDetails
 import io.github.astiskala.minimpos.terminal.transport.AdyenTerminalDetails
+import io.github.astiskala.minimpos.terminal.transport.MerchantLookup
 import io.github.astiskala.minimpos.terminal.transport.StoreDetailsApi
-import io.github.astiskala.minimpos.terminal.transport.StoreListing
+import io.github.astiskala.minimpos.terminal.transport.StoreLookup
 import io.github.astiskala.minimpos.terminal.transport.TerminalDetailsApi
 import io.github.astiskala.minimpos.terminal.transport.TerminalEnvironment
 import io.github.astiskala.minimpos.terminal.transport.TerminalListing
@@ -40,9 +41,12 @@ sealed interface ReceiptBusinesses {
     /**
      * Details of the assigned store, or of the merchant account when no store is assigned, for review.
      * @property business Proposal, not yet saved.
+     * @property fromStore Whether a store supplied it; a merchant account has only a legal name, never an address or
+     *   phone.
      */
     data class Found(
         val business: ReceiptBusiness,
+        val fromStore: Boolean,
     ) : ReceiptBusinesses
 
     /**
@@ -137,17 +141,25 @@ class ReceiptBusinessDetails(
             setup.settings.terminal.merchantAccount
                 .trim()
         val api = connect(checkNotNull(unlocked.apiKey), checkNotNull(setup.environment))
-        val id = assigned.ifBlank { merchant }
-        return when (val listing = if (assigned.isBlank()) api.merchant(merchant) else api.stores(merchant)) {
-            is StoreListing.Failed -> {
-                ReceiptBusinesses.Failed(listing.message)
+        val store = assigned.trim()
+        if (store.isEmpty()) {
+            return when (val lookup = api.merchant(merchant)) {
+                is MerchantLookup.Found -> ReceiptBusinesses.Found(ReceiptBusiness(lookup.legalName, "", ""), fromStore = false)
+                is MerchantLookup.Failed -> ReceiptBusinesses.Failed(lookup.message)
+            }
+        }
+        return when (val lookup = api.store(merchant, store)) {
+            is StoreLookup.Found -> {
+                val details = lookup.store
+                ReceiptBusinesses.Found(ReceiptBusiness(details.name, details.address, details.phone), fromStore = true)
             }
 
-            is StoreListing.Listed -> {
-                listing.stores
-                    .firstOrNull { it.id == id }
-                    ?.let { ReceiptBusinesses.Found(ReceiptBusiness(it.name, it.address, it.phone)) }
-                    ?: ReceiptBusinesses.NotSetUp(SetupProblem.STORE_ACCESS)
+            StoreLookup.Missing -> {
+                ReceiptBusinesses.NotSetUp(SetupProblem.STORE_ACCESS)
+            }
+
+            is StoreLookup.Failed -> {
+                ReceiptBusinesses.Failed(lookup.message)
             }
         }
     }

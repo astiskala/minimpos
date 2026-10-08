@@ -53,7 +53,7 @@ import io.github.astiskala.minimpos.terminal.client.RetryAdvice
 import io.github.astiskala.minimpos.terminal.simulator.SimulatedModifications
 import io.github.astiskala.minimpos.terminal.simulator.SimulatedOutcome
 import io.github.astiskala.minimpos.terminal.simulator.TerminalSimulator
-import io.github.astiskala.minimpos.terminal.transport.StoreListing
+import io.github.astiskala.minimpos.terminal.transport.StoreLookup
 import io.github.astiskala.minimpos.terminal.transport.TerminalEnvironment
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
@@ -181,6 +181,7 @@ class SettingsViewModelTest {
         assertThat(await { vm.businessImport.state.first { it.lookup.isError } }.lookup.outcome)
             .isEqualTo(ActionOutcome.NotSetUp(SetupProblem.API_REQUIRED))
         env.useLinks()
+        env.updateSettings { it.copy(terminal = it.terminal.copy(storeId = "ST1")) }
         vm.businessImport.find()
         assertThat(await { vm.businessImport.state.first { it.lookup.isError } }.lookup.outcome)
             .isEqualTo(ActionOutcome.NotSetUp(SetupProblem.STORE_ACCESS))
@@ -193,7 +194,7 @@ class SettingsViewModelTest {
 
     @Test
     fun `receipt lookup failures leave receipt settings unchanged`() {
-        val failed = TestEnvironment(stores = FakeStoreDetails(storeList = StoreListing.Failed("Missing store permission")))
+        val failed = TestEnvironment(stores = FakeStoreDetails(storeAnswer = StoreLookup.Failed("Missing store permission")))
         try {
             failed.useLinks()
             failed.updateSettings { it.copy(terminal = it.terminal.copy(storeId = "ST1")) }

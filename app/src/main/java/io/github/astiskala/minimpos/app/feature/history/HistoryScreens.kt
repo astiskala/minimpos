@@ -79,6 +79,7 @@ import io.github.astiskala.minimpos.app.feature.sale.statusKind
 import io.github.astiskala.minimpos.app.feature.sale.statusTitle
 import io.github.astiskala.minimpos.app.refund.PaymentAction
 import io.github.astiskala.minimpos.app.refund.decline
+import io.github.astiskala.minimpos.app.refund.methodCode
 import io.github.astiskala.minimpos.app.refund.simulatedLink
 import io.github.astiskala.minimpos.app.share.ShareEffect
 import io.github.astiskala.minimpos.app.ui.components.ActionMessage
@@ -109,6 +110,7 @@ import io.github.astiskala.minimpos.app.ui.theme.LocalStatusColors
 import io.github.astiskala.minimpos.core.money.CurrencySpec
 import io.github.astiskala.minimpos.core.money.MoneyFormatter
 import io.github.astiskala.minimpos.core.payment.PaymentMethods
+import io.github.astiskala.minimpos.core.payment.ScanWallet
 import io.github.astiskala.minimpos.core.receipt.ReceiptCopy
 import io.github.astiskala.minimpos.core.receipt.ReceiptDocument
 import io.github.astiskala.minimpos.core.shopper.ShopperReferences
@@ -405,8 +407,10 @@ private fun historyRowText(
 
 /** The card brand code in upper case and the wallet, such as "VISA Apple Pay"; null when the terminal reported neither. */
 private fun paymentMethodText(sale: SaleEntity): String? =
-    listOfNotNull(sale.paymentBrand?.uppercase(), PaymentMethods.wallet(sale.paymentMethodVariant)?.displayName)
-        .joinToString(" ")
+    listOfNotNull(
+        sale.methodCode?.let { if (ScanWallet.reported(it) != null) PaymentMethods.brandName(it) else it.uppercase() },
+        PaymentMethods.wallet(sale.paymentMethodVariant)?.displayName,
+    ).joinToString(" ")
         .ifBlank { null }
 
 /**

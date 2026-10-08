@@ -367,7 +367,6 @@ class CloudTransport internal constructor(
 }
 
 private val HTTP_CLIENT_ERROR = 400..499
-private const val HTTP_NOT_FOUND = 404
 private const val HTTP_TIMEOUT = 408
 
 /** Adyen's explanation of an HTTP error, with the status code, e.g. "Invalid API key (HTTP 401)". */

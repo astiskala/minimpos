@@ -60,6 +60,21 @@ class HistorySearchTest {
     ) = HistorySearch(text, method).matches(HistoryItem.Refund(refund), sale.takeIf { withSale })
 
     @Test
+    fun `unanswered scanned sales remain searchable by requested wallet without overriding an actual answer`() {
+        val unanswered =
+            sale.copy(
+                paymentBrand = null,
+                paymentMethodVariant = null,
+                requestedWallet = "wechatpay_pos",
+                status = SaleStatus.UNKNOWN,
+            )
+        assertThat(HistorySearch("WeChat").matches(HistoryItem.Sale(unanswered), unanswered)).isTrue()
+        assertThat(PaymentMethodFilter.available(listOf(unanswered)).single().label).isEqualTo("WeChat Pay")
+        val answered = unanswered.copy(paymentBrand = "paypal_pos", paymentMethodVariant = "paypal_pos", status = SaleStatus.APPROVED)
+        assertThat(PaymentMethodFilter.available(listOf(answered)).single().label).isEqualTo("PayPal")
+    }
+
+    @Test
     fun `matches references, shopper details, the card and its payment method, ignoring case`() {
         listOf(
             "w2ht",

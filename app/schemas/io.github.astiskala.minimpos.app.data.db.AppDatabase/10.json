@@ -2,7 +2,7 @@
   "formatVersion": 1,
   "database": {
     "version": 10,
-    "identityHash": "a5dec44eb8c09d1d5726e9b7cc9458e6",
+    "identityHash": "8c818b4635c53a8fa5e0165a4da41730",
     "entities": [
       {
         "tableName": "tax_rates",
@@ -246,7 +246,7 @@
       },
       {
         "tableName": "sales",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `sample` INTEGER NOT NULL DEFAULT 0, `createdAt` INTEGER NOT NULL, `currency` TEXT NOT NULL, `taxMode` TEXT NOT NULL, `netMinor` INTEGER NOT NULL, `taxMinor` INTEGER NOT NULL, `totalMinor` INTEGER NOT NULL, `status` TEXT NOT NULL, `merchantReference` TEXT NOT NULL, `customerReference` TEXT, `shopperReference` TEXT, `shopperEmail` TEXT, `tokenizationRequested` INTEGER NOT NULL, `storedPaymentMethodId` TEXT, `serviceId` TEXT, `poiId` TEXT, `poiTransactionId` TEXT, `poiTimestamp` TEXT, `pspReference` TEXT, `paymentBrand` TEXT, `maskedPan` TEXT, `entryMode` TEXT, `authCode` TEXT, `message` TEXT, `customerReceiptJson` TEXT, `cashierReceiptJson` TEXT, `signatureRequired` INTEGER NOT NULL, `refundedMinor` INTEGER NOT NULL, `emailedTo` TEXT, `errorCondition` TEXT, `refusalReason` TEXT, `kind` TEXT NOT NULL DEFAULT 'SALE', `tipOnReceipt` INTEGER NOT NULL DEFAULT 0, `tipMinor` INTEGER, `authorisedMinor` INTEGER, `adjustment` TEXT, `adjustAuthorisationData` TEXT, `capturedMinor` INTEGER, `captureStatus` TEXT, `modificationMessage` TEXT, `paymentMethodVariant` TEXT, `holdCancelled` INTEGER NOT NULL DEFAULT 0, `paymentLink` INTEGER NOT NULL DEFAULT 0, `paymentLinkId` TEXT, `paymentLinkUrl` TEXT, `paymentLinkExpiresAt` INTEGER, `reason` TEXT, `modificationReason` TEXT, `context` TEXT, `linkLocale` TEXT, `linkCountry` TEXT, `linkRecurringModel` TEXT, `adjustmentKey` TEXT, `adjustmentAmountMinor` INTEGER, `adjustmentPending` INTEGER NOT NULL, `processedAt` INTEGER, `captureStartedAt` INTEGER, `captureProcessedAt` INTEGER, PRIMARY KEY(`id`))",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `sample` INTEGER NOT NULL DEFAULT 0, `createdAt` INTEGER NOT NULL, `currency` TEXT NOT NULL, `taxMode` TEXT NOT NULL, `netMinor` INTEGER NOT NULL, `taxMinor` INTEGER NOT NULL, `totalMinor` INTEGER NOT NULL, `status` TEXT NOT NULL, `merchantReference` TEXT NOT NULL, `customerReference` TEXT, `shopperReference` TEXT, `shopperEmail` TEXT, `requestedWallet` TEXT, `tokenizationRequested` INTEGER NOT NULL, `storedPaymentMethodId` TEXT, `serviceId` TEXT, `poiId` TEXT, `poiTransactionId` TEXT, `poiTimestamp` TEXT, `pspReference` TEXT, `paymentBrand` TEXT, `maskedPan` TEXT, `entryMode` TEXT, `authCode` TEXT, `message` TEXT, `customerReceiptJson` TEXT, `cashierReceiptJson` TEXT, `signatureRequired` INTEGER NOT NULL, `refundedMinor` INTEGER NOT NULL, `emailedTo` TEXT, `errorCondition` TEXT, `refusalReason` TEXT, `kind` TEXT NOT NULL DEFAULT 'SALE', `tipOnReceipt` INTEGER NOT NULL DEFAULT 0, `tipMinor` INTEGER, `authorisedMinor` INTEGER, `adjustment` TEXT, `adjustAuthorisationData` TEXT, `capturedMinor` INTEGER, `captureStatus` TEXT, `modificationMessage` TEXT, `paymentMethodVariant` TEXT, `holdCancelled` INTEGER NOT NULL DEFAULT 0, `paymentLink` INTEGER NOT NULL DEFAULT 0, `paymentLinkId` TEXT, `paymentLinkUrl` TEXT, `paymentLinkExpiresAt` INTEGER, `reason` TEXT, `modificationReason` TEXT, `context` TEXT, `linkLocale` TEXT, `linkCountry` TEXT, `linkRecurringModel` TEXT, `adjustmentKey` TEXT, `adjustmentAmountMinor` INTEGER, `adjustmentPending` INTEGER NOT NULL, `processedAt` INTEGER, `captureStartedAt` INTEGER, `captureProcessedAt` INTEGER, PRIMARY KEY(`id`))",
         "fields": [
           {
             "fieldPath": "id",
@@ -322,6 +322,11 @@
           {
             "fieldPath": "shopperEmail",
             "columnName": "shopperEmail",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "requestedWallet",
+            "columnName": "requestedWallet",
             "affinity": "TEXT"
           },
           {
@@ -882,7 +887,7 @@
     ],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'a5dec44eb8c09d1d5726e9b7cc9458e6')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '8c818b4635c53a8fa5e0165a4da41730')"
     ]
   }
 }

@@ -21,6 +21,7 @@ existing spelling (`preAuthorisation`, `SaleKind.PRE_AUTHORISATION`, `authorised
 | Abort | Asks the terminal to stop a current transaction; does not establish its outcome. | `TerminalClient` |
 | Decline | Terminal refusal/cancellation/busy reason and retry advice, derived from ErrorCondition. | `client/Decline` |
 | Payment link | Sale paid on Adyen's payment page instead of a terminal; awaiting payment after creation, then paid, expired or cancelled. Simulator links are offline demos completed explicitly; their QR codes cannot take payments. | `payment/PaymentLinks`, `PaymentLinkStart` |
+| Scanned wallet | Immediate-charge sale using a shopper-presented numeric payment code; selected wallet is intent, the terminal answer is authoritative. Raw codes are transient, status recovery never replays them. PayMe is explicitly best-effort. | `core/payment/ScanWallet`, `terminal/WalletDiscovery`, `payment/WalletPayments` |
 | Merchant reference | Generated payment identifier: optional prefix plus `yyMMdd-HHmmss-XXXX`; refunds `R-…`, cancellations `C-…`. | Adyen `reference` |
 | Transaction reference | Optional operator-entered reference, separate from the shopper reference. | `CheckoutForm`, `PaymentSettings` |
 | Customer reference | Operator-entered identifier requested when it is the shopper reference. | `ShopperReferenceSource.CUSTOMER_REFERENCE` |

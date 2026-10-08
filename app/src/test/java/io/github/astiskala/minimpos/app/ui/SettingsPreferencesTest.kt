@@ -20,8 +20,9 @@ import io.github.astiskala.minimpos.app.data.db.SaleEntity
 import io.github.astiskala.minimpos.app.data.db.SaleStatus
 import io.github.astiskala.minimpos.app.data.settings.ReceiptTipping
 import io.github.astiskala.minimpos.app.data.settings.TerminalMode
+import io.github.astiskala.minimpos.terminal.transport.MerchantLookup
 import io.github.astiskala.minimpos.terminal.transport.StoreDetails
-import io.github.astiskala.minimpos.terminal.transport.StoreListing
+import io.github.astiskala.minimpos.terminal.transport.StoreLookup
 import kotlinx.coroutines.flow.first
 import org.junit.Rule
 import org.junit.Test
@@ -34,7 +35,7 @@ import io.github.astiskala.minimpos.app.createRecordingComposeRule as createComp
 @RunWith(RobolectricTestRunner::class)
 @Config(qualifiers = "en-rAU-w320dp-h460dp-hdpi")
 class SettingsPreferencesTest {
-    private val stores = FakeStoreDetails(StoreListing.Listed(listOf(StoreDetails("ST1", "cafe", "Adyen Cafe", "1 Main St\nSydney", ""))))
+    private val stores = FakeStoreDetails(StoreLookup.Found(StoreDetails("Adyen Cafe", "1 Main St\nSydney", "")))
 
     @get:Rule(order = 0)
     val env = TestEnvironment(stores = stores)
@@ -145,7 +146,7 @@ class SettingsPreferencesTest {
     @Test
     fun `a store with no importable details cannot erase receipt fields`() {
         env.useLinks()
-        stores.storeList = StoreListing.Listed(listOf(StoreDetails("ST2", "empty", "", "", "")))
+        stores.storeAnswer = StoreLookup.Found(StoreDetails("", "", ""))
         env.updateSettings { it.copy(terminal = it.terminal.copy(storeId = "ST2")) }
         open("receipts")
         findStores()
@@ -156,7 +157,7 @@ class SettingsPreferencesTest {
     @Test
     fun `a terminal without an assigned store reviews the merchant legal name`() {
         env.useLinks()
-        stores.merchantDetails = StoreListing.Listed(listOf(StoreDetails("HarbourCoffeeCOM", "", "Harbour Coffee Pty Ltd", "", "")))
+        stores.merchantAnswer = MerchantLookup.Found("Harbour Coffee Pty Ltd")
         open("receipts")
         findStores()
         compose.waitUntilAtLeastOneExists(hasTestTag("confirmReceiptBusiness"), 15_000)

@@ -146,6 +146,9 @@ data class TerminalSetup(
         )
     }
 
+    /** Whether the resolved destination supports shopper-presented wallet codes, independently of account configuration. */
+    val scannedWallets: Boolean get() = destination.scannedWallets
+
     /** Non-secret identity for this resolved setup, with [detected] from its actual transport when known. */
     fun paymentContext(detected: TerminalEnvironment? = environment): PaymentContext =
         PaymentContext(

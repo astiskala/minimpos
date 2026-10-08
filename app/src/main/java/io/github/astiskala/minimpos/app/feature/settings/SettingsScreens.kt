@@ -41,7 +41,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
@@ -88,6 +87,7 @@ import io.github.astiskala.minimpos.app.payment.TransactionState.Processing
 import io.github.astiskala.minimpos.app.terminal.ReceiptBusiness
 import io.github.astiskala.minimpos.app.terminal.SharedKeyOffer
 import io.github.astiskala.minimpos.app.terminal.TerminalConnection
+import io.github.astiskala.minimpos.app.terminal.WalletAvailability
 import io.github.astiskala.minimpos.app.ui.components.ActionMessage
 import io.github.astiskala.minimpos.app.ui.components.ConfirmDialog
 import io.github.astiskala.minimpos.app.ui.components.HistorySwitchDialog
@@ -453,16 +453,12 @@ private fun ColumnScope.OtherSectionRows(
     }, tag = "section_about")
 }
 
-/**
- * One settings [section] (a [SettingsSections] key; unknown keys show About).
- * With [automaticSetup], Terminal starts optional read-only lookup once after imported settings have loaded; never boards.
- */
+/** One settings [section] (a [SettingsSections] key; unknown keys show About). */
 @Composable
 fun SettingsSectionScreen(
     section: String,
     navigator: Navigator,
     modifier: Modifier = Modifier,
-    automaticSetup: Boolean = false,
 ) {
     val vm = settingsViewModel()
     val sampleData = sampleDataViewModel()
@@ -478,9 +474,6 @@ fun SettingsSectionScreen(
     }
     val events = remember(vm, sampleData) { settingsEvents(vm, sampleData) }
     val setupEvents = remember(setup) { terminalSetupEvents(setup) }
-    LaunchedEffect(section, automaticSetup) {
-        setup.startAutomaticSetup(automaticSetup && section == SettingsSections.TERMINAL)
-    }
     var settingPin by remember { mutableStateOf<Boolean?>(null) }
     if (settingPin != null) {
         SetPinScreen(onDone = {
@@ -696,6 +689,39 @@ private fun ColumnScope.TerminalSection(
         )
     } else {
         TerminalSteps(status, state, actions, setup, events, setupEvents)
+    }
+    val container = LocalAppContainer.current
+    val wallets by container.walletDiscovery.state.collectAsStateWithLifecycle()
+    if (wallets.supported) WalletSettings(wallets, container.currency(state.settings).code, container.walletDiscovery::refreshInBackground)
+}
+
+@Composable
+private fun WalletSettings(
+    state: WalletAvailability,
+    currency: String,
+    onRefresh: () -> Unit,
+) {
+    SectionHeader(stringResource(R.string.wallet_methods))
+    if (!state.simulated) SettingNote(stringResource(R.string.wallet_role_hint))
+    val offered = state.offered(currency)
+    if (state.checked) {
+        SettingNote(
+            if (offered.isEmpty()) {
+                stringResource(R.string.wallet_none, currency)
+            } else {
+                stringResource(R.string.wallet_available, currency, offered.joinToString { it.displayName })
+            },
+        )
+    }
+    state.failure?.let { SettingNote(it.text()) }
+    state.problem?.let { SettingNote(it.text()) }
+    SettingActions {
+        SecondaryButton(
+            stringResource(R.string.wallet_refresh),
+            onRefresh,
+            loading = state.checking,
+            modifier = Modifier.testTag("refreshWallets"),
+        )
     }
 }
 

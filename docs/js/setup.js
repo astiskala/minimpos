@@ -205,7 +205,7 @@
       group.disabled = !wanted;
     }
     for (const group of form.querySelectorAll("[data-receipt]")) {
-      const manual = form.elements.includeReceipt.value === "yes" && form.elements[group.dataset.receipt].value === "manual";
+      const manual = form.elements[group.dataset.receipt].value === "manual";
       group.hidden = !manual;
       for (const input of group.querySelectorAll("input, textarea")) input.disabled = !manual;
     }

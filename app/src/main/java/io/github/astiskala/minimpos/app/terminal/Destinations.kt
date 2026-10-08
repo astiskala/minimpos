@@ -180,6 +180,7 @@ class SimulatedTerminal(
      */
     companion object : DestinationRules {
         override val mode: TerminalMode get() = TerminalMode.SIMULATOR
+        override val scannedWallets: Boolean get() = true
         override val secrets: Set<Secret> get() = emptySet()
         override val checksConnection: Boolean get() = false
         override val simulatesApi: Boolean get() = true
@@ -245,6 +246,7 @@ internal class LocalTerminal(
      */
     companion object : DestinationRules {
         override val mode: TerminalMode get() = TerminalMode.TERMINAL
+        override val scannedWallets: Boolean get() = true
         override val secrets: Set<Secret> get() = setOf(Secret.TERMINAL_PASSPHRASE)
         override val discoversTerminals: Boolean get() = true
 
@@ -356,6 +358,7 @@ internal class CloudTerminal(
      */
     companion object : DestinationRules {
         override val mode: TerminalMode get() = TerminalMode.CLOUD
+        override val scannedWallets: Boolean get() = true
         override val secrets: Set<Secret> get() = setOf(Secret.ADYEN_API_KEY)
         override val discoversTerminals: Boolean get() = true
 

@@ -93,9 +93,13 @@ sealed interface TerminalOperation {
      * A card payment.
      *
      * @property params What to charge.
+     * @property expected Original destination for a scanned payment; null for ordinary terminal collection.
+     * @property setupIdentity Exact checked scan setup fingerprint; null for ordinary terminal collection.
      */
     data class Pay(
         val params: PaymentParams,
+        val expected: PaymentContext? = null,
+        val setupIdentity: String? = null,
     ) : TerminalOperation
 
     /**
@@ -127,6 +131,9 @@ interface TransactionBook<R> {
 
     /** The request to send for [request]. */
     fun operation(request: R): TerminalOperation
+
+    /** Erases transient request material after every attempt, including persistence failures; recovery facts remain intact. */
+    fun release(request: R) = Unit
 
     /** Original destination required for a locally referenced refund; null for new payments or reviewed foreign receipts. */
     fun expectedContext(request: R): PaymentContext? = null
@@ -221,6 +228,8 @@ class TransactionLifecycle<R>(
                     // It stays PENDING, which the next start turns into UNKNOWN.
                 }
                 _state.value = TransactionState.Finished(id)
+            } finally {
+                book.release(request)
             }
         }
         return id
@@ -290,6 +299,8 @@ class TransactionLifecycle<R>(
                         gateway.pay(
                             operation.params,
                             serviceId,
+                            expected = operation.expected,
+                            expectedIdentity = operation.setupIdentity,
                             onSending = onSending,
                             onContext = { book.recordContext(id, it) },
                         )

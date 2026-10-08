@@ -122,6 +122,7 @@ fun ScannerView(
     onResult: (String) -> Unit,
     modifier: Modifier = Modifier,
     continuous: Boolean = false,
+    acceptResult: (String) -> Boolean = { true },
 ) {
     val context = LocalContext.current
     var granted by remember {
@@ -137,6 +138,7 @@ fun ScannerView(
     }
     val lifecycleOwner = LocalLifecycleOwner.current
     val latestOnResult by rememberUpdatedState(onResult)
+    val latestAcceptResult by rememberUpdatedState(acceptResult)
     val previewView = remember { PreviewView(context).apply { scaleType = PreviewView.ScaleType.FILL_CENTER } }
     var error by remember { mutableStateOf(false) }
 
@@ -147,14 +149,14 @@ fun ScannerView(
         var delivered = false
         var lastCode: String? = null
         val analyzer =
-            BarcodeAnalyzer(mode.formats, rotateForLinear = mode == ScanMode.BARCODE) { code ->
+            BarcodeAnalyzer(mode.formats, rotateForLinear = mode != ScanMode.QR) { code ->
                 mainExecutor.execute {
                     if (continuous) {
                         if (code != lastCode) {
                             lastCode = code
                             latestOnResult(code)
                         }
-                    } else if (!delivered) {
+                    } else if (!delivered && latestAcceptResult(code)) {
                         delivered = true
                         latestOnResult(code)
                     }

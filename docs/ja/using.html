@@ -57,7 +57,7 @@
           <li><a href="#business">販売を始める前に</a><ul>
             <li><a href="#pricing">通貨と税</a></li><li><a href="#products">商品</a></li><li><a href="#staff">スタッフの PIN</a></li>
           </ul></li>
-          <li><a href="#sell">カード決済を受け付ける</a></li><li><a href="#refund">返金・取消</a></li>
+          <li><a href="#sell">カード決済を受け付ける</a></li><li><a href="#wallets">ウォレットをスキャン</a></li><li><a href="#refund">返金・取消</a></li>
           <li><a href="#receipts">領収書</a><ul>
             <li><a href="#customize-receipts">領収書をカスタマイズ</a></li><li><a href="#language-receipts">領収書の言語</a></li><li><a href="#email">領収書のメール送信</a></li>
           </ul></li>
@@ -69,7 +69,7 @@
           <li><a href="#business">販売を始める前に</a><ul>
             <li><a href="#pricing">通貨と税</a></li><li><a href="#products">商品</a></li><li><a href="#staff">スタッフの PIN</a></li>
           </ul></li>
-          <li><a href="#sell">カード決済を受け付ける</a></li><li><a href="#refund">返金・取消</a></li>
+          <li><a href="#sell">カード決済を受け付ける</a></li><li><a href="#wallets">ウォレットをスキャン</a></li><li><a href="#refund">返金・取消</a></li>
           <li><a href="#receipts">領収書</a><ul>
             <li><a href="#customize-receipts">領収書をカスタマイズ</a></li><li><a href="#language-receipts">領収書の言語</a></li><li><a href="#email">領収書のメール送信</a></li>
           </ul></li>
@@ -126,6 +126,25 @@
           <p>顧客参照ID、カード保存、チップは任意です。<a href="#shoppers">参照IDとカード保存</a>を参照してください。お客様自身のスマートフォンで支払う場合は<a href="#payment-links">支払いリンク</a>を使います。決済が拒否された場合は<a href="troubleshooting.html#declines">拒否された決済</a>を参照してください。</p>
           <p class="back-to-contents"><a href="#contents">目次に戻る</a></p>
         </section>
+        <section id="wallets">
+          <h2>お客様のウォレットコードをスキャンする</h2>
+          <p>販売の会計で<strong>ウォレットをスキャン</strong>を使い、お客様のウォレットアプリの支払いコードを読み取ります。商品バーコードや返金用領収書のスキャンとは別です。物理決済端末が必要で、Tap to Pay では使えません。<a href="getting-started.html#credentials">ウォレット照会には任意の読み取り権限が必要です</a>。</p>
+          <ol>
+            <li>合計と会計欄を確認し、<strong>ウォレットをスキャン</strong>をタップします。領収書でのチップが選択されている場合は、それを使わず支払うことを確認します。ウォレットは合計を直ちに請求し、プリオーソリは行いません。</li>
+            <li>お客様のウォレットを選びます。1 種類だけなら自動選択します。個別に設定されたものだけが表示され、Alipay+ の設定から GCash、DANA、Kakao Pay、TrueMoney の個別開通を推測しません。</li>
+            <li>内蔵スキャナーを確認できた端末では、その端末のスキャンボタンを押します。Mini mPOS のデバイスではなく、ネットワークやクラウドの決済端末の場合もあります。デバイスのカメラを使うには<strong>カメラを使用</strong>をタップします。</li>
+            <li>お客様の支払い QR コードまたは支払いバーコードをスキャンします。有効な 1 回のスキャンで直ちに決済が始まります。通常の結果を待ち、領収書を渡します。</li>
+          </ol>
+          <p>キャンセルしてもカートと会計欄は残ります。無効なコードでは支払いません。再スキャンするかウォレットを変更してください。内蔵スキャンは最大 30 秒で終了し、その後は<strong>再スキャン</strong>またはカメラを使えます。アプリを離れるとスキャンを停止し、戻ったら明示的な再開が必要です。コードの手入力や貼り付けはできません。</p>
+          <p>顧客参照IDと同意がある場合、<strong>カードを保存</strong>で支払い情報の保存を試みます。対応状況はウォレットによります。保存用トークンが返った場合だけ保存成功とし、トークンなしでも承認済みの決済は承認済みです。<a href="troubleshooting.html#wallets">照会や決済の問題</a>を参照し、<a href="troubleshooting.html#unknown">結果不明の決済</a>を再スキャンで置き換えないでください。</p>
+          <p>対象は GCash、DANA、Kakao Pay、TrueMoney、PayMe、Alipay、AlipayHK、Alipay+、WeChat Pay、PayPal、Venmo で、端末の店舗・国・通貨に対応した有効な POS 設定が必要です。PayMe のスキャンは意図的に未検証で、Adyen の公開された制限と矛盾し、拒否される場合があります。Adyen の<a href="https://docs.adyen.com/point-of-sale/alternative-payment-methods/qr-code-wallets">ウォレットガイド</a>と <a href="https://docs.adyen.com/point-of-sale/alternative-payment-methods/qr-code-wallets/paypal-pos">PayPal/Venmo ガイド</a>で開通状況と TEST 動作を確認してください。</p>
+          <div class="shot-pair">
+            <div class="terminal terminal-s1f2"><img src="../images/wallets.png" width="540" height="960" loading="lazy" alt="英語のシミュレーターデモ：$34.00 の販売でウォレットを選択"></div>
+            <div class="terminal terminal-s1f2"><img src="../images/wallet-scan.png" width="540" height="960" loading="lazy" alt="英語のシミュレーターデモ：WeChat Pay のスキャンとオフラインデモコードの操作"></div>
+          </div>
+          <p class="fine">S1F2 風の端末イラスト内の英語シミュレーターデモです。実際の支払いではなく、ウォレットや内蔵スキャナーの対応を証明するものではありません。</p>
+          <p class="back-to-contents"><a href="#contents">目次に戻る</a></p>
+        </section>
         <section id="refund">
           <h2>決済を返金・取消する</h2>
           <dl class="settings-list">
@@ -150,7 +169,7 @@
           <p>決済結果や取引履歴の項目で<strong>領収書を印刷</strong>または<strong>領収書をメール送信</strong>をタップします。タブレットやスマートフォンでは<strong>領収書を共有</strong>で、Android の共有メニューから画像を送れます。印刷にはプリンター付きの端末が必要です。</p>
           <h3 id="customize-receipts">領収書をカスタマイズしてテストする</h3>
           <ol>
-            <li><strong>設定 › 領収書</strong>で店舗情報、ヘッダー、フッターを入力します。または<strong>Adyenから店舗情報をインポート</strong>をタップし、Adyen の店舗情報で空欄を埋めます。これには任意の <a href="getting-started.html#credentials">Management API — Stores read</a> ロールが必要です。</li>
+            <li><strong>設定 › 領収書</strong>で店舗情報、ヘッダー、フッターを入力します。または<strong>Adyenから店舗情報をインポート</strong>をタップし、Adyen の店舗情報で空欄を埋めます。端末に店舗がない場合は、マーチャントアカウントの法人名のみを取り込みます。これには任意の <a href="getting-started.html#credentials">Management API — Stores read</a> または Account read ロールが必要です。</li>
             <li><strong>決済後に自動印刷</strong>、<strong>加盟店控え</strong>を印刷する条件、<strong>返金用QRコードを表示</strong>するかを選びます。</li>
             <li><strong>テスト領収書を印刷</strong>をタップして印字を確認します。画面のプレビューはプリンターの正確なレイアウトを示しません。</li>
           </ol>

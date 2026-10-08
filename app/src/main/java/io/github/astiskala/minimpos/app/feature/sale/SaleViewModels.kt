@@ -24,6 +24,7 @@ import io.github.astiskala.minimpos.app.payment.PaymentStart
 import io.github.astiskala.minimpos.app.payment.ReceiptDelivery
 import io.github.astiskala.minimpos.app.payment.SaleSession
 import io.github.astiskala.minimpos.app.payment.TransactionLifecycle
+import io.github.astiskala.minimpos.app.payment.WalletPayments
 import io.github.astiskala.minimpos.app.refund.PaymentAction
 import io.github.astiskala.minimpos.app.refund.StoredPayment
 import io.github.astiskala.minimpos.app.refund.StoredPayments
@@ -31,6 +32,7 @@ import io.github.astiskala.minimpos.app.refund.awaitsLinkPayment
 import io.github.astiskala.minimpos.app.refund.decline
 import io.github.astiskala.minimpos.app.refund.simulatedLink
 import io.github.astiskala.minimpos.app.terminal.TerminalState
+import io.github.astiskala.minimpos.app.terminal.WalletDiscovery
 import io.github.astiskala.minimpos.core.cart.Cart
 import io.github.astiskala.minimpos.core.cart.CartTotals
 import io.github.astiskala.minimpos.core.money.CurrencySpec
@@ -212,6 +214,8 @@ class SaleViewModel(
  * @param links Creates payment links; null offers none.
  * @param clock Stamps generated merchant references.
  * @param zone The time zone of generated merchant references.
+ * @param walletPayments Prepares scanned-wallet sales; null offers no wallet action.
+ * @param discovery Memory-only, currency-filtered wallet availability; null offers none.
  */
 class CheckoutViewModel(
     private val session: SaleSession,
@@ -222,12 +226,29 @@ class CheckoutViewModel(
     private val links: PaymentLinks? = null,
     private val clock: Clock = Clock.systemDefaultZone(),
     private val zone: () -> ZoneId = { ZoneId.systemDefault() },
+    private val walletPayments: WalletPayments? = null,
+    discovery: WalletDiscovery? = null,
 ) : ViewModel() {
+    private val checkout =
+        session.checkout(
+            settings,
+            terminal.map {
+                it.printerAvailable
+            },
+            terminal.map { it.paymentLinks && links != null },
+            currency,
+        )
+    private val withWallets =
+        if (discovery == null) {
+            checkout
+        } else {
+            combine(checkout, discovery.state) { checked, wallets ->
+                checked.copy(wallets = wallets.offered(checked.currency.code))
+            }
+        }
+
     /** The screen state, updated whenever the form, cart, settings, printer or payment link setup change. */
-    val state: StateFlow<Checkout> =
-        session
-            .checkout(settings, terminal.map { it.printerAvailable }, terminal.map { it.paymentLinks && links != null }, currency)
-            .stateIn(viewModelScope, SharingStarted.Eagerly, Checkout(kind = session.kind))
+    val state: StateFlow<Checkout> = withWallets.stateIn(viewModelScope, SharingStarted.Eagerly, Checkout(kind = session.kind))
 
     /** Updates the form (kept in the [SaleSession] so it survives going back to the cart). */
     fun update(transform: (CheckoutForm) -> CheckoutForm) = session.updateForm(transform)
@@ -238,6 +259,9 @@ class CheckoutViewModel(
         payments.start(start)
         return true
     }
+
+    /** Prepares the unchanged sale for wallet scanning; false when unavailable or already busy. */
+    fun scanWallet(): Boolean = walletPayments?.begin(state.value) == true
 
     /**
      * Starts creating a payment link instead ([Checkout.linkStart]) and returns its sale's ID; null when no link can be

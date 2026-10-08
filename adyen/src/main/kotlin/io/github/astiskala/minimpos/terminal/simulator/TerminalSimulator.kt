@@ -247,9 +247,16 @@ class TerminalSimulator(
     ): PaymentResponse {
         if (outcome == SimulatedOutcome.BUSY) return busy(request)
         val amount = request.paymentTransaction.amountsReq
+        val wallet = request.paymentData?.paymentInstrumentData?.paymentInstrumentType == PaymentInstrumentType.STORED_VALUE
+        val brand =
+            request.paymentTransaction.transactionConditions
+                ?.allowedPaymentBrand
+                ?.singleOrNull()
+                .orEmpty()
         val payment =
             SimulatedPayment(
-                card = CARDS[random.nextInt(CARDS.size)],
+                card = if (wallet) SimulatedCard(brand, brand, brand.uppercase(), "", "", "") else CARDS[random.nextInt(CARDS.size)],
+                wallet = wallet,
                 psp = randomString(PSP_LENGTH, UPPER),
                 tender = randomString(TENDER_PREFIX_LENGTH, ALNUM) + randomString(TENDER_DIGITS, DIGITS),
                 authCode = randomString(AUTH_CODE_LENGTH, DIGITS),
@@ -263,24 +270,8 @@ class TerminalSimulator(
                 preAuthorisation = request.saleData?.saleToAcquirerData?.authorisationType == TerminalClient.PRE_AUTH,
             )
         if (payment.approved) ledger.approved(payment.psp, manualCapture = payment.preAuthorisation)
-        val additional =
-            linkedMapOf(
-                "pspReference" to payment.psp,
-                "merchantReference" to payment.merchantReference,
-                "paymentMethod" to payment.card.brand,
-                "paymentMethodVariant" to payment.card.variant,
-                "cardSummary" to payment.card.maskedPan.takeLast(4),
-                "posEntryMode" to "CLESS_CHIP",
-            )
         val refusal = if (payment.approved) null else refusal(outcome)
-        if (refusal == null) {
-            additional["authCode"] = payment.authCode
-            // As with "return adjust authorisation data" enabled in the Customer Area, for synchronous adjustments.
-            if (payment.preAuthorisation) additional["adjustAuthorisationData"] = SimulatedModifications.blob(random)
-            additional += tokenization(payment.card, request.saleData?.saleToAcquirerData)
-        } else {
-            additional["refusalReason"] = refusal.second
-        }
+        val additional = paymentAdditional(payment, request.saleData?.saleToAcquirerData, refusal)
         return PaymentResponse().apply {
             response =
                 Response().apply {
@@ -302,6 +293,31 @@ class TerminalSimulator(
                     ),
                 )
         }
+    }
+
+    private fun paymentAdditional(
+        payment: SimulatedPayment,
+        acquirer: SaleToAcquirerData?,
+        refusal: Pair<ErrorConditionType, String>?,
+    ): Map<String, String> {
+        val additional =
+            linkedMapOf(
+                "pspReference" to payment.psp,
+                "merchantReference" to payment.merchantReference,
+                "paymentMethod" to payment.card.brand,
+                "paymentMethodVariant" to payment.card.variant,
+                "cardSummary" to payment.card.maskedPan.takeLast(4),
+                "posEntryMode" to if (payment.wallet) "Scanned" else "CLESS_CHIP",
+            )
+        if (refusal == null) {
+            additional["authCode"] = payment.authCode
+            // As with "return adjust authorisation data" enabled in the Customer Area, for synchronous adjustments.
+            if (payment.preAuthorisation) additional["adjustAuthorisationData"] = SimulatedModifications.blob(random)
+            if (!payment.wallet) additional += tokenization(payment.card, acquirer)
+        } else {
+            additional["refusalReason"] = refusal.second
+        }
+        return additional
     }
 
     private fun refusal(outcome: SimulatedOutcome?): Pair<ErrorConditionType, String> =
@@ -345,7 +361,20 @@ class TerminalSimulator(
         requestedAmount: BigDecimal,
     ) = PaymentResult().apply {
         paymentType = PaymentType.NORMAL
-        paymentInstrumentData =
+        paymentInstrumentData = paymentInstrument(payment)
+        amountsResp =
+            AmountsResp().apply {
+                currency = requestedCurrency
+                authorizedAmount = if (payment.approved) requestedAmount else BigDecimal.ZERO
+            }
+        setOnlineFlag(true)
+        paymentAcquirerData = PaymentAcquirerData().apply { approvalCode = payment.authCode.takeIf { payment.approved } }
+    }
+
+    private fun paymentInstrument(payment: SimulatedPayment): PaymentInstrumentData =
+        if (payment.wallet) {
+            PaymentInstrumentData().apply { paymentInstrumentType = PaymentInstrumentType.STORED_VALUE }
+        } else {
             PaymentInstrumentData().apply {
                 paymentInstrumentType = PaymentInstrumentType.CARD
                 cardData =
@@ -360,14 +389,7 @@ class TerminalSimulator(
                             }
                     }
             }
-        amountsResp =
-            AmountsResp().apply {
-                currency = requestedCurrency
-                authorizedAmount = if (payment.approved) requestedAmount else BigDecimal.ZERO
-            }
-        setOnlineFlag(true)
-        paymentAcquirerData = PaymentAcquirerData().apply { approvalCode = payment.authCode.takeIf { payment.approved } }
-    }
+        }
 
     /** A busy terminal never starts the payment (no card, no PSP reference), but names the transaction it is busy with. */
     private fun busy(request: PaymentRequest) =
@@ -496,9 +518,9 @@ class TerminalSimulator(
                 add(line("filler"))
                 add(line("cardholderHeader", copyLabel))
                 add(line("paymentMethod", card.label))
-                add(line("pan", "Card", card.maskedPan.takeLast(9)))
-                add(line("posEntryMode", "Entry", "Contactless"))
-                add(line("aid", "AID", card.aid))
+                if (!payment.wallet) add(line("pan", "Card", card.maskedPan.takeLast(9)))
+                add(line("posEntryMode", "Entry", if (payment.wallet) "Scanned" else "Contactless"))
+                if (!payment.wallet) add(line("aid", "AID", card.aid))
                 add(line("mid", "MID", "SIMULATOR"))
                 add(line("tid", "TID", "00000001"))
                 add(line("txRef", "Tender", payment.tender))
@@ -592,6 +614,7 @@ class TerminalSimulator(
         val amountText: String,
         val approved: Boolean,
         val preAuthorisation: Boolean,
+        val wallet: Boolean = false,
     )
 
     /** Fixed values that tests and callers can rely on. */

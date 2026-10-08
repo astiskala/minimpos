@@ -8,6 +8,7 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.isEnabled
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -218,6 +219,34 @@ class SmallScreenTest {
             .performClick()
         waitForText("Connected (OK")
         compose.onNodeWithTag("connectionResult").assertTextContains("Payments are taken in AUD", substring = true)
+    }
+
+    @Test
+    fun `wallet checkout and its offline scan fit AMS1 without hiding primary actions`() {
+        env.useSimulator()
+        await {
+            val tax =
+                container.catalog.taxRates
+                    .first()
+                    .first { it.rateMilliPercent == 0 }
+            container.session(SaleKind.SALE).addCustom("Wallet demo", 1_250, tax)
+            container.walletDiscovery.refresh()
+        }
+        compose.setContent { MiniMposApp(container) }
+        compose.onNodeWithTag("newSale").performClick()
+        compose.waitUntilAtLeastOneExists(hasTestTag("charge") and isEnabled(), 15_000)
+        compose.onNodeWithTag("charge").performClick()
+        waitForTag("scanWallet")
+        compose.onNodeWithTag("pay").assertIsDisplayed()
+        compose.onNodeWithTag("sendLink").assertIsDisplayed()
+        compose.onNodeWithTag("scanWallet").assertIsDisplayed().performClick()
+        waitForTag("wallet_pick_wechatpay_pos")
+        compose.onNodeWithTag("wallet_pick_wechatpay_pos").performScrollTo().performClick()
+        waitForTag("walletDemo")
+        compose.onNodeWithTag("walletDemo").assertIsDisplayed().performClick()
+        waitForTag("newSaleAfter")
+        compose.onNodeWithTag("newSaleAfter").assertIsDisplayed()
+        compose.onNodeWithText("WeChat Pay", substring = true).assertExists()
     }
 
     @Test

@@ -1,7 +1,6 @@
 package io.github.astiskala.minimpos.terminal.transport
 
 import com.adyen.model.management.DefaultErrorResponseEntity
-import com.adyen.model.management.ListStoresResponse
 import com.adyen.model.management.Merchant
 import com.adyen.model.management.Store
 import kotlinx.coroutines.CoroutineDispatcher
@@ -12,50 +11,69 @@ import okhttp3.OkHttpClient
 import kotlin.time.Duration.Companion.seconds
 
 /**
- * Receipt fields supplied by an Adyen store or merchant; blanks are unavailable, not instructions to erase saved text.
+ * Receipt fields supplied by an Adyen store; blank fields are unavailable, not instructions to erase saved text.
  *
- * @property id Adyen store ID, or merchant account ID for merchant-level proposals.
- * @property reference Merchant's store reference; blank for merchant-level proposals or if absent.
- * @property name Store shopper statement or merchant legal name; blank if absent.
+ * @property name Store shopper statement, the name Adyen prints on shopper receipts; blank if absent.
  * @property address Address components in receipt order, separated by newlines; blank if absent.
  * @property phone Store phone number, normally E.164; blank if absent.
  */
 data class StoreDetails(
-    val id: String,
-    val reference: String,
     val name: String,
     val address: String,
     val phone: String,
 )
 
-/** Result of reading store receipt details; HTTP, network and malformed-answer failures are returned, not thrown. */
-sealed interface StoreListing {
+/** Result of reading one store's receipt details; HTTP, network and malformed-answer failures are returned, not thrown. */
+sealed interface StoreLookup {
     /**
-     * Stores from the requested account, or at most one merchant-level proposal; empty when none are available.
-     * @property stores Receipt details in API order.
+     * The requested store of the requested merchant account.
+     * @property store Its receipt details.
      */
-    data class Listed(
-        val stores: List<StoreDetails>,
-    ) : StoreListing
+    data class Found(
+        val store: StoreDetails,
+    ) : StoreLookup
+
+    /** Adyen knows no such store in the requested merchant account (HTTP 404). */
+    data object Missing : StoreLookup
 
     /**
-     * The store list could not be read completely; no partial list is offered.
+     * The store could not be read; no partial details are offered.
      * @property message Non-secret failure explanation.
      */
     data class Failed(
         val message: String,
-    ) : StoreListing
+    ) : StoreLookup
 }
 
-/** Read-only Management API store access; safe to call from any thread. */
-interface StoreDetailsApi {
-    /** Reads all pages of stores belonging to [merchantAccount], using a credential with Management API—Stores read. */
-    suspend fun stores(merchantAccount: String): StoreListing
-
-    /** Reads the merchant's legal name with Management API—Account read; address and phone remain unavailable.
-     * Returns at most one proposal, identified by [merchantAccount], without listing unrelated stores.
+/** Result of reading a merchant account's legal name; HTTP, network and malformed-answer failures are returned, not thrown. */
+sealed interface MerchantLookup {
+    /**
+     * The requested merchant account.
+     * @property legalName Its legal name, trimmed; blank if Adyen has none.
      */
-    suspend fun merchant(merchantAccount: String): StoreListing
+    data class Found(
+        val legalName: String,
+    ) : MerchantLookup
+
+    /**
+     * The merchant account could not be read.
+     * @property message Non-secret failure explanation.
+     */
+    data class Failed(
+        val message: String,
+    ) : MerchantLookup
+}
+
+/** Read-only Management API store and merchant access; safe to call from any thread. */
+interface StoreDetailsApi {
+    /** Reads store [storeId] of [merchantAccount] with Management API—Stores read, without listing other stores. */
+    suspend fun store(
+        merchantAccount: String,
+        storeId: String,
+    ): StoreLookup
+
+    /** Reads the legal name of [merchantAccount] with Management API—Account read; it has no receipt address or phone. */
+    suspend fun merchant(merchantAccount: String): MerchantLookup
 }
 
 /**
@@ -76,31 +94,46 @@ class AdyenStoreDetails(
 ) : StoreDetailsApi {
     private val http = AdyenHttp(apiKey, baseClient, dispatcher)
 
-    override suspend fun stores(merchantAccount: String): StoreListing {
-        val stores = mutableListOf<StoreDetails>()
-        var next = true
-        var page = 1
-        var failure: String? = null
-        while (next && page <= MAX_PAGES && failure == null) {
-            when (val result = page(merchantAccount, page++)) {
-                is Page.Listed -> {
-                    stores += result.stores
-                    next = result.next
-                }
+    override suspend fun store(
+        merchantAccount: String,
+        storeId: String,
+    ): StoreLookup {
+        val url =
+            baseUrl
+                .newBuilder()
+                .addPathSegment("merchants")
+                .addPathSegment(merchantAccount)
+                .addPathSegment("stores")
+                .addPathSegment(storeId)
+                .build()
+        return when (val reply = http.get(url, TIMEOUT)) {
+            is AdyenReply.Failed -> {
+                StoreLookup.Failed(reply.message)
+            }
 
-                is Page.Failed -> {
-                    failure = result.message
+            is AdyenReply.Answered -> {
+                when {
+                    reply.code == HTTP_NOT_FOUND -> {
+                        StoreLookup.Missing
+                    }
+
+                    !reply.ok -> {
+                        StoreLookup.Failed(error(reply.code, reply.body, STORES_READ))
+                    }
+
+                    else -> {
+                        runCatching {
+                            val store = requireNotNull(decodeAdyenModel(reply.body, Store::class.java))
+                            require(store.id?.trim() == storeId)
+                            StoreLookup.Found(details(store))
+                        }.getOrElse { StoreLookup.Failed("Adyen sent unreadable store details") }
+                    }
                 }
             }
         }
-        return when {
-            failure != null -> StoreListing.Failed(failure)
-            next -> StoreListing.Failed("The store list is too large to import")
-            else -> StoreListing.Listed(stores.distinctBy { it.id })
-        }
     }
 
-    override suspend fun merchant(merchantAccount: String): StoreListing {
+    override suspend fun merchant(merchantAccount: String): MerchantLookup {
         val url =
             baseUrl
                 .newBuilder()
@@ -109,81 +142,26 @@ class AdyenStoreDetails(
                 .build()
         return when (val reply = http.get(url, TIMEOUT)) {
             is AdyenReply.Failed -> {
-                StoreListing.Failed(reply.message)
+                MerchantLookup.Failed(reply.message)
             }
 
             is AdyenReply.Answered -> {
                 if (!reply.ok) {
-                    StoreListing.Failed(error(reply.code, reply.body, "Management API—Account read"))
+                    MerchantLookup.Failed(error(reply.code, reply.body, ACCOUNT_READ))
                 } else {
                     runCatching {
                         val merchant = requireNotNull(decodeAdyenModel(reply.body, Merchant::class.java))
                         require(merchant.id == merchantAccount)
-                        StoreListing.Listed(listOf(StoreDetails(merchantAccount, "", merchant.name?.trim().orEmpty(), "", "")))
-                    }.getOrElse { StoreListing.Failed("Adyen sent unreadable merchant details") }
+                        MerchantLookup.Found(merchant.name?.trim().orEmpty())
+                    }.getOrElse { MerchantLookup.Failed("Adyen sent unreadable merchant details") }
                 }
             }
         }
     }
 
-    private suspend fun page(
-        merchant: String,
-        number: Int,
-    ): Page {
-        val url =
-            baseUrl
-                .newBuilder()
-                .addPathSegment("merchants")
-                .addPathSegment(merchant)
-                .addPathSegment("stores")
-                .addQueryParameter("pageSize", PAGE_SIZE.toString())
-                .addQueryParameter("pageNumber", number.toString())
-                .build()
-        return when (val reply = http.get(url, TIMEOUT)) {
-            is AdyenReply.Failed -> {
-                Page.Failed(reply.message)
-            }
-
-            is AdyenReply.Answered -> {
-                if (!reply.ok) Page.Failed(error(reply.code, reply.body)) else parsePage(reply.body)
-            }
-        }
-    }
-
-    private fun parsePage(text: String): Page =
-        runCatching {
-            val response = requireNotNull(decodeAdyenModel(text, ListStoresResponse::class.java))
-            val stores = requireNotNull(response.data).map(::store)
-            Page.Listed(
-                stores,
-                !response.links
-                    ?.next
-                    ?.href
-                    .isNullOrBlank(),
-            )
-        }.getOrElse { Page.Failed("Adyen sent an unreadable store list") }
-
-    private sealed interface Page {
-        data class Listed(
-            val stores: List<StoreDetails>,
-            val next: Boolean,
-        ) : Page
-
-        data class Failed(
-            val message: String,
-        ) : Page
-    }
-
-    private fun store(store: Store): StoreDetails {
-        val id =
-            store.id
-                ?.trim()
-                .orEmpty()
-                .also { require(it.isNotBlank()) }
+    private fun details(store: Store): StoreDetails {
         val address = store.address
         return StoreDetails(
-            id = id,
-            reference = store.reference?.trim().orEmpty(),
             name = store.shopperStatement?.trim().orEmpty(),
             address =
                 listOf(
@@ -202,7 +180,7 @@ class AdyenStoreDetails(
     private fun error(
         code: Int,
         text: String,
-        role: String = "Management API—Stores read",
+        role: String,
     ): String {
         val error = decodeAdyenModel(text, DefaultErrorResponseEntity::class.java)
         val message =
@@ -227,11 +205,11 @@ class AdyenStoreDetails(
         return "$message (HTTP $code)"
     }
 
-    /** Endpoint and bounded read policy. */
+    /** Endpoint, read timeout and the API key roles each read needs. */
     companion object {
         private val TIMEOUT = 30.seconds
-        private const val PAGE_SIZE = 100
-        private const val MAX_PAGES = 100
+        private const val STORES_READ = "Management API—Stores read"
+        private const val ACCOUNT_READ = "Management API—Account read"
 
         /** Management v3 endpoint for [environment], with no trailing slash. */
         fun endpoint(environment: TerminalEnvironment): String =

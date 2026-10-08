@@ -1,16 +1,23 @@
 package io.github.astiskala.minimpos.terminal.client
 
+import com.adyen.model.checkout.JSON
 import com.adyen.model.nexo.AbortRequest
+import com.adyen.model.nexo.AdminRequest
 import com.adyen.model.nexo.AmountsReq
 import com.adyen.model.nexo.DiagnosisRequest
 import com.adyen.model.nexo.DocumentQualifierType
+import com.adyen.model.nexo.EntryModeType
 import com.adyen.model.nexo.ErrorConditionType
+import com.adyen.model.nexo.IdentificationType
 import com.adyen.model.nexo.MessageCategoryType
 import com.adyen.model.nexo.MessageClassType
 import com.adyen.model.nexo.MessageHeader
 import com.adyen.model.nexo.MessageReference
 import com.adyen.model.nexo.MessageType
 import com.adyen.model.nexo.OriginalPOITransaction
+import com.adyen.model.nexo.PaymentData
+import com.adyen.model.nexo.PaymentInstrumentData
+import com.adyen.model.nexo.PaymentInstrumentType
 import com.adyen.model.nexo.PaymentReceipt
 import com.adyen.model.nexo.PaymentRequest
 import com.adyen.model.nexo.PaymentResponse
@@ -24,7 +31,10 @@ import com.adyen.model.nexo.ReversalResponse
 import com.adyen.model.nexo.SaleData
 import com.adyen.model.nexo.SaleToPOIRequest
 import com.adyen.model.nexo.SaleToPOIResponse
+import com.adyen.model.nexo.StoredValueAccountID
+import com.adyen.model.nexo.StoredValueAccountType
 import com.adyen.model.nexo.TokenRequestedType
+import com.adyen.model.nexo.TransactionConditions
 import com.adyen.model.nexo.TransactionIdentification
 import com.adyen.model.nexo.TransactionStatusRequest
 import com.adyen.model.terminal.SaleToAcquirerData
@@ -39,6 +49,7 @@ import java.time.Clock
 import java.time.Instant
 import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
+import java.util.Base64
 import javax.xml.datatype.DatatypeConstants
 import javax.xml.datatype.DatatypeFactory
 import javax.xml.datatype.XMLGregorianCalendar
@@ -121,19 +132,92 @@ class TerminalClient(
                                     }
                                 if (params.requestCardAlias) tokenRequestedType = TokenRequestedType.CUSTOMER
                             }
-                        paymentTransaction =
-                            PaymentTransaction().apply {
-                                amountsReq =
-                                    AmountsReq().apply {
-                                        currency = params.currency
-                                        requestedAmount = params.amount
-                                    }
-                            }
+                        paymentData = params.scannedPayment?.let(::scannedInstrument)
+                        paymentTransaction = paymentAmounts(params)
                     }
             }
         onStarted(serviceId)
         return execute(serviceId, MessageCategoryType.PAYMENT, request) { it.paymentResponse?.let(::mapPayment) }
     }
+
+    /**
+     * Activates one native scan for at most 30 seconds, identified by positive [sessionId].
+     * Uses the documented Admin service extension; nexo headers and Admin wire models remain SDK-owned.
+     * The result contains transient scanner data only, never a payment outcome. Main-safe; no retries.
+     */
+    suspend fun scanBarcode(sessionId: Long): BarcodeScan {
+        val request = barcodeRequest(sessionId, once = true)
+        val delivery = transport.send(request, 35.seconds)
+        val response =
+            (delivery as? Delivery.Answered)
+                ?.response
+                ?.saleToPOIResponse
+                ?.adminResponse
+                ?.response
+        val code =
+            response
+                ?.takeIf { it.result == ResultType.SUCCESS }
+                ?.additionalResponse
+                ?.let(AdditionalResponseParser::parse)
+                ?.get("Barcode.Data")
+        return code?.takeIf { it.isNotBlank() }?.let(BarcodeScan::Read) ?: BarcodeScan.NotRead
+    }
+
+    /** Ends only native scanning session [sessionId]; best effort, never aborts or establishes a payment outcome. */
+    suspend fun endBarcodeScan(sessionId: Long): Boolean {
+        val delivery = transport.send(barcodeRequest(sessionId, once = false), shortTimeout)
+        return (delivery as? Delivery.Answered)
+            ?.response
+            ?.saleToPOIResponse
+            ?.adminResponse
+            ?.response
+            ?.result == ResultType.SUCCESS
+    }
+
+    private fun barcodeRequest(
+        sessionId: Long,
+        once: Boolean,
+    ): TerminalAPIRequest {
+        require(sessionId > 0) { "Invalid scan session" }
+        val service =
+            buildMap {
+                put("Session", mapOf("Id" to sessionId, "Type" to if (once) "Once" else "End"))
+                if (once) put("Operation", listOf(mapOf("Type" to "ScanBarcode", "TimeoutMs" to 30_000)))
+            }
+        val encoded = Base64.getEncoder().encodeToString(JSON.getMapper().writeValueAsString(service).toByteArray(Charsets.UTF_8))
+        return message(MessageClassType.SERVICE, MessageCategoryType.ADMIN, newServiceId())
+            .apply {
+                adminRequest = AdminRequest().apply { serviceIdentification = encoded }
+            }.let { TerminalAPIRequest().apply { saleToPOIRequest = it } }
+    }
+
+    private fun paymentAmounts(params: PaymentParams): PaymentTransaction =
+        PaymentTransaction().apply {
+            transactionConditions = params.scannedPayment?.let(::walletConditions)
+            amountsReq =
+                AmountsReq().apply {
+                    currency = params.currency
+                    requestedAmount = params.amount
+                }
+        }
+
+    private fun walletConditions(payment: ScannedPayment): TransactionConditions =
+        TransactionConditions().apply { allowedPaymentBrand += payment.brand }
+
+    private fun scannedInstrument(payment: ScannedPayment): PaymentData =
+        PaymentData().apply {
+            paymentInstrumentData =
+                PaymentInstrumentData().apply {
+                    paymentInstrumentType = PaymentInstrumentType.STORED_VALUE
+                    storedValueAccountID =
+                        StoredValueAccountID().apply {
+                            storedValueAccountType = StoredValueAccountType.OTHER
+                            entryMode += EntryModeType.SCANNED
+                            identificationType = IdentificationType.BAR_CODE
+                            storedValueID = payment.consume()
+                        }
+                }
+        }
 
     /**
      * Refunds an earlier payment with a nexo reversal (reason `MerchantCancel`), which refers to the original

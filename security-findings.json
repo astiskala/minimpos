@@ -1,0 +1,37 @@
+{
+  "scan_id": "scan-2026-10-08-github-setup",
+  "scan_date": "2026-10-08T05:30:00Z",
+  "scan_type": "working",
+  "commit_range": "db4bc0b574623e430696329293e9beb87cd20d58..working-tree",
+  "pr_number": null,
+  "threat_model_version": "1.0.0",
+  "findings": [],
+  "summary": {
+    "total_findings": 0,
+    "by_severity": {"CRITICAL": 0, "HIGH": 0, "MEDIUM": 0, "LOW": 0},
+    "by_stride": {
+      "Spoofing": 0,
+      "Tampering": 0,
+      "Repudiation": 0,
+      "InfoDisclosure": 0,
+      "DoS": 0,
+      "ElevationOfPrivilege": 0
+    },
+    "files_analyzed": 16
+  },
+  "scope": "Previously validated workflow, tooling, script, regression-test and contributor changes only.",
+  "limitations": [
+    "Not a full repository audit or proof of actual GitHub deployment.",
+    "Existing device-resident credential trade-offs and upstream plugin deprecations are unchanged.",
+    "Signing requires trusted main CI artifacts and the existing release environment; no release is triggered."
+  ],
+  "reviewed_controls": [
+    "SHA-pinned actions and credentials-free checkout",
+    "Exact main commit, successful run and positive numeric run/attempt selection",
+    "Hash/version/provenance verification and fail-closed reuse",
+    "Signing-job isolation and successful dependency guards",
+    "Environment-variable quoting instead of shell evaluation",
+    "Main-only cache writes, secret-free forks and encrypted configuration-cache integration",
+    "Main-only verified Pages artifacts and compiler execution for Kotlin CodeQL"
+  ]
+}

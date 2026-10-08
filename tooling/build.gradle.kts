@@ -57,9 +57,9 @@ tasks.test {
     inputs.files(
         repository.file("scripts/gradle"),
         repository.file("scripts/dev"),
-        repository.file(".github/workflows/ci.yml"),
-        repository.file(".github/workflows/release.yml"),
+        repository.file("scripts/ci"),
     )
+    inputs.dir(repository.dir(".github/workflows")).withPathSensitivity(PathSensitivity.RELATIVE)
     systemProperty("minimpos.repository", repository.asFile.absolutePath)
     systemProperty(
         "minimpos.tooling.jar",

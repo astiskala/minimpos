@@ -73,28 +73,54 @@ class ReleaseTest {
     }
 
     @Test
-    fun `CI selection rejects stale runs other commits branches and PRs`() {
-        val since = "2026-10-05T00:00:00Z"
+    fun `CI reuse accepts exact successful main push and dispatch runs regardless of age`() {
         val run =
             json(
-                """{"head_sha":"$commit","head_branch":"main","event":"workflow_dispatch","created_at":"$since"}""",
+                """{"id":123,"run_attempt":2,"head_sha":"$commit","head_branch":"main","event":"push",
+                |"created_at":"2026-10-05T00:00:00Z","status":"completed","conclusion":"success"}
+                """.trimMargin(),
             )
-        assertThat(Release.selectCiRun(JsonArray(listOf(run)), commit, since)).isEqualTo(run)
-        assertThat(Release.selectCiRun(JsonArray(emptyList()), commit, since)).isNull()
+        assertThat(Release.selectCiRun(JsonArray(listOf(run)), commit)).isEqualTo(run)
+        val dispatch = JsonObject(run + ("event" to JsonPrimitive("workflow_dispatch")) + ("id" to JsonPrimitive(124)))
+        assertThat(Release.selectCiRun(JsonArray(listOf(dispatch, run)), commit)).isEqualTo(dispatch)
+        assertThat(Release.selectCiRun(JsonArray(listOf(run, dispatch)), commit)).isEqualTo(dispatch)
+        assertThat(Release.selectCiRun(JsonArray(emptyList()), commit)).isNull()
+    }
+
+    @Test
+    fun `CI reuse rejects other commits branches events incomplete failures and malformed provenance`() {
+        val run =
+            json(
+                """{"id":123,"run_attempt":2,"head_sha":"$commit","head_branch":"main","event":"push",
+                |"status":"completed","conclusion":"success"}
+                """.trimMargin(),
+            )
         val changes =
             mapOf(
                 "head_sha" to "b".repeat(40),
                 "head_branch" to "feature",
                 "event" to "pull_request",
-                "created_at" to "2026-10-04T23:59:59Z",
+                "status" to "queued",
+                "conclusion" to "failure",
             )
         for ((key, value) in changes) {
-            assertThat(Release.selectCiRun(JsonArray(listOf(JsonObject(run + (key to JsonPrimitive(value))))), commit, since))
+            assertThat(Release.selectCiRun(JsonArray(listOf(JsonObject(run + (key to JsonPrimitive(value))))), commit))
                 .isNull()
         }
-        val pending = JsonObject(run + ("status" to JsonPrimitive("queued")))
-        val stale = JsonObject(run + ("created_at" to JsonPrimitive("2026-10-04T00:00:00Z")))
-        assertThat(Release.selectCiRun(JsonArray(listOf(pending, stale)), commit, since)).isEqualTo(pending)
+        for (key in listOf("id", "run_attempt")) {
+            assertThat(Release.selectCiRun(JsonArray(listOf(JsonObject(run - key))), commit)).isNull()
+            for (value in listOf(JsonPrimitive(0), JsonPrimitive(-1), JsonPrimitive("123"), JsonPrimitive(true))) {
+                assertThat(Release.selectCiRun(JsonArray(listOf(JsonObject(run + (key to value)))), commit)).isNull()
+            }
+        }
+        for (status in listOf("in_progress", "waiting", "requested")) {
+            assertThat(Release.selectCiRun(JsonArray(listOf(JsonObject(run + ("status" to JsonPrimitive(status))))), commit)).isNull()
+        }
+        for (conclusion in listOf("cancelled", "skipped", "timed_out", "neutral")) {
+            assertThat(
+                Release.selectCiRun(JsonArray(listOf(JsonObject(run + ("conclusion" to JsonPrimitive(conclusion))))), commit),
+            ).isNull()
+        }
     }
 
     @Test
@@ -182,21 +208,21 @@ class ReleaseTest {
     }
 
     @Test
-    fun `standalone CLI selects pending exact CI or prints null`() {
+    fun `standalone CLI selects successful exact CI or prints null`() {
         val fixture = fixture()
         val runs = fixture.root.resolve("runs.json")
         Files.writeString(
             runs,
-            """{"workflow_runs":[{"head_sha":"$commit","head_branch":"main","event":"workflow_dispatch",
-            |"created_at":"2026-10-05T00:00:00Z","status":"queued"}]}
+            """{"workflow_runs":[{"id":123,"run_attempt":1,"head_sha":"$commit","head_branch":"main","event":"push",
+            |"created_at":"2026-10-05T00:00:00Z","status":"completed","conclusion":"success"}]}
             """.trimMargin(),
         )
         val selected =
-            Cli.run("release", "ci", "--runs", runs.toString(), "--commit", commit, "--not-before", "2026-10-05T00:00:00Z")
+            Cli.run("release", "ci", "--runs", runs.toString(), "--commit", commit)
         assertThat(selected.code).isEqualTo(0)
-        assertThat(selected.output).contains("\"status\":\"queued\"")
+        assertThat(selected.output).contains("\"status\":\"completed\"")
         val none =
-            Cli.run("release", "ci", "--runs", runs.toString(), "--commit", commit, "--not-before", "2026-10-06T00:00:00Z")
+            Cli.run("release", "ci", "--runs", runs.toString(), "--commit", "b".repeat(40))
         assertThat(none.code).isEqualTo(0)
         assertThat(none.output).isEqualTo("null\n")
     }

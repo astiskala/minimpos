@@ -71,7 +71,6 @@ internal object Tooling {
                     Release.selectCiRun(
                         requireNotNull(runs) { "Expected workflow_runs array" },
                         args.required("commit"),
-                        args.required("not-before"),
                     )
                 System.out.println(selected ?: JsonNull)
             }
@@ -111,7 +110,7 @@ private class Arguments(
 
     init {
         val supported =
-            setOf("version", "artifact", "commit", "run-id", "run-attempt", "subject", "files", "runs", "not-before", "out")
+            setOf("version", "artifact", "commit", "run-id", "run-attempt", "subject", "files", "runs", "out")
         val iterator = args.iterator()
         while (iterator.hasNext()) {
             val value = iterator.next()

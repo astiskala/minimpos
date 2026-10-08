@@ -42,6 +42,7 @@ spotless {
             ".github/**/*.yml",
             "scripts/gradle",
             "scripts/dev",
+            "scripts/ci",
             "config/**/*.yml",
             "*/src/**/*.xml",
             "*/lint.xml",
@@ -289,9 +290,9 @@ val actionlint =
 
 val shellCheck =
     registerCheck("shellCheck", "Checks the concise Bash Gradle runner with shellcheck.") {
-        sources.from("scripts/gradle", "scripts/dev")
+        sources.from("scripts/gradle", "scripts/dev", "scripts/ci")
         tools.from(shellcheckDownload)
-        command.set(listOf(tool("shellcheck"), "scripts/gradle", "scripts/dev"))
+        command.set(listOf(tool("shellcheck"), "scripts/gradle", "scripts/dev", "scripts/ci"))
     }
 
 val zizmor =

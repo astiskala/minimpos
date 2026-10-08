@@ -1,0 +1,12 @@
+#!/bin/bash
+set -euo pipefail
+root=$(CDPATH='' cd -- "$(dirname -- "$0")/.." && pwd)
+cd "$root"
+if [ "${CI:-}" != true ]; then
+  printf '%s\n' 'scripts/ci requires CI=true; use scripts/dev finish for local verification' >&2
+  exit 2
+fi
+# Keep the gate and R8 policy identical in ordinary CI and Release's direct CI job.
+# The release-lint exemption is valid only after this unchanged checkout's full gate succeeds.
+./gradlew qualityGate --continue
+./gradlew :app:assembleRelease -PqualityGatePassed=true

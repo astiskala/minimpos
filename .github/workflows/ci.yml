@@ -30,16 +30,15 @@ jobs:
 
       # Also validates the Gradle wrapper checksum.
       - uses: gradle/actions/setup-gradle@3f5f9adaf7d9fecd50b5935e54106014257a94e6 # v6.4.0
+        with:
+          cache-encryption-key: ${{ secrets.GRADLE_ENCRYPTION_KEY }}
 
-      - name: Quality gate
+      - name: Quality gate and release build
         run: |
           # Use the runner image's browser; helper pages themselves make no network requests.
           MINIMPOS_CHROME="$(command -v google-chrome)"
           export MINIMPOS_CHROME
-          ./gradlew qualityGate --continue
-
-      - name: Release build (R8)
-        run: ./gradlew :app:assembleRelease -PqualityGatePassed=true
+          scripts/ci
 
       # Only main's successful CI may supply an APK to the signing workflow.
       - name: Prepare unsigned release artifact

@@ -885,7 +885,7 @@ class ArchitectureTest {
         rules: List<ArchRule>,
         violation: Class<*>,
     ) {
-        val imported = ClassFileImporter().importClasses(violation)
+        val imported = architectureViolation(violation)
         rules.forEach { assertTrue(it.description, it.evaluate(imported).hasViolation()) }
     }
 
@@ -1501,3 +1501,14 @@ class ArchitectureTest {
             }
     }
 }
+
+// Import the named fixtures once per worker; each rule still evaluates only its own deliberate violation.
+private val architectureViolations: JavaClasses =
+    ClassFileImporter().importClasses(
+        ArchitectureTest::class.java.declaredClasses.filter { it.simpleName.endsWith("Violation") },
+    )
+
+internal fun architectureViolation(violation: Class<*>): JavaClasses =
+    architectureViolations.that(type(violation)).also {
+        assertTrue("The deliberate violation must be imported", it.contain(violation))
+    }

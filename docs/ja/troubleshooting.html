@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>トラブルシューティング – Mini mPOS</title>
-  <meta name="description" content="不明な決済結果を確認し、Mini mPOS の接続、キャプチャ、支払いリンク、領収書、インストールの問題を解決します。">
+  <meta name="description" content="Mini mPOS の結果不明、拒否された決済、端末ペアリングとネットワーク、キャプチャ、支払いリンク、プリンター、メール、PIN、インストールの問題を解決します。">
   <link rel="icon" href="../favicon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="../styles.css">
   <link rel="canonical" href="https://astiskala.github.io/minimpos/ja/troubleshooting.html">
@@ -14,7 +14,7 @@
   <link rel="alternate" hreflang="x-default" href="https://astiskala.github.io/minimpos/troubleshooting.html">
   <meta property="og:type" content="article">
   <meta property="og:title" content="Mini mPOS のトラブルシューティング">
-  <meta property="og:description" content="不確かな決済を安全に確認し、問題が起きたときの次の手順を探します。">
+  <meta property="og:description" content="症状、原因、対処方法。まずは結果が不明な決済から。">
   <meta property="og:url" content="https://astiskala.github.io/minimpos/ja/troubleshooting.html">
   <meta property="og:image" content="https://astiskala.github.io/minimpos/images/social.png">
   <meta property="og:image:alt" content="Adyen 端末をイメージした Mini mPOS のイラストと英語のシミュレーターデモ。">
@@ -23,7 +23,7 @@
   <meta property="og:locale:alternate" content="zh_CN">
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="Mini mPOS のトラブルシューティング">
-  <meta name="twitter:description" content="不確かな決済を安全に確認し、問題が起きたときの次の手順を探します。">
+  <meta name="twitter:description" content="症状、原因、対処方法。まずは結果が不明な決済から。">
   <meta name="twitter:image" content="https://astiskala.github.io/minimpos/images/social.png">
   <meta name="twitter:image:alt" content="Adyen 端末をイメージした Mini mPOS のイラストと英語のシミュレーターデモ。">
   <meta name="theme-color" content="#00112C">
@@ -49,82 +49,219 @@
     <details class="language-menu"><summary aria-label="言語：日本語" title="言語"><svg aria-hidden="true" class="globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 2.7 3.8 5.7 3.8 9s-1.3 6.3-3.8 9c-2.5-2.7-3.8-5.7-3.8-9S9.5 5.7 12 3z"/></svg><span class="language-current">日本語</span></summary><nav aria-label="言語"><ul><li><a href="../troubleshooting.html" hreflang="en" lang="en">English</a></li><li><a href="../zh-CN/troubleshooting.html" hreflang="zh-CN" lang="zh-CN">简体中文</a></li><li><a href="troubleshooting.html" hreflang="ja" lang="ja" aria-current="page">日本語</a></li></ul></nav></details>
   </div></header>
   <main id="main">
-    <section class="guide-hero"><div class="wrap"><p class="eyebrow">ガイド</p><h1>トラブルシューティング</h1><p class="lead">まず決済結果を確認してください。接続を直しても、前の決済が成立したかどうかはわかりません。</p></div></section>
+    <section class="guide-hero"><div class="wrap"><p class="eyebrow">ガイド</p><h1>トラブルシューティング</h1><p class="lead">表示されている症状を探し、考えられる原因を確認して、対処方法に従います。決済の途中だった場合は、まずその結果を確認してください。接続を直しても、前の決済が成立したかどうかはわかりません。</p></div></section>
     <div class="wrap guide">
       <nav class="toc" id="contents" aria-label="ガイドナビゲーション">
         <p class="toc-title">ガイド</p><p><a href="getting-started.html">はじめに</a><br><a href="using.html">Mini mPOS の使い方</a><br><a href="troubleshooting.html" aria-current="page">トラブルシューティング</a></p>
         <div class="desktop-contents"><p class="toc-title">このページの内容</p><ol>
-          <li><a href="#unknown">決済・返金の結果が不明</a></li><li><a href="#connection">設定と接続</a></li>
+          <li><a href="#unknown">結果不明</a></li><li><a href="#declines">拒否された決済</a></li>
+          <li><a href="#connection">端末ペアリングと設定</a></li><li><a href="#network-dropouts">ネットワークの切断</a></li>
           <li><a href="#modifications">キャプチャと調整</a></li><li><a href="#links">支払いリンク</a></li>
-          <li><a href="#receipts">領収書とメール</a></li><li><a href="#access">PIN と転送</a></li>
+          <li><a href="#receipts">プリンターとメール</a></li><li><a href="#access">PIN と転送</a></li>
           <li><a href="#install">インストール</a></li><li><a href="#help">問い合わせ</a></li>
         </ol></div>
         <details class="mobile-contents"><summary class="toc-title">このページの内容</summary><ol>
-          <li><a href="#unknown">決済・返金の結果が不明</a></li><li><a href="#connection">設定と接続</a></li>
+          <li><a href="#unknown">結果不明</a></li><li><a href="#declines">拒否された決済</a></li>
+          <li><a href="#connection">端末ペアリングと設定</a></li><li><a href="#network-dropouts">ネットワークの切断</a></li>
           <li><a href="#modifications">キャプチャと調整</a></li><li><a href="#links">支払いリンク</a></li>
-          <li><a href="#receipts">領収書とメール</a></li><li><a href="#access">PIN と転送</a></li>
+          <li><a href="#receipts">プリンターとメール</a></li><li><a href="#access">PIN と転送</a></li>
           <li><a href="#install">インストール</a></li><li><a href="#help">問い合わせ</a></li>
         </ol></details>
       </nav>
       <div class="guide-body">
         <section id="unknown">
-          <h2>決済や返金の結果が不明</h2>
-          <p class="note"><strong>応答がないという理由だけで、もう一度請求・返金しないでください。</strong>リクエストは Adyen に届いている可能性があります。元の操作を確認します。</p>
-          <ol><li><strong>取引履歴 › 要確認</strong>で元の決済・返金を開きます。</li><li><strong>結果を再確認</strong>をタップします。ローカルやクラウド端末では元の取引結果を問い合わせます。</li><li>不明のままなら、参照ID、時刻、金額で<strong>Customer Area › Payments › Payment list</strong>を確認してから次の操作を決めます。</li></ol>
-          <p>クラッシュや再起動で中断した操作は、不明として残ります。アプリデータを消去して解決しようとしないでください。</p>
-          <h3>Tap to Pay から応答なしで戻った</h3>
-          <p>Payments アプリには取引状態を問い合わせられません。<strong>結果を再確認</strong>は遅れて届いた応答を使えますが、リモートで取得はできません。応答がなければ再請求前に Customer Area を確認します。</p>
-          <h3>端末が使用中</h3>
-          <p>ほかの決済を終えるか管理メニューを閉じます。結果画面に<strong>端末の現在の取引をキャンセル</strong>がある場合、その取引を止める意図があるときだけ使い、結果を確認してから再試行します。Tap to Pay はこの操作に対応しません。</p>
+          <h2>決済や返金が「結果不明」になった</h2>
+          <div class="callout callout-warning" role="note">
+            <p class="callout-title">警告</p>
+            <p>応答がないという理由だけで、もう一度請求・返金しないでください。リクエストは Adyen に届いている可能性があります。</p>
+          </div>
+          <ol>
+            <li><strong>取引履歴</strong>を開いて<strong>要確認</strong>で絞り込み、元の決済または返金を開きます。</li>
+            <li><strong>結果を再確認</strong>をタップします。端末の場合、アプリはその取引の結果を端末に問い合わせます。</li>
+            <li>それでも不明なら、参照ID、時刻、金額で<strong>Customer Area › Payments › Payment list</strong>から決済を探します。確認してから次の操作を決めてください。</li>
+          </ol>
+          <p>クラッシュや再起動で中断した操作は、不明として取引履歴に残ります。消すためにアプリデータを消去しないでください。</p>
+          <p>Tap to Pay では、Payments アプリに状態を問い合わせられません。<strong>結果を再確認</strong>は、すでに届いている遅れた応答だけを使います。応答がなければ、再請求の前に Customer Area を確認してください。</p>
+          <p class="back-to-contents"><a href="#contents">目次に戻る</a></p>
+        </section>
+        <section id="declines">
+          <h2>決済が拒否された、または処理されなかった</h2>
+          <p>結果画面には、状態、Adyen の理由、対処の案内が表示されます。案内に従ってください。</p>
+          <dl class="fixes">
+            <div><dt>「このカードで再試行しないでください。別のカードまたは決済方法を購入者にお願いしてください。」</dt>
+              <dd><p><span class="fix-label">原因</span>カード発行会社が、変わることのない理由（カードの停止や制限、不正の疑いなど）でこのカードを拒否したか、このカードはこの決済に使えません。</p>
+                <p><span class="fix-label">対処</span>別のカードか決済方法をお願いします。拒否の理由はお客様の銀行が説明できます。表示された理由は Adyen の<a href="https://docs.adyen.com/point-of-sale/error-scenarios/refusal-reasons-pos">拒否理由</a>で確認できます。</p></dd></div>
+            <div><dt>「再試行できます。」</dt>
+              <dd><p><span class="fix-label">原因</span>決済がキャンセルされた、PIN が誤っていた、または残高不足など繰り返さない可能性のある理由でカードが拒否されました。</p>
+                <p><span class="fix-label">対処</span><strong>再試行</strong>をタップするか、別のカードをお願いします。</p></dd></div>
+            <div><dt>「端末で別の取引または管理メニューの操作中です。」</dt>
+              <dd><p><span class="fix-label">原因</span>端末が別の決済を処理しているか、管理メニューを表示しています。</p>
+                <p><span class="fix-label">対処</span>別の決済を終えるかメニューを閉じてから再試行します。画面に<strong>端末の現在の取引をキャンセル</strong>がある場合は、その取引を止めるときだけ使い、再試行の前に結果を確認します。</p></dd></div>
+            <div><dt>「現在、端末を使用できません。」</dt>
+              <dd><p><span class="fix-label">原因</span>端末またはカードリーダーが一時的に使用できません。</p>
+                <p><span class="fix-label">対処</span>少し待ち、端末の電源と接続を確認してから再試行します。<a href="#network-dropouts">ネットワークの切断</a>を参照してください。</p></dd></div>
+            <div><dt>「端末がリクエストを受け付けませんでした。再試行する前に端末設定を確認してください。」</dt>
+              <dd><p><span class="fix-label">原因</span>端末がリクエストを拒否したか、このサービスに対応していません。多くの場合、設定やアカウント構成の問題です。</p>
+                <p><span class="fix-label">対処</span><strong>設定 › 端末</strong>でテストを実行します。<a href="#connection">端末ペアリングと設定</a>を参照してください。テストに成功する場合は、端末の構成確認を Adyen に依頼してください。</p></dd></div>
+            <div><dt>「再度請求しないでください。この決済は成功しています。」</dt>
+              <dd><p><span class="fix-label">原因</span>端末はキャンセルを報告しましたが、決済は承認されています。</p>
+                <p><span class="fix-label">対処</span>再請求しないでください。お客様が支払うべきでない場合は返金します。</p></dd></div>
+          </dl>
           <p class="back-to-contents"><a href="#contents">目次に戻る</a></p>
         </section>
         <section id="connection">
-          <h2>決済の設定が未完了、または端末に接続できない</h2>
-          <p>ホームの設定メッセージから<strong>設定 › 端末</strong>を開き、番号付き手順を完了して接続と API をテストします。必要なら<a href="getting-started.html#connect">構成別の接続手順</a>を参照してください。</p>
-          <dl class="settings-list"><dt>この端末、またはネットワーク上の端末</dt><dd>共有キーの識別子、パスフレーズ、バージョンを Customer Area と照合します。ネットワークでは現在の IP アドレス、POIID、同じネットワークで相互接続できることも確認します。</dd><dt>クラウド</dt><dd>マーチャントアカウント、POIID、認証情報の Cloud Device API と Checkout webservice ロールを確認します。端末がオフラインならクラウド決済はできません。</dd><dt>Tap to Pay</dt><dd>対象環境のPaymentsアプリを入れ、TESTとLIVEの両方は入れないでください。登録と共有キーの入力を完了します。設定チェックの成功はカード決済のテストではありません。</dd><dt>Checkout API</dt><dd>すべての実決済構成で必要です。アカウントとキーを確認し、LIVEではlive URL prefixも入力します。保存キーを読み取れなければ再入力します。</dd><dt>環境が違う</dt><dd>ネットワークやクラウドの端末では設定 › 端末の手順1で環境を確認し、同じ環境の端末、アカウント、APIキーを使います。証明書が一致しなければ接続を拒否し、API呼び出しは環境を自動変更しません。Adyen端末やTap to Payでは正しいデバイスまたはPaymentsアプリを使います。<a href="getting-started.html#connect">設定手順</a>を参照してください。</dd></dl>
-          <p id="key-setup">キー作成後も接続が未確認の場合は、物理端末の <strong>Admin menu › Config › Update</strong> で設定を更新し、<strong>もう一度確認</strong>をタップします。Adyen が設定を受け付けても端末での適用は保証されません。アプリは再起動の予約や再起動ポリシーの変更をしません。作成中断時は<strong>キー設定を再開</strong>で設定を読み取り、別のキーは生成しません。QR インポートをキャンセルしても Adyen のキーは残り、現在の設定と履歴は変更されません。<a href="getting-started.html#shared-key-creation">キー作成</a>と Adyen の<a href="https://docs.adyen.com/point-of-sale/managing-terminals/maintain-performance">設定更新の手順</a>を参照してください。</p>
-          <p>アカウント、環境、端末を変えると、以前の決済の操作がブロックされる場合があります。その決済時の設定に戻すか Customer Area で処理してください。別アカウントで処理しようとしないでください。</p>
+          <h2>端末ペアリングや設定がうまくいかない</h2>
+          <p>まずホームのメッセージを確認し、<strong>設定 › 端末</strong>で<strong>APIをテスト</strong>と<strong>接続をテスト</strong>を実行します。詳しい手順は<a href="getting-started.html#connect">Adyen に接続する</a>を参照してください。</p>
+          <dl class="fixes">
+            <div><dt>ホームに「端末設定に…を入力してください」と表示される</dt>
+              <dd><p><span class="fix-label">原因</span>必須項目が空であるか、保存したキーをこのデバイスで読み取れません。</p>
+                <p><span class="fix-label">対処</span><strong>設定 › 端末</strong>で不足している項目を入力するか、キーを入力し直します。</p></dd></div>
+            <div><dt>API のテストに失敗する、またはアクセスの問題が表示される</dt>
+              <dd><p><span class="fix-label">原因</span>APIキー、マーチャントアカウント、LIVE URLプレフィックスが誤っている、ロールが不足している、または認証情報が別の Company アカウントや環境のものです。</p>
+                <p><span class="fix-label">対処</span><a href="getting-started.html#credentials">認証情報の要件</a>に照らしてロールとアクセス範囲を確認します。LIVE では <strong>LIVE URLプレフィックス</strong>を確認します。</p></dd></div>
+            <div><dt>「加盟店アカウントが端末の現在の割り当てと一致しません。」</dt>
+              <dd><p><span class="fix-label">原因</span>端末は Adyen で別のマーチャントアカウントに割り当てられています。</p>
+                <p><span class="fix-label">対処</span>端末が割り当てられているマーチャントアカウントを入力するか、Customer Area で端末を割り当て直します。</p></dd></div>
+            <div><dt>Adyen 端末やネットワーク上の端末で接続テストに失敗する</dt>
+              <dd><p><span class="fix-label">原因</span>共有キーが一致しないか、IP アドレスや<strong>端末ID（POIID）</strong>が古くなっています。</p>
+                <p><span class="fix-label">対処</span>共有キーの識別子、パスフレーズ、バージョンを Customer Area と照合します。ネットワーク上の端末では、端末の「Device info」画面で IP アドレスと POIID を確認します。</p></dd></div>
+            <div><dt>環境の不一致で接続が拒否される</dt>
+              <dd><p><span class="fix-label">原因</span>TEST と LIVE が混在しています。端末、アカウント、APIキーはすべて同じ環境のものが必要です。</p>
+                <p><span class="fix-label">対処</span>ネットワークやクラウドの端末では、<strong>設定 › 端末</strong>の<strong>環境</strong>を確認します。Adyen 端末や Tap to Pay では、正しい環境のデバイスまたは Payments アプリを使います。</p></dd></div>
+            <div><dt>クラウドの端末に接続できない</dt>
+              <dd><p><span class="fix-label">原因</span>端末がオフライン、POIID が誤っている、または APIキーに Cloud Device API role がありません。</p>
+                <p><span class="fix-label">対処</span>端末の電源が入りオンラインであることを確認し、POIID と認証情報のロールを確認します。</p></dd></div>
+            <div><dt>「TEST版とLIVE版のAdyen Paymentsアプリが両方インストールされています」</dt>
+              <dd><p><span class="fix-label">原因</span>Tap to Pay では Payments アプリを 1 つだけ使います。</p>
+                <p><span class="fix-label">対処</span>使わない方をアンインストールし、登録を完了して共有キーを入力します。設定チェックの成功はカード決済のテストではないため、TEST 決済を行ってください。</p></dd></div>
+            <div id="key-setup"><dt>「新しいキーを保存しました。この端末で…設定を更新してください」</dt>
+              <dd><p><span class="fix-label">原因</span>暗号化キーは Adyen で作成されましたが、端末がまだ読み込んでいません。</p>
+                <p><span class="fix-label">対処</span>端末で <strong>Admin menu › Config › Update</strong> を開き、Mini mPOS に戻って<strong>もう一度確認</strong>をタップします。作成が中断した場合は<strong>キー設定を再開</strong>をタップします。2 つ目のキーは作成されません。<a href="getting-started.html#shared-key-creation">キーの作成</a>と Adyen の<a href="https://docs.adyen.com/point-of-sale/managing-terminals/maintain-performance">設定の更新</a>を参照してください。</p></dd></div>
+            <div><dt>以前の決済の操作がブロックされる</dt>
+              <dd><p><span class="fix-label">原因</span>その決済の後で、マーチャントアカウント、環境、端末が変わりました。</p>
+                <p><span class="fix-label">対処</span>その決済を受け付けたときの設定に戻すか、Customer Area で処理します。別のアカウントで処理しないでください。</p></dd></div>
+          </dl>
+          <p class="back-to-contents"><a href="#contents">目次に戻る</a></p>
+        </section>
+        <section id="network-dropouts">
+          <h2>接続が切れる、または端末が応答しない</h2>
+          <div class="callout callout-important" role="note">
+            <p class="callout-title">重要</p>
+            <p>接続が切れたときに決済の途中だった場合は、再請求の前に<a href="#unknown">その結果を確認</a>してください。</p>
+          </div>
+          <dl class="fixes">
+            <div><dt>「端末から応答がありませんでした」と表示される、またはネットワーク上の端末がときどきつながらない</dt>
+              <dd><p><span class="fix-label">原因</span>端末の IP アドレスが変わった、デバイスが別のネットワークに移った、またはネットワークが接続を遮断しています。</p>
+                <p><span class="fix-label">対処</span></p>
+                <ol>
+                  <li>端末の「Device info」画面で IP アドレスを確認し、<strong>設定 › 端末</strong>で更新します。</li>
+                  <li>デバイスと端末を同じネットワークに接続します。デバイスを分離することが多いゲスト Wi-Fi は避けてください。</li>
+                  <li>両者間の TCP 8443 の許可と、端末の IP アドレスの予約をネットワーク管理者に依頼します。<a href="getting-started.html#network-requirements">ネットワークの要件</a>を参照してください。</li>
+                </ol></dd></div>
+            <div><dt>どの構成でも決済や API のテストに失敗する</dt>
+              <dd><p><span class="fix-label">原因</span>デバイスや端末がインターネットに接続できないか、ファイアウォールが Adyen への通信を遮断しています。</p>
+                <p><span class="fix-label">対処</span>インターネット接続を確認し、Adyen のドメインへの TCP 443 の HTTPS 通信が許可されていることを確認します。</p></dd></div>
+            <div><dt>クラウド決済がタイムアウトする</dt>
+              <dd><p><span class="fix-label">原因</span>端末のインターネット接続が切れています。</p>
+                <p><span class="fix-label">対処</span>端末の Wi-Fi、イーサネット、モバイルデータを確認し、<strong>接続をテスト</strong>を実行します。</p></dd></div>
+          </dl>
           <p class="back-to-contents"><a href="#contents">目次に戻る</a></p>
         </section>
         <section id="modifications">
-          <h2>キャプチャや調整が失敗、または結果が不明</h2>
-          <p><strong>取引履歴</strong>の元の項目で理由を確認します。不足する Checkout API 設定を直すか、元のアカウント・環境に戻します。</p>
-          <ul><li><strong>キャプチャを再試行</strong>は保存した同じ要求を同じ識別子で送ります。新しい決済を作らず、この操作を使ってください。</li><li>未解決の調整は元の金額で再試行します。別の金額は別操作であり、先の操作を解決するまでブロックされる場合があります。</li><li>発行会社がチップ増額を拒否した場合は少額かゼロを選びます。拒否された増額ではチップは保存されません。</li><li><strong>キャプチャ要求済み</strong>、<strong>返金要求済み</strong>、非同期調整の受理は最終確認ではありません。Customer Area で確認してください。アプリは確認 webhook を受信できません。</li></ul>
-          <p>要件は<a href="using.html#preauth">予約金</a>と<a href="using.html#tips">領収書のチップ</a>を参照してください。確保には期限があるので、速やかに解決します。</p>
+          <h2>キャプチャや調整が失敗した、または結果が不明</h2>
+          <p><strong>取引履歴</strong>で元の項目を開き、理由を確認します。Checkout API の設定が不足していれば完了させ、アカウントや環境が変わっていれば元に戻します。</p>
+          <dl class="fixes">
+            <div><dt><strong>キャプチャ失敗</strong>または<strong>キャプチャ結果不明</strong></dt>
+              <dd><p><span class="fix-label">対処</span><strong>キャプチャを再試行</strong>をタップします。同じキャプチャを安全に再送します。新しい決済は作らないでください。</p></dd></div>
+            <div><dt>金額調整が未解決のまま</dt>
+              <dd><p><span class="fix-label">対処</span>同じ金額で再試行します。別の金額は別のリクエストとなり、最初のリクエストが解決するまでブロックされる場合があります。</p></dd></div>
+            <div><dt>チップが保存されない</dt>
+              <dd><p><span class="fix-label">原因</span>20% を超えるチップのための確保額の増額を、カード発行会社が拒否しました。</p>
+                <p><span class="fix-label">対処</span>少ないチップを入力するか、<strong>チップなし</strong>をタップします。</p></dd></div>
+            <div><dt><strong>キャプチャ要求済み</strong>や<strong>返金要求済み</strong>が変わらない</dt>
+              <dd><p><span class="fix-label">原因</span>これは Adyen がリクエストを受け付けたという意味です。Mini mPOS にはサーバーがないため、最終確認を受け取りません。</p>
+                <p><span class="fix-label">対処</span>最終結果は Customer Area で確認してください。</p></dd></div>
+          </dl>
+          <p>確保には期限があるため、速やかに解決してください。通常の手順は<a href="using.html#preauth">予約金</a>と<a href="using.html#tips">領収書のチップ</a>を参照してください。</p>
           <p class="back-to-contents"><a href="#contents">目次に戻る</a></p>
         </section>
         <section id="links">
           <h2>支払いリンクが表示されない、更新されない</h2>
-          <p>実決済構成の会計に<strong>支払いリンクを作成</strong>がない場合は<strong>設定 › 端末</strong>でCheckout APIの設定を完了します。販売では自動で表示され、プリオーソリや領収書のチップには使えません。オフラインのデモは<a href="using.html#payment-links">支払いリンク</a>を参照してください。</p>
-          <p>リンク画面が開いている間だけ確認し、バックグラウンドでは継続確認しません。取引履歴から開き直して<strong>支払いを確認</strong>します。支払い待ちは日計に含まれません。</p>
-          <p>リンク作成が中断し結果が不明な場合は元の項目を開き、<strong>支払いを確認</strong>をタップします。元の要求で作成を再試行します。リンクを得るためだけに別の販売を作らないでください。支払済みリンクの返金は<strong>Customer Area › Payments › Payment list</strong>で行います。</p>
-          <p>通常の手順は<a href="using.html#payment-links">支払いリンクの作成と管理</a>を参照してください。</p>
+          <dl class="fixes">
+            <div><dt>会計に<strong>支払いリンクを作成</strong>がない</dt>
+              <dd><p><span class="fix-label">原因</span>Checkout API の設定が完了していないか、プリオーソリまたは領収書のチップの会計です。</p>
+                <p><span class="fix-label">対処</span><strong>設定 › 端末</strong>で Checkout API の設定を完了します。リンクは販売専用です。オフラインのデモは<a href="using.html#payment-links">支払いリンク</a>を参照してください。</p></dd></div>
+            <div><dt>支払済みのリンクが<strong>支払い待ち</strong>のまま</dt>
+              <dd><p><span class="fix-label">原因</span>アプリはリンク画面を開いている間だけ確認します。</p>
+                <p><span class="fix-label">対処</span>取引履歴で項目を開き、<strong>支払いを確認</strong>をタップします。</p></dd></div>
+            <div><dt>リンクの作成が中断した</dt>
+              <dd><p><span class="fix-label">対処</span>元の項目を開いて<strong>支払いを確認</strong>をタップします。元のリクエストで再試行するため、リンクを得るためだけに別の販売を作らないでください。</p></dd></div>
+          </dl>
+          <p>支払済みリンクの返金は<strong>Customer Area › Payments › Payment list</strong>で行います。</p>
           <p class="back-to-contents"><a href="#contents">目次に戻る</a></p>
         </section>
         <section id="receipts">
-          <h2>領収書が印刷・メール送信できない</h2>
-          <p><strong>印刷：</strong>接続先に実際のプリンターがあるか確認します。<strong>設定 › アプリ情報</strong>を見て接続をテストし、<strong>設定 › 領収書</strong>の検出と自動印刷を確認して<strong>テスト領収書を印刷</strong>します。手動で使用可能に設定しても AMS1 や Tap to Pay のスマートフォンにプリンターは追加されません。</p>
-          <p><strong>メール：</strong><strong>設定 › メール</strong>からテストし、サーバー、ポート、STARTTLS/SSL、ユーザー名、指定パスワードを確認します。SMTP 有効化やアプリパスワードが必要、またはパスワード認証が禁止されている場合があります。設定 › 決済の自動送信とメール取得は別に確認します。<a href="using.html#email">メール設定と各社の説明</a>を参照してください。</p>
+          <h2>プリンターや領収書のメール送信が動かない</h2>
+          <dl class="fixes">
+            <div><dt>印刷されない、または<strong>領収書を印刷</strong>がない</dt>
+              <dd><p><span class="fix-label">原因</span>端末にプリンターがない、プリンターが検出されていない、または接続が切れています。AMS1 端末と Tap to Pay のスマートフォンにはプリンターがありません。</p>
+                <p><span class="fix-label">対処</span></p>
+                <ol>
+                  <li><strong>設定 › アプリ情報</strong>で<strong>プリンター</strong>が<strong>あり</strong>になっていることを確認します。なっていなければ、<strong>設定 › 端末</strong>で<strong>接続をテスト</strong>を実行します。</li>
+                  <li><strong>設定 › 領収書</strong>で<strong>プリンター</strong>を<strong>自動検出</strong>にし、<strong>決済後に自動印刷</strong>を確認します。</li>
+                  <li><strong>テスト領収書を印刷</strong>をタップします。印刷されない場合は、端末のロール紙を確認します。</li>
+                </ol></dd></div>
+            <div><dt>レイアウトが切れる、折り返しがおかしい</dt>
+              <dd><p><span class="fix-label">対処</span><strong>設定 › 領収書</strong>で<strong>1行の文字幅</strong>を変更し、テスト領収書を印刷します。</p></dd></div>
+            <div><dt>テストメールの送信に失敗する</dt>
+              <dd><p><span class="fix-label">原因</span>サーバー、ポート、セキュリティ方式、パスワードが誤っているか、プロバイダーが SMTP やパスワードでのログインを禁止しています。</p>
+                <p><span class="fix-label">対処</span><strong>設定 › メール（SMTP）</strong>でサーバー、ポート、STARTTLS または SSL/TLS、ユーザー名、パスワードを確認します。プロバイダーによっては SMTP の有効化やアプリパスワードが必要です。<a href="using.html#email">メール設定</a>を参照してください。</p></dd></div>
+            <div><dt>テストメールは届くが、お客様に領収書が届かない</dt>
+              <dd><p><span class="fix-label">対処</span><strong>設定 › 決済 › 領収書のメール送信</strong>で、メールを尋ねるタイミングと自動送信の有無を確認します。</p></dd></div>
+          </dl>
           <p class="back-to-contents"><a href="#contents">目次に戻る</a></p>
         </section>
         <section id="access">
           <h2>PIN や設定転送の問題</h2>
-          <p><strong>マネージャーPIN：</strong>管理者が設定 › セキュリティで変更・削除できます。管理者PINとは保護対象が異なり、一方で他方が自動解除されることはありません。</p>
-          <p><strong>管理者PINを忘れた場合：</strong>PIN の復旧機能はありません。Android のアプリデータ消去で PIN を削除できますが、<strong>全ローカル商品、設定、秘密情報、決済履歴も失います</strong>。未完了の決済を解決し、必要な記録を確保してください。設定転送は取引履歴を復元しません。この損失を受け入れる場合だけリセットします。</p>
-          <p><strong>転送コード：</strong>その QR コードと一緒に表示されたコードを使います。新しく生成したコードは使えません。誤ったコードでは何も取り込まず、空欄では非秘密情報だけを取り込みます。保存失敗の表示を確認し、不足キーを再入力します。コピー後は受信側の決済先と認証情報を確認します。<a href="using.html#more">デバイスとデータ</a>を参照してください。</p>
-          <p>各 PIN の保護対象は<a href="using.html#staff">スタッフの PIN 設定</a>を参照してください。</p>
+          <dl class="fixes">
+            <div><dt>スタッフがマネージャーPINを忘れた</dt>
+              <dd><p><span class="fix-label">対処</span>管理者が<strong>設定 › セキュリティ</strong>で変更・削除できます。管理者PINとマネージャーPINは保護する操作が異なり、一方で他方を解除することはできません。</p></dd></div>
+            <div><dt>管理者PINを忘れた</dt>
+              <dd><p><span class="fix-label">原因</span>PIN の復旧機能はありません。</p>
+                <p><span class="fix-label">対処</span>唯一の方法は、Android でアプリのデータを消去することです。</p>
+                <div class="callout callout-warning" role="note">
+                  <p class="callout-title">警告</p>
+                  <p>アプリのデータを消去すると、デバイスのすべての商品、設定、キー、決済履歴が削除されます。先に未完了の決済を解決し、必要な記録を保存してください。設定転送では履歴を復元できません。</p>
+                </div></dd></div>
+            <div><dt>転送コードが拒否される、またはインポート後にキーがない</dt>
+              <dd><p><span class="fix-label">原因</span>コードがこの QR コードのものではないか、空欄でした。</p>
+                <p><span class="fix-label">対処</span>新しく生成したコードではなく、この QR コードと一緒に表示されたコードを使います。誤ったコードでは何も取り込まず、空欄ではパスワードとキーを省きます。コピー後は、新しいデバイスの決済先と認証情報を確認します。<a href="using.html#more">追加デバイス</a>を参照してください。</p></dd></div>
+          </dl>
+          <p>各 PIN が保護する操作は<a href="using.html#staff">スタッフの PIN</a>を参照してください。</p>
           <p class="back-to-contents"><a href="#contents">目次に戻る</a></p>
         </section>
         <section id="install">
-          <h2>端末にインストールできない</h2>
-          <dl class="settings-list"><dt><code>INSTALL_PARSE_FAILED_NO_CERTIFICATES</code></dt><dd>APK が未署名です。<a href="https://github.com/astiskala/minimpos/releases/latest">最新リリース</a>のメンテナー署名済み <code>minimpos-&lt;version&gt;.apk</code> をアップロードします。</dd><dt><code>INVALID_SIGNING_CERTIFICATE_MISMATCH</code></dt><dd>以前と署名キーが異なります。元の署名元を使い、意図的に変える場合は Adyen サポートに旧バージョン削除を相談します。</dd><dt>Android のバージョンが非対応</dt><dd>Android 9 以降が必要です。旧 S1E の Android 7.1 は非対応です。</dd></dl>
-          <p>デバイスに合った<a href="getting-started.html#install">インストール手順</a>に従ってください。</p>
+          <h2>端末にアプリをインストールできない</h2>
+          <dl class="fixes">
+            <div><dt><code>INSTALL_PARSE_FAILED_NO_CERTIFICATES</code></dt>
+              <dd><p><span class="fix-label">原因</span>APK が署名されていません。</p>
+                <p><span class="fix-label">対処</span><a href="https://github.com/astiskala/minimpos/releases/latest">最新リリース</a>の署名済み <code>minimpos-&lt;version&gt;.apk</code> をアップロードします。</p></dd></div>
+            <div><dt><code>INVALID_SIGNING_CERTIFICATE_MISMATCH</code></dt>
+              <dd><p><span class="fix-label">原因</span>APK が以前のアップロードと異なるキーで署名されています。</p>
+                <p><span class="fix-label">対処</span>元の署名元を使います。変更が必要な場合は、旧バージョンの削除を Adyen サポートに相談してください。</p></dd></div>
+            <div><dt>Android のバージョンが非対応</dt>
+              <dd><p><span class="fix-label">原因</span>Mini mPOS には Android 9 以降が必要です。旧 S1E は Android 7.1 です。</p>
+                <p><span class="fix-label">対処</span>対応する端末を使います。<a href="getting-started.html#install">インストール</a>を参照してください。</p></dd></div>
+          </dl>
           <p class="back-to-contents"><a href="#contents">目次に戻る</a></p>
         </section>
         <section id="help">
           <h2>まだ解決しない場合</h2>
-          <p>Adyen アカウント、端末配布、決済方法の有効化、最終結果は Adyen に問い合わせます。アプリの問題は<a href="https://github.com/astiskala/minimpos/issues">GitHub issue</a>で、アプリのバージョン、モデル、決済構成、TEST／LIVE、再現手順を知らせてください。</p>
-          <p>キー、パスワード、PIN、顧客情報を含めないでください。脆弱性の疑いは<a href="https://github.com/astiskala/minimpos/blob/main/SECURITY.md">セキュリティポリシー</a>に従って非公開で報告します。</p>
+          <p>Adyen アカウント、端末の配布、決済方法、最終的な決済結果については Adyen に問い合わせてください。アプリの問題は<a href="https://github.com/astiskala/minimpos/issues">GitHub issue</a>で、アプリのバージョン、デバイスのモデル、構成、TEST または LIVE、再現手順を知らせてください。</p>
+          <div class="callout callout-important" role="note">
+            <p class="callout-title">重要</p>
+            <p>キー、パスワード、PIN、顧客情報は絶対に含めないでください。脆弱性の疑いは<a href="https://github.com/astiskala/minimpos/blob/main/SECURITY.md">セキュリティポリシー</a>に従って非公開で報告します。</p>
+          </div>
           <p class="back-to-contents"><a href="#contents">目次に戻る</a></p>
         </section>
       </div>

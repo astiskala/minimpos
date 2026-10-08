@@ -168,6 +168,7 @@ class SettingsViewModelTest {
             assertThat(calls).isEqualTo(1)
             assertThat(finished.email.isError).isTrue()
         } finally {
+            closeViewModels(viewModels)
             onTerminal.close()
         }
     }
@@ -202,6 +203,7 @@ class SettingsViewModelTest {
             assertThat(await { failed.container.settings.current() }).isEqualTo(before)
             assertThat(vm.businessImport.state.value.stores).isNull()
         } finally {
+            closeViewModels(viewModels)
             failed.close()
         }
     }
@@ -271,6 +273,7 @@ class SettingsViewModelTest {
             vm.setSecret(Secret.SMTP_PASSWORD, "hunter2")
             await { vm.actions.first { it.secretError == null } }
         } finally {
+            closeViewModels(viewModels)
             onTerminal.close()
         }
     }

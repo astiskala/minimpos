@@ -54,7 +54,7 @@
   <string name="home_printer_yes">打印机可用</string>
   <string name="home_printer_no">无打印机</string>
   <string name="home_setup_title">连接此终端</string>
-  <string name="home_setup_text">输入商户后台中的共享密钥，即可开始收款。</string>
+  <string name="home_setup_text">点按此处完成终端设置。</string>
   <string name="home_setup_title_remote">完成收款设置</string>
   <string name="home_connection_failed">无法连接支付终端</string>
   <string name="update_available">版本 %1$s 可用</string>
@@ -350,7 +350,6 @@
   <string name="transfer_replace_hint">先删除此处所有商品、分类和税率。</string>
   <string name="transfer_replace_confirm">此设备上的所有商品、分类和税率都将被删除并替换。</string>
   <string name="transfer_done">导入完成</string>
-  <string name="transfer_review_setup">检查设置</string>
   <string name="transfer_added">已添加商品</string>
   <string name="transfer_updated">已更新商品</string>
   <string name="transfer_new_categories">新增分类</string>
@@ -502,10 +501,6 @@
   <string name="settings_shared_key">共享密钥</string>
   <string name="settings_shared_key_hint">从商户后台复制：Devices › Device settings › Integrations › Terminal API › Encryption key（点击铅笔图标查看）。</string>
   <string name="settings_payments_app_shared_key_hint">请在此输入共享密钥，或在设置助手中填写。手机注册不会获取共享密钥。</string>
-  <string name="settings_setup_review">检查或编辑信息</string>
-  <string name="settings_setup_hide">隐藏信息</string>
-  <string name="settings_setup_supplied">信息已填写</string>
-  <string name="settings_setup_guided">已保存的信息已折叠。点击步骤即可检查或编辑。测试 Adyen API 后显示下一步，再依次完成设置。</string>
   <string name="settings_key_identifier">密钥标识符</string>
   <string name="settings_key_version">密钥版本</string>
   <string name="settings_passphrase">密钥口令</string>
@@ -666,12 +661,10 @@
   <string name="settings_auto_send">自动发送电子收据</string>
   <string name="settings_header_footer">页眉和页脚</string>
   <string name="settings_business_import">从 Adyen 导入商家信息</string>
-  <string name="settings_business_import_hint">选择 Adyen 门店并核对收据名称、地址和电话。Adyen API 密钥需要 Management API—Stores read 权限。</string>
-  <string name="settings_business_choose">选择门店</string>
+  <string name="settings_business_import_hint">核对已分配门店（Management API—Stores read）或商家账户（Management API—Account read）的收据信息。商家账户仅提供法人名称。</string>
   <string name="settings_business_review">核对商家信息</string>
   <string name="settings_business_review_hint">仅补充空白的商家名称、地址和电话。已有文本绝不被替换，税号、标题和页脚不变。</string>
-  <string name="settings_business_none">此商家账户下未找到门店。</string>
-  <string name="settings_business_unavailable">此门店没有可导入的商家信息。</string>
+  <string name="settings_business_unavailable">没有可导入的商家信息。</string>
   <string name="settings_business_name">商家名称</string>
   <string name="settings_address">地址（每行一条）</string>
   <string name="settings_tax_id_label">税号标签</string>
@@ -848,7 +841,6 @@
     <string name="transfer_business_failed">无法导入商家信息。请重试，或在“设置 › 收据”中输入。</string>
     <string name="transfer_missing_fields">设置不完整。请在手动设置助手中补充缺失信息，再扫描新二维码。</string>
     <string name="transfer_tap_checked">已检查 Payments app 注册和设置。该应用不支持共享密钥诊断测试。</string>
-    <string name="transfer_skip_business">跳过商家信息</string>
     <string name="settings_payments_app_setup_checked">已检查设置字段。Payments app 无法对共享密钥进行诊断测试。</string>
   <string name="history_print_day">打印整日汇总</string>
   <string name="history_capture_activity">请款 / 小费</string>
@@ -873,11 +865,12 @@
   <string name="history_switch_confirm">删除记录并切换</string>
   <string name="settings_create_shared_key">创建加密密钥</string>
   <string name="settings_resume_shared_key">继续密钥设置</string>
-  <string name="settings_shared_key_confirm">%1$s · %2$s\n仅为此终端创建新密钥。若 Adyen 已有密钥，则使用现有密钥。创建期间，请勿在其他位置更改此终端的设置。</string>
+  <string name="settings_shared_key_confirm">%1$s · %2$s\n此终端尚无加密密钥。要生成并保存新密钥吗？若 Adyen 已有密钥，则使用现有密钥。创建期间，请勿在其他位置更改此终端的设置。</string>
   <string name="settings_shared_key_replace">这将替换本地已提供的密钥值。口令会加密保存。</string>
   <string name="settings_shared_key_resume_confirm">%1$s · %2$s\n先读取 Adyen 设置。如需重试创建，将使用已保存的同一密钥。</string>
   <string name="settings_shared_key_check_again">再次检查</string>
-  <string name="setup_key_connection_pending">密钥已创建，但终端连接尚未验证。请在终端打开 Admin menu › Config › Update，然后再次检查。</string>
+  <string name="setup_key_update_title">更新终端配置</string>
+  <string name="setup_key_connection_pending">新密钥已保存。请更新此终端的配置：打开“Admin menu › Config › Update”。完成后返回 Mini mPOS，点按“再次检查”以完成设置。</string>
   <string name="setup_key_recovery_unreadable">无法读取待完成的密钥设置。创建其他密钥前，请获取现有密钥或联系支持。</string>
   <string name="setup_key_creation_unconfirmed">尚未确认密钥创建结果。请继续密钥设置，先读取 Adyen 设置再重试。</string>
   <string name="transfer_key_not_imported">已为终端创建密钥，但设置尚未导入。请重试，或稍后重新扫描同一组设置二维码。取消不会删除 Adyen 的密钥。</string>

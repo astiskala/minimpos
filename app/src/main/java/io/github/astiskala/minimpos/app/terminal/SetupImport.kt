@@ -4,7 +4,7 @@ import io.github.astiskala.minimpos.app.data.db.SetupProblem
 import io.github.astiskala.minimpos.app.data.repo.ImportMode
 import io.github.astiskala.minimpos.app.data.security.Secret
 import io.github.astiskala.minimpos.app.data.security.SecretStoreException
-import io.github.astiskala.minimpos.app.data.settings.ReceiptSettings
+import io.github.astiskala.minimpos.app.data.settings.ConnectionSetup
 import io.github.astiskala.minimpos.app.data.transfer.ImportOutcome
 import io.github.astiskala.minimpos.app.data.transfer.PreparedTransfer
 import io.github.astiskala.minimpos.app.data.transfer.ReceivedTransfer
@@ -28,10 +28,6 @@ internal sealed interface SetupImportOutcome {
         val ids: List<String>,
     ) : SetupImportOutcome
 
-    data class Businesses(
-        val stores: List<ReceiptBusiness>,
-    ) : SetupImportOutcome
-
     data class KeyConfirmation(
         val offer: SharedKeyOffer,
     ) : SetupImportOutcome
@@ -53,7 +49,7 @@ internal sealed interface SetupImportOutcome {
 
 /** Management checks and separately confirmed key setup used before activating an import candidate. */
 class SetupImportChecks(
-    /** Proposes store receipt fields without replacing saved merchant text. */
+    /** Proposes store or merchant receipt fields without replacing saved merchant text. */
     val businessDetails: ReceiptBusinessDetails,
     /** Creates a read-only terminal-management client for the candidate credential. */
     val terminals: (String) -> TerminalDetailsApi,
@@ -90,8 +86,6 @@ class SetupImport internal constructor(
         mode: ImportMode,
         code: String,
         terminalId: String? = null,
-        businessId: String? = null,
-        skipBusiness: Boolean = false,
         board: Boolean = false,
         confirmedHistorySwitch: HistorySwitchPlan? = null,
         confirmedKey: SharedKeyOffer? = null,
@@ -102,7 +96,7 @@ class SetupImport internal constructor(
             val prepared = transfer.prepare(received, code) ?: return@withLock SetupImportOutcome.Committed(ImportOutcome.WrongCode)
             if (!prepared.original.acceptsSetupImport) return@withLock SetupImportOutcome.Failed(SetupProblem.SETUP_CHANGED)
             try {
-                val choices = Choices(terminalId, businessId, skipBusiness, board, confirmedHistorySwitch, confirmedKey)
+                val choices = Choices(terminalId, board, confirmedHistorySwitch, confirmedKey)
                 val problem = verify(prepared, choices)
                 if (problem != null) return@withLock problem
                 val switch = historySwitches.preview(prepared.settings.terminal)
@@ -135,8 +129,6 @@ class SetupImport internal constructor(
 
     private class Choices(
         val terminalId: String?,
-        val businessId: String?,
-        val skipBusiness: Boolean,
         val board: Boolean,
         val confirmedHistory: HistorySwitchPlan?,
         val confirmedKey: SharedKeyOffer?,
@@ -157,7 +149,7 @@ class SetupImport internal constructor(
             ?: sharedKey(prepared, choices.confirmedHistory, choices.confirmedKey)
             ?: requiredFields(prepared)
             ?: connection(prepared)
-            ?: business(prepared, choices.businessId, choices.skipBusiness)
+            ?: business(prepared)
     }
 
     private suspend fun environment(prepared: PreparedTransfer): SetupImportOutcome? {
@@ -375,47 +367,21 @@ class SetupImport internal constructor(
         }
     }
 
-    private suspend fun business(
-        prepared: PreparedTransfer,
-        selected: String?,
-        skip: Boolean,
-    ): SetupImportOutcome? {
-        if (skip || !prepared.settings.receipt.needsBusinessDetails()) return null
-        return when (val result = checks.businessDetails.stores(candidate(prepared))) {
-            is ReceiptBusinesses.Listed -> {
-                chooseBusiness(prepared, result.stores, selected)
-            }
-
-            is ReceiptBusinesses.Failed, is ReceiptBusinesses.NotSetUp -> {
-                prepared.businessWarning = true
-                null
-            }
+    private suspend fun business(prepared: PreparedTransfer): SetupImportOutcome? {
+        val choices = prepared.received.connection ?: ConnectionSetup()
+        if (!choices.needsReceiptDetails(prepared.settings.receipt)) return null
+        val result = checks.businessDetails.lookup(candidate(prepared))
+        if (result is ReceiptBusinesses.Found) {
+            val business = result.business
+            val selected =
+                ReceiptBusiness(
+                    name = business.name.takeIf { choices.importReceiptName }.orEmpty(),
+                    address = business.address.takeIf { choices.importReceiptAddress }.orEmpty(),
+                    phone = business.phone.takeIf { choices.importReceiptPhone }.orEmpty(),
+                )
+            prepared.settings = prepared.settings.copy(receipt = selected.applyTo(prepared.settings.receipt))
         }
-    }
-
-    private fun chooseBusiness(
-        prepared: PreparedTransfer,
-        stores: List<ReceiptBusiness>,
-        selected: String?,
-    ): SetupImportOutcome? {
-        val business = if (selected == null) stores.singleOrNull() else stores.firstOrNull { it.id == selected }
-        return when {
-            business != null -> {
-                prepared.settings = prepared.settings.copy(receipt = business.applyTo(prepared.settings.receipt))
-                prepared.businessWarning = !business.available
-                null
-            }
-
-            stores.size > 1 -> {
-                SetupImportOutcome.Businesses(stores)
-            }
-
-            else -> {
-                prepared.businessWarning = true
-                null
-            }
-        }
+        prepared.businessWarning = choices.needsReceiptDetails(prepared.settings.receipt)
+        return null
     }
 }
-
-internal fun ReceiptSettings.needsBusinessDetails(): Boolean = businessName.isBlank() || addressLines.isBlank() || phone.isBlank()

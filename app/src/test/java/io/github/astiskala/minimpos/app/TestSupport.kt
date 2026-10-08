@@ -368,6 +368,18 @@ class FakeLinkApi(
     }
 }
 
+/** Management receipt lookups answering the current listings; never reaches Adyen. */
+class FakeStoreDetails(
+    /** What store-list lookups answer. */
+    var storeList: StoreListing = StoreListing.Listed(emptyList()),
+    /** What merchant-account lookups answer. */
+    var merchantDetails: StoreListing = StoreListing.Listed(emptyList()),
+) : StoreDetailsApi {
+    override suspend fun stores(merchantAccount: String): StoreListing = storeList
+
+    override suspend fun merchant(merchantAccount: String): StoreListing = merchantDetails
+}
+
 /**
  * A complete [AppContainer] for Robolectric tests: an in-memory database, settings and secrets in a temporary
  * directory, [FakeCipher] instead of the Keystore and [RecordingTransport] instead of SMTP. Call [close] after each
@@ -393,7 +405,7 @@ class TestEnvironment(
     modifications: PaymentModifications = SimulatedModifications(),
     /** Replaces the GitHub update check; the default answers that no update is available. */
     updates: FakeUpdateCheck = FakeUpdateCheck(),
-    stores: StoreDetailsApi = StoreDetailsApi { StoreListing.Listed(emptyList()) },
+    stores: StoreDetailsApi = FakeStoreDetails(),
     terminalDetails: TerminalDetailsApi? = null,
     terminalEnvironment: suspend () -> TerminalEnvironment? = { TerminalEnvironment.TEST },
     queryCallback: ((String) -> Unit)? = null,

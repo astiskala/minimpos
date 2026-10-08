@@ -178,6 +178,43 @@
           </fieldset>
 
           <fieldset>
+            <legend>領収書の情報（任意）</legend>
+            <label class="choice"><input type="radio" name="includeReceipt" value="no" checked> <span>領収書設定を変更しない</span></label>
+            <label class="choice"><input type="radio" name="includeReceipt" value="yes"> <span>領収書の情報を含める</span></label>
+            <p class="hint">どちらの設定モードでも使えます。オフの場合、領収書の文面や Adyen の事業者情報はインポートしません。</p>
+          </fieldset>
+
+          <fieldset id="receipt-fields" data-receipt-settings="true" hidden disabled>
+            <legend>領収書の情報</legend>
+            <p class="hint">各事業者情報は Adyen からの取得または手入力を選べます。</p>
+            <label for="receiptNameSource">事業者名</label>
+            <select id="receiptNameSource" name="receiptNameSource"><option value="adyen">Adyen から取得</option><option value="manual">手入力</option></select>
+            <div data-receipt="receiptNameSource" hidden>
+              <label for="receiptBusinessName">領収書の事業者名</label>
+              <input id="receiptBusinessName" name="receiptBusinessName" type="text" disabled>
+            </div>
+            <label for="receiptAddressSource">住所</label>
+            <select id="receiptAddressSource" name="receiptAddressSource"><option value="adyen">Adyen から取得</option><option value="manual">手入力</option></select>
+            <div data-receipt="receiptAddressSource" hidden>
+              <label for="receiptAddressLines">領収書の住所</label>
+              <textarea id="receiptAddressLines" name="receiptAddressLines" rows="3" disabled></textarea>
+            </div>
+            <label for="receiptPhoneSource">電話番号</label>
+            <select id="receiptPhoneSource" name="receiptPhoneSource"><option value="adyen">Adyen から取得</option><option value="manual">手入力</option></select>
+            <div data-receipt="receiptPhoneSource" hidden>
+              <label for="receiptPhone">領収書の電話番号</label>
+              <input id="receiptPhone" name="receiptPhone" type="tel" disabled>
+            </div>
+            <label for="receiptTaxId">税務番号（任意）</label>
+            <input id="receiptTaxId" name="receiptTaxId" type="text">
+            <label for="receiptTitle">領収書のタイトル（任意）</label>
+            <input id="receiptTitle" name="receiptTitle" type="text">
+            <label for="receiptFooter">フッター（任意）</label>
+            <textarea id="receiptFooter" name="receiptFooter" rows="2"></textarea>
+            <p class="hint">入力した手動の文面だけが保存済みの値を変更します。空欄は既存の文面を残します。税務番号、タイトル、フッターは手入力で、Adyen から取得しません。<a href="using.html#receipts">領収書の設定</a>を参照してください。</p>
+          </fieldset>
+
+          <fieldset>
             <legend>領収書メール（任意）</legend>
             <label class="choice"><input type="radio" name="includeSmtp" value="no" checked> <span>メール設定を変更しない</span></label>
             <label class="choice"><input type="radio" name="includeSmtp" value="yes"> <span>SMTP設定を含める</span></label>
@@ -217,7 +254,7 @@
             <li>Mini mPOS の<strong>設定 › 端末</strong>を開き、かんたんセットアップの<strong>設定コードを読み取る</strong>か右上のQRスキャンアイコンをタップします。決済先や環境を先に選ぶ必要はありません。</li>
             <li>カメラで下のコードを読み取ります。複数ある場合は自動で切り替わります。</li>
             <li>決済先と環境、特にLIVEを確認し、必須の<strong>転送コード</strong>を入力して<strong>確認してインポート</strong>をタップします。ハイフンは自動挿入されます。</li>
-            <li><a href="getting-started.html#helper">確認済みインポート手順</a>に従います。自動取得で補完しても必須項目が不足する場合は、何も変更せず拒否します。Tap to Payは明示的な登録操作を求めます。成功後も取得済み設定は表示されます。</li>
+            <li><a href="getting-started.html#helper">確認済みインポート手順</a>に従います。自動取得で補完しても必須項目が不足する場合は、何も変更せず拒否します。Tap to Payは明示的な登録操作を求めます。</li>
           </ol>
           <p>SMTP設定を含めた場合は<strong>設定 › メール</strong>を確認し、テストメールを送ります。メール取得と自動送信は別の設定です。<a href="using.html#email">メール設定</a>を参照してください。</p>
           <p>取り込み後は<a href="getting-started.html#first-payment">最初の TEST 決済</a>を行ってください。</p>
@@ -242,7 +279,7 @@
           <li><strong>入力内容はこのページの外に出ません。</strong>コードはブラウザー内で作成され、このページは何も送信・保存しません。終わったらページを閉じてください。</li>
           <li><strong>キーは暗号化されます。</strong>コード内のパスワードとキーは、ここにだけ表示される転送コードで暗号化されるため、コードの写真だけでは読み取れません。</li>
           <li><strong>転送コードは秘密にしてください。</strong>QR コードと転送コードの両方があればキーを復号できます。必要に応じて新しい転送を作り、終わったら閉じてください。</li>
-          <li><strong>接続と任意のSMTP欄だけを設定します。</strong>商品、領収書のレイアウトやほかの店舗設定はコピーしません。それらはアプリの<a href="using.html#more">別のデバイスに共有</a>を使います。</li>
+          <li><strong>接続、領収書の文面、任意の SMTP 欄を設定します。</strong>商品や領収書のレイアウトはコピーしません。それらはアプリの<a href="using.html#more">別のデバイスに共有</a>を使います。</li>
           <li><strong>全体の手順は？</strong><a href="getting-started.html">はじめに</a>を参照し、取り込みや接続の問題は<a href="troubleshooting.html">トラブルシューティング</a>で確認してください。</li>
         </ul>
       </aside>

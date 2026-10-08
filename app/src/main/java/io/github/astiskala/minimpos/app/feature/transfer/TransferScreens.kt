@@ -64,7 +64,6 @@ import io.github.astiskala.minimpos.app.data.transfer.ReceivedTransfer
 import io.github.astiskala.minimpos.app.data.transfer.TransferContents
 import io.github.astiskala.minimpos.app.data.transfer.TransferExport
 import io.github.astiskala.minimpos.app.feature.settings.SettingSwitch
-import io.github.astiskala.minimpos.app.feature.settings.SettingsSections
 import io.github.astiskala.minimpos.app.feature.text
 import io.github.astiskala.minimpos.app.scan.ScanMode
 import io.github.astiskala.minimpos.app.scan.ScannerView
@@ -273,6 +272,10 @@ fun TransferImportScreen(
 ) {
     val currency = LocalAppContainer.current.currency().code
     val state by vm.state.collectAsStateWithLifecycle()
+    val returnHome = (state as? ImportUiState.Done)?.result?.let { it.connection && !it.businessWarning && !it.paymentsAppChecked } == true
+    LaunchedEffect(returnHome) {
+        if (returnHome) navigator.home()
+    }
     var confirmReplace by remember { mutableStateOf(false) }
     BackHandler(enabled = state == ImportUiState.Importing) {}
     MiniScaffold(
@@ -286,15 +289,8 @@ fun TransferImportScreen(
                 onBoard = vm::setUpTapToPay,
                 onRetry = vm::retryRecovery,
                 onDone = {
-                    val result = (state as? ImportUiState.Done)?.result
-                    if (result?.connection == true) {
-                        navigator.replace(
-                            Route.SettingsSection(SettingsSections.TERMINAL, helperSetup = true),
-                        )
-                    } else {
-                        navigator.back()
-                        if (navigator.current == Route.Onboarding) navigator.home()
-                    }
+                    navigator.back()
+                    if (navigator.current == Route.Onboarding) navigator.home()
                 },
             )
         },
@@ -302,7 +298,14 @@ fun TransferImportScreen(
         val callbacks = remember(vm) { ImportContentEvents(vm::onCode, vm::setMode, vm::setCode) }
         ImportContent(state, currency, callbacks, Modifier.padding(padding))
     }
-    ImportSelectionDialogs(state as? ImportUiState.Ready, vm::chooseTerminal, vm::chooseBusiness, vm::skipBusinessDetails)
+    (state as? ImportUiState.Ready)?.terminalChoices?.let { ids ->
+        ImportChoiceDialog(
+            stringResource(R.string.settings_choose_terminal),
+            ids.map { it to it },
+            vm::chooseTerminal,
+            onDismiss = { vm.chooseTerminal(null) },
+        )
+    }
     (state as? ImportUiState.Ready)?.historySwitch?.let {
         HistorySwitchDialog(it.unfinished, { vm.reviewSetup(true) }, { vm.reviewSetup(false) })
     }
@@ -320,33 +323,6 @@ fun TransferImportScreen(
                 if ((state as? ImportUiState.Ready)?.boardingRequired == true) vm.setUpTapToPay() else vm.import()
             },
             onDismiss = { confirmReplace = false },
-        )
-    }
-}
-
-@Composable
-private fun ImportSelectionDialogs(
-    ready: ImportUiState.Ready?,
-    onTerminal: (String?) -> Unit,
-    onBusiness: (String?) -> Unit,
-    onSkip: () -> Unit,
-) {
-    ready?.terminalChoices?.let { ids ->
-        ImportChoiceDialog(
-            stringResource(R.string.settings_choose_terminal),
-            ids.map { it to it },
-            onTerminal,
-            onDismiss = { onTerminal(null) },
-        )
-    }
-    ready?.businessChoices?.let { stores ->
-        val choices = stores.map { it.id to listOf(it.name, it.reference, it.id).filter(String::isNotBlank).joinToString("\n") }
-        ImportChoiceDialog(
-            stringResource(R.string.settings_business_choose),
-            choices,
-            onBusiness,
-            onDismiss = { onBusiness(null) },
-            onSkip = onSkip,
         )
     }
 }
@@ -425,12 +401,7 @@ private fun ImportBottomBar(
 
         is ImportUiState.Done -> {
             BottomActions {
-                val label =
-                    when {
-                        state.result.connection -> R.string.transfer_review_setup
-                        else -> R.string.action_done
-                    }
-                PrimaryButton(stringResource(label), onDone, modifier = Modifier.testTag("importFinished"))
+                PrimaryButton(stringResource(R.string.action_done), onDone, modifier = Modifier.testTag("importFinished"))
             }
         }
 
@@ -450,7 +421,6 @@ private fun ImportChoiceDialog(
     choices: List<Pair<String, String>>,
     onChoose: (String) -> Unit,
     onDismiss: () -> Unit,
-    onSkip: (() -> Unit)? = null,
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -462,7 +432,7 @@ private fun ImportChoiceDialog(
                 }
             }
         },
-        confirmButton = { onSkip?.let { TextButton(onClick = it) { Text(stringResource(R.string.transfer_skip_business)) } } },
+        confirmButton = {},
         dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) } },
     )
 }
@@ -621,7 +591,16 @@ private fun ImportReady(
                 CatalogueModeChoice(state.mode, onMode)
             }
             if (received.hasSettings) Note(stringResource(R.string.transfer_settings_note))
-            state.outcome?.let { ActionMessage(it.text(), isError = true) }
+            state.outcome?.let {
+                if (state.keyPending) {
+                    Card(Modifier.fillMaxWidth().testTag("keyUpdateCallout")) {
+                        Text(stringResource(R.string.setup_key_update_title), style = MaterialTheme.typography.titleSmall)
+                        Text(it.text(), color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                } else {
+                    ActionMessage(it.text(), isError = true)
+                }
+            }
             if (state.incomplete) ActionMessage(stringResource(R.string.transfer_missing_fields), isError = true)
             if (state.boardingRequired) Text(stringResource(R.string.transfer_board_first))
             if (state.keyPending) Note(stringResource(R.string.transfer_key_not_imported))

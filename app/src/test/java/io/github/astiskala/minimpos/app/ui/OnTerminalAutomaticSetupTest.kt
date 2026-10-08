@@ -39,7 +39,7 @@ import io.github.astiskala.minimpos.app.createRecordingComposeRule as createComp
 @OptIn(ExperimentalTestApi::class)
 @RunWith(RobolectricTestRunner::class)
 @Config(qualifiers = "en-rAU-w320dp-h460dp-hdpi")
-class GuidedLocalSetupTest {
+class OnTerminalAutomaticSetupTest {
     private val terminal = FakeTerminal()
     private var remoteKey: DiscoveredKey? = DiscoveredKey("terminal-key", 2, terminal.passphrase)
     private val queries = mutableListOf<String?>()
@@ -81,7 +81,7 @@ class GuidedLocalSetupTest {
     val compose = createComposeRule()
 
     @Test
-    fun `Automatic helper setup on a terminal collapses discovered details and leaves testing visible`() {
+    fun `Automatic setup on a terminal discovers its details and leaves testing visible`() {
         val container = env.container
         await { container.secrets.set(Secret.ADYEN_API_KEY, "imported-key") }
         container.start()
@@ -89,7 +89,7 @@ class GuidedLocalSetupTest {
         compose.setContent {
             MiniMposTheme {
                 CompositionLocalProvider(LocalAppContainer provides container) {
-                    SettingsSectionScreen("terminal", navigator, automaticSetup = true, helperSetup = true)
+                    SettingsSectionScreen("terminal", navigator, automaticSetup = true)
                 }
             }
         }
@@ -114,7 +114,7 @@ class GuidedLocalSetupTest {
         compose.setContent {
             MiniMposTheme {
                 CompositionLocalProvider(LocalAppContainer provides container) {
-                    SettingsSectionScreen("terminal", navigator, automaticSetup = true, helperSetup = true)
+                    SettingsSectionScreen("terminal", navigator, automaticSetup = true)
                 }
             }
         }

@@ -518,7 +518,10 @@ class WebsiteTest {
     fun `the setup helpers ask for the same fields, link the same pages and word every message`() {
         val english = pages.getValue("en" to Kind.SETUP)
 
-        fun Page.fields() = document.select("#setup-form input").map { listOf(it.id(), it.attr("name"), it.attr("type"), it.attr("value")) }
+        fun Page.fields() =
+            document
+                .select("#setup-form input, #setup-form select, #setup-form textarea")
+                .map { listOf(it.id(), it.attr("name"), it.attr("type"), it.attr("value")) }
 
         fun Page.groups() =
             document.select("#setup-form [data-for]").map {

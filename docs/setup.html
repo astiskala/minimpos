@@ -189,6 +189,43 @@
           </fieldset>
 
           <fieldset>
+            <legend>Receipt details, optional</legend>
+            <label class="choice"><input type="radio" name="includeReceipt" value="no" checked> <span>Leave receipt settings unchanged</span></label>
+            <label class="choice"><input type="radio" name="includeReceipt" value="yes"> <span>Include receipt details</span></label>
+            <p class="hint">Available with either setup mode. When off, no receipt text or Adyen business details are imported.</p>
+          </fieldset>
+
+          <fieldset id="receipt-fields" data-receipt-settings="true" hidden disabled>
+            <legend>Receipt details</legend>
+            <p class="hint">Choose Adyen import or manual entry for each business field.</p>
+            <label for="receiptNameSource">Business name</label>
+            <select id="receiptNameSource" name="receiptNameSource"><option value="adyen">Import from Adyen</option><option value="manual">Enter manually</option></select>
+            <div data-receipt="receiptNameSource" hidden>
+              <label for="receiptBusinessName">Receipt business name</label>
+              <input id="receiptBusinessName" name="receiptBusinessName" type="text" disabled>
+            </div>
+            <label for="receiptAddressSource">Address</label>
+            <select id="receiptAddressSource" name="receiptAddressSource"><option value="adyen">Import from Adyen</option><option value="manual">Enter manually</option></select>
+            <div data-receipt="receiptAddressSource" hidden>
+              <label for="receiptAddressLines">Receipt address</label>
+              <textarea id="receiptAddressLines" name="receiptAddressLines" rows="3" disabled></textarea>
+            </div>
+            <label for="receiptPhoneSource">Phone</label>
+            <select id="receiptPhoneSource" name="receiptPhoneSource"><option value="adyen">Import from Adyen</option><option value="manual">Enter manually</option></select>
+            <div data-receipt="receiptPhoneSource" hidden>
+              <label for="receiptPhone">Receipt phone</label>
+              <input id="receiptPhone" name="receiptPhone" type="tel" disabled>
+            </div>
+            <label for="receiptTaxId">Tax ID, optional</label>
+            <input id="receiptTaxId" name="receiptTaxId" type="text">
+            <label for="receiptTitle">Receipt title, optional</label>
+            <input id="receiptTitle" name="receiptTitle" type="text">
+            <label for="receiptFooter">Footer, optional</label>
+            <textarea id="receiptFooter" name="receiptFooter" rows="2"></textarea>
+            <p class="hint">Only supplied manual text changes saved values. Blank fields keep existing text. Tax ID, title and footer are entered manually, not imported from Adyen. See <a href="using.html#receipts">receipt setup</a>.</p>
+          </fieldset>
+
+          <fieldset>
             <legend>Email receipts, optional</legend>
             <label class="choice"><input type="radio" name="includeSmtp" value="no" checked> <span>Leave email settings unchanged</span></label>
             <label class="choice"><input type="radio" name="includeSmtp" value="yes"> <span>Include SMTP settings</span></label>
@@ -233,7 +270,7 @@
               and tap <strong>Verify and import</strong>. Dashes are inserted automatically.</li>
             <li>Follow the <a href="getting-started.html#helper">verified import steps</a>. Automatic lookup completes
               details where possible; unresolved required fields reject the import unchanged. Tap to Pay asks for
-              explicit registration. Obtained settings remain visible after successful import.</li>
+              explicit registration.</li>
           </ol>
           <p>If you included SMTP settings, review <strong>Settings › Email</strong> and send a test email.
             Email collection and automatic delivery are configured separately; see <a href="using.html#email">email setup</a>.</p>
@@ -262,8 +299,8 @@
             code, which is shown only here, so a photo of the codes alone does not reveal them.</li>
           <li><strong>Keep the transfer code private.</strong> Anyone with both the codes and the transfer code can
             open the keys. Generate a fresh transfer when needed; close this page when finished.</li>
-          <li><strong>This sets the connection and optional SMTP fields only.</strong> It does not copy products, receipt layouts or other business
-            settings. For those, use <a href="using.html#more">Share with another device</a> in the app.</li>
+          <li><strong>This sets connection, receipt text and optional SMTP fields.</strong> It does not copy products or receipt layouts.
+            For those, use <a href="using.html#more">Share with another device</a> in the app.</li>
           <li><strong>Need the full instructions?</strong> Follow <a href="getting-started.html">Getting started</a>;
             for an import or connection problem, see <a href="troubleshooting.html">Troubleshooting</a>.</li>
         </ul>

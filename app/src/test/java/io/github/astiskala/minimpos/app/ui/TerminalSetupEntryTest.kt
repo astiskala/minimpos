@@ -1,5 +1,6 @@
 package io.github.astiskala.minimpos.app.ui
 
+import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.assertIsDisplayed
@@ -9,10 +10,13 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.performSemanticsAction
 import androidx.compose.ui.test.performTextInput
+import androidx.compose.ui.text.TextLayoutResult
 import com.google.common.truth.Truth.assertThat
 import io.github.astiskala.minimpos.app.FakeDevice
 import io.github.astiskala.minimpos.app.MiniMposApp
+import io.github.astiskala.minimpos.app.R
 import io.github.astiskala.minimpos.app.TestEnvironment
 import io.github.astiskala.minimpos.app.await
 import io.github.astiskala.minimpos.app.data.security.Secret
@@ -40,6 +44,31 @@ class TerminalSetupEntryTest {
         compose.waitUntilAtLeastOneExists(hasTestTag("section_terminal"), 15_000)
         compose.onNodeWithTag("section_terminal").performClick()
         compose.waitUntilAtLeastOneExists(hasTestTag("terminalMode"), 15_000)
+    }
+
+    @Test
+    fun `home setup hint fits two lines without truncation on AMS1`() = setupHintFits()
+
+    @Test
+    @Config(qualifiers = "zh-rCN-w320dp-h460dp-hdpi")
+    fun `Chinese home setup hint fits two lines on AMS1`() = setupHintFits()
+
+    @Test
+    @Config(qualifiers = "ja-w320dp-h460dp-hdpi")
+    fun `Japanese home setup hint fits two lines on AMS1`() = setupHintFits()
+
+    private fun setupHintFits() {
+        compose.setContent { MiniMposApp(env.container) }
+        compose.waitUntilAtLeastOneExists(hasTestTag("terminalSetup"), 15_000)
+        val layouts = mutableListOf<TextLayoutResult>()
+        compose
+            .onNodeWithText(env.context.getString(R.string.home_setup_text), useUnmergedTree = true)
+            .assertIsDisplayed()
+            .performSemanticsAction(SemanticsActions.GetTextLayoutResult) { it(layouts) }
+        val layout = layouts.single()
+        assertThat(layout.lineCount).isAtMost(2)
+        assertThat(layout.isLineEllipsized(layout.lineCount - 1)).isFalse()
+        assertThat(layout.getLineEnd(layout.lineCount - 1, visibleEnd = true)).isEqualTo(layout.layoutInput.text.length)
     }
 
     @Test

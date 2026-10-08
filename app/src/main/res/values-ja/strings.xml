@@ -54,7 +54,7 @@
   <string name="home_printer_yes">プリンターあり</string>
   <string name="home_printer_no">プリンターなし</string>
   <string name="home_setup_title">この端末に接続</string>
-  <string name="home_setup_text">Customer Areaの共有キーを入力すると、決済を受け付けられます。</string>
+  <string name="home_setup_text">ここをタップして端末設定を完了。</string>
   <string name="home_setup_title_remote">決済の設定を完了</string>
   <string name="home_connection_failed">決済端末に接続できません</string>
   <string name="update_available">バージョン %1$s が利用可能</string>
@@ -350,7 +350,6 @@
   <string name="transfer_replace_hint">先にこの端末の商品、カテゴリー、税率をすべて削除します。</string>
   <string name="transfer_replace_confirm">このデバイスの商品、カテゴリー、税率をすべて削除して置き換えます。</string>
   <string name="transfer_done">インポート完了</string>
-  <string name="transfer_review_setup">設定を確認</string>
   <string name="transfer_added">追加した商品</string>
   <string name="transfer_updated">更新した商品</string>
   <string name="transfer_new_categories">新しいカテゴリー</string>
@@ -502,10 +501,6 @@
   <string name="settings_shared_key">共有キー</string>
   <string name="settings_shared_key_hint">Customer AreaのDevices › Device settings › Integrations › Terminal API › Encryption keyからコピーしてください（鉛筆アイコンで表示）。</string>
   <string name="settings_payments_app_shared_key_hint">共有キーはここで入力するか、セットアップヘルパーに含めてください。スマートフォンの登録では取得しません。</string>
-  <string name="settings_setup_review">情報を確認・編集</string>
-  <string name="settings_setup_hide">情報を隠す</string>
-  <string name="settings_setup_supplied">情報は入力済み</string>
-  <string name="settings_setup_guided">保存済みの情報は折りたたまれています。手順をタップすると確認・編集できます。Adyen APIをテストすると次の手順が表示されます。順番に設定を完了してください。</string>
   <string name="settings_key_identifier">キー識別子</string>
   <string name="settings_key_version">キーバージョン</string>
   <string name="settings_passphrase">キーのパスフレーズ</string>
@@ -666,12 +661,10 @@
   <string name="settings_auto_send">領収書を自動でメール送信</string>
   <string name="settings_header_footer">ヘッダーとフッター</string>
   <string name="settings_business_import">Adyenから店舗情報をインポート</string>
-  <string name="settings_business_import_hint">Adyenの店舗を選び、領収書の店舗名、住所、電話番号を確認します。Adyen APIキーにManagement API—Stores read権限が必要です。</string>
-  <string name="settings_business_choose">店舗を選択</string>
+  <string name="settings_business_import_hint">割り当て店舗（Management API—Stores read）またはマーチャントアカウント（Management API—Account read）の領収書情報を確認します。アカウントからは法人名のみ取得できます。</string>
   <string name="settings_business_review">店舗情報を確認</string>
   <string name="settings_business_review_hint">店舗名、住所、電話番号の空欄だけを補完します。既存の文面は置き換えません。税務番号、タイトル、フッターは変更しません。</string>
-  <string name="settings_business_none">このマーチャントアカウントに店舗が見つかりません。</string>
-  <string name="settings_business_unavailable">この店舗にはインポートできる情報がありません。</string>
+  <string name="settings_business_unavailable">インポートできる事業者情報はありません。</string>
   <string name="settings_business_name">店舗名</string>
   <string name="settings_address">住所（1行ずつ入力）</string>
   <string name="settings_tax_id_label">税務番号のラベル</string>
@@ -848,7 +841,6 @@
     <string name="transfer_business_failed">店舗情報をインポートできませんでした。再試行するか、「設定 › 領収書」で入力してください。</string>
     <string name="transfer_missing_fields">設定が不完全です。手動設定ヘルパーで不足する情報を追加し、新しいコードを読み取ってください。</string>
     <string name="transfer_tap_checked">Payments app の登録と設定を確認しました。このアプリは共有キーの診断テストに対応していません。</string>
-    <string name="transfer_skip_business">店舗情報をスキップ</string>
     <string name="settings_payments_app_setup_checked">設定項目を確認しました。Payments app は共有キーの診断テストに対応していません。</string>
   <string name="history_print_day">一日全体の集計を印刷</string>
   <string name="history_capture_activity">売上確定 / チップ</string>
@@ -873,11 +865,12 @@
   <string name="history_switch_confirm">履歴を削除して切替</string>
   <string name="settings_create_shared_key">暗号化キーを作成</string>
   <string name="settings_resume_shared_key">キー設定を再開</string>
-  <string name="settings_shared_key_confirm">%1$s · %2$s\nこの端末専用の新しいキーを作成します。Adyen にキーがある場合は既存のキーを使用します。作成中は他の場所でこの端末の設定を変更しないでください。</string>
+  <string name="settings_shared_key_confirm">%1$s · %2$s\nこの端末にはまだ暗号化キーがありません。新しいキーを生成して保存しますか？Adyen にキーがある場合は既存のキーを使用します。作成中は他の場所でこの端末の設定を変更しないでください。</string>
   <string name="settings_shared_key_replace">ローカルで指定したキーの値を置き換えます。パスフレーズは暗号化して保存します。</string>
   <string name="settings_shared_key_resume_confirm">%1$s · %2$s\nまず Adyen の設定を読み取ります。作成の再試行が必要な場合は保存済みの同じキーを使います。</string>
   <string name="settings_shared_key_check_again">もう一度確認</string>
-  <string name="setup_key_connection_pending">キーは作成済みですが、端末接続は未確認です。端末の Admin menu › Config › Update を開き、もう一度確認してください。</string>
+  <string name="setup_key_update_title">端末の設定を更新</string>
+  <string name="setup_key_connection_pending">新しいキーを保存しました。この端末で「Admin menu › Config › Update」を開き、設定を更新してください。完了後、Mini mPOS に戻り「もう一度確認」をタップして設定を完了します。</string>
   <string name="setup_key_recovery_unreadable">保存途中のキー設定を読み取れませんでした。別のキーを作成する前に既存のキーを取得するか、サポートへお問い合わせください。</string>
   <string name="setup_key_creation_unconfirmed">キー作成の結果は未確認です。キー設定を再開して Adyen の設定を読み取ってから再試行してください。</string>
   <string name="transfer_key_not_imported">端末用のキーは作成済みですが、設定は未インポートです。再試行するか、後で同じ設定コードを再読み取りしてください。キャンセルしても Adyen のキーは削除されません。</string>

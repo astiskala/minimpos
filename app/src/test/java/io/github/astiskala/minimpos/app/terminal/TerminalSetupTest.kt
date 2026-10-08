@@ -307,6 +307,10 @@ class TerminalSetupTest {
         val f2 = resolve(terminal.copy(poiIdOverride = "S1F2-000158213605014"))
         assertThat(f2.printerAvailable(emptyMap())).isTrue()
         assertThat(f2.printerAvailable(mapOf("S1F2-000158213605014" to false))).isFalse()
+        val ams1Id = "AMS1-000168223606144"
+        val ams1 = resolve(device = FakeDevice(detectedPoiId = ams1Id))
+        assertThat(ams1.printerAvailable(emptyMap())).isFalse()
+        assertThat(ams1.printerAvailable(mapOf(ams1Id to false))).isFalse()
         val u2 = resolve(terminal.copy(poiIdOverride = "S1U2-000158213605014"))
         assertThat(u2.printerAvailable(emptyMap())).isFalse()
         assertThat(u2.printerAvailable(mapOf("S1U2-000158213605014" to true))).isTrue()

@@ -11,6 +11,7 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import com.google.common.truth.Truth.assertThat
+import io.github.astiskala.minimpos.app.FakeStoreDetails
 import io.github.astiskala.minimpos.app.MiniMposApp
 import io.github.astiskala.minimpos.app.TestEnvironment
 import io.github.astiskala.minimpos.app.await
@@ -20,7 +21,6 @@ import io.github.astiskala.minimpos.app.data.db.SaleStatus
 import io.github.astiskala.minimpos.app.data.settings.ReceiptTipping
 import io.github.astiskala.minimpos.app.data.settings.TerminalMode
 import io.github.astiskala.minimpos.terminal.transport.StoreDetails
-import io.github.astiskala.minimpos.terminal.transport.StoreDetailsApi
 import io.github.astiskala.minimpos.terminal.transport.StoreListing
 import kotlinx.coroutines.flow.first
 import org.junit.Rule
@@ -34,10 +34,10 @@ import io.github.astiskala.minimpos.app.createRecordingComposeRule as createComp
 @RunWith(RobolectricTestRunner::class)
 @Config(qualifiers = "en-rAU-w320dp-h460dp-hdpi")
 class SettingsPreferencesTest {
-    private var listing: StoreListing = StoreListing.Listed(listOf(StoreDetails("ST1", "cafe", "Adyen Cafe", "1 Main St\nSydney", "")))
+    private val stores = FakeStoreDetails(StoreListing.Listed(listOf(StoreDetails("ST1", "cafe", "Adyen Cafe", "1 Main St\nSydney", ""))))
 
     @get:Rule(order = 0)
-    val env = TestEnvironment(stores = StoreDetailsApi { listing })
+    val env = TestEnvironment(stores = stores)
 
     @get:Rule(order = 1)
     val compose = createComposeRule()
@@ -112,6 +112,7 @@ class SettingsPreferencesTest {
         env.useLinks()
         env.updateSettings {
             it.copy(
+                terminal = it.terminal.copy(storeId = "ST1"),
                 receipt =
                     it.receipt.copy(
                         businessName = "My cafe",
@@ -125,14 +126,12 @@ class SettingsPreferencesTest {
         open("receipts")
         findStores()
         compose.waitUntilAtLeastOneExists(hasTestTag("confirmReceiptBusiness"), 15_000)
-        compose.onNodeWithTag("receiptBusiness_ST1").assertDoesNotExist()
         compose.onNodeWithTag("confirmReceiptBusiness").assertIsDisplayed()
         assertThat(container.settingsState.value.receipt.businessName).isEqualTo("My cafe")
         compose.onNodeWithText("Cancel").performClick()
         assertThat(container.settingsState.value.receipt.businessName).isEqualTo("My cafe")
         findStores()
         compose.waitUntilAtLeastOneExists(hasTestTag("confirmReceiptBusiness"), 15_000)
-        compose.onNodeWithTag("receiptBusiness_ST1").assertDoesNotExist()
         compose.onNodeWithTag("confirmReceiptBusiness").performClick()
         compose.waitUntilDoesNotExist(hasTestTag("confirmReceiptBusiness"), 15_000)
         compose.onNodeWithTag("businessName").performScrollTo().assertTextContains("My cafe")
@@ -146,25 +145,23 @@ class SettingsPreferencesTest {
     @Test
     fun `a store with no importable details cannot erase receipt fields`() {
         env.useLinks()
-        listing = StoreListing.Listed(listOf(StoreDetails("ST2", "empty", "", "", "")))
+        stores.storeList = StoreListing.Listed(listOf(StoreDetails("ST2", "empty", "", "", "")))
+        env.updateSettings { it.copy(terminal = it.terminal.copy(storeId = "ST2")) }
         open("receipts")
         findStores()
         compose.waitUntilAtLeastOneExists(hasTestTag("confirmReceiptBusiness"), 15_000)
-        compose.onNodeWithTag("receiptBusiness_ST2").assertDoesNotExist()
         compose.onNodeWithTag("confirmReceiptBusiness").assertIsDisplayed().assertIsNotEnabled()
     }
 
     @Test
-    fun `an account with no stores has a clear empty result`() {
+    fun `a terminal without an assigned store reviews the merchant legal name`() {
         env.useLinks()
-        listing = StoreListing.Listed(emptyList())
+        stores.merchantDetails = StoreListing.Listed(listOf(StoreDetails("HarbourCoffeeCOM", "", "Harbour Coffee Pty Ltd", "", "")))
         open("receipts")
         findStores()
-        compose.waitUntilAtLeastOneExists(
-            hasText("No stores were found for this merchant account."),
-            15_000,
-        )
-        compose.onNodeWithText("No stores were found for this merchant account.").assertIsDisplayed()
-        compose.onNodeWithTag("confirmReceiptBusiness").assertDoesNotExist()
+        compose.waitUntilAtLeastOneExists(hasTestTag("confirmReceiptBusiness"), 15_000)
+        compose.onNodeWithText("Harbour Coffee Pty Ltd").assertIsDisplayed()
+        compose.onNodeWithTag("confirmReceiptBusiness").performClick()
+        compose.awaitCondition("legal name imported") { container.settingsState.value.receipt.businessName == "Harbour Coffee Pty Ltd" }
     }
 }

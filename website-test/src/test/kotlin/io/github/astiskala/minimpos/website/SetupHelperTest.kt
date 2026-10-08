@@ -37,7 +37,7 @@ class SetupHelperTest {
                 requireNotNull(script.executeScript("return document.querySelector('#setup-qr svg path').getAttribute('d').length")) as Long
             assertThat(svgLength).isGreaterThan(0)
             val (connection, secrets) = readTransfer()
-            assertThat(connection).isEqualTo(json("""{"destination":"network","environment":"TEST"}"""))
+            assertThat(connection).isEqualTo(receiptUnchanged("""{"destination":"network","environment":"TEST"}"""))
             assertThat(secrets).isEqualTo(json("""{"ADYEN_API_KEY":"demo-key"}"""))
         }
     }
@@ -61,6 +61,16 @@ class SetupHelperTest {
             "smtpPassword" to " demo-smtp-password ",
             "smtpFromAddress" to "receipts@example.com",
             "smtpFromName" to "Example shop",
+            "includeReceipt" to "yes",
+            "receiptNameSource" to "manual",
+            "receiptBusinessName" to "Vector shop",
+            "receiptAddressSource" to "manual",
+            "receiptAddressLines" to "1 Main St\nSydney",
+            "receiptPhoneSource" to "manual",
+            "receiptPhone" to "+123",
+            "receiptTaxId" to "TAX123",
+            "receiptTitle" to "Sale receipt",
+            "receiptFooter" to "Thanks",
         ).forEach(::field)
         submit()
         ready()
@@ -130,6 +140,66 @@ class SetupHelperTest {
     }
 
     @Test
+    fun `receipt fields support independent Adyen import and manual text in every language`() {
+        for (language in listOf("", "zh-CN/", "ja/")) {
+            openPage(language)
+            field("includeReceipt", "yes")
+            assertReceiptControls()
+            field("receiptNameSource", "manual")
+            field("receiptBusinessName", " My shop ")
+            field("receiptAddressSource", "adyen")
+            field("receiptPhoneSource", "manual")
+            field("receiptPhone", " +61212345678 ")
+            field("receiptTaxId", " TAX123 ")
+            field("receiptTitle", " Receipt ")
+            field("receiptFooter", " Thanks ")
+            submit()
+            ready()
+            assertThat(readTransfer().first).isEqualTo(
+                json(
+                    """{"destination":"network","environment":"TEST","receiptBusinessName":"My shop",
+                    |"receiptPhone":"+61212345678","receiptTaxId":"TAX123","receiptTitle":"Receipt","receiptFooter":"Thanks",
+                    |"importReceiptName":false,"importReceiptPhone":false}
+                    """.trimMargin(),
+                ),
+            )
+            field("receiptNameSource", "adyen")
+            field("receiptPhoneSource", "adyen")
+            script.executeScript("window.__codes = [];")
+            submit()
+            ready()
+            val connection = readTransfer().first
+            assertThat(connection).doesNotContainKey("receiptBusinessName")
+            assertThat(connection).doesNotContainKey("receiptPhone")
+            assertThat(connection).doesNotContainKey("importReceiptName")
+        }
+    }
+
+    @Test
+    fun `receipt opt-out hides fields and excludes manual text and Adyen lookup in every language`() {
+        for (language in listOf("", "zh-CN/", "ja/")) {
+            openPage(language)
+            assertReceiptDisabled(true)
+            field("includeReceipt", "yes")
+            assertReceiptDisabled(false)
+            field("receiptNameSource", "manual")
+            field("receiptBusinessName", "Do not import")
+            field("receiptTaxId", "Do not import")
+            field("includeReceipt", "no")
+            assertReceiptDisabled(true)
+            submit()
+            ready()
+            assertThat(readTransfer().first).isEqualTo(
+                json(
+                    """{"destination":"network","environment":"TEST",
+                    |"importReceiptName":false,"importReceiptAddress":false,"importReceiptPhone":false}
+                    """.trimMargin(),
+                ),
+            )
+        }
+    }
+
+    @Test
     fun `SMTP opt-out excludes previously typed values`() {
         assertSmtpDisabled(true)
         field("includeSmtp", "yes")
@@ -141,7 +211,7 @@ class SetupHelperTest {
         submit()
         ready()
         assertThat(readTransfer())
-            .isEqualTo(json("""{"destination":"network","environment":"TEST"}""") to json("""{"ADYEN_API_KEY":"demo-key"}"""))
+            .isEqualTo(receiptUnchanged("""{"destination":"network","environment":"TEST"}""") to json("""{"ADYEN_API_KEY":"demo-key"}"""))
     }
 
     @Test
@@ -172,7 +242,7 @@ class SetupHelperTest {
                     """.trimMargin()
                 assertThat(readTransfer())
                     .isEqualTo(
-                        json(expected) to json("""{"ADYEN_API_KEY":"demo-key","SMTP_PASSWORD":" demo-smtp-password "}"""),
+                        receiptUnchanged(expected) to json("""{"ADYEN_API_KEY":"demo-key","SMTP_PASSWORD":" demo-smtp-password "}"""),
                     )
             }
         }
@@ -186,7 +256,7 @@ class SetupHelperTest {
         ready()
         assertThat(readTransfer())
             .isEqualTo(
-                json("""{"destination":"network","environment":"TEST","smtpSecurity":"STARTTLS","smtpPort":587}""") to
+                receiptUnchanged("""{"destination":"network","environment":"TEST","smtpSecurity":"STARTTLS","smtpPort":587}""") to
                     json("""{"ADYEN_API_KEY":"demo-key"}"""),
             )
     }
@@ -212,7 +282,7 @@ class SetupHelperTest {
             ready()
             assertThat(readTransfer())
                 .isEqualTo(
-                    json(
+                    receiptUnchanged(
                         """{"destination":"tapToPay","merchantAccount":"Merchant","storeId":"ST1",
                         |"keyIdentifier":"manual-key","keyVersion":2}
                         """.trimMargin(),
@@ -233,7 +303,7 @@ class SetupHelperTest {
         submit()
         ready()
         assertThat(readTransfer())
-            .isEqualTo(json("""{"destination":"tapToPay"}""") to json("""{"ADYEN_API_KEY":"demo-key"}"""))
+            .isEqualTo(receiptUnchanged("""{"destination":"tapToPay"}""") to json("""{"ADYEN_API_KEY":"demo-key"}"""))
         assertRequired(true)
         field("destination", "network")
         assertRequired(true)
@@ -328,6 +398,25 @@ class SetupHelperTest {
         )
     }
 
+    private fun assertReceiptDisabled(disabled: Boolean) {
+        assertThat(script.executeScript("return document.getElementById('receipt-fields').disabled")).isEqualTo(disabled)
+        assertThat(script.executeScript("return document.getElementById('receipt-fields').hidden")).isEqualTo(disabled)
+    }
+
+    private fun assertReceiptControls() {
+        assertThat(
+            script.executeScript(
+                """
+                const sources = Array.from(document.querySelectorAll('select[id^=receipt]'));
+                const groups = Array.from(document.querySelectorAll('[data-receipt]'));
+                return sources.length === 3 && groups.length === 3 &&
+                  sources.every(source => Array.from(source.options).map(option => option.value).join(',') === 'adyen,manual') &&
+                  groups.every(group => group.hidden && group.querySelector('input, textarea').disabled);
+                """.trimIndent(),
+            ),
+        ).isEqualTo(true)
+    }
+
     private fun assertSmtpDisabled(disabled: Boolean) {
         assertThat(script.executeScript("return document.querySelector('[data-email]').disabled")).isEqualTo(disabled)
         assertThat(script.executeScript("return document.querySelector('[data-email]').hidden")).isEqualTo(disabled)
@@ -373,21 +462,31 @@ class SetupHelperTest {
         return json(requireNotNull(transfer.connection)) to json(String(secrets, Charsets.UTF_8))
     }
 
+    private fun receiptUnchanged(text: String) =
+        JsonObject(
+            json(text) + json("""{"importReceiptName":false,"importReceiptAddress":false,"importReceiptPhone":false}"""),
+        )
+
     private fun json(text: String) = Json.parseToJsonElement(text) as JsonObject
 
     companion object {
         private val HELPER_VECTOR =
             listOf(
-                "MPC1:0000:1/2:FW0T08K:9VY1TQU3R1X50200SF9000000000000000000000000000000000000000000L-S939+\$5+MP-%14" +
+                "MPC1:0000:1/3:RV0MK77Y07I28/T3R1X50200SF9000000000000000000000000000000000000000000L-S939+\$5+MP-%14" +
                     "+3UX88BV3CN7\$SXG92L8U0H\$XR:MRQ*JXRM6LS1.EEW5IKGZQDSLC8\$UAWV5CF1H2*F8L66P+MYP92QS\$\$ECQ3PLS:IN" +
-                    "827I7AN/62W1ZFV9C6F2QY/OSG22UAT9MZ10DWALC8E-0SM4MDS60E.Q4087F.U**FY2VDERE2H8XFCH7I9WOAMX/DANI8XTZ" +
-                    "FO:2SMPF6VC QEZEDIEC EDO-DWF71/DPWE04ELOD3Q51\$CS/E0LE9/D1\$CUUEWF7ITA2OAIE4XF414EUUEWF71A6LF6/96" +
+                    "827I7AN/62W1ZFV9C6F2QY/OSG22UAT9MZ10DWALC8E-0SM4MDS60E.Q4087F.U**FY2VDERE2HUS8Z7BU8KIG310Q+YTIY4T" +
+                    "-8LVSMPF6VC QEZEDIEC EDO-DWF71/DPWE04ELOD3Q51\$CS/E0LE9/D1\$CUUEWF7ITA2OAIE4XF414EUUEWF71A6LF6/96" +
                     "R47Z96NF6IE4-F4 3ENC9WE4CF4EA6KF6646746YW6OF6FL6B46746QQ63Q5/PD:EF6VCG/DREDQEDDJEWF7 QE04EQZC/PD5EF3Q" +
                     "5F\$DXKE 8D",
-                "MPC1:0000:2/2:G/D:B8UPC2%EUUEWF7Y69WKE34E1KEX3EN.C3 C61AIE4:F4U\$DY8E14EUUEWF7TQEIWE.%5\$9FQ\$DTVD+%5" +
+                "MPC1:0000:2/3:G/D:B8UPC2%EUUEWF7Y69WKE34E1KEX3EN.C3 C61AIE4:F4U\$DY8E14EUUEWF7TQEIWE.%5\$9FQ\$DTVD+%5" +
                     "+3EIE4:F4U\$D09EZ C6%E-ED5EFWF71OA5S93Q5TQEIWE5 A5\$C..DF\$DWE4:F459DQ8EB\$CBECP9ERZCUPC%ZD3Q5TQEIWE" +
                     "Y+8+3E0C8JVC6\$C:OEWF7ZKEKPC\$EDLWEF68\$9FQ\$DTVD+%5+3EIE4:F4U\$DW8E0LE\$ DBECFZCWF79Z8BECP9EDZCOQE/3" +
-                    "EIE4 F4C\$CM-A4LE EDO-D3G73Q5TQEIWEQ7A5LEWE41R6DY6",
+                    "EIE4/F4Z C- CX9E3I8PQE1/DZQE++9F\$DWE4FF4Z CHWEBJEOQE/3EIE4/F4Z C- CX9E0C8JVC6\$C-PEZED6\$CWE4NE4" +
+                    "Y347ECM-DYOA\$UB*OAFVCC\$CIE4/F4Z C- CX9EJ7A-3EFZCWF7WK5QF6IE4/F4Z C- CX9E1UAD9FTTCWF7ETAW6BQF6IE4/" +
+                    "F4Z C- CX9E9UA",
+                "MPC1:0000:3/3:EWEFZCWF7FOATVDQ44Z C- CX9EIE4/F4Z C- CX9EV+824E5\$CWE4DF4 8D7/D:OE3Q5YEDS9E5LEXIAKPC" +
+                    "\$EDTVEBECFZCAH7AECLQE3Q5YEDS9E5LEXIAKPC\$EDGVE5VCZKEZQEWE4J.C/VDPZCYF4Q\$D04EXVEZ C- CX9EJ7A-3EFZCA" +
+                    "H7AECLQE3Q5/PDCFF5\$CPQE-3EWE4JF6:F4U\$D.8E04EUUE5G7H%6Z2",
             )
         private lateinit var browser: HelperBrowser
 

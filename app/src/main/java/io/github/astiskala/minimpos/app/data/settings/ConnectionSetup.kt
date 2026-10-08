@@ -25,7 +25,7 @@ enum class ConnectionDestination {
 }
 
 /**
- * The connection and optional SMTP fields the setup helper web page sends in a transfer, typed on a computer instead
+ * Connection, receipt text and optional SMTP fields sent by the setup helper, typed on a computer instead
  * of the device. Only what it holds is set, so the device's other settings stay as they are; unlike a
  * transfer between terminals it may set the device fields ([TerminalSettings.withDeviceFieldsOf]). Its secrets travel
  * sealed beside it, as in any transfer. The page leaves out what was not typed; a blank value counts as left out too.
@@ -46,6 +46,15 @@ enum class ConnectionDestination {
  * @property smtpUsername SMTP login name; null or blank keeps the saved login.
  * @property smtpFromAddress Receipt sender address; null or blank keeps the saved address.
  * @property smtpFromName Receipt sender display name; null or blank keeps the saved name.
+ * @property receiptBusinessName Explicit receipt business name; null or blank keeps saved text.
+ * @property receiptAddressLines Explicit newline-separated receipt address; null or blank keeps saved text.
+ * @property receiptPhone Explicit receipt phone number; null or blank keeps saved text.
+ * @property receiptTaxId Explicit receipt tax identifier; null or blank keeps saved text.
+ * @property receiptTitle Explicit receipt heading; null or blank keeps saved text.
+ * @property receiptFooter Explicit receipt footer; null or blank keeps saved text.
+ * @property importReceiptName Whether Adyen lookup may fill a blank business name.
+ * @property importReceiptAddress Whether Adyen lookup may fill a blank address.
+ * @property importReceiptPhone Whether Adyen lookup may fill a blank phone number.
  */
 @Serializable
 data class ConnectionSetup(
@@ -65,7 +74,33 @@ data class ConnectionSetup(
     val smtpUsername: String? = null,
     val smtpFromAddress: String? = null,
     val smtpFromName: String? = null,
+    val receiptBusinessName: String? = null,
+    val receiptAddressLines: String? = null,
+    val receiptPhone: String? = null,
+    val receiptTaxId: String? = null,
+    val receiptTitle: String? = null,
+    val receiptFooter: String? = null,
+    val importReceiptName: Boolean = true,
+    val importReceiptAddress: Boolean = true,
+    val importReceiptPhone: Boolean = true,
 ) {
+    /** Applies explicit nonblank receipt text; omitted fields and unrelated receipt preferences stay unchanged. */
+    fun receiptAppliedTo(receipt: ReceiptSettings): ReceiptSettings =
+        receipt.copy(
+            businessName = receiptBusinessName.or(receipt.businessName),
+            addressLines = receiptAddressLines.or(receipt.addressLines),
+            phone = receiptPhone.or(receipt.phone),
+            taxId = receiptTaxId.or(receipt.taxId),
+            title = receiptTitle.or(receipt.title),
+            footer = receiptFooter.or(receipt.footer),
+        )
+
+    /** Whether a selected automatic receipt field remains blank and needs read-only Adyen lookup. */
+    fun needsReceiptDetails(receipt: ReceiptSettings): Boolean =
+        (importReceiptName && receipt.businessName.isBlank()) ||
+            (importReceiptAddress && receipt.addressLines.isBlank()) ||
+            (importReceiptPhone && receipt.phone.isBlank())
+
     /** [email] with supplied SMTP fields; omitted or blank text and unrelated receipt email settings stay unchanged. */
     fun emailAppliedTo(email: EmailSettings): EmailSettings =
         email.copy(

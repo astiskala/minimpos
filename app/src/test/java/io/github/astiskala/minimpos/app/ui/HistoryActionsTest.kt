@@ -113,6 +113,15 @@ class HistoryActionsTest {
     }
 
     @Test
+    fun `printerless destination has no daily print action at AMS1 size`() {
+        seedReportHistory()
+        env.updateSettings { it.copy(simulator = it.simulator.copy(hasPrinter = false)) }
+        compose.onNodeWithTag("history").performClick()
+        waitForTag("historyList")
+        compose.onNodeWithTag("printDay_${LocalDate.now()}").assertDoesNotExist()
+    }
+
+    @Test
     fun `day totals wrap beside the print action at AMS1 size`() = assertDayTotalsBesidePrint()
 
     @Test

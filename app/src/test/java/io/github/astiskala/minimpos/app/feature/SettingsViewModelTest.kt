@@ -3,6 +3,7 @@ package io.github.astiskala.minimpos.app.feature
 import com.google.common.truth.Truth.assertThat
 import io.github.astiskala.minimpos.app.AppContainer
 import io.github.astiskala.minimpos.app.FakeDevice
+import io.github.astiskala.minimpos.app.FakeStoreDetails
 import io.github.astiskala.minimpos.app.FakeTerminal
 import io.github.astiskala.minimpos.app.TestEnvironment
 import io.github.astiskala.minimpos.app.await
@@ -52,7 +53,6 @@ import io.github.astiskala.minimpos.terminal.client.RetryAdvice
 import io.github.astiskala.minimpos.terminal.simulator.SimulatedModifications
 import io.github.astiskala.minimpos.terminal.simulator.SimulatedOutcome
 import io.github.astiskala.minimpos.terminal.simulator.TerminalSimulator
-import io.github.astiskala.minimpos.terminal.transport.StoreDetailsApi
 import io.github.astiskala.minimpos.terminal.transport.StoreListing
 import io.github.astiskala.minimpos.terminal.transport.TerminalEnvironment
 import kotlinx.coroutines.CompletableDeferred
@@ -182,26 +182,28 @@ class SettingsViewModelTest {
             .isEqualTo(ActionOutcome.NotSetUp(SetupProblem.API_REQUIRED))
         env.useLinks()
         vm.businessImport.find()
-        assertThat(await { vm.businessImport.state.first { it.stores != null } }.stores).isEmpty()
+        assertThat(await { vm.businessImport.state.first { it.lookup.isError } }.lookup.outcome)
+            .isEqualTo(ActionOutcome.NotSetUp(SetupProblem.STORE_ACCESS))
         val before = await { container.settings.current() }
-        vm.businessImport.choose(ReceiptBusiness("ST1", "cafe", "Not offered", "", ""))
+        vm.businessImport.choose(ReceiptBusiness("Not offered", "", ""))
         assertThat(await { container.settings.current() }).isEqualTo(before)
         vm.businessImport.choose(null)
-        assertThat(vm.businessImport.state.value.stores).isNull()
+        assertThat(vm.businessImport.state.value.proposal).isNull()
     }
 
     @Test
     fun `receipt lookup failures leave receipt settings unchanged`() {
-        val failed = TestEnvironment(stores = StoreDetailsApi { StoreListing.Failed("Missing store permission") })
+        val failed = TestEnvironment(stores = FakeStoreDetails(storeList = StoreListing.Failed("Missing store permission")))
         try {
             failed.useLinks()
+            failed.updateSettings { it.copy(terminal = it.terminal.copy(storeId = "ST1")) }
             val vm = settingsViewModel(failed.container)
             val before = await { failed.container.settings.current() }
             vm.businessImport.find()
             assertThat(await { vm.businessImport.state.first { it.lookup.isError } }.lookup.outcome)
                 .isEqualTo(ActionOutcome.Failed("Missing store permission"))
             assertThat(await { failed.container.settings.current() }).isEqualTo(before)
-            assertThat(vm.businessImport.state.value.stores).isNull()
+            assertThat(vm.businessImport.state.value.proposal).isNull()
         } finally {
             closeViewModels(viewModels)
             failed.close()

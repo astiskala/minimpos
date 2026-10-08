@@ -456,7 +456,6 @@ private fun ColumnScope.OtherSectionRows(
 /**
  * One settings [section] (a [SettingsSections] key; unknown keys show About).
  * With [automaticSetup], Terminal starts optional read-only lookup once after imported settings have loaded; never boards.
- * [helperSetup] collapses supplied details during guided setup, including Manual helper imports.
  */
 @Composable
 fun SettingsSectionScreen(
@@ -464,7 +463,6 @@ fun SettingsSectionScreen(
     navigator: Navigator,
     modifier: Modifier = Modifier,
     automaticSetup: Boolean = false,
-    helperSetup: Boolean = false,
 ) {
     val vm = settingsViewModel()
     val sampleData = sampleDataViewModel()
@@ -480,8 +478,8 @@ fun SettingsSectionScreen(
     }
     val events = remember(vm, sampleData) { settingsEvents(vm, sampleData) }
     val setupEvents = remember(setup) { terminalSetupEvents(setup) }
-    LaunchedEffect(section, automaticSetup, helperSetup) {
-        setup.startAutomaticSetup(automaticSetup && section == SettingsSections.TERMINAL, helperSetup)
+    LaunchedEffect(section, automaticSetup) {
+        setup.startAutomaticSetup(automaticSetup && section == SettingsSections.TERMINAL)
     }
     var settingPin by remember { mutableStateOf<Boolean?>(null) }
     if (settingPin != null) {
@@ -539,7 +537,7 @@ private fun ColumnScope.SetupImportFeedback(
             }, modifier = Modifier.testTag("resumeSetupImport"))
         }
     }
-    if (business.stores != null || business.lookup.isError) {
+    if (business.proposal != null || business.lookup.isError) {
         ReceiptBusinessImport(business, events)
         SecondaryButton(stringResource(R.string.settings_receipts), { navigator.push(Route.SettingsSection(SettingsSections.RECEIPTS)) })
     }
@@ -688,14 +686,7 @@ private fun ColumnScope.TerminalSection(
         // own environment, selected or read from the device again.
         events.onUpdate { it.copy(terminal = it.terminal.selectDestination(choice, terminalStatus.automaticMode)) }
     }
-    if (setup.guided) {
-        SettingNote(stringResource(R.string.settings_setup_guided))
-        CollapsibleSettings(stringResource(R.string.settings_mode), tag = "destinationDetails") {
-            TerminalModeChoice(mode, status.onTerminal, selectMode)
-        }
-    } else {
-        TerminalModeChoice(mode, status.onTerminal, selectMode)
-    }
+    TerminalModeChoice(mode, status.onTerminal, selectMode)
     if (mode == TerminalMode.SIMULATOR) {
         SettingNavRow(
             Icons.Default.Science,

@@ -489,16 +489,21 @@ class SetupTransferTest {
         // Made by docs/js/setup.js (Settings: a terminal on the network), so the page and the app keep one format.
         val chunks =
             listOf(
-                "MPC1:0000:1/2:FW0T08K:9VY1TQU3R1X50200SF9000000000000000000000000000000000000000000L-S939+\$5+MP-%14" +
+                "MPC1:0000:1/3:RV0MK77Y07I28/T3R1X50200SF9000000000000000000000000000000000000000000L-S939+\$5+MP-%14" +
                     "+3UX88BV3CN7\$SXG92L8U0H\$XR:MRQ*JXRM6LS1.EEW5IKGZQDSLC8\$UAWV5CF1H2*F8L66P+MYP92QS\$\$ECQ3PLS:IN" +
-                    "827I7AN/62W1ZFV9C6F2QY/OSG22UAT9MZ10DWALC8E-0SM4MDS60E.Q4087F.U**FY2VDERE2H8XFCH7I9WOAMX/DANI8XTZ" +
-                    "FO:2SMPF6VC QEZEDIEC EDO-DWF71/DPWE04ELOD3Q51\$CS/E0LE9/D1\$CUUEWF7ITA2OAIE4XF414EUUEWF71A6LF6/96" +
+                    "827I7AN/62W1ZFV9C6F2QY/OSG22UAT9MZ10DWALC8E-0SM4MDS60E.Q4087F.U**FY2VDERE2HUS8Z7BU8KIG310Q+YTIY4T" +
+                    "-8LVSMPF6VC QEZEDIEC EDO-DWF71/DPWE04ELOD3Q51\$CS/E0LE9/D1\$CUUEWF7ITA2OAIE4XF414EUUEWF71A6LF6/96" +
                     "R47Z96NF6IE4-F4 3ENC9WE4CF4EA6KF6646746YW6OF6FL6B46746QQ63Q5/PD:EF6VCG/DREDQEDDJEWF7 QE04EQZC/PD5EF3Q" +
                     "5F\$DXKE 8D",
-                "MPC1:0000:2/2:G/D:B8UPC2%EUUEWF7Y69WKE34E1KEX3EN.C3 C61AIE4:F4U\$DY8E14EUUEWF7TQEIWE.%5\$9FQ\$DTVD+%5" +
+                "MPC1:0000:2/3:G/D:B8UPC2%EUUEWF7Y69WKE34E1KEX3EN.C3 C61AIE4:F4U\$DY8E14EUUEWF7TQEIWE.%5\$9FQ\$DTVD+%5" +
                     "+3EIE4:F4U\$D09EZ C6%E-ED5EFWF71OA5S93Q5TQEIWE5 A5\$C..DF\$DWE4:F459DQ8EB\$CBECP9ERZCUPC%ZD3Q5TQEIWE" +
                     "Y+8+3E0C8JVC6\$C:OEWF7ZKEKPC\$EDLWEF68\$9FQ\$DTVD+%5+3EIE4:F4U\$DW8E0LE\$ DBECFZCWF79Z8BECP9EDZCOQE/3" +
-                    "EIE4 F4C\$CM-A4LE EDO-D3G73Q5TQEIWEQ7A5LEWE41R6DY6",
+                    "EIE4/F4Z C- CX9E3I8PQE1/DZQE++9F\$DWE4FF4Z CHWEBJEOQE/3EIE4/F4Z C- CX9E0C8JVC6\$C-PEZED6\$CWE4NE4" +
+                    "Y347ECM-DYOA\$UB*OAFVCC\$CIE4/F4Z C- CX9EJ7A-3EFZCWF7WK5QF6IE4/F4Z C- CX9E1UAD9FTTCWF7ETAW6BQF6IE4/" +
+                    "F4Z C- CX9E9UA",
+                "MPC1:0000:3/3:EWEFZCWF7FOATVDQ44Z C- CX9EIE4/F4Z C- CX9EV+824E5\$CWE4DF4 8D7/D:OE3Q5YEDS9E5LEXIAKPC" +
+                    "\$EDTVEBECFZCAH7AECLQE3Q5YEDS9E5LEXIAKPC\$EDGVE5VCZKEZQEWE4J.C/VDPZCYF4Q\$D04EXVEZ C- CX9EJ7A-3EFZCA" +
+                    "H7AECLQE3Q5/PDCFF5\$CPQE-3EWE4JF6:F4U\$D.8E04EUUE5G7H%6Z2",
             )
         val assembler = QrChunkAssembler()
         chunks.forEach { assembler.add(checkNotNull(QrChunks.parse(it))) }
@@ -528,6 +533,15 @@ class SetupTransferTest {
                 ),
             )
         assertThat(await { target.container.secrets.get(Secret.SMTP_PASSWORD) }).isEqualTo(" demo-smtp-password ")
+        assertThat(settings.receipt.businessName).isEqualTo("Vector shop")
+        assertThat(settings.receipt.addressLines).isEqualTo("1 Main St\nSydney")
+        assertThat(settings.receipt.phone).isEqualTo("+123")
+        assertThat(settings.receipt.taxId).isEqualTo("TAX123")
+        assertThat(settings.receipt.title).isEqualTo("Sale receipt")
+        assertThat(settings.receipt.footer).isEqualTo("Thanks")
+        assertThat(received.connection?.importReceiptName).isFalse()
+        assertThat(received.connection?.importReceiptAddress).isFalse()
+        assertThat(received.connection?.importReceiptPhone).isFalse()
     }
 
     @Test

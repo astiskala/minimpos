@@ -80,7 +80,7 @@ existing spelling (`preAuthorisation`, `SaleKind.PRE_AUTHORISATION`, `authorised
 | Receipt standing | What the receipt says: held, tip lines, captured, unpaid link, paid online or offline demo. Demo meaning follows the stored payment context even after settlement or a destination change. | `ReceiptStanding`, `sale.simulatedLink` |
 | Merchant copy | Additional receipt copy under the configured policy. | `MerchantCopyPolicy` |
 | Receipt tax display | Independent amounts/totals by rate, optional marked rate, marker and explanation. | `ReceiptSettings` |
-| Receipt business details | Store receipt name, address and phone read from Management; imports fill blank receipt fields without replacing merchant text. | `terminal/ReceiptBusinessDetails` |
+| Receipt business details | Assigned-store receipt name, address and phone, or merchant-account legal name, read from Management; automatic imports fill selected blank fields without replacing merchant text. | `terminal/ReceiptBusinessDetails` |
 | Receipt delivery | Offers/prints/emails/shares a stored sale or refund; automatic delivery uses the same path. | `ReceiptDelivery`, `TransactionActions`, `StoredTransaction` |
 | Unpaid receipt | Link payment request with amount due, QR and address, not proof of payment. | `SaleReceipt.unpaidLink` |
 | Outcome | Typed result presented in the current language, worded only at the UI boundary. | `ActionOutcome`, `ActionState`, `OutcomeMessages.kt` |
@@ -95,7 +95,7 @@ existing spelling (`preAuthorisation`, `SaleKind.PRE_AUTHORISATION`, `authorised
 | Transfer | Copies catalog, shared settings and sealed secrets by QR; not history or synchronization. | `SetupTransfer`, `TransferCodec` (`MPC1:`) |
 | Device fields | Configuration that stays local when shared settings are imported. | `AppSettings.withDeviceFieldsOf` |
 | Transfer code | Separate 12-character code for decrypting transferred secrets. | `TransferSeal` |
-| Setup helper | Offline browser tool: Automatic transfers credentials for physical-terminal lookup; Manual transfers complete connection details. Every transfer requires its code and verification before activation. Tap to Pay requires explicit registration and a supplied shared key. Obtained setup stays visible; optional SMTP settings can be included. | `docs/setup.html`, `ConnectionSetup` |
+| Setup helper | Offline browser tool: Automatic transfers credentials for physical-terminal lookup; Manual transfers complete connection details. Every transfer requires its code and verification before activation. Tap to Pay requires explicit registration and a supplied shared key. Verified setup returns Home; saved details stay editable. Receipt text/business lookup and SMTP settings are opt-in; receipt lookup can be selected per field. | `docs/setup.html`, `ConnectionSetup` |
 | Secrets | Shared-key passphrase, API keys, SMTP password and PIN verifiers; encrypted and never logged. | `SecretStore` |
 | Repository tooling | Kotlin/JVM release integrity and signing-property parsing, plus a Bash runner with private build logs; not device application code. | `:tooling`, `scripts/gradle` |
 | Admin PIN | Access to configuration and products, separate from financial approval. | `pinManager`, `sessionLock` |

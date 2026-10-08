@@ -33,6 +33,7 @@
   const CONNECTION_FIELDS = [
     "host", "poiId", "keyIdentifier", "merchantAccount", "liveUrlPrefix", "storeId",
     "smtpHost", "smtpSecurity", "smtpUsername", "smtpFromAddress", "smtpFromName",
+    "receiptBusinessName", "receiptAddressLines", "receiptPhone", "receiptTaxId", "receiptTitle", "receiptFooter",
   ];
   const SECRET_FIELDS = {
     passphrase: "TERMINAL_PASSPHRASE", apiKey: "ADYEN_API_KEY",
@@ -194,13 +195,19 @@
 
   /** Hidden destination, environment and mode fields are disabled, so they are neither checked nor read. */
   const refresh = () => {
-    for (const group of form.querySelectorAll("fieldset[data-for], fieldset[data-mode], fieldset[data-email]")) {
+    for (const group of form.querySelectorAll("fieldset[data-for], fieldset[data-mode], fieldset[data-email], fieldset[data-receipt-settings]")) {
       const wanted = (!group.dataset.for || group.dataset.for.split(" ").includes(destination())) &&
         (!group.dataset.env || group.dataset.env === environment()) &&
         (!group.dataset.mode || group.dataset.mode === setupMode()) &&
-        (!group.dataset.email || form.elements.includeSmtp.value === "yes");
+        (!group.dataset.email || form.elements.includeSmtp.value === "yes") &&
+        (!group.dataset.receiptSettings || form.elements.includeReceipt.value === "yes");
       group.hidden = !wanted;
       group.disabled = !wanted;
+    }
+    for (const group of form.querySelectorAll("[data-receipt]")) {
+      const manual = form.elements.includeReceipt.value === "yes" && form.elements[group.dataset.receipt].value === "manual";
+      group.hidden = !manual;
+      for (const input of group.querySelectorAll("input, textarea")) input.disabled = !manual;
     }
     for (const input of form.querySelectorAll("[data-required-for]")) {
       input.required = input.dataset.requiredFor.split(" ").includes(destination());
@@ -266,6 +273,13 @@
     for (const name of CONNECTION_FIELDS) {
       const value = (data.get(name) || "").trim();
       if (value) connection[name] = value;
+    }
+    for (const [source, flag] of [
+      ["receiptNameSource", "importReceiptName"],
+      ["receiptAddressSource", "importReceiptAddress"],
+      ["receiptPhoneSource", "importReceiptPhone"],
+    ]) {
+      if (data.get(source) !== "adyen") connection[flag] = false;
     }
     const version = Number.parseInt(data.get("keyVersion") || "", 10);
     if (Number.isInteger(version) && (connection.keyIdentifier || (data.get("passphrase") || "").trim())) {

@@ -184,12 +184,10 @@ sealed interface Route : NavKey {
      *
      * @property section One of the [io.github.astiskala.minimpos.app.feature.settings.SettingsSections] keys.
      * @property automaticSetup Start optional read-only lookup when opening Terminal after an Automatic helper import; never boards.
-     * @property helperSetup Collapse supplied details while completing an imported helper setup.
      */
     @Serializable data class SettingsSection(
         val section: String,
         val automaticSetup: Boolean = false,
-        val helperSetup: Boolean = false,
     ) : Route {
         override val isProtected get() = true
     }

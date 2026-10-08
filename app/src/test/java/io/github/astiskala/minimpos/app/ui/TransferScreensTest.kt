@@ -247,15 +247,11 @@ class TransferScreensTest {
         assertImportSummary()
         compose.onNodeWithTag("transferCodeInput").performScrollTo().performTextInput(code)
         compose.onNodeWithTag("import").performClick()
-        waitForTag("importDone")
-        compose.onNodeWithText("Connection").performScrollTo().assertIsDisplayed()
-        compose.onNodeWithText("Adyen API key").performScrollTo().assertIsDisplayed()
+        compose.awaitCondition("Verified helper setup returns Home") { navigator.current == Route.Home }
         compose.awaitCondition("Applying the connection") { container.settingsState.value.terminal.merchantAccount == "HarbourCoffeeCOM" }
         // The other settings stay as they were.
         assertThat(container.settingsState.value.receipt.businessName).isEqualTo("Corner Cafe")
         assertThat(await { container.secrets.get(Secret.ADYEN_API_KEY) }).isEqualTo("AQE-key")
-        compose.onNodeWithTag("importFinished").assertTextContains("Review setup").performClick()
-        assertThat(navigator.current).isEqualTo(Route.SettingsSection(SettingsSections.TERMINAL, helperSetup = true))
     }
 
     @Test

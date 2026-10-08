@@ -30,7 +30,8 @@ Screenshots show an English demo café using the built-in simulator, not live pa
 ## What you can do
 
 - **Sell:** products, categories, barcode scanning and custom amounts, with your own tax rates and any Adyen currency.
-- **Get paid:** card and wallet payments, payment links, pre-authorizations for deposits, and tips written on receipts.
+- **Get paid:** card and wallet payments, merchant-scanned wallet codes, payment links, pre-authorizations for deposits,
+  and tips written on receipts.
 - **Deliver receipts:** print on a terminal with a printer, email through your SMTP server, or share from a tablet or phone.
 - **Manage payments:** referenced refunds in full, by item or by amount; searchable history and daily totals.
 - **Run your setup:** admin and Manager PINs, optional shopper references and card saving, and QR transfers of products,

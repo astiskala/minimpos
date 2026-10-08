@@ -3,8 +3,13 @@ package io.github.astiskala.minimpos.app.refund
 import io.github.astiskala.minimpos.app.data.db.SaleEntity
 import io.github.astiskala.minimpos.app.data.db.SaleWithLines
 import io.github.astiskala.minimpos.app.data.repo.SaleRepository
+import io.github.astiskala.minimpos.core.payment.ScanWallet
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
+
+/** Actual method code when reported; otherwise requested scanned-wallet intent, never proof of approval. */
+val SaleEntity.methodCode: String?
+    get() = ScanWallet.reported(paymentMethodVariant ?: paymentBrand)?.brand ?: paymentBrand ?: requestedWallet
 
 /**
  * A stored payment: the one reading of what can be done with it ([actions]), shared by the screens that show it

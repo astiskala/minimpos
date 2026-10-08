@@ -522,6 +522,9 @@ data class ReceiptSettings(
             markedTaxRateNote = markedTaxRateNote.trim(),
         )
 
+    /** Whether the business name, address or phone is blank, so an Adyen lookup could still fill it. */
+    val businessDetailsMissing: Boolean get() = businessName.isBlank() || addressLines.isBlank() || phone.isBlank()
+
     /** The limits of the numbers. */
     companion object {
         /** The allowed range of [charsPerLine]. */

@@ -134,6 +134,12 @@ class AutomaticSetupUiTest {
 
     private fun waitForTag(tag: String) = compose.waitUntilAtLeastOneExists(hasTestTag(tag), 15_000)
 
+    /** Opens Terminal settings after an import and waits for the field tagged [tag]. */
+    private fun openTerminal(tag: String) {
+        compose.runOnIdle { navigator.push(Route.SettingsSection(SettingsSections.TERMINAL)) }
+        waitForTag(tag)
+    }
+
     private fun importAutomatic(
         destination: String = "network",
         environment: TerminalEnvironment = TerminalEnvironment.TEST,
@@ -238,8 +244,7 @@ class AutomaticSetupUiTest {
     @Test
     fun `Automatic import verifies before saving and keeps all obtained sections visible`() {
         importAutomatic()
-        compose.runOnIdle { navigator.push(Route.SettingsSection(SettingsSections.TERMINAL)) }
-        waitForTag("host")
+        openTerminal("host")
         compose.onNodeWithTag("host").performScrollTo().assertTextContains("192.168.1.42", substring = true)
         compose.onNodeWithTag("merchantAccount").performScrollTo().assertTextContains("Merchant", substring = true)
         compose.onNodeWithTag("keyIdentifier").performScrollTo().assertTextContains("store-key", substring = true)
@@ -252,8 +257,7 @@ class AutomaticSetupUiTest {
     @Test
     fun `Automatic LIVE cloud setup keeps prefix and terminal visible without retesting API`() {
         importAutomatic("cloud", TerminalEnvironment.LIVE)
-        compose.runOnIdle { navigator.push(Route.SettingsSection(SettingsSections.TERMINAL)) }
-        waitForTag("livePrefix")
+        openTerminal("livePrefix")
         compose.onNodeWithTag("livePrefix").performScrollTo().assertTextContains("1797a841fbb37ca7-AdyenDemo", substring = true)
         compose.onNodeWithTag("poiId").performScrollTo().assertTextContains(POI_ID, substring = true)
         assertThat(env.container.settingsState.value.terminal.environment).isEqualTo(TerminalEnvironment.LIVE)
@@ -407,8 +411,7 @@ class AutomaticSetupUiTest {
             secrets = """{"ADYEN_API_KEY":"imported-key","TERMINAL_PASSPHRASE":"manual secret","PAYMENTS_APP_API_KEY":"boarding-key"}""",
             register = true,
         )
-        compose.runOnIdle { navigator.push(Route.SettingsSection(SettingsSections.TERMINAL)) }
-        waitForTag("keyIdentifier")
+        openTerminal("keyIdentifier")
         compose.onNodeWithTag("keyIdentifier").performScrollTo().assertTextContains("manual-key", substring = true)
         compose.onNodeWithTag("paymentsAppKey").assertExists()
         assertThat(searches).isEmpty()
@@ -431,8 +434,7 @@ class AutomaticSetupUiTest {
             manualDetails = """"merchantAccount":"Merchant","host":"192.168.1.42","poiId":"$POI_ID","keyIdentifier":"manual-key",""",
             secrets = """{"ADYEN_API_KEY":"imported-key","TERMINAL_PASSPHRASE":"correct horse battery staple"}""",
         )
-        compose.runOnIdle { navigator.push(Route.SettingsSection(SettingsSections.TERMINAL)) }
-        waitForTag("host")
+        openTerminal("host")
         compose.onNodeWithTag("host").performScrollTo().assertTextContains("192.168.1.42", substring = true)
         compose.onNodeWithTag("passphrase").assertExists()
         assertThat(keyLookups).isEqualTo(0)

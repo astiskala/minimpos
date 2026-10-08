@@ -503,21 +503,16 @@ pre {
 
 .guide-body pre code { background: none; padding: 0; }
 
-.note {
+/* Guide callouts. Each states its kind in text, so the label is translated with the page; .callout-note keeps the
+   base style. */
+.note, .callout {
   padding: 14px 18px;
   border-left: 4px solid var(--green);
   border-radius: 8px;
   background: var(--green-light);
 }
 
-/* Guide callouts. Each states its kind in text, so the label is translated with the page. */
-.callout {
-  margin: 20px 0;
-  padding: 14px 18px;
-  border-left: 4px solid var(--green);
-  border-radius: 8px;
-  background: var(--green-light);
-}
+.callout { margin: 20px 0; }
 
 .callout > :first-child { margin-top: 0; }
 

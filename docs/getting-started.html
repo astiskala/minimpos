@@ -123,6 +123,7 @@
               </ul>
               The credential must belong to the terminal's company account and have access to its merchant account.</li>
             <li>Optional: to import receipt business details, also add <strong>Management API — Stores read</strong> (store name, address and phone) or <strong>Management API — Account read</strong> (legal name only).</li>
+            <li>Optional: for <a href="using.html#wallets">merchant-scanned wallet payments</a>, add <strong>Management API — Payment methods read</strong>. Configure the required POS wallets through Adyen’s <a href="https://docs.adyen.com/point-of-sale/what-we-support/payment-methods/add-payment-methods">payment-method setup</a>. This read permission affects only wallet discovery, not ordinary payments.</li>
             <li>Note the <strong>Merchant account</strong>. For LIVE, also note the <strong>Live URL prefix</strong> from <strong>Developers › API URLs</strong>.</li>
             <li>Find the <strong>Shared key</strong> (identifier, passphrase and version) under <strong>Devices › Device settings › Integrations › Terminal API › Encryption key</strong>. Automatic setup can look it up for physical terminals; Tap to Pay needs you to enter it. Cloud terminals do not use it.</li>
             <li>For Tap to Pay only: create a second credential with only the <strong>Adyen Payments app role</strong>, for registering the phone.</li>
@@ -169,7 +170,7 @@
             <li>Click <strong>Make QR codes</strong>. Keep the page open: it shows the 12-character transfer code.</li>
             <li>In Mini mPOS, open <strong>Settings › Terminal</strong> and tap <strong>Scan setup codes</strong> or the QR icon at the top right. Scan every code.</li>
             <li>Check the destination and environment, enter the transfer code and tap <strong>Verify and import</strong>.</li>
-            <li>If asked, choose your terminal, or register the phone for Tap to Pay. Nothing is saved until all checks pass; the app then returns to Home.</li>
+            <li>If asked, choose your terminal, or register the phone for Tap to Pay. Nothing is saved until all checks pass. The app then returns to Home, unless it has a Tap to Pay or business details note to show.</li>
           </ol>
           <p>If the import reports missing details, make new codes with <strong>Manual</strong>. If you included SMTP settings, send a test email; see <a href="using.html#email">email setup</a>.</p>
           <h3 id="on-terminal">Connect an Adyen terminal</h3>

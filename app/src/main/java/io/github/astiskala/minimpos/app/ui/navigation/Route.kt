@@ -37,6 +37,9 @@ sealed interface Route : NavKey {
         val kind: SaleKind = SaleKind.SALE,
     ) : Route
 
+    /** Transient wallet selection and scanning; contains no code and restores without automatically restarting a scan. */
+    @Serializable data object WalletScan : Route
+
     /**
      * Waiting for the terminal while the shopper pays.
      *
@@ -183,11 +186,9 @@ sealed interface Route : NavKey {
      * One settings section.
      *
      * @property section One of the [io.github.astiskala.minimpos.app.feature.settings.SettingsSections] keys.
-     * @property automaticSetup Start optional read-only lookup when opening Terminal after an Automatic helper import; never boards.
      */
     @Serializable data class SettingsSection(
         val section: String,
-        val automaticSetup: Boolean = false,
     ) : Route {
         override val isProtected get() = true
     }

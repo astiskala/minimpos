@@ -398,10 +398,7 @@ class SetupHelperTest {
         )
     }
 
-    private fun assertReceiptDisabled(disabled: Boolean) {
-        assertThat(script.executeScript("return document.getElementById('receipt-fields').disabled")).isEqualTo(disabled)
-        assertThat(script.executeScript("return document.getElementById('receipt-fields').hidden")).isEqualTo(disabled)
-    }
+    private fun assertReceiptDisabled(disabled: Boolean) = assertGroupDisabled("#receipt-fields", disabled)
 
     private fun assertReceiptControls() {
         assertThat(
@@ -417,9 +414,14 @@ class SetupHelperTest {
         ).isEqualTo(true)
     }
 
-    private fun assertSmtpDisabled(disabled: Boolean) {
-        assertThat(script.executeScript("return document.querySelector('[data-email]').disabled")).isEqualTo(disabled)
-        assertThat(script.executeScript("return document.querySelector('[data-email]').hidden")).isEqualTo(disabled)
+    private fun assertSmtpDisabled(disabled: Boolean) = assertGroupDisabled("[data-email]", disabled)
+
+    private fun assertGroupDisabled(
+        selector: String,
+        disabled: Boolean,
+    ) {
+        assertThat(script.executeScript("return document.querySelector(arguments[0]).disabled", selector)).isEqualTo(disabled)
+        assertThat(script.executeScript("return document.querySelector(arguments[0]).hidden", selector)).isEqualTo(disabled)
     }
 
     private fun assertRequired(required: Boolean) {

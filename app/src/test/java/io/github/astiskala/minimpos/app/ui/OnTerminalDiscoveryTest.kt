@@ -4,6 +4,7 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.hasTestTag
+import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
@@ -39,7 +40,7 @@ import io.github.astiskala.minimpos.app.createRecordingComposeRule as createComp
 @OptIn(ExperimentalTestApi::class)
 @RunWith(RobolectricTestRunner::class)
 @Config(qualifiers = "en-rAU-w320dp-h460dp-hdpi")
-class OnTerminalAutomaticSetupTest {
+class OnTerminalDiscoveryTest {
     private val terminal = FakeTerminal()
     private var remoteKey: DiscoveredKey? = DiscoveredKey("terminal-key", 2, terminal.passphrase)
     private val queries = mutableListOf<String?>()
@@ -80,20 +81,35 @@ class OnTerminalAutomaticSetupTest {
     @get:Rule(order = 1)
     val compose = createComposeRule()
 
-    @Test
-    fun `Automatic setup on a terminal discovers its details and leaves testing visible`() {
+    /** Opens Terminal settings with a saved API key, then tests it and starts the discovery it unlocks. */
+    private fun discover() {
         val container = env.container
         await { container.secrets.set(Secret.ADYEN_API_KEY, "imported-key") }
+        env.updateSettings { it.copy(terminal = it.terminal.copy(merchantAccount = "Merchant")) }
         container.start()
         val navigator = Navigator(NavBackStack<NavKey>(Route.Home, Route.SettingsSection("terminal")))
         compose.setContent {
             MiniMposTheme {
                 CompositionLocalProvider(LocalAppContainer provides container) {
-                    SettingsSectionScreen("terminal", navigator, automaticSetup = true)
+                    SettingsSectionScreen("terminal", navigator)
                 }
             }
         }
-        compose.waitUntilAtLeastOneExists(hasTestTag("keyIdentifier"), 15_000)
+        // The API test applies to the account on screen, so it must have loaded first. Learning the terminal's
+        // environment restarts the setup steps and forgets an earlier test, so wait for that too.
+        compose.waitUntilAtLeastOneExists(hasTestTag("merchantAccount") and hasText("Merchant"), 15_000)
+        compose.awaitCondition("Terminal environment learned") {
+            container.terminalStatus.state.value.environment == TerminalEnvironment.TEST
+        }
+        compose.onNodeWithTag("testApi").performScrollTo().performClick()
+        compose.waitUntilAtLeastOneExists(hasTestTag("discoverSetup"), 15_000)
+        compose.onNodeWithTag("discoverSetup").performScrollTo().performClick()
+    }
+
+    @Test
+    fun `on terminal discovery fills its details and leaves testing visible`() {
+        discover()
+        compose.waitUntilAtLeastOneExists(hasTestTag("keyIdentifier") and hasText("terminal-key", substring = true), 15_000)
         compose.onNodeWithTag("step_2").assertExists()
         compose.onNodeWithTag("merchantAccount").assertExists()
         compose.onNodeWithTag("testConnection").assertExists()
@@ -108,16 +124,7 @@ class OnTerminalAutomaticSetupTest {
     fun `on terminal Settings discovery offers confirmed key creation without a terminal selector`() {
         remoteKey = null
         val container = env.container
-        await { container.secrets.set(Secret.ADYEN_API_KEY, "imported-key") }
-        container.start()
-        val navigator = Navigator(NavBackStack<NavKey>(Route.Home, Route.SettingsSection("terminal")))
-        compose.setContent {
-            MiniMposTheme {
-                CompositionLocalProvider(LocalAppContainer provides container) {
-                    SettingsSectionScreen("terminal", navigator, automaticSetup = true)
-                }
-            }
-        }
+        discover()
         compose.waitUntilAtLeastOneExists(hasTestTag("createSharedKey"), 15_000)
         compose.onNodeWithTag("terminal_$POI_ID").assertDoesNotExist()
         assertThat(creations).isEqualTo(0)

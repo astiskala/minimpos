@@ -55,14 +55,14 @@
         <p class="toc-title">指南</p><p><a href="getting-started.html">快速入门</a><br><a href="using.html">使用 Mini mPOS</a><br><a href="troubleshooting.html" aria-current="page">故障排查</a></p>
         <div class="desktop-contents"><p class="toc-title">本页目录</p><ol>
           <li><a href="#unknown">结果未知</a></li><li><a href="#declines">付款被拒绝</a></li>
-          <li><a href="#connection">终端绑定和设置</a></li><li><a href="#network-dropouts">网络中断</a></li>
+          <li><a href="#wallets">钱包扫码</a></li><li><a href="#connection">终端绑定和设置</a></li><li><a href="#network-dropouts">网络中断</a></li>
           <li><a href="#modifications">扣款和调整</a></li><li><a href="#links">支付链接</a></li>
           <li><a href="#receipts">打印机和邮件</a></li><li><a href="#access">PIN 和传输</a></li>
           <li><a href="#install">安装</a></li><li><a href="#help">获取帮助</a></li>
         </ol></div>
         <details class="mobile-contents"><summary class="toc-title">本页目录</summary><ol>
           <li><a href="#unknown">结果未知</a></li><li><a href="#declines">付款被拒绝</a></li>
-          <li><a href="#connection">终端绑定和设置</a></li><li><a href="#network-dropouts">网络中断</a></li>
+          <li><a href="#wallets">钱包扫码</a></li><li><a href="#connection">终端绑定和设置</a></li><li><a href="#network-dropouts">网络中断</a></li>
           <li><a href="#modifications">扣款和调整</a></li><li><a href="#links">支付链接</a></li>
           <li><a href="#receipts">打印机和邮件</a></li><li><a href="#access">PIN 和传输</a></li>
           <li><a href="#install">安装</a></li><li><a href="#help">获取帮助</a></li>
@@ -107,6 +107,18 @@
               <dd><p><span class="fix-label">原因</span>虽然终端报告了取消，但付款已获批准。</p>
                 <p><span class="fix-label">解决</span>请勿再次收款。如果顾客不应付款，请为其退款。</p></dd></div>
           </dl>
+          <p class="back-to-contents"><a href="#contents">返回目录</a></p>
+        </section>
+        <section id="wallets">
+          <h2>没有扫描钱包按钮或扫描失败</h2>
+          <dl class="fixes">
+            <div><dt>没有扫描钱包按钮</dt><dd><p>打开<strong>设置 › 终端</strong>，点按<strong>刷新扫码钱包</strong>。成功查询后没有符合条件的 POS 钱包时，按钮会保持隐藏。核对终端门店、当前币种和<a href="getting-started.html#credentials">可选查询权限</a>。Tap to Pay 和预授权不提供此功能。</p></dd></div>
+            <div><dt>钱包查询报错</dt><dd><p>错误仅显示在设置中，不会阻止普通支付。请检查凭据、环境和只读访问权限。设置未变时，临时刷新错误会保留最近验证的钱包列表；成功查询到空列表或访问失败会移除它。只在启动、设置改变或手动刷新时查询，不会在每笔销售前查询。</p></dd></div>
+            <div><dt>付款码无效或未收到付款码</dt><dd><p>请使用顾客的付款码，而非个人资料、设置转移或收据二维码，并选择正确的钱包。终端扫描最多持续 30 秒，之后点按<strong>重新扫描</strong>或<strong>使用摄像头</strong>。摄像头提示时请授予权限。应用从后台返回后需重新开始扫描。</p></dd></div>
+            <div><dt>保存被拒绝或未创建令牌</dt><dd><p>请以支付结果为准。没有保存令牌的已批准付款仍然有效。仅在明确被拒绝后，如需重试，返回结账，关闭<strong>保存卡片</strong>并明确开始新扫描。应用不会自动重新付款。<strong>结果未知</strong>时应<a href="#unknown">查询原交易</a>。</p></dd></div>
+            <div><dt>PayMe 扫码被拒绝</dt><dd><p>PayMe 商家扫码是尽力尝试，与 Adyen 已发布的限制相冲突。请顾客改用其他支付方式，或使用终端的普通钱包流程。模拟器批准不代表钱包实际支持此功能。</p></dd></div>
+          </dl>
+          <p>请参阅<a href="using.html#wallets">钱包支付步骤</a>。交易记录中的请求钱包仅表示支付意图，不证明付款成功或 Adyen 使用了该方式。</p>
           <p class="back-to-contents"><a href="#contents">返回目录</a></p>
         </section>
         <section id="connection">

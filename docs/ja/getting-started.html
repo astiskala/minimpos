@@ -112,6 +112,7 @@
               </ul>
               認証情報は端末の Company アカウントに属し、端末のマーチャントアカウントへのアクセス権が必要です。</li>
             <li>任意：領収書の店舗情報を取り込む場合は、<strong>Management API — Stores read</strong>（店舗名、住所、電話番号）または <strong>Management API — Account read</strong>（法人名のみ）も追加します。</li>
+            <li>任意：<a href="using.html#wallets">お客様のウォレットをスキャンする決済</a>には <strong>Management API — Payment methods read</strong> を追加します。Adyen の<a href="https://docs.adyen.com/point-of-sale/what-we-support/payment-methods/add-payment-methods">支払い方法の設定</a>に従って POS ウォレットを開通してください。この読み取り権限は照会だけに影響し、通常の支払いを妨げません。</li>
             <li><strong>マーチャントアカウント</strong>を控えます。LIVE では <strong>Developers › API URLs</strong> の <strong>LIVE URLプレフィックス</strong>も控えます。</li>
             <li><strong>Devices › Device settings › Integrations › Terminal API › Encryption key</strong> で<strong>共有キー</strong>（識別子、パスフレーズ、バージョン）を確認します。物理端末では自動設定で取得できますが、Tap to Pay では入力が必要です。クラウドの端末では使いません。</li>
             <li>Tap to Pay のみ：スマートフォンの登録用に、<strong>Adyen Payments app role</strong> だけを持つ別の認証情報を作成します。</li>
@@ -158,7 +159,7 @@
             <li><strong>QRコードを作成</strong>をクリックします。12 文字の転送コードが表示されるため、ページは開いたままにします。</li>
             <li>Mini mPOS の<strong>設定 › 端末</strong>で<strong>設定コードを読み取る</strong>か右上の QR アイコンをタップし、すべてのコードを読み取ります。</li>
             <li>決済先と環境を確認し、転送コードを入力して<strong>確認してインポート</strong>をタップします。</li>
-            <li>案内があれば端末を選ぶか、Tap to Pay のスマートフォンを登録します。すべての確認に成功するまで何も保存されず、成功するとホームに戻ります。</li>
+            <li>案内があれば端末を選ぶか、Tap to Pay のスマートフォンを登録します。すべての確認に成功するまで何も保存されず、成功するとホームに戻ります。Tap to Pay や店舗情報についてのお知らせがある場合は、ホームに戻らずに表示します。</li>
           </ol>
           <p>情報が不足しているとインポートで表示された場合は、<strong>手動</strong>で新しいコードを作成してください。SMTP 設定を含めた場合はテストメールを送ります。<a href="using.html#email">メール設定</a>を参照してください。</p>
           <h3 id="on-terminal">Adyen 端末を接続する</h3>

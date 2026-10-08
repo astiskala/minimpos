@@ -6,6 +6,9 @@ import com.adyen.model.applicationinfo.ExternalPlatform
 import com.adyen.model.applicationinfo.MerchantDevice
 import io.github.astiskala.minimpos.terminal.parse.ReceiptField
 import java.math.BigDecimal
+import java.util.concurrent.atomic.AtomicReference
+
+private const val MAX_SCANNED_CODE_LENGTH = 128
 
 /**
  * The two ends of every Terminal API conversation, copied into each nexo `MessageHeader`. A request only reaches the
@@ -193,7 +196,59 @@ data class PaymentParams(
      * payment with the account's default authorisation type and capture.
      */
     val preAuthorisation: Boolean = false,
-)
+    /** Single-use scanned wallet instrument; null asks the terminal to collect the payment instrument normally. */
+    val scannedPayment: ScannedPayment? = null,
+) {
+    init {
+        require(scannedPayment == null || !preAuthorisation) { "Scanned wallets require an immediate-charge sale" }
+    }
+}
+
+/**
+ * A transient numeric wallet code, consumed once while building a request. String conversion never exposes it.
+ * Recovery uses transaction status, never this code. Safe to consume or discard from any thread.
+ *
+ * @property brand Exact Terminal API routing brand, not a display name.
+ * @param code ASCII digits, retaining leading zeros; bounded to 128 characters for unverified wallet contracts.
+ * @throws IllegalArgumentException for an empty/invalid brand or a nonnumeric, empty or oversized code.
+ */
+class ScannedPayment(
+    val brand: String,
+    code: String,
+) {
+    private val value = AtomicReference(code)
+
+    init {
+        require(brand.matches(Regex("[a-z0-9_]+"))) { "Invalid wallet brand" }
+        require(code.length in 1..MAX_SCANNED_CODE_LENGTH && code.all { it in '0'..'9' }) { "Invalid payment code" }
+    }
+
+    /** Whether a code remains available; false after consumption or explicit discard. */
+    val available: Boolean get() = value.get() != null
+
+    /** Erases the retained reference when an attempt is abandoned, including before a request could be constructed. */
+    fun discard() {
+        value.set(null)
+    }
+
+    internal fun consume(): String = checkNotNull(value.getAndSet(null)) { "Payment code no longer available" }
+
+    override fun toString(): String = "ScannedPayment(brand=$brand, code=[redacted])"
+}
+
+/** Native scanning is nonfinancial: an absent, rejected or unreadable answer cannot start a payment. */
+sealed interface BarcodeScan {
+    /**
+     * One scanner result. Deliberately not a data class: string conversion must not expose payment codes.
+     * @property code Sensitive scanner content; validate, consume transiently and never persist or log it.
+     */
+    class Read(
+        val code: String,
+    ) : BarcodeScan
+
+    /** Scanner did not return a usable code; retrying the scan does not retry a financial operation. */
+    data object NotRead : BarcodeScan
+}
 
 /**
  * A refund of an earlier card payment, see [TerminalClient.refund]. The Terminal API calls this a reversal: it refers to

@@ -658,7 +658,7 @@ private fun ColumnScope.CloudTerminalStep(
 
 /** The terminals connected in the cloud, to choose one; [onChoose] gets null when the dialog is dismissed. */
 @Composable
-private fun TerminalChoiceDialog(
+internal fun TerminalChoiceDialog(
     poiIds: List<String>,
     onChoose: (poiId: String?) -> Unit,
 ) {

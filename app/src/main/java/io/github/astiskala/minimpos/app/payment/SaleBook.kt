@@ -11,6 +11,7 @@ import io.github.astiskala.minimpos.core.money.CurrencySpec
 import io.github.astiskala.minimpos.core.money.PaymentContext
 import io.github.astiskala.minimpos.terminal.client.PaymentParams
 import io.github.astiskala.minimpos.terminal.client.RecurringModel
+import io.github.astiskala.minimpos.terminal.client.ScannedPayment
 import io.github.astiskala.minimpos.terminal.client.TransactionKind
 
 /**
@@ -29,6 +30,9 @@ import io.github.astiskala.minimpos.terminal.client.TransactionKind
  * @property shopperReference Adyen's `shopperReference`, sent with the payment whether or not the card is saved; null
  *   for none.
  * @property sessionRevision Originating in-memory session revision; null when not started through a session.
+ * @property scannedPayment Single-use, transient scanned instrument; null for ordinary terminal payments.
+ * @property walletContext Original scan destination; required with a scanned instrument and persisted before sending.
+ * @property walletSetupIdentity Fingerprint of checked connection/secrets; required for scans and never persisted as a credential.
  * @throws IllegalArgumentException if a pre-authorisation is taken for tipping on the receipt, or a card is to be saved
  *   without a [shopperReference].
  */
@@ -43,10 +47,18 @@ data class PaymentStart(
     val tipOnReceipt: Boolean = false,
     val shopperReference: String? = null,
     val sessionRevision: Long? = null,
+    val scannedPayment: ScannedPayment? = null,
+    val walletContext: PaymentContext? = null,
+    val walletSetupIdentity: String? = null,
 ) {
     init {
         require(!tipOnReceipt || kind == SaleKind.SALE) { "Only a sale can be taken for tipping on the receipt" }
         require(tokenization == null || shopperReference != null) { "Saving a card needs a shopper reference" }
+        require(
+            scannedPayment == null || (kind == SaleKind.SALE && !tipOnReceipt && walletContext != null && walletSetupIdentity != null),
+        ) {
+            "Scanned payments require an immediate-charge sale and its checked destination"
+        }
     }
 
     /**
@@ -54,6 +66,13 @@ data class PaymentStart(
      * a pre-authorisation, or a sale taken for tipping on the receipt, which Adyen's flow captures with the tip.
      */
     val manualCapture: Boolean get() = kind == SaleKind.PRE_AUTHORISATION || tipOnReceipt
+
+    /** Attaches a transient [instrument] only to this validated sale, bound to [context] and exact [setupIdentity]. */
+    internal fun withScanned(
+        instrument: ScannedPayment,
+        context: PaymentContext,
+        setupIdentity: String,
+    ): PaymentStart = copy(scannedPayment = instrument, walletContext = context, walletSetupIdentity = setupIdentity)
 }
 
 /**
@@ -107,11 +126,18 @@ class SaleBook(
                 // The app prints its own combined receipt, including the card details.
                 tenderOptions = listOf(RECEIPT_HANDLER),
                 metadata = listOfNotNull(request.customerReference?.let { "customerReference" to it }).toMap(),
-                requestCardAlias = tokenization != null,
+                requestCardAlias = tokenization != null && request.scannedPayment == null,
                 // A tip on the receipt is captured later with the tip, as Adyen's tipping on the receipt flow asks.
                 preAuthorisation = request.manualCapture,
+                scannedPayment = request.scannedPayment,
             ),
+            expected = request.walletContext,
+            setupIdentity = request.walletSetupIdentity,
         )
+    }
+
+    override fun release(request: PaymentStart) {
+        request.scannedPayment?.discard()
     }
 
     override suspend fun sending(
@@ -170,6 +196,8 @@ class SaleBook(
                 shopperReference = request.shopperReference,
                 shopperEmail = request.shopperEmail,
                 tokenizationRequested = request.tokenization != null,
+                requestedWallet = request.scannedPayment?.brand,
+                context = request.walletContext,
                 kind = request.kind,
                 tipOnReceipt = request.tipOnReceipt,
             )

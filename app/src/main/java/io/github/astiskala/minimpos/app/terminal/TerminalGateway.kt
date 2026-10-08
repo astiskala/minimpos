@@ -9,6 +9,7 @@ import io.github.astiskala.minimpos.app.data.db.SetupProblem
 import io.github.astiskala.minimpos.app.data.security.SecretStore
 import io.github.astiskala.minimpos.app.data.settings.TerminalMode
 import io.github.astiskala.minimpos.core.money.PaymentContext
+import io.github.astiskala.minimpos.terminal.client.BarcodeScan
 import io.github.astiskala.minimpos.terminal.client.DiagnosisResult
 import io.github.astiskala.minimpos.terminal.client.PaymentParams
 import io.github.astiskala.minimpos.terminal.client.PosApplication
@@ -100,6 +101,20 @@ class AndroidDeviceInfo(
         /** `[device model]-[serial number]`, as in the terminal certificates Adyen's library validates. */
         val POI_ID = Regex("^[A-Za-z0-9]{3,}-[A-Za-z0-9]{9,15}$")
     }
+}
+
+/**
+ * Native scanner bound to the original open terminal connection, so cancellation never targets a later destination.
+ * @param client Original Terminal client; retained only for this transient scan session.
+ */
+class NativeScanner internal constructor(
+    private val client: TerminalClient,
+) {
+    /** Reads one code during positive [sessionId], at most 30 seconds; no financial operation or automatic retry. */
+    suspend fun read(sessionId: Long): BarcodeScan = client.scanBarcode(sessionId)
+
+    /** Best-effort end of the original [sessionId], even if the app's current destination has changed. */
+    suspend fun end(sessionId: Long): Boolean = client.endBarcodeScan(sessionId)
 }
 
 /** What a connection check found out about the payment terminal. */
@@ -277,9 +292,23 @@ class TerminalGateway(
     suspend fun pay(
         params: PaymentParams,
         serviceId: String,
+        expected: PaymentContext? = null,
+        expectedIdentity: String? = null,
         onContext: suspend (PaymentContext) -> Unit = {},
         onSending: suspend (poiId: String) -> Unit = {},
-    ): Attempt<TransactionOutcome> = send(serviceId, paying = true, onSending, onContext) { it.pay(params, serviceId) }
+    ): Attempt<TransactionOutcome> =
+        send(serviceId, paying = true, onSending, onContext, expected, expectedIdentity) {
+            it.pay(params, serviceId)
+        }
+
+    /** Opens native scanning only for the unchanged [expected] destination and [identity] fingerprint; null when blocked. */
+    internal suspend fun nativeScanner(
+        expected: PaymentContext,
+        identity: String,
+    ): NativeScanner? =
+        (connection(paying = true, expectedIdentity = identity) as? Connection.Open)
+            ?.takeIf { it.destination.scannedWallets && expected.matchesTerminal(it.context()) }
+            ?.let { NativeScanner(it.client) }
 
     /**
      * Refunds an earlier payment, see [TerminalClient.refund]; [onSending] and missing setup are handled as for [pay],
@@ -472,10 +501,18 @@ class TerminalGateway(
      * The client for where payments go now with the stored settings, or why there is none: for a payment ([paying]) the
      * whole [TerminalSetup.problem], Checkout API included, else the [TerminalSetup.connectionProblem].
      */
-    private suspend fun connection(paying: Boolean = false): Connection {
+    private suspend fun connection(
+        paying: Boolean = false,
+        expectedIdentity: String? = null,
+    ): Connection {
         readEnvironment()
         val unlocked = setups.unlocked()
         val setup = unlocked.setup
+        if (expectedIdentity != null &&
+            expectedIdentity != unlocked.validationIdentity
+        ) {
+            return Connection.NotSetUp(SetupProblem.SETUP_CHANGED)
+        }
         return (if (paying) setup.problem else setup.connectionProblem)?.let(Connection::NotSetUp)
             ?: destinations.single { it.rules == setup.destination }.connect(unlocked, application)
     }
@@ -490,9 +527,10 @@ class TerminalGateway(
         onSending: suspend (poiId: String) -> Unit,
         onContext: suspend (PaymentContext) -> Unit,
         expected: PaymentContext? = null,
+        expectedIdentity: String? = null,
         call: suspend (TerminalClient) -> TransactionOutcome,
     ): Attempt<TransactionOutcome> =
-        when (val connection = connection(paying)) {
+        when (val connection = connection(paying, expectedIdentity)) {
             is Connection.Open -> {
                 if (expected != null && !expected.matchesTerminal(connection.context())) {
                     Attempt.NotSetUp(SetupProblem.PAYMENT_CONTEXT)

@@ -23,6 +23,7 @@ import io.github.astiskala.minimpos.terminal.transport.AdyenCloudDevices
 import io.github.astiskala.minimpos.terminal.transport.AdyenHttp
 import io.github.astiskala.minimpos.terminal.transport.AdyenStoreDetails
 import io.github.astiskala.minimpos.terminal.transport.AdyenTerminalDetails
+import io.github.astiskala.minimpos.terminal.transport.AdyenWalletMethods
 import io.github.astiskala.minimpos.terminal.transport.TerminalHttpClient
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -46,6 +47,7 @@ class ArchitectureTest {
             resideInAnyPackage("io.github.astiskala.minimpos.terminal.checkout..")
                 .or(type(AdyenStoreDetails::class.java))
                 .or(type(AdyenTerminalDetails::class.java))
+                .or(type(AdyenWalletMethods::class.java))
                 .or(type(AdyenCloudDevices::class.java))
                 .or(type(AdyenPaymentsAppManagement::class.java)),
         ).check(terminal)

@@ -33,6 +33,7 @@ import io.github.astiskala.minimpos.app.email.MailTransport
 import io.github.astiskala.minimpos.app.email.ReceiptEmailer
 import io.github.astiskala.minimpos.app.email.SmtpMailer
 import io.github.astiskala.minimpos.app.payment.Captures
+import io.github.astiskala.minimpos.app.payment.Checkout
 import io.github.astiskala.minimpos.app.payment.PaymentLinks
 import io.github.astiskala.minimpos.app.payment.PaymentStart
 import io.github.astiskala.minimpos.app.payment.PricingChanges
@@ -44,6 +45,7 @@ import io.github.astiskala.minimpos.app.payment.SaleSession
 import io.github.astiskala.minimpos.app.payment.StoredPaymentActions
 import io.github.astiskala.minimpos.app.payment.TransactionLifecycle
 import io.github.astiskala.minimpos.app.payment.TransactionState
+import io.github.astiskala.minimpos.app.payment.WalletPayments
 import io.github.astiskala.minimpos.app.qr.QrCodes
 import io.github.astiskala.minimpos.app.receipt.ReceiptFactory
 import io.github.astiskala.minimpos.app.receipt.ReceiptSampleTexts
@@ -68,6 +70,7 @@ import io.github.astiskala.minimpos.app.terminal.TerminalGateway
 import io.github.astiskala.minimpos.app.terminal.TerminalSetupSource
 import io.github.astiskala.minimpos.app.terminal.TerminalStatus
 import io.github.astiskala.minimpos.app.terminal.VirtualPrinter
+import io.github.astiskala.minimpos.app.terminal.WalletDiscovery
 import io.github.astiskala.minimpos.app.update.AppUpdate
 import io.github.astiskala.minimpos.app.update.GitHubReleases
 import io.github.astiskala.minimpos.app.update.UpdateCheck
@@ -89,6 +92,7 @@ import io.github.astiskala.minimpos.terminal.transport.AdyenCloudDevices
 import io.github.astiskala.minimpos.terminal.transport.AdyenLocalTransport
 import io.github.astiskala.minimpos.terminal.transport.AdyenStoreDetails
 import io.github.astiskala.minimpos.terminal.transport.AdyenTerminalDetails
+import io.github.astiskala.minimpos.terminal.transport.AdyenWalletMethods
 import io.github.astiskala.minimpos.terminal.transport.CloudCredentials
 import io.github.astiskala.minimpos.terminal.transport.CloudDevices
 import io.github.astiskala.minimpos.terminal.transport.StoreDetailsApi
@@ -97,6 +101,7 @@ import io.github.astiskala.minimpos.terminal.transport.TerminalEnvironment
 import io.github.astiskala.minimpos.terminal.transport.TerminalKey
 import io.github.astiskala.minimpos.terminal.transport.TerminalTls
 import io.github.astiskala.minimpos.terminal.transport.TerminalTransport
+import io.github.astiskala.minimpos.terminal.transport.WalletMethodsApi
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -104,6 +109,7 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.serialization.KSerializer
@@ -134,6 +140,7 @@ import kotlin.time.Duration.Companion.minutes
  * @param storeDetails Reads Management API store or merchant details for reviewed receipt-business import.
  * @param terminalDetails Reads optional Management terminal setup details.
  * @param terminalEnvironment Reads the local terminal certificate without credentials.
+ * @param walletMethods Reads optional, read-only POS-wallet configuration without affecting ordinary API setup.
  * @param updateCheck Reads the latest GitHub release for the installed version, on devices that are not Adyen
  *   terminals; the default reaches GitHub, tests answer directly.
  * @param onboardingCompleted Initial setup completion for isolated tests; production installations start incomplete.
@@ -160,6 +167,7 @@ class AppContainer(
     },
     terminalDetails: (String) -> TerminalDetailsApi = { AdyenTerminalDetails(it) },
     terminalEnvironment: suspend () -> TerminalEnvironment? = { TerminalTls().readEnvironment("localhost") },
+    walletMethods: (String, TerminalEnvironment) -> WalletMethodsApi = { key, environment -> AdyenWalletMethods(key, environment) },
     updateCheck: suspend () -> UpdateCheck = { GitHubReleases().latest(BuildConfig.VERSION_CODE.toLong()) },
     onboardingCompleted: Boolean = false,
 ) {
@@ -314,6 +322,9 @@ class AppContainer(
             readEnvironment = gateway::refreshEnvironment,
         )
 
+    /** Optional memory-only POS-wallet availability; errors are displayed only in Settings. */
+    val walletDiscovery = WalletDiscovery(terminalSetup, appScope, terminalDetails, walletMethods)
+
     private val sharedKeys = SharedKeySetup(terminalSetup, terminalDetails, api::verify, ::financialOperationRunning)
 
     /** Optional read-only discovery of terminal connection fields, within the destination's environment. */
@@ -464,6 +475,20 @@ class AppContainer(
             },
         )
 
+    /** Transient wallet scanning delegates to the same sale lifecycle, with original-context send protection. */
+    val walletPayments = WalletPayments(session(SaleKind.SALE), payments, walletDiscovery, gateway, appScope, ::walletCheckout)
+
+    private suspend fun walletCheckout(): Checkout {
+        val checkout =
+            session(SaleKind.SALE)
+                .checkout(
+                    settingsState,
+                    flowOf(terminalStatus.state.value.printerAvailable),
+                    currency = ::currency,
+                ).first()
+        return checkout.copy(wallets = walletDiscovery.state.value.offered(checkout.currency.code))
+    }
+
     /** Enters tips and captures and adjusts payments taken with manual capture. */
     val captures = Captures(sales, api::target, ::managerPermits)
 
@@ -538,6 +563,7 @@ class AppContainer(
             history.prune(settings.current().history.retentionDays, System.currentTimeMillis())
         }
         terminalStatus.start()
+        walletDiscovery.start()
         // Adyen terminals update through the Customer Area; only other devices check GitHub Releases for a newer one.
         if (!device.isAdyenTerminal) update.start()
     }

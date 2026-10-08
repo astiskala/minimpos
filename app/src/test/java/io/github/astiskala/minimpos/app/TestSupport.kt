@@ -47,9 +47,10 @@ import io.github.astiskala.minimpos.terminal.transport.CloudEndpoint
 import io.github.astiskala.minimpos.terminal.transport.CloudRegion
 import io.github.astiskala.minimpos.terminal.transport.CredentialLookup
 import io.github.astiskala.minimpos.terminal.transport.Delivery
+import io.github.astiskala.minimpos.terminal.transport.MerchantLookup
 import io.github.astiskala.minimpos.terminal.transport.SharedKeyLookup
 import io.github.astiskala.minimpos.terminal.transport.StoreDetailsApi
-import io.github.astiskala.minimpos.terminal.transport.StoreListing
+import io.github.astiskala.minimpos.terminal.transport.StoreLookup
 import io.github.astiskala.minimpos.terminal.transport.TerminalDetails
 import io.github.astiskala.minimpos.terminal.transport.TerminalDetailsApi
 import io.github.astiskala.minimpos.terminal.transport.TerminalEnvironment
@@ -57,6 +58,8 @@ import io.github.astiskala.minimpos.terminal.transport.TerminalHttpClient
 import io.github.astiskala.minimpos.terminal.transport.TerminalKey
 import io.github.astiskala.minimpos.terminal.transport.TerminalListing
 import io.github.astiskala.minimpos.terminal.transport.TerminalTransport
+import io.github.astiskala.minimpos.terminal.transport.WalletMethodListing
+import io.github.astiskala.minimpos.terminal.transport.WalletMethodsApi
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -158,6 +161,7 @@ class RecordingTransport : MailTransport {
 class FakeTerminal(
     var passphrase: String = "correct horse battery staple",
     private val beforeSend: suspend () -> Unit = {},
+    private val reply: suspend (TerminalAPIRequest) -> Delivery? = { null },
 ) {
     /** Every host a transport was created for, in order (`localhost` when the app runs on the terminal). */
     val hosts = mutableListOf<String>()
@@ -172,7 +176,7 @@ class FakeTerminal(
         return if (key.passphrase == passphrase) {
             TerminalTransport { request, timeout ->
                 beforeSend()
-                simulator.send(request, timeout)
+                reply(request) ?: simulator.send(request, timeout)
             }
         } else {
             TerminalTransport { _, _ ->
@@ -368,16 +372,22 @@ class FakeLinkApi(
     }
 }
 
-/** Management receipt lookups answering the current listings; never reaches Adyen. */
+/** Management receipt lookups answering the current results and recording each request; never reaches Adyen. */
 class FakeStoreDetails(
-    /** What store-list lookups answer. */
-    var storeList: StoreListing = StoreListing.Listed(emptyList()),
+    /** What store lookups answer. */
+    var storeAnswer: StoreLookup = StoreLookup.Missing,
     /** What merchant-account lookups answer. */
-    var merchantDetails: StoreListing = StoreListing.Listed(emptyList()),
+    var merchantAnswer: MerchantLookup = MerchantLookup.Found(""),
 ) : StoreDetailsApi {
-    override suspend fun stores(merchantAccount: String): StoreListing = storeList
+    /** Requests in order, as `store:<merchant account>/<store ID>` or `merchant:<merchant account>`. */
+    val calls = mutableListOf<String>()
 
-    override suspend fun merchant(merchantAccount: String): StoreListing = merchantDetails
+    override suspend fun store(
+        merchantAccount: String,
+        storeId: String,
+    ): StoreLookup = storeAnswer.also { calls += "store:$merchantAccount/$storeId" }
+
+    override suspend fun merchant(merchantAccount: String): MerchantLookup = merchantAnswer.also { calls += "merchant:$merchantAccount" }
 }
 
 /**
@@ -407,6 +417,7 @@ class TestEnvironment(
     updates: FakeUpdateCheck = FakeUpdateCheck(),
     stores: StoreDetailsApi = FakeStoreDetails(),
     terminalDetails: TerminalDetailsApi? = null,
+    walletMethods: WalletMethodsApi = WalletMethodsApi { _, _ -> WalletMethodListing.Listed(emptyList()) },
     terminalEnvironment: suspend () -> TerminalEnvironment? = { TerminalEnvironment.TEST },
     queryCallback: ((String) -> Unit)? = null,
     /** Most tests begin after first-run setup; onboarding tests opt into a fresh installation. */
@@ -457,6 +468,7 @@ class TestEnvironment(
             paymentModifications = { modifications },
             storeDetails = { _, _ -> stores },
             terminalDetails = { terminalDetails ?: defaultTerminalDetails() },
+            walletMethods = { _, _ -> walletMethods },
             terminalEnvironment = terminalEnvironment,
             updateCheck = updates::check,
             onboardingCompleted = onboardingCompleted,

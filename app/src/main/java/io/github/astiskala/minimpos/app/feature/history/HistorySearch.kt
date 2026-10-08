@@ -2,6 +2,7 @@ package io.github.astiskala.minimpos.app.feature.history
 
 import io.github.astiskala.minimpos.app.data.db.SaleEntity
 import io.github.astiskala.minimpos.app.data.repo.HistoryItem
+import io.github.astiskala.minimpos.app.refund.methodCode
 import io.github.astiskala.minimpos.core.money.CurrencySpec
 import io.github.astiskala.minimpos.core.payment.PaymentMethods
 import io.github.astiskala.minimpos.core.payment.Wallet
@@ -24,7 +25,7 @@ sealed interface PaymentMethodFilter {
     ) : PaymentMethodFilter {
         override val label: String get() = PaymentMethods.brandName(code)
 
-        override fun matches(sale: SaleEntity): Boolean = sale.paymentBrand?.let(PaymentMethods::normalizeBrand) == code
+        override fun matches(sale: SaleEntity): Boolean = sale.methodCode?.let(PaymentMethods::normalizeBrand) == code
     }
 
     /**
@@ -46,7 +47,7 @@ sealed interface PaymentMethodFilter {
         fun available(sales: List<SaleEntity>): List<PaymentMethodFilter> {
             val brands =
                 sales
-                    .mapNotNull { sale -> sale.paymentBrand?.let(PaymentMethods::normalizeBrand)?.takeIf { it.isNotEmpty() } }
+                    .mapNotNull { sale -> sale.methodCode?.let(PaymentMethods::normalizeBrand)?.takeIf { it.isNotEmpty() } }
                     .distinct()
                     .map(::Brand)
                     .sortedBy { it.label.lowercase() }
@@ -110,7 +111,9 @@ class HistorySearch(
             sale.shopperEmail,
             sale.maskedPan?.filter(Char::isDigit)?.takeLast(LAST_DIGITS),
             sale.paymentBrand,
-            sale.paymentBrand?.let(PaymentMethods::brandName),
+            sale.methodCode?.let(PaymentMethods::brandName),
+            sale.requestedWallet,
+            sale.requestedWallet?.let(PaymentMethods::brandName),
             sale.paymentMethodVariant,
             PaymentMethods.wallet(sale.paymentMethodVariant)?.displayName,
         )

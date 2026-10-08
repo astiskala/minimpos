@@ -18,7 +18,6 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.NavigateBefore
 import androidx.compose.material.icons.automirrored.filled.NavigateNext
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
@@ -27,7 +26,6 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -64,6 +62,7 @@ import io.github.astiskala.minimpos.app.data.transfer.ReceivedTransfer
 import io.github.astiskala.minimpos.app.data.transfer.TransferContents
 import io.github.astiskala.minimpos.app.data.transfer.TransferExport
 import io.github.astiskala.minimpos.app.feature.settings.SettingSwitch
+import io.github.astiskala.minimpos.app.feature.settings.TerminalChoiceDialog
 import io.github.astiskala.minimpos.app.feature.text
 import io.github.astiskala.minimpos.app.scan.ScanMode
 import io.github.astiskala.minimpos.app.scan.ScannerView
@@ -262,7 +261,8 @@ private fun transferImportViewModel(): TransferImportViewModel {
 /**
  * Scans another terminal's transfer codes in any order, then imports them: the catalogue merged or replacing this
  * one, the settings, and with the transfer code the secrets. It warns when the catalogue's currency differs from the
- * one this terminal will use.
+ * one this terminal will use. A verified connection import returns straight to Home unless its result shows a business
+ * details warning or the Tap to Pay check note.
  */
 @Composable
 fun TransferImportScreen(
@@ -298,14 +298,7 @@ fun TransferImportScreen(
         val callbacks = remember(vm) { ImportContentEvents(vm::onCode, vm::setMode, vm::setCode) }
         ImportContent(state, currency, callbacks, Modifier.padding(padding))
     }
-    (state as? ImportUiState.Ready)?.terminalChoices?.let { ids ->
-        ImportChoiceDialog(
-            stringResource(R.string.settings_choose_terminal),
-            ids.map { it to it },
-            vm::chooseTerminal,
-            onDismiss = { vm.chooseTerminal(null) },
-        )
-    }
+    (state as? ImportUiState.Ready)?.terminalChoices?.let { TerminalChoiceDialog(it, vm::chooseTerminal) }
     (state as? ImportUiState.Ready)?.historySwitch?.let {
         HistorySwitchDialog(it.unfinished, { vm.reviewSetup(true) }, { vm.reviewSetup(false) })
     }
@@ -413,28 +406,6 @@ private fun ImportBottomBar(
 
         is ImportUiState.Scanning, ImportUiState.Importing -> {}
     }
-}
-
-@Composable
-private fun ImportChoiceDialog(
-    title: String,
-    choices: List<Pair<String, String>>,
-    onChoose: (String) -> Unit,
-    onDismiss: () -> Unit,
-) {
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(title) },
-        text = {
-            Column(Modifier.verticalScroll(rememberScrollState())) {
-                choices.forEach { (id, label) ->
-                    TextButton(onClick = { onChoose(id) }, modifier = Modifier.fillMaxWidth().testTag("importChoice_$id")) { Text(label) }
-                }
-            }
-        },
-        confirmButton = {},
-        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) } },
-    )
 }
 
 /** Previous, "code n of m", next and play/pause; stepping pauses the automatic advance. */
@@ -593,7 +564,7 @@ private fun ImportReady(
             if (received.hasSettings) Note(stringResource(R.string.transfer_settings_note))
             state.outcome?.let {
                 if (state.keyPending) {
-                    Card(Modifier.fillMaxWidth().testTag("keyUpdateCallout")) {
+                    Card(Modifier.testTag("keyUpdateCallout")) {
                         Text(stringResource(R.string.setup_key_update_title), style = MaterialTheme.typography.titleSmall)
                         Text(it.text(), color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }

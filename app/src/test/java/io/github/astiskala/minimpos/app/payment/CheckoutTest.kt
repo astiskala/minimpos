@@ -14,6 +14,7 @@ import io.github.astiskala.minimpos.core.cart.AppliedTax
 import io.github.astiskala.minimpos.core.cart.Cart
 import io.github.astiskala.minimpos.core.cart.CartProduct
 import io.github.astiskala.minimpos.core.money.CurrencySpec
+import io.github.astiskala.minimpos.core.payment.ScanWallet
 import io.github.astiskala.minimpos.core.shopper.EmailReferenceMode
 import io.github.astiskala.minimpos.core.tax.TaxMode
 import io.github.astiskala.minimpos.terminal.client.RecurringModel
@@ -45,6 +46,21 @@ class CheckoutTest {
         kind: SaleKind = SaleKind.SALE,
         printer: Boolean = true,
     ) = Checkout(form, payment, totals, aud, kind, printer)
+
+    @Test
+    fun `scanned wallet sales keep saving consent but remove receipt tipping without changing the form`() {
+        val state =
+            checkout(
+                form = CheckoutForm(customerReference = "CUST-1", tokenize = true, tipOnReceipt = true),
+                payment = PaymentSettings(offerCardSaving = true, receiptTipping = ReceiptTipping.DEFAULT_ON),
+            ).copy(wallets = listOf(ScanWallet.WECHAT_PAY))
+        val start = checkNotNull(state.walletStart(now, ZoneOffset.UTC))
+        assertThat(start.manualCapture).isFalse()
+        assertThat(start.tokenization).isNotNull()
+        assertThat(state.form.tipOnReceipt).isTrue()
+        assertThat(state.copy(kind = SaleKind.PRE_AUTHORISATION).walletStart(now, ZoneOffset.UTC)).isNull()
+        assertThat(state.copy(wallets = emptyList()).canScanWallet).isFalse()
+    }
 
     @Test
     fun `completing a payment clears only its originating session revision`() =

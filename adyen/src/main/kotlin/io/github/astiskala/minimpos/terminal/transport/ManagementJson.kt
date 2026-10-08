@@ -22,6 +22,9 @@ private val apiMapper =
     JSON.getMapper().copy().apply {
         disable(DeserializationFeature.ACCEPT_FLOAT_AS_INT)
         enable(DeserializationFeature.FAIL_ON_TRAILING_TOKENS)
+        coercionConfigFor(LogicalType.Boolean)
+            .setCoercion(CoercionInputShape.String, CoercionAction.Fail)
+            .setCoercion(CoercionInputShape.Integer, CoercionAction.Fail)
         registerModule(
             SimpleModule().apply {
                 setDeserializers(

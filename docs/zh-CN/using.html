@@ -57,7 +57,7 @@
           <li><a href="#business">开始销售前</a><ul>
             <li><a href="#pricing">币种和税费</a></li><li><a href="#products">商品</a></li><li><a href="#staff">员工 PIN</a></li>
           </ul></li>
-          <li><a href="#sell">银行卡收款</a></li><li><a href="#refund">退款或撤销</a></li>
+          <li><a href="#sell">银行卡收款</a></li><li><a href="#wallets">扫描钱包付款码</a></li><li><a href="#refund">退款或撤销</a></li>
           <li><a href="#receipts">收据</a><ul>
             <li><a href="#customize-receipts">自定义收据</a></li><li><a href="#language-receipts">收据语言</a></li><li><a href="#email">电子收据</a></li>
           </ul></li>
@@ -69,7 +69,7 @@
           <li><a href="#business">开始销售前</a><ul>
             <li><a href="#pricing">币种和税费</a></li><li><a href="#products">商品</a></li><li><a href="#staff">员工 PIN</a></li>
           </ul></li>
-          <li><a href="#sell">银行卡收款</a></li><li><a href="#refund">退款或撤销</a></li>
+          <li><a href="#sell">银行卡收款</a></li><li><a href="#wallets">扫描钱包付款码</a></li><li><a href="#refund">退款或撤销</a></li>
           <li><a href="#receipts">收据</a><ul>
             <li><a href="#customize-receipts">自定义收据</a></li><li><a href="#language-receipts">收据语言</a></li><li><a href="#email">电子收据</a></li>
           </ul></li>
@@ -126,6 +126,25 @@
           <p>客户识别号、保存卡片和小费均可选；参见<a href="#shoppers">识别号和保存卡片</a>。如需让顾客在自己的手机上付款，请使用<a href="#payment-links">支付链接</a>。付款被拒绝时，请参阅<a href="troubleshooting.html#declines">付款被拒绝</a>。</p>
           <p class="back-to-contents"><a href="#contents">返回目录</a></p>
         </section>
+        <section id="wallets">
+          <h2>扫描顾客的钱包付款码</h2>
+          <p>在销售结账时使用<strong>扫描钱包</strong>读取顾客钱包应用中的付款码。这与扫描商品条码或退款收据不同。此功能需要实体支付终端，不适用于 Tap to Pay；<a href="getting-started.html#credentials">钱包查询需要可选的只读权限</a>。</p>
+          <ol>
+            <li>核对合计和结账字段后点按<strong>扫描钱包</strong>。若已选择收据小费，请确认不使用该选项：钱包会立即收取合计，而不是进行预授权。</li>
+            <li>选择顾客的钱包。只有一个可用钱包时会自动选择。仅显示单独配置的钱包；Alipay+ 不代表 GCash、DANA、Kakao Pay 或 TrueMoney 已分别启用。</li>
+            <li>终端确认配备内置扫描器时，按下该终端的扫描按钮。它可能是网络或云端终端，而非运行 Mini mPOS 的设备。要改用设备摄像头，请点按<strong>使用摄像头</strong>。</li>
+            <li>扫描顾客的付款二维码或付款条码。一个有效扫描会立即开始支付。等待普通支付结果并提供收据。</li>
+          </ol>
+          <p>取消会保留购物车和结账字段。无效码不会付款：请重新扫描或更换钱包。终端扫描最多持续 30 秒；之后可点按<strong>重新扫描</strong>或使用摄像头。离开应用会停止扫描，返回后需明确重新开始。不能手动输入或粘贴付款码。</p>
+          <p>顾客识别号和授权允许时，<strong>保存卡片</strong>会尝试保存支付信息，是否支持取决于钱包。只有返回保存的支付令牌才表示成功保存；没有令牌的已批准付款仍然有效。请参阅<a href="troubleshooting.html#wallets">钱包查询和支付问题</a>；不要通过再次扫码替代<a href="troubleshooting.html#unknown">结果未知的原付款</a>。</p>
+          <p>目标钱包包括 GCash、DANA、Kakao Pay、TrueMoney、PayMe、Alipay、AlipayHK、Alipay+、WeChat Pay、PayPal 和 Venmo，取决于终端门店、国家和币种的已启用 POS 配置。PayMe 扫码仍未验证，Adyen 已发布的限制与此功能相冲突，支付可能被拒绝。请使用 Adyen 的<a href="https://docs.adyen.com/point-of-sale/alternative-payment-methods/qr-code-wallets">钱包指南</a>和 <a href="https://docs.adyen.com/point-of-sale/alternative-payment-methods/qr-code-wallets/paypal-pos">PayPal/Venmo 指南</a>核对钱包开通情况和 TEST 行为。</p>
+          <div class="shot-pair">
+            <div class="terminal terminal-s1f2"><img src="../images/wallets.png" width="540" height="960" loading="lazy" alt="英文模拟器演示：为 $34.00 的销售选择钱包"></div>
+            <div class="terminal terminal-s1f2"><img src="../images/wallet-scan.png" width="540" height="960" loading="lazy" alt="英文模拟器演示：WeChat Pay 扫码流程和离线演示付款码按钮"></div>
+          </div>
+          <p class="fine">S1F2 风格终端插图中的英文模拟器演示，不会进行真实支付。模拟结果不证明钱包或内置扫描器实际支持此功能。</p>
+          <p class="back-to-contents"><a href="#contents">返回目录</a></p>
+        </section>
         <section id="refund">
           <h2>退款或撤销付款</h2>
           <dl class="settings-list">
@@ -150,7 +169,7 @@
           <p>在付款结果或交易记录中点按<strong>打印收据</strong>或<strong>发送电子收据</strong>。平板和手机还可点按<strong>分享收据</strong>，通过 Android 分享菜单发送图片。打印需要配有打印机的终端。</p>
           <h3 id="customize-receipts">自定义并测试收据</h3>
           <ol>
-            <li>在<strong>设置 › 收据</strong>中填写商家信息、抬头和页脚。也可点按<strong>从 Adyen 导入商家信息</strong>，从 Adyen 门店补充空白字段；这需要可选的 <a href="getting-started.html#credentials">Management API — Stores read</a> 角色。</li>
+            <li>在<strong>设置 › 收据</strong>中填写商家信息、抬头和页脚。也可点按<strong>从 Adyen 导入商家信息</strong>，从 Adyen 门店补充空白字段。如果终端没有门店，则仅从商家账户导入法人名称。这需要可选的 <a href="getting-started.html#credentials">Management API — Stores read</a> 或 Account read 角色。</li>
             <li>选择<strong>支付后自动打印</strong>、何时打印<strong>商家联</strong>，以及是否<strong>显示退款二维码</strong>。</li>
             <li>点按<strong>打印测试收据</strong>并检查打印效果。屏幕预览无法显示打印机的确切排版。</li>
           </ol>

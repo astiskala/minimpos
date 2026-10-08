@@ -8,6 +8,7 @@ import io.github.astiskala.minimpos.core.cart.Cart
 import io.github.astiskala.minimpos.core.cart.CartTotals
 import io.github.astiskala.minimpos.core.ids.Ids
 import io.github.astiskala.minimpos.core.money.CurrencySpec
+import io.github.astiskala.minimpos.core.payment.ScanWallet
 import io.github.astiskala.minimpos.core.shopper.ShopperReferences
 import io.github.astiskala.minimpos.core.tax.TaxMode
 import java.time.Duration
@@ -28,6 +29,7 @@ import java.time.ZoneId
  * @property linksAvailable Whether payment links can be created
  *   ([io.github.astiskala.minimpos.app.terminal.TerminalSetup.paymentLinks]).
  * @property sessionRevision Revision of the coherent session snapshot; null for a checkout made without a session.
+ * @property wallets Explicitly configured scanned wallets for this currency; empty when unavailable.
  */
 data class Checkout(
     val form: CheckoutForm = CheckoutForm(),
@@ -38,6 +40,7 @@ data class Checkout(
     val printerAvailable: Boolean = false,
     val linksAvailable: Boolean = false,
     internal val sessionRevision: Long? = null,
+    val wallets: List<ScanWallet> = emptyList(),
 ) {
     /** Whether the amount is only held (a pre-authorisation) rather than charged. */
     val preAuthorisation: Boolean get() = kind == SaleKind.PRE_AUTHORISATION
@@ -147,6 +150,18 @@ data class Checkout(
         val lifetime = minOf(Duration.ofHours(payment.linkExpiryHours.toLong()), MAX_LINK_LIFETIME)
         return PaymentLinkStart(start, now.plus(lifetime))
     }
+
+    /** Whether scanned wallets are offered, independently of entered-field validation. */
+    val offersScanWallet: Boolean get() = !preAuthorisation && wallets.isNotEmpty()
+
+    /** Whether a configured scanned wallet can pay this checkout now. */
+    val canScanWallet: Boolean get() = offersScanWallet && canPay
+
+    /** Immediate-charge sale at [now] in [zone], retaining saving consent but never receipt tipping; null when unavailable. */
+    fun walletStart(
+        now: Instant,
+        zone: ZoneId,
+    ): PaymentStart? = paymentStart(now, zone)?.copy(tipOnReceipt = false).takeIf { canScanWallet }
 
     /** Field limits. */
     companion object {

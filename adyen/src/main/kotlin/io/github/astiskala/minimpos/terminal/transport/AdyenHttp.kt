@@ -144,3 +144,6 @@ internal const val HTTP_UNAUTHORIZED = 401
 
 /** HTTP 403: the API key may not do this. */
 internal const val HTTP_FORBIDDEN = 403
+
+/** HTTP 404: Adyen does not know the requested resource. */
+internal const val HTTP_NOT_FOUND = 404

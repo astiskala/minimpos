@@ -74,11 +74,10 @@ class TerminalSetupViewModel(
     private val observedSettings: StateFlow<SettingsUiState>,
 ) : ViewModel() {
     private val _actions = MutableStateFlow(TerminalSetupActions())
-    private var automaticStarted = false
 
     init {
         launchWrite({ discovery.pendingKey() }) { offer ->
-            _actions.update { if (!automaticStarted && !it.terminals.running && it.revision == 0) it.copy(sharedKeyOffer = offer) else it }
+            _actions.update { if (!it.terminals.running && it.revision == 0) it.copy(sharedKeyOffer = offer) else it }
         }
     }
 
@@ -91,17 +90,6 @@ class TerminalSetupViewModel(
         present: Boolean,
     ) {
         _actions.update { it.copy(unsavedSecrets = if (present) it.unsavedSecrets + secret else it.unsavedSecrets - secret) }
-    }
-
-    /** When [requested], starts optional physical-terminal discovery once, never boarding. */
-    suspend fun startAutomaticSetup(requested: Boolean) {
-        if (!requested) return
-        observedSettings.first { it.loaded }
-        if (automaticStarted) return
-        automaticStarted = true
-        if (observedSettings.value.settings.terminal.mode != TerminalMode.PAYMENTS_APP) {
-            findTerminals()
-        }
     }
 
     /**

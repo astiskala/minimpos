@@ -18,6 +18,7 @@ import io.github.astiskala.minimpos.terminal.client.RecoveryPolicy
 import io.github.astiskala.minimpos.terminal.client.RecurringModel
 import io.github.astiskala.minimpos.terminal.client.RefundParams
 import io.github.astiskala.minimpos.terminal.client.RetryAdvice
+import io.github.astiskala.minimpos.terminal.client.ScannedPayment
 import io.github.astiskala.minimpos.terminal.client.TerminalClient
 import io.github.astiskala.minimpos.terminal.client.TerminalIdentity
 import io.github.astiskala.minimpos.terminal.client.TransactionOutcome
@@ -57,6 +58,17 @@ class TerminalSimulatorTest {
         )
 
     private fun pay(params: PaymentParams = tokenizing) = runBlocking { client.pay(params) as TransactionOutcome.Completed }.details
+
+    @Test
+    fun `scanned wallet demos report the wallet without inventing a card or successful tokenization`() {
+        val details = pay(tokenizing.copy(scannedPayment = ScannedPayment("wechatpay_pos", "133341022926803846")))
+        assertThat(details.success).isTrue()
+        assertThat(details.paymentBrand).isEqualTo("wechatpay_pos")
+        assertThat(details.maskedPan).isNull()
+        assertThat(details.tokenization).isNull()
+        assertThat(details.entryMode).isEqualTo("Scanned")
+        assertThat(details.customerReceipt.toString()).doesNotContain("133341022926803846")
+    }
 
     @Test
     fun `approves with receipts and tokenization`() {

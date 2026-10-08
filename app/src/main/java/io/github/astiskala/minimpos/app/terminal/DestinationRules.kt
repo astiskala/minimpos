@@ -30,6 +30,9 @@ sealed interface DestinationRules {
     /** Whether the Checkout API is simulated along with it ([ApiSetup.Simulated]). */
     val simulatesApi: Boolean get() = false
 
+    /** Whether shopper-presented scanned wallet payments are supported; hardware availability is checked separately. */
+    val scannedWallets: Boolean get() = false
+
     /** Whether Management terminal discovery can propose connection fields for this destination. */
     val discoversTerminals: Boolean get() = false
 

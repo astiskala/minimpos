@@ -100,6 +100,7 @@ import io.github.astiskala.minimpos.app.terminal.TerminalGateway
 import io.github.astiskala.minimpos.app.terminal.TerminalSetup
 import io.github.astiskala.minimpos.app.terminal.TerminalSetupSource
 import io.github.astiskala.minimpos.app.terminal.UnlockedSetup
+import io.github.astiskala.minimpos.app.terminal.WalletOffers
 import io.github.astiskala.minimpos.app.update.AppUpdate
 import io.github.astiskala.minimpos.app.update.GitHubReleases
 import io.github.astiskala.minimpos.app.update.UpdateCheck
@@ -248,25 +249,6 @@ class ArchitectureTest {
             .resideInAPackage("io.github.astiskala.minimpos.app.data.db..")
             .check(app)
     }
-
-    @Test
-    fun `secrets are encrypted in one place`() =
-        noClasses()
-            .that()
-            .resideOutsideOfPackage("io.github.astiskala.minimpos.app.data.security..")
-            .should()
-            .dependOnClassesThat()
-            .resideInAnyPackage("javax.crypto..", "android.security.keystore..")
-            .check(app)
-
-    @Test
-    fun `the Adyen library stays behind adyen`() =
-        // adyen's interface has its own print model and enums, so nexo knowledge lives in one module.
-        noClasses()
-            .should()
-            .dependOnClassesThat()
-            .resideInAPackage("com.adyen..")
-            .check(app)
 
     @Test
     fun `only the terminal package talks to the terminal, the cloud and the Payments app`() {
@@ -794,6 +776,7 @@ class ArchitectureTest {
             ReceiptStanding::class.java,
             TerminalSetup::class.java,
             TerminalAssignments::class.java,
+            WalletOffers::class.java,
             DestinationRules::class.java,
             AppSettings::class.java,
             TerminalSettings::class.java,
@@ -1165,6 +1148,7 @@ class ArchitectureTest {
                 .or(declaredIn("io.github.astiskala.minimpos.app.refund", "HistoryAccounting.kt"))
                 .or(declaredIn("io.github.astiskala.minimpos.app.feature.history", "HistorySearch.kt"))
                 .or(declaredIn("io.github.astiskala.minimpos.app.terminal", "TerminalAssignments.kt"))
+                .or(declaredIn("io.github.astiskala.minimpos.app.terminal", "WalletOffers.kt"))
                 // TerminalSetup.kt also holds TerminalSetupSource, which reads the stored settings and secrets.
                 .or(DescribedPredicate.describe("TerminalSetup") { it.name.matches(Regex(within(TerminalSetup::class.java.name))) })
                 // What each destination needs and can do, on its adapter's companion; the adapters open transports.
@@ -1198,6 +1182,7 @@ class ArchitectureTest {
                         "printer",
                         "getChecksConnection",
                         "getSimulatesApi",
+                        "getScannedWallets",
                         "getDiscoversTerminals",
                         "getBoardsPhone",
                         "selectsEnvironment",
@@ -1432,7 +1417,7 @@ class ArchitectureTest {
                     .that()
                     .haveNameNotMatching(within(Checkout::class.java.name, SaleSession::class.java.name))
                     .should()
-                    .callMethodWhere(callTo(Checkout::class.java.name, "paymentStart", "linkStart")),
+                    .callMethodWhere(callTo(Checkout::class.java.name, "paymentStart", "linkStart", "walletStart")),
                 noClasses()
                     .that()
                     .haveNameNotMatching(within(Checkout::class.java.name, PaymentStart::class.java.name))

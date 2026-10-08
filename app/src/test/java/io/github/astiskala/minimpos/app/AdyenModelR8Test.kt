@@ -12,6 +12,11 @@ import com.adyen.model.clouddevice.ConnectedDevicesResponse
 import com.adyen.model.management.Key
 import com.adyen.model.management.Merchant
 import com.adyen.model.management.Nexo
+import com.adyen.model.management.PaymentMethod
+import com.adyen.model.management.PaymentMethodResponse
+import com.adyen.model.management.Store
+import com.adyen.model.management.StoreLocation
+import com.adyen.model.management.Terminal
 import com.adyen.model.management.TerminalSettings
 import com.adyen.model.paymentsapp.BoardingTokenRequest
 import com.android.tools.r8.ClassFileConsumer
@@ -53,10 +58,26 @@ class AdyenModelR8Test {
                 TerminalSettings::class.java to
                     """{"nexo":{"encryptionKey":{"identifier":"test-key","version":1,"passphrase":"synthetic"}}}""",
                 Merchant::class.java to """{"id":"HarbourCoffeeCOM","name":"Harbour Coffee"}""",
+                Store::class.java to
+                    """{"id":"ST1","shopperStatement":"Harbour Coffee","phoneNumber":"+61212345678",""" +
+                    """"address":{"line1":"1 Main St","city":"Sydney","country":"AU"}}""",
+                PaymentMethodResponse::class.java to
+                    """{"data":[{"type":"wechatpay_pos","enabled":true,"allowed":true,"shopperInteraction":"pos","currencies":["AUD"]}]}""",
+                Terminal::class.java to """{"id":"S1F2L-123456789","model":"S1F2L","countryCode":"AU"}""",
                 BoardingTokenRequest::class.java to """{"boardingRequestToken":"synthetic"}""",
                 ConnectedDevicesResponse::class.java to """{"uniqueDeviceIds":["AMS1-1"]}""",
             )
-        shrink(cases.keys + listOf(Amount::class.java, LineItem::class.java, Nexo::class.java, Key::class.java)).use { loader ->
+        shrink(
+            cases.keys +
+                listOf(
+                    Amount::class.java,
+                    LineItem::class.java,
+                    Nexo::class.java,
+                    Key::class.java,
+                    PaymentMethod::class.java,
+                    StoreLocation::class.java,
+                ),
+        ).use { loader ->
             cases.forEach { (model, json) ->
                 val type = loader.loadClass(model.name)
                 val value = JSON.getMapper().readValue(json, type)

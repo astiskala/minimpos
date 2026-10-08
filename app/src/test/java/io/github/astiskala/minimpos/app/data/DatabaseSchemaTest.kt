@@ -84,6 +84,7 @@ class DatabaseSchemaTest {
                             totalMinor = 400,
                             status = SaleStatus.UNKNOWN,
                             merchantReference = "schema-sale",
+                            requestedWallet = "wechatpay_pos",
                             reason = StoredReason.NotSetUp(SetupProblem.API_KEY),
                             processedAt = 10,
                             captureStartedAt = 20,
@@ -100,6 +101,7 @@ class DatabaseSchemaTest {
                     assertThat(product.name).isEqualTo("Item")
                     assertThat(sale.sample).isTrue()
                     assertThat(sale.reason).isEqualTo(StoredReason.NotSetUp(SetupProblem.API_KEY))
+                    assertThat(sale.requestedWallet).isEqualTo("wechatpay_pos")
                     assertThat(sale.processedAt).isEqualTo(10)
                     assertThat(sale.captureStartedAt).isEqualTo(20)
                     assertThat(sale.captureProcessedAt).isEqualTo(30)

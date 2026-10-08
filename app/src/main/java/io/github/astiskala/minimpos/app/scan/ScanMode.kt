@@ -13,6 +13,9 @@ enum class ScanMode(
     /** QR codes only: refund codes on receipts and catalogue transfer codes. */
     QR(listOf(BarcodeFormat.QR_CODE)),
 
+    /** Shopper wallet payment codes, rendered as QR or Code 128; never matched against product SKUs. */
+    WALLET(listOf(BarcodeFormat.QR_CODE, BarcodeFormat.CODE_128)),
+
     /** Product barcodes (retail 1D codes, plus QR and Data Matrix), matched against SKUs. */
     BARCODE(
         listOf(

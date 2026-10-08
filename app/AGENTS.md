@@ -23,9 +23,9 @@ Starred rules below are enforced by `ArchitectureTest`, `SettingsArchitectureTes
 - \* `PaymentStanding` alone reads capture/hold status (apart from `SaleEvent` writing it); `CaptureStatus.captured`
   defines captured statuses. `StoredPayment.actions` owns allowed actions and is checked by capture operations too.
 - \* Decision rules stay pure: Checkout, PaymentLinkRequests, SaleEvent, PaymentStanding, RefundablePayment,
-  HistorySearch, HistoryAccounting, TerminalAssignments, TerminalSetup, DestinationRules and settings models. No Android,
-  coroutines, repositories or clocks; do not rederive their decisions elsewhere. History filters reuse accounting's issue
-  meaning rather than reading pending/unknown status fields. `ReceiptStanding` owns receipt meaning;
+  HistorySearch, HistoryAccounting, TerminalAssignments, WalletOffers, TerminalSetup, DestinationRules and settings models.
+  No Android, coroutines, repositories or clocks; do not rederive their decisions elsewhere. History filters reuse
+  accounting's issue meaning rather than reading pending/unknown status fields. `ReceiptStanding` owns receipt meaning;
   only the stored-payment reading interprets the original payment context's simulator flag for demo links.
 - \* Only `TerminalSetupSource` calls `TerminalSetup.resolve` and reads destination/API secrets. Unlock once per call;
   unreadable secrets become typed setup problems. `boarding()` does the same for the Payments app credential.

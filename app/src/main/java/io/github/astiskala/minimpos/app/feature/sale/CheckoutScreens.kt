@@ -2,6 +2,7 @@ package io.github.astiskala.minimpos.app.feature.sale
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
@@ -23,6 +24,7 @@ import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Link
 import androidx.compose.material.icons.filled.Print
+import androidx.compose.material.icons.filled.QrCodeScanner
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.CircularProgressIndicator
@@ -90,6 +92,7 @@ import io.github.astiskala.minimpos.app.ui.theme.LocalDimens
 import io.github.astiskala.minimpos.core.money.CurrencySpec
 import io.github.astiskala.minimpos.core.money.MoneyFormatter
 import io.github.astiskala.minimpos.core.payment.PaymentMethods
+import io.github.astiskala.minimpos.core.payment.ScanWallet
 import io.github.astiskala.minimpos.core.receipt.ReceiptCopy
 import io.github.astiskala.minimpos.core.receipt.ReceiptDocument
 import io.github.astiskala.minimpos.core.shopper.ShopperReferences
@@ -110,9 +113,25 @@ fun CheckoutScreen(
     vm: CheckoutViewModel = checkoutViewModel(kind),
 ) {
     val state by vm.state.collectAsStateWithLifecycle()
-    val dimens = LocalDimens.current
     val money = rememberMoneyFormatter(state.currency)
     var confirmLink by remember { mutableStateOf(false) }
+    var confirmWallet by remember { mutableStateOf(false) }
+    val scanWallet = {
+        if (vm.scanWallet()) navigator.replace(Route.WalletScan)
+        Unit
+    }
+    if (confirmWallet) {
+        ConfirmDialog(
+            title = stringResource(R.string.checkout_scan_wallet),
+            message = stringResource(R.string.wallet_without_tip),
+            confirmLabel = stringResource(R.string.checkout_scan_wallet),
+            onConfirm = {
+                confirmWallet = false
+                scanWallet()
+            },
+            onDismiss = { confirmWallet = false },
+        )
+    }
     val createLink = {
         vm.sendLink()?.let { navigator.replace(Route.PaymentLink(it, fresh = true)) }
         Unit
@@ -132,37 +151,45 @@ fun CheckoutScreen(
                 money,
                 onPay = { if (vm.pay()) navigator.replace(Route.Payment(kind)) },
                 onSendLink = { if (state.tipOnReceipt) confirmLink = true else createLink() },
+                onScanWallet = { if (state.tipOnReceipt) confirmWallet = true else scanWallet() },
             )
         },
     ) { padding ->
-        Column(
-            Modifier
-                .fillMaxSize()
-                .padding(padding)
-                .verticalScroll(rememberScrollState())
-                .padding(dimens.screenPadding),
-            horizontalAlignment = Alignment.CenterHorizontally,
-        ) {
-            Column(Modifier.widthIn(max = 560.dp), verticalArrangement = Arrangement.spacedBy(dimens.spacing)) {
+        CheckoutDetails(state, money, vm::update, Modifier.fillMaxSize().padding(padding))
+    }
+}
+
+@Composable
+private fun CheckoutDetails(
+    state: Checkout,
+    money: MoneyFormatter,
+    onUpdate: ((CheckoutForm) -> CheckoutForm) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val dimens = LocalDimens.current
+    Column(
+        modifier.verticalScroll(rememberScrollState()).padding(dimens.screenPadding),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Column(Modifier.widthIn(max = 560.dp), verticalArrangement = Arrangement.spacedBy(dimens.spacing)) {
+            Text(
+                money.format(state.totals.amounts.gross),
+                style = dimens.amountStyle,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.fillMaxWidth().testTag("checkoutAmount"),
+            )
+            if (state.preAuthorisation) {
                 Text(
-                    money.format(state.totals.amounts.gross),
-                    style = dimens.amountStyle,
+                    stringResource(R.string.checkout_pre_auth_note),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     textAlign = TextAlign.Center,
-                    modifier = Modifier.fillMaxWidth().testTag("checkoutAmount"),
+                    modifier = Modifier.fillMaxWidth().testTag("preAuthNote"),
                 )
-                if (state.preAuthorisation) {
-                    Text(
-                        stringResource(R.string.checkout_pre_auth_note),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        textAlign = TextAlign.Center,
-                        modifier = Modifier.fillMaxWidth().testTag("preAuthNote"),
-                    )
-                }
-                CartSummary(state, money)
-                CheckoutFields(state, onUpdate = vm::update)
-                CheckoutSwitches(state, onUpdate = vm::update)
             }
+            CartSummary(state, money)
+            CheckoutFields(state, onUpdate)
+            CheckoutSwitches(state, onUpdate)
         }
     }
 }
@@ -191,6 +218,7 @@ private fun CheckoutActions(
     money: MoneyFormatter,
     onPay: () -> Unit,
     onSendLink: () -> Unit,
+    onScanWallet: () -> Unit,
 ) {
     BottomActions {
         PrimaryButton(
@@ -203,16 +231,45 @@ private fun CheckoutActions(
             onClick = onPay,
             modifier = Modifier.testTag("pay"),
         )
-        if (state.canSendLink) {
-            SecondaryButton(
-                stringResource(R.string.checkout_send_link),
-                onSendLink,
-                icon = Icons.Default.Link,
-                modifier = Modifier.testTag("sendLink"),
-            )
+        BoxWithConstraints(Modifier.fillMaxWidth()) {
+            if (maxWidth >= 480.dp && state.offersScanWallet && state.canSendLink) {
+                Row(horizontalArrangement = Arrangement.spacedBy(LocalDimens.current.spacing)) {
+                    WalletCheckoutButton(state.canScanWallet, onScanWallet, Modifier.weight(1f))
+                    LinkCheckoutButton(onSendLink, Modifier.weight(1f))
+                }
+            } else {
+                Column(verticalArrangement = Arrangement.spacedBy(LocalDimens.current.spacing)) {
+                    if (state.offersScanWallet) WalletCheckoutButton(state.canScanWallet, onScanWallet)
+                    if (state.canSendLink) LinkCheckoutButton(onSendLink)
+                }
+            }
         }
     }
 }
+
+@Composable
+private fun WalletCheckoutButton(
+    enabled: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) = SecondaryButton(
+    stringResource(R.string.checkout_scan_wallet),
+    onClick,
+    enabled = enabled,
+    icon = Icons.Default.QrCodeScanner,
+    modifier = modifier.testTag("scanWallet"),
+)
+
+@Composable
+private fun LinkCheckoutButton(
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) = SecondaryButton(
+    stringResource(R.string.checkout_send_link),
+    onClick,
+    icon = Icons.Default.Link,
+    modifier = modifier.testTag("sendLink"),
+)
 
 /** The cart's lines, the tax (when it is charged) and the total. */
 @Composable
@@ -349,6 +406,8 @@ private fun checkoutViewModel(kind: SaleKind): CheckoutViewModel {
             container.terminalStatus.state,
             container::currency,
             container.links,
+            walletPayments = container.walletPayments,
+            discovery = container.walletDiscovery,
         )
     }
 }
@@ -585,7 +644,14 @@ private fun SalePaymentCard(sale: SaleEntity) {
                 null
             },
         )
-        LabeledValue(stringResource(R.string.detail_wallet), PaymentMethods.wallet(sale.paymentMethodVariant)?.displayName)
+        LabeledValue(
+            stringResource(R.string.detail_wallet),
+            ScanWallet.reported(sale.paymentMethodVariant ?: sale.paymentBrand)?.displayName
+                ?: PaymentMethods.wallet(sale.paymentMethodVariant)?.displayName,
+        )
+        sale.requestedWallet
+            ?.takeUnless { it == ScanWallet.reported(sale.paymentMethodVariant ?: sale.paymentBrand)?.brand }
+            ?.let { LabeledValue(stringResource(R.string.wallet_requested), PaymentMethods.brandName(it)) }
         LabeledValue(stringResource(R.string.detail_psp), sale.pspReference)
         if (sale.tokenizationRequested) {
             LabeledValue(

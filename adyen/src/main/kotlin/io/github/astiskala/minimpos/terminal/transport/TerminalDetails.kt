@@ -18,12 +18,16 @@ import kotlin.time.Duration.Companion.seconds
  * @property merchantAccount Assigned merchant account, never the reassignment target.
  * @property host Last reported Ethernet address, otherwise Wi-Fi address; possibly stale or blank.
  * @property storeId Currently assigned store ID, never the pending reassignment target; blank when not assigned to a store.
+ * @property model Hardware model reported by Management; blank when absent, never inferred as a scanner-equipped variant.
+ * @property countryCode Terminal country code; blank when absent, never replaced with the POS device's locale.
  */
 data class TerminalDetails(
     val id: String,
     val merchantAccount: String,
     val host: String,
     val storeId: String = "",
+    val model: String = "",
+    val countryCode: String = "",
 )
 
 /** A discovered encryption key, kept only in memory until encrypted storage; string conversion never reveals it.
@@ -392,6 +396,8 @@ class AdyenTerminalDetails(
                 ?.storeId
                 ?.trim()
                 .orEmpty(),
+            terminal.model?.trim().orEmpty(),
+            terminal.countryCode?.trim().orEmpty(),
         )
     }
 

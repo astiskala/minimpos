@@ -1,5 +1,6 @@
 package io.github.astiskala.minimpos.terminal
 
+import com.adyen.model.nexo.AdminResponse
 import com.adyen.model.nexo.AlignmentType
 import com.adyen.model.nexo.AmountsResp
 import com.adyen.model.nexo.BarcodeType
@@ -35,6 +36,7 @@ import com.adyen.model.nexo.TransactionStatusResponse
 import com.adyen.model.terminal.TerminalAPIRequest
 import com.adyen.model.terminal.TerminalAPIResponse
 import com.google.common.truth.Truth.assertThat
+import io.github.astiskala.minimpos.terminal.client.BarcodeScan
 import io.github.astiskala.minimpos.terminal.client.PaymentParams
 import io.github.astiskala.minimpos.terminal.client.PosApplication
 import io.github.astiskala.minimpos.terminal.client.PrintAlign
@@ -46,6 +48,7 @@ import io.github.astiskala.minimpos.terminal.client.RecoveryPolicy
 import io.github.astiskala.minimpos.terminal.client.RecurringModel
 import io.github.astiskala.minimpos.terminal.client.RefundParams
 import io.github.astiskala.minimpos.terminal.client.RetryAdvice
+import io.github.astiskala.minimpos.terminal.client.ScannedPayment
 import io.github.astiskala.minimpos.terminal.client.TerminalClient
 import io.github.astiskala.minimpos.terminal.client.TerminalIdentity
 import io.github.astiskala.minimpos.terminal.client.TransactionKind
@@ -170,6 +173,71 @@ class TerminalClientTest {
             metadata = mapOf("customerReference" to "C1"),
             requestCardAlias = true,
         )
+
+    @Test
+    fun `native barcode session reads a single code and ends the same session`() =
+        runTest {
+            val terminal =
+                client {
+                    respond {
+                        adminResponse =
+                            AdminResponse().apply {
+                                response =
+                                    result(
+                                        ResultType.SUCCESS,
+                                        additional = base64("""{"Barcode":{"Data":"000190468703","Symbology":"QR_CODE"}}"""),
+                                    )
+                            }
+                    }
+                }
+            val scanned = terminal.scanBarcode(42)
+            assertThat(scanned).isInstanceOf(BarcodeScan.Read::class.java)
+            assertThat((scanned as BarcodeScan.Read).code).isEqualTo("000190468703")
+            assertThat(scanned.toString()).doesNotContain("000190468703")
+            terminal.endBarcodeScan(42)
+            val bodies = sent.map { String(Base64.getDecoder().decode(it.saleToPOIRequest.adminRequest.serviceIdentification)) }
+            assertThat(bodies.first()).contains("\"Type\":\"Once\"")
+            assertThat(bodies.last()).contains("\"Type\":\"End\"")
+            assertThat(bodies).containsNoDuplicates()
+            assertThat(sent.all { it.saleToPOIRequest.paymentRequest == null }).isTrue()
+        }
+
+    @Test
+    fun `scanned wallets preserve payment facts and constrain the stored value instrument`() =
+        runTest {
+            val payment = ScannedPayment("wechatpay_pos", "133341022926803846")
+            client { respond { paymentResponse = approval() } }.pay(params.copy(scannedPayment = payment), "WALLET1")
+            val request = sent.single().saleToPOIRequest
+            val instrument = request.paymentRequest.paymentData.paymentInstrumentData
+            assertThat(instrument.paymentInstrumentType.value()).isEqualTo("StoredValue")
+            assertThat(instrument.storedValueAccountID.storedValueID).isEqualTo("133341022926803846")
+            assertThat(instrument.storedValueAccountID.storedValueAccountType.value()).isEqualTo("Other")
+            assertThat(instrument.storedValueAccountID.identificationType.value()).isEqualTo("BarCode")
+            assertThat(instrument.storedValueAccountID.entryMode.map { it.value() }).containsExactly("Scanned")
+            assertThat(request.paymentRequest.paymentTransaction.transactionConditions.allowedPaymentBrand).containsExactly("wechatpay_pos")
+            assertThat(request.paymentRequest.paymentTransaction.amountsReq.requestedAmount).isEqualTo(BigDecimal("12.50"))
+            assertThat(request.messageHeader.serviceID).isEqualTo("WALLET1")
+            assertThat(payment.toString()).doesNotContain("133341022926803846")
+            assertThat(payment.available).isFalse()
+        }
+
+    @Test
+    fun `unanswered scanned payment checks status without replaying its code`() =
+        runTest {
+            val payment = ScannedPayment("paypal_pos", "000190468703")
+            val outcome =
+                client { request ->
+                    if (request.saleToPOIRequest.paymentRequest != null) Delivery.MaybeSent("timeout") else empty
+                }.pay(params.copy(scannedPayment = payment), "WALLET2")
+            assertThat(outcome).isInstanceOf(TransactionOutcome.Unknown::class.java)
+            assertThat(sent.count { it.saleToPOIRequest.paymentRequest != null }).isEqualTo(1)
+            assertThat(
+                sent
+                    .first()
+                    .saleToPOIRequest.paymentRequest.paymentData.paymentInstrumentData.storedValueAccountID.storedValueID,
+            ).isEqualTo("000190468703")
+            assertThat(payment.available).isFalse()
+        }
 
     @Test
     fun `ordinary payments carry shopper email and references without saving a card`() =

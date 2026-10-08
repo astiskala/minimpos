@@ -315,7 +315,7 @@ class SettingsViewModel(
             is TerminalConnection.Connected -> {
                 val diagnosis = connection.diagnosis
                 val target = checks.api.target()
-                if (target.realAndReady) {
+                if (target.realAndReady && state.value.settings.receipt.businessDetailsMissing) {
                     businessImport.find(automatic = true)
                 }
                 ActionState(

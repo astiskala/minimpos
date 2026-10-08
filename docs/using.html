@@ -60,7 +60,7 @@
           <li><a href="#business">Before you sell</a><ul>
             <li><a href="#pricing">Currency and tax</a></li><li><a href="#products">Products</a></li><li><a href="#staff">Staff PINs</a></li>
           </ul></li>
-          <li><a href="#sell">Take a card payment</a></li><li><a href="#refund">Refund or cancel</a></li>
+          <li><a href="#sell">Take a card payment</a></li><li><a href="#wallets">Scan wallet codes</a></li><li><a href="#refund">Refund or cancel</a></li>
           <li><a href="#receipts">Receipts</a><ul>
             <li><a href="#customize-receipts">Customize receipts</a></li><li><a href="#language-receipts">Receipt language</a></li><li><a href="#email">Email receipts</a></li>
           </ul></li>
@@ -72,7 +72,7 @@
           <li><a href="#business">Before you sell</a><ul>
             <li><a href="#pricing">Currency and tax</a></li><li><a href="#products">Products</a></li><li><a href="#staff">Staff PINs</a></li>
           </ul></li>
-          <li><a href="#sell">Take a card payment</a></li><li><a href="#refund">Refund or cancel</a></li>
+          <li><a href="#sell">Take a card payment</a></li><li><a href="#wallets">Scan wallet codes</a></li><li><a href="#refund">Refund or cancel</a></li>
           <li><a href="#receipts">Receipts</a><ul>
             <li><a href="#customize-receipts">Customize receipts</a></li><li><a href="#language-receipts">Receipt language</a></li><li><a href="#email">Email receipts</a></li>
           </ul></li>
@@ -129,6 +129,25 @@
           <p>Customer references, card saving and tips are optional; see <a href="#shoppers">references and saved cards</a>. To let customers pay on their own phone, use a <a href="#payment-links">payment link</a>. If a payment is declined, see <a href="troubleshooting.html#declines">declined payments</a>.</p>
           <p class="back-to-contents"><a href="#contents">Back to contents</a></p>
         </section>
+        <section id="wallets">
+          <h2>Scan a shopper wallet code</h2>
+          <p>Use <strong>Scan wallet</strong> at sale checkout to read a payment code from the shopper’s wallet app. This is different from scanning a product barcode or a refund receipt. It works with a physical payment terminal, not Tap to Pay; <a href="getting-started.html#credentials">wallet discovery needs an optional read role</a>.</p>
+          <ol>
+            <li>Check the total and checkout fields, then tap <strong>Scan wallet</strong>. If receipt tipping is selected, confirm paying without it: the wallet charges the total immediately, not a pre-authorization.</li>
+            <li>Choose the shopper’s wallet. A single available wallet is selected automatically. Only individually configured wallets appear; Alipay+ does not imply separate GCash, DANA, Kakao Pay or TrueMoney choices.</li>
+            <li>On a confirmed scanner-equipped terminal, press its scan button. This may be the network/cloud terminal, not the device running Mini mPOS. To scan with the device’s camera instead, tap <strong>Use camera</strong>.</li>
+            <li>Scan the shopper’s payment QR code or payment barcode. One valid scan starts payment immediately. Wait for the normal payment result and deliver its receipt.</li>
+          </ol>
+          <p>Canceling keeps the cart and checkout fields. Invalid codes do not pay: scan again or change wallet. A native scan expires after 30 seconds; use <strong>Scan again</strong> or the camera. Leaving the app stops scanning; returning requires an explicit new scan. Codes cannot be typed or pasted.</p>
+          <p><strong>Save card</strong> requests best-effort saving when shopper reference and consent allow it. Wallet support varies; only a returned stored-payment token means details were saved. An approved payment without a token is still approved. <a href="troubleshooting.html#wallets">Handle wallet discovery or payment problems</a>; never replace an <a href="troubleshooting.html#unknown">unknown payment</a> by scanning again.</p>
+          <p>The targeted wallets are GCash, DANA, Kakao Pay, TrueMoney, PayMe, Alipay, AlipayHK, Alipay+, WeChat Pay, PayPal and Venmo, subject to enabled POS configuration for the terminal’s store, country and currency. PayMe scanning is intentionally unverified despite Adyen’s published limitation; it may be rejected. Confirm your wallet onboarding and TEST behavior using Adyen’s <a href="https://docs.adyen.com/point-of-sale/alternative-payment-methods/qr-code-wallets">wallet guide</a> and <a href="https://docs.adyen.com/point-of-sale/alternative-payment-methods/qr-code-wallets/paypal-pos">PayPal/Venmo guide</a>.</p>
+          <div class="shot-pair">
+            <div class="terminal terminal-s1f2"><img src="images/wallets.png" width="540" height="960" loading="lazy" alt="English simulator demo: choose a wallet for a $34.00 sale"></div>
+            <div class="terminal terminal-s1f2"><img src="images/wallet-scan.png" width="540" height="960" loading="lazy" alt="English simulator demo: WeChat Pay scan flow with an offline demo-code action"></div>
+          </div>
+          <p class="fine">English simulator demos in illustrated S1F2-style terminal frames. No real payments; simulator results do not establish provider or native-scanner support.</p>
+          <p class="back-to-contents"><a href="#contents">Back to contents</a></p>
+        </section>
         <section id="refund">
           <h2>Refund or cancel a payment</h2>
           <dl class="settings-list">
@@ -153,7 +172,7 @@
           <p>From a payment result or a History entry, tap <strong>Print receipt</strong> or <strong>Email receipt</strong>. Tablets and phones also offer <strong>Share receipt</strong>, which sends an image through Android's share menu. Printing needs a terminal with a printer.</p>
           <h3 id="customize-receipts">Customize and test receipts</h3>
           <ol>
-            <li>In <strong>Settings › Receipts</strong>, enter your business details, header and footer. Or tap <strong>Import business details from Adyen</strong> to fill blank fields from your Adyen store; this needs the optional <a href="getting-started.html#credentials">Management API — Stores read</a> role.</li>
+            <li>In <strong>Settings › Receipts</strong>, enter your business details, header and footer. Or tap <strong>Import business details from Adyen</strong> to fill blank fields from your Adyen store. If the terminal has no store, only the legal name comes from your merchant account. This needs the optional <a href="getting-started.html#credentials">Management API — Stores read</a> or Account read role.</li>
             <li>Choose <strong>Print automatically after payment</strong>, when to print a <strong>Merchant copy</strong>, and whether to <strong>Show refund QR code</strong>.</li>
             <li>Tap <strong>Print test receipt</strong> and check the printout. The on-screen preview does not show the printer's exact layout.</li>
           </ol>

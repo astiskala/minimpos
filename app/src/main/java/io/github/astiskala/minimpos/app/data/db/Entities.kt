@@ -213,6 +213,8 @@ data class SaleEntity(
     val shopperReference: String? = null,
     /** The shopper's email captured at checkout, if any. */
     val shopperEmail: String? = null,
+    /** Requested scanned-wallet routing brand; intent only, never proof of the actual payment method or a raw code. */
+    val requestedWallet: String? = null,
     /** Whether the shopper asked to save their card with this payment. */
     val tokenizationRequested: Boolean = false,
     /** Adyen's ID of the saved card, set when tokenization succeeded. */

@@ -1,15 +1,16 @@
 package io.github.astiskala.minimpos.app.terminal
 
 import com.google.common.truth.Truth.assertThat
+import io.github.astiskala.minimpos.app.FakeStoreDetails
 import io.github.astiskala.minimpos.app.TestEnvironment
 import io.github.astiskala.minimpos.app.await
 import io.github.astiskala.minimpos.app.data.db.SetupProblem
 import io.github.astiskala.minimpos.app.data.security.Secret
 import io.github.astiskala.minimpos.app.data.settings.ReceiptSettings
 import io.github.astiskala.minimpos.app.data.settings.TerminalMode
+import io.github.astiskala.minimpos.terminal.transport.MerchantLookup
 import io.github.astiskala.minimpos.terminal.transport.StoreDetails
-import io.github.astiskala.minimpos.terminal.transport.StoreDetailsApi
-import io.github.astiskala.minimpos.terminal.transport.StoreListing
+import io.github.astiskala.minimpos.terminal.transport.StoreLookup
 import io.github.astiskala.minimpos.terminal.transport.TerminalEnvironment
 import org.junit.After
 import org.junit.Test
@@ -18,24 +19,13 @@ import org.robolectric.RobolectricTestRunner
 
 @RunWith(RobolectricTestRunner::class)
 class ReceiptBusinessDetailsTest {
-    private val calls = mutableListOf<String>()
-    private var result: StoreListing = StoreListing.Listed(listOf(StoreDetails("ST1", "cafe", "Cafe", "1 Main St", "+61212345678")))
-    private var merchantResult: StoreListing = StoreListing.Listed(listOf(StoreDetails("Merchant", "", "Legal Shop", "", "")))
-    private val env =
-        TestEnvironment(
-            stores =
-                object : StoreDetailsApi {
-                    override suspend fun stores(merchantAccount: String): StoreListing {
-                        calls += merchantAccount
-                        return result
-                    }
-
-                    override suspend fun merchant(merchantAccount: String): StoreListing {
-                        calls += "merchant:$merchantAccount"
-                        return merchantResult
-                    }
-                },
+    private val stores =
+        FakeStoreDetails(
+            StoreLookup.Found(StoreDetails("Cafe", "1 Main St", "+61212345678")),
+            MerchantLookup.Found("Legal Shop"),
         )
+    private val calls get() = stores.calls
+    private val env = TestEnvironment(stores = stores)
     private val container = env.container
 
     @After
@@ -64,27 +54,30 @@ class ReceiptBusinessDetailsTest {
                 terminal =
                     it.terminal.copy(
                         merchantAccount = " Merchant ",
-                        storeId = "ST1",
+                        storeId = " ST1 ",
                         environment = TerminalEnvironment.LIVE,
                         liveUrlPrefix = "",
                     ),
             )
         }
         val before = await { container.settings.current() }
-        assertThat(read()).isEqualTo(ReceiptBusinesses.Found(ReceiptBusiness("Cafe", "1 Main St", "+61212345678")))
-        assertThat(calls).containsExactly("Merchant")
+        assertThat(read())
+            .isEqualTo(ReceiptBusinesses.Found(ReceiptBusiness("Cafe", "1 Main St", "+61212345678"), fromStore = true))
+        assertThat(calls).containsExactly("store:Merchant/ST1")
         assertThat(await { container.settings.current() }).isEqualTo(before)
-        result = StoreListing.Failed("Access denied")
+        stores.storeAnswer = StoreLookup.Missing
+        assertThat(read()).isEqualTo(ReceiptBusinesses.NotSetUp(SetupProblem.STORE_ACCESS))
+        stores.storeAnswer = StoreLookup.Failed("Access denied")
         assertThat(read()).isEqualTo(ReceiptBusinesses.Failed("Access denied"))
     }
 
     @Test
-    fun `merchant scope uses only merchant details and never lists unrelated stores`() {
+    fun `merchant scope uses only merchant details and never reads stores`() {
         env.useLinks()
         env.updateSettings { it.copy(terminal = it.terminal.copy(merchantAccount = "Merchant")) }
-        assertThat(read()).isEqualTo(ReceiptBusinesses.Found(ReceiptBusiness("Legal Shop", "", "")))
+        assertThat(read()).isEqualTo(ReceiptBusinesses.Found(ReceiptBusiness("Legal Shop", "", ""), fromStore = false))
         assertThat(calls).containsExactly("merchant:Merchant")
-        merchantResult = StoreListing.Failed("Account read denied")
+        stores.merchantAnswer = MerchantLookup.Failed("Account read denied")
         assertThat(read()).isEqualTo(ReceiptBusinesses.Failed("Account read denied"))
     }
 

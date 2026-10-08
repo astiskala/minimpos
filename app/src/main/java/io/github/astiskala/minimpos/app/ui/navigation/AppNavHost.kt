@@ -29,6 +29,7 @@ import io.github.astiskala.minimpos.app.feature.sale.PaymentLinkScreen
 import io.github.astiskala.minimpos.app.feature.sale.PaymentScreen
 import io.github.astiskala.minimpos.app.feature.sale.SaleResultScreen
 import io.github.astiskala.minimpos.app.feature.sale.SaleScreen
+import io.github.astiskala.minimpos.app.feature.sale.WalletScreen
 import io.github.astiskala.minimpos.app.feature.settings.OnboardingScreen
 import io.github.astiskala.minimpos.app.feature.settings.SettingsScreen
 import io.github.astiskala.minimpos.app.feature.settings.SettingsSectionScreen
@@ -80,6 +81,7 @@ fun AppNavHost() {
                 entry<Route.Sale> { SaleScreen(navigator, SaleKind.SALE) }
                 entry<Route.PreAuth> { SaleScreen(navigator, SaleKind.PRE_AUTHORISATION) }
                 entry<Route.Checkout> { CheckoutScreen(navigator, it.kind) }
+                entry<Route.WalletScan> { WalletScreen(navigator) }
                 entry<Route.Payment> { PaymentScreen(navigator, it.kind) }
                 entry<Route.SaleResult> { SaleResultScreen(it.saleId, navigator) }
                 entry<Route.PaymentLink> { PaymentLinkScreen(it.saleId, it.fresh, navigator) }
@@ -97,11 +99,7 @@ fun AppNavHost() {
                 entry<Route.TransferExport> { PinGate(navigator) { TransferExportScreen(navigator) } }
                 entry<Route.TransferImport> { PinGate(navigator) { TransferImportScreen(navigator) } }
                 entry<Route.Settings> { PinGate(navigator) { SettingsScreen(navigator) } }
-                entry<Route.SettingsSection> {
-                    PinGate(navigator) {
-                        SettingsSectionScreen(it.section, navigator, automaticSetup = it.automaticSetup)
-                    }
-                }
+                entry<Route.SettingsSection> { PinGate(navigator) { SettingsSectionScreen(it.section, navigator) } }
             },
     )
 }

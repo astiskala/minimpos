@@ -109,9 +109,12 @@ class SaleSession(
         checkout: Checkout,
         now: Instant,
         zone: ZoneId,
+        scannedWallet: Boolean = false,
     ): PaymentStart? =
         synchronized(this) {
-            checkout.takeIf { it.kind == kind && it.sessionRevision == revision }?.paymentStart(now, zone)
+            checkout.takeIf { it.kind == kind && it.sessionRevision == revision }?.let {
+                if (scannedWallet) it.walletStart(now, zone) else it.paymentStart(now, zone)
+            }
         }
 
     /** Builds a link from the displayed [checkout] at [now] in [zone]; null when unavailable or an edit made it stale. */

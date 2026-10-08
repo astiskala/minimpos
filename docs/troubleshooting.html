@@ -55,14 +55,14 @@
         <p class="toc-title">Guides</p><p><a href="getting-started.html">Getting started</a><br><a href="using.html">Using Mini mPOS</a><br><a href="troubleshooting.html" aria-current="page">Troubleshooting</a></p>
         <div class="desktop-contents"><p class="toc-title">On this page</p><ol>
           <li><a href="#unknown">Unknown result</a></li><li><a href="#declines">Declined payments</a></li>
-          <li><a href="#connection">Pairing and setup</a></li><li><a href="#network-dropouts">Network dropouts</a></li>
+          <li><a href="#wallets">Wallet scanning</a></li><li><a href="#connection">Pairing and setup</a></li><li><a href="#network-dropouts">Network dropouts</a></li>
           <li><a href="#modifications">Captures and adjustments</a></li><li><a href="#links">Payment links</a></li>
           <li><a href="#receipts">Printer and email</a></li><li><a href="#access">PINs and transfers</a></li>
           <li><a href="#install">Installation</a></li><li><a href="#help">Get help</a></li>
         </ol></div>
         <details class="mobile-contents"><summary class="toc-title">On this page</summary><ol>
           <li><a href="#unknown">Unknown result</a></li><li><a href="#declines">Declined payments</a></li>
-          <li><a href="#connection">Pairing and setup</a></li><li><a href="#network-dropouts">Network dropouts</a></li>
+          <li><a href="#wallets">Wallet scanning</a></li><li><a href="#connection">Pairing and setup</a></li><li><a href="#network-dropouts">Network dropouts</a></li>
           <li><a href="#modifications">Captures and adjustments</a></li><li><a href="#links">Payment links</a></li>
           <li><a href="#receipts">Printer and email</a></li><li><a href="#access">PINs and transfers</a></li>
           <li><a href="#install">Installation</a></li><li><a href="#help">Get help</a></li>
@@ -107,6 +107,18 @@
               <dd><p><span class="fix-label">Cause</span>The payment was approved even though the terminal reported a cancellation.</p>
                 <p><span class="fix-label">Fix</span>Do not charge again. Refund it if the customer should not pay.</p></dd></div>
           </dl>
+          <p class="back-to-contents"><a href="#contents">Back to contents</a></p>
+        </section>
+        <section id="wallets">
+          <h2>Scan wallet is missing or scanning fails</h2>
+          <dl class="fixes">
+            <div><dt>No Scan wallet button</dt><dd><p>Open <strong>Settings › Terminal</strong> and tap <strong>Refresh scanned wallets</strong>. A successful check with no eligible POS wallets leaves the button hidden. Check the assigned store, current currency and <a href="getting-started.html#credentials">optional discovery role</a>. Tap to Pay and pre-authorizations do not offer this action.</p></dd></div>
+            <div><dt>Wallet discovery reports an error</dt><dd><p>The error appears only in Settings and does not block ordinary payments. Fix credential/environment or read access problems there. A temporary refresh failure keeps the last verified list for unchanged setup; a successful empty check or access failure removes it. Configuration is checked at startup/setup changes and manual refresh, not before every sale.</p></dd></div>
+            <div><dt>The code is invalid or no code arrives</dt><dd><p>Use the shopper’s payment code, not a profile, transfer or receipt QR. Choose the correct wallet. Native scanning ends after 30 seconds: tap <strong>Scan again</strong> or <strong>Use camera</strong>. Allow camera permission when requested. Returning from the background requires a new scan.</p></dd></div>
+            <div><dt>Saving is rejected or no token is created</dt><dd><p>Follow the payment’s result. An approved payment stays approved without a saved token. Only after a conclusive rejection, return to checkout, turn off <strong>Save card</strong> and explicitly start another scan if appropriate. There is no automatic replacement payment. For <strong>Result unknown</strong>, <a href="#unknown">check the original transaction</a> instead.</p></dd></div>
+            <div><dt>PayMe scanning is rejected</dt><dd><p>PayMe merchant scanning is best-effort and conflicts with Adyen’s published limitation. Ask for another payment method or use the terminal’s normal wallet flow; do not treat a simulator approval as provider support.</p></dd></div>
+          </dl>
+          <p>See <a href="using.html#wallets">the wallet payment procedure</a>. History’s requested wallet is intent, not proof that payment succeeded or that Adyen used that method.</p>
           <p class="back-to-contents"><a href="#contents">Back to contents</a></p>
         </section>
         <section id="connection">

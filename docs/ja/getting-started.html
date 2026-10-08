@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>はじめに – Mini mPOS</title>
-  <meta name="description" content="Mini mPOS をインストールし、決済先を選び、Adyen に接続して、本番運用の前に最初の決済をテストします。">
+  <meta name="description" content="前提条件を確認し、Mini mPOS をインストールして Adyen に接続し、本番運用の前に最初の決済をテストします。">
   <link rel="icon" href="../favicon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="../styles.css">
   <link rel="canonical" href="https://astiskala.github.io/minimpos/ja/getting-started.html">
@@ -14,7 +14,7 @@
   <link rel="alternate" hreflang="x-default" href="https://astiskala.github.io/minimpos/getting-started.html">
   <meta property="og:type" content="article">
   <meta property="og:title" content="Mini mPOS をはじめる">
-  <meta property="og:description" content="構成を選び、Adyen に接続して、最初の TEST 決済を行います。">
+  <meta property="og:description" content="前提条件、インストール、Adyen への接続、最初の TEST 決済。">
   <meta property="og:url" content="https://astiskala.github.io/minimpos/ja/getting-started.html">
   <meta property="og:image" content="https://astiskala.github.io/minimpos/images/social.png">
   <meta property="og:image:alt" content="Adyen 端末をイメージした Mini mPOS のイラストと英語のシミュレーターデモ。">
@@ -23,7 +23,7 @@
   <meta property="og:locale:alternate" content="zh_CN">
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="Mini mPOS をはじめる">
-  <meta name="twitter:description" content="構成を選び、Adyen に接続して、最初の TEST 決済を行います。">
+  <meta name="twitter:description" content="前提条件、インストール、Adyen への接続、最初の TEST 決済。">
   <meta name="twitter:image" content="https://astiskala.github.io/minimpos/images/social.png">
   <meta name="twitter:image:alt" content="Adyen 端末をイメージした Mini mPOS のイラストと英語のシミュレーターデモ。">
   <meta name="theme-color" content="#00112C">
@@ -49,154 +49,258 @@
     <details class="language-menu"><summary aria-label="言語：日本語" title="言語"><svg aria-hidden="true" class="globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 2.7 3.8 5.7 3.8 9s-1.3 6.3-3.8 9c-2.5-2.7-3.8-5.7-3.8-9S9.5 5.7 12 3z"/></svg><span class="language-current">日本語</span></summary><nav aria-label="言語"><ul><li><a href="../getting-started.html" hreflang="en" lang="en">English</a></li><li><a href="../zh-CN/getting-started.html" hreflang="zh-CN" lang="zh-CN">简体中文</a></li><li><a href="getting-started.html" hreflang="ja" lang="ja" aria-current="page">日本語</a></li></ul></nav></details>
   </div></header>
   <main id="main">
-    <section class="guide-hero"><div class="wrap"><p class="eyebrow">ガイド</p><h1>はじめに</h1><p class="lead">構成を選び、アプリをインストールして Adyen に接続します。まず TEST で確認し、本番決済の前に設定を点検してください。</p></div></section>
+    <section class="guide-hero"><div class="wrap"><p class="eyebrow">ガイド</p><h1>はじめに</h1><p class="lead">前提条件を確認し、アプリをインストールして Adyen に接続します。本番決済の前に、すべてを TEST でテストしてください。</p></div></section>
     <div class="wrap guide">
       <nav class="toc" id="contents" aria-label="ガイドナビゲーション">
         <p class="toc-title">ガイド</p><p><a href="getting-started.html" aria-current="page">はじめに</a><br><a href="using.html">Mini mPOS の使い方</a><br><a href="troubleshooting.html">トラブルシューティング</a></p>
         <div class="desktop-contents"><p class="toc-title">このページの内容</p><ol>
-          <li><a href="#try">まず試す</a></li><li><a href="#choose">構成を選ぶ</a></li><li><a href="#install">インストール</a></li>
-          <li><a href="#connect">Adyen に接続</a><ul>
-            <li><a href="#credentials">認証情報を用意する</a></li><li><a href="#shared-key-creation">不足している暗号化キーを作成</a></li><li><a href="#helper">パソコンからキーを入力</a></li>
-            <li><a href="#on-terminal">Adyen 端末で動かす</a></li><li><a href="#network">ネットワーク上の端末</a></li>
-            <li><a href="#cloud">クラウドの端末</a></li><li><a href="#tap-to-pay">Tap to Pay</a></li>
+          <li><a href="#choose">前提条件を確認する</a><ul>
+            <li><a href="#devices">デバイス</a></li><li><a href="#network-requirements">ネットワーク</a></li><li><a href="#credentials">Adyen の認証情報</a></li>
           </ul></li>
-          <li><a href="#first-payment">TEST 決済</a></li><li><a href="#live">本番運用</a></li>
+          <li><a href="#install">アプリをインストール</a></li>
+          <li><a href="#connect">Adyen に接続</a><ul>
+            <li><a href="#helper">設定コードを読み取る</a></li><li><a href="#on-terminal">Adyen 端末</a></li><li><a href="#network">ネットワーク上の端末</a></li>
+            <li><a href="#cloud">クラウドの端末</a></li><li><a href="#tap-to-pay">Tap to Pay</a></li><li><a href="#shared-key-creation">暗号化キーがない場合</a></li>
+          </ul></li>
+          <li><a href="#first-payment">TEST 決済</a></li><li><a href="#live">本番運用</a></li><li><a href="#try">シミュレーターを試す</a></li>
         </ol></div>
         <details class="mobile-contents"><summary class="toc-title">このページの内容</summary><ol>
-          <li><a href="#try">まず試す</a></li><li><a href="#choose">構成を選ぶ</a></li><li><a href="#install">インストール</a></li>
-          <li><a href="#connect">Adyen に接続</a><ul>
-            <li><a href="#credentials">認証情報を用意する</a></li><li><a href="#shared-key-creation">不足している暗号化キーを作成</a></li><li><a href="#helper">パソコンからキーを入力</a></li>
-            <li><a href="#on-terminal">Adyen 端末で動かす</a></li><li><a href="#network">ネットワーク上の端末</a></li>
-            <li><a href="#cloud">クラウドの端末</a></li><li><a href="#tap-to-pay">Tap to Pay</a></li>
+          <li><a href="#choose">前提条件を確認する</a><ul>
+            <li><a href="#devices">デバイス</a></li><li><a href="#network-requirements">ネットワーク</a></li><li><a href="#credentials">Adyen の認証情報</a></li>
           </ul></li>
-          <li><a href="#first-payment">TEST 決済</a></li><li><a href="#live">本番運用</a></li>
+          <li><a href="#install">アプリをインストール</a></li>
+          <li><a href="#connect">Adyen に接続</a><ul>
+            <li><a href="#helper">設定コードを読み取る</a></li><li><a href="#on-terminal">Adyen 端末</a></li><li><a href="#network">ネットワーク上の端末</a></li>
+            <li><a href="#cloud">クラウドの端末</a></li><li><a href="#tap-to-pay">Tap to Pay</a></li><li><a href="#shared-key-creation">暗号化キーがない場合</a></li>
+          </ul></li>
+          <li><a href="#first-payment">TEST 決済</a></li><li><a href="#live">本番運用</a></li><li><a href="#try">シミュレーターを試す</a></li>
         </ol></details>
       </nav>
       <div class="guide-body">
-        <section id="try">
-          <h2>アカウントなしで、まず試す</h2>
-          <p>初回起動時に<strong>サンプルでシミュレーターを試す</strong>、設定 QR コードを読み込む<strong>別のデバイスから設定</strong>、または<strong>端末を設定</strong>を選びます。シミュレーターを選ぶと、Adyen アカウントなしでサンプル商品と読み取り専用のデモ履歴を追加します。履歴と領収書にはデモと表示され、日次合計には含まれません。</p>
-          <p><strong>設定 › データ</strong>で<strong>サンプルデータを追加</strong>または<strong>サンプルデータを削除</strong>を選べます。編集済みのサンプル商品も削除対象ですが、ご自身の商品、履歴、税率、設定、およびご自身の商品が使うサンプルカテゴリは残ります。ここで追加しても支払先は変わりません。</p>
-          <p><a href="https://github.com/astiskala/minimpos/releases/latest">最新リリース</a>から <code>minimpos-&lt;version&gt;.apk</code> をダウンロードし、Android 9 以降のスマートフォンやエミュレーターで開きます。Android の案内に従い、ブラウザーやファイルマネージャーからのインストールを許可してください。</p>
-          <p>Adyen 端末以外では、初期状態で<strong>シミュレーター</strong>を使い、カードに請求しません。<strong>設定 › シミュレーター</strong>で承認、拒否、使用中、タイムアウトの結果、待ち時間、プリンターの有無を選べます。領収書は画面に表示され、予約金、チップ、キャプチャも試せます。オフラインのデモリンクは<a href="using.html#payment-links">支払いリンク</a>を参照してください。</p>
-          <p>ソースからビルドする場合は、<a href="https://github.com/astiskala/minimpos/blob/main/CONTRIBUTING.md">貢献者向けガイド</a>を参照してください。</p>
-          <p class="back-to-contents"><a href="#contents">目次に戻る</a></p>
-        </section>
         <section id="choose">
-          <h2>構成を選ぶ</h2>
-          <p><strong>デバイス</strong>が Mini mPOS を動かし、<strong>端末</strong>がカードを読み取ります。同じ機器でも構いません。</p>
+          <h2>前提条件を確認する</h2>
+          <p>設置日より前に確認してください。デバイスが Mini mPOS を動かし、端末がカードを読み取ります。同じ機器でも構いません。</p>
+          <h3 id="devices">デバイス構成を選ぶ</h3>
           <dl class="settings-list">
             <dt><a href="#on-terminal">Adyen 端末で動かす</a></dt><dd>1 台で会計を完結できます。Android 9 以降の Adyen Android 端末（S1F2、S1F4Pro、S1E4Pro、S1E2L、AMS1、S1U2、SFO1 など）が必要です。</dd>
-            <dt><a href="#network">タブレットやスマートフォンとネットワーク上の端末</a></dt><dd>カウンターのタブレットにおすすめです。Android 9 以降のデバイスと端末を同じネットワークに接続します。その端末への Mini mPOS のインストールは不要です。</dd>
-            <dt><a href="#cloud">タブレットやスマートフォンとクラウドの端末</a></dt><dd>別々のネットワークで使う構成です。Adyen Cloud device API を通して端末に決済を送ります。</dd>
+            <dt><a href="#network">タブレットやスマートフォンとネットワーク上の端末</a></dt><dd>カウンターにおすすめです。Android 9 以降のタブレットやスマートフォンを Adyen 端末と同じローカルネットワークに接続します。その端末への Mini mPOS のインストールは不要です。</dd>
+            <dt><a href="#cloud">タブレットやスマートフォンとクラウドの端末</a></dt><dd>デバイスと端末が別々のネットワークにある場合の構成です。どちらもインターネット接続が必要で、決済は Adyen を経由して端末に届きます。</dd>
             <dt><a href="#tap-to-pay">スマートフォンの Tap to Pay</a></dt><dd>別の端末は不要です。Google 認定の NFC 対応 Android 12 以降のスマートフォン、Adyen Payments アプリ、Adyen サポートによる有効化が必要です。Adyen の<a href="https://docs.adyen.com/point-of-sale/mobile-android/requirements">要件</a>と<a href="https://docs.adyen.com/point-of-sale/ipp-mobile">対応国・決済方法</a>を確認してください。</dd>
           </dl>
-          <p>印刷にはプリンター搭載端末、バーコード・領収書・設定コードの読み取りにはカメラが必要です。Tap to Pay にはプリンターがないため、領収書をメール送信または共有してください。</p>
-          <p class="note">Mini mPOS は独立したプロジェクトで、Adyen による製品、推奨、サポートではありません。本番決済には必要なサービスが有効な Adyen アカウント、Customer Area へのアクセス、Checkout API の認証情報が必要です。アカウントやプラットフォームの手順はリンク先の Adyen 文書に従ってください。</p>
+          <ul>
+            <li>印刷にはプリンター内蔵の端末が必要です。AMS1 端末と Tap to Pay のスマートフォンにはプリンターがないため、領収書をメール送信または共有してください。</li>
+            <li>バーコード、返金用 QR コード、設定コードの読み取りにはカメラが必要です。</li>
+          </ul>
+          <h3 id="network-requirements">ネットワークを準備する</h3>
+          <p>店舗のネットワーク管理者に、次の通信の許可を依頼してください。</p>
+          <dl class="settings-list">
+            <dt>インターネット（すべての実決済構成）</dt><dd>デバイスと端末から <code>*.adyen.com</code> と <code>*.adyenpayments.com</code> への TCP 443 の HTTPS 送信を許可します。Adyen の IP アドレスは変わるため、IP アドレスではなくドメイン名で許可してください。</dd>
+            <dt>ローカルネットワーク（ネットワーク上の端末）</dt><dd>タブレットやスマートフォンから端末の IP アドレスの TCP 8443 に接続できる必要があります。両方を同じネットワークに接続し、Wi-Fi のクライアント分離（ゲストネットワークでよく使われます）で隔てられていないことを確認してください。</dd>
+            <dt>領収書のメール送信（任意）</dt><dd>SMTP サーバーへの送信を許可します。通常は TCP 587（STARTTLS）または 465（SSL/TLS）です。</dd>
+          </dl>
+          <p>ネットワーク上の端末には、ルーターの DHCP 予約で固定 IP アドレスを割り当ててください。クラウドと Tap to Pay の構成ではタブレットやスマートフォンでモバイルデータを使えますが、ネットワーク上の端末とは使えません。端末自体の要件は Adyen の<a href="https://docs.adyen.com/point-of-sale/design-your-integration/network-and-connectivity/network-configuration">ネットワーク設定</a>を参照してください。</p>
+          <h3 id="credentials">Adyen の認証情報を用意する</h3>
+          <p>本番決済には、対面決済が有効な Adyen アカウントと Customer Area へのアクセスが必要です。端末と同じ環境（TEST または LIVE）の認証情報を使います。</p>
+          <ol>
+            <li>Customer Area の <strong>Developers › API credentials</strong> で Mini mPOS 用の認証情報を作成し、APIキーを生成します。Adyen の<a href="https://docs.adyen.com/development-resources/api-credentials">認証情報ガイド</a>を参照してください。</li>
+            <li>初期設定の <strong>Checkout webservice role</strong> はそのままにし、次のロールを追加します。
+              <ul class="roles">
+                <li><strong>Management API — Terminal actions read</strong></li>
+                <li><strong>Management API — Terminal settings read and write</strong></li>
+                <li><strong>Management API — Terminal settings Advanced read and write</strong></li>
+                <li><strong>Cloud Device API role</strong>（クラウドの端末のみ）</li>
+              </ul>
+              認証情報は端末の Company アカウントに属し、端末のマーチャントアカウントへのアクセス権が必要です。</li>
+            <li>任意：領収書の店舗情報を取り込む場合は、<strong>Management API — Stores read</strong>（店舗名、住所、電話番号）または <strong>Management API — Account read</strong>（法人名のみ）も追加します。</li>
+            <li><strong>マーチャントアカウント</strong>を控えます。LIVE では <strong>Developers › API URLs</strong> の <strong>LIVE URLプレフィックス</strong>も控えます。</li>
+            <li><strong>Devices › Device settings › Integrations › Terminal API › Encryption key</strong> で<strong>共有キー</strong>（識別子、パスフレーズ、バージョン）を確認します。物理端末では自動設定で取得できますが、Tap to Pay では入力が必要です。クラウドの端末では使いません。</li>
+            <li>Tap to Pay のみ：スマートフォンの登録用に、<strong>Adyen Payments app role</strong> だけを持つ別の認証情報を作成します。</li>
+          </ol>
+          <div class="callout callout-important" role="note">
+            <p class="callout-title">重要</p>
+            <p>Mini mPOS にはサーバーがないため、APIキーはデバイスに暗号化して保存します。上記のロールだけを持つ Mini mPOS 専用の認証情報を作成し、管理者PINを設定してください。デバイスを紛失したら認証情報を無効にします。<a href="https://github.com/astiskala/minimpos/blob/main/SECURITY.md">セキュリティポリシー</a>も確認してください。</p>
+          </div>
+          <div class="callout callout-note" role="note">
+            <p class="callout-title">注記</p>
+            <p>Mini mPOS は独立したプロジェクトで、Adyen による製品、推奨、サポートではありません。アカウントやプラットフォームの手順はリンク先の Adyen 文書に従ってください。</p>
+          </div>
           <p class="back-to-contents"><a href="#contents">目次に戻る</a></p>
         </section>
         <section id="install">
           <h2>アプリをインストールする</h2>
-          <p>すべての構成で、<a href="https://github.com/astiskala/minimpos/releases/latest">最新リリース</a>の署名済み APK を使います。</p>
-          <ul><li><strong>Adyen 端末：</strong>Adyen の<a href="https://docs.adyen.com/point-of-sale/android-terminals/deploy-apps">アプリ配布ガイド</a>に従い、Customer Area でアップロード・配布します。ユーザーにはアプリのアップロード・配布権限が必要です。</li><li><strong>タブレットやスマートフォン：</strong>デバイスで APK を開き、インストールを許可します。Adyen 経由の配布は不要です。</li></ul>
-          <p>更新時も同じ署名元を使ってください。端末が受け付ける後続バージョンは、同じキーで署名したものだけです。自分でビルドして署名する場合は、<a href="https://github.com/astiskala/minimpos/blob/main/CONTRIBUTING.md#signing-your-own-apk">貢献者向けガイド</a>を参照してください。</p>
+          <p><a href="https://github.com/astiskala/minimpos/releases/latest">最新リリース</a>から署名済みの <code>minimpos-&lt;version&gt;.apk</code> をダウンロードします。</p>
+          <dl class="settings-list">
+            <dt>Adyen 端末</dt><dd><ol><li>Customer Area で APK をアップロードし、端末に配布します。Adyen の<a href="https://docs.adyen.com/point-of-sale/android-terminals/deploy-apps">アプリ配布ガイド</a>を参照してください。ユーザーにはアプリのアップロード・配布権限が必要です。</li><li>端末で Mini mPOS を開き、<strong>端末を設定</strong>を選びます。</li></ol></dd>
+            <dt>タブレットやスマートフォン</dt><dd><ol><li>デバイスで APK を開き、Android の案内に従ってブラウザーやファイルマネージャーからのインストールを許可します。</li><li>Mini mPOS を開き、<strong>端末を設定</strong>を選びます。</li></ol></dd>
+          </dl>
+          <div class="callout callout-important" role="note">
+            <p class="callout-title">重要</p>
+            <p>更新は毎回同じ署名元からインストールしてください。端末は別のキーで署名した更新を拒否します。自分でビルドして署名する場合は<a href="https://github.com/astiskala/minimpos/blob/main/CONTRIBUTING.md#signing-your-own-apk">貢献者向けガイド</a>を参照してください。</p>
+          </div>
           <p class="back-to-contents"><a href="#contents">目次に戻る</a></p>
         </section>
         <section id="connect">
           <h2>Adyen に接続する</h2>
-          <p>該当する構成の手順だけを進めます。<strong>設定 › 端末</strong>でQRコードによるかんたんセットアップを使えます。タブレットやスマートフォンで手入力する場合は<strong>決済先</strong>を選びます。アプリの番号付き手順に必要事項が表示され、ホームには不足項目が表示されます。</p>
-          <h3 id="credentials">認証情報を用意する</h3>
-          <p><strong>Developers › API credentials</strong> で認証情報を作成し、APIキーを生成します。Adyen の<a href="https://docs.adyen.com/development-resources/api-credentials">認証情報ガイド</a>を参照してください。<strong>Checkout webservice role</strong> は初期設定で付与されます。構成に必要な追加ロールだけを設定してください：</p>
-          <ul>
-            <li><strong>Cloud Device API role</strong>：クラウド決済に必要です。</li>
-            <li><strong>Management API — Terminal actions read</strong>：手動と Tap to Pay を含む、すべての実決済設定で主 Adyen API 認証情報に必要です。端末の Company アカウントに属し、加盟店アカウントと端末へのアクセス権が必要です。</li>
-            <li><strong>Management API — Terminal settings read and write</strong>：キーの取得や作成を使わない場合も、すべての実決済設定で主認証情報に必要です。</li>
-            <li><strong>Management API — Terminal settings Advanced read and write</strong>：すべての実決済設定で必要です。機密性の高い共有キー設定の読み取りと作成に使います。</li>
-          </ul>
-          <p>この端末、ネットワーク上の端末、Tap to Pay では<strong>共有キー</strong>も用意します。<strong>Devices › Device settings › Integrations › Terminal API › Encryption key</strong> から識別子、パスフレーズ、バージョンを取得します。Adyen の<a href="https://docs.adyen.com/point-of-sale/design-your-integration/choose-your-architecture/local">ローカル統合ガイド</a>を参照してください。クラウドではこのキーは使いません。</p>
-          <p>ネットワークやクラウドの端末では、手順1は<strong>環境</strong>です。テストカードには<strong>TEST</strong>、実際の決済には<strong>LIVE</strong>を選びます。同じ環境の端末、アカウント、認証情報を使用してください。Mini mPOSは別の環境でAPIキーを試しません。Adyen端末で動く場合はデバイスの検証済み証明書を読み、Tap to PayではインストールしたPaymentsアプリの環境を使います。</p>
-          <p>現在の手順を完了すると次の手順が表示されます。<strong>Adyen API</strong>でAPIキーとマーチャントアカウントを一緒に入力し、LIVEではライブURLプレフィックスも入力します。<strong>APIをテスト</strong>（キーを入力した場合は<strong>APIを保存してテスト</strong>）が成功すると次に進めます。取得済み情報は、設定を開き直しても表示・編集できます。部分的に入力した項目も表示されます。</p>
-          <p>物理端末では、入力したキー、マーチャントアカウント、ライブURLプレフィックスのAPIテストが成功した後にだけ、<strong>Adyen API</strong>に<strong>設定を取得</strong>が表示されます。取得はその環境の端末情報を読み取ります。Adyen 端末上では検出した POIID を使い、端末の選択は不要です。ネットワークやクラウドの設定では端末一覧から選択でき、POIID が既知の確認はその ID だけを検索します。Adyen の<a href="https://docs.adyen.com/api-explorer/Management/3/get/terminals">端末一覧</a>と<a href="https://docs.adyen.com/api-explorer/Management/latest/get/terminals/(terminalId)/terminalSettings">端末設定</a>の API リファレンスを参照してください。アクセス確認に失敗すると設定を続行できません。認証情報の Company アカウント、権限、アクセス範囲を修正して再試行してください。共有キーは手入力もできますが、必須ロールの確認は省略できません。取得したアドレスが古い可能性があるため確認してください。Tap to Pay は主認証情報の必要ロールを確認しますが、物理端末を検索しません。</p>
-          <h3 id="shared-key-creation">不足している暗号化キーを作成</h3>
-          <p>ローカル通信を使う物理端末では、認証情報、アカウント、必須項目、Checkout の確認後に、設定の取得と自動 QR インポートで<strong>暗号化キーを作成</strong>を選べます。POIID と TEST/LIVE 環境を確認してください。この端末専用のランダムなキーをバージョン 1 で生成し、パスフレーズを暗号化して保存します。ローカルで指定した値は置き換えますが、継承したキーを含む Adyen の既存キーは再利用します。作成中は他の場所で同じ端末の設定を変更しないでください。クラウドと Tap to Pay ではこの操作は表示されません。</p>
-          <p>作成が中断した場合、<strong>キー設定を再開</strong>はまず Adyen の設定を読み、再試行が必要なら保存済みの同じキーを使います。QR 設定では同じコードを再読み取りし、その転送コードを入力してください。キャンセルしてもリモートのキーは残り、確認成功まで設定を有効にしません。端末がキーを適用していない場合は<a href="troubleshooting.html#key-setup">キー設定の復旧</a>を参照してください。</p>
+          <p>接続により、Mini mPOS を端末または Adyen Payments アプリとペアリングし（端末ペアリング）、Adyen APIキーを確認します。該当する構成の手順だけを進めてください。どの構成にも、<a href="setup.html">セットアップヘルパー</a>（推奨）と<strong>設定 › 端末</strong>での手入力の 2 つの方法があります。</p>
+          <p><strong>設定 › 端末</strong>では手順が 1 つずつ表示され、テストが成功すると次に進めます。Adyen から端末情報を補完する<strong>設定を取得</strong>は、APIテストが成功した後にだけ表示されます。不足している項目はホームに表示されます。</p>
           <figure class="guide-shot">
             <div class="terminal terminal-s1f2">
               <img alt="QRスキャンのショートカットとAdyen APIの手順がある端末設定" height="960" loading="lazy" src="../images/terminal-setup.png" width="540">
             </div>
             <figcaption class="fine">英語のエミュレーター設定デモです。実際の決済はありません。</figcaption>
           </figure>
-          <h3 id="helper">パソコンからキーを入力する</h3>
-          <p>信頼できるパソコンで<a href="setup.html">セットアップヘルパー</a>を開き、決済先とTEST/LIVEを選びます。<strong>自動（推奨）</strong>ではAPIキーを入力します。取得権限があればデバイスが端末のアカウント、アドレス、共有キーを調べます。スマートフォンやタブレットでは端末を選んで結果を確認してください。<strong>手動</strong>では接続情報をすべてパソコンで入力します。LIVEではどちらも<strong>live URL prefix</strong>が必要です。Tap to Payの共有キーは手動で入力します。インストールとスマートフォンの登録はデバイスで行います。<a href="#tap-to-pay">設定手順</a>を参照してください。</p>
-          <p>領収書メール用のSMTP設定も任意で含められます。プロバイダーの要件は<a href="using.html#email">メール設定</a>を参照してください。インポート後に<strong>設定 › メール</strong>を確認し、テストメールを送ります。</p>
-          <p><strong>QRコードを作成</strong>をクリックします。アプリの<strong>設定 › 端末</strong>で<strong>設定コードを読み取る</strong>か右上のスキャンアイコンをタップします。全コードを読み取り、決済先と環境を確認して、別に表示される12文字の転送コードを入力します。ハイフンは自動挿入されます。商品カタログや設定だけの場合も、すべての転送にコードが必要です。</p>
-          <p><strong>確認してインポート</strong>をタップします。自動取得で接続情報を補完でき、候補が複数ある場合だけ端末を選びます。認証情報、アカウント、接続の確認に成功するまで何もインポートしません。必須情報が不足する場合は、ヘルパーの<strong>手動</strong>で完全なコードを作り直してください。拒否されたインポートは現在の設定やカタログを変更しません。Tap to Pay は明示的な登録操作を求め、診断ではなく対応する確認を使います。</p>
-          <p>確認済みインポートは保存中断後に再開でき、カタログの置換や登録を繰り返しません。設定成功後はホームに戻ります。領収書情報の取得や Tap to Pay についての通知がある場合は、先に結果を表示します。保存した情報は設定で編集できます。任意の領収書設定では文面を手入力するか、割り当て店舗またはマーチャントアカウントから項目ごとに取得できます。自動取得は既存の文面を変更しません。<a href="setup.html">ヘルパー</a>と<a href="using.html#receipts">領収書の設定</a>を参照してください。設定 › 端末で直接設定することもできます。</p>
-          <h3 id="on-terminal">Adyen 端末で動かす</h3>
-          <p>先に<a href="#install">アプリをインストール</a>し、<a href="#credentials">認証情報を用意</a>してください。</p>
-          <dl class="settings-list">
-            <dt>セットアップヘルパー（推奨）</dt>
-            <dd>信頼できるパソコンで<a href="setup.html">セットアップヘルパー</a>を開き、<strong>Adyen端末で動かす</strong>、端末のTEST/LIVE環境、<strong>自動</strong>を選びます。Adyen APIキーと、LIVEの場合はライブURLプレフィックスを入力します。<a href="#helper">確認済みQRインポート手順</a>に従います。Mini mPOSはこの端末を特定し、アカウントと共有キーを取得してから、保存前にテストします。必須情報を取得できない場合はヘルパーの<strong>手動</strong>で完全なコードを作成してください。</dd>
-          </dl>
-          <details class="manual-setup">
-            <summary>手動</summary>
-            <ol><li><strong>設定 › 端末 › Adyen API</strong>でAdyen APIキーとマーチャントアカウントを入力し、LIVEではライブURLプレフィックスも入力します。APIテスト成功後、任意で<strong>設定を取得</strong>をタップして端末情報を補完できます。共有キーなしでこのデバイスの証明書を読み、TEST／LIVEを判別します。APIをテストすると共有キーの手順が表示されます。</li><li>共有キーを確認または入力し、<strong>接続をテスト</strong>（パスフレーズを入力した場合は<strong>保存してテスト</strong>）をタップします。アドレスと POIID はデバイスから検出します。</li></ol>
-          </details>
-          <h3 id="network">ネットワーク上の端末を使う</h3>
-          <p>先に<a href="#install">アプリをインストール</a>し、<a href="#credentials">認証情報を用意</a>してください。</p>
-          <dl class="settings-list">
-            <dt>セットアップヘルパー（推奨）</dt>
-            <dd>信頼できるパソコンで<a href="setup.html">セットアップヘルパー</a>を開き、タブレットまたはスマートフォンと同じネットワークの端末、端末のTEST/LIVE環境、<strong>自動</strong>を選びます。Adyen APIキーと、LIVEの場合はライブURLプレフィックスを入力します。<a href="#helper">確認済みQRインポート手順</a>に従います。候補が複数ある場合だけ端末を選び、割り当て、アドレス、共有キー、接続を保存前に確認します。完全な情報を取得できない場合はヘルパーの<strong>手動</strong>を選んでください。</dd>
-          </dl>
-          <details class="manual-setup">
-            <summary>手動</summary>
-            <ol><li><strong>ネットワーク上の端末</strong>を選び、手順1の<strong>環境</strong>で端末に合うTESTまたはLIVEを選びます。</li><li><strong>Adyen API</strong>でAdyen APIキーとマーチャントアカウントを入力し、LIVEではライブURLプレフィックスも入力します。APIテスト成功後に端末の手順と<strong>設定を取得</strong>が表示され、任意で取得した一覧から端末を選べます。</li><li>IPアドレスとPOIIDを確認または入力します。端末の「Device info」に両方が表示されます。入力が完了すると共有キーの手順が表示されます。</li><li>共有キーを確認または入力し、接続をテストします。</li></ol>
-          </details>
-          <p>接続時に端末の証明書が選択した環境と一致するか検証します。一致しなければ接続を拒否し、環境は自動変更しません。</p>
-          <h3 id="cloud">インターネット経由で端末を使う</h3>
-          <p>先に<a href="#install">アプリをインストール</a>し、<a href="#credentials">認証情報を用意</a>してください。</p>
-          <dl class="settings-list">
-            <dt>セットアップヘルパー（推奨）</dt>
-            <dd>信頼できるパソコンで<a href="setup.html">セットアップヘルパー</a>を開き、タブレットまたはスマートフォンとインターネット経由の端末（クラウド）、端末のTEST/LIVE環境、<strong>自動</strong>を選びます。Cloud Device API roleを持つAdyen APIキーと、LIVEの場合はライブURLプレフィックスを入力します。<a href="#helper">確認済みQRインポート手順</a>に従います。必要な場合だけ端末を選び、アカウント、POIID、APIアクセス、接続を保存前に確認します。情報を手入力する場合はヘルパーの<strong>手動</strong>を選びます。</dd>
-          </dl>
-          <details class="manual-setup">
-            <summary>手動</summary>
-            <ol><li>クラウドの決済先を選び、手順1の<strong>環境</strong>で端末に合うTESTまたはLIVEを選びます。</li><li><strong>Adyen API</strong>でCloud Device API roleを持つAdyen APIキーとマーチャントアカウントを入力し、LIVEではライブURLプレフィックスも入力します。APIテスト成功後に端末の手順と<strong>設定を取得</strong>が表示され、任意で取得した一覧から端末を選べます。</li><li>端末のPOIIDを確認または入力し、<strong>接続をテスト</strong>をタップします。APIも再確認します。</li></ol>
-          </details>
-          <p>選択した環境内でデータセンターを検索します。クラウド決済はローカル決済より端末の応答を長く待つ場合があります。</p>
-          <h3 id="tap-to-pay">Tap to Pay を使う</h3>
-          <p class="note">Tap to Pay on Androidを使うには、Adyenによるサービスと<strong>Adyen Payments app role</strong>の会社向け有効化が必要です。先に<a href="https://help.adyen.com/contact">Adyenサポートに連絡</a>してください。</p>
-          <p>先に<a href="#install">アプリをインストール</a>し、<a href="#credentials">認証情報を用意</a>してください。</p>
+          <h3 id="helper">パソコンから設定コードを読み取る</h3>
           <ol>
-            <li>Google Playから、TEST用の<a href="https://play.google.com/store/apps/details?id=com.adyen.ipp.mobile.companion.test">Adyen Payments Test</a>かLIVE用の<a href="https://play.google.com/store/apps/details?id=com.adyen.ipp.mobile.companion.live">Adyen Payments</a>をインストールします。両方は入れないでください。</li>
-            <li>Mini mPOSの<strong>設定 › 端末</strong>で<strong>このスマートフォンでTap to Pay</strong>を選びます。</li>
+            <li>信頼できるパソコンで<a href="setup.html">セットアップヘルパー</a>を開きます。オフラインで動作し、何も送信しません。</li>
+            <li>Mini mPOS を動かす場所と、環境（<strong>TEST</strong> または <strong>LIVE</strong>）を選びます。</li>
+            <li><strong>自動（推奨）</strong>では Adyen APIキーだけを入力し、残りはデバイスが取得します。<strong>手動</strong>では接続情報をすべて入力します。LIVE ではどちらも <strong>LIVE URLプレフィックス</strong>が必要です。</li>
+            <li>任意で、領収書の情報とメール（SMTP）設定を含めます。</li>
+            <li><strong>QRコードを作成</strong>をクリックします。12 文字の転送コードが表示されるため、ページは開いたままにします。</li>
+            <li>Mini mPOS の<strong>設定 › 端末</strong>で<strong>設定コードを読み取る</strong>か右上の QR アイコンをタップし、すべてのコードを読み取ります。</li>
+            <li>決済先と環境を確認し、転送コードを入力して<strong>確認してインポート</strong>をタップします。</li>
+            <li>案内があれば端末を選ぶか、Tap to Pay のスマートフォンを登録します。すべての確認に成功するまで何も保存されず、成功するとホームに戻ります。</li>
           </ol>
-          <p>インストールしたPaymentsアプリの環境の認証情報を、次のどちらかで入力します。</p>
+          <p>情報が不足しているとインポートで表示された場合は、<strong>手動</strong>で新しいコードを作成してください。SMTP 設定を含めた場合はテストメールを送ります。<a href="using.html#email">メール設定</a>を参照してください。</p>
+          <h3 id="on-terminal">Adyen 端末を接続する</h3>
+          <div class="callout callout-prereq" role="note">
+            <p class="callout-title">前提条件</p>
+            <ul>
+              <li>Mini mPOS を<a href="#install">端末に配布済み</a></li>
+              <li>端末と同じ環境の <a href="#credentials">Adyen APIキー</a></li>
+              <li>端末のインターネット接続</li>
+            </ul>
+          </div>
           <dl class="settings-list">
             <dt>セットアップヘルパー（推奨）</dt>
-            <dd>信頼できるパソコンで<a href="setup.html">セットアップヘルパー</a>を開き、Tap to Payと一致するTEST/LIVEを選びます。Adyen APIキー、マーチャントアカウント、別のPaymentsアプリのAPIキーを入力します。完全な共有キーをここで入力してください。LIVEではライブURLプレフィックスも必要で、店舗IDは任意です。<a href="#helper">確認済みQRインポート手順</a>に従い、インポート完了前に明示的な操作でスマートフォンを登録します。</dd>
+            <dd><a href="setup.html">セットアップヘルパー</a>で<strong>Adyen 端末で動かす</strong>、端末の <strong>TEST</strong> または <strong>LIVE</strong> 環境、<strong>自動</strong>を選びます。APIキーを入力し、<a href="#helper">コードを読み取ります</a>。Mini mPOS がこの端末のマーチャントアカウントと共有キーを取得します。</dd>
           </dl>
           <details class="manual-setup">
             <summary>手動</summary>
-            <p><strong>設定 › 端末 › Adyen API</strong>でAdyen APIキーとマーチャントアカウントを一緒に入力し、LIVEではライブURLプレフィックスも入力します。APIのテストが成功すると<strong>Tap to Pay</strong>が表示されます。別の<strong>PaymentsアプリのAPIキー</strong>（Adyen Payments app roleのみ）と、任意で店舗ID（referenceではありません）を入力します。</p>
+            <ol>
+              <li><strong>設定 › 端末 › Adyen API</strong>で Adyen APIキーとマーチャントアカウントを入力し、LIVE では LIVE URLプレフィックスも入力します。<strong>APIをテスト</strong>をタップし、任意で<strong>設定を取得</strong>をタップして共有キーを補完します。</li>
+              <li>共有キーを確認または入力し、<strong>接続をテスト</strong>をタップします。</li>
+            </ol>
           </details>
-          <p>どちらもAPIをテストしてから<strong>Tap to Payを設定</strong>をタップし、Paymentsアプリで登録を完了します。Checkoutとスマートフォンの登録には同じマーチャントアカウントを使います。登録すると<strong>共有キー</strong>が表示されます。</p>
-          <p>Mini mPOSはTap to Payの共有キーを取得しません。識別子、パスフレーズ、バージョンはヘルパーで入力するか、デバイスで直接手動設定する場合は設定画面で入力します。Paymentsアプリは診断接続テストに対応しません。登録、アカウントアクセス、必須項目を確認できますが、共有キーの診断はできません。取得済み項目は表示・編集できます。</p>
-          <p>Mini mPOSはAdyenの<a href="https://docs.adyen.com/point-of-sale/mobile-android/build/payments-app">Paymentsアプリガイド</a>の登録フローを実行します。登録状態を確認し、ワンタイム登録トークンを取得してPaymentsアプリに渡します。トークンをコピーする必要はありません。PaymentsアプリのAPIキーは登録の認証に、別のAdyen APIキーはCheckout操作に使います。共有キーはAdyenの要件に従って決済メッセージを暗号化するもので、登録しても必要です。</p>
-          <p>決済時は Payments アプリが開き、Mini mPOS に戻ります。インストールしたアプリが TEST／LIVE を決めます。後で登録を解除するには<strong>このスマートフォンを削除</strong>を使います。</p>
-          <p class="note">APIキーはこのデバイスに暗号化して保存します。Adyen はサーバーでの保管を推奨していますが、Mini mPOS にはサーバーがありません。必要最小限の権限を持つ、Mini mPOS専用の認証情報を使い、管理者PINを設定してください。漏えいや紛失時は認証情報を無効にします。<a href="https://github.com/astiskala/minimpos/blob/main/SECURITY.md">セキュリティポリシー</a>も確認してください。</p>
+          <p>端末の ID、アドレス、環境は自動で検出されます。</p>
+          <h3 id="network">ネットワーク上の端末をペアリングする</h3>
+          <div class="callout callout-prereq" role="note">
+            <p class="callout-title">前提条件</p>
+            <ul>
+              <li>タブレットやスマートフォンに Mini mPOS を<a href="#install">インストール済み</a></li>
+              <li>端末と同じ環境の <a href="#credentials">Adyen APIキー</a></li>
+              <li>デバイスと端末が<a href="#network-requirements">同じネットワーク</a>にあり、相互に TCP 8443 で通信できること</li>
+            </ul>
+          </div>
+          <dl class="settings-list">
+            <dt>セットアップヘルパー（推奨）</dt>
+            <dd><a href="setup.html">セットアップヘルパー</a>で<strong>タブレットやスマートフォンで動かす</strong>（同じネットワーク上の端末）、端末の <strong>TEST</strong> または <strong>LIVE</strong> 環境、<strong>自動</strong>を選びます。APIキーを入力し、<a href="#helper">コードを読み取ります</a>。複数の端末が見つかった場合は、使う端末を選びます。</dd>
+          </dl>
+          <details class="manual-setup">
+            <summary>手動</summary>
+            <ol>
+              <li><strong>設定 › 端末</strong>で<strong>決済先</strong>を<strong>ネットワーク上の端末</strong>にします。<strong>環境</strong>で端末に合う TEST または LIVE を選びます。</li>
+              <li><strong>Adyen API</strong>で Adyen APIキーとマーチャントアカウントを入力し、LIVE では LIVE URLプレフィックスも入力します。<strong>APIをテスト</strong>をタップし、任意で<strong>設定を取得</strong>をタップして端末を選びます。</li>
+              <li>端末の IP アドレスと<strong>端末ID（POIID）</strong>を確認または入力します。どちらも端末の「Device info」画面に表示されます。</li>
+              <li>共有キーを確認または入力し、<strong>接続をテスト</strong>をタップします。</li>
+            </ol>
+          </details>
+          <p>端末の環境が選択と一致しない場合、接続は拒否されます。</p>
+          <h3 id="cloud">クラウドの端末を接続する</h3>
+          <div class="callout callout-prereq" role="note">
+            <p class="callout-title">前提条件</p>
+            <ul>
+              <li>タブレットやスマートフォンに Mini mPOS を<a href="#install">インストール済み</a></li>
+              <li>端末と同じ環境で Cloud Device API role を持つ <a href="#credentials">Adyen APIキー</a></li>
+              <li>デバイスと端末のインターネット接続</li>
+            </ul>
+          </div>
+          <dl class="settings-list">
+            <dt>セットアップヘルパー（推奨）</dt>
+            <dd><a href="setup.html">セットアップヘルパー</a>で<strong>タブレットやスマートフォンで動かす</strong>（インターネット経由の端末（クラウド））、端末の <strong>TEST</strong> または <strong>LIVE</strong> 環境、<strong>自動</strong>を選びます。Cloud Device API role を持つ APIキーを入力し、<a href="#helper">コードを読み取ります</a>。複数の端末が見つかった場合は、使う端末を選びます。</dd>
+          </dl>
+          <details class="manual-setup">
+            <summary>手動</summary>
+            <ol>
+              <li><strong>設定 › 端末</strong>で<strong>決済先</strong>を<strong>インターネット経由の端末（クラウド）</strong>にします。<strong>環境</strong>で端末に合う TEST または LIVE を選びます。</li>
+              <li><strong>Adyen API</strong>で Adyen APIキーとマーチャントアカウントを入力し、LIVE では LIVE URLプレフィックスも入力します。<strong>APIをテスト</strong>をタップし、任意で<strong>設定を取得</strong>をタップして端末を選びます。</li>
+              <li><strong>端末ID（POIID）</strong>を確認または入力し、<strong>接続をテスト</strong>をタップします。</li>
+            </ol>
+          </details>
+          <p>クラウド決済は、ローカルの決済より端末に届くまで少し時間がかかる場合があります。</p>
+          <h3 id="tap-to-pay">Tap to Pay を設定する</h3>
+          <div class="callout callout-prereq" role="note">
+            <p class="callout-title">前提条件</p>
+            <ul>
+              <li>Adyen が会社向けに Tap to Pay と <strong>Adyen Payments app role</strong> を有効化済み。<a href="https://help.adyen.com/contact">Adyen サポートに連絡</a>してください</li>
+              <li><a href="#install">Mini mPOS をインストール</a>した<a href="#devices">対応スマートフォン</a></li>
+              <li><a href="#credentials">Adyen APIキー</a>、別の Payments アプリの APIキー、共有キー</li>
+            </ul>
+          </div>
+          <ol>
+            <li>Google Play から、TEST 用の <a href="https://play.google.com/store/apps/details?id=com.adyen.ipp.mobile.companion.test">Adyen Payments Test</a> か LIVE 用の <a href="https://play.google.com/store/apps/details?id=com.adyen.ipp.mobile.companion.live">Adyen Payments</a> をインストールします。両方は入れないでください。</li>
+            <li>Mini mPOS の<strong>設定 › 端末</strong>で<strong>このスマートフォンでTap to Pay</strong>を選びます。</li>
+          </ol>
+          <dl class="settings-list">
+            <dt>セットアップヘルパー（推奨）</dt>
+            <dd><a href="setup.html">セットアップヘルパー</a>で<strong>スマートフォンで動かす</strong>（Adyen Payments アプリの Tap to Pay）と、インストールしたアプリの <strong>TEST</strong> または <strong>LIVE</strong> 環境を選びます。Adyen APIキー、マーチャントアカウント、Payments アプリの APIキー、共有キー、任意で店舗IDを入力します。<a href="#helper">コードを読み取り</a>、案内に従ってスマートフォンを登録します。</dd>
+          </dl>
+          <details class="manual-setup">
+            <summary>手動</summary>
+            <p><strong>設定 › 端末 › Adyen API</strong>で Adyen APIキーとマーチャントアカウントを入力し、LIVE では LIVE URLプレフィックスも入力して、<strong>APIをテスト</strong>をタップします。<strong>Tap to Pay</strong>で<strong>PaymentsアプリのAPIキー</strong>（Adyen Payments app role のみ）と、任意で店舗IDを入力します。<strong>Tap to Payを設定</strong>をタップして Payments アプリで登録を完了し、共有キーを入力します。</p>
+          </details>
+          <p>Mini mPOS がスマートフォンを Adyen に登録（オンボーディング）するため、登録トークンをコピーする必要はありません。共有キーは引き続き決済メッセージを暗号化するもので、登録しても必要です。</p>
+          <p>Payments アプリは接続テストに対応しないため、<a href="#first-payment">TEST 決済</a>で設定を確認してください。決済中は Payments アプリが開き、終わると Mini mPOS に戻ります。後で登録を解除するには<strong>このスマートフォンを削除</strong>を使います。</p>
+          <h3 id="shared-key-creation">不足している暗号化キーを作成する</h3>
+          <p>物理端末に暗号化キーがまだない場合、認証情報とアカウントの確認後に<strong>暗号化キーを作成</strong>が表示されます。</p>
+          <ol>
+            <li>表示された端末IDと環境を確認してから確定します。作成中は、他の場所でこの端末の設定を変更しないでください。</li>
+            <li>接続がまだ確認されていない場合は、端末の設定を更新します。<a href="troubleshooting.html#key-setup">キー設定の復旧</a>を参照してください。</li>
+            <li>作成が中断した場合は<strong>キー設定を再開</strong>をタップします。QR 設定では、同じコードとその転送コードをもう一度読み取ります。</li>
+          </ol>
+          <p>Mini mPOS は Adyen の既存のキーを再利用し、置き換えることはありません。クラウドの端末と Tap to Pay ではこの操作は使いません。</p>
           <p class="back-to-contents"><a href="#contents">目次に戻る</a></p>
         </section>
         <section id="first-payment">
-          <h2>最初の TEST 決済を行う</h2>
-          <ol><li><strong>設定 › 端末</strong>で、選択または検出された環境が<strong>TEST</strong>であることを確認し、接続とAPIのテストを完了します。</li><li><strong>設定 › 決済</strong>で Adyen アカウントが受け付ける通貨を、<strong>設定 › 税</strong>で税率と税込・税抜設定を確認します。</li><li><strong>新規販売</strong>から任意の金額を入力して会計に進み、決済ボタンをタップして Adyen の<a href="https://docs.adyen.com/point-of-sale/testing-pos-payments">テストカード</a>を使います。</li><li>結果、領収書、取引履歴を確認し、返金も試します。結果が不明な場合は、別の決済を試す前に<a href="troubleshooting.html#unknown">復旧手順</a>に従ってください。</li></ol>
-          <p>次は<a href="using.html">Mini mPOS の使い方</a>で、商品、領収書、スタッフの権限、必要な業務フローを設定します。</p>
+          <h2>TEST 決済を行う</h2>
+          <ol>
+            <li><strong>設定 › 端末</strong>で、環境が <strong>TEST</strong> であり、接続と API のテストに成功していることを確認します。</li>
+            <li><strong>設定 › 決済</strong>で通貨を、<strong>設定 › 税</strong>で税率と税込・税抜の設定を確認します。</li>
+            <li>ホームで<strong>新規販売</strong>をタップし、<strong>任意の商品</strong>を追加して会計ボタンをタップします。</li>
+            <li>決済ボタンをタップし、Adyen の<a href="https://docs.adyen.com/point-of-sale/testing-pos-payments">テストカード</a>を使います。</li>
+            <li>結果、領収書、<strong>取引履歴</strong>の項目を確認します。その後、この決済を返金します。</li>
+          </ol>
+          <div class="callout callout-warning" role="note">
+            <p class="callout-title">警告</p>
+            <p>結果が不明な場合は、もう一度決済しないでください。先に<a href="troubleshooting.html#unknown">復旧手順</a>に従います。</p>
+          </div>
+          <p>次は<a href="using.html">Mini mPOS の使い方</a>で、商品、領収書、スタッフの権限を設定します。</p>
           <p class="back-to-contents"><a href="#contents">目次に戻る</a></p>
         </section>
         <section id="live">
-          <h2>本番決済の前に</h2>
-          <ul><li>予約金、チップ、支払いリンクなど、使うすべてのフローをテストしてください。シミュレーターは Adyen でのテストの代わりにはなりません。</li><li>プリンターがあれば実際のテスト領収書を印刷し、メール送信を使う場合はテストメールも送ります。</li><li>管理者PINと、必要ならマネージャーPINを設定します。<a href="using.html#business">店舗設定</a>を確認してください。</li><li>LIVEの端末またはPaymentsアプリとLIVE認証情報を使います。ネットワークやクラウドの端末では手順1で<strong>LIVE</strong>を選びます。Checkoutには<strong>Developers › API URLs</strong>の<strong>live URL prefix</strong>が必要です。Adyenの<a href="https://docs.adyen.com/development-resources/live-endpoints">LIVE エンドポイント</a>を参照してください。LIVEを選択または検出すると欄が表示されます。</li><li>接続とAPIをテストし、設定 › 端末で<strong>LIVE</strong>を確認します。ヘルパーはネットワークやクラウド端末の環境選択をインポートしますが、Adyen端末の証明書やインストールしたPaymentsアプリの環境は上書きしません。</li></ul>
+          <h2>本番運用を始める</h2>
+          <ol>
+            <li>予約金、チップ、支払いリンクなど、使うすべてのフローを TEST で試します。シミュレーターはこの代わりになりません。</li>
+            <li>実際のプリンターでテスト領収書を印刷し、メール送信を使う場合はテストメールも送ります。</li>
+            <li>管理者PINと、必要ならマネージャーPINを設定します。<a href="using.html#business">スタッフの権限</a>を参照してください。</li>
+            <li>LIVE の端末または LIVE 版 Payments アプリと、LIVE の認証情報に切り替えます。ネットワークやクラウドの端末では<strong>環境</strong>で <strong>LIVE</strong> を選びます。<strong>LIVE URLプレフィックス</strong>を入力します。Adyen の<a href="https://docs.adyen.com/development-resources/live-endpoints">LIVE エンドポイント</a>を参照してください。</li>
+            <li>接続と API をテストし、<strong>設定 › 端末</strong>に <strong>LIVE</strong> と表示されることを確認します。</li>
+          </ol>
+          <div class="callout callout-warning" role="note">
+            <p class="callout-title">警告</p>
+            <p>TEST、LIVE、シミュレーターを切り替えると、未完了の決済の復旧データを含め、デバイスのすべての決済履歴が削除されます。先に<strong>要確認</strong>の決済をすべて解決してください。</p>
+          </div>
           <p>困った場合は<a href="troubleshooting.html">トラブルシューティング</a>へ。</p>
+          <p class="back-to-contents"><a href="#contents">目次に戻る</a></p>
+        </section>
+        <section id="try">
+          <h2>シミュレーターを試す</h2>
+          <p>Adyen アカウントや端末がなくても Mini mPOS を試せます。カードへの請求はありません。</p>
+          <ol>
+            <li>Android 9 以降のスマートフォンかエミュレーターに<a href="#install">アプリをインストール</a>します。</li>
+            <li>ようこそ画面で<strong>サンプルでシミュレーターを試す</strong>を選びます。ほかに、設定 QR コードを読み込む<strong>別のデバイスから設定</strong>と、<strong>端末を設定</strong>があります。</li>
+            <li><strong>設定 › シミュレーター</strong>で、決済結果、待ち時間、プリンターの有無を選びます。</li>
+          </ol>
+          <p>サンプルの商品と履歴にはデモと表示され、日次合計には含まれません。<strong>設定 › データ</strong>で<strong>サンプルデータを追加</strong>または<strong>サンプルデータを削除</strong>を使えます。削除しても、ご自身の商品、履歴、設定は残ります。オフラインのデモリンクは<a href="using.html#payment-links">支払いリンク</a>を参照してください。ソースからビルドする場合は<a href="https://github.com/astiskala/minimpos/blob/main/CONTRIBUTING.md">貢献者向けガイド</a>を参照してください。</p>
           <p class="back-to-contents"><a href="#contents">目次に戻る</a></p>
         </section>
       </div>

@@ -510,9 +510,51 @@ pre {
   background: var(--green-light);
 }
 
+/* Guide callouts. Each states its kind in text, so the label is translated with the page. */
+.callout {
+  margin: 20px 0;
+  padding: 14px 18px;
+  border-left: 4px solid var(--green);
+  border-radius: 8px;
+  background: var(--green-light);
+}
+
+.callout > :first-child { margin-top: 0; }
+
+.callout > :last-child { margin-bottom: 0; }
+
+.callout ul, .callout ol { padding-left: 1.2em; }
+
+.callout li { margin-bottom: 4px; }
+
+.callout-title { margin: 0 0 6px; font-weight: 700; }
+
+.callout-prereq { border-left-color: var(--navy); background: var(--grey-light); }
+
+.callout-important { border-left-color: #2f6fdb; background: #eaf1fd; }
+
+.callout-warning { border-left-color: #b86e00; background: #fff4e0; }
+
 .settings-list dt { font-weight: 700; margin-top: 14px; }
 
 .settings-list dd { margin: 4px 0 0; color: var(--grey); }
+
+.settings-list dd ol { padding-left: 1.2em; }
+
+/* Troubleshooting: what you see, why, and what to do. */
+.fixes > div { padding: 14px 0; border-top: 1px solid var(--border); }
+
+.fixes > div:first-child { border-top: 0; padding-top: 4px; }
+
+.fixes dt { font-weight: 700; }
+
+.fixes dd { margin: 6px 0 0; }
+
+.fixes dd p { margin: 4px 0; }
+
+.fixes dd ol, .fixes dd ul { margin: 4px 0; padding-left: 1.2em; }
+
+.fix-label { margin-right: 6px; color: var(--grey); font-size: 0.85rem; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; }
 
 .manual-setup { margin: 14px 0; }
 

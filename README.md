@@ -47,14 +47,15 @@ Away from an Adyen terminal, the default is the simulator: no account, keys or r
 printer behavior in Settings › Simulator. Offline demo links let you try the payment-link workflow too.
 
 **Ready to connect to Adyen?** Follow [Getting started](https://astiskala.github.io/minimpos/getting-started.html).
-It covers supported devices, deployment and all four payment setups. Every real-payment setup needs the Checkout API;
-the [setup helper](https://astiskala.github.io/minimpos/setup.html) lets you enter keys on a computer and scan them in.
+It covers device, network and credential prerequisites, deployment and all four payment setups. Every real-payment
+setup needs the Checkout API; the [setup helper](https://astiskala.github.io/minimpos/setup.html) lets you enter keys
+on a computer and scan them in.
 
 | Guide | What it covers |
 | --- | --- |
-| [Getting started](https://astiskala.github.io/minimpos/getting-started.html) | Install, connect, test and go live. |
-| [Using Mini mPOS](https://astiskala.github.io/minimpos/using.html) | Configure your business, sell, refund, handle deposits and tips, and manage devices. |
-| [Troubleshooting](https://astiskala.github.io/minimpos/troubleshooting.html) | Setup problems, unknown payments, failed operations and recovery. |
+| [Getting started](https://astiskala.github.io/minimpos/getting-started.html) | Check prerequisites, install, connect, test and go live. |
+| [Using Mini mPOS](https://astiskala.github.io/minimpos/using.html) | Daily operations: sell, refund, receipts, closing the day, deposits, tips and more devices. |
+| [Troubleshooting](https://astiskala.github.io/minimpos/troubleshooting.html) | Unknown results, declines, pairing, network, capture, printer and email problems. |
 
 ## Important boundaries
 

@@ -13,9 +13,9 @@ class DailyReportGuideTest {
         val docs = Path.of(checkNotNull(System.getProperty("minimpos.website"))).toAbsolutePath().normalize()
         val terms =
             mapOf(
-                "en" to listOf("Local daily summary", "ignoring filters", "undated", "seeded samples", "safe retry data"),
-                "zh-CN" to listOf("本地每日汇总", "忽略筛选", "无日期", "示例", "安全重试数据"),
-                "ja" to listOf("ローカル日次集計", "フィルターを無視", "日付不明", "サンプル", "安全な再試行データ"),
+                "en" to listOf("Local daily summary", "ignoring filters", "undated", "safe retry data"),
+                "zh-CN" to listOf("本地每日汇总", "忽略筛选", "无日期", "安全重试数据"),
+                "ja" to listOf("ローカル日次集計", "フィルターを無視", "日付不明", "安全な再試行データ"),
             )
         terms.forEach { (language, required) ->
             val file = docs.resolve(if (language == "en") "using.html" else "$language/using.html")

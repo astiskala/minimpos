@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Using Mini mPOS</title>
-  <meta name="description" content="Run your business with Mini mPOS: products, sales, refunds, receipts, payment links, deposits, tips and additional devices.">
+  <meta name="description" content="Daily operations with Mini mPOS: take card payments, refund, deliver receipts, close the day, and handle payment links, deposits and tips.">
   <link rel="icon" href="favicon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="styles.css">
   <link rel="canonical" href="https://astiskala.github.io/minimpos/using.html">
@@ -14,7 +14,7 @@
   <link rel="alternate" hreflang="x-default" href="https://astiskala.github.io/minimpos/using.html">
   <meta property="og:type" content="article">
   <meta property="og:title" content="Using Mini mPOS">
-  <meta property="og:description" content="Practical guidance for everyday sales and the workflows your business needs.">
+  <meta property="og:description" content="Step-by-step daily operations: payments, refunds, receipts and closing the day.">
   <meta property="og:url" content="https://astiskala.github.io/minimpos/using.html">
   <meta property="og:image" content="https://astiskala.github.io/minimpos/images/social.png">
   <meta property="og:image:alt" content="Mini mPOS on illustrated Adyen terminals, showing English simulator demos.">
@@ -23,7 +23,7 @@
   <meta property="og:locale:alternate" content="ja_JP">
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="Using Mini mPOS">
-  <meta name="twitter:description" content="Practical guidance for everyday sales and the workflows your business needs.">
+  <meta name="twitter:description" content="Step-by-step daily operations: payments, refunds, receipts and closing the day.">
   <meta name="twitter:image" content="https://astiskala.github.io/minimpos/images/social.png">
   <meta name="twitter:image:alt" content="Mini mPOS on illustrated Adyen terminals, showing English simulator demos.">
   <meta name="theme-color" content="#00112C">
@@ -52,98 +52,129 @@
     </details>
   </div></header>
   <main id="main">
-    <section class="guide-hero"><div class="wrap"><p class="eyebrow">Guide</p><h1>Using Mini mPOS</h1><p class="lead">Set up your business and handle everyday payments. Add the optional workflows you need, without making every checkout more complicated.</p></div></section>
+    <section class="guide-hero"><div class="wrap"><p class="eyebrow">Guide</p><h1>Using Mini mPOS</h1><p class="lead">Step-by-step procedures for everyday work: take payments, refund, deliver receipts and close the day. Optional workflows follow at the end.</p></div></section>
     <div class="wrap guide">
       <nav class="toc" id="contents" aria-label="Guide navigation">
         <p class="toc-title">Guides</p><p><a href="getting-started.html">Getting started</a><br><a href="using.html" aria-current="page">Using Mini mPOS</a><br><a href="troubleshooting.html">Troubleshooting</a></p>
         <div class="desktop-contents"><p class="toc-title">On this page</p><ol>
-          <li><a href="#business">Products, pricing and staff</a><ul>
-            <li><a href="#pricing">Currency and tax</a></li><li><a href="#products">Add products</a></li><li><a href="#staff">Staff PINs</a></li>
+          <li><a href="#business">Before you sell</a><ul>
+            <li><a href="#pricing">Currency and tax</a></li><li><a href="#products">Products</a></li><li><a href="#staff">Staff PINs</a></li>
           </ul></li>
-          <li><a href="#sell">Take a sale</a></li><li><a href="#refund">Refund a payment</a></li><li><a href="#history">Find payments and totals</a></li>
-          <li><a href="#receipts">Deliver receipts</a><ul>
-            <li><a href="#customize-receipts">Customize receipts</a></li><li><a href="#language-receipts">Receipt language</a></li><li><a href="#email">Set up email</a></li>
+          <li><a href="#sell">Take a card payment</a></li><li><a href="#refund">Refund or cancel</a></li>
+          <li><a href="#receipts">Receipts</a><ul>
+            <li><a href="#customize-receipts">Customize receipts</a></li><li><a href="#language-receipts">Receipt language</a></li><li><a href="#email">Email receipts</a></li>
           </ul></li>
+          <li><a href="#history">History</a><ul><li><a href="#close-day">Close the day</a></li></ul></li>
           <li><a href="#shoppers">References and saved cards</a></li><li><a href="#payment-links">Payment links</a></li>
-          <li><a href="#preauth">Deposits and pre-authorizations</a></li><li><a href="#tips">Tips on the receipt</a></li><li><a href="#more">Devices and data</a></li>
+          <li><a href="#preauth">Deposits</a></li><li><a href="#tips">Tips on the receipt</a></li><li><a href="#more">More devices and data</a></li>
         </ol></div>
         <details class="mobile-contents"><summary class="toc-title">On this page</summary><ol>
-          <li><a href="#business">Products, pricing and staff</a><ul>
-            <li><a href="#pricing">Currency and tax</a></li><li><a href="#products">Add products</a></li><li><a href="#staff">Staff PINs</a></li>
+          <li><a href="#business">Before you sell</a><ul>
+            <li><a href="#pricing">Currency and tax</a></li><li><a href="#products">Products</a></li><li><a href="#staff">Staff PINs</a></li>
           </ul></li>
-          <li><a href="#sell">Take a sale</a></li><li><a href="#refund">Refund a payment</a></li><li><a href="#history">Find payments and totals</a></li>
-          <li><a href="#receipts">Deliver receipts</a><ul>
-            <li><a href="#customize-receipts">Customize receipts</a></li><li><a href="#language-receipts">Receipt language</a></li><li><a href="#email">Set up email</a></li>
+          <li><a href="#sell">Take a card payment</a></li><li><a href="#refund">Refund or cancel</a></li>
+          <li><a href="#receipts">Receipts</a><ul>
+            <li><a href="#customize-receipts">Customize receipts</a></li><li><a href="#language-receipts">Receipt language</a></li><li><a href="#email">Email receipts</a></li>
           </ul></li>
+          <li><a href="#history">History</a><ul><li><a href="#close-day">Close the day</a></li></ul></li>
           <li><a href="#shoppers">References and saved cards</a></li><li><a href="#payment-links">Payment links</a></li>
-          <li><a href="#preauth">Deposits and pre-authorizations</a></li><li><a href="#tips">Tips on the receipt</a></li><li><a href="#more">Devices and data</a></li>
+          <li><a href="#preauth">Deposits</a></li><li><a href="#tips">Tips on the receipt</a></li><li><a href="#more">More devices and data</a></li>
         </ol></details>
       </nav>
       <div class="guide-body">
         <section id="business">
-          <h2>Prepare products, pricing and staff access</h2>
-          <p>Connect payments first with <a href="getting-started.html">Getting started</a>. Then check these before adding your catalog.</p>
-          <h3 id="pricing">Currency and tax</h3>
-          <p>In <strong>Settings › Payments</strong>, choose a currency your Adyen account accepts; Automatic follows the device's region. In <strong>Settings › Tax</strong>, check the rates, whether prices include tax or add it at checkout, and the default rate for new products and custom items. Every product has a rate; use 0% for untaxed items. Switching off <strong>Charge tax</strong> stops charging tax but keeps the rates.</p>
-          <p>Changing currency or tax style asks for confirmation. A currency change keeps numeric prices, rounded to the new currency's precision—it does not perform an exchange-rate conversion. Review the preview and check product prices afterward.</p>
+          <h2>Prepare products, tax and staff access</h2>
+          <p>Do this once, after <a href="getting-started.html">connecting to Adyen</a>.</p>
+          <h3 id="pricing">Set the currency and tax</h3>
+          <ol>
+            <li>In <strong>Settings › Payments</strong>, choose a <strong>Currency</strong> that your Adyen account accepts for in-person payments.</li>
+            <li>In <strong>Settings › Tax</strong>, check the rates, whether prices include tax or tax is added at checkout, and the default rate for new products.</li>
+          </ol>
+          <p>Every product has a tax rate; use a 0% rate for untaxed items. Switching off <strong>Charge tax</strong> stops charging tax but keeps the rates.</p>
+          <div class="callout callout-important" role="note">
+            <p class="callout-title">Important</p>
+            <p>Changing the currency keeps the numbers in your prices; it does not convert them at an exchange rate. Check your product prices afterward.</p>
+          </div>
           <h3 id="products">Add products</h3>
-          <p>Open <strong>Products</strong>, tap <strong>+</strong> and enter a name, price and tax rate. Add a category or barcode if useful; barcodes can be typed or scanned. The Categories tab groups the sale grid. Mark deposits as <strong>Pre-authorization products</strong> to keep them separate from ordinary sales.</p>
-          <h3 id="staff">Control staff access</h3>
-          <p>In <strong>Settings › Security</strong>, set an <strong>admin PIN</strong> to protect Settings and Products, and choose the automatic re-lock time. Optionally set a separate <strong>Manager PIN</strong> for refunds, cancellations, captures and adjustments, including entering tips. Set the admin PIN first. To replace or remove it, use <strong>Change Admin PIN</strong> or <strong>Remove Admin PIN</strong> in the same section; removing it also removes the Manager PIN. Repeated incorrect attempts temporarily lock PIN entry.</p>
-          <p>For PIN problems, see <a href="troubleshooting.html#access">access troubleshooting</a>.</p>
+          <ol>
+            <li>Open <strong>Products</strong> and tap <strong>+</strong>.</li>
+            <li>Enter a name, price and tax rate. Optionally add a category and a barcode, typed or scanned.</li>
+            <li>For a deposit, switch on <strong>Pre-authorization product</strong> so that it appears only in pre-authorizations.</li>
+          </ol>
+          <h3 id="staff">Set staff PINs</h3>
+          <ol>
+            <li>In <strong>Settings › Security</strong>, tap <strong>Set admin PIN</strong>. It protects Settings and Products. Choose how soon the app locks again.</li>
+            <li>Optionally, tap <strong>Set Manager PIN</strong>. Staff then need it for refunds, cancellations, captures, amount adjustments and entering tips.</li>
+          </ol>
+          <p>To replace or remove the admin PIN, use <strong>Change Admin PIN</strong> or <strong>Remove Admin PIN</strong>; removing it also removes the Manager PIN. Repeated wrong attempts lock PIN entry for a while. For a forgotten PIN, see <a href="troubleshooting.html#access">PIN problems</a>.</p>
           <p class="back-to-contents"><a href="#contents">Back to contents</a></p>
         </section>
         <section id="sell">
-          <h2>Take a sale</h2>
+          <h2>Take a card payment</h2>
           <ol>
-            <li>On Home, tap <strong>New sale</strong>. Tap products, scan barcodes or add a custom item.</li>
-            <li>Tap <strong>Charge</strong>. Review the items, tax and total. Complete any references or email fields your business has enabled.</li>
-            <li>Tap <strong>Pay</strong> and follow the terminal or Payments app. Wait for the result before starting another payment.</li>
-            <li>Deliver the receipt from the result screen, or let automatic printing/emailing handle it.</li>
+            <li>On Home, tap <strong>New sale</strong>. Tap products, tap <strong>Scan barcode</strong>, or add a <strong>Custom item</strong>.</li>
+            <li>Tap <strong>Charge</strong>. Check the items, tax and total, and fill in any reference or email fields.</li>
+            <li>Tap <strong>Pay</strong>. The terminal, or the Adyen Payments app with Tap to Pay, asks the customer to pay.</li>
+            <li>Wait for the result. Do not start another payment until it appears.</li>
+            <li>Give the customer a receipt with <strong>Print receipt</strong>, <strong>Email receipt</strong> or <strong>Share receipt</strong>, unless it was delivered automatically.</li>
           </ol>
-          <p>Customer references, saved cards and tips are optional; see <a href="#shoppers">reference settings</a>. Use a <a href="#payment-links">payment link</a> if the customer should pay on their own phone instead.</p>
-          <p class="note">An unknown result does not mean the payment failed. <a href="troubleshooting.html#unknown">Check the original payment</a> before charging again.</p>
+          <div class="callout callout-note" role="note">
+            <p class="callout-title">Note</p>
+            <p>The terminal reads the card; Mini mPOS never receives full card details. Depending on the terminal and your Adyen account, customers can insert or tap a card, or tap a phone or watch. For contactless payments, the card or phone must stay near the contactless symbol until the terminal confirms. With Tap to Pay, follow the instructions in the Adyen Payments app.</p>
+          </div>
+          <div class="callout callout-warning" role="note">
+            <p class="callout-title">Warning</p>
+            <p><strong>Result unknown</strong> does not mean the payment failed. <a href="troubleshooting.html#unknown">Check the original payment</a> before charging again.</p>
+          </div>
+          <p>Customer references, card saving and tips are optional; see <a href="#shoppers">references and saved cards</a>. To let customers pay on their own phone, use a <a href="#payment-links">payment link</a>. If a payment is declined, see <a href="troubleshooting.html#declines">declined payments</a>.</p>
           <p class="back-to-contents"><a href="#contents">Back to contents</a></p>
         </section>
         <section id="refund">
-          <h2>Refund a payment</h2>
+          <h2>Refund or cancel a payment</h2>
+          <dl class="settings-list">
+            <dt>Refund</dt><dd>For a charged payment. Returns all or part of the money.</dd>
+            <dt>Cancel (void)</dt><dd>For a held payment that has not been captured: tap <strong>Cancel pre-authorization</strong> for a <a href="#preauth">deposit</a>, or <strong>Cancel payment</strong> for a sale <strong>Awaiting tip</strong>. This releases the hold.</dd>
+          </dl>
+          <p>To refund:</p>
           <ol>
-            <li>Tap <strong>Refund</strong> on Home and scan the receipt's refund QR code, or open the original sale in <strong>History</strong>.</li>
-            <li>Choose a full refund, an amount or individual items. Item refunds require the original sale on this device; a receipt from another device supports full or amount refunds.</li>
-            <li>Confirm the refund and obtain Manager PIN approval if configured.</li>
+            <li>On Home, tap <strong>Refund</strong> and scan the refund QR code on the receipt, or open the original sale in <strong>History</strong>.</li>
+            <li>Choose a full refund, an amount or individual items. Item refunds need the original sale on this device.</li>
+            <li>Confirm the refund, and enter the Manager PIN if asked.</li>
           </ol>
-          <p>Refunds are always linked to an original payment; unreferenced refunds are not supported. Refund a charged payment, but <a href="#preauth">cancel an uncaptured deposit</a>. Paid payment links must be refunded in the Customer Area.</p>
-          <p class="note"><strong>Refund requested</strong> means Adyen received the request, not that the shopper has received the money. Check the final outcome in the Customer Area; Mini mPOS has no server to receive webhooks.</p>
-          <p>If a refund's result is unknown, <a href="troubleshooting.html#unknown">check the original refund before retrying</a>.</p>
-          <p class="back-to-contents"><a href="#contents">Back to contents</a></p>
-        </section>
-        <section id="history">
-          <h2>Find a payment and review totals</h2>
-          <p><strong>History</strong> groups payments and refunds by day. Use the filter chips for sales, <strong>Awaiting tip</strong>, pre-authorizations, refunds or <strong>Needs attention</strong>, and the <strong>Payment method</strong> menu for a card brand or wallet.</p>
-          <p>Search by merchant or PSP reference, authorization code, shopper reference or email, card last four digits, brand, wallet or exact amount. On a small screen, tap the search icon first. Every word must match: <code>visa 34</code> finds Visa payments for 34 in the displayed currency. Refunds can also match their sale's shopper and card details.</p>
-          <p>On-screen daily totals follow your search and filters. Sales taken with manual capture, including receipt tips, count on the day Adyen accepts the capture. <strong>Held</strong> shows new authorizations that day, not the current outstanding balance. Capture-only days link back to the original payment.</p>
-          <p>Tap the print icon beside a day to print its <strong>Local daily summary</strong>. Printing uses the whole day, ignoring filters: sales, included tips, accepted refunds, net, new holds, and unresolved operations, separately per currency. TEST and simulator activity is labeled; seeded samples count in demo totals and disappear when removed. Only retained records on this device are included, not the whole Adyen account or terminal reconciliation. The report is not final settlement confirmation.</p>
-          <p>Paid links and captures without known processing dates appear separately as undated retained activity; they do not enter the selected day’s sales or net. Unpaid links do not count. Unresolved outcomes may change a later printout.</p>
-          <p class="note">Switching between LIVE, TEST, and simulator requires confirmation to permanently delete all local payment history and report data. An extra warning names unfinished payments: deletion does not cancel Adyen payments, authorizations, or links, and removes local recovery and safe retry data. Products and other settings remain. Cancel keeps the current environment and history.</p>
+          <p>Every refund is linked to its original payment; refunds without one are not supported. Refund paid payment links in the Customer Area.</p>
+          <div class="callout callout-important" role="note">
+            <p class="callout-title">Important</p>
+            <p><strong>Refund requested</strong> means Adyen received the request, not that the customer has the money. Check the final outcome in the Customer Area. If a refund's result is unknown, <a href="troubleshooting.html#unknown">check it before retrying</a>.</p>
+          </div>
           <p class="back-to-contents"><a href="#contents">Back to contents</a></p>
         </section>
         <section id="receipts">
           <h2>Print, email or share receipts</h2>
-          <p>From a result or History entry, use <strong>Print receipt</strong> or <strong>Email receipt</strong>. Tablets and phones also offer <strong>Share receipt</strong>, an image sent through Android's share sheet. Printing requires a connected terminal with a physical printer; Tap to Pay has none.</p>
-          <h3 id="customize-receipts">Customize and test</h3>
-          <p>In <strong>Settings › Receipts</strong>, set your business details, header and footer, references and refund QR code. Choose automatic printing and when to print a merchant copy. The preview helps with layout; always use <strong>Print test receipt</strong> to check the actual printer.</p>
-          <p><strong>Show tax amounts</strong> displays the tax included in or added to the total; it does not change the tax charged. <strong>Show tax breakdown</strong> lists the tax amount for each rate and is needed to display included tax with tax-inclusive prices. Independently, <strong>Show taxable totals by rate</strong> groups item totals by rate, including 0%: tax-inclusive totals for tax-inclusive prices, otherwise totals before tax.</p>
-          <p><strong>Show references</strong> is on by default. It prints the merchant reference and any entered customer reference so a receipt can be matched to a payment or customer. To identify items at a particular tax rate, set <strong>Marked tax rate (%)</strong>, an <strong>Item marker</strong> and its explanation. Leave the rate blank for no marking.</p>
-          <p><strong>Characters per line</strong> defaults to 32 for narrow receipt rolls. It controls printed dividers and plain-text receipts; the on-screen preview fits the available screen width. Use a test print to choose the width for your printer.</p>
-          <p>Adyen lookup fills blank receipt name, address and phone fields from the assigned store, requiring <a href="https://docs.adyen.com/api-explorer/Management/latest/get/merchants/(merchantId)/stores"><strong>Management API—Stores read</strong> access</a>. Without a store assignment, only the merchant account is read: <a href="https://docs.adyen.com/api-explorer/Management/latest/get/merchants/(merchantId)"><strong>Management API—Account read</strong> access</a> provides the legal name, not an address or phone. Unrelated stores are never offered. Lookup failure does not block otherwise verified setup: retry or enter unavailable details manually.</p>
-          <p><strong>Import business details from Adyen</strong> offers the same assignment-based lookup and a review. Automatic Adyen imports fill blanks only; saved text is preserved. To replace it, edit or clear the fields yourself. The <a href="setup.html">setup helper</a> also accepts explicit manual receipt text and per-field Adyen import choices. Adyen lookup does not change tax ID, title or footer.</p>
-          <h3 id="language-receipts">Language and receipt text</h3>
-          <p>The app supports English, Simplified Chinese and Japanese. On Android 12 or earlier it follows the device language; on Android 13 or later use Android's per-app language setting. Adyen's payment receipt lines follow the terminal's own receipt-language setting and stay as supplied. Test the printed layout, especially for Chinese and Japanese text.</p>
-          <h3 id="email">Set up email</h3>
-          <p>To enter SMTP details on a computer, include them in the <a href="setup.html">setup helper</a> and follow the <a href="getting-started.html#helper">QR import steps</a>. This is optional and does not enable automatic email delivery.</p>
-          <p>Open <strong>Settings › Email</strong>. Choose a provider or enter your SMTP server, sender and credentials. Use STARTTLS or SSL, and send a test email. In <strong>Settings › Payments › Email receipts</strong>, choose when to ask for the customer's email and whether to send automatically.</p>
-          <p>Emails collected before payment are always sent to Adyen for terminal payments and payment links, even when no card is saved. Emails collected afterward are receipt-only.</p>
-          <p>Provider buttons fill in server details, not account authorization. Follow your provider's instructions for SMTP access and the required password:</p>
+          <p>From a payment result or a History entry, tap <strong>Print receipt</strong> or <strong>Email receipt</strong>. Tablets and phones also offer <strong>Share receipt</strong>, which sends an image through Android's share menu. Printing needs a terminal with a printer.</p>
+          <h3 id="customize-receipts">Customize and test receipts</h3>
+          <ol>
+            <li>In <strong>Settings › Receipts</strong>, enter your business details, header and footer. Or tap <strong>Import business details from Adyen</strong> to fill blank fields from your Adyen store; this needs the optional <a href="getting-started.html#credentials">Management API — Stores read</a> role.</li>
+            <li>Choose <strong>Print automatically after payment</strong>, when to print a <strong>Merchant copy</strong>, and whether to <strong>Show refund QR code</strong>.</li>
+            <li>Tap <strong>Print test receipt</strong> and check the printout. The on-screen preview does not show the printer's exact layout.</li>
+          </ol>
+          <p>Importing from Adyen fills blank fields only; it never replaces text you saved. Other options:</p>
+          <dl class="settings-list">
+            <dt>Show tax amounts</dt><dd>Shows the tax included in, or added to, the total. It does not change the tax charged.</dd>
+            <dt>Show tax breakdown</dt><dd>Lists the tax for each rate. Needed to show included tax when prices include tax.</dd>
+            <dt>Show taxable totals by rate</dt><dd>Groups item totals by tax rate, including 0%.</dd>
+            <dt>Show references</dt><dd>On by default. Prints the merchant reference and any customer reference, so that a receipt can be matched to its payment.</dd>
+            <dt>Marked tax rate (%)</dt><dd>Marks items at that rate with an <strong>Item marker</strong> and its explanation. Leave it blank for no marker.</dd>
+            <dt>Characters per line</dt><dd>32 by default, for narrow receipt rolls. Choose the width for your printer with a test print.</dd>
+          </dl>
+          <h3 id="language-receipts">Set the language</h3>
+          <p>The app supports English, Simplified Chinese and Japanese. On Android 12 or earlier it follows the device language; on Android 13 or later, choose it in Android's per-app language settings. Adyen's card receipt lines follow the terminal's own receipt language. Test the printed layout, especially for Chinese and Japanese.</p>
+          <h3 id="email">Set up email receipts</h3>
+          <ol>
+            <li>Open <strong>Settings › Email (SMTP)</strong>. Choose your provider, or enter the SMTP server, port, sender and login. Use STARTTLS or SSL/TLS.</li>
+            <li>Send a test email.</li>
+            <li>In <strong>Settings › Payments › Email receipts</strong>, choose when to ask for the customer's email and whether to send receipts automatically.</li>
+          </ol>
+          <p>You can also enter SMTP details on a computer with the <a href="getting-started.html#helper">setup helper</a>. Provider buttons fill in server details only. Follow your provider's instructions to allow SMTP and get the right password:</p>
           <ul>
             <li><a href="https://support.google.com/mail/answer/185833">Gmail</a></li>
             <li><a href="https://learn.microsoft.com/en-us/exchange/mail-flow-best-practices/how-to-set-up-a-multifunction-device-or-application-to-send-email-using-microsoft-365-or-office-365">Microsoft 365</a></li>
@@ -153,77 +184,134 @@
             <li><a href="https://www.zoho.com/mail/help/zoho-smtp.html">Zoho Mail</a></li>
             <li><a href="https://proton.me/support/smtp-submission">Proton Mail</a></li>
           </ul>
-          <p>The app uses password-based SMTP, not OAuth. Provider or organization policy may prevent a connection even with the correct server details.</p>
-          <p>For delivery problems, see <a href="troubleshooting.html#receipts">receipt and email troubleshooting</a>.</p>
+          <p>Mini mPOS uses password-based SMTP, not OAuth. Emails entered before payment are also sent to Adyen with the payment. Emails collected afterward are receipt-only.</p>
+          <p>If receipts do not print or send, see <a href="troubleshooting.html#receipts">printer and email problems</a>.</p>
+          <p class="back-to-contents"><a href="#contents">Back to contents</a></p>
+        </section>
+        <section id="history">
+          <h2>Find payments and close the day</h2>
+          <p><strong>History</strong> lists payments and refunds by day, with daily totals.</p>
+          <ul>
+            <li>Filter by sales, <strong>Awaiting tip</strong>, pre-authorizations, refunds or <strong>Needs attention</strong>, and use <strong>Payment method</strong> for a card brand or wallet.</li>
+            <li>Search by reference, authorization code, customer reference or email, the card's last four digits, brand, wallet or exact amount. Every word must match: <code>visa 34</code> finds Visa payments of 34.</li>
+          </ul>
+          <p>On-screen totals follow your search and filters. Held payments, such as deposits and tips on the receipt, count as sales on the day their capture is accepted.</p>
+          <h3 id="close-day">Close the day</h3>
+          <ol>
+            <li>Open <strong>History</strong>, filter by <strong>Needs attention</strong> and resolve each entry; see <a href="troubleshooting.html#unknown">unknown results</a>.</li>
+            <li>Check the <strong>Awaiting tip</strong> and pre-authorization filters. Enter tips, and capture or cancel deposits before their holds expire.</li>
+            <li>Tap the print icon beside the day to print the <strong>Local daily summary</strong>.</li>
+            <li>Reconcile with Adyen's reports in the Customer Area; see Adyen's <a href="https://docs.adyen.com/reporting/settlement-reconciliation">settlement reconciliation</a>.</li>
+          </ol>
+          <p>The summary covers the whole day, ignoring filters: sales, tips included, accepted refunds, net, new holds and unresolved operations, for each currency. TEST and simulator activity is labeled. Paid payment links and captures without a known date are listed separately as undated activity.</p>
+          <div class="callout callout-important" role="note">
+            <p class="callout-title">Important</p>
+            <p>The Local daily summary covers only payments kept on this device. It is not Adyen's settlement and does not include other devices. The Customer Area is authoritative.</p>
+          </div>
+          <div class="callout callout-warning" role="note">
+            <p class="callout-title">Warning</p>
+            <p>Switching between LIVE, TEST and the simulator permanently deletes all payment history and report data on this device. If unfinished payments exist, the app warns again: nothing is canceled at Adyen, but the local recovery and safe retry data is lost. Products and settings stay.</p>
+          </div>
           <p class="back-to-contents"><a href="#contents">Back to contents</a></p>
         </section>
         <section id="shoppers">
-          <h2>References and saved cards</h2>
-          <p>Turn on <strong>Settings › Payments › Ask for a merchant reference</strong> if staff need to record a booking or order number. That number identifies the payment in Adyen; leaving it blank generates a unique reference. Separately, choose a <strong>shopper reference</strong>: a customer reference typed at checkout (the default), the customer's email, or none. Leave the customer reference blank when it is not needed; choose None to hide the field. That shopper reference goes to Adyen with every payment, whether or not the card is saved. Email references are hashed by default; use the same salt across devices for consistent identifiers.</p>
-          <p>With a shopper reference configured, <strong>Offer to save cards</strong> makes card saving available at checkout. Obtain the shopper's consent and choose the recurring processing model appropriate to your Adyen integration. Saving a card does not provide a saved-card charging screen in Mini mPOS.</p>
+          <h2>Use references and save cards</h2>
+          <dl class="settings-list">
+            <dt>Merchant reference</dt><dd>To record a booking or order number, turn on <strong>Settings › Payments › Ask for a merchant reference</strong>. The number identifies the payment in Adyen. If left blank, a unique reference is generated.</dd>
+            <dt>Shopper reference</dt><dd>In <strong>Settings › Payments</strong>, choose the <strong>Shopper reference</strong>: a customer reference typed at checkout (the default), the customer's email, or none. It is sent to Adyen with every payment. Email references are hashed by default; use the same salt on every device.</dd>
+            <dt>Saved cards</dt><dd>With a shopper reference set, turn on <strong>Offer to save cards</strong> and choose the <strong>Recurring processing model</strong> for your Adyen setup. Get the customer's consent before selecting <strong>Save card for future payments</strong>. Mini mPOS cannot charge saved cards.</dd>
+          </dl>
           <p class="back-to-contents"><a href="#contents">Back to contents</a></p>
         </section>
         <section id="payment-links">
-          <h2>Let the customer pay with a link</h2>
-          <p>Adyen <a href="https://docs.adyen.com/unified-commerce/pay-by-link">Pay by Link</a> lets the customer pay on Adyen's payment page instead of the terminal. Check your account's Pay by Link requirements, including terms and conditions, before LIVE use.</p>
+          <h2>Take payment with a link</h2>
+          <div class="callout callout-prereq" role="note">
+            <p class="callout-title">Prerequisites</p>
+            <ul>
+              <li>Checkout API setup complete in <strong>Settings › Terminal</strong> (not needed for simulator demos)</li>
+              <li>Your Adyen account's <a href="https://docs.adyen.com/unified-commerce/pay-by-link">Pay by Link</a> requirements met, including terms and conditions, before LIVE use</li>
+            </ul>
+          </div>
           <ol>
-            <li>Complete Checkout API setup. Links are offered automatically; choose their lifetime in <strong>Settings › Payments › Payment links</strong>.</li>
-            <li>At a sale's checkout, tap <strong>Create payment link</strong>. Show the QR code, <strong>Email link</strong> with the unpaid receipt, <strong>Print link</strong>, or <strong>Share link</strong> from a tablet or phone.</li>
-            <li>Keep the link screen open for automatic checks, or tap <strong>Check payment</strong> later from its History entry. Use <strong>Cancel link</strong> when it is no longer needed.</li>
+            <li>At a sale's checkout, tap <strong>Create payment link</strong>.</li>
+            <li>Show the QR code, or tap <strong>Email link</strong>, <strong>Print link</strong> or, on a tablet or phone, <strong>Share link</strong>.</li>
+            <li>Keep the link screen open to see the payment arrive, or later tap <strong>Check payment</strong> in its History entry.</li>
+            <li>If the link is no longer needed, tap <strong>Cancel link</strong>.</li>
           </ol>
-          <p>History shows <strong>Awaiting payment</strong> until the link is paid, expires or is canceled. Paid links have <a href="#history">separate undated report totals</a>; unpaid links do not count. Links include the items and any shopper details/card-saving choice. Your Adyen account's online risk and capture settings apply.</p>
-          <p class="note">Links are for sales only, not deposits or tips on the receipt. Real links require Checkout API setup. Anyone with a real link can pay until it expires. Refund paid links in <strong>Customer Area › Payments › Payment list</strong>: the app cannot retrieve their PSP reference.</p>
-          <p>In simulator mode, no credentials are needed. Create a demo link, then tap <strong>Simulate payment</strong>
-            to complete it, or cancel it or let it expire. Checks alone never pay a demo link. Its QR code cannot take
-            payments, and its shared, emailed and printed receipts are labeled as demos. Outcomes remain in History
-            after restarting the app.</p>
-          <p>If a link is missing or not updating, see <a href="troubleshooting.html#links">payment-link troubleshooting</a>.</p>
+          <p>The entry shows <strong>Awaiting payment</strong> until the link is paid, expires or is canceled. Set how long links work in <strong>Settings › Payments › Payment links</strong>. Links are for sales only, not deposits or tips on the receipt.</p>
+          <div class="callout callout-important" role="note">
+            <p class="callout-title">Important</p>
+            <p>Anyone with a real link can pay until it expires. Refund paid links in <strong>Customer Area › Payments › Payment list</strong>; the app cannot refund them.</p>
+          </div>
+          <p>In the simulator, demo links need no credentials. Tap <strong>Simulate payment</strong> to complete one. Their QR codes cannot take payments, and their receipts are labeled as demos.</p>
+          <p>If a link is missing or not updating, see <a href="troubleshooting.html#links">payment link problems</a>.</p>
           <p class="back-to-contents"><a href="#contents">Back to contents</a></p>
         </section>
         <section id="preauth">
           <h2>Hold and collect a deposit</h2>
-          <p>A pre-authorization holds money on a card without charging it immediately. Ask Adyen Support to enable it for your payment methods; availability depends on the card and your business. See Adyen's <a href="https://docs.adyen.com/point-of-sale/pre-authorisation">pre-authorization guide</a>. You do not need to change your whole account to manual capture: Mini mPOS requests it for these payments only.</p>
+          <div class="callout callout-prereq" role="note">
+            <p class="callout-title">Prerequisites</p>
+            <ul>
+              <li>Pre-authorization enabled by Adyen Support for your payment methods; see Adyen's <a href="https://docs.adyen.com/point-of-sale/pre-authorisation">pre-authorization guide</a></li>
+              <li>Checkout API setup complete</li>
+            </ul>
+          </div>
+          <p>A pre-authorization holds an amount on the card without charging it. Your whole account does not need manual capture; Mini mPOS requests it for these payments only.</p>
           <ol>
-            <li>Tap <strong>New pre-authorization</strong> on Home. Choose a pre-authorization product, scan its barcode or enter a custom amount. Each pre-authorization contains one item.</li>
+            <li>On Home, tap <strong>New pre-authorization</strong>. Choose a pre-authorization product, scan its barcode or enter an amount. Each pre-authorization has one item.</li>
             <li>At checkout, tap <strong>Pre-authorize</strong>. The receipt shows the amount held.</li>
-            <li>Open the entry in <strong>History</strong> when you are ready to collect or release it.</li>
+            <li>When you are ready, open the entry in <strong>History</strong> and choose an action:</li>
           </ol>
           <dl class="settings-list">
-            <dt>Capture</dt><dd>Collect the amount owed. A lower amount releases the remainder; a higher amount first asks the issuer to increase the authorization. Once capture is requested, refunds are available.</dd>
-            <dt>Adjust amount</dt><dd>Change the amount held without charging it. Submitting the same amount requests an authorization renewal.</dd>
-            <dt>Cancel pre-authorization</dt><dd>Release the hold. If the payment was already captured in the Customer Area, Adyen refunds it in full instead.</dd>
+            <dt>Capture</dt><dd>Collects the amount owed. A lower amount releases the rest; a higher amount first asks the card issuer to increase the hold. Refunds are possible once capture is requested.</dd>
+            <dt>Adjust amount</dt><dd>Changes the amount held without charging it. Submitting the same amount renews the authorization.</dd>
+            <dt>Cancel pre-authorization</dt><dd>Releases the hold. If the payment was already captured in the Customer Area, Adyen refunds it in full instead.</dd>
           </dl>
-          <p>Captures and adjustments use the Checkout API. <strong>Capture requested</strong> is not final confirmation; check the Customer Area. To receive immediate authorization-adjustment answers, enable <strong>Return adjust authorisation data</strong> as described in Adyen's <a href="https://docs.adyen.com/online-payments/adjust-authorisation">adjustment guide</a>; otherwise confirmation is asynchronous.</p>
-          <p class="note">Holds expire. Review the pre-authorization filter and capture or cancel promptly. For failed or unknown operations, use <a href="troubleshooting.html#modifications">the recovery instructions</a>.</p>
+          <p><strong>Capture requested</strong> is not final confirmation; check the Customer Area. For immediate answers to adjustments, enable <strong>Return adjust authorisation data</strong> as described in Adyen's <a href="https://docs.adyen.com/online-payments/adjust-authorisation">adjustment guide</a>.</p>
+          <div class="callout callout-warning" role="note">
+            <p class="callout-title">Warning</p>
+            <p>Holds expire. Check the pre-authorization filter daily and capture or cancel promptly. For failed or unknown operations, see <a href="troubleshooting.html#modifications">capture problems</a>.</p>
+          </div>
           <p class="back-to-contents"><a href="#contents">Back to contents</a></p>
         </section>
         <section id="tips">
           <h2>Collect a tip written on the receipt</h2>
-          <p>This needs a physical printer and Adyen's <a href="https://docs.adyen.com/point-of-sale/tipping/tipping-on-receipt">tipping-on-the-receipt</a> setup. Ask Adyen Support to enable pre-authorization and overcapture for your payment methods. Some debit cards and wallets do not support this flow.</p>
-          <p>In <strong>Settings › Payments › Tip on the receipt</strong>, choose <strong>Enabled (default off)</strong> or <strong>Enabled (default on)</strong>. <strong>Disabled</strong>, the default, hides the checkout switch. The two enabled choices decide whether that switch starts off or on.</p>
+          <div class="callout callout-prereq" role="note">
+            <p class="callout-title">Prerequisites</p>
+            <ul>
+              <li>A terminal with a printer</li>
+              <li>Pre-authorization and overcapture enabled by Adyen Support; see Adyen's <a href="https://docs.adyen.com/point-of-sale/tipping/tipping-on-receipt">tipping on the receipt</a></li>
+            </ul>
+          </div>
+          <p>In <strong>Settings › Payments › Tipping</strong>, choose <strong>Enabled (default off)</strong> or <strong>Enabled (default on)</strong> to set how the checkout switch starts. <strong>Disabled</strong>, the default, hides it. Some debit cards and wallets do not support this flow.</p>
           <ol>
-            <li>At a sale's checkout, switch on <strong>Tip on the receipt</strong> and tap Pay. The bill is held, not captured.</li>
-            <li>Print the receipt with blank Tip and Total lines. The merchant copy includes a signature line.</li>
-            <li>After the customer fills it in, choose <strong>Enter tip</strong> from the result or History's <strong>Awaiting tip</strong> filter. Enter the tip or total, or choose <strong>No tip</strong>, and confirm.</li>
+            <li>At a sale's checkout, switch on <strong>Tip on the receipt</strong> and tap <strong>Pay</strong>. The bill is held, not charged.</li>
+            <li>Print the receipt. It has blank Tip and Total lines, and the merchant copy has a signature line.</li>
+            <li>When the customer has filled it in, tap <strong>Enter tip</strong> on the result or in History's <strong>Awaiting tip</strong> filter.</li>
+            <li>Enter the tip or the total, or tap <strong>No tip</strong>, and confirm.</li>
           </ol>
-          <p>The app requests capture of bill plus tip. Tips up to 20% use overcapture; larger tips first raise the authorization. If the issuer refuses that increase, the tip is not saved and you can enter a smaller one or none. Once saved, a tip cannot be changed. Before entering it, cancel the held payment rather than refund it; afterward refunds include the tip.</p>
-          <p class="note">Enter tips promptly, including zero tips, so the bills are captured before their holds expire. A capture request still needs final confirmation in the Customer Area.</p>
-          <p>For failed or unknown captures, see <a href="troubleshooting.html#modifications">capture and adjustment recovery</a>.</p>
+          <p>The app captures the bill plus the tip. Tips over 20% first need the card issuer to increase the hold; if it refuses, enter a smaller tip or none. A saved tip cannot be changed. Before a tip is entered, cancel the payment instead of refunding it; afterward, refunds include the tip.</p>
+          <div class="callout callout-warning" role="note">
+            <p class="callout-title">Warning</p>
+            <p>Enter every tip promptly, including zero tips, so the bills are captured before their holds expire. For failed or unknown captures, see <a href="troubleshooting.html#modifications">capture problems</a>.</p>
+          </div>
           <p class="back-to-contents"><a href="#contents">Back to contents</a></p>
         </section>
         <section id="more">
-          <h2>Set up more devices and manage local data</h2>
+          <h2>Set up more devices and manage data</h2>
           <ol>
-            <li>On the configured device, open <strong>Settings › Data › Share with another device</strong>, or the Products menu. Choose the catalog, settings and/or passwords and keys, then <strong>Show QR codes</strong>.</li>
-            <li>On the receiving device, choose <strong>Set up from another device</strong> and scan all codes in any order. Choose whether to merge or replace its catalog.</li>
-            <li>To import secrets, enter the sender's transfer code. Leaving it blank skips secrets; an incorrect code imports nothing. Tap <strong>Import</strong>.</li>
-            <li>Review prices and tax, check the connection in <strong>Settings › Terminal</strong>, and test a receipt.</li>
+            <li>On the configured device, open <strong>Settings › Data › Share with another device</strong>. Choose the catalog, settings and/or passwords and keys, then tap <strong>Show QR codes</strong>.</li>
+            <li>On the new device, choose <strong>Set up from another device</strong> and scan all the codes, in any order. Choose whether to merge or replace its catalog.</li>
+            <li>To copy passwords and keys, enter the transfer code shown on the first device. Tap <strong>Import</strong>.</li>
+            <li>Check prices and tax, test the connection in <strong>Settings › Terminal</strong>, and print a test receipt.</li>
           </ol>
-          <p>Settings replace the receiving device's shared settings. Its payment destination, terminal address and ID, Tap to Pay installation, environment and simulator remain local. Included secrets cover API keys, the shared-key passphrase, SMTP password and both PINs. A shared key works for another terminal only if Adyen assigns it the same key; device-specific credentials may need replacing.</p>
-          <p>Check the import's currency warning: catalog prices are not exchange-rate converted. The <a href="setup.html">setup helper</a> is different: it imports only the connection and optional SMTP fields you filled in, leaving unrelated settings alone.</p>
-          <p><strong>This is a copy, not synchronization or a transaction-history backup.</strong> Future changes and each device's payments stay local. In Settings › Data, choose history retention and clear settled history when appropriate. Unresolved payments are protected from routine cleanup. Clearing Android app data removes all local products, settings and history.</p>
-          <p>Keep the app on the <a href="https://github.com/astiskala/minimpos/releases/latest">latest release</a>. Install updates through the same route and signing source as the original installation; see <a href="getting-started.html#install">installation</a>.</p>
-          <p>For import problems, see <a href="troubleshooting.html#access">PIN and transfer troubleshooting</a>.</p>
+          <p>The new device keeps its own payment destination, terminal, environment and Tap to Pay registration. A shared key works for another terminal only if Adyen assigns it the same key.</p>
+          <div class="callout callout-important" role="note">
+            <p class="callout-title">Important</p>
+            <p>This is a one-time copy, not synchronization or a backup of payment history. Each device keeps its own payments. Clearing the app's data in Android deletes all products, settings and history on the device.</p>
+          </div>
+          <p>In <strong>Settings › Data</strong>, set <strong>Keep transactions for</strong> or tap <strong>Clear settled history</strong>; unresolved payments are always kept. Install updates from the <a href="https://github.com/astiskala/minimpos/releases/latest">latest release</a> in the same way as the <a href="getting-started.html#install">original installation</a>.</p>
+          <p>For import problems, see <a href="troubleshooting.html#access">PIN and transfer problems</a>.</p>
           <p class="back-to-contents"><a href="#contents">Back to contents</a></p>
         </section>
       </div>

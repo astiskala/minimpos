@@ -197,14 +197,11 @@ class WebsiteTest {
         LANGUAGES.forEach { language ->
             val guide = pages.getValue(language to Kind.GUIDE)
             listOf("on-terminal", "network", "cloud", "tap-to-pay").forEach { destination ->
-                val prerequisites =
-                    guide.document
-                        .getElementById(destination)!!
-                        .nextElementSiblings()
-                        .first { it.tagName() == "p" && !it.hasClass("note") }
+                val prerequisites = guide.document.getElementById(destination)!!.nextElementSibling()!!
+                assertWithMessage("${guide.name} #$destination prerequisites").that(prerequisites.hasClass("callout-prereq")).isTrue()
                 assertWithMessage("${guide.name} #$destination")
                     .that(prerequisites.select("a").map { it.attr("href") })
-                    .containsExactly("#install", "#credentials")
+                    .containsAtLeast("#install", "#credentials")
                     .inOrder()
             }
             val helper = pages.getValue(language to Kind.SETUP)
@@ -258,12 +255,12 @@ class WebsiteTest {
             }
             assertThat(guide.text).contains("Management API — Terminal actions read")
             assertThat(guide.text).contains("Management API — Terminal settings Advanced read and write")
-            assertThat(guide.document.select("#connect ul li strong").map { it.text() })
+            assertThat(guide.document.select("#choose ul.roles li strong").map { it.text() })
                 .containsExactly(
-                    "Cloud Device API role",
                     "Management API — Terminal actions read",
                     "Management API — Terminal settings read and write",
                     "Management API — Terminal settings Advanced read and write",
+                    "Cloud Device API role",
                 ).inOrder()
         }
     }
@@ -288,6 +285,9 @@ class WebsiteTest {
                     .that(page.document.select("#$task a[href='troubleshooting.html#$recovery']"))
                     .isNotEmpty()
             }
+            assertWithMessage("${page.name} #sell declines")
+                .that(page.document.select("#sell a[href='troubleshooting.html#declines']"))
+                .isNotEmpty()
         }
     }
 
@@ -423,10 +423,8 @@ class WebsiteTest {
             )
         LANGUAGES.forEach { language ->
             val using = pages.getValue(language to Kind.USING)
-            (wording.getValue(language) + "Management API—Stores read").forEach { assertThat(using.text).contains(it) }
-            assertThat(using.externalLinks).contains(
-                "https://docs.adyen.com/api-explorer/Management/latest/get/merchants/(merchantId)/stores",
-            )
+            (wording.getValue(language) + "Management API — Stores read").forEach { assertThat(using.text).contains(it) }
+            assertThat(using.document.select("#receipts a[href='getting-started.html#credentials']")).isNotEmpty()
             val troubleshooting = pages.getValue(language to Kind.TROUBLE)
             listOf("Settings › Payments › Offer payment links", "设置 › 支付 › 提供支付链接", "設定 › 決済 › 支払いリンクを使う").forEach { obsolete ->
                 assertThat(using.text).doesNotContain(obsolete)
@@ -662,6 +660,17 @@ class SetupGuideTest {
     }
 
     @Test
+    fun `prerequisites name the network ports and Adyen domains in every language`() {
+        LANGUAGES.forEach { language ->
+            val heading = pages.getValue(language to Kind.GUIDE).document.getElementById("network-requirements")!!
+            val text = heading.nextElementSiblings().takeWhile { it.tagName() != "h3" }.joinToString(" ") { it.text() }
+            listOf("443", "8443", "*.adyen.com", "*.adyenpayments.com").forEach {
+                assertWithMessage("$language network prerequisites: $it").that(text).contains(it)
+            }
+        }
+    }
+
+    @Test
     fun `every language describes confirmed key creation and links delayed activation recovery`() {
         val create = mapOf("en" to "Create encryption key", "zh-CN" to "创建加密密钥", "ja" to "暗号化キーを作成")
         val resume = mapOf("en" to "Resume key setup", "zh-CN" to "继续密钥设置", "ja" to "キー設定を再開")
@@ -706,9 +715,9 @@ class SetupGuideTest {
             val guide = pages.getValue(language to Kind.GUIDE)
             val heading = guide.document.getElementById("tap-to-pay")!!
             val notice = heading.nextElementSibling()!!
-            assertWithMessage(guide.name).that(notice.hasClass("note")).isTrue()
+            assertWithMessage(guide.name).that(notice.hasClass("callout-prereq")).isTrue()
             assertThat(notice.text()).contains("Adyen Payments app role")
-            assertThat(notice.select("a").map { it.attr("href") }).containsExactly("https://help.adyen.com/contact")
+            assertThat(notice.select("a").map { it.attr("href") }).contains("https://help.adyen.com/contact")
             val following = heading.nextElementSiblings()
             val steps = following.first { it.tagName() == "ol" }.select("li")
             assertThat(steps).hasSize(2)
@@ -823,7 +832,19 @@ private val GUIDE_TOPICS =
     mapOf(
         Kind.GUIDE to setOf("try", "choose", "install", "connect", "first-payment", "live"),
         Kind.USING to setOf("business", "sell", "refund", "history", "receipts", "shoppers", "payment-links", "preauth", "tips", "more"),
-        Kind.TROUBLE to setOf("unknown", "connection", "modifications", "links", "receipts", "access", "install", "help"),
+        Kind.TROUBLE to
+            setOf(
+                "unknown",
+                "declines",
+                "connection",
+                "network-dropouts",
+                "modifications",
+                "links",
+                "receipts",
+                "access",
+                "install",
+                "help",
+            ),
     )
 
 private val docs: Path =

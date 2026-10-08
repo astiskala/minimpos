@@ -13,7 +13,7 @@ import io.github.astiskala.minimpos.app.data.settings.SmtpSecurity
  * @property port The SMTP port [fill] puts in.
  * @property security How [fill] secures the connection.
  * @property helpUrl The provider's page on sending through its SMTP server from another app (an HTTPS URL), linked
- *   from Settings off a terminal and listed in the getting started guide.
+ *   from Settings off a terminal and listed in the Using Mini mPOS guide.
  * @param hosts Every SMTP server of the provider, so [of] also recognises regional or plan-specific ones.
  */
 enum class SmtpProvider(

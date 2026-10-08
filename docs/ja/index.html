@@ -35,14 +35,14 @@
         <a aria-label="Mini mPOS ホーム" class="brand" href="#top"> <img alt="" height="36" src="../favicon.svg" width="36"> <span>Mini mPOS</span> </a>
         <nav class="desktop-nav" aria-label="メインナビゲーション">
           <ul class="nav">
-            <li><a href="getting-started.html">はじめに</a></li>
+            <li><a href="quick-start.html">クイックスタート</a></li>
             <li><a href="using.html">Mini mPOS の使い方</a></li>
             <li><a href="troubleshooting.html">トラブルシューティング</a></li>
             <li><a href="setup.html">セットアップヘルパー</a></li>
           </ul>
         </nav>
         <details class="mobile-menu"><summary>メニュー</summary><div class="mobile-panel"><nav aria-label="メインナビゲーション"><ul class="nav">
-          <li><a href="getting-started.html">はじめに</a></li><li><a href="using.html">Mini mPOS の使い方</a></li>
+          <li><a href="quick-start.html">クイックスタート</a></li><li><a href="using.html">Mini mPOS の使い方</a></li>
           <li><a href="troubleshooting.html">トラブルシューティング</a></li><li><a href="setup.html">セットアップヘルパー</a></li>
         </ul></nav>
           <nav class="mobile-languages" aria-label="言語"><p>言語</p><ul>
@@ -71,7 +71,7 @@
             <h1>お会計のすべてを、決済端末そのもので。</h1>
             <p class="lead">Mini mPOS は Adyen Android 決済端末の上で直接動作します。商品を選び、決済を受け付け、領収書を印刷またはメール送信し、返金は領収書をスキャンするだけ。すべてが 1 台で完結し、別のレジもタブレットも、アプリのサブスクリプションも不要です。タブレットやスマートフォンで使いたい場合も、お手持ちの端末や Tap to Pay と組み合わせて動作します。</p>
             <div class="actions">
-              <a class="button" href="getting-started.html">はじめる</a>
+              <a class="button" href="quick-start.html">はじめる</a>
               <a class="button button-ghost" href="setup.html">セットアップヘルパーを開く</a>
             </div>
             <ul class="hero-points">
@@ -98,7 +98,7 @@
         <div class="wrap">
           <h2 id="guides-title">必要なガイドを見つける</h2>
           <div class="guide-cards">
-            <article class="guide-card"><h3><a href="getting-started.html">はじめに</a></h3><p>前提条件を確認し、インストール、Adyen への接続、テストを進めます。</p></article>
+            <article class="guide-card"><h3><a href="quick-start.html">クイックスタート</a></h3><p>前提条件を確認し、インストール、Adyen への接続、テストを進めます。</p></article>
             <article class="guide-card"><h3><a href="using.html">Mini mPOS の使い方</a></h3><p>決済、返金、領収書、一日の精算を行います。</p></article>
             <article class="guide-card"><h3><a href="troubleshooting.html">トラブルシューティング</a></h3><p>結果不明、拒否、端末ペアリング、ネットワーク、プリンターの問題を解決します。</p></article>
           </div>
@@ -258,12 +258,12 @@
             <article class="step">
               <h3>まずは試してみる</h3>
               <p>Android スマートフォンやエミュレーターで内蔵シミュレーターを試せます。決済端末は不要です。</p>
-              <p><a href="getting-started.html#try">デモを試す</a></p>
+              <p><a href="quick-start.html#try">デモを試す</a></p>
             </article>
             <article class="step">
               <h3>お店で使う準備はできましたか？</h3>
               <p>アプリをダウンロードし、Adyen Customer Area から端末に配布（またはタブレットやスマートフォンにインストール）して、セットアップヘルパーでキーを読み取ります。ガイドで手順を確認できます。</p>
-              <p><a href="getting-started.html">はじめにを読む</a> · <a href="setup.html">セットアップヘルパーを開く</a> · <a href="https://github.com/astiskala/minimpos/releases/latest">アプリをダウンロード</a></p>
+              <p><a href="quick-start.html">クイックスタートを読む</a> · <a href="setup.html">セットアップヘルパーを開く</a> · <a href="https://github.com/astiskala/minimpos/releases/latest">アプリをダウンロード</a></p>
             </article>
           </div>
           <p><a href="using.html">Mini mPOS の使い方</a> · <a href="troubleshooting.html">トラブルシューティング</a></p>
@@ -275,7 +275,7 @@
           <div class="faq">
             <details>
               <summary>どの構成を選べばよいですか？</summary>
-              <p>Adyen Android 端末で会計を完結するか、タブレットやスマートフォンでネットワーク端末、クラウド端末、Tap to Pay を使えます。<a href="getting-started.html#choose">要件と構成の選択</a>を参照してください。印刷にはプリンター、スキャンにはカメラが必要です。</p>
+              <p>Adyen Android 端末で会計を完結するか、タブレットやスマートフォンでネットワーク端末、クラウド端末、Tap to Pay を使えます。<a href="quick-start.html#choose">要件と構成の選択</a>を参照してください。印刷にはプリンター、スキャンにはカメラが必要です。</p>
             </details>
             <details>
               <summary>料金はいくらですか？</summary>
@@ -291,7 +291,7 @@
             </details>
             <details>
               <summary>サーバーや APIキーは必要ですか？</summary>
-              <p>サーバーは不要ですが、すべての実決済構成に Checkout API の認証情報が必要です。他のキーは決済先によります。デバイスに暗号化して保存するため、Adyen のサーバー保管の推奨とのトレードオフがあります。<a href="getting-started.html#connect">接続設定</a>とそこでの安全上の案内に従ってください。</p>
+              <p>サーバーは不要ですが、すべての実決済構成に Checkout API の認証情報が必要です。他のキーは決済先によります。デバイスに暗号化して保存するため、Adyen のサーバー保管の推奨とのトレードオフがあります。<a href="quick-start.html#connect">接続設定</a>とそこでの安全上の案内に従ってください。</p>
             </details>
           </div>
         </div>
@@ -300,7 +300,7 @@
     <footer class="site-footer">
       <div class="wrap footer-row">
         <nav aria-label="ガイドと設定"><ul class="footer-nav">
-          <li><a href="getting-started.html">はじめに</a></li><li><a href="using.html">Mini mPOS の使い方</a></li>
+          <li><a href="quick-start.html">クイックスタート</a></li><li><a href="using.html">Mini mPOS の使い方</a></li>
           <li><a href="troubleshooting.html">トラブルシューティング</a></li><li><a href="setup.html">セットアップヘルパー</a></li>
         </ul></nav>
         <p><img alt="" height="24" src="../favicon.svg" width="24"> Mini mPOS · MIT ライセンス · <a href="https://github.com/astiskala/minimpos">GitHub</a> · <a href="https://github.com/astiskala/minimpos/blob/main/SECURITY.md">セキュリティ</a></p>

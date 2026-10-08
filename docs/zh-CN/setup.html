@@ -43,14 +43,14 @@
       </a>
       <nav class="desktop-nav" aria-label="主导航">
         <ul class="nav">
-          <li><a href="getting-started.html">快速入门</a></li>
+          <li><a href="quick-start.html">快速入门</a></li>
           <li><a href="using.html">使用 Mini mPOS</a></li>
           <li><a href="troubleshooting.html">故障排查</a></li>
           <li><a href="setup.html" aria-current="page">设置助手</a></li>
         </ul>
       </nav>
       <details class="mobile-menu"><summary>菜单</summary><div class="mobile-panel"><nav aria-label="主导航"><ul class="nav">
-        <li><a href="getting-started.html">快速入门</a></li><li><a href="using.html">使用 Mini mPOS</a></li>
+        <li><a href="quick-start.html">快速入门</a></li><li><a href="using.html">使用 Mini mPOS</a></li>
         <li><a href="troubleshooting.html">故障排查</a></li><li><a href="setup.html" aria-current="page">设置助手</a></li>
       </ul></nav>
         <nav class="mobile-languages" aria-label="语言"><p>语言</p><ul>
@@ -85,9 +85,9 @@
 
     <div class="wrap setup">
       <div class="setup-main">
-        <p>初次使用 Mini mPOS？填写前请先<a href="getting-started.html#choose">选择配置方式</a>并<a href="getting-started.html#credentials">准备凭据</a>。</p>
+        <p>初次使用 Mini mPOS？填写前请先<a href="quick-start.html#choose">选择配置方式</a>并<a href="quick-start.html#credentials">准备凭据</a>。</p>
         <p class="hint" id="customer-area-note">商户后台链接会在新标签页中打开，方便保留此表单。</p>
-        <p class="note" id="setup-noscript">设置助手需要 JavaScript。请为此页面启用 JavaScript，或按照<a href="getting-started.html#connect">快速入门指南</a>在应用中输入。</p>
+        <p class="note" id="setup-noscript">设置助手需要 JavaScript。请为此页面启用 JavaScript，或按照<a href="quick-start.html#connect">快速入门指南</a>在应用中输入。</p>
 
         <form id="setup-form" class="setup-form" hidden autocomplete="off"
               data-msg-making="正在生成二维码…"
@@ -118,17 +118,17 @@
             <p class="hint">LIVE 环境下两种方式都需要 LIVE URL 前缀。自动查询无法补全必需字段时，请在此选择手动并生成新二维码。凭据或终端访问错误必须先更正。</p>
           </fieldset>
 
-          <p class="hint" data-only="tapToPay" hidden>请先遵循<a href="getting-started.html#tap-to-pay">Tap to Pay 准备步骤</a>并安装 Payments 应用。输入商家账户和独立的 Payments 应用 API 密钥进行注册。请在此输入共享密钥；Mini mPOS 不会查询共享密钥。导入完成前，手机会要求明确执行注册操作。无需复制注册令牌。</p>
+          <p class="hint" data-only="tapToPay" hidden>请先遵循<a href="quick-start.html#tap-to-pay">Tap to Pay 准备步骤</a>并安装 Payments 应用。输入商家账户和独立的 Payments 应用 API 密钥进行注册。请在此输入共享密钥；Mini mPOS 不会查询共享密钥。导入完成前，手机会要求明确执行注册操作。无需复制注册令牌。</p>
 
           <fieldset data-for="thisTerminal network cloud tapToPay" id="api-key-fields">
             <legend>Adyen API 密钥</legend>
-            <p class="hint">在 <a data-ca="developers/api-credentials/" href="https://ca-test.adyen.com/ca/ui/developers/api-credentials/" target="_blank" rel="noopener noreferrer" aria-describedby="customer-area-note">Developers › API credentials</a> 中创建凭据并生成 API 密钥。<span data-only="cloud" hidden>云端付款需添加 Cloud Device API role。</span><span data-only="tapToPay" hidden>此密钥用于 Checkout 操作，而非 Payments 应用注册。</span>所有真实付款设置的主凭据都必须具有所需的 Management 权限，包括终端设置写入和 Advanced 权限；参见<a href="getting-started.html#credentials">凭据要求</a>。设置助手保持离线；查询和验证在设备上执行，成功后才导入。</p>
+            <p class="hint">在 <a data-ca="developers/api-credentials/" href="https://ca-test.adyen.com/ca/ui/developers/api-credentials/" target="_blank" rel="noopener noreferrer" aria-describedby="customer-area-note">Developers › API credentials</a> 中创建凭据并生成 API 密钥。<span data-only="cloud" hidden>云端付款需添加 Cloud Device API role。</span><span data-only="tapToPay" hidden>此密钥用于 Checkout 操作，而非 Payments 应用注册。</span>所有真实付款设置的主凭据都必须具有所需的 Management 权限，包括终端设置写入和 Advanced 权限；参见<a href="quick-start.html#credentials">凭据要求</a>。设置助手保持离线；查询和验证在设备上执行，成功后才导入。</p>
             <label for="apiKey">API 密钥</label>
             <input id="apiKey" name="apiKey" type="password" required spellcheck="false">
           </fieldset>
 
           <fieldset data-for="thisTerminal network cloud tapToPay" data-mode="manual">
-            <legend>Adyen 账户</legend>
+            <legend>商家账户</legend>
             <label for="merchantAccount">商家账户</label>
             <input id="merchantAccount" name="merchantAccount" type="text" required spellcheck="false">
           </fieldset>
@@ -136,7 +136,7 @@
           <fieldset data-for="network" data-mode="manual">
             <legend>同一网络中的终端</legend>
             <label for="host">终端 IP 地址</label>
-            <input id="host" name="host" type="text" inputmode="url" required spellcheck="false" placeholder="192.168.1.20">
+            <input id="host" name="host" type="text" inputmode="url" required spellcheck="false" placeholder="192.0.2.1">
             <label for="poiId">终端 ID（POIID）</label>
             <input id="poiId" name="poiId" type="text" required spellcheck="false" placeholder="S1F2-000158213605014">
             <p class="hint">两者都可在终端的 Device info（设备信息）界面查看。</p>
@@ -169,7 +169,7 @@
 
           <fieldset data-for="tapToPay">
             <legend>Tap to Pay</legend>
-            <p class="hint">用于手机注册的独立 API 凭据，仅具有 Adyen Payments app role；参见 Adyen 的 <a href="https://docs.adyen.com/point-of-sale/mobile-android/build/payments-app">Payments 应用指南</a>。</p>
+            <p class="hint">用于手机注册的独立 API 凭据，仅具有 Adyen Payments app role；参见 <a href="https://docs.adyen.com/point-of-sale/mobile-android/build/payments-app">Adyen Payments 应用指南</a>。</p>
             <label for="paymentsAppApiKey">Payments 应用 API 密钥</label>
             <input id="paymentsAppApiKey" name="paymentsAppApiKey" type="password" required spellcheck="false">
             <label for="storeId">门店 ID（可选）</label>
@@ -254,10 +254,10 @@
             <li>在 Mini mPOS 中打开<strong>设置 › 终端</strong>，点按快速设置下的<strong>扫描设置二维码</strong>，或右上角的二维码扫描图标。无需先选择支付目标或环境。</li>
             <li>用摄像头扫描下方的二维码。有多个二维码时会自动轮换。</li>
             <li>检查支付目标和环境，尤其是 LIVE。输入必需的<strong>传输码</strong>，连字符会自动插入，再点击<strong>验证并导入</strong>。</li>
-            <li>按照<a href="getting-started.html#helper">验证后导入的步骤</a>操作。自动查询可补全信息；必需字段仍缺失时，会拒绝导入且不更改现有内容。Tap to Pay 会要求明确执行注册操作。</li>
+            <li>按照<a href="quick-start.html#helper">验证后导入的步骤</a>操作。自动查询可补全信息；必需字段仍缺失时，会拒绝导入且不更改现有内容。Tap to Pay 会要求明确执行注册操作。</li>
           </ol>
           <p>如包含 SMTP 设置，请检查<strong>设置 › 电子邮件</strong>并发送测试邮件。邮箱采集与自动发送需单独配置，参见<a href="using.html#email">邮件设置</a>。</p>
-          <p>导入后请<a href="getting-started.html#first-payment">完成第一笔 TEST 付款</a>。</p>
+          <p>导入后请<a href="quick-start.html#first-payment">完成第一笔 TEST 付款</a>。</p>
           <p><a href="troubleshooting.html#access">导入问题？</a> · <a href="troubleshooting.html#connection">连接问题？</a></p>
           <div class="setup-code-card" id="setup-code-card">
             <p>传输码</p>
@@ -280,7 +280,7 @@
           <li><strong>密钥经过加密。</strong>二维码中的密码和密钥使用传输码加密，传输码只在这里显示，因此仅拍摄二维码不会泄露它们。</li>
           <li><strong>请保密传输码。</strong>同时持有二维码和传输码的人可解密密钥。按需生成新传输，完成后关闭页面。</li>
           <li><strong>设置连接、收据文本及可选 SMTP 字段。</strong>不复制商品或收据布局。请用应用中的<a href="using.html#more">共享至另一台设备</a>复制这些设置。</li>
-          <li><strong>需要完整说明？</strong>参阅<a href="getting-started.html">快速入门</a>；导入或连接问题参见<a href="troubleshooting.html">故障排查</a>。</li>
+          <li><strong>需要完整说明？</strong>参阅<a href="quick-start.html">快速入门</a>；导入或连接问题参见<a href="troubleshooting.html">故障排查</a>。</li>
         </ul>
       </aside>
     </div>
@@ -289,7 +289,7 @@
   <footer class="site-footer">
     <div class="wrap footer-row">
       <nav aria-label="指南和设置"><ul class="footer-nav">
-        <li><a href="getting-started.html">快速入门</a></li><li><a href="using.html">使用 Mini mPOS</a></li>
+        <li><a href="quick-start.html">快速入门</a></li><li><a href="using.html">使用 Mini mPOS</a></li>
         <li><a href="troubleshooting.html">故障排查</a></li><li><a href="setup.html" aria-current="page">设置助手</a></li>
       </ul></nav>
       <p>

@@ -46,7 +46,7 @@ class TaxRateFormTest {
         compose.onNodeWithTag("taxName").assertTextContains("VAT")
         assertThat(form.valid).isFalse()
 
-        compose.onNodeWithText("e.g. 5, 8.1 or 25.5").assertExists()
+        compose.onNodeWithText("For example, 5, 8.1 or 25.5").assertExists()
         compose.onNodeWithTag("taxRate").performTextInput("25.5555")
         compose.onNodeWithText("Enter 0 to 100, with at most 3 decimals").assertExists()
         assertThat(form.valid).isFalse()

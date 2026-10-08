@@ -43,14 +43,14 @@
       </a>
       <nav class="desktop-nav" aria-label="メインナビゲーション">
         <ul class="nav">
-          <li><a href="getting-started.html">はじめに</a></li>
+          <li><a href="quick-start.html">クイックスタート</a></li>
           <li><a href="using.html">Mini mPOS の使い方</a></li>
           <li><a href="troubleshooting.html">トラブルシューティング</a></li>
           <li><a href="setup.html" aria-current="page">セットアップヘルパー</a></li>
         </ul>
       </nav>
       <details class="mobile-menu"><summary>メニュー</summary><div class="mobile-panel"><nav aria-label="メインナビゲーション"><ul class="nav">
-        <li><a href="getting-started.html">はじめに</a></li><li><a href="using.html">Mini mPOS の使い方</a></li>
+        <li><a href="quick-start.html">クイックスタート</a></li><li><a href="using.html">Mini mPOS の使い方</a></li>
         <li><a href="troubleshooting.html">トラブルシューティング</a></li><li><a href="setup.html" aria-current="page">セットアップヘルパー</a></li>
       </ul></nav>
         <nav class="mobile-languages" aria-label="言語"><p>言語</p><ul>
@@ -85,9 +85,9 @@
 
     <div class="wrap setup">
       <div class="setup-main">
-        <p>初めて使う場合は、入力前に<a href="getting-started.html#choose">構成を選び</a>、<a href="getting-started.html#credentials">認証情報を用意</a>してください。</p>
+        <p>初めて使う場合は、入力前に<a href="quick-start.html#choose">構成を選び</a>、<a href="quick-start.html#credentials">認証情報を用意</a>してください。</p>
         <p class="hint" id="customer-area-note">Customer Area のリンクは新しいタブで開くので、このフォームを開いたままにできます。</p>
-        <p class="note" id="setup-noscript">セットアップヘルパーには JavaScript が必要です。このページで有効にするか、<a href="getting-started.html#connect">はじめにガイド</a>のとおりアプリで入力してください。</p>
+        <p class="note" id="setup-noscript">セットアップヘルパーには JavaScript が必要です。このページで有効にするか、<a href="quick-start.html#connect">クイックスタートガイド</a>のとおりアプリで入力してください。</p>
 
         <form id="setup-form" class="setup-form" hidden autocomplete="off"
               data-msg-making="コードを作成しています…"
@@ -118,17 +118,17 @@
             <p class="hint">LIVEではどちらもLIVE URLプレフィックスが必要です。自動取得で必須項目を補完できない場合は、ここで手動を選びコードを作り直してください。認証情報や端末アクセスのエラーは先に修正が必要です。</p>
           </fieldset>
 
-          <p class="hint" data-only="tapToPay" hidden>先に<a href="getting-started.html#tap-to-pay">Tap to Payの準備手順</a>に従い、Paymentsアプリをインストールしてください。登録用のマーチャントアカウントと別のPaymentsアプリのAPIキーを入力します。共有キーはここで入力してください。Mini mPOSは共有キーを取得しません。インポート完了前にスマートフォンで明示的な登録操作が必要です。登録トークンをコピーする必要はありません。</p>
+          <p class="hint" data-only="tapToPay" hidden>先に<a href="quick-start.html#tap-to-pay">Tap to Payの準備手順</a>に従い、Paymentsアプリをインストールしてください。登録用のマーチャントアカウントと別のPaymentsアプリのAPIキーを入力します。共有キーはここで入力してください。Mini mPOSは共有キーを取得しません。インポート完了前にスマートフォンで明示的な登録操作が必要です。登録トークンをコピーする必要はありません。</p>
 
           <fieldset data-for="thisTerminal network cloud tapToPay" id="api-key-fields">
             <legend>Adyen APIキー</legend>
-            <p class="hint"><a data-ca="developers/api-credentials/" href="https://ca-test.adyen.com/ca/ui/developers/api-credentials/" target="_blank" rel="noopener noreferrer" aria-describedby="customer-area-note">Developers › API credentials</a>で認証情報を作成し、APIキーを生成してください。<span data-only="cloud" hidden>クラウド決済にはCloud Device API roleを追加します。</span><span data-only="tapToPay" hidden>このキーはCheckout操作用で、Paymentsアプリの登録用ではありません。</span>すべての実決済設定で、端末設定の書き込みと Advanced アクセスを含む必須の Management ロールが主認証情報に必要です。<a href="getting-started.html#credentials">認証情報の要件</a>を参照してください。このヘルパーはオフラインで、取得と確認はインポート前にデバイスで行います。</p>
+            <p class="hint"><a data-ca="developers/api-credentials/" href="https://ca-test.adyen.com/ca/ui/developers/api-credentials/" target="_blank" rel="noopener noreferrer" aria-describedby="customer-area-note">Developers › API credentials</a>で認証情報を作成し、APIキーを生成してください。<span data-only="cloud" hidden>クラウド決済にはCloud Device API roleを追加します。</span><span data-only="tapToPay" hidden>このキーはCheckout操作用で、Paymentsアプリの登録用ではありません。</span>すべての実決済設定で、端末設定の書き込みと Advanced アクセスを含む必須の Management ロールが主認証情報に必要です。<a href="quick-start.html#credentials">認証情報の要件</a>を参照してください。このヘルパーはオフラインで、取得と確認はインポート前にデバイスで行います。</p>
             <label for="apiKey">APIキー</label>
             <input id="apiKey" name="apiKey" type="password" required spellcheck="false">
           </fieldset>
 
           <fieldset data-for="thisTerminal network cloud tapToPay" data-mode="manual">
-            <legend>Adyenアカウント</legend>
+            <legend>マーチャントアカウント</legend>
             <label for="merchantAccount">マーチャントアカウント</label>
             <input id="merchantAccount" name="merchantAccount" type="text" required spellcheck="false">
           </fieldset>
@@ -136,7 +136,7 @@
           <fieldset data-for="network" data-mode="manual">
             <legend>ネットワーク上の端末</legend>
             <label for="host">端末のIPアドレス</label>
-            <input id="host" name="host" type="text" inputmode="url" required spellcheck="false" placeholder="192.168.1.20">
+            <input id="host" name="host" type="text" inputmode="url" required spellcheck="false" placeholder="192.0.2.1">
             <label for="poiId">端末ID（POIID）</label>
             <input id="poiId" name="poiId" type="text" required spellcheck="false" placeholder="S1F2-000158213605014">
             <p class="hint">どちらも端末の Device info 画面に表示されます。</p>
@@ -169,7 +169,7 @@
 
           <fieldset data-for="tapToPay">
             <legend>Tap to Pay</legend>
-            <p class="hint">スマートフォン登録用の別のAPI認証情報で、Adyen Payments app roleのみを持ちます。Adyenの<a href="https://docs.adyen.com/point-of-sale/mobile-android/build/payments-app">Paymentsアプリガイド</a>を参照してください。</p>
+            <p class="hint">スマートフォン登録用の別のAPI認証情報で、Adyen Payments app roleのみを持ちます。<a href="https://docs.adyen.com/point-of-sale/mobile-android/build/payments-app">Adyen Paymentsアプリガイド</a>を参照してください。</p>
             <label for="paymentsAppApiKey">PaymentsアプリのAPIキー</label>
             <input id="paymentsAppApiKey" name="paymentsAppApiKey" type="password" required spellcheck="false">
             <label for="storeId">店舗ID（任意）</label>
@@ -254,10 +254,10 @@
             <li>Mini mPOS の<strong>設定 › 端末</strong>を開き、かんたんセットアップの<strong>設定コードを読み取る</strong>か右上のQRスキャンアイコンをタップします。決済先や環境を先に選ぶ必要はありません。</li>
             <li>カメラで下のコードを読み取ります。複数ある場合は自動で切り替わります。</li>
             <li>決済先と環境、特にLIVEを確認し、必須の<strong>転送コード</strong>を入力して<strong>確認してインポート</strong>をタップします。ハイフンは自動挿入されます。</li>
-            <li><a href="getting-started.html#helper">確認済みインポート手順</a>に従います。自動取得で補完しても必須項目が不足する場合は、何も変更せず拒否します。Tap to Payは明示的な登録操作を求めます。</li>
+            <li><a href="quick-start.html#helper">確認済みインポート手順</a>に従います。自動取得で補完しても必須項目が不足する場合は、何も変更せず拒否します。Tap to Payは明示的な登録操作を求めます。</li>
           </ol>
           <p>SMTP設定を含めた場合は<strong>設定 › メール</strong>を確認し、テストメールを送ります。メール取得と自動送信は別の設定です。<a href="using.html#email">メール設定</a>を参照してください。</p>
-          <p>取り込み後は<a href="getting-started.html#first-payment">最初の TEST 決済</a>を行ってください。</p>
+          <p>取り込み後は<a href="quick-start.html#first-payment">最初の TEST 決済</a>を行ってください。</p>
           <p><a href="troubleshooting.html#access">取り込みの問題</a> · <a href="troubleshooting.html#connection">接続の問題</a></p>
           <div class="setup-code-card" id="setup-code-card">
             <p>転送コード</p>
@@ -280,7 +280,7 @@
           <li><strong>キーは暗号化されます。</strong>コード内のパスワードとキーは、ここにだけ表示される転送コードで暗号化されるため、コードの写真だけでは読み取れません。</li>
           <li><strong>転送コードは秘密にしてください。</strong>QR コードと転送コードの両方があればキーを復号できます。必要に応じて新しい転送を作り、終わったら閉じてください。</li>
           <li><strong>接続、領収書の文面、任意の SMTP 欄を設定します。</strong>商品や領収書のレイアウトはコピーしません。それらはアプリの<a href="using.html#more">別のデバイスに共有</a>を使います。</li>
-          <li><strong>全体の手順は？</strong><a href="getting-started.html">はじめに</a>を参照し、取り込みや接続の問題は<a href="troubleshooting.html">トラブルシューティング</a>で確認してください。</li>
+          <li><strong>全体の手順は？</strong><a href="quick-start.html">クイックスタート</a>を参照し、取り込みや接続の問題は<a href="troubleshooting.html">トラブルシューティング</a>で確認してください。</li>
         </ul>
       </aside>
     </div>
@@ -289,7 +289,7 @@
   <footer class="site-footer">
     <div class="wrap footer-row">
       <nav aria-label="ガイドと設定"><ul class="footer-nav">
-        <li><a href="getting-started.html">はじめに</a></li><li><a href="using.html">Mini mPOS の使い方</a></li>
+        <li><a href="quick-start.html">クイックスタート</a></li><li><a href="using.html">Mini mPOS の使い方</a></li>
         <li><a href="troubleshooting.html">トラブルシューティング</a></li><li><a href="setup.html" aria-current="page">セットアップヘルパー</a></li>
       </ul></nav>
       <p>

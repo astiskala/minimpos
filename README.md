@@ -1,7 +1,7 @@
 # Mini mPOS
 
-A free, open-source point-of-sale app that runs **directly on Adyen Android payment terminals**. Ring up products,
-take a payment, deliver a receipt and refund it—all on the terminal, with no separate till or app subscription.
+A free, open-source point-of-sale app that runs **directly on Adyen Android payment terminals**. Add products,
+take a payment, deliver a receipt and refund the payment on one terminal. No separate till or app subscription is needed.
 
 The same app works on Android tablets and phones with an Adyen terminal on your network or over the internet,
 or with Tap to Pay through the Adyen Payments app.
@@ -24,8 +24,8 @@ or with Tap to Pay through the Adyen Payments app.
 Screenshots show an English demo café using the built-in simulator, not live payments.
 
 > [!IMPORTANT]
-> Mini mPOS is an independent project, not made, endorsed or supported by Adyen. Test your setup in Adyen's TEST
-> environment before taking live payments.
+> Mini mPOS is an independent project, not made, endorsed or supported by Adyen. Test your setup in the Adyen test
+> environment before you take live payments.
 
 ## What you can do
 
@@ -47,14 +47,14 @@ there is no backend, tracking or automatic synchronization between devices.
 Away from an Adyen terminal, the default is the simulator: no account, keys or real card needed. Choose outcomes and
 printer behavior in Settings › Simulator. Offline demo links let you try the payment-link workflow too.
 
-**Ready to connect to Adyen?** Follow [Getting started](https://astiskala.github.io/minimpos/getting-started.html).
+**Ready to connect to Adyen?** Follow [Quick start](https://astiskala.github.io/minimpos/quick-start.html).
 It covers device, network and credential prerequisites, deployment and all four payment setups. Every real-payment
 setup needs the Checkout API; the [setup helper](https://astiskala.github.io/minimpos/setup.html) lets you enter keys
 on a computer and scan them in.
 
 | Guide | What it covers |
 | --- | --- |
-| [Getting started](https://astiskala.github.io/minimpos/getting-started.html) | Check prerequisites, install, connect, test and go live. |
+| [Quick start](https://astiskala.github.io/minimpos/quick-start.html) | Check prerequisites, install, connect, test and go live. |
 | [Using Mini mPOS](https://astiskala.github.io/minimpos/using.html) | Daily operations: sell, refund, receipts, closing the day, deposits, tips and more devices. |
 | [Troubleshooting](https://astiskala.github.io/minimpos/troubleshooting.html) | Unknown results, declines, pairing, network, capture, printer and email problems. |
 
@@ -64,7 +64,7 @@ Mini mPOS has no server to receive Adyen webhooks. Refunds and captures shown as
 in the Customer Area. Paid payment links are refunded there, not in the app. If a payment's result is unknown, check it
 before charging again.
 
-API keys are encrypted on the device, but storing them there is a trade-off against Adyen's recommendation to keep
+Mini mPOS saves API keys encrypted on the device. This is a trade-off against the Adyen recommendation to keep
 keys on a server. Use narrowly scoped credentials, protect the device, and review [SECURITY.md](SECURITY.md).
 
 ## For contributors

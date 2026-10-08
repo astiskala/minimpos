@@ -167,7 +167,7 @@
   <string name="payment_cancelling">キャンセル中…</string>
   <string name="payment_unknown_outcome">端末から結果を確認できませんでした。再度請求する前に、Customer Areaで決済を確認してください。</string>
   <string name="payment_interrupted">結果を受信する前にアプリが停止しました。</string>
-  <string name="capture_interrupted">キャプチャに対するAdyenの応答を受信する前にアプリが停止しました。安全に再送できます。</string>
+  <string name="capture_interrupted">キャプチャ要求へのAdyenの応答を受信する前にアプリが停止しました。同じキャプチャ要求を安全に再試行できます。</string>
   <string name="result_title">結果</string>
   <string name="result_print">領収書を印刷</string>
   <string name="result_print_merchant">加盟店控えを印刷</string>
@@ -234,7 +234,7 @@
   <string name="detail_tip">会計 %1$s + チップ %2$s</string>
   <string name="detail_capture_requested">%1$sのキャプチャを要求しました。結果はAdyenが確定し、Customer Areaで確認できます。</string>
   <string name="detail_capture_failed">Adyenが%1$sのキャプチャ要求を受け付けませんでした。</string>
-  <string name="detail_capture_unknown">Adyenが%1$sのキャプチャ要求を受信したか不明です。安全に再試行できます。</string>
+  <string name="detail_capture_unknown">Adyenは%1$sのキャプチャ要求の受信を確認していません。同じキャプチャ要求を安全に再試行できます。</string>
   <string name="detail_held_now">現在の確保額 %1$s</string>
   <string name="detail_adjustment_requested">%1$sへの調整を要求しました。結果はAdyenが確定し、Customer Areaで確認できます。</string>
   <string name="detail_modification_message">キャプチャまたは調整の問題</string>
@@ -266,7 +266,7 @@
   <string name="refund_confirm_title">この決済を返金しますか？</string>
   <string name="refund_confirm_message">%1$sが購入者のカードに返金されます。</string>
   <string name="refund_confirm">返金</string>
-  <string name="refund_processing">返金を要求中…</string>
+  <string name="refund_processing">返金リクエストを送信中…</string>
   <string name="refund_status_requested">返金要求済み</string>
   <string name="refund_status_failed">返金失敗</string>
   <string name="refund_status_unknown">返金結果不明</string>
@@ -277,7 +277,7 @@
   <string name="refund_awaiting_tip">この決済はチップを含むキャプチャ待ちです。「取引履歴」からチップを入力するか、決済をキャンセルしてください。</string>
   <string name="cancellation_title">キャンセル</string>
   <string name="cancellation_detail_title">キャンセルの詳細</string>
-  <string name="cancellation_processing">キャンセルを要求中…</string>
+  <string name="cancellation_processing">キャンセルリクエストを送信中…</string>
   <string name="cancellation_status_requested">キャンセル要求済み</string>
   <string name="cancellation_status_failed">キャンセル失敗</string>
   <string name="cancellation_status_unknown">キャンセル結果不明</string>
@@ -511,7 +511,7 @@
   <string name="settings_mode_payments_app">このスマートフォンでTap to Pay</string>
   <string name="settings_environment">環境</string>
   <string name="settings_environment_hint">テストカードにはTEST、実際の支払いにはLIVEを選択します。端末、マーチャントアカウント、APIキーは同じ環境のものを使用してください。</string>
-  <string name="settings_adyen_key_hint">Adyen Customer Areaの「Developers › API credentials」で認証情報を作成し、APIキーを生成してください。</string>
+  <string name="settings_adyen_key_hint">Customer Areaで「Developers › API credentials」を開いてください。認証情報を作成し、APIキーを生成してください。</string>
   <string name="settings_adyen_roles_hint">初期ロールに加え、このAPIキーには次の追加ロールが必要です：</string>
   <string name="settings_adyen_role_cloud">Cloud Device API role</string>
   <string name="settings_adyen_role_terminals">Management API - Terminal actions read</string>
@@ -523,7 +523,7 @@
   <string name="settings_poiid_hint">例：S1F2-…</string>
   <string name="settings_poiid_help">端末のDevice info画面に表示されるモデルとシリアル番号です。</string>
   <string name="settings_host">端末のIPアドレス</string>
-  <string name="settings_host_placeholder">例：192.168.1.20</string>
+  <string name="settings_host_placeholder">例：192.0.2.1</string>
   <string name="settings_host_hint">端末はこのデバイスと同じネットワークに接続してください。</string>
   <string name="settings_port">ポート</string>
   <string name="settings_shared_key">共有キー</string>
@@ -569,7 +569,7 @@
   <string name="settings_choose_terminal">端末を選択</string>
   <string name="settings_no_terminals">一致する端末がありません。情報を手動で入力してください。</string>
   <string name="settings_tap_to_pay">Tap to Pay</string>
-  <string name="settings_tap_to_pay_hint">AdyenサポートにTap to Pay on AndroidとAdyen Payments app roleの有効化を依頼してください。設定すると、このスマートフォンがPaymentsアプリで上のマーチャントアカウント（またはその店舗）に登録されます。その後、お客様はこのスマートフォンにカードやスマートフォンをタッチして支払います。プリンターはないため、領収書はメールで送ります。</string>
+  <string name="settings_tap_to_pay_hint">AdyenサポートにTap to Pay on AndroidとAdyen Payments app roleの有効化を依頼してください。設定すると、このスマートフォンをマーチャントアカウントまたはその店舗に登録します。お客様はカードやスマートフォンをこのスマートフォンにタッチして支払います。プリンターはないため、領収書をメール送信または共有してください。</string>
   <string name="settings_payments_app">Adyen Paymentsアプリ</string>
   <string name="settings_payments_app_hint">Tap to PayはAdyen Paymentsアプリで動作します。テストアカウントにはAdyen Payments Test、本番アカウントにはAdyen Paymentsを、Google Playからインストールしてください。</string>
   <string name="settings_payments_app_installed">インストール済み</string>
@@ -609,7 +609,7 @@
   <string name="settings_pricing">価格設定</string>
   <string name="settings_currency">通貨</string>
   <string name="settings_currency_auto">自動（%1$s）</string>
-  <string name="settings_currency_hint">Adyenが処理するすべての通貨に対応します。Adyenアカウントがその通貨の対面決済を受け付けるか確認してください。</string>
+  <string name="settings_currency_hint">Adyenが処理するすべての通貨に対応します。マーチャントアカウントがその通貨の対面決済を受け付けるか確認してください。</string>
   <string name="settings_currency_search">コードまたは名前で検索</string>
   <string name="settings_currency_none">一致する通貨がありません</string>
   <string name="settings_tax">税</string>
@@ -799,7 +799,7 @@
   <string name="about_app_info_integrator">インテグレーター</string>
   <string name="about_app_info_device">デバイス</string>
   <string name="about_app_info_library">Adyenライブラリ</string>
-  <string name="about_text">Mini mPOSはAdyen Terminal APIで決済を受け付けます。アプリが動作している端末、ネットワーク上またはインターネット経由（クラウド）の端末、またはAdyen PaymentsアプリのTap to Payに対応しています。AdyenのJava APIライブラリを使用し、端末やPaymentsアプリへのメッセージは共有キーで暗号化します。クラウドへのリクエストはAPIキーで認証します。</string>
+  <string name="about_text">Mini mPOSはAdyen Terminal APIとAdyen Java APIライブラリで決済を受け付けます。決済端末上で動作するか、ネットワーク上またはインターネット経由（クラウド）の端末を使えます。スマートフォンのTap to PayはAdyen Paymentsアプリを使います。Mini mPOSは共有キーで端末やPaymentsアプリへのメッセージを暗号化します。クラウドへのリクエストはAPIキーで認証します。</string>
   <!-- Payment links (Pay by Link) and sharing -->
   <string name="checkout_send_link">支払いリンクを作成</string>
   <string name="checkout_link_without_tip">支払いリンクは領収書のチップに対応していません。このオプションなしでリンクを作成しますか？</string>
@@ -844,9 +844,9 @@
   <string name="link_demo_label">デモリンク</string>
   <string name="settings_link_expiry">リンクの有効時間（時間）</string>
   <string name="settings_link_expiry_hint">1〜1680時間（70日）。Adyenの既定は24時間です</string>
-  <string name="payment_context_mismatch">現在の設定は元の決済の端末、Adyenアカウント、または環境と一致しません。元の設定に戻してから続行してください。</string>
+  <string name="payment_context_mismatch">現在の設定は元の決済の端末、マーチャントアカウント、または環境と一致しません。元の設定に戻してから続行してください。</string>
   <string name="refund_review_title">元の決済を確認</string>
-  <string name="refund_review_message">このデバイスには元の販売記録がありません。QRコードではキャプチャ完了、後のチップや返金、元の端末を確認できません。Customer Areaで決済と返金可能な残額を確認し、選択した端末と環境が正しいことを確認してください。確認した金額のみを返金し、金額無制限の全額取消は行いません。</string>
+  <string name="refund_review_message">このデバイスには元の販売記録がありません。QRコードではキャプチャ、後のチップや返金、決済先を確認できません。Customer Areaで元の決済と返金可能な残額を確認してください。選択した端末と環境が正しいことも確認してください。この返金は確認した金額だけを送信し、金額無制限の全額取消は行いません。</string>
   <string name="refund_review_confirm">決済と設定を確認しました</string>
   <string name="pricing_change_title">価格変更を確認</string>
   <string name="pricing_change_message">%1$s → %2$s。表示単価を維持し、新しい通貨の精度に四捨五入します。変換後の価格の一部を以下に示します。税込・税抜価格の切り替えは税額の計算方法を変更します。保存済みの販売記録は変更しません。</string>
@@ -868,8 +868,8 @@
     <string name="transfer_board_first">このインポートを確認するため Tap to Pay を設定してください。確認成功まで他の内容は保存しません。</string>
     <string name="transfer_business_failed">店舗情報をインポートできませんでした。再試行するか、「設定 › 領収書」で入力してください。</string>
     <string name="transfer_missing_fields">設定が不完全です。手動設定ヘルパーで不足する情報を追加し、新しいコードを読み取ってください。</string>
-    <string name="transfer_tap_checked">Payments app の登録と設定を確認しました。このアプリは共有キーの診断テストに対応していません。</string>
-    <string name="settings_payments_app_setup_checked">設定項目を確認しました。Payments app は共有キーの診断テストに対応していません。</string>
+    <string name="transfer_tap_checked">Paymentsアプリの登録と設定を確認しました。このアプリは接続確認で共有キーをテストできません。</string>
+    <string name="settings_payments_app_setup_checked">設定項目を確認しました。Paymentsアプリは接続確認で共有キーをテストできません。</string>
   <string name="history_print_day">一日全体の集計を印刷</string>
   <string name="history_capture_activity">売上確定 / チップ</string>
   <string name="report_title">ローカル日次集計</string>
@@ -883,7 +883,7 @@
   <string name="report_online">オンライン支払い — 支払日不明</string>
   <string name="report_undated">売上確定 — 処理日不明</string>
   <string name="report_undated_note">保持された日付不明の全活動。当日の売上と差引額には含めません。</string>
-  <string name="report_note">保持されたローカル活動のみ。売上確定や返金の受理は最終決済ではありません。Adyen Customer Area を正とします。</string>
+  <string name="report_note">このデバイスに保存した取引のみです。キャプチャや返金要求の受理は最終精算の確認ではありません。Customer Areaで最終結果を確認してください。</string>
   <string name="report_issue_note">未解決の結果により合計が変わる場合があります。</string>
   <string name="report_demo">デモ — 資金移動なし</string>
   <string name="report_unknown">環境不明</string>

@@ -25,6 +25,15 @@ import javax.xml.parsers.DocumentBuilderFactory
 @Config(qualifiers = "ja-rJP")
 class LocalizationTest {
     @Test
+    fun `terminal address examples use an address reserved for documentation in every language`() {
+        listOf("values", "values-ja", "values-zh-rCN").forEach { folder ->
+            assertWithMessage(folder)
+                .that(resourceEntries(folder).getValue("string:settings_host_placeholder").single())
+                .contains("192.0.2.1")
+        }
+    }
+
+    @Test
     fun `translations cover every resource and preserve format arguments`() {
         val base = resourceEntries("values")
         listOf("values-ja", "values-zh-rCN").forEach { folder ->

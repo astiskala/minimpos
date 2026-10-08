@@ -4,18 +4,18 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>快速入门 – Mini mPOS</title>
-  <meta name="description" content="检查前提条件，安装 Mini mPOS，连接 Adyen，并在上线前测试第一笔付款。">
+  <meta name="description" content="安装 Mini mPOS，连接 Adyen，并在上线前验证 TEST 配置。">
   <link rel="icon" href="../favicon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="../styles.css">
-  <link rel="canonical" href="https://astiskala.github.io/minimpos/zh-CN/getting-started.html">
-  <link rel="alternate" hreflang="en" href="https://astiskala.github.io/minimpos/getting-started.html">
-  <link rel="alternate" hreflang="zh-CN" href="https://astiskala.github.io/minimpos/zh-CN/getting-started.html">
-  <link rel="alternate" hreflang="ja" href="https://astiskala.github.io/minimpos/ja/getting-started.html">
-  <link rel="alternate" hreflang="x-default" href="https://astiskala.github.io/minimpos/getting-started.html">
+  <link rel="canonical" href="https://astiskala.github.io/minimpos/zh-CN/quick-start.html">
+  <link rel="alternate" hreflang="en" href="https://astiskala.github.io/minimpos/quick-start.html">
+  <link rel="alternate" hreflang="zh-CN" href="https://astiskala.github.io/minimpos/zh-CN/quick-start.html">
+  <link rel="alternate" hreflang="ja" href="https://astiskala.github.io/minimpos/ja/quick-start.html">
+  <link rel="alternate" hreflang="x-default" href="https://astiskala.github.io/minimpos/quick-start.html">
   <meta property="og:type" content="article">
   <meta property="og:title" content="Mini mPOS 快速入门">
-  <meta property="og:description" content="前提条件、安装、连接 Adyen 和第一笔 TEST 付款。">
-  <meta property="og:url" content="https://astiskala.github.io/minimpos/zh-CN/getting-started.html">
+  <meta property="og:description" content="前提条件、安装、连接 Adyen 和上线前的 TEST 验证。">
+  <meta property="og:url" content="https://astiskala.github.io/minimpos/zh-CN/quick-start.html">
   <meta property="og:image" content="https://astiskala.github.io/minimpos/images/social.png">
   <meta property="og:image:alt" content="Adyen 终端示意图中的 Mini mPOS，展示英文模拟器演示。">
   <meta property="og:locale" content="zh_CN">
@@ -23,7 +23,7 @@
   <meta property="og:locale:alternate" content="ja_JP">
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="Mini mPOS 快速入门">
-  <meta name="twitter:description" content="前提条件、安装、连接 Adyen 和第一笔 TEST 付款。">
+  <meta name="twitter:description" content="前提条件、安装、连接 Adyen 和上线前的 TEST 验证。">
   <meta name="twitter:image" content="https://astiskala.github.io/minimpos/images/social.png">
   <meta name="twitter:image:alt" content="Adyen 终端示意图中的 Mini mPOS，展示英文模拟器演示。">
   <meta name="theme-color" content="#00112C">
@@ -33,26 +33,26 @@
   <header class="site-header"><div class="wrap header-row">
     <a class="brand" href="./" aria-label="Mini mPOS 首页"><img src="../favicon.svg" alt="" width="36" height="36"><span>Mini mPOS</span></a>
     <nav class="desktop-nav" aria-label="主导航"><ul class="nav">
-      <li><a href="getting-started.html" aria-current="page">快速入门</a></li><li><a href="using.html">使用 Mini mPOS</a></li>
+      <li><a href="quick-start.html" aria-current="page">快速入门</a></li><li><a href="using.html">使用 Mini mPOS</a></li>
       <li><a href="troubleshooting.html">故障排查</a></li><li><a href="setup.html">设置助手</a></li>
     </ul></nav>
     <details class="mobile-menu"><summary>菜单</summary><div class="mobile-panel"><nav aria-label="主导航"><ul class="nav">
-      <li><a href="getting-started.html" aria-current="page">快速入门</a></li><li><a href="using.html">使用 Mini mPOS</a></li>
+      <li><a href="quick-start.html" aria-current="page">快速入门</a></li><li><a href="using.html">使用 Mini mPOS</a></li>
       <li><a href="troubleshooting.html">故障排查</a></li><li><a href="setup.html">设置助手</a></li>
     </ul></nav>
       <nav class="mobile-languages" aria-label="语言"><p>语言</p><ul>
-        <li><a href="../getting-started.html" hreflang="en" lang="en">English</a></li>
-        <li><a aria-current="page" href="getting-started.html" hreflang="zh-CN" lang="zh-CN">简体中文</a></li>
-        <li><a href="../ja/getting-started.html" hreflang="ja" lang="ja">日本語</a></li>
+        <li><a href="../quick-start.html" hreflang="en" lang="en">English</a></li>
+        <li><a aria-current="page" href="quick-start.html" hreflang="zh-CN" lang="zh-CN">简体中文</a></li>
+        <li><a href="../ja/quick-start.html" hreflang="ja" lang="ja">日本語</a></li>
       </ul></nav>
     </div></details>
-    <details class="language-menu"><summary aria-label="语言：简体中文" title="语言"><svg aria-hidden="true" class="globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 2.7 3.8 5.7 3.8 9s-1.3 6.3-3.8 9c-2.5-2.7-3.8-5.7-3.8-9S9.5 5.7 12 3z"/></svg><span class="language-current">简体中文</span></summary><nav aria-label="语言"><ul><li><a href="../getting-started.html" hreflang="en" lang="en">English</a></li><li><a href="getting-started.html" hreflang="zh-CN" lang="zh-CN" aria-current="page">简体中文</a></li><li><a href="../ja/getting-started.html" hreflang="ja" lang="ja">日本語</a></li></ul></nav></details>
+    <details class="language-menu"><summary aria-label="语言：简体中文" title="语言"><svg aria-hidden="true" class="globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 2.7 3.8 5.7 3.8 9s-1.3 6.3-3.8 9c-2.5-2.7-3.8-5.7-3.8-9S9.5 5.7 12 3z"/></svg><span class="language-current">简体中文</span></summary><nav aria-label="语言"><ul><li><a href="../quick-start.html" hreflang="en" lang="en">English</a></li><li><a href="quick-start.html" hreflang="zh-CN" lang="zh-CN" aria-current="page">简体中文</a></li><li><a href="../ja/quick-start.html" hreflang="ja" lang="ja">日本語</a></li></ul></nav></details>
   </div></header>
   <main id="main">
-    <section class="guide-hero"><div class="wrap"><p class="eyebrow">指南</p><h1>快速入门</h1><p class="lead">检查前提条件，安装应用并连接 Adyen。先在 TEST 环境中测试全部流程，再接受真实付款。</p></div></section>
+    <section class="guide-hero"><div class="wrap"><p class="eyebrow">指南</p><h1>快速入门</h1><p class="lead">安装 Mini mPOS，连接 Adyen，并验证第一笔 TEST 付款。只需按照您的设备配置操作。</p><p>只是想体验？无需 Adyen 账户或终端即可<a href="#try">试用模拟器</a>。</p></div></section>
     <div class="wrap guide">
       <nav class="toc" id="contents" aria-label="指南导航">
-        <p class="toc-title">指南</p><p><a href="getting-started.html" aria-current="page">快速入门</a><br><a href="using.html">使用 Mini mPOS</a><br><a href="troubleshooting.html">故障排查</a></p>
+        <p class="toc-title">指南</p><p><a href="quick-start.html" aria-current="page">快速入门</a><br><a href="using.html">使用 Mini mPOS</a><br><a href="troubleshooting.html">故障排查</a></p>
         <div class="desktop-contents"><p class="toc-title">本页目录</p><ol>
           <li><a href="#choose">检查前提条件</a><ul>
             <li><a href="#devices">设备</a></li><li><a href="#network-requirements">网络</a></li><li><a href="#credentials">Adyen 凭据</a></li>
@@ -62,7 +62,7 @@
             <li><a href="#helper">扫描设置二维码</a></li><li><a href="#on-terminal">Adyen 终端</a></li><li><a href="#network">网络终端</a></li>
             <li><a href="#cloud">云端终端</a></li><li><a href="#tap-to-pay">Tap to Pay</a></li><li><a href="#shared-key-creation">缺少加密密钥</a></li>
           </ul></li>
-          <li><a href="#first-payment">完成 TEST 付款</a></li><li><a href="#live">正式上线</a></li><li><a href="#try">试用模拟器</a></li>
+          <li><a href="#first-payment">验证 TEST 配置</a></li><li><a href="#live">正式上线</a></li><li><a href="#try">试用模拟器</a></li>
         </ol></div>
         <details class="mobile-contents"><summary class="toc-title">本页目录</summary><ol>
           <li><a href="#choose">检查前提条件</a><ul>
@@ -73,7 +73,7 @@
             <li><a href="#helper">扫描设置二维码</a></li><li><a href="#on-terminal">Adyen 终端</a></li><li><a href="#network">网络终端</a></li>
             <li><a href="#cloud">云端终端</a></li><li><a href="#tap-to-pay">Tap to Pay</a></li><li><a href="#shared-key-creation">缺少加密密钥</a></li>
           </ul></li>
-          <li><a href="#first-payment">完成 TEST 付款</a></li><li><a href="#live">正式上线</a></li><li><a href="#try">试用模拟器</a></li>
+          <li><a href="#first-payment">验证 TEST 配置</a></li><li><a href="#live">正式上线</a></li><li><a href="#try">试用模拟器</a></li>
         </ol></details>
       </nav>
       <div class="guide-body">
@@ -82,10 +82,10 @@
           <p>请在安装当天之前确认以下内容。设备运行 Mini mPOS，终端读取银行卡；两者可以是同一台设备。</p>
           <h3 id="devices">选择设备配置</h3>
           <dl class="settings-list">
-            <dt><a href="#on-terminal">在 Adyen 终端上运行</a></dt><dd>一台设备完成整个收银流程。需要 Android 9 或更高版本的 Adyen Android 终端，例如 S1F2、S1F4Pro、S1E4Pro、S1E2L、AMS1、S1U2 或 SFO1。</dd>
+            <dt><a href="#on-terminal">在 Adyen 终端上运行</a></dt><dd>一台设备完成整个收银流程。需要 Android 9 或更高版本的 Adyen Android 支付终端。当前型号请参阅 <a href="https://docs.adyen.com/point-of-sale/android-terminals">Adyen Android 终端指南</a>。</dd>
             <dt><a href="#network">平板或手机搭配网络终端</a></dt><dd>柜台推荐方式。Android 9+ 平板或手机与 Adyen 终端位于同一局域网。终端上无需安装 Mini mPOS。</dd>
             <dt><a href="#cloud">平板或手机搭配云端终端</a></dt><dd>适用于位于不同网络的设备和终端。两者都需要互联网连接，付款通过 Adyen 发送到终端。</dd>
-            <dt><a href="#tap-to-pay">在手机上使用 Tap to Pay</a></dt><dd>无需独立终端。需要通过 Google 认证、支持 NFC 的 Android 12+ 手机和 Adyen Payments 应用，并由 Adyen 支持团队开通。请检查 Adyen 的<a href="https://docs.adyen.com/point-of-sale/mobile-android/requirements">要求</a>与<a href="https://docs.adyen.com/point-of-sale/ipp-mobile">支持的国家和付款方式</a>。</dd>
+            <dt><a href="#tap-to-pay">在手机上使用 Tap to Pay</a></dt><dd>无需独立终端。使用支持近场通信（NFC）的手机和 Adyen Payments 应用，并由 Adyen 支持团队开通。请检查 <a href="https://docs.adyen.com/point-of-sale/mobile-android/requirements">Adyen 手机要求</a>与 <a href="https://docs.adyen.com/point-of-sale/ipp-mobile">Adyen 支持的国家和付款方式</a>。</dd>
           </dl>
           <ul>
             <li>打印需要内置打印机的终端。AMS1 终端和 Tap to Pay 手机没有打印机，请改为发送电子收据或分享收据。</li>
@@ -98,28 +98,33 @@
             <dt>局域网（网络终端）</dt><dd>平板或手机必须能通过 TCP 8443 访问终端的 IP 地址。请将两者连接到同一网络，并确保 Wi-Fi 客户端隔离（访客网络常见）不会隔开它们。</dd>
             <dt>电子收据（可选）</dt><dd>允许出站访问您的 SMTP 服务器，通常为 TCP 587（STARTTLS）或 465（SSL/TLS）。</dd>
           </dl>
-          <p>请在路由器中为每台网络终端设置 DHCP 保留，固定其 IP 地址。云端和 Tap to Pay 配置中的平板或手机可使用移动数据，但搭配网络终端时不行。终端本身的网络要求请参阅 Adyen 的<a href="https://docs.adyen.com/point-of-sale/design-your-integration/network-and-connectivity/network-configuration">网络配置</a>。</p>
+          <p>请在路由器中为每台网络终端设置 DHCP 保留，固定其 IP 地址。云端和 Tap to Pay 配置中的平板或手机可使用移动数据，但搭配网络终端时不行。终端本身的网络要求请参阅 <a href="https://docs.adyen.com/point-of-sale/design-your-integration/network-and-connectivity/network-configuration">Adyen 网络配置指南</a>。</p>
           <h3 id="credentials">准备 Adyen 凭据</h3>
-          <p>真实付款需要已开通线下付款服务的 Adyen 账户及其商户后台（Customer Area）访问权限。凭据必须与终端属于同一环境（TEST 或 LIVE）。</p>
+          <p>通过 Adyen 验证配置需要有效的测试商家账户、已开通的线下付款服务及商户后台（Customer Area）访问权限。先使用 TEST 凭据及 TEST 终端或 Adyen Payments Test。上线时改用对应的 LIVE 账户、凭据及终端或 Payments 应用。每种真实付款配置都需要 Checkout API 访问权限，包括普通销售。</p>
+          <p>创建或编辑凭据时，商户后台用户需有 <strong>Manage API credentials</strong> 或 <strong>Merchant admin</strong> 权限。这些是用户权限，不是 API 密钥的角色。</p>
+          <p>请按照 <a href="https://docs.adyen.com/point-of-sale/what-we-support/payment-methods/add-payment-methods">Adyen 支付方式设置指南</a>开通计划接受的 POS 支付方式。Mini mPOS 使用终端已配置的支付方式。</p>
           <ol>
-            <li>在商户后台进入 <strong>Developers › API credentials</strong>，为 Mini mPOS 创建凭据并生成 API 密钥；参见 Adyen 的<a href="https://docs.adyen.com/development-resources/api-credentials">凭据指南</a>。</li>
-            <li>保留默认的 <strong>Checkout webservice role</strong>，并添加以下角色：
+            <li>在商户后台进入 <strong>Developers › API credentials</strong>，为 Mini mPOS 创建凭据并生成 API 密钥；参见 <a href="https://docs.adyen.com/development-resources/api-credentials">Adyen API 凭据指南</a>。</li>
+            <li>为主 API 密钥启用以下角色：
               <ul class="roles">
-                <li><strong>Management API — Terminal actions read</strong></li>
-                <li><strong>Management API — Terminal settings read and write</strong></li>
-                <li><strong>Management API — Terminal settings Advanced read and write</strong></li>
-                <li><strong>Cloud Device API role</strong>（仅云端终端）</li>
+                <li><strong>Merchant PAL webservice role</strong> — 支付 API 访问</li>
+                <li><strong>Checkout webservice role</strong> — API 检查、扣款、金额调整和支付链接</li>
+                <li><strong>Management API — Terminal actions read</strong> — 终端访问检查</li>
+                <li><strong>Management API — Terminal settings read and write</strong> — 终端设置和共享密钥创建</li>
+                <li><strong>Management API — Terminal settings Advanced read and write</strong> — 敏感设置，包括共享密钥</li>
+                <li><strong>Cloud Device API role</strong> — 仅云端终端</li>
               </ul>
-              凭据须属于终端的 Company 账户，并能访问终端的商家账户。</li>
+              每种真实付款配置都会由 Mini mPOS 检查这三个 Management 角色，包括手动输入、云端和 Tap to Pay。凭据须属于您的 Company 账户，并能访问支付目标的商家账户。参见 <a href="https://docs.adyen.com/development-resources/api-credentials/roles">Adyen API 角色指南</a>。</li>
+            <li>可选：如需<a href="using.html#shoppers">通过支付链接保存卡片</a>，还需启用 <strong>Merchant Recurring role</strong>。参见 <a href="https://docs.adyen.com/online-payments/tokenization/create-tokens">Adyen 在线支付令牌化指南</a>。</li>
             <li>可选：如需导入收据商家信息，还可添加 <strong>Management API — Stores read</strong>（门店名称、地址和电话）或 <strong>Management API — Account read</strong>（仅法人名称）。</li>
-            <li>可选：如需<a href="using.html#wallets">商家扫描钱包付款码</a>，添加 <strong>Management API — Payment methods read</strong>。请按照 Adyen 的<a href="https://docs.adyen.com/point-of-sale/what-we-support/payment-methods/add-payment-methods">支付方式设置</a>开通所需 POS 钱包。此只读权限仅影响钱包查询，不影响普通支付。</li>
+            <li>可选：如需<a href="using.html#wallets">商家扫描钱包付款码</a>，添加 <strong>Management API — Payment methods read</strong>。此只读权限仅影响钱包查询，不影响普通支付。</li>
             <li>记下<strong>商家账户</strong>。LIVE 还需记下 <strong>Developers › API URLs</strong> 中的 <strong>LIVE URL 前缀</strong>。</li>
             <li>在 <strong>Devices › Device settings › Integrations › Terminal API › Encryption key</strong> 中找到<strong>共享密钥</strong>（标识符、口令和版本）。实体终端可通过自动设置获取；Tap to Pay 需手动输入。云端终端不使用共享密钥。</li>
             <li>仅限 Tap to Pay：另建一个只有 <strong>Adyen Payments app role</strong> 的凭据，用于注册手机。</li>
           </ol>
           <div class="callout callout-important" role="note">
             <p class="callout-title">重要</p>
-            <p>Mini mPOS 没有服务器，API 密钥会加密保存在设备上。请创建仅供 Mini mPOS 使用、只含上述角色的凭据，设置管理员 PIN，设备丢失时撤销凭据。请阅读<a href="https://github.com/astiskala/minimpos/blob/main/SECURITY.md">安全政策</a>。</p>
+            <p>Mini mPOS 没有服务器，API 密钥会加密保存在设备上。请创建仅供 Mini mPOS 使用、只含您的配置所需 API 角色的凭据。设置管理员 PIN，设备丢失时撤销凭据。请阅读<a href="https://github.com/astiskala/minimpos/blob/main/SECURITY.md">安全政策</a>。</p>
           </div>
           <div class="callout callout-note" role="note">
             <p class="callout-title">说明</p>
@@ -131,7 +136,7 @@
           <h2>安装应用</h2>
           <p>从<a href="https://github.com/astiskala/minimpos/releases/latest">最新发布版本</a>下载已签名的 <code>minimpos-&lt;version&gt;.apk</code>。</p>
           <dl class="settings-list">
-            <dt>Adyen 终端</dt><dd><ol><li>在商户后台上传 APK 并部署到终端；参见 Adyen 的<a href="https://docs.adyen.com/point-of-sale/android-terminals/deploy-apps">应用部署指南</a>。用户需有上传和部署应用的权限。</li><li>在终端上打开 Mini mPOS，选择<strong>设置终端</strong>。</li></ol></dd>
+            <dt>Adyen 终端</dt><dd><ol><li>在商户后台上传 APK 并部署到终端；参见 <a href="https://docs.adyen.com/point-of-sale/android-terminals/deploy-apps">Adyen 应用部署指南</a>。用户需有上传和部署应用的权限。</li><li>在终端上打开 Mini mPOS，选择<strong>设置终端</strong>。</li></ol></dd>
             <dt>平板或手机</dt><dd><ol><li>在设备上打开 APK，按 Android 提示允许浏览器或文件管理器安装应用。</li><li>打开 Mini mPOS，选择<strong>设置终端</strong>。</li></ol></dd>
           </dl>
           <div class="callout callout-important" role="note">
@@ -247,7 +252,12 @@
           </dl>
           <details class="manual-setup">
             <summary>手动</summary>
-            <p>在<strong>设置 › 终端 › Adyen API</strong>中输入 Adyen API 密钥和商家账户，LIVE 还需输入 LIVE URL 前缀，然后点按<strong>测试 API</strong>。在 <strong>Tap to Pay</strong> 中输入 <strong>Payments 应用 API 密钥</strong>（仅有 Adyen Payments app role），可选填门店 ID。点按<strong>设置 Tap to Pay</strong>，在 Payments 应用中完成注册，再输入共享密钥。</p>
+            <ol>
+              <li>在<strong>设置 › 终端 › Adyen API</strong>中输入 Adyen API 密钥和商家账户。LIVE 还需输入 LIVE URL 前缀。点按<strong>测试 API</strong>。</li>
+              <li>在 <strong>Tap to Pay</strong> 中输入 <strong>Payments 应用 API 密钥</strong>，仅具有 Adyen Payments app role。可选填门店 ID。</li>
+              <li>点按<strong>设置 Tap to Pay</strong>，在 Payments 应用中完成注册。</li>
+              <li>在 Mini mPOS 中输入共享密钥。</li>
+            </ol>
           </details>
           <p>Mini mPOS 会替您在 Adyen 注册手机，无需手动复制注册令牌。共享密钥仍用于加密支付消息，注册不能替代它。</p>
           <p>Payments 应用无法进行连接测试，请通过一笔 <a href="#first-payment">TEST 付款</a>确认设置。付款时会打开 Payments 应用，完成后返回 Mini mPOS。以后要注销手机，请使用<strong>移除本手机</strong>。</p>
@@ -262,13 +272,19 @@
           <p class="back-to-contents"><a href="#contents">返回目录</a></p>
         </section>
         <section id="first-payment">
-          <h2>完成 TEST 付款</h2>
+          <h2>验证 TEST 配置</h2>
           <ol>
-            <li>在<strong>设置 › 终端</strong>中，确认环境为 <strong>TEST</strong>，且连接和 API 测试通过。</li>
+            <li>在<strong>设置 › 终端</strong>中，确认环境为 <strong>TEST</strong>。运行<strong>测试 API</strong>并确认通过。
+              <ul>
+                <li>实体终端：运行<strong>测试连接</strong>并确认通过。</li>
+                <li>Tap to Pay：确认手机已在 <strong>Adyen Payments Test</strong> 中注册。此应用没有连接测试；下方付款用于验证配置。</li>
+              </ul></li>
             <li>在<strong>设置 › 支付</strong>中检查币种，在<strong>设置 › 税</strong>中检查税率和价格是否含税。</li>
             <li>在首页点按<strong>新建销售</strong>，添加<strong>自定义商品</strong>，然后点按<strong>收款</strong>。</li>
-            <li>点按<strong>支付</strong>，使用 Adyen 的<a href="https://docs.adyen.com/point-of-sale/testing-pos-payments">测试卡</a>付款。</li>
-            <li>检查结果、收据和<strong>交易记录</strong>中的记录，然后为该付款退款。</li>
+            <li>点按<strong>支付</strong>，按照 <a href="https://docs.adyen.com/point-of-sale/testing-pos-payments">Adyen POS 测试指南</a>完成一笔成功付款。</li>
+            <li>确认结果为批准，且收据上的金额、币种和税额正确。在<strong>交易记录</strong>中打开销售记录，用其 <strong>PSP 识别号</strong>核对 TEST 商户后台中的付款。</li>
+            <li><a href="using.html#refund">为该付款退款</a>，并在 TEST 商户后台确认最终退款结果。<strong>已请求退款</strong>并非最终确认。</li>
+            <li>按照 <a href="https://docs.adyen.com/point-of-sale/testing-pos-payments">Adyen POS 测试指南</a>的拒付场景再次测试销售。确认 Mini mPOS 显示拒付，而非批准；参见<a href="troubleshooting.html#declines">付款被拒绝</a>。</li>
           </ol>
           <div class="callout callout-warning" role="note">
             <p class="callout-title">警告</p>
@@ -280,17 +296,21 @@
         <section id="live">
           <h2>正式上线</h2>
           <ol>
-            <li>在 TEST 环境中试用所有计划使用的流程，包括订金、小费和支付链接。模拟器不能替代此测试。</li>
-            <li>用实体打印机打印测试收据；使用电子收据时发送测试邮件。</li>
-            <li>设置管理员 PIN，需要时另设经理 PIN；参见<a href="using.html#business">员工权限</a>。</li>
-            <li>改用 LIVE 终端或 LIVE 版 Payments 应用及 LIVE 凭据。网络或云端终端请在<strong>环境</strong>中选择 <strong>LIVE</strong>。输入 <strong>LIVE URL 前缀</strong>；参见 Adyen 的<a href="https://docs.adyen.com/development-resources/live-endpoints">LIVE 端点</a>。</li>
-            <li>运行连接和 API 测试，确认<strong>设置 › 终端</strong>显示 <strong>LIVE</strong>。</li>
+            <li>在 TEST 中测试计划使用的可选流程：<a href="using.html#preauth">订金</a>、<a href="using.html#tips">收据小费</a>、<a href="using.html#payment-links">支付链接</a>或<a href="using.html#wallets">扫描钱包</a>。订金和收据小费会冻结资金，直至扣款。请在商户后台确认最终扣款结果。模拟器不能替代 Adyen 测试。</li>
+            <li>测试计划使用的收据交付方式：用实体打印机打印、发送测试邮件或分享收据。</li>
+            <li>设置管理员 PIN，需要时另设经理 PIN；参见<a href="using.html#staff">员工权限</a>。</li>
+            <li>改用 LIVE 终端或 LIVE 版 Payments 应用及 LIVE 凭据。网络或云端终端请在<strong>环境</strong>中选择 <strong>LIVE</strong>。输入 <strong>LIVE URL 前缀</strong>；参见 <a href="https://docs.adyen.com/development-resources/live-endpoints">Adyen LIVE 端点指南</a>。</li>
+            <li>在<strong>设置 › 终端</strong>中运行<strong>测试 API</strong>并确认通过。确认环境为 <strong>LIVE</strong>。
+              <ul>
+                <li>实体终端：运行<strong>测试连接</strong>并确认通过。</li>
+                <li>Tap to Pay：确认手机已在 LIVE 版 <strong>Adyen Payments</strong> 应用中注册。此应用没有连接测试。</li>
+              </ul></li>
           </ol>
           <div class="callout callout-warning" role="note">
             <p class="callout-title">警告</p>
             <p>在 TEST、LIVE 和模拟器之间切换会删除设备上的全部交易记录，包括未完成付款的恢复数据。请先处理<strong>需处理</strong>中的所有付款。</p>
           </div>
-          <p>需要帮助？请参阅<a href="troubleshooting.html">故障排查</a>。</p>
+          <p>日常检查和对账请参阅<a href="using.html#close-day">日终结算</a>。应用或 Adyen 问题请参阅<a href="troubleshooting.html#help">支持范围</a>。</p>
           <p class="back-to-contents"><a href="#contents">返回目录</a></p>
         </section>
         <section id="try">
@@ -301,7 +321,7 @@
             <li>在欢迎界面选择<strong>使用示例数据试用模拟器</strong>。其他选项为<strong>从另一台设备设置</strong>（导入设置二维码）和<strong>设置终端</strong>。</li>
             <li>在<strong>设置 › 模拟器</strong>中选择支付结果、延迟以及是否有打印机。</li>
           </ol>
-          <p>示例商品和交易记录会标为演示，不计入每日合计。在<strong>设置 › 数据</strong>中可<strong>添加示例数据</strong>或<strong>删除示例数据</strong>；删除会保留您自己的商品、交易记录和设置。离线演示链接请参阅<a href="using.html#payment-links">支付链接</a>。要从源码构建，请参阅<a href="https://github.com/astiskala/minimpos/blob/main/CONTRIBUTING.md">贡献者指南</a>。</p>
+          <p>示例商品和交易记录会标为演示。示例计入演示每日合计和报告，并非真实付款。在<strong>设置 › 数据</strong>中可<strong>添加示例数据</strong>或<strong>删除示例数据</strong>；删除会保留您自己的商品、交易记录和设置。离线演示链接请参阅<a href="using.html#payment-links">支付链接</a>。要从源码构建，请参阅<a href="https://github.com/astiskala/minimpos/blob/main/CONTRIBUTING.md">贡献者指南</a>。</p>
           <p class="back-to-contents"><a href="#contents">返回目录</a></p>
         </section>
       </div>
@@ -309,7 +329,7 @@
   </main>
   <footer class="site-footer"><div class="wrap footer-row">
     <nav aria-label="指南和设置"><ul class="footer-nav">
-      <li><a href="getting-started.html" aria-current="page">快速入门</a></li><li><a href="using.html">使用 Mini mPOS</a></li>
+      <li><a href="quick-start.html" aria-current="page">快速入门</a></li><li><a href="using.html">使用 Mini mPOS</a></li>
       <li><a href="troubleshooting.html">故障排查</a></li><li><a href="setup.html">设置助手</a></li>
     </ul></nav>
     <p><img src="../favicon.svg" alt="" width="24" height="24"> Mini mPOS · MIT 许可证 · <a href="https://github.com/astiskala/minimpos">GitHub</a> · <a href="https://github.com/astiskala/minimpos/blob/main/SECURITY.md">安全</a></p><p class="fine">Adyen 是 Adyen N.V. 的商标。Mini mPOS 是独立项目，与 Adyen 无关联，未获其背书，也不由其提供支持。</p>

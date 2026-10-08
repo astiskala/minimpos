@@ -62,6 +62,31 @@ class StoreDetailsTest {
     }
 
     @Test
+    fun `merchant receipt lookup reads only legal name without borrowing city or store fields`() {
+        reply("""{"id":"Merchant/One","name":" Legal Shop ","merchantCity":"Sydney","description":"Internal"}""")
+        assertThat(runBlocking { api.merchant("Merchant/One") })
+            .isEqualTo(StoreListing.Listed(listOf(StoreDetails("Merchant/One", "", "Legal Shop", "", ""))))
+        val sent = server.takeRequest()
+        assertThat(sent.method).isEqualTo("GET")
+        assertThat(sent.url.encodedPath).isEqualTo("/v3/merchants/Merchant%2FOne")
+        assertThat(sent.headers["x-api-key"]).isEqualTo("secret-key")
+        assertThat(sent.body).isNull()
+    }
+
+    @Test
+    fun `merchant lookup accepts unavailable name but rejects missing or mismatched identity`() {
+        reply("""{"id":"Merchant/One"}""")
+        assertThat(runBlocking { api.merchant("Merchant/One") })
+            .isEqualTo(StoreListing.Listed(listOf(StoreDetails("Merchant/One", "", "", "", ""))))
+        for (body in listOf("not json", "{}", """{"id":"Other","name":"Other name"}""")) {
+            reply(body)
+            assertThat(runBlocking { api.merchant("Merchant/One") }).isInstanceOf(StoreListing.Failed::class.java)
+        }
+        reply("{}", 403)
+        assertThat((runBlocking { api.merchant("Merchant/One") } as StoreListing.Failed).message).contains("merchant account")
+    }
+
+    @Test
     fun `reads subsequent pages without following response URLs or leaking credentials`() {
         reply("""{"data":[$store],"_links":{"next":{"href":"https://untrusted.example/steal"}}}""")
         reply("""{"data":[$store,{"id":"ST2"}]}""")

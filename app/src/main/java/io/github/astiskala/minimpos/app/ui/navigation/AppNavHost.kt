@@ -99,7 +99,7 @@ fun AppNavHost() {
                 entry<Route.Settings> { PinGate(navigator) { SettingsScreen(navigator) } }
                 entry<Route.SettingsSection> {
                     PinGate(navigator) {
-                        SettingsSectionScreen(it.section, navigator, automaticSetup = it.automaticSetup, helperSetup = it.helperSetup)
+                        SettingsSectionScreen(it.section, navigator, automaticSetup = it.automaticSetup)
                     }
                 }
             },

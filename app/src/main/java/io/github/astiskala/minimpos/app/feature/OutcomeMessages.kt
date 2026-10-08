@@ -94,7 +94,7 @@ private fun note(
 
 /**
  * The title and text of Home's setup card while this is missing: on a terminal ([onTerminal]) whose shared key is
- * missing, the request to enter it; otherwise "finish setting up" with what is missing.
+ * missing, a prompt to finish terminal setup; otherwise "finish setting up" with what is missing.
  */
 @Composable
 @ReadOnlyComposable

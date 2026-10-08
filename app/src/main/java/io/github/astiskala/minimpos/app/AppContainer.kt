@@ -131,7 +131,7 @@ import kotlin.time.Duration.Companion.minutes
  * @param paymentsAppManagement Boards and revokes the Payments app with an API key, in an environment.
  * @param paymentLinks Creates, checks and expires payment links with Checkout API credentials.
  * @param paymentModifications Verifies API access and modifies payments with Checkout API credentials.
- * @param storeDetails Reads Management API stores for reviewed receipt-business import.
+ * @param storeDetails Reads Management API store or merchant details for reviewed receipt-business import.
  * @param terminalDetails Reads optional Management terminal setup details.
  * @param terminalEnvironment Reads the local terminal certificate without credentials.
  * @param updateCheck Reads the latest GitHub release for the installed version, on devices that are not Adyen

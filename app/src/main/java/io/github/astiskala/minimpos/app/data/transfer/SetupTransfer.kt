@@ -187,7 +187,8 @@ private class PendingSetupImport(
  * @property settings Whether the settings were applied.
  * @property secrets The secrets stored.
  * @property connection Whether a verified connection was applied.
- * @property businessWarning Whether optional receipt-business lookup failed; existing text remains unchanged.
+ * @property businessWarning Whether a field selected for receipt-business lookup is still blank; existing text remains
+ *   unchanged.
  * @property paymentsAppChecked Whether phone registration and supported setup checks passed, without a diagnostic key test.
  */
 data class TransferResult(
@@ -202,7 +203,7 @@ data class TransferResult(
 /**
  * Sets up another terminal of the same merchant account like this one, through QR codes ([TransferCodec]): the
  * catalogue, the settings and the secrets. It also imports the codes of the setup helper web page: a connection
- * ([ConnectionSetup], which only sets the connection and optional SMTP fields it holds) and its secrets.
+ * ([ConnectionSetup], which sets its supplied connection, receipt text and optional SMTP fields) and its secrets.
  *
  * Shared settings omit device-bound fields as defined by [AppSettings.withDeviceFieldsOf]; imported shared values
  * replace this device's values, including defaults. The default tax rate travels as its name and rate and is matched
@@ -246,6 +247,7 @@ class SetupTransfer(
                 candidate.copy(
                     terminal = connection.appliedTo(candidate.terminal, onTerminal),
                     email = connection.emailAppliedTo(candidate.email),
+                    receipt = connection.receiptAppliedTo(candidate.receipt),
                 )
         }
         return PreparedTransfer(

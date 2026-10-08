@@ -30,7 +30,6 @@ import kotlinx.coroutines.flow.update
  * @property terminals The latest search for terminals connected in the cloud.
  * @property connectedTerminals The POIIDs that search found, to choose from; null while none is offered.
  * @property tapToPay The latest setup or removal of Tap to Pay.
- * @property guided Whether an imported helper setup should collapse already supplied details.
  * @property paymentsAppKeyStored Whether the Payments app API key given to the latest setup was stored (so the field
  *   can be cleared).
  * @property apiKeyStored Whether the API key given to the latest search was stored (so the field can be cleared).
@@ -45,7 +44,6 @@ data class TerminalSetupActions(
     val terminals: ActionState = ActionState(),
     val connectedTerminals: List<String>? = null,
     val tapToPay: ActionState = ActionState(),
-    val guided: Boolean = false,
     val paymentsAppKeyStored: Boolean = false,
     val apiKeyStored: Boolean = false,
     val manualDetails: Boolean = false,
@@ -95,15 +93,11 @@ class TerminalSetupViewModel(
         _actions.update { it.copy(unsavedSecrets = if (present) it.unsavedSecrets + secret else it.unsavedSecrets - secret) }
     }
 
-    /** Sets [helperSetup]'s guided presentation; [requested] starts optional physical-terminal discovery once, never boarding. */
-    suspend fun startAutomaticSetup(
-        requested: Boolean,
-        helperSetup: Boolean = false,
-    ) {
-        if (!requested && !helperSetup) return
+    /** When [requested], starts optional physical-terminal discovery once, never boarding. */
+    suspend fun startAutomaticSetup(requested: Boolean) {
+        if (!requested) return
         observedSettings.first { it.loaded }
-        _actions.update { it.copy(guided = helperSetup) }
-        if (!requested || automaticStarted) return
+        if (automaticStarted) return
         automaticStarted = true
         if (observedSettings.value.settings.terminal.mode != TerminalMode.PAYMENTS_APP) {
             findTerminals()

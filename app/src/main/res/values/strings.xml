@@ -59,7 +59,7 @@
   <string name="home_printer_yes">printer available</string>
   <string name="home_printer_no">no printer</string>
   <string name="home_setup_title">Connect to this terminal</string>
-  <string name="home_setup_text">Enter the shared key from your Customer Area to start taking payments.</string>
+  <string name="home_setup_text">Tap here to finish terminal setup.</string>
   <string name="home_setup_title_remote">Finish setting up payments</string>
   <string name="home_connection_failed">Payments cannot reach the terminal</string>
   <string name="update_available">Version %1$s is available</string>
@@ -376,7 +376,6 @@
   <string name="transfer_replace_hint">Deletes all products, categories and tax rates here first.</string>
   <string name="transfer_replace_confirm">All products, categories and tax rates on this device will be deleted and replaced.</string>
   <string name="transfer_done">Import complete</string>
-  <string name="transfer_review_setup">Review setup</string>
   <string name="transfer_added">Products added</string>
   <string name="transfer_updated">Products updated</string>
   <string name="transfer_new_categories">New categories</string>
@@ -537,10 +536,6 @@
   <string name="settings_shared_key">Shared key</string>
   <string name="settings_shared_key_hint">Copy these from your Customer Area: Devices › Device settings › Integrations › Terminal API › Encryption key (select the pencil icon to see them).</string>
   <string name="settings_payments_app_shared_key_hint">Enter the shared key here or include it in the setup helper. Phone registration does not retrieve it.</string>
-  <string name="settings_setup_review">Review or edit details</string>
-  <string name="settings_setup_hide">Hide details</string>
-  <string name="settings_setup_supplied">Details supplied</string>
-  <string name="settings_setup_guided">Saved details are collapsed. Tap a step to review or edit. Test the Adyen API to unlock the next step, then finish setup in order.</string>
   <string name="settings_key_identifier">Key identifier</string>
   <string name="settings_key_version">Key version</string>
   <string name="settings_passphrase">Key passphrase</string>
@@ -706,12 +701,10 @@
 
   <string name="settings_header_footer">Header and footer</string>
   <string name="settings_business_import">Import business details from Adyen</string>
-  <string name="settings_business_import_hint">Choose an Adyen store and review its receipt name, address and phone. Requires Management API—Stores read access on your Adyen API key.</string>
-  <string name="settings_business_choose">Choose a store</string>
+  <string name="settings_business_import_hint">Review receipt details from the assigned store (Management API—Stores read) or merchant account (Management API—Account read). Merchant accounts provide only the legal name.</string>
   <string name="settings_business_review">Review business details</string>
   <string name="settings_business_review_hint">Import fills only blank business name, address and phone fields. Existing text is never replaced. Tax ID, title and footer stay unchanged.</string>
-  <string name="settings_business_none">No stores were found for this merchant account.</string>
-  <string name="settings_business_unavailable">This store has no business details to import.</string>
+  <string name="settings_business_unavailable">No business details are available to import.</string>
   <string name="settings_business_name">Business name</string>
   <string name="settings_address">Address (one line per row)</string>
   <string name="settings_tax_id_label">Tax ID label</string>
@@ -894,7 +887,6 @@
   <string name="transfer_business_failed">Business details could not be imported. Retry or enter them in Settings › Receipts.</string>
   <string name="transfer_missing_fields">Setup is incomplete. Add the missing details in the Manual setup helper and scan the new codes.</string>
   <string name="transfer_tap_checked">Payments app registration and setup checked. The app does not support a diagnostic shared-key test.</string>
-  <string name="transfer_skip_business">Skip business details</string>
   <string name="settings_payments_app_setup_checked">Setup fields checked. The Payments app cannot diagnostically test the shared key.</string>
   <string name="history_print_day">Print whole-day summary</string>
   <string name="history_capture_activity">Capture / tip</string>
@@ -919,11 +911,12 @@
   <string name="history_switch_confirm">Delete history and switch</string>
   <string name="settings_create_shared_key">Create encryption key</string>
   <string name="settings_resume_shared_key">Resume key setup</string>
-  <string name="settings_shared_key_confirm">%1$s · %2$s\nCreate a new key for this terminal only. Existing keys at Adyen are reused. Do not edit this terminal’s settings elsewhere during creation.</string>
+  <string name="settings_shared_key_confirm">%1$s · %2$s\nThis terminal does not yet have an encryption key. Generate and save a new key? Existing keys at Adyen are reused. Do not edit this terminal’s settings elsewhere during creation.</string>
   <string name="settings_shared_key_replace">This replaces any locally supplied key values. The passphrase is stored encrypted.</string>
   <string name="settings_shared_key_resume_confirm">%1$s · %2$s\nRead Adyen settings first. If creation needs retrying, use the same saved key.</string>
   <string name="settings_shared_key_check_again">Check again</string>
-  <string name="setup_key_connection_pending">Key created; terminal connection not verified. On the terminal, open Admin menu › Config › Update, then check again.</string>
+  <string name="setup_key_update_title">Update terminal config</string>
+  <string name="setup_key_connection_pending">The new key is saved. Update this terminal’s config: open Admin menu › Config › Update. When finished, return to Mini mPOS and tap Check again to complete setup.</string>
   <string name="setup_key_recovery_unreadable">Pending key setup could not be read. Retrieve an existing key or contact support before creating another.</string>
   <string name="setup_key_creation_unconfirmed">Key creation is unconfirmed. Resume key setup to read Adyen settings before retrying.</string>
   <string name="transfer_key_not_imported">The key was created for the terminal. Setup was not imported. Retry, or rescan the same setup codes later. Cancelling does not remove the key at Adyen.</string>

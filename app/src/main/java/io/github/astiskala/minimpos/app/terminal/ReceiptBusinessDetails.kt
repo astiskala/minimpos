@@ -12,21 +12,18 @@ import io.github.astiskala.minimpos.terminal.transport.TerminalEnvironment
 import io.github.astiskala.minimpos.terminal.transport.TerminalListing
 
 /**
- * One store's proposed receipt fields; existing merchant text is never replaced by [applyTo].
- * @property id Adyen store ID, used to distinguish stores with identical names.
- * @property reference Store reference, possibly blank.
- * @property name Store name used on Adyen shopper receipts, possibly blank.
+ * Proposed receipt fields from the assigned store or merchant account; existing merchant text is never replaced by
+ * [applyTo].
+ * @property name Store shopper receipt name or merchant legal name, possibly blank.
  * @property address Newline-separated address components, possibly blank.
  * @property phone Store phone number, possibly blank.
  */
 data class ReceiptBusiness(
-    val id: String,
-    val reference: String,
     val name: String,
     val address: String,
     val phone: String,
 ) {
-    /** Whether the store supplies any fields that can be imported. */
+    /** Whether the proposal supplies any fields that can be imported. */
     val available: Boolean get() = name.isNotBlank() || address.isNotBlank() || phone.isNotBlank()
 
     /** Fills only blank business fields of [receipt]; tax ID, title, footer and other preferences are untouched. */
@@ -41,11 +38,11 @@ data class ReceiptBusiness(
 /** Result of the receipt-business import lookup; no lookup changes saved fields. */
 sealed interface ReceiptBusinesses {
     /**
-     * Stores available for review; empty when the account has none. An assigned store is offered alone.
-     * @property stores Proposals, not yet saved.
+     * Details of the assigned store, or of the merchant account when no store is assigned, for review.
+     * @property business Proposal, not yet saved.
      */
-    data class Listed(
-        val stores: List<ReceiptBusiness>,
+    data class Found(
+        val business: ReceiptBusiness,
     ) : ReceiptBusinesses
 
     /**
@@ -57,7 +54,7 @@ sealed interface ReceiptBusinesses {
     ) : ReceiptBusinesses
 
     /**
-     * Adyen refused or the store list could not be read.
+     * Adyen refused or the store or merchant details could not be read.
      * @property message Non-secret reason supplied by the integration.
      */
     data class Failed(
@@ -69,25 +66,25 @@ sealed interface ReceiptBusinesses {
  * Read-only store receipt lookup using the same unlocked account and environment as payments; never simulated.
  * @param setups Resolves setup and decrypts secrets once per lookup.
  * @param connect Builds the store Management client; tests replace it with a fake.
- * @param terminals Reads the selected terminal's current assignment so only an ambiguous store needs selection.
+ * @param terminals Reads the selected terminal's current store or merchant-account assignment.
  */
 class ReceiptBusinessDetails(
     private val setups: TerminalSetupSource,
     private val connect: (String, TerminalEnvironment) -> StoreDetailsApi = { key, environment -> AdyenStoreDetails(key, environment) },
     private val terminals: (String) -> TerminalDetailsApi = { AdyenTerminalDetails(it) },
 ) {
-    /** Loads the assigned store or account stores for review, without writing settings or Adyen configuration. */
-    suspend fun stores(): ReceiptBusinesses = stores(setups.unlocked())
+    /** Loads the assigned store, or the merchant legal name without unrelated stores; never writes settings or Adyen. */
+    suspend fun lookup(): ReceiptBusinesses = lookup(setups.unlocked())
 
     internal suspend fun validateOrigin(origin: TerminalSettings): SetupProblem? =
         SetupProblem.SETUP_CHANGED.takeUnless { setups.current().settings.terminal == origin }
 
-    internal suspend fun stores(unlocked: UnlockedSetup): ReceiptBusinesses {
+    internal suspend fun lookup(unlocked: UnlockedSetup): ReceiptBusinesses {
         val problem = lookupProblem(unlocked)
         if (problem != null) return ReceiptBusinesses.NotSetUp(problem)
         return when (val scope = assignedStore(unlocked)) {
             is StoreScope.Blocked -> ReceiptBusinesses.NotSetUp(scope.problem)
-            is StoreScope.Assigned -> proposals(unlocked, scope.id)
+            is StoreScope.Assigned -> proposal(unlocked, scope.id)
         }
     }
 
@@ -131,7 +128,7 @@ class ReceiptBusinessDetails(
         }
     }
 
-    private suspend fun proposals(
+    private suspend fun proposal(
         unlocked: UnlockedSetup,
         assigned: String,
     ): ReceiptBusinesses {
@@ -139,21 +136,18 @@ class ReceiptBusinessDetails(
         val merchant =
             setup.settings.terminal.merchantAccount
                 .trim()
-        return when (val listing = connect(checkNotNull(unlocked.apiKey), checkNotNull(setup.environment)).stores(merchant)) {
+        val api = connect(checkNotNull(unlocked.apiKey), checkNotNull(setup.environment))
+        val id = assigned.ifBlank { merchant }
+        return when (val listing = if (assigned.isBlank()) api.merchant(merchant) else api.stores(merchant)) {
             is StoreListing.Failed -> {
                 ReceiptBusinesses.Failed(listing.message)
             }
 
             is StoreListing.Listed -> {
-                if (assigned.isNotBlank() && listing.stores.none { it.id == assigned }) {
-                    ReceiptBusinesses.NotSetUp(SetupProblem.STORE_ACCESS)
-                } else {
-                    ReceiptBusinesses.Listed(
-                        listing.stores.filter { assigned.isBlank() || it.id == assigned }.map {
-                            ReceiptBusiness(it.id, it.reference, it.name, it.address, it.phone)
-                        },
-                    )
-                }
+                listing.stores
+                    .firstOrNull { it.id == id }
+                    ?.let { ReceiptBusinesses.Found(ReceiptBusiness(it.name, it.address, it.phone)) }
+                    ?: ReceiptBusinesses.NotSetUp(SetupProblem.STORE_ACCESS)
             }
         }
     }

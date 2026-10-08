@@ -27,7 +27,9 @@ import io.github.astiskala.minimpos.app.await
 import io.github.astiskala.minimpos.app.awaitCondition
 import io.github.astiskala.minimpos.app.data.security.Secret
 import io.github.astiskala.minimpos.app.data.security.TransferSeal
+import io.github.astiskala.minimpos.app.feature.home.HomeScreen
 import io.github.astiskala.minimpos.app.feature.settings.SettingsSectionScreen
+import io.github.astiskala.minimpos.app.feature.settings.SettingsSections
 import io.github.astiskala.minimpos.app.feature.transfer.ImportUiState
 import io.github.astiskala.minimpos.app.feature.transfer.TransferImportScreen
 import io.github.astiskala.minimpos.app.feature.transfer.TransferImportViewModel
@@ -66,6 +68,7 @@ class AutomaticSetupUiTest {
     private var sharedKeyFailure: ManagementFailure? = null
     private var emptyListing = false
     private val device = FakeDevice()
+    private val navigator = Navigator(NavBackStack<NavKey>(Route.Home, Route.TransferImport))
     private val paymentsApp = FakePaymentsApp()
     private val searches = mutableListOf<TerminalEnvironment>()
     private var keyLookups = 0
@@ -148,6 +151,7 @@ class AutomaticSetupUiTest {
         val account = if (destination == "tapToPay") """"merchantAccount":"Merchant",""" else ""
         val connection =
             """{"destination":"$destination","environment":"$environment","automatic":$automatic,""" +
+                """"importReceiptName":false,"importReceiptAddress":false,"importReceiptPhone":false,""" +
                 """$account$manualDetails"liveUrlPrefix":"1797a841fbb37ca7-AdyenDemo"}"""
         val public = Transfer(connection = connection)
         val encrypted = seal.seal(secrets.toByteArray(), code, TransferCodec.authenticationData(public))
@@ -155,12 +159,12 @@ class AutomaticSetupUiTest {
         val vm = TransferImportViewModel(container.setupTransfer, "AUD", container.setupImport)
         compose.awaitCondition("Opening scanner") { vm.state.value is ImportUiState.Scanning }
         QrChunks.split(TransferCodec.encode(transfer), "AUTO").forEach { vm.onCode(it.encode()) }
-        val navigator = Navigator(NavBackStack<NavKey>(Route.Home, Route.TransferImport))
         compose.setContent {
             MiniMposTheme {
                 CompositionLocalProvider(LocalAppContainer provides container) {
                     when (val route = navigator.current) {
-                        is Route.SettingsSection -> SettingsSectionScreen(route.section, navigator, helperSetup = route.helperSetup)
+                        is Route.SettingsSection -> SettingsSectionScreen(route.section, navigator)
+                        Route.Home -> HomeScreen(navigator)
                         else -> TransferImportScreen(navigator, vm = vm)
                     }
                 }
@@ -193,9 +197,13 @@ class AutomaticSetupUiTest {
             }
             assertThat(paymentsApp.opened).isEmpty()
             compose.onNodeWithTag("import").assertTextContains(env.context.getString(R.string.settings_set_up_tap_to_pay)).performClick()
+            waitForTag("importDone")
+            compose.onNodeWithText(env.context.getString(R.string.transfer_tap_checked)).performScrollTo().assertIsDisplayed()
+            compose.onNodeWithTag("importFinished").performClick()
         }
-        waitForTag("importDone")
-        compose.onNodeWithTag("importFinished").assertIsDisplayed().performClick()
+        compose.awaitCondition("Verified setup returns Home") { navigator.current == Route.Home }
+        waitForTag("newSale")
+        compose.onNodeWithTag("importFinished").assertDoesNotExist()
     }
 
     @Test
@@ -230,6 +238,7 @@ class AutomaticSetupUiTest {
     @Test
     fun `Automatic import verifies before saving and keeps all obtained sections visible`() {
         importAutomatic()
+        compose.runOnIdle { navigator.push(Route.SettingsSection(SettingsSections.TERMINAL)) }
         waitForTag("host")
         compose.onNodeWithTag("host").performScrollTo().assertTextContains("192.168.1.42", substring = true)
         compose.onNodeWithTag("merchantAccount").performScrollTo().assertTextContains("Merchant", substring = true)
@@ -243,6 +252,7 @@ class AutomaticSetupUiTest {
     @Test
     fun `Automatic LIVE cloud setup keeps prefix and terminal visible without retesting API`() {
         importAutomatic("cloud", TerminalEnvironment.LIVE)
+        compose.runOnIdle { navigator.push(Route.SettingsSection(SettingsSections.TERMINAL)) }
         waitForTag("livePrefix")
         compose.onNodeWithTag("livePrefix").performScrollTo().assertTextContains("1797a841fbb37ca7-AdyenDemo", substring = true)
         compose.onNodeWithTag("poiId").performScrollTo().assertTextContains(POI_ID, substring = true)
@@ -342,7 +352,17 @@ class AutomaticSetupUiTest {
     }
 
     @Test
-    fun `created key remains recoverable until terminal activation and Check again completes import`() {
+    fun `created key remains recoverable until terminal activation and Check again completes import`() = pendingKeyCompletes()
+
+    @Test
+    @Config(qualifiers = "zh-rCN-w320dp-h460dp-hdpi")
+    fun `Chinese key update action fits AMS1 and completes setup`() = pendingKeyCompletes()
+
+    @Test
+    @Config(qualifiers = "ja-w320dp-h460dp-hdpi")
+    fun `Japanese key update action fits AMS1 and completes setup`() = pendingKeyCompletes()
+
+    private fun pendingKeyCompletes() {
         sharedKeyAvailable = false
         activateKey = false
         val vm = importAutomatic(awaitKey = true)
@@ -353,6 +373,9 @@ class AutomaticSetupUiTest {
                 "import",
             ).assertIsDisplayed()
             .assertTextContains(env.context.getString(R.string.settings_shared_key_check_again))
+        compose.onNodeWithTag("keyUpdateCallout").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText(env.context.getString(R.string.setup_key_update_title)).assertIsDisplayed()
+        compose.onNodeWithText(env.context.getString(R.string.setup_key_connection_pending)).assertIsDisplayed()
         compose.onNodeWithText(env.context.getString(R.string.transfer_key_not_imported)).performScrollTo().assertIsDisplayed()
         assertThat(creations).isEqualTo(1)
         assertThat(await { env.container.secrets.get(Secret.ADYEN_API_KEY) }).isNull()
@@ -364,7 +387,7 @@ class AutomaticSetupUiTest {
         ).isTrue()
         terminal.passphrase = checkNotNull(generatedKey).passphrase
         compose.onNodeWithTag("import").performClick()
-        waitForTag("importDone")
+        compose.awaitCondition("Updated terminal completes setup directly Home") { navigator.current == Route.Home }
         assertThat(creations).isEqualTo(1)
         assertThat(
             await {
@@ -384,6 +407,7 @@ class AutomaticSetupUiTest {
             secrets = """{"ADYEN_API_KEY":"imported-key","TERMINAL_PASSPHRASE":"manual secret","PAYMENTS_APP_API_KEY":"boarding-key"}""",
             register = true,
         )
+        compose.runOnIdle { navigator.push(Route.SettingsSection(SettingsSections.TERMINAL)) }
         waitForTag("keyIdentifier")
         compose.onNodeWithTag("keyIdentifier").performScrollTo().assertTextContains("manual-key", substring = true)
         compose.onNodeWithTag("paymentsAppKey").assertExists()
@@ -407,6 +431,7 @@ class AutomaticSetupUiTest {
             manualDetails = """"merchantAccount":"Merchant","host":"192.168.1.42","poiId":"$POI_ID","keyIdentifier":"manual-key",""",
             secrets = """{"ADYEN_API_KEY":"imported-key","TERMINAL_PASSPHRASE":"correct horse battery staple"}""",
         )
+        compose.runOnIdle { navigator.push(Route.SettingsSection(SettingsSections.TERMINAL)) }
         waitForTag("host")
         compose.onNodeWithTag("host").performScrollTo().assertTextContains("192.168.1.42", substring = true)
         compose.onNodeWithTag("passphrase").assertExists()

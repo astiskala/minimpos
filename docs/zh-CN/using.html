@@ -123,8 +123,8 @@
           <p><strong>显示税额</strong>显示总额中包含或另行加收的税额，不改变实际收取的税额。<strong>显示税额明细</strong>按税率列出税额；使用含税价格时，显示所含税额需要开启此项。<strong>按税率显示应税金额</strong>可独立开启，按税率汇总商品金额，包括0%：含税价格显示含税合计，否则显示税前合计。</p>
           <p><strong>显示识别号</strong>默认开启，打印商家识别号及已输入的客户识别号，便于将收据与付款或客户对应。要标记特定税率的商品，设置<strong>标记的税率（%）</strong>、<strong>商品标记</strong>及说明；税率留空则不标记。</p>
           <p><strong>每行字符宽度</strong>默认为32，适用于较窄的收据纸卷。它控制打印分隔线和纯文本收据的宽度；屏幕预览按可用宽度显示。请通过测试打印选择适合打印机的宽度。</p>
-          <p>新终端设置会从已分配门店自动补充空白的收据名称、地址和电话。没有门店分配时使用账户唯一门店；仅剩多个门店时才显示选择器。Adyen API 密钥需要<a href="https://docs.adyen.com/api-explorer/Management/latest/get/merchants/(merchantId)/stores"><strong>Management API—Stores read</strong>权限</a>。查询失败不会阻止其他验证已通过的设置；可重试或手动填写。无法访问已分配门店时，不会使用其他门店。</p>
-          <p><strong>从 Adyen 导入商家信息</strong>会使用相同门店规则并提供核对界面。Adyen 和二维码的商家信息导入都只补充空白项，绝不覆盖已保存或手动输入的文本。如需替换，请自行编辑或清空字段。Adyen 商家信息查询不会更改税号、标题和页脚。</p>
+          <p>Adyen 查询从已分配门店补充空白的收据名称、地址和电话，需要<a href="https://docs.adyen.com/api-explorer/Management/latest/get/merchants/(merchantId)/stores"><strong>Management API—Stores read</strong>权限</a>。未分配门店时只读取商家账户：<a href="https://docs.adyen.com/api-explorer/Management/latest/get/merchants/(merchantId)"><strong>Management API—Account read</strong>权限</a>可获取法人名称，但不提供地址或电话。不会列出无关门店。查询失败不会阻止其他验证已通过的设置；可重试或手动填写缺失信息。</p>
+          <p><strong>从 Adyen 导入商家信息</strong>使用相同分配规则并提供核对界面。Adyen 自动导入只补充空白项，保留已保存文本。如需替换，请自行编辑或清空字段。<a href="setup.html">设置助手</a>还支持明确输入手动收据文本，以及逐项选择从 Adyen 导入。Adyen 查询不会更改税号、标题和页脚。</p>
           <h3 id="language-receipts">语言和收据文字</h3>
           <p>应用支持英语、简体中文和日语。Android 12 及更早版本跟随设备语言；Android 13 及更高版本使用系统的单应用语言设置。Adyen 的付款收据行跟随终端的收据语言，并按原样保留。请测试打印布局，特别是中日文文字。</p>
           <h3 id="email">设置电子邮件</h3>

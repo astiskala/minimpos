@@ -14,7 +14,6 @@ import io.github.astiskala.minimpos.app.data.transfer.TransferResult
 import io.github.astiskala.minimpos.app.feature.ActionOutcome
 import io.github.astiskala.minimpos.app.feature.launchWrite
 import io.github.astiskala.minimpos.app.terminal.HistorySwitchPlan
-import io.github.astiskala.minimpos.app.terminal.ReceiptBusiness
 import io.github.astiskala.minimpos.app.terminal.SetupImport
 import io.github.astiskala.minimpos.app.terminal.SetupImportOutcome
 import io.github.astiskala.minimpos.app.terminal.SharedKeyOffer
@@ -131,7 +130,6 @@ sealed interface ImportUiState {
      * @property outcome Current typed validation or storage error; null before checking or after correction.
      * @property incomplete Whether required connection fields are missing and the helper must generate complete codes.
      * @property terminalChoices Eligible IDs offered only for an ambiguous destination; null when not selecting.
-     * @property businessChoices Optional store proposals offered only when ambiguous; null when not selecting.
      * @property boardingRequired Whether explicit phone registration must run before this import can commit.
      * @property historySwitch Destructive history confirmation for this exact candidate; null before verification.
      * @property sharedKeyOffer Explicit key-creation/recovery confirmation; null when not offered.
@@ -146,7 +144,6 @@ sealed interface ImportUiState {
         val outcome: ActionOutcome? = null,
         val incomplete: Boolean = false,
         val terminalChoices: List<String>? = null,
-        val businessChoices: List<ReceiptBusiness>? = null,
         val boardingRequired: Boolean = false,
         /** Destructive environment-change confirmation; null until authenticated setup validation succeeds. */
         val historySwitch: HistorySwitchPlan? = null,
@@ -198,8 +195,6 @@ class TransferImportViewModel(
     private val assembler = QrChunkAssembler()
     private val _state = MutableStateFlow<ImportUiState>(ImportUiState.Importing)
     private var selectedTerminal: String? = null
-    private var selectedBusiness: String? = null
-    private var skipBusiness = false
     private var confirmedHistory: HistorySwitchPlan? = null
 
     init {
@@ -269,24 +264,6 @@ class TransferImportViewModel(
         }
     }
 
-    /** Chooses only an offered receipt store; null skips optional business import without changing receipt text. */
-    fun chooseBusiness(id: String?) {
-        val ready = _state.value as? ImportUiState.Ready ?: return
-        if (id != null && ready.businessChoices.orEmpty().none { it.id == id }) return
-        updateReady { it.copy(businessChoices = null) }
-        if (id != null) {
-            selectedBusiness = id
-            import()
-        }
-    }
-
-    /** Explicitly skips optional receipt-business lookup; never called by dismissing the selector. */
-    fun skipBusinessDetails() {
-        skipBusiness = true
-        updateReady { it.copy(businessChoices = null) }
-        import()
-    }
-
     /** Resumes an encrypted verified commit, without requiring its transfer code again or repeating remote registration. */
     fun retryRecovery() {
         _state.value = ImportUiState.Importing
@@ -337,8 +314,6 @@ class TransferImportViewModel(
                 ready.mode,
                 ready.code,
                 selectedTerminal,
-                selectedBusiness,
-                skipBusiness,
                 board,
                 confirmedHistorySwitch ?: confirmedHistory,
                 confirmedKey,
@@ -359,10 +334,6 @@ class TransferImportViewModel(
 
             is SetupImportOutcome.Terminals -> {
                 ready.copy(terminalChoices = result.ids, outcome = null)
-            }
-
-            is SetupImportOutcome.Businesses -> {
-                ready.copy(businessChoices = result.stores, outcome = null)
             }
 
             is SetupImportOutcome.HistoryConfirmation -> {
@@ -405,14 +376,14 @@ class TransferImportViewModel(
             }
 
             is ImportOutcome.Rejected -> {
-                ready.copy(outcome = ActionOutcome.NotSetUp(result.problem))
+                ready.copy(outcome = ActionOutcome.NotSetUp(result.problem), keyPending = false)
             }
 
             is ImportOutcome.StorageFailed -> {
                 if (result.pending) {
                     ImportUiState.RecoveryFailed(ActionOutcome.SecretNotStored(result.reason))
                 } else {
-                    ready.copy(outcome = ActionOutcome.SecretNotStored(result.reason))
+                    ready.copy(outcome = ActionOutcome.SecretNotStored(result.reason), keyPending = false)
                 }
             }
         }

@@ -178,6 +178,43 @@
           </fieldset>
 
           <fieldset>
+            <legend>收据信息（可选）</legend>
+            <label class="choice"><input type="radio" name="includeReceipt" value="no" checked> <span>保留现有收据设置</span></label>
+            <label class="choice"><input type="radio" name="includeReceipt" value="yes"> <span>包含收据信息</span></label>
+            <p class="hint">两种设置方式均可使用。关闭时，不导入收据文本或 Adyen 商家信息。</p>
+          </fieldset>
+
+          <fieldset id="receipt-fields" data-receipt-settings="true" hidden disabled>
+            <legend>收据信息</legend>
+            <p class="hint">每项商家信息均可选择从 Adyen 导入或手动输入。</p>
+            <label for="receiptNameSource">商家名称</label>
+            <select id="receiptNameSource" name="receiptNameSource"><option value="adyen">从 Adyen 导入</option><option value="manual">手动输入</option></select>
+            <div data-receipt="receiptNameSource" hidden>
+              <label for="receiptBusinessName">收据商家名称</label>
+              <input id="receiptBusinessName" name="receiptBusinessName" type="text" disabled>
+            </div>
+            <label for="receiptAddressSource">地址</label>
+            <select id="receiptAddressSource" name="receiptAddressSource"><option value="adyen">从 Adyen 导入</option><option value="manual">手动输入</option></select>
+            <div data-receipt="receiptAddressSource" hidden>
+              <label for="receiptAddressLines">收据地址</label>
+              <textarea id="receiptAddressLines" name="receiptAddressLines" rows="3" disabled></textarea>
+            </div>
+            <label for="receiptPhoneSource">电话</label>
+            <select id="receiptPhoneSource" name="receiptPhoneSource"><option value="adyen">从 Adyen 导入</option><option value="manual">手动输入</option></select>
+            <div data-receipt="receiptPhoneSource" hidden>
+              <label for="receiptPhone">收据电话</label>
+              <input id="receiptPhone" name="receiptPhone" type="tel" disabled>
+            </div>
+            <label for="receiptTaxId">税号（可选）</label>
+            <input id="receiptTaxId" name="receiptTaxId" type="text">
+            <label for="receiptTitle">收据标题（可选）</label>
+            <input id="receiptTitle" name="receiptTitle" type="text">
+            <label for="receiptFooter">页脚（可选）</label>
+            <textarea id="receiptFooter" name="receiptFooter" rows="2"></textarea>
+            <p class="hint">只有已填写的手动文本会更改已保存值，留空会保留原文本。税号、标题和页脚需手动输入，不从 Adyen 导入。参见<a href="using.html#receipts">收据设置</a>。</p>
+          </fieldset>
+
+          <fieldset>
             <legend>电子收据（可选）</legend>
             <label class="choice"><input type="radio" name="includeSmtp" value="no" checked> <span>保留现有邮件设置</span></label>
             <label class="choice"><input type="radio" name="includeSmtp" value="yes"> <span>包含 SMTP 设置</span></label>
@@ -217,7 +254,7 @@
             <li>在 Mini mPOS 中打开<strong>设置 › 终端</strong>，点按快速设置下的<strong>扫描设置二维码</strong>，或右上角的二维码扫描图标。无需先选择支付目标或环境。</li>
             <li>用摄像头扫描下方的二维码。有多个二维码时会自动轮换。</li>
             <li>检查支付目标和环境，尤其是 LIVE。输入必需的<strong>传输码</strong>，连字符会自动插入，再点击<strong>验证并导入</strong>。</li>
-            <li>按照<a href="getting-started.html#helper">验证后导入的步骤</a>操作。自动查询可补全信息；必需字段仍缺失时，会拒绝导入且不更改现有内容。Tap to Pay 会要求明确执行注册操作。成功导入后，已获取的设置保持可见。</li>
+            <li>按照<a href="getting-started.html#helper">验证后导入的步骤</a>操作。自动查询可补全信息；必需字段仍缺失时，会拒绝导入且不更改现有内容。Tap to Pay 会要求明确执行注册操作。</li>
           </ol>
           <p>如包含 SMTP 设置，请检查<strong>设置 › 电子邮件</strong>并发送测试邮件。邮箱采集与自动发送需单独配置，参见<a href="using.html#email">邮件设置</a>。</p>
           <p>导入后请<a href="getting-started.html#first-payment">完成第一笔 TEST 付款</a>。</p>
@@ -242,7 +279,7 @@
           <li><strong>数据不会离开此页面。</strong>二维码在您的浏览器中生成；页面不会发送或保存任何内容。完成后请关闭页面。</li>
           <li><strong>密钥经过加密。</strong>二维码中的密码和密钥使用传输码加密，传输码只在这里显示，因此仅拍摄二维码不会泄露它们。</li>
           <li><strong>请保密传输码。</strong>同时持有二维码和传输码的人可解密密钥。按需生成新传输，完成后关闭页面。</li>
-          <li><strong>仅设置连接及可选 SMTP 字段。</strong>不复制商品、收据布局或其他业务设置。请用应用中的<a href="using.html#more">共享至另一台设备</a>复制这些设置。</li>
+          <li><strong>设置连接、收据文本及可选 SMTP 字段。</strong>不复制商品或收据布局。请用应用中的<a href="using.html#more">共享至另一台设备</a>复制这些设置。</li>
           <li><strong>需要完整说明？</strong>参阅<a href="getting-started.html">快速入门</a>；导入或连接问题参见<a href="troubleshooting.html">故障排查</a>。</li>
         </ul>
       </aside>

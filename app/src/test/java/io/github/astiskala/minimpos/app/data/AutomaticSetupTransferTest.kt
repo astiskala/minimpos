@@ -4,6 +4,7 @@ import com.google.common.truth.Truth.assertThat
 import io.github.astiskala.minimpos.app.FakeDevice
 import io.github.astiskala.minimpos.app.FakeManagement
 import io.github.astiskala.minimpos.app.FakePaymentsApp
+import io.github.astiskala.minimpos.app.FakeStoreDetails
 import io.github.astiskala.minimpos.app.FakeTerminal
 import io.github.astiskala.minimpos.app.TestEnvironment
 import io.github.astiskala.minimpos.app.await
@@ -29,7 +30,6 @@ import io.github.astiskala.minimpos.terminal.transport.ManagementFailure
 import io.github.astiskala.minimpos.terminal.transport.SharedKeyLookup
 import io.github.astiskala.minimpos.terminal.transport.SharedKeyUpdate
 import io.github.astiskala.minimpos.terminal.transport.StoreDetails
-import io.github.astiskala.minimpos.terminal.transport.StoreDetailsApi
 import io.github.astiskala.minimpos.terminal.transport.StoreListing
 import io.github.astiskala.minimpos.terminal.transport.TerminalDetails
 import io.github.astiskala.minimpos.terminal.transport.TerminalDetailsApi
@@ -50,9 +50,9 @@ class AutomaticSetupTransferTest {
     private val terminal = FakeTerminal()
     private val createdKeys = mutableListOf<DiscoveredKey>()
     private var activateKey = true
-    private var stores: StoreListing =
-        StoreListing.Listed(
-            listOf(StoreDetails("ST1", "cafe", "Cafe", "1 Main St", "+61212345678")),
+    private val storeDetails =
+        FakeStoreDetails(
+            StoreListing.Listed(listOf(StoreDetails("ST1", "cafe", "Cafe", "1 Main St", "+61212345678"))),
         )
     private var credentialReads = 0
     private val details: TerminalDetailsApi =
@@ -91,7 +91,7 @@ class AutomaticSetupTransferTest {
             FakeDevice(detectedPoiId = poiId),
             terminal = terminal,
             terminalDetails = details,
-            stores = StoreDetailsApi { stores },
+            stores = storeDetails,
             verifiedSetup = false,
         )
 
@@ -188,6 +188,18 @@ class AutomaticSetupTransferTest {
                     .first()
             },
         ).isNull()
+    }
+
+    @Test
+    fun `merchant-assigned terminal imports the merchant legal name instead of unrelated stores`() {
+        available = listOf(TerminalDetails(poiId, "Merchant", "192.168.1.42"))
+        storeDetails.storeList = StoreListing.Listed(listOf(StoreDetails("ST1", "", "Other store", "", "")))
+        storeDetails.merchantDetails = StoreListing.Listed(listOf(StoreDetails("Merchant", "", "Legal Shop", "", "")))
+        val result = import() as SetupImportOutcome.Committed
+        assertThat((result.outcome as ImportOutcome.Imported).result.businessWarning).isTrue()
+        val receipt = await { env.container.settings.current() }.receipt
+        assertThat(receipt.businessName).isEqualTo("Legal Shop")
+        assertThat(receipt.addressLines).isEmpty()
     }
 
     @Test
@@ -466,9 +478,59 @@ class AutomaticSetupTransferTest {
     }
 
     @Test
+    fun `helper receipt choices import only selected Adyen fields alongside manual details`() {
+        val result =
+            import(
+                """{"destination":"thisTerminal","automatic":true,"receiptBusinessName":"My shop",
+                |"receiptPhone":"+123","receiptTaxId":"TAX123","receiptTitle":"Sale receipt","receiptFooter":"Thanks",
+                |"importReceiptName":false,"importReceiptPhone":false}
+                """.trimMargin(),
+            ) as SetupImportOutcome.Committed
+        assertThat(result.outcome).isInstanceOf(ImportOutcome.Imported::class.java)
+        val receipt = await { env.container.settings.current() }.receipt
+        assertThat(receipt.businessName).isEqualTo("My shop")
+        assertThat(receipt.addressLines).isEqualTo("1 Main St")
+        assertThat(receipt.phone).isEqualTo("+123")
+        assertThat(receipt.taxId).isEqualTo("TAX123")
+        assertThat(receipt.title).isEqualTo("Sale receipt")
+        assertThat(receipt.footer).isEqualTo("Thanks")
+    }
+
+    @Test
+    fun `unavailable selected Adyen field warns without importing unselected fields`() {
+        storeDetails.storeList = StoreListing.Listed(listOf(StoreDetails("ST1", "", "Unselected name", "", "")))
+        val result =
+            import(
+                """{"destination":"thisTerminal","automatic":true,"importReceiptName":false,"importReceiptPhone":false}""",
+            ) as SetupImportOutcome.Committed
+        assertThat((result.outcome as ImportOutcome.Imported).result.businessWarning).isTrue()
+        val receipt = await { env.container.settings.current() }.receipt
+        assertThat(receipt.businessName).isEmpty()
+        assertThat(receipt.addressLines).isEmpty()
+        assertThat(receipt.phone).isEmpty()
+    }
+
+    @Test
+    fun `manual blank receipt fields do not trigger Adyen lookup or erase saved text`() {
+        storeDetails.storeList = StoreListing.Failed("Lookup must not run")
+        env.updateSettings { it.copy(receipt = it.receipt.copy(businessName = "Saved", addressLines = "Saved address")) }
+        val result =
+            import(
+                """{"destination":"thisTerminal","automatic":true,"receiptBusinessName":" ",
+                |"importReceiptName":false,"importReceiptAddress":false,"importReceiptPhone":false}
+                """.trimMargin(),
+            ) as SetupImportOutcome.Committed
+        assertThat((result.outcome as ImportOutcome.Imported).result.businessWarning).isFalse()
+        val receipt = await { env.container.settings.current() }.receipt
+        assertThat(receipt.businessName).isEqualTo("Saved")
+        assertThat(receipt.addressLines).isEqualTo("Saved address")
+        assertThat(receipt.phone).isEmpty()
+    }
+
+    @Test
     fun `receipt lookup failures do not block verified setup or overwrite existing business text`() {
         env.updateSettings { it.copy(receipt = it.receipt.copy(businessName = "Saved shop", phone = "Saved phone")) }
-        stores = StoreListing.Failed("Access denied")
+        storeDetails.storeList = StoreListing.Failed("Access denied")
         val result = (import() as SetupImportOutcome.Committed).outcome as ImportOutcome.Imported
         assertThat(result.result.businessWarning).isTrue()
         assertThat(await { env.container.settings.current() }.receipt.businessName).isEqualTo("Saved shop")
@@ -476,14 +538,14 @@ class AutomaticSetupTransferTest {
     }
 
     @Test
-    fun `terminal and store selectors are only offered when ambiguous and selection writes nothing`() {
+    fun `terminal selector writes nothing until a terminal is chosen`() {
         env.close()
         env =
             TestEnvironment(
                 FakeDevice(),
                 terminal = FakeTerminal(),
                 terminalDetails = details,
-                stores = StoreDetailsApi { stores },
+                stores = storeDetails,
                 verifiedSetup = false,
             )
         available =
@@ -491,17 +553,13 @@ class AutomaticSetupTransferTest {
                 TerminalDetails(poiId, "Merchant", "192.168.1.42"),
                 TerminalDetails("AMS1-000168223606144", "Merchant", "192.168.1.7"),
             )
-        stores = StoreListing.Listed(listOf(StoreDetails("ST1", "one", "One", "", ""), StoreDetails("ST2", "two", "Two", "", "")))
         val received = received("""{"destination":"network","environment":"TEST","automatic":true}""")
         val before = await { env.container.settings.current() }
         val terminals = await { env.container.setupImport.import(received, ImportMode.MERGE, code) }
         assertThat(terminals).isEqualTo(SetupImportOutcome.Terminals(available.map { it.id }))
-        val choice = await { env.container.setupImport.import(received, ImportMode.MERGE, code, terminalId = poiId) }
-        assertThat(choice).isInstanceOf(SetupImportOutcome.Businesses::class.java)
         assertThat(await { env.container.settings.current() }).isEqualTo(before)
-        val complete = await { env.container.setupImport.import(received, ImportMode.MERGE, code, terminalId = poiId, businessId = "ST2") }
+        val complete = await { env.container.setupImport.import(received, ImportMode.MERGE, code, terminalId = poiId) }
         assertThat(complete).isInstanceOf(SetupImportOutcome.Committed::class.java)
-        assertThat(await { env.container.settings.current() }.receipt.businessName).isEqualTo("Two")
     }
 
     @Test

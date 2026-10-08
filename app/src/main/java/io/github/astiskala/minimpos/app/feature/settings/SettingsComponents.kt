@@ -2,7 +2,6 @@ package io.github.astiskala.minimpos.app.feature.settings
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -18,8 +17,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.ErrorOutline
-import androidx.compose.material.icons.filled.ExpandLess
-import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material.icons.outlined.Info
@@ -39,7 +36,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -372,45 +368,6 @@ fun SettingSecret(
                 }
             },
         )
-    }
-}
-
-/**
- * Settings under an upper-case [title] that opens and closes them; they start open when [initiallyOpen]. The title is
- * tagged [tag] for tests.
- */
-@Composable
-fun CollapsibleSettings(
-    title: String,
-    tag: String,
-    modifier: Modifier = Modifier,
-    initiallyOpen: Boolean = false,
-    content: @Composable ColumnScope.() -> Unit,
-) {
-    var open by rememberSaveable { mutableStateOf(initiallyOpen) }
-    Column(modifier) {
-        Row(
-            Modifier
-                .fillMaxWidth()
-                .clickable {
-                    open = !open
-                }.padding(horizontal = 16.dp, vertical = LocalDimens.current.rowPadding)
-                .testTag(tag),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Text(
-                title.uppercase(),
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.weight(1f),
-            )
-            Icon(
-                if (open) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
-        if (open) content()
     }
 }
 

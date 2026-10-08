@@ -10,6 +10,7 @@ import com.adyen.model.checkout.PaymentMethodsRequest
 import com.adyen.model.checkout.UpdatePaymentLinkRequest
 import com.adyen.model.clouddevice.ConnectedDevicesResponse
 import com.adyen.model.management.Key
+import com.adyen.model.management.Merchant
 import com.adyen.model.management.Nexo
 import com.adyen.model.management.TerminalSettings
 import com.adyen.model.paymentsapp.BoardingTokenRequest
@@ -51,6 +52,7 @@ class AdyenModelR8Test {
                 UpdatePaymentLinkRequest::class.java to """{"status":"expired"}""",
                 TerminalSettings::class.java to
                     """{"nexo":{"encryptionKey":{"identifier":"test-key","version":1,"passphrase":"synthetic"}}}""",
+                Merchant::class.java to """{"id":"HarbourCoffeeCOM","name":"Harbour Coffee"}""",
                 BoardingTokenRequest::class.java to """{"boardingRequestToken":"synthetic"}""",
                 ConnectedDevicesResponse::class.java to """{"uniqueDeviceIds":["AMS1-1"]}""",
             )

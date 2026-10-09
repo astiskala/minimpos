@@ -44,7 +44,8 @@ then wait for completion. Pass multiple tasks in one invocation when collecting 
 ### Room and stored events
 
 - Read [app ownership rules](../../../app/AGENTS.md); edit the event/repository owner, not downstream mutations.
-- Update the current exported schema and `DatabaseSchemaTest` together.
+- Follow [schema upgrade requirements](../../../CONTRIBUTING.md#make-changes-that-fit): version and register migrations,
+  retain released schemas, export the new schema and update `DatabaseSchemaTest` with migration/data-preservation tests.
 - Run `scripts/dev check db`, plus affected repository/event tests. No destructive fallback or merchant-data reset.
 
 ### Financial operations

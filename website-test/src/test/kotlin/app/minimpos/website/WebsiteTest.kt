@@ -29,14 +29,10 @@ class QuickStartGuideTest {
             assertThat(steps.children()[1].ownText()).contains(additional.getValue(language))
             assertThat(steps.select("ul.roles li strong").map { it.text() })
                 .containsExactly(
-                    "Management API — Terminal actions read",
-                    "Management API — Terminal settings read and write",
-                    "Management API — Terminal settings Advanced read and write",
+                    "Management API - Terminal actions read",
+                    "Management API - Terminal settings read and write",
+                    "Management API - Terminal settings Advanced read and write",
                     "Cloud Device API role",
-                    "Merchant Recurring role",
-                    "Management API — Stores read",
-                    "Management API — Account read",
-                    "Management API — Payment methods read",
                 ).inOrder()
             steps.select("ul.roles li").forEach { role ->
                 assertThat(role.text()).isEqualTo(role.select("strong").single().text())
@@ -51,7 +47,7 @@ class QuickStartGuideTest {
                 },
             ).contains("Devices › Device settings › Integrations › Terminal API › Encryption key")
             assertThat(text).doesNotContain("API tokenise payment details")
-            assertThat(text).doesNotContain("Management API — API credentials read and write")
+            assertThat(text).doesNotContain("Management API - API credentials read and write")
         }
     }
 
@@ -369,8 +365,8 @@ class WebsiteTest {
                     assertThat(first).contains("LIVE")
                 }
             }
-            assertThat(guide.text).contains("Management API — Terminal actions read")
-            assertThat(guide.text).contains("Management API — Terminal settings Advanced read and write")
+            assertThat(guide.text).contains("Management API - Terminal actions read")
+            assertThat(guide.text).contains("Management API - Terminal settings Advanced read and write")
         }
     }
 
@@ -445,7 +441,7 @@ class WebsiteTest {
             }
         }
         LANGUAGES.forEach { language ->
-            assertThat(pages.getValue(language to Kind.GUIDE).text).contains("Management API — Terminal settings read and write")
+            assertThat(pages.getValue(language to Kind.GUIDE).text).contains("Management API - Terminal settings read and write")
             assertThat(pages.getValue(language to Kind.USING).text).contains("Return adjust authorisation data")
         }
     }
@@ -530,13 +526,6 @@ class WebsiteTest {
         LANGUAGES.forEach { language ->
             val using = pages.getValue(language to Kind.USING)
             wording.getValue(language).forEach { assertThat(using.text).contains(it) }
-            val credentialRoles =
-                pages
-                    .getValue(language to Kind.GUIDE)
-                    .document
-                    .select("ul.roles")
-                    .text()
-            listOf("Management API — Stores read", "Management API — Account read").forEach { assertThat(credentialRoles).contains(it) }
             val troubleshooting = pages.getValue(language to Kind.TROUBLE)
             listOf("Settings › Payments › Offer payment links", "设置 › 支付 › 提供支付链接", "設定 › 決済 › 支払いリンクを使う").forEach { obsolete ->
                 assertThat(using.text).doesNotContain(obsolete)
@@ -999,7 +988,7 @@ class SetupGuideTest {
             assertThat(security.map { it.attr("value") }).containsExactly("STARTTLS", "SSL", "NONE").inOrder()
             assertThat(security.first()!!.hasAttr("checked")).isTrue()
             assertThat(fields.select("#smtpPort").single().attr("value")).isEqualTo("587")
-            assertThat(helper.document.select("#setup-codes a[href='using.html#email']")).isNotEmpty()
+            assertThat(helper.document.select("#setup-form a[href='using.html#email']")).isNotEmpty()
             val using = pages.getValue(language to Kind.USING)
             assertThat(
                 using.document

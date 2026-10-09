@@ -195,8 +195,12 @@ they require a backend for certificates, a private Maven repository, PCI MPoC an
   and merchant guides: short active sentences, consistent terms and numbered instructions. Name Adyen in documentation
   link text and link to pages, not fragments. Use reserved example domains and IP addresses. Keep exact UI labels,
   localized money formatting and explicit uncertainty in payment outcomes; do not apply prose rules to protocol values.
-- Pre-launch schemas and QR formats have one current contract. Update models, exported Room schema, tests and setup
-  helper together, without earlier-build compatibility. Never add destructive fallback or reset local data silently.
+- From 1.0.0 onward, preserve upgrade paths from every released database schema. For each Room schema change, bump
+  the database version, register a data-preserving migration, retain released exported schemas and export the new
+  schema. Update `DatabaseSchemaTest` and add migration tests that verify schema validity and preservation of merchant
+  data, including unfinished financial operations. Never add destructive fallback or reset local data silently.
+- QR formats retain one current contract. Update the app, setup helper, format tests and helper vectors together;
+  see [repository constraints](AGENTS.md).
 - New-install localized/regional defaults must not overwrite stored text or imported settings.
 
 ## Website and screenshots

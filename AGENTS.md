@@ -12,10 +12,10 @@ Adyen Payments app (Tap to Pay). The built-in simulator needs no Adyen account.
 
 ## Non-negotiable constraints
 
-- Pre-launch, with no users yet: keep one current model, format and set of defaults. No earlier-build aliases,
-  migrations or compatibility branches. Preserve supported Android versions, Adyen protocols, validation,
-  encryption, transaction recovery and idempotency. Never reset local data or add destructive database fallback
-  without approval; update the current Room schema and its tests together.
+- From 1.0.0 onward, schema changes require versioned, data-preserving migrations and upgrade tests. Retain released
+  Room schemas; update the new schema and its tests together. Preserve supported Android versions, Adyen protocols,
+  validation, encryption, transaction recovery and idempotency. Never reset local data or add destructive database
+  fallback without approval.
 - Never change `applicationId` (`io.github.astiskala.minimpos`) or raise `minSdk` above 28. Terminals have no Google
   Play services and no adb. Smallest usable screen is AMS1, about 320×460 dp.
 - Only INTERNET, ACCESS_NETWORK_STATE and CAMERA permissions; no CATEGORY_HOME or `testOnly`. The application icon

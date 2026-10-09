@@ -5,6 +5,7 @@ import app.minimpos.app.TestEnvironment
 import app.minimpos.app.await
 import app.minimpos.app.data.db.AdjustmentStatus
 import app.minimpos.app.data.db.CaptureStatus
+import app.minimpos.app.data.db.Failure
 import app.minimpos.app.data.db.SaleEntity
 import app.minimpos.app.data.db.SaleKind
 import app.minimpos.app.data.db.SaleLineEntity
@@ -212,7 +213,7 @@ class CapturesTest {
         val result = await { captures.addTip("s1", 100) }
         assertThat(result).isEqualTo(CaptureResult.NotSetUp(SetupProblem.API_KEY))
         assertThat(sale().tipMinor).isNull()
-        assertThat(sale().modificationReason).isEqualTo(StoredReason.NotSetUp(SetupProblem.API_KEY))
+        assertThat(sale().modificationReason).isEqualTo(StoredReason.NotDone(Failure.NotSetUp(SetupProblem.API_KEY)))
         assertThat(sale().modificationMessage).isNull()
         assertThat(fake.keys).isEmpty()
         // Nothing of it entered is no longer left to the Customer Area either.

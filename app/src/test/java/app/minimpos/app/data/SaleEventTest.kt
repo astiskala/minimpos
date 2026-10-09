@@ -2,6 +2,9 @@ package app.minimpos.app.data
 
 import app.minimpos.app.data.db.AdjustmentStatus
 import app.minimpos.app.data.db.CaptureStatus
+import app.minimpos.app.data.db.DeviceFault
+import app.minimpos.app.data.db.EmailFault
+import app.minimpos.app.data.db.Failure
 import app.minimpos.app.data.db.SaleEntity
 import app.minimpos.app.data.db.SaleKind
 import app.minimpos.app.data.db.SaleStatus
@@ -19,6 +22,10 @@ import app.minimpos.terminal.checkout.ModificationResult
 import app.minimpos.terminal.checkout.PaymentLink
 import app.minimpos.terminal.checkout.PaymentLinkStatus
 import app.minimpos.terminal.client.TransactionDetails
+import app.minimpos.terminal.transport.ApiKey
+import app.minimpos.terminal.transport.ExternalText
+import app.minimpos.terminal.transport.Fault
+import app.minimpos.terminal.transport.MalformedPart
 import com.google.common.truth.Truth.assertThat
 import org.junit.Test
 import java.time.Instant
@@ -80,8 +87,11 @@ class SaleEventTest {
         assertThat(unknown.message).isEqualTo("No answer")
         assertThat(unknown.standing).isEqualTo(PaymentStanding.NOT_APPROVED)
         // What the app says and what the terminal says replace each other.
-        val notSetUp = pending.after(SaleEvent.Settled(SaleStatus.FAILED, null, null, StoredReason.NotSetUp(SetupProblem.PASSPHRASE)))
-        assertThat(notSetUp.reason).isEqualTo(StoredReason.NotSetUp(SetupProblem.PASSPHRASE))
+        val notSetUp =
+            pending.after(
+                SaleEvent.Settled(SaleStatus.FAILED, null, null, StoredReason.NotDone(Failure.NotSetUp(SetupProblem.PASSPHRASE))),
+            )
+        assertThat(notSetUp.reason).isEqualTo(StoredReason.NotDone(Failure.NotSetUp(SetupProblem.PASSPHRASE)))
         assertThat(notSetUp.after(SaleEvent.Settled(SaleStatus.DECLINED, "Refused", null)).reason).isNull()
     }
 
@@ -132,7 +142,7 @@ class SaleEventTest {
         assertThat(refused.after(SaleEvent.AdjustmentAnswered(2_400, ModificationResult.Received(null))).modificationMessage).isNull()
 
         val notSent = refused.after(SaleEvent.ModificationNotSetUp(SetupProblem.API_KEY))
-        assertThat(notSent.modificationReason).isEqualTo(StoredReason.NotSetUp(SetupProblem.API_KEY))
+        assertThat(notSent.modificationReason).isEqualTo(StoredReason.NotDone(Failure.NotSetUp(SetupProblem.API_KEY)))
         assertThat(notSent.modificationMessage).isNull()
         assertThat(notSent.standing).isEqualTo(PaymentStanding.HELD)
     }
@@ -158,10 +168,10 @@ class SaleEventTest {
         assertThat(linkSale.after(SaleEvent.NotSent("Invalid")).status).isEqualTo(SaleStatus.FAILED)
         val notSetUp = linkSale.after(SaleEvent.NotSetUp(SetupProblem.API_REQUIRED))
         assertThat(notSetUp.status).isEqualTo(SaleStatus.FAILED)
-        assertThat(notSetUp.reason).isEqualTo(StoredReason.NotSetUp(SetupProblem.API_REQUIRED))
+        assertThat(notSetUp.reason).isEqualTo(StoredReason.NotDone(Failure.NotSetUp(SetupProblem.API_REQUIRED)))
         val unknown = linkSale.after(SaleEvent.OutcomeUnknown("No answer"))
         assertThat(unknown.status).isEqualTo(SaleStatus.UNKNOWN)
-        assertThat(unknown.reason).isEqualTo(StoredReason.OutcomeUnknown)
+        assertThat(unknown.reason).isEqualTo(StoredReason.Unconfirmed())
         assertThat(unknown.message).isEqualTo("No answer")
         // A link created after an unknown outcome clears why.
         val created = unknown.after(SaleEvent.LinkAnswered(link))
@@ -203,12 +213,80 @@ class SaleEventTest {
 
     @Test
     fun `stored reasons survive the database, and ones this version does not know read as none`() {
-        val reasons = listOf(StoredReason.OutcomeUnknown, StoredReason.Interrupted) + SetupProblem.entries.map(StoredReason::NotSetUp)
+        val failures =
+            SetupProblem.entries.map(Failure::NotSetUp) + DeviceFault.entries.map(Failure::Device) +
+                EmailFault.entries.map { Failure.Email(it, ExternalText("535 5.7.8 Rejected")) } + Failure.Email(EmailFault.REJECTED) +
+                ALL_FAULTS.map(Failure::Remote)
+        val reasons =
+            listOf(StoredReason.Unconfirmed(), StoredReason.Interrupted) + failures.map(StoredReason::NotDone) +
+                failures.map(StoredReason::Unconfirmed)
         reasons.forEach { assertThat(StoredReasonConverter.decode(StoredReasonConverter.encode(it))).isEqualTo(it) }
-        assertThat(StoredReasonConverter.encode(StoredReason.NotSetUp(SetupProblem.POI_ID))).isEqualTo("NOT_SET_UP:POI_ID")
         assertThat(StoredReasonConverter.encode(null)).isNull()
         assertThat(StoredReasonConverter.decode(null)).isNull()
         assertThat(StoredReasonConverter.decode("NOT_SET_UP:SOMETHING_NEW")).isNull()
         assertThat(StoredReasonConverter.decode("SOMETHING_NEW")).isNull()
+        assertThat(StoredReasonConverter.decode("NOT_DONE:{\"kind\":\"fault\",\"value\":\"SOMETHING_NEW\"}")).isNull()
+        assertThat(StoredReasonConverter.decode("NOT_DONE:{\"kind\":\"fault\",\"value\":\"UNTRUSTED\"}")).isNull()
+        assertThat(StoredReasonConverter.decode("UNCONFIRMED:not json")).isNull()
+    }
+
+    @Test
+    fun `reasons stored by 1_0_0 keep their encoding and meaning`() {
+        assertThat(StoredReasonConverter.encode(StoredReason.NotDone(Failure.NotSetUp(SetupProblem.POI_ID)))).isEqualTo("NOT_SET_UP:POI_ID")
+        assertThat(
+            StoredReasonConverter.decode("NOT_SET_UP:API_KEY"),
+        ).isEqualTo(StoredReason.NotDone(Failure.NotSetUp(SetupProblem.API_KEY)))
+        assertThat(StoredReasonConverter.encode(StoredReason.Unconfirmed())).isEqualTo("OUTCOME_UNKNOWN")
+        assertThat(StoredReasonConverter.decode("OUTCOME_UNKNOWN")).isEqualTo(StoredReason.Unconfirmed())
+        assertThat(StoredReasonConverter.decode("INTERRUPTED")).isEqualTo(StoredReason.Interrupted)
+    }
+
+    @Test
+    fun `a fault keeps Adyen's words and codes in the stored reason`() {
+        val reason = StoredReason.NotDone(Failure.Remote(Fault.AdyenRejected(422, "137", ExternalText("Invalid amount"))))
+        val stored = checkNotNull(StoredReasonConverter.encode(reason))
+        assertThat(stored).startsWith("NOT_DONE:{")
+        assertThat(stored).contains("Invalid amount")
+        assertThat(StoredReasonConverter.decode(stored)).isEqualTo(reason)
+    }
+
+    private companion object {
+        private val SAID = ExternalText("said")
+
+        /** One of each fault, with every optional field set and left out. */
+        val ALL_FAULTS: List<Fault> =
+            listOf(
+                Fault.Unreachable("10.0.0.1:8443", terminal = true),
+                Fault.UnknownHost("checkout-test.adyen.com", terminal = false),
+                Fault.Untrusted("10.0.0.1"),
+                Fault.KeyRejected(SAID),
+                Fault.KeyRejected(null),
+                Fault.TerminalRejected(SAID),
+                Fault.TerminalOffline("P400Plus-1", SAID),
+                Fault.NotStarted,
+                Fault.AppRefused(null),
+                Fault.Unsupported,
+                Fault.NoLateReply,
+                Fault.NoRecord,
+                Fault.RequestNotEncrypted,
+                Fault.Credential(ApiKey.PAYMENTS_APP),
+                Fault.Permission(ApiKey.ADYEN, "Management API—Stores read"),
+                Fault.Permission(ApiKey.ADYEN),
+                Fault.NotFound("P400Plus-1"),
+                Fault.NotFound(null),
+                Fault.AdyenRejected(422, "137", SAID),
+                Fault.AdyenRejected(400),
+                Fault.ListTooLarge,
+                Fault.TimedOut,
+                Fault.ConnectionLost,
+                Fault.ReplyUnverified,
+                Fault.UnreadableReply(SAID),
+                Fault.Malformed(MalformedPart.KEY_VERSION),
+                Fault.NoAnswerFromTerminal("P400Plus-1", null),
+                Fault.Abandoned,
+                Fault.TerminalHttp(500),
+                Fault.AdyenUnavailable(503, "905", SAID),
+                Fault.StillInProgress,
+            )
     }
 }

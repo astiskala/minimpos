@@ -18,6 +18,7 @@ import app.minimpos.app.MiniMposApp
 import app.minimpos.app.R
 import app.minimpos.app.TestEnvironment
 import app.minimpos.app.await
+import app.minimpos.app.data.db.Failure
 import app.minimpos.app.data.db.SaleEntity
 import app.minimpos.app.data.db.SaleKind
 import app.minimpos.app.data.db.SaleStatus
@@ -74,7 +75,7 @@ class LocalizedUiTest {
                 totalMinor = 1_100,
                 status = SaleStatus.FAILED,
                 merchantReference = "MP-1",
-                reason = StoredReason.NotSetUp(SetupProblem.POI_ID),
+                reason = StoredReason.NotDone(Failure.NotSetUp(SetupProblem.POI_ID)),
             )
         val interrupted = failed.copy(reason = StoredReason.Interrupted, message = "EOF")
         compose.setContent {

@@ -2,6 +2,7 @@ package app.minimpos.app.payment
 
 import app.minimpos.app.TestEnvironment
 import app.minimpos.app.await
+import app.minimpos.app.data.db.Failure
 import app.minimpos.app.data.db.RefundStatus
 import app.minimpos.app.data.db.SaleKind
 import app.minimpos.app.data.db.SaleWithLines
@@ -123,7 +124,7 @@ class StoredPaymentActionsTest {
         assertThat(actions().refund(payment, RefundChoice.Everything)).isTrue()
         val refund = finishedRefund()
         assertThat(refund.status).isEqualTo(RefundStatus.FAILED)
-        assertThat(refund.reason).isEqualTo(StoredReason.NotSetUp(SetupProblem.MANAGER_APPROVAL))
+        assertThat(refund.reason).isEqualTo(StoredReason.NotDone(Failure.NotSetUp(SetupProblem.MANAGER_APPROVAL)))
     }
 
     @Test

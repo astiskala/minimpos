@@ -6,6 +6,9 @@ import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import app.minimpos.app.R
+import app.minimpos.app.data.db.DeviceFault
+import app.minimpos.app.data.db.EmailFault
+import app.minimpos.app.data.db.Failure
 import app.minimpos.app.data.db.RefundEntity
 import app.minimpos.app.data.db.SaleEntity
 import app.minimpos.app.data.db.SetupProblem
@@ -16,6 +19,10 @@ import app.minimpos.app.ui.components.ActionMessage
 import app.minimpos.app.ui.components.currentLocale
 import app.minimpos.core.money.CurrencySpec
 import app.minimpos.core.money.MoneyFormatter
+import app.minimpos.terminal.transport.ApiKey
+import app.minimpos.terminal.transport.ExternalText
+import app.minimpos.terminal.transport.Fault
+import app.minimpos.terminal.transport.MalformedPart
 
 /** How the screens word this outcome; the one place view-model outcomes become text. */
 @Composable
@@ -113,12 +120,13 @@ fun RefundEntity.outcomeNote(): String? = note(reason?.text(R.string.refund_unkn
 private fun note(
     worded: String?,
     said: String?,
-): String? =
-    when {
-        worded == null -> said
-        said == null -> worded
-        else -> "$worded ($said)"
-    }
+): String? = worded?.let { noted(it, said) } ?: said
+
+/** [worded], with [details] in brackets after it when there are any. */
+private fun noted(
+    worded: String,
+    details: String?,
+): String = details?.let { "$worded ($it)" } ?: worded
 
 /**
  * The title and text of Home's setup card while this is missing: on a terminal ([onTerminal]) whose shared key is
@@ -137,7 +145,10 @@ fun SetupProblem.setupCard(onTerminal: Boolean): Pair<String, String> =
 private val SHARED_KEY_PROBLEMS =
     setOf(SetupProblem.KEY_IDENTIFIER, SetupProblem.PASSPHRASE, SetupProblem.KEY_VERSION, SetupProblem.UNREADABLE_PASSPHRASE)
 
-/** This stored reason in the current language: an unknown outcome as [unknown], an interruption as [interrupted]. */
+/**
+ * This stored reason in the current language: an unconfirmed outcome as [unknown] followed by what prevented the
+ * confirmation, an interruption as [interrupted].
+ */
 @Composable
 @ReadOnlyComposable
 private fun StoredReason.text(
@@ -145,10 +156,163 @@ private fun StoredReason.text(
     @StringRes interrupted: Int,
 ): String =
     when (this) {
-        is StoredReason.NotSetUp -> problem.text()
-        StoredReason.OutcomeUnknown -> stringResource(unknown)
-        StoredReason.Interrupted -> stringResource(interrupted)
+        is StoredReason.NotDone -> {
+            failure.text()
+        }
+
+        is StoredReason.Unconfirmed -> {
+            failure?.let { stringResource(R.string.sentences, stringResource(unknown), it.text()) }
+                ?: stringResource(unknown)
+        }
+
+        StoredReason.Interrupted -> {
+            stringResource(interrupted)
+        }
     }
+
+/** Why an action did not happen or was not confirmed, as one sentence with what to do and any details in brackets. */
+@Composable
+@ReadOnlyComposable
+fun Failure.text(): String =
+    when (this) {
+        is Failure.NotSetUp -> problem.text()
+        is Failure.Remote -> fault.text()
+        is Failure.Device -> stringResource(fault.deviceRes)
+        is Failure.Email -> noted(stringResource(fault.emailRes), reply?.text)
+    }
+
+/** This fault as one sentence with what to do, followed by its details (host, terminal, Adyen's words, codes). */
+@Composable
+@ReadOnlyComposable
+fun Fault.text(): String = noted(stringResource(faultRes), details().joinToString(", ").ifEmpty { null })
+
+/** The facts that identify this fault for the operator or support, in brackets after its sentence; Adyen's words verbatim. */
+@Composable
+@ReadOnlyComposable
+private fun Fault.details(): List<String> =
+    when (this) {
+        is Fault.Unreachable -> listOf(host)
+
+        is Fault.UnknownHost -> listOf(host)
+
+        is Fault.Untrusted -> listOf(host)
+
+        is Fault.KeyRejected -> listOfNotNull(said?.text)
+
+        is Fault.TerminalRejected -> listOfNotNull(said?.text)
+
+        is Fault.TerminalOffline -> listOfNotNull(poiId, said?.text)
+
+        is Fault.AppRefused -> listOfNotNull(said?.text)
+
+        is Fault.Permission -> listOfNotNull(role)
+
+        is Fault.NotFound -> listOfNotNull(poiId)
+
+        is Fault.AdyenRejected -> adyenDetails(said, http, errorCode)
+
+        is Fault.AdyenUnavailable -> adyenDetails(said, http, errorCode)
+
+        is Fault.UnreadableReply -> listOfNotNull(said?.text)
+
+        is Fault.NoAnswerFromTerminal -> listOfNotNull(poiId, said?.text)
+
+        is Fault.TerminalHttp -> listOf(httpStatus(code))
+
+        is Fault.Credential,
+        is Fault.Malformed,
+        Fault.NotStarted,
+        Fault.Unsupported,
+        Fault.NoLateReply,
+        Fault.NoRecord,
+        Fault.RequestNotEncrypted,
+        Fault.ListTooLarge,
+        Fault.TimedOut,
+        Fault.ConnectionLost,
+        Fault.ReplyUnverified,
+        Fault.Abandoned,
+        Fault.StillInProgress,
+        -> emptyList()
+    }
+
+/** Adyen's error message, then its HTTP status and error code. */
+@Composable
+@ReadOnlyComposable
+private fun adyenDetails(
+    said: ExternalText?,
+    http: Int,
+    errorCode: String?,
+): List<String> = listOfNotNull(said?.text, httpStatus(http), errorCode?.let { stringResource(R.string.fault_error_code, it) })
+
+/** An HTTP status as support staff read it, such as `HTTP 422`. */
+private fun httpStatus(code: Int) = "HTTP $code"
+
+/** The string resource that words this fault. */
+@get:StringRes
+private val Fault.faultRes: Int
+    get() =
+        when (this) {
+            is Fault.Unreachable -> if (terminal) R.string.fault_unreachable_terminal else R.string.fault_unreachable_adyen
+            is Fault.UnknownHost -> if (terminal) R.string.fault_unknown_host_terminal else R.string.fault_unknown_host_adyen
+            is Fault.Untrusted -> R.string.fault_untrusted
+            is Fault.KeyRejected -> R.string.fault_key_rejected
+            is Fault.TerminalRejected -> R.string.fault_terminal_rejected
+            is Fault.TerminalOffline -> R.string.fault_terminal_offline
+            Fault.NotStarted -> R.string.fault_not_started
+            is Fault.AppRefused -> R.string.fault_app_refused
+            Fault.Unsupported -> R.string.fault_unsupported
+            Fault.NoLateReply -> R.string.fault_no_late_reply
+            Fault.NoRecord -> R.string.fault_no_record
+            Fault.RequestNotEncrypted -> R.string.fault_request_not_encrypted
+            is Fault.Credential -> if (key == ApiKey.ADYEN) R.string.fault_credential_adyen else R.string.fault_credential_payments_app
+            is Fault.Permission -> if (key == ApiKey.ADYEN) R.string.fault_permission_adyen else R.string.fault_permission_payments_app
+            is Fault.NotFound -> R.string.fault_not_found
+            is Fault.AdyenRejected -> R.string.fault_adyen_rejected
+            Fault.ListTooLarge -> R.string.fault_list_too_large
+            Fault.TimedOut -> R.string.fault_timed_out
+            Fault.ConnectionLost -> R.string.fault_connection_lost
+            Fault.ReplyUnverified -> R.string.fault_reply_unverified
+            is Fault.UnreadableReply -> R.string.fault_unreadable_reply
+            is Fault.Malformed -> part.partRes
+            is Fault.NoAnswerFromTerminal -> R.string.fault_no_answer_from_terminal
+            Fault.Abandoned -> R.string.fault_abandoned
+            is Fault.TerminalHttp -> R.string.fault_terminal_http
+            is Fault.AdyenUnavailable -> R.string.fault_adyen_unavailable
+            Fault.StillInProgress -> R.string.fault_still_in_progress
+        }
+
+/** The string resource that words this unusable part of a Management answer. */
+@get:StringRes
+private val MalformedPart.partRes: Int
+    get() =
+        when (this) {
+            MalformedPart.SETTINGS -> R.string.setup_terminal_settings_unreadable
+            MalformedPart.KEY -> R.string.setup_shared_key_incomplete
+            MalformedPart.KEY_VERSION -> R.string.setup_shared_key_invalid
+        }
+
+/** The string resource that words this device failure. */
+@get:StringRes
+private val DeviceFault.deviceRes: Int
+    get() =
+        when (this) {
+            DeviceFault.SECURE_STORAGE -> R.string.device_secure_storage
+            DeviceFault.DATABASE -> R.string.device_database
+            DeviceFault.FILE_STORAGE -> R.string.device_file_storage
+            DeviceFault.UNEXPECTED -> R.string.device_unexpected
+        }
+
+/** The string resource that words this email failure. */
+@get:StringRes
+private val EmailFault.emailRes: Int
+    get() =
+        when (this) {
+            EmailFault.NOT_CONFIGURED -> R.string.email_not_configured
+            EmailFault.INVALID_ADDRESS -> R.string.email_invalid_address
+            EmailFault.AUTHENTICATION -> R.string.email_authentication
+            EmailFault.UNREACHABLE -> R.string.email_unreachable
+            EmailFault.REJECTED -> R.string.email_rejected
+        }
 
 /** The string resource that words this setup problem. */
 @get:StringRes

@@ -3,6 +3,7 @@ package app.minimpos.app.payment
 import app.minimpos.app.FakeLinkApi
 import app.minimpos.app.TestEnvironment
 import app.minimpos.app.await
+import app.minimpos.app.data.db.Failure
 import app.minimpos.app.data.db.ProductEntity
 import app.minimpos.app.data.db.SaleEntity
 import app.minimpos.app.data.db.SaleKind
@@ -240,7 +241,7 @@ class PaymentLinksTest {
         api.createResult = PaymentLinkResult.Unknown("timeout")
         val unknown = links.start(linkStart())
         val pending = saleWhen(unknown) { it.status == SaleStatus.UNKNOWN }
-        assertThat(pending.reason).isEqualTo(StoredReason.OutcomeUnknown)
+        assertThat(pending.reason).isEqualTo(StoredReason.Unconfirmed())
         assertThat(pending.message).isNull()
         api.createResult = null
         assertThat(await { links.check(unknown) }).isEqualTo(LinkUpdate.StillOpen)
@@ -315,7 +316,7 @@ class PaymentLinksTest {
         val other = links.start(linkStart())
         assertThat(
             saleWhen(other) { it.status == SaleStatus.FAILED }.reason,
-        ).isEqualTo(StoredReason.NotSetUp(SetupProblem.MERCHANT_ACCOUNT))
+        ).isEqualTo(StoredReason.NotDone(Failure.NotSetUp(SetupProblem.MERCHANT_ACCOUNT)))
         assertThat(api.created).hasSize(1)
     }
 

@@ -10,6 +10,8 @@ import androidx.room.Database
 import androidx.room.Entity
 import app.minimpos.app.data.db.AppDatabase
 import app.minimpos.app.data.db.CatalogDao
+import app.minimpos.app.data.db.DeviceFault
+import app.minimpos.app.data.db.Failure
 import app.minimpos.app.data.db.RefundDao
 import app.minimpos.app.data.db.RefundEntity
 import app.minimpos.app.data.db.SaleDao
@@ -88,8 +90,12 @@ import app.minimpos.terminal.client.TerminalClient
 import app.minimpos.terminal.client.TransactionDetails
 import app.minimpos.terminal.parse.ReceiptField
 import app.minimpos.terminal.simulator.SimulatedOutcome
+import app.minimpos.terminal.transport.ApiKey
 import app.minimpos.terminal.transport.CloudRegion
 import app.minimpos.terminal.transport.DiscoveredKey
+import app.minimpos.terminal.transport.ExternalText
+import app.minimpos.terminal.transport.Fault
+import app.minimpos.terminal.transport.MalformedPart
 import app.minimpos.terminal.transport.TerminalDetails
 import app.minimpos.terminal.transport.TerminalDetailsApi
 import app.minimpos.terminal.transport.TerminalEnvironment
@@ -255,6 +261,8 @@ class ArchitectureTest {
         // The container plugs the transports, the cloud and the Payments app's links into the gateway and Tap to Pay
         // setup; the activity only serves the bridge's links. Elsewhere the transports, the simulator and the Payments
         // app are only the values the settings store, and a TerminalClient only its helpers for IDs and timestamps.
+        // Faults and external text are outcome values too: results carry them up to the screens that word them, and
+        // stored reasons keep them, so they are typed once in :adyen rather than rewritten as app strings.
         noClasses()
             .that()
             .resideOutsideOfPackage(TERMINAL_PACKAGE)
@@ -266,7 +274,8 @@ class ArchitectureTest {
                     "app.minimpos.terminal.transport..",
                     "app.minimpos.terminal.simulator..",
                     "app.minimpos.terminal.paymentsapp..",
-                ).and(not(belongToAnyOf(TerminalEnvironment::class.java, CloudRegion::class.java, SimulatedOutcome::class.java))),
+                ).and(not(belongToAnyOf(TerminalEnvironment::class.java, CloudRegion::class.java, SimulatedOutcome::class.java)))
+                    .and(not(belongToAnyOf(*OUTCOME_VALUES))),
             ).orShould()
             .callMethodWhere(target(owner(type(TerminalClient::class.java))))
             .check(app)
@@ -575,14 +584,17 @@ class ArchitectureTest {
 
     @Test
     fun `the transaction lifecycle stores only through its book`() =
-        // It names why a transaction failed with the stored values (StoredReason, SetupProblem), which its book stores.
+        // It names why a transaction failed with the stored values (StoredReason, Failure, SetupProblem, DeviceFault),
+        // which its book stores.
         noClasses()
             .that(declaredIn("app.minimpos.app.payment", "TransactionLifecycle.kt"))
             .should()
             .dependOnClassesThat(
                 resideInAnyPackage("app.minimpos.app.data..")
                     .and(not(assignableTo(StoredReason::class.java)))
-                    .and(not(type(SetupProblem::class.java))),
+                    .and(not(assignableTo(Failure::class.java)))
+                    .and(not(type(SetupProblem::class.java)))
+                    .and(not(type(DeviceFault::class.java))),
             ).check(app)
 
     @Test
@@ -1037,6 +1049,9 @@ class ArchitectureTest {
         const val PAYMENT_STANDING_FILE = "app.minimpos.app.refund.PaymentStandingKt"
         const val TRANSACTION_ACTIONS_FILE = "app.minimpos.app.feature.TransactionActionsKt"
         const val OUTCOME_MESSAGES_FILE = "app.minimpos.app.feature.OutcomeMessagesKt"
+
+        /** :adyen's typed failure values, which the app may carry, store and word like other outcome values. */
+        val OUTCOME_VALUES = arrayOf(Fault::class.java, ExternalText::class.java, ApiKey::class.java, MalformedPart::class.java)
 
         val UI_PACKAGES =
             arrayOf(

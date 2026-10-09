@@ -2,6 +2,7 @@ package app.minimpos.app.data.repo
 
 import app.minimpos.app.data.db.AdjustmentStatus
 import app.minimpos.app.data.db.CaptureStatus
+import app.minimpos.app.data.db.Failure
 import app.minimpos.app.data.db.SaleEntity
 import app.minimpos.app.data.db.SaleStatus
 import app.minimpos.app.data.db.SetupProblem
@@ -77,7 +78,7 @@ sealed interface SaleEvent {
     ) : SaleEvent
 
     /**
-     * Nothing was sent, because something must be set up first ([StoredReason.NotSetUp]), so nothing was charged.
+     * Nothing was sent, because something must be set up first ([StoredReason.NotDone]), so nothing was charged.
      *
      * @property problem What.
      */
@@ -87,7 +88,7 @@ sealed interface SaleEvent {
 
     /**
      * It is not known whether what was sent took effect (a payment link that may or may not have been created):
-     * [StoredReason.OutcomeUnknown].
+     * [StoredReason.Unconfirmed].
      *
      * @property message What went wrong, as it was worded; null when nothing more is known.
      */
@@ -206,11 +207,11 @@ fun SaleEntity.after(event: SaleEvent): SaleEntity =
         }
 
         is SaleEvent.NotSetUp -> {
-            ended(SaleStatus.FAILED, null, StoredReason.NotSetUp(event.problem))
+            ended(SaleStatus.FAILED, null, StoredReason.NotDone(Failure.NotSetUp(event.problem)))
         }
 
         is SaleEvent.OutcomeUnknown -> {
-            ended(SaleStatus.UNKNOWN, event.message, StoredReason.OutcomeUnknown)
+            ended(SaleStatus.UNKNOWN, event.message, StoredReason.Unconfirmed())
         }
 
         is SaleEvent.Emailed -> {
@@ -230,7 +231,7 @@ fun SaleEntity.after(event: SaleEvent): SaleEntity =
         }
 
         is SaleEvent.ModificationNotSetUp -> {
-            modificationFailed(null, StoredReason.NotSetUp(event.problem))
+            modificationFailed(null, StoredReason.NotDone(Failure.NotSetUp(event.problem)))
         }
 
         SaleEvent.Interrupted -> {

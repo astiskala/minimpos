@@ -2,7 +2,7 @@
 agp = "9.4.1"
 kotlin = "2.4.20"
 ksp = "2.3.12"
-kover = "0.9.9"
+kover = "0.9.11"
 spotless = "8.10.3"
 ktlint = "1.8.0"
 # detekt 1.x is built on Kotlin 2.0 and cannot analyse this project's Kotlin 2.4 code; 2.0 is built on Kotlin 2.4.

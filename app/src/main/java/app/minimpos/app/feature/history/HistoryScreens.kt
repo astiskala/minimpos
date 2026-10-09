@@ -77,6 +77,7 @@ import app.minimpos.app.feature.sale.ShareReceiptButton
 import app.minimpos.app.feature.sale.adviceText
 import app.minimpos.app.feature.sale.statusKind
 import app.minimpos.app.feature.sale.statusTitle
+import app.minimpos.app.feature.stillUnconfirmed
 import app.minimpos.app.refund.PaymentAction
 import app.minimpos.app.refund.decline
 import app.minimpos.app.refund.methodCode
@@ -657,8 +658,8 @@ private fun ColumnScope.SaleDetailActions(
             loading = state.transaction.rechecking,
             icon = Icons.Default.Refresh,
         )
-        if (state.transaction.stillUnknown) {
-            Text(stringResource(R.string.detail_still_unknown), textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
+        state.transaction.stillUnknown?.let {
+            Text(stillUnconfirmed(it), textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
         }
     }
     if (PaymentAction.REFUND in state.actions) {

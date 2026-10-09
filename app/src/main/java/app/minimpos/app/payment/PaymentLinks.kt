@@ -39,21 +39,23 @@ sealed interface LinkUpdate {
     data object StillOpen : LinkUpdate
 
     /**
-     * Adyen could not be asked, or did not answer, so nothing changed.
+     * Nothing changed: Adyen could not be asked (the Checkout API or Manager approval is missing, or the setup no longer
+     * matches the link), refused, or did not answer a question about where the link stands.
      *
      * @property failure Why.
      */
-    data class Failed(
+    data class NotDone(
         val failure: Failure,
     ) : LinkUpdate
 
     /**
-     * Adyen could not be asked, because the Checkout API is not set up now, so nothing changed.
+     * Adyen did not confirm a creation or expiry that may have taken effect; the stored sale says so, and checking again
+     * establishes it.
      *
-     * @property problem What is missing.
+     * @property failure What prevented the confirmation.
      */
-    data class NotSetUp(
-        val problem: SetupProblem,
+    data class Unconfirmed(
+        val failure: Failure,
     ) : LinkUpdate
 }
 
@@ -159,7 +161,7 @@ class PaymentLinks(
         mutex.withLock {
             val sale = sales.get(saleId)?.sale?.takeIf { it.status == SaleStatus.AWAITING_PAYMENT }
             val linkId = sale?.paymentLinkId ?: return@withLock LinkUpdate.Settled
-            if (!permits()) return@withLock LinkUpdate.NotSetUp(SetupProblem.MANAGER_APPROVAL)
+            if (!permits()) return@withLock notSetUp(SetupProblem.MANAGER_APPROVAL)
             withApi(sale) { stored(saleId, it.expire(linkId), cancelling = true) }
         }
 
@@ -171,10 +173,10 @@ class PaymentLinks(
     suspend fun simulate(saleId: String): LinkUpdate =
         mutex.withLock {
             val sale = sales.get(saleId)?.sale ?: return@withLock LinkUpdate.Settled
-            if (!sale.simulatedLink) return@withLock LinkUpdate.NotSetUp(SetupProblem.PAYMENT_CONTEXT)
+            if (!sale.simulatedLink) return@withLock notSetUp(SetupProblem.PAYMENT_CONTEXT)
             if (sale.status != SaleStatus.AWAITING_PAYMENT) return@withLock LinkUpdate.Settled
             val linkId = sale.paymentLinkId ?: return@withLock LinkUpdate.Settled
-            if (!permits()) return@withLock LinkUpdate.NotSetUp(SetupProblem.MANAGER_APPROVAL)
+            if (!permits()) return@withLock notSetUp(SetupProblem.MANAGER_APPROVAL)
             withApi(sale) { api ->
                 when (val result = api.status(linkId)) {
                     is PaymentLinkResult.Answered -> {
@@ -205,7 +207,7 @@ class PaymentLinks(
                         synchronized(unresolvedStarts) { unresolvedStarts.remove(id) }
                         LinkUpdate.Settled
                     } else {
-                        LinkUpdate.NotSetUp(access.problem)
+                        notSetUp(access.problem)
                     }
                 }
             }
@@ -222,7 +224,7 @@ class PaymentLinks(
             is PaymentLinkResult.Failed -> {
                 val failure = Failure.Remote(result.fault)
                 sales.record(id, SaleEvent.OutcomeUnknown(failure))
-                LinkUpdate.Failed(failure)
+                LinkUpdate.Unconfirmed(failure)
             }
         }
     }
@@ -234,19 +236,35 @@ class PaymentLinks(
     ): LinkUpdate =
         when (val access = target().links(sale.context)) {
             is ApiAccess.Ready -> call(access.client)
-            is ApiAccess.Blocked -> LinkUpdate.NotSetUp(access.problem)
+            is ApiAccess.Blocked -> notSetUp(access.problem)
         }
 
-    /** Stores Adyen's answer [result] about the link of sale [id], which was being expired when [cancelling]. */
+    /**
+     * Stores Adyen's answer [result] about the link of sale [id], which was being expired when [cancelling]. A question
+     * about where it stands that got no answer changed nothing; an expiry that may have taken effect is unconfirmed.
+     */
     private suspend fun stored(
         id: String,
         result: PaymentLinkResult,
         cancelling: Boolean = false,
     ): LinkUpdate =
         when (result) {
-            is PaymentLinkResult.Answered -> applied(id, result.link, cancelling)
-            is PaymentLinkResult.Failed -> LinkUpdate.Failed(Failure.Remote(result.fault))
+            is PaymentLinkResult.Answered -> {
+                applied(id, result.link, cancelling)
+            }
+
+            is PaymentLinkResult.Failed if cancelling && result.fault.mayHaveTakenEffect -> {
+                LinkUpdate.Unconfirmed(
+                    Failure.Remote(result.fault),
+                )
+            }
+
+            is PaymentLinkResult.Failed -> {
+                LinkUpdate.NotDone(Failure.Remote(result.fault))
+            }
         }
+
+    private fun notSetUp(problem: SetupProblem): LinkUpdate = LinkUpdate.NotDone(Failure.NotSetUp(problem))
 
     /** Stores where [link], the link of sale [id], stands (see [SaleEvent.LinkAnswered]): still open, paid, or ended. */
     private suspend fun applied(

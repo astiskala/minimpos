@@ -175,13 +175,13 @@ class PaymentLinksTest {
         val first = links.start(linkStart())
         saleWhen(first) { it.status == SaleStatus.AWAITING_PAYMENT }
         api.getResult = PaymentLinkResult.Failed(Fault.TimedOut)
-        assertThat(await { links.check(first) }).isEqualTo(LinkUpdate.Failed(Failure.Remote(Fault.TimedOut)))
+        assertThat(await { links.check(first) }).isEqualTo(LinkUpdate.NotDone(Failure.Remote(Fault.TimedOut)))
         api.getResult = PaymentLinkResult.Failed(Fault.AdyenRejected(422, null, ExternalText("Not allowed (HTTP 403)")))
         assertThat(
             await {
                 links.check(first)
             },
-        ).isEqualTo(LinkUpdate.Failed(Failure.Remote(Fault.AdyenRejected(422, null, ExternalText("Not allowed (HTTP 403)")))))
+        ).isEqualTo(LinkUpdate.NotDone(Failure.Remote(Fault.AdyenRejected(422, null, ExternalText("Not allowed (HTTP 403)")))))
         assertThat(
             await {
                 container.sales
@@ -204,7 +204,7 @@ class PaymentLinksTest {
         val second = links.start(linkStart())
         saleWhen(second) { it.status == SaleStatus.AWAITING_PAYMENT }
         api.expireResult = PaymentLinkResult.Failed(Fault.TimedOut)
-        assertThat(await { links.cancel(second) }).isEqualTo(LinkUpdate.Failed(Failure.Remote(Fault.TimedOut)))
+        assertThat(await { links.cancel(second) }).isEqualTo(LinkUpdate.Unconfirmed(Failure.Remote(Fault.TimedOut)))
         api.expireResult = null
         assertThat(await { links.cancel(second) }).isEqualTo(LinkUpdate.Settled)
         assertThat(
@@ -293,7 +293,7 @@ class PaymentLinksTest {
         val id = links.start(linkStart())
         saleWhen(id) { it.status == SaleStatus.UNKNOWN }
         env.useSimulator()
-        assertThat(await { links.check(id) }).isEqualTo(LinkUpdate.NotSetUp(SetupProblem.PAYMENT_CONTEXT))
+        assertThat(await { links.check(id) }).isEqualTo(LinkUpdate.NotDone(Failure.NotSetUp(SetupProblem.PAYMENT_CONTEXT)))
         assertThat(
             await {
                 container.sales
@@ -309,8 +309,8 @@ class PaymentLinksTest {
         val id = links.start(linkStart())
         val original = saleWhen(id) { it.status == SaleStatus.AWAITING_PAYMENT }
         env.updateSettings { it.copy(terminal = it.terminal.copy(merchantAccount = "OtherMerchant")) }
-        assertThat(await { links.check(id) }).isEqualTo(LinkUpdate.NotSetUp(SetupProblem.PAYMENT_CONTEXT))
-        assertThat(await { links.cancel(id) }).isEqualTo(LinkUpdate.NotSetUp(SetupProblem.PAYMENT_CONTEXT))
+        assertThat(await { links.check(id) }).isEqualTo(LinkUpdate.NotDone(Failure.NotSetUp(SetupProblem.PAYMENT_CONTEXT)))
+        assertThat(await { links.cancel(id) }).isEqualTo(LinkUpdate.NotDone(Failure.NotSetUp(SetupProblem.PAYMENT_CONTEXT)))
         assertThat(api.asked).isEmpty()
         assertThat(api.expired).isEmpty()
         assertThat(await { container.sales.get(id)!!.sale }).isEqualTo(original)
@@ -322,8 +322,8 @@ class PaymentLinksTest {
         val id = links.start(linkStart())
         saleWhen(id) { it.status == SaleStatus.AWAITING_PAYMENT }
         env.updateSettings { it.copy(terminal = it.terminal.copy(mode = TerminalMode.TERMINAL, merchantAccount = "")) }
-        assertThat(await { links.check(id) }).isEqualTo(LinkUpdate.NotSetUp(SetupProblem.MERCHANT_ACCOUNT))
-        assertThat(await { links.cancel(id) }).isEqualTo(LinkUpdate.NotSetUp(SetupProblem.MERCHANT_ACCOUNT))
+        assertThat(await { links.check(id) }).isEqualTo(LinkUpdate.NotDone(Failure.NotSetUp(SetupProblem.MERCHANT_ACCOUNT)))
+        assertThat(await { links.cancel(id) }).isEqualTo(LinkUpdate.NotDone(Failure.NotSetUp(SetupProblem.MERCHANT_ACCOUNT)))
         val other = links.start(linkStart())
         assertThat(
             saleWhen(other) { it.status == SaleStatus.FAILED }.reason,
@@ -364,11 +364,11 @@ class PaymentLinksTest {
         val open = links.start(linkStart(instant = Instant.now()))
         val original = saleWhen(open) { it.status == SaleStatus.AWAITING_PAYMENT }
         env.useLinks()
-        assertThat(await { links.simulate(open) }).isEqualTo(LinkUpdate.NotSetUp(SetupProblem.PAYMENT_CONTEXT))
+        assertThat(await { links.simulate(open) }).isEqualTo(LinkUpdate.NotDone(Failure.NotSetUp(SetupProblem.PAYMENT_CONTEXT)))
         assertThat(await { container.sales.get(open)!!.sale }).isEqualTo(original)
         val real = links.start(linkStart())
         saleWhen(real) { it.status == SaleStatus.AWAITING_PAYMENT }
-        assertThat(await { links.simulate(real) }).isEqualTo(LinkUpdate.NotSetUp(SetupProblem.PAYMENT_CONTEXT))
+        assertThat(await { links.simulate(real) }).isEqualTo(LinkUpdate.NotDone(Failure.NotSetUp(SetupProblem.PAYMENT_CONTEXT)))
         assertThat(api.asked).isEmpty()
     }
 
@@ -381,7 +381,7 @@ class PaymentLinksTest {
             container.pinManager.setPin("1234")
             container.managerPin.setPin("2468")
         }
-        assertThat(await { links.simulate(id) }).isEqualTo(LinkUpdate.NotSetUp(SetupProblem.MANAGER_APPROVAL))
+        assertThat(await { links.simulate(id) }).isEqualTo(LinkUpdate.NotDone(Failure.NotSetUp(SetupProblem.MANAGER_APPROVAL)))
         assertThat(await { container.sales.get(id)!!.sale }).isEqualTo(original)
     }
 

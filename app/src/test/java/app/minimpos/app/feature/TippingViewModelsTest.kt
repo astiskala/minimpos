@@ -3,6 +3,7 @@ package app.minimpos.app.feature
 import app.minimpos.app.TestEnvironment
 import app.minimpos.app.await
 import app.minimpos.app.data.db.CaptureStatus
+import app.minimpos.app.data.db.Failure
 import app.minimpos.app.data.db.ProductEntity
 import app.minimpos.app.data.db.SaleKind
 import app.minimpos.app.data.db.SetupProblem
@@ -25,6 +26,7 @@ import app.minimpos.app.payment.TransactionState
 import app.minimpos.app.refund.PaymentAction
 import app.minimpos.app.refund.standing
 import app.minimpos.terminal.transport.ExternalText
+import app.minimpos.terminal.transport.Fault
 import com.google.common.truth.Truth.assertThat
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -226,7 +228,7 @@ class TippingViewModelsTest {
             await {
                 vm.state.first { it.retry.isError }
             }.retry.outcome,
-        ).isEqualTo(ActionOutcome.NotSetUp(SetupProblem.API_KEY))
+        ).isEqualTo(ActionOutcome.NotCaptured(Failure.NotSetUp(SetupProblem.API_KEY), CaptureStep.CAPTURE))
         env.useSimulator()
         vm.retryCapture()
         await { vm.state.first { it.retry.done } }
@@ -310,8 +312,12 @@ class TippingViewModelsTest {
         assertThat(refused.done).isFalse()
         assertThat(CaptureResult.NotAllowed.toState(CaptureStep.TIP, 2_500, "AUD").outcome).isEqualTo(ActionOutcome.CaptureNotAllowed)
         assertThat(CaptureResult.Requested.toState(CaptureStep.CAPTURE, 2_500, "AUD")).isEqualTo(ActionState(done = true))
-        assertThat(CaptureResult.NotSetUp(SetupProblem.LIVE_PREFIX).toState(CaptureStep.ADJUSTMENT, 2_500, "AUD"))
-            .isEqualTo(ActionState(outcome = ActionOutcome.NotSetUp(SetupProblem.LIVE_PREFIX), isError = true))
+        val notSetUp = Failure.NotSetUp(SetupProblem.LIVE_PREFIX)
+        assertThat(CaptureResult.NotDone(notSetUp).toState(CaptureStep.ADJUSTMENT, 2_500, "AUD"))
+            .isEqualTo(ActionState(outcome = ActionOutcome.NotCaptured(notSetUp, CaptureStep.ADJUSTMENT), isError = true))
+        val timedOut = Failure.Remote(Fault.TimedOut)
+        assertThat(CaptureResult.Unconfirmed(timedOut).toState(CaptureStep.CAPTURE, 2_500, "AUD"))
+            .isEqualTo(ActionState(outcome = ActionOutcome.CaptureUnconfirmed(timedOut, CaptureStep.CAPTURE), isError = true))
     }
 
     @Test

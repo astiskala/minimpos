@@ -178,7 +178,7 @@ class CapturesTest {
         assertThat(refused.standing).isEqualTo(PaymentStanding.AWAITING_TIP)
 
         fake.adjustResult = ModificationResult.Failed(Fault.TimedOut)
-        assertThat(await { captures.addTip("s1", 1_000) }).isEqualTo(CaptureResult.Failed(Failure.Remote(Fault.TimedOut)))
+        assertThat(await { captures.addTip("s1", 1_000) }).isEqualTo(CaptureResult.Unconfirmed(Failure.Remote(Fault.TimedOut)))
         assertThat(sale().tipMinor).isNull()
 
         fake.adjustResult = null
@@ -191,7 +191,7 @@ class CapturesTest {
         store()
         fake.captureResult = ModificationResult.Failed(Fault.AdyenRejected(422, null, ExternalText("Invalid amount (HTTP 422, code 137)")))
         val invalid = Fault.AdyenRejected(422, null, ExternalText("Invalid amount (HTTP 422, code 137)"))
-        assertThat(await { captures.addTip("s1", 100) }).isEqualTo(CaptureResult.Failed(Failure.Remote(invalid)))
+        assertThat(await { captures.addTip("s1", 100) }).isEqualTo(CaptureResult.NotDone(Failure.Remote(invalid)))
         val failed = sale()
         assertThat(failed.tipMinor).isEqualTo(100)
         assertThat(failed.captureStatus).isEqualTo(CaptureStatus.FAILED)
@@ -199,7 +199,7 @@ class CapturesTest {
         assertThat(failed.standing).isEqualTo(PaymentStanding.CAPTURE_FAILED)
 
         fake.captureResult = ModificationResult.Failed(Fault.TimedOut)
-        assertThat(await { captures.retryCapture("s1") }).isEqualTo(CaptureResult.Failed(Failure.Remote(Fault.TimedOut)))
+        assertThat(await { captures.retryCapture("s1") }).isEqualTo(CaptureResult.Unconfirmed(Failure.Remote(Fault.TimedOut)))
         assertThat(sale().captureStatus).isEqualTo(CaptureStatus.UNKNOWN)
 
         fake.captureResult = ModificationResult.Received("CAP")
@@ -214,14 +214,14 @@ class CapturesTest {
         target = ApiTarget(ApiSetup.Incomplete(SetupProblem.API_KEY))
         store()
         val result = await { captures.addTip("s1", 100) }
-        assertThat(result).isEqualTo(CaptureResult.NotSetUp(SetupProblem.API_KEY))
+        assertThat(result).isEqualTo(CaptureResult.NotDone(Failure.NotSetUp(SetupProblem.API_KEY)))
         assertThat(sale().tipMinor).isNull()
         assertThat(sale().modificationReason).isEqualTo(StoredReason.NotDone(Failure.NotSetUp(SetupProblem.API_KEY)))
         assertThat(sale().modificationMessage).isNull()
         assertThat(fake.keys).isEmpty()
         // Nothing of it entered is no longer left to the Customer Area either.
         target = ApiTarget(ApiSetup.Incomplete(SetupProblem.MERCHANT_ACCOUNT))
-        assertThat(await { captures.addTip("s1", 600) }).isEqualTo(CaptureResult.NotSetUp(SetupProblem.MERCHANT_ACCOUNT))
+        assertThat(await { captures.addTip("s1", 600) }).isEqualTo(CaptureResult.NotDone(Failure.NotSetUp(SetupProblem.MERCHANT_ACCOUNT)))
         assertThat(sale().captureStatus).isNull()
         assertThat(sale().standing).isEqualTo(PaymentStanding.AWAITING_TIP)
     }
@@ -253,7 +253,7 @@ class CapturesTest {
         assertThat(sale("p1").captureStatus).isNull()
         fake.adjustResult = ModificationResult.Failed(Fault.AdyenRejected(422, null, ExternalText("Not allowed")))
         assertThat(await { captures.adjust("p1", 3_500) })
-            .isEqualTo(CaptureResult.Failed(Failure.Remote(Fault.AdyenRejected(422, null, ExternalText("Not allowed")))))
+            .isEqualTo(CaptureResult.NotDone(Failure.Remote(Fault.AdyenRejected(422, null, ExternalText("Not allowed")))))
         assertThat(sale("p1").heldMinor).isEqualTo(3_000)
         // Adjusting a sale awaiting its tip is not offered.
         store()
@@ -261,8 +261,8 @@ class CapturesTest {
 
         // Without the API neither an adjustment nor a capture is made.
         target = ApiTarget(ApiSetup.Incomplete(SetupProblem.API_KEY))
-        assertThat(await { captures.adjust("p1", 3_500) }).isEqualTo(CaptureResult.NotSetUp(SetupProblem.API_KEY))
-        assertThat(await { captures.capture("p1", 2_800) }).isEqualTo(CaptureResult.NotSetUp(SetupProblem.API_KEY))
+        assertThat(await { captures.adjust("p1", 3_500) }).isEqualTo(CaptureResult.NotDone(Failure.NotSetUp(SetupProblem.API_KEY)))
+        assertThat(await { captures.capture("p1", 2_800) }).isEqualTo(CaptureResult.NotDone(Failure.NotSetUp(SetupProblem.API_KEY)))
         assertThat(sale("p1").capturedMinor).isNull()
     }
 
@@ -271,7 +271,7 @@ class CapturesTest {
         val context = PaymentContext("TERMINAL", "AMS1-1", "POS", "Merchant", "TEST")
         store(bill.copy(context = context))
         target = ApiTarget(ApiSetup.Complete, fake, context = context.copy(merchantAccount = "Other"))
-        assertThat(await { captures.addTip("s1", 100) }).isEqualTo(CaptureResult.NotSetUp(SetupProblem.PAYMENT_CONTEXT))
+        assertThat(await { captures.addTip("s1", 100) }).isEqualTo(CaptureResult.NotDone(Failure.NotSetUp(SetupProblem.PAYMENT_CONTEXT)))
         assertThat(fake.captures).isEmpty()
         assertThat(fake.adjustments).isEmpty()
         assertThat(sale()).isEqualTo(bill.copy(context = context))

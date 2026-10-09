@@ -670,6 +670,7 @@ class ArchitectureTest {
             .dependOnClassesThat()
             .belongToAnyOf(
                 ActionOutcome.NotCaptured::class.java,
+                ActionOutcome.CaptureUnconfirmed::class.java,
                 ActionOutcome.CaptureRefused::class.java,
                 ActionOutcome.CaptureNotAllowed::class.java,
             ).check(app)

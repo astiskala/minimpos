@@ -58,6 +58,9 @@ class UpdateOfferTest {
         val opened = shadowOf(ApplicationProvider.getApplicationContext<Application>()).nextStartedActivity
         assertThat(opened.action).isEqualTo(Intent.ACTION_VIEW)
         assertThat(opened.dataString).isEqualTo(apkUrl)
+        // A browser app, not whatever claims github.com links (such as an in-app browser), downloads the APK.
+        assertThat(opened.selector?.action).isEqualTo(Intent.ACTION_MAIN)
+        assertThat(opened.selector?.categories).containsExactly(Intent.CATEGORY_APP_BROWSER)
 
         compose.onNodeWithTag("updateDismiss").performClick()
         compose.awaitCondition("the update offer is gone") {

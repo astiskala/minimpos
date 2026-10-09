@@ -58,7 +58,7 @@ import io.github.astiskala.minimpos.app.terminal.TerminalConnection
 import io.github.astiskala.minimpos.app.terminal.TerminalState
 import io.github.astiskala.minimpos.app.ui.components.LocalAppContainer
 import io.github.astiskala.minimpos.app.ui.components.MiniScaffold
-import io.github.astiskala.minimpos.app.ui.components.openUrl
+import io.github.astiskala.minimpos.app.ui.components.openInBrowser
 import io.github.astiskala.minimpos.app.ui.navigation.Navigator
 import io.github.astiskala.minimpos.app.ui.navigation.Route
 import io.github.astiskala.minimpos.app.ui.theme.LocalDimens
@@ -168,8 +168,9 @@ private fun ConnectionProblem(
 
 /**
  * Offers a newer version (the update's version name) as a dismissible card, never shown on an Adyen terminal (the
- * container does not check there): Update opens the release's APK in the browser, which downloads it, and Android then
- * asks for its installation. Closing hides the offer for the rest of this session.
+ * container does not check there): Update opens the release's APK in a browser app (not an app that claims GitHub
+ * links), which downloads it, and Android then asks for its installation. Closing hides the offer for the rest of this
+ * session.
  */
 @Composable
 private fun UpdateCard(
@@ -196,7 +197,7 @@ private fun UpdateCard(
             )
             Spacer(Modifier.width(dimens.spacing))
             Button(
-                onClick = { context.openUrl(update.apkUrl) },
+                onClick = { context.openInBrowser(update.apkUrl) },
                 contentPadding = PaddingValues(horizontal = 12.dp),
                 modifier = Modifier.testTag("updateDownload"),
             ) { Text(stringResource(R.string.update_download)) }

@@ -1,8 +1,5 @@
 package io.github.astiskala.minimpos.app.ui.components
 
-import android.content.ActivityNotFoundException
-import android.content.Context
-import android.content.Intent
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -47,7 +44,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
-import androidx.core.net.toUri
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.astiskala.minimpos.app.AppContainer
 import io.github.astiskala.minimpos.app.R
@@ -90,17 +86,6 @@ fun rememberMoneyFormatter(currency: CurrencySpec): MoneyFormatter {
 @Composable
 fun rememberMoneyFormatter(currencyCode: String): MoneyFormatter =
     rememberMoneyFormatter(remember(currencyCode) { CurrencySpec.of(currencyCode) })
-
-/**
- * Opens [url] in the browser, or whatever app answers it; does nothing when the device has none (an Adyen terminal
- * has no browser).
- */
-fun Context.openUrl(url: String) {
-    try {
-        startActivity(Intent(Intent.ACTION_VIEW, url.toUri()))
-    } catch (ignored: ActivityNotFoundException) {
-    }
-}
 
 /**
  * Thin banner under the top bar when payments are simulated. There is none for the TEST environment: Adyen's test

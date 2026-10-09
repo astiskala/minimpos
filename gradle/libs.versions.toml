@@ -35,7 +35,7 @@ androidxTestCore = "1.7.0"
 archunit = "1.5.1"
 jsoup = "1.23.2"
 # The W3C Nu Html Checker (validator.w3.org/nu), run on the website by :website-test.
-nuValidator = "26.9.16"
+nuValidator = "26.10.2"
 # Stands in for the checker's log4j 1.2.17 (end of life, with unfixed advisories); a drop-in fork with them fixed.
 reload4j = "1.2.26"
 

@@ -2,6 +2,7 @@ package app.minimpos.terminal.checkout
 
 import app.minimpos.terminal.transport.AdyenHttp
 import app.minimpos.terminal.transport.AdyenReply
+import app.minimpos.terminal.transport.Fault
 import app.minimpos.terminal.transport.decodeAdyenModel
 import com.adyen.model.applicationinfo.ApplicationInfo
 import com.adyen.model.checkout.Amount
@@ -24,8 +25,8 @@ import com.adyen.model.checkout.PaymentLinkRequest as AdyenPaymentLinkRequest
  * The API key goes in the `x-api-key` header and is never part of an error message.
  *
  * Blocking calls run on [dispatcher]; cancelling the coroutine interrupts them. A request that could not be sent at
- * all and HTTP 4xx answers other than 408 and 429 are [PaymentLinkResult.NotProcessed]; timeouts, 408, 429, 5xx and
- * answers without a link are [PaymentLinkResult.Unknown].
+ * all and HTTP 4xx answers other than 408 and 429 fail with a fault that took no effect; timeouts, 408, 429, 5xx and
+ * answers without a link with one that may have.
  */
 class CheckoutPaymentLinks(
     private val credentials: CheckoutCredentials,
@@ -39,7 +40,7 @@ class CheckoutPaymentLinks(
     dispatcher: CoroutineDispatcher = Dispatchers.IO,
     private val application: ApplicationInfo? = null,
 ) : PaymentLinkApi {
-    private val http = AdyenHttp(credentials.apiKey, baseClient, dispatcher, "check the internet connection and the live URL prefix")
+    private val http = AdyenHttp(credentials.apiKey, baseClient, dispatcher)
 
     override suspend fun create(
         request: PaymentLinkRequest,
@@ -62,25 +63,23 @@ class CheckoutPaymentLinks(
 
     private fun result(reply: AdyenReply): PaymentLinkResult =
         when (reply) {
-            is AdyenReply.Failed if reply.sent -> PaymentLinkResult.Unknown(reply.message)
-            is AdyenReply.Failed -> PaymentLinkResult.NotProcessed(reply.message)
+            is AdyenReply.Failed -> PaymentLinkResult.Failed(reply.fault)
             is AdyenReply.Answered if reply.ok -> link(reply.body)
-            is AdyenReply.Answered if reply.outcomeUnknown() -> PaymentLinkResult.Unknown(adyenError(reply))
-            is AdyenReply.Answered -> PaymentLinkResult.NotProcessed(adyenError(reply))
+            is AdyenReply.Answered -> PaymentLinkResult.Failed(reply.checkoutFault())
         }
 
     private fun link(text: String): PaymentLinkResult {
         val response = decodeAdyenModel(text, PaymentLinkResponse::class.java)
         val id = response?.id
         val url = response?.url
-        if (id == null || url == null) return PaymentLinkResult.Unknown("Unexpected response from Adyen")
+        if (id == null || url == null) return PaymentLinkResult.Failed(Fault.UnreadableReply())
         val status =
             when (response.status) {
                 PaymentLinkResponse.StatusEnum.ACTIVE -> PaymentLinkStatus.ACTIVE
                 PaymentLinkResponse.StatusEnum.PAYMENTPENDING -> PaymentLinkStatus.PAYMENT_PENDING
                 PaymentLinkResponse.StatusEnum.COMPLETED, PaymentLinkResponse.StatusEnum.PAID -> PaymentLinkStatus.COMPLETED
                 PaymentLinkResponse.StatusEnum.EXPIRED -> PaymentLinkStatus.EXPIRED
-                else -> return PaymentLinkResult.Unknown(unexpectedStatus(text))
+                else -> return PaymentLinkResult.Failed(unexpectedStatus(text))
             }
         return PaymentLinkResult.Answered(PaymentLink(id, url, status, response.expiresAt?.toInstant()))
     }

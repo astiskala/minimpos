@@ -33,37 +33,57 @@ internal sealed interface AdyenReply {
     /**
      * There was no HTTP answer.
      *
-     * @property message Why, in English, without the API key.
-     * @property sent Whether the request may have reached Adyen (a timeout or a dropped connection), so its effect is
-     *   unknown; false when it never left the device (no connection, unknown host, no route).
+     * @property fault Why, without the API key; it states whether the request may have reached Adyen.
      */
     data class Failed(
-        val message: String,
-        val sent: Boolean,
-    ) : AdyenReply {
-        /** This failure as a Terminal API [Delivery]: [Delivery.MaybeSent] when it was [sent], else [Delivery.NotSent]. */
-        val delivery: Delivery get() = if (sent) Delivery.MaybeSent(message) else Delivery.NotSent(message)
-    }
+        val fault: Fault,
+    ) : AdyenReply
 }
 
 /**
+ * The fault an unsuccessful HTTP answer means, sent with [key]: 401 and 403 name the key (and the [role] a 403 lacks),
+ * 408, 429 and 5xx leave the outcome unknown, any other code is a rejection. [error] is Adyen's error message and code,
+ * read with the API's own error model.
+ */
+internal fun AdyenReply.Answered.fault(
+    key: ApiKey,
+    role: String? = null,
+    error: AdyenError? = null,
+): Fault =
+    when {
+        code == HTTP_UNAUTHORIZED -> Fault.Credential(key)
+        code == HTTP_FORBIDDEN -> Fault.Permission(key, role)
+        code in UNCERTAIN_HTTP || code >= HTTP_SERVER_ERROR -> Fault.AdyenUnavailable(code, error?.code, error?.said)
+        else -> Fault.AdyenRejected(code, error?.code, error?.said)
+    }
+
+/**
+ * Adyen's explanation of a failed request, from the API's error model.
+ *
+ * @property said Its message; null when it sent none.
+ * @property code Its error code; null when it sent none.
+ */
+internal data class AdyenError(
+    val said: ExternalText?,
+    val code: String?,
+)
+
+/**
  * Calls to Adyen's HTTPS APIs (Cloud device, Checkout and Management) with an API key, which goes in the `x-api-key`
- * header and never into a message. Requests are never re-sent silently: a payment or capture sent twice could charge
+ * header and never into a fault. Requests are never re-sent silently: a payment or capture sent twice could charge
  * twice, so deliberate retries rely on idempotency keys. Each call is limited by its own timeout only (no read timeout,
  * since a cloud payment's answer comes once the shopper is done). Network failures are returned as
- * [AdyenReply.Failed], never thrown; blocking work runs on [dispatcher] and is interrupted when the coroutine is
- * cancelled.
+ * [AdyenReply.Failed], never thrown: no connection, no route and an unknown host did not reach Adyen; a timeout or any
+ * other failure may have. Blocking work runs on [dispatcher] and is interrupted when the coroutine is cancelled.
  *
  * @param apiKey The API key.
  * @param baseClient The client to derive from, so an app can share one connection pool.
  * @param dispatcher Where the blocking calls run.
- * @param unknownHostAdvice What to check when a host is unknown, appended to that failure's message.
  */
 internal class AdyenHttp(
     private val apiKey: String,
     baseClient: OkHttpClient,
     private val dispatcher: CoroutineDispatcher,
-    private val unknownHostAdvice: String = "check the internet connection",
 ) {
     private val client =
         baseClient
@@ -116,19 +136,18 @@ internal class AdyenHttp(
                     .execute()
                     .use { AdyenReply.Answered(it.code, it.body.string()) }
             } catch (e: IOException) {
-                failure(built.url, e)
+                AdyenReply.Failed(failure(built.url, e))
             }
         }
 
     private fun failure(
         url: HttpUrl,
         error: IOException,
-    ): AdyenReply.Failed =
+    ): Fault =
         when (error) {
-            is ConnectException -> AdyenReply.Failed("Cannot connect to Adyen at ${url.host}", sent = false)
-            is UnknownHostException -> AdyenReply.Failed("Unknown host ${url.host}; $unknownHostAdvice", sent = false)
-            is NoRouteToHostException -> AdyenReply.Failed("No route to ${url.host}", sent = false)
-            else -> AdyenReply.Failed(error.message ?: "No response from Adyen", sent = true)
+            is ConnectException, is NoRouteToHostException -> Fault.Unreachable(url.host, terminal = false)
+            is UnknownHostException -> Fault.UnknownHost(url.host, terminal = false)
+            else -> error.fault()
         }
 
     private companion object {
@@ -147,3 +166,9 @@ internal const val HTTP_FORBIDDEN = 403
 
 /** HTTP 404: Adyen does not know the requested resource. */
 internal const val HTTP_NOT_FOUND = 404
+
+/** Request timeout and rate limit: the request may still have been processed, or can be sent again. */
+private val UNCERTAIN_HTTP = setOf(408, 429)
+
+/** The first server error code; from here on the outcome is unknown. */
+private const val HTTP_SERVER_ERROR = 500

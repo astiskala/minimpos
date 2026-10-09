@@ -6,6 +6,9 @@ import app.minimpos.terminal.checkout.ModificationAmount
 import app.minimpos.terminal.checkout.ModificationResult
 import app.minimpos.terminal.client.PosApplication
 import app.minimpos.terminal.simulator.SimulatedModifications
+import app.minimpos.terminal.transport.ApiKey
+import app.minimpos.terminal.transport.ExternalText
+import app.minimpos.terminal.transport.Fault
 import app.minimpos.terminal.transport.TerminalEnvironment
 import com.adyen.terminal.serialization.TerminalAPIGsonBuilder
 import com.google.common.truth.Truth.assertThat
@@ -131,10 +134,10 @@ class CheckoutModificationsTest {
                     """.trimIndent(),
                 ),
             )
-            assertThat(api.updateAmount("PSP1", amount, "ref", "blob", "b")).isEqualTo(ModificationResult.Refused("Not enough balance"))
             assertThat(
-                api.updateAmount("PSP1", amount, "ref", "blob", "c"),
-            ).isEqualTo(ModificationResult.Refused("Refused by the card issuer"))
+                api.updateAmount("PSP1", amount, "ref", "blob", "b"),
+            ).isEqualTo(ModificationResult.Refused(ExternalText("Not enough balance")))
+            assertThat(api.updateAmount("PSP1", amount, "ref", "blob", "c")).isEqualTo(ModificationResult.Refused(null))
         }
     }
 
@@ -148,13 +151,14 @@ class CheckoutModificationsTest {
         reply("""{"status":"pending"}""")
         runBlocking {
             assertThat(api.capture("PSP1", amount, "r", "k"))
-                .isEqualTo(ModificationResult.NotProcessed("Original pspReference required (HTTP 422, code 167)"))
-            assertThat(api.capture("PSP1", amount, "r", "k"))
-                .isEqualTo(ModificationResult.NotProcessed("HTTP Status Response - Unauthorized (HTTP 401)"))
-            assertThat(api.capture("PSP1", amount, "r", "k")).isEqualTo(ModificationResult.Unknown("Internal error (HTTP 500)"))
-            assertThat(api.capture("PSP1", amount, "r", "k")).isEqualTo(ModificationResult.Unknown("Adyen returned an error (HTTP 429)"))
-            assertThat(api.capture("PSP1", amount, "r", "k")).isEqualTo(ModificationResult.Unknown("Unexpected response from Adyen"))
-            assertThat(api.capture("PSP1", amount, "r", "k")).isEqualTo(ModificationResult.Unknown("Unexpected status from Adyen: pending"))
+                .isEqualTo(failed(Fault.AdyenRejected(422, "167", ExternalText("Original pspReference required"))))
+            assertThat(api.capture("PSP1", amount, "r", "k")).isEqualTo(failed(Fault.Credential(ApiKey.ADYEN)))
+            assertThat(
+                api.capture("PSP1", amount, "r", "k"),
+            ).isEqualTo(failed(Fault.AdyenUnavailable(500, null, ExternalText("Internal error"))))
+            assertThat(api.capture("PSP1", amount, "r", "k")).isEqualTo(failed(Fault.AdyenUnavailable(429)))
+            assertThat(api.capture("PSP1", amount, "r", "k")).isEqualTo(failed(Fault.UnreadableReply()))
+            assertThat(api.capture("PSP1", amount, "r", "k")).isEqualTo(failed(Fault.UnreadableReply(ExternalText("pending"))))
         }
     }
 
@@ -169,15 +173,14 @@ class CheckoutModificationsTest {
                 .headersDelay(2, TimeUnit.SECONDS)
                 .build(),
         )
-        assertThat(runBlocking { slow.capture("PSP1", amount, "r", "k") }).isInstanceOf(ModificationResult.Unknown::class.java)
+        assertThat(runBlocking { slow.capture("PSP1", amount, "r", "k") }).isEqualTo(failed(Fault.TimedOut))
 
         val closed = MockWebServer().apply { start() }
         val url = closed.url("/v72/")
         closed.close()
         val result = runBlocking { CheckoutModifications(credentials, baseUrl = url).capture("PSP1", amount, "r", "k") }
-        assertThat(result).isInstanceOf(ModificationResult.NotProcessed::class.java)
-        assertThat((result as ModificationResult.NotProcessed).message).startsWith("Cannot connect to Adyen")
-        assertThat(result.message).doesNotContain("secret-api-key")
+        assertThat(result).isEqualTo(failed(Fault.Unreachable(url.host, terminal = false)))
+        assertThat(result.toString()).doesNotContain("secret-api-key")
     }
 
     @Test
@@ -194,9 +197,9 @@ class CheckoutModificationsTest {
             assertThat(JsonParser.parseString(request.body!!.utf8())).isEqualTo(
                 JsonParser.parseString("""{"merchantAccount":"HarbourCoffeeCOM"}"""),
             )
-            assertThat(api.verify()).isEqualTo("Adyen did not accept the API key (HTTP 401)")
-            assertThat(api.verify()).isEqualTo("The API key may not use merchant account HarbourCoffeeCOM (HTTP 403)")
-            assertThat(api.verify()).isEqualTo("Invalid merchant account (HTTP 422, code 901)")
+            assertThat(api.verify()).isEqualTo(Fault.Credential(ApiKey.ADYEN))
+            assertThat(api.verify()).isEqualTo(Fault.Permission(ApiKey.ADYEN))
+            assertThat(api.verify()).isEqualTo(Fault.AdyenRejected(422, "901", ExternalText("Invalid merchant account")))
         }
     }
 
@@ -210,7 +213,8 @@ class CheckoutModificationsTest {
             }
             listOf("""{"status":"future"}""", """{"status":true}""", """{"status":"received"} {}""").forEach { body ->
                 reply(body)
-                assertThat(api.updateAmount("PSP", amount, "r", "blob", "k")).isInstanceOf(ModificationResult.Unknown::class.java)
+                val answer = api.updateAmount("PSP", amount, "r", "blob", "k")
+                assertThat((answer as ModificationResult.Failed).fault).isInstanceOf(Fault.UnreadableReply::class.java)
             }
             reply("""{"status":"received","pspReference":"CAP","futureField":{}}""")
             assertThat(api.capture("PSP", amount, "r", "k")).isEqualTo(ModificationResult.Received("CAP"))
@@ -239,4 +243,6 @@ class CheckoutModificationsTest {
             assertThat(simulated.verify()).isNull()
         }
     }
+
+    private fun failed(fault: Fault) = ModificationResult.Failed(fault)
 }

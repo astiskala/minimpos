@@ -352,7 +352,7 @@ class TransferImportViewModel(
                 ready.copy(
                     outcome =
                         result.problem?.let(ActionOutcome::NotSetUp)
-                            ?: result.message?.let(ActionOutcome::Failed)
+                            ?: result.failure?.let(ActionOutcome::Failed)
                             ?: ActionOutcome.NoAnswer,
                     incomplete = result.incomplete,
                     sharedKeyOffer = null,

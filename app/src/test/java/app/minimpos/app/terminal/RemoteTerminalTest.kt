@@ -6,6 +6,7 @@ import app.minimpos.app.FakeManagement
 import app.minimpos.app.FakePaymentsApp
 import app.minimpos.app.TestEnvironment
 import app.minimpos.app.await
+import app.minimpos.app.data.db.Failure
 import app.minimpos.app.data.db.SetupProblem
 import app.minimpos.app.data.security.Secret
 import app.minimpos.app.data.settings.TerminalMode
@@ -19,9 +20,11 @@ import app.minimpos.terminal.client.TransactionKind
 import app.minimpos.terminal.client.TransactionOutcome
 import app.minimpos.terminal.paymentsapp.BoardingTarget
 import app.minimpos.terminal.paymentsapp.ManagementResult
+import app.minimpos.terminal.transport.ApiKey
 import app.minimpos.terminal.transport.CloudCredentials
 import app.minimpos.terminal.transport.CloudDetection
 import app.minimpos.terminal.transport.CloudRegion
+import app.minimpos.terminal.transport.Fault
 import app.minimpos.terminal.transport.TerminalEnvironment
 import com.google.common.truth.Truth.assertThat
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -122,7 +125,7 @@ class RemoteTerminalTest {
             assertThat(cloud.credentials).containsExactly(CloudCredentials("cloud-key", "Merchant"))
             val refund = RefundParams(paid.details.poiTransactionId!!, paid.details.poiTimestamp!!, "R-1")
             assertThat((gateway.refund(refund, "REF1").made() as TransactionOutcome.Completed).details.success).isTrue()
-            assertThat(gateway.status("PAY1", TransactionKind.PAYMENT)).isInstanceOf(TransactionOutcome.Completed::class.java)
+            assertThat(gateway.status("PAY1", TransactionKind.PAYMENT).made()).isInstanceOf(TransactionOutcome.Completed::class.java)
             assertThat(gateway.print(listOf(PrintJob.Text(listOf(PrintLine.Text("x"))))).made()).isEqualTo(PrintOutcome.Printed)
             // The endpoint is found once per key and terminal.
             assertThat(cloud.detections).isEqualTo(1)
@@ -145,10 +148,11 @@ class RemoteTerminalTest {
     @Test
     fun `an API key no endpoint takes is a failed connection, and nothing is sent`() {
         useCloud()
-        cloud.detection = CloudDetection.Failed("Adyen did not accept the API key for LIVE (HTTP 401)")
-        assertThat((await { gateway.diagnose() } as TerminalConnection.Failed).message).contains("for LIVE")
-        assertThat((await { gateway.pay(payment, "PAY1") }.made() as TransactionOutcome.NotProcessed).reason).contains("HTTP 401")
-        assertThat((await { container.terminalStatus.connectedTerminals() } as ConnectedTerminals.Failed).message).contains("HTTP 401")
+        cloud.detection = CloudDetection.Failed(Fault.Credential(ApiKey.ADYEN))
+        val credential = Fault.Credential(ApiKey.ADYEN)
+        assertThat((await { gateway.diagnose() } as TerminalConnection.Failed).failure).isEqualTo(Failure.Remote(credential))
+        assertThat((await { gateway.pay(payment, "PAY1") }.made() as TransactionOutcome.NotProcessed).fault).isEqualTo(credential)
+        assertThat((await { container.terminalStatus.connectedTerminals() } as ConnectedTerminals.Failed).fault).isEqualTo(credential)
         // A key saved but no longer readable is reported as such.
         env.cipher.fail = true
         assertThat((await { gateway.diagnose() } as TerminalConnection.NotSetUp).problem).isEqualTo(SetupProblem.UNREADABLE_API_KEY)
@@ -196,7 +200,11 @@ class RemoteTerminalTest {
         assertThat(
             await { gateway.print(listOf(PrintJob.Text(listOf(PrintLine.Text("x"))))) }.made(),
         ).isInstanceOf(PrintOutcome.Failed::class.java)
-        assertThat(await { gateway.status("PAY1", TransactionKind.PAYMENT) }).isInstanceOf(TransactionOutcome.Unknown::class.java)
+        assertThat(
+            await {
+                gateway.status("PAY1", TransactionKind.PAYMENT)
+            }.made(),
+        ).isEqualTo(TransactionOutcome.Unknown("PAY1", Fault.NoLateReply))
         assertThat(await { gateway.abort("PAY1") }).isFalse()
     }
 
@@ -210,8 +218,9 @@ class RemoteTerminalTest {
         // Already boarded, so Adyen was not asked for a token.
         assertThat(management.requests).isEmpty()
 
-        management.result = ManagementResult.Failed("Not allowed (HTTP 403)")
-        assertThat(await { container.tapToPay.unregister() }).isEqualTo(TapToPayOutcome.Failed("Not allowed (HTTP 403)"))
+        management.result = ManagementResult.Failed(Fault.Permission(ApiKey.PAYMENTS_APP))
+        assertThat(await { container.tapToPay.unregister() })
+            .isEqualTo(TapToPayOutcome.Failed(Failure.Remote(Fault.Permission(ApiKey.PAYMENTS_APP))))
         management.result = ManagementResult.Done()
         assertThat(await { container.tapToPay.unregister() }).isEqualTo(TapToPayOutcome.Unregistered)
         assertThat(management.revoked).containsExactly(FakePaymentsApp.INSTALLATION_ID, FakePaymentsApp.INSTALLATION_ID)

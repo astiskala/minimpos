@@ -19,6 +19,7 @@ import app.minimpos.terminal.transport.CloudCredentials
 import app.minimpos.terminal.transport.CloudDetection
 import app.minimpos.terminal.transport.CloudDevices
 import app.minimpos.terminal.transport.CloudEndpoint
+import app.minimpos.terminal.transport.Fault
 import app.minimpos.terminal.transport.TerminalEnvironment
 import app.minimpos.terminal.transport.TerminalKey
 import app.minimpos.terminal.transport.TerminalTls
@@ -60,10 +61,10 @@ sealed interface Connection {
     /**
      * The destination could not be found, such as a cloud API key no endpoint accepts.
      *
-     * @property message Why, as Adyen or the client worded it.
+     * @property fault Why.
      */
     data class Unreachable(
-        val message: String,
+        val fault: Fault,
     ) : Blocked
 }
 
@@ -326,7 +327,7 @@ internal class CloudTerminal(
             }
 
             is CloudDetection.Failed -> {
-                Connection.Unreachable(detection.message)
+                Connection.Unreachable(detection.fault)
             }
         }
     }
@@ -347,7 +348,7 @@ internal class CloudTerminal(
             }
 
             is CloudDetection.Failed -> {
-                ConnectedTerminals.Failed(detection.message)
+                ConnectedTerminals.Failed(detection.fault)
             }
         }
     }

@@ -3,6 +3,8 @@ package app.minimpos.app.receipt
 import app.minimpos.app.TestEnvironment
 import app.minimpos.app.await
 import app.minimpos.app.data.db.CaptureStatus
+import app.minimpos.app.data.db.EmailFault
+import app.minimpos.app.data.db.Failure
 import app.minimpos.app.data.db.RefundEntity
 import app.minimpos.app.data.db.RefundStatus
 import app.minimpos.app.data.db.SaleEntity
@@ -43,6 +45,7 @@ import app.minimpos.terminal.client.PrintAlign
 import app.minimpos.terminal.client.PrintJob
 import app.minimpos.terminal.client.PrintLine
 import app.minimpos.terminal.client.PrintStyle
+import app.minimpos.terminal.transport.Fault
 import com.google.common.truth.Truth.assertThat
 import kotlinx.coroutines.flow.first
 import org.junit.After
@@ -275,8 +278,8 @@ class ReceiptServicesTest {
             container.virtualPrinter.jobs.value
                 .filterIsInstance<PrintJob.QrCode>(),
         ).isEmpty()
-        assertThat(await { receipts.print(StoredTransaction.Sale("missing")) }.result).isInstanceOf(ActionResult.Failure::class.java)
-        assertThat(await { receipts.print(StoredTransaction.Refund("missing")).result }).isInstanceOf(ActionResult.Failure::class.java)
+        assertThat(await { receipts.print(StoredTransaction.Sale("missing")) }.result).isEqualTo(ActionResult.Missing)
+        assertThat(await { receipts.print(StoredTransaction.Refund("missing")).result }).isEqualTo(ActionResult.Missing)
         assertThat(await { receipts.printDocument(ReceiptDocument(listOf(ReceiptElement.Text("Test")))) }).isEqualTo(ActionResult.Success)
 
         env.updateSettings { it.copy(receipt = it.receipt.copy(merchantCopy = MerchantCopyPolicy.NEVER)) }
@@ -289,7 +292,8 @@ class ReceiptServicesTest {
 
         env.useSimulator { it.copy(simulator = it.simulator.copy(hasPrinter = false)) }
         val failure = await { receipts.print(StoredTransaction.Sale("s1")) }
-        assertThat((failure.result as ActionResult.Failure).message).contains("no printer")
+        val noPrinter = ((failure.result as ActionResult.Failed).failure as Failure.Remote).fault as Fault.TerminalRejected
+        assertThat(noPrinter.said?.text).contains("no printer")
         assertThat(failure.merchantCopyDue).isFalse()
     }
 
@@ -418,10 +422,10 @@ class ReceiptServicesTest {
         ).isEqualTo("shopper@example.com")
         assertThat(
             await { container.receipts.email(StoredTransaction.Sale("missing"), "a@b.co") },
-        ).isInstanceOf(ActionResult.Failure::class.java)
+        ).isEqualTo(ActionResult.Missing)
         assertThat(
             await { container.receipts.email(StoredTransaction.Refund("missing"), "a@b.co") },
-        ).isInstanceOf(ActionResult.Failure::class.java)
+        ).isEqualTo(ActionResult.Missing)
     }
 
     @Test
@@ -629,18 +633,18 @@ class ReceiptServicesTest {
     @Test
     fun `email validates configuration, addresses and transport errors`() {
         store()
-        assertThat((await { container.receipts.sendTestEmail("a@b.co") } as ActionResult.Failure).message).contains("not set up")
+        assertThat(
+            await { container.receipts.sendTestEmail("a@b.co") },
+        ).isEqualTo(ActionResult.Failed(Failure.Email(EmailFault.NOT_CONFIGURED)))
         configureEmail()
-        assertThat((await { container.receipts.sendTestEmail("nope") } as ActionResult.Failure).message).contains("valid email")
+        assertThat(
+            await { container.receipts.sendTestEmail("nope") },
+        ).isEqualTo(ActionResult.Failed(Failure.Email(EmailFault.INVALID_ADDRESS)))
         assertThat(await { container.receipts.sendTestEmail("a@b.co") }).isEqualTo(ActionResult.Success)
         env.mail.failure = MessagingException("Connection refused")
         assertThat(
-            (
-                await {
-                    container.receipts.email(StoredTransaction.Sale("s1"), "a@b.co")
-                } as ActionResult.Failure
-            ).message,
-        ).isEqualTo("Connection refused")
+            await { container.receipts.email(StoredTransaction.Sale("s1"), "a@b.co") },
+        ).isEqualTo(ActionResult.Failed(Failure.Email(EmailFault.UNREACHABLE)))
         assertThat(
             await {
                 container.sales

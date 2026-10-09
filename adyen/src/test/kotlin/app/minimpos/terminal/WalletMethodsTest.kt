@@ -1,7 +1,7 @@
 package app.minimpos.terminal
 
 import app.minimpos.terminal.transport.AdyenWalletMethods
-import app.minimpos.terminal.transport.ManagementFailure
+import app.minimpos.terminal.transport.Fault
 import app.minimpos.terminal.transport.TerminalEnvironment
 import app.minimpos.terminal.transport.WalletMethodListing
 import com.google.common.truth.Truth.assertThat
@@ -24,7 +24,7 @@ class WalletMethodsTest {
                         ).build(),
                 )
                 val api = AdyenWalletMethods("synthetic", TerminalEnvironment.TEST, baseUrl = server.url("/v3/"))
-                assertThat(api.methods("Merchant", "")).isEqualTo(WalletMethodListing.Failed(ManagementFailure.UNREADABLE))
+                assertThat(api.methods("Merchant", "")).isEqualTo(WalletMethodListing.Failed(Fault.UnreadableReply()))
             }
         }
 

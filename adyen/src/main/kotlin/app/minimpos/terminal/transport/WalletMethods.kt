@@ -40,11 +40,11 @@ sealed interface WalletMethodListing {
     ) : WalletMethodListing
 
     /**
-     * Lookup failed; authentication and permission failures must invalidate a previously verified list.
-     * @property reason Non-secret typed failure; unavailable is transient, unreadable is not an empty configuration.
+     * Lookup failed; [Fault.Credential] and [Fault.Permission] must invalidate a previously verified list.
+     * @property fault Why; an unreadable answer is not an empty configuration.
      */
     data class Failed(
-        val reason: ManagementFailure,
+        val fault: Fault,
     ) : WalletMethodListing
 }
 
@@ -82,11 +82,11 @@ class AdyenWalletMethods(
         val methods = mutableListOf<WalletMethod>()
         var number = 1
         var next = true
-        var problem: ManagementFailure? = null
+        var problem: Fault? = null
         while (next && number <= MAX_PAGES && problem == null) {
             when (val page = page(merchantAccount, storeId, number++)) {
                 is Page.Failed -> {
-                    problem = page.reason
+                    problem = page.fault
                 }
 
                 is Page.Listed -> {
@@ -97,7 +97,7 @@ class AdyenWalletMethods(
         }
         return when {
             problem != null -> WalletMethodListing.Failed(problem)
-            next -> WalletMethodListing.Failed(ManagementFailure.UNREADABLE)
+            next -> WalletMethodListing.Failed(Fault.ListTooLarge)
             else -> WalletMethodListing.Listed(methods)
         }
     }
@@ -117,13 +117,16 @@ class AdyenWalletMethods(
                 .addQueryParameter("pageSize", PAGE_SIZE.toString())
                 .apply { if (storeId.isNotBlank()) addQueryParameter("storeId", storeId) }
                 .build()
-        val reply = http.get(url, TIMEOUT)
-        if (reply !is AdyenReply.Answered) return Page.Failed(ManagementFailure.UNAVAILABLE)
-        if (!reply.ok) return Page.Failed(failure(reply.code))
+        val reply =
+            when (val got = http.get(url, TIMEOUT)) {
+                is AdyenReply.Failed -> return Page.Failed(got.fault)
+                is AdyenReply.Answered -> got
+            }
+        if (!reply.ok) return Page.Failed(reply.fault(ApiKey.ADYEN, PAYMENT_METHODS_READ, managementError(reply.body)))
         val response = decodeAdyenModel(reply.body, PaymentMethodResponse::class.java)
         val data = response?.data
         if (data == null || !response.typesWithErrors.isNullOrEmpty() || data.any { it?.type.isNullOrBlank() }) {
-            return Page.Failed(ManagementFailure.UNREADABLE)
+            return Page.Failed(Fault.UnreadableReply())
         }
         return Page.Listed(
             data.map(::method),
@@ -141,7 +144,7 @@ class AdyenWalletMethods(
         ) : Page
 
         data class Failed(
-            val reason: ManagementFailure,
+            val fault: Fault,
         ) : Page
     }
 
@@ -156,16 +159,10 @@ class AdyenWalletMethods(
             storeIds = value.storeIds.orEmpty().toSet(),
         )
 
-    private fun failure(code: Int): ManagementFailure =
-        when (code) {
-            HTTP_UNAUTHORIZED -> ManagementFailure.AUTHENTICATION
-            HTTP_FORBIDDEN -> ManagementFailure.PERMISSION
-            else -> ManagementFailure.UNAVAILABLE
-        }
-
     private companion object {
         const val MAX_PAGES = 100
         const val PAGE_SIZE = 100
         val TIMEOUT = 15.seconds
+        const val PAYMENT_METHODS_READ = "Management API—Payment methods read"
     }
 }

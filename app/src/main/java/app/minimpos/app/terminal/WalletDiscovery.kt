@@ -3,7 +3,7 @@ package app.minimpos.app.terminal
 import app.minimpos.app.data.db.SetupProblem
 import app.minimpos.core.money.PaymentContext
 import app.minimpos.core.payment.ScanWallet
-import app.minimpos.terminal.transport.ManagementFailure
+import app.minimpos.terminal.transport.Fault
 import app.minimpos.terminal.transport.TerminalDetailsApi
 import app.minimpos.terminal.transport.TerminalEnvironment
 import app.minimpos.terminal.transport.TerminalListing
@@ -165,12 +165,12 @@ class WalletDiscovery(
         val key = checkNotNull(origin.apiKey)
         when (val listing = terminals(key).terminals(environment, setup.poiId)) {
             is TerminalListing.Failed -> {
-                publishFailure(origin, initial, listing.reason)
+                publishFailure(origin, initial, listing.fault)
             }
 
             is TerminalListing.Listed -> {
                 if (listing.environment != environment) {
-                    publishFailure(origin, initial, ManagementFailure.UNREADABLE)
+                    publishFailure(origin, initial, Fault.UnreadableReply())
                     return
                 }
                 when (
@@ -189,7 +189,7 @@ class WalletDiscovery(
                         val terminal = assignment.terminal
                         when (val methods = connect(key, environment).methods(terminal.merchantAccount, terminal.storeId)) {
                             is WalletMethodListing.Failed -> {
-                                publishFailure(origin, initial, methods.reason)
+                                publishFailure(origin, initial, methods.fault)
                             }
 
                             is WalletMethodListing.Listed -> {
@@ -215,19 +215,25 @@ class WalletDiscovery(
     private suspend fun publishFailure(
         origin: UnlockedSetup,
         initial: WalletAvailability,
-        reason: ManagementFailure,
+        reason: Fault,
     ) {
         val failure =
-            when (reason) {
-                ManagementFailure.AUTHENTICATION -> WalletDiscoveryFailure.AUTHENTICATION
+            when {
+                reason is Fault.Credential -> {
+                    WalletDiscoveryFailure.AUTHENTICATION
+                }
 
-                ManagementFailure.PERMISSION -> WalletDiscoveryFailure.PERMISSION
+                reason is Fault.Permission -> {
+                    WalletDiscoveryFailure.PERMISSION
+                }
 
-                ManagementFailure.UNAVAILABLE -> WalletDiscoveryFailure.UNAVAILABLE
+                reason is Fault.UnreadableReply || reason is Fault.Malformed || reason == Fault.ListTooLarge -> {
+                    WalletDiscoveryFailure.UNREADABLE
+                }
 
-                ManagementFailure.UNREADABLE, ManagementFailure.SETTINGS_UNREADABLE,
-                ManagementFailure.KEY_INCOMPLETE, ManagementFailure.KEY_INVALID,
-                -> WalletDiscoveryFailure.UNREADABLE
+                else -> {
+                    WalletDiscoveryFailure.UNAVAILABLE
+                }
             }
         val kept = if (failure == WalletDiscoveryFailure.UNAVAILABLE) initial else initial.copy(offers = emptyList(), checked = false)
         publish(origin, kept.copy(checking = false, failure = failure))

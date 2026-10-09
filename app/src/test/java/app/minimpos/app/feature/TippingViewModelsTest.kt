@@ -24,6 +24,7 @@ import app.minimpos.app.payment.CaptureResult
 import app.minimpos.app.payment.TransactionState
 import app.minimpos.app.refund.PaymentAction
 import app.minimpos.app.refund.standing
+import app.minimpos.terminal.transport.ExternalText
 import com.google.common.truth.Truth.assertThat
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -303,8 +304,8 @@ class TippingViewModelsTest {
         }
         // Cancelled meanwhile.
         assertThat(await { tip.state.first { it.sale?.pspReference == "PSP" } }.canSubmit).isFalse()
-        val refused = CaptureResult.Refused("No").toState(CaptureStep.TIP, 2_500, "AUD")
-        assertThat(refused.outcome).isEqualTo(ActionOutcome.CaptureRefused(CaptureStep.TIP, 2_500, "AUD", "No"))
+        val refused = CaptureResult.Refused(ExternalText("No")).toState(CaptureStep.TIP, 2_500, "AUD")
+        assertThat(refused.outcome).isEqualTo(ActionOutcome.CaptureRefused(CaptureStep.TIP, 2_500, "AUD", ExternalText("No")))
         assertThat(refused.isError).isTrue()
         assertThat(refused.done).isFalse()
         assertThat(CaptureResult.NotAllowed.toState(CaptureStep.TIP, 2_500, "AUD").outcome).isEqualTo(ActionOutcome.CaptureNotAllowed)

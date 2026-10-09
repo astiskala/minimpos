@@ -2,15 +2,14 @@ package app.minimpos.terminal
 
 import app.minimpos.terminal.transport.AdyenLocalTransport
 import app.minimpos.terminal.transport.Delivery
+import app.minimpos.terminal.transport.ExternalText
+import app.minimpos.terminal.transport.Fault
+import app.minimpos.terminal.transport.FaultException
 import app.minimpos.terminal.transport.TerminalEnvironment
 import app.minimpos.terminal.transport.TerminalHttpClient
 import app.minimpos.terminal.transport.TerminalKey
-import app.minimpos.terminal.transport.TerminalProtocolException
-import app.minimpos.terminal.transport.TerminalRejectedException
 import app.minimpos.terminal.transport.TerminalTls
-import app.minimpos.terminal.transport.TerminalUnreachableException
-import app.minimpos.terminal.transport.TerminalUntrustedException
-import app.minimpos.terminal.transport.toDelivery
+import app.minimpos.terminal.transport.fault
 import com.adyen.Config
 import com.adyen.constants.ApiConstants
 import com.adyen.httpclient.ClientInterface
@@ -45,6 +44,7 @@ import org.junit.Assert.assertThrows
 import org.junit.Test
 import java.io.IOException
 import java.net.ConnectException
+import java.net.SocketTimeoutException
 import java.net.UnknownHostException
 import java.security.MessageDigest
 import java.util.Locale
@@ -241,9 +241,7 @@ class LocalTransportTest {
             assertThat(tls.readEnvironment("localhost", server.port)).isNull()
             assertThat(observed).isEmpty()
             assertThat(server.requestCount).isEqualTo(0)
-            assertThrows(TerminalUntrustedException::class.java) {
-                TerminalHttpClient(tls, terminalCrypto).post(server.url("/nexo/"))
-            }
+            assertThat(fault { TerminalHttpClient(tls, terminalCrypto).post(server.url("/nexo/")) }).isEqualTo(Fault.Untrusted("localhost"))
             assertThat(server.requestCount).isEqualTo(0)
         }
 
@@ -267,7 +265,7 @@ class LocalTransportTest {
     }
 
     @Test
-    fun `replies signed with another key are protocol errors that mention the shared key`() {
+    fun `replies signed with another key may have taken effect and point to the shared key`() {
         val server = server()
         val other = NexoCrypto(TerminalKey("key-id", "wrong passphrase", 3).toSecurityKey())
         server.reply(
@@ -279,22 +277,20 @@ class LocalTransportTest {
         )
         server.reply("""{"SaleToPOIResponse":{"NexoBlob":"AAAA"}}""")
         val transport = AdyenLocalTransport("localhost", key, tls(), Redirect(server.url("/nexo/"), http()))
-        val mismatch = runBlocking { transport.send(request, 5.seconds) } as Delivery.MaybeSent
-        assertThat(mismatch.reason).contains("shared key")
-        assertThat(runBlocking { transport.send(request, 5.seconds) }).isInstanceOf(Delivery.MaybeSent::class.java)
+        assertThat(runBlocking { transport.send(request, 5.seconds) }).isEqualTo(Delivery.Failed(Fault.ReplyUnverified))
+        val garbled = runBlocking { transport.send(request, 5.seconds) } as Delivery.Failed
+        assertThat(garbled.fault.mayHaveTakenEffect).isTrue()
     }
 
     @Test
     fun `what the HTTP client throws decides whether the request can have taken effect`() {
-        assertThat(TerminalUnreachableException("gone").toDelivery("x")).isEqualTo(Delivery.NotSent("gone"))
-        assertThat(TerminalUntrustedException("stranger").toDelivery("x")).isEqualTo(Delivery.NotSent("stranger"))
-        assertThat(TerminalRejectedException("wrong key").toDelivery("x")).isEqualTo(Delivery.NotSent("wrong key"))
-        assertThat(TerminalProtocolException("garbled").toDelivery("x")).isEqualTo(Delivery.MaybeSent("garbled"))
-        assertThat(IOException().toDelivery("no answer")).isEqualTo(Delivery.MaybeSent("no answer"))
+        assertThat(FaultException(Fault.Untrusted("stranger")).fault()).isEqualTo(Fault.Untrusted("stranger"))
+        assertThat(SocketTimeoutException().fault()).isEqualTo(Fault.TimedOut)
+        assertThat(IOException().fault()).isEqualTo(Fault.ConnectionLost)
         val server = server()
         server.reply("oops", code = 500)
         val transport = AdyenLocalTransport("localhost", key, tls(), Redirect(server.url("/nexo/"), http()))
-        assertThat(runBlocking { transport.send(request, 5.seconds) }).isEqualTo(Delivery.MaybeSent("Terminal returned HTTP 500"))
+        assertThat(runBlocking { transport.send(request, 5.seconds) }).isEqualTo(Delivery.Failed(Fault.TerminalHttp(500)))
     }
 
     @Test
@@ -327,11 +323,11 @@ class LocalTransportTest {
         server.reply("""{"SaleToPOIResponse":{"MessageHeader":{}}}""")
         val client = http()
 
-        fun rejection() = assertThrows(TerminalRejectedException::class.java) { client.post(server.url("/nexo/")) }.message
-        assertThat(rejection()).isEqualTo("Terminal rejected the request: Crypto error. ${TerminalHttpClient.KEY_ADVICE}")
-        assertThat(rejection()).isEqualTo("Terminal rejected the request: Unknown POIID")
-        assertThat(rejection()).isEqualTo("Terminal rejected the request: Bad JSON:1: unexpected end")
-        assertThat(rejection()).isEqualTo("Terminal rejected the request")
+        fun rejection() = fault { client.post(server.url("/nexo/")) }
+        assertThat(rejection()).isEqualTo(Fault.KeyRejected(ExternalText("Crypto error")))
+        assertThat(rejection()).isEqualTo(Fault.TerminalRejected(ExternalText("Unknown POIID")))
+        assertThat(rejection()).isEqualTo(Fault.TerminalRejected(ExternalText("Bad JSON:1: unexpected end")))
+        assertThat(rejection()).isEqualTo(Fault.TerminalRejected(null))
     }
 
     @Test
@@ -340,9 +336,8 @@ class LocalTransportTest {
         server.reply("not json {")
         server.reply("oops", code = 500)
         val client = http()
-        assertThrows(TerminalProtocolException::class.java) { client.post(server.url("/nexo/")) }
-        assertThat(assertThrows(TerminalProtocolException::class.java) { client.post(server.url("/nexo/")) }.message)
-            .isEqualTo("Terminal returned HTTP 500")
+        assertThat(fault { client.post(server.url("/nexo/")) }).isEqualTo(Fault.UnreadableReply())
+        assertThat(fault { client.post(server.url("/nexo/")) }).isEqualTo(Fault.TerminalHttp(500))
     }
 
     @Test
@@ -371,7 +366,7 @@ class LocalTransportTest {
         )
         val quick = Config().apply { readTimeoutMillis = 200 }
         val error = assertThrows(IOException::class.java) { http().request(server.url("/nexo/").toString(), "{}", quick) }
-        assertThat(error).isNotInstanceOf(TerminalUnreachableException::class.java)
+        assertThat(error.fault()).isEqualTo(Fault.TimedOut)
     }
 
     @Test
@@ -400,8 +395,7 @@ class LocalTransportTest {
         // A certificate must be named for the environment of the root that issued it.
         val mismatched = server("S1F2-000158213605014.test.terminal.adyen.com", issuer = liveRoot)
         mismatched.reply("")
-        val error = assertThrows(TerminalUntrustedException::class.java) { client.post(mismatched.url("/nexo/")) }
-        assertThat(error.message).contains("Adyen terminal certificate")
+        assertThat(fault { client.post(mismatched.url("/nexo/")) }).isInstanceOf(Fault.Untrusted::class.java)
         assertThat(detected).hasSize(2)
         assertThat(tls.environmentOf(emptyList())).isNull()
         assertThat(
@@ -421,12 +415,12 @@ class LocalTransportTest {
     fun `wrong environment, foreign roots and non-terminal certificates are rejected`() {
         val server = server()
         server.reply("")
-        assertThrows(TerminalUntrustedException::class.java) { http(TerminalEnvironment.LIVE).post(server.url("/nexo/")) }
+        assertThat(fault { http(TerminalEnvironment.LIVE).post(server.url("/nexo/")) }).isInstanceOf(Fault.Untrusted::class.java)
         val stranger = HeldCertificate.Builder().certificateAuthority(0).build()
-        assertThrows(TerminalUntrustedException::class.java) { http(trusted = stranger).post(server.url("/nexo/")) }
+        assertThat(fault { http(trusted = stranger).post(server.url("/nexo/")) }).isInstanceOf(Fault.Untrusted::class.java)
         val website = server("www.example.com")
         website.reply("")
-        assertThrows(TerminalUntrustedException::class.java) { http().post(website.url("/nexo/")) }
+        assertThat(fault { http().post(website.url("/nexo/")) }).isInstanceOf(Fault.Untrusted::class.java)
         // Same checks over an IPv4 literal, where no fast-fallback race is involved.
         val ipv4 =
             server
@@ -434,35 +428,29 @@ class LocalTransportTest {
                 .newBuilder()
                 .host("127.0.0.1")
                 .build()
-        assertThrows(TerminalUntrustedException::class.java) { http(TerminalEnvironment.LIVE).post(ipv4) }
-        assertThrows(TerminalUntrustedException::class.java) { http(trusted = stranger).post(ipv4) }
+        assertThat(fault { http(TerminalEnvironment.LIVE).post(ipv4) }).isEqualTo(Fault.Untrusted("127.0.0.1"))
+        assertThat(fault { http(trusted = stranger).post(ipv4) }).isEqualTo(Fault.Untrusted("127.0.0.1"))
     }
 
     @Test(timeout = 5_000)
-    fun `TLS classification preserves cause and suppressed precedence without following cyclic causes`() {
-        fun thrown(error: IOException): IOException {
+    fun `TLS failures hidden in causes or suppressed exceptions are untrusted, without following cyclic causes`() {
+        fun thrown(error: IOException): Fault {
             val failing = OkHttpClient.Builder().addInterceptor { throw error }.build()
-            return assertThrows(IOException::class.java) {
-                TerminalHttpClient(tls(), terminalCrypto, failing).request("https://terminal.invalid:8443/nexo/", "{}", config)
-            }
+            return fault { TerminalHttpClient(tls(), terminalCrypto, failing).request("https://terminal.invalid:8443/nexo/", "{}", config) }
         }
         val cycle = ConnectException("refused")
         val nested = IOException("nested")
         cycle.initCause(nested)
         nested.initCause(cycle)
-        assertThat(thrown(cycle)).isInstanceOf(TerminalUnreachableException::class.java)
+        assertThat(thrown(cycle)).isEqualTo(Fault.Unreachable("terminal.invalid:8443", terminal = true))
 
-        val cause = SSLHandshakeException("cause")
-        val suppressed = SSLPeerUnverifiedException("suppressed")
-        val error =
-            ConnectException("refused").apply {
-                initCause(cause)
-                addSuppressed(suppressed)
-            }
-        assertThat(thrown(error).cause).isSameInstanceAs(suppressed)
-        assertThat(thrown(ConnectException("refused").apply { initCause(cause) }).cause).isSameInstanceAs(cause)
-        val outerTls = SSLHandshakeException("outer").apply { addSuppressed(suppressed) }
-        assertThat(thrown(ConnectException("refused").apply { initCause(outerTls) }).cause).isSameInstanceAs(outerTls)
+        val untrusted = Fault.Untrusted("terminal.invalid")
+        assertThat(
+            thrown(ConnectException("refused").apply { addSuppressed(SSLPeerUnverifiedException("suppressed")) }),
+        ).isEqualTo(untrusted)
+        assertThat(thrown(ConnectException("refused").apply { initCause(SSLHandshakeException("cause")) })).isEqualTo(untrusted)
+        val outerTls = SSLHandshakeException("outer").apply { addSuppressed(SSLPeerUnverifiedException("suppressed")) }
+        assertThat(thrown(ConnectException("refused").apply { initCause(outerTls) })).isEqualTo(untrusted)
     }
 
     @Test
@@ -477,12 +465,11 @@ class LocalTransportTest {
                 .host("127.0.0.1")
                 .port(port)
                 .build()
-        assertThrows(TerminalUnreachableException::class.java) { http().post(closed) }
+        assertThat(fault { http().post(closed) }).isEqualTo(Fault.Unreachable("127.0.0.1:$port", terminal = true))
         // A resolver that knows no hosts, so the test does not depend on (or wait for) the machine's DNS.
         val noDns = OkHttpClient.Builder().dns { throw UnknownHostException(it) }.build()
-        assertThrows(TerminalUnreachableException::class.java) {
-            TerminalHttpClient(tls(), terminalCrypto, noDns).request("https://terminal.invalid:8443/nexo/", "{}", config)
-        }
+        assertThat(fault { TerminalHttpClient(tls(), terminalCrypto, noDns).request("https://terminal.invalid:8443/nexo/", "{}", config) })
+            .isEqualTo(Fault.UnknownHost("terminal.invalid", terminal = true))
     }
 
     @Test
@@ -517,4 +504,7 @@ class LocalTransportTest {
         assertThat(valid("S1F2-000158213605014.live.terminal.adyen.com", TerminalEnvironment.LIVE)).isTrue()
         assertThat(valid("S1F2-12.test.terminal.adyen.com")).isFalse()
     }
+
+    /** The fault [block] throws, as the transport turns it into a delivery. */
+    private fun fault(block: () -> Unit): Fault = assertThrows(FaultException::class.java) { block() }.fault
 }

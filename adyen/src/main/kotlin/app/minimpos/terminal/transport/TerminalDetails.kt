@@ -53,37 +53,11 @@ sealed interface TerminalListing {
     ) : TerminalListing
 
     /** Lookup could not complete; manual setup remains possible.
-     * @property message Non-secret explanation.
-     * @property reason Typed setup failure for localized presentation.
+     * @property fault Why: the key, a missing role, a temporary failure, an unreadable answer or a list too long to read.
      */
     data class Failed(
-        val message: String,
-        val reason: ManagementFailure = ManagementFailure.UNAVAILABLE,
+        val fault: Fault,
     ) : TerminalListing
-}
-
-/** Non-secret reason a Management setup check could not complete. */
-enum class ManagementFailure {
-    /** API key rejected by the selected environment. */
-    AUTHENTICATION,
-
-    /** Credential lacks the required Management role or resource access. */
-    PERMISSION,
-
-    /** Network or server failure; retry in the same environment. */
-    UNAVAILABLE,
-
-    /** Successful answer did not contain the required fields. */
-    UNREADABLE,
-
-    /** Terminal settings contain unsupported fields or values that cannot be safely preserved in a PATCH. */
-    SETTINGS_UNREADABLE,
-
-    /** An encryption-key object is present but lacks an identifier, version or passphrase; absence is not verified. */
-    KEY_INCOMPLETE,
-
-    /** An encryption-key object has a version outside the supported range. */
-    KEY_INVALID,
 }
 
 /** Read-only credential-role check; no secrets or raw API responses are exposed. */
@@ -92,10 +66,10 @@ sealed interface CredentialLookup {
     data object Allowed : CredentialLookup
 
     /** Credential could not be verified.
-     * @property reason Authentication, permission, temporary failure or malformed answer.
+     * @property fault Authentication, permission, temporary failure or unreadable answer.
      */
     data class Failed(
-        val reason: ManagementFailure,
+        val fault: Fault,
     ) : CredentialLookup
 }
 
@@ -112,10 +86,10 @@ sealed interface SharedKeyLookup {
     data object Missing : SharedKeyLookup
 
     /** Settings could not be read; never grants permission to create or replace a key.
-     * @property reason Non-secret typed failure.
+     * @property fault Why, including [Fault.Malformed] settings or keys.
      */
     data class Failed(
-        val reason: ManagementFailure,
+        val fault: Fault,
     ) : SharedKeyLookup
 }
 
@@ -131,11 +105,11 @@ sealed interface SharedKeyUpdate {
     ) : SharedKeyUpdate
 
     /** Creation or verification failed; the caller retains its encrypted recovery record.
-     * @property reason Non-secret failure.
+     * @property fault Why.
      * @property uncertain Whether a PATCH may have taken effect without verified read-back.
      */
     data class Failed(
-        val reason: ManagementFailure,
+        val fault: Fault,
         val uncertain: Boolean = false,
     ) : SharedKeyUpdate
 }
@@ -143,7 +117,7 @@ sealed interface SharedKeyUpdate {
 /** Management discovery and explicit key creation; main-safe, without silent retries or environment fallback. */
 interface TerminalDetailsApi {
     /** Checks terminal-access, terminal-settings write and Advanced roles in [environment]. */
-    suspend fun credential(environment: TerminalEnvironment): CredentialLookup = CredentialLookup.Failed(ManagementFailure.UNAVAILABLE)
+    suspend fun credential(environment: TerminalEnvironment): CredentialLookup = CredentialLookup.Failed(Fault.Unsupported)
 
     /** Reads all visible terminals, or only the exact [id] using a targeted substring search followed by exact matching. */
     suspend fun terminals(
@@ -165,7 +139,7 @@ interface TerminalDetailsApi {
         id: String,
         environment: TerminalEnvironment,
         key: DiscoveredKey,
-    ): SharedKeyUpdate = SharedKeyUpdate.Failed(ManagementFailure.UNAVAILABLE)
+    ): SharedKeyUpdate = SharedKeyUpdate.Failed(Fault.Unsupported)
 }
 
 /** Management v3 terminal discovery with bounded pagination and no automatic request retries.
@@ -184,16 +158,16 @@ class AdyenTerminalDetails(
 
     override suspend fun credential(environment: TerminalEnvironment): CredentialLookup {
         val reply = http.get(baseUrl(environment).newBuilder().addPathSegment("me").build(), TIMEOUT)
-        if (reply !is AdyenReply.Answered || !reply.ok) return CredentialLookup.Failed(reason(reply))
+        if (reply !is AdyenReply.Answered || !reply.ok) return CredentialLookup.Failed(reason(reply, MANAGEMENT_ROLES))
         val roles =
             runCatching {
                 requireNotNull(decodeAdyenModel(reply.body, MeApiCredential::class.java)?.roles).map { requireNotNull(it) }
-            }.getOrNull() ?: return CredentialLookup.Failed(ManagementFailure.UNREADABLE)
+            }.getOrNull() ?: return CredentialLookup.Failed(Fault.UnreadableReply())
         val normalized = roles.map { it.replace("—", "-").replace("–", "-").replace(" ", "") }.toSet()
         return if (normalized.containsAll(REQUIRED_ROLES)) {
             CredentialLookup.Allowed
         } else {
-            CredentialLookup.Failed(ManagementFailure.PERMISSION)
+            CredentialLookup.Failed(Fault.Permission(ApiKey.ADYEN, MANAGEMENT_ROLES))
         }
     }
 
@@ -211,18 +185,18 @@ class AdyenTerminalDetails(
                         .build(),
                     TIMEOUT,
                 )
-            val parsed = parsePage(reply) ?: return TerminalListing.Failed("Terminal lookup is unavailable", reason(reply))
+            val parsed = parsePage(reply) ?: return TerminalListing.Failed(reason(reply))
             return TerminalListing.Listed(parsed.first.filter { it.id == id }.distinctBy { it.id }, environment)
         }
         var reply = page(environment, 1)
         val terminals = mutableListOf<TerminalDetails>()
         var number = 1
         var next = true
-        var failure: String? = null
+        var failure: Fault? = null
         while (next && number <= MAX_PAGES && failure == null) {
             val parsed = parsePage(reply)
             if (parsed == null) {
-                failure = "Terminal discovery is unavailable; enter the details manually"
+                failure = reason(reply)
             } else {
                 terminals += parsed.first
                 next = parsed.second
@@ -230,8 +204,8 @@ class AdyenTerminalDetails(
             }
         }
         return when {
-            failure != null -> TerminalListing.Failed(failure, reason(reply))
-            next -> TerminalListing.Failed("The terminal list is too large; enter the details manually")
+            failure != null -> TerminalListing.Failed(failure)
+            next -> TerminalListing.Failed(Fault.ListTooLarge)
             else -> TerminalListing.Listed(terminals.distinctBy { it.id }, environment)
         }
     }
@@ -242,7 +216,7 @@ class AdyenTerminalDetails(
     ): SharedKeyLookup {
         val reply = http.get(settingsUrl(id, environment), TIMEOUT)
         if (reply !is AdyenReply.Answered || !reply.ok) return SharedKeyLookup.Failed(reason(reply))
-        val settings = decodeTerminalSettings(reply.body) ?: return SharedKeyLookup.Failed(ManagementFailure.SETTINGS_UNREADABLE)
+        val settings = decodeTerminalSettings(reply.body) ?: return SharedKeyLookup.Failed(Fault.Malformed(MalformedPart.SETTINGS))
         return lookup(settings)
     }
 
@@ -254,10 +228,10 @@ class AdyenTerminalDetails(
         val url = settingsUrl(id, environment)
         val before = http.get(url, TIMEOUT)
         if (before !is AdyenReply.Answered || !before.ok) return SharedKeyUpdate.Failed(reason(before))
-        val settings = decodeTerminalSettings(before.body) ?: return SharedKeyUpdate.Failed(ManagementFailure.SETTINGS_UNREADABLE)
+        val settings = decodeTerminalSettings(before.body) ?: return SharedKeyUpdate.Failed(Fault.Malformed(MalformedPart.SETTINGS))
         return when (val existing = lookup(settings)) {
             is SharedKeyLookup.Found -> SharedKeyUpdate.Ready(existing.key, created = false)
-            is SharedKeyLookup.Failed -> SharedKeyUpdate.Failed(existing.reason)
+            is SharedKeyLookup.Failed -> SharedKeyUpdate.Failed(existing.fault)
             SharedKeyLookup.Missing -> patchKey(id, environment, key, settings)
         }
     }
@@ -272,12 +246,8 @@ class AdyenTerminalDetails(
         val json = TerminalSettings().nexo(nexo).toJson()
         val reply = http.patch(settingsUrl(id, environment), json, TIMEOUT)
         if (reply !is AdyenReply.Answered || !reply.ok) {
-            val uncertain =
-                when (reply) {
-                    is AdyenReply.Failed -> reply.sent
-                    is AdyenReply.Answered -> reply.code >= HTTP_SERVER_ERROR || reply.code in UNCERTAIN_HTTP
-                }
-            return SharedKeyUpdate.Failed(reason(reply), uncertain)
+            val fault = reason(reply)
+            return SharedKeyUpdate.Failed(fault, fault.mayHaveTakenEffect)
         }
         return verifyKey(id, environment, key)
     }
@@ -298,16 +268,16 @@ class AdyenTerminalDetails(
                         created = true,
                     )
                 } else {
-                    SharedKeyUpdate.Failed(ManagementFailure.UNREADABLE, uncertain = true)
+                    SharedKeyUpdate.Failed(Fault.UnreadableReply(), uncertain = true)
                 }
             }
 
             is SharedKeyLookup.Failed -> {
-                SharedKeyUpdate.Failed(verified.reason, uncertain = true)
+                SharedKeyUpdate.Failed(verified.fault, uncertain = true)
             }
 
             SharedKeyLookup.Missing -> {
-                SharedKeyUpdate.Failed(ManagementFailure.UNREADABLE, uncertain = true)
+                SharedKeyUpdate.Failed(Fault.UnreadableReply(), uncertain = true)
             }
         }
 
@@ -328,8 +298,8 @@ class AdyenTerminalDetails(
         val passphrase = key.passphrase.orEmpty()
         val version = key.version
         return when {
-            identifier.isBlank() || passphrase.isBlank() || version == null -> SharedKeyLookup.Failed(ManagementFailure.KEY_INCOMPLETE)
-            version !in KEY_VERSIONS -> SharedKeyLookup.Failed(ManagementFailure.KEY_INVALID)
+            identifier.isBlank() || passphrase.isBlank() || version == null -> SharedKeyLookup.Failed(Fault.Malformed(MalformedPart.KEY))
+            version !in KEY_VERSIONS -> SharedKeyLookup.Failed(Fault.Malformed(MalformedPart.KEY_VERSION))
             else -> SharedKeyLookup.Found(DiscoveredKey(identifier, version, passphrase))
         }
     }
@@ -358,13 +328,15 @@ class AdyenTerminalDetails(
         }.getOrNull()
     }
 
-    private fun reason(reply: AdyenReply): ManagementFailure =
-        when {
-            reply !is AdyenReply.Answered -> ManagementFailure.UNAVAILABLE
-            reply.code == HTTP_UNAUTHORIZED -> ManagementFailure.AUTHENTICATION
-            reply.code == HTTP_FORBIDDEN -> ManagementFailure.PERMISSION
-            reply.ok -> ManagementFailure.UNREADABLE
-            else -> ManagementFailure.UNAVAILABLE
+    /** Why [reply] gave no usable answer; a successful one was unreadable. A 403 lacks [role]. */
+    private fun reason(
+        reply: AdyenReply,
+        role: String? = null,
+    ): Fault =
+        when (reply) {
+            is AdyenReply.Failed -> reply.fault
+            is AdyenReply.Answered if reply.ok -> Fault.UnreadableReply()
+            is AdyenReply.Answered -> reply.fault(ApiKey.ADYEN, role, managementError(reply.body))
         }
 
     private fun terminal(terminal: Terminal): TerminalDetails {
@@ -406,8 +378,10 @@ class AdyenTerminalDetails(
         const val PAGE_SIZE = 100
         const val MAX_PAGES = 100
         val KEY_VERSIONS = 1..9_999
-        const val HTTP_SERVER_ERROR = 500
-        val UNCERTAIN_HTTP = setOf(408, 429)
+
+        /** [REQUIRED_ROLES] as Adyen names them in the Customer Area. */
+        const val MANAGEMENT_ROLES =
+            "Management API—Terminal actions read, Terminal settings read and write, Terminal settings Advanced read and write"
         val REQUIRED_ROLES =
             setOf(
                 "ManagementAPI-Terminalactionsread",

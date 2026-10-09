@@ -1,5 +1,7 @@
 package app.minimpos.terminal.checkout
 
+import app.minimpos.terminal.transport.ExternalText
+import app.minimpos.terminal.transport.Fault
 import app.minimpos.terminal.transport.TerminalEnvironment
 
 /**
@@ -44,30 +46,23 @@ sealed interface ModificationResult {
      * A synchronous authorisation adjustment was refused by the issuer (status `Refused`); the amount authorised before
      * still applies.
      *
-     * @property reason Adyen's refusal reason, or a generic text when it gave none.
+     * @property said Adyen's refusal reason; null when it gave none.
      */
     data class Refused(
-        val reason: String,
+        val said: ExternalText?,
     ) : ModificationResult
 
     /**
-     * The request did not take effect: it never reached Adyen, or Adyen rejected it (HTTP 4xx, e.g. a wrong API key or
-     * merchant account, or a payment that cannot be modified).
+     * Adyen gave no usable answer. When [Fault.mayHaveTakenEffect] is false the request did not take effect (it never
+     * reached Adyen, or Adyen rejected it, e.g. a wrong API key or merchant account, or a payment that cannot be
+     * modified); otherwise it is not known whether it did (timeout, broken connection, HTTP 408, 429 or 5xx), and
+     * sending it again with the same idempotency key is safe: Adyen then answers with the first result instead of
+     * acting twice.
      *
-     * @property message Why, in English, with Adyen's error code when it sent one.
+     * @property fault Why.
      */
-    data class NotProcessed(
-        val message: String,
-    ) : ModificationResult
-
-    /**
-     * It is not known whether the request took effect (timeout, broken connection, HTTP 5xx). Sending it again with the
-     * same idempotency key is safe: Adyen then answers with the first result instead of acting twice.
-     *
-     * @property message Why, in English.
-     */
-    data class Unknown(
-        val message: String,
+    data class Failed(
+        val fault: Fault,
     ) : ModificationResult
 }
 
@@ -118,9 +113,9 @@ interface PaymentModifications {
 
     /**
      * Checks that the API key is accepted for the merchant account without changing anything (a payment methods
-     * request). Returns null when it is, else why not, in English.
+     * request). Returns null when it is, else why not.
      */
-    suspend fun verify(): String?
+    suspend fun verify(): Fault?
 }
 
 /**

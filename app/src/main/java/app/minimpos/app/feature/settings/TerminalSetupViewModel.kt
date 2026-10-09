@@ -193,7 +193,7 @@ class TerminalSetupViewModel(
             is SharedKeySetupOutcome.Failed -> {
                 val offer = discovery.pendingKey()
                 val outcome =
-                    result.problem?.let(ActionOutcome::NotSetUp) ?: result.message?.let(ActionOutcome::Failed) ?: ActionOutcome.NoAnswer
+                    result.problem?.let(ActionOutcome::NotSetUp) ?: result.failure?.let(ActionOutcome::Failed) ?: ActionOutcome.NoAnswer
                 _actions.update { it.copy(sharedKeyOffer = offer, keyResult = ActionState(outcome = outcome, isError = true)) }
             }
 
@@ -271,10 +271,7 @@ class TerminalSetupViewModel(
                     }
 
                     is TapToPayOutcome.Failed -> {
-                        ActionState(
-                            outcome = outcome.message?.let(ActionOutcome::Failed) ?: ActionOutcome.NoAnswer,
-                            isError = true,
-                        )
+                        ActionState(outcome = ActionOutcome.Failed(outcome.failure), isError = true)
                     }
                 }
             _actions.update { it.copy(tapToPay = result) }

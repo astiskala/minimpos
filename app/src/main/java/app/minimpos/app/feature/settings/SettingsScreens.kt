@@ -853,7 +853,7 @@ private fun ConnectionStatus(
         when (connection) {
             is TerminalConnection.Connected -> listOfNotNull(poiId, environmentLabel(environment)).joinToString(" · ")
             is TerminalConnection.NotSetUp -> problem?.text() ?: stringResource(R.string.settings_status_not_set_up_hint)
-            is TerminalConnection.Failed -> connection.message ?: stringResource(R.string.setup_no_response)
+            is TerminalConnection.Failed -> connection.failure.text()
             TerminalConnection.Unknown, TerminalConnection.Checking -> poiId.orEmpty()
         }
     Column(modifier.fillMaxWidth()) {

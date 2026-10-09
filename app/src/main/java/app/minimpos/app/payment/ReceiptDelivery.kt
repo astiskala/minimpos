@@ -1,5 +1,6 @@
 package app.minimpos.app.payment
 
+import app.minimpos.app.data.db.Failure
 import app.minimpos.app.data.db.SaleEntity
 import app.minimpos.app.data.repo.HistoryRepository
 import app.minimpos.app.data.repo.RefundRepository
@@ -135,8 +136,8 @@ class ReceiptRecords(
  * succeeded while the app runs: the transaction lifecycles call [arm], and [app.minimpos.app.feature.TransactionActions]
  * claims the automation for a transaction just made with [automation], which only delivers something the first time.
  *
- * Missing sales and refunds (for example after pruning), missing email setup and delivery errors are returned as
- * [ActionResult.Failure] with a message to show; missing terminal setup as [ActionResult.NotSetUp].
+ * Missing sales and refunds (for example after pruning) are [ActionResult.Missing]; missing terminal or email setup and
+ * delivery errors are [ActionResult.Failed] with the typed failure the screens word.
  *
  * @param settings The receipt, payment and email settings, read for each call.
  * @param records Stored sales, refunds and unfiltered daily activity.
@@ -144,7 +145,6 @@ class ReceiptRecords(
  * @param gateway Prints them.
  * @param status Tells whether printing is offered.
  * @param emailer Emails them.
- * @param notFound The message when the sale or refund no longer exists.
  */
 class ReceiptDelivery(
     private val settings: SettingsRepository,
@@ -153,7 +153,6 @@ class ReceiptDelivery(
     private val gateway: TerminalGateway,
     private val status: TerminalStatus,
     private val emailer: ReceiptEmailer,
-    private val notFound: String,
 ) {
     /** Whether a daily summary can be printed with the current destination and receipt settings. */
     val canPrintReports: Flow<Boolean> = status.state.map { it.printerAvailable }
@@ -283,7 +282,7 @@ class ReceiptDelivery(
         copy: ReceiptCopy,
     ): ReceiptPrint {
         val current = settings.current()
-        val record = records.sales.get(saleId) ?: return ReceiptPrint(ActionResult.Failure(notFound))
+        val record = records.sales.get(saleId) ?: return ReceiptPrint(ActionResult.Missing)
         val result = print(receipts.sale(record, current.receipt, copy), current)
         val due = copy == ReceiptCopy.CUSTOMER && result == ActionResult.Success && merchantCopyWanted(record.sale, current)
         return ReceiptPrint(result, due)
@@ -291,7 +290,7 @@ class ReceiptDelivery(
 
     private suspend fun printRefund(refundId: String): ActionResult {
         val current = settings.current()
-        val refund = records.refunds.get(refundId) ?: return ActionResult.Failure(notFound)
+        val refund = records.refunds.get(refundId) ?: return ActionResult.Missing
         return print(receipts.refund(refund, current.receipt), current)
     }
 
@@ -302,7 +301,7 @@ class ReceiptDelivery(
         saleId: String,
         to: String,
     ): ActionResult {
-        val record = records.sales.get(saleId) ?: return ActionResult.Failure(notFound)
+        val record = records.sales.get(saleId) ?: return ActionResult.Missing
         val sale = record.sale
         val document = receipts.sale(record, settings.current().receipt, paper = false)
         val standing = ReceiptStanding.of(sale)
@@ -319,7 +318,7 @@ class ReceiptDelivery(
         refundId: String,
         to: String,
     ): ActionResult {
-        val refund = records.refunds.get(refundId) ?: return ActionResult.Failure(notFound)
+        val refund = records.refunds.get(refundId) ?: return ActionResult.Missing
         return emailer.sendRefund(to, receipts.refund(refund, settings.current().receipt), refund.merchantReference, refund.cancellation)
     }
 
@@ -351,13 +350,13 @@ class ReceiptDelivery(
     ): ActionResult =
         when (val attempt = gateway.print(PrintRenderer.jobs(document, current.receipt.charsPerLine))) {
             is Attempt.NotSetUp -> {
-                ActionResult.NotSetUp(attempt.problem)
+                ActionResult.Failed(Failure.NotSetUp(attempt.problem))
             }
 
             is Attempt.Made -> {
                 when (val outcome = attempt.result) {
                     PrintOutcome.Printed -> ActionResult.Success
-                    is PrintOutcome.Failed -> ActionResult.Failure(outcome.message)
+                    is PrintOutcome.Failed -> ActionResult.Failed(Failure.Remote(outcome.fault))
                 }
             }
         }

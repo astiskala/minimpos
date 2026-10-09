@@ -107,17 +107,21 @@ class SaleEventTest {
         assertThat(requested.amountMinor).isEqualTo(2_300)
         assertThat(requested.actions()).containsExactly(PaymentAction.REFUND)
 
-        val failed = sending.after(SaleEvent.CaptureAnswered(ModificationResult.NotProcessed("Invalid amount")))
+        val failed =
+            sending.after(
+                SaleEvent.CaptureAnswered(ModificationResult.Failed(Fault.AdyenRejected(422, null, ExternalText("Invalid amount")))),
+            )
         assertThat(failed.standing).isEqualTo(PaymentStanding.CAPTURE_FAILED)
-        assertThat(failed.modificationMessage).isEqualTo("Invalid amount")
+        assertThat(failed.modificationReason)
+            .isEqualTo(StoredReason.NotDone(Failure.Remote(Fault.AdyenRejected(422, null, ExternalText("Invalid amount")))))
         assertThat(failed.actions()).containsExactly(PaymentAction.CANCEL, PaymentAction.RETRY_CAPTURE)
         // An answer that captured clears the reason the last one failed.
-        assertThat(failed.after(SaleEvent.CaptureAnswered(ModificationResult.Received(null))).modificationMessage).isNull()
+        assertThat(failed.after(SaleEvent.CaptureAnswered(ModificationResult.Received(null))).modificationReason).isNull()
         // A setup problem recorded before the capture is cleared by sending it.
         val sentAfterSetup = tipSale.afterAll(SaleEvent.ModificationNotSetUp(SetupProblem.LIVE_PREFIX), SaleEvent.CaptureSending(2_300))
         assertThat(sentAfterSetup.modificationReason).isNull()
 
-        val unknown = sending.after(SaleEvent.CaptureAnswered(ModificationResult.Unknown("timeout")))
+        val unknown = sending.after(SaleEvent.CaptureAnswered(ModificationResult.Failed(Fault.TimedOut)))
         assertThat(unknown.standing).isEqualTo(PaymentStanding.CAPTURE_UNKNOWN)
         assertThat(unknown.actions()).containsExactly(PaymentAction.RETRY_CAPTURE)
         // Sending it again keeps the amount and tip.
@@ -136,7 +140,7 @@ class SaleEventTest {
         assertThat(received.adjustment).isEqualTo(AdjustmentStatus.REQUESTED)
         assertThat(received.adjustAuthorisationData).isEqualTo("BQABAQfirst")
 
-        val refused = preAuth.after(SaleEvent.AdjustmentAnswered(2_500, ModificationResult.Refused("Not enough balance")))
+        val refused = preAuth.after(SaleEvent.AdjustmentAnswered(2_500, ModificationResult.Refused(ExternalText("Not enough balance"))))
         assertThat(refused.heldMinor).isEqualTo(2_000)
         assertThat(refused.modificationMessage).isEqualTo("Not enough balance")
         assertThat(refused.after(SaleEvent.AdjustmentAnswered(2_400, ModificationResult.Received(null))).modificationMessage).isNull()
@@ -165,14 +169,14 @@ class SaleEventTest {
         assertThat(awaiting.after(SaleEvent.LinkAnswered(ended)).status).isEqualTo(SaleStatus.EXPIRED)
         assertThat(awaiting.after(SaleEvent.LinkAnswered(ended, cancelling = true)).status).isEqualTo(SaleStatus.CANCELLED)
 
-        assertThat(linkSale.after(SaleEvent.NotSent("Invalid")).status).isEqualTo(SaleStatus.FAILED)
+        assertThat(linkSale.after(SaleEvent.NotSent(Fault.AdyenRejected(422))).status).isEqualTo(SaleStatus.FAILED)
         val notSetUp = linkSale.after(SaleEvent.NotSetUp(SetupProblem.API_REQUIRED))
         assertThat(notSetUp.status).isEqualTo(SaleStatus.FAILED)
         assertThat(notSetUp.reason).isEqualTo(StoredReason.NotDone(Failure.NotSetUp(SetupProblem.API_REQUIRED)))
-        val unknown = linkSale.after(SaleEvent.OutcomeUnknown("No answer"))
+        val unknown = linkSale.after(SaleEvent.OutcomeUnknown(Failure.Remote(Fault.TimedOut)))
         assertThat(unknown.status).isEqualTo(SaleStatus.UNKNOWN)
-        assertThat(unknown.reason).isEqualTo(StoredReason.Unconfirmed())
-        assertThat(unknown.message).isEqualTo("No answer")
+        assertThat(unknown.reason).isEqualTo(StoredReason.Unconfirmed(Failure.Remote(Fault.TimedOut)))
+        assertThat(unknown.message).isNull()
         // A link created after an unknown outcome clears why.
         val created = unknown.after(SaleEvent.LinkAnswered(link))
         assertThat(created.message).isNull()

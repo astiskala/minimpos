@@ -5,6 +5,7 @@ import android.content.Context
 import android.content.res.Resources
 import android.os.Build
 import android.provider.Settings
+import app.minimpos.app.data.db.Failure
 import app.minimpos.app.data.db.SetupProblem
 import app.minimpos.app.data.security.SecretStore
 import app.minimpos.app.data.settings.TerminalMode
@@ -26,6 +27,7 @@ import app.minimpos.terminal.transport.CloudCredentials
 import app.minimpos.terminal.transport.CloudDevices
 import app.minimpos.terminal.transport.CloudEndpoint
 import app.minimpos.terminal.transport.CloudRegion
+import app.minimpos.terminal.transport.Fault
 import app.minimpos.terminal.transport.TerminalEnvironment
 import app.minimpos.terminal.transport.TerminalKey
 import app.minimpos.terminal.transport.TerminalTls
@@ -146,12 +148,12 @@ sealed interface TerminalConnection {
     ) : TerminalConnection
 
     /**
-     * The terminal could not be reached or did not answer properly.
+     * The terminal could not be reached or did not answer properly, or its credentials could not be checked.
      *
-     * @property message Why, as the terminal or Adyen worded it; null when it did not answer at all.
+     * @property failure Why.
      */
     data class Failed(
-        val message: String?,
+        val failure: Failure,
     ) : TerminalConnection
 }
 
@@ -232,10 +234,10 @@ sealed interface ConnectedTerminals {
     /**
      * They could not be listed.
      *
-     * @property message Adyen's answer, or why it could not be reached.
+     * @property fault Why.
      */
     data class Failed(
-        val message: String,
+        val fault: Fault,
     ) : ConnectedTerminals
 }
 
@@ -326,29 +328,30 @@ class TerminalGateway(
 
     /**
      * Asks the terminal once for the result of the [kind] of transaction sent with [serviceId], see
-     * [TerminalClient.status]. Without complete setup the terminal cannot be asked, so the outcome stays
-     * [TransactionOutcome.Unknown].
+     * [TerminalClient.status]. Without complete setup, or when the setup no longer matches the original transaction's
+     * [expected] context ([SetupProblem.PAYMENT_CONTEXT]), the terminal cannot be asked ([Attempt.NotSetUp]); an
+     * unreachable destination leaves the outcome [TransactionOutcome.Unknown] with its fault.
      */
     suspend fun status(
         serviceId: String,
         kind: TransactionKind,
         expected: PaymentContext? = null,
-    ): TransactionOutcome =
+    ): Attempt<TransactionOutcome> =
         when (val connection = connection()) {
             is Connection.Open -> {
                 if (expected == null || expected.matchesTerminal(connection.context())) {
-                    connection.client.status(serviceId, kind)
+                    Attempt.Made(connection.client.status(serviceId, kind))
                 } else {
-                    TransactionOutcome.Unknown(serviceId, SetupProblem.PAYMENT_CONTEXT.name)
+                    Attempt.NotSetUp(SetupProblem.PAYMENT_CONTEXT)
                 }
             }
 
             is Connection.NotSetUp -> {
-                TransactionOutcome.Unknown(serviceId, connection.problem.name)
+                Attempt.NotSetUp(connection.problem)
             }
 
             is Connection.Unreachable -> {
-                TransactionOutcome.Unknown(serviceId, connection.message)
+                Attempt.Made(TransactionOutcome.Unknown(serviceId, connection.fault))
             }
         }
 
@@ -384,7 +387,7 @@ class TerminalGateway(
             }
 
             is Connection.Unreachable -> {
-                Attempt.Made(PrintOutcome.Failed(connection.message, noPrinter = false))
+                Attempt.Made(PrintOutcome.Failed(connection.fault, noPrinter = false))
             }
         }
 
@@ -400,11 +403,11 @@ class TerminalGateway(
             }
 
             is Connection.Unreachable -> {
-                TerminalConnection.Failed(connection.message)
+                TerminalConnection.Failed(Failure.Remote(connection.fault))
             }
 
             is Connection.Open if !connection.destination.diagnoses -> {
-                TerminalConnection.Connected(DiagnosisResult(reachable = true, message = null), setupOnly = true)
+                TerminalConnection.Connected(DiagnosisResult(reachable = true, fault = null), setupOnly = true)
             }
 
             is Connection.Open -> {
@@ -413,7 +416,7 @@ class TerminalGateway(
                     learnPrinter(connection.client, diagnosis.hasPrinter)
                     TerminalConnection.Connected(diagnosis)
                 } else {
-                    TerminalConnection.Failed(diagnosis.message)
+                    TerminalConnection.Failed(Failure.Remote(diagnosis.failure()))
                 }
             }
         }
@@ -451,18 +454,18 @@ class TerminalGateway(
                     }
 
                     is Connection.Unreachable -> {
-                        TerminalConnection.Failed(connection.message)
+                        TerminalConnection.Failed(Failure.Remote(connection.fault))
                     }
 
                     is Connection.Open -> {
                         if (!connection.destination.diagnoses) {
-                            TerminalConnection.Connected(DiagnosisResult(reachable = true, message = null), setupOnly = true)
+                            TerminalConnection.Connected(DiagnosisResult(reachable = true, fault = null), setupOnly = true)
                         } else {
                             val diagnosis = connection.client.diagnose()
                             if (diagnosis.reachable) {
                                 TerminalConnection.Connected(diagnosis)
                             } else {
-                                TerminalConnection.Failed(diagnosis.message)
+                                TerminalConnection.Failed(Failure.Remote(diagnosis.failure()))
                             }
                         }
                     }
@@ -548,7 +551,7 @@ class TerminalGateway(
             }
 
             is Connection.Unreachable -> {
-                Attempt.Made(TransactionOutcome.NotProcessed(serviceId, connection.message))
+                Attempt.Made(TransactionOutcome.NotProcessed(serviceId, connection.fault))
             }
         }
 
@@ -558,3 +561,6 @@ class TerminalGateway(
         const val DEFAULT_SALE_ID = "MiniMPOS"
     }
 }
+
+/** Why an unreachable diagnosis failed; a terminal that refused without saying why is still a refusal. */
+internal fun DiagnosisResult.failure(): Fault = fault ?: Fault.TerminalRejected(null)

@@ -1,5 +1,7 @@
 package app.minimpos.app.email
 
+import app.minimpos.app.data.db.EmailFault
+import app.minimpos.app.data.db.Failure
 import app.minimpos.app.data.security.Secret
 import app.minimpos.app.data.security.SecretStore
 import app.minimpos.app.data.settings.AppSettings
@@ -13,15 +15,13 @@ import java.io.UnsupportedEncodingException
 import javax.mail.MessagingException
 
 /**
- * Localised texts of receipt emails and their errors.
+ * Localised texts of receipt emails.
  *
  * @property appName Used in the subject when no business name is set.
  * @property intro Paragraph above a sale receipt.
  * @property refundIntro Paragraph above a refund receipt.
  * @property testSubject Subject of the test email.
  * @property testBody Body of the test email.
- * @property notConfigured Error when SMTP is not set up.
- * @property invalidAddress Error when the recipient address is not valid.
  * @property preAuthIntro Paragraph above a pre-authorisation receipt.
  * @property cancellationIntro Paragraph above the receipt of a cancelled payment that only held its amount.
  * @property linkSubject Subject of a payment link email, with the `{business}` and `{reference}` placeholders of
@@ -36,8 +36,6 @@ data class EmailTexts(
     val refundIntro: String,
     val testSubject: String,
     val testBody: String,
-    val notConfigured: String,
-    val invalidAddress: String,
     val preAuthIntro: String,
     val cancellationIntro: String,
     val linkSubject: String = "Payment request from {business}",
@@ -49,7 +47,7 @@ data class EmailTexts(
 /**
  * Emails receipts as HTML with a plain-text alternative; the receipt's QR codes are attached as inline PNG images. The
  * SMTP password is read from [SecretStore] for each email. Missing settings, invalid addresses and delivery errors are
- * returned as [ActionResult.Failure] with a message to show.
+ * returned as [ActionResult.Failed] with an [EmailFault] (and the mail server's reply, verbatim).
  */
 class ReceiptEmailer(
     private val settings: SettingsRepository,
@@ -157,8 +155,8 @@ class ReceiptEmailer(
         current: AppSettings,
         to: String,
     ): ActionResult? {
-        if (!current.email.isConfigured) return ActionResult.Failure(texts.notConfigured)
-        if (!ShopperReferences.isValidEmail(to)) return ActionResult.Failure(texts.invalidAddress)
+        if (!current.email.isConfigured) return ActionResult.Failed(Failure.Email(EmailFault.NOT_CONFIGURED))
+        if (!ShopperReferences.isValidEmail(to)) return ActionResult.Failed(Failure.Email(EmailFault.INVALID_ADDRESS))
         return null
     }
 
@@ -170,8 +168,9 @@ class ReceiptEmailer(
             mailer.send(current.email, secrets.get(Secret.SMTP_PASSWORD), message)
             ActionResult.Success
         } catch (e: MessagingException) {
-            ActionResult.Failure(e.message ?: e.javaClass.simpleName)
-        } catch (e: UnsupportedEncodingException) {
-            ActionResult.Failure(e.message ?: e.javaClass.simpleName)
+            ActionResult.Failed(e.emailFailure())
+        } catch (ignored: UnsupportedEncodingException) {
+            // The sender name cannot be encoded: the server never got the message.
+            ActionResult.Failed(Failure.Email(EmailFault.REJECTED))
         }
 }

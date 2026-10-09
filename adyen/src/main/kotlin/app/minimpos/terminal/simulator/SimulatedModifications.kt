@@ -3,6 +3,8 @@ package app.minimpos.terminal.simulator
 import app.minimpos.terminal.checkout.ModificationAmount
 import app.minimpos.terminal.checkout.ModificationResult
 import app.minimpos.terminal.checkout.PaymentModifications
+import app.minimpos.terminal.transport.ExternalText
+import app.minimpos.terminal.transport.Fault
 import java.util.Base64
 import java.util.concurrent.ConcurrentHashMap
 import kotlin.random.Random
@@ -27,21 +29,24 @@ internal class SimulatedLedger {
     /** Releases the hold of [psp] when it is still uncaptured; returns whether it did (a cancellation, not a refund). */
     fun cancel(psp: String): Boolean = payments.replace(psp, State.HELD, State.CANCELLED)
 
-    /** Why [psp] cannot be captured; null when it can (it is held, already captured, or unknown). */
-    fun captureRefusal(psp: String): String? =
+    /** How Adyen would reject a capture of [psp]; null when it can be captured (it is held, already captured, or unknown). */
+    fun captureRefusal(psp: String): Fault? =
         when (payments[psp]) {
-            State.CHARGED -> "The payment was captured when it was taken (simulated)"
-            State.CANCELLED -> "The payment was cancelled (simulated)"
+            State.CHARGED -> rejected("The payment was captured when it was taken (simulated)")
+            State.CANCELLED -> rejected("The payment was cancelled (simulated)")
             State.HELD, State.CAPTURED, null -> null
         }
 
-    /** Why the amount of [psp] cannot be adjusted; null when it can (it is held, or unknown). */
-    fun adjustmentRefusal(psp: String): String? =
+    /** How Adyen would reject an adjustment of [psp]; null when it can be adjusted (it is held, or unknown). */
+    fun adjustmentRefusal(psp: String): Fault? =
         when (payments[psp]) {
-            State.CAPTURED -> "The payment was already captured (simulated)"
+            State.CAPTURED -> rejected("The payment was already captured (simulated)")
             State.CHARGED, State.CANCELLED -> captureRefusal(psp)
             State.HELD, null -> null
         }
+
+    /** Adyen's rejection of a modification the payment no longer allows, with its simulated words. */
+    private fun rejected(said: String) = Fault.AdyenRejected(HTTP_UNPROCESSABLE, null, ExternalText(said))
 
     /** Records that [psp] was captured, when it was held. */
     fun captured(psp: String) {
@@ -49,6 +54,11 @@ internal class SimulatedLedger {
     }
 
     private enum class State { CHARGED, HELD, CAPTURED, CANCELLED }
+
+    private companion object {
+        /** How Adyen rejects a modification it cannot apply to the payment. */
+        const val HTTP_UNPROCESSABLE = 422
+    }
 }
 
 /**
@@ -70,7 +80,7 @@ class SimulatedModifications internal constructor(
         reference: String,
         idempotencyKey: String,
     ): ModificationResult {
-        ledger.captureRefusal(paymentPspReference)?.let { return ModificationResult.NotProcessed(it) }
+        ledger.captureRefusal(paymentPspReference)?.let { return ModificationResult.Failed(it) }
         ledger.captured(paymentPspReference)
         return ModificationResult.Received(pspReference())
     }
@@ -84,13 +94,13 @@ class SimulatedModifications internal constructor(
     ): ModificationResult {
         val refusal = ledger.adjustmentRefusal(paymentPspReference)
         return when {
-            refusal != null -> ModificationResult.NotProcessed(refusal)
+            refusal != null -> ModificationResult.Failed(refusal)
             adjustAuthorisationData != null -> ModificationResult.Authorised(pspReference(), blob(random))
             else -> ModificationResult.Received(pspReference())
         }
     }
 
-    override suspend fun verify(): String? = null
+    override suspend fun verify(): Fault? = null
 
     private fun pspReference() = (1..PSP_LENGTH).map { UPPER[random.nextInt(UPPER.length)] }.joinToString("")
 

@@ -1,6 +1,7 @@
 package app.minimpos.app.payment
 
 import app.minimpos.app.data.db.CaptureStatus
+import app.minimpos.app.data.db.Failure
 import app.minimpos.app.data.db.SaleEntity
 import app.minimpos.app.data.db.SetupProblem
 import app.minimpos.app.data.repo.SaleEvent
@@ -14,6 +15,7 @@ import app.minimpos.app.terminal.ApiTarget
 import app.minimpos.terminal.checkout.ModificationAmount
 import app.minimpos.terminal.checkout.ModificationResult
 import app.minimpos.terminal.checkout.PaymentModifications
+import app.minimpos.terminal.transport.ExternalText
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
@@ -28,19 +30,19 @@ sealed interface CaptureResult {
     /**
      * The card issuer refused the higher amount, so nothing was captured (and a tip was not saved).
      *
-     * @property reason Adyen's refusal reason.
+     * @property said Adyen's refusal reason; null when it gave none.
      */
     data class Refused(
-        val reason: String,
+        val said: ExternalText?,
     ) : CaptureResult
 
     /**
      * Adyen did not take the request, or its outcome is unknown (the capture can then be sent again safely).
      *
-     * @property message Why, in English.
+     * @property failure Why.
      */
     data class Failed(
-        val message: String,
+        val failure: Failure,
     ) : CaptureResult
 
     /**
@@ -211,9 +213,8 @@ class Captures(
         sales.record(sale.id, SaleEvent.AdjustmentAnswered(amount, result))
         return when (result) {
             is ModificationResult.Authorised, is ModificationResult.Received -> CaptureResult.Adjusted
-            is ModificationResult.Refused -> CaptureResult.Refused(result.reason)
-            is ModificationResult.NotProcessed -> CaptureResult.Failed(result.message)
-            is ModificationResult.Unknown -> CaptureResult.Failed(result.message)
+            is ModificationResult.Refused -> CaptureResult.Refused(result.said)
+            is ModificationResult.Failed -> CaptureResult.Failed(Failure.Remote(result.fault))
         }
     }
 
@@ -235,9 +236,8 @@ class Captures(
         sales.record(sale.id, SaleEvent.CaptureAnswered(result))
         return when (result) {
             is ModificationResult.Received, is ModificationResult.Authorised -> CaptureResult.Requested
-            is ModificationResult.Refused -> CaptureResult.Failed(result.reason)
-            is ModificationResult.NotProcessed -> CaptureResult.Failed(result.message)
-            is ModificationResult.Unknown -> CaptureResult.Failed(result.message)
+            is ModificationResult.Refused -> CaptureResult.Refused(result.said)
+            is ModificationResult.Failed -> CaptureResult.Failed(Failure.Remote(result.fault))
         }
     }
 }

@@ -1,14 +1,12 @@
 package app.minimpos.app.terminal
 
-import app.minimpos.terminal.transport.TerminalUnreachableException
+import app.minimpos.terminal.paymentsapp.AppLinkAnswer
 import com.google.common.truth.Truth.assertThat
 import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
-import org.junit.Assert.assertThrows
 import org.junit.Test
-import java.io.IOException
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
 
@@ -18,7 +16,7 @@ class PaymentsAppBridgeTest {
     private val answer = "${PaymentsAppBridge.RETURN_URL}/nexo?response=abc"
 
     /** Starts an exchange, waits until the activity is asked to open it, and runs [activity] with that link. */
-    private fun exchange(activity: (PaymentsAppBridge.Launch) -> Unit): String =
+    private fun exchange(activity: (PaymentsAppBridge.Launch) -> Unit): AppLinkAnswer =
         runBlocking {
             val reply =
                 async { bridge.exchange("https://www.adyen.com/test/nexo?request=x", "com.adyen.ipp.mobile.companion.test", 5.seconds) }
@@ -39,31 +37,25 @@ class PaymentsAppBridgeTest {
                 assertThat(bridge.deliver("https://example.com/")).isFalse()
                 assertThat(bridge.deliver(answer)).isTrue()
             }
-        assertThat(reply).isEqualTo(answer)
+        assertThat(reply).isEqualTo(AppLinkAnswer.Returned(answer))
         assertThat(bridge.awaitingAnswer).isNull()
         assertThat(bridge.lateReplies()).isEmpty()
     }
 
     @Test
     fun `a Payments app that cannot be started, or that sends no answer, ends the exchange`() {
-        val missing = assertThrows(TerminalUnreachableException::class.java) { exchange { bridge.failed(it.id, "Not installed") } }
-        assertThat(missing.message).isEqualTo("Not installed")
+        assertThat(exchange { bridge.failed(it.id) }).isEqualTo(AppLinkAnswer.NotStarted)
         val abandoned =
-            assertThrows(IOException::class.java) {
-                exchange { launch ->
-                    // Abandoning before the link was opened, or another exchange, does nothing.
-                    bridge.abandon(launch.id)
-                    bridge.opened(launch.id)
-                    bridge.abandon(launch.id + 1)
-                    bridge.abandon(launch.id)
-                }
+            exchange { launch ->
+                // Abandoning before the link was opened, or another exchange, does nothing.
+                bridge.abandon(launch.id)
+                bridge.opened(launch.id)
+                bridge.abandon(launch.id + 1)
+                bridge.abandon(launch.id)
             }
-        assertThat(abandoned).isNotInstanceOf(TerminalUnreachableException::class.java)
-        val late =
-            assertThrows(IOException::class.java) {
-                runBlocking { bridge.exchange("https://www.adyen.com/test/nexo", "p", 10.milliseconds) }
-            }
-        assertThat(late.message).contains("did not answer in time")
+        assertThat(abandoned).isEqualTo(AppLinkAnswer.Abandoned)
+        val late = runBlocking { bridge.exchange("https://www.adyen.com/test/nexo", "p", 10.milliseconds) }
+        assertThat(late).isEqualTo(AppLinkAnswer.TimedOut)
     }
 
     @Test

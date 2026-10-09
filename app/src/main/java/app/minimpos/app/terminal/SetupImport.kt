@@ -1,5 +1,6 @@
 package app.minimpos.app.terminal
 
+import app.minimpos.app.data.db.Failure
 import app.minimpos.app.data.db.SetupProblem
 import app.minimpos.app.data.repo.ImportMode
 import app.minimpos.app.data.security.Secret
@@ -40,7 +41,7 @@ internal sealed interface SetupImportOutcome {
 
     data class Failed(
         val problem: SetupProblem? = null,
-        val message: String? = null,
+        val failure: Failure? = null,
         val incomplete: Boolean = false,
     ) : SetupImportOutcome {
         val keyPending: Boolean get() = problem == SetupProblem.KEY_CONNECTION_PENDING
@@ -165,7 +166,7 @@ class SetupImport internal constructor(
         val environment = unlocked.setup.environment ?: return SetupImportOutcome.Failed(SetupProblem.ENVIRONMENT, incomplete = true)
         return when (val result = checks.terminals(key).credential(environment)) {
             CredentialLookup.Allowed -> null
-            is CredentialLookup.Failed -> SetupImportOutcome.Failed(result.reason.setupProblem())
+            is CredentialLookup.Failed -> SetupImportOutcome.Failed(result.fault.setupProblem())
         }
     }
 
@@ -177,7 +178,7 @@ class SetupImport internal constructor(
         if (!unlocked.setup.discoversTerminals) return null
         val management = checks.terminals(checkNotNull(unlocked.apiKey))
         return when (val result = management.terminals(checkNotNull(unlocked.setup.environment), unlocked.setup.poiId ?: selected)) {
-            is TerminalListing.Failed -> SetupImportOutcome.Failed(result.reason.setupProblem())
+            is TerminalListing.Failed -> SetupImportOutcome.Failed(result.fault.setupProblem())
             is TerminalListing.Listed -> chooseTerminal(prepared, unlocked.setup, management, result, selected)
         }
     }
@@ -212,7 +213,7 @@ class SetupImport internal constructor(
                     when (val found = management.sharedKey(terminal.id, listing.environment)) {
                         is SharedKeyLookup.Found -> applyKey(prepared, found.key)
                         SharedKeyLookup.Missing -> missingKey = true
-                        is SharedKeyLookup.Failed -> return SetupImportOutcome.Failed(found.reason.setupProblem())
+                        is SharedKeyLookup.Failed -> return SetupImportOutcome.Failed(found.fault.setupProblem())
                     }
                 }
                 null
@@ -275,7 +276,7 @@ class SetupImport internal constructor(
             }
 
             is SharedKeySetupOutcome.Failed -> {
-                SetupImportOutcome.Failed(result.problem, result.message)
+                SetupImportOutcome.Failed(result.problem, result.failure)
             }
         }
     }
@@ -302,7 +303,7 @@ class SetupImport internal constructor(
         when (val result = api.verify(candidate(prepared))) {
             ApiCheck.Works -> null
             is ApiCheck.NotSetUp -> SetupImportOutcome.Failed(result.problem)
-            is ApiCheck.Failed -> SetupImportOutcome.Failed(message = result.message)
+            is ApiCheck.Failed -> SetupImportOutcome.Failed(failure = Failure.Remote(result.fault))
         }
 
     private suspend fun phone(
@@ -327,7 +328,7 @@ class SetupImport internal constructor(
             }
 
             is TapToPayOutcome.Failed -> {
-                SetupImportOutcome.Failed(message = result.message)
+                SetupImportOutcome.Failed(failure = result.failure)
             }
 
             TapToPayOutcome.Unregistered -> {
@@ -358,7 +359,7 @@ class SetupImport internal constructor(
             }
 
             is TerminalConnection.Failed -> {
-                SetupImportOutcome.Failed(message = connection.message)
+                SetupImportOutcome.Failed(failure = connection.failure)
             }
 
             TerminalConnection.Checking, TerminalConnection.Unknown -> {

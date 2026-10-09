@@ -22,6 +22,7 @@ import app.minimpos.terminal.simulator.SimulatedOutcome
 import app.minimpos.terminal.simulator.SimulatorConfig
 import app.minimpos.terminal.simulator.TerminalSimulator
 import app.minimpos.terminal.transport.Delivery
+import app.minimpos.terminal.transport.Fault
 import com.adyen.model.nexo.DiagnosisRequest
 import com.adyen.model.nexo.MessageHeader
 import com.adyen.model.nexo.SaleToPOIRequest
@@ -116,9 +117,10 @@ class TerminalSimulatorTest {
             val amount = ModificationAmount("AUD", 1_200)
             // A sale was captured when it was taken.
             val sale = pay()
-            assertThat(api.capture(sale.pspReference!!, amount, "MP-1", "k1")).isInstanceOf(ModificationResult.NotProcessed::class.java)
-            assertThat(api.updateAmount(sale.pspReference, amount, "MP-1", null, "k2"))
-                .isInstanceOf(ModificationResult.NotProcessed::class.java)
+            val notCaptured = api.capture(sale.pspReference!!, amount, "MP-1", "k1") as ModificationResult.Failed
+            assertThat(notCaptured.fault.mayHaveTakenEffect).isFalse()
+            val notAdjusted = api.updateAmount(sale.pspReference, amount, "MP-1", null, "k2") as ModificationResult.Failed
+            assertThat(notAdjusted.fault.mayHaveTakenEffect).isFalse()
 
             // A pre-authorisation is adjusted while held, then captured (again with the same key), and no longer adjusted.
             val held = pay(tokenizing.copy(preAuthorisation = true))
@@ -127,8 +129,8 @@ class TerminalSimulatorTest {
                 .isInstanceOf(ModificationResult.Authorised::class.java)
             assertThat(api.capture(psp, amount, "MP-1", "k4")).isInstanceOf(ModificationResult.Received::class.java)
             assertThat(api.capture(psp, amount, "MP-1", "k4")).isInstanceOf(ModificationResult.Received::class.java)
-            val captured = api.updateAmount(psp, amount, "MP-1", null, "k5") as ModificationResult.NotProcessed
-            assertThat(captured.message).contains("already captured")
+            val captured = api.updateAmount(psp, amount, "MP-1", null, "k5") as ModificationResult.Failed
+            assertThat((captured.fault as Fault.AdyenRejected).said?.text).contains("already captured")
             // Reversing it in full now refunds it rather than releasing a hold.
             val refund = client.refund(RefundParams(held.poiTransactionId!!, held.poiTimestamp!!, "R-1")) as TransactionOutcome.Completed
             assertThat(refund.details.customerReceipt.map { it.name }).contains("REFUND REQUESTED")
@@ -136,8 +138,8 @@ class TerminalSimulatorTest {
             // A cancelled pre-authorisation cannot be captured.
             val cancelled = pay(tokenizing.copy(preAuthorisation = true))
             client.refund(RefundParams(cancelled.poiTransactionId!!, cancelled.poiTimestamp!!, "C-1"))
-            val refused = api.capture(cancelled.pspReference!!, amount, "MP-1", "k6") as ModificationResult.NotProcessed
-            assertThat(refused.message).contains("cancelled")
+            val refused = api.capture(cancelled.pspReference!!, amount, "MP-1", "k6") as ModificationResult.Failed
+            assertThat((refused.fault as Fault.AdyenRejected).said?.text).contains("cancelled")
 
             // Payments it never saw (from before a restart) are accepted.
             assertThat(api.capture("UNKNOWNPSP", amount, "MP-1", "k7")).isInstanceOf(ModificationResult.Received::class.java)
@@ -171,7 +173,7 @@ class TerminalSimulatorTest {
     @Test
     fun `declines, cancellations, busy terminals and random outcomes`() {
         config = config.copy(outcome = SimulatedOutcome.DECLINE)
-        assertThat(pay().message).isEqualTo("Not enough balance")
+        assertThat(pay().message?.text).isEqualTo("Not enough balance")
         config = config.copy(outcome = SimulatedOutcome.CANCEL)
         assertThat(pay().decline!!.cancelled).isTrue()
         config = config.copy(outcome = SimulatedOutcome.BUSY)
@@ -235,7 +237,7 @@ class TerminalSimulatorTest {
             config = config.copy(hasPrinter = false)
             val failed = client.print(listOf(qr)) as PrintOutcome.Failed
             assertThat(failed.noPrinter).isTrue()
-            assertThat(failed.message).contains("no printer")
+            assertThat((failed.fault as Fault.TerminalRejected).said?.text).contains("no printer")
             assertThat(client.diagnose().hasPrinter).isFalse()
         }
 
@@ -244,8 +246,8 @@ class TerminalSimulatorTest {
         runBlocking {
             assertThat(client.status("NOPE")).isInstanceOf(TransactionOutcome.NotProcessed::class.java)
             val unsupported = TerminalAPIRequest().apply { saleToPOIRequest = SaleToPOIRequest().apply { messageHeader = MessageHeader() } }
-            assertThat(simulator.send(unsupported, 1.seconds)).isInstanceOf(Delivery.MaybeSent::class.java)
-            assertThat(simulator.send(TerminalAPIRequest(), 1.seconds)).isInstanceOf(Delivery.MaybeSent::class.java)
+            assertThat(simulator.send(unsupported, 1.seconds)).isEqualTo(Delivery.Failed(Fault.Unsupported))
+            assertThat(simulator.send(TerminalAPIRequest(), 1.seconds)).isEqualTo(Delivery.Failed(Fault.UnreadableReply()))
             val diagnosis =
                 TerminalAPIRequest().apply {
                     saleToPOIRequest =

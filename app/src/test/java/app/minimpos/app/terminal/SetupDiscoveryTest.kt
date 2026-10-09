@@ -6,8 +6,9 @@ import app.minimpos.app.await
 import app.minimpos.app.data.db.SetupProblem
 import app.minimpos.app.data.security.Secret
 import app.minimpos.app.data.settings.TerminalMode
+import app.minimpos.terminal.transport.ApiKey
 import app.minimpos.terminal.transport.DiscoveredKey
-import app.minimpos.terminal.transport.ManagementFailure
+import app.minimpos.terminal.transport.Fault
 import app.minimpos.terminal.transport.SharedKeyLookup
 import app.minimpos.terminal.transport.TerminalDetails
 import app.minimpos.terminal.transport.TerminalDetailsApi
@@ -27,7 +28,7 @@ class SetupDiscoveryTest {
             TerminalEnvironment.TEST,
         )
     private var sharedKey: DiscoveredKey? = DiscoveredKey("key", 2, " secret passphrase ")
-    private var keyUnavailable: SharedKeyLookup = SharedKeyLookup.Failed(ManagementFailure.PERMISSION)
+    private var keyUnavailable: SharedKeyLookup = SharedKeyLookup.Failed(Fault.Permission(ApiKey.ADYEN))
     private var reads = 0
     private val environments = mutableListOf<TerminalEnvironment>()
     private val queries = mutableListOf<String?>()
@@ -123,7 +124,7 @@ class SetupDiscoveryTest {
         assertThat(await { container.setupDiscovery.find() }).isEqualTo(SetupDiscoverySearch.Unavailable)
         assertThat(reads).isEqualTo(0)
         ready()
-        listing = TerminalListing.Failed("Forbidden")
+        listing = TerminalListing.Failed(Fault.AdyenUnavailable(503))
         val before = await { container.settings.current() }
         assertThat(await { container.setupDiscovery.find() }).isEqualTo(SetupDiscoverySearch.Failed(SetupProblem.MANAGEMENT_UNAVAILABLE))
         assertThat(await { container.setupDiscovery.choose("S1F2-123456789") }).isEqualTo(SetupDiscoveryChoice.Ignored)
@@ -181,7 +182,7 @@ class SetupDiscoveryTest {
     @Test
     fun `failed search reports its outcome without reading mutable discovery fields`() {
         ready()
-        listing = TerminalListing.Failed("Forbidden")
+        listing = TerminalListing.Failed(Fault.AdyenUnavailable(503))
         val before = await { container.settings.current() }
         val failed = await { container.setupDiscovery.find() }
         assertThat(failed).isEqualTo(SetupDiscoverySearch.Failed(SetupProblem.MANAGEMENT_UNAVAILABLE))

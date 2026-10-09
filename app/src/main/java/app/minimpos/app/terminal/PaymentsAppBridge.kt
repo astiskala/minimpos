@@ -1,7 +1,7 @@
 package app.minimpos.app.terminal
 
+import app.minimpos.terminal.paymentsapp.AppLinkAnswer
 import app.minimpos.terminal.paymentsapp.AppLinkExchange
-import app.minimpos.terminal.transport.TerminalUnreachableException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -9,7 +9,6 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withTimeoutOrNull
-import java.io.IOException
 import java.util.concurrent.CopyOnWriteArrayList
 import kotlin.time.Duration
 
@@ -45,7 +44,7 @@ class PaymentsAppBridge : AppLinkExchange {
 
     private class Pending(
         val id: Long,
-        val reply: CompletableDeferred<String> = CompletableDeferred(),
+        val reply: CompletableDeferred<AppLinkAnswer> = CompletableDeferred(),
     ) {
         @Volatile var opened = false
     }
@@ -57,13 +56,13 @@ class PaymentsAppBridge : AppLinkExchange {
         link: String,
         packageName: String,
         timeout: Duration,
-    ): String =
+    ): AppLinkAnswer =
         mutex.withLock {
             val waiting = Pending(++nextId)
             pending = waiting
             _launches.value = Launch(waiting.id, link, packageName)
             try {
-                withTimeoutOrNull(timeout) { waiting.reply.await() } ?: throw IOException("The Adyen Payments app did not answer in time")
+                withTimeoutOrNull(timeout) { waiting.reply.await() } ?: AppLinkAnswer.TimedOut
             } finally {
                 pending = null
                 _launches.value = null
@@ -78,12 +77,9 @@ class PaymentsAppBridge : AppLinkExchange {
         _launches.value = _launches.value?.takeIf { it.id != id }
     }
 
-    /** The Payments app could not be started for [id] (it is not installed), so nothing was sent; [reason] says so. */
-    fun failed(
-        id: Long,
-        reason: String,
-    ) {
-        pending?.takeIf { it.id == id }?.reply?.completeExceptionally(TerminalUnreachableException(reason))
+    /** The Payments app could not be started for [id] (it is not installed), so nothing was sent. */
+    fun failed(id: Long) {
+        pending?.takeIf { it.id == id }?.reply?.complete(AppLinkAnswer.NotStarted)
     }
 
     /**
@@ -92,7 +88,7 @@ class PaymentsAppBridge : AppLinkExchange {
      */
     fun deliver(url: String): Boolean {
         if (!url.startsWith("$RETURN_URL/")) return false
-        if (pending?.reply?.complete(url) != true) late += url
+        if (pending?.reply?.complete(AppLinkAnswer.Returned(url)) != true) late += url
         return true
     }
 
@@ -105,7 +101,7 @@ class PaymentsAppBridge : AppLinkExchange {
         pending
             ?.takeIf { it.id == id && it.opened }
             ?.reply
-            ?.completeExceptionally(IOException("Came back from the Adyen Payments app without an answer"))
+            ?.complete(AppLinkAnswer.Abandoned)
     }
 
     /** The return URL. */

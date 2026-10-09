@@ -7,6 +7,7 @@ import app.minimpos.app.FakeStoreDetails
 import app.minimpos.app.FakeTerminal
 import app.minimpos.app.TestEnvironment
 import app.minimpos.app.await
+import app.minimpos.app.data.db.Failure
 import app.minimpos.app.data.db.SaleEntity
 import app.minimpos.app.data.db.SaleStatus
 import app.minimpos.app.data.db.SetupProblem
@@ -23,9 +24,11 @@ import app.minimpos.core.codec.Transfer
 import app.minimpos.core.codec.TransferCodec
 import app.minimpos.core.money.PaymentContext
 import app.minimpos.terminal.paymentsapp.ManagementResult
+import app.minimpos.terminal.transport.ApiKey
 import app.minimpos.terminal.transport.CredentialLookup
 import app.minimpos.terminal.transport.DiscoveredKey
-import app.minimpos.terminal.transport.ManagementFailure
+import app.minimpos.terminal.transport.ExternalText
+import app.minimpos.terminal.transport.Fault
 import app.minimpos.terminal.transport.MerchantLookup
 import app.minimpos.terminal.transport.SharedKeyLookup
 import app.minimpos.terminal.transport.SharedKeyUpdate
@@ -232,15 +235,15 @@ class AutomaticSetupTransferTest {
 
     @Test
     fun `permission failures do not become manual fallback or replace saved fields`() {
-        credential = CredentialLookup.Failed(ManagementFailure.PERMISSION)
+        credential = CredentialLookup.Failed(Fault.Permission(ApiKey.ADYEN))
         val before = await { env.container.settings.current() }
         assertThat(import()).isEqualTo(SetupImportOutcome.Failed(SetupProblem.MANAGEMENT_PERMISSION))
         assertThat(await { env.container.settings.current() }).isEqualTo(before)
-        credential = CredentialLookup.Failed(ManagementFailure.AUTHENTICATION)
+        credential = CredentialLookup.Failed(Fault.Credential(ApiKey.ADYEN))
         assertThat(import()).isEqualTo(SetupImportOutcome.Failed(SetupProblem.MANAGEMENT_AUTHENTICATION))
-        credential = CredentialLookup.Failed(ManagementFailure.UNAVAILABLE)
+        credential = CredentialLookup.Failed(Fault.AdyenUnavailable(503))
         assertThat(import()).isEqualTo(SetupImportOutcome.Failed(SetupProblem.MANAGEMENT_UNAVAILABLE))
-        credential = CredentialLookup.Failed(ManagementFailure.UNREADABLE)
+        credential = CredentialLookup.Failed(Fault.UnreadableReply())
         assertThat(import()).isEqualTo(SetupImportOutcome.Failed(SetupProblem.MANAGEMENT_UNREADABLE))
     }
 
@@ -276,7 +279,7 @@ class AutomaticSetupTransferTest {
         key = DiscoveredKey("store-key", 2, "wrong passphrase")
         val before = await { env.container.settings.current() }
         val result = import() as SetupImportOutcome.Failed
-        assertThat(result.message).contains("Crypto error")
+        assertThat(result.failure).isEqualTo(Failure.Remote(Fault.KeyRejected(ExternalText("Crypto error"))))
         assertThat(await { env.container.settings.current() }).isEqualTo(before)
         assertThat(
             await {
@@ -520,7 +523,7 @@ class AutomaticSetupTransferTest {
 
     @Test
     fun `manual blank receipt fields do not trigger Adyen lookup or erase saved text`() {
-        storeDetails.storeAnswer = StoreLookup.Failed("Lookup must not run")
+        storeDetails.storeAnswer = StoreLookup.Failed(Fault.Permission(ApiKey.ADYEN, "Management API—Stores read"))
         env.updateSettings { it.copy(receipt = it.receipt.copy(businessName = "Saved", addressLines = "Saved address")) }
         val result =
             import(
@@ -539,7 +542,7 @@ class AutomaticSetupTransferTest {
     @Test
     fun `receipt lookup failures do not block verified setup or overwrite existing business text`() {
         env.updateSettings { it.copy(receipt = it.receipt.copy(businessName = "Saved shop", phone = "Saved phone")) }
-        storeDetails.storeAnswer = StoreLookup.Failed("Access denied")
+        storeDetails.storeAnswer = StoreLookup.Failed(Fault.Permission(ApiKey.ADYEN, "Management API—Stores read"))
         val result = (import() as SetupImportOutcome.Committed).outcome as ImportOutcome.Imported
         assertThat(result.result.businessWarning).isTrue()
         assertThat(await { env.container.settings.current() }.receipt.businessName).isEqualTo("Saved shop")
@@ -588,9 +591,9 @@ class AutomaticSetupTransferTest {
                 """{"ADYEN_API_KEY":"key","PAYMENTS_APP_API_KEY":"boarding-key","TERMINAL_PASSPHRASE":"shared passphrase"}""",
             )
         val before = await { env.container.settings.current() }
-        management.registrationResult = ManagementResult.Failed("Try again")
+        management.registrationResult = ManagementResult.Failed(Fault.AdyenUnavailable(503))
         val failed = await { env.container.setupImport.import(received, ImportMode.MERGE, code, board = true) }
-        assertThat(failed).isEqualTo(SetupImportOutcome.Failed(message = "Try again"))
+        assertThat(failed).isEqualTo(SetupImportOutcome.Failed(failure = Failure.Remote(Fault.AdyenUnavailable(503))))
         assertThat(await { env.container.settings.current() }).isEqualTo(before)
         assertThat(
             await {

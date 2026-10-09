@@ -5,6 +5,7 @@ import app.minimpos.app.FakeLinkApi
 import app.minimpos.app.TestEnvironment
 import app.minimpos.app.await
 import app.minimpos.app.closeViewModels
+import app.minimpos.app.data.db.Failure
 import app.minimpos.app.data.db.ProductEntity
 import app.minimpos.app.data.db.SaleKind
 import app.minimpos.app.data.db.SaleStatus
@@ -15,6 +16,8 @@ import app.minimpos.app.feature.sale.CheckoutViewModel
 import app.minimpos.app.feature.sale.PaymentLinkViewModel
 import app.minimpos.terminal.checkout.PaymentLinkResult
 import app.minimpos.terminal.checkout.PaymentLinkStatus
+import app.minimpos.terminal.transport.ExternalText
+import app.minimpos.terminal.transport.Fault
 import com.google.common.truth.Truth.assertThat
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -144,10 +147,10 @@ class PaymentLinkViewModelsTest {
 
         vm.check()
         assertThat(await { vm.state.first { it.check.done } }.check.outcome).isEqualTo(ActionOutcome.LinkNotPaid)
-        api.getResult = PaymentLinkResult.Unknown("timeout")
+        api.getResult = PaymentLinkResult.Failed(Fault.TimedOut)
         vm.check()
         val failed = await { vm.state.first { it.check.isError } }.check
-        assertThat(failed.outcome).isEqualTo(ActionOutcome.Failed("timeout"))
+        assertThat(failed.outcome).isEqualTo(ActionOutcome.Failed(Failure.Remote(Fault.TimedOut)))
         api.getResult = null
         api.status = PaymentLinkStatus.COMPLETED
         vm.check()
@@ -202,9 +205,10 @@ class PaymentLinkViewModelsTest {
                 .subject,
         ).contains("Payment request")
 
-        api.expireResult = PaymentLinkResult.NotProcessed("Not allowed (HTTP 403)")
+        api.expireResult = PaymentLinkResult.Failed(Fault.AdyenRejected(422, null, ExternalText("Not allowed (HTTP 403)")))
         vm.cancel()
-        assertThat(await { vm.state.first { it.cancel.isError } }.cancel.outcome).isEqualTo(ActionOutcome.Failed("Not allowed (HTTP 403)"))
+        assertThat(await { vm.state.first { it.cancel.isError } }.cancel.outcome)
+            .isEqualTo(ActionOutcome.Failed(Failure.Remote(Fault.AdyenRejected(422, null, ExternalText("Not allowed (HTTP 403)")))))
         api.expireResult = null
         vm.cancel()
         val cancelled =

@@ -7,6 +7,8 @@ import app.minimpos.app.R
 import app.minimpos.app.TestEnvironment
 import app.minimpos.app.await
 import app.minimpos.app.data.db.CategoryEntity
+import app.minimpos.app.data.db.EmailFault
+import app.minimpos.app.data.db.Failure
 import app.minimpos.app.data.db.ProductEntity
 import app.minimpos.app.data.db.SaleKind
 import app.minimpos.app.data.db.SaleStatus
@@ -381,7 +383,7 @@ class ViewModelsTest {
         await { result.state.first { it.transaction.print.done || it.transaction.print.isError } }
         result.transaction.email("a@b.co")
         assertThat(await { result.state.first { it.transaction.email.isError } }.transaction.email.outcome)
-            .isEqualTo(ActionOutcome.Failed(env.context.getString(R.string.email_not_configured)))
+            .isEqualTo(ActionOutcome.Failed(Failure.Email(EmailFault.NOT_CONFIGURED)))
         result.finish()
         assertThat(container.refunds.state.value).isEqualTo(TransactionState.Idle)
     }

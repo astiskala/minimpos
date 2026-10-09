@@ -11,6 +11,7 @@ import app.minimpos.terminal.checkout.CheckoutPaymentLinks
 import app.minimpos.terminal.checkout.PaymentLinkApi
 import app.minimpos.terminal.checkout.PaymentModifications
 import app.minimpos.terminal.simulator.SimulatedPaymentLinks
+import app.minimpos.terminal.transport.Fault
 import app.minimpos.terminal.transport.TerminalEnvironment
 
 /**
@@ -123,10 +124,10 @@ sealed interface ApiCheck {
     /**
      * Adyen refused, or could not be reached.
      *
-     * @property message Why, as Adyen or the client worded it.
+     * @property fault Why.
      */
     data class Failed(
-        val message: String,
+        val fault: Fault,
     ) : ApiCheck
 }
 

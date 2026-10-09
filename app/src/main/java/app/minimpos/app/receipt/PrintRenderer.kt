@@ -1,6 +1,6 @@
 package app.minimpos.app.receipt
 
-import app.minimpos.app.data.db.SetupProblem
+import app.minimpos.app.data.db.Failure
 import app.minimpos.core.receipt.Align
 import app.minimpos.core.receipt.ReceiptDocument
 import app.minimpos.core.receipt.ReceiptElement
@@ -58,21 +58,15 @@ sealed interface ActionResult {
     /** The receipt was printed or sent. */
     data object Success : ActionResult
 
-    /**
-     * It was not.
-     *
-     * @property message Why, for display.
-     */
-    data class Failure(
-        val message: String,
-    ) : ActionResult
+    /** The sale or refund no longer exists, so there was nothing to print or send. */
+    data object Missing : ActionResult
 
     /**
-     * Nothing was printed, because the terminal is not set up.
+     * It was not printed or sent.
      *
-     * @property problem What must be entered, installed or fixed first.
+     * @property failure Why: the terminal or email is not set up, the terminal or mail server refused, or no answer.
      */
-    data class NotSetUp(
-        val problem: SetupProblem,
+    data class Failed(
+        val failure: Failure,
     ) : ActionResult
 }

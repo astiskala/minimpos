@@ -4,6 +4,7 @@ import com.adyen.enums.Environment
 import com.adyen.model.terminal.TerminalAPIRequest
 import com.adyen.model.terminal.TerminalAPIResponse
 import java.io.IOException
+import java.io.InterruptedIOException
 import kotlin.time.Duration
 
 /**
@@ -24,9 +25,9 @@ enum class TerminalEnvironment(
 }
 
 /**
- * What became of one message sent with [TerminalTransport.send]: the terminal's reply, or how sure it is that the
- * request took no effect. This is the one statement of that certainty, which decides whether a payment is reported as
- * not processed or has its status checked; every transport works it out once, and no caller sees an exception.
+ * What became of one message sent with [TerminalTransport.send]: the terminal's reply, or the [Fault] that left it
+ * without one. The fault states whether the request may have taken effect, which decides whether a payment is reported
+ * as not processed or has its status checked; every transport works it out once, and no caller sees an exception.
  */
 sealed interface Delivery {
     /**
@@ -38,27 +39,14 @@ sealed interface Delivery {
         val response: TerminalAPIResponse?,
     ) : Delivery
 
-    /** No usable answer came back; [NotSent] and [MaybeSent] tell whether the request can have taken effect. */
-    sealed interface Failed : Delivery {
-        /** Why, in English. */
-        val reason: String
-    }
-
     /**
-     * The request took no effect: it never reached the terminal (no connection, an untrusted certificate, an unknown or
-     * offline terminal) or the terminal refused it (such as a wrong shared key).
+     * No usable answer came back.
+     *
+     * @property fault Why, including whether the request may have taken effect ([Fault.mayHaveTakenEffect]).
      */
-    data class NotSent(
-        override val reason: String,
-    ) : Failed
-
-    /**
-     * The request may have reached the terminal, but no usable answer came back (a timeout, a dropped connection, an
-     * HTTP error, or a reply that could not be read or verified), so whether it took effect is unknown.
-     */
-    data class MaybeSent(
-        override val reason: String,
-    ) : Failed
+    data class Failed(
+        val fault: Fault,
+    ) : Delivery
 }
 
 /** Sends one Terminal API message and returns what became of it. */
@@ -69,7 +57,7 @@ fun interface TerminalTransport {
      *
      * @param request The plain (unencrypted) Terminal API message; encryption is the transport's job.
      * @param timeout How long to wait for the reply.
-     * @return The reply, or whether the request can have taken effect without one.
+     * @return The reply, or the fault that left it without one.
      */
     suspend fun send(
         request: TerminalAPIRequest,
@@ -78,45 +66,23 @@ fun interface TerminalTransport {
 }
 
 /**
- * The delivery this I/O failure means, read from its type: [TerminalUnreachableException] and
- * [TerminalRejectedException] are [Delivery.NotSent]; anything else, such as a [TerminalProtocolException] or a timeout,
- * is [Delivery.MaybeSent]. [fallback] is the reason when the failure has no message.
+ * The fault this I/O failure means: a [FaultException]'s own fault, a timeout ([InterruptedIOException], which OkHttp's
+ * call timeout and socket timeouts are) as [Fault.TimedOut], and anything else as [Fault.ConnectionLost], which may
+ * have taken effect.
  */
-internal fun IOException.toDelivery(fallback: String): Delivery =
+internal fun IOException.fault(): Fault =
     when (this) {
-        is TerminalUnreachableException, is TerminalRejectedException -> Delivery.NotSent(message ?: fallback)
-        else -> Delivery.MaybeSent(message ?: fallback)
+        is FaultException -> fault
+        is InterruptedIOException -> Fault.TimedOut
+        else -> Fault.ConnectionLost
     }
 
 /**
- * The request was never delivered (e.g. connection refused), so it is safe to treat as not processed. This and the
- * exceptions below are how the parts of a transport that must throw (the Adyen library's HTTP client, App Link
- * exchanges) report failures; the transport turns them into a [Delivery].
+ * Carries a [Fault] out of the parts of a transport that must throw (the Adyen library's HTTP client), so the transport
+ * can return it as [Delivery.Failed]. It has no message: nothing reads exception text.
+ *
+ * @property fault What went wrong.
  */
-open class TerminalUnreachableException(
-    message: String,
-    cause: Throwable? = null,
-) : IOException(message, cause)
-
-/**
- * TLS setup failed before anything was sent: the peer did not present a certificate from Adyen's terminal fleet whose
- * name matches the environment of the root it chains to (see [TerminalTls]).
- */
-class TerminalUntrustedException(
-    message: String,
-    cause: Throwable? = null,
-) : TerminalUnreachableException(message, cause)
-
-/**
- * The terminal replied, but with something other than a valid response (e.g. an HTTP error, or a message that could
- * not be decrypted or verified with the shared key). The request may or may not have been processed.
- */
-open class TerminalProtocolException(
-    message: String,
-    cause: Throwable? = null,
-) : IOException(message, cause)
-
-/** The terminal explicitly rejected the request (e.g. wrong shared key), so it was not processed. */
-class TerminalRejectedException(
-    message: String,
-) : TerminalProtocolException(message)
+internal class FaultException(
+    val fault: Fault,
+) : IOException()

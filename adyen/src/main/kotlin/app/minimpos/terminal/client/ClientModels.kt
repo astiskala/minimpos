@@ -1,6 +1,8 @@
 package app.minimpos.terminal.client
 
 import app.minimpos.terminal.parse.ReceiptField
+import app.minimpos.terminal.transport.ExternalText
+import app.minimpos.terminal.transport.Fault
 import com.adyen.model.applicationinfo.ApplicationInfo
 import com.adyen.model.applicationinfo.CommonField
 import com.adyen.model.applicationinfo.ExternalPlatform
@@ -301,8 +303,8 @@ data class TransactionDetails(
     val success: Boolean,
     /** `Response.ErrorCondition` as sent by the terminal, e.g. `Refusal` or `Cancel`. */
     val errorCondition: String?,
-    /** The best human-readable explanation: `refusalReason`, `message`, `errors` or `warnings`. */
-    val message: String?,
+    /** The terminal's best explanation, verbatim: `refusalReason`, `message`, `errors` or `warnings`; null when none. */
+    val message: ExternalText?,
     /** Why the payment was declined (`refusalReason` in the `AdditionalResponse`, e.g. `Not enough balance`). */
     val refusalReason: String?,
     /**
@@ -368,7 +370,8 @@ data class TransactionDetails(
 
 /**
  * The result of a payment or refund from [TerminalClient]: either the terminal's answer, or a statement of how sure we
- * are that nothing happened. Network and terminal errors are reported as [NotProcessed] or [Unknown], not thrown.
+ * are that nothing happened, with the [Fault] that left it without an answer. Network and terminal errors are reported
+ * as [NotProcessed] or [Unknown], not thrown.
  */
 sealed interface TransactionOutcome {
     /** The ServiceID of the payment or refund request (not of any status check made to settle it). */
@@ -386,15 +389,18 @@ sealed interface TransactionOutcome {
     /** The request never took effect, so nothing was charged or refunded. */
     data class NotProcessed(
         override val serviceId: String,
-        /** Why, in English, e.g. the connection error or the terminal's rejection message. */
-        val reason: String,
+        /** Why: a fault that took no effect, or [Fault.NoRecord] from a status check. */
+        val fault: Fault,
     ) : TransactionOutcome
 
     /** The result could not be confirmed; check the Customer Area before retrying. */
     data class Unknown(
         override val serviceId: String,
-        /** Why, in English: what went wrong with the original request, or that the status could not be confirmed. */
-        val reason: String,
+        /**
+         * What prevented the confirmation: the original request's fault, the status check's, or
+         * [Fault.StillInProgress] while the terminal still works on it.
+         */
+        val fault: Fault,
     ) : TransactionOutcome
 }
 
@@ -406,12 +412,12 @@ sealed interface PrintOutcome {
     /**
      * A job could not be printed; later jobs were not sent.
      *
-     * @property message Why, from the terminal's `AdditionalResponse` or the connection error.
+     * @property fault Why: the delivery's fault, or [Fault.TerminalRejected] with the terminal's message.
      * @property noPrinter True when the terminal has no printer (ErrorCondition `UnavailableDevice`, or a message
      *   saying so), so printing will never work on it; false for errors that may pass, such as a paper jam.
      */
     data class Failed(
-        val message: String,
+        val fault: Fault,
         val noPrinter: Boolean,
     ) : PrintOutcome
 }
@@ -421,15 +427,14 @@ sealed interface PrintOutcome {
  *
  * @property reachable True when the terminal answered with `Result` `Success`, which proves that the host, POIID and
  *   shared key are all right.
- * @property message Why it failed (connection error, rejection with key advice, or the terminal's message); may be
- *   null when the terminal gives no explanation.
+ * @property fault Why it failed (the delivery's fault, or the terminal's refusal); null when it is reachable.
  * @property globalStatus The terminal's nexo `GlobalStatus`, e.g. `OK` or `Busy`; null if not reported.
  * @property printerStatus The nexo `PrinterStatus`, e.g. `OK` or `PaperLow`; null when the terminal has no printer (or
  *   is unreachable).
  */
 data class DiagnosisResult(
     val reachable: Boolean,
-    val message: String?,
+    val fault: Fault?,
     val globalStatus: String? = null,
     val printerStatus: String? = null,
 ) {

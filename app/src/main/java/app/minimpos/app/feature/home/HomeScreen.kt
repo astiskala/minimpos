@@ -54,6 +54,7 @@ import app.minimpos.app.R
 import app.minimpos.app.data.settings.TerminalMode
 import app.minimpos.app.feature.settings.SettingsSections
 import app.minimpos.app.feature.setupCard
+import app.minimpos.app.feature.text
 import app.minimpos.app.terminal.TerminalConnection
 import app.minimpos.app.terminal.TerminalState
 import app.minimpos.app.ui.components.LocalAppContainer
@@ -158,7 +159,7 @@ private fun ConnectionProblem(
             SetupCard(
                 Icons.Default.ErrorOutline,
                 stringResource(R.string.home_connection_failed),
-                connection.message ?: stringResource(R.string.setup_no_response),
+                connection.failure.text(),
                 error = true,
                 onClick = onClick,
             )

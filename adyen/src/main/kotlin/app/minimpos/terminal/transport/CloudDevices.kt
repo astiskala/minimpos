@@ -113,10 +113,10 @@ sealed interface CloudDetection {
     /**
      * No endpoint accepted the key, or none could be reached.
      *
-     * @property message Why, in English.
+     * @property fault Why.
      */
     data class Failed(
-        val message: String,
+        val fault: Fault,
     ) : CloudDetection
 }
 
@@ -132,23 +132,13 @@ sealed interface CloudListing {
     ) : CloudListing
 
     /**
-     * Adyen refused the request.
+     * Adyen refused the request (such as [Fault.Credential] for a key the endpoint does not know), could not be reached,
+     * or answered with something unusable.
      *
-     * @property code The HTTP status code, e.g. 401 for a key the endpoint does not know.
-     * @property message Why, in English.
-     */
-    data class Refused(
-        val code: Int,
-        val message: String,
-    ) : CloudListing
-
-    /**
-     * Adyen could not be reached, or answered with something unusable.
-     *
-     * @property message Why, in English.
+     * @property fault Why.
      */
     data class Failed(
-        val message: String,
+        val fault: Fault,
     ) : CloudListing
 }
 
@@ -224,44 +214,31 @@ class AdyenCloudDevices(
 
     private suspend fun listingAt(endpoint: CloudEndpoint): CloudDetection =
         when (val live = connectedDevices(endpoint)) {
-            is CloudListing.Listed -> {
-                CloudDetection.Found(endpoint, live.devices)
-            }
-
-            is CloudListing.Refused if live.code == HTTP_UNAUTHORIZED -> {
-                CloudDetection.Failed("Adyen did not accept the API key for ${endpoint.environment.name} (HTTP 401)")
-            }
-
-            is CloudListing.Refused -> {
-                CloudDetection.Failed(live.message)
-            }
-
-            is CloudListing.Failed -> {
-                CloudDetection.Failed(live.message)
-            }
+            is CloudListing.Listed -> CloudDetection.Found(endpoint, live.devices)
+            is CloudListing.Failed -> CloudDetection.Failed(live.fault)
         }
 
     /** The terminals connected to [endpoint] (`GET …/connectedDevices`). Never throws. */
     suspend fun connectedDevices(endpoint: CloudEndpoint): CloudListing =
         when (val reply = http.get(merchant(endpoint).addPathSegment("connectedDevices").build(), LISTING_TIMEOUT)) {
             is AdyenReply.Answered -> listing(reply.code, reply.body)
-            is AdyenReply.Failed -> CloudListing.Failed(reply.message)
+            is AdyenReply.Failed -> CloudListing.Failed(reply.fault)
         }
 
-    override fun transport(endpoint: CloudEndpoint): TerminalTransport = CloudTransport(credentials, merchant(endpoint).build(), http)
+    override fun transport(endpoint: CloudEndpoint): TerminalTransport = CloudTransport(merchant(endpoint).build(), http)
 
     private fun listing(
         code: Int,
         body: String,
     ): CloudListing {
-        if (code !in HTTP_OK) return CloudListing.Refused(code, httpError(code, body, credentials.merchantAccount))
+        if (code !in HTTP_OK) return CloudListing.Failed(cloudFault(code, body))
         val devices =
             runCatching {
                 requireNotNull(decodeAdyenModel(body, ConnectedDevicesResponse::class.java))
                     .uniqueDeviceIds
                     .orEmpty()
                     .map { requireNotNull(it) }
-            }.getOrNull() ?: return CloudListing.Failed("Unexpected response from Adyen")
+            }.getOrNull() ?: return CloudListing.Failed(Fault.UnreadableReply())
         return CloudListing.Listed(devices)
     }
 
@@ -289,13 +266,13 @@ class AdyenCloudDevices(
  * POIID and holds the connection open until the terminal answers. Requests travel as plain JSON over TLS, authenticated
  * by the API key; they are not encrypted with the terminal's shared key.
  *
- * No connection, an unknown terminal (HTTP 404), a terminal Adyen reports as not connected and a refused key or
- * request (other HTTP 4xx) are [Delivery.NotSent]; a call that may have reached Adyen without an answer, HTTP 5xx or
- * 408, an unreadable reply and any other event notification Adyen answers with instead of a response (e.g. that the
- * terminal did not answer in time) are [Delivery.MaybeSent], after which the outcome is unknown.
+ * No connection, an unknown terminal ([Fault.NotFound], HTTP 404), a terminal Adyen reports as not connected
+ * ([Fault.TerminalOffline]) and a refused key or request (other HTTP 4xx) did not reach the terminal; a call that may
+ * have reached Adyen without an answer, HTTP 5xx, 408 or 429, an unreadable reply and any other event notification
+ * Adyen answers with instead of a response ([Fault.NoAnswerFromTerminal], e.g. that the terminal did not answer in
+ * time) may have, after which the outcome is unknown.
  */
 class CloudTransport internal constructor(
-    private val credentials: CloudCredentials,
     /** The merchant account's base URL, `…/v1/merchants/{merchantAccount}`. */
     private val merchantUrl: HttpUrl,
     private val http: AdyenHttp,
@@ -306,7 +283,7 @@ class CloudTransport internal constructor(
         request: TerminalAPIRequest,
         timeout: Duration,
     ): Delivery {
-        val poiId = request.saleToPOIRequest?.messageHeader?.poiid ?: return Delivery.NotSent("The request names no terminal")
+        val poiId = request.saleToPOIRequest?.messageHeader?.poiid ?: return Delivery.Failed(Fault.NotFound(null))
         val url =
             merchantUrl
                 .newBuilder()
@@ -315,19 +292,10 @@ class CloudTransport internal constructor(
                 .addPathSegment("sync")
                 .build()
         return when (val reply = http.post(url, gson.toJson(request), timeout)) {
-            is AdyenReply.Failed -> reply.delivery
-            is AdyenReply.Answered if !reply.ok -> failure(reply.code, reply.body, poiId)
+            is AdyenReply.Failed -> Delivery.Failed(reply.fault)
+            is AdyenReply.Answered if !reply.ok -> Delivery.Failed(cloudFault(reply.code, reply.body, poiId))
             is AdyenReply.Answered -> reply(reply.body, poiId)
         }
-    }
-
-    private fun failure(
-        code: Int,
-        body: String,
-        poiId: String,
-    ): Delivery {
-        val message = httpError(code, body, credentials.merchantAccount, poiId)
-        return if (code in HTTP_CLIENT_ERROR && code != HTTP_TIMEOUT) Delivery.NotSent(message) else Delivery.MaybeSent(message)
     }
 
     private fun reply(
@@ -342,12 +310,13 @@ class CloudTransport internal constructor(
                 null
             } ?: return Delivery.Answered(null)
         if (response.saleToPOIResponse != null) return Delivery.Answered(response)
-        val details = eventDetails(body) ?: return Delivery.MaybeSent("Unexpected response from Adyen")
+        val details = eventDetails(body) ?: return Delivery.Failed(Fault.UnreadableReply())
         val message = FormEncoding.decode(details)["message"] ?: details
+        val said = ExternalText.of(message)
         return if (NOT_CONNECTED.any { message.contains(it, ignoreCase = true) }) {
-            Delivery.NotSent("Terminal $poiId is not connected to Adyen: $message")
+            Delivery.Failed(Fault.TerminalOffline(poiId, said))
         } else {
-            Delivery.MaybeSent("Adyen did not get an answer from terminal $poiId: $message")
+            Delivery.Failed(Fault.NoAnswerFromTerminal(poiId, said))
         }
     }
 
@@ -366,23 +335,23 @@ class CloudTransport internal constructor(
     }
 }
 
-private val HTTP_CLIENT_ERROR = 400..499
-private const val HTTP_TIMEOUT = 408
-
-/** Adyen's explanation of an HTTP error, with the status code, e.g. "Invalid API key (HTTP 401)". */
-internal fun httpError(
+/**
+ * The fault of an unsuccessful Cloud device API answer: an unknown terminal [poiId] (HTTP 404) is [Fault.NotFound];
+ * other codes follow [AdyenReply.Answered.fault], with Adyen's message from its error model.
+ */
+internal fun cloudFault(
     code: Int,
     body: String,
-    merchantAccount: String,
     poiId: String? = null,
-): String {
-    val message = decodeAdyenModel(body, ApiError::class.java)?.message
-    val fallback =
-        when (code) {
-            HTTP_UNAUTHORIZED -> "Adyen did not accept the API key"
-            HTTP_FORBIDDEN -> "The API key may not use merchant account $merchantAccount, or lacks the Cloud Device API role"
-            HTTP_NOT_FOUND -> "Adyen does not know terminal ${poiId.orEmpty()} in merchant account $merchantAccount"
-            else -> "Adyen returned an error"
-        }
-    return "${message ?: fallback} (HTTP $code)"
+): Fault {
+    if (code == HTTP_NOT_FOUND) return Fault.NotFound(poiId)
+    val error = decodeAdyenModel(body, ApiError::class.java)
+    return AdyenReply
+        .Answered(
+            code,
+            body,
+        ).fault(ApiKey.ADYEN, CLOUD_DEVICE_ROLE, AdyenError(ExternalText.of(error?.message), error?.errorCode))
 }
+
+/** The API credential role the Cloud device API needs, as Adyen names it. */
+private const val CLOUD_DEVICE_ROLE = "Cloud Device API role"

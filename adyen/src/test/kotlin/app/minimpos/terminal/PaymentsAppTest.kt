@@ -11,6 +11,7 @@ import app.minimpos.terminal.client.TerminalIdentity
 import app.minimpos.terminal.client.TransactionOutcome
 import app.minimpos.terminal.parse.FormEncoding
 import app.minimpos.terminal.paymentsapp.AdyenPaymentsAppManagement
+import app.minimpos.terminal.paymentsapp.AppLinkAnswer
 import app.minimpos.terminal.paymentsapp.AppLinkExchange
 import app.minimpos.terminal.paymentsapp.BoardingTarget
 import app.minimpos.terminal.paymentsapp.ManagementResult
@@ -21,10 +22,12 @@ import app.minimpos.terminal.paymentsapp.PaymentsAppOnboarding
 import app.minimpos.terminal.paymentsapp.PaymentsAppTransport
 import app.minimpos.terminal.simulator.SimulatorConfig
 import app.minimpos.terminal.simulator.TerminalSimulator
+import app.minimpos.terminal.transport.ApiKey
 import app.minimpos.terminal.transport.Delivery
+import app.minimpos.terminal.transport.ExternalText
+import app.minimpos.terminal.transport.Fault
 import app.minimpos.terminal.transport.TerminalEnvironment
 import app.minimpos.terminal.transport.TerminalKey
-import app.minimpos.terminal.transport.TerminalUnreachableException
 import com.adyen.model.nexo.MessageCategoryType
 import com.adyen.model.nexo.MessageClassType
 import com.adyen.model.nexo.MessageHeader
@@ -47,7 +50,6 @@ import okhttp3.HttpUrl
 import org.junit.After
 import org.junit.Assert.assertThrows
 import org.junit.Test
-import java.io.IOException
 import java.math.BigDecimal
 import java.net.URLDecoder
 import java.util.Base64
@@ -134,7 +136,8 @@ class PaymentsAppTest {
     @Test
     fun `errors, foreign answers and wrong keys are reported as such`() {
         app.reply = { "$RETURN_URL/nexo?error=Cancelled+by+user" }
-        assertThat((runBlocking { client.pay(payment) } as TransactionOutcome.NotProcessed).reason).contains("Cancelled by user")
+        assertThat((runBlocking { client.pay(payment) } as TransactionOutcome.NotProcessed).fault)
+            .isEqualTo(Fault.AppRefused(ExternalText("Cancelled by user")))
         app.reply = { "$RETURN_URL/nexo?response=bm90IGpzb24" }
         assertThat(runBlocking { client.pay(payment) }).isInstanceOf(TransactionOutcome.Unknown::class.java)
         // A Payments app with another shared key answers in a way that cannot be verified.
@@ -152,16 +155,15 @@ class PaymentsAppTest {
                     }
             }
         stranger.reply = { stranger.encryptedAnswer(it, serviceId = "X") }
-        val failure = runBlocking { mismatched.send(request, 5.seconds) } as Delivery.MaybeSent
-        assertThat(failure.reason).contains("shared key")
+        assertThat(runBlocking { mismatched.send(request, 5.seconds) }).isEqualTo(Delivery.Failed(Fault.ReplyUnverified))
         // An answer to another request is not taken for this one.
         app.reply = { app.encryptedAnswer(it, serviceId = "SOMETHING-ELSE") }
         assertThat(
             runBlocking { PaymentsAppTransport(key, TerminalEnvironment.TEST, app, RETURN_URL).send(request, 5.seconds) },
-        ).isInstanceOf(Delivery.MaybeSent::class.java)
+        ).isEqualTo(Delivery.Failed(Fault.UnreadableReply()))
         // A Payments app that cannot be started means nothing was sent.
-        app.reply = { throw TerminalUnreachableException("not installed") }
-        assertThat(runBlocking { client.pay(payment) }).isInstanceOf(TransactionOutcome.NotProcessed::class.java)
+        app.unanswered = AppLinkAnswer.NotStarted
+        assertThat((runBlocking { client.pay(payment) } as TransactionOutcome.NotProcessed).fault).isEqualTo(Fault.NotStarted)
     }
 
     @Test
@@ -185,34 +187,34 @@ class PaymentsAppTest {
 
         // Failures from Adyen and from the Payments app are reported.
         app.boarded = false
-        management.result = ManagementResult.Failed("Forbidden (HTTP 403)")
+        management.result = ManagementResult.Failed(Fault.Permission(ApiKey.PAYMENTS_APP))
         assertThat(
             runBlocking { onboarding.board(BoardingTarget("HarbourCoffeeCOM")) },
-        ).isEqualTo(Onboarding.Failed("Forbidden (HTTP 403)"))
+        ).isEqualTo(Onboarding.Failed(Fault.Permission(ApiKey.PAYMENTS_APP)))
         management.result = ManagementResult.Done(boardingToken = null)
         assertThat(
             (
                 runBlocking {
                     onboarding.board(BoardingTarget("HarbourCoffeeCOM"))
                 } as Onboarding.Failed
-            ).message,
-        ).contains("no boarding token")
+            ).fault,
+        ).isEqualTo(Fault.UnreadableReply())
         app.reply = { "$RETURN_URL/boarded?boarded=false&error=Device+not+supported" }
         assertThat(
             (
                 runBlocking {
                     onboarding.board(BoardingTarget("HarbourCoffeeCOM"))
                 } as Onboarding.Failed
-            ).message,
-        ).contains("Device not supported")
+            ).fault,
+        ).isEqualTo(Fault.AppRefused(ExternalText("Device not supported")))
         app.reply = { "$RETURN_URL/boarded?boarded=true" }
         assertThat(
             (
                 runBlocking {
                     onboarding.board(BoardingTarget("HarbourCoffeeCOM"))
                 } as Onboarding.Failed
-            ).message,
-        ).contains("no installation ID")
+            ).fault,
+        ).isEqualTo(Fault.UnreadableReply())
         assertThrows(IllegalArgumentException::class.java) { BoardingTarget(" ") }
     }
 
@@ -243,15 +245,23 @@ class PaymentsAppTest {
                     .body("""{"detail":"Not allowed"}""")
                     .build(),
             )
-            assertThat(runBlocking { api.revoke("Merchant", "I1") }).isEqualTo(ManagementResult.Failed("Not allowed (HTTP 403)"))
+            val permission = Fault.Permission(ApiKey.PAYMENTS_APP, "Adyen Payments app role")
+            assertThat(runBlocking { api.revoke("Merchant", "I1") }).isEqualTo(ManagementResult.Failed(permission))
             server.enqueue(MockResponse.Builder().code(401).build())
-            assertThat((runBlocking { api.revoke("Merchant", "I1") } as ManagementResult.Failed).message).contains("did not accept")
-            server.enqueue(MockResponse.Builder().code(403).build())
             assertThat(
-                (runBlocking { api.revoke("Merchant", "I1") } as ManagementResult.Failed).message,
-            ).contains("Adyen Payments app role")
+                runBlocking { api.revoke("Merchant", "I1") },
+            ).isEqualTo(ManagementResult.Failed(Fault.Credential(ApiKey.PAYMENTS_APP)))
+            server.enqueue(
+                MockResponse
+                    .Builder()
+                    .code(422)
+                    .body("""{"detail":"Not allowed","errorCode":"00_422"}""")
+                    .build(),
+            )
+            assertThat(runBlocking { api.revoke("Merchant", "I1") })
+                .isEqualTo(ManagementResult.Failed(Fault.AdyenRejected(422, "00_422", ExternalText("Not allowed"))))
             server.enqueue(MockResponse.Builder().code(500).build())
-            assertThat((runBlocking { api.revoke("Merchant", "I1") } as ManagementResult.Failed).message).contains("HTTP 500")
+            assertThat(runBlocking { api.revoke("Merchant", "I1") }).isEqualTo(ManagementResult.Failed(Fault.AdyenUnavailable(500)))
         }
         val offline =
             AdyenPaymentsAppManagement(
@@ -266,7 +276,7 @@ class PaymentsAppTest {
                         .build(),
             )
         val failed = runBlocking { offline.revoke("Merchant", "I1") } as ManagementResult.Failed
-        assertThat(failed.message).contains("Cannot connect to Adyen")
+        assertThat(failed.fault).isEqualTo(Fault.Unreachable("127.0.0.1", terminal = false))
         assertThat(AdyenPaymentsAppManagement.endpoint(TerminalEnvironment.LIVE)).isEqualTo("https://management-live.adyen.com/v1")
     }
 
@@ -296,7 +306,7 @@ class PaymentsAppTest {
                             """{"paymentsApps":[{"installationId":"I1","merchantAccountCode":"Other","status":"BOARDED"}]}""",
                         ).build(),
                 )
-                assertThat(api.registration(target, "I1")).isInstanceOf(ManagementResult.Failed::class.java)
+                assertThat(api.registration(target, "I1")).isEqualTo(ManagementResult.NotBoarded)
                 listOf(
                     "{}",
                     "not json",
@@ -304,7 +314,7 @@ class PaymentsAppTest {
                     """{"paymentsApps":[null]}""",
                 ).forEach { body ->
                     server.enqueue(MockResponse.Builder().body(body).build())
-                    assertThat(api.registration(target, "I1")).isInstanceOf(ManagementResult.Failed::class.java)
+                    assertThat(api.registration(target, "I1")).isNotInstanceOf(ManagementResult.Done::class.java)
                 }
                 server.enqueue(MockResponse.Builder().code(403).build())
                 assertThat(api.registration(target, "I1")).isInstanceOf(ManagementResult.Failed::class.java)
@@ -321,7 +331,7 @@ class PaymentsAppTest {
                     100,
                 ) { """{"installationId":"Other","merchantAccountCode":"Merchant","status":"BOARDED"}""" }.joinToString(",")}]}"""
                 repeat(100) { server.enqueue(MockResponse.Builder().body(full).build()) }
-                assertThat(api.registration(BoardingTarget("Merchant"), "I1")).isInstanceOf(ManagementResult.Failed::class.java)
+                assertThat(api.registration(BoardingTarget("Merchant"), "I1")).isEqualTo(ManagementResult.Failed(Fault.ListTooLarge))
                 assertThat(server.requestCount).isEqualTo(100)
                 assertThat(server.takeRequest().url.queryParameter("offset")).isEqualTo("0")
                 assertThat(server.takeRequest().url.queryParameter("offset")).isEqualTo("100")
@@ -356,18 +366,18 @@ class PaymentsAppTest {
         /** Replaces the answer to the next links. */
         var reply: ((Opened) -> String)? = null
 
+        /** Brings no answer back from the next links. */
+        var unanswered: AppLinkAnswer.Unanswered? = null
+
         override suspend fun exchange(
             link: String,
             packageName: String,
             timeout: Duration,
-        ): String {
+        ): AppLinkAnswer {
             val opened = Opened(link, packageName).also { this.opened += it }
-            val answer = reply?.invoke(opened) ?: answer(opened)
-            if (keepAnswers) {
-                late += answer
-                throw IOException("The Payments app did not call back")
-            }
-            return answer
+            val answer = unanswered ?: AppLinkAnswer.Returned(reply?.invoke(opened) ?: answer(opened))
+            if (keepAnswers && answer is AppLinkAnswer.Returned) late += answer.url
+            return if (keepAnswers) AppLinkAnswer.TimedOut else answer
         }
 
         override fun lateReplies(): List<String> = late

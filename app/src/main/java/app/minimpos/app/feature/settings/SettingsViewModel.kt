@@ -2,6 +2,7 @@ package app.minimpos.app.feature.settings
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import app.minimpos.app.data.db.Failure
 import app.minimpos.app.data.db.TaxRateEntity
 import app.minimpos.app.data.repo.CatalogRepository
 import app.minimpos.app.data.repo.DeleteResult
@@ -329,7 +330,7 @@ class SettingsViewModel(
             }
 
             is TerminalConnection.Failed -> {
-                ActionState(outcome = ActionOutcome.ConnectionFailed(connection.message), isError = true)
+                ActionState(outcome = ActionOutcome.ConnectionFailed(connection.failure), isError = true)
             }
 
             TerminalConnection.Checking, TerminalConnection.Unknown -> {
@@ -341,7 +342,7 @@ class SettingsViewModel(
         when (val check = checks.api.verify()) {
             ApiCheck.Works -> ActionState(outcome = ActionOutcome.ApiWorks, done = true)
             is ApiCheck.NotSetUp -> ActionState(outcome = ActionOutcome.NotSetUp(check.problem), isError = true)
-            is ApiCheck.Failed -> ActionState(outcome = ActionOutcome.Failed(check.message), isError = true)
+            is ApiCheck.Failed -> ActionState(outcome = ActionOutcome.Failed(Failure.Remote(check.fault)), isError = true)
         }
 
     /** Closes the connection test's result dialog. */

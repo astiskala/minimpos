@@ -1,5 +1,6 @@
 package app.minimpos.terminal.checkout
 
+import app.minimpos.terminal.transport.Fault
 import java.time.Instant
 
 /**
@@ -97,23 +98,16 @@ sealed interface PaymentLinkResult {
     ) : PaymentLinkResult
 
     /**
-     * The request did not take effect: it never reached Adyen, or Adyen rejected it (HTTP 4xx, such as a wrong API key,
-     * an API credential without the Pay by Link role, or an expiry too far ahead).
+     * Adyen gave no usable answer. When [Fault.mayHaveTakenEffect] is false the request did not take effect (it never
+     * reached Adyen, or Adyen rejected it, such as a wrong API key, an API credential without the Pay by Link role, or
+     * an expiry too far ahead); otherwise it is not known whether it did (timeout, broken connection, HTTP 5xx, an
+     * unexpected answer), and a creation can be sent again with the same idempotency key, which returns the same link
+     * instead of a second one.
      *
-     * @property message Why, in English, with Adyen's error code when it sent one.
+     * @property fault Why.
      */
-    data class NotProcessed(
-        val message: String,
-    ) : PaymentLinkResult
-
-    /**
-     * It is not known whether the request took effect (timeout, broken connection, HTTP 5xx, an unexpected answer). A
-     * creation can be sent again with the same idempotency key, which returns the same link instead of a second one.
-     *
-     * @property message Why, in English.
-     */
-    data class Unknown(
-        val message: String,
+    data class Failed(
+        val fault: Fault,
     ) : PaymentLinkResult
 }
 

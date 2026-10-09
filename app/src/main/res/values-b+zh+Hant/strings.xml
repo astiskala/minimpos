@@ -325,7 +325,7 @@
   <string name="tip_confirm_no_tip_title">不新增小費？</string>
   <string name="tip_confirm_sum">帳單 %1$s + 小費 %2$s = %3$s。</string>
   <string name="tip_confirm_capture">現在將扣款 %1$s，之後無法更改小費。</string>
-  <string name="tip_refused">發卡行未授權 %1$s（%2$s）。請輸入較少的小費，或選擇無小費。</string>
+  <string name="tip_refused">發卡行未授權 %1$s。請輸入較少的小費，或選擇無小費。</string>
   <string name="capture_failed">未扣款：%1$s</string>
   <string name="capture_not_allowed">此次支付已無法扣款。</string>
   <string name="capture_title">扣款</string>
@@ -342,7 +342,7 @@
   <string name="capture_confirm_more">將先請求發卡行授權較高的金額。</string>
   <string name="adjust_confirm_title">凍結 %1$s？</string>
   <string name="adjust_confirm_message">將請求發卡行把購物者卡內的凍結金額從 %2$s 改為 %1$s。</string>
-  <string name="capture_refused">發卡行未授權 %1$s（%2$s）。</string>
+  <string name="capture_refused">發卡行未授權 %1$s。</string>
   <string name="adjust_failed">未調整：%1$s</string>
   <string name="products_title">商品</string>
   <string name="products_tab_products">商品</string>

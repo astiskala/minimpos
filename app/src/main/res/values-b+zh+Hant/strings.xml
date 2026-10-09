@@ -34,10 +34,6 @@
     <string name="wallet_role_hint">可選權限：Management API—Payment methods read。查詢錯誤不會阻止普通支付。</string>
     <string name="wallet_none">沒有適用於 %1$s 的掃碼錢包。</string>
     <string name="wallet_available">適用於 %1$s：%2$s</string>
-    <string name="wallet_discovery_auth">錢包檢查失敗：此環境未接受 API 密鑰。</string>
-    <string name="wallet_discovery_permission">錢包檢查失敗：請檢查終端存取權限和 Management API—Payment methods read 角色。</string>
-    <string name="wallet_discovery_unavailable">無法重新整理錢包。請檢查連接後重試。</string>
-    <string name="wallet_discovery_unreadable">Adyen 返回的錢包設定不完整。請重試。</string>
     <string name="onboarding_title">歡迎使用 Mini mPOS</string>
     <string name="onboarding_hint">無需 Adyen 帳戶即可試用模擬器，也可匯入設定二維碼或連接終端。</string>
     <string name="onboarding_simulator">使用示例資料試用模擬器</string>
@@ -94,7 +90,7 @@
   <string name="home_setup_title">連接此終端</string>
   <string name="home_setup_text">點按此處完成終端設定。</string>
   <string name="home_setup_title_remote">完成收款設定</string>
-  <string name="home_connection_failed">無法連接支付終端</string>
+  <string name="home_connection_failed">目前無法收款</string>
   <string name="update_available">版本 %1$s 可用</string>
   <string name="update_download">更新</string>
   <string name="manager_pin_title">經理 PIN</string>
@@ -502,7 +498,6 @@
   <string name="setup_unreadable_passphrase">此設備無法讀取已儲存的共享密鑰口令；請在終端設定中重新輸入</string>
   <string name="setup_unreadable_api_key">此設備無法讀取已儲存的 Adyen API 密鑰；請在終端設定中重新輸入</string>
   <string name="setup_api_required">請先輸入商戶帳戶和 Adyen API 密鑰</string>
-  <string name="setup_no_response">終端未回應</string>
   <string name="setup_cloud_api_key">請在終端設定中輸入 API 密鑰</string>
   <string name="setup_payments_app_missing">請從 Google Play 安裝 Adyen Payments 應用程式</string>
   <string name="setup_payments_app_ambiguous">同時安裝了 TEST 和 LIVE 版 Adyen Payments 應用程式，請解除安裝不用的那個</string>
@@ -861,10 +856,6 @@
     <string name="setup_transfer_pending">設定匯入尚未儲存完成。請重試以繼續。</string>
     <string name="setup_terminal_access">此 API 密鑰無法存取本終端。請確認密鑰屬於終端的 Company 帳戶，並具有存取本終端的權限。</string>
     <string name="setup_merchant_mismatch">商戶帳戶與終端目前分配的帳戶不一致。請更正帳戶或終端註冊後再繼續。</string>
-    <string name="setup_management_permission">所有真實付款設定的 API 密鑰都必須具有 Management API - Terminal actions read、Management API - Terminal settings read and write 和 Management API - Terminal settings Advanced read and write 權限。</string>
-    <string name="setup_management_authentication">Adyen 未接受所選環境中的 API 密鑰。請更換密鑰後重試。</string>
-    <string name="setup_management_unavailable">無法連接 Adyen Management API，或 API 返回了錯誤。請檢查網絡連接及 Adyen API 日誌後重試。</string>
-    <string name="setup_management_unreadable">Adyen 返回的設定回應無效，或缺少必需欄位。請檢查 Management API 回應後重試。</string>
     <string name="setup_terminal_settings_unreadable">Adyen 返回的終端設定包含不支援的欄位或無效值，Mini mPOS 無法讀取。已阻止建立共享密鑰。請檢查 Adyen API 日誌中的終端設定回應。</string>
     <string name="setup_shared_key_incomplete">Adyen 返回的共享密鑰不完整：缺少識別碼、版本或口令。請在 Customer Area 檢查加密密鑰及高級設定權限。Mini mPOS 不會替換未經驗證的密鑰。</string>
     <string name="setup_shared_key_invalid">Adyen 返回的共享密鑰版本不在 1–9999 範圍內。請在 Customer Area 檢查加密密鑰。Mini mPOS 不會替換此密鑰。</string>
@@ -952,4 +943,5 @@
   <string name="adjust_unconfirmed">Adyen 未確認金額調整。可安全地重試同一調整。</string>
   <string name="action_unconfirmed">Adyen 未確認結果。請先再次查詢，再進行其他操作。</string>
   <string name="still_unconfirmed">仍未確認：%1$s</string>
+  <string name="wallet_check_failed">錢包檢查失敗：%1$s</string>
 </resources>

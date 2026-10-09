@@ -3,6 +3,7 @@ package app.minimpos.app.terminal
 import app.minimpos.app.FakeStoreDetails
 import app.minimpos.app.TestEnvironment
 import app.minimpos.app.await
+import app.minimpos.app.data.db.Failure
 import app.minimpos.app.data.db.SetupProblem
 import app.minimpos.app.data.security.Secret
 import app.minimpos.app.data.settings.ReceiptSettings
@@ -38,13 +39,13 @@ class ReceiptBusinessDetailsTest {
     @Test
     fun `simulator and missing setup never call Management`() {
         env.useSimulator()
-        assertThat(read()).isEqualTo(ReceiptBusinesses.NotSetUp(SetupProblem.API_REQUIRED))
+        assertThat(read()).isEqualTo(ReceiptBusinesses.Failed(Failure.NotSetUp(SetupProblem.API_REQUIRED)))
         env.updateSettings { it.copy(terminal = it.terminal.copy(mode = TerminalMode.TERMINAL)) }
-        assertThat(read()).isEqualTo(ReceiptBusinesses.NotSetUp(SetupProblem.MERCHANT_ACCOUNT))
+        assertThat(read()).isEqualTo(ReceiptBusinesses.Failed(Failure.NotSetUp(SetupProblem.MERCHANT_ACCOUNT)))
         env.updateSettings { it.copy(terminal = it.terminal.copy(merchantAccount = "Merchant")) }
-        assertThat(read()).isEqualTo(ReceiptBusinesses.NotSetUp(SetupProblem.API_KEY))
+        assertThat(read()).isEqualTo(ReceiptBusinesses.Failed(Failure.NotSetUp(SetupProblem.API_KEY)))
         await { container.secrets.set(Secret.ADYEN_API_KEY, "key") }
-        assertThat(read()).isEqualTo(ReceiptBusinesses.NotSetUp(SetupProblem.ENVIRONMENT))
+        assertThat(read()).isEqualTo(ReceiptBusinesses.Failed(Failure.NotSetUp(SetupProblem.ENVIRONMENT)))
         assertThat(calls).isEmpty()
     }
 
@@ -68,9 +69,9 @@ class ReceiptBusinessDetailsTest {
         assertThat(calls).containsExactly("store:Merchant/ST1")
         assertThat(await { container.settings.current() }).isEqualTo(before)
         stores.storeAnswer = StoreLookup.Missing
-        assertThat(read()).isEqualTo(ReceiptBusinesses.NotSetUp(SetupProblem.STORE_ACCESS))
+        assertThat(read()).isEqualTo(ReceiptBusinesses.Failed(Failure.NotSetUp(SetupProblem.STORE_ACCESS)))
         stores.storeAnswer = StoreLookup.Failed(Fault.Permission(ApiKey.ADYEN, "Management API—Stores read"))
-        assertThat(read()).isEqualTo(ReceiptBusinesses.Failed(Fault.Permission(ApiKey.ADYEN, "Management API—Stores read")))
+        assertThat(read()).isEqualTo(ReceiptBusinesses.Failed(Failure.Remote(Fault.Permission(ApiKey.ADYEN, "Management API—Stores read"))))
     }
 
     @Test
@@ -80,14 +81,16 @@ class ReceiptBusinessDetailsTest {
         assertThat(read()).isEqualTo(ReceiptBusinesses.Found(ReceiptBusiness("Legal Shop", "", ""), fromStore = false))
         assertThat(calls).containsExactly("merchant:Merchant")
         stores.merchantAnswer = MerchantLookup.Failed(Fault.Permission(ApiKey.ADYEN, "Management API—Account read"))
-        assertThat(read()).isEqualTo(ReceiptBusinesses.Failed(Fault.Permission(ApiKey.ADYEN, "Management API—Account read")))
+        assertThat(
+            read(),
+        ).isEqualTo(ReceiptBusinesses.Failed(Failure.Remote(Fault.Permission(ApiKey.ADYEN, "Management API—Account read"))))
     }
 
     @Test
     fun `unreadable saved keys block the lookup`() {
         env.useLinks()
         env.cipher.fail = true
-        assertThat(read()).isEqualTo(ReceiptBusinesses.NotSetUp(SetupProblem.UNREADABLE_API_KEY))
+        assertThat(read()).isEqualTo(ReceiptBusinesses.Failed(Failure.NotSetUp(SetupProblem.UNREADABLE_API_KEY)))
         assertThat(calls).isEmpty()
     }
 

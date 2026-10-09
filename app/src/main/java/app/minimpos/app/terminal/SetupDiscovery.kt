@@ -1,5 +1,6 @@
 package app.minimpos.app.terminal
 
+import app.minimpos.app.data.db.Failure
 import app.minimpos.app.data.db.SetupProblem
 import app.minimpos.app.data.security.SecretStoreException
 import app.minimpos.app.data.settings.SettingsRepository
@@ -7,8 +8,6 @@ import app.minimpos.app.data.settings.TerminalMode
 import app.minimpos.terminal.transport.AdyenTerminalDetails
 import app.minimpos.terminal.transport.CredentialLookup
 import app.minimpos.terminal.transport.DiscoveredKey
-import app.minimpos.terminal.transport.Fault
-import app.minimpos.terminal.transport.MalformedPart
 import app.minimpos.terminal.transport.SharedKeyLookup
 import app.minimpos.terminal.transport.TerminalDetails
 import app.minimpos.terminal.transport.TerminalDetailsApi
@@ -29,17 +28,17 @@ sealed interface SetupDiscoverySearch {
     ) : SetupDiscoverySearch
 
     /** Discovery was attempted but could not offer terminals.
-     * @property problem Typed reason, including an empty permitted listing.
+     * @property failure Why, including an empty permitted listing ([SetupProblem.TERMINAL_ACCESS]).
      */
     data class Failed(
-        val problem: SetupProblem,
+        val failure: Failure,
     ) : SetupDiscoverySearch
 }
 
 /** One terminal selection's immutable outcome; optional field imports may succeed despite a lookup failure. */
 sealed interface SetupDiscoveryChoice {
-    /** Lookup or assignment problem; null when no failure needs presentation. */
-    val problem: SetupProblem? get() = null
+    /** Lookup or assignment failure; null when no failure needs presentation. */
+    val failure: Failure? get() = null
 
     /** Whether missing optional details can be entered manually. */
     val manualDetails: Boolean get() = false
@@ -65,10 +64,10 @@ sealed interface SetupDiscoveryChoice {
     }
 
     /** Assignment or optional lookup failed; any safely imported fields are retained.
-     * @property problem Typed reason to present rather than silently falling back to manual entry.
+     * @property failure Why, to present rather than silently falling back to manual entry.
      */
     data class Failed(
-        override val problem: SetupProblem,
+        override val failure: Failure,
     ) : SetupDiscoveryChoice
 }
 
@@ -103,16 +102,16 @@ class SetupDiscovery(
             val environment = setup.environment ?: return@withLock SetupDiscoverySearch.Unavailable
             val api = connect(key)
             val credential = api.credential(environment)
-            if (credential is CredentialLookup.Failed) return@withLock SetupDiscoverySearch.Failed(credential.fault.setupProblem())
+            if (credential is CredentialLookup.Failed) return@withLock SetupDiscoverySearch.Failed(Failure.Remote(credential.fault))
             val onDevice = setup.onTerminal && setup.mode == TerminalMode.TERMINAL
             val target = setup.poiId.takeIf { onDevice }
             val found =
                 when (val result = api.terminals(environment, target)) {
                     is TerminalListing.Listed -> result
-                    is TerminalListing.Failed -> return@withLock SetupDiscoverySearch.Failed(result.fault.setupProblem())
+                    is TerminalListing.Failed -> return@withLock SetupDiscoverySearch.Failed(Failure.Remote(result.fault))
                 }
             val terminals = if (onDevice && target == null) emptyList() else TerminalAssignments.offered(found.terminals, target)
-            if (terminals.isEmpty()) return@withLock SetupDiscoverySearch.Failed(SetupProblem.TERMINAL_ACCESS)
+            if (terminals.isEmpty()) return@withLock SetupDiscoverySearch.Failed(Failure.NotSetUp(SetupProblem.TERMINAL_ACCESS))
             selection = Selection(key, setup, api, found.copy(terminals = terminals))
             SetupDiscoverySearch.Found(terminals.map { it.id })
         }
@@ -145,7 +144,7 @@ class SetupDiscovery(
                         return@withLock if (problem == SetupProblem.TERMINAL_ACCESS) {
                             SetupDiscoveryChoice.Ignored
                         } else {
-                            SetupDiscoveryChoice.Failed(problem)
+                            SetupDiscoveryChoice.Failed(Failure.NotSetUp(problem))
                         }
                     }
                 }
@@ -166,7 +165,7 @@ class SetupDiscovery(
         key: DiscoveredKey?,
         lookup: SharedKeyLookup?,
     ): SetupDiscoveryChoice {
-        if (lookup is SharedKeyLookup.Failed) return SetupDiscoveryChoice.Failed(lookup.fault.setupProblem())
+        if (lookup is SharedKeyLookup.Failed) return SetupDiscoveryChoice.Failed(Failure.Remote(lookup.fault))
         val localComplete = key != null && (selected.setup.onTerminal || terminal.host.isNotBlank())
         return if (terminal.merchantAccount.isNotBlank() && (selected.setup.mode != TerminalMode.TERMINAL || localComplete)) {
             SetupDiscoveryChoice.Complete
@@ -257,22 +256,11 @@ class SetupDiscovery(
     )
 }
 
-/** The setup problem a failed Management lookup reports. */
-internal fun Fault.setupProblem(): SetupProblem =
-    when {
-        this is Fault.Credential -> SetupProblem.MANAGEMENT_AUTHENTICATION
-        this is Fault.Permission -> SetupProblem.MANAGEMENT_PERMISSION
-        this is Fault.UnreadableReply -> SetupProblem.MANAGEMENT_UNREADABLE
-        this == Fault.Malformed(MalformedPart.SETTINGS) -> SetupProblem.TERMINAL_SETTINGS_UNREADABLE
-        this == Fault.Malformed(MalformedPart.KEY) -> SetupProblem.SHARED_KEY_INCOMPLETE
-        this == Fault.Malformed(MalformedPart.KEY_VERSION) -> SetupProblem.SHARED_KEY_INVALID
-        else -> SetupProblem.MANAGEMENT_UNAVAILABLE
-    }
-
 internal class SetupAccess(
     private val connect: (String) -> TerminalDetailsApi = { AdyenTerminalDetails(it) },
 ) {
-    suspend fun verify(unlocked: UnlockedSetup): SetupProblem? {
+    /** Why the credential or terminal assignment of [unlocked] cannot be used; null when it can. */
+    suspend fun verify(unlocked: UnlockedSetup): Failure? {
         val setup = unlocked.setup
         val key = unlocked.apiKey
         val environment = setup.environment
@@ -282,17 +270,17 @@ internal class SetupAccess(
             }
 
             key == null -> {
-                setup.apiSetup.problem ?: SetupProblem.API_KEY
+                Failure.NotSetUp(setup.apiSetup.problem ?: SetupProblem.API_KEY)
             }
 
             environment == null -> {
-                SetupProblem.ENVIRONMENT
+                Failure.NotSetUp(SetupProblem.ENVIRONMENT)
             }
 
             else -> {
                 val api = connect(key)
                 when (val credential = api.credential(environment)) {
-                    is CredentialLookup.Failed -> credential.fault.setupProblem()
+                    is CredentialLookup.Failed -> Failure.Remote(credential.fault)
                     CredentialLookup.Allowed -> if (setup.discoversTerminals && setup.poiId != null) assignment(api, setup) else null
                 }
             }
@@ -302,14 +290,16 @@ internal class SetupAccess(
     private suspend fun assignment(
         api: TerminalDetailsApi,
         setup: TerminalSetup,
-    ): SetupProblem? =
+    ): Failure? =
         when (val listing = api.terminals(checkNotNull(setup.environment), setup.poiId)) {
             is TerminalListing.Failed -> {
-                listing.fault.setupProblem()
+                Failure.Remote(listing.fault)
             }
 
             is TerminalListing.Listed -> {
-                TerminalAssignments.access(listing.terminals, checkNotNull(setup.poiId), setup.settings.terminal.merchantAccount)
+                TerminalAssignments
+                    .access(listing.terminals, checkNotNull(setup.poiId), setup.settings.terminal.merchantAccount)
+                    ?.let(Failure::NotSetUp)
             }
         }
 }

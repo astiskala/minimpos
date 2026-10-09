@@ -61,7 +61,7 @@ existing spelling (`preAuthorisation`, `SaleKind.PRE_AUTHORISATION`, `authorised
 | Verified setup | Local fingerprint of checked connection fields and encrypted payment secrets; changed facts invalidate it, not a process restart. | `TerminalSetupSource`, `AppSettings.verifiedSetup` |
 | Verified setup import | Authenticated QR candidate checked before activation; encrypted commit journal resumes interrupted saves, with an atomic catalog import receipt. | `terminal/SetupImport`, `data/transfer/SetupTransfer` |
 | Unlocked setup | Resolved setup with required secrets decrypted once. | `UnlockedSetup` |
-| Setup problem | Missing/unreadable information or other local condition to enter, install, approve or reconcile first, reported typed rather than thrown. | `SetupProblem` |
+| Setup problem | Missing/unreadable information or other local condition to enter, install, approve or reconcile first, reported typed rather than thrown. What Adyen refuses or fails to answer is a fault, not a setup problem; retired entries are kept only so stored names read. | `SetupProblem` |
 | Connection | Open with a client, or blocked as not set up/unreachable. | `Connection`, `Destination.connect` |
 | Connection check | Checks reachability/setup and learns printer availability when supported. | `TerminalStatus` |
 | Delivery | One message was answered, or failed with a fault; a fault that may have taken effect requires recovery. | `transport/Delivery` |

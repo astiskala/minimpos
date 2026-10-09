@@ -14,7 +14,6 @@ import app.minimpos.app.data.db.SaleEntity
 import app.minimpos.app.data.db.SetupProblem
 import app.minimpos.app.data.db.StoredReason
 import app.minimpos.app.payment.WalletScanProblem
-import app.minimpos.app.terminal.WalletDiscoveryFailure
 import app.minimpos.app.ui.components.ActionMessage
 import app.minimpos.app.ui.components.currentLocale
 import app.minimpos.core.money.CurrencySpec
@@ -36,8 +35,6 @@ fun ActionOutcome.text(): String =
         is ActionOutcome.CaptureFailed -> captureText()
         is ActionOutcome.Connected -> connectedText()
         is ActionOutcome.ConnectionFailed -> "${stringResource(R.string.settings_connection_failed)}: ${failure.text()}"
-        is ActionOutcome.NotSetUp -> problem.text()
-        ActionOutcome.NoAnswer -> stringResource(R.string.setup_no_response)
         ActionOutcome.ApiWorks -> stringResource(R.string.settings_api_ok)
         is ActionOutcome.TapToPayReady -> stringResource(R.string.result_tap_to_pay_ready, installationId)
         ActionOutcome.TapToPayRemoved -> stringResource(R.string.result_tap_to_pay_removed)
@@ -60,18 +57,10 @@ internal fun WalletScanProblem.text(): String =
         },
     )
 
-/** Optional wallet discovery diagnostics; only Settings displays these failures. */
+/** Why optional wallet discovery failed; only Settings displays it. */
 @Composable
 @ReadOnlyComposable
-internal fun WalletDiscoveryFailure.text(): String =
-    stringResource(
-        when (this) {
-            WalletDiscoveryFailure.AUTHENTICATION -> R.string.wallet_discovery_auth
-            WalletDiscoveryFailure.PERMISSION -> R.string.wallet_discovery_permission
-            WalletDiscoveryFailure.UNAVAILABLE -> R.string.wallet_discovery_unavailable
-            WalletDiscoveryFailure.UNREADABLE -> R.string.wallet_discovery_unreadable
-        },
-    )
+internal fun walletCheckFailed(failure: Failure): String = stringResource(R.string.wallet_check_failed, failure.text())
 
 /** Why a status check left a transaction's outcome unconfirmed, with what to do about it. */
 @Composable
@@ -321,42 +310,80 @@ private val SetupProblem.textRes: Int
     get() =
         when (this) {
             SetupProblem.POI_ID -> R.string.setup_poiid
+
             SetupProblem.HOST -> R.string.setup_host
+
             SetupProblem.KEY_IDENTIFIER -> R.string.setup_key_identifier
+
             SetupProblem.PASSPHRASE -> R.string.setup_passphrase
+
             SetupProblem.KEY_VERSION -> R.string.setup_key_version
+
             SetupProblem.MERCHANT_ACCOUNT -> R.string.setup_merchant_account
+
             SetupProblem.API_KEY -> R.string.setup_api_key
+
             SetupProblem.ENVIRONMENT -> R.string.setup_environment
+
             SetupProblem.TERMINAL_ENVIRONMENT -> R.string.setup_terminal_environment
+
             SetupProblem.LIVE_PREFIX -> R.string.setup_live_prefix
+
             SetupProblem.UNREADABLE_PASSPHRASE -> R.string.setup_unreadable_passphrase
+
             SetupProblem.UNREADABLE_API_KEY -> R.string.setup_unreadable_api_key
+
             SetupProblem.API_REQUIRED -> R.string.setup_api_required
+
             SetupProblem.CLOUD_API_KEY -> R.string.setup_cloud_api_key
+
             SetupProblem.PAYMENTS_APP_MISSING -> R.string.setup_payments_app_missing
+
             SetupProblem.PAYMENTS_APP_AMBIGUOUS -> R.string.setup_payments_app_ambiguous
+
             SetupProblem.PAYMENTS_APP_NOT_BOARDED -> R.string.setup_payments_app_not_boarded
+
             SetupProblem.PAYMENTS_APP_ON_TERMINAL -> R.string.setup_payments_app_on_terminal
+
             SetupProblem.PAYMENTS_APP_API_KEY -> R.string.setup_payments_app_api_key
+
             SetupProblem.UNREADABLE_PAYMENTS_APP_KEY -> R.string.setup_unreadable_payments_app_key
+
             SetupProblem.MANAGER_APPROVAL -> R.string.manager_pin_enter
+
             SetupProblem.PAYMENT_CONTEXT -> R.string.payment_context_mismatch
+
             SetupProblem.SETUP_NOT_VERIFIED -> R.string.setup_not_verified
+
             SetupProblem.TRANSFER_PENDING -> R.string.setup_transfer_pending
+
             SetupProblem.TERMINAL_ACCESS -> R.string.setup_terminal_access
+
             SetupProblem.MERCHANT_MISMATCH -> R.string.setup_merchant_mismatch
-            SetupProblem.MANAGEMENT_PERMISSION -> R.string.setup_management_permission
-            SetupProblem.MANAGEMENT_AUTHENTICATION -> R.string.setup_management_authentication
-            SetupProblem.MANAGEMENT_UNAVAILABLE -> R.string.setup_management_unavailable
-            SetupProblem.MANAGEMENT_UNREADABLE -> R.string.setup_management_unreadable
+
+            // Management failures are faults now; older stored names read as the matching fault.
+            SetupProblem.MANAGEMENT_PERMISSION -> R.string.fault_permission_adyen
+
+            SetupProblem.MANAGEMENT_AUTHENTICATION -> R.string.fault_credential_adyen
+
+            SetupProblem.MANAGEMENT_UNAVAILABLE -> R.string.fault_adyen_unavailable
+
+            SetupProblem.MANAGEMENT_UNREADABLE -> R.string.fault_unreadable_reply
+
             SetupProblem.TERMINAL_SETTINGS_UNREADABLE -> R.string.setup_terminal_settings_unreadable
+
             SetupProblem.SHARED_KEY_INCOMPLETE -> R.string.setup_shared_key_incomplete
+
             SetupProblem.SHARED_KEY_INVALID -> R.string.setup_shared_key_invalid
+
             SetupProblem.STORE_ACCESS -> R.string.setup_store_access
+
             SetupProblem.SETUP_CHANGED -> R.string.setup_changed
+
             SetupProblem.KEY_CONNECTION_PENDING -> R.string.setup_key_connection_pending
+
             SetupProblem.KEY_RECOVERY_UNREADABLE -> R.string.setup_key_recovery_unreadable
+
             SetupProblem.KEY_CREATION_UNCONFIRMED -> R.string.setup_key_creation_unconfirmed
         }
 

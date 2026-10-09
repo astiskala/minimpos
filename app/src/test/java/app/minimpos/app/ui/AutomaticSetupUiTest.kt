@@ -271,7 +271,12 @@ class AutomaticSetupUiTest {
     fun `unavailable lookup rejects import without saving credentials or offering manual bypass`() {
         lookupAvailable = false
         importAutomatic(succeeds = false)
-        compose.onNodeWithText(env.context.getString(R.string.setup_management_unavailable)).performScrollTo().assertIsDisplayed()
+        compose
+            .onNodeWithText(
+                env.context.getString(R.string.fault_adyen_unavailable),
+                substring = true,
+            ).performScrollTo()
+            .assertIsDisplayed()
         assertThat(await { env.container.secrets.get(Secret.ADYEN_API_KEY) }).isNull()
         assertThat(env.container.settingsState.value.terminal.merchantAccount).isEmpty()
     }
@@ -315,7 +320,7 @@ class AutomaticSetupUiTest {
         val before = await { env.container.settings.current() }
         importAutomatic(succeeds = false)
         compose.onNodeWithText(env.context.getString(message)).performScrollTo().assertIsDisplayed()
-        compose.onNodeWithText(env.context.getString(R.string.setup_management_unavailable)).assertDoesNotExist()
+        compose.onNodeWithText(env.context.getString(R.string.fault_adyen_unavailable), substring = true).assertDoesNotExist()
         compose.onNodeWithTag("confirmSharedKey").assertDoesNotExist()
         assertThat(await { env.container.settings.current() }).isEqualTo(before)
         assertThat(await { env.container.secrets.get(Secret.ADYEN_API_KEY) }).isNull()

@@ -327,7 +327,7 @@ class SettingsViewModel(
             }
 
             is TerminalConnection.NotSetUp -> {
-                ActionState(outcome = ActionOutcome.NotSetUp(connection.problem), isError = true)
+                ActionState(outcome = ActionOutcome.Failed(Failure.NotSetUp(connection.problem)), isError = true)
             }
 
             is TerminalConnection.Failed -> {
@@ -342,8 +342,8 @@ class SettingsViewModel(
     private suspend fun apiResult(): ActionState =
         when (val check = checks.api.verify()) {
             ApiCheck.Works -> ActionState(outcome = ActionOutcome.ApiWorks, done = true)
-            is ApiCheck.NotSetUp -> ActionState(outcome = ActionOutcome.NotSetUp(check.problem), isError = true)
-            is ApiCheck.Failed -> ActionState(outcome = ActionOutcome.Failed(Failure.Remote(check.fault)), isError = true)
+            is ApiCheck.NotSetUp -> ActionState(outcome = ActionOutcome.Failed(Failure.NotSetUp(check.problem)), isError = true)
+            is ApiCheck.Failed -> ActionState(outcome = ActionOutcome.Failed(check.failure), isError = true)
         }
 
     /** Closes the connection test's result dialog. */

@@ -188,9 +188,11 @@ class SharedKeySetupTest {
         assertThat(await { owner.resolve(unlocked()) }).isEqualTo(SharedKeySetupOutcome.Failed(SetupProblem.SETUP_CHANGED))
         assertThat(reads).isEqualTo(0)
         busy = false
-        apiCheck = ApiCheck.NotSetUp(SetupProblem.MANAGEMENT_PERMISSION)
-        assertThat(await { owner.resolve(unlocked()) }).isEqualTo(SharedKeySetupOutcome.Failed(SetupProblem.MANAGEMENT_PERMISSION))
-        apiCheck = ApiCheck.Failed(Fault.AdyenUnavailable(503))
+        apiCheck = ApiCheck.Failed(Failure.Remote(Fault.Permission(ApiKey.ADYEN)))
+        assertThat(
+            await { owner.resolve(unlocked()) },
+        ).isEqualTo(SharedKeySetupOutcome.Failed(Failure.Remote(Fault.Permission(ApiKey.ADYEN))))
+        apiCheck = ApiCheck.Failed(Failure.Remote(Fault.AdyenUnavailable(503)))
         assertThat(
             await {
                 owner.resolve(unlocked())
@@ -206,14 +208,14 @@ class SharedKeySetupTest {
     fun `failed reads and unreadable recovery never become key absence`() {
         val owner = owner()
         listOf(
-            Fault.Permission(ApiKey.ADYEN) to SetupProblem.MANAGEMENT_PERMISSION,
-            Fault.UnreadableReply() to SetupProblem.MANAGEMENT_UNREADABLE,
-            Fault.Malformed(MalformedPart.SETTINGS) to SetupProblem.TERMINAL_SETTINGS_UNREADABLE,
-            Fault.Malformed(MalformedPart.KEY) to SetupProblem.SHARED_KEY_INCOMPLETE,
-            Fault.Malformed(MalformedPart.KEY_VERSION) to SetupProblem.SHARED_KEY_INVALID,
-        ).forEach { (reason, problem) ->
+            Fault.Permission(ApiKey.ADYEN),
+            Fault.UnreadableReply(),
+            Fault.Malformed(MalformedPart.SETTINGS),
+            Fault.Malformed(MalformedPart.KEY),
+            Fault.Malformed(MalformedPart.KEY_VERSION),
+        ).forEach { reason ->
             found = SharedKeyLookup.Failed(reason)
-            assertThat(await { owner.resolve(unlocked()) }).isEqualTo(SharedKeySetupOutcome.Failed(problem))
+            assertThat(await { owner.resolve(unlocked()) }).isEqualTo(SharedKeySetupOutcome.Failed(Failure.Remote(reason)))
         }
         found = SharedKeyLookup.Missing
         await {

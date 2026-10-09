@@ -85,25 +85,46 @@ enum class SetupProblem {
     /** Explicit account conflicts with the terminal's current assignment. */
     MERCHANT_MISMATCH,
 
-    /** Credential lacks the terminal-access role required for every real setup. */
+    /**
+     * Credential lacks the terminal-access role required for every real setup.
+     * No longer reported (Management failures are faults); kept so stored names still read.
+     */
     MANAGEMENT_PERMISSION,
 
-    /** API credential is rejected in the device's selected or detected environment. */
+    /**
+     * API credential is rejected in the device's selected or detected environment.
+     * No longer reported (Management failures are faults); kept so stored names still read.
+     */
     MANAGEMENT_AUTHENTICATION,
 
-    /** Management lookup failed temporarily or returned an unreadable answer. */
+    /**
+     * Management lookup failed temporarily or returned an unreadable answer.
+     * No longer reported (Management failures are faults); kept so stored names still read.
+     */
     MANAGEMENT_UNAVAILABLE,
 
-    /** A successful Management answer lacks required fields or contains malformed data. */
+    /**
+     * A successful Management answer lacks required fields or contains malformed data.
+     * No longer reported (Management failures are faults); kept so stored names still read.
+     */
     MANAGEMENT_UNREADABLE,
 
-    /** Terminal settings contain unsupported fields or invalid values, preventing safe shared-key lookup or creation. */
+    /**
+     * Terminal settings contain unsupported fields or invalid values, preventing safe shared-key lookup or creation.
+     * No longer reported (Management failures are faults); kept so stored names still read.
+     */
     TERMINAL_SETTINGS_UNREADABLE,
 
-    /** Adyen returned an encryption-key object without all required fields; never treat it as key absence. */
+    /**
+     * Adyen returned an encryption-key object without all required fields; never treat it as key absence.
+     * No longer reported (Management failures are faults); kept so stored names still read.
+     */
     SHARED_KEY_INCOMPLETE,
 
-    /** Adyen returned an encryption-key version outside the supported range. */
+    /**
+     * Adyen returned an encryption-key version outside the supported range.
+     * No longer reported (Management failures are faults); kept so stored names still read.
+     */
     SHARED_KEY_INVALID,
 
     /** The assigned receipt store could not be retrieved; another store must not be substituted. */

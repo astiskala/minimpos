@@ -93,7 +93,7 @@ class TapToPaySetup(
                 when (val checked = verifyApi()) {
                     ApiCheck.Works -> boardSaved(access, reboard)
                     is ApiCheck.NotSetUp -> TapToPayOutcome.NotSetUp(checked.problem)
-                    is ApiCheck.Failed -> TapToPayOutcome.Failed(Failure.Remote(checked.fault))
+                    is ApiCheck.Failed -> TapToPayOutcome.Failed(checked.failure)
                 }
             }
         }
@@ -147,7 +147,7 @@ class TapToPaySetup(
         explicit: Boolean,
     ): TapToPayOutcome {
         val (previous, unreadable) = recovery()
-        if (unreadable) return TapToPayOutcome.NotSetUp(SetupProblem.MANAGEMENT_UNAVAILABLE)
+        if (unreadable) return TapToPayOutcome.Failed(Failure.Device(DeviceFault.SECURE_STORAGE))
         val same = previous?.matches(access, target) == true
         val active = setups.current().settings.terminal
         val activeMatches = active.targetOrNull() == target

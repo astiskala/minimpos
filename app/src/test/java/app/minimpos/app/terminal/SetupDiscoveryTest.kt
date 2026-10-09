@@ -3,6 +3,7 @@ package app.minimpos.app.terminal
 import app.minimpos.app.FakeDevice
 import app.minimpos.app.TestEnvironment
 import app.minimpos.app.await
+import app.minimpos.app.data.db.Failure
 import app.minimpos.app.data.db.SetupProblem
 import app.minimpos.app.data.security.Secret
 import app.minimpos.app.data.settings.TerminalMode
@@ -110,7 +111,7 @@ class SetupDiscoveryTest {
         await { container.secrets.set(Secret.TERMINAL_PASSPHRASE, "manual secret") }
         await { container.setupDiscovery.find() }
         assertThat(await { container.setupDiscovery.choose("S1F2-123456789") }).isEqualTo(
-            SetupDiscoveryChoice.Failed(SetupProblem.MANAGEMENT_PERMISSION),
+            SetupDiscoveryChoice.Failed(Failure.Remote(Fault.Permission(ApiKey.ADYEN))),
         )
         val saved = await { container.settings.current() }.terminal
         assertThat(saved.merchantAccount).isEqualTo("Merchant")
@@ -126,7 +127,9 @@ class SetupDiscoveryTest {
         ready()
         listing = TerminalListing.Failed(Fault.AdyenUnavailable(503))
         val before = await { container.settings.current() }
-        assertThat(await { container.setupDiscovery.find() }).isEqualTo(SetupDiscoverySearch.Failed(SetupProblem.MANAGEMENT_UNAVAILABLE))
+        assertThat(
+            await { container.setupDiscovery.find() },
+        ).isEqualTo(SetupDiscoverySearch.Failed(Failure.Remote(Fault.AdyenUnavailable(503))))
         assertThat(await { container.setupDiscovery.choose("S1F2-123456789") }).isEqualTo(SetupDiscoveryChoice.Ignored)
         assertThat(await { container.settings.current() }).isEqualTo(before)
     }
@@ -185,10 +188,12 @@ class SetupDiscoveryTest {
         listing = TerminalListing.Failed(Fault.AdyenUnavailable(503))
         val before = await { container.settings.current() }
         val failed = await { container.setupDiscovery.find() }
-        assertThat(failed).isEqualTo(SetupDiscoverySearch.Failed(SetupProblem.MANAGEMENT_UNAVAILABLE))
+        assertThat(failed).isEqualTo(SetupDiscoverySearch.Failed(Failure.Remote(Fault.AdyenUnavailable(503))))
         listing = TerminalListing.Listed(emptyList(), TerminalEnvironment.TEST)
-        assertThat(await { container.setupDiscovery.find() }).isEqualTo(SetupDiscoverySearch.Failed(SetupProblem.TERMINAL_ACCESS))
-        assertThat(failed).isEqualTo(SetupDiscoverySearch.Failed(SetupProblem.MANAGEMENT_UNAVAILABLE))
+        assertThat(
+            await { container.setupDiscovery.find() },
+        ).isEqualTo(SetupDiscoverySearch.Failed(Failure.NotSetUp(SetupProblem.TERMINAL_ACCESS)))
+        assertThat(failed).isEqualTo(SetupDiscoverySearch.Failed(Failure.Remote(Fault.AdyenUnavailable(503))))
         assertThat(await { container.settings.current() }).isEqualTo(before)
     }
 
@@ -216,7 +221,7 @@ class SetupDiscoveryTest {
         val before = await { container.settings.current() }
         await { container.setupDiscovery.find() }
         val result = await { container.setupDiscovery.choose("S1F2-123456789") }
-        assertThat(result).isEqualTo(SetupDiscoveryChoice.Failed(SetupProblem.MERCHANT_MISMATCH))
+        assertThat(result).isEqualTo(SetupDiscoveryChoice.Failed(Failure.NotSetUp(SetupProblem.MERCHANT_MISMATCH)))
         assertThat(result.manualDetails).isFalse()
         assertThat(await { container.settings.current() }).isEqualTo(before)
     }

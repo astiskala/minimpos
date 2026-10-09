@@ -184,12 +184,12 @@ class SettingsViewModelTest {
         val vm = settingsViewModel()
         vm.businessImport.find()
         assertThat(await { vm.businessImport.state.first { it.lookup.isError } }.lookup.outcome)
-            .isEqualTo(ActionOutcome.NotSetUp(SetupProblem.API_REQUIRED))
+            .isEqualTo(ActionOutcome.Failed(Failure.NotSetUp(SetupProblem.API_REQUIRED)))
         env.useLinks()
         env.updateSettings { it.copy(terminal = it.terminal.copy(storeId = "ST1")) }
         vm.businessImport.find()
         assertThat(await { vm.businessImport.state.first { it.lookup.isError } }.lookup.outcome)
-            .isEqualTo(ActionOutcome.NotSetUp(SetupProblem.STORE_ACCESS))
+            .isEqualTo(ActionOutcome.Failed(Failure.NotSetUp(SetupProblem.STORE_ACCESS)))
         val before = await { container.settings.current() }
         vm.businessImport.choose(ReceiptBusiness("Not offered", "", ""))
         assertThat(await { container.settings.current() }).isEqualTo(before)
@@ -357,7 +357,7 @@ class SettingsViewModelTest {
         env.updateSettings { it.copy(terminal = it.terminal.copy(mode = TerminalMode.TERMINAL)) }
         vm.saveAndTest(Secret.TERMINAL_PASSPHRASE)
         assertThat(await { vm.actions.first { it.connection.isError } }.connection.outcome)
-            .isEqualTo(ActionOutcome.NotSetUp(SetupProblem.ENVIRONMENT))
+            .isEqualTo(ActionOutcome.Failed(Failure.NotSetUp(SetupProblem.ENVIRONMENT)))
         env.updateSettings {
             it.copy(
                 terminal =

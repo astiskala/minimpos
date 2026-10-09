@@ -12,6 +12,7 @@ import app.minimpos.terminal.checkout.ModificationResult
 import app.minimpos.terminal.checkout.PaymentLink
 import app.minimpos.terminal.checkout.PaymentLinkStatus
 import app.minimpos.terminal.client.TransactionDetails
+import app.minimpos.terminal.transport.Fault
 
 /**
  * Something that happened to a stored sale after it was opened, which moves it on ([after]). It is the one place that
@@ -20,8 +21,9 @@ import app.minimpos.terminal.client.TransactionDetails
  * [app.minimpos.app.refund.PaymentStanding] as what can be observed. An accepted refund or cancellation, which also
  * changes the sale's lines, is [SaleRepository.applyRefund].
  *
- * Why something did not succeed is stored as Adyen or the terminal worded it (`message`) or, when the app itself says
- * so, as a [StoredReason] the screens word; each happening that writes one clears the other.
+ * Why something did not succeed is stored as the terminal or Adyen answered it (`message`, verbatim) or as a typed
+ * [StoredReason] the screens word, which also keeps the words of a fault; each happening that writes one clears the
+ * other.
  */
 sealed interface SaleEvent {
     /**
@@ -71,14 +73,14 @@ sealed interface SaleEvent {
     /**
      * Adyen did not take what was sent (a payment link that was not created), so nothing was charged.
      *
-     * @property message Why, as Adyen worded it.
+     * @property fault Why; one that took no effect.
      */
     data class NotSent(
-        val message: String,
+        val fault: Fault,
     ) : SaleEvent
 
     /**
-     * Nothing was sent, because something must be set up first ([StoredReason.NotDone]), so nothing was charged.
+     * Nothing was sent, because something must be set up first ([Failure.NotSetUp]), so nothing was charged.
      *
      * @property problem What.
      */
@@ -90,10 +92,10 @@ sealed interface SaleEvent {
      * It is not known whether what was sent took effect (a payment link that may or may not have been created):
      * [StoredReason.Unconfirmed].
      *
-     * @property message What went wrong, as it was worded; null when nothing more is known.
+     * @property failure What prevented the confirmation; null when nothing more is known.
      */
     data class OutcomeUnknown(
-        val message: String? = null,
+        val failure: Failure? = null,
     ) : SaleEvent
 
     /**
@@ -203,7 +205,7 @@ fun SaleEntity.after(event: SaleEvent): SaleEntity =
         }
 
         is SaleEvent.NotSent -> {
-            ended(SaleStatus.FAILED, event.message, null)
+            ended(SaleStatus.FAILED, null, StoredReason.NotDone(Failure.Remote(event.fault)))
         }
 
         is SaleEvent.NotSetUp -> {
@@ -211,7 +213,7 @@ fun SaleEntity.after(event: SaleEvent): SaleEntity =
         }
 
         is SaleEvent.OutcomeUnknown -> {
-            ended(SaleStatus.UNKNOWN, event.message, StoredReason.Unconfirmed())
+            ended(SaleStatus.UNKNOWN, null, StoredReason.Unconfirmed(event.failure))
         }
 
         is SaleEvent.Emailed -> {
@@ -219,7 +221,7 @@ fun SaleEntity.after(event: SaleEvent): SaleEntity =
         }
 
         is SaleEvent.AdjustmentAnswered -> {
-            adjustmentAnswered(event.amountMinor, event.result).copy(adjustmentPending = event.result is ModificationResult.Unknown)
+            adjustmentAnswered(event.amountMinor, event.result).copy(adjustmentPending = event.result.unconfirmed)
         }
 
         is SaleEvent.CaptureSending -> {
@@ -322,9 +324,8 @@ private fun SaleEntity.adjustmentAnswered(
     when (result) {
         is ModificationResult.Authorised -> adjusted(amountMinor, AdjustmentStatus.AUTHORISED, result.adjustAuthorisationData)
         is ModificationResult.Received -> adjusted(amountMinor, AdjustmentStatus.REQUESTED, adjustAuthorisationData)
-        is ModificationResult.Refused -> modificationFailed(result.reason, null)
-        is ModificationResult.NotProcessed -> modificationFailed(result.message, null)
-        is ModificationResult.Unknown -> modificationFailed(result.message, null)
+        is ModificationResult.Refused -> modificationFailed(result.said?.text, null)
+        is ModificationResult.Failed -> modificationFailed(null, result.fault.storedReason())
     }
 
 private fun SaleEntity.adjusted(
@@ -342,16 +343,31 @@ private fun SaleEntity.captureRecorded(
 
 private fun SaleEntity.captureAnswered(result: ModificationResult): SaleEntity =
     when (result) {
-        is ModificationResult.Received, is ModificationResult.Authorised -> captureAnswered(CaptureStatus.REQUESTED, null)
-        is ModificationResult.Refused -> captureAnswered(CaptureStatus.FAILED, result.reason)
-        is ModificationResult.NotProcessed -> captureAnswered(CaptureStatus.FAILED, result.message)
-        is ModificationResult.Unknown -> captureAnswered(CaptureStatus.UNKNOWN, result.message)
+        is ModificationResult.Received, is ModificationResult.Authorised -> {
+            copy(
+                captureStatus = CaptureStatus.REQUESTED,
+            ).modificationFailed(null, null)
+        }
+
+        is ModificationResult.Refused -> {
+            copy(captureStatus = CaptureStatus.FAILED).modificationFailed(result.said?.text, null)
+        }
+
+        is ModificationResult.Failed -> {
+            captureFailed(result.fault)
+        }
     }
 
-private fun SaleEntity.captureAnswered(
-    status: CaptureStatus,
-    message: String?,
-): SaleEntity = copy(captureStatus = status).modificationFailed(message, null)
+private fun SaleEntity.captureFailed(fault: Fault): SaleEntity =
+    copy(captureStatus = if (fault.mayHaveTakenEffect) CaptureStatus.UNKNOWN else CaptureStatus.FAILED)
+        .modificationFailed(null, fault.storedReason())
+
+/** Whether this answer leaves the modification's outcome unknown, so it is sent again with the same identity. */
+private val ModificationResult.unconfirmed: Boolean get() = this is ModificationResult.Failed && fault.mayHaveTakenEffect
+
+/** This fault as the stored reason: unconfirmed when the request may have taken effect, else not done. */
+private fun Fault.storedReason(): StoredReason =
+    if (mayHaveTakenEffect) StoredReason.Unconfirmed(Failure.Remote(this)) else StoredReason.NotDone(Failure.Remote(this))
 
 private fun SaleEntity.interrupted(): SaleEntity {
     val payment = if (status == SaleStatus.PENDING) ended(SaleStatus.UNKNOWN, null, StoredReason.Interrupted) else this

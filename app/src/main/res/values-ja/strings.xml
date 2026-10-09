@@ -325,7 +325,7 @@
   <string name="tip_confirm_no_tip_title">チップなしにしますか？</string>
   <string name="tip_confirm_sum">会計 %1$s + チップ %2$s = %3$s。</string>
   <string name="tip_confirm_capture">今すぐ%1$sをキャプチャします。チップは後から変更できません。</string>
-  <string name="tip_refused">カード発行会社が%1$sを承認しませんでした（%2$s）。チップを減らすか、チップなしにしてください。</string>
+  <string name="tip_refused">カード発行会社が%1$sを承認しませんでした。チップを減らすか、チップなしにしてください。</string>
   <string name="capture_failed">未キャプチャ：%1$s</string>
   <string name="capture_not_allowed">この決済はキャプチャできなくなりました。</string>
   <string name="capture_title">キャプチャ</string>
@@ -342,7 +342,7 @@
   <string name="capture_confirm_more">先にカード発行会社へ、増額の承認を要求します。</string>
   <string name="adjust_confirm_title">%1$sを確保しますか？</string>
   <string name="adjust_confirm_message">カード発行会社に、購入者のカードの確保額を%2$sから%1$sに変更するよう要求します。</string>
-  <string name="capture_refused">カード発行会社が%1$sを承認しませんでした（%2$s）。</string>
+  <string name="capture_refused">カード発行会社が%1$sを承認しませんでした。</string>
   <string name="adjust_failed">未調整：%1$s</string>
   <string name="products_title">商品</string>
   <string name="products_tab_products">商品</string>

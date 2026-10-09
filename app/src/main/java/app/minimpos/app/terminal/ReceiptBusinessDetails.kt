@@ -5,6 +5,7 @@ import app.minimpos.app.data.settings.ReceiptSettings
 import app.minimpos.app.data.settings.TerminalSettings
 import app.minimpos.terminal.transport.AdyenStoreDetails
 import app.minimpos.terminal.transport.AdyenTerminalDetails
+import app.minimpos.terminal.transport.Fault
 import app.minimpos.terminal.transport.MerchantLookup
 import app.minimpos.terminal.transport.StoreDetailsApi
 import app.minimpos.terminal.transport.StoreLookup
@@ -59,10 +60,10 @@ sealed interface ReceiptBusinesses {
 
     /**
      * Adyen refused or the store or merchant details could not be read.
-     * @property message Non-secret reason supplied by the integration.
+     * @property fault Why.
      */
     data class Failed(
-        val message: String,
+        val fault: Fault,
     ) : ReceiptBusinesses
 }
 
@@ -113,7 +114,7 @@ class ReceiptBusinessDetails(
         if (!setup.discoversTerminals || setup.poiId == null) return StoreScope.Assigned(setup.settings.terminal.storeId)
         return when (val listing = terminals(checkNotNull(unlocked.apiKey)).terminals(checkNotNull(setup.environment), setup.poiId)) {
             is TerminalListing.Failed -> {
-                StoreScope.Blocked(listing.reason.setupProblem())
+                StoreScope.Blocked(listing.fault.setupProblem())
             }
 
             is TerminalListing.Listed -> {
@@ -145,7 +146,7 @@ class ReceiptBusinessDetails(
         if (store.isEmpty()) {
             return when (val lookup = api.merchant(merchant)) {
                 is MerchantLookup.Found -> ReceiptBusinesses.Found(ReceiptBusiness(lookup.legalName, "", ""), fromStore = false)
-                is MerchantLookup.Failed -> ReceiptBusinesses.Failed(lookup.message)
+                is MerchantLookup.Failed -> ReceiptBusinesses.Failed(lookup.fault)
             }
         }
         return when (val lookup = api.store(merchant, store)) {
@@ -159,7 +160,7 @@ class ReceiptBusinessDetails(
             }
 
             is StoreLookup.Failed -> {
-                ReceiptBusinesses.Failed(lookup.message)
+                ReceiptBusinesses.Failed(lookup.fault)
             }
         }
     }

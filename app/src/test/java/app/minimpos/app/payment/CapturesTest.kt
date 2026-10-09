@@ -32,6 +32,8 @@ import app.minimpos.terminal.checkout.CheckoutCredentials
 import app.minimpos.terminal.checkout.ModificationAmount
 import app.minimpos.terminal.checkout.ModificationResult
 import app.minimpos.terminal.checkout.PaymentModifications
+import app.minimpos.terminal.transport.ExternalText
+import app.minimpos.terminal.transport.Fault
 import app.minimpos.terminal.transport.TerminalEnvironment
 import com.google.common.truth.Truth.assertThat
 import kotlinx.coroutines.flow.first
@@ -79,7 +81,7 @@ private class FakeModifications : PaymentModifications {
             }
     }
 
-    override suspend fun verify(): String? = null
+    override suspend fun verify(): Fault? = null
 }
 
 @RunWith(RobolectricTestRunner::class)
@@ -167,16 +169,16 @@ class CapturesTest {
     @Test
     fun `a refused adjustment keeps the tip unsaved, so a smaller one can be entered`() {
         store()
-        fake.adjustResult = ModificationResult.Refused("Not enough balance")
-        assertThat(await { captures.addTip("s1", 1_000) }).isEqualTo(CaptureResult.Refused("Not enough balance"))
+        fake.adjustResult = ModificationResult.Refused(ExternalText("Not enough balance"))
+        assertThat(await { captures.addTip("s1", 1_000) }).isEqualTo(CaptureResult.Refused(ExternalText("Not enough balance")))
         val refused = sale()
         assertThat(refused.tipMinor).isNull()
         assertThat(refused.modificationMessage).isEqualTo("Not enough balance")
         assertThat(fake.captures).isEmpty()
         assertThat(refused.standing).isEqualTo(PaymentStanding.AWAITING_TIP)
 
-        fake.adjustResult = ModificationResult.Unknown("timeout")
-        assertThat(await { captures.addTip("s1", 1_000) }).isEqualTo(CaptureResult.Failed("timeout"))
+        fake.adjustResult = ModificationResult.Failed(Fault.TimedOut)
+        assertThat(await { captures.addTip("s1", 1_000) }).isEqualTo(CaptureResult.Failed(Failure.Remote(Fault.TimedOut)))
         assertThat(sale().tipMinor).isNull()
 
         fake.adjustResult = null
@@ -187,16 +189,17 @@ class CapturesTest {
     @Test
     fun `a capture Adyen did not take, or whose outcome is unknown, is sent again with the same key`() {
         store()
-        fake.captureResult = ModificationResult.NotProcessed("Invalid amount (HTTP 422, code 137)")
-        assertThat(await { captures.addTip("s1", 100) }).isEqualTo(CaptureResult.Failed("Invalid amount (HTTP 422, code 137)"))
+        fake.captureResult = ModificationResult.Failed(Fault.AdyenRejected(422, null, ExternalText("Invalid amount (HTTP 422, code 137)")))
+        val invalid = Fault.AdyenRejected(422, null, ExternalText("Invalid amount (HTTP 422, code 137)"))
+        assertThat(await { captures.addTip("s1", 100) }).isEqualTo(CaptureResult.Failed(Failure.Remote(invalid)))
         val failed = sale()
         assertThat(failed.tipMinor).isEqualTo(100)
         assertThat(failed.captureStatus).isEqualTo(CaptureStatus.FAILED)
-        assertThat(failed.modificationMessage).contains("Invalid amount")
+        assertThat(failed.modificationReason).isEqualTo(StoredReason.NotDone(Failure.Remote(invalid)))
         assertThat(failed.standing).isEqualTo(PaymentStanding.CAPTURE_FAILED)
 
-        fake.captureResult = ModificationResult.Unknown("timeout")
-        assertThat(await { captures.retryCapture("s1") }).isEqualTo(CaptureResult.Failed("timeout"))
+        fake.captureResult = ModificationResult.Failed(Fault.TimedOut)
+        assertThat(await { captures.retryCapture("s1") }).isEqualTo(CaptureResult.Failed(Failure.Remote(Fault.TimedOut)))
         assertThat(sale().captureStatus).isEqualTo(CaptureStatus.UNKNOWN)
 
         fake.captureResult = ModificationResult.Received("CAP")
@@ -248,8 +251,9 @@ class CapturesTest {
         assertThat(await { captures.adjust("p1", 3_000) }).isEqualTo(CaptureResult.Adjusted)
         assertThat(sale("p1").heldMinor).isEqualTo(3_000)
         assertThat(sale("p1").captureStatus).isNull()
-        fake.adjustResult = ModificationResult.NotProcessed("Not allowed")
-        assertThat(await { captures.adjust("p1", 3_500) }).isEqualTo(CaptureResult.Failed("Not allowed"))
+        fake.adjustResult = ModificationResult.Failed(Fault.AdyenRejected(422, null, ExternalText("Not allowed")))
+        assertThat(await { captures.adjust("p1", 3_500) })
+            .isEqualTo(CaptureResult.Failed(Failure.Remote(Fault.AdyenRejected(422, null, ExternalText("Not allowed")))))
         assertThat(sale("p1").heldMinor).isEqualTo(3_000)
         // Adjusting a sale awaiting its tip is not offered.
         store()

@@ -9,6 +9,9 @@ import app.minimpos.terminal.checkout.PaymentLinkRequest
 import app.minimpos.terminal.checkout.PaymentLinkResult
 import app.minimpos.terminal.checkout.PaymentLinkStatus
 import app.minimpos.terminal.client.PosApplication
+import app.minimpos.terminal.transport.ApiKey
+import app.minimpos.terminal.transport.ExternalText
+import app.minimpos.terminal.transport.Fault
 import app.minimpos.terminal.transport.TerminalEnvironment
 import com.adyen.terminal.serialization.TerminalAPIGsonBuilder
 import com.google.common.truth.Truth.assertThat
@@ -164,12 +167,14 @@ class CheckoutPaymentLinksTest {
         reply("""{"id":"PL1","url":"https://test.adyen.link/PL1","status":"strange"}""")
         reply("""{"id":"PL1","url":"https://test.adyen.link/PL1","status":"active","expiresAt":"tomorrow"}""")
         runBlocking {
-            assertThat(api.status("PL1")).isEqualTo(PaymentLinkResult.NotProcessed("Not allowed (HTTP 403, code 010)"))
-            assertThat(api.status("PL1")).isEqualTo(PaymentLinkResult.Unknown("Internal error (HTTP 500)"))
-            assertThat(api.status("PL1")).isEqualTo(PaymentLinkResult.Unknown("Adyen returned an error (HTTP 429)"))
-            assertThat(api.status("PL1")).isEqualTo(PaymentLinkResult.Unknown("Unexpected response from Adyen"))
-            assertThat(api.status("PL1")).isEqualTo(PaymentLinkResult.Unknown("Unexpected response from Adyen"))
-            assertThat(api.status("PL1")).isEqualTo(PaymentLinkResult.Unknown("Unexpected status from Adyen: strange"))
+            assertThat(api.status("PL1")).isEqualTo(PaymentLinkResult.Failed(Fault.Permission(ApiKey.ADYEN)))
+            assertThat(
+                api.status("PL1"),
+            ).isEqualTo(PaymentLinkResult.Failed(Fault.AdyenUnavailable(500, null, ExternalText("Internal error"))))
+            assertThat(api.status("PL1")).isEqualTo(PaymentLinkResult.Failed(Fault.AdyenUnavailable(429)))
+            assertThat(api.status("PL1")).isEqualTo(PaymentLinkResult.Failed(Fault.UnreadableReply()))
+            assertThat(api.status("PL1")).isEqualTo(PaymentLinkResult.Failed(Fault.UnreadableReply()))
+            assertThat(api.status("PL1")).isEqualTo(PaymentLinkResult.Failed(Fault.UnreadableReply(ExternalText("strange"))))
             assertThat((api.status("PL1") as PaymentLinkResult.Answered).link.expiresAt).isNull()
         }
     }
@@ -186,7 +191,7 @@ class CheckoutPaymentLinksTest {
                 link("active") + " {}",
             ).forEach { body ->
                 reply(body)
-                assertThat(api.status("PL123")).isInstanceOf(PaymentLinkResult.Unknown::class.java)
+                assertThat(api.status("PL123")).isEqualTo(PaymentLinkResult.Failed(Fault.UnreadableReply()))
             }
         }
 
@@ -200,14 +205,13 @@ class CheckoutPaymentLinksTest {
                 .headersDelay(2, TimeUnit.SECONDS)
                 .build(),
         )
-        assertThat(runBlocking { slow.create(request, "k") }).isInstanceOf(PaymentLinkResult.Unknown::class.java)
+        assertThat(runBlocking { slow.create(request, "k") }).isEqualTo(PaymentLinkResult.Failed(Fault.TimedOut))
 
         val closed = MockWebServer().apply { start() }
         val url = closed.url("/v72/")
         closed.close()
         val result = runBlocking { CheckoutPaymentLinks(credentials, baseUrl = url).create(request, "k") }
-        assertThat(result).isInstanceOf(PaymentLinkResult.NotProcessed::class.java)
-        assertThat((result as PaymentLinkResult.NotProcessed).message).startsWith("Cannot connect to Adyen")
-        assertThat(result.message).doesNotContain("secret-api-key")
+        assertThat(result).isEqualTo(PaymentLinkResult.Failed(Fault.Unreachable(url.host, terminal = false)))
+        assertThat(result.toString()).doesNotContain("secret-api-key")
     }
 }

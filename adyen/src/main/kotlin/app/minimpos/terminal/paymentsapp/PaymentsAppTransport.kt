@@ -3,12 +3,11 @@ package app.minimpos.terminal.paymentsapp
 import app.minimpos.terminal.parse.FormEncoding
 import app.minimpos.terminal.transport.CompletedTransactions
 import app.minimpos.terminal.transport.Delivery
+import app.minimpos.terminal.transport.ExternalText
+import app.minimpos.terminal.transport.Fault
 import app.minimpos.terminal.transport.TerminalEnvironment
-import app.minimpos.terminal.transport.TerminalHttpClient
 import app.minimpos.terminal.transport.TerminalKey
 import app.minimpos.terminal.transport.TerminalTransport
-import app.minimpos.terminal.transport.TerminalUnreachableException
-import app.minimpos.terminal.transport.toDelivery
 import com.adyen.model.nexo.MessageHeader
 import com.adyen.model.nexo.SaleToPOIResponse
 import com.adyen.model.nexo.TransactionStatusRequest
@@ -18,10 +17,42 @@ import com.adyen.model.terminal.TerminalAPISecuredRequest
 import com.adyen.model.terminal.TerminalAPISecuredResponse
 import com.adyen.terminal.security.NexoCrypto
 import com.adyen.terminal.serialization.TerminalAPIGsonBuilder
-import java.io.IOException
 import java.net.URLEncoder
 import java.util.Base64
 import kotlin.time.Duration
+
+/** What came of opening one App Link in the Adyen Payments app, see [AppLinkExchange.exchange]. */
+sealed interface AppLinkAnswer {
+    /**
+     * The app called back.
+     *
+     * @property url The URL it called back with, query included.
+     */
+    data class Returned(
+        val url: String,
+    ) : AppLinkAnswer
+
+    /** No answer came back; [fault] says whether the app may have acted. */
+    sealed interface Unanswered : AppLinkAnswer {
+        /** Why, as a fault of the request the link carried. */
+        val fault: Fault
+    }
+
+    /** The app could not be started, so nothing was sent. */
+    data object NotStarted : Unanswered {
+        override val fault: Fault get() = Fault.NotStarted
+    }
+
+    /** The app did not call back in time; whether it acted is unknown. */
+    data object TimedOut : Unanswered {
+        override val fault: Fault get() = Fault.TimedOut
+    }
+
+    /** The operator came back from the app without an answer; whether it acted is unknown. */
+    data object Abandoned : Unanswered {
+        override val fault: Fault get() = Fault.Abandoned
+    }
+}
 
 /**
  * Opens App Links in the Adyen Payments app and waits for it to call back, which on Android means starting its
@@ -29,18 +60,15 @@ import kotlin.time.Duration
  */
 interface AppLinkExchange {
     /**
-     * Opens [link] in the app [packageName] and suspends until it calls back, at most [timeout].
+     * Opens [link] in the app [packageName] and suspends until it calls back, at most [timeout]. Never throws.
      *
-     * @return The URL the app called back with, query included.
-     * @throws java.io.IOException [TerminalUnreachableException] when the app could not be started (so nothing was
-     *   sent); another [java.io.IOException] when it did not call back in time or the operator came back without a
-     *   result, after which the outcome is unknown.
+     * @return The URL the app called back with, or why there is none.
      */
     suspend fun exchange(
         link: String,
         packageName: String,
         timeout: Duration,
-    ): String
+    ): AppLinkAnswer
 
     /**
      * The return URLs that arrived while no exchange was waiting, oldest first: the app was restarted while the
@@ -148,10 +176,10 @@ internal class PaymentsAppCrypto(
  *
  * The Payments app takes only payments and reversals. A transaction status request is answered from
  * [AppLinkExchange.lateReplies] (an answer that arrived after the app was restarted), as a terminal would repeat it;
- * without one, and for every other request (abort, print, diagnosis), [send] returns [Delivery.NotSent], as it does for
- * a request that cannot be encrypted, a Payments app that could not be started and an answer with only an `error`
- * (the Payments app did not take the payment). Not calling back in time, coming back without a result, and an answer
- * that cannot be read or belongs to another request are [Delivery.MaybeSent].
+ * without one it fails with [Fault.NoLateReply], and every other request (abort, print, diagnosis) with
+ * [Fault.Unsupported]. A request that cannot be encrypted, a Payments app that could not be started and an answer with
+ * only an `error` (the Payments app did not take the payment) took no effect. Not calling back in time, coming back
+ * without a result, and an answer that cannot be verified or belongs to another request may have.
  *
  * @param key The shared key the Payments app's requests are encrypted with.
  * @param environment Which Payments app to use.
@@ -179,12 +207,11 @@ class PaymentsAppTransport(
             }
 
             status != null -> {
-                repeat(status)?.let(Delivery::Answered) ?: Delivery.NotSent(NO_STATUS)
+                repeat(status)?.let(Delivery::Answered) ?: Delivery.Failed(Fault.NoLateReply)
             }
 
             else -> {
-                val category = message?.messageHeader?.messageCategory?.value() ?: "this request"
-                Delivery.NotSent("The Adyen Payments app does not take $category")
+                Delivery.Failed(Fault.Unsupported)
             }
         }
     }
@@ -193,21 +220,19 @@ class PaymentsAppTransport(
         request: TerminalAPIRequest,
         timeout: Duration,
     ): Delivery {
-        val encryptedRequest = crypto.encrypt(request) ?: return Delivery.NotSent("The request could not be encrypted")
+        val encryptedRequest = crypto.encrypt(request) ?: return Delivery.Failed(Fault.RequestNotEncrypted)
         val link = links.nexo(encryptedRequest, "$returnUrl/$NEXO")
-        val returned =
-            try {
-                exchange.exchange(link, links.packageName, timeout)
-            } catch (e: IOException) {
-                return e.toDelivery("The Payments app did not answer")
+        val answer =
+            when (val returned = exchange.exchange(link, links.packageName, timeout)) {
+                is AppLinkAnswer.Returned -> PaymentsAppLinks.answer(returned.url)
+                is AppLinkAnswer.Unanswered -> return Delivery.Failed(returned.fault)
             }
-        val answer = PaymentsAppLinks.answer(returned)
         val encrypted =
             answer["response"]?.takeIf { it.isNotEmpty() }
-                ?: return Delivery.NotSent("The Payments app did not take the request: ${answer["error"] ?: "no answer"}")
-        val response = crypto.decrypt(encrypted) ?: return Delivery.MaybeSent(UNREADABLE)
+                ?: return Delivery.Failed(Fault.AppRefused(ExternalText.of(answer["error"])))
+        val response = crypto.decrypt(encrypted) ?: return Delivery.Failed(Fault.ReplyUnverified)
         if (response.saleToPOIResponse?.messageHeader?.serviceID != request.saleToPOIRequest.messageHeader.serviceID) {
-            return Delivery.MaybeSent("The Payments app answered another request")
+            return Delivery.Failed(Fault.UnreadableReply())
         }
         return Delivery.Answered(response)
     }
@@ -233,7 +258,5 @@ class PaymentsAppTransport(
     private companion object {
         /** The path of the return URL the Payments app answers transactions on. */
         const val NEXO = "nexo"
-        const val NO_STATUS = "The Adyen Payments app cannot be asked for the status of a transaction"
-        const val UNREADABLE = "The Payments app's answer could not be read. ${TerminalHttpClient.KEY_ADVICE}"
     }
 }

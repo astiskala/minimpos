@@ -33,14 +33,13 @@ import javax.net.ssl.SSLPeerUnverifiedException
  * [ClientInterface] for exactly this.
  *
  * It also turns replies that are not encrypted Terminal API responses (a terminal rejecting the request, or a
- * "Bad JSON" reply) into [TerminalRejectedException] with the terminal's explanation, instead of letting the library
- * fail on them.
+ * "Bad JSON" reply) into [Fault.KeyRejected] or [Fault.TerminalRejected] with the terminal's explanation, instead of
+ * letting the library fail on them.
  *
  * Every `request` overload posts the body unchanged and returns the response body. Calls block the calling thread; the
- * connect timeout and the timeout for the whole call come from the library's [Config]. Failures are thrown as
- * [TerminalUntrustedException] (certificate not accepted), [TerminalUnreachableException] (no connection),
- * [TerminalRejectedException] (reply not encrypted, e.g. a wrong shared key), [TerminalProtocolException] (HTTP error or
- * a reply that is not JSON), or OkHttp's own [java.io.IOException] (e.g. a timeout).
+ * connect timeout and the timeout for the whole call come from the library's [Config]. Failures are thrown as a
+ * [FaultException] ([Fault.Untrusted], [Fault.Unreachable], [Fault.UnknownHost], a rejection, [Fault.TerminalHttp] or
+ * [Fault.UnreadableReply]) or as OkHttp's own [java.io.IOException] (e.g. a timeout).
  */
 class TerminalHttpClient(
     /** Decides which terminals are trusted; see [TerminalTls]. */
@@ -124,21 +123,22 @@ class TerminalHttpClient(
         val text =
             try {
                 call.execute().use { response ->
-                    if (!response.isSuccessful) throw TerminalProtocolException("Terminal returned HTTP ${response.code}")
+                    if (!response.isSuccessful) throw FaultException(Fault.TerminalHttp(response.code))
                     response.body.string()
                 }
-            } catch (e: SSLHandshakeException) {
-                throw untrusted(e)
-            } catch (e: SSLPeerUnverifiedException) {
-                throw untrusted(e)
+            } catch (ignored: SSLHandshakeException) {
+                throw FaultException(Fault.Untrusted(url.host))
+            } catch (ignored: SSLPeerUnverifiedException) {
+                throw FaultException(Fault.Untrusted(url.host))
             } catch (e: ConnectException) {
                 // With fast fallback, a refused IPv6 attempt can mask the real TLS failure on IPv4.
-                tlsFailure(e)?.let { throw untrusted(it) }
-                throw TerminalUnreachableException("Cannot connect to the terminal at ${url.host}:${url.port}", e)
-            } catch (e: UnknownHostException) {
-                throw TerminalUnreachableException("Unknown terminal host ${url.host}", e)
-            } catch (e: NoRouteToHostException) {
-                throw TerminalUnreachableException("No route to terminal host ${url.host}", e)
+                throw FaultException(
+                    if (tlsFailure(e)) Fault.Untrusted(url.host) else Fault.Unreachable("${url.host}:${url.port}", terminal = true),
+                )
+            } catch (ignored: UnknownHostException) {
+                throw FaultException(Fault.UnknownHost(url.host, terminal = true))
+            } catch (ignored: NoRouteToHostException) {
+                throw FaultException(Fault.Unreachable("${url.host}:${url.port}", terminal = true))
             }
         if (text.isNotBlank()) requireSecured(text)
         return text
@@ -148,16 +148,19 @@ class TerminalHttpClient(
         val root =
             try {
                 JsonParser.parseString(text)
-            } catch (e: JsonParseException) {
-                throw TerminalProtocolException("Unexpected response from the terminal", e)
+            } catch (ignored: JsonParseException) {
+                throw FaultException(Fault.UnreadableReply())
             }
         val secured = (root as? JsonObject)?.objectAt("SaleToPOIResponse")
         if (secured?.has("NexoBlob") == true) return
-        throw TerminalRejectedException(rejection(root))
+        throw FaultException(rejection(root))
     }
 
-    /** Explains an unencrypted (or event-only) reply, e.g. a Reject event when the shared key does not match. */
-    private fun rejection(root: JsonElement): String {
+    /**
+     * The fault of an unencrypted (or event-only) reply, e.g. a Reject event when the shared key does not match: a key
+     * rejection when the terminal's explanation mentions the key or encryption, else another rejection.
+     */
+    private fun rejection(root: JsonElement): Fault {
         val details =
             runCatching {
                 when {
@@ -166,8 +169,14 @@ class TerminalHttpClient(
                     else -> null
                 }
             }.getOrNull()?.let { FormEncoding.decode(it)["message"] ?: it }
-        val base = "Terminal rejected the request" + details?.let { ": $it" }.orEmpty()
-        return if (details != null && KEY_HINTS.any { details.contains(it, ignoreCase = true) }) "$base. $KEY_ADVICE" else base
+        val said = ExternalText.of(details)
+        return if (details != null &&
+            KEY_HINTS.any { details.contains(it, ignoreCase = true) }
+        ) {
+            Fault.KeyRejected(said)
+        } else {
+            Fault.TerminalRejected(said)
+        }
     }
 
     private fun eventDetails(root: JsonObject): String? {
@@ -188,22 +197,18 @@ class TerminalHttpClient(
 
     private fun JsonObject.objectAt(name: String): JsonObject? = get(name)?.takeIf { it.isJsonObject }?.asJsonObject
 
-    private fun tlsFailure(error: Throwable): Throwable? {
+    /** Whether a TLS failure hides in [error]'s causes or suppressed exceptions. */
+    private fun tlsFailure(error: Throwable): Boolean {
         val seen = Collections.newSetFromMap(IdentityHashMap<Throwable, Boolean>())
         return generateSequence(error) { it.cause }
             .takeWhile { seen.add(it) }
             .flatMap { sequenceOf(it) + it.suppressed.asSequence() }
-            .firstOrNull { it is SSLHandshakeException || it is SSLPeerUnverifiedException }
+            .any { it is SSLHandshakeException || it is SSLPeerUnverifiedException }
     }
 
-    private fun untrusted(cause: Throwable) =
-        TerminalUntrustedException("The device did not present a valid Adyen terminal certificate, so it is not trusted", cause)
-
-    /** Messages shared with [AdyenLocalTransport]. */
-    companion object {
-        /** Appended to errors that point to a shared key mismatch, to tell the user what to check. */
-        const val KEY_ADVICE = "Check the shared key identifier, version and passphrase in Terminal settings."
-        private val KEY_HINTS = listOf("crypt", "hmac", "key", "security")
-        private val JSON = "application/json; charset=utf-8".toMediaType()
+    private companion object {
+        /** Words in a terminal's rejection that point to the shared key. */
+        val KEY_HINTS = listOf("crypt", "hmac", "key", "security")
+        val JSON = "application/json; charset=utf-8".toMediaType()
     }
 }

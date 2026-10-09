@@ -1,6 +1,9 @@
 package app.minimpos.terminal
 
 import app.minimpos.terminal.transport.AdyenStoreDetails
+import app.minimpos.terminal.transport.ApiKey
+import app.minimpos.terminal.transport.ExternalText
+import app.minimpos.terminal.transport.Fault
 import app.minimpos.terminal.transport.MerchantLookup
 import app.minimpos.terminal.transport.StoreDetails
 import app.minimpos.terminal.transport.StoreLookup
@@ -41,7 +44,7 @@ class StoreDetailsTest {
 
     private fun store() = runBlocking { api.store("Merchant/One", "ST1") }
 
-    private fun failure() = (store() as StoreLookup.Failed).message
+    private fun failure() = (store() as StoreLookup.Failed).fault
 
     @Test
     fun `reads only the assigned store and its shopper receipt name, not description`() {
@@ -66,7 +69,7 @@ class StoreDetailsTest {
         reply("""{"detail":"Store not found"}""", 404)
         assertThat(store()).isEqualTo(StoreLookup.Missing)
         reply("""{"id":"ST2","shopperStatement":"Other store"}""")
-        assertThat(failure()).isEqualTo("Adyen sent unreadable store details")
+        assertThat(failure()).isEqualTo(Fault.UnreadableReply())
     }
 
     @Test
@@ -89,8 +92,8 @@ class StoreDetailsTest {
             assertThat(runBlocking { api.merchant("Merchant/One") }).isInstanceOf(MerchantLookup.Failed::class.java)
         }
         reply("{}", 403)
-        assertThat((runBlocking { api.merchant("Merchant/One") } as MerchantLookup.Failed).message)
-            .isEqualTo("The API key needs Management API—Account read access to this merchant account (HTTP 403)")
+        assertThat((runBlocking { api.merchant("Merchant/One") } as MerchantLookup.Failed).fault)
+            .isEqualTo(Fault.Permission(ApiKey.ADYEN, "Management API—Account read"))
     }
 
     @Test
@@ -114,22 +117,22 @@ class StoreDetailsTest {
     fun `unreadable successful replies do not offer partial imports`() {
         listOf("not json", "[]", "{}", """{"id":""}""", "1").forEach { body ->
             reply(body)
-            assertThat(failure()).isEqualTo("Adyen sent unreadable store details")
+            assertThat(failure()).isEqualTo(Fault.UnreadableReply())
         }
     }
 
     @Test
     fun `permission and authentication failures give useful non-secret explanations`() {
         reply("{}", 401)
-        assertThat(failure()).isEqualTo("Adyen did not accept the API key (HTTP 401)")
+        assertThat(failure()).isEqualTo(Fault.Credential(ApiKey.ADYEN))
         reply("{}", 403)
-        assertThat(failure()).isEqualTo("The API key needs Management API—Stores read access to this merchant account (HTTP 403)")
-        reply("""{"detail":"Store access denied"}""", 422)
-        assertThat(failure()).isEqualTo("Store access denied (HTTP 422)")
+        assertThat(failure()).isEqualTo(Fault.Permission(ApiKey.ADYEN, "Management API—Stores read"))
+        reply("""{"detail":"Store access denied","errorCode":"00_422"}""", 422)
+        assertThat(failure()).isEqualTo(Fault.AdyenRejected(422, "00_422", ExternalText("Store access denied")))
         reply("""{"title":"Unavailable"}""", 503)
-        assertThat(failure()).isEqualTo("Unavailable (HTTP 503)")
+        assertThat(failure()).isEqualTo(Fault.AdyenUnavailable(503, null, ExternalText("Unavailable")))
         reply("not json", 500)
-        assertThat(failure()).isEqualTo("Adyen returned an error (HTTP 500)")
+        assertThat(failure()).isEqualTo(Fault.AdyenUnavailable(500))
     }
 
     @Test

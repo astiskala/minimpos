@@ -373,7 +373,7 @@ class PaymentLinkViewModel(
         when (this) {
             LinkUpdate.Settled -> ActionState(done = true)
             LinkUpdate.StillOpen -> ActionState(outcome = ActionOutcome.LinkNotPaid.takeIf { stillOpen }, done = true)
-            is LinkUpdate.Failed -> ActionState(outcome = ActionOutcome.Failed(message), isError = true)
+            is LinkUpdate.Failed -> ActionState(outcome = ActionOutcome.Failed(failure), isError = true)
             is LinkUpdate.NotSetUp -> ActionState(outcome = ActionOutcome.NotSetUp(problem), isError = true)
         }
 }

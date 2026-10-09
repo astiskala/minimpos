@@ -4,6 +4,7 @@ import app.minimpos.app.FakeDevice
 import app.minimpos.app.FakeTerminal
 import app.minimpos.app.TestEnvironment
 import app.minimpos.app.await
+import app.minimpos.app.data.db.Failure
 import app.minimpos.app.data.db.SetupProblem
 import app.minimpos.app.data.security.Secret
 import app.minimpos.app.data.settings.PrinterMode
@@ -15,6 +16,8 @@ import app.minimpos.terminal.client.PrintLine
 import app.minimpos.terminal.client.PrintOutcome
 import app.minimpos.terminal.client.TransactionKind
 import app.minimpos.terminal.client.TransactionOutcome
+import app.minimpos.terminal.transport.ExternalText
+import app.minimpos.terminal.transport.Fault
 import app.minimpos.terminal.transport.TerminalEnvironment
 import com.google.common.truth.Truth.assertThat
 import kotlinx.coroutines.flow.first
@@ -62,7 +65,7 @@ class TerminalTest {
         var sending: String? = null
         assertThat(await { gateway.pay(payment, "S1") { sending = it } }).isEqualTo(Attempt.NotSetUp(SetupProblem.POI_ID))
         assertThat(sending).isNull()
-        assertThat(await { gateway.status("S1", TransactionKind.REFUND) }).isInstanceOf(TransactionOutcome.Unknown::class.java)
+        assertThat(await { gateway.status("S1", TransactionKind.REFUND) }).isEqualTo(Attempt.NotSetUp(SetupProblem.POI_ID))
         assertThat(await { gateway.abort("S1") }).isFalse()
         assertThat(
             await { gateway.print(listOf(PrintJob.Text(listOf(PrintLine.Text("x"))))) },
@@ -88,7 +91,9 @@ class TerminalTest {
             assertThat((paid as TransactionOutcome.Completed).details.success).isTrue()
             assertThat(sending).isEqualTo("S1F2-000158213605014")
             assertThat(await { gateway.abort("PAY1", TransactionKind.PAYMENT) }).isTrue()
-            assertThat(await { gateway.status("PAY1", TransactionKind.PAYMENT) }).isInstanceOf(TransactionOutcome.Completed::class.java)
+            assertThat(
+                await { gateway.status("PAY1", TransactionKind.PAYMENT) }.made(),
+            ).isInstanceOf(TransactionOutcome.Completed::class.java)
             // The transport is reused while host and key stay the same.
             assertThat(fake.hosts).containsExactly("localhost")
 
@@ -107,7 +112,8 @@ class TerminalTest {
 
             terminal.updateSettings { it.copy(terminal = it.terminal.copy(keyIdentifier = "key")) }
             await { terminal.container.secrets.set(Secret.TERMINAL_PASSPHRASE, "wrong") }
-            assertThat((await { status.check() } as TerminalConnection.Failed).message).contains("shared key")
+            assertThat((await { status.check() } as TerminalConnection.Failed).failure)
+                .isEqualTo(Failure.Remote(Fault.KeyRejected(ExternalText("Crypto error"))))
             // AMS1 terminals have no printer as far as their name tells, until one answers.
             assertThat(status(terminal).printerAvailable).isFalse()
 

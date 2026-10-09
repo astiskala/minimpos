@@ -7,7 +7,8 @@ import app.minimpos.app.data.settings.TerminalMode
 import app.minimpos.terminal.transport.AdyenTerminalDetails
 import app.minimpos.terminal.transport.CredentialLookup
 import app.minimpos.terminal.transport.DiscoveredKey
-import app.minimpos.terminal.transport.ManagementFailure
+import app.minimpos.terminal.transport.Fault
+import app.minimpos.terminal.transport.MalformedPart
 import app.minimpos.terminal.transport.SharedKeyLookup
 import app.minimpos.terminal.transport.TerminalDetails
 import app.minimpos.terminal.transport.TerminalDetailsApi
@@ -102,13 +103,13 @@ class SetupDiscovery(
             val environment = setup.environment ?: return@withLock SetupDiscoverySearch.Unavailable
             val api = connect(key)
             val credential = api.credential(environment)
-            if (credential is CredentialLookup.Failed) return@withLock SetupDiscoverySearch.Failed(credential.reason.setupProblem())
+            if (credential is CredentialLookup.Failed) return@withLock SetupDiscoverySearch.Failed(credential.fault.setupProblem())
             val onDevice = setup.onTerminal && setup.mode == TerminalMode.TERMINAL
             val target = setup.poiId.takeIf { onDevice }
             val found =
                 when (val result = api.terminals(environment, target)) {
                     is TerminalListing.Listed -> result
-                    is TerminalListing.Failed -> return@withLock SetupDiscoverySearch.Failed(result.reason.setupProblem())
+                    is TerminalListing.Failed -> return@withLock SetupDiscoverySearch.Failed(result.fault.setupProblem())
                 }
             val terminals = if (onDevice && target == null) emptyList() else TerminalAssignments.offered(found.terminals, target)
             if (terminals.isEmpty()) return@withLock SetupDiscoverySearch.Failed(SetupProblem.TERMINAL_ACCESS)
@@ -165,7 +166,7 @@ class SetupDiscovery(
         key: DiscoveredKey?,
         lookup: SharedKeyLookup?,
     ): SetupDiscoveryChoice {
-        if (lookup is SharedKeyLookup.Failed) return SetupDiscoveryChoice.Failed(lookup.reason.setupProblem())
+        if (lookup is SharedKeyLookup.Failed) return SetupDiscoveryChoice.Failed(lookup.fault.setupProblem())
         val localComplete = key != null && (selected.setup.onTerminal || terminal.host.isNotBlank())
         return if (terminal.merchantAccount.isNotBlank() && (selected.setup.mode != TerminalMode.TERMINAL || localComplete)) {
             SetupDiscoveryChoice.Complete
@@ -256,15 +257,16 @@ class SetupDiscovery(
     )
 }
 
-internal fun ManagementFailure.setupProblem(): SetupProblem =
-    when (this) {
-        ManagementFailure.AUTHENTICATION -> SetupProblem.MANAGEMENT_AUTHENTICATION
-        ManagementFailure.PERMISSION -> SetupProblem.MANAGEMENT_PERMISSION
-        ManagementFailure.UNAVAILABLE -> SetupProblem.MANAGEMENT_UNAVAILABLE
-        ManagementFailure.UNREADABLE -> SetupProblem.MANAGEMENT_UNREADABLE
-        ManagementFailure.SETTINGS_UNREADABLE -> SetupProblem.TERMINAL_SETTINGS_UNREADABLE
-        ManagementFailure.KEY_INCOMPLETE -> SetupProblem.SHARED_KEY_INCOMPLETE
-        ManagementFailure.KEY_INVALID -> SetupProblem.SHARED_KEY_INVALID
+/** The setup problem a failed Management lookup reports. */
+internal fun Fault.setupProblem(): SetupProblem =
+    when {
+        this is Fault.Credential -> SetupProblem.MANAGEMENT_AUTHENTICATION
+        this is Fault.Permission -> SetupProblem.MANAGEMENT_PERMISSION
+        this is Fault.UnreadableReply -> SetupProblem.MANAGEMENT_UNREADABLE
+        this == Fault.Malformed(MalformedPart.SETTINGS) -> SetupProblem.TERMINAL_SETTINGS_UNREADABLE
+        this == Fault.Malformed(MalformedPart.KEY) -> SetupProblem.SHARED_KEY_INCOMPLETE
+        this == Fault.Malformed(MalformedPart.KEY_VERSION) -> SetupProblem.SHARED_KEY_INVALID
+        else -> SetupProblem.MANAGEMENT_UNAVAILABLE
     }
 
 internal class SetupAccess(
@@ -290,7 +292,7 @@ internal class SetupAccess(
             else -> {
                 val api = connect(key)
                 when (val credential = api.credential(environment)) {
-                    is CredentialLookup.Failed -> credential.reason.setupProblem()
+                    is CredentialLookup.Failed -> credential.fault.setupProblem()
                     CredentialLookup.Allowed -> if (setup.discoversTerminals && setup.poiId != null) assignment(api, setup) else null
                 }
             }
@@ -303,7 +305,7 @@ internal class SetupAccess(
     ): SetupProblem? =
         when (val listing = api.terminals(checkNotNull(setup.environment), setup.poiId)) {
             is TerminalListing.Failed -> {
-                listing.reason.setupProblem()
+                listing.fault.setupProblem()
             }
 
             is TerminalListing.Listed -> {

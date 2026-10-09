@@ -30,36 +30,21 @@ import app.minimpos.terminal.transport.MalformedPart
 fun ActionOutcome.text(): String =
     when (this) {
         ActionOutcome.Printed -> stringResource(R.string.result_printed)
-
         is ActionOutcome.Emailed -> stringResource(R.string.result_emailed, to)
-
         ActionOutcome.AbortSent -> stringResource(R.string.result_abort_sent)
-
         ActionOutcome.LinkNotPaid -> stringResource(R.string.link_not_paid)
-
         is ActionOutcome.CaptureFailed -> captureText()
-
         is ActionOutcome.Connected -> connectedText()
-
-        is ActionOutcome.ConnectionFailed -> "${stringResource(
-            R.string.settings_connection_failed,
-        )}: ${reason ?: stringResource(R.string.setup_no_response)}"
-
+        is ActionOutcome.ConnectionFailed -> "${stringResource(R.string.settings_connection_failed)}: ${failure.text()}"
         is ActionOutcome.NotSetUp -> problem.text()
-
         ActionOutcome.NoAnswer -> stringResource(R.string.setup_no_response)
-
         ActionOutcome.ApiWorks -> stringResource(R.string.settings_api_ok)
-
         is ActionOutcome.TapToPayReady -> stringResource(R.string.result_tap_to_pay_ready, installationId)
-
         ActionOutcome.TapToPayRemoved -> stringResource(R.string.result_tap_to_pay_removed)
-
         is ActionOutcome.TestEmailSent -> stringResource(R.string.settings_test_email_sent, to)
-
         is ActionOutcome.SecretNotStored -> stringResource(R.string.settings_secret_not_stored, reason.orEmpty())
-
-        is ActionOutcome.Failed -> message
+        ActionOutcome.Missing -> stringResource(R.string.error_not_found)
+        is ActionOutcome.Failed -> failure.text()
     }
 
 /** Local scan failures, containing no scanned data or provider payload. */
@@ -105,11 +90,22 @@ fun SaleEntity.outcomeNote(): String? =
         message,
     )
 
-/** Why this sale's latest capture or adjustment did not go through, worded as [outcomeNote]; null when it did. */
+/**
+ * Why this sale's latest capture or adjustment did not go through, worded as [outcomeNote]; null when it did. Its
+ * standing already says when the outcome is unconfirmed, so only what prevented the confirmation is added.
+ */
 @Composable
 @ReadOnlyComposable
 fun SaleEntity.modificationNote(): String? =
-    note(modificationReason?.text(R.string.capture_interrupted, R.string.capture_interrupted), modificationMessage)
+    note(
+        when (val reason = modificationReason) {
+            null -> null
+            is StoredReason.NotDone -> reason.failure.text()
+            is StoredReason.Unconfirmed -> reason.failure?.text()
+            StoredReason.Interrupted -> stringResource(R.string.capture_interrupted)
+        },
+        modificationMessage,
+    )
 
 /** Why this refund was not accepted, worded as [SaleEntity.outcomeNote]; null when nothing is stored. */
 @Composable
@@ -365,12 +361,12 @@ private val SetupProblem.textRes: Int
 private fun ActionOutcome.CaptureFailed.captureText(): String =
     when (this) {
         is ActionOutcome.NotCaptured -> {
-            stringResource(if (step == CaptureStep.ADJUSTMENT) R.string.adjust_failed else R.string.capture_failed, reason)
+            stringResource(if (step == CaptureStep.ADJUSTMENT) R.string.adjust_failed else R.string.capture_failed, failure.text())
         }
 
         is ActionOutcome.CaptureRefused -> {
             val amount = MoneyFormatter(CurrencySpec.of(currency), currentLocale()).format(amountMinor)
-            stringResource(if (step == CaptureStep.TIP) R.string.tip_refused else R.string.capture_refused, amount, reason)
+            noted(stringResource(if (step == CaptureStep.TIP) R.string.tip_refused else R.string.capture_refused, amount), said?.text)
         }
 
         ActionOutcome.CaptureNotAllowed -> {

@@ -1,5 +1,6 @@
 package app.minimpos.app.terminal
 
+import app.minimpos.app.data.db.Failure
 import app.minimpos.app.data.db.SetupProblem
 import app.minimpos.app.data.settings.TerminalMode
 import app.minimpos.terminal.transport.TerminalEnvironment
@@ -149,7 +150,7 @@ class TerminalStatus(
     private suspend fun credentialCheck(candidate: UnlockedSetup): TerminalConnection? =
         when (val checked = verifyApi(candidate)) {
             is ApiCheck.NotSetUp -> TerminalConnection.NotSetUp(checked.problem)
-            is ApiCheck.Failed -> TerminalConnection.Failed(checked.message)
+            is ApiCheck.Failed -> TerminalConnection.Failed(Failure.Remote(checked.fault))
             ApiCheck.Works -> if (candidate.setup.boardsPhone) phoneCheck(candidate.setup) else null
         }
 
@@ -157,7 +158,7 @@ class TerminalStatus(
         when (val phone = verifyPhone(setup)) {
             is TapToPayOutcome.Boarded -> null
             is TapToPayOutcome.NotSetUp -> TerminalConnection.NotSetUp(phone.problem)
-            is TapToPayOutcome.Failed -> TerminalConnection.Failed(phone.message)
+            is TapToPayOutcome.Failed -> TerminalConnection.Failed(phone.failure)
             TapToPayOutcome.Unregistered -> TerminalConnection.NotSetUp(SetupProblem.PAYMENTS_APP_NOT_BOARDED)
         }
 

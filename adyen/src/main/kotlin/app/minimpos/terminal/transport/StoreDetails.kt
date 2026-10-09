@@ -38,10 +38,10 @@ sealed interface StoreLookup {
 
     /**
      * The store could not be read; no partial details are offered.
-     * @property message Non-secret failure explanation.
+     * @property fault Why.
      */
     data class Failed(
-        val message: String,
+        val fault: Fault,
     ) : StoreLookup
 }
 
@@ -57,10 +57,10 @@ sealed interface MerchantLookup {
 
     /**
      * The merchant account could not be read.
-     * @property message Non-secret failure explanation.
+     * @property fault Why.
      */
     data class Failed(
-        val message: String,
+        val fault: Fault,
     ) : MerchantLookup
 }
 
@@ -108,7 +108,7 @@ class AdyenStoreDetails(
                 .build()
         return when (val reply = http.get(url, TIMEOUT)) {
             is AdyenReply.Failed -> {
-                StoreLookup.Failed(reply.message)
+                StoreLookup.Failed(reply.fault)
             }
 
             is AdyenReply.Answered -> {
@@ -118,7 +118,7 @@ class AdyenStoreDetails(
                     }
 
                     !reply.ok -> {
-                        StoreLookup.Failed(error(reply.code, reply.body, STORES_READ))
+                        StoreLookup.Failed(reply.fault(ApiKey.ADYEN, STORES_READ, managementError(reply.body)))
                     }
 
                     else -> {
@@ -126,7 +126,7 @@ class AdyenStoreDetails(
                             val store = requireNotNull(decodeAdyenModel(reply.body, Store::class.java))
                             require(store.id?.trim() == storeId)
                             StoreLookup.Found(details(store))
-                        }.getOrElse { StoreLookup.Failed("Adyen sent unreadable store details") }
+                        }.getOrElse { StoreLookup.Failed(Fault.UnreadableReply()) }
                     }
                 }
             }
@@ -142,18 +142,18 @@ class AdyenStoreDetails(
                 .build()
         return when (val reply = http.get(url, TIMEOUT)) {
             is AdyenReply.Failed -> {
-                MerchantLookup.Failed(reply.message)
+                MerchantLookup.Failed(reply.fault)
             }
 
             is AdyenReply.Answered -> {
                 if (!reply.ok) {
-                    MerchantLookup.Failed(error(reply.code, reply.body, ACCOUNT_READ))
+                    MerchantLookup.Failed(reply.fault(ApiKey.ADYEN, ACCOUNT_READ, managementError(reply.body)))
                 } else {
                     runCatching {
                         val merchant = requireNotNull(decodeAdyenModel(reply.body, Merchant::class.java))
                         require(merchant.id == merchantAccount)
                         MerchantLookup.Found(merchant.name?.trim().orEmpty())
-                    }.getOrElse { MerchantLookup.Failed("Adyen sent unreadable merchant details") }
+                    }.getOrElse { MerchantLookup.Failed(Fault.UnreadableReply()) }
                 }
             }
         }
@@ -177,34 +177,6 @@ class AdyenStoreDetails(
         )
     }
 
-    private fun error(
-        code: Int,
-        text: String,
-        role: String,
-    ): String {
-        val error = decodeAdyenModel(text, DefaultErrorResponseEntity::class.java)
-        val message =
-            when (code) {
-                HTTP_UNAUTHORIZED -> {
-                    "Adyen did not accept the API key"
-                }
-
-                HTTP_FORBIDDEN -> {
-                    "The API key needs $role access to this merchant account"
-                }
-
-                else -> {
-                    error
-                        ?.detail
-                        ?.trim()
-                        ?.ifBlank { error.title?.trim() }
-                        ?.ifBlank { null }
-                        ?: error?.title?.trim()?.ifBlank { null } ?: "Adyen returned an error"
-                }
-            }
-        return "$message (HTTP $code)"
-    }
-
     /** Endpoint, read timeout and the API key roles each read needs. */
     companion object {
         private val TIMEOUT = 30.seconds
@@ -218,4 +190,10 @@ class AdyenStoreDetails(
                 TerminalEnvironment.LIVE -> "https://management-live.adyen.com/v3"
             }
     }
+}
+
+/** Adyen's explanation of a failed Management API request: its detail (else its title) and error code. */
+internal fun managementError(body: String): AdyenError {
+    val error = decodeAdyenModel(body, DefaultErrorResponseEntity::class.java)
+    return AdyenError(ExternalText.of(error?.detail) ?: ExternalText.of(error?.title), error?.errorCode)
 }

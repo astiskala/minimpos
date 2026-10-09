@@ -7,6 +7,8 @@ import app.minimpos.app.data.db.SetupProblem
 import app.minimpos.app.data.security.Secret
 import app.minimpos.app.data.settings.ReceiptSettings
 import app.minimpos.app.data.settings.TerminalMode
+import app.minimpos.terminal.transport.ApiKey
+import app.minimpos.terminal.transport.Fault
 import app.minimpos.terminal.transport.MerchantLookup
 import app.minimpos.terminal.transport.StoreDetails
 import app.minimpos.terminal.transport.StoreLookup
@@ -67,8 +69,8 @@ class ReceiptBusinessDetailsTest {
         assertThat(await { container.settings.current() }).isEqualTo(before)
         stores.storeAnswer = StoreLookup.Missing
         assertThat(read()).isEqualTo(ReceiptBusinesses.NotSetUp(SetupProblem.STORE_ACCESS))
-        stores.storeAnswer = StoreLookup.Failed("Access denied")
-        assertThat(read()).isEqualTo(ReceiptBusinesses.Failed("Access denied"))
+        stores.storeAnswer = StoreLookup.Failed(Fault.Permission(ApiKey.ADYEN, "Management API—Stores read"))
+        assertThat(read()).isEqualTo(ReceiptBusinesses.Failed(Fault.Permission(ApiKey.ADYEN, "Management API—Stores read")))
     }
 
     @Test
@@ -77,8 +79,8 @@ class ReceiptBusinessDetailsTest {
         env.updateSettings { it.copy(terminal = it.terminal.copy(merchantAccount = "Merchant")) }
         assertThat(read()).isEqualTo(ReceiptBusinesses.Found(ReceiptBusiness("Legal Shop", "", ""), fromStore = false))
         assertThat(calls).containsExactly("merchant:Merchant")
-        stores.merchantAnswer = MerchantLookup.Failed("Account read denied")
-        assertThat(read()).isEqualTo(ReceiptBusinesses.Failed("Account read denied"))
+        stores.merchantAnswer = MerchantLookup.Failed(Fault.Permission(ApiKey.ADYEN, "Management API—Account read"))
+        assertThat(read()).isEqualTo(ReceiptBusinesses.Failed(Fault.Permission(ApiKey.ADYEN, "Management API—Account read")))
     }
 
     @Test

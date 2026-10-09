@@ -5,6 +5,7 @@ import app.minimpos.terminal.checkout.PaymentLinkRequest
 import app.minimpos.terminal.checkout.PaymentLinkResult
 import app.minimpos.terminal.checkout.PaymentLinkStatus
 import app.minimpos.terminal.simulator.SimulatedPaymentLinks
+import app.minimpos.terminal.transport.Fault
 import com.google.common.truth.Truth.assertThat
 import kotlinx.coroutines.runBlocking
 import org.junit.Test
@@ -42,7 +43,7 @@ class SimulatedPaymentLinksTest {
             val createdExpired = expired.create(request, "link-sale") as PaymentLinkResult.Answered
             assertThat(createdExpired.link.status).isEqualTo(PaymentLinkStatus.EXPIRED)
             listOf("PL-real", "simulated:bad:key", "simulated:").forEach {
-                assertThat(expired.status(it)).isInstanceOf(PaymentLinkResult.NotProcessed::class.java)
+                assertThat(expired.status(it)).isEqualTo(PaymentLinkResult.Failed(Fault.NotFound(null)))
             }
         }
 }

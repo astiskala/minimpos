@@ -451,7 +451,6 @@ class AppContainer(
                     currentTexts = ::emailTexts,
                     qrPng = { QrCodes.png(it) },
                 ),
-            notFound = localizedContext.getString(R.string.error_not_found),
         )
 
     private val sessions = SaleKind.entries.associateWith { SaleSession(it) }
@@ -706,8 +705,6 @@ class AppContainer(
             refundIntro = localizedContext.getString(R.string.email_refund_intro),
             testSubject = localizedContext.getString(R.string.email_test_subject),
             testBody = localizedContext.getString(R.string.email_test_body),
-            notConfigured = localizedContext.getString(R.string.email_not_configured),
-            invalidAddress = localizedContext.getString(R.string.email_invalid_address),
             preAuthIntro = localizedContext.getString(R.string.email_pre_auth_intro),
             cancellationIntro = localizedContext.getString(R.string.email_cancellation_intro),
             linkSubject = localizedContext.getString(R.string.email_link_subject),

@@ -40,9 +40,11 @@ import app.minimpos.core.codec.QrChunks
 import app.minimpos.core.codec.SealedSecrets
 import app.minimpos.core.codec.Transfer
 import app.minimpos.core.codec.TransferCodec
+import app.minimpos.terminal.transport.ApiKey
 import app.minimpos.terminal.transport.CredentialLookup
 import app.minimpos.terminal.transport.DiscoveredKey
-import app.minimpos.terminal.transport.ManagementFailure
+import app.minimpos.terminal.transport.Fault
+import app.minimpos.terminal.transport.MalformedPart
 import app.minimpos.terminal.transport.SharedKeyLookup
 import app.minimpos.terminal.transport.SharedKeyUpdate
 import app.minimpos.terminal.transport.TerminalDetails
@@ -65,7 +67,7 @@ import app.minimpos.app.createRecordingComposeRule as createComposeRule
 class AutomaticSetupUiTest {
     private var lookupAvailable = true
     private var sharedKeyAvailable = true
-    private var sharedKeyFailure: ManagementFailure? = null
+    private var sharedKeyFailure: Fault? = null
     private var emptyListing = false
     private val device = FakeDevice()
     private val navigator = Navigator(NavBackStack<NavKey>(Route.Home, Route.TransferImport))
@@ -95,7 +97,7 @@ class AutomaticSetupUiTest {
                         environment,
                     )
                 } else {
-                    TerminalListing.Failed("Lookup denied")
+                    TerminalListing.Failed(Fault.AdyenUnavailable(503))
                 }
             }
 
@@ -285,28 +287,28 @@ class AutomaticSetupUiTest {
 
     @Test
     fun `unreadable terminal settings explain why key creation is blocked`() =
-        sharedKeyError(ManagementFailure.SETTINGS_UNREADABLE, R.string.setup_terminal_settings_unreadable)
+        sharedKeyError(Fault.Malformed(MalformedPart.SETTINGS), R.string.setup_terminal_settings_unreadable)
 
     @Test
     fun `invalid key version explains why import cannot replace the key`() =
-        sharedKeyError(ManagementFailure.KEY_INVALID, R.string.setup_shared_key_invalid)
+        sharedKeyError(Fault.Malformed(MalformedPart.KEY_VERSION), R.string.setup_shared_key_invalid)
 
     @Test
     fun `incomplete shared key is not presented as missing or a network failure`() =
-        sharedKeyError(ManagementFailure.KEY_INCOMPLETE, R.string.setup_shared_key_incomplete)
+        sharedKeyError(Fault.Malformed(MalformedPart.KEY), R.string.setup_shared_key_incomplete)
 
     @Test
     @Config(qualifiers = "zh-rCN-w320dp-h460dp-hdpi")
     fun `Chinese incomplete key error is readable on AMS1`() =
-        sharedKeyError(ManagementFailure.KEY_INCOMPLETE, R.string.setup_shared_key_incomplete)
+        sharedKeyError(Fault.Malformed(MalformedPart.KEY), R.string.setup_shared_key_incomplete)
 
     @Test
     @Config(qualifiers = "ja-w320dp-h460dp-hdpi")
     fun `Japanese incomplete key error is readable on AMS1`() =
-        sharedKeyError(ManagementFailure.KEY_INCOMPLETE, R.string.setup_shared_key_incomplete)
+        sharedKeyError(Fault.Malformed(MalformedPart.KEY), R.string.setup_shared_key_incomplete)
 
     private fun sharedKeyError(
-        reason: ManagementFailure,
+        reason: Fault,
         message: Int,
     ) {
         sharedKeyFailure = reason

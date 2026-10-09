@@ -3,6 +3,8 @@ package app.minimpos.terminal.client
 import app.minimpos.terminal.parse.AdditionalResponseParser
 import app.minimpos.terminal.parse.ReceiptParser
 import app.minimpos.terminal.transport.Delivery
+import app.minimpos.terminal.transport.ExternalText
+import app.minimpos.terminal.transport.Fault
 import app.minimpos.terminal.transport.TerminalTransport
 import com.adyen.model.checkout.JSON
 import com.adyen.model.nexo.AbortRequest
@@ -317,14 +319,14 @@ class TerminalClient(
                 }
 
                 is Delivery.Failed -> {
-                    return PrintOutcome.Failed(delivery.reason, noPrinter = false)
+                    return PrintOutcome.Failed(delivery.fault, noPrinter = false)
                 }
-            } ?: return PrintOutcome.Failed("No print response from the terminal", noPrinter = false)
+            } ?: return PrintOutcome.Failed(Fault.UnreadableReply(), noPrinter = false)
         if (response.result == ResultType.SUCCESS) return null
-        val message = AdditionalResponseParser.parse(response.additionalResponse)["message"] ?: "Printing failed"
+        val message = AdditionalResponseParser.parse(response.additionalResponse)["message"]
         val noPrinter =
-            response.errorCondition == ErrorConditionType.UNAVAILABLE_DEVICE || message.contains("no printer", ignoreCase = true)
-        return PrintOutcome.Failed(message, noPrinter)
+            response.errorCondition == ErrorConditionType.UNAVAILABLE_DEVICE || message.orEmpty().contains("no printer", ignoreCase = true)
+        return PrintOutcome.Failed(Fault.TerminalRejected(ExternalText.of(message)), noPrinter)
     }
 
     /**
@@ -342,12 +344,13 @@ class TerminalClient(
         val response =
             when (val delivery = transport.send(wrap(request), shortTimeout)) {
                 is Delivery.Answered -> delivery.response?.saleToPOIResponse?.diagnosisResponse
-                is Delivery.Failed -> return DiagnosisResult(reachable = false, message = delivery.reason)
-            } ?: return DiagnosisResult(reachable = false, message = "No diagnosis response from the terminal")
+                is Delivery.Failed -> return DiagnosisResult(reachable = false, fault = delivery.fault)
+            } ?: return DiagnosisResult(reachable = false, fault = Fault.UnreadableReply())
         val additional = AdditionalResponseParser.parse(response.response?.additionalResponse)
+        val reachable = response.response?.result == ResultType.SUCCESS
         return DiagnosisResult(
-            reachable = response.response?.result == ResultType.SUCCESS,
-            message = additional["message"],
+            reachable = reachable,
+            fault = Fault.TerminalRejected(ExternalText.of(additional["message"])).takeUnless { reachable },
             globalStatus = response.poiStatus?.globalStatus?.value(),
             printerStatus = response.poiStatus?.printerStatus?.value(),
         )
@@ -361,15 +364,19 @@ class TerminalClient(
      * @param serviceId The ServiceID the payment or refund was sent with.
      * @param kind Whether it was a payment or a refund.
      * @return [TransactionOutcome.Completed] (marked as recovered) with the original result;
-     *   [TransactionOutcome.NotProcessed] if the terminal has no record of it; otherwise [TransactionOutcome.Unknown],
-     *   also while the transaction is still in progress. I/O errors are not thrown.
+     *   [TransactionOutcome.NotProcessed] ([Fault.NoRecord]) if the terminal has no record of it; otherwise
+     *   [TransactionOutcome.Unknown] with why, [Fault.StillInProgress] while the transaction is still in progress. I/O
+     *   errors are not thrown.
      */
     suspend fun status(
         serviceId: String,
         kind: TransactionKind = TransactionKind.PAYMENT,
     ): TransactionOutcome =
-        (checkStatus(serviceId, kind.category()) as? StatusCheck.Settled)?.outcome
-            ?: TransactionOutcome.Unknown(serviceId, "The terminal could not confirm the result yet")
+        when (val check = checkStatus(serviceId, kind.category())) {
+            is StatusCheck.Settled -> check.outcome
+            StatusCheck.InProgress -> TransactionOutcome.Unknown(serviceId, Fault.StillInProgress)
+            is StatusCheck.NoAnswer -> TransactionOutcome.Unknown(serviceId, check.fault)
+        }
 
     private suspend fun execute(
         serviceId: String,
@@ -380,18 +387,27 @@ class TerminalClient(
         val response =
             when (val delivery = transport.send(wrap(request), transactionTimeout)) {
                 is Delivery.Answered -> delivery.response
-                is Delivery.NotSent -> return TransactionOutcome.NotProcessed(serviceId, delivery.reason)
-                is Delivery.MaybeSent -> return recover(serviceId, category, delivery.reason)
+
+                is Delivery.Failed if !delivery.fault.mayHaveTakenEffect -> return TransactionOutcome.NotProcessed(
+                    serviceId,
+                    delivery.fault,
+                )
+
+                is Delivery.Failed -> return recover(serviceId, category, delivery.fault)
             }
         val details =
-            response?.saleToPOIResponse?.let(extract) ?: return recover(serviceId, category, "Unexpected response")
+            response?.saleToPOIResponse?.let(extract) ?: return recover(serviceId, category, Fault.UnreadableReply())
         return TransactionOutcome.Completed(serviceId, details)
     }
 
+    /**
+     * Checks the status of the transaction whose answer went missing because of [fault]; while it stays unconfirmed the
+     * outcome is unknown, for [fault] or, when the terminal kept reporting it in progress, [Fault.StillInProgress].
+     */
     private suspend fun recover(
         serviceId: String,
         category: MessageCategoryType,
-        reason: String?,
+        fault: Fault,
     ): TransactionOutcome {
         var unanswered = 0
         var inProgress = 0
@@ -400,10 +416,10 @@ class TerminalClient(
             when (val check = checkStatus(serviceId, category)) {
                 is StatusCheck.Settled -> return check.outcome
                 StatusCheck.InProgress -> inProgress++
-                StatusCheck.NoAnswer -> unanswered++
+                is StatusCheck.NoAnswer -> unanswered++
             }
         }
-        return TransactionOutcome.Unknown(serviceId, reason ?: "No response from the terminal")
+        return TransactionOutcome.Unknown(serviceId, if (inProgress >= recovery.maxInProgressChecks) Fault.StillInProgress else fault)
     }
 
     private sealed interface StatusCheck {
@@ -414,26 +430,32 @@ class TerminalClient(
         /** The terminal is still waiting for the shopper or the issuer. */
         data object InProgress : StatusCheck
 
-        data object NoAnswer : StatusCheck
+        /** No usable status came back, because of [fault]. */
+        data class NoAnswer(
+            val fault: Fault,
+        ) : StatusCheck
     }
 
     private suspend fun checkStatus(
         serviceId: String,
         category: MessageCategoryType,
     ): StatusCheck {
-        val delivery = transport.send(wrap(statusRequest(serviceId, category)), shortTimeout)
         val status =
-            (delivery as? Delivery.Answered)?.response?.saleToPOIResponse?.transactionStatusResponse ?: return StatusCheck.NoAnswer
+            when (val delivery = transport.send(wrap(statusRequest(serviceId, category)), shortTimeout)) {
+                is Delivery.Failed -> return StatusCheck.NoAnswer(delivery.fault)
+                is Delivery.Answered -> delivery.response?.saleToPOIResponse?.transactionStatusResponse
+            } ?: return StatusCheck.NoAnswer(Fault.UnreadableReply())
         val response = status.response
         return when {
             response?.result == ResultType.SUCCESS -> {
                 val body = status.repeatedMessageResponse?.repeatedResponseMessageBody
                 val details = body?.paymentResponse?.let(::mapPayment) ?: body?.reversalResponse?.let(::mapReversal)
-                details?.let { StatusCheck.Settled(TransactionOutcome.Completed(serviceId, it, recovered = true)) } ?: StatusCheck.NoAnswer
+                details?.let { StatusCheck.Settled(TransactionOutcome.Completed(serviceId, it, recovered = true)) }
+                    ?: StatusCheck.NoAnswer(Fault.UnreadableReply())
             }
 
             response?.errorCondition == ErrorConditionType.NOT_FOUND -> {
-                StatusCheck.Settled(TransactionOutcome.NotProcessed(serviceId, "The terminal has no record of this transaction"))
+                StatusCheck.Settled(TransactionOutcome.NotProcessed(serviceId, Fault.NoRecord))
             }
 
             response?.errorCondition == ErrorConditionType.IN_PROGRESS -> {
@@ -441,7 +463,7 @@ class TerminalClient(
             }
 
             else -> {
-                StatusCheck.NoAnswer
+                StatusCheck.NoAnswer(Fault.UnreadableReply())
             }
         }
     }
@@ -618,7 +640,7 @@ class TerminalClient(
             return TransactionDetails(
                 success = success,
                 errorCondition = response?.errorCondition?.value(),
-                message = refusalReason ?: additional["message"] ?: additional["errors"] ?: additional["warnings"],
+                message = ExternalText.of(refusalReason ?: additional["message"] ?: additional["errors"] ?: additional["warnings"]),
                 refusalReason = refusalReason,
                 poiTransactionId = poi?.transactionID,
                 poiTimestamp = poi?.timeStamp?.toXMLFormat(),

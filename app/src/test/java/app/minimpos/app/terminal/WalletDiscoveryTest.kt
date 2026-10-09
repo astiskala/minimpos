@@ -6,7 +6,8 @@ import app.minimpos.app.TestEnvironment
 import app.minimpos.app.await
 import app.minimpos.app.data.security.Secret
 import app.minimpos.core.payment.ScanWallet
-import app.minimpos.terminal.transport.ManagementFailure
+import app.minimpos.terminal.transport.ApiKey
+import app.minimpos.terminal.transport.Fault
 import app.minimpos.terminal.transport.WalletMethod
 import app.minimpos.terminal.transport.WalletMethodListing
 import app.minimpos.terminal.transport.WalletMethodsApi
@@ -46,11 +47,11 @@ class WalletDiscoveryTest {
             val discovery = env.container.walletDiscovery
             discovery.refresh()
             assertThat(discovery.state.value.offered("AUD")).containsExactly(ScanWallet.WECHAT_PAY)
-            result = WalletMethodListing.Failed(ManagementFailure.UNAVAILABLE)
+            result = WalletMethodListing.Failed(Fault.AdyenUnavailable(503))
             discovery.refresh()
             assertThat(discovery.state.value.offered("AUD")).containsExactly(ScanWallet.WECHAT_PAY)
             assertThat(discovery.state.value.failure).isEqualTo(WalletDiscoveryFailure.UNAVAILABLE)
-            result = WalletMethodListing.Failed(ManagementFailure.PERMISSION)
+            result = WalletMethodListing.Failed(Fault.Permission(ApiKey.ADYEN))
             discovery.refresh()
             assertThat(discovery.state.value.offered("AUD")).isEmpty()
             val api = env.container.api.target()

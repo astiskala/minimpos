@@ -98,10 +98,7 @@ class MainActivity : ComponentActivity() {
             startActivity(Intent(Intent.ACTION_VIEW, launch.link.toUri()).setPackage(launch.packageName))
             paymentsApp.opened(launch.id)
         } catch (ignored: ActivityNotFoundException) {
-            val language =
-                (application as MiniMposApplication)
-                    .container.settingsState.value.languageTag
-            paymentsApp.failed(launch.id, withAppLanguage(language).getString(R.string.setup_payments_app_missing))
+            paymentsApp.failed(launch.id)
         }
     }
 

@@ -1,6 +1,8 @@
 package app.minimpos.app.payment
 
 import android.database.SQLException
+import app.minimpos.app.data.db.DeviceFault
+import app.minimpos.app.data.db.Failure
 import app.minimpos.app.data.db.SaleEntity
 import app.minimpos.app.data.db.SaleStatus
 import app.minimpos.app.data.db.SaleWithLines
@@ -15,6 +17,7 @@ import app.minimpos.terminal.checkout.PaymentLink
 import app.minimpos.terminal.checkout.PaymentLinkApi
 import app.minimpos.terminal.checkout.PaymentLinkResult
 import app.minimpos.terminal.checkout.PaymentLinkStatus
+import app.minimpos.terminal.transport.Fault
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
@@ -38,10 +41,10 @@ sealed interface LinkUpdate {
     /**
      * Adyen could not be asked, or did not answer, so nothing changed.
      *
-     * @property message Why, as Adyen or the app worded it.
+     * @property failure Why.
      */
     data class Failed(
-        val message: String,
+        val failure: Failure,
     ) : LinkUpdate
 
     /**
@@ -110,22 +113,22 @@ class PaymentLinks(
                 mutex.withLock { sales.get(id)?.let { send(it) } }
             } catch (e: CancellationException) {
                 throw e
-            } catch (e: SQLException) {
-                interrupted(id, e)
-            } catch (e: IllegalStateException) {
-                interrupted(id, e)
+            } catch (ignored: SQLException) {
+                interrupted(id, DeviceFault.DATABASE)
+            } catch (ignored: IllegalStateException) {
+                interrupted(id, DeviceFault.UNEXPECTED)
             }
         }
         return id
     }
 
-    /** Stores sale [id] as unknown after [error] stopped its creation, so it does not look as if it were still running. */
+    /** Stores sale [id] as unknown after [fault] stopped its creation, so it does not look as if it were still running. */
     private suspend fun interrupted(
         id: String,
-        error: Exception,
+        fault: DeviceFault,
     ) {
         try {
-            sales.record(id, SaleEvent.OutcomeUnknown(error.message))
+            sales.record(id, SaleEvent.OutcomeUnknown(Failure.Device(fault)))
         } catch (ignored: SQLException) {
             // It stays PENDING, which the next start turns into UNKNOWN.
         }
@@ -180,7 +183,7 @@ class PaymentLinks(
                         applied(saleId, paid)
                     }
 
-                    else -> {
+                    is PaymentLinkResult.Failed -> {
                         stored(saleId, result)
                     }
                 }
@@ -212,13 +215,14 @@ class PaymentLinks(
                 applied(id, result.link)
             }
 
-            is PaymentLinkResult.NotProcessed -> {
-                settleFailed(id, result.message)
+            is PaymentLinkResult.Failed if !result.fault.mayHaveTakenEffect -> {
+                settleFailed(id, result.fault)
             }
 
-            is PaymentLinkResult.Unknown -> {
-                sales.record(id, SaleEvent.OutcomeUnknown())
-                LinkUpdate.Failed(result.message)
+            is PaymentLinkResult.Failed -> {
+                val failure = Failure.Remote(result.fault)
+                sales.record(id, SaleEvent.OutcomeUnknown(failure))
+                LinkUpdate.Failed(failure)
             }
         }
     }
@@ -241,8 +245,7 @@ class PaymentLinks(
     ): LinkUpdate =
         when (result) {
             is PaymentLinkResult.Answered -> applied(id, result.link, cancelling)
-            is PaymentLinkResult.NotProcessed -> LinkUpdate.Failed(result.message)
-            is PaymentLinkResult.Unknown -> LinkUpdate.Failed(result.message)
+            is PaymentLinkResult.Failed -> LinkUpdate.Failed(Failure.Remote(result.fault))
         }
 
     /** Stores where [link], the link of sale [id], stands (see [SaleEvent.LinkAnswered]): still open, paid, or ended. */
@@ -260,9 +263,9 @@ class PaymentLinks(
 
     private suspend fun settleFailed(
         id: String,
-        message: String,
+        fault: Fault,
     ): LinkUpdate {
-        sales.record(id, SaleEvent.NotSent(message))
+        sales.record(id, SaleEvent.NotSent(fault))
         synchronized(unresolvedStarts) { unresolvedStarts.remove(id) }
         return LinkUpdate.Settled
     }

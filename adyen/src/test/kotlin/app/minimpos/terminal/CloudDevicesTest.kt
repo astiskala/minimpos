@@ -11,12 +11,15 @@ import app.minimpos.terminal.client.TransactionOutcome
 import app.minimpos.terminal.simulator.SimulatorConfig
 import app.minimpos.terminal.simulator.TerminalSimulator
 import app.minimpos.terminal.transport.AdyenCloudDevices
+import app.minimpos.terminal.transport.ApiKey
 import app.minimpos.terminal.transport.CloudCredentials
 import app.minimpos.terminal.transport.CloudDetection
 import app.minimpos.terminal.transport.CloudEndpoint
 import app.minimpos.terminal.transport.CloudListing
 import app.minimpos.terminal.transport.CloudRegion
 import app.minimpos.terminal.transport.Delivery
+import app.minimpos.terminal.transport.ExternalText
+import app.minimpos.terminal.transport.Fault
 import app.minimpos.terminal.transport.TerminalEnvironment
 import com.adyen.model.nexo.MessageHeader
 import com.adyen.model.nexo.SaleToPOIRequest
@@ -138,26 +141,27 @@ class CloudDevicesTest {
             }
             return runBlocking { transport.send(header(request), 5.seconds) } as Delivery.Failed
         }
-        assertThat(failure(401)).isInstanceOf(Delivery.NotSent::class.java)
-        assertThat(failure(403).reason).contains("Cloud Device API role")
-        assertThat(failure(422, """{"message":"Structure of PaymentRequest is invalid"}""").reason)
-            .isEqualTo("Structure of PaymentRequest is invalid (HTTP 422)")
-        assertThat(failure(404)).isInstanceOf(Delivery.NotSent::class.java)
-        assertThat(failure(500)).isInstanceOf(Delivery.MaybeSent::class.java)
-        assertThat(failure(408)).isInstanceOf(Delivery.MaybeSent::class.java)
-        assertThat(failure(200, """{"unexpected":true}""")).isInstanceOf(Delivery.MaybeSent::class.java)
+        assertThat(failure(401).fault).isEqualTo(Fault.Credential(ApiKey.ADYEN))
+        assertThat(failure(403).fault).isEqualTo(Fault.Permission(ApiKey.ADYEN, "Cloud Device API role"))
+        assertThat(failure(422, """{"message":"Structure of PaymentRequest is invalid"}""").fault)
+            .isEqualTo(Fault.AdyenRejected(422, null, ExternalText("Structure of PaymentRequest is invalid")))
+        assertThat(failure(404).fault).isEqualTo(Fault.NotFound("S1F2-000158213605014"))
+        assertThat(failure(500).fault.mayHaveTakenEffect).isTrue()
+        assertThat(failure(408).fault.mayHaveTakenEffect).isTrue()
+        assertThat(failure(200, """{"unexpected":true}""").fault).isEqualTo(Fault.UnreadableReply())
         // Adyen answers a terminal that is not there, or did not answer, with an event notification.
-        assertThat(failure(200, event("Device S1F2-1 is not connected"))).isInstanceOf(Delivery.NotSent::class.java)
+        assertThat(failure(200, event("Device S1F2-1 is not connected")).fault)
+            .isEqualTo(Fault.TerminalOffline("S1F2-000158213605014", ExternalText("Device S1F2-1 is not connected")))
         val late = failure(200, event("Did not receive a response from the POI."))
-        assertThat(late).isInstanceOf(Delivery.MaybeSent::class.java)
-        assertThat(late.reason).contains("Did not receive a response")
+        assertThat(late.fault)
+            .isEqualTo(Fault.NoAnswerFromTerminal("S1F2-000158213605014", ExternalText("Did not receive a response from the POI.")))
         // Without a POIID nothing is sent.
         val anonymous =
             TerminalAPIRequest().apply {
                 saleToPOIRequest =
                     SaleToPOIRequest()
             }
-        assertThat(runBlocking { transport.send(anonymous, 5.seconds) }).isInstanceOf(Delivery.NotSent::class.java)
+        assertThat(runBlocking { transport.send(anonymous, 5.seconds) }).isEqualTo(Delivery.Failed(Fault.NotFound(null)))
     }
 
     @Test
@@ -210,7 +214,7 @@ class CloudDevicesTest {
     @Test
     fun `a key that no endpoint accepts, or a refused merchant account, is reported`() {
         val unknown = runBlocking { devices.detect(TerminalEnvironment.TEST, null, "AU") }
-        assertThat((unknown as CloudDetection.Failed).message).contains("for TEST")
+        assertThat(unknown).isEqualTo(CloudDetection.Failed(Fault.Credential(ApiKey.ADYEN)))
         assertThat(server.requestCount).isEqualTo(1)
         listings["/test"] = 403 to ""
         assertThat(
@@ -218,12 +222,12 @@ class CloudDevicesTest {
                 runBlocking {
                     devices.detect(TerminalEnvironment.TEST, null, "AU")
                 } as CloudDetection.Failed
-            ).message,
-        ).contains("HarbourCoffeeCOM")
+            ).fault,
+        ).isEqualTo(Fault.Permission(ApiKey.ADYEN, "Cloud Device API role"))
         listings["/test"] = 200 to "not json"
         assertThat(
             runBlocking { devices.connectedDevices(CloudEndpoint.TEST) },
-        ).isEqualTo(CloudListing.Failed("Unexpected response from Adyen"))
+        ).isEqualTo(CloudListing.Failed(Fault.UnreadableReply()))
     }
 
     @Test
@@ -231,7 +235,7 @@ class CloudDevicesTest {
         runBlocking {
             listOf("""{"uniqueDeviceIds":[null]}""", """{"uniqueDeviceIds":[123]}""").forEach { body ->
                 listings["/test"] = 200 to body
-                assertThat(devices.connectedDevices(CloudEndpoint.TEST)).isEqualTo(CloudListing.Failed("Unexpected response from Adyen"))
+                assertThat(devices.connectedDevices(CloudEndpoint.TEST)).isEqualTo(CloudListing.Failed(Fault.UnreadableReply()))
             }
             listings["/test"] = 200 to """{"uniqueDeviceIds":["AMS1-1"],"futureField":{}}"""
             assertThat(devices.connectedDevices(CloudEndpoint.TEST)).isEqualTo(CloudListing.Listed(listOf("AMS1-1")))
@@ -245,8 +249,8 @@ class CloudDevicesTest {
                 runBlocking {
                     offline.detect(TerminalEnvironment.TEST, null, "AU")
                 } as CloudDetection.Failed
-            ).message,
-        ).contains("Cannot connect")
+            ).fault,
+        ).isEqualTo(Fault.Unreachable("127.0.0.1", terminal = false))
         val transport = offline.transport(CloudEndpoint.TEST)
         val request =
             header(
@@ -255,7 +259,8 @@ class CloudDevicesTest {
                         SaleToPOIRequest()
                 },
             )
-        assertThat(runBlocking { transport.send(request, 5.seconds) }).isInstanceOf(Delivery.NotSent::class.java)
+        val delivery = runBlocking { transport.send(request, 5.seconds) } as Delivery.Failed
+        assertThat(delivery.fault.mayHaveTakenEffect).isFalse()
     }
 
     private fun header(request: TerminalAPIRequest) =

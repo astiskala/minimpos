@@ -5,6 +5,7 @@ import app.minimpos.terminal.checkout.PaymentLinkApi
 import app.minimpos.terminal.checkout.PaymentLinkRequest
 import app.minimpos.terminal.checkout.PaymentLinkResult
 import app.minimpos.terminal.checkout.PaymentLinkStatus
+import app.minimpos.terminal.transport.Fault
 import java.time.Clock
 import java.time.Instant
 
@@ -37,7 +38,7 @@ class SimulatedPaymentLinks(
                 ?.removePrefix(PREFIX)
                 ?.substringBefore(':')
                 ?.toLongOrNull()
-                ?: return PaymentLinkResult.NotProcessed("Invalid simulated link")
+                ?: return PaymentLinkResult.Failed(Fault.NotFound(null))
         val status = if (expire || clock.millis() >= expiry) PaymentLinkStatus.EXPIRED else PaymentLinkStatus.ACTIVE
         return PaymentLinkResult.Answered(
             PaymentLink(linkId, "https://example.invalid/minimpos-demo/$linkId", status, Instant.ofEpochMilli(expiry)),

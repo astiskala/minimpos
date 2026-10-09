@@ -347,7 +347,7 @@
   <string name="tip_confirm_no_tip_title">No tip?</string>
   <string name="tip_confirm_sum">Bill %1$s + tip %2$s = %3$s.</string>
   <string name="tip_confirm_capture">%1$s is captured now, and the tip cannot be changed afterwards.</string>
-  <string name="tip_refused">The card issuer did not authorize %1$s (%2$s). Enter a smaller tip, or no tip.</string>
+  <string name="tip_refused">The card issuer did not authorize %1$s. Enter a smaller tip, or no tip.</string>
   <string name="capture_failed">Not captured: %1$s</string>
   <string name="capture_not_allowed">This payment can no longer be captured.</string>
   <string name="capture_title">Capture</string>
@@ -364,7 +364,7 @@
   <string name="capture_confirm_more">The card issuer is first asked to authorize the higher amount.</string>
   <string name="adjust_confirm_title">Hold %1$s?</string>
   <string name="adjust_confirm_message">The card issuer is asked to hold %1$s on the shopper’s card instead of %2$s.</string>
-  <string name="capture_refused">The card issuer did not authorize %1$s (%2$s).</string>
+  <string name="capture_refused">The card issuer did not authorize %1$s.</string>
   <string name="adjust_failed">Not adjusted: %1$s</string>
 
   <!-- Products -->

@@ -23,6 +23,8 @@ import app.minimpos.app.data.settings.TerminalMode
 import app.minimpos.app.terminal.TerminalConnection
 import app.minimpos.terminal.checkout.PaymentModifications
 import app.minimpos.terminal.simulator.SimulatedModifications
+import app.minimpos.terminal.transport.ApiKey
+import app.minimpos.terminal.transport.Fault
 import app.minimpos.terminal.transport.TerminalEnvironment
 import com.google.common.truth.Truth.assertThat
 import kotlinx.coroutines.CompletableDeferred
@@ -38,12 +40,12 @@ import app.minimpos.app.createRecordingComposeRule as createComposeRule
 @Config(qualifiers = "en-rAU-w320dp-h460dp-hdpi")
 class SetupDiscoveryUiTest {
     private val phone = FakeDevice()
-    private var apiFailure: String? = null
+    private var apiFailure: Fault? = null
     private var apiRelease: CompletableDeferred<Unit>? = null
     private var apiEntered = CompletableDeferred<Unit>()
     private val modifications =
         object : PaymentModifications by SimulatedModifications() {
-            override suspend fun verify(): String? {
+            override suspend fun verify(): Fault? {
                 apiEntered.complete(Unit)
                 apiRelease?.await()
                 return apiFailure
@@ -282,7 +284,7 @@ class SetupDiscoveryUiTest {
         compose.onNodeWithTag("discoverSetup").assertDoesNotExist()
         compose.onNodeWithTag("merchantAccount").performScrollTo().performTextInput("Merchant")
         compose.awaitCondition("the account is saved") { container.settingsState.value.terminal.merchantAccount == "Merchant" }
-        apiFailure = "Invalid API key"
+        apiFailure = Fault.Credential(ApiKey.ADYEN)
         compose.onNodeWithTag("apiKey").performScrollTo().performTextInput(" demo-key ")
         compose
             .onNodeWithTag("testApi")
@@ -292,7 +294,10 @@ class SetupDiscoveryUiTest {
         compose.awaitCondition("the API key is saved without discovery") {
             await { container.secrets.get(Secret.ADYEN_API_KEY) } == "demo-key"
         }
-        compose.waitUntilAtLeastOneExists(hasTestTag("apiResult") and hasText("Invalid API key", substring = true), 15_000)
+        compose.waitUntilAtLeastOneExists(
+            hasTestTag("apiResult") and hasText(env.context.getString(R.string.fault_credential_adyen), substring = true),
+            15_000,
+        )
         compose.onNodeWithTag("step_3").assertDoesNotExist()
         apiFailure = null
         compose.onNodeWithTag("testApi").performScrollTo().performClick()
@@ -307,9 +312,12 @@ class SetupDiscoveryUiTest {
         compose.onNodeWithTag("step_4").assertDoesNotExist()
         // Once unlocked, retesting cannot discard a secret draft in a later step.
         compose.onNodeWithTag("paymentsAppKey").performScrollTo().performTextInput("boarding-draft")
-        apiFailure = "Temporarily unavailable"
+        apiFailure = Fault.AdyenUnavailable(503)
         compose.onNodeWithTag("testApi").performScrollTo().performClick()
-        compose.waitUntilAtLeastOneExists(hasTestTag("apiResult") and hasText("Temporarily unavailable", substring = true), 15_000)
+        compose.waitUntilAtLeastOneExists(
+            hasTestTag("apiResult") and hasText(env.context.getString(R.string.fault_adyen_unavailable), substring = true),
+            15_000,
+        )
         compose.onNodeWithTag("paymentsAppKey").performScrollTo().assertTextContains("boarding-draft", substring = true)
     }
 
@@ -326,9 +334,12 @@ class SetupDiscoveryUiTest {
         compose.onNodeWithTag("merchantAccount").performScrollTo().performTextInput("Merchant")
         compose.awaitCondition("the account is saved") { container.settingsState.value.terminal.merchantAccount == "Merchant" }
         compose.onNodeWithTag("apiKey").performScrollTo().performTextInput("discovery-key")
-        apiFailure = "Invalid API key"
+        apiFailure = Fault.Credential(ApiKey.ADYEN)
         compose.onNodeWithTag("testApi").performScrollTo().performClick()
-        compose.waitUntilAtLeastOneExists(hasTestTag("apiResult") and hasText("Invalid API key", substring = true), 15_000)
+        compose.waitUntilAtLeastOneExists(
+            hasTestTag("apiResult") and hasText(env.context.getString(R.string.fault_credential_adyen), substring = true),
+            15_000,
+        )
         compose.onNodeWithTag("discoverSetup").assertDoesNotExist()
         apiFailure = null
         compose.onNodeWithTag("testApi").performScrollTo().performClick()

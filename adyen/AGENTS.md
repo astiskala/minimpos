@@ -8,10 +8,11 @@ Starred rules are enforced by `ArchitectureTest`. KDoc is the detailed API/proto
 - \* Layers go downwards: `simulator` → `client`/`checkout`/`paymentsapp` → `transport` → `parse`, with no cycles.
   No Android, `:core` or `:app` dependencies; public interfaces use this module's types. Nothing logs or prints.
 - \* Every Adyen HTTPS API call (cloud, Checkout, Management) uses `transport/AdyenHttp`: per-call timeout, no silent
-  retries, typed sent/not-sent failures. Only `transport` builds OkHttp requests; only `AdyenHttp` and
-  `TerminalHttpClient` execute calls.
-- \* `TerminalTransport.send` returns `Delivery` (answered/not sent/maybe sent), never throws. Each transport decides
-  delivery uncertainty once. Convert transport exceptions there; client/checkout code must not see them.
+  retries, typed `Fault`s. Only `transport` builds OkHttp requests; only `AdyenHttp` and `TerminalHttpClient` execute
+  calls.
+- \* `TerminalTransport.send` returns `Delivery` (answered, or failed with a `Fault`), never throws. Each `Fault` states
+  once whether the request may have taken effect. Convert transport exceptions there (`FaultException` only inside
+  `:adyen`); client/checkout code must not see them. Results carry faults and `ExternalText`, never English sentences.
 - \* Only `client/Decline` interprets ErrorCondition and retry advice. Do not compare its strings elsewhere.
 - \* Always install our `TerminalHttpClient` on the Adyen `Client`. The default Apache client crashes on Android;
   even a bare `httpClient` inside `Client.apply` calls its getter and creates it. The getter and unencrypted TEST-only

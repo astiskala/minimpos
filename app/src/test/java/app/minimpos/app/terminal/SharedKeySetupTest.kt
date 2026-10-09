@@ -3,13 +3,16 @@ package app.minimpos.app.terminal
 import app.minimpos.app.FakeDevice
 import app.minimpos.app.TestEnvironment
 import app.minimpos.app.await
+import app.minimpos.app.data.db.Failure
 import app.minimpos.app.data.db.SetupProblem
 import app.minimpos.app.data.security.Secret
 import app.minimpos.app.data.security.SecretStoreException
 import app.minimpos.app.data.security.SharedKeyGenerator
 import app.minimpos.app.data.settings.TerminalMode
+import app.minimpos.terminal.transport.ApiKey
 import app.minimpos.terminal.transport.DiscoveredKey
-import app.minimpos.terminal.transport.ManagementFailure
+import app.minimpos.terminal.transport.Fault
+import app.minimpos.terminal.transport.MalformedPart
 import app.minimpos.terminal.transport.SharedKeyLookup
 import app.minimpos.terminal.transport.SharedKeyUpdate
 import app.minimpos.terminal.transport.TerminalDetails
@@ -142,7 +145,7 @@ class SharedKeySetupTest {
     fun `unknown delivery survives owner reconstruction and explicitly retries exactly the same key`() {
         val first = owner()
         accepted = false
-        updateFailure = SharedKeyUpdate.Failed(ManagementFailure.UNAVAILABLE, uncertain = true)
+        updateFailure = SharedKeyUpdate.Failed(Fault.AdyenUnavailable(503), uncertain = true)
         assertThat(
             await { first.resolve(unlocked(), offer(first)) },
         ).isEqualTo(SharedKeySetupOutcome.Failed(SetupProblem.KEY_CREATION_UNCONFIRMED))
@@ -170,7 +173,7 @@ class SharedKeySetupTest {
     @Test
     fun `accepted but unanswered creation resolves by reading without a second PATCH`() {
         val owner = owner()
-        updateFailure = SharedKeyUpdate.Failed(ManagementFailure.UNAVAILABLE, uncertain = true)
+        updateFailure = SharedKeyUpdate.Failed(Fault.AdyenUnavailable(503), uncertain = true)
         await { owner.resolve(unlocked(), offer(owner)) }
         val restarted = owner()
         val result = await { restarted.resolve(unlocked(), restarted.pendingOffer(unlocked())) } as SharedKeySetupOutcome.Ready
@@ -187,8 +190,12 @@ class SharedKeySetupTest {
         busy = false
         apiCheck = ApiCheck.NotSetUp(SetupProblem.MANAGEMENT_PERMISSION)
         assertThat(await { owner.resolve(unlocked()) }).isEqualTo(SharedKeySetupOutcome.Failed(SetupProblem.MANAGEMENT_PERMISSION))
-        apiCheck = ApiCheck.Failed("Checkout unavailable")
-        assertThat(await { owner.resolve(unlocked()) }).isEqualTo(SharedKeySetupOutcome.Failed(message = "Checkout unavailable"))
+        apiCheck = ApiCheck.Failed(Fault.AdyenUnavailable(503))
+        assertThat(
+            await {
+                owner.resolve(unlocked())
+            },
+        ).isEqualTo(SharedKeySetupOutcome.Failed(failure = Failure.Remote(Fault.AdyenUnavailable(503))))
         apiCheck = ApiCheck.Works
         env.updateSettings { it.copy(terminal = it.terminal.copy(host = "")) }
         assertThat(await { owner.resolve(unlocked()) }).isEqualTo(SharedKeySetupOutcome.Failed(SetupProblem.HOST))
@@ -199,11 +206,11 @@ class SharedKeySetupTest {
     fun `failed reads and unreadable recovery never become key absence`() {
         val owner = owner()
         listOf(
-            ManagementFailure.PERMISSION to SetupProblem.MANAGEMENT_PERMISSION,
-            ManagementFailure.UNREADABLE to SetupProblem.MANAGEMENT_UNREADABLE,
-            ManagementFailure.SETTINGS_UNREADABLE to SetupProblem.TERMINAL_SETTINGS_UNREADABLE,
-            ManagementFailure.KEY_INCOMPLETE to SetupProblem.SHARED_KEY_INCOMPLETE,
-            ManagementFailure.KEY_INVALID to SetupProblem.SHARED_KEY_INVALID,
+            Fault.Permission(ApiKey.ADYEN) to SetupProblem.MANAGEMENT_PERMISSION,
+            Fault.UnreadableReply() to SetupProblem.MANAGEMENT_UNREADABLE,
+            Fault.Malformed(MalformedPart.SETTINGS) to SetupProblem.TERMINAL_SETTINGS_UNREADABLE,
+            Fault.Malformed(MalformedPart.KEY) to SetupProblem.SHARED_KEY_INCOMPLETE,
+            Fault.Malformed(MalformedPart.KEY_VERSION) to SetupProblem.SHARED_KEY_INVALID,
         ).forEach { (reason, problem) ->
             found = SharedKeyLookup.Failed(reason)
             assertThat(await { owner.resolve(unlocked()) }).isEqualTo(SharedKeySetupOutcome.Failed(problem))

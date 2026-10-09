@@ -59,10 +59,9 @@ data class TerminalKey(
  * Local Terminal API through Adyen's [TerminalLocalAPI], which encrypts requests with the shared key and posts them to
  * `https://<host>:8443/nexo` (use `localhost` when the app runs on the terminal itself).
  *
- * [send] runs the library's blocking call on the dispatcher; cancelling the coroutine interrupts it. What the HTTP
- * client throws ([TerminalHttpClient]) decides the [Delivery]: no connection, an untrusted certificate or a rejection is
- * [Delivery.NotSent], anything else [Delivery.MaybeSent]; so is a reply that fails decryption or its HMAC check (with
- * advice to check the shared key) and any other library failure.
+ * [send] runs the library's blocking call on the dispatcher; cancelling the coroutine interrupts it. The [Fault] the HTTP
+ * client throws ([TerminalHttpClient]) becomes [Delivery.Failed]; a reply that fails decryption or its HMAC check is
+ * [Fault.ReplyUnverified], and any other library failure [Fault.UnreadableReply].
  */
 class AdyenLocalTransport(
     /** The terminal's IP address or host name, without scheme or port. */
@@ -91,17 +90,17 @@ class AdyenLocalTransport(
             try {
                 Delivery.Answered(api(timeout.inWholeMilliseconds).request(request))
             } catch (e: IOException) {
-                e.toDelivery("No response from the terminal")
+                Delivery.Failed(e.fault())
             } catch (ignored: NexoCryptoException) {
-                KEY_MISMATCH
+                Delivery.Failed(Fault.ReplyUnverified)
             } catch (ignored: GeneralSecurityException) {
                 // A wrong passphrase usually fails AES padding before the HMAC check.
-                KEY_MISMATCH
+                Delivery.Failed(Fault.ReplyUnverified)
             } catch (
                 // TerminalLocalAPI.request is declared to throw Exception.
                 @Suppress("TooGenericExceptionCaught") ignored: Exception,
             ) {
-                Delivery.MaybeSent("Unexpected response from the terminal")
+                Delivery.Failed(Fault.UnreadableReply())
             }
         }
 
@@ -120,6 +119,5 @@ class AdyenLocalTransport(
 
     private companion object {
         const val CONNECT_TIMEOUT_MILLIS = 10_000
-        val KEY_MISMATCH = Delivery.MaybeSent("The terminal's reply could not be verified. ${TerminalHttpClient.KEY_ADVICE}")
     }
 }

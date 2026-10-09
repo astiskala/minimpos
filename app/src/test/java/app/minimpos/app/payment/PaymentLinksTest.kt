@@ -26,6 +26,8 @@ import app.minimpos.core.receipt.PlainTextReceiptRenderer
 import app.minimpos.terminal.checkout.ModificationAmount
 import app.minimpos.terminal.checkout.PaymentLinkResult
 import app.minimpos.terminal.checkout.PaymentLinkStatus
+import app.minimpos.terminal.transport.ExternalText
+import app.minimpos.terminal.transport.Fault
 import com.google.common.truth.Truth.assertThat
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOf
@@ -172,10 +174,14 @@ class PaymentLinksTest {
         env.useLinks()
         val first = links.start(linkStart())
         saleWhen(first) { it.status == SaleStatus.AWAITING_PAYMENT }
-        api.getResult = PaymentLinkResult.Unknown("timeout")
-        assertThat(await { links.check(first) }).isEqualTo(LinkUpdate.Failed("timeout"))
-        api.getResult = PaymentLinkResult.NotProcessed("Not allowed (HTTP 403)")
-        assertThat(await { links.check(first) }).isEqualTo(LinkUpdate.Failed("Not allowed (HTTP 403)"))
+        api.getResult = PaymentLinkResult.Failed(Fault.TimedOut)
+        assertThat(await { links.check(first) }).isEqualTo(LinkUpdate.Failed(Failure.Remote(Fault.TimedOut)))
+        api.getResult = PaymentLinkResult.Failed(Fault.AdyenRejected(422, null, ExternalText("Not allowed (HTTP 403)")))
+        assertThat(
+            await {
+                links.check(first)
+            },
+        ).isEqualTo(LinkUpdate.Failed(Failure.Remote(Fault.AdyenRejected(422, null, ExternalText("Not allowed (HTTP 403)")))))
         assertThat(
             await {
                 container.sales
@@ -197,8 +203,8 @@ class PaymentLinksTest {
         api.status = PaymentLinkStatus.ACTIVE
         val second = links.start(linkStart())
         saleWhen(second) { it.status == SaleStatus.AWAITING_PAYMENT }
-        api.expireResult = PaymentLinkResult.Unknown("timeout")
-        assertThat(await { links.cancel(second) }).isEqualTo(LinkUpdate.Failed("timeout"))
+        api.expireResult = PaymentLinkResult.Failed(Fault.TimedOut)
+        assertThat(await { links.cancel(second) }).isEqualTo(LinkUpdate.Failed(Failure.Remote(Fault.TimedOut)))
         api.expireResult = null
         assertThat(await { links.cancel(second) }).isEqualTo(LinkUpdate.Settled)
         assertThat(
@@ -230,18 +236,23 @@ class PaymentLinksTest {
     @Test
     fun `a refused link fails and keeps the cart, and an unknown one is created again with the same key`() {
         env.useLinks()
-        api.createResult = PaymentLinkResult.NotProcessed("Expiry too far ahead (HTTP 422, code 1)")
+        api.createResult = PaymentLinkResult.Failed(Fault.AdyenRejected(422, null, ExternalText("Expiry too far ahead (HTTP 422, code 1)")))
         val refused = links.start(linkStart())
         val failed = saleWhen(refused) { it.status == SaleStatus.FAILED }
-        assertThat(failed.message).isEqualTo("Expiry too far ahead (HTTP 422, code 1)")
+        assertThat(failed.reason)
+            .isEqualTo(
+                StoredReason.NotDone(
+                    Failure.Remote(Fault.AdyenRejected(422, null, ExternalText("Expiry too far ahead (HTTP 422, code 1)"))),
+                ),
+            )
         assertThat(session.cart.value.lines).isNotEmpty()
         assertThat(await { links.check(refused) }).isEqualTo(LinkUpdate.Settled)
 
         session.clear()
-        api.createResult = PaymentLinkResult.Unknown("timeout")
+        api.createResult = PaymentLinkResult.Failed(Fault.TimedOut)
         val unknown = links.start(linkStart())
         val pending = saleWhen(unknown) { it.status == SaleStatus.UNKNOWN }
-        assertThat(pending.reason).isEqualTo(StoredReason.Unconfirmed())
+        assertThat(pending.reason).isEqualTo(StoredReason.Unconfirmed(Failure.Remote(Fault.TimedOut)))
         assertThat(pending.message).isNull()
         api.createResult = null
         assertThat(await { links.check(unknown) }).isEqualTo(LinkUpdate.StillOpen)
@@ -261,7 +272,7 @@ class PaymentLinksTest {
     fun `recovering an unknown link clears its original session but preserves newer work`() {
         env.useLinks()
         repeat(2) { attempt ->
-            api.createResult = PaymentLinkResult.Unknown("timeout")
+            api.createResult = PaymentLinkResult.Failed(Fault.TimedOut)
             val start = linkStart()
             val id = links.start(start)
             saleWhen(id) { it.status == SaleStatus.UNKNOWN }
@@ -278,7 +289,7 @@ class PaymentLinksTest {
     @Test
     fun `missing setup cannot turn an unknown link creation into a known failure`() {
         env.useLinks()
-        api.createResult = PaymentLinkResult.Unknown("timeout")
+        api.createResult = PaymentLinkResult.Failed(Fault.TimedOut)
         val id = links.start(linkStart())
         saleWhen(id) { it.status == SaleStatus.UNKNOWN }
         env.useSimulator()

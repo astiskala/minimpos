@@ -2,6 +2,7 @@ package app.minimpos.app.feature.settings
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import app.minimpos.app.data.db.Failure
 import app.minimpos.app.data.settings.TerminalSettings
 import app.minimpos.app.feature.ActionOutcome
 import app.minimpos.app.feature.ActionState
@@ -73,7 +74,7 @@ internal class ReceiptBusinessImports(
 
                     is ReceiptBusinesses.Failed -> {
                         it.copy(
-                            lookup = ActionState(outcome = ActionOutcome.Failed(result.message), isError = true),
+                            lookup = ActionState(outcome = ActionOutcome.Failed(Failure.Remote(result.fault)), isError = true),
                         )
                     }
                 }

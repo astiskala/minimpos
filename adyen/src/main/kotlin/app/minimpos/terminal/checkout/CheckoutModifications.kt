@@ -2,8 +2,8 @@ package app.minimpos.terminal.checkout
 
 import app.minimpos.terminal.transport.AdyenHttp
 import app.minimpos.terminal.transport.AdyenReply
-import app.minimpos.terminal.transport.HTTP_FORBIDDEN
-import app.minimpos.terminal.transport.HTTP_UNAUTHORIZED
+import app.minimpos.terminal.transport.ExternalText
+import app.minimpos.terminal.transport.Fault
 import app.minimpos.terminal.transport.adyenField
 import app.minimpos.terminal.transport.decodeAdyenModel
 import com.adyen.model.applicationinfo.ApplicationInfo
@@ -27,8 +27,8 @@ import kotlin.time.Duration.Companion.seconds
  * is not used. The API key goes in the `x-api-key` header and is never part of an error message.
  *
  * Blocking calls run on [dispatcher]; cancelling the coroutine interrupts them. A request that could not be sent at
- * all (no connection, unknown host) and HTTP 4xx answers other than 408 and 429 are
- * [ModificationResult.NotProcessed]; timeouts, 408, 429 and 5xx are [ModificationResult.Unknown].
+ * all (no connection, unknown host) and HTTP 4xx answers other than 408 and 429 fail with a fault that took no effect;
+ * timeouts, 408, 429, 5xx and unreadable answers with one that may have.
  */
 class CheckoutModifications(
     private val credentials: CheckoutCredentials,
@@ -42,7 +42,7 @@ class CheckoutModifications(
     dispatcher: CoroutineDispatcher = Dispatchers.IO,
     private val application: ApplicationInfo? = null,
 ) : PaymentModifications {
-    private val http = AdyenHttp(credentials.apiKey, baseClient, dispatcher, "check the internet connection and the live URL prefix")
+    private val http = AdyenHttp(credentials.apiKey, baseClient, dispatcher)
 
     override suspend fun capture(
         paymentPspReference: String,
@@ -83,18 +83,10 @@ class CheckoutModifications(
             ::adjusted,
         )
 
-    override suspend fun verify(): String? {
+    override suspend fun verify(): Fault? {
         val body = PaymentMethodsRequest().merchantAccount(credentials.merchantAccount).toJson()
-        return when (val reply = post(listOf("paymentMethods"), body, idempotencyKey = null)) {
-            is AdyenReply.Answered if reply.ok -> null
-            is AdyenReply.Answered if reply.code == HTTP_UNAUTHORIZED -> "Adyen did not accept the API key (HTTP 401)"
-            is AdyenReply.Answered if reply.code == HTTP_FORBIDDEN -> forbidden()
-            is AdyenReply.Answered -> adyenError(reply)
-            is AdyenReply.Failed -> reply.message
-        }
+        return post(listOf("paymentMethods"), body, idempotencyKey = null).failure()
     }
-
-    private fun forbidden() = "The API key may not use merchant account ${credentials.merchantAccount} (HTTP 403)"
 
     private suspend fun modify(
         path: List<String>,
@@ -103,27 +95,25 @@ class CheckoutModifications(
         success: (String) -> ModificationResult,
     ): ModificationResult =
         when (val reply = post(path, body, idempotencyKey)) {
-            is AdyenReply.Failed if reply.sent -> ModificationResult.Unknown(reply.message)
-            is AdyenReply.Failed -> ModificationResult.NotProcessed(reply.message)
+            is AdyenReply.Failed -> ModificationResult.Failed(reply.fault)
             is AdyenReply.Answered if reply.ok -> success(reply.body)
-            is AdyenReply.Answered if reply.outcomeUnknown() -> ModificationResult.Unknown(adyenError(reply))
-            is AdyenReply.Answered -> ModificationResult.NotProcessed(adyenError(reply))
+            is AdyenReply.Answered -> ModificationResult.Failed(reply.checkoutFault())
         }
 
     private fun captured(text: String): ModificationResult {
         val response =
             decodeAdyenModel(text, PaymentCaptureResponse::class.java)
-                ?: return ModificationResult.Unknown("Unexpected response from Adyen")
+                ?: return ModificationResult.Failed(Fault.UnreadableReply())
         return when (response.status) {
             PaymentCaptureResponse.StatusEnum.RECEIVED -> ModificationResult.Received(response.pspReference)
-            else -> ModificationResult.Unknown(unexpectedStatus(text))
+            else -> ModificationResult.Failed(unexpectedStatus(text))
         }
     }
 
     private fun adjusted(text: String): ModificationResult {
         val response =
             decodeAdyenModel(text, PaymentAmountUpdateResponse::class.java)
-                ?: return ModificationResult.Unknown("Unexpected response from Adyen")
+                ?: return ModificationResult.Failed(Fault.UnreadableReply())
         return when (response.status) {
             PaymentAmountUpdateResponse.StatusEnum.RECEIVED -> {
                 ModificationResult.Received(response.pspReference)
@@ -134,11 +124,11 @@ class CheckoutModifications(
             }
 
             PaymentAmountUpdateResponse.StatusEnum.REFUSED -> {
-                ModificationResult.Refused(adyenField(text, "refusalReason") ?: "Refused by the card issuer")
+                ModificationResult.Refused(ExternalText.of(adyenField(text, "refusalReason")))
             }
 
             else -> {
-                ModificationResult.Unknown(unexpectedStatus(text))
+                ModificationResult.Failed(unexpectedStatus(text))
             }
         }
     }

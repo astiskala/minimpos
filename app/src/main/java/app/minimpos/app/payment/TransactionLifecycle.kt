@@ -75,11 +75,10 @@ enum class SettlementStatus {
  * The outcome of a transaction as it is stored.
  *
  * @property status How it ended.
- * @property message Why it did not succeed, as the terminal (or what failed) worded it; null when it succeeded or
- *   nothing was said.
+ * @property message What the terminal said when it did not approve, verbatim; null when it succeeded or said nothing.
  * @property details What the terminal answered; null when it did not answer.
- * @property reason Why it did not succeed when the app says so (not set up, outcome unknown), which the screens word;
- *   null otherwise.
+ * @property reason Why it did not succeed when there is no answer to tell (not set up, a fault, outcome unconfirmed),
+ *   which the screens word; null otherwise.
  */
 data class Settlement(
     val status: SettlementStatus,
@@ -271,8 +270,8 @@ class TransactionLifecycle<R>(
     suspend fun recheck(id: String): Boolean =
         rechecks.withLock {
             val serviceId = book.unsettledServiceId(id) ?: return@withLock false
-            val outcome = gateway.status(serviceId, book.kind, book.context(id))
-            if (outcome is TransactionOutcome.Unknown) return@withLock false
+            val outcome = (gateway.status(serviceId, book.kind, book.context(id)) as? Attempt.Made)?.result
+            if (outcome == null || outcome is TransactionOutcome.Unknown) return@withLock false
             val settlement = settle(id, outcome)
             book.settle(id, settlement)
             complete(id, settlement)
@@ -358,15 +357,16 @@ class TransactionLifecycle<R>(
                         decline.cancelled -> SettlementStatus.CANCELLED
                         else -> SettlementStatus.DECLINED
                     }
-                Settlement(status, decline?.let { details.message ?: it.errorCondition }, details)
+                // A decline is worded from its stored ErrorCondition; only the terminal's own text is kept as its message.
+                Settlement(status, details.message?.text?.takeIf { decline != null }, details)
             }
 
             is TransactionOutcome.NotProcessed -> {
-                Settlement(SettlementStatus.FAILED, outcome.reason)
+                Settlement(SettlementStatus.FAILED, null, reason = StoredReason.NotDone(Failure.Remote(outcome.fault)))
             }
 
             is TransactionOutcome.Unknown -> {
-                Settlement(SettlementStatus.UNKNOWN, null, reason = StoredReason.Unconfirmed())
+                Settlement(SettlementStatus.UNKNOWN, null, reason = StoredReason.Unconfirmed(Failure.Remote(outcome.fault)))
             }
         }
 }

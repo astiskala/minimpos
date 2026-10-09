@@ -8,6 +8,7 @@ import app.minimpos.app.TestEnvironment
 import app.minimpos.app.await
 import app.minimpos.app.closeViewModels
 import app.minimpos.app.data.db.CategoryEntity
+import app.minimpos.app.data.db.Failure
 import app.minimpos.app.data.db.ProductEntity
 import app.minimpos.app.data.db.SaleKind
 import app.minimpos.app.data.db.SaleStatus
@@ -52,6 +53,9 @@ import app.minimpos.terminal.client.RetryAdvice
 import app.minimpos.terminal.simulator.SimulatedModifications
 import app.minimpos.terminal.simulator.SimulatedOutcome
 import app.minimpos.terminal.simulator.TerminalSimulator
+import app.minimpos.terminal.transport.ApiKey
+import app.minimpos.terminal.transport.ExternalText
+import app.minimpos.terminal.transport.Fault
 import app.minimpos.terminal.transport.StoreLookup
 import app.minimpos.terminal.transport.TerminalEnvironment
 import com.google.common.truth.Truth.assertThat
@@ -122,7 +126,7 @@ class SettingsViewModelTest {
         var calls = 0
         val modifications =
             object : PaymentModifications by SimulatedModifications() {
-                override suspend fun verify(): String? {
+                override suspend fun verify(): Fault? {
                     calls++
                     entered.complete(Unit)
                     release.await()
@@ -194,7 +198,10 @@ class SettingsViewModelTest {
 
     @Test
     fun `receipt lookup failures leave receipt settings unchanged`() {
-        val failed = TestEnvironment(stores = FakeStoreDetails(storeAnswer = StoreLookup.Failed("Missing store permission")))
+        val failed =
+            TestEnvironment(
+                stores = FakeStoreDetails(storeAnswer = StoreLookup.Failed(Fault.Permission(ApiKey.ADYEN, "Management API—Stores read"))),
+            )
         try {
             failed.useLinks()
             failed.updateSettings { it.copy(terminal = it.terminal.copy(storeId = "ST1")) }
@@ -202,7 +209,7 @@ class SettingsViewModelTest {
             val before = await { failed.container.settings.current() }
             vm.businessImport.find()
             assertThat(await { vm.businessImport.state.first { it.lookup.isError } }.lookup.outcome)
-                .isEqualTo(ActionOutcome.Failed("Missing store permission"))
+                .isEqualTo(ActionOutcome.Failed(Failure.Remote(Fault.Permission(ApiKey.ADYEN, "Management API—Stores read"))))
             assertThat(await { failed.container.settings.current() }).isEqualTo(before)
             assertThat(vm.businessImport.state.value.proposal).isNull()
         } finally {
@@ -251,7 +258,8 @@ class SettingsViewModelTest {
 
             vm.saveAndTest(Secret.TERMINAL_PASSPHRASE, "wrong passphrase")
             val rejected = await { vm.actions.first { it.connection.isError } }
-            assertThat((rejected.connection.outcome as? ActionOutcome.ConnectionFailed)?.reason).contains("shared key")
+            assertThat((rejected.connection.outcome as? ActionOutcome.ConnectionFailed)?.failure)
+                .isEqualTo(Failure.Remote(Fault.KeyRejected(ExternalText("Crypto error"))))
             assertThat(rejected.passphraseStored).isTrue()
             vm.dismissConnectionResult()
             assertThat(vm.actions.value.connection.outcome).isNull()
@@ -364,7 +372,7 @@ class SettingsViewModelTest {
         assertThat(
             await {
                 vm.actions.first { it.connection.isError && it.connection.outcome is ActionOutcome.ConnectionFailed }
-            }.connection.outcome.let { (it as? ActionOutcome.ConnectionFailed)?.reason },
-        ).contains("Cannot connect")
+            }.connection.outcome.let { (it as? ActionOutcome.ConnectionFailed)?.failure },
+        ).isEqualTo(Failure.Remote(Fault.Unreachable("127.0.0.1:8443", terminal = true)))
     }
 }

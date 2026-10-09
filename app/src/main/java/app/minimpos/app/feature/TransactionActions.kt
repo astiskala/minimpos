@@ -1,5 +1,6 @@
 package app.minimpos.app.feature
 
+import app.minimpos.app.data.db.Failure
 import app.minimpos.app.data.db.SetupProblem
 import app.minimpos.app.payment.CaptureResult
 import app.minimpos.app.payment.LinkUpdate
@@ -13,6 +14,7 @@ import app.minimpos.app.receipt.ActionResult
 import app.minimpos.app.refund.RefundStart
 import app.minimpos.core.receipt.ReceiptCopy
 import app.minimpos.core.receipt.ReceiptDocument
+import app.minimpos.terminal.transport.ExternalText
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -25,7 +27,7 @@ import java.time.LocalDate
 
 /**
  * What a finished action reports, for the screen to word (see [OutcomeMessage]). View models never hold display text:
- * a failure worded elsewhere (by the module that failed, or by Adyen) travels as [Failed].
+ * a failure travels typed as [Failed], with any words Adyen, a terminal or a mail server wrote kept verbatim inside it.
  */
 sealed interface ActionOutcome {
     /** A receipt (or the test receipt) was printed. */
@@ -53,11 +55,11 @@ sealed interface ActionOutcome {
      * A tip, capture or adjustment did not go through: Adyen did not take it, its outcome is unknown (it can be sent
      * again safely), or the Checkout API is not set up.
      *
-     * @property reason Why, as Adyen or the app worded it.
+     * @property failure Why.
      * @property step What was sent.
      */
     data class NotCaptured(
-        val reason: String,
+        val failure: Failure,
         val step: CaptureStep,
     ) : CaptureFailed
 
@@ -68,13 +70,13 @@ sealed interface ActionOutcome {
      * @property step What was sent.
      * @property amountMinor The amount asked for, in minor units of [currency].
      * @property currency The payment's ISO 4217 currency code.
-     * @property reason Adyen's refusal reason.
+     * @property said Adyen's refusal reason; null when it gave none.
      */
     data class CaptureRefused(
         val step: CaptureStep,
         val amountMinor: Long,
         val currency: String,
-        val reason: String,
+        val said: ExternalText?,
     ) : CaptureFailed
 
     /** The payment no longer allows the tip, capture or adjustment (captured or cancelled meanwhile, or gone). */
@@ -96,10 +98,10 @@ sealed interface ActionOutcome {
     /**
      * The connection test could not reach the terminal, or it did not answer properly.
      *
-     * @property reason Why, as the terminal or Adyen worded it; null when it did not answer at all.
+     * @property failure Why.
      */
     data class ConnectionFailed(
-        val reason: String?,
+        val failure: Failure,
     ) : ActionOutcome
 
     /**
@@ -147,13 +149,16 @@ sealed interface ActionOutcome {
         val reason: String?,
     ) : ActionOutcome
 
+    /** The sale or refund no longer exists. */
+    data object Missing : ActionOutcome
+
     /**
-     * The action failed for a reason worded elsewhere, shown as it is.
+     * The action failed.
      *
-     * @property message Why.
+     * @property failure Why.
      */
     data class Failed(
-        val message: String,
+        val failure: Failure,
     ) : ActionOutcome
 }
 
@@ -176,8 +181,8 @@ data class ActionState(
 fun ActionResult.toState(success: ActionOutcome) =
     when (this) {
         ActionResult.Success -> ActionState(outcome = success, done = true)
-        is ActionResult.Failure -> ActionState(outcome = ActionOutcome.Failed(message), isError = true)
-        is ActionResult.NotSetUp -> ActionState(outcome = ActionOutcome.NotSetUp(problem), isError = true)
+        ActionResult.Missing -> ActionState(outcome = ActionOutcome.Missing, isError = true)
+        is ActionResult.Failed -> ActionState(outcome = ActionOutcome.Failed(failure), isError = true)
     }
 
 /** What a tip, capture or adjustment sent, which the wording of its failure names. */
@@ -207,11 +212,11 @@ fun CaptureResult.toState(
         }
 
         is CaptureResult.Refused -> {
-            ActionState(outcome = ActionOutcome.CaptureRefused(step, amountMinor, currency, reason), isError = true)
+            ActionState(outcome = ActionOutcome.CaptureRefused(step, amountMinor, currency, said), isError = true)
         }
 
         is CaptureResult.Failed -> {
-            ActionState(outcome = ActionOutcome.NotCaptured(message, step), isError = true)
+            ActionState(outcome = ActionOutcome.NotCaptured(failure, step), isError = true)
         }
 
         is CaptureResult.NotSetUp -> {

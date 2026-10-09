@@ -1,5 +1,7 @@
 package app.minimpos.app.terminal
 
+import app.minimpos.app.data.db.DeviceFault
+import app.minimpos.app.data.db.Failure
 import app.minimpos.app.data.db.SetupProblem
 import app.minimpos.app.data.security.Secret
 import app.minimpos.app.data.security.SecretStore
@@ -15,11 +17,11 @@ import app.minimpos.terminal.paymentsapp.ManagementResult
 import app.minimpos.terminal.paymentsapp.Onboarding
 import app.minimpos.terminal.paymentsapp.PaymentsAppManagement
 import app.minimpos.terminal.paymentsapp.PaymentsAppOnboarding
+import app.minimpos.terminal.transport.Fault
 import app.minimpos.terminal.transport.TerminalEnvironment
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.serializer
-import java.io.IOException
 
 /** The outcome of [TapToPaySetup.board] and [TapToPaySetup.unregister]. Failures are reported here, never thrown. */
 sealed interface TapToPayOutcome {
@@ -48,10 +50,10 @@ sealed interface TapToPayOutcome {
     /**
      * Active local settings were not changed; remote registration may already have completed and remains recoverable.
      *
-     * @property message What the Payments app, Adyen or storage answered; null when no reason was supplied.
+     * @property failure Why: the Payments app, Adyen or this device's secure storage.
      */
     data class Failed(
-        val message: String?,
+        val failure: Failure,
     ) : TapToPayOutcome
 }
 
@@ -91,7 +93,7 @@ class TapToPaySetup(
                 when (val checked = verifyApi()) {
                     ApiCheck.Works -> boardSaved(access, reboard)
                     is ApiCheck.NotSetUp -> TapToPayOutcome.NotSetUp(checked.problem)
-                    is ApiCheck.Failed -> TapToPayOutcome.Failed(checked.message)
+                    is ApiCheck.Failed -> TapToPayOutcome.Failed(Failure.Remote(checked.fault))
                 }
             }
         }
@@ -199,7 +201,7 @@ class TapToPaySetup(
             val onboarding = PaymentsAppOnboarding(environment, exchange, client, PaymentsAppBridge.RETURN_URL)
             when (val result = onboarding.board(target, reboard)) {
                 is Onboarding.Failed -> {
-                    TapToPayOutcome.Failed(result.message)
+                    TapToPayOutcome.Failed(Failure.Remote(result.fault))
                 }
 
                 is Onboarding.Boarded -> {
@@ -207,10 +209,8 @@ class TapToPaySetup(
                     registered(client, target, result.installationId)
                 }
             }
-        } catch (e: IOException) {
-            TapToPayOutcome.Failed(e.message)
-        } catch (e: SecretStoreException) {
-            TapToPayOutcome.Failed(e.message)
+        } catch (ignored: SecretStoreException) {
+            TapToPayOutcome.Failed(Failure.Device(DeviceFault.SECURE_STORAGE))
         }
 
     private suspend fun remember(
@@ -230,7 +230,8 @@ class TapToPaySetup(
     ): TapToPayOutcome =
         when (val result = client.registration(target, id)) {
             is ManagementResult.Done -> TapToPayOutcome.Boarded(id)
-            is ManagementResult.Failed -> TapToPayOutcome.Failed(result.message)
+            ManagementResult.NotBoarded -> TapToPayOutcome.NotSetUp(SetupProblem.PAYMENTS_APP_NOT_BOARDED)
+            is ManagementResult.Failed -> TapToPayOutcome.Failed(Failure.Remote(result.fault))
         }
 
     private fun TerminalSettings.target(): BoardingTarget = BoardingTarget(merchantAccount.trim(), storeId.trim().ifEmpty { null })
@@ -270,7 +271,11 @@ class TapToPaySetup(
         val result = if (id.isEmpty()) ManagementResult.Done() else access.management.revoke(terminal.merchantAccount.trim(), id)
         return when (result) {
             is ManagementResult.Failed -> {
-                TapToPayOutcome.Failed(result.message)
+                TapToPayOutcome.Failed(Failure.Remote(result.fault))
+            }
+
+            ManagementResult.NotBoarded -> {
+                TapToPayOutcome.Failed(Failure.Remote(Fault.UnreadableReply()))
             }
 
             is ManagementResult.Done -> {

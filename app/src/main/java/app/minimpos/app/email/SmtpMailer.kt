@@ -1,18 +1,27 @@
 package app.minimpos.app.email
 
+import app.minimpos.app.data.db.EmailFault
+import app.minimpos.app.data.db.Failure
 import app.minimpos.app.data.settings.EmailSettings
 import app.minimpos.app.data.settings.SmtpSecurity
+import app.minimpos.terminal.transport.ExternalText
+import com.sun.mail.smtp.SMTPAddressFailedException
+import com.sun.mail.smtp.SMTPSendFailedException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.util.Date
 import java.util.Properties
 import javax.activation.DataHandler
+import javax.mail.AuthenticationFailedException
 import javax.mail.Authenticator
 import javax.mail.Message
+import javax.mail.MessagingException
 import javax.mail.PasswordAuthentication
+import javax.mail.SendFailedException
 import javax.mail.Session
 import javax.mail.Transport
+import javax.mail.internet.AddressException
 import javax.mail.internet.InternetAddress
 import javax.mail.internet.MimeBodyPart
 import javax.mail.internet.MimeMessage
@@ -166,3 +175,30 @@ class SmtpMailer(
         const val TIMEOUT_MILLIS = "20000"
     }
 }
+
+/**
+ * Why this exception kept an email from being sent: the server refused the login ([EmailFault.AUTHENTICATION]), the
+ * message or a recipient ([EmailFault.REJECTED]), an address was invalid ([EmailFault.INVALID_ADDRESS]), or the server
+ * could not be reached ([EmailFault.UNREACHABLE]). JavaMail keeps the mail server's own reply only as the text of its
+ * SMTP exceptions; that reply is kept verbatim, while JavaMail's own words are never shown.
+ */
+internal fun MessagingException.emailFailure(): Failure.Email {
+    val chain = generateSequence<Exception>(this) { (it as? MessagingException)?.nextException }.take(MAX_CHAIN).toList()
+    val reply =
+        chain.firstOrNull {
+            it is AuthenticationFailedException || it is SMTPSendFailedException || it is SMTPAddressFailedException
+        }
+    val fault =
+        when {
+            chain.any { it is AuthenticationFailedException } -> EmailFault.AUTHENTICATION
+            chain.any { it is AddressException } -> EmailFault.INVALID_ADDRESS
+            chain.any { it is SendFailedException } -> EmailFault.REJECTED
+            else -> EmailFault.UNREACHABLE
+        }
+    return Failure.Email(fault, ExternalText.of(reply?.message?.replace(WHITESPACE, " ")))
+}
+
+/** How deep [MessagingException.getNextException] is followed. */
+private const val MAX_CHAIN = 8
+
+private val WHITESPACE = Regex("\\s+")

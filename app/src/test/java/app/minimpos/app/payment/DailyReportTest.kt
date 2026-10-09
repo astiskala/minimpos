@@ -89,7 +89,7 @@ class DailyReportTest {
             val offered = container.receipts.canPrintReports.first()
             assertThat(offered).isFalse()
             val result = container.receipts.printReport(LocalDate.now())
-            assertThat(result).isInstanceOf(ActionResult.Failure::class.java)
+            assertThat(result).isInstanceOf(ActionResult.Failed::class.java)
             assertThat(container.virtualPrinter.jobs.value).isEmpty()
         }
 }

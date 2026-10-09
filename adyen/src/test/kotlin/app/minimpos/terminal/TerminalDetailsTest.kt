@@ -1,9 +1,11 @@
 package app.minimpos.terminal
 
 import app.minimpos.terminal.transport.AdyenTerminalDetails
+import app.minimpos.terminal.transport.ApiKey
 import app.minimpos.terminal.transport.CredentialLookup
 import app.minimpos.terminal.transport.DiscoveredKey
-import app.minimpos.terminal.transport.ManagementFailure
+import app.minimpos.terminal.transport.Fault
+import app.minimpos.terminal.transport.MalformedPart
 import app.minimpos.terminal.transport.SharedKeyLookup
 import app.minimpos.terminal.transport.SharedKeyUpdate
 import app.minimpos.terminal.transport.TerminalEnvironment
@@ -46,14 +48,14 @@ class TerminalDetailsTest {
             assertThat(api.credential(TerminalEnvironment.TEST)).isEqualTo(CredentialLookup.Allowed)
             assertThat(server.takeRequest().url.encodedPath).isEqualTo("/test/v3/me")
             reply("""{"roles":["Checkout webservice role"]}""")
-            assertThat(api.credential(TerminalEnvironment.TEST)).isEqualTo(CredentialLookup.Failed(ManagementFailure.PERMISSION))
+            assertThat(api.credential(TerminalEnvironment.TEST)).isEqualTo(CredentialLookup.Failed(Fault.Permission(ApiKey.ADYEN, ROLES)))
             listOf(401, 403, 503).forEach { status ->
                 reply("{}", status)
                 assertThat(api.credential(TerminalEnvironment.TEST)).isInstanceOf(CredentialLookup.Failed::class.java)
             }
             listOf("{}", "not json", """{"roles":[null]}""", """{"roles":[123]}""").forEach { body ->
                 reply(body)
-                assertThat(api.credential(TerminalEnvironment.TEST)).isEqualTo(CredentialLookup.Failed(ManagementFailure.UNREADABLE))
+                assertThat(api.credential(TerminalEnvironment.TEST)).isEqualTo(CredentialLookup.Failed(Fault.UnreadableReply()))
             }
         }
 
@@ -61,7 +63,7 @@ class TerminalDetailsTest {
     fun `real setup requires terminal settings write and advanced roles even when unused`() =
         runBlocking {
             reply("""{"roles":["Management API - Terminal actions read"]}""")
-            assertThat(api.credential(TerminalEnvironment.TEST)).isEqualTo(CredentialLookup.Failed(ManagementFailure.PERMISSION))
+            assertThat(api.credential(TerminalEnvironment.TEST)).isEqualTo(CredentialLookup.Failed(Fault.Permission(ApiKey.ADYEN, ROLES)))
             reply(
                 """
                 {"roles":["Management API - Terminal actions read",
@@ -154,18 +156,19 @@ class TerminalDetailsTest {
                 assertThat(api.sharedKey("ID", TerminalEnvironment.TEST)).isEqualTo(SharedKeyLookup.Missing)
             }
             listOf(
-                "[]" to ManagementFailure.SETTINGS_UNREADABLE,
-                """{"nexo":{"encryptionKey":{"identifier":"key","version":0,"passphrase":"secret"}}}""" to ManagementFailure.KEY_INVALID,
-                """{"nexo":{"encryptionKey":{"identifier":"","version":2,"passphrase":"secret"}}}""" to ManagementFailure.KEY_INCOMPLETE,
-                """{"nexo":{"encryptionKey":{"identifier":"key","version":2,"passphrase":""}}}""" to ManagementFailure.KEY_INCOMPLETE,
+                "[]" to Fault.Malformed(MalformedPart.SETTINGS),
+                """{"nexo":{"encryptionKey":{"identifier":"key","version":0,"passphrase":"secret"}}}""" to
+                    Fault.Malformed(MalformedPart.KEY_VERSION),
+                """{"nexo":{"encryptionKey":{"identifier":"","version":2,"passphrase":"secret"}}}""" to Fault.Malformed(MalformedPart.KEY),
+                """{"nexo":{"encryptionKey":{"identifier":"key","version":2,"passphrase":""}}}""" to Fault.Malformed(MalformedPart.KEY),
                 """{"nexo":{"encryptionKey":{"identifier":"key","version":2.5,"passphrase":"secret"}}}""" to
-                    ManagementFailure.SETTINGS_UNREADABLE,
+                    Fault.Malformed(MalformedPart.SETTINGS),
             ).forEach { (body, reason) ->
                 reply(body)
                 assertThat(api.sharedKey("ID", TerminalEnvironment.TEST)).isEqualTo(SharedKeyLookup.Failed(reason))
             }
             reply("{}", 403)
-            assertThat(api.sharedKey("ID", TerminalEnvironment.TEST)).isEqualTo(SharedKeyLookup.Failed(ManagementFailure.PERMISSION))
+            assertThat(api.sharedKey("ID", TerminalEnvironment.TEST)).isEqualTo(SharedKeyLookup.Failed(Fault.Permission(ApiKey.ADYEN)))
         }
 
     @Test
@@ -270,17 +273,17 @@ class TerminalDetailsTest {
     fun `failed or unmodeled settings never permit creation`() =
         runBlocking {
             listOf(
-                "not json" to ManagementFailure.SETTINGS_UNREADABLE,
-                "[]" to ManagementFailure.SETTINGS_UNREADABLE,
-                """{"nexo":{"encryptionKey":{}}}""" to ManagementFailure.KEY_INCOMPLETE,
-                """{"nexo":{"encryptionKey":{"identifier":"existing","version":2}}}""" to ManagementFailure.KEY_INCOMPLETE,
-                """{"nexo":{"encryptionKey":{"identifier":"existing","passphrase":"secret"}}}""" to ManagementFailure.KEY_INCOMPLETE,
+                "not json" to Fault.Malformed(MalformedPart.SETTINGS),
+                "[]" to Fault.Malformed(MalformedPart.SETTINGS),
+                """{"nexo":{"encryptionKey":{}}}""" to Fault.Malformed(MalformedPart.KEY),
+                """{"nexo":{"encryptionKey":{"identifier":"existing","version":2}}}""" to Fault.Malformed(MalformedPart.KEY),
+                """{"nexo":{"encryptionKey":{"identifier":"existing","passphrase":"secret"}}}""" to Fault.Malformed(MalformedPart.KEY),
                 """{"nexo":{"encryptionKey":{"identifier":"existing","version":10000,"passphrase":"secret"}}}""" to
-                    ManagementFailure.KEY_INVALID,
-                """{"nexo":{"unknownSetting":true}}""" to ManagementFailure.SETTINGS_UNREADABLE,
-                """{"nexo":{"notification":{"title":123}}}""" to ManagementFailure.SETTINGS_UNREADABLE,
-                """{"nexo":{"notification":{"enabled":"false"}}}""" to ManagementFailure.SETTINGS_UNREADABLE,
-                """{"nexo":{"notification":{"showButton":1}}}""" to ManagementFailure.SETTINGS_UNREADABLE,
+                    Fault.Malformed(MalformedPart.KEY_VERSION),
+                """{"nexo":{"unknownSetting":true}}""" to Fault.Malformed(MalformedPart.SETTINGS),
+                """{"nexo":{"notification":{"title":123}}}""" to Fault.Malformed(MalformedPart.SETTINGS),
+                """{"nexo":{"notification":{"enabled":"false"}}}""" to Fault.Malformed(MalformedPart.SETTINGS),
+                """{"nexo":{"notification":{"showButton":1}}}""" to Fault.Malformed(MalformedPart.SETTINGS),
             ).forEach { (body, reason) ->
                 reply(body)
                 assertThat(api.sharedKey("ID", TerminalEnvironment.TEST)).isEqualTo(SharedKeyLookup.Failed(reason))
@@ -290,7 +293,7 @@ class TerminalDetailsTest {
             }
             reply("{}", 403)
             assertThat(api.createSharedKey("ID", TerminalEnvironment.TEST, DiscoveredKey("new", 1, "NewStrongSecret123!")))
-                .isEqualTo(SharedKeyUpdate.Failed(ManagementFailure.PERMISSION))
+                .isEqualTo(SharedKeyUpdate.Failed(Fault.Permission(ApiKey.ADYEN)))
             assertThat(server.requestCount).isEqualTo(21)
         }
 
@@ -300,12 +303,17 @@ class TerminalDetailsTest {
             reply("{}")
             reply("{}", 503)
             assertThat(api.createSharedKey("ID", TerminalEnvironment.TEST, DiscoveredKey("new", 1, "NewStrongSecret123!")))
-                .isEqualTo(SharedKeyUpdate.Failed(ManagementFailure.UNAVAILABLE, uncertain = true))
+                .isEqualTo(SharedKeyUpdate.Failed(Fault.AdyenUnavailable(503), uncertain = true))
             reply("{}")
             reply("{}")
             reply("{}")
             assertThat(api.createSharedKey("ID", TerminalEnvironment.TEST, DiscoveredKey("new", 1, "NewStrongSecret123!")))
-                .isEqualTo(SharedKeyUpdate.Failed(ManagementFailure.UNREADABLE, uncertain = true))
+                .isEqualTo(SharedKeyUpdate.Failed(Fault.UnreadableReply(), uncertain = true))
             assertThat(server.requestCount).isEqualTo(5)
         }
+
+    private companion object {
+        const val ROLES =
+            "Management API—Terminal actions read, Terminal settings read and write, Terminal settings Advanced read and write"
+    }
 }

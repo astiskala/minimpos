@@ -27,6 +27,7 @@ import app.minimpos.terminal.checkout.PaymentLinkResult
 import app.minimpos.terminal.checkout.PaymentLinkStatus
 import app.minimpos.terminal.checkout.PaymentModifications
 import app.minimpos.terminal.parse.FormEncoding
+import app.minimpos.terminal.paymentsapp.AppLinkAnswer
 import app.minimpos.terminal.paymentsapp.AppLinkExchange
 import app.minimpos.terminal.paymentsapp.BoardingTarget
 import app.minimpos.terminal.paymentsapp.ManagementResult
@@ -42,6 +43,8 @@ import app.minimpos.terminal.transport.CloudEndpoint
 import app.minimpos.terminal.transport.CloudRegion
 import app.minimpos.terminal.transport.CredentialLookup
 import app.minimpos.terminal.transport.Delivery
+import app.minimpos.terminal.transport.ExternalText
+import app.minimpos.terminal.transport.Fault
 import app.minimpos.terminal.transport.MerchantLookup
 import app.minimpos.terminal.transport.SharedKeyLookup
 import app.minimpos.terminal.transport.StoreDetailsApi
@@ -49,7 +52,6 @@ import app.minimpos.terminal.transport.StoreLookup
 import app.minimpos.terminal.transport.TerminalDetails
 import app.minimpos.terminal.transport.TerminalDetailsApi
 import app.minimpos.terminal.transport.TerminalEnvironment
-import app.minimpos.terminal.transport.TerminalHttpClient
 import app.minimpos.terminal.transport.TerminalKey
 import app.minimpos.terminal.transport.TerminalListing
 import app.minimpos.terminal.transport.TerminalTransport
@@ -180,7 +182,7 @@ class FakeTerminal(
             }
         } else {
             TerminalTransport { _, _ ->
-                Delivery.NotSent("Terminal rejected the request: Crypto error. ${TerminalHttpClient.KEY_ADVICE}")
+                Delivery.Failed(Fault.KeyRejected(ExternalText("Crypto error")))
             }
         }
     }
@@ -256,16 +258,19 @@ class FakePaymentsApp(
         link: String,
         packageName: String,
         timeout: Duration,
-    ): String {
+    ): AppLinkAnswer {
         opened += link
         val parameters = FormEncoding.decode(link.substringAfter('?'))
         val returnUrl = URLDecoder.decode(parameters.getValue("returnUrl"), "UTF-8")
-        return when {
-            link.contains("/boarded?") && boarded && "reboard=true" !in link -> "$returnUrl?boarded=true&installationId=$INSTALLATION_ID"
-            link.contains("/boarded?") -> "$returnUrl?boarded=false&installationId=$INSTALLATION_ID&boardingRequestToken=BRT"
-            link.contains("/board?") -> "$returnUrl?boarded=true&installationId=$INSTALLATION_ID".also { boarded = true }
-            else -> "$returnUrl?response=${answer(parameters.getValue("request"))}"
-        }
+        val boardedUrl = "$returnUrl?boarded=true&installationId=$INSTALLATION_ID"
+        val url =
+            when {
+                link.contains("/boarded?") && boarded && "reboard=true" !in link -> boardedUrl
+                link.contains("/boarded?") -> "$returnUrl?boarded=false&installationId=$INSTALLATION_ID&boardingRequestToken=BRT"
+                link.contains("/board?") -> boardedUrl.also { boarded = true }
+                else -> "$returnUrl?response=${answer(parameters.getValue("request"))}"
+            }
+        return AppLinkAnswer.Returned(url)
     }
 
     override fun lateReplies(): List<String> = emptyList()

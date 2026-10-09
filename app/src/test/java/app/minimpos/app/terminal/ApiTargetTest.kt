@@ -6,6 +6,7 @@ import app.minimpos.core.money.PaymentContext
 import app.minimpos.terminal.checkout.ModificationAmount
 import app.minimpos.terminal.checkout.ModificationResult
 import app.minimpos.terminal.checkout.PaymentModifications
+import app.minimpos.terminal.transport.Fault
 import com.google.common.truth.Truth.assertThat
 import org.junit.Test
 
@@ -29,7 +30,7 @@ class ApiTargetTest {
                 idempotencyKey: String,
             ): ModificationResult = ModificationResult.Received(null)
 
-            override suspend fun verify(): String? = null
+            override suspend fun verify(): Fault? = null
         }
 
     @Test

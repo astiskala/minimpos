@@ -10,6 +10,7 @@ import app.minimpos.app.data.repo.SaleEvent
 import app.minimpos.app.data.repo.after
 import app.minimpos.core.money.PaymentContext
 import app.minimpos.terminal.checkout.ModificationResult
+import app.minimpos.terminal.transport.Fault
 import com.google.common.truth.Truth.assertThat
 import org.junit.Test
 import java.time.Instant
@@ -109,7 +110,7 @@ class HistoryAccountingTest {
     @Test
     fun `retry keeps first send timestamp and repeated acceptance cannot move accounting day`() {
         val pending = sale.copy(tipOnReceipt = true).after(SaleEvent.CaptureSending(11_500, 1500, monday))
-        val unknown = pending.after(SaleEvent.CaptureAnswered(ModificationResult.Unknown("timeout"), monday))
+        val unknown = pending.after(SaleEvent.CaptureAnswered(ModificationResult.Failed(Fault.TimedOut), monday))
         val retried = unknown.after(SaleEvent.CaptureSending(11_500, startedAt = tuesday))
         assertThat(retried.captureStartedAt).isEqualTo(monday)
         val accepted = retried.after(SaleEvent.CaptureAnswered(ModificationResult.Received("PSP"), tuesday))

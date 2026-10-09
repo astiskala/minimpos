@@ -1,11 +1,14 @@
 package app.minimpos.terminal.paymentsapp
 
+import app.minimpos.terminal.transport.AdyenError
 import app.minimpos.terminal.transport.AdyenHttp
 import app.minimpos.terminal.transport.AdyenReply
-import app.minimpos.terminal.transport.HTTP_FORBIDDEN
-import app.minimpos.terminal.transport.HTTP_UNAUTHORIZED
+import app.minimpos.terminal.transport.ApiKey
+import app.minimpos.terminal.transport.ExternalText
+import app.minimpos.terminal.transport.Fault
 import app.minimpos.terminal.transport.TerminalEnvironment
 import app.minimpos.terminal.transport.decodeAdyenModel
+import app.minimpos.terminal.transport.fault
 import com.adyen.model.paymentsapp.BoardingTokenRequest
 import com.adyen.model.paymentsapp.BoardingTokenResponse
 import com.adyen.model.paymentsapp.DefaultErrorResponseEntity
@@ -47,13 +50,16 @@ sealed interface ManagementResult {
         val boardingToken: String? = null,
     ) : ManagementResult
 
+    /** Adyen lists no boarded Payments app with that installation ID for the merchant account or store. */
+    data object NotBoarded : ManagementResult
+
     /**
-     * Adyen refused, or could not be reached.
+     * Adyen refused, could not be reached, or answered with something unusable.
      *
-     * @property message Why, in English.
+     * @property fault Why.
      */
     data class Failed(
-        val message: String,
+        val fault: Fault,
     ) : ManagementResult
 }
 
@@ -63,7 +69,7 @@ interface PaymentsAppManagement {
     suspend fun registration(
         target: BoardingTarget,
         installationId: String,
-    ): ManagementResult = ManagementResult.Failed("Payments app registration could not be verified")
+    ): ManagementResult = ManagementResult.Failed(Fault.Unsupported)
 
     /** Asks for a boarding token for the instance that sent [boardingRequestToken], to board it at [target]. */
     suspend fun boardingToken(
@@ -115,11 +121,11 @@ class AdyenPaymentsAppManagement(
                     .build()
             found =
                 when (val reply = http.get(url, TIMEOUT)) {
-                    is AdyenReply.Failed -> ManagementResult.Failed(reply.message)
+                    is AdyenReply.Failed -> ManagementResult.Failed(reply.fault)
                     is AdyenReply.Answered -> if (reply.ok) registrationPage(reply.body, target, installationId) else result(reply)
                 }
         }
-        return found ?: ManagementResult.Failed("The Payments app list is too large to verify")
+        return found ?: ManagementResult.Failed(Fault.ListTooLarge)
     }
 
     private fun registrationPage(
@@ -133,7 +139,7 @@ class AdyenPaymentsAppManagement(
             }.getOrNull()
         return when {
             apps == null -> {
-                ManagementResult.Failed("Adyen sent an unreadable Payments app list")
+                ManagementResult.Failed(Fault.UnreadableReply())
             }
 
             apps.any {
@@ -144,7 +150,7 @@ class AdyenPaymentsAppManagement(
             }
 
             apps.size < PAGE_SIZE -> {
-                ManagementResult.Failed("The Payments app is not boarded for this merchant account or store")
+                ManagementResult.NotBoarded
             }
 
             else -> {
@@ -175,26 +181,20 @@ class AdyenPaymentsAppManagement(
             is AdyenReply.Answered -> result(reply)
 
             // Boarding tokens and revocations can be asked for again, so a request that may have arrived needs no special care.
-            is AdyenReply.Failed -> ManagementResult.Failed(reply.message)
+            is AdyenReply.Failed -> ManagementResult.Failed(reply.fault)
         }
 
     private fun result(reply: AdyenReply.Answered): ManagementResult {
-        val code = reply.code
         if (reply.ok) return ManagementResult.Done(decodeAdyenModel(reply.body, BoardingTokenResponse::class.java)?.boardingToken)
         val error = decodeAdyenModel(reply.body, DefaultErrorResponseEntity::class.java)
-        val message =
-            error?.detail ?: error?.title
-                ?: when (code) {
-                    HTTP_UNAUTHORIZED -> "Adyen did not accept the Payments app API key"
-                    HTTP_FORBIDDEN -> "The API key lacks the Adyen Payments app role, or may not use this merchant account"
-                    else -> "Adyen returned an error"
-                }
-        return ManagementResult.Failed("$message (HTTP $code)")
+        val said = ExternalText.of(error?.detail) ?: ExternalText.of(error?.title)
+        return ManagementResult.Failed(reply.fault(ApiKey.PAYMENTS_APP, PAYMENTS_APP_ROLE, AdyenError(said, error?.errorCode)))
     }
 
     /** The Management API's endpoints. */
     companion object {
         private val TIMEOUT = 30.seconds
+        private const val PAYMENTS_APP_ROLE = "Adyen Payments app role"
         private const val PAGE_SIZE = 100
         private const val MAX_PAGES = 100
 
@@ -221,10 +221,10 @@ sealed interface Onboarding {
     /**
      * It is not boarded.
      *
-     * @property message Why, in English (from the Payments app or the Management API).
+     * @property fault Why (from the Payments app, the exchange with it, or the Management API).
      */
     data class Failed(
-        val message: String,
+        val fault: Fault,
     ) : Onboarding
 }
 
@@ -248,14 +248,18 @@ class PaymentsAppOnboarding(
 
     /**
      * Boards the Payments app at [target], or reports the instance it is already boarded with; with [reboard] it is
-     * boarded afresh (another merchant account or store). Network and Payments app errors are reported in the outcome;
-     * a Payments app that cannot be started throws as [AppLinkExchange.exchange] does.
+     * boarded afresh (another merchant account or store). Network and Payments app errors, and a Payments app that
+     * cannot be started, are reported in the outcome.
      */
     suspend fun board(
         target: BoardingTarget,
         reboard: Boolean = false,
     ): Onboarding {
-        val check = open(links.boardedCheck("$returnUrl/$BOARDED", reboard))
+        val check =
+            when (val answer = open(links.boardedCheck("$returnUrl/$BOARDED", reboard))) {
+                is Step.Answered -> answer.fields
+                is Step.Failed -> return Onboarding.Failed(answer.fault)
+            }
         val token = check["boardingRequestToken"]
         return when {
             check["boarded"] == "true" && !reboard -> {
@@ -268,7 +272,8 @@ class PaymentsAppOnboarding(
 
             else -> {
                 when (val result = management.boardingToken(target, token)) {
-                    is ManagementResult.Failed -> Onboarding.Failed(result.message)
+                    is ManagementResult.Failed -> Onboarding.Failed(result.fault)
+                    ManagementResult.NotBoarded -> Onboarding.Failed(Fault.UnreadableReply())
                     is ManagementResult.Done -> finish(result.boardingToken)
                 }
             }
@@ -276,20 +281,37 @@ class PaymentsAppOnboarding(
     }
 
     private suspend fun finish(boardingToken: String?): Onboarding {
-        if (boardingToken.isNullOrEmpty()) return Onboarding.Failed("Adyen sent no boarding token")
-        val answer = open(links.board(boardingToken, "$returnUrl/$BOARD"))
+        if (boardingToken.isNullOrEmpty()) return Onboarding.Failed(Fault.UnreadableReply())
+        val answer =
+            when (val step = open(links.board(boardingToken, "$returnUrl/$BOARD"))) {
+                is Step.Answered -> step.fields
+                is Step.Failed -> return Onboarding.Failed(step.fault)
+            }
         return if (answer["boarded"] == "true") boarded(answer) else failed(answer)
     }
 
     private fun boarded(answer: Map<String, String>): Onboarding =
         answer["installationId"]?.takeIf { it.isNotEmpty() }?.let { Onboarding.Boarded(it) }
-            ?: Onboarding.Failed("The Payments app sent no installation ID")
+            ?: Onboarding.Failed(Fault.UnreadableReply())
 
-    private fun failed(answer: Map<String, String>): Onboarding =
-        Onboarding.Failed("The Payments app is not boarded: ${answer["error"] ?: "no reason given"}")
+    private fun failed(answer: Map<String, String>): Onboarding = Onboarding.Failed(Fault.AppRefused(ExternalText.of(answer["error"])))
 
-    private suspend fun open(link: String): Map<String, String> =
-        PaymentsAppLinks.answer(exchange.exchange(link, links.packageName, STEP_TIMEOUT))
+    private suspend fun open(link: String): Step =
+        when (val answer = exchange.exchange(link, links.packageName, STEP_TIMEOUT)) {
+            is AppLinkAnswer.Returned -> Step.Answered(PaymentsAppLinks.answer(answer.url))
+            is AppLinkAnswer.Unanswered -> Step.Failed(answer.fault)
+        }
+
+    /** What one step in the Payments app answered. */
+    private sealed interface Step {
+        data class Answered(
+            val fields: Map<String, String>,
+        ) : Step
+
+        data class Failed(
+            val fault: Fault,
+        ) : Step
+    }
 
     private companion object {
         /** The path of the return URL the boarding check answers on. */

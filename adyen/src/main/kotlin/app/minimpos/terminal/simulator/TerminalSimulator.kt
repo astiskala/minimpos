@@ -5,9 +5,10 @@ import app.minimpos.terminal.client.TerminalClient
 import app.minimpos.terminal.client.toPrintJob
 import app.minimpos.terminal.transport.CompletedTransactions
 import app.minimpos.terminal.transport.Delivery
-import app.minimpos.terminal.transport.TerminalProtocolException
+import app.minimpos.terminal.transport.Fault
+import app.minimpos.terminal.transport.FaultException
 import app.minimpos.terminal.transport.TerminalTransport
-import app.minimpos.terminal.transport.toDelivery
+import app.minimpos.terminal.transport.fault
 import com.adyen.model.nexo.AmountsResp
 import com.adyen.model.nexo.CardData
 import com.adyen.model.nexo.CharacterStyleType
@@ -110,8 +111,8 @@ data class SimulatorConfig(
  * mimic real Terminal API payloads, including receipt data and tokenization details. Requests and responses pass
  * through the Adyen library's JSON serialisation, exactly as they would on the way to and from a real terminal.
  *
- * It handles payments, reversals, aborts, prints, diagnoses and transaction status checks; any other request, like a
- * simulated timeout, is [Delivery.MaybeSent]. A status check of a payment still under way is answered
+ * It handles payments, reversals, aborts, prints, diagnoses and transaction status checks; any other request is
+ * [Fault.Unsupported], and a simulated timeout [Fault.TimedOut]. A status check of a payment still under way is answered
  * `InProgress`; finished payments and reversals are remembered in memory for status checks, so after a restart they are
  * reported as not found. Approved payments are remembered the same way, shared with the simulated Checkout API
  * ([modifications]): a full reversal of an uncaptured pre-authorisation is answered as a cancellation, and captures
@@ -147,13 +148,13 @@ class TerminalSimulator(
             try {
                 handle(received)
             } catch (e: IOException) {
-                return e.toDelivery("No response from the simulator")
+                return Delivery.Failed(e.fault())
             }
         return Delivery.Answered(response?.let { gson.fromJson(gson.toJson(it), TerminalAPIResponse::class.java) })
     }
 
     private suspend fun handle(request: TerminalAPIRequest): TerminalAPIResponse? {
-        val message = request.saleToPOIRequest ?: throw TerminalProtocolException("Empty request")
+        val message = request.saleToPOIRequest ?: throw FaultException(Fault.UnreadableReply())
         val header = message.messageHeader
         val settings = config()
         return when {
@@ -199,7 +200,7 @@ class TerminalSimulator(
             }
 
             else -> {
-                throw TerminalProtocolException("The simulator does not support this request")
+                throw FaultException(Fault.Unsupported)
             }
         }
     }

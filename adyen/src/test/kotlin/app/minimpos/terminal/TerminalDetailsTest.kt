@@ -39,7 +39,7 @@ class TerminalDetailsTest {
         runBlocking {
             reply(
                 """
-                {"roles":["Management API — Terminal actions read","Management API – Terminal settings read and write",
+                {"roles":["Management API - Terminal actions read","Management API – Terminal settings read and write",
                 "Management API - Terminal settings Advanced read and write"]}
                 """.trimIndent(),
             )

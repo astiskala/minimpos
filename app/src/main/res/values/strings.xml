@@ -900,7 +900,7 @@
   <string name="setup_transfer_pending">Setup import needs to finish saving. Retry to resume.</string>
   <string name="setup_terminal_access">This API key cannot access this terminal. Check that it belongs to the terminal’s company account and has access to this terminal.</string>
   <string name="setup_merchant_mismatch">The merchant account does not match this terminal’s current assignment. Correct the account or boarding before continuing.</string>
-  <string name="setup_management_permission">Every real setup requires Management API — Terminal actions read, Management API — Terminal settings read and write, and Management API — Terminal settings Advanced read and write.</string>
+  <string name="setup_management_permission">Every real setup requires Management API - Terminal actions read, Management API - Terminal settings read and write, and Management API - Terminal settings Advanced read and write.</string>
   <string name="setup_management_authentication">Adyen did not accept this API key in the selected environment. Replace the key and retry.</string>
   <string name="setup_management_unavailable">The Adyen Management API could not be reached or returned an error. Check the internet connection and Adyen API logs, then retry.</string>
   <string name="setup_management_unreadable">Adyen returned an invalid setup response or omitted required fields. Check the Management API response and retry.</string>

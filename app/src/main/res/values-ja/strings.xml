@@ -854,7 +854,7 @@
     <string name="setup_transfer_pending">設定のインポートは保存途中です。再試行して続行してください。</string>
     <string name="setup_terminal_access">この API キーは端末にアクセスできません。端末の Company アカウントに属し、この端末へのアクセス権があることを確認してください。</string>
     <string name="setup_merchant_mismatch">加盟店アカウントが端末の現在の割り当てと一致しません。アカウントまたは端末登録を修正してから続行してください。</string>
-    <string name="setup_management_permission">すべての実決済設定で、API キーに Management API — Terminal actions read、Management API — Terminal settings read and write、Management API — Terminal settings Advanced read and write の権限が必要です。</string>
+    <string name="setup_management_permission">すべての実決済設定で、API キーに Management API - Terminal actions read、Management API - Terminal settings read and write、Management API - Terminal settings Advanced read and write の権限が必要です。</string>
     <string name="setup_management_authentication">選択した環境で Adyen が API キーを受け付けませんでした。キーを変更して再試行してください。</string>
     <string name="setup_management_unavailable">Adyen Management API に接続できないか、API がエラーを返しました。インターネット接続と Adyen API ログを確認して再試行してください。</string>
     <string name="setup_management_unreadable">Adyen の設定レスポンスが無効か、必須フィールドがありません。Management API レスポンスを確認して再試行してください。</string>

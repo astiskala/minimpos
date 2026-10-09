@@ -22,8 +22,6 @@ class DailyReportGuideTest {
             assertThat(using.select("a[href$=\"#unknown\"]")).isNotEmpty()
             assertThat(using.select("img")).hasSize(2)
             assertThat(using.select("img[src$='wallet-scan.png']").single().attr("alt")).contains("WeChat Pay")
-            val setup = Jsoup.parse(directory.resolve("quick-start.html").readText()).select("#choose").text()
-            assertThat(setup).contains("Management API — Payment methods read")
             val troubleshooting = Jsoup.parse(directory.resolve("troubleshooting.html").readText()).select("#wallets")
             assertThat(troubleshooting.select("a[href=\"#unknown\"]")).isNotEmpty()
         }

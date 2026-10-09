@@ -854,7 +854,7 @@
     <string name="setup_transfer_pending">设置导入尚未保存完成。请重试以继续。</string>
     <string name="setup_terminal_access">此 API 密钥无法访问本终端。请确认密钥属于终端的 Company 账户，并具有访问本终端的权限。</string>
     <string name="setup_merchant_mismatch">商家账户与终端当前分配的账户不一致。请更正账户或终端注册后再继续。</string>
-    <string name="setup_management_permission">所有真实付款设置的 API 密钥都必须具有 Management API — Terminal actions read、Management API — Terminal settings read and write 和 Management API — Terminal settings Advanced read and write 权限。</string>
+    <string name="setup_management_permission">所有真实付款设置的 API 密钥都必须具有 Management API - Terminal actions read、Management API - Terminal settings read and write 和 Management API - Terminal settings Advanced read and write 权限。</string>
     <string name="setup_management_authentication">Adyen 未接受所选环境中的 API 密钥。请更换密钥后重试。</string>
     <string name="setup_management_unavailable">无法连接 Adyen Management API，或 API 返回了错误。请检查网络连接及 Adyen API 日志后重试。</string>
     <string name="setup_management_unreadable">Adyen 返回的设置响应无效，或缺少必需字段。请检查 Management API 响应后重试。</string>

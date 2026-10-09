@@ -41,11 +41,11 @@ require(!qualityGatePassed || providers.environmentVariable("CI").orNull == "tru
 }
 
 android {
-    namespace = "io.github.astiskala.minimpos.app"
+    namespace = "app.minimpos.app"
     compileSdk = 37
 
     defaultConfig {
-        applicationId = "io.github.astiskala.minimpos"
+        applicationId = "app.minimpos"
         // S1F2 (Android 9) is the lowest API level in Adyen's Android terminal app requirements.
         minSdk = 28
         targetSdk = 37
@@ -243,12 +243,12 @@ kover {
                     "*_Impl",
                     "*_Impl\$*",
                     "*.BuildConfig",
-                    "io.github.astiskala.minimpos.app.MainActivity*",
-                    "io.github.astiskala.minimpos.app.MiniMposApplication*",
+                    "app.minimpos.app.MainActivity*",
+                    "app.minimpos.app.MiniMposApplication*",
                 )
                 packages(
-                    "io.github.astiskala.minimpos.app.ui.theme",
-                    "io.github.astiskala.minimpos.app.scan",
+                    "app.minimpos.app.ui.theme",
+                    "app.minimpos.app.scan",
                 )
             }
         }

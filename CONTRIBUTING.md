@@ -207,6 +207,12 @@ they require a backend for certificates, a private Maven repository, PCI MPoC an
 
 The Pages workflow validates the website before publishing `docs/` unchanged. It runs on website, helper-contract,
 website-test and relevant build changes, or manually; app-only and version-only commits do not redeploy the site.
+The public site is <https://minimpos.app/>. Verify domain ownership in the GitHub account settings, then set
+**Settings › Pages › Custom domain** to `minimpos.app` before configuring DNS. Follow
+[GitHub's custom-domain instructions](https://docs.github.com/en/pages/configuring-a-custom-domain-for-your-github-pages-site/managing-a-custom-domain-for-your-github-pages-site)
+for the apex records and optional `www` redirect, then enable **Enforce HTTPS**. This Actions-based deployment uses
+repository settings, not a `CNAME` file, to select the domain; DNS and repository settings are not configured by a commit.
+
 Keep the existing visual design and script-free guides; only the setup
 helper runs `docs/js/setup.js` and the vendored `qrcodegen.js`. Preserve the helper's no-network policy and update its
 format alongside `TransferCodec`, `QrChunks`, `TransferSeal` and the helper vectors in `SetupTransferTest`.
@@ -288,7 +294,7 @@ Set `storeFile`, `storePassword`, `keyAlias` and `keyPassword` in an untracked `
 
 The signed output is `app/build/outputs/apk/release/app-release.apk`. Without signing properties the build produces
 an unsigned APK, which Adyen accepts as an upload but terminals cannot install. The application ID is
-`io.github.astiskala.minimpos`; each ID is tied to the key used for its first upload. Keep the same key and use a higher
+`app.minimpos`; each ID is tied to the key used for its first upload. Keep the same key and use a higher
 version code for each deployment. A signing-key mismatch requires Adyen Support to remove earlier uploads.
 
 Do not bump this repository's version by hand. Use the release workflow for releases; forks must maintain their own

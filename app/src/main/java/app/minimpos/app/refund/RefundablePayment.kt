@@ -1,0 +1,369 @@
+package app.minimpos.app.refund
+
+import app.minimpos.app.data.db.SaleKind
+import app.minimpos.app.data.db.SaleStatus
+import app.minimpos.app.data.db.SaleWithLines
+import app.minimpos.app.data.repo.RefundedLine
+import app.minimpos.core.codec.RefundQrPayload
+import app.minimpos.core.ids.Ids
+import app.minimpos.core.money.CurrencySpec
+import app.minimpos.core.money.PaymentContext
+import app.minimpos.core.refund.RefundCalculator
+import app.minimpos.core.refund.RefundableLine
+import app.minimpos.terminal.client.RefundParams
+import app.minimpos.terminal.client.TerminalClient
+import java.time.Instant
+import java.time.ZoneId
+
+/** Why a payment cannot be refunded. */
+enum class RefundInvalidReason {
+    /** The scanned code is not a Mini mPOS refund code, or the sale no longer exists. */
+    NOT_A_RECEIPT,
+
+    /**
+     * The sale was not approved, or the terminal gave no transaction ID or no time stamp (an XML date-time with a time
+     * zone) for it, so a reversal could not refer to it.
+     */
+    NOT_REFUNDABLE,
+
+    /** Everything has already been refunded from this terminal. */
+    FULLY_REFUNDED,
+
+    /**
+     * It is a pre-authorisation that has not been captured yet, so nothing was charged; until it is captured the app
+     * can only cancel it, from history ([PaymentAction.CANCEL]).
+     */
+    PRE_AUTHORISATION,
+
+    /**
+     * It was taken for tipping on the receipt and its tip has not been captured yet; until then it can only be
+     * cancelled, from history ([PaymentAction.CANCEL]).
+     */
+    AWAITING_TIP,
+}
+
+/** What the operator chose to refund of a [RefundablePayment]. */
+sealed interface RefundChoice {
+    /** Everything that is left: a full reversal when nothing was refunded before, else the remaining amount. */
+    data object Everything : RefundChoice
+
+    /**
+     * Items of a sale taken on this terminal; each line's share of its gross total is refunded.
+     *
+     * @property selection Units to refund per sale line ID; unknown lines are ignored and quantities are capped at what
+     *   is left of each line.
+     */
+    data class Items(
+        val selection: Map<Long, Int>,
+    ) : RefundChoice
+
+    /**
+     * An amount typed in.
+     *
+     * @property minor The amount in minor units of the payment's currency.
+     */
+    data class Amount(
+        val minor: Long,
+    ) : RefundChoice
+}
+
+/** Whether a payment can be refunded. */
+sealed interface Refundability {
+    /**
+     * It can.
+     *
+     * @property payment The payment, with what is left to refund.
+     */
+    data class Refundable(
+        val payment: RefundablePayment,
+    ) : Refundability
+
+    /**
+     * It cannot.
+     *
+     * @property reason Why.
+     */
+    data class NotRefundable(
+        val reason: RefundInvalidReason,
+    ) : Refundability
+}
+
+/**
+ * A ready referenced refund: what the refund screen chose, checked and priced by [RefundablePayment.request].
+ *
+ * @property saleId The local sale being refunded, or null for a payment known only from its receipt QR code.
+ * @property originalTransactionId POITransactionID of the payment to refund.
+ * @property originalTimestamp Its POITransactionID time stamp, as the terminal expects it back.
+ * @property originalReference Merchant reference of the payment, for the refund receipt; null if unknown.
+ * @property currency ISO 4217 code of the payment.
+ * @property amountMinor Amount to refund in minor units; positive, and the whole remaining amount for [full].
+ * @property full A full reversal of the original payment (only when nothing was refunded before), sent without an
+ *   amount.
+ * @property merchantReference The refund's own merchant reference, such as `R-260930-145811-VQ45`.
+ * @property lines The items refunded, for an item refund; empty for an amount or full refund.
+ * @property cancellation Whether this full reversal cancels a pre-authorisation ([RefundablePayment.cancellation])
+ *   rather than refunding a sale.
+ * @property expectedContext Original locally recorded destination; null for a reviewed foreign receipt.
+ * @throws IllegalArgumentException if [amountMinor] is not positive.
+ */
+data class RefundStart(
+    val saleId: String?,
+    val originalTransactionId: String,
+    val originalTimestamp: String,
+    val originalReference: String?,
+    val currency: String,
+    val amountMinor: Long,
+    val full: Boolean,
+    val merchantReference: String,
+    val lines: List<RefundedLine> = emptyList(),
+    val cancellation: Boolean = false,
+    /** Original locally recorded destination; null for an independently reviewed foreign receipt. */
+    val expectedContext: PaymentContext? = null,
+) {
+    init {
+        require(amountMinor > 0) { "Refund amount must be positive" }
+    }
+
+    /** The Terminal API reversal: a full one is sent without amount and currency, a partial one in major units. */
+    fun params(): RefundParams =
+        RefundParams(
+            originalTransactionId = originalTransactionId,
+            originalTimestamp = originalTimestamp,
+            merchantReference = merchantReference,
+            amount = if (full) null else CurrencySpec.of(currency).toMajor(amountMinor),
+            currency = if (full) null else currency,
+        )
+}
+
+/**
+ * A payment that can be refunded, from the local history or only from its receipt QR code, and the one set of rules
+ * for refunding it: whether it can be refunded at all ([check], [find]), what is left, what a [RefundChoice] refunds,
+ * the refund request itself ([request]) and the refund QR code printed on the sale's receipt ([qrCode]). It also holds
+ * the rule for payments that only hold their amount ([PaymentStanding.held]: pre-authorisations and sales awaiting a
+ * tip), which are not refunded until they are captured but can be cancelled ([cancellation]). Whether a stored sale
+ * offers either is [PaymentAction.REFUND] or [PaymentAction.CANCEL] in its [actions].
+ *
+ * A payment can be refunded when it was approved and the terminal gave a transaction ID and a time stamp that a
+ * reversal can send back, and something is left to refund. Its amount is the sale's as it stands (with the tip, or what
+ * was captured, see [app.minimpos.app.data.db.SaleEntity.amountMinor]). Pure: callers look the sale up themselves.
+ *
+ * @property transactionId Its POITransactionID.
+ * @property timestamp Its POITransactionID time stamp, as sent back in the reversal request.
+ * @property createdAt When it was paid.
+ * @property amountMinor The amount paid (with any tip, or what was captured), in minor units of [currency].
+ * @property currency ISO 4217 code of the payment.
+ * @property reference Its merchant reference, if known.
+ * @property local The sale on this terminal, or null for a payment known only from its QR code (its items and earlier
+ *   refunds are then unknown, so it cannot be refunded by item).
+ */
+class RefundablePayment private constructor(
+    val transactionId: String,
+    val timestamp: String,
+    val createdAt: Instant,
+    val amountMinor: Long,
+    val currency: String,
+    val reference: String?,
+    val local: SaleWithLines?,
+) {
+    /** Already refunded from this terminal; 0 when the sale is not [local]. */
+    val refundedMinor: Long get() = local?.sale?.refundedMinor ?: 0
+
+    /** What can still be refunded, never negative. */
+    val remainingMinor: Long get() = (amountMinor - refundedMinor).coerceAtLeast(0)
+
+    /** The sale's lines with what is left of each, in cart order; empty when the sale is not [local]. */
+    val lines: List<RefundableLine>
+        get() = local?.sortedLines.orEmpty().map { RefundableLine(it.id, it.quantity, it.refundedQuantity, it.grossMinor) }
+
+    /**
+     * Whether items can be chosen, which needs the [local] sale; not for a captured pre-authorisation, whose capture can
+     * differ from its item.
+     */
+    val itemsKnown: Boolean get() = local?.sale?.kind == SaleKind.SALE
+
+    /** How much [choice] refunds, in minor units; items are apportioned by [RefundCalculator.amountFor]. */
+    fun amountFor(choice: RefundChoice): Long =
+        when (choice) {
+            RefundChoice.Everything -> remainingMinor
+            is RefundChoice.Items -> RefundCalculator.amountFor(lines, choice.selection, remainingMinor)
+            is RefundChoice.Amount -> choice.minor
+        }
+
+    /** Whether [choice] refunds more than 0 and no more than what is left. */
+    fun isValid(choice: RefundChoice): Boolean = amountFor(choice) in 1..remainingMinor
+
+    /** [quantity] units of line [lineId] capped at what is left of it; null for a line the sale does not have. */
+    fun cappedQuantity(
+        lineId: Long,
+        quantity: Int,
+    ): Int? = lines.firstOrNull { it.lineId == lineId }?.let { quantity.coerceIn(0, it.remainingQuantity) }
+
+    /**
+     * The refund of [choice], or null when it is not [isValid]. Its merchant reference is generated from [now] in
+     * [zone] with "R" after [referencePrefix] (just "R" without one). Choosing [RefundChoice.Everything] before anything
+     * was refunded is a full reversal; refunded items carry their apportioned share of the line.
+     */
+    fun request(
+        choice: RefundChoice,
+        referencePrefix: String,
+        now: Instant,
+        zone: ZoneId,
+    ): RefundStart? {
+        if (!isValid(choice)) return null
+        val prefix = referencePrefix.trim().let { if (it.isEmpty()) "R" else "$it-R" }
+        return RefundStart(
+            saleId = local?.sale?.id,
+            originalTransactionId = transactionId,
+            originalTimestamp = timestamp,
+            originalReference = reference,
+            currency = currency,
+            amountMinor = amountFor(choice),
+            full = choice == RefundChoice.Everything && refundedMinor == 0L && local != null,
+            merchantReference = Ids.transactionReference(prefix, now, zone),
+            lines = (choice as? RefundChoice.Items)?.let(::refundedLines).orEmpty(),
+            expectedContext = local?.sale?.context,
+        )
+    }
+
+    private fun refundedLines(choice: RefundChoice.Items): List<RefundedLine> =
+        local?.sortedLines.orEmpty().mapNotNull { line ->
+            val quantity = choice.selection[line.id]?.takeIf { it > 0 } ?: return@mapNotNull null
+            val share =
+                RefundCalculator.lineAmount(
+                    RefundableLine(line.id, line.quantity, line.refundedQuantity, line.grossMinor),
+                    quantity,
+                )
+            RefundedLine(line.id, line.name, quantity, line.unitPriceMinor, share, line.taxRateMilliPercent)
+        }
+
+    /** Deciding whether payments can be refunded, and pre-authorisations cancelled. */
+    companion object {
+        /**
+         * Whether the stored sale [record] can be refunded: a pre-authorisation or a tip-on-receipt sale only once it
+         * is [PaymentStanding.captured], up to the amount captured.
+         */
+        fun check(record: SaleWithLines): Refundability {
+            val sale = record.sale
+            val uncaptured = sale.manualCapture && !sale.standing.captured
+            return when {
+                uncaptured && sale.kind == SaleKind.PRE_AUTHORISATION -> {
+                    Refundability.NotRefundable(RefundInvalidReason.PRE_AUTHORISATION)
+                }
+
+                uncaptured -> {
+                    Refundability.NotRefundable(RefundInvalidReason.AWAITING_TIP)
+                }
+
+                else -> {
+                    eligible(record)?.let(::refundable) ?: Refundability.NotRefundable(RefundInvalidReason.NOT_REFUNDABLE)
+                }
+            }
+        }
+
+        /**
+         * The cancellation of [record], a payment that still only holds its amount ([PaymentStanding.held]: a
+         * pre-authorisation or a sale awaiting its tip), or null when it cannot be cancelled ([cancellable]). It is a
+         * full reversal (no amount, so Adyen releases the whole hold, or refunds it in full if it was captured in the
+         * meantime), with a merchant reference generated from [now] in [zone] with "C" after [referencePrefix].
+         */
+        fun cancellation(
+            record: SaleWithLines,
+            referencePrefix: String,
+            now: Instant,
+            zone: ZoneId,
+        ): RefundStart? {
+            val payment = eligible(record)?.takeIf { record.sale.standing.held } ?: return null
+            val prefix = referencePrefix.trim().let { if (it.isEmpty()) "C" else "$it-C" }
+            return RefundStart(
+                saleId = record.sale.id,
+                originalTransactionId = payment.transactionId,
+                originalTimestamp = payment.timestamp,
+                originalReference = payment.reference,
+                currency = payment.currency,
+                amountMinor = record.sale.heldMinor,
+                full = true,
+                merchantReference = Ids.transactionReference(prefix, now, zone),
+                cancellation = true,
+                expectedContext = record.sale.context,
+            )
+        }
+
+        /**
+         * Whether [record] can be cancelled: it is [PaymentStanding.held] (so not captured, and no cancellation was
+         * accepted yet) and the terminal gave the transaction details a reversal refers to.
+         */
+        internal fun cancellable(record: SaleWithLines): Boolean = record.sale.standing.held && eligible(record) != null
+
+        /**
+         * Whether the payment to refund can be refunded: the stored sale [record] when there is one (a scanned code of a
+         * sale taken on this terminal should be looked up first, so its items and earlier refunds are known), else the
+         * payment described by the scanned [qr] code.
+         */
+        fun find(
+            record: SaleWithLines?,
+            qr: RefundQrPayload?,
+        ): Refundability =
+            when {
+                record != null -> {
+                    check(record)
+                }
+
+                qr != null -> {
+                    refundable(
+                        RefundablePayment(
+                            qr.transactionId,
+                            TerminalClient.formatTimestamp(qr.timestamp),
+                            qr.timestamp,
+                            qr.amountMinor,
+                            qr.currency,
+                            qr.reference,
+                            null,
+                        ),
+                    )
+                }
+
+                else -> {
+                    Refundability.NotRefundable(RefundInvalidReason.NOT_A_RECEIPT)
+                }
+            }
+
+        /**
+         * The refund QR code content for [record]'s receipt, or null when the sale could never be refunded (a
+         * pre-authorisation, or its transaction ID cannot be carried in the code). Printed whether or not something is
+         * left to refund.
+         */
+        fun qrCode(record: SaleWithLines): String? {
+            if (record.sale.kind == SaleKind.PRE_AUTHORISATION || !record.sale.standing.charged) return null
+            val payment = eligible(record) ?: return null
+            // Eligibility already requires a time stamp with a time zone, so it is one instant.
+            val instant = checkNotNull(TerminalClient.instantOf(payment.timestamp))
+            return runCatching {
+                RefundQrPayload(payment.transactionId, instant, payment.amountMinor, payment.currency, payment.reference).encode()
+            }.getOrNull()
+        }
+
+        private fun eligible(record: SaleWithLines): RefundablePayment? {
+            val sale = record.sale
+            if (sale.sample) return null
+            val transactionId = sale.poiTransactionId
+            val timestamp = sale.poiTimestamp?.takeIf { TerminalClient.instantOf(it) != null }
+            if (sale.status != SaleStatus.APPROVED || transactionId == null || timestamp == null) return null
+            return RefundablePayment(
+                transactionId,
+                timestamp,
+                Instant.ofEpochMilli(sale.createdAt),
+                sale.amountMinor,
+                sale.currency,
+                sale.merchantReference,
+                record,
+            )
+        }
+
+        private fun refundable(payment: RefundablePayment): Refundability =
+            if (payment.remainingMinor > 0) {
+                Refundability.Refundable(payment)
+            } else {
+                Refundability.NotRefundable(RefundInvalidReason.FULLY_REFUNDED)
+            }
+    }
+}

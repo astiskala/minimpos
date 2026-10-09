@@ -10,10 +10,10 @@ or with Tap to Pay through the Adyen Payments app.
 [![License: MIT](https://img.shields.io/badge/license-MIT-0abf53.svg)](LICENSE)
 ![Android 9+](https://img.shields.io/badge/Android-9%2B-00112c.svg)
 
-[Website](https://astiskala.github.io/minimpos/) ·
+[Website](https://minimpos.app/) ·
 [Download APK](https://github.com/astiskala/minimpos/releases/latest) ·
-[简体中文](https://astiskala.github.io/minimpos/zh-CN/) ·
-[日本語](https://astiskala.github.io/minimpos/ja/)
+[简体中文](https://minimpos.app/zh-CN/) ·
+[日本語](https://minimpos.app/ja/)
 
 <p align="center">
   <img src="docs/images/home.png" width="200" alt="Home screen">
@@ -47,16 +47,16 @@ there is no backend, tracking or automatic synchronization between devices.
 Away from an Adyen terminal, the default is the simulator: no account, keys or real card needed. Choose outcomes and
 printer behavior in Settings › Simulator. Offline demo links let you try the payment-link workflow too.
 
-**Ready to connect to Adyen?** Follow [Quick start](https://astiskala.github.io/minimpos/quick-start.html).
+**Ready to connect to Adyen?** Follow [Quick start](https://minimpos.app/quick-start.html).
 It covers device, network and credential prerequisites, deployment and all four payment setups. Every real-payment
-setup needs the Checkout API; the [setup helper](https://astiskala.github.io/minimpos/setup.html) lets you enter keys
+setup needs the Checkout API; the [setup helper](https://minimpos.app/setup.html) lets you enter keys
 on a computer and scan them in.
 
 | Guide | What it covers |
 | --- | --- |
-| [Quick start](https://astiskala.github.io/minimpos/quick-start.html) | Check prerequisites, install, connect, test and go live. |
-| [Using Mini mPOS](https://astiskala.github.io/minimpos/using.html) | Daily operations: sell, refund, receipts, closing the day, deposits, tips and more devices. |
-| [Troubleshooting](https://astiskala.github.io/minimpos/troubleshooting.html) | Unknown results, declines, pairing, network, capture, printer and email problems. |
+| [Quick start](https://minimpos.app/quick-start.html) | Check prerequisites, install, connect, test and go live. |
+| [Using Mini mPOS](https://minimpos.app/using.html) | Daily operations: sell, refund, receipts, closing the day, deposits, tips and more devices. |
+| [Troubleshooting](https://minimpos.app/troubleshooting.html) | Unknown results, declines, pairing, network, capture, printer and email problems. |
 
 ## Important boundaries
 

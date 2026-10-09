@@ -39,7 +39,7 @@ description: Re-capture the screenshots and social image of the docs/ website, o
   Or move the seeded sales to today instead (`createdAt` of `sales` and `refunds`, and the `yyMMdd` in their
   merchant references) and capture in the afternoon.
 - To re-capture a flow without leaving extra sales in History, snapshot the app's data as root
-  (`cd /data/data/io.github.astiskala.minimpos && tar -cf /data/local/tmp/minimpos-base.tar .`) and restore it between
+  (`cd /data/data/app.minimpos && tar -cf /data/local/tmp/minimpos-base.tar .`) and restore it between
   flows (force-stop, delete, untar, `chown` to the app's uid, `restorecon -R`); the Keystore keys stay valid because
   the app is not reinstalled. Install a fresh debug build with `adb install -r` first (the data survives).
 - Shut emulators down with `adb shell reboot -p`: `adb emu kill` can leave a freshly installed APK corrupt.
@@ -47,9 +47,9 @@ description: Re-capture the screenshots and social image of the docs/ website, o
 ## Demo data
 
 Seeded before the first launch (debug builds only), piped in with
-`adb shell "cat … | run-as io.github.astiskala.minimpos sh -c 'cat > …'"`:
+`adb shell "cat … | run-as app.minimpos sh -c 'cat > …'"`:
 
-- A Room DB built from the latest `app/schemas/io.github.astiskala.minimpos.app.data.db.AppDatabase/<version>.json`
+- A Room DB built from the latest `app/schemas/app.minimpos.app.data.db.AppDatabase/<version>.json`
   (Python sqlite3, `PRAGMA user_version`).
 - `files/datastore/settings.json`: auto-lock 10 min, simulator delay 6 s (so the "waiting" screen can be captured).
   Explicitly set `payment.askTransactionReference = true`, `payment.shopperReferenceSource = CUSTOMER_REFERENCE`,

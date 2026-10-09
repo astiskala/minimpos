@@ -17,7 +17,7 @@
     @com.fasterxml.jackson.annotation.* <methods>;
 }
 -keepattributes Signature, *Annotation*, InnerClasses, EnclosingMethod
--keep,allowoptimization,allowobfuscation interface io.github.astiskala.minimpos.terminal.transport.NexoSettings
+-keep,allowoptimization,allowobfuscation interface app.minimpos.terminal.transport.NexoSettings
 -keep @interface com.fasterxml.jackson.annotation.JsonIncludeProperties { *; }
 # The library's default Apache HttpClient is excluded (it does not run on Android); TerminalHttpClient replaces it.
 -dontwarn org.apache.hc.**

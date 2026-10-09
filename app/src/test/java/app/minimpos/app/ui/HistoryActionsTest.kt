@@ -1,0 +1,202 @@
+package app.minimpos.app.ui
+
+import androidx.compose.ui.test.ExperimentalTestApi
+import androidx.compose.ui.test.assertCountEquals
+import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertTextEquals
+import androidx.compose.ui.test.hasTestTag
+import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
+import app.minimpos.app.GST_RATES
+import app.minimpos.app.MiniMposApp
+import app.minimpos.app.R
+import app.minimpos.app.TestEnvironment
+import app.minimpos.app.await
+import app.minimpos.app.data.db.ProductEntity
+import app.minimpos.app.data.db.RefundEntity
+import app.minimpos.app.data.db.RefundStatus
+import app.minimpos.app.data.db.SaleKind
+import app.minimpos.core.money.CurrencySpec
+import app.minimpos.core.money.MoneyFormatter
+import app.minimpos.core.money.PaymentContext
+import com.google.common.truth.Truth.assertThat
+import kotlinx.coroutines.flow.first
+import org.junit.Before
+import org.junit.Rule
+import org.junit.Test
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
+import org.robolectric.annotation.Config
+import java.time.LocalDate
+import app.minimpos.app.createRecordingComposeRule as createComposeRule
+
+@OptIn(ExperimentalTestApi::class)
+@RunWith(RobolectricTestRunner::class)
+@Config(qualifiers = "en-rAU-w320dp-h460dp-hdpi")
+class HistoryActionsTest {
+    @get:Rule(order = 0)
+    val env = TestEnvironment()
+
+    @get:Rule(order = 1)
+    val compose = createComposeRule()
+
+    private val container = env.container
+
+    @Before
+    fun setUp() {
+        env.useSimulator {
+            it.copy(payment = it.payment.copy(currencyCode = "AUD"), receipt = it.receipt.copy(autoPrint = false))
+        }
+        await {
+            container.catalog.seedDefaults(GST_RATES)
+            val rate =
+                container.catalog.taxRates
+                    .first()
+                    .first()
+            container.catalog.saveProduct(
+                ProductEntity(name = "Catering deposit", priceMinor = 20_000, taxRateId = rate.id, kind = SaleKind.PRE_AUTHORISATION),
+            )
+        }
+        compose.setContent { MiniMposApp(container) }
+    }
+
+    private fun waitForTag(tag: String) = compose.waitUntilAtLeastOneExists(hasTestTag(tag), 15_000)
+
+    private fun openPreAuthorisation() {
+        compose.onNodeWithTag("preAuth").performClick()
+        compose.waitUntilAtLeastOneExists(hasText("Catering deposit"), 15_000)
+        compose.onNodeWithText("Catering deposit").performClick()
+        waitForTag("pay")
+        compose.onNodeWithTag("pay").performClick()
+        compose.waitUntilAtLeastOneExists(hasTestTag("resultStatus") and hasText("Pre-authorized"), 15_000)
+        compose.onNodeWithTag("home").performClick()
+        waitForTag("history")
+        compose.onNodeWithTag("history").performClick()
+        compose.waitUntilAtLeastOneExists(hasText("Pre-authorized"), 15_000)
+        compose.onNodeWithText("Pre-authorized", useUnmergedTree = true).performClick()
+        waitForTag("adjust")
+    }
+
+    @Test
+    fun `adjusting from history opens the held amount and returns to the same detail`() {
+        openPreAuthorisation()
+        compose
+            .onNodeWithTag("adjust")
+            .performScrollTo()
+            .assertIsDisplayed()
+            .performClick()
+        waitForTag("submitCapture")
+        compose.onNodeWithTag("submitCapture").assertIsDisplayed().assertTextEquals("Hold $200.00")
+        compose.onNodeWithTag("back").performClick()
+        waitForTag("capture")
+        compose.onNodeWithTag("capture").performScrollTo().assertIsDisplayed()
+    }
+
+    @Test
+    fun `the merchant copy action prints a merchant receipt from history`() {
+        openPreAuthorisation()
+        compose
+            .onNodeWithText("Print merchant copy")
+            .performScrollTo()
+            .assertIsDisplayed()
+            .performClick()
+        waitForTag("virtualPrinter")
+        compose.waitUntilAtLeastOneExists(hasText("MERCHANT COPY"), 15_000)
+        compose.onAllNodesWithText("MERCHANT COPY").assertCountEquals(2)
+        compose.runOnIdle { container.virtualPrinter.clear() }
+        compose.onNodeWithTag("virtualPrinter").assertDoesNotExist()
+        compose.onNodeWithTag("cancelPreAuth").performScrollTo().assertIsDisplayed()
+    }
+
+    @Test
+    fun `printerless destination has no daily print action at AMS1 size`() {
+        seedReportHistory()
+        env.updateSettings { it.copy(simulator = it.simulator.copy(hasPrinter = false)) }
+        compose.onNodeWithTag("history").performClick()
+        waitForTag("historyList")
+        compose.onNodeWithTag("printDay_${LocalDate.now()}").assertDoesNotExist()
+    }
+
+    @Test
+    fun `day totals wrap beside the print action at AMS1 size`() = assertDayTotalsBesidePrint()
+
+    @Test
+    @Config(qualifiers = "zh-rCN-w320dp-h460dp-hdpi")
+    fun `Chinese day totals stay beside the print action at AMS1 size`() = assertDayTotalsBesidePrint()
+
+    @Test
+    @Config(qualifiers = "ja-w320dp-h460dp-hdpi")
+    fun `Japanese day totals stay beside the print action at AMS1 size`() = assertDayTotalsBesidePrint()
+
+    private fun assertDayTotalsBesidePrint() {
+        seedReportHistory()
+        compose.onNodeWithTag("history").performClick()
+        val date = LocalDate.now()
+        waitForTag("printDay_$date")
+        val amount = MoneyFormatter(CurrencySpec.of("AUD"), env.context.resources.configuration.locales[0]).format(450)
+        val sales = env.context.getString(R.string.history_day_sales, amount, 1)
+        val totals =
+            compose
+                .onNode(hasText(sales, substring = true))
+                .assertIsDisplayed()
+                .fetchSemanticsNode()
+                .boundsInRoot
+        val print =
+            compose
+                .onNodeWithTag("printDay_$date")
+                .assertIsDisplayed()
+                .fetchSemanticsNode()
+                .boundsInRoot
+        assertThat(totals.right).isAtMost(print.left)
+        assertThat(totals.top).isLessThan(print.bottom)
+    }
+
+    private fun seedReportHistory() =
+        await {
+            container.sampleData.populate(container.settings.current())
+            val now = System.currentTimeMillis()
+            container.refundRecords.create(
+                RefundEntity(
+                    id = "refund",
+                    saleId = null,
+                    createdAt = now,
+                    processedAt = now,
+                    merchantReference = "R-DEMO",
+                    originalTransactionId = "EXTERNAL",
+                    originalTimestamp = "2026-10-06T12:00:00Z",
+                    originalReference = null,
+                    currency = "AUD",
+                    amountMinor = 100,
+                    full = false,
+                    status = RefundStatus.REQUESTED,
+                    context = PaymentContext("SIMULATOR", "SIM", "POS", "", null, simulated = true),
+                ),
+            )
+        }
+
+    @Test
+    fun `day header prints hidden refunds and demo sales despite active sales filter at AMS1 size`() {
+        seedReportHistory()
+        compose.onNodeWithTag("history").performClick()
+        compose.waitUntilAtLeastOneExists(hasText("Sales"), 15_000)
+        compose.onNodeWithText("Sales").performClick()
+        val date = LocalDate.now()
+        waitForTag("printDay_$date")
+        compose.onNodeWithTag("printDay_$date").assertIsDisplayed().performClick()
+        waitForTag("virtualPrinter")
+        compose.waitUntilAtLeastOneExists(hasText("Local daily summary"), 15_000)
+        compose.runOnIdle {
+            val printed =
+                container.virtualPrinter.jobs.value
+                    .toString()
+            assertThat(printed).contains("DEMO")
+            assertThat(printed).contains("Sales (1)")
+            assertThat(printed).contains("Accepted refunds (1)")
+            assertThat(printed).doesNotContain("DEMO-1")
+        }
+    }
+}

@@ -16,7 +16,7 @@ Use for money, formats and decision owners without Android calls, including pure
 Nearest examples: `core/.../MoneyTest.kt`, `app/.../payment/CheckoutTest.kt`.
 
 ```kotlin
-package io.github.astiskala.minimpos.core.money
+package app.minimpos.core.money
 
 import com.google.common.truth.Truth.assertThat
 import org.junit.Test
@@ -36,12 +36,12 @@ Run `scripts/dev test core '*CurrencyDecisionTest'`.
 Nearest example: `app/.../data/RepositoriesTest.kt`. No manually constructed production container or real network.
 
 ```kotlin
-package io.github.astiskala.minimpos.app.data
+package app.minimpos.app.data
 
 import com.google.common.truth.Truth.assertThat
-import io.github.astiskala.minimpos.app.TestEnvironment
-import io.github.astiskala.minimpos.app.await
-import io.github.astiskala.minimpos.app.data.db.TaxRateEntity
+import app.minimpos.app.TestEnvironment
+import app.minimpos.app.await
+import app.minimpos.app.data.db.TaxRateEntity
 import kotlinx.coroutines.flow.first
 import org.junit.Rule
 import org.junit.Test
@@ -73,13 +73,13 @@ changes; do not replace DataStore synchronization with sleeps or blind `advanceU
 Nearest examples: `AppFlowTest`, `SmallScreenTest`, `LocalizedUiTest`. Test wiring/layout here; decisions in JUnit.
 
 ```kotlin
-package io.github.astiskala.minimpos.app.ui
+package app.minimpos.app.ui
 
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.onNodeWithTag
-import io.github.astiskala.minimpos.app.MiniMposApp
-import io.github.astiskala.minimpos.app.TestEnvironment
-import io.github.astiskala.minimpos.app.createRecordingComposeRule
+import app.minimpos.app.MiniMposApp
+import app.minimpos.app.TestEnvironment
+import app.minimpos.app.createRecordingComposeRule
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith

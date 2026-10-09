@@ -779,7 +779,7 @@
   <string name="settings_export_hint">カタログ、設定、パスワード、キーをQRコードで表示</string>
   <string name="settings_import_hint">別のデバイスまたはセットアップヘルパーのコードを読み取り、設定をコピー</string>
   <string name="settings_quick_setup">かんたんセットアップ</string>
-  <string name="settings_quick_setup_hint">パソコンでastiskala.github.io/minimpos/ja/setup.htmlを開き、ここでコードを読み取ります。決済先や環境を先に選ぶ必要はありません。</string>
+  <string name="settings_quick_setup_hint">パソコンでminimpos.app/ja/setup.htmlを開き、ここでコードを読み取ります。決済先や環境を先に選ぶ必要はありません。</string>
   <string name="settings_manual_setup">またはこのデバイスで設定</string>
   <string name="settings_scan_discard_drafts">スキャナーを開くと、未保存のキーは破棄されます。インポートするまで保存済みの設定は変わりません。</string>
   <string name="settings_scan_discard_confirm">破棄して読み取る</string>

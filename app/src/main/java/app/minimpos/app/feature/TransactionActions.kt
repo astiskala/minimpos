@@ -7,6 +7,7 @@ import app.minimpos.app.payment.LinkUpdate
 import app.minimpos.app.payment.PaymentLinks
 import app.minimpos.app.payment.PaymentStart
 import app.minimpos.app.payment.ReceiptDelivery
+import app.minimpos.app.payment.Recheck
 import app.minimpos.app.payment.SharedReceipt
 import app.minimpos.app.payment.StoredTransaction
 import app.minimpos.app.payment.TransactionLifecycle
@@ -52,13 +53,23 @@ sealed interface ActionOutcome {
     sealed interface CaptureFailed : ActionOutcome
 
     /**
-     * A tip, capture or adjustment did not go through: Adyen did not take it, its outcome is unknown (it can be sent
-     * again safely), or the Checkout API is not set up.
+     * A tip, capture or adjustment did not go through: Adyen did not take it, or the Checkout API is not set up.
      *
      * @property failure Why.
      * @property step What was sent.
      */
     data class NotCaptured(
+        val failure: Failure,
+        val step: CaptureStep,
+    ) : CaptureFailed
+
+    /**
+     * Adyen did not confirm a tip, capture or adjustment; only the same request may be sent again.
+     *
+     * @property failure What prevented the confirmation.
+     * @property step What was sent.
+     */
+    data class CaptureUnconfirmed(
         val failure: Failure,
         val step: CaptureStep,
     ) : CaptureFailed
@@ -153,6 +164,15 @@ sealed interface ActionOutcome {
     data object Missing : ActionOutcome
 
     /**
+     * Adyen did not confirm what was asked (such as expiring a payment link), so it may have happened; check again.
+     *
+     * @property failure What prevented the confirmation.
+     */
+    data class Unconfirmed(
+        val failure: Failure,
+    ) : ActionOutcome
+
+    /**
      * The action failed.
      *
      * @property failure Why.
@@ -215,12 +235,12 @@ fun CaptureResult.toState(
             ActionState(outcome = ActionOutcome.CaptureRefused(step, amountMinor, currency, said), isError = true)
         }
 
-        is CaptureResult.Failed -> {
+        is CaptureResult.NotDone -> {
             ActionState(outcome = ActionOutcome.NotCaptured(failure, step), isError = true)
         }
 
-        is CaptureResult.NotSetUp -> {
-            ActionState(outcome = ActionOutcome.NotSetUp(problem), isError = true)
+        is CaptureResult.Unconfirmed -> {
+            ActionState(outcome = ActionOutcome.CaptureUnconfirmed(failure, step), isError = true)
         }
 
         CaptureResult.NotAllowed -> {
@@ -235,7 +255,7 @@ fun CaptureResult.toState(
  * @property merchantCopyPending Whether the customer copy of a sale has printed and its merchant copy is due next.
  * @property email The latest email.
  * @property rechecking Whether a transaction status check is running.
- * @property stillUnknown Whether the latest status check found the outcome still unknown.
+ * @property stillUnknown Why the latest status check could not establish the outcome; null when none ran or it did.
  * @property receipt The receipt as it prints now with the current settings; null until the transaction is loaded (or
  *   once it is gone).
  * @property canPrint Whether printing is offered (Settings › Receipts › Printer, and what the terminal reported).
@@ -250,7 +270,7 @@ data class TransactionActionsState(
     val merchantCopyPending: Boolean = false,
     val email: ActionState = ActionState(),
     val rechecking: Boolean = false,
-    val stillUnknown: Boolean = false,
+    val stillUnknown: Failure? = null,
     val receipt: ReceiptDocument? = null,
     val canPrint: Boolean = false,
     val canEmail: Boolean = false,
@@ -273,7 +293,7 @@ class TransactionActions private constructor(
     private val receipts: ReceiptDelivery,
     private val transaction: StoredTransaction,
     fresh: Boolean,
-    private val rechecking: suspend () -> Boolean,
+    private val rechecking: suspend () -> Recheck,
 ) {
     private val _state = MutableStateFlow(TransactionActionsState())
 
@@ -333,10 +353,10 @@ class TransactionActions private constructor(
 
     /** Asks the terminal again for an unknown outcome; the stored transaction updates when it is settled. */
     fun recheck() {
-        _state.update { it.copy(rechecking = true, stillUnknown = false) }
+        _state.update { it.copy(rechecking = true, stillUnknown = null) }
         scope.launch {
-            val settled = rechecking()
-            _state.update { it.copy(rechecking = false, stillUnknown = !settled) }
+            val checked = rechecking()
+            _state.update { it.copy(rechecking = false, stillUnknown = (checked as? Recheck.StillUnknown)?.failure) }
         }
     }
 
@@ -384,7 +404,7 @@ class TransactionActions private constructor(
             receipts: ReceiptDelivery,
             links: PaymentLinks,
             fresh: Boolean,
-        ) = TransactionActions(scope, receipts, StoredTransaction.Sale(saleId), fresh) { links.check(saleId) == LinkUpdate.Settled }
+        ) = TransactionActions(scope, receipts, StoredTransaction.Sale(saleId), fresh) { links.check(saleId).recheck() }
 
         /**
          * The actions on refund [refundId], in [scope]: receipts through [receipts] (a refund has one copy only), status
@@ -399,3 +419,11 @@ class TransactionActions private constructor(
         ) = TransactionActions(scope, receipts, StoredTransaction.Refund(refundId), fresh) { refunds.recheck(refundId) }
     }
 }
+
+/** This link answer as a status check: settled once the link exists or ended, else still unknown for why. */
+private fun LinkUpdate.recheck(): Recheck =
+    when (this) {
+        LinkUpdate.Settled, LinkUpdate.StillOpen -> Recheck.Settled
+        is LinkUpdate.NotDone -> Recheck.StillUnknown(failure)
+        is LinkUpdate.Unconfirmed -> Recheck.StillUnknown(failure)
+    }

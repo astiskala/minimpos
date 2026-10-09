@@ -62,6 +62,7 @@ import app.minimpos.app.feature.OutcomeMessage
 import app.minimpos.app.feature.outcomeNote
 import app.minimpos.app.feature.sale.ReceiptToggle
 import app.minimpos.app.feature.sale.ShareReceiptButton
+import app.minimpos.app.feature.stillUnconfirmed
 import app.minimpos.app.payment.TransactionState
 import app.minimpos.app.refund.RefundInvalidReason
 import app.minimpos.app.refund.Refundability
@@ -630,8 +631,8 @@ private fun ColumnScope.RefundRecheck(
         icon = Icons.Default.Refresh,
         modifier = Modifier.testTag("refundRecheck"),
     )
-    if (state.transaction.stillUnknown) {
-        Text(stringResource(R.string.refund_still_unknown), textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
+    state.transaction.stillUnknown?.let {
+        Text(stillUnconfirmed(it), textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
     }
 }
 

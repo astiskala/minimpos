@@ -53,6 +53,22 @@ sealed interface TransactionState {
     ) : TransactionState
 }
 
+/** What checking the outcome of an unconfirmed transaction again found, see [TransactionLifecycle.recheck]. */
+sealed interface Recheck {
+    /** The outcome is known now and stored (or there was nothing left to check). */
+    data object Settled : Recheck
+
+    /**
+     * The outcome is still unknown.
+     *
+     * @property failure Why: the terminal could not be asked (setup, original context), did not answer, has no late
+     *   reply (the Payments app), or reports the transaction as still in progress.
+     */
+    data class StillUnknown(
+        val failure: Failure,
+    ) : Recheck
+}
+
 /** How a transaction ended, whatever its kind; each [TransactionBook] maps it to its own stored status. */
 enum class SettlementStatus {
     /** Approved (a payment) or accepted (a refund). */
@@ -265,17 +281,21 @@ class TransactionLifecycle<R>(
 
     /**
      * Asks the terminal again (TransactionStatus) about record [id] whose outcome is unknown, and stores the answer.
-     * Returns false when the outcome is still unknown, or the record is not unknown (or was never sent).
+     * A record whose outcome is not unknown has nothing left to check ([Recheck.Settled]).
      */
-    suspend fun recheck(id: String): Boolean =
+    suspend fun recheck(id: String): Recheck =
         rechecks.withLock {
-            val serviceId = book.unsettledServiceId(id) ?: return@withLock false
-            val outcome = (gateway.status(serviceId, book.kind, book.context(id)) as? Attempt.Made)?.result
-            if (outcome == null || outcome is TransactionOutcome.Unknown) return@withLock false
+            val serviceId = book.unsettledServiceId(id) ?: return@withLock Recheck.Settled
+            val outcome =
+                when (val attempt = gateway.status(serviceId, book.kind, book.context(id))) {
+                    is Attempt.NotSetUp -> return@withLock Recheck.StillUnknown(Failure.NotSetUp(attempt.problem))
+                    is Attempt.Made -> attempt.result
+                }
+            if (outcome is TransactionOutcome.Unknown) return@withLock Recheck.StillUnknown(Failure.Remote(outcome.fault))
             val settlement = settle(id, outcome)
             book.settle(id, settlement)
             complete(id, settlement)
-            true
+            Recheck.Settled
         }
 
     private suspend fun run(

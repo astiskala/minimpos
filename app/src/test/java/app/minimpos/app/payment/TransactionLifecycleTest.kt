@@ -201,8 +201,8 @@ class TransactionLifecycleTest {
         assertThat(sale.status).isEqualTo(SaleStatus.FAILED)
         assertThat(sale.reason).isEqualTo(StoredReason.NotDone(Failure.NotSetUp(SetupProblem.ENVIRONMENT)))
         assertThat(sale.poiId).isNull()
-        await { assertThat(payments.recheck(sale.id)).isFalse() }
-        await { assertThat(payments.recheck("missing")).isFalse() }
+        await { assertThat(payments.recheck(sale.id)).isEqualTo(Recheck.Settled) }
+        await { assertThat(payments.recheck("missing")).isEqualTo(Recheck.Settled) }
     }
 
     @Test
@@ -211,17 +211,17 @@ class TransactionLifecycleTest {
         val saleId = start()
         val record = finished(saleId)
         await { container.database.saleDao().update(record.sale.copy(status = SaleStatus.UNKNOWN, pspReference = null)) }
-        await { assertThat(payments.recheck(saleId)).isTrue() }
+        await { assertThat(payments.recheck(saleId)).isEqualTo(Recheck.Settled) }
         val settled = await { container.sales.get(saleId)!!.sale }
         assertThat(settled.status).isEqualTo(SaleStatus.APPROVED)
         assertThat(settled.pspReference).isNotNull()
         // Only unknown outcomes are checked again.
-        await { assertThat(payments.recheck(saleId)).isFalse() }
+        await { assertThat(payments.recheck(saleId)).isEqualTo(Recheck.Settled) }
 
         // Without complete setup the terminal cannot be asked, so the outcome stays unknown.
         await { container.database.saleDao().update(settled.copy(status = SaleStatus.UNKNOWN)) }
         env.useSimulator { it.copy(terminal = it.terminal.copy(mode = TerminalMode.TERMINAL, poiIdOverride = "X-000000001")) }
-        await { assertThat(payments.recheck(saleId)).isFalse() }
+        await { assertThat(payments.recheck(saleId)).isInstanceOf(Recheck.StillUnknown::class.java) }
         assertThat(
             await {
                 container.sales
@@ -296,7 +296,7 @@ class TransactionLifecycleTest {
                 serviceId = "LOST1",
             )
         await { container.refundRecords.create(refund) }
-        assertThat(await { refunds.recheck("r1") }).isTrue()
+        assertThat(await { refunds.recheck("r1") }).isEqualTo(Recheck.Settled)
         val settled = await { container.refundRecords.get("r1")!! }
         assertThat(settled.status).isEqualTo(RefundStatus.REQUESTED)
         assertThat(settled.pspReference).isNotNull()
@@ -308,10 +308,10 @@ class TransactionLifecycleTest {
             },
         ).isEqualTo(1_200)
         // Settled refunds are not checked again, so they are never counted twice.
-        assertThat(await { refunds.recheck("r1") }).isFalse()
+        assertThat(await { refunds.recheck("r1") }).isEqualTo(Recheck.Settled)
 
         await { container.refundRecords.create(refund.copy(id = "r2", serviceId = "NEVER")) }
-        assertThat(await { refunds.recheck("r2") }).isTrue()
+        assertThat(await { refunds.recheck("r2") }).isEqualTo(Recheck.Settled)
         assertThat(await { container.refundRecords.get("r2")!!.status }).isEqualTo(RefundStatus.FAILED)
     }
 

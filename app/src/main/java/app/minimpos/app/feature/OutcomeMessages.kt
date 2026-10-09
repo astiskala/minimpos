@@ -44,6 +44,7 @@ fun ActionOutcome.text(): String =
         is ActionOutcome.TestEmailSent -> stringResource(R.string.settings_test_email_sent, to)
         is ActionOutcome.SecretNotStored -> stringResource(R.string.settings_secret_not_stored, reason.orEmpty())
         ActionOutcome.Missing -> stringResource(R.string.error_not_found)
+        is ActionOutcome.Unconfirmed -> stringResource(R.string.sentences, stringResource(R.string.action_unconfirmed), failure.text())
         is ActionOutcome.Failed -> failure.text()
     }
 
@@ -72,6 +73,11 @@ internal fun WalletDiscoveryFailure.text(): String =
             WalletDiscoveryFailure.UNREADABLE -> R.string.wallet_discovery_unreadable
         },
     )
+
+/** Why a status check left a transaction's outcome unconfirmed, with what to do about it. */
+@Composable
+@ReadOnlyComposable
+fun stillUnconfirmed(failure: Failure): String = stringResource(R.string.still_unconfirmed, failure.text())
 
 /** How the screens word this setup problem: what to enter, install or fix. */
 @Composable
@@ -180,7 +186,7 @@ fun Failure.text(): String =
 /** This fault as one sentence with what to do, followed by its details (host, terminal, Adyen's words, codes). */
 @Composable
 @ReadOnlyComposable
-fun Fault.text(): String = noted(stringResource(faultRes), details().joinToString(", ").ifEmpty { null })
+private fun Fault.text(): String = noted(stringResource(faultRes), details().joinToString(", ").ifEmpty { null })
 
 /** The facts that identify this fault for the operator or support, in brackets after its sentence; Adyen's words verbatim. */
 @Composable
@@ -362,6 +368,11 @@ private fun ActionOutcome.CaptureFailed.captureText(): String =
     when (this) {
         is ActionOutcome.NotCaptured -> {
             stringResource(if (step == CaptureStep.ADJUSTMENT) R.string.adjust_failed else R.string.capture_failed, failure.text())
+        }
+
+        is ActionOutcome.CaptureUnconfirmed -> {
+            val unconfirmed = if (step == CaptureStep.ADJUSTMENT) R.string.adjust_unconfirmed else R.string.capture_unconfirmed
+            stringResource(R.string.sentences, stringResource(unconfirmed), failure.text())
         }
 
         is ActionOutcome.CaptureRefused -> {

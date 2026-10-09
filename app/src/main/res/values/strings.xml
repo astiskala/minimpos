@@ -250,7 +250,6 @@
   <string name="detail_refunds">Refunds</string>
   <string name="detail_refunded">Refunded %1$s</string>
   <string name="detail_reprint">Reprint receipt</string>
-  <string name="detail_still_unknown">The terminal still cannot confirm this payment. Check your Customer Area.</string>
   <string name="detail_pre_auth_title">Pre-authorization</string>
   <string name="detail_capture">Capture</string>
   <string name="detail_adjust">Adjust amount</string>
@@ -299,7 +298,6 @@
   <string name="refund_status_failed">Refund failed</string>
   <string name="refund_status_unknown">Refund result unknown</string>
   <string name="refund_unknown_outcome">The terminal did not confirm the refund. Check it in your Customer Area before refunding again.</string>
-  <string name="refund_still_unknown">The terminal still cannot confirm this refund. Check your Customer Area.</string>
   <string name="refund_async_note">Adyen processes refunds asynchronously; the final outcome appears in your Customer Area.</string>
   <string name="refund_pre_authorisation">This pre-authorization has not been captured, so there is nothing to refund yet. Capture or cancel it from History.</string>
   <string name="refund_awaiting_tip">This payment is waiting for its tip to be captured. Enter the tip from History, or cancel the payment there.</string>
@@ -997,4 +995,8 @@
   <string name="email_unreachable">The mail server could not be reached. Check the server, port and internet connection.</string>
   <string name="email_rejected">The mail server did not accept the email.</string>
   <string name="sentences">%1$s %2$s</string>
+  <string name="capture_unconfirmed">Adyen did not confirm the capture. Retry the same capture safely.</string>
+  <string name="adjust_unconfirmed">Adyen did not confirm the adjustment. Retry the same adjustment safely.</string>
+  <string name="action_unconfirmed">Adyen did not confirm the result. Check again before you try anything else.</string>
+  <string name="still_unconfirmed">Still not confirmed: %1$s</string>
 </resources>

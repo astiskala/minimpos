@@ -408,13 +408,13 @@ class ViewModelsTest {
         // Opened again from history, nothing is delivered automatically or acknowledged.
         val fromHistory = RefundResultViewModel(refundId, container.refundRecords, container.receipts, container.refunds, justMade = false)
         assertThat(await { fromHistory.state.first { it.refund != null } }.transaction.print.running).isFalse()
-        // Only an unknown outcome is checked again.
+        // Only an unknown outcome is checked again; a settled one has nothing left to confirm.
         fromHistory.transaction.recheck()
         assertThat(
             await {
-                fromHistory.state.first { !it.transaction.rechecking && it.transaction.stillUnknown }
+                fromHistory.state.first { !it.transaction.rechecking }
             }.transaction.stillUnknown,
-        ).isTrue()
+        ).isNull()
         fromHistory.finish()
 
         // Scanning the same receipt again knows what is left.
@@ -507,11 +507,9 @@ class ViewModelsTest {
         detail.transaction.recheck()
         assertThat(
             await {
-                detail.state.first {
-                    !it.transaction.rechecking && it.transaction.stillUnknown
-                }
+                detail.state.first { !it.transaction.rechecking }
             }.transaction.stillUnknown,
-        ).isTrue()
+        ).isNull()
     }
 
     @Test

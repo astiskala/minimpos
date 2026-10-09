@@ -3,7 +3,6 @@ package app.minimpos.app.payment
 import app.minimpos.app.data.db.CaptureStatus
 import app.minimpos.app.data.db.Failure
 import app.minimpos.app.data.db.SaleEntity
-import app.minimpos.app.data.db.SetupProblem
 import app.minimpos.app.data.repo.SaleEvent
 import app.minimpos.app.data.repo.SaleRepository
 import app.minimpos.app.refund.PaymentAction
@@ -16,6 +15,7 @@ import app.minimpos.terminal.checkout.ModificationAmount
 import app.minimpos.terminal.checkout.ModificationResult
 import app.minimpos.terminal.checkout.PaymentModifications
 import app.minimpos.terminal.transport.ExternalText
+import app.minimpos.terminal.transport.Fault
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
@@ -37,21 +37,23 @@ sealed interface CaptureResult {
     ) : CaptureResult
 
     /**
-     * Adyen did not take the request, or its outcome is unknown (the capture can then be sent again safely).
+     * Nothing was captured or adjusted: nothing was sent (the Checkout API is not set up) or Adyen did not take it, so
+     * the amount may be changed and sent again.
      *
      * @property failure Why.
      */
-    data class Failed(
+    data class NotDone(
         val failure: Failure,
     ) : CaptureResult
 
     /**
-     * Nothing was sent, because the Checkout API is not set up.
+     * It is not known whether Adyen took it; only the same request (same identity and amount) may be sent again, which
+     * Adyen applies at most once.
      *
-     * @property problem What is missing.
+     * @property failure What prevented the confirmation.
      */
-    data class NotSetUp(
-        val problem: SetupProblem,
+    data class Unconfirmed(
+        val failure: Failure,
     ) : CaptureResult
 
     /** The payment no longer allows it (captured or cancelled meanwhile, or gone), or the amount is not valid. */
@@ -62,8 +64,8 @@ sealed interface CaptureResult {
  * Finishes payments taken with manual capture: enters the tip of a sale taken for tipping on the receipt and captures
  * it, captures a pre-authorisation (adjusting it first when more is captured than it holds) and adjusts what a
  * pre-authorisation holds, through the Checkout API ([AdyenApi]); while it is not set up nothing is sent
- * ([CaptureResult.NotSetUp]). Which payments allow what is decided by their [StoredPayment.actions], the same reading
- * the screens use; anything else is [CaptureResult.NotAllowed].
+ * ([CaptureResult.NotDone] with [Failure.NotSetUp]). Which payments allow what is decided by their
+ * [StoredPayment.actions], the same reading the screens use; anything else is [CaptureResult.NotAllowed].
  *
  * A tip above [PaymentStanding.TIP_ADJUSTMENT_PERCENT] of the bill first raises the authorisation to bill plus tip; if
  * the issuer refuses, the tip is not saved, so a smaller one can be entered. Otherwise the tip is saved and the total
@@ -176,7 +178,7 @@ class Captures(
 
             is ApiAccess.Blocked -> {
                 if (access is ApiAccess.Unavailable) sales.record(sale.id, SaleEvent.ModificationNotSetUp(access.problem))
-                CaptureResult.NotSetUp(access.problem)
+                CaptureResult.NotDone(Failure.NotSetUp(access.problem))
             }
         }
 
@@ -214,7 +216,7 @@ class Captures(
         return when (result) {
             is ModificationResult.Authorised, is ModificationResult.Received -> CaptureResult.Adjusted
             is ModificationResult.Refused -> CaptureResult.Refused(result.said)
-            is ModificationResult.Failed -> CaptureResult.Failed(Failure.Remote(result.fault))
+            is ModificationResult.Failed -> result.fault.captureResult()
         }
     }
 
@@ -237,7 +239,11 @@ class Captures(
         return when (result) {
             is ModificationResult.Received, is ModificationResult.Authorised -> CaptureResult.Requested
             is ModificationResult.Refused -> CaptureResult.Refused(result.said)
-            is ModificationResult.Failed -> CaptureResult.Failed(Failure.Remote(result.fault))
+            is ModificationResult.Failed -> result.fault.captureResult()
         }
     }
+
+    /** This fault as the result of a capture or adjustment: unconfirmed when it may have taken effect. */
+    private fun Fault.captureResult(): CaptureResult =
+        if (mayHaveTakenEffect) CaptureResult.Unconfirmed(Failure.Remote(this)) else CaptureResult.NotDone(Failure.Remote(this))
 }

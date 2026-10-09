@@ -60,6 +60,7 @@ import app.minimpos.app.data.db.SaleStatus
 import app.minimpos.app.data.settings.ShopperReferenceSource
 import app.minimpos.app.feature.OutcomeMessage
 import app.minimpos.app.feature.outcomeNote
+import app.minimpos.app.feature.stillUnconfirmed
 import app.minimpos.app.payment.Checkout
 import app.minimpos.app.payment.CheckoutForm
 import app.minimpos.app.payment.TransactionState
@@ -611,8 +612,8 @@ private fun ColumnScope.UnapprovedSaleActions(
             loading = state.transaction.rechecking,
             icon = Icons.Default.Refresh,
         )
-        if (state.transaction.stillUnknown) {
-            Text(stringResource(R.string.detail_still_unknown), textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
+        state.transaction.stillUnknown?.let {
+            Text(stillUnconfirmed(it), textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
         }
     }
     if (state.busyServiceId != null) {

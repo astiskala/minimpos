@@ -2,6 +2,7 @@ package app.minimpos.app.feature.settings
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import app.minimpos.app.data.db.DeviceFault
 import app.minimpos.app.data.db.Failure
 import app.minimpos.app.data.db.TaxRateEntity
 import app.minimpos.app.data.repo.CatalogRepository
@@ -80,7 +81,7 @@ data class SettingsUiState(
 data class SettingsActions(
     val connection: ActionState = ActionState(),
     val passphraseStored: Boolean = false,
-    val secretError: ActionOutcome.SecretNotStored? = null,
+    val secretError: ActionOutcome.Failed? = null,
     val email: ActionState = ActionState(),
     val print: ActionState = ActionState(),
     val cleared: Boolean = false,
@@ -247,8 +248,8 @@ class SettingsViewModel(
             store()
             _actions.update { it.copy(secretError = null) }
             true
-        } catch (e: SecretStoreException) {
-            _actions.update { it.copy(secretError = ActionOutcome.SecretNotStored(e.message)) }
+        } catch (ignored: SecretStoreException) {
+            _actions.update { it.copy(secretError = SECURE_STORAGE_FAILED) }
             false
         }
 
@@ -280,7 +281,7 @@ class SettingsViewModel(
             if (entered != null) {
                 val stored = persisting { storeSecret { secrets.set(secret, entered) } } && secrets.get(secret) == entered
                 if (!stored) {
-                    val error = _actions.value.secretError ?: ActionOutcome.SecretNotStored("it did not read back")
+                    val error = _actions.value.secretError ?: SECURE_STORAGE_FAILED
                     _actions.update { it.with(ActionState(outcome = error, isError = true)) }
                     return@launch
                 }
@@ -374,3 +375,6 @@ class SettingsViewModel(
         launchWrite({ history.clear() }) { _ -> _actions.update { it.copy(cleared = true) } }
     }
 }
+
+/** A secret could not be stored, or did not read back, on this device. */
+private val SECURE_STORAGE_FAILED = ActionOutcome.Failed(Failure.Device(DeviceFault.SECURE_STORAGE))

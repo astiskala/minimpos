@@ -1,6 +1,7 @@
 package app.minimpos.app.data.transfer
 
 import android.database.sqlite.SQLiteException
+import app.minimpos.app.data.db.DeviceFault
 import app.minimpos.app.data.db.SetupProblem
 import app.minimpos.app.data.repo.CatalogRepository
 import app.minimpos.app.data.repo.HistoryRepository
@@ -143,11 +144,11 @@ sealed interface ImportOutcome {
     ) : ImportOutcome
 
     /** Saving failed; an encrypted journal, when already written, remains available for recovery.
-     * @property reason Non-secret storage failure explanation.
+     * @property fault What on this device failed: secure storage, the settings files or the database.
      * @property pending Whether an encrypted verified journal was written and must be resumed before a new import.
      */
     data class StorageFailed(
-        val reason: String,
+        val fault: DeviceFault,
         val pending: Boolean = false,
     ) : ImportOutcome
 }
@@ -424,12 +425,12 @@ class SetupTransfer(
     private suspend fun saving(write: suspend () -> ImportOutcome): ImportOutcome =
         try {
             write()
-        } catch (e: SecretStoreException) {
-            ImportOutcome.StorageFailed(e.message.orEmpty(), pending.first())
-        } catch (e: IOException) {
-            ImportOutcome.StorageFailed(e.message.orEmpty(), pending.first())
-        } catch (e: SQLiteException) {
-            ImportOutcome.StorageFailed(e.message.orEmpty(), pending.first())
+        } catch (ignored: SecretStoreException) {
+            ImportOutcome.StorageFailed(DeviceFault.SECURE_STORAGE, pending.first())
+        } catch (ignored: IOException) {
+            ImportOutcome.StorageFailed(DeviceFault.FILE_STORAGE, pending.first())
+        } catch (ignored: SQLiteException) {
+            ImportOutcome.StorageFailed(DeviceFault.DATABASE, pending.first())
         } catch (ignored: SerializationException) {
             ImportOutcome.Rejected(SetupProblem.TRANSFER_PENDING)
         }

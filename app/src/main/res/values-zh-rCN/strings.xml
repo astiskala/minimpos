@@ -489,7 +489,6 @@
   <string name="settings_secret_enter">与商户后台一致</string>
   <string name="settings_secret_show">显示</string>
   <string name="settings_secret_hide">隐藏</string>
-  <string name="settings_secret_not_stored">此设备无法安全保存（%1$s）。请重试或重启设备。</string>
   <string name="setup_poiid">请在终端设置中输入终端 ID（POIID）</string>
   <string name="setup_host">请在终端设置中输入终端 IP 地址</string>
   <string name="setup_key_identifier">请在终端设置中输入共享密钥标识符</string>

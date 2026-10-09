@@ -34,6 +34,7 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.RuntimeEnvironment
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
+import java.security.ProviderException
 import java.util.Locale
 
 @RunWith(RobolectricTestRunner::class)
@@ -57,7 +58,7 @@ class SecurityAndSettingsTest {
             // A device that cannot encrypt reports it, and keeps what was stored before.
             env.cipher.failEncrypt = true
             val error = assertThrows(SecretStoreException::class.java) { runBlocking { secrets.set(Secret.SMTP_PASSWORD, "other") } }
-            assertThat(error).hasMessageThat().isEqualTo("ProviderException: Keystore unavailable")
+            assertThat(generateSequence<Throwable>(error) { it.cause }.any { it is ProviderException }).isTrue()
             env.cipher.failEncrypt = false
             assertThat(secrets.get(Secret.SMTP_PASSWORD)).isEqualTo("hunter2")
             secrets.set(Secret.SMTP_PASSWORD, "")

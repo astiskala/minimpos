@@ -2,6 +2,8 @@ package app.minimpos.app.feature.transfer
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import app.minimpos.app.data.db.DeviceFault
+import app.minimpos.app.data.db.Failure
 import app.minimpos.app.data.repo.ImportMode
 import app.minimpos.app.data.security.Secret
 import app.minimpos.app.data.security.TransferSeal
@@ -270,11 +272,28 @@ class TransferImportViewModel(
         launchWrite({ importer.recover() }) { result ->
             _state.value =
                 when (result) {
-                    null -> ImportUiState.Scanning()
-                    is ImportOutcome.Imported -> ImportUiState.Done(result.result)
-                    is ImportOutcome.StorageFailed -> ImportUiState.RecoveryFailed(ActionOutcome.SecretNotStored(result.reason))
-                    is ImportOutcome.Rejected -> ImportUiState.RecoveryFailed(ActionOutcome.NotSetUp(result.problem))
-                    ImportOutcome.WrongCode -> ImportUiState.RecoveryFailed(ActionOutcome.NoAnswer)
+                    null -> {
+                        ImportUiState.Scanning()
+                    }
+
+                    is ImportOutcome.Imported -> {
+                        ImportUiState.Done(result.result)
+                    }
+
+                    is ImportOutcome.StorageFailed -> {
+                        ImportUiState.RecoveryFailed(ActionOutcome.Failed(Failure.Device(result.fault)))
+                    }
+
+                    is ImportOutcome.Rejected -> {
+                        ImportUiState.RecoveryFailed(ActionOutcome.NotSetUp(result.problem))
+                    }
+
+                    // Recovery never asks for the code: a journal it cannot open is unreadable secure storage.
+                    ImportOutcome.WrongCode -> {
+                        ImportUiState.RecoveryFailed(
+                            ActionOutcome.Failed(Failure.Device(DeviceFault.SECURE_STORAGE)),
+                        )
+                    }
                 }
         }
     }
@@ -381,9 +400,9 @@ class TransferImportViewModel(
 
             is ImportOutcome.StorageFailed -> {
                 if (result.pending) {
-                    ImportUiState.RecoveryFailed(ActionOutcome.SecretNotStored(result.reason))
+                    ImportUiState.RecoveryFailed(ActionOutcome.Failed(Failure.Device(result.fault)))
                 } else {
-                    ready.copy(outcome = ActionOutcome.SecretNotStored(result.reason), keyPending = false)
+                    ready.copy(outcome = ActionOutcome.Failed(Failure.Device(result.fault)), keyPending = false)
                 }
             }
         }

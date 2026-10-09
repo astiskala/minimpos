@@ -60,14 +60,14 @@
           <li><a href="#wallets">钱包扫码</a></li><li><a href="#connection">终端绑定和设置</a></li><li><a href="#network-dropouts">网络中断</a></li>
           <li><a href="#modifications">扣款和调整</a></li><li><a href="#links">支付链接</a></li>
           <li><a href="#receipts">打印机和邮件</a></li><li><a href="#access">PIN 和传输</a></li>
-          <li><a href="#install">安装</a></li><li><a href="#help">获取帮助</a></li>
+          <li><a href="#install">安装</a></li><li><a href="#messages">错误消息</a></li><li><a href="#help">获取帮助</a></li>
         </ol></div>
         <details class="mobile-contents"><summary class="toc-title">本页目录</summary><ol>
           <li><a href="#unknown">结果未知</a></li><li><a href="#declines">付款被拒绝</a></li>
           <li><a href="#wallets">钱包扫码</a></li><li><a href="#connection">终端绑定和设置</a></li><li><a href="#network-dropouts">网络中断</a></li>
           <li><a href="#modifications">扣款和调整</a></li><li><a href="#links">支付链接</a></li>
           <li><a href="#receipts">打印机和邮件</a></li><li><a href="#access">PIN 和传输</a></li>
-          <li><a href="#install">安装</a></li><li><a href="#help">获取帮助</a></li>
+          <li><a href="#install">安装</a></li><li><a href="#messages">错误消息</a></li><li><a href="#help">获取帮助</a></li>
         </ol></details>
       </nav>
       <div class="guide-body">
@@ -266,6 +266,52 @@
             <div><dt>不支持的 Android 版本</dt>
               <dd><p><span class="fix-label">原因</span>Mini mPOS 需要 Android 9 或更高版本；旧款 S1E 运行 Android 7.1。</p>
                 <p><span class="fix-label">解决</span>使用受支持的终端；参见<a href="quick-start.html#install">安装</a>。</p></dd></div>
+          </dl>
+          <p class="back-to-contents"><a href="#contents">返回目录</a></p>
+        </section>
+        <section id="messages">
+          <h2>出现错误消息</h2>
+          <p>每条消息都会说明问题及需要检查的内容。括号中的详细信息（如 IP 地址、HTTP 状态或 Adyen 的原文）有助于 Adyen 支持团队排查，寻求帮助时请一并提供。如果有付款正在进行，请先<a href="#unknown">查询其结果</a>，再处理其他问题。</p>
+          <dl class="fixes">
+            <div><dt>“无法连接终端。请确认终端已开机、位于同一网络，且 IP 地址正确。”</dt>
+              <dd><p><span class="fix-label">原因</span>Mini mPOS 无法连接到所保存 IP 地址上的网络终端。</p>
+                <p><span class="fix-label">解决</span>请参阅<a href="#network-dropouts">连接中断</a>。</p></dd></div>
+            <div><dt>“此地址不是所选环境中的 Adyen 终端。请检查 IP 地址以及 TEST 或 LIVE。”</dt>
+              <dd><p><span class="fix-label">原因</span>该地址有设备响应，但不是所选环境中的 Adyen 终端：该地址已分配给其他设备，或混用了 TEST 和 LIVE。</p>
+                <p><span class="fix-label">解决</span>在终端的“Device info”屏幕上核对 IP 地址，并检查<strong>设置 › 终端</strong>中的<strong>环境</strong>。</p></dd></div>
+            <div><dt>“终端拒绝了共享密钥。请在终端设置中检查密钥标识、版本和密码短语。”</dt>
+              <dd><p><span class="fix-label">原因</span>共享密钥的标识、版本或密码短语与终端上的不一致。</p>
+                <p><span class="fix-label">解决</span>与商户后台中的设置进行核对，或<a href="#key-setup">重新设置密钥</a>。</p></dd></div>
+            <div><dt>“无法验证终端的回复。请在终端设置中检查共享密钥。”</dt>
+              <dd><p><span class="fix-label">原因</span>终端使用了不同的共享密钥回复，因此请求可能已送达终端。</p>
+                <p><span class="fix-label">解决</span>再次收款前请先<a href="#unknown">查询结果</a>，然后修正共享密钥。</p></dd></div>
+            <div><dt>“终端未连接到 Adyen。请确认终端已开机并已联网。”</dt>
+              <dd><p><span class="fix-label">原因</span>云终端已关机或没有互联网连接。</p>
+                <p><span class="fix-label">解决</span>检查终端的 Wi-Fi、以太网或移动数据，然后运行<strong>测试连接</strong>。</p></dd></div>
+            <div><dt>“Adyen 未接受 API 密钥。请在终端设置中检查。”</dt>
+              <dd><p><span class="fix-label">原因</span>API 密钥有误、已被撤销，或属于另一个环境。</p>
+                <p><span class="fix-label">解决</span>重新输入密钥，并对照<a href="quick-start.html#credentials">凭据要求</a>检查。</p></dd></div>
+            <div><dt>“此 API 密钥缺少所需角色或对此商户账户的访问权限。请在商户后台检查 API 凭据。”</dt>
+              <dd><p><span class="fix-label">原因</span>凭据缺少某个角色或对此商户账户的访问权限。已知缺少的角色时，括号中会注明。</p>
+                <p><span class="fix-label">解决</span>在商户后台中添加该角色或账户访问权限；请参阅<a href="quick-start.html#credentials">凭据要求</a>。</p></dd></div>
+            <div><dt>“Adyen 繁忙或暂时不可用。”</dt>
+              <dd><p><span class="fix-label">原因</span>Adyen 正在限制请求，或暂时不可用。</p>
+                <p><span class="fix-label">解决</span>稍候片刻再重试。如果是付款、扣款或支付链接，请先<a href="#unknown">查询其结果</a>。</p></dd></div>
+            <div><dt>“未在规定时间内收到响应。”</dt>
+              <dd><p><span class="fix-label">原因</span>请求已发出，但未收到响应，因此结果未知。</p>
+                <p><span class="fix-label">解决</span>请<a href="#unknown">查询结果</a>。在确认结果前，请勿再次收款。</p></dd></div>
+            <div><dt>“尚未收到 Payments 应用的回复。无法向其查询结果，请在商户后台核实此次支付。”</dt>
+              <dd><p><span class="fix-label">原因</span>使用 Tap to Pay 时，无法向 Payments 应用查询结果，且尚未收到迟到的回复。</p>
+                <p><span class="fix-label">解决</span>再次收款前，请在商户后台中查找此次付款。</p></dd></div>
+            <div><dt>“无法打开 Adyen Payments 应用。请确认已安装该应用。”</dt>
+              <dd><p><span class="fix-label">原因</span>Payments 应用未安装或已被移除。</p>
+                <p><span class="fix-label">解决</span>安装与您的环境对应的 Payments 应用，然后重试。请参阅<a href="quick-start.html#connect">连接 Adyen</a>。</p></dd></div>
+            <div><dt>“邮件服务器未接受用户名或密码。请在“设置 › 电子邮件”中检查。”</dt>
+              <dd><p><span class="fix-label">原因</span>SMTP 用户名或密码有误，或邮件服务商要求使用应用专用密码。</p>
+                <p><span class="fix-label">解决</span>更正后发送一封测试邮件。</p></dd></div>
+            <div><dt>“此设备的安全存储无法使用。请重试或重启设备。”</dt>
+              <dd><p><span class="fix-label">原因</span>Android 密钥库无法加密或读取已保存的密钥信息。</p>
+                <p><span class="fix-label">解决</span>如果重启后问题仍然存在，请重新输入密钥和密码。</p></dd></div>
           </dl>
           <p class="back-to-contents"><a href="#contents">返回目录</a></p>
         </section>

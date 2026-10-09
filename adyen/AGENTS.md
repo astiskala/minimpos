@@ -12,7 +12,8 @@ Starred rules are enforced by `ArchitectureTest`. KDoc is the detailed API/proto
   calls.
 - \* `TerminalTransport.send` returns `Delivery` (answered, or failed with a `Fault`), never throws. Each `Fault` states
   once whether the request may have taken effect. Convert transport exceptions there (`FaultException` only inside
-  `:adyen`); client/checkout code must not see them. Results carry faults and `ExternalText`, never English sentences.
+  `:adyen`); client/checkout code must not see them. Results carry faults and `ExternalText`, never English sentences
+  or exception messages.
 - \* Only `client/Decline` interprets ErrorCondition and retry advice. Do not compare its strings elsewhere.
 - \* Always install our `TerminalHttpClient` on the Adyen `Client`. The default Apache client crashes on Android;
   even a bare `httpClient` inside `Client.apply` calls its getter and creates it. The getter and unencrypted TEST-only

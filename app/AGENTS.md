@@ -55,8 +55,10 @@ Starred rules below are enforced by `ArchitectureTest`, `SettingsArchitectureTes
 - \* Screens access receipts through `TransactionActions`, backed by `ReceiptDelivery` for `StoredTransaction`.
   Only delivery uses `ReceiptFactory`; only the container arms automatic delivery. UI state outside Settings must
   not hold `AppSettings` or `printerAvailable`.
-- \* Outcomes/setup problems/stored reasons are worded only in `OutcomeMessages.kt`. Tests assert typed outcomes.
-  Store app reasons as `StoredReason`, external messages verbatim; use `outcomeNote`/`modificationNote` at presentation.
+- \* Outcomes/failures/setup problems/stored reasons are worded only in `OutcomeMessages.kt`; screens carry a
+  `Failure` whole. Tests assert typed outcomes. Store app reasons as `StoredReason`, external messages verbatim; use
+  `outcomeNote`/`modificationNote` at presentation. Never read exception messages (only `SmtpMailer.kt` keeps the
+  mail server's reply); only `email` and stored-reason decoding create `ExternalText` in `:app`.
   Only `CaptureResult.toState(CaptureStep, …)` creates capture-action outcomes outside the capture module.
 - \* Only `ReceiptLinesJson` converts Adyen receipt fields; only `PrintRenderer` builds print jobs from document segments.
 - \* Only the container creates/completes one `SaleSession` per kind. Start through its atomic cart/form/revision

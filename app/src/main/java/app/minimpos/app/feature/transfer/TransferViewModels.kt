@@ -285,7 +285,7 @@ class TransferImportViewModel(
                     }
 
                     is ImportOutcome.Rejected -> {
-                        ImportUiState.RecoveryFailed(ActionOutcome.NotSetUp(result.problem))
+                        ImportUiState.RecoveryFailed(ActionOutcome.Failed(Failure.NotSetUp(result.problem)))
                     }
 
                     // Recovery never asks for the code: a journal it cannot open is unreadable secure storage.
@@ -369,10 +369,7 @@ class TransferImportViewModel(
 
             is SetupImportOutcome.Failed -> {
                 ready.copy(
-                    outcome =
-                        result.problem?.let(ActionOutcome::NotSetUp)
-                            ?: result.failure?.let(ActionOutcome::Failed)
-                            ?: ActionOutcome.NoAnswer,
+                    outcome = ActionOutcome.Failed(result.failure),
                     incomplete = result.incomplete,
                     sharedKeyOffer = null,
                     historySwitch = null,
@@ -395,7 +392,7 @@ class TransferImportViewModel(
             }
 
             is ImportOutcome.Rejected -> {
-                ready.copy(outcome = ActionOutcome.NotSetUp(result.problem), keyPending = false)
+                ready.copy(outcome = ActionOutcome.Failed(Failure.NotSetUp(result.problem)), keyPending = false)
             }
 
             is ImportOutcome.StorageFailed -> {

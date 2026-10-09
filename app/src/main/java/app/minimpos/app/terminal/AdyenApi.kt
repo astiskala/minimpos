@@ -1,5 +1,6 @@
 package app.minimpos.app.terminal
 
+import app.minimpos.app.data.db.Failure
 import app.minimpos.app.data.db.SetupProblem
 import app.minimpos.app.data.security.Secret
 import app.minimpos.app.data.security.SecretStore
@@ -11,7 +12,6 @@ import app.minimpos.terminal.checkout.CheckoutPaymentLinks
 import app.minimpos.terminal.checkout.PaymentLinkApi
 import app.minimpos.terminal.checkout.PaymentModifications
 import app.minimpos.terminal.simulator.SimulatedPaymentLinks
-import app.minimpos.terminal.transport.Fault
 import app.minimpos.terminal.transport.TerminalEnvironment
 
 /**
@@ -122,12 +122,12 @@ sealed interface ApiCheck {
     ) : ApiCheck
 
     /**
-     * Adyen refused, or could not be reached.
+     * Adyen refused the credential, merchant account or terminal access, or could not be reached.
      *
-     * @property fault Why.
+     * @property failure Why; a missing or mismatched terminal assignment is a [Failure.NotSetUp].
      */
     data class Failed(
-        val fault: Fault,
+        val failure: Failure,
     ) : ApiCheck
 }
 
@@ -154,7 +154,7 @@ class AdyenApi(
     private val connect: (CheckoutCredentials) -> PaymentModifications = { CheckoutModifications(it) },
     private val connectLinks: (CheckoutCredentials) -> PaymentLinkApi = { CheckoutPaymentLinks(it) },
     private val simulatedLinks: PaymentLinkApi = SimulatedPaymentLinks(),
-    private val verifyAccess: suspend (UnlockedSetup) -> SetupProblem?,
+    private val verifyAccess: suspend (UnlockedSetup) -> Failure?,
     private val readEnvironment: suspend () -> Unit = {},
 ) {
     private val clients = Reused<CheckoutCredentials, PaymentModifications>()
@@ -191,17 +191,20 @@ class AdyenApi(
 
     internal suspend fun verify(unlocked: UnlockedSetup): ApiCheck {
         val setup = unlocked.setup
-        if (setup.apiSetup == ApiSetup.Simulated) return simulated.verify()?.let(ApiCheck::Failed) ?: ApiCheck.Works
-        val problem = setup.apiSetup.problem ?: verifyAccess(unlocked)
-        return if (problem != null) ApiCheck.NotSetUp(problem) else verifyCheckout(unlocked)
+        if (setup.apiSetup == ApiSetup.Simulated) return checkout(simulated)
+        setup.apiSetup.problem?.let { return ApiCheck.NotSetUp(it) }
+        return verifyAccess(unlocked)?.let(ApiCheck::Failed) ?: verifyCheckout(unlocked)
     }
 
     private suspend fun verifyCheckout(unlocked: UnlockedSetup): ApiCheck {
         val setup = unlocked.setup
         val target = connected(setup.settings.terminal, checkNotNull(setup.environment), checkNotNull(unlocked.apiKey))
         return when (val access = target.modifications(null)) {
-            is ApiAccess.Ready -> access.client.verify()?.let(ApiCheck::Failed) ?: ApiCheck.Works
+            is ApiAccess.Ready -> checkout(access.client)
             is ApiAccess.Blocked -> ApiCheck.NotSetUp(access.problem)
         }
     }
+
+    private suspend fun checkout(client: PaymentModifications): ApiCheck =
+        client.verify()?.let { ApiCheck.Failed(Failure.Remote(it)) } ?: ApiCheck.Works
 }

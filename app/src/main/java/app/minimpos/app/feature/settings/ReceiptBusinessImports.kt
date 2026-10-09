@@ -53,7 +53,7 @@ internal class ReceiptBusinessImports(
                     it.copy(
                         lookup =
                             ActionState(
-                                outcome = ActionOutcome.NotSetUp(changed),
+                                outcome = ActionOutcome.Failed(Failure.NotSetUp(changed)),
                                 isError = true,
                             ),
                     )
@@ -66,16 +66,8 @@ internal class ReceiptBusinessImports(
                         it.copy(lookup = ActionState(done = true), proposal = result.business)
                     }
 
-                    is ReceiptBusinesses.NotSetUp -> {
-                        it.copy(
-                            lookup = ActionState(outcome = ActionOutcome.NotSetUp(result.problem), isError = true),
-                        )
-                    }
-
                     is ReceiptBusinesses.Failed -> {
-                        it.copy(
-                            lookup = ActionState(outcome = ActionOutcome.Failed(Failure.Remote(result.fault)), isError = true),
-                        )
+                        it.copy(lookup = ActionState(outcome = ActionOutcome.Failed(result.failure), isError = true))
                     }
                 }
             }

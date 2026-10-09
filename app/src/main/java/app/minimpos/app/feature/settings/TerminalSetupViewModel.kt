@@ -133,7 +133,7 @@ class TerminalSetupViewModel(
                 is SetupDiscoverySearch.Failed -> {
                     _actions.update {
                         it.copy(
-                            terminals = ActionState(outcome = ActionOutcome.NotSetUp(discovered.problem), isError = true),
+                            terminals = ActionState(outcome = ActionOutcome.Failed(discovered.failure), isError = true),
                         )
                     }
                 }
@@ -153,7 +153,7 @@ class TerminalSetupViewModel(
                     it.copy(
                         manualDetails = result.manualDetails,
                         terminals =
-                            result.problem?.let { problem -> ActionState(outcome = ActionOutcome.NotSetUp(problem), isError = true) }
+                            result.failure?.let { failure -> ActionState(outcome = ActionOutcome.Failed(failure), isError = true) }
                                 ?: ActionState(),
                         revision = it.revision + 1,
                     )
@@ -195,7 +195,7 @@ class TerminalSetupViewModel(
             is SharedKeySetupOutcome.Failed -> {
                 val offer = discovery.pendingKey()
                 val outcome =
-                    result.problem?.let(ActionOutcome::NotSetUp) ?: result.failure?.let(ActionOutcome::Failed) ?: ActionOutcome.NoAnswer
+                    ActionOutcome.Failed(result.failure)
                 _actions.update { it.copy(sharedKeyOffer = offer, keyResult = ActionState(outcome = outcome, isError = true)) }
             }
 
@@ -216,7 +216,7 @@ class TerminalSetupViewModel(
                 ActionState(done = true)
             } else {
                 ActionState(
-                    outcome = ActionOutcome.NotSetUp(ready.unverifiedProblem),
+                    outcome = ActionOutcome.Failed(Failure.NotSetUp(ready.unverifiedProblem)),
                     isError = true,
                 )
             }
@@ -269,7 +269,7 @@ class TerminalSetupViewModel(
                     }
 
                     is TapToPayOutcome.NotSetUp -> {
-                        ActionState(outcome = ActionOutcome.NotSetUp(outcome.problem), isError = true)
+                        ActionState(outcome = ActionOutcome.Failed(Failure.NotSetUp(outcome.problem)), isError = true)
                     }
 
                     is TapToPayOutcome.Failed -> {

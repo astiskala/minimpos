@@ -115,18 +115,6 @@ sealed interface ActionOutcome {
         val failure: Failure,
     ) : ActionOutcome
 
-    /**
-     * Nothing was sent, because something must be entered, installed or fixed first.
-     *
-     * @property problem What.
-     */
-    data class NotSetUp(
-        val problem: SetupProblem,
-    ) : ActionOutcome
-
-    /** The Payments app (or the terminal) did not answer, and gave no reason. */
-    data object NoAnswer : ActionOutcome
-
     /** The Checkout API test went through. */
     data object ApiWorks : ActionOutcome
 

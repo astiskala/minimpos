@@ -50,9 +50,10 @@ internal sealed interface SharedKeySetupOutcome {
     }
 
     data class Failed(
-        val problem: SetupProblem? = null,
-        val failure: Failure? = null,
-    ) : SharedKeySetupOutcome
+        val failure: Failure,
+    ) : SharedKeySetupOutcome {
+        constructor(problem: SetupProblem) : this(Failure.NotSetUp(problem))
+    }
 }
 
 /** Owns confirmed terminal-specific creation and encrypted recovery, independent of active setup/import commits.
@@ -95,7 +96,7 @@ class SharedKeySetup internal constructor(
         if (problem != null) return SharedKeySetupOutcome.Failed(problem)
         return when (val checked = verifyApi(unlocked)) {
             is ApiCheck.NotSetUp -> SharedKeySetupOutcome.Failed(checked.problem)
-            is ApiCheck.Failed -> SharedKeySetupOutcome.Failed(failure = Failure.Remote(checked.fault))
+            is ApiCheck.Failed -> SharedKeySetupOutcome.Failed(checked.failure)
             ApiCheck.Works -> null
         }
     }
@@ -112,7 +113,7 @@ class SharedKeySetup internal constructor(
             }
 
             is SharedKeyLookup.Failed -> {
-                SharedKeySetupOutcome.Failed(found.fault.setupProblem())
+                SharedKeySetupOutcome.Failed(Failure.Remote(found.fault))
             }
 
             SharedKeyLookup.Missing -> {
@@ -134,7 +135,7 @@ class SharedKeySetup internal constructor(
     private suspend fun assignment(attempt: Attempt): SharedKeySetupOutcome.Failed? =
         when (val listing = attempt.api.terminals(attempt.environment, attempt.id)) {
             is TerminalListing.Failed -> {
-                SharedKeySetupOutcome.Failed(listing.fault.setupProblem())
+                SharedKeySetupOutcome.Failed(Failure.Remote(listing.fault))
             }
 
             is TerminalListing.Listed -> {
@@ -151,8 +152,9 @@ class SharedKeySetup internal constructor(
         if (busy() || !attempt.unchanged()) return SharedKeySetupOutcome.Failed(SetupProblem.SETUP_CHANGED)
         return when (val updated = attempt.api.createSharedKey(attempt.id, attempt.environment, pending.key())) {
             is SharedKeyUpdate.Failed -> {
-                val problem = if (updated.uncertain) SetupProblem.KEY_CREATION_UNCONFIRMED else updated.fault.setupProblem()
-                SharedKeySetupOutcome.Failed(problem)
+                SharedKeySetupOutcome.Failed(
+                    if (updated.uncertain) Failure.NotSetUp(SetupProblem.KEY_CREATION_UNCONFIRMED) else Failure.Remote(updated.fault),
+                )
             }
 
             is SharedKeyUpdate.Ready -> {

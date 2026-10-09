@@ -150,7 +150,7 @@ class TerminalStatus(
     private suspend fun credentialCheck(candidate: UnlockedSetup): TerminalConnection? =
         when (val checked = verifyApi(candidate)) {
             is ApiCheck.NotSetUp -> TerminalConnection.NotSetUp(checked.problem)
-            is ApiCheck.Failed -> TerminalConnection.Failed(Failure.Remote(checked.fault))
+            is ApiCheck.Failed -> TerminalConnection.Failed(checked.failure)
             ApiCheck.Works -> if (candidate.setup.boardsPhone) phoneCheck(candidate.setup) else null
         }
 

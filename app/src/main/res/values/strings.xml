@@ -34,10 +34,6 @@
   <string name="wallet_role_hint">Optional: Management API—Payment methods read. Discovery errors do not block ordinary payments.</string>
   <string name="wallet_none">No scanned wallets available for %1$s.</string>
   <string name="wallet_available">Available for %1$s: %2$s</string>
-  <string name="wallet_discovery_auth">Wallet check failed: API key rejected in this environment.</string>
-  <string name="wallet_discovery_permission">Wallet check failed: check terminal access and the Management API—Payment methods read role.</string>
-  <string name="wallet_discovery_unavailable">Could not refresh wallets. Check the connection and try again.</string>
-  <string name="wallet_discovery_unreadable">Adyen returned incomplete wallet configuration. Try again.</string>
   <string name="onboarding_title">Welcome to Mini mPOS</string>
   <string name="onboarding_hint">Try the simulator without an Adyen account, import a setup QR code, or connect a terminal.</string>
   <string name="onboarding_simulator">Try simulator with samples</string>
@@ -99,7 +95,7 @@
   <string name="home_setup_title">Connect to this terminal</string>
   <string name="home_setup_text">Tap here to finish terminal setup.</string>
   <string name="home_setup_title_remote">Finish setting up payments</string>
-  <string name="home_connection_failed">Payments cannot reach the terminal</string>
+  <string name="home_connection_failed">Payments are not working right now</string>
   <string name="update_available">Version %1$s is available</string>
   <string name="update_download">Update</string>
 
@@ -536,7 +532,6 @@
   <string name="setup_unreadable_passphrase">The saved shared key passphrase could not be read on this device; enter it again in Terminal settings</string>
   <string name="setup_unreadable_api_key">The saved Adyen API key could not be read on this device; enter it again in Terminal settings</string>
   <string name="setup_api_required">Enter the merchant account and the Adyen API key first</string>
-  <string name="setup_no_response">The terminal did not answer</string>
   <string name="setup_cloud_api_key">Enter the API key in Terminal settings</string>
   <string name="setup_payments_app_missing">Install the Adyen Payments app from Google Play</string>
   <string name="setup_payments_app_ambiguous">Both the TEST and the LIVE Adyen Payments app are installed; uninstall the one you do not use</string>
@@ -907,10 +902,6 @@
   <string name="setup_transfer_pending">Setup import needs to finish saving. Retry to resume.</string>
   <string name="setup_terminal_access">This API key cannot access this terminal. Check that it belongs to the terminal’s company account and has access to this terminal.</string>
   <string name="setup_merchant_mismatch">The merchant account does not match this terminal’s current assignment. Correct the account or boarding before continuing.</string>
-  <string name="setup_management_permission">Every real setup requires Management API - Terminal actions read, Management API - Terminal settings read and write, and Management API - Terminal settings Advanced read and write.</string>
-  <string name="setup_management_authentication">Adyen did not accept this API key in the selected environment. Replace the key and retry.</string>
-  <string name="setup_management_unavailable">The Adyen Management API could not be reached or returned an error. Check the internet connection and Adyen API logs, then retry.</string>
-  <string name="setup_management_unreadable">Adyen returned an invalid setup response or omitted required fields. Check the Management API response and retry.</string>
   <string name="setup_terminal_settings_unreadable">Adyen returned terminal settings Mini mPOS cannot read: unsupported fields or invalid values. Shared-key creation is blocked. Check the terminal settings response in Adyen API logs.</string>
   <string name="setup_shared_key_incomplete">Adyen returned an incomplete shared key: identifier, version or passphrase is missing. Check the encryption key and Advanced settings permission in Customer Area. Mini mPOS will not replace an unverified key.</string>
   <string name="setup_shared_key_invalid">Adyen returned a shared-key version outside 1–9999. Check the encryption key in Customer Area. Mini mPOS will not replace it.</string>
@@ -998,4 +989,5 @@
   <string name="adjust_unconfirmed">Adyen did not confirm the adjustment. Retry the same adjustment safely.</string>
   <string name="action_unconfirmed">Adyen did not confirm the result. Check again before you try anything else.</string>
   <string name="still_unconfirmed">Still not confirmed: %1$s</string>
+  <string name="wallet_check_failed">Wallet check failed: %1$s</string>
 </resources>

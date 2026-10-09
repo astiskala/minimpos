@@ -4,6 +4,7 @@ import app.minimpos.app.FakeDevice
 import app.minimpos.app.FakeTerminal
 import app.minimpos.app.TestEnvironment
 import app.minimpos.app.await
+import app.minimpos.app.data.db.Failure
 import app.minimpos.app.data.security.Secret
 import app.minimpos.core.payment.ScanWallet
 import app.minimpos.terminal.transport.ApiKey
@@ -50,7 +51,7 @@ class WalletDiscoveryTest {
             result = WalletMethodListing.Failed(Fault.AdyenUnavailable(503))
             discovery.refresh()
             assertThat(discovery.state.value.offered("AUD")).containsExactly(ScanWallet.WECHAT_PAY)
-            assertThat(discovery.state.value.failure).isEqualTo(WalletDiscoveryFailure.UNAVAILABLE)
+            assertThat(discovery.state.value.failure).isEqualTo(Failure.Remote(Fault.AdyenUnavailable(503)))
             result = WalletMethodListing.Failed(Fault.Permission(ApiKey.ADYEN))
             discovery.refresh()
             assertThat(discovery.state.value.offered("AUD")).isEmpty()

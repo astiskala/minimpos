@@ -104,7 +104,7 @@ class RemoteSettingsViewModelTest {
         vm.saveAndTest(Secret.ADYEN_API_KEY, " cloud-key ", SettingsTest.CONNECTION)
         val tested = await { vm.actions.first { it.connection.isError } }
         assertThat(tested.apiKeyStored).isTrue()
-        assertThat(tested.connection.outcome).isEqualTo(ActionOutcome.NotSetUp(SetupProblem.POI_ID))
+        assertThat(tested.connection.outcome).isEqualTo(ActionOutcome.Failed(Failure.NotSetUp(SetupProblem.POI_ID)))
         assertThat(await { container.secrets.get(Secret.ADYEN_API_KEY) }).isEqualTo("cloud-key")
         vm.dismissConnectionResult()
 
@@ -149,14 +149,14 @@ class RemoteSettingsViewModelTest {
         val tested = await { vm.actions.first { it.connection.done && it.api.outcome != null } }
         assertThat(tested.connection.outcome).isInstanceOf(ActionOutcome.Connected::class.java)
         // The key reaches a LIVE data center, so the Checkout API asks for the live URL prefix next.
-        assertThat(tested.api.outcome).isEqualTo(ActionOutcome.NotSetUp(SetupProblem.LIVE_PREFIX))
+        assertThat(tested.api.outcome).isEqualTo(ActionOutcome.Failed(Failure.NotSetUp(SetupProblem.LIVE_PREFIX)))
         assertThat(tested.api.isError).isTrue()
 
         // Without a terminal to reach, the Checkout API is not tested.
         env.updateSettings { it.copy(terminal = it.terminal.copy(poiIdOverride = "")) }
         vm.saveAndTest(Secret.ADYEN_API_KEY, test = SettingsTest.CLOUD)
         val failed = await { vm.actions.first { it.connection.isError } }
-        assertThat(failed.connection.outcome).isEqualTo(ActionOutcome.NotSetUp(SetupProblem.POI_ID))
+        assertThat(failed.connection.outcome).isEqualTo(ActionOutcome.Failed(Failure.NotSetUp(SetupProblem.POI_ID)))
         assertThat(failed.api.outcome).isNull()
     }
 
@@ -169,7 +169,7 @@ class RemoteSettingsViewModelTest {
         val vm = setupViewModel()
         vm.setUpTapToPay()
         val missing = await { vm.actions.first { it.tapToPay.isError } }
-        assertThat(missing.tapToPay.outcome).isEqualTo(ActionOutcome.NotSetUp(SetupProblem.PAYMENTS_APP_API_KEY))
+        assertThat(missing.tapToPay.outcome).isEqualTo(ActionOutcome.Failed(Failure.NotSetUp(SetupProblem.PAYMENTS_APP_API_KEY)))
 
         vm.setUpTapToPay(" pa-key ")
         val ready = await { vm.actions.first { it.tapToPay.done } }

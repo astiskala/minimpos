@@ -237,14 +237,12 @@ class AutomaticSetupTransferTest {
     fun `permission failures do not become manual fallback or replace saved fields`() {
         credential = CredentialLookup.Failed(Fault.Permission(ApiKey.ADYEN))
         val before = await { env.container.settings.current() }
-        assertThat(import()).isEqualTo(SetupImportOutcome.Failed(SetupProblem.MANAGEMENT_PERMISSION))
+        assertThat(import()).isEqualTo(SetupImportOutcome.Failed(Failure.Remote(Fault.Permission(ApiKey.ADYEN))))
         assertThat(await { env.container.settings.current() }).isEqualTo(before)
-        credential = CredentialLookup.Failed(Fault.Credential(ApiKey.ADYEN))
-        assertThat(import()).isEqualTo(SetupImportOutcome.Failed(SetupProblem.MANAGEMENT_AUTHENTICATION))
-        credential = CredentialLookup.Failed(Fault.AdyenUnavailable(503))
-        assertThat(import()).isEqualTo(SetupImportOutcome.Failed(SetupProblem.MANAGEMENT_UNAVAILABLE))
-        credential = CredentialLookup.Failed(Fault.UnreadableReply())
-        assertThat(import()).isEqualTo(SetupImportOutcome.Failed(SetupProblem.MANAGEMENT_UNREADABLE))
+        listOf(Fault.Credential(ApiKey.ADYEN), Fault.AdyenUnavailable(503), Fault.UnreadableReply()).forEach { fault ->
+            credential = CredentialLookup.Failed(fault)
+            assertThat(import()).isEqualTo(SetupImportOutcome.Failed(Failure.Remote(fault)))
+        }
     }
 
     @Test

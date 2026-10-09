@@ -41,11 +41,12 @@ internal sealed interface SetupImportOutcome {
     ) : SetupImportOutcome
 
     data class Failed(
-        val problem: SetupProblem? = null,
-        val failure: Failure? = null,
+        val failure: Failure,
         val incomplete: Boolean = false,
     ) : SetupImportOutcome {
-        val keyPending: Boolean get() = problem == SetupProblem.KEY_CONNECTION_PENDING
+        constructor(problem: SetupProblem, incomplete: Boolean = false) : this(Failure.NotSetUp(problem), incomplete)
+
+        val keyPending: Boolean get() = failure == Failure.NotSetUp(SetupProblem.KEY_CONNECTION_PENDING)
     }
 }
 
@@ -167,7 +168,7 @@ class SetupImport internal constructor(
         val environment = unlocked.setup.environment ?: return SetupImportOutcome.Failed(SetupProblem.ENVIRONMENT, incomplete = true)
         return when (val result = checks.terminals(key).credential(environment)) {
             CredentialLookup.Allowed -> null
-            is CredentialLookup.Failed -> SetupImportOutcome.Failed(result.fault.setupProblem())
+            is CredentialLookup.Failed -> SetupImportOutcome.Failed(Failure.Remote(result.fault))
         }
     }
 
@@ -179,7 +180,7 @@ class SetupImport internal constructor(
         if (!unlocked.setup.discoversTerminals) return null
         val management = checks.terminals(checkNotNull(unlocked.apiKey))
         return when (val result = management.terminals(checkNotNull(unlocked.setup.environment), unlocked.setup.poiId ?: selected)) {
-            is TerminalListing.Failed -> SetupImportOutcome.Failed(result.fault.setupProblem())
+            is TerminalListing.Failed -> SetupImportOutcome.Failed(Failure.Remote(result.fault))
             is TerminalListing.Listed -> chooseTerminal(prepared, unlocked.setup, management, result, selected)
         }
     }
@@ -214,7 +215,7 @@ class SetupImport internal constructor(
                     when (val found = management.sharedKey(terminal.id, listing.environment)) {
                         is SharedKeyLookup.Found -> applyKey(prepared, found.key)
                         SharedKeyLookup.Missing -> missingKey = true
-                        is SharedKeyLookup.Failed -> return SetupImportOutcome.Failed(found.fault.setupProblem())
+                        is SharedKeyLookup.Failed -> return SetupImportOutcome.Failed(Failure.Remote(found.fault))
                     }
                 }
                 null
@@ -277,7 +278,7 @@ class SetupImport internal constructor(
             }
 
             is SharedKeySetupOutcome.Failed -> {
-                SetupImportOutcome.Failed(result.problem, result.failure)
+                SetupImportOutcome.Failed(result.failure)
             }
         }
     }
@@ -304,7 +305,7 @@ class SetupImport internal constructor(
         when (val result = api.verify(candidate(prepared))) {
             ApiCheck.Works -> null
             is ApiCheck.NotSetUp -> SetupImportOutcome.Failed(result.problem)
-            is ApiCheck.Failed -> SetupImportOutcome.Failed(failure = Failure.Remote(result.fault))
+            is ApiCheck.Failed -> SetupImportOutcome.Failed(result.failure)
         }
 
     private suspend fun phone(
@@ -329,7 +330,7 @@ class SetupImport internal constructor(
             }
 
             is TapToPayOutcome.Failed -> {
-                SetupImportOutcome.Failed(failure = result.failure)
+                SetupImportOutcome.Failed(result.failure)
             }
 
             TapToPayOutcome.Unregistered -> {
@@ -360,11 +361,12 @@ class SetupImport internal constructor(
             }
 
             is TerminalConnection.Failed -> {
-                SetupImportOutcome.Failed(failure = connection.failure)
+                SetupImportOutcome.Failed(connection.failure)
             }
 
+            // A candidate check always settles; anything else is unexpected.
             TerminalConnection.Checking, TerminalConnection.Unknown -> {
-                SetupImportOutcome.Failed()
+                SetupImportOutcome.Failed(Failure.Device(DeviceFault.UNEXPECTED))
             }
         }
     }

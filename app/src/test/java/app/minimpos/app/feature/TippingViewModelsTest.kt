@@ -342,7 +342,7 @@ class TippingViewModelsTest {
         vm.saveAndTest(Secret.ADYEN_API_KEY, " secret-key ")
         val tested = await { vm.actions.first { it.apiKeyStored && !it.api.running } }
         assertThat(tested.api.isError).isTrue()
-        assertThat(tested.api.outcome).isEqualTo(ActionOutcome.NotSetUp(SetupProblem.ENVIRONMENT))
+        assertThat(tested.api.outcome).isEqualTo(ActionOutcome.Failed(Failure.NotSetUp(SetupProblem.ENVIRONMENT)))
         assertThat(await { container.secrets.get(Secret.ADYEN_API_KEY) }).isEqualTo("secret-key")
 
         env.cipher.failEncrypt = true

@@ -84,6 +84,7 @@ import app.minimpos.app.data.settings.TerminalMode
 import app.minimpos.app.feature.OutcomeMessage
 import app.minimpos.app.feature.lock.SetPinScreen
 import app.minimpos.app.feature.text
+import app.minimpos.app.feature.walletCheckFailed
 import app.minimpos.app.payment.TransactionState.Processing
 import app.minimpos.app.terminal.ReceiptBusiness
 import app.minimpos.app.terminal.SharedKeyOffer
@@ -722,7 +723,7 @@ private fun WalletSettings(
             },
         )
     }
-    state.failure?.let { SettingNote(it.text()) }
+    state.failure?.let { SettingNote(walletCheckFailed(it)) }
     state.problem?.let { SettingNote(it.text()) }
     SettingActions {
         SecondaryButton(

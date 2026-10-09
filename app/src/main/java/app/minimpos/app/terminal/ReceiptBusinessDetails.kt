@@ -1,11 +1,11 @@
 package app.minimpos.app.terminal
 
+import app.minimpos.app.data.db.Failure
 import app.minimpos.app.data.db.SetupProblem
 import app.minimpos.app.data.settings.ReceiptSettings
 import app.minimpos.app.data.settings.TerminalSettings
 import app.minimpos.terminal.transport.AdyenStoreDetails
 import app.minimpos.terminal.transport.AdyenTerminalDetails
-import app.minimpos.terminal.transport.Fault
 import app.minimpos.terminal.transport.MerchantLookup
 import app.minimpos.terminal.transport.StoreDetailsApi
 import app.minimpos.terminal.transport.StoreLookup
@@ -51,19 +51,12 @@ sealed interface ReceiptBusinesses {
     ) : ReceiptBusinesses
 
     /**
-     * Lookup needs setup first or its originating account/store no longer matches.
-     * @property problem Missing setup, simulator destination, context mismatch or inaccessible assigned store.
-     */
-    data class NotSetUp(
-        val problem: SetupProblem,
-    ) : ReceiptBusinesses
-
-    /**
-     * Adyen refused or the store or merchant details could not be read.
-     * @property fault Why.
+     * Nothing could be proposed.
+     * @property failure Why: missing setup, simulator destination, context mismatch or inaccessible assigned store
+     *   ([Failure.NotSetUp]), or Adyen refused or the store or merchant details could not be read.
      */
     data class Failed(
-        val fault: Fault,
+        val failure: Failure,
     ) : ReceiptBusinesses
 }
 
@@ -86,9 +79,9 @@ class ReceiptBusinessDetails(
 
     internal suspend fun lookup(unlocked: UnlockedSetup): ReceiptBusinesses {
         val problem = lookupProblem(unlocked)
-        if (problem != null) return ReceiptBusinesses.NotSetUp(problem)
+        if (problem != null) return ReceiptBusinesses.Failed(Failure.NotSetUp(problem))
         return when (val scope = assignedStore(unlocked)) {
-            is StoreScope.Blocked -> ReceiptBusinesses.NotSetUp(scope.problem)
+            is StoreScope.Blocked -> ReceiptBusinesses.Failed(scope.failure)
             is StoreScope.Assigned -> proposal(unlocked, scope.id)
         }
     }
@@ -114,7 +107,7 @@ class ReceiptBusinessDetails(
         if (!setup.discoversTerminals || setup.poiId == null) return StoreScope.Assigned(setup.settings.terminal.storeId)
         return when (val listing = terminals(checkNotNull(unlocked.apiKey)).terminals(checkNotNull(setup.environment), setup.poiId)) {
             is TerminalListing.Failed -> {
-                StoreScope.Blocked(listing.fault.setupProblem())
+                StoreScope.Blocked(Failure.Remote(listing.fault))
             }
 
             is TerminalListing.Listed -> {
@@ -127,7 +120,7 @@ class ReceiptBusinessDetails(
                         )
                 ) {
                     is TerminalAssignment.Assigned -> StoreScope.Assigned(assignment.terminal.storeId)
-                    is TerminalAssignment.Blocked -> StoreScope.Blocked(assignment.problem)
+                    is TerminalAssignment.Blocked -> StoreScope.Blocked(Failure.NotSetUp(assignment.problem))
                 }
             }
         }
@@ -146,7 +139,7 @@ class ReceiptBusinessDetails(
         if (store.isEmpty()) {
             return when (val lookup = api.merchant(merchant)) {
                 is MerchantLookup.Found -> ReceiptBusinesses.Found(ReceiptBusiness(lookup.legalName, "", ""), fromStore = false)
-                is MerchantLookup.Failed -> ReceiptBusinesses.Failed(lookup.fault)
+                is MerchantLookup.Failed -> ReceiptBusinesses.Failed(Failure.Remote(lookup.fault))
             }
         }
         return when (val lookup = api.store(merchant, store)) {
@@ -156,11 +149,11 @@ class ReceiptBusinessDetails(
             }
 
             StoreLookup.Missing -> {
-                ReceiptBusinesses.NotSetUp(SetupProblem.STORE_ACCESS)
+                ReceiptBusinesses.Failed(Failure.NotSetUp(SetupProblem.STORE_ACCESS))
             }
 
             is StoreLookup.Failed -> {
-                ReceiptBusinesses.Failed(lookup.fault)
+                ReceiptBusinesses.Failed(Failure.Remote(lookup.fault))
             }
         }
     }
@@ -171,7 +164,7 @@ class ReceiptBusinessDetails(
         ) : StoreScope
 
         class Blocked(
-            val problem: SetupProblem,
+            val failure: Failure,
         ) : StoreScope
     }
 }

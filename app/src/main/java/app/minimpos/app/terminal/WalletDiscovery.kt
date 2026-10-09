@@ -1,5 +1,6 @@
 package app.minimpos.app.terminal
 
+import app.minimpos.app.data.db.Failure
 import app.minimpos.app.data.db.SetupProblem
 import app.minimpos.core.money.PaymentContext
 import app.minimpos.core.payment.ScanWallet
@@ -21,21 +22,6 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import java.util.concurrent.atomic.AtomicBoolean
 
-/** Discovery failure presented only in Settings, independently of ordinary payment setup. */
-enum class WalletDiscoveryFailure {
-    /** The current environment rejected the credential; discard cached availability. */
-    AUTHENTICATION,
-
-    /** The credential lacks payment-method or terminal read access; discard cached availability. */
-    PERMISSION,
-
-    /** Temporary network/server failure; retain a verified list only for unchanged setup. */
-    UNAVAILABLE,
-
-    /** Malformed or incomplete configuration; never interpret it as an empty list. */
-    UNREADABLE,
-}
-
 /**
  * Memory-only wallet discovery, with no credentials, codes or raw responses.
  * @property context Destination/account/environment that was checked; null before discovery.
@@ -47,7 +33,7 @@ enum class WalletDiscoveryFailure {
  * @property checked Whether a complete discovery answer has been obtained.
  * @property supported Whether the destination supports scanned wallets, independently of configuration.
  * @property problem Setup problem blocking discovery; null when complete.
- * @property failure Discovery-only failure; null when none.
+ * @property failure Discovery-only failure, presented only in Settings; null when none.
  */
 data class WalletAvailability(
     val context: PaymentContext? = null,
@@ -59,7 +45,7 @@ data class WalletAvailability(
     val checked: Boolean = false,
     val supported: Boolean = false,
     val problem: SetupProblem? = null,
-    val failure: WalletDiscoveryFailure? = null,
+    val failure: Failure? = null,
 ) {
     /** Explicitly configured wallets for [currency]; the simulator offers offline demos of every requested wallet. */
     fun offered(currency: String): List<ScanWallet> =
@@ -217,26 +203,12 @@ class WalletDiscovery(
         initial: WalletAvailability,
         reason: Fault,
     ) {
-        val failure =
-            when {
-                reason is Fault.Credential -> {
-                    WalletDiscoveryFailure.AUTHENTICATION
-                }
-
-                reason is Fault.Permission -> {
-                    WalletDiscoveryFailure.PERMISSION
-                }
-
-                reason is Fault.UnreadableReply || reason is Fault.Malformed || reason == Fault.ListTooLarge -> {
-                    WalletDiscoveryFailure.UNREADABLE
-                }
-
-                else -> {
-                    WalletDiscoveryFailure.UNAVAILABLE
-                }
-            }
-        val kept = if (failure == WalletDiscoveryFailure.UNAVAILABLE) initial else initial.copy(offers = emptyList(), checked = false)
-        publish(origin, kept.copy(checking = false, failure = failure))
+        // A rejected credential or an unreadable answer discards cached offers; an outage keeps a verified list.
+        val discard =
+            reason is Fault.Credential || reason is Fault.Permission || reason is Fault.UnreadableReply ||
+                reason is Fault.Malformed || reason == Fault.ListTooLarge
+        val kept = if (discard) initial.copy(offers = emptyList(), checked = false) else initial
+        publish(origin, kept.copy(checking = false, failure = Failure.Remote(reason)))
     }
 
     private suspend fun publish(

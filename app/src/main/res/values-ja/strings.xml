@@ -34,10 +34,6 @@
     <string name="wallet_role_hint">任意の権限：Management API—Payment methods read。照会エラーは通常の支払いを妨げません。</string>
     <string name="wallet_none">%1$s に対応するスキャン用ウォレットはありません。</string>
     <string name="wallet_available">%1$s 対応：%2$s</string>
-    <string name="wallet_discovery_auth">ウォレット確認失敗：この環境で API キーが拒否されました。</string>
-    <string name="wallet_discovery_permission">ウォレット確認失敗：端末へのアクセス権限と Management API—Payment methods read ロールを確認してください。</string>
-    <string name="wallet_discovery_unavailable">ウォレットを更新できませんでした。接続を確認して再試行してください。</string>
-    <string name="wallet_discovery_unreadable">Adyen のウォレット設定が不完全です。再試行してください。</string>
     <string name="onboarding_title">Mini mPOS へようこそ</string>
     <string name="onboarding_hint">Adyen アカウントなしでシミュレーターを試す、設定 QR コードを読み込む、または端末を接続できます。</string>
     <string name="onboarding_simulator">サンプルでシミュレーターを試す</string>
@@ -94,7 +90,7 @@
   <string name="home_setup_title">この端末に接続</string>
   <string name="home_setup_text">ここをタップして端末設定を完了。</string>
   <string name="home_setup_title_remote">決済の設定を完了</string>
-  <string name="home_connection_failed">決済端末に接続できません</string>
+  <string name="home_connection_failed">現在、決済を受け付けられません</string>
   <string name="update_available">バージョン %1$s が利用可能</string>
   <string name="update_download">更新</string>
   <string name="manager_pin_title">マネージャーPIN</string>
@@ -502,7 +498,6 @@
   <string name="setup_unreadable_passphrase">このデバイスで保存した共有キーのパスフレーズを読み取れません。端末設定で再入力してください</string>
   <string name="setup_unreadable_api_key">このデバイスで保存したAdyen APIキーを読み取れません。端末設定で再入力してください</string>
   <string name="setup_api_required">先にマーチャントアカウントとAdyen APIキーを入力してください</string>
-  <string name="setup_no_response">端末から応答がありませんでした</string>
   <string name="setup_cloud_api_key">端末設定にAPIキーを入力してください</string>
   <string name="setup_payments_app_missing">Google PlayからAdyen Paymentsアプリをインストールしてください</string>
   <string name="setup_payments_app_ambiguous">TEST版とLIVE版のAdyen Paymentsアプリが両方インストールされています。使わない方をアンインストールしてください</string>
@@ -861,10 +856,6 @@
     <string name="setup_transfer_pending">設定のインポートは保存途中です。再試行して続行してください。</string>
     <string name="setup_terminal_access">この API キーは端末にアクセスできません。端末の Company アカウントに属し、この端末へのアクセス権があることを確認してください。</string>
     <string name="setup_merchant_mismatch">加盟店アカウントが端末の現在の割り当てと一致しません。アカウントまたは端末登録を修正してから続行してください。</string>
-    <string name="setup_management_permission">すべての実決済設定で、API キーに Management API - Terminal actions read、Management API - Terminal settings read and write、Management API - Terminal settings Advanced read and write の権限が必要です。</string>
-    <string name="setup_management_authentication">選択した環境で Adyen が API キーを受け付けませんでした。キーを変更して再試行してください。</string>
-    <string name="setup_management_unavailable">Adyen Management API に接続できないか、API がエラーを返しました。インターネット接続と Adyen API ログを確認して再試行してください。</string>
-    <string name="setup_management_unreadable">Adyen の設定レスポンスが無効か、必須フィールドがありません。Management API レスポンスを確認して再試行してください。</string>
     <string name="setup_terminal_settings_unreadable">Adyen の端末設定に未対応のフィールドまたは無効な値があり、Mini mPOS で読み取れません。共有キーの作成は停止しています。Adyen API ログの端末設定レスポンスを確認してください。</string>
     <string name="setup_shared_key_incomplete">Adyen の共有キーが不完全です。識別子、バージョン、またはパスフレーズがありません。Customer Area で暗号化キーと Advanced 設定の権限を確認してください。Mini mPOS は未確認のキーを置き換えません。</string>
     <string name="setup_shared_key_invalid">Adyen の共有キーバージョンが 1–9999 の範囲外です。Customer Area で暗号化キーを確認してください。Mini mPOS はこのキーを置き換えません。</string>
@@ -952,4 +943,5 @@
   <string name="adjust_unconfirmed">Adyenが金額調整を確認できませんでした。同じ調整を安全に再試行できます。</string>
   <string name="action_unconfirmed">Adyenが結果を確認できませんでした。他の操作をする前に、もう一度確認してください。</string>
   <string name="still_unconfirmed">まだ確認できません：%1$s</string>
+  <string name="wallet_check_failed">ウォレット確認失敗：%1$s</string>
 </resources>

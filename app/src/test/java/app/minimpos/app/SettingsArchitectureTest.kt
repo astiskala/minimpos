@@ -6,7 +6,9 @@ import app.minimpos.app.terminal.DestinationRules
 import app.minimpos.terminal.transport.CloudRegion
 import app.minimpos.terminal.transport.TerminalEnvironment
 import com.google.common.truth.Truth.assertThat
+import com.tngtech.archunit.base.DescribedPredicate
 import com.tngtech.archunit.core.domain.JavaClass
+import com.tngtech.archunit.core.domain.JavaMethodCall
 import com.tngtech.archunit.core.importer.ClassFileImporter
 import com.tngtech.archunit.core.importer.ImportOption
 import com.tngtech.archunit.lang.ArchCondition
@@ -14,6 +16,7 @@ import com.tngtech.archunit.lang.ArchRule
 import com.tngtech.archunit.lang.ConditionEvents
 import com.tngtech.archunit.lang.SimpleConditionEvent
 import com.tngtech.archunit.lang.syntax.ArchRuleDefinition.classes
+import com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses
 import com.tngtech.archunit.thirdparty.org.objectweb.asm.ClassReader
 import com.tngtech.archunit.thirdparty.org.objectweb.asm.ClassVisitor
 import com.tngtech.archunit.thirdparty.org.objectweb.asm.Label
@@ -22,6 +25,7 @@ import com.tngtech.archunit.thirdparty.org.objectweb.asm.Opcodes
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.lang.reflect.Modifier
+import java.util.Locale
 
 class SettingsArchitectureTest {
     @Test
@@ -73,6 +77,24 @@ class SettingsArchitectureTest {
         assertThat(violations).hasSize(1)
     }
 
+    @Test
+    fun `app-language overrides cannot change the process-wide locale`() =
+        localeIsolation.check(
+            ClassFileImporter()
+                .withImportOption(ImportOption.Predefined.DO_NOT_INCLUDE_TESTS)
+                .withImportOption { !it.contains("UnitTest") }
+                .importPackages("app.minimpos.app"),
+        )
+
+    @Test
+    fun `locale isolation rejects a global override`() {
+        assertTrue(localeIsolation.evaluate(ClassFileImporter().importClasses(LocaleMutationViolation::class.java)).hasViolation())
+    }
+
+    private class LocaleMutationViolation {
+        fun change() = Locale.setDefault(Locale.JAPAN)
+    }
+
     private class DestinationViolation {
         fun change(settings: TerminalSettings) = settings.copy(mode = TerminalMode.CLOUD)
     }
@@ -96,6 +118,15 @@ class SettingsArchitectureTest {
     }
 
     private companion object {
+        val localeIsolation: ArchRule =
+            noClasses()
+                .should()
+                .callMethodWhere(
+                    DescribedPredicate.describe<JavaMethodCall>("change the process-wide locale") {
+                        it.targetOwner.name == Locale::class.java.name && it.target.name == "setDefault"
+                    },
+                ).because("app-language overrides must not change device-country pricing or unrelated Android services")
+
         val ownership: ArchRule =
             classes()
                 .should(

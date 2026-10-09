@@ -1,8 +1,11 @@
 package app.minimpos.app
 
 import android.content.ActivityNotFoundException
+import android.content.Context
 import android.content.Intent
+import android.content.res.Configuration
 import android.os.Bundle
+import android.view.ContextThemeWrapper
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -19,8 +22,12 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
@@ -37,6 +44,7 @@ import app.minimpos.app.ui.theme.MiniMposTheme
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.launch
+import java.util.Locale
 import kotlin.time.Duration.Companion.minutes
 
 /**
@@ -90,7 +98,10 @@ class MainActivity : ComponentActivity() {
             startActivity(Intent(Intent.ACTION_VIEW, launch.link.toUri()).setPackage(launch.packageName))
             paymentsApp.opened(launch.id)
         } catch (ignored: ActivityNotFoundException) {
-            paymentsApp.failed(launch.id, getString(R.string.setup_payments_app_missing))
+            val language =
+                (application as MiniMposApplication)
+                    .container.settingsState.value.languageTag
+            paymentsApp.failed(launch.id, withAppLanguage(language).getString(R.string.setup_payments_app_missing))
         }
     }
 
@@ -103,11 +114,41 @@ class MainActivity : ComponentActivity() {
 /** The whole UI, with [container] provided to every screen as [LocalAppContainer]; UI tests set it directly. */
 @Composable
 fun MiniMposApp(container: AppContainer) {
-    MiniMposTheme {
-        CompositionLocalProvider(LocalAppContainer provides container) {
+    val settings by container.settingsState.collectAsStateWithLifecycle()
+    val context = LocalContext.current
+    val configuration = LocalConfiguration.current
+    val localized =
+        remember(context, configuration, settings.languageTag) {
+            context.withAppLanguage(settings.languageTag, configuration)
+        }
+    CompositionLocalProvider(
+        LocalAppContainer provides container,
+        LocalContext provides localized,
+        LocalConfiguration provides localized.resources.configuration,
+        LocalResources provides localized.resources,
+    ) {
+        MiniMposTheme {
             AppNavHost()
             VirtualPrinterSheet()
         }
+    }
+}
+
+internal fun Context.withAppLanguage(
+    languageTag: String,
+    configuration: Configuration = resources.configuration,
+): Context {
+    if (languageTag.isEmpty()) return this
+    val requested = Locale.forLanguageTag(languageTag)
+    val locale =
+        Locale
+            .Builder()
+            .setLanguage(requested.language)
+            .setScript(if (languageTag == "zh-CN") "Hans" else requested.script)
+            .setRegion(configuration.locales[0]?.country.orEmpty())
+            .build()
+    return ContextThemeWrapper(this, 0).apply {
+        applyOverrideConfiguration(Configuration(configuration).apply { setLocale(locale) })
     }
 }
 

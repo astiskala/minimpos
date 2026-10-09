@@ -13,6 +13,7 @@ or with Tap to Pay through the Adyen Payments app.
 [Website](https://minimpos.app/) ·
 [Download APK](https://github.com/astiskala/minimpos/releases/latest) ·
 [简体中文](https://minimpos.app/zh-CN/) ·
+[繁體中文](https://minimpos.app/zh-Hant/) ·
 [日本語](https://minimpos.app/ja/)
 
 <p align="center">
@@ -37,8 +38,8 @@ Screenshots show an English demo café using the built-in simulator, not live pa
 - **Run your setup:** admin and Manager PINs, optional shopper references and card saving, and QR transfers of products,
   settings and encrypted keys to additional devices.
 
-The app supports English, Simplified Chinese and Japanese. Products, settings and history stay on each device;
-there is no backend, tracking or automatic synchronization between devices.
+The app supports English, Simplified Chinese, Traditional Chinese and Japanese. Products, settings and history stay
+on each device; there is no backend, tracking or automatic synchronization between devices.
 
 ## Try it or set it up
 

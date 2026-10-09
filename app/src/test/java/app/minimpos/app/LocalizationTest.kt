@@ -28,14 +28,19 @@ class LocalizationTest {
     fun `application identity uses the owned domain and keeps the display name`() {
         assertThat(BuildConfig.APPLICATION_ID).isEqualTo("app.minimpos")
         assertThat(RuntimeEnvironment.getApplication().packageName).isEqualTo("app.minimpos")
-        listOf("values", "values-ja", "values-zh-rCN").forEach { folder ->
+        listOf("values", "values-ja", "values-zh-rCN", "values-b+zh+Hant").forEach { folder ->
             assertThat(resourceEntries(folder).getValue("string:app_name").single()).isEqualTo("Mini mPOS")
         }
     }
 
     @Test
     fun `setup hints point to the localized helpers on the owned domain`() {
-        mapOf("values" to "", "values-ja" to "ja/", "values-zh-rCN" to "zh-CN/").forEach { (folder, path) ->
+        mapOf(
+            "values" to "",
+            "values-ja" to "ja/",
+            "values-zh-rCN" to "zh-CN/",
+            "values-b+zh+Hant" to "zh-Hant/",
+        ).forEach { (folder, path) ->
             assertWithMessage(folder)
                 .that(resourceEntries(folder).getValue("string:settings_quick_setup_hint").single())
                 .contains("minimpos.app/${path}setup.html")
@@ -44,7 +49,7 @@ class LocalizationTest {
 
     @Test
     fun `terminal address examples use an address reserved for documentation in every language`() {
-        listOf("values", "values-ja", "values-zh-rCN").forEach { folder ->
+        listOf("values", "values-ja", "values-zh-rCN", "values-b+zh+Hant").forEach { folder ->
             assertWithMessage(folder)
                 .that(resourceEntries(folder).getValue("string:settings_host_placeholder").single())
                 .contains("192.0.2.1")
@@ -54,7 +59,7 @@ class LocalizationTest {
     @Test
     fun `translations cover every resource and preserve format arguments`() {
         val base = resourceEntries("values")
-        listOf("values-ja", "values-zh-rCN").forEach { folder ->
+        listOf("values-ja", "values-zh-rCN", "values-b+zh+Hant").forEach { folder ->
             val translated = resourceEntries(folder)
             assertThat(translated.keys).containsExactlyElementsIn(base.keys)
             base.forEach { (name, texts) ->
@@ -116,6 +121,75 @@ class LocalizationTest {
         }
 
     @Test
+    fun `Android app language settings advertise both Chinese scripts`() {
+        val locales =
+            DocumentBuilderFactory
+                .newInstance()
+                .newDocumentBuilder()
+                .parse(File("src/main/res/xml/locales_config.xml"))
+                .getElementsByTagName("locale")
+        val names =
+            (0 until locales.length).map {
+                locales
+                    .item(it)
+                    .attributes
+                    .getNamedItem("android:name")
+                    .nodeValue
+            }
+        assertThat(names).containsExactly("en", "zh-CN", "zh-Hant", "ja")
+    }
+
+    @Test
+    fun `Traditional Chinese locales share Hong Kong wording without replacing Simplified Chinese`() {
+        listOf("zh-rHK", "zh-rMO", "zh-rTW", "b+zh+Hant").forEach { qualifiers ->
+            RuntimeEnvironment.setQualifiers(qualifiers)
+            val context = RuntimeEnvironment.getApplication()
+            assertWithMessage(qualifiers).that(context.getString(R.string.home_settings)).isEqualTo("設定")
+            assertWithMessage(qualifiers).that(context.getString(R.string.result_print)).isEqualTo("列印收據")
+            assertWithMessage(qualifiers).that(context.getString(R.string.home_history)).isEqualTo("交易紀錄")
+            assertWithMessage(qualifiers)
+                .that(context.getString(R.string.settings_quick_setup_hint))
+                .contains("minimpos.app/zh-Hant/setup.html")
+        }
+        RuntimeEnvironment.setQualifiers("zh-rCN")
+        assertThat(RuntimeEnvironment.getApplication().getString(R.string.home_settings)).isEqualTo("设置")
+    }
+
+    @Test
+    @Config(qualifiers = "zh-rHK")
+    fun `Hong Kong defaults keep tax off and render Traditional Chinese receipts in HKD`() =
+        TestEnvironment(device = FakeDevice(country = "HK")).use { env ->
+            val settings = await { env.container.settings.current() }
+            assertThat(settings.payment.chargeTax).isFalse()
+            assertThat(settings.receipt.showTaxAmounts).isFalse()
+            assertThat(settings.receipt.showTaxRateTotals).isFalse()
+            assertThat(settings.receipt.markedTaxRateMilliPercent).isNull()
+            assertThat(settings.receipt.title).isEqualTo("收據")
+            assertThat(settings.receipt.footer).isEqualTo("謝謝惠顧！")
+            assertThat(settings.receipt.taxIdLabel).isEqualTo("稅務編號")
+            assertThat(settings.email.subject).isEqualTo("來自 {business} 的收據")
+            assertThat(env.container.currency(settings).code).isEqualTo("HKD")
+            assertThat(env.container.currency(settings).fractionDigits).isEqualTo(2)
+            assertThat(
+                env.container
+                    .starterTaxRates()
+                    .single()
+                    .rateMilliPercent,
+            ).isEqualTo(0)
+            val document = env.container.sampleReceipt(settings)
+            val text = PlainTextReceiptRenderer().render(document)
+            assertThat(text).contains("收據")
+            assertThat(text).contains("交易時間")
+            assertThat(text).contains("總計")
+            assertThat(text).contains(".00")
+            assertThat(text).doesNotContain("稅額")
+            assertThat(text).doesNotContain("发票")
+            assertThat(PrintRenderer.jobs(document, 32)).isNotEmpty()
+            receiptPreview("zh-Hant", document)
+            assertThat(AdyenCurrencies["HKD"]!!.localName(Locale.forLanguageTag("zh-Hant-HK"))).contains("港")
+        }
+
+    @Test
     fun `receipt labels update with language without rewriting merchant content`() =
         TestEnvironment().use { env ->
             env.updateSettings { it.copy(receipt = it.receipt.copy(title = "My receipt", footer = "My footer")) }
@@ -137,6 +211,13 @@ class LocalizationTest {
             assertThat(await { env.container.settings.current() }.receipt).isEqualTo(settings.receipt)
             assertThat(text).contains("8%应税金额（含税）")
             assertThat(text).contains("※は軽減税率対象商品")
+            RuntimeEnvironment.setQualifiers("zh-rHK")
+            val traditional = PlainTextReceiptRenderer().render(env.container.sampleReceipt(settings))
+            assertThat(traditional).contains("My receipt")
+            assertThat(traditional).contains("My footer")
+            assertThat(traditional).contains("總計")
+            assertThat(traditional).contains("自訂商品")
+            assertThat(await { env.container.settings.current() }).isEqualTo(settings)
             assertThat(await { env.container.api.verify() }).isEqualTo(ApiCheck.Works)
         }
 
@@ -235,7 +316,7 @@ class LocalizationTest {
     }
 
     private fun arguments(text: String): List<String> =
-        Regex("""%(?:\d+\$)?[ds]""")
+        Regex("""%(?:\d+\$)?[ds]|\{\w+}""")
             .findAll(text)
             .map { it.value }
             .sorted()

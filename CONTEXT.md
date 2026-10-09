@@ -95,6 +95,7 @@ existing spelling (`preAuthorisation`, `SaleKind.PRE_AUTHORISATION`, `authorised
 | New-installation settings | Baseline plus initial country/language choices; never overrides saved settings. | `AppSettings.forNewInstallation` |
 | Transfer | Copies catalog, shared settings and sealed secrets by QR; not history or synchronization. | `SetupTransfer`, `TransferCodec` (`MPC1:`) |
 | Device fields | Configuration that stays local when shared settings are imported. | `AppSettings.withDeviceFieldsOf` |
+| App language | Device-local display-language override, empty to follow Android; changes current UI and receipt labels without changing pricing or saved merchant text. | `AppSettings.languageTag`, `MiniMposApp` |
 | Transfer code | Separate 12-character code for decrypting transferred secrets. | `TransferSeal` |
 | Setup helper | Offline browser tool: Automatic transfers credentials for physical-terminal lookup; Manual transfers complete connection details. Every transfer requires its code and verification before activation. Tap to Pay requires explicit registration and a supplied shared key. Verified setup returns Home; saved details stay editable. Receipt text/business lookup and SMTP settings are opt-in; receipt lookup can be selected per field. | `docs/setup.html`, `ConnectionSetup` |
 | Secrets | Shared-key passphrase, API keys, SMTP password and PIN verifiers; encrypted and never logged. | `SecretStore` |

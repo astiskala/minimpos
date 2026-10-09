@@ -1,5 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources xmlns:tools="http://schemas.android.com/tools">
+  <string name="settings_language">Language</string>
+  <string name="settings_language_device">Follow device</string>
+  <string name="settings_language_hint">Changes app text and receipt labels on this device. Saved merchant text stays unchanged.</string>
+  <string-array name="app_language_names">
+    <item>@string/settings_language_device</item>
+    <item>English</item>
+    <item>简体中文</item>
+    <item>繁體中文</item>
+    <item>日本語</item>
+  </string-array>
   <string name="checkout_scan_wallet">Scan wallet</string>
   <string name="wallet_choose">Choose wallet</string>
   <string name="wallet_scan_hint">Scan the shopper’s %1$s payment code</string>

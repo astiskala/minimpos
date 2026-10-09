@@ -16,7 +16,7 @@ Adyen Payments app (Tap to Pay). The built-in simulator needs no Adyen account.
   Room schemas; update the new schema and its tests together. Preserve supported Android versions, Adyen protocols,
   validation, encryption, transaction recovery and idempotency. Never reset local data or add destructive database
   fallback without approval.
-- Never change `applicationId` (`io.github.astiskala.minimpos`) or raise `minSdk` above 28. Terminals have no Google
+- Never change `applicationId` (`app.minimpos`) or raise `minSdk` above 28. Terminals have no Google
   Play services and no adb. Smallest usable screen is AMS1, about 320×460 dp.
 - Only INTERNET, ACCESS_NETWORK_STATE and CAMERA permissions; no CATEGORY_HOME or `testOnly`. The application icon
   must be PNG, not adaptive; `MainActivity` has a separate adaptive icon. Both manifest variants are checked.

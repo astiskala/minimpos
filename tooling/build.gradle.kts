@@ -43,7 +43,7 @@ dependencies {
 val cliJar =
     tasks.register<Jar>("cliJar") {
         archiveFileName.set("minimpos-tooling.jar")
-        manifest.attributes["Main-Class"] = "io.github.astiskala.minimpos.tooling.Tooling"
+        manifest.attributes["Main-Class"] = "app.minimpos.tooling.Tooling"
         from(sourceSets.main.get().output)
         val runtime = configurations.runtimeClasspath
         from(runtime.map { files -> files.map(::zipTree) })

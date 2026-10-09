@@ -69,7 +69,7 @@ if [ "$status" -ne 0 ]; then
     awk '
       /^> Task .* FAILED$/ || / > .* FAILED$/ { print; frame = 0; next }
       /AssertionError|ComparisonFailure|expected:|but was:|^Execution failed for task/ { print; next }
-      /io\.github\.astiskala\.minimpos.*\([^)]*:[0-9]+\)/ && !frame { print; frame = 1; next }
+      /app\.minimpos.*\([^)]*:[0-9]+\)/ && !frame { print; frame = 1; next }
       /^[ew]: .*\.(kt|kts):[0-9]+/ || /^[^[:space:]]+\.(kt|kts|xml|html|md):[0-9]+/ { print }
     ' "$log"
   } > "$packet"; then

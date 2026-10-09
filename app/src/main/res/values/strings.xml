@@ -824,7 +824,7 @@
   <string name="settings_export_hint">Show the catalog, settings, passwords and keys as QR codes</string>
   <string name="settings_import_hint">Scan the codes of another device or of the setup helper page to copy its setup</string>
   <string name="settings_quick_setup">Quick setup</string>
-  <string name="settings_quick_setup_hint">Open astiskala.github.io/minimpos/setup.html on a computer, then scan its codes here. No destination or environment choice is needed first.</string>
+  <string name="settings_quick_setup_hint">Open minimpos.app/setup.html on a computer, then scan its codes here. No destination or environment choice is needed first.</string>
   <string name="settings_manual_setup">Or set up on this device</string>
   <string name="settings_scan_discard_drafts">Unsaved keys will be discarded when you open the scanner. Saved settings will not change until you import.</string>
   <string name="settings_scan_discard_confirm">Discard and scan</string>

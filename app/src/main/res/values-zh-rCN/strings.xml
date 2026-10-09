@@ -779,7 +779,7 @@
   <string name="settings_export_hint">以二维码显示商品目录、设置、密码和密钥</string>
   <string name="settings_import_hint">扫描另一台设备或设置助手页面的二维码，复制其设置</string>
   <string name="settings_quick_setup">快速设置</string>
-  <string name="settings_quick_setup_hint">在电脑上打开 astiskala.github.io/minimpos/zh-CN/setup.html，然后在此扫描二维码。无需先选择支付目标或环境。</string>
+  <string name="settings_quick_setup_hint">在电脑上打开 minimpos.app/zh-CN/setup.html，然后在此扫描二维码。无需先选择支付目标或环境。</string>
   <string name="settings_manual_setup">或在此设备上设置</string>
   <string name="settings_scan_discard_drafts">打开扫描器将丢弃未保存的密钥。在导入之前，已保存的设置不会改变。</string>
   <string name="settings_scan_discard_confirm">丢弃并扫描</string>

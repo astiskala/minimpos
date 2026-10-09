@@ -247,7 +247,7 @@ jobs:
           tools=$(printf '%s\n' "$ANDROID_HOME"/build-tools/* | sort -V | tail -n 1)
           apk="$RUNNER_TEMP/release-artifact/app-release-unsigned.apk"
           "$tools/aapt" dump badging "$apk" \
-            | grep -F "package: name='io.github.astiskala.minimpos' versionCode='$CODE' versionName='$VERSION'"
+            | grep -F "package: name='app.minimpos' versionCode='$CODE' versionName='$VERSION'"
           printf '%s' "$RELEASE_KEYSTORE" | base64 --decode > "$RUNNER_TEMP/release.jks"
           printf '%s' "$RELEASE_SIGNING_PROPERTIES" > "$RUNNER_TEMP/signing.properties"
           # Use Java's same .properties parser as Gradle; never print or shell-evaluate secret values.

@@ -68,6 +68,8 @@ Starred rules below are enforced by `ArchitectureTest`, `SettingsArchitectureTes
 - \* Settings ranges live on section companions; only `SettingsRepository` and `AppSettings` normalize. Do not clamp
   downstream. Constructor defaults are current; installation applies country/language defaults. `TerminalSettings`
   owns destination/environment choices and their coupled fields; destination companions may copy only learned facts.
+- \* App-language overrides use scoped resources, never the process-wide locale; pricing still follows the device
+  country. Language stays local on setup transfer, and changing it must not rewrite saved merchant text.
 - \* Below screens and their view-model factories, composables take state/callbacks, not view models. Settings bundles
   callbacks in `SettingsEvents`/`TerminalSetupEvents`.
 - \* Only PIN-entry UI and `data.security` verify PINs. Financial actions request Manager approval and recheck it before

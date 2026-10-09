@@ -1,0 +1,292 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>疑難排解 – Mini mPOS</title>
+  <meta name="description" content="解決 Mini mPOS 的結果未知、付款被拒絕、終端綁定和網絡問題，以及扣款、支付連結、打印機、郵件、PIN 和安裝問題。">
+  <link rel="icon" href="../favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="../styles.css">
+  <link rel="canonical" href="https://minimpos.app/zh-Hant/troubleshooting.html">
+  <link rel="alternate" hreflang="en" href="https://minimpos.app/troubleshooting.html">
+  <link rel="alternate" hreflang="zh-CN" href="https://minimpos.app/zh-CN/troubleshooting.html">
+  <link rel="alternate" hreflang="zh-Hant" href="https://minimpos.app/zh-Hant/troubleshooting.html">
+  <link rel="alternate" hreflang="ja" href="https://minimpos.app/ja/troubleshooting.html">
+  <link rel="alternate" hreflang="x-default" href="https://minimpos.app/troubleshooting.html">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="Mini mPOS 疑難排解">
+  <meta property="og:description" content="現象、原因和解決方法，從結果未知的付款開始。">
+  <meta property="og:url" content="https://minimpos.app/zh-Hant/troubleshooting.html">
+  <meta property="og:image" content="https://minimpos.app/images/social.png">
+  <meta property="og:image:alt" content="Adyen 終端示意圖中的 Mini mPOS，展示英文模擬器演示。">
+  <meta property="og:locale" content="zh_HK">
+  <meta content="zh_CN" property="og:locale:alternate">
+  <meta property="og:locale:alternate" content="en_US">
+  <meta property="og:locale:alternate" content="ja_JP">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Mini mPOS 疑難排解">
+  <meta name="twitter:description" content="現象、原因和解決方法，從結果未知的付款開始。">
+  <meta name="twitter:image" content="https://minimpos.app/images/social.png">
+  <meta name="twitter:image:alt" content="Adyen 終端示意圖中的 Mini mPOS，展示英文模擬器演示。">
+  <meta name="theme-color" content="#00112C">
+</head>
+<body>
+  <a class="skip" href="#main">跳到正文</a>
+  <header class="site-header"><div class="wrap header-row">
+    <a class="brand" href="./" aria-label="Mini mPOS 首頁"><img src="../favicon.svg" alt="" width="36" height="36"><span>Mini mPOS</span></a>
+    <nav class="desktop-nav" aria-label="主導航"><ul class="nav">
+      <li><a href="quick-start.html">快速入門</a></li><li><a href="using.html">使用 Mini mPOS</a></li>
+      <li><a href="troubleshooting.html" aria-current="page">疑難排解</a></li><li><a href="setup.html">設定助手</a></li>
+    </ul></nav>
+    <details class="mobile-menu"><summary>選單</summary><div class="mobile-panel"><nav aria-label="主導航"><ul class="nav">
+      <li><a href="quick-start.html">快速入門</a></li><li><a href="using.html">使用 Mini mPOS</a></li>
+      <li><a href="troubleshooting.html" aria-current="page">疑難排解</a></li><li><a href="setup.html">設定助手</a></li>
+    </ul></nav>
+      <nav class="mobile-languages" aria-label="語言"><p>語言</p><ul>
+        <li><a href="../troubleshooting.html" hreflang="en" lang="en">English</a></li>
+        <li><a href="../zh-CN/troubleshooting.html" hreflang="zh-CN" lang="zh-CN">简体中文</a></li><li><a aria-current="page" href="troubleshooting.html" hreflang="zh-Hant" lang="zh-Hant">繁體中文</a></li>
+        <li><a href="../ja/troubleshooting.html" hreflang="ja" lang="ja">日本語</a></li>
+      </ul></nav>
+    </div></details>
+    <details class="language-menu"><summary aria-label="語言：繁體中文" title="語言"><svg aria-hidden="true" class="globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 2.7 3.8 5.7 3.8 9s-1.3 6.3-3.8 9c-2.5-2.7-3.8-5.7-3.8-9S9.5 5.7 12 3z"/></svg><span class="language-current">繁體中文</span></summary><nav aria-label="語言"><ul><li><a href="../troubleshooting.html" hreflang="en" lang="en">English</a></li><li><a href="../zh-CN/troubleshooting.html" hreflang="zh-CN" lang="zh-CN">简体中文</a></li><li><a href="troubleshooting.html" hreflang="zh-Hant" lang="zh-Hant" aria-current="page">繁體中文</a></li><li><a href="../ja/troubleshooting.html" hreflang="ja" lang="ja">日本語</a></li></ul></nav></details>
+  </div></header>
+  <main id="main">
+    <section class="guide-hero"><div class="wrap"><p class="eyebrow">指南</p><h1>疑難排解</h1><p class="lead">找到您看到的現象，確認可能的原因，再按解決方法操作。如果有付款正在進行，請先確認其結果：修復連接並不能說明之前的付款是否成功。</p></div></section>
+    <div class="wrap guide">
+      <nav class="toc" id="contents" aria-label="指南導航">
+        <p class="toc-title">指南</p><p><a href="quick-start.html">快速入門</a><br><a href="using.html">使用 Mini mPOS</a><br><a href="troubleshooting.html" aria-current="page">疑難排解</a></p>
+        <div class="desktop-contents"><p class="toc-title">本頁目錄</p><ol>
+          <li><a href="#unknown">結果未知</a></li><li><a href="#declines">付款被拒絕</a></li>
+          <li><a href="#wallets">錢包掃碼</a></li><li><a href="#connection">終端綁定和設定</a></li><li><a href="#network-dropouts">網絡中斷</a></li>
+          <li><a href="#modifications">扣款和調整</a></li><li><a href="#links">支付連結</a></li>
+          <li><a href="#receipts">打印機和郵件</a></li><li><a href="#access">PIN 和傳輸</a></li>
+          <li><a href="#install">安裝</a></li><li><a href="#help">取得幫助</a></li>
+        </ol></div>
+        <details class="mobile-contents"><summary class="toc-title">本頁目錄</summary><ol>
+          <li><a href="#unknown">結果未知</a></li><li><a href="#declines">付款被拒絕</a></li>
+          <li><a href="#wallets">錢包掃碼</a></li><li><a href="#connection">終端綁定和設定</a></li><li><a href="#network-dropouts">網絡中斷</a></li>
+          <li><a href="#modifications">扣款和調整</a></li><li><a href="#links">支付連結</a></li>
+          <li><a href="#receipts">打印機和郵件</a></li><li><a href="#access">PIN 和傳輸</a></li>
+          <li><a href="#install">安裝</a></li><li><a href="#help">取得幫助</a></li>
+        </ol></details>
+      </nav>
+      <div class="guide-body">
+        <section id="unknown">
+          <h2>付款或退款顯示“結果未知”</h2>
+          <div class="callout callout-warning" role="note">
+            <p class="callout-title">警告</p>
+            <p>不要僅因應用程式沒有回應就再次收款或退款。請求可能已到達 Adyen。</p>
+          </div>
+          <ol>
+            <li>打開<strong>交易紀錄</strong>，篩選<strong>需處理</strong>，打開原付款或退款。</li>
+            <li>點按<strong>重新查詢結果</strong>。對於終端，應用程式會向終端查詢該交易的結果。</li>
+            <li>如果結果仍未知，請按參考編號、時間和金額在<strong>商戶後台 › Payments › Payment list</strong>中查找該付款。確認後再決定下一步。</li>
+          </ol>
+          <p>崩潰或重啟後，中斷的操作會以未知狀態保留在交易紀錄中。不要通過清除應用程式資料來移除它。</p>
+          <p>使用 Tap to Pay 時，無法向 Payments 應用程式查詢狀態。<strong>重新查詢結果</strong>只能使用已經送達的遲到回應。若沒有回應，再次收款前請檢查商戶後台。</p>
+          <p class="back-to-contents"><a href="#contents">返回目錄</a></p>
+        </section>
+        <section id="declines">
+          <h2>付款被拒絕或未處理</h2>
+          <p>結果畫面會顯示狀態、Adyen 給出的原因和建議。請按建議操作：</p>
+          <dl class="fixes">
+            <div><dt>“請勿使用此卡重試。請購物者使用其他卡或付款方式。”</dt>
+              <dd><p><span class="fix-label">原因</span>發卡行因不會改變的原因拒絕了此卡（如卡被凍結、受限或疑似欺詐），或此卡不允許用於本次付款。</p>
+                <p><span class="fix-label">解決</span>請顧客改用其他卡或付款方式。顧客的銀行可以說明拒絕原因；<a href="https://docs.adyen.com/point-of-sale/error-scenarios/refusal-reasons-pos">Adyen 拒絕原因</a>解釋了顯示的原因。</p></dd></div>
+            <div><dt>“可以重試。”</dt>
+              <dd><p><span class="fix-label">原因</span>付款被取消、PIN 輸入錯誤，或卡因可能不會重復的原因被拒絕（如餘額不足）。</p>
+                <p><span class="fix-label">解決</span>點按<strong>重試</strong>，或請顧客換一張卡。</p></dd></div>
+            <div><dt>“終端正在處理其他交易或顯示管理選單。”</dt>
+              <dd><p><span class="fix-label">原因</span>終端正在處理另一筆付款或顯示管理選單。</p>
+                <p><span class="fix-label">解決</span>完成另一筆付款或退出選單後重試。如果畫面提供<strong>取消終端目前交易</strong>，僅在確實要停止該交易時使用，並在重試前查詢其結果。</p></dd></div>
+            <div><dt>“終端暫時不可用。”</dt>
+              <dd><p><span class="fix-label">原因</span>終端或其讀卡器暫時不可用。</p>
+                <p><span class="fix-label">解決</span>稍候，確認終端已開機並已連接，然後重試。參見<a href="#network-dropouts">網絡中斷</a>。</p></dd></div>
+            <div><dt>“終端未接受請求。重試前，請檢查終端設定。”</dt>
+              <dd><p><span class="fix-label">原因</span>終端拒絕了請求或不提供此服務，通常是設定或帳戶設定問題。</p>
+                <p><span class="fix-label">解決</span>在<strong>設定 › 終端</strong>中運行測試；參見<a href="#connection">終端綁定和設定</a>。如果測試通過，請聯繫 Adyen 檢查終端設定。</p></dd></div>
+            <div><dt>“請勿再次收款：此次支付已成功。”</dt>
+              <dd><p><span class="fix-label">原因</span>雖然終端報告了取消，但付款已獲批准。</p>
+                <p><span class="fix-label">解決</span>請勿再次收款。如果顧客不應付款，請為其退款。</p></dd></div>
+          </dl>
+          <p class="back-to-contents"><a href="#contents">返回目錄</a></p>
+        </section>
+        <section id="wallets">
+          <h2>沒有掃描錢包按鈕或掃描失敗</h2>
+          <dl class="fixes">
+            <div><dt>沒有掃描錢包按鈕</dt><dd><p>打開<strong>設定 › 終端</strong>，點按<strong>重新整理掃碼錢包</strong>。成功查詢後沒有符合條件的 POS 錢包時，按鈕會保持隱藏。核對終端店舖、目前貨幣和<a href="quick-start.html#credentials">可選查詢權限</a>。Tap to Pay 和預授權不提供此功能。</p></dd></div>
+            <div><dt>錢包查詢報錯</dt><dd><p>錯誤僅顯示在設定中，不會阻止普通支付。請檢查憑據、環境和只讀存取權限。設定未變時，臨時重新整理錯誤會保留最近驗證的錢包列表；成功查詢到空列表或存取失敗會移除它。只在啟動、設定改變或手動重新整理時查詢，不會在每筆銷售前查詢。</p></dd></div>
+            <div><dt>付款碼無效或未收到付款碼</dt><dd><p>請使用顧客的付款碼，而非個人資料、設定轉移或收據二維碼，並選擇正確的錢包。終端掃描最多持續 30 秒，之後點按<strong>重新掃描</strong>或<strong>使用相機</strong>。相機提示時請授予權限。應用程式從後台返回後需重新開始掃描。</p></dd></div>
+            <div><dt>儲存被拒絕或未建立代碼</dt><dd><p>請以支付結果為準。沒有儲存代碼的已批准付款仍然有效。僅在明確被拒絕後，如需重試，返回結帳，關閉<strong>儲存卡</strong>並明確開始新掃描。應用程式不會自動重新付款。<strong>結果未知</strong>時應<a href="#unknown">查詢原交易</a>。</p></dd></div>
+            <div><dt>PayMe 掃碼被拒絕</dt><dd><p>PayMe 商戶掃碼是盡力嘗試，與 Adyen 已發佈的限制相衝突。請顧客改用其他支付方式，或使用終端的普通錢包流程。模擬器批准不代表錢包實際支援此功能。</p></dd></div>
+          </dl>
+          <p>請參閱<a href="using.html#wallets">錢包支付步驟</a>。交易紀錄中的請求錢包僅表示支付意圖，不證明付款成功或 Adyen 使用了該方式。</p>
+          <p class="back-to-contents"><a href="#contents">返回目錄</a></p>
+        </section>
+        <section id="connection">
+          <h2>終端綁定或設定失敗</h2>
+          <p>先查看首頁的提示，再打開<strong>設定 › 終端</strong>，運行<strong>測試 API</strong>。實體終端還需運行<strong>測試連接</strong>。Tap to Pay 則檢查 Payments 應用程式的註冊狀態。完整步驟請參閱<a href="quick-start.html#connect">連接 Adyen</a>。</p>
+          <dl class="fixes">
+            <div><dt>首頁提示“請在終端設定中輸入”某項資訊</dt>
+              <dd><p><span class="fix-label">原因</span>必填欄位為空，或本設備無法讀取已儲存的密鑰。</p>
+                <p><span class="fix-label">解決</span>在<strong>設定 › 終端</strong>中填寫缺少的資訊，或重新輸入密鑰。</p></dd></div>
+            <div><dt>API 測試失敗，或設定提示存取問題</dt>
+              <dd><p><span class="fix-label">原因</span>API 密鑰、商戶帳戶或 LIVE URL 前置字元有誤，缺少角色，或憑據屬於其他 Company 帳戶或環境。</p>
+                <p><span class="fix-label">解決</span>按照<a href="quick-start.html#credentials">憑據要求</a>檢查憑據的角色和存取範圍。LIVE 請檢查 <strong>LIVE URL 前置字元</strong>。</p></dd></div>
+            <div><dt>“商戶帳戶與終端目前分配的帳戶不一致。”</dt>
+              <dd><p><span class="fix-label">原因</span>終端在 Adyen 中被分配到其他商戶帳戶。</p>
+                <p><span class="fix-label">解決</span>輸入終端所分配的商戶帳戶，或在商戶後台重新分配終端。</p></dd></div>
+            <div><dt>Adyen 終端或網絡終端的連接測試失敗</dt>
+              <dd><p><span class="fix-label">原因</span>共享密鑰不一致，或 IP 地址、<strong>終端 ID（POIID）</strong>已過時。</p>
+                <p><span class="fix-label">解決</span>將共享密鑰的識別碼、口令和版本與商戶後台核對。網絡終端還需在終端的“Device info”畫面核對 IP 地址和 POIID。</p></dd></div>
+            <div><dt>連接因環境不一致被拒絕</dt>
+              <dd><p><span class="fix-label">原因</span>混用了 TEST 和 LIVE：終端、帳戶和 API 密鑰必須屬於同一環境。</p>
+                <p><span class="fix-label">解決</span>網絡或雲端終端請在<strong>設定 › 終端</strong>中檢查<strong>環境</strong>。在 Adyen 終端上運行或使用 Tap to Pay 時，請使用正確環境的設備或 Payments 應用程式。</p></dd></div>
+            <div><dt>無法連接雲端終端</dt>
+              <dd><p><span class="fix-label">原因</span>終端離線、POIID 有誤，或 API 密鑰缺少 Cloud Device API role。</p>
+                <p><span class="fix-label">解決</span>確認終端已開機並已連線，再檢查 POIID 和憑據的角色。</p></dd></div>
+            <div><dt>“同時安裝了 TEST 和 LIVE 版 Adyen Payments 應用程式”</dt>
+              <dd><p><span class="fix-label">原因</span>Tap to Pay 只能安裝一個 Payments 應用程式。</p>
+                <p><span class="fix-label">解決</span>解除安裝不用的那個，再完成註冊並輸入共享密鑰。設定檢查通過並不代表測試了銀行卡付款，請完成一筆 TEST 付款。</p></dd></div>
+            <div id="key-setup"><dt>“新密鑰已儲存。請更新此終端的設定”</dt>
+              <dd><p><span class="fix-label">原因</span>加密密鑰已在 Adyen 建立，但終端尚未載入。</p>
+                <p><span class="fix-label">解決</span>在終端上打開 <strong>Admin menu › Config › Update</strong>，然後返回 Mini mPOS 點按<strong>再次檢查</strong>。如果建立中斷，請點按<strong>繼續密鑰設定</strong>，不會建立第二個密鑰。參見<a href="quick-start.html#shared-key-creation">密鑰建立</a>及 <a href="https://docs.adyen.com/point-of-sale/managing-terminals/maintain-performance">Adyen 設定更新指南</a>。</p></dd></div>
+            <div><dt>舊付款的操作被阻止</dt>
+              <dd><p><span class="fix-label">原因</span>該付款之後更換了商戶帳戶、環境或終端。</p>
+                <p><span class="fix-label">解決</span>恢復處理該付款時的設定，或在商戶後台處理。不要用另一個帳戶處理它。</p></dd></div>
+          </dl>
+          <p class="back-to-contents"><a href="#contents">返回目錄</a></p>
+        </section>
+        <section id="network-dropouts">
+          <h2>連接中斷或終端未回應</h2>
+          <div class="callout callout-important" role="note">
+            <p class="callout-title">重要</p>
+            <p>如果連接中斷時有付款正在進行，再次收款前請<a href="#unknown">查詢其結果</a>。</p>
+          </div>
+          <dl class="fixes">
+            <div><dt>“終端未回應”，或網絡終端時好時壞</dt>
+              <dd><p><span class="fix-label">原因</span>終端的 IP 地址已變化、設備換到了其他網絡，或網絡阻止了連接。</p>
+                <p><span class="fix-label">解決</span></p>
+                <ol>
+                  <li>在終端的“Device info”畫面查看 IP 地址，並在<strong>設定 › 終端</strong>中更新。</li>
+                  <li>將設備和終端連接到同一網絡。避免使用訪客 Wi-Fi，它通常會隔離設備。</li>
+                  <li>請網絡管理員放行兩者之間的 TCP 8443，並為終端保留 IP 地址；參見<a href="quick-start.html#network-requirements">網絡要求</a>。</li>
+                </ol></dd></div>
+            <div><dt>所有設定的付款或 API 測試都失敗</dt>
+              <dd><p><span class="fix-label">原因</span>設備或終端無法存取互聯網，或防火牆阻止了 Adyen。</p>
+                <p><span class="fix-label">解決</span>檢查互聯網連接，並確認已放行到 Adyen 域名的 TCP 443 HTTPS 連接。</p></dd></div>
+            <div><dt>雲端付款逾時</dt>
+              <dd><p><span class="fix-label">原因</span>終端失去了互聯網連接。</p>
+                <p><span class="fix-label">解決</span>檢查終端的 Wi-Fi、以太網或移動資料，然後運行<strong>測試連接</strong>。</p></dd></div>
+          </dl>
+          <p class="back-to-contents"><a href="#contents">返回目錄</a></p>
+        </section>
+        <section id="modifications">
+          <h2>扣款或調整失敗或結果未知</h2>
+          <p>在<strong>交易紀錄</strong>中打開原紀錄並查看原因。如果缺少 Checkout API 設定，請補全；如果帳戶或環境已更改，請恢復原設定。</p>
+          <dl class="fixes">
+            <div><dt><strong>扣款失敗</strong>或<strong>扣款結果未知</strong></dt>
+              <dd><p><span class="fix-label">解決</span>點按<strong>重試扣款</strong>。它會安全地重新發送同一扣款請求；不要建立新的付款。</p></dd></div>
+            <div><dt>金額調整未解決</dt>
+              <dd><p><span class="fix-label">解決</span>使用相同金額重試。不同金額是獨立請求，可能需先解決第一個請求。</p></dd></div>
+            <div><dt>小費未儲存</dt>
+              <dd><p><span class="fix-label">原因</span>小費超過 20% 時，發卡行拒絕增加凍結金額。</p>
+                <p><span class="fix-label">解決</span>輸入較少的小費，或點按<strong>無小費</strong>。</p></dd></div>
+            <div><dt><strong>已請求扣款</strong>或<strong>已請求退款</strong>一直不變</dt>
+              <dd><p><span class="fix-label">原因</span>這表示 Adyen 已接受請求。Mini mPOS 沒有伺服器，無法收到最終確認。</p>
+                <p><span class="fix-label">解決</span>請在商戶後台確認最終結果。</p></dd></div>
+          </dl>
+          <p>凍結金額會到期，請及時處理。正常步驟請參閱<a href="using.html#preauth">訂金</a>和<a href="using.html#tips">收據小費</a>。</p>
+          <p class="back-to-contents"><a href="#contents">返回目錄</a></p>
+        </section>
+        <section id="links">
+          <h2>支付連結未顯示或不更新</h2>
+          <dl class="fixes">
+            <div><dt>結帳時沒有<strong>建立支付連結</strong></dt>
+              <dd><p><span class="fix-label">原因</span>Checkout API 設定未完成，或本次結帳是預授權或收據小費。</p>
+                <p><span class="fix-label">解決</span>在<strong>設定 › 終端</strong>中完成 Checkout API 設定。連結僅用於銷售。離線演示請參閱<a href="using.html#payment-links">支付連結</a>。</p></dd></div>
+            <div><dt>已支付的連結仍顯示<strong>待支付</strong></dt>
+              <dd><p><span class="fix-label">原因</span>應用程式僅在連結畫面打開時查詢。</p>
+                <p><span class="fix-label">解決</span>在交易紀錄中打開該紀錄，點按<strong>查詢支付狀態</strong>。</p></dd></div>
+            <div><dt>建立連結時中斷</dt>
+              <dd><p><span class="fix-label">解決</span>打開原紀錄並點按<strong>查詢支付狀態</strong>，會使用原請求重試；不要僅為取得連結建立另一筆銷售。</p></dd></div>
+          </dl>
+          <p>已支付的連結請在<strong>商戶後台 › Payments › Payment list</strong>中退款。</p>
+          <p class="back-to-contents"><a href="#contents">返回目錄</a></p>
+        </section>
+        <section id="receipts">
+          <h2>打印機或電子收據無法使用</h2>
+          <dl class="fixes">
+            <div><dt>無法列印，或沒有<strong>列印收據</strong></dt>
+              <dd><p><span class="fix-label">原因</span>終端沒有打印機、未檢測到打印機，或連接中斷。AMS1 終端和 Tap to Pay 手機沒有打印機。</p>
+                <p><span class="fix-label">解決</span></p>
+                <ol>
+                  <li>在<strong>設定 › 關於</strong>中確認<strong>打印機</strong>顯示<strong>可用</strong>。否則請在<strong>設定 › 終端</strong>中運行<strong>測試連接</strong>。</li>
+                  <li>在<strong>設定 › 收據</strong>中將<strong>打印機</strong>設為<strong>自動檢測</strong>，並檢查<strong>支付後自動列印</strong>。</li>
+                  <li>點按<strong>列印測試收據</strong>。如果仍無法列印，請檢查終端的收據紙捲。</li>
+                </ol></dd></div>
+            <div><dt>排版被截斷或換行異常</dt>
+              <dd><p><span class="fix-label">解決</span>在<strong>設定 › 收據</strong>中更改<strong>每行字元寬度</strong>，然後列印測試收據。</p></dd></div>
+            <div><dt>測試郵件發送失敗</dt>
+              <dd><p><span class="fix-label">原因</span>伺服器、連接埠、安全方式或密碼有誤，或服務商禁止 SMTP 或密碼登入。</p>
+                <p><span class="fix-label">解決</span>在<strong>設定 › 電子郵件（SMTP）</strong>中檢查伺服器、連接埠、STARTTLS 或 SSL/TLS、用戶名稱和密碼。服務商可能要求開通 SMTP 或使用應用程式密碼；參見<a href="using.html#email">郵件設定</a>。</p></dd></div>
+            <div><dt>測試郵件正常，但顧客收不到收據</dt>
+              <dd><p><span class="fix-label">解決</span>在<strong>設定 › 支付 › 電子收據</strong>中檢查何時詢問郵箱以及是否自動發送收據。</p></dd></div>
+          </dl>
+          <p class="back-to-contents"><a href="#contents">返回目錄</a></p>
+        </section>
+        <section id="access">
+          <h2>PIN 和設定傳輸問題</h2>
+          <dl class="fixes">
+            <div><dt>員工忘記了經理 PIN</dt>
+              <dd><p><span class="fix-label">解決</span>管理員可在<strong>設定 › 安全</strong>中更換或移除。管理員 PIN 和經理 PIN 保護不同的操作，其中一個不會解鎖另一個。</p></dd></div>
+            <div><dt>忘記了管理員 PIN</dt>
+              <dd><p><span class="fix-label">原因</span>沒有 PIN 恢復功能。</p>
+                <p><span class="fix-label">解決</span>唯一的方法是在 Android 中清除應用程式資料。</p>
+                <div class="callout callout-warning" role="note">
+                  <p class="callout-title">警告</p>
+                  <p>清除應用程式資料會刪除設備上的全部商品、設定、密鑰和交易紀錄。請先處理未完成的付款並保留所需紀錄。設定傳輸不能恢復交易紀錄。</p>
+                </div></dd></div>
+            <div><dt>傳輸碼被拒絕，或匯入後缺少密鑰</dt>
+              <dd><p><span class="fix-label">原因</span>傳輸碼與這些二維碼不相符，或未填寫。</p>
+                <p><span class="fix-label">解決</span>使用與這些二維碼一起顯示的傳輸碼，而不是新生成的碼。每次傳輸都需要傳輸碼。錯誤的碼或留空都不會匯入任何內容。複製後，請檢查新設備的支付目標和憑據；參見<a href="using.html#more">更多設備</a>。</p></dd></div>
+          </dl>
+          <p>各 PIN 保護的操作請參閱<a href="using.html#staff">員工 PIN</a>。</p>
+          <p class="back-to-contents"><a href="#contents">返回目錄</a></p>
+        </section>
+        <section id="install">
+          <h2>終端無法安裝應用程式</h2>
+          <dl class="fixes">
+            <div><dt><code>INSTALL_PARSE_FAILED_NO_CERTIFICATES</code></dt>
+              <dd><p><span class="fix-label">原因</span>APK 未簽名。</p>
+                <p><span class="fix-label">解決</span>上傳<a href="https://github.com/astiskala/minimpos/releases/latest">最新發佈版本</a>中已簽名的 <code>minimpos-&lt;version&gt;.apk</code>。</p></dd></div>
+            <div><dt><code>INVALID_SIGNING_CERTIFICATE_MISMATCH</code></dt>
+              <dd><p><span class="fix-label">原因</span>APK 的簽名密鑰與之前上傳的不同。</p>
+                <p><span class="fix-label">解決</span>保持原簽名來源。確需更換時，請向 Adyen 支援團隊咨詢移除舊版本。</p></dd></div>
+            <div><dt>不支援的 Android 版本</dt>
+              <dd><p><span class="fix-label">原因</span>Mini mPOS 需要 Android 9 或更高版本；舊款 S1E 運行 Android 7.1。</p>
+                <p><span class="fix-label">解決</span>使用受支援的終端；參見<a href="quick-start.html#install">安裝</a>。</p></dd></div>
+          </dl>
+          <p class="back-to-contents"><a href="#contents">返回目錄</a></p>
+        </section>
+        <section id="help">
+          <h2>仍需幫助？</h2>
+          <p>Adyen 帳戶、終端部署、付款方式或最終付款結果請聯繫 Adyen。應用程式問題請<a href="https://github.com/astiskala/minimpos/issues">提交 GitHub issue</a>，並提供應用程式版本、設備型號、設定、TEST 或 LIVE 環境以及重現步驟。</p>
+          <div class="callout callout-important" role="note">
+            <p class="callout-title">重要</p>
+            <p>切勿包含密鑰、密碼、PIN 或顧客資料。疑似漏洞請按<a href="https://github.com/astiskala/minimpos/blob/main/SECURITY.md">安全政策</a>私下報告。</p>
+          </div>
+          <p class="back-to-contents"><a href="#contents">返回目錄</a></p>
+        </section>
+      </div>
+    </div>
+  </main>
+  <footer class="site-footer"><div class="wrap footer-row">
+    <nav aria-label="指南和設定"><ul class="footer-nav">
+      <li><a href="quick-start.html">快速入門</a></li><li><a href="using.html">使用 Mini mPOS</a></li>
+      <li><a href="troubleshooting.html" aria-current="page">疑難排解</a></li><li><a href="setup.html">設定助手</a></li>
+    </ul></nav>
+    <p><img src="../favicon.svg" alt="" width="24" height="24"> Mini mPOS · MIT 授權條款 · <a href="https://github.com/astiskala/minimpos">GitHub</a> · <a href="https://github.com/astiskala/minimpos/blob/main/SECURITY.md">安全</a></p><p class="fine">Adyen 是 Adyen N.V. 的商標。Mini mPOS 是獨立項目，與 Adyen 無關聯，未獲其認可，也不由其提供支援。</p>
+  </div></footer>
+</body>
+</html>

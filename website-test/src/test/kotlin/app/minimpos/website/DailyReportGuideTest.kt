@@ -11,7 +11,7 @@ class DailyReportGuideTest {
     @Test
     fun `merchant scan guides preserve wallet limitations and recovery in every language`() {
         val docs = Path.of(checkNotNull(System.getProperty("minimpos.website"))).toAbsolutePath().normalize()
-        listOf("", "zh-CN", "ja").forEach { language ->
+        listOf("", "zh-CN", "zh-Hant", "ja").forEach { language ->
             val directory = docs.resolve(language)
             val using = Jsoup.parse(directory.resolve("using.html").readText()).select("#wallets")
             listOf("Alipay+", "PayPal", "Venmo", "GCash", "DANA", "Kakao Pay", "TrueMoney")
@@ -34,6 +34,7 @@ class DailyReportGuideTest {
             mapOf(
                 "en" to listOf("Local daily summary", "ignoring filters", "undated", "safe retry data"),
                 "zh-CN" to listOf("本地每日汇总", "忽略筛选", "无日期", "安全重试数据"),
+                "zh-Hant" to listOf("本地每日摘要", "忽略篩選", "無日期", "安全重試資料"),
                 "ja" to listOf("ローカル日次集計", "フィルターを無視", "日付不明", "安全な再試行データ"),
             )
         terms.forEach { (language, required) ->

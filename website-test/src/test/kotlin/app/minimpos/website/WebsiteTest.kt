@@ -18,8 +18,20 @@ import kotlin.io.path.readText
 class QuickStartGuideTest {
     @Test
     fun `credentials list API roles together and separate manual details from user permissions`() {
-        val manual = mapOf("en" to "If you want to configure the device manually", "zh-CN" to "如需手动配置设备", "ja" to "デバイスを手動で設定する場合")
-        val additional = mapOf("en" to "enable these additional roles", "zh-CN" to "启用以下额外角色", "ja" to "次のロールを追加で有効にします")
+        val manual =
+            mapOf(
+                "en" to "If you want to configure the device manually",
+                "zh-CN" to "如需手动配置设备",
+                "zh-Hant" to "如需手動設定設備",
+                "ja" to "デバイスを手動で設定する場合",
+            )
+        val additional =
+            mapOf(
+                "en" to "enable these additional roles",
+                "zh-CN" to "启用以下额外角色",
+                "zh-Hant" to "啟用以下額外角色",
+                "ja" to "次のロールを追加で有効にします",
+            )
         LANGUAGES.forEach { language ->
             val guide = pages.getValue(language to Kind.GUIDE)
             val credentials = guide.document.getElementById("credentials")!!.untilNextTask()
@@ -53,7 +65,7 @@ class QuickStartGuideTest {
 
     @Test
     fun `quick start guides name their outcome and offer the simulator before prerequisites`() {
-        val titles = mapOf("en" to "Quick start", "zh-CN" to "快速入门", "ja" to "クイックスタート")
+        val titles = mapOf("en" to "Quick start", "zh-CN" to "快速入门", "zh-Hant" to "快速入門", "ja" to "クイックスタート")
         LANGUAGES.forEach { language ->
             val guide = pages.getValue(language to Kind.GUIDE)
             val title = titles.getValue(language)
@@ -86,9 +98,9 @@ class QuickStartGuideTest {
 
     @Test
     fun `test and live validation distinguish physical connection checks from Payments app registration`() {
-        val connection = mapOf("en" to "Test connection", "zh-CN" to "测试连接", "ja" to "接続をテスト")
-        val api = mapOf("en" to "Test API", "zh-CN" to "测试 API", "ja" to "APIをテスト")
-        val unavailable = mapOf("en" to "no connection test", "zh-CN" to "没有连接测试", "ja" to "接続テストはありません")
+        val connection = mapOf("en" to "Test connection", "zh-CN" to "测试连接", "zh-Hant" to "測試連接", "ja" to "接続をテスト")
+        val api = mapOf("en" to "Test API", "zh-CN" to "测试 API", "zh-Hant" to "測試 API", "ja" to "APIをテスト")
+        val unavailable = mapOf("en" to "no connection test", "zh-CN" to "没有连接测试", "zh-Hant" to "沒有連接測試", "ja" to "接続テストはありません")
         LANGUAGES.forEach { language ->
             val guide = pages.getValue(language to Kind.GUIDE)
             listOf("first-payment" to "TEST", "live" to "LIVE").forEach { (id, environment) ->
@@ -110,8 +122,8 @@ class QuickStartGuideTest {
 
     @Test
     fun `quick start validation verifies Adyen outcomes and links optional workflows to their owners`() {
-        val references = mapOf("en" to "PSP reference", "zh-CN" to "PSP 识别号", "ja" to "PSP参照ID")
-        val pending = mapOf("en" to "Refund requested", "zh-CN" to "已请求退款", "ja" to "返金要求済み")
+        val references = mapOf("en" to "PSP reference", "zh-CN" to "PSP 识别号", "zh-Hant" to "PSP 參考編號", "ja" to "PSP参照ID")
+        val pending = mapOf("en" to "Refund requested", "zh-CN" to "已请求退款", "zh-Hant" to "已請求退款", "ja" to "返金要求済み")
         LANGUAGES.forEach { language ->
             val guide = pages.getValue(language to Kind.GUIDE)
             val validation = guide.document.select("#first-payment")
@@ -150,6 +162,7 @@ class WebsiteTest {
                         "Remove sample data",
                     ),
                 "zh-CN" to listOf("使用示例数据试用模拟器", "从另一台设备设置", "设置终端", "添加示例数据", "删除示例数据"),
+                "zh-Hant" to listOf("使用示例資料試用模擬器", "從另一台設備設定", "設定終端", "新增示例資料", "刪除示例資料"),
                 "ja" to listOf("サンプルでシミュレーターを試す", "別のデバイスから設定", "端末を設定", "サンプルデータを追加", "サンプルデータを削除"),
             )
         labels.forEach { (language, actions) ->
@@ -165,7 +178,7 @@ class WebsiteTest {
 
     @Test
     fun `pages declare their language and metadata`() {
-        val locales = mapOf("en" to "en_US", "zh-CN" to "zh_CN", "ja" to "ja_JP")
+        val locales = mapOf("en" to "en_US", "zh-CN" to "zh_CN", "zh-Hant" to "zh_HK", "ja" to "ja_JP")
         pages.forEach { (key, page) ->
             val (language, kind) = key
             assertThat(page.single("html").attr("lang")).isEqualTo(language)
@@ -339,8 +352,8 @@ class WebsiteTest {
 
     @Test
     fun `destination guides start with their environment source and keep discovery optional`() {
-        val keys = mapOf("en" to "Adyen API key", "zh-CN" to "Adyen API 密钥", "ja" to "Adyen APIキー")
-        val environments = mapOf("en" to "Environment", "zh-CN" to "环境", "ja" to "環境")
+        val keys = mapOf("en" to "Adyen API key", "zh-CN" to "Adyen API 密钥", "zh-Hant" to "Adyen API 密鑰", "ja" to "Adyen APIキー")
+        val environments = mapOf("en" to "Environment", "zh-CN" to "环境", "zh-Hant" to "環境", "ja" to "環境")
         LANGUAGES.forEach { language ->
             val guide = pages.getValue(language to Kind.GUIDE)
             listOf("on-terminal", "network", "cloud", "tap-to-pay").forEach { destination ->
@@ -445,10 +458,12 @@ class WebsiteTest {
             assertThat(pages.getValue(language to Kind.USING).text).contains("Return adjust authorisation data")
         }
     }
+}
 
+class WebsitePresentationTest {
     @Test
     fun `copy is translated and screenshots are disclosed`() {
-        listOf("en" to "English demo", "zh-CN" to "英文演示", "ja" to "英語のデモ").forEach { (language, marker) ->
+        listOf("en" to "English demo", "zh-CN" to "英文演示", "zh-Hant" to "英文演示", "ja" to "英語のデモ").forEach { (language, marker) ->
             val page = pages.getValue(language to Kind.LANDING)
             assertWithMessage(page.name).that(page.text).contains(marker)
             assertWithMessage(page.name).that(page.source).doesNotContain("class=\"phone")
@@ -461,6 +476,56 @@ class WebsiteTest {
         assertThat(styles).contains("object-fit: contain")
         assertThat(styles).doesNotContain("object-fit: cover")
         assertThat(styles).doesNotContain(".phone")
+    }
+
+    @Test
+    fun `landing and receipt guides advertise both Chinese scripts in every language`() {
+        val scripts =
+            mapOf(
+                "en" to listOf("Simplified", "Traditional"),
+                "zh-CN" to listOf("简体中文", "繁体中文"),
+                "zh-Hant" to listOf("簡體中文", "繁體中文"),
+                "ja" to listOf("簡体字", "繁体字"),
+            )
+        LANGUAGES.forEach { language ->
+            val landing =
+                pages
+                    .getValue(language to Kind.LANDING)
+                    .document
+                    .select(".hero-points")
+                    .text()
+            val receipts =
+                pages
+                    .getValue(language to Kind.USING)
+                    .document
+                    .getElementById("language-receipts")!!
+                    .untilNextTask()
+                    .joinToString(" ") { it.text() }
+            scripts.getValue(language).forEach { script ->
+                assertWithMessage("$language landing").that(landing).contains(script)
+                assertWithMessage("$language receipts").that(receipts).contains(script)
+            }
+        }
+    }
+
+    @Test
+    fun `language guides describe the in-app override and the device fallback`() {
+        val choices =
+            mapOf(
+                "en" to listOf("Settings › Language", "Follow device", "saved merchant text"),
+                "zh-CN" to listOf("设置 › 语言", "跟随设备", "已保存的商家文字"),
+                "zh-Hant" to listOf("設定 › 語言", "跟隨裝置", "已儲存的商戶文字"),
+                "ja" to listOf("設定 › 言語", "デバイスに従う", "保存済みの店舗の文言"),
+            )
+        choices.forEach { (language, labels) ->
+            val page = pages.getValue(language to Kind.USING)
+            val text =
+                page.document
+                    .getElementById("language-receipts")!!
+                    .untilNextTask()
+                    .joinToString(" ") { it.text() }
+            labels.forEach { assertWithMessage(language).that(text).contains(it) }
+        }
     }
 
     @Test
@@ -477,6 +542,7 @@ class WebsiteTest {
                         "Marked tax rate (%)",
                     ),
                 "zh-CN" to listOf("显示税额", "显示税额明细", "按税率显示应税金额", "显示识别号", "每行字符宽度", "标记的税率（%）"),
+                "zh-Hant" to listOf("顯示稅額", "顯示稅額明細", "按稅率顯示應稅金額", "顯示參考編號", "每行字元寬度", "標記的稅率（%）"),
                 "ja" to listOf("税額を表示", "税率別の内訳を表示", "税率別の対象金額を表示", "参照IDを表示", "1行の文字幅", "印を付ける税率（%）"),
             )
         LANGUAGES.forEach { language ->
@@ -512,6 +578,16 @@ class WebsiteTest {
                         "移除管理员 PIN",
                         "禁用",
                     ),
+                "zh-Hant" to
+                    listOf(
+                        "從 Adyen 匯入商戶資訊",
+                        "啟用（預設關閉）",
+                        "啟用（預設開啟）",
+                        "要求輸入商戶交易參考編號",
+                        "更改管理員 PIN",
+                        "移除管理員 PIN",
+                        "停用",
+                    ),
                 "ja" to
                     listOf(
                         "Adyenから店舗情報をインポート",
@@ -534,46 +610,65 @@ class WebsiteTest {
         }
     }
 
+    private fun quotedLabels() =
+        // The actual UI wording from values-zh-rCN/strings.xml and values-ja/strings.xml.
+        mapOf(
+            "zh-CN" to
+                listOf(
+                    "交易记录",
+                    "新建销售",
+                    "在收据上填写小费",
+                    "待填写小费",
+                    "已请求扣款",
+                    "支付目标",
+                    "同一网络中的终端",
+                    "共享至另一台设备",
+                    "Adyen API 密钥",
+                    "获取设置",
+                    "重新查询结果",
+                    "需处理",
+                    "设置 › 收据",
+                ),
+            "zh-Hant" to
+                listOf(
+                    "交易紀錄",
+                    "新建銷售",
+                    "在收據上填寫小費",
+                    "待填寫小費",
+                    "已請求扣款",
+                    "支付目標",
+                    "同一網絡中的終端",
+                    "共享至另一台設備",
+                    "Adyen API 密鑰",
+                    "取得設定",
+                    "重新查詢結果",
+                    "需處理",
+                    "設定 › 收據",
+                ),
+            "ja" to
+                listOf(
+                    "取引履歴",
+                    "領収書にチップを記入",
+                    "チップ入力待ち",
+                    "キャプチャ要求済み",
+                    "プリオーソリ商品",
+                    "プリオーソリをキャンセル",
+                    "Adyen APIキー",
+                    "設定を取得",
+                    "別のデバイスに共有",
+                    "決済先",
+                    "アプリ情報",
+                    "設定 › 領収書",
+                ),
+        )
+
     @Test
     fun `guides quote the app's labels`() {
-        // The actual UI wording from values-zh-rCN/strings.xml and values-ja/strings.xml.
-        val labels =
-            mapOf(
-                "zh-CN" to
-                    listOf(
-                        "交易记录",
-                        "新建销售",
-                        "在收据上填写小费",
-                        "待填写小费",
-                        "已请求扣款",
-                        "支付目标",
-                        "同一网络中的终端",
-                        "共享至另一台设备",
-                        "Adyen API 密钥",
-                        "获取设置",
-                        "重新查询结果",
-                        "需处理",
-                        "设置 › 收据",
-                    ),
-                "ja" to
-                    listOf(
-                        "取引履歴",
-                        "領収書にチップを記入",
-                        "チップ入力待ち",
-                        "キャプチャ要求済み",
-                        "プリオーソリ商品",
-                        "プリオーソリをキャンセル",
-                        "Adyen APIキー",
-                        "設定を取得",
-                        "別のデバイスに共有",
-                        "決済先",
-                        "アプリ情報",
-                        "設定 › 領収書",
-                    ),
-            )
+        val labels = quotedLabels()
         val forbidden =
             mapOf(
                 "zh-CN" to listOf("历史记录", "新销售", "等待小费", "已申请扣款", "支付去向", "分享给另一台终端", "共享至另一台终端"),
+                "zh-Hant" to listOf("歷史紀錄", "新銷售", "等待小費", "已申請扣款", "支付去向", "分享給另一台終端", "共享至另一台終端"),
                 "ja" to listOf("チップ待ち", "キャプチャ申請済み", "別の端末と共有", "別の端末に共有", "アプリについて"),
             )
         labels.forEach { (language, expected) ->
@@ -582,7 +677,13 @@ class WebsiteTest {
             forbidden.getValue(language).forEach { assertWithMessage(language).that(guide).doesNotContain(it) }
             val landing = pages.getValue(language to Kind.LANDING).text
             assertWithMessage(language).that(landing).contains(expected.first())
-            assertWithMessage(language).that(landing).contains(if (language == "zh-CN") "在收据上填写小费" else "領収書にチップを記入")
+            assertWithMessage(language).that(landing).contains(
+                when (language) {
+                    "zh-CN" -> "在收据上填写小费"
+                    "zh-Hant" -> "在收據上填寫小費"
+                    else -> "領収書にチップを記入"
+                },
+            )
         }
     }
 
@@ -792,12 +893,14 @@ class PartnerStyleGuideTest {
             mapOf(
                 "en" to "Samples count in demo day totals and reports",
                 "zh-CN" to "示例计入演示每日合计和报告",
+                "zh-Hant" to "示例計入演示每日總計和報告",
                 "ja" to "サンプルはデモの日次合計とレポートに含まれます",
             )
         val transferCodes =
             mapOf(
                 "en" to "A wrong or blank code imports nothing",
                 "zh-CN" to "错误的码或留空都不会导入任何内容",
+                "zh-Hant" to "錯誤的碼或留空都不會匯入任何內容",
                 "ja" to "誤ったコードでも空欄でも何も取り込みません",
             )
         LANGUAGES.forEach { language ->
@@ -825,7 +928,13 @@ class PartnerStyleGuideTest {
 class SetupGuideTest {
     @Test
     fun `guides describe the customer reference default`() {
-        val defaults = mapOf("en" to "a customer reference typed at checkout (the default)", "zh-CN" to "客户识别号（默认）", "ja" to "顧客参照ID（初期設定）")
+        val defaults =
+            mapOf(
+                "en" to "a customer reference typed at checkout (the default)",
+                "zh-CN" to "客户识别号（默认）",
+                "zh-Hant" to "顧客參考編號（預設）",
+                "ja" to "顧客参照ID（初期設定）",
+            )
         LANGUAGES.forEach { language ->
             val using = pages.getValue(language to Kind.USING)
             assertThat(using.document.select("#shoppers").text()).contains(defaults.getValue(language))
@@ -855,8 +964,8 @@ class SetupGuideTest {
 
     @Test
     fun `every language describes confirmed key creation and links delayed activation recovery`() {
-        val create = mapOf("en" to "Create encryption key", "zh-CN" to "创建加密密钥", "ja" to "暗号化キーを作成")
-        val resume = mapOf("en" to "Resume key setup", "zh-CN" to "继续密钥设置", "ja" to "キー設定を再開")
+        val create = mapOf("en" to "Create encryption key", "zh-CN" to "创建加密密钥", "zh-Hant" to "建立加密密鑰", "ja" to "暗号化キーを作成")
+        val resume = mapOf("en" to "Resume key setup", "zh-CN" to "继续密钥设置", "zh-Hant" to "繼續密鑰設定", "ja" to "キー設定を再開")
         LANGUAGES.forEach { language ->
             val guide = pages.getValue(language to Kind.GUIDE)
             assertThat(guide.document.getElementById("shared-key-creation")).isNotNull()
@@ -872,7 +981,7 @@ class SetupGuideTest {
 
     @Test
     fun `setup guides combine API credentials in every language`() {
-        val tests = mapOf("en" to "Test API", "zh-CN" to "测试 API", "ja" to "APIをテスト")
+        val tests = mapOf("en" to "Test API", "zh-CN" to "测试 API", "zh-Hant" to "測試 API", "ja" to "APIをテスト")
         LANGUAGES.forEach { language ->
             val guide = pages.getValue(language to Kind.GUIDE)
             assertWithMessage(guide.name)
@@ -919,10 +1028,16 @@ class SetupGuideTest {
 
     @Test
     fun `every integration shows helper guidance and keeps Manual collapsed without scripts`() {
-        val helperLabels = mapOf("en" to "Setup helper (recommended)", "zh-CN" to "设置助手（推荐）", "ja" to "セットアップヘルパー（推奨）")
-        val manualLabels = mapOf("en" to "Manual", "zh-CN" to "手动", "ja" to "手動")
-        val automaticLabels = mapOf("en" to "Automatic", "zh-CN" to "自动", "ja" to "自動")
-        val registrationLabels = mapOf("en" to "register the phone", "zh-CN" to "注册手机", "ja" to "スマートフォンを登録")
+        val helperLabels =
+            mapOf(
+                "en" to "Setup helper (recommended)",
+                "zh-CN" to "设置助手（推荐）",
+                "zh-Hant" to "設定助手（建議）",
+                "ja" to "セットアップヘルパー（推奨）",
+            )
+        val manualLabels = mapOf("en" to "Manual", "zh-CN" to "手动", "zh-Hant" to "手動", "ja" to "手動")
+        val automaticLabels = mapOf("en" to "Automatic", "zh-CN" to "自动", "zh-Hant" to "自動", "ja" to "自動")
+        val registrationLabels = mapOf("en" to "register the phone", "zh-CN" to "注册手机", "zh-Hant" to "註冊手機", "ja" to "スマートフォンを登録")
         LANGUAGES.forEach { language ->
             val guide = pages.getValue(language to Kind.GUIDE)
             assertThat(guide.document.select("#connect details.manual-setup")).hasSize(4)
@@ -1020,7 +1135,7 @@ private const val BASE = "https://minimpos.app/"
 private const val FRAME_TOLERANCE = 0.005
 private const val CUSTOMER_AREA_TEST = "https://ca-test.adyen.com/ca/ui/"
 private const val CUSTOMER_AREA_LIVE = "https://ca-live.adyen.com/ca/ui/"
-private val LANGUAGES = listOf("en", "zh-CN", "ja")
+private val LANGUAGES = listOf("en", "zh-CN", "zh-Hant", "ja")
 private val GUIDE_TOPICS =
     mapOf(
         Kind.GUIDE to setOf("try", "choose", "install", "connect", "first-payment", "live"),

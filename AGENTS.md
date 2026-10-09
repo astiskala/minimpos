@@ -68,7 +68,8 @@ Adyen Payments app (Tap to Pay). The built-in simulator needs no Adyen account.
 - Public/protected declarations need useful KDoc (tests exempt): units, null meaning, threading, formats, errors.
   Once constructor tags are used, cover every parameter in order (`@property` for public properties, otherwise `@param`).
 - User text is short US English; keep identifier/stored-value spelling and Adyen text unchanged. Update English,
-  Simplified Chinese and Japanese together, with matching resource keys/format arguments; CJK plurals use only `other`.
+  Simplified Chinese, Hong Kong-style Traditional Chinese (`zh-Hant`) and Japanese together, with matching resource
+  keys/format arguments; CJK plurals use only `other`.
   Customer Area paths stay English (quote UI names with “…” in Chinese and 「…」 in Japanese).
 - New-install defaults may depend on country/language; never overwrite saved merchant text or imported catalogs.
   Receipt labels are read at delivery, Adyen receipt fields stay verbatim. Keep `StarterTax`'s rates current.
@@ -81,7 +82,7 @@ Adyen Payments app (Tap to Pay). The built-in simulator needs no Adyen account.
 
 - Give each fact one authoritative home for its reader; link instead of copying. Merchant guides are Quick start,
   Using Mini mPOS and Troubleshooting. Setup guides branch by destination; operations describe tasks, not every field.
-- Preserve the site's visual design. Update all three languages, reciprocal switches, canonical/hreflang metadata and
+- Preserve the site's visual design. Update all four languages, reciprocal switches, canonical/hreflang metadata and
   website tests together. Only setup helpers run scripts; all assets are local. HTML void elements have no trailing slash.
 - Explain Mini mPOS's requirements; link to Adyen for Adyen account/platform procedures. Avoid older-app warnings,
   country-specific tax compliance, invoice requirements and country-specific receipt defaults.

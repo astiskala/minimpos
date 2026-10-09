@@ -57,6 +57,10 @@ class TerminalSetupEntryTest {
     @Config(qualifiers = "ja-w320dp-h460dp-hdpi")
     fun `Japanese home setup hint fits two lines on AMS1`() = setupHintFits()
 
+    @Test
+    @Config(qualifiers = "zh-rHK-w320dp-h460dp-hdpi")
+    fun `Traditional Chinese home setup hint fits two lines on AMS1`() = setupHintFits()
+
     private fun setupHintFits() {
         compose.setContent { MiniMposApp(env.container) }
         compose.waitUntilAtLeastOneExists(hasTestTag("terminalSetup"), 15_000)

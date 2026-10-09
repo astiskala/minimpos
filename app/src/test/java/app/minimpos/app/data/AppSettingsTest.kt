@@ -57,6 +57,19 @@ class AppSettingsTest {
     }
 
     @Test
+    fun `language overrides are normalized and remain local when settings are transferred`() {
+        val sender = AppSettings(languageTag = "zh-Hant")
+        val receiver = AppSettings(languageTag = "ja")
+        assertThat(sender.shared().languageTag).isEmpty()
+        assertThat(sender.withDeviceFieldsOf(receiver).languageTag).isEqualTo("ja")
+        assertThat(receiver.takingOver(sender, defaultTaxRateId = 1).languageTag).isEqualTo("ja")
+        assertThat(sender.normalized()).isEqualTo(sender)
+        assertThat(sender.copy(languageTag = " ZH-hANT ").normalized()).isEqualTo(sender)
+        assertThat(sender.copy(languageTag = "fr").normalized().languageTag).isEmpty()
+        assertThat(sender.copy(languageTag = "").normalized().languageTag).isEmpty()
+    }
+
+    @Test
     fun `a new installation asks for a customer reference, prints automatically and taxes as is usual there`() {
         val australia = AppSettings.forNewInstallation("AU")
         assertThat(australia.payment.askTransactionReference).isFalse()

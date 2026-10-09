@@ -265,6 +265,10 @@ class TransferScreensTest {
     @Config(qualifiers = "ja-w320dp-h460dp-hdpi")
     fun `Japanese QR preview gives destination text full width`() = reviewLiveDestination()
 
+    @Test
+    @Config(qualifiers = "zh-rHK-w320dp-h460dp-hdpi")
+    fun `Traditional Chinese QR preview gives destination text full width`() = reviewLiveDestination()
+
     private fun assertImportSummary() {
         compose.onNodeWithTag("transferCodeInput").performScrollTo()
         val summary = compose.onNodeWithTag("transferSummary").fetchSemanticsNode().boundsInRoot

@@ -8,6 +8,7 @@ import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.hasTestTag
+import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.isEnabled
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
@@ -45,7 +46,15 @@ class LocalizedUiTest {
 
     @Before
     fun setUp() {
-        env.useSimulator { it.copy(payment = it.payment.copy(currencyCode = "JPY")) }
+        val currency =
+            if (env.context.resources.configuration.locales[0]
+                    .country == "HK"
+            ) {
+                "HKD"
+            } else {
+                "JPY"
+            }
+        env.useSimulator { it.copy(payment = it.payment.copy(currencyCode = currency)) }
         await { env.container.catalog.seedDefaults(env.container.starterTaxRates()) }
     }
 
@@ -88,6 +97,49 @@ class LocalizedUiTest {
     @Test
     @Config(qualifiers = "zh-rCN-w320dp-h460dp-hdpi")
     fun `Chinese wallet checkout and demo scan fit AMS1`() = walletFits()
+
+    @Test
+    @Config(qualifiers = "zh-rHK-w320dp-h460dp-hdpi")
+    fun `Traditional Chinese sale primary actions fit an AMS1`() = saleFits()
+
+    @Test
+    @Config(qualifiers = "zh-rHK-w320dp-h460dp-hdpi")
+    fun `Traditional Chinese wallet checkout and demo scan fit AMS1`() = walletFits()
+
+    @Test
+    @Config(qualifiers = "en-rHK-w320dp-h460dp-hdpi")
+    fun `language can be overridden in Settings without losing the cart and reset to the device`() {
+        await { env.container.session(SaleKind.SALE).addCustom("Merchant item", 1_200, TaxRateEntity(1, "No tax", 0)) }
+        val original = await { env.container.settings.current() }
+        compose.setContent { MiniMposApp(env.container) }
+        compose.onNodeWithTag("settings").performClick()
+        compose.waitUntilAtLeastOneExists(hasTestTag("appLanguage"), 15_000)
+        compose.onNodeWithTag("appLanguage").performScrollTo().performClick()
+        compose.onNodeWithText("繁體中文").assertIsDisplayed().performClick()
+        compose.waitUntilAtLeastOneExists(
+            hasText("語言"),
+            15_000,
+        )
+        compose.onNodeWithTag("back").performClick()
+        compose.onNodeWithTag("settings").assertTextContains("設定")
+        assertThat(
+            env.container
+                .session(SaleKind.SALE)
+                .cart.value.lines
+                .single()
+                .name,
+        ).isEqualTo("Merchant item")
+        compose.onNodeWithTag("settings").performClick()
+        compose.onNodeWithTag("appLanguage").performScrollTo().performClick()
+        compose.onNodeWithText("跟隨裝置").performClick()
+        compose.waitUntilAtLeastOneExists(
+            hasText("Language"),
+            15_000,
+        )
+        compose.onNodeWithTag("back").performClick()
+        compose.onNodeWithTag("settings").assertTextContains("Settings")
+        assertThat(await { env.container.settings.current() }).isEqualTo(original)
+    }
 
     private fun walletFits() {
         await {

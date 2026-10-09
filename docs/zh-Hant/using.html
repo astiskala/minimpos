@@ -1,0 +1,342 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>使用 Mini mPOS</title>
+  <meta name="description" content="Mini mPOS 日常操作：銀行卡收款、退款、發送收據、每日對帳，以及支付連結、訂金和小費。">
+  <link rel="icon" href="../favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="../styles.css">
+  <link rel="canonical" href="https://minimpos.app/zh-Hant/using.html">
+  <link rel="alternate" hreflang="en" href="https://minimpos.app/using.html">
+  <link rel="alternate" hreflang="zh-CN" href="https://minimpos.app/zh-CN/using.html">
+  <link rel="alternate" hreflang="zh-Hant" href="https://minimpos.app/zh-Hant/using.html">
+  <link rel="alternate" hreflang="ja" href="https://minimpos.app/ja/using.html">
+  <link rel="alternate" hreflang="x-default" href="https://minimpos.app/using.html">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="使用 Mini mPOS">
+  <meta property="og:description" content="分步驟的日常操作：付款、退款、收據和每日對帳。">
+  <meta property="og:url" content="https://minimpos.app/zh-Hant/using.html">
+  <meta property="og:image" content="https://minimpos.app/images/social.png">
+  <meta property="og:image:alt" content="Adyen 終端示意圖中的 Mini mPOS，展示英文模擬器演示。">
+  <meta property="og:locale" content="zh_HK">
+  <meta content="zh_CN" property="og:locale:alternate">
+  <meta property="og:locale:alternate" content="en_US">
+  <meta property="og:locale:alternate" content="ja_JP">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="使用 Mini mPOS">
+  <meta name="twitter:description" content="分步驟的日常操作：付款、退款、收據和每日對帳。">
+  <meta name="twitter:image" content="https://minimpos.app/images/social.png">
+  <meta name="twitter:image:alt" content="Adyen 終端示意圖中的 Mini mPOS，展示英文模擬器演示。">
+  <meta name="theme-color" content="#00112C">
+</head>
+<body>
+  <a class="skip" href="#main">跳到正文</a>
+  <header class="site-header"><div class="wrap header-row">
+    <a class="brand" href="./" aria-label="Mini mPOS 首頁"><img src="../favicon.svg" alt="" width="36" height="36"><span>Mini mPOS</span></a>
+    <nav class="desktop-nav" aria-label="主導航"><ul class="nav">
+      <li><a href="quick-start.html">快速入門</a></li><li><a href="using.html" aria-current="page">使用 Mini mPOS</a></li>
+      <li><a href="troubleshooting.html">疑難排解</a></li><li><a href="setup.html">設定助手</a></li>
+    </ul></nav>
+    <details class="mobile-menu"><summary>選單</summary><div class="mobile-panel"><nav aria-label="主導航"><ul class="nav">
+      <li><a href="quick-start.html">快速入門</a></li><li><a href="using.html" aria-current="page">使用 Mini mPOS</a></li>
+      <li><a href="troubleshooting.html">疑難排解</a></li><li><a href="setup.html">設定助手</a></li>
+    </ul></nav>
+      <nav class="mobile-languages" aria-label="語言"><p>語言</p><ul>
+        <li><a href="../using.html" hreflang="en" lang="en">English</a></li>
+        <li><a href="../zh-CN/using.html" hreflang="zh-CN" lang="zh-CN">简体中文</a></li><li><a aria-current="page" href="using.html" hreflang="zh-Hant" lang="zh-Hant">繁體中文</a></li>
+        <li><a href="../ja/using.html" hreflang="ja" lang="ja">日本語</a></li>
+      </ul></nav>
+    </div></details>
+    <details class="language-menu"><summary aria-label="語言：繁體中文" title="語言"><svg aria-hidden="true" class="globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 2.7 3.8 5.7 3.8 9s-1.3 6.3-3.8 9c-2.5-2.7-3.8-5.7-3.8-9S9.5 5.7 12 3z"/></svg><span class="language-current">繁體中文</span></summary><nav aria-label="語言"><ul><li><a href="../using.html" hreflang="en" lang="en">English</a></li><li><a href="../zh-CN/using.html" hreflang="zh-CN" lang="zh-CN">简体中文</a></li><li><a href="using.html" hreflang="zh-Hant" lang="zh-Hant" aria-current="page">繁體中文</a></li><li><a href="../ja/using.html" hreflang="ja" lang="ja">日本語</a></li></ul></nav></details>
+  </div></header>
+  <main id="main">
+    <section class="guide-hero"><div class="wrap"><p class="eyebrow">指南</p><h1>使用 Mini mPOS</h1><p class="lead">日常工作的分步操作：收款、退款、發送收據和每日對帳。可選流程放在最後。</p></div></section>
+    <div class="wrap guide">
+      <nav class="toc" id="contents" aria-label="指南導航">
+        <p class="toc-title">指南</p><p><a href="quick-start.html">快速入門</a><br><a href="using.html" aria-current="page">使用 Mini mPOS</a><br><a href="troubleshooting.html">疑難排解</a></p>
+        <div class="desktop-contents"><p class="toc-title">本頁目錄</p><ol>
+          <li><a href="#business">開始銷售前</a><ul>
+            <li><a href="#pricing">貨幣和稅費</a></li><li><a href="#products">商品</a></li><li><a href="#staff">員工 PIN</a></li>
+          </ul></li>
+          <li><a href="#sell">銀行卡收款</a></li><li><a href="#wallets">掃描錢包付款碼</a></li><li><a href="#refund">退款或撤銷</a></li>
+          <li><a href="#receipts">收據</a><ul>
+            <li><a href="#customize-receipts">自訂收據</a></li><li><a href="#language-receipts">收據語言</a></li><li><a href="#email">電子收據</a></li>
+          </ul></li>
+          <li><a href="#history">交易紀錄</a><ul><li><a href="#close-day">每日對帳</a></li></ul></li>
+          <li><a href="#shoppers">參考編號和儲存卡</a></li><li><a href="#payment-links">支付連結</a></li>
+          <li><a href="#preauth">訂金</a></li><li><a href="#tips">收據小費</a></li><li><a href="#more">更多設備和資料</a></li>
+        </ol></div>
+        <details class="mobile-contents"><summary class="toc-title">本頁目錄</summary><ol>
+          <li><a href="#business">開始銷售前</a><ul>
+            <li><a href="#pricing">貨幣和稅費</a></li><li><a href="#products">商品</a></li><li><a href="#staff">員工 PIN</a></li>
+          </ul></li>
+          <li><a href="#sell">銀行卡收款</a></li><li><a href="#wallets">掃描錢包付款碼</a></li><li><a href="#refund">退款或撤銷</a></li>
+          <li><a href="#receipts">收據</a><ul>
+            <li><a href="#customize-receipts">自訂收據</a></li><li><a href="#language-receipts">收據語言</a></li><li><a href="#email">電子收據</a></li>
+          </ul></li>
+          <li><a href="#history">交易紀錄</a><ul><li><a href="#close-day">每日對帳</a></li></ul></li>
+          <li><a href="#shoppers">參考編號和儲存卡</a></li><li><a href="#payment-links">支付連結</a></li>
+          <li><a href="#preauth">訂金</a></li><li><a href="#tips">收據小費</a></li><li><a href="#more">更多設備和資料</a></li>
+        </ol></details>
+      </nav>
+      <div class="guide-body">
+        <section id="business">
+          <h2>準備商品、稅費和員工權限</h2>
+          <p>真實收款前，請完成<a href="quick-start.html">連接 Adyen 的設定</a>。需要支付終端或 Adyen Payments 應用程式。然後一次性準備商品、稅費和員工權限。</p>
+          <h3 id="pricing">設定貨幣和稅費</h3>
+          <ol>
+            <li>在<strong>設定 › 支付</strong>中選擇商戶帳戶接受實體店付款的<strong>貨幣</strong>。</li>
+            <li>在<strong>設定 › 稅</strong>中檢查稅率、價格含稅還是結帳時加稅，以及新商品的預設稅率。</li>
+          </ol>
+          <p>每個商品都有稅率，不徵稅的商品使用 0% 稅率。關閉<strong>收取稅費</strong>會停止徵稅，但保留稅率。</p>
+          <div class="callout callout-important" role="note">
+            <p class="callout-title">重要</p>
+            <p>更改貨幣會保留價格中的數值，不會按匯率換算。更改後請檢查商品價格。</p>
+          </div>
+          <h3 id="products">新增商品</h3>
+          <ol>
+            <li>打開<strong>商品</strong>，點按 <strong>+</strong>。</li>
+            <li>輸入名稱、價格和稅率。可選新增分類和條碼（輸入或掃描）。</li>
+            <li>訂金商品請開啟<strong>預授權商品</strong>，使其只出現在預授權中。</li>
+          </ol>
+          <h3 id="staff">設定員工 PIN</h3>
+          <ol>
+            <li>在<strong>設定 › 安全</strong>中點按<strong>設定管理員 PIN</strong>。它保護設定和商品管理。選擇應用程式多久後重新鎖定。</li>
+            <li>可選：點按<strong>設定經理 PIN</strong>。之後退款、取消、扣款、金額調整和錄入小費都需要輸入它。</li>
+          </ol>
+          <p>如需更換或移除管理員 PIN，請使用<strong>更改管理員 PIN</strong>或<strong>移除管理員 PIN</strong>；移除它也會移除經理 PIN。多次輸錯會暫時鎖定 PIN 輸入。忘記 PIN 時請參閱 <a href="troubleshooting.html#access">PIN 問題</a>。</p>
+          <p class="back-to-contents"><a href="#contents">返回目錄</a></p>
+        </section>
+        <section id="sell">
+          <h2>銀行卡收款</h2>
+          <ol>
+            <li>在首頁點按<strong>新建銷售</strong>。點按商品、點按<strong>掃描條碼</strong>，或新增<strong>自訂商品</strong>。</li>
+            <li>點按<strong>收款</strong>。核對商品、稅費和總計，並填寫參考編號或郵箱欄位。</li>
+            <li>點按<strong>支付</strong>。終端（或 Tap to Pay 的 Adyen Payments 應用程式）會提示顧客付款。</li>
+            <li>等待結果。結果顯示前請勿開始另一筆付款。</li>
+            <li>通過<strong>列印收據</strong>、<strong>發送電子收據</strong>或<strong>分享收據</strong>向顧客提供收據（已自動發送時除外）。</li>
+          </ol>
+          <div class="callout callout-note" role="note">
+            <p class="callout-title">說明</p>
+            <p>銀行卡由終端讀取，Mini mPOS 不會獲得完整卡號資訊。根據終端和商戶帳戶的不同，顧客可插卡、揮卡，或用手機、手錶感應付款。非接觸式（NFC）付款時，卡或手機須保持靠近非接觸標誌，直到終端確認。使用 Tap to Pay 時，請按 Adyen Payments 應用程式中的說明操作。</p>
+          </div>
+          <div class="callout callout-warning" role="note">
+            <p class="callout-title">警告</p>
+            <p><strong>結果未知</strong>不表示付款失敗。再次收款前，請<a href="troubleshooting.html#unknown">查詢原付款</a>。</p>
+          </div>
+          <p>顧客參考編號、儲存卡和小費均可選；參見<a href="#shoppers">參考編號和儲存卡</a>。如需讓顧客在自己的手機上付款，請使用<a href="#payment-links">支付連結</a>。付款被拒絕時，請參閱<a href="troubleshooting.html#declines">付款被拒絕</a>。</p>
+          <p class="back-to-contents"><a href="#contents">返回目錄</a></p>
+        </section>
+        <section id="wallets">
+          <h2>掃描顧客的錢包付款碼</h2>
+          <p>在銷售結帳時使用<strong>掃描錢包</strong>讀取顧客錢包應用程式中的付款碼。這與掃描商品條碼或退款收據不同。此功能需要實體支付終端，不適用於 Tap to Pay；<a href="quick-start.html#credentials">錢包查詢需要只讀權限</a>。</p>
+          <ol>
+            <li>核對總計和結帳欄位後點按<strong>掃描錢包</strong>。若已選擇收據小費，請確認不使用該選項：錢包會立即收取總計，而不是進行預授權。</li>
+            <li>選擇顧客的錢包。只有一個可用錢包時會自動選擇。僅顯示單獨設定的錢包；Alipay+ 不代表 GCash、DANA、Kakao Pay 或 TrueMoney 已分別啟用。</li>
+            <li>終端確認配備內置掃描器時，按下該終端的掃描按鈕。它可能是網絡或雲端終端，而非運行 Mini mPOS 的設備。要改用設備相機，請點按<strong>使用相機</strong>。</li>
+            <li>掃描顧客的付款二維碼或付款條碼。一個有效掃描會立即開始支付。等待普通支付結果並提供收據。</li>
+          </ol>
+          <p>取消會保留購物車和結帳欄位。無效碼不會付款：請重新掃描或更換錢包。終端掃描最多持續 30 秒；之後可點按<strong>重新掃描</strong>或使用相機。離開應用程式會停止掃描，返回後需明確重新開始。不能手動輸入或貼上付款碼。</p>
+          <p>顧客參考編號和授權允許時，<strong>儲存卡</strong>會嘗試儲存支付資訊，是否支援取決於錢包。只有返回儲存的支付代碼才表示成功儲存；沒有代碼的已批准付款仍然有效。請參閱<a href="troubleshooting.html#wallets">錢包查詢和支付問題</a>；不要通過再次掃碼替代<a href="troubleshooting.html#unknown">結果未知的原付款</a>。</p>
+          <p>請使用 <a href="https://docs.adyen.com/point-of-sale/alternative-payment-methods/qr-code-wallets">Adyen 錢包指南</a>和 <a href="https://docs.adyen.com/point-of-sale/alternative-payment-methods/qr-code-wallets/paypal-pos">Adyen PayPal 和 Venmo 指南</a>核對錢包開通情況和 TEST 行為。</p>
+          <div class="shot-pair">
+            <div class="terminal terminal-s1f2"><img src="../images/wallets.png" width="540" height="960" loading="lazy" alt="英文模擬器演示：為 $34.00 的銷售選擇錢包"></div>
+            <div class="terminal terminal-s1f2"><img src="../images/wallet-scan.png" width="540" height="960" loading="lazy" alt="英文模擬器演示：WeChat Pay 掃碼流程和離線演示付款碼按鈕"></div>
+          </div>
+          <p class="fine">錢包掃描的英文模擬器演示。</p>
+          <p class="back-to-contents"><a href="#contents">返回目錄</a></p>
+        </section>
+        <section id="refund">
+          <h2>退款或撤銷付款</h2>
+          <dl class="settings-list">
+            <dt>退款</dt><dd>適用於已扣款的付款，退還全部或部分金額。</dd>
+            <dt>撤銷（取消）</dt><dd>適用於尚未扣款的凍結付款：<a href="#preauth">訂金</a>點按<strong>取消預授權</strong>，<strong>待填寫小費</strong>的銷售點按<strong>取消支付</strong>。這會釋放凍結金額。</dd>
+          </dl>
+          <p>退款步驟：</p>
+          <ol>
+            <li>在首頁點按<strong>退款</strong>並掃描收據上的退款二維碼，或在<strong>交易紀錄</strong>中打開原銷售。</li>
+            <li>選擇全額、指定金額或按商品退款。按商品退款要求本設備保留原銷售。</li>
+            <li>確認退款，如有提示則輸入經理 PIN。</li>
+          </ol>
+          <p>每筆退款都關聯原付款，不支援無原付款的退款。已支付的支付連結請在商戶後台退款。</p>
+          <div class="callout callout-important" role="note">
+            <p class="callout-title">重要</p>
+            <p><strong>已請求退款</strong>表示 Adyen 已收到請求，不表示顧客已收到款項。請在商戶後台確認最終結果。退款結果未知時，<a href="troubleshooting.html#unknown">重試前請先查詢</a>。</p>
+          </div>
+          <p class="back-to-contents"><a href="#contents">返回目錄</a></p>
+        </section>
+        <section id="receipts">
+          <h2>列印、發送電子收據或分享收據</h2>
+          <p>在付款結果或交易紀錄中點按<strong>列印收據</strong>或<strong>發送電子收據</strong>。平板和手機還可點按<strong>分享收據</strong>，通過 Android 分享選單發送圖片。列印需要配有打印機的終端。</p>
+          <h3 id="customize-receipts">自訂並測試收據</h3>
+          <ol>
+            <li>在<strong>設定 › 收據</strong>中填寫商戶資訊、抬頭和頁尾。也可點按<strong>從 Adyen 匯入商戶資訊</strong>，從 Adyen 店舖補充空白欄位。</li>
+            <li>選擇<strong>支付後自動列印</strong>、何時列印<strong>商戶副本</strong>，以及是否<strong>顯示退款二維碼</strong>。</li>
+            <li>點按<strong>列印測試收據</strong>並檢查列印效果。螢幕預覽無法顯示打印機的確切排版。</li>
+          </ol>
+          <p>其他選項：</p>
+          <dl class="settings-list">
+            <dt>顯示稅額</dt><dd>顯示總額中包含或另行加收的稅額，不改變實際收取的稅額。</dd>
+            <dt>顯示稅額明細</dt><dd>按稅率列出稅額。價格含稅時，顯示所含稅額需要開啟此項。</dd>
+            <dt>按稅率顯示應稅金額</dt><dd>按稅率彙總商品金額，包括 0%。</dd>
+            <dt>顯示參考編號</dt><dd>預設開啟。列印商戶參考編號及已輸入的顧客參考編號，便於將收據與付款對應。</dd>
+            <dt>標記的稅率（%）</dt><dd>用<strong>商品標記</strong>及其說明標出該稅率的商品。留空則不標記。</dd>
+            <dt>每行字元寬度</dt><dd>預設為 32，適用於較窄的收據紙捲。請通過測試列印選擇適合打印機的寬度。</dd>
+          </dl>
+          <h3 id="language-receipts">設定語言</h3>
+          <p>應用程式支援英語、簡體中文、繁體中文和日語。在<strong>設定 › 語言</strong>中選擇此裝置的應用程式語言。應用程式文字和應用程式產生的收據標籤會立即更改；已儲存的商戶文字、商品名稱、貨幣和稅設定保持不變。<strong>跟隨裝置</strong>在 Android 12 及更早版本使用裝置語言，在 Android 13 及更高版本使用 Android 的個別應用程式語言選擇。Adyen 的銀行卡收據行跟隨終端自身的收據語言。</p>
+          <h3 id="email">設定電子收據</h3>
+          <ol>
+            <li>打開<strong>設定 › 電子郵件（SMTP）</strong>。選擇服務商，或填寫 SMTP 伺服器、連接埠、寄件人和登入資訊。使用 STARTTLS 或 SSL/TLS。</li>
+            <li>發送測試郵件。</li>
+            <li>在<strong>設定 › 支付 › 電子收據</strong>中選擇何時詢問顧客郵箱，以及是否自動發送收據。</li>
+          </ol>
+          <p>請按服務商說明開通 SMTP 並取得正確的密碼：</p>
+          <ul>
+            <li><a href="https://support.google.com/mail/answer/185833">Gmail</a></li>
+            <li><a href="https://learn.microsoft.com/en-us/exchange/mail-flow-best-practices/how-to-set-up-a-multifunction-device-or-application-to-send-email-using-microsoft-365-or-office-365">Microsoft 365</a></li>
+            <li><a href="https://support.apple.com/en-us/102525">iCloud Mail</a></li>
+            <li><a href="https://help.yahoo.com/kb/pop-smtp-settings-article-sln4724.html">Yahoo Mail</a></li>
+            <li><a href="https://www.fastmail.help/hc/en-us/articles/1500000278342-Server-names-and-ports">Fastmail</a></li>
+            <li><a href="https://www.zoho.com/mail/help/zoho-smtp.html">Zoho Mail</a></li>
+            <li><a href="https://proton.me/support/smtp-submission">Proton Mail</a></li>
+          </ul>
+          <p>收據無法列印或發送時，請參閱<a href="troubleshooting.html#receipts">打印機和郵件問題</a>。</p>
+          <p class="back-to-contents"><a href="#contents">返回目錄</a></p>
+        </section>
+        <section id="history">
+          <h2>查詢付款並完成每日對帳</h2>
+          <p><strong>交易紀錄</strong>按日列出付款和退款，並顯示每日總計。</p>
+          <ul>
+            <li>按銷售、<strong>待填寫小費</strong>、預授權、退款或<strong>需處理</strong>篩選，並用<strong>付款方式</strong>篩選卡品牌或錢包。</li>
+            <li>可按參考編號、授權碼、顧客參考編號或郵箱、卡號後四位、品牌、錢包或確切金額搜尋。每個詞都需相符：<code>visa 34</code> 可查找金額為 34 的 Visa 付款。</li>
+          </ul>
+          <p>螢幕上的總計受搜尋和篩選影響。凍結的付款（如訂金和收據小費）在扣款被受理當日計入銷售。</p>
+          <h3 id="close-day">每日對帳</h3>
+          <ol>
+            <li>打開<strong>交易紀錄</strong>，篩選<strong>需處理</strong>並逐一處理；參見<a href="troubleshooting.html#unknown">結果未知</a>。</li>
+            <li>檢查<strong>待填寫小費</strong>和預授權篩選。錄入小費，並在凍結到期前為訂金扣款或取消。</li>
+            <li>點按日期旁的列印圖示，列印<strong>本地每日摘要</strong>。</li>
+            <li>與商戶後台中的 Adyen 報告對帳；參見 <a href="https://docs.adyen.com/reporting/settlement-reconciliation">Adyen 結算對帳指南</a>。</li>
+          </ol>
+          <p>摘要忽略篩選，涵蓋整日的銷售、已含小費、已受理退款、淨額、新增凍結和未解決操作，按貨幣分列。TEST 和模擬器活動會標明。已支付的支付連結和日期未知的扣款會作為無日期活動單獨列出。</p>
+          <div class="callout callout-important" role="note">
+            <p class="callout-title">重要</p>
+            <p>本地每日摘要只包含本設備儲存的付款，不是 Adyen 的最終結算，也不包含其他設備。以商戶後台為準。</p>
+          </div>
+          <div class="callout callout-warning" role="note">
+            <p class="callout-title">警告</p>
+            <p>在 LIVE、TEST 和模擬器之間切換會永久刪除本設備上的所有交易紀錄和報告資料。存在未完成付款時，應用程式會再次警告：Adyen 上的任何操作都不會被取消，但本地恢復和安全重試資料將遺失。商品和設定保留。</p>
+          </div>
+          <p class="back-to-contents"><a href="#contents">返回目錄</a></p>
+        </section>
+        <section id="shoppers">
+          <h2>使用參考編號並儲存卡</h2>
+          <dl class="settings-list">
+            <dt>商戶交易參考編號</dt><dd>如需紀錄預訂或訂單號，請開啟<strong>設定 › 支付 › 要求輸入商戶交易參考編號</strong>。此號碼用於在 Adyen 中識別付款。留空時會生成唯一參考編號。</dd>
+            <dt>購物者參考編號</dt><dd>在<strong>設定 › 支付</strong>中選擇<strong>購物者參考編號</strong>：結帳時輸入的顧客參考編號（預設）、顧客郵箱或無。它會隨每筆付款發送給 Adyen。郵箱參考編號預設經過雜湊處理；所有設備請使用相同的鹽值。</dd>
+            <dt>儲存卡</dt><dd>設定購物者參考編號後，開啟<strong>提供儲存卡選項</strong>，並選擇適合您 Adyen 設定的<strong>循環扣款模式</strong>。勾選<strong>儲存卡以供今後支付</strong>前須取得顧客同意。Mini mPOS 無法使用已儲存的卡扣款。</dd>
+          </dl>
+          <p class="back-to-contents"><a href="#contents">返回目錄</a></p>
+        </section>
+        <section id="payment-links">
+          <h2>通過連結收款</h2>
+          <div class="callout callout-prereq" role="note">
+            <p class="callout-title">前提條件</p>
+            <ul>
+              <li>LIVE 使用前，商戶帳戶已滿足 <a href="https://docs.adyen.com/unified-commerce/pay-by-link">Adyen Pay by Link 要求</a>，包括條款和條件</li>
+            </ul>
+          </div>
+          <ol>
+            <li>在銷售結帳時點按<strong>建立支付連結</strong>。</li>
+            <li>展示二維碼，或點按<strong>通過郵件發送連結</strong>、<strong>列印連結</strong>，在平板或手機上還可點按<strong>分享連結</strong>。</li>
+            <li>保持連結畫面打開以查看付款結果，或稍後在交易紀錄中點按<strong>查詢支付狀態</strong>。</li>
+            <li>不再需要連結時，點按<strong>取消連結</strong>。</li>
+          </ol>
+          <p>連結被支付、過期或取消前，紀錄顯示<strong>待支付</strong>。在<strong>設定 › 支付 › 支付連結</strong>中設定連結有效時長。連結僅用於銷售，不用於訂金或收據小費。</p>
+          <div class="callout callout-important" role="note">
+            <p class="callout-title">重要</p>
+            <p>有效期內任何持有真實連結的人均可付款。已支付的連結請在<strong>商戶後台 › Payments › Payment list</strong>中退款，應用程式無法為其退款。</p>
+          </div>
+          <p>連結未顯示或不更新時，請參閱<a href="troubleshooting.html#links">支付連結問題</a>。</p>
+          <p class="back-to-contents"><a href="#contents">返回目錄</a></p>
+        </section>
+        <section id="preauth">
+          <h2>凍結並收取訂金</h2>
+          <div class="callout callout-prereq" role="note">
+            <p class="callout-title">前提條件</p>
+            <ul>
+              <li>Adyen 支援團隊已為您的付款方式開通預授權；參見 <a href="https://docs.adyen.com/point-of-sale/pre-authorisation">Adyen 預授權指南</a></li>
+            </ul>
+          </div>
+          <p>預授權在卡上凍結金額，不立即扣款。無需將整個帳戶改為手動扣款：Mini mPOS 僅對此類付款請求手動扣款。</p>
+          <ol>
+            <li>在首頁點按<strong>新建預授權</strong>。選擇預授權商品、掃描其條碼或輸入金額。每筆預授權包含一個商品。</li>
+            <li>結帳時點按<strong>預授權</strong>。收據會顯示凍結金額。</li>
+            <li>準備好後，在<strong>交易紀錄</strong>中打開該紀錄並選擇操作：</li>
+          </ol>
+          <dl class="settings-list">
+            <dt>扣款</dt><dd>收取應付金額。較少金額會釋放剩餘部分；較多金額會先請求發卡行增加凍結金額。請求扣款後即可退款。</dd>
+            <dt>調整金額</dt><dd>更改凍結金額，不扣款。提交相同金額會續期授權。</dd>
+            <dt>取消預授權</dt><dd>釋放凍結金額。如果已在商戶後台扣款，Adyen 會改為全額退款。</dd>
+          </dl>
+          <p><strong>已請求扣款</strong>不是最終確認，請檢查商戶後台。如需立即獲得金額調整結果，請按 <a href="https://docs.adyen.com/online-payments/adjust-authorisation">Adyen 授權調整指南</a>啟用 <strong>Return adjust authorisation data</strong>。</p>
+          <div class="callout callout-warning" role="note">
+            <p class="callout-title">警告</p>
+            <p>凍結金額會到期。請每天檢查預授權篩選，並及時扣款或取消。操作失敗或結果未知時，請參閱<a href="troubleshooting.html#modifications">扣款問題</a>。</p>
+          </div>
+          <p class="back-to-contents"><a href="#contents">返回目錄</a></p>
+        </section>
+        <section id="tips">
+          <h2>收取顧客在收據上填寫的小費</h2>
+          <div class="callout callout-prereq" role="note">
+            <p class="callout-title">前提條件</p>
+            <ul>
+              <li>配有打印機的終端</li>
+              <li>Adyen 支援團隊已開通預授權和超額扣款（overcapture）；參見 <a href="https://docs.adyen.com/point-of-sale/tipping/tipping-on-receipt">Adyen 收據小費指南</a></li>
+            </ul>
+          </div>
+          <p>在<strong>設定 › 支付 › 小費</strong>中選擇<strong>啟用（預設關閉）</strong>或<strong>啟用（預設開啟）</strong>，決定結帳開關的初始狀態。預設的<strong>停用</strong>會隱藏該開關。部分借記卡和錢包不支援此流程。</p>
+          <ol>
+            <li>在銷售結帳時開啟<strong>在收據上填寫小費</strong>，點按<strong>支付</strong>。帳單金額只凍結，不扣款。</li>
+            <li>列印收據。收據有空白的小費和總計欄，商戶副本有簽名欄。</li>
+            <li>顧客填寫後，在結果畫面或交易紀錄的<strong>待填寫小費</strong>篩選中點按<strong>輸入小費</strong>。</li>
+            <li>輸入小費或總計，或點按<strong>無小費</strong>，然後確認。</li>
+          </ol>
+          <p>應用程式會扣款帳單加小費的總額。超過 20% 的小費需要發卡行先增加凍結金額；若被拒絕，請輸入較少的小費或不加小費。小費儲存後不能更改。錄入小費前應取消付款而不是退款；錄入後的退款包括小費。</p>
+          <div class="callout callout-warning" role="note">
+            <p class="callout-title">警告</p>
+            <p>請及時錄入每筆小費（包括零小費），以便在凍結到期前完成扣款。扣款失敗或結果未知時，請參閱<a href="troubleshooting.html#modifications">扣款問題</a>。</p>
+          </div>
+          <p class="back-to-contents"><a href="#contents">返回目錄</a></p>
+        </section>
+        <section id="more">
+          <h2>設定更多設備並管理資料</h2>
+          <ol>
+            <li>在已設定的設備上打開<strong>設定 › 資料 › 共享至另一台設備</strong>。選擇商品目錄、設定和／或密碼與密鑰，然後點按<strong>顯示二維碼</strong>。</li>
+            <li>在新設備上選擇<strong>從另一台設備設定</strong>，按任意順序掃描所有二維碼。選擇合併或替換其商品目錄。</li>
+            <li>如需複製密碼和密鑰，請輸入第一台設備顯示的傳輸碼。點按<strong>匯入</strong>。</li>
+            <li>檢查價格和稅費，在<strong>設定 › 終端</strong>中測試連接，並列印測試收據。</li>
+          </ol>
+          <p>新設備保留自己的支付目標、終端、環境和 Tap to Pay 註冊。只有 Adyen 為另一台終端分配了相同密鑰時，共享密鑰才可用於該終端。</p>
+          <div class="callout callout-important" role="note">
+            <p class="callout-title">重要</p>
+            <p>這是一次性複製，不是同步，也不是交易紀錄備份。各設備保留各自的付款。在 Android 中清除應用程式資料會刪除設備上的全部商品、設定和交易紀錄。</p>
+          </div>
+          <p>在<strong>設定 › 資料</strong>中設定<strong>交易保留時長</strong>或點按<strong>清除已完成的交易紀錄</strong>；未解決的付款始終保留。請從<a href="https://github.com/astiskala/minimpos/releases/latest">最新發佈版本</a>安裝更新，方式與<a href="quick-start.html#install">原安裝</a>相同。</p>
+          <p>匯入問題請參閱 <a href="troubleshooting.html#access">PIN 和傳輸問題</a>。</p>
+          <p class="back-to-contents"><a href="#contents">返回目錄</a></p>
+        </section>
+      </div>
+    </div>
+  </main>
+  <footer class="site-footer"><div class="wrap footer-row">
+    <nav aria-label="指南和設定"><ul class="footer-nav">
+      <li><a href="quick-start.html">快速入門</a></li><li><a href="using.html" aria-current="page">使用 Mini mPOS</a></li>
+      <li><a href="troubleshooting.html">疑難排解</a></li><li><a href="setup.html">設定助手</a></li>
+    </ul></nav>
+    <p><img src="../favicon.svg" alt="" width="24" height="24"> Mini mPOS · MIT 授權條款 · <a href="https://github.com/astiskala/minimpos">GitHub</a> · <a href="https://github.com/astiskala/minimpos/blob/main/SECURITY.md">安全</a></p><p class="fine">Adyen 是 Adyen N.V. 的商標。Mini mPOS 是獨立項目，與 Adyen 無關聯，未獲其認可，也不由其提供支援。</p>
+  </div></footer>
+</body>
+</html>

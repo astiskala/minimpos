@@ -32,6 +32,7 @@ import kotlinx.serialization.serializer
  * @property pricingChange Local recoverable pricing journal; null when stable, never shared.
  * @property onboardingCompleted Whether this device has chosen its first-run setup path; never shared.
  * @property verifiedSetup Opaque fingerprint of locally verified connection fields and encrypted payment secrets; null until verified.
+ * @property languageTag Supported app-language tag, or empty to follow Android; device-local and unrelated to pricing.
  */
 @Serializable
 data class AppSettings(
@@ -46,10 +47,11 @@ data class AppSettings(
     val pricingChange: PricingChange? = null,
     val onboardingCompleted: Boolean = false,
     val verifiedSetup: String? = null,
+    val languageTag: String = "",
 ) {
     internal val acceptsSetupImport: Boolean get() = pricingChange == null
 
-    /** These settings with every number brought within its section's limits. */
+    /** These settings with numbers within their section's limits and a supported language tag, or Android's language. */
     fun normalized(): AppSettings =
         copy(
             terminal = terminal.normalized(),
@@ -59,6 +61,7 @@ data class AppSettings(
             security = security.normalized(),
             simulator = simulator.normalized(),
             history = history.normalized(),
+            languageTag = LANGUAGE_TAGS.firstOrNull { it.equals(languageTag.trim(), ignoreCase = true) }.orEmpty(),
         )
 
     /**
@@ -75,6 +78,7 @@ data class AppSettings(
             pricingChange = device.pricingChange,
             onboardingCompleted = device.onboardingCompleted,
             verifiedSetup = device.verifiedSetup,
+            languageTag = device.languageTag,
         )
 
     /**
@@ -103,6 +107,8 @@ data class AppSettings(
 
     /** The settings a new installation starts with. */
     companion object {
+        internal val LANGUAGE_TAGS = listOf("", "en", "zh-CN", "zh-Hant", "ja")
+
         internal val VAT_COUNTRIES =
             setOf(
                 "AT",

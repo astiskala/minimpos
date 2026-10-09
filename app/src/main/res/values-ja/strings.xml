@@ -1,5 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+  <string name="settings_language">言語</string>
+  <string name="settings_language_device">デバイスに従う</string>
+  <string name="settings_language_hint">このデバイスのアプリの表示と領収書のラベルを変更します。保存済みの店舗の文言は変わりません。</string>
+  <string-array name="app_language_names">
+    <item>@string/settings_language_device</item>
+    <item>English</item>
+    <item>简体中文</item>
+    <item>繁體中文</item>
+    <item>日本語</item>
+  </string-array>
     <string name="checkout_scan_wallet">ウォレットをスキャン</string>
     <string name="wallet_choose">ウォレットを選択</string>
     <string name="wallet_scan_hint">お客様の %1$s 支払いコードをスキャンしてください</string>

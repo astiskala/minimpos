@@ -1,0 +1,313 @@
+<!doctype html>
+<html lang="zh-Hant">
+  <head>
+    <meta charset="utf-8">
+    <meta content="width=device-width, initial-scale=1" name="viewport">
+    <title>Mini mPOS – Adyen Android 支付終端上的收銀應用程式</title>
+    <meta content="免費開源的收銀應用程式，直接在 Adyen Android 支付終端上銷售商品、接受支付、列印或發送收據，並通過掃描二維碼退款。" name="description">
+    <link href="../favicon.svg" rel="icon" type="image/svg+xml">
+    <link href="https://minimpos.app/zh-Hant/" rel="canonical">
+    <meta content="website" property="og:type">
+    <meta content="Mini mPOS – Adyen Android 支付終端上的收銀應用程式" property="og:title">
+    <meta content="商品、支付、收據與退款，一台支付終端即可完成。免費開源。" property="og:description">
+    <meta content="https://minimpos.app/zh-Hant/" property="og:url">
+    <meta content="https://minimpos.app/images/social.png" property="og:image">
+    <meta content="summary_large_image" name="twitter:card">
+    <meta content="#00112C" name="theme-color">
+    <link href="../styles.css" rel="stylesheet">
+    <link href="https://minimpos.app/" hreflang="en" rel="alternate">
+    <link href="https://minimpos.app/zh-CN/" hreflang="zh-CN" rel="alternate">
+  <link href="https://minimpos.app/zh-Hant/" hreflang="zh-Hant" rel="alternate">
+    <link href="https://minimpos.app/ja/" hreflang="ja" rel="alternate">
+    <link href="https://minimpos.app/" hreflang="x-default" rel="alternate">
+    <meta content="en_US" property="og:locale:alternate">
+    <meta content="zh_HK" property="og:locale">
+  <meta content="zh_CN" property="og:locale:alternate">
+    <meta content="ja_JP" property="og:locale:alternate">
+    <meta content="Mini mPOS 與 Adyen 支付終端示意圖，展示英文演示畫面。" property="og:image:alt">
+    <meta content="Mini mPOS – Adyen Android 支付終端上的收銀應用程式" name="twitter:title">
+    <meta content="商品、支付、收據與退款，一台支付終端即可完成。免費開源。" name="twitter:description">
+    <meta content="https://minimpos.app/images/social.png" name="twitter:image">
+    <meta content="Mini mPOS 與 Adyen 支付終端示意圖，展示英文演示畫面。" name="twitter:image:alt">
+  </head>
+  <body>
+    <a class="skip" href="#main">跳到正文</a>
+    <header class="site-header">
+      <div class="wrap header-row">
+        <a aria-label="Mini mPOS 首頁" class="brand" href="#top"> <img alt="" height="36" src="../favicon.svg" width="36"> <span>Mini mPOS</span> </a>
+        <nav class="desktop-nav" aria-label="主導航">
+          <ul class="nav">
+            <li><a href="quick-start.html">快速入門</a></li>
+            <li><a href="using.html">使用 Mini mPOS</a></li>
+            <li><a href="troubleshooting.html">疑難排解</a></li>
+            <li><a href="setup.html">設定助手</a></li>
+          </ul>
+        </nav>
+        <details class="mobile-menu"><summary>選單</summary><div class="mobile-panel"><nav aria-label="主導航"><ul class="nav">
+          <li><a href="quick-start.html">快速入門</a></li><li><a href="using.html">使用 Mini mPOS</a></li>
+          <li><a href="troubleshooting.html">疑難排解</a></li><li><a href="setup.html">設定助手</a></li>
+        </ul></nav>
+          <nav class="mobile-languages" aria-label="語言"><p>語言</p><ul>
+            <li><a href="../" hreflang="en" lang="en">English</a></li>
+            <li><a href="../zh-CN/" hreflang="zh-CN" lang="zh-CN">简体中文</a></li><li><a aria-current="page" href="./" hreflang="zh-Hant" lang="zh-Hant">繁體中文</a></li>
+            <li><a href="../ja/" hreflang="ja" lang="ja">日本語</a></li>
+          </ul></nav>
+        </div></details>
+        <details class="language-menu">
+          <summary aria-label="語言：繁體中文" title="語言"><svg aria-hidden="true" class="globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 2.7 3.8 5.7 3.8 9s-1.3 6.3-3.8 9c-2.5-2.7-3.8-5.7-3.8-9S9.5 5.7 12 3z"/></svg><span class="language-current">繁體中文</span></summary>
+          <nav aria-label="語言">
+            <ul>
+              <li><a href="../" hreflang="en" lang="en">English</a></li>
+              <li><a href="../zh-CN/" hreflang="zh-CN" lang="zh-CN">简体中文</a></li><li><a aria-current="page" href="../zh-Hant/" hreflang="zh-Hant" lang="zh-Hant">繁體中文</a></li>
+              <li><a href="../ja/" hreflang="ja" lang="ja">日本語</a></li>
+            </ul>
+          </nav>
+        </details>
+      </div>
+    </header>
+    <main id="main">
+      <section class="hero" id="top">
+        <div class="wrap hero-grid">
+          <div class="hero-copy">
+            <p class="eyebrow">免費開源 · 直接運行在 Adyen Android 支付終端上</p>
+            <h1>完整收銀流程，就在支付終端上。</h1>
+            <p class="lead">Mini mPOS 直接運行在 Adyen Android 支付終端上，一台設備即可選購商品、收款、列印或發送電子收據，並通過掃描收據完成退款。無需單獨的收銀機、平板或應用程式訂閱。更喜歡用平板電腦或手機？Mini mPOS 同樣可以在上面運行，配合您的終端或 Tap to Pay 收款。</p>
+            <div class="actions">
+              <a class="button" href="quick-start.html">開始使用</a>
+              <a class="button button-ghost" href="setup.html">打開設定助手</a>
+            </div>
+            <ul class="hero-points">
+              <li>直接在終端上運行</li>
+              <li>也可用於平板電腦或手機</li>
+              <li>支援 Adyen 處理的所有貨幣</li>
+              <li>內置模擬器，方便試用</li>
+              <li>支援英語、簡體中文、繁體中文和日語</li>
+            </ul>
+          </div>
+          <div class="hero-visual">
+            <div class="hero-shots">
+              <div class="terminal terminal-s1f2 terminal-back">
+                <img alt="S1F2 風格支付終端上的收據演示" height="960" src="../images/receipt.png" width="540">
+              </div>
+              <div class="terminal terminal-ams1 terminal-front">
+                <img alt="AMS1 風格支付終端上的銷售演示" height="800" src="../images/sale-ams1.png" width="480">
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+      <section class="guide-start" aria-labelledby="guides-title">
+        <div class="wrap">
+          <h2 id="guides-title">找到所需指南</h2>
+          <div class="guide-cards">
+            <article class="guide-card"><h3><a href="quick-start.html">快速入門</a></h3><p>檢查前提條件，安裝、連接 Adyen 並測試。</p></article>
+            <article class="guide-card"><h3><a href="using.html">使用 Mini mPOS</a></h3><p>收款、退款、發送收據和每日對帳。</p></article>
+            <article class="guide-card"><h3><a href="troubleshooting.html">疑難排解</a></h3><p>解決結果未知、付款被拒絕、終端綁定、網絡和打印機問題。</p></article>
+          </div>
+          <p><a href="#features">瞭解功能</a></p>
+        </div>
+      </section>
+      <section aria-labelledby="features-title" class="section" id="features">
+        <div class="wrap">
+          <h2 id="features-title">實體店收款所需，一應俱全</h2>
+          <p class="section-lead">從一個櫃台到分布在店舖、活動、配送和上門服務中的多台設備：商品、支付、收據和退款，無需運營後台。</p>
+          <div class="features">
+            <article class="feature">
+              <svg aria-hidden="true" viewbox="0 0 24 24"><path d="M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z"></path></svg>
+              <h3>商品觸手可及</h3>
+              <p>管理商品價格、分類、條碼和稅率。搜尋、篩選、掃碼，或直接輸入自訂金額。</p>
+              <p class="feature-link"><a href="using.html#products">新增商品</a></p>
+            </article>
+            <article class="feature">
+              <svg aria-hidden="true" viewbox="0 0 24 24"><path d="M3 6a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2zm2 2v2h14V8zm0 6v2h6v-2z"></path></svg>
+              <h3>支付輕鬆便捷</h3>
+              <p>直接在終端上通過 Adyen 接受卡和錢包支付，也可以在平板電腦或手機上配合終端或 Tap to Pay 收款。</p>
+              <p class="feature-link"><a href="using.html#sell">銷售收款</a></p>
+            </article>
+            <article class="feature">
+              <svg aria-hidden="true" viewbox="0 0 24 24"><path d="M6 2h12v20l-3-2-3 2-3-2-3 2zm3 5v2h6V7zm0 4v2h6v-2z"></path></svg>
+              <h3>收據由您做主</h3>
+              <p>列印包含商戶資訊和退款二維碼的完整收據，通過電子郵件發送，或在平板和手機上分享。</p>
+              <p class="feature-link"><a href="using.html#customize-receipts">設定收據</a></p>
+            </article>
+            <article class="feature">
+              <svg aria-hidden="true" viewbox="0 0 24 24"><path d="M10.6 13.4a1 1 0 0 1 0-1.4l3-3a1 1 0 1 1 1.4 1.4l-3 3a1 1 0 0 1-1.4 0zM8.5 19a4.5 4.5 0 0 1-3.2-7.7l2.1-2.1 1.4 1.4-2.1 2.1a2.5 2.5 0 0 0 3.5 3.5l2.1-2.1 1.4 1.4-2.1 2.1A4.5 4.5 0 0 1 8.5 19zm8.1-4.2-1.4-1.4 2.1-2.1a2.5 2.5 0 0 0-3.5-3.5l-2.1 2.1-1.4-1.4 2.1-2.1a4.5 4.5 0 0 1 6.4 6.4z"></path></svg>
+              <h3>支付連結</h3>
+              <p>也可以發送支付連結：顧客掃描二維碼或打開郵件中的連結，在 Adyen 支付頁面完成付款。</p>
+              <p class="feature-link"><a href="using.html#payment-links">建立支付連結</a></p>
+            </article>
+            <article class="feature">
+              <svg aria-hidden="true" viewbox="0 0 24 24"><path d="M3 3h8v8H3zm2 2v4h4V5zm8-2h8v8h-8zm2 2v4h4V5zM3 13h8v8H3zm2 2v4h4v-4zm8-2h3v3h-3zm5 0h3v3h-3zm-5 5h3v3h-3zm5 0h3v3h-3z"></path></svg>
+              <h3>快速退款</h3>
+              <p>掃描收據二維碼，按全部商品、部分商品或指定金額退款，始終關聯原支付。</p>
+              <p class="feature-link"><a href="using.html#refund">為付款退款</a></p>
+            </article>
+            <article class="feature">
+              <svg aria-hidden="true" viewbox="0 0 24 24"><path d="M12 2a5 5 0 0 1 5 5v2h1a2 2 0 0 1 2 2v1.5a6.5 6.5 0 0 0-8 8.5H6a2 2 0 0 1-2-2v-8a2 2 0 0 1 2-2h1V7a5 5 0 0 1 5-5zm0 2a3 3 0 0 0-3 3v2h6V7a3 3 0 0 0-3-3zm6 10a4.5 4.5 0 1 1 0 9 4.5 4.5 0 0 1 0-9zm-.75 1.5v3.3l2.6 1.5.75-1.3-1.85-1.07V15.5z"></path></svg>
+              <h3>訂金預授權</h3>
+              <p>為預訂或租賃凍結訂金，稍後收款、調整金額或解除凍結。</p>
+              <p class="feature-link"><a href="using.html#preauth">凍結並收取訂金</a></p>
+            </article>
+            <article class="feature">
+              <svg aria-hidden="true" viewbox="0 0 24 24"><path d="M12 2a10 10 0 1 1 0 20 10 10 0 0 1 0-20zm1 4h-2v1.1A3 3 0 0 0 8.5 10c0 1.7 1.3 2.4 3 2.8 1.2.3 1.5.6 1.5 1.1s-.5.9-1.3.9c-.9 0-1.5-.4-1.6-1.1H8.2c.1 1.6 1.2 2.6 2.8 2.9V18h2v-1.4c1.6-.3 2.8-1.3 2.8-2.8 0-1.8-1.4-2.5-3.1-2.9-1.1-.3-1.4-.5-1.4-1 0-.4.4-.8 1.1-.8.8 0 1.2.4 1.3.9h1.9A2.9 2.9 0 0 0 13 7.1z"></path></svg>
+              <h3>在收據上填寫小費</h3>
+              <p>讓顧客在列印的收據上填寫小費，準備好後再將小費加入帳單。</p>
+              <p class="feature-link"><a href="using.html#tips">收取收據上的小費</a></p>
+            </article>
+            <article class="feature">
+              <svg aria-hidden="true" viewbox="0 0 24 24"><path d="M7 5a2 2 0 1 1 0 4 2 2 0 0 1 0-4zm10 10a2 2 0 1 1 0 4 2 2 0 0 1 0-4zM18.4 4.2l1.4 1.4-14.2 14.2-1.4-1.4z"></path></svg>
+              <h3>靈活的稅費與貨幣</h3>
+              <p>設定自己的稅率，選擇價格含稅或結帳時加稅，並使用 Adyen 支援的任意貨幣。</p>
+              <p class="feature-link"><a href="using.html#pricing">設定貨幣和稅費</a></p>
+            </article>
+            <article class="feature">
+              <svg aria-hidden="true" viewbox="0 0 24 24"><path d="M4 4h10v6H4zm6 10h10v6H10zM16 5h3a1 1 0 0 1 1 1v5h2l-3 3-3-3h2V7h-2zM8 19H5a1 1 0 0 1-1-1v-5H2l3-3 3 3H6v4h2z"></path></svg>
+              <h3>掃碼匯入設定</h3>
+              <p>在電腦上用設定助手填寫密鑰，再掃碼匯入設備。還可以通過二維碼把商品和設定複製到更多設備，密鑰也可一並傳輸，並由傳輸碼保護。</p>
+              <p class="feature-link"><a href="setup.html">打開設定助手</a></p>
+            </article>
+            <article class="feature">
+              <svg aria-hidden="true" viewbox="0 0 24 24"><path d="M12 2a5 5 0 0 1 5 5v3h1a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-8a2 2 0 0 1 2-2h1V7a5 5 0 0 1 5-5zm0 2a3 3 0 0 0-3 3v3h6V7a3 3 0 0 0-3-3z"></path></svg>
+              <h3>安全保護</h3>
+              <p>管理員 PIN 保護設定，獨立的經理 PIN 保護付款後續操作。密碼和密鑰均加密儲存。</p>
+              <p class="feature-link"><a href="using.html#staff">設定員工 PIN</a></p>
+            </article>
+          </div>
+        </div>
+      </section>
+      <section aria-labelledby="flow-title" class="section section-alt">
+        <div class="wrap">
+          <h2 id="flow-title">從銷售到退款</h2>
+          <ol class="flow">
+            <li>
+              <div class="terminal terminal-s1f2">
+                <img alt="英文演示：咖啡店商品格狀清單與 $34.00 收款按鈕" height="960" loading="lazy" src="../images/sale.png" width="540">
+              </div>
+              <h3><span>1</span> 選擇商品</h3>
+              <p>點按商品或輸入金額。</p>
+            </li>
+            <li>
+              <div class="terminal terminal-s1f2">
+                <img alt="英文模擬器結帳演示：$1.46 稅費、顧客參考編號、支付、掃描錢包和建立支付連結按鈕" height="960" loading="lazy" src="../images/checkout.png" width="540">
+              </div>
+              <h3><span>2</span> 結帳</h3>
+              <p>新增參考編號，並在徵得同意後儲存卡。</p>
+            </li>
+            <li>
+              <div class="terminal terminal-s1f2">
+                <img alt="英文演示：含商戶資訊、商品、卡收據和退款二維碼的收據" height="960" loading="lazy" src="../images/receipt.png" width="540">
+              </div>
+              <h3><span>3</span> 列印收據</h3>
+              <p>一張收據包含全部資訊和二維碼。</p>
+            </li>
+            <li>
+              <div class="terminal terminal-s1f2">
+                <img alt="英文演示：為一杯 Flat white 和一份香蕉麵包退款 $11.00" height="960" loading="lazy" src="../images/refund.png" width="540">
+              </div>
+              <h3><span>4</span> 掃碼退款</h3>
+              <p>掃描收據，選擇要退款的內容。</p>
+            </li>
+          </ol>
+        </div>
+      </section>
+      <section aria-labelledby="history-title" class="section" id="history">
+        <div class="wrap split">
+          <div class="shot-pair">
+            <div class="terminal terminal-s1f2">
+              <img alt="英文演示：按日分組的交易紀錄，含預授權、小費、退款和錢包支付" height="960" loading="lazy" src="../images/history.png" width="540">
+            </div>
+            <div class="terminal terminal-s1f2">
+              <img alt="英文演示：搜尋顧客參考編號 CUST-1042，顯示對應銷售與退款" height="960" loading="lazy" src="../images/history-search.png" width="540">
+            </div>
+          </div>
+          <div>
+            <h2 id="history-title">輕鬆找到每筆交易</h2>
+            <p class="section-lead">查看每日總計，只需輕點幾下即可找到銷售、退款和訂金。</p>
+            <ul class="checks">
+              <li><strong>按您習慣的方式搜尋。</strong>查找參考編號、顧客、卡或金額。</li>
+              <li><strong>按付款方式篩選。</strong>選擇卡品牌或錢包，包括 Apple Pay、Google Pay 和 Samsung Pay。</li>
+              <li><strong>待辦事項一目瞭然。</strong>查看待錄入的小費、待收取的訂金和需處理的支付。</li>
+            </ul>
+            <p><a href="using.html#history">查詢付款和每日總計</a></p>
+          </div>
+        </div>
+      </section>
+      <section aria-labelledby="how-title" class="section section-alt" id="how">
+        <div class="wrap split">
+          <div>
+            <h2 id="how-title">內置於 Adyen 支付終端</h2>
+            <p class="section-lead">安裝在終端上後，Mini mPOS 無需其他硬件，也無需運行後端。在平板電腦或手機上，它可配合您的終端或 Tap to Pay 使用。</p>
+            <ul class="checks">
+              <li><strong>卡資料留在 Adyen。</strong>Mini mPOS 僅接收遮蔽卡資訊和支付參考編號。</li>
+              <li><strong>您的業務，就在您的設備上。</strong>在設備上管理商品、設定和交易紀錄，無需雲端帳戶。</li>
+              <li><strong>櫃台內外都適用。</strong>適配 AMS1 等小型終端、內置打印機的機型，以及平板電腦和手機。</li>
+            </ul>
+          </div>
+          <div class="shot-pair">
+            <div class="terminal terminal-s1f2">
+              <img alt="英文演示：稅費設定中的收取稅費開關及 GST 和 GST-free 稅率" height="960" loading="lazy" src="../images/tax.png" width="540">
+            </div>
+            <div class="terminal terminal-s1f2">
+              <img alt="英文演示：已批准的 $34.00 支付及卡資訊、商戶參考編號和 PSP 參考編號" height="960" loading="lazy" src="../images/approved.png" width="540">
+            </div>
+          </div>
+        </div>
+      </section>
+      <section aria-labelledby="start-title" class="section section-dark" id="start">
+        <div class="wrap">
+          <h2 id="start-title">開始使用</h2>
+          <div class="steps">
+            <article class="step">
+              <h3>先試用一下</h3>
+              <p>使用 Android 手機或模擬器探索內置支付模擬器，無需支付終端。</p>
+              <p><a href="quick-start.html#try">試用演示</a></p>
+            </article>
+            <article class="step">
+              <h3>準備好開始營業了嗎？</h3>
+              <p>下載應用程式，通過 Adyen 商戶後台部署到終端（或安裝到平板電腦或手機上），再用設定助手掃碼匯入密鑰。指南將帶您完成每一步。</p>
+              <p><a href="quick-start.html">閱讀快速入門</a> · <a href="setup.html">打開設定助手</a> · <a href="https://github.com/astiskala/minimpos/releases/latest">下載應用程式</a></p>
+            </article>
+          </div>
+          <p><a href="using.html">使用 Mini mPOS</a> · <a href="troubleshooting.html">疑難排解</a></p>
+        </div>
+      </section>
+      <section aria-labelledby="faq-title" class="section">
+        <div class="wrap">
+          <h2 id="faq-title">常見問題</h2>
+          <div class="faq">
+            <details>
+              <summary>哪種設定適合我？</summary>
+              <p>直接在 Adyen Android 終端完成整個收銀流程，或用 Android 平板、手機搭配網絡終端、雲端終端或 Tap to Pay。參閱<a href="quick-start.html#choose">要求和設定選擇</a>。列印需要打印機，掃描需要相機。</p>
+            </details>
+            <details>
+              <summary>費用是多少？</summary>
+              <p>應用程式免費，採用 MIT 授權條款開源。Adyen 的支付處理費用仍適用。</p>
+            </details>
+            <details>
+              <summary>這是 Adyen 的產品嗎？</summary>
+              <p>不是。Mini mPOS 並非 Adyen 製作、認可或支援的產品。正式上線前請在 Adyen TEST 環境測試。應用程式和 Adyen 問題參見<a href="troubleshooting.html#help">取得幫助</a>。</p>
+            </details>
+            <details>
+              <summary>設備共享後台嗎？</summary>
+              <p>不共享。商品、設定和交易紀錄儲存在各設備上。二維碼傳輸複製商品和設定，不複製交易紀錄或持續同步更改。參見<a href="using.html#more">設備和資料</a>。</p>
+            </details>
+            <details>
+              <summary>需要伺服器或 API 密鑰嗎？</summary>
+              <p>無需伺服器，但所有真實付款設定都需要 Checkout API 憑據。其他密鑰取決於支付目標。密鑰加密儲存在設備上，這與 Adyen 的伺服器端建議存在取捨。請按<a href="quick-start.html#connect">連接設定</a>及其中的安全建議操作。</p>
+            </details>
+          </div>
+        </div>
+      </section>
+    </main>
+    <footer class="site-footer">
+      <div class="wrap footer-row">
+        <nav aria-label="指南和設定"><ul class="footer-nav">
+          <li><a href="quick-start.html">快速入門</a></li><li><a href="using.html">使用 Mini mPOS</a></li>
+          <li><a href="troubleshooting.html">疑難排解</a></li><li><a href="setup.html">設定助手</a></li>
+        </ul></nav>
+        <p><img alt="" height="24" src="../favicon.svg" width="24"> Mini mPOS · MIT 授權條款 · <a href="https://github.com/astiskala/minimpos">GitHub</a> · <a href="https://github.com/astiskala/minimpos/blob/main/SECURITY.md">安全</a></p>
+        <p class="fine">Adyen 是 Adyen N.V. 的商標。Mini mPOS 是獨立項目，與 Adyen 無關聯，未獲其認可，也不由其提供支援。截圖展示內置模擬器中的英文演示咖啡店。</p>
+      </div>
+    </footer>
+  </body>
+</html>

@@ -150,7 +150,8 @@ standalone release builds retain release lint by default. R8, signing and packag
   Capture errors never replace the original assertion. These contain synthetic test data, not merchant screenshots;
   CI includes them in its existing reports artifact. Check timestamps: old failure artifacts may remain.
 - `LocalizationTest` checks resource/format parity and writes receipt samples under
-  `app/build/reports/localization/`. `LocalizedUiTest` checks Chinese/Japanese checkout at AMS1 size.
+  `app/build/reports/localization/`. `LocalizedUiTest` checks Simplified/Traditional Chinese and Japanese checkout
+  at AMS1 size.
 - No real network or DNS in unit tests. Use the existing fake terminal, cloud, Payments app, Management and link APIs.
 - Website helper integration tests use JDK HTTP/WebSocket APIs to drive Chromium's DevTools protocol. They load the
   actual localized pages from disk in a disposable profile with loopback-only debugging and outbound DNS blocked,
@@ -189,7 +190,8 @@ they require a backend for certificates, a private Maven repository, PCI MPoC an
   others `@param`. Don't merely repeat a declaration's name.
 - Keep Compose components small. Pass state/callbacks rather than view models below screen level, reuse components,
   and use `ColumnScope`/`RowScope` extensions for siblings that need parent spacing.
-- Put user text in resources, in short US English, with Chinese/Japanese translations and matching format arguments.
+- Put user text in resources, in short US English, with Simplified/Traditional Chinese and Japanese translations
+  and matching format arguments.
   CJK plurals use `other`. Preserve identifiers, stored spelling and Adyen text; keep Customer Area paths English.
   Follow the [Adyen partner style guide](https://docs.adyen.com/development-resources/partner-style-guide) for app copy
   and merchant guides: short active sentences, consistent terms and numbered instructions. Name Adyen in documentation
@@ -218,8 +220,9 @@ helper runs `docs/js/setup.js` and the vendored `qrcodegen.js`. Preserve the hel
 format alongside `TransferCodec`, `QrChunks`, `TransferSeal` and the helper vectors in `SetupTransferTest`.
 
 The merchant documentation has three guides: setup, using the app, troubleshooting. Each fact has one home, with
-links from elsewhere. Update English, Chinese and Japanese together, including metadata and reciprocal language
-switches. Website tests protect workflow coverage and translation parity, not a fixed count of pages or headings.
+links from elsewhere. Update English, Simplified Chinese, Traditional Chinese and Japanese together, including metadata
+and reciprocal language switches. Website tests protect workflow coverage and translation parity, not a fixed count
+of pages or headings.
 For a quick check, run `./gradlew :website-test:check`; the full gate remains required.
 
 Use [the screenshot skill](.devin/skills/docs-screenshots/SKILL.md) to capture English simulator demos and the social

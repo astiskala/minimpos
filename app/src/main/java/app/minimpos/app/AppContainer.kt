@@ -182,11 +182,11 @@ class AppContainer(
                 it.copy(
                     receipt =
                         it.receipt.copy(
-                            title = context.getString(R.string.receipt_default_title),
-                            footer = context.getString(R.string.receipt_default_footer),
-                            taxIdLabel = context.getString(taxIdLabelResource()),
+                            title = context.resources.getString(R.string.receipt_default_title),
+                            footer = context.resources.getString(R.string.receipt_default_footer),
+                            taxIdLabel = context.resources.getString(taxIdLabelResource()),
                             markedTaxRateNote =
-                                context.getString(
+                                context.resources.getString(
                                     if (country == "AU" && it.receipt.markedTaxRateMilliPercent == 0) {
                                         R.string.receipt_default_no_gst_note
                                     } else {
@@ -194,7 +194,7 @@ class AppContainer(
                                     },
                                 ),
                         ),
-                    email = it.email.copy(subject = context.getString(R.string.email_default_subject)),
+                    email = it.email.copy(subject = context.resources.getString(R.string.email_default_subject)),
                     onboardingCompleted = onboardingCompleted,
                 )
             }
@@ -204,6 +204,8 @@ class AppContainer(
 
     /** [settings] as a state that is always available; it holds the defaults until the file has been read. */
     val settingsState: StateFlow<AppSettings> = settings.settings.stateIn(appScope, SharingStarted.Eagerly, defaults)
+
+    private val localizedContext: Context get() = context.withAppLanguage(settingsState.value.languageTag)
 
     /** First-run choice after storage has loaded; null prevents briefly showing either Home or onboarding too early. */
     val onboardingState: StateFlow<Boolean?> =
@@ -225,7 +227,7 @@ class AppContainer(
     val sessionLock = SessionLock()
 
     /** Tax rates, categories and products. */
-    val catalog = CatalogRepository(database, context.getString(R.string.tax_default_zero))
+    val catalog = CatalogRepository(database, localizedContext.getString(R.string.tax_default_zero))
 
     /** Stored sales. */
     val sales = SaleRepository(database)
@@ -265,7 +267,7 @@ class AppContainer(
                     R.string.sample_cake,
                     R.string.sample_deposit,
                     R.string.sample_category,
-                ).map(context::getString)
+                ).map(localizedContext::getString)
             },
             starterRates = ::starterTaxRates,
             country = device.country,
@@ -355,11 +357,12 @@ class AppContainer(
     internal val receiptFactory =
         ReceiptFactory(
             receiptLabels(),
-            currentLabels = ::receiptLabels,
-            simulationText = { context.getString(R.string.link_simulation_note) },
-            demoLinkText = { context.getString(R.string.link_demo_label) },
+            locale = { localizedContext.resources.configuration.locales[0] ?: Locale.ROOT },
+            currentLabels = { receiptLabels() },
+            simulationText = { localizedContext.getString(R.string.link_simulation_note) },
+            demoLinkText = { localizedContext.getString(R.string.link_demo_label) },
             reportText = { label ->
-                context.getString(
+                localizedContext.getString(
                     when (label) {
                         ReportText.TITLE -> R.string.report_title
                         ReportText.GENERATED -> R.string.report_generated
@@ -383,25 +386,25 @@ class AppContainer(
                 when (standing) {
                     PaymentStanding.CHARGED -> null
 
-                    PaymentStanding.NOT_APPROVED -> context.getString(R.string.receipt_not_completed)
+                    PaymentStanding.NOT_APPROVED -> localizedContext.getString(R.string.receipt_not_completed)
 
-                    PaymentStanding.AWAITING_TIP -> context.getString(R.string.detail_tip_awaiting)
+                    PaymentStanding.AWAITING_TIP -> localizedContext.getString(R.string.detail_tip_awaiting)
 
-                    PaymentStanding.HELD -> context.getString(R.string.receipt_pre_auth_note)
+                    PaymentStanding.HELD -> localizedContext.getString(R.string.receipt_pre_auth_note)
 
-                    PaymentStanding.CAPTURE_REQUESTED -> context.getString(R.string.status_capture_requested)
+                    PaymentStanding.CAPTURE_REQUESTED -> localizedContext.getString(R.string.status_capture_requested)
 
-                    PaymentStanding.CAPTURE_FAILED -> context.getString(R.string.status_capture_failed)
+                    PaymentStanding.CAPTURE_FAILED -> localizedContext.getString(R.string.status_capture_failed)
 
                     PaymentStanding.CAPTURE_SENDING,
                     PaymentStanding.CAPTURE_UNKNOWN,
-                    -> context.getString(R.string.status_capture_unknown)
+                    -> localizedContext.getString(R.string.status_capture_unknown)
 
-                    PaymentStanding.HOLD_CANCELLED -> context.getString(R.string.status_cancellation_requested)
+                    PaymentStanding.HOLD_CANCELLED -> localizedContext.getString(R.string.status_cancellation_requested)
                 }
             },
             refundText = { status ->
-                context.getString(
+                localizedContext.getString(
                     when (status) {
                         RefundStatus.REQUESTED -> R.string.refund_status_requested
                         RefundStatus.PENDING -> R.string.status_pending
@@ -410,30 +413,26 @@ class AppContainer(
                     },
                 )
             },
-            sampleTexts = {
-                ReceiptSampleTexts(
-                    coffee = context.getString(R.string.receipt_sample_coffee),
-                    custom = context.getString(R.string.receipt_sample_item),
-                    taxed =
-                        context.getString(
-                            standardTaxNameResource().takeUnless { it == R.string.tax_default_standard } ?: R.string.receipt_sample_tax,
-                        ),
-                    zero = context.getString(R.string.receipt_sample_zero_tax),
-                )
-            },
+            sampleTexts = { sampleTexts() },
         )
 
-    /** A time stamp (epoch milliseconds) as a short date and time in the device's locale and zone, as receipts print it. */
+    /** A time stamp (epoch milliseconds) in the current app language and device time zone, as receipts print it. */
     fun formatDateTime(epochMillis: Long): String = receiptFactory.formatDateTime(epochMillis)
 
     /** The sample receipt Settings shows and test-prints with [appSettings], which may not be stored yet. */
-    fun sampleReceipt(appSettings: AppSettings): ReceiptDocument =
-        receiptFactory.sample(
+    fun sampleReceipt(appSettings: AppSettings): ReceiptDocument {
+        val localized = context.withAppLanguage(appSettings.languageTag)
+        return ReceiptFactory(
+            receiptLabels(localized),
+            locale = { localized.resources.configuration.locales[0] ?: Locale.ROOT },
+            sampleTexts = { sampleTexts(localized) },
+        ).sample(
             appSettings.receipt,
             currency(appSettings),
             appSettings.payment.taxMode,
             appSettings.payment.asksCustomerReference,
         )
+    }
 
     /** Printing and emailing of stored sales and refunds, including what is delivered automatically. */
     val receipts =
@@ -452,7 +451,7 @@ class AppContainer(
                     currentTexts = ::emailTexts,
                     qrPng = { QrCodes.png(it) },
                 ),
-            notFound = context.getString(R.string.error_not_found),
+            notFound = localizedContext.getString(R.string.error_not_found),
         )
 
     private val sessions = SaleKind.entries.associateWith { SaleSession(it) }
@@ -498,6 +497,7 @@ class AppContainer(
             scope = appScope,
             sales = sales,
             target = api::target,
+            locale = { localizedContext.resources.configuration.locales[0] ?: Locale.ROOT },
             onCreated = { id, start ->
                 // The cart is now the link's to pay, so the next sale starts afresh.
                 completeSale(id, start.payment)
@@ -577,17 +577,17 @@ class AppContainer(
         return listOfNotNull(
             starter.standardMilliPercent?.let {
                 TaxRateEntity(
-                    name = context.getString(standardTaxNameResource()),
+                    name = localizedContext.getString(standardTaxNameResource()),
                     rateMilliPercent = it,
                 )
             },
             starter.reducedMilliPercent?.let {
                 TaxRateEntity(
-                    name = context.getString(R.string.tax_default_reduced),
+                    name = localizedContext.getString(R.string.tax_default_reduced),
                     rateMilliPercent = it,
                 )
             },
-            TaxRateEntity(name = context.getString(R.string.tax_default_zero), rateMilliPercent = 0),
+            TaxRateEntity(name = localizedContext.getString(R.string.tax_default_zero), rateMilliPercent = 0),
         )
     }
 
@@ -644,63 +644,74 @@ class AppContainer(
             else -> if (country in AppSettings.VAT_COUNTRIES) R.string.tax_name_vat else R.string.tax_default_standard
         }
 
-    private fun receiptLabels() =
+    private fun sampleTexts(localizedContext: Context = this.localizedContext) =
+        ReceiptSampleTexts(
+            coffee = localizedContext.getString(R.string.receipt_sample_coffee),
+            custom = localizedContext.getString(R.string.receipt_sample_item),
+            taxed =
+                localizedContext.getString(
+                    standardTaxNameResource().takeUnless { it == R.string.tax_default_standard } ?: R.string.receipt_sample_tax,
+                ),
+            zero = localizedContext.getString(R.string.receipt_sample_zero_tax),
+        )
+
+    private fun receiptLabels(localizedContext: Context = this.localizedContext) =
         ReceiptLabels(
-            date = context.getString(R.string.receipt_date),
-            reference = context.getString(R.string.receipt_reference),
-            customer = context.getString(R.string.receipt_customer),
-            subtotal = context.getString(R.string.receipt_subtotal),
-            tax = context.getString(R.string.receipt_tax),
-            total = context.getString(R.string.receipt_total),
-            includesTaxFormat = context.getString(R.string.receipt_includes_tax),
-            quantityFormat = context.getString(R.string.receipt_quantity),
-            refundQrCaption = context.getString(R.string.receipt_refund_qr_caption),
-            merchantCopy = context.getString(R.string.receipt_merchant_copy),
-            refundTitle = context.getString(R.string.receipt_refund_title),
-            originalReference = context.getString(R.string.receipt_original_sale),
-            refundTotal = context.getString(R.string.receipt_refund_total),
-            partialRefund = context.getString(R.string.receipt_partial_refund),
-            cardSaved = context.getString(R.string.receipt_card_saved),
-            notCompleted = context.getString(R.string.receipt_not_completed),
-            preAuthTitle = context.getString(R.string.receipt_pre_auth_title),
-            amountHeld = context.getString(R.string.receipt_amount_held),
-            preAuthNote = context.getString(R.string.receipt_pre_auth_note),
-            cancellationTitle = context.getString(R.string.receipt_cancellation_title),
-            cancelledReference = context.getString(R.string.receipt_cancelled_reference),
-            cancellationNote = context.getString(R.string.receipt_cancellation_note),
-            released = context.getString(R.string.receipt_released),
-            amount = context.getString(R.string.receipt_amount),
-            tip = context.getString(R.string.receipt_tip),
-            tipTotal = context.getString(R.string.receipt_tip_total),
-            signature = context.getString(R.string.receipt_signature),
-            heldNow = context.getString(R.string.receipt_held_now),
-            captured = context.getString(R.string.receipt_captured),
-            taxableGrossFormat = context.getString(R.string.receipt_taxable_gross_format),
-            taxableNetFormat = context.getString(R.string.receipt_taxable_net_format),
-            amountDue = context.getString(R.string.receipt_amount_due),
-            unpaid = context.getString(R.string.receipt_unpaid),
-            payLinkCaption = context.getString(R.string.receipt_pay_link_caption),
-            payLinkIntro = context.getString(R.string.receipt_pay_link_intro),
-            payNow = context.getString(R.string.receipt_pay_now),
-            linkValidFormat = context.getString(R.string.receipt_link_valid),
-            paidOnline = context.getString(R.string.receipt_paid_online),
+            date = localizedContext.getString(R.string.receipt_date),
+            reference = localizedContext.getString(R.string.receipt_reference),
+            customer = localizedContext.getString(R.string.receipt_customer),
+            subtotal = localizedContext.getString(R.string.receipt_subtotal),
+            tax = localizedContext.getString(R.string.receipt_tax),
+            total = localizedContext.getString(R.string.receipt_total),
+            includesTaxFormat = localizedContext.getString(R.string.receipt_includes_tax),
+            quantityFormat = localizedContext.getString(R.string.receipt_quantity),
+            refundQrCaption = localizedContext.getString(R.string.receipt_refund_qr_caption),
+            merchantCopy = localizedContext.getString(R.string.receipt_merchant_copy),
+            refundTitle = localizedContext.getString(R.string.receipt_refund_title),
+            originalReference = localizedContext.getString(R.string.receipt_original_sale),
+            refundTotal = localizedContext.getString(R.string.receipt_refund_total),
+            partialRefund = localizedContext.getString(R.string.receipt_partial_refund),
+            cardSaved = localizedContext.getString(R.string.receipt_card_saved),
+            notCompleted = localizedContext.getString(R.string.receipt_not_completed),
+            preAuthTitle = localizedContext.getString(R.string.receipt_pre_auth_title),
+            amountHeld = localizedContext.getString(R.string.receipt_amount_held),
+            preAuthNote = localizedContext.getString(R.string.receipt_pre_auth_note),
+            cancellationTitle = localizedContext.getString(R.string.receipt_cancellation_title),
+            cancelledReference = localizedContext.getString(R.string.receipt_cancelled_reference),
+            cancellationNote = localizedContext.getString(R.string.receipt_cancellation_note),
+            released = localizedContext.getString(R.string.receipt_released),
+            amount = localizedContext.getString(R.string.receipt_amount),
+            tip = localizedContext.getString(R.string.receipt_tip),
+            tipTotal = localizedContext.getString(R.string.receipt_tip_total),
+            signature = localizedContext.getString(R.string.receipt_signature),
+            heldNow = localizedContext.getString(R.string.receipt_held_now),
+            captured = localizedContext.getString(R.string.receipt_captured),
+            taxableGrossFormat = localizedContext.getString(R.string.receipt_taxable_gross_format),
+            taxableNetFormat = localizedContext.getString(R.string.receipt_taxable_net_format),
+            amountDue = localizedContext.getString(R.string.receipt_amount_due),
+            unpaid = localizedContext.getString(R.string.receipt_unpaid),
+            payLinkCaption = localizedContext.getString(R.string.receipt_pay_link_caption),
+            payLinkIntro = localizedContext.getString(R.string.receipt_pay_link_intro),
+            payNow = localizedContext.getString(R.string.receipt_pay_now),
+            linkValidFormat = localizedContext.getString(R.string.receipt_link_valid),
+            paidOnline = localizedContext.getString(R.string.receipt_paid_online),
         )
 
     private fun emailTexts() =
         EmailTexts(
-            demoSubject = context.getString(R.string.link_demo_label),
-            simulationNote = context.getString(R.string.link_simulation_note),
-            appName = context.getString(R.string.app_name),
-            intro = context.getString(R.string.email_intro),
-            refundIntro = context.getString(R.string.email_refund_intro),
-            testSubject = context.getString(R.string.email_test_subject),
-            testBody = context.getString(R.string.email_test_body),
-            notConfigured = context.getString(R.string.email_not_configured),
-            invalidAddress = context.getString(R.string.email_invalid_address),
-            preAuthIntro = context.getString(R.string.email_pre_auth_intro),
-            cancellationIntro = context.getString(R.string.email_cancellation_intro),
-            linkSubject = context.getString(R.string.email_link_subject),
-            linkIntro = context.getString(R.string.email_link_intro),
+            demoSubject = localizedContext.getString(R.string.link_demo_label),
+            simulationNote = localizedContext.getString(R.string.link_simulation_note),
+            appName = localizedContext.getString(R.string.app_name),
+            intro = localizedContext.getString(R.string.email_intro),
+            refundIntro = localizedContext.getString(R.string.email_refund_intro),
+            testSubject = localizedContext.getString(R.string.email_test_subject),
+            testBody = localizedContext.getString(R.string.email_test_body),
+            notConfigured = localizedContext.getString(R.string.email_not_configured),
+            invalidAddress = localizedContext.getString(R.string.email_invalid_address),
+            preAuthIntro = localizedContext.getString(R.string.email_pre_auth_intro),
+            cancellationIntro = localizedContext.getString(R.string.email_cancellation_intro),
+            linkSubject = localizedContext.getString(R.string.email_link_subject),
+            linkIntro = localizedContext.getString(R.string.email_link_intro),
         )
 
     /** The application identity and currency resolution, also used without a container. */

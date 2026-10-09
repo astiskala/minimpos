@@ -1,0 +1,308 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="Content-Security-Policy" content="connect-src 'none'; form-action 'none'; base-uri 'none'; object-src 'none'; frame-src 'none'; worker-src 'none'">
+  <meta name="referrer" content="no-referrer">
+  <title>設定助手 – Mini mPOS</title>
+  <meta name="description" content="在方便打開商戶後台的電腦上填寫 Adyen 密鑰和帳戶資訊，再以二維碼形式掃描到 Mini mPOS 中，無需在設備上輸入冗長的 API 密鑰。">
+  <link rel="icon" href="../favicon.svg" type="image/svg+xml">
+  <link rel="canonical" href="https://minimpos.app/zh-Hant/setup.html">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="Mini mPOS 設定助手">
+  <meta property="og:description" content="在電腦上複製 Adyen 密鑰，再以二維碼形式掃描到 Mini mPOS 中。">
+  <meta property="og:url" content="https://minimpos.app/zh-Hant/setup.html">
+  <meta property="og:image" content="https://minimpos.app/images/social.png">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="theme-color" content="#00112C">
+  <link rel="stylesheet" href="../styles.css">
+  <link href="https://minimpos.app/setup.html" hreflang="en" rel="alternate">
+  <link href="https://minimpos.app/zh-CN/setup.html" hreflang="zh-CN" rel="alternate">
+  <link href="https://minimpos.app/zh-Hant/setup.html" hreflang="zh-Hant" rel="alternate">
+  <link href="https://minimpos.app/ja/setup.html" hreflang="ja" rel="alternate">
+  <link href="https://minimpos.app/setup.html" hreflang="x-default" rel="alternate">
+  <meta content="zh_HK" property="og:locale">
+  <meta content="zh_CN" property="og:locale:alternate">
+  <meta content="en_US" property="og:locale:alternate">
+  <meta content="ja_JP" property="og:locale:alternate">
+  <meta content="Adyen 支付終端示意圖上的 Mini mPOS，展示英文演示畫面。" property="og:image:alt">
+  <meta content="Mini mPOS 設定助手" name="twitter:title">
+  <meta content="在電腦上複製 Adyen 密鑰，再以二維碼形式掃描到 Mini mPOS 中。" name="twitter:description">
+  <meta content="https://minimpos.app/images/social.png" name="twitter:image">
+  <meta content="Adyen 支付終端示意圖上的 Mini mPOS，展示英文演示畫面。" name="twitter:image:alt">
+  <script defer src="../js/qrcodegen.js"></script>
+  <script defer src="../js/setup.js"></script>
+</head>
+<body>
+  <a class="skip" href="#main">跳到正文</a>
+
+  <header class="site-header">
+    <div class="wrap header-row">
+      <a class="brand" href="./" aria-label="Mini mPOS 首頁">
+        <img src="../favicon.svg" alt="" width="36" height="36">
+        <span>Mini mPOS</span>
+      </a>
+      <nav class="desktop-nav" aria-label="主導航">
+        <ul class="nav">
+          <li><a href="quick-start.html">快速入門</a></li>
+          <li><a href="using.html">使用 Mini mPOS</a></li>
+          <li><a href="troubleshooting.html">疑難排解</a></li>
+          <li><a href="setup.html" aria-current="page">設定助手</a></li>
+        </ul>
+      </nav>
+      <details class="mobile-menu"><summary>選單</summary><div class="mobile-panel"><nav aria-label="主導航"><ul class="nav">
+        <li><a href="quick-start.html">快速入門</a></li><li><a href="using.html">使用 Mini mPOS</a></li>
+        <li><a href="troubleshooting.html">疑難排解</a></li><li><a href="setup.html" aria-current="page">設定助手</a></li>
+      </ul></nav>
+        <nav class="mobile-languages" aria-label="語言"><p>語言</p><ul>
+          <li><a href="../setup.html" hreflang="en" lang="en">English</a></li>
+          <li><a href="../zh-CN/setup.html" hreflang="zh-CN" lang="zh-CN">简体中文</a></li><li><a aria-current="page" href="setup.html" hreflang="zh-Hant" lang="zh-Hant">繁體中文</a></li>
+          <li><a href="../ja/setup.html" hreflang="ja" lang="ja">日本語</a></li>
+        </ul></nav>
+      </div></details>
+      <details class="language-menu">
+        <summary aria-label="語言：繁體中文" title="語言"><svg aria-hidden="true" class="globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 2.7 3.8 5.7 3.8 9s-1.3 6.3-3.8 9c-2.5-2.7-3.8-5.7-3.8-9S9.5 5.7 12 3z"/></svg><span class="language-current">繁體中文</span></summary>
+        <nav aria-label="語言">
+          <ul>
+            <li><a href="../setup.html" hreflang="en" lang="en">English</a></li>
+            <li><a href="../zh-CN/setup.html" hreflang="zh-CN" lang="zh-CN">简体中文</a></li><li><a aria-current="page" href="../zh-Hant/setup.html" hreflang="zh-Hant" lang="zh-Hant">繁體中文</a></li>
+            <li><a href="../ja/setup.html" hreflang="ja" lang="ja">日本語</a></li>
+          </ul>
+        </nav>
+      </details>
+    </div>
+  </header>
+
+  <main id="main">
+    <section class="guide-hero">
+      <div class="wrap">
+        <p class="eyebrow">設定助手</p>
+        <h1>在電腦上設定設備</h1>
+        <p class="lead">
+          在終端鍵盤上輸入冗長的 API 密鑰既費時又容易出錯。請在這裡對照商戶後台填寫，再以二維碼形式掃描到 Mini mPOS 中。
+        </p>
+      </div>
+    </section>
+
+    <div class="wrap setup">
+      <div class="setup-main">
+        <p>初次使用 Mini mPOS？填寫前請先<a href="quick-start.html#choose">選擇設定方式</a>並<a href="quick-start.html#credentials">準備憑據</a>。</p>
+        <p class="hint" id="customer-area-note">商戶後台連結會在新分頁中打開，方便保留此表單。</p>
+        <p class="note" id="setup-noscript">設定助手需要 JavaScript。請為此頁面啟用 JavaScript，或按照<a href="quick-start.html#connect">快速入門指南</a>在應用程式中輸入。</p>
+
+        <form id="setup-form" class="setup-form" hidden autocomplete="off"
+              data-msg-making="正在生成二維碼…"
+              data-msg-ready="已生成 {total} 個二維碼，見下方。"
+              data-msg-code-of="第 {n} 個，共 {total} 個"
+              data-msg-pause="暫停"
+              data-msg-play="播放"
+              data-msg-unsupported="此瀏覽器無法生成二維碼。請使用最新版本的 Chrome、Edge、Firefox 或 Safari。">
+          <fieldset>
+            <legend>Mini mPOS 在哪裡運行，支付發往哪裡？</legend>
+            <label class="choice"><input type="radio" name="destination" value="thisTerminal" checked> <span><strong>在 Adyen 終端上運行</strong>，由該終端直接收款</span></label>
+            <label class="choice"><input type="radio" name="destination" value="network"> <span><strong>在平板電腦或手機上運行</strong>，配合同一網絡中的終端</span></label>
+            <label class="choice"><input type="radio" name="destination" value="cloud"> <span><strong>在平板電腦或手機上運行</strong>，配合通過互聯網連接的終端（雲端）</span></label>
+            <label class="choice"><input type="radio" name="destination" value="tapToPay"> <span><strong>在手機上運行</strong>，通過 Adyen Payments 應用程式使用 Tap to Pay</span></label>
+          </fieldset>
+
+          <fieldset>
+            <legend>使用哪個 Adyen 環境？</legend>
+            <label class="choice"><input type="radio" name="environment" value="test" checked> <span><strong>TEST</strong>：測試終端和測試卡</span></label>
+            <label class="choice"><input type="radio" name="environment" value="live"> <span><strong>LIVE</strong>：真實支付</span></label>
+            <p class="hint">對於網絡或雲端終端，此選項會作為應用程式環境匯入。在 Adyen 終端上運行或使用 Tap to Pay 時，環境由本設備或已安裝的 Payments 應用程式決定。</p>
+          </fieldset>
+
+          <fieldset data-for="thisTerminal network cloud">
+            <legend>如何設定？</legend>
+            <label class="choice"><input type="radio" name="setupMode" value="automatic" checked> <span><strong>自動（建議）</strong>：在設備上查詢終端設定</span></label>
+            <label class="choice"><input type="radio" name="setupMode" value="manual"> <span><strong>手動</strong>：在電腦上輸入全部連接資訊</span></label>
+          </fieldset>
+
+          <p class="hint" data-only="tapToPay" hidden>請先遵循<a href="quick-start.html#tap-to-pay">Tap to Pay 準備步驟</a>並安裝 Payments 應用程式。輸入商戶帳戶和獨立的 Payments 應用程式 API 密鑰進行註冊。請在此輸入共享密鑰；Mini mPOS 不會查詢共享密鑰。匯入完成前，手機會要求明確執行註冊操作。無需複製註冊代碼。</p>
+
+          <fieldset data-for="thisTerminal network cloud tapToPay" id="api-key-fields">
+            <legend>Adyen API 密鑰</legend>
+            <p class="hint">在 <a data-ca="developers/api-credentials/" href="https://ca-test.adyen.com/ca/ui/developers/api-credentials/" target="_blank" rel="noopener noreferrer" aria-describedby="customer-area-note">Developers › API credentials</a> 中建立憑據並生成 API 密鑰。<span data-only="cloud" hidden>雲端付款需新增 Cloud Device API role。</span><span data-only="tapToPay" hidden>此密鑰用於 Checkout 操作，而非 Payments 應用程式註冊。</span>此主憑據需要特定角色；參見<a href="quick-start.html#credentials">憑據要求</a>。</p>
+            <label for="apiKey">API 密鑰</label>
+            <input id="apiKey" name="apiKey" type="password" required spellcheck="false">
+          </fieldset>
+
+          <fieldset data-for="thisTerminal network cloud tapToPay" data-mode="manual">
+            <legend>商戶帳戶</legend>
+            <label for="merchantAccount">商戶帳戶</label>
+            <input id="merchantAccount" name="merchantAccount" type="text" required spellcheck="false">
+          </fieldset>
+
+          <fieldset data-for="network" data-mode="manual">
+            <legend>同一網絡中的終端</legend>
+            <label for="host">終端 IP 地址</label>
+            <input id="host" name="host" type="text" inputmode="url" required spellcheck="false" placeholder="192.0.2.1">
+            <label for="poiId">終端 ID（POIID）</label>
+            <input id="poiId" name="poiId" type="text" required spellcheck="false" placeholder="S1F2-000158213605014">
+            <p class="hint">兩者都可在終端的 Device info（設備資訊）畫面查看。</p>
+          </fieldset>
+
+          <fieldset data-for="cloud" data-mode="manual">
+            <legend>雲端終端</legend>
+            <label for="cloudPoiId">終端 ID（POIID）</label>
+            <input id="cloudPoiId" name="poiId" type="text" required spellcheck="false" placeholder="S1F2-000158213605014">
+            <p class="hint">可在終端的 Device info 畫面或商戶後台的 Devices › Terminals 中查看。</p>
+          </fieldset>
+
+          <fieldset data-for="thisTerminal network tapToPay" data-mode="manual">
+            <legend>共享密鑰</legend>
+            <p class="hint">在商戶後台的 <a data-ca="devices/device-settings?categoryId=tapi" href="https://ca-test.adyen.com/ca/ui/devices/device-settings?categoryId=tapi" target="_blank" rel="noopener noreferrer" aria-describedby="customer-area-note">Devices › Device settings › Terminal API</a> 中的 Encryption key 下（點按鉛筆圖示查看）。</p>
+            <label for="keyIdentifier">密鑰識別碼</label>
+            <input id="keyIdentifier" name="keyIdentifier" type="text" required data-required-for="thisTerminal network tapToPay" spellcheck="false">
+            <label for="passphrase">密鑰口令</label>
+            <input id="passphrase" name="passphrase" type="password" required data-required-for="thisTerminal network tapToPay" spellcheck="false">
+            <label for="keyVersion">密鑰版本</label>
+            <input id="keyVersion" name="keyVersion" type="number" min="1" max="9999" value="1" required data-required-for="thisTerminal network tapToPay">
+          </fieldset>
+
+          <fieldset data-for="thisTerminal network cloud tapToPay" data-env="live">
+            <legend>LIVE URL 前置字元</legend>
+            <p class="hint">見 <a data-ca="developers/api-urls" href="https://ca-live.adyen.com/ca/ui/developers/api-urls" target="_blank" rel="noopener noreferrer" aria-describedby="customer-area-note">Developers › API URLs</a>。</p>
+            <label for="liveUrlPrefix">前置字元</label>
+            <input id="liveUrlPrefix" name="liveUrlPrefix" type="text" required spellcheck="false" placeholder="1797a841fbb37ca7-AdyenDemo">
+          </fieldset>
+
+          <fieldset data-for="tapToPay">
+            <legend>Tap to Pay</legend>
+            <p class="hint">用於手機註冊的獨立 API 憑據，僅具有 Adyen Payments app role；參見 <a href="https://docs.adyen.com/point-of-sale/mobile-android/build/payments-app">Adyen Payments 應用程式指南</a>。</p>
+            <label for="paymentsAppApiKey">Payments 應用程式 API 密鑰</label>
+            <input id="paymentsAppApiKey" name="paymentsAppApiKey" type="password" required spellcheck="false">
+            <label for="storeId">店舖 ID（可選）</label>
+            <input id="storeId" name="storeId" type="text" spellcheck="false">
+            <p class="hint">如只為一家店舖設定本手機：填寫 <a data-ca="devices/stores/" href="https://ca-test.adyen.com/ca/ui/devices/stores/" target="_blank" rel="noopener noreferrer" aria-describedby="customer-area-note">Devices › Stores</a> 中該店舖的 ID（不是其 reference）。</p>
+          </fieldset>
+
+          <fieldset>
+            <legend>收據資訊（可選）</legend>
+            <label class="choice"><input type="radio" name="includeReceipt" value="no" checked> <span>保留現有收據設定</span></label>
+            <label class="choice"><input type="radio" name="includeReceipt" value="yes"> <span>包含收據資訊</span></label>
+            <p class="hint">關閉時，不匯入收據文字或 Adyen 商戶資訊。</p>
+
+            <fieldset id="receipt-fields" data-receipt-settings="true" hidden disabled>
+              <legend>收據資訊</legend>
+              <p class="hint">每項商戶資訊均可選擇從 Adyen 匯入或手動輸入。</p>
+              <label for="receiptNameSource">商戶名稱</label>
+              <select id="receiptNameSource" name="receiptNameSource"><option value="adyen">從 Adyen 匯入</option><option value="manual">手動輸入</option></select>
+              <div data-receipt="receiptNameSource" hidden>
+                <label for="receiptBusinessName">收據商戶名稱</label>
+                <input id="receiptBusinessName" name="receiptBusinessName" type="text" disabled>
+              </div>
+              <label for="receiptAddressSource">地址</label>
+              <select id="receiptAddressSource" name="receiptAddressSource"><option value="adyen">從 Adyen 匯入</option><option value="manual">手動輸入</option></select>
+              <div data-receipt="receiptAddressSource" hidden>
+                <label for="receiptAddressLines">收據地址</label>
+                <textarea id="receiptAddressLines" name="receiptAddressLines" rows="3" disabled></textarea>
+              </div>
+              <label for="receiptPhoneSource">電話</label>
+              <select id="receiptPhoneSource" name="receiptPhoneSource"><option value="adyen">從 Adyen 匯入</option><option value="manual">手動輸入</option></select>
+              <div data-receipt="receiptPhoneSource" hidden>
+                <label for="receiptPhone">收據電話</label>
+                <input id="receiptPhone" name="receiptPhone" type="tel" disabled>
+              </div>
+              <label for="receiptTaxId">稅務編號（可選）</label>
+              <input id="receiptTaxId" name="receiptTaxId" type="text">
+              <label for="receiptTitle">收據標題（可選）</label>
+              <input id="receiptTitle" name="receiptTitle" type="text">
+              <label for="receiptFooter">頁尾（可選）</label>
+              <textarea id="receiptFooter" name="receiptFooter" rows="2"></textarea>
+              <p class="hint">只有已填寫的手動文字會更改已儲存值，留空會保留原文字。稅務編號、標題和頁尾需手動輸入，不從 Adyen 匯入。參見<a href="using.html#receipts">收據設定</a>。</p>
+            </fieldset>
+          </fieldset>
+
+          <fieldset>
+            <legend>電子收據（可選）</legend>
+            <label class="choice"><input type="radio" name="includeSmtp" value="no" checked> <span>保留現有郵件設定</span></label>
+            <label class="choice"><input type="radio" name="includeSmtp" value="yes"> <span>包含 SMTP 設定</span></label>
+            <p class="hint">請先檢查<a href="using.html#email">郵件設定及服務商要求</a>；設定助手無法測試伺服器。</p>
+
+            <fieldset id="smtp-fields" data-email="true" hidden disabled>
+              <legend>SMTP 伺服器</legend>
+              <label for="smtpHost">伺服器名稱</label>
+              <input id="smtpHost" name="smtpHost" type="text" required spellcheck="false" placeholder="smtp.example.com">
+              <label for="smtpPort">連接埠</label>
+              <input id="smtpPort" name="smtpPort" type="number" min="1" max="65535" value="587" required>
+              <label class="choice"><input type="radio" name="smtpSecurity" value="STARTTLS" checked> <span>STARTTLS（通常為連接埠 587）</span></label>
+              <label class="choice"><input type="radio" name="smtpSecurity" value="SSL"> <span>SSL/TLS（通常為連接埠 465）</span></label>
+              <label class="choice"><input type="radio" name="smtpSecurity" value="NONE"> <span>無（不加密，不建議）</span></label>
+              <label for="smtpUsername">用戶名稱（可選）</label>
+              <input id="smtpUsername" name="smtpUsername" type="text" spellcheck="false">
+              <label for="smtpPassword">密碼或應用程式密碼（可選）</label>
+              <input id="smtpPassword" name="smtpPassword" type="password" spellcheck="false">
+              <label for="smtpFromAddress">寄件人郵箱</label>
+              <input id="smtpFromAddress" name="smtpFromAddress" type="email" required spellcheck="false">
+              <label for="smtpFromName">寄件人名稱（可選）</label>
+              <input id="smtpFromName" name="smtpFromName" type="text">
+              <p class="hint">只更改已填寫欄位。可選項留空會保留已儲存值；如需清除，請在“設定 › 電子郵件”中操作。密碼與其他秘密資訊一同加密。</p>
+            </fieldset>
+          </fieldset>
+
+          <div class="setup-actions">
+            <button class="button" type="submit">生成二維碼</button>
+            <button class="button button-ghost" type="reset">清空</button>
+          </div>
+          <p class="hint" id="setup-status" role="status" aria-live="polite"></p>
+        </form>
+      </div>
+
+      <section id="setup-codes" class="setup-codes" hidden aria-labelledby="setup-codes-title">
+        <h2 id="setup-codes-title">用設備掃描這些二維碼</h2>
+        <div class="setup-scan">
+          <div class="setup-qr" id="setup-qr"></div>
+          <div class="setup-controls">
+            <span id="setup-position"></span>
+            <button class="button button-ghost button-small" id="setup-previous" type="button">上一個</button>
+            <button class="button button-ghost button-small" id="setup-pause" type="button">暫停</button>
+            <button class="button button-ghost button-small" id="setup-next" type="button">下一個</button>
+          </div>
+        </div>
+        <div class="setup-next">
+          <div class="setup-code-card" id="setup-code-card">
+            <p>傳輸碼</p>
+            <p class="setup-code" id="setup-code"></p>
+          </div>
+          <ol>
+            <li>在 Mini mPOS 中打開<strong>設定 › 終端</strong>，點按快速設定下的<strong>掃描設定二維碼</strong>，或右上角的二維碼掃描圖示。無需先選擇支付目標或環境。</li>
+            <li>用相機掃描二維碼。有多個二維碼時會自動輪換。</li>
+            <li>檢查支付目標和環境，尤其是 LIVE。輸入必需的<strong>傳輸碼</strong>，再點按<strong>驗證並匯入</strong>。</li>
+            <li>按照<a href="quick-start.html#helper">驗證後匯入的步驟</a>操作。</li>
+          </ol>
+          <p>如包含 SMTP 設定，請檢查<strong>設定 › 電子郵件</strong>併發送測試郵件。</p>
+          <p>匯入後請<a href="quick-start.html#first-payment">完成第一筆 TEST 付款</a>。</p>
+          <p><a href="troubleshooting.html#access">匯入問題？</a> · <a href="troubleshooting.html#connection">連接問題？</a></p>
+        </div>
+      </section>
+
+      <aside class="setup-side"><div>
+        <h2>須知</h2>
+        <ul>
+          <li><strong>資料不會離開此頁面。</strong>二維碼在您的瀏覽器中生成；頁面不會發送或儲存任何內容。完成後請關閉頁面。</li>
+          <li><strong>密鑰經過加密。</strong>二維碼中的密碼和密鑰使用傳輸碼加密，傳輸碼只在這裡顯示，因此僅拍攝二維碼不會洩露它們。</li>
+          <li><strong>請保密傳輸碼。</strong>同時持有二維碼和傳輸碼的人可解密密鑰。按需生成新傳輸，完成後關閉頁面。</li>
+          <li><strong>需要完整說明？</strong>參閱<a href="quick-start.html">快速入門</a>；匯入或連接問題參見<a href="troubleshooting.html">疑難排解</a>。</li>
+        </ul>
+      </div></aside>
+    </div>
+  </main>
+
+  <footer class="site-footer">
+    <div class="wrap footer-row">
+      <nav aria-label="指南和設定"><ul class="footer-nav">
+        <li><a href="quick-start.html">快速入門</a></li><li><a href="using.html">使用 Mini mPOS</a></li>
+        <li><a href="troubleshooting.html">疑難排解</a></li><li><a href="setup.html" aria-current="page">設定助手</a></li>
+      </ul></nav>
+      <p>
+        <img src="../favicon.svg" alt="" width="24" height="24"> Mini mPOS · MIT 授權條款 ·
+        <a href="https://github.com/astiskala/minimpos">GitHub</a> ·
+        <a href="https://github.com/astiskala/minimpos/blob/main/SECURITY.md">安全</a>
+      </p>
+      <p class="fine">Adyen 是 Adyen N.V. 的商標。Mini mPOS 是獨立項目，與 Adyen 無關聯，未獲其認可，也不由其提供支援。二維碼使用 Project Nayuki 的 QR Code generator 庫（MIT 授權條款）繪制。</p>
+    </div>
+  </footer>
+</body>
+</html>

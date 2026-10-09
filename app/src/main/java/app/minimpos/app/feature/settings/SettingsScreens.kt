@@ -52,6 +52,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.res.stringArrayResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.ImeAction
@@ -371,6 +372,14 @@ fun SettingsScreen(
                     onOpen = ::open,
                 )
                 OtherSectionRows(settings, state.pinSet, onOpen = ::open)
+                SettingChoice(
+                    title = stringResource(R.string.settings_language),
+                    options = AppSettings.LANGUAGE_TAGS.zip(stringArrayResource(R.array.app_language_names).toList()),
+                    selected = settings.languageTag,
+                    onSelect = { language -> vm.update { it.copy(languageTag = language) } },
+                    subtitle = stringResource(R.string.settings_language_hint),
+                    tag = "appLanguage",
+                )
             }
         }
     }

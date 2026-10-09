@@ -28,7 +28,7 @@ class SetupHelperTest {
 
     @Test
     fun `every language loads offline and generates genuine SVG QR codes with WebCrypto`() {
-        for (language in listOf("", "zh-CN/", "ja/")) {
+        for (language in listOf("", "zh-CN/", "zh-Hant/", "ja/")) {
             openPage(language)
             assertThat(script.executeScript("return Boolean(crypto.subtle)")).isEqualTo(true)
             submit()
@@ -141,7 +141,7 @@ class SetupHelperTest {
 
     @Test
     fun `receipt fields support independent Adyen import and manual text in every language`() {
-        for (language in listOf("", "zh-CN/", "ja/")) {
+        for (language in listOf("", "zh-CN/", "zh-Hant/", "ja/")) {
             openPage(language)
             field("includeReceipt", "yes")
             assertReceiptControls()
@@ -177,7 +177,7 @@ class SetupHelperTest {
 
     @Test
     fun `receipt opt-out hides fields and excludes manual text and Adyen lookup in every language`() {
-        for (language in listOf("", "zh-CN/", "ja/")) {
+        for (language in listOf("", "zh-CN/", "zh-Hant/", "ja/")) {
             openPage(language)
             assertReceiptDisabled(true)
             field("includeReceipt", "yes")

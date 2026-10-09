@@ -14,11 +14,13 @@ import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.longOrNull
 import kotlinx.serialization.json.put
+import java.io.UncheckedIOException
 import java.net.URI
 import java.net.http.HttpClient
 import java.net.http.HttpRequest
 import java.net.http.HttpResponse
 import java.net.http.WebSocket
+import java.nio.file.DirectoryNotEmptyException
 import java.nio.file.Files
 import java.nio.file.Path
 import java.time.Duration
@@ -201,11 +203,41 @@ internal class HelperBrowser : AutoCloseable {
         }
 
     private fun stop(removeProfile: Boolean = true) {
+        // Chromium's helper processes (crashpad, GPU, renderers) can outlive the browser and keep writing to the
+        // profile, so they are stopped too before it is deleted.
+        val helpers = process.descendants().toList()
         process.destroy()
         if (!process.waitFor(TIMEOUT.seconds, TimeUnit.SECONDS)) process.destroyForcibly().waitFor()
-        if (removeProfile) {
-            Files.walk(profile).use { files -> files.sorted(Comparator.reverseOrder()).forEach(Files::delete) }
+        helpers.forEach { it.destroy() }
+        val deadline = System.nanoTime() + TIMEOUT.toNanos()
+        while (helpers.any { it.isAlive } && System.nanoTime() < deadline) {
+            LockSupport.parkNanos(TimeUnit.MILLISECONDS.toNanos(POLL_MILLIS))
         }
+        helpers.filter { it.isAlive }.forEach { it.destroyForcibly() }
+        if (removeProfile) removeProfile()
+    }
+
+    /** Deletes the profile, walking it again while files that exiting processes flushed still appear. */
+    private fun removeProfile() {
+        repeat(PROFILE_REMOVAL_ATTEMPTS) { attempt ->
+            try {
+                Files.walk(profile).use { files -> files.sorted(Comparator.reverseOrder()).forEach(Files::deleteIfExists) }
+                return
+            } catch (e: DirectoryNotEmptyException) {
+                retry(attempt, e)
+            } catch (e: UncheckedIOException) {
+                // A file vanished while the profile was walked.
+                retry(attempt, e)
+            }
+        }
+    }
+
+    private fun retry(
+        attempt: Int,
+        error: Exception,
+    ) {
+        if (attempt == PROFILE_REMOVAL_ATTEMPTS - 1) throw error
+        LockSupport.parkNanos(TimeUnit.MILLISECONDS.toNanos(PROFILE_REMOVAL_PAUSE_MILLIS))
     }
 
     private inner class Responses : WebSocket.Listener {
@@ -238,5 +270,7 @@ internal class HelperBrowser : AutoCloseable {
         val TIMEOUT: Duration = Duration.ofSeconds(15)
         val STARTUP_TIMEOUT: Duration = Duration.ofSeconds(60)
         const val POLL_MILLIS = 10L
+        const val PROFILE_REMOVAL_ATTEMPTS = 20
+        const val PROFILE_REMOVAL_PAUSE_MILLIS = 100L
     }
 }

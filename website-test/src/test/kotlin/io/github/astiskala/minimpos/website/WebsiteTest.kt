@@ -17,30 +17,39 @@ import kotlin.io.path.readText
 
 class QuickStartGuideTest {
     @Test
-    fun `credentials separate required API roles user permissions and optional link tokenization`() {
-        val optional = mapOf("en" to "Optional", "zh-CN" to "可选", "ja" to "任意")
+    fun `credentials list API roles together and separate manual details from user permissions`() {
+        val manual = mapOf("en" to "If you want to configure the device manually", "zh-CN" to "如需手动配置设备", "ja" to "デバイスを手動で設定する場合")
+        val additional = mapOf("en" to "enable these additional roles", "zh-CN" to "启用以下额外角色", "ja" to "次のロールを追加で有効にします")
         LANGUAGES.forEach { language ->
             val guide = pages.getValue(language to Kind.GUIDE)
             val credentials = guide.document.getElementById("credentials")!!.untilNextTask()
             val text = credentials.joinToString(" ") { it.text() }
             listOf("Manage API credentials", "Merchant admin").forEach { assertThat(text).contains(it) }
             val steps = credentials.single { it.tagName() == "ol" }
+            assertThat(steps.children()[1].ownText()).contains(additional.getValue(language))
             assertThat(steps.select("ul.roles li strong").map { it.text() })
                 .containsExactly(
-                    "Merchant PAL webservice role",
-                    "Checkout webservice role",
                     "Management API — Terminal actions read",
                     "Management API — Terminal settings read and write",
                     "Management API — Terminal settings Advanced read and write",
                     "Cloud Device API role",
+                    "Merchant Recurring role",
+                    "Management API — Stores read",
+                    "Management API — Account read",
+                    "Management API — Payment methods read",
                 ).inOrder()
-            val cardSaving = steps.children().single { it.text().contains("Merchant Recurring role") }
-            assertThat(cardSaving.text()).contains(optional.getValue(language))
-            assertThat(cardSaving.select("a[href='using.html#shoppers']")).hasSize(1)
-            assertThat(cardSaving.select("a[href='https://docs.adyen.com/online-payments/tokenization/create-tokens']")).hasSize(1)
+            steps.select("ul.roles li").forEach { role ->
+                assertThat(role.text()).isEqualTo(role.select("strong").single().text())
+            }
+            assertThat(steps.children()[1].select("ul.roles")).hasSize(1)
+            val manualStep = steps.children().last()!!
+            assertThat(manualStep.text()).contains(manual.getValue(language))
+            assertThat(manualStep.select("ul > li")).hasSize(2)
             assertThat(
-                pages.getValue(language to Kind.USING).document.select("#shoppers a[href='quick-start.html#credentials']"),
-            ).hasSize(1)
+                manualStep.select("strong").map {
+                    it.text()
+                },
+            ).contains("Devices › Device settings › Integrations › Terminal API › Encryption key")
             assertThat(text).doesNotContain("API tokenise payment details")
             assertThat(text).doesNotContain("Management API — API credentials read and write")
         }
@@ -121,9 +130,7 @@ class QuickStartGuideTest {
                     .that(guide.document.select("#live a[href='using.html#$workflow']"))
                     .hasSize(1)
             }
-            listOf("using.html#close-day", "troubleshooting.html#help").forEach { owner ->
-                assertThat(guide.document.select("#live a[href='$owner']")).hasSize(1)
-            }
+            assertThat(guide.document.select("#live a[href='using.html#close-day']")).hasSize(1)
         }
     }
 }
@@ -364,15 +371,6 @@ class WebsiteTest {
             }
             assertThat(guide.text).contains("Management API — Terminal actions read")
             assertThat(guide.text).contains("Management API — Terminal settings Advanced read and write")
-            assertThat(guide.document.select("#choose ul.roles li strong").map { it.text() })
-                .containsExactly(
-                    "Merchant PAL webservice role",
-                    "Checkout webservice role",
-                    "Management API — Terminal actions read",
-                    "Management API — Terminal settings read and write",
-                    "Management API — Terminal settings Advanced read and write",
-                    "Cloud Device API role",
-                ).inOrder()
         }
     }
 
@@ -447,7 +445,7 @@ class WebsiteTest {
             }
         }
         LANGUAGES.forEach { language ->
-            assertThat(pages.getValue(language to Kind.GUIDE).text).contains("Checkout webservice role")
+            assertThat(pages.getValue(language to Kind.GUIDE).text).contains("Management API — Terminal settings read and write")
             assertThat(pages.getValue(language to Kind.USING).text).contains("Return adjust authorisation data")
         }
     }
@@ -503,7 +501,6 @@ class WebsiteTest {
                         "Import business details from Adyen",
                         "Enabled (default off)",
                         "Enabled (default on)",
-                        "Emails collected afterward are receipt-only",
                         "Ask for a merchant reference",
                         "Change Admin PIN",
                         "Remove Admin PIN",
@@ -514,7 +511,6 @@ class WebsiteTest {
                         "从 Adyen 导入商家信息",
                         "启用（默认关闭）",
                         "启用（默认开启）",
-                        "支付后收集的邮箱仅用于收据",
                         "要求输入商家交易识别号",
                         "更改管理员 PIN",
                         "移除管理员 PIN",
@@ -525,7 +521,6 @@ class WebsiteTest {
                         "Adyenから店舗情報をインポート",
                         "有効（初期値オフ）",
                         "有効（初期値オン）",
-                        "決済後のメールは領収書専用",
                         "加盟店参照IDの入力を求める",
                         "管理者PINを変更",
                         "管理者PINを削除",
@@ -534,9 +529,14 @@ class WebsiteTest {
             )
         LANGUAGES.forEach { language ->
             val using = pages.getValue(language to Kind.USING)
-            val roles = listOf("Management API — Stores read", "Account read")
-            (wording.getValue(language) + roles).forEach { assertThat(using.text).contains(it) }
-            assertThat(using.document.select("#receipts a[href='quick-start.html#credentials']")).isNotEmpty()
+            wording.getValue(language).forEach { assertThat(using.text).contains(it) }
+            val credentialRoles =
+                pages
+                    .getValue(language to Kind.GUIDE)
+                    .document
+                    .select("ul.roles")
+                    .text()
+            listOf("Management API — Stores read", "Management API — Account read").forEach { assertThat(credentialRoles).contains(it) }
             val troubleshooting = pages.getValue(language to Kind.TROUBLE)
             listOf("Settings › Payments › Offer payment links", "设置 › 支付 › 提供支付链接", "設定 › 決済 › 支払いリンクを使う").forEach { obsolete ->
                 assertThat(using.text).doesNotContain(obsolete)
@@ -763,8 +763,9 @@ class PartnerStyleGuideTest {
         pages.values.forEach { page ->
             page.document.select("a[href^='https://docs.adyen.com/']").forEach { link ->
                 val href = link.attr("href")
-                assertWithMessage("${page.name}: $href").that(link.text()).contains("Adyen")
-                assertWithMessage("${page.name}: $href").that(href).doesNotContain("#")
+                assertWithMessage("${page.name}: $href").that(link.parent()!!.text()).contains("Adyen")
+                assertWithMessage("${page.name}: $href").that(link.text()).isNotEmpty()
+                if ('#' in href) assertWithMessage("${page.name}: $href").that(href.substringAfter('#')).matches("[a-z0-9-]+")
                 assertWithMessage("${page.name}: $href").that(href).doesNotContain("+")
             }
         }
@@ -834,11 +835,9 @@ class PartnerStyleGuideTest {
 /** Destination setup instructions and optional email fields share the website's localized page fixtures. */
 class SetupGuideTest {
     @Test
-    fun `guides describe API gated discovery and the customer reference default`() {
-        val discovery = mapOf("en" to "only after the API test succeeds", "zh-CN" to "通过 API 测试后", "ja" to "APIテストが成功した後にだけ")
+    fun `guides describe the customer reference default`() {
         val defaults = mapOf("en" to "a customer reference typed at checkout (the default)", "zh-CN" to "客户识别号（默认）", "ja" to "顧客参照ID（初期設定）")
         LANGUAGES.forEach { language ->
-            assertThat(pages.getValue(language to Kind.GUIDE).text).contains(discovery.getValue(language))
             val using = pages.getValue(language to Kind.USING)
             assertThat(using.document.select("#shoppers").text()).contains(defaults.getValue(language))
             assertThat(using.document.select("#sell a[href='#shoppers']")).isNotEmpty()
@@ -853,6 +852,15 @@ class SetupGuideTest {
             listOf("443", "8443", "*.adyen.com", "*.adyenpayments.com").forEach {
                 assertWithMessage("$language network prerequisites: $it").that(text).contains(it)
             }
+            val allowlisting =
+                heading.untilNextTask().flatMap {
+                    it.select(
+                        "a[href='https://docs.adyen.com/development-resources/security/integration-security/" +
+                            "allowlisting#dns-resolution-and-domain-base-allowlist']",
+                    )
+                }
+            assertThat(allowlisting).hasSize(1)
+            assertThat(allowlisting.single().text()).isNotEmpty()
         }
     }
 
@@ -874,17 +882,10 @@ class SetupGuideTest {
     }
 
     @Test
-    fun `setup guides combine API credentials and explain progressive steps in every language`() {
-        val progress =
-            mapOf(
-                "en" to "a successful test unlocks the next step",
-                "zh-CN" to "测试成功后显示下一步",
-                "ja" to "成功すると次に進めます",
-            )
+    fun `setup guides combine API credentials in every language`() {
         val tests = mapOf("en" to "Test API", "zh-CN" to "测试 API", "ja" to "APIをテスト")
         LANGUAGES.forEach { language ->
             val guide = pages.getValue(language to Kind.GUIDE)
-            assertWithMessage(guide.name).that(guide.text).contains(progress.getValue(language))
             assertWithMessage(guide.name)
                 .that(guide.document.select("#connect strong").map { it.text() })
                 .contains("Adyen API")
@@ -918,9 +919,13 @@ class SetupGuideTest {
             assertThat(options.select("a").map { it.attr("href") }).containsExactly("setup.html", "#helper").inOrder()
             assertThat(following.single { it.hasClass("manual-setup") }.text()).contains("Adyen Payments app role")
         }
-        val english = pages.getValue("en" to Kind.GUIDE).text
-        assertThat(english).contains("You do not need to copy boarding tokens")
-        assertThat(english).contains("boarding does not replace it")
+        val english =
+            pages
+                .getValue("en" to Kind.GUIDE)
+                .document
+                .getElementById("tap-to-pay")!!
+                .untilNextTask()
+        assertThat(english.single { it.hasClass("manual-setup") }.text()).contains("shared key")
     }
 
     @Test
@@ -996,7 +1001,28 @@ class SetupGuideTest {
             assertThat(fields.select("#smtpPort").single().attr("value")).isEqualTo("587")
             assertThat(helper.document.select("#setup-codes a[href='using.html#email']")).isNotEmpty()
             val using = pages.getValue(language to Kind.USING)
-            assertThat(using.document.select("#receipts a[href='quick-start.html#helper']")).isNotEmpty()
+            assertThat(
+                using.document
+                    .getElementById("email")!!
+                    .untilNextTask()
+                    .first { it.tagName() == "ol" }
+                    .select("li"),
+            ).hasSize(3)
+        }
+    }
+
+    @Test
+    fun `setup helper steps are numbered by layout and optional details stay inside their choice`() {
+        LANGUAGES.forEach { language ->
+            val helper = pages.getValue(language to Kind.SETUP)
+            // The stylesheet numbers visible groups, so numbers in the text would duplicate or skip when groups hide.
+            helper.document.select("#setup-form legend").forEach { legend ->
+                assertWithMessage("${helper.name}: ${legend.text()}").that(legend.text()).doesNotContainMatch("^\\d")
+            }
+            mapOf("receipt-fields" to "includeReceipt", "smtp-fields" to "includeSmtp").forEach { (details, choice) ->
+                val group = helper.document.getElementById(details)!!.parent()!!
+                assertWithMessage("${helper.name} #$details").that(group.select("> label > input[name=$choice]")).hasSize(2)
+            }
         }
     }
 }

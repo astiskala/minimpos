@@ -100,7 +100,7 @@
               data-msg-play="Play"
               data-msg-unsupported="This browser cannot make the codes. Use a current version of Chrome, Edge, Firefox or Safari.">
           <fieldset>
-            <legend>1. Where does Mini mPOS run, and where do payments go?</legend>
+            <legend>Where does Mini mPOS run, and where do payments go?</legend>
             <label class="choice"><input type="radio" name="destination" value="thisTerminal" checked> <span><strong>On an Adyen terminal</strong> that takes the payments itself</span></label>
             <label class="choice"><input type="radio" name="destination" value="network"> <span><strong>On a tablet or phone</strong>, with a terminal on the same network</span></label>
             <label class="choice"><input type="radio" name="destination" value="cloud"> <span><strong>On a tablet or phone</strong>, with a terminal over the internet (cloud)</span></label>
@@ -108,19 +108,17 @@
           </fieldset>
 
           <fieldset>
-            <legend>2. Which Adyen environment?</legend>
+            <legend>Which Adyen environment?</legend>
             <label class="choice"><input type="radio" name="environment" value="test" checked> <span><strong>TEST</strong>: test terminals and test cards</span></label>
             <label class="choice"><input type="radio" name="environment" value="live"> <span><strong>LIVE</strong>: real payments</span></label>
             <p class="hint">For a network or cloud terminal, this choice is imported as the app’s environment.
-              On an Adyen terminal or with Tap to Pay, the device or installed Payments app determines it instead.
-              Use matching credentials; this choice also selects Customer Area links and the live URL prefix field.</p>
+              On an Adyen terminal or with Tap to Pay, the device or installed Payments app determines it instead.</p>
           </fieldset>
 
           <fieldset data-for="thisTerminal network cloud">
-            <legend>3. How do you want to set up?</legend>
+            <legend>How do you want to set up?</legend>
             <label class="choice"><input type="radio" name="setupMode" value="automatic" checked> <span><strong>Automatic (recommended)</strong>: look up terminal setup on the device</span></label>
             <label class="choice"><input type="radio" name="setupMode" value="manual"> <span><strong>Manual</strong>: enter all connection details on this computer</span></label>
-            <p class="hint">Both modes need the LIVE URL prefix for LIVE. If automatic lookup cannot complete the required fields, use Manual here and generate new codes. Credential or terminal-access errors must be corrected first.</p>
           </fieldset>
 
           <p class="hint" data-only="tapToPay" hidden>Follow the <a href="quick-start.html#tap-to-pay">Tap to Pay prerequisites</a> and install the Payments app first. Enter the merchant account and separate Payments app API key for registration. Enter the shared key here; Mini mPOS does not look it up. Registration is an explicit action on the phone before import finishes. You do not need to copy boarding tokens.</p>
@@ -130,8 +128,7 @@
             <p class="hint">Create a credential in <a data-ca="developers/api-credentials/" href="https://ca-test.adyen.com/ca/ui/developers/api-credentials/" target="_blank" rel="noopener noreferrer" aria-describedby="customer-area-note">Developers › API credentials</a> and generate its API key.
               <span data-only="cloud" hidden>Add the Cloud Device API role for cloud payments.</span>
               <span data-only="tapToPay" hidden>This key is for Checkout operations, not Payments app registration.</span>
-              Every real setup needs the required Management roles on this main credential, including terminal-settings write and Advanced access; see the <a href="quick-start.html#credentials">credential requirements</a>.
-              This helper stays offline; discovery and verification run on the device before import.</p>
+              This main credential needs specific roles; see the <a href="quick-start.html#credentials">credential requirements</a>.</p>
             <label for="apiKey">API key</label>
             <input id="apiKey" name="apiKey" type="password" required spellcheck="false">
           </fieldset>
@@ -189,67 +186,67 @@
           </fieldset>
 
           <fieldset>
-            <legend>Receipt details, optional</legend>
+            <legend>Receipt details (optional)</legend>
             <label class="choice"><input type="radio" name="includeReceipt" value="no" checked> <span>Leave receipt settings unchanged</span></label>
             <label class="choice"><input type="radio" name="includeReceipt" value="yes"> <span>Include receipt details</span></label>
-            <p class="hint">Available with either setup mode. When off, no receipt text or Adyen business details are imported.</p>
-          </fieldset>
+            <p class="hint">When off, no receipt text or Adyen business details are imported.</p>
 
-          <fieldset id="receipt-fields" data-receipt-settings="true" hidden disabled>
-            <legend>Receipt details</legend>
-            <p class="hint">Choose Adyen import or manual entry for each business field.</p>
-            <label for="receiptNameSource">Business name</label>
-            <select id="receiptNameSource" name="receiptNameSource"><option value="adyen">Import from Adyen</option><option value="manual">Enter manually</option></select>
-            <div data-receipt="receiptNameSource" hidden>
-              <label for="receiptBusinessName">Receipt business name</label>
-              <input id="receiptBusinessName" name="receiptBusinessName" type="text" disabled>
-            </div>
-            <label for="receiptAddressSource">Address</label>
-            <select id="receiptAddressSource" name="receiptAddressSource"><option value="adyen">Import from Adyen</option><option value="manual">Enter manually</option></select>
-            <div data-receipt="receiptAddressSource" hidden>
-              <label for="receiptAddressLines">Receipt address</label>
-              <textarea id="receiptAddressLines" name="receiptAddressLines" rows="3" disabled></textarea>
-            </div>
-            <label for="receiptPhoneSource">Phone</label>
-            <select id="receiptPhoneSource" name="receiptPhoneSource"><option value="adyen">Import from Adyen</option><option value="manual">Enter manually</option></select>
-            <div data-receipt="receiptPhoneSource" hidden>
-              <label for="receiptPhone">Receipt phone</label>
-              <input id="receiptPhone" name="receiptPhone" type="tel" disabled>
-            </div>
-            <label for="receiptTaxId">Tax ID, optional</label>
-            <input id="receiptTaxId" name="receiptTaxId" type="text">
-            <label for="receiptTitle">Receipt title, optional</label>
-            <input id="receiptTitle" name="receiptTitle" type="text">
-            <label for="receiptFooter">Footer, optional</label>
-            <textarea id="receiptFooter" name="receiptFooter" rows="2"></textarea>
-            <p class="hint">Only supplied manual text changes saved values. Blank fields keep existing text. Tax ID, title and footer are entered manually, not imported from Adyen. See <a href="using.html#receipts">receipt setup</a>.</p>
+            <fieldset id="receipt-fields" data-receipt-settings="true" hidden disabled>
+              <legend>Receipt details</legend>
+              <p class="hint">Choose Adyen import or manual entry for each business field.</p>
+              <label for="receiptNameSource">Business name</label>
+              <select id="receiptNameSource" name="receiptNameSource"><option value="adyen">Import from Adyen</option><option value="manual">Enter manually</option></select>
+              <div data-receipt="receiptNameSource" hidden>
+                <label for="receiptBusinessName">Receipt business name</label>
+                <input id="receiptBusinessName" name="receiptBusinessName" type="text" disabled>
+              </div>
+              <label for="receiptAddressSource">Address</label>
+              <select id="receiptAddressSource" name="receiptAddressSource"><option value="adyen">Import from Adyen</option><option value="manual">Enter manually</option></select>
+              <div data-receipt="receiptAddressSource" hidden>
+                <label for="receiptAddressLines">Receipt address</label>
+                <textarea id="receiptAddressLines" name="receiptAddressLines" rows="3" disabled></textarea>
+              </div>
+              <label for="receiptPhoneSource">Phone</label>
+              <select id="receiptPhoneSource" name="receiptPhoneSource"><option value="adyen">Import from Adyen</option><option value="manual">Enter manually</option></select>
+              <div data-receipt="receiptPhoneSource" hidden>
+                <label for="receiptPhone">Receipt phone</label>
+                <input id="receiptPhone" name="receiptPhone" type="tel" disabled>
+              </div>
+              <label for="receiptTaxId">Tax ID, optional</label>
+              <input id="receiptTaxId" name="receiptTaxId" type="text">
+              <label for="receiptTitle">Receipt title, optional</label>
+              <input id="receiptTitle" name="receiptTitle" type="text">
+              <label for="receiptFooter">Footer, optional</label>
+              <textarea id="receiptFooter" name="receiptFooter" rows="2"></textarea>
+              <p class="hint">Only supplied manual text changes saved values. Blank fields keep existing text. Tax ID, title and footer are entered manually, not imported from Adyen. See <a href="using.html#receipts">receipt setup</a>.</p>
+            </fieldset>
           </fieldset>
 
           <fieldset>
-            <legend>Email receipts, optional</legend>
+            <legend>Email receipts (optional)</legend>
             <label class="choice"><input type="radio" name="includeSmtp" value="no" checked> <span>Leave email settings unchanged</span></label>
             <label class="choice"><input type="radio" name="includeSmtp" value="yes"> <span>Include SMTP settings</span></label>
-            <p class="hint">Available with either setup mode. Check <a href="using.html#email">email setup and provider requirements</a> first; the helper cannot test the server.</p>
-          </fieldset>
+            <p class="hint">Check <a href="using.html#email">email setup and provider requirements</a> first; the helper cannot test the server.</p>
 
-          <fieldset id="smtp-fields" data-email="true" hidden disabled>
-            <legend>SMTP server</legend>
-            <label for="smtpHost">Server name</label>
-            <input id="smtpHost" name="smtpHost" type="text" required spellcheck="false" placeholder="smtp.example.com">
-            <label for="smtpPort">Port</label>
-            <input id="smtpPort" name="smtpPort" type="number" min="1" max="65535" value="587" required>
-            <label class="choice"><input type="radio" name="smtpSecurity" value="STARTTLS" checked> <span>STARTTLS (usually port 587)</span></label>
-            <label class="choice"><input type="radio" name="smtpSecurity" value="SSL"> <span>SSL/TLS (usually port 465)</span></label>
-            <label class="choice"><input type="radio" name="smtpSecurity" value="NONE"> <span>None (unencrypted, not recommended)</span></label>
-            <label for="smtpUsername">Username, optional</label>
-            <input id="smtpUsername" name="smtpUsername" type="text" spellcheck="false">
-            <label for="smtpPassword">Password or app password, optional</label>
-            <input id="smtpPassword" name="smtpPassword" type="password" spellcheck="false">
-            <label for="smtpFromAddress">Sender email address</label>
-            <input id="smtpFromAddress" name="smtpFromAddress" type="email" required spellcheck="false">
-            <label for="smtpFromName">Sender name, optional</label>
-            <input id="smtpFromName" name="smtpFromName" type="text">
-            <p class="hint">Only supplied fields change. Blank optional fields keep saved values; clear them in Settings › Email if needed. The password is sealed with the other secrets.</p>
+            <fieldset id="smtp-fields" data-email="true" hidden disabled>
+              <legend>SMTP server</legend>
+              <label for="smtpHost">Server name</label>
+              <input id="smtpHost" name="smtpHost" type="text" required spellcheck="false" placeholder="smtp.example.com">
+              <label for="smtpPort">Port</label>
+              <input id="smtpPort" name="smtpPort" type="number" min="1" max="65535" value="587" required>
+              <label class="choice"><input type="radio" name="smtpSecurity" value="STARTTLS" checked> <span>STARTTLS (usually port 587)</span></label>
+              <label class="choice"><input type="radio" name="smtpSecurity" value="SSL"> <span>SSL/TLS (usually port 465)</span></label>
+              <label class="choice"><input type="radio" name="smtpSecurity" value="NONE"> <span>None (unencrypted, not recommended)</span></label>
+              <label for="smtpUsername">Username, optional</label>
+              <input id="smtpUsername" name="smtpUsername" type="text" spellcheck="false">
+              <label for="smtpPassword">Password or app password, optional</label>
+              <input id="smtpPassword" name="smtpPassword" type="password" spellcheck="false">
+              <label for="smtpFromAddress">Sender email address</label>
+              <input id="smtpFromAddress" name="smtpFromAddress" type="email" required spellcheck="false">
+              <label for="smtpFromName">Sender name, optional</label>
+              <input id="smtpFromName" name="smtpFromName" type="text">
+              <p class="hint">Only supplied fields change. Blank optional fields keep saved values; clear them in Settings › Email if needed. The password is sealed with the other secrets.</p>
+            </fieldset>
           </fieldset>
 
           <div class="setup-actions">
@@ -258,14 +255,29 @@
           </div>
           <p class="hint" id="setup-status" role="status" aria-live="polite"></p>
         </form>
+      </div>
 
-        <section id="setup-codes" class="setup-codes" hidden aria-labelledby="setup-codes-title">
-          <h2 id="setup-codes-title">Scan these codes with the device</h2>
+      <section id="setup-codes" class="setup-codes" hidden aria-labelledby="setup-codes-title">
+        <h2 id="setup-codes-title">Scan these codes with the device</h2>
+        <div class="setup-scan">
+          <div class="setup-qr" id="setup-qr"></div>
+          <div class="setup-controls">
+            <span id="setup-position"></span>
+            <button class="button button-ghost button-small" id="setup-previous" type="button">Previous</button>
+            <button class="button button-ghost button-small" id="setup-pause" type="button">Pause</button>
+            <button class="button button-ghost button-small" id="setup-next" type="button">Next</button>
+          </div>
+        </div>
+        <div class="setup-next">
+          <div class="setup-code-card" id="setup-code-card">
+            <p>Transfer code</p>
+            <p class="setup-code" id="setup-code"></p>
+          </div>
           <ol>
             <li>In Mini mPOS, open <strong>Settings › Terminal</strong> and tap <strong>Scan setup codes</strong>
               under Quick setup, or the QR scan icon at the top right. You do not need to choose a destination or
               environment first.</li>
-            <li>Point its camera at the codes below. With more than one, they change by themselves.</li>
+            <li>Point its camera at the codes. With more than one, they change by themselves.</li>
             <li>Review the destination and environment, especially LIVE. Enter the required <strong>transfer code</strong>
               and tap <strong>Verify and import</strong>. Dashes are inserted automatically.</li>
             <li>Follow the <a href="quick-start.html#helper">verified import steps</a>. Automatic lookup completes
@@ -276,21 +288,10 @@
             Email collection and automatic delivery are configured separately; see <a href="using.html#email">email setup</a>.</p>
           <p>After importing, <a href="quick-start.html#first-payment">make your first TEST payment</a>.</p>
           <p><a href="troubleshooting.html#access">Import problem?</a> · <a href="troubleshooting.html#connection">Connection problem?</a></p>
-          <div class="setup-code-card" id="setup-code-card">
-            <p>Transfer code</p>
-            <p class="setup-code" id="setup-code"></p>
-          </div>
-          <div class="setup-qr" id="setup-qr"></div>
-          <div class="setup-controls">
-            <button class="button button-ghost button-small" id="setup-previous" type="button">Previous</button>
-            <span id="setup-position"></span>
-            <button class="button button-ghost button-small" id="setup-next" type="button">Next</button>
-            <button class="button button-ghost button-small" id="setup-pause" type="button">Pause</button>
-          </div>
-        </section>
-      </div>
+        </div>
+      </section>
 
-      <aside class="setup-side">
+      <aside class="setup-side"><div>
         <h2>Good to know</h2>
         <ul>
           <li><strong>Nothing leaves this page.</strong> The codes are made in your browser; the page sends nothing
@@ -299,12 +300,10 @@
             code, which is shown only here, so a photo of the codes alone does not reveal them.</li>
           <li><strong>Keep the transfer code private.</strong> Anyone with both the codes and the transfer code can
             open the keys. Generate a fresh transfer when needed; close this page when finished.</li>
-          <li><strong>This sets connection, receipt text and optional SMTP fields.</strong> It does not copy products or receipt layouts.
-            For those, use <a href="using.html#more">Share with another device</a> in the app.</li>
           <li><strong>Need the full instructions?</strong> Follow <a href="quick-start.html">Quick start</a>;
             for an import or connection problem, see <a href="troubleshooting.html">Troubleshooting</a>.</li>
         </ul>
-      </aside>
+      </div></aside>
     </div>
   </main>
 

@@ -131,7 +131,7 @@
         </section>
         <section id="wallets">
           <h2>Scan a shopper wallet code</h2>
-          <p>Use <strong>Scan wallet</strong> at sale checkout to read a payment code from the shopper’s wallet app. This is different from scanning a product barcode or a refund receipt. It works with a physical payment terminal, not Tap to Pay; <a href="quick-start.html#credentials">wallet discovery needs an optional read role</a>.</p>
+          <p>Use <strong>Scan wallet</strong> at sale checkout to read a payment code from the shopper’s wallet app. This is different from scanning a product barcode or a refund receipt. It works with a physical payment terminal, not Tap to Pay; <a href="quick-start.html#credentials">wallet discovery needs a read role</a>.</p>
           <ol>
             <li>Check the total and checkout fields, then tap <strong>Scan wallet</strong>. If receipt tipping is selected, confirm paying without it: the wallet charges the total immediately, not a pre-authorization.</li>
             <li>Choose the shopper’s wallet. A single available wallet is selected automatically. Only individually configured wallets appear; Alipay+ does not imply separate GCash, DANA, Kakao Pay or TrueMoney choices.</li>
@@ -140,12 +140,12 @@
           </ol>
           <p>Canceling keeps the cart and checkout fields. Invalid codes do not pay: scan again or change wallet. A native scan expires after 30 seconds; use <strong>Scan again</strong> or the camera. Leaving the app stops scanning; returning requires an explicit new scan. Codes cannot be typed or pasted.</p>
           <p><strong>Save card</strong> requests best-effort saving when shopper reference and consent allow it. Wallet support varies; only a returned stored-payment token means details were saved. An approved payment without a token is still approved. <a href="troubleshooting.html#wallets">Handle wallet discovery or payment problems</a>; never replace an <a href="troubleshooting.html#unknown">unknown payment</a> by scanning again.</p>
-          <p>The targeted wallets are GCash, DANA, Kakao Pay, TrueMoney, PayMe, Alipay, AlipayHK, Alipay+, WeChat Pay, PayPal and Venmo, subject to enabled POS configuration for the terminal’s store, country and currency. PayMe scanning is intentionally unverified despite Adyen’s published limitation; it may be rejected. Confirm your wallet setup and test behavior with the <a href="https://docs.adyen.com/point-of-sale/alternative-payment-methods/qr-code-wallets">Adyen wallet guide</a> and <a href="https://docs.adyen.com/point-of-sale/alternative-payment-methods/qr-code-wallets/paypal-pos">Adyen PayPal and Venmo guide</a>.</p>
+          <p>Confirm your wallet setup and test behavior with the <a href="https://docs.adyen.com/point-of-sale/alternative-payment-methods/qr-code-wallets">Adyen wallet guide</a> and <a href="https://docs.adyen.com/point-of-sale/alternative-payment-methods/qr-code-wallets/paypal-pos">Adyen PayPal and Venmo guide</a>.</p>
           <div class="shot-pair">
             <div class="terminal terminal-s1f2"><img src="images/wallets.png" width="540" height="960" loading="lazy" alt="English simulator demo: choose a wallet for a $34.00 sale"></div>
             <div class="terminal terminal-s1f2"><img src="images/wallet-scan.png" width="540" height="960" loading="lazy" alt="English simulator demo: WeChat Pay scan flow with an offline demo-code action"></div>
           </div>
-          <p class="fine">English simulator demos in illustrated S1F2-style terminal frames. No real payments; simulator results do not establish provider or native-scanner support.</p>
+          <p class="fine">English simulator demos of wallet scanning.</p>
           <p class="back-to-contents"><a href="#contents">Back to contents</a></p>
         </section>
         <section id="refund">
@@ -172,11 +172,11 @@
           <p>From a payment result or a History entry, tap <strong>Print receipt</strong> or <strong>Email receipt</strong>. Tablets and phones also offer <strong>Share receipt</strong>, which sends an image through Android's share menu. Printing needs a terminal with a printer.</p>
           <h3 id="customize-receipts">Customize and test receipts</h3>
           <ol>
-            <li>In <strong>Settings › Receipts</strong>, enter your business details, header and footer. Or tap <strong>Import business details from Adyen</strong> to fill blank fields from your Adyen store. If the terminal has no store, only the legal name comes from your merchant account. This needs the optional <a href="quick-start.html#credentials">Management API — Stores read</a> or Account read role.</li>
+            <li>In <strong>Settings › Receipts</strong>, enter your business details, header and footer. Or tap <strong>Import business details from Adyen</strong> to fill blank fields from your Adyen store.</li>
             <li>Choose <strong>Print automatically after payment</strong>, when to print a <strong>Merchant copy</strong>, and whether to <strong>Show refund QR code</strong>.</li>
             <li>Tap <strong>Print test receipt</strong> and check the printout. The on-screen preview does not show the printer's exact layout.</li>
           </ol>
-          <p>Importing from Adyen fills blank fields only; it never replaces text you saved. Other options:</p>
+          <p>Other options:</p>
           <dl class="settings-list">
             <dt>Show tax amounts</dt><dd>Shows the tax included in, or added to, the total. It does not change the tax charged.</dd>
             <dt>Show tax breakdown</dt><dd>Lists the tax for each rate. Needed to show included tax when prices include tax.</dd>
@@ -186,14 +186,14 @@
             <dt>Characters per line</dt><dd>32 by default, for narrow receipt rolls. Choose the width for your printer with a test print.</dd>
           </dl>
           <h3 id="language-receipts">Set the language</h3>
-          <p>The app supports English, Simplified Chinese and Japanese. On Android 12 or earlier it follows the device language; on Android 13 or later, choose it in Android's per-app language settings. Adyen's card receipt lines follow the terminal's own receipt language. Test the printed layout, especially for Chinese and Japanese.</p>
+          <p>The app supports English, Simplified Chinese and Japanese. On Android 12 or earlier it follows the device language; on Android 13 or later, choose it in Android's per-app language settings. Adyen's card receipt lines follow the terminal's own receipt language.</p>
           <h3 id="email">Set up email receipts</h3>
           <ol>
             <li>Open <strong>Settings › Email (SMTP)</strong>. Choose your provider, or enter the SMTP server, port, sender and login. Use STARTTLS or SSL/TLS.</li>
             <li>Send a test email.</li>
             <li>In <strong>Settings › Payments › Email receipts</strong>, choose when to ask for the customer's email and whether to send receipts automatically.</li>
           </ol>
-          <p>You can also enter SMTP details on a computer with the <a href="quick-start.html#helper">setup helper</a>. Provider buttons fill in server details only. Follow your provider's instructions to allow SMTP and get the right password:</p>
+          <p>Follow your provider's instructions to allow SMTP and get the right password:</p>
           <ul>
             <li><a href="https://support.google.com/mail/answer/185833">Gmail</a></li>
             <li><a href="https://learn.microsoft.com/en-us/exchange/mail-flow-best-practices/how-to-set-up-a-multifunction-device-or-application-to-send-email-using-microsoft-365-or-office-365">Microsoft 365</a></li>
@@ -203,7 +203,6 @@
             <li><a href="https://www.zoho.com/mail/help/zoho-smtp.html">Zoho Mail</a></li>
             <li><a href="https://proton.me/support/smtp-submission">Proton Mail</a></li>
           </ul>
-          <p>Mini mPOS uses password-based SMTP, not OAuth. Emails entered before payment are also sent to Adyen with the payment. Emails collected afterward are receipt-only.</p>
           <p>If receipts do not print or send, see <a href="troubleshooting.html#receipts">printer and email problems</a>.</p>
           <p class="back-to-contents"><a href="#contents">Back to contents</a></p>
         </section>
@@ -238,7 +237,7 @@
           <dl class="settings-list">
             <dt>Merchant reference</dt><dd>To record a booking or order number, turn on <strong>Settings › Payments › Ask for a merchant reference</strong>. The number identifies the payment in Adyen. If left blank, a unique reference is generated.</dd>
             <dt>Shopper reference</dt><dd>In <strong>Settings › Payments</strong>, choose the <strong>Shopper reference</strong>: a customer reference typed at checkout (the default), the customer's email, or none. It is sent to Adyen with every payment. Email references are hashed by default; use the same salt on every device.</dd>
-            <dt>Saved cards</dt><dd>With a shopper reference set, turn on <strong>Offer to save cards</strong> and choose the <strong>Recurring processing model</strong> for your Adyen setup. Get the customer's consent before selecting <strong>Save card for future payments</strong>. Mini mPOS cannot charge saved cards. For payment links, also check the <a href="quick-start.html#credentials">card-saving API role</a>.</dd>
+            <dt>Saved cards</dt><dd>With a shopper reference set, turn on <strong>Offer to save cards</strong> and choose the <strong>Recurring processing model</strong> for your Adyen setup. Get the customer's consent before selecting <strong>Save card for future payments</strong>. Mini mPOS cannot charge saved cards.</dd>
           </dl>
           <p class="back-to-contents"><a href="#contents">Back to contents</a></p>
         </section>
@@ -247,7 +246,6 @@
           <div class="callout callout-prereq" role="note">
             <p class="callout-title">Prerequisites</p>
             <ul>
-              <li>Checkout API setup complete in <strong>Settings › Terminal</strong> (not needed for simulator demos)</li>
               <li>Your merchant account meets the <a href="https://docs.adyen.com/unified-commerce/pay-by-link">Adyen Pay by Link requirements</a>, including terms and conditions, before live use</li>
             </ul>
           </div>
@@ -262,7 +260,6 @@
             <p class="callout-title">Important</p>
             <p>Anyone with a real link can pay until it expires. Refund paid links in <strong>Customer Area › Payments › Payment list</strong>; the app cannot refund them.</p>
           </div>
-          <p>In the simulator, demo links need no credentials. Tap <strong>Simulate payment</strong> to complete one. Their QR codes cannot take payments, and their receipts are labeled as demos.</p>
           <p>If a link is missing or not updating, see <a href="troubleshooting.html#links">payment link problems</a>.</p>
           <p class="back-to-contents"><a href="#contents">Back to contents</a></p>
         </section>
@@ -272,7 +269,6 @@
             <p class="callout-title">Prerequisites</p>
             <ul>
               <li>Pre-authorization enabled by Adyen Support for your payment methods; see the <a href="https://docs.adyen.com/point-of-sale/pre-authorisation">Adyen pre-authorization guide</a></li>
-              <li>Checkout API setup complete</li>
             </ul>
           </div>
           <p>A pre-authorization holds an amount on the card without charging it. Your whole account does not need manual capture; Mini mPOS requests it for these payments only.</p>

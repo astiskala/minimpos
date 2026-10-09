@@ -545,15 +545,62 @@ pre {
 
 .fixes dd { margin: 6px 0 0; }
 
-.fixes dd p { margin: 4px 0; }
+.fixes dd p { margin: 12px 0; }
 
 .fixes dd ol, .fixes dd ul { margin: 4px 0; padding-left: 1.2em; }
 
-.fix-label { margin-right: 6px; color: var(--grey); font-size: 0.85rem; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; }
+.fix-label { display: block; margin-bottom: 4px; color: var(--navy); font-size: 1rem; font-weight: 700; line-height: 1.4; }
 
-.manual-setup { margin: 14px 0; }
+/* Quick start: each device setup is a card linking to its connection steps. */
+.setup-choices { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; margin: 16px 0 24px; }
 
-.manual-setup > summary { cursor: pointer; font-weight: 700; }
+.setup-choices > div { padding: 18px 20px; border: 1px solid var(--border); border-radius: var(--radius); }
+
+.setup-choices dt { margin-top: 0; font-size: 1.05rem; }
+
+/* Each connection task leads with the recommended setup helper route; Manual is a collapsed alternative below it. */
+.setup-route { margin: 20px 0 0; padding: 16px 20px; border: 1px solid var(--green); border-radius: 12px; background: var(--green-light); }
+
+.setup-route dt { margin-top: 0; }
+
+.setup-route dd { color: var(--navy); }
+
+.manual-setup { margin: 12px 0 20px; border: 1px solid var(--border); border-radius: 12px; }
+
+.manual-setup > summary {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 48px;
+  padding: 10px 20px;
+  border-radius: 12px;
+  cursor: pointer;
+  font-weight: 700;
+  list-style: none;
+}
+
+.manual-setup > summary::-webkit-details-marker { display: none; }
+
+.manual-setup > summary::before {
+  content: "";
+  flex-shrink: 0;
+  width: 7px;
+  height: 7px;
+  border-right: 2px solid var(--grey);
+  border-bottom: 2px solid var(--grey);
+  transform: rotate(-45deg);
+  transition: transform 0.15s;
+}
+
+.manual-setup[open] > summary::before { transform: rotate(45deg); }
+
+.manual-setup > summary:hover { background: var(--grey-light); }
+
+.manual-setup[open] > summary { border-bottom: 1px solid var(--border); border-radius: 12px 12px 0 0; }
+
+.manual-setup > ol { margin: 16px 20px 18px 0; }
+
+.guide-body ol > li::marker { color: var(--green-dark); font-weight: 700; }
 
 /* Footer */
 
@@ -608,6 +655,7 @@ pre {
   .brand img { width: 28px; height: 28px; }
   .step { padding: 22px; }
   .flow { gap: 20px; }
+  .setup-choices { grid-template-columns: minmax(0, 1fr); }
 }
 
 @media (max-width: 360px) {
@@ -619,6 +667,7 @@ pre {
 
 [hidden] { display: none !important; }
 
+/* The form and its notes sit beside the sticky aside; the generated codes span both columns below them. */
 .setup {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 340px;
@@ -629,65 +678,166 @@ pre {
 
 .setup-main { max-width: 680px; min-width: 0; }
 
+.setup-main > .hint { margin-bottom: 24px; }
+
+/* Each visible top-level group is a numbered step, like the app's Terminal setup. Hidden groups generate no box, so
+   the numbers stay consecutive whichever destination, environment and mode are chosen. */
+.setup-form { counter-reset: step; }
+
 .setup-form fieldset {
-  margin: 0 0 20px;
-  padding: 20px 24px 22px;
+  min-width: 0;
+  margin: 0 0 24px;
+  padding: 24px;
   border: 1px solid var(--border);
   border-radius: var(--radius);
+  background: #fff;
 }
 
-.setup-form legend { padding: 0 6px; font-weight: 700; font-size: 1.05rem; }
+/* A floated legend is laid out inside its card, like a heading, instead of across the border. */
+.setup-form legend {
+  float: left;
+  width: 100%;
+  margin: 0 0 12px;
+  padding: 0;
+  font-weight: 700;
+  font-size: 1.1rem;
+  line-height: 1.35;
+}
 
-.setup-form label:not(.choice) { display: block; margin: 14px 0 4px; font-weight: 600; }
+.setup-form legend + * { clear: left; }
+
+.setup-form > fieldset > legend { position: relative; min-height: 28px; padding: 2px 0 0 40px; }
+
+.setup-form > fieldset > legend::before {
+  counter-increment: step;
+  content: counter(step);
+  position: absolute;
+  top: 0;
+  left: 0;
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--green);
+  color: #fff;
+  font-size: 0.9rem;
+}
+
+/* Details revealed by an optional group's choice continue inside the same card. */
+.setup-form fieldset fieldset { margin: 24px 0 0; padding: 24px 0 0; border: 0; border-top: 1px solid var(--border); border-radius: 0; }
+
+.setup-form fieldset fieldset > legend { font-size: 1rem; }
+
+.setup-form label:not(.choice) { display: block; margin: 16px 0 6px; font-weight: 600; }
 
 .setup-form input:not([type="radio"]), .setup-form select, .setup-form textarea {
   width: 100%;
-  padding: 10px 12px;
-  border: 1px solid var(--border);
+  padding: 11px 12px;
+  border: 1px solid #858fa0;
   border-radius: 10px;
   font: inherit;
   font-family: var(--mono);
   font-size: 0.95rem;
   color: var(--navy);
   background: #fff;
+  transition: border-color 0.15s;
 }
+
+/* Keys, IDs and addresses stay monospaced; text printed on receipts or shown to customers does not. */
+.setup-form input:not([type="radio"]):not([spellcheck="false"]), .setup-form textarea:not([spellcheck="false"]) { font-family: var(--font); }
+
+.setup-form input:not([type="radio"]):hover, .setup-form select:hover, .setup-form textarea:hover { border-color: var(--navy); }
+
+.setup-form input:focus, .setup-form select:focus, .setup-form textarea:focus { border-color: var(--green-dark); }
+
+.setup-form input:user-invalid, .setup-form select:user-invalid, .setup-form textarea:user-invalid { border-color: #c62828; }
 
 .setup-form input:focus-visible, .setup-form select:focus-visible,
 .setup-form textarea:focus-visible, .setup-form button:focus-visible { outline: 3px solid var(--green); outline-offset: 2px; }
 
-.choice { display: flex; gap: 10px; align-items: baseline; padding: 6px 0; cursor: pointer; }
+/* Choices are whole-row targets that show which option is selected. */
+.choice {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  margin: 8px 0 0;
+  padding: 12px 16px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s, box-shadow 0.15s;
+}
 
-.choice input { accent-color: var(--green-dark); }
+.choice:hover { border-color: var(--green); }
+
+.choice:has(input:checked) { border-color: var(--green); background: var(--green-light); box-shadow: inset 0 0 0 1px var(--green); }
+
+.choice:has(input:focus-visible) { outline: 3px solid var(--green); outline-offset: 2px; }
+
+.choice input { flex-shrink: 0; width: 18px; height: 18px; margin: 4px 0 0; accent-color: var(--green-dark); }
 
 .hint { margin: 8px 0 0; color: var(--grey); font-size: 0.93rem; }
+
+.choice + .hint { margin-top: 12px; }
+
+.setup-form legend + .choice, .setup-form legend + .hint, .setup-form legend + label:not(.choice) { margin-top: 0; }
+
+/* A destination's prerequisites between steps read like the guides' prerequisite callouts. */
+.setup-form > .hint[data-only] { margin: 0 0 24px; padding: 14px 18px; border-left: 4px solid var(--navy); border-radius: 8px; background: var(--grey-light); color: var(--navy); }
 
 button.button { font: inherit; font-weight: 700; cursor: pointer; }
 
 .setup-actions { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 8px; }
 
-.setup-codes { margin-top: 40px; padding-top: 24px; border-top: 1px solid var(--border); scroll-margin-top: 88px; }
+.setup-codes {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: minmax(0, 400px) minmax(0, 1fr);
+  gap: 24px 48px;
+  align-items: start;
+  padding: 32px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--grey-light);
+}
 
-.setup-codes li { margin-bottom: 6px; }
+.setup-codes > h2 { grid-column: 1 / -1; margin: 0; font-size: clamp(1.5rem, 2.6vw, 2rem); }
+
+.setup-scan { padding: 16px; border: 1px solid var(--border); border-radius: var(--radius); background: #fff; }
+
+.setup-qr svg { display: block; width: 100%; height: auto; }
+
+.setup-controls { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 8px 10px; margin-top: 12px; }
+
+.setup-controls span { flex-basis: 100%; font-weight: 600; text-align: center; }
 
 .setup-code-card {
-  max-width: 420px;
-  margin: 20px 0;
-  padding: 14px 20px;
+  margin: 0 0 24px;
+  padding: 16px 20px;
+  border: 1px solid var(--green);
   border-radius: var(--radius);
   background: var(--green-light);
 }
 
 .setup-code-card p { margin: 0; font-weight: 600; }
 
-.setup-code { font-family: var(--mono); font-size: 1.8rem; letter-spacing: 0.06em; }
+.setup-code { font-family: var(--mono); font-size: clamp(1.4rem, 5vw, 1.9rem); letter-spacing: 0.06em; }
 
-.setup-qr { max-width: 420px; }
+.setup-next ol { margin: 0 0 16px; padding-left: 1.4em; }
 
-.setup-qr svg { display: block; width: 100%; height: auto; border: 1px solid var(--border); border-radius: 12px; }
+.setup-next li { margin-bottom: 8px; }
 
-.setup-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; max-width: 420px; margin-top: 14px; }
+.setup-next li::marker { color: var(--green-dark); font-weight: 700; }
 
-.setup-side {
+.setup-next p { margin: 0 0 12px; }
+
+.setup-next .setup-code-card p, .setup-next > :last-child { margin: 0; }
+
+/* The aside fills the form's row and its content sticks within it, so it never scrolls over the generated codes. */
+.setup-side { grid-column: 2; grid-row: 1; align-self: stretch; }
+
+.setup-side > div {
   position: sticky;
   top: 88px;
   padding: 24px;
@@ -698,13 +848,27 @@ button.button { font: inherit; font-weight: 700; cursor: pointer; }
 
 .setup-side h2 { font-size: 1.15rem; }
 
-.setup-side ul { margin: 0 0 24px; padding-left: 1.2em; color: var(--grey); }
+.setup-side ul { margin: 12px 0 0; padding-left: 1.2em; color: var(--grey); }
 
 .setup-side li { margin-bottom: 8px; }
 
 .setup-side li strong { color: var(--navy); }
 
+.setup-side li:last-child { margin-bottom: 0; }
+
 @media (max-width: 900px) {
   .setup { grid-template-columns: minmax(0, 1fr); gap: 24px; }
-  .setup-side { position: static; }
+  .setup-side { grid-column: auto; grid-row: auto; }
+  .setup-side > div { position: static; }
+  .setup-codes { grid-template-columns: minmax(0, 1fr); }
+  .setup-scan { max-width: 420px; }
+}
+
+@media (max-width: 600px) {
+  .setup-form fieldset { padding: 16px; }
+  .setup-form fieldset fieldset { padding: 16px 0 0; }
+  .choice { padding: 12px; }
+  .setup-actions .button { flex: 1 1 auto; text-align: center; }
+  .setup-codes { padding: 16px; }
+  .setup-scan { padding: 10px; }
 }

@@ -5,6 +5,7 @@ import com.google.common.truth.Truth.assertWithMessage
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Document
 import org.jsoup.nodes.Element
+import org.jsoup.parser.Parser
 import org.junit.Test
 import java.net.URLDecoder
 import java.nio.ByteBuffer
@@ -457,6 +458,50 @@ class WebsiteTest {
             assertThat(pages.getValue(language to Kind.GUIDE).text).contains("Management API - Terminal settings read and write")
             assertThat(pages.getValue(language to Kind.USING).text).contains("Return adjust authorisation data")
         }
+    }
+}
+
+class ErrorMessageGuideTest {
+    @Test
+    fun `troubleshooting quotes error messages exactly as the app words them`() {
+        // The headings are what the merchant sees, so a reworded in-app message must update its guide entry too.
+        LANGUAGES.forEach { language ->
+            val page = pages.getValue(language to Kind.TROUBLE)
+            val quoted = page.document.select("#messages dt").map { it.text() }
+            assertWithMessage(page.name).that(quoted).isNotEmpty()
+            val messages = appStrings(language)
+            quoted.forEach { heading ->
+                val (open, close) = if (language == "ja") "「" to "」" else "“" to "”"
+                assertWithMessage("${page.name}: $heading").that(heading.startsWith(open) && heading.endsWith(close)).isTrue()
+                assertWithMessage("${page.name}: $heading").that(messages).contains(heading.removePrefix(open).removeSuffix(close))
+            }
+        }
+        val counts =
+            LANGUAGES.map {
+                pages
+                    .getValue(it to Kind.TROUBLE)
+                    .document
+                    .select("#messages dt")
+                    .size
+            }
+        assertThat(counts.toSet()).hasSize(1)
+    }
+
+    /** The app's string resources in [language], unescaped as Android shows them. */
+    private fun appStrings(language: String): Set<String> {
+        val folder =
+            mapOf(
+                "en" to "values",
+                "zh-CN" to "values-zh-rCN",
+                "zh-Hant" to "values-b+zh+Hant",
+                "ja" to "values-ja",
+            ).getValue(language)
+        val file = appResources.resolve(folder).resolve("strings.xml")
+        return Jsoup
+            .parse(file.readText(), "", Parser.xmlParser())
+            .select("string")
+            .map { it.text().replace("\\'", "'").replace("\\\"", "\"") }
+            .toSet()
     }
 }
 
@@ -1151,6 +1196,7 @@ private val GUIDE_TOPICS =
                 "receipts",
                 "access",
                 "install",
+                "messages",
                 "help",
             ),
     )
@@ -1158,6 +1204,8 @@ private val GUIDE_TOPICS =
 private val docs: Path =
     Path.of(checkNotNull(System.getProperty("minimpos.website")) { "minimpos.website is not set" }).toAbsolutePath().normalize()
 private val styles = docs.resolve("styles.css").readText()
+private val appResources: Path =
+    Path.of(checkNotNull(System.getProperty("minimpos.appResources")) { "minimpos.appResources is not set" }).toAbsolutePath().normalize()
 
 /** The kinds of page each language has. */
 private enum class Kind(

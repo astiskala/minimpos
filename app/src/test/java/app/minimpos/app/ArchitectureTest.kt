@@ -999,7 +999,7 @@ class ArchitectureTest {
         GeneralCodingRules.NO_CLASSES_SHOULD_USE_JAVA_UTIL_LOGGING.check(app)
     }
 
-    private companion object {
+    internal companion object {
         // A QR code proves possession, not payment readiness; only verified orchestration may activate its configuration.
         val setupVerificationOwnership: List<ArchRule> =
             listOf(

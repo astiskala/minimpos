@@ -52,12 +52,20 @@ dependencies {
 
 val website = isolated.rootProject.projectDirectory.dir("docs")
 
+// Troubleshooting quotes the app's messages, so the guide tests read its string resources.
+val appResources = isolated.rootProject.projectDirectory.dir("app/src/main/res")
+
 tasks.test {
     inputs
         .dir(website)
         .withPathSensitivity(PathSensitivity.RELATIVE)
         .withPropertyName("website")
     systemProperty("minimpos.website", website.asFile.absolutePath)
+    inputs
+        .files(fileTree(appResources) { include("values*/strings.xml") })
+        .withPathSensitivity(PathSensitivity.RELATIVE)
+        .withPropertyName("appStrings")
+    systemProperty("minimpos.appResources", appResources.asFile.absolutePath)
     // Browser paths affect helper integration tests even when the published website has not changed.
     inputs.property("chrome", providers.environmentVariable("MINIMPOS_CHROME").orElse(""))
 }

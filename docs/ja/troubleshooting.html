@@ -60,14 +60,14 @@
           <li><a href="#wallets">ウォレットスキャン</a></li><li><a href="#connection">端末ペアリングと設定</a></li><li><a href="#network-dropouts">ネットワークの切断</a></li>
           <li><a href="#modifications">キャプチャと調整</a></li><li><a href="#links">支払いリンク</a></li>
           <li><a href="#receipts">プリンターとメール</a></li><li><a href="#access">PIN と転送</a></li>
-          <li><a href="#install">インストール</a></li><li><a href="#help">問い合わせ</a></li>
+          <li><a href="#install">インストール</a></li><li><a href="#messages">エラーメッセージ</a></li><li><a href="#help">問い合わせ</a></li>
         </ol></div>
         <details class="mobile-contents"><summary class="toc-title">このページの内容</summary><ol>
           <li><a href="#unknown">結果不明</a></li><li><a href="#declines">拒否された決済</a></li>
           <li><a href="#wallets">ウォレットスキャン</a></li><li><a href="#connection">端末ペアリングと設定</a></li><li><a href="#network-dropouts">ネットワークの切断</a></li>
           <li><a href="#modifications">キャプチャと調整</a></li><li><a href="#links">支払いリンク</a></li>
           <li><a href="#receipts">プリンターとメール</a></li><li><a href="#access">PIN と転送</a></li>
-          <li><a href="#install">インストール</a></li><li><a href="#help">問い合わせ</a></li>
+          <li><a href="#install">インストール</a></li><li><a href="#messages">エラーメッセージ</a></li><li><a href="#help">問い合わせ</a></li>
         </ol></details>
       </nav>
       <div class="guide-body">
@@ -266,6 +266,52 @@
             <div><dt>Android のバージョンが非対応</dt>
               <dd><p><span class="fix-label">原因</span>Mini mPOS には Android 9 以降が必要です。旧 S1E は Android 7.1 です。</p>
                 <p><span class="fix-label">対処</span>対応する端末を使います。<a href="quick-start.html#install">インストール</a>を参照してください。</p></dd></div>
+          </dl>
+          <p class="back-to-contents"><a href="#contents">目次に戻る</a></p>
+        </section>
+        <section id="messages">
+          <h2>エラーメッセージが表示される</h2>
+          <p>各メッセージは問題と確認すべき点を示します。括弧内の詳細（IPアドレス、HTTPステータス、Adyenの原文など）はAdyenサポートの調査に役立つため、問い合わせの際に伝えてください。決済の途中だった場合は、ほかの対処の前に<a href="#unknown">その結果を確認</a>してください。</p>
+          <dl class="fixes">
+            <div><dt>「端末に接続できませんでした。端末の電源、同じネットワークにあること、IPアドレスを確認してください。」</dt>
+              <dd><p><span class="fix-label">原因</span>Mini mPOS が、保存されたIPアドレスのネットワーク端末に接続できませんでした。</p>
+                <p><span class="fix-label">対処</span><a href="#network-dropouts">接続の切断</a>を参照してください。</p></dd></div>
+            <div><dt>「このアドレスは選択した環境のAdyen端末ではありません。IPアドレスとTESTまたはLIVEを確認してください。」</dt>
+              <dd><p><span class="fix-label">原因</span>そのアドレスで応答がありましたが、選択した環境のAdyen端末ではありません。アドレスが別のデバイスに割り当てられたか、TESTとLIVEが混在しています。</p>
+                <p><span class="fix-label">対処</span>端末の「Device info」画面でIPアドレスを確認し、<strong>設定 › 端末</strong>の<strong>環境</strong>を確認してください。</p></dd></div>
+            <div><dt>「端末が共有キーを拒否しました。端末設定でキー識別子、バージョン、パスフレーズを確認してください。」</dt>
+              <dd><p><span class="fix-label">原因</span>共有キーの識別子、バージョン、パスフレーズが端末のものと異なります。</p>
+                <p><span class="fix-label">対処</span>Customer Area と照合するか、<a href="#key-setup">キーを設定し直して</a>ください。</p></dd></div>
+            <div><dt>「端末の応答を検証できませんでした。端末設定で共有キーを確認してください。」</dt>
+              <dd><p><span class="fix-label">原因</span>端末が別の共有キーで応答したため、リクエストは端末に届いた可能性があります。</p>
+                <p><span class="fix-label">対処</span>再請求の前に<a href="#unknown">結果を確認</a>し、その後で共有キーを修正してください。</p></dd></div>
+            <div><dt>「端末がAdyenに接続されていません。端末の電源とオンライン状態を確認してください。」</dt>
+              <dd><p><span class="fix-label">原因</span>クラウド端末の電源が切れているか、インターネットに接続されていません。</p>
+                <p><span class="fix-label">対処</span>端末のWi-Fi、イーサネット、モバイルデータを確認してから、<strong>接続をテスト</strong>を実行してください。</p></dd></div>
+            <div><dt>「AdyenがAPIキーを受け付けませんでした。端末設定で確認してください。」</dt>
+              <dd><p><span class="fix-label">原因</span>APIキーが間違っているか、無効化されたか、別の環境のものです。</p>
+                <p><span class="fix-label">対処</span>キーを入力し直し、<a href="quick-start.html#credentials">認証情報の要件</a>と照合してください。</p></dd></div>
+            <div><dt>「APIキーに必要なロール、またはこのマーチャントアカウントへのアクセス権がありません。Customer AreaでAPI認証情報を確認してください。」</dt>
+              <dd><p><span class="fix-label">原因</span>認証情報に必要なロール、またはこのマーチャントアカウントへのアクセス権がありません。不足しているロールが分かる場合は括弧内に表示されます。</p>
+                <p><span class="fix-label">対処</span>Customer Area でロールまたはアカウントへのアクセス権を追加してください。<a href="quick-start.html#credentials">認証情報の要件</a>を参照してください。</p></dd></div>
+            <div><dt>「Adyenが混雑しているか、一時的に利用できません。」</dt>
+              <dd><p><span class="fix-label">原因</span>Adyenがリクエストを制限しているか、一時的に利用できません。</p>
+                <p><span class="fix-label">対処</span>しばらく待ってから再試行してください。決済、キャプチャ、支払いリンクの場合は、先に<a href="#unknown">その結果を確認</a>してください。</p></dd></div>
+            <div><dt>「時間内に応答がありませんでした。」</dt>
+              <dd><p><span class="fix-label">原因</span>リクエストは送信されましたが応答がなかったため、結果は不明です。</p>
+                <p><span class="fix-label">対処</span><a href="#unknown">結果を確認</a>してください。結果が分かるまで再請求しないでください。</p></dd></div>
+            <div><dt>「Paymentsアプリからの応答はまだ届いていません。結果を問い合わせることはできないため、Customer Areaで決済を確認してください。」</dt>
+              <dd><p><span class="fix-label">原因</span>Tap to Payでは、Paymentsアプリに結果を問い合わせることができず、遅れて届く応答もまだありません。</p>
+                <p><span class="fix-label">対処</span>再請求の前に、Customer Area で決済を確認してください。</p></dd></div>
+            <div><dt>「Adyen Paymentsアプリを開けませんでした。インストールされているか確認してください。」</dt>
+              <dd><p><span class="fix-label">原因</span>Paymentsアプリがインストールされていないか、削除されました。</p>
+                <p><span class="fix-label">対処</span>環境に合ったPaymentsアプリをインストールしてから、再試行してください。<a href="quick-start.html#connect">Adyenに接続</a>を参照してください。</p></dd></div>
+            <div><dt>「メールサーバーがユーザー名またはパスワードを受け付けませんでした。「設定 › メール」で確認してください。」</dt>
+              <dd><p><span class="fix-label">原因</span>SMTPのユーザー名またはパスワードが間違っているか、プロバイダーがアプリパスワードを要求しています。</p>
+                <p><span class="fix-label">対処</span>修正してから、テストメールを送信してください。</p></dd></div>
+            <div><dt>「このデバイスの安全な保存領域を使用できませんでした。再試行するか、デバイスを再起動してください。」</dt>
+              <dd><p><span class="fix-label">原因</span>Androidのキーストアが、保存された秘密情報を暗号化または読み取れませんでした。</p>
+                <p><span class="fix-label">対処</span>再起動しても続く場合は、キーとパスワードを入力し直してください。</p></dd></div>
           </dl>
           <p class="back-to-contents"><a href="#contents">目次に戻る</a></p>
         </section>

@@ -60,14 +60,14 @@
           <li><a href="#wallets">Wallet scanning</a></li><li><a href="#connection">Pairing and setup</a></li><li><a href="#network-dropouts">Network dropouts</a></li>
           <li><a href="#modifications">Captures and adjustments</a></li><li><a href="#links">Payment links</a></li>
           <li><a href="#receipts">Printer and email</a></li><li><a href="#access">PINs and transfers</a></li>
-          <li><a href="#install">Installation</a></li><li><a href="#help">Get help</a></li>
+          <li><a href="#install">Installation</a></li><li><a href="#messages">Error messages</a></li><li><a href="#help">Get help</a></li>
         </ol></div>
         <details class="mobile-contents"><summary class="toc-title">On this page</summary><ol>
           <li><a href="#unknown">Unknown result</a></li><li><a href="#declines">Declined payments</a></li>
           <li><a href="#wallets">Wallet scanning</a></li><li><a href="#connection">Pairing and setup</a></li><li><a href="#network-dropouts">Network dropouts</a></li>
           <li><a href="#modifications">Captures and adjustments</a></li><li><a href="#links">Payment links</a></li>
           <li><a href="#receipts">Printer and email</a></li><li><a href="#access">PINs and transfers</a></li>
-          <li><a href="#install">Installation</a></li><li><a href="#help">Get help</a></li>
+          <li><a href="#install">Installation</a></li><li><a href="#messages">Error messages</a></li><li><a href="#help">Get help</a></li>
         </ol></details>
       </nav>
       <div class="guide-body">
@@ -266,6 +266,52 @@
             <div><dt>The Android version is not supported</dt>
               <dd><p><span class="fix-label">Cause</span>Mini mPOS needs Android 9 or later; the older S1E runs Android 7.1.</p>
                 <p><span class="fix-label">Fix</span>Use a supported terminal; see <a href="quick-start.html#install">installation</a>.</p></dd></div>
+          </dl>
+          <p class="back-to-contents"><a href="#contents">Back to contents</a></p>
+        </section>
+        <section id="messages">
+          <h2>An error message names a problem</h2>
+          <p>Each message names the problem and what to check. Details in brackets, such as an IP address, an HTTP status or Adyen’s own words, help Adyen support: include them when you ask for help. If a payment was in progress, <a href="#unknown">check its result</a> before you fix anything else.</p>
+          <dl class="fixes">
+            <div><dt>“The terminal could not be reached. Check that it is on, on the same network and at this IP address.”</dt>
+              <dd><p><span class="fix-label">Cause</span>Mini mPOS could not open a connection to the network terminal at the saved IP address.</p>
+                <p><span class="fix-label">Fix</span>Follow <a href="#network-dropouts">network dropouts</a>.</p></dd></div>
+            <div><dt>“This address is not an Adyen terminal of the selected environment. Check the IP address and TEST or LIVE.”</dt>
+              <dd><p><span class="fix-label">Cause</span>Something answered at that address, but not an Adyen terminal of the selected environment: the address now belongs to another device, or TEST and LIVE are mixed.</p>
+                <p><span class="fix-label">Fix</span>Check the IP address on the terminal’s Device info screen, and <strong>Environment</strong> in <strong>Settings › Terminal</strong>.</p></dd></div>
+            <div><dt>“The terminal rejected the shared key. Check the key identifier, version and passphrase in Terminal settings.”</dt>
+              <dd><p><span class="fix-label">Cause</span>The shared key’s identifier, version or passphrase differs from the terminal’s.</p>
+                <p><span class="fix-label">Fix</span>Compare them with the Customer Area, or <a href="#key-setup">set up the key again</a>.</p></dd></div>
+            <div><dt>“The terminal’s reply could not be verified. Check the shared key in Terminal settings.”</dt>
+              <dd><p><span class="fix-label">Cause</span>The terminal answered with a different shared key, so the request may have reached it.</p>
+                <p><span class="fix-label">Fix</span><a href="#unknown">Check the result</a> before charging again, then fix the shared key.</p></dd></div>
+            <div><dt>“The terminal is not connected to Adyen. Check that it is on and online.”</dt>
+              <dd><p><span class="fix-label">Cause</span>The cloud terminal is off or has no internet connection.</p>
+                <p><span class="fix-label">Fix</span>Check the terminal’s Wi-Fi, Ethernet or mobile data, then run <strong>Test connection</strong>.</p></dd></div>
+            <div><dt>“Adyen did not accept the API key. Check it in Terminal settings.”</dt>
+              <dd><p><span class="fix-label">Cause</span>The API key is wrong, revoked or from the other environment.</p>
+                <p><span class="fix-label">Fix</span>Enter the key again and check it against the <a href="quick-start.html#credentials">credential requirements</a>.</p></dd></div>
+            <div><dt>“The API key lacks a role or access to this merchant account. Check the API credential in your Customer Area.”</dt>
+              <dd><p><span class="fix-label">Cause</span>The credential lacks a role or access to this merchant account. The brackets name the missing role when it is known.</p>
+                <p><span class="fix-label">Fix</span>Add the role or account access in the Customer Area; see the <a href="quick-start.html#credentials">credential requirements</a>.</p></dd></div>
+            <div><dt>“Adyen is busy or temporarily unavailable.”</dt>
+              <dd><p><span class="fix-label">Cause</span>Adyen is limiting requests or is briefly unavailable.</p>
+                <p><span class="fix-label">Fix</span>Wait a moment, then try again. For a payment, capture or payment link, <a href="#unknown">check its result</a> first.</p></dd></div>
+            <div><dt>“No answer came back in time.”</dt>
+              <dd><p><span class="fix-label">Cause</span>The request was sent, but no answer arrived, so its outcome is unknown.</p>
+                <p><span class="fix-label">Fix</span><a href="#unknown">Check the result</a>. Do not charge again until you know it.</p></dd></div>
+            <div><dt>“No reply from the Payments app has arrived yet. It cannot be asked for the result, so check the payment in your Customer Area.”</dt>
+              <dd><p><span class="fix-label">Cause</span>With Tap to Pay, the Payments app cannot be asked for a result, and no late answer has arrived.</p>
+                <p><span class="fix-label">Fix</span>Find the payment in the Customer Area before charging again.</p></dd></div>
+            <div><dt>“The Adyen Payments app could not be opened. Check that it is installed.”</dt>
+              <dd><p><span class="fix-label">Cause</span>The Payments app is not installed, or was removed.</p>
+                <p><span class="fix-label">Fix</span>Install the Payments app for your environment, then try again. See <a href="quick-start.html#connect">Connect to Adyen</a>.</p></dd></div>
+            <div><dt>“The mail server did not accept the username or password. Check them in Settings › Email.”</dt>
+              <dd><p><span class="fix-label">Cause</span>The SMTP username or password is wrong, or the provider requires an app password.</p>
+                <p><span class="fix-label">Fix</span>Correct them, then send a test email.</p></dd></div>
+            <div><dt>“This device’s secure storage did not work. Try again, or restart the device.”</dt>
+              <dd><p><span class="fix-label">Cause</span>Android’s keystore could not encrypt or read a saved secret.</p>
+                <p><span class="fix-label">Fix</span>If it continues after a restart, enter the keys and passwords again.</p></dd></div>
           </dl>
           <p class="back-to-contents"><a href="#contents">Back to contents</a></p>
         </section>

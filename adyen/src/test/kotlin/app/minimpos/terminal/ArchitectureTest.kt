@@ -22,6 +22,7 @@ import com.tngtech.archunit.core.importer.ImportOption
 import com.tngtech.archunit.lang.ArchRule
 import com.tngtech.archunit.lang.syntax.ArchRuleDefinition.classes
 import com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses
+import com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noMethods
 import com.tngtech.archunit.library.Architectures.layeredArchitecture
 import com.tngtech.archunit.library.GeneralCodingRules
 import com.tngtech.archunit.library.dependencies.SlicesRuleDefinition.slices
@@ -143,6 +144,28 @@ class ArchitectureTest {
     }
 
     @Test
+    fun `results carry faults and verbatim text, never exception text or English sentences`() {
+        // The app words every Fault in the user's language and shows ExternalText as received, so nothing here reads
+        // an exception's message or exposes a String reason or message on a public result.
+        exceptionText(resideInAnyPackage("app.minimpos.terminal..")).check(terminal)
+        sentenceResults(resideInAnyPackage("app.minimpos.terminal..")).check(terminal)
+    }
+
+    @Test
+    fun `fault ownership rejects exception text and String reasons`() {
+        val violation = ClassFileImporter().importClasses(SentenceViolation::class.java)
+        listOf(exceptionText(type(SentenceViolation::class.java)), sentenceResults(type(SentenceViolation::class.java))).forEach {
+            assertTrue(it.description, it.evaluate(violation).hasViolation())
+        }
+    }
+
+    private class SentenceViolation(
+        val reason: String,
+    ) {
+        fun said(error: IOException) = error.message
+    }
+
+    @Test
     fun `only the decline reads why a transaction was not approved`() =
         // Cancellations, busy terminals and retry advice come from Decline; nothing else compares ErrorCondition strings.
         noClasses()
@@ -231,6 +254,29 @@ class ArchitectureTest {
         const val PAYMENTS_APP = "PaymentsApp"
         const val TRANSPORT = "Transport"
         const val PARSE = "Parse"
+
+        fun exceptionText(classes: DescribedPredicate<in JavaClass>): ArchRule =
+            noClasses()
+                .that(classes)
+                .should()
+                .callMethodWhere(
+                    DescribedPredicate.describe("a read of an exception's message") { call ->
+                        call.targetOwner.isAssignableTo(Throwable::class.java) && call.name in setOf("getMessage", "getLocalizedMessage")
+                    },
+                )
+
+        fun sentenceResults(classes: DescribedPredicate<in JavaClass>): ArchRule =
+            noMethods()
+                .that()
+                .areDeclaredInClassesThat(classes)
+                .and()
+                .arePublic()
+                .and()
+                .haveNameMatching("get(Reason|Message)")
+                .should()
+                .haveRawReturnType(String::class.java)
+                // None remain, so only the deliberate violation exercises it.
+                .allowEmptyShould(true)
 
         val terminal: JavaClasses =
             ClassFileImporter()

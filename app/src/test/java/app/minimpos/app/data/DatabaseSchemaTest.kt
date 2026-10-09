@@ -5,6 +5,7 @@ import android.database.sqlite.SQLiteDatabase
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import app.minimpos.app.data.db.AppDatabase
+import app.minimpos.app.data.db.Failure
 import app.minimpos.app.data.db.ProductEntity
 import app.minimpos.app.data.db.SaleEntity
 import app.minimpos.app.data.db.SaleStatus
@@ -85,7 +86,7 @@ class DatabaseSchemaTest {
                             status = SaleStatus.UNKNOWN,
                             merchantReference = "schema-sale",
                             requestedWallet = "wechatpay_pos",
-                            reason = StoredReason.NotSetUp(SetupProblem.API_KEY),
+                            reason = StoredReason.NotDone(Failure.NotSetUp(SetupProblem.API_KEY)),
                             processedAt = 10,
                             captureStartedAt = 20,
                             captureProcessedAt = 30,
@@ -100,7 +101,7 @@ class DatabaseSchemaTest {
                     assertThat(product.sample).isTrue()
                     assertThat(product.name).isEqualTo("Item")
                     assertThat(sale.sample).isTrue()
-                    assertThat(sale.reason).isEqualTo(StoredReason.NotSetUp(SetupProblem.API_KEY))
+                    assertThat(sale.reason).isEqualTo(StoredReason.NotDone(Failure.NotSetUp(SetupProblem.API_KEY)))
                     assertThat(sale.requestedWallet).isEqualTo("wechatpay_pos")
                     assertThat(sale.processedAt).isEqualTo(10)
                     assertThat(sale.captureStartedAt).isEqualTo(20)

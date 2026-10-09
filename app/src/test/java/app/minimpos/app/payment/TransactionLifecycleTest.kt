@@ -2,6 +2,7 @@ package app.minimpos.app.payment
 
 import app.minimpos.app.TestEnvironment
 import app.minimpos.app.await
+import app.minimpos.app.data.db.Failure
 import app.minimpos.app.data.db.ProductEntity
 import app.minimpos.app.data.db.RefundEntity
 import app.minimpos.app.data.db.RefundStatus
@@ -96,7 +97,7 @@ class TransactionLifecycleTest {
         await { refunds.state.first { it == TransactionState.Finished(id) } }
         val record = await { container.refundRecords.get(id)!! }
         assertThat(record.status).isEqualTo(RefundStatus.FAILED)
-        assertThat(record.reason).isEqualTo(StoredReason.NotSetUp(SetupProblem.MANAGER_APPROVAL))
+        assertThat(record.reason).isEqualTo(StoredReason.NotDone(Failure.NotSetUp(SetupProblem.MANAGER_APPROVAL)))
     }
 
     @Test
@@ -198,7 +199,7 @@ class TransactionLifecycleTest {
         }
         val sale = finished(start()).sale
         assertThat(sale.status).isEqualTo(SaleStatus.FAILED)
-        assertThat(sale.reason).isEqualTo(StoredReason.NotSetUp(SetupProblem.ENVIRONMENT))
+        assertThat(sale.reason).isEqualTo(StoredReason.NotDone(Failure.NotSetUp(SetupProblem.ENVIRONMENT)))
         assertThat(sale.poiId).isNull()
         await { assertThat(payments.recheck(sale.id)).isFalse() }
         await { assertThat(payments.recheck("missing")).isFalse() }
@@ -330,7 +331,7 @@ class TransactionLifecycleTest {
         }
         val refund = refundFinished(refunds.start(refundStart(null, 100, full = false)))
         assertThat(refund.status).isEqualTo(RefundStatus.FAILED)
-        assertThat(refund.reason).isEqualTo(StoredReason.NotSetUp(SetupProblem.PASSPHRASE))
+        assertThat(refund.reason).isEqualTo(StoredReason.NotDone(Failure.NotSetUp(SetupProblem.PASSPHRASE)))
         assertThat(await { container.receipts.automation(StoredTransaction.Refund(refund.id)) }).isEqualTo(AutoDelivery())
         refunds.acknowledge()
 
@@ -339,7 +340,7 @@ class TransactionLifecycleTest {
         val broken = refundFinished(refunds.start(refundStart(null, 100, full = false, timestamp = "not a time")))
         assertThat(broken.status).isEqualTo(RefundStatus.UNKNOWN)
         assertThat(broken.message).isNotEmpty()
-        assertThat(broken.reason).isEqualTo(StoredReason.OutcomeUnknown)
+        assertThat(broken.reason).isEqualTo(StoredReason.Unconfirmed())
         assertThrows(IllegalArgumentException::class.java) { refunds.start(refundStart(null, 0, full = true)) }
     }
 
@@ -392,7 +393,7 @@ class TransactionLifecycleTest {
                 val request = RefundablePayment.cancellation(record, "", Instant.now(), ZoneOffset.UTC)!!
                 val failed = refundFinished(refunds.start(request))
                 assertThat(failed.status).isEqualTo(RefundStatus.FAILED)
-                assertThat(failed.reason).isEqualTo(StoredReason.NotSetUp(SetupProblem.PAYMENT_CONTEXT))
+                assertThat(failed.reason).isEqualTo(StoredReason.NotDone(Failure.NotSetUp(SetupProblem.PAYMENT_CONTEXT)))
                 assertThat(failed.pspReference).isNull()
                 assertThat(await { container.sales.get(sale.id)!! }.sale).isEqualTo(sale)
                 refunds.acknowledge()

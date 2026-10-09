@@ -1,6 +1,7 @@
 package app.minimpos.app.payment
 
 import android.database.SQLException
+import app.minimpos.app.data.db.Failure
 import app.minimpos.app.data.db.SetupProblem
 import app.minimpos.app.data.db.StoredReason
 import app.minimpos.app.terminal.Attempt
@@ -223,7 +224,7 @@ class TransactionLifecycle<R>(
                 @Suppress("TooGenericExceptionCaught") e: Exception,
             ) {
                 try {
-                    book.settle(id, Settlement(SettlementStatus.UNKNOWN, e.message, reason = StoredReason.OutcomeUnknown))
+                    book.settle(id, Settlement(SettlementStatus.UNKNOWN, e.message, reason = StoredReason.Unconfirmed()))
                 } catch (ignored: SQLException) {
                     // It stays PENDING, which the next start turns into UNKNOWN.
                 }
@@ -315,8 +316,17 @@ class TransactionLifecycle<R>(
             }
         val settlement =
             when (attempt) {
-                is Attempt.Made -> settle(id, attempt.result)
-                is Attempt.NotSetUp -> Settlement(SettlementStatus.FAILED, null, reason = StoredReason.NotSetUp(attempt.problem))
+                is Attempt.Made -> {
+                    settle(id, attempt.result)
+                }
+
+                is Attempt.NotSetUp -> {
+                    Settlement(
+                        SettlementStatus.FAILED,
+                        null,
+                        reason = StoredReason.NotDone(Failure.NotSetUp(attempt.problem)),
+                    )
+                }
             }
         book.settle(id, settlement)
         complete(id, settlement)
@@ -356,7 +366,7 @@ class TransactionLifecycle<R>(
             }
 
             is TransactionOutcome.Unknown -> {
-                Settlement(SettlementStatus.UNKNOWN, null, reason = StoredReason.OutcomeUnknown)
+                Settlement(SettlementStatus.UNKNOWN, null, reason = StoredReason.Unconfirmed())
             }
         }
 }

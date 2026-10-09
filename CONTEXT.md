@@ -61,10 +61,12 @@ existing spelling (`preAuthorisation`, `SaleKind.PRE_AUTHORISATION`, `authorised
 | Verified setup | Local fingerprint of checked connection fields and encrypted payment secrets; changed facts invalidate it, not a process restart. | `TerminalSetupSource`, `AppSettings.verifiedSetup` |
 | Verified setup import | Authenticated QR candidate checked before activation; encrypted commit journal resumes interrupted saves, with an atomic catalog import receipt. | `terminal/SetupImport`, `data/transfer/SetupTransfer` |
 | Unlocked setup | Resolved setup with required secrets decrypted once. | `UnlockedSetup` |
-| Setup problem | Missing/unreadable information or other condition blocking setup, reported typed rather than thrown. | `SetupProblem` |
+| Setup problem | Missing/unreadable information or other local condition to enter, install, approve or reconcile first, reported typed rather than thrown. | `SetupProblem` |
 | Connection | Open with a client, or blocked as not set up/unreachable. | `Connection`, `Destination.connect` |
 | Connection check | Checks reachability/setup and learns printer availability when supported. | `TerminalStatus` |
-| Delivery | One message was answered, not sent, or maybe sent; maybe sent requires recovery. | `transport/Delivery` |
+| Delivery | One message was answered, or failed with a fault; a fault that may have taken effect requires recovery. | `transport/Delivery` |
+| Fault | Why an exchange with Adyen, a terminal or the Payments app produced no usable result; each case states once whether the request may have taken effect. Typed, worded only at the UI. | `transport/Fault` |
+| External text | Words written by Adyen, a terminal, the Payments app or a mail server, shown verbatim and never used to decide. | `ExternalText` |
 | Environment | TEST/LIVE selected for network/cloud terminals, otherwise read from this device's certificate or installed Payments app. Learned facts retain their original terminal setup and cannot update changed connection settings. | `TerminalEnvironment`, `TerminalSetupSource.remember` |
 | POIID | Terminal ID (`<model>-<serial>`), device name on terminals, boarded installation ID for Tap to Pay. | `poiId` |
 | Shared key | Identifier, passphrase and version encrypting local and Payments app messages. | Terminal settings + `SecretStore` |
@@ -85,7 +87,10 @@ existing spelling (`preAuthorisation`, `SaleKind.PRE_AUTHORISATION`, `authorised
 | Receipt delivery | Offers/prints/emails/shares a stored sale or refund; automatic delivery uses the same path. | `ReceiptDelivery`, `TransactionActions`, `StoredTransaction` |
 | Unpaid receipt | Link payment request with amount due, QR and address, not proof of payment. | `SaleReceipt.unpaidLink` |
 | Outcome | Typed result presented in the current language, worded only at the UI boundary. | `ActionOutcome`, `ActionState`, `OutcomeMessages.kt` |
-| Stored reason | Typed app-origin reason; Adyen/terminal messages remain verbatim. | `StoredReason` |
+| Failure | Why an action did not happen or was not confirmed: not set up, a fault, a device fault or an email fault. One sentence with its fix, details in brackets. | `data/db/Failure` |
+| Device fault | Failure on the device running Mini mPOS (secure storage, database, files, unexpected); exception text is never kept. | `DeviceFault` |
+| Email fault | Why a receipt email was not sent; the mail server's reply stays external text. | `EmailFault` |
+| Stored reason | Typed reason stored with a transaction or capture: not done, unconfirmed (with what prevented confirmation) or interrupted. Answer text remains verbatim. | `StoredReason` |
 | Catalogue | Products, categories and tax rates. | `CatalogRepository` |
 | Sample data | Optional demo products, categories and read-only simulated history, tracked separately for scoped removal. Never replaces merchant data or credentials. | `data/repo/SampleData`, `sample` on stored rows |
 | Onboarding | First-run choice of simulator with sample data, setup import or terminal settings; completion stays local. | `feature/settings/OnboardingScreen`, `AppSettings.onboardingCompleted` |
@@ -108,5 +113,7 @@ existing spelling (`preAuthorisation`, `SaleKind.PRE_AUTHORISATION`, `authorised
 - A stored record is a **sale**, not an order or draft. A **session** is not a basket.
 - Use **standing** for the domain reading, **delivery** for whether a request may have taken effect, and **outcome**
   for what a completed action reports; generic state/result/error should not replace these distinct concepts.
+- A **decline** is not a **fault**: the terminal answered. A **failure** is worded by the app; **external text** is
+  never reworded, and exception text is never shown.
 - A held payment is **cancelled**, not refunded. **Held** is an amount/standing, not another payment kind.
 - A payment link is not an invoice. Receipt delivery **sharing** is not device **transfer** or synchronization.

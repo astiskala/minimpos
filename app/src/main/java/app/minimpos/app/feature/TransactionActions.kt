@@ -151,15 +151,6 @@ sealed interface ActionOutcome {
         val to: String,
     ) : ActionOutcome
 
-    /**
-     * A secret (password, passphrase, API key or PIN) could not be stored on this device.
-     *
-     * @property reason Why, in English; null when the device gave no reason.
-     */
-    data class SecretNotStored(
-        val reason: String?,
-    ) : ActionOutcome
-
     /** The sale or refund no longer exists. */
     data object Missing : ActionOutcome
 

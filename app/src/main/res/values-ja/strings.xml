@@ -489,7 +489,6 @@
   <string name="settings_secret_enter">Customer Areaと同じ値</string>
   <string name="settings_secret_show">表示</string>
   <string name="settings_secret_hide">非表示</string>
-  <string name="settings_secret_not_stored">このデバイスに安全に保存できませんでした（%1$s）。再試行するか、デバイスを再起動してください。</string>
   <string name="setup_poiid">端末設定に端末ID（POIID）を入力してください</string>
   <string name="setup_host">端末設定に端末のIPアドレスを入力してください</string>
   <string name="setup_key_identifier">端末設定に共有キーの識別子を入力してください</string>

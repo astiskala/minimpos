@@ -489,7 +489,6 @@
   <string name="settings_secret_enter">與商戶後台一致</string>
   <string name="settings_secret_show">顯示</string>
   <string name="settings_secret_hide">隱藏</string>
-  <string name="settings_secret_not_stored">此設備無法安全儲存（%1$s）。請重試或重啟設備。</string>
   <string name="setup_poiid">請在終端設定中輸入終端 ID（POIID）</string>
   <string name="setup_host">請在終端設定中輸入終端 IP 地址</string>
   <string name="setup_key_identifier">請在終端設定中輸入共享密鑰識別碼</string>

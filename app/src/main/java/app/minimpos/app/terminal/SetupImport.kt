@@ -1,5 +1,6 @@
 package app.minimpos.app.terminal
 
+import app.minimpos.app.data.db.DeviceFault
 import app.minimpos.app.data.db.Failure
 import app.minimpos.app.data.db.SetupProblem
 import app.minimpos.app.data.repo.ImportMode
@@ -105,8 +106,8 @@ class SetupImport internal constructor(
                     return@withLock SetupImportOutcome.HistoryConfirmation(switch)
                 }
                 SetupImportOutcome.Committed(transfer.commit(prepared, mode, purgeHistory = switch != null, verified = ::remember))
-            } catch (e: SecretStoreException) {
-                SetupImportOutcome.Committed(ImportOutcome.StorageFailed(e.message.orEmpty()))
+            } catch (ignored: SecretStoreException) {
+                SetupImportOutcome.Committed(ImportOutcome.StorageFailed(DeviceFault.SECURE_STORAGE))
             }
         }
 

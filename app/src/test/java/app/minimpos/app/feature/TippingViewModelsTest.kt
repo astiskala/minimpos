@@ -3,6 +3,7 @@ package app.minimpos.app.feature
 import app.minimpos.app.TestEnvironment
 import app.minimpos.app.await
 import app.minimpos.app.data.db.CaptureStatus
+import app.minimpos.app.data.db.DeviceFault
 import app.minimpos.app.data.db.Failure
 import app.minimpos.app.data.db.ProductEntity
 import app.minimpos.app.data.db.SaleKind
@@ -347,7 +348,7 @@ class TippingViewModelsTest {
         env.cipher.failEncrypt = true
         vm.saveAndTest(Secret.ADYEN_API_KEY, "other")
         assertThat(await { vm.actions.first { it.api.isError && !it.apiKeyStored } }.api.outcome)
-            .isInstanceOf(ActionOutcome.SecretNotStored::class.java)
+            .isEqualTo(ActionOutcome.Failed(Failure.Device(DeviceFault.SECURE_STORAGE)))
         env.cipher.failEncrypt = false
     }
 }

@@ -42,7 +42,6 @@ fun ActionOutcome.text(): String =
         is ActionOutcome.TapToPayReady -> stringResource(R.string.result_tap_to_pay_ready, installationId)
         ActionOutcome.TapToPayRemoved -> stringResource(R.string.result_tap_to_pay_removed)
         is ActionOutcome.TestEmailSent -> stringResource(R.string.settings_test_email_sent, to)
-        is ActionOutcome.SecretNotStored -> stringResource(R.string.settings_secret_not_stored, reason.orEmpty())
         ActionOutcome.Missing -> stringResource(R.string.error_not_found)
         is ActionOutcome.Unconfirmed -> stringResource(R.string.sentences, stringResource(R.string.action_unconfirmed), failure.text())
         is ActionOutcome.Failed -> failure.text()

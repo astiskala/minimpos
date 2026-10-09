@@ -1,6 +1,7 @@
 package app.minimpos.app.payment
 
 import android.database.SQLException
+import app.minimpos.app.data.db.DeviceFault
 import app.minimpos.app.data.db.Failure
 import app.minimpos.app.data.db.SetupProblem
 import app.minimpos.app.data.db.StoredReason
@@ -236,10 +237,12 @@ class TransactionLifecycle<R>(
                 throw e
             } catch (
                 // Whatever went wrong, the record must not be left looking as if it were still in progress.
-                @Suppress("TooGenericExceptionCaught") e: Exception,
+                @Suppress("TooGenericExceptionCaught") ignored: Exception,
             ) {
                 try {
-                    book.settle(id, Settlement(SettlementStatus.UNKNOWN, e.message, reason = StoredReason.Unconfirmed()))
+                    // The request may already have been sent, so the outcome is unconfirmed rather than failed.
+                    val unexpected = Failure.Device(DeviceFault.UNEXPECTED)
+                    book.settle(id, Settlement(SettlementStatus.UNKNOWN, null, reason = StoredReason.Unconfirmed(unexpected)))
                 } catch (ignored: SQLException) {
                     // It stays PENDING, which the next start turns into UNKNOWN.
                 }

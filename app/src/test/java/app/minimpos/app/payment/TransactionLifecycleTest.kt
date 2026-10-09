@@ -2,6 +2,7 @@ package app.minimpos.app.payment
 
 import app.minimpos.app.TestEnvironment
 import app.minimpos.app.await
+import app.minimpos.app.data.db.DeviceFault
 import app.minimpos.app.data.db.Failure
 import app.minimpos.app.data.db.ProductEntity
 import app.minimpos.app.data.db.RefundEntity
@@ -339,8 +340,9 @@ class TransactionLifecycleTest {
         env.useSimulator()
         val broken = refundFinished(refunds.start(refundStart(null, 100, full = false, timestamp = "not a time")))
         assertThat(broken.status).isEqualTo(RefundStatus.UNKNOWN)
-        assertThat(broken.message).isNotEmpty()
-        assertThat(broken.reason).isEqualTo(StoredReason.Unconfirmed())
+        // Exception text is never stored; the screens word the device fault instead.
+        assertThat(broken.message).isNull()
+        assertThat(broken.reason).isEqualTo(StoredReason.Unconfirmed(Failure.Device(DeviceFault.UNEXPECTED)))
         assertThrows(IllegalArgumentException::class.java) { refunds.start(refundStart(null, 0, full = true)) }
     }
 

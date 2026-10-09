@@ -132,7 +132,7 @@ internal class SetupSecrets(
 /** The device could not encrypt a secret (e.g. the Android Keystore failed), so it was not stored. */
 class SecretStoreException(
     cause: Throwable,
-) : Exception(listOfNotNull(cause::class.simpleName, cause.message).joinToString(": "), cause)
+) : Exception(cause)
 
 /**
  * Encrypted key/value storage for credentials; values never leave this class unencrypted except via [get]. Keystore

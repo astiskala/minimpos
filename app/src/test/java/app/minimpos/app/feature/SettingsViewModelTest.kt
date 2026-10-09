@@ -8,6 +8,7 @@ import app.minimpos.app.TestEnvironment
 import app.minimpos.app.await
 import app.minimpos.app.closeViewModels
 import app.minimpos.app.data.db.CategoryEntity
+import app.minimpos.app.data.db.DeviceFault
 import app.minimpos.app.data.db.Failure
 import app.minimpos.app.data.db.ProductEntity
 import app.minimpos.app.data.db.SaleKind
@@ -273,7 +274,7 @@ class SettingsViewModelTest {
             onTerminal.cipher.failEncrypt = true
             vm.saveAndTest(Secret.TERMINAL_PASSPHRASE, "another passphrase")
             val failed = await { vm.actions.first { it.connection.isError } }
-            assertThat(failed.connection.outcome).isEqualTo(ActionOutcome.SecretNotStored("ProviderException: Keystore unavailable"))
+            assertThat(failed.connection.outcome).isEqualTo(ActionOutcome.Failed(Failure.Device(DeviceFault.SECURE_STORAGE)))
             assertThat(failed.passphraseStored).isFalse()
             assertThat(await { onTerminal.container.secrets.get(Secret.TERMINAL_PASSPHRASE) }).isEqualTo("correct horse battery staple")
             vm.setSecret(Secret.SMTP_PASSWORD, "hunter2")

@@ -7,6 +7,8 @@ import app.minimpos.app.FakePaymentsApp
 import app.minimpos.app.TestEnvironment
 import app.minimpos.app.await
 import app.minimpos.app.closeViewModels
+import app.minimpos.app.data.db.DeviceFault
+import app.minimpos.app.data.db.Failure
 import app.minimpos.app.data.db.SetupProblem
 import app.minimpos.app.data.security.Secret
 import app.minimpos.app.data.settings.TerminalMode
@@ -185,6 +187,6 @@ class RemoteSettingsViewModelTest {
         vm.setUpTapToPay("another key")
         assertThat(
             await { vm.actions.first { it.tapToPay.isError } }.tapToPay.outcome,
-        ).isInstanceOf(ActionOutcome.SecretNotStored::class.java)
+        ).isEqualTo(ActionOutcome.Failed(Failure.Device(DeviceFault.SECURE_STORAGE)))
     }
 }

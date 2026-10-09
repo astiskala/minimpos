@@ -2,6 +2,7 @@ package app.minimpos.app.data
 
 import app.minimpos.app.TestEnvironment
 import app.minimpos.app.await
+import app.minimpos.app.data.db.DeviceFault
 import app.minimpos.app.data.db.ProductEntity
 import app.minimpos.app.data.db.TaxRateEntity
 import app.minimpos.app.data.repo.ImportMode
@@ -552,7 +553,7 @@ class SetupTransferTest {
         target.cipher.failEncrypt = true
         val before = await { target.container.settings.current() }
         val result = await { setup(target).import(received, ImportMode.MERGE, export.code) } as ImportOutcome.StorageFailed
-        assertThat(result.reason).contains("Keystore")
+        assertThat(result.fault).isEqualTo(DeviceFault.SECURE_STORAGE)
         assertThat(result.pending).isFalse()
         assertThat(await { target.container.settings.current() }).isEqualTo(before)
         assertThat(

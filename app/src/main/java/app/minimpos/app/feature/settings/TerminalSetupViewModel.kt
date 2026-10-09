@@ -1,6 +1,8 @@
 package app.minimpos.app.feature.settings
 
 import androidx.lifecycle.ViewModel
+import app.minimpos.app.data.db.DeviceFault
+import app.minimpos.app.data.db.Failure
 import app.minimpos.app.data.security.Secret
 import app.minimpos.app.data.security.SecretStore
 import app.minimpos.app.data.security.SecretStoreException
@@ -176,8 +178,8 @@ class TerminalSetupViewModel(
         launchWrite({
             try {
                 keyOutcome(discovery.setupKey(confirmed))
-            } catch (error: SecretStoreException) {
-                _actions.update { it.copy(keyResult = ActionState(outcome = ActionOutcome.SecretNotStored(error.message), isError = true)) }
+            } catch (ignored: SecretStoreException) {
+                _actions.update { it.copy(keyResult = ActionState(outcome = SECURE_STORAGE_FAILED, isError = true)) }
             }
         })
     }
@@ -282,11 +284,14 @@ class TerminalSetupViewModel(
     private suspend fun store(
         secret: Secret,
         apiKey: String,
-    ): ActionOutcome.SecretNotStored? =
+    ): ActionOutcome.Failed? =
         try {
             secrets.set(secret, apiKey)
             null
-        } catch (e: SecretStoreException) {
-            ActionOutcome.SecretNotStored(e.message)
+        } catch (ignored: SecretStoreException) {
+            SECURE_STORAGE_FAILED
         }
 }
+
+/** A secret could not be stored on this device. */
+private val SECURE_STORAGE_FAILED = ActionOutcome.Failed(Failure.Device(DeviceFault.SECURE_STORAGE))

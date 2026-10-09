@@ -93,46 +93,50 @@
           <h2>Check the prerequisites</h2>
           <p>Check these requirements before you install the app. The device runs Mini mPOS; the payment terminal takes the card. They can be the same device.</p>
           <h3 id="devices">Choose a device setup</h3>
-          <dl class="settings-list">
-            <dt><a href="#on-terminal">On an Adyen terminal</a></dt><dd>The complete checkout on one device. Use an Adyen Android payment terminal with Android 9 or later. Check the current models in the <a href="https://docs.adyen.com/point-of-sale/android-terminals">Adyen Android terminal guide</a>.</dd>
-            <dt><a href="#network">Tablet or phone with a network terminal</a></dt><dd>Recommended for a counter. An Android 9+ tablet or phone on the same local network as an Adyen terminal. Mini mPOS is not installed on that terminal.</dd>
-            <dt><a href="#cloud">Tablet or phone with a cloud terminal</a></dt><dd>For a device and terminal on different networks. Both need internet access; payments reach the terminal through Adyen.</dd>
-            <dt><a href="#tap-to-pay">Tap to Pay on a phone</a></dt><dd>No separate terminal. Use a phone with near-field communication (NFC) and the Adyen Payments app, activated by Adyen Support. Check the <a href="https://docs.adyen.com/point-of-sale/mobile-android/requirements">Adyen phone requirements</a> and <a href="https://docs.adyen.com/point-of-sale/ipp-mobile">Adyen supported countries and payment methods</a>.</dd>
+          <dl class="settings-list setup-choices">
+            <div><dt><a href="#on-terminal">On an Adyen terminal</a></dt><dd>The complete checkout on one device. Use an Adyen Android payment terminal with Android 9 or later. Check the current models in the <a href="https://docs.adyen.com/point-of-sale/android-terminals">Adyen Android terminal guide</a>.</dd></div>
+            <div><dt><a href="#network">Tablet or phone with a network terminal</a></dt><dd>Recommended for a counter. An Android 9+ tablet or phone on the same local network as an Adyen terminal. Mini mPOS is not installed on that terminal.</dd></div>
+            <div><dt><a href="#cloud">Tablet or phone with a cloud terminal</a></dt><dd>For a device and terminal on different networks. Both need internet access; payments reach the terminal through Adyen.</dd></div>
+            <div><dt><a href="#tap-to-pay">Tap to Pay on a phone</a></dt><dd>No separate terminal. Use a phone with near-field communication (NFC) and the Adyen Payments app, activated by Adyen Support. Check the <a href="https://docs.adyen.com/point-of-sale/mobile-android/requirements">Adyen phone requirements</a> and <a href="https://docs.adyen.com/point-of-sale/ipp-mobile">Adyen supported countries and payment methods</a>.</dd></div>
           </dl>
           <ul>
-            <li>Printing needs a terminal with a built-in printer. AMS1 terminals and Tap to Pay phones have none; email or share receipts instead.</li>
+            <li>Printing needs a terminal with a built-in printer. If there is none, you can email or share receipts instead.</li>
             <li>Scanning barcodes, refund QR codes or setup codes needs a camera.</li>
           </ul>
           <h3 id="network-requirements">Prepare the network</h3>
           <p>Ask the site's network administrator to allow the following:</p>
           <dl class="settings-list">
-            <dt>Internet (every real setup)</dt><dd>Outgoing HTTPS on TCP 443 from the device and terminal to <code>*.adyen.com</code> and <code>*.adyenpayments.com</code>. Allow these by domain name, not IP address, because Adyen's IP addresses change.</dd>
-            <dt>Local network (network terminal)</dt><dd>The tablet or phone must reach the terminal's IP address on TCP 8443. Connect both to the same network, and make sure Wi-Fi client isolation (common on guest networks) does not separate them.</dd>
+            <dt>Internet</dt><dd>Outgoing HTTPS on TCP 443 from the device and terminal to <code>*.adyen.com</code> and <code>*.adyenpayments.com</code>. <a href="https://docs.adyen.com/development-resources/security/integration-security/allowlisting#dns-resolution-and-domain-base-allowlist">Allow these by domain name</a>, not IP address, because Adyen's IP addresses change.</dd>
+            <dt>Local network (for network terminals)</dt><dd>The tablet or phone must reach the terminal's IP address on TCP 8443. Connect both to the same network, and make sure Wi-Fi client isolation (common on guest networks) does not separate them.</dd>
             <dt>Email receipts (optional)</dt><dd>Outgoing access to your SMTP server, usually TCP 587 (STARTTLS) or 465 (SSL/TLS).</dd>
           </dl>
           <p>Give each network terminal a fixed IP address with a DHCP reservation in your router. Mobile data works for the tablet or phone in cloud and Tap to Pay setups, but not with a network terminal. For the terminal's own requirements, see the <a href="https://docs.adyen.com/point-of-sale/design-your-integration/network-and-connectivity/network-configuration">Adyen network configuration guide</a>.</p>
           <h3 id="credentials">Prepare Adyen credentials</h3>
-          <p>To validate with Adyen, you need an active test merchant account with in-person payments enabled and Customer Area access. Start with TEST credentials and a TEST terminal or Adyen Payments Test. For LIVE, use the corresponding live account, credentials and terminal or Payments app. Every real-payment setup needs Checkout API access, including ordinary sales.</p>
+          <p>To validate with Adyen, you need an active test merchant account with in-person payments enabled and Customer Area access. Start with TEST credentials and a TEST terminal or Adyen Payments Test. For LIVE, use the corresponding live account, credentials and terminal or Payments app.</p>
           <p>To create or edit credentials, your Customer Area user needs <strong>Manage API credentials</strong> or <strong>Merchant admin</strong>. These are user permissions, not roles for the API key.</p>
           <p>Enable the POS payment methods you plan to accept; follow the <a href="https://docs.adyen.com/point-of-sale/what-we-support/payment-methods/add-payment-methods">Adyen payment method setup guide</a>. Mini mPOS uses the terminal's configured methods.</p>
           <ol>
             <li>In the Customer Area, go to <strong>Developers › API credentials</strong>. Create a credential for Mini mPOS and generate its API key; see the <a href="https://docs.adyen.com/development-resources/api-credentials">Adyen API credential guide</a>.</li>
-            <li>For the main API key, enable these roles:
+            <li>For the main API key, enable these additional roles:
               <ul class="roles">
-                <li><strong>Merchant PAL webservice role</strong> — payments API access</li>
-                <li><strong>Checkout webservice role</strong> — API checks, captures, adjustments and payment links</li>
-                <li><strong>Management API — Terminal actions read</strong> — terminal access checks</li>
-                <li><strong>Management API — Terminal settings read and write</strong> — terminal settings and shared-key creation</li>
-                <li><strong>Management API — Terminal settings Advanced read and write</strong> — sensitive settings, including shared keys</li>
-                <li><strong>Cloud Device API role</strong> — cloud terminals only</li>
+                <li><strong>Management API — Terminal actions read</strong></li>
+                <li><strong>Management API — Terminal settings read and write</strong></li>
+                <li><strong>Management API — Terminal settings Advanced read and write</strong></li>
+                <li><strong>Cloud Device API role</strong></li>
+                <li><strong>Merchant Recurring role</strong></li>
+                <li><strong>Management API — Stores read</strong></li>
+                <li><strong>Management API — Account read</strong></li>
+                <li><strong>Management API — Payment methods read</strong></li>
               </ul>
-              Mini mPOS checks all three Management roles for every real setup, including manual entry, cloud and Tap to Pay. The credential must belong to your company account and have access to the destination's merchant account. See the <a href="https://docs.adyen.com/development-resources/api-credentials/roles">Adyen API role guide</a>.</li>
-            <li>Optional: for <a href="using.html#shoppers">card saving through payment links</a>, also enable <strong>Merchant Recurring role</strong>. See the <a href="https://docs.adyen.com/online-payments/tokenization/create-tokens">Adyen online tokenization guide</a>.</li>
-            <li>Optional: to import receipt business details, also add <strong>Management API — Stores read</strong> (store name, address and phone) or <strong>Management API — Account read</strong> (legal name only).</li>
-            <li>Optional: for <a href="using.html#wallets">merchant-scanned wallet payments</a>, add <strong>Management API — Payment methods read</strong>. This read permission affects only wallet discovery, not ordinary payments.</li>
-            <li>Note the <strong>Merchant account</strong>. For LIVE, also note the <strong>Live URL prefix</strong> from <strong>Developers › API URLs</strong>.</li>
-            <li>Find the <strong>Shared key</strong> (identifier, passphrase and version) under <strong>Devices › Device settings › Integrations › Terminal API › Encryption key</strong>. Automatic setup can look it up for physical terminals; Tap to Pay needs you to enter it. Cloud terminals do not use it.</li>
-            <li>For Tap to Pay only: create a second credential with only the <strong>Adyen Payments app role</strong>, for registering the phone.</li>
+              The credential must belong to your company account and have access to the destination's merchant account. See the <a href="https://docs.adyen.com/development-resources/api-credentials/roles">Adyen API role guide</a>.</li>
+            <li>For LIVE, note the <strong>Live URL prefix</strong> from <strong>Developers › API URLs</strong>.</li>
+            <li>For Tap to Pay only: create a second credential with only the <strong>Adyen Payments app role</strong>, for registering the phone. Have the shared key ready as described below.</li>
+            <li>If you want to configure the device manually:
+              <ul>
+                <li>Note the <strong>Merchant account</strong>.</li>
+                <li>For an Adyen terminal, network terminal or Tap to Pay, find the <strong>Shared key</strong> (identifier, passphrase and version) under <strong>Devices › Device settings › Integrations › Terminal API › Encryption key</strong>. Cloud terminals do not use it.</li>
+              </ul>
+            </li>
           </ol>
           <div class="callout callout-important" role="note">
             <p class="callout-title">Important</p>
@@ -160,25 +164,23 @@
         <section id="connect">
           <h2>Connect to Adyen</h2>
           <p>Connecting pairs Mini mPOS with its terminal or the Adyen Payments app and checks your Adyen API key. Follow only the part for your setup. Each has two options: the <a href="setup.html">setup helper</a> (recommended), or manual entry in <strong>Settings › Terminal</strong>.</p>
-          <p>In <strong>Settings › Terminal</strong>, steps appear one at a time: a successful test unlocks the next step. <strong>Find setup</strong>, which fills in terminal details from Adyen, appears only after the API test succeeds. Home lists anything still missing.</p>
           <figure class="guide-shot">
             <div class="terminal terminal-s1f2">
               <img alt="Terminal setup with a QR scan shortcut and an Adyen API step" height="960" loading="lazy" src="images/terminal-setup.png" width="540">
             </div>
-            <figcaption class="fine">English emulator setup demo. No real payments.</figcaption>
+            <figcaption class="fine">English emulator setup demo.</figcaption>
           </figure>
           <h3 id="helper">Scan setup codes from a computer</h3>
           <ol>
             <li>On a trusted computer, open the <a href="setup.html">setup helper</a>. It works offline and sends nothing.</li>
             <li>Choose where Mini mPOS runs and the environment, <strong>TEST</strong> or <strong>LIVE</strong>.</li>
-            <li>Choose <strong>Automatic (recommended)</strong> to enter only the Adyen API key; the device looks up the rest. Choose <strong>Manual</strong> to enter every connection detail. For LIVE, both need the <strong>Live URL prefix</strong>.</li>
-            <li>Optionally include receipt details and email (SMTP) settings.</li>
+            <li>Choose <strong>Automatic (recommended)</strong> to enter only the Adyen API key; the device looks up the rest. Choose <strong>Manual</strong> to enter every connection detail.</li>
+            <li>Enter the requested details.</li>
             <li>Click <strong>Make QR codes</strong>. Keep the page open: it shows the 12-character transfer code.</li>
             <li>In Mini mPOS, open <strong>Settings › Terminal</strong> and tap <strong>Scan setup codes</strong> or the QR icon at the top right. Scan every code.</li>
             <li>Check the destination and environment, enter the transfer code and tap <strong>Verify and import</strong>.</li>
-            <li>If asked, choose your terminal, or register the phone for Tap to Pay. Nothing is saved until all checks pass. The app then returns to Home, unless it has a Tap to Pay or business details note to show.</li>
+            <li>If asked, choose your terminal, or register the phone for Tap to Pay. Nothing is saved until all checks pass.</li>
           </ol>
-          <p>If the import reports missing details, make new codes with <strong>Manual</strong>. If you included SMTP settings, send a test email; see <a href="using.html#email">email setup</a>.</p>
           <h3 id="on-terminal">Connect an Adyen terminal</h3>
           <div class="callout callout-prereq" role="note">
             <p class="callout-title">Prerequisites</p>
@@ -188,9 +190,9 @@
               <li>Internet access for the terminal</li>
             </ul>
           </div>
-          <dl class="settings-list">
+          <dl class="settings-list setup-route">
             <dt>Setup helper (recommended)</dt>
-            <dd>In the <a href="setup.html">setup helper</a>, choose <strong>On an Adyen terminal</strong>, the terminal's <strong>TEST</strong> or <strong>LIVE</strong> environment and <strong>Automatic</strong>. Enter the API key, then <a href="#helper">scan the codes</a>. Mini mPOS finds this terminal's merchant account and shared key.</dd>
+            <dd>In the <a href="setup.html">setup helper</a>, choose <strong>On an Adyen terminal</strong>, the terminal's <strong>TEST</strong> or <strong>LIVE</strong> environment and <strong>Automatic</strong>. Enter the API key, then <a href="#helper">scan the codes</a>.</dd>
           </dl>
           <details class="manual-setup">
             <summary>Manual</summary>
@@ -199,7 +201,6 @@
               <li>Check or enter the shared key and tap <strong>Test connection</strong>.</li>
             </ol>
           </details>
-          <p>The terminal's ID, address and environment are detected automatically.</p>
           <h3 id="network">Pair a terminal on your network</h3>
           <div class="callout callout-prereq" role="note">
             <p class="callout-title">Prerequisites</p>
@@ -209,7 +210,7 @@
               <li>The device and terminal on the <a href="#network-requirements">same network</a>, with TCP 8443 open between them</li>
             </ul>
           </div>
-          <dl class="settings-list">
+          <dl class="settings-list setup-route">
             <dt>Setup helper (recommended)</dt>
             <dd>In the <a href="setup.html">setup helper</a>, choose <strong>On a tablet or phone, with a terminal on the same network</strong>, the terminal's <strong>TEST</strong> or <strong>LIVE</strong> environment and <strong>Automatic</strong>. Enter the API key, then <a href="#helper">scan the codes</a>. If more than one terminal is found, choose yours.</dd>
           </dl>
@@ -222,7 +223,6 @@
               <li>Check or enter the shared key and tap <strong>Test connection</strong>.</li>
             </ol>
           </details>
-          <p>The connection is rejected if the terminal's environment does not match your choice.</p>
           <h3 id="cloud">Connect a cloud terminal</h3>
           <div class="callout callout-prereq" role="note">
             <p class="callout-title">Prerequisites</p>
@@ -232,7 +232,7 @@
               <li>Internet access for the device and the terminal</li>
             </ul>
           </div>
-          <dl class="settings-list">
+          <dl class="settings-list setup-route">
             <dt>Setup helper (recommended)</dt>
             <dd>In the <a href="setup.html">setup helper</a>, choose <strong>On a tablet or phone, with a terminal over the internet (cloud)</strong>, the terminal's <strong>TEST</strong> or <strong>LIVE</strong> environment and <strong>Automatic</strong>. Enter the API key with the Cloud Device API role, then <a href="#helper">scan the codes</a>. If more than one terminal is found, choose yours.</dd>
           </dl>
@@ -244,7 +244,6 @@
               <li>Check or enter the <strong>Terminal ID (POIID)</strong> and tap <strong>Test connection</strong>.</li>
             </ol>
           </details>
-          <p>Cloud payments can take a little longer to reach the terminal than local ones.</p>
           <h3 id="tap-to-pay">Set up Tap to Pay</h3>
           <div class="callout callout-prereq" role="note">
             <p class="callout-title">Prerequisites</p>
@@ -258,7 +257,7 @@
             <li>From Google Play, install <a href="https://play.google.com/store/apps/details?id=com.adyen.ipp.mobile.companion.test">Adyen Payments Test</a> for TEST or <a href="https://play.google.com/store/apps/details?id=com.adyen.ipp.mobile.companion.live">Adyen Payments</a> for LIVE, not both.</li>
             <li>In Mini mPOS, open <strong>Settings › Terminal</strong> and select <strong>Tap to Pay on this phone</strong>.</li>
           </ol>
-          <dl class="settings-list">
+          <dl class="settings-list setup-route">
             <dt>Setup helper (recommended)</dt>
             <dd>In the <a href="setup.html">setup helper</a>, choose <strong>On a phone, with Tap to Pay in the Adyen Payments app</strong> and the installed app's <strong>TEST</strong> or <strong>LIVE</strong> environment. Enter the Adyen API key, merchant account, Payments app API key and shared key, and optionally a store ID. <a href="#helper">Scan the codes</a> and register the phone when prompted.</dd>
           </dl>
@@ -271,8 +270,7 @@
               <li>In Mini mPOS, enter the shared key.</li>
             </ol>
           </details>
-          <p>Mini mPOS registers the phone with Adyen for you. You do not need to copy boarding tokens. The shared key still encrypts payment messages; boarding does not replace it.</p>
-          <p>The Payments app cannot run a connection test, so confirm the setup with a <a href="#first-payment">TEST payment</a>. During a payment the Payments app opens and then returns to Mini mPOS. To unregister the phone later, use <strong>Remove this phone</strong>.</p>
+          <p>The Payments app cannot run a connection test, so confirm the setup with a <a href="#first-payment">TEST payment</a>. To unregister the phone later, use <strong>Remove this phone</strong>.</p>
           <h3 id="shared-key-creation">Create a missing encryption key</h3>
           <p>If a physical terminal has no encryption key yet, setup offers <strong>Create encryption key</strong> after the credential and account checks pass.</p>
           <ol>
@@ -280,7 +278,6 @@
             <li>If the connection is not verified yet, update the terminal's configuration; see <a href="troubleshooting.html#key-setup">key setup recovery</a>.</li>
             <li>If creation is interrupted, tap <strong>Resume key setup</strong>. For QR setup, scan the same codes again with their transfer code.</li>
           </ol>
-          <p>Mini mPOS reuses an existing key at Adyen and never replaces one. Cloud terminals and Tap to Pay do not use this option.</p>
           <p class="back-to-contents"><a href="#contents">Back to contents</a></p>
         </section>
         <section id="first-payment">
@@ -308,7 +305,7 @@
         <section id="live">
           <h2>Go live</h2>
           <ol>
-            <li>In TEST, try only the optional workflows you plan to use: <a href="using.html#preauth">deposits</a>, <a href="using.html#tips">receipt tips</a>, <a href="using.html#payment-links">payment links</a> or <a href="using.html#wallets">scanned wallets</a>. Deposits and receipt tips hold funds until capture. Check final capture outcomes in the Customer Area. The simulator does not replace Adyen testing.</li>
+            <li>In TEST, try only the optional workflows you plan to use: <a href="using.html#preauth">deposits</a>, <a href="using.html#tips">receipt tips</a>, <a href="using.html#payment-links">payment links</a> or <a href="using.html#wallets">scanned wallets</a>. Deposits and receipt tips hold funds until capture. Check final capture outcomes in the Customer Area.</li>
             <li>Test the receipt delivery methods you plan to use: print on a real printer, send a test email or share a receipt.</li>
             <li>Set an admin PIN and, if needed, a Manager PIN; see <a href="using.html#staff">staff access</a>.</li>
             <li>Switch to the LIVE terminal or the LIVE Payments app, with LIVE credentials. For a network or cloud terminal, choose <strong>LIVE</strong> under <strong>Environment</strong>. Enter the <strong>Live URL prefix</strong>; see the <a href="https://docs.adyen.com/development-resources/live-endpoints">Adyen live endpoints guide</a>.</li>
@@ -322,7 +319,7 @@
             <p class="callout-title">Warning</p>
             <p>Switching between TEST, LIVE and the simulator deletes all payment history on the device, including recovery data for unfinished payments. Resolve every payment under <strong>Needs attention</strong> first.</p>
           </div>
-          <p>For daily checks and reconciliation, see <a href="using.html#close-day">Close the day</a>. For app or Adyen help, see <a href="troubleshooting.html#help">support boundaries</a>.</p>
+          <p>For daily checks and reconciliation, see <a href="using.html#close-day">Close the day</a>.</p>
           <p class="back-to-contents"><a href="#contents">Back to contents</a></p>
         </section>
         <section id="try">
@@ -333,7 +330,7 @@
             <li>On the welcome screen, choose <strong>Try simulator with samples</strong>. The other choices are <strong>Set up from another device</strong>, to import setup QR codes, and <strong>Set up a terminal</strong>.</li>
             <li>In <strong>Settings › Simulator</strong>, choose the payment outcome, the delay and whether a printer is available.</li>
           </ol>
-          <p>Sample products and history are labeled as demos. Samples count in demo day totals and reports; they are not real payments. In <strong>Settings › Data</strong>, use <strong>Add sample data</strong> or <strong>Remove sample data</strong>; removal keeps your own products, history and settings. For offline demo links, see <a href="using.html#payment-links">payment links</a>. To build from source, see the <a href="https://github.com/astiskala/minimpos/blob/main/CONTRIBUTING.md">contributor guide</a>.</p>
+          <p>Sample products and history are labeled as demos. Samples count in demo day totals and reports; they are not real payments. In <strong>Settings › Data</strong>, use <strong>Add sample data</strong> or <strong>Remove sample data</strong>; removal keeps your own products, history and settings. For offline demo links, see <a href="using.html#payment-links">payment links</a>.</p>
           <p class="back-to-contents"><a href="#contents">Back to contents</a></p>
         </section>
       </div>

@@ -97,7 +97,7 @@
               data-msg-play="播放"
               data-msg-unsupported="此浏览器无法生成二维码。请使用最新版本的 Chrome、Edge、Firefox 或 Safari。">
           <fieldset>
-            <legend>1. Mini mPOS 在哪里运行，支付发往哪里？</legend>
+            <legend>Mini mPOS 在哪里运行，支付发往哪里？</legend>
             <label class="choice"><input type="radio" name="destination" value="thisTerminal" checked> <span><strong>在 Adyen 终端上运行</strong>，由该终端直接收款</span></label>
             <label class="choice"><input type="radio" name="destination" value="network"> <span><strong>在平板电脑或手机上运行</strong>，配合同一网络中的终端</span></label>
             <label class="choice"><input type="radio" name="destination" value="cloud"> <span><strong>在平板电脑或手机上运行</strong>，配合通过互联网连接的终端（云端）</span></label>
@@ -105,24 +105,23 @@
           </fieldset>
 
           <fieldset>
-            <legend>2. 使用哪个 Adyen 环境？</legend>
+            <legend>使用哪个 Adyen 环境？</legend>
             <label class="choice"><input type="radio" name="environment" value="test" checked> <span><strong>TEST</strong>：测试终端和测试卡</span></label>
             <label class="choice"><input type="radio" name="environment" value="live"> <span><strong>LIVE</strong>：真实支付</span></label>
-            <p class="hint">对于网络或云端终端，此选项会作为应用环境导入。在 Adyen 终端上运行或使用 Tap to Pay 时，环境由本设备或已安装的 Payments 应用决定。请使用对应环境的凭据；此选项也会切换商户后台链接和 LIVE URL 前缀字段。</p>
+            <p class="hint">对于网络或云端终端，此选项会作为应用环境导入。在 Adyen 终端上运行或使用 Tap to Pay 时，环境由本设备或已安装的 Payments 应用决定。</p>
           </fieldset>
 
           <fieldset data-for="thisTerminal network cloud">
-            <legend>3. 如何设置？</legend>
+            <legend>如何设置？</legend>
             <label class="choice"><input type="radio" name="setupMode" value="automatic" checked> <span><strong>自动（推荐）</strong>：在设备上查询终端设置</span></label>
             <label class="choice"><input type="radio" name="setupMode" value="manual"> <span><strong>手动</strong>：在电脑上输入全部连接信息</span></label>
-            <p class="hint">LIVE 环境下两种方式都需要 LIVE URL 前缀。自动查询无法补全必需字段时，请在此选择手动并生成新二维码。凭据或终端访问错误必须先更正。</p>
           </fieldset>
 
           <p class="hint" data-only="tapToPay" hidden>请先遵循<a href="quick-start.html#tap-to-pay">Tap to Pay 准备步骤</a>并安装 Payments 应用。输入商家账户和独立的 Payments 应用 API 密钥进行注册。请在此输入共享密钥；Mini mPOS 不会查询共享密钥。导入完成前，手机会要求明确执行注册操作。无需复制注册令牌。</p>
 
           <fieldset data-for="thisTerminal network cloud tapToPay" id="api-key-fields">
             <legend>Adyen API 密钥</legend>
-            <p class="hint">在 <a data-ca="developers/api-credentials/" href="https://ca-test.adyen.com/ca/ui/developers/api-credentials/" target="_blank" rel="noopener noreferrer" aria-describedby="customer-area-note">Developers › API credentials</a> 中创建凭据并生成 API 密钥。<span data-only="cloud" hidden>云端付款需添加 Cloud Device API role。</span><span data-only="tapToPay" hidden>此密钥用于 Checkout 操作，而非 Payments 应用注册。</span>所有真实付款设置的主凭据都必须具有所需的 Management 权限，包括终端设置写入和 Advanced 权限；参见<a href="quick-start.html#credentials">凭据要求</a>。设置助手保持离线；查询和验证在设备上执行，成功后才导入。</p>
+            <p class="hint">在 <a data-ca="developers/api-credentials/" href="https://ca-test.adyen.com/ca/ui/developers/api-credentials/" target="_blank" rel="noopener noreferrer" aria-describedby="customer-area-note">Developers › API credentials</a> 中创建凭据并生成 API 密钥。<span data-only="cloud" hidden>云端付款需添加 Cloud Device API role。</span><span data-only="tapToPay" hidden>此密钥用于 Checkout 操作，而非 Payments 应用注册。</span>此主凭据需要特定角色；参见<a href="quick-start.html#credentials">凭据要求</a>。</p>
             <label for="apiKey">API 密钥</label>
             <input id="apiKey" name="apiKey" type="password" required spellcheck="false">
           </fieldset>
@@ -181,64 +180,64 @@
             <legend>收据信息（可选）</legend>
             <label class="choice"><input type="radio" name="includeReceipt" value="no" checked> <span>保留现有收据设置</span></label>
             <label class="choice"><input type="radio" name="includeReceipt" value="yes"> <span>包含收据信息</span></label>
-            <p class="hint">两种设置方式均可使用。关闭时，不导入收据文本或 Adyen 商家信息。</p>
-          </fieldset>
+            <p class="hint">关闭时，不导入收据文本或 Adyen 商家信息。</p>
 
-          <fieldset id="receipt-fields" data-receipt-settings="true" hidden disabled>
-            <legend>收据信息</legend>
-            <p class="hint">每项商家信息均可选择从 Adyen 导入或手动输入。</p>
-            <label for="receiptNameSource">商家名称</label>
-            <select id="receiptNameSource" name="receiptNameSource"><option value="adyen">从 Adyen 导入</option><option value="manual">手动输入</option></select>
-            <div data-receipt="receiptNameSource" hidden>
-              <label for="receiptBusinessName">收据商家名称</label>
-              <input id="receiptBusinessName" name="receiptBusinessName" type="text" disabled>
-            </div>
-            <label for="receiptAddressSource">地址</label>
-            <select id="receiptAddressSource" name="receiptAddressSource"><option value="adyen">从 Adyen 导入</option><option value="manual">手动输入</option></select>
-            <div data-receipt="receiptAddressSource" hidden>
-              <label for="receiptAddressLines">收据地址</label>
-              <textarea id="receiptAddressLines" name="receiptAddressLines" rows="3" disabled></textarea>
-            </div>
-            <label for="receiptPhoneSource">电话</label>
-            <select id="receiptPhoneSource" name="receiptPhoneSource"><option value="adyen">从 Adyen 导入</option><option value="manual">手动输入</option></select>
-            <div data-receipt="receiptPhoneSource" hidden>
-              <label for="receiptPhone">收据电话</label>
-              <input id="receiptPhone" name="receiptPhone" type="tel" disabled>
-            </div>
-            <label for="receiptTaxId">税号（可选）</label>
-            <input id="receiptTaxId" name="receiptTaxId" type="text">
-            <label for="receiptTitle">收据标题（可选）</label>
-            <input id="receiptTitle" name="receiptTitle" type="text">
-            <label for="receiptFooter">页脚（可选）</label>
-            <textarea id="receiptFooter" name="receiptFooter" rows="2"></textarea>
-            <p class="hint">只有已填写的手动文本会更改已保存值，留空会保留原文本。税号、标题和页脚需手动输入，不从 Adyen 导入。参见<a href="using.html#receipts">收据设置</a>。</p>
+            <fieldset id="receipt-fields" data-receipt-settings="true" hidden disabled>
+              <legend>收据信息</legend>
+              <p class="hint">每项商家信息均可选择从 Adyen 导入或手动输入。</p>
+              <label for="receiptNameSource">商家名称</label>
+              <select id="receiptNameSource" name="receiptNameSource"><option value="adyen">从 Adyen 导入</option><option value="manual">手动输入</option></select>
+              <div data-receipt="receiptNameSource" hidden>
+                <label for="receiptBusinessName">收据商家名称</label>
+                <input id="receiptBusinessName" name="receiptBusinessName" type="text" disabled>
+              </div>
+              <label for="receiptAddressSource">地址</label>
+              <select id="receiptAddressSource" name="receiptAddressSource"><option value="adyen">从 Adyen 导入</option><option value="manual">手动输入</option></select>
+              <div data-receipt="receiptAddressSource" hidden>
+                <label for="receiptAddressLines">收据地址</label>
+                <textarea id="receiptAddressLines" name="receiptAddressLines" rows="3" disabled></textarea>
+              </div>
+              <label for="receiptPhoneSource">电话</label>
+              <select id="receiptPhoneSource" name="receiptPhoneSource"><option value="adyen">从 Adyen 导入</option><option value="manual">手动输入</option></select>
+              <div data-receipt="receiptPhoneSource" hidden>
+                <label for="receiptPhone">收据电话</label>
+                <input id="receiptPhone" name="receiptPhone" type="tel" disabled>
+              </div>
+              <label for="receiptTaxId">税号（可选）</label>
+              <input id="receiptTaxId" name="receiptTaxId" type="text">
+              <label for="receiptTitle">收据标题（可选）</label>
+              <input id="receiptTitle" name="receiptTitle" type="text">
+              <label for="receiptFooter">页脚（可选）</label>
+              <textarea id="receiptFooter" name="receiptFooter" rows="2"></textarea>
+              <p class="hint">只有已填写的手动文本会更改已保存值，留空会保留原文本。税号、标题和页脚需手动输入，不从 Adyen 导入。参见<a href="using.html#receipts">收据设置</a>。</p>
+            </fieldset>
           </fieldset>
 
           <fieldset>
             <legend>电子收据（可选）</legend>
             <label class="choice"><input type="radio" name="includeSmtp" value="no" checked> <span>保留现有邮件设置</span></label>
             <label class="choice"><input type="radio" name="includeSmtp" value="yes"> <span>包含 SMTP 设置</span></label>
-            <p class="hint">两种设置方式均可使用。请先检查<a href="using.html#email">邮件设置及服务商要求</a>；设置助手无法测试服务器。</p>
-          </fieldset>
+            <p class="hint">请先检查<a href="using.html#email">邮件设置及服务商要求</a>；设置助手无法测试服务器。</p>
 
-          <fieldset id="smtp-fields" data-email="true" hidden disabled>
-            <legend>SMTP 服务器</legend>
-            <label for="smtpHost">服务器名称</label>
-            <input id="smtpHost" name="smtpHost" type="text" required spellcheck="false" placeholder="smtp.example.com">
-            <label for="smtpPort">端口</label>
-            <input id="smtpPort" name="smtpPort" type="number" min="1" max="65535" value="587" required>
-            <label class="choice"><input type="radio" name="smtpSecurity" value="STARTTLS" checked> <span>STARTTLS（通常为端口 587）</span></label>
-            <label class="choice"><input type="radio" name="smtpSecurity" value="SSL"> <span>SSL/TLS（通常为端口 465）</span></label>
-            <label class="choice"><input type="radio" name="smtpSecurity" value="NONE"> <span>无（不加密，不推荐）</span></label>
-            <label for="smtpUsername">用户名（可选）</label>
-            <input id="smtpUsername" name="smtpUsername" type="text" spellcheck="false">
-            <label for="smtpPassword">密码或应用密码（可选）</label>
-            <input id="smtpPassword" name="smtpPassword" type="password" spellcheck="false">
-            <label for="smtpFromAddress">发件人邮箱</label>
-            <input id="smtpFromAddress" name="smtpFromAddress" type="email" required spellcheck="false">
-            <label for="smtpFromName">发件人名称（可选）</label>
-            <input id="smtpFromName" name="smtpFromName" type="text">
-            <p class="hint">只更改已填写字段。可选项留空会保留已保存值；如需清除，请在“设置 › 电子邮件”中操作。密码与其他秘密信息一同加密。</p>
+            <fieldset id="smtp-fields" data-email="true" hidden disabled>
+              <legend>SMTP 服务器</legend>
+              <label for="smtpHost">服务器名称</label>
+              <input id="smtpHost" name="smtpHost" type="text" required spellcheck="false" placeholder="smtp.example.com">
+              <label for="smtpPort">端口</label>
+              <input id="smtpPort" name="smtpPort" type="number" min="1" max="65535" value="587" required>
+              <label class="choice"><input type="radio" name="smtpSecurity" value="STARTTLS" checked> <span>STARTTLS（通常为端口 587）</span></label>
+              <label class="choice"><input type="radio" name="smtpSecurity" value="SSL"> <span>SSL/TLS（通常为端口 465）</span></label>
+              <label class="choice"><input type="radio" name="smtpSecurity" value="NONE"> <span>无（不加密，不推荐）</span></label>
+              <label for="smtpUsername">用户名（可选）</label>
+              <input id="smtpUsername" name="smtpUsername" type="text" spellcheck="false">
+              <label for="smtpPassword">密码或应用密码（可选）</label>
+              <input id="smtpPassword" name="smtpPassword" type="password" spellcheck="false">
+              <label for="smtpFromAddress">发件人邮箱</label>
+              <input id="smtpFromAddress" name="smtpFromAddress" type="email" required spellcheck="false">
+              <label for="smtpFromName">发件人名称（可选）</label>
+              <input id="smtpFromName" name="smtpFromName" type="text">
+              <p class="hint">只更改已填写字段。可选项留空会保留已保存值；如需清除，请在“设置 › 电子邮件”中操作。密码与其他秘密信息一同加密。</p>
+            </fieldset>
           </fieldset>
 
           <div class="setup-actions">
@@ -247,42 +246,45 @@
           </div>
           <p class="hint" id="setup-status" role="status" aria-live="polite"></p>
         </form>
+      </div>
 
-        <section id="setup-codes" class="setup-codes" hidden aria-labelledby="setup-codes-title">
-          <h2 id="setup-codes-title">用设备扫描这些二维码</h2>
+      <section id="setup-codes" class="setup-codes" hidden aria-labelledby="setup-codes-title">
+        <h2 id="setup-codes-title">用设备扫描这些二维码</h2>
+        <div class="setup-scan">
+          <div class="setup-qr" id="setup-qr"></div>
+          <div class="setup-controls">
+            <span id="setup-position"></span>
+            <button class="button button-ghost button-small" id="setup-previous" type="button">上一个</button>
+            <button class="button button-ghost button-small" id="setup-pause" type="button">暂停</button>
+            <button class="button button-ghost button-small" id="setup-next" type="button">下一个</button>
+          </div>
+        </div>
+        <div class="setup-next">
+          <div class="setup-code-card" id="setup-code-card">
+            <p>传输码</p>
+            <p class="setup-code" id="setup-code"></p>
+          </div>
           <ol>
             <li>在 Mini mPOS 中打开<strong>设置 › 终端</strong>，点按快速设置下的<strong>扫描设置二维码</strong>，或右上角的二维码扫描图标。无需先选择支付目标或环境。</li>
-            <li>用摄像头扫描下方的二维码。有多个二维码时会自动轮换。</li>
+            <li>用摄像头扫描二维码。有多个二维码时会自动轮换。</li>
             <li>检查支付目标和环境，尤其是 LIVE。输入必需的<strong>传输码</strong>，连字符会自动插入，再点击<strong>验证并导入</strong>。</li>
             <li>按照<a href="quick-start.html#helper">验证后导入的步骤</a>操作。自动查询可补全信息；必需字段仍缺失时，会拒绝导入且不更改现有内容。Tap to Pay 会要求明确执行注册操作。</li>
           </ol>
           <p>如包含 SMTP 设置，请检查<strong>设置 › 电子邮件</strong>并发送测试邮件。邮箱采集与自动发送需单独配置，参见<a href="using.html#email">邮件设置</a>。</p>
           <p>导入后请<a href="quick-start.html#first-payment">完成第一笔 TEST 付款</a>。</p>
           <p><a href="troubleshooting.html#access">导入问题？</a> · <a href="troubleshooting.html#connection">连接问题？</a></p>
-          <div class="setup-code-card" id="setup-code-card">
-            <p>传输码</p>
-            <p class="setup-code" id="setup-code"></p>
-          </div>
-          <div class="setup-qr" id="setup-qr"></div>
-          <div class="setup-controls">
-            <button class="button button-ghost button-small" id="setup-previous" type="button">上一个</button>
-            <span id="setup-position"></span>
-            <button class="button button-ghost button-small" id="setup-next" type="button">下一个</button>
-            <button class="button button-ghost button-small" id="setup-pause" type="button">暂停</button>
-          </div>
-        </section>
-      </div>
+        </div>
+      </section>
 
-      <aside class="setup-side">
+      <aside class="setup-side"><div>
         <h2>须知</h2>
         <ul>
           <li><strong>数据不会离开此页面。</strong>二维码在您的浏览器中生成；页面不会发送或保存任何内容。完成后请关闭页面。</li>
           <li><strong>密钥经过加密。</strong>二维码中的密码和密钥使用传输码加密，传输码只在这里显示，因此仅拍摄二维码不会泄露它们。</li>
           <li><strong>请保密传输码。</strong>同时持有二维码和传输码的人可解密密钥。按需生成新传输，完成后关闭页面。</li>
-          <li><strong>设置连接、收据文本及可选 SMTP 字段。</strong>不复制商品或收据布局。请用应用中的<a href="using.html#more">共享至另一台设备</a>复制这些设置。</li>
           <li><strong>需要完整说明？</strong>参阅<a href="quick-start.html">快速入门</a>；导入或连接问题参见<a href="troubleshooting.html">故障排查</a>。</li>
         </ul>
-      </aside>
+      </div></aside>
     </div>
   </main>
 

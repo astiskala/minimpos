@@ -128,7 +128,7 @@
         </section>
         <section id="wallets">
           <h2>扫描顾客的钱包付款码</h2>
-          <p>在销售结账时使用<strong>扫描钱包</strong>读取顾客钱包应用中的付款码。这与扫描商品条码或退款收据不同。此功能需要实体支付终端，不适用于 Tap to Pay；<a href="quick-start.html#credentials">钱包查询需要可选的只读权限</a>。</p>
+          <p>在销售结账时使用<strong>扫描钱包</strong>读取顾客钱包应用中的付款码。这与扫描商品条码或退款收据不同。此功能需要实体支付终端，不适用于 Tap to Pay；<a href="quick-start.html#credentials">钱包查询需要只读权限</a>。</p>
           <ol>
             <li>核对合计和结账字段后点按<strong>扫描钱包</strong>。若已选择收据小费，请确认不使用该选项：钱包会立即收取合计，而不是进行预授权。</li>
             <li>选择顾客的钱包。只有一个可用钱包时会自动选择。仅显示单独配置的钱包；Alipay+ 不代表 GCash、DANA、Kakao Pay 或 TrueMoney 已分别启用。</li>
@@ -137,12 +137,12 @@
           </ol>
           <p>取消会保留购物车和结账字段。无效码不会付款：请重新扫描或更换钱包。终端扫描最多持续 30 秒；之后可点按<strong>重新扫描</strong>或使用摄像头。离开应用会停止扫描，返回后需明确重新开始。不能手动输入或粘贴付款码。</p>
           <p>顾客识别号和授权允许时，<strong>保存卡片</strong>会尝试保存支付信息，是否支持取决于钱包。只有返回保存的支付令牌才表示成功保存；没有令牌的已批准付款仍然有效。请参阅<a href="troubleshooting.html#wallets">钱包查询和支付问题</a>；不要通过再次扫码替代<a href="troubleshooting.html#unknown">结果未知的原付款</a>。</p>
-          <p>目标钱包包括 GCash、DANA、Kakao Pay、TrueMoney、PayMe、Alipay、AlipayHK、Alipay+、WeChat Pay、PayPal 和 Venmo，取决于终端门店、国家和币种的已启用 POS 配置。PayMe 扫码仍未验证，Adyen 已发布的限制与此功能相冲突，支付可能被拒绝。请使用 <a href="https://docs.adyen.com/point-of-sale/alternative-payment-methods/qr-code-wallets">Adyen 钱包指南</a>和 <a href="https://docs.adyen.com/point-of-sale/alternative-payment-methods/qr-code-wallets/paypal-pos">Adyen PayPal 和 Venmo 指南</a>核对钱包开通情况和 TEST 行为。</p>
+          <p>请使用 <a href="https://docs.adyen.com/point-of-sale/alternative-payment-methods/qr-code-wallets">Adyen 钱包指南</a>和 <a href="https://docs.adyen.com/point-of-sale/alternative-payment-methods/qr-code-wallets/paypal-pos">Adyen PayPal 和 Venmo 指南</a>核对钱包开通情况和 TEST 行为。</p>
           <div class="shot-pair">
             <div class="terminal terminal-s1f2"><img src="../images/wallets.png" width="540" height="960" loading="lazy" alt="英文模拟器演示：为 $34.00 的销售选择钱包"></div>
             <div class="terminal terminal-s1f2"><img src="../images/wallet-scan.png" width="540" height="960" loading="lazy" alt="英文模拟器演示：WeChat Pay 扫码流程和离线演示付款码按钮"></div>
           </div>
-          <p class="fine">S1F2 风格终端插图中的英文模拟器演示，不会进行真实支付。模拟结果不证明钱包或内置扫描器实际支持此功能。</p>
+          <p class="fine">钱包扫描的英文模拟器演示。</p>
           <p class="back-to-contents"><a href="#contents">返回目录</a></p>
         </section>
         <section id="refund">
@@ -169,11 +169,11 @@
           <p>在付款结果或交易记录中点按<strong>打印收据</strong>或<strong>发送电子收据</strong>。平板和手机还可点按<strong>分享收据</strong>，通过 Android 分享菜单发送图片。打印需要配有打印机的终端。</p>
           <h3 id="customize-receipts">自定义并测试收据</h3>
           <ol>
-            <li>在<strong>设置 › 收据</strong>中填写商家信息、抬头和页脚。也可点按<strong>从 Adyen 导入商家信息</strong>，从 Adyen 门店补充空白字段。如果终端没有门店，则仅从商家账户导入法人名称。这需要可选的 <a href="quick-start.html#credentials">Management API — Stores read</a> 或 Account read 角色。</li>
+            <li>在<strong>设置 › 收据</strong>中填写商家信息、抬头和页脚。也可点按<strong>从 Adyen 导入商家信息</strong>，从 Adyen 门店补充空白字段。</li>
             <li>选择<strong>支付后自动打印</strong>、何时打印<strong>商家联</strong>，以及是否<strong>显示退款二维码</strong>。</li>
             <li>点按<strong>打印测试收据</strong>并检查打印效果。屏幕预览无法显示打印机的确切排版。</li>
           </ol>
-          <p>从 Adyen 导入只会填充空白字段，绝不替换已保存的文本。其他选项：</p>
+          <p>其他选项：</p>
           <dl class="settings-list">
             <dt>显示税额</dt><dd>显示总额中包含或另行加收的税额，不改变实际收取的税额。</dd>
             <dt>显示税额明细</dt><dd>按税率列出税额。价格含税时，显示所含税额需要开启此项。</dd>
@@ -183,14 +183,14 @@
             <dt>每行字符宽度</dt><dd>默认为 32，适用于较窄的收据纸卷。请通过测试打印选择适合打印机的宽度。</dd>
           </dl>
           <h3 id="language-receipts">设置语言</h3>
-          <p>应用支持英语、简体中文和日语。Android 12 及更早版本跟随设备语言；Android 13 及更高版本请在 Android 的单应用语言设置中选择。Adyen 的银行卡收据行跟随终端自身的收据语言。请测试打印布局，特别是中日文文字。</p>
+          <p>应用支持英语、简体中文和日语。Android 12 及更早版本跟随设备语言；Android 13 及更高版本请在 Android 的单应用语言设置中选择。Adyen 的银行卡收据行跟随终端自身的收据语言。</p>
           <h3 id="email">设置电子收据</h3>
           <ol>
             <li>打开<strong>设置 › 电子邮件（SMTP）</strong>。选择服务商，或填写 SMTP 服务器、端口、发件人和登录信息。使用 STARTTLS 或 SSL/TLS。</li>
             <li>发送测试邮件。</li>
             <li>在<strong>设置 › 支付 › 电子收据</strong>中选择何时询问顾客邮箱，以及是否自动发送收据。</li>
           </ol>
-          <p>也可使用<a href="quick-start.html#helper">设置助手</a>在电脑上输入 SMTP 信息。服务商按钮只填写服务器信息。请按服务商说明开通 SMTP 并获取正确的密码：</p>
+          <p>请按服务商说明开通 SMTP 并获取正确的密码：</p>
           <ul>
             <li><a href="https://support.google.com/mail/answer/185833">Gmail</a></li>
             <li><a href="https://learn.microsoft.com/en-us/exchange/mail-flow-best-practices/how-to-set-up-a-multifunction-device-or-application-to-send-email-using-microsoft-365-or-office-365">Microsoft 365</a></li>
@@ -200,7 +200,6 @@
             <li><a href="https://www.zoho.com/mail/help/zoho-smtp.html">Zoho Mail</a></li>
             <li><a href="https://proton.me/support/smtp-submission">Proton Mail</a></li>
           </ul>
-          <p>Mini mPOS 使用基于密码的 SMTP，不支持 OAuth。支付前输入的邮箱也会随付款发送给 Adyen。支付后收集的邮箱仅用于收据。</p>
           <p>收据无法打印或发送时，请参阅<a href="troubleshooting.html#receipts">打印机和邮件问题</a>。</p>
           <p class="back-to-contents"><a href="#contents">返回目录</a></p>
         </section>
@@ -235,7 +234,7 @@
           <dl class="settings-list">
             <dt>商家交易识别号</dt><dd>如需记录预订或订单号，请开启<strong>设置 › 支付 › 要求输入商家交易识别号</strong>。此号码用于在 Adyen 中识别付款。留空时会生成唯一识别号。</dd>
             <dt>购物者识别号</dt><dd>在<strong>设置 › 支付</strong>中选择<strong>购物者识别号</strong>：结账时输入的客户识别号（默认）、顾客邮箱或无。它会随每笔付款发送给 Adyen。邮箱识别号默认经过哈希处理；所有设备请使用相同的盐值。</dd>
-            <dt>保存卡片</dt><dd>设置购物者识别号后，开启<strong>提供保存卡片选项</strong>，并选择适合您 Adyen 配置的<strong>循环扣款模式</strong>。勾选<strong>保存卡片以供今后支付</strong>前须取得顾客同意。Mini mPOS 无法使用已保存的卡片扣款。使用支付链接时，还需检查<a href="quick-start.html#credentials">保存卡片所需的 API 角色</a>。</dd>
+            <dt>保存卡片</dt><dd>设置购物者识别号后，开启<strong>提供保存卡片选项</strong>，并选择适合您 Adyen 配置的<strong>循环扣款模式</strong>。勾选<strong>保存卡片以供今后支付</strong>前须取得顾客同意。Mini mPOS 无法使用已保存的卡片扣款。</dd>
           </dl>
           <p class="back-to-contents"><a href="#contents">返回目录</a></p>
         </section>
@@ -244,7 +243,6 @@
           <div class="callout callout-prereq" role="note">
             <p class="callout-title">前提条件</p>
             <ul>
-              <li>已在<strong>设置 › 终端</strong>中完成 Checkout API 设置（模拟器演示无需此项）</li>
               <li>LIVE 使用前，商家账户已满足 <a href="https://docs.adyen.com/unified-commerce/pay-by-link">Adyen Pay by Link 要求</a>，包括条款和条件</li>
             </ul>
           </div>
@@ -259,7 +257,6 @@
             <p class="callout-title">重要</p>
             <p>有效期内任何持有真实链接的人均可付款。已支付的链接请在<strong>商户后台 › Payments › Payment list</strong>中退款，应用无法为其退款。</p>
           </div>
-          <p>在模拟器中，演示链接无需凭据。点按<strong>模拟支付</strong>即可完成。其二维码无法收款，收据会标为演示。</p>
           <p>链接未显示或不更新时，请参阅<a href="troubleshooting.html#links">支付链接问题</a>。</p>
           <p class="back-to-contents"><a href="#contents">返回目录</a></p>
         </section>
@@ -269,7 +266,6 @@
             <p class="callout-title">前提条件</p>
             <ul>
               <li>Adyen 支持团队已为您的付款方式开通预授权；参见 <a href="https://docs.adyen.com/point-of-sale/pre-authorisation">Adyen 预授权指南</a></li>
-              <li>已完成 Checkout API 设置</li>
             </ul>
           </div>
           <p>预授权在卡上冻结金额，不立即扣款。无需将整个账户改为手动扣款：Mini mPOS 仅对此类付款请求手动扣款。</p>

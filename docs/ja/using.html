@@ -128,7 +128,7 @@
         </section>
         <section id="wallets">
           <h2>お客様のウォレットコードをスキャンする</h2>
-          <p>販売の会計で<strong>ウォレットをスキャン</strong>を使い、お客様のウォレットアプリの支払いコードを読み取ります。商品バーコードや返金用領収書のスキャンとは別です。物理決済端末が必要で、Tap to Pay では使えません。<a href="quick-start.html#credentials">ウォレット照会には任意の読み取り権限が必要です</a>。</p>
+          <p>販売の会計で<strong>ウォレットをスキャン</strong>を使い、お客様のウォレットアプリの支払いコードを読み取ります。商品バーコードや返金用領収書のスキャンとは別です。物理決済端末が必要で、Tap to Pay では使えません。<a href="quick-start.html#credentials">ウォレット照会には読み取り権限が必要です</a>。</p>
           <ol>
             <li>合計と会計欄を確認し、<strong>ウォレットをスキャン</strong>をタップします。領収書でのチップが選択されている場合は、それを使わず支払うことを確認します。ウォレットは合計を直ちに請求し、プリオーソリは行いません。</li>
             <li>お客様のウォレットを選びます。1 種類だけなら自動選択します。個別に設定されたものだけが表示され、Alipay+ の設定から GCash、DANA、Kakao Pay、TrueMoney の個別開通を推測しません。</li>
@@ -137,12 +137,12 @@
           </ol>
           <p>キャンセルしてもカートと会計欄は残ります。無効なコードでは支払いません。再スキャンするかウォレットを変更してください。内蔵スキャンは最大 30 秒で終了し、その後は<strong>再スキャン</strong>またはカメラを使えます。アプリを離れるとスキャンを停止し、戻ったら明示的な再開が必要です。コードの手入力や貼り付けはできません。</p>
           <p>顧客参照IDと同意がある場合、<strong>カードを保存</strong>で支払い情報の保存を試みます。対応状況はウォレットによります。保存用トークンが返った場合だけ保存成功とし、トークンなしでも承認済みの決済は承認済みです。<a href="troubleshooting.html#wallets">照会や決済の問題</a>を参照し、<a href="troubleshooting.html#unknown">結果不明の決済</a>を再スキャンで置き換えないでください。</p>
-          <p>対象は GCash、DANA、Kakao Pay、TrueMoney、PayMe、Alipay、AlipayHK、Alipay+、WeChat Pay、PayPal、Venmo で、端末の店舗・国・通貨に対応した有効な POS 設定が必要です。PayMe のスキャンは意図的に未検証で、Adyen の公開された制限と矛盾し、拒否される場合があります。<a href="https://docs.adyen.com/point-of-sale/alternative-payment-methods/qr-code-wallets">Adyen のウォレットガイド</a>と <a href="https://docs.adyen.com/point-of-sale/alternative-payment-methods/qr-code-wallets/paypal-pos">Adyen の PayPal と Venmo ガイド</a>で開通状況と TEST 動作を確認してください。</p>
+          <p><a href="https://docs.adyen.com/point-of-sale/alternative-payment-methods/qr-code-wallets">Adyen のウォレットガイド</a>と <a href="https://docs.adyen.com/point-of-sale/alternative-payment-methods/qr-code-wallets/paypal-pos">Adyen の PayPal と Venmo ガイド</a>で開通状況と TEST 動作を確認してください。</p>
           <div class="shot-pair">
             <div class="terminal terminal-s1f2"><img src="../images/wallets.png" width="540" height="960" loading="lazy" alt="英語のシミュレーターデモ：$34.00 の販売でウォレットを選択"></div>
             <div class="terminal terminal-s1f2"><img src="../images/wallet-scan.png" width="540" height="960" loading="lazy" alt="英語のシミュレーターデモ：WeChat Pay のスキャンとオフラインデモコードの操作"></div>
           </div>
-          <p class="fine">S1F2 風の端末イラスト内の英語シミュレーターデモです。実際の支払いではなく、ウォレットや内蔵スキャナーの対応を証明するものではありません。</p>
+          <p class="fine">ウォレットスキャンの英語シミュレーターデモです。</p>
           <p class="back-to-contents"><a href="#contents">目次に戻る</a></p>
         </section>
         <section id="refund">
@@ -169,11 +169,11 @@
           <p>決済結果や取引履歴の項目で<strong>領収書を印刷</strong>または<strong>領収書をメール送信</strong>をタップします。タブレットやスマートフォンでは<strong>領収書を共有</strong>で、Android の共有メニューから画像を送れます。印刷にはプリンター付きの端末が必要です。</p>
           <h3 id="customize-receipts">領収書をカスタマイズしてテストする</h3>
           <ol>
-            <li><strong>設定 › 領収書</strong>で店舗情報、ヘッダー、フッターを入力します。または<strong>Adyenから店舗情報をインポート</strong>をタップし、Adyen の店舗情報で空欄を埋めます。端末に店舗がない場合は、マーチャントアカウントの法人名のみを取り込みます。これには任意の <a href="quick-start.html#credentials">Management API — Stores read</a> または Account read ロールが必要です。</li>
+            <li><strong>設定 › 領収書</strong>で店舗情報、ヘッダー、フッターを入力します。または<strong>Adyenから店舗情報をインポート</strong>をタップし、Adyen の店舗情報で空欄を埋めます。</li>
             <li><strong>決済後に自動印刷</strong>、<strong>加盟店控え</strong>を印刷する条件、<strong>返金用QRコードを表示</strong>するかを選びます。</li>
             <li><strong>テスト領収書を印刷</strong>をタップして印字を確認します。画面のプレビューはプリンターの正確なレイアウトを示しません。</li>
           </ol>
-          <p>Adyen からのインポートは空欄だけを埋め、保存済みの文面を置き換えることはありません。そのほかの設定：</p>
+          <p>そのほかの設定：</p>
           <dl class="settings-list">
             <dt>税額を表示</dt><dd>合計に含まれる税額、または加算する税額を表示します。課税額は変わりません。</dd>
             <dt>税率別の内訳を表示</dt><dd>税率ごとの税額を表示します。税込価格で含まれる税額を表示するには必要です。</dd>
@@ -183,14 +183,14 @@
             <dt>1行の文字幅</dt><dd>細い領収書ロール向けに初期値は 32 です。テスト印刷でプリンターに合う幅を選んでください。</dd>
           </dl>
           <h3 id="language-receipts">言語を設定する</h3>
-          <p>英語、簡体字中国語、日本語に対応しています。Android 12 以前ではデバイスの言語に従い、Android 13 以降では Android のアプリごとの言語設定で選びます。Adyen のカード領収書の行は端末自体の領収書言語に従います。特に中国語・日本語では印字レイアウトをテストしてください。</p>
+          <p>英語、簡体字中国語、日本語に対応しています。Android 12 以前ではデバイスの言語に従い、Android 13 以降では Android のアプリごとの言語設定で選びます。Adyen のカード領収書の行は端末自体の領収書言語に従います。</p>
           <h3 id="email">領収書のメール送信を設定する</h3>
           <ol>
             <li><strong>設定 › メール（SMTP）</strong>を開きます。プロバイダーを選ぶか、SMTP サーバー、ポート、差出人、ログイン情報を入力します。STARTTLS または SSL/TLS を使います。</li>
             <li>テストメールを送ります。</li>
             <li><strong>設定 › 決済 › 領収書のメール送信</strong>で、お客様のメールを尋ねるタイミングと自動送信の有無を選びます。</li>
           </ol>
-          <p>SMTP 情報は<a href="quick-start.html#helper">セットアップヘルパー</a>でパソコンから入力することもできます。プロバイダーボタンはサーバー情報を入力するだけです。SMTP の許可と正しいパスワードについては各社の説明に従ってください。</p>
+          <p>SMTP の許可と正しいパスワードについては各社の説明に従ってください。</p>
           <ul>
             <li><a href="https://support.google.com/mail/answer/185833">Gmail</a></li>
             <li><a href="https://learn.microsoft.com/en-us/exchange/mail-flow-best-practices/how-to-set-up-a-multifunction-device-or-application-to-send-email-using-microsoft-365-or-office-365">Microsoft 365</a></li>
@@ -200,7 +200,6 @@
             <li><a href="https://www.zoho.com/mail/help/zoho-smtp.html">Zoho Mail</a></li>
             <li><a href="https://proton.me/support/smtp-submission">Proton Mail</a></li>
           </ul>
-          <p>Mini mPOS はパスワード認証の SMTP を使い、OAuth は使いません。決済前に入力したメールは決済とともに Adyen にも送信します。決済後のメールは領収書専用です。</p>
           <p>領収書を印刷・送信できない場合は<a href="troubleshooting.html#receipts">プリンターとメールの問題</a>を参照してください。</p>
           <p class="back-to-contents"><a href="#contents">目次に戻る</a></p>
         </section>
@@ -235,7 +234,7 @@
           <dl class="settings-list">
             <dt>加盟店参照ID</dt><dd>予約番号や注文番号を記録するには、<strong>設定 › 決済 › 加盟店参照IDの入力を求める</strong>をオンにします。この番号は Adyen で決済を識別します。空欄なら一意の参照IDを生成します。</dd>
             <dt>購入者参照ID</dt><dd><strong>設定 › 決済</strong>で<strong>購入者参照ID</strong>を、会計で入力する顧客参照ID（初期設定）、お客様のメール、なしから選びます。すべての決済とともに Adyen に送信します。メールの参照IDは初期設定でハッシュ化されます。すべてのデバイスで同じソルトを使ってください。</dd>
-            <dt>カード保存</dt><dd>購入者参照IDを設定したうえで<strong>カード保存の選択肢を表示</strong>をオンにし、Adyen の設定に合った<strong>継続課金モデル</strong>を選びます。<strong>次回の決済用にカードを保存</strong>を選ぶ前にお客様の同意を得てください。Mini mPOS は保存したカードで請求できません。支払いリンクでは、<a href="quick-start.html#credentials">カード保存に必要な API ロール</a>も確認してください。</dd>
+            <dt>カード保存</dt><dd>購入者参照IDを設定したうえで<strong>カード保存の選択肢を表示</strong>をオンにし、Adyen の設定に合った<strong>継続課金モデル</strong>を選びます。<strong>次回の決済用にカードを保存</strong>を選ぶ前にお客様の同意を得てください。Mini mPOS は保存したカードで請求できません。</dd>
           </dl>
           <p class="back-to-contents"><a href="#contents">目次に戻る</a></p>
         </section>
@@ -244,7 +243,6 @@
           <div class="callout callout-prereq" role="note">
             <p class="callout-title">前提条件</p>
             <ul>
-              <li><strong>設定 › 端末</strong>で Checkout API の設定が完了していること（シミュレーターのデモでは不要）</li>
               <li>LIVE で使う前に、マーチャントアカウントが利用規約を含む <a href="https://docs.adyen.com/unified-commerce/pay-by-link">Adyen Pay by Link の要件</a>を満たしていること</li>
             </ul>
           </div>
@@ -259,7 +257,6 @@
             <p class="callout-title">重要</p>
             <p>有効期間中は、実際のリンクを持つ人なら誰でも支払えます。支払済みリンクの返金は<strong>Customer Area › Payments › Payment list</strong>で行います。アプリからは返金できません。</p>
           </div>
-          <p>シミュレーターでは、デモリンクに認証情報は不要です。<strong>支払いをシミュレート</strong>をタップすると完了します。QR コードで支払いはできず、領収書にはデモと明記されます。</p>
           <p>リンクが表示されない、更新されない場合は<a href="troubleshooting.html#links">支払いリンクの問題</a>を参照してください。</p>
           <p class="back-to-contents"><a href="#contents">目次に戻る</a></p>
         </section>
@@ -269,7 +266,6 @@
             <p class="callout-title">前提条件</p>
             <ul>
               <li>Adyen サポートが決済方法のプリオーソリゼーションを有効化済み。<a href="https://docs.adyen.com/point-of-sale/pre-authorisation">Adyen のプリオーソリゼーションガイド</a>を参照してください</li>
-              <li>Checkout API の設定が完了していること</li>
             </ul>
           </div>
           <p>プリオーソリゼーションはカードに金額を確保し、すぐには請求しません。アカウント全体を手動キャプチャにする必要はなく、Mini mPOS はこの決済だけに手動キャプチャを指定します。</p>

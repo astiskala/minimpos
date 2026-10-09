@@ -97,7 +97,7 @@
               data-msg-play="再生"
               data-msg-unsupported="このブラウザーではコードを作成できません。最新の Chrome、Edge、Firefox、Safari をお使いください。">
           <fieldset>
-            <legend>1. Mini mPOS をどこで動かし、決済をどこに送りますか？</legend>
+            <legend>Mini mPOS をどこで動かし、決済をどこに送りますか？</legend>
             <label class="choice"><input type="radio" name="destination" value="thisTerminal" checked> <span><strong>Adyen 端末で動かす</strong>：その端末自体で決済を受け付けます</span></label>
             <label class="choice"><input type="radio" name="destination" value="network"> <span><strong>タブレットやスマートフォンで動かす</strong>：同じネットワーク上の端末を使います</span></label>
             <label class="choice"><input type="radio" name="destination" value="cloud"> <span><strong>タブレットやスマートフォンで動かす</strong>：インターネット経由の端末（クラウド）を使います</span></label>
@@ -105,24 +105,23 @@
           </fieldset>
 
           <fieldset>
-            <legend>2. どの Adyen 環境ですか？</legend>
+            <legend>どの Adyen 環境ですか？</legend>
             <label class="choice"><input type="radio" name="environment" value="test" checked> <span><strong>TEST</strong>：テスト端末とテストカード</span></label>
             <label class="choice"><input type="radio" name="environment" value="live"> <span><strong>LIVE</strong>：本番の決済</span></label>
-            <p class="hint">ネットワークやクラウドの端末では、この選択をアプリの環境としてインポートします。Adyen端末やTap to Payでは、デバイスまたはインストールしたPaymentsアプリが環境を決めます。同じ環境の認証情報を使ってください。この選択でCustomer AreaのリンクとLIVE URLプレフィックス欄も切り替わります。</p>
+            <p class="hint">ネットワークやクラウドの端末では、この選択をアプリの環境としてインポートします。Adyen端末やTap to Payでは、デバイスまたはインストールしたPaymentsアプリが環境を決めます。</p>
           </fieldset>
 
           <fieldset data-for="thisTerminal network cloud">
-            <legend>3. どの方法で設定しますか？</legend>
+            <legend>どの方法で設定しますか？</legend>
             <label class="choice"><input type="radio" name="setupMode" value="automatic" checked> <span><strong>自動（推奨）</strong>：デバイスで端末設定を取得</span></label>
             <label class="choice"><input type="radio" name="setupMode" value="manual"> <span><strong>手動</strong>：接続情報をすべてパソコンで入力します</span></label>
-            <p class="hint">LIVEではどちらもLIVE URLプレフィックスが必要です。自動取得で必須項目を補完できない場合は、ここで手動を選びコードを作り直してください。認証情報や端末アクセスのエラーは先に修正が必要です。</p>
           </fieldset>
 
           <p class="hint" data-only="tapToPay" hidden>先に<a href="quick-start.html#tap-to-pay">Tap to Payの準備手順</a>に従い、Paymentsアプリをインストールしてください。登録用のマーチャントアカウントと別のPaymentsアプリのAPIキーを入力します。共有キーはここで入力してください。Mini mPOSは共有キーを取得しません。インポート完了前にスマートフォンで明示的な登録操作が必要です。登録トークンをコピーする必要はありません。</p>
 
           <fieldset data-for="thisTerminal network cloud tapToPay" id="api-key-fields">
             <legend>Adyen APIキー</legend>
-            <p class="hint"><a data-ca="developers/api-credentials/" href="https://ca-test.adyen.com/ca/ui/developers/api-credentials/" target="_blank" rel="noopener noreferrer" aria-describedby="customer-area-note">Developers › API credentials</a>で認証情報を作成し、APIキーを生成してください。<span data-only="cloud" hidden>クラウド決済にはCloud Device API roleを追加します。</span><span data-only="tapToPay" hidden>このキーはCheckout操作用で、Paymentsアプリの登録用ではありません。</span>すべての実決済設定で、端末設定の書き込みと Advanced アクセスを含む必須の Management ロールが主認証情報に必要です。<a href="quick-start.html#credentials">認証情報の要件</a>を参照してください。このヘルパーはオフラインで、取得と確認はインポート前にデバイスで行います。</p>
+            <p class="hint"><a data-ca="developers/api-credentials/" href="https://ca-test.adyen.com/ca/ui/developers/api-credentials/" target="_blank" rel="noopener noreferrer" aria-describedby="customer-area-note">Developers › API credentials</a>で認証情報を作成し、APIキーを生成してください。<span data-only="cloud" hidden>クラウド決済にはCloud Device API roleを追加します。</span><span data-only="tapToPay" hidden>このキーはCheckout操作用で、Paymentsアプリの登録用ではありません。</span>このメインの認証情報には特定のロールが必要です。<a href="quick-start.html#credentials">認証情報の要件</a>を参照してください。</p>
             <label for="apiKey">APIキー</label>
             <input id="apiKey" name="apiKey" type="password" required spellcheck="false">
           </fieldset>
@@ -181,64 +180,64 @@
             <legend>領収書の情報（任意）</legend>
             <label class="choice"><input type="radio" name="includeReceipt" value="no" checked> <span>領収書設定を変更しない</span></label>
             <label class="choice"><input type="radio" name="includeReceipt" value="yes"> <span>領収書の情報を含める</span></label>
-            <p class="hint">どちらの設定モードでも使えます。オフの場合、領収書の文面や Adyen の事業者情報はインポートしません。</p>
-          </fieldset>
+            <p class="hint">オフの場合、領収書の文面や Adyen の事業者情報はインポートしません。</p>
 
-          <fieldset id="receipt-fields" data-receipt-settings="true" hidden disabled>
-            <legend>領収書の情報</legend>
-            <p class="hint">各事業者情報は Adyen からの取得または手入力を選べます。</p>
-            <label for="receiptNameSource">事業者名</label>
-            <select id="receiptNameSource" name="receiptNameSource"><option value="adyen">Adyen から取得</option><option value="manual">手入力</option></select>
-            <div data-receipt="receiptNameSource" hidden>
-              <label for="receiptBusinessName">領収書の事業者名</label>
-              <input id="receiptBusinessName" name="receiptBusinessName" type="text" disabled>
-            </div>
-            <label for="receiptAddressSource">住所</label>
-            <select id="receiptAddressSource" name="receiptAddressSource"><option value="adyen">Adyen から取得</option><option value="manual">手入力</option></select>
-            <div data-receipt="receiptAddressSource" hidden>
-              <label for="receiptAddressLines">領収書の住所</label>
-              <textarea id="receiptAddressLines" name="receiptAddressLines" rows="3" disabled></textarea>
-            </div>
-            <label for="receiptPhoneSource">電話番号</label>
-            <select id="receiptPhoneSource" name="receiptPhoneSource"><option value="adyen">Adyen から取得</option><option value="manual">手入力</option></select>
-            <div data-receipt="receiptPhoneSource" hidden>
-              <label for="receiptPhone">領収書の電話番号</label>
-              <input id="receiptPhone" name="receiptPhone" type="tel" disabled>
-            </div>
-            <label for="receiptTaxId">税務番号（任意）</label>
-            <input id="receiptTaxId" name="receiptTaxId" type="text">
-            <label for="receiptTitle">領収書のタイトル（任意）</label>
-            <input id="receiptTitle" name="receiptTitle" type="text">
-            <label for="receiptFooter">フッター（任意）</label>
-            <textarea id="receiptFooter" name="receiptFooter" rows="2"></textarea>
-            <p class="hint">入力した手動の文面だけが保存済みの値を変更します。空欄は既存の文面を残します。税務番号、タイトル、フッターは手入力で、Adyen から取得しません。<a href="using.html#receipts">領収書の設定</a>を参照してください。</p>
+            <fieldset id="receipt-fields" data-receipt-settings="true" hidden disabled>
+              <legend>領収書の情報</legend>
+              <p class="hint">各事業者情報は Adyen からの取得または手入力を選べます。</p>
+              <label for="receiptNameSource">事業者名</label>
+              <select id="receiptNameSource" name="receiptNameSource"><option value="adyen">Adyen から取得</option><option value="manual">手入力</option></select>
+              <div data-receipt="receiptNameSource" hidden>
+                <label for="receiptBusinessName">領収書の事業者名</label>
+                <input id="receiptBusinessName" name="receiptBusinessName" type="text" disabled>
+              </div>
+              <label for="receiptAddressSource">住所</label>
+              <select id="receiptAddressSource" name="receiptAddressSource"><option value="adyen">Adyen から取得</option><option value="manual">手入力</option></select>
+              <div data-receipt="receiptAddressSource" hidden>
+                <label for="receiptAddressLines">領収書の住所</label>
+                <textarea id="receiptAddressLines" name="receiptAddressLines" rows="3" disabled></textarea>
+              </div>
+              <label for="receiptPhoneSource">電話番号</label>
+              <select id="receiptPhoneSource" name="receiptPhoneSource"><option value="adyen">Adyen から取得</option><option value="manual">手入力</option></select>
+              <div data-receipt="receiptPhoneSource" hidden>
+                <label for="receiptPhone">領収書の電話番号</label>
+                <input id="receiptPhone" name="receiptPhone" type="tel" disabled>
+              </div>
+              <label for="receiptTaxId">税務番号（任意）</label>
+              <input id="receiptTaxId" name="receiptTaxId" type="text">
+              <label for="receiptTitle">領収書のタイトル（任意）</label>
+              <input id="receiptTitle" name="receiptTitle" type="text">
+              <label for="receiptFooter">フッター（任意）</label>
+              <textarea id="receiptFooter" name="receiptFooter" rows="2"></textarea>
+              <p class="hint">入力した手動の文面だけが保存済みの値を変更します。空欄は既存の文面を残します。税務番号、タイトル、フッターは手入力で、Adyen から取得しません。<a href="using.html#receipts">領収書の設定</a>を参照してください。</p>
+            </fieldset>
           </fieldset>
 
           <fieldset>
             <legend>領収書メール（任意）</legend>
             <label class="choice"><input type="radio" name="includeSmtp" value="no" checked> <span>メール設定を変更しない</span></label>
             <label class="choice"><input type="radio" name="includeSmtp" value="yes"> <span>SMTP設定を含める</span></label>
-            <p class="hint">どちらの設定モードでも使えます。先に<a href="using.html#email">メール設定とプロバイダーの要件</a>を確認してください。ヘルパーからサーバーはテストできません。</p>
-          </fieldset>
+            <p class="hint">先に<a href="using.html#email">メール設定とプロバイダーの要件</a>を確認してください。ヘルパーからサーバーはテストできません。</p>
 
-          <fieldset id="smtp-fields" data-email="true" hidden disabled>
-            <legend>SMTPサーバー</legend>
-            <label for="smtpHost">サーバー名</label>
-            <input id="smtpHost" name="smtpHost" type="text" required spellcheck="false" placeholder="smtp.example.com">
-            <label for="smtpPort">ポート</label>
-            <input id="smtpPort" name="smtpPort" type="number" min="1" max="65535" value="587" required>
-            <label class="choice"><input type="radio" name="smtpSecurity" value="STARTTLS" checked> <span>STARTTLS（通常はポート587）</span></label>
-            <label class="choice"><input type="radio" name="smtpSecurity" value="SSL"> <span>SSL/TLS（通常はポート465）</span></label>
-            <label class="choice"><input type="radio" name="smtpSecurity" value="NONE"> <span>なし（暗号化なし、非推奨）</span></label>
-            <label for="smtpUsername">ユーザー名（任意）</label>
-            <input id="smtpUsername" name="smtpUsername" type="text" spellcheck="false">
-            <label for="smtpPassword">パスワードまたはアプリパスワード（任意）</label>
-            <input id="smtpPassword" name="smtpPassword" type="password" spellcheck="false">
-            <label for="smtpFromAddress">差出人メールアドレス</label>
-            <input id="smtpFromAddress" name="smtpFromAddress" type="email" required spellcheck="false">
-            <label for="smtpFromName">差出人名（任意）</label>
-            <input id="smtpFromName" name="smtpFromName" type="text">
-            <p class="hint">入力した欄だけが変わります。空の任意欄は保存済みの値を残します。削除が必要なら設定 › メールで行ってください。パスワードはほかの秘密情報とともに暗号化します。</p>
+            <fieldset id="smtp-fields" data-email="true" hidden disabled>
+              <legend>SMTPサーバー</legend>
+              <label for="smtpHost">サーバー名</label>
+              <input id="smtpHost" name="smtpHost" type="text" required spellcheck="false" placeholder="smtp.example.com">
+              <label for="smtpPort">ポート</label>
+              <input id="smtpPort" name="smtpPort" type="number" min="1" max="65535" value="587" required>
+              <label class="choice"><input type="radio" name="smtpSecurity" value="STARTTLS" checked> <span>STARTTLS（通常はポート587）</span></label>
+              <label class="choice"><input type="radio" name="smtpSecurity" value="SSL"> <span>SSL/TLS（通常はポート465）</span></label>
+              <label class="choice"><input type="radio" name="smtpSecurity" value="NONE"> <span>なし（暗号化なし、非推奨）</span></label>
+              <label for="smtpUsername">ユーザー名（任意）</label>
+              <input id="smtpUsername" name="smtpUsername" type="text" spellcheck="false">
+              <label for="smtpPassword">パスワードまたはアプリパスワード（任意）</label>
+              <input id="smtpPassword" name="smtpPassword" type="password" spellcheck="false">
+              <label for="smtpFromAddress">差出人メールアドレス</label>
+              <input id="smtpFromAddress" name="smtpFromAddress" type="email" required spellcheck="false">
+              <label for="smtpFromName">差出人名（任意）</label>
+              <input id="smtpFromName" name="smtpFromName" type="text">
+              <p class="hint">入力した欄だけが変わります。空の任意欄は保存済みの値を残します。削除が必要なら設定 › メールで行ってください。パスワードはほかの秘密情報とともに暗号化します。</p>
+            </fieldset>
           </fieldset>
 
           <div class="setup-actions">
@@ -247,42 +246,45 @@
           </div>
           <p class="hint" id="setup-status" role="status" aria-live="polite"></p>
         </form>
+      </div>
 
-        <section id="setup-codes" class="setup-codes" hidden aria-labelledby="setup-codes-title">
-          <h2 id="setup-codes-title">デバイスでこのコードを読み取る</h2>
+      <section id="setup-codes" class="setup-codes" hidden aria-labelledby="setup-codes-title">
+        <h2 id="setup-codes-title">デバイスでこのコードを読み取る</h2>
+        <div class="setup-scan">
+          <div class="setup-qr" id="setup-qr"></div>
+          <div class="setup-controls">
+            <span id="setup-position"></span>
+            <button class="button button-ghost button-small" id="setup-previous" type="button">前へ</button>
+            <button class="button button-ghost button-small" id="setup-pause" type="button">一時停止</button>
+            <button class="button button-ghost button-small" id="setup-next" type="button">次へ</button>
+          </div>
+        </div>
+        <div class="setup-next">
+          <div class="setup-code-card" id="setup-code-card">
+            <p>転送コード</p>
+            <p class="setup-code" id="setup-code"></p>
+          </div>
           <ol>
             <li>Mini mPOS の<strong>設定 › 端末</strong>を開き、かんたんセットアップの<strong>設定コードを読み取る</strong>か右上のQRスキャンアイコンをタップします。決済先や環境を先に選ぶ必要はありません。</li>
-            <li>カメラで下のコードを読み取ります。複数ある場合は自動で切り替わります。</li>
+            <li>カメラでコードを読み取ります。複数ある場合は自動で切り替わります。</li>
             <li>決済先と環境、特にLIVEを確認し、必須の<strong>転送コード</strong>を入力して<strong>確認してインポート</strong>をタップします。ハイフンは自動挿入されます。</li>
             <li><a href="quick-start.html#helper">確認済みインポート手順</a>に従います。自動取得で補完しても必須項目が不足する場合は、何も変更せず拒否します。Tap to Payは明示的な登録操作を求めます。</li>
           </ol>
           <p>SMTP設定を含めた場合は<strong>設定 › メール</strong>を確認し、テストメールを送ります。メール取得と自動送信は別の設定です。<a href="using.html#email">メール設定</a>を参照してください。</p>
           <p>取り込み後は<a href="quick-start.html#first-payment">最初の TEST 決済</a>を行ってください。</p>
           <p><a href="troubleshooting.html#access">取り込みの問題</a> · <a href="troubleshooting.html#connection">接続の問題</a></p>
-          <div class="setup-code-card" id="setup-code-card">
-            <p>転送コード</p>
-            <p class="setup-code" id="setup-code"></p>
-          </div>
-          <div class="setup-qr" id="setup-qr"></div>
-          <div class="setup-controls">
-            <button class="button button-ghost button-small" id="setup-previous" type="button">前へ</button>
-            <span id="setup-position"></span>
-            <button class="button button-ghost button-small" id="setup-next" type="button">次へ</button>
-            <button class="button button-ghost button-small" id="setup-pause" type="button">一時停止</button>
-          </div>
-        </section>
-      </div>
+        </div>
+      </section>
 
-      <aside class="setup-side">
+      <aside class="setup-side"><div>
         <h2>知っておきたいこと</h2>
         <ul>
           <li><strong>入力内容はこのページの外に出ません。</strong>コードはブラウザー内で作成され、このページは何も送信・保存しません。終わったらページを閉じてください。</li>
           <li><strong>キーは暗号化されます。</strong>コード内のパスワードとキーは、ここにだけ表示される転送コードで暗号化されるため、コードの写真だけでは読み取れません。</li>
           <li><strong>転送コードは秘密にしてください。</strong>QR コードと転送コードの両方があればキーを復号できます。必要に応じて新しい転送を作り、終わったら閉じてください。</li>
-          <li><strong>接続、領収書の文面、任意の SMTP 欄を設定します。</strong>商品や領収書のレイアウトはコピーしません。それらはアプリの<a href="using.html#more">別のデバイスに共有</a>を使います。</li>
           <li><strong>全体の手順は？</strong><a href="quick-start.html">クイックスタート</a>を参照し、取り込みや接続の問題は<a href="troubleshooting.html">トラブルシューティング</a>で確認してください。</li>
         </ul>
-      </aside>
+      </div></aside>
     </div>
   </main>
 

@@ -547,7 +547,7 @@ class AppContainer(
     fun currency(appSettings: AppSettings = settingsState.value): CurrencySpec =
         resolveCurrency(appSettings.payment, Locale.forLanguageTag("und-${device.country}"))
 
-    private suspend fun managerPermits(): Boolean =
+    internal suspend fun managerPermits(): Boolean =
         !managerPin.pinConfigured.first() ||
             managerLock.allows(
                 settings

@@ -982,4 +982,13 @@
   <string name="settings_dynamic_tip_override_hint">少額の会計では定額、高額の会計では割合のチップ候補を表示します。</string>
   <string name="settings_tip_on_pre_tax">税抜き金額に対して割合チップを計算</string>
   <string name="settings_tip_on_pre_tax_hint">税抜き小計をチップ計算の対象金額として送信します（AmountToTipOn）。</string>
+  <string name="history_reconcile">端末と集計を照合</string>
+  <string name="reconciliation_title">端末集計照合（期間 %1$s）</string>
+  <string name="reconciliation_closed_title">端末集計期間 %1$s を締めました</string>
+  <string name="reconciliation_matched">Mini mPOSと端末の合計が一致しています。</string>
+  <string name="reconciliation_mismatch">合計に差異があるか、未解決の取引があります。</string>
+  <string name="reconciliation_sales_label">売上（%1$s）</string>
+  <string name="reconciliation_refunds_label">返金（%1$s）</string>
+  <string name="reconciliation_compare">Mini mPOS %1$s · 端末 %2$s</string>
+  <string name="reconciliation_close_period">集計期間を締める</string>
 </resources>

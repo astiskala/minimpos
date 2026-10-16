@@ -286,6 +286,7 @@ private fun SaleEntity.settled(event: SaleEvent.Settled): SaleEntity {
     return ended.copy(
         poiTransactionId = details.poiTransactionId,
         poiTimestamp = details.poiTimestamp,
+        poiReconciliationId = details.poiReconciliationId ?: poiReconciliationId,
         pspReference = details.pspReference,
         paymentBrand = details.paymentBrand,
         paymentMethodVariant = details.paymentMethodVariant,

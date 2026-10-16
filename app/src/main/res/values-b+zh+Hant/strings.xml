@@ -982,4 +982,13 @@
   <string name="settings_dynamic_tip_override_hint">小額訂單推薦固定金額，較大金額訂單推薦百分比小費。</string>
   <string name="settings_tip_on_pre_tax">按稅前金額計算百分比小費</string>
   <string name="settings_tip_on_pre_tax_hint">將稅前小計作為小費計算基數發送（AmountToTipOn）。</string>
+  <string name="history_reconcile">與終端核對總額</string>
+  <string name="reconciliation_title">終端對賬（週期 %1$s）</string>
+  <string name="reconciliation_closed_title">已結算終端週期 %1$s</string>
+  <string name="reconciliation_matched">Mini mPOS 與終端總額一致。</string>
+  <string name="reconciliation_mismatch">總額存在差異或仍有未解決交易。</string>
+  <string name="reconciliation_sales_label">銷售額（%1$s）</string>
+  <string name="reconciliation_refunds_label">退款（%1$s）</string>
+  <string name="reconciliation_compare">Mini mPOS %1$s · 終端 %2$s</string>
+  <string name="reconciliation_close_period">結束對賬週期</string>
 </resources>

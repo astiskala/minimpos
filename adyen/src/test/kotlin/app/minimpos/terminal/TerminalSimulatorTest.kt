@@ -15,9 +15,11 @@ import app.minimpos.terminal.client.RefundParams
 import app.minimpos.terminal.client.RetryAdvice
 import app.minimpos.terminal.client.ScannedPayment
 import app.minimpos.terminal.client.TerminalClient
+import app.minimpos.terminal.client.TerminalCurrencyTotals
 import app.minimpos.terminal.client.TerminalIdentity
 import app.minimpos.terminal.client.TerminalTipOptions
 import app.minimpos.terminal.client.TerminalTipSuggestions
+import app.minimpos.terminal.client.TerminalTotalsOutcome
 import app.minimpos.terminal.client.TransactionOutcome
 import app.minimpos.terminal.simulator.SimulatedModifications
 import app.minimpos.terminal.simulator.SimulatedOutcome
@@ -301,5 +303,35 @@ class TerminalSimulatorTest {
                 )
             assertThat(preTaxPercentTip.tipAmount).isEqualTo(BigDecimal("15.00"))
             assertThat(preTaxPercentTip.amount).isEqualTo(BigDecimal("125.00"))
+        }
+
+    @Test
+    fun `getTotals and reconcile report and reset period totals`() =
+        runBlocking {
+            val p1 = pay(tokenizing.copy(amount = BigDecimal("10.00"), currency = "AUD"))
+            assertThat(p1.poiReconciliationId).isEqualTo("1000")
+            client.refund(RefundParams(p1.poiTransactionId!!, p1.poiTimestamp!!, "MP-R", BigDecimal("3.00"), "AUD"))
+
+            val totals = client.getTotals() as TerminalTotalsOutcome.Answered
+            assertThat(totals.poiReconciliationId).isEqualTo("1000")
+            assertThat(totals.closedPeriod).isFalse()
+            assertThat(totals.totals).containsExactly(
+                TerminalCurrencyTotals(
+                    currency = "AUD",
+                    debitAmount = BigDecimal("10.00"),
+                    debitCount = 1,
+                    creditAmount = BigDecimal("3.00"),
+                    creditCount = 1,
+                ),
+            )
+
+            val closed = client.reconcile() as TerminalTotalsOutcome.Answered
+            assertThat(closed.poiReconciliationId).isEqualTo("1000")
+            assertThat(closed.closedPeriod).isTrue()
+            assertThat(closed.totals).isEqualTo(totals.totals)
+
+            val nextPeriod = client.getTotals() as TerminalTotalsOutcome.Answered
+            assertThat(nextPeriod.poiReconciliationId).isEqualTo("1001")
+            assertThat(nextPeriod.totals).isEmpty()
         }
 }

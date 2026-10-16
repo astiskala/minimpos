@@ -25,14 +25,17 @@ import java.util.UUID
 class DatabaseSchemaTest {
     private val context = ApplicationProvider.getApplicationContext<Context>()
 
-    private fun exportedSchema(): JSONObject =
+    private fun exportedSchema(version: Int = 11): JSONObject =
         listOf("schemas", "app/schemas")
-            .map { File(it, "app.minimpos.app.data.db.AppDatabase/10.json") }
+            .map { File(it, "app.minimpos.app.data.db.AppDatabase/$version.json") }
             .first { it.exists() }
             .let { JSONObject(it.readText()).getJSONObject("database") }
 
-    private fun createExportedDatabase(name: String) {
-        val schema = exportedSchema()
+    private fun createExportedDatabase(
+        name: String,
+        version: Int = 11,
+    ) {
+        val schema = exportedSchema(version)
         val file = context.getDatabasePath(name).apply { parentFile?.mkdirs() }
         SQLiteDatabase.openOrCreateDatabase(file, null).use { db ->
             val entities = schema.getJSONArray("entities")
@@ -56,7 +59,12 @@ class DatabaseSchemaTest {
         name: String,
         block: (AppDatabase) -> T,
     ): T {
-        val db = Room.databaseBuilder(context, AppDatabase::class.java, name).allowMainThreadQueries().build()
+        val db =
+            Room
+                .databaseBuilder(context, AppDatabase::class.java, name)
+                .addMigrations(AppDatabase.MIGRATION_10_11)
+                .allowMainThreadQueries()
+                .build()
         try {
             return block(db)
         } finally {
@@ -107,6 +115,35 @@ class DatabaseSchemaTest {
                     assertThat(sale.captureStartedAt).isEqualTo(20)
                     assertThat(sale.captureProcessedAt).isEqualTo(30)
                     assertThat(db.openHelper.readableDatabase.version).isEqualTo(exportedSchema().getInt("version"))
+                }
+            }
+        } finally {
+            context.deleteDatabase(name)
+        }
+    }
+
+    @Test
+    fun `migrates version 10 database to version 11 preserving existing sales and catalogue`() {
+        val name = "schema-v10-${UUID.randomUUID()}"
+        createExportedDatabase(name, version = 10)
+        val file = context.getDatabasePath(name)
+        SQLiteDatabase.openDatabase(file.path, null, SQLiteDatabase.OPEN_READWRITE).use { raw ->
+            raw.execSQL("INSERT INTO `tax_rates` (`id`, `name`, `rateMilliPercent`, `sortOrder`) VALUES (1, 'GST', 10000, 0)")
+            raw.execSQL(
+                "INSERT INTO `sales` (`id`, `sample`, `createdAt`, `currency`, `taxMode`, `netMinor`, `taxMinor`, `totalMinor`, " +
+                    "`status`, `merchantReference`, `tokenizationRequested`, `signatureRequired`, `refundedMinor`, `kind`, " +
+                    "`tipOnReceipt`, `holdCancelled`, `paymentLink`, `adjustmentPending`) " +
+                    "VALUES ('s10', 0, 100, 'AUD', 'INCLUSIVE', 909, 91, 1000, 'APPROVED', 'MP-10', 0, 0, 0, 'SALE', 0, 0, 0, 0)",
+            )
+        }
+        try {
+            withDatabase(name) { db ->
+                runBlocking {
+                    val sale = checkNotNull(db.saleDao().sale("s10")).sale
+                    assertThat(sale.totalMinor).isEqualTo(1_000)
+                    assertThat(sale.merchantReference).isEqualTo("MP-10")
+                    assertThat(sale.poiReconciliationId).isNull()
+                    assertThat(db.openHelper.readableDatabase.version).isEqualTo(11)
                 }
             }
         } finally {

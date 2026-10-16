@@ -110,6 +110,7 @@ class RefundRepository(
                 message = message,
                 reason = reason,
                 pspReference = details?.pspReference ?: stored.pspReference,
+                poiReconciliationId = details?.poiReconciliationId ?: stored.poiReconciliationId,
                 customerReceiptJson = details?.let { ReceiptLinesJson.encodeFields(it.customerReceipt) } ?: stored.customerReceiptJson,
             )
         dao.update(refund)

@@ -4,6 +4,8 @@ import app.minimpos.app.data.db.RefundStatus
 import app.minimpos.app.data.db.SaleEntity
 import app.minimpos.app.data.db.SaleStatus
 import app.minimpos.app.data.repo.HistoryItem
+import app.minimpos.core.money.CurrencySpec
+import app.minimpos.terminal.client.TerminalTotalsOutcome
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
@@ -129,6 +131,46 @@ data class HistoryReport(
     /** Distinct environment sections with separate currency totals. */
     val sections: List<HistoryReportSection>,
 )
+
+/**
+ * Comparison of local Mini mPOS accounting and terminal-reported totals for one [currency].
+ *
+ * @property currency ISO 4217 currency code.
+ * @property localSalesMinor Local approved terminal sales in minor units.
+ * @property terminalSalesMinor Terminal-reported debit total in minor units.
+ * @property localRefundsMinor Local accepted terminal refunds in minor units.
+ * @property terminalRefundsMinor Terminal-reported credit/reversal total in minor units.
+ */
+data class CurrencyReconciliation(
+    val currency: String,
+    val localSalesMinor: Long = 0,
+    val terminalSalesMinor: Long = 0,
+    val localRefundsMinor: Long = 0,
+    val terminalRefundsMinor: Long = 0,
+) {
+    /** Whether local sales and refunds both match the terminal's reported totals. */
+    val matches: Boolean get() = localSalesMinor == terminalSalesMinor && localRefundsMinor == terminalRefundsMinor
+}
+
+/**
+ * Comparison between Mini mPOS local records and a terminal `GetTotals` or `SaleReconciliation` answer.
+ *
+ * @property poiId Terminal POIID compared.
+ * @property poiReconciliationId Terminal reconciliation period ID (`POIReconciliationID`), if reported.
+ * @property closedPeriod True when the reconciliation period was closed (`SaleReconciliation`).
+ * @property currencies Per-currency comparison rows, sorted by currency code.
+ * @property unresolvedCount Unresolved terminal operations for [poiId] that may still affect totals.
+ */
+data class TerminalReconciliationReport(
+    val poiId: String,
+    val poiReconciliationId: String?,
+    val closedPeriod: Boolean,
+    val currencies: List<CurrencyReconciliation>,
+    val unresolvedCount: Int = 0,
+) {
+    /** True when every currency matches and no terminal operations remain unresolved. */
+    val allMatch: Boolean get() = currencies.all { it.matches } && unresolvedCount == 0
+}
 
 /** Pure processing-day accounting shared by filtered History and unfiltered reports; no clock or storage access. */
 object HistoryAccounting {
@@ -265,5 +307,126 @@ object HistoryAccounting {
                     }
                 }.sortedBy { it.scope.ordinal }
         return HistoryReport(date, zone, generatedAt, sections)
+    }
+
+    /**
+     * Compares terminal-reported [outcome] against local terminal operations in [items] for [poiId] (matching
+     * [TerminalTotalsOutcome.Answered.poiReconciliationId] when stored, otherwise [date] in [zone]). Excludes payment
+     * links, manual-capture holds, hold cancellations and sample records, which do not appear in terminal debit/credit totals.
+     */
+    fun compareReconciliation(
+        items: List<HistoryItem>,
+        poiId: String,
+        outcome: TerminalTotalsOutcome.Answered,
+        date: LocalDate,
+        zone: ZoneId,
+    ): TerminalReconciliationReport {
+        val terminalItems = items.filter { matchesTerminal(it, poiId) }
+        val unresolved = terminalItems.count(::isUnresolvedTerminalItem)
+        val scoped = filterReconciliationScope(terminalItems, outcome.poiReconciliationId, date, zone)
+        val (localSales, localRefunds) = sumReconciliationAmounts(scoped)
+        val remoteByCurrency = outcome.totals.associateBy { it.currency.uppercase() }
+        val currencies = (localSales.keys + localRefunds.keys + remoteByCurrency.keys).toSortedSet()
+        val comparisons =
+            currencies.map { code ->
+                val spec = CurrencySpec.of(code)
+                val remote = remoteByCurrency[code]
+                CurrencyReconciliation(
+                    currency = code,
+                    localSalesMinor = localSales[code] ?: 0L,
+                    terminalSalesMinor = remote?.let { spec.toMinor(it.debitAmount) } ?: 0L,
+                    localRefundsMinor = localRefunds[code] ?: 0L,
+                    terminalRefundsMinor = remote?.let { spec.toMinor(it.creditAmount) } ?: 0L,
+                )
+            }
+        return TerminalReconciliationReport(
+            poiId = poiId,
+            poiReconciliationId = outcome.poiReconciliationId,
+            closedPeriod = outcome.closedPeriod,
+            currencies = comparisons,
+            unresolvedCount = unresolved,
+        )
+    }
+
+    /** Terminal items in [items] for [poiId] whose terminal outcome is still unresolved (`PENDING` or `UNKNOWN`). */
+    fun unresolvedTerminalItems(
+        items: List<HistoryItem>,
+        poiId: String,
+    ): List<HistoryItem> = items.filter { matchesTerminal(it, poiId) && isUnresolvedTerminalItem(it) }
+
+    private fun matchesTerminal(
+        item: HistoryItem,
+        poiId: String,
+    ): Boolean =
+        when (item) {
+            is HistoryItem.Sale -> {
+                val s = item.sale
+                !s.sample && !s.paymentLink && (poiId.isBlank() || s.poiId == poiId || s.context?.poiId == poiId)
+            }
+
+            is HistoryItem.Refund -> {
+                val r = item.refund
+                poiId.isBlank() || r.context?.poiId == poiId
+            }
+        }
+
+    private fun isUnresolvedTerminalItem(item: HistoryItem): Boolean =
+        when (item) {
+            is HistoryItem.Sale -> item.sale.status == SaleStatus.PENDING || item.sale.status == SaleStatus.UNKNOWN
+            is HistoryItem.Refund -> item.refund.status.unresolved
+        }
+
+    private fun filterReconciliationScope(
+        terminalItems: List<HistoryItem>,
+        poiReconciliationId: String?,
+        date: LocalDate,
+        zone: ZoneId,
+    ): List<HistoryItem> {
+        val hasPeriodIds =
+            poiReconciliationId != null &&
+                terminalItems.any { item ->
+                    when (item) {
+                        is HistoryItem.Sale -> item.sale.poiReconciliationId != null
+                        is HistoryItem.Refund -> item.refund.poiReconciliationId != null
+                    }
+                }
+        return terminalItems.filter { item ->
+            if (hasPeriodIds) {
+                when (item) {
+                    is HistoryItem.Sale -> item.sale.poiReconciliationId == poiReconciliationId
+                    is HistoryItem.Refund -> item.refund.poiReconciliationId == poiReconciliationId
+                }
+            } else {
+                val at =
+                    when (item) {
+                        is HistoryItem.Sale -> item.sale.processedAt ?: item.sale.createdAt
+                        is HistoryItem.Refund -> item.refund.processedAt ?: item.refund.createdAt
+                    }
+                Instant.ofEpochMilli(at).atZone(zone).toLocalDate() == date
+            }
+        }
+    }
+
+    private fun sumReconciliationAmounts(scoped: List<HistoryItem>): Pair<Map<String, Long>, Map<String, Long>> {
+        val localSales = mutableMapOf<String, Long>()
+        val localRefunds = mutableMapOf<String, Long>()
+        scoped.forEach { item ->
+            when (item) {
+                is HistoryItem.Sale -> {
+                    val s = item.sale
+                    if (s.status == SaleStatus.APPROVED && !s.manualCapture) {
+                        localSales[s.currency] = (localSales[s.currency] ?: 0L) + s.amountMinor
+                    }
+                }
+
+                is HistoryItem.Refund -> {
+                    val r = item.refund
+                    if (r.status == RefundStatus.REQUESTED && !r.cancellation) {
+                        localRefunds[r.currency] = (localRefunds[r.currency] ?: 0L) + r.amountMinor
+                    }
+                }
+            }
+        }
+        return localSales to localRefunds
     }
 }

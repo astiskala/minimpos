@@ -7,6 +7,7 @@ import app.minimpos.app.data.db.SaleEntity
 import app.minimpos.app.data.db.SaleStatus
 import app.minimpos.app.data.db.SetupProblem
 import app.minimpos.app.data.db.StoredReason
+import app.minimpos.core.money.CurrencySpec
 import app.minimpos.core.money.PaymentContext
 import app.minimpos.terminal.checkout.ModificationResult
 import app.minimpos.terminal.checkout.PaymentLink
@@ -277,6 +278,11 @@ private fun SaleEntity.settled(event: SaleEvent.Settled): SaleEntity {
             processedAt = processedAt ?: event.processedAt.takeIf { event.status == SaleStatus.APPROVED && !paymentLink },
         )
     val details = event.details ?: return ended
+    val terminalTipMinor =
+        details.tipAmount
+            ?.takeIf { event.status == SaleStatus.APPROVED && !manualCapture }
+            ?.let { CurrencySpec.of(currency).toMinor(it) }
+            ?.takeIf { it > 0 }
     return ended.copy(
         poiTransactionId = details.poiTransactionId,
         poiTimestamp = details.poiTimestamp,
@@ -293,6 +299,7 @@ private fun SaleEntity.settled(event: SaleEvent.Settled): SaleEntity {
         cashierReceiptJson = ReceiptLinesJson.encodeFields(details.cashierReceipt),
         signatureRequired = details.signatureRequired,
         adjustAuthorisationData = details.adjustAuthorisationData,
+        tipMinor = terminalTipMinor ?: tipMinor,
     )
 }
 

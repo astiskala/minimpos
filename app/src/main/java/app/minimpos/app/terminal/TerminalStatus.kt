@@ -36,6 +36,7 @@ import kotlinx.coroutines.launch
  * @property paymentsApps The Adyen Payments apps installed, by environment, see [TerminalSetup.paymentsApps].
  * @property selectsEnvironment Whether setup asks for TEST or LIVE before credentials.
  * @property importPending Whether a verified import journal still blocks new financial operations until saving resumes.
+ * @property supportsTerminalFeatures Whether physical-terminal capabilities are supported on this destination.
  */
 data class TerminalState(
     val loaded: Boolean = false,
@@ -51,6 +52,7 @@ data class TerminalState(
     val paymentsApps: Set<TerminalEnvironment> = emptySet(),
     val selectsEnvironment: Boolean = false,
     val importPending: Boolean = false,
+    val supportsTerminalFeatures: Boolean = true,
 ) {
     /**
      * Whether receipts and payment links can be shared through Android's share sheet: on phones and tablets, not on an
@@ -98,6 +100,7 @@ class TerminalStatus(
                 paymentsApps = setup.paymentsApps,
                 selectsEnvironment = setup.selectsEnvironment,
                 importPending = setup.importPending,
+                supportsTerminalFeatures = setup.supportsTerminalFeatures,
             )
         }.stateIn(scope, SharingStarted.Eagerly, TerminalState())
 

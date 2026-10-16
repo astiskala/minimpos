@@ -31,6 +31,7 @@ import java.util.concurrent.atomic.AtomicLong
  * @property email The shopper's email typed in, for the receipt and possibly the shopper reference.
  * @property tokenize Null until the operator touches the switch; then the settings default no longer applies.
  * @property tipOnReceipt "Tip on the receipt": null until the operator touches the switch, as with [tokenize].
+ * @property askGratuity "Tip on terminal": null until the operator touches the switch; mutually exclusive with [tipOnReceipt].
  */
 data class CheckoutForm(
     val transactionReference: String = "",
@@ -38,6 +39,7 @@ data class CheckoutForm(
     val email: String = "",
     val tokenize: Boolean? = null,
     val tipOnReceipt: Boolean? = null,
+    val askGratuity: Boolean? = null,
 )
 
 /**
@@ -101,9 +103,15 @@ class SaleSession(
         printerAvailable: Flow<Boolean>,
         linksAvailable: Flow<Boolean> = flowOf(false),
         wallets: Flow<WalletAvailability> = flowOf(WalletAvailability()),
+        terminalTippingAvailable: Flow<Boolean> = flowOf(true),
         currency: (AppSettings) -> CurrencySpec,
     ): Flow<Checkout> =
-        combine(snapshot, settings, printerAvailable, linksAvailable, wallets) { snapshot, appSettings, printer, links, availableWallets ->
+        combine(
+            combine(snapshot, settings, printerAvailable) { snap, appSettings, printer -> Triple(snap, appSettings, printer) },
+            combine(linksAvailable, wallets, terminalTippingAvailable) { links, availableWallets, terminalTips ->
+                Triple(links, availableWallets, terminalTips)
+            },
+        ) { (snapshot, appSettings, printer), (links, availableWallets, terminalTips) ->
             val payment = appSettings.payment
             val resolvedCurrency = currency(appSettings)
             Checkout(
@@ -122,6 +130,7 @@ class SaleSession(
                 links,
                 snapshot.revision,
                 availableWallets.offered(resolvedCurrency.code),
+                terminalTippingAvailable = terminalTips,
             )
         }
 

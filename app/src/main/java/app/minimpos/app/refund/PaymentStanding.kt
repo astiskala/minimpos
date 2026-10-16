@@ -149,7 +149,7 @@ data class ReceiptStanding(
             return ReceiptStanding(
                 approved = standing != PaymentStanding.NOT_APPROVED,
                 preAuthorisation = preAuthorisation,
-                tipMinor = sale.tipMinor?.takeIf { sale.tipOnReceipt },
+                tipMinor = sale.tipMinor?.takeIf { sale.tipOnReceipt || it > 0 },
                 awaitingTip = standing == PaymentStanding.AWAITING_TIP,
                 heldNowMinor = sale.authorisedMinor?.takeIf { preAuthorisation && it != sale.totalMinor },
                 capturedMinor = sale.capturedMinor?.takeIf { preAuthorisation && standing.captured },

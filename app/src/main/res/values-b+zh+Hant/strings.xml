@@ -975,4 +975,11 @@
   <string name="capability_offline_chip_floor">晶片離線限額（主貨幣單位）</string>
   <string name="capability_offline_saf_max">儲存轉發最高限額（%1$s 最小單位）</string>
   <string name="capability_offline_max_payments">最多儲存離線交易筆數</string>
+  <string name="checkout_tip_on_terminal">在終端上輸入小費</string>
+  <string name="checkout_tip_on_terminal_hint">刷卡扣款前在終端螢幕上請顧客選擇或輸入小費。</string>
+  <string name="settings_terminal_tip_hint">在終端螢幕上提示顧客添加小費（AskGratuity）。</string>
+  <string name="settings_dynamic_tip_override">按訂單金額動態推薦小費</string>
+  <string name="settings_dynamic_tip_override_hint">小額訂單推薦固定金額，較大金額訂單推薦百分比小費。</string>
+  <string name="settings_tip_on_pre_tax">按稅前金額計算百分比小費</string>
+  <string name="settings_tip_on_pre_tax_hint">將稅前小計作為小費計算基數發送（AmountToTipOn）。</string>
 </resources>

@@ -374,6 +374,13 @@ enum class ReceiptTipping {
  *   same reference, so saved cards work on all of them; changing it gives every shopper a new reference.
  * @property offerCardSaving Whether checkout offers "Save card" while a shopper reference is available.
  * @property linkExpiryHours How long a payment link works, in hours within [LINK_EXPIRY_HOURS].
+ * @property terminalTipping Whether sales offer native terminal tipping (`AskGratuity`), and its initial choice.
+ * @property dynamicTipOverride Whether checkout sends dynamic per-payment `SaleToPOIData` tip suggestions.
+ * @property lowBasketThresholdMinor Basket gross threshold in minor units below which fixed tip amounts are sent instead of percentages.
+ * @property fixedTipAmountsMinor Up to three fixed tip options in minor units for baskets below [lowBasketThresholdMinor].
+ * @property tipPercentages Up to three percentage tip options (`1..100`) for baskets at or above [lowBasketThresholdMinor].
+ * @property allowCustomTip Whether dynamic `TipSuggestions` include the custom tip button (`TipCustom`).
+ * @property tipOnPreTax Whether percentage terminal tips are calculated on the pre-tax net amount (`AmountToTipOn`).
  */
 @Serializable
 data class PaymentSettings(
@@ -394,9 +401,30 @@ data class PaymentSettings(
     val emailReferenceSalt: String = "",
     val offerCardSaving: Boolean = true,
     val linkExpiryHours: Int = DEFAULT_LINK_EXPIRY_HOURS,
+    val terminalTipping: ReceiptTipping = ReceiptTipping.DISABLED,
+    val dynamicTipOverride: Boolean = false,
+    val lowBasketThresholdMinor: Long = DEFAULT_LOW_BASKET_THRESHOLD_MINOR,
+    val fixedTipAmountsMinor: List<Long> = DEFAULT_FIXED_TIPS_MINOR,
+    val tipPercentages: List<Int> = DEFAULT_TIP_PERCENTAGES,
+    val allowCustomTip: Boolean = true,
+    val tipOnPreTax: Boolean = false,
 ) {
-    /** These settings with [linkExpiryHours] within its range. */
-    fun normalized(): PaymentSettings = copy(linkExpiryHours = linkExpiryHours.coerceIn(LINK_EXPIRY_HOURS))
+    /** These settings with [linkExpiryHours] and terminal tipping numbers within their valid ranges. */
+    fun normalized(): PaymentSettings =
+        copy(
+            linkExpiryHours = linkExpiryHours.coerceIn(LINK_EXPIRY_HOURS),
+            lowBasketThresholdMinor = lowBasketThresholdMinor.coerceAtLeast(0),
+            fixedTipAmountsMinor =
+                fixedTipAmountsMinor
+                    .filter { it > 0 }
+                    .take(MAX_TIP_OPTIONS)
+                    .ifEmpty { DEFAULT_FIXED_TIPS_MINOR },
+            tipPercentages =
+                tipPercentages
+                    .filter { it in TIP_PERCENT_RANGE }
+                    .take(MAX_TIP_OPTIONS)
+                    .ifEmpty { DEFAULT_TIP_PERCENTAGES },
+        )
 
     /**
      * When the email is the shopper reference for saved cards it must be known when the payment starts, so it is then
@@ -445,6 +473,21 @@ data class PaymentSettings(
 
         /** The allowed range of [linkExpiryHours]: an hour to Adyen's longest, 70 days. */
         val LINK_EXPIRY_HOURS = 1..70 * 24
+
+        /** Default basket threshold in minor units below which fixed tip amounts are suggested. */
+        const val DEFAULT_LOW_BASKET_THRESHOLD_MINOR = 1_000L
+
+        /** Maximum number of dynamic `TipSuggestions` options Adyen accepts per payment. */
+        const val MAX_TIP_OPTIONS = 3
+
+        /** Allowed range for percentage tip suggestions (`1..100`). */
+        val TIP_PERCENT_RANGE = 1..100
+
+        /** Default fixed tip amounts in minor units (`100`, `200`, `300`). */
+        val DEFAULT_FIXED_TIPS_MINOR: List<Long> = listOf(100L, 200L, 300L)
+
+        /** Default percentage tip suggestions (`10%`, `15%`, `20%`). */
+        val DEFAULT_TIP_PERCENTAGES: List<Int> = listOf(10, 15, 20)
     }
 }
 

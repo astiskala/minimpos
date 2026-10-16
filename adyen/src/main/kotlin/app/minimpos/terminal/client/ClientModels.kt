@@ -11,6 +11,8 @@ import java.math.BigDecimal
 import java.util.concurrent.atomic.AtomicReference
 
 private const val MAX_SCANNED_CODE_LENGTH = 128
+private const val MAX_TIP_SUGGESTIONS = 3
+private const val MAX_TIP_PERCENT = 100
 
 /**
  * The two ends of every Terminal API conversation, copied into each nexo `MessageHeader`. A request only reaches the
@@ -200,9 +202,71 @@ data class PaymentParams(
     val preAuthorisation: Boolean = false,
     /** Single-use scanned wallet instrument; null asks the terminal to collect the payment instrument normally. */
     val scannedPayment: ScannedPayment? = null,
+    /** Prompts the shopper for a tip on the terminal (`AskGratuity`), with optional `SaleToPOIData` overrides. */
+    val terminalTip: TerminalTipOptions? = null,
 ) {
     init {
         require(scannedPayment == null || !preAuthorisation) { "Scanned wallets require an immediate-charge sale" }
+        require(terminalTip == null || (!preAuthorisation && scannedPayment == null)) {
+            "Terminal tipping requires an immediate-charge card sale"
+        }
+    }
+}
+
+/**
+ * Dynamic tipping buttons shown on the terminal for one payment (`TipOptions.TipSuggestions` in `SaleData.SaleToPOIData`).
+ * Adyen accepts either up to three percentage options (`1`..`100`) or up to three fixed amounts in minor units (`> 0`),
+ * plus whether a custom tip option is shown.
+ */
+sealed interface TerminalTipSuggestions {
+    /** Whether the terminal also shows a button to enter a custom tip amount (`TipCustom`). */
+    val allowCustom: Boolean
+
+    /** Up to three percentage options (`Percentage1`, `Percentage2`, `Percentage3`), each in `1..100`.
+     * @property percentages Non-empty list of up to three percentages.
+     * @property allowCustom Whether a custom tip button is included.
+     */
+    data class Percentages(
+        val percentages: List<Int>,
+        override val allowCustom: Boolean = true,
+    ) : TerminalTipSuggestions {
+        init {
+            require(percentages.size in 1..MAX_TIP_SUGGESTIONS && percentages.all { it in 1..MAX_TIP_PERCENT }) {
+                "Invalid tip percentages"
+            }
+        }
+    }
+
+    /** Up to three fixed tip amounts in minor units (`Amount1`, `Amount2`, `Amount3`).
+     * @property amountsMinor Non-empty list of up to three positive minor-unit amounts.
+     * @property allowCustom Whether a custom tip button is included.
+     */
+    data class FixedAmounts(
+        val amountsMinor: List<Long>,
+        override val allowCustom: Boolean = true,
+    ) : TerminalTipSuggestions {
+        init {
+            require(amountsMinor.size in 1..MAX_TIP_SUGGESTIONS && amountsMinor.all { it > 0 }) { "Invalid fixed tip amounts" }
+        }
+    }
+}
+
+/**
+ * Per-payment terminal tipping configuration (`AskGratuity` with optional `SaleData.SaleToPOIData` `TipOptions` override).
+ * Adyen requires [suggestions] whenever [amountToTipOn] is specified.
+ *
+ * @property suggestions Dynamic per-payment `TipSuggestions` override; null uses the terminal's configured gratuities.
+ * @property amountToTipOn Part of the purchase amount in major units to calculate percentage tips on (`AmountToTipOn`);
+ *   null tips on the full requested amount. Requires [suggestions].
+ */
+data class TerminalTipOptions(
+    val suggestions: TerminalTipSuggestions? = null,
+    val amountToTipOn: BigDecimal? = null,
+) {
+    init {
+        require(amountToTipOn == null || (suggestions != null && amountToTipOn > BigDecimal.ZERO)) {
+            "AmountToTipOn requires positive amount and TipSuggestions"
+        }
     }
 }
 
@@ -323,6 +387,8 @@ data class TransactionDetails(
     val merchantReference: String?,
     /** The authorised amount of a payment, or the reversed amount of a refund (null if the terminal omitted it). */
     val amount: BigDecimal?,
+    /** The tip added on the terminal (`PaymentResult.AmountsResp.TipAmount`), in major units; null when none was added. */
+    val tipAmount: BigDecimal? = null,
     /** The ISO 4217 currency code of a payment's [amount]. */
     val currency: String?,
     /** The card scheme, e.g. `mc` or `visa`. */

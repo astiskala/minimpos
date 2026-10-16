@@ -12,6 +12,7 @@ import app.minimpos.core.money.PaymentContext
 import app.minimpos.terminal.client.PaymentParams
 import app.minimpos.terminal.client.RecurringModel
 import app.minimpos.terminal.client.ScannedPayment
+import app.minimpos.terminal.client.TerminalTipOptions
 import app.minimpos.terminal.client.TransactionKind
 
 /**
@@ -33,6 +34,7 @@ import app.minimpos.terminal.client.TransactionKind
  * @property scannedPayment Single-use, transient scanned instrument; null for ordinary terminal payments.
  * @property walletContext Original scan destination; required with a scanned instrument and persisted before sending.
  * @property walletSetupIdentity Fingerprint of checked connection/secrets; required for scans and never persisted as a credential.
+ * @property terminalTip Native terminal tipping options (`AskGratuity` and optional `SaleToPOIData`); null when disabled.
  * @throws IllegalArgumentException if a pre-authorisation is taken for tipping on the receipt, or a card is to be saved
  *   without a [shopperReference].
  */
@@ -50,9 +52,13 @@ data class PaymentStart(
     val scannedPayment: ScannedPayment? = null,
     val walletContext: PaymentContext? = null,
     val walletSetupIdentity: String? = null,
+    val terminalTip: TerminalTipOptions? = null,
 ) {
     init {
         require(!tipOnReceipt || kind == SaleKind.SALE) { "Only a sale can be taken for tipping on the receipt" }
+        require(terminalTip == null || (kind == SaleKind.SALE && !tipOnReceipt && scannedPayment == null)) {
+            "Terminal tipping requires an immediate-charge card sale"
+        }
         require(tokenization == null || shopperReference != null) { "Saving a card needs a shopper reference" }
         require(
             scannedPayment == null || (kind == SaleKind.SALE && !tipOnReceipt && walletContext != null && walletSetupIdentity != null),
@@ -130,6 +136,7 @@ class SaleBook(
                 // A tip on the receipt is captured later with the tip, as Adyen's tipping on the receipt flow asks.
                 preAuthorisation = request.manualCapture,
                 scannedPayment = request.scannedPayment,
+                terminalTip = request.terminalTip,
             ),
             expected = request.walletContext,
             setupIdentity = request.walletSetupIdentity,

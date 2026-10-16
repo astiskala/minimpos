@@ -11,6 +11,8 @@ import app.minimpos.core.money.CurrencySpec
 import app.minimpos.core.payment.ScanWallet
 import app.minimpos.core.shopper.ShopperReferences
 import app.minimpos.core.tax.TaxMode
+import app.minimpos.terminal.client.TerminalTipOptions
+import app.minimpos.terminal.client.TerminalTipSuggestions
 import java.time.Duration
 import java.time.Instant
 import java.time.ZoneId
@@ -30,6 +32,7 @@ import java.time.ZoneId
  *   ([app.minimpos.app.terminal.TerminalSetup.paymentLinks]).
  * @property sessionRevision Revision of the coherent session snapshot; null for a checkout made without a session.
  * @property wallets Explicitly configured scanned wallets for this currency; empty when unavailable.
+ * @property terminalTippingAvailable Whether the destination supports native terminal tipping (`AskGratuity`).
  */
 data class Checkout(
     val form: CheckoutForm = CheckoutForm(),
@@ -41,6 +44,7 @@ data class Checkout(
     val linksAvailable: Boolean = false,
     internal val sessionRevision: Long? = null,
     val wallets: List<ScanWallet> = emptyList(),
+    val terminalTippingAvailable: Boolean = true,
 ) {
     /** Whether the amount is only held (a pre-authorisation) rather than charged. */
     val preAuthorisation: Boolean get() = kind == SaleKind.PRE_AUTHORISATION
@@ -101,8 +105,40 @@ data class Checkout(
     /** Whether "Tip on the receipt" is offered: for a sale, while a printer is available to print the receipt. */
     val canTipOnReceipt: Boolean get() = payment.receiptTipping != ReceiptTipping.DISABLED && !preAuthorisation && printerAvailable
 
-    /** Whether the sale is taken for tipping on the receipt: the operator's choice, else the settings default. */
-    val tipOnReceipt: Boolean get() = canTipOnReceipt && (form.tipOnReceipt ?: (payment.receiptTipping == ReceiptTipping.DEFAULT_ON))
+    /** Whether native terminal tipping (`AskGratuity`) is offered: for a sale on a destination that supports it. */
+    val canTipOnTerminal: Boolean
+        get() = payment.terminalTipping != ReceiptTipping.DISABLED && !preAuthorisation && terminalTippingAvailable
+
+    /** Whether the sale prompts for a tip on the terminal: mutually exclusive with [tipOnReceipt]. */
+    val askGratuity: Boolean
+        get() =
+            canTipOnTerminal &&
+                form.tipOnReceipt != true &&
+                (form.askGratuity ?: (payment.terminalTipping == ReceiptTipping.DEFAULT_ON))
+
+    /** Whether the sale is taken for tipping on the receipt: the operator's choice, else the settings default when not [askGratuity]. */
+    val tipOnReceipt: Boolean
+        get() =
+            canTipOnReceipt &&
+                !askGratuity &&
+                (form.tipOnReceipt ?: (payment.receiptTipping == ReceiptTipping.DEFAULT_ON))
+
+    /** Resolved per-payment terminal tipping options when [askGratuity] is active; null otherwise. */
+    fun terminalTipOptions(): TerminalTipOptions? {
+        if (!askGratuity) return null
+        val preTaxAmount =
+            currency.toMajor(totals.amounts.net).takeIf {
+                payment.tipOnPreTax && payment.chargeTax && totals.amounts.net in 1 until totals.amounts.gross
+            }
+        if (!payment.dynamicTipOverride && preTaxAmount == null) return TerminalTipOptions()
+        val suggestions =
+            if (payment.dynamicTipOverride && totals.amounts.gross < payment.lowBasketThresholdMinor) {
+                TerminalTipSuggestions.FixedAmounts(payment.fixedTipAmountsMinor, payment.allowCustomTip)
+            } else {
+                TerminalTipSuggestions.Percentages(payment.tipPercentages, payment.allowCustomTip)
+            }
+        return TerminalTipOptions(suggestions = suggestions, amountToTipOn = preTaxAmount)
+    }
 
     /** Whether "Pay" is enabled: something to charge and every entered field valid. */
     val canPay: Boolean get() = !totals.isEmpty && totals.amounts.gross > 0 && emailValid && referenceValid && customerReferenceValid
@@ -127,6 +163,7 @@ data class Checkout(
             tipOnReceipt = tipOnReceipt,
             shopperReference = shopperReference,
             sessionRevision = sessionRevision,
+            terminalTip = terminalTipOptions(),
         )
     }
 
@@ -146,7 +183,7 @@ data class Checkout(
         zone: ZoneId,
     ): PaymentLinkStart? {
         if (!canSendLink) return null
-        val start = paymentStart(now, zone)?.copy(tipOnReceipt = false) ?: return null
+        val start = paymentStart(now, zone)?.copy(tipOnReceipt = false, terminalTip = null) ?: return null
         val lifetime = minOf(Duration.ofHours(payment.linkExpiryHours.toLong()), MAX_LINK_LIFETIME)
         return PaymentLinkStart(start, now.plus(lifetime))
     }
@@ -161,7 +198,7 @@ data class Checkout(
     fun walletStart(
         now: Instant,
         zone: ZoneId,
-    ): PaymentStart? = paymentStart(now, zone)?.copy(tipOnReceipt = false).takeIf { canScanWallet }
+    ): PaymentStart? = paymentStart(now, zone)?.copy(tipOnReceipt = false, terminalTip = null).takeIf { canScanWallet }
 
     /** Whether [actual] has the same priced cart, currency, form and payment settings as this checkout, and still offers [wallet]. */
     internal fun matchesWalletCheckout(

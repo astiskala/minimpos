@@ -125,13 +125,20 @@ class TerminalClient(
                                         shopperEmail = params.shopperEmail
                                         recurringProcessingModel =
                                             params.recurringProcessingModel?.let { RecurringProcessingModelEnum.valueOf(it.name) }
-                                        tenderOption = params.tenderOptions.takeIf { it.isNotEmpty() }?.joinToString(",")
+                                        val tenders =
+                                            if (params.terminalTip != null) {
+                                                (params.tenderOptions + ASK_GRATUITY).distinct()
+                                            } else {
+                                                params.tenderOptions
+                                            }
+                                        tenderOption = tenders.takeIf { it.isNotEmpty() }?.joinToString(",")
                                         metadata = params.metadata.takeIf { it.isNotEmpty() }
                                         if (params.preAuthorisation) {
                                             authorisationType = PRE_AUTH
                                             additionalData = mapOf(MANUAL_CAPTURE to "true")
                                         }
                                     }
+                                params.terminalTip?.takeIf { it.suggestions != null }?.let { saleToPOIData = encodeTipOperation(it) }
                                 if (params.requestCardAlias) tokenRequestedType = TokenRequestedType.CUSTOMER
                             }
                         paymentData = params.scannedPayment?.let(::scannedInstrument)
@@ -511,6 +518,32 @@ class TerminalClient(
 
     private fun wrap(request: SaleToPOIRequest) = TerminalAPIRequest().apply { saleToPOIRequest = request }
 
+    private fun encodeTipOperation(tip: TerminalTipOptions): String {
+        val suggestions =
+            when (val configured = checkNotNull(tip.suggestions)) {
+                is TerminalTipSuggestions.Percentages -> {
+                    buildMap<String, Any> {
+                        configured.percentages.forEachIndexed { index, pct -> put("Percentage${index + 1}", pct) }
+                        put("TipCustom", configured.allowCustom)
+                    }
+                }
+
+                is TerminalTipSuggestions.FixedAmounts -> {
+                    buildMap<String, Any> {
+                        configured.amountsMinor.forEachIndexed { index, amt -> put("Amount${index + 1}", amt) }
+                        put("TipCustom", configured.allowCustom)
+                    }
+                }
+            }
+        val tipOptions =
+            buildMap<String, Any> {
+                tip.amountToTipOn?.let { put("AmountToTipOn", it) }
+                put("TipSuggestions", suggestions)
+            }
+        val operation = mapOf("Operation" to listOf(mapOf("Type" to "Payment", "TipOptions" to tipOptions)))
+        return Base64.getEncoder().encodeToString(JSON.getMapper().writeValueAsString(operation).toByteArray(Charsets.UTF_8))
+    }
+
     private fun TransactionKind.category(): MessageCategoryType =
         when (this) {
             TransactionKind.PAYMENT -> MessageCategoryType.PAYMENT
@@ -531,6 +564,9 @@ class TerminalClient(
          * the way a terminal does.
          */
         internal const val PRE_AUTH = "PreAuth"
+
+        /** Tender option that prompts the shopper for a tip on the terminal. */
+        const val ASK_GRATUITY = "AskGratuity"
 
         /** The `additionalData` key that leaves a payment uncaptured until it is captured manually. */
         private const val MANUAL_CAPTURE = "manualCapture"
@@ -597,6 +633,7 @@ class TerminalClient(
             ).copy(
                 merchantReference = response.saleData?.saleTransactionID?.transactionID,
                 amount = response.paymentResult?.amountsResp?.authorizedAmount,
+                tipAmount = response.paymentResult?.amountsResp?.tipAmount,
                 currency = response.paymentResult?.amountsResp?.currency,
                 paymentBrand = card?.paymentBrand ?: additional["paymentMethod"],
                 paymentMethodVariant = additional["paymentMethodVariant"],

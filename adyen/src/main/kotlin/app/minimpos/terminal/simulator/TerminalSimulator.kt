@@ -50,9 +50,11 @@ import com.adyen.model.terminal.SaleToAcquirerData
 import com.adyen.model.terminal.TerminalAPIRequest
 import com.adyen.model.terminal.TerminalAPIResponse
 import com.adyen.terminal.serialization.TerminalAPIGsonBuilder
+import com.google.gson.JsonParser
 import kotlinx.coroutines.delay
 import java.io.IOException
 import java.math.BigDecimal
+import java.math.RoundingMode
 import java.net.SocketTimeoutException
 import java.net.URLEncoder
 import java.time.Clock
@@ -254,6 +256,9 @@ class TerminalSimulator(
                 ?.allowedPaymentBrand
                 ?.singleOrNull()
                 .orEmpty()
+        val approved = outcome == SimulatedOutcome.APPROVE || outcome == SimulatedOutcome.TIMEOUT
+        val tipAmount = if (approved) simulatedTip(request.saleData, amount.requestedAmount) else null
+        val authorizedAmount = if (approved) amount.requestedAmount + (tipAmount ?: BigDecimal.ZERO) else BigDecimal.ZERO
         val payment =
             SimulatedPayment(
                 card = if (wallet) SimulatedCard(brand, brand, brand.uppercase(), "", "", "") else CARDS[random.nextInt(CARDS.size)],
@@ -266,9 +271,10 @@ class TerminalSimulator(
                         ?.saleTransactionID
                         ?.transactionID
                         .orEmpty(),
-                amountText = "${amount.currency} ${amount.requestedAmount.toPlainString()}",
-                approved = outcome == SimulatedOutcome.APPROVE || outcome == SimulatedOutcome.TIMEOUT,
+                amountText = "${amount.currency} ${authorizedAmount.toPlainString()}",
+                approved = approved,
                 preAuthorisation = request.saleData?.saleToAcquirerData?.authorisationType == TerminalClient.PRE_AUTH,
+                tipAmount = tipAmount,
             )
         if (payment.approved) ledger.approved(payment.psp, manualCapture = payment.preAuthorisation)
         val refusal = if (payment.approved) null else refusal(outcome)
@@ -282,7 +288,7 @@ class TerminalSimulator(
                 }
             saleData = SaleData().apply { saleTransactionID = request.saleData?.saleTransactionID }
             poiData = poiData(payment.tender, payment.psp)
-            paymentResult = paymentResult(payment, amount.currency, amount.requestedAmount)
+            paymentResult = paymentResult(payment, amount.currency, authorizedAmount)
             paymentReceipt +=
                 listOf(
                     receipt(DocumentQualifierType.CUSTOMER_RECEIPT, "CARDHOLDER COPY", payment, signature = false),
@@ -359,17 +365,68 @@ class TerminalSimulator(
     private fun paymentResult(
         payment: SimulatedPayment,
         requestedCurrency: String,
-        requestedAmount: BigDecimal,
+        authorized: BigDecimal,
     ) = PaymentResult().apply {
         paymentType = PaymentType.NORMAL
         paymentInstrumentData = paymentInstrument(payment)
         amountsResp =
             AmountsResp().apply {
                 currency = requestedCurrency
-                authorizedAmount = if (payment.approved) requestedAmount else BigDecimal.ZERO
+                authorizedAmount = authorized
+                tipAmount = payment.tipAmount
             }
         setOnlineFlag(true)
         paymentAcquirerData = PaymentAcquirerData().apply { approvalCode = payment.authCode.takeIf { payment.approved } }
+    }
+
+    private fun simulatedTip(
+        saleData: SaleData?,
+        requestedAmount: BigDecimal,
+    ): BigDecimal? {
+        val tenders =
+            saleData
+                ?.saleToAcquirerData
+                ?.tenderOption
+                ?.split(',')
+                .orEmpty()
+        if (TerminalClient.ASK_GRATUITY !in tenders) return null
+        val scale = requestedAmount.scale().coerceAtLeast(0)
+        val poiData = saleData?.saleToPOIData
+        if (!poiData.isNullOrBlank()) {
+            val tip =
+                runCatching {
+                    val decoded = String(Base64.getDecoder().decode(poiData), Charsets.UTF_8)
+                    val tipOptions =
+                        JsonParser
+                            .parseString(decoded)
+                            .asJsonObject
+                            .getAsJsonArray("Operation")
+                            .first()
+                            .asJsonObject
+                            .getAsJsonObject("TipOptions")
+                    val base = tipOptions.get("AmountToTipOn")?.asBigDecimal ?: requestedAmount
+                    val suggestions = tipOptions.getAsJsonObject("TipSuggestions")
+                    when {
+                        suggestions.has("Amount1") -> {
+                            BigDecimal.valueOf(suggestions.get("Amount1").asLong, scale)
+                        }
+
+                        suggestions.has("Percentage1") -> {
+                            base
+                                .multiply(BigDecimal.valueOf(suggestions.get("Percentage1").asLong))
+                                .divide(BigDecimal.valueOf(PERCENT.toLong()), scale, RoundingMode.HALF_UP)
+                        }
+
+                        else -> {
+                            null
+                        }
+                    }
+                }.getOrNull()
+            if (tip != null) return tip
+        }
+        return requestedAmount
+            .multiply(BigDecimal.TEN)
+            .divide(BigDecimal.valueOf(PERCENT.toLong()), scale, RoundingMode.HALF_UP)
     }
 
     private fun paymentInstrument(payment: SimulatedPayment): PaymentInstrumentData =
@@ -616,6 +673,7 @@ class TerminalSimulator(
         val approved: Boolean,
         val preAuthorisation: Boolean,
         val wallet: Boolean = false,
+        val tipAmount: BigDecimal? = null,
     )
 
     /** Fixed values that tests and callers can rely on. */

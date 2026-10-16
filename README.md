@@ -32,11 +32,16 @@ Screenshots show an English demo café using the built-in simulator, not live pa
 
 - **Sell:** products, categories, barcode scanning and custom amounts, with your own tax rates and any Adyen currency.
 - **Get paid:** card and wallet payments, merchant-scanned wallet codes, payment links, pre-authorizations for deposits,
-  and tips written on receipts.
+  tips on the terminal or receipt, and partial payments across cards.
 - **Deliver receipts:** print on a terminal with a printer, email through your SMTP server, or share from a tablet or phone.
-- **Manage payments:** referenced refunds in full, by item or by amount; searchable history and daily totals.
+- **Manage payments:** referenced refunds in full, by item or by amount; searchable history, daily totals and terminal
+  reconciliation, with offline-payment and unconfirmed-batch warnings.
 - **Run your setup:** admin and Manager PINs, optional shopper references and card saving, and QR transfers of products,
   settings and encrypted keys to additional devices.
+
+For supported terminals, the [operations guide](https://minimpos.app/using.html#capabilities) also covers Adyen
+capabilities, shopper-facing prompts, Adyen Giving and Manager-approved MOTO / Manual Key Entry. Feature availability
+depends on the payment destination and your Adyen configuration; test the workflows you plan to use.
 
 The app supports English, Simplified Chinese, Traditional Chinese and Japanese. Products, settings and history stay
 on each device; there is no backend, tracking or automatic synchronization between devices.

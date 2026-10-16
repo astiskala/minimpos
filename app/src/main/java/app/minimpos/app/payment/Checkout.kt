@@ -22,6 +22,27 @@ import java.time.Instant
 import java.time.ZoneId
 
 /**
+ * App-localized text for the optional shopper-facing terminal session.
+ *
+ * @property order Header above the item list.
+ * @property total Label for the total below the item list.
+ * @property confirmOrder Title of the order confirmation prompt.
+ * @property confirm Label accepting the order.
+ * @property cancel Label declining the order.
+ * @property email Prompt for an email address before payment.
+ * @property rating Prompt for a 0-10 rating after approval.
+ */
+data class ShopperPromptTexts(
+    val order: String,
+    val total: String,
+    val confirmOrder: String,
+    val confirm: String,
+    val cancel: String,
+    val email: String,
+    val rating: String,
+)
+
+/**
  * A payment being checked out ([SaleSession.checkout]): what the operator entered, with the payment settings that
  * decide which fields apply, and the one set of rules for what payment it becomes ([paymentStart]): the shopper
  * reference, saving the card, tipping on the receipt and whether it can be paid at all.
@@ -38,6 +59,7 @@ import java.time.ZoneId
  * @property wallets Explicitly configured scanned wallets for this currency; empty when unavailable.
  * @property terminalTippingAvailable Whether the destination supports native terminal tipping (`AskGratuity`).
  * @property shopperDisplayAvailable Whether the destination supports shopper-facing terminal display and input requests.
+ * @property shopperTexts App-localized terminal prompts; required when [shopperDisplayAvailable].
  */
 data class Checkout(
     val form: CheckoutForm = CheckoutForm(),
@@ -51,6 +73,7 @@ data class Checkout(
     val wallets: List<ScanWallet> = emptyList(),
     val terminalTippingAvailable: Boolean = true,
     val shopperDisplayAvailable: Boolean = false,
+    val shopperTexts: ShopperPromptTexts? = null,
 ) {
     /** Whether the amount is only held (a pre-authorisation) rather than charged. */
     val preAuthorisation: Boolean get() = kind == SaleKind.PRE_AUTHORISATION
@@ -175,10 +198,11 @@ data class Checkout(
     /** Resolved chained shopper display and input session for external terminals; null when disabled or unsupported. */
     fun shopperSessionFlow(merchantReference: String): ShopperSessionFlow? {
         if (!shopperDisplayAvailable) return null
+        val texts = checkNotNull(shopperTexts)
         val virtualReceipt =
             if (payment.showVirtualReceipt) {
                 VirtualReceipt(
-                    header = "Order",
+                    header = texts.order,
                     lines =
                         totals.lines.map {
                             VirtualReceiptLine(it.line.quantity, it.line.name, currency.code, currency.toMajor(it.amounts.gross))
@@ -187,23 +211,26 @@ data class Checkout(
                     tax = currency.toMajor(totals.amounts.tax).takeIf { payment.chargeTax },
                     total = currency.toMajor(totals.amounts.gross),
                     currency = currency.code,
+                    totalLabel = texts.total,
                 )
             } else {
                 null
             }
         val confirmPrompt =
             if (payment.confirmBasketOnTerminal) {
-                "Confirm order" to "${currency.code} ${currency.toMajor(totals.amounts.gross).toPlainString()}"
+                texts.confirmOrder to "${currency.code} ${currency.toMajor(totals.amounts.gross).toPlainString()}"
             } else {
                 null
             }
-        val emailPrompt = "Enter your email address:".takeIf { payment.collectEmailOnTerminal && form.email.isBlank() }
+        val emailPrompt = texts.email.takeIf { payment.collectEmailOnTerminal && form.email.isBlank() }
         val qrReceipt = merchantReference.takeIf { payment.showTerminalQrReceipt }
-        val ratingPrompt = ("Rate your experience (0–10)" to (null as String?)).takeIf { payment.askShopperRating }
+        val ratingPrompt = (texts.rating to (null as String?)).takeIf { payment.askShopperRating }
         if (listOf(virtualReceipt, confirmPrompt, emailPrompt, qrReceipt, ratingPrompt).all { it == null }) return null
         return ShopperSessionFlow(
             virtualReceipt = virtualReceipt,
             confirmationPrompt = confirmPrompt,
+            confirmLabel = texts.confirm,
+            cancelLabel = texts.cancel,
             emailPrompt = emailPrompt,
             qrReceipt = qrReceipt,
             ratingPrompt = ratingPrompt,

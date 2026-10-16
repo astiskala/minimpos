@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>疑難排解 – Mini mPOS</title>
-  <meta name="description" content="解決 Mini mPOS 的結果未知、付款被拒絕、終端綁定和網絡問題，以及扣款、支付連結、打印機、郵件、PIN 和安裝問題。">
+  <meta name="description" content="解決 Mini mPOS 的結果未知、付款被拒絕、終端綁定和網絡問題，以及扣款、付款連結、打印機、郵件、PIN 和安裝問題。">
   <link rel="icon" href="../favicon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="../styles.css">
   <link rel="canonical" href="https://minimpos.app/zh-Hant/troubleshooting.html">
@@ -57,15 +57,17 @@
         <p class="toc-title">指南</p><p><a href="quick-start.html">快速入門</a><br><a href="using.html">使用 Mini mPOS</a><br><a href="troubleshooting.html" aria-current="page">疑難排解</a></p>
         <div class="desktop-contents"><p class="toc-title">本頁目錄</p><ol>
           <li><a href="#unknown">結果未知</a></li><li><a href="#declines">付款被拒絕</a></li>
+          <li><a href="#terminal-features">可選終端功能</a></li>
           <li><a href="#wallets">錢包掃碼</a></li><li><a href="#connection">終端綁定和設定</a></li><li><a href="#network-dropouts">網絡中斷</a></li>
-          <li><a href="#modifications">扣款和調整</a></li><li><a href="#links">支付連結</a></li>
+          <li><a href="#modifications">扣款和調整</a></li><li><a href="#links">付款連結</a></li>
           <li><a href="#receipts">打印機和郵件</a></li><li><a href="#access">PIN 和傳輸</a></li>
           <li><a href="#install">安裝</a></li><li><a href="#messages">錯誤訊息</a></li><li><a href="#help">取得幫助</a></li>
         </ol></div>
         <details class="mobile-contents"><summary class="toc-title">本頁目錄</summary><ol>
           <li><a href="#unknown">結果未知</a></li><li><a href="#declines">付款被拒絕</a></li>
+          <li><a href="#terminal-features">可選終端功能</a></li>
           <li><a href="#wallets">錢包掃碼</a></li><li><a href="#connection">終端綁定和設定</a></li><li><a href="#network-dropouts">網絡中斷</a></li>
-          <li><a href="#modifications">扣款和調整</a></li><li><a href="#links">支付連結</a></li>
+          <li><a href="#modifications">扣款和調整</a></li><li><a href="#links">付款連結</a></li>
           <li><a href="#receipts">打印機和郵件</a></li><li><a href="#access">PIN 和傳輸</a></li>
           <li><a href="#install">安裝</a></li><li><a href="#messages">錯誤訊息</a></li><li><a href="#help">取得幫助</a></li>
         </ol></details>
@@ -90,7 +92,7 @@
           <h2>付款被拒絕或未處理</h2>
           <p>結果畫面會顯示狀態、Adyen 給出的原因和建議。請按建議操作：</p>
           <dl class="fixes">
-            <div><dt>“請勿使用此卡重試。請購物者使用其他卡或付款方式。”</dt>
+            <div><dt>“請勿使用此卡重試。請顧客使用其他卡或付款方式。”</dt>
               <dd><p><span class="fix-label">原因</span>發卡行因不會改變的原因拒絕了此卡（如卡被凍結、受限或疑似欺詐），或此卡不允許用於本次付款。</p>
                 <p><span class="fix-label">解決</span>請顧客改用其他卡或付款方式。顧客的銀行可以說明拒絕原因；<a href="https://docs.adyen.com/point-of-sale/error-scenarios/refusal-reasons-pos">Adyen 拒絕原因</a>解釋了顯示的原因。</p></dd></div>
             <div><dt>“可以重試。”</dt>
@@ -108,6 +110,16 @@
             <div><dt>“請勿再次收款：此次支付已成功。”</dt>
               <dd><p><span class="fix-label">原因</span>雖然終端報告了取消，但付款已獲批准。</p>
                 <p><span class="fix-label">解決</span>請勿再次收款。如果顧客不應付款，請為其退款。</p></dd></div>
+          </dl>
+          <p class="back-to-contents"><a href="#contents">返回目錄</a></p>
+        </section>
+        <section id="terminal-features">
+          <h2>可選終端功能不可用或總額存在差異</h2>
+          <dl class="fixes">
+            <div><dt>終端功能未顯示或被拒絕</dt><dd><p>檢查收款目標和 <a href="using.html#capabilities">Adyen 功能</a>，重新整理終端設定，並確認 API 角色和 Adyen 帳戶設定。本地結帳開關不會在 Adyen 開通服務。Tap to Pay 不提供實體終端流程。小費請比較<a href="using.html#terminal-tips">終端小費</a>和<a href="using.html#tips">收據小費</a>。</p></dd></div>
+            <div><dt>只有部分金額獲批</dt><dd><p>從結果頁面按<a href="using.html#partial-payments">部分付款流程</a>操作。不要再次收取原合計金額。若後續付款結果未知，請先<a href="#unknown">查詢結果</a>再繼續收款。</p></dd></div>
+            <div><dt>終端總額與 Mini mPOS 不符</dt><dd><p>按<a href="using.html#reconciliation">終端對帳</a>說明檢查終端週期、使用同一終端的其他設備、本地保留紀錄和未解決交易。結束週期不會修復差異，也不代表結算完成。</p></dd></div>
+            <div><dt>離線銷售缺少 PSP 參考編號或仍有未確認批次</dt><dd><p>按<a href="using.html#offline">離線付款檢查步驟</a>操作。恢復終端與 Adyen 的連接，並在商戶後台核對上傳的付款。不要僅因缺少 PSP 參考編號就再次收取已批准的付款。</p></dd></div>
           </dl>
           <p class="back-to-contents"><a href="#contents">返回目錄</a></p>
         </section>
@@ -200,11 +212,11 @@
           <p class="back-to-contents"><a href="#contents">返回目錄</a></p>
         </section>
         <section id="links">
-          <h2>支付連結未顯示或不更新</h2>
+          <h2>付款連結未顯示或不更新</h2>
           <dl class="fixes">
-            <div><dt>結帳時沒有<strong>建立支付連結</strong></dt>
+            <div><dt>結帳時沒有<strong>建立付款連結</strong></dt>
               <dd><p><span class="fix-label">原因</span>Checkout API 設定未完成，或本次結帳是預授權或收據小費。</p>
-                <p><span class="fix-label">解決</span>在<strong>設定 › 終端</strong>中完成 Checkout API 設定。連結僅用於銷售。離線演示請參閱<a href="using.html#payment-links">支付連結</a>。</p></dd></div>
+                <p><span class="fix-label">解決</span>在<strong>設定 › 終端</strong>中完成 Checkout API 設定。連結僅用於銷售。離線演示請參閱<a href="using.html#payment-links">付款連結</a>。</p></dd></div>
             <div><dt>已支付的連結仍顯示<strong>待支付</strong></dt>
               <dd><p><span class="fix-label">原因</span>應用程式僅在連結畫面打開時查詢。</p>
                 <p><span class="fix-label">解決</span>在交易紀錄中打開該紀錄，點按<strong>查詢支付狀態</strong>。</p></dd></div>
@@ -229,9 +241,9 @@
               <dd><p><span class="fix-label">解決</span>在<strong>設定 › 收據</strong>中更改<strong>每行字元寬度</strong>，然後列印測試收據。</p></dd></div>
             <div><dt>測試郵件發送失敗</dt>
               <dd><p><span class="fix-label">原因</span>伺服器、連接埠、安全方式或密碼有誤，或服務商禁止 SMTP 或密碼登入。</p>
-                <p><span class="fix-label">解決</span>在<strong>設定 › 電子郵件（SMTP）</strong>中檢查伺服器、連接埠、STARTTLS 或 SSL/TLS、用戶名稱和密碼。服務商可能要求開通 SMTP 或使用應用程式密碼；參見<a href="using.html#email">郵件設定</a>。</p></dd></div>
+                <p><span class="fix-label">解決</span>在<strong>設定 › 電郵（SMTP）</strong>中檢查伺服器、連接埠、STARTTLS 或 SSL/TLS、用戶名稱和密碼。服務商可能要求開通 SMTP 或使用應用程式密碼；參見<a href="using.html#email">郵件設定</a>。</p></dd></div>
             <div><dt>測試郵件正常，但顧客收不到收據</dt>
-              <dd><p><span class="fix-label">解決</span>在<strong>設定 › 支付 › 電子收據</strong>中檢查何時詢問郵箱以及是否自動發送收據。</p></dd></div>
+              <dd><p><span class="fix-label">解決</span>在<strong>設定 › 支付 › 電子收據</strong>中檢查何時詢問電郵以及是否自動發送收據。</p></dd></div>
           </dl>
           <p class="back-to-contents"><a href="#contents">返回目錄</a></p>
         </section>
@@ -296,7 +308,7 @@
                 <p><span class="fix-label">解決</span>在商戶後台中新增該角色或帳戶存取權限；請參閱<a href="quick-start.html#credentials">憑證要求</a>。</p></dd></div>
             <div><dt>“Adyen 繁忙或暫時無法使用。”</dt>
               <dd><p><span class="fix-label">原因</span>Adyen 正在限制請求，或暫時無法使用。</p>
-                <p><span class="fix-label">解決</span>稍候片刻再重試。如果是付款、扣款或支付連結，請先<a href="#unknown">查詢其結果</a>。</p></dd></div>
+                <p><span class="fix-label">解決</span>稍候片刻再重試。如果是付款、扣款或付款連結，請先<a href="#unknown">查詢其結果</a>。</p></dd></div>
             <div><dt>“未能在限定時間內收到回應。”</dt>
               <dd><p><span class="fix-label">原因</span>請求已發出，但未收到回應，因此結果未知。</p>
                 <p><span class="fix-label">解決</span>請<a href="#unknown">查詢結果</a>。在確認結果前，請勿再次收款。</p></dd></div>
@@ -306,8 +318,8 @@
             <div><dt>“無法開啟 Adyen Payments 應用程式。請確認已安裝該應用程式。”</dt>
               <dd><p><span class="fix-label">原因</span>Payments 應用程式未安裝或已被移除。</p>
                 <p><span class="fix-label">解決</span>安裝與您的環境對應的 Payments 應用程式，然後重試。請參閱<a href="quick-start.html#connect">連接 Adyen</a>。</p></dd></div>
-            <div><dt>“郵件伺服器未接受使用者名稱或密碼。請在“設定 › 電子郵件”中檢查。”</dt>
-              <dd><p><span class="fix-label">原因</span>SMTP 使用者名稱或密碼有誤，或郵件服務供應商要求使用應用程式專用密碼。</p>
+            <div><dt>“郵件伺服器未接受用戶名稱或密碼。請在“設定 › 電郵”中檢查。”</dt>
+              <dd><p><span class="fix-label">原因</span>SMTP 用戶名稱或密碼有誤，或郵件服務供應商要求使用應用程式專用密碼。</p>
                 <p><span class="fix-label">解決</span>更正後傳送一封測試郵件。</p></dd></div>
             <div><dt>“此設備的安全儲存空間無法使用。請重試或重啟設備。”</dt>
               <dd><p><span class="fix-label">原因</span>Android 金鑰庫無法加密或讀取已儲存的密鑰資料。</p>

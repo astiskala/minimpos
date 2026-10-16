@@ -1,6 +1,7 @@
 package app.minimpos.app
 
 import android.content.res.Configuration
+import app.minimpos.app.data.db.SaleKind
 import app.minimpos.app.data.settings.AppSettings
 import app.minimpos.app.data.settings.JsonDataStoreSerializer
 import app.minimpos.app.receipt.ActionResult
@@ -8,6 +9,8 @@ import app.minimpos.app.terminal.AndroidDeviceInfo
 import app.minimpos.core.receipt.PlainTextReceiptRenderer
 import com.google.common.truth.Truth.assertThat
 import com.google.common.truth.Truth.assertWithMessage
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.serialization.serializer
 import org.junit.Rule
 import org.junit.Test
@@ -44,6 +47,44 @@ class AppLanguageTest {
         }
         assertThat(env.context.withAppLanguage("")).isSameInstanceAs(env.context)
     }
+
+    @Test
+    fun `shopper terminal prompts follow the current app language without rewriting an earlier flow`() =
+        await {
+            env.updateSettings {
+                it.copy(
+                    payment =
+                        it.payment.copy(
+                            showVirtualReceipt = true,
+                            confirmBasketOnTerminal = true,
+                            collectEmailOnTerminal = true,
+                            askShopperRating = true,
+                        ),
+                )
+            }
+            val checkouts =
+                env.container.session(SaleKind.SALE).checkout(
+                    env.container.settingsState,
+                    flowOf(false),
+                    shopperDisplayAvailable = flowOf(true),
+                    currency = env.container::currency,
+                )
+            mapOf("en" to "Order", "zh-CN" to "订单", "zh-Hant" to "訂單", "ja" to "注文").forEach { (tag, order) ->
+                env.updateSettings { it.copy(languageTag = tag) }
+                val checkout = checkouts.first { it.shopperTexts?.order == order }
+                val flow = checkNotNull(checkout.shopperSessionFlow("ORDER-1"))
+                val localized = env.context.withAppLanguage(tag)
+                assertWithMessage(tag).that(flow.virtualReceipt?.header).isEqualTo(order)
+                assertThat(flow.virtualReceipt?.totalLabel).isEqualTo(localized.getString(R.string.checkout_total))
+                assertThat(flow.confirmationPrompt?.first).isEqualTo(localized.getString(R.string.shopper_confirm_order))
+                assertThat(flow.confirmLabel).isEqualTo(localized.getString(R.string.shopper_confirm))
+                assertThat(flow.cancelLabel).isEqualTo(localized.getString(R.string.action_cancel))
+                assertThat(flow.emailPrompt).isEqualTo(localized.getString(R.string.shopper_email_prompt))
+                assertThat(flow.ratingPrompt?.first).isEqualTo(localized.getString(R.string.shopper_rating_prompt))
+                env.updateSettings { it.copy(languageTag = if (tag == "en") "ja" else "en") }
+                assertThat(flow.virtualReceipt?.header).isEqualTo(order)
+            }
+        }
 
     @Test
     fun `language is persisted without changing merchant text payment settings or automatic currency`() =

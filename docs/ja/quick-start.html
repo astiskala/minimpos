@@ -290,8 +290,9 @@
         </section>
         <section id="live">
           <h2>本番運用を始める</h2>
+          <p>任意の端末機能を使う前に、<a href="using.html#capabilities">Adyen機能</a>を確認し、実際の決済先でテストします。対象は<a href="using.html#terminal-tips">端末チップ</a>、<a href="using.html#terminal-checkout">一部承認、購入者向け入力、Giving、カード番号手入力</a>、<a href="using.html#offline">オフライン処理</a>、<a href="using.html#reconciliation">端末集計照合</a>です。利用可否はAdyenの設定と決済先によって異なります。シミュレーターの結果は実端末での検証にはなりません。</p>
           <ol>
-            <li>使う予定の任意のフローだけを TEST で試します：<a href="using.html#preauth">予約金</a>、<a href="using.html#tips">領収書のチップ</a>、<a href="using.html#payment-links">支払いリンク</a>、<a href="using.html#wallets">ウォレットのスキャン</a>。予約金と領収書のチップは、キャプチャまで金額を確保します。最終的なキャプチャ結果は Customer Area で確認します。</li>
+            <li>使う予定の任意のフローだけを TEST で試します：<a href="using.html#preauth">予約金</a>、<a href="using.html#tips">領収書のチップ</a>、<a href="using.html#payment-links">決済リンク</a>、<a href="using.html#wallets">ウォレットのスキャン</a>。予約金と領収書のチップは、キャプチャまで金額を確保します。最終的なキャプチャ結果は Customer Area で確認します。</li>
             <li>使う予定の領収書の渡し方をテストします。実際のプリンターで印刷するか、テストメールを送信するか、領収書を共有します。</li>
             <li>管理者PINと、必要ならマネージャーPINを設定します。<a href="using.html#staff">スタッフの権限</a>を参照してください。</li>
             <li>LIVE の端末または LIVE 版 Payments アプリと、LIVE の認証情報に切り替えます。ネットワークやクラウドの端末では<strong>環境</strong>で <strong>LIVE</strong> を選びます。<strong>LIVE URLプレフィックス</strong>を入力します。<a href="https://docs.adyen.com/development-resources/live-endpoints">Adyen の LIVE エンドポイントガイド</a>を参照してください。</li>
@@ -310,13 +311,14 @@
         </section>
         <section id="try">
           <h2>シミュレーターを試す</h2>
+          <p>オフライン警告を試すには、<strong>設定 › シミュレーター</strong>で<strong>オフライン（ストア・アンド・フォワード）をシミュレート</strong>をオンにします。承認された模擬販売にはPSP参照IDがなく、未確認バッチが報告されます。取引履歴で販売を開き、<a href="using.html#reconciliation">端末集計照合</a>も試してください。これはデモであり、実際のオフライン承認や後からのAdyenへのアップロードの検証ではありません。</p>
           <p>Adyen アカウントや端末がなくても Mini mPOS を試せます。カードへの請求はありません。</p>
           <ol>
             <li>Android 9 以降のスマートフォンかエミュレーターに<a href="#install">アプリをインストール</a>します。</li>
             <li>ようこそ画面で<strong>サンプルでシミュレーターを試す</strong>を選びます。ほかに、設定 QR コードを読み込む<strong>別のデバイスから設定</strong>と、<strong>端末を設定</strong>があります。</li>
             <li><strong>設定 › シミュレーター</strong>で、決済結果、待ち時間、プリンターの有無を選びます。</li>
           </ol>
-          <p>サンプルの商品と履歴にはデモと表示されます。サンプルはデモの日次合計とレポートに含まれますが、実際の決済ではありません。<strong>設定 › データ</strong>で<strong>サンプルデータを追加</strong>または<strong>サンプルデータを削除</strong>を使えます。削除しても、ご自身の商品、履歴、設定は残ります。オフラインのデモリンクは<a href="using.html#payment-links">支払いリンク</a>を参照してください。</p>
+          <p>サンプルの商品と履歴にはデモと表示されます。サンプルはデモの日次合計とレポートに含まれますが、実際の決済ではありません。<strong>設定 › データ</strong>で<strong>サンプルデータを追加</strong>または<strong>サンプルデータを削除</strong>を使えます。削除しても、ご自身の商品、履歴、設定は残ります。オフラインのデモリンクは<a href="using.html#payment-links">決済リンク</a>を参照してください。</p>
           <p class="back-to-contents"><a href="#contents">目次に戻る</a></p>
         </section>
       </div>

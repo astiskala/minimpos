@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>トラブルシューティング – Mini mPOS</title>
-  <meta name="description" content="Mini mPOS の結果不明、拒否された決済、端末ペアリングとネットワーク、キャプチャ、支払いリンク、プリンター、メール、PIN、インストールの問題を解決します。">
+  <meta name="description" content="Mini mPOS の結果不明、拒否された決済、端末ペアリングとネットワーク、キャプチャ、決済リンク、プリンター、メール、PIN、インストールの問題を解決します。">
   <link rel="icon" href="../favicon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="../styles.css">
   <link rel="canonical" href="https://minimpos.app/ja/troubleshooting.html">
@@ -57,15 +57,17 @@
         <p class="toc-title">ガイド</p><p><a href="quick-start.html">クイックスタート</a><br><a href="using.html">Mini mPOS の使い方</a><br><a href="troubleshooting.html" aria-current="page">トラブルシューティング</a></p>
         <div class="desktop-contents"><p class="toc-title">このページの内容</p><ol>
           <li><a href="#unknown">結果不明</a></li><li><a href="#declines">拒否された決済</a></li>
+          <li><a href="#terminal-features">任意の端末機能</a></li>
           <li><a href="#wallets">ウォレットスキャン</a></li><li><a href="#connection">端末ペアリングと設定</a></li><li><a href="#network-dropouts">ネットワークの切断</a></li>
-          <li><a href="#modifications">キャプチャと調整</a></li><li><a href="#links">支払いリンク</a></li>
+          <li><a href="#modifications">キャプチャと調整</a></li><li><a href="#links">決済リンク</a></li>
           <li><a href="#receipts">プリンターとメール</a></li><li><a href="#access">PIN と転送</a></li>
           <li><a href="#install">インストール</a></li><li><a href="#messages">エラーメッセージ</a></li><li><a href="#help">問い合わせ</a></li>
         </ol></div>
         <details class="mobile-contents"><summary class="toc-title">このページの内容</summary><ol>
           <li><a href="#unknown">結果不明</a></li><li><a href="#declines">拒否された決済</a></li>
+          <li><a href="#terminal-features">任意の端末機能</a></li>
           <li><a href="#wallets">ウォレットスキャン</a></li><li><a href="#connection">端末ペアリングと設定</a></li><li><a href="#network-dropouts">ネットワークの切断</a></li>
-          <li><a href="#modifications">キャプチャと調整</a></li><li><a href="#links">支払いリンク</a></li>
+          <li><a href="#modifications">キャプチャと調整</a></li><li><a href="#links">決済リンク</a></li>
           <li><a href="#receipts">プリンターとメール</a></li><li><a href="#access">PIN と転送</a></li>
           <li><a href="#install">インストール</a></li><li><a href="#messages">エラーメッセージ</a></li><li><a href="#help">問い合わせ</a></li>
         </ol></details>
@@ -92,7 +94,7 @@
           <dl class="fixes">
             <div><dt>「このカードで再試行しないでください。別のカードまたは決済方法を購入者にお願いしてください。」</dt>
               <dd><p><span class="fix-label">原因</span>カード発行会社が、変わることのない理由（カードの停止や制限、不正の疑いなど）でこのカードを拒否したか、このカードはこの決済に使えません。</p>
-                <p><span class="fix-label">対処</span>別のカードか決済方法をお願いします。拒否の理由はお客様の銀行が説明できます。表示された理由は <a href="https://docs.adyen.com/point-of-sale/error-scenarios/refusal-reasons-pos">Adyen の拒否理由</a>で確認できます。</p></dd></div>
+                <p><span class="fix-label">対処</span>別のカードか決済方法をお願いします。拒否の理由は購入者の銀行が説明できます。表示された理由は <a href="https://docs.adyen.com/point-of-sale/error-scenarios/refusal-reasons-pos">Adyen の拒否理由</a>で確認できます。</p></dd></div>
             <div><dt>「再試行できます。」</dt>
               <dd><p><span class="fix-label">原因</span>決済がキャンセルされた、PIN が誤っていた、または残高不足など繰り返さない可能性のある理由でカードが拒否されました。</p>
                 <p><span class="fix-label">対処</span><strong>再試行</strong>をタップするか、別のカードをお願いします。</p></dd></div>
@@ -107,7 +109,17 @@
                 <p><span class="fix-label">対処</span><strong>設定 › 端末</strong>でテストを実行します。<a href="#connection">端末ペアリングと設定</a>を参照してください。テストに成功する場合は、端末の構成確認を Adyen に依頼してください。</p></dd></div>
             <div><dt>「再度請求しないでください。この決済は成功しています。」</dt>
               <dd><p><span class="fix-label">原因</span>端末はキャンセルを報告しましたが、決済は承認されています。</p>
-                <p><span class="fix-label">対処</span>再請求しないでください。お客様が支払うべきでない場合は返金します。</p></dd></div>
+                <p><span class="fix-label">対処</span>再請求しないでください。購入者が支払うべきでない場合は返金します。</p></dd></div>
+          </dl>
+          <p class="back-to-contents"><a href="#contents">目次に戻る</a></p>
+        </section>
+        <section id="terminal-features">
+          <h2>任意の端末機能が使えない、または合計が一致しない</h2>
+          <dl class="fixes">
+            <div><dt>端末機能が表示されない、または拒否される</dt><dd><p>決済先と<a href="using.html#capabilities">Adyen機能</a>を確認し、端末設定を再取得します。APIロールとAdyenのアカウント設定も確認してください。ローカルのスイッチだけではAdyen側のサービスは有効になりません。Tap to Payでは物理端末向けフローは使えません。チップは<a href="using.html#terminal-tips">端末チップ</a>と<a href="using.html#tips">領収書のチップ</a>を比較してください。</p></dd></div>
+            <div><dt>金額の一部だけが承認された</dt><dd><p>結果画面から<a href="using.html#partial-payments">一部承認の手順</a>に従ってください。元の全額を再請求しないでください。次の決済が結果不明の場合は、追加決済の前に<a href="#unknown">結果を確認</a>します。</p></dd></div>
+            <div><dt>端末の合計がMini mPOSと一致しない</dt><dd><p><a href="using.html#reconciliation">端末集計照合</a>で、集計期間、同じ端末を使う別のデバイス、保存済み履歴、未解決取引を確認します。期間を締めても差異は修正されず、精算の確認にもなりません。</p></dd></div>
+            <div><dt>オフライン販売にPSP参照IDがない、または未確認バッチが残る</dt><dd><p><a href="using.html#offline">オフライン決済の確認手順</a>に従います。端末とAdyenの接続を復旧し、Customer Areaでアップロードされた決済を確認してください。PSP参照IDがないだけで承認済みの決済を再請求しないでください。</p></dd></div>
           </dl>
           <p class="back-to-contents"><a href="#contents">目次に戻る</a></p>
         </section>
@@ -116,7 +128,7 @@
           <dl class="fixes">
             <div><dt>ウォレットをスキャンがない</dt><dd><p><strong>設定 › 端末</strong>で<strong>ウォレットを更新</strong>をタップします。照会が成功しても対象 POS ウォレットがなければ、ボタンは表示しません。端末の店舗、現在の通貨、<a href="quick-start.html#credentials">任意の照会権限</a>を確認します。Tap to Pay とプリオーソリでは使えません。</p></dd></div>
             <div><dt>ウォレット照会のエラー</dt><dd><p>エラーは設定だけに表示し、通常の支払いを妨げません。認証情報、環境、読み取り権限を確認してください。設定が同じなら、一時的な更新失敗では最後に確認した一覧を維持します。正常な空の結果やアクセス失敗では削除します。起動、設定変更、手動更新だけで照会し、毎回の販売前には照会しません。</p></dd></div>
-            <div><dt>コードが無効、または受信できない</dt><dd><p>プロフィール、設定転送、領収書 QR ではなく、お客様の支払いコードと正しいウォレットを選びます。端末スキャンは最大 30 秒です。<strong>再スキャン</strong>または<strong>カメラを使用</strong>を選び、求められたカメラ権限を許可してください。バックグラウンドから戻った場合も明示的な再開が必要です。</p></dd></div>
+            <div><dt>コードが無効、または受信できない</dt><dd><p>プロフィール、設定転送、領収書 QR ではなく、購入者の支払いコードと正しいウォレットを選びます。端末スキャンは最大 30 秒です。<strong>再スキャン</strong>または<strong>カメラを使用</strong>を選び、求められたカメラ権限を許可してください。バックグラウンドから戻った場合も明示的な再開が必要です。</p></dd></div>
             <div><dt>保存が拒否された、またはトークンがない</dt><dd><p>決済結果に従ってください。保存トークンがなくても承認済みの支払いは承認済みです。明確な拒否が確認された場合だけ、必要に応じて会計に戻り、<strong>カードを保存</strong>をオフにして新しいスキャンを始めます。自動で代替決済はしません。<strong>結果不明</strong>なら<a href="#unknown">元の取引を確認</a>します。</p></dd></div>
             <div><dt>PayMe のスキャンが拒否された</dt><dd><p>PayMe の店舗側スキャンはベストエフォートで、Adyen の公開された制限と矛盾します。別の支払い方法をお願いするか、端末の通常のウォレット操作を使います。シミュレーターの承認は対応の証明ではありません。</p></dd></div>
           </dl>
@@ -200,11 +212,11 @@
           <p class="back-to-contents"><a href="#contents">目次に戻る</a></p>
         </section>
         <section id="links">
-          <h2>支払いリンクが表示されない、更新されない</h2>
+          <h2>決済リンクが表示されない、更新されない</h2>
           <dl class="fixes">
-            <div><dt>会計に<strong>支払いリンクを作成</strong>がない</dt>
+            <div><dt>会計に<strong>決済リンクを作成</strong>がない</dt>
               <dd><p><span class="fix-label">原因</span>Checkout API の設定が完了していないか、プリオーソリまたは領収書のチップの会計です。</p>
-                <p><span class="fix-label">対処</span><strong>設定 › 端末</strong>で Checkout API の設定を完了します。リンクは販売専用です。オフラインのデモは<a href="using.html#payment-links">支払いリンク</a>を参照してください。</p></dd></div>
+                <p><span class="fix-label">対処</span><strong>設定 › 端末</strong>で Checkout API の設定を完了します。リンクは販売専用です。オフラインのデモは<a href="using.html#payment-links">決済リンク</a>を参照してください。</p></dd></div>
             <div><dt>支払済みのリンクが<strong>支払い待ち</strong>のまま</dt>
               <dd><p><span class="fix-label">原因</span>アプリはリンク画面を開いている間だけ確認します。</p>
                 <p><span class="fix-label">対処</span>取引履歴で項目を開き、<strong>支払いを確認</strong>をタップします。</p></dd></div>
@@ -230,7 +242,7 @@
             <div><dt>テストメールの送信に失敗する</dt>
               <dd><p><span class="fix-label">原因</span>サーバー、ポート、セキュリティ方式、パスワードが誤っているか、プロバイダーが SMTP やパスワードでのログインを禁止しています。</p>
                 <p><span class="fix-label">対処</span><strong>設定 › メール（SMTP）</strong>でサーバー、ポート、STARTTLS または SSL/TLS、ユーザー名、パスワードを確認します。プロバイダーによっては SMTP の有効化やアプリパスワードが必要です。<a href="using.html#email">メール設定</a>を参照してください。</p></dd></div>
-            <div><dt>テストメールは届くが、お客様に領収書が届かない</dt>
+            <div><dt>テストメールは届くが、購入者に領収書が届かない</dt>
               <dd><p><span class="fix-label">対処</span><strong>設定 › 決済 › 領収書のメール送信</strong>で、メールを尋ねるタイミングと自動送信の有無を確認します。</p></dd></div>
           </dl>
           <p class="back-to-contents"><a href="#contents">目次に戻る</a></p>
@@ -296,7 +308,7 @@
                 <p><span class="fix-label">対処</span>Customer Area でロールまたはアカウントへのアクセス権を追加してください。<a href="quick-start.html#credentials">認証情報の要件</a>を参照してください。</p></dd></div>
             <div><dt>「Adyenが混雑しているか、一時的に利用できません。」</dt>
               <dd><p><span class="fix-label">原因</span>Adyenがリクエストを制限しているか、一時的に利用できません。</p>
-                <p><span class="fix-label">対処</span>しばらく待ってから再試行してください。決済、キャプチャ、支払いリンクの場合は、先に<a href="#unknown">その結果を確認</a>してください。</p></dd></div>
+                <p><span class="fix-label">対処</span>しばらく待ってから再試行してください。決済、キャプチャ、決済リンクの場合は、先に<a href="#unknown">その結果を確認</a>してください。</p></dd></div>
             <div><dt>「時間内に応答がありませんでした。」</dt>
               <dd><p><span class="fix-label">原因</span>リクエストは送信されましたが応答がなかったため、結果は不明です。</p>
                 <p><span class="fix-label">対処</span><a href="#unknown">結果を確認</a>してください。結果が分かるまで再請求しないでください。</p></dd></div>
@@ -320,7 +332,7 @@
           <p>Adyen アカウント、端末の配布、決済方法、最終的な決済結果については Adyen に問い合わせてください。アプリの問題は<a href="https://github.com/astiskala/minimpos/issues">GitHub issue</a>で、アプリのバージョン、デバイスのモデル、構成、TEST または LIVE、再現手順を知らせてください。</p>
           <div class="callout callout-important" role="note">
             <p class="callout-title">重要</p>
-            <p>キー、パスワード、PIN、顧客情報は絶対に含めないでください。脆弱性の疑いは<a href="https://github.com/astiskala/minimpos/blob/main/SECURITY.md">セキュリティポリシー</a>に従って非公開で報告します。</p>
+            <p>キー、パスワード、PIN、購入者情報は絶対に含めないでください。脆弱性の疑いは<a href="https://github.com/astiskala/minimpos/blob/main/SECURITY.md">セキュリティポリシー</a>に従って非公開で報告します。</p>
           </div>
           <p class="back-to-contents"><a href="#contents">目次に戻る</a></p>
         </section>

@@ -74,6 +74,8 @@ class WalletScanStart(
 class SaleSession(
     /** What is being rung up; a [SaleKind.singleItem] kind holds at most one item, with a quantity of one. */
     val kind: SaleKind = SaleKind.SALE,
+    /** Resolves prompts in the current app language; null only for sessions without shopper display. */
+    private val shopperTexts: (() -> ShopperPromptTexts)? = null,
     /** Generates cart line keys; tests make them predictable. */
     private val newKey: () -> String = { UUID.randomUUID().toString() },
 ) {
@@ -145,6 +147,7 @@ class SaleSession(
                 caps.wallets.offered(resolvedCurrency.code),
                 terminalTippingAvailable = caps.terminalTippingAvailable,
                 shopperDisplayAvailable = caps.shopperDisplayAvailable,
+                shopperTexts = if (caps.shopperDisplayAvailable) checkNotNull(shopperTexts).invoke() else null,
             )
         }
 

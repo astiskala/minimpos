@@ -57,6 +57,7 @@
         <p class="toc-title">Guides</p><p><a href="quick-start.html">Quick start</a><br><a href="using.html">Using Mini mPOS</a><br><a href="troubleshooting.html" aria-current="page">Troubleshooting</a></p>
         <div class="desktop-contents"><p class="toc-title">On this page</p><ol>
           <li><a href="#unknown">Unknown result</a></li><li><a href="#declines">Declined payments</a></li>
+          <li><a href="#terminal-features">Optional terminal features</a></li>
           <li><a href="#wallets">Wallet scanning</a></li><li><a href="#connection">Pairing and setup</a></li><li><a href="#network-dropouts">Network dropouts</a></li>
           <li><a href="#modifications">Captures and adjustments</a></li><li><a href="#links">Payment links</a></li>
           <li><a href="#receipts">Printer and email</a></li><li><a href="#access">PINs and transfers</a></li>
@@ -64,6 +65,7 @@
         </ol></div>
         <details class="mobile-contents"><summary class="toc-title">On this page</summary><ol>
           <li><a href="#unknown">Unknown result</a></li><li><a href="#declines">Declined payments</a></li>
+          <li><a href="#terminal-features">Optional terminal features</a></li>
           <li><a href="#wallets">Wallet scanning</a></li><li><a href="#connection">Pairing and setup</a></li><li><a href="#network-dropouts">Network dropouts</a></li>
           <li><a href="#modifications">Captures and adjustments</a></li><li><a href="#links">Payment links</a></li>
           <li><a href="#receipts">Printer and email</a></li><li><a href="#access">PINs and transfers</a></li>
@@ -108,6 +110,16 @@
             <div><dt>“Do not charge again: this payment went through.”</dt>
               <dd><p><span class="fix-label">Cause</span>The payment was approved even though the terminal reported a cancellation.</p>
                 <p><span class="fix-label">Fix</span>Do not charge again. Refund it if the customer should not pay.</p></dd></div>
+          </dl>
+          <p class="back-to-contents"><a href="#contents">Back to contents</a></p>
+        </section>
+        <section id="terminal-features">
+          <h2>An optional terminal feature is missing or totals differ</h2>
+          <dl class="fixes">
+            <div><dt>A terminal feature is missing or rejected</dt><dd><p>Check the selected destination and <a href="using.html#capabilities">Adyen capabilities</a>, refresh its settings, and confirm the API roles and Adyen account configuration. Local checkout switches alone do not enable a service at Adyen. Tap to Pay does not offer the physical-terminal workflows. For tips, compare <a href="using.html#terminal-tips">terminal tipping</a> with <a href="using.html#tips">receipt tipping</a>.</p></dd></div>
+            <div><dt>Only part of the amount was approved</dt><dd><p>Follow the <a href="using.html#partial-payments">partial-payment workflow</a> from the result screen. Do not charge the full original total again. If a later attempt's result is unknown, <a href="#unknown">resolve it</a> before collecting more.</p></dd></div>
+            <div><dt>Terminal totals do not match Mini mPOS</dt><dd><p>Review the terminal period, other devices using that terminal, retained local history and unresolved transactions in <a href="using.html#reconciliation">terminal reconciliation</a>. Closing the period does not fix differences or confirm settlement.</p></dd></div>
+            <div><dt>An offline sale has no PSP reference or unconfirmed batches remain</dt><dd><p>Follow <a href="using.html#offline">offline-payment checks</a>. Restore the terminal's connection to Adyen and verify its uploaded payments in the Customer Area. Do not collect an approved payment again just because its PSP reference is missing.</p></dd></div>
           </dl>
           <p class="back-to-contents"><a href="#contents">Back to contents</a></p>
         </section>

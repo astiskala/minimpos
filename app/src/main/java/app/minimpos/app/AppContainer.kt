@@ -42,6 +42,7 @@ import app.minimpos.app.payment.ReceiptRecords
 import app.minimpos.app.payment.RefundBook
 import app.minimpos.app.payment.SaleBook
 import app.minimpos.app.payment.SaleSession
+import app.minimpos.app.payment.ShopperPromptTexts
 import app.minimpos.app.payment.StoredPaymentActions
 import app.minimpos.app.payment.TransactionLifecycle
 import app.minimpos.app.payment.TransactionState
@@ -373,7 +374,20 @@ class AppContainer(
                 ),
         )
 
-    private val sessions = SaleKind.entries.associateWith { SaleSession(it) }
+    private val sessions = SaleKind.entries.associateWith { SaleSession(it, ::shopperPromptTexts) }
+
+    private fun shopperPromptTexts(): ShopperPromptTexts {
+        val localized = localizedContext
+        return ShopperPromptTexts(
+            order = localized.getString(R.string.shopper_order),
+            total = localized.getString(R.string.checkout_total),
+            confirmOrder = localized.getString(R.string.shopper_confirm_order),
+            confirm = localized.getString(R.string.shopper_confirm),
+            cancel = localized.getString(R.string.action_cancel),
+            email = localized.getString(R.string.shopper_email_prompt),
+            rating = localized.getString(R.string.shopper_rating_prompt),
+        )
+    }
 
     /**
      * The payment of [kind] being rung up, shared by its ring-up and checkout screens; one per kind, so a sale being rung

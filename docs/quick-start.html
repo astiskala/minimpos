@@ -302,6 +302,7 @@
         </section>
         <section id="live">
           <h2>Go live</h2>
+          <p>Before using optional terminal features, review <a href="using.html#capabilities">Adyen capabilities</a> and test your actual destination: <a href="using.html#terminal-tips">terminal tipping</a>, <a href="using.html#terminal-checkout">partial payments, shopper prompts, Giving and keyed entry</a>, <a href="using.html#offline">offline processing</a> and <a href="using.html#reconciliation">terminal reconciliation</a>. Availability depends on Adyen configuration and the payment destination; simulator results are not real-terminal verification.</p>
           <ol>
             <li>In TEST, try only the optional workflows you plan to use: <a href="using.html#preauth">deposits</a>, <a href="using.html#tips">receipt tips</a>, <a href="using.html#payment-links">payment links</a> or <a href="using.html#wallets">scanned wallets</a>. Deposits and receipt tips hold funds until capture. Check final capture outcomes in the Customer Area.</li>
             <li>Test the receipt delivery methods you plan to use: print on a real printer, send a test email or share a receipt.</li>
@@ -323,6 +324,7 @@
         <section id="try">
           <h2>Try the simulator</h2>
           <p>Explore Mini mPOS without an Adyen account or terminal. No card is charged.</p>
+          <p>To explore offline warnings, turn on <strong>Simulate offline Store-and-Forward</strong> in <strong>Settings › Simulator</strong>. Approved simulated sales then have no PSP reference and report an unconfirmed batch. Inspect the sale in History and try <a href="using.html#reconciliation">terminal reconciliation</a>. This is a demo, not a test of real offline authorization or later upload to Adyen.</p>
           <ol>
             <li><a href="#install">Install the app</a> on an Android 9+ phone or emulator.</li>
             <li>On the welcome screen, choose <strong>Try simulator with samples</strong>. The other choices are <strong>Set up from another device</strong>, to import setup QR codes, and <strong>Set up a terminal</strong>.</li>

@@ -2,9 +2,9 @@ package app.minimpos.app.payment
 
 import app.minimpos.app.data.db.SaleWithLines
 import app.minimpos.app.data.settings.AppSettings
-import app.minimpos.app.refund.RefundChoice
-import app.minimpos.app.refund.RefundStart
-import app.minimpos.app.refund.RefundablePayment
+import app.minimpos.app.history.RefundChoice
+import app.minimpos.app.history.RefundStart
+import app.minimpos.app.history.RefundablePayment
 import kotlinx.coroutines.flow.StateFlow
 import java.time.Clock
 import java.time.ZoneId

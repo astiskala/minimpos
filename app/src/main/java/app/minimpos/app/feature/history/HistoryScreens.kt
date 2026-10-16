@@ -78,11 +78,11 @@ import app.minimpos.app.feature.sale.adviceText
 import app.minimpos.app.feature.sale.statusKind
 import app.minimpos.app.feature.sale.statusTitle
 import app.minimpos.app.feature.stillUnconfirmed
-import app.minimpos.app.refund.PaymentAction
-import app.minimpos.app.refund.TerminalReconciliationReport
-import app.minimpos.app.refund.decline
-import app.minimpos.app.refund.methodCode
-import app.minimpos.app.refund.simulatedLink
+import app.minimpos.app.history.PaymentAction
+import app.minimpos.app.history.TerminalReconciliationReport
+import app.minimpos.app.history.decline
+import app.minimpos.app.history.methodCode
+import app.minimpos.app.history.simulatedLink
 import app.minimpos.app.share.ShareEffect
 import app.minimpos.app.ui.components.ActionMessage
 import app.minimpos.app.ui.components.Card

@@ -22,10 +22,10 @@ import app.minimpos.app.feature.history.SaleDetailViewModel
 import app.minimpos.app.feature.sale.CheckoutViewModel
 import app.minimpos.app.feature.settings.SettingsChecks
 import app.minimpos.app.feature.settings.SettingsViewModel
+import app.minimpos.app.history.PaymentAction
+import app.minimpos.app.history.standing
 import app.minimpos.app.payment.CaptureResult
 import app.minimpos.app.payment.TransactionState
-import app.minimpos.app.refund.PaymentAction
-import app.minimpos.app.refund.standing
 import app.minimpos.terminal.transport.ExternalText
 import app.minimpos.terminal.transport.Fault
 import com.google.common.truth.Truth.assertThat

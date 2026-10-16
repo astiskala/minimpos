@@ -2,7 +2,9 @@ package app.minimpos.app.feature.settings
 
 import androidx.lifecycle.ViewModel
 import app.minimpos.app.data.repo.SampleData
+import app.minimpos.app.feature.SampleDataState
 import app.minimpos.app.feature.launchWrite
+import app.minimpos.app.feature.sampleDataWrite
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow

@@ -32,6 +32,9 @@ import app.minimpos.app.email.EmailTexts
 import app.minimpos.app.email.MailTransport
 import app.minimpos.app.email.ReceiptEmailer
 import app.minimpos.app.email.SmtpMailer
+import app.minimpos.app.history.PaymentStanding
+import app.minimpos.app.history.RefundStart
+import app.minimpos.app.history.StoredPayments
 import app.minimpos.app.payment.Captures
 import app.minimpos.app.payment.Checkout
 import app.minimpos.app.payment.PaymentLinks
@@ -52,9 +55,6 @@ import app.minimpos.app.receipt.ReceiptFactory
 import app.minimpos.app.receipt.ReceiptSampleTexts
 import app.minimpos.app.receipt.ReceiptTexts
 import app.minimpos.app.receipt.ReportText
-import app.minimpos.app.refund.PaymentStanding
-import app.minimpos.app.refund.RefundStart
-import app.minimpos.app.refund.StoredPayments
 import app.minimpos.app.terminal.AdyenApi
 import app.minimpos.app.terminal.AndroidDeviceInfo
 import app.minimpos.app.terminal.CapabilityDiscovery
@@ -74,6 +74,7 @@ import app.minimpos.app.terminal.TerminalSetupSource
 import app.minimpos.app.terminal.TerminalStatus
 import app.minimpos.app.terminal.VirtualPrinter
 import app.minimpos.app.terminal.WalletDiscovery
+import app.minimpos.app.terminal.refreshEnvironment
 import app.minimpos.app.update.AppUpdate
 import app.minimpos.app.update.GitHubReleases
 import app.minimpos.app.update.UpdateCheck

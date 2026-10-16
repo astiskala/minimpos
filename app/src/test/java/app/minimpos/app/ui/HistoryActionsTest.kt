@@ -22,7 +22,7 @@ import app.minimpos.app.data.db.RefundStatus
 import app.minimpos.app.data.db.SaleKind
 import app.minimpos.core.money.CurrencySpec
 import app.minimpos.core.money.MoneyFormatter
-import app.minimpos.core.money.PaymentContext
+import app.minimpos.core.payment.PaymentContext
 import com.google.common.truth.Truth.assertThat
 import kotlinx.coroutines.flow.first
 import org.junit.Before

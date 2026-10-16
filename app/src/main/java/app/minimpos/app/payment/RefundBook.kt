@@ -4,8 +4,8 @@ import app.minimpos.app.data.db.RefundEntity
 import app.minimpos.app.data.db.RefundStatus
 import app.minimpos.app.data.repo.ReceiptLinesJson
 import app.minimpos.app.data.repo.RefundRepository
-import app.minimpos.app.refund.RefundStart
-import app.minimpos.core.money.PaymentContext
+import app.minimpos.app.history.RefundStart
+import app.minimpos.core.payment.PaymentContext
 import app.minimpos.terminal.client.TransactionKind
 
 /**

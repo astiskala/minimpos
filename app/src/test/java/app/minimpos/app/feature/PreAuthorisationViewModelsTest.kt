@@ -15,8 +15,8 @@ import app.minimpos.app.feature.history.SaleDetailViewModel
 import app.minimpos.app.feature.sale.CheckoutViewModel
 import app.minimpos.app.feature.sale.SaleResultViewModel
 import app.minimpos.app.feature.sale.SaleViewModel
+import app.minimpos.app.history.PaymentAction
 import app.minimpos.app.payment.TransactionState
-import app.minimpos.app.refund.PaymentAction
 import com.google.common.truth.Truth.assertThat
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi

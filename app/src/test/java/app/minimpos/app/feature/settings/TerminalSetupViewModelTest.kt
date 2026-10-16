@@ -1,4 +1,4 @@
-package app.minimpos.app.feature
+package app.minimpos.app.feature.settings
 
 import android.os.Looper
 import androidx.lifecycle.ViewModel
@@ -12,6 +12,7 @@ import app.minimpos.app.data.db.Failure
 import app.minimpos.app.data.db.SetupProblem
 import app.minimpos.app.data.security.Secret
 import app.minimpos.app.data.settings.TerminalMode
+import app.minimpos.app.feature.ActionOutcome
 import app.minimpos.app.feature.settings.SettingsChecks
 import app.minimpos.app.feature.settings.SettingsTest
 import app.minimpos.app.feature.settings.SettingsViewModel
@@ -35,7 +36,7 @@ import org.robolectric.Shadows.shadowOf
 /** Settings for a terminal in the cloud and for Tap to Pay, through the settings view model. */
 @OptIn(ExperimentalCoroutinesApi::class)
 @RunWith(RobolectricTestRunner::class)
-class RemoteSettingsViewModelTest {
+class TerminalSetupViewModelTest {
     private val env = TestEnvironment(FakeDevice(paymentsApps = setOf(TerminalEnvironment.TEST)))
     private val container = env.container
     private val main = UnconfinedTestDispatcher()

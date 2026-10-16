@@ -1,4 +1,4 @@
-package app.minimpos.app.feature
+package app.minimpos.app.feature.history
 
 import app.minimpos.app.TestEnvironment
 import app.minimpos.app.closeViewModels
@@ -12,8 +12,8 @@ import app.minimpos.app.feature.history.HistoryFilter
 import app.minimpos.app.feature.history.HistoryUiState
 import app.minimpos.app.feature.history.HistoryViewModel
 import app.minimpos.app.feature.history.PaymentMethodFilter
-import app.minimpos.app.refund.HistoryAccounting
-import app.minimpos.app.refund.HistoryActivityKind
+import app.minimpos.app.history.HistoryAccounting
+import app.minimpos.app.history.HistoryActivityKind
 import app.minimpos.core.payment.Wallet
 import com.google.common.truth.Truth.assertThat
 import kotlinx.coroutines.Dispatchers

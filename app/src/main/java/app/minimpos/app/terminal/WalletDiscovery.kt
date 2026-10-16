@@ -2,7 +2,7 @@ package app.minimpos.app.terminal
 
 import app.minimpos.app.data.db.Failure
 import app.minimpos.app.data.db.SetupProblem
-import app.minimpos.core.money.PaymentContext
+import app.minimpos.core.payment.PaymentContext
 import app.minimpos.core.payment.ScanWallet
 import app.minimpos.terminal.transport.Fault
 import app.minimpos.terminal.transport.TerminalDetailsApi

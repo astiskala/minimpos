@@ -63,11 +63,11 @@ import app.minimpos.app.feature.OutcomeMessage
 import app.minimpos.app.feature.lock.ManagerApproval
 import app.minimpos.app.feature.outcomeNote
 import app.minimpos.app.feature.stillUnconfirmed
+import app.minimpos.app.history.PaymentAction
+import app.minimpos.app.history.standing
 import app.minimpos.app.payment.Checkout
 import app.minimpos.app.payment.CheckoutForm
 import app.minimpos.app.payment.TransactionState
-import app.minimpos.app.refund.PaymentAction
-import app.minimpos.app.refund.standing
 import app.minimpos.app.share.ShareEffect
 import app.minimpos.app.ui.components.ActionMessage
 import app.minimpos.app.ui.components.BottomActions

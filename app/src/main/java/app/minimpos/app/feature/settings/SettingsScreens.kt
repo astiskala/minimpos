@@ -19,6 +19,7 @@ import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.DeleteSweep
 import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.Error
+import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FileDownload
 import androidx.compose.material.icons.filled.FileUpload
 import androidx.compose.material.icons.filled.Info
@@ -33,6 +34,7 @@ import androidx.compose.material.icons.filled.Receipt
 import androidx.compose.material.icons.filled.Science
 import androidx.compose.material.icons.filled.Storage
 import androidx.compose.material.icons.filled.Sync
+import androidx.compose.material.icons.filled.Tv
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -367,7 +369,8 @@ fun SettingsScreen(
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             Column(Modifier.widthIn(max = 640.dp)) {
-                PaymentSectionRows(
+                SectionHeader(stringResource(R.string.settings_connection_group))
+                ConnectionSectionRows(
                     terminalSummary =
                         if (mode == TerminalMode.SIMULATOR) {
                             stringResource(R.string.settings_mode_simulator)
@@ -375,6 +378,10 @@ fun SettingsScreen(
                             connectionTitle(terminal.connection)
                         },
                     simulatorOutcome = settings.simulator.outcome.takeIf { mode == TerminalMode.SIMULATOR },
+                    onOpen = ::open,
+                )
+                SectionHeader(stringResource(R.string.checkout_title))
+                PaymentSectionRows(
                     currency = container.currency(settings).code,
                     taxSummary =
                         if (settings.payment.chargeTax) {
@@ -393,18 +400,19 @@ fun SettingsScreen(
                     subtitle = stringResource(R.string.settings_language_hint),
                     tag = "appLanguage",
                 )
+                SettingNavRow(Icons.Default.Info, stringResource(R.string.settings_about), BuildConfig.VERSION_NAME, {
+                    open(SettingsSections.ABOUT)
+                }, tag = "section_about")
             }
         }
     }
 }
 
-/** Rows for the sections that decide how payments are taken; the simulator's only while payments go to it. */
+/** Destination setup and Adyen-side configuration; simulator controls appear only while payments go to it. */
 @Composable
-private fun ColumnScope.PaymentSectionRows(
+private fun ColumnScope.ConnectionSectionRows(
     terminalSummary: String,
     simulatorOutcome: SimulatedOutcome?,
-    currency: String,
-    taxSummary: String?,
     onOpen: (section: String) -> Unit,
 ) {
     SettingNavRow(
@@ -426,6 +434,15 @@ private fun ColumnScope.PaymentSectionRows(
             onOpen(SettingsSections.SIMULATOR)
         })
     }
+}
+
+/** App-side checkout preferences, separate from configuring capabilities at Adyen. */
+@Composable
+private fun ColumnScope.PaymentSectionRows(
+    currency: String,
+    taxSummary: String?,
+    onOpen: (section: String) -> Unit,
+) {
     SettingNavRow(
         Icons.Default.Payments,
         stringResource(R.string.settings_payments),
@@ -440,15 +457,30 @@ private fun ColumnScope.PaymentSectionRows(
         { onOpen(SettingsSections.TAX) },
         tag = "section_tax",
     )
+    SettingNavRow(
+        Icons.Default.Favorite,
+        stringResource(R.string.settings_tips_donations),
+        null,
+        { onOpen(SettingsSections.TIPPING) },
+        tag = "section_tipping",
+    )
+    SettingNavRow(
+        Icons.Default.Tv,
+        stringResource(R.string.settings_shopper_display),
+        null,
+        { onOpen(SettingsSections.SHOPPER_DISPLAY) },
+        tag = "section_shopper_display",
+    )
 }
 
-/** Rows for receipts, email, security, data and About. */
+/** Receipt delivery followed by device-local access and data management. */
 @Composable
 private fun ColumnScope.OtherSectionRows(
     settings: AppSettings,
     pinSet: Boolean,
     onOpen: (section: String) -> Unit,
 ) {
+    SectionHeader(stringResource(R.string.settings_receipts))
     SettingNavRow(
         Icons.Default.Receipt,
         stringResource(R.string.settings_receipts),
@@ -463,6 +495,7 @@ private fun ColumnScope.OtherSectionRows(
         { onOpen(SettingsSections.EMAIL) },
         tag = "section_email",
     )
+    SectionHeader(stringResource(R.string.settings_device_group))
     SettingNavRow(
         Icons.Default.Lock,
         stringResource(R.string.settings_security),
@@ -477,9 +510,6 @@ private fun ColumnScope.OtherSectionRows(
         { onOpen(SettingsSections.DATA) },
         tag = "section_data",
     )
-    SettingNavRow(Icons.Default.Info, stringResource(R.string.settings_about), BuildConfig.VERSION_NAME, {
-        onOpen(SettingsSections.ABOUT)
-    }, tag = "section_about")
 }
 
 /** One settings [section] (a [SettingsSections] key; unknown keys show About). */
@@ -635,6 +665,18 @@ private fun ColumnScope.SettingsContent(
             PaymentsSection(state, events)
         }
 
+        SettingsSections.TIPPING -> {
+            TippingSection(state.settings.payment) { transform ->
+                events.onUpdate { it.copy(payment = transform(it.payment)) }
+            }
+        }
+
+        SettingsSections.SHOPPER_DISPLAY -> {
+            ShopperDisplaySection(state.settings.payment) { transform ->
+                events.onUpdate { it.copy(payment = transform(it.payment)) }
+            }
+        }
+
         SettingsSections.TAX -> {
             TaxSection(state, actions, events)
         }
@@ -669,6 +711,8 @@ private fun sectionTitle(section: String): Int =
         SettingsSections.CAPABILITIES -> R.string.settings_capabilities
         SettingsSections.SIMULATOR -> R.string.settings_simulator
         SettingsSections.PAYMENTS -> R.string.settings_payments
+        SettingsSections.TIPPING -> R.string.settings_tips_donations
+        SettingsSections.SHOPPER_DISPLAY -> R.string.settings_shopper_display
         SettingsSections.TAX -> R.string.settings_tax
         SettingsSections.RECEIPTS -> R.string.settings_receipts
         SettingsSections.EMAIL -> R.string.settings_email
@@ -1009,540 +1053,6 @@ private fun simulatorOutcomeLabel(outcome: SimulatedOutcome): String =
             SimulatedOutcome.RANDOM -> R.string.settings_sim_random
         },
     )
-
-@Composable
-private fun ColumnScope.PaymentsSection(
-    state: SettingsUiState,
-    events: SettingsEvents,
-) {
-    val payment = state.settings.payment
-
-    fun update(transform: (PaymentSettings) -> PaymentSettings) = events.onUpdate { it.copy(payment = transform(it.payment)) }
-    SectionHeader(stringResource(R.string.settings_pricing))
-    CurrencySetting(
-        selectedCode = payment.currencyCode,
-        automatic = PaymentSettings().resolvedCurrency(LocalAppContainer.current.device.country),
-        onSelect = { code -> update { it.copy(currencyCode = code) } },
-    )
-    SectionHeader(stringResource(R.string.settings_references))
-    SettingTextField(
-        stringResource(R.string.settings_reference_prefix),
-        payment.referencePrefix,
-        { value -> update { it.copy(referencePrefix = value.trim()) } },
-        supporting = stringResource(R.string.settings_reference_prefix_hint),
-        autoCorrect = false,
-    )
-    SettingSwitch(stringResource(R.string.settings_ask_transaction_reference), payment.askTransactionReference, { value ->
-        update { it.copy(askTransactionReference = value) }
-    }, subtitle = stringResource(R.string.settings_ask_transaction_reference_hint))
-    SettingSwitch(
-        stringResource(R.string.settings_allow_partial_auth),
-        payment.allowPartialAuthorisation,
-        { value -> update { it.copy(allowPartialAuthorisation = value) } },
-        subtitle = stringResource(R.string.settings_allow_partial_auth_hint),
-        tag = "allowPartialAuthorisation",
-    )
-    SettingSwitch(
-        stringResource(R.string.settings_allow_moto),
-        payment.allowMoto,
-        { value -> update { it.copy(allowMoto = value) } },
-        subtitle = stringResource(R.string.settings_allow_moto_hint),
-        tag = "allowMoto",
-    )
-    SettingSwitch(
-        stringResource(R.string.settings_allow_mke),
-        payment.allowMke,
-        { value -> update { it.copy(allowMke = value) } },
-        subtitle = stringResource(R.string.settings_allow_mke_hint),
-        tag = "allowMke",
-    )
-    SectionHeader(stringResource(R.string.settings_tokenization))
-    ShopperReferenceSettings(payment, ::update)
-    SectionHeader(stringResource(R.string.settings_tipping))
-    TerminalTippingSettings(payment, ::update)
-    SectionHeader(stringResource(R.string.settings_email_receipts))
-    EmailCaptureSettings(payment, ::update)
-    SectionHeader(stringResource(R.string.settings_shopper_display))
-    ShopperDisplaySettings(payment, ::update)
-    SectionHeader(stringResource(R.string.settings_payment_links))
-    PaymentLinkSettings(payment, ::update)
-}
-
-@Composable
-private fun ColumnScope.ShopperDisplaySettings(
-    payment: PaymentSettings,
-    update: ((PaymentSettings) -> PaymentSettings) -> Unit,
-) {
-    SettingNote(stringResource(R.string.settings_shopper_display_hint))
-    SettingSwitch(
-        stringResource(R.string.settings_show_virtual_receipt),
-        payment.showVirtualReceipt,
-        { value -> update { it.copy(showVirtualReceipt = value) } },
-        tag = "showVirtualReceipt",
-    )
-    SettingSwitch(
-        stringResource(R.string.settings_confirm_basket_terminal),
-        payment.confirmBasketOnTerminal,
-        { value -> update { it.copy(confirmBasketOnTerminal = value) } },
-        tag = "confirmBasketOnTerminal",
-    )
-    SettingSwitch(
-        stringResource(R.string.settings_collect_email_terminal),
-        payment.collectEmailOnTerminal,
-        { value -> update { it.copy(collectEmailOnTerminal = value) } },
-        tag = "collectEmailOnTerminal",
-    )
-    SettingSwitch(
-        stringResource(R.string.settings_show_terminal_qr),
-        payment.showTerminalQrReceipt,
-        { value -> update { it.copy(showTerminalQrReceipt = value) } },
-        tag = "showTerminalQrReceipt",
-    )
-    SettingSwitch(
-        stringResource(R.string.settings_ask_shopper_rating),
-        payment.askShopperRating,
-        { value -> update { it.copy(askShopperRating = value) } },
-        tag = "askShopperRating",
-    )
-}
-
-@Composable
-private fun ColumnScope.TerminalTippingSettings(
-    payment: PaymentSettings,
-    update: ((PaymentSettings) -> PaymentSettings) -> Unit,
-) {
-    val options =
-        listOf(
-            ReceiptTipping.DISABLED to stringResource(R.string.settings_tip_disabled),
-            ReceiptTipping.DEFAULT_OFF to stringResource(R.string.settings_tip_default_off),
-            ReceiptTipping.DEFAULT_ON to stringResource(R.string.settings_tip_default_on),
-        )
-    SettingChoice(
-        title = stringResource(R.string.checkout_tip_on_terminal),
-        options = options,
-        selected = payment.terminalTipping,
-        onSelect = { value -> update { it.copy(terminalTipping = value) } },
-        subtitle = stringResource(R.string.settings_terminal_tip_hint),
-        tag = "terminalTipping",
-    )
-    if (payment.terminalTipping != ReceiptTipping.DISABLED) {
-        SettingSwitch(
-            stringResource(R.string.settings_dynamic_tip_override),
-            payment.dynamicTipOverride,
-            { value -> update { it.copy(dynamicTipOverride = value) } },
-            subtitle = stringResource(R.string.settings_dynamic_tip_override_hint),
-            tag = "dynamicTipOverride",
-        )
-        SettingSwitch(
-            stringResource(R.string.settings_tip_on_pre_tax),
-            payment.tipOnPreTax,
-            { value -> update { it.copy(tipOnPreTax = value) } },
-            subtitle = stringResource(R.string.settings_tip_on_pre_tax_hint),
-            tag = "tipOnPreTax",
-        )
-    }
-    SettingChoice(
-        title = stringResource(R.string.checkout_tip_on_receipt),
-        options = options,
-        selected = payment.receiptTipping,
-        onSelect = { value -> update { it.copy(receiptTipping = value) } },
-        subtitle = stringResource(R.string.settings_tip_default_hint),
-        tag = "receiptTipping",
-    )
-    SettingChoice(
-        title = stringResource(R.string.checkout_ask_giving),
-        options = options,
-        selected = payment.askGiving,
-        onSelect = { value -> update { it.copy(askGiving = value) } },
-        subtitle = stringResource(R.string.settings_ask_giving_hint),
-        tag = "askGivingSetting",
-    )
-}
-
-/**
- * How payment links work and how long they remain payable. API readiness belongs to Terminal settings.
- */
-@Composable
-private fun ColumnScope.PaymentLinkSettings(
-    payment: PaymentSettings,
-    update: ((PaymentSettings) -> PaymentSettings) -> Unit,
-) {
-    SettingNote(stringResource(R.string.settings_links_hint))
-    SettingNumberField(
-        stringResource(R.string.settings_link_expiry),
-        payment.linkExpiryHours,
-        PaymentSettings.LINK_EXPIRY_HOURS,
-        { hours -> update { it.copy(linkExpiryHours = hours) } },
-        supporting = stringResource(R.string.settings_link_expiry_hint),
-        tag = "linkExpiry",
-    )
-}
-
-/**
- * Shoppers and saved cards: what the shopper reference sent with every payment is made from (or none, so no card can be
- * saved) and how an email becomes one, then, while there is one, offering to save cards under it.
- */
-@Composable
-private fun ColumnScope.ShopperReferenceSettings(
-    payment: PaymentSettings,
-    update: ((PaymentSettings) -> PaymentSettings) -> Unit,
-) {
-    val source = payment.shopperReferenceSource
-    ShopperReferenceSourceChoice(source) { choice -> update { it.copy(shopperReferenceSource = choice) } }
-    if (source == ShopperReferenceSource.NONE) return
-    if (source == ShopperReferenceSource.EMAIL) EmailReferenceSettings(payment, update)
-    CardSavingSettings(payment, update)
-}
-
-/** How the shopper's email becomes the shopper reference: hashed (with its salt) or the raw address. */
-@Composable
-private fun ColumnScope.EmailReferenceSettings(
-    payment: PaymentSettings,
-    update: ((PaymentSettings) -> PaymentSettings) -> Unit,
-) {
-    SettingChoice(
-        title = stringResource(R.string.settings_email_reference_mode),
-        options =
-            listOf(
-                EmailReferenceMode.HASHED to stringResource(R.string.settings_email_hashed),
-                EmailReferenceMode.RAW to stringResource(R.string.settings_email_raw),
-            ),
-        selected = payment.emailReferenceMode,
-        onSelect = { mode -> update { it.copy(emailReferenceMode = mode) } },
-        subtitle = stringResource(R.string.settings_email_reference_hint),
-    )
-    if (payment.emailReferenceMode == EmailReferenceMode.HASHED) {
-        SettingTextField(
-            stringResource(R.string.settings_email_salt),
-            payment.emailReferenceSalt,
-            { value -> update { it.copy(emailReferenceSalt = value) } },
-            supporting = stringResource(R.string.settings_email_salt_hint),
-        )
-    }
-}
-
-/**
- * Whether checkout offers "Save card", then, while it does, its defaults, the recurring model and sending the shopper's
- * email with saved cards.
- */
-@Composable
-private fun ColumnScope.CardSavingSettings(
-    payment: PaymentSettings,
-    update: ((PaymentSettings) -> PaymentSettings) -> Unit,
-) {
-    SettingSwitch(
-        stringResource(R.string.settings_offer_card_saving),
-        payment.offerCardSaving,
-        { value -> update { it.copy(offerCardSaving = value) } },
-        subtitle = stringResource(R.string.settings_offer_card_saving_hint),
-        tag = "offerCardSaving",
-    )
-    if (!payment.offerCardSaving) return
-    SaveCardDefaults(payment, update)
-    SettingChoice(
-        title = stringResource(R.string.settings_recurring_model),
-        options =
-            PaymentSettings.RECURRING_MODELS.map {
-                it to
-                    stringResource(
-                        when (it) {
-                            "CardOnFile" -> R.string.recurring_card_on_file
-                            "Subscription" -> R.string.recurring_subscription
-                            else -> R.string.recurring_unscheduled
-                        },
-                    )
-            },
-        selected = payment.recurringProcessingModel,
-        onSelect = { model -> update { it.copy(recurringProcessingModel = model) } },
-    )
-}
-
-/**
- * What the shopper reference sent with every payment is made from, [source] (none sends none and saves no card); it
- * also decides whether checkout asks for a customer reference, which has no switch of its own.
- */
-@Composable
-private fun ShopperReferenceSourceChoice(
-    source: ShopperReferenceSource,
-    onSelect: (ShopperReferenceSource) -> Unit,
-) = SettingChoice(
-    title = stringResource(R.string.settings_shopper_reference_source),
-    options =
-        listOf(
-            ShopperReferenceSource.NONE to stringResource(R.string.settings_source_none),
-            ShopperReferenceSource.CUSTOMER_REFERENCE to stringResource(R.string.settings_source_customer),
-            ShopperReferenceSource.EMAIL to stringResource(R.string.settings_source_email),
-        ),
-    selected = source,
-    onSelect = onSelect,
-    subtitle =
-        stringResource(
-            when (source) {
-                ShopperReferenceSource.NONE -> R.string.settings_source_none_hint
-                ShopperReferenceSource.CUSTOMER_REFERENCE -> R.string.settings_source_customer_hint
-                ShopperReferenceSource.EMAIL -> R.string.settings_source_email_hint
-            },
-        ),
-    tag = "referenceSource",
-)
-
-/** Whether "Save card" starts switched on at checkout, for sales and for pre-authorisations. */
-@Composable
-private fun ColumnScope.SaveCardDefaults(
-    payment: PaymentSettings,
-    update: ((PaymentSettings) -> PaymentSettings) -> Unit,
-) {
-    SettingSwitch(
-        stringResource(R.string.settings_tokenize_default),
-        payment.tokenizeDefaultOn,
-        { value -> update { it.copy(tokenizeDefaultOn = value) } },
-        subtitle = stringResource(R.string.settings_tokenize_default_hint),
-        tag = "tokenizeDefault",
-    )
-    SettingSwitch(
-        stringResource(R.string.settings_pre_auth_tokenize_default),
-        payment.preAuthTokenizeDefaultOn,
-        { value -> update { it.copy(preAuthTokenizeDefaultOn = value) } },
-        subtitle = stringResource(R.string.settings_pre_auth_tokenize_default_hint),
-        tag = "preAuthTokenizeDefault",
-    )
-}
-
-/** When checkout asks for the email, and sending the receipt automatically. */
-@Composable
-private fun ColumnScope.EmailCaptureSettings(
-    payment: PaymentSettings,
-    update: ((PaymentSettings) -> PaymentSettings) -> Unit,
-) {
-    val emailIsReference = payment.shopperReferenceSource == ShopperReferenceSource.EMAIL
-    SettingNote(stringResource(R.string.settings_shopper_email_hint))
-    // With the email as shopper reference it is needed when the payment starts, so only "before" choices are offered.
-    SettingChoice(
-        title = stringResource(R.string.settings_email_capture),
-        options =
-            listOfNotNull(
-                (EmailCapture.OFF to stringResource(R.string.settings_capture_off)).takeUnless { emailIsReference },
-                EmailCapture.BEFORE_PAYMENT to stringResource(R.string.settings_capture_before),
-                (EmailCapture.AFTER_PAYMENT to stringResource(R.string.settings_capture_after)).takeUnless { emailIsReference },
-            ),
-        selected = payment.effectiveEmailCapture,
-        onSelect = { capture -> update { it.copy(emailCapture = capture) } },
-        subtitle = stringResource(R.string.settings_email_capture_reference).takeIf { emailIsReference },
-        tag = "emailCapture",
-    )
-    if (payment.captureEmailBefore) {
-        SettingSwitch(stringResource(R.string.settings_auto_send), payment.autoSendEmail, { value ->
-            update { it.copy(autoSendEmail = value) }
-        })
-    }
-}
-
-@Composable
-private fun ColumnScope.ReceiptTaxSettings(
-    receipt: ReceiptSettings,
-    update: ((ReceiptSettings) -> ReceiptSettings) -> Unit,
-) {
-    SettingSwitch(stringResource(R.string.settings_show_tax_amounts), receipt.showTaxAmounts, { value ->
-        update { it.copy(showTaxAmounts = value) }
-    }, subtitle = stringResource(R.string.settings_show_tax_amounts_hint), tag = "showTaxAmounts")
-    if (receipt.showTaxAmounts) {
-        SettingSwitch(stringResource(R.string.settings_show_tax), receipt.showTaxBreakdown, { value ->
-            update { it.copy(showTaxBreakdown = value) }
-        }, subtitle = stringResource(R.string.settings_show_tax_hint), tag = "showTaxBreakdown")
-    }
-    SettingSwitch(stringResource(R.string.settings_show_tax_rate_totals), receipt.showTaxRateTotals, { value ->
-        update { it.copy(showTaxRateTotals = value) }
-    }, subtitle = stringResource(R.string.settings_show_tax_rate_totals_hint), tag = "showTaxRateTotals")
-    SettingTextField(
-        label = stringResource(R.string.settings_marked_tax_rate),
-        value = receipt.markedTaxRateMilliPercent?.let(TaxRates::format).orEmpty(),
-        onCommit = { value -> update { it.copy(markedTaxRateMilliPercent = TaxRates.parse(value)) } },
-        supporting = stringResource(R.string.settings_marked_tax_rate_hint),
-        isError = { it.isNotBlank() && TaxRates.parse(it) == null },
-        keyboardType = KeyboardType.Decimal,
-        tag = "markedTaxRate",
-    )
-    if (receipt.markedTaxRateMilliPercent != null) {
-        SettingTextField(stringResource(R.string.settings_tax_marker), receipt.markedTaxRateMarker, { value ->
-            update { it.copy(markedTaxRateMarker = value) }
-        }, isError = { it.isBlank() }, tag = "taxMarker")
-        SettingTextField(stringResource(R.string.settings_tax_marker_note), receipt.markedTaxRateNote, { value ->
-            update { it.copy(markedTaxRateNote = value) }
-        }, tag = "taxMarkerNote")
-    }
-}
-
-@Composable
-private fun ColumnScope.ReceiptsSection(
-    state: SettingsUiState,
-    actions: SettingsActions,
-    businessImport: ReceiptBusinessImportState,
-    events: SettingsEvents,
-) {
-    val receipt = state.settings.receipt
-
-    fun update(transform: (ReceiptSettings) -> ReceiptSettings) = events.onUpdate { it.copy(receipt = transform(it.receipt)) }
-    ReceiptBusinessImport(businessImport, events.businessImport)
-    key(businessImport.revision) { ReceiptTextSettings(receipt, ::update) }
-    SectionHeader(stringResource(R.string.settings_content))
-    ReceiptTaxSettings(receipt, ::update)
-    SettingSwitch(stringResource(R.string.settings_show_references), receipt.showReferences, { value ->
-        update { it.copy(showReferences = value) }
-    }, subtitle = stringResource(R.string.settings_show_references_hint))
-    SettingSwitch(
-        stringResource(R.string.settings_show_qr),
-        receipt.showRefundQr,
-        { value -> update { it.copy(showRefundQr = value) } },
-        subtitle = stringResource(R.string.settings_show_qr_hint),
-    )
-    ReceiptPrintingSettings(receipt, ::update)
-    SectionHeader(stringResource(R.string.settings_preview))
-    state.sampleReceipt?.let { document ->
-        Box(Modifier.fillMaxWidth().padding(16.dp), contentAlignment = Alignment.Center) { ReceiptPreview(document) }
-    }
-    SettingActions {
-        SecondaryButton(
-            stringResource(R.string.settings_print_test),
-            events::onTestPrint,
-            loading = actions.print.running,
-            icon = Icons.Default.Print,
-        )
-        OutcomeMessage(actions.print)
-    }
-}
-
-/** The business details, title and footer printed on every receipt. */
-@Composable
-private fun ColumnScope.ReceiptTextSettings(
-    receipt: ReceiptSettings,
-    update: ((ReceiptSettings) -> ReceiptSettings) -> Unit,
-) {
-    SectionHeader(stringResource(R.string.settings_header_footer))
-    SettingTextField(stringResource(R.string.settings_business_name), receipt.businessName, { value ->
-        update { it.copy(businessName = value) }
-    }, tag = "businessName")
-    SettingTextField(stringResource(R.string.settings_address), receipt.addressLines, { value ->
-        update { it.copy(addressLines = value) }
-    }, singleLine = false)
-    SettingTextField(stringResource(R.string.settings_tax_id_label), receipt.taxIdLabel, { value ->
-        update { it.copy(taxIdLabel = value) }
-    })
-    SettingTextField(stringResource(R.string.settings_tax_id), receipt.taxId, { value -> update { it.copy(taxId = value) } })
-    SettingTextField(stringResource(R.string.settings_phone), receipt.phone, { value ->
-        update { it.copy(phone = value) }
-    }, keyboardType = KeyboardType.Phone)
-    SettingTextField(stringResource(R.string.settings_receipt_title), receipt.title, { value -> update { it.copy(title = value) } })
-    SettingTextField(stringResource(R.string.settings_footer), receipt.footer, { value ->
-        update { it.copy(footer = value) }
-    }, singleLine = false)
-}
-
-/** Whether and when receipts print, the merchant copy, and the line width. */
-@Composable
-private fun ColumnScope.ReceiptPrintingSettings(
-    receipt: ReceiptSettings,
-    update: ((ReceiptSettings) -> ReceiptSettings) -> Unit,
-) {
-    SectionHeader(stringResource(R.string.settings_printing))
-    SettingChoice(
-        title = stringResource(R.string.settings_printer),
-        options =
-            listOf(
-                PrinterMode.AUTO to stringResource(R.string.settings_printer_auto),
-                PrinterMode.ON to stringResource(R.string.settings_printer_on),
-                PrinterMode.OFF to stringResource(R.string.settings_printer_off),
-            ),
-        selected = receipt.printerMode,
-        onSelect = { mode -> update { it.copy(printerMode = mode) } },
-    )
-    SettingSwitch(stringResource(R.string.settings_auto_print), receipt.autoPrint, { value ->
-        update { it.copy(autoPrint = value) }
-    }, tag = "autoPrint")
-    SettingChoice(
-        title = stringResource(R.string.settings_merchant_copy),
-        options =
-            listOf(
-                MerchantCopyPolicy.NEVER to stringResource(R.string.settings_merchant_never),
-                MerchantCopyPolicy.SIGNATURE_ONLY to stringResource(R.string.settings_merchant_signature),
-                MerchantCopyPolicy.ALWAYS to stringResource(R.string.settings_merchant_always),
-            ),
-        selected = receipt.merchantCopy,
-        onSelect = { policy -> update { it.copy(merchantCopy = policy) } },
-    )
-    SettingNumberField(
-        stringResource(R.string.settings_chars_per_line),
-        receipt.charsPerLine,
-        ReceiptSettings.CHARS_PER_LINE,
-        { chars -> update { it.copy(charsPerLine = chars) } },
-        supporting = stringResource(R.string.settings_chars_per_line_hint),
-    )
-}
-
-@Composable
-private fun ColumnScope.EmailSection(
-    state: SettingsUiState,
-    actions: SettingsActions,
-    events: SettingsEvents,
-) {
-    val email = state.settings.email
-    val terminal by LocalAppContainer.current.terminalStatus.state
-        .collectAsStateWithLifecycle()
-    var askRecipient by remember { mutableStateOf(false) }
-
-    fun update(transform: (EmailSettings) -> EmailSettings) = events.onUpdate { it.copy(email = transform(it.email)) }
-    SmtpServerSettings(
-        email = email,
-        passwordSaved = Secret.SMTP_PASSWORD in state.secrets,
-        secretError = actions.secretError?.text(),
-        canOpenLinks = terminal.loaded && !terminal.onTerminal,
-        onPassword = { events.onSecretChange(Secret.SMTP_PASSWORD, it) },
-        update = ::update,
-    )
-    SectionHeader(stringResource(R.string.settings_message))
-    SettingTextField(
-        stringResource(R.string.settings_from_address),
-        email.fromAddress,
-        { value -> update { it.copy(fromAddress = value.trim()) } },
-        isError = { it.isNotBlank() && !ShopperReferences.isValidEmail(it) },
-        keyboardType = KeyboardType.Email,
-        tag = "fromAddress",
-    )
-    SettingTextField(stringResource(R.string.settings_from_name), email.fromName, { value -> update { it.copy(fromName = value) } })
-    SettingTextField(
-        stringResource(R.string.settings_bcc),
-        email.bcc,
-        { value -> update { it.copy(bcc = value.trim()) } },
-        isError = { it.isNotBlank() && !ShopperReferences.isValidEmail(it) },
-        keyboardType = KeyboardType.Email,
-    )
-    SettingTextField(stringResource(R.string.settings_subject), email.subject, { value ->
-        update { it.copy(subject = value) }
-    }, supporting = stringResource(R.string.settings_subject_hint))
-    SettingActions {
-        SecondaryButton(
-            stringResource(R.string.settings_send_test),
-            { askRecipient = true },
-            enabled = email.isConfigured,
-            loading = actions.email.running,
-            icon = Icons.Default.Email,
-        )
-        OutcomeMessage(actions.email)
-    }
-    if (askRecipient) {
-        TextInputDialog(
-            title = stringResource(R.string.settings_send_test),
-            label = stringResource(R.string.checkout_email),
-            confirmLabel = stringResource(R.string.action_send),
-            keyboardType = KeyboardType.Email,
-            validate = ShopperReferences::isValidEmail,
-            onConfirm = {
-                askRecipient = false
-                events.onTestEmailSend(it)
-            },
-            onDismiss = { askRecipient = false },
-        )
-    }
-}
 
 @Composable
 private fun SecuritySection(

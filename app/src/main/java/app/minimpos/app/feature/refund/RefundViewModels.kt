@@ -8,13 +8,13 @@ import app.minimpos.app.data.repo.RefundRepository
 import app.minimpos.app.data.repo.SaleRepository
 import app.minimpos.app.feature.TransactionActions
 import app.minimpos.app.feature.TransactionActionsState
+import app.minimpos.app.history.RefundChoice
+import app.minimpos.app.history.RefundStart
+import app.minimpos.app.history.Refundability
+import app.minimpos.app.history.RefundablePayment
 import app.minimpos.app.payment.ReceiptDelivery
 import app.minimpos.app.payment.StoredPaymentActions
 import app.minimpos.app.payment.TransactionLifecycle
-import app.minimpos.app.refund.RefundChoice
-import app.minimpos.app.refund.RefundStart
-import app.minimpos.app.refund.Refundability
-import app.minimpos.app.refund.RefundablePayment
 import app.minimpos.core.codec.RefundQrPayload
 import app.minimpos.core.money.AmountEntry
 import kotlinx.coroutines.flow.MutableStateFlow

@@ -104,7 +104,7 @@ class TransferScreensTest {
         compose.setContent { MiniMposApp(container) }
         compose.onNodeWithTag("settings").performClick()
         waitForTag("section_about")
-        compose.onNodeWithText("Data").performScrollTo().performClick()
+        compose.onNodeWithTag("section_data").performScrollTo().performClick()
         waitForTag("shareToTerminal")
         compose.onNodeWithTag("shareToTerminal").performScrollTo().performClick()
         waitForTag("showCodes")

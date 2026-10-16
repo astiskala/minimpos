@@ -1,4 +1,4 @@
-package app.minimpos.app.refund
+package app.minimpos.app.history
 
 import app.minimpos.app.data.db.CaptureStatus
 import app.minimpos.app.data.db.RefundEntity
@@ -8,7 +8,7 @@ import app.minimpos.app.data.db.SaleStatus
 import app.minimpos.app.data.repo.HistoryItem
 import app.minimpos.app.data.repo.SaleEvent
 import app.minimpos.app.data.repo.after
-import app.minimpos.core.money.PaymentContext
+import app.minimpos.core.payment.PaymentContext
 import app.minimpos.terminal.checkout.ModificationResult
 import app.minimpos.terminal.transport.Fault
 import com.google.common.truth.Truth.assertThat

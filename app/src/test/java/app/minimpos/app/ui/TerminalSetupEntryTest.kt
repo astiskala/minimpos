@@ -6,6 +6,7 @@ import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.hasTestTag
+import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -46,6 +47,11 @@ class TerminalSetupEntryTest {
         compose.waitUntilAtLeastOneExists(hasTestTag("terminalMode"), 15_000)
     }
 
+    private fun backFromImport() {
+        compose.waitUntilAtLeastOneExists(hasText(env.context.getString(R.string.transfer_import_hint)), 15_000)
+        compose.onNodeWithTag("back").performClick()
+    }
+
     @Test
     fun `home setup hint fits two lines without truncation on AMS1`() = setupHintFits()
 
@@ -84,7 +90,7 @@ class TerminalSetupEntryTest {
         assertThat(scan.top).isLessThan(mode.top)
         val before = await { env.container.settings.current() }
         compose.onNodeWithTag("quickSetupImport").performClick()
-        compose.onNodeWithTag("back").performClick()
+        backFromImport()
         assertThat(await { env.container.settings.current() }).isEqualTo(before)
     }
 
@@ -94,7 +100,7 @@ class TerminalSetupEntryTest {
         openTerminal()
         compose.onNodeWithTag("quickSetupImport").assertDoesNotExist()
         compose.onNodeWithTag("scanSetup").assertIsDisplayed().performClick()
-        compose.onNodeWithTag("back").performClick()
+        backFromImport()
         compose.waitUntilAtLeastOneExists(hasTestTag("scanSetup"), 15_000)
         compose.onNodeWithTag("scanSetup").assertIsDisplayed()
         assertThat(await { env.container.settings.current() }.terminal.merchantAccount).isEqualTo("Merchant")
@@ -112,7 +118,7 @@ class TerminalSetupEntryTest {
         assertThat(await { env.container.secrets.get(Secret.ADYEN_API_KEY) }).isNull()
         compose.onNodeWithTag("scanSetup").performClick()
         compose.onNodeWithText("Discard and scan").performClick()
-        compose.onNodeWithTag("back").performClick()
+        backFromImport()
         compose.waitUntilAtLeastOneExists(hasTestTag("apiKey"), 15_000)
         val field = compose.onNodeWithTag("apiKey").performScrollTo().fetchSemanticsNode()
         assertThat(field.config[SemanticsProperties.EditableText].text).isEmpty()

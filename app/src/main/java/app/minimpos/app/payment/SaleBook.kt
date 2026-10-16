@@ -8,7 +8,7 @@ import app.minimpos.app.data.repo.SaleEvent
 import app.minimpos.app.data.repo.SaleRepository
 import app.minimpos.core.cart.CartTotals
 import app.minimpos.core.money.CurrencySpec
-import app.minimpos.core.money.PaymentContext
+import app.minimpos.core.payment.PaymentContext
 import app.minimpos.terminal.client.CardEntryOverride
 import app.minimpos.terminal.client.PaymentParams
 import app.minimpos.terminal.client.RecurringModel

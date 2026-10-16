@@ -126,7 +126,7 @@
           <ol>
             <li>點按<strong>重新整理功能狀態</strong>，讀取所選終端的設定。檢查真實終端需要<a href="quick-start.html#credentials">快速入門中列出的 Management API 角色</a>。</li>
             <li>對於支援的終端，可設定付款貨幣的終端小費、DCC、MOTO 或離線限額。這些控制項會更新 Adyen 上的終端設定，而不只是 Mini mPOS。「主貨幣單位」使用貨幣的主單位；最小單位金額使用 Adyen 的貨幣精度。</li>
-            <li>在<strong>設定 › 支付</strong>中啟用所需結帳選項，並在 TEST 中測試。功能列表還包括 Adyen Giving、部分授權、附加費、禮品卡、終端對帳和顧客端螢幕，但並非每項都有設定控制項。</li>
+            <li>在設定中的<strong>支付</strong>、<strong>小費與捐款</strong>或<strong>顧客端終端螢幕</strong>中啟用所需結帳選項，並在 TEST 中測試。功能列表還包括 Adyen Giving、部分授權、附加費、禮品卡、終端對帳和顧客端螢幕，但並非每項都有設定控制項。</li>
           </ol>
           <p>Tap to Pay 不提供終端小費、顧客端螢幕、MOTO/MKE、離線支付或終端對帳等實體終端功能。部分授權是獨立的付款選項。帳戶開通和付款方式要求請參閱 <a href="https://docs.adyen.com/point-of-sale">Adyen 實體店支付文件</a>。模擬器中可用不代表真實終端支援。</p>
           <p class="back-to-contents"><a href="#contents">返回目錄</a></p>
@@ -153,15 +153,15 @@
         </section>
         <section id="terminal-checkout">
           <h2>使用可選結帳流程</h2>
-          <p>只在<strong>設定 › 支付</strong>中啟用需要的選項。除部分授權外，這些流程需要支援的實體終端，不適用於 Tap to Pay。請先檢查 <a href="#capabilities">Adyen 功能</a>並測試實際設定。</p>
+          <p>只在設定中啟用需要的結帳選項。除部分授權外，這些流程需要支援的實體終端，不適用於 Tap to Pay。請先檢查 <a href="#capabilities">Adyen 功能</a>並測試實際設定。</p>
           <h3 id="partial-payments">收取部分授權後的剩餘金額</h3>
           <p>開啟<strong>允許部分授權</strong>，即可接受銀行卡批准低於請求金額的付款。結果顯示<strong>部分已付</strong>時，核對已付和剩餘金額，然後在該結果頁面點按<strong>支付剩餘</strong>，用另一張卡收取差額。應用程式將各次付款保留在同一筆銷售中。全部金額獲批前，不要將銷售視為全額付清。</p>
           <p>未收到答覆不等於部分批准。繼續收款前請<a href="troubleshooting.html#unknown">解決未知結果</a>。不要按原合計金額另開一筆銷售：已批准的部分已經付款。</p>
           <h3 id="shopper-display">使用顧客端終端螢幕</h3>
-          <p>使用獨立的網絡或雲端終端時，開啟<strong>設定 › 支付 › 顧客端終端螢幕</strong>。可選擇在付款前顯示商品明細、請顧客確認訂單，或在結帳未填寫電郵時收集電郵。批准後可顯示二維碼並邀請顧客進行 0–10 評分；終端回傳的評分顯示在交易詳情中。</p>
+          <p>使用獨立的網絡或雲端終端時，開啟<strong>設定 › 顧客端終端螢幕</strong>。可選擇在付款前顯示商品明細、請顧客確認訂單，或在結帳未填寫電郵時收集電郵。批准後可顯示二維碼並邀請顧客進行 0–10 評分；終端回傳的評分顯示在交易詳情中。</p>
           <p>這些提示使用所選應用程式語言，模擬器也可示範。Mini mPOS 直接在支付終端上執行時不提供此功能。顯示的二維碼包含商戶參考編號，不是託管收據的下載連結；仍請<a href="#receipts">列印、發送電子收據或分享收據</a>。</p>
           <h3 id="giving">邀請慈善捐款</h3>
-          <p>與 Adyen 安排開通 Adyen Giving 後，在<strong>設定 › 支付 › 小費</strong>中啟用<strong>慈善捐款（Adyen Giving）</strong>。銷售結帳時選擇它，在付款後透過終端邀請捐款。預授權和收據小費凍結付款不提供此選項。</p>
+          <p>與 Adyen 安排開通 Adyen Giving 後，在<strong>設定 › 小費與捐款</strong>中啟用<strong>慈善捐款（Adyen Giving）</strong>。銷售結帳時選擇它，在付款後透過終端邀請捐款。預授權和收據小費凍結付款不提供此選項。</p>
           <p>購買和捐款是兩筆獨立交易。終端報告的捐款金額顯示在交易詳情中；購買獲批本身不代表捐款已確認。</p>
           <h3 id="keyed-entry">接受 MOTO 或手動鍵入卡號付款</h3>
           <ol>
@@ -239,9 +239,9 @@
           <p>應用程式支援英語、簡體中文、繁體中文和日語。在<strong>設定 › 語言</strong>中選擇此裝置的應用程式語言。應用程式文字和應用程式產生的收據標籤會立即更改；已儲存的商戶文字、商品名稱、貨幣和稅設定保持不變。<strong>跟隨裝置</strong>在 Android 12 及更早版本使用裝置語言，在 Android 13 及更高版本使用 Android 的個別應用程式語言選擇。Adyen 的銀行卡收據行跟隨終端自身的收據語言。</p>
           <h3 id="email">設定電子收據</h3>
           <ol>
-            <li>打開<strong>設定 › 電郵（SMTP）</strong>。選擇服務商，或填寫 SMTP 伺服器、連接埠、寄件人和登入資訊。使用 STARTTLS 或 SSL/TLS。</li>
+            <li>打開<strong>設定 › 電郵收據</strong>。選擇服務商，或填寫 SMTP 伺服器、連接埠、寄件人和登入資訊。使用 STARTTLS 或 SSL/TLS。</li>
             <li>發送測試郵件。</li>
-            <li>在<strong>設定 › 支付 › 電子收據</strong>中選擇何時詢問顧客電郵，以及是否自動發送收據。</li>
+            <li>在同一螢幕上選擇何時詢問顧客電郵，以及是否自動發送收據。</li>
           </ol>
           <p>請按服務商說明開通 SMTP 並取得正確的密碼：</p>
           <ul>
@@ -350,7 +350,7 @@
           <h2>在終端上收取小費</h2>
           <ol>
             <li>在 <a href="#capabilities">Adyen 功能</a>中檢查終端小費。必要時為付款貨幣設定預設和自訂小費選項。</li>
-            <li>在<strong>設定 › 支付 › 小費</strong>中啟用<strong>在終端上輸入小費</strong>並選擇結帳預設狀態。可選開啟<strong>按訂單金額動態推薦小費</strong>，對小額訂單推薦固定金額、較大訂單推薦百分比，或開啟<strong>按稅前金額計算百分比小費</strong>。</li>
+            <li>在<strong>設定 › 小費與捐款</strong>中啟用<strong>在終端上輸入小費</strong>並選擇結帳預設狀態。可選開啟<strong>按訂單金額動態推薦小費</strong>，對小額訂單推薦固定金額、較大訂單推薦百分比，或開啟<strong>按稅前金額計算百分比小費</strong>。</li>
             <li>銷售結帳時選擇<strong>在終端上輸入小費</strong>，點按<strong>支付</strong>。顧客在卡片扣款前選擇小費。核對回傳的總額和小費並提供收據。</li>
           </ol>
           <p>此流程不需要打印機，也無需稍後輸入小費。終端小費和<a href="#tips">收據小費</a>不能同時選擇。兩者均不用於預授權、掃碼錢包付款或付款連結；Tap to Pay 不提供終端小費。</p>
@@ -365,7 +365,7 @@
               <li>Adyen 支援團隊已開通預授權和超額扣款（overcapture）；參見 <a href="https://docs.adyen.com/point-of-sale/tipping/tipping-on-receipt">Adyen 收據小費指南</a></li>
             </ul>
           </div>
-          <p>在<strong>設定 › 支付 › 小費</strong>中選擇<strong>啟用（預設關閉）</strong>或<strong>啟用（預設開啟）</strong>，決定結帳開關的初始狀態。預設的<strong>停用</strong>會隱藏該開關。部分借記卡和錢包不支援此流程。</p>
+          <p>在<strong>設定 › 小費與捐款</strong>中選擇<strong>啟用（預設關閉）</strong>或<strong>啟用（預設開啟）</strong>，決定結帳開關的初始狀態。預設的<strong>停用</strong>會隱藏該開關。部分借記卡和錢包不支援此流程。</p>
           <ol>
             <li>在銷售結帳時開啟<strong>在收據上填寫小費</strong>，點按<strong>支付</strong>。帳單金額只凍結，不扣款。</li>
             <li>列印收據。收據有空白的小費和總計欄，商戶副本有簽名欄。</li>
@@ -382,7 +382,7 @@
         <section id="more">
           <h2>設定更多設備並管理資料</h2>
           <ol>
-            <li>在已設定的設備上打開<strong>設定 › 資料 › 共享至另一台設備</strong>。選擇商品目錄、設定和／或密碼與密鑰，然後點按<strong>顯示二維碼</strong>。</li>
+            <li>在已設定的設備上打開<strong>設定 › 資料與轉移 › 共享至另一台設備</strong>。選擇商品目錄、設定和／或密碼與密鑰，然後點按<strong>顯示二維碼</strong>。</li>
             <li>在新設備上選擇<strong>從另一台設備設定</strong>，按任意順序掃描所有二維碼。選擇合併或替換其商品目錄。</li>
             <li>如需複製密碼和密鑰，請輸入第一台設備顯示的傳輸碼。點按<strong>匯入</strong>。</li>
             <li>檢查價格和稅費，在<strong>設定 › 終端</strong>中測試連接，並列印測試收據。</li>
@@ -392,7 +392,7 @@
             <p class="callout-title">重要</p>
             <p>這是一次性複製，不是同步，也不是交易紀錄備份。各設備保留各自的付款。在 Android 中清除應用程式資料會刪除設備上的全部商品、設定和交易紀錄。</p>
           </div>
-          <p>在<strong>設定 › 資料</strong>中設定<strong>交易保留時長</strong>或點按<strong>清除已完成的交易紀錄</strong>；未解決的付款始終保留。請從<a href="https://github.com/astiskala/minimpos/releases/latest">最新發佈版本</a>安裝更新，方式與<a href="quick-start.html#install">原安裝</a>相同。</p>
+          <p>在<strong>設定 › 資料與轉移</strong>中設定<strong>交易保留時長</strong>或點按<strong>清除已完成的交易紀錄</strong>；未解決的付款始終保留。請從<a href="https://github.com/astiskala/minimpos/releases/latest">最新發佈版本</a>安裝更新，方式與<a href="quick-start.html#install">原安裝</a>相同。</p>
           <p>匯入問題請參閱 <a href="troubleshooting.html#access">PIN 和傳輸問題</a>。</p>
           <p class="back-to-contents"><a href="#contents">返回目錄</a></p>
         </section>

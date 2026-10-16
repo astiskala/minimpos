@@ -1,4 +1,4 @@
-package app.minimpos.app.feature
+package app.minimpos.app.feature.transfer
 
 import android.os.Looper
 import app.minimpos.app.TestEnvironment

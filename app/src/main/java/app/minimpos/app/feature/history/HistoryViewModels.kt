@@ -6,7 +6,6 @@ import app.minimpos.app.data.db.Failure
 import app.minimpos.app.data.db.RefundEntity
 import app.minimpos.app.data.db.SaleKind
 import app.minimpos.app.data.db.SaleWithLines
-import app.minimpos.app.data.db.SetupProblem
 import app.minimpos.app.data.repo.HistoryItem
 import app.minimpos.app.data.repo.HistoryRepository
 import app.minimpos.app.data.repo.RefundRepository
@@ -17,24 +16,23 @@ import app.minimpos.app.feature.TransactionActions
 import app.minimpos.app.feature.TransactionActionsState
 import app.minimpos.app.feature.launchWrite
 import app.minimpos.app.feature.toState
+import app.minimpos.app.history.HistoryAccounting
+import app.minimpos.app.history.HistoryActivityKind
+import app.minimpos.app.history.PaymentAction
+import app.minimpos.app.history.PaymentStanding
+import app.minimpos.app.history.RefundStart
+import app.minimpos.app.history.RefundablePayment
+import app.minimpos.app.history.StoredPayment
+import app.minimpos.app.history.StoredPayments
+import app.minimpos.app.history.TerminalReconciliationReport
+import app.minimpos.app.history.standing
 import app.minimpos.app.payment.PaymentStart
 import app.minimpos.app.payment.ReceiptDelivery
 import app.minimpos.app.payment.StoredPaymentActions
 import app.minimpos.app.payment.TransactionLifecycle
-import app.minimpos.app.refund.HistoryAccounting
-import app.minimpos.app.refund.HistoryActivityKind
-import app.minimpos.app.refund.PaymentAction
-import app.minimpos.app.refund.PaymentStanding
-import app.minimpos.app.refund.RefundStart
-import app.minimpos.app.refund.RefundablePayment
-import app.minimpos.app.refund.StoredPayment
-import app.minimpos.app.refund.StoredPayments
-import app.minimpos.app.refund.TerminalReconciliationReport
-import app.minimpos.app.refund.standing
 import app.minimpos.app.terminal.Attempt
 import app.minimpos.app.terminal.TerminalGateway
 import app.minimpos.app.terminal.TerminalState
-import app.minimpos.app.terminal.totals
 import app.minimpos.terminal.client.TerminalTotalsOutcome
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -242,11 +240,6 @@ class HistoryViewModel(
         if (reconcileState.value.first.running) return
         reconcileState.value = ActionState(running = true) to null
         launchWrite({
-            if (closePeriod && !permitsClose()) {
-                reconcileState.value =
-                    ActionState(outcome = ActionOutcome.Failed(Failure.NotSetUp(SetupProblem.MANAGER_APPROVAL)), isError = true) to null
-                return@launchWrite
-            }
             val currentTerminal = terminal.first()
             val poiId = currentTerminal.poiId.orEmpty()
             val beforeItems = history.items().first()
@@ -256,7 +249,7 @@ class HistoryViewModel(
                     is HistoryItem.Refund -> refunds?.recheck(item.id)
                 }
             }
-            when (val attempt = terminalGateway.totals(closePeriod)) {
+            when (val attempt = terminalGateway.totals(closePeriod, permitsClose)) {
                 is Attempt.NotSetUp -> {
                     reconcileState.value =
                         ActionState(outcome = ActionOutcome.Failed(Failure.NotSetUp(attempt.problem)), isError = true) to null

@@ -1,7 +1,9 @@
 package app.minimpos.app.payment
 
 import app.minimpos.app.data.db.ProductEntity
+import app.minimpos.app.data.db.SaleEntity
 import app.minimpos.app.data.db.SaleKind
+import app.minimpos.app.data.db.SaleStatus
 import app.minimpos.app.data.db.TaxRateEntity
 import app.minimpos.app.data.settings.AppSettings
 import app.minimpos.app.data.settings.EmailCapture
@@ -48,6 +50,49 @@ class CheckoutTest {
         kind: SaleKind = SaleKind.SALE,
         printer: Boolean = true,
     ) = Checkout(form, payment, totals, aud, kind, printer)
+
+    @Test
+    fun `remaining tender uses stored sale facts without repeating card consent tips or shopper prompts`() {
+        val sale =
+            SaleEntity(
+                id = "partial",
+                createdAt = 1,
+                currency = "AUD",
+                taxMode = "INCLUSIVE",
+                netMinor = 1000,
+                taxMinor = 0,
+                totalMinor = 1000,
+                paidMinor = 400,
+                status = SaleStatus.APPROVED,
+                merchantReference = "ORIGINAL",
+                customerReference = "CUSTOMER",
+                shopperEmail = "shopper@example.invalid",
+                shopperReference = "SHOPPER",
+            )
+        val start = checkNotNull(Checkout.remainingPayment(sale))
+        assertThat(start.requestedAmountMinor).isEqualTo(600)
+        assertThat(start.existingSaleId).isEqualTo(sale.id)
+        assertThat(start.currency).isEqualTo(aud)
+        assertThat(start.merchantReference).isEqualTo(sale.merchantReference)
+        assertThat(start.customerReference).isEqualTo(sale.customerReference)
+        assertThat(start.shopperEmail).isEqualTo(sale.shopperEmail)
+        assertThat(start.shopperReference).isEqualTo(sale.shopperReference)
+        assertThat(start.allowPartialAuthorisation).isTrue()
+        assertThat(start.tokenization).isNull()
+        assertThat(start.terminalTip).isNull()
+        assertThat(start.shopperFlow).isNull()
+        assertThat(start.tipOnReceipt).isFalse()
+        assertThat(start.askGiving).isFalse()
+        listOf(
+            sale.copy(paidMinor = 1000),
+            sale.copy(paidMinor = 0),
+            sale.copy(kind = SaleKind.PRE_AUTHORISATION),
+            sale.copy(tipOnReceipt = true),
+            sale.copy(paymentLink = true),
+            sale.copy(holdCancelled = true),
+            sale.copy(status = SaleStatus.UNKNOWN),
+        ).forEach { assertThat(Checkout.remainingPayment(it)).isNull() }
+    }
 
     @Test
     fun `scanned wallet sales keep saving consent but remove receipt tipping without changing the form`() {

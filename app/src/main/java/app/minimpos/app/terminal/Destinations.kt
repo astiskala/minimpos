@@ -5,7 +5,7 @@ import app.minimpos.app.data.security.Secret
 import app.minimpos.app.data.settings.AppSettings
 import app.minimpos.app.data.settings.TerminalMode
 import app.minimpos.app.data.settings.TerminalSettings
-import app.minimpos.core.money.PaymentContext
+import app.minimpos.core.payment.PaymentContext
 import app.minimpos.terminal.checkout.PaymentModifications
 import app.minimpos.terminal.client.OfflineProcessingMode
 import app.minimpos.terminal.client.PosApplication

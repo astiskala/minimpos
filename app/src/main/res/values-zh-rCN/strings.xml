@@ -438,7 +438,7 @@
   <!-- Setup and catalog transfer -->
   <string name="transfer_export">共享至另一台设备</string>
   <string name="transfer_import">从另一台设备设置</string>
-  <string name="transfer_export_hint">在另一台设备的“商品”或“设置 › 数据”中选择“从另一台设备设置”，然后用摄像头扫描这些二维码。</string>
+  <string name="transfer_export_hint">在另一台设备的“商品”或“设置 › 数据与传输”中选择“从另一台设备设置”，然后用摄像头扫描这些二维码。</string>
   <string name="transfer_import_hint">用摄像头扫描另一台设备或设置助手页面上显示的二维码。</string>
   <string name="transfer_code_of">第 %1$d 个，共 %2$d 个</string>
   <string name="transfer_received">已扫描 %1$d/%2$d</string>
@@ -572,10 +572,10 @@
   <string name="email_link_intro">请通过下方链接或二维码在线安全支付。</string>
   <string name="email_test_subject">Mini mPOS 测试邮件</string>
   <string name="email_test_body">您的 SMTP 设置有效。现在可通过 Mini mPOS 发送电子收据。</string>
-  <string name="email_not_configured">尚未设置电子邮件。请在“设置 › 电子邮件”中配置 SMTP。</string>
+  <string name="email_not_configured">尚未设置电子邮件。请在“设置 › 电子收据”中配置 SMTP。</string>
   <string name="email_invalid_address">请输入有效的电子邮件地址</string>
   <string name="email_default_subject">来自 {business} 的收据</string>
-  <string name="email_authentication">邮件服务器未接受用户名或密码。请在“设置 › 电子邮件”中检查。</string>
+  <string name="email_authentication">邮件服务器未接受用户名或密码。请在“设置 › 电子收据”中检查。</string>
   <string name="email_unreachable">无法连接邮件服务器。请检查服务器、端口和互联网连接。</string>
   <string name="email_rejected">邮件服务器未接受此邮件。</string>
 
@@ -606,9 +606,13 @@
   <string name="settings_payments">支付</string>
   <string name="settings_tax">税</string>
   <string name="settings_receipts">收据</string>
-  <string name="settings_email">电子邮件（SMTP）</string>
+  <string name="settings_email">电子收据</string>
   <string name="settings_security">安全</string>
-  <string name="settings_data">数据</string>
+  <string name="settings_data">数据与传输</string>
+  <string name="settings_connection_group">连接</string>
+  <string name="settings_device_group">设备</string>
+  <string name="settings_tips_donations">小费与捐款</string>
+  <string name="settings_card_payments">银行卡支付</string>
   <string name="settings_about">关于</string>
   <string name="settings_not_configured">未配置</string>
   <string name="settings_pin_on">已启用管理员 PIN</string>

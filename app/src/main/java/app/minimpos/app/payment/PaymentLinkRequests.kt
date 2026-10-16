@@ -3,7 +3,7 @@ package app.minimpos.app.payment
 import app.minimpos.app.data.db.SaleEntity
 import app.minimpos.app.data.db.SaleLineEntity
 import app.minimpos.app.data.db.SaleWithLines
-import app.minimpos.core.money.PaymentContext
+import app.minimpos.core.payment.PaymentContext
 import app.minimpos.terminal.checkout.ModificationAmount
 import app.minimpos.terminal.checkout.PaymentLinkLineItem
 import app.minimpos.terminal.checkout.PaymentLinkRequest

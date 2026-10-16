@@ -8,9 +8,9 @@ import app.minimpos.app.data.db.SaleKind
 import app.minimpos.app.data.db.SaleWithLines
 import app.minimpos.app.data.db.SetupProblem
 import app.minimpos.app.data.db.StoredReason
-import app.minimpos.app.refund.RefundChoice
-import app.minimpos.app.refund.Refundability
-import app.minimpos.app.refund.RefundablePayment
+import app.minimpos.app.history.RefundChoice
+import app.minimpos.app.history.Refundability
+import app.minimpos.app.history.RefundablePayment
 import app.minimpos.core.cart.AppliedTax
 import app.minimpos.core.cart.Cart
 import app.minimpos.core.money.CurrencySpec

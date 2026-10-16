@@ -70,7 +70,7 @@ class ShopperReferenceFlowTest {
     private fun openPaymentSettings() {
         compose.onNodeWithTag("settings").performClick()
         waitForTag("section_payments")
-        compose.onNodeWithTag("section_payments").performClick()
+        compose.onNodeWithTag("section_payments").performScrollTo().performClick()
     }
 
     private fun useEmailAsShopperReference() =
@@ -107,9 +107,13 @@ class ShopperReferenceFlowTest {
     fun `with the email as shopper reference it is always asked for before payment`() {
         useEmailAsShopperReference()
         openPaymentSettings()
-        waitForTag("emailCapture")
         // There is no separate customer reference to ask for.
-        compose.onNodeWithTag("referenceSource").assertTextContains("No separate customer reference", substring = true)
+        waitForTag("referenceSource")
+        compose.onNodeWithTag("referenceSource").performScrollTo().assertTextContains("No separate customer reference", substring = true)
+        compose.onNodeWithTag("back").performClick()
+        waitForTag("section_email")
+        compose.onNodeWithTag("section_email").performScrollTo().performClick()
+        waitForTag("emailCapture")
         compose.onNodeWithTag("emailCapture").performScrollTo().assertTextContains("Before payment", substring = true)
         compose.onNodeWithTag("emailCapture").assertTextContains("the email is the shopper reference", substring = true)
         compose.onNodeWithTag("emailCapture").performClick()
@@ -120,6 +124,9 @@ class ShopperReferenceFlowTest {
         awaitSetting("Before payment") { container.settingsState.value.payment.emailCapture == EmailCapture.BEFORE_PAYMENT }
 
         // Back to the customer reference as shopper reference: checkout asks for it again.
+        compose.onNodeWithTag("back").performClick()
+        waitForTag("section_payments")
+        compose.onNodeWithTag("section_payments").performScrollTo().performClick()
         compose.onNodeWithTag("referenceSource").performScrollTo().performClick()
         waitForTag("referenceSource_CUSTOMER_REFERENCE")
         compose.onNodeWithTag("referenceSource_CUSTOMER_REFERENCE").performClick()

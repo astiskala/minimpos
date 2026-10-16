@@ -30,6 +30,16 @@ class DevRunnerTest {
     }
 
     @Test
+    fun `payment lane includes stored history and receipt tests after package moves`() {
+        val result = run(fixture(), "check", "payment")
+        assertThat(result.first).isEqualTo(0)
+        assertThat(result.second).contains("<--tests>\n<*payment.*>")
+        assertThat(result.second).contains("<--tests>\n<*history.*>")
+        assertThat(result.second).contains("<--tests>\n<*receipt.*>")
+        assertThat(result.second).contains("<:app:detektDebug>")
+    }
+
+    @Test
     fun `finish formats then collects all findings without hiding failure`() {
         val root = fixture("case \"${'$'}*\" in *qualityGate*) exit 37 ;; esac")
         val result = run(root, "finish", "--stacktrace")

@@ -1,13 +1,13 @@
-package app.minimpos.app.payment
+package app.minimpos.app.receipt
 
 import app.minimpos.app.TestEnvironment
 import app.minimpos.app.await
 import app.minimpos.app.data.db.SaleEntity
 import app.minimpos.app.data.db.SaleStatus
 import app.minimpos.app.data.repo.HistoryItem
+import app.minimpos.app.history.HistoryAccounting
 import app.minimpos.app.receipt.ActionResult
-import app.minimpos.app.refund.HistoryAccounting
-import app.minimpos.core.money.PaymentContext
+import app.minimpos.core.payment.PaymentContext
 import app.minimpos.core.receipt.PlainTextReceiptRenderer
 import app.minimpos.terminal.client.PrintJob
 import com.google.common.truth.Truth.assertThat

@@ -96,7 +96,7 @@ class SettingsPreferencesTest {
     @Test
     fun `receipt tipping selection persists all three modes with disabled as the default`() {
         env.useSimulator()
-        open("payments")
+        open("tipping")
         compose.waitUntilAtLeastOneExists(hasTestTag("receiptTipping"), 15_000)
         compose.onNodeWithTag("receiptTipping").performScrollTo().assertTextContains("Disabled")
         listOf(ReceiptTipping.DEFAULT_OFF, ReceiptTipping.DEFAULT_ON, ReceiptTipping.DISABLED).forEach { mode ->

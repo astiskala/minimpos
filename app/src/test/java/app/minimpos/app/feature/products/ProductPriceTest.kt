@@ -1,4 +1,4 @@
-package app.minimpos.app.feature
+package app.minimpos.app.feature.products
 
 import app.minimpos.app.feature.products.ProductEditUiState
 import app.minimpos.app.feature.products.ProductForm

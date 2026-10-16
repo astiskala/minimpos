@@ -10,7 +10,7 @@ import app.minimpos.app.data.db.SaleStatus
 import app.minimpos.app.data.db.TaxRateEntity
 import app.minimpos.app.data.settings.AppSettings
 import app.minimpos.core.money.CurrencySpec
-import app.minimpos.core.money.PaymentContext
+import app.minimpos.core.payment.PaymentContext
 import app.minimpos.core.tax.TaxRates
 import kotlinx.coroutines.flow.first
 import java.math.BigDecimal

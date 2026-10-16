@@ -5,7 +5,7 @@ import app.minimpos.app.data.db.AppDatabase
 import app.minimpos.app.data.db.RefundEntity
 import app.minimpos.app.data.db.RefundStatus
 import app.minimpos.app.data.db.StoredReason
-import app.minimpos.core.money.PaymentContext
+import app.minimpos.core.payment.PaymentContext
 import app.minimpos.terminal.client.TransactionDetails
 import kotlinx.coroutines.flow.Flow
 import kotlinx.serialization.Serializable

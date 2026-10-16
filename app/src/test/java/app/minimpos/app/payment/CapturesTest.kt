@@ -14,8 +14,8 @@ import app.minimpos.app.data.db.SetupProblem
 import app.minimpos.app.data.db.StoredReason
 import app.minimpos.app.data.security.Secret
 import app.minimpos.app.data.settings.TerminalMode
-import app.minimpos.app.refund.PaymentStanding
-import app.minimpos.app.refund.standing
+import app.minimpos.app.history.PaymentStanding
+import app.minimpos.app.history.standing
 import app.minimpos.app.terminal.AdyenApi
 import app.minimpos.app.terminal.ApiAccess
 import app.minimpos.app.terminal.ApiCheck
@@ -26,7 +26,7 @@ import app.minimpos.core.cart.AppliedTax
 import app.minimpos.core.cart.Cart
 import app.minimpos.core.cart.CartProduct
 import app.minimpos.core.money.CurrencySpec
-import app.minimpos.core.money.PaymentContext
+import app.minimpos.core.payment.PaymentContext
 import app.minimpos.core.tax.TaxMode
 import app.minimpos.terminal.checkout.CheckoutCredentials
 import app.minimpos.terminal.checkout.ModificationAmount

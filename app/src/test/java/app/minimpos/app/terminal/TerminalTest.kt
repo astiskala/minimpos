@@ -14,6 +14,7 @@ import app.minimpos.terminal.client.PaymentParams
 import app.minimpos.terminal.client.PrintJob
 import app.minimpos.terminal.client.PrintLine
 import app.minimpos.terminal.client.PrintOutcome
+import app.minimpos.terminal.client.TerminalTotalsOutcome
 import app.minimpos.terminal.client.TransactionKind
 import app.minimpos.terminal.client.TransactionOutcome
 import app.minimpos.terminal.transport.ExternalText
@@ -56,6 +57,30 @@ class TerminalTest {
         await {
             env.container.terminalStatus.state
                 .first { it.loaded }
+        }
+
+    @Test
+    fun `closing terminal period rechecks Manager approval after connecting and sends nothing when denied`() =
+        onTerminal { terminal, fake ->
+            terminal.updateSettings { it.copy(terminal = it.terminal.copy(keyIdentifier = "key")) }
+            await { terminal.container.secrets.set(Secret.TERMINAL_PASSPHRASE, fake.passphrase) }
+            val gateway = terminal.container.gateway
+            var checks = 0
+            val denied =
+                await {
+                    gateway.totals(closePeriod = true) {
+                        assertThat(fake.hosts).containsExactly("localhost")
+                        checks++
+                        false
+                    }
+                }
+            assertThat(denied).isEqualTo(Attempt.NotSetUp(SetupProblem.MANAGER_APPROVAL))
+            assertThat(checks).isEqualTo(1)
+            val current = await { gateway.totals(closePeriod = false) { error("Reading totals needs no Manager approval") } }.made()
+            val closed = await { gateway.totals(closePeriod = true) { true } }.made()
+            assertThat((current as TerminalTotalsOutcome.Answered).closedPeriod).isFalse()
+            assertThat((closed as TerminalTotalsOutcome.Answered).closedPeriod).isTrue()
+            assertThat(closed.poiReconciliationId).isEqualTo(current.poiReconciliationId)
         }
 
     @Test

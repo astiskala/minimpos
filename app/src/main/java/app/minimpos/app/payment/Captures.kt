@@ -5,9 +5,9 @@ import app.minimpos.app.data.db.Failure
 import app.minimpos.app.data.db.SaleEntity
 import app.minimpos.app.data.repo.SaleEvent
 import app.minimpos.app.data.repo.SaleRepository
-import app.minimpos.app.refund.PaymentAction
-import app.minimpos.app.refund.PaymentStanding
-import app.minimpos.app.refund.StoredPayment
+import app.minimpos.app.history.PaymentAction
+import app.minimpos.app.history.PaymentStanding
+import app.minimpos.app.history.StoredPayment
 import app.minimpos.app.terminal.AdyenApi
 import app.minimpos.app.terminal.ApiAccess
 import app.minimpos.app.terminal.ApiTarget

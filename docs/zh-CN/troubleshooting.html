@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>故障排查 – Mini mPOS</title>
-  <meta name="description" content="解决 Mini mPOS 的结果未知、付款被拒绝、终端绑定和网络问题，以及扣款、支付链接、打印机、邮件、PIN 和安装问题。">
+  <meta name="description" content="解决 Mini mPOS 的结果未知、付款被拒绝、终端绑定和网络问题，以及扣款、付款链接、打印机、邮件、PIN 和安装问题。">
   <link rel="icon" href="../favicon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="../styles.css">
   <link rel="canonical" href="https://minimpos.app/zh-CN/troubleshooting.html">
@@ -57,15 +57,17 @@
         <p class="toc-title">指南</p><p><a href="quick-start.html">快速入门</a><br><a href="using.html">使用 Mini mPOS</a><br><a href="troubleshooting.html" aria-current="page">故障排查</a></p>
         <div class="desktop-contents"><p class="toc-title">本页目录</p><ol>
           <li><a href="#unknown">结果未知</a></li><li><a href="#declines">付款被拒绝</a></li>
+          <li><a href="#terminal-features">可选终端功能</a></li>
           <li><a href="#wallets">钱包扫码</a></li><li><a href="#connection">终端绑定和设置</a></li><li><a href="#network-dropouts">网络中断</a></li>
-          <li><a href="#modifications">扣款和调整</a></li><li><a href="#links">支付链接</a></li>
+          <li><a href="#modifications">扣款和调整</a></li><li><a href="#links">付款链接</a></li>
           <li><a href="#receipts">打印机和邮件</a></li><li><a href="#access">PIN 和传输</a></li>
           <li><a href="#install">安装</a></li><li><a href="#messages">错误消息</a></li><li><a href="#help">获取帮助</a></li>
         </ol></div>
         <details class="mobile-contents"><summary class="toc-title">本页目录</summary><ol>
           <li><a href="#unknown">结果未知</a></li><li><a href="#declines">付款被拒绝</a></li>
+          <li><a href="#terminal-features">可选终端功能</a></li>
           <li><a href="#wallets">钱包扫码</a></li><li><a href="#connection">终端绑定和设置</a></li><li><a href="#network-dropouts">网络中断</a></li>
-          <li><a href="#modifications">扣款和调整</a></li><li><a href="#links">支付链接</a></li>
+          <li><a href="#modifications">扣款和调整</a></li><li><a href="#links">付款链接</a></li>
           <li><a href="#receipts">打印机和邮件</a></li><li><a href="#access">PIN 和传输</a></li>
           <li><a href="#install">安装</a></li><li><a href="#messages">错误消息</a></li><li><a href="#help">获取帮助</a></li>
         </ol></details>
@@ -92,10 +94,10 @@
           <dl class="fixes">
             <div><dt>“请勿使用此卡重试。请购物者使用其他卡片或付款方式。”</dt>
               <dd><p><span class="fix-label">原因</span>发卡行因不会改变的原因拒绝了此卡（如卡片被冻结、受限或疑似欺诈），或此卡不允许用于本次付款。</p>
-                <p><span class="fix-label">解决</span>请顾客改用其他卡片或付款方式。顾客的银行可以说明拒绝原因；<a href="https://docs.adyen.com/point-of-sale/error-scenarios/refusal-reasons-pos">Adyen 拒绝原因</a>解释了显示的原因。</p></dd></div>
+                <p><span class="fix-label">解决</span>请购物者改用其他卡片或付款方式。购物者的银行可以说明拒绝原因；<a href="https://docs.adyen.com/point-of-sale/error-scenarios/refusal-reasons-pos">Adyen 拒绝原因</a>解释了显示的原因。</p></dd></div>
             <div><dt>“可以重试。”</dt>
               <dd><p><span class="fix-label">原因</span>付款被取消、PIN 输入错误，或卡片因可能不会重复的原因被拒绝（如余额不足）。</p>
-                <p><span class="fix-label">解决</span>点按<strong>重试</strong>，或请顾客换一张卡。</p></dd></div>
+                <p><span class="fix-label">解决</span>点按<strong>重试</strong>，或请购物者换一张卡。</p></dd></div>
             <div><dt>“终端正在处理其他交易或显示管理菜单。”</dt>
               <dd><p><span class="fix-label">原因</span>终端正在处理另一笔付款或显示管理菜单。</p>
                 <p><span class="fix-label">解决</span>完成另一笔付款或退出菜单后重试。如果界面提供<strong>取消终端当前交易</strong>，仅在确实要停止该交易时使用，并在重试前查询其结果。</p></dd></div>
@@ -107,7 +109,17 @@
                 <p><span class="fix-label">解决</span>在<strong>设置 › 终端</strong>中运行测试；参见<a href="#connection">终端绑定和设置</a>。如果测试通过，请联系 Adyen 检查终端配置。</p></dd></div>
             <div><dt>“请勿再次收款：此次支付已成功。”</dt>
               <dd><p><span class="fix-label">原因</span>虽然终端报告了取消，但付款已获批准。</p>
-                <p><span class="fix-label">解决</span>请勿再次收款。如果顾客不应付款，请为其退款。</p></dd></div>
+                <p><span class="fix-label">解决</span>请勿再次收款。如果购物者不应付款，请为其退款。</p></dd></div>
+          </dl>
+          <p class="back-to-contents"><a href="#contents">返回目录</a></p>
+        </section>
+        <section id="terminal-features">
+          <h2>可选终端功能不可用或总额存在差异</h2>
+          <dl class="fixes">
+            <div><dt>终端功能未显示或被拒绝</dt><dd><p>检查收款目标和 <a href="using.html#capabilities">Adyen 功能</a>，刷新终端设置，并确认 API 角色和 Adyen 账户配置。本地结账开关不会在 Adyen 开通服务。Tap to Pay 不提供实体终端流程。小费请比较<a href="using.html#terminal-tips">终端小费</a>和<a href="using.html#tips">收据小费</a>。</p></dd></div>
+            <div><dt>只有部分金额获批</dt><dd><p>从结果页面按<a href="using.html#partial-payments">部分付款流程</a>操作。不要再次收取原合计金额。若后续付款结果未知，请先<a href="#unknown">查询结果</a>再继续收款。</p></dd></div>
+            <div><dt>终端总额与 Mini mPOS 不符</dt><dd><p>按<a href="using.html#reconciliation">终端对账</a>说明检查终端周期、使用同一终端的其他设备、本地保留记录和未解决交易。结束周期不会修复差异，也不代表结算完成。</p></dd></div>
+            <div><dt>离线销售缺少 PSP 识别号或仍有未确认批次</dt><dd><p>按<a href="using.html#offline">离线付款检查步骤</a>操作。恢复终端与 Adyen 的连接，并在商户后台核对上传的付款。不要仅因缺少 PSP 识别号就再次收取已批准的付款。</p></dd></div>
           </dl>
           <p class="back-to-contents"><a href="#contents">返回目录</a></p>
         </section>
@@ -116,9 +128,9 @@
           <dl class="fixes">
             <div><dt>没有扫描钱包按钮</dt><dd><p>打开<strong>设置 › 终端</strong>，点按<strong>刷新扫码钱包</strong>。成功查询后没有符合条件的 POS 钱包时，按钮会保持隐藏。核对终端门店、当前币种和<a href="quick-start.html#credentials">可选查询权限</a>。Tap to Pay 和预授权不提供此功能。</p></dd></div>
             <div><dt>钱包查询报错</dt><dd><p>错误仅显示在设置中，不会阻止普通支付。请检查凭据、环境和只读访问权限。设置未变时，临时刷新错误会保留最近验证的钱包列表；成功查询到空列表或访问失败会移除它。只在启动、设置改变或手动刷新时查询，不会在每笔销售前查询。</p></dd></div>
-            <div><dt>付款码无效或未收到付款码</dt><dd><p>请使用顾客的付款码，而非个人资料、设置转移或收据二维码，并选择正确的钱包。终端扫描最多持续 30 秒，之后点按<strong>重新扫描</strong>或<strong>使用摄像头</strong>。摄像头提示时请授予权限。应用从后台返回后需重新开始扫描。</p></dd></div>
+            <div><dt>付款码无效或未收到付款码</dt><dd><p>请使用购物者的付款码，而非个人资料、设置转移或收据二维码，并选择正确的钱包。终端扫描最多持续 30 秒，之后点按<strong>重新扫描</strong>或<strong>使用摄像头</strong>。摄像头提示时请授予权限。应用从后台返回后需重新开始扫描。</p></dd></div>
             <div><dt>保存被拒绝或未创建令牌</dt><dd><p>请以支付结果为准。没有保存令牌的已批准付款仍然有效。仅在明确被拒绝后，如需重试，返回结账，关闭<strong>保存卡片</strong>并明确开始新扫描。应用不会自动重新付款。<strong>结果未知</strong>时应<a href="#unknown">查询原交易</a>。</p></dd></div>
-            <div><dt>PayMe 扫码被拒绝</dt><dd><p>PayMe 商家扫码是尽力尝试，与 Adyen 已发布的限制相冲突。请顾客改用其他支付方式，或使用终端的普通钱包流程。模拟器批准不代表钱包实际支持此功能。</p></dd></div>
+            <div><dt>PayMe 扫码被拒绝</dt><dd><p>PayMe 商家扫码是尽力尝试，与 Adyen 已发布的限制相冲突。请购物者改用其他支付方式，或使用终端的普通钱包流程。模拟器批准不代表钱包实际支持此功能。</p></dd></div>
           </dl>
           <p>请参阅<a href="using.html#wallets">钱包支付步骤</a>。交易记录中的请求钱包仅表示支付意图，不证明付款成功或 Adyen 使用了该方式。</p>
           <p class="back-to-contents"><a href="#contents">返回目录</a></p>
@@ -200,11 +212,11 @@
           <p class="back-to-contents"><a href="#contents">返回目录</a></p>
         </section>
         <section id="links">
-          <h2>支付链接未显示或不更新</h2>
+          <h2>付款链接未显示或不更新</h2>
           <dl class="fixes">
-            <div><dt>结账时没有<strong>创建支付链接</strong></dt>
+            <div><dt>结账时没有<strong>创建付款链接</strong></dt>
               <dd><p><span class="fix-label">原因</span>Checkout API 设置未完成，或本次结账是预授权或收据小费。</p>
-                <p><span class="fix-label">解决</span>在<strong>设置 › 终端</strong>中完成 Checkout API 设置。链接仅用于销售。离线演示请参阅<a href="using.html#payment-links">支付链接</a>。</p></dd></div>
+                <p><span class="fix-label">解决</span>在<strong>设置 › 终端</strong>中完成 Checkout API 设置。链接仅用于销售。离线演示请参阅<a href="using.html#payment-links">付款链接</a>。</p></dd></div>
             <div><dt>已支付的链接仍显示<strong>待支付</strong></dt>
               <dd><p><span class="fix-label">原因</span>应用仅在链接界面打开时查询。</p>
                 <p><span class="fix-label">解决</span>在交易记录中打开该记录，点按<strong>查询支付状态</strong>。</p></dd></div>
@@ -230,8 +242,8 @@
             <div><dt>测试邮件发送失败</dt>
               <dd><p><span class="fix-label">原因</span>服务器、端口、安全方式或密码有误，或服务商禁止 SMTP 或密码登录。</p>
                 <p><span class="fix-label">解决</span>在<strong>设置 › 电子邮件（SMTP）</strong>中检查服务器、端口、STARTTLS 或 SSL/TLS、用户名和密码。服务商可能要求开通 SMTP 或使用应用密码；参见<a href="using.html#email">邮件设置</a>。</p></dd></div>
-            <div><dt>测试邮件正常，但顾客收不到收据</dt>
-              <dd><p><span class="fix-label">解决</span>在<strong>设置 › 支付 › 电子收据</strong>中检查何时询问邮箱以及是否自动发送收据。</p></dd></div>
+            <div><dt>测试邮件正常，但购物者收不到收据</dt>
+              <dd><p><span class="fix-label">解决</span>在<strong>设置 › 支付 › 电子收据</strong>中检查何时询问电子邮件以及是否自动发送收据。</p></dd></div>
           </dl>
           <p class="back-to-contents"><a href="#contents">返回目录</a></p>
         </section>
@@ -296,7 +308,7 @@
                 <p><span class="fix-label">解决</span>在商户后台中添加该角色或账户访问权限；请参阅<a href="quick-start.html#credentials">凭据要求</a>。</p></dd></div>
             <div><dt>“Adyen 繁忙或暂时不可用。”</dt>
               <dd><p><span class="fix-label">原因</span>Adyen 正在限制请求，或暂时不可用。</p>
-                <p><span class="fix-label">解决</span>稍候片刻再重试。如果是付款、扣款或支付链接，请先<a href="#unknown">查询其结果</a>。</p></dd></div>
+                <p><span class="fix-label">解决</span>稍候片刻再重试。如果是付款、扣款或付款链接，请先<a href="#unknown">查询其结果</a>。</p></dd></div>
             <div><dt>“未在规定时间内收到响应。”</dt>
               <dd><p><span class="fix-label">原因</span>请求已发出，但未收到响应，因此结果未知。</p>
                 <p><span class="fix-label">解决</span>请<a href="#unknown">查询结果</a>。在确认结果前，请勿再次收款。</p></dd></div>
@@ -320,7 +332,7 @@
           <p>Adyen 账户、终端部署、付款方式或最终付款结果请联系 Adyen。应用问题请<a href="https://github.com/astiskala/minimpos/issues">提交 GitHub issue</a>，并提供应用版本、设备型号、配置、TEST 或 LIVE 环境以及复现步骤。</p>
           <div class="callout callout-important" role="note">
             <p class="callout-title">重要</p>
-            <p>切勿包含密钥、密码、PIN 或顾客数据。疑似漏洞请按<a href="https://github.com/astiskala/minimpos/blob/main/SECURITY.md">安全政策</a>私下报告。</p>
+            <p>切勿包含密钥、密码、PIN 或购物者数据。疑似漏洞请按<a href="https://github.com/astiskala/minimpos/blob/main/SECURITY.md">安全政策</a>私下报告。</p>
           </div>
           <p class="back-to-contents"><a href="#contents">返回目录</a></p>
         </section>

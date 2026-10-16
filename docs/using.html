@@ -62,25 +62,37 @@
           <li><a href="#business">Before you sell</a><ul>
             <li><a href="#pricing">Currency and tax</a></li><li><a href="#products">Products</a></li><li><a href="#staff">Staff PINs</a></li>
           </ul></li>
-          <li><a href="#sell">Take a card payment</a></li><li><a href="#wallets">Scan wallet codes</a></li><li><a href="#refund">Refund or cancel</a></li>
+          <li><a href="#capabilities">Check Adyen capabilities</a></li>
+          <li><a href="#sell">Take a card payment</a></li>
+          <li><a href="#terminal-checkout">Optional checkout workflows</a><ul>
+            <li><a href="#partial-payments">Partial payments</a></li><li><a href="#shopper-display">Shopper display</a></li>
+            <li><a href="#giving">Charity donations</a></li><li><a href="#keyed-entry">MOTO and MKE</a></li>
+          </ul></li>
+          <li><a href="#offline">Offline payments</a></li><li><a href="#wallets">Scan wallet codes</a></li><li><a href="#refund">Refund or cancel</a></li>
           <li><a href="#receipts">Receipts</a><ul>
             <li><a href="#customize-receipts">Customize receipts</a></li><li><a href="#language-receipts">Receipt language</a></li><li><a href="#email">Email receipts</a></li>
           </ul></li>
-          <li><a href="#history">History</a><ul><li><a href="#close-day">Close the day</a></li></ul></li>
+          <li><a href="#history">History</a><ul><li><a href="#close-day">Close the day</a></li><li><a href="#reconciliation">Reconcile with the terminal</a></li></ul></li>
           <li><a href="#shoppers">References and saved cards</a></li><li><a href="#payment-links">Payment links</a></li>
-          <li><a href="#preauth">Deposits</a></li><li><a href="#tips">Tips on the receipt</a></li><li><a href="#more">More devices and data</a></li>
+          <li><a href="#preauth">Deposits</a></li><li><a href="#terminal-tips">Tips on the terminal</a></li><li><a href="#tips">Tips on the receipt</a></li><li><a href="#more">More devices and data</a></li>
         </ol></div>
         <details class="mobile-contents"><summary class="toc-title">On this page</summary><ol>
           <li><a href="#business">Before you sell</a><ul>
             <li><a href="#pricing">Currency and tax</a></li><li><a href="#products">Products</a></li><li><a href="#staff">Staff PINs</a></li>
           </ul></li>
-          <li><a href="#sell">Take a card payment</a></li><li><a href="#wallets">Scan wallet codes</a></li><li><a href="#refund">Refund or cancel</a></li>
+          <li><a href="#capabilities">Check Adyen capabilities</a></li>
+          <li><a href="#sell">Take a card payment</a></li>
+          <li><a href="#terminal-checkout">Optional checkout workflows</a><ul>
+            <li><a href="#partial-payments">Partial payments</a></li><li><a href="#shopper-display">Shopper display</a></li>
+            <li><a href="#giving">Charity donations</a></li><li><a href="#keyed-entry">MOTO and MKE</a></li>
+          </ul></li>
+          <li><a href="#offline">Offline payments</a></li><li><a href="#wallets">Scan wallet codes</a></li><li><a href="#refund">Refund or cancel</a></li>
           <li><a href="#receipts">Receipts</a><ul>
             <li><a href="#customize-receipts">Customize receipts</a></li><li><a href="#language-receipts">Receipt language</a></li><li><a href="#email">Email receipts</a></li>
           </ul></li>
-          <li><a href="#history">History</a><ul><li><a href="#close-day">Close the day</a></li></ul></li>
+          <li><a href="#history">History</a><ul><li><a href="#close-day">Close the day</a></li><li><a href="#reconciliation">Reconcile with the terminal</a></li></ul></li>
           <li><a href="#shoppers">References and saved cards</a></li><li><a href="#payment-links">Payment links</a></li>
-          <li><a href="#preauth">Deposits</a></li><li><a href="#tips">Tips on the receipt</a></li><li><a href="#more">More devices and data</a></li>
+          <li><a href="#preauth">Deposits</a></li><li><a href="#terminal-tips">Tips on the terminal</a></li><li><a href="#tips">Tips on the receipt</a></li><li><a href="#more">More devices and data</a></li>
         </ol></details>
       </nav>
       <div class="guide-body">
@@ -111,6 +123,17 @@
           <p>To replace or remove the admin PIN, use <strong>Change Admin PIN</strong> or <strong>Remove Admin PIN</strong>; removing it also removes the Manager PIN. Repeated wrong attempts lock PIN entry for a while. For a forgotten PIN, see <a href="troubleshooting.html#access">PIN problems</a>.</p>
           <p class="back-to-contents"><a href="#contents">Back to contents</a></p>
         </section>
+        <section id="capabilities">
+          <h2>Check and configure Adyen capabilities</h2>
+          <p>Open <strong>Settings › Adyen capabilities</strong> after connecting your payment destination. The screen shows features as <strong>Available</strong>, <strong>Needs configuration</strong> or <strong>Unsupported on this destination</strong>. These are setup indicators, not proof that your merchant account, card or payment method can complete a transaction.</p>
+          <ol>
+            <li>Tap <strong>Refresh capabilities</strong> to read the selected terminal's settings. Real terminal inspection uses the <a href="quick-start.html#credentials">Management API roles in Quick start</a>.</li>
+            <li>For supported terminals, configure terminal tipping for the payment currency, DCC, MOTO or offline limits. These controls update terminal settings at Adyen, not just Mini mPOS. Amounts labeled major units use whole currency units; minor-unit amounts use Adyen's currency precision.</li>
+            <li>Enable the checkout options you need in <strong>Settings › Payments</strong>, then test them in TEST. The matrix also lists Adyen Giving, partial authorization, surcharge, gift cards, terminal reconciliation and shopper display; it does not provide an editor for every feature.</li>
+          </ol>
+          <p>Tap to Pay does not offer physical-terminal features such as terminal tipping, shopper display, MOTO/MKE, offline payments or terminal reconciliation. Partial authorization is a separate payment option. For account enablement and payment-method requirements, follow the <a href="https://docs.adyen.com/point-of-sale">Adyen in-person payments documentation</a>. Simulator availability does not establish real-terminal support.</p>
+          <p class="back-to-contents"><a href="#contents">Back to contents</a></p>
+        </section>
         <section id="sell">
           <h2>Take a card payment</h2>
           <ol>
@@ -129,6 +152,34 @@
             <p><strong>Result unknown</strong> does not mean the payment failed. <a href="troubleshooting.html#unknown">Check the original payment</a> before charging again.</p>
           </div>
           <p>Customer references, card saving and tips are optional; see <a href="#shoppers">references and saved cards</a>. To let customers pay on their own phone, use a <a href="#payment-links">payment link</a>. If a payment is declined, see <a href="troubleshooting.html#declines">declined payments</a>.</p>
+          <p class="back-to-contents"><a href="#contents">Back to contents</a></p>
+        </section>
+        <section id="terminal-checkout">
+          <h2>Use optional checkout workflows</h2>
+          <p>Enable only the options you need in <strong>Settings › Payments</strong>. Except for partial authorization, these workflows need a supported physical terminal, not Tap to Pay. Check <a href="#capabilities">Adyen capabilities</a> and test your actual setup first.</p>
+          <h3 id="partial-payments">Collect a partially authorized payment</h3>
+          <p>Turn on <strong>Allow partial authorizations</strong> to accept a card approval for less than the requested amount. When the result shows <strong>Partially paid</strong>, check the paid and remaining amounts, then tap <strong>Pay remaining</strong> on that result screen and collect the balance on another card. The app keeps the attempts on the same sale. Do not treat the sale as fully paid until the whole amount is approved.</p>
+          <p>A missing answer is not a partial approval. <a href="troubleshooting.html#unknown">Resolve unknown results</a> before collecting more. Do not start a new sale for the full original total: an approved portion has already been paid.</p>
+          <h3 id="shopper-display">Use the shopper-facing terminal screen</h3>
+          <p>With a separate network/cloud terminal, open <strong>Settings › Payments › Shopper terminal display</strong>. Choose whether to show item details before payment, ask the shopper to confirm the order, or collect an email when checkout has none. After approval, you can show a QR code and ask for a 0–10 rating; a returned rating appears in transaction details.</p>
+          <p>These prompts use the selected app language and are also simulated. They are not offered when Mini mPOS runs on the payment terminal itself. The displayed QR code contains the merchant reference, not a hosted receipt download; continue to <a href="#receipts">print, email or share the receipt</a>.</p>
+          <h3 id="giving">Invite a charity donation</h3>
+          <p>After arranging Adyen Giving with Adyen, enable <strong>Charity donation (Adyen Giving)</strong> in <strong>Settings › Payments › Tipping</strong>. At sale checkout, select it to invite a donation on the terminal after payment. It is not offered for pre-authorizations or receipt-tip holds.</p>
+          <p>The purchase and donation are separate. A reported donation amount appears in transaction details; an approved purchase alone does not confirm a donation.</p>
+          <h3 id="keyed-entry">Take a MOTO or Manual Key Entry payment</h3>
+          <ol>
+            <li>Check with Adyen that your terminal and account allow the required entry mode. Configure MOTO in <a href="#capabilities">Adyen capabilities</a> when needed, and set staff PINs under <a href="#staff">Staff PINs</a>.</li>
+            <li>In <strong>Settings › Payments</strong>, enable the MOTO or Manual Key Entry option. At checkout, select <strong>Mail / telephone order (MOTO)</strong> for a remote order, or <strong>Manual Key Entry (MKE)</strong> when chip or contactless reading fails. Only one can be selected.</li>
+            <li>Tap <strong>Pay</strong>, review the fraud and chargeback liability warning, and complete Manager approval when prompted. Enter card details on the terminal, never in Mini mPOS.</li>
+          </ol>
+          <p>Keyed transactions carry higher fraud and chargeback liability for the merchant. Enabling an app switch does not enable the service at Adyen or remove that risk.</p>
+          <p class="back-to-contents"><a href="#contents">Back to contents</a></p>
+        </section>
+        <section id="offline">
+          <h2>Recognize offline payments and pending batches</h2>
+          <p>Offline EMV and Store-and-Forward need a supported terminal reached locally: Mini mPOS on that terminal or a terminal on your network. They are not offered through cloud routing or Tap to Pay. Arrange offline processing with Adyen and review its risks before setting limits in <a href="#capabilities">Adyen capabilities</a>; Mini mPOS does not queue payments itself or make a terminal reachable when your local network is down.</p>
+          <p>History marks reported offline sales. Open a sale to see <strong>Offline processing</strong>, whether it used offline EMV or Store-and-Forward, and any <strong>Unconfirmed offline batches</strong> reported by the terminal. An offline approval can have no PSP reference yet. It is not an unknown result, but it does not confirm that Adyen has received or settled the payment.</p>
+          <p>Restore the terminal's connection to Adyen and verify uploaded payments and final outcomes in the Customer Area. Check the offline and unconfirmed-batch warnings during <a href="#reconciliation">terminal reconciliation</a>; matching totals do not confirm offline settlement. If no conclusive payment answer arrived, follow <a href="troubleshooting.html#unknown">unknown-result recovery</a> instead of assuming offline approval or charging again.</p>
           <p class="back-to-contents"><a href="#contents">Back to contents</a></p>
         </section>
         <section id="wallets">
@@ -232,6 +283,13 @@
             <p class="callout-title">Warning</p>
             <p>Switching between LIVE, TEST and the simulator permanently deletes all payment history and report data on this device. If unfinished payments exist, the app warns again: nothing is canceled at Adyen, but the local recovery and safe retry data is lost. Products and settings stay.</p>
           </div>
+          <h3 id="reconciliation">Compare with terminal totals and close a period</h3>
+          <ol>
+            <li>In <strong>History</strong>, tap <strong>Reconcile with terminal</strong>. Mini mPOS tries to resolve pending or unknown terminal transactions before requesting totals.</li>
+            <li>Compare sales and refunds for each currency and review unresolved transactions, offline sales and unconfirmed batches. The terminal period is not necessarily a calendar day; other devices using the terminal or missing local history can cause differences. Payment links and sample history are not terminal payments.</li>
+            <li>When ready, tap <strong>Close period</strong> and complete Manager approval if requested. This asks the terminal to close its reconciliation period; it does not just print a report.</li>
+          </ol>
+          <p>This is available for physical terminals and the simulator, not Tap to Pay. A matching comparison or closed period does not confirm settlement, refund completion or offline upload. Keep using the Customer Area for final financial outcomes.</p>
           <p class="back-to-contents"><a href="#contents">Back to contents</a></p>
         </section>
         <section id="shoppers">
@@ -289,6 +347,16 @@
             <p class="callout-title">Warning</p>
             <p>Holds expire. Check the pre-authorization filter daily and capture or cancel promptly. For failed or unknown operations, see <a href="troubleshooting.html#modifications">capture problems</a>.</p>
           </div>
+          <p class="back-to-contents"><a href="#contents">Back to contents</a></p>
+        </section>
+        <section id="terminal-tips">
+          <h2>Collect a tip on the terminal</h2>
+          <ol>
+            <li>Check terminal tipping in <a href="#capabilities">Adyen capabilities</a>. Set the terminal's predefined and custom tip options for the payment currency when needed.</li>
+            <li>In <strong>Settings › Payments › Tipping</strong>, enable <strong>Tip on the terminal</strong> and choose its checkout default. Optionally enable <strong>Dynamic basket tip suggestions</strong> for fixed amounts on small baskets and percentages on larger ones, or <strong>Calculate percentage tips before tax</strong>.</li>
+            <li>At sale checkout, select <strong>Tip on the terminal</strong> and tap <strong>Pay</strong>. The shopper chooses a tip before the card is charged. Check the returned total and tip and deliver the receipt.</li>
+          </ol>
+          <p>This does not need a printer or later tip entry. Terminal tipping and <a href="#tips">tips on the receipt</a> cannot be selected together. Neither is offered for pre-authorizations, scanned-wallet payments or payment links; terminal tipping is not offered with Tap to Pay.</p>
           <p class="back-to-contents"><a href="#contents">Back to contents</a></p>
         </section>
         <section id="tips">

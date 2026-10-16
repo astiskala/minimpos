@@ -290,9 +290,12 @@ class WebsiteTest {
                         .attr("href"),
                 ).isEqualTo(Kind.GUIDE.file)
             page.document.select(".feature").forEach { feature ->
-                val link = feature.select(".feature-link a").single()
-                assertWithMessage(page.name).that(hasScheme(link.attr("href"))).isFalse()
-                assertWithMessage(page.name).that(link.text()).isNotEmpty()
+                val links = feature.select(".feature-link a")
+                assertWithMessage(page.name).that(links).isNotEmpty()
+                links.forEach { link ->
+                    assertWithMessage(page.name).that(hasScheme(link.attr("href"))).isFalse()
+                    assertWithMessage(page.name).that(link.text()).isNotEmpty()
+                }
             }
         }
     }
@@ -648,7 +651,7 @@ class WebsitePresentationTest {
             val using = pages.getValue(language to Kind.USING)
             wording.getValue(language).forEach { assertThat(using.text).contains(it) }
             val troubleshooting = pages.getValue(language to Kind.TROUBLE)
-            listOf("Settings › Payments › Offer payment links", "设置 › 支付 › 提供支付链接", "設定 › 決済 › 支払いリンクを使う").forEach { obsolete ->
+            listOf("Settings › Payments › Offer payment links", "设置 › 支付 › 提供付款链接", "設定 › 決済 › 決済リンクを使う").forEach { obsolete ->
                 assertThat(using.text).doesNotContain(obsolete)
                 assertThat(troubleshooting.text).doesNotContain(obsolete)
             }
@@ -976,9 +979,9 @@ class SetupGuideTest {
         val defaults =
             mapOf(
                 "en" to "a customer reference typed at checkout (the default)",
-                "zh-CN" to "客户识别号（默认）",
+                "zh-CN" to "购物者识别号（默认）",
                 "zh-Hant" to "顧客參考編號（預設）",
-                "ja" to "顧客参照ID（初期設定）",
+                "ja" to "購入者参照ID（初期設定）",
             )
         LANGUAGES.forEach { language ->
             val using = pages.getValue(language to Kind.USING)

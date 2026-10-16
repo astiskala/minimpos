@@ -62,6 +62,7 @@ class LocalizationTest {
         listOf("values-ja", "values-zh-rCN", "values-b+zh+Hant").forEach { folder ->
             val translated = resourceEntries(folder)
             assertThat(translated.keys).containsExactlyElementsIn(base.keys)
+            assertWithMessage("$folder resource order").that(translated.keys.toList()).containsExactlyElementsIn(base.keys).inOrder()
             base.forEach { (name, texts) ->
                 val localized = translated.getValue(name)
                 // Japanese and Chinese both use only the CLDR "other" plural form.
@@ -71,6 +72,31 @@ class LocalizationTest {
                     assertThat(actual).doesNotContain("\uFFFD")
                 }
             }
+        }
+    }
+
+    @Test
+    fun `glossary terms distinguish capture from settlement and Manager approval from admin access`() {
+        val terms =
+            mapOf(
+                "values-zh-rCN" to listOf("付款链接", "购物者识别号", "扣款 / 小费", "经理", "已结束"),
+                "values-b+zh+Hant" to listOf("付款連結", "顧客參考編號", "扣款 / 小費", "經理", "已結束"),
+                "values-ja" to listOf("決済リンク", "購入者参照ID", "キャプチャ / チップ", "マネージャー", "締めました"),
+            )
+        terms.forEach { (folder, expected) ->
+            val strings = resourceEntries(folder)
+            listOf("link_title", "detail_shopper_reference", "history_capture_activity").zip(expected).forEach { (key, text) ->
+                assertWithMessage("$folder/$key").that(strings.getValue("string:$key").single()).isEqualTo(text)
+            }
+            listOf("settings_allow_moto_hint", "settings_allow_mke_hint", "checkout_special_entry_warning").forEach { key ->
+                assertWithMessage("$folder/$key").that(strings.getValue("string:$key").single()).contains(expected[3])
+            }
+            assertThat(strings.getValue("string:reconciliation_closed_title").single()).contains(expected[4])
+        }
+        listOf("values", "values-zh-rCN", "values-b+zh+Hant", "values-ja").forEach { folder ->
+            val strings = resourceEntries(folder)
+            assertThat(strings.getValue("string:wallet_role_hint").single()).contains("Management API - Payment methods read")
+            assertThat(strings.getValue("string:settings_business_import_hint").single()).contains("Management API - Stores read")
         }
     }
 

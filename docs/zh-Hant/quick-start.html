@@ -102,7 +102,7 @@
           </dl>
           <p>請在路由器中為每台網絡終端設定 DHCP 保留，固定其 IP 地址。雲端和 Tap to Pay 設定中的平板或手機可使用移動資料，但搭配網絡終端時不行。終端本身的網絡要求請參閱 <a href="https://docs.adyen.com/point-of-sale/design-your-integration/network-and-connectivity/network-configuration">Adyen 網絡設定指南</a>。</p>
           <h3 id="credentials">準備 Adyen 憑據</h3>
-          <p>通過 Adyen 驗證設定需要有效的測試商戶帳戶、已開通的實體店付款服務及商戶後台（Customer Area）存取權限。先使用 TEST 憑據及 TEST 終端或 Adyen Payments Test。上線時改用對應的 LIVE 帳戶、憑據及終端或 Payments 應用程式。</p>
+          <p>通過 Adyen 驗證設定需要有效的測試商戶帳戶、已開通的實體店付款服務及商戶後台（商戶後台）存取權限。先使用 TEST 憑據及 TEST 終端或 Adyen Payments Test。上線時改用對應的 LIVE 帳戶、憑據及終端或 Payments 應用程式。</p>
           <p>建立或編輯憑據時，商戶後台用戶需有 <strong>Manage API credentials</strong> 或 <strong>Merchant admin</strong> 權限。這些是用戶權限，不是 API 密鑰的角色。</p>
           <p>請按照 <a href="https://docs.adyen.com/point-of-sale/what-we-support/payment-methods/add-payment-methods">Adyen 支付方式設定指南</a>開通計劃接受的 POS 支付方式。Mini mPOS 使用終端已設定的支付方式。</p>
           <ol>
@@ -290,8 +290,9 @@
         </section>
         <section id="live">
           <h2>正式上線</h2>
+          <p>使用可選終端功能前，請檢查 <a href="using.html#capabilities">Adyen 功能</a>並測試實際收款目標：<a href="using.html#terminal-tips">終端小費</a>、<a href="using.html#terminal-checkout">部分付款、顧客提示、Giving 和手動輸入卡號</a>、<a href="using.html#offline">離線處理</a>及<a href="using.html#reconciliation">終端對帳</a>。可用性取決於 Adyen 設定和收款目標；模擬器結果不等於真實終端驗證。</p>
           <ol>
-            <li>在 TEST 中測試計劃使用的可選流程：<a href="using.html#preauth">訂金</a>、<a href="using.html#tips">收據小費</a>、<a href="using.html#payment-links">支付連結</a>或<a href="using.html#wallets">掃描錢包</a>。訂金和收據小費會凍結資金，直至扣款。請在商戶後台確認最終扣款結果。</li>
+            <li>在 TEST 中測試計劃使用的可選流程：<a href="using.html#preauth">訂金</a>、<a href="using.html#tips">收據小費</a>、<a href="using.html#payment-links">付款連結</a>或<a href="using.html#wallets">掃描錢包</a>。訂金和收據小費會凍結資金，直至扣款。請在商戶後台確認最終扣款結果。</li>
             <li>測試計劃使用的收據交付方式：用實體打印機列印、發送測試郵件或分享收據。</li>
             <li>設定管理員 PIN，需要時另設經理 PIN；參見<a href="using.html#staff">員工權限</a>。</li>
             <li>改用 LIVE 終端或 LIVE 版 Payments 應用程式及 LIVE 憑據。網絡或雲端終端請在<strong>環境</strong>中選擇 <strong>LIVE</strong>。輸入 <strong>LIVE URL 前置字元</strong>；參見 <a href="https://docs.adyen.com/development-resources/live-endpoints">Adyen LIVE 端點指南</a>。</li>
@@ -310,13 +311,14 @@
         </section>
         <section id="try">
           <h2>試用模擬器</h2>
+          <p>要示範離線警告，請在<strong>設定 › 模擬器</strong>中開啟<strong>模擬離線儲存轉發式（Store-and-Forward）</strong>。獲批的模擬銷售將沒有 PSP 參考編號，並報告未確認批次。在交易紀錄中查看銷售並嘗試<a href="using.html#reconciliation">終端對帳</a>。這只是示範，不會驗證真實離線授權或稍後上傳 Adyen 的流程。</p>
           <p>無需 Adyen 帳戶或終端即可體驗 Mini mPOS，不會扣款。</p>
           <ol>
             <li>在 Android 9+ 手機或模擬器上<a href="#install">安裝應用程式</a>。</li>
             <li>在歡迎畫面選擇<strong>使用示例資料試用模擬器</strong>。其他選項為<strong>從另一台設備設定</strong>（匯入設定二維碼）和<strong>設定終端</strong>。</li>
             <li>在<strong>設定 › 模擬器</strong>中選擇支付結果、延遲以及是否有打印機。</li>
           </ol>
-          <p>示例商品和交易紀錄會標為演示。示例計入演示每日總計和報告，並非真實付款。在<strong>設定 › 資料</strong>中可<strong>新增示例資料</strong>或<strong>刪除示例資料</strong>；刪除會保留您自己的商品、交易紀錄和設定。離線演示連結請參閱<a href="using.html#payment-links">支付連結</a>。</p>
+          <p>示例商品和交易紀錄會標為演示。示例計入演示每日總計和報告，並非真實付款。在<strong>設定 › 資料</strong>中可<strong>新增示例資料</strong>或<strong>刪除示例資料</strong>；刪除會保留您自己的商品、交易紀錄和設定。離線演示連結請參閱<a href="using.html#payment-links">付款連結</a>。</p>
           <p class="back-to-contents"><a href="#contents">返回目錄</a></p>
         </section>
       </div>

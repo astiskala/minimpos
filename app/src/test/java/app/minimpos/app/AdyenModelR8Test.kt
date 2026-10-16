@@ -9,13 +9,22 @@ import com.adyen.model.checkout.PaymentLinkRequest
 import com.adyen.model.checkout.PaymentMethodsRequest
 import com.adyen.model.checkout.UpdatePaymentLinkRequest
 import com.adyen.model.clouddevice.ConnectedDevicesResponse
+import com.adyen.model.management.Dcc
+import com.adyen.model.management.Gratuity
 import com.adyen.model.management.Key
 import com.adyen.model.management.Merchant
+import com.adyen.model.management.MinorUnitsMonetaryValue
+import com.adyen.model.management.ModelConfiguration
+import com.adyen.model.management.Moto
 import com.adyen.model.management.Nexo
+import com.adyen.model.management.OfflineProcessing
 import com.adyen.model.management.PaymentMethod
 import com.adyen.model.management.PaymentMethodResponse
 import com.adyen.model.management.Store
+import com.adyen.model.management.StoreAndForward
 import com.adyen.model.management.StoreLocation
+import com.adyen.model.management.SupportedCardTypes
+import com.adyen.model.management.Surcharge
 import com.adyen.model.management.Terminal
 import com.adyen.model.management.TerminalSettings
 import com.adyen.model.paymentsapp.BoardingTokenRequest
@@ -44,40 +53,8 @@ class AdyenModelR8Test {
 
     @Test
     fun `release rules preserve official API JSON without exposing bookkeeping fields`() {
-        val cases =
-            mapOf(
-                PaymentMethodsRequest::class.java to """{"merchantAccount":"HarbourCoffeeCOM"}""",
-                PaymentCaptureRequest::class.java to
-                    """{"merchantAccount":"HarbourCoffeeCOM","amount":{"currency":"AUD","value":3900},"reference":"capture"}""",
-                PaymentAmountUpdateRequest::class.java to
-                    """{"merchantAccount":"HarbourCoffeeCOM","amount":{"currency":"AUD","value":3900},"industryUsage":"delayedCharge"}""",
-                PaymentLinkRequest::class.java to
-                    """{"merchantAccount":"HarbourCoffeeCOM","amount":{"currency":"AUD","value":3900},""" +
-                    """"lineItems":[{"id":"coffee","quantity":1}]}""",
-                UpdatePaymentLinkRequest::class.java to """{"status":"expired"}""",
-                TerminalSettings::class.java to
-                    """{"nexo":{"encryptionKey":{"identifier":"test-key","version":1,"passphrase":"synthetic"}}}""",
-                Merchant::class.java to """{"id":"HarbourCoffeeCOM","name":"Harbour Coffee"}""",
-                Store::class.java to
-                    """{"id":"ST1","shopperStatement":"Harbour Coffee","phoneNumber":"+61212345678",""" +
-                    """"address":{"line1":"1 Main St","city":"Sydney","country":"AU"}}""",
-                PaymentMethodResponse::class.java to
-                    """{"data":[{"type":"wechatpay_pos","enabled":true,"allowed":true,"shopperInteraction":"pos","currencies":["AUD"]}]}""",
-                Terminal::class.java to """{"id":"S1F2L-123456789","model":"S1F2L","countryCode":"AU"}""",
-                BoardingTokenRequest::class.java to """{"boardingRequestToken":"synthetic"}""",
-                ConnectedDevicesResponse::class.java to """{"uniqueDeviceIds":["AMS1-1"]}""",
-            )
-        shrink(
-            cases.keys +
-                listOf(
-                    Amount::class.java,
-                    LineItem::class.java,
-                    Nexo::class.java,
-                    Key::class.java,
-                    PaymentMethod::class.java,
-                    StoreLocation::class.java,
-                ),
-        ).use { loader ->
+        val cases = modelCases()
+        shrink(cases.keys + extraTypes()).use { loader ->
             cases.forEach { (model, json) ->
                 val type = loader.loadClass(model.name)
                 val value = JSON.getMapper().readValue(json, type)
@@ -91,6 +68,56 @@ class AdyenModelR8Test {
                 .isEqualTo(JsonParser.parseString(cases.getValue(PaymentMethodsRequest::class.java)))
         }
     }
+
+    private fun modelCases(): Map<Class<*>, String> =
+        mapOf(
+            PaymentMethodsRequest::class.java to """{"merchantAccount":"HarbourCoffeeCOM"}""",
+            PaymentCaptureRequest::class.java to
+                """{"merchantAccount":"HarbourCoffeeCOM","amount":{"currency":"AUD","value":3900},"reference":"capture"}""",
+            PaymentAmountUpdateRequest::class.java to
+                """{"merchantAccount":"HarbourCoffeeCOM","amount":{"currency":"AUD","value":3900},"industryUsage":"delayedCharge"}""",
+            PaymentLinkRequest::class.java to
+                """{"merchantAccount":"HarbourCoffeeCOM","amount":{"currency":"AUD","value":3900},""" +
+                """"lineItems":[{"id":"coffee","quantity":1}]}""",
+            UpdatePaymentLinkRequest::class.java to """{"status":"expired"}""",
+            TerminalSettings::class.java to
+                """{"dcc":{"enableDcc":true},"gratuities":[{"allowCustomAmount":true,""" +
+                """"currency":"AUD","predefinedTipEntries":["10%"],"usePredefinedTipEntries":true}],""" +
+                """"moto":{"enableMoto":true,"maxAmount":500},""" +
+                """"nexo":{"encryptionKey":{"identifier":"test-key","version":1,"passphrase":"synthetic"}},""" +
+                """"offlineProcessing":{"chipFloorLimit":50},""" +
+                """"storeAndForward":{"maxAmount":[{"amount":5000,"currencyCode":"AUD"}],""" +
+                """"maxPayments":10,"supportedCardTypes":{"credit":true,"debit":true}},""" +
+                """"surcharge":{"askConfirmation":true}}""",
+            Merchant::class.java to """{"id":"HarbourCoffeeCOM","name":"Harbour Coffee"}""",
+            Store::class.java to
+                """{"id":"ST1","shopperStatement":"Harbour Coffee","phoneNumber":"+61212345678",""" +
+                """"address":{"line1":"1 Main St","city":"Sydney","country":"AU"}}""",
+            PaymentMethodResponse::class.java to
+                """{"data":[{"type":"wechatpay_pos","enabled":true,"allowed":true,"shopperInteraction":"pos","currencies":["AUD"]}]}""",
+            Terminal::class.java to """{"id":"S1F2L-123456789","model":"S1F2L","countryCode":"AU"}""",
+            BoardingTokenRequest::class.java to """{"boardingRequestToken":"synthetic"}""",
+            ConnectedDevicesResponse::class.java to """{"uniqueDeviceIds":["AMS1-1"]}""",
+        )
+
+    private fun extraTypes(): List<Class<*>> =
+        listOf(
+            Amount::class.java,
+            LineItem::class.java,
+            Dcc::class.java,
+            Gratuity::class.java,
+            Moto::class.java,
+            OfflineProcessing::class.java,
+            StoreAndForward::class.java,
+            MinorUnitsMonetaryValue::class.java,
+            SupportedCardTypes::class.java,
+            Surcharge::class.java,
+            ModelConfiguration::class.java,
+            Nexo::class.java,
+            Key::class.java,
+            PaymentMethod::class.java,
+            StoreLocation::class.java,
+        )
 
     private fun shrink(models: Collection<Class<*>>): URLClassLoader {
         val sdk = location(PaymentMethodsRequest::class.java)

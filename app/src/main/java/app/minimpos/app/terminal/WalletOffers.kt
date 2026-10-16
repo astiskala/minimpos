@@ -17,6 +17,7 @@ data class WalletOffer(
 /** Pure configuration and hardware reading; callers must not infer wallet or scanner support independently. */
 internal object WalletOffers {
     private val SCANNER_MODELS = setOf("S1EL", "S1EBARCODE", "S1E2L", "S1F2L", "S1F2BARCODE", "S1U2")
+    private val GIFT_CARD_TYPES = setOf("svs", "valuelink", "givex", "intersolve", "genericgiftcard", "auriga", "badoit", "eagleeye")
 
     fun configured(
         methods: List<WalletMethod>,
@@ -35,6 +36,22 @@ internal object WalletOffers {
                     if (configurations.any { it.currencies.isEmpty() }) emptySet() else configurations.flatMap { it.currencies }.toSet(),
                 )
             }
+
+    fun giftCards(
+        methods: List<WalletMethod>,
+        storeId: String,
+        country: String,
+        currency: String,
+    ): List<String> =
+        methods
+            .filter { it.enabled && it.allowed && it.channel.equals("pos", ignoreCase = true) }
+            .filter { it.storeIds.isEmpty() || storeId in it.storeIds }
+            .filter { it.countries.isEmpty() || country in it.countries || "ANY" in it.countries }
+            .filter { it.currencies.isEmpty() || currency in it.currencies }
+            .map { it.type.trim().lowercase(Locale.ROOT) }
+            .filter { it.contains("giftcard") || it in GIFT_CARD_TYPES }
+            .distinct()
+            .sorted()
 
     fun forCurrency(
         offers: List<WalletOffer>,

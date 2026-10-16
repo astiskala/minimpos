@@ -56,6 +56,7 @@ import app.minimpos.app.refund.RefundStart
 import app.minimpos.app.refund.StoredPayments
 import app.minimpos.app.terminal.AdyenApi
 import app.minimpos.app.terminal.AndroidDeviceInfo
+import app.minimpos.app.terminal.CapabilityDiscovery
 import app.minimpos.app.terminal.DeviceInfo
 import app.minimpos.app.terminal.HistorySwitches
 import app.minimpos.app.terminal.PaymentsAppBridge
@@ -307,6 +308,9 @@ class AppContainer(
 
     /** Optional memory-only POS-wallet availability; errors are displayed only in Settings. */
     val walletDiscovery = WalletDiscovery(terminalSetup, appScope, terminalDetails, walletMethods)
+
+    /** Progressive terminal capability inspection and scoped Management updates for Settings › Capabilities. */
+    val capabilityDiscovery = CapabilityDiscovery(terminalSetup, terminalDetails, walletMethods)
 
     private val sharedKeys = SharedKeySetup(terminalSetup, terminalDetails, api::verify, ::financialOperationRunning)
 

@@ -150,6 +150,15 @@ data class TerminalSetup(
     /** Whether the resolved destination supports shopper-presented wallet codes, independently of account configuration. */
     val scannedWallets: Boolean get() = destination.scannedWallets
 
+    /** Whether physical-terminal features (terminal tipping, Giving, MOTO/MKE, totals, display) are supported. */
+    val supportsTerminalFeatures: Boolean get() = destination.supportsTerminalFeatures
+
+    /** Whether local offline EMV and store-and-forward processing are supported on this destination. */
+    val supportsOfflinePayments: Boolean get() = destination.supportsOfflinePayments
+
+    /** Whether shopper-facing display and input requests are supported (external terminal or simulator). */
+    val supportsShopperDisplay: Boolean get() = destination.supportsTerminalFeatures && (!onTerminal || destination.simulatesApi)
+
     /** Non-secret identity for this resolved setup, with [detected] from its actual transport when known. */
     fun paymentContext(detected: TerminalEnvironment? = environment): PaymentContext =
         PaymentContext(

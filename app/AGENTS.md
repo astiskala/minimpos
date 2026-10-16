@@ -40,8 +40,9 @@ Starred rules below are enforced by `ArchitectureTest`, `SettingsArchitectureTes
   through `TerminalSetupSource`, which automatically completes pending shared-key recovery records in `SharedKeySetup`.
 - \* Only `SharedKeySetup` creates terminal-specific keys at Adyen, after explicit confirmation and encrypted recovery
   persistence. Discovery stays read-only; existing effective keys are reused, never deliberately replaced.
-- \* Setup, receipt and wallet tasks share `TerminalAssignments`, which alone queries `TerminalDetailsApi.terminals`
+- \* Setup, receipt, wallet and capability tasks share `TerminalAssignments`, which alone queries `TerminalDetailsApi.terminals`
   and verifies the listing environment while preserving each task's distinct strictness.
+  Only `CapabilityDiscovery` reads or updates Management capability settings (`capabilities`, `updateCapabilities`).
   `SetupDiscovery` returns immutable operation outcomes, not ambient problem/key-missing getters.
 - \* Destination requirements/capabilities belong to adapter companions in `Destinations.kt`; `DestinationRules.of`
   selects rules. Adapters open transports; only `Destination.connect` constructs clients, only the gateway opens

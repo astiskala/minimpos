@@ -1,9 +1,16 @@
 package app.minimpos.terminal.transport
 
+import com.adyen.model.management.Dcc
+import com.adyen.model.management.Gratuity
 import com.adyen.model.management.Key
 import com.adyen.model.management.ListTerminalsResponse
 import com.adyen.model.management.MeApiCredential
+import com.adyen.model.management.MinorUnitsMonetaryValue
+import com.adyen.model.management.Moto
 import com.adyen.model.management.Nexo
+import com.adyen.model.management.OfflineProcessing
+import com.adyen.model.management.StoreAndForward
+import com.adyen.model.management.SupportedCardTypes
 import com.adyen.model.management.Terminal
 import com.adyen.model.management.TerminalSettings
 import kotlinx.coroutines.CoroutineDispatcher
@@ -114,6 +121,137 @@ sealed interface SharedKeyUpdate {
     ) : SharedKeyUpdate
 }
 
+/** Terminal-level gratuity settings for one [currency] (`terminalSettings.gratuities`).
+ * @property currency ISO 4217 currency code.
+ * @property usePredefinedEntries True when the terminal displays predefined buttons; false for a direct tip prompt.
+ * @property predefinedEntries Up to four percentage (`"10%"`) or minor-unit (`"100"`) options.
+ * @property allowCustomAmount Whether one button lets the shopper enter a custom tip amount.
+ */
+data class TerminalGratuity(
+    val currency: String,
+    val usePredefinedEntries: Boolean = false,
+    val predefinedEntries: List<String> = emptyList(),
+    val allowCustomAmount: Boolean = false,
+)
+
+/** Terminal-level MOTO configuration (`terminalSettings.moto`).
+ * @property enabled Whether MOTO is enabled on the terminal.
+ * @property maxAmount Maximum MOTO transaction amount in major units, or null when unset.
+ */
+data class TerminalMotoSettings(
+    val enabled: Boolean = false,
+    val maxAmount: Int? = null,
+)
+
+/** Terminal-level offline EMV and store-and-forward limits (`offlineProcessing` and `storeAndForward`).
+ * @property chipFloorLimit Maximum chip offline EMV amount in major units, or null when unset.
+ * @property maxStoreAndForwardMinor Maximum store-and-forward transaction amount in minor units by currency code.
+ * @property maxPayments Maximum number of stored offline payments before forwarding, or null when unset.
+ */
+data class TerminalOfflineLimits(
+    val chipFloorLimit: Int? = null,
+    val maxStoreAndForwardMinor: Map<String, Long> = emptyMap(),
+    val maxPayments: Int? = null,
+) {
+    /** Whether any offline EMV or store-and-forward limit is active for [currency]. */
+    fun configuredFor(currency: String): Boolean =
+        (chipFloorLimit != null && chipFloorLimit > 0) ||
+            ((maxStoreAndForwardMinor[currency] ?: 0L) > 0L && (maxPayments == null || maxPayments > 0))
+}
+
+/** Non-secret terminal feature settings read from Management `terminalSettings`.
+ * @property gratuities Configured gratuities by currency.
+ * @property dccEnabled Whether Dynamic Currency Conversion is enabled (`dcc.enableDcc`).
+ * @property surchargeConfigured Whether card surcharge rules or confirmation are configured (`surcharge`).
+ * @property moto MOTO settings (`moto`).
+ * @property offline Offline EMV and store-and-forward limits (`offlineProcessing`, `storeAndForward`).
+ */
+data class RemoteTerminalCapabilities(
+    val gratuities: List<TerminalGratuity> = emptyList(),
+    val dccEnabled: Boolean = false,
+    val surchargeConfigured: Boolean = false,
+    val moto: TerminalMotoSettings = TerminalMotoSettings(),
+    val offline: TerminalOfflineLimits = TerminalOfflineLimits(),
+) {
+    /** The gratuity configuration for [currency], if any. */
+    fun gratuityFor(currency: String): TerminalGratuity? = gratuities.firstOrNull { it.currency.equals(currency, ignoreCase = true) }
+}
+
+/** Result of reading capability sections from Management `terminalSettings`. */
+sealed interface TerminalCapabilitiesLookup {
+    /** Readable capability settings.
+     * @property capabilities Current remote terminal feature settings.
+     */
+    data class Found(
+        val capabilities: RemoteTerminalCapabilities,
+    ) : TerminalCapabilitiesLookup
+
+    /** Lookup could not complete.
+     * @property fault Why.
+     */
+    data class Failed(
+        val fault: Fault,
+    ) : TerminalCapabilitiesLookup
+}
+
+/** Scoped Management `terminalSettings` update for one capability section; never touches `nexo` or unrelated sections. */
+sealed interface TerminalCapabilitiesPatch {
+    /** Updates the gratuity entry for [currency], preserving other currencies' entries.
+     * @property currency ISO 4217 currency code being updated.
+     * @property gratuity New gratuity configuration for [currency], or null to remove its entry.
+     */
+    data class Gratuity(
+        val currency: String,
+        val gratuity: TerminalGratuity?,
+    ) : TerminalCapabilitiesPatch
+
+    /** Updates `dcc.enableDcc`.
+     * @property enabled Whether DCC is enabled.
+     */
+    data class Dcc(
+        val enabled: Boolean,
+    ) : TerminalCapabilitiesPatch
+
+    /** Updates `moto`.
+     * @property settings New MOTO settings.
+     */
+    data class Moto(
+        val settings: TerminalMotoSettings,
+    ) : TerminalCapabilitiesPatch
+
+    /** Updates `offlineProcessing` and `storeAndForward` for [currency], preserving other currencies' store-and-forward limits.
+     * @property currency ISO 4217 currency code for [maxStoreAndForwardMinor].
+     * @property chipFloorLimit Chip floor limit in major units, or null to clear.
+     * @property maxStoreAndForwardMinor Maximum store-and-forward amount in minor units of [currency], or null to remove.
+     * @property maxPayments Maximum number of stored payments, or null to leave unset.
+     */
+    data class Offline(
+        val currency: String,
+        val chipFloorLimit: Int?,
+        val maxStoreAndForwardMinor: Int?,
+        val maxPayments: Int?,
+    ) : TerminalCapabilitiesPatch
+}
+
+/** Result of a scoped capability `PATCH` and read-back verification. */
+sealed interface TerminalCapabilitiesUpdate {
+    /** Updated capabilities verified from the read-back response.
+     * @property capabilities Freshly read capability settings.
+     */
+    data class Ready(
+        val capabilities: RemoteTerminalCapabilities,
+    ) : TerminalCapabilitiesUpdate
+
+    /** Update or read-back failed.
+     * @property fault Why.
+     * @property uncertain Whether the `PATCH` may have taken effect without verified read-back.
+     */
+    data class Failed(
+        val fault: Fault,
+        val uncertain: Boolean = false,
+    ) : TerminalCapabilitiesUpdate
+}
+
 /** Management discovery and explicit key creation; main-safe, without silent retries or environment fallback. */
 interface TerminalDetailsApi {
     /** Checks terminal-access, terminal-settings write and Advanced roles in [environment]. */
@@ -140,6 +278,19 @@ interface TerminalDetailsApi {
         environment: TerminalEnvironment,
         key: DiscoveredKey,
     ): SharedKeyUpdate = SharedKeyUpdate.Failed(Fault.Unsupported)
+
+    /** Reads non-secret capability sections from `/terminals/{id}/terminalSettings`. */
+    suspend fun capabilities(
+        id: String,
+        environment: TerminalEnvironment,
+    ): TerminalCapabilitiesLookup = TerminalCapabilitiesLookup.Failed(Fault.Unsupported)
+
+    /** Applies a scoped [patch] to `/terminals/{id}/terminalSettings` and verifies read-back; never touches `nexo`. */
+    suspend fun updateCapabilities(
+        id: String,
+        environment: TerminalEnvironment,
+        patch: TerminalCapabilitiesPatch,
+    ): TerminalCapabilitiesUpdate = TerminalCapabilitiesUpdate.Failed(Fault.Unsupported)
 }
 
 /** Management v3 terminal discovery with bounded pagination and no automatic request retries.
@@ -223,6 +374,205 @@ class AdyenTerminalDetails(
             SharedKeyLookup.Missing -> patchKey(id, environment, key, settings)
         }
     }
+
+    override suspend fun capabilities(
+        id: String,
+        environment: TerminalEnvironment,
+    ): TerminalCapabilitiesLookup {
+        val reply = http.get(settingsUrl(id, environment), TIMEOUT)
+        if (reply !is AdyenReply.Answered || !reply.ok) return TerminalCapabilitiesLookup.Failed(managementFault(reply))
+        val settings =
+            decodeCapabilitySettings(reply.body) ?: return TerminalCapabilitiesLookup.Failed(Fault.Malformed(MalformedPart.SETTINGS))
+        return TerminalCapabilitiesLookup.Found(parseCapabilities(settings))
+    }
+
+    override suspend fun updateCapabilities(
+        id: String,
+        environment: TerminalEnvironment,
+        patch: TerminalCapabilitiesPatch,
+    ): TerminalCapabilitiesUpdate {
+        val url = settingsUrl(id, environment)
+        val before =
+            if (patch is TerminalCapabilitiesPatch.Gratuity || patch is TerminalCapabilitiesPatch.Offline) {
+                val reply = http.get(url, TIMEOUT)
+                if (reply !is AdyenReply.Answered || !reply.ok) return TerminalCapabilitiesUpdate.Failed(managementFault(reply))
+                decodeCapabilitySettings(reply.body)
+                    ?: return TerminalCapabilitiesUpdate.Failed(Fault.Malformed(MalformedPart.SETTINGS))
+            } else {
+                null
+            }
+        val body = buildCapabilitiesPatch(patch, before)
+        val reply = http.patch(url, body, TIMEOUT)
+        if (reply !is AdyenReply.Answered || !reply.ok) {
+            val fault = managementFault(reply)
+            return TerminalCapabilitiesUpdate.Failed(fault, fault.mayHaveTakenEffect)
+        }
+        return when (val verified = capabilities(id, environment)) {
+            is TerminalCapabilitiesLookup.Failed -> {
+                TerminalCapabilitiesUpdate.Failed(verified.fault, uncertain = true)
+            }
+
+            is TerminalCapabilitiesLookup.Found -> {
+                if (matchesPatch(patch, verified.capabilities)) {
+                    TerminalCapabilitiesUpdate.Ready(verified.capabilities)
+                } else {
+                    TerminalCapabilitiesUpdate.Failed(Fault.UnreadableReply(), uncertain = true)
+                }
+            }
+        }
+    }
+
+    private fun buildCapabilitiesPatch(
+        patch: TerminalCapabilitiesPatch,
+        before: TerminalSettings?,
+    ): String =
+        when (patch) {
+            is TerminalCapabilitiesPatch.Gratuity -> {
+                val retained =
+                    before
+                        ?.gratuities
+                        .orEmpty()
+                        .filterNotNull()
+                        .filterNot { it.currency.equals(patch.currency, ignoreCase = true) }
+                val updated =
+                    patch.gratuity?.let { item ->
+                        Gratuity()
+                            .currency(patch.currency.uppercase())
+                            .usePredefinedTipEntries(item.usePredefinedEntries)
+                            .predefinedTipEntries(item.predefinedEntries)
+                            .allowCustomAmount(item.allowCustomAmount)
+                    }
+                TerminalSettings().gratuities(if (updated == null) retained else retained + updated).toJson()
+            }
+
+            is TerminalCapabilitiesPatch.Dcc -> {
+                TerminalSettings().dcc(Dcc().enableDcc(patch.enabled)).toJson()
+            }
+
+            is TerminalCapabilitiesPatch.Moto -> {
+                TerminalSettings()
+                    .moto(Moto().enableMoto(patch.settings.enabled).maxAmount(patch.settings.maxAmount))
+                    .toJson()
+            }
+
+            is TerminalCapabilitiesPatch.Offline -> {
+                val retained =
+                    before
+                        ?.storeAndForward
+                        ?.maxAmount
+                        .orEmpty()
+                        .filterNotNull()
+                        .filterNot { it.currencyCode.equals(patch.currency, ignoreCase = true) }
+                val updated =
+                    patch.maxStoreAndForwardMinor?.let { amount ->
+                        MinorUnitsMonetaryValue().currencyCode(patch.currency.uppercase()).amount(amount)
+                    }
+                val amounts = if (updated == null) retained else retained + updated
+                val cardTypes =
+                    before?.storeAndForward?.supportedCardTypes
+                        ?: SupportedCardTypes()
+                            .credit(true)
+                            .debit(true)
+                            .prepaid(true)
+                            .takeIf { amounts.isNotEmpty() }
+                TerminalSettings()
+                    .offlineProcessing(OfflineProcessing().chipFloorLimit(patch.chipFloorLimit))
+                    .storeAndForward(
+                        StoreAndForward()
+                            .maxAmount(amounts)
+                            .maxPayments(patch.maxPayments)
+                            .supportedCardTypes(cardTypes),
+                    ).toJson()
+            }
+        }
+
+    private fun matchesPatch(
+        patch: TerminalCapabilitiesPatch,
+        actual: RemoteTerminalCapabilities,
+    ): Boolean =
+        when (patch) {
+            is TerminalCapabilitiesPatch.Gratuity -> {
+                val found = actual.gratuityFor(patch.currency)
+                if (patch.gratuity == null) {
+                    found == null
+                } else {
+                    found ==
+                        patch.gratuity.copy(
+                            currency = found?.currency ?: patch.currency,
+                            predefinedEntries = if (patch.gratuity.usePredefinedEntries) patch.gratuity.predefinedEntries else emptyList(),
+                        )
+                }
+            }
+
+            is TerminalCapabilitiesPatch.Dcc -> {
+                actual.dccEnabled == patch.enabled
+            }
+
+            is TerminalCapabilitiesPatch.Moto -> {
+                actual.moto.enabled == patch.settings.enabled &&
+                    (patch.settings.maxAmount == null || actual.moto.maxAmount == patch.settings.maxAmount)
+            }
+
+            is TerminalCapabilitiesPatch.Offline -> {
+                (patch.chipFloorLimit == null || actual.offline.chipFloorLimit == patch.chipFloorLimit) &&
+                    actual.offline.maxStoreAndForwardMinor[patch.currency.uppercase()] == patch.maxStoreAndForwardMinor?.toLong() &&
+                    (patch.maxPayments == null || actual.offline.maxPayments == patch.maxPayments)
+            }
+        }
+
+    private fun parseCapabilities(settings: TerminalSettings): RemoteTerminalCapabilities {
+        val surcharge = settings.surcharge
+        val moto = settings.moto
+        return RemoteTerminalCapabilities(
+            gratuities = parseGratuities(settings),
+            dccEnabled = settings.dcc?.enableDcc == true,
+            surchargeConfigured = surcharge?.askConfirmation == true || surcharge?.configurations.orEmpty().any { it != null },
+            moto = TerminalMotoSettings(enabled = moto?.enableMoto == true, maxAmount = moto?.maxAmount),
+            offline =
+                TerminalOfflineLimits(
+                    chipFloorLimit = settings.offlineProcessing?.chipFloorLimit,
+                    maxStoreAndForwardMinor = parseStoreAndForward(settings),
+                    maxPayments = settings.storeAndForward?.maxPayments,
+                ),
+        )
+    }
+
+    private fun parseGratuities(settings: TerminalSettings): List<TerminalGratuity> =
+        settings.gratuities.orEmpty().mapNotNull { item ->
+            val currency =
+                item
+                    ?.currency
+                    ?.trim()
+                    ?.uppercase()
+                    .orEmpty()
+            if (currency.isEmpty()) {
+                null
+            } else {
+                val usePredefined = item.usePredefinedTipEntries == true
+                val entries =
+                    if (usePredefined) {
+                        item.predefinedTipEntries.orEmpty().mapNotNull { entry -> entry?.trim()?.takeIf { it.isNotEmpty() } }
+                    } else {
+                        emptyList()
+                    }
+                TerminalGratuity(currency, usePredefined, entries, item.allowCustomAmount == true)
+            }
+        }
+
+    private fun parseStoreAndForward(settings: TerminalSettings): Map<String, Long> =
+        settings.storeAndForward
+            ?.maxAmount
+            .orEmpty()
+            .mapNotNull { entry ->
+                val code =
+                    entry
+                        ?.currencyCode
+                        ?.trim()
+                        ?.uppercase()
+                        .orEmpty()
+                val amount = entry?.amount?.toLong()
+                if (code.isNotEmpty() && amount != null && amount >= 0) code to amount else null
+            }.toMap()
 
     private suspend fun patchKey(
         id: String,

@@ -182,6 +182,7 @@ class SimulatedTerminal(
     companion object : DestinationRules {
         override val mode: TerminalMode get() = TerminalMode.SIMULATOR
         override val scannedWallets: Boolean get() = true
+        override val supportsOfflinePayments: Boolean get() = true
         override val secrets: Set<Secret> get() = emptySet()
         override val checksConnection: Boolean get() = false
         override val simulatesApi: Boolean get() = true
@@ -248,6 +249,7 @@ internal class LocalTerminal(
     companion object : DestinationRules {
         override val mode: TerminalMode get() = TerminalMode.TERMINAL
         override val scannedWallets: Boolean get() = true
+        override val supportsOfflinePayments: Boolean get() = true
         override val secrets: Set<Secret> get() = setOf(Secret.TERMINAL_PASSPHRASE)
         override val discoversTerminals: Boolean get() = true
 
@@ -428,6 +430,7 @@ internal class PaymentsAppDestination(
 
         override val mode: TerminalMode get() = TerminalMode.PAYMENTS_APP
         override val secrets: Set<Secret> get() = setOf(Secret.TERMINAL_PASSPHRASE)
+        override val supportsTerminalFeatures: Boolean get() = false
         override val boardsPhone: Boolean get() = true
         override val aborts: Boolean get() = false
         override val diagnoses: Boolean get() = false

@@ -27,7 +27,6 @@ import app.minimpos.core.receipt.ReceiptDocument
 import app.minimpos.terminal.client.PrintOutcome
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import java.time.LocalDate
 import java.time.ZoneId

@@ -2,7 +2,6 @@ package app.minimpos.app.terminal
 
 import app.minimpos.app.data.db.Failure
 import app.minimpos.app.data.db.SetupProblem
-import app.minimpos.app.data.security.Secret
 import app.minimpos.app.data.security.SecretStore
 import app.minimpos.app.data.settings.TerminalSettings
 import app.minimpos.core.payment.PaymentContext

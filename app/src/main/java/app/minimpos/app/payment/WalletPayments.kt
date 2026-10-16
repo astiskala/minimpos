@@ -12,7 +12,6 @@ import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import java.time.Clock
 import java.time.ZoneId
@@ -119,7 +118,6 @@ class WalletPayments(
     private val clock: Clock = Clock.systemUTC(),
     private val zone: () -> ZoneId = { ZoneId.systemDefault() },
 ) {
-    private val mutable = MutableStateFlow(WalletPaymentState())
     private val epochs = AtomicLong(clock.millis())
     private var prepared: Checkout? = null
     private var origin = WalletAvailability()
@@ -128,7 +126,8 @@ class WalletPayments(
     private var ending: Job? = null
 
     /** Scan presentation; financial progress is published separately by the existing lifecycle. */
-    val state: StateFlow<WalletPaymentState> = mutable.asStateFlow()
+    val state: StateFlow<WalletPaymentState>
+        field = MutableStateFlow(WalletPaymentState())
 
     /** Captures [checkout]; false when unavailable or a payment is already running. A sole wallet skips selection. */
     @Synchronized
@@ -137,7 +136,7 @@ class WalletPayments(
         stopNative()
         prepared = checkout
         origin = discovery.state.value
-        mutable.value =
+        state.value =
             WalletPaymentState(
                 stage = WalletScanStage.CHOOSING,
                 epoch = epochs.incrementAndGet(),
@@ -156,11 +155,11 @@ class WalletPayments(
     /** Chooses [wallet] only from the original offered list; defaults to native hardware, otherwise camera or offline demo. */
     @Synchronized
     fun choose(wallet: ScanWallet?) {
-        val current = mutable.value
+        val current = state.value
         if (current.stage in setOf(WalletScanStage.CLOSED, WalletScanStage.PAYING, WalletScanStage.VALIDATING)) return
         if (wallet == null) {
             stopNative()
-            mutable.value =
+            state.value =
                 current.copy(
                     stage = WalletScanStage.CHOOSING,
                     selected = null,
@@ -171,7 +170,7 @@ class WalletPayments(
             return
         }
         if (wallet !in current.wallets) return
-        mutable.value = current.copy(selected = wallet)
+        state.value = current.copy(selected = wallet)
         useSource(
             when {
                 current.nativeScanner -> WalletScanSource.NATIVE
@@ -184,7 +183,7 @@ class WalletPayments(
     /** Starts a fresh attempt from [source]; unsupported native/demo sources are ignored. */
     @Synchronized
     fun useSource(source: WalletScanSource) {
-        val current = mutable.value
+        val current = state.value
         if (current.selected == null ||
             current.stage in setOf(WalletScanStage.CLOSED, WalletScanStage.PAYING, WalletScanStage.VALIDATING)
         ) {
@@ -194,7 +193,7 @@ class WalletPayments(
         if (source == WalletScanSource.DEMO && !current.simulated) return
         stopNative()
         val next = current.copy(stage = WalletScanStage.SCANNING, source = source, epoch = epochs.incrementAndGet(), problem = null)
-        mutable.value = next
+        state.value = next
         if (source == WalletScanSource.NATIVE) startNative(next.epoch)
     }
 
@@ -206,9 +205,9 @@ class WalletPayments(
     /** Stops pre-payment scanning when backgrounded; returning requires an explicit new attempt. */
     @Synchronized
     fun background() {
-        if (mutable.value.stage !in setOf(WalletScanStage.SCANNING, WalletScanStage.VALIDATING)) return
+        if (state.value.stage !in setOf(WalletScanStage.SCANNING, WalletScanStage.VALIDATING)) return
         stopNative()
-        mutable.value = mutable.value.copy(stage = WalletScanStage.PAUSED, epoch = epochs.incrementAndGet())
+        state.value = state.value.copy(stage = WalletScanStage.PAUSED, epoch = epochs.incrementAndGet())
     }
 
     /** Abandons transient scanning without changing checkout or aborting a payment already handed off. */
@@ -216,7 +215,7 @@ class WalletPayments(
     fun close() {
         stopNative()
         prepared = null
-        mutable.value = WalletPaymentState(epoch = epochs.incrementAndGet())
+        state.value = WalletPaymentState(epoch = epochs.incrementAndGet())
     }
 
     /** Checks transient [code] for active attempt [epoch], leaving camera scanning active after invalid input. */
@@ -225,11 +224,11 @@ class WalletPayments(
         code: String,
         epoch: Long,
     ): Boolean {
-        val current = mutable.value
+        val current = state.value
         if (current.epoch != epoch || current.stage != WalletScanStage.SCANNING) return false
         val valid = current.selected?.accepts(code) == true
         if (!valid) {
-            mutable.value =
+            state.value =
                 current.copy(
                     problem = WalletScanProblem.INVALID_CODE,
                     stage = if (current.source == WalletScanSource.NATIVE) WalletScanStage.PAUSED else WalletScanStage.SCANNING,
@@ -245,15 +244,15 @@ class WalletPayments(
         epoch: Long,
     ): Boolean {
         if (!accepts(code, epoch)) return false
-        val current = mutable.value
+        val current = state.value
         val checkout = prepared ?: return false
         val captured = origin
-        mutable.value = current.copy(stage = WalletScanStage.VALIDATING, problem = null)
+        state.value = current.copy(stage = WalletScanStage.VALIDATING, problem = null)
         scope.launch {
             val actual = currentCheckout()
             val setupReady = discovery.current(captured)
             synchronized(this@WalletPayments) {
-                if (mutable.value.epoch != epoch || mutable.value.stage != WalletScanStage.VALIDATING) return@synchronized
+                if (state.value.epoch != epoch || state.value.stage != WalletScanStage.VALIDATING) return@synchronized
                 val selected = checkNotNull(current.selected)
                 val start =
                     if (setupReady) {
@@ -268,18 +267,18 @@ class WalletPayments(
                     }
                 when {
                     start == null -> {
-                        mutable.value =
+                        state.value =
                             current.copy(stage = WalletScanStage.PAUSED, problem = WalletScanProblem.CHECKOUT_CHANGED)
                     }
 
                     payments.state.value is TransactionState.Processing -> {
-                        mutable.value =
+                        state.value =
                             current.copy(stage = WalletScanStage.PAUSED, problem = WalletScanProblem.BUSY)
                     }
 
                     else -> {
                         payments.start(start)
-                        mutable.value = current.copy(stage = WalletScanStage.PAYING)
+                        state.value = current.copy(stage = WalletScanStage.PAYING)
                     }
                 }
             }
@@ -305,7 +304,7 @@ class WalletPayments(
                     return@launch
                 }
                 synchronized(this@WalletPayments) {
-                    if (mutable.value.epoch == epoch && mutable.value.stage == WalletScanStage.SCANNING) native = scanner to epoch
+                    if (state.value.epoch == epoch && state.value.stage == WalletScanStage.SCANNING) native = scanner to epoch
                 }
                 if (state.value.epoch != epoch || state.value.stage != WalletScanStage.SCANNING) return@launch
                 when (val result = scanner.read(epoch)) {
@@ -320,8 +319,8 @@ class WalletPayments(
 
     @Synchronized
     private fun failedScan(epoch: Long) {
-        if (mutable.value.epoch == epoch && mutable.value.stage == WalletScanStage.SCANNING) {
-            mutable.value = mutable.value.copy(stage = WalletScanStage.PAUSED, problem = WalletScanProblem.SCAN_FAILED)
+        if (state.value.epoch == epoch && state.value.stage == WalletScanStage.SCANNING) {
+            state.value = state.value.copy(stage = WalletScanStage.PAUSED, problem = WalletScanProblem.SCAN_FAILED)
         }
     }
 

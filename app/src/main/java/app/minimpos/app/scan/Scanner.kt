@@ -319,8 +319,8 @@ private class BarcodeAnalyzer(
         height: Int,
     ): ByteArray {
         val rotated = ByteArray(width * height)
-        for (y in 0 until height) {
-            for (x in 0 until width) {
+        for (y in 0..<height) {
+            for (x in 0..<width) {
                 rotated[x * height + (height - 1 - y)] = data[y * stride + x]
             }
         }

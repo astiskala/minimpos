@@ -18,6 +18,7 @@ import app.minimpos.terminal.transport.ExternalText
 import app.minimpos.terminal.transport.Fault
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlin.uuid.Uuid
 
 /** What became of entering a tip, a capture or an authorisation adjustment, see [Captures]. */
 sealed interface CaptureResult {
@@ -202,7 +203,7 @@ class Captures(
         val psp = sale.pspReference ?: return CaptureResult.NotAllowed
         // An unresolved request keeps its identity; a separate renewal or amount change gets a new identity.
         if (sale.adjustmentPending && sale.adjustmentAmountMinor != amount) return CaptureResult.NotAllowed
-        val key = if (sale.adjustmentPending) checkNotNull(sale.adjustmentKey) else "adjust-${java.util.UUID.randomUUID()}"
+        val key = if (sale.adjustmentPending) checkNotNull(sale.adjustmentKey) else "adjust-${Uuid.random()}"
         sales.record(sale.id, SaleEvent.AdjustmentSending(key, amount))
         val result =
             modifications.updateAmount(

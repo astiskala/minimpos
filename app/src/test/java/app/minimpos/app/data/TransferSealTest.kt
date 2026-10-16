@@ -6,7 +6,7 @@ import com.google.common.truth.Truth.assertThat
 import org.junit.Assert.assertThrows
 import org.junit.Test
 import java.security.SecureRandom
-import java.util.Base64
+import kotlin.io.encoding.Base64
 
 /** Plain JUnit: sealing needs only the JDK's crypto. */
 class TransferSealTest {
@@ -67,8 +67,8 @@ class TransferSealTest {
 
     @Test
     fun `PIN verifiers copied from another terminal are checked before they are stored`() {
-        val hash = Base64.getEncoder().encodeToString(ByteArray(32))
-        val salt = Base64.getEncoder().encodeToString(ByteArray(16))
+        val hash = Base64.encode(ByteArray(32))
+        val salt = Base64.encode(ByteArray(16))
         assertThat(PinManager.isValidVerifier("v1:20000:$salt:$hash")).isTrue()
         listOf(
             "v2:20000:$salt:$hash",

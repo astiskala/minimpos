@@ -14,7 +14,6 @@ import app.minimpos.app.terminal.MotoCapability
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.update
@@ -48,10 +47,9 @@ class CapabilitiesViewModel(
     /** Current non-secret capability state. */
     val state: StateFlow<AdyenCapabilitiesState> = discovery.state
 
-    private val _actions = MutableStateFlow(CapabilitiesActions())
-
     /** Outcomes of the latest capability updates. */
-    val actions: StateFlow<CapabilitiesActions> = _actions.asStateFlow()
+    val actions: StateFlow<CapabilitiesActions>
+        field = MutableStateFlow(CapabilitiesActions())
 
     init {
         viewModelScope.launch {
@@ -65,7 +63,7 @@ class CapabilitiesViewModel(
     fun refresh() {
         if (state.value.checking) return
         launchWrite({ discovery.refresh() }) { _ ->
-            _actions.update { it.copy(revision = it.revision + 1) }
+            actions.update { it.copy(revision = it.revision + 1) }
         }
     }
 
@@ -74,10 +72,10 @@ class CapabilitiesViewModel(
         currency: String,
         gratuity: GratuityCapability?,
     ) {
-        if (_actions.value.gratuity.running) return
-        _actions.update { it.copy(gratuity = ActionState(running = true)) }
+        if (actions.value.gratuity.running) return
+        actions.update { it.copy(gratuity = ActionState(running = true)) }
         launchWrite({ discovery.updateGratuity(currency, gratuity) }) { result ->
-            _actions.update {
+            actions.update {
                 it.copy(
                     gratuity = result.toActionState(),
                     revision = if (result == CapabilityPatchResult.Updated) it.revision + 1 else it.revision,
@@ -88,10 +86,10 @@ class CapabilitiesViewModel(
 
     /** Updates the terminal's Dynamic Currency Conversion setting. */
     fun saveDcc(enabled: Boolean) {
-        if (_actions.value.dcc.running) return
-        _actions.update { it.copy(dcc = ActionState(running = true)) }
+        if (actions.value.dcc.running) return
+        actions.update { it.copy(dcc = ActionState(running = true)) }
         launchWrite({ discovery.updateDcc(enabled) }) { result ->
-            _actions.update {
+            actions.update {
                 it.copy(
                     dcc = result.toActionState(),
                     revision = if (result == CapabilityPatchResult.Updated) it.revision + 1 else it.revision,
@@ -102,10 +100,10 @@ class CapabilitiesViewModel(
 
     /** Updates the terminal's MOTO configuration. */
     fun saveMoto(moto: MotoCapability) {
-        if (_actions.value.moto.running) return
-        _actions.update { it.copy(moto = ActionState(running = true)) }
+        if (actions.value.moto.running) return
+        actions.update { it.copy(moto = ActionState(running = true)) }
         launchWrite({ discovery.updateMoto(moto) }) { result ->
-            _actions.update {
+            actions.update {
                 it.copy(
                     moto = result.toActionState(),
                     revision = if (result == CapabilityPatchResult.Updated) it.revision + 1 else it.revision,
@@ -121,8 +119,8 @@ class CapabilitiesViewModel(
         maxStoreAndForwardMinor: Int?,
         maxPayments: Int?,
     ) {
-        if (_actions.value.offline.running) return
-        _actions.update { it.copy(offline = ActionState(running = true)) }
+        if (actions.value.offline.running) return
+        actions.update { it.copy(offline = ActionState(running = true)) }
         launchWrite({
             discovery.updateOffline(
                 currency = currency,
@@ -131,7 +129,7 @@ class CapabilitiesViewModel(
                 maxPayments = maxPayments,
             )
         }) { result ->
-            _actions.update {
+            actions.update {
                 it.copy(
                     offline = result.toActionState(),
                     revision = if (result == CapabilityPatchResult.Updated) it.revision + 1 else it.revision,

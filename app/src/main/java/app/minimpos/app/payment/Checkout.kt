@@ -184,7 +184,7 @@ data class Checkout(
         if (!askGratuity) return null
         val preTaxAmount =
             currency.toMajor(totals.amounts.net).takeIf {
-                payment.tipOnPreTax && payment.chargeTax && totals.amounts.net in 1 until totals.amounts.gross
+                payment.tipOnPreTax && payment.chargeTax && totals.amounts.net in 1..<totals.amounts.gross
             }
         if (!payment.dynamicTipOverride && preTaxAmount == null) return TerminalTipOptions()
         val suggestions =
@@ -241,7 +241,7 @@ data class Checkout(
     /** Amount requested on the first tender in minor units: operator-entered split amount when valid, else full gross total. */
     val requestedAmountMinor: Long
         get() =
-            form.splitAmountMinor?.takeIf { !preAuthorisation && it in 1 until totals.amounts.gross }
+            form.splitAmountMinor?.takeIf { !preAuthorisation && it in 1..<totals.amounts.gross }
                 ?: totals.amounts.gross
 
     /** Whether "Pay" is enabled: something to charge and every entered field valid. */

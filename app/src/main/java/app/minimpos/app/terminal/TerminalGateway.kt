@@ -7,8 +7,6 @@ import android.os.Build
 import android.provider.Settings
 import app.minimpos.app.data.db.Failure
 import app.minimpos.app.data.db.SetupProblem
-import app.minimpos.app.data.security.SecretStore
-import app.minimpos.app.data.settings.TerminalMode
 import app.minimpos.core.payment.PaymentContext
 import app.minimpos.terminal.client.BarcodeScan
 import app.minimpos.terminal.client.DiagnosisResult
@@ -27,7 +25,6 @@ import app.minimpos.terminal.transport.AdyenCloudDevices
 import app.minimpos.terminal.transport.AdyenLocalTransport
 import app.minimpos.terminal.transport.CloudCredentials
 import app.minimpos.terminal.transport.CloudDevices
-import app.minimpos.terminal.transport.CloudEndpoint
 import app.minimpos.terminal.transport.CloudRegion
 import app.minimpos.terminal.transport.Fault
 import app.minimpos.terminal.transport.TerminalEnvironment
@@ -36,7 +33,6 @@ import app.minimpos.terminal.transport.TerminalTls
 import app.minimpos.terminal.transport.TerminalTransport
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import java.util.Locale
 import java.util.concurrent.atomic.AtomicReference
@@ -161,17 +157,16 @@ sealed interface TerminalConnection {
 
 /** Collects what the simulator "prints", so it can be shown on screen. Thread-safe. */
 class VirtualPrinter {
-    private val _jobs = MutableStateFlow<List<PrintJob>>(emptyList())
-
     /** Everything printed since the last [clear], oldest first. */
-    val jobs: StateFlow<List<PrintJob>> = _jobs.asStateFlow()
+    val jobs: StateFlow<List<PrintJob>>
+        field = MutableStateFlow<List<PrintJob>>(emptyList())
 
     /** Adds [job] to [jobs]; the simulator calls this for each print request. */
-    fun print(job: PrintJob) = _jobs.update { it + job }
+    fun print(job: PrintJob) = jobs.update { it + job }
 
     /** Discards the printed jobs, when the operator dismisses the printout. */
     fun clear() {
-        _jobs.value = emptyList()
+        jobs.value = emptyList()
     }
 }
 
@@ -271,10 +266,20 @@ class TerminalGateway(
     /** Reads this device's terminal certificate before credentials are entered; tests replace the TLS connection. */
     private val localEnvironment: suspend () -> TerminalEnvironment? = { TerminalTls().readEnvironment(TerminalSetup.LOCALHOST) },
 ) {
-    private val _detectedEnvironment = MutableStateFlow<DetectedEnvironment?>(null)
+    /** Certificate environment or selected cloud endpoint from the last connection. */
+    val detectedEnvironment: StateFlow<DetectedEnvironment?>
+        field = MutableStateFlow<DetectedEnvironment?>(null)
+
+    /**
+     * Whether a terminal has a printer, by POIID, as far as it has told: a diagnosis reports a printer status only when
+     * one is fitted, and a print request can be refused because there is none. Terminals not asked yet are absent.
+     */
+    val printers: StateFlow<Map<String, Boolean>>
+        field = MutableStateFlow<Map<String, Boolean>>(emptyMap())
+
     private val cloudTerminal =
         CloudTerminal(cloud, setups.device) { setup, endpoint ->
-            _detectedEnvironment.value = DetectedEnvironment(setup, endpoint.environment, endpoint.region)
+            detectedEnvironment.value = DetectedEnvironment(setup, endpoint.environment, endpoint.region)
         }
     private val destinations =
         listOf(
@@ -283,17 +288,6 @@ class TerminalGateway(
             cloudTerminal,
             PaymentsAppDestination(paymentsApp),
         )
-
-    /** Certificate environment or selected cloud endpoint from the last connection. */
-    val detectedEnvironment: StateFlow<DetectedEnvironment?> = _detectedEnvironment.asStateFlow()
-
-    private val _printers = MutableStateFlow<Map<String, Boolean>>(emptyMap())
-
-    /**
-     * Whether a terminal has a printer, by POIID, as far as it has told: a diagnosis reports a printer status only when
-     * one is fitted, and a print request can be refused because there is none. Terminals not asked yet are absent.
-     */
-    val printers: StateFlow<Map<String, Boolean>> = _printers.asStateFlow()
 
     /**
      * Takes a card payment, see [TerminalClient.pay]. [onSending] is called with the terminal's POIID right before the
@@ -388,7 +382,7 @@ class TerminalGateway(
             is Connection.Open -> {
                 val outcome = connection.client.print(jobs)
                 if (outcome is PrintOutcome.Failed && outcome.noPrinter) {
-                    _printers.update { it + (connection.client.identity.poiId to false) }
+                    printers.update { it + (connection.client.identity.poiId to false) }
                 }
                 Attempt.Made(outcome)
             }
@@ -413,7 +407,7 @@ class TerminalGateway(
         val connection = connection()
         return candidates.diagnose(connection).also { result ->
             if (connection is Connection.Open && result is TerminalConnection.Connected && !result.setupOnly) {
-                _printers.update { it + (connection.client.identity.poiId to result.diagnosis.hasPrinter) }
+                printers.update { it + (connection.client.identity.poiId to result.diagnosis.hasPrinter) }
             }
         }
     }
@@ -508,7 +502,7 @@ class TerminalGateway(
         setup: TerminalSetup,
         environment: TerminalEnvironment,
     ) {
-        _detectedEnvironment.value = DetectedEnvironment(setup, environment)
+        detectedEnvironment.value = DetectedEnvironment(setup, environment)
     }
 
     /**

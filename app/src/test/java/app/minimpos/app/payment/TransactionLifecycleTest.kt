@@ -21,7 +21,6 @@ import app.minimpos.app.history.RefundStart
 import app.minimpos.app.history.RefundablePayment
 import app.minimpos.app.history.actions
 import app.minimpos.app.history.standing
-import app.minimpos.app.payment.StoredTransaction
 import app.minimpos.core.cart.AppliedTax
 import app.minimpos.core.cart.Cart
 import app.minimpos.core.cart.CartProduct

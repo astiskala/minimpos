@@ -1,7 +1,5 @@
 package app.minimpos.app.feature.products
 
-import app.minimpos.app.feature.products.ProductEditUiState
-import app.minimpos.app.feature.products.ProductForm
 import app.minimpos.core.money.CurrencySpec
 import com.google.common.truth.Truth.assertThat
 import org.junit.Test

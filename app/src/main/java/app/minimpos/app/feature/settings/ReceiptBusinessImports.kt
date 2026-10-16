@@ -14,7 +14,6 @@ import app.minimpos.app.terminal.ReceiptBusinesses
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -39,19 +38,19 @@ internal class ReceiptBusinessImports(
     private val operations: SettingsOperations,
     private val observedReceipt: Flow<ReceiptSettings>,
 ) {
-    private val _state = MutableStateFlow(ReceiptBusinessImportState())
-    val state: StateFlow<ReceiptBusinessImportState> = _state.asStateFlow()
+    val state: StateFlow<ReceiptBusinessImportState>
+        field = MutableStateFlow(ReceiptBusinessImportState())
     private var origin: TerminalSettings? = null
 
     fun find(automatic: Boolean = false) {
-        if (_state.value.lookup.running) return
-        _state.update { it.copy(lookup = ActionState(running = true), proposal = null) }
+        if (state.value.lookup.running) return
+        state.update { it.copy(lookup = ActionState(running = true), proposal = null) }
         owner.viewModelScope.launch {
             origin = operations.changes.first().terminal
             val result = details.lookup()
             val changed = details.validateOrigin(checkNotNull(origin))
             if (changed != null) {
-                _state.update {
+                state.update {
                     it.copy(
                         lookup =
                             ActionState(
@@ -62,7 +61,7 @@ internal class ReceiptBusinessImports(
                 }
                 return@launch
             }
-            _state.update {
+            state.update {
                 when (result) {
                     is ReceiptBusinesses.Found -> {
                         it.copy(lookup = ActionState(done = true), proposal = result.business)
@@ -78,15 +77,15 @@ internal class ReceiptBusinessImports(
     }
 
     fun choose(business: ReceiptBusiness?) {
-        if (business != null && (business != _state.value.proposal || !business.available)) return
-        _state.update { it.copy(proposal = null, lookup = ActionState()) }
+        if (business != null && (business != state.value.proposal || !business.available)) return
+        state.update { it.copy(proposal = null, lookup = ActionState()) }
         if (business != null) {
             owner.launchWrite({
                 operations.update { if (it.terminal == origin) it.copy(receipt = business.applyTo(it.receipt)) else it }
                 val receipt = operations.changes.first().receipt
                 observedReceipt.first { it == receipt }
             }) { _ ->
-                _state.update { it.copy(revision = it.revision + 1) }
+                state.update { it.copy(revision = it.revision + 1) }
             }
         }
     }

@@ -22,7 +22,6 @@ import app.minimpos.app.data.settings.ShopperReferenceSource
 import app.minimpos.app.terminal.AndroidDeviceInfo
 import app.minimpos.core.money.CurrencySpec
 import app.minimpos.terminal.client.RecurringModel
-import app.minimpos.terminal.transport.TerminalEnvironment
 import com.google.common.truth.Truth.assertThat
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking

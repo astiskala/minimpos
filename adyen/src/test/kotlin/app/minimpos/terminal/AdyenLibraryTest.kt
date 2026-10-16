@@ -25,8 +25,8 @@ import java.math.BigDecimal
 import java.time.Clock
 import java.time.Instant
 import java.time.ZoneOffset
-import java.util.Base64
 import javax.xml.datatype.DatatypeFactory
+import kotlin.io.encoding.Base64
 
 /** Pins the behaviour of the official Adyen library that Mini mPOS relies on. */
 class AdyenLibraryTest {
@@ -39,7 +39,7 @@ class AdyenLibraryTest {
 
     private fun secured(
         blob: String = expectedBlob,
-        hmac: ByteArray = Base64.getDecoder().decode(expectedHmac),
+        hmac: ByteArray = Base64.decode(expectedHmac),
     ) = SaleToPOISecuredMessage().apply {
         nexoBlob = blob
         securityTrailer =
@@ -59,7 +59,7 @@ class AdyenLibraryTest {
 
     @Test
     fun `Adyen NexoCrypto rejects tampering and wrong keys`() {
-        val tampered = Base64.getDecoder().decode(expectedHmac).also { it[0] = (it[0] + 1).toByte() }
+        val tampered = Base64.decode(expectedHmac).also { it[0] = (it[0] + 1).toByte() }
         assertThrows(NexoCryptoException::class.java) { NexoCrypto(key.toSecurityKey()).decrypt(secured(hmac = tampered)) }
         val wrong = TerminalKey("mykey", "another passphrase", 1).toSecurityKey()
         assertThrows(Exception::class.java) { NexoCrypto(wrong).decrypt(secured()) }
@@ -129,7 +129,7 @@ class AdyenLibraryTest {
         assertThat(amounts["RequestedAmount"].asBigDecimal).isEqualTo(BigDecimal("12.50"))
         val saleData = payment.getAsJsonObject("SaleData")
         assertThat(saleData.getAsJsonObject("SaleTransactionID")["TimeStamp"].asString).isEqualTo("2026-09-30T01:02:03.456Z")
-        val acquirer = JsonParser.parseString(String(Base64.getDecoder().decode(saleData["SaleToAcquirerData"].asString))).asJsonObject
+        val acquirer = JsonParser.parseString(String(Base64.decode(saleData["SaleToAcquirerData"].asString))).asJsonObject
         assertThat(acquirer["shopperReference"].asString).isEqualTo("CUST-1")
         assertThat(acquirer["recurringProcessingModel"].asString).isEqualTo("UnscheduledCardOnFile")
         assertThat(acquirer["tenderOption"].asString).isEqualTo("ReceiptHandler")

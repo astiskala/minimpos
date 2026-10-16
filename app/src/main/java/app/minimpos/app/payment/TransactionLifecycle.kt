@@ -18,13 +18,12 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import java.time.Clock
-import java.util.UUID
+import kotlin.uuid.Uuid
 
 /** Where the current transaction of a [TransactionLifecycle] is; there is at most one at a time. */
 sealed interface TransactionState {
@@ -210,14 +209,13 @@ class TransactionLifecycle<R>(
     private val book: TransactionBook<R>,
     private val onSucceeded: (id: String, request: R) -> Unit = { _, _ -> },
     private val clock: Clock = Clock.systemUTC(),
-    private val newId: () -> String = { UUID.randomUUID().toString() },
+    private val newId: () -> String = { Uuid.random().toString() },
     private val newServiceId: () -> String = { TerminalClient.randomServiceId() },
     private val permits: suspend (R) -> Boolean = { true },
 ) {
-    private val _state = MutableStateFlow<TransactionState>(TransactionState.Idle)
-
     /** The current transaction; the waiting and result screens follow it. */
-    val state: StateFlow<TransactionState> = _state.asStateFlow()
+    val state: StateFlow<TransactionState>
+        field = MutableStateFlow<TransactionState>(TransactionState.Idle)
     private val busyServiceIds = mutableMapOf<String, String>()
     private val unresolvedRequests = mutableMapOf<String, R>()
     private val rechecks = Mutex()
@@ -229,9 +227,9 @@ class TransactionLifecycle<R>(
      */
     @Synchronized
     fun start(request: R): String {
-        check(_state.value !is TransactionState.Processing) { "A ${book.kind.name.lowercase()} is already in progress" }
+        check(state.value !is TransactionState.Processing) { "A ${book.kind.name.lowercase()} is already in progress" }
         val id = book.existingId(request) ?: newId()
-        _state.value = TransactionState.Processing(id)
+        state.value = TransactionState.Processing(id)
         synchronized(unresolvedRequests) { unresolvedRequests[id] = request }
         scope.launch {
             try {
@@ -249,7 +247,7 @@ class TransactionLifecycle<R>(
                 } catch (ignored: SQLException) {
                     // It stays PENDING, which the next start turns into UNKNOWN.
                 }
-                _state.value = TransactionState.Finished(id)
+                state.value = TransactionState.Finished(id)
             } finally {
                 book.release(request)
             }
@@ -262,9 +260,9 @@ class TransactionLifecycle<R>(
      * sent. The outcome still arrives through the transaction itself, usually as cancelled.
      */
     fun cancel() {
-        val processing = _state.value as? TransactionState.Processing ?: return
+        val processing = state.value as? TransactionState.Processing ?: return
         val serviceId = processing.serviceId ?: return
-        _state.value = processing.copy(cancelling = true)
+        state.value = processing.copy(cancelling = true)
         scope.launch { gateway.abort(serviceId, book.kind) }
     }
 
@@ -282,7 +280,7 @@ class TransactionLifecycle<R>(
 
     /** Returns to [TransactionState.Idle] once the result has been seen, so the next transaction can start. */
     fun acknowledge() {
-        if (_state.value is TransactionState.Finished) _state.value = TransactionState.Idle
+        if (state.value is TransactionState.Finished) state.value = TransactionState.Idle
     }
 
     /**
@@ -312,7 +310,7 @@ class TransactionLifecycle<R>(
         book.open(id, request, serviceId, clock.millis())
         val onSending: suspend (String) -> Unit = { poiId ->
             book.sending(id, poiId)
-            _state.update { current ->
+            state.update { current ->
                 (current as? TransactionState.Processing)?.takeIf { it.id == id }?.copy(serviceId = serviceId) ?: current
             }
         }
@@ -355,7 +353,7 @@ class TransactionLifecycle<R>(
             }
         book.settle(id, settlement)
         complete(id, settlement)
-        _state.value = TransactionState.Finished(id)
+        state.value = TransactionState.Finished(id)
     }
 
     private fun complete(

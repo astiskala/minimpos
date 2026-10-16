@@ -12,7 +12,6 @@ import app.minimpos.terminal.transport.WalletMethodsApi
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
@@ -69,12 +68,12 @@ class WalletDiscovery(
     private val terminals: (String) -> TerminalDetailsApi,
     private val connect: (String, TerminalEnvironment) -> WalletMethodsApi,
 ) {
-    private val mutable = MutableStateFlow(WalletAvailability())
     private val refreshes = Mutex()
     private val started = AtomicBoolean()
 
     /** Current non-secret availability and Settings-only diagnostics. */
-    val state: StateFlow<WalletAvailability> = mutable.asStateFlow()
+    val state: StateFlow<WalletAvailability>
+        field = MutableStateFlow(WalletAvailability())
 
     /** Starts once per process; changed setup invalidates availability before starting a new lookup. */
     fun start() {
@@ -85,7 +84,7 @@ class WalletDiscovery(
                     Triple(setup.settings.terminal to setup.settings.verifiedSetup, setup.paymentContext(), setup.problem)
                 }.distinctUntilChanged()
                 .collectLatest {
-                    mutable.value = WalletAvailability()
+                    state.value = WalletAvailability()
                     refresh()
                 }
         }
@@ -93,7 +92,7 @@ class WalletDiscovery(
 
     /** Requests a manual refresh; duplicate taps while checking do not queue additional requests. */
     fun refreshInBackground() {
-        if (!mutable.value.checking) scope.launch { refresh() }
+        if (!state.value.checking) scope.launch { refresh() }
     }
 
     /** Performs one serialized read, retaining cached offers only after a transient failure for unchanged setup. */
@@ -102,7 +101,7 @@ class WalletDiscovery(
             val origin = setups.unlocked()
             val setup = origin.setup
             val context = setup.paymentContext()
-            val old = mutable.value.takeIf { it.identity == origin.validationIdentity && it.context == context } ?: WalletAvailability()
+            val old = state.value.takeIf { it.identity == origin.validationIdentity && it.context == context } ?: WalletAvailability()
             val initial =
                 old.copy(
                     context = context,
@@ -111,7 +110,7 @@ class WalletDiscovery(
                     simulated = setup.apiSetup == ApiSetup.Simulated,
                     checking = true,
                 )
-            mutable.value = initial
+            state.value = initial
             when {
                 !setup.scannedWallets -> {
                     publish(origin, initial.copy(checking = false))
@@ -209,7 +208,7 @@ class WalletDiscovery(
     ) {
         val actual = setups.unlocked()
         if (actual.validationIdentity == origin.validationIdentity && actual.setup.settings.terminal == origin.setup.settings.terminal) {
-            mutable.value = result
+            state.value = result
         }
     }
 }

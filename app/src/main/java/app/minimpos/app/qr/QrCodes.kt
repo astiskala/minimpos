@@ -51,8 +51,8 @@ object QrCodes {
         val scale = (sizePx / matrix.width).coerceAtLeast(1)
         val size = matrix.width * scale
         val bitmap = createBitmap(size, size)
-        for (y in 0 until size) {
-            for (x in 0 until size) {
+        for (y in 0..<size) {
+            for (x in 0..<size) {
                 bitmap[x, y] = if (matrix[x / scale, y / scale]) Color.BLACK else Color.WHITE
             }
         }

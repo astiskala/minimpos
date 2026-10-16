@@ -4,7 +4,6 @@ import app.minimpos.app.FakeDevice
 import app.minimpos.app.data.db.SetupProblem
 import app.minimpos.app.data.security.Secret
 import app.minimpos.app.data.settings.AppSettings
-import app.minimpos.app.data.settings.PaymentSettings
 import app.minimpos.app.data.settings.PrinterMode
 import app.minimpos.app.data.settings.TerminalMode
 import app.minimpos.app.data.settings.TerminalSettings

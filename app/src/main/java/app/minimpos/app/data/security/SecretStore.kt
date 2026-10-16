@@ -20,11 +20,11 @@ import java.security.GeneralSecurityException
 import java.security.KeyStore
 import java.security.MessageDigest
 import java.security.ProviderException
-import java.util.Base64
 import javax.crypto.Cipher
 import javax.crypto.KeyGenerator
 import javax.crypto.SecretKey
 import javax.crypto.spec.GCMParameterSpec
+import kotlin.io.encoding.Base64
 
 /** The credentials the app keeps; each is stored under its enum name in [SecretBlob]. */
 enum class Secret {
@@ -271,7 +271,7 @@ class SecretStore(
     private suspend fun decrypt(stored: String): String? =
         withContext(io) {
             try {
-                cipher.decrypt(Base64.getDecoder().decode(stored)).decodeToString()
+                cipher.decrypt(Base64.decode(stored)).decodeToString()
             } catch (ignored: GeneralSecurityException) {
                 null
             } catch (ignored: IllegalArgumentException) {
@@ -327,7 +327,7 @@ class SecretStore(
                                 .append(value)
                         }
                     }
-                Base64.getEncoder().encodeToString(
+                Base64.encode(
                     MessageDigest
                         .getInstance("SHA-256")
                         .digest(text.toByteArray()),
@@ -356,7 +356,7 @@ class SecretStore(
     private suspend fun encrypt(value: String): String =
         withContext(io) {
             try {
-                Base64.getEncoder().encodeToString(cipher.encrypt(value.toByteArray()))
+                Base64.encode(cipher.encrypt(value.toByteArray()))
             } catch (e: GeneralSecurityException) {
                 throw SecretStoreException(e)
             } catch (e: ProviderException) {

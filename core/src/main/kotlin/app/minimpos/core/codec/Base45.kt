@@ -58,7 +58,7 @@ object Base45 {
             val chunk = minOf(GROUP_CHARS, text.length - i)
             var n = 0
             var factor = 1
-            for (j in 0 until chunk) {
+            for (j in 0..<chunk) {
                 n += value(text[i + j]) * factor
                 factor *= BASE
             }

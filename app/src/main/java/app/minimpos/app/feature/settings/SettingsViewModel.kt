@@ -30,7 +30,6 @@ import app.minimpos.core.receipt.ReceiptDocument
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
@@ -171,10 +170,9 @@ class SettingsViewModel(
             )
         }.stateIn(viewModelScope, SharingStarted.Eagerly, SettingsUiState())
 
-    private val _actions = MutableStateFlow(SettingsActions())
-
     /** Outcomes of the latest actions. */
-    val actions: StateFlow<SettingsActions> = _actions.asStateFlow()
+    val actions: StateFlow<SettingsActions>
+        field = MutableStateFlow(SettingsActions())
 
     /** Explicit environment-change confirmation, separate from pricing confirmation. */
     internal val environment = HistorySwitchConfirmation(this, historySwitches)
@@ -193,7 +191,7 @@ class SettingsViewModel(
         taxRate: TaxRateEntity,
         makeDefault: Boolean,
     ) {
-        _actions.update { it.copy(taxRateInUse = null) }
+        actions.update { it.copy(taxRateInUse = null) }
         launchWrite({
             val id = catalog.saveTaxRate(taxRate.copy(name = taxRate.name.trim()))
             if (makeDefault) pricingChanges.update { it.copy(payment = it.payment.copy(defaultTaxRateId = id)) }
@@ -204,8 +202,8 @@ class SettingsViewModel(
     fun deleteTaxRate(taxRate: TaxRateEntity) {
         launchWrite({ catalog.deleteTaxRate(taxRate) }) { result ->
             when (result) {
-                DeleteResult.Deleted, DeleteResult.LastRate -> _actions.update { it.copy(taxRateInUse = null) }
-                is DeleteResult.InUse -> _actions.update { it.copy(taxRateInUse = result.productCount) }
+                DeleteResult.Deleted, DeleteResult.LastRate -> actions.update { it.copy(taxRateInUse = null) }
+                is DeleteResult.InUse -> actions.update { it.copy(taxRateInUse = result.productCount) }
             }
         }
     }
@@ -215,10 +213,10 @@ class SettingsViewModel(
         secret: Secret,
         value: String?,
     ) {
-        if (secret == Secret.ADYEN_API_KEY) _actions.update { it.copy(apiKeyStored = false) }
+        if (secret == Secret.ADYEN_API_KEY) actions.update { it.copy(apiKeyStored = false) }
         launchWrite({
             if (storeSecret { secrets.set(secret, value) } && secret == Secret.ADYEN_API_KEY && !value.isNullOrBlank()) {
-                _actions.update { it.copy(apiKeyStored = true) }
+                actions.update { it.copy(apiKeyStored = true) }
             }
         })
     }
@@ -245,12 +243,12 @@ class SettingsViewModel(
     private suspend fun storeSecret(store: suspend () -> Unit): Boolean =
         when (val error = runSecretWrite(store)) {
             null -> {
-                _actions.update { it.copy(secretError = null) }
+                actions.update { it.copy(secretError = null) }
                 true
             }
 
             else -> {
-                _actions.update { it.copy(secretError = error) }
+                actions.update { it.copy(secretError = error) }
                 false
             }
         }
@@ -274,7 +272,7 @@ class SettingsViewModel(
         val apiKey = secret == Secret.ADYEN_API_KEY
 
         fun SettingsActions.with(state: ActionState) = if (api) copy(api = state) else copy(connection = state)
-        _actions.update {
+        actions.update {
             val started = it.with(ActionState(running = true)).copy(apiKeyStored = false, passphraseStored = false)
             if (test == SettingsTest.CLOUD) started.copy(api = ActionState()) else started
         }
@@ -283,11 +281,11 @@ class SettingsViewModel(
             if (entered != null) {
                 val stored = persisting { storeSecret { secrets.set(secret, entered) } } && secrets.get(secret) == entered
                 if (!stored) {
-                    val error = _actions.value.secretError ?: SECURE_STORAGE_FAILED
-                    _actions.update { it.with(ActionState(outcome = error, isError = true)) }
+                    val error = actions.value.secretError ?: SECURE_STORAGE_FAILED
+                    actions.update { it.with(ActionState(outcome = error, isError = true)) }
                     return@launch
                 }
-                _actions.update { if (apiKey) it.copy(apiKeyStored = true) else it.copy(passphraseStored = true) }
+                actions.update { if (apiKey) it.copy(apiKeyStored = true) else it.copy(passphraseStored = true) }
             }
             run(test)
         }
@@ -298,18 +296,18 @@ class SettingsViewModel(
         when (test) {
             SettingsTest.API -> {
                 val result = apiResult()
-                _actions.update { it.copy(api = result) }
+                actions.update { it.copy(api = result) }
             }
 
             SettingsTest.CONNECTION -> {
                 val result = connectionResult()
-                _actions.update { it.copy(connection = result) }
+                actions.update { it.copy(connection = result) }
             }
 
             SettingsTest.CLOUD -> {
                 val connection = connectionResult()
                 val checked = if (connection.done) apiResult() else ActionState()
-                _actions.update { it.copy(connection = connection, api = checked) }
+                actions.update { it.copy(connection = connection, api = checked) }
             }
         }
     }
@@ -350,31 +348,31 @@ class SettingsViewModel(
 
     /** Closes the connection test's result dialog. */
     fun dismissConnectionResult() {
-        _actions.update { it.copy(connection = ActionState()) }
+        actions.update { it.copy(connection = ActionState()) }
     }
 
     /** Sends a test email to [to] with the stored SMTP settings. */
     fun sendTestEmail(to: String) {
-        _actions.update { it.copy(email = ActionState(running = true)) }
+        actions.update { it.copy(email = ActionState(running = true)) }
         viewModelScope.launch {
             val result = checks.receipts.sendTestEmail(to).toState(ActionOutcome.TestEmailSent(to))
-            _actions.update { it.copy(email = result) }
+            actions.update { it.copy(email = result) }
         }
     }
 
     /** Prints the [SettingsUiState.sampleReceipt] to check the receipt layout; ignored until it is loaded. */
     fun printTest() {
         val document = state.value.sampleReceipt ?: return
-        _actions.update { it.copy(print = ActionState(running = true)) }
+        actions.update { it.copy(print = ActionState(running = true)) }
         viewModelScope.launch {
             val result = checks.receipts.printDocument(document)
-            _actions.update { it.copy(print = result.toState(ActionOutcome.Printed)) }
+            actions.update { it.copy(print = result.toState(ActionOutcome.Printed)) }
         }
     }
 
     /** Deletes every sale and refund; the catalogue and settings stay. */
     fun clearHistory() {
-        launchWrite({ history.clear() }) { _ -> _actions.update { it.copy(cleared = true) } }
+        launchWrite({ history.clear() }) { _ -> actions.update { it.copy(cleared = true) } }
     }
 }
 

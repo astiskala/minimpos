@@ -1,9 +1,5 @@
 package app.minimpos.app.feature
 
-import app.minimpos.app.AppContainer
-import app.minimpos.app.FakeDevice
-import app.minimpos.app.FakeTerminal
-import app.minimpos.app.R
 import app.minimpos.app.TestEnvironment
 import app.minimpos.app.await
 import app.minimpos.app.data.db.CategoryEntity
@@ -13,12 +9,9 @@ import app.minimpos.app.data.db.ProductEntity
 import app.minimpos.app.data.db.SaleKind
 import app.minimpos.app.data.db.SaleStatus
 import app.minimpos.app.data.db.TaxRateEntity
-import app.minimpos.app.data.repo.ImportMode
-import app.minimpos.app.data.security.Secret
 import app.minimpos.app.data.settings.EmailCapture
 import app.minimpos.app.data.settings.MerchantCopyPolicy
 import app.minimpos.app.data.settings.ShopperReferenceSource
-import app.minimpos.app.data.settings.TerminalMode
 import app.minimpos.app.feature.history.HistoryFilter
 import app.minimpos.app.feature.history.HistoryViewModel
 import app.minimpos.app.feature.history.SaleDetailViewModel
@@ -37,12 +30,9 @@ import app.minimpos.app.history.RefundablePayment
 import app.minimpos.app.payment.TransactionState
 import app.minimpos.core.codec.RefundQrPayload
 import app.minimpos.core.receipt.ReceiptCopy
-import app.minimpos.core.receipt.ReceiptDocument
-import app.minimpos.core.receipt.ReceiptElement
 import app.minimpos.core.shopper.EmailReferenceMode
 import app.minimpos.core.shopper.ShopperReferences
 import app.minimpos.core.tax.TaxMode
-import app.minimpos.core.tax.TaxRates
 import app.minimpos.terminal.client.RetryAdvice
 import app.minimpos.terminal.simulator.SimulatedOutcome
 import app.minimpos.terminal.simulator.TerminalSimulator

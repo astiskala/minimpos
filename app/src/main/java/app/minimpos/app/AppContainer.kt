@@ -36,7 +36,6 @@ import app.minimpos.app.history.PaymentStanding
 import app.minimpos.app.history.RefundStart
 import app.minimpos.app.history.StoredPayments
 import app.minimpos.app.payment.Captures
-import app.minimpos.app.payment.Checkout
 import app.minimpos.app.payment.PaymentLinks
 import app.minimpos.app.payment.PaymentStart
 import app.minimpos.app.payment.PricingChanges

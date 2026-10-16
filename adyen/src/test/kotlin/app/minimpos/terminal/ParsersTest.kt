@@ -14,7 +14,7 @@ import com.adyen.model.nexo.OutputText
 import com.adyen.model.nexo.PaymentReceipt
 import com.google.common.truth.Truth.assertThat
 import org.junit.Test
-import java.util.Base64
+import kotlin.io.encoding.Base64
 
 class ParsersTest {
     private fun receipt(
@@ -74,11 +74,11 @@ class ParsersTest {
         val json =
             """{"additionalData":{"pspReference":"XYZ","tokenization":{"storedPaymentMethodId":"123"}},""" +
                 """"message":"ok","n":null,"list":[1]}"""
-        assertThat(AdditionalResponseParser.parse(Base64.getEncoder().encodeToString(json.toByteArray())))
+        assertThat(AdditionalResponseParser.parse(Base64.encode(json.toByteArray())))
             .containsExactly("pspReference", "XYZ", "tokenization.storedPaymentMethodId", "123", "message", "ok", "list", "[1]")
         // Base64 that is not JSON, and plain words, fall back to form decoding.
-        assertThat(AdditionalResponseParser.parse(Base64.getEncoder().encodeToString("hello".toByteArray()))).hasSize(1)
-        assertThat(AdditionalResponseParser.parse(Base64.getEncoder().encodeToString("{broken".toByteArray()))).hasSize(1)
+        assertThat(AdditionalResponseParser.parse(Base64.encode("hello".toByteArray()))).hasSize(1)
+        assertThat(AdditionalResponseParser.parse(Base64.encode("{broken".toByteArray()))).hasSize(1)
         assertThat(AdditionalResponseParser.parse("message=Printer%20error")).containsExactly("message", "Printer error")
     }
 

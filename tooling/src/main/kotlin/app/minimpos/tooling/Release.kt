@@ -64,7 +64,7 @@ internal object Release {
                 .map(String::toBigInteger)
                 .toMutableList()
         parts[index] += BigInteger.ONE
-        for (position in index + 1 until parts.size) parts[position] = BigInteger.ZERO
+        for (position in (index + 1)..<parts.size) parts[position] = BigInteger.ZERO
         val next = Version(parts.joinToString("."), current.code + 1)
         val text =
             Files.readString(path).let { original ->

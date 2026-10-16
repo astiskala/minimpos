@@ -64,7 +64,7 @@ import java.math.BigDecimal
 import java.time.Clock
 import java.time.Instant
 import java.time.ZoneOffset
-import java.util.Base64
+import kotlin.io.encoding.Base64
 
 class TerminalClientTest {
     private val sent = mutableListOf<TerminalAPIRequest>()
@@ -123,7 +123,7 @@ class TerminalClientTest {
         additionalResponse = additional
     }
 
-    private fun base64(json: String) = Base64.getEncoder().encodeToString(json.toByteArray())
+    private fun base64(json: String) = Base64.encode(json.toByteArray())
 
     private fun approval() =
         PaymentResponse().apply {
@@ -197,7 +197,7 @@ class TerminalClientTest {
             assertThat((scanned as BarcodeScan.Read).code).isEqualTo("000190468703")
             assertThat(scanned.toString()).doesNotContain("000190468703")
             terminal.endBarcodeScan(42)
-            val bodies = sent.map { String(Base64.getDecoder().decode(it.saleToPOIRequest.adminRequest.serviceIdentification)) }
+            val bodies = sent.map { String(Base64.decode(it.saleToPOIRequest.adminRequest.serviceIdentification)) }
             assertThat(bodies.first()).contains("\"Type\":\"Once\"")
             assertThat(bodies.last()).contains("\"Type\":\"End\"")
             assertThat(bodies).containsNoDuplicates()
@@ -308,7 +308,7 @@ class TerminalClientTest {
             val (preAuth, sale) = sent.map { it.saleToPOIRequest.paymentRequest.saleData.saleToAcquirerData }
             assertThat(preAuth.authorisationType).isEqualTo("PreAuth")
             assertThat(preAuth.additionalData).containsExactly("manualCapture", "true")
-            val wire = String(Base64.getDecoder().decode(preAuth.toBase64()))
+            val wire = String(Base64.decode(preAuth.toBase64()))
             assertThat(wire).containsMatch("\"authorisationType\":\\s*\"PreAuth\"")
             assertThat(wire).containsMatch("\"additionalData\":\\s*\\{\\s*\"manualCapture\":\\s*\"true\"\\s*}")
             assertThat(sale.authorisationType).isNull()

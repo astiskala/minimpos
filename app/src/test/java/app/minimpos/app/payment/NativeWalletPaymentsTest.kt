@@ -32,7 +32,7 @@ import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
-import java.util.Base64
+import kotlin.io.encoding.Base64
 
 @RunWith(RobolectricTestRunner::class)
 class NativeWalletPaymentsTest {
@@ -45,7 +45,7 @@ class NativeWalletPaymentsTest {
             val message = request.saleToPOIRequest
             if (message.paymentRequest != null) paymentRequests++
             message.adminRequest?.let { admin ->
-                val command = String(Base64.getDecoder().decode(admin.serviceIdentification), Charsets.UTF_8)
+                val command = String(Base64.decode(admin.serviceIdentification), Charsets.UTF_8)
                 if (command.contains("\"End\"")) {
                     ended.complete(Unit)
                 } else {
@@ -62,7 +62,7 @@ class NativeWalletPaymentsTest {
                                             Response().apply {
                                                 result = ResultType.SUCCESS
                                                 additionalResponse =
-                                                    Base64.getEncoder().encodeToString(
+                                                    Base64.encode(
                                                         """{"Barcode":{"Data":"133341022926803846","Symbology":"QR_CODE"}}""".toByteArray(),
                                                     )
                                             }

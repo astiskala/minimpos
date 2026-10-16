@@ -6,7 +6,6 @@ import app.minimpos.app.data.db.SaleEntity
 import app.minimpos.app.data.db.SaleStatus
 import app.minimpos.app.data.repo.HistoryItem
 import app.minimpos.app.history.HistoryAccounting
-import app.minimpos.app.receipt.ActionResult
 import app.minimpos.core.payment.PaymentContext
 import app.minimpos.core.receipt.PlainTextReceiptRenderer
 import app.minimpos.terminal.client.PrintJob

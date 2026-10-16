@@ -626,7 +626,7 @@ class ReceiptServicesTest {
     private fun Part.allText(): String =
         when (val content = content) {
             is String -> content
-            is Multipart -> (0 until content.count).joinToString("\n") { content.getBodyPart(it).allText() }
+            is Multipart -> (0..<content.count).joinToString("\n") { content.getBodyPart(it).allText() }
             else -> ""
         }
 

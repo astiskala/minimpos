@@ -13,10 +13,6 @@ import app.minimpos.app.data.db.SetupProblem
 import app.minimpos.app.data.security.Secret
 import app.minimpos.app.data.settings.TerminalMode
 import app.minimpos.app.feature.ActionOutcome
-import app.minimpos.app.feature.settings.SettingsChecks
-import app.minimpos.app.feature.settings.SettingsTest
-import app.minimpos.app.feature.settings.SettingsViewModel
-import app.minimpos.app.feature.settings.TerminalSetupViewModel
 import app.minimpos.terminal.transport.TerminalEnvironment
 import com.google.common.truth.Truth.assertThat
 import kotlinx.coroutines.Dispatchers

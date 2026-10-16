@@ -9,7 +9,6 @@ import app.minimpos.app.feature.sampleDataWrite
 import app.minimpos.app.payment.PricingChanges
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
 
 /** The first-run path; selecting import or terminal setup creates no samples and changes no connection settings. */
 enum class OnboardingChoice {
@@ -34,18 +33,17 @@ class OnboardingViewModel(
     private val samples: SampleData,
     private val automaticMode: TerminalMode,
 ) : ViewModel() {
-    private val _state = MutableStateFlow(SampleDataState())
-
     /** Persistence progress; completion is delivered through [choose]'s callback. */
-    val state: StateFlow<SampleDataState> = _state.asStateFlow()
+    val state: StateFlow<SampleDataState>
+        field = MutableStateFlow(SampleDataState())
 
     /** Completes setup then calls [onDone] with [choice]; ignores duplicate taps while saving. */
     fun choose(
         choice: OnboardingChoice,
         onDone: (OnboardingChoice) -> Unit,
     ) {
-        if (_state.value.running) return
-        _state.value = SampleDataState(running = true)
+        if (state.value.running) return
+        state.value = SampleDataState(running = true)
         launchWrite({
             sampleDataWrite {
                 pricing.recover()
@@ -63,7 +61,7 @@ class OnboardingViewModel(
                 }
             }
         }) { result ->
-            _state.value = SampleDataState(failed = result.isFailure)
+            state.value = SampleDataState(failed = result.isFailure)
             if (result.isSuccess) onDone(choice)
         }
     }

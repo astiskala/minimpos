@@ -3,7 +3,6 @@ package app.minimpos.app.update
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
@@ -47,19 +46,18 @@ class AppUpdate(
     private val check: suspend () -> UpdateCheck,
     private val scope: CoroutineScope,
 ) {
-    private val _state = MutableStateFlow<UpdateCheck>(UpdateCheck.Unchecked)
-
     /** The check's answer for Home: only [UpdateCheck.Available] shows anything. */
-    val state: StateFlow<UpdateCheck> = _state.asStateFlow()
+    val state: StateFlow<UpdateCheck>
+        field = MutableStateFlow<UpdateCheck>(UpdateCheck.Unchecked)
 
     /** Runs the check once, in [scope]; later calls do nothing, so an answered or dismissed check stays. */
     fun start() {
-        if (_state.value != UpdateCheck.Unchecked) return
-        scope.launch { _state.value = check() }
+        if (state.value != UpdateCheck.Unchecked) return
+        scope.launch { state.value = check() }
     }
 
     /** Hides an offered update for the rest of this session; nothing when there was nothing to offer. */
     fun dismiss() {
-        _state.update { if (it is UpdateCheck.Available) UpdateCheck.Dismissed else it }
+        state.update { if (it is UpdateCheck.Available) UpdateCheck.Dismissed else it }
     }
 }

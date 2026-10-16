@@ -155,7 +155,7 @@ class LocalizationTest {
                 .parse(File("src/main/res/xml/locales_config.xml"))
                 .getElementsByTagName("locale")
         val names =
-            (0 until locales.length).map {
+            (0..<locales.length).map {
                 locales
                     .item(it)
                     .attributes
@@ -323,7 +323,7 @@ class LocalizationTest {
                 .newDocumentBuilder()
                 .parse(File("src/main/res/$folder/strings.xml"))
                 .documentElement
-        return (0 until root.childNodes.length)
+        return (0..<root.childNodes.length)
             .map { root.childNodes.item(it) }
             .filter { it.nodeType == Node.ELEMENT_NODE }
             .associate { node ->
@@ -332,7 +332,7 @@ class LocalizationTest {
                     if (node.nodeName == "string") {
                         listOf(node.textContent)
                     } else {
-                        (0 until node.childNodes.length)
+                        (0..<node.childNodes.length)
                             .map { node.childNodes.item(it) }
                             .filter { it.nodeType == Node.ELEMENT_NODE }
                             .map { it.textContent }

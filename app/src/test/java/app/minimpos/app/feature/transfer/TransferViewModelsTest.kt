@@ -7,10 +7,6 @@ import app.minimpos.app.data.db.ProductEntity
 import app.minimpos.app.data.db.TaxRateEntity
 import app.minimpos.app.data.repo.ImportMode
 import app.minimpos.app.data.security.Secret
-import app.minimpos.app.feature.transfer.ImportError
-import app.minimpos.app.feature.transfer.ImportUiState
-import app.minimpos.app.feature.transfer.TransferExportViewModel
-import app.minimpos.app.feature.transfer.TransferImportViewModel
 import com.google.common.truth.Truth.assertThat
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi

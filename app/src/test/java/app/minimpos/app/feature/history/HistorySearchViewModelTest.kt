@@ -8,10 +8,6 @@ import app.minimpos.app.data.db.RefundStatus
 import app.minimpos.app.data.db.SaleEntity
 import app.minimpos.app.data.db.SaleStatus
 import app.minimpos.app.data.repo.HistoryItem
-import app.minimpos.app.feature.history.HistoryFilter
-import app.minimpos.app.feature.history.HistoryUiState
-import app.minimpos.app.feature.history.HistoryViewModel
-import app.minimpos.app.feature.history.PaymentMethodFilter
 import app.minimpos.app.history.HistoryAccounting
 import app.minimpos.app.history.HistoryActivityKind
 import app.minimpos.core.payment.Wallet

@@ -26,7 +26,6 @@ import app.minimpos.core.codec.TransferFormatException
 import app.minimpos.core.ids.Ids
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlin.random.Random
@@ -69,40 +68,39 @@ class TransferExportViewModel(
     private val chunkSize: Int = QrChunks.DEFAULT_MAX_DATA_CHARS,
     private val random: Random = Random.Default,
 ) : ViewModel() {
-    private val _state = MutableStateFlow(ExportUiState())
-
     /** The export state. */
-    val state: StateFlow<ExportUiState> = _state.asStateFlow()
+    val state: StateFlow<ExportUiState>
+        field = MutableStateFlow(ExportUiState())
 
     init {
         viewModelScope.launch {
             val available = setup.configuredSecrets()
-            _state.update { it.copy(secretsAvailable = available) }
+            state.update { it.copy(secretsAvailable = available) }
         }
     }
 
     /** Changes what is shared with [transform]; ignored while the codes are made or shown. */
     fun setContents(transform: (TransferContents) -> TransferContents) {
-        if (_state.value.loading || _state.value.export != null) return
-        _state.update { it.copy(contents = transform(it.contents)) }
+        if (state.value.loading || state.value.export != null) return
+        state.update { it.copy(contents = transform(it.contents)) }
     }
 
     /** Makes the codes for what was chosen; ignored unless [ExportUiState.canShow]. */
     fun show() {
-        val current = _state.value
+        val current = state.value
         if (!current.canShow || current.export != null) return
-        _state.update { it.copy(loading = true) }
+        state.update { it.copy(loading = true) }
         viewModelScope.launch {
             // The secrets set are looked up again, in case they were asked for before they had been read.
             val export = setup.export(current.contents, currencyCode)
             val setId = Ids.randomString(QrChunks.SET_ID_LENGTH, random)
             val codes = QrChunks.split(export.payload, setId, chunkSize).map { it.encode() }
-            _state.update { it.copy(loading = false, export = export, codes = codes) }
+            state.update { it.copy(loading = false, export = export, codes = codes) }
         }
     }
 
     /** Goes back from the codes to the choice; the next codes get a new set ID and transfer code. */
-    fun hide() = _state.update { it.copy(export = null, codes = emptyList()) }
+    fun hide() = state.update { it.copy(export = null, codes = emptyList()) }
 }
 
 /** Where an import is. */
@@ -193,7 +191,10 @@ class TransferImportViewModel(
     private val importer: SetupImport,
 ) : ViewModel() {
     private val assembler = QrChunkAssembler()
-    private val _state = MutableStateFlow<ImportUiState>(ImportUiState.Importing)
+
+    /** The import state. */
+    val state: StateFlow<ImportUiState>
+        field = MutableStateFlow<ImportUiState>(ImportUiState.Importing)
     private var selectedTerminal: String? = null
     private var confirmedHistory: HistorySwitchPlan? = null
 
@@ -201,23 +202,20 @@ class TransferImportViewModel(
         retryRecovery()
     }
 
-    /** The import state. */
-    val state: StateFlow<ImportUiState> = _state.asStateFlow()
-
     /** Handles a scanned code [text]; ignored unless scanning. Called on the main thread by the scanner. */
     fun onCode(text: String) {
-        if (_state.value !is ImportUiState.Scanning) return
+        if (state.value !is ImportUiState.Scanning) return
         val chunk = QrChunks.parse(text)
         if (chunk == null) {
-            _state.value = ImportUiState.Scanning(assembler.received, assembler.expected, ImportError.NOT_A_TRANSFER)
+            state.value = ImportUiState.Scanning(assembler.received, assembler.expected, ImportError.NOT_A_TRANSFER)
             return
         }
         assembler.add(chunk)
         if (!assembler.isComplete) {
-            _state.value = ImportUiState.Scanning(assembler.received, assembler.expected)
+            state.value = ImportUiState.Scanning(assembler.received, assembler.expected)
             return
         }
-        _state.value =
+        state.value =
             try {
                 val received = importer.receive(TransferCodec.decode(assembler.assemble()))
                 ImportUiState.Ready(received, received.currencyMatches(currencyCode))
@@ -250,12 +248,12 @@ class TransferImportViewModel(
 
     /** Explicitly opens phone registration for the currently authenticated candidate; never called by scanning. */
     fun setUpTapToPay() {
-        if ((_state.value as? ImportUiState.Ready)?.boardingRequired == true) verify(board = true)
+        if ((state.value as? ImportUiState.Ready)?.boardingRequired == true) verify(board = true)
     }
 
     /** Chooses only an offered terminal, or dismisses the selector for null; no fields have been imported yet. */
     fun chooseTerminal(id: String?) {
-        val ready = _state.value as? ImportUiState.Ready ?: return
+        val ready = state.value as? ImportUiState.Ready ?: return
         if (id != null && id !in ready.terminalChoices.orEmpty()) return
         updateReady { it.copy(terminalChoices = null) }
         if (id != null) {
@@ -266,9 +264,9 @@ class TransferImportViewModel(
 
     /** Resumes an encrypted verified commit, without requiring its transfer code again or repeating remote registration. */
     fun retryRecovery() {
-        _state.value = ImportUiState.Importing
+        state.value = ImportUiState.Importing
         launchWrite({ importer.recover() }) { result ->
-            _state.value =
+            state.value =
                 when (result) {
                     null -> {
                         ImportUiState.Scanning()
@@ -298,7 +296,7 @@ class TransferImportViewModel(
 
     /** Reviews permanent history loss for this import; cancellation leaves current settings and history untouched. */
     fun reviewSetup(confirm: Boolean) {
-        val ready = _state.value as? ImportUiState.Ready ?: return
+        val ready = state.value as? ImportUiState.Ready ?: return
         val offer = ready.sharedKeyOffer
         if (offer != null) {
             if (confirm) verify(board = false, confirmedKey = offer) else updateReady { it.copy(sharedKeyOffer = null) }
@@ -319,12 +317,12 @@ class TransferImportViewModel(
         confirmedHistorySwitch: HistorySwitchPlan? = null,
         confirmedKey: SharedKeyOffer? = null,
     ) {
-        val ready = _state.value as? ImportUiState.Ready ?: return
+        val ready = state.value as? ImportUiState.Ready ?: return
         if (!ready.received.accepts(ready.code)) {
-            _state.value = ready.copy(wrongCode = true)
+            state.value = ready.copy(wrongCode = true)
             return
         }
-        _state.value = ImportUiState.Importing
+        state.value = ImportUiState.Importing
         launchWrite({
             importer.import(
                 ready.received,
@@ -336,7 +334,7 @@ class TransferImportViewModel(
                 confirmedKey,
             )
         }) { result ->
-            _state.value = finished(ready, result)
+            state.value = finished(ready, result)
         }
     }
 
@@ -403,5 +401,5 @@ class TransferImportViewModel(
         }
 
     private fun updateReady(transform: (ImportUiState.Ready) -> ImportUiState.Ready) =
-        _state.update { if (it is ImportUiState.Ready) transform(it) else it }
+        state.update { if (it is ImportUiState.Ready) transform(it) else it }
 }

@@ -23,7 +23,6 @@ import app.minimpos.app.terminal.TerminalStatus
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
@@ -77,23 +76,22 @@ class TerminalSetupViewModel(
     private val settings: SettingsRepository,
     private val observedTerminal: Flow<TerminalSettings> = settings.settings.map { it.terminal },
 ) : ViewModel() {
-    private val _actions = MutableStateFlow(TerminalSetupActions())
+    /** Outcomes of the latest actions. */
+    val actions: StateFlow<TerminalSetupActions>
+        field = MutableStateFlow(TerminalSetupActions())
 
     init {
         launchWrite({ discovery.pendingKey() }) { offer ->
-            _actions.update { if (!it.terminals.running && it.revision == 0) it.copy(sharedKeyOffer = offer) else it }
+            actions.update { if (!it.terminals.running && it.revision == 0) it.copy(sharedKeyOffer = offer) else it }
         }
     }
-
-    /** Outcomes of the latest actions. */
-    val actions: StateFlow<TerminalSetupActions> = _actions.asStateFlow()
 
     /** Tracks only whether [secret] has a visible unsaved draft, so scanner navigation can warn before discarding it. */
     fun secretDraft(
         secret: Secret,
         present: Boolean,
     ) {
-        _actions.update { it.copy(unsavedSecrets = if (present) it.unsavedSecrets + secret else it.unsavedSecrets - secret) }
+        actions.update { it.copy(unsavedSecrets = if (present) it.unsavedSecrets + secret else it.unsavedSecrets - secret) }
     }
 
     /**
@@ -101,8 +99,8 @@ class TerminalSetupViewModel(
      * [apiKey] as the API key if one was entered.
      */
     fun findTerminals(apiKey: String? = null) {
-        if (_actions.value.terminals.running) return
-        _actions.update {
+        if (actions.value.terminals.running) return
+        actions.update {
             it.copy(
                 terminals = ActionState(running = true),
                 connectedTerminals = null,
@@ -114,26 +112,26 @@ class TerminalSetupViewModel(
             val entered = apiKey?.trim()?.takeIf { it.isNotEmpty() }
             val notStored = entered?.let { persisting { secrets.storeSafely(Secret.ADYEN_API_KEY, it) } }
             if (notStored != null) {
-                _actions.update { it.copy(terminals = ActionState(outcome = notStored, isError = true)) }
+                actions.update { it.copy(terminals = ActionState(outcome = notStored, isError = true)) }
                 return@launchWrite
             }
-            if (entered != null) _actions.update { it.copy(apiKeyStored = true) }
+            if (entered != null) actions.update { it.copy(apiKeyStored = true) }
             when (val discovered = discovery.find()) {
                 is SetupDiscoverySearch.Found -> {
                     val current = status.state.value
                     if (current.onTerminal && current.mode == TerminalMode.TERMINAL && discovered.ids.size == 1) {
                         chooseTerminal(discovered.ids.single())
                     } else {
-                        _actions.update { it.copy(terminals = ActionState(done = true), connectedTerminals = discovered.ids) }
+                        actions.update { it.copy(terminals = ActionState(done = true), connectedTerminals = discovered.ids) }
                     }
                 }
 
                 SetupDiscoverySearch.Unavailable -> {
-                    _actions.update { it.copy(terminals = ActionState(done = true), manualDetails = true) }
+                    actions.update { it.copy(terminals = ActionState(done = true), manualDetails = true) }
                 }
 
                 is SetupDiscoverySearch.Failed -> {
-                    _actions.update {
+                    actions.update {
                         it.copy(
                             terminals = ActionState(outcome = ActionOutcome.Failed(discovered.failure), isError = true),
                         )
@@ -145,13 +143,13 @@ class TerminalSetupViewModel(
 
     /** Takes [poiId] (one of [TerminalSetupActions.connectedTerminals]) as the terminal in the cloud; null only closes the list. */
     fun chooseTerminal(poiId: String?) {
-        _actions.update { it.copy(connectedTerminals = null, terminals = ActionState()) }
+        actions.update { it.copy(connectedTerminals = null, terminals = ActionState()) }
         launchWrite({
             val result = discovery.choose(poiId)
             if (poiId != null) {
                 val terminal = settings.current().terminal
                 observedTerminal.first { it == terminal }
-                _actions.update {
+                actions.update {
                     it.copy(
                         manualDetails = result.manualDetails,
                         terminals =
@@ -167,7 +165,7 @@ class TerminalSetupViewModel(
 
     /** Confirms only the currently offered terminal/environment; never triggered by discovery or startup. */
     fun createSharedKey(offer: SharedKeyOffer) {
-        if (_actions.value.sharedKeyOffer?.matches(offer) != true) return
+        if (actions.value.sharedKeyOffer?.matches(offer) != true) return
         keyAction(offer)
     }
 
@@ -175,13 +173,13 @@ class TerminalSetupViewModel(
     fun checkSharedKey() = keyAction(null)
 
     private fun keyAction(confirmed: SharedKeyOffer?) {
-        if (_actions.value.terminals.running || _actions.value.keyResult.running) return
-        _actions.update { it.copy(keyResult = ActionState(running = true)) }
+        if (actions.value.terminals.running || actions.value.keyResult.running) return
+        actions.update { it.copy(keyResult = ActionState(running = true)) }
         launchWrite({
             try {
                 keyOutcome(discovery.setupKey(confirmed))
             } catch (ignored: SecretStoreException) {
-                _actions.update { it.copy(keyResult = ActionState(outcome = SECURE_STORAGE_FAILED, isError = true)) }
+                actions.update { it.copy(keyResult = ActionState(outcome = SECURE_STORAGE_FAILED, isError = true)) }
             }
         })
     }
@@ -189,7 +187,7 @@ class TerminalSetupViewModel(
     private suspend fun keyOutcome(result: SharedKeySetupOutcome) {
         when (result) {
             is SharedKeySetupOutcome.Confirmation -> {
-                _actions.update {
+                actions.update {
                     it.copy(sharedKeyOffer = result.offer, keyResult = ActionState(), manualDetails = false)
                 }
             }
@@ -198,7 +196,7 @@ class TerminalSetupViewModel(
                 val offer = discovery.pendingKey()
                 val outcome =
                     ActionOutcome.Failed(result.failure)
-                _actions.update { it.copy(sharedKeyOffer = offer, keyResult = ActionState(outcome = outcome, isError = true)) }
+                actions.update { it.copy(sharedKeyOffer = offer, keyResult = ActionState(outcome = outcome, isError = true)) }
             }
 
             is SharedKeySetupOutcome.Ready -> {
@@ -221,7 +219,7 @@ class TerminalSetupViewModel(
                     isError = true,
                 )
             }
-        _actions.update {
+        actions.update {
             it.copy(
                 sharedKeyOffer = null,
                 keyPending = !connected && pending,
@@ -248,16 +246,16 @@ class TerminalSetupViewModel(
         apiKey: String?,
         action: suspend () -> TapToPayOutcome,
     ) {
-        if (_actions.value.tapToPay.running) return
-        _actions.update { it.copy(tapToPay = ActionState(running = true), paymentsAppKeyStored = false) }
+        if (actions.value.tapToPay.running) return
+        actions.update { it.copy(tapToPay = ActionState(running = true), paymentsAppKeyStored = false) }
         launchWrite({
             val entered = apiKey?.trim()?.takeIf { it.isNotEmpty() }
             val notStored = entered?.let { persisting { secrets.storeSafely(Secret.PAYMENTS_APP_API_KEY, it) } }
             if (notStored != null) {
-                _actions.update { it.copy(tapToPay = ActionState(outcome = notStored, isError = true)) }
+                actions.update { it.copy(tapToPay = ActionState(outcome = notStored, isError = true)) }
                 return@launchWrite
             }
-            if (entered != null) _actions.update { it.copy(paymentsAppKeyStored = true) }
+            if (entered != null) actions.update { it.copy(paymentsAppKeyStored = true) }
             val result =
                 when (val outcome = persisting { action() }) {
                     is TapToPayOutcome.Boarded -> {
@@ -277,7 +275,7 @@ class TerminalSetupViewModel(
                         ActionState(outcome = ActionOutcome.Failed(outcome.failure), isError = true)
                     }
                 }
-            _actions.update { it.copy(tapToPay = result) }
+            actions.update { it.copy(tapToPay = result) }
         })
     }
 }

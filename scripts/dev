@@ -15,7 +15,8 @@ usage() {
     '  preflight                       Check local JDK, SDK 37, Chrome; no downloads or writes' \
     '  warm                            Warm compiler, Robolectric, browser and pinned tool caches' \
     '  report                          Build tooling, summarize existing JUnit failures and timings' \
-    '  profile WORKERS [PATTERN]        Rerun app tests only; workers 1-4, default pattern *ui.*'
+    '  profile WORKERS [PATTERN]        Rerun app tests only; workers 1-4, default pattern *ui.*' \
+    '  mutation                        Mutation-test core and adyen with PIT (slow; not part of finish)'
 }
 invalid() {
   printf '%s\n' "$1" >&2
@@ -147,5 +148,6 @@ case "$command" in
     if [ "$#" -gt 0 ] && [[ "$1" != -* ]]; then pattern=$1; shift; fi
     exec "${runner[@]}" :app:testDebugUnitTest --rerun --tests "$pattern" "-PappTestWorkers=$workers" --profile "$@"
     ;;
+  mutation) exec "${runner[@]}" mutationTest "$@" ;;
   *) invalid "Unknown command: $command" ;;
 esac

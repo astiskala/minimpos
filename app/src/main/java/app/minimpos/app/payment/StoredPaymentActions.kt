@@ -45,5 +45,5 @@ class StoredPaymentActions(
     /** Retries [saleId]'s stored capture amount and identity; callers use `persisting` to survive screen cancellation. */
     suspend fun retryCapture(saleId: String): CaptureResult = captures.retryCapture(saleId)
 
-    private fun start(request: RefundStart?): String? = request?.let { runCatching { refunds.start(it) }.getOrNull() }
+    private fun start(request: RefundStart?): String? = request?.let(refunds::start)
 }

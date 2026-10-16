@@ -120,6 +120,16 @@ class CloudDevicesTest {
     }
 
     @Test
+    fun `an answer whose fields have the wrong JSON type is unreadable, not thrown`() {
+        // Adyen's own type adapter for SaleToAcquirerData fails with UnsupportedOperationException on an object.
+        syncReply = {
+            MockResponse.Builder().body("""{"SaleToPOIResponse":{"PaymentResponse":{"SaleData":{"SaleToAcquirerData":{"a":1}}}}}""").build()
+        }
+        val outcome = runBlocking { client().pay(payment, serviceId = "PAY1") }
+        assertThat(outcome).isEqualTo(TransactionOutcome.Unknown("PAY1", Fault.UnreadableReply()))
+    }
+
+    @Test
     fun `HTTP errors say whether the request can have reached the terminal`() {
         val transport = devices.transport(CloudEndpoint.TEST)
         val request =

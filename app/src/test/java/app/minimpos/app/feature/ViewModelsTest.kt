@@ -310,6 +310,54 @@ class ViewModelsTest {
     }
 
     @Test
+    fun `a second Pay or Pay remaining while the payment runs starts nothing more`() {
+        env.useSimulator { it.copy(simulator = it.simulator.copy(delayMillis = 300)) }
+        val (tax, _) = seedCatalogue()
+        // Adyen's test amounts ending in 139 are approved in part.
+        container.session(SaleKind.SALE).addCustom("Item", 139, tax)
+        val checkout =
+            CheckoutViewModel(
+                container.session(SaleKind.SALE),
+                container.payments,
+                container.settingsState,
+                container.terminalStatus.state,
+                container::currency,
+            )
+        await { checkout.state.first { it.canPay } }
+        assertThat(checkout.pay()).isTrue()
+        assertThat(checkout.pay()).isFalse()
+        val saleId = await { (container.payments.state.first { it is TransactionState.Finished } as TransactionState.Finished).id }
+        val result = SaleResultViewModel(saleId, container.storedPayments, container.receipts, container.payments)
+        await { result.state.first { it.record?.sale?.isPartiallyPaid == true } }
+        assertThat(result.payRemaining()).isTrue()
+        assertThat(result.payRemaining()).isFalse()
+        await { container.payments.state.first { it == TransactionState.Finished(saleId) } }
+        assertThat(await { container.sales.get(saleId)!! }.tenders).hasSize(2)
+        assertThat(await { container.history.items().first() }).hasSize(1)
+    }
+
+    @Test
+    fun `a second Create payment link from the same checkout creates no second link`() {
+        env.useLinks()
+        val (tax, latte) = seedCatalogue()
+        container.session(SaleKind.SALE).addProduct(latte, tax)
+        val checkout =
+            CheckoutViewModel(
+                container.session(SaleKind.SALE),
+                container.payments,
+                container.settingsState,
+                container.terminalStatus.state,
+                container::currency,
+                container.links,
+            )
+        await { checkout.state.first { it.canPay && it.linksAvailable } }
+        val id = checkNotNull(checkout.sendLink())
+        assertThat(checkout.sendLink()).isNull()
+        await { container.sales.observe(id).first { it?.sale?.status == SaleStatus.AWAITING_PAYMENT } }
+        assertThat(await { container.history.items().first() }).hasSize(1)
+    }
+
+    @Test
     fun `result view model gives retry advice and cancels a busy terminal's transaction`() {
         env.useSimulator { it.copy(simulator = it.simulator.copy(outcome = SimulatedOutcome.BUSY)) }
         val (tax, latte) = seedCatalogue()

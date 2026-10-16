@@ -4,6 +4,7 @@ plugins {
     alias(libs.plugins.android.lint)
     alias(libs.plugins.detekt)
     alias(libs.plugins.dokka)
+    alias(libs.plugins.pitest)
 }
 
 java {
@@ -83,4 +84,18 @@ kover {
 tasks.named("check") {
     setDependsOn(dependsOn - tasks.named("detekt"))
     dependsOn("koverVerify", "detektMain", "detektTest", "dokkaGeneratePublicationHtml")
+}
+
+// Mutation testing (root mutationTest; not in the gate, as every mutant reruns the tests): whether the tests notice changed
+// behaviour, which coverage does not show. Report: build/reports/pitest/index.html.
+pitest {
+    targetClasses.set(listOf("app.minimpos.terminal.*"))
+    threads.set(4)
+    outputFormats.set(listOf("HTML", "XML"))
+    timestampedReports.set(false)
+    // Kotlin's generated null checks and serializers are compiler output, not behaviour the tests could notice.
+    avoidCallsTo.set(listOf("kotlin.jvm.internal"))
+    excludedClasses.set(listOf("*\$\$serializer"))
+    // Just below the score reached when mutation testing was added; raise it as tests improve, never lower it.
+    mutationThreshold.set(72)
 }

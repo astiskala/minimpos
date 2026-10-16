@@ -271,13 +271,12 @@ class WalletPayments(
                             current.copy(stage = WalletScanStage.PAUSED, problem = WalletScanProblem.CHECKOUT_CHANGED)
                     }
 
-                    payments.state.value is TransactionState.Processing -> {
+                    payments.start(start) == null -> {
                         state.value =
                             current.copy(stage = WalletScanStage.PAUSED, problem = WalletScanProblem.BUSY)
                     }
 
                     else -> {
-                        payments.start(start)
                         state.value = current.copy(stage = WalletScanStage.PAYING)
                     }
                 }

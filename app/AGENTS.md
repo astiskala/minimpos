@@ -97,7 +97,8 @@ Starred rules below are enforced by `ArchitectureTest`, `SettingsArchitectureTes
 
 ## Tests
 
-- Robolectric SDK 33, `TestApplication`, Compose v2, `en-rAU`. `SmallScreenTest` checks visible primary actions at AMS1
+- Robolectric SDK 33 (`testDebugUnitTestMinSdk` reruns all at 28), `TestApplication`, Compose v2, `en-rAU`.
+  `SmallScreenTest` checks visible primary actions at AMS1
   `w320dp-h460dp-hdpi`, P630 and S1F2 sizes. Localization tests cover resource parity and CJK checkout.
 - `TestEnvironment` is rule order 0, `createRecordingComposeRule` order 1 (v2 rule with pre-teardown failure artifacts;
   CONTRIBUTING owns paths and usage). FakeDevice/FakeTerminal model terminals; FakeCloud,

@@ -221,13 +221,12 @@ class TransactionLifecycle<R>(
     private val rechecks = Mutex()
 
     /**
-     * Starts [request] in the background and returns the new record's ID straight away.
-     *
-     * @throws IllegalStateException if a transaction is already in progress.
+     * Starts [request] in the background and returns the new record's ID straight away; null, with nothing stored or
+     * sent, while a transaction is already in progress (such as a second tap on the same action).
      */
     @Synchronized
-    fun start(request: R): String {
-        check(state.value !is TransactionState.Processing) { "A ${book.kind.name.lowercase()} is already in progress" }
+    fun start(request: R): String? {
+        if (state.value is TransactionState.Processing) return null
         val id = book.existingId(request) ?: newId()
         state.value = TransactionState.Processing(id)
         synchronized(unresolvedRequests) { unresolvedRequests[id] = request }
@@ -257,10 +256,13 @@ class TransactionLifecycle<R>(
 
     /**
      * Asks the terminal to cancel the running transaction (an AbortRequest). Does nothing before its request is being
-     * sent. The outcome still arrives through the transaction itself, usually as cancelled.
+     * sent, or once cancelling it was asked for. The outcome still arrives through the transaction itself, usually as
+     * cancelled.
      */
+    @Synchronized
     fun cancel() {
         val processing = state.value as? TransactionState.Processing ?: return
+        if (processing.cancelling) return
         val serviceId = processing.serviceId ?: return
         state.value = processing.copy(cancelling = true)
         scope.launch { gateway.abort(serviceId, book.kind) }

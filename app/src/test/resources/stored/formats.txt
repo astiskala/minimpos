@@ -1,0 +1,272 @@
+settings.json: app.minimpos.app.data.settings.AppSettings
+  terminal: app.minimpos.app.data.settings.TerminalSettings
+    mode: enum app.minimpos.app.data.settings.TerminalMode [AUTO, TERMINAL, CLOUD, PAYMENTS_APP, SIMULATOR]
+    environment?: enum app.minimpos.terminal.transport.TerminalEnvironment [TEST, LIVE]
+    cloudRegion?: enum app.minimpos.terminal.transport.CloudRegion [EU, US, AU, NEA]
+    host: string
+    poiIdOverride: string
+    paymentsAppInstallationId: string
+    storeId: string
+    keyIdentifier: string
+    keyVersion: int
+    merchantAccount: string
+    liveUrlPrefix: string
+  payment: app.minimpos.app.data.settings.PaymentSettings
+    currencyCode: string
+    chargeTax: boolean
+    taxMode: enum app.minimpos.core.tax.TaxMode [INCLUSIVE, EXCLUSIVE]
+    defaultTaxRateId?: long
+    referencePrefix: string
+    askTransactionReference: boolean
+    tokenizeDefaultOn: boolean
+    preAuthTokenizeDefaultOn: boolean
+    receiptTipping: enum app.minimpos.app.data.settings.ReceiptTipping [DISABLED, DEFAULT_OFF, DEFAULT_ON]
+    recurringProcessingModel: string
+    emailCapture: enum app.minimpos.app.data.settings.EmailCapture [OFF, BEFORE_PAYMENT, AFTER_PAYMENT]
+    autoSendEmail: boolean
+    shopperReferenceSource: enum app.minimpos.app.data.settings.ShopperReferenceSource [CUSTOMER_REFERENCE, EMAIL, NONE]
+    emailReferenceMode: enum app.minimpos.core.shopper.EmailReferenceMode [HASHED, RAW]
+    emailReferenceSalt: string
+    offerCardSaving: boolean
+    linkExpiryHours: int
+    terminalTipping: enum app.minimpos.app.data.settings.ReceiptTipping [DISABLED, DEFAULT_OFF, DEFAULT_ON]
+    dynamicTipOverride: boolean
+    lowBasketThresholdMinor: long
+    fixedTipAmountsMinor: list of
+      - long
+    tipPercentages: list of
+      - int
+    allowCustomTip: boolean
+    tipOnPreTax: boolean
+    showVirtualReceipt: boolean
+    confirmBasketOnTerminal: boolean
+    collectEmailOnTerminal: boolean
+    showTerminalQrReceipt: boolean
+    askShopperRating: boolean
+    allowPartialAuthorisation: boolean
+    askGiving: enum app.minimpos.app.data.settings.ReceiptTipping [DISABLED, DEFAULT_OFF, DEFAULT_ON]
+    allowMoto: boolean
+    allowMke: boolean
+  receipt: app.minimpos.app.data.settings.ReceiptSettings
+    businessName: string
+    addressLines: string
+    taxIdLabel: string
+    taxId: string
+    phone: string
+    title: string
+    footer: string
+    printerMode: enum app.minimpos.app.data.settings.PrinterMode [AUTO, ON, OFF]
+    autoPrint: boolean
+    merchantCopy: enum app.minimpos.app.data.settings.MerchantCopyPolicy [NEVER, SIGNATURE_ONLY, ALWAYS]
+    showTaxBreakdown: boolean
+    showReferences: boolean
+    showRefundQr: boolean
+    charsPerLine: int
+    showTaxAmounts: boolean
+    showTaxRateTotals: boolean
+    markedTaxRateMilliPercent?: int
+    markedTaxRateMarker: string
+    markedTaxRateNote: string
+  email: app.minimpos.app.data.settings.EmailSettings
+    host: string
+    port: int
+    security: enum app.minimpos.app.data.settings.SmtpSecurity [NONE, STARTTLS, SSL]
+    username: string
+    fromAddress: string
+    fromName: string
+    bcc: string
+    subject: string
+  security: app.minimpos.app.data.settings.SecuritySettings
+    autoLockMinutes: int
+  simulator: app.minimpos.app.data.settings.SimulatorSettings
+    outcome: enum app.minimpos.terminal.simulator.SimulatedOutcome [APPROVE, DECLINE, CANCEL, BUSY, TIMEOUT, RANDOM]
+    delayMillis: long
+    hasPrinter: boolean
+    signatureRequired: boolean
+    offlineMode: boolean
+  history: app.minimpos.app.data.settings.HistorySettings
+    retentionDays: int
+  pricingChange?: app.minimpos.app.data.settings.PricingChange
+    fromCurrency required: string
+    toCurrency required: string
+    payment required: app.minimpos.app.data.settings.PaymentSettings (as above)
+    prices required: map
+      key: long
+      value: long
+  onboardingCompleted: boolean
+  verifiedSetup?: string
+  languageTag: string
+
+secrets.json: app.minimpos.app.data.security.SecretBlob
+  values: map
+    key: string
+    value: string
+  pendingImport?: string
+  boardingRecovery?: string
+  keyCreationRecovery?: string
+
+Room column: payment context: app.minimpos.core.payment.PaymentContext
+  destination required: string
+  poiId required: string
+  saleId required: string
+  merchantAccount required: string
+  environment? required: string
+  host?: string
+  simulated: boolean
+
+Room column: card receipt lines: list of
+  - app.minimpos.core.receipt.CardReceiptLine
+    key?: string
+    name?: string
+    value?: string
+    bold: boolean
+
+Room column: refunded lines: list of
+  - app.minimpos.app.data.repo.RefundedLine
+    lineId required: long
+    name required: string
+    quantity required: int
+    unitPriceMinor required: long
+    grossMinor required: long
+    taxRateMilliPercent: int
+
+Room column: history switch target: app.minimpos.app.data.settings.TerminalSettings
+  mode: enum app.minimpos.app.data.settings.TerminalMode [AUTO, TERMINAL, CLOUD, PAYMENTS_APP, SIMULATOR]
+  environment?: enum app.minimpos.terminal.transport.TerminalEnvironment [TEST, LIVE]
+  cloudRegion?: enum app.minimpos.terminal.transport.CloudRegion [EU, US, AU, NEA]
+  host: string
+  poiIdOverride: string
+  paymentsAppInstallationId: string
+  storeId: string
+  keyIdentifier: string
+  keyVersion: int
+  merchantAccount: string
+  liveUrlPrefix: string
+
+Encrypted journal: setup import: app.minimpos.app.data.transfer.PendingSetupImport
+  id required: string
+  payload required: string
+  mode required: enum app.minimpos.app.data.repo.ImportMode [REPLACE, MERGE]
+  settings required: app.minimpos.app.data.settings.AppSettings
+    terminal: app.minimpos.app.data.settings.TerminalSettings
+      mode: enum app.minimpos.app.data.settings.TerminalMode [AUTO, TERMINAL, CLOUD, PAYMENTS_APP, SIMULATOR]
+      environment?: enum app.minimpos.terminal.transport.TerminalEnvironment [TEST, LIVE]
+      cloudRegion?: enum app.minimpos.terminal.transport.CloudRegion [EU, US, AU, NEA]
+      host: string
+      poiIdOverride: string
+      paymentsAppInstallationId: string
+      storeId: string
+      keyIdentifier: string
+      keyVersion: int
+      merchantAccount: string
+      liveUrlPrefix: string
+    payment: app.minimpos.app.data.settings.PaymentSettings
+      currencyCode: string
+      chargeTax: boolean
+      taxMode: enum app.minimpos.core.tax.TaxMode [INCLUSIVE, EXCLUSIVE]
+      defaultTaxRateId?: long
+      referencePrefix: string
+      askTransactionReference: boolean
+      tokenizeDefaultOn: boolean
+      preAuthTokenizeDefaultOn: boolean
+      receiptTipping: enum app.minimpos.app.data.settings.ReceiptTipping [DISABLED, DEFAULT_OFF, DEFAULT_ON]
+      recurringProcessingModel: string
+      emailCapture: enum app.minimpos.app.data.settings.EmailCapture [OFF, BEFORE_PAYMENT, AFTER_PAYMENT]
+      autoSendEmail: boolean
+      shopperReferenceSource: enum app.minimpos.app.data.settings.ShopperReferenceSource [CUSTOMER_REFERENCE, EMAIL, NONE]
+      emailReferenceMode: enum app.minimpos.core.shopper.EmailReferenceMode [HASHED, RAW]
+      emailReferenceSalt: string
+      offerCardSaving: boolean
+      linkExpiryHours: int
+      terminalTipping: enum app.minimpos.app.data.settings.ReceiptTipping [DISABLED, DEFAULT_OFF, DEFAULT_ON]
+      dynamicTipOverride: boolean
+      lowBasketThresholdMinor: long
+      fixedTipAmountsMinor: list of
+        - long
+      tipPercentages: list of
+        - int
+      allowCustomTip: boolean
+      tipOnPreTax: boolean
+      showVirtualReceipt: boolean
+      confirmBasketOnTerminal: boolean
+      collectEmailOnTerminal: boolean
+      showTerminalQrReceipt: boolean
+      askShopperRating: boolean
+      allowPartialAuthorisation: boolean
+      askGiving: enum app.minimpos.app.data.settings.ReceiptTipping [DISABLED, DEFAULT_OFF, DEFAULT_ON]
+      allowMoto: boolean
+      allowMke: boolean
+    receipt: app.minimpos.app.data.settings.ReceiptSettings
+      businessName: string
+      addressLines: string
+      taxIdLabel: string
+      taxId: string
+      phone: string
+      title: string
+      footer: string
+      printerMode: enum app.minimpos.app.data.settings.PrinterMode [AUTO, ON, OFF]
+      autoPrint: boolean
+      merchantCopy: enum app.minimpos.app.data.settings.MerchantCopyPolicy [NEVER, SIGNATURE_ONLY, ALWAYS]
+      showTaxBreakdown: boolean
+      showReferences: boolean
+      showRefundQr: boolean
+      charsPerLine: int
+      showTaxAmounts: boolean
+      showTaxRateTotals: boolean
+      markedTaxRateMilliPercent?: int
+      markedTaxRateMarker: string
+      markedTaxRateNote: string
+    email: app.minimpos.app.data.settings.EmailSettings
+      host: string
+      port: int
+      security: enum app.minimpos.app.data.settings.SmtpSecurity [NONE, STARTTLS, SSL]
+      username: string
+      fromAddress: string
+      fromName: string
+      bcc: string
+      subject: string
+    security: app.minimpos.app.data.settings.SecuritySettings
+      autoLockMinutes: int
+    simulator: app.minimpos.app.data.settings.SimulatorSettings
+      outcome: enum app.minimpos.terminal.simulator.SimulatedOutcome [APPROVE, DECLINE, CANCEL, BUSY, TIMEOUT, RANDOM]
+      delayMillis: long
+      hasPrinter: boolean
+      signatureRequired: boolean
+      offlineMode: boolean
+    history: app.minimpos.app.data.settings.HistorySettings
+      retentionDays: int
+    pricingChange?: app.minimpos.app.data.settings.PricingChange
+      fromCurrency required: string
+      toCurrency required: string
+      payment required: app.minimpos.app.data.settings.PaymentSettings (as above)
+      prices required: map
+        key: long
+        value: long
+    onboardingCompleted: boolean
+    verifiedSetup?: string
+    languageTag: string
+  secrets required: map
+    key: enum app.minimpos.app.data.security.Secret [TERMINAL_PASSPHRASE, SMTP_PASSWORD, PIN_VERIFIER, MANAGER_PIN_VERIFIER, ADYEN_API_KEY, PAYMENTS_APP_API_KEY]
+    value: string
+  changesSetup required: boolean
+  businessWarning required: boolean
+  paymentsAppChecked required: boolean
+  purgeHistory: boolean
+
+Encrypted journal: Tap to Pay registration: app.minimpos.app.terminal.TapToPaySetup.RegistrationRecovery
+  key required: string
+  environment required: enum app.minimpos.terminal.transport.TerminalEnvironment [TEST, LIVE]
+  merchant required: string
+  store? required: string
+  installation? required: string
+
+Encrypted journal: key creation: app.minimpos.app.terminal.SharedKeySetup.KeyRecords
+  entries: list of
+    - app.minimpos.app.terminal.SharedKeySetup.KeyRecord
+      apiKey required: string
+      environment required: enum app.minimpos.terminal.transport.TerminalEnvironment [TEST, LIVE]
+      poiId required: string
+      merchant required: string
+      identifier required: string
+      passphrase required: string
+      version required: int

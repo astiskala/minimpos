@@ -11,6 +11,7 @@ import app.minimpos.app.data.db.StoredReason
 import app.minimpos.app.history.RefundChoice
 import app.minimpos.app.history.Refundability
 import app.minimpos.app.history.RefundablePayment
+import app.minimpos.app.started
 import app.minimpos.core.cart.AppliedTax
 import app.minimpos.core.cart.Cart
 import app.minimpos.core.money.CurrencySpec
@@ -42,7 +43,7 @@ class StoredPaymentActionsTest {
 
     private fun pay(kind: SaleKind = SaleKind.SALE): SaleWithLines {
         val id =
-            container.payments.start(
+            container.payments.started(
                 PaymentStart(
                     Cart().addCustom("Item", 1000, AppliedTax.NONE, "item").totals(TaxMode.INCLUSIVE),
                     CurrencySpec("AUD", 2),

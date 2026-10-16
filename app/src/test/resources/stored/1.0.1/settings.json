@@ -1,0 +1,106 @@
+{
+  "terminal": {
+    "mode": "TERMINAL",
+    "environment": "TEST",
+    "cloudRegion": "EU",
+    "host": "host 1.0.1",
+    "poiIdOverride": "poiIdOverride 1.0.1",
+    "paymentsAppInstallationId": "paymentsAppInstallationId 1.0.1",
+    "storeId": "storeId 1.0.1",
+    "keyIdentifier": "keyIdentifier 1.0.1",
+    "keyVersion": 2,
+    "merchantAccount": "merchantAccount 1.0.1",
+    "liveUrlPrefix": "liveUrlPrefix 1.0.1"
+  },
+  "payment": {
+    "currencyCode": "currencyCode 1.0.1",
+    "chargeTax": false,
+    "taxMode": "EXCLUSIVE",
+    "defaultTaxRateId": 1,
+    "referencePrefix": "referencePrefix 1.0.1",
+    "askTransactionReference": true,
+    "tokenizeDefaultOn": true,
+    "preAuthTokenizeDefaultOn": false,
+    "receiptTipping": "DEFAULT_OFF",
+    "recurringProcessingModel": "recurringProcessingModel 1.0.1",
+    "emailCapture": "OFF",
+    "autoSendEmail": false,
+    "shopperReferenceSource": "EMAIL",
+    "emailReferenceMode": "RAW",
+    "emailReferenceSalt": "emailReferenceSalt 1.0.1",
+    "offerCardSaving": false,
+    "linkExpiryHours": 25
+  },
+  "receipt": {
+    "businessName": "businessName 1.0.1",
+    "addressLines": "addressLines 1.0.1",
+    "taxIdLabel": "taxIdLabel 1.0.1",
+    "taxId": "taxId 1.0.1",
+    "phone": "phone 1.0.1",
+    "title": "title 1.0.1",
+    "footer": "footer 1.0.1",
+    "printerMode": "ON",
+    "autoPrint": false,
+    "merchantCopy": "ALWAYS",
+    "showTaxBreakdown": false,
+    "showReferences": false,
+    "showRefundQr": false,
+    "charsPerLine": 33,
+    "showTaxAmounts": false,
+    "showTaxRateTotals": true,
+    "markedTaxRateMilliPercent": 1,
+    "markedTaxRateMarker": "markedTaxRateMarker 1.0.1",
+    "markedTaxRateNote": "markedTaxRateNote 1.0.1"
+  },
+  "email": {
+    "host": "host 1.0.1",
+    "port": 588,
+    "security": "SSL",
+    "username": "username 1.0.1",
+    "fromAddress": "fromAddress 1.0.1",
+    "fromName": "fromName 1.0.1",
+    "bcc": "bcc 1.0.1",
+    "subject": "subject 1.0.1"
+  },
+  "security": {
+    "autoLockMinutes": 3
+  },
+  "simulator": {
+    "outcome": "DECLINE",
+    "delayMillis": 2501,
+    "hasPrinter": false,
+    "signatureRequired": true
+  },
+  "history": {
+    "retentionDays": 91
+  },
+  "pricingChange": {
+    "fromCurrency": "fromCurrency 1.0.1",
+    "toCurrency": "toCurrency 1.0.1",
+    "payment": {
+      "currencyCode": "currencyCode 1.0.1",
+      "chargeTax": true,
+      "taxMode": "INCLUSIVE",
+      "defaultTaxRateId": 1,
+      "referencePrefix": "referencePrefix 1.0.1",
+      "askTransactionReference": true,
+      "tokenizeDefaultOn": true,
+      "preAuthTokenizeDefaultOn": true,
+      "receiptTipping": "DISABLED",
+      "recurringProcessingModel": "recurringProcessingModel 1.0.1",
+      "emailCapture": "OFF",
+      "autoSendEmail": true,
+      "shopperReferenceSource": "CUSTOMER_REFERENCE",
+      "emailReferenceMode": "HASHED",
+      "emailReferenceSalt": "emailReferenceSalt 1.0.1",
+      "offerCardSaving": true,
+      "linkExpiryHours": 1
+    },
+    "prices": {
+      "1": 1
+    }
+  },
+  "onboardingCompleted": true,
+  "verifiedSetup": null,
+  "languageTag": ""
+}

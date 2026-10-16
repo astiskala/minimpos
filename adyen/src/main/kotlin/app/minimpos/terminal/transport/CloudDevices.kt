@@ -6,7 +6,6 @@ import com.adyen.model.clouddevice.ConnectedDevicesResponse
 import com.adyen.model.terminal.TerminalAPIRequest
 import com.adyen.model.terminal.TerminalAPIResponse
 import com.adyen.terminal.serialization.TerminalAPIGsonBuilder
-import com.google.gson.JsonParseException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import okhttp3.HttpUrl
@@ -302,13 +301,9 @@ class CloudTransport internal constructor(
         body: String,
         poiId: String,
     ): Delivery {
-        // An abort is acknowledged with a bare "ok".
-        val response =
-            try {
-                gson.fromJson(body, TerminalAPIResponse::class.java)
-            } catch (ignored: JsonParseException) {
-                null
-            } ?: return Delivery.Answered(null)
+        // An abort is acknowledged with a bare "ok". Gson and Adyen's type adapters reject unreadable JSON with several
+        // exception types (a field of the wrong type fails as UnsupportedOperationException); none may escape send.
+        val response = runCatching { gson.fromJson(body, TerminalAPIResponse::class.java) }.getOrNull() ?: return Delivery.Answered(null)
         if (response.saleToPOIResponse != null) return Delivery.Answered(response)
         val details = eventDetails(body) ?: return Delivery.Failed(Fault.UnreadableReply())
         val message = FormEncoding.decode(details)["message"] ?: details

@@ -12,6 +12,7 @@ plugins {
     alias(libs.plugins.room) apply false
     alias(libs.plugins.detekt) apply false
     alias(libs.plugins.dokka) apply false
+    alias(libs.plugins.pitest) apply false
     alias(libs.plugins.spotless)
 }
 
@@ -302,6 +303,12 @@ val zizmor =
         // Offline: the online audits need a GitHub token and would make the result depend on the network.
         command.set(listOf(tool("zizmor"), "--offline", "--no-progress", ".github"))
     }
+
+tasks.register("mutationTest") {
+    group = "verification"
+    description = "Mutation-tests :core and :adyen with PIT (not part of qualityGate): each mutant reruns the tests."
+    dependsOn(":core:pitest", ":adyen:pitest")
+}
 
 tasks.register("qualityGate") {
     group = "verification"

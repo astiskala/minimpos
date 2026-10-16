@@ -4,13 +4,17 @@ import android.security.keystore.KeyGenParameterSpec
 import android.security.keystore.KeyProperties
 import androidx.datastore.core.DataStore
 import app.minimpos.app.data.settings.ObservedStore
+import app.minimpos.app.data.settings.StorageJson
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
+import kotlinx.serialization.KSerializer
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.SerializationException
+import kotlinx.serialization.json.Json
 import java.io.IOException
 import java.security.GeneralSecurityException
 import java.security.KeyStore
@@ -129,6 +133,112 @@ internal class SetupSecrets(
     val pending: Boolean,
 )
 
+/** Which encrypted recovery journal in [SecretBlob] an operation reads or writes. */
+enum class RecoveryJournal {
+    /** Verified setup import commit journal. */
+    SETUP_IMPORT {
+        override fun get(blob: SecretBlob): String? = blob.pendingImport
+
+        override fun set(
+            blob: SecretBlob,
+            encrypted: String?,
+        ): SecretBlob = blob.copy(pendingImport = encrypted)
+    },
+
+    /** Tap to Pay phone registration recovery record. */
+    BOARDING {
+        override fun get(blob: SecretBlob): String? = blob.boardingRecovery
+
+        override fun set(
+            blob: SecretBlob,
+            encrypted: String?,
+        ): SecretBlob = blob.copy(boardingRecovery = encrypted)
+    },
+
+    /** Terminal-specific shared-key creation recovery records. */
+    KEY_CREATION {
+        override fun get(blob: SecretBlob): String? = blob.keyCreationRecovery
+
+        override fun set(
+            blob: SecretBlob,
+            encrypted: String?,
+        ): SecretBlob = blob.copy(keyCreationRecovery = encrypted)
+    },
+    ;
+
+    internal abstract fun get(blob: SecretBlob): String?
+
+    internal abstract fun set(
+        blob: SecretBlob,
+        encrypted: String?,
+    ): SecretBlob
+}
+
+/** Outcome of reading an encrypted recovery journal in one snapshot. */
+sealed interface JournalRead<out T> {
+    /** No journal is stored. */
+    data object Absent : JournalRead<Nothing>
+
+    /**
+     * The stored journal was decrypted and decoded.
+     *
+     * @param T The journal's decoded model.
+     * @property value The decoded journal.
+     */
+    data class Present<T>(
+        val value: T,
+    ) : JournalRead<T>
+
+    /** A journal is stored, but it could not be decrypted or decoded. */
+    data object Unreadable : JournalRead<Nothing>
+}
+
+/**
+ * Typed encrypted recovery journal backed by one field in [SecretBlob], reading and validating in a single snapshot.
+ *
+ * @param T The serialized journal model.
+ * @property exists Whether a journal entry is currently stored in [SecretBlob].
+ * @param readPlaintext Reads and decrypts the stored journal in one DataStore snapshot.
+ * @param writePlaintext Encrypts and stores (or clears) the journal.
+ * @param serializer Serializer for [T].
+ * @param json JSON format used to encode and decode [T].
+ * @param validate Additional domain invariant for decoded entries.
+ */
+class EncryptedJournal<T> internal constructor(
+    val exists: Flow<Boolean>,
+    private val readPlaintext: suspend () -> JournalRead<String>,
+    private val writePlaintext: suspend (String?) -> Unit,
+    private val serializer: KSerializer<T>,
+    private val json: Json = StorageJson,
+    private val validate: (T) -> Boolean = { true },
+) {
+    /** Reads, decrypts and validates the stored journal in a single DataStore snapshot. */
+    suspend fun read(): JournalRead<T> =
+        when (val raw = readPlaintext()) {
+            JournalRead.Absent -> {
+                JournalRead.Absent
+            }
+
+            JournalRead.Unreadable -> {
+                JournalRead.Unreadable
+            }
+
+            is JournalRead.Present -> {
+                try {
+                    val parsed = json.decodeFromString(serializer, raw.value)
+                    if (validate(parsed)) JournalRead.Present(parsed) else JournalRead.Unreadable
+                } catch (ignored: SerializationException) {
+                    JournalRead.Unreadable
+                }
+            }
+        }
+
+    /** Encrypts and persists [value], or clears the journal when [value] is null. */
+    suspend fun write(value: T?) {
+        writePlaintext(value?.let { json.encodeToString(serializer, it) })
+    }
+}
+
 /** The device could not encrypt a secret (e.g. the Android Keystore failed), so it was not stored. */
 class SecretStoreException(
     cause: Throwable,
@@ -173,7 +283,28 @@ class SecretStore(
             }
         }
 
-    internal val pendingImport: Flow<Boolean> = store.data.map { it.pendingImport != null }
+    internal fun hasJournal(kind: RecoveryJournal): Flow<Boolean> = store.data.map { kind.get(it) != null }
+
+    internal fun <T> journal(
+        kind: RecoveryJournal,
+        serializer: KSerializer<T>,
+        json: Json = StorageJson,
+        validate: (T) -> Boolean = { true },
+    ): EncryptedJournal<T> =
+        EncryptedJournal(
+            exists = hasJournal(kind),
+            readPlaintext = {
+                val encrypted = kind.get(store.data.first()) ?: return@EncryptedJournal JournalRead.Absent
+                decrypt(encrypted)?.let { JournalRead.Present(it) } ?: JournalRead.Unreadable
+            },
+            writePlaintext = { value ->
+                val encrypted = value?.let { encrypt(it) }
+                store.update { kind.set(it, encrypted) }
+            },
+            serializer = serializer,
+            json = json,
+            validate = validate,
+        )
 
     internal suspend fun setupSecrets(
         tag: String,
@@ -203,49 +334,12 @@ class SecretStore(
                 )
             }
         val values = if (read) requested.intersect(configured).associateWith { decrypt(checkNotNull(blob.values[it.name])) } else emptyMap()
-        return SetupSecrets(configured, values, identity, blob.pendingImport != null)
+        return SetupSecrets(configured, values, identity, RecoveryJournal.SETUP_IMPORT.get(blob) != null)
     }
 
     internal suspend fun setAll(values: Map<Secret, String>) {
         val encrypted = values.mapKeys { it.key.name }.mapValues { encrypt(it.value) }
         store.update { it.copy(values = it.values + encrypted) }
-    }
-
-    internal suspend fun readImport(): String? =
-        store.data
-            .first()
-            .pendingImport
-            ?.let { decrypt(it) }
-
-    internal suspend fun writeImport(value: String?) {
-        val encrypted = value?.let { encrypt(it) }
-        store.update { it.copy(pendingImport = encrypted) }
-    }
-
-    internal suspend fun readBoarding(): String? =
-        store.data
-            .first()
-            .boardingRecovery
-            ?.let { decrypt(it) }
-
-    internal suspend fun hasBoarding(): Boolean = store.data.first().boardingRecovery != null
-
-    internal suspend fun writeBoarding(value: String?) {
-        val encrypted = value?.let { encrypt(it) }
-        store.update { it.copy(boardingRecovery = encrypted) }
-    }
-
-    internal val keyCreationExists: Flow<Boolean> = store.data.map { it.keyCreationRecovery != null }
-
-    internal suspend fun readKeyCreation(): String? =
-        store.data
-            .first()
-            .keyCreationRecovery
-            ?.let { decrypt(it) }
-
-    internal suspend fun writeKeyCreation(value: String?) {
-        val encrypted = value?.let { encrypt(it) }
-        store.update { it.copy(keyCreationRecovery = encrypted) }
     }
 
     /** Stores [value], or clears the secret when it is null or empty. Throws [SecretStoreException] if it cannot be encrypted. */

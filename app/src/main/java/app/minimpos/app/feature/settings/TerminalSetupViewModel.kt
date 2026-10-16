@@ -210,7 +210,6 @@ class TerminalSetupViewModel(
         val current = settings.current().terminal
         observedSettings.first { it.settings.terminal == current }
         val connected = status.check() is TerminalConnection.Connected
-        if (connected) discovery.completeKey()
         val result =
             if (connected) {
                 ActionState(done = true)

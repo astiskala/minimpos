@@ -7,7 +7,9 @@ import app.minimpos.app.data.repo.CatalogRepository
 import app.minimpos.app.data.repo.HistoryRepository
 import app.minimpos.app.data.repo.ImportMode
 import app.minimpos.app.data.repo.ImportSummary
+import app.minimpos.app.data.security.JournalRead
 import app.minimpos.app.data.security.PinManager
+import app.minimpos.app.data.security.RecoveryJournal
 import app.minimpos.app.data.security.Secret
 import app.minimpos.app.data.security.SecretStore
 import app.minimpos.app.data.security.SecretStoreException
@@ -231,8 +233,9 @@ class SetupTransfer(
     private val history: HistoryRepository? = null,
 ) {
     private val importing = Mutex()
+    private val journal = secrets.journal(RecoveryJournal.SETUP_IMPORT, serializer<PendingSetupImport>(), TransferJson)
 
-    internal val pending = secrets.pendingImport
+    internal val pending = journal.exists
 
     internal suspend fun prepare(
         received: ReceivedTransfer,
@@ -372,7 +375,7 @@ class SetupTransfer(
             if (pending.first()) return@withLock ImportOutcome.Rejected(SetupProblem.TRANSFER_PENDING)
             if (!unchanged(prepared)) return@withLock ImportOutcome.Rejected(SetupProblem.SETUP_CHANGED)
             saving {
-                val journal =
+                val entry =
                     PendingSetupImport(
                         UUID.randomUUID().toString(),
                         TransferCodec.encode(prepared.received.transfer),
@@ -384,40 +387,40 @@ class SetupTransfer(
                         prepared.paymentsAppChecked,
                         purgeHistory,
                     )
-                secrets.writeImport(TransferJson.encodeToString(serializer<PendingSetupImport>(), journal))
-                resume(journal, verified)
+                journal.write(entry)
+                resume(entry, verified)
             }
         }
 
     internal suspend fun recover(verified: suspend () -> Boolean = { true }): ImportOutcome? =
         importing.withLock {
-            if (!pending.first()) return@withLock null
-            saving {
-                val journal = secrets.readImport() ?: return@saving ImportOutcome.Rejected(SetupProblem.TRANSFER_PENDING)
-                resume(TransferJson.decodeFromString(serializer<PendingSetupImport>(), journal), verified)
+            when (val stored = journal.read()) {
+                JournalRead.Absent -> null
+                JournalRead.Unreadable -> ImportOutcome.Rejected(SetupProblem.TRANSFER_PENDING)
+                is JournalRead.Present -> saving { resume(stored.value, verified) }
             }
         }
 
     private suspend fun resume(
-        journal: PendingSetupImport,
+        entry: PendingSetupImport,
         verified: suspend () -> Boolean,
     ): ImportOutcome {
-        val received = receive(TransferCodec.decode(journal.payload))
-        val summary = received.catalogue?.let { catalog.import(it, journal.mode, journal.id) }
-        secrets.setAll(journal.secrets)
-        if (journal.purgeHistory) checkNotNull(history).purgeForEnvironmentSwitch(journal.settings.terminal)
-        if (received.settings != null) apply(received.settings, journal.settings) else settings.update { journal.settings }
-        if (journal.changesSetup && !verified()) return ImportOutcome.Rejected(SetupProblem.SETUP_CHANGED)
-        if (journal.purgeHistory) checkNotNull(history).finishSwitch()
-        secrets.writeImport(null)
+        val received = receive(TransferCodec.decode(entry.payload))
+        val summary = received.catalogue?.let { catalog.import(it, entry.mode, entry.id) }
+        secrets.setAll(entry.secrets)
+        if (entry.purgeHistory) checkNotNull(history).purgeForEnvironmentSwitch(entry.settings.terminal)
+        if (received.settings != null) apply(received.settings, entry.settings) else settings.update { entry.settings }
+        if (entry.changesSetup && !verified()) return ImportOutcome.Rejected(SetupProblem.SETUP_CHANGED)
+        if (entry.purgeHistory) checkNotNull(history).finishSwitch()
+        journal.write(null)
         return ImportOutcome.Imported(
             TransferResult(
                 summary,
                 received.hasSettings,
-                journal.secrets.keys,
+                entry.secrets.keys,
                 connection = received.hasConnection,
-                businessWarning = journal.businessWarning,
-                paymentsAppChecked = journal.paymentsAppChecked,
+                businessWarning = entry.businessWarning,
+                paymentsAppChecked = entry.paymentsAppChecked,
             ),
         )
     }

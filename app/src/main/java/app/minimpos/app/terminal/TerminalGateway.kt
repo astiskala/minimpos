@@ -391,35 +391,21 @@ class TerminalGateway(
             }
         }
 
+    internal val candidates = CandidateChecks()
+
     /**
      * Checks the connection with a diagnosis request, see [TerminalClient.diagnose], and remembers whether the terminal
      * has a printer. A destination that takes no diagnosis ([DestinationRules.diagnoses]) only has its setup checked, without
      * being opened. Never [TerminalConnection.Unknown] or [TerminalConnection.Checking].
      */
-    suspend fun diagnose(): TerminalConnection =
-        when (val connection = connection()) {
-            is Connection.NotSetUp -> {
-                TerminalConnection.NotSetUp(connection.problem)
-            }
-
-            is Connection.Unreachable -> {
-                TerminalConnection.Failed(Failure.Remote(connection.fault))
-            }
-
-            is Connection.Open if !connection.destination.diagnoses -> {
-                TerminalConnection.Connected(DiagnosisResult(reachable = true, fault = null), setupOnly = true)
-            }
-
-            is Connection.Open -> {
-                val diagnosis = connection.client.diagnose()
-                if (diagnosis.reachable) {
-                    learnPrinter(connection.client, diagnosis.hasPrinter)
-                    TerminalConnection.Connected(diagnosis)
-                } else {
-                    TerminalConnection.Failed(Failure.Remote(diagnosis.failure()))
-                }
+    suspend fun diagnose(): TerminalConnection {
+        val connection = connection()
+        return candidates.diagnose(connection).also {
+            if (connection is Connection.Open && it is TerminalConnection.Connected && !it.setupOnly) {
+                learnPrinter(connection.client, it.diagnosis.hasPrinter)
             }
         }
+    }
 
     internal suspend fun refreshEnvironment() {
         val setup = setups.current()
@@ -427,8 +413,6 @@ class TerminalGateway(
             localEnvironment()?.let { setups.remember(DetectedEnvironment(setup, it)) }
         }
     }
-
-    internal val candidates = CandidateChecks()
 
     internal inner class CandidateChecks {
         suspend fun environment(): TerminalEnvironment? = localEnvironment()
@@ -447,31 +431,33 @@ class TerminalGateway(
                     ) { origin, endpoint -> detected.set(DetectedEnvironment(origin, endpoint.environment, endpoint.region)) },
                     PaymentsAppDestination(paymentsApp),
                 )
-            val result =
-                when (val connection = candidates.single { it.rules == setup.destination }.connect(unlocked, application)) {
-                    is Connection.NotSetUp -> {
-                        TerminalConnection.NotSetUp(connection.problem)
-                    }
+            val connection = candidates.single { it.rules == setup.destination }.connect(unlocked, application)
+            return diagnose(connection) to detected.get()
+        }
 
-                    is Connection.Unreachable -> {
-                        TerminalConnection.Failed(Failure.Remote(connection.fault))
-                    }
+        internal suspend fun diagnose(connection: Connection): TerminalConnection =
+            when (connection) {
+                is Connection.NotSetUp -> {
+                    TerminalConnection.NotSetUp(connection.problem)
+                }
 
-                    is Connection.Open -> {
-                        if (!connection.destination.diagnoses) {
-                            TerminalConnection.Connected(DiagnosisResult(reachable = true, fault = null), setupOnly = true)
-                        } else {
-                            val diagnosis = connection.client.diagnose()
-                            if (diagnosis.reachable) {
-                                TerminalConnection.Connected(diagnosis)
-                            } else {
-                                TerminalConnection.Failed(Failure.Remote(diagnosis.failure()))
-                            }
-                        }
+                is Connection.Unreachable -> {
+                    TerminalConnection.Failed(Failure.Remote(connection.fault))
+                }
+
+                is Connection.Open if !connection.destination.diagnoses -> {
+                    TerminalConnection.Connected(DiagnosisResult(reachable = true, fault = null), setupOnly = true)
+                }
+
+                is Connection.Open -> {
+                    val diagnosis = connection.client.diagnose()
+                    if (diagnosis.reachable) {
+                        TerminalConnection.Connected(diagnosis)
+                    } else {
+                        TerminalConnection.Failed(Failure.Remote(diagnosis.failure()))
                     }
                 }
-            return result to detected.get()
-        }
+            }
     }
 
     /** The terminals connected to the merchant account in the cloud, for choosing one, see [CloudTerminal.connectedTerminals]. */

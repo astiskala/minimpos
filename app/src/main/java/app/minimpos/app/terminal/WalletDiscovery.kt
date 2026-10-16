@@ -7,7 +7,6 @@ import app.minimpos.core.payment.ScanWallet
 import app.minimpos.terminal.transport.Fault
 import app.minimpos.terminal.transport.TerminalDetailsApi
 import app.minimpos.terminal.transport.TerminalEnvironment
-import app.minimpos.terminal.transport.TerminalListing
 import app.minimpos.terminal.transport.WalletMethodListing
 import app.minimpos.terminal.transport.WalletMethodsApi
 import kotlinx.coroutines.CoroutineScope
@@ -149,49 +148,42 @@ class WalletDiscovery(
         val setup = origin.setup
         val environment = checkNotNull(setup.environment)
         val key = checkNotNull(origin.apiKey)
-        when (val listing = terminals(key).terminals(environment, setup.poiId)) {
-            is TerminalListing.Failed -> {
-                publishFailure(origin, initial, listing.fault)
+        when (
+            val assignment =
+                TerminalAssignments.assigned(
+                    terminals(key),
+                    environment,
+                    checkNotNull(setup.poiId),
+                    setup.settings.terminal.merchantAccount,
+                )
+        ) {
+            is AssignedTerminal.Failed -> {
+                publishFailure(origin, initial, assignment.fault)
             }
 
-            is TerminalListing.Listed -> {
-                if (listing.environment != environment) {
-                    publishFailure(origin, initial, Fault.UnreadableReply())
-                    return
-                }
-                when (
-                    val assignment =
-                        TerminalAssignments.receipt(
-                            listing.terminals,
-                            checkNotNull(setup.poiId),
-                            setup.settings.terminal.merchantAccount,
-                        )
-                ) {
-                    is TerminalAssignment.Blocked -> {
-                        publish(origin, initial.copy(checking = false, checked = false, problem = assignment.problem))
+            is AssignedTerminal.Blocked -> {
+                publish(origin, initial.copy(checking = false, checked = false, problem = assignment.problem))
+            }
+
+            is AssignedTerminal.Found -> {
+                val terminal = assignment.terminal
+                when (val methods = connect(key, environment).methods(terminal.merchantAccount, terminal.storeId)) {
+                    is WalletMethodListing.Failed -> {
+                        publishFailure(origin, initial, methods.fault)
                     }
 
-                    is TerminalAssignment.Assigned -> {
-                        val terminal = assignment.terminal
-                        when (val methods = connect(key, environment).methods(terminal.merchantAccount, terminal.storeId)) {
-                            is WalletMethodListing.Failed -> {
-                                publishFailure(origin, initial, methods.fault)
-                            }
-
-                            is WalletMethodListing.Listed -> {
-                                publish(
-                                    origin,
-                                    initial.copy(
-                                        offers = WalletOffers.configured(methods.methods, terminal.storeId, terminal.countryCode),
-                                        nativeScanner = WalletOffers.nativeScanner(terminal.model, terminal.id),
-                                        checking = false,
-                                        checked = true,
-                                        problem = null,
-                                        failure = null,
-                                    ),
-                                )
-                            }
-                        }
+                    is WalletMethodListing.Listed -> {
+                        publish(
+                            origin,
+                            initial.copy(
+                                offers = WalletOffers.configured(methods.methods, terminal.storeId, terminal.countryCode),
+                                nativeScanner = WalletOffers.nativeScanner(terminal.model, terminal.id),
+                                checking = false,
+                                checked = true,
+                                problem = null,
+                                failure = null,
+                            ),
+                        )
                     }
                 }
             }

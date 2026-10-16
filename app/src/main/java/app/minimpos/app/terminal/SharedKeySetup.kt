@@ -2,18 +2,18 @@ package app.minimpos.app.terminal
 
 import app.minimpos.app.data.db.Failure
 import app.minimpos.app.data.db.SetupProblem
-import app.minimpos.app.data.settings.StorageJson
+import app.minimpos.app.data.security.JournalRead
+import app.minimpos.app.data.security.RecoveryJournal
+import app.minimpos.app.data.security.SharedKeyGenerator
 import app.minimpos.app.data.settings.TerminalSettings
 import app.minimpos.terminal.transport.DiscoveredKey
 import app.minimpos.terminal.transport.SharedKeyLookup
 import app.minimpos.terminal.transport.SharedKeyUpdate
 import app.minimpos.terminal.transport.TerminalDetailsApi
 import app.minimpos.terminal.transport.TerminalEnvironment
-import app.minimpos.terminal.transport.TerminalListing
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.SerializationException
 import kotlinx.serialization.serializer
 
 /** Non-secret confirmation for one exact setup; never contains API keys or passphrases.
@@ -64,12 +64,17 @@ internal sealed interface SharedKeySetupOutcome {
  * @param busy Whether a financial operation is actively running; unfinished history alone does not block creation.
  */
 class SharedKeySetup internal constructor(
-    private val setups: TerminalSetupSource,
+    setups: TerminalSetupSource,
     private val connect: (String) -> TerminalDetailsApi,
     private val verifyApi: suspend (UnlockedSetup) -> ApiCheck,
     private val busy: () -> Boolean,
 ) {
     private val mutex = Mutex()
+    private val generator = SharedKeyGenerator()
+    private val journal =
+        setups.journal(RecoveryJournal.KEY_CREATION, serializer<KeyRecords>()) { parsed ->
+            parsed.entries.isNotEmpty() && parsed.entries.all { it.valid() }
+        }
 
     internal suspend fun resolve(
         unlocked: UnlockedSetup,
@@ -133,17 +138,9 @@ class SharedKeySetup internal constructor(
     }
 
     private suspend fun assignment(attempt: Attempt): SharedKeySetupOutcome.Failed? =
-        when (val listing = attempt.api.terminals(attempt.environment, attempt.id)) {
-            is TerminalListing.Failed -> {
-                SharedKeySetupOutcome.Failed(Failure.Remote(listing.fault))
-            }
-
-            is TerminalListing.Listed -> {
-                TerminalAssignments
-                    .unchanged(listing.terminals, attempt.id, attempt.unlocked.setup.settings.terminal)
-                    ?.let { SharedKeySetupOutcome.Failed(it) }
-            }
-        }
+        TerminalAssignments
+            .verifyUnchanged(attempt.api, attempt.environment, attempt.id, attempt.unlocked.setup.settings.terminal)
+            ?.let(SharedKeySetupOutcome::Failed)
 
     private suspend fun patch(
         attempt: Attempt,
@@ -204,11 +201,11 @@ class SharedKeySetup internal constructor(
             unlocked.setup.settings.terminal.keyIdentifier
                 .isNotBlank() || unlocked.hasSharedPassphrase,
             unlocked.setup.settings.terminal,
-            setups.keyRecovery.identity(checkNotNull(unlocked.apiKey)),
+            generator.identity(checkNotNull(unlocked.apiKey)),
         )
 
     private fun newRecord(unlocked: UnlockedSetup): KeyRecord {
-        val material = setups.keyRecovery.generate()
+        val material = generator.generate()
         return KeyRecord(
             checkNotNull(unlocked.apiKey),
             checkNotNull(unlocked.setup.environment),
@@ -221,17 +218,12 @@ class SharedKeySetup internal constructor(
         )
     }
 
-    private suspend fun records(): KeyRecords? {
-        val text = setups.keyRecovery.read()
-        if (text == null) return if (setups.keyRecovery.exists()) null else KeyRecords()
-        return try {
-            StorageJson.decodeFromString(serializer<KeyRecords>(), text).takeIf { parsed ->
-                parsed.entries.isNotEmpty() && parsed.entries.all { it.valid() }
-            }
-        } catch (ignored: SerializationException) {
-            null
+    private suspend fun records(): KeyRecords? =
+        when (val stored = journal.read()) {
+            JournalRead.Absent -> KeyRecords()
+            is JournalRead.Present -> stored.value
+            JournalRead.Unreadable -> null
         }
-    }
 
     private suspend fun save(
         records: KeyRecords,
@@ -240,10 +232,7 @@ class SharedKeySetup internal constructor(
         KeyRecords(records.entries.filterNot { it.sameContext(entry) } + entry),
     )
 
-    private suspend fun write(records: KeyRecords) =
-        setups.keyRecovery.write(
-            records.takeIf { it.entries.isNotEmpty() }?.let { StorageJson.encodeToString(serializer<KeyRecords>(), it) },
-        )
+    private suspend fun write(records: KeyRecords) = journal.write(records.takeIf { it.entries.isNotEmpty() })
 
     @Serializable
     private class KeyRecords(

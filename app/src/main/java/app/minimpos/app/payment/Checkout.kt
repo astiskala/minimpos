@@ -163,6 +163,17 @@ data class Checkout(
         zone: ZoneId,
     ): PaymentStart? = paymentStart(now, zone)?.copy(tipOnReceipt = false).takeIf { canScanWallet }
 
+    /** Whether [actual] has the same priced cart, currency, form and payment settings as this checkout, and still offers [wallet]. */
+    internal fun matchesWalletCheckout(
+        actual: Checkout,
+        wallet: ScanWallet,
+    ): Boolean =
+        wallet in actual.wallets &&
+            actual.currency == currency &&
+            actual.totals == totals &&
+            actual.form == form &&
+            actual.payment == payment
+
     /** Field limits. */
     companion object {
         /** Longest merchant reference accepted, in characters (Adyen's limit for `merchantReference`). */

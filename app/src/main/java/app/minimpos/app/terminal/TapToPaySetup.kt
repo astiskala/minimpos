@@ -3,12 +3,13 @@ package app.minimpos.app.terminal
 import app.minimpos.app.data.db.DeviceFault
 import app.minimpos.app.data.db.Failure
 import app.minimpos.app.data.db.SetupProblem
+import app.minimpos.app.data.security.JournalRead
+import app.minimpos.app.data.security.RecoveryJournal
 import app.minimpos.app.data.security.Secret
 import app.minimpos.app.data.security.SecretStore
 import app.minimpos.app.data.security.SecretStoreException
 import app.minimpos.app.data.settings.AppSettings
 import app.minimpos.app.data.settings.SettingsRepository
-import app.minimpos.app.data.settings.StorageJson
 import app.minimpos.app.data.settings.TerminalSettings
 import app.minimpos.terminal.paymentsapp.AdyenPaymentsAppManagement
 import app.minimpos.terminal.paymentsapp.AppLinkExchange
@@ -20,7 +21,6 @@ import app.minimpos.terminal.paymentsapp.PaymentsAppOnboarding
 import app.minimpos.terminal.transport.Fault
 import app.minimpos.terminal.transport.TerminalEnvironment
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.SerializationException
 import kotlinx.serialization.serializer
 
 /** The outcome of [TapToPaySetup.board] and [TapToPaySetup.unregister]. Failures are reported here, never thrown. */
@@ -78,6 +78,8 @@ class TapToPaySetup(
     },
     private val verifyApi: suspend () -> ApiCheck,
 ) {
+    private val journal = setups.journal(RecoveryJournal.BOARDING, serializer<RegistrationRecovery>())
+
     /**
      * Boards the Payments app (or confirms that it is boarded); [reboard] boards it again, e.g. for another store. It
      * opens the Payments app up to twice and calls the Management API in between. The shared key is entered separately
@@ -136,7 +138,7 @@ class TapToPaySetup(
         values: Map<Secret, String>,
         explicit: Boolean,
     ): TapToPayOutcome =
-        when (val access = setups.registrations.access(current, values)) {
+        when (val access = setups.candidateBoarding(current, values)) {
             is BoardingSetup.Blocked -> TapToPayOutcome.NotSetUp(access.problem)
             is BoardingSetup.Ready -> candidateRegistration(current.terminal.target(), access, explicit)
         }
@@ -146,8 +148,12 @@ class TapToPaySetup(
         access: BoardingSetup.Ready,
         explicit: Boolean,
     ): TapToPayOutcome {
-        val (previous, unreadable) = recovery()
-        if (unreadable) return TapToPayOutcome.Failed(Failure.Device(DeviceFault.SECURE_STORAGE))
+        val previous =
+            when (val stored = journal.read()) {
+                JournalRead.Absent -> null
+                is JournalRead.Present -> stored.value
+                JournalRead.Unreadable -> return TapToPayOutcome.Failed(Failure.Device(DeviceFault.SECURE_STORAGE))
+            }
         val same = previous?.matches(access, target) == true
         val active = setups.current().settings.terminal
         val activeMatches = active.targetOrNull() == target
@@ -176,16 +182,6 @@ class TapToPaySetup(
                     reboard = !same && active.paymentsAppInstallationId.isNotBlank() && !activeMatches,
                 )
             }
-        }
-    }
-
-    private suspend fun recovery(): Pair<RegistrationRecovery?, Boolean> {
-        val text = setups.registrations.read()
-        if (text == null) return null to setups.registrations.exists()
-        return try {
-            StorageJson.decodeFromString(serializer<RegistrationRecovery>(), text) to false
-        } catch (ignored: SerializationException) {
-            null to true
         }
     }
 
@@ -219,8 +215,7 @@ class TapToPaySetup(
         target: BoardingTarget,
         installation: String?,
     ) {
-        val recovery = RegistrationRecovery(key, environment, target.merchantAccount, target.storeId, installation)
-        setups.registrations.write(StorageJson.encodeToString(serializer<RegistrationRecovery>(), recovery))
+        journal.write(RegistrationRecovery(key, environment, target.merchantAccount, target.storeId, installation))
     }
 
     private suspend fun registered(
@@ -280,7 +275,7 @@ class TapToPaySetup(
 
             is ManagementResult.Done -> {
                 settings.update { it.copy(terminal = it.terminal.copy(paymentsAppInstallationId = "")) }
-                setups.registrations.write(null)
+                journal.write(null)
                 TapToPayOutcome.Unregistered
             }
         }

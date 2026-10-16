@@ -27,6 +27,10 @@ import app.minimpos.app.data.repo.ImportMode
 import app.minimpos.app.data.repo.ReceiptLinesJson
 import app.minimpos.app.data.repo.RefundRepository
 import app.minimpos.app.data.repo.SaleRepository
+import app.minimpos.app.data.security.EncryptedJournal
+import app.minimpos.app.data.security.JournalRead
+import app.minimpos.app.data.security.RecoveryJournal
+import app.minimpos.app.data.security.SecretBlob
 import app.minimpos.app.data.security.SecretStore
 import app.minimpos.app.data.settings.AppSettings
 import app.minimpos.app.data.settings.ConnectionSetup
@@ -48,6 +52,7 @@ import app.minimpos.app.payment.PricingChanges
 import app.minimpos.app.payment.ReceiptDelivery
 import app.minimpos.app.payment.SaleBook
 import app.minimpos.app.payment.SaleSession
+import app.minimpos.app.payment.SettingsEdit
 import app.minimpos.app.receipt.PrintRenderer
 import app.minimpos.app.receipt.ReceiptFactory
 import app.minimpos.app.refund.HistoryAccounting
@@ -75,6 +80,7 @@ import app.minimpos.app.terminal.TerminalGateway
 import app.minimpos.app.terminal.TerminalSetup
 import app.minimpos.app.terminal.TerminalSetupSource
 import app.minimpos.app.terminal.UnlockedSetup
+import app.minimpos.app.terminal.WalletDiscovery
 import app.minimpos.app.terminal.WalletOffers
 import app.minimpos.app.update.AppUpdate
 import app.minimpos.app.update.GitHubReleases
@@ -126,6 +132,8 @@ import com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noMethods
 import com.tngtech.archunit.library.Architectures.layeredArchitecture
 import com.tngtech.archunit.library.GeneralCodingRules
 import com.tngtech.archunit.library.dependencies.SlicesRuleDefinition.slices
+import kotlinx.coroutines.flow.Flow
+import kotlinx.serialization.serializer
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.time.Clock
@@ -561,14 +569,26 @@ class ArchitectureTest {
     }
 
     @Test
-    fun `setup tasks share the pure terminal assignment reading`() = assignmentReading.check(app)
+    fun `setup tasks share the pure terminal assignment reading`() = assignmentReading.forEach { it.check(app) }
 
     @Test
-    fun `assignment reading rejects an independent matching module`() =
-        reject(listOf(assignmentReading), AssignmentReadingViolation::class.java)
+    fun `assignment reading rejects an independent matching module`() = reject(assignmentReading, AssignmentReadingViolation::class.java)
 
     private class AssignmentReadingViolation {
-        fun match(terminal: TerminalDetails) = terminal.merchantAccount
+        suspend fun list(api: TerminalDetailsApi) = api.terminals(TerminalEnvironment.TEST, null)
+    }
+
+    @Test
+    fun `encrypted recovery journals stay behind their typed seam`() = recoveryJournalOwnership.forEach { it.check(app) }
+
+    @Test
+    fun `recovery journal ownership rejects raw blob reads and forged journals`() =
+        reject(recoveryJournalOwnership, RecoveryJournalViolation::class.java)
+
+    private class RecoveryJournalViolation {
+        fun raw(blob: SecretBlob) = blob.pendingImport
+
+        fun journal(flow: Flow<Boolean>) = EncryptedJournal(flow, { JournalRead.Absent }, {}, serializer<String>())
     }
 
     @Test
@@ -768,6 +788,11 @@ class ArchitectureTest {
             source: TerminalSetupSource,
             setup: UnlockedSetup,
         ) = source.rememberVerified(setup)
+
+        suspend fun complete(
+            keys: SharedKeySetup,
+            setup: UnlockedSetup,
+        ) = keys.complete(setup)
     }
 
     @Test
@@ -896,6 +921,8 @@ class ArchitectureTest {
         fun reprice(session: SaleSession) = session.reprice(CurrencySpec.of("USD"), CurrencySpec.of("JPY"))
 
         fun make() = PricingChange("USD", "JPY", AppSettings().payment, emptyMap())
+
+        fun confirmEdit(change: PricingChange) = SettingsEdit.ConfirmPricing(change)
     }
 
     private class TargetViolation {
@@ -1032,6 +1059,17 @@ class ArchitectureTest {
                                 call.target.name.startsWith("rememberVerified")
                         },
                     ),
+                noClasses()
+                    .that()
+                    .haveNameNotMatching(
+                        within(
+                            SharedKeySetup::class.java.name,
+                            "app.minimpos.app.terminal.SetupImport",
+                            "app.minimpos.app.terminal.TerminalStatus",
+                            AppContainer::class.java.name,
+                        ),
+                    ).should()
+                    .callMethodWhere(callTo(SharedKeySetup::class.java.name, "complete")),
             )
 
         const val UI = "UI"
@@ -1129,18 +1167,48 @@ class ArchitectureTest {
                 .orShould()
                 .accessField(PaymentStanding::class.java, PaymentStanding.CAPTURE_SENDING.name)
 
-        // Each setup task uses the same pure matching owner while its required strictness stays explicit there.
-        val assignmentReading: ArchRule =
-            classes()
-                .that(
-                    type(SetupDiscovery::class.java)
-                        .or(type(SetupAccess::class.java))
-                        .or(type(SetupImport::class.java))
-                        .or(type(SharedKeySetup::class.java))
-                        .or(type(ReceiptBusinessDetails::class.java))
-                        .or(type(AssignmentReadingViolation::class.java)),
-                ).should()
-                .dependOnClassesThat(type(TerminalAssignments::class.java))
+        // Each setup task uses the same assignment owner, which alone queries Management terminal listings.
+        val assignmentReading: List<ArchRule> =
+            listOf(
+                classes()
+                    .that(
+                        type(SetupDiscovery::class.java)
+                            .or(type(SetupAccess::class.java))
+                            .or(type(SetupImport::class.java))
+                            .or(type(SharedKeySetup::class.java))
+                            .or(type(ReceiptBusinessDetails::class.java))
+                            .or(type(WalletDiscovery::class.java))
+                            .or(type(AssignmentReadingViolation::class.java)),
+                    ).should()
+                    .dependOnClassesThat(type(TerminalAssignments::class.java)),
+                noClasses()
+                    .that()
+                    .haveNameNotMatching(within(TerminalAssignments::class.java.name))
+                    .should()
+                    .callMethodWhere(callToSubtypeOf(TerminalDetailsApi::class.java, "terminals")),
+            )
+
+        // Encrypted recovery journals are read and decoded in one snapshot through EncryptedJournal.
+        val recoveryJournalOwnership: List<ArchRule> =
+            listOf(
+                noClasses()
+                    .that()
+                    .haveNameNotMatching(within(RecoveryJournal::class.java.name, SecretBlob::class.java.name))
+                    .should()
+                    .callMethodWhere(
+                        callTo(
+                            SecretBlob::class.java.name,
+                            "getPendingImport",
+                            "getBoardingRecovery",
+                            "getKeyCreationRecovery",
+                        ),
+                    ),
+                noClasses()
+                    .that()
+                    .haveNameNotMatching(within(SecretStore::class.java.name, EncryptedJournal::class.java.name))
+                    .should()
+                    .callConstructorWhere(target(owner(type(EncryptedJournal::class.java)))),
+            )
 
         // Reference facts and busy-start handling belong to stored-payment actions, not financial screens.
         val reversalInitiation: ArchRule =
@@ -1394,6 +1462,20 @@ class ArchitectureTest {
                     .haveNameNotMatching(within(PricingChanges::class.java.name, PricingChange::class.java.name))
                     .should()
                     .callConstructorWhere(target(owner(type(PricingChange::class.java)))),
+                noClasses()
+                    .that()
+                    .haveNameNotMatching(within(PricingChanges::class.java.name, SettingsEdit::class.java.name))
+                    .should()
+                    .callConstructorWhere(
+                        target(
+                            owner(
+                                belongToAnyOf(
+                                    SettingsEdit.ConfirmHistorySwitch::class.java,
+                                    SettingsEdit.ConfirmPricing::class.java,
+                                ),
+                            ),
+                        ),
+                    ),
             )
 
         // Availability and stored-context matching must be decided before a caller receives an eligible adapter.
@@ -1433,12 +1515,18 @@ class ArchitectureTest {
                     .that()
                     .haveNameNotMatching(within(Checkout::class.java.name, SaleSession::class.java.name))
                     .should()
-                    .callMethodWhere(callTo(Checkout::class.java.name, "paymentStart", "linkStart", "walletStart")),
+                    .callMethodWhere(
+                        callTo(Checkout::class.java.name, "paymentStart", "linkStart", "walletStart", "matchesWalletCheckout")
+                            .or(callTo(PaymentStart::class.java.name, "withScanned")),
+                    ),
                 noClasses()
                     .that()
-                    .haveNameNotMatching(within(Checkout::class.java.name, PaymentStart::class.java.name))
+                    .haveNameNotMatching(within(Checkout::class.java.name, PaymentStart::class.java.name, SaleSession::class.java.name))
                     .should()
-                    .callMethodWhere(callTo(PaymentStart::class.java.name, "copy")),
+                    .callMethodWhere(
+                        callTo(PaymentStart::class.java.name, "copy")
+                            .or(callTo(Checkout::class.java.name, "copy")),
+                    ),
                 noClasses()
                     .that()
                     .haveNameNotMatching(within(SaleSession::class.java.name))

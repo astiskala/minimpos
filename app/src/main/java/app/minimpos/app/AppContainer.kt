@@ -339,7 +339,7 @@ class AppContainer(
     val tapToPay = TapToPaySetup(terminalSetup, settings, paymentsAppLinks, paymentsAppManagement) { api.verify() }
 
     /** Whether payments and printing can work, for Home, Settings and the receipt screens. */
-    val terminalStatus = TerminalStatus(terminalSetup, gateway, appScope, api::verify, tapToPay::checkSaved)
+    val terminalStatus = TerminalStatus(terminalSetup, gateway, appScope, api::verify, tapToPay::checkSaved, sharedKeys::complete)
 
     /**
      * The startup check for a newer GitHub release, which Home offers to download in the browser; never started on an
@@ -474,18 +474,23 @@ class AppContainer(
         )
 
     /** Transient wallet scanning delegates to the same sale lifecycle, with original-context send protection. */
-    val walletPayments = WalletPayments(session(SaleKind.SALE), payments, walletDiscovery, gateway, appScope, ::walletCheckout)
-
-    private suspend fun walletCheckout(): Checkout {
-        val checkout =
-            session(SaleKind.SALE)
-                .checkout(
-                    settingsState,
-                    flowOf(terminalStatus.state.value.printerAvailable),
-                    currency = ::currency,
-                ).first()
-        return checkout.copy(wallets = walletDiscovery.state.value.offered(checkout.currency.code))
-    }
+    val walletPayments =
+        WalletPayments(
+            session(SaleKind.SALE),
+            payments,
+            walletDiscovery,
+            gateway,
+            appScope,
+            currentCheckout = {
+                session(SaleKind.SALE)
+                    .checkout(
+                        settingsState,
+                        flowOf(terminalStatus.state.value.printerAvailable),
+                        wallets = walletDiscovery.state,
+                        currency = ::currency,
+                    ).first()
+            },
+        )
 
     /** Enters tips and captures and adjusts payments taken with manual capture. */
     val captures = Captures(sales, api::target, ::managerPermits)

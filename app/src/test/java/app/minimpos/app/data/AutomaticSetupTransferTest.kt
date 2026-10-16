@@ -12,6 +12,7 @@ import app.minimpos.app.data.db.SaleEntity
 import app.minimpos.app.data.db.SaleStatus
 import app.minimpos.app.data.db.SetupProblem
 import app.minimpos.app.data.repo.ImportMode
+import app.minimpos.app.data.security.RecoveryJournal
 import app.minimpos.app.data.security.Secret
 import app.minimpos.app.data.security.TransferSeal
 import app.minimpos.app.data.transfer.ImportOutcome
@@ -99,7 +100,8 @@ class AutomaticSetupTransferTest {
 
     internal suspend fun assertCreationPersisted() =
         assertThat(
-            env.container.secrets.keyCreationExists
+            env.container.secrets
+                .hasJournal(RecoveryJournal.KEY_CREATION)
                 .first(),
         ).isTrue()
 
@@ -317,7 +319,8 @@ class AutomaticSetupTransferTest {
         assertThat(createdKeys).isEmpty()
         assertThat(
             await {
-                env.container.secrets.keyCreationExists
+                env.container.secrets
+                    .hasJournal(RecoveryJournal.KEY_CREATION)
                     .first()
             },
         ).isFalse()
@@ -332,7 +335,8 @@ class AutomaticSetupTransferTest {
         assertThat(await { env.container.secrets.get(Secret.TERMINAL_PASSPHRASE) }).isEqualTo(generated.passphrase)
         assertThat(
             await {
-                env.container.secrets.keyCreationExists
+                env.container.secrets
+                    .hasJournal(RecoveryJournal.KEY_CREATION)
                     .first()
             },
         ).isFalse()
@@ -360,7 +364,8 @@ class AutomaticSetupTransferTest {
         assertThat(await { env.container.secrets.get(Secret.TERMINAL_PASSPHRASE) }).isNull()
         assertThat(
             await {
-                env.container.secrets.keyCreationExists
+                env.container.secrets
+                    .hasJournal(RecoveryJournal.KEY_CREATION)
                     .first()
             },
         ).isTrue()
@@ -370,7 +375,8 @@ class AutomaticSetupTransferTest {
         assertThat(createdKeys).hasSize(1)
         assertThat(
             await {
-                env.container.secrets.keyCreationExists
+                env.container.secrets
+                    .hasJournal(RecoveryJournal.KEY_CREATION)
                     .first()
             },
         ).isFalse()

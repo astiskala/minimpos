@@ -32,6 +32,7 @@ import app.minimpos.app.refund.awaitsLinkPayment
 import app.minimpos.app.refund.decline
 import app.minimpos.app.refund.simulatedLink
 import app.minimpos.app.terminal.TerminalState
+import app.minimpos.app.terminal.WalletAvailability
 import app.minimpos.app.terminal.WalletDiscovery
 import app.minimpos.core.cart.Cart
 import app.minimpos.core.cart.CartTotals
@@ -46,6 +47,7 @@ import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
@@ -236,19 +238,12 @@ class CheckoutViewModel(
                 it.printerAvailable
             },
             terminal.map { it.paymentLinks && links != null },
+            discovery?.state ?: flowOf(WalletAvailability()),
             currency,
         )
-    private val withWallets =
-        if (discovery == null) {
-            checkout
-        } else {
-            combine(checkout, discovery.state) { checked, wallets ->
-                checked.copy(wallets = wallets.offered(checked.currency.code))
-            }
-        }
 
     /** The screen state, updated whenever the form, cart, settings, printer or payment link setup change. */
-    val state: StateFlow<Checkout> = withWallets.stateIn(viewModelScope, SharingStarted.Eagerly, Checkout(kind = session.kind))
+    val state: StateFlow<Checkout> = checkout.stateIn(viewModelScope, SharingStarted.Eagerly, Checkout(kind = session.kind))
 
     /** Updates the form (kept in the [SaleSession] so it survives going back to the cart). */
     fun update(transform: (CheckoutForm) -> CheckoutForm) = session.updateForm(transform)

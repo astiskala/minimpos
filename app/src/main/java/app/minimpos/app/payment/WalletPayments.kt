@@ -7,7 +7,6 @@ import app.minimpos.app.terminal.WalletDiscovery
 import app.minimpos.core.money.CurrencySpec
 import app.minimpos.core.payment.ScanWallet
 import app.minimpos.terminal.client.BarcodeScan
-import app.minimpos.terminal.client.ScannedPayment
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Job
@@ -252,13 +251,21 @@ class WalletPayments(
         mutable.value = current.copy(stage = WalletScanStage.VALIDATING, problem = null)
         scope.launch {
             val actual = currentCheckout()
-            val ready =
-                discovery.current(captured) && current.selected in discovery.state.value.offered(actual.currency.code) &&
-                    actual.currency == checkout.currency && actual.totals == checkout.totals && actual.form == checkout.form &&
-                    actual.payment == checkout.payment
+            val setupReady = discovery.current(captured)
             synchronized(this@WalletPayments) {
                 if (mutable.value.epoch != epoch || mutable.value.stage != WalletScanStage.VALIDATING) return@synchronized
-                val start = session.paymentStart(checkout, clock.instant(), zone(), scannedWallet = true).takeIf { ready }
+                val selected = checkNotNull(current.selected)
+                val start =
+                    if (setupReady) {
+                        session.paymentStart(
+                            checkout,
+                            clock.instant(),
+                            zone(),
+                            WalletScanStart(actual, selected, code, captured),
+                        )
+                    } else {
+                        null
+                    }
                 when {
                     start == null -> {
                         mutable.value =
@@ -271,13 +278,7 @@ class WalletPayments(
                     }
 
                     else -> {
-                        val payment =
-                            start.withScanned(
-                                ScannedPayment(checkNotNull(current.selected).brand, code),
-                                checkNotNull(captured.context),
-                                checkNotNull(captured.identity),
-                            )
-                        payments.start(payment)
+                        payments.start(start)
                         mutable.value = current.copy(stage = WalletScanStage.PAYING)
                     }
                 }

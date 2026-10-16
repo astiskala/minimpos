@@ -32,6 +32,7 @@ import java.util.concurrent.atomic.AtomicLong
  * @property tokenize Null until the operator touches the switch; then the settings default no longer applies.
  * @property tipOnReceipt "Tip on the receipt": null until the operator touches the switch, as with [tokenize].
  * @property askGratuity "Tip on terminal": null until the operator touches the switch; mutually exclusive with [tipOnReceipt].
+ * @property splitAmountMinor Optional operator-entered split tender amount in minor units (`1 until gross`); null charges full total.
  */
 data class CheckoutForm(
     val transactionReference: String = "",
@@ -40,6 +41,7 @@ data class CheckoutForm(
     val tokenize: Boolean? = null,
     val tipOnReceipt: Boolean? = null,
     val askGratuity: Boolean? = null,
+    val splitAmountMinor: Long? = null,
 )
 
 /**

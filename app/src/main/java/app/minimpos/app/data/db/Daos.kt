@@ -153,6 +153,10 @@ interface SaleDao {
     @Insert
     suspend fun insertLines(lines: List<SaleLineEntity>)
 
+    /** Inserts or replaces a recorded payment tender for an existing sale. */
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun upsertTender(tender: SaleTenderEntity)
+
     /** Overwrites the sale with the same `id`; its lines are not touched. */
     @Update
     suspend fun update(sale: SaleEntity)

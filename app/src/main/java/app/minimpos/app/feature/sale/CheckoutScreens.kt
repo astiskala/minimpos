@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -485,6 +486,7 @@ fun SaleResultScreen(
     val state by vm.state.collectAsStateWithLifecycle()
     var showReceipt by remember { mutableStateOf(false) }
     val record = state.record
+    val money = rememberMoneyFormatter(record?.sale?.currency ?: "EUR")
     val ringUp = Route.ringUp(state.kind)
 
     fun done(route: Route) {
@@ -492,7 +494,6 @@ fun SaleResultScreen(
         navigator.popTo(route)
     }
     BackHandler { done(ringUp) }
-    val dimens = LocalDimens.current
 
     MiniScaffold(
         title = stringResource(R.string.result_title),
@@ -500,48 +501,62 @@ fun SaleResultScreen(
         modifier = modifier,
         bottomBar = {
             if (record != null) {
-                SaleResultBottomBar(state, onHome = { done(Route.Home) }, onNewSale = { done(ringUp) }, onTryAgain = {
+                SaleResultBottomBar(
+                    state,
+                    money,
+                    onHome = { done(Route.Home) },
+                    onNewSale = { done(ringUp) },
+                    onPayRemaining = { if (vm.payRemaining()) navigator.replace(Route.Payment(state.kind)) },
+                ) {
                     vm.finish()
                     navigator.replace(Route.Checkout(state.kind))
-                })
+                }
             }
         },
     ) { padding ->
         if (record == null) return@MiniScaffold
-        val money = rememberMoneyFormatter(record.sale.currency)
-        Column(
-            Modifier
-                .fillMaxSize()
-                .padding(padding)
-                .verticalScroll(rememberScrollState())
-                .padding(dimens.screenPadding),
-            horizontalAlignment = Alignment.CenterHorizontally,
-        ) {
-            Column(
-                Modifier.widthIn(max = 560.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(dimens.spacing),
-            ) {
-                SaleOutcome(state, money)
-                SalePaymentCard(record.sale)
-                if (state.approved) {
-                    ApprovedSaleActions(
-                        state = state,
-                        receipt = state.transaction.receipt?.takeIf { showReceipt },
-                        onPrint = vm.transaction::print,
-                        onPrintMerchantCopy = { vm.transaction.print(ReceiptCopy.MERCHANT) },
-                        onEnterTip = { navigator.push(Route.Tip(saleId)) },
-                        onEmail = vm.transaction::email,
-                        onShare = vm.transaction::share,
-                        onToggleReceipt = { showReceipt = !showReceipt },
-                    )
-                } else {
-                    UnapprovedSaleActions(state, vm.transaction::recheck, vm::abortBusyTransaction) { done(ringUp) }
-                }
+        SaleResultColumn(padding) {
+            SaleOutcome(state, money)
+            SalePaymentCard(record.sale)
+            if (state.approved) {
+                ApprovedSaleActions(
+                    state,
+                    state.transaction.receipt?.takeIf { showReceipt },
+                    vm.transaction::print,
+                    { vm.transaction.print(ReceiptCopy.MERCHANT) },
+                    { navigator.push(Route.Tip(saleId)) },
+                    vm.transaction::email,
+                    vm.transaction::share,
+                ) { showReceipt = !showReceipt }
+            } else {
+                UnapprovedSaleActions(state, vm.transaction::recheck, vm::abortBusyTransaction) { done(ringUp) }
             }
         }
     }
     ShareEffect(state.transaction.share, vm.transaction::shared)
+}
+
+@Composable
+private fun SaleResultColumn(
+    padding: PaddingValues,
+    content: @Composable ColumnScope.() -> Unit,
+) {
+    val dimens = LocalDimens.current
+    Column(
+        Modifier
+            .fillMaxSize()
+            .padding(padding)
+            .verticalScroll(rememberScrollState())
+            .padding(dimens.screenPadding),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Column(
+            Modifier.widthIn(max = 560.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(dimens.spacing),
+            content = content,
+        )
+    }
 }
 
 /** The outcome badge and title, the amount, and for unsuccessful payments why and what to do next. */
@@ -573,20 +588,29 @@ private fun SaleOutcome(
 @Composable
 private fun SaleResultBottomBar(
     state: SaleResultUiState,
+    money: MoneyFormatter,
     onHome: () -> Unit,
     onNewSale: () -> Unit,
+    onPayRemaining: () -> Unit,
     onTryAgain: () -> Unit,
 ) {
+    val sale = state.record?.sale
     BottomActions {
         Row(horizontalArrangement = Arrangement.spacedBy(LocalDimens.current.spacing), verticalAlignment = Alignment.CenterVertically) {
             HomeButton(onHome, Modifier.weight(1f))
-            if (state.approved) {
+            if (sale?.isPartiallyPaid == true) {
+                PrimaryButton(
+                    stringResource(R.string.result_pay_remaining, money.format(sale.remainingMinor)),
+                    onPayRemaining,
+                    modifier = Modifier.weight(1f).testTag("payRemaining"),
+                )
+            } else if (state.approved) {
                 PrimaryButton(
                     stringResource(if (state.preAuthorisation) R.string.result_new_pre_auth else R.string.result_new_sale),
                     onNewSale,
                     modifier = Modifier.weight(1f).testTag("newSaleAfter"),
                 )
-            } else if (state.record?.sale?.status in setOf(SaleStatus.DECLINED, SaleStatus.CANCELLED, SaleStatus.FAILED) &&
+            } else if (sale?.status in setOf(SaleStatus.DECLINED, SaleStatus.CANCELLED, SaleStatus.FAILED) &&
                 state.advice != RetryAdvice.DO_NOT_RETRY
             ) {
                 PrimaryButton(stringResource(R.string.result_try_again), onTryAgain, modifier = Modifier.weight(1f).testTag("tryAgain"))

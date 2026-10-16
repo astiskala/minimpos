@@ -78,7 +78,7 @@ fun statusKind(sale: SaleEntity): StatusKind =
         }
 
         PaymentStanding.CHARGED, PaymentStanding.AWAITING_TIP, PaymentStanding.HELD, PaymentStanding.CAPTURE_REQUESTED -> {
-            StatusKind.SUCCESS
+            if (sale.isPartiallyPaid) StatusKind.WARNING else StatusKind.SUCCESS
         }
 
         PaymentStanding.CAPTURE_FAILED -> {
@@ -103,7 +103,7 @@ fun statusKind(sale: SaleEntity): StatusKind =
 fun statusTitle(sale: SaleEntity): String =
     when (val standing = sale.standing) {
         PaymentStanding.NOT_APPROVED, PaymentStanding.CHARGED -> {
-            statusTitle(sale.status)
+            if (sale.isPartiallyPaid) stringResource(R.string.status_partially_paid) else statusTitle(sale.status)
         }
 
         PaymentStanding.HOLD_CANCELLED -> {
@@ -166,6 +166,12 @@ internal fun ColumnScope.HoldNotes(
 ) {
     val standing = sale.standing
     if (standing == PaymentStanding.NOT_APPROVED || standing == PaymentStanding.HOLD_CANCELLED) return
+    if (sale.isPartiallyPaid) {
+        OutcomeNote(
+            stringResource(R.string.detail_partially_paid, money.format(sale.paidMinor), money.format(sale.remainingMinor)),
+            Modifier.testTag("partialNote"),
+        )
+    }
     sale.tipMinor?.let { OutcomeNote(stringResource(R.string.detail_tip, money.format(sale.totalMinor), money.format(it))) }
     if (standing == PaymentStanding.AWAITING_TIP) {
         OutcomeNote(stringResource(if (afterPayment) R.string.result_tip_note else R.string.detail_tip_awaiting))

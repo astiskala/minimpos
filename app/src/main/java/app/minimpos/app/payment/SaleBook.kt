@@ -37,6 +37,9 @@ import app.minimpos.terminal.client.TransactionKind
  * @property walletSetupIdentity Fingerprint of checked connection/secrets; required for scans and never persisted as a credential.
  * @property terminalTip Native terminal tipping options (`AskGratuity` and optional `SaleToPOIData`); null when disabled.
  * @property shopperFlow Chained customer-display and input prompts run before and after payment; null when disabled.
+ * @property allowPartialAuthorisation Whether `AllowPartialAuthorisation` is sent on this tender.
+ * @property requestedAmountMinor Amount requested for this tender in minor units; defaults to `totals.amounts.gross`.
+ * @property existingSaleId Existing partially paid sale ID when collecting the remaining balance; null for a new sale.
  * @throws IllegalArgumentException if a pre-authorisation is taken for tipping on the receipt, or a card is to be saved
  *   without a [shopperReference].
  */
@@ -56,6 +59,9 @@ data class PaymentStart(
     val walletSetupIdentity: String? = null,
     val terminalTip: TerminalTipOptions? = null,
     val shopperFlow: ShopperSessionFlow? = null,
+    val allowPartialAuthorisation: Boolean = false,
+    val requestedAmountMinor: Long = totals.amounts.gross,
+    val existingSaleId: String? = null,
 ) {
     init {
         require(!tipOnReceipt || kind == SaleKind.SALE) { "Only a sale can be taken for tipping on the receipt" }
@@ -106,13 +112,17 @@ class SaleBook(
 ) : TransactionBook<PaymentStart> {
     override val kind: TransactionKind = TransactionKind.PAYMENT
 
+    override fun existingId(request: PaymentStart): String? = request.existingSaleId
+
     override suspend fun open(
         id: String,
         request: PaymentStart,
         serviceId: String,
         createdAt: Long,
     ) {
-        sales.createPending(pendingSale(id, request, createdAt).copy(serviceId = serviceId), lines(id, request.totals))
+        if (request.existingSaleId == null) {
+            sales.createPending(pendingSale(id, request, createdAt).copy(serviceId = serviceId), lines(id, request.totals))
+        }
     }
 
     override suspend fun recordContext(
@@ -124,9 +134,10 @@ class SaleBook(
 
     override fun operation(request: PaymentStart): TerminalOperation {
         val tokenization = request.tokenization
+        val isSplit = request.existingSaleId != null || request.requestedAmountMinor < request.totals.amounts.gross
         return TerminalOperation.Pay(
             PaymentParams(
-                amount = request.currency.toMajor(request.totals.amounts.gross),
+                amount = request.currency.toMajor(request.requestedAmountMinor),
                 currency = request.currency.code,
                 merchantReference = request.merchantReference,
                 shopperReference = request.shopperReference,
@@ -141,6 +152,8 @@ class SaleBook(
                 scannedPayment = request.scannedPayment,
                 terminalTip = request.terminalTip,
                 shopperFlow = request.shopperFlow,
+                allowPartialAuthorisation = request.allowPartialAuthorisation,
+                saleReferenceId = request.merchantReference.takeIf { isSplit || request.allowPartialAuthorisation },
             ),
             expected = request.walletContext,
             setupIdentity = request.walletSetupIdentity,

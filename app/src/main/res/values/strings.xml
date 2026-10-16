@@ -1045,4 +1045,9 @@
   <string name="settings_show_terminal_qr">Show QR receipt on terminal after approval</string>
   <string name="settings_ask_shopper_rating">Ask shopper for 0–10 rating after approval</string>
   <string name="detail_shopper_rating">Shopper rating</string>
+  <string name="settings_allow_partial_auth">Allow partial authorizations</string>
+  <string name="settings_allow_partial_auth_hint">Accept partial card approvals (AllowPartialAuthorisation) and prompt for the remaining balance on another card.</string>
+  <string name="status_partially_paid">Partially paid</string>
+  <string name="detail_partially_paid">Paid %1$s · Remaining %2$s</string>
+  <string name="result_pay_remaining">Pay remaining %1$s</string>
 </resources>

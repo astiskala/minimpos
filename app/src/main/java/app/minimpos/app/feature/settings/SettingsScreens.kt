@@ -1028,6 +1028,13 @@ private fun ColumnScope.PaymentsSection(
     SettingSwitch(stringResource(R.string.settings_ask_transaction_reference), payment.askTransactionReference, { value ->
         update { it.copy(askTransactionReference = value) }
     }, subtitle = stringResource(R.string.settings_ask_transaction_reference_hint))
+    SettingSwitch(
+        stringResource(R.string.settings_allow_partial_auth),
+        payment.allowPartialAuthorisation,
+        { value -> update { it.copy(allowPartialAuthorisation = value) } },
+        subtitle = stringResource(R.string.settings_allow_partial_auth_hint),
+        tag = "allowPartialAuthorisation",
+    )
     SectionHeader(stringResource(R.string.settings_tokenization))
     ShopperReferenceSettings(payment, ::update)
     SectionHeader(stringResource(R.string.settings_tipping))

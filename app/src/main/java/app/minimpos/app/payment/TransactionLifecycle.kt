@@ -138,6 +138,9 @@ interface TransactionBook<R> {
     /** The kind of transaction, for status checks and aborts. */
     val kind: TransactionKind
 
+    /** Existing record ID when [request] adds a tender to an already stored sale; null for a new record. */
+    fun existingId(request: R): String? = null
+
     /** Stores [request] as a new PENDING record [id], sent with [serviceId] and started at [createdAt] (epoch ms). */
     suspend fun open(
         id: String,
@@ -227,7 +230,7 @@ class TransactionLifecycle<R>(
     @Synchronized
     fun start(request: R): String {
         check(_state.value !is TransactionState.Processing) { "A ${book.kind.name.lowercase()} is already in progress" }
-        val id = newId()
+        val id = book.existingId(request) ?: newId()
         _state.value = TransactionState.Processing(id)
         synchronized(unresolvedRequests) { unresolvedRequests[id] = request }
         scope.launch {

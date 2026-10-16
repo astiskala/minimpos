@@ -6,7 +6,10 @@ import app.minimpos.app.data.db.RefundEntity
 import app.minimpos.app.data.db.RefundStatus
 import app.minimpos.app.data.db.SaleEntity
 import app.minimpos.app.data.db.SaleLineEntity
+import app.minimpos.app.data.db.SaleStatus
+import app.minimpos.app.data.db.SaleTenderEntity
 import app.minimpos.app.data.db.SaleWithLines
+import app.minimpos.core.money.CurrencySpec
 import kotlinx.coroutines.flow.Flow
 import java.time.Instant
 
@@ -56,7 +59,8 @@ class SaleRepository(
         event: SaleEvent,
     ) {
         db.withTransaction {
-            dao.sale(id)?.sale?.let { sale ->
+            dao.sale(id)?.let { record ->
+                val sale = record.sale
                 val stamped =
                     when (event) {
                         is SaleEvent.Settled -> {
@@ -90,8 +94,38 @@ class SaleRepository(
                     }
                 val updated = sale.after(stamped)
                 if (updated != sale) dao.update(updated)
+                if (stamped is SaleEvent.Settled) recordApprovedTender(record, stamped)
             }
         }
+    }
+
+    private suspend fun recordApprovedTender(
+        record: SaleWithLines,
+        settled: SaleEvent.Settled,
+    ) {
+        val details = settled.details ?: return
+        if (settled.status != SaleStatus.APPROVED) return
+        val sale = record.sale
+        val seq = record.tenders.size + 1
+        val spec = CurrencySpec.of(sale.currency)
+        val requested = (sale.totalMinor - sale.paidMinor).coerceAtLeast(0)
+        val authorised = details.amount?.let { spec.toMinor(it) } ?: requested
+        dao.upsertTender(
+            SaleTenderEntity(
+                id = "${sale.id}-$seq",
+                saleId = sale.id,
+                sequence = seq,
+                requestedMinor = requested,
+                authorisedMinor = authorised,
+                status = settled.status,
+                poiTransactionId = details.poiTransactionId,
+                poiTimestamp = details.poiTimestamp,
+                pspReference = details.pspReference,
+                paymentBrand = details.paymentBrand,
+                maskedPan = details.maskedPan,
+                createdAt = settled.processedAt ?: now(),
+            ),
+        )
     }
 
     /**

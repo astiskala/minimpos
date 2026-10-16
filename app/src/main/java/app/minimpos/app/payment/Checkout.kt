@@ -183,6 +183,12 @@ data class Checkout(
         )
     }
 
+    /** Amount requested on the first tender in minor units: operator-entered split amount when valid, else full gross total. */
+    val requestedAmountMinor: Long
+        get() =
+            form.splitAmountMinor?.takeIf { !preAuthorisation && it in 1 until totals.amounts.gross }
+                ?: totals.amounts.gross
+
     /** Whether "Pay" is enabled: something to charge and every entered field valid. */
     val canPay: Boolean get() = !totals.isEmpty && totals.amounts.gross > 0 && emailValid && referenceValid && customerReferenceValid
 
@@ -196,6 +202,7 @@ data class Checkout(
     ): PaymentStart? {
         if (!canPay) return null
         val reference = form.transactionReference.trim().ifEmpty { Ids.transactionReference(payment.referencePrefix, now, zone) }
+        val allowPartial = payment.allowPartialAuthorisation && !preAuthorisation && !tipOnReceipt
         return PaymentStart(
             totals = totals,
             currency = currency,
@@ -209,6 +216,8 @@ data class Checkout(
             sessionRevision = sessionRevision,
             terminalTip = terminalTipOptions(),
             shopperFlow = shopperSessionFlow(reference),
+            allowPartialAuthorisation = allowPartial,
+            requestedAmountMinor = requestedAmountMinor,
         )
     }
 
@@ -228,7 +237,14 @@ data class Checkout(
         zone: ZoneId,
     ): PaymentLinkStart? {
         if (!canSendLink) return null
-        val start = paymentStart(now, zone)?.copy(tipOnReceipt = false, terminalTip = null, shopperFlow = null) ?: return null
+        val start =
+            paymentStart(now, zone)?.copy(
+                tipOnReceipt = false,
+                terminalTip = null,
+                shopperFlow = null,
+                allowPartialAuthorisation = false,
+                requestedAmountMinor = totals.amounts.gross,
+            ) ?: return null
         val lifetime = minOf(Duration.ofHours(payment.linkExpiryHours.toLong()), MAX_LINK_LIFETIME)
         return PaymentLinkStart(start, now.plus(lifetime))
     }
@@ -243,7 +259,14 @@ data class Checkout(
     fun walletStart(
         now: Instant,
         zone: ZoneId,
-    ): PaymentStart? = paymentStart(now, zone)?.copy(tipOnReceipt = false, terminalTip = null, shopperFlow = null).takeIf { canScanWallet }
+    ): PaymentStart? =
+        paymentStart(now, zone)
+            ?.copy(
+                tipOnReceipt = false,
+                terminalTip = null,
+                shopperFlow = null,
+                allowPartialAuthorisation = false,
+            ).takeIf { canScanWallet }
 
     /** Whether [actual] has the same priced cart, currency, form and payment settings as this checkout, and still offers [wallet]. */
     internal fun matchesWalletCheckout(

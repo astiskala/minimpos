@@ -1035,6 +1035,20 @@ private fun ColumnScope.PaymentsSection(
         subtitle = stringResource(R.string.settings_allow_partial_auth_hint),
         tag = "allowPartialAuthorisation",
     )
+    SettingSwitch(
+        stringResource(R.string.settings_allow_moto),
+        payment.allowMoto,
+        { value -> update { it.copy(allowMoto = value) } },
+        subtitle = stringResource(R.string.settings_allow_moto_hint),
+        tag = "allowMoto",
+    )
+    SettingSwitch(
+        stringResource(R.string.settings_allow_mke),
+        payment.allowMke,
+        { value -> update { it.copy(allowMke = value) } },
+        subtitle = stringResource(R.string.settings_allow_mke_hint),
+        tag = "allowMke",
+    )
     SectionHeader(stringResource(R.string.settings_tokenization))
     ShopperReferenceSettings(payment, ::update)
     SectionHeader(stringResource(R.string.settings_tipping))

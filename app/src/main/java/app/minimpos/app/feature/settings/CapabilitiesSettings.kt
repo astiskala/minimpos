@@ -309,7 +309,7 @@ private fun ColumnScope.CapabilitiesMatrix(
     )
     CapabilityStandingRow(
         title = stringResource(R.string.capability_moto_mke),
-        standing = capabilities.motoStanding(enabledLocally = false),
+        standing = capabilities.motoStanding(enabledLocally = payment.allowMoto || payment.allowMke),
         tag = "cap_moto",
     )
     CapabilityStandingRow(

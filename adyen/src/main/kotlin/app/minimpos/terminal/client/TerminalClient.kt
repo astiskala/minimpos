@@ -14,6 +14,7 @@ import com.adyen.model.nexo.DiagnosisRequest
 import com.adyen.model.nexo.DocumentQualifierType
 import com.adyen.model.nexo.EntryModeType
 import com.adyen.model.nexo.ErrorConditionType
+import com.adyen.model.nexo.ForceEntryModeType
 import com.adyen.model.nexo.GetTotalsRequest
 import com.adyen.model.nexo.IdentificationType
 import com.adyen.model.nexo.MessageCategoryType
@@ -145,6 +146,7 @@ class TerminalClient(
                                                     if (effectiveParams.terminalTip != null) add(ASK_GRATUITY)
                                                     if (effectiveParams.allowPartialAuthorisation) add(ALLOW_PARTIAL_AUTHORISATION)
                                                     if (effectiveParams.askGiving) add(ASK_GIVING)
+                                                    if (effectiveParams.cardEntryOverride == CardEntryOverride.MOTO) add(MOTO)
                                                 }.distinct()
                                             tenderOption = tenders.takeIf { it.isNotEmpty() }?.joinToString(",")
                                             metadata = effectiveParams.metadata.takeIf { it.isNotEmpty() }
@@ -220,7 +222,20 @@ class TerminalClient(
 
     private fun paymentAmounts(params: PaymentParams): PaymentTransaction =
         PaymentTransaction().apply {
-            transactionConditions = params.scannedPayment?.let(::walletConditions)
+            transactionConditions =
+                when {
+                    params.scannedPayment != null -> {
+                        walletConditions(params.scannedPayment)
+                    }
+
+                    params.cardEntryOverride == CardEntryOverride.MKE -> {
+                        TransactionConditions().apply { forceEntryMode += ForceEntryModeType.KEYED }
+                    }
+
+                    else -> {
+                        null
+                    }
+                }
             amountsReq =
                 AmountsReq().apply {
                     currency = params.currency
@@ -708,6 +723,9 @@ class TerminalClient(
 
         /** Fixed SaleID Adyen uses for two-step Adyen Giving donation status lookups. */
         const val GIVING_SALE_ID = "AdyenGiving"
+
+        /** Tender option for Mail Order / Telephone Order card entry on the terminal. */
+        const val MOTO = "MOTO"
 
         /** The `additionalData` key that leaves a payment uncaptured until it is captured manually. */
         private const val MANUAL_CAPTURE = "manualCapture"

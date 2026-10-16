@@ -1,8 +1,10 @@
 package app.minimpos.terminal.simulator
 
+import app.minimpos.terminal.client.CardEntryOverride
 import app.minimpos.terminal.client.TerminalClient
 import app.minimpos.terminal.client.TerminalCurrencyTotals
 import com.adyen.model.nexo.DeviceType
+import com.adyen.model.nexo.ForceEntryModeType
 import com.adyen.model.nexo.InfoQualifyType
 import com.adyen.model.nexo.Input
 import com.adyen.model.nexo.InputCommandType
@@ -10,6 +12,7 @@ import com.adyen.model.nexo.InputRequest
 import com.adyen.model.nexo.InputResponse
 import com.adyen.model.nexo.InputResult
 import com.adyen.model.nexo.PaymentInstrumentType
+import com.adyen.model.nexo.PaymentRequest
 import com.adyen.model.nexo.PaymentTotals
 import com.adyen.model.nexo.Response
 import com.adyen.model.nexo.ResultType
@@ -48,7 +51,27 @@ internal data class SimulatedPayment(
     val tipAmount: BigDecimal? = null,
     val partial: Boolean = false,
     val givingServiceId: String? = null,
+    val entryOverride: CardEntryOverride = CardEntryOverride.NORMAL,
 )
+
+internal fun simulatedCardEntryOverride(request: PaymentRequest): CardEntryOverride {
+    val tenders =
+        request.saleData
+            ?.saleToAcquirerData
+            ?.tenderOption
+            ?.split(',')
+            .orEmpty()
+    val forceModes =
+        request.paymentTransaction
+            ?.transactionConditions
+            ?.forceEntryMode
+            .orEmpty()
+    return when {
+        TerminalClient.MOTO in tenders -> CardEntryOverride.MOTO
+        ForceEntryModeType.KEYED in forceModes -> CardEntryOverride.MKE
+        else -> CardEntryOverride.NORMAL
+    }
+}
 
 internal fun simulatedGivingServiceId(
     saleData: SaleData?,

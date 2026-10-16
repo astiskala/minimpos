@@ -1008,4 +1008,13 @@
   <string name="checkout_ask_giving_hint">決済後に端末画面でチャリティ寄付を購入者に案内します。</string>
   <string name="settings_ask_giving_hint">購入後に端末でAdyen Givingの寄付を購入者に尋ねます。</string>
   <string name="detail_donation">チャリティ寄付: %1$s</string>
+  <string name="settings_allow_moto">会計時にMOTOを許可</string>
+  <string name="settings_allow_moto_hint">郵便・電話注文（MOTO）の手入力カード決済を許可します（管理者PINが必要）。</string>
+  <string name="settings_allow_mke">会計時にカード番号手入力（MKE）を許可</string>
+  <string name="settings_allow_mke_hint">ICチップが読み取れない場合に端末でのカード番号手入力を許可します（管理者PINが必要）。</string>
+  <string name="checkout_moto">郵便・電話注文（MOTO）</string>
+  <string name="checkout_moto_hint">遠隔注文のため端末でカード情報を手入力します（管理者承認が必要）。</string>
+  <string name="checkout_mke">カード番号手入力（MKE）</string>
+  <string name="checkout_mke_hint">ICチップやタッチ決済が利用できない場合に端末でカード番号を手入力します（管理者承認が必要）。</string>
+  <string name="checkout_special_entry_warning">手入力によるカード取引は、不正利用やチャージバックの責任が加盟店に発生するリスクが高まります。管理者承認に進みますか？</string>
 </resources>

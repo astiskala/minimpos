@@ -2,6 +2,7 @@ package app.minimpos.terminal
 
 import app.minimpos.terminal.checkout.ModificationAmount
 import app.minimpos.terminal.checkout.ModificationResult
+import app.minimpos.terminal.client.CardEntryOverride
 import app.minimpos.terminal.client.PaymentParams
 import app.minimpos.terminal.client.PosApplication
 import app.minimpos.terminal.client.PrintAlign
@@ -404,5 +405,20 @@ class TerminalSimulatorTest {
             assertThat(details.amount).isEqualTo(BigDecimal("15.00"))
             assertThat(details.givingServiceId).isEqualTo("GIVINGSIM1")
             assertThat(details.donationAmount).isEqualTo(BigDecimal("2.50"))
+        }
+
+    @Test
+    fun `simulates MOTO and Manual Key Entry overrides`() =
+        runBlocking {
+            val moto = pay(tokenizing.copy(cardEntryOverride = CardEntryOverride.MOTO))
+            assertThat(moto.success).isTrue()
+            assertThat(moto.entryMode).isEqualTo("Keyed")
+            assertThat(moto.additionalData["posEntryMode"]).isEqualTo("MOTO")
+
+            val mke = pay(tokenizing.copy(cardEntryOverride = CardEntryOverride.MKE))
+            assertThat(mke.success).isTrue()
+            assertThat(mke.entryMode).isEqualTo("Keyed")
+            assertThat(mke.additionalData["posEntryMode"]).isEqualTo("MKE")
+            assertThat(mke.signatureRequired).isTrue()
         }
 }

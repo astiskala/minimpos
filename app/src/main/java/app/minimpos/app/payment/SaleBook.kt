@@ -9,6 +9,7 @@ import app.minimpos.app.data.repo.SaleRepository
 import app.minimpos.core.cart.CartTotals
 import app.minimpos.core.money.CurrencySpec
 import app.minimpos.core.money.PaymentContext
+import app.minimpos.terminal.client.CardEntryOverride
 import app.minimpos.terminal.client.PaymentParams
 import app.minimpos.terminal.client.RecurringModel
 import app.minimpos.terminal.client.ScannedPayment
@@ -41,6 +42,7 @@ import app.minimpos.terminal.client.TransactionKind
  * @property requestedAmountMinor Amount requested for this tender in minor units; defaults to `totals.amounts.gross`.
  * @property existingSaleId Existing partially paid sale ID when collecting the remaining balance; null for a new sale.
  * @property askGiving Whether `AskGiving` is sent on this payment.
+ * @property cardEntryOverride Card entry override (`NORMAL`, `MOTO` or `MKE`).
  * @throws IllegalArgumentException if a pre-authorisation is taken for tipping on the receipt, or a card is to be saved
  *   without a [shopperReference].
  */
@@ -64,6 +66,7 @@ data class PaymentStart(
     val requestedAmountMinor: Long = totals.amounts.gross,
     val existingSaleId: String? = null,
     val askGiving: Boolean = false,
+    val cardEntryOverride: CardEntryOverride = CardEntryOverride.NORMAL,
 ) {
     init {
         require(!tipOnReceipt || kind == SaleKind.SALE) { "Only a sale can be taken for tipping on the receipt" }
@@ -157,6 +160,7 @@ class SaleBook(
                 allowPartialAuthorisation = request.allowPartialAuthorisation,
                 saleReferenceId = request.merchantReference.takeIf { isSplit || request.allowPartialAuthorisation },
                 askGiving = request.askGiving,
+                cardEntryOverride = request.cardEntryOverride,
             ),
             expected = request.walletContext,
             setupIdentity = request.walletSetupIdentity,

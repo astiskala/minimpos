@@ -388,6 +388,8 @@ enum class ReceiptTipping {
  * @property askShopperRating Whether external terminals prompt the shopper for a 0–10 rating after approval.
  * @property allowPartialAuthorisation Whether immediate-charge sales send `AllowPartialAuthorisation` and accept split tenders.
  * @property askGiving Whether immediate-charge sales offer Adyen Giving charity donations (`AskGiving`), and its default choice.
+ * @property allowMoto Whether checkout offers Mail Order / Telephone Order (`MOTO`) card entry, guarded by Manager PIN.
+ * @property allowMke Whether checkout offers Manual Key Entry (`ForceEntryMode=Keyed`), guarded by Manager PIN.
  */
 @Serializable
 data class PaymentSettings(
@@ -422,6 +424,8 @@ data class PaymentSettings(
     val askShopperRating: Boolean = false,
     val allowPartialAuthorisation: Boolean = true,
     val askGiving: ReceiptTipping = ReceiptTipping.DISABLED,
+    val allowMoto: Boolean = false,
+    val allowMke: Boolean = false,
 ) {
     /** These settings with [linkExpiryHours] and terminal tipping numbers within their valid ranges. */
     fun normalized(): PaymentSettings =

@@ -181,7 +181,7 @@ class SetupDiscovery(
                 val current = setups.unlocked(forValidation = true)
                 return current.apiKey == unlocked.apiKey && current.setup.settings.terminal == unlocked.setup.settings.terminal
             }
-            val result = sharedKeys.resolve(unlocked, confirmed, ::unchanged)
+            val result = sharedKeys.resolve(unlocked, confirmed, unchanged = ::unchanged)
             if (result !is SharedKeySetupOutcome.Ready) return@withLock result
             if (!unchanged()) return@withLock SharedKeySetupOutcome.Failed(SetupProblem.SETUP_CHANGED)
             savePassphrase(result.key.passphrase)

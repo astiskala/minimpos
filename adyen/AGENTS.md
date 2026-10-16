@@ -9,7 +9,8 @@ Starred rules are enforced by `ArchitectureTest`. KDoc is the detailed API/proto
   No Android, `:core` or `:app` dependencies; public interfaces use this module's types. Nothing logs or prints.
 - \* Every Adyen HTTPS API call (cloud, Checkout, Management) uses `transport/AdyenHttp`: per-call timeout, no silent
   retries, typed `Fault`s. Only `transport` builds OkHttp requests; only `AdyenHttp` and `TerminalHttpClient` execute
-  calls.
+  calls. Only `transport/ManagementJson.kt` decodes Management error responses into `Fault`s and collects bounded
+  1-based Management pages.
 - \* `TerminalTransport.send` returns `Delivery` (answered, or failed with a `Fault`), never throws. Each `Fault` states
   once whether the request may have taken effect. Convert transport exceptions there (`FaultException` only inside
   `:adyen`); client/checkout code must not see them. Results carry faults and `ExternalText`, never English sentences

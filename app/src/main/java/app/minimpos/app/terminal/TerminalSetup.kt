@@ -412,6 +412,8 @@ class TerminalSetupSource(
     internal fun learnedCandidate(detected: DetectedEnvironment): AppSettings =
         detected.setup.settings.copy(terminal = detected.setup.learnedEnvironment(detected))
 
+    internal var onVerified: suspend (UnlockedSetup) -> Unit = {}
+
     internal suspend fun rememberVerified(tested: UnlockedSetup): Boolean {
         val current = reading(settings.current(), read = false, forValidation = true)
         val identity = tested.validationIdentity ?: return false
@@ -426,7 +428,10 @@ class TerminalSetupSource(
                 saved
             }
         }
-        return settings.current().verifiedSetup == identity && reading(settings.current(), read = false).validationIdentity == identity
+        val remembered =
+            settings.current().verifiedSetup == identity && reading(settings.current(), read = false).validationIdentity == identity
+        if (remembered) onVerified(tested)
+        return remembered
     }
 
     /**

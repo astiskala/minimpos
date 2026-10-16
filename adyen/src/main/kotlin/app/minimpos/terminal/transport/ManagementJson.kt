@@ -1,6 +1,7 @@
 package app.minimpos.terminal.transport
 
 import com.adyen.model.checkout.JSON
+import com.adyen.model.management.DefaultErrorResponseEntity
 import com.adyen.model.management.TerminalSettings
 import com.fasterxml.jackson.annotation.JsonIncludeProperties
 import com.fasterxml.jackson.core.JsonParser
@@ -126,3 +127,71 @@ internal fun adyenField(
             ?.takeIf { it.isTextual }
             ?.textValue()
     }.getOrNull()
+
+internal const val MANAGEMENT_PAGE_SIZE = 100
+internal const val MAX_MANAGEMENT_PAGES = 100
+
+/** Management API base URL for [environment] and API [version], with no trailing slash. */
+internal fun managementEndpoint(
+    environment: TerminalEnvironment,
+    version: Int = 3,
+): String =
+    when (environment) {
+        TerminalEnvironment.TEST -> "https://management-test.adyen.com/v$version"
+        TerminalEnvironment.LIVE -> "https://management-live.adyen.com/v$version"
+    }
+
+/** Why [reply] gave no usable Management answer; a 2xx reply that failed parsing is [Fault.UnreadableReply], and a 403 lacks [role]. */
+internal fun managementFault(
+    reply: AdyenReply,
+    key: ApiKey = ApiKey.ADYEN,
+    role: String? = null,
+): Fault =
+    when (reply) {
+        is AdyenReply.Failed -> reply.fault
+        is AdyenReply.Answered if reply.ok -> Fault.UnreadableReply()
+        is AdyenReply.Answered -> reply.fault(key, role, managementError(reply.body))
+    }
+
+private fun managementError(body: String): AdyenError {
+    val error = decodeAdyenModel(body, DefaultErrorResponseEntity::class.java)
+    return AdyenError(ExternalText.of(error?.detail) ?: ExternalText.of(error?.title), error?.errorCode)
+}
+
+/** Complete multi-page Management collection, or the fault that stopped it without partial results. */
+internal sealed interface ManagementPages<out T> {
+    data class Listed<T>(
+        val items: List<T>,
+    ) : ManagementPages<T>
+
+    data class Failed(
+        val fault: Fault,
+    ) : ManagementPages<Nothing>
+}
+
+/** Collects up to [MAX_MANAGEMENT_PAGES] pages using 1-based [fetch] without following server links. */
+internal suspend fun <T> collectManagementPages(
+    role: String? = null,
+    fetch: suspend (pageNumber: Int) -> AdyenReply,
+    parse: (String) -> Pair<List<T>, Boolean>?,
+): ManagementPages<T> {
+    val items = mutableListOf<T>()
+    var number = 1
+    var next = true
+    var failure: Fault? = null
+    while (next && number <= MAX_MANAGEMENT_PAGES && failure == null) {
+        val reply = fetch(number++)
+        val parsed = (reply as? AdyenReply.Answered)?.takeIf { it.ok }?.let { parse(it.body) }
+        if (parsed == null) {
+            failure = managementFault(reply, role = role)
+        } else {
+            items += parsed.first
+            next = parsed.second
+        }
+    }
+    return when {
+        failure != null -> ManagementPages.Failed(failure)
+        next -> ManagementPages.Failed(Fault.ListTooLarge)
+        else -> ManagementPages.Listed(items)
+    }
+}

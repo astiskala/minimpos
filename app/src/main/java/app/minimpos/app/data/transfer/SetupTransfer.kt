@@ -17,7 +17,9 @@ import app.minimpos.app.data.security.TransferSeal
 import app.minimpos.app.data.settings.AppSettings
 import app.minimpos.app.data.settings.ConnectionDestination
 import app.minimpos.app.data.settings.ConnectionSetup
+import app.minimpos.app.data.settings.ReceiptSettings
 import app.minimpos.app.data.settings.SettingsRepository
+import app.minimpos.app.data.settings.TerminalSettings
 import app.minimpos.core.catalogue.Catalogue
 import app.minimpos.core.codec.SealedSecrets
 import app.minimpos.core.codec.Transfer
@@ -155,19 +157,41 @@ sealed interface ImportOutcome {
     ) : ImportOutcome
 }
 
-internal class PreparedTransfer(
+internal data class PreparedTransfer(
     val received: ReceivedTransfer,
     val original: AppSettings,
     val originalSecrets: Map<Secret, String?>,
-    var settings: AppSettings,
-    val secrets: MutableMap<Secret, String>,
-    val importedSecrets: MutableMap<Secret, String>,
+    val settings: AppSettings,
+    val secrets: Map<Secret, String>,
+    val importedSecrets: Map<Secret, String>,
+    val businessWarning: Boolean = false,
+    val paymentsAppChecked: Boolean = false,
 ) {
-    var businessWarning = false
-    var paymentsAppChecked = false
-    val changesSetup: Boolean get() =
-        received.hasConnection || settings.terminal != original.terminal ||
-            importedSecrets.keys.any { it in setOf(Secret.ADYEN_API_KEY, Secret.TERMINAL_PASSPHRASE, Secret.PAYMENTS_APP_API_KEY) }
+    val changesSetup: Boolean
+        get() =
+            received.hasConnection || settings.terminal != original.terminal ||
+                importedSecrets.keys.any { it in setOf(Secret.ADYEN_API_KEY, Secret.TERMINAL_PASSPHRASE, Secret.PAYMENTS_APP_API_KEY) }
+
+    fun withTerminal(terminal: TerminalSettings): PreparedTransfer = copy(settings = settings.copy(terminal = terminal))
+
+    fun withReceipt(receipt: ReceiptSettings): PreparedTransfer = copy(settings = settings.copy(receipt = receipt))
+
+    fun withSharedKey(
+        identifier: String,
+        version: Int,
+        passphrase: String,
+    ): PreparedTransfer =
+        copy(
+            settings = settings.copy(terminal = settings.terminal.copy(keyIdentifier = identifier, keyVersion = version)),
+            secrets = secrets + (Secret.TERMINAL_PASSPHRASE to passphrase),
+            importedSecrets = importedSecrets + (Secret.TERMINAL_PASSPHRASE to passphrase),
+        )
+
+    fun withBoardedPhone(installationId: String): PreparedTransfer =
+        copy(
+            settings = settings.copy(terminal = settings.terminal.copy(paymentsAppInstallationId = installationId)),
+            paymentsAppChecked = true,
+        )
 }
 
 @Serializable
@@ -259,11 +283,8 @@ class SetupTransfer(
             current,
             existing,
             candidate,
-            (
-                existing.filterValues { it != null }.mapValues { checkNotNull(it.value) } +
-                    incoming
-            ).toMutableMap(),
-            incoming.toMutableMap(),
+            existing.filterValues { it != null }.mapValues { checkNotNull(it.value) } + incoming,
+            incoming,
         )
     }
 

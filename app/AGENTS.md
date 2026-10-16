@@ -33,10 +33,11 @@ Starred rules below are enforced by `ArchitectureTest`, `SettingsArchitectureTes
   their `SecretBlob` fields. Only this source applies learned environment/region facts, atomically against their
   originating terminal settings; pure destination rules decide what can be learned. Detection origins cannot be copied
   by callers.
-- \* Only `terminal/SetupImport` activates QR candidates through `SetupTransfer`; code, account/access and supported
-  connection verification precede activation writes. Its encrypted journal resumes commits without replaying catalog
-  replacement or phone registration. Only it and `TerminalStatus` record verified identities through `TerminalSetupSource`
-  and complete pending shared-key recovery records.
+- \* Only `terminal/SetupImport` activates QR candidates through `SetupTransfer`, using an immutable `PreparedTransfer`
+  candidate; `TransferImportViewModel` reaches transfer decoding and import only through `SetupImport`. Code,
+  account/access and supported connection verification precede activation writes. Its encrypted journal resumes commits
+  without replaying catalog replacement or phone registration. Only it and `TerminalStatus` record verified identities
+  through `TerminalSetupSource`, which automatically completes pending shared-key recovery records in `SharedKeySetup`.
 - \* Only `SharedKeySetup` creates terminal-specific keys at Adyen, after explicit confirmation and encrypted recovery
   persistence. Discovery stays read-only; existing effective keys are reused, never deliberately replaced.
 - \* Setup, receipt and wallet tasks share `TerminalAssignments`, which alone queries `TerminalDetailsApi.terminals`
@@ -69,16 +70,17 @@ Starred rules below are enforced by `ArchitectureTest`, `SettingsArchitectureTes
   snapshot, including scanned-wallet starts and offered-wallet checkout assembly; only the session reads revisions or
   copies `Checkout`. Stale starts cannot pay or clear newer work; terminal/link completion share the same wiring.
 - \* Only `payment/PricingChanges` owns the pricing journal, confirmation/recovery, absolute catalog targets, session
-  repricing and single-pass `SettingsEdit` evaluation. Settings only presents confirmation. Block checkout until
-  repricing finishes; replay must be idempotent, including session repricing after failed settings writes. Serialize
-  operations and reject stale previews.
+  repricing, `withStableSettings` (wired by the container into `SampleData`) and single-pass `SettingsEdit` evaluation.
+  Settings only presents confirmation. Block checkout until repricing finishes; replay must be idempotent, including
+  session repricing after failed settings writes. Serialize operations and reject stale previews.
 - \* Settings ranges live on section companions; only `SettingsRepository` and `AppSettings` normalize. Do not clamp
   downstream. Constructor defaults are current; installation applies country/language defaults. `TerminalSettings`
   owns destination/environment choices and their coupled fields; destination companions may copy only learned facts.
 - \* App-language overrides use scoped resources, never the process-wide locale; pricing still follows the device
   country. Language stays local on setup transfer, and changing it must not rewrite saved merchant text.
 - \* Below screens and their view-model factories, composables take state/callbacks, not view models. Settings bundles
-  callbacks in `SettingsEvents`/`TerminalSetupEvents`.
+  callbacks in `SettingsEvents`/`TerminalSetupEvents`; `TerminalSetupViewModel` and `ReceiptBusinessImports` observe
+  narrow settings slices rather than `SettingsViewModel` or `SettingsUiState`.
 - \* Only PIN-entry UI and `data.security` verify PINs. Financial actions request Manager approval and recheck it before
   sending; admin access is separate. Secrets remain in `SecretStore`.
 

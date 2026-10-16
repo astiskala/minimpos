@@ -105,7 +105,7 @@ class OnboardingViewModelTest {
     @Test
     fun `Data actions add idempotently and purge without changing the destination or onboarding choice`() {
         val container = env.container
-        val vm = SampleDataViewModel(container.pricingChanges, container.sampleData).also(viewModels::add)
+        val vm = SampleDataViewModel(container.sampleData).also(viewModels::add)
         val stored = await { container.settings.current() }
         vm.populate()
         vm.populate()
@@ -132,7 +132,7 @@ class OnboardingViewModelTest {
                 starterRates = container::starterTaxRates,
                 country = "AU",
             )
-        val vm = SampleDataViewModel(container.pricingChanges, broken).also(viewModels::add)
+        val vm = SampleDataViewModel(broken).also(viewModels::add)
         vm.populate()
         await { vm.state.first { it.failed } }
         vm.purge()

@@ -183,14 +183,12 @@ enum class ImportError {
 }
 
 /**
- * Scans another terminal's transfer codes, in any order, then imports them (see [SetupTransfer]).
+ * Scans another terminal's transfer codes, in any order, then imports them (see [SetupImport]).
  *
- * @param setup Reads the authenticated transfer and builds read-only previews.
  * @param currencyCode This terminal's currency, to warn when the catalogue's differs.
- * @param importer Verifies candidate setup before activation and resumes encrypted interrupted commits.
+ * @param importer Reads the authenticated transfer, verifies candidate setup before activation, and resumes encrypted interrupted commits.
  */
 class TransferImportViewModel(
-    private val setup: SetupTransfer,
     private val currencyCode: String,
     private val importer: SetupImport,
 ) : ViewModel() {
@@ -221,7 +219,7 @@ class TransferImportViewModel(
         }
         _state.value =
             try {
-                val received = setup.receive(TransferCodec.decode(assembler.assemble()))
+                val received = importer.receive(TransferCodec.decode(assembler.assemble()))
                 ImportUiState.Ready(received, received.currencyMatches(currencyCode))
             } catch (ignored: TransferFormatException) {
                 assembler.reset()

@@ -113,7 +113,7 @@ class TransferViewModelsTest {
     fun `the import scans codes in any order and imports the catalogue, settings and secrets`() {
         await { source.container.secrets.set(Secret.SMTP_PASSWORD, "pw") }
         val (codes, code) = exportCodes()
-        val import = TransferImportViewModel(target.container.setupTransfer, "NZD", target.container.setupImport)
+        val import = TransferImportViewModel("NZD", target.container.setupImport)
         settled(import) { it is ImportUiState.Scanning }
         import.onCode("hello")
         assertThat((import.state.value as ImportUiState.Scanning).error).isEqualTo(ImportError.NOT_A_TRANSFER)
@@ -151,7 +151,7 @@ class TransferViewModelsTest {
 
     @Test
     fun `corrupt transfer data clears scanned chunks and allows another transfer`() {
-        val import = TransferImportViewModel(target.container.setupTransfer, "NZD", target.container.setupImport)
+        val import = TransferImportViewModel("NZD", target.container.setupImport)
         settled(import) { it is ImportUiState.Scanning }
         import.onCode("MPC1:ABCD:1/1:AAAA")
         assertThat((import.state.value as ImportUiState.Scanning).error).isEqualTo(ImportError.CORRUPT)
@@ -164,7 +164,7 @@ class TransferViewModelsTest {
     fun `without the code nothing imports and catalogue-only transfers still need a code`() {
         await { source.container.secrets.set(Secret.SMTP_PASSWORD, "pw") }
         val (codes, code) = exportCodes()
-        val import = TransferImportViewModel(target.container.setupTransfer, "NZD", target.container.setupImport)
+        val import = TransferImportViewModel("NZD", target.container.setupImport)
         settled(import) { it is ImportUiState.Scanning }
         codes.forEach(import::onCode)
         import.import()
@@ -191,7 +191,7 @@ class TransferViewModelsTest {
                 }
             }
         assertThat(catalogueCode).isNotEmpty()
-        val catalogueOnly = TransferImportViewModel(target.container.setupTransfer, "NZD", target.container.setupImport)
+        val catalogueOnly = TransferImportViewModel("NZD", target.container.setupImport)
         settled(catalogueOnly) { it is ImportUiState.Scanning }
         catalogueCodes.forEach(catalogueOnly::onCode)
         val ready = catalogueOnly.state.value as ImportUiState.Ready

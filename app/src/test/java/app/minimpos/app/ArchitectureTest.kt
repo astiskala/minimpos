@@ -38,11 +38,17 @@ import app.minimpos.app.data.settings.PricingChange
 import app.minimpos.app.data.settings.SettingsRepository
 import app.minimpos.app.data.settings.TerminalMode
 import app.minimpos.app.data.settings.TerminalSettings
+import app.minimpos.app.data.transfer.PreparedTransfer
 import app.minimpos.app.data.transfer.ReceivedTransfer
 import app.minimpos.app.data.transfer.SetupTransfer
 import app.minimpos.app.feature.ActionOutcome
 import app.minimpos.app.feature.TransactionActions
 import app.minimpos.app.feature.history.HistoryViewModel
+import app.minimpos.app.feature.settings.ReceiptBusinessImports
+import app.minimpos.app.feature.settings.SettingsUiState
+import app.minimpos.app.feature.settings.SettingsViewModel
+import app.minimpos.app.feature.settings.TerminalSetupViewModel
+import app.minimpos.app.feature.transfer.TransferImportViewModel
 import app.minimpos.app.payment.CaptureResult
 import app.minimpos.app.payment.Checkout
 import app.minimpos.app.payment.PaymentLinkStart
@@ -85,6 +91,7 @@ import app.minimpos.app.terminal.WalletOffers
 import app.minimpos.app.update.AppUpdate
 import app.minimpos.app.update.GitHubReleases
 import app.minimpos.app.update.UpdateCheck
+import app.minimpos.core.codec.Transfer
 import app.minimpos.core.money.CurrencySpec
 import app.minimpos.core.money.PaymentContext
 import app.minimpos.terminal.checkout.PaymentLink
@@ -237,6 +244,15 @@ class ArchitectureTest {
             .dependOnClassesThat()
             .resideInAnyPackage("android.content..", "android.view..", "android.widget..", "androidx.compose.ui..")
             .check(app)
+        settingsPresentationIsolation.check(app)
+    }
+
+    @Test
+    fun `settings presentation isolation rejects cross-view-model state coupling`() =
+        reject(listOf(settingsPresentationIsolation), SettingsPresentationViolation::class.java)
+
+    private class SettingsPresentationViolation {
+        fun coupled(state: SettingsUiState) = state.loaded
     }
 
     @Test
@@ -779,10 +795,17 @@ class ArchitectureTest {
         reject(setupVerificationOwnership, SetupVerificationViolation::class.java)
 
     private class SetupVerificationViolation {
+        var mutableCandidate = false
+
         suspend fun import(
             transfer: SetupTransfer,
             received: ReceivedTransfer,
         ) = transfer.import(received, ImportMode.MERGE, "2222-2222-2222")
+
+        fun receive(
+            transfer: SetupTransfer,
+            raw: Transfer,
+        ) = transfer.receive(raw)
 
         suspend fun trust(
             source: TerminalSetupSource,
@@ -923,6 +946,8 @@ class ArchitectureTest {
         fun make() = PricingChange("USD", "JPY", AppSettings().payment, emptyMap())
 
         fun confirmEdit(change: PricingChange) = SettingsEdit.ConfirmPricing(change)
+
+        suspend fun stable(pricing: PricingChanges) = pricing.withStableSettings { true }
     }
 
     private class TargetViolation {
@@ -1064,12 +1089,19 @@ class ArchitectureTest {
                     .haveNameNotMatching(
                         within(
                             SharedKeySetup::class.java.name,
-                            "app.minimpos.app.terminal.SetupImport",
-                            "app.minimpos.app.terminal.TerminalStatus",
-                            AppContainer::class.java.name,
                         ),
                     ).should()
                     .callMethodWhere(callTo(SharedKeySetup::class.java.name, "complete")),
+                noClasses()
+                    .that(type(TransferImportViewModel::class.java).or(type(SetupVerificationViolation::class.java)))
+                    .should()
+                    .callMethodWhere(callTo(SetupTransfer::class.java.name, "receive")),
+                noFields()
+                    .that()
+                    .areDeclaredInClassesThat()
+                    .belongToAnyOf(PreparedTransfer::class.java, SetupVerificationViolation::class.java)
+                    .should()
+                    .notBeFinal(),
             )
 
         const val UI = "UI"
@@ -1439,6 +1471,16 @@ class ArchitectureTest {
                 .should()
                 .callMethodWhere(callTo(PAYMENT_STANDING_FILE, "getActions"))
 
+        val settingsPresentationIsolation: ArchRule =
+            noClasses()
+                .that(
+                    type(TerminalSetupViewModel::class.java)
+                        .or(type(ReceiptBusinessImports::class.java))
+                        .or(type(SettingsPresentationViolation::class.java)),
+                ).should()
+                .dependOnClassesThat(belongToAnyOf(SettingsViewModel::class.java, SettingsUiState::class.java))
+                .because("terminal setup and receipt-business import observe narrow settings slices rather than SettingsUiState")
+
         // One implementation owns the journal ordering for confirmation and recovery; screens cannot reprice sessions.
         val pricingOwnership: List<ArchRule> =
             listOf(
@@ -1476,6 +1518,11 @@ class ArchitectureTest {
                             ),
                         ),
                     ),
+                noClasses()
+                    .that()
+                    .haveNameNotMatching(within(PricingChanges::class.java.name, AppContainer::class.java.name))
+                    .should()
+                    .callMethodWhere(callTo(PricingChanges::class.java.name, "withStableSettings")),
             )
 
         // Availability and stored-context matching must be decided before a caller receives an eligible adapter.

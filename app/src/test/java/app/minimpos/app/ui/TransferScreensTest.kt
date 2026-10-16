@@ -153,7 +153,7 @@ class TransferScreensTest {
                     code,
                 ),
             )
-        val vm = TransferImportViewModel(container.setupTransfer, "AUD", container.setupImport)
+        val vm = TransferImportViewModel("AUD", container.setupImport)
         compose.awaitCondition(
             "Opening scanner",
         ) { vm.state.value is ImportUiState.Scanning }
@@ -189,7 +189,7 @@ class TransferScreensTest {
     @Test
     fun `finishing a first-run settings import leaves onboarding and opens Home`() {
         val payload = TransferCodec.encode(protect(Transfer(settings = TransferredSettings(AppSettings().shared(), null).encode())))
-        val vm = TransferImportViewModel(container.setupTransfer, "AUD", container.setupImport)
+        val vm = TransferImportViewModel("AUD", container.setupImport)
         compose.awaitCondition(
             "Opening scanner",
         ) { vm.state.value is ImportUiState.Scanning }
@@ -224,7 +224,7 @@ class TransferScreensTest {
                     code,
                 ),
             )
-        val vm = TransferImportViewModel(container.setupTransfer, "AUD", container.setupImport)
+        val vm = TransferImportViewModel("AUD", container.setupImport)
         compose.awaitCondition(
             "Opening scanner",
         ) { vm.state.value is ImportUiState.Scanning }
@@ -284,7 +284,7 @@ class TransferScreensTest {
 
     private fun reviewLiveDestination() {
         val payload = TransferCodec.encode(protect(Transfer(connection = """{"destination":"cloud","environment":"LIVE"}""")))
-        val vm = TransferImportViewModel(container.setupTransfer, "AUD", container.setupImport)
+        val vm = TransferImportViewModel("AUD", container.setupImport)
         compose.awaitCondition(
             "Opening scanner",
         ) { vm.state.value is ImportUiState.Scanning }

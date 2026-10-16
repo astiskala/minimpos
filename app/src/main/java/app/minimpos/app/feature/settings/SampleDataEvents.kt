@@ -28,7 +28,7 @@ internal interface SampleDataEvents {
 @Composable
 internal fun sampleDataViewModel(): SampleDataViewModel {
     val container = LocalAppContainer.current
-    return viewModel { SampleDataViewModel(container.pricingChanges, container.sampleData) }
+    return viewModel { SampleDataViewModel(container.sampleData) }
 }
 
 /** Sample creation and confirmed scoped removal; never changes the payment destination. */

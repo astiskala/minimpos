@@ -76,13 +76,18 @@ class SharedKeySetup internal constructor(
             parsed.entries.isNotEmpty() && parsed.entries.all { it.valid() }
         }
 
+    init {
+        setups.onVerified = ::complete
+    }
+
     internal suspend fun resolve(
         unlocked: UnlockedSetup,
         confirmed: SharedKeyOffer? = null,
+        verified: Boolean = false,
         unchanged: suspend () -> Boolean = { true },
     ): SharedKeySetupOutcome =
         mutex.withLock {
-            check(unlocked, unchanged)?.let { return@withLock it }
+            check(unlocked, unchanged, verified)?.let { return@withLock it }
             if (confirmed != null && !offer(unlocked, resume = false).matches(confirmed)) {
                 return@withLock SharedKeySetupOutcome.Failed(SetupProblem.SETUP_CHANGED)
             }
@@ -93,12 +98,14 @@ class SharedKeySetup internal constructor(
     private suspend fun check(
         unlocked: UnlockedSetup,
         unchanged: suspend () -> Boolean,
+        verified: Boolean = false,
     ): SharedKeySetupOutcome.Failed? {
         val setup = unlocked.setup
         if (busy() || !unchanged()) return SharedKeySetupOutcome.Failed(SetupProblem.SETUP_CHANGED)
         if (!setup.discoversTerminals || !setup.needsSharedKey) return SharedKeySetupOutcome.Failed(SetupProblem.KEY_IDENTIFIER)
         val problem = setup.connectionProblem?.takeUnless { it in KEY_PROBLEMS }
         if (problem != null) return SharedKeySetupOutcome.Failed(problem)
+        if (verified) return null
         return when (val checked = verifyApi(unlocked)) {
             is ApiCheck.NotSetUp -> SharedKeySetupOutcome.Failed(checked.problem)
             is ApiCheck.Failed -> SharedKeySetupOutcome.Failed(checked.failure)

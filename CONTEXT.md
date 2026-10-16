@@ -79,7 +79,7 @@ existing spelling (`preAuthorisation`, `SaleKind.PRE_AUTHORISATION`, `authorised
 
 | Term | Meaning | Owner / code name |
 | --- | --- | --- |
-| Receipt | Combined merchant details, items, tax and Adyen receipt lines; refund QR printed as a second request. | `ReceiptDocument` |
+| Receipt | Combined merchant details, items, tax and Adyen receipt lines; refund QR printed as a second request. | `ReceiptDocument`, `ReceiptFactory`, `ReceiptTexts` |
 | Receipt standing | What the receipt says: held, tip lines, captured, unpaid link, paid online or offline demo. Demo meaning follows the stored payment context even after settlement or a destination change. | `ReceiptStanding`, `sale.simulatedLink` |
 | Merchant copy | Additional receipt copy under the configured policy. | `MerchantCopyPolicy` |
 | Receipt tax display | Independent amounts/totals by rate, optional marked rate, marker and explanation. | `ReceiptSettings` |

@@ -79,7 +79,6 @@ class RemoteSettingsViewModelTest {
             container.tapToPay,
             container.setupDiscovery,
             container.settings,
-            settingsViewModel().state,
         ).also(viewModels::add)
 
     @Test

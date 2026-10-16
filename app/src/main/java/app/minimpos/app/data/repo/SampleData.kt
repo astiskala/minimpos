@@ -29,6 +29,7 @@ import java.util.UUID
  * @param starterRates Initial tax rates if setup runs before startup seeding.
  * @param country Device country used when the merchant has not selected a currency.
  * @param now Epoch milliseconds used for the sample history.
+ * @param withSettings Runs population with stable settings while excluding concurrent pricing transitions.
  */
 class SampleData(
     private val db: AppDatabase,
@@ -39,8 +40,12 @@ class SampleData(
     private val starterRates: () -> List<TaxRateEntity>,
     private val country: String,
     private val now: () -> Long = System::currentTimeMillis,
+    private val withSettings: suspend (suspend (AppSettings) -> Boolean) -> Boolean = { it(AppSettings()) },
 ) {
-    /** Adds samples priced in the current currency/tax style; returns false if samples already exist. */
+    /** Adds samples priced in the current stable currency and tax style; returns false if samples already exist. */
+    suspend fun populate(): Boolean = withSettings(::populate)
+
+    /** Adds samples priced in [settings]'s currency/tax style; returns false if samples already exist. */
     suspend fun populate(settings: AppSettings): Boolean =
         db.withTransaction {
             if (catalog.samples.exists() || history.hasSamples()) return@withTransaction false

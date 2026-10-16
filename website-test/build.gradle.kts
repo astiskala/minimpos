@@ -54,6 +54,7 @@ val website = isolated.rootProject.projectDirectory.dir("docs")
 
 // Troubleshooting quotes the app's messages, so the guide tests read its string resources.
 val appResources = isolated.rootProject.projectDirectory.dir("app/src/main/res")
+val screenshotSamples = isolated.rootProject.projectDirectory.file(".devin/skills/docs-screenshots/sample-data.json")
 
 tasks.test {
     inputs
@@ -66,6 +67,10 @@ tasks.test {
         .withPathSensitivity(PathSensitivity.RELATIVE)
         .withPropertyName("appStrings")
     systemProperty("minimpos.appResources", appResources.asFile.absolutePath)
+    inputs
+        .file(screenshotSamples)
+        .withPathSensitivity(PathSensitivity.RELATIVE)
+        .withPropertyName("screenshotSamples")
     // Browser paths affect helper integration tests even when the published website has not changed.
     inputs.property("chrome", providers.environmentVariable("MINIMPOS_CHROME").orElse(""))
 }

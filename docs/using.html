@@ -117,7 +117,7 @@
           </ol>
           <h3 id="staff">Set staff PINs</h3>
           <ol>
-            <li>In <strong>Settings › Security</strong>, tap <strong>Set admin PIN</strong>. It protects Settings and Products. Choose how soon the app locks again.</li>
+            <li>In <strong>Settings › Security</strong>, tap <strong>Set PIN</strong>. It protects Settings and Products. Choose how soon the app locks again.</li>
             <li>Optionally, tap <strong>Set Manager PIN</strong>. Staff then need it for refunds, cancellations, captures, amount adjustments and entering tips.</li>
           </ol>
           <p>To replace or remove the admin PIN, use <strong>Change Admin PIN</strong> or <strong>Remove Admin PIN</strong>; removing it also removes the Manager PIN. Repeated wrong attempts lock PIN entry for a while. For a forgotten PIN, see <a href="troubleshooting.html#access">PIN problems</a>.</p>
@@ -132,6 +132,10 @@
             <li>Enable the checkout options you need under <strong>Payments</strong>, <strong>Tips and donations</strong> or <strong>Shopper terminal display</strong> in Settings, then test them in TEST. The matrix also lists Adyen Giving, partial authorization, surcharge, gift cards, terminal reconciliation and shopper display; it does not provide an editor for every feature.</li>
           </ol>
           <p>Tap to Pay does not offer physical-terminal features such as terminal tipping, shopper display, MOTO/MKE, offline payments or terminal reconciliation. Partial authorization is a separate payment option. For account enablement and payment-method requirements, follow the <a href="https://docs.adyen.com/point-of-sale">Adyen in-person payments documentation</a>. Simulator availability does not establish real-terminal support.</p>
+          <figure class="guide-shot">
+            <div class="terminal terminal-s1f2"><img src="images/capabilities.png" width="540" height="960" loading="lazy" alt="English simulator demo: Adyen capability availability and configuration status"></div>
+            <figcaption class="fine">English simulator demo. Availability here does not verify a real terminal.</figcaption>
+          </figure>
           <p class="back-to-contents"><a href="#contents">Back to contents</a></p>
         </section>
         <section id="sell">
@@ -160,6 +164,10 @@
           <h3 id="partial-payments">Collect a partially authorized payment</h3>
           <p>Turn on <strong>Allow partial authorizations</strong> to accept a card approval for less than the requested amount. When the result shows <strong>Partially paid</strong>, check the paid and remaining amounts, then tap <strong>Pay remaining</strong> on that result screen and collect the balance on another card. The app keeps the attempts on the same sale. Do not treat the sale as fully paid until the whole amount is approved.</p>
           <p>A missing answer is not a partial approval. <a href="troubleshooting.html#unknown">Resolve unknown results</a> before collecting more. Do not start a new sale for the full original total: an approved portion has already been paid.</p>
+          <figure class="guide-shot">
+            <div class="terminal terminal-s1f2"><img src="images/partial-payment.png" width="540" height="960" loading="lazy" alt="English simulator demo: $10.70 paid, $10.69 remaining and a Pay remaining button"></div>
+            <figcaption class="fine">English simulator demo of a partial approval, not a fully paid sale.</figcaption>
+          </figure>
           <h3 id="shopper-display">Use the shopper-facing terminal screen</h3>
           <p>With a separate network/cloud terminal, open <strong>Settings › Shopper terminal display</strong>. Choose whether to show item details before payment, ask the shopper to confirm the order, or collect an email when checkout has none. After approval, you can show a QR code and ask for a 0–10 rating; a returned rating appears in transaction details.</p>
           <p>These prompts use the selected app language and are also simulated. They are not offered when Mini mPOS runs on the payment terminal itself. The displayed QR code contains the merchant reference, not a hosted receipt download; continue to <a href="#receipts">print, email or share the receipt</a>.</p>
@@ -180,6 +188,10 @@
           <p>Offline EMV and Store-and-Forward need a supported terminal reached locally: Mini mPOS on that terminal or a terminal on your network. They are not offered through cloud routing or Tap to Pay. Arrange offline processing with Adyen and review its risks before setting limits in <a href="#capabilities">Adyen capabilities</a>; Mini mPOS does not queue payments itself or make a terminal reachable when your local network is down.</p>
           <p>History marks reported offline sales. Open a sale to see <strong>Offline processing</strong>, whether it used offline EMV or Store-and-Forward, and any <strong>Unconfirmed offline batches</strong> reported by the terminal. An offline approval can have no PSP reference yet. It is not an unknown result, but it does not confirm that Adyen has received or settled the payment.</p>
           <p>Restore the terminal's connection to Adyen and verify uploaded payments and final outcomes in the Customer Area. Check the offline and unconfirmed-batch warnings during <a href="#reconciliation">terminal reconciliation</a>; matching totals do not confirm offline settlement. If no conclusive payment answer arrived, follow <a href="troubleshooting.html#unknown">unknown-result recovery</a> instead of assuming offline approval or charging again.</p>
+          <figure class="guide-shot">
+            <div class="terminal terminal-s1f2"><img src="images/offline-payment.png" width="540" height="960" loading="lazy" alt="English simulator demo: Store-and-Forward payment details with one unconfirmed offline batch"></div>
+            <figcaption class="fine">English simulator demo of offline details, not proof of upload or settlement.</figcaption>
+          </figure>
           <p class="back-to-contents"><a href="#contents">Back to contents</a></p>
         </section>
         <section id="wallets">
@@ -290,6 +302,10 @@
             <li>When ready, tap <strong>Close period</strong> and complete Manager approval if requested. This asks the terminal to close its reconciliation period; it does not just print a report.</li>
           </ol>
           <p>This is available for physical terminals and the simulator, not Tap to Pay. A matching comparison or closed period does not confirm settlement, refund completion or offline upload. Keep using the Customer Area for final financial outcomes.</p>
+          <figure class="guide-shot">
+            <div class="terminal terminal-s1f2"><img src="images/reconciliation.png" width="540" height="960" loading="lazy" alt="English simulator demo: matching $34.00 totals with an offline-sale and unconfirmed-batch warning"></div>
+            <figcaption class="fine">English simulator demo. Matching totals can still have an unconfirmed offline batch.</figcaption>
+          </figure>
           <p class="back-to-contents"><a href="#contents">Back to contents</a></p>
         </section>
         <section id="shoppers">
@@ -316,6 +332,7 @@
             <li>If the link is no longer needed, tap <strong>Cancel link</strong>.</li>
           </ol>
           <p>The entry shows <strong>Awaiting payment</strong> until the link is paid, expires or is canceled. Set how long links work in <strong>Settings › Payments › Payment links</strong>. Links are for sales only, not deposits or tips on the receipt.</p>
+          <p>In the simulator, links work offline without API credentials. Their QR codes cannot take payments. Tap <strong>Simulate payment</strong> to complete the demo, with Manager approval if configured. The screen and delivered receipts remain labeled as demos; no money moves.</p>
           <div class="callout callout-important" role="note">
             <p class="callout-title">Important</p>
             <p>Anyone with a real link can pay until it expires. Refund paid links in <strong>Customer Area › Payments › Payment list</strong>; the app cannot refund them.</p>
@@ -357,6 +374,10 @@
             <li>At sale checkout, select <strong>Tip on the terminal</strong> and tap <strong>Pay</strong>. The shopper chooses a tip before the card is charged. Check the returned total and tip and deliver the receipt.</li>
           </ol>
           <p>This does not need a printer or later tip entry. Terminal tipping and <a href="#tips">tips on the receipt</a> cannot be selected together. Neither is offered for pre-authorizations, scanned-wallet payments or payment links; terminal tipping is not offered with Tap to Pay.</p>
+          <figure class="guide-shot">
+            <div class="terminal terminal-s1f2"><img src="images/terminal-tipping.png" width="540" height="960" loading="lazy" alt="English simulator demo: terminal tipping enabled with dynamic basket suggestions in Tips and donations"></div>
+            <figcaption class="fine">English simulator demo of checkout preferences. Configure the terminal separately in Adyen capabilities.</figcaption>
+          </figure>
           <p class="back-to-contents"><a href="#contents">Back to contents</a></p>
         </section>
         <section id="tips">
@@ -387,7 +408,7 @@
           <ol>
             <li>On the configured device, open <strong>Settings › Data and transfer › Share with another device</strong>. Choose the catalog, settings and/or passwords and keys, then tap <strong>Show QR codes</strong>.</li>
             <li>On the new device, choose <strong>Set up from another device</strong> and scan all the codes, in any order. Choose whether to merge or replace its catalog.</li>
-            <li>To copy passwords and keys, enter the transfer code shown on the first device. Tap <strong>Import</strong>.</li>
+            <li>Enter the 12-character transfer code shown on the first device, even when copying only products or settings. Keep it separate from the QR codes. Tap <strong>Import</strong>.</li>
             <li>Check prices and tax, test the connection in <strong>Settings › Terminal</strong>, and print a test receipt.</li>
           </ol>
           <p>The new device keeps its own payment destination, terminal, environment and Tap to Pay registration. A shared key works for another terminal only if Adyen assigns it the same key.</p>
@@ -395,7 +416,8 @@
             <p class="callout-title">Important</p>
             <p>This is a one-time copy, not synchronization or a backup of payment history. Each device keeps its own payments. Clearing the app's data in Android deletes all products, settings and history on the device.</p>
           </div>
-          <p>In <strong>Settings › Data and transfer</strong>, set <strong>Keep transactions for</strong> or tap <strong>Clear settled history</strong>; unresolved payments are always kept. Install updates from the <a href="https://github.com/astiskala/minimpos/releases/latest">latest release</a> in the same way as the <a href="quick-start.html#install">original installation</a>.</p>
+          <p>In <strong>Settings › Data and transfer</strong>, set <strong>Keep transactions for</strong> or tap <strong>Clear settled history</strong>; unresolved payments are always kept.</p>
+          <p>On a tablet or phone, Mini mPOS checks for a newer version at startup. If Home offers <strong>Update</strong>, tap it to open the APK in your browser, then install the download. Adyen terminals update through the Customer Area, not this prompt. You can also get the <a href="https://github.com/astiskala/minimpos/releases/latest">latest release</a> and follow the <a href="quick-start.html#install">installation steps</a>. Keep the same signing source and install over the existing app; do not uninstall or clear its data.</p>
           <p>For import problems, see <a href="troubleshooting.html#access">PIN and transfer problems</a>.</p>
           <p class="back-to-contents"><a href="#contents">Back to contents</a></p>
         </section>

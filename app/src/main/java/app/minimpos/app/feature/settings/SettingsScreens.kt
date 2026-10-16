@@ -22,6 +22,7 @@ import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FileDownload
 import androidx.compose.material.icons.filled.FileUpload
 import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.Language
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.LockOpen
 import androidx.compose.material.icons.filled.Payments
@@ -372,6 +373,7 @@ fun SettingsScreen(
                     onSelect = { language -> vm.update { it.copy(languageTag = language) } },
                     subtitle = stringResource(R.string.settings_language_hint),
                     tag = "appLanguage",
+                    navigationIcon = Icons.Default.Language,
                 )
                 SettingNavRow(Icons.Default.Info, stringResource(R.string.settings_about), BuildConfig.VERSION_NAME, {
                     open(SettingsSections.ABOUT)
@@ -398,7 +400,7 @@ private fun ColumnScope.ConnectionSectionRows(
     SettingNavRow(
         Icons.Default.Sync,
         stringResource(R.string.settings_capabilities),
-        null,
+        stringResource(R.string.settings_capabilities_summary),
         { onOpen(SettingsSections.CAPABILITIES) },
         tag = "section_capabilities",
     )
@@ -426,21 +428,21 @@ private fun ColumnScope.PaymentSectionRows(
     SettingNavRow(
         Icons.Default.Percent,
         stringResource(R.string.settings_tax),
-        taxSummary,
+        taxSummary ?: stringResource(R.string.settings_tax_summary),
         { onOpen(SettingsSections.TAX) },
         tag = "section_tax",
     )
     SettingNavRow(
         Icons.Default.Favorite,
         stringResource(R.string.settings_tips_donations),
-        null,
+        stringResource(R.string.settings_tipping_summary),
         { onOpen(SettingsSections.TIPPING) },
         tag = "section_tipping",
     )
     SettingNavRow(
         Icons.Default.Tv,
         stringResource(R.string.settings_shopper_display),
-        null,
+        stringResource(R.string.settings_shopper_display_summary),
         { onOpen(SettingsSections.SHOPPER_DISPLAY) },
         tag = "section_shopper_display",
     )
@@ -457,7 +459,7 @@ private fun ColumnScope.OtherSectionRows(
     SettingNavRow(
         Icons.Default.Receipt,
         stringResource(R.string.settings_receipts),
-        settings.receipt.businessName.ifBlank { null },
+        settings.receipt.businessName.ifBlank { stringResource(R.string.settings_receipts_summary) },
         { onOpen(SettingsSections.RECEIPTS) },
         tag = "section_receipts",
     )
@@ -479,7 +481,7 @@ private fun ColumnScope.OtherSectionRows(
     SettingNavRow(
         Icons.Default.Storage,
         stringResource(R.string.settings_data),
-        null,
+        stringResource(R.string.settings_data_summary),
         { onOpen(SettingsSections.DATA) },
         tag = "section_data",
     )

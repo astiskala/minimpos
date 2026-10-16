@@ -5,6 +5,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -37,10 +38,12 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
@@ -228,10 +231,7 @@ fun ReceiptPreview(
                 }
 
                 is ReceiptElement.Row -> {
-                    Row(Modifier.fillMaxWidth()) {
-                        PaperText(element.left, Align.LEFT, element.style, Modifier.weight(1f))
-                        PaperText(element.right, Align.RIGHT, element.style)
-                    }
+                    PaperRow(element.left, element.right, element.style)
                 }
 
                 ReceiptElement.Divider -> {
@@ -292,14 +292,41 @@ fun PrintJobsPreview(
 private fun PrintedLine(line: PrintLine) {
     when (line) {
         is PrintLine.Columns -> {
-            Row(Modifier.fillMaxWidth()) {
-                PaperText(line.left, Align.LEFT, style(line.style), Modifier.weight(1f))
-                PaperText(line.right, Align.RIGHT, style(line.style))
-            }
+            PaperRow(line.left, line.right, style(line.style))
         }
 
         is PrintLine.Text -> {
             PaperText(line.text, align(line.align), style(line.style))
+        }
+    }
+}
+
+/** Leaves a gutter between columns; long values move below their labels instead of squeezing them. */
+@Composable
+private fun PaperRow(
+    left: String,
+    right: String,
+    style: TextStyle,
+) {
+    val measurer = rememberTextMeasurer()
+    val textStyle =
+        MaterialTheme.typography.bodySmall.copy(
+            fontFamily = FontFamily.Monospace,
+            fontWeight = if (style == TextStyle.BOLD) FontWeight.Bold else FontWeight.Normal,
+        )
+    val gap = with(LocalDensity.current) { 12.dp.roundToPx() }
+    val valueWidth = measurer.measure(right, textStyle).size.width
+    BoxWithConstraints(Modifier.fillMaxWidth()) {
+        if (valueWidth + gap > constraints.maxWidth / 2) {
+            Column {
+                PaperText(left, Align.LEFT, style)
+                PaperText(right, Align.RIGHT, style, Modifier.fillMaxWidth())
+            }
+        } else {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                PaperText(left, Align.LEFT, style, Modifier.weight(1f))
+                PaperText(right, Align.RIGHT, style)
+            }
         }
     }
 }
@@ -343,7 +370,7 @@ private fun PaperText(
                 Align.CENTER -> TextAlign.Center
                 Align.RIGHT -> TextAlign.End
             },
-        modifier = if (align == Align.RIGHT) modifier else modifier.fillMaxWidth(),
+        modifier = (if (align == Align.RIGHT) modifier else modifier.fillMaxWidth()).padding(vertical = 2.dp),
     )
 }
 

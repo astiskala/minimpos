@@ -57,6 +57,10 @@ import app.minimpos.terminal.transport.TerminalListing
 import app.minimpos.terminal.transport.TerminalTransport
 import app.minimpos.terminal.transport.WalletMethodListing
 import app.minimpos.terminal.transport.WalletMethodsApi
+import coil3.ImageLoader
+import coil3.SingletonImageLoader
+import coil3.intercept.Interceptor
+import coil3.request.ErrorResult
 import com.adyen.model.terminal.TerminalAPIRequest
 import com.adyen.model.terminal.TerminalAPISecuredRequest
 import com.adyen.model.terminal.TerminalAPISecuredResponse
@@ -75,6 +79,7 @@ import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
 import org.junit.rules.ExternalResource
 import java.io.File
+import java.io.IOException
 import java.net.URLDecoder
 import java.nio.file.Files
 import java.security.ProviderException
@@ -87,8 +92,21 @@ import kotlin.io.encoding.Base64
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.seconds
 
-/** Robolectric application that does not build the production container. */
-class TestApplication : Application()
+/** Robolectric application without a production container or external image requests. */
+class TestApplication :
+    Application(),
+    SingletonImageLoader.Factory {
+    override fun newImageLoader(context: Context): ImageLoader =
+        ImageLoader
+            .Builder(context)
+            .components {
+                add(
+                    Interceptor { chain ->
+                        ErrorResult(image = null, request = chain.request, throwable = IOException("Offline image fixture"))
+                    },
+                )
+            }.build()
+}
 
 /** Reversible stand-in for the Android Keystore, which Robolectric does not provide. */
 class FakeCipher : SecretCipher {

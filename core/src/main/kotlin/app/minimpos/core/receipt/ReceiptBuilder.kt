@@ -38,6 +38,7 @@ class ReceiptBuilder(
         val out = mutableListOf<ReceiptElement>()
         header(out, title = if (receipt.preAuthorisation) labels.preAuthTitle else branding.title)
         if (copy == ReceiptCopy.MERCHANT) out += Text(labels.merchantCopy, Align.CENTER, TextStyle.BOLD)
+        if (out.isNotEmpty() && out.last() != Blank) out += Blank
         out += Row(labels.date, receipt.dateTime)
         if (options.showReferences) {
             out += Row(labels.reference, receipt.reference)
@@ -66,6 +67,7 @@ class ReceiptBuilder(
         val out = mutableListOf<ReceiptElement>()
         val cancellation = receipt.cancellation
         header(out, title = if (cancellation) labels.cancellationTitle else labels.refundTitle)
+        if (out.isNotEmpty() && out.last() != Blank) out += Blank
         out += Row(labels.date, receipt.dateTime)
         if (options.showReferences) out += Row(labels.reference, receipt.reference)
         out += Row(if (cancellation) labels.cancelledReference else labels.originalReference, receipt.originalReference)
@@ -100,7 +102,8 @@ class ReceiptBuilder(
         out: MutableList<ReceiptElement>,
         items: List<ReceiptItem>,
     ) {
-        for (item in items) {
+        for ((index, item) in items.withIndex()) {
+            if (index > 0) out += Blank
             val name =
                 if (item.taxRateMilliPercent ==
                     options.markedTaxRateMilliPercent

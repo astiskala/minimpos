@@ -1,5 +1,6 @@
 package app.minimpos.app.ui
 
+import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
@@ -11,6 +12,8 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.performSemanticsAction
+import androidx.compose.ui.text.TextLayoutResult
 import app.minimpos.app.GST_RATES
 import app.minimpos.app.MiniMposApp
 import app.minimpos.app.R
@@ -129,6 +132,10 @@ class HistoryActionsTest {
     fun `Chinese day totals stay beside the print action at AMS1 size`() = assertDayTotalsBesidePrint()
 
     @Test
+    @Config(qualifiers = "zh-rHK-w320dp-h460dp-hdpi")
+    fun `Traditional Chinese day totals stay beside the print action at AMS1 size`() = assertDayTotalsBesidePrint()
+
+    @Test
     @Config(qualifiers = "ja-w320dp-h460dp-hdpi")
     fun `Japanese day totals stay beside the print action at AMS1 size`() = assertDayTotalsBesidePrint()
 
@@ -138,7 +145,10 @@ class HistoryActionsTest {
         val date = LocalDate.now()
         waitForTag("printDay_$date")
         val amount = MoneyFormatter(CurrencySpec.of("AUD"), env.context.resources.configuration.locales[0]).format(450)
-        val sales = env.context.getString(R.string.history_day_sales, amount, 1)
+        val sales = env.context.getString(R.string.history_day_sales, amount, 1).replace(" (", "\u00a0(")
+        val textLayouts = mutableListOf<TextLayoutResult>()
+        compose.onNodeWithText(sales).performSemanticsAction(SemanticsActions.GetTextLayoutResult) { it(textLayouts) }
+        assertThat(textLayouts.single().lineCount).isEqualTo(1)
         val totals =
             compose
                 .onNode(hasText(sales, substring = true))

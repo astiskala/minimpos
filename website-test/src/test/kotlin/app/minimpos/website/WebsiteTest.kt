@@ -13,6 +13,7 @@ import java.nio.file.Path
 import kotlin.io.path.extension
 import kotlin.io.path.isDirectory
 import kotlin.io.path.isRegularFile
+import kotlin.io.path.listDirectoryEntries
 import kotlin.io.path.readBytes
 import kotlin.io.path.readText
 
@@ -182,6 +183,10 @@ class WebsiteTest {
         val locales = mapOf("en" to "en_US", "zh-CN" to "zh_CN", "zh-Hant" to "zh_HK", "ja" to "ja_JP")
         pages.forEach { (key, page) ->
             val (language, kind) = key
+            assertThat(page.single("link", "rel" to "stylesheet").attr("href"))
+                .isEqualTo(if (language == "en") "styles.css" else "../styles.css")
+            assertThat(page.single("meta", "name" to "twitter:card").attr("content")).isEqualTo("summary_large_image")
+            assertThat(page.single("meta", "name" to "theme-color").attr("content")).isEqualTo("#00112C")
             assertThat(page.single("html").attr("lang")).isEqualTo(language)
             assertThat(page.single("link", "rel" to "canonical").attr("href")).isEqualTo(publicUrl(language, kind))
             assertThat(page.single("meta", "property" to "og:url").attr("content")).isEqualTo(publicUrl(language, kind))
@@ -198,8 +203,9 @@ class WebsiteTest {
                 "name" to "twitter:description",
                 "name" to "twitter:image:alt",
             ).forEach { assertWithMessage("${page.name} $it").that(page.single("meta", it).attr("content")).isNotEmpty() }
-            assertThat(page.single("meta", "property" to "og:image").attr("content")).isEqualTo(BASE + "images/social.png")
-            assertThat(page.single("meta", "name" to "twitter:image").attr("content")).isEqualTo(BASE + "images/social.png")
+            val image = BASE + "images/" + (if (language == "en") "" else "$language/") + "social.png"
+            assertThat(page.single("meta", "property" to "og:image").attr("content")).isEqualTo(image)
+            assertThat(page.single("meta", "name" to "twitter:image").attr("content")).isEqualTo(image)
         }
     }
 
@@ -510,8 +516,37 @@ class ErrorMessageGuideTest {
 
 class WebsitePresentationTest {
     @Test
+    fun `every language has its own complete screenshot set and pages use it`() {
+        val originals = docs.resolve("images").listDirectoryEntries("*.png")
+        LANGUAGES.forEach { language ->
+            val directory = docs.resolve("images").resolve(if (language == "en") "" else language).normalize()
+            originals.forEach { original ->
+                val localized = directory.resolve(original.fileName)
+                assertWithMessage("$language ${original.fileName}").that(localized.isRegularFile()).isTrue()
+                assertThat(pngSize(localized)).isEqualTo(pngSize(original))
+                if (language != "en") {
+                    assertWithMessage("$language ${original.fileName} must be a localized capture")
+                        .that(localized.readBytes().contentEquals(original.readBytes()))
+                        .isFalse()
+                }
+            }
+            pages.filterKeys { it.first == language }.values.forEach { page ->
+                page.document.select(".terminal img").forEach { image ->
+                    assertWithMessage("${page.name} screenshot language")
+                        .that(
+                            page.path.parent
+                                .resolve(image.attr("src"))
+                                .normalize()
+                                .parent,
+                        ).isEqualTo(directory)
+                }
+            }
+        }
+    }
+
+    @Test
     fun `copy is translated and screenshots are disclosed`() {
-        listOf("en" to "English demo", "zh-CN" to "英文演示", "zh-Hant" to "英文演示", "ja" to "英語のデモ").forEach { (language, marker) ->
+        listOf("en" to "English demo", "zh-CN" to "简体中文演示", "zh-Hant" to "繁體中文演示", "ja" to "日本語のデモ").forEach { (language, marker) ->
             val page = pages.getValue(language to Kind.LANDING)
             assertWithMessage(page.name).that(page.text).contains(marker)
             assertWithMessage(page.name).that(page.source).doesNotContain("class=\"phone")

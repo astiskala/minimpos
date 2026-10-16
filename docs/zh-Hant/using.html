@@ -17,17 +17,17 @@
   <meta property="og:title" content="使用 Mini mPOS">
   <meta property="og:description" content="分步驟的日常操作：付款、退款、收據和每日對帳。">
   <meta property="og:url" content="https://minimpos.app/zh-Hant/using.html">
-  <meta property="og:image" content="https://minimpos.app/images/social.png">
-  <meta property="og:image:alt" content="Adyen 終端示意圖中的 Mini mPOS，展示英文模擬器演示。">
+  <meta property="og:image" content="https://minimpos.app/images/zh-Hant/social.png">
+  <meta property="og:image:alt" content="Adyen 終端示意圖中的 Mini mPOS，展示繁體中文模擬器演示。">
+  <meta name="twitter:image" content="https://minimpos.app/images/zh-Hant/social.png">
+  <meta name="twitter:image:alt" content="Adyen 終端示意圖中的 Mini mPOS，展示繁體中文模擬器演示。">
   <meta property="og:locale" content="zh_HK">
-  <meta content="zh_CN" property="og:locale:alternate">
+  <meta property="og:locale:alternate" content="zh_CN">
   <meta property="og:locale:alternate" content="en_US">
   <meta property="og:locale:alternate" content="ja_JP">
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="使用 Mini mPOS">
   <meta name="twitter:description" content="分步驟的日常操作：付款、退款、收據和每日對帳。">
-  <meta name="twitter:image" content="https://minimpos.app/images/social.png">
-  <meta name="twitter:image:alt" content="Adyen 終端示意圖中的 Mini mPOS，展示英文模擬器演示。">
   <meta name="theme-color" content="#00112C">
 </head>
 <body>
@@ -114,7 +114,7 @@
           </ol>
           <h3 id="staff">設定員工 PIN</h3>
           <ol>
-            <li>在<strong>設定 › 安全</strong>中點按<strong>設定管理員 PIN</strong>。它保護設定和商品管理。選擇應用程式多久後重新鎖定。</li>
+            <li>在<strong>設定 › 安全</strong>中點按<strong>設定 PIN</strong>。它保護設定和商品管理。選擇應用程式多久後重新鎖定。</li>
             <li>可選：點按<strong>設定經理 PIN</strong>。之後退款、取消、扣款、金額調整和錄入小費都需要輸入它。</li>
           </ol>
           <p>如需更換或移除管理員 PIN，請使用<strong>更改管理員 PIN</strong>或<strong>移除管理員 PIN</strong>；移除它也會移除經理 PIN。多次輸錯會暫時鎖定 PIN 輸入。忘記 PIN 時請參閱 <a href="troubleshooting.html#access">PIN 問題</a>。</p>
@@ -129,6 +129,10 @@
             <li>在設定中的<strong>支付</strong>、<strong>小費與捐款</strong>或<strong>顧客端終端螢幕</strong>中啟用所需結帳選項，並在 TEST 中測試。功能列表還包括 Adyen Giving、部分授權、附加費、禮品卡、終端對帳和顧客端螢幕，但並非每項都有設定控制項。</li>
           </ol>
           <p>Tap to Pay 不提供終端小費、顧客端螢幕、MOTO/MKE、離線支付或終端對帳等實體終端功能。部分授權是獨立的付款選項。帳戶開通和付款方式要求請參閱 <a href="https://docs.adyen.com/point-of-sale">Adyen 實體店支付文件</a>。模擬器中可用不代表真實終端支援。</p>
+          <figure class="guide-shot">
+            <div class="terminal terminal-s1f2"><img src="../images/zh-Hant/capabilities.png" width="540" height="960" loading="lazy" alt="繁體中文模擬器演示：Adyen 功能的可用狀態及設定狀態"></div>
+            <figcaption class="fine">繁體中文模擬器演示。此處顯示可用不代表真實終端已通過驗證。</figcaption>
+          </figure>
           <p class="back-to-contents"><a href="#contents">返回目錄</a></p>
         </section>
         <section id="sell">
@@ -157,6 +161,10 @@
           <h3 id="partial-payments">收取部分授權後的剩餘金額</h3>
           <p>開啟<strong>允許部分授權</strong>，即可接受銀行卡批准低於請求金額的付款。結果顯示<strong>部分已付</strong>時，核對已付和剩餘金額，然後在該結果頁面點按<strong>支付剩餘</strong>，用另一張卡收取差額。應用程式將各次付款保留在同一筆銷售中。全部金額獲批前，不要將銷售視為全額付清。</p>
           <p>未收到答覆不等於部分批准。繼續收款前請<a href="troubleshooting.html#unknown">解決未知結果</a>。不要按原合計金額另開一筆銷售：已批准的部分已經付款。</p>
+          <figure class="guide-shot">
+            <div class="terminal terminal-s1f2"><img src="../images/zh-Hant/partial-payment.png" width="540" height="960" loading="lazy" alt="繁體中文模擬器演示：已支付 60.70 港元、剩餘 60.69 港元及支付餘額按鈕"></div>
+            <figcaption class="fine">繁體中文模擬器部分授權演示，並非已全額支付的銷售。</figcaption>
+          </figure>
           <h3 id="shopper-display">使用顧客端終端螢幕</h3>
           <p>使用獨立的網絡或雲端終端時，開啟<strong>設定 › 顧客端終端螢幕</strong>。可選擇在付款前顯示商品明細、請顧客確認訂單，或在結帳未填寫電郵時收集電郵。批准後可顯示二維碼並邀請顧客進行 0–10 評分；終端回傳的評分顯示在交易詳情中。</p>
           <p>這些提示使用所選應用程式語言，模擬器也可示範。Mini mPOS 直接在支付終端上執行時不提供此功能。顯示的二維碼包含商戶參考編號，不是託管收據的下載連結；仍請<a href="#receipts">列印、發送電子收據或分享收據</a>。</p>
@@ -177,6 +185,10 @@
           <p>離線 EMV 和儲存轉發式（Store-and-Forward）支付需要透過本地連接存取支援的終端：Mini mPOS 在該終端上執行，或連接同一網絡中的終端。雲端路由和 Tap to Pay 不提供此功能。請先與 Adyen 安排離線處理並評估風險，再在 <a href="#capabilities">Adyen 功能</a>中設定限額。Mini mPOS 本身不會排隊儲存付款，也不能在本地網絡中斷時恢復終端連接。</p>
           <p>交易紀錄會標記終端報告的離線銷售。開啟銷售可查看<strong>離線處理</strong>、使用的是離線 EMV 還是儲存轉發式，以及終端報告的<strong>未確認離線批次</strong>。離線批准可能暫時沒有 PSP 參考編號。它不是未知結果，但也不代表 Adyen 已收到或結算該付款。</p>
           <p>恢復終端與 Adyen 的連接後，在商戶後台核對上傳的付款和最終結果。進行<a href="#reconciliation">終端對帳</a>時檢查離線和未確認批次警告；總額一致不代表離線付款已結算。若未收到明確付款答覆，請遵循<a href="troubleshooting.html#unknown">未知結果恢復步驟</a>，不要自行認定已離線批准或再次收款。</p>
+          <figure class="guide-shot">
+            <div class="terminal terminal-s1f2"><img src="../images/zh-Hant/offline-payment.png" width="540" height="960" loading="lazy" alt="繁體中文模擬器演示：儲存轉發式付款詳情及一個未確認離線批次"></div>
+            <figcaption class="fine">繁體中文模擬器離線詳情演示，不代表已上傳或結算。</figcaption>
+          </figure>
           <p class="back-to-contents"><a href="#contents">返回目錄</a></p>
         </section>
         <section id="wallets">
@@ -192,10 +204,10 @@
           <p>顧客參考編號和授權允許時，<strong>儲存卡</strong>會嘗試儲存支付資訊，是否支援取決於錢包。只有返回儲存的支付代碼才表示成功儲存；沒有代碼的已批准付款仍然有效。請參閱<a href="troubleshooting.html#wallets">錢包查詢和支付問題</a>；不要通過再次掃碼替代<a href="troubleshooting.html#unknown">結果未知的原付款</a>。</p>
           <p>請使用 <a href="https://docs.adyen.com/point-of-sale/alternative-payment-methods/qr-code-wallets">Adyen 錢包指南</a>和 <a href="https://docs.adyen.com/point-of-sale/alternative-payment-methods/qr-code-wallets/paypal-pos">Adyen PayPal 和 Venmo 指南</a>核對錢包開通情況和 TEST 行為。</p>
           <div class="shot-pair">
-            <div class="terminal terminal-s1f2"><img src="../images/wallets.png" width="540" height="960" loading="lazy" alt="英文模擬器演示：為 $34.00 的銷售選擇錢包"></div>
-            <div class="terminal terminal-s1f2"><img src="../images/wallet-scan.png" width="540" height="960" loading="lazy" alt="英文模擬器演示：WeChat Pay 掃碼流程和離線演示付款碼按鈕"></div>
+            <div class="terminal terminal-s1f2"><img src="../images/zh-Hant/wallets.png" width="540" height="960" loading="lazy" alt="繁體中文模擬器演示：為 232.00 港元的銷售選擇錢包"></div>
+            <div class="terminal terminal-s1f2"><img src="../images/zh-Hant/wallet-scan.png" width="540" height="960" loading="lazy" alt="繁體中文模擬器演示：WeChat Pay 掃碼流程和離線演示付款碼按鈕"></div>
           </div>
-          <p class="fine">錢包掃描的英文模擬器演示。</p>
+          <p class="fine">錢包掃描的繁體中文模擬器演示。</p>
           <p class="back-to-contents"><a href="#contents">返回目錄</a></p>
         </section>
         <section id="refund">
@@ -287,6 +299,10 @@
             <li>準備好後點按<strong>結束對賬週期</strong>，並在要求時完成經理批准。這會請求終端結束其對帳週期，不只是列印報告。</li>
           </ol>
           <p>此功能適用於實體終端和模擬器，不適用於 Tap to Pay。總額一致或週期結束都不代表結算、退款完成或離線付款已上傳。最終財務結果仍請以商戶後台為準。</p>
+          <figure class="guide-shot">
+            <div class="terminal terminal-s1f2"><img src="../images/zh-Hant/reconciliation.png" width="540" height="960" loading="lazy" alt="繁體中文模擬器演示：232.00 港元總額一致，仍有離線銷售及未確認批次警告"></div>
+            <figcaption class="fine">繁體中文模擬器演示。總額一致時仍可能有未確認的離線批次。</figcaption>
+          </figure>
           <p class="back-to-contents"><a href="#contents">返回目錄</a></p>
         </section>
         <section id="shoppers">
@@ -313,6 +329,7 @@
             <li>不再需要連結時，點按<strong>取消連結</strong>。</li>
           </ol>
           <p>連結被支付、過期或取消前，紀錄顯示<strong>待支付</strong>。在<strong>設定 › 支付 › 付款連結</strong>中設定連結有效時長。連結僅用於銷售，不用於訂金或收據小費。</p>
+          <p>模擬器中的連結毋須 API 憑證即可離線演示，二維碼無法收款。點按<strong>模擬支付</strong>完成演示；如已設定經理審批，需先獲得批准。畫面及送出的收據會一直標明演示性質，不會轉移資金。</p>
           <div class="callout callout-important" role="note">
             <p class="callout-title">重要</p>
             <p>有效期內任何持有真實連結的人均可付款。已支付的連結請在<strong>商戶後台 › Payments › Payment list</strong>中退款，應用程式無法為其退款。</p>
@@ -354,6 +371,10 @@
             <li>銷售結帳時選擇<strong>在終端上輸入小費</strong>，點按<strong>支付</strong>。顧客在卡片扣款前選擇小費。核對回傳的總額和小費並提供收據。</li>
           </ol>
           <p>此流程不需要打印機，也無需稍後輸入小費。終端小費和<a href="#tips">收據小費</a>不能同時選擇。兩者均不用於預授權、掃碼錢包付款或付款連結；Tap to Pay 不提供終端小費。</p>
+          <figure class="guide-shot">
+            <div class="terminal terminal-s1f2"><img src="../images/zh-Hant/terminal-tipping.png" width="540" height="960" loading="lazy" alt="繁體中文模擬器演示：小費與捐款中已啟用終端小費及動態小費建議"></div>
+            <figcaption class="fine">繁體中文模擬器結帳偏好演示。終端設定需在 Adyen 功能中另行設定。</figcaption>
+          </figure>
           <p class="back-to-contents"><a href="#contents">返回目錄</a></p>
         </section>
         <section id="tips">
@@ -384,7 +405,7 @@
           <ol>
             <li>在已設定的設備上打開<strong>設定 › 資料與轉移 › 共享至另一台設備</strong>。選擇商品目錄、設定和／或密碼與密鑰，然後點按<strong>顯示二維碼</strong>。</li>
             <li>在新設備上選擇<strong>從另一台設備設定</strong>，按任意順序掃描所有二維碼。選擇合併或替換其商品目錄。</li>
-            <li>如需複製密碼和密鑰，請輸入第一台設備顯示的傳輸碼。點按<strong>匯入</strong>。</li>
+            <li>輸入第一台設備顯示的 12 位傳輸碼，即使只複製商品或設定也需要。請將傳輸碼與二維碼分開保管。點按<strong>匯入</strong>。</li>
             <li>檢查價格和稅費，在<strong>設定 › 終端</strong>中測試連接，並列印測試收據。</li>
           </ol>
           <p>新設備保留自己的支付目標、終端、環境和 Tap to Pay 註冊。只有 Adyen 為另一台終端分配了相同密鑰時，共享密鑰才可用於該終端。</p>
@@ -392,7 +413,8 @@
             <p class="callout-title">重要</p>
             <p>這是一次性複製，不是同步，也不是交易紀錄備份。各設備保留各自的付款。在 Android 中清除應用程式資料會刪除設備上的全部商品、設定和交易紀錄。</p>
           </div>
-          <p>在<strong>設定 › 資料與轉移</strong>中設定<strong>交易保留時長</strong>或點按<strong>清除已完成的交易紀錄</strong>；未解決的付款始終保留。請從<a href="https://github.com/astiskala/minimpos/releases/latest">最新發佈版本</a>安裝更新，方式與<a href="quick-start.html#install">原安裝</a>相同。</p>
+          <p>在<strong>設定 › 資料與轉移</strong>中設定<strong>交易保留時長</strong>或點按<strong>清除已完成的交易紀錄</strong>；未解決的付款始終保留。</p>
+          <p>在平板或手機上，Mini mPOS 會在啟動時檢查新版本。如果首頁顯示<strong>更新</strong>，點按後會在瀏覽器中開啟 APK，再安裝下載的檔案。Adyen 終端透過商戶後台更新，不會顯示此提示。您亦可取得<a href="https://github.com/astiskala/minimpos/releases/latest">最新發佈版本</a>並按<a href="quick-start.html#install">安裝步驟</a>操作。保持相同簽署來源，直接覆蓋安裝；不要解除安裝應用程式或清除資料。</p>
           <p>匯入問題請參閱 <a href="troubleshooting.html#access">PIN 和傳輸問題</a>。</p>
           <p class="back-to-contents"><a href="#contents">返回目錄</a></p>
         </section>

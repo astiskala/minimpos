@@ -7,6 +7,12 @@ description: Re-capture the screenshots and social image of the docs/ website, o
 
 ## Output format
 
+- Capture English, Simplified Chinese, Traditional Chinese and Japanese using `AppSettings.languageTag` (`en`,
+  `zh-CN`, `zh-Hant`, `ja`), not translated overlays. English assets live directly in `docs/images/`; the other sets
+  live in matching language subdirectories. Localized pages and social metadata must use their own set. Use the
+  separate localized café fixtures in `sample-data.json`, including native merchant details, products, categories,
+  receipt text, currency and prices. Never translate or reprice saved merchant data. Adyen receipt fields remain
+  verbatim in the app; only synthetic fixture card receipts are regenerated for the chosen demo currency.
 - The site shows every screenshot inside a terminal frame, so each must have its frame's screen ratio
   (`WebsiteTest`'s "screenshots match their terminal frames" checks the PNG sizes, the `width`/`height` attributes and
   the white screen `rect` of each SVG):
@@ -21,13 +27,17 @@ description: Re-capture the screenshots and social image of the docs/ website, o
 
 - AVD `MiniMpos_Docs_S1F2`: a clone (`cp -c -R`) of `MiniMpos_Docs_Pixel4a` (API 33 google_apis, gesture nav,
   `hw.keyboard=no`) with `hw.lcd.width/height/density` = 720/1280/320, so it keeps the demo data. Use these separate
-  AVDs so existing emulator data is untouched. Headless: `-no-window -no-snapshot -gpu swiftshader_indirect`. A
+  AVDs so existing emulator data is untouched. For a refresh, clone a stopped docs AVD under a new name, updating its
+  `config.ini` and sibling `.ini` paths; never reset another emulator's data. Headless:
+  `-no-window -no-snapshot -gpu swiftshader_indirect`. A
   `-read-only` boot of the Pixel 4a AVD from its snapshot stayed `offline` in adb.
 - Disable the Pixel 4a emulation overlays (`cmd overlay disable com.android.internal.emulation.pixel_4a` and
   `com.android.systemui.emulation.pixel_4a`, then `stop`/`start`): they add a hole-punch cutout, a 68 dp status bar
-  and rounded corners that clip the clock.
-- Setup: `adb root`, `setprop persist.sys.locale en-AU` and Australia/Perth (`settings put global auto_time_zone 0` and
-  `service call alarm 3 s16 Australia/Perth`; setprop alone does not stick), then `stop`/`start`; window, transition
+  and rounded corners that clip the clock. Wait for Package Manager after restarting the framework before launching
+  the app; an early launch can report that the activity does not exist.
+- Setup: `adb root`, set `persist.sys.locale` to the fixture's `deviceLocale` and use its `timeZone`
+  (`settings put global auto_time_zone 0` and `service call alarm 3 s16 <timeZone>`; setprop alone does not stick),
+  then `stop`/`start`; wait until Package Manager resolves the app's activity, not just its APK path. Window, transition
   and animator animations off; SystemUI demo mode (clock 09:30, full Wi-Fi and battery, no notifications; re-send it
   after every `stop`/`start`).
 - The frames show terminals, so make the app behave as on one: `settings put global device_name S1F2-000158213605014`
@@ -52,38 +62,74 @@ Seeded before the first launch (debug builds only), piped in with
 - A Room DB built from the latest `app/schemas/app.minimpos.app.data.db.AppDatabase/<version>.json`
   (Python sqlite3, `PRAGMA user_version`).
 - `files/datastore/settings.json`: auto-lock 10 min, simulator delay 6 s (so the "waiting" screen can be captured).
-  Explicitly set `payment.askTransactionReference = true`, `payment.shopperReferenceSource = CUSTOMER_REFERENCE`,
+  Explicitly set `payment.askTransactionReference = false`, `payment.shopperReferenceSource = CUSTOMER_REFERENCE`,
   `payment.offerCardSaving = true` and `receipt.autoPrint = false` for these demos. Omitted keys take the current
   constructor defaults: customer reference on, extra merchant reference off, automatic printing on. Card saving still
-  needs an entered shopper reference and consent.
+  needs an entered shopper reference and consent. Keep the extra merchant reference off in checkout captures so the
+  saving switch and its consent explanation can fit.
 - Café "Harbour Coffee Co.", 1 Wharf Street Fremantle, ABN; GST 10% default and GST-free; AUD; 10 products in
   Coffee/Food/Retail, the beans GST-free with a barcode; plus "Catering deposit" $200.00 GST 10% in a Bookings category
-  as a pre-authorisation product.
+  as a pre-authorisation product. This is the English fixture; use `sample-data.json` for each other language's
+  native café, realistic prices and tax examples. JPY minor units are whole yen, not hundredths.
 - The admin PIN (1357) is set in the app.
+- Back up the database through SQLite, including committed WAL contents, before preparing localized copies. Recompute
+  line amounts, net/tax totals, tips, authorizations, captures, tenders, refunds and synthetic card-receipt totals in the
+  selected currency. Validate foreign keys, integrity and summed line totals before installing a disposable fixture.
+
+| Page language | Device locale | Currency | Main sale | Item refund | Tip sale + tip | Deposit | Partial sale |
+| --- | --- | --- | ---: | ---: | ---: | ---: | ---: |
+| English | en-AU | AUD | 34.00 | 11.00 | 38.00 + 7.00 | 200.00 | 21.39 |
+| Simplified Chinese | zh-SG | SGD | 33.50 | 10.00 | 35.00 + 5.00 | 200.00 | 21.39 |
+| Traditional Chinese | zh-HK | HKD | 232.00 | 66.00 | 192.00 + 18.00 | 2,000.00 | 121.39 |
+| Japanese | ja-JP | JPY | 3,050 | 1,000 | 3,000 + 500 | 20,000 | 2,139 |
 
 ## Flows
 
+The amounts and customer references below describe the English fixture. Use the table above and the JSON fixture for
+the other languages. CJK fixtures use numeric customer references so input methods do not autocorrect ASCII acronyms.
+In Japanese, send `KEYCODE_EISU` before typing to keep digits half-width. Verify the actual field text after the keyboard
+closes. Always restore the market's device locale when recapturing only part of a flow.
+
 1. Sale of 2 flat whites, banana bread and beans ($34.00, CUST-1042, save card; `checkout.png` shows Save card on,
    with `payment.receiptTipping = DISABLED`, the default, so there is no tipping switch) → printed receipt (simulated
-   printer sheet, expanded and scrolled to the items) → `refund.png`
-   from that sale's history detail (Refund › Items, one flat white and the banana bread, $11.00). The same cart on the
-   AMS1-sized screen is `sale-ams1.png`.
+   printer sheet, expanded to show the merchant header, references and items) → `refund.png`
+   from that sale's history detail (Refund › Items, one flat white and the banana bread, $11.00). Use a fixture from
+   before that refund, and press each item's increase button; tapping its label does not select a quantity. The same
+   cart on the AMS1-sized screen is `sale-ams1.png`.
 2. Sales of $11.50 and $29.50, then an item refund of the first sale ($11.00). These four can also be seeded into the
    DB to re-capture later screens only. In the DB the $11.50 sale is `visa_applepay` and the $29.50 one `mc_googlepay`
    (the others plain, matching `receipt.png`/`approved.png`), so `history.png` shows "VISA Apple Pay" and
    "MC Google Pay".
 3. `history-search.png`: History searched for `CUST-1042` (typed with `adb shell input text`, keyboard closed with
    Back), showing that sale and its refund.
-4. In Settings › Payments, set Tip on the receipt to Enabled (default off) (`payment.receiptTipping = DEFAULT_OFF`)
+4. In Settings › Tips and donations, set Tip on the receipt to Enabled (default off)
+   (`payment.receiptTipping = DEFAULT_OFF`)
    before this flow; restore Disabled afterward. Tip on the receipt sale of 2 avocado toast and 2 flat whites ($38.00):
    `tip-receipt.png` is its merchant copy with
-   the blank TIP, TOTAL and SIGNATURE lines in the expanded printer sheet, `tip.png` the Enter tip screen with Total
-   $45.00 typed; confirmed, so History shows Capture requested and Tips $7.00.
+   the blank TIP, TOTAL and SIGNATURE lines in the expanded printer sheet, scrolled past the business header without
+   clipping the receipt title. `tip.png` is the Enter tip screen with a $7.00
+   tip and $45.00 total. The main History fixture shows the accepted capture and Tips $7.00.
 5. Pre-authorisation of the catering deposit (CUST-2077): `pre-auth.png` is its checkout (tapping the deposit opens it)
    with CUST-2077 typed, before tapping Pre-authorize $200.00, `pre-auth-detail.png` its history detail with Capture,
    Adjust amount and Cancel pre-authorisation; left open so Home shows the split tile.
-6. `transfer.png` and `export.png`: Products › More › Share with another device (after the PIN is set, so passwords
-   and keys are offered) before and after Show QR codes, paused on a code.
+6. `transfer.png` and `export.png`: Settings › Data and transfer › Share with another device (after the PIN is set,
+   so passwords and keys are offered) before and after Show QR codes, paused on a complete code. Keep the transfer
+   code and its explanation visible; these are disposable demo transfers with no real credentials.
+7. `capabilities.png`: Settings › Adyen capabilities, showing the simulator matrix. Never enter real credentials or
+   imply that simulator availability verifies a real terminal.
+8. `terminal-tipping.png`: Settings › Tips and donations with terminal tipping Enabled (default on), Dynamic basket
+   tip suggestions on, percentage tips before tax off, receipt tipping and Giving Disabled. Restore the defaults
+   after this capture.
+9. `partial-payment.png`: with Allow partial authorizations on and tipping off, take a custom-item sale of $21.39.
+   The simulator's minor-unit `139` suffix approves half, rounded up: $10.70 paid and $10.69 remaining. Capture the
+   result with Pay remaining visible; turn the simulated printer off for this capture so Show receipt also fits.
+   Restore the printer afterward; do not add this payment to the main history screenshot.
+10. `offline-payment.png` and `reconciliation.png`: use a separate empty-history demo fixture with the same products.
+    Enable Settings › Simulator › Simulate offline Store-and-Forward, then approve the $34.00 sale. In its History
+    detail, scroll past the receipt buttons to show the full Offline processing and Unconfirmed offline batches rows,
+    followed by the receipt preview. Return to History and tap Reconcile with terminal without restarting the app:
+    the simulator ledger is in memory. Capture matching $34.00 totals together with the offline-sale and
+    one-unconfirmed-batch warning. Restore the main fixture afterward.
 
 ## Driving the UI
 
@@ -91,11 +137,17 @@ Seeded before the first launch (debug builds only), piped in with
   takes about 2 s: tap known coordinates where the layout is fixed.
 - Switches have no text in the dump: tap the n-th `checkable` node.
 - The PIN pad needs OK after the digits.
-- Press Back twice to close the printer sheet; the first only collapses it. A merchant copy comes from the sale's
-  history detail (Print merchant copy); the result screen's Print receipt prints the cardholder copy.
-- Focusing a text field scrolls Checkout to its end; swipe back a little so the items show above Save card.
+- Expand the printer sheet by dragging its handle upward, not by scrolling the receipt; this keeps the business
+  details at the top. Find the handle's bounds first: starting above it taps the scrim and dismisses the sheet.
+  Press Back twice from the expanded sheet; the first only collapses it. A merchant copy comes
+  from the sale's history detail (Print merchant copy); the result screen's Print receipt prints the cardholder copy.
+- Focusing a text field scrolls Checkout to its end; swipe to show Save card and its full consent explanation,
+  with the cart totals above. Avoid stopping halfway through a text row or leaving a switch behind fixed actions.
+  Recheck this in every language: Japanese consent is longer and needs a smaller scroll adjustment.
 - The simulator picks the card brand and wallet at random, so a new capture may show another brand than History's
-  seeded sales.
+  seeded sales. Keep the approved sale, receipt and refund on the same payment; keep image descriptions accurate
+  about the visible portion of a long receipt. Review a contact sheet, PNG dimensions and palette sizes before
+  running website checks. When a referenced image changes, regenerate `social.png` too.
 
 ## Social image and site rendering
 
@@ -108,6 +160,10 @@ Seeded before the first launch (debug builds only), piped in with
   AMS1's top free of an NFC symbol; `./gradlew :website-test:check` checks this.
 - Render pages with Playwright's `chrome-headless-shell` (`~/Library/Caches/ms-playwright/`) and
   `--screenshot --window-size=W,H`; full Chrome headless and the Playwright MCP browser crashed in this sandbox.
+- Review guides at desktop and phone widths. Guide frames are up to 300 px wide, with captions up to 420 px;
+  paired wallet screenshots stack on phones. Check that images load, captions stay readable and pages do not overflow.
+- Let wallet logos finish loading from Adyen's public CDN before capturing. They are decorative and cached; unavailable
+  images fall back to a wallet icon without hiding the name or blocking selection.
 
 ## AMS1-sized emulator
 

@@ -493,9 +493,15 @@ pre {
 
 .guide-body h3 { margin-top: 1.4em; }
 
-.guide-shot { width: 100%; max-width: 240px; margin: 24px auto; text-align: center; }
+.guide-shot { width: 100%; max-width: 420px; margin: 24px auto; text-align: center; }
+
+.guide-shot .terminal { max-width: 300px; margin: 0 auto; }
 
 .guide-shot figcaption { margin-top: 16px; }
+
+.guide-body .shot-pair { max-width: 620px; margin: 24px auto; }
+
+.guide-body .shot-pair + .fine { text-align: center; }
 
 .guide-body li { margin-bottom: 6px; }
 
@@ -656,6 +662,8 @@ pre {
   .step { padding: 22px; }
   .flow { gap: 20px; }
   .setup-choices { grid-template-columns: minmax(0, 1fr); }
+  .guide-body .shot-pair { grid-template-columns: minmax(0, 1fr); max-width: 300px; gap: 24px; }
+  .guide-body .shot-pair .terminal:last-child { margin-top: 0; }
 }
 
 @media (max-width: 360px) {

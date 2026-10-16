@@ -330,7 +330,7 @@ class AppFlowTest {
     fun `an admin PIN locks settings`() {
         compose.onNodeWithTag("settings").performClick()
         compose.waitForTag("section_security")
-        compose.onNodeWithTag("section_security").performClick()
+        compose.onNodeWithTag("section_security").performScrollTo().performClick()
         compose.waitForTag("setPin")
         compose.onNodeWithTag("setPin").performClick()
         repeat(2) {

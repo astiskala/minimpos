@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -162,7 +163,10 @@ fun SettingSwitch(
     )
 }
 
-/** A single-choice setting: shows the current value, opens a radio list dialog. */
+/**
+ * A single-choice setting: shows the current value, opens a radio list dialog. With [navigationIcon], uses the
+ * settings menu's two-line layout and shows [subtitle] inside the dialog instead.
+ */
 @Composable
 fun <T : Any> SettingChoice(
     title: String,
@@ -172,56 +176,90 @@ fun <T : Any> SettingChoice(
     modifier: Modifier = Modifier,
     subtitle: String? = null,
     tag: String? = null,
+    navigationIcon: ImageVector? = null,
 ) {
     var open by remember { mutableStateOf(false) }
-    Row(
-        modifier
-            .fillMaxWidth()
-            .clickable {
-                open = true
-            }.padding(horizontal = 16.dp, vertical = LocalDimens.current.rowPadding)
-            .tagged(tag),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Column(Modifier.weight(1f)) {
-            Text(title, style = MaterialTheme.typography.bodyLarge)
-            Text(
-                options.firstOrNull { it.first == selected }?.second.orEmpty(),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.primary,
-            )
-            subtitle?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+    if (navigationIcon != null) {
+        SettingNavRow(
+            navigationIcon,
+            title,
+            options.firstOrNull { it.first == selected }?.second.orEmpty(),
+            { open = true },
+            modifier,
+            tag,
+        )
+    } else {
+        Row(
+            modifier
+                .fillMaxWidth()
+                .clickable {
+                    open = true
+                }.padding(horizontal = 16.dp, vertical = LocalDimens.current.rowPadding)
+                .tagged(tag),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Column(Modifier.weight(1f)) {
+                Text(title, style = MaterialTheme.typography.bodyLarge)
+                Text(
+                    options.firstOrNull { it.first == selected }?.second.orEmpty(),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.primary,
+                )
+                subtitle?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+            }
         }
     }
     if (open) {
-        AlertDialog(
-            onDismissRequest = { open = false },
-            title = { Text(title) },
-            text = {
-                // Long lists (e.g. the EU's 25 currencies) scroll inside the dialog.
-                Column(Modifier.verticalScroll(rememberScrollState())) {
-                    options.forEach { (value, label) ->
-                        Row(
-                            Modifier
-                                .fillMaxWidth()
-                                .selectable(selected = value == selected, onClick = {
-                                    onSelect(value)
-                                    open = false
-                                })
-                                .padding(vertical = 10.dp)
-                                .tagged(tag?.let { "${it}_$value" }),
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            RadioButton(selected = value == selected, onClick = null)
-                            Spacer(Modifier.width(12.dp))
-                            Text(label)
-                        }
-                    }
-                }
+        ChoiceDialog(
+            title,
+            options,
+            selected,
+            onSelect = {
+                onSelect(it)
+                open = false
             },
-            confirmButton = { TextButton(onClick = { open = false }) { Text(stringResource(R.string.action_cancel)) } },
+            onDismiss = { open = false },
+            note = subtitle.takeIf { navigationIcon != null },
+            tag = tag,
         )
     }
+}
+
+/** A scrollable choice list, including the optional explanation for a settings menu row. */
+@Composable
+private fun <T : Any> ChoiceDialog(
+    title: String,
+    options: List<Pair<T, String>>,
+    selected: T,
+    onSelect: (T) -> Unit,
+    onDismiss: () -> Unit,
+    note: String?,
+    tag: String?,
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(title) },
+        text = {
+            Column(Modifier.verticalScroll(rememberScrollState())) {
+                note?.let { Text(it, style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(bottom = 12.dp)) }
+                options.forEach { (value, label) ->
+                    Row(
+                        Modifier
+                            .fillMaxWidth()
+                            .selectable(selected = value == selected, onClick = { onSelect(value) })
+                            .padding(vertical = 10.dp)
+                            .tagged(tag?.let { "${it}_$value" }),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        RadioButton(selected = value == selected, onClick = null)
+                        Spacer(Modifier.width(12.dp))
+                        Text(label)
+                    }
+                }
+            }
+        },
+        confirmButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) } },
+    )
 }
 
 /** A password field that shows what was typed only on request. */
@@ -371,12 +409,12 @@ fun SettingSecret(
     }
 }
 
-/** A row that opens a settings section, with its current value as [subtitle]. */
+/** A two-line settings menu row, with a summary or current value as [subtitle]; grows for large text. */
 @Composable
 fun SettingNavRow(
     icon: ImageVector,
     title: String,
-    subtitle: String?,
+    subtitle: String,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     tag: String? = null,
@@ -386,6 +424,7 @@ fun SettingNavRow(
         Row(
             Modifier
                 .fillMaxWidth()
+                .heightIn(min = 72.dp)
                 .clickable(
                     onClick = onClick,
                 ).padding(horizontal = 16.dp, vertical = dimens.rowPadding + 2.dp)
@@ -396,7 +435,13 @@ fun SettingNavRow(
             Spacer(Modifier.width(16.dp))
             Column(Modifier.weight(1f)) {
                 Text(title, style = MaterialTheme.typography.bodyLarge)
-                subtitle?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+                Text(
+                    subtitle,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
             }
             Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
         }

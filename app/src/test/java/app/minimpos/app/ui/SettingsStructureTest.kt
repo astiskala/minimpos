@@ -1,12 +1,14 @@
 package app.minimpos.app.ui
 
 import androidx.compose.ui.test.ExperimentalTestApi
+import androidx.compose.ui.test.assertHeightIsEqualTo
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsOn
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.unit.dp
 import app.minimpos.app.MiniMposApp
 import app.minimpos.app.TestEnvironment
 import app.minimpos.app.awaitCondition
@@ -46,6 +48,22 @@ class SettingsStructureTest {
         env.useSimulator()
         compose.setContent { MiniMposApp(env.container) }
         compose.onNodeWithTag("settings").performClick()
+        listOf(
+            "terminal",
+            "capabilities",
+            "payments",
+            "tax",
+            "tipping",
+            "shopper_display",
+            "receipts",
+            "email",
+            "security",
+            "data",
+            "about",
+        ).forEach { section ->
+            compose.onNodeWithTag("section_$section").performScrollTo().assertHeightIsEqualTo(72.dp)
+        }
+        compose.onNodeWithTag("appLanguage").performScrollTo().assertHeightIsEqualTo(72.dp)
         open("payments")
         compose.onNodeWithTag("referenceSource").performScrollTo().assertIsDisplayed()
         compose.onNodeWithTag("receiptTipping").assertDoesNotExist()

@@ -24,6 +24,13 @@ class SettingsNavigationGuideTest {
             fun path(key: String) = "$root \u203a ${strings.getValue(key)}"
             val using = Jsoup.parse(directory.resolve("using.html").readText())
             val labels = using.select("strong").eachText()
+            assertWithMessage("$language admin PIN setup").that(labels).contains(strings.getValue("settings_set_pin"))
+            assertWithMessage("$language simulator link action")
+                .that(using.select("#payment-links strong").eachText())
+                .contains(strings.getValue("link_simulate"))
+            assertWithMessage("$language browser update action")
+                .that(using.select("#more strong").eachText())
+                .contains(strings.getValue("update_download"))
             listOf("settings_tips_donations", "settings_shopper_display", "settings_email", "settings_data").forEach { key ->
                 assertWithMessage("$language current $key path").that(labels).contains(path(key))
             }

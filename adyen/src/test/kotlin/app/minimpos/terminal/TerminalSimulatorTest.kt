@@ -366,4 +366,32 @@ class TerminalSimulatorTest {
             assertThat(declinedConfirm.success).isFalse()
             assertThat(declinedConfirm.decline?.cancelled).isTrue()
         }
+
+    @Test
+    fun `simulates partial authorisation via 139 suffix and configured ratio`() =
+        runBlocking {
+            val triggerPartial =
+                pay(
+                    tokenizing.copy(
+                        amount = BigDecimal("11.39"),
+                        allowPartialAuthorisation = true,
+                        saleReferenceId = "MP-SPLIT-1",
+                    ),
+                )
+            assertThat(triggerPartial.success).isTrue()
+            assertThat(triggerPartial.partial).isTrue()
+            assertThat(triggerPartial.amount).isEqualTo(BigDecimal("5.70"))
+
+            config = config.copy(partialApprovalPercent = 40)
+            val ratioPartial =
+                pay(
+                    tokenizing.copy(
+                        amount = BigDecimal("20.00"),
+                        allowPartialAuthorisation = true,
+                    ),
+                )
+            assertThat(ratioPartial.success).isTrue()
+            assertThat(ratioPartial.partial).isTrue()
+            assertThat(ratioPartial.amount).isEqualTo(BigDecimal("8.00"))
+        }
 }

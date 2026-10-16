@@ -206,11 +206,18 @@ data class PaymentParams(
     val terminalTip: TerminalTipOptions? = null,
     /** Chained customer-display and input prompts run before and after the payment; null skips them. */
     val shopperFlow: ShopperSessionFlow? = null,
+    /** Sends `AllowPartialAuthorisation` in `SaleToAcquirerData.tenderOption` so the terminal can approve part of [amount]. */
+    val allowPartialAuthorisation: Boolean = false,
+    /** Optional `SaleData.SaleReferenceID` grouping split tenders of the same sale. */
+    val saleReferenceId: String? = null,
 ) {
     init {
         require(scannedPayment == null || !preAuthorisation) { "Scanned wallets require an immediate-charge sale" }
         require(terminalTip == null || (!preAuthorisation && scannedPayment == null)) {
             "Terminal tipping requires an immediate-charge card sale"
+        }
+        require(!allowPartialAuthorisation || !preAuthorisation) {
+            "Partial authorisation requires an immediate-charge sale"
         }
     }
 }
@@ -365,8 +372,10 @@ data class Tokenization(
  * empty); the card fields and [tokenization] are only filled for payments. Amounts are in major units, as in nexo.
  */
 data class TransactionDetails(
-    /** True when `Response.Result` is `Success`: the payment was approved or the refund accepted. */
+    /** True when `Response.Result` is `Success` or `Partial`: the payment was approved or the refund accepted. */
     val success: Boolean,
+    /** True when `Response.Result` is `Partial` (`AuthorizedAmount < RequestedAmount`). */
+    val partial: Boolean = false,
     /** `Response.ErrorCondition` as sent by the terminal, e.g. `Refusal` or `Cancel`. */
     val errorCondition: String?,
     /** The terminal's best explanation, verbatim: `refusalReason`, `message`, `errors` or `warnings`; null when none. */

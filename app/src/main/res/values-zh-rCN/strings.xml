@@ -999,4 +999,9 @@
   <string name="settings_show_terminal_qr">批准后在终端显示二维码收据</string>
   <string name="settings_ask_shopper_rating">批准后请顾客进行 0–10 评分</string>
   <string name="detail_shopper_rating">顾客评分</string>
+  <string name="settings_allow_partial_auth">允许部分授权</string>
+  <string name="settings_allow_partial_auth_hint">接受银行卡部分批准（AllowPartialAuthorisation），并提示用另一张卡支付剩余差额。</string>
+  <string name="status_partially_paid">部分已付</string>
+  <string name="detail_partially_paid">已付 %1$s · 剩余 %2$s</string>
+  <string name="result_pay_remaining">支付剩余 %1$s</string>
 </resources>

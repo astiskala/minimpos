@@ -185,9 +185,18 @@ sealed interface SaleEvent {
 val SaleEntity.retentionEligible: Boolean
     get() =
         when (status) {
-            SaleStatus.PENDING, SaleStatus.UNKNOWN, SaleStatus.AWAITING_PAYMENT -> false
-            SaleStatus.APPROVED -> !adjustmentPending && (!manualCapture || holdCancelled || captureStatus?.captured == true)
-            SaleStatus.DECLINED, SaleStatus.CANCELLED, SaleStatus.FAILED, SaleStatus.EXPIRED -> true
+            SaleStatus.PENDING, SaleStatus.UNKNOWN, SaleStatus.AWAITING_PAYMENT -> {
+                false
+            }
+
+            SaleStatus.APPROVED -> {
+                !adjustmentPending && !isPartiallyPaid &&
+                    (!manualCapture || holdCancelled || captureStatus?.captured == true)
+            }
+
+            SaleStatus.DECLINED, SaleStatus.CANCELLED, SaleStatus.FAILED, SaleStatus.EXPIRED -> {
+                true
+            }
         }
 
 /** This sale after [event] happened to it. */
@@ -273,22 +282,20 @@ private fun SaleEntity.ended(
 ): SaleEntity = copy(status = status, message = message, reason = reason)
 
 private fun SaleEntity.settled(event: SaleEvent.Settled): SaleEntity {
+    val effectiveStatus = if (paidMinor > 0 && event.status != SaleStatus.UNKNOWN) SaleStatus.APPROVED else event.status
     val ended =
-        ended(event.status, event.message, event.reason).copy(
-            processedAt = processedAt ?: event.processedAt.takeIf { event.status == SaleStatus.APPROVED && !paymentLink },
+        ended(effectiveStatus, event.message, event.reason).copy(
+            processedAt = processedAt ?: event.processedAt.takeIf { effectiveStatus == SaleStatus.APPROVED && !paymentLink },
         )
     val details = event.details ?: return ended
-    val terminalTipMinor =
-        details.tipAmount
-            ?.takeIf { event.status == SaleStatus.APPROVED && !manualCapture }
-            ?.let { CurrencySpec.of(currency).toMinor(it) }
-            ?.takeIf { it > 0 }
+    val (terminalTipMinor, updatedPaidMinor) = settledAmounts(event.status, details)
     return ended.copy(
         poiTransactionId = details.poiTransactionId,
         poiTimestamp = details.poiTimestamp,
         poiReconciliationId = details.poiReconciliationId ?: poiReconciliationId,
         shopperEmail = details.collectedEmail ?: shopperEmail,
         shopperRating = details.shopperRating ?: shopperRating,
+        paidMinor = updatedPaidMinor,
         pspReference = details.pspReference,
         paymentBrand = details.paymentBrand,
         paymentMethodVariant = details.paymentMethodVariant,
@@ -305,6 +312,31 @@ private fun SaleEntity.settled(event: SaleEvent.Settled): SaleEntity {
         tipMinor = terminalTipMinor ?: tipMinor,
     )
 }
+
+private fun SaleEntity.settledAmounts(
+    eventStatus: SaleStatus,
+    details: TransactionDetails,
+): Pair<Long?, Long> {
+    if (eventStatus != SaleStatus.APPROVED || manualCapture) return null to paidMinor
+    val spec = CurrencySpec.of(currency)
+    val terminalTipMinor = details.tipAmount?.let { spec.toMinor(it) }?.takeIf { it > 0 }
+    val reportedMinor = details.amount?.let { spec.toMinor(it) }
+    val remaining = totalMinor - paidMinor
+    val baseTenderMinor =
+        if (reportedMinor != null && isPartialOrSplitTender(details.partial, reportedMinor, remaining, paidMinor)) {
+            (reportedMinor - (terminalTipMinor ?: 0L)).coerceAtLeast(0L)
+        } else {
+            remaining
+        }
+    return terminalTipMinor to (paidMinor + baseTenderMinor).coerceAtMost(totalMinor)
+}
+
+private fun isPartialOrSplitTender(
+    partial: Boolean,
+    reportedMinor: Long,
+    remainingMinor: Long,
+    paidMinor: Long,
+): Boolean = partial || reportedMinor < remainingMinor || paidMinor > 0
 
 private fun SaleEntity.linkAnswered(event: SaleEvent.LinkAnswered): SaleEntity {
     val link = event.link

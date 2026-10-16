@@ -358,6 +358,8 @@ data class SaleEntity(
     val poiReconciliationId: String? = null,
     /** 0–10 rating collected from the shopper on the terminal after payment; null when not collected. */
     val shopperRating: Int? = null,
+    /** Cumulative approved base amount across tenders in minor units; `0` when paid in a single full tender. */
+    @ColumnInfo(defaultValue = "0") val paidMinor: Long = 0,
 ) {
     /** What the payment holds on the card: [authorisedMinor] after an adjustment, else [totalMinor]. */
     val heldMinor: Long get() = authorisedMinor ?: totalMinor
@@ -368,14 +370,22 @@ data class SaleEntity(
      */
     val manualCapture: Boolean get() = kind == SaleKind.PRE_AUTHORISATION || tipOnReceipt
 
+    /** True when one or more partial tenders have been approved, leaving a positive balance still due. */
+    val isPartiallyPaid: Boolean
+        get() = !manualCapture && !paymentLink && status == SaleStatus.APPROVED && paidMinor in 1 until totalMinor && !holdCancelled
+
+    /** Remaining unpaid balance in minor units when [isPartiallyPaid], else 0. */
+    val remainingMinor: Long get() = if (isPartiallyPaid) (totalMinor - paidMinor).coerceAtLeast(0) else 0
+
     /**
-     * The payment's amount as it stands: the capture's once captured ([CaptureStatus.captured]), else the bill plus any
-     * tip entered, else what a pre-authorisation holds, else [totalMinor].
+     * The payment's amount as it stands: the capture's once captured ([CaptureStatus.captured]), else the partially
+     * paid amount when [isPartiallyPaid], else the bill plus any tip entered, else what a pre-authorisation holds, else [totalMinor].
      */
     val amountMinor: Long
         get() =
             when {
                 captureStatus?.captured == true -> capturedMinor ?: totalMinor
+                isPartiallyPaid -> paidMinor + (tipMinor ?: 0)
                 tipMinor != null -> totalMinor + tipMinor
                 kind == SaleKind.PRE_AUTHORISATION -> heldMinor
                 else -> totalMinor
@@ -558,15 +568,64 @@ data class RefundEntity(
 )
 
 /**
- * A sale with its lines, loaded together by Room (the DAO queries run in a transaction).
+ * One payment tender of a sale (table `sale_tenders`), allowing a single sale to be paid across multiple cards or
+ * partial authorizations. Deleted with its sale (foreign key `CASCADE`).
+ *
+ * @property id Deterministic tender ID (`<saleId>-<sequence>`).
+ * @property saleId The [SaleEntity] this tender belongs to.
+ * @property sequence One-based sequence number of the tender within the sale.
+ * @property requestedMinor Amount requested from the terminal for this tender, in minor units.
+ * @property authorisedMinor Amount approved by the terminal for this tender, in minor units; null when not approved.
+ * @property status Outcome status of this tender ([SaleStatus]).
+ * @property poiTransactionId Terminal `POITransactionID.TransactionID` for this tender.
+ * @property poiTimestamp Terminal `POITransactionID.TimeStamp` for this tender.
+ * @property pspReference Adyen PSP reference for this tender.
+ * @property paymentBrand Card scheme or wallet brand for this tender.
+ * @property maskedPan Masked PAN for this tender.
+ * @property createdAt Epoch milliseconds when this tender was recorded.
+ */
+@Entity(
+    tableName = "sale_tenders",
+    foreignKeys = [
+        ForeignKey(
+            entity = SaleEntity::class,
+            parentColumns = ["id"],
+            childColumns = ["saleId"],
+            onDelete = ForeignKey.CASCADE,
+        ),
+    ],
+    indices = [Index("saleId"), Index("poiTransactionId")],
+)
+data class SaleTenderEntity(
+    @PrimaryKey val id: String,
+    val saleId: String,
+    val sequence: Int,
+    val requestedMinor: Long,
+    val authorisedMinor: Long? = null,
+    val status: SaleStatus = SaleStatus.APPROVED,
+    val poiTransactionId: String? = null,
+    val poiTimestamp: String? = null,
+    val pspReference: String? = null,
+    val paymentBrand: String? = null,
+    val maskedPan: String? = null,
+    val createdAt: Long = 0,
+)
+
+/**
+ * A sale with its lines and tenders, loaded together by Room (the DAO queries run in a transaction).
  *
  * @property sale The sale row.
  * @property lines Its lines in no particular order; use [sortedLines] for receipt order.
+ * @property tenders Its recorded tenders; use [sortedTenders] for chronological tender order.
  */
 data class SaleWithLines(
     @Embedded val sale: SaleEntity,
     @Relation(parentColumn = "id", entityColumn = "saleId") val lines: List<SaleLineEntity>,
+    @Relation(parentColumn = "id", entityColumn = "saleId") val tenders: List<SaleTenderEntity> = emptyList(),
 ) {
     /** [lines] in cart order (by [SaleLineEntity.position]). */
     val sortedLines: List<SaleLineEntity> get() = lines.sortedBy { it.position }
+
+    /** [tenders] in chronological sequence order (by [SaleTenderEntity.sequence]). */
+    val sortedTenders: List<SaleTenderEntity> get() = tenders.sortedBy { it.sequence }
 }

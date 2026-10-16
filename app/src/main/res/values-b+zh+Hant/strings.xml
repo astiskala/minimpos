@@ -999,4 +999,9 @@
   <string name="settings_show_terminal_qr">批准後在終端顯示二維碼收據</string>
   <string name="settings_ask_shopper_rating">批准後請顧客進行 0–10 評分</string>
   <string name="detail_shopper_rating">顧客評分</string>
+  <string name="settings_allow_partial_auth">允許部分授權</string>
+  <string name="settings_allow_partial_auth_hint">接受銀行卡部分批准（AllowPartialAuthorisation），並提示用另一張卡支付剩餘差額。</string>
+  <string name="status_partially_paid">部分已付</string>
+  <string name="detail_partially_paid">已付 %1$s · 剩餘 %2$s</string>
+  <string name="result_pay_remaining">支付剩餘 %1$s</string>
 </resources>

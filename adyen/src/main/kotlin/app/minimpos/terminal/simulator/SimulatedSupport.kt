@@ -23,6 +23,8 @@ import java.math.RoundingMode
 import java.util.Base64
 
 private const val PERCENT = 100L
+private const val ADYEN_PARTIAL_TRIGGER_SUFFIX = "139"
+private const val DEFAULT_PARTIAL_RATIO = 50L
 
 internal data class SimulatedCard(
     val brand: String,
@@ -44,7 +46,35 @@ internal data class SimulatedPayment(
     val preAuthorisation: Boolean,
     val wallet: Boolean = false,
     val tipAmount: BigDecimal? = null,
+    val partial: Boolean = false,
 )
+
+internal fun simulatedPartialAmount(
+    saleData: SaleData?,
+    requestedAmount: BigDecimal,
+    settings: SimulatorConfig,
+): BigDecimal? {
+    val tenders =
+        saleData
+            ?.saleToAcquirerData
+            ?.tenderOption
+            ?.split(',')
+            .orEmpty()
+    if (TerminalClient.ALLOW_PARTIAL_AUTHORISATION !in tenders) return null
+    val scale = requestedAmount.scale().coerceAtLeast(0)
+    val minorString = requestedAmount.movePointRight(scale).toBigInteger().toString()
+    val ratio =
+        when {
+            settings.partialApprovalPercent in 1 until PERCENT.toInt() -> settings.partialApprovalPercent.toLong()
+            minorString.endsWith(ADYEN_PARTIAL_TRIGGER_SUFFIX) -> DEFAULT_PARTIAL_RATIO
+            else -> return null
+        }
+    val partial =
+        requestedAmount
+            .multiply(BigDecimal.valueOf(ratio))
+            .divide(BigDecimal.valueOf(PERCENT), scale, RoundingMode.HALF_UP)
+    return partial.takeIf { it > BigDecimal.ZERO && it < requestedAmount }
+}
 
 internal fun simulatedTipAmount(
     saleData: SaleData?,

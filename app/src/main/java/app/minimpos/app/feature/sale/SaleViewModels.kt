@@ -451,4 +451,32 @@ class SaleResultViewModel(
 
     /** Leaves the result, so the next payment can start. */
     fun finish() = lifecycle.acknowledge()
+
+    /** Starts collecting the remaining balance of a partially paid sale on another card; false when not partially paid. */
+    fun payRemaining(): Boolean {
+        val sale =
+            state.value.record
+                ?.sale
+                ?.takeIf { it.isPartiallyPaid } ?: return false
+        val remaining = sale.remainingMinor
+        if (remaining <= 0) return false
+        lifecycle.acknowledge()
+        lifecycle.start(
+            PaymentStart(
+                totals = Cart().totals(TaxMode.INCLUSIVE),
+                currency = CurrencySpec.of(sale.currency),
+                merchantReference = sale.merchantReference,
+                customerReference = sale.customerReference,
+                shopperEmail = sale.shopperEmail,
+                tokenization = null,
+                kind = sale.kind,
+                tipOnReceipt = false,
+                shopperReference = sale.shopperReference,
+                allowPartialAuthorisation = true,
+                requestedAmountMinor = remaining,
+                existingSaleId = sale.id,
+            ),
+        )
+        return true
+    }
 }

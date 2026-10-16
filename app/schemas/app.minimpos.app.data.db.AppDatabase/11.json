@@ -2,7 +2,7 @@
   "formatVersion": 1,
   "database": {
     "version": 11,
-    "identityHash": "4cb75be164c202451f679aa65f0763e0",
+    "identityHash": "0a069811c13c8888e4ebe544f978ab54",
     "entities": [
       {
         "tableName": "tax_rates",
@@ -246,7 +246,7 @@
       },
       {
         "tableName": "sales",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `sample` INTEGER NOT NULL DEFAULT 0, `createdAt` INTEGER NOT NULL, `currency` TEXT NOT NULL, `taxMode` TEXT NOT NULL, `netMinor` INTEGER NOT NULL, `taxMinor` INTEGER NOT NULL, `totalMinor` INTEGER NOT NULL, `status` TEXT NOT NULL, `merchantReference` TEXT NOT NULL, `customerReference` TEXT, `shopperReference` TEXT, `shopperEmail` TEXT, `requestedWallet` TEXT, `tokenizationRequested` INTEGER NOT NULL, `storedPaymentMethodId` TEXT, `serviceId` TEXT, `poiId` TEXT, `poiTransactionId` TEXT, `poiTimestamp` TEXT, `pspReference` TEXT, `paymentBrand` TEXT, `maskedPan` TEXT, `entryMode` TEXT, `authCode` TEXT, `message` TEXT, `customerReceiptJson` TEXT, `cashierReceiptJson` TEXT, `signatureRequired` INTEGER NOT NULL, `refundedMinor` INTEGER NOT NULL, `emailedTo` TEXT, `errorCondition` TEXT, `refusalReason` TEXT, `kind` TEXT NOT NULL DEFAULT 'SALE', `tipOnReceipt` INTEGER NOT NULL DEFAULT 0, `tipMinor` INTEGER, `authorisedMinor` INTEGER, `adjustment` TEXT, `adjustAuthorisationData` TEXT, `capturedMinor` INTEGER, `captureStatus` TEXT, `modificationMessage` TEXT, `paymentMethodVariant` TEXT, `holdCancelled` INTEGER NOT NULL DEFAULT 0, `paymentLink` INTEGER NOT NULL DEFAULT 0, `paymentLinkId` TEXT, `paymentLinkUrl` TEXT, `paymentLinkExpiresAt` INTEGER, `reason` TEXT, `modificationReason` TEXT, `context` TEXT, `linkLocale` TEXT, `linkCountry` TEXT, `linkRecurringModel` TEXT, `adjustmentKey` TEXT, `adjustmentAmountMinor` INTEGER, `adjustmentPending` INTEGER NOT NULL, `processedAt` INTEGER, `captureStartedAt` INTEGER, `captureProcessedAt` INTEGER, `poiReconciliationId` TEXT, `shopperRating` INTEGER, PRIMARY KEY(`id`))",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `sample` INTEGER NOT NULL DEFAULT 0, `createdAt` INTEGER NOT NULL, `currency` TEXT NOT NULL, `taxMode` TEXT NOT NULL, `netMinor` INTEGER NOT NULL, `taxMinor` INTEGER NOT NULL, `totalMinor` INTEGER NOT NULL, `status` TEXT NOT NULL, `merchantReference` TEXT NOT NULL, `customerReference` TEXT, `shopperReference` TEXT, `shopperEmail` TEXT, `requestedWallet` TEXT, `tokenizationRequested` INTEGER NOT NULL, `storedPaymentMethodId` TEXT, `serviceId` TEXT, `poiId` TEXT, `poiTransactionId` TEXT, `poiTimestamp` TEXT, `pspReference` TEXT, `paymentBrand` TEXT, `maskedPan` TEXT, `entryMode` TEXT, `authCode` TEXT, `message` TEXT, `customerReceiptJson` TEXT, `cashierReceiptJson` TEXT, `signatureRequired` INTEGER NOT NULL, `refundedMinor` INTEGER NOT NULL, `emailedTo` TEXT, `errorCondition` TEXT, `refusalReason` TEXT, `kind` TEXT NOT NULL DEFAULT 'SALE', `tipOnReceipt` INTEGER NOT NULL DEFAULT 0, `tipMinor` INTEGER, `authorisedMinor` INTEGER, `adjustment` TEXT, `adjustAuthorisationData` TEXT, `capturedMinor` INTEGER, `captureStatus` TEXT, `modificationMessage` TEXT, `paymentMethodVariant` TEXT, `holdCancelled` INTEGER NOT NULL DEFAULT 0, `paymentLink` INTEGER NOT NULL DEFAULT 0, `paymentLinkId` TEXT, `paymentLinkUrl` TEXT, `paymentLinkExpiresAt` INTEGER, `reason` TEXT, `modificationReason` TEXT, `context` TEXT, `linkLocale` TEXT, `linkCountry` TEXT, `linkRecurringModel` TEXT, `adjustmentKey` TEXT, `adjustmentAmountMinor` INTEGER, `adjustmentPending` INTEGER NOT NULL, `processedAt` INTEGER, `captureStartedAt` INTEGER, `captureProcessedAt` INTEGER, `poiReconciliationId` TEXT, `shopperRating` INTEGER, `paidMinor` INTEGER NOT NULL DEFAULT 0, PRIMARY KEY(`id`))",
         "fields": [
           {
             "fieldPath": "id",
@@ -580,6 +580,13 @@
             "fieldPath": "shopperRating",
             "columnName": "shopperRating",
             "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "paidMinor",
+            "columnName": "paidMinor",
+            "affinity": "INTEGER",
+            "notNull": true,
+            "defaultValue": "0"
           }
         ],
         "primaryKey": {
@@ -711,6 +718,117 @@
             ],
             "orders": [],
             "createSql": "CREATE INDEX IF NOT EXISTS `index_sale_lines_saleId` ON `${TABLE_NAME}` (`saleId`)"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "table": "sales",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "saleId"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          }
+        ]
+      },
+      {
+        "tableName": "sale_tenders",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `saleId` TEXT NOT NULL, `sequence` INTEGER NOT NULL, `requestedMinor` INTEGER NOT NULL, `authorisedMinor` INTEGER, `status` TEXT NOT NULL, `poiTransactionId` TEXT, `poiTimestamp` TEXT, `pspReference` TEXT, `paymentBrand` TEXT, `maskedPan` TEXT, `createdAt` INTEGER NOT NULL, PRIMARY KEY(`id`), FOREIGN KEY(`saleId`) REFERENCES `sales`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "saleId",
+            "columnName": "saleId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "sequence",
+            "columnName": "sequence",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "requestedMinor",
+            "columnName": "requestedMinor",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "authorisedMinor",
+            "columnName": "authorisedMinor",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "status",
+            "columnName": "status",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "poiTransactionId",
+            "columnName": "poiTransactionId",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "poiTimestamp",
+            "columnName": "poiTimestamp",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "pspReference",
+            "columnName": "pspReference",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "paymentBrand",
+            "columnName": "paymentBrand",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "maskedPan",
+            "columnName": "maskedPan",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "createdAt",
+            "columnName": "createdAt",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_sale_tenders_saleId",
+            "unique": false,
+            "columnNames": [
+              "saleId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_sale_tenders_saleId` ON `${TABLE_NAME}` (`saleId`)"
+          },
+          {
+            "name": "index_sale_tenders_poiTransactionId",
+            "unique": false,
+            "columnNames": [
+              "poiTransactionId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_sale_tenders_poiTransactionId` ON `${TABLE_NAME}` (`poiTransactionId`)"
           }
         ],
         "foreignKeys": [
@@ -902,7 +1020,7 @@
     ],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '4cb75be164c202451f679aa65f0763e0')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '0a069811c13c8888e4ebe544f978ab54')"
     ]
   }
 }

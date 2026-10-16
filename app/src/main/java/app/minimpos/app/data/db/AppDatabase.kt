@@ -18,6 +18,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         CatalogImportEntity::class,
         SaleEntity::class,
         SaleLineEntity::class,
+        SaleTenderEntity::class,
         RefundEntity::class,
         HistorySwitchEntity::class,
     ],
@@ -42,7 +43,18 @@ abstract class AppDatabase : RoomDatabase() {
                 override fun migrate(db: SupportSQLiteDatabase) {
                     db.execSQL("ALTER TABLE `sales` ADD COLUMN `poiReconciliationId` TEXT")
                     db.execSQL("ALTER TABLE `sales` ADD COLUMN `shopperRating` INTEGER")
+                    db.execSQL("ALTER TABLE `sales` ADD COLUMN `paidMinor` INTEGER NOT NULL DEFAULT 0")
                     db.execSQL("ALTER TABLE `refunds` ADD COLUMN `poiReconciliationId` TEXT")
+                    db.execSQL(
+                        "CREATE TABLE IF NOT EXISTS `sale_tenders` (" +
+                            "`id` TEXT NOT NULL, `saleId` TEXT NOT NULL, `sequence` INTEGER NOT NULL, " +
+                            "`requestedMinor` INTEGER NOT NULL, `authorisedMinor` INTEGER, `status` TEXT NOT NULL, " +
+                            "`poiTransactionId` TEXT, `poiTimestamp` TEXT, `pspReference` TEXT, " +
+                            "`paymentBrand` TEXT, `maskedPan` TEXT, `createdAt` INTEGER NOT NULL, " +
+                            "PRIMARY KEY(`id`), FOREIGN KEY(`saleId`) REFERENCES `sales`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+                    )
+                    db.execSQL("CREATE INDEX IF NOT EXISTS `index_sale_tenders_saleId` ON `sale_tenders` (`saleId`)")
+                    db.execSQL("CREATE INDEX IF NOT EXISTS `index_sale_tenders_poiTransactionId` ON `sale_tenders` (`poiTransactionId`)")
                 }
             }
 

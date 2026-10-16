@@ -128,6 +128,7 @@ class TerminalClient(
                             saleData =
                                 SaleData().apply {
                                     saleTransactionID = transaction(effectiveParams.merchantReference, clock.instant())
+                                    saleReferenceID = effectiveParams.saleReferenceId
                                     saleToAcquirerData =
                                         acquirerData {
                                             shopperReference = effectiveParams.shopperReference
@@ -139,11 +140,11 @@ class TerminalClient(
                                                     )
                                                 }
                                             val tenders =
-                                                if (effectiveParams.terminalTip != null) {
-                                                    (effectiveParams.tenderOptions + ASK_GRATUITY).distinct()
-                                                } else {
-                                                    effectiveParams.tenderOptions
-                                                }
+                                                buildList {
+                                                    addAll(effectiveParams.tenderOptions)
+                                                    if (effectiveParams.terminalTip != null) add(ASK_GRATUITY)
+                                                    if (effectiveParams.allowPartialAuthorisation) add(ALLOW_PARTIAL_AUTHORISATION)
+                                                }.distinct()
                                             tenderOption = tenders.takeIf { it.isNotEmpty() }?.joinToString(",")
                                             metadata = effectiveParams.metadata.takeIf { it.isNotEmpty() }
                                             if (effectiveParams.preAuthorisation) {
@@ -698,6 +699,9 @@ class TerminalClient(
         /** Tender option that prompts the shopper for a tip on the terminal. */
         const val ASK_GRATUITY = "AskGratuity"
 
+        /** Tender option that allows the terminal/issuer to approve a smaller amount than requested. */
+        const val ALLOW_PARTIAL_AUTHORISATION = "AllowPartialAuthorisation"
+
         /** The `additionalData` key that leaves a payment uncaptured until it is captured manually. */
         private const val MANUAL_CAPTURE = "manualCapture"
         private const val SERVICE_ID_CHARS = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ"
@@ -803,10 +807,12 @@ class TerminalClient(
             receipts: List<PaymentReceipt>?,
         ): TransactionDetails {
             val poi = poiData?.poiTransactionID
-            val success = response?.result == ResultType.SUCCESS
+            val partial = response?.result == ResultType.PARTIAL
+            val success = response?.result == ResultType.SUCCESS || partial
             val refusalReason = additional["refusalReason"]
             return TransactionDetails(
                 success = success,
+                partial = partial,
                 errorCondition = response?.errorCondition?.value(),
                 message = ExternalText.of(refusalReason ?: additional["message"] ?: additional["errors"] ?: additional["warnings"]),
                 refusalReason = refusalReason,

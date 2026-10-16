@@ -123,6 +123,8 @@ enum class SimulatedOutcome {
  * @property shopperConfirmed Answer returned by simulated `GetConfirmation` input requests.
  * @property shopperEmailInput Email text returned by simulated `GetText` input requests.
  * @property shopperRating 0–10 rating returned by simulated `GetRating` input requests.
+ * @property partialApprovalPercent Percentage (`1..99`) of `requestedAmount` approved when `AllowPartialAuthorisation`
+ *   is present; `100` approves in full unless the minor-unit amount ends with Adyen's `139` partial-approval test suffix.
  */
 data class SimulatorConfig(
     val outcome: SimulatedOutcome = SimulatedOutcome.APPROVE,
@@ -132,9 +134,11 @@ data class SimulatorConfig(
     val shopperConfirmed: Boolean = true,
     val shopperEmailInput: String = "shopper@example.com",
     val shopperRating: Int = DEFAULT_SIMULATED_RATING,
+    val partialApprovalPercent: Int = FULL_APPROVAL_PERCENT,
 ) {
     private companion object {
         const val DEFAULT_SIMULATED_RATING = 9
+        const val FULL_APPROVAL_PERCENT = 100
     }
 }
 
@@ -332,39 +336,19 @@ class TerminalSimulator(
     ): PaymentResponse {
         if (outcome == SimulatedOutcome.BUSY) return busy(request)
         val amount = request.paymentTransaction.amountsReq
-        val wallet = request.paymentData?.paymentInstrumentData?.paymentInstrumentType == PaymentInstrumentType.STORED_VALUE
-        val brand =
-            request.paymentTransaction.transactionConditions
-                ?.allowedPaymentBrand
-                ?.singleOrNull()
-                .orEmpty()
-        val approved = outcome == SimulatedOutcome.APPROVE || outcome == SimulatedOutcome.TIMEOUT
-        val tipAmount = if (approved) simulatedTipAmount(request.saleData, amount.requestedAmount) else null
-        val authorizedAmount = if (approved) amount.requestedAmount + (tipAmount ?: BigDecimal.ZERO) else BigDecimal.ZERO
-        val payment =
-            SimulatedPayment(
-                card = if (wallet) SimulatedCard(brand, brand, brand.uppercase(), "", "", "") else CARDS[random.nextInt(CARDS.size)],
-                wallet = wallet,
-                psp = randomString(PSP_LENGTH, UPPER),
-                tender = randomString(TENDER_PREFIX_LENGTH, ALNUM) + randomString(TENDER_DIGITS, DIGITS),
-                authCode = randomString(AUTH_CODE_LENGTH, DIGITS),
-                merchantReference =
-                    request.saleData
-                        ?.saleTransactionID
-                        ?.transactionID
-                        .orEmpty(),
-                amountText = "${amount.currency} ${authorizedAmount.toPlainString()}",
-                approved = approved,
-                preAuthorisation = request.saleData?.saleToAcquirerData?.authorisationType == TerminalClient.PRE_AUTH,
-                tipAmount = tipAmount,
-            )
+        val (payment, authorizedAmount) = buildSimulatedPayment(request, outcome, settings)
         if (payment.approved) recordApprovedPayment(payment, amount.currency, authorizedAmount)
         val refusal = if (payment.approved) null else refusal(outcome)
         val additional = paymentAdditional(payment, request.saleData?.saleToAcquirerData, refusal)
         return PaymentResponse().apply {
             response =
                 Response().apply {
-                    result = if (payment.approved) ResultType.SUCCESS else ResultType.FAILURE
+                    result =
+                        when {
+                            !payment.approved -> ResultType.FAILURE
+                            payment.partial -> ResultType.PARTIAL
+                            else -> ResultType.SUCCESS
+                        }
                     errorCondition = refusal?.first
                     additionalResponse = base64Json(additional)
                 }
@@ -382,6 +366,44 @@ class TerminalSimulator(
                     ),
                 )
         }
+    }
+
+    private fun buildSimulatedPayment(
+        request: PaymentRequest,
+        outcome: SimulatedOutcome?,
+        settings: SimulatorConfig,
+    ): Pair<SimulatedPayment, BigDecimal> {
+        val amount = request.paymentTransaction.amountsReq
+        val wallet = request.paymentData?.paymentInstrumentData?.paymentInstrumentType == PaymentInstrumentType.STORED_VALUE
+        val brand =
+            request.paymentTransaction.transactionConditions
+                ?.allowedPaymentBrand
+                ?.singleOrNull()
+                .orEmpty()
+        val approved = outcome == SimulatedOutcome.APPROVE || outcome == SimulatedOutcome.TIMEOUT
+        val partialBase = if (approved) simulatedPartialAmount(request.saleData, amount.requestedAmount, settings) else null
+        val baseApproved = partialBase ?: amount.requestedAmount
+        val tipAmount = if (approved && partialBase == null) simulatedTipAmount(request.saleData, baseApproved) else null
+        val authorizedAmount = if (approved) baseApproved + (tipAmount ?: BigDecimal.ZERO) else BigDecimal.ZERO
+        val payment =
+            SimulatedPayment(
+                card = if (wallet) SimulatedCard(brand, brand, brand.uppercase(), "", "", "") else CARDS[random.nextInt(CARDS.size)],
+                wallet = wallet,
+                psp = randomString(PSP_LENGTH, UPPER),
+                tender = randomString(TENDER_PREFIX_LENGTH, ALNUM) + randomString(TENDER_DIGITS, DIGITS),
+                authCode = randomString(AUTH_CODE_LENGTH, DIGITS),
+                merchantReference =
+                    request.saleData
+                        ?.saleTransactionID
+                        ?.transactionID
+                        .orEmpty(),
+                amountText = "${amount.currency} ${authorizedAmount.toPlainString()}",
+                approved = approved,
+                preAuthorisation = request.saleData?.saleToAcquirerData?.authorisationType == TerminalClient.PRE_AUTH,
+                tipAmount = tipAmount,
+                partial = partialBase != null,
+            )
+        return payment to authorizedAmount
     }
 
     private fun recordApprovedPayment(

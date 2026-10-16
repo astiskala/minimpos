@@ -25,7 +25,7 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import java.time.Clock
 import java.util.Locale
-import java.util.UUID
+import kotlin.uuid.Uuid
 
 /** What asking Adyen about a payment link (or cancelling it) found, see [PaymentLinks]. */
 sealed interface LinkUpdate {
@@ -86,7 +86,7 @@ class PaymentLinks(
     private val target: suspend () -> ApiTarget,
     private val onCreated: (id: String, start: PaymentLinkStart) -> Unit = { _, _ -> },
     private val clock: Clock = Clock.systemUTC(),
-    private val newId: () -> String = { UUID.randomUUID().toString() },
+    private val newId: () -> String = { Uuid.random().toString() },
     private val locale: () -> Locale = { Locale.getDefault() },
     private val permits: suspend () -> Boolean = { true },
 ) {

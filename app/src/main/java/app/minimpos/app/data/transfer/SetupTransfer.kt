@@ -39,7 +39,7 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.serializer
 import java.io.IOException
-import java.util.UUID
+import kotlin.uuid.Uuid
 
 /**
  * What an export includes.
@@ -398,7 +398,7 @@ class SetupTransfer(
             saving {
                 val entry =
                     PendingSetupImport(
-                        UUID.randomUUID().toString(),
+                        Uuid.random().toString(),
                         TransferCodec.encode(prepared.received.transfer),
                         mode,
                         prepared.settings,

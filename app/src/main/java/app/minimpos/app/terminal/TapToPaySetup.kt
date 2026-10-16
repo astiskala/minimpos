@@ -6,7 +6,6 @@ import app.minimpos.app.data.db.SetupProblem
 import app.minimpos.app.data.security.JournalRead
 import app.minimpos.app.data.security.RecoveryJournal
 import app.minimpos.app.data.security.Secret
-import app.minimpos.app.data.security.SecretStore
 import app.minimpos.app.data.security.SecretStoreException
 import app.minimpos.app.data.settings.AppSettings
 import app.minimpos.app.data.settings.SettingsRepository

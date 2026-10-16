@@ -79,11 +79,11 @@ import java.net.URLDecoder
 import java.nio.file.Files
 import java.security.ProviderException
 import java.time.Instant
-import java.util.Base64
 import java.util.Collections
 import javax.crypto.AEADBadTagException
 import javax.mail.internet.MimeMessage
 import kotlin.experimental.xor
+import kotlin.io.encoding.Base64
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.seconds
 
@@ -276,7 +276,7 @@ class FakePaymentsApp(
     override fun lateReplies(): List<String> = emptyList()
 
     private suspend fun answer(request: String): String {
-        val secured = gson.fromJson(String(Base64.getUrlDecoder().decode(request)), TerminalAPISecuredRequest::class.java)
+        val secured = gson.fromJson(String(Base64.UrlSafe.decode(request)), TerminalAPISecuredRequest::class.java)
         val delivery = simulator.send(gson.fromJson(crypto.decrypt(secured.saleToPOIRequest), TerminalAPIRequest::class.java), 1.seconds)
         val response = checkNotNull((delivery as Delivery.Answered).response)
         val encrypted =
@@ -284,7 +284,7 @@ class FakePaymentsApp(
                 saleToPOIResponse =
                     crypto.encrypt(gson.toJson(response), response.saleToPOIResponse.messageHeader)
             }
-        return Base64.getUrlEncoder().encodeToString(gson.toJson(encrypted).toByteArray())
+        return Base64.UrlSafe.encode(gson.toJson(encrypted).toByteArray())
     }
 
     /** The installation ID it boards with. */

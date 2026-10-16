@@ -20,7 +20,6 @@ import app.minimpos.app.history.StoredPayment
 import app.minimpos.app.history.TotalsShare
 import app.minimpos.app.history.standing
 import app.minimpos.app.history.totalsShare
-import app.minimpos.app.payment.StoredTransaction
 import app.minimpos.core.money.CurrencySpec
 import app.minimpos.core.receipt.PlainTextReceiptRenderer
 import app.minimpos.terminal.checkout.ModificationAmount
@@ -431,7 +430,7 @@ class PaymentLinksTest {
     private fun Part.allText(): String =
         when (val content = content) {
             is String -> content
-            is Multipart -> (0 until content.count).joinToString("\n") { content.getBodyPart(it).allText() }
+            is Multipart -> (0..<content.count).joinToString("\n") { content.getBodyPart(it).allText() }
             else -> ""
         }
 }

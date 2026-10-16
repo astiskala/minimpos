@@ -23,34 +23,19 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.ViewModel
-import androidx.lifecycle.viewModelScope
 import app.minimpos.app.R
 import app.minimpos.app.data.settings.PaymentSettings
 import app.minimpos.app.data.settings.ReceiptTipping
-import app.minimpos.app.data.settings.TerminalSettings
-import app.minimpos.app.feature.ActionOutcome
 import app.minimpos.app.feature.ActionState
 import app.minimpos.app.feature.OutcomeMessage
-import app.minimpos.app.feature.launchWrite
 import app.minimpos.app.feature.text
 import app.minimpos.app.terminal.AdyenCapabilitiesState
-import app.minimpos.app.terminal.CapabilityDiscovery
-import app.minimpos.app.terminal.CapabilityPatchResult
 import app.minimpos.app.terminal.CapabilityStanding
 import app.minimpos.app.terminal.GratuityCapability
 import app.minimpos.app.terminal.MotoCapability
 import app.minimpos.app.ui.components.SecondaryButton
 import app.minimpos.app.ui.components.SectionHeader
 import app.minimpos.app.ui.theme.LocalStatusColors
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.collectLatest
-import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.flow.update
-import kotlinx.coroutines.launch
 
 /** Settings › Capabilities: progressive readiness matrix and scoped Management `terminalSettings` editors. */
 @Composable

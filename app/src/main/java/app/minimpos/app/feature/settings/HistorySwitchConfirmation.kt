@@ -12,20 +12,20 @@ internal class HistorySwitchConfirmation(
     private val owner: ViewModel,
     private val switches: HistorySwitches?,
 ) {
-    private val proposed = MutableStateFlow<HistorySwitchPlan?>(null)
-    val pending: StateFlow<HistorySwitchPlan?> = proposed
+    val pending: StateFlow<HistorySwitchPlan?>
+        field = MutableStateFlow<HistorySwitchPlan?>(null)
 
     fun propose(plan: HistorySwitchPlan) {
-        proposed.value = plan
+        pending.value = plan
     }
 
     fun review(confirm: Boolean) {
-        val plan = proposed.value ?: return
-        proposed.value = null
+        val plan = pending.value ?: return
+        pending.value = null
         if (!confirm) return
         val operations = switches ?: return
         owner.launchWrite({ operations.confirm(plan) }) { saved ->
-            if (!saved) owner.launchWrite({ operations.preview(plan.target) }) { proposed.value = it }
+            if (!saved) owner.launchWrite({ operations.preview(plan.target) }) { pending.value = it }
         }
     }
 }

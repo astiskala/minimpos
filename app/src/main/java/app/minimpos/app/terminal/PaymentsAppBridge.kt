@@ -5,7 +5,6 @@ import app.minimpos.terminal.paymentsapp.AppLinkExchange
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withTimeoutOrNull
@@ -33,10 +32,10 @@ class PaymentsAppBridge : AppLinkExchange {
     )
 
     private val mutex = Mutex()
-    private val _launches = MutableStateFlow<Launch?>(null)
 
     /** The link to open now, until the activity reports it [opened]; null while there is none. */
-    val launches: StateFlow<Launch?> = _launches.asStateFlow()
+    val launches: StateFlow<Launch?>
+        field = MutableStateFlow<Launch?>(null)
 
     @Volatile private var pending: Pending? = null
     private var nextId = 0L
@@ -60,12 +59,12 @@ class PaymentsAppBridge : AppLinkExchange {
         mutex.withLock {
             val waiting = Pending(++nextId)
             pending = waiting
-            _launches.value = Launch(waiting.id, link, packageName)
+            launches.value = Launch(waiting.id, link, packageName)
             try {
                 withTimeoutOrNull(timeout) { waiting.reply.await() } ?: AppLinkAnswer.TimedOut
             } finally {
                 pending = null
-                _launches.value = null
+                launches.value = null
             }
         }
 
@@ -74,7 +73,7 @@ class PaymentsAppBridge : AppLinkExchange {
     /** The activity started the Payments app with [id]'s link. */
     fun opened(id: Long) {
         pending?.takeIf { it.id == id }?.opened = true
-        _launches.value = _launches.value?.takeIf { it.id != id }
+        launches.value = launches.value?.takeIf { it.id != id }
     }
 
     /** The Payments app could not be started for [id] (it is not installed), so nothing was sent. */

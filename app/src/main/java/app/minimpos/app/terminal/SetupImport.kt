@@ -4,7 +4,6 @@ import app.minimpos.app.data.db.DeviceFault
 import app.minimpos.app.data.db.Failure
 import app.minimpos.app.data.db.SetupProblem
 import app.minimpos.app.data.repo.ImportMode
-import app.minimpos.app.data.security.Secret
 import app.minimpos.app.data.security.SecretStoreException
 import app.minimpos.app.data.settings.ConnectionSetup
 import app.minimpos.app.data.transfer.ImportOutcome

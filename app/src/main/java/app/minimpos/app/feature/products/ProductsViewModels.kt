@@ -13,7 +13,6 @@ import app.minimpos.core.money.CurrencySpec
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
@@ -137,10 +136,9 @@ class ProductEditViewModel(
     settingsState: StateFlow<AppSettings>,
     currency: (AppSettings) -> CurrencySpec,
 ) : ViewModel() {
-    private val _state = MutableStateFlow(ProductEditUiState())
-
     /** The editor state. */
-    val state: StateFlow<ProductEditUiState> = _state.asStateFlow()
+    val state: StateFlow<ProductEditUiState>
+        field = MutableStateFlow(ProductEditUiState())
 
     init {
         viewModelScope.launch {
@@ -163,22 +161,22 @@ class ProductEditViewModel(
                         preAuthorisation = it.kind == SaleKind.PRE_AUTHORISATION,
                     )
                 } ?: ProductForm(taxRateId = defaultTaxRateId, sku = initialSku.orEmpty())
-            _state.value = ProductEditUiState(true, form, taxRates, categories, spec, chargeTax = appSettings.payment.chargeTax)
+            state.value = ProductEditUiState(true, form, taxRates, categories, spec, chargeTax = appSettings.payment.chargeTax)
             checkSku(form.sku)
         }
     }
 
     /** Applies [transform] to the form and, when the SKU changed, checks whether another product has it. */
     fun update(transform: (ProductForm) -> ProductForm) {
-        val before = _state.value.form.sku
-        _state.update { it.copy(form = transform(it.form)) }
-        val sku = _state.value.form.sku
+        val before = state.value.form.sku
+        state.update { it.copy(form = transform(it.form)) }
+        val sku = state.value.form.sku
         if (sku != before) viewModelScope.launch { checkSku(sku) }
     }
 
     private suspend fun checkSku(sku: String) {
         val existing = sku.trim().takeIf { it.isNotEmpty() }?.let { catalog.productBySku(it) }
-        _state.update { it.copy(skuInUse = existing != null && existing.id != it.form.id) }
+        state.update { it.copy(skuInUse = existing != null && existing.id != it.form.id) }
     }
 
     /**
@@ -186,7 +184,7 @@ class ProductEditViewModel(
      * (unless the editor was closed meanwhile; the save still finishes). Does nothing otherwise.
      */
     fun save(onSaved: () -> Unit) {
-        val current = _state.value
+        val current = state.value
         val price = current.priceMinor ?: return
         val taxRateId = current.form.taxRateId ?: return
         if (!current.valid || current.saving) return
@@ -204,9 +202,9 @@ class ProductEditViewModel(
                 sortOrder = current.form.sortOrder,
                 kind = if (current.form.preAuthorisation) SaleKind.PRE_AUTHORISATION else SaleKind.SALE,
             )
-        _state.update { it.copy(saving = true) }
+        state.update { it.copy(saving = true) }
         launchWrite({ catalog.saveProduct(product) }) { _ ->
-            _state.update { it.copy(saving = false) }
+            state.update { it.copy(saving = false) }
             onSaved()
         }
     }
@@ -216,12 +214,12 @@ class ProductEditViewModel(
      * for a new product or while saving.
      */
     fun delete(onDeleted: () -> Unit) {
-        val current = _state.value
+        val current = state.value
         val id = current.form.id
         if (id == 0L || current.saving) return
-        _state.update { it.copy(saving = true) }
+        state.update { it.copy(saving = true) }
         launchWrite({ catalog.product(id)?.let { catalog.deleteProduct(it) } }) { _ ->
-            _state.update { it.copy(saving = false) }
+            state.update { it.copy(saving = false) }
             onDeleted()
         }
     }

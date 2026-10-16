@@ -92,11 +92,11 @@ internal object BuildReports {
         require(suite.tagName == "testsuite") { "Expected testsuite: ${root.relativize(report)}" }
         val tests = suite.getElementsByTagName("testcase")
         val failures =
-            (0 until tests.length).flatMap { index ->
+            (0..<tests.length).flatMap { index ->
                 val test = tests.item(index) as Element
                 listOf("failure", "error").flatMap { kind ->
                     val nodes = test.getElementsByTagName(kind)
-                    (0 until nodes.length).map { failureIndex ->
+                    (0..<nodes.length).map { failureIndex ->
                         val failure = nodes.item(failureIndex) as Element
                         val lines = failure.textContent.trim().lines()
                         val assertion =

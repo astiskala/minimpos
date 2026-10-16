@@ -25,11 +25,6 @@ import com.adyen.model.nexo.ErrorConditionType
 import com.adyen.model.nexo.GetTotalsResponse
 import com.adyen.model.nexo.GlobalStatusType
 import com.adyen.model.nexo.InfoQualifyType
-import com.adyen.model.nexo.Input
-import com.adyen.model.nexo.InputCommandType
-import com.adyen.model.nexo.InputRequest
-import com.adyen.model.nexo.InputResponse
-import com.adyen.model.nexo.InputResult
 import com.adyen.model.nexo.MessageHeader
 import com.adyen.model.nexo.MessageType
 import com.adyen.model.nexo.OutputContent
@@ -46,7 +41,6 @@ import com.adyen.model.nexo.PaymentRequest
 import com.adyen.model.nexo.PaymentResponse
 import com.adyen.model.nexo.PaymentResult
 import com.adyen.model.nexo.PaymentToken
-import com.adyen.model.nexo.PaymentTotals
 import com.adyen.model.nexo.PaymentType
 import com.adyen.model.nexo.PrintOutput
 import com.adyen.model.nexo.PrintResponse
@@ -61,29 +55,22 @@ import com.adyen.model.nexo.SaleData
 import com.adyen.model.nexo.SaleToPOIRequest
 import com.adyen.model.nexo.SaleToPOIResponse
 import com.adyen.model.nexo.TokenRequestedType
-import com.adyen.model.nexo.TransactionIdentification
 import com.adyen.model.nexo.TransactionStatusRequest
 import com.adyen.model.nexo.TransactionStatusResponse
-import com.adyen.model.nexo.TransactionTotals
-import com.adyen.model.nexo.TransactionType
-import com.adyen.model.terminal.SaleToAcquirerData
 import com.adyen.model.terminal.TerminalAPIRequest
 import com.adyen.model.terminal.TerminalAPIResponse
 import com.adyen.terminal.serialization.TerminalAPIGsonBuilder
-import com.google.gson.JsonParser
 import kotlinx.coroutines.delay
 import java.io.IOException
 import java.math.BigDecimal
-import java.math.BigInteger
-import java.math.RoundingMode
 import java.net.SocketTimeoutException
 import java.net.URLEncoder
 import java.time.Clock
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
-import java.util.Base64
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicInteger
+import kotlin.io.encoding.Base64
 import kotlin.random.Random
 import kotlin.time.Duration
 
@@ -714,8 +701,7 @@ class TerminalSimulator(
     }
 
     /** Requests carry SaleToAcquirerData as Base64 JSON, so the terminal answers AdditionalResponse in kind. */
-    private fun base64Json(values: Map<String, String>): String =
-        Base64.getEncoder().encodeToString(gson.toJson(values).toByteArray(Charsets.UTF_8))
+    private fun base64Json(values: Map<String, String>): String = Base64.encode(gson.toJson(values).toByteArray(Charsets.UTF_8))
 
     private fun formEncode(values: Map<String, String>): String =
         values.entries.joinToString("&") { (k, v) -> "${urlEncode(k)}=${urlEncode(v)}" }

@@ -24,14 +24,13 @@ import com.adyen.model.nexo.OutputFormatType
 import com.adyen.model.nexo.OutputText
 import com.adyen.model.nexo.PredefinedContent
 import com.adyen.model.nexo.ResultType
-import com.adyen.model.nexo.SaleToPOIRequest
 import com.adyen.model.nexo.TransactionStatusRequest
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.withContext
 import java.math.BigDecimal
 import java.math.BigInteger
 import java.net.URLEncoder
-import java.util.Base64
+import kotlin.io.encoding.Base64
 
 private const val DEFAULT_WAITING_TIMEOUT_MS = 15_000
 private const val DEFAULT_INPUT_TIMEOUT_SECONDS = 60
@@ -196,7 +195,7 @@ suspend fun TerminalClient.shopperSession(
                 )
             }
         }
-    val encoded = Base64.getEncoder().encodeToString(JSON.getMapper().writeValueAsString(payload).toByteArray(Charsets.UTF_8))
+    val encoded = Base64.encode(JSON.getMapper().writeValueAsString(payload).toByteArray(Charsets.UTF_8))
     val delivery =
         sendShortMessage(MessageClassType.SERVICE, MessageCategoryType.ADMIN) {
             adminRequest = AdminRequest().apply { serviceIdentification = encoded }

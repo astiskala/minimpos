@@ -115,7 +115,7 @@ The gate checks:
 | Website | Local links/fragments/assets, language and metadata parity, UI labels, screenshots, setup-helper fields and async generation; W3C Nu HTML/CSS validation with no messages. |
 | Workflows and scripts | actionlint, shellcheck and offline zizmor. |
 | Release | Offline version preparation and exact-commit APK/tooling artifact integrity tests. |
-| detekt | Type-resolved checks of main/test sources, including Compose and documentation rules; no baseline. |
+| detekt | Type-resolved checks of main/test sources, including Compose, documentation and modern Kotlin/Jetpack API rules (reasons in `config/detekt/detekt.yml`); no baseline. |
 | Dokka | All KDoc links resolve, including private code; generated HTML is in `<module>/build/dokka/html`. |
 | Android Lint | All checks, including normally disabled checks and test sources; warnings fail. |
 | Tests | JVM, Robolectric, Compose, ArchUnit and Android API-level tests. |

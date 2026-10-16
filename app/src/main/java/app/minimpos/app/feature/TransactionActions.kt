@@ -1,7 +1,6 @@
 package app.minimpos.app.feature
 
 import app.minimpos.app.data.db.Failure
-import app.minimpos.app.data.db.SetupProblem
 import app.minimpos.app.history.RefundStart
 import app.minimpos.app.payment.CaptureResult
 import app.minimpos.app.payment.LinkUpdate
@@ -20,7 +19,6 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -274,20 +272,19 @@ class TransactionActions private constructor(
     fresh: Boolean,
     private val rechecking: suspend () -> Recheck,
 ) {
-    private val _state = MutableStateFlow(TransactionActionsState())
-
     /** The receipt to share when asked, as last offered. */
     @Volatile private var shareable: SharedReceipt? = null
 
     /** Where the actions stand. */
-    val state: StateFlow<TransactionActionsState> = _state.asStateFlow()
+    val state: StateFlow<TransactionActionsState>
+        field = MutableStateFlow(TransactionActionsState())
 
     init {
         val offer = receipts.offer(transaction, fresh)
         scope.launch {
             offer.collect { offered ->
                 shareable = offered.share
-                _state.update {
+                state.update {
                     it.copy(
                         receipt = offered.receipt,
                         canPrint = offered.canPrint,
@@ -312,10 +309,10 @@ class TransactionActions private constructor(
      * whether the merchant copy is due (it waits for the operator to tear off the first).
      */
     fun print(copy: ReceiptCopy = ReceiptCopy.CUSTOMER) {
-        _state.update { it.copy(print = ActionState(running = true), merchantCopyPending = false) }
+        state.update { it.copy(print = ActionState(running = true), merchantCopyPending = false) }
         scope.launch {
             val printed = receipts.print(transaction, copy)
-            _state.update {
+            state.update {
                 it.copy(print = printed.result.toState(ActionOutcome.Printed), merchantCopyPending = printed.merchantCopyDue)
             }
         }
@@ -323,30 +320,30 @@ class TransactionActions private constructor(
 
     /** Emails the receipt to [to]. */
     fun email(to: String) {
-        _state.update { it.copy(email = ActionState(running = true)) }
+        state.update { it.copy(email = ActionState(running = true)) }
         scope.launch {
             val result = persisting { receipts.email(transaction, to) }
-            _state.update { it.copy(email = result.toState(ActionOutcome.Emailed(to))) }
+            state.update { it.copy(email = result.toState(ActionOutcome.Emailed(to))) }
         }
     }
 
     /** Asks the terminal again for an unknown outcome; the stored transaction updates when it is settled. */
     fun recheck() {
-        _state.update { it.copy(rechecking = true, stillUnknown = null) }
+        state.update { it.copy(rechecking = true, stillUnknown = null) }
         scope.launch {
             val checked = rechecking()
-            _state.update { it.copy(rechecking = false, stillUnknown = (checked as? Recheck.StillUnknown)?.failure) }
+            state.update { it.copy(rechecking = false, stillUnknown = (checked as? Recheck.StillUnknown)?.failure) }
         }
     }
 
     /** Asks for the receipt to be shared; the screen hands [TransactionActionsState.share] to the share sheet. */
     fun share() {
         val shared = shareable ?: return
-        _state.update { it.copy(share = shared) }
+        state.update { it.copy(share = shared) }
     }
 
     /** Reports that the screen handed the waiting receipt to the share sheet, so it is not shared twice. */
-    fun shared() = _state.update { it.copy(share = null) }
+    fun shared() = state.update { it.copy(share = null) }
 
     /** The actions for a sale or a refund. */
     companion object {

@@ -17,25 +17,25 @@ internal class PricingChanges(
     private val switches: HistorySwitches? = null,
     private val environment: HistorySwitchConfirmation,
 ) {
-    private val _pending = MutableStateFlow<PricingChange?>(null)
-    val pending: StateFlow<PricingChange?> = _pending
+    val pending: StateFlow<PricingChange?>
+        field = MutableStateFlow<PricingChange?>(null)
 
     fun edit(transform: (AppSettings) -> AppSettings) {
         owner.launchWrite({ operations.edit(transform, switches) }) { result ->
             when (result) {
-                SettingsEdit.Saved -> _pending.value = null
+                SettingsEdit.Saved -> pending.value = null
                 is SettingsEdit.ConfirmHistorySwitch -> environment.propose(result.plan)
-                is SettingsEdit.ConfirmPricing -> _pending.value = result.change
+                is SettingsEdit.ConfirmPricing -> pending.value = result.change
             }
         }
     }
 
     fun cancel() {
-        _pending.value = null
+        pending.value = null
     }
 
     fun confirm() {
-        val change = _pending.value ?: return
-        owner.launchWrite({ operations.confirm(change) }) { confirmed -> if (confirmed) _pending.value = null }
+        val change = pending.value ?: return
+        owner.launchWrite({ operations.confirm(change) }) { confirmed -> if (confirmed) pending.value = null }
     }
 }

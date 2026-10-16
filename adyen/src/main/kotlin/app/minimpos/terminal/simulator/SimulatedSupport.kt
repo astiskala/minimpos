@@ -26,7 +26,7 @@ import com.google.gson.JsonParser
 import java.math.BigDecimal
 import java.math.BigInteger
 import java.math.RoundingMode
-import java.util.Base64
+import kotlin.io.encoding.Base64
 import kotlin.random.Random
 
 private const val PERCENT = 100L
@@ -113,7 +113,7 @@ internal fun simulatedPartialAmount(
     val minorString = requestedAmount.movePointRight(scale).toBigInteger().toString()
     val ratio =
         when {
-            settings.partialApprovalPercent in 1 until PERCENT.toInt() -> settings.partialApprovalPercent.toLong()
+            settings.partialApprovalPercent in 1..<PERCENT.toInt() -> settings.partialApprovalPercent.toLong()
             minorString.endsWith(ADYEN_PARTIAL_TRIGGER_SUFFIX) -> DEFAULT_PARTIAL_RATIO
             else -> return null
         }
@@ -140,7 +140,7 @@ internal fun simulatedTipAmount(
     if (!poiData.isNullOrBlank()) {
         val tip =
             runCatching {
-                val decoded = String(Base64.getDecoder().decode(poiData), Charsets.UTF_8)
+                val decoded = String(Base64.decode(poiData), Charsets.UTF_8)
                 val tipOptions =
                     JsonParser
                         .parseString(decoded)

@@ -14,7 +14,7 @@ import app.minimpos.core.payment.PaymentContext
 import app.minimpos.core.tax.TaxRates
 import kotlinx.coroutines.flow.first
 import java.math.BigDecimal
-import java.util.UUID
+import kotlin.uuid.Uuid
 
 /**
  * Optional catalog examples and read-only simulated history. Creation and removal are atomic, main-safe and offline.
@@ -76,7 +76,7 @@ class SampleData(
         product: ProductEntity,
         index: Int,
     ) {
-        val id = UUID.randomUUID().toString()
+        val id = Uuid.random().toString()
         val rate = if (settings.payment.chargeTax) tax.rateMilliPercent else 0
         val amounts = TaxRates.apply(product.priceMinor, rate, settings.payment.taxMode)
         sales.createPending(

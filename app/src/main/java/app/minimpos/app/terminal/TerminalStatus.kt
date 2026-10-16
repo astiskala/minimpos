@@ -1,6 +1,5 @@
 package app.minimpos.app.terminal
 
-import app.minimpos.app.data.db.Failure
 import app.minimpos.app.data.db.SetupProblem
 import app.minimpos.app.data.settings.TerminalMode
 import app.minimpos.terminal.transport.TerminalEnvironment

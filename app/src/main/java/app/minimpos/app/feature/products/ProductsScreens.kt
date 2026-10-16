@@ -72,7 +72,6 @@ import app.minimpos.app.ui.components.LocalAppContainer
 import app.minimpos.app.ui.components.MiniScaffold
 import app.minimpos.app.ui.components.PrimaryButton
 import app.minimpos.app.ui.components.SwitchRow
-import app.minimpos.app.ui.components.currentLocale
 import app.minimpos.app.ui.components.rememberMoneyFormatter
 import app.minimpos.app.ui.navigation.Navigator
 import app.minimpos.app.ui.navigation.Route
@@ -80,7 +79,6 @@ import app.minimpos.app.ui.theme.LocalDimens
 import app.minimpos.core.cart.AppliedTax
 import app.minimpos.core.money.MoneyFormatter
 import app.minimpos.core.receipt.label
-import java.util.Locale
 
 /** The product and category lists, in two tabs, with adding, editing and deleting and the catalogue transfer menu. */
 @Composable

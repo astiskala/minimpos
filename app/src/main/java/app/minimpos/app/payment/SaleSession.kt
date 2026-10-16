@@ -15,14 +15,13 @@ import app.minimpos.terminal.client.ScannedPayment
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.update
 import java.time.Instant
 import java.time.ZoneId
-import java.util.UUID
 import java.util.concurrent.atomic.AtomicLong
+import kotlin.uuid.Uuid
 
 /**
  * What the operator has entered on the checkout screen, kept while going back to the cart and forward again.
@@ -77,22 +76,21 @@ class SaleSession(
     /** Resolves prompts in the current app language; null only for sessions without shopper display. */
     private val shopperTexts: (() -> ShopperPromptTexts)? = null,
     /** Generates cart line keys; tests make them predictable. */
-    private val newKey: () -> String = { UUID.randomUUID().toString() },
+    private val newKey: () -> String = { Uuid.random().toString() },
 ) {
     private val singleItem = kind.singleItem
     private val edits = AtomicLong()
 
     /** The session's edit revision, used to avoid clearing newer work when a payment is recovered. */
     private val revision: Long get() = edits.get()
-    private val _cart = MutableStateFlow(Cart())
 
     /** The current cart. */
-    val cart: StateFlow<Cart> = _cart.asStateFlow()
-
-    private val _form = MutableStateFlow(CheckoutForm())
+    val cart: StateFlow<Cart>
+        field = MutableStateFlow(Cart())
 
     /** The current checkout form. */
-    val form: StateFlow<CheckoutForm> = _form.asStateFlow()
+    val form: StateFlow<CheckoutForm>
+        field = MutableStateFlow(CheckoutForm())
 
     private data class Snapshot(
         val cart: Cart,
@@ -100,7 +98,7 @@ class SaleSession(
         val revision: Long,
     )
 
-    private val snapshot = MutableStateFlow(Snapshot(_cart.value, _form.value, revision))
+    private val snapshot = MutableStateFlow(Snapshot(cart.value, form.value, revision))
 
     /**
      * The checkout of this session's cart and form with [settings], charged in the [currency] the settings give,
@@ -203,7 +201,7 @@ class SaleSession(
         product: ProductEntity,
         tax: TaxRateEntity,
     ) = edited {
-        _cart.update { base(it).addProduct(CartProduct(product.id, product.name, product.sku, product.priceMinor, applied(tax)), newKey) }
+        cart.update { base(it).addProduct(CartProduct(product.id, product.name, product.sku, product.priceMinor, applied(tax)), newKey) }
     }
 
     /**
@@ -216,7 +214,7 @@ class SaleSession(
         name: String,
         amountMinor: Long,
         tax: TaxRateEntity,
-    ) = edited { _cart.update { base(it).addCustom(name, amountMinor, applied(tax), newKey()) } }
+    ) = edited { cart.update { base(it).addCustom(name, amountMinor, applied(tax), newKey()) } }
 
     private fun base(cart: Cart) = if (singleItem) Cart() else cart
 
@@ -229,27 +227,27 @@ class SaleSession(
     fun setQuantity(
         key: String,
         quantity: Int,
-    ) = edited { _cart.update { it.setQuantity(key, if (singleItem) quantity.coerceAtMost(1) else quantity) } }
+    ) = edited { cart.update { it.setQuantity(key, if (singleItem) quantity.coerceAtMost(1) else quantity) } }
 
     /** Removes the line with [key]; an unknown key changes nothing. */
-    fun remove(key: String) = edited { _cart.update { it.remove(key) } }
+    fun remove(key: String) = edited { cart.update { it.remove(key) } }
 
     /** Updates the checkout form atomically; [transform] must not have side effects, as it can run more than once. */
-    fun updateForm(transform: (CheckoutForm) -> CheckoutForm) = edited { _form.update(transform) }
+    fun updateForm(transform: (CheckoutForm) -> CheckoutForm) = edited { form.update(transform) }
 
     /** Preserves displayed unit prices when moving from [before] to [after]; increments the originating revision. */
     internal fun reprice(
         before: CurrencySpec,
         after: CurrencySpec,
     ) = edited {
-        _cart.update { cart -> cart.copy(lines = cart.lines.map { it.copy(unitPrice = after.toMinor(before.toMajor(it.unitPrice))) }) }
+        cart.update { cart -> cart.copy(lines = cart.lines.map { it.copy(unitPrice = after.toMinor(before.toMajor(it.unitPrice))) }) }
     }
 
     /** Empties the cart and the checkout form, for the next sale. */
     fun clear() =
         edited {
-            _cart.value = Cart()
-            _form.value = CheckoutForm()
+            cart.value = Cart()
+            form.value = CheckoutForm()
         }
 
     /** Clears only the session revision that made [start]; newer work is kept. */
@@ -262,7 +260,7 @@ class SaleSession(
         synchronized(this) {
             change()
             edits.incrementAndGet()
-            snapshot.value = Snapshot(_cart.value, _form.value, revision)
+            snapshot.value = Snapshot(cart.value, form.value, revision)
             Unit
         }
 }

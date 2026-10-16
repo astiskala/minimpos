@@ -7,7 +7,7 @@ import com.google.gson.JsonElement
 import com.google.gson.JsonObject
 import com.google.gson.JsonParser
 import java.net.URLDecoder
-import java.util.Base64
+import kotlin.io.encoding.Base64
 
 /**
  * A decoded line of Adyen receipt data: `key=...&name=...&value=...`. Each part is null when the line leaves it out.
@@ -100,7 +100,7 @@ object AdditionalResponseParser {
     private fun decodeBase64Json(text: String): JsonObject? {
         // Base64 can end in '=' padding but never contains '&'.
         if (text.contains('=') && text.contains('&')) return null
-        val bytes = runCatching { Base64.getDecoder().decode(text) }.getOrNull() ?: return null
+        val bytes = runCatching { Base64.withPadding(Base64.PaddingOption.PRESENT_OPTIONAL).decode(text) }.getOrNull() ?: return null
         val json = bytes.toString(Charsets.UTF_8).trim()
         if (!json.startsWith("{")) return null
         return runCatching { JsonParser.parseString(json).asJsonObject }.getOrNull()

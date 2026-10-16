@@ -12,49 +12,18 @@ import app.minimpos.app.data.db.DeviceFault
 import app.minimpos.app.data.db.Failure
 import app.minimpos.app.data.db.ProductEntity
 import app.minimpos.app.data.db.SaleKind
-import app.minimpos.app.data.db.SaleStatus
 import app.minimpos.app.data.db.SetupProblem
 import app.minimpos.app.data.db.TaxRateEntity
-import app.minimpos.app.data.repo.ImportMode
 import app.minimpos.app.data.security.Secret
-import app.minimpos.app.data.settings.EmailCapture
-import app.minimpos.app.data.settings.MerchantCopyPolicy
-import app.minimpos.app.data.settings.ShopperReferenceSource
 import app.minimpos.app.data.settings.TerminalMode
 import app.minimpos.app.feature.ActionOutcome
-import app.minimpos.app.feature.history.HistoryFilter
-import app.minimpos.app.feature.history.HistoryViewModel
-import app.minimpos.app.feature.history.SaleDetailViewModel
-import app.minimpos.app.feature.products.ProductEditViewModel
-import app.minimpos.app.feature.products.ProductsViewModel
-import app.minimpos.app.feature.refund.RefundOption
-import app.minimpos.app.feature.refund.RefundResultViewModel
-import app.minimpos.app.feature.refund.RefundViewModel
-import app.minimpos.app.feature.sale.CheckoutViewModel
-import app.minimpos.app.feature.sale.SaleResultViewModel
-import app.minimpos.app.feature.sale.SaleViewModel
-import app.minimpos.app.feature.settings.SettingsChecks
-import app.minimpos.app.feature.settings.SettingsTest
-import app.minimpos.app.feature.settings.SettingsViewModel
-import app.minimpos.app.history.RefundInvalidReason
-import app.minimpos.app.history.Refundability
-import app.minimpos.app.history.RefundablePayment
-import app.minimpos.app.payment.TransactionState
 import app.minimpos.app.terminal.AdyenApi
 import app.minimpos.app.terminal.ReceiptBusiness
 import app.minimpos.app.terminal.TerminalSetupSource
-import app.minimpos.core.codec.RefundQrPayload
 import app.minimpos.core.receipt.PlainTextReceiptRenderer
-import app.minimpos.core.receipt.ReceiptElement
-import app.minimpos.core.shopper.EmailReferenceMode
-import app.minimpos.core.shopper.ShopperReferences
-import app.minimpos.core.tax.TaxMode
 import app.minimpos.core.tax.TaxRates
 import app.minimpos.terminal.checkout.PaymentModifications
-import app.minimpos.terminal.client.RetryAdvice
 import app.minimpos.terminal.simulator.SimulatedModifications
-import app.minimpos.terminal.simulator.SimulatedOutcome
-import app.minimpos.terminal.simulator.TerminalSimulator
 import app.minimpos.terminal.transport.ApiKey
 import app.minimpos.terminal.transport.ExternalText
 import app.minimpos.terminal.transport.Fault
@@ -65,7 +34,6 @@ import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.setMain
@@ -74,7 +42,6 @@ import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
-import java.time.Instant
 
 /** Settings through its view model: settings, secrets, tax rates, and the connection, email and print checks. */
 @OptIn(ExperimentalCoroutinesApi::class)

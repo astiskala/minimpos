@@ -7,7 +7,6 @@ import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.hasTestTag
-import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
@@ -41,7 +40,6 @@ import app.minimpos.core.codec.QrChunks
 import app.minimpos.core.codec.SealedSecrets
 import app.minimpos.core.codec.Transfer
 import app.minimpos.core.codec.TransferCodec
-import app.minimpos.terminal.transport.ApiKey
 import app.minimpos.terminal.transport.CredentialLookup
 import app.minimpos.terminal.transport.DiscoveredKey
 import app.minimpos.terminal.transport.Fault

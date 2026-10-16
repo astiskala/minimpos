@@ -378,7 +378,7 @@ data class SaleEntity(
 
     /** True when one or more partial tenders have been approved, leaving a positive balance still due. */
     val isPartiallyPaid: Boolean
-        get() = !manualCapture && !paymentLink && status == SaleStatus.APPROVED && paidMinor in 1 until totalMinor && !holdCancelled
+        get() = !manualCapture && !paymentLink && status == SaleStatus.APPROVED && paidMinor in 1..<totalMinor && !holdCancelled
 
     /** Remaining unpaid balance in minor units when [isPartiallyPaid], else 0. */
     val remainingMinor: Long get() = if (isPartiallyPaid) (totalMinor - paidMinor).coerceAtLeast(0) else 0

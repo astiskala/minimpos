@@ -121,6 +121,30 @@ style:
     active: true
   ExplicitCollectionElementAccessMethod:
     active: true
+  ExpressionBodySyntax:
+    active: true
+  # Modern Kotlin and Android: the stable Kotlin standard library and Jetpack replace these older APIs.
+  ForbiddenImport:
+    active: true
+    forbiddenImports:
+      - reason: 'use kotlin.io.encoding.Base64 (stable since Kotlin 2.2); decoders that accept missing padding use withPadding(PRESENT_OPTIONAL)'
+        value: 'java.util.Base64'
+      - reason: 'use kotlin.io.encoding.Base64 (stable since Kotlin 2.2)'
+        value: 'android.util.Base64'
+      - reason: 'use kotlin.uuid.Uuid (stable since Kotlin 2.4)'
+        value: 'java.util.UUID'
+      - reason: 'use java.time.format.DateTimeFormatter'
+        value: 'java.text.DateFormat'
+      - reason: 'use java.time.format.DateTimeFormatter'
+        value: 'java.text.SimpleDateFormat'
+      - reason: 'view models take their dependencies through the constructor, not the Application (Android architecture recommendations)'
+        value: 'androidx.lifecycle.AndroidViewModel'
+      - reason: 'expose state as a StateFlow (Android architecture recommendations: coroutines and flows between layers)'
+        value: 'androidx.lifecycle.LiveData'
+      - reason: 'expose state as a StateFlow (Android architecture recommendations: coroutines and flows between layers)'
+        value: 'androidx.lifecycle.MutableLiveData'
+      - reason: 'expose state as a StateFlow and collect it with collectAsStateWithLifecycle'
+        value: 'androidx.compose.runtime.livedata.*'
   ForbiddenMethodCall:
     active: true
     methods:
@@ -130,6 +154,20 @@ style:
         value: 'kotlin.io.println'
       - reason: 'blocks the calling thread; use a suspending API or runTest in tests'
         value: 'java.lang.Thread.sleep'
+      - reason: 'money is Long minor units; a Double cannot represent most decimal amounts exactly'
+        value: 'java.math.BigDecimal.<init>(kotlin.Double)'
+      - reason: 'obsolete; use kotlin.time.measureTime'
+        value: 'kotlin.system.measureTimeMillis'
+      - reason: 'obsolete; use kotlin.time.measureTime'
+        value: 'kotlin.system.measureNanoTime'
+      - reason: 'use the ..< operator for open-ended ranges (Kotlin coding conventions)'
+        value: 'kotlin.ranges.until'
+      - reason: 'use kotlin.uuid.Uuid.random() (stable since Kotlin 2.4)'
+        value: 'java.util.UUID.randomUUID'
+      - reason: 'expose a MutableStateFlow through an explicit backing field (`val state: StateFlow<T>` then `field = MutableStateFlow(…)`, stable since Kotlin 2.4) instead of a `_state` twin'
+        value: 'kotlinx.coroutines.flow.asStateFlow'
+      - reason: 'collect UI state with collectAsStateWithLifecycle so collection stops while the UI is not visible (Android architecture recommendations)'
+        value: 'androidx.compose.runtime.collectAsState'
   MaxLineLength:
     # The same limit as ktlint (.editorconfig).
     maxLineLength: 140
@@ -139,6 +177,8 @@ style:
   NullableBooleanCheck:
     active: true
   RangeUntilInsteadOfRangeTo:
+    active: true
+  RedundantConstructorKeyword:
     active: true
   RedundantExplicitType:
     active: true
@@ -154,7 +194,11 @@ style:
     active: true
   UnderscoresInNumericLiterals:
     active: true
+  UnnecessaryAny:
+    active: true
   UnnecessaryBackticks:
+    active: true
+  UnnecessaryBracesAroundTrailingLambda:
     active: true
   UnnecessaryFullyQualifiedName:
     active: true
@@ -164,9 +208,16 @@ style:
     active: true
   UnnecessaryReversed:
     active: true
+  # ktlint no longer checks imports; detekt resolves types, so it also sees imports used only by KDoc or operators.
+  UnusedImport:
+    active: true
+  # Not UseDataClass: several plain classes hold secrets or key material, and a data class's generated toString()
+  # would print them.
   UseEmptyCounterpart:
     active: true
   UseIfEmptyOrIfBlank:
+    active: true
+  UseLet:
     active: true
   UseSumOfInsteadOfFlatMapSize:
     active: true

@@ -48,8 +48,10 @@ import app.minimpos.app.ui.navigation.Navigator
 import app.minimpos.app.ui.theme.LocalDimens
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import java.text.DateFormat
-import java.util.Date
+import java.time.Instant
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
+import java.time.format.FormatStyle
 import kotlin.time.Duration.Companion.seconds
 
 /** Shows [content] when the selected PIN is absent or unlocked; [manager] selects Manager rather than admin access. */
@@ -147,7 +149,10 @@ fun UnlockScreen(
                             error =
                                 lockedOut.format(
                                     locale,
-                                    DateFormat.getTimeInstance(DateFormat.SHORT, locale).format(Date(result.untilMillis)),
+                                    DateTimeFormatter
+                                        .ofLocalizedTime(FormatStyle.SHORT)
+                                        .withLocale(locale)
+                                        .format(Instant.ofEpochMilli(result.untilMillis).atZone(ZoneId.systemDefault())),
                                 )
                         }
                     }

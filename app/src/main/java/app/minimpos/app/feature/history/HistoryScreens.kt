@@ -2,7 +2,6 @@ package app.minimpos.app.feature.history
 
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -50,15 +49,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import app.minimpos.app.R
 import app.minimpos.app.data.db.RefundEntity
-import app.minimpos.app.data.db.RefundStatus
 import app.minimpos.app.data.db.SaleEntity
 import app.minimpos.app.data.db.SaleKind
 import app.minimpos.app.data.db.SaleStatus
@@ -84,7 +80,6 @@ import app.minimpos.app.history.decline
 import app.minimpos.app.history.methodCode
 import app.minimpos.app.history.simulatedLink
 import app.minimpos.app.share.ShareEffect
-import app.minimpos.app.ui.components.ActionMessage
 import app.minimpos.app.ui.components.Card
 import app.minimpos.app.ui.components.ConfirmDialog
 import app.minimpos.app.ui.components.EmailReceiptDialog
@@ -100,7 +95,6 @@ import app.minimpos.app.ui.components.SearchMode
 import app.minimpos.app.ui.components.SearchToggle
 import app.minimpos.app.ui.components.SecondaryButton
 import app.minimpos.app.ui.components.StatusKind
-import app.minimpos.app.ui.components.TextInputDialog
 import app.minimpos.app.ui.components.TransactionRow
 import app.minimpos.app.ui.components.currentLocale
 import app.minimpos.app.ui.components.rememberMoneyFormatter
@@ -115,7 +109,6 @@ import app.minimpos.core.payment.PaymentMethods
 import app.minimpos.core.payment.ScanWallet
 import app.minimpos.core.receipt.ReceiptCopy
 import app.minimpos.core.receipt.ReceiptDocument
-import app.minimpos.core.shopper.ShopperReferences
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
@@ -244,8 +237,7 @@ private fun HistoryList(
                     },
                     canPrint,
                     printing,
-                    { onPrint(day.date) },
-                )
+                ) { onPrint(day.date) }
             }
             items(day.items, key = { "${day.date}-${it.id}" }) { item ->
                 HistoryRow(item, timeFormat, day.times[item.id] ?: item.createdAt, item.id in day.captures) { onOpen(item) }

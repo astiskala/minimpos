@@ -205,8 +205,8 @@ fun QrImage(
     val matrix = remember(content) { QrCodes.matrix(content, margin = 2) }
     Canvas(modifier = modifier.aspectRatio(1f).background(Color.White)) {
         val cell = size.minDimension / matrix.width
-        for (y in 0 until matrix.height) {
-            for (x in 0 until matrix.width) {
+        for (y in 0..<matrix.height) {
+            for (x in 0..<matrix.width) {
                 // Each module overlaps its neighbours by half a pixel, so fractional cell sizes leave no hairline gaps.
                 if (matrix[x, y]) drawRect(Color.Black, Offset(x * cell, y * cell), Size(cell + 0.5f, cell + 0.5f))
             }

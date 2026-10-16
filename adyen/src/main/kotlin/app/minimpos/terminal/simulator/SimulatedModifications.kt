@@ -5,8 +5,8 @@ import app.minimpos.terminal.checkout.ModificationResult
 import app.minimpos.terminal.checkout.PaymentModifications
 import app.minimpos.terminal.transport.ExternalText
 import app.minimpos.terminal.transport.Fault
-import java.util.Base64
 import java.util.concurrent.ConcurrentHashMap
+import kotlin.io.encoding.Base64
 import kotlin.random.Random
 
 /**
@@ -111,6 +111,6 @@ class SimulatedModifications internal constructor(
         private const val UPPER = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
 
         /** A random stand-in for Adyen's `adjustAuthorisationData` blob. */
-        internal fun blob(random: Random): String = "BQABAQ" + Base64.getEncoder().encodeToString(random.nextBytes(BLOB_BYTES))
+        internal fun blob(random: Random): String = "BQABAQ" + Base64.encode(random.nextBytes(BLOB_BYTES))
     }
 }

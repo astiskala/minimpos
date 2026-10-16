@@ -23,9 +23,10 @@ import java.net.NoRouteToHostException
 import java.net.UnknownHostException
 import java.util.Collections
 import java.util.IdentityHashMap
-import java.util.concurrent.TimeUnit
 import javax.net.ssl.SSLHandshakeException
 import javax.net.ssl.SSLPeerUnverifiedException
+import kotlin.time.Duration
+import kotlin.time.Duration.Companion.milliseconds
 
 /**
  * HTTP client for Adyen's [com.adyen.service.TerminalLocalAPI], built on OkHttp. The library's default Apache
@@ -56,7 +57,7 @@ class TerminalHttpClient(
             .sslSocketFactory(tls.socketFactory, tls.trustManager)
             .hostnameVerifier(tls.hostnameVerifier)
             // A payment response only comes once the shopper is done, so only the call timeout (set per call) applies.
-            .readTimeout(0, TimeUnit.MILLISECONDS)
+            .readTimeout(Duration.ZERO)
             // Silently re-sending a payment request could charge the shopper twice.
             .retryOnConnectionFailure(false)
             .build()
@@ -110,8 +111,8 @@ class TerminalHttpClient(
         val call =
             client
                 .newBuilder()
-                .connectTimeout(config.connectionTimeoutMillis.toLong(), TimeUnit.MILLISECONDS)
-                .callTimeout(config.readTimeoutMillis.toLong(), TimeUnit.MILLISECONDS)
+                .connectTimeout(config.connectionTimeoutMillis.milliseconds)
+                .callTimeout(config.readTimeoutMillis.milliseconds)
                 .build()
                 .newCall(
                     Request

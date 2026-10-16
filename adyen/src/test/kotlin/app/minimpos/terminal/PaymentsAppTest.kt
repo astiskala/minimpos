@@ -47,12 +47,11 @@ import kotlinx.coroutines.runBlocking
 import mockwebserver3.MockResponse
 import mockwebserver3.MockWebServer
 import okhttp3.HttpUrl
-import org.junit.After
 import org.junit.Assert.assertThrows
 import org.junit.Test
 import java.math.BigDecimal
 import java.net.URLDecoder
-import java.util.Base64
+import kotlin.io.encoding.Base64
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.seconds
 
@@ -83,7 +82,7 @@ class PaymentsAppTest {
         val board = live.board("token-1", "app://x")
         assertThat(board).startsWith("https://www.adyen.com/board?boardingToken=")
         val token = FormEncoding.decode(board.substringAfter('?')).getValue("boardingToken")
-        assertThat(String(Base64.getUrlDecoder().decode(token))).isEqualTo("token-1")
+        assertThat(String(Base64.UrlSafe.decode(token))).isEqualTo("token-1")
         assertThat(test.nexo("abc=", "app://x")).isEqualTo("https://www.adyen.com/test/nexo?request=abc%3D&returnUrl=app%253A%252F%252Fx")
         assertThat(
             PaymentsAppLinks.answer("app://x?boarded=true&installationId=ID%201"),
@@ -101,7 +100,7 @@ class PaymentsAppTest {
         assertThat(opened.returnUrl).isEqualTo("$RETURN_URL/nexo")
         // The request in the link is encrypted, not readable.
         assertThat(opened.link).doesNotContain("PaymentRequest")
-        assertThat(String(Base64.getUrlDecoder().decode(opened.request))).contains("NexoBlob")
+        assertThat(String(Base64.UrlSafe.decode(checkNotNull(opened.request)))).contains("NexoBlob")
 
         val refund =
             RefundParams(paid.details.poiTransactionId!!, paid.details.poiTimestamp!!, "R-260930-1")
@@ -393,7 +392,7 @@ class PaymentsAppTest {
                 }
 
                 opened.link.contains("/board?") -> {
-                    boardingTokens += String(Base64.getUrlDecoder().decode(opened.parameters.getValue("boardingToken")))
+                    boardingTokens += String(Base64.UrlSafe.decode(opened.parameters.getValue("boardingToken")))
                     boarded = true
                     "${opened.returnUrl}?boarded=true&installationId=INSTALLATION-1"
                 }
@@ -401,7 +400,7 @@ class PaymentsAppTest {
                 else -> {
                     val secured =
                         gson.fromJson(
-                            String(Base64.getUrlDecoder().decode(opened.request)),
+                            String(Base64.UrlSafe.decode(checkNotNull(opened.request))),
                             TerminalAPISecuredRequest::class.java,
                         )
                     val request = gson.fromJson(crypto.decrypt(secured.saleToPOIRequest), TerminalAPIRequest::class.java)
@@ -436,7 +435,7 @@ class PaymentsAppTest {
             header: MessageHeader,
         ): String {
             val secured = TerminalAPISecuredResponse().apply { saleToPOIResponse = crypto.encrypt(json, header) }
-            return Base64.getUrlEncoder().encodeToString(gson.toJson(secured).toByteArray())
+            return Base64.UrlSafe.encode(gson.toJson(secured).toByteArray())
         }
     }
 

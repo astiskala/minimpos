@@ -19,7 +19,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import java.io.File
-import java.util.UUID
+import kotlin.uuid.Uuid
 
 @RunWith(RobolectricTestRunner::class)
 class DatabaseSchemaTest {
@@ -39,18 +39,18 @@ class DatabaseSchemaTest {
         val file = context.getDatabasePath(name).apply { parentFile?.mkdirs() }
         SQLiteDatabase.openOrCreateDatabase(file, null).use { db ->
             val entities = schema.getJSONArray("entities")
-            for (index in 0 until entities.length()) {
+            for (index in 0..<entities.length()) {
                 val entity = entities.getJSONObject(index)
                 db.execSQL(entity.getString("createSql").replace("\${TABLE_NAME}", entity.getString("tableName")))
                 val indices = entity.optJSONArray("indices") ?: continue
-                for (position in 0 until indices.length()) {
+                for (position in 0..<indices.length()) {
                     db.execSQL(
                         indices.getJSONObject(position).getString("createSql").replace("\${TABLE_NAME}", entity.getString("tableName")),
                     )
                 }
             }
             val queries = schema.getJSONArray("setupQueries")
-            for (index in 0 until queries.length()) db.execSQL(queries.getString(index))
+            for (index in 0..<queries.length()) db.execSQL(queries.getString(index))
             db.version = schema.getInt("version")
         }
     }
@@ -74,7 +74,7 @@ class DatabaseSchemaTest {
 
     @Test
     fun `the exported current schema opens and retains catalogue and typed sale outcomes`() {
-        val name = "schema-${UUID.randomUUID()}"
+        val name = "schema-${Uuid.random()}"
         createExportedDatabase(name)
         try {
             withDatabase(name) { db ->
@@ -124,7 +124,7 @@ class DatabaseSchemaTest {
 
     @Test
     fun `migrates version 10 database to version 11 preserving existing sales and catalogue`() {
-        val name = "schema-v10-${UUID.randomUUID()}"
+        val name = "schema-v10-${Uuid.random()}"
         createExportedDatabase(name, version = 10)
         val file = context.getDatabasePath(name)
         SQLiteDatabase.openDatabase(file.path, null, SQLiteDatabase.OPEN_READWRITE).use { raw ->

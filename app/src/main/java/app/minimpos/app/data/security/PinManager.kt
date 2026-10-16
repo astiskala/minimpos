@@ -4,14 +4,13 @@ import android.os.SystemClock
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import java.security.MessageDigest
 import java.security.SecureRandom
-import java.util.Base64
 import javax.crypto.SecretKeyFactory
 import javax.crypto.spec.PBEKeySpec
+import kotlin.io.encoding.Base64
 
 /** The outcome of [PinManager.verify]. */
 sealed interface PinCheck {
@@ -69,10 +68,9 @@ class PinManager(
     suspend fun setPin(pin: String) {
         require(isValidPin(pin)) { "PIN must be $MIN_LENGTH-$MAX_LENGTH digits" }
         val salt = ByteArray(SALT_BYTES).also(random::nextBytes)
-        val encoder = Base64.getEncoder()
         secrets.set(
             verifierSecret,
-            "v1:$iterations:${encoder.encodeToString(salt)}:${encoder.encodeToString(hash(pin, salt, iterations))}",
+            "v1:$iterations:${Base64.encode(salt)}:${Base64.encode(hash(pin, salt, iterations))}",
         )
         failures = 0
         lockedUntil = 0
@@ -91,10 +89,9 @@ class PinManager(
         if (verifierSecret !in secrets.configured.first()) return PinCheck.Accepted
         val stored = secrets.get(verifierSecret)?.takeIf(::isValidVerifier) ?: return PinCheck.Unreadable
         val parts = stored.split(':')
-        val decoder = Base64.getDecoder()
         val matches =
             parts.size == 4 &&
-                MessageDigest.isEqual(hash(pin, decoder.decode(parts[2]), parts[1].toInt()), decoder.decode(parts[3]))
+                MessageDigest.isEqual(hash(pin, Base64.decode(parts[2]), parts[1].toInt()), Base64.decode(parts[3]))
         if (matches) {
             failures = 0
             return PinCheck.Accepted
@@ -154,8 +151,7 @@ class PinManager(
             val (version, rounds, salt) = parts
             if (version != "v1" || rounds.toIntOrNull() !in 1..MAX_ITERATIONS) return false
             return try {
-                val decoder = Base64.getDecoder()
-                decoder.decode(salt).isNotEmpty() && decoder.decode(parts.last()).size * Byte.SIZE_BITS == HASH_BITS
+                Base64.decode(salt).isNotEmpty() && Base64.decode(parts.last()).size * Byte.SIZE_BITS == HASH_BITS
             } catch (ignored: IllegalArgumentException) {
                 false
             }
@@ -170,22 +166,21 @@ class PinManager(
 class SessionLock(
     private val clock: () -> Long = SystemClock::elapsedRealtime,
 ) {
-    private val _unlocked = MutableStateFlow(false)
-
     /** Whether the admin area is unlocked now. */
-    val unlocked: StateFlow<Boolean> = _unlocked.asStateFlow()
+    val unlocked: StateFlow<Boolean>
+        field = MutableStateFlow(false)
 
     @Volatile private var lastActivity = 0L
 
     /** Unlocks the admin area (after the PIN was accepted or set) and starts the inactivity time-out. */
     fun unlock() {
         lastActivity = clock()
-        _unlocked.value = true
+        unlocked.value = true
     }
 
     /** Locks the admin area. */
     fun lock() {
-        _unlocked.value = false
+        unlocked.value = false
     }
 
     /**
@@ -193,19 +188,19 @@ class SessionLock(
      * [autoLockMillis] have passed since the last activity; 0 or less never times out.
      */
     fun touch(autoLockMillis: Long): Boolean {
-        if (!_unlocked.value) return false
+        if (!unlocked.value) return false
         val now = clock()
         expire(autoLockMillis)
-        if (!_unlocked.value) return false
+        if (!unlocked.value) return false
         lastActivity = now
         return true
     }
 
     /** Whether the session is unlocked and unexpired; a thread-safe check that does not refresh activity. */
-    fun allows(autoLockMillis: Long): Boolean = _unlocked.value && (autoLockMillis <= 0 || clock() - lastActivity < autoLockMillis)
+    fun allows(autoLockMillis: Long): Boolean = unlocked.value && (autoLockMillis <= 0 || clock() - lastActivity < autoLockMillis)
 
     /** Locks an expired session without refreshing activity; 0 or less disables inactivity expiry. */
     fun expire(autoLockMillis: Long) {
-        if (_unlocked.value && autoLockMillis > 0 && clock() - lastActivity >= autoLockMillis) lock()
+        if (unlocked.value && autoLockMillis > 0 && clock() - lastActivity >= autoLockMillis) lock()
     }
 }

@@ -16,10 +16,8 @@ import app.minimpos.terminal.transport.TerminalOfflineLimits
 import app.minimpos.terminal.transport.WalletMethod
 import app.minimpos.terminal.transport.WalletMethodListing
 import app.minimpos.terminal.transport.WalletMethodsApi
-import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
@@ -237,7 +235,6 @@ class CapabilityDiscovery(
     private val terminals: (String) -> TerminalDetailsApi,
     private val walletMethods: (String, TerminalEnvironment) -> WalletMethodsApi,
 ) {
-    private val mutable = MutableStateFlow(AdyenCapabilitiesState())
     private val mutex = Mutex()
     private var simulatedCapabilities =
         RemoteTerminalCapabilities(
@@ -249,7 +246,8 @@ class CapabilityDiscovery(
         )
 
     /** Current non-secret capability state. */
-    val state: StateFlow<AdyenCapabilitiesState> = mutable.asStateFlow()
+    val state: StateFlow<AdyenCapabilitiesState>
+        field = MutableStateFlow(AdyenCapabilitiesState())
 
     /** Refreshes capability state for the current setup. */
     suspend fun refresh(): AdyenCapabilitiesState =
@@ -257,7 +255,7 @@ class CapabilityDiscovery(
             val origin = setups.unlocked()
             val setup = origin.setup
             val context = setup.paymentContext()
-            val old = mutable.value.takeIf { it.identity == origin.validationIdentity && it.context == context } ?: AdyenCapabilitiesState()
+            val old = state.value.takeIf { it.identity == origin.validationIdentity && it.context == context } ?: AdyenCapabilitiesState()
             val initial =
                 old.copy(
                     context = context,
@@ -269,7 +267,7 @@ class CapabilityDiscovery(
                     simulated = setup.apiSetup == ApiSetup.Simulated,
                     checking = true,
                 )
-            mutable.value = initial
+            state.value = initial
             when {
                 setup.apiSetup == ApiSetup.Simulated -> {
                     publish(
@@ -295,7 +293,7 @@ class CapabilityDiscovery(
                     discoverRemote(origin, initial)
                 }
             }
-            mutable.value
+            state.value
         }
 
     /** Updates the terminal's gratuity configuration for [currency]. */
@@ -348,7 +346,7 @@ class CapabilityDiscovery(
             if (setup.apiSetup == ApiSetup.Simulated) {
                 simulatedCapabilities = applySimulated(simulatedCapabilities, patch)
                 val next =
-                    mutable.value
+                    state.value
                         .copy(
                             context = setup.paymentContext(),
                             identity = origin.validationIdentity,
@@ -362,7 +360,7 @@ class CapabilityDiscovery(
                             problem = null,
                             failure = null,
                         ).withRemote(simulatedCapabilities)
-                mutable.value = next
+                state.value = next
                 return@withLock CapabilityPatchResult.Updated
             }
             if (!setup.discoversTerminals) {
@@ -388,7 +386,7 @@ class CapabilityDiscovery(
                 is TerminalCapabilitiesUpdate.Ready -> {
                     publish(
                         origin,
-                        mutable.value
+                        state.value
                             .withRemote(result.capabilities)
                             .copy(checking = false, checked = true, problem = null, failure = null),
                     )
@@ -519,7 +517,7 @@ class CapabilityDiscovery(
     ) {
         val actual = setups.unlocked()
         if (actual.validationIdentity == origin.validationIdentity && actual.setup.settings.terminal == origin.setup.settings.terminal) {
-            mutable.value = result
+            state.value = result
         }
     }
 }

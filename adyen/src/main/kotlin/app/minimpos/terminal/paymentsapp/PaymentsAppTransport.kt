@@ -18,7 +18,7 @@ import com.adyen.model.terminal.TerminalAPISecuredResponse
 import com.adyen.terminal.security.NexoCrypto
 import com.adyen.terminal.serialization.TerminalAPIGsonBuilder
 import java.net.URLEncoder
-import java.util.Base64
+import kotlin.io.encoding.Base64
 import kotlin.time.Duration
 
 /** What came of opening one App Link in the Adyen Payments app, see [AppLinkExchange.exchange]. */
@@ -138,7 +138,7 @@ class PaymentsAppLinks(
 
     private fun encode(value: String): String = URLEncoder.encode(value, "UTF-8")
 
-    private fun base64(value: String): String = Base64.getUrlEncoder().encodeToString(value.toByteArray())
+    private fun base64(value: String): String = Base64.UrlSafe.encode(value.toByteArray())
 }
 
 /**
@@ -157,14 +157,18 @@ internal class PaymentsAppCrypto(
         val message =
             runCatching { crypto.encrypt(gson.toJson(request), request.saleToPOIRequest.messageHeader) }.getOrNull() ?: return null
         val json = gson.toJson(TerminalAPISecuredRequest().apply { saleToPOIRequest = message })
-        return Base64.getUrlEncoder().encodeToString(json.toByteArray())
+        return Base64.UrlSafe.encode(json.toByteArray())
     }
 
     /** Decodes and decrypts a `response` parameter; null when it cannot be read or verified with the shared key. */
     fun decrypt(response: String): TerminalAPIResponse? =
         // Base64, JSON and NexoCrypto each fail with their own exceptions, and NexoCrypto declares any Exception.
         runCatching {
-            val secured = gson.fromJson(String(Base64.getUrlDecoder().decode(response)), TerminalAPISecuredResponse::class.java)
+            val secured =
+                gson.fromJson(
+                    String(Base64.UrlSafe.withPadding(Base64.PaddingOption.PRESENT_OPTIONAL).decode(response)),
+                    TerminalAPISecuredResponse::class.java,
+                )
             gson.fromJson(crypto.decrypt(checkNotNull(secured?.saleToPOIResponse)), TerminalAPIResponse::class.java)
         }.getOrNull()
 }

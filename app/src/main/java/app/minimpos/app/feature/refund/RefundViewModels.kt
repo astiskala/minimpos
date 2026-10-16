@@ -20,7 +20,6 @@ import app.minimpos.core.money.AmountEntry
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
@@ -87,44 +86,43 @@ class RefundViewModel(
     private val sales: SaleRepository,
     private val operations: StoredPaymentActions,
 ) : ViewModel() {
-    private val _state = MutableStateFlow(RefundUiState())
-
     /** The screen state. */
-    val state: StateFlow<RefundUiState> = _state.asStateFlow()
+    val state: StateFlow<RefundUiState>
+        field = MutableStateFlow(RefundUiState())
 
     init {
         viewModelScope.launch {
             val qr = payload?.let(RefundQrPayload::decode)
             val record = saleId?.let { sales.get(it) } ?: qr?.let { sales.findByTransactionId(it.transactionId) }
             val load = RefundablePayment.find(record, qr)
-            _state.update { it.copy(load = load) }
+            state.update { it.copy(load = load) }
         }
     }
 
     /** Records explicit staff review of a receipt without local payment context. */
-    fun reviewRemote(reviewed: Boolean) = _state.update { it.copy(remoteReviewed = reviewed) }
+    fun reviewRemote(reviewed: Boolean) = state.update { it.copy(remoteReviewed = reviewed) }
 
     /** Chooses what to refund. */
-    fun selectOption(option: RefundOption) = _state.update { it.copy(option = option) }
+    fun selectOption(option: RefundOption) = state.update { it.copy(option = option) }
 
     /** Sets the units of line [lineId] to refund, capped at what is left of it; ignored for an unknown line. */
     fun setQuantity(
         lineId: Long,
         quantity: Int,
     ) {
-        val capped = _state.value.original?.cappedQuantity(lineId, quantity) ?: return
-        _state.update { it.copy(selection = it.selection + (lineId to capped)) }
+        val capped = state.value.original?.cappedQuantity(lineId, quantity) ?: return
+        state.update { it.copy(selection = it.selection + (lineId to capped)) }
     }
 
     /** Updates the typed amount with a keypad step such as [AmountEntry.append]. */
-    fun updateAmount(transform: (AmountEntry) -> AmountEntry) = _state.update { it.copy(amount = transform(it.amount)) }
+    fun updateAmount(transform: (AmountEntry) -> AmountEntry) = state.update { it.copy(amount = transform(it.amount)) }
 
     /**
      * Starts the refund; returns false when the amount is invalid or a refund is already running. Its merchant
      * reference is generated with "R" after the configured prefix.
      */
     fun refund(): Boolean {
-        val current = _state.value
+        val current = state.value
         if (!current.amountValid) return false
         return current.original?.let { operations.refund(it, current.choice) } == true
     }

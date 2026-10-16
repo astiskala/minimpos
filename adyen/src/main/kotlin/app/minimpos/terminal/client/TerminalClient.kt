@@ -784,6 +784,13 @@ class TerminalClient(
             val card = response.paymentResult?.paymentInstrumentData?.cardData
             val storedId =
                 additional["tokenization.storedPaymentMethodId"] ?: additional["recurring.recurringDetailReference"]
+            val online = response.paymentResult?.isOnlineFlag != false && additional["offline"] != "true"
+            val offlineMode =
+                when {
+                    online -> OfflineProcessingMode.ONLINE
+                    !additional["offlineAuthCode"].isNullOrBlank() -> OfflineProcessingMode.OFFLINE_EMV
+                    else -> OfflineProcessingMode.STORE_AND_FORWARD
+                }
             return details(
                 response = response.response,
                 additional = additional,
@@ -798,7 +805,10 @@ class TerminalClient(
                 paymentMethodVariant = additional["paymentMethodVariant"],
                 maskedPan = card?.maskedPAN,
                 entryMode = card?.entryMode?.firstOrNull()?.value() ?: additional["posEntryMode"],
-                approvalCode = response.paymentResult?.paymentAcquirerData?.approvalCode ?: additional["authCode"],
+                approvalCode =
+                    response.paymentResult?.paymentAcquirerData?.approvalCode
+                        ?: additional["authCode"]
+                        ?: additional["offlineAuthCode"],
                 tokenization =
                     storedId?.let {
                         Tokenization(
@@ -810,6 +820,8 @@ class TerminalClient(
                         )
                     },
                 givingServiceId = additional["adyen_giving_service_id"]?.trim()?.ifEmpty { null },
+                offlineMode = offlineMode,
+                unconfirmedBatchCount = additional["unconfirmedBatchCount"]?.trim()?.toIntOrNull()?.takeIf { it >= 0 },
             )
         }
 

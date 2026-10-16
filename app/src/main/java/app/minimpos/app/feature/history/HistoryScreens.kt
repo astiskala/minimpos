@@ -419,6 +419,7 @@ private fun historyRowText(
                 listOfNotNull(
                     time,
                     stringResource(R.string.sample_label).takeIf { sale.sample },
+                    stringResource(R.string.history_offline_label).takeIf { sale.offlineMode != null },
                     paymentMethodText(sale),
                     sale.customerReference,
                 ).joinToString(" · "),
@@ -802,6 +803,15 @@ private fun PaymentDetailsCard(sale: SaleEntity) {
         LabeledValue(stringResource(R.string.detail_shopper_reference), sale.shopperReference)
         LabeledValue(stringResource(R.string.detail_token), sale.storedPaymentMethodId)
         LabeledValue(stringResource(R.string.detail_terminal), sale.poiId)
+        sale.offlineMode?.let { mode ->
+            LabeledValue(
+                stringResource(R.string.detail_offline_mode),
+                stringResource(if (mode == "OFFLINE_EMV") R.string.detail_offline_emv else R.string.detail_offline_saf),
+            )
+        }
+        sale.unconfirmedBatchCount?.takeIf { it > 0 }?.let {
+            LabeledValue(stringResource(R.string.detail_unconfirmed_batches), it.toString())
+        }
         sale.shopperRating?.let { LabeledValue(stringResource(R.string.detail_shopper_rating), "$it / 10") }
         LabeledValue(stringResource(R.string.detail_message), sale.outcomeNote())
         LabeledValue(stringResource(R.string.detail_error_condition), sale.errorCondition)
@@ -834,6 +844,13 @@ private fun ReconciliationCard(
                 style = MaterialTheme.typography.bodySmall,
                 color = if (report.allMatch) colors.success else colors.warning,
             )
+            if (report.offlineSaleCount > 0 || report.unconfirmedBatchCount > 0) {
+                Text(
+                    text = stringResource(R.string.reconciliation_offline_warning, report.offlineSaleCount, report.unconfirmedBatchCount),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = colors.warning,
+                )
+            }
             report.currencies.forEach { row ->
                 val fmt = MoneyFormatter(CurrencySpec.of(row.currency), locale)
                 LabeledValue(

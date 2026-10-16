@@ -171,6 +171,18 @@ enum class CardEntryOverride {
     MKE,
 }
 
+/** How a payment was authorized on the terminal (`PaymentResult.OnlineFlag` and `AdditionalResponse`). */
+enum class OfflineProcessingMode {
+    /** Approved online by the issuer/acquirer (`OnlineFlag=true`). */
+    ONLINE,
+
+    /** Approved offline by the EMV chip within floor limits (`OnlineFlag=false` and `offlineAuthCode` present). */
+    OFFLINE_EMV,
+
+    /** Approved offline under Store-and-Forward (`OnlineFlag=false` without `offlineAuthCode`). */
+    STORE_AND_FORWARD,
+}
+
 /**
  * What to charge in a card payment, see [TerminalClient.pay]. The shopper, tender option and metadata fields travel in
  * `SaleToAcquirerData`, together with the [PosApplication] info.
@@ -460,6 +472,10 @@ data class TransactionDetails(
     val givingServiceId: String? = null,
     /** Charity donation amount in major units from the two-step Adyen Giving status lookup; null when none. */
     val donationAmount: BigDecimal? = null,
+    /** Whether the transaction was approved online, via Offline EMV, or via Store-and-Forward. */
+    val offlineMode: OfflineProcessingMode = OfflineProcessingMode.ONLINE,
+    /** Number of unconfirmed offline batches stored on the terminal (`unconfirmedBatchCount`), if reported. */
+    val unconfirmedBatchCount: Int? = null,
 ) {
     /** Why it was not approved (cancelled, busy, what to do next); null when it [succeeded][success]. */
     val decline: Decline? get() = Decline.of(success, errorCondition, refusalReason, additionalData)

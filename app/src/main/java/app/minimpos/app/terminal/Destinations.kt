@@ -7,6 +7,7 @@ import app.minimpos.app.data.settings.TerminalMode
 import app.minimpos.app.data.settings.TerminalSettings
 import app.minimpos.core.money.PaymentContext
 import app.minimpos.terminal.checkout.PaymentModifications
+import app.minimpos.terminal.client.OfflineProcessingMode
 import app.minimpos.terminal.client.PosApplication
 import app.minimpos.terminal.client.RecoveryPolicy
 import app.minimpos.terminal.client.TerminalClient
@@ -170,7 +171,14 @@ class SimulatedTerminal(
 
     override suspend fun open(unlocked: UnlockedSetup): Opening {
         val sim = unlocked.setup.settings.simulator
-        config = SimulatorConfig(sim.outcome, sim.delayMillis, sim.hasPrinter, sim.signatureRequired)
+        config =
+            SimulatorConfig(
+                outcome = sim.outcome,
+                delayMillis = sim.delayMillis,
+                hasPrinter = sim.hasPrinter,
+                signatureRequired = sim.signatureRequired,
+                offlineMode = if (sim.offlineMode) OfflineProcessingMode.STORE_AND_FORWARD else OfflineProcessingMode.ONLINE,
+            )
         return Opening.Transport(simulator)
     }
 

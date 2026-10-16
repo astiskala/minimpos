@@ -1017,4 +1017,12 @@
   <string name="checkout_mke">カード番号手入力（MKE）</string>
   <string name="checkout_mke_hint">ICチップやタッチ決済が利用できない場合に端末でカード番号を手入力します（管理者承認が必要）。</string>
   <string name="checkout_special_entry_warning">手入力によるカード取引は、不正利用やチャージバックの責任が加盟店に発生するリスクが高まります。管理者承認に進みますか？</string>
+  <string name="settings_sim_offline">オフライン（ストアアンドフォワード）をシミュレート</string>
+  <string name="settings_sim_offline_hint">PSPリファレンスなしでオフライン承認をシミュレートし、未確認バッチを報告します。</string>
+  <string name="history_offline_label">オフライン</string>
+  <string name="detail_offline_mode">オフライン処理</string>
+  <string name="detail_offline_emv">オフライン承認（EMV上限内）</string>
+  <string name="detail_offline_saf">オフライン承認（ストアアンドフォワード）</string>
+  <string name="detail_unconfirmed_batches">未確認のオフラインバッチ数</string>
+  <string name="reconciliation_offline_warning">オフライン売上: %1$d · 未確認の端末バッチ: %2$d</string>
 </resources>

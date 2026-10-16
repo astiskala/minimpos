@@ -170,7 +170,12 @@ targeted POIID search, full-object PATCH preservation and propagation of newly c
 configuration inheritance and routing for individually configured GCash, DANA, Kakao Pay and TrueMoney; native scanner
 model reporting, single-scan/end behavior on local/network/cloud terminals, and wallet tokenization attempts. PayMe
 merchant scanning is intentionally best-effort: Adyen's published wallet guide excludes it, and simulator success does
-not establish support.
+not establish support. Also needing real-terminal verification: scoped Management `terminalSettings` updates for
+gratuities, DCC, MOTO and offline limits; `AskGratuity` with `SaleToPOIData` `TipOptions`/`AmountToTipOn`;
+`GetTotalsRequest` and `ReconciliationRequest` (`SaleReconciliation`); chained `AdminRequest` waiting-screen sessions with
+`DisplayRequest` and `InputRequest`; `AllowPartialAuthorisation` (`Result=Partial`); `AskGiving` two-step
+`TransactionStatus` (`SaleID=AdyenGiving`) lookups; `MOTO` and `ForceEntryMode=Keyed` (MKE); and offline EMV /
+Store-and-Forward `OnlineFlag`, `offlineAuthCode` and `unconfirmedBatchCount` fields.
 
 For a merchant-scan TEST check, verify discovery for the actual store and currency, scan once with camera and native
 hardware, cancel/switch/background a scan and verify late data cannot pay, exercise approval/decline/missing replies,

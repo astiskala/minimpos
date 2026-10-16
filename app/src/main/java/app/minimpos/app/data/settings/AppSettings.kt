@@ -670,6 +670,7 @@ data class SecuritySettings(
  * @property delayMillis How long the simulated terminal takes to answer, in milliseconds, within [DELAY_MILLIS].
  * @property hasPrinter Whether the simulated terminal has a printer (prints are shown on screen).
  * @property signatureRequired Whether simulated approvals ask for a signature, which affects the merchant copy.
+ * @property offlineMode Whether simulated approvals are processed offline (`Store-and-Forward`).
  */
 @Serializable
 data class SimulatorSettings(
@@ -677,6 +678,7 @@ data class SimulatorSettings(
     val delayMillis: Long = 2_500,
     val hasPrinter: Boolean = true,
     val signatureRequired: Boolean = false,
+    val offlineMode: Boolean = false,
 ) {
     /** These settings with [delayMillis] within [DELAY_MILLIS]. */
     fun normalized(): SimulatorSettings = copy(delayMillis = delayMillis.coerceIn(DELAY_MILLIS.first.toLong(), DELAY_MILLIS.last.toLong()))

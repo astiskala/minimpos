@@ -362,6 +362,10 @@ data class SaleEntity(
     @ColumnInfo(defaultValue = "0") val paidMinor: Long = 0,
     /** Charity donation amount in minor units from Adyen Giving; null when no donation was made. */
     val donationMinor: Long? = null,
+    /** Offline authorization mode (`OFFLINE_EMV` or `STORE_AND_FORWARD`); null when approved online. */
+    val offlineMode: String? = null,
+    /** Unconfirmed offline batch count reported by the terminal (`unconfirmedBatchCount`); null when unavailable. */
+    val unconfirmedBatchCount: Int? = null,
 ) {
     /** What the payment holds on the card: [authorisedMinor] after an adjustment, else [totalMinor]. */
     val heldMinor: Long get() = authorisedMinor ?: totalMinor

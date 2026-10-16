@@ -1017,4 +1017,12 @@
   <string name="checkout_mke">手動鍵入卡號（MKE）</string>
   <string name="checkout_mke_hint">晶片或感應支付失敗時在終端上手動輸入卡號（需要主管批准）。</string>
   <string name="checkout_special_entry_warning">手動鍵入卡號交易的欺詐和拒付責任風險較高。是否繼續並進行主管批准？</string>
+  <string name="settings_sim_offline">模擬離線儲存轉發（Store-and-Forward）</string>
+  <string name="settings_sim_offline_hint">在無 PSP 參考號的情況下離線批准模擬交易，並報告未確認批次。</string>
+  <string name="history_offline_label">離線</string>
+  <string name="detail_offline_mode">離線處理</string>
+  <string name="detail_offline_emv">離線批准（EMV 限額內）</string>
+  <string name="detail_offline_saf">離線批准（儲存轉發）</string>
+  <string name="detail_unconfirmed_batches">未確認離線批次</string>
+  <string name="reconciliation_offline_warning">離線銷售：%1$d · 未確認終端批次：%2$d</string>
 </resources>

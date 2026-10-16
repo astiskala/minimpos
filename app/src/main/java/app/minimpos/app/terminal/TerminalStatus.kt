@@ -37,6 +37,7 @@ import kotlinx.coroutines.launch
  * @property selectsEnvironment Whether setup asks for TEST or LIVE before credentials.
  * @property importPending Whether a verified import journal still blocks new financial operations until saving resumes.
  * @property supportsTerminalFeatures Whether physical-terminal capabilities are supported on this destination.
+ * @property supportsShopperDisplay Whether external-terminal shopper display and input requests are supported.
  */
 data class TerminalState(
     val loaded: Boolean = false,
@@ -53,6 +54,7 @@ data class TerminalState(
     val selectsEnvironment: Boolean = false,
     val importPending: Boolean = false,
     val supportsTerminalFeatures: Boolean = true,
+    val supportsShopperDisplay: Boolean = true,
 ) {
     /**
      * Whether receipts and payment links can be shared through Android's share sheet: on phones and tablets, not on an
@@ -101,6 +103,7 @@ class TerminalStatus(
                 selectsEnvironment = setup.selectsEnvironment,
                 importPending = setup.importPending,
                 supportsTerminalFeatures = setup.supportsTerminalFeatures,
+                supportsShopperDisplay = setup.supportsShopperDisplay,
             )
         }.stateIn(scope, SharingStarted.Eagerly, TerminalState())
 

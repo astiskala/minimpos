@@ -28,6 +28,7 @@ existing spelling (`preAuthorisation`, `SaleKind.PRE_AUTHORISATION`, `authorised
 | Shopper reference | Identifier sent with every payment: customer reference, email-derived reference, or none. | `ShopperReferenceSource`, Adyen `shopperReference` |
 | Saving a card | Tokenization under a shopper reference with consent; an offer at checkout, not a saved-card charging workflow. | `offerCardSaving` |
 | Terminal tipping | Immediate-charge sale that prompts for a tip on the terminal (`AskGratuity`), optionally overriding suggestions (`TipSuggestions`) and the amount to tip on (`AmountToTipOn`) in `SaleData.SaleToPOIData`. | `PaymentSettings.terminalTipping`, `TerminalTipOptions`, `SaleEntity.tipMinor` |
+| Shopper display | Chained `AdminRequest` session around a payment on an external terminal (or simulator) showing a virtual receipt (`DisplayRequest`), basket confirmation, email entry, QR receipt and 0–10 rating (`InputRequest`). | `ShopperSessionFlow`, `SaleEntity.shopperRating` |
 | Sale event | A happening that changes a stored sale; the sole decision of which statuses/fields it writes. | `data/repo/SaleEvent`, `SaleEntity.after` |
 
 ## Following up

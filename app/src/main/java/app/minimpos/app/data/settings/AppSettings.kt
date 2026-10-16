@@ -381,6 +381,11 @@ enum class ReceiptTipping {
  * @property tipPercentages Up to three percentage tip options (`1..100`) for baskets at or above [lowBasketThresholdMinor].
  * @property allowCustomTip Whether dynamic `TipSuggestions` include the custom tip button (`TipCustom`).
  * @property tipOnPreTax Whether percentage terminal tips are calculated on the pre-tax net amount (`AmountToTipOn`).
+ * @property showVirtualReceipt Whether external terminals display a virtual receipt before payment (`DisplayRequest`).
+ * @property confirmBasketOnTerminal Whether external terminals prompt the shopper to confirm the basket before payment.
+ * @property collectEmailOnTerminal Whether external terminals prompt the shopper to enter their email before payment.
+ * @property showTerminalQrReceipt Whether external terminals display a QR code receipt after approval.
+ * @property askShopperRating Whether external terminals prompt the shopper for a 0–10 rating after approval.
  */
 @Serializable
 data class PaymentSettings(
@@ -408,6 +413,11 @@ data class PaymentSettings(
     val tipPercentages: List<Int> = DEFAULT_TIP_PERCENTAGES,
     val allowCustomTip: Boolean = true,
     val tipOnPreTax: Boolean = false,
+    val showVirtualReceipt: Boolean = false,
+    val confirmBasketOnTerminal: Boolean = false,
+    val collectEmailOnTerminal: Boolean = false,
+    val showTerminalQrReceipt: Boolean = false,
+    val askShopperRating: Boolean = false,
 ) {
     /** These settings with [linkExpiryHours] and terminal tipping numbers within their valid ranges. */
     fun normalized(): PaymentSettings =

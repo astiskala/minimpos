@@ -991,4 +991,12 @@
   <string name="reconciliation_refunds_label">退款（%1$s）</string>
   <string name="reconciliation_compare">Mini mPOS %1$s · 终端 %2$s</string>
   <string name="reconciliation_close_period">结束对账周期</string>
+  <string name="settings_shopper_display">顾客端终端屏幕</string>
+  <string name="settings_shopper_display_hint">使用独立终端（或模拟器）时，在结账过程中于顾客屏幕上显示商品明细或收集输入。</string>
+  <string name="settings_show_virtual_receipt">付款前在终端显示商品明细</string>
+  <string name="settings_confirm_basket_terminal">请顾客在终端确认订单</string>
+  <string name="settings_collect_email_terminal">未填写邮箱时请顾客在终端输入邮箱</string>
+  <string name="settings_show_terminal_qr">批准后在终端显示二维码收据</string>
+  <string name="settings_ask_shopper_rating">批准后请顾客进行 0–10 评分</string>
+  <string name="detail_shopper_rating">顾客评分</string>
 </resources>

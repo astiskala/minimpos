@@ -104,14 +104,20 @@ class SaleSession(
         linksAvailable: Flow<Boolean> = flowOf(false),
         wallets: Flow<WalletAvailability> = flowOf(WalletAvailability()),
         terminalTippingAvailable: Flow<Boolean> = flowOf(true),
+        shopperDisplayAvailable: Flow<Boolean> = flowOf(false),
         currency: (AppSettings) -> CurrencySpec,
     ): Flow<Checkout> =
         combine(
             combine(snapshot, settings, printerAvailable) { snap, appSettings, printer -> Triple(snap, appSettings, printer) },
-            combine(linksAvailable, wallets, terminalTippingAvailable) { links, availableWallets, terminalTips ->
-                Triple(links, availableWallets, terminalTips)
+            combine(linksAvailable, wallets, terminalTippingAvailable, shopperDisplayAvailable) {
+                links,
+                availableWallets,
+                terminalTips,
+                shopperDisplay,
+                ->
+                CheckoutCapabilities(links, availableWallets, terminalTips, shopperDisplay)
             },
-        ) { (snapshot, appSettings, printer), (links, availableWallets, terminalTips) ->
+        ) { (snapshot, appSettings, printer), caps ->
             val payment = appSettings.payment
             val resolvedCurrency = currency(appSettings)
             Checkout(
@@ -127,12 +133,20 @@ class SaleSession(
                 resolvedCurrency,
                 kind,
                 printer,
-                links,
+                caps.linksAvailable,
                 snapshot.revision,
-                availableWallets.offered(resolvedCurrency.code),
-                terminalTippingAvailable = terminalTips,
+                caps.wallets.offered(resolvedCurrency.code),
+                terminalTippingAvailable = caps.terminalTippingAvailable,
+                shopperDisplayAvailable = caps.shopperDisplayAvailable,
             )
         }
+
+    private data class CheckoutCapabilities(
+        val linksAvailable: Boolean,
+        val wallets: WalletAvailability,
+        val terminalTippingAvailable: Boolean,
+        val shopperDisplayAvailable: Boolean,
+    )
 
     /**
      * Builds a payment from the displayed [checkout] at [now] in [zone] (for [walletScan], only when [checkout] and

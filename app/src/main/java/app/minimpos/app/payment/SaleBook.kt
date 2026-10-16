@@ -12,6 +12,7 @@ import app.minimpos.core.money.PaymentContext
 import app.minimpos.terminal.client.PaymentParams
 import app.minimpos.terminal.client.RecurringModel
 import app.minimpos.terminal.client.ScannedPayment
+import app.minimpos.terminal.client.ShopperSessionFlow
 import app.minimpos.terminal.client.TerminalTipOptions
 import app.minimpos.terminal.client.TransactionKind
 
@@ -35,6 +36,7 @@ import app.minimpos.terminal.client.TransactionKind
  * @property walletContext Original scan destination; required with a scanned instrument and persisted before sending.
  * @property walletSetupIdentity Fingerprint of checked connection/secrets; required for scans and never persisted as a credential.
  * @property terminalTip Native terminal tipping options (`AskGratuity` and optional `SaleToPOIData`); null when disabled.
+ * @property shopperFlow Chained customer-display and input prompts run before and after payment; null when disabled.
  * @throws IllegalArgumentException if a pre-authorisation is taken for tipping on the receipt, or a card is to be saved
  *   without a [shopperReference].
  */
@@ -53,6 +55,7 @@ data class PaymentStart(
     val walletContext: PaymentContext? = null,
     val walletSetupIdentity: String? = null,
     val terminalTip: TerminalTipOptions? = null,
+    val shopperFlow: ShopperSessionFlow? = null,
 ) {
     init {
         require(!tipOnReceipt || kind == SaleKind.SALE) { "Only a sale can be taken for tipping on the receipt" }
@@ -137,6 +140,7 @@ class SaleBook(
                 preAuthorisation = request.manualCapture,
                 scannedPayment = request.scannedPayment,
                 terminalTip = request.terminalTip,
+                shopperFlow = request.shopperFlow,
             ),
             expected = request.walletContext,
             setupIdentity = request.walletSetupIdentity,

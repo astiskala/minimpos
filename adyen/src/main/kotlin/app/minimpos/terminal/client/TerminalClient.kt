@@ -119,43 +119,51 @@ class TerminalClient(
         params: PaymentParams,
         serviceId: String = newServiceId(),
         onStarted: (serviceId: String) -> Unit = {},
-    ): TransactionOutcome {
-        val request =
-            message(MessageClassType.SERVICE, MessageCategoryType.PAYMENT, serviceId).apply {
-                paymentRequest =
-                    PaymentRequest().apply {
-                        saleData =
-                            SaleData().apply {
-                                saleTransactionID = transaction(params.merchantReference, clock.instant())
-                                saleToAcquirerData =
-                                    acquirerData {
-                                        shopperReference = params.shopperReference
-                                        shopperEmail = params.shopperEmail
-                                        recurringProcessingModel =
-                                            params.recurringProcessingModel?.let { RecurringProcessingModelEnum.valueOf(it.name) }
-                                        val tenders =
-                                            if (params.terminalTip != null) {
-                                                (params.tenderOptions + ASK_GRATUITY).distinct()
-                                            } else {
-                                                params.tenderOptions
+    ): TransactionOutcome =
+        executeShopperFlow(params, serviceId) { effectiveParams ->
+            val request =
+                message(MessageClassType.SERVICE, MessageCategoryType.PAYMENT, serviceId).apply {
+                    paymentRequest =
+                        PaymentRequest().apply {
+                            saleData =
+                                SaleData().apply {
+                                    saleTransactionID = transaction(effectiveParams.merchantReference, clock.instant())
+                                    saleToAcquirerData =
+                                        acquirerData {
+                                            shopperReference = effectiveParams.shopperReference
+                                            shopperEmail = effectiveParams.shopperEmail
+                                            recurringProcessingModel =
+                                                effectiveParams.recurringProcessingModel?.let {
+                                                    RecurringProcessingModelEnum.valueOf(
+                                                        it.name,
+                                                    )
+                                                }
+                                            val tenders =
+                                                if (effectiveParams.terminalTip != null) {
+                                                    (effectiveParams.tenderOptions + ASK_GRATUITY).distinct()
+                                                } else {
+                                                    effectiveParams.tenderOptions
+                                                }
+                                            tenderOption = tenders.takeIf { it.isNotEmpty() }?.joinToString(",")
+                                            metadata = effectiveParams.metadata.takeIf { it.isNotEmpty() }
+                                            if (effectiveParams.preAuthorisation) {
+                                                authorisationType = PRE_AUTH
+                                                additionalData = mapOf(MANUAL_CAPTURE to "true")
                                             }
-                                        tenderOption = tenders.takeIf { it.isNotEmpty() }?.joinToString(",")
-                                        metadata = params.metadata.takeIf { it.isNotEmpty() }
-                                        if (params.preAuthorisation) {
-                                            authorisationType = PRE_AUTH
-                                            additionalData = mapOf(MANUAL_CAPTURE to "true")
                                         }
+                                    effectiveParams.terminalTip?.takeIf { it.suggestions != null }?.let {
+                                        saleToPOIData =
+                                            encodeTipOperation(it)
                                     }
-                                params.terminalTip?.takeIf { it.suggestions != null }?.let { saleToPOIData = encodeTipOperation(it) }
-                                if (params.requestCardAlias) tokenRequestedType = TokenRequestedType.CUSTOMER
-                            }
-                        paymentData = params.scannedPayment?.let(::scannedInstrument)
-                        paymentTransaction = paymentAmounts(params)
-                    }
-            }
-        onStarted(serviceId)
-        return execute(serviceId, MessageCategoryType.PAYMENT, request) { it.paymentResponse?.let(::mapPayment) }
-    }
+                                    if (effectiveParams.requestCardAlias) tokenRequestedType = TokenRequestedType.CUSTOMER
+                                }
+                            paymentData = effectiveParams.scannedPayment?.let(::scannedInstrument)
+                            paymentTransaction = paymentAmounts(effectiveParams)
+                        }
+                }
+            onStarted(serviceId)
+            execute(serviceId, MessageCategoryType.PAYMENT, request) { it.paymentResponse?.let(::mapPayment) }
+        }
 
     /**
      * Activates one native scan for at most 30 seconds, identified by positive [sessionId].
@@ -372,45 +380,58 @@ class TerminalClient(
     }
 
     /**
-     * Retrieves the terminal's current reconciliation period totals (`GetTotalsRequest`) without closing the period.
+     * Retrieves the terminal's current reconciliation period totals (`GetTotalsRequest`), or starts a new period
+     * (`SaleReconciliation`) when [closePeriod] is true.
      *
+     * @param closePeriod True to close the current reconciliation period (`SaleReconciliation`); false for `GetTotals`.
      * @return [TerminalTotalsOutcome.Answered] with totals per currency, or [TerminalTotalsOutcome.Failed].
      */
-    suspend fun getTotals(): TerminalTotalsOutcome {
+    suspend fun reconcile(closePeriod: Boolean = true): TerminalTotalsOutcome {
         val request =
-            message(MessageClassType.SERVICE, MessageCategoryType.GET_TOTALS, newServiceId()).apply {
-                getTotalsRequest =
-                    GetTotalsRequest().apply {
-                        totalFilter = TotalFilter().apply { poiid = identity.poiId }
-                    }
+            if (closePeriod) {
+                message(MessageClassType.SERVICE, MessageCategoryType.RECONCILIATION, newServiceId()).apply {
+                    reconciliationRequest =
+                        ReconciliationRequest().apply {
+                            reconciliationType = ReconciliationType.SALE_RECONCILIATION
+                        }
+                }
+            } else {
+                message(MessageClassType.SERVICE, MessageCategoryType.GET_TOTALS, newServiceId()).apply {
+                    getTotalsRequest =
+                        GetTotalsRequest().apply {
+                            totalFilter = TotalFilter().apply { poiid = identity.poiId }
+                        }
+                }
             }
-        val response =
-            when (val delivery = transport.send(wrap(request), shortTimeout)) {
-                is Delivery.Answered -> delivery.response?.saleToPOIResponse?.getTotalsResponse
-                is Delivery.Failed -> return TerminalTotalsOutcome.Failed(delivery.fault)
-            } ?: return TerminalTotalsOutcome.Failed(Fault.UnreadableReply())
-        return mapTotalsResponse(response.response, response.poiReconciliationID, response.transactionTotals, closedPeriod = false)
-    }
+        return when (val delivery = transport.send(wrap(request), shortTimeout)) {
+            is Delivery.Failed -> {
+                TerminalTotalsOutcome.Failed(delivery.fault)
+            }
 
-    /**
-     * Retrieves the terminal's current reconciliation period totals and starts a new period (`SaleReconciliation`).
-     *
-     * @return [TerminalTotalsOutcome.Answered] with totals per currency, or [TerminalTotalsOutcome.Failed].
-     */
-    suspend fun reconcile(): TerminalTotalsOutcome {
-        val request =
-            message(MessageClassType.SERVICE, MessageCategoryType.RECONCILIATION, newServiceId()).apply {
-                reconciliationRequest =
-                    ReconciliationRequest().apply {
-                        reconciliationType = ReconciliationType.SALE_RECONCILIATION
+            is Delivery.Answered -> {
+                val poiResponse = delivery.response?.saleToPOIResponse
+                val getTotals = poiResponse?.getTotalsResponse
+                val recon = poiResponse?.reconciliationResponse
+                when {
+                    closePeriod && recon != null -> {
+                        mapTotalsResponse(recon.response, recon.poiReconciliationID, recon.transactionTotals, closedPeriod = true)
                     }
+
+                    !closePeriod && getTotals != null -> {
+                        mapTotalsResponse(
+                            getTotals.response,
+                            getTotals.poiReconciliationID,
+                            getTotals.transactionTotals,
+                            closedPeriod = false,
+                        )
+                    }
+
+                    else -> {
+                        TerminalTotalsOutcome.Failed(Fault.UnreadableReply())
+                    }
+                }
             }
-        val response =
-            when (val delivery = transport.send(wrap(request), shortTimeout)) {
-                is Delivery.Answered -> delivery.response?.saleToPOIResponse?.reconciliationResponse
-                is Delivery.Failed -> return TerminalTotalsOutcome.Failed(delivery.fault)
-            } ?: return TerminalTotalsOutcome.Failed(Fault.UnreadableReply())
-        return mapTotalsResponse(response.response, response.poiReconciliationID, response.transactionTotals, closedPeriod = true)
+        }
     }
 
     private fun mapTotalsResponse(
@@ -618,6 +639,12 @@ class TerminalClient(
                 poiid = identity.poiId
             }
     }
+
+    internal suspend fun sendShortMessage(
+        messageClass: MessageClassType,
+        category: MessageCategoryType,
+        configure: SaleToPOIRequest.() -> Unit,
+    ): Delivery = transport.send(wrap(message(messageClass, category, newServiceId()).apply(configure)), shortTimeout)
 
     private fun wrap(request: SaleToPOIRequest) = TerminalAPIRequest().apply { saleToPOIRequest = request }
 

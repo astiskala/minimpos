@@ -204,6 +204,8 @@ data class PaymentParams(
     val scannedPayment: ScannedPayment? = null,
     /** Prompts the shopper for a tip on the terminal (`AskGratuity`), with optional `SaleToPOIData` overrides. */
     val terminalTip: TerminalTipOptions? = null,
+    /** Chained customer-display and input prompts run before and after the payment; null skips them. */
+    val shopperFlow: ShopperSessionFlow? = null,
 ) {
     init {
         require(scannedPayment == null || !preAuthorisation) { "Scanned wallets require an immediate-charge sale" }
@@ -419,6 +421,10 @@ data class TransactionDetails(
     val additionalData: Map<String, String>,
     /** The stored card, when a payment asked for tokenization and Adyen stored it; null otherwise. */
     val tokenization: Tokenization?,
+    /** Email collected from the shopper on the terminal before payment (`InputRequest` `GetText`), if any. */
+    val collectedEmail: String? = null,
+    /** 0–10 rating collected from the shopper on the terminal after payment (`InputRequest` `GetRating`), if any. */
+    val shopperRating: Int? = null,
 ) {
     /** Why it was not approved (cancelled, busy, what to do next); null when it [succeeded][success]. */
     val decline: Decline? get() = Decline.of(success, errorCondition, refusalReason, additionalData)

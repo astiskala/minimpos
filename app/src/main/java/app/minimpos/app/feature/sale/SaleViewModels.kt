@@ -240,6 +240,7 @@ class CheckoutViewModel(
             terminal.map { it.paymentLinks && links != null },
             discovery?.state ?: flowOf(WalletAvailability()),
             terminal.map { it.supportsTerminalFeatures },
+            terminal.map { it.supportsShopperDisplay },
             currency,
         )
 

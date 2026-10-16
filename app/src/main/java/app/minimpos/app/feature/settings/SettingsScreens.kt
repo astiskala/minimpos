@@ -1039,19 +1039,6 @@ private fun ColumnScope.PaymentsSection(
     ShopperReferenceSettings(payment, ::update)
     SectionHeader(stringResource(R.string.settings_tipping))
     TerminalTippingSettings(payment, ::update)
-    SettingChoice(
-        title = stringResource(R.string.checkout_tip_on_receipt),
-        options =
-            listOf(
-                ReceiptTipping.DISABLED to stringResource(R.string.settings_tip_disabled),
-                ReceiptTipping.DEFAULT_OFF to stringResource(R.string.settings_tip_default_off),
-                ReceiptTipping.DEFAULT_ON to stringResource(R.string.settings_tip_default_on),
-            ),
-        selected = payment.receiptTipping,
-        onSelect = { value -> update { it.copy(receiptTipping = value) } },
-        subtitle = stringResource(R.string.settings_tip_default_hint),
-        tag = "receiptTipping",
-    )
     SectionHeader(stringResource(R.string.settings_email_receipts))
     EmailCaptureSettings(payment, ::update)
     SectionHeader(stringResource(R.string.settings_shopper_display))
@@ -1103,14 +1090,15 @@ private fun ColumnScope.TerminalTippingSettings(
     payment: PaymentSettings,
     update: ((PaymentSettings) -> PaymentSettings) -> Unit,
 ) {
+    val options =
+        listOf(
+            ReceiptTipping.DISABLED to stringResource(R.string.settings_tip_disabled),
+            ReceiptTipping.DEFAULT_OFF to stringResource(R.string.settings_tip_default_off),
+            ReceiptTipping.DEFAULT_ON to stringResource(R.string.settings_tip_default_on),
+        )
     SettingChoice(
         title = stringResource(R.string.checkout_tip_on_terminal),
-        options =
-            listOf(
-                ReceiptTipping.DISABLED to stringResource(R.string.settings_tip_disabled),
-                ReceiptTipping.DEFAULT_OFF to stringResource(R.string.settings_tip_default_off),
-                ReceiptTipping.DEFAULT_ON to stringResource(R.string.settings_tip_default_on),
-            ),
+        options = options,
         selected = payment.terminalTipping,
         onSelect = { value -> update { it.copy(terminalTipping = value) } },
         subtitle = stringResource(R.string.settings_terminal_tip_hint),
@@ -1132,6 +1120,22 @@ private fun ColumnScope.TerminalTippingSettings(
             tag = "tipOnPreTax",
         )
     }
+    SettingChoice(
+        title = stringResource(R.string.checkout_tip_on_receipt),
+        options = options,
+        selected = payment.receiptTipping,
+        onSelect = { value -> update { it.copy(receiptTipping = value) } },
+        subtitle = stringResource(R.string.settings_tip_default_hint),
+        tag = "receiptTipping",
+    )
+    SettingChoice(
+        title = stringResource(R.string.checkout_ask_giving),
+        options = options,
+        selected = payment.askGiving,
+        onSelect = { value -> update { it.copy(askGiving = value) } },
+        subtitle = stringResource(R.string.settings_ask_giving_hint),
+        tag = "askGivingSetting",
+    )
 }
 
 /**

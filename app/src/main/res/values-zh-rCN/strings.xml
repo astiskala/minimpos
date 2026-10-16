@@ -1004,4 +1004,8 @@
   <string name="status_partially_paid">部分已付</string>
   <string name="detail_partially_paid">已付 %1$s · 剩余 %2$s</string>
   <string name="result_pay_remaining">支付剩余 %1$s</string>
+  <string name="checkout_ask_giving">慈善捐款（Adyen Giving）</string>
+  <string name="checkout_ask_giving_hint">付款后在终端屏幕上邀请顾客向慈善机构捐款。</string>
+  <string name="settings_ask_giving_hint">购买后在终端上提示顾客进行 Adyen Giving 慈善捐款。</string>
+  <string name="detail_donation">慈善捐款：%1$s</string>
 </resources>

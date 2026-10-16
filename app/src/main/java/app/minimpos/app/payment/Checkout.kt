@@ -128,6 +128,14 @@ data class Checkout(
                 !askGratuity &&
                 (form.tipOnReceipt ?: (payment.receiptTipping == ReceiptTipping.DEFAULT_ON))
 
+    /** Whether Adyen Giving (`AskGiving`) is offered: for an immediate-charge sale on a destination that supports it. */
+    val canAskGiving: Boolean
+        get() = payment.askGiving != ReceiptTipping.DISABLED && !preAuthorisation && !tipOnReceipt && terminalTippingAvailable
+
+    /** Whether the sale prompts for an Adyen Giving charity donation after purchase. */
+    val askGiving: Boolean
+        get() = canAskGiving && (form.askGiving ?: (payment.askGiving == ReceiptTipping.DEFAULT_ON))
+
     /** Resolved per-payment terminal tipping options when [askGratuity] is active; null otherwise. */
     fun terminalTipOptions(): TerminalTipOptions? {
         if (!askGratuity) return null
@@ -218,6 +226,7 @@ data class Checkout(
             shopperFlow = shopperSessionFlow(reference),
             allowPartialAuthorisation = allowPartial,
             requestedAmountMinor = requestedAmountMinor,
+            askGiving = askGiving,
         )
     }
 
@@ -244,6 +253,7 @@ data class Checkout(
                 shopperFlow = null,
                 allowPartialAuthorisation = false,
                 requestedAmountMinor = totals.amounts.gross,
+                askGiving = false,
             ) ?: return null
         val lifetime = minOf(Duration.ofHours(payment.linkExpiryHours.toLong()), MAX_LINK_LIFETIME)
         return PaymentLinkStart(start, now.plus(lifetime))
@@ -266,6 +276,7 @@ data class Checkout(
                 terminalTip = null,
                 shopperFlow = null,
                 allowPartialAuthorisation = false,
+                askGiving = false,
             ).takeIf { canScanWallet }
 
     /** Whether [actual] has the same priced cart, currency, form and payment settings as this checkout, and still offers [wallet]. */

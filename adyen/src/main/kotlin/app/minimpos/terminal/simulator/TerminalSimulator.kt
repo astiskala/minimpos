@@ -125,6 +125,7 @@ enum class SimulatedOutcome {
  * @property shopperRating 0–10 rating returned by simulated `GetRating` input requests.
  * @property partialApprovalPercent Percentage (`1..99`) of `requestedAmount` approved when `AllowPartialAuthorisation`
  *   is present; `100` approves in full unless the minor-unit amount ends with Adyen's `139` partial-approval test suffix.
+ * @property givingDonationAmount Simulated charity donation amount in major units when `AskGiving` is present; zero skips donation.
  */
 data class SimulatorConfig(
     val outcome: SimulatedOutcome = SimulatedOutcome.APPROVE,
@@ -135,6 +136,7 @@ data class SimulatorConfig(
     val shopperEmailInput: String = "shopper@example.com",
     val shopperRating: Int = DEFAULT_SIMULATED_RATING,
     val partialApprovalPercent: Int = FULL_APPROVAL_PERCENT,
+    val givingDonationAmount: BigDecimal = BigDecimal.ONE,
 ) {
     private companion object {
         const val DEFAULT_SIMULATED_RATING = 9
@@ -402,7 +404,25 @@ class TerminalSimulator(
                 preAuthorisation = request.saleData?.saleToAcquirerData?.authorisationType == TerminalClient.PRE_AUTH,
                 tipAmount = tipAmount,
                 partial = partialBase != null,
+                givingServiceId = simulatedGivingServiceId(request.saleData, approved, partialBase != null, settings),
             )
+        payment.givingServiceId?.let { givingId ->
+            completed.remember(
+                givingId,
+                payment =
+                    PaymentResponse().apply {
+                        response = Response().apply { result = ResultType.SUCCESS }
+                        paymentResult =
+                            PaymentResult().apply {
+                                amountsResp =
+                                    AmountsResp().apply {
+                                        currency = amount.currency
+                                        this.authorizedAmount = settings.givingDonationAmount
+                                    }
+                            }
+                    },
+            )
+        }
         return payment to authorizedAmount
     }
 
@@ -440,6 +460,10 @@ class TerminalSimulator(
             // As with "return adjust authorisation data" enabled in the Customer Area, for synchronous adjustments.
             if (payment.preAuthorisation) additional["adjustAuthorisationData"] = SimulatedModifications.blob(random)
             if (!payment.wallet) additional += tokenization(payment.card, acquirer)
+            payment.givingServiceId?.let {
+                additional["adyen_giving_sale_id"] = TerminalClient.GIVING_SALE_ID
+                additional["adyen_giving_service_id"] = it
+            }
         } else {
             additional["refusalReason"] = refusal.second
         }

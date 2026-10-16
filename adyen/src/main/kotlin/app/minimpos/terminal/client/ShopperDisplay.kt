@@ -17,6 +17,7 @@ import com.adyen.model.nexo.InputData
 import com.adyen.model.nexo.InputRequest
 import com.adyen.model.nexo.MessageCategoryType
 import com.adyen.model.nexo.MessageClassType
+import com.adyen.model.nexo.MessageReference
 import com.adyen.model.nexo.OutputBarcode
 import com.adyen.model.nexo.OutputContent
 import com.adyen.model.nexo.OutputFormatType
@@ -24,6 +25,7 @@ import com.adyen.model.nexo.OutputText
 import com.adyen.model.nexo.PredefinedContent
 import com.adyen.model.nexo.ResultType
 import com.adyen.model.nexo.SaleToPOIRequest
+import com.adyen.model.nexo.TransactionStatusRequest
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.withContext
 import java.math.BigDecimal
@@ -443,20 +445,57 @@ private fun parseInputDelivery(delivery: Delivery): InputOutcome<Input> {
     return InputOutcome.Failed(Fault.TerminalRejected(ExternalText.of(message)))
 }
 
+/** Queries the two-step Adyen Giving donation status (`SaleID=AdyenGiving`) for [givingServiceId], returning the donated amount. */
+suspend fun TerminalClient.givingDonation(givingServiceId: String): BigDecimal? {
+    val delivery =
+        sendShortMessage(MessageClassType.SERVICE, MessageCategoryType.TRANSACTION_STATUS) {
+            transactionStatusRequest =
+                TransactionStatusRequest().apply {
+                    setReceiptReprintFlag(true)
+                    messageReference =
+                        MessageReference().apply {
+                            messageCategory = MessageCategoryType.PAYMENT
+                            saleID = TerminalClient.GIVING_SALE_ID
+                            serviceID = givingServiceId
+                        }
+                }
+        }
+    val repeated =
+        (delivery as? Delivery.Answered)
+            ?.response
+            ?.saleToPOIResponse
+            ?.transactionStatusResponse
+            ?.repeatedMessageResponse
+            ?.repeatedResponseMessageBody
+            ?.paymentResponse
+    return repeated
+        ?.takeIf { it.response?.result == ResultType.SUCCESS }
+        ?.paymentResult
+        ?.amountsResp
+        ?.authorizedAmount
+}
+
 internal suspend fun TerminalClient.executeShopperFlow(
     params: PaymentParams,
     serviceId: String,
     payCore: suspend (PaymentParams) -> TransactionOutcome,
 ): TransactionOutcome {
-    val flow = params.shopperFlow ?: return payCore(params)
+    val flow = params.shopperFlow ?: return attachGivingDonation(payCore(params))
     shopperSession(flow.sessionId, begin = true)
     return try {
-        runShopperFlowSteps(flow, params, serviceId, payCore)
+        attachGivingDonation(runShopperFlowSteps(flow, params, serviceId, payCore))
     } finally {
         withContext(NonCancellable) {
             shopperSession(flow.sessionId, begin = false)
         }
     }
+}
+
+private suspend fun TerminalClient.attachGivingDonation(outcome: TransactionOutcome): TransactionOutcome {
+    if (outcome !is TransactionOutcome.Completed || !outcome.details.success) return outcome
+    val givingId = outcome.details.givingServiceId ?: return outcome
+    val donation = givingDonation(givingId) ?: return outcome
+    return outcome.copy(details = outcome.details.copy(donationAmount = donation))
 }
 
 private suspend fun TerminalClient.runShopperFlowSteps(

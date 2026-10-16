@@ -144,6 +144,7 @@ class TerminalClient(
                                                     addAll(effectiveParams.tenderOptions)
                                                     if (effectiveParams.terminalTip != null) add(ASK_GRATUITY)
                                                     if (effectiveParams.allowPartialAuthorisation) add(ALLOW_PARTIAL_AUTHORISATION)
+                                                    if (effectiveParams.askGiving) add(ASK_GIVING)
                                                 }.distinct()
                                             tenderOption = tenders.takeIf { it.isNotEmpty() }?.joinToString(",")
                                             metadata = effectiveParams.metadata.takeIf { it.isNotEmpty() }
@@ -702,6 +703,12 @@ class TerminalClient(
         /** Tender option that allows the terminal/issuer to approve a smaller amount than requested. */
         const val ALLOW_PARTIAL_AUTHORISATION = "AllowPartialAuthorisation"
 
+        /** Tender option that prompts the shopper for an Adyen Giving charity donation after purchase. */
+        const val ASK_GIVING = "AskGiving"
+
+        /** Fixed SaleID Adyen uses for two-step Adyen Giving donation status lookups. */
+        const val GIVING_SALE_ID = "AdyenGiving"
+
         /** The `additionalData` key that leaves a payment uncaptured until it is captured manually. */
         private const val MANUAL_CAPTURE = "manualCapture"
         private const val SERVICE_ID_CHARS = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ"
@@ -784,6 +791,7 @@ class TerminalClient(
                             cardAlias = card?.paymentToken?.tokenValue ?: additional["alias"],
                         )
                     },
+                givingServiceId = additional["adyen_giving_service_id"]?.trim()?.ifEmpty { null },
             )
         }
 

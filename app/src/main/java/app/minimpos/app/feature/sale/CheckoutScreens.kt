@@ -382,6 +382,15 @@ private fun ColumnScope.CheckoutSwitches(
             tag = "tipOnReceipt",
         )
     }
+    if (state.canAskGiving) {
+        LabeledSwitch(
+            title = stringResource(R.string.checkout_ask_giving),
+            hint = stringResource(R.string.checkout_ask_giving_hint),
+            checked = state.askGiving,
+            onChange = { checked -> onUpdate { it.copy(askGiving = checked) } },
+            tag = "askGiving",
+        )
+    }
 }
 
 /** "Save card", explaining what the saved card is filed under ([byEmail]: the email, else the customer reference). */

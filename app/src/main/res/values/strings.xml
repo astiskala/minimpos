@@ -1050,4 +1050,8 @@
   <string name="status_partially_paid">Partially paid</string>
   <string name="detail_partially_paid">Paid %1$s · Remaining %2$s</string>
   <string name="result_pay_remaining">Pay remaining %1$s</string>
+  <string name="checkout_ask_giving">Charity donation (Adyen Giving)</string>
+  <string name="checkout_ask_giving_hint">Invite the shopper to donate to charity on the terminal after payment.</string>
+  <string name="settings_ask_giving_hint">Prompt shoppers on the terminal for an Adyen Giving donation after purchase.</string>
+  <string name="detail_donation">Charity donation: %1$s</string>
 </resources>

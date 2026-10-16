@@ -1054,4 +1054,13 @@
   <string name="checkout_ask_giving_hint">Invite the shopper to donate to charity on the terminal after payment.</string>
   <string name="settings_ask_giving_hint">Prompt shoppers on the terminal for an Adyen Giving donation after purchase.</string>
   <string name="detail_donation">Charity donation: %1$s</string>
+  <string name="settings_allow_moto">Offer MOTO at checkout</string>
+  <string name="settings_allow_moto_hint">Allow Mail Order / Telephone Order keyed card payments (requires Manager PIN).</string>
+  <string name="settings_allow_mke">Offer Manual Key Entry (MKE) at checkout</string>
+  <string name="settings_allow_mke_hint">Allow staff to key a card number on the terminal when the chip cannot be read (requires Manager PIN).</string>
+  <string name="checkout_moto">Mail / telephone order (MOTO)</string>
+  <string name="checkout_moto_hint">Key in the shopper\'s card on the terminal for a remote order (Manager approval required).</string>
+  <string name="checkout_mke">Manual Key Entry (MKE)</string>
+  <string name="checkout_mke_hint">Key in the card on the terminal when chip or contactless fails (Manager approval required).</string>
+  <string name="checkout_special_entry_warning">Keyed card transactions carry higher fraud and chargeback liability for the merchant. Continue with Manager approval?</string>
 </resources>

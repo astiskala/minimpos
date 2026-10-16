@@ -85,6 +85,7 @@ import app.minimpos.terminal.checkout.CheckoutModifications
 import app.minimpos.terminal.checkout.CheckoutPaymentLinks
 import app.minimpos.terminal.checkout.PaymentLinkApi
 import app.minimpos.terminal.checkout.PaymentModifications
+import app.minimpos.terminal.client.CardEntryOverride
 import app.minimpos.terminal.client.PosApplication
 import app.minimpos.terminal.paymentsapp.AdyenPaymentsAppManagement
 import app.minimpos.terminal.paymentsapp.AppLinkExchange
@@ -390,6 +391,7 @@ class AppContainer(
                 // The cart has been paid for, so the next payment of its kind starts afresh.
                 completeSale(id, start)
             },
+            permits = { start -> start.cardEntryOverride == CardEntryOverride.NORMAL || managerPermits() },
         )
 
     /** Transient wallet scanning delegates to the same sale lifecycle, with original-context send protection. */

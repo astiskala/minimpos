@@ -1008,4 +1008,13 @@
   <string name="checkout_ask_giving_hint">付款後在終端螢幕上邀請顧客向慈善機構捐款。</string>
   <string name="settings_ask_giving_hint">購買後在終端上提示顧客進行 Adyen Giving 慈善捐款。</string>
   <string name="detail_donation">慈善捐款：%1$s</string>
+  <string name="settings_allow_moto">在結賬時提供 MOTO</string>
+  <string name="settings_allow_moto_hint">允許郵購／電話訂購（MOTO）手動輸入卡號付款（需要主管 PIN 碼）。</string>
+  <string name="settings_allow_mke">在結賬時提供手動鍵入卡號（MKE）</string>
+  <string name="settings_allow_mke_hint">晶片無法讀取時允許店員在終端上手動鍵入卡號（需要主管 PIN 碼）。</string>
+  <string name="checkout_moto">郵購／電話訂購（MOTO）</string>
+  <string name="checkout_moto_hint">針對遠距訂單在終端上手動輸入顧客卡號（需要主管批准）。</string>
+  <string name="checkout_mke">手動鍵入卡號（MKE）</string>
+  <string name="checkout_mke_hint">晶片或感應支付失敗時在終端上手動輸入卡號（需要主管批准）。</string>
+  <string name="checkout_special_entry_warning">手動鍵入卡號交易的欺詐和拒付責任風險較高。是否繼續並進行主管批准？</string>
 </resources>

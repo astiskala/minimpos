@@ -11,6 +11,7 @@ import app.minimpos.core.money.CurrencySpec
 import app.minimpos.core.payment.ScanWallet
 import app.minimpos.core.shopper.ShopperReferences
 import app.minimpos.core.tax.TaxMode
+import app.minimpos.terminal.client.CardEntryOverride
 import app.minimpos.terminal.client.ShopperSessionFlow
 import app.minimpos.terminal.client.TerminalTipOptions
 import app.minimpos.terminal.client.TerminalTipSuggestions
@@ -136,6 +137,24 @@ data class Checkout(
     val askGiving: Boolean
         get() = canAskGiving && (form.askGiving ?: (payment.askGiving == ReceiptTipping.DEFAULT_ON))
 
+    /** Whether MOTO card entry is available at checkout on this destination. */
+    val canUseMoto: Boolean get() = payment.allowMoto && terminalTippingAvailable
+
+    /** Whether Manual Key Entry (MKE) is available at checkout on this destination. */
+    val canUseMke: Boolean get() = payment.allowMke && terminalTippingAvailable
+
+    /** Effective card entry mode (`NORMAL` unless the chosen special mode is enabled and supported). */
+    val effectiveCardEntry: CardEntryOverride
+        get() =
+            when (form.cardEntryOverride) {
+                CardEntryOverride.MOTO -> if (canUseMoto) CardEntryOverride.MOTO else CardEntryOverride.NORMAL
+                CardEntryOverride.MKE -> if (canUseMke) CardEntryOverride.MKE else CardEntryOverride.NORMAL
+                CardEntryOverride.NORMAL -> CardEntryOverride.NORMAL
+            }
+
+    /** True when the operator selected MOTO or MKE, requiring a fraud/liability warning and Manager PIN approval. */
+    val requiresSpecialEntryApproval: Boolean get() = effectiveCardEntry != CardEntryOverride.NORMAL
+
     /** Resolved per-payment terminal tipping options when [askGratuity] is active; null otherwise. */
     fun terminalTipOptions(): TerminalTipOptions? {
         if (!askGratuity) return null
@@ -227,6 +246,7 @@ data class Checkout(
             allowPartialAuthorisation = allowPartial,
             requestedAmountMinor = requestedAmountMinor,
             askGiving = askGiving,
+            cardEntryOverride = effectiveCardEntry,
         )
     }
 
@@ -254,6 +274,7 @@ data class Checkout(
                 allowPartialAuthorisation = false,
                 requestedAmountMinor = totals.amounts.gross,
                 askGiving = false,
+                cardEntryOverride = CardEntryOverride.NORMAL,
             ) ?: return null
         val lifetime = minOf(Duration.ofHours(payment.linkExpiryHours.toLong()), MAX_LINK_LIFETIME)
         return PaymentLinkStart(start, now.plus(lifetime))
@@ -277,6 +298,7 @@ data class Checkout(
                 shopperFlow = null,
                 allowPartialAuthorisation = false,
                 askGiving = false,
+                cardEntryOverride = CardEntryOverride.NORMAL,
             ).takeIf { canScanWallet }
 
     /** Whether [actual] has the same priced cart, currency, form and payment settings as this checkout, and still offers [wallet]. */

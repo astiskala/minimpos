@@ -159,6 +159,18 @@ enum class TransactionKind {
     REFUND,
 }
 
+/** Card entry mode override for a terminal payment. */
+enum class CardEntryOverride {
+    /** Normal card presentation on the terminal (tap, chip or swipe). */
+    NORMAL,
+
+    /** Mail Order / Telephone Order (`SaleToAcquirerData.tenderOption=MOTO`). */
+    MOTO,
+
+    /** Manual Key Entry (`PaymentTransaction.TransactionConditions.ForceEntryMode=[Keyed]`). */
+    MKE,
+}
+
 /**
  * What to charge in a card payment, see [TerminalClient.pay]. The shopper, tender option and metadata fields travel in
  * `SaleToAcquirerData`, together with the [PosApplication] info.
@@ -212,6 +224,8 @@ data class PaymentParams(
     val saleReferenceId: String? = null,
     /** Sends `AskGiving` in `SaleToAcquirerData.tenderOption` to prompt for a charity donation after purchase. */
     val askGiving: Boolean = false,
+    /** Overrides how the card is entered on the terminal (`MOTO` tender option or `ForceEntryMode=Keyed`). */
+    val cardEntryOverride: CardEntryOverride = CardEntryOverride.NORMAL,
 ) {
     init {
         require(scannedPayment == null || !preAuthorisation) { "Scanned wallets require an immediate-charge sale" }
@@ -223,6 +237,9 @@ data class PaymentParams(
         }
         require(!askGiving || (!preAuthorisation && scannedPayment == null)) {
             "Adyen Giving requires an immediate-charge card sale"
+        }
+        require(cardEntryOverride == CardEntryOverride.NORMAL || scannedPayment == null) {
+            "Card entry overrides cannot be combined with a scanned wallet"
         }
     }
 }

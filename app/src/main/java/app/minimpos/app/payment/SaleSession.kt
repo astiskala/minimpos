@@ -10,6 +10,7 @@ import app.minimpos.core.cart.Cart
 import app.minimpos.core.cart.CartProduct
 import app.minimpos.core.money.CurrencySpec
 import app.minimpos.core.payment.ScanWallet
+import app.minimpos.terminal.client.CardEntryOverride
 import app.minimpos.terminal.client.ScannedPayment
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -34,6 +35,7 @@ import java.util.concurrent.atomic.AtomicLong
  * @property askGratuity "Tip on terminal": null until the operator touches the switch; mutually exclusive with [tipOnReceipt].
  * @property splitAmountMinor Optional operator-entered split tender amount in minor units (`1 until gross`); null charges full total.
  * @property askGiving "Charity donation (Adyen Giving)": null until the operator touches the switch.
+ * @property cardEntryOverride Selected card entry mode (`NORMAL`, `MOTO` or `MKE`).
  */
 data class CheckoutForm(
     val transactionReference: String = "",
@@ -44,6 +46,7 @@ data class CheckoutForm(
     val askGratuity: Boolean? = null,
     val splitAmountMinor: Long? = null,
     val askGiving: Boolean? = null,
+    val cardEntryOverride: CardEntryOverride = CardEntryOverride.NORMAL,
 )
 
 /**

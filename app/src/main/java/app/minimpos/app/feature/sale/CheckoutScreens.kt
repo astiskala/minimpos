@@ -60,6 +60,7 @@ import app.minimpos.app.data.db.SaleKind
 import app.minimpos.app.data.db.SaleStatus
 import app.minimpos.app.data.settings.ShopperReferenceSource
 import app.minimpos.app.feature.OutcomeMessage
+import app.minimpos.app.feature.lock.ManagerApproval
 import app.minimpos.app.feature.outcomeNote
 import app.minimpos.app.feature.stillUnconfirmed
 import app.minimpos.app.payment.Checkout
@@ -98,6 +99,7 @@ import app.minimpos.core.payment.ScanWallet
 import app.minimpos.core.receipt.ReceiptCopy
 import app.minimpos.core.receipt.ReceiptDocument
 import app.minimpos.core.shopper.ShopperReferences
+import app.minimpos.terminal.client.CardEntryOverride
 import app.minimpos.terminal.client.RetryAdvice
 import java.util.Locale
 
@@ -118,22 +120,29 @@ fun CheckoutScreen(
     val money = rememberMoneyFormatter(state.currency)
     var confirmLink by remember { mutableStateOf(false) }
     var confirmWallet by remember { mutableStateOf(false) }
+    var confirmSpecialEntry by remember { mutableStateOf(false) }
+    var approveSpecialEntry by remember { mutableStateOf(false) }
+    if (approveSpecialEntry) {
+        return ManagerApproval(
+            onApprove = {
+                approveSpecialEntry = false
+                if (vm.pay()) navigator.replace(Route.Payment(kind))
+            },
+            onCancel = { approveSpecialEntry = false },
+        )
+    }
+    SpecialEntryConfirmation(confirmSpecialEntry, state.effectiveCardEntry, onConfirm = {
+        confirmSpecialEntry = false
+        approveSpecialEntry = true
+    }, onDismiss = { confirmSpecialEntry = false })
     val scanWallet = {
         if (vm.scanWallet()) navigator.replace(Route.WalletScan)
         Unit
     }
-    if (confirmWallet) {
-        ConfirmDialog(
-            title = stringResource(R.string.checkout_scan_wallet),
-            message = stringResource(R.string.wallet_without_tip),
-            confirmLabel = stringResource(R.string.checkout_scan_wallet),
-            onConfirm = {
-                confirmWallet = false
-                scanWallet()
-            },
-            onDismiss = { confirmWallet = false },
-        )
-    }
+    WalletTipConfirmation(confirmWallet, onConfirm = {
+        confirmWallet = false
+        scanWallet()
+    }, onDismiss = { confirmWallet = false })
     val createLink = {
         vm.sendLink()?.let { navigator.replace(Route.PaymentLink(it, fresh = true)) }
         Unit
@@ -151,13 +160,55 @@ fun CheckoutScreen(
             CheckoutActions(
                 state,
                 money,
-                onPay = { if (vm.pay()) navigator.replace(Route.Payment(kind)) },
+                onPay = {
+                    if (state.requiresSpecialEntryApproval) {
+                        confirmSpecialEntry = true
+                    } else if (vm.pay()) {
+                        navigator.replace(Route.Payment(kind))
+                    }
+                },
                 onSendLink = { if (state.tipOnReceipt || state.askGratuity) confirmLink = true else createLink() },
                 onScanWallet = { if (state.tipOnReceipt || state.askGratuity) confirmWallet = true else scanWallet() },
             )
         },
     ) { padding ->
         CheckoutDetails(state, money, vm::update, Modifier.fillMaxSize().padding(padding))
+    }
+}
+
+@Composable
+private fun WalletTipConfirmation(
+    visible: Boolean,
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    if (visible) {
+        ConfirmDialog(
+            title = stringResource(R.string.checkout_scan_wallet),
+            message = stringResource(R.string.wallet_without_tip),
+            confirmLabel = stringResource(R.string.checkout_scan_wallet),
+            onConfirm = onConfirm,
+            onDismiss = onDismiss,
+        )
+    }
+}
+
+@Composable
+private fun SpecialEntryConfirmation(
+    visible: Boolean,
+    mode: CardEntryOverride,
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    if (visible) {
+        val label = stringResource(if (mode == CardEntryOverride.MOTO) R.string.checkout_moto else R.string.checkout_mke)
+        ConfirmDialog(
+            title = label,
+            message = stringResource(R.string.checkout_special_entry_warning),
+            confirmLabel = label,
+            onConfirm = onConfirm,
+            onDismiss = onDismiss,
+        )
     }
 }
 
@@ -389,6 +440,36 @@ private fun ColumnScope.CheckoutSwitches(
             checked = state.askGiving,
             onChange = { checked -> onUpdate { it.copy(askGiving = checked) } },
             tag = "askGiving",
+        )
+    }
+    SpecialEntrySwitches(state, onUpdate)
+}
+
+@Composable
+private fun ColumnScope.SpecialEntrySwitches(
+    state: Checkout,
+    onUpdate: ((CheckoutForm) -> CheckoutForm) -> Unit,
+) {
+    if (state.canUseMoto) {
+        LabeledSwitch(
+            title = stringResource(R.string.checkout_moto),
+            hint = stringResource(R.string.checkout_moto_hint),
+            checked = state.effectiveCardEntry == CardEntryOverride.MOTO,
+            onChange = { checked ->
+                onUpdate { it.copy(cardEntryOverride = if (checked) CardEntryOverride.MOTO else CardEntryOverride.NORMAL) }
+            },
+            tag = "motoSwitch",
+        )
+    }
+    if (state.canUseMke) {
+        LabeledSwitch(
+            title = stringResource(R.string.checkout_mke),
+            hint = stringResource(R.string.checkout_mke_hint),
+            checked = state.effectiveCardEntry == CardEntryOverride.MKE,
+            onChange = { checked ->
+                onUpdate { it.copy(cardEntryOverride = if (checked) CardEntryOverride.MKE else CardEntryOverride.NORMAL) }
+            },
+            tag = "mkeSwitch",
         )
     }
 }

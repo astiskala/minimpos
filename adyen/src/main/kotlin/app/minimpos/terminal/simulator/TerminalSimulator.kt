@@ -1,5 +1,6 @@
 package app.minimpos.terminal.simulator
 
+import app.minimpos.terminal.client.CardEntryOverride
 import app.minimpos.terminal.client.PrintJob
 import app.minimpos.terminal.client.TerminalClient
 import app.minimpos.terminal.client.TerminalCurrencyTotals
@@ -364,7 +365,9 @@ class TerminalSimulator(
                         DocumentQualifierType.CASHIER_RECEIPT,
                         "MERCHANT COPY",
                         payment,
-                        signature = payment.approved && settings.signatureRequired,
+                        signature =
+                            payment.approved &&
+                                (settings.signatureRequired || payment.entryOverride == CardEntryOverride.MKE),
                     ),
                 )
         }
@@ -405,6 +408,7 @@ class TerminalSimulator(
                 tipAmount = tipAmount,
                 partial = partialBase != null,
                 givingServiceId = simulatedGivingServiceId(request.saleData, approved, partialBase != null, settings),
+                entryOverride = simulatedCardEntryOverride(request),
             )
         payment.givingServiceId?.let { givingId ->
             completed.remember(
@@ -453,7 +457,13 @@ class TerminalSimulator(
                 "paymentMethod" to payment.card.brand,
                 "paymentMethodVariant" to payment.card.variant,
                 "cardSummary" to payment.card.maskedPan.takeLast(4),
-                "posEntryMode" to if (payment.wallet) "Scanned" else "CLESS_CHIP",
+                "posEntryMode" to
+                    when {
+                        payment.wallet -> "Scanned"
+                        payment.entryOverride == CardEntryOverride.MOTO -> "MOTO"
+                        payment.entryOverride == CardEntryOverride.MKE -> "MKE"
+                        else -> "CLESS_CHIP"
+                    },
             )
         if (refusal == null) {
             additional["authCode"] = payment.authCode
@@ -530,7 +540,12 @@ class TerminalSimulator(
                 paymentInstrumentType = PaymentInstrumentType.CARD
                 cardData =
                     CardData().apply {
-                        entryMode += EntryModeType.CONTACTLESS
+                        entryMode +=
+                            if (payment.entryOverride == CardEntryOverride.NORMAL) {
+                                EntryModeType.CONTACTLESS
+                            } else {
+                                EntryModeType.KEYED
+                            }
                         maskedPAN = payment.card.maskedPan
                         paymentBrand = payment.card.brand
                         paymentToken =

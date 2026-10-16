@@ -1037,4 +1037,12 @@
   <string name="reconciliation_refunds_label">Refunds (%1$s)</string>
   <string name="reconciliation_compare">Mini mPOS %1$s · Terminal %2$s</string>
   <string name="reconciliation_close_period">Close period</string>
+  <string name="settings_shopper_display">Shopper terminal display</string>
+  <string name="settings_shopper_display_hint">When using a separate terminal (or the simulator), show items or collect input on the customer-facing screen during checkout.</string>
+  <string name="settings_show_virtual_receipt">Show virtual receipt on terminal before payment</string>
+  <string name="settings_confirm_basket_terminal">Ask shopper to confirm order on terminal</string>
+  <string name="settings_collect_email_terminal">Ask shopper for email on terminal when blank</string>
+  <string name="settings_show_terminal_qr">Show QR receipt on terminal after approval</string>
+  <string name="settings_ask_shopper_rating">Ask shopper for 0–10 rating after approval</string>
+  <string name="detail_shopper_rating">Shopper rating</string>
 </resources>

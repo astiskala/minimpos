@@ -407,6 +407,7 @@ class AppContainer(
                         flowOf(terminalStatus.state.value.printerAvailable),
                         wallets = walletDiscovery.state,
                         terminalTippingAvailable = flowOf(terminalStatus.state.value.supportsTerminalFeatures),
+                        shopperDisplayAvailable = flowOf(terminalStatus.state.value.supportsShopperDisplay),
                         currency = ::currency,
                     ).first()
             },

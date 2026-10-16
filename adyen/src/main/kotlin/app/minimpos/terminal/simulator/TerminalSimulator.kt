@@ -10,19 +10,29 @@ import app.minimpos.terminal.transport.Fault
 import app.minimpos.terminal.transport.FaultException
 import app.minimpos.terminal.transport.TerminalTransport
 import app.minimpos.terminal.transport.fault
+import com.adyen.model.nexo.AdminResponse
 import com.adyen.model.nexo.AmountsResp
 import com.adyen.model.nexo.CardData
 import com.adyen.model.nexo.CharacterStyleType
+import com.adyen.model.nexo.DeviceType
 import com.adyen.model.nexo.DiagnosisResponse
+import com.adyen.model.nexo.DisplayResponse
 import com.adyen.model.nexo.DocumentQualifierType
 import com.adyen.model.nexo.EntryModeType
 import com.adyen.model.nexo.ErrorConditionType
 import com.adyen.model.nexo.GetTotalsResponse
 import com.adyen.model.nexo.GlobalStatusType
+import com.adyen.model.nexo.InfoQualifyType
+import com.adyen.model.nexo.Input
+import com.adyen.model.nexo.InputCommandType
+import com.adyen.model.nexo.InputRequest
+import com.adyen.model.nexo.InputResponse
+import com.adyen.model.nexo.InputResult
 import com.adyen.model.nexo.MessageHeader
 import com.adyen.model.nexo.MessageType
 import com.adyen.model.nexo.OutputContent
 import com.adyen.model.nexo.OutputFormatType
+import com.adyen.model.nexo.OutputResult
 import com.adyen.model.nexo.OutputText
 import com.adyen.model.nexo.POIData
 import com.adyen.model.nexo.POIStatus
@@ -110,13 +120,23 @@ enum class SimulatedOutcome {
  * @property hasPrinter False makes print requests fail with ErrorCondition `UnavailableDevice` and diagnoses report no
  *   printer status, like a terminal without a printer.
  * @property signatureRequired True asks for the shopper's signature on the merchant copy of approved payments.
+ * @property shopperConfirmed Answer returned by simulated `GetConfirmation` input requests.
+ * @property shopperEmailInput Email text returned by simulated `GetText` input requests.
+ * @property shopperRating 0–10 rating returned by simulated `GetRating` input requests.
  */
 data class SimulatorConfig(
     val outcome: SimulatedOutcome = SimulatedOutcome.APPROVE,
     val delayMillis: Long = 2_500,
     val hasPrinter: Boolean = true,
     val signatureRequired: Boolean = false,
-)
+    val shopperConfirmed: Boolean = true,
+    val shopperEmailInput: String = "shopper@example.com",
+    val shopperRating: Int = DEFAULT_SIMULATED_RATING,
+) {
+    private companion object {
+        const val DEFAULT_SIMULATED_RATING = 9
+    }
+}
 
 /**
  * An in-process stand-in for an Adyen terminal, so every flow can be exercised on an emulator or phone. Responses
@@ -215,7 +235,7 @@ class TerminalSimulator(
             }
 
             else -> {
-                handleTotals(header, message)
+                handleTotals(header, message, settings)
             }
         }
     }
@@ -223,6 +243,7 @@ class TerminalSimulator(
     private fun handleTotals(
         header: MessageHeader,
         message: SaleToPOIRequest,
+        settings: SimulatorConfig,
     ): TerminalAPIResponse =
         when {
             message.getTotalsRequest != null -> {
@@ -232,6 +253,34 @@ class TerminalSimulator(
             message.reconciliationRequest != null -> {
                 respond(header) {
                     reconciliationResponse = reconcileResponse(message.reconciliationRequest)
+                }
+            }
+
+            message.adminRequest != null -> {
+                respond(header) {
+                    adminResponse = AdminResponse().apply { response = Response().apply { result = ResultType.SUCCESS } }
+                }
+            }
+
+            message.displayRequest != null -> {
+                respond(header) {
+                    displayResponse =
+                        DisplayResponse().apply {
+                            outputResult +=
+                                message.displayRequest.displayOutput.orEmpty().map {
+                                    OutputResult().apply {
+                                        device = it.device ?: DeviceType.CUSTOMER_DISPLAY
+                                        infoQualify = it.infoQualify ?: InfoQualifyType.DISPLAY
+                                        response = Response().apply { result = ResultType.SUCCESS }
+                                    }
+                                }
+                        }
+                }
+            }
+
+            message.inputRequest != null -> {
+                respond(header) {
+                    inputResponse = simulateInputResponse(message.inputRequest, settings)
                 }
             }
 
@@ -290,7 +339,7 @@ class TerminalSimulator(
                 ?.singleOrNull()
                 .orEmpty()
         val approved = outcome == SimulatedOutcome.APPROVE || outcome == SimulatedOutcome.TIMEOUT
-        val tipAmount = if (approved) simulatedTip(request.saleData, amount.requestedAmount) else null
+        val tipAmount = if (approved) simulatedTipAmount(request.saleData, amount.requestedAmount) else null
         val authorizedAmount = if (approved) amount.requestedAmount + (tipAmount ?: BigDecimal.ZERO) else BigDecimal.ZERO
         val payment =
             SimulatedPayment(
@@ -425,56 +474,6 @@ class TerminalSimulator(
             }
         setOnlineFlag(true)
         paymentAcquirerData = PaymentAcquirerData().apply { approvalCode = payment.authCode.takeIf { payment.approved } }
-    }
-
-    private fun simulatedTip(
-        saleData: SaleData?,
-        requestedAmount: BigDecimal,
-    ): BigDecimal? {
-        val tenders =
-            saleData
-                ?.saleToAcquirerData
-                ?.tenderOption
-                ?.split(',')
-                .orEmpty()
-        if (TerminalClient.ASK_GRATUITY !in tenders) return null
-        val scale = requestedAmount.scale().coerceAtLeast(0)
-        val poiData = saleData?.saleToPOIData
-        if (!poiData.isNullOrBlank()) {
-            val tip =
-                runCatching {
-                    val decoded = String(Base64.getDecoder().decode(poiData), Charsets.UTF_8)
-                    val tipOptions =
-                        JsonParser
-                            .parseString(decoded)
-                            .asJsonObject
-                            .getAsJsonArray("Operation")
-                            .first()
-                            .asJsonObject
-                            .getAsJsonObject("TipOptions")
-                    val base = tipOptions.get("AmountToTipOn")?.asBigDecimal ?: requestedAmount
-                    val suggestions = tipOptions.getAsJsonObject("TipSuggestions")
-                    when {
-                        suggestions.has("Amount1") -> {
-                            BigDecimal.valueOf(suggestions.get("Amount1").asLong, scale)
-                        }
-
-                        suggestions.has("Percentage1") -> {
-                            base
-                                .multiply(BigDecimal.valueOf(suggestions.get("Percentage1").asLong))
-                                .divide(BigDecimal.valueOf(PERCENT.toLong()), scale, RoundingMode.HALF_UP)
-                        }
-
-                        else -> {
-                            null
-                        }
-                    }
-                }.getOrNull()
-            if (tip != null) return tip
-        }
-        return requestedAmount
-            .multiply(BigDecimal.TEN)
-            .divide(BigDecimal.valueOf(PERCENT.toLong()), scale, RoundingMode.HALF_UP)
     }
 
     private fun paymentInstrument(payment: SimulatedPayment): PaymentInstrumentData =
@@ -628,7 +627,7 @@ class TerminalSimulator(
         GetTotalsResponse().apply {
             response = Response().apply { result = ResultType.SUCCESS }
             poiReconciliationID = reconciliationId.get().toString()
-            transactionTotals += snapshotTransactionTotals(periodTotals.values.toList())
+            transactionTotals += buildSimulatedTransactionTotals(periodTotals.values.toList())
         }
 
     private fun reconcileResponse(request: ReconciliationRequest): ReconciliationResponse {
@@ -639,33 +638,9 @@ class TerminalSimulator(
             response = Response().apply { result = ResultType.SUCCESS }
             reconciliationType = request.reconciliationType
             poiReconciliationID = currentId
-            transactionTotals += snapshotTransactionTotals(snapshot)
+            transactionTotals += buildSimulatedTransactionTotals(snapshot)
         }
     }
-
-    private fun snapshotTransactionTotals(entries: List<TerminalCurrencyTotals>): List<TransactionTotals> =
-        entries.sortedBy { it.currency }.map { item ->
-            TransactionTotals().apply {
-                paymentInstrumentType = PaymentInstrumentType.CARD
-                paymentCurrency = item.currency
-                if (item.debitCount > 0) {
-                    paymentTotals +=
-                        PaymentTotals().apply {
-                            transactionType = TransactionType.DEBIT
-                            transactionCount = BigInteger.valueOf(item.debitCount.toLong())
-                            transactionAmount = item.debitAmount
-                        }
-                }
-                if (item.creditCount > 0) {
-                    paymentTotals +=
-                        PaymentTotals().apply {
-                            transactionType = TransactionType.CREDIT
-                            transactionCount = BigInteger.valueOf(item.creditCount.toLong())
-                            transactionAmount = item.creditAmount
-                        }
-                }
-            }
-        }
 
     private fun receipt(
         qualifier: DocumentQualifierType,
@@ -765,28 +740,6 @@ class TerminalSimulator(
                 body()
             }
     }
-
-    private data class SimulatedCard(
-        val brand: String,
-        val variant: String,
-        val label: String,
-        val maskedPan: String,
-        val aid: String,
-        val alias: String,
-    )
-
-    private data class SimulatedPayment(
-        val card: SimulatedCard,
-        val psp: String,
-        val tender: String,
-        val authCode: String,
-        val merchantReference: String,
-        val amountText: String,
-        val approved: Boolean,
-        val preAuthorisation: Boolean,
-        val wallet: Boolean = false,
-        val tipAmount: BigDecimal? = null,
-    )
 
     /** Fixed values that tests and callers can rely on. */
     companion object {

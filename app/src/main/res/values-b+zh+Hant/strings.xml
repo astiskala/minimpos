@@ -991,4 +991,12 @@
   <string name="reconciliation_refunds_label">退款（%1$s）</string>
   <string name="reconciliation_compare">Mini mPOS %1$s · 終端 %2$s</string>
   <string name="reconciliation_close_period">結束對賬週期</string>
+  <string name="settings_shopper_display">顧客端終端螢幕</string>
+  <string name="settings_shopper_display_hint">使用獨立終端（或模擬器）時，在結賬過程中於顧客螢幕上顯示商品明細或收集輸入。</string>
+  <string name="settings_show_virtual_receipt">付款前在終端顯示商品明細</string>
+  <string name="settings_confirm_basket_terminal">請顧客在終端確認訂單</string>
+  <string name="settings_collect_email_terminal">未填寫電郵時請顧客在終端輸入電郵</string>
+  <string name="settings_show_terminal_qr">批准後在終端顯示二維碼收據</string>
+  <string name="settings_ask_shopper_rating">批准後請顧客進行 0–10 評分</string>
+  <string name="detail_shopper_rating">顧客評分</string>
 </resources>

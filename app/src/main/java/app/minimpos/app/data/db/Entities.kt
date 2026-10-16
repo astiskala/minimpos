@@ -356,6 +356,8 @@ data class SaleEntity(
     val captureProcessedAt: Long? = null,
     /** Terminal reconciliation period ID (`POIReconciliationID`) reported by the terminal; null when unavailable. */
     val poiReconciliationId: String? = null,
+    /** 0–10 rating collected from the shopper on the terminal after payment; null when not collected. */
+    val shopperRating: Int? = null,
 ) {
     /** What the payment holds on the card: [authorisedMinor] after an adjustment, else [totalMinor]. */
     val heldMinor: Long get() = authorisedMinor ?: totalMinor

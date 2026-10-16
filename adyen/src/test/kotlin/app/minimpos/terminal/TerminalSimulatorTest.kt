@@ -14,6 +14,7 @@ import app.minimpos.terminal.client.RecurringModel
 import app.minimpos.terminal.client.RefundParams
 import app.minimpos.terminal.client.RetryAdvice
 import app.minimpos.terminal.client.ScannedPayment
+import app.minimpos.terminal.client.ShopperSessionFlow
 import app.minimpos.terminal.client.TerminalClient
 import app.minimpos.terminal.client.TerminalCurrencyTotals
 import app.minimpos.terminal.client.TerminalIdentity
@@ -21,6 +22,9 @@ import app.minimpos.terminal.client.TerminalTipOptions
 import app.minimpos.terminal.client.TerminalTipSuggestions
 import app.minimpos.terminal.client.TerminalTotalsOutcome
 import app.minimpos.terminal.client.TransactionOutcome
+import app.minimpos.terminal.client.VirtualReceipt
+import app.minimpos.terminal.client.VirtualReceiptLine
+import app.minimpos.terminal.client.getTotals
 import app.minimpos.terminal.simulator.SimulatedModifications
 import app.minimpos.terminal.simulator.SimulatedOutcome
 import app.minimpos.terminal.simulator.SimulatorConfig
@@ -333,5 +337,33 @@ class TerminalSimulatorTest {
             val nextPeriod = client.getTotals() as TerminalTotalsOutcome.Answered
             assertThat(nextPeriod.poiReconciliationId).isEqualTo("1001")
             assertThat(nextPeriod.totals).isEmpty()
+        }
+
+    @Test
+    fun `chains shopper display and input session around payment`() =
+        runBlocking {
+            val flow =
+                ShopperSessionFlow(
+                    virtualReceipt =
+                        VirtualReceipt(
+                            header = "Order",
+                            lines = listOf(VirtualReceiptLine(1, "Coffee", "AUD", BigDecimal("4.50"))),
+                            total = BigDecimal("4.50"),
+                            currency = "AUD",
+                        ),
+                    confirmationPrompt = "Confirm order" to "AUD 4.50",
+                    emailPrompt = "Enter your email address:",
+                    qrReceipt = "MP-1",
+                    ratingPrompt = "Rate us" to null,
+                )
+            val details = pay(tokenizing.copy(shopperEmail = null, shopperFlow = flow))
+            assertThat(details.success).isTrue()
+            assertThat(details.collectedEmail).isEqualTo("shopper@example.com")
+            assertThat(details.shopperRating).isEqualTo(9)
+
+            config = config.copy(shopperConfirmed = false)
+            val declinedConfirm = pay(tokenizing.copy(shopperFlow = flow))
+            assertThat(declinedConfirm.success).isFalse()
+            assertThat(declinedConfirm.decline?.cancelled).isTrue()
         }
 }

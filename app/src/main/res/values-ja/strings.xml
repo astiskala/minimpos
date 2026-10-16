@@ -991,4 +991,12 @@
   <string name="reconciliation_refunds_label">返金（%1$s）</string>
   <string name="reconciliation_compare">Mini mPOS %1$s · 端末 %2$s</string>
   <string name="reconciliation_close_period">集計期間を締める</string>
+  <string name="settings_shopper_display">購入者向け端末画面</string>
+  <string name="settings_shopper_display_hint">外部端末（またはシミュレーター）を使用する場合、会計時に購入者向け画面に明細を表示したり入力を求めたりします。</string>
+  <string name="settings_show_virtual_receipt">決済前に端末へ明細を表示</string>
+  <string name="settings_confirm_basket_terminal">決済前に端末で注文確認を求める</string>
+  <string name="settings_collect_email_terminal">メールアドレス未入力時に端末で入力を求める</string>
+  <string name="settings_show_terminal_qr">承認後に端末へQR領収書を表示</string>
+  <string name="settings_ask_shopper_rating">承認後に0〜10の評価を求める</string>
+  <string name="detail_shopper_rating">購入者評価</string>
 </resources>

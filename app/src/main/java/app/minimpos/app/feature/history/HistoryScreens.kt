@@ -802,6 +802,7 @@ private fun PaymentDetailsCard(sale: SaleEntity) {
         LabeledValue(stringResource(R.string.detail_shopper_reference), sale.shopperReference)
         LabeledValue(stringResource(R.string.detail_token), sale.storedPaymentMethodId)
         LabeledValue(stringResource(R.string.detail_terminal), sale.poiId)
+        sale.shopperRating?.let { LabeledValue(stringResource(R.string.detail_shopper_rating), "$it / 10") }
         LabeledValue(stringResource(R.string.detail_message), sale.outcomeNote())
         LabeledValue(stringResource(R.string.detail_error_condition), sale.errorCondition)
         LabeledValue(stringResource(R.string.detail_modification_message), sale.modificationNote())

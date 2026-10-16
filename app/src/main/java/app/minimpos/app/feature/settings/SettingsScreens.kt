@@ -1047,8 +1047,48 @@ private fun ColumnScope.PaymentsSection(
     )
     SectionHeader(stringResource(R.string.settings_email_receipts))
     EmailCaptureSettings(payment, ::update)
+    SectionHeader(stringResource(R.string.settings_shopper_display))
+    ShopperDisplaySettings(payment, ::update)
     SectionHeader(stringResource(R.string.settings_payment_links))
     PaymentLinkSettings(payment, ::update)
+}
+
+@Composable
+private fun ColumnScope.ShopperDisplaySettings(
+    payment: PaymentSettings,
+    update: ((PaymentSettings) -> PaymentSettings) -> Unit,
+) {
+    SettingNote(stringResource(R.string.settings_shopper_display_hint))
+    SettingSwitch(
+        stringResource(R.string.settings_show_virtual_receipt),
+        payment.showVirtualReceipt,
+        { value -> update { it.copy(showVirtualReceipt = value) } },
+        tag = "showVirtualReceipt",
+    )
+    SettingSwitch(
+        stringResource(R.string.settings_confirm_basket_terminal),
+        payment.confirmBasketOnTerminal,
+        { value -> update { it.copy(confirmBasketOnTerminal = value) } },
+        tag = "confirmBasketOnTerminal",
+    )
+    SettingSwitch(
+        stringResource(R.string.settings_collect_email_terminal),
+        payment.collectEmailOnTerminal,
+        { value -> update { it.copy(collectEmailOnTerminal = value) } },
+        tag = "collectEmailOnTerminal",
+    )
+    SettingSwitch(
+        stringResource(R.string.settings_show_terminal_qr),
+        payment.showTerminalQrReceipt,
+        { value -> update { it.copy(showTerminalQrReceipt = value) } },
+        tag = "showTerminalQrReceipt",
+    )
+    SettingSwitch(
+        stringResource(R.string.settings_ask_shopper_rating),
+        payment.askShopperRating,
+        { value -> update { it.copy(askShopperRating = value) } },
+        tag = "askShopperRating",
+    )
 }
 
 @Composable

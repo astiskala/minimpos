@@ -11,8 +11,11 @@ import app.minimpos.core.money.CurrencySpec
 import app.minimpos.core.payment.ScanWallet
 import app.minimpos.core.shopper.ShopperReferences
 import app.minimpos.core.tax.TaxMode
+import app.minimpos.terminal.client.ShopperSessionFlow
 import app.minimpos.terminal.client.TerminalTipOptions
 import app.minimpos.terminal.client.TerminalTipSuggestions
+import app.minimpos.terminal.client.VirtualReceipt
+import app.minimpos.terminal.client.VirtualReceiptLine
 import java.time.Duration
 import java.time.Instant
 import java.time.ZoneId
@@ -33,6 +36,7 @@ import java.time.ZoneId
  * @property sessionRevision Revision of the coherent session snapshot; null for a checkout made without a session.
  * @property wallets Explicitly configured scanned wallets for this currency; empty when unavailable.
  * @property terminalTippingAvailable Whether the destination supports native terminal tipping (`AskGratuity`).
+ * @property shopperDisplayAvailable Whether the destination supports shopper-facing terminal display and input requests.
  */
 data class Checkout(
     val form: CheckoutForm = CheckoutForm(),
@@ -45,6 +49,7 @@ data class Checkout(
     internal val sessionRevision: Long? = null,
     val wallets: List<ScanWallet> = emptyList(),
     val terminalTippingAvailable: Boolean = true,
+    val shopperDisplayAvailable: Boolean = false,
 ) {
     /** Whether the amount is only held (a pre-authorisation) rather than charged. */
     val preAuthorisation: Boolean get() = kind == SaleKind.PRE_AUTHORISATION
@@ -140,6 +145,44 @@ data class Checkout(
         return TerminalTipOptions(suggestions = suggestions, amountToTipOn = preTaxAmount)
     }
 
+    /** Resolved chained shopper display and input session for external terminals; null when disabled or unsupported. */
+    fun shopperSessionFlow(merchantReference: String): ShopperSessionFlow? {
+        if (!shopperDisplayAvailable) return null
+        val virtualReceipt =
+            if (payment.showVirtualReceipt) {
+                VirtualReceipt(
+                    header = "Order",
+                    lines =
+                        totals.lines.map {
+                            VirtualReceiptLine(it.line.quantity, it.line.name, currency.code, currency.toMajor(it.amounts.gross))
+                        },
+                    subtotal = currency.toMajor(totals.amounts.net).takeIf { payment.chargeTax },
+                    tax = currency.toMajor(totals.amounts.tax).takeIf { payment.chargeTax },
+                    total = currency.toMajor(totals.amounts.gross),
+                    currency = currency.code,
+                )
+            } else {
+                null
+            }
+        val confirmPrompt =
+            if (payment.confirmBasketOnTerminal) {
+                "Confirm order" to "${currency.code} ${currency.toMajor(totals.amounts.gross).toPlainString()}"
+            } else {
+                null
+            }
+        val emailPrompt = "Enter your email address:".takeIf { payment.collectEmailOnTerminal && form.email.isBlank() }
+        val qrReceipt = merchantReference.takeIf { payment.showTerminalQrReceipt }
+        val ratingPrompt = ("Rate your experience (0–10)" to (null as String?)).takeIf { payment.askShopperRating }
+        if (listOf(virtualReceipt, confirmPrompt, emailPrompt, qrReceipt, ratingPrompt).all { it == null }) return null
+        return ShopperSessionFlow(
+            virtualReceipt = virtualReceipt,
+            confirmationPrompt = confirmPrompt,
+            emailPrompt = emailPrompt,
+            qrReceipt = qrReceipt,
+            ratingPrompt = ratingPrompt,
+        )
+    }
+
     /** Whether "Pay" is enabled: something to charge and every entered field valid. */
     val canPay: Boolean get() = !totals.isEmpty && totals.amounts.gross > 0 && emailValid && referenceValid && customerReferenceValid
 
@@ -152,10 +195,11 @@ data class Checkout(
         zone: ZoneId,
     ): PaymentStart? {
         if (!canPay) return null
+        val reference = form.transactionReference.trim().ifEmpty { Ids.transactionReference(payment.referencePrefix, now, zone) }
         return PaymentStart(
             totals = totals,
             currency = currency,
-            merchantReference = form.transactionReference.trim().ifEmpty { Ids.transactionReference(payment.referencePrefix, now, zone) },
+            merchantReference = reference,
             customerReference = customerReference,
             shopperEmail = form.email.trim().takeIf { it.isNotEmpty() },
             tokenization = TokenizationRequest(payment.recurringModel()).takeIf { tokenize },
@@ -164,6 +208,7 @@ data class Checkout(
             shopperReference = shopperReference,
             sessionRevision = sessionRevision,
             terminalTip = terminalTipOptions(),
+            shopperFlow = shopperSessionFlow(reference),
         )
     }
 
@@ -183,7 +228,7 @@ data class Checkout(
         zone: ZoneId,
     ): PaymentLinkStart? {
         if (!canSendLink) return null
-        val start = paymentStart(now, zone)?.copy(tipOnReceipt = false, terminalTip = null) ?: return null
+        val start = paymentStart(now, zone)?.copy(tipOnReceipt = false, terminalTip = null, shopperFlow = null) ?: return null
         val lifetime = minOf(Duration.ofHours(payment.linkExpiryHours.toLong()), MAX_LINK_LIFETIME)
         return PaymentLinkStart(start, now.plus(lifetime))
     }
@@ -198,7 +243,7 @@ data class Checkout(
     fun walletStart(
         now: Instant,
         zone: ZoneId,
-    ): PaymentStart? = paymentStart(now, zone)?.copy(tipOnReceipt = false, terminalTip = null).takeIf { canScanWallet }
+    ): PaymentStart? = paymentStart(now, zone)?.copy(tipOnReceipt = false, terminalTip = null, shopperFlow = null).takeIf { canScanWallet }
 
     /** Whether [actual] has the same priced cart, currency, form and payment settings as this checkout, and still offers [wallet]. */
     internal fun matchesWalletCheckout(

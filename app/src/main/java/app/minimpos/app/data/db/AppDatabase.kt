@@ -41,6 +41,7 @@ abstract class AppDatabase : RoomDatabase() {
             object : Migration(10, 11) {
                 override fun migrate(db: SupportSQLiteDatabase) {
                     db.execSQL("ALTER TABLE `sales` ADD COLUMN `poiReconciliationId` TEXT")
+                    db.execSQL("ALTER TABLE `sales` ADD COLUMN `shopperRating` INTEGER")
                     db.execSQL("ALTER TABLE `refunds` ADD COLUMN `poiReconciliationId` TEXT")
                 }
             }

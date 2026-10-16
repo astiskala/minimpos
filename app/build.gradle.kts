@@ -3,8 +3,10 @@ import com.android.tools.r8.BackportedMethodList
 import com.android.tools.r8.BackportedMethodListCommand
 import dev.detekt.gradle.Detekt
 import org.jetbrains.kotlin.gradle.tasks.KotlinJvmCompile
+import org.objectweb.asm.ClassReader
 import org.w3c.dom.Element
 import java.util.Properties
+import java.util.zip.ZipFile
 import javax.xml.parsers.DocumentBuilderFactory
 import javax.xml.transform.TransformerFactory
 import javax.xml.transform.dom.DOMSource
@@ -66,6 +68,10 @@ android {
     }
 
     buildTypes {
+        debug {
+            // en-XA (accented, longer) lets tests find text that was never translated; ScreenTextTest uses it.
+            isPseudoLocalesEnabled = true
+        }
         release {
             isMinifyEnabled = true
             isShrinkResources = true
@@ -403,6 +409,78 @@ abstract class VerifyTerminalManifestTask : DefaultTask() {
     }
 }
 
+/**
+ * Fails a shrunk build whose R8 output still contains code that must never ship. Lint's TrustAllX509TrustManager
+ * exception for the Adyen library (lint.xml) relies on R8 removing its TEST-only `TerminalLocalAPIUnencrypted` and every
+ * trust manager in the library, which accepts any certificate; Apache HttpClient 5 does not run on Android (see :adyen).
+ * The kept classes are the class lines of R8's [mapping]; the library's trust managers are read from its class files.
+ */
+abstract class VerifyShrunkClassesTask : DefaultTask() {
+    @get:InputFile
+    @get:PathSensitive(PathSensitivity.NONE)
+    abstract val mapping: RegularFileProperty
+
+    @get:InputFiles
+    @get:PathSensitive(PathSensitivity.NONE)
+    abstract val adyenLibrary: ConfigurableFileCollection
+
+    @get:OutputFile
+    abstract val report: RegularFileProperty
+
+    @TaskAction
+    fun verify() {
+        val classLine = Regex("""^(\S+) -> \S+:$""")
+        val kept = mapping.get().asFile.useLines { lines -> lines.mapNotNull { classLine.matchEntire(it)?.groupValues?.get(1) }.toSet() }
+        val types =
+            adyenLibrary.files
+                .flatMap { jar ->
+                    ZipFile(jar).use { zip ->
+                        zip
+                            .entries()
+                            .asSequence()
+                            .filter { it.name.endsWith(".class") }
+                            .map { entry -> ClassReader(zip.getInputStream(entry).readBytes()) }
+                            .map { it.className to (listOfNotNull(it.superName) + it.interfaces) }
+                            .toList()
+                    }
+                }.toMap()
+        val trustManagerTypes =
+            setOf("javax/net/ssl/TrustManager", "javax/net/ssl/X509TrustManager", "javax/net/ssl/X509ExtendedTrustManager")
+
+        fun trustsCertificates(type: String): Boolean = type in trustManagerTypes || types[type].orEmpty().any(::trustsCertificates)
+        val trustManagers =
+            types.keys
+                .filter(::trustsCertificates)
+                .map { it.replace('/', '.') }
+                .toSet()
+        if (trustManagers.isEmpty()) {
+            throw GradleException(
+                "The Adyen library has no trust manager any more: remove its TrustAllX509TrustManager exception from lint.xml " +
+                    "and this check's trust-manager part.",
+            )
+        }
+        val forbidden =
+            kept.filter {
+                it in trustManagers || it == "com.adyen.service.TerminalLocalAPIUnencrypted" || it.startsWith("org.apache.hc.")
+            }
+        if (forbidden.isNotEmpty()) {
+            throw GradleException("R8 kept classes that must not ship (check the keep rules in proguard-rules.pro): ${forbidden.sorted()}")
+        }
+        report.get().asFile.writeText("OK\nRemoved: ${trustManagers.sorted().joinToString()}\n")
+    }
+}
+
+// The Adyen library's own jar, whose trust managers the shrunk build must not contain.
+val adyenLibraryJar =
+    configurations.create("adyenLibrary") {
+        isCanBeConsumed = false
+        isTransitive = false
+    }
+
+dependencies {
+    adyenLibraryJar(libs.adyen.java.api.library)
+}
+
 val adyenAllowedPermissions =
     setOf(
         "ACCESS_BACKGROUND_LOCATION",
@@ -455,6 +533,18 @@ androidComponents {
                 report.set(layout.buildDirectory.file("reports/terminal-manifest/${variant.name}.txt"))
             }
         tasks.named("check").configure { dependsOn(verifyTask) }
+        if (variant.isMinifyEnabled) {
+            val shrinkTask =
+                tasks.register<VerifyShrunkClassesTask>("verify${name}ShrunkClasses") {
+                    group = "verification"
+                    description = "Checks that R8 removed the Adyen library's trust managers and TEST-only API from ${variant.name}."
+                    mapping.set(variant.artifacts.get(SingleArtifact.OBFUSCATION_MAPPING_FILE))
+                    adyenLibrary.from(adyenLibraryJar)
+                    report.set(layout.buildDirectory.file("reports/shrunk-classes/${variant.name}.txt"))
+                }
+            // Release builds are checked where they are made (CI's R8 build), not in the gate, which never compiles release.
+            tasks.named { it == "assemble$name" }.configureEach { dependsOn(shrinkTask) }
+        }
     }
 }
 
@@ -539,8 +629,39 @@ tasks.withType<Test>().configureEach {
         }
 }
 
+// S1F2 terminals run the minimum SDK (Android 9), so every unit test also runs on Robolectric's Android of that version:
+// the same tests and classpath, with a robolectric.properties ahead of the usual one that changes only the SDK.
+val robolectricMinSdkConfig =
+    tasks.register<WriteProperties>("robolectricMinSdkConfig") {
+        destinationFile.set(layout.buildDirectory.file("robolectric-min-sdk/robolectric.properties"))
+        val usual = Properties().apply { file("src/test/resources/robolectric.properties").inputStream().use { load(it) } }
+        properties(usual.stringPropertyNames().associateWith { usual.getProperty(it) })
+        property("sdk", checkNotNull(android.defaultConfig.minSdk))
+    }
+
+val minSdkUnitTests =
+    tasks.register<Test>("testDebugUnitTestMinSdk") {
+        group = "verification"
+        description = "Runs the debug unit tests on Robolectric's Android ${android.defaultConfig.minSdk}, the oldest supported."
+        val unitTests = tasks.named<Test>("testDebugUnitTest").get()
+        useJUnit()
+        testClassesDirs = unitTests.testClassesDirs
+        classpath = files(
+            robolectricMinSdkConfig.map {
+                it.destinationFile
+                    .get()
+                    .asFile.parentFile
+            },
+        ) + unitTests.classpath
+        jvmArgs(unitTests.jvmArgs.orEmpty())
+        maxHeapSize = unitTests.maxHeapSize
+        maxParallelForks = appTestWorkers
+        // Two suites of Robolectric workers at once would compete for memory.
+        mustRunAfter(unitTests)
+    }
+
 // The app has no variant-specific sources, so analysing the release variant too would only repeat the debug findings.
 tasks.named("check") {
     setDependsOn(dependsOn - tasks.named("detekt"))
-    dependsOn("koverVerifyDebug", "detektDebug", "detektDebugUnitTest", "dokkaGeneratePublicationHtml")
+    dependsOn("koverVerifyDebug", "detektDebug", "detektDebugUnitTest", "dokkaGeneratePublicationHtml", minSdkUnitTests)
 }

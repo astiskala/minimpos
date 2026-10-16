@@ -779,7 +779,12 @@ class TerminalClient(
                     SERVICE_ID_CHARS[Random.nextInt(SERVICE_ID_CHARS.length)]
                 }.joinToString("")
 
-        internal fun mapPayment(response: PaymentResponse): TransactionDetails {
+        /**
+         * The payment [response] said; null when it has no result this version can read (missing, or a value it does
+         * not know), which leaves the payment unknown rather than declined.
+         */
+        internal fun mapPayment(response: PaymentResponse): TransactionDetails? {
+            if (response.response?.result == null) return null
             val additional = AdditionalResponseParser.parse(response.response?.additionalResponse)
             val card = response.paymentResult?.paymentInstrumentData?.cardData
             val storedId =
@@ -825,7 +830,9 @@ class TerminalClient(
             )
         }
 
-        internal fun mapReversal(response: ReversalResponse): TransactionDetails {
+        /** The refund [response] said; null, so the refund stays unknown, when it has no result this version can read. */
+        internal fun mapReversal(response: ReversalResponse): TransactionDetails? {
+            if (response.response?.result == null) return null
             val additional = AdditionalResponseParser.parse(response.response?.additionalResponse)
             return details(
                 response = response.response,

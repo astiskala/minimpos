@@ -54,6 +54,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.time.Clock
 import java.time.ZoneId
+import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.seconds
 
@@ -247,14 +248,15 @@ class CheckoutViewModel(
     /** The screen state, updated whenever the form, cart, settings, printer or payment link setup change. */
     val state: StateFlow<Checkout> = checkout.stateIn(viewModelScope, SharingStarted.Eagerly, Checkout(kind = session.kind))
 
+    private val linkStarted = AtomicBoolean()
+
     /** Updates the form (kept in the [SaleSession] so it survives going back to the cart). */
     fun update(transform: (CheckoutForm) -> CheckoutForm) = session.updateForm(transform)
 
-    /** Starts the payment ([Checkout.paymentStart]); returns false when the form is not ready. */
+    /** Starts the payment ([Checkout.paymentStart]); returns false when the form is not ready or a payment is running. */
     fun pay(): Boolean {
         val start = session.paymentStart(state.value, clock.instant(), zone()) ?: return false
-        payments.start(start)
-        return true
+        return payments.start(start) != null
     }
 
     /** Prepares the unchanged sale for wallet scanning; false when unavailable or already busy. */
@@ -262,11 +264,14 @@ class CheckoutViewModel(
 
     /**
      * Starts creating a payment link instead ([Checkout.linkStart]) and returns its sale's ID; null when no link can be
-     * made (the form is not ready, or links are not offered).
+     * made (the form is not ready, or links are not offered) or this checkout already started one, such as on a second
+     * tap: each link can be paid on its own, so a second one would be a second charge.
      */
     fun sendLink(): String? {
+        val links = links ?: return null
         val start = session.linkStart(state.value, clock.instant(), zone()) ?: return null
-        return links?.start(start)
+        if (!linkStarted.compareAndSet(false, true)) return null
+        return links.start(start)
     }
 }
 
@@ -452,12 +457,14 @@ class SaleResultViewModel(
     /** Leaves the result, so the next payment can start. */
     fun finish() = lifecycle.acknowledge()
 
-    /** Starts collecting the remaining balance of a partially paid sale on another card; false when not partially paid. */
+    /**
+     * Starts collecting the remaining balance of a partially paid sale on another card; false when not partially paid
+     * or a payment is already running.
+     */
     fun payRemaining(): Boolean {
         val sale = state.value.record?.sale ?: return false
         val start = Checkout.remainingPayment(sale) ?: return false
         lifecycle.acknowledge()
-        lifecycle.start(start)
-        return true
+        return lifecycle.start(start) != null
     }
 }

@@ -38,7 +38,8 @@ object QrChunks {
 
     /**
      * Splits [data] into chunks of at most [maxDataChars] characters, numbered from 1; empty [data] gives one empty
-     * chunk so that an empty payload can still be transferred.
+     * chunk so that an empty payload can still be transferred. A set never has more than the 999 chunks [parse]
+     * accepts: data that would need more is split into 999 longer chunks instead.
      *
      * @throws IllegalArgumentException if [setId] is not [SET_ID_LENGTH] upper-case letters or digits, or
      *   [maxDataChars] is not positive.
@@ -50,7 +51,8 @@ object QrChunks {
     ): List<Chunk> {
         require(setId.length == SET_ID_LENGTH && setId.all { it in '0'..'9' || it in 'A'..'Z' }) { "Invalid set id" }
         require(maxDataChars > 0) { "Chunk size must be positive" }
-        val parts = if (data.isEmpty()) listOf("") else data.chunked(maxDataChars)
+        val size = maxOf(maxDataChars, (data.length + MAX_CHUNKS - 1) / MAX_CHUNKS)
+        val parts = if (data.isEmpty()) listOf("") else data.chunked(size)
         return parts.mapIndexed { i, part -> Chunk(setId, i + 1, parts.size, part) }
     }
 

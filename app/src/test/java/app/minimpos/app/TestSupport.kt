@@ -15,6 +15,7 @@ import app.minimpos.app.data.security.SecretCipher
 import app.minimpos.app.data.settings.AppSettings
 import app.minimpos.app.data.settings.TerminalMode
 import app.minimpos.app.email.MailTransport
+import app.minimpos.app.payment.TransactionLifecycle
 import app.minimpos.app.terminal.ApiSetup
 import app.minimpos.app.terminal.Attempt
 import app.minimpos.app.terminal.DeviceInfo
@@ -446,6 +447,8 @@ class TestEnvironment(
     /** Most tests begin after first-run setup; onboarding tests opt into a fresh installation. */
     onboardingCompleted: Boolean = true,
     private val verifiedSetup: Boolean = true,
+    /** Files (such as `settings.json`) already in the data folder by name, as an earlier version left them. */
+    storedFiles: Map<String, String> = emptyMap(),
 ) : ExternalResource() {
     /** Robolectric's application context. */
     val context: Context = ApplicationProvider.getApplicationContext()
@@ -455,7 +458,10 @@ class TestEnvironment(
     }
 
     /** Where the DataStore files live; deleted by [close]. */
-    val dir: File = Files.createTempDirectory("minimpos").toFile()
+    val dir: File =
+        Files.createTempDirectory("minimpos").toFile().also { dir ->
+            storedFiles.forEach { (name, text) -> File(dir, name).writeText(text) }
+        }
 
     /** The container's cipher, to make secret storage fail. */
     val cipher = FakeCipher()
@@ -627,6 +633,9 @@ fun closeViewModels(models: List<ViewModel>) {
 
 /** What came of a request the gateway sent; fails the test when nothing was sent. */
 fun <T> Attempt<T>.made(): T = (this as Attempt.Made).result
+
+/** Starts [request] and returns its record ID; fails the test when another transaction is still in progress. */
+fun <R> TransactionLifecycle<R>.started(request: R): String = checkNotNull(start(request)) { "Another transaction is in progress" }
 
 /**
  * Waits until [condition] holds. Saves resume on the main looper, which Robolectric pauses, so each check drains it

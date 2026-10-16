@@ -10,6 +10,8 @@ detekt = "2.0.0-alpha.6"
 composeRules = "0.6.7"
 # Only used to check KDoc: every module's check fails when a [link] does not resolve.
 dokka = "2.2.0"
+# Mutation testing (./gradlew mutationTest); not part of the quality gate.
+pitest = "1.19.0"
 
 composeBom = "2026.09.00"
 activityCompose = "1.13.0"
@@ -101,3 +103,4 @@ detekt = { id = "dev.detekt", version.ref = "detekt" }
 dokka = { id = "org.jetbrains.dokka", version.ref = "dokka" }
 android-lint = { id = "com.android.lint", version.ref = "agp" }
 room = { id = "androidx.room", version.ref = "room" }
+pitest = { id = "info.solidsoft.pitest", version.ref = "pitest" }

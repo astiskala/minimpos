@@ -15,6 +15,7 @@ import app.minimpos.app.data.db.RefundStatus
 import app.minimpos.app.data.repo.HistoryItem
 import app.minimpos.app.payment.PaymentStart
 import app.minimpos.app.payment.TransactionState
+import app.minimpos.app.started
 import app.minimpos.core.cart.AppliedTax
 import app.minimpos.core.cart.Cart
 import app.minimpos.core.money.CurrencySpec
@@ -64,7 +65,7 @@ class PinAccessFlowTest {
                 null,
                 null,
             )
-        val saleId = container.payments.start(start)
+        val saleId = container.payments.started(start)
         await { container.payments.state.first { it == TransactionState.Finished(saleId) } }
         await { container.managerPin.setPin("2468") }
         compose.onNodeWithTag("history").performClick()

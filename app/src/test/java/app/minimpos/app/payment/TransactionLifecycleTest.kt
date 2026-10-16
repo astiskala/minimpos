@@ -1,5 +1,7 @@
 package app.minimpos.app.payment
 
+import app.minimpos.app.FakeDevice
+import app.minimpos.app.FakeTerminal
 import app.minimpos.app.TestEnvironment
 import app.minimpos.app.await
 import app.minimpos.app.data.db.DeviceFault
@@ -15,12 +17,14 @@ import app.minimpos.app.data.db.StoredReason
 import app.minimpos.app.data.db.TaxRateEntity
 import app.minimpos.app.data.repo.ReceiptLinesJson
 import app.minimpos.app.data.repo.RefundedLine
+import app.minimpos.app.data.security.Secret
 import app.minimpos.app.data.settings.TerminalMode
 import app.minimpos.app.history.PaymentStanding
 import app.minimpos.app.history.RefundStart
 import app.minimpos.app.history.RefundablePayment
 import app.minimpos.app.history.actions
 import app.minimpos.app.history.standing
+import app.minimpos.app.started
 import app.minimpos.core.cart.AppliedTax
 import app.minimpos.core.cart.Cart
 import app.minimpos.core.cart.CartProduct
@@ -32,7 +36,10 @@ import app.minimpos.terminal.simulator.SimulatedOutcome
 import app.minimpos.terminal.simulator.TerminalSimulator
 import app.minimpos.terminal.transport.TerminalEnvironment
 import com.google.common.truth.Truth.assertThat
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.withTimeoutOrNull
 import org.junit.After
 import org.junit.Assert.assertThrows
 import org.junit.Test
@@ -40,6 +47,7 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import java.time.Instant
 import java.time.ZoneOffset
+import java.util.concurrent.atomic.AtomicInteger
 
 /** Payments and refunds share one lifecycle; these tests run it through the simulator and an in-memory database. */
 @RunWith(RobolectricTestRunner::class)
@@ -53,27 +61,30 @@ class TransactionLifecycleTest {
     @After
     fun tearDown() = env.close()
 
-    private fun start(
+    private fun request(
         tokenize: Boolean = false,
         email: String? = null,
-    ): String {
+    ): PaymentStart {
         val cart =
             Cart()
                 .addProduct(CartProduct(1, "Latte", null, 450, gst)) { "a" }
                 .addProduct(CartProduct(1, "Latte", null, 450, gst)) { "b" }
                 .addCustom("Custom", 300, AppliedTax("Free", 0), "c")
-        return payments.start(
-            PaymentStart(
-                totals = cart.totals(TaxMode.INCLUSIVE),
-                currency = CurrencySpec("AUD", 2),
-                merchantReference = "MP-1",
-                customerReference = "CUST-1",
-                shopperEmail = email,
-                tokenization = TokenizationRequest(RecurringModel.CARD_ON_FILE).takeIf { tokenize },
-                shopperReference = "CUST-1",
-            ),
+        return PaymentStart(
+            totals = cart.totals(TaxMode.INCLUSIVE),
+            currency = CurrencySpec("AUD", 2),
+            merchantReference = "MP-1",
+            customerReference = "CUST-1",
+            shopperEmail = email,
+            tokenization = TokenizationRequest(RecurringModel.CARD_ON_FILE).takeIf { tokenize },
+            shopperReference = "CUST-1",
         )
     }
+
+    private fun start(
+        tokenize: Boolean = false,
+        email: String? = null,
+    ): String = payments.started(request(tokenize, email))
 
     private fun finished(saleId: String) =
         await {
@@ -93,7 +104,7 @@ class TransactionLifecycleTest {
     fun `a configured Manager PIN also blocks direct refunds until approved`() {
         env.useSimulator()
         await { container.managerPin.setPin("2468") }
-        val id = refunds.start(refundStart(null, 100, full = false))
+        val id = refunds.started(refundStart(null, 100, full = false))
         await { refunds.state.first { it == TransactionState.Finished(id) } }
         val record = await { container.refundRecords.get(id)!! }
         assertThat(record.status).isEqualTo(RefundStatus.FAILED)
@@ -186,10 +197,47 @@ class TransactionLifecycleTest {
         payments.cancel()
         val saleId = start()
         await { payments.state.first { (it as? TransactionState.Processing)?.serviceId != null } }
-        assertThrows(IllegalStateException::class.java) { start() }
+        // A second start (such as a second tap on Pay) stores and sends nothing.
+        assertThat(payments.start(request())).isNull()
+        assertThat(await { container.history.items().first() }).hasSize(1)
         payments.cancel()
         assertThat((payments.state.value as? TransactionState.Processing)?.cancelling).isTrue()
         assertThat(finished(saleId).sale.status).isEqualTo(SaleStatus.CANCELLED)
+    }
+
+    @Test
+    fun `a second cancel while cancelling sends no second abort`() {
+        val aborts = AtomicInteger()
+        val answer = CompletableDeferred<Unit>()
+        val terminal =
+            FakeTerminal(reply = { request ->
+                if (request.saleToPOIRequest.abortRequest != null) aborts.incrementAndGet()
+                if (request.saleToPOIRequest.paymentRequest != null) answer.await()
+                null
+            })
+        val onTerminal = TestEnvironment(FakeDevice(detectedPoiId = "S1F2-000158213605014"), terminal)
+        try {
+            await { onTerminal.container.secrets.set(Secret.TERMINAL_PASSPHRASE, terminal.passphrase) }
+            onTerminal.useCheckoutApi()
+            onTerminal.updateSettings { it.copy(terminal = it.terminal.copy(keyIdentifier = "key")) }
+            await { onTerminal.container.terminalStatus.check() }
+            val lifecycle = onTerminal.container.payments
+            val saleId = lifecycle.started(request())
+            await { lifecycle.state.first { (it as? TransactionState.Processing)?.serviceId != null } }
+            lifecycle.cancel()
+            lifecycle.cancel()
+            await {
+                while (aborts.get() == 0) delay(10)
+                // Both cancellations would have been sent at once; give a second one time to arrive.
+                withTimeoutOrNull(500) { while (aborts.get() < 2) delay(10) }
+            }
+            assertThat(aborts.get()).isEqualTo(1)
+            answer.complete(Unit)
+            await { lifecycle.state.first { it == TransactionState.Finished(saleId) } }
+        } finally {
+            answer.complete(Unit)
+            onTerminal.close()
+        }
     }
 
     @Test
@@ -254,7 +302,7 @@ class TransactionLifecycleTest {
         val line = record.sortedLines.first()
         val partial =
             refundFinished(
-                refunds.start(refundStart(saleId, 450, full = false, lines = listOf(RefundedLine(line.id, "Latte", 1, 450, 450)))),
+                refunds.started(refundStart(saleId, 450, full = false, lines = listOf(RefundedLine(line.id, "Latte", 1, 450, 450)))),
             )
         assertThat(partial.status).isEqualTo(RefundStatus.REQUESTED)
         assertThat(partial.pspReference).isNotNull()
@@ -268,7 +316,7 @@ class TransactionLifecycleTest {
         assertThat(sale.sale.refundedMinor).isEqualTo(450)
         assertThat(sale.sortedLines.first().refundedQuantity).isEqualTo(1)
 
-        val full = refundFinished(refunds.start(refundStart(null, 1_200, full = true)))
+        val full = refundFinished(refunds.started(refundStart(null, 1_200, full = true)))
         assertThat(full.status).isEqualTo(RefundStatus.REQUESTED)
     }
 
@@ -329,7 +377,7 @@ class TransactionLifecycleTest {
                     ),
             )
         }
-        val refund = refundFinished(refunds.start(refundStart(null, 100, full = false)))
+        val refund = refundFinished(refunds.started(refundStart(null, 100, full = false)))
         assertThat(refund.status).isEqualTo(RefundStatus.FAILED)
         assertThat(refund.reason).isEqualTo(StoredReason.NotDone(Failure.NotSetUp(SetupProblem.PASSPHRASE)))
         assertThat(await { container.receipts.automation(StoredTransaction.Refund(refund.id)) }).isEqualTo(AutoDelivery())
@@ -337,7 +385,7 @@ class TransactionLifecycleTest {
 
         // A time stamp the terminal client cannot send makes the request fail inside the job.
         env.useSimulator()
-        val broken = refundFinished(refunds.start(refundStart(null, 100, full = false, timestamp = "not a time")))
+        val broken = refundFinished(refunds.started(refundStart(null, 100, full = false, timestamp = "not a time")))
         assertThat(broken.status).isEqualTo(RefundStatus.UNKNOWN)
         // Exception text is never stored; the screens word the device fault instead.
         assertThat(broken.message).isNull()
@@ -392,7 +440,7 @@ class TransactionLifecycleTest {
                 }
                 val record = await { container.sales.get(sale.id)!! }
                 val request = RefundablePayment.cancellation(record, "", Instant.now(), ZoneOffset.UTC)!!
-                val failed = refundFinished(refunds.start(request))
+                val failed = refundFinished(refunds.started(request))
                 assertThat(failed.status).isEqualTo(RefundStatus.FAILED)
                 assertThat(failed.reason).isEqualTo(StoredReason.NotDone(Failure.NotSetUp(SetupProblem.PAYMENT_CONTEXT)))
                 assertThat(failed.pspReference).isNull()
@@ -407,7 +455,7 @@ class TransactionLifecycleTest {
         useSimulatorWithAutoPrint()
         val cart = Cart().addProduct(CartProduct(7, "Catering deposit", null, 20_000, gst)) { "a" }
         val saleId =
-            payments.start(
+            payments.started(
                 PaymentStart(
                     totals = cart.totals(TaxMode.INCLUSIVE),
                     currency = CurrencySpec("AUD", 2),
@@ -424,7 +472,7 @@ class TransactionLifecycleTest {
         assertThat(ReceiptLinesJson.decode(record.sale.customerReceiptJson).map { it.name }).contains("Pre-authorization")
         payments.acknowledge()
 
-        val cancellation = refundFinished(refunds.start(RefundablePayment.cancellation(record, "", Instant.now(), ZoneOffset.UTC)!!))
+        val cancellation = refundFinished(refunds.started(RefundablePayment.cancellation(record, "", Instant.now(), ZoneOffset.UTC)!!))
         assertThat(cancellation.cancellation).isTrue()
         assertThat(cancellation.full).isTrue()
         assertThat(cancellation.status).isEqualTo(RefundStatus.REQUESTED)

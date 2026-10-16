@@ -86,6 +86,7 @@ scripts/dev finish
 | `warm` | Preflight, then compiler/test/browser/pinned-tool warmup; does not install SDKs or change config. |
 | `report` | Build current tooling, then summarize existing JUnit XML: exact assertions, first project frame, quoted reruns and slowest suites. |
 | `profile WORKERS [PATTERN]` | Rerun only the app test task with 1–4 workers and Gradle `--profile`; default pattern `*ui.*`. |
+| `mutation` | Existing `mutationTest`: PIT mutation testing of `core` and `adyen`; slow, never part of `finish` or CI. |
 
 Except `preflight`/`report`, commands accept trailing Gradle flags. `scripts/dev help` shows syntax.
 Fast lanes deliberately omit unrelated checks. Passing one never replaces `finish`; dependency edits still need a
@@ -114,11 +115,11 @@ The gate checks:
 | rumdl | Markdown rules and relative links; 120 columns outside tables/code. Wrap prose by hand; formatting keeps line breaks. |
 | Website | Local links/fragments/assets, language and metadata parity, UI labels, screenshots, setup-helper fields and async generation; W3C Nu HTML/CSS validation with no messages. |
 | Workflows and scripts | actionlint, shellcheck and offline zizmor. |
-| Release | Offline version preparation and exact-commit APK/tooling artifact integrity tests. |
+| Release | Offline version preparation and exact-commit APK/tooling artifact integrity tests. Every R8 build fails if it keeps the Adyen library's trust managers, `TerminalLocalAPIUnencrypted` or Apache HttpClient 5. |
 | detekt | Type-resolved checks of main/test sources, including Compose, documentation and modern Kotlin/Jetpack API rules (reasons in `config/detekt/detekt.yml`); no baseline. |
 | Dokka | All KDoc links resolve, including private code; generated HTML is in `<module>/build/dokka/html`. |
 | Android Lint | All checks, including normally disabled checks and test sources; warnings fail. |
-| Tests | JVM, Robolectric, Compose, ArchUnit and Android API-level tests. |
+| Tests | JVM, Robolectric, Compose, ArchUnit and Android API-level tests; app tests run on Robolectric SDK 33 and again on the minimum SDK 28. |
 | Kover | Core 95/85%, Adyen 90/75% line/branch coverage; app non-UI 80% lines via `koverVerifyDebug`. |
 | Manifest | Debug and release satisfy Adyen's constraints, including a PNG-only application icon and allowed permissions. |
 
@@ -151,7 +152,15 @@ standalone release builds retain release lint by default. R8, signing and packag
   CI includes them in its existing reports artifact. Check timestamps: old failure artifacts may remain.
 - `LocalizationTest` checks resource/format parity and writes receipt samples under
   `app/build/reports/localization/`. `LocalizedUiTest` checks Simplified/Traditional Chinese and Japanese checkout
-  at AMS1 size.
+  at AMS1 size. `ScreenTextTest` finds text cut off without an ellipsis in all four languages at AMS1 size, and text
+  still in English in the debug-only en-XA pseudo-locale.
+- `testDebugUnitTestMinSdk` reruns every app test on Robolectric SDK 28 (S1F2's Android 9); it is part of `check`.
+  Filter it like `testDebugUnitTest`.
+- Financial actions are tapped twice in one input batch (`DoubleActivationTest`, `DoubleModificationTest`); add each
+  new money-moving action there. `MalformedTerminalReplyTest` and `MalformedAdyenReplyTest` damage every field of
+  real answers: a damaged answer may only become unknown, never change the outcome or be thrown.
+- `InvariantsTest` and `SaleEventPropertiesTest` check properties on many seeded random inputs; a failure names the
+  seed and case. Use whole code points when generating text.
 - No real network or DNS in unit tests. Use the existing fake terminal, cloud, Payments app, Management and link APIs.
 - Website helper integration tests use JDK HTTP/WebSocket APIs to drive Chromium's DevTools protocol. They load the
   actual localized pages from disk in a disposable profile with loopback-only debugging and outbound DNS blocked,
@@ -206,6 +215,10 @@ they require a backend for certificates, a private Maven repository, PCI MPoC an
   the database version, register a data-preserving migration, retain released exported schemas and export the new
   schema. Update `DatabaseSchemaTest` and add migration tests that verify schema validity and preservation of merchant
   data, including unfinished financial operations. Never add destructive fallback or reset local data silently.
+- Settings, secrets, JSON columns and journal payloads have no Room schema export, and an unreadable settings or
+  secrets file is replaced with defaults. `StoredFormatTest` keeps their format in `stored/formats.txt` and loads the
+  files each release wrote from `app/src/test/resources/stored/<version>/`. When a release changes the format, copy
+  `app/build/reports/stored-formats/current/` (written by that test) to `stored/<version>/` before releasing.
 - QR formats retain one current contract. Update the app, setup helper, format tests and helper vectors together;
   see [repository constraints](AGENTS.md).
 - New-install localized/regional defaults must not overwrite stored text or imported settings.
@@ -244,8 +257,11 @@ label screenshots as demos, and keep demo data consistent. The guides' SMTP link
 - For transitive advisories, pin a patched version in `settings.gradle.kts`'s `patched` table, check
   `./gradlew <module>:dependencies buildEnvironment`, then run the gate and signed release build. Remove overrides
   when upstream catches up. Dependency submission sends the resolved graph to GitHub.
-- Adyen's library ships no R8 rules. Keep its model/serialization rules in `app/proguard-rules.pro` and inspect release
-  dex after upgrades: the `TrustAllX509TrustManager` lint exception depends on stripping the TEST-only API.
+- Adyen's library ships no R8 rules. Keep its model/serialization rules in `app/proguard-rules.pro`. The
+  `TrustAllX509TrustManager` lint exception depends on stripping the TEST-only API; `verifyReleaseShrunkClasses`
+  (run by every `assembleRelease`) fails when R8 keeps it, any trust manager in the library or Apache HttpClient 5.
+- Mutation testing (`./gradlew mutationTest`, reports under `<module>/build/reports/pitest/`) shows tests that run
+  code without noticing a change. It is too slow for the gate; add tests for meaningful survivors.
 - rumdl, actionlint, shellcheck and zizmor use official archives with pinned hashes in `registerDownload`. Upgrade to a
   release at least seven days old; update all four platform checksums together, using release checksum files or
   verified archives (`gh attestation verify`). Dependabot cannot update these binaries.

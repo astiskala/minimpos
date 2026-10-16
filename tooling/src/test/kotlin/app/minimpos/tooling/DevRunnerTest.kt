@@ -73,6 +73,14 @@ class DevRunnerTest {
     }
 
     @Test
+    fun `mutation runs only the separate mutation task with trailing flags`() {
+        val result = run(fixture(), "mutation", "--continue")
+        assertThat(result.first).isEqualTo(0)
+        assertThat(result.second).contains("<mutationTest>\n<--continue>")
+        assertThat(result.second).doesNotContain("qualityGate")
+    }
+
+    @Test
     fun `help succeeds without Gradle or local configuration`() {
         val result = run(fixture(), "help")
         assertThat(result.first).isEqualTo(0)

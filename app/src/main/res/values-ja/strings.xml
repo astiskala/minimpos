@@ -438,7 +438,7 @@
   <!-- Setup and catalog transfer -->
   <string name="transfer_export">別のデバイスに共有</string>
   <string name="transfer_import">別のデバイスから設定</string>
-  <string name="transfer_export_hint">別のデバイスで「別のデバイスから設定」（「商品」または「設定 › データ」）を選び、カメラでこれらのコードを読み取ってください。</string>
+  <string name="transfer_export_hint">別のデバイスで「別のデバイスから設定」（「商品」または「設定 › データと転送」）を選び、カメラでこれらのコードを読み取ってください。</string>
   <string name="transfer_import_hint">別のデバイスまたはセットアップヘルパーのページに表示されたQRコードをカメラで読み取ってください。</string>
   <string name="transfer_code_of">%1$d / %2$d コード</string>
   <string name="transfer_received">%1$d/%2$d スキャン済み</string>
@@ -572,10 +572,10 @@
   <string name="email_link_intro">以下のリンクまたはQRコードから、オンラインで安全にお支払いください。</string>
   <string name="email_test_subject">Mini mPOS テストメール</string>
   <string name="email_test_body">SMTP設定は正常です。Mini mPOSから領収書をメールで送信できます。</string>
-  <string name="email_not_configured">メールが未設定です。「設定 › メール」でSMTPを設定してください。</string>
+  <string name="email_not_configured">メールが未設定です。「設定 › 領収書のメール送信」でSMTPを設定してください。</string>
   <string name="email_invalid_address">有効なメールアドレスを入力してください</string>
   <string name="email_default_subject">{business}の領収書</string>
-  <string name="email_authentication">メールサーバーがユーザー名またはパスワードを受け付けませんでした。「設定 › メール」で確認してください。</string>
+  <string name="email_authentication">メールサーバーがユーザー名またはパスワードを受け付けませんでした。「設定 › 領収書のメール送信」で確認してください。</string>
   <string name="email_unreachable">メールサーバーに接続できませんでした。サーバー、ポート、インターネット接続を確認してください。</string>
   <string name="email_rejected">メールサーバーがこのメールを受け付けませんでした。</string>
 
@@ -606,9 +606,13 @@
   <string name="settings_payments">決済</string>
   <string name="settings_tax">税</string>
   <string name="settings_receipts">領収書</string>
-  <string name="settings_email">メール（SMTP）</string>
+  <string name="settings_email">領収書のメール送信</string>
   <string name="settings_security">セキュリティ</string>
-  <string name="settings_data">データ</string>
+  <string name="settings_data">データと転送</string>
+  <string name="settings_connection_group">接続</string>
+  <string name="settings_device_group">デバイス</string>
+  <string name="settings_tips_donations">チップと寄付</string>
+  <string name="settings_card_payments">カード決済</string>
   <string name="settings_about">アプリ情報</string>
   <string name="settings_not_configured">未設定</string>
   <string name="settings_pin_on">管理者PINあり</string>

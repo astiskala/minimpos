@@ -16,12 +16,12 @@ import app.minimpos.app.data.db.TaxRateEntity
 import app.minimpos.app.data.repo.ReceiptLinesJson
 import app.minimpos.app.data.repo.RefundedLine
 import app.minimpos.app.data.settings.TerminalMode
+import app.minimpos.app.history.PaymentStanding
+import app.minimpos.app.history.RefundStart
+import app.minimpos.app.history.RefundablePayment
+import app.minimpos.app.history.actions
+import app.minimpos.app.history.standing
 import app.minimpos.app.payment.StoredTransaction
-import app.minimpos.app.refund.PaymentStanding
-import app.minimpos.app.refund.RefundStart
-import app.minimpos.app.refund.RefundablePayment
-import app.minimpos.app.refund.actions
-import app.minimpos.app.refund.standing
 import app.minimpos.core.cart.AppliedTax
 import app.minimpos.core.cart.Cart
 import app.minimpos.core.cart.CartProduct

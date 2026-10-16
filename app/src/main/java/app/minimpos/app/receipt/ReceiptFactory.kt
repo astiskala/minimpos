@@ -5,10 +5,10 @@ import app.minimpos.app.data.db.RefundStatus
 import app.minimpos.app.data.db.SaleWithLines
 import app.minimpos.app.data.repo.ReceiptLinesJson
 import app.minimpos.app.data.settings.ReceiptSettings
-import app.minimpos.app.refund.HistoryReport
-import app.minimpos.app.refund.PaymentStanding
-import app.minimpos.app.refund.ReceiptStanding
-import app.minimpos.app.refund.RefundablePayment
+import app.minimpos.app.history.HistoryReport
+import app.minimpos.app.history.PaymentStanding
+import app.minimpos.app.history.ReceiptStanding
+import app.minimpos.app.history.RefundablePayment
 import app.minimpos.core.cart.AppliedTax
 import app.minimpos.core.cart.TaxBreakdown
 import app.minimpos.core.codec.RefundQrPayload

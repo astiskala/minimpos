@@ -6,7 +6,7 @@ Starred rules below are enforced by `ArchitectureTest`, `SettingsArchitectureTes
 ## Architecture boundaries
 
 - \* Dependencies go downwards: UI (`feature`, `ui`, `scan`, `qr`, `share`) → `payment` → `email` → `receipt` →
-  `refund`/`terminal` → `data`, beside the isolated `update` package. Every production class belongs to a listed
+  `history`/`terminal` → `data`, beside the isolated `update` package. Every production class belongs to a listed
   module or the application bootstrap. Only UI reaches `AppContainer`; view models hold no UI types or display text.
 - \* Only `terminal` integrates `:adyen` transports/simulator/Payments app, with the container wiring them. Elsewhere
   only stored environment/region/outcome values and `TerminalClient` companion helpers are allowed. `com.adyen` stays

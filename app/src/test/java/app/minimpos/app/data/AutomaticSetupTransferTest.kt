@@ -23,7 +23,7 @@ import app.minimpos.app.terminal.TerminalConnection
 import app.minimpos.core.codec.SealedSecrets
 import app.minimpos.core.codec.Transfer
 import app.minimpos.core.codec.TransferCodec
-import app.minimpos.core.money.PaymentContext
+import app.minimpos.core.payment.PaymentContext
 import app.minimpos.terminal.paymentsapp.ManagementResult
 import app.minimpos.terminal.transport.ApiKey
 import app.minimpos.terminal.transport.CredentialLookup

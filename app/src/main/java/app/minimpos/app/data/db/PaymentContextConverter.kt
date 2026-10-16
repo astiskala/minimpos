@@ -1,7 +1,7 @@
 package app.minimpos.app.data.db
 
 import androidx.room.TypeConverter
-import app.minimpos.core.money.PaymentContext
+import app.minimpos.core.payment.PaymentContext
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.serializer
 

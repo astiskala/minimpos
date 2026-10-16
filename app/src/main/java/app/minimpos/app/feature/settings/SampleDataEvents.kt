@@ -10,6 +10,7 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.viewmodel.compose.viewModel
 import app.minimpos.app.R
+import app.minimpos.app.feature.SampleDataState
 import app.minimpos.app.ui.components.ActionMessage
 import app.minimpos.app.ui.components.LocalAppContainer
 import app.minimpos.app.ui.components.SecondaryButton

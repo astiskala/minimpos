@@ -13,8 +13,8 @@ import app.minimpos.app.data.db.AdjustmentStatus
 import app.minimpos.app.data.db.SaleEntity
 import app.minimpos.app.data.db.SaleKind
 import app.minimpos.app.data.db.SaleStatus
-import app.minimpos.app.refund.PaymentStanding
-import app.minimpos.app.refund.standing
+import app.minimpos.app.history.PaymentStanding
+import app.minimpos.app.history.standing
 import app.minimpos.app.ui.components.OutcomeNote
 import app.minimpos.app.ui.components.SecondaryButton
 import app.minimpos.app.ui.components.StatusKind

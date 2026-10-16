@@ -50,6 +50,13 @@ import app.minimpos.app.feature.settings.SettingsUiState
 import app.minimpos.app.feature.settings.SettingsViewModel
 import app.minimpos.app.feature.settings.TerminalSetupViewModel
 import app.minimpos.app.feature.transfer.TransferImportViewModel
+import app.minimpos.app.history.HistoryAccounting
+import app.minimpos.app.history.PaymentStanding
+import app.minimpos.app.history.ReceiptStanding
+import app.minimpos.app.history.RefundChoice
+import app.minimpos.app.history.RefundablePayment
+import app.minimpos.app.history.StoredPayment
+import app.minimpos.app.history.actions
 import app.minimpos.app.payment.CaptureResult
 import app.minimpos.app.payment.Checkout
 import app.minimpos.app.payment.PaymentLinkStart
@@ -62,13 +69,6 @@ import app.minimpos.app.payment.SaleSession
 import app.minimpos.app.payment.SettingsEdit
 import app.minimpos.app.receipt.PrintRenderer
 import app.minimpos.app.receipt.ReceiptFactory
-import app.minimpos.app.refund.HistoryAccounting
-import app.minimpos.app.refund.PaymentStanding
-import app.minimpos.app.refund.ReceiptStanding
-import app.minimpos.app.refund.RefundChoice
-import app.minimpos.app.refund.RefundablePayment
-import app.minimpos.app.refund.StoredPayment
-import app.minimpos.app.refund.actions
 import app.minimpos.app.terminal.AdyenApi
 import app.minimpos.app.terminal.ApiAccess
 import app.minimpos.app.terminal.ApiSetup
@@ -95,7 +95,7 @@ import app.minimpos.app.update.GitHubReleases
 import app.minimpos.app.update.UpdateCheck
 import app.minimpos.core.codec.Transfer
 import app.minimpos.core.money.CurrencySpec
-import app.minimpos.core.money.PaymentContext
+import app.minimpos.core.payment.PaymentContext
 import app.minimpos.terminal.checkout.PaymentLink
 import app.minimpos.terminal.checkout.PaymentLinkApi
 import app.minimpos.terminal.checkout.PaymentModifications
@@ -164,8 +164,8 @@ class ArchitectureTest {
             .definedBy("app.minimpos.app.email..")
             .layer(RECEIPT)
             .definedBy("app.minimpos.app.receipt..")
-            .layer(REFUND)
-            .definedBy("app.minimpos.app.refund..")
+            .layer(HISTORY)
+            .definedBy("app.minimpos.app.history..")
             .layer(TERMINAL)
             .definedBy("app.minimpos.app.terminal..")
             .layer(UPDATE)
@@ -180,14 +180,14 @@ class ArchitectureTest {
             .mayOnlyBeAccessedByLayers(PAYMENT, UI)
             .whereLayer(RECEIPT)
             .mayOnlyBeAccessedByLayers(EMAIL, PAYMENT, UI)
-            .whereLayer(REFUND)
+            .whereLayer(HISTORY)
             .mayOnlyBeAccessedByLayers(RECEIPT, PAYMENT, UI)
             .whereLayer(TERMINAL)
             .mayOnlyBeAccessedByLayers(RECEIPT, PAYMENT, UI)
             .whereLayer(UPDATE)
             .mayOnlyBeAccessedByLayers(UI)
             .whereLayer(DATA)
-            .mayOnlyBeAccessedByLayers(TERMINAL, REFUND, RECEIPT, EMAIL, PAYMENT, UI)
+            .mayOnlyBeAccessedByLayers(TERMINAL, HISTORY, RECEIPT, EMAIL, PAYMENT, UI)
             .check(app)
 
     @Test
@@ -1110,7 +1110,7 @@ class ArchitectureTest {
         const val PAYMENT = "Payment"
         const val EMAIL = "Email"
         const val RECEIPT = "Receipt"
-        const val REFUND = "Refund"
+        const val HISTORY = "History"
         const val TERMINAL = "Terminal"
         const val UPDATE = "Update"
         const val DATA = "Data"
@@ -1119,7 +1119,7 @@ class ArchitectureTest {
         const val DB = "app.minimpos.app.data.db.."
         const val TERMINAL_PACKAGE = "app.minimpos.app.terminal.."
         const val UPDATE_PACKAGE = "app.minimpos.app.update.."
-        const val PAYMENT_STANDING_FILE = "app.minimpos.app.refund.PaymentStandingKt"
+        const val PAYMENT_STANDING_FILE = "app.minimpos.app.history.PaymentStandingKt"
         const val TRANSACTION_ACTIONS_FILE = "app.minimpos.app.feature.TransactionActionsKt"
         const val OUTCOME_MESSAGES_FILE = "app.minimpos.app.feature.OutcomeMessagesKt"
 
@@ -1141,7 +1141,7 @@ class ArchitectureTest {
                 "app.minimpos.app.terminal..",
                 "app.minimpos.app.update..",
                 "app.minimpos.app.receipt..",
-                "app.minimpos.app.refund..",
+                "app.minimpos.app.history..",
                 "app.minimpos.app.email..",
                 "app.minimpos.app.payment..",
             )
@@ -1262,9 +1262,9 @@ class ArchitectureTest {
                 .or(declaredIn("app.minimpos.app.data.settings", "AppSettings.kt"))
                 .or(declaredIn("app.minimpos.app.data.settings", "ConnectionSetup.kt"))
                 .or(declaredIn("app.minimpos.app.data.settings", "PricingChange.kt"))
-                .or(declaredIn("app.minimpos.app.refund", "PaymentStanding.kt"))
-                .or(declaredIn("app.minimpos.app.refund", "RefundablePayment.kt"))
-                .or(declaredIn("app.minimpos.app.refund", "HistoryAccounting.kt"))
+                .or(declaredIn("app.minimpos.app.history", "PaymentStanding.kt"))
+                .or(declaredIn("app.minimpos.app.history", "RefundablePayment.kt"))
+                .or(declaredIn("app.minimpos.app.history", "HistoryAccounting.kt"))
                 .or(declaredIn("app.minimpos.app.feature.history", "HistorySearch.kt"))
                 .or(declaredIn("app.minimpos.app.terminal", "TerminalAssignments.kt"))
                 .or(declaredIn("app.minimpos.app.terminal", "WalletOffers.kt"))
@@ -1379,7 +1379,7 @@ class ArchitectureTest {
         // A demo's stored meaning survives later destination changes and payment-link settlement.
         val demoOwnership: ArchRule =
             noClasses()
-                .that(not(declaredIn("app.minimpos.app.refund", "PaymentStanding.kt")))
+                .that(not(declaredIn("app.minimpos.app.history", "PaymentStanding.kt")))
                 .should()
                 .callMethodWhere(callTo(PaymentContext::class.java.name, "getSimulated", "component7"))
 

@@ -1,17 +1,17 @@
-package app.minimpos.app.refund
+package app.minimpos.app.history
 
 import app.minimpos.app.data.db.CaptureStatus
 import app.minimpos.app.data.db.SaleEntity
 import app.minimpos.app.data.db.SaleKind
 import app.minimpos.app.data.db.SaleStatus
 import app.minimpos.app.data.db.SaleWithLines
-import app.minimpos.app.refund.PaymentAction.ADJUST
-import app.minimpos.app.refund.PaymentAction.CANCEL
-import app.minimpos.app.refund.PaymentAction.CAPTURE
-import app.minimpos.app.refund.PaymentAction.ENTER_TIP
-import app.minimpos.app.refund.PaymentAction.REFUND
-import app.minimpos.app.refund.PaymentAction.RETRY_CAPTURE
-import app.minimpos.core.money.PaymentContext
+import app.minimpos.app.history.PaymentAction.ADJUST
+import app.minimpos.app.history.PaymentAction.CANCEL
+import app.minimpos.app.history.PaymentAction.CAPTURE
+import app.minimpos.app.history.PaymentAction.ENTER_TIP
+import app.minimpos.app.history.PaymentAction.REFUND
+import app.minimpos.app.history.PaymentAction.RETRY_CAPTURE
+import app.minimpos.core.payment.PaymentContext
 import app.minimpos.terminal.client.RetryAdvice
 import com.google.common.truth.Truth.assertThat
 import org.junit.Test

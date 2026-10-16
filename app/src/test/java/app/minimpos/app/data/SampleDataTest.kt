@@ -13,10 +13,10 @@ import app.minimpos.app.data.repo.ImportMode
 import app.minimpos.app.data.repo.SampleData
 import app.minimpos.app.data.settings.AppSettings
 import app.minimpos.app.data.settings.PaymentSettings
-import app.minimpos.app.refund.RefundablePayment
-import app.minimpos.app.refund.StoredPayment
-import app.minimpos.app.refund.TotalsShare
-import app.minimpos.app.refund.totalsShare
+import app.minimpos.app.history.RefundablePayment
+import app.minimpos.app.history.StoredPayment
+import app.minimpos.app.history.TotalsShare
+import app.minimpos.app.history.totalsShare
 import app.minimpos.core.receipt.PlainTextReceiptRenderer
 import app.minimpos.core.tax.TaxMode
 import com.google.common.truth.Truth.assertThat

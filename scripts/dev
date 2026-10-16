@@ -115,7 +115,7 @@ case "$command" in
       ui) tasks=(:app:testDebugUnitTest --tests '*ui.*' --tests '*ComposeFailureArtifactsTest' :app:detektDebug :app:detektDebugUnitTest) ;;
       qr) tasks=(:core:test --tests '*CodecTest' :app:testDebugUnitTest --tests '*SetupTransferTest' --tests '*TransferSealTest' :website-test:test --tests '*SetupHelperTest') ;;
       db) tasks=(:app:testDebugUnitTest --tests '*DatabaseSchemaTest' --tests '*RepositoriesTest' :app:detektDebug) ;;
-      payment) tasks=(:app:testDebugUnitTest --tests '*payment.*' --tests '*refund.*' :app:detektDebug) ;;
+      payment) tasks=(:app:testDebugUnitTest --tests '*payment.*' --tests '*history.*' --tests '*receipt.*' :app:detektDebug) ;;
       *) invalid "Unknown check area: $area" ;;
     esac
     exec "${runner[@]}" "${tasks[@]}" "$@"

@@ -1,4 +1,4 @@
-package app.minimpos.app.refund
+package app.minimpos.app.history
 
 import app.minimpos.app.data.db.SaleKind
 import app.minimpos.app.data.db.SaleStatus
@@ -7,7 +7,7 @@ import app.minimpos.app.data.repo.RefundedLine
 import app.minimpos.core.codec.RefundQrPayload
 import app.minimpos.core.ids.Ids
 import app.minimpos.core.money.CurrencySpec
-import app.minimpos.core.money.PaymentContext
+import app.minimpos.core.payment.PaymentContext
 import app.minimpos.core.refund.RefundCalculator
 import app.minimpos.core.refund.RefundableLine
 import app.minimpos.terminal.client.RefundParams

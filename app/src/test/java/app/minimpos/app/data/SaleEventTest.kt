@@ -14,10 +14,10 @@ import app.minimpos.app.data.db.StoredReason
 import app.minimpos.app.data.db.StoredReasonConverter
 import app.minimpos.app.data.repo.SaleEvent
 import app.minimpos.app.data.repo.after
-import app.minimpos.app.refund.PaymentAction
-import app.minimpos.app.refund.PaymentStanding
-import app.minimpos.app.refund.actions
-import app.minimpos.app.refund.standing
+import app.minimpos.app.history.PaymentAction
+import app.minimpos.app.history.PaymentStanding
+import app.minimpos.app.history.actions
+import app.minimpos.app.history.standing
 import app.minimpos.terminal.checkout.ModificationResult
 import app.minimpos.terminal.checkout.PaymentLink
 import app.minimpos.terminal.checkout.PaymentLinkStatus

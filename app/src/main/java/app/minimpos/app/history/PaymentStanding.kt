@@ -1,4 +1,4 @@
-package app.minimpos.app.refund
+package app.minimpos.app.history
 
 import app.minimpos.app.data.db.CaptureStatus
 import app.minimpos.app.data.db.SaleEntity

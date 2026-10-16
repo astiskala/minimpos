@@ -18,6 +18,7 @@ import app.minimpos.app.feature.history.RefundDetailScreen
 import app.minimpos.app.feature.history.SaleDetailScreen
 import app.minimpos.app.feature.home.HomeScreen
 import app.minimpos.app.feature.lock.PinGate
+import app.minimpos.app.feature.onboarding.OnboardingScreen
 import app.minimpos.app.feature.products.ProductEditScreen
 import app.minimpos.app.feature.products.ProductsScreen
 import app.minimpos.app.feature.refund.RefundProcessingScreen
@@ -30,7 +31,6 @@ import app.minimpos.app.feature.sale.PaymentScreen
 import app.minimpos.app.feature.sale.SaleResultScreen
 import app.minimpos.app.feature.sale.SaleScreen
 import app.minimpos.app.feature.sale.WalletScreen
-import app.minimpos.app.feature.settings.OnboardingScreen
 import app.minimpos.app.feature.settings.SettingsScreen
 import app.minimpos.app.feature.settings.SettingsSectionScreen
 import app.minimpos.app.feature.transfer.TransferExportScreen

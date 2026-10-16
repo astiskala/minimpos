@@ -1,4 +1,4 @@
-package app.minimpos.core.money
+package app.minimpos.core.payment
 
 import kotlinx.serialization.Serializable
 

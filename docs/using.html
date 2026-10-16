@@ -129,7 +129,7 @@
           <ol>
             <li>Tap <strong>Refresh capabilities</strong> to read the selected terminal's settings. Real terminal inspection uses the <a href="quick-start.html#credentials">Management API roles in Quick start</a>.</li>
             <li>For supported terminals, configure terminal tipping for the payment currency, DCC, MOTO or offline limits. These controls update terminal settings at Adyen, not just Mini mPOS. Amounts labeled major units use whole currency units; minor-unit amounts use Adyen's currency precision.</li>
-            <li>Enable the checkout options you need in <strong>Settings › Payments</strong>, then test them in TEST. The matrix also lists Adyen Giving, partial authorization, surcharge, gift cards, terminal reconciliation and shopper display; it does not provide an editor for every feature.</li>
+            <li>Enable the checkout options you need under <strong>Payments</strong>, <strong>Tips and donations</strong> or <strong>Shopper terminal display</strong> in Settings, then test them in TEST. The matrix also lists Adyen Giving, partial authorization, surcharge, gift cards, terminal reconciliation and shopper display; it does not provide an editor for every feature.</li>
           </ol>
           <p>Tap to Pay does not offer physical-terminal features such as terminal tipping, shopper display, MOTO/MKE, offline payments or terminal reconciliation. Partial authorization is a separate payment option. For account enablement and payment-method requirements, follow the <a href="https://docs.adyen.com/point-of-sale">Adyen in-person payments documentation</a>. Simulator availability does not establish real-terminal support.</p>
           <p class="back-to-contents"><a href="#contents">Back to contents</a></p>
@@ -156,15 +156,15 @@
         </section>
         <section id="terminal-checkout">
           <h2>Use optional checkout workflows</h2>
-          <p>Enable only the options you need in <strong>Settings › Payments</strong>. Except for partial authorization, these workflows need a supported physical terminal, not Tap to Pay. Check <a href="#capabilities">Adyen capabilities</a> and test your actual setup first.</p>
+          <p>Enable only the checkout options you need in Settings. Except for partial authorization, these workflows need a supported physical terminal, not Tap to Pay. Check <a href="#capabilities">Adyen capabilities</a> and test your actual setup first.</p>
           <h3 id="partial-payments">Collect a partially authorized payment</h3>
           <p>Turn on <strong>Allow partial authorizations</strong> to accept a card approval for less than the requested amount. When the result shows <strong>Partially paid</strong>, check the paid and remaining amounts, then tap <strong>Pay remaining</strong> on that result screen and collect the balance on another card. The app keeps the attempts on the same sale. Do not treat the sale as fully paid until the whole amount is approved.</p>
           <p>A missing answer is not a partial approval. <a href="troubleshooting.html#unknown">Resolve unknown results</a> before collecting more. Do not start a new sale for the full original total: an approved portion has already been paid.</p>
           <h3 id="shopper-display">Use the shopper-facing terminal screen</h3>
-          <p>With a separate network/cloud terminal, open <strong>Settings › Payments › Shopper terminal display</strong>. Choose whether to show item details before payment, ask the shopper to confirm the order, or collect an email when checkout has none. After approval, you can show a QR code and ask for a 0–10 rating; a returned rating appears in transaction details.</p>
+          <p>With a separate network/cloud terminal, open <strong>Settings › Shopper terminal display</strong>. Choose whether to show item details before payment, ask the shopper to confirm the order, or collect an email when checkout has none. After approval, you can show a QR code and ask for a 0–10 rating; a returned rating appears in transaction details.</p>
           <p>These prompts use the selected app language and are also simulated. They are not offered when Mini mPOS runs on the payment terminal itself. The displayed QR code contains the merchant reference, not a hosted receipt download; continue to <a href="#receipts">print, email or share the receipt</a>.</p>
           <h3 id="giving">Invite a charity donation</h3>
-          <p>After arranging Adyen Giving with Adyen, enable <strong>Charity donation (Adyen Giving)</strong> in <strong>Settings › Payments › Tipping</strong>. At sale checkout, select it to invite a donation on the terminal after payment. It is not offered for pre-authorizations or receipt-tip holds.</p>
+          <p>After arranging Adyen Giving with Adyen, enable <strong>Charity donation (Adyen Giving)</strong> in <strong>Settings › Tips and donations</strong>. At sale checkout, select it to invite a donation on the terminal after payment. It is not offered for pre-authorizations or receipt-tip holds.</p>
           <p>The purchase and donation are separate. A reported donation amount appears in transaction details; an approved purchase alone does not confirm a donation.</p>
           <h3 id="keyed-entry">Take a MOTO or Manual Key Entry payment</h3>
           <ol>
@@ -242,9 +242,9 @@
           <p>The app supports English, Simplified Chinese, Traditional Chinese and Japanese. Choose <strong>Settings › Language</strong> to override the language on this device. The change applies immediately to app text and app-generated receipt labels; saved merchant text, product names, currency and tax settings stay unchanged. <strong>Follow device</strong> uses the device language on Android 12 or earlier, or Android's per-app language choice on Android 13 or later. Adyen's card receipt lines follow the terminal's own receipt language.</p>
           <h3 id="email">Set up email receipts</h3>
           <ol>
-            <li>Open <strong>Settings › Email (SMTP)</strong>. Choose your provider, or enter the SMTP server, port, sender and login. Use STARTTLS or SSL/TLS.</li>
+            <li>Open <strong>Settings › Email receipts</strong>. Choose your provider, or enter the SMTP server, port, sender and login. Use STARTTLS or SSL/TLS.</li>
             <li>Send a test email.</li>
-            <li>In <strong>Settings › Payments › Email receipts</strong>, choose when to ask for the customer's email and whether to send receipts automatically.</li>
+            <li>On the same screen, choose when to ask for the customer's email and whether to send receipts automatically.</li>
           </ol>
           <p>Follow your provider's instructions to allow SMTP and get the right password:</p>
           <ul>
@@ -353,7 +353,7 @@
           <h2>Collect a tip on the terminal</h2>
           <ol>
             <li>Check terminal tipping in <a href="#capabilities">Adyen capabilities</a>. Set the terminal's predefined and custom tip options for the payment currency when needed.</li>
-            <li>In <strong>Settings › Payments › Tipping</strong>, enable <strong>Tip on the terminal</strong> and choose its checkout default. Optionally enable <strong>Dynamic basket tip suggestions</strong> for fixed amounts on small baskets and percentages on larger ones, or <strong>Calculate percentage tips before tax</strong>.</li>
+            <li>In <strong>Settings › Tips and donations</strong>, enable <strong>Tip on the terminal</strong> and choose its checkout default. Optionally enable <strong>Dynamic basket tip suggestions</strong> for fixed amounts on small baskets and percentages on larger ones, or <strong>Calculate percentage tips before tax</strong>.</li>
             <li>At sale checkout, select <strong>Tip on the terminal</strong> and tap <strong>Pay</strong>. The shopper chooses a tip before the card is charged. Check the returned total and tip and deliver the receipt.</li>
           </ol>
           <p>This does not need a printer or later tip entry. Terminal tipping and <a href="#tips">tips on the receipt</a> cannot be selected together. Neither is offered for pre-authorizations, scanned-wallet payments or payment links; terminal tipping is not offered with Tap to Pay.</p>
@@ -368,7 +368,7 @@
               <li>Pre-authorization and overcapture enabled by Adyen Support; see the <a href="https://docs.adyen.com/point-of-sale/tipping/tipping-on-receipt">Adyen receipt tipping guide</a></li>
             </ul>
           </div>
-          <p>In <strong>Settings › Payments › Tipping</strong>, choose <strong>Enabled (default off)</strong> or <strong>Enabled (default on)</strong> to set how the checkout switch starts. <strong>Disabled</strong>, the default, hides it. Some debit cards and wallets do not support this flow.</p>
+          <p>In <strong>Settings › Tips and donations</strong>, choose <strong>Enabled (default off)</strong> or <strong>Enabled (default on)</strong> to set how the checkout switch starts. <strong>Disabled</strong>, the default, hides it. Some debit cards and wallets do not support this flow.</p>
           <ol>
             <li>At a sale's checkout, switch on <strong>Tip on the receipt</strong> and tap <strong>Pay</strong>. The bill is held, not charged.</li>
             <li>Print the receipt. It has blank Tip and Total lines, and the merchant copy has a signature line.</li>
@@ -385,7 +385,7 @@
         <section id="more">
           <h2>Set up more devices and manage data</h2>
           <ol>
-            <li>On the configured device, open <strong>Settings › Data › Share with another device</strong>. Choose the catalog, settings and/or passwords and keys, then tap <strong>Show QR codes</strong>.</li>
+            <li>On the configured device, open <strong>Settings › Data and transfer › Share with another device</strong>. Choose the catalog, settings and/or passwords and keys, then tap <strong>Show QR codes</strong>.</li>
             <li>On the new device, choose <strong>Set up from another device</strong> and scan all the codes, in any order. Choose whether to merge or replace its catalog.</li>
             <li>To copy passwords and keys, enter the transfer code shown on the first device. Tap <strong>Import</strong>.</li>
             <li>Check prices and tax, test the connection in <strong>Settings › Terminal</strong>, and print a test receipt.</li>
@@ -395,7 +395,7 @@
             <p class="callout-title">Important</p>
             <p>This is a one-time copy, not synchronization or a backup of payment history. Each device keeps its own payments. Clearing the app's data in Android deletes all products, settings and history on the device.</p>
           </div>
-          <p>In <strong>Settings › Data</strong>, set <strong>Keep transactions for</strong> or tap <strong>Clear settled history</strong>; unresolved payments are always kept. Install updates from the <a href="https://github.com/astiskala/minimpos/releases/latest">latest release</a> in the same way as the <a href="quick-start.html#install">original installation</a>.</p>
+          <p>In <strong>Settings › Data and transfer</strong>, set <strong>Keep transactions for</strong> or tap <strong>Clear settled history</strong>; unresolved payments are always kept. Install updates from the <a href="https://github.com/astiskala/minimpos/releases/latest">latest release</a> in the same way as the <a href="quick-start.html#install">original installation</a>.</p>
           <p>For import problems, see <a href="troubleshooting.html#access">PIN and transfer problems</a>.</p>
           <p class="back-to-contents"><a href="#contents">Back to contents</a></p>
         </section>

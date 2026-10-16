@@ -8,7 +8,7 @@ import app.minimpos.app.data.db.SaleStatus
 import app.minimpos.app.data.db.SetupProblem
 import app.minimpos.app.data.db.StoredReason
 import app.minimpos.core.money.CurrencySpec
-import app.minimpos.core.money.PaymentContext
+import app.minimpos.core.payment.PaymentContext
 import app.minimpos.terminal.checkout.ModificationResult
 import app.minimpos.terminal.checkout.PaymentLink
 import app.minimpos.terminal.checkout.PaymentLinkStatus
@@ -20,7 +20,7 @@ import app.minimpos.terminal.transport.Fault
  * Something that happened to a stored sale after it was opened, which moves it on ([after]). It is the one place that
  * decides which [SaleStatus], [CaptureStatus] and fields each happening writes, so callers name what happened rather
  * than the fields; [SaleRepository.record] applies it in a transaction. Pure: tested with plain JUnit, with
- * [app.minimpos.app.refund.PaymentStanding] as what can be observed. An accepted refund or cancellation, which also
+ * [app.minimpos.app.history.PaymentStanding] as what can be observed. An accepted refund or cancellation, which also
  * changes the sale's lines, is [SaleRepository.applyRefund].
  *
  * Why something did not succeed is stored as the terminal or Adyen answered it (`message`, verbatim) or as a typed

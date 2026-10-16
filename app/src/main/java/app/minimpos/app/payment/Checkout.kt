@@ -1,5 +1,6 @@
 package app.minimpos.app.payment
 
+import app.minimpos.app.data.db.SaleEntity
 import app.minimpos.app.data.db.SaleKind
 import app.minimpos.app.data.settings.PaymentSettings
 import app.minimpos.app.data.settings.ReceiptTipping
@@ -339,8 +340,31 @@ data class Checkout(
             actual.form == form &&
             actual.payment == payment
 
-    /** Field limits. */
+    /** Checkout limits and continuation of stored partially paid sales. */
     companion object {
+        /**
+         * Next card tender for a stored partially paid [sale], or null when no balance can be collected.
+         * Reuses its references and currency, without repeating consent, tips or shopper-display prompts.
+         */
+        fun remainingPayment(sale: SaleEntity): PaymentStart? {
+            val remaining = sale.remainingMinor
+            if (remaining <= 0) return null
+            return PaymentStart(
+                totals = Cart().totals(TaxMode.INCLUSIVE),
+                currency = CurrencySpec.of(sale.currency),
+                merchantReference = sale.merchantReference,
+                customerReference = sale.customerReference,
+                shopperEmail = sale.shopperEmail,
+                tokenization = null,
+                kind = sale.kind,
+                tipOnReceipt = false,
+                shopperReference = sale.shopperReference,
+                allowPartialAuthorisation = true,
+                requestedAmountMinor = remaining,
+                existingSaleId = sale.id,
+            )
+        }
+
         /** Longest merchant reference accepted, in characters (Adyen's limit for `merchantReference`). */
         const val MAX_REFERENCE_LENGTH = 80
 

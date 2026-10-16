@@ -438,7 +438,7 @@
   <!-- Setup and catalog transfer -->
   <string name="transfer_export">Share with another device</string>
   <string name="transfer_import">Set up from another device</string>
-  <string name="transfer_export_hint">On the other device choose Set up from another device (in Products or Settings › Data) and point its camera at these codes.</string>
+  <string name="transfer_export_hint">On the other device choose Set up from another device (in Products or Settings › Data and transfer) and point its camera at these codes.</string>
   <string name="transfer_import_hint">Point the camera at the QR codes shown on the other device or on the setup helper page.</string>
   <string name="transfer_code_of">Code %1$d of %2$d</string>
   <string name="transfer_received">Scanned %1$d/%2$d</string>
@@ -572,10 +572,10 @@
   <string name="email_link_intro">Pay securely online with the link or the QR code below.</string>
   <string name="email_test_subject">Mini mPOS test email</string>
   <string name="email_test_body">Your SMTP settings work. Receipts can now be emailed from Mini mPOS.</string>
-  <string name="email_not_configured">Email is not set up. Configure SMTP in Settings › Email.</string>
+  <string name="email_not_configured">Email is not set up. Configure SMTP in Settings › Email receipts.</string>
   <string name="email_invalid_address">Enter a valid email address</string>
   <string name="email_default_subject">Your receipt from {business}</string>
-  <string name="email_authentication">The mail server did not accept the username or password. Check them in Settings › Email.</string>
+  <string name="email_authentication">The mail server did not accept the username or password. Check them in Settings › Email receipts.</string>
   <string name="email_unreachable">The mail server could not be reached. Check the server, port and internet connection.</string>
   <string name="email_rejected">The mail server did not accept the email.</string>
 
@@ -606,9 +606,13 @@
   <string name="settings_payments">Payments</string>
   <string name="settings_tax">Tax</string>
   <string name="settings_receipts">Receipts</string>
-  <string name="settings_email">Email (SMTP)</string>
+  <string name="settings_email">Email receipts</string>
   <string name="settings_security">Security</string>
-  <string name="settings_data">Data</string>
+  <string name="settings_data">Data and transfer</string>
+  <string name="settings_connection_group">Connection</string>
+  <string name="settings_device_group">Device</string>
+  <string name="settings_tips_donations">Tips and donations</string>
+  <string name="settings_card_payments">Card payments</string>
   <string name="settings_about">About</string>
   <string name="settings_not_configured">Not configured</string>
   <string name="settings_pin_on">Admin PIN on</string>

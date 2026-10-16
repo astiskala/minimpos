@@ -2,7 +2,7 @@ package app.minimpos.app.feature.history
 
 import app.minimpos.app.data.db.SaleEntity
 import app.minimpos.app.data.repo.HistoryItem
-import app.minimpos.app.refund.methodCode
+import app.minimpos.app.history.methodCode
 import app.minimpos.core.money.CurrencySpec
 import app.minimpos.core.payment.PaymentMethods
 import app.minimpos.core.payment.Wallet

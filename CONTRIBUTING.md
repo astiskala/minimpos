@@ -25,7 +25,7 @@ there is no Java code, and that importer cannot handle this build.
 
 | Module | Responsibility |
 | --- | --- |
-| `core` | Android-free money/tax, cart, refunds, receipt model/renderers, QR formats, currencies and payment methods. |
+| `core` | Android-free money/tax, cart, refunds, receipt model/renderers, QR formats, currencies, payment methods and original payment context. |
 | `adyen` | Android-free Terminal, Checkout, Cloud device and Management API integration, transports and simulator. |
 | `app` | Compose UI, Room, DataStore, Keystore, email, camera scanning and manual DI in `AppContainer`. |
 | `website-test` | Tests and validation for the static website in `docs/`; no app code. |

@@ -7,7 +7,7 @@ import androidx.room.ForeignKey
 import androidx.room.Index
 import androidx.room.PrimaryKey
 import androidx.room.Relation
-import app.minimpos.core.money.PaymentContext
+import app.minimpos.core.payment.PaymentContext
 
 /** Confirmed history purge awaiting its non-secret destination settings write; singleton recovery journal. */
 @Entity(tableName = "history_switch")
@@ -425,7 +425,7 @@ enum class CaptureStatus {
     /**
      * Whether the capture counts as made, so the payment counts as charged: Adyen received it ([REQUESTED]).
      * The one rule behind [SaleEntity.amountMinor] and
-     * [app.minimpos.app.refund.PaymentStanding.captured].
+     * [app.minimpos.app.history.PaymentStanding.captured].
      */
     val captured: Boolean get() = this == REQUESTED
 }

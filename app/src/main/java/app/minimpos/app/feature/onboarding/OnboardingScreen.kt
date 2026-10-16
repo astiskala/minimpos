@@ -1,4 +1,4 @@
-package app.minimpos.app.feature.settings
+package app.minimpos.app.feature.onboarding
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -21,6 +21,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import app.minimpos.app.R
 import app.minimpos.app.data.settings.TerminalMode
+import app.minimpos.app.feature.SampleDataState
+import app.minimpos.app.feature.settings.SettingsSections
 import app.minimpos.app.ui.components.ActionMessage
 import app.minimpos.app.ui.components.BottomActions
 import app.minimpos.app.ui.components.LocalAppContainer

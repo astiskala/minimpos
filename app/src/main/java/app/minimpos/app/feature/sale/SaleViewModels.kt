@@ -16,6 +16,12 @@ import app.minimpos.app.feature.ActionState
 import app.minimpos.app.feature.TransactionActions
 import app.minimpos.app.feature.TransactionActionsState
 import app.minimpos.app.feature.launchWrite
+import app.minimpos.app.history.PaymentAction
+import app.minimpos.app.history.StoredPayment
+import app.minimpos.app.history.StoredPayments
+import app.minimpos.app.history.awaitsLinkPayment
+import app.minimpos.app.history.decline
+import app.minimpos.app.history.simulatedLink
 import app.minimpos.app.payment.Checkout
 import app.minimpos.app.payment.CheckoutForm
 import app.minimpos.app.payment.LinkUpdate
@@ -25,12 +31,6 @@ import app.minimpos.app.payment.ReceiptDelivery
 import app.minimpos.app.payment.SaleSession
 import app.minimpos.app.payment.TransactionLifecycle
 import app.minimpos.app.payment.WalletPayments
-import app.minimpos.app.refund.PaymentAction
-import app.minimpos.app.refund.StoredPayment
-import app.minimpos.app.refund.StoredPayments
-import app.minimpos.app.refund.awaitsLinkPayment
-import app.minimpos.app.refund.decline
-import app.minimpos.app.refund.simulatedLink
 import app.minimpos.app.terminal.TerminalState
 import app.minimpos.app.terminal.WalletAvailability
 import app.minimpos.app.terminal.WalletDiscovery
@@ -454,29 +454,10 @@ class SaleResultViewModel(
 
     /** Starts collecting the remaining balance of a partially paid sale on another card; false when not partially paid. */
     fun payRemaining(): Boolean {
-        val sale =
-            state.value.record
-                ?.sale
-                ?.takeIf { it.isPartiallyPaid } ?: return false
-        val remaining = sale.remainingMinor
-        if (remaining <= 0) return false
+        val sale = state.value.record?.sale ?: return false
+        val start = Checkout.remainingPayment(sale) ?: return false
         lifecycle.acknowledge()
-        lifecycle.start(
-            PaymentStart(
-                totals = Cart().totals(TaxMode.INCLUSIVE),
-                currency = CurrencySpec.of(sale.currency),
-                merchantReference = sale.merchantReference,
-                customerReference = sale.customerReference,
-                shopperEmail = sale.shopperEmail,
-                tokenization = null,
-                kind = sale.kind,
-                tipOnReceipt = false,
-                shopperReference = sale.shopperReference,
-                allowPartialAuthorisation = true,
-                requestedAmountMinor = remaining,
-                existingSaleId = sale.id,
-            ),
-        )
+        lifecycle.start(start)
         return true
     }
 }

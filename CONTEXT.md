@@ -29,7 +29,7 @@ existing spelling (`preAuthorisation`, `SaleKind.PRE_AUTHORISATION`, `authorised
 | Saving a card | Tokenization under a shopper reference with consent; an offer at checkout, not a saved-card charging workflow. | `offerCardSaving` |
 | Terminal tipping | Immediate-charge sale that prompts for a tip on the terminal (`AskGratuity`), optionally overriding suggestions (`TipSuggestions`) and the amount to tip on (`AmountToTipOn`) in `SaleData.SaleToPOIData`. | `PaymentSettings.terminalTipping`, `TerminalTipOptions`, `SaleEntity.tipMinor` |
 | Shopper display | Chained `AdminRequest` session around a payment on an external terminal (or simulator) showing a virtual receipt (`DisplayRequest`), basket confirmation, email entry, QR receipt and 0–10 rating (`InputRequest`). | `ShopperSessionFlow`, `SaleEntity.shopperRating` |
-| Partial authorization / split tender | Immediate-charge sale that accepts partial approvals (`AllowPartialAuthorisation`, `Result=Partial`) or operator-entered split amounts across multiple tenders (`SaleTenderEntity`), tracking paid vs remaining balance until paid in full or reversed. | `SaleTenderEntity`, `PaymentStanding.PARTIALLY_PAID`, `SaleEvent.Settled` |
+| Partial authorization / split tender | Immediate-charge sale that accepts partial approvals (`AllowPartialAuthorisation`, `Result=Partial`) or operator-entered split amounts across multiple tenders (`SaleTenderEntity`), tracking paid vs remaining balance until paid in full or reversed. | `SaleTenderEntity`, `PaymentStanding.PARTIALLY_PAID`, `Checkout.remainingPayment`, `SaleEvent.Settled` |
 | Adyen Giving | Charity donation prompt on the terminal after purchase (`AskGiving` tender option); when `adyen_giving_service_id` is returned, queries `TransactionStatus` (`SaleID=AdyenGiving`) for the donation amount without affecting merchant accounting. | `PaymentSettings.askGiving`, `TerminalClient.givingDonation`, `SaleEntity.donationMinor` |
 | Special card entry (MOTO / MKE) | Optional card-entry override (`MOTO` tender option for mail/telephone orders, or `ForceEntryMode=Keyed` for Manual Key Entry); requires explicit fraud/liability confirmation and Manager PIN approval rechecked before sending. | `CardEntryOverride`, `PaymentSettings.allowMoto`, `PaymentSettings.allowMke` |
 | Offline payment | Local-terminal transaction approved offline (`OnlineFlag=false`, `offlineAuthCode` for Offline EMV vs Store-and-forward, `unconfirmedBatchCount`); surfaces outstanding unforwarded offline batches in History and reconciliation. | `OfflineProcessingMode`, `SaleEntity.offlineMode`, `SaleEntity.unconfirmedBatchCount` |
@@ -39,19 +39,20 @@ existing spelling (`preAuthorisation`, `SaleKind.PRE_AUTHORISATION`, `authorised
 
 | Term | Meaning | Owner / code name |
 | --- | --- | --- |
-| Standing | Where a payment stands: charged, awaiting tip, held, capture requested/failed/unknown, or cancelled. | `refund/PaymentStanding`, `sale.standing` |
+| Stored payment | Read-only interpretation of a retained sale: standing, allowed actions, refund eligibility and history accounting. Separate from sending financial operations. | `history/StoredPayment`, `history/PaymentStanding`, `history/RefundablePayment`, `history/HistoryAccounting` |
+| Standing | Where a payment stands: charged, awaiting tip, held, capture requested/failed/unknown, or cancelled. | `history/PaymentStanding`, `sale.standing` |
 | Actions | Operations permitted on a stored payment now; refund/cancellation initiation and capture retry keep reference facts out of screens. | `StoredPayment.actions`, `PaymentAction`, `payment/StoredPaymentActions` |
 | Capture | Collects a held amount through Checkout; accepted requests still need Adyen's final confirmation. | `payment/Captures` |
 | Adjustment | Changes or renews an authorization before capture; an unresolved request retains its identity. | `Captures.adjust` |
 | Tip on the receipt | Sale held with manual capture; customer writes a tip on paper, then staff enter and capture it. Tips above 20% require adjustment first. | `tipOnReceipt`, `PaymentStanding` |
 | Cancellation | Full reversal of a held payment; if already captured externally, Adyen refunds it instead. | `PaymentAction.CANCEL` |
 | Refund | Referenced return of a charged payment, full/by amount/by item. Item refunds need the stored original sale. | `RefundablePayment`, `RefundStart`, refund QR `MPR1*` |
-| Day totals / history search | Processing-day aggregation of retained activity currently shown; capture and tip count on acceptance day, new holds stay separate. Issue filtering uses the same accounting activity reading. | `refund/HistoryAccounting`, `feature/history/HistorySearch` |
+| Day totals / history search | Processing-day aggregation of retained activity currently shown; capture and tip count on acceptance day, new holds stay separate. Issue filtering uses the same accounting activity reading. | `history/HistoryAccounting`, `feature/history/HistorySearch` |
 | Daily report | Unfiltered whole-day local summary; currencies/environments separate, undated links/captures excluded from dated net. Seeded samples count as demos and disappear with sample purge. | `HistoryAccounting`, `ReceiptDelivery` |
 | Terminal reconciliation | Retrieves terminal totals (`GetTotalsRequest`) or closes the current reconciliation period (`ReconciliationRequest` with `SaleReconciliation`), rechecking unresolved terminal operations first and comparing terminal debit/credit totals against local accounting. | `TerminalClient.getTotals`, `TerminalClient.reconcile`, `HistoryAccounting.compareReconciliation` |
 | History environment switch | Explicitly confirmed LIVE/TEST/simulator transition deletes all local operations, including unfinished ones; durable non-secret journal completes destination settings. | `terminal/HistorySwitches` |
 | Operation identity | Persisted key and request facts for one logical operation; retries reuse them, separate renewals get new ones. | Stored capture, adjustment and link requests |
-| Payment context | Non-secret original destination, identity, account and environment used to validate later actions. | `PaymentContext`, `ApiTarget`, `ApiAccess` |
+| Payment context | Non-secret original destination, identity, account and environment used to validate later actions. | `core/payment/PaymentContext`, `ApiTarget`, `ApiAccess` |
 
 ## Connecting to Adyen
 
@@ -101,7 +102,7 @@ existing spelling (`preAuthorisation`, `SaleKind.PRE_AUTHORISATION`, `authorised
 | Stored reason | Typed reason stored with a transaction or capture: not done, unconfirmed (with what prevented confirmation) or interrupted. Answer text remains verbatim. | `StoredReason` |
 | Catalogue | Products, categories and tax rates. | `CatalogRepository` |
 | Sample data | Optional demo products, categories and read-only simulated history, tracked separately for scoped removal. Never replaces merchant data or credentials. | `data/repo/SampleData`, `sample` on stored rows |
-| Onboarding | First-run choice of simulator with sample data, setup import or terminal settings; completion stays local. | `feature/settings/OnboardingScreen`, `AppSettings.onboardingCompleted` |
+| Onboarding | First-run choice of simulator with sample data, setup import or terminal settings; completion stays local. | `feature/onboarding/OnboardingScreen`, `AppSettings.onboardingCompleted` |
 | Self-update | Startup check for a newer version on a device that is not an Adyen terminal; the offer opens the release's APK in the browser, which downloads it. Terminals update through the Customer Area. | `update/AppUpdate`, `update/GitHubReleases` |
 | Pricing change | Confirmed currency/tax-style transition, including durable recovery; numeric prices are preserved and rounded, not FX-converted. | `payment/PricingChanges` |
 | Starter tax | Initial country-based rates and price style, not an ongoing regional override. | `StarterTax` |

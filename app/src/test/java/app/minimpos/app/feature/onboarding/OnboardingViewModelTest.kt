@@ -1,4 +1,4 @@
-package app.minimpos.app.feature
+package app.minimpos.app.feature.onboarding
 
 import android.database.sqlite.SQLiteException
 import androidx.lifecycle.ViewModel
@@ -7,10 +7,10 @@ import app.minimpos.app.await
 import app.minimpos.app.closeViewModels
 import app.minimpos.app.data.repo.SampleData
 import app.minimpos.app.data.settings.TerminalMode
-import app.minimpos.app.feature.settings.OnboardingChoice
-import app.minimpos.app.feature.settings.OnboardingViewModel
+import app.minimpos.app.feature.onboarding.OnboardingChoice
+import app.minimpos.app.feature.onboarding.OnboardingViewModel
+import app.minimpos.app.feature.sampleDataWrite
 import app.minimpos.app.feature.settings.SampleDataViewModel
-import app.minimpos.app.feature.settings.sampleDataWrite
 import com.google.common.truth.Truth.assertThat
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred

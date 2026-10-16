@@ -63,10 +63,10 @@ import app.minimpos.app.feature.outcomeNote
 import app.minimpos.app.feature.sale.ReceiptToggle
 import app.minimpos.app.feature.sale.ShareReceiptButton
 import app.minimpos.app.feature.stillUnconfirmed
+import app.minimpos.app.history.RefundInvalidReason
+import app.minimpos.app.history.Refundability
+import app.minimpos.app.history.RefundablePayment
 import app.minimpos.app.payment.TransactionState
-import app.minimpos.app.refund.RefundInvalidReason
-import app.minimpos.app.refund.Refundability
-import app.minimpos.app.refund.RefundablePayment
 import app.minimpos.app.scan.ScanHint
 import app.minimpos.app.scan.ScanMode
 import app.minimpos.app.scan.ScannerView

@@ -1,4 +1,4 @@
-package app.minimpos.app.feature
+package app.minimpos.app.feature.settings
 
 import app.minimpos.app.AppContainer
 import app.minimpos.app.FakeDevice
@@ -21,6 +21,7 @@ import app.minimpos.app.data.settings.EmailCapture
 import app.minimpos.app.data.settings.MerchantCopyPolicy
 import app.minimpos.app.data.settings.ShopperReferenceSource
 import app.minimpos.app.data.settings.TerminalMode
+import app.minimpos.app.feature.ActionOutcome
 import app.minimpos.app.feature.history.HistoryFilter
 import app.minimpos.app.feature.history.HistoryViewModel
 import app.minimpos.app.feature.history.SaleDetailViewModel
@@ -35,10 +36,10 @@ import app.minimpos.app.feature.sale.SaleViewModel
 import app.minimpos.app.feature.settings.SettingsChecks
 import app.minimpos.app.feature.settings.SettingsTest
 import app.minimpos.app.feature.settings.SettingsViewModel
+import app.minimpos.app.history.RefundInvalidReason
+import app.minimpos.app.history.Refundability
+import app.minimpos.app.history.RefundablePayment
 import app.minimpos.app.payment.TransactionState
-import app.minimpos.app.refund.RefundInvalidReason
-import app.minimpos.app.refund.Refundability
-import app.minimpos.app.refund.RefundablePayment
 import app.minimpos.app.terminal.AdyenApi
 import app.minimpos.app.terminal.ReceiptBusiness
 import app.minimpos.app.terminal.TerminalSetupSource

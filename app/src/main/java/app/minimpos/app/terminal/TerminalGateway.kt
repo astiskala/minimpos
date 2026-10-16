@@ -9,7 +9,7 @@ import app.minimpos.app.data.db.Failure
 import app.minimpos.app.data.db.SetupProblem
 import app.minimpos.app.data.security.SecretStore
 import app.minimpos.app.data.settings.TerminalMode
-import app.minimpos.core.money.PaymentContext
+import app.minimpos.core.payment.PaymentContext
 import app.minimpos.terminal.client.BarcodeScan
 import app.minimpos.terminal.client.DiagnosisResult
 import app.minimpos.terminal.client.PaymentParams
@@ -418,15 +418,15 @@ class TerminalGateway(
         }
     }
 
-    internal suspend fun refreshEnvironment() {
-        val setup = setups.current()
-        if (setup.suppliesCertificateEnvironment) {
-            localEnvironment()?.let { setups.remember(DetectedEnvironment(setup, it)) }
-        }
-    }
-
     internal inner class CandidateChecks {
         suspend fun environment(): TerminalEnvironment? = localEnvironment()
+
+        suspend fun refreshEnvironment() {
+            val setup = setups.current()
+            if (setup.suppliesCertificateEnvironment) {
+                localEnvironment()?.let { setups.remember(DetectedEnvironment(setup, it)) }
+            }
+        }
 
         suspend fun check(unlocked: UnlockedSetup): Pair<TerminalConnection, DetectedEnvironment?> {
             val setup = unlocked.setup
@@ -469,26 +469,33 @@ class TerminalGateway(
                     }
                 }
             }
+    }
 
-        internal suspend fun totals(closePeriod: Boolean): Attempt<TerminalTotalsOutcome> =
-            when (val connection = connection()) {
-                is Connection.Open -> {
-                    if (!connection.destination.supportsTerminalFeatures) {
-                        Attempt.Made(TerminalTotalsOutcome.Failed(Fault.Unsupported))
-                    } else {
-                        Attempt.Made(if (closePeriod) connection.client.reconcile() else connection.client.getTotals())
-                    }
-                }
-
-                is Connection.NotSetUp -> {
-                    Attempt.NotSetUp(connection.problem)
-                }
-
-                is Connection.Unreachable -> {
-                    Attempt.Made(TerminalTotalsOutcome.Failed(connection.fault))
+    /**
+     * Reads current terminal totals, or closes its reconciliation period when [closePeriod].
+     * Rechecks [permitsClose] immediately before sending a close; denial sends nothing.
+     */
+    suspend fun totals(
+        closePeriod: Boolean,
+        permitsClose: suspend () -> Boolean,
+    ): Attempt<TerminalTotalsOutcome> =
+        when (val connection = connection()) {
+            is Connection.Open -> {
+                when {
+                    closePeriod && !permitsClose() -> Attempt.NotSetUp(SetupProblem.MANAGER_APPROVAL)
+                    !connection.destination.supportsTerminalFeatures -> Attempt.Made(TerminalTotalsOutcome.Failed(Fault.Unsupported))
+                    else -> Attempt.Made(if (closePeriod) connection.client.reconcile() else connection.client.getTotals())
                 }
             }
-    }
+
+            is Connection.NotSetUp -> {
+                Attempt.NotSetUp(connection.problem)
+            }
+
+            is Connection.Unreachable -> {
+                Attempt.Made(TerminalTotalsOutcome.Failed(connection.fault))
+            }
+        }
 
     /** The terminals connected to the merchant account in the cloud, for choosing one, see [CloudTerminal.connectedTerminals]. */
     suspend fun connectedTerminals(): ConnectedTerminals = cloudTerminal.connectedTerminals(setups.unlocked())
@@ -566,11 +573,8 @@ class TerminalGateway(
     }
 }
 
-/**
- * Retrieves the terminal's current reconciliation totals (`GetTotalsRequest`), or closes the current period and
- * starts a new one (`ReconciliationRequest` with `SaleReconciliation`) when [closePeriod] is true.
- */
-suspend fun TerminalGateway.totals(closePeriod: Boolean = false): Attempt<TerminalTotalsOutcome> = candidates.totals(closePeriod)
+/** Refreshes this device's certificate environment before setup or access checks, preserving the originating settings. */
+internal suspend fun TerminalGateway.refreshEnvironment() = candidates.refreshEnvironment()
 
 /** Why an unreachable diagnosis failed; a terminal that refused without saying why is still a refusal. */
 internal fun DiagnosisResult.failure(): Fault = fault ?: Fault.TerminalRejected(null)

@@ -2,6 +2,7 @@ package app.minimpos.app.feature
 
 import app.minimpos.app.data.db.Failure
 import app.minimpos.app.data.db.SetupProblem
+import app.minimpos.app.history.RefundStart
 import app.minimpos.app.payment.CaptureResult
 import app.minimpos.app.payment.LinkUpdate
 import app.minimpos.app.payment.PaymentLinks
@@ -12,7 +13,6 @@ import app.minimpos.app.payment.SharedReceipt
 import app.minimpos.app.payment.StoredTransaction
 import app.minimpos.app.payment.TransactionLifecycle
 import app.minimpos.app.receipt.ActionResult
-import app.minimpos.app.refund.RefundStart
 import app.minimpos.core.receipt.ReceiptCopy
 import app.minimpos.core.receipt.ReceiptDocument
 import app.minimpos.terminal.transport.ExternalText

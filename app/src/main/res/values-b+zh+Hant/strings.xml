@@ -438,7 +438,7 @@
   <!-- Setup and catalog transfer -->
   <string name="transfer_export">共享至另一台設備</string>
   <string name="transfer_import">從另一台設備設定</string>
-  <string name="transfer_export_hint">在另一台設備的“商品”或“設定 › 資料”中選擇“從另一台設備設定”，然後用相機掃描這些二維碼。</string>
+  <string name="transfer_export_hint">在另一台設備的“商品”或“設定 › 資料與轉移”中選擇“從另一台設備設定”，然後用相機掃描這些二維碼。</string>
   <string name="transfer_import_hint">用相機掃描另一台設備或設定助手頁面上顯示的二維碼。</string>
   <string name="transfer_code_of">第 %1$d 個，共 %2$d 個</string>
   <string name="transfer_received">已掃描 %1$d/%2$d</string>
@@ -572,10 +572,10 @@
   <string name="email_link_intro">請透過下方連結或二維碼在網上安全付款。</string>
   <string name="email_test_subject">Mini mPOS 測試郵件</string>
   <string name="email_test_body">您的 SMTP 設定有效。現在可通過 Mini mPOS 發送電子收據。</string>
-  <string name="email_not_configured">尚未設定電郵。請在“設定 › 電郵”中設定 SMTP。</string>
+  <string name="email_not_configured">尚未設定電郵。請在“設定 › 電郵收據”中設定 SMTP。</string>
   <string name="email_invalid_address">請輸入有效的電郵地址</string>
   <string name="email_default_subject">來自 {business} 的收據</string>
-  <string name="email_authentication">郵件伺服器未接受用戶名稱或密碼。請在“設定 › 電郵”中檢查。</string>
+  <string name="email_authentication">郵件伺服器未接受用戶名稱或密碼。請在“設定 › 電郵收據”中檢查。</string>
   <string name="email_unreachable">無法連接郵件伺服器。請檢查伺服器、連接埠及互聯網連接。</string>
   <string name="email_rejected">郵件伺服器未接受此郵件。</string>
 
@@ -606,9 +606,13 @@
   <string name="settings_payments">支付</string>
   <string name="settings_tax">稅</string>
   <string name="settings_receipts">收據</string>
-  <string name="settings_email">電郵（SMTP）</string>
+  <string name="settings_email">電郵收據</string>
   <string name="settings_security">安全</string>
-  <string name="settings_data">資料</string>
+  <string name="settings_data">資料與轉移</string>
+  <string name="settings_connection_group">連線</string>
+  <string name="settings_device_group">裝置</string>
+  <string name="settings_tips_donations">小費與捐款</string>
+  <string name="settings_card_payments">信用卡付款</string>
   <string name="settings_about">關於</string>
   <string name="settings_not_configured">未設定</string>
   <string name="settings_pin_on">已啟用管理員 PIN</string>

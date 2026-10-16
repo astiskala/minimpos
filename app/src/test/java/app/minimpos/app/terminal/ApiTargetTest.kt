@@ -2,7 +2,7 @@ package app.minimpos.app.terminal
 
 import app.minimpos.app.FakeLinkApi
 import app.minimpos.app.data.db.SetupProblem
-import app.minimpos.core.money.PaymentContext
+import app.minimpos.core.payment.PaymentContext
 import app.minimpos.terminal.checkout.ModificationAmount
 import app.minimpos.terminal.checkout.ModificationResult
 import app.minimpos.terminal.checkout.PaymentModifications

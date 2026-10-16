@@ -646,7 +646,7 @@ class AppFlowTest {
     fun `any Adyen currency can be chosen, or automatic`() {
         compose.onNodeWithTag("settings").performClick()
         compose.waitForTag("section_payments")
-        compose.onNodeWithTag("section_payments").performClick()
+        compose.onNodeWithTag("section_payments").performScrollTo().performClick()
         compose.waitForTag("currency")
         compose.onNodeWithTag("currency").assertTextContains("AUD – Australian Dollar", substring = true)
         compose.onNodeWithTag("currency").performClick()

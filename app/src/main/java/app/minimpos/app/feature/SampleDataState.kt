@@ -1,11 +1,11 @@
-package app.minimpos.app.feature.settings
+package app.minimpos.app.feature
 
 import android.database.sqlite.SQLiteException
 import kotlinx.coroutines.CancellationException
 import java.io.IOException
 
 /**
- * Progress of a sample-data write.
+ * Progress of a sample-data write, shared by onboarding and Settings.
  * @property running Whether a write is in progress; disables duplicate actions.
  * @property added True after population, false after removal, null before success.
  * @property failed Whether persistence failed, allowing a retry without losing merchant data.

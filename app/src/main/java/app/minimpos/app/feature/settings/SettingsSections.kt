@@ -11,8 +11,14 @@ object SettingsSections {
     /** How the simulator behaves; only offered when payments go to it. */
     const val SIMULATOR = "simulator"
 
-    /** Currency, references, email capture and saving cards. */
+    /** Currency, references, card entry, saving cards and payment-link expiry. */
     const val PAYMENTS = "payments"
+
+    /** Checkout defaults for terminal tips, receipt tips and Adyen Giving. */
+    const val TIPPING = "tipping"
+
+    /** Optional interactions on the shopper-facing screen of a separate terminal. */
+    const val SHOPPER_DISPLAY = "shopper_display"
 
     /** Tax rates, tax-inclusive prices and "Charge tax". */
     const val TAX = "tax"
@@ -20,13 +26,13 @@ object SettingsSections {
     /** Receipt content, printing and the merchant copy. */
     const val RECEIPTS = "receipts"
 
-    /** SMTP settings and the test email. */
+    /** Email collection, automatic receipt delivery, SMTP settings and the test email. */
     const val EMAIL = "email"
 
-    /** The admin PIN and auto-lock. */
+    /** Admin PIN, auto-lock and the separate Manager PIN. */
     const val SECURITY = "security"
 
-    /** History retention, clearing history and catalogue transfer. */
+    /** History retention, clearing history, sample data and setup transfer. */
     const val DATA = "data"
 
     /** App, device and terminal details. */

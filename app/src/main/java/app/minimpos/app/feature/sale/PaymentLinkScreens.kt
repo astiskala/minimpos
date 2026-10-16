@@ -40,7 +40,7 @@ import app.minimpos.app.data.db.SaleStatus
 import app.minimpos.app.feature.OutcomeMessage
 import app.minimpos.app.feature.lock.ManagerApproval
 import app.minimpos.app.feature.outcomeNote
-import app.minimpos.app.refund.simulatedLink
+import app.minimpos.app.history.simulatedLink
 import app.minimpos.app.share.ShareEffect
 import app.minimpos.app.ui.components.BottomActions
 import app.minimpos.app.ui.components.ConfirmDialog

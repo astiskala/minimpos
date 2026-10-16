@@ -1,9 +1,9 @@
 package app.minimpos.app.receipt
 
 import app.minimpos.app.data.settings.ReceiptSettings
-import app.minimpos.app.refund.CurrencyHistoryTotals
-import app.minimpos.app.refund.HistoryReport
-import app.minimpos.app.refund.HistoryScope
+import app.minimpos.app.history.CurrencyHistoryTotals
+import app.minimpos.app.history.HistoryReport
+import app.minimpos.app.history.HistoryScope
 import app.minimpos.core.money.CurrencySpec
 import app.minimpos.core.money.MoneyFormatter
 import app.minimpos.core.receipt.Align

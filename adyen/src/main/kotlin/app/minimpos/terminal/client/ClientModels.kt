@@ -378,6 +378,8 @@ data class TransactionDetails(
     val poiTransactionId: String?,
     /** The terminal's transaction timestamp in XML date-time format, to pass back as [RefundParams.originalTimestamp]. */
     val poiTimestamp: String?,
+    /** The terminal's reconciliation period ID (`POIData.POIReconciliationID`), e.g. `1000`; null when omitted. */
+    val poiReconciliationId: String? = null,
     /**
      * Adyen's unique reference for the transaction, from the `AdditionalResponse` or else the part of
      * [poiTransactionId] after the dot.
@@ -486,6 +488,48 @@ sealed interface PrintOutcome {
         val fault: Fault,
         val noPrinter: Boolean,
     ) : PrintOutcome
+}
+
+/**
+ * Totals reported by the terminal for one [currency] in a `GetTotalsResponse` or `ReconciliationResponse`.
+ *
+ * @property currency ISO 4217 currency code (`PaymentCurrency`).
+ * @property debitAmount Total approved payment amount (`TransactionType.DEBIT`), in major units.
+ * @property debitCount Number of approved debit transactions.
+ * @property creditAmount Total accepted refund/reversal amount (`TransactionType.CREDIT` or `REVERSE_DEBIT`), in major units.
+ * @property creditCount Number of accepted credit/reversal transactions.
+ */
+data class TerminalCurrencyTotals(
+    val currency: String,
+    val debitAmount: BigDecimal = BigDecimal.ZERO,
+    val debitCount: Int = 0,
+    val creditAmount: BigDecimal = BigDecimal.ZERO,
+    val creditCount: Int = 0,
+)
+
+/** The result of [TerminalClient.getTotals] or [TerminalClient.reconcile]. */
+sealed interface TerminalTotalsOutcome {
+    /**
+     * The terminal returned its totals for the reconciliation period.
+     *
+     * @property poiReconciliationId The terminal's reconciliation period identifier (`POIReconciliationID`), if reported.
+     * @property totals Aggregated totals per currency, sorted by currency code.
+     * @property closedPeriod True when the request closed the reconciliation period (`SaleReconciliation`).
+     */
+    data class Answered(
+        val poiReconciliationId: String?,
+        val totals: List<TerminalCurrencyTotals>,
+        val closedPeriod: Boolean,
+    ) : TerminalTotalsOutcome
+
+    /**
+     * The totals request failed.
+     *
+     * @property fault Why.
+     */
+    data class Failed(
+        val fault: Fault,
+    ) : TerminalTotalsOutcome
 }
 
 /**

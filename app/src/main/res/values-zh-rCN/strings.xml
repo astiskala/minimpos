@@ -982,4 +982,13 @@
   <string name="settings_dynamic_tip_override_hint">小额订单推荐固定金额，较大金额订单推荐百分比小费。</string>
   <string name="settings_tip_on_pre_tax">按税前金额计算百分比小费</string>
   <string name="settings_tip_on_pre_tax_hint">将税前小计作为小费计算基数发送（AmountToTipOn）。</string>
+  <string name="history_reconcile">与终端核对总额</string>
+  <string name="reconciliation_title">终端对账（周期 %1$s）</string>
+  <string name="reconciliation_closed_title">已结算终端周期 %1$s</string>
+  <string name="reconciliation_matched">Mini mPOS 与终端总额一致。</string>
+  <string name="reconciliation_mismatch">总额存在差异或仍有未解决交易。</string>
+  <string name="reconciliation_sales_label">销售额（%1$s）</string>
+  <string name="reconciliation_refunds_label">退款（%1$s）</string>
+  <string name="reconciliation_compare">Mini mPOS %1$s · 终端 %2$s</string>
+  <string name="reconciliation_close_period">结束对账周期</string>
 </resources>

@@ -2,6 +2,7 @@ package app.minimpos.terminal.simulator
 
 import app.minimpos.terminal.client.PrintJob
 import app.minimpos.terminal.client.TerminalClient
+import app.minimpos.terminal.client.TerminalCurrencyTotals
 import app.minimpos.terminal.client.toPrintJob
 import app.minimpos.terminal.transport.CompletedTransactions
 import app.minimpos.terminal.transport.Delivery
@@ -16,6 +17,7 @@ import com.adyen.model.nexo.DiagnosisResponse
 import com.adyen.model.nexo.DocumentQualifierType
 import com.adyen.model.nexo.EntryModeType
 import com.adyen.model.nexo.ErrorConditionType
+import com.adyen.model.nexo.GetTotalsResponse
 import com.adyen.model.nexo.GlobalStatusType
 import com.adyen.model.nexo.MessageHeader
 import com.adyen.model.nexo.MessageType
@@ -32,20 +34,26 @@ import com.adyen.model.nexo.PaymentRequest
 import com.adyen.model.nexo.PaymentResponse
 import com.adyen.model.nexo.PaymentResult
 import com.adyen.model.nexo.PaymentToken
+import com.adyen.model.nexo.PaymentTotals
 import com.adyen.model.nexo.PaymentType
 import com.adyen.model.nexo.PrintOutput
 import com.adyen.model.nexo.PrintResponse
 import com.adyen.model.nexo.PrinterStatusType
+import com.adyen.model.nexo.ReconciliationRequest
+import com.adyen.model.nexo.ReconciliationResponse
 import com.adyen.model.nexo.Response
 import com.adyen.model.nexo.ResultType
 import com.adyen.model.nexo.ReversalRequest
 import com.adyen.model.nexo.ReversalResponse
 import com.adyen.model.nexo.SaleData
+import com.adyen.model.nexo.SaleToPOIRequest
 import com.adyen.model.nexo.SaleToPOIResponse
 import com.adyen.model.nexo.TokenRequestedType
 import com.adyen.model.nexo.TransactionIdentification
 import com.adyen.model.nexo.TransactionStatusRequest
 import com.adyen.model.nexo.TransactionStatusResponse
+import com.adyen.model.nexo.TransactionTotals
+import com.adyen.model.nexo.TransactionType
 import com.adyen.model.terminal.SaleToAcquirerData
 import com.adyen.model.terminal.TerminalAPIRequest
 import com.adyen.model.terminal.TerminalAPIResponse
@@ -54,6 +62,7 @@ import com.google.gson.JsonParser
 import kotlinx.coroutines.delay
 import java.io.IOException
 import java.math.BigDecimal
+import java.math.BigInteger
 import java.math.RoundingMode
 import java.net.SocketTimeoutException
 import java.net.URLEncoder
@@ -62,6 +71,7 @@ import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.Base64
 import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.atomic.AtomicInteger
 import kotlin.random.Random
 import kotlin.time.Duration
 
@@ -137,6 +147,9 @@ class TerminalSimulator(
     private val aborted = ConcurrentHashMap.newKeySet<String>()
     private val inProgress = ConcurrentHashMap.newKeySet<String>()
     private val ledger = SimulatedLedger()
+    private val reconciliationId = AtomicInteger(INITIAL_RECONCILIATION_ID)
+    private val periodTotals = ConcurrentHashMap<String, TerminalCurrencyTotals>()
+    private val paymentAmountsByTransactionId = ConcurrentHashMap<String, Pair<String, BigDecimal>>()
 
     /** Adyen's Checkout API for the payments this simulator takes, answering from what happened to them. */
     val modifications: SimulatedModifications = SimulatedModifications(random, ledger)
@@ -202,10 +215,30 @@ class TerminalSimulator(
             }
 
             else -> {
-                throw FaultException(Fault.Unsupported)
+                handleTotals(header, message)
             }
         }
     }
+
+    private fun handleTotals(
+        header: MessageHeader,
+        message: SaleToPOIRequest,
+    ): TerminalAPIResponse =
+        when {
+            message.getTotalsRequest != null -> {
+                respond(header) { getTotalsResponse = totalsResponse() }
+            }
+
+            message.reconciliationRequest != null -> {
+                respond(header) {
+                    reconciliationResponse = reconcileResponse(message.reconciliationRequest)
+                }
+            }
+
+            else -> {
+                throw FaultException(Fault.Unsupported)
+            }
+        }
 
     private suspend fun payment(
         header: MessageHeader,
@@ -276,7 +309,7 @@ class TerminalSimulator(
                 preAuthorisation = request.saleData?.saleToAcquirerData?.authorisationType == TerminalClient.PRE_AUTH,
                 tipAmount = tipAmount,
             )
-        if (payment.approved) ledger.approved(payment.psp, manualCapture = payment.preAuthorisation)
+        if (payment.approved) recordApprovedPayment(payment, amount.currency, authorizedAmount)
         val refusal = if (payment.approved) null else refusal(outcome)
         val additional = paymentAdditional(payment, request.saleData?.saleToAcquirerData, refusal)
         return PaymentResponse().apply {
@@ -299,6 +332,21 @@ class TerminalSimulator(
                         signature = payment.approved && settings.signatureRequired,
                     ),
                 )
+        }
+    }
+
+    private fun recordApprovedPayment(
+        payment: SimulatedPayment,
+        currency: String,
+        authorizedAmount: BigDecimal,
+    ) {
+        ledger.approved(payment.psp, manualCapture = payment.preAuthorisation)
+        paymentAmountsByTransactionId["${payment.tender}.${payment.psp}"] = currency to authorizedAmount
+        if (!payment.preAuthorisation) {
+            periodTotals.compute(currency) { _, current ->
+                val base = current ?: TerminalCurrencyTotals(currency)
+                base.copy(debitAmount = base.debitAmount + authorizedAmount, debitCount = base.debitCount + 1)
+            }
         }
     }
 
@@ -487,6 +535,7 @@ class TerminalSimulator(
                     ?.transactionID
                     ?.substringAfter('.')
                     ?.let(ledger::cancel) == true
+        if (!cancels) recordApprovedReversal(request)
         val response =
             ReversalResponse().apply {
                 response =
@@ -518,6 +567,23 @@ class TerminalSimulator(
             }
         completed.remember(header.serviceID.orEmpty(), reversal = response)
         return response
+    }
+
+    private fun recordApprovedReversal(request: ReversalRequest) {
+        val originalId =
+            request.originalPOITransaction
+                ?.poiTransactionID
+                ?.transactionID
+                .orEmpty()
+        val original = paymentAmountsByTransactionId[originalId]
+        val currency = original?.first ?: "EUR"
+        val reversed = request.reversedAmount ?: original?.second ?: BigDecimal.ZERO
+        if (reversed > BigDecimal.ZERO) {
+            periodTotals.compute(currency) { _, current ->
+                val base = current ?: TerminalCurrencyTotals(currency)
+                base.copy(creditAmount = base.creditAmount + reversed, creditCount = base.creditCount + 1)
+            }
+        }
     }
 
     private fun print(
@@ -553,7 +619,53 @@ class TerminalSimulator(
     private fun poiData(
         tender: String,
         psp: String,
-    ) = POIData().apply { poiTransactionID = TerminalClient.transaction("$tender.$psp", clock.instant()) }
+    ) = POIData().apply {
+        poiTransactionID = TerminalClient.transaction("$tender.$psp", clock.instant())
+        poiReconciliationID = reconciliationId.get().toString()
+    }
+
+    private fun totalsResponse(): GetTotalsResponse =
+        GetTotalsResponse().apply {
+            response = Response().apply { result = ResultType.SUCCESS }
+            poiReconciliationID = reconciliationId.get().toString()
+            transactionTotals += snapshotTransactionTotals(periodTotals.values.toList())
+        }
+
+    private fun reconcileResponse(request: ReconciliationRequest): ReconciliationResponse {
+        val currentId = reconciliationId.getAndIncrement().toString()
+        val snapshot = periodTotals.values.toList()
+        periodTotals.clear()
+        return ReconciliationResponse().apply {
+            response = Response().apply { result = ResultType.SUCCESS }
+            reconciliationType = request.reconciliationType
+            poiReconciliationID = currentId
+            transactionTotals += snapshotTransactionTotals(snapshot)
+        }
+    }
+
+    private fun snapshotTransactionTotals(entries: List<TerminalCurrencyTotals>): List<TransactionTotals> =
+        entries.sortedBy { it.currency }.map { item ->
+            TransactionTotals().apply {
+                paymentInstrumentType = PaymentInstrumentType.CARD
+                paymentCurrency = item.currency
+                if (item.debitCount > 0) {
+                    paymentTotals +=
+                        PaymentTotals().apply {
+                            transactionType = TransactionType.DEBIT
+                            transactionCount = BigInteger.valueOf(item.debitCount.toLong())
+                            transactionAmount = item.debitAmount
+                        }
+                }
+                if (item.creditCount > 0) {
+                    paymentTotals +=
+                        PaymentTotals().apply {
+                            transactionType = TransactionType.CREDIT
+                            transactionCount = BigInteger.valueOf(item.creditCount.toLong())
+                            transactionAmount = item.creditAmount
+                        }
+                }
+            }
+        }
 
     private fun receipt(
         qualifier: DocumentQualifierType,
@@ -680,6 +792,7 @@ class TerminalSimulator(
     companion object {
         /** The ServiceID a [SimulatedOutcome.BUSY] payment names as the transaction the terminal is busy with. */
         const val BUSY_SERVICE_ID = "SIMBUSY001"
+        private const val INITIAL_RECONCILIATION_ID = 1000
         private const val POLL_MILLIS = 100L
         private const val PERCENT = 100
         private const val RANDOM_APPROVAL_PERCENT = 80

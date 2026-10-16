@@ -79,6 +79,7 @@ import app.minimpos.app.feature.sale.statusKind
 import app.minimpos.app.feature.sale.statusTitle
 import app.minimpos.app.feature.stillUnconfirmed
 import app.minimpos.app.refund.PaymentAction
+import app.minimpos.app.refund.TerminalReconciliationReport
 import app.minimpos.app.refund.decline
 import app.minimpos.app.refund.methodCode
 import app.minimpos.app.refund.simulatedLink
@@ -133,12 +134,33 @@ fun HistoryScreen(
     vm: HistoryViewModel = historyViewModel(),
 ) {
     val state by vm.state.collectAsStateWithLifecycle()
+    var closeApproval by remember { mutableStateOf(false) }
+    if (closeApproval) {
+        return ManagerApproval(
+            onApprove = {
+                closeApproval = false
+                vm.reconcileTerminal(closePeriod = true)
+            },
+            onCancel = { closeApproval = false },
+        )
+    }
     val search = rememberSearchControl(available = state.hasHistory, onRequest = LocalDimens.current.compact, state.query, vm::setQuery)
     MiniScaffold(
         title = stringResource(R.string.history_title),
         onBack = navigator::back,
         modifier = modifier,
-        actions = { if (search.onRequest) SearchToggle(search.mode, stringResource(R.string.history_search), search.toggle) },
+        actions = {
+            if (state.canReconcile) {
+                IconButton(
+                    onClick = { vm.reconcileTerminal(closePeriod = false) },
+                    enabled = !state.reconcile.running,
+                    modifier = Modifier.testTag("reconcileTerminal"),
+                ) {
+                    Icon(Icons.Default.Refresh, contentDescription = stringResource(R.string.history_reconcile))
+                }
+            }
+            if (search.onRequest) SearchToggle(search.mode, stringResource(R.string.history_search), search.toggle)
+        },
     ) { padding ->
         Column(Modifier.fillMaxSize().padding(padding)) {
             if (search.mode != SearchMode.HIDDEN) {
@@ -152,34 +174,48 @@ fun HistoryScreen(
             }
             HistoryFilters(state.filter, vm::setFilter, state.methods, state.method, vm::setMethod)
             OutcomeMessage(state.print)
-            when {
-                !state.loaded -> {}
+            OutcomeMessage(state.reconcile)
+            state.reconciliation?.let { report ->
+                ReconciliationCard(report, state.reconcile.running, { closeApproval = true }, vm::dismissReconciliation)
+            }
+            HistoryBody(state, vm::printDay, vm::showAll, navigator)
+        }
+    }
+}
 
-                state.days.isNotEmpty() -> {
-                    HistoryList(state.days, state.canPrint, state.print.running, vm::printDay) { item ->
-                        when (item) {
-                            is HistoryItem.Sale -> navigator.push(Route.SaleDetail(item.sale.id))
-                            is HistoryItem.Refund -> navigator.push(Route.RefundDetail(item.refund.id))
-                        }
-                    }
-                }
+@Composable
+private fun ColumnScope.HistoryBody(
+    state: HistoryUiState,
+    onPrintDay: (LocalDate) -> Unit,
+    onShowAll: () -> Unit,
+    navigator: Navigator,
+) {
+    when {
+        !state.loaded -> {}
 
-                state.hasHistory && state.narrowed -> {
-                    EmptyState(
-                        Icons.Default.SearchOff,
-                        stringResource(R.string.history_no_match),
-                        stringResource(R.string.history_no_match_hint),
-                    ) { SecondaryButton(stringResource(R.string.history_show_all), vm::showAll, modifier = Modifier.testTag("showAll")) }
-                }
-
-                else -> {
-                    EmptyState(
-                        Icons.AutoMirrored.Filled.ReceiptLong,
-                        stringResource(R.string.history_empty),
-                        stringResource(R.string.history_empty_hint),
-                    )
+        state.days.isNotEmpty() -> {
+            HistoryList(state.days, state.canPrint, state.print.running, onPrintDay) { item ->
+                when (item) {
+                    is HistoryItem.Sale -> navigator.push(Route.SaleDetail(item.sale.id))
+                    is HistoryItem.Refund -> navigator.push(Route.RefundDetail(item.refund.id))
                 }
             }
+        }
+
+        state.hasHistory && state.narrowed -> {
+            EmptyState(
+                Icons.Default.SearchOff,
+                stringResource(R.string.history_no_match),
+                stringResource(R.string.history_no_match_hint),
+            ) { SecondaryButton(stringResource(R.string.history_show_all), onShowAll, modifier = Modifier.testTag("showAll")) }
+        }
+
+        else -> {
+            EmptyState(
+                Icons.AutoMirrored.Filled.ReceiptLong,
+                stringResource(R.string.history_empty),
+                stringResource(R.string.history_empty_hint),
+            )
         }
     }
 }
@@ -774,9 +810,74 @@ private fun PaymentDetailsCard(sale: SaleEntity) {
 }
 
 @Composable
+private fun ReconciliationCard(
+    report: TerminalReconciliationReport,
+    running: Boolean,
+    onClosePeriod: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    val locale = currentLocale()
+    val colors = LocalStatusColors.current
+    Column(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp).testTag("reconciliationCard")) {
+        Card {
+            Text(
+                text =
+                    stringResource(
+                        if (report.closedPeriod) R.string.reconciliation_closed_title else R.string.reconciliation_title,
+                        report.poiReconciliationId ?: "—",
+                    ),
+                style = MaterialTheme.typography.titleSmall,
+            )
+            Text(
+                text = stringResource(if (report.allMatch) R.string.reconciliation_matched else R.string.reconciliation_mismatch),
+                style = MaterialTheme.typography.bodySmall,
+                color = if (report.allMatch) colors.success else colors.warning,
+            )
+            report.currencies.forEach { row ->
+                val fmt = MoneyFormatter(CurrencySpec.of(row.currency), locale)
+                LabeledValue(
+                    stringResource(R.string.reconciliation_sales_label, row.currency),
+                    stringResource(R.string.reconciliation_compare, fmt.format(row.localSalesMinor), fmt.format(row.terminalSalesMinor)),
+                )
+                if (row.localRefundsMinor > 0 || row.terminalRefundsMinor > 0) {
+                    LabeledValue(
+                        stringResource(R.string.reconciliation_refunds_label, row.currency),
+                        stringResource(
+                            R.string.reconciliation_compare,
+                            fmt.format(row.localRefundsMinor),
+                            fmt.format(row.terminalRefundsMinor),
+                        ),
+                    )
+                }
+            }
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                if (!report.closedPeriod) {
+                    TextButton(onClick = onClosePeriod, enabled = !running, modifier = Modifier.testTag("closeReconciliationPeriod")) {
+                        Text(stringResource(R.string.reconciliation_close_period))
+                    }
+                }
+                TextButton(onClick = onDismiss, modifier = Modifier.testTag("dismissReconciliation")) {
+                    Text(stringResource(R.string.action_close))
+                }
+            }
+        }
+    }
+}
+
+@Composable
 private fun historyViewModel(): HistoryViewModel {
     val container = LocalAppContainer.current
-    return viewModel { HistoryViewModel(container.history, receipts = container.receipts) }
+    return viewModel {
+        HistoryViewModel(
+            history = container.history,
+            receipts = container.receipts,
+            gateway = container.gateway,
+            terminal = container.terminalStatus.state,
+            payments = container.payments,
+            refunds = container.refunds,
+            permitsClose = container::managerPermits,
+        )
+    }
 }
 
 @Composable

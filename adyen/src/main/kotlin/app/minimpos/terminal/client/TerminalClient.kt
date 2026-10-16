@@ -14,6 +14,7 @@ import com.adyen.model.nexo.DiagnosisRequest
 import com.adyen.model.nexo.DocumentQualifierType
 import com.adyen.model.nexo.EntryModeType
 import com.adyen.model.nexo.ErrorConditionType
+import com.adyen.model.nexo.GetTotalsRequest
 import com.adyen.model.nexo.IdentificationType
 import com.adyen.model.nexo.MessageCategoryType
 import com.adyen.model.nexo.MessageClassType
@@ -21,6 +22,7 @@ import com.adyen.model.nexo.MessageHeader
 import com.adyen.model.nexo.MessageReference
 import com.adyen.model.nexo.MessageType
 import com.adyen.model.nexo.OriginalPOITransaction
+import com.adyen.model.nexo.POIData
 import com.adyen.model.nexo.PaymentData
 import com.adyen.model.nexo.PaymentInstrumentData
 import com.adyen.model.nexo.PaymentInstrumentType
@@ -29,6 +31,8 @@ import com.adyen.model.nexo.PaymentRequest
 import com.adyen.model.nexo.PaymentResponse
 import com.adyen.model.nexo.PaymentTransaction
 import com.adyen.model.nexo.PrintRequest
+import com.adyen.model.nexo.ReconciliationRequest
+import com.adyen.model.nexo.ReconciliationType
 import com.adyen.model.nexo.Response
 import com.adyen.model.nexo.ResultType
 import com.adyen.model.nexo.ReversalReasonType
@@ -40,13 +44,17 @@ import com.adyen.model.nexo.SaleToPOIResponse
 import com.adyen.model.nexo.StoredValueAccountID
 import com.adyen.model.nexo.StoredValueAccountType
 import com.adyen.model.nexo.TokenRequestedType
+import com.adyen.model.nexo.TotalFilter
 import com.adyen.model.nexo.TransactionConditions
 import com.adyen.model.nexo.TransactionIdentification
 import com.adyen.model.nexo.TransactionStatusRequest
+import com.adyen.model.nexo.TransactionTotals
+import com.adyen.model.nexo.TransactionType
 import com.adyen.model.terminal.SaleToAcquirerData
 import com.adyen.model.terminal.SaleToAcquirerData.RecurringProcessingModelEnum
 import com.adyen.model.terminal.TerminalAPIRequest
 import kotlinx.coroutines.delay
+import java.math.BigDecimal
 import java.time.Clock
 import java.time.Instant
 import java.time.ZoneOffset
@@ -364,6 +372,101 @@ class TerminalClient(
     }
 
     /**
+     * Retrieves the terminal's current reconciliation period totals (`GetTotalsRequest`) without closing the period.
+     *
+     * @return [TerminalTotalsOutcome.Answered] with totals per currency, or [TerminalTotalsOutcome.Failed].
+     */
+    suspend fun getTotals(): TerminalTotalsOutcome {
+        val request =
+            message(MessageClassType.SERVICE, MessageCategoryType.GET_TOTALS, newServiceId()).apply {
+                getTotalsRequest =
+                    GetTotalsRequest().apply {
+                        totalFilter = TotalFilter().apply { poiid = identity.poiId }
+                    }
+            }
+        val response =
+            when (val delivery = transport.send(wrap(request), shortTimeout)) {
+                is Delivery.Answered -> delivery.response?.saleToPOIResponse?.getTotalsResponse
+                is Delivery.Failed -> return TerminalTotalsOutcome.Failed(delivery.fault)
+            } ?: return TerminalTotalsOutcome.Failed(Fault.UnreadableReply())
+        return mapTotalsResponse(response.response, response.poiReconciliationID, response.transactionTotals, closedPeriod = false)
+    }
+
+    /**
+     * Retrieves the terminal's current reconciliation period totals and starts a new period (`SaleReconciliation`).
+     *
+     * @return [TerminalTotalsOutcome.Answered] with totals per currency, or [TerminalTotalsOutcome.Failed].
+     */
+    suspend fun reconcile(): TerminalTotalsOutcome {
+        val request =
+            message(MessageClassType.SERVICE, MessageCategoryType.RECONCILIATION, newServiceId()).apply {
+                reconciliationRequest =
+                    ReconciliationRequest().apply {
+                        reconciliationType = ReconciliationType.SALE_RECONCILIATION
+                    }
+            }
+        val response =
+            when (val delivery = transport.send(wrap(request), shortTimeout)) {
+                is Delivery.Answered -> delivery.response?.saleToPOIResponse?.reconciliationResponse
+                is Delivery.Failed -> return TerminalTotalsOutcome.Failed(delivery.fault)
+            } ?: return TerminalTotalsOutcome.Failed(Fault.UnreadableReply())
+        return mapTotalsResponse(response.response, response.poiReconciliationID, response.transactionTotals, closedPeriod = true)
+    }
+
+    private fun mapTotalsResponse(
+        response: Response?,
+        poiReconciliationId: String?,
+        totals: List<TransactionTotals>?,
+        closedPeriod: Boolean,
+    ): TerminalTotalsOutcome {
+        if (response?.result != ResultType.SUCCESS) {
+            val message = AdditionalResponseParser.parse(response?.additionalResponse)["message"]
+            return TerminalTotalsOutcome.Failed(Fault.TerminalRejected(ExternalText.of(message)))
+        }
+        val byCurrency = linkedMapOf<String, TerminalCurrencyTotals>()
+        totals.orEmpty().forEach { group ->
+            val currency =
+                group.paymentCurrency
+                    ?.trim()
+                    ?.uppercase()
+                    .orEmpty()
+            if (currency.isNotEmpty()) {
+                var current = byCurrency[currency] ?: TerminalCurrencyTotals(currency)
+                group.paymentTotals.orEmpty().forEach { entry ->
+                    val amount = entry.transactionAmount ?: BigDecimal.ZERO
+                    val count = entry.transactionCount?.toInt() ?: 0
+                    current =
+                        when (entry.transactionType) {
+                            TransactionType.DEBIT -> {
+                                current.copy(
+                                    debitAmount = current.debitAmount + amount,
+                                    debitCount = current.debitCount + count,
+                                )
+                            }
+
+                            TransactionType.CREDIT, TransactionType.REVERSE_DEBIT -> {
+                                current.copy(
+                                    creditAmount = current.creditAmount + amount,
+                                    creditCount = current.creditCount + count,
+                                )
+                            }
+
+                            else -> {
+                                current
+                            }
+                        }
+                }
+                byCurrency[currency] = current
+            }
+        }
+        return TerminalTotalsOutcome.Answered(
+            poiReconciliationId = poiReconciliationId?.trim()?.ifEmpty { null },
+            totals = byCurrency.values.sortedBy { it.currency },
+            closedPeriod = closedPeriod,
+        )
+    }
+
+    /**
      * One transaction status check for an earlier payment or reversal (e.g. to settle an "unknown" sale later). The
      * terminal looks the transaction up by our SaleID and its ServiceID and repeats its original response, receipts
      * included.
@@ -628,7 +731,7 @@ class TerminalClient(
             return details(
                 response = response.response,
                 additional = additional,
-                poi = response.poiData?.poiTransactionID,
+                poiData = response.poiData,
                 receipts = response.paymentReceipt,
             ).copy(
                 merchantReference = response.saleData?.saleTransactionID?.transactionID,
@@ -658,7 +761,7 @@ class TerminalClient(
             return details(
                 response = response.response,
                 additional = additional,
-                poi = response.poiData?.poiTransactionID,
+                poiData = response.poiData,
                 receipts = response.paymentReceipt,
             ).copy(
                 merchantReference = additional["merchantReference"],
@@ -669,9 +772,10 @@ class TerminalClient(
         private fun details(
             response: Response?,
             additional: Map<String, String>,
-            poi: TransactionIdentification?,
+            poiData: POIData?,
             receipts: List<PaymentReceipt>?,
         ): TransactionDetails {
+            val poi = poiData?.poiTransactionID
             val success = response?.result == ResultType.SUCCESS
             val refusalReason = additional["refusalReason"]
             return TransactionDetails(
@@ -681,6 +785,7 @@ class TerminalClient(
                 refusalReason = refusalReason,
                 poiTransactionId = poi?.transactionID,
                 poiTimestamp = poi?.timeStamp?.toXMLFormat(),
+                poiReconciliationId = poiData?.poiReconciliationID?.trim()?.ifEmpty { null },
                 pspReference =
                     additional["pspReference"]
                         ?: poi?.transactionID?.substringAfter('.', missingDelimiterValue = "")?.ifEmpty { null },

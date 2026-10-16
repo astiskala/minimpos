@@ -18,6 +18,7 @@ import app.minimpos.terminal.client.PrintJob
 import app.minimpos.terminal.client.PrintOutcome
 import app.minimpos.terminal.client.RefundParams
 import app.minimpos.terminal.client.TerminalClient
+import app.minimpos.terminal.client.TerminalTotalsOutcome
 import app.minimpos.terminal.client.TransactionKind
 import app.minimpos.terminal.client.TransactionOutcome
 import app.minimpos.terminal.paymentsapp.PaymentsAppLinks
@@ -269,11 +270,18 @@ class TerminalGateway(
     /** Reads this device's terminal certificate before credentials are entered; tests replace the TLS connection. */
     private val localEnvironment: suspend () -> TerminalEnvironment? = { TerminalTls().readEnvironment(TerminalSetup.LOCALHOST) },
 ) {
-    private val cloudTerminal = CloudTerminal(cloud, setups.device, ::cloudDetected)
-    private val destinations =
-        listOf(simulator, LocalTerminal(connect, ::environmentDetected), cloudTerminal, PaymentsAppDestination(paymentsApp))
-
     private val _detectedEnvironment = MutableStateFlow<DetectedEnvironment?>(null)
+    private val cloudTerminal =
+        CloudTerminal(cloud, setups.device) { setup, endpoint ->
+            _detectedEnvironment.value = DetectedEnvironment(setup, endpoint.environment, endpoint.region)
+        }
+    private val destinations =
+        listOf(
+            simulator,
+            LocalTerminal(connect, ::environmentDetected),
+            cloudTerminal,
+            PaymentsAppDestination(paymentsApp),
+        )
 
     /** Certificate environment or selected cloud endpoint from the last connection. */
     val detectedEnvironment: StateFlow<DetectedEnvironment?> = _detectedEnvironment.asStateFlow()
@@ -378,7 +386,9 @@ class TerminalGateway(
         when (val connection = connection()) {
             is Connection.Open -> {
                 val outcome = connection.client.print(jobs)
-                if (outcome is PrintOutcome.Failed && outcome.noPrinter) learnPrinter(connection.client, hasPrinter = false)
+                if (outcome is PrintOutcome.Failed && outcome.noPrinter) {
+                    _printers.update { it + (connection.client.identity.poiId to false) }
+                }
                 Attempt.Made(outcome)
             }
 
@@ -400,9 +410,9 @@ class TerminalGateway(
      */
     suspend fun diagnose(): TerminalConnection {
         val connection = connection()
-        return candidates.diagnose(connection).also {
-            if (connection is Connection.Open && it is TerminalConnection.Connected && !it.setupOnly) {
-                learnPrinter(connection.client, it.diagnosis.hasPrinter)
+        return candidates.diagnose(connection).also { result ->
+            if (connection is Connection.Open && result is TerminalConnection.Connected && !result.setupOnly) {
+                _printers.update { it + (connection.client.identity.poiId to result.diagnosis.hasPrinter) }
             }
         }
     }
@@ -458,6 +468,25 @@ class TerminalGateway(
                     }
                 }
             }
+
+        internal suspend fun totals(closePeriod: Boolean): Attempt<TerminalTotalsOutcome> =
+            when (val connection = connection()) {
+                is Connection.Open -> {
+                    if (!connection.destination.supportsTerminalFeatures) {
+                        Attempt.Made(TerminalTotalsOutcome.Failed(Fault.Unsupported))
+                    } else {
+                        Attempt.Made(if (closePeriod) connection.client.reconcile() else connection.client.getTotals())
+                    }
+                }
+
+                is Connection.NotSetUp -> {
+                    Attempt.NotSetUp(connection.problem)
+                }
+
+                is Connection.Unreachable -> {
+                    Attempt.Made(TerminalTotalsOutcome.Failed(connection.fault))
+                }
+            }
     }
 
     /** The terminals connected to the merchant account in the cloud, for choosing one, see [CloudTerminal.connectedTerminals]. */
@@ -473,18 +502,6 @@ class TerminalGateway(
     ) {
         _detectedEnvironment.value = DetectedEnvironment(setup, environment)
     }
-
-    private fun cloudDetected(
-        setup: TerminalSetup,
-        endpoint: CloudEndpoint,
-    ) {
-        _detectedEnvironment.value = DetectedEnvironment(setup, endpoint.environment, endpoint.region)
-    }
-
-    private fun learnPrinter(
-        client: TerminalClient,
-        hasPrinter: Boolean,
-    ) = _printers.update { it + (client.identity.poiId to hasPrinter) }
 
     /**
      * The client for where payments go now with the stored settings, or why there is none: for a payment ([paying]) the
@@ -547,6 +564,12 @@ class TerminalGateway(
         const val DEFAULT_SALE_ID = "MiniMPOS"
     }
 }
+
+/**
+ * Retrieves the terminal's current reconciliation totals (`GetTotalsRequest`), or closes the current period and
+ * starts a new one (`ReconciliationRequest` with `SaleReconciliation`) when [closePeriod] is true.
+ */
+suspend fun TerminalGateway.totals(closePeriod: Boolean = false): Attempt<TerminalTotalsOutcome> = candidates.totals(closePeriod)
 
 /** Why an unreachable diagnosis failed; a terminal that refused without saying why is still a refusal. */
 internal fun DiagnosisResult.failure(): Fault = fault ?: Fault.TerminalRejected(null)

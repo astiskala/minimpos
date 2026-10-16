@@ -1028,4 +1028,13 @@
   <string name="settings_dynamic_tip_override_hint">Suggest fixed tip amounts on small baskets and percentages on larger ones.</string>
   <string name="settings_tip_on_pre_tax">Calculate percentage tips before tax</string>
   <string name="settings_tip_on_pre_tax_hint">Send the pre-tax subtotal as the amount to tip on (AmountToTipOn).</string>
+  <string name="history_reconcile">Reconcile with terminal</string>
+  <string name="reconciliation_title">Terminal reconciliation (period %1$s)</string>
+  <string name="reconciliation_closed_title">Closed terminal period %1$s</string>
+  <string name="reconciliation_matched">Mini mPOS and terminal totals match.</string>
+  <string name="reconciliation_mismatch">Totals differ or unresolved transactions remain.</string>
+  <string name="reconciliation_sales_label">Sales (%1$s)</string>
+  <string name="reconciliation_refunds_label">Refunds (%1$s)</string>
+  <string name="reconciliation_compare">Mini mPOS %1$s · Terminal %2$s</string>
+  <string name="reconciliation_close_period">Close period</string>
 </resources>

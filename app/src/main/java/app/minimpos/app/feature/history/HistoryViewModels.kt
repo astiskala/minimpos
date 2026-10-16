@@ -2,12 +2,15 @@ package app.minimpos.app.feature.history
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import app.minimpos.app.data.db.Failure
 import app.minimpos.app.data.db.RefundEntity
 import app.minimpos.app.data.db.SaleKind
 import app.minimpos.app.data.db.SaleWithLines
+import app.minimpos.app.data.db.SetupProblem
 import app.minimpos.app.data.repo.HistoryItem
 import app.minimpos.app.data.repo.HistoryRepository
 import app.minimpos.app.data.repo.RefundRepository
+import app.minimpos.app.feature.ActionOutcome
 import app.minimpos.app.feature.ActionState
 import app.minimpos.app.feature.CaptureStep
 import app.minimpos.app.feature.TransactionActions
@@ -22,14 +25,23 @@ import app.minimpos.app.refund.HistoryAccounting
 import app.minimpos.app.refund.HistoryActivityKind
 import app.minimpos.app.refund.PaymentAction
 import app.minimpos.app.refund.PaymentStanding
+import app.minimpos.app.refund.RefundStart
 import app.minimpos.app.refund.RefundablePayment
 import app.minimpos.app.refund.StoredPayment
 import app.minimpos.app.refund.StoredPayments
+import app.minimpos.app.refund.TerminalReconciliationReport
 import app.minimpos.app.refund.standing
+import app.minimpos.app.terminal.Attempt
+import app.minimpos.app.terminal.TerminalGateway
+import app.minimpos.app.terminal.TerminalState
+import app.minimpos.app.terminal.totals
+import app.minimpos.terminal.client.TerminalTotalsOutcome
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
@@ -115,6 +127,9 @@ enum class HistoryFilter {
  * @property hasHistory Whether history holds any transaction at all, matching or not.
  * @property canPrint Whether daily reports can print on the current destination.
  * @property print Latest whole-day print outcome.
+ * @property canReconcile Whether the current destination supports terminal totals and reconciliation.
+ * @property reconcile Latest terminal totals/reconciliation action state.
+ * @property reconciliation Latest comparison between local records and terminal totals; null before running or after dismissal.
  */
 data class HistoryUiState(
     val loaded: Boolean = false,
@@ -128,6 +143,9 @@ data class HistoryUiState(
     val canPrint: Boolean = false,
     /** Latest whole-day print outcome. */
     val print: ActionState = ActionState(),
+    val canReconcile: Boolean = false,
+    val reconcile: ActionState = ActionState(),
+    val reconciliation: TerminalReconciliationReport? = null,
 ) {
     /** Whether the filter, the search or the payment method leaves transactions out. */
     val narrowed: Boolean get() = filter != HistoryFilter.ALL || HistorySearch(query, method).isActive
@@ -135,13 +153,19 @@ data class HistoryUiState(
 
 /** The history list: sales and refunds by day, with daily totals, filtered and searched. */
 class HistoryViewModel(
-    history: HistoryRepository,
+    private val history: HistoryRepository,
     /** The time zone days are counted in; read for each update, so it follows the device's setting. */
     private val zone: () -> ZoneId = { ZoneId.systemDefault() },
     /** Report delivery, absent only in list-only tests. */
     private val receipts: ReceiptDelivery? = null,
+    private val gateway: TerminalGateway? = null,
+    private val terminal: Flow<TerminalState> = flowOf(TerminalState()),
+    private val payments: TransactionLifecycle<PaymentStart>? = null,
+    private val refunds: TransactionLifecycle<RefundStart>? = null,
+    private val permitsClose: suspend () -> Boolean = { true },
 ) : ViewModel() {
     private val print = MutableStateFlow(ActionState())
+    private val reconcileState = MutableStateFlow<Pair<ActionState, TerminalReconciliationReport?>>(ActionState() to null)
     private val canPrint = receipts?.let(TransactionActions::canPrintReports) ?: flowOf(false)
     private val filter = MutableStateFlow(HistoryFilter.ALL)
     private val query = MutableStateFlow("")
@@ -175,9 +199,27 @@ class HistoryViewModel(
                 methods = PaymentMethodFilter.available(sales.values.toList()),
                 hasHistory = items.isNotEmpty(),
             )
-        }.combine(combine(canPrint, print) { available, action -> available to action }) { list, (available, action) ->
-            list.copy(canPrint = available, print = action)
+        }.combine(
+            combine(canPrint, print, terminal, reconcileState) { available, action, term, (recAction, recReport) ->
+                ReconcileSlice(available, action, gateway != null && term.supportsTerminalFeatures, recAction, recReport)
+            },
+        ) { list, slice ->
+            list.copy(
+                canPrint = slice.canPrint,
+                print = slice.print,
+                canReconcile = slice.canReconcile,
+                reconcile = slice.reconcile,
+                reconciliation = slice.reconciliation,
+            )
         }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), HistoryUiState())
+
+    private data class ReconcileSlice(
+        val canPrint: Boolean,
+        val print: ActionState,
+        val canReconcile: Boolean,
+        val reconcile: ActionState,
+        val reconciliation: TerminalReconciliationReport?,
+    )
 
     /** Prints every retained activity for [date], irrespective of active list filters; duplicate taps are ignored. */
     fun printDay(date: LocalDate) {
@@ -185,6 +227,69 @@ class HistoryViewModel(
         if (!state.value.canPrint || print.value.running) return
         print.value = ActionState(running = true)
         viewModelScope.launch { print.value = TransactionActions.printReport(delivery, date) }
+    }
+
+    /**
+     * Rechecks any unresolved terminal operations for the current terminal, then retrieves terminal totals
+     * (`GetTotalsRequest`, or `SaleReconciliation` when [closePeriod] is true) and compares them against local
+     * accounting for [date]. Closing a period rechecks Manager PIN approval before sending.
+     */
+    fun reconcileTerminal(
+        date: LocalDate = LocalDate.now(zone()),
+        closePeriod: Boolean = false,
+    ) {
+        val terminalGateway = gateway ?: return
+        if (reconcileState.value.first.running) return
+        reconcileState.value = ActionState(running = true) to null
+        launchWrite({
+            if (closePeriod && !permitsClose()) {
+                reconcileState.value =
+                    ActionState(outcome = ActionOutcome.Failed(Failure.NotSetUp(SetupProblem.MANAGER_APPROVAL)), isError = true) to null
+                return@launchWrite
+            }
+            val currentTerminal = terminal.first()
+            val poiId = currentTerminal.poiId.orEmpty()
+            val beforeItems = history.items().first()
+            HistoryAccounting.unresolvedTerminalItems(beforeItems, poiId).forEach { item ->
+                when (item) {
+                    is HistoryItem.Sale -> payments?.recheck(item.id)
+                    is HistoryItem.Refund -> refunds?.recheck(item.id)
+                }
+            }
+            when (val attempt = terminalGateway.totals(closePeriod)) {
+                is Attempt.NotSetUp -> {
+                    reconcileState.value =
+                        ActionState(outcome = ActionOutcome.Failed(Failure.NotSetUp(attempt.problem)), isError = true) to null
+                }
+
+                is Attempt.Made -> {
+                    when (val outcome = attempt.result) {
+                        is TerminalTotalsOutcome.Failed -> {
+                            reconcileState.value =
+                                ActionState(outcome = ActionOutcome.Failed(Failure.Remote(outcome.fault)), isError = true) to null
+                        }
+
+                        is TerminalTotalsOutcome.Answered -> {
+                            val currentItems = history.items().first()
+                            val report =
+                                HistoryAccounting.compareReconciliation(
+                                    items = currentItems,
+                                    poiId = poiId,
+                                    outcome = outcome,
+                                    date = date,
+                                    zone = zone(),
+                                )
+                            reconcileState.value = ActionState(done = true) to report
+                        }
+                    }
+                }
+            }
+        })
+    }
+
+    /** Dismisses the displayed terminal reconciliation comparison card. */
+    fun dismissReconciliation() {
+        reconcileState.update { (action, _) -> action to null }
     }
 
     /** Shows the transactions matching [value]. */

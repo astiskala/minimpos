@@ -354,6 +354,8 @@ data class SaleEntity(
     val captureStartedAt: Long? = null,
     /** Time capture acceptance was recorded, in epoch milliseconds; null without dated acceptance. */
     val captureProcessedAt: Long? = null,
+    /** Terminal reconciliation period ID (`POIReconciliationID`) reported by the terminal; null when unavailable. */
+    val poiReconciliationId: String? = null,
 ) {
     /** What the payment holds on the card: [authorisedMinor] after an adjustment, else [totalMinor]. */
     val heldMinor: Long get() = authorisedMinor ?: totalMinor
@@ -549,6 +551,8 @@ data class RefundEntity(
     val context: PaymentContext? = null,
     /** Terminal acceptance time in epoch milliseconds; null before acceptance or when unavailable. */
     val processedAt: Long? = null,
+    /** Terminal reconciliation period ID (`POIReconciliationID`) reported by the terminal; null when unavailable. */
+    val poiReconciliationId: String? = null,
 )
 
 /**

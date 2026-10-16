@@ -1,17 +1,18 @@
 package app.minimpos.terminal.paymentsapp
 
-import app.minimpos.terminal.transport.AdyenError
 import app.minimpos.terminal.transport.AdyenHttp
 import app.minimpos.terminal.transport.AdyenReply
 import app.minimpos.terminal.transport.ApiKey
 import app.minimpos.terminal.transport.ExternalText
 import app.minimpos.terminal.transport.Fault
+import app.minimpos.terminal.transport.MANAGEMENT_PAGE_SIZE
+import app.minimpos.terminal.transport.MAX_MANAGEMENT_PAGES
 import app.minimpos.terminal.transport.TerminalEnvironment
 import app.minimpos.terminal.transport.decodeAdyenModel
-import app.minimpos.terminal.transport.fault
+import app.minimpos.terminal.transport.managementEndpoint
+import app.minimpos.terminal.transport.managementFault
 import com.adyen.model.paymentsapp.BoardingTokenRequest
 import com.adyen.model.paymentsapp.BoardingTokenResponse
-import com.adyen.model.paymentsapp.DefaultErrorResponseEntity
 import com.adyen.model.paymentsapp.PaymentsAppResponse
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
@@ -110,13 +111,13 @@ class AdyenPaymentsAppManagement(
         val path = listOf("merchants", target.merchantAccount) + target.storeId?.let { listOf("stores", it) }.orEmpty() + "paymentsApps"
         var page = 0
         var found: ManagementResult? = null
-        while (page < MAX_PAGES && found == null) {
+        while (page < MAX_MANAGEMENT_PAGES && found == null) {
             val url =
                 baseUrl
                     .newBuilder()
                     .apply { path.forEach { addPathSegment(it) } }
-                    .addQueryParameter("limit", PAGE_SIZE.toString())
-                    .addQueryParameter("offset", (page++ * PAGE_SIZE).toString())
+                    .addQueryParameter("limit", MANAGEMENT_PAGE_SIZE.toString())
+                    .addQueryParameter("offset", (page++ * MANAGEMENT_PAGE_SIZE).toString())
                     .addQueryParameter("statuses", "BOARDED")
                     .build()
             found =
@@ -149,7 +150,7 @@ class AdyenPaymentsAppManagement(
                     .Done()
             }
 
-            apps.size < PAGE_SIZE -> {
+            apps.size < MANAGEMENT_PAGE_SIZE -> {
                 ManagementResult.NotBoarded
             }
 
@@ -184,26 +185,20 @@ class AdyenPaymentsAppManagement(
             is AdyenReply.Failed -> ManagementResult.Failed(reply.fault)
         }
 
-    private fun result(reply: AdyenReply.Answered): ManagementResult {
-        if (reply.ok) return ManagementResult.Done(decodeAdyenModel(reply.body, BoardingTokenResponse::class.java)?.boardingToken)
-        val error = decodeAdyenModel(reply.body, DefaultErrorResponseEntity::class.java)
-        val said = ExternalText.of(error?.detail) ?: ExternalText.of(error?.title)
-        return ManagementResult.Failed(reply.fault(ApiKey.PAYMENTS_APP, PAYMENTS_APP_ROLE, AdyenError(said, error?.errorCode)))
-    }
+    private fun result(reply: AdyenReply.Answered): ManagementResult =
+        if (reply.ok) {
+            ManagementResult.Done(decodeAdyenModel(reply.body, BoardingTokenResponse::class.java)?.boardingToken)
+        } else {
+            ManagementResult.Failed(managementFault(reply, ApiKey.PAYMENTS_APP, PAYMENTS_APP_ROLE))
+        }
 
     /** The Management API's endpoints. */
     companion object {
         private val TIMEOUT = 30.seconds
         private const val PAYMENTS_APP_ROLE = "Adyen Payments app role"
-        private const val PAGE_SIZE = 100
-        private const val MAX_PAGES = 100
 
         /** The Management API's base URL for [environment], with its version and without a trailing slash. */
-        fun endpoint(environment: TerminalEnvironment): String =
-            when (environment) {
-                TerminalEnvironment.TEST -> "https://management-test.adyen.com/v1"
-                TerminalEnvironment.LIVE -> "https://management-live.adyen.com/v1"
-            }
+        fun endpoint(environment: TerminalEnvironment): String = managementEndpoint(environment, version = 1)
     }
 }
 

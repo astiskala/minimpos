@@ -11,12 +11,12 @@ import app.minimpos.app.data.transfer.ImportOutcome
 import app.minimpos.app.data.transfer.PreparedTransfer
 import app.minimpos.app.data.transfer.ReceivedTransfer
 import app.minimpos.app.data.transfer.SetupTransfer
+import app.minimpos.core.codec.Transfer
 import app.minimpos.terminal.transport.CredentialLookup
 import app.minimpos.terminal.transport.DiscoveredKey
 import app.minimpos.terminal.transport.SharedKeyLookup
 import app.minimpos.terminal.transport.TerminalDetails
 import app.minimpos.terminal.transport.TerminalDetailsApi
-import app.minimpos.terminal.transport.TerminalEnvironment
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -82,7 +82,9 @@ class SetupImport internal constructor(
 ) {
     private val sharedKeys get() = checks.sharedKeys
     private val mutex = Mutex()
-    private var missingKey = false
+
+    /** Reads the settings and connection of a scanned [raw] transfer before verification. */
+    fun receive(raw: Transfer): ReceivedTransfer = transfer.receive(raw)
 
     internal suspend fun import(
         received: ReceivedTransfer,
@@ -100,13 +102,16 @@ class SetupImport internal constructor(
             if (!prepared.original.acceptsSetupImport) return@withLock SetupImportOutcome.Failed(SetupProblem.SETUP_CHANGED)
             try {
                 val choices = Choices(terminalId, board, confirmedHistorySwitch, confirmedKey)
-                val problem = verify(prepared, choices)
-                if (problem != null) return@withLock problem
-                val switch = historySwitches.preview(prepared.settings.terminal)
+                val verified =
+                    when (val step = verify(prepared, choices)) {
+                        is Step.Halted -> return@withLock step.outcome
+                        is Step.Next -> step.candidate.prepared
+                    }
+                val switch = historySwitches.preview(verified.settings.terminal)
                 if (switch != null && !switch.wasConfirmedBy(confirmedHistorySwitch)) {
                     return@withLock SetupImportOutcome.HistoryConfirmation(switch)
                 }
-                SetupImportOutcome.Committed(transfer.commit(prepared, mode, purgeHistory = switch != null, verified = ::remember))
+                SetupImportOutcome.Committed(transfer.commit(verified, mode, purgeHistory = switch != null, verified = ::remember))
             } catch (ignored: SecretStoreException) {
                 SetupImportOutcome.Committed(ImportOutcome.StorageFailed(DeviceFault.SECURE_STORAGE))
             }
@@ -121,12 +126,7 @@ class SetupImport internal constructor(
     private suspend fun recoverResult(): SetupImportOutcome =
         SetupImportOutcome.Committed(transfer.recover(::remember) ?: ImportOutcome.Rejected(SetupProblem.TRANSFER_PENDING))
 
-    private suspend fun remember(): Boolean {
-        val unlocked = setups.unlocked(forValidation = true)
-        val remembered = setups.rememberVerified(unlocked)
-        if (remembered) sharedKeys.complete(unlocked)
-        return remembered
-    }
+    private suspend fun remember(): Boolean = setups.rememberVerified(setups.unlocked(forValidation = true))
 
     private fun candidate(prepared: PreparedTransfer): UnlockedSetup = setups.candidate(prepared.settings, prepared.secrets)
 
@@ -137,47 +137,71 @@ class SetupImport internal constructor(
         val confirmedKey: SharedKeyOffer?,
     )
 
+    private data class Candidate(
+        val prepared: PreparedTransfer,
+        val missingKey: Boolean = false,
+    )
+
+    private sealed interface Step {
+        data class Next(
+            val candidate: Candidate,
+        ) : Step
+
+        data class Halted(
+            val outcome: SetupImportOutcome,
+        ) : Step
+    }
+
+    private inline fun Step.andThen(block: (Candidate) -> Step): Step =
+        when (this) {
+            is Step.Next -> block(candidate)
+            is Step.Halted -> this
+        }
+
     private suspend fun verify(
-        prepared: PreparedTransfer,
+        initial: PreparedTransfer,
         choices: Choices,
-    ): SetupImportOutcome? {
-        missingKey = false
-        if (!prepared.changesSetup || candidate(prepared).setup.apiSetup == ApiSetup.Simulated) return null
-        return environment(prepared)
-            ?: credential(prepared)
-            ?: discovery(prepared, choices.terminalId)
-            ?: requiredFields(prepared, allowMissingKey = missingKey)
-            ?: checkout(prepared)
-            ?: phone(prepared, choices.board)
-            ?: sharedKey(prepared, choices.confirmedHistory, choices.confirmedKey)
-            ?: requiredFields(prepared)
-            ?: connection(prepared)
-            ?: business(prepared)
+    ): Step {
+        val start = Candidate(initial)
+        if (!initial.changesSetup || candidate(initial).setup.apiSetup == ApiSetup.Simulated) return Step.Next(start)
+        return environment(start)
+            .andThen { credential(it) }
+            .andThen { discovery(it, choices.terminalId) }
+            .andThen { requiredFields(it, allowMissingKey = it.missingKey) }
+            .andThen { checkout(it) }
+            .andThen { phone(it, choices.board) }
+            .andThen { sharedKey(it, choices.confirmedHistory, choices.confirmedKey) }
+            .andThen { requiredFields(it) }
+            .andThen { connection(it) }
+            .andThen { business(it) }
     }
 
-    private suspend fun environment(prepared: PreparedTransfer): SetupImportOutcome? {
-        if (!candidate(prepared).setup.suppliesCertificateEnvironment) return null
-        val environment = gateway.candidates.environment() ?: return SetupImportOutcome.Failed(SetupProblem.TERMINAL_ENVIRONMENT)
-        prepared.settings = prepared.settings.copy(terminal = prepared.settings.terminal.selectEnvironment(environment))
-        return null
+    private suspend fun environment(current: Candidate): Step {
+        val prepared = current.prepared
+        if (!candidate(prepared).setup.suppliesCertificateEnvironment) return Step.Next(current)
+        val environment =
+            gateway.candidates.environment() ?: return Step.Halted(SetupImportOutcome.Failed(SetupProblem.TERMINAL_ENVIRONMENT))
+        return Step.Next(current.copy(prepared = prepared.withTerminal(prepared.settings.terminal.selectEnvironment(environment))))
     }
 
-    private suspend fun credential(prepared: PreparedTransfer): SetupImportOutcome? {
-        val unlocked = candidate(prepared)
-        val key = unlocked.apiKey ?: return SetupImportOutcome.Failed(SetupProblem.API_KEY, incomplete = true)
-        val environment = unlocked.setup.environment ?: return SetupImportOutcome.Failed(SetupProblem.ENVIRONMENT, incomplete = true)
+    private suspend fun credential(current: Candidate): Step {
+        val unlocked = candidate(current.prepared)
+        val key = unlocked.apiKey ?: return Step.Halted(SetupImportOutcome.Failed(SetupProblem.API_KEY, incomplete = true))
+        val environment =
+            unlocked.setup.environment ?: return Step.Halted(SetupImportOutcome.Failed(SetupProblem.ENVIRONMENT, incomplete = true))
         return when (val result = checks.terminals(key).credential(environment)) {
-            CredentialLookup.Allowed -> null
-            is CredentialLookup.Failed -> SetupImportOutcome.Failed(Failure.Remote(result.fault))
+            CredentialLookup.Allowed -> Step.Next(current)
+            is CredentialLookup.Failed -> Step.Halted(SetupImportOutcome.Failed(Failure.Remote(result.fault)))
         }
     }
 
     private suspend fun discovery(
-        prepared: PreparedTransfer,
+        current: Candidate,
         selected: String?,
-    ): SetupImportOutcome? {
+    ): Step {
+        val prepared = current.prepared
         val unlocked = candidate(prepared)
-        if (!unlocked.setup.discoversTerminals) return null
+        if (!unlocked.setup.discoversTerminals) return Step.Next(current)
         val setup = unlocked.setup
         val environment = checkNotNull(setup.environment)
         val management = checks.terminals(checkNotNull(unlocked.apiKey))
@@ -191,24 +215,25 @@ class SetupImport internal constructor(
                 )
         ) {
             is DiscoveredAssignment.Choices -> {
-                SetupImportOutcome.Terminals(assignment.ids)
+                Step.Halted(SetupImportOutcome.Terminals(assignment.ids))
             }
 
             is DiscoveredAssignment.Failed -> {
-                SetupImportOutcome.Failed(assignment.failure)
+                Step.Halted(SetupImportOutcome.Failed(assignment.failure))
             }
 
             is DiscoveredAssignment.Assigned -> {
                 val terminal = assignment.terminal
-                applyAssignment(prepared, setup, terminal)
-                if (prepared.received.automatic && setup.needsSharedKey) {
+                val assigned = applyAssignment(prepared, setup, terminal)
+                if (!prepared.received.automatic || !setup.needsSharedKey) {
+                    Step.Next(current.copy(prepared = assigned))
+                } else {
                     when (val found = management.sharedKey(terminal.id, environment)) {
-                        is SharedKeyLookup.Found -> applyKey(prepared, found.key)
-                        SharedKeyLookup.Missing -> missingKey = true
-                        is SharedKeyLookup.Failed -> return SetupImportOutcome.Failed(Failure.Remote(found.fault))
+                        is SharedKeyLookup.Found -> Step.Next(current.copy(prepared = assigned.withSharedKey(found.key)))
+                        SharedKeyLookup.Missing -> Step.Next(Candidate(assigned, missingKey = true))
+                        is SharedKeyLookup.Failed -> Step.Halted(SetupImportOutcome.Failed(Failure.Remote(found.fault)))
                     }
                 }
-                null
             }
         }
     }
@@ -217,169 +242,171 @@ class SetupImport internal constructor(
         prepared: PreparedTransfer,
         setup: TerminalSetup,
         terminal: TerminalDetails,
-    ) {
+    ): PreparedTransfer {
         val current = prepared.settings.terminal
-        prepared.settings =
-            prepared.settings.copy(
-                terminal =
-                    current.copy(
-                        merchantAccount = terminal.merchantAccount,
-                        storeId = terminal.storeId,
-                        poiIdOverride = if (setup.onTerminal) current.poiIdOverride else terminal.id,
-                        host =
-                            if (prepared.received.automatic && setup.host != TerminalSetup.LOCALHOST &&
-                                setup.needsSharedKey
-                            ) {
-                                terminal.host
-                            } else {
-                                current.host
-                            },
-                    ),
-            )
-    }
-
-    private fun applyKey(
-        prepared: PreparedTransfer,
-        key: DiscoveredKey,
-    ) {
-        prepared.settings =
-            prepared.settings.copy(terminal = prepared.settings.terminal.copy(keyIdentifier = key.identifier, keyVersion = key.version))
-        prepared.secrets[Secret.TERMINAL_PASSPHRASE] = key.passphrase
-        prepared.importedSecrets[Secret.TERMINAL_PASSPHRASE] = key.passphrase
+        return prepared.withTerminal(
+            current.copy(
+                merchantAccount = terminal.merchantAccount,
+                storeId = terminal.storeId,
+                poiIdOverride = if (setup.onTerminal) current.poiIdOverride else terminal.id,
+                host =
+                    if (prepared.received.automatic && setup.host != TerminalSetup.LOCALHOST &&
+                        setup.needsSharedKey
+                    ) {
+                        terminal.host
+                    } else {
+                        current.host
+                    },
+            ),
+        )
     }
 
     private suspend fun sharedKey(
-        prepared: PreparedTransfer,
+        current: Candidate,
         confirmedHistory: HistorySwitchPlan?,
         confirmedKey: SharedKeyOffer?,
-    ): SetupImportOutcome? {
+    ): Step {
+        val prepared = current.prepared
         val unlocked = candidate(prepared)
-        if (!missingKey && sharedKeys.pendingOffer(unlocked) == null) return null
+        if (!current.missingKey && sharedKeys.pendingOffer(unlocked) == null) return Step.Next(current)
         val switch = historySwitches.preview(prepared.settings.terminal)
-        if (switch != null && !switch.wasConfirmedBy(confirmedHistory)) return SetupImportOutcome.HistoryConfirmation(switch)
-        return when (val result = sharedKeys.resolve(unlocked, confirmedKey) { transfer.unchanged(prepared) }) {
+        if (switch != null && !switch.wasConfirmedBy(confirmedHistory)) {
+            return Step.Halted(SetupImportOutcome.HistoryConfirmation(switch))
+        }
+        return when (val result = sharedKeys.resolve(unlocked, confirmedKey, verified = true) { transfer.unchanged(prepared) }) {
             is SharedKeySetupOutcome.Confirmation -> {
-                SetupImportOutcome.KeyConfirmation(result.offer)
+                Step.Halted(SetupImportOutcome.KeyConfirmation(result.offer))
             }
 
             is SharedKeySetupOutcome.Ready -> {
-                applyKey(prepared, result.key)
-                null
+                Step.Next(current.copy(prepared = prepared.withSharedKey(result.key)))
             }
 
             is SharedKeySetupOutcome.Failed -> {
-                SetupImportOutcome.Failed(result.failure)
+                Step.Halted(SetupImportOutcome.Failed(result.failure))
             }
         }
     }
 
     private fun requiredFields(
-        prepared: PreparedTransfer,
+        current: Candidate,
         allowMissingKey: Boolean = false,
-    ): SetupImportOutcome? =
-        candidate(prepared)
-            .setup
-            .importProblem(prepared.secrets.keys)
-            ?.takeUnless {
-                allowMissingKey &&
-                    it in
-                    setOf(
-                        SetupProblem.KEY_IDENTIFIER,
-                        SetupProblem.KEY_VERSION,
-                        SetupProblem.PASSPHRASE,
-                        SetupProblem.UNREADABLE_PASSPHRASE,
-                    )
-            }?.let { SetupImportOutcome.Failed(it, incomplete = true) }
+    ): Step {
+        val prepared = current.prepared
+        val problem =
+            candidate(prepared)
+                .setup
+                .importProblem(prepared.secrets.keys)
+                ?.takeUnless {
+                    allowMissingKey &&
+                        it in
+                        setOf(
+                            SetupProblem.KEY_IDENTIFIER,
+                            SetupProblem.KEY_VERSION,
+                            SetupProblem.PASSPHRASE,
+                            SetupProblem.UNREADABLE_PASSPHRASE,
+                        )
+                }
+        return if (problem == null) Step.Next(current) else Step.Halted(SetupImportOutcome.Failed(problem, incomplete = true))
+    }
 
-    private suspend fun checkout(prepared: PreparedTransfer): SetupImportOutcome? =
-        when (val result = api.verify(candidate(prepared))) {
-            ApiCheck.Works -> null
-            is ApiCheck.NotSetUp -> SetupImportOutcome.Failed(result.problem)
-            is ApiCheck.Failed -> SetupImportOutcome.Failed(result.failure)
+    private suspend fun checkout(current: Candidate): Step =
+        when (val result = api.verify(candidate(current.prepared), accessVerified = true)) {
+            ApiCheck.Works -> Step.Next(current)
+            is ApiCheck.NotSetUp -> Step.Halted(SetupImportOutcome.Failed(result.problem))
+            is ApiCheck.Failed -> Step.Halted(SetupImportOutcome.Failed(result.failure))
         }
 
     private suspend fun phone(
-        prepared: PreparedTransfer,
+        current: Candidate,
         explicit: Boolean,
-    ): SetupImportOutcome? {
-        if (!candidate(prepared).setup.boardsPhone) return null
+    ): Step {
+        val prepared = current.prepared
+        if (!candidate(prepared).setup.boardsPhone) return Step.Next(current)
         return when (val result = tapToPay.candidate(prepared.settings, prepared.secrets, explicit)) {
             is TapToPayOutcome.Boarded -> {
-                prepared.settings =
-                    prepared.settings.copy(terminal = prepared.settings.terminal.copy(paymentsAppInstallationId = result.installationId))
-                prepared.paymentsAppChecked = true
-                null
+                Step.Next(current.copy(prepared = prepared.withBoardedPhone(result.installationId)))
             }
 
             is TapToPayOutcome.NotSetUp -> {
-                if (result.problem == SetupProblem.PAYMENTS_APP_NOT_BOARDED) {
-                    SetupImportOutcome.BoardingRequired
-                } else {
-                    SetupImportOutcome.Failed(result.problem, incomplete = true)
-                }
+                Step.Halted(
+                    if (result.problem == SetupProblem.PAYMENTS_APP_NOT_BOARDED) {
+                        SetupImportOutcome.BoardingRequired
+                    } else {
+                        SetupImportOutcome.Failed(result.problem, incomplete = true)
+                    },
+                )
             }
 
             is TapToPayOutcome.Failed -> {
-                SetupImportOutcome.Failed(result.failure)
+                Step.Halted(SetupImportOutcome.Failed(result.failure))
             }
 
             TapToPayOutcome.Unregistered -> {
-                SetupImportOutcome.Failed(SetupProblem.PAYMENTS_APP_NOT_BOARDED)
+                Step.Halted(SetupImportOutcome.Failed(SetupProblem.PAYMENTS_APP_NOT_BOARDED))
             }
         }
     }
 
-    private suspend fun connection(prepared: PreparedTransfer): SetupImportOutcome? {
-        if (!transfer.unchanged(prepared)) return SetupImportOutcome.Failed(SetupProblem.SETUP_CHANGED)
+    private suspend fun connection(current: Candidate): Step {
+        val prepared = current.prepared
+        if (!transfer.unchanged(prepared)) return Step.Halted(SetupImportOutcome.Failed(SetupProblem.SETUP_CHANGED))
         val unlocked = candidate(prepared)
         val (connection, detected) = gateway.candidates.check(unlocked)
         if (connection !is TerminalConnection.Connected && sharedKeys.pendingOffer(unlocked) != null) {
-            return SetupImportOutcome.Failed(SetupProblem.KEY_CONNECTION_PENDING)
+            return Step.Halted(SetupImportOutcome.Failed(SetupProblem.KEY_CONNECTION_PENDING))
         }
         return when (connection) {
             is TerminalConnection.Connected -> {
                 if (detected != null && detected.environment != unlocked.setup.environment) {
-                    SetupImportOutcome.Failed(SetupProblem.SETUP_CHANGED)
+                    Step.Halted(SetupImportOutcome.Failed(SetupProblem.SETUP_CHANGED))
                 } else {
-                    detected?.let { prepared.settings = setups.learnedCandidate(it) }
-                    null
+                    val updated = detected?.let { prepared.copy(settings = setups.learnedCandidate(it)) } ?: prepared
+                    Step.Next(current.copy(prepared = updated))
                 }
             }
 
             is TerminalConnection.NotSetUp -> {
-                SetupImportOutcome.Failed(connection.problem, incomplete = true)
+                Step.Halted(SetupImportOutcome.Failed(connection.problem, incomplete = true))
             }
 
             is TerminalConnection.Failed -> {
-                SetupImportOutcome.Failed(connection.failure)
+                Step.Halted(SetupImportOutcome.Failed(connection.failure))
             }
 
             // A candidate check always settles; anything else is unexpected.
             TerminalConnection.Checking, TerminalConnection.Unknown -> {
-                SetupImportOutcome.Failed(Failure.Device(DeviceFault.UNEXPECTED))
+                Step.Halted(SetupImportOutcome.Failed(Failure.Device(DeviceFault.UNEXPECTED)))
             }
         }
     }
 
-    private suspend fun business(prepared: PreparedTransfer): SetupImportOutcome? {
+    private suspend fun business(current: Candidate): Step {
+        val prepared = current.prepared
         val choices = prepared.received.connection ?: transferredSetup
-        if (!choices.needsReceiptDetails(prepared.settings.receipt, addressAndPhone = true)) return null
+        if (!choices.needsReceiptDetails(prepared.settings.receipt, addressAndPhone = true)) return Step.Next(current)
         val result = checks.businessDetails.lookup(candidate(prepared))
-        if (result is ReceiptBusinesses.Found) {
-            val business = result.business
-            val selected =
-                ReceiptBusiness(
-                    name = business.name.takeIf { choices.importReceiptName }.orEmpty(),
-                    address = business.address.takeIf { choices.importReceiptAddress }.orEmpty(),
-                    phone = business.phone.takeIf { choices.importReceiptPhone }.orEmpty(),
-                )
-            prepared.settings = prepared.settings.copy(receipt = selected.applyTo(prepared.settings.receipt))
-        }
+        val withReceipt =
+            if (result is ReceiptBusinesses.Found) {
+                val business = result.business
+                val selected =
+                    ReceiptBusiness(
+                        name = business.name.takeIf { choices.importReceiptName }.orEmpty(),
+                        address = business.address.takeIf { choices.importReceiptAddress }.orEmpty(),
+                        phone = business.phone.takeIf { choices.importReceiptPhone }.orEmpty(),
+                    )
+                prepared.withReceipt(selected.applyTo(prepared.settings.receipt))
+            } else {
+                prepared
+            }
         val fromStore = (result as? ReceiptBusinesses.Found)?.fromStore != false
-        prepared.businessWarning = choices.needsReceiptDetails(prepared.settings.receipt, addressAndPhone = fromStore)
-        return null
+        val warning = choices.needsReceiptDetails(withReceipt.settings.receipt, addressAndPhone = fromStore)
+        return Step.Next(current.copy(prepared = withReceipt.copy(businessWarning = warning)))
     }
 }
 
 /** Setup moved from another device carries no setup helper choices, so it may look up every blank receipt field. */
 private val transferredSetup = ConnectionSetup()
+
+internal fun PreparedTransfer.withSharedKey(key: DiscoveredKey): PreparedTransfer =
+    withSharedKey(key.identifier, key.version, key.passphrase)

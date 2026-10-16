@@ -3,6 +3,7 @@ package app.minimpos.app.feature.settings
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import app.minimpos.app.data.db.Failure
+import app.minimpos.app.data.settings.ReceiptSettings
 import app.minimpos.app.data.settings.TerminalSettings
 import app.minimpos.app.feature.ActionOutcome
 import app.minimpos.app.feature.ActionState
@@ -10,6 +11,7 @@ import app.minimpos.app.feature.launchWrite
 import app.minimpos.app.terminal.ReceiptBusiness
 import app.minimpos.app.terminal.ReceiptBusinessDetails
 import app.minimpos.app.terminal.ReceiptBusinesses
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -35,7 +37,7 @@ internal class ReceiptBusinessImports(
     private val owner: ViewModel,
     private val details: ReceiptBusinessDetails,
     private val operations: SettingsOperations,
-    private val settings: StateFlow<SettingsUiState>,
+    private val observedReceipt: Flow<ReceiptSettings>,
 ) {
     private val _state = MutableStateFlow(ReceiptBusinessImportState())
     val state: StateFlow<ReceiptBusinessImportState> = _state.asStateFlow()
@@ -82,7 +84,7 @@ internal class ReceiptBusinessImports(
             owner.launchWrite({
                 operations.update { if (it.terminal == origin) it.copy(receipt = business.applyTo(it.receipt)) else it }
                 val receipt = operations.changes.first().receipt
-                settings.first { it.settings.receipt == receipt }
+                observedReceipt.first { it == receipt }
             }) { _ ->
                 _state.update { it.copy(revision = it.revision + 1) }
             }

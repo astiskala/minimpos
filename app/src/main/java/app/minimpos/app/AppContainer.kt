@@ -49,6 +49,7 @@ import app.minimpos.app.payment.WalletPayments
 import app.minimpos.app.qr.QrCodes
 import app.minimpos.app.receipt.ReceiptFactory
 import app.minimpos.app.receipt.ReceiptSampleTexts
+import app.minimpos.app.receipt.ReceiptTexts
 import app.minimpos.app.receipt.ReportText
 import app.minimpos.app.refund.PaymentStanding
 import app.minimpos.app.refund.RefundStart
@@ -253,26 +254,6 @@ class AppContainer(
             },
         )
 
-    /** Optional offline catalog and read-only history examples, with scoped removal. */
-    val sampleData =
-        SampleData(
-            database,
-            catalog,
-            sales,
-            history,
-            texts = {
-                listOf(
-                    R.string.sample_coffee,
-                    R.string.sample_tea,
-                    R.string.sample_cake,
-                    R.string.sample_deposit,
-                    R.string.sample_category,
-                ).map(localizedContext::getString)
-            },
-            starterRates = ::starterTaxRates,
-            country = device.country,
-        )
-
     /** What the simulator prints, shown on screen instead of paper. */
     val virtualPrinter = VirtualPrinter()
 
@@ -339,7 +320,7 @@ class AppContainer(
     val tapToPay = TapToPaySetup(terminalSetup, settings, paymentsAppLinks, paymentsAppManagement) { api.verify() }
 
     /** Whether payments and printing can work, for Home, Settings and the receipt screens. */
-    val terminalStatus = TerminalStatus(terminalSetup, gateway, appScope, api::verify, tapToPay::checkSaved, sharedKeys::complete)
+    val terminalStatus = TerminalStatus(terminalSetup, gateway, appScope, api::verify, tapToPay::checkSaved)
 
     /**
      * The startup check for a newer GitHub release, which Home offers to download in the browser; never started on an
@@ -354,85 +335,20 @@ class AppContainer(
      * Builds receipt documents from stored sales and refunds, with localised labels. Screens get their receipts from
      * [receipts] (through `TransactionActions`); tests build documents with it directly.
      */
-    internal val receiptFactory =
-        ReceiptFactory(
-            receiptLabels(),
-            locale = { localizedContext.resources.configuration.locales[0] ?: Locale.ROOT },
-            currentLabels = { receiptLabels() },
-            simulationText = { localizedContext.getString(R.string.link_simulation_note) },
-            demoLinkText = { localizedContext.getString(R.string.link_demo_label) },
-            reportText = { label ->
-                localizedContext.getString(
-                    when (label) {
-                        ReportText.TITLE -> R.string.report_title
-                        ReportText.GENERATED -> R.string.report_generated
-                        ReportText.SALES -> R.string.report_sales
-                        ReportText.TIPS -> R.string.report_tips
-                        ReportText.REFUNDS -> R.string.report_refunds
-                        ReportText.NET -> R.string.report_net
-                        ReportText.HOLDS -> R.string.report_holds
-                        ReportText.UNRESOLVED -> R.string.report_unresolved
-                        ReportText.ONLINE -> R.string.report_online
-                        ReportText.UNDATED -> R.string.report_undated
-                        ReportText.UNDATED_NOTE -> R.string.report_undated_note
-                        ReportText.NOTE -> R.string.report_note
-                        ReportText.ISSUE_NOTE -> R.string.report_issue_note
-                        ReportText.DEMO -> R.string.report_demo
-                        ReportText.UNKNOWN -> R.string.report_unknown
-                    },
-                )
-            },
-            standingText = { standing ->
-                when (standing) {
-                    PaymentStanding.CHARGED -> null
-
-                    PaymentStanding.NOT_APPROVED -> localizedContext.getString(R.string.receipt_not_completed)
-
-                    PaymentStanding.AWAITING_TIP -> localizedContext.getString(R.string.detail_tip_awaiting)
-
-                    PaymentStanding.HELD -> localizedContext.getString(R.string.receipt_pre_auth_note)
-
-                    PaymentStanding.CAPTURE_REQUESTED -> localizedContext.getString(R.string.status_capture_requested)
-
-                    PaymentStanding.CAPTURE_FAILED -> localizedContext.getString(R.string.status_capture_failed)
-
-                    PaymentStanding.CAPTURE_SENDING,
-                    PaymentStanding.CAPTURE_UNKNOWN,
-                    -> localizedContext.getString(R.string.status_capture_unknown)
-
-                    PaymentStanding.HOLD_CANCELLED -> localizedContext.getString(R.string.status_cancellation_requested)
-                }
-            },
-            refundText = { status ->
-                localizedContext.getString(
-                    when (status) {
-                        RefundStatus.REQUESTED -> R.string.refund_status_requested
-                        RefundStatus.PENDING -> R.string.status_pending
-                        RefundStatus.UNKNOWN -> R.string.status_unknown
-                        RefundStatus.FAILED -> R.string.status_failed
-                    },
-                )
-            },
-            sampleTexts = { sampleTexts() },
-        )
+    internal val receiptFactory = ReceiptFactory(::receiptTexts)
 
     /** A time stamp (epoch milliseconds) in the current app language and device time zone, as receipts print it. */
     fun formatDateTime(epochMillis: Long): String = receiptFactory.formatDateTime(epochMillis)
 
     /** The sample receipt Settings shows and test-prints with [appSettings], which may not be stored yet. */
-    fun sampleReceipt(appSettings: AppSettings): ReceiptDocument {
-        val localized = context.withAppLanguage(appSettings.languageTag)
-        return ReceiptFactory(
-            receiptLabels(localized),
-            locale = { localized.resources.configuration.locales[0] ?: Locale.ROOT },
-            sampleTexts = { sampleTexts(localized) },
-        ).sample(
+    fun sampleReceipt(appSettings: AppSettings): ReceiptDocument =
+        receiptFactory.sample(
             appSettings.receipt,
             currency(appSettings),
             appSettings.payment.taxMode,
             appSettings.payment.asksCustomerReference,
+            appSettings.languageTag,
         )
-    }
 
     /** Printing and emailing of stored sales and refunds, including what is delivered automatically. */
     val receipts =
@@ -447,9 +363,8 @@ class AppContainer(
                     settings = settings,
                     secrets = secrets,
                     mailer = mailTransport?.let { SmtpMailer(it, ioDispatcher) } ?: SmtpMailer(io = ioDispatcher),
-                    texts = emailTexts(),
-                    currentTexts = ::emailTexts,
                     qrPng = { QrCodes.png(it) },
+                    currentTexts = ::emailTexts,
                 ),
         )
 
@@ -552,6 +467,27 @@ class AppContainer(
             payments.state.value is TransactionState.Processing || refunds.state.value is TransactionState.Processing
         }
 
+    /** Optional offline catalog and read-only history examples, with scoped removal. */
+    val sampleData =
+        SampleData(
+            database,
+            catalog,
+            sales,
+            history,
+            texts = {
+                listOf(
+                    R.string.sample_coffee,
+                    R.string.sample_tea,
+                    R.string.sample_cake,
+                    R.string.sample_deposit,
+                    R.string.sample_category,
+                ).map(localizedContext::getString)
+            },
+            starterRates = ::starterTaxRates,
+            country = device.country,
+            withSettings = pricingChanges::withStableSettings,
+        )
+
     /**
      * Starts the background work, once per process: marks transactions and captures interrupted by the last shutdown as UNKNOWN,
      * seeds the [starterTaxRates] on first launch, prunes old history, and starts the [terminalStatus] checks. On a
@@ -647,6 +583,60 @@ class AppContainer(
             "MX" -> R.string.tax_name_iva
             else -> if (country in AppSettings.VAT_COUNTRIES) R.string.tax_name_vat else R.string.tax_default_standard
         }
+
+    private fun receiptTexts(languageTag: String = settingsState.value.languageTag): ReceiptTexts {
+        val localized = context.withAppLanguage(languageTag.ifEmpty { settingsState.value.languageTag })
+        return ReceiptTexts(
+            labels = receiptLabels(localized),
+            locale = localized.resources.configuration.locales[0] ?: Locale.ROOT,
+            sample = sampleTexts(localized),
+            simulationNote = localized.getString(R.string.link_simulation_note),
+            demoLink = localized.getString(R.string.link_demo_label),
+            standing = { standing ->
+                when (standing) {
+                    PaymentStanding.CHARGED -> null
+                    PaymentStanding.NOT_APPROVED -> localized.getString(R.string.receipt_not_completed)
+                    PaymentStanding.AWAITING_TIP -> localized.getString(R.string.detail_tip_awaiting)
+                    PaymentStanding.HELD -> localized.getString(R.string.receipt_pre_auth_note)
+                    PaymentStanding.CAPTURE_REQUESTED -> localized.getString(R.string.status_capture_requested)
+                    PaymentStanding.CAPTURE_FAILED -> localized.getString(R.string.status_capture_failed)
+                    PaymentStanding.CAPTURE_SENDING, PaymentStanding.CAPTURE_UNKNOWN -> localized.getString(R.string.status_capture_unknown)
+                    PaymentStanding.HOLD_CANCELLED -> localized.getString(R.string.status_cancellation_requested)
+                }
+            },
+            refund = { status ->
+                localized.getString(
+                    when (status) {
+                        RefundStatus.REQUESTED -> R.string.refund_status_requested
+                        RefundStatus.PENDING -> R.string.status_pending
+                        RefundStatus.UNKNOWN -> R.string.status_unknown
+                        RefundStatus.FAILED -> R.string.status_failed
+                    },
+                )
+            },
+            report = { label ->
+                localized.getString(
+                    when (label) {
+                        ReportText.TITLE -> R.string.report_title
+                        ReportText.GENERATED -> R.string.report_generated
+                        ReportText.SALES -> R.string.report_sales
+                        ReportText.TIPS -> R.string.report_tips
+                        ReportText.REFUNDS -> R.string.report_refunds
+                        ReportText.NET -> R.string.report_net
+                        ReportText.HOLDS -> R.string.report_holds
+                        ReportText.UNRESOLVED -> R.string.report_unresolved
+                        ReportText.ONLINE -> R.string.report_online
+                        ReportText.UNDATED -> R.string.report_undated
+                        ReportText.UNDATED_NOTE -> R.string.report_undated_note
+                        ReportText.NOTE -> R.string.report_note
+                        ReportText.ISSUE_NOTE -> R.string.report_issue_note
+                        ReportText.DEMO -> R.string.report_demo
+                        ReportText.UNKNOWN -> R.string.report_unknown
+                    },
+                )
+            },
+        )
+    }
 
     private fun sampleTexts(localizedContext: Context = this.localizedContext) =
         ReceiptSampleTexts(

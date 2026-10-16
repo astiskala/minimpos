@@ -71,7 +71,6 @@ data class TerminalState(
  * @param scope Keeps [state] up to date, runs background checks and forwards detections to [TerminalSetupSource.remember].
  * @param verifyApi Checks the exact unlocked candidate's credential and account when its cached verification is invalid.
  * @param verifyPhone Confirms existing phone registration against the candidate account/store; never registers automatically.
- * @param completeKey Clears any pending shared-key creation recovery record once the setup is verified.
  */
 class TerminalStatus(
     private val setups: TerminalSetupSource,
@@ -79,7 +78,6 @@ class TerminalStatus(
     private val scope: CoroutineScope,
     private val verifyApi: suspend (UnlockedSetup) -> ApiCheck,
     private val verifyPhone: suspend (TerminalSetup) -> TapToPayOutcome,
-    private val completeKey: suspend (UnlockedSetup) -> Unit = {},
 ) {
     private val connection = MutableStateFlow<TerminalConnection>(TerminalConnection.Unknown)
 
@@ -145,8 +143,8 @@ class TerminalStatus(
         val complete = candidate.setup.apiSetup == ApiSetup.Complete
         val blocked = if (complete && actual.apiSetup != ApiSetup.Complete) credentialCheck(candidate) else null
         val result = blocked ?: gateway.diagnose()
-        if (result is TerminalConnection.Connected && complete && setups.rememberVerified(candidate)) {
-            completeKey(candidate)
+        if (result is TerminalConnection.Connected && complete) {
+            setups.rememberVerified(candidate)
         }
         return result
     }

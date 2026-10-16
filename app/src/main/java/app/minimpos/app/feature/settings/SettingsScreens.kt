@@ -119,6 +119,7 @@ import app.minimpos.core.tax.TaxMode
 import app.minimpos.core.tax.TaxRates
 import app.minimpos.terminal.simulator.SimulatedOutcome
 import app.minimpos.terminal.transport.TerminalEnvironment
+import kotlinx.coroutines.flow.map
 
 @Composable
 private fun settingsViewModel(): SettingsViewModel {
@@ -149,7 +150,7 @@ private fun terminalSetupViewModel(settings: SettingsViewModel): TerminalSetupVi
             container.tapToPay,
             container.setupDiscovery,
             container.settings,
-            settings.state,
+            settings.state.map { it.settings.terminal },
         )
     }
 }

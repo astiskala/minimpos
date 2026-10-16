@@ -165,7 +165,7 @@ class AutomaticSetupUiTest {
         val public = Transfer(connection = connection)
         val encrypted = seal.seal(secrets.toByteArray(), code, TransferCodec.authenticationData(public))
         val transfer = public.copy(sealedSecrets = SealedSecrets(encrypted))
-        val vm = TransferImportViewModel(container.setupTransfer, "AUD", container.setupImport)
+        val vm = TransferImportViewModel("AUD", container.setupImport)
         compose.awaitCondition("Opening scanner") { vm.state.value is ImportUiState.Scanning }
         QrChunks.split(TransferCodec.encode(transfer), "AUTO").forEach { vm.onCode(it.encode()) }
         compose.setContent {

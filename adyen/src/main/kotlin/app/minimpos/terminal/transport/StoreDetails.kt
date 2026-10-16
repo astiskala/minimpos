@@ -1,6 +1,5 @@
 package app.minimpos.terminal.transport
 
-import com.adyen.model.management.DefaultErrorResponseEntity
 import com.adyen.model.management.Merchant
 import com.adyen.model.management.Store
 import kotlinx.coroutines.CoroutineDispatcher
@@ -118,7 +117,7 @@ class AdyenStoreDetails(
                     }
 
                     !reply.ok -> {
-                        StoreLookup.Failed(reply.fault(ApiKey.ADYEN, STORES_READ, managementError(reply.body)))
+                        StoreLookup.Failed(managementFault(reply, role = STORES_READ))
                     }
 
                     else -> {
@@ -147,7 +146,7 @@ class AdyenStoreDetails(
 
             is AdyenReply.Answered -> {
                 if (!reply.ok) {
-                    MerchantLookup.Failed(reply.fault(ApiKey.ADYEN, ACCOUNT_READ, managementError(reply.body)))
+                    MerchantLookup.Failed(managementFault(reply, role = ACCOUNT_READ))
                 } else {
                     runCatching {
                         val merchant = requireNotNull(decodeAdyenModel(reply.body, Merchant::class.java))
@@ -184,16 +183,6 @@ class AdyenStoreDetails(
         private const val ACCOUNT_READ = "Management API—Account read"
 
         /** Management v3 endpoint for [environment], with no trailing slash. */
-        fun endpoint(environment: TerminalEnvironment): String =
-            when (environment) {
-                TerminalEnvironment.TEST -> "https://management-test.adyen.com/v3"
-                TerminalEnvironment.LIVE -> "https://management-live.adyen.com/v3"
-            }
+        fun endpoint(environment: TerminalEnvironment): String = managementEndpoint(environment)
     }
-}
-
-/** Adyen's explanation of a failed Management API request: its detail (else its title) and error code. */
-internal fun managementError(body: String): AdyenError {
-    val error = decodeAdyenModel(body, DefaultErrorResponseEntity::class.java)
-    return AdyenError(ExternalText.of(error?.detail) ?: ExternalText.of(error?.title), error?.errorCode)
 }

@@ -1,13 +1,13 @@
 package app.minimpos.app.feature.settings
 
 import androidx.lifecycle.ViewModel
-import app.minimpos.app.data.db.DeviceFault
 import app.minimpos.app.data.db.Failure
 import app.minimpos.app.data.security.Secret
 import app.minimpos.app.data.security.SecretStore
 import app.minimpos.app.data.security.SecretStoreException
 import app.minimpos.app.data.settings.SettingsRepository
 import app.minimpos.app.data.settings.TerminalMode
+import app.minimpos.app.data.settings.TerminalSettings
 import app.minimpos.app.feature.ActionOutcome
 import app.minimpos.app.feature.ActionState
 import app.minimpos.app.feature.launchWrite
@@ -20,10 +20,12 @@ import app.minimpos.app.terminal.TapToPayOutcome
 import app.minimpos.app.terminal.TapToPaySetup
 import app.minimpos.app.terminal.TerminalConnection
 import app.minimpos.app.terminal.TerminalStatus
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
 
 /**
@@ -65,7 +67,7 @@ data class TerminalSetupActions(
  * @param tapToPay Boards and removes the Payments app.
  * @param discovery Reads optional terminal setup details.
  * @param settings Reads the fields after a discovered setup is saved.
- * @param observedSettings Screen state to synchronize before resetting field editing state.
+ * @param observedTerminal Terminal settings stream to synchronize before resetting field editing state.
  */
 class TerminalSetupViewModel(
     private val secrets: SecretStore,
@@ -73,7 +75,7 @@ class TerminalSetupViewModel(
     private val tapToPay: TapToPaySetup,
     private val discovery: SetupDiscovery,
     private val settings: SettingsRepository,
-    private val observedSettings: StateFlow<SettingsUiState>,
+    private val observedTerminal: Flow<TerminalSettings> = settings.settings.map { it.terminal },
 ) : ViewModel() {
     private val _actions = MutableStateFlow(TerminalSetupActions())
 
@@ -110,7 +112,7 @@ class TerminalSetupViewModel(
         }
         launchWrite({
             val entered = apiKey?.trim()?.takeIf { it.isNotEmpty() }
-            val notStored = entered?.let { persisting { store(Secret.ADYEN_API_KEY, it) } }
+            val notStored = entered?.let { persisting { secrets.storeSafely(Secret.ADYEN_API_KEY, it) } }
             if (notStored != null) {
                 _actions.update { it.copy(terminals = ActionState(outcome = notStored, isError = true)) }
                 return@launchWrite
@@ -148,7 +150,7 @@ class TerminalSetupViewModel(
             val result = discovery.choose(poiId)
             if (poiId != null) {
                 val terminal = settings.current().terminal
-                observedSettings.first { it.settings.terminal == terminal }
+                observedTerminal.first { it == terminal }
                 _actions.update {
                     it.copy(
                         manualDetails = result.manualDetails,
@@ -208,7 +210,7 @@ class TerminalSetupViewModel(
     private suspend fun checkedKey(ready: SharedKeySetupOutcome.Ready) {
         val pending = ready.pending
         val current = settings.current().terminal
-        observedSettings.first { it.settings.terminal == current }
+        observedTerminal.first { it == current }
         val connected = status.check() is TerminalConnection.Connected
         val result =
             if (connected) {
@@ -250,7 +252,7 @@ class TerminalSetupViewModel(
         _actions.update { it.copy(tapToPay = ActionState(running = true), paymentsAppKeyStored = false) }
         launchWrite({
             val entered = apiKey?.trim()?.takeIf { it.isNotEmpty() }
-            val notStored = entered?.let { persisting { store(Secret.PAYMENTS_APP_API_KEY, it) } }
+            val notStored = entered?.let { persisting { secrets.storeSafely(Secret.PAYMENTS_APP_API_KEY, it) } }
             if (notStored != null) {
                 _actions.update { it.copy(tapToPay = ActionState(outcome = notStored, isError = true)) }
                 return@launchWrite
@@ -278,19 +280,4 @@ class TerminalSetupViewModel(
             _actions.update { it.copy(tapToPay = result) }
         })
     }
-
-    /** Stores [apiKey] as [secret]; null when it was stored, else why not. */
-    private suspend fun store(
-        secret: Secret,
-        apiKey: String,
-    ): ActionOutcome.Failed? =
-        try {
-            secrets.set(secret, apiKey)
-            null
-        } catch (ignored: SecretStoreException) {
-            SECURE_STORAGE_FAILED
-        }
 }
-
-/** A secret could not be stored on this device. */
-private val SECURE_STORAGE_FAILED = ActionOutcome.Failed(Failure.Device(DeviceFault.SECURE_STORAGE))

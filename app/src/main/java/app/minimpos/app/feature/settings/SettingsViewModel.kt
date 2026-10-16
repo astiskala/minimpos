@@ -32,6 +32,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -146,7 +147,7 @@ class SettingsViewModel(
     sampleReceipt: (AppSettings) -> ReceiptDocument,
     private val managerPins: PinManager = PinManager(secrets, verifierSecret = Secret.MANAGER_PIN_VERIFIER),
     /** Confirmed history deletion on LIVE/TEST/simulator changes. */
-    private val historySwitches: HistorySwitches? = null,
+    historySwitches: HistorySwitches? = null,
 ) : ViewModel() {
     /** The screen state, updated whenever settings, secrets or the catalogue change. */
     val state: StateFlow<SettingsUiState> =
@@ -175,19 +176,17 @@ class SettingsViewModel(
     /** Outcomes of the latest actions. */
     val actions: StateFlow<SettingsActions> = _actions.asStateFlow()
 
-    private val pricingConfirmation = PricingChanges(this, pricingChanges)
-
-    /** Store receipt proposals and confirmation actions, without automatic replacement of merchant text. */
-    internal val businessImport = ReceiptBusinessImports(this, checks.businessDetails, pricingChanges, state)
-
     /** Explicit environment-change confirmation, separate from pricing confirmation. */
     internal val environment = HistorySwitchConfirmation(this, historySwitches)
 
-    /** Stores ordinary settings; pricing and history-destructive environment changes require confirmation. */
-    fun update(transform: (AppSettings) -> AppSettings) = pricingConfirmation.edit(transform, historySwitches, environment)
-
     /** Preview state and confirmation actions for pricing changes. */
-    internal val pricing = pricingConfirmation
+    internal val pricing = PricingChanges(this, pricingChanges, historySwitches, environment)
+
+    /** Store receipt proposals and confirmation actions, without automatic replacement of merchant text. */
+    internal val businessImport = ReceiptBusinessImports(this, checks.businessDetails, pricingChanges, state.map { it.settings.receipt })
+
+    /** Stores ordinary settings; pricing and history-destructive environment changes require confirmation. */
+    fun update(transform: (AppSettings) -> AppSettings) = pricing.edit(transform)
 
     /** Adds (ID 0) or updates [taxRate], trimming its name, and makes it the default rate when [makeDefault]. */
     fun saveTaxRate(
@@ -244,13 +243,16 @@ class SettingsViewModel(
 
     /** Runs [store], reporting (instead of crashing on) a device that cannot encrypt secrets. Returns whether it worked. */
     private suspend fun storeSecret(store: suspend () -> Unit): Boolean =
-        try {
-            store()
-            _actions.update { it.copy(secretError = null) }
-            true
-        } catch (ignored: SecretStoreException) {
-            _actions.update { it.copy(secretError = SECURE_STORAGE_FAILED) }
-            false
+        when (val error = runSecretWrite(store)) {
+            null -> {
+                _actions.update { it.copy(secretError = null) }
+                true
+            }
+
+            else -> {
+                _actions.update { it.copy(secretError = error) }
+                false
+            }
         }
 
     /**
@@ -377,4 +379,19 @@ class SettingsViewModel(
 }
 
 /** A secret could not be stored, or did not read back, on this device. */
-private val SECURE_STORAGE_FAILED = ActionOutcome.Failed(Failure.Device(DeviceFault.SECURE_STORAGE))
+internal val SECURE_STORAGE_FAILED = ActionOutcome.Failed(Failure.Device(DeviceFault.SECURE_STORAGE))
+
+/** Runs [write] and maps a [SecretStoreException] into [SECURE_STORAGE_FAILED] so callers share one failure translation. */
+internal suspend fun runSecretWrite(write: suspend () -> Unit): ActionOutcome.Failed? =
+    try {
+        write()
+        null
+    } catch (ignored: SecretStoreException) {
+        SECURE_STORAGE_FAILED
+    }
+
+/** Stores [value] as [secret] through [runSecretWrite]. */
+internal suspend fun SecretStore.storeSafely(
+    secret: Secret,
+    value: String?,
+): ActionOutcome.Failed? = runSecretWrite { set(secret, value) }

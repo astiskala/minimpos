@@ -53,39 +53,65 @@ data class ReceiptSampleTexts(
 )
 
 /**
+ * Localised receipt, report and sample texts for one resolved language and locale, read at delivery time.
+ *
+ * @property labels Standard receipt line and section labels.
+ * @property locale Formatting locale for numbers, currency symbols and dates.
+ * @property sample Product and tax names for the settings preview receipt.
+ * @property simulationNote Permanent demo warning for simulated links and seeded samples.
+ * @property demoLink Non-payable demo label for simulated link QR codes and captions.
+ * @property standing Localised payment-standing note; null when no note is shown.
+ * @property refund Localised refund-request status note.
+ * @property report Localised daily-report heading and row labels.
+ */
+data class ReceiptTexts(
+    val labels: ReceiptLabels = ReceiptLabels(),
+    val locale: Locale = Locale.getDefault(),
+    val sample: ReceiptSampleTexts = ReceiptSampleTexts(),
+    val simulationNote: String = "Simulation only. No money moved.",
+    val demoLink: String = "Demo link",
+    val standing: (PaymentStanding) -> String? = { it.name.takeUnless { name -> name == "CHARGED" } },
+    val refund: (RefundStatus) -> String? = { it.name },
+    val report: (ReportText) -> String = { it.name },
+)
+
+/**
  * Turns stored sales and refunds into receipt documents using the current receipt settings. Dates and amounts use the
  * device's current locale and time zone, read on each call.
+ *
+ * @param texts Resolves localized receipt texts and formatting locale for a language tag (empty for the current app language).
+ * @param zone Time zone used to format transaction and report timestamps.
  */
 class ReceiptFactory(
-    labels: ReceiptLabels,
-    private val locale: () -> Locale = { Locale.getDefault() },
+    private val texts: (languageTag: String) -> ReceiptTexts = { ReceiptTexts() },
     private val zone: () -> ZoneId = { ZoneId.systemDefault() },
-    /** Reads receipt labels in the current language, rather than caching them for the process lifetime. */
-    private val currentLabels: () -> ReceiptLabels = { labels },
-    /** Product and tax names for the sample receipt in the current language. */
-    private val sampleTexts: () -> ReceiptSampleTexts = { ReceiptSampleTexts() },
-    /** Reads payment-standing labels in the current language at delivery. */
-    private val standingText: (PaymentStanding) -> String? = { it.name.takeUnless { name -> name == "CHARGED" } },
-    /** Reads refund-request outcome labels in the current language at delivery. */
-    private val refundText: (RefundStatus) -> String? = { it.name },
-    /** Reads the permanent demo warning for simulated links in the current language at delivery. */
-    private val simulationText: () -> String = { "Simulation only. No money moved." },
-    /** Labels a demo QR/address without inviting the shopper to pay. */
-    private val demoLinkText: () -> String = { "Demo link" },
-    /** Daily-summary labels in the current language at printing. */
-    private val reportText: (ReportText) -> String = { it.name },
 ) {
+    /** Creates a factory with fixed [labels] and [locale] supplier, for unit tests. */
+    constructor(
+        labels: ReceiptLabels,
+        locale: () -> Locale = { Locale.getDefault() },
+        zone: () -> ZoneId = { ZoneId.systemDefault() },
+    ) : this(
+        texts = { ReceiptTexts(labels = labels, locale = locale()) },
+        zone = zone,
+    )
+
+    private val current: ReceiptTexts get() = texts("")
+
     /** Summary of retained processing-day activity; no payment receipt, QR, or settlement claim. */
     fun dailyReport(
         report: HistoryReport,
         settings: ReceiptSettings,
-    ): ReceiptDocument = DailyReport.document(report, settings, locale(), reportText)
+    ): ReceiptDocument {
+        val resolved = current
+        return DailyReport.document(report, settings, resolved.locale, resolved.report)
+    }
 
     /** [epochMillis] as a short localised date and time, as printed on receipts and shown in history. */
     fun formatDateTime(epochMillis: Long): String =
         DateTimeFormatter
             .ofLocalizedDateTime(FormatStyle.SHORT)
-            .withLocale(locale())
+            .withLocale(current.locale)
             .format(Instant.ofEpochMilli(epochMillis).atZone(zone()))
 
     /**
@@ -112,6 +138,7 @@ class ReceiptFactory(
                 .map { (tax, group) ->
                     TaxBreakdown(tax, TaxAmounts(group.sumOf { it.netMinor }, group.sumOf { it.taxMinor }, group.sumOf { it.grossMinor }))
                 }.sortedWith(compareByDescending<TaxBreakdown> { it.tax.rateMilliPercent }.thenBy { it.tax.name })
+        val resolved = current
         val standing = ReceiptStanding.of(sale)
         val receipt =
             SaleReceipt(
@@ -144,13 +171,13 @@ class ReceiptFactory(
                 captured = standing.capturedMinor,
                 unpaidLink = standing.unpaidLink?.let { UnpaidLink(it, standing.linkExpiresAt?.let(::formatDateTime)) },
                 paidOnline = standing.paidOnline,
-                standingNote = standingText(standing.standing),
+                standingNote = resolved.standing(standing.standing),
                 holdCancelled = standing.standing == PaymentStanding.HOLD_CANCELLED,
             )
         val simulated = standing.simulatedLink || sale.sample
-        val document = builder(settings, currency, simulated).sale(receipt, copy)
+        val document = builder(settings, currency, resolved, simulated).sale(receipt, copy)
         return if (simulated) {
-            ReceiptDocument(listOf(ReceiptElement.Text(simulationText(), Align.CENTER, TextStyle.BOLD)) + document.elements)
+            ReceiptDocument(listOf(ReceiptElement.Text(resolved.simulationNote, Align.CENTER, TextStyle.BOLD)) + document.elements)
         } else {
             document
         }
@@ -164,6 +191,7 @@ class ReceiptFactory(
         refund: RefundEntity,
         settings: ReceiptSettings,
     ): ReceiptDocument {
+        val resolved = current
         val receipt =
             RefundReceipt(
                 reference = refund.merchantReference,
@@ -177,9 +205,9 @@ class ReceiptFactory(
                 cardReceipt = ReceiptLinesJson.decode(refund.customerReceiptJson),
                 cancellation = refund.cancellation,
                 full = refund.full,
-                standingNote = refundText(refund.status),
+                standingNote = resolved.refund(refund.status),
             )
-        return builder(settings, CurrencySpec.of(refund.currency)).refund(receipt)
+        return builder(settings, CurrencySpec.of(refund.currency), resolved).refund(receipt)
     }
 
     /**
@@ -193,22 +221,29 @@ class ReceiptFactory(
         currency: CurrencySpec,
         mode: TaxMode,
         withCustomerReference: Boolean,
+        languageTag: String = "",
     ): ReceiptDocument {
-        val texts = sampleTexts()
+        val resolved = texts(languageTag)
+        val sample = resolved.sample
         val markedRate = settings.markedTaxRateMilliPercent ?: 0
         val customAmounts = TaxRates.apply(300, markedRate, TaxMode.INCLUSIVE)
+        val dateTime =
+            DateTimeFormatter
+                .ofLocalizedDateTime(FormatStyle.SHORT)
+                .withLocale(resolved.locale)
+                .format(Instant.ofEpochMilli(System.currentTimeMillis()).atZone(zone()))
         val receipt =
             SaleReceipt(
                 reference = SAMPLE_REFERENCE,
                 customerReference = SAMPLE_CUSTOMER.takeIf { withCustomerReference },
-                dateTime = formatDateTime(System.currentTimeMillis()),
+                dateTime = dateTime,
                 mode = mode,
-                items = listOf(ReceiptItem(texts.coffee, 2, 450, 900, 10_000), ReceiptItem(texts.custom, 1, 300, 300, markedRate)),
+                items = listOf(ReceiptItem(sample.coffee, 2, 450, 900, 10_000), ReceiptItem(sample.custom, 1, 300, 300, markedRate)),
                 amounts = TaxAmounts(818, 82, 900) + customAmounts,
                 breakdown =
                     listOf(
-                        TaxBreakdown(AppliedTax(texts.taxed, 10_000), TaxAmounts(818, 82, 900)),
-                        TaxBreakdown(AppliedTax(if (markedRate == 0) texts.zero else texts.taxed, markedRate), customAmounts),
+                        TaxBreakdown(AppliedTax(sample.taxed, 10_000), TaxAmounts(818, 82, 900)),
+                        TaxBreakdown(AppliedTax(if (markedRate == 0) sample.zero else sample.taxed, markedRate), customAmounts),
                     ),
                 approved = true,
                 cardReceipt = emptyList(),
@@ -216,12 +251,13 @@ class ReceiptFactory(
                     RefundQrPayload(SAMPLE_TRANSACTION_ID, SAMPLE_TIMESTAMP, SAMPLE_TOTALS.gross, currency.code, SAMPLE_REFERENCE).encode(),
                 cardSaved = false,
             )
-        return builder(settings, currency).sale(receipt, ReceiptCopy.CUSTOMER)
+        return builder(settings, currency, resolved).sale(receipt, ReceiptCopy.CUSTOMER)
     }
 
     private fun builder(
         settings: ReceiptSettings,
         currency: CurrencySpec,
+        resolved: ReceiptTexts,
         simulated: Boolean = false,
     ) = ReceiptBuilder(
         branding =
@@ -245,19 +281,19 @@ class ReceiptFactory(
                 markedTaxRateMarker = settings.markedTaxRateMarker,
             ),
         labels =
-            currentLabels().copy(markedTaxRateNote = settings.markedTaxRateNote).let {
+            resolved.labels.copy(markedTaxRateNote = settings.markedTaxRateNote).let {
                 if (simulated) {
                     it.copy(
-                        payLinkCaption = demoLinkText(),
-                        payLinkIntro = demoLinkText(),
-                        payNow = demoLinkText(),
-                        paidOnline = simulationText(),
+                        payLinkCaption = resolved.demoLink,
+                        payLinkIntro = resolved.demoLink,
+                        payNow = resolved.demoLink,
+                        paidOnline = resolved.simulationNote,
                     )
                 } else {
                     it
                 }
             },
-        money = MoneyFormatter(currency, locale()),
+        money = MoneyFormatter(currency, resolved.locale),
     )
 
     private companion object {

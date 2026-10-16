@@ -255,7 +255,7 @@ private fun transferExportViewModel(): TransferExportViewModel {
 private fun transferImportViewModel(): TransferImportViewModel {
     val container = LocalAppContainer.current
     val currency = container.currency().code
-    return viewModel { TransferImportViewModel(container.setupTransfer, currency, container.setupImport) }
+    return viewModel { TransferImportViewModel(currency, container.setupImport) }
 }
 
 /**

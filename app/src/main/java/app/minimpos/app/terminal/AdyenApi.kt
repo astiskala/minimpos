@@ -189,11 +189,18 @@ class AdyenApi(
         return verify(setups.unlocked(forValidation = true))
     }
 
-    internal suspend fun verify(unlocked: UnlockedSetup): ApiCheck {
+    internal suspend fun verify(
+        unlocked: UnlockedSetup,
+        accessVerified: Boolean = false,
+    ): ApiCheck {
         val setup = unlocked.setup
         if (setup.apiSetup == ApiSetup.Simulated) return checkout(simulated)
-        setup.apiSetup.problem?.let { return ApiCheck.NotSetUp(it) }
-        return verifyAccess(unlocked)?.let(ApiCheck::Failed) ?: verifyCheckout(unlocked)
+        val problem = setup.apiSetup.problem
+        return when {
+            problem != null -> ApiCheck.NotSetUp(problem)
+            !accessVerified -> verifyAccess(unlocked)?.let(ApiCheck::Failed) ?: verifyCheckout(unlocked)
+            else -> verifyCheckout(unlocked)
+        }
     }
 
     private suspend fun verifyCheckout(unlocked: UnlockedSetup): ApiCheck {

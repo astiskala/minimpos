@@ -158,7 +158,7 @@ class AdyenTerminalDetails(
 
     override suspend fun credential(environment: TerminalEnvironment): CredentialLookup {
         val reply = http.get(baseUrl(environment).newBuilder().addPathSegment("me").build(), TIMEOUT)
-        if (reply !is AdyenReply.Answered || !reply.ok) return CredentialLookup.Failed(reason(reply, MANAGEMENT_ROLES))
+        if (reply !is AdyenReply.Answered || !reply.ok) return CredentialLookup.Failed(managementFault(reply, role = MANAGEMENT_ROLES))
         val roles =
             runCatching {
                 requireNotNull(decodeAdyenModel(reply.body, MeApiCredential::class.java)?.roles).map { requireNotNull(it) }
@@ -185,28 +185,16 @@ class AdyenTerminalDetails(
                         .build(),
                     TIMEOUT,
                 )
-            val parsed = parsePage(reply) ?: return TerminalListing.Failed(reason(reply))
-            return TerminalListing.Listed(parsed.first.filter { it.id == id }.distinctBy { it.id }, environment)
-        }
-        var reply = page(environment, 1)
-        val terminals = mutableListOf<TerminalDetails>()
-        var number = 1
-        var next = true
-        var failure: Fault? = null
-        while (next && number <= MAX_PAGES && failure == null) {
-            val parsed = parsePage(reply)
-            if (parsed == null) {
-                failure = reason(reply)
+            val parsed = (reply as? AdyenReply.Answered)?.takeIf { it.ok }?.let { parsePage(it.body) }
+            return if (parsed == null) {
+                TerminalListing.Failed(managementFault(reply))
             } else {
-                terminals += parsed.first
-                next = parsed.second
-                if (next && ++number <= MAX_PAGES) reply = page(environment, number)
+                TerminalListing.Listed(parsed.first.filter { it.id == id }.distinctBy { it.id }, environment)
             }
         }
-        return when {
-            failure != null -> TerminalListing.Failed(failure)
-            next -> TerminalListing.Failed(Fault.ListTooLarge)
-            else -> TerminalListing.Listed(terminals.distinctBy { it.id }, environment)
+        return when (val pages = collectManagementPages(fetch = { page(environment, it) }, parse = ::parsePage)) {
+            is ManagementPages.Failed -> TerminalListing.Failed(pages.fault)
+            is ManagementPages.Listed -> TerminalListing.Listed(pages.items.distinctBy { it.id }, environment)
         }
     }
 
@@ -215,7 +203,7 @@ class AdyenTerminalDetails(
         environment: TerminalEnvironment,
     ): SharedKeyLookup {
         val reply = http.get(settingsUrl(id, environment), TIMEOUT)
-        if (reply !is AdyenReply.Answered || !reply.ok) return SharedKeyLookup.Failed(reason(reply))
+        if (reply !is AdyenReply.Answered || !reply.ok) return SharedKeyLookup.Failed(managementFault(reply))
         val settings = decodeTerminalSettings(reply.body) ?: return SharedKeyLookup.Failed(Fault.Malformed(MalformedPart.SETTINGS))
         return lookup(settings)
     }
@@ -227,7 +215,7 @@ class AdyenTerminalDetails(
     ): SharedKeyUpdate {
         val url = settingsUrl(id, environment)
         val before = http.get(url, TIMEOUT)
-        if (before !is AdyenReply.Answered || !before.ok) return SharedKeyUpdate.Failed(reason(before))
+        if (before !is AdyenReply.Answered || !before.ok) return SharedKeyUpdate.Failed(managementFault(before))
         val settings = decodeTerminalSettings(before.body) ?: return SharedKeyUpdate.Failed(Fault.Malformed(MalformedPart.SETTINGS))
         return when (val existing = lookup(settings)) {
             is SharedKeyLookup.Found -> SharedKeyUpdate.Ready(existing.key, created = false)
@@ -246,7 +234,7 @@ class AdyenTerminalDetails(
         val json = TerminalSettings().nexo(nexo).toJson()
         val reply = http.patch(settingsUrl(id, environment), json, TIMEOUT)
         if (reply !is AdyenReply.Answered || !reply.ok) {
-            val fault = reason(reply)
+            val fault = managementFault(reply)
             return SharedKeyUpdate.Failed(fault, fault.mayHaveTakenEffect)
         }
         return verifyKey(id, environment, key)
@@ -312,32 +300,19 @@ class AdyenTerminalDetails(
             baseUrl(environment)
                 .newBuilder()
                 .addPathSegment("terminals")
-                .addQueryParameter("pageSize", PAGE_SIZE.toString())
+                .addQueryParameter("pageSize", MANAGEMENT_PAGE_SIZE.toString())
                 .addQueryParameter("pageNumber", number.toString())
                 .build(),
             TIMEOUT,
         )
 
-    private fun parsePage(reply: AdyenReply): Pair<List<TerminalDetails>, Boolean>? {
-        if (reply !is AdyenReply.Answered || !reply.ok) return null
-        return runCatching {
-            val response = requireNotNull(decodeAdyenModel(reply.body, ListTerminalsResponse::class.java))
+    private fun parsePage(body: String): Pair<List<TerminalDetails>, Boolean>? =
+        runCatching {
+            val response = requireNotNull(decodeAdyenModel(body, ListTerminalsResponse::class.java))
             val terminals = requireNotNull(response.data).map(::terminal)
             val next = response.links?.next?.href
             terminals to !next.isNullOrBlank()
         }.getOrNull()
-    }
-
-    /** Why [reply] gave no usable answer; a successful one was unreadable. A 403 lacks [role]. */
-    private fun reason(
-        reply: AdyenReply,
-        role: String? = null,
-    ): Fault =
-        when (reply) {
-            is AdyenReply.Failed -> reply.fault
-            is AdyenReply.Answered if reply.ok -> Fault.UnreadableReply()
-            is AdyenReply.Answered -> reply.fault(ApiKey.ADYEN, role, managementError(reply.body))
-        }
 
     private fun terminal(terminal: Terminal): TerminalDetails {
         val id =
@@ -375,8 +350,6 @@ class AdyenTerminalDetails(
 
     private companion object {
         val TIMEOUT = 15.seconds
-        const val PAGE_SIZE = 100
-        const val MAX_PAGES = 100
         val KEY_VERSIONS = 1..9_999
 
         /** [REQUIRED_ROLES] as Adyen names them in the Customer Area. */

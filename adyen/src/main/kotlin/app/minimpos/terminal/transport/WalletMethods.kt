@@ -78,35 +78,24 @@ class AdyenWalletMethods(
     override suspend fun methods(
         merchantAccount: String,
         storeId: String,
-    ): WalletMethodListing {
-        val methods = mutableListOf<WalletMethod>()
-        var number = 1
-        var next = true
-        var problem: Fault? = null
-        while (next && number <= MAX_PAGES && problem == null) {
-            when (val page = page(merchantAccount, storeId, number++)) {
-                is Page.Failed -> {
-                    problem = page.fault
-                }
-
-                is Page.Listed -> {
-                    methods += page.methods
-                    next = page.next
-                }
-            }
+    ): WalletMethodListing =
+        when (
+            val pages =
+                collectManagementPages(
+                    role = PAYMENT_METHODS_READ,
+                    fetch = { page(merchantAccount, storeId, it) },
+                    parse = ::parsePage,
+                )
+        ) {
+            is ManagementPages.Failed -> WalletMethodListing.Failed(pages.fault)
+            is ManagementPages.Listed -> WalletMethodListing.Listed(pages.items)
         }
-        return when {
-            problem != null -> WalletMethodListing.Failed(problem)
-            next -> WalletMethodListing.Failed(Fault.ListTooLarge)
-            else -> WalletMethodListing.Listed(methods)
-        }
-    }
 
     private suspend fun page(
         merchantAccount: String,
         storeId: String,
         number: Int,
-    ): Page {
+    ): AdyenReply {
         val url =
             baseUrl
                 .newBuilder()
@@ -114,38 +103,23 @@ class AdyenWalletMethods(
                 .addPathSegment(merchantAccount)
                 .addPathSegment("paymentMethodSettings")
                 .addQueryParameter("pageNumber", number.toString())
-                .addQueryParameter("pageSize", PAGE_SIZE.toString())
+                .addQueryParameter("pageSize", MANAGEMENT_PAGE_SIZE.toString())
                 .apply { if (storeId.isNotBlank()) addQueryParameter("storeId", storeId) }
                 .build()
-        val reply =
-            when (val got = http.get(url, TIMEOUT)) {
-                is AdyenReply.Failed -> return Page.Failed(got.fault)
-                is AdyenReply.Answered -> got
-            }
-        if (!reply.ok) return Page.Failed(reply.fault(ApiKey.ADYEN, PAYMENT_METHODS_READ, managementError(reply.body)))
-        val response = decodeAdyenModel(reply.body, PaymentMethodResponse::class.java)
+        return http.get(url, TIMEOUT)
+    }
+
+    private fun parsePage(body: String): Pair<List<WalletMethod>, Boolean>? {
+        val response = decodeAdyenModel(body, PaymentMethodResponse::class.java)
         val data = response?.data
         if (data == null || !response.typesWithErrors.isNullOrEmpty() || data.any { it?.type.isNullOrBlank() }) {
-            return Page.Failed(Fault.UnreadableReply())
+            return null
         }
-        return Page.Listed(
-            data.map(::method),
+        return data.map(::method) to
             !response.links
                 ?.next
                 ?.href
-                .isNullOrBlank(),
-        )
-    }
-
-    private sealed interface Page {
-        data class Listed(
-            val methods: List<WalletMethod>,
-            val next: Boolean,
-        ) : Page
-
-        data class Failed(
-            val fault: Fault,
-        ) : Page
+                .isNullOrBlank()
     }
 
     private fun method(value: PaymentMethod): WalletMethod =
@@ -160,8 +134,6 @@ class AdyenWalletMethods(
         )
 
     private companion object {
-        const val MAX_PAGES = 100
-        const val PAGE_SIZE = 100
         val TIMEOUT = 15.seconds
         const val PAYMENT_METHODS_READ = "Management API—Payment methods read"
     }

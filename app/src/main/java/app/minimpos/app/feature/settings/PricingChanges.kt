@@ -14,15 +14,13 @@ import app.minimpos.app.payment.PricingChanges as PricingChangeOperations
 internal class PricingChanges(
     private val owner: ViewModel,
     private val operations: PricingChangeOperations,
+    private val switches: HistorySwitches? = null,
+    private val environment: HistorySwitchConfirmation,
 ) {
     private val _pending = MutableStateFlow<PricingChange?>(null)
     val pending: StateFlow<PricingChange?> = _pending
 
-    fun edit(
-        transform: (AppSettings) -> AppSettings,
-        switches: HistorySwitches?,
-        environment: HistorySwitchConfirmation,
-    ) {
+    fun edit(transform: (AppSettings) -> AppSettings) {
         owner.launchWrite({ operations.edit(transform, switches) }) { result ->
             when (result) {
                 SettingsEdit.Saved -> _pending.value = null

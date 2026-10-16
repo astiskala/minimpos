@@ -10,6 +10,7 @@ import app.minimpos.terminal.transport.AdyenTerminalDetails
 import app.minimpos.terminal.transport.AdyenWalletMethods
 import app.minimpos.terminal.transport.TerminalHttpClient
 import com.adyen.Client
+import com.adyen.model.management.DefaultErrorResponseEntity
 import com.google.gson.JsonObject
 import com.tngtech.archunit.base.DescribedPredicate
 import com.tngtech.archunit.core.domain.JavaClass
@@ -166,6 +167,24 @@ class ArchitectureTest {
     }
 
     @Test
+    fun `only ManagementJson maps Management API error responses into faults`() =
+        managementFaultOwnership(
+            resideInAnyPackage("app.minimpos.terminal..")
+                .and(DescribedPredicate.not(DescribedPredicate.describe("ManagementJson") { it.name.endsWith(".ManagementJsonKt") })),
+        ).check(terminal)
+
+    @Test
+    fun `management fault ownership rejects direct error decoding in adapters`() {
+        val violation = ClassFileImporter().importClasses(ManagementFaultViolation::class.java)
+        val rule = managementFaultOwnership(type(ManagementFaultViolation::class.java))
+        assertTrue(rule.description, rule.evaluate(violation).hasViolation())
+    }
+
+    private class ManagementFaultViolation {
+        fun error() = DefaultErrorResponseEntity()
+    }
+
+    @Test
     fun `only the decline reads why a transaction was not approved`() =
         // Cancellations, busy terminals and retry advice come from Decline; nothing else compares ErrorCondition strings.
         noClasses()
@@ -247,6 +266,14 @@ class ArchitectureTest {
 
         fun deliveryOwnership(selected: DescribedPredicate<JavaClass>): ArchRule =
             noClasses().that(selected).should().dependOnClassesThat(assignableTo(IOException::class.java))
+
+        fun managementFaultOwnership(selected: DescribedPredicate<JavaClass>): ArchRule =
+            noClasses()
+                .that(selected)
+                .should()
+                .dependOnClassesThat()
+                .haveSimpleName("DefaultErrorResponseEntity")
+                .because("Management adapters share error-response decoding and Fault mapping in ManagementJson")
 
         const val SIMULATOR = "Simulator"
         const val CLIENT = "Client"

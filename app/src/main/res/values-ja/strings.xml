@@ -975,4 +975,11 @@
   <string name="capability_offline_chip_floor">ICチップオフライン上限（主通貨単位）</string>
   <string name="capability_offline_saf_max">ストアアンドフォワード上限（%1$s最小単位）</string>
   <string name="capability_offline_max_payments">保存可能なオフライン決済の最大件数</string>
+  <string name="checkout_tip_on_terminal">端末でチップを入力</string>
+  <string name="checkout_tip_on_terminal_hint">カード決済の前に端末画面で購入者にチップを尋ねます。</string>
+  <string name="settings_terminal_tip_hint">端末画面で購入者にチップを尋ねます（AskGratuity）。</string>
+  <string name="settings_dynamic_tip_override">購入金額に応じたチップ候補</string>
+  <string name="settings_dynamic_tip_override_hint">少額の会計では定額、高額の会計では割合のチップ候補を表示します。</string>
+  <string name="settings_tip_on_pre_tax">税抜き金額に対して割合チップを計算</string>
+  <string name="settings_tip_on_pre_tax_hint">税抜き小計をチップ計算の対象金額として送信します（AmountToTipOn）。</string>
 </resources>

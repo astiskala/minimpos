@@ -406,6 +406,7 @@ class AppContainer(
                         settingsState,
                         flowOf(terminalStatus.state.value.printerAvailable),
                         wallets = walletDiscovery.state,
+                        terminalTippingAvailable = flowOf(terminalStatus.state.value.supportsTerminalFeatures),
                         currency = ::currency,
                     ).first()
             },

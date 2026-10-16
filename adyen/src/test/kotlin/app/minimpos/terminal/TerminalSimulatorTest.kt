@@ -16,6 +16,8 @@ import app.minimpos.terminal.client.RetryAdvice
 import app.minimpos.terminal.client.ScannedPayment
 import app.minimpos.terminal.client.TerminalClient
 import app.minimpos.terminal.client.TerminalIdentity
+import app.minimpos.terminal.client.TerminalTipOptions
+import app.minimpos.terminal.client.TerminalTipSuggestions
 import app.minimpos.terminal.client.TransactionOutcome
 import app.minimpos.terminal.simulator.SimulatedModifications
 import app.minimpos.terminal.simulator.SimulatedOutcome
@@ -258,5 +260,46 @@ class TerminalSimulatorTest {
                 }
             val answered = simulator.send(diagnosis, 1.seconds) as Delivery.Answered
             assertThat(answered.response!!.saleToPOIResponse.diagnosisResponse).isNotNull()
+        }
+
+    @Test
+    fun `simulates native terminal tipping with default and dynamic SaleToPOIData options`() =
+        runBlocking {
+            val plainTip =
+                pay(
+                    tokenizing.copy(
+                        amount = BigDecimal("20.00"),
+                        terminalTip = TerminalTipOptions(),
+                    ),
+                )
+            assertThat(plainTip.tipAmount).isEqualTo(BigDecimal("2.00"))
+            assertThat(plainTip.amount).isEqualTo(BigDecimal("22.00"))
+
+            val fixedTip =
+                pay(
+                    tokenizing.copy(
+                        amount = BigDecimal("6.00"),
+                        terminalTip =
+                            TerminalTipOptions(
+                                suggestions = TerminalTipSuggestions.FixedAmounts(listOf(100, 200, 300), allowCustom = true),
+                            ),
+                    ),
+                )
+            assertThat(fixedTip.tipAmount).isEqualTo(BigDecimal("1.00"))
+            assertThat(fixedTip.amount).isEqualTo(BigDecimal("7.00"))
+
+            val preTaxPercentTip =
+                pay(
+                    tokenizing.copy(
+                        amount = BigDecimal("110.00"),
+                        terminalTip =
+                            TerminalTipOptions(
+                                suggestions = TerminalTipSuggestions.Percentages(listOf(15, 18, 20), allowCustom = true),
+                                amountToTipOn = BigDecimal("100.00"),
+                            ),
+                    ),
+                )
+            assertThat(preTaxPercentTip.tipAmount).isEqualTo(BigDecimal("15.00"))
+            assertThat(preTaxPercentTip.amount).isEqualTo(BigDecimal("125.00"))
         }
 }

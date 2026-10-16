@@ -975,4 +975,11 @@
   <string name="capability_offline_chip_floor">芯片离线限额（主货币单位）</string>
   <string name="capability_offline_saf_max">存储转发最高限额（%1$s 最小单位）</string>
   <string name="capability_offline_max_payments">最多存储离线交易笔数</string>
+  <string name="checkout_tip_on_terminal">在终端上输入小费</string>
+  <string name="checkout_tip_on_terminal_hint">刷卡扣款前在终端屏幕上请顾客选择或输入小费。</string>
+  <string name="settings_terminal_tip_hint">在终端屏幕上提示顾客添加小费（AskGratuity）。</string>
+  <string name="settings_dynamic_tip_override">按订单金额动态推荐小费</string>
+  <string name="settings_dynamic_tip_override_hint">小额订单推荐固定金额，较大金额订单推荐百分比小费。</string>
+  <string name="settings_tip_on_pre_tax">按税前金额计算百分比小费</string>
+  <string name="settings_tip_on_pre_tax_hint">将税前小计作为小费计算基数发送（AmountToTipOn）。</string>
 </resources>

@@ -202,7 +202,15 @@ object HistoryAccounting {
                     }
 
                     else -> {
-                        add(HistoryActivity(item, sale.processedAt ?: sale.createdAt, HistoryActivityKind.SALE, sale.amountMinor))
+                        add(
+                            HistoryActivity(
+                                item,
+                                sale.processedAt ?: sale.createdAt,
+                                HistoryActivityKind.SALE,
+                                sale.amountMinor,
+                                sale.tipMinor ?: 0,
+                            ),
+                        )
                     }
                 }
             }

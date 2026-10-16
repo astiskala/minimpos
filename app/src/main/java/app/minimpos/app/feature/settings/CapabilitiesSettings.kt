@@ -27,6 +27,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import app.minimpos.app.R
 import app.minimpos.app.data.settings.PaymentSettings
+import app.minimpos.app.data.settings.ReceiptTipping
 import app.minimpos.app.data.settings.TerminalSettings
 import app.minimpos.app.feature.ActionOutcome
 import app.minimpos.app.feature.ActionState
@@ -250,7 +251,7 @@ internal fun ColumnScope.CapabilitiesSection(
     }
 
     SectionHeader(stringResource(R.string.capabilities_matrix_header))
-    CapabilitiesMatrix(capabilities, currency)
+    CapabilitiesMatrix(capabilities, payment, currency)
 
     if ((capabilities.discoversTerminals || capabilities.simulated) && capabilities.problem == null) {
         key(actions.revision, currency) {
@@ -262,18 +263,21 @@ internal fun ColumnScope.CapabilitiesSection(
             }
         }
     }
-    // Keep parameter referenced so later feature commits can read local payment capability toggles without changing signature.
-    payment.currencyCode
 }
 
 @Composable
 private fun ColumnScope.CapabilitiesMatrix(
     capabilities: AdyenCapabilitiesState,
+    payment: PaymentSettings,
     currency: String,
 ) {
     CapabilityStandingRow(
         title = stringResource(R.string.capability_terminal_tipping),
-        standing = capabilities.tippingStanding(currency, enabledLocally = false),
+        standing =
+            capabilities.tippingStanding(
+                currency,
+                enabledLocally = payment.terminalTipping != ReceiptTipping.DISABLED,
+            ),
         tag = "cap_tipping",
     )
     CapabilityStandingRow(

@@ -1031,6 +1031,7 @@ private fun ColumnScope.PaymentsSection(
     SectionHeader(stringResource(R.string.settings_tokenization))
     ShopperReferenceSettings(payment, ::update)
     SectionHeader(stringResource(R.string.settings_tipping))
+    TerminalTippingSettings(payment, ::update)
     SettingChoice(
         title = stringResource(R.string.checkout_tip_on_receipt),
         options =
@@ -1048,6 +1049,42 @@ private fun ColumnScope.PaymentsSection(
     EmailCaptureSettings(payment, ::update)
     SectionHeader(stringResource(R.string.settings_payment_links))
     PaymentLinkSettings(payment, ::update)
+}
+
+@Composable
+private fun ColumnScope.TerminalTippingSettings(
+    payment: PaymentSettings,
+    update: ((PaymentSettings) -> PaymentSettings) -> Unit,
+) {
+    SettingChoice(
+        title = stringResource(R.string.checkout_tip_on_terminal),
+        options =
+            listOf(
+                ReceiptTipping.DISABLED to stringResource(R.string.settings_tip_disabled),
+                ReceiptTipping.DEFAULT_OFF to stringResource(R.string.settings_tip_default_off),
+                ReceiptTipping.DEFAULT_ON to stringResource(R.string.settings_tip_default_on),
+            ),
+        selected = payment.terminalTipping,
+        onSelect = { value -> update { it.copy(terminalTipping = value) } },
+        subtitle = stringResource(R.string.settings_terminal_tip_hint),
+        tag = "terminalTipping",
+    )
+    if (payment.terminalTipping != ReceiptTipping.DISABLED) {
+        SettingSwitch(
+            stringResource(R.string.settings_dynamic_tip_override),
+            payment.dynamicTipOverride,
+            { value -> update { it.copy(dynamicTipOverride = value) } },
+            subtitle = stringResource(R.string.settings_dynamic_tip_override_hint),
+            tag = "dynamicTipOverride",
+        )
+        SettingSwitch(
+            stringResource(R.string.settings_tip_on_pre_tax),
+            payment.tipOnPreTax,
+            { value -> update { it.copy(tipOnPreTax = value) } },
+            subtitle = stringResource(R.string.settings_tip_on_pre_tax_hint),
+            tag = "tipOnPreTax",
+        )
+    }
 }
 
 /**

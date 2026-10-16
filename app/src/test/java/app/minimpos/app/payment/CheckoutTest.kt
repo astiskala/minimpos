@@ -17,6 +17,8 @@ import app.minimpos.core.payment.ScanWallet
 import app.minimpos.core.shopper.EmailReferenceMode
 import app.minimpos.core.tax.TaxMode
 import app.minimpos.terminal.client.RecurringModel
+import app.minimpos.terminal.client.TerminalTipOptions
+import app.minimpos.terminal.client.TerminalTipSuggestions
 import com.google.common.truth.Truth.assertThat
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.first
@@ -319,4 +321,48 @@ class CheckoutTest {
             assertThat(ready.kind).isEqualTo(SaleKind.SALE)
             assertThat(session.checkout(settings, flowOf(false), flowOf(true)) { CurrencySpec.of("AUD") }.first().canSendLink).isTrue()
         }
+
+    @Test
+    fun `terminal tipping supports dynamic basket thresholds pre-tax amounts and mutual exclusion with receipt tipping`() {
+        val smallCart =
+            Cart()
+                .addProduct(CartProduct(1, "Coffee", null, 600, AppliedTax("GST", 10_000))) { "c1" }
+                .totals(TaxMode.INCLUSIVE, chargeTax = true)
+        val largeCart =
+            Cart()
+                .addProduct(CartProduct(2, "Meal", null, 11_000, AppliedTax("GST", 10_000))) { "c2" }
+                .totals(TaxMode.INCLUSIVE, chargeTax = true)
+        val settings =
+            PaymentSettings(
+                terminalTipping = ReceiptTipping.DEFAULT_ON,
+                receiptTipping = ReceiptTipping.DEFAULT_ON,
+                dynamicTipOverride = true,
+                lowBasketThresholdMinor = 1_000,
+                fixedTipAmountsMinor = listOf(100, 200, 300),
+                tipPercentages = listOf(10, 15, 20),
+                tipOnPreTax = true,
+            )
+        val smallCheckout = Checkout(CheckoutForm(), settings, smallCart, aud, printerAvailable = true)
+        assertThat(smallCheckout.askGratuity).isTrue()
+        assertThat(smallCheckout.tipOnReceipt).isFalse()
+        assertThat(smallCheckout.terminalTipOptions()).isEqualTo(
+            TerminalTipOptions(
+                suggestions = TerminalTipSuggestions.FixedAmounts(listOf(100, 200, 300), allowCustom = true),
+                amountToTipOn = aud.toMajor(smallCart.amounts.net),
+            ),
+        )
+
+        val largeCheckout = Checkout(CheckoutForm(), settings, largeCart, aud, printerAvailable = true)
+        assertThat(largeCheckout.terminalTipOptions()).isEqualTo(
+            TerminalTipOptions(
+                suggestions = TerminalTipSuggestions.Percentages(listOf(10, 15, 20), allowCustom = true),
+                amountToTipOn = aud.toMajor(10_000),
+            ),
+        )
+
+        val switchedToReceipt = largeCheckout.copy(form = CheckoutForm(tipOnReceipt = true, askGratuity = false))
+        assertThat(switchedToReceipt.tipOnReceipt).isTrue()
+        assertThat(switchedToReceipt.askGratuity).isFalse()
+        assertThat(switchedToReceipt.terminalTipOptions()).isNull()
+    }
 }

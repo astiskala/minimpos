@@ -151,8 +151,8 @@ fun CheckoutScreen(
                 state,
                 money,
                 onPay = { if (vm.pay()) navigator.replace(Route.Payment(kind)) },
-                onSendLink = { if (state.tipOnReceipt) confirmLink = true else createLink() },
-                onScanWallet = { if (state.tipOnReceipt) confirmWallet = true else scanWallet() },
+                onSendLink = { if (state.tipOnReceipt || state.askGratuity) confirmLink = true else createLink() },
+                onScanWallet = { if (state.tipOnReceipt || state.askGratuity) confirmWallet = true else scanWallet() },
             )
         },
     ) { padding ->
@@ -359,12 +359,25 @@ private fun ColumnScope.CheckoutSwitches(
             onChange = { checked -> onUpdate { it.copy(tokenize = checked) } },
         )
     }
+    if (state.canTipOnTerminal) {
+        LabeledSwitch(
+            title = stringResource(R.string.checkout_tip_on_terminal),
+            hint = stringResource(R.string.checkout_tip_on_terminal_hint),
+            checked = state.askGratuity,
+            onChange = { checked ->
+                onUpdate { it.copy(askGratuity = checked, tipOnReceipt = if (checked) false else it.tipOnReceipt) }
+            },
+            tag = "askGratuity",
+        )
+    }
     if (state.canTipOnReceipt) {
         LabeledSwitch(
             title = stringResource(R.string.checkout_tip_on_receipt),
             hint = stringResource(R.string.checkout_tip_on_receipt_hint),
             checked = state.tipOnReceipt,
-            onChange = { checked -> onUpdate { it.copy(tipOnReceipt = checked) } },
+            onChange = { checked ->
+                onUpdate { it.copy(tipOnReceipt = checked, askGratuity = if (checked) false else it.askGratuity) }
+            },
             tag = "tipOnReceipt",
         )
     }

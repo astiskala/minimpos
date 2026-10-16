@@ -1021,4 +1021,11 @@
   <string name="capability_offline_chip_floor">Chip floor limit (major units)</string>
   <string name="capability_offline_saf_max">Store-and-forward max (%1$s minor units)</string>
   <string name="capability_offline_max_payments">Max stored offline payments</string>
+  <string name="checkout_tip_on_terminal">Tip on the terminal</string>
+  <string name="checkout_tip_on_terminal_hint">Ask the shopper for a tip on the terminal screen before charging the card.</string>
+  <string name="settings_terminal_tip_hint">Prompt shoppers for a tip on the terminal screen (AskGratuity).</string>
+  <string name="settings_dynamic_tip_override">Dynamic basket tip suggestions</string>
+  <string name="settings_dynamic_tip_override_hint">Suggest fixed tip amounts on small baskets and percentages on larger ones.</string>
+  <string name="settings_tip_on_pre_tax">Calculate percentage tips before tax</string>
+  <string name="settings_tip_on_pre_tax_hint">Send the pre-tax subtotal as the amount to tip on (AmountToTipOn).</string>
 </resources>

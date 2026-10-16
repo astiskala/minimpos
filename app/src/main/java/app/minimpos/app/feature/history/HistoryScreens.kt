@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -329,38 +330,13 @@ private fun DayHeader(
     printing: Boolean,
     onPrint: () -> Unit,
 ) {
-    val locale = currentLocale()
-
-    fun totals(values: Map<String, Long>) =
-        values.entries.joinToString(" + ") { (currency, minor) ->
-            MoneyFormatter(CurrencySpec.of(currency), locale).format(minor)
-        }
     Row(
         Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.surfaceVariant).padding(horizontal = 16.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Column(Modifier.weight(1f)) {
             Text(title, style = MaterialTheme.typography.titleSmall)
-            val parts =
-                buildList {
-                    if (day.totals.saleCount > 0) {
-                        add(stringResource(R.string.history_day_sales, totals(day.totals.salesMinor), day.totals.saleCount))
-                    }
-                    if (day.totals.tipsMinor.isNotEmpty()) add(stringResource(R.string.history_day_tips, totals(day.totals.tipsMinor)))
-                    if (day.totals.refundCount > 0) {
-                        add(stringResource(R.string.history_day_refunds, totals(day.totals.refundsMinor), day.totals.refundCount))
-                    }
-                    if (day.totals.preAuthCount > 0) {
-                        add(stringResource(R.string.history_day_pre_auths, totals(day.totals.preAuthsMinor), day.totals.preAuthCount))
-                    }
-                }
-            if (parts.isNotEmpty()) {
-                Text(
-                    parts.joinToString(" · "),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
+            DaySummary(day.totals)
         }
         if (canPrint) {
             IconButton(
@@ -370,6 +346,33 @@ private fun DayHeader(
             ) {
                 Icon(Icons.Default.Print, stringResource(R.string.history_print_day))
             }
+        }
+    }
+}
+
+/** Wraps between transaction types; a count stays attached to its amount even for unusually long totals. */
+@Composable
+private fun DaySummary(day: DayTotals) {
+    val locale = currentLocale()
+
+    fun totals(values: Map<String, Long>) =
+        values.entries.joinToString(" + ") { (currency, minor) ->
+            MoneyFormatter(CurrencySpec.of(currency), locale).format(minor)
+        }
+    val parts =
+        buildList {
+            if (day.saleCount > 0) add(stringResource(R.string.history_day_sales, totals(day.salesMinor), day.saleCount))
+            if (day.tipsMinor.isNotEmpty()) add(stringResource(R.string.history_day_tips, totals(day.tipsMinor)))
+            if (day.refundCount > 0) add(stringResource(R.string.history_day_refunds, totals(day.refundsMinor), day.refundCount))
+            if (day.preAuthCount > 0) add(stringResource(R.string.history_day_pre_auths, totals(day.preAuthsMinor), day.preAuthCount))
+        }
+    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+        parts.forEach { part ->
+            Text(
+                part.replace(" (", "\u00a0("),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
         }
     }
 }

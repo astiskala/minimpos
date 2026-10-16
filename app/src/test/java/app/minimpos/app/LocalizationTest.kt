@@ -57,6 +57,15 @@ class LocalizationTest {
     }
 
     @Test
+    fun `merchant strings do not expose terminal tipping API field names`() {
+        listOf("values", "values-ja", "values-zh-rCN", "values-b+zh+Hant").forEach { folder ->
+            val text = resourceEntries(folder).values.flatten().joinToString("\n")
+            assertWithMessage(folder).that(text).doesNotContain("AskGratuity")
+            assertWithMessage(folder).that(text).doesNotContain("AmountToTipOn")
+        }
+    }
+
+    @Test
     fun `translations cover every resource and preserve format arguments`() {
         val base = resourceEntries("values")
         listOf("values-ja", "values-zh-rCN", "values-b+zh+Hant").forEach { folder ->

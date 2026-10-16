@@ -17,8 +17,10 @@
   <meta property="og:title" content="Mini mPOS の使い方">
   <meta property="og:description" content="日常業務の手順：決済、返金、領収書、一日の精算。">
   <meta property="og:url" content="https://minimpos.app/ja/using.html">
-  <meta property="og:image" content="https://minimpos.app/images/social.png">
-  <meta property="og:image:alt" content="Adyen 端末をイメージした Mini mPOS のイラストと英語のシミュレーターデモ。">
+  <meta property="og:image" content="https://minimpos.app/images/ja/social.png">
+  <meta property="og:image:alt" content="Adyen 端末をイメージした Mini mPOS のイラストと日本語のシミュレーターデモ。">
+  <meta name="twitter:image" content="https://minimpos.app/images/ja/social.png">
+  <meta name="twitter:image:alt" content="Adyen 端末をイメージした Mini mPOS のイラストと日本語のシミュレーターデモ。">
   <meta property="og:locale" content="ja_JP">
   <meta property="og:locale:alternate" content="en_US">
   <meta property="og:locale:alternate" content="zh_CN">
@@ -26,8 +28,6 @@
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="Mini mPOS の使い方">
   <meta name="twitter:description" content="日常業務の手順：決済、返金、領収書、一日の精算。">
-  <meta name="twitter:image" content="https://minimpos.app/images/social.png">
-  <meta name="twitter:image:alt" content="Adyen 端末をイメージした Mini mPOS のイラストと英語のシミュレーターデモ。">
   <meta name="theme-color" content="#00112C">
 </head>
 <body>
@@ -114,7 +114,7 @@
           </ol>
           <h3 id="staff">スタッフの PIN を設定する</h3>
           <ol>
-            <li><strong>設定 › セキュリティ</strong>で<strong>管理者PINを設定</strong>をタップします。設定と商品を保護します。再ロックまでの時間を選びます。</li>
+            <li><strong>設定 › セキュリティ</strong>で<strong>PINを設定</strong>をタップします。設定と商品を保護します。再ロックまでの時間を選びます。</li>
             <li>任意で<strong>マネージャーPINを設定</strong>をタップします。以後、返金、取消、キャプチャ、金額調整、チップ入力に必要になります。</li>
           </ol>
           <p>管理者PINを変更・削除するには<strong>管理者PINを変更</strong>または<strong>管理者PINを削除</strong>を使います。削除するとマネージャーPINも削除されます。誤入力を繰り返すと一時的に入力がロックされます。PIN を忘れた場合は <a href="troubleshooting.html#access">PIN の問題</a>を参照してください。</p>
@@ -129,6 +129,10 @@
             <li>設定の<strong>決済</strong>、<strong>チップと寄付</strong>、<strong>購入者向け端末画面</strong>で必要な会計オプションを有効にし、TESTで試します。一覧にはAdyen Giving、一部承認、サーチャージ、ギフトカード、端末集計照合、購入者向け画面も表示されますが、すべてに設定欄があるわけではありません。</li>
           </ol>
           <p>Tap to Payでは、端末チップ、購入者向け画面、MOTO/MKE、オフライン決済、端末集計照合などの物理端末向け機能は使えません。一部承認は別の決済オプションです。アカウントでの有効化や決済方法の要件は、<a href="https://docs.adyen.com/point-of-sale">Adyenの対面決済ドキュメント</a>を参照してください。シミュレーターで使えても、実端末での対応を証明するものではありません。</p>
+          <figure class="guide-shot">
+            <div class="terminal terminal-s1f2"><img src="../images/ja/capabilities.png" width="540" height="960" loading="lazy" alt="日本語のシミュレーターデモ：Adyen機能の利用可否と設定状況"></div>
+            <figcaption class="fine">日本語のシミュレーターデモです。利用可能と表示されても実端末の動作確認にはなりません。</figcaption>
+          </figure>
           <p class="back-to-contents"><a href="#contents">目次に戻る</a></p>
         </section>
         <section id="sell">
@@ -157,6 +161,10 @@
           <h3 id="partial-payments">一部承認された決済の残額を受け取る</h3>
           <p><strong>一部承認を許可</strong>をオンにすると、要求額より少ないカード承認を受け付けられます。結果が<strong>一部支払済み</strong>の場合は支払額と残額を確認し、その結果画面で<strong>残額を支払う</strong>ボタンをタップして別のカードで残額を受け取ります。各決済の試行は同じ販売に保存されます。全額が承認されるまでは支払い完了としないでください。</p>
           <p>返答がないことは一部承認ではありません。追加の決済前に<a href="troubleshooting.html#unknown">結果不明の取引を解決</a>してください。承認された分は支払済みなので、元の全額で新しい販売を始めないでください。</p>
+          <figure class="guide-shot">
+            <div class="terminal terminal-s1f2"><img src="../images/ja/partial-payment.png" width="540" height="960" loading="lazy" alt="日本語のシミュレーターデモ：支払済み1,070円、残額1,069円と残額を支払うボタン"></div>
+            <figcaption class="fine">日本語のシミュレーターでの一部承認です。販売全額の支払完了ではありません。</figcaption>
+          </figure>
           <h3 id="shopper-display">購入者向け端末画面を使う</h3>
           <p>別のネットワーク端末またはクラウド端末を使う場合、<strong>設定 › 購入者向け端末画面</strong>を開きます。決済前の明細表示、注文確認、会計のメール欄が空の場合のメール入力を選べます。承認後にQRコードを表示したり、0–10の評価を求めたりすることもできます。返された評価は取引詳細に表示されます。</p>
           <p>これらの案内には選択したアプリ言語を使い、シミュレーターでも試せます。Mini mPOSが決済端末自体で動いている場合は使えません。表示するQRコードはマーチャント参照IDであり、オンライン領収書のダウンロードではありません。引き続き<a href="#receipts">領収書を印刷、メール送信、または共有</a>してください。</p>
@@ -177,6 +185,10 @@
           <p>オフラインEMVとストア・アンド・フォワード（Store-and-Forward）は、ローカル接続の対応端末で使います。Mini mPOSをその端末で動かすか、同じネットワーク上の端末に接続します。クラウド経由やTap to Payでは使えません。Adyenとオフライン処理を手配し、リスクを確認してから<a href="#capabilities">Adyen機能</a>で上限を設定してください。Mini mPOS自体は決済をキューに保存せず、ローカルネットワーク障害時に端末への接続を復旧するものでもありません。</p>
           <p>取引履歴では、端末が報告したオフライン販売に印が付きます。販売を開くと、<strong>オフライン処理</strong>の方式（オフラインEMVまたはストア・アンド・フォワード）と、端末が報告した<strong>未確認のオフラインバッチ数</strong>を確認できます。オフライン承認ではPSP参照IDがまだない場合があります。これは結果不明ではありませんが、Adyenが受信・精算したことの確認でもありません。</p>
           <p>端末とAdyenの接続を復旧し、Customer Areaでアップロードされた決済と最終結果を確認します。<a href="#reconciliation">端末集計照合</a>でもオフラインと未確認バッチの警告を確認してください。合計の一致はオフライン決済の精算完了ではありません。確定的な返答がない場合は、オフライン承認と決めつけたり再請求したりせず、<a href="troubleshooting.html#unknown">結果不明の復旧手順</a>に従ってください。</p>
+          <figure class="guide-shot">
+            <div class="terminal terminal-s1f2"><img src="../images/ja/offline-payment.png" width="540" height="960" loading="lazy" alt="日本語のシミュレーターデモ：Store-and-Forwardの決済詳細と未確認オフラインバッチ1件"></div>
+            <figcaption class="fine">日本語のシミュレーターのオフライン詳細です。アップロードや精算の証明ではありません。</figcaption>
+          </figure>
           <p class="back-to-contents"><a href="#contents">目次に戻る</a></p>
         </section>
         <section id="wallets">
@@ -192,10 +204,10 @@
           <p>購入者参照IDと同意がある場合、<strong>カードを保存</strong>で支払い情報の保存を試みます。対応状況はウォレットによります。保存用トークンが返った場合だけ保存成功とし、トークンなしでも承認済みの決済は承認済みです。<a href="troubleshooting.html#wallets">照会や決済の問題</a>を参照し、<a href="troubleshooting.html#unknown">結果不明の決済</a>を再スキャンで置き換えないでください。</p>
           <p><a href="https://docs.adyen.com/point-of-sale/alternative-payment-methods/qr-code-wallets">Adyen のウォレットガイド</a>と <a href="https://docs.adyen.com/point-of-sale/alternative-payment-methods/qr-code-wallets/paypal-pos">Adyen の PayPal と Venmo ガイド</a>で開通状況と TEST 動作を確認してください。</p>
           <div class="shot-pair">
-            <div class="terminal terminal-s1f2"><img src="../images/wallets.png" width="540" height="960" loading="lazy" alt="英語のシミュレーターデモ：$34.00 の販売でウォレットを選択"></div>
-            <div class="terminal terminal-s1f2"><img src="../images/wallet-scan.png" width="540" height="960" loading="lazy" alt="英語のシミュレーターデモ：WeChat Pay のスキャンとオフラインデモコードの操作"></div>
+            <div class="terminal terminal-s1f2"><img src="../images/ja/wallets.png" width="540" height="960" loading="lazy" alt="日本語のシミュレーターデモ：3,050円の販売でウォレットを選択"></div>
+            <div class="terminal terminal-s1f2"><img src="../images/ja/wallet-scan.png" width="540" height="960" loading="lazy" alt="日本語のシミュレーターデモ：WeChat Pay のスキャンとオフラインデモコードの操作"></div>
           </div>
-          <p class="fine">ウォレットスキャンの英語シミュレーターデモです。</p>
+          <p class="fine">ウォレットスキャンの日本語シミュレーターデモです。</p>
           <p class="back-to-contents"><a href="#contents">目次に戻る</a></p>
         </section>
         <section id="refund">
@@ -287,6 +299,10 @@
             <li>準備ができたら<strong>集計期間を締める</strong>をタップし、必要ならマネージャーの承認を行います。これはレポートの印刷だけでなく、端末に集計期間の終了を要求します。</li>
           </ol>
           <p>物理端末とシミュレーターで使えますが、Tap to Payでは使えません。照合の一致や期間終了は、精算、返金完了、オフライン決済のアップロードを確認するものではありません。最終的な金銭処理は引き続きCustomer Areaで確認してください。</p>
+          <figure class="guide-shot">
+            <div class="terminal terminal-s1f2"><img src="../images/ja/reconciliation.png" width="540" height="960" loading="lazy" alt="日本語のシミュレーターデモ：3,050円の合計が一致しても残るオフライン決済と未確認バッチの警告"></div>
+            <figcaption class="fine">日本語のシミュレーターデモです。合計が一致しても未確認オフラインバッチが残る場合があります。</figcaption>
+          </figure>
           <p class="back-to-contents"><a href="#contents">目次に戻る</a></p>
         </section>
         <section id="shoppers">
@@ -313,6 +329,7 @@
             <li>リンクが不要になったら<strong>リンクを取り消す</strong>をタップします。</li>
           </ol>
           <p>リンクが支払われる、期限切れになる、または取り消されるまで、項目には<strong>支払い待ち</strong>と表示されます。リンクの有効時間は<strong>設定 › 決済 › 決済リンク</strong>で設定します。リンクは販売専用で、予約金や領収書のチップには使えません。</p>
+          <p>シミュレーターのリンクは API 認証情報なしでオフラインで試せます。QR コードで支払いはできません。<strong>支払いをシミュレート</strong>をタップしてデモを完了します。マネージャー承認を設定している場合は承認が必要です。画面と送信した領収書には引き続きデモと表示され、お金は動きません。</p>
           <div class="callout callout-important" role="note">
             <p class="callout-title">重要</p>
             <p>有効期間中は、実際のリンクを持つ人なら誰でも支払えます。支払済みリンクの返金は<strong>Customer Area › Payments › Payment list</strong>で行います。アプリからは返金できません。</p>
@@ -354,6 +371,10 @@
             <li>販売の会計で<strong>端末でチップを入力</strong>を選び、<strong>支払う</strong>をタップします。購入者はカードへの請求前にチップを選びます。返された合計とチップを確認し、領収書を渡します。</li>
           </ol>
           <p>プリンターも後からのチップ入力も不要です。端末チップと<a href="#tips">領収書のチップ</a>は同時に選べません。どちらもプリオーソリ、スキャンするウォレット決済、決済リンクには使えません。Tap to Payでは端末チップを使えません。</p>
+          <figure class="guide-shot">
+            <div class="terminal terminal-s1f2"><img src="../images/ja/terminal-tipping.png" width="540" height="960" loading="lazy" alt="日本語のシミュレーターデモ：チップと寄付の端末チップと購入金額に応じた候補の設定"></div>
+            <figcaption class="fine">日本語のシミュレーターの会計設定です。端末側はAdyen機能で別途設定します。</figcaption>
+          </figure>
           <p class="back-to-contents"><a href="#contents">目次に戻る</a></p>
         </section>
         <section id="tips">
@@ -384,7 +405,7 @@
           <ol>
             <li>設定済みのデバイスで<strong>設定 › データと転送 › 別のデバイスに共有</strong>を開きます。カタログ、設定、パスワードとキーから選び、<strong>QRコードを表示</strong>をタップします。</li>
             <li>新しいデバイスで<strong>別のデバイスから設定</strong>を選び、すべてのコードを任意の順で読み取ります。カタログを統合するか置き換えるかを選びます。</li>
-            <li>パスワードとキーをコピーするには、最初のデバイスに表示された転送コードを入力します。<strong>インポート</strong>をタップします。</li>
+            <li>最初のデバイスに表示された 12 文字の転送コードを入力します。商品や設定だけをコピーする場合も必要です。QR コードとは別に保管してください。<strong>インポート</strong>をタップします。</li>
             <li>価格と税を確認し、<strong>設定 › 端末</strong>で接続をテストして、テスト領収書を印刷します。</li>
           </ol>
           <p>新しいデバイスは、自身の決済先、端末、環境、Tap to Pay の登録を保持します。共有キーを別の端末で使えるのは、Adyen がその端末に同じキーを割り当てている場合だけです。</p>
@@ -392,7 +413,8 @@
             <p class="callout-title">重要</p>
             <p>これは一度きりのコピーで、同期や決済履歴のバックアップではありません。各デバイスがそれぞれの決済を保持します。Android でアプリのデータを消去すると、デバイスのすべての商品、設定、履歴が削除されます。</p>
           </div>
-          <p><strong>設定 › データと転送</strong>で<strong>取引の保存期間</strong>を設定するか、<strong>完了した履歴を消去</strong>をタップします。未解決の決済は常に残ります。更新は<a href="https://github.com/astiskala/minimpos/releases/latest">最新リリース</a>から、<a href="quick-start.html#install">最初のインストール</a>と同じ方法で行ってください。</p>
+          <p><strong>設定 › データと転送</strong>で<strong>取引の保存期間</strong>を設定するか、<strong>完了した履歴を消去</strong>をタップします。未解決の決済は常に残ります。</p>
+          <p>タブレットやスマートフォンでは、起動時に新しいバージョンを確認します。ホームに<strong>更新</strong>が表示されたら、タップしてブラウザーで APK を開き、ダウンロードしたファイルをインストールします。Adyen 端末はこの通知ではなく Customer Area から更新します。<a href="https://github.com/astiskala/minimpos/releases/latest">最新リリース</a>を入手し、<a href="quick-start.html#install">インストール手順</a>に従うこともできます。同じ署名元を使い、既存のアプリに上書きしてください。アンインストールやデータの消去はしないでください。</p>
           <p>取り込みの問題は <a href="troubleshooting.html#access">PIN と転送の問題</a>を参照してください。</p>
           <p class="back-to-contents"><a href="#contents">目次に戻る</a></p>
         </section>

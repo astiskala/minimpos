@@ -1,0 +1,229 @@
+{
+  "purpose": "Fictional screenshot fixtures only. Company, contact and registration details are not real business records.",
+  "languages": {
+    "en": {
+      "deviceLocale": "en-AU",
+      "timeZone": "Australia/Perth",
+      "currencyCode": "AUD",
+      "customerReference": "CUST-1042",
+      "preAuthCustomerReference": "CUST-2077",
+      "decimals": 2,
+      "tipMinor": 700,
+      "partialMinor": 2139,
+      "taxDialogRate": "8.875",
+      "taxRates": [
+        {"id": 1, "name": "GST", "rateMilliPercent": 10000},
+        {"id": 2, "name": "GST-free", "rateMilliPercent": 0}
+      ],
+      "pricesMinor": {
+        "Flat white": 500,
+        "Long black": 450,
+        "Cappuccino": 500,
+        "Chai latte": 550,
+        "Iced latte": 650,
+        "Banana bread": 600,
+        "Almond croissant": 650,
+        "Avocado toast": 1400,
+        "Coffee beans 250 g": 1800,
+        "Reusable cup": 1500,
+        "Catering deposit": 20000
+      },
+      "receipt": {
+        "businessName": "Harbour Coffee Co.",
+        "addressLines": "1 Wharf Street\nFremantle WA 6160",
+        "taxIdLabel": "ABN",
+        "taxId": "12 345 678 901",
+        "phone": "",
+        "title": "RECEIPT",
+        "footer": "Thank you!"
+      },
+      "names": {
+        "Coffee": "Coffee",
+        "Food": "Food",
+        "Retail": "Retail",
+        "Bookings": "Bookings",
+        "GST": "GST",
+        "GST-free": "GST-free",
+        "Flat white": "Flat white",
+        "Long black": "Long black",
+        "Cappuccino": "Cappuccino",
+        "Chai latte": "Chai latte",
+        "Iced latte": "Iced latte",
+        "Banana bread": "Banana bread",
+        "Almond croissant": "Almond croissant",
+        "Avocado toast": "Avocado toast",
+        "Coffee beans 250 g": "Coffee beans 250 g",
+        "Reusable cup": "Reusable cup",
+        "Catering deposit": "Catering deposit"
+      }
+    },
+    "zh-CN": {
+      "deviceLocale": "zh-SG",
+      "timeZone": "Asia/Singapore",
+      "currencyCode": "SGD",
+      "customerReference": "1042",
+      "preAuthCustomerReference": "2077",
+      "decimals": 2,
+      "tipMinor": 500,
+      "partialMinor": 2139,
+      "taxDialogRate": "9",
+      "taxRates": [
+        {"id": 1, "name": "消费税", "rateMilliPercent": 9000},
+        {"id": 2, "name": "零税率", "rateMilliPercent": 0}
+      ],
+      "taxRateIds": {"Coffee beans 250 g": 1},
+      "pricesMinor": {
+        "Flat white": 550,
+        "Long black": 450,
+        "Cappuccino": 550,
+        "Chai latte": 600,
+        "Iced latte": 650,
+        "Banana bread": 450,
+        "Almond croissant": 550,
+        "Avocado toast": 1200,
+        "Coffee beans 250 g": 1800,
+        "Reusable cup": 1800,
+        "Catering deposit": 20000
+      },
+      "receipt": {
+        "businessName": "晴川咖啡私人有限公司",
+        "addressLines": "新加坡丹戎巴葛路88号\n#01-06，新加坡 088509",
+        "taxIdLabel": "消费税登记号",
+        "taxId": "202612345Z",
+        "phone": "+65 6123 4567",
+        "title": "销售小票",
+        "footer": "谢谢惠顾！"
+      },
+      "names": {
+        "Coffee": "咖啡",
+        "Food": "餐点",
+        "Retail": "零售",
+        "Bookings": "预订",
+        "GST": "消费税",
+        "GST-free": "零税率",
+        "Flat white": "澳白咖啡",
+        "Long black": "长黑咖啡",
+        "Cappuccino": "卡布奇诺",
+        "Chai latte": "印度香料奶茶",
+        "Iced latte": "冰拿铁",
+        "Banana bread": "香蕉面包",
+        "Almond croissant": "杏仁可颂",
+        "Avocado toast": "牛油果吐司",
+        "Coffee beans 250 g": "咖啡豆250克",
+        "Reusable cup": "环保杯",
+        "Catering deposit": "餐饮预订金"
+      }
+    },
+    "zh-Hant": {
+      "deviceLocale": "zh-HK",
+      "timeZone": "Asia/Hong_Kong",
+      "currencyCode": "HKD",
+      "customerReference": "1042",
+      "preAuthCustomerReference": "2077",
+      "decimals": 2,
+      "tipMinor": 1800,
+      "partialMinor": 12139,
+      "taxDialogRate": "0",
+      "taxRates": [
+        {"id": 1, "name": "不徵稅", "rateMilliPercent": 0}
+      ],
+      "pricesMinor": {
+        "Flat white": 3800,
+        "Long black": 3200,
+        "Cappuccino": 3800,
+        "Chai latte": 4200,
+        "Iced latte": 4000,
+        "Banana bread": 2800,
+        "Almond croissant": 3200,
+        "Avocado toast": 5800,
+        "Coffee beans 250 g": 12800,
+        "Reusable cup": 8000,
+        "Catering deposit": 200000
+      },
+      "receipt": {
+        "businessName": "榕巷咖啡有限公司",
+        "addressLines": "香港上環荷李活道128號\n地下A舖",
+        "taxIdLabel": "商業登記號碼",
+        "taxId": "76543210",
+        "phone": "+852 3123 4567",
+        "title": "銷售收據",
+        "footer": "多謝惠顧！"
+      },
+      "names": {
+        "Coffee": "咖啡",
+        "Food": "食品",
+        "Retail": "零售",
+        "Bookings": "預訂",
+        "GST": "不徵稅",
+        "GST-free": "免稅",
+        "Flat white": "澳白咖啡",
+        "Long black": "長黑咖啡",
+        "Cappuccino": "卡布奇諾",
+        "Chai latte": "印度香料奶茶",
+        "Iced latte": "凍鮮奶咖啡",
+        "Banana bread": "香蕉蛋糕",
+        "Almond croissant": "杏仁牛角包",
+        "Avocado toast": "牛油果多士",
+        "Coffee beans 250 g": "咖啡豆250克",
+        "Reusable cup": "環保杯",
+        "Catering deposit": "到會訂金"
+      }
+    },
+    "ja": {
+      "deviceLocale": "ja-JP",
+      "timeZone": "Asia/Tokyo",
+      "currencyCode": "JPY",
+      "customerReference": "1042",
+      "preAuthCustomerReference": "2077",
+      "decimals": 0,
+      "tipMinor": 500,
+      "partialMinor": 2139,
+      "taxDialogRate": "8",
+      "taxRates": [
+        {"id": 1, "name": "消費税", "rateMilliPercent": 10000},
+        {"id": 2, "name": "軽減税率", "rateMilliPercent": 8000}
+      ],
+      "pricesMinor": {
+        "Flat white": 550,
+        "Long black": 450,
+        "Cappuccino": 550,
+        "Chai latte": 600,
+        "Iced latte": 600,
+        "Banana bread": 450,
+        "Almond croissant": 500,
+        "Avocado toast": 950,
+        "Coffee beans 250 g": 1500,
+        "Reusable cup": 1800,
+        "Catering deposit": 20000
+      },
+      "receipt": {
+        "businessName": "株式会社あおぞら焙煎所",
+        "addressLines": "東京都台東区蔵前3-14-8\n〒111-0051",
+        "taxIdLabel": "登録番号",
+        "taxId": "T1234567890123",
+        "phone": "03-1234-5678",
+        "title": "領収書",
+        "footer": "ご利用ありがとうございます。"
+      },
+      "names": {
+        "Coffee": "コーヒー",
+        "Food": "フード",
+        "Retail": "グッズ",
+        "Bookings": "予約",
+        "GST": "消費税",
+        "GST-free": "軽減税率",
+        "Flat white": "フラットホワイト",
+        "Long black": "ロングブラック",
+        "Cappuccino": "カプチーノ",
+        "Chai latte": "チャイラテ",
+        "Iced latte": "アイスラテ",
+        "Banana bread": "バナナブレッド",
+        "Almond croissant": "アーモンドクロワッサン",
+        "Avocado toast": "アボカドトースト",
+        "Coffee beans 250 g": "コーヒー豆250g",
+        "Reusable cup": "リユースカップ",
+        "Catering deposit": "ケータリング予約金"
+      }
+    }
+  }
+}

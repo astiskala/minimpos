@@ -19,7 +19,7 @@ or with Tap to Pay through the Adyen Payments app.
 <p align="center">
   <img src="docs/images/home.png" width="200" alt="Home screen">
   <img src="docs/images/sale.png" width="200" alt="Selling products">
-  <img src="docs/images/receipt.png" width="200" alt="Receipt with a refund QR code">
+  <img src="docs/images/receipt.png" width="200" alt="Simulated café receipt">
 </p>
 
 Screenshots show an English demo café using the built-in simulator, not live payments.

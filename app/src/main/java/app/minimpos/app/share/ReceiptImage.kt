@@ -31,6 +31,7 @@ object ReceiptImage {
     private const val TEXT_SIZE = 22f
     private const val PADDING = 32f
     private const val ROW_GAP = 16f
+    private const val LINE_GAP = 6f
     private const val QR_SHARE = 0.55f
     private const val DASH = 6f
     private const val LINK_COLOR = 0xFF0A62D0.toInt()
@@ -70,7 +71,7 @@ object ReceiptImage {
         private val content = (widthPx - PADDING * 2 * scale).roundToInt()
         private val plain = paint(Typeface.NORMAL)
         private val bold = paint(Typeface.BOLD)
-        private val lineHeight = plain.fontSpacing
+        private val lineHeight = plain.fontSpacing + LINE_GAP * scale
         private val divider =
             Paint(Paint.ANTI_ALIAS_FLAG).apply {
                 color = Color.GRAY
@@ -112,7 +113,8 @@ object ReceiptImage {
                         Align.CENTER -> Layout.Alignment.ALIGN_CENTER
                         Align.RIGHT -> Layout.Alignment.ALIGN_OPPOSITE
                     },
-                ).build()
+                ).setLineSpacing(LINE_GAP * scale, 1f)
+                .build()
 
         private fun text(
             text: String,
@@ -120,7 +122,7 @@ object ReceiptImage {
             paint: TextPaint,
         ): Block {
             val layout = layout(text, paint, content, align)
-            return Block(layout.height.toFloat()) { layout.draw(it) }
+            return Block(layout.height + LINE_GAP * scale) { layout.draw(it) }
         }
 
         /** The label wrapped beside the value; a value too wide to share the line goes under the label, flush right. */
@@ -131,14 +133,14 @@ object ReceiptImage {
             if (valueWidth + gap > content / 2) {
                 val label = layout(row.left, paint, content)
                 val value = layout(row.right, paint, content, Align.RIGHT)
-                return Block((label.height + value.height).toFloat()) {
+                return Block(label.height + value.height + LINE_GAP * 2 * scale) {
                     label.draw(it)
-                    it.translate(0f, label.height.toFloat())
+                    it.translate(0f, label.height + LINE_GAP * scale)
                     value.draw(it)
                 }
             }
             val label = layout(row.left, paint, content - valueWidth - gap)
-            return Block(maxOf(label.height.toFloat(), lineHeight)) {
+            return Block(maxOf(label.height.toFloat(), lineHeight) + LINE_GAP * scale) {
                 label.draw(it)
                 it.drawText(row.right, (content - valueWidth).toFloat(), -paint.fontMetrics.ascent, paint)
             }
@@ -150,9 +152,10 @@ object ReceiptImage {
             val code = QrCodes.bitmap(qr.content, size)
             val caption = qr.caption?.let { layout(it, plain, content, Align.CENTER) }
             val margin = lineHeight / 2
-            return Block(margin + code.height + (caption?.height ?: 0)) {
+            val captionGap = if (caption == null) 0f else margin
+            return Block(margin * 2 + code.height + captionGap + (caption?.height ?: 0)) {
                 it.drawBitmap(code, (content - code.width) / 2f, margin, null)
-                it.translate(0f, margin + code.height)
+                it.translate(0f, margin + code.height + captionGap)
                 caption?.draw(it)
             }
         }

@@ -126,7 +126,7 @@ private fun RowScope.ButtonContent(
         Icon(icon, contentDescription = null, modifier = Modifier.size(20.dp))
         Spacer(Modifier.width(8.dp))
     }
-    Text(text, style = MaterialTheme.typography.labelLarge)
+    Text(text, style = MaterialTheme.typography.labelLarge, textAlign = TextAlign.Center)
 }
 
 /**

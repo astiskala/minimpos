@@ -36,7 +36,7 @@ class PlainTextReceiptRenderer(
         right: String,
     ): List<String> {
         val occupied = ReceiptTextWidth.columns(left) + ReceiptTextWidth.columns(right)
-        if (occupied + 1 <= width) {
+        if (occupied + 2 <= width) {
             return listOf(left + " ".repeat(width - occupied) + right)
         }
         return wrap(left) + wrap(right).map { align(it, Align.RIGHT) }
@@ -161,7 +161,8 @@ class HtmlReceiptRenderer(
             append("<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">")
             append("<title>").append(escape(title)).append("</title></head>")
             append(
-                "<body style=\"margin:0;padding:24px;background:#f3f6f9;font-family:Helvetica,Arial,sans-serif;color:#00112c;\">",
+                "<body style=\"margin:0;padding:24px;background:#f3f6f9;font-family:Helvetica,Arial,sans-serif;" +
+                    "font-size:14px;line-height:1.55;color:#00112c;\">",
             )
             append("<div style=\"max-width:420px;margin:0 auto;background:#ffffff;border-radius:12px;padding:24px;\">")
             intro?.let { append("<p style=\"margin:0 0 16px 0;\">").append(escape(it)).append("</p>") }
@@ -172,17 +173,18 @@ class HtmlReceiptRenderer(
                         append("<div style=\"")
                             .append(textAlign(element.align))
                             .append(fontStyle(element.style))
+                            .append("padding:2px 0;overflow-wrap:anywhere;")
                             .append("\">")
                             .append(escape(element.text))
                             .append("</div>")
                     }
 
                     is ReceiptElement.Row -> {
-                        append("<table role=\"presentation\" width=\"100%\" style=\"border-collapse:collapse;")
+                        append("<table role=\"presentation\" width=\"100%\" style=\"border-collapse:collapse;table-layout:fixed;")
                             .append(fontStyle(element.style))
-                            .append("\"><tr><td style=\"padding:2px 0;\">")
+                            .append("\"><tr><td style=\"width:50%;padding:4px 16px 4px 0;overflow-wrap:anywhere;\">")
                             .append(escape(element.left))
-                            .append("</td><td style=\"padding:2px 0;text-align:right;white-space:nowrap;\">")
+                            .append("</td><td style=\"width:50%;padding:4px 0;text-align:right;overflow-wrap:anywhere;\">")
                             .append(escape(element.right))
                             .append("</td></tr></table>")
                     }

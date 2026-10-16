@@ -33,8 +33,11 @@ ordinary transaction facts; missing answers are recovered by transaction status,
 - **Cloud:** HTTPS requests to Adyen's Cloud device API use the Adyen API key, not shared-key message encryption.
 - **Tap to Pay:** App Links to the Payments app are encrypted and authenticated with the shared key. Unverifiable
   answers or answers for a different request are rejected.
-- **Other Adyen services:** Checkout handles captures, adjustments and payment links; Management boards/revokes the
-  Payments app and reads optional wallet configuration. These HTTPS calls use API credentials.
+- **Other Adyen services:** Checkout handles captures, adjustments and payment links. Management verifies terminal
+  assignment and setup, reads receipt details, wallet configuration and capabilities, and applies explicitly requested
+  terminal-setting changes. A separate credential boards/revokes the Payments app. These HTTPS calls use API credentials.
+- **Wallet artwork:** cached logos load from Adyen's public HTTPS CDN using known brand paths. These requests contain
+  no API credentials, payment details or shopper data. Unavailable artwork does not block wallet selection.
 
 A missing answer does not prove a request failed. Operations are persisted before sending; unknown outcomes need
 reconciliation, not a fresh charge. Merchant recovery instructions are in
@@ -53,7 +56,8 @@ increasing lockout periods. The two PINs protect separate actions; neither repla
 ### Transfers and the setup helper
 
 Secrets in QR transfers are encrypted with AES-256-GCM using a PBKDF2-derived key from a 12-character transfer code.
-The code is displayed separately; the QR images alone do not reveal the secrets. Anyone with both can decrypt them,
+Every transfer needs the code, even without secrets. The code is displayed separately; the QR images alone do not
+reveal the secrets. Anyone with both can decrypt them,
 so keep the code private and generate a fresh transfer when needed. Transfers are protected by admin access when an
 admin PIN is configured; they are not a remote revocation mechanism.
 
@@ -71,8 +75,9 @@ file, not the app's private database. Email sends receipt/customer information t
 Encryption at rest does not make a compromised or unlocked device safe. Tablets and phones offer less protection than
 payment terminals; prefer a network terminal where practical.
 
-- Use dedicated, least-privilege API credentials. Local/Tap to Pay Checkout needs the Checkout webservice role;
-  cloud adds Cloud Device API on the same credential. Boarding uses a separate Adyen Payments app credential.
+- Use dedicated, least-privilege API credentials with the
+  [roles and account access required for your destination](docs/quick-start.html#credentials).
+  Boarding uses a separate Adyen Payments app credential.
 - Set an admin PIN; optionally require a Manager PIN for financial follow-up actions. Keep phone/tablet screen locks
   and Android security updates enabled. Review [staff access](docs/using.html#business).
 - Keep TEST and LIVE credentials separate. Verify the selected or detected environment in Settings › Terminal before

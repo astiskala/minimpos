@@ -114,8 +114,8 @@ private fun WalletContent(
                     verticalArrangement = Arrangement.spacedBy(dimens.spacing),
                 ) {
                     state.wallets.forEach { wallet ->
-                        SecondaryButton(
-                            wallet.displayName,
+                        WalletChoice(
+                            wallet,
                             { onChoose(wallet) },
                             modifier = Modifier.testTag("wallet_pick_${wallet.brand}"),
                         )

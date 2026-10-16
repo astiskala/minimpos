@@ -16,6 +16,7 @@ import app.minimpos.app.ui.components.ReceiptPreview
 import app.minimpos.app.ui.theme.MiniMposTheme
 import app.minimpos.core.receipt.ReceiptDocument
 import app.minimpos.core.receipt.ReceiptElement
+import com.google.common.truth.Truth.assertThat
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -33,6 +34,25 @@ class ReceiptToggleTest {
     fun `preview dividers stay a single row on the smallest screen`() {
         compose.setContent { MiniMposTheme { ReceiptPreview(ReceiptDocument(listOf(ReceiptElement.Divider))) } }
         compose.onNodeWithTag("receiptDivider").assertIsDisplayed().assertHeightIsEqualTo(16.dp)
+    }
+
+    @Test
+    fun `receipt rows leave a gutter and stack long references on the smallest screen`() {
+        val document =
+            ReceiptDocument(
+                listOf(
+                    ReceiptElement.Row("Total", "$34.00"),
+                    ReceiptElement.Row("Merchant reference", "261016-153444-6N03"),
+                ),
+            )
+        compose.setContent { MiniMposTheme { ReceiptPreview(document) } }
+        val total = compose.onNodeWithText("Total").fetchSemanticsNode().boundsInRoot
+        val amount = compose.onNodeWithText("$34.00").fetchSemanticsNode().boundsInRoot
+        assertThat(amount.left).isGreaterThan(total.right)
+        assertThat(amount.top).isEqualTo(total.top)
+        val label = compose.onNodeWithText("Merchant reference").fetchSemanticsNode().boundsInRoot
+        val reference = compose.onNodeWithText("261016-153444-6N03").fetchSemanticsNode().boundsInRoot
+        assertThat(reference.top).isAtLeast(label.bottom)
     }
 
     @Test

@@ -54,6 +54,18 @@ class ReceiptRenderersTest {
     }
 
     @Test
+    fun `receipt columns keep a readable gutter rather than a single separating space`() {
+        val document = ReceiptDocument(listOf(Row("1234567890", "12345")))
+        assertThat(PlainTextReceiptRenderer(16).render(document)).isEqualTo("1234567890\n           12345\n")
+        val html = HtmlReceiptRenderer().render(document, "Receipt")
+        assertThat(html).contains("line-height:1.55")
+        assertThat(html).contains("table-layout:fixed")
+        assertThat(html).contains("padding:4px 16px 4px 0")
+        assertThat(html).contains("overflow-wrap:anywhere")
+        assertThat(html).doesNotContain("white-space:nowrap")
+    }
+
+    @Test
     fun `CJK receipts align and wrap in display columns`() {
         val renderer = PlainTextReceiptRenderer(width = 16)
         val text =

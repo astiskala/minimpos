@@ -230,8 +230,10 @@ and reciprocal language switches. Website tests protect workflow coverage and tr
 of pages or headings.
 For a quick check, run `./gradlew :website-test:check`; the full gate remains required.
 
-Use [the screenshot skill](.devin/skills/docs-screenshots/SKILL.md) to capture English simulator demos and the social
-image. Screenshots must match their original terminal frames: S1F2 540×960, AMS1 480×800. Do not crop or stretch to fit,
+Use [the screenshot skill](.devin/skills/docs-screenshots/SKILL.md) to capture simulator demos and social images in all
+four supported languages, with its fictional local companies, prices and currencies. Each translated page uses its
+own language's captures. Screenshots must match their original terminal frames: S1F2 540×960, AMS1 480×800.
+Do not crop or stretch to fit,
 label screenshots as demos, and keep demo data consistent. The guides' SMTP links must match
 `SmtpProvider.helpUrl`; verify provider requirements when changing the list.
 

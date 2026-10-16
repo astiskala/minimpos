@@ -86,7 +86,7 @@ Adyen Payments app (Tap to Pay). The built-in simulator needs no Adyen account.
   website tests together. Only setup helpers run scripts; all assets are local. HTML void elements have no trailing slash.
 - Explain Mini mPOS's requirements; link to Adyen for Adyen account/platform procedures. Avoid older-app warnings,
   country-specific tax compliance, invoice requirements and country-specific receipt defaults.
-- Screenshots are disclosed English simulator demos in original terminal frames. Use
+- Screenshots are disclosed simulator demos in the page's supported language and original terminal frames. Use
   `.devin/skills/docs-screenshots/SKILL.md` only when capturing screenshots or running the AMS1 emulator.
 - Keep this file small: retain actionable constraints and non-obvious decisions, not feature inventories, code tours,
   historical fixes or copies of contributor instructions. Put module-specific pitfalls in the module's file.

@@ -1,14 +1,19 @@
 {
-  "scan_id": "scan-2026-10-08-github-setup",
-  "scan_date": "2026-10-08T05:30:00Z",
+  "scan_id": "scan-2026-10-16-regional-docs-ui",
+  "scan_date": "2026-10-16T12:25:03.358286Z",
   "scan_type": "working",
-  "commit_range": "db4bc0b574623e430696329293e9beb87cd20d58..working-tree",
+  "commit_range": "7700945e9ce75b906ca76f3f36f5a297dd95329d..working-tree",
   "pr_number": null,
   "threat_model_version": "1.0.0",
   "findings": [],
   "summary": {
     "total_findings": 0,
-    "by_severity": {"CRITICAL": 0, "HIGH": 0, "MEDIUM": 0, "LOW": 0},
+    "by_severity": {
+      "CRITICAL": 0,
+      "HIGH": 0,
+      "MEDIUM": 0,
+      "LOW": 0
+    },
     "by_stride": {
       "Spoofing": 0,
       "Tampering": 0,
@@ -17,21 +22,26 @@
       "DoS": 0,
       "ElevationOfPrivilege": 0
     },
-    "files_analyzed": 16
+    "files_analyzed": 55,
+    "screenshots_reviewed": 116
   },
-  "scope": "Previously validated workflow, tooling, script, regression-test and contributor changes only.",
+  "scope": "Changed source, resources, dependencies, tests, documentation and screenshot fixtures relative to HEAD. PNGs reviewed as fictional simulator assets.",
+  "thresholds_triggered": [],
   "limitations": [
-    "Not a full repository audit or proof of actual GitHub deployment.",
-    "Existing device-resident credential trade-offs and upstream plugin deprecations are unchanged.",
-    "Signing requires trusted main CI artifacts and the existing release environment; no release is triggered."
+    "LLM-based change review, not a full repository audit or a dependency vulnerability database scan.",
+    "No real Adyen transactions, production credentials, receipt delivery or remote deployment were exercised.",
+    "Existing device-resident credentials and upstream Gradle plugin deprecations remain documented trade-offs."
   ],
   "reviewed_controls": [
-    "SHA-pinned actions and credentials-free checkout",
-    "Exact main commit, successful run and positive numeric run/attempt selection",
-    "Hash/version/provenance verification and fail-closed reuse",
-    "Signing-job isolation and successful dependency guards",
-    "Environment-variable quoting instead of shell evaluation",
-    "Main-only cache writes, secret-free forks and encrypted configuration-cache integration",
-    "Main-only verified Pages artifacts and compiler execution for Kotlin CodeQL"
+    "Wallet artwork uses fixed HTTPS URLs with enum-owned brand names, no credentials or shopper data, and bounded library caches.",
+    "Public CDN requests do not select a payment environment or probe API credentials; unavailable artwork leaves wallet selection usable.",
+    "Receipt HTML escaping, web-only link filtering and narrow receipt file sharing remain intact.",
+    "No financial protocol, database schema, recovery, idempotency, PIN authorization or original-context eligibility changes.",
+    "Regional data lives in documented simulator fixtures; no saved merchant text is rewritten by app-language changes.",
+    "All public screenshots and transfer codes use disposable demo data without real credentials.",
+    "Offline Coil test interception prevents external image requests in app unit tests.",
+    "Website assets remain local; the setup helper retains its no-network CSP and existing transfer formats.",
+    "No new production logging or committed keys, keystores or signing properties.",
+    "Merchant-facing hints use plain language in all four locales; a resource regression guard excludes terminal tipping API field names without changing protocol identifiers."
   ]
 }

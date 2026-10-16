@@ -36,6 +36,12 @@ sealed interface DestinationRules {
     /** Whether Management terminal discovery can propose connection fields for this destination. */
     val discoversTerminals: Boolean get() = false
 
+    /** Whether physical-terminal capabilities (terminal tipping, Giving, MOTO/MKE, totals, display) are supported. */
+    val supportsTerminalFeatures: Boolean get() = true
+
+    /** Whether local offline EMV and store-and-forward processing are supported on this destination. */
+    val supportsOfflinePayments: Boolean get() = false
+
     /** Whether this destination needs explicit phone registration before connection verification. */
     val boardsPhone: Boolean get() = false
 

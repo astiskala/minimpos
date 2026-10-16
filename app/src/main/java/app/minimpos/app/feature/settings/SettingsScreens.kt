@@ -155,6 +155,17 @@ private fun terminalSetupViewModel(settings: SettingsViewModel): TerminalSetupVi
     }
 }
 
+@Composable
+private fun capabilitiesViewModel(): CapabilitiesViewModel {
+    val container = LocalAppContainer.current
+    return viewModel {
+        CapabilitiesViewModel(
+            container.capabilityDiscovery,
+            container.settings.settings.map { it.terminal },
+        )
+    }
+}
+
 /** What the settings sections ask [SettingsViewModel] to do, so that they get callbacks rather than the view model. */
 internal interface SettingsEvents {
     /** Stores the settings with [transform] applied ([SettingsViewModel.update]). */
@@ -403,6 +414,13 @@ private fun ColumnScope.PaymentSectionRows(
         { onOpen(SettingsSections.TERMINAL) },
         tag = "section_terminal",
     )
+    SettingNavRow(
+        Icons.Default.Sync,
+        stringResource(R.string.settings_capabilities),
+        null,
+        { onOpen(SettingsSections.CAPABILITIES) },
+        tag = "section_capabilities",
+    )
     simulatorOutcome?.let { outcome ->
         SettingNavRow(Icons.Default.Science, stringResource(R.string.settings_simulator), simulatorOutcomeLabel(outcome), {
             onOpen(SettingsSections.SIMULATOR)
@@ -528,6 +546,16 @@ fun SettingsSectionScreen(
 }
 
 @Composable
+private fun ColumnScope.CapabilitiesSectionScreen(payment: PaymentSettings) {
+    val vm = capabilitiesViewModel()
+    val capabilities by vm.state.collectAsStateWithLifecycle()
+    val actions by vm.actions.collectAsStateWithLifecycle()
+    val events = remember(vm) { capabilitiesEvents(vm) }
+    val currency = LocalAppContainer.current.currency(AppSettings(payment = payment)).code
+    CapabilitiesSection(capabilities, actions, payment, currency, events)
+}
+
+@Composable
 private fun ColumnScope.SetupImportFeedback(
     pending: Boolean,
     business: ReceiptBusinessImportState,
@@ -595,6 +623,10 @@ private fun ColumnScope.SettingsContent(
             ConnectionResultSection(state, actions, events)
         }
 
+        SettingsSections.CAPABILITIES -> {
+            CapabilitiesSectionScreen(state.settings.payment)
+        }
+
         SettingsSections.SIMULATOR -> {
             SimulatorSection(state, events)
         }
@@ -634,6 +666,7 @@ private fun ColumnScope.SettingsContent(
 private fun sectionTitle(section: String): Int =
     when (section) {
         SettingsSections.TERMINAL -> R.string.settings_terminal
+        SettingsSections.CAPABILITIES -> R.string.settings_capabilities
         SettingsSections.SIMULATOR -> R.string.settings_simulator
         SettingsSections.PAYMENTS -> R.string.settings_payments
         SettingsSections.TAX -> R.string.settings_tax

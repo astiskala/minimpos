@@ -44,6 +44,7 @@ import app.minimpos.app.data.transfer.SetupTransfer
 import app.minimpos.app.feature.ActionOutcome
 import app.minimpos.app.feature.TransactionActions
 import app.minimpos.app.feature.history.HistoryViewModel
+import app.minimpos.app.feature.settings.CapabilitiesViewModel
 import app.minimpos.app.feature.settings.ReceiptBusinessImports
 import app.minimpos.app.feature.settings.SettingsUiState
 import app.minimpos.app.feature.settings.SettingsViewModel
@@ -72,6 +73,7 @@ import app.minimpos.app.terminal.AdyenApi
 import app.minimpos.app.terminal.ApiAccess
 import app.minimpos.app.terminal.ApiSetup
 import app.minimpos.app.terminal.ApiTarget
+import app.minimpos.app.terminal.CapabilityDiscovery
 import app.minimpos.app.terminal.Destination
 import app.minimpos.app.terminal.DestinationRules
 import app.minimpos.app.terminal.DetectedEnvironment
@@ -1210,6 +1212,7 @@ class ArchitectureTest {
                             .or(type(SharedKeySetup::class.java))
                             .or(type(ReceiptBusinessDetails::class.java))
                             .or(type(WalletDiscovery::class.java))
+                            .or(type(CapabilityDiscovery::class.java))
                             .or(type(AssignmentReadingViolation::class.java)),
                     ).should()
                     .dependOnClassesThat(type(TerminalAssignments::class.java)),
@@ -1300,6 +1303,8 @@ class ArchitectureTest {
                         "getSimulatesApi",
                         "getScannedWallets",
                         "getDiscoversTerminals",
+                        "getSupportsTerminalFeatures",
+                        "getSupportsOfflinePayments",
                         "getBoardsPhone",
                         "selectsEnvironment",
                     ),
@@ -1475,6 +1480,7 @@ class ArchitectureTest {
             noClasses()
                 .that(
                     type(TerminalSetupViewModel::class.java)
+                        .or(type(CapabilitiesViewModel::class.java))
                         .or(type(ReceiptBusinessImports::class.java))
                         .or(type(SettingsPresentationViolation::class.java)),
                 ).should()

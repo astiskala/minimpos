@@ -116,6 +116,9 @@ private val settingsMapper =
 internal fun decodeTerminalSettings(text: String): TerminalSettings? =
     runCatching { settingsMapper.readValue(text, TerminalSettings::class.java) }.getOrNull()
 
+/** Reads official terminal capability settings without failing on unrelated sections. */
+internal fun decodeCapabilitySettings(text: String): TerminalSettings? = decodeAdyenModel(text, TerminalSettings::class.java)
+
 internal fun adyenField(
     text: String,
     name: String,

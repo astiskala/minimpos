@@ -5,6 +5,9 @@ object SettingsSections {
     /** Where payments go, the shared key and the connection test. */
     const val TERMINAL = "terminal"
 
+    /** Progressive Adyen terminal capabilities and scoped Management configuration. */
+    const val CAPABILITIES = "capabilities"
+
     /** How the simulator behaves; only offered when payments go to it. */
     const val SIMULATOR = "simulator"
 

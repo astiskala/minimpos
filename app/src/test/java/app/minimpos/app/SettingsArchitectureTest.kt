@@ -2,8 +2,11 @@ package app.minimpos.app
 
 import app.minimpos.app.data.settings.TerminalMode
 import app.minimpos.app.data.settings.TerminalSettings
+import app.minimpos.app.terminal.CapabilityDiscovery
 import app.minimpos.app.terminal.DestinationRules
 import app.minimpos.terminal.transport.CloudRegion
+import app.minimpos.terminal.transport.TerminalCapabilitiesPatch
+import app.minimpos.terminal.transport.TerminalDetailsApi
 import app.minimpos.terminal.transport.TerminalEnvironment
 import com.google.common.truth.Truth.assertThat
 import com.tngtech.archunit.base.DescribedPredicate
@@ -91,6 +94,25 @@ class SettingsArchitectureTest {
         assertTrue(localeIsolation.evaluate(ClassFileImporter().importClasses(LocaleMutationViolation::class.java)).hasViolation())
     }
 
+    @Test
+    fun `only capability discovery reads or updates remote terminal capabilities`() =
+        capabilityOwnership.check(
+            ClassFileImporter()
+                .withImportOption(ImportOption.Predefined.DO_NOT_INCLUDE_TESTS)
+                .withImportOption { !it.contains("UnitTest") }
+                .importPackages("app.minimpos.app"),
+        )
+
+    @Test
+    fun `capability ownership rejects direct capability writes`() {
+        assertTrue(capabilityOwnership.evaluate(ClassFileImporter().importClasses(CapabilityWriteViolation::class.java)).hasViolation())
+    }
+
+    private class CapabilityWriteViolation {
+        suspend fun update(api: TerminalDetailsApi) =
+            api.updateCapabilities("ID", TerminalEnvironment.TEST, TerminalCapabilitiesPatch.Dcc(true))
+    }
+
     private class LocaleMutationViolation {
         fun change() = Locale.setDefault(Locale.JAPAN)
     }
@@ -118,6 +140,20 @@ class SettingsArchitectureTest {
     }
 
     private companion object {
+        // Remote capability reads and updates verify unchanged terminal assignment in CapabilityDiscovery.
+        val capabilityOwnership: ArchRule =
+            noClasses()
+                .that()
+                .haveNameNotMatching(
+                    "${Regex.escape(CapabilityDiscovery::class.java.name)}(\\$.*)?",
+                ).should()
+                .callMethodWhere(
+                    DescribedPredicate.describe<JavaMethodCall>("a call to TerminalDetailsApi.capabilities/updateCapabilities") { call ->
+                        call.targetOwner.isAssignableTo(TerminalDetailsApi::class.java) &&
+                            call.name.substringBefore('$') in setOf("capabilities", "updateCapabilities")
+                    },
+                )
+
         val localeIsolation: ArchRule =
             noClasses()
                 .should()

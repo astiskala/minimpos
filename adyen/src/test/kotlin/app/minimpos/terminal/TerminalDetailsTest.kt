@@ -8,8 +8,13 @@ import app.minimpos.terminal.transport.Fault
 import app.minimpos.terminal.transport.MalformedPart
 import app.minimpos.terminal.transport.SharedKeyLookup
 import app.minimpos.terminal.transport.SharedKeyUpdate
+import app.minimpos.terminal.transport.TerminalCapabilitiesLookup
+import app.minimpos.terminal.transport.TerminalCapabilitiesPatch
+import app.minimpos.terminal.transport.TerminalCapabilitiesUpdate
 import app.minimpos.terminal.transport.TerminalEnvironment
+import app.minimpos.terminal.transport.TerminalGratuity
 import app.minimpos.terminal.transport.TerminalListing
+import app.minimpos.terminal.transport.TerminalMotoSettings
 import com.adyen.model.management.TerminalSettings
 import com.google.common.truth.Truth.assertThat
 import kotlinx.coroutines.runBlocking
@@ -310,6 +315,93 @@ class TerminalDetailsTest {
             assertThat(api.createSharedKey("ID", TerminalEnvironment.TEST, DiscoveredKey("new", 1, "NewStrongSecret123!")))
                 .isEqualTo(SharedKeyUpdate.Failed(Fault.UnreadableReply(), uncertain = true))
             assertThat(server.requestCount).isEqualTo(5)
+        }
+
+    @Test
+    fun `reads and patches gratuities and dcc without touching nexo or other currencies`() =
+        runBlocking {
+            val initial =
+                """
+                {"gratuities":[{"currency":"USD","usePredefinedTipEntries":true,"predefinedTipEntries":["15%","20%"],"allowCustomAmount":true}],
+                "dcc":{"enableDcc":false},"surcharge":{"askConfirmation":true},
+                "moto":{"enableMoto":false,"maxAmount":250},"offlineProcessing":{"chipFloorLimit":50},
+                "storeAndForward":{"maxAmount":[{"currencyCode":"USD","amount":10000}],"maxPayments":20}}
+                """.trimIndent()
+            reply(initial)
+            val found = (api.capabilities("ID", TerminalEnvironment.TEST) as TerminalCapabilitiesLookup.Found).capabilities
+            assertThat(found.gratuityFor("USD")).isEqualTo(TerminalGratuity("USD", true, listOf("15%", "20%"), true))
+            assertThat(found.dccEnabled).isFalse()
+            assertThat(found.surchargeConfigured).isTrue()
+            assertThat(found.moto).isEqualTo(TerminalMotoSettings(enabled = false, maxAmount = 250))
+            assertThat(found.offline.configuredFor("USD")).isTrue()
+            server.takeRequest()
+
+            reply(initial)
+            reply("{}")
+            reply(
+                """
+                {"gratuities":[
+                  {"currency":"USD","usePredefinedTipEntries":true,"predefinedTipEntries":["15%","20%"],"allowCustomAmount":true},
+                  {"currency":"EUR","usePredefinedTipEntries":true,"predefinedTipEntries":["10%","15%","20%"],"allowCustomAmount":true}
+                ]}
+                """.trimIndent(),
+            )
+            val patch = TerminalCapabilitiesPatch.Gratuity("EUR", TerminalGratuity("EUR", true, listOf("10%", "15%", "20%"), true))
+            val updatedGratuity = api.updateCapabilities("ID", TerminalEnvironment.TEST, patch) as TerminalCapabilitiesUpdate.Ready
+            assertThat(updatedGratuity.capabilities.gratuities).hasSize(2)
+            assertThat(server.takeRequest().method).isEqualTo("GET")
+            val gratuityPatch = checkNotNull(server.takeRequest().body).utf8()
+            assertThat(gratuityPatch).doesNotContain("nexo")
+            assertThat(gratuityPatch).doesNotContain("moto")
+            assertThat(TerminalSettings.fromJson(gratuityPatch).gratuities.map { it.currency }).containsExactly("USD", "EUR").inOrder()
+            assertThat(server.takeRequest().method).isEqualTo("GET")
+
+            reply("{}")
+            reply("""{"dcc":{"enableDcc":true}}""")
+            val updatedDcc =
+                api.updateCapabilities(
+                    "ID",
+                    TerminalEnvironment.TEST,
+                    TerminalCapabilitiesPatch.Dcc(true),
+                ) as TerminalCapabilitiesUpdate.Ready
+            assertThat(updatedDcc.capabilities.dccEnabled).isTrue()
+            assertThat(checkNotNull(server.takeRequest().body).utf8()).isEqualTo("""{"dcc":{"enableDcc":true}}""")
+            assertThat(server.takeRequest().method).isEqualTo("GET")
+        }
+
+    @Test
+    fun `patches moto and offline limits while preserving other currencies`() =
+        runBlocking {
+            reply("{}")
+            reply("""{"moto":{"enableMoto":true,"maxAmount":500}}""")
+            val motoPatch = TerminalCapabilitiesPatch.Moto(TerminalMotoSettings(enabled = true, maxAmount = 500))
+            val updatedMoto = api.updateCapabilities("ID", TerminalEnvironment.TEST, motoPatch) as TerminalCapabilitiesUpdate.Ready
+            assertThat(updatedMoto.capabilities.moto).isEqualTo(TerminalMotoSettings(enabled = true, maxAmount = 500))
+            assertThat(checkNotNull(server.takeRequest().body).utf8()).isEqualTo("""{"moto":{"enableMoto":true,"maxAmount":500}}""")
+            server.takeRequest()
+
+            reply("""{"storeAndForward":{"maxAmount":[{"currencyCode":"USD","amount":10000}],"maxPayments":20}}""")
+            reply("{}")
+            reply(
+                """
+                {"offlineProcessing":{"chipFloorLimit":75},
+                "storeAndForward":{"maxAmount":[{"currencyCode":"USD","amount":10000},{"currencyCode":"EUR","amount":5000}],"maxPayments":15}}
+                """.trimIndent(),
+            )
+            val offlineReq = TerminalCapabilitiesPatch.Offline("EUR", chipFloorLimit = 75, maxStoreAndForwardMinor = 5000, maxPayments = 15)
+            val updatedOffline = api.updateCapabilities("ID", TerminalEnvironment.TEST, offlineReq) as TerminalCapabilitiesUpdate.Ready
+            assertThat(updatedOffline.capabilities.offline.configuredFor("EUR")).isTrue()
+            server.takeRequest()
+            val offlinePatch = checkNotNull(server.takeRequest().body).utf8()
+            assertThat(offlinePatch).doesNotContain("nexo")
+            assertThat(
+                TerminalSettings
+                    .fromJson(offlinePatch)
+                    .storeAndForward
+                    .maxAmount
+                    .map { it.currencyCode },
+            ).containsExactly("USD", "EUR").inOrder()
+            assertThat(server.takeRequest().method).isEqualTo("GET")
         }
 
     private companion object {

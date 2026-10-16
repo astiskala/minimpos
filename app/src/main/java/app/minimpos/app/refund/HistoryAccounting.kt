@@ -160,6 +160,8 @@ data class CurrencyReconciliation(
  * @property closedPeriod True when the reconciliation period was closed (`SaleReconciliation`).
  * @property currencies Per-currency comparison rows, sorted by currency code.
  * @property unresolvedCount Unresolved terminal operations for [poiId] that may still affect totals.
+ * @property offlineSaleCount Number of offline-approved sales in the compared scope.
+ * @property unconfirmedBatchCount Highest `unconfirmedBatchCount` reported on offline sales for [poiId].
  */
 data class TerminalReconciliationReport(
     val poiId: String,
@@ -167,6 +169,8 @@ data class TerminalReconciliationReport(
     val closedPeriod: Boolean,
     val currencies: List<CurrencyReconciliation>,
     val unresolvedCount: Int = 0,
+    val offlineSaleCount: Int = 0,
+    val unconfirmedBatchCount: Int = 0,
 ) {
     /** True when every currency matches and no terminal operations remain unresolved. */
     val allMatch: Boolean get() = currencies.all { it.matches } && unresolvedCount == 0
@@ -345,6 +349,15 @@ object HistoryAccounting {
             closedPeriod = outcome.closedPeriod,
             currencies = comparisons,
             unresolvedCount = unresolved,
+            offlineSaleCount =
+                scoped.count {
+                    it is HistoryItem.Sale && it.sale.status == SaleStatus.APPROVED && it.sale.offlineMode != null
+                },
+            unconfirmedBatchCount =
+                scoped
+                    .filterIsInstance<HistoryItem.Sale>()
+                    .mapNotNull { it.sale.unconfirmedBatchCount }
+                    .maxOrNull() ?: 0,
         )
     }
 

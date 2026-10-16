@@ -45,6 +45,8 @@ abstract class AppDatabase : RoomDatabase() {
                     db.execSQL("ALTER TABLE `sales` ADD COLUMN `shopperRating` INTEGER")
                     db.execSQL("ALTER TABLE `sales` ADD COLUMN `paidMinor` INTEGER NOT NULL DEFAULT 0")
                     db.execSQL("ALTER TABLE `sales` ADD COLUMN `donationMinor` INTEGER")
+                    db.execSQL("ALTER TABLE `sales` ADD COLUMN `offlineMode` TEXT")
+                    db.execSQL("ALTER TABLE `sales` ADD COLUMN `unconfirmedBatchCount` INTEGER")
                     db.execSQL("ALTER TABLE `refunds` ADD COLUMN `poiReconciliationId` TEXT")
                     db.execSQL(
                         "CREATE TABLE IF NOT EXISTS `sale_tenders` (" +

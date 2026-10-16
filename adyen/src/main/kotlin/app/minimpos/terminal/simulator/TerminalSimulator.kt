@@ -1,6 +1,7 @@
 package app.minimpos.terminal.simulator
 
 import app.minimpos.terminal.client.CardEntryOverride
+import app.minimpos.terminal.client.OfflineProcessingMode
 import app.minimpos.terminal.client.PrintJob
 import app.minimpos.terminal.client.TerminalClient
 import app.minimpos.terminal.client.TerminalCurrencyTotals
@@ -127,6 +128,8 @@ enum class SimulatedOutcome {
  * @property partialApprovalPercent Percentage (`1..99`) of `requestedAmount` approved when `AllowPartialAuthorisation`
  *   is present; `100` approves in full unless the minor-unit amount ends with Adyen's `139` partial-approval test suffix.
  * @property givingDonationAmount Simulated charity donation amount in major units when `AskGiving` is present; zero skips donation.
+ * @property offlineMode Whether payments are approved online or simulated offline (`OFFLINE_EMV` or `STORE_AND_FORWARD`).
+ * @property unconfirmedBatchCount Simulated `unconfirmedBatchCount` returned when [offlineMode] is not `ONLINE`.
  */
 data class SimulatorConfig(
     val outcome: SimulatedOutcome = SimulatedOutcome.APPROVE,
@@ -138,6 +141,8 @@ data class SimulatorConfig(
     val shopperRating: Int = DEFAULT_SIMULATED_RATING,
     val partialApprovalPercent: Int = FULL_APPROVAL_PERCENT,
     val givingDonationAmount: BigDecimal = BigDecimal.ONE,
+    val offlineMode: OfflineProcessingMode = OfflineProcessingMode.ONLINE,
+    val unconfirmedBatchCount: Int = 1,
 ) {
     private companion object {
         const val DEFAULT_SIMULATED_RATING = 9
@@ -341,8 +346,11 @@ class TerminalSimulator(
         val amount = request.paymentTransaction.amountsReq
         val (payment, authorizedAmount) = buildSimulatedPayment(request, outcome, settings)
         if (payment.approved) recordApprovedPayment(payment, amount.currency, authorizedAmount)
-        val refusal = if (payment.approved) null else refusal(outcome)
-        val additional = paymentAdditional(payment, request.saleData?.saleToAcquirerData, refusal)
+        val refusal = if (payment.approved) null else simulatedRefusal(outcome)
+        val additional =
+            buildPaymentAdditional(payment, request.saleData?.saleToAcquirerData, refusal, random) {
+                randomString(PSP_LENGTH, DIGITS)
+            }
         return PaymentResponse().apply {
             response =
                 Response().apply {
@@ -356,7 +364,7 @@ class TerminalSimulator(
                     additionalResponse = base64Json(additional)
                 }
             saleData = SaleData().apply { saleTransactionID = request.saleData?.saleTransactionID }
-            poiData = poiData(payment.tender, payment.psp)
+            poiData = poiData(payment.tender, payment.psp.takeUnless { payment.isOffline })
             paymentResult = paymentResult(payment, amount.currency, authorizedAmount)
             paymentReceipt +=
                 listOf(
@@ -409,6 +417,8 @@ class TerminalSimulator(
                 partial = partialBase != null,
                 givingServiceId = simulatedGivingServiceId(request.saleData, approved, partialBase != null, settings),
                 entryOverride = simulatedCardEntryOverride(request),
+                offlineMode = settings.offlineMode,
+                unconfirmedBatchCount = settings.unconfirmedBatchCount,
             )
         payment.givingServiceId?.let { givingId ->
             completed.remember(
@@ -436,82 +446,13 @@ class TerminalSimulator(
         authorizedAmount: BigDecimal,
     ) {
         ledger.approved(payment.psp, manualCapture = payment.preAuthorisation)
-        paymentAmountsByTransactionId["${payment.tender}.${payment.psp}"] = currency to authorizedAmount
         if (!payment.preAuthorisation) {
+            val key = if (payment.isOffline) payment.tender else "${payment.tender}.${payment.psp}"
+            paymentAmountsByTransactionId[key] = currency to authorizedAmount
             periodTotals.compute(currency) { _, current ->
                 val base = current ?: TerminalCurrencyTotals(currency)
                 base.copy(debitAmount = base.debitAmount + authorizedAmount, debitCount = base.debitCount + 1)
             }
-        }
-    }
-
-    private fun paymentAdditional(
-        payment: SimulatedPayment,
-        acquirer: SaleToAcquirerData?,
-        refusal: Pair<ErrorConditionType, String>?,
-    ): Map<String, String> {
-        val additional =
-            linkedMapOf(
-                "pspReference" to payment.psp,
-                "merchantReference" to payment.merchantReference,
-                "paymentMethod" to payment.card.brand,
-                "paymentMethodVariant" to payment.card.variant,
-                "cardSummary" to payment.card.maskedPan.takeLast(4),
-                "posEntryMode" to
-                    when {
-                        payment.wallet -> "Scanned"
-                        payment.entryOverride == CardEntryOverride.MOTO -> "MOTO"
-                        payment.entryOverride == CardEntryOverride.MKE -> "MKE"
-                        else -> "CLESS_CHIP"
-                    },
-            )
-        if (refusal == null) {
-            additional["authCode"] = payment.authCode
-            // As with "return adjust authorisation data" enabled in the Customer Area, for synchronous adjustments.
-            if (payment.preAuthorisation) additional["adjustAuthorisationData"] = SimulatedModifications.blob(random)
-            if (!payment.wallet) additional += tokenization(payment.card, acquirer)
-            payment.givingServiceId?.let {
-                additional["adyen_giving_sale_id"] = TerminalClient.GIVING_SALE_ID
-                additional["adyen_giving_service_id"] = it
-            }
-        } else {
-            additional["refusalReason"] = refusal.second
-        }
-        return additional
-    }
-
-    private fun refusal(outcome: SimulatedOutcome?): Pair<ErrorConditionType, String> =
-        when (outcome) {
-            SimulatedOutcome.CANCEL -> ErrorConditionType.CANCEL to "Cancelled by shopper"
-
-            null -> ErrorConditionType.ABORTED to "Transaction aborted"
-
-            SimulatedOutcome.APPROVE,
-            SimulatedOutcome.DECLINE,
-            SimulatedOutcome.BUSY,
-            SimulatedOutcome.TIMEOUT,
-            SimulatedOutcome.RANDOM,
-            -> ErrorConditionType.REFUSAL to "Not enough balance"
-        }
-
-    /** The stored-card details a terminal returns when the request asked to tokenize the card for a shopper. */
-    private fun tokenization(
-        card: SimulatedCard,
-        acquirerData: SaleToAcquirerData?,
-    ): Map<String, String> {
-        val shopperReference = acquirerData?.shopperReference
-        val model = acquirerData?.recurringProcessingModel
-        if (shopperReference == null || model == null) return emptyMap()
-        val token = randomString(PSP_LENGTH, DIGITS)
-        return buildMap {
-            put("alias", card.alias)
-            put("recurring.recurringDetailReference", token)
-            put("recurring.shopperReference", shopperReference)
-            put("recurringProcessingModel", model.toString())
-            put("tokenization.shopperReference", shopperReference)
-            put("tokenization.storedPaymentMethodId", token)
-            put("tokenization.store.operationType", "created")
-            acquirerData.shopperEmail?.let { put("shopperEmail", it) }
         }
     }
 
@@ -528,8 +469,11 @@ class TerminalSimulator(
                 authorizedAmount = authorized
                 tipAmount = payment.tipAmount
             }
-        setOnlineFlag(true)
-        paymentAcquirerData = PaymentAcquirerData().apply { approvalCode = payment.authCode.takeIf { payment.approved } }
+        setOnlineFlag(!payment.isOffline)
+        paymentAcquirerData =
+            PaymentAcquirerData().apply {
+                approvalCode = payment.authCode.takeIf { payment.approved && !payment.isOffline }
+            }
     }
 
     private fun paymentInstrument(payment: SimulatedPayment): PaymentInstrumentData =
@@ -678,9 +622,10 @@ class TerminalSimulator(
 
     private fun poiData(
         tender: String,
-        psp: String,
+        psp: String?,
     ) = POIData().apply {
-        poiTransactionID = TerminalClient.transaction("$tender.$psp", clock.instant())
+        val txId = if (psp.isNullOrBlank()) tender else "$tender.$psp"
+        poiTransactionID = TerminalClient.transaction(txId, clock.instant())
         poiReconciliationID = reconciliationId.get().toString()
     }
 

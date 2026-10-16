@@ -987,6 +987,13 @@ private fun SimulatorSection(
     SettingSwitch(stringResource(R.string.settings_sim_signature), simulator.signatureRequired, { value ->
         update { it.copy(signatureRequired = value) }
     })
+    SettingSwitch(
+        stringResource(R.string.settings_sim_offline),
+        simulator.offlineMode,
+        { value -> update { it.copy(offlineMode = value) } },
+        subtitle = stringResource(R.string.settings_sim_offline_hint),
+        tag = "simOffline",
+    )
 }
 
 @Composable

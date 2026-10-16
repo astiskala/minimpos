@@ -1063,4 +1063,12 @@
   <string name="checkout_mke">Manual Key Entry (MKE)</string>
   <string name="checkout_mke_hint">Key in the card on the terminal when chip or contactless fails (Manager approval required).</string>
   <string name="checkout_special_entry_warning">Keyed card transactions carry higher fraud and chargeback liability for the merchant. Continue with Manager approval?</string>
+  <string name="settings_sim_offline">Simulate offline Store-and-Forward</string>
+  <string name="settings_sim_offline_hint">Approve simulated payments offline without a PSP reference and report an unconfirmed batch.</string>
+  <string name="history_offline_label">Offline</string>
+  <string name="detail_offline_mode">Offline processing</string>
+  <string name="detail_offline_emv">Approved offline (EMV floor limit)</string>
+  <string name="detail_offline_saf">Approved offline (Store-and-Forward)</string>
+  <string name="detail_unconfirmed_batches">Unconfirmed offline batches</string>
+  <string name="reconciliation_offline_warning">Offline sales: %1$d · Unconfirmed terminal batches: %2$d</string>
 </resources>

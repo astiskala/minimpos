@@ -3,6 +3,7 @@ package app.minimpos.terminal
 import app.minimpos.terminal.checkout.ModificationAmount
 import app.minimpos.terminal.checkout.ModificationResult
 import app.minimpos.terminal.client.CardEntryOverride
+import app.minimpos.terminal.client.OfflineProcessingMode
 import app.minimpos.terminal.client.PaymentParams
 import app.minimpos.terminal.client.PosApplication
 import app.minimpos.terminal.client.PrintAlign
@@ -420,5 +421,25 @@ class TerminalSimulatorTest {
             assertThat(mke.entryMode).isEqualTo("Keyed")
             assertThat(mke.additionalData["posEntryMode"]).isEqualTo("MKE")
             assertThat(mke.signatureRequired).isTrue()
+        }
+
+    @Test
+    fun `simulates offline EMV and store-and-forward payments without PSP reference`() =
+        runBlocking {
+            config = config.copy(offlineMode = OfflineProcessingMode.OFFLINE_EMV, unconfirmedBatchCount = 2)
+            val emvOffline = pay()
+            assertThat(emvOffline.success).isTrue()
+            assertThat(emvOffline.offlineMode).isEqualTo(OfflineProcessingMode.OFFLINE_EMV)
+            assertThat(emvOffline.unconfirmedBatchCount).isEqualTo(2)
+            assertThat(emvOffline.pspReference).isNull()
+            assertThat(emvOffline.poiTransactionId).doesNotContain(".")
+            assertThat(emvOffline.approvalCode).isNotNull()
+
+            config = config.copy(offlineMode = OfflineProcessingMode.STORE_AND_FORWARD, unconfirmedBatchCount = 3)
+            val safOffline = pay()
+            assertThat(safOffline.success).isTrue()
+            assertThat(safOffline.offlineMode).isEqualTo(OfflineProcessingMode.STORE_AND_FORWARD)
+            assertThat(safOffline.unconfirmedBatchCount).isEqualTo(3)
+            assertThat(safOffline.pspReference).isNull()
         }
 }

@@ -166,14 +166,7 @@ internal fun ColumnScope.HoldNotes(
 ) {
     val standing = sale.standing
     if (standing == PaymentStanding.NOT_APPROVED || standing == PaymentStanding.HOLD_CANCELLED) return
-    if (sale.isPartiallyPaid) {
-        OutcomeNote(
-            stringResource(R.string.detail_partially_paid, money.format(sale.paidMinor), money.format(sale.remainingMinor)),
-            Modifier.testTag("partialNote"),
-        )
-    }
-    sale.tipMinor?.let { OutcomeNote(stringResource(R.string.detail_tip, money.format(sale.totalMinor), money.format(it))) }
-    sale.donationMinor?.let { OutcomeNote(stringResource(R.string.detail_donation, money.format(it)), Modifier.testTag("donationNote")) }
+    ExtraSaleNotes(sale, money)
     if (standing == PaymentStanding.AWAITING_TIP) {
         OutcomeNote(stringResource(if (afterPayment) R.string.result_tip_note else R.string.detail_tip_awaiting))
     }
@@ -189,6 +182,28 @@ internal fun ColumnScope.HoldNotes(
     }
     val note = captureStrings(standing)?.second ?: return
     OutcomeNote(stringResource(note, money.format(sale.capturedMinor ?: return)), Modifier.testTag("captureNote"))
+}
+
+@Composable
+private fun ColumnScope.ExtraSaleNotes(
+    sale: SaleEntity,
+    money: MoneyFormatter,
+) {
+    if (sale.isPartiallyPaid) {
+        OutcomeNote(
+            stringResource(R.string.detail_partially_paid, money.format(sale.paidMinor), money.format(sale.remainingMinor)),
+            Modifier.testTag("partialNote"),
+        )
+    }
+    sale.tipMinor?.let { OutcomeNote(stringResource(R.string.detail_tip, money.format(sale.totalMinor), money.format(it))) }
+    sale.donationMinor?.let { OutcomeNote(stringResource(R.string.detail_donation, money.format(it)), Modifier.testTag("donationNote")) }
+    sale.offlineMode?.let { mode ->
+        val label =
+            stringResource(
+                if (mode == "OFFLINE_EMV") R.string.detail_offline_emv else R.string.detail_offline_saf,
+            )
+        OutcomeNote(label, Modifier.testTag("offlineNote"))
+    }
 }
 
 /** The heading for a sale in [status], such as "Approved". */

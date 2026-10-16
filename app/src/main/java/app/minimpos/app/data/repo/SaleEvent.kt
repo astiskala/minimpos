@@ -12,6 +12,7 @@ import app.minimpos.core.money.PaymentContext
 import app.minimpos.terminal.checkout.ModificationResult
 import app.minimpos.terminal.checkout.PaymentLink
 import app.minimpos.terminal.checkout.PaymentLinkStatus
+import app.minimpos.terminal.client.OfflineProcessingMode
 import app.minimpos.terminal.client.TransactionDetails
 import app.minimpos.terminal.transport.Fault
 
@@ -302,6 +303,8 @@ private fun SaleEntity.settled(event: SaleEvent.Settled): SaleEntity {
         shopperRating = details.shopperRating ?: shopperRating,
         paidMinor = updatedPaidMinor,
         donationMinor = donatedMinor ?: donationMinor,
+        offlineMode = details.offlineMode.name.takeIf { details.offlineMode != OfflineProcessingMode.ONLINE } ?: offlineMode,
+        unconfirmedBatchCount = details.unconfirmedBatchCount ?: unconfirmedBatchCount,
         pspReference = details.pspReference,
         paymentBrand = details.paymentBrand,
         paymentMethodVariant = details.paymentMethodVariant,

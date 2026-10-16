@@ -40,6 +40,7 @@ import app.minimpos.terminal.client.TransactionKind
  * @property allowPartialAuthorisation Whether `AllowPartialAuthorisation` is sent on this tender.
  * @property requestedAmountMinor Amount requested for this tender in minor units; defaults to `totals.amounts.gross`.
  * @property existingSaleId Existing partially paid sale ID when collecting the remaining balance; null for a new sale.
+ * @property askGiving Whether `AskGiving` is sent on this payment.
  * @throws IllegalArgumentException if a pre-authorisation is taken for tipping on the receipt, or a card is to be saved
  *   without a [shopperReference].
  */
@@ -62,6 +63,7 @@ data class PaymentStart(
     val allowPartialAuthorisation: Boolean = false,
     val requestedAmountMinor: Long = totals.amounts.gross,
     val existingSaleId: String? = null,
+    val askGiving: Boolean = false,
 ) {
     init {
         require(!tipOnReceipt || kind == SaleKind.SALE) { "Only a sale can be taken for tipping on the receipt" }
@@ -154,6 +156,7 @@ class SaleBook(
                 shopperFlow = request.shopperFlow,
                 allowPartialAuthorisation = request.allowPartialAuthorisation,
                 saleReferenceId = request.merchantReference.takeIf { isSplit || request.allowPartialAuthorisation },
+                askGiving = request.askGiving,
             ),
             expected = request.walletContext,
             setupIdentity = request.walletSetupIdentity,

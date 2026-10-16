@@ -1004,4 +1004,8 @@
   <string name="status_partially_paid">一部支払済み</string>
   <string name="detail_partially_paid">支払済み %1$s · 残額 %2$s</string>
   <string name="result_pay_remaining">残額 %1$s を支払う</string>
+  <string name="checkout_ask_giving">チャリティ寄付（Adyen Giving）</string>
+  <string name="checkout_ask_giving_hint">決済後に端末画面でチャリティ寄付を購入者に案内します。</string>
+  <string name="settings_ask_giving_hint">購入後に端末でAdyen Givingの寄付を購入者に尋ねます。</string>
+  <string name="detail_donation">チャリティ寄付: %1$s</string>
 </resources>

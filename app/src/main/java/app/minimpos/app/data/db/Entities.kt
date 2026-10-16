@@ -360,6 +360,8 @@ data class SaleEntity(
     val shopperRating: Int? = null,
     /** Cumulative approved base amount across tenders in minor units; `0` when paid in a single full tender. */
     @ColumnInfo(defaultValue = "0") val paidMinor: Long = 0,
+    /** Charity donation amount in minor units from Adyen Giving; null when no donation was made. */
+    val donationMinor: Long? = null,
 ) {
     /** What the payment holds on the card: [authorisedMinor] after an adjustment, else [totalMinor]. */
     val heldMinor: Long get() = authorisedMinor ?: totalMinor

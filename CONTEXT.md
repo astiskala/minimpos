@@ -30,6 +30,7 @@ existing spelling (`preAuthorisation`, `SaleKind.PRE_AUTHORISATION`, `authorised
 | Terminal tipping | Immediate-charge sale that prompts for a tip on the terminal (`AskGratuity`), optionally overriding suggestions (`TipSuggestions`) and the amount to tip on (`AmountToTipOn`) in `SaleData.SaleToPOIData`. | `PaymentSettings.terminalTipping`, `TerminalTipOptions`, `SaleEntity.tipMinor` |
 | Shopper display | Chained `AdminRequest` session around a payment on an external terminal (or simulator) showing a virtual receipt (`DisplayRequest`), basket confirmation, email entry, QR receipt and 0–10 rating (`InputRequest`). | `ShopperSessionFlow`, `SaleEntity.shopperRating` |
 | Partial authorization / split tender | Immediate-charge sale that accepts partial approvals (`AllowPartialAuthorisation`, `Result=Partial`) or operator-entered split amounts across multiple tenders (`SaleTenderEntity`), tracking paid vs remaining balance until paid in full or reversed. | `SaleTenderEntity`, `PaymentStanding.PARTIALLY_PAID`, `SaleEvent.Settled` |
+| Adyen Giving | Charity donation prompt on the terminal after purchase (`AskGiving` tender option); when `adyen_giving_service_id` is returned, queries `TransactionStatus` (`SaleID=AdyenGiving`) for the donation amount without affecting merchant accounting. | `PaymentSettings.askGiving`, `TerminalClient.givingDonation`, `SaleEntity.donationMinor` |
 | Sale event | A happening that changes a stored sale; the sole decision of which statuses/fields it writes. | `data/repo/SaleEvent`, `SaleEntity.after` |
 
 ## Following up

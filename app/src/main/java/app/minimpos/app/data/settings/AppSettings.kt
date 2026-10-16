@@ -387,6 +387,7 @@ enum class ReceiptTipping {
  * @property showTerminalQrReceipt Whether external terminals display a QR code receipt after approval.
  * @property askShopperRating Whether external terminals prompt the shopper for a 0–10 rating after approval.
  * @property allowPartialAuthorisation Whether immediate-charge sales send `AllowPartialAuthorisation` and accept split tenders.
+ * @property askGiving Whether immediate-charge sales offer Adyen Giving charity donations (`AskGiving`), and its default choice.
  */
 @Serializable
 data class PaymentSettings(
@@ -420,6 +421,7 @@ data class PaymentSettings(
     val showTerminalQrReceipt: Boolean = false,
     val askShopperRating: Boolean = false,
     val allowPartialAuthorisation: Boolean = true,
+    val askGiving: ReceiptTipping = ReceiptTipping.DISABLED,
 ) {
     /** These settings with [linkExpiryHours] and terminal tipping numbers within their valid ranges. */
     fun normalized(): PaymentSettings =

@@ -287,7 +287,7 @@ private fun ColumnScope.CapabilitiesMatrix(
     )
     CapabilityStandingRow(
         title = stringResource(R.string.capability_giving),
-        standing = capabilities.givingStanding(enabledLocally = false),
+        standing = capabilities.givingStanding(enabledLocally = payment.askGiving != ReceiptTipping.DISABLED),
         tag = "cap_giving",
     )
     CapabilityStandingRow(

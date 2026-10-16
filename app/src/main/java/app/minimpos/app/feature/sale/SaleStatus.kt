@@ -173,6 +173,7 @@ internal fun ColumnScope.HoldNotes(
         )
     }
     sale.tipMinor?.let { OutcomeNote(stringResource(R.string.detail_tip, money.format(sale.totalMinor), money.format(it))) }
+    sale.donationMinor?.let { OutcomeNote(stringResource(R.string.detail_donation, money.format(it)), Modifier.testTag("donationNote")) }
     if (standing == PaymentStanding.AWAITING_TIP) {
         OutcomeNote(stringResource(if (afterPayment) R.string.result_tip_note else R.string.detail_tip_awaiting))
     }

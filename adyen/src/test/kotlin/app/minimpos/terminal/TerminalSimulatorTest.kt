@@ -394,4 +394,15 @@ class TerminalSimulatorTest {
             assertThat(ratioPartial.partial).isTrue()
             assertThat(ratioPartial.amount).isEqualTo(BigDecimal("8.00"))
         }
+
+    @Test
+    fun `simulates AskGiving with two-step AdyenGiving status lookup`() =
+        runBlocking {
+            config = config.copy(givingDonationAmount = BigDecimal("2.50"))
+            val details = pay(tokenizing.copy(amount = BigDecimal("15.00"), askGiving = true))
+            assertThat(details.success).isTrue()
+            assertThat(details.amount).isEqualTo(BigDecimal("15.00"))
+            assertThat(details.givingServiceId).isEqualTo("GIVINGSIM1")
+            assertThat(details.donationAmount).isEqualTo(BigDecimal("2.50"))
+        }
 }

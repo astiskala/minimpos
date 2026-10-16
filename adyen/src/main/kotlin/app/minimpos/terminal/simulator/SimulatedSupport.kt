@@ -47,7 +47,24 @@ internal data class SimulatedPayment(
     val wallet: Boolean = false,
     val tipAmount: BigDecimal? = null,
     val partial: Boolean = false,
+    val givingServiceId: String? = null,
 )
+
+internal fun simulatedGivingServiceId(
+    saleData: SaleData?,
+    approved: Boolean,
+    partial: Boolean,
+    settings: SimulatorConfig,
+): String? {
+    if (!approved || partial || settings.givingDonationAmount <= BigDecimal.ZERO) return null
+    val tenders =
+        saleData
+            ?.saleToAcquirerData
+            ?.tenderOption
+            ?.split(',')
+            .orEmpty()
+    return "GIVINGSIM1".takeIf { TerminalClient.ASK_GIVING in tenders }
+}
 
 internal fun simulatedPartialAmount(
     saleData: SaleData?,

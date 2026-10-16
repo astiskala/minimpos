@@ -289,6 +289,11 @@ private fun SaleEntity.settled(event: SaleEvent.Settled): SaleEntity {
         )
     val details = event.details ?: return ended
     val (terminalTipMinor, updatedPaidMinor) = settledAmounts(event.status, details)
+    val donatedMinor =
+        details.donationAmount
+            ?.takeIf { event.status == SaleStatus.APPROVED }
+            ?.let { CurrencySpec.of(currency).toMinor(it) }
+            ?.takeIf { it > 0 }
     return ended.copy(
         poiTransactionId = details.poiTransactionId,
         poiTimestamp = details.poiTimestamp,
@@ -296,6 +301,7 @@ private fun SaleEntity.settled(event: SaleEvent.Settled): SaleEntity {
         shopperEmail = details.collectedEmail ?: shopperEmail,
         shopperRating = details.shopperRating ?: shopperRating,
         paidMinor = updatedPaidMinor,
+        donationMinor = donatedMinor ?: donationMinor,
         pspReference = details.pspReference,
         paymentBrand = details.paymentBrand,
         paymentMethodVariant = details.paymentMethodVariant,

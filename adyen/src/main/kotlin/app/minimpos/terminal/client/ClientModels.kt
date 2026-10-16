@@ -210,6 +210,8 @@ data class PaymentParams(
     val allowPartialAuthorisation: Boolean = false,
     /** Optional `SaleData.SaleReferenceID` grouping split tenders of the same sale. */
     val saleReferenceId: String? = null,
+    /** Sends `AskGiving` in `SaleToAcquirerData.tenderOption` to prompt for a charity donation after purchase. */
+    val askGiving: Boolean = false,
 ) {
     init {
         require(scannedPayment == null || !preAuthorisation) { "Scanned wallets require an immediate-charge sale" }
@@ -218,6 +220,9 @@ data class PaymentParams(
         }
         require(!allowPartialAuthorisation || !preAuthorisation) {
             "Partial authorisation requires an immediate-charge sale"
+        }
+        require(!askGiving || (!preAuthorisation && scannedPayment == null)) {
+            "Adyen Giving requires an immediate-charge card sale"
         }
     }
 }
@@ -434,6 +439,10 @@ data class TransactionDetails(
     val collectedEmail: String? = null,
     /** 0–10 rating collected from the shopper on the terminal after payment (`InputRequest` `GetRating`), if any. */
     val shopperRating: Int? = null,
+    /** ServiceID of the two-step Adyen Giving donation (`adyen_giving_service_id`), when the shopper donated. */
+    val givingServiceId: String? = null,
+    /** Charity donation amount in major units from the two-step Adyen Giving status lookup; null when none. */
+    val donationAmount: BigDecimal? = null,
 ) {
     /** Why it was not approved (cancelled, busy, what to do next); null when it [succeeded][success]. */
     val decline: Decline? get() = Decline.of(success, errorCondition, refusalReason, additionalData)

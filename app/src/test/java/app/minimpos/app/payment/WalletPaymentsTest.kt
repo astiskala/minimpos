@@ -25,17 +25,16 @@ class WalletPaymentsTest {
         env.container.walletDiscovery.refresh()
         val session = env.container.session(SaleKind.SALE)
         session.addCustom("Demo", 150, TaxRateEntity(1, "No tax", 0))
-        val displayed = session.checkout(env.container.settingsState, flowOf(true), currency = env.container::currency).first()
+        val displayed =
+            session
+                .checkout(
+                    env.container.settingsState,
+                    flowOf(true),
+                    wallets = env.container.walletDiscovery.state,
+                    currency = env.container::currency,
+                ).first()
         val wallets = env.container.walletPayments
-        check(
-            wallets.begin(
-                displayed.copy(
-                    wallets =
-                        env.container.walletDiscovery.state.value
-                            .offered(displayed.currency.code),
-                ),
-            ),
-        )
+        check(wallets.begin(displayed))
         wallets.choose(ScanWallet.WECHAT_PAY)
         return session to wallets
     }
@@ -76,13 +75,14 @@ class WalletPaymentsTest {
             env.container.walletDiscovery.refresh()
             val session = env.container.session(SaleKind.SALE)
             session.addCustom("Demo", 150, TaxRateEntity(1, "No tax", 0))
-            val displayed = session.checkout(env.container.settingsState, flowOf(true), currency = env.container::currency).first()
             val checkout =
-                displayed.copy(
-                    wallets =
-                        env.container.walletDiscovery.state.value
-                            .offered(displayed.currency.code),
-                )
+                session
+                    .checkout(
+                        env.container.settingsState,
+                        flowOf(true),
+                        wallets = env.container.walletDiscovery.state,
+                        currency = env.container::currency,
+                    ).first()
             val wallets = env.container.walletPayments
             assertThat(wallets.begin(checkout)).isTrue()
             wallets.choose(ScanWallet.WECHAT_PAY)

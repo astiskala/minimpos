@@ -118,17 +118,16 @@ class NativeWalletPaymentsTest {
         env.container.walletDiscovery.refresh()
         val session = env.container.session(SaleKind.SALE)
         session.addCustom("Native demo", 150, TaxRateEntity(1, "No tax", 0))
-        val displayed = session.checkout(env.container.settingsState, flowOf(false), currency = env.container::currency).first()
+        val displayed =
+            session
+                .checkout(
+                    env.container.settingsState,
+                    flowOf(false),
+                    wallets = env.container.walletDiscovery.state,
+                    currency = env.container::currency,
+                ).first()
         val wallets = env.container.walletPayments
-        check(
-            wallets.begin(
-                displayed.copy(
-                    wallets =
-                        env.container.walletDiscovery.state.value
-                            .offered(displayed.currency.code),
-                ),
-            ),
-        )
+        check(wallets.begin(displayed))
         withTimeout(15_000) { started.await() }
         return wallets
     }

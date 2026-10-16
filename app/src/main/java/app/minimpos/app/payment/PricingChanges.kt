@@ -4,11 +4,37 @@ import app.minimpos.app.data.repo.CatalogRepository
 import app.minimpos.app.data.settings.AppSettings
 import app.minimpos.app.data.settings.PricingChange
 import app.minimpos.app.data.settings.SettingsRepository
+import app.minimpos.app.terminal.HistorySwitchPlan
+import app.minimpos.app.terminal.HistorySwitches
 import app.minimpos.core.money.CurrencySpec
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+
+/** What an attempted settings write requires before it can take effect. */
+sealed interface SettingsEdit {
+    /** The non-destructive, non-repricing change was saved (or ignored while busy/recovering). */
+    data object Saved : SettingsEdit
+
+    /**
+     * The change switches history environment and requires explicit destructive confirmation.
+     *
+     * @property plan Destructive switch plan to confirm.
+     */
+    data class ConfirmHistorySwitch(
+        val plan: HistorySwitchPlan,
+    ) : SettingsEdit
+
+    /**
+     * The change alters currency or tax style and requires explicit repricing confirmation.
+     *
+     * @property change Repricing preview to confirm.
+     */
+    data class ConfirmPricing(
+        val change: PricingChange,
+    ) : SettingsEdit
+}
 
 /**
  * Confirmed currency and tax-style changes, including their durable journal and startup recovery. Operations are
@@ -47,20 +73,46 @@ class PricingChanges(
             write(current)
         }
 
+    /**
+     * Evaluates [transform] in one serialized pass: proposes a history-switch confirmation when [switches] requires
+     * one, otherwise stores ordinary settings or proposes a pricing confirmation.
+     */
+    suspend fun edit(
+        transform: (AppSettings) -> AppSettings,
+        switches: HistorySwitches? = null,
+    ): SettingsEdit =
+        mutex.withLock {
+            val current = settings.current()
+            if (current.pricingChange != null) return@withLock SettingsEdit.Saved
+            val proposed = transform(current)
+            val switchPlan = switches?.preview(proposed.terminal)
+            if (switchPlan != null) {
+                SettingsEdit.ConfirmHistorySwitch(switchPlan)
+            } else {
+                updateUnlocked(current, proposed, transform)?.let(SettingsEdit::ConfirmPricing) ?: SettingsEdit.Saved
+            }
+        }
+
     /** Stores ordinary settings, or previews a pricing change; null when stored, blocked, or rounding would erase a price. */
     suspend fun update(transform: (AppSettings) -> AppSettings): PricingChange? =
         mutex.withLock {
             val current = settings.current()
-            val proposed = transform(current)
             if (current.pricingChange != null) return@withLock null
-            if (currency(current) == currency(proposed) && current.payment.taxMode == proposed.payment.taxMode) {
-                settings.update(transform)
-                null
-            } else if (active()) {
-                null
-            } else {
-                preview(current, proposed)
-            }
+            updateUnlocked(current, transform(current), transform)
+        }
+
+    private suspend fun updateUnlocked(
+        current: AppSettings,
+        proposed: AppSettings,
+        transform: (AppSettings) -> AppSettings,
+    ): PricingChange? =
+        if (currency(current) == currency(proposed) && current.payment.taxMode == proposed.payment.taxMode) {
+            settings.update(transform)
+            null
+        } else if (active()) {
+            null
+        } else {
+            preview(current, proposed)
         }
 
     /** Commits [change]; false while busy, another journal exists, or its currency or catalogue preview is stale. */

@@ -5,6 +5,7 @@ import app.minimpos.app.TestEnvironment
 import app.minimpos.app.await
 import app.minimpos.app.data.db.Failure
 import app.minimpos.app.data.db.SetupProblem
+import app.minimpos.app.data.security.RecoveryJournal
 import app.minimpos.app.data.security.Secret
 import app.minimpos.app.data.security.SecretStoreException
 import app.minimpos.app.data.security.SharedKeyGenerator
@@ -21,6 +22,7 @@ import app.minimpos.terminal.transport.TerminalEnvironment
 import app.minimpos.terminal.transport.TerminalListing
 import com.google.common.truth.Truth.assertThat
 import kotlinx.coroutines.flow.first
+import kotlinx.serialization.serializer
 import org.junit.Assert.assertThrows
 import org.junit.Before
 import org.junit.Rule
@@ -64,9 +66,11 @@ class SharedKeySetupTest {
             ): SharedKeyUpdate {
                 assertThat(
                     await {
-                        env.container.secrets.readKeyCreation()
+                        env.container.secrets
+                            .hasJournal(RecoveryJournal.KEY_CREATION)
+                            .first()
                     },
-                ).isNotNull()
+                ).isTrue()
                 requested += key
                 if (accepted) found = SharedKeyLookup.Found(key)
                 return updateFailure ?: SharedKeyUpdate.Ready(key, created = true)
@@ -114,7 +118,8 @@ class SharedKeySetupTest {
         assertThat(offered.toString()).doesNotContain("synthetic-api-key")
         assertThat(
             await {
-                env.container.secrets.keyCreationExists
+                env.container.secrets
+                    .hasJournal(RecoveryJournal.KEY_CREATION)
                     .first()
             },
         ).isFalse()
@@ -164,7 +169,8 @@ class SharedKeySetupTest {
         await { restarted.complete(unlocked()) }
         assertThat(
             await {
-                env.container.secrets.keyCreationExists
+                env.container.secrets
+                    .hasJournal(RecoveryJournal.KEY_CREATION)
                     .first()
             },
         ).isFalse()
@@ -219,7 +225,9 @@ class SharedKeySetupTest {
         }
         found = SharedKeyLookup.Missing
         await {
-            env.container.secrets.writeKeyCreation("not json")
+            env.container.secrets
+                .journal(RecoveryJournal.KEY_CREATION, serializer<String>())
+                .write("not json")
         }
         assertThat(await { owner.resolve(unlocked()) }).isEqualTo(SharedKeySetupOutcome.Failed(SetupProblem.KEY_RECOVERY_UNREADABLE))
         assertThat(requested).isEmpty()

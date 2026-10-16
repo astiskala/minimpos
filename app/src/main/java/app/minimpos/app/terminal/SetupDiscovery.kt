@@ -11,7 +11,7 @@ import app.minimpos.terminal.transport.DiscoveredKey
 import app.minimpos.terminal.transport.SharedKeyLookup
 import app.minimpos.terminal.transport.TerminalDetails
 import app.minimpos.terminal.transport.TerminalDetailsApi
-import app.minimpos.terminal.transport.TerminalListing
+import app.minimpos.terminal.transport.TerminalEnvironment
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
@@ -104,15 +104,12 @@ class SetupDiscovery(
             val credential = api.credential(environment)
             if (credential is CredentialLookup.Failed) return@withLock SetupDiscoverySearch.Failed(Failure.Remote(credential.fault))
             val onDevice = setup.onTerminal && setup.mode == TerminalMode.TERMINAL
-            val target = setup.poiId.takeIf { onDevice }
-            val found =
-                when (val result = api.terminals(environment, target)) {
-                    is TerminalListing.Listed -> result
-                    is TerminalListing.Failed -> return@withLock SetupDiscoverySearch.Failed(Failure.Remote(result.fault))
+            val terminals =
+                when (val found = TerminalAssignments.listOffered(api, environment, onDevice, setup.poiId)) {
+                    is DiscoveredTerminals.Found -> found.terminals
+                    is DiscoveredTerminals.Failed -> return@withLock SetupDiscoverySearch.Failed(found.failure)
                 }
-            val terminals = if (onDevice && target == null) emptyList() else TerminalAssignments.offered(found.terminals, target)
-            if (terminals.isEmpty()) return@withLock SetupDiscoverySearch.Failed(Failure.NotSetUp(SetupProblem.TERMINAL_ACCESS))
-            selection = Selection(key, setup, api, found.copy(terminals = terminals))
+            selection = Selection(key, setup, api, environment, terminals)
             SetupDiscoverySearch.Found(terminals.map { it.id })
         }
 
@@ -129,7 +126,7 @@ class SetupDiscovery(
                 when (
                     val assignment =
                         TerminalAssignments.select(
-                            selected.list.terminals,
+                            selected.terminals,
                             id,
                             selected.setup.settings.terminal.merchantAccount,
                         )
@@ -149,7 +146,7 @@ class SetupDiscovery(
                     }
                 }
             val local = selected.setup.mode == TerminalMode.TERMINAL
-            val lookup = if (local) selected.api.sharedKey(terminal.id, selected.list.environment) else null
+            val lookup = if (local) selected.api.sharedKey(terminal.id, selected.environment) else null
             val current = setups.unlocked()
             if (current.apiKey != selected.key || current.setup.settings.terminal != selected.setup.settings.terminal) {
                 return@withLock SetupDiscoveryChoice.Ignored
@@ -199,8 +196,6 @@ class SetupDiscovery(
             }
             result
         }
-
-    internal suspend fun completeKey() = sharedKeys.complete(setups.unlocked(forValidation = true))
 
     private suspend fun store(key: DiscoveredKey): Boolean =
         try {
@@ -252,7 +247,8 @@ class SetupDiscovery(
         val key: String,
         val setup: TerminalSetup,
         val api: TerminalDetailsApi,
-        val list: TerminalListing.Listed,
+        val environment: TerminalEnvironment,
+        val terminals: List<TerminalDetails>,
     )
 }
 
@@ -291,15 +287,10 @@ internal class SetupAccess(
         api: TerminalDetailsApi,
         setup: TerminalSetup,
     ): Failure? =
-        when (val listing = api.terminals(checkNotNull(setup.environment), setup.poiId)) {
-            is TerminalListing.Failed -> {
-                Failure.Remote(listing.fault)
-            }
-
-            is TerminalListing.Listed -> {
-                TerminalAssignments
-                    .access(listing.terminals, checkNotNull(setup.poiId), setup.settings.terminal.merchantAccount)
-                    ?.let(Failure::NotSetUp)
-            }
-        }
+        TerminalAssignments.verifyAccess(
+            api,
+            checkNotNull(setup.environment),
+            checkNotNull(setup.poiId),
+            setup.settings.terminal.merchantAccount,
+        )
 }

@@ -28,15 +28,19 @@ Starred rules below are enforced by `ArchitectureTest`, `SettingsArchitectureTes
   accounting's issue meaning rather than reading pending/unknown status fields. `ReceiptStanding` owns receipt meaning;
   only the stored-payment reading interprets the original payment context's simulator flag for demo links.
 - \* Only `TerminalSetupSource` calls `TerminalSetup.resolve` and reads destination/API secrets. Unlock once per call;
-  unreadable secrets become typed setup problems. `boarding()` does the same for the Payments app credential.
-  Only this source applies learned environment/region facts, atomically against their originating terminal settings;
-  pure destination rules decide what can be learned. Detection origins cannot be copied by callers.
+  unreadable secrets become typed setup problems. `boarding()` and `candidateBoarding()` do the same for the Payments
+  app credential. Encrypted recovery journals use `EncryptedJournal` in one snapshot; only `RecoveryJournal` accesses
+  their `SecretBlob` fields. Only this source applies learned environment/region facts, atomically against their
+  originating terminal settings; pure destination rules decide what can be learned. Detection origins cannot be copied
+  by callers.
 - \* Only `terminal/SetupImport` activates QR candidates through `SetupTransfer`; code, account/access and supported
   connection verification precede activation writes. Its encrypted journal resumes commits without replaying catalog
-  replacement or phone registration. Only it and `TerminalStatus` record verified identities through `TerminalSetupSource`.
+  replacement or phone registration. Only it and `TerminalStatus` record verified identities through `TerminalSetupSource`
+  and complete pending shared-key recovery records.
 - \* Only `SharedKeySetup` creates terminal-specific keys at Adyen, after explicit confirmation and encrypted recovery
   persistence. Discovery stays read-only; existing effective keys are reused, never deliberately replaced.
-- \* Setup tasks share `TerminalAssignments`' pure account/identity/store reading, preserving their distinct strictness.
+- \* Setup, receipt and wallet tasks share `TerminalAssignments`, which alone queries `TerminalDetailsApi.terminals`
+  and verifies the listing environment while preserving each task's distinct strictness.
   `SetupDiscovery` returns immutable operation outcomes, not ambient problem/key-missing getters.
 - \* Destination requirements/capabilities belong to adapter companions in `Destinations.kt`; `DestinationRules.of`
   selects rules. Adapters open transports; only `Destination.connect` constructs clients, only the gateway opens
@@ -62,11 +66,12 @@ Starred rules below are enforced by `ArchitectureTest`, `SettingsArchitectureTes
   Only `CaptureResult.toState(CaptureStep, …)` creates capture-action outcomes outside the capture module.
 - \* Only `ReceiptLinesJson` converts Adyen receipt fields; only `PrintRenderer` builds print jobs from document segments.
 - \* Only the container creates/completes one `SaleSession` per kind. Start through its atomic cart/form/revision
-  snapshot; only the session reads revisions. Stale starts cannot pay or clear newer work; terminal/link completion
-  share the same wiring.
-- \* Only `payment/PricingChanges` owns the pricing journal, confirmation/recovery, absolute catalog targets and session
-  repricing. Settings only presents confirmation. Block checkout until repricing finishes; replay must be idempotent,
-  including session repricing after failed settings writes. Serialize operations and reject stale previews.
+  snapshot, including scanned-wallet starts and offered-wallet checkout assembly; only the session reads revisions or
+  copies `Checkout`. Stale starts cannot pay or clear newer work; terminal/link completion share the same wiring.
+- \* Only `payment/PricingChanges` owns the pricing journal, confirmation/recovery, absolute catalog targets, session
+  repricing and single-pass `SettingsEdit` evaluation. Settings only presents confirmation. Block checkout until
+  repricing finishes; replay must be idempotent, including session repricing after failed settings writes. Serialize
+  operations and reject stale previews.
 - \* Settings ranges live on section companions; only `SettingsRepository` and `AppSettings` normalize. Do not clamp
   downstream. Constructor defaults are current; installation applies country/language defaults. `TerminalSettings`
   owns destination/environment choices and their coupled fields; destination companions may copy only learned facts.

@@ -16,7 +16,7 @@ import app.minimpos.terminal.transport.DiscoveredKey
 import app.minimpos.terminal.transport.SharedKeyLookup
 import app.minimpos.terminal.transport.TerminalDetails
 import app.minimpos.terminal.transport.TerminalDetailsApi
-import app.minimpos.terminal.transport.TerminalListing
+import app.minimpos.terminal.transport.TerminalEnvironment
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -178,41 +178,31 @@ class SetupImport internal constructor(
     ): SetupImportOutcome? {
         val unlocked = candidate(prepared)
         if (!unlocked.setup.discoversTerminals) return null
+        val setup = unlocked.setup
+        val environment = checkNotNull(setup.environment)
         val management = checks.terminals(checkNotNull(unlocked.apiKey))
-        return when (val result = management.terminals(checkNotNull(unlocked.setup.environment), unlocked.setup.poiId ?: selected)) {
-            is TerminalListing.Failed -> SetupImportOutcome.Failed(Failure.Remote(result.fault))
-            is TerminalListing.Listed -> chooseTerminal(prepared, unlocked.setup, management, result, selected)
-        }
-    }
-
-    private suspend fun chooseTerminal(
-        prepared: PreparedTransfer,
-        setup: TerminalSetup,
-        management: TerminalDetailsApi,
-        listing: TerminalListing.Listed,
-        selected: String?,
-    ): SetupImportOutcome? {
         return when (
             val assignment =
                 TerminalAssignments.discover(
-                    listing.terminals,
+                    management,
+                    environment,
                     setup.poiId ?: selected,
                     prepared.settings.terminal.merchantAccount,
                 )
         ) {
-            is TerminalAssignment.Choices -> {
+            is DiscoveredAssignment.Choices -> {
                 SetupImportOutcome.Terminals(assignment.ids)
             }
 
-            is TerminalAssignment.Blocked -> {
-                SetupImportOutcome.Failed(assignment.problem)
+            is DiscoveredAssignment.Failed -> {
+                SetupImportOutcome.Failed(assignment.failure)
             }
 
-            is TerminalAssignment.Assigned -> {
+            is DiscoveredAssignment.Assigned -> {
                 val terminal = assignment.terminal
                 applyAssignment(prepared, setup, terminal)
                 if (prepared.received.automatic && setup.needsSharedKey) {
-                    when (val found = management.sharedKey(terminal.id, listing.environment)) {
+                    when (val found = management.sharedKey(terminal.id, environment)) {
                         is SharedKeyLookup.Found -> applyKey(prepared, found.key)
                         SharedKeyLookup.Missing -> missingKey = true
                         is SharedKeyLookup.Failed -> return SetupImportOutcome.Failed(Failure.Remote(found.fault))

@@ -57,7 +57,7 @@ existing spelling (`preAuthorisation`, `SaleKind.PRE_AUTHORISATION`, `authorised
 | Destination rules | Pure requirements/capabilities: setup, printer, secrets, recovery, timeouts, abort/diagnosis. | `DestinationRules`, adapter companions in `Destinations.kt` |
 | Terminal setup | One resolved reading of destination, identity, environment, API setup and printer. | `TerminalSetup.resolve`, `TerminalSetupSource` |
 | Setup discovery | Read-only terminal assignment and optional shared-key lookup; immutable operation outcomes distinguish unavailable discovery, failures and manual completion. Terminal access and the main credential's required Management role are verified for every real setup. | `terminal/SetupDiscovery`, `SetupAccess` |
-| Terminal assignment | Pure reading of listed POIIDs, merchant accounts and stores; discovery may fill a blank account, access requires an exact account, and shared-key creation also requires an unchanged store and unique identity. | `terminal/TerminalAssignments` |
+| Terminal assignment | Pure reading and verified Management query of listed POIIDs, merchant accounts and stores; discovery may fill a blank account, access requires an exact account, and shared-key creation also requires an unchanged store and unique identity. | `terminal/TerminalAssignments` |
 | Verified setup | Local fingerprint of checked connection fields and encrypted payment secrets; changed facts invalidate it, not a process restart. | `TerminalSetupSource`, `AppSettings.verifiedSetup` |
 | Verified setup import | Authenticated QR candidate checked before activation; encrypted commit journal resumes interrupted saves, with an atomic catalog import receipt. | `terminal/SetupImport`, `data/transfer/SetupTransfer` |
 | Unlocked setup | Resolved setup with required secrets decrypted once. | `UnlockedSetup` |
@@ -103,7 +103,7 @@ existing spelling (`preAuthorisation`, `SaleKind.PRE_AUTHORISATION`, `authorised
 | App language | Device-local display-language override, empty to follow Android; changes current UI and receipt labels without changing pricing or saved merchant text. | `AppSettings.languageTag`, `MiniMposApp` |
 | Transfer code | Separate 12-character code for decrypting transferred secrets. | `TransferSeal` |
 | Setup helper | Offline browser tool: Automatic transfers credentials for physical-terminal lookup; Manual transfers complete connection details. Every transfer requires its code and verification before activation. Tap to Pay requires explicit registration and a supplied shared key. Verified setup returns Home; saved details stay editable. Receipt text/business lookup and SMTP settings are opt-in; receipt lookup can be selected per field. | `docs/setup.html`, `ConnectionSetup` |
-| Secrets | Shared-key passphrase, API keys, SMTP password and PIN verifiers; encrypted and never logged. | `SecretStore` |
+| Secrets | Shared-key passphrase, API keys, SMTP password, PIN verifiers and typed encrypted recovery journals; encrypted and never logged. | `SecretStore`, `EncryptedJournal` |
 | Repository tooling | Kotlin/JVM release integrity and signing-property parsing, plus a Bash runner with private build logs; not device application code. | `:tooling`, `scripts/gradle` |
 | Admin PIN | Access to configuration and products, separate from financial approval. | `pinManager`, `sessionLock` |
 | Manager approval | Optional financial-action access, configured only after admin PIN; rechecked before sending. | `managerPin`, `managerLock`, Manager PIN |

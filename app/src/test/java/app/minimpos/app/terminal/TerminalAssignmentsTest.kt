@@ -1,8 +1,15 @@
 package app.minimpos.app.terminal
 
+import app.minimpos.app.await
+import app.minimpos.app.data.db.Failure
 import app.minimpos.app.data.db.SetupProblem
 import app.minimpos.app.data.settings.TerminalSettings
+import app.minimpos.terminal.transport.Fault
+import app.minimpos.terminal.transport.SharedKeyLookup
 import app.minimpos.terminal.transport.TerminalDetails
+import app.minimpos.terminal.transport.TerminalDetailsApi
+import app.minimpos.terminal.transport.TerminalEnvironment
+import app.minimpos.terminal.transport.TerminalListing
 import com.google.common.truth.Truth.assertThat
 import org.junit.Test
 
@@ -83,4 +90,32 @@ class TerminalAssignmentsTest {
         assertThat(TerminalAssignments.offered(listOf(other, terminal), null)).containsExactly(other, terminal).inOrder()
         assertThat(TerminalAssignments.offered(listOf(terminal), "missing")).isEmpty()
     }
+
+    @Test
+    fun `remote lookups reject mismatched listing environments across all assignment queries`() =
+        await {
+            val wrongEnvironment =
+                object : TerminalDetailsApi {
+                    override suspend fun terminals(
+                        environment: TerminalEnvironment,
+                        id: String?,
+                    ): TerminalListing = TerminalListing.Listed(listOf(terminal), TerminalEnvironment.LIVE)
+
+                    override suspend fun sharedKey(
+                        id: String,
+                        environment: TerminalEnvironment,
+                    ) = SharedKeyLookup.Missing
+                }
+            val unreadable = Failure.Remote(Fault.UnreadableReply())
+            assertThat(TerminalAssignments.listOffered(wrongEnvironment, TerminalEnvironment.TEST, false, null))
+                .isEqualTo(DiscoveredTerminals.Failed(unreadable))
+            assertThat(TerminalAssignments.discover(wrongEnvironment, TerminalEnvironment.TEST, terminal.id, "Merchant"))
+                .isEqualTo(DiscoveredAssignment.Failed(unreadable))
+            assertThat(TerminalAssignments.verifyAccess(wrongEnvironment, TerminalEnvironment.TEST, terminal.id, "Merchant"))
+                .isEqualTo(unreadable)
+            assertThat(TerminalAssignments.verifyUnchanged(wrongEnvironment, TerminalEnvironment.TEST, terminal.id, settings))
+                .isEqualTo(unreadable)
+            assertThat(TerminalAssignments.assigned(wrongEnvironment, TerminalEnvironment.TEST, terminal.id, "Merchant"))
+                .isEqualTo(AssignedTerminal.Failed(Fault.UnreadableReply()))
+        }
 }

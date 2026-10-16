@@ -15,6 +15,7 @@ import app.minimpos.app.FakeTerminal
 import app.minimpos.app.TestEnvironment
 import app.minimpos.app.await
 import app.minimpos.app.awaitCondition
+import app.minimpos.app.data.security.RecoveryJournal
 import app.minimpos.app.data.security.Secret
 import app.minimpos.app.feature.settings.SettingsSectionScreen
 import app.minimpos.app.ui.components.LocalAppContainer
@@ -135,7 +136,7 @@ class OnTerminalDiscoveryTest {
             .assertTextContains("TEST", substring = true)
         compose.onNodeWithTag("confirmSharedKey").performClick()
         compose.awaitCondition("Created key saved and checked") {
-            creations == 1 && await { container.secrets.keyCreationExists.first() } == false
+            creations == 1 && await { container.secrets.hasJournal(RecoveryJournal.KEY_CREATION).first() } == false
         }
         assertThat(await { container.secrets.get(Secret.TERMINAL_PASSPHRASE) }).isEqualTo(checkNotNull(remoteKey).passphrase)
         assertThat(queries.toSet()).containsExactly(POI_ID)

@@ -4,10 +4,13 @@ import app.minimpos.app.data.db.ProductEntity
 import app.minimpos.app.data.db.SaleKind
 import app.minimpos.app.data.db.TaxRateEntity
 import app.minimpos.app.data.settings.AppSettings
+import app.minimpos.app.terminal.WalletAvailability
 import app.minimpos.core.cart.AppliedTax
 import app.minimpos.core.cart.Cart
 import app.minimpos.core.cart.CartProduct
 import app.minimpos.core.money.CurrencySpec
+import app.minimpos.core.payment.ScanWallet
+import app.minimpos.terminal.client.ScannedPayment
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -35,6 +38,21 @@ data class CheckoutForm(
     val email: String = "",
     val tokenize: Boolean? = null,
     val tipOnReceipt: Boolean? = null,
+)
+
+/**
+ * Scanned-wallet verification facts for [SaleSession.paymentStart].
+ *
+ * @property actual Current checkout snapshot to compare against the prepared one.
+ * @property wallet Chosen wallet, which must still be offered in [actual].
+ * @property code Shopper-presented numeric payment code.
+ * @property origin Verified wallet availability (context and setup identity) from preparation.
+ */
+class WalletScanStart(
+    val actual: Checkout,
+    val wallet: ScanWallet,
+    val code: String,
+    val origin: WalletAvailability,
 )
 
 /**
@@ -75,17 +93,19 @@ class SaleSession(
 
     /**
      * The checkout of this session's cart and form with [settings], charged in the [currency] the settings give,
-     * offering tipping on the receipt while [printerAvailable] and payment links while [linksAvailable]; updated
-     * whenever any of them changes.
+     * offering tipping on the receipt while [printerAvailable], payment links while [linksAvailable] and scanned
+     * wallets from [wallets]; updated whenever any of them changes.
      */
     fun checkout(
         settings: Flow<AppSettings>,
         printerAvailable: Flow<Boolean>,
         linksAvailable: Flow<Boolean> = flowOf(false),
+        wallets: Flow<WalletAvailability> = flowOf(WalletAvailability()),
         currency: (AppSettings) -> CurrencySpec,
     ): Flow<Checkout> =
-        combine(snapshot, settings, printerAvailable, linksAvailable) { snapshot, appSettings, printer, links ->
+        combine(snapshot, settings, printerAvailable, linksAvailable, wallets) { snapshot, appSettings, printer, links, availableWallets ->
             val payment = appSettings.payment
+            val resolvedCurrency = currency(appSettings)
             Checkout(
                 snapshot.form,
                 payment,
@@ -96,24 +116,38 @@ class SaleSession(
                         Cart()
                     }
                 ).totals(payment.taxMode, payment.chargeTax),
-                currency(appSettings),
+                resolvedCurrency,
                 kind,
                 printer,
                 links,
                 snapshot.revision,
+                availableWallets.offered(resolvedCurrency.code),
             )
         }
 
-    /** Builds a payment from the displayed [checkout] at [now] in [zone]; null when not ready or an edit made it stale. */
+    /**
+     * Builds a payment from the displayed [checkout] at [now] in [zone] (for [walletScan], only when [checkout] and
+     * the offered wallet still match [WalletScanStart.actual]); null when not ready or an edit made it stale.
+     */
     fun paymentStart(
         checkout: Checkout,
         now: Instant,
         zone: ZoneId,
-        scannedWallet: Boolean = false,
+        walletScan: WalletScanStart? = null,
     ): PaymentStart? =
         synchronized(this) {
-            checkout.takeIf { it.kind == kind && it.sessionRevision == revision }?.let {
-                if (scannedWallet) it.walletStart(now, zone) else it.paymentStart(now, zone)
+            val current = checkout.takeIf { it.kind == kind && it.sessionRevision == revision } ?: return null
+            if (walletScan == null) {
+                current.paymentStart(now, zone)
+            } else {
+                current
+                    .takeIf { it.matchesWalletCheckout(walletScan.actual, walletScan.wallet) }
+                    ?.walletStart(now, zone)
+                    ?.withScanned(
+                        ScannedPayment(walletScan.wallet.brand, walletScan.code),
+                        checkNotNull(walletScan.origin.context),
+                        checkNotNull(walletScan.origin.identity),
+                    )
             }
         }
 

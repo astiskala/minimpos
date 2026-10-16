@@ -24,6 +24,7 @@ import app.minimpos.app.R
 import app.minimpos.app.TestEnvironment
 import app.minimpos.app.await
 import app.minimpos.app.awaitCondition
+import app.minimpos.app.data.security.RecoveryJournal
 import app.minimpos.app.data.security.Secret
 import app.minimpos.app.data.security.TransferSeal
 import app.minimpos.app.feature.home.HomeScreen
@@ -351,7 +352,8 @@ class AutomaticSetupUiTest {
         assertThat(creations).isEqualTo(0)
         assertThat(
             await {
-                env.container.secrets.keyCreationExists
+                env.container.secrets
+                    .hasJournal(RecoveryJournal.KEY_CREATION)
                     .first()
             },
         ).isFalse()
@@ -392,7 +394,8 @@ class AutomaticSetupUiTest {
         assertThat(await { env.container.secrets.get(Secret.ADYEN_API_KEY) }).isNull()
         assertThat(
             await {
-                env.container.secrets.keyCreationExists
+                env.container.secrets
+                    .hasJournal(RecoveryJournal.KEY_CREATION)
                     .first()
             },
         ).isTrue()
@@ -402,7 +405,8 @@ class AutomaticSetupUiTest {
         assertThat(creations).isEqualTo(1)
         assertThat(
             await {
-                env.container.secrets.keyCreationExists
+                env.container.secrets
+                    .hasJournal(RecoveryJournal.KEY_CREATION)
                     .first()
             },
         ).isFalse()

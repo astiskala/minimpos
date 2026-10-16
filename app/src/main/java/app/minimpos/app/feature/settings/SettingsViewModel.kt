@@ -146,7 +146,7 @@ class SettingsViewModel(
     sampleReceipt: (AppSettings) -> ReceiptDocument,
     private val managerPins: PinManager = PinManager(secrets, verifierSecret = Secret.MANAGER_PIN_VERIFIER),
     /** Confirmed history deletion on LIVE/TEST/simulator changes. */
-    historySwitches: HistorySwitches? = null,
+    private val historySwitches: HistorySwitches? = null,
 ) : ViewModel() {
     /** The screen state, updated whenever settings, secrets or the catalogue change. */
     val state: StateFlow<SettingsUiState> =
@@ -181,10 +181,10 @@ class SettingsViewModel(
     internal val businessImport = ReceiptBusinessImports(this, checks.businessDetails, pricingChanges, state)
 
     /** Explicit environment-change confirmation, separate from pricing confirmation. */
-    internal val environment = HistorySwitchConfirmation(this, historySwitches, pricingChanges.changes)
+    internal val environment = HistorySwitchConfirmation(this, historySwitches)
 
     /** Stores ordinary settings; pricing and history-destructive environment changes require confirmation. */
-    fun update(transform: (AppSettings) -> AppSettings) = environment.update(transform) { pricingConfirmation.update(transform) }
+    fun update(transform: (AppSettings) -> AppSettings) = pricingConfirmation.edit(transform, historySwitches, environment)
 
     /** Preview state and confirmation actions for pricing changes. */
     internal val pricing = pricingConfirmation

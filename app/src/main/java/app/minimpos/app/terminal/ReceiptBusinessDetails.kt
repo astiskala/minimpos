@@ -11,7 +11,6 @@ import app.minimpos.terminal.transport.StoreDetailsApi
 import app.minimpos.terminal.transport.StoreLookup
 import app.minimpos.terminal.transport.TerminalDetailsApi
 import app.minimpos.terminal.transport.TerminalEnvironment
-import app.minimpos.terminal.transport.TerminalListing
 
 /**
  * Proposed receipt fields from the assigned store or merchant account; existing merchant text is never replaced by
@@ -105,24 +104,18 @@ class ReceiptBusinessDetails(
     private suspend fun assignedStore(unlocked: UnlockedSetup): StoreScope {
         val setup = unlocked.setup
         if (!setup.discoversTerminals || setup.poiId == null) return StoreScope.Assigned(setup.settings.terminal.storeId)
-        return when (val listing = terminals(checkNotNull(unlocked.apiKey)).terminals(checkNotNull(setup.environment), setup.poiId)) {
-            is TerminalListing.Failed -> {
-                StoreScope.Blocked(Failure.Remote(listing.fault))
-            }
-
-            is TerminalListing.Listed -> {
-                when (
-                    val assignment =
-                        TerminalAssignments.receipt(
-                            listing.terminals,
-                            setup.poiId,
-                            setup.settings.terminal.merchantAccount,
-                        )
-                ) {
-                    is TerminalAssignment.Assigned -> StoreScope.Assigned(assignment.terminal.storeId)
-                    is TerminalAssignment.Blocked -> StoreScope.Blocked(Failure.NotSetUp(assignment.problem))
-                }
-            }
+        return when (
+            val assigned =
+                TerminalAssignments.assigned(
+                    terminals(checkNotNull(unlocked.apiKey)),
+                    checkNotNull(setup.environment),
+                    setup.poiId,
+                    setup.settings.terminal.merchantAccount,
+                )
+        ) {
+            is AssignedTerminal.Found -> StoreScope.Assigned(assigned.terminal.storeId)
+            is AssignedTerminal.Blocked -> StoreScope.Blocked(Failure.NotSetUp(assigned.problem))
+            is AssignedTerminal.Failed -> StoreScope.Blocked(Failure.Remote(assigned.fault))
         }
     }
 

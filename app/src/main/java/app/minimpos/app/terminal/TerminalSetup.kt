@@ -1,10 +1,10 @@
 package app.minimpos.app.terminal
 
 import app.minimpos.app.data.db.SetupProblem
+import app.minimpos.app.data.security.EncryptedJournal
+import app.minimpos.app.data.security.RecoveryJournal
 import app.minimpos.app.data.security.Secret
 import app.minimpos.app.data.security.SecretStore
-import app.minimpos.app.data.security.SharedKeyGenerator
-import app.minimpos.app.data.security.SharedKeyMaterial
 import app.minimpos.app.data.settings.AppSettings
 import app.minimpos.app.data.settings.PrinterMode
 import app.minimpos.app.data.settings.SettingsRepository
@@ -18,6 +18,7 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.update
+import kotlinx.serialization.KSerializer
 
 /**
  * Where payments go and what is still missing, resolved in one place ([resolve]) from the stored settings, which
@@ -397,36 +398,16 @@ class TerminalSetupSource(
         values: Map<Secret, String>,
     ): UnlockedSetup = TerminalSetup.resolve(current, values.keys, device, verified = true, pendingImport = false).unlock(values)
 
-    internal val keyRecovery = KeyCreationRecovery()
+    internal fun candidateBoarding(
+        current: AppSettings,
+        values: Map<Secret, String>,
+    ): BoardingSetup = TerminalSetup.boarding(current, values.keys, device, values[Secret.PAYMENTS_APP_API_KEY])
 
-    internal inner class KeyCreationRecovery {
-        private val generator = SharedKeyGenerator()
-
-        fun generate(): SharedKeyMaterial = generator.generate()
-
-        fun identity(key: String): String = generator.identity(key)
-
-        suspend fun read(): String? = secrets.readKeyCreation()
-
-        suspend fun exists(): Boolean = secrets.keyCreationExists.first()
-
-        suspend fun write(value: String?) = secrets.writeKeyCreation(value)
-    }
-
-    internal val registrations = RegistrationRecovery()
-
-    internal inner class RegistrationRecovery {
-        fun access(
-            current: AppSettings,
-            values: Map<Secret, String>,
-        ): BoardingSetup = TerminalSetup.boarding(current, values.keys, device, values[Secret.PAYMENTS_APP_API_KEY])
-
-        suspend fun read(): String? = secrets.readBoarding()
-
-        suspend fun exists(): Boolean = secrets.hasBoarding()
-
-        suspend fun write(value: String?) = secrets.writeBoarding(value)
-    }
+    internal fun <T> journal(
+        kind: RecoveryJournal,
+        serializer: KSerializer<T>,
+        validate: (T) -> Boolean = { true },
+    ): EncryptedJournal<T> = secrets.journal(kind, serializer, validate = validate)
 
     internal fun learnedCandidate(detected: DetectedEnvironment): AppSettings =
         detected.setup.settings.copy(terminal = detected.setup.learnedEnvironment(detected))

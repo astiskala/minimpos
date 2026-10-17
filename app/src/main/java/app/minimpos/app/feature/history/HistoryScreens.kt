@@ -801,7 +801,8 @@ internal fun ReconciliationCard(
 ) {
     val locale = currentLocale()
     val colors = LocalStatusColors.current
-    Column(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp).testTag("reconciliationCard")) {
+    // The Reconciliation screen already pads its content, so the card lines up with its buttons.
+    Column(Modifier.fillMaxWidth().padding(top = 12.dp).testTag("reconciliationCard")) {
         Card {
             Text(
                 text =

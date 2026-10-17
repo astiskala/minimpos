@@ -1,5 +1,6 @@
 package app.minimpos.terminal.simulator
 
+import app.minimpos.terminal.checkout.StoredCard
 import app.minimpos.terminal.client.CardEntryOverride
 import app.minimpos.terminal.client.OfflineProcessingMode
 import app.minimpos.terminal.client.PrintJob
@@ -164,6 +165,13 @@ class TerminalSimulator(
 
     /** Adyen's Checkout API for the payments this simulator takes, answering from what happened to them. */
     val modifications: SimulatedModifications = SimulatedModifications(random, ledger)
+
+    /**
+     * Simulated saved cards: the ones the app knows were saved under a shopper reference ([cards]), charged with this
+     * simulator's outcome and remembered in the ledger [modifications] shares.
+     */
+    fun savedCards(cards: suspend (shopperReference: String) -> List<StoredCard>): SimulatedSavedCards =
+        SimulatedSavedCards(random, ledger, cards) { config().outcome }
 
     override suspend fun send(
         request: TerminalAPIRequest,

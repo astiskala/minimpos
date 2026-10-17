@@ -1,8 +1,11 @@
 package app.minimpos.terminal
 
+import app.minimpos.terminal.checkout.CardChargeRequest
+import app.minimpos.terminal.checkout.CardChargeResult
 import app.minimpos.terminal.checkout.CheckoutCredentials
 import app.minimpos.terminal.checkout.CheckoutModifications
 import app.minimpos.terminal.checkout.CheckoutPaymentLinks
+import app.minimpos.terminal.checkout.CheckoutSavedCards
 import app.minimpos.terminal.checkout.ModificationAmount
 import app.minimpos.terminal.checkout.ModificationResult
 import app.minimpos.terminal.checkout.PaymentLinkRequest
@@ -31,6 +34,7 @@ class MalformedAdyenReplyTest {
     private val credentials = CheckoutCredentials("secret-api-key", "HarbourCoffeeCOM", TerminalEnvironment.TEST)
     private val modifications = CheckoutModifications(credentials, baseUrl = server.url("/v72/"))
     private val links = CheckoutPaymentLinks(credentials, baseUrl = server.url("/v72/"))
+    private val savedCards = CheckoutSavedCards(credentials, baseUrl = server.url("/v72/"))
     private val management = AdyenTerminalDetails("secret", baseUrl = { server.url("/${it.name.lowercase()}/v3/") })
     private val amount = ModificationAmount("AUD", 1_200)
 
@@ -89,6 +93,34 @@ class MalformedAdyenReplyTest {
                 { modifications.updateAmount("PSP1", amount, "ref", "BQABAQfirst", "adjust-key") },
             ) { _, result -> result.mayHaveHappened() }
         assertWithMessage("Damaged adjustment answers").that(wrong).isEmpty()
+    }
+
+    @Test
+    fun `a damaged refund answer is received or may have taken effect, never refused or not sent`() {
+        val wrong =
+            wrongResults(
+                """{"pspReference":"REF1","status":"received","paymentPspReference":"PSP1"}""",
+                201,
+                { modifications.refund("PSP1", amount, "ref", "refund-key") },
+            ) { _, result -> result.mayHaveHappened() }
+        assertWithMessage("Damaged refund answers").that(wrong).isEmpty()
+    }
+
+    @Test
+    fun `a damaged saved-card charge is authorised or may have charged, never refused or not sent`() {
+        val request = CardChargeRequest("TOKEN1", "CUST-001", amount, "ref", "UnscheduledCardOnFile")
+        val wrong =
+            wrongResults(
+                """
+                {"pspReference":"PSP9","resultCode":"Authorised","merchantReference":"ref",
+                "paymentMethod":{"brand":"visa","type":"scheme"},"additionalData":{"cardSummary":"1111","authCode":"123456"}}
+                """.trimIndent(),
+                200,
+                { savedCards.charge(request, "card-key") },
+            ) { _, result ->
+                result is CardChargeResult.Authorised || (result is CardChargeResult.Failed && result.fault.mayHaveTakenEffect)
+            }
+        assertWithMessage("Damaged saved-card charges").that(wrong).isEmpty()
     }
 
     @Test

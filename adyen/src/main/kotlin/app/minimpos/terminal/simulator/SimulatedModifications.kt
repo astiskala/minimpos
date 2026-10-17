@@ -45,6 +45,14 @@ internal class SimulatedLedger {
             State.HELD, null -> null
         }
 
+    /** How Adyen would reject a refund of [psp]; null when it can be refunded (it charged, was captured, or is unknown). */
+    fun refundRefusal(psp: String): Fault? =
+        when (payments[psp]) {
+            State.HELD -> rejected("The payment was not captured (simulated)")
+            State.CANCELLED -> rejected("The payment was cancelled (simulated)")
+            State.CHARGED, State.CAPTURED, null -> null
+        }
+
     /** Adyen's rejection of a modification the payment no longer allows, with its simulated words. */
     private fun rejected(said: String) = Fault.AdyenRejected(HTTP_UNPROCESSABLE, null, ExternalText(said))
 
@@ -99,6 +107,16 @@ class SimulatedModifications internal constructor(
             else -> ModificationResult.Received(pspReference())
         }
     }
+
+    /** Accepts the refund of a payment that charged; one that only held its amount is refused, as Adyen refuses it. */
+    override suspend fun refund(
+        paymentPspReference: String,
+        amount: ModificationAmount,
+        reference: String,
+        idempotencyKey: String,
+    ): ModificationResult =
+        ledger.refundRefusal(paymentPspReference)?.let { ModificationResult.Failed(it) }
+            ?: ModificationResult.Received(pspReference())
 
     override suspend fun verify(): Fault? = null
 

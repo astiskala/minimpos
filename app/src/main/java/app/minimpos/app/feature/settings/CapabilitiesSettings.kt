@@ -46,7 +46,7 @@ internal fun ColumnScope.CapabilitiesSection(
     currency: String,
     events: CapabilitiesEvents,
 ) {
-    SettingNote(stringResource(R.string.capabilities_intro))
+    SettingIntro(stringResource(R.string.capabilities_intro))
     capabilities.problem?.let { SettingNote(it.text()) }
     capabilities.failure?.let { SettingNote(it.text()) }
     if (capabilities.discoversTerminals || capabilities.simulated) {

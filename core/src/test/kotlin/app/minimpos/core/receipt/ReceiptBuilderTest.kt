@@ -289,6 +289,24 @@ class ReceiptBuilderTest {
     }
 
     @Test
+    fun `a note the receipt already carries is printed once while Adyen's lines stay verbatim`() {
+        val warning = Text("PAYMENT NOT COMPLETED", Align.CENTER, TextStyle.BOLD)
+        val declined = builder().sale(sale(approved = false).copy(standingNote = "PAYMENT NOT COMPLETED", cardReceipt = emptyList()))
+        assertThat(declined.elements.count { it == warning }).isEqualTo(1)
+        assertThat(declined.elements.zipWithNext().none { (a, b) -> a is Text && a == b }).isTrue()
+        val adyenSaysSo =
+            builder().sale(sale(approved = false).copy(cardReceipt = listOf(CardReceiptLine(name = "PAYMENT NOT COMPLETED", bold = true))))
+        assertThat(adyenSaysSo.elements.count { it == warning }).isEqualTo(2)
+        val demo =
+            ReceiptBuilder(branding, ReceiptOptions(), ReceiptLabels(paidOnline = "Simulation only."), money)
+                .sale(sale().copy(cardReceipt = emptyList(), refundQr = null, paidOnline = true, notice = "Simulation only."))
+        assertThat(demo.elements.first()).isEqualTo(Text("Simulation only.", Align.CENTER, TextStyle.BOLD))
+        assertThat(demo.elements.filterIsInstance<Text>().count { it.text == "Simulation only." }).isEqualTo(1)
+        val saved = builder().sale(sale(cardSaved = true).copy(standingNote = "Card saved for future payments"))
+        assertThat(saved.elements.filterIsInstance<Text>().count { it.text == "Card saved for future payments" }).isEqualTo(1)
+    }
+
+    @Test
     fun `options hide references, breakdown and QR`() {
         val doc =
             builder(
@@ -365,7 +383,10 @@ class ReceiptBuilderTest {
         val fullEmptyItems =
             ReceiptBuilder(ReceiptBranding(), ReceiptOptions(), ReceiptLabels(refundTitle = ""), money)
                 .refund(refund.copy(items = emptyList(), full = true))
-        assertThat(fullEmptyItems.elements).contains(Text(""))
+        assertThat(fullEmptyItems.elements).contains(Text("Full refund"))
+        // The body no longer repeats the title of a full refund made without its items.
+        val titled = builder().refund(refund.copy(items = emptyList(), full = true))
+        assertThat(titled.elements.filterIsInstance<Text>().count { it.text == "REFUND" }).isEqualTo(1)
         val brandedUntitledRefund =
             ReceiptBuilder(branding, ReceiptOptions(), ReceiptLabels(refundTitle = ""), money)
                 .refund(refund.copy(items = emptyList(), full = true))

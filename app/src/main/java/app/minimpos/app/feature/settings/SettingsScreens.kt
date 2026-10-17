@@ -738,9 +738,10 @@ private fun ColumnScope.TerminalSection(
     }
     val selectMode: (TerminalMode) -> Unit = { choice ->
         manualSetup = true
-        // The device's own default is stored as Automatic, so the app keeps following it. Another destination has its
-        // own environment, selected or read from the device again.
-        events.onUpdate { it.copy(terminal = it.terminal.selectDestination(choice, terminalStatus.automaticMode)) }
+        // The device's own default is stored as Automatic, so the app keeps following it. The selected environment stays
+        // with the saved API key and merchant account it belongs to; otherwise it is selected or read again.
+        val apiKeySaved = Secret.ADYEN_API_KEY in state.secrets
+        events.onUpdate { it.copy(terminal = it.terminal.selectDestination(choice, terminalStatus.automaticMode, apiKeySaved)) }
     }
     TerminalModeChoice(mode, status.onTerminal, selectMode)
     if (mode == TerminalMode.SIMULATOR) {
@@ -984,7 +985,7 @@ private fun SimulatorSection(
     val simulator = state.settings.simulator
 
     fun update(transform: (SimulatorSettings) -> SimulatorSettings) = events.onUpdate { it.copy(simulator = transform(it.simulator)) }
-    SettingNote(stringResource(R.string.settings_simulator_hint))
+    SettingIntro(stringResource(R.string.settings_simulator_hint))
     SettingChoice(
         title = stringResource(R.string.settings_sim_outcome),
         options = SimulatedOutcome.entries.map { it to simulatorOutcomeLabel(it) },
@@ -1036,7 +1037,7 @@ private fun SecuritySection(
     events: SettingsEvents,
     onSetPin: (Boolean) -> Unit,
 ) {
-    SettingNote(stringResource(R.string.settings_pin_hint))
+    SettingIntro(stringResource(R.string.settings_pin_hint))
     SettingActions {
         SecondaryButton(
             stringResource(if (state.pinSet) R.string.settings_change_pin else R.string.settings_set_pin),

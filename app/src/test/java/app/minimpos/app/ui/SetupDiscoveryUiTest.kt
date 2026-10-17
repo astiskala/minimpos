@@ -123,6 +123,8 @@ class SetupDiscoveryUiTest {
 
     private fun assertCloudSteps() {
         chooseMode(TerminalMode.CLOUD)
+        // The saved API key and merchant account came along, so their environment does too.
+        assertThat(env.container.settingsState.value.terminal.environment).isEqualTo(TerminalEnvironment.TEST)
         waitForTag("environment_LIVE")
         compose.onNodeWithTag("apiKey").assertExists()
         compose.onNodeWithTag("environment_LIVE").performScrollTo().performClick()

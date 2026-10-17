@@ -88,6 +88,7 @@ data class ReceiptOptions(
  * @property originalReference the label of the refunded sale's reference on refund receipts.
  * @property refundTotal the label of the refunded amount.
  * @property partialRefund the text shown instead of items for a refund of an amount rather than of items.
+ * @property fullRefund the text shown instead of items for a refund of the whole remaining amount without its items.
  * @property cardSaved the note printed when the shopper's card was stored for future payments.
  * @property notCompleted the warning on receipts of payments that were not approved.
  * @property preAuthTitle the heading of pre-authorisation receipts, instead of [ReceiptBranding.title].
@@ -130,6 +131,7 @@ data class ReceiptLabels(
     val originalReference: String = "Original sale",
     val refundTotal: String = "REFUND TOTAL",
     val partialRefund: String = "Partial refund",
+    val fullRefund: String = "Full refund",
     val cardSaved: String = "Card saved for future payments",
     val notCompleted: String = "PAYMENT NOT COMPLETED",
     val preAuthTitle: String = "PRE-AUTHORIZATION",
@@ -240,6 +242,7 @@ enum class ReceiptCopy {
  * @property paidOnline whether the sale was paid through a payment link, which adds [ReceiptLabels.paidOnline].
  * @property standingNote Current localized payment standing; null for a normal charged sale.
  * @property holdCancelled The original amount is no longer held.
+ * @property notice A warning printed first, in bold, such as a demo receipt's note that no money moved; null for none.
  */
 data class SaleReceipt(
     val reference: String,
@@ -263,6 +266,7 @@ data class SaleReceipt(
     val standingNote: String? = null,
     /** The hold was canceled, so its original amount is no longer shown as held. */
     val holdCancelled: Boolean = false,
+    val notice: String? = null,
 )
 
 /**

@@ -235,15 +235,7 @@ fun ReceiptPreview(
                 }
 
                 ReceiptElement.Divider -> {
-                    Canvas(Modifier.fillMaxWidth().height(16.dp).testTag("receiptDivider")) {
-                        drawLine(
-                            Color.Black,
-                            Offset(0f, size.height / 2),
-                            Offset(size.width, size.height / 2),
-                            strokeWidth = 1.dp.toPx(),
-                            pathEffect = PathEffect.dashPathEffect(floatArrayOf(4.dp.toPx(), 4.dp.toPx())),
-                        )
-                    }
+                    ReceiptRule()
                 }
 
                 ReceiptElement.Blank -> {
@@ -265,7 +257,33 @@ fun ReceiptPreview(
     }
 }
 
-/** What the simulated printer received, shown as the slip a real terminal would print. */
+/** A dashed line across the whole width of the slip, as a divider prints on paper sized to the line width. */
+@Composable
+private fun ReceiptRule() {
+    Canvas(Modifier.fillMaxWidth().height(16.dp).testTag("receiptDivider")) {
+        drawLine(
+            Color.Black,
+            Offset(0f, size.height / 2),
+            Offset(size.width, size.height / 2),
+            strokeWidth = 1.dp.toPx(),
+            pathEffect = PathEffect.dashPathEffect(floatArrayOf(4.dp.toPx(), 4.dp.toPx())),
+        )
+    }
+}
+
+/**
+ * Whether this printed line is a divider: dashes only, which the receipt's divider prints as many of as the paper has
+ * columns, so the preview draws it across the whole slip like the paper would.
+ */
+private val PrintLine.Text.isRule: Boolean get() = text.length >= MIN_RULE_DASHES && text.all { it == '-' }
+
+/** The fewest dashes a line needs to count as a divider rather than text. */
+private const val MIN_RULE_DASHES = 3
+
+/**
+ * What the simulated printer received, shown as the slip a real terminal would print; a line of dashes spans the slip
+ * exactly, as it does on paper whose width matches the configured characters per line.
+ */
 @Composable
 fun PrintJobsPreview(
     jobs: List<PrintJob>,
@@ -296,7 +314,7 @@ private fun PrintedLine(line: PrintLine) {
         }
 
         is PrintLine.Text -> {
-            PaperText(line.text, align(line.align), style(line.style))
+            if (line.isRule) ReceiptRule() else PaperText(line.text, align(line.align), style(line.style))
         }
     }
 }

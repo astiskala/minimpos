@@ -234,17 +234,24 @@ data class TerminalSettings(
 ) {
     /**
      * Selects [choice], storing the device's [automaticMode] as [TerminalMode.AUTO]. An unchanged effective destination
-     * keeps its learned fields; changing it clears its environment and cloud region.
+     * keeps its learned fields. Changing it clears the learned cloud region, and also the environment unless
+     * [keepsEnvironment] with [apiKeySaved].
      */
     fun selectDestination(
         choice: TerminalMode,
         automaticMode: TerminalMode,
-    ): TerminalSettings =
-        if (choice == (if (mode == TerminalMode.AUTO) automaticMode else mode)) {
-            this
-        } else {
-            withConnection(mode = if (choice == automaticMode) TerminalMode.AUTO else choice)
-        }
+        apiKeySaved: Boolean = false,
+    ): TerminalSettings {
+        if (choice == (if (mode == TerminalMode.AUTO) automaticMode else mode)) return this
+        val selected = if (choice == automaticMode) TerminalMode.AUTO else choice
+        return if (keepsEnvironment(apiKeySaved)) copy(mode = selected, cloudRegion = null) else withConnection(mode = selected)
+    }
+
+    /**
+     * Whether a destination change keeps the selected environment: the saved API key ([apiKeySaved]) and the
+     * [merchantAccount] stay with the new destination, and they belong to one environment.
+     */
+    fun keepsEnvironment(apiKeySaved: Boolean): Boolean = apiKeySaved && merchantAccount.isNotBlank()
 
     /** Selects [selected], clearing the learned cloud region even on reselection; null leaves the environment unknown. */
     fun selectEnvironment(selected: TerminalEnvironment?): TerminalSettings = copy(environment = selected, cloudRegion = null)
@@ -261,9 +268,16 @@ data class TerminalSettings(
         return if (environment != null && environment != moved.environment) moved.selectEnvironment(environment) else moved
     }
 
-    /** History accounting environment; null while a real destination has not established TEST or LIVE. */
+    /**
+     * History accounting environment; null while a real destination has not established TEST or LIVE. The Payments app
+     * decides its own environment, so an environment kept from another destination does not count for it.
+     */
     fun historyEnvironment(automaticMode: TerminalMode): String? =
-        if ((if (mode == TerminalMode.AUTO) automaticMode else mode) == TerminalMode.SIMULATOR) "SIMULATOR" else environment?.name
+        when (if (mode == TerminalMode.AUTO) automaticMode else mode) {
+            TerminalMode.SIMULATOR -> "SIMULATOR"
+            TerminalMode.PAYMENTS_APP -> null
+            else -> environment?.name
+        }
 
     /** These settings with [keyVersion] within its range. */
     fun normalized(): TerminalSettings = copy(keyVersion = keyVersion.coerceIn(KEY_VERSIONS))
@@ -381,7 +395,8 @@ enum class ReceiptTipping {
  * @property tipPercentages Up to three percentage tip options (`1..100`) for baskets at or above [lowBasketThresholdMinor].
  * @property allowCustomTip Whether dynamic `TipSuggestions` include the custom tip button (`TipCustom`).
  * @property tipOnPreTax Whether percentage terminal tips are calculated on the pre-tax net amount (`AmountToTipOn`).
- * @property showVirtualReceipt Whether external terminals display a virtual receipt before payment (`DisplayRequest`).
+ * @property showVirtualReceipt Whether external terminals display a virtual receipt before payment (`DisplayRequest`); on
+ *   by default.
  * @property confirmBasketOnTerminal Whether external terminals prompt the shopper to confirm the basket before payment.
  * @property collectEmailOnTerminal Whether external terminals prompt the shopper to enter their email before payment.
  * @property showTerminalQrReceipt Whether external terminals display a QR code receipt after approval.
@@ -417,7 +432,7 @@ data class PaymentSettings(
     val tipPercentages: List<Int> = DEFAULT_TIP_PERCENTAGES,
     val allowCustomTip: Boolean = true,
     val tipOnPreTax: Boolean = false,
-    val showVirtualReceipt: Boolean = false,
+    val showVirtualReceipt: Boolean = true,
     val confirmBasketOnTerminal: Boolean = false,
     val collectEmailOnTerminal: Boolean = false,
     val showTerminalQrReceipt: Boolean = false,

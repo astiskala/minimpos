@@ -3,16 +3,20 @@ package app.minimpos.app.ui
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.assertHeightIsEqualTo
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsOff
 import androidx.compose.ui.test.assertIsOn
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.unit.dp
 import app.minimpos.app.MiniMposApp
+import app.minimpos.app.R
 import app.minimpos.app.TestEnvironment
 import app.minimpos.app.awaitCondition
 import app.minimpos.app.createRecordingComposeRule
+import com.google.common.truth.Truth.assertThat
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -65,6 +69,11 @@ class SettingsStructureTest {
         }
         compose.onNodeWithTag("appLanguage").performScrollTo().assertHeightIsEqualTo(72.dp)
         open("payments")
+        val headingTop =
+            compose
+                .onNodeWithText(env.context.getString(R.string.settings_pricing).uppercase())
+                .fetchSemanticsNode()
+                .boundsInRoot.top
         compose.onNodeWithTag("referenceSource").performScrollTo().assertIsDisplayed()
         compose.onNodeWithTag("receiptTipping").assertDoesNotExist()
         compose.onNodeWithTag("showVirtualReceipt").assertDoesNotExist()
@@ -76,11 +85,23 @@ class SettingsStructureTest {
         compose.onNodeWithTag("askGivingSetting").performScrollTo().assertIsDisplayed()
         back()
         open("shopper_display")
-        compose.onNodeWithTag("showVirtualReceipt").performScrollTo().performClick()
-        compose.awaitCondition("shopper display saved") { env.container.settingsState.value.payment.showVirtualReceipt }
+        // An opening explanation without a heading starts where a heading's text would.
+        val introTop =
+            compose
+                .onNodeWithText(env.context.getString(R.string.settings_shopper_display_hint))
+                .fetchSemanticsNode()
+                .boundsInRoot.top
+        assertThat(introTop).isWithin(1f).of(headingTop)
+        // The virtual receipt starts on; switching it off is kept.
+        compose
+            .onNodeWithTag("showVirtualReceipt")
+            .performScrollTo()
+            .assertIsOn()
+            .performClick()
+        compose.awaitCondition("shopper display saved") { !env.container.settingsState.value.payment.showVirtualReceipt }
         back()
         open("shopper_display")
-        compose.onNodeWithTag("showVirtualReceipt").performScrollTo().assertIsOn()
+        compose.onNodeWithTag("showVirtualReceipt").performScrollTo().assertIsOff()
         compose.onNodeWithTag("askShopperRating").performScrollTo().assertIsDisplayed()
         back()
         open("email")

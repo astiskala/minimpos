@@ -449,6 +449,19 @@ fun SettingNavRow(
     }
 }
 
+/**
+ * The explanation that opens a screen without a heading: a [SettingNote] with the space above it that a
+ * [app.minimpos.app.ui.components.SectionHeader] would leave, so it does not sit against the app bar.
+ */
+@Composable
+fun SettingIntro(
+    text: String,
+    modifier: Modifier = Modifier,
+) {
+    val compact = LocalDimens.current.compact
+    SettingNote(text, modifier.padding(top = if (compact) 8.dp else 16.dp))
+}
+
 /** Small explanatory text under a setting. */
 @Composable
 fun SettingNote(

@@ -95,7 +95,6 @@ fun ReconciliationScreen(
         )
     }
     val totalsBlocked = terminal.totalsBlocked?.let(Failure::NotSetUp)
-    val report = state.reconciliation
     MiniScaffold(title = stringResource(R.string.home_reconciliation), onBack = navigator::back, modifier = modifier) { padding ->
         Column(
             Modifier
@@ -104,48 +103,69 @@ fun ReconciliationScreen(
                 .verticalScroll(rememberScrollState())
                 .padding(vertical = LocalDimens.current.spacing),
         ) {
-            Step(R.string.reconciliation_totals_header, R.string.reconciliation_check_hint) {
-                GatedButton(
-                    stringResource(R.string.reconciliation_check),
-                    { vm.reconcileTerminal(closePeriod = false) },
-                    blocked = totalsBlocked,
-                    loading = state.reconcile.running,
-                    icon = Icons.Default.Sync,
-                    primary = report == null,
-                    modifier = Modifier.testTag("reconcileTerminal"),
-                )
-                OutcomeMessage(state.reconcile)
-                report?.let { ReconciliationResult(it) }
-            }
-            Step(R.string.reconciliation_end_header, R.string.reconciliation_close_hint) {
-                GatedButton(
-                    stringResource(R.string.reconciliation_close_period),
-                    { confirmClose = true },
-                    blocked = totalsBlocked,
-                    enabled = !state.reconcile.running && report?.closedPeriod != true,
-                    icon = Icons.Default.EventAvailable,
-                    primary = report?.allMatch == true && !report.closedPeriod,
-                    modifier = Modifier.testTag("closeReconciliationPeriod"),
-                )
-            }
-            Step(R.string.reconciliation_report_header, R.string.reconciliation_report_hint) {
-                GatedButton(
-                    stringResource(R.string.reconciliation_print_today),
-                    { vm.printDay(LocalDate.now()) },
-                    blocked = terminal.printBlocked?.let(Failure::NotSetUp),
-                    loading = state.print.running,
-                    icon = Icons.Default.Print,
-                    modifier = Modifier.testTag("printToday"),
-                )
-                OutcomeMessage(state.print)
-            }
+            ReconciliationSteps(
+                state = state,
+                totalsBlocked = totalsBlocked,
+                printBlocked = terminal.printBlocked?.let(Failure::NotSetUp),
+                onCheck = { vm.reconcileTerminal(closePeriod = false) },
+                onClose = { confirmClose = true },
+                onPrint = { vm.printDay(LocalDate.now()) },
+            )
         }
+    }
+}
+
+/** The three steps: check totals with the result, close the period, print today's report. */
+@Composable
+private fun ColumnScope.ReconciliationSteps(
+    state: HistoryUiState,
+    totalsBlocked: Failure?,
+    printBlocked: Failure?,
+    onCheck: () -> Unit,
+    onClose: () -> Unit,
+    onPrint: () -> Unit,
+) {
+    val report = state.reconciliation
+    Step(R.string.reconciliation_totals_header, R.string.reconciliation_check_hint) {
+        GatedButton(
+            stringResource(R.string.reconciliation_check),
+            onCheck,
+            blocked = totalsBlocked,
+            loading = state.reconcile.running,
+            icon = Icons.Default.Sync,
+            primary = report == null,
+            modifier = Modifier.testTag("reconcileTerminal"),
+        )
+        OutcomeMessage(state.reconcile)
+        report?.let { ReconciliationResult(it) }
+    }
+    Step(R.string.reconciliation_end_header, R.string.reconciliation_close_hint) {
+        GatedButton(
+            stringResource(R.string.reconciliation_close_period),
+            onClose,
+            blocked = totalsBlocked,
+            enabled = !state.reconcile.running && report?.closedPeriod != true,
+            icon = Icons.Default.EventAvailable,
+            primary = report?.allMatch == true && !report.closedPeriod,
+            modifier = Modifier.testTag("closeReconciliationPeriod"),
+        )
+    }
+    Step(R.string.reconciliation_report_header, R.string.reconciliation_report_hint) {
+        GatedButton(
+            stringResource(R.string.reconciliation_print_today),
+            onPrint,
+            blocked = printBlocked,
+            loading = state.print.running,
+            icon = Icons.Default.Print,
+            modifier = Modifier.testTag("printToday"),
+        )
+        OutcomeMessage(state.print)
     }
 }
 
 /** One step of the screen: its heading, what it does, then its [content], padded like the screen. */
 @Composable
-private fun Step(
+private fun ColumnScope.Step(
     title: Int,
     hint: Int,
     content: @Composable ColumnScope.() -> Unit,

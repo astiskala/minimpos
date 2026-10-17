@@ -69,9 +69,7 @@ fun AppNavHost() {
     // Leaving the admin area re-locks it.
     LaunchedEffect(top) {
         if (backStack.none { (it as? Route)?.isProtected == true }) container.sessionLock.lock()
-        if (backStack.none { (it as? Route)?.requiresManager == true }) {
-            container.managerLock.lock()
-        }
+        if (backStack.none { (it as? Route)?.requiresManager == true }) container.managerLock.lock()
     }
 
     NavDisplay(

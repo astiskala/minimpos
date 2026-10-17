@@ -70,7 +70,7 @@
             <li><a href="#customize-receipts">自定义收据</a></li><li><a href="#language-receipts">收据语言</a></li><li><a href="#email">电子收据</a></li>
           </ul></li>
           <li><a href="#history">交易记录</a><ul><li><a href="#close-day">每日平账</a></li><li><a href="#reconciliation">与终端对账</a></li></ul></li>
-          <li><a href="#shoppers">识别号和保存卡片</a></li><li><a href="#payment-links">付款链接</a></li>
+          <li><a href="#shoppers">识别号和保存卡片</a><ul><li><a href="#saved-card">扣款已保存的卡</a></li></ul></li><li><a href="#payment-links">付款链接</a></li>
           <li><a href="#preauth">订金</a></li><li><a href="#terminal-tips">终端小费</a></li><li><a href="#tips">收据小费</a></li><li><a href="#more">更多设备和数据</a></li>
         </ol></div>
         <details class="mobile-contents"><summary class="toc-title">本页目录</summary><ol>
@@ -88,7 +88,7 @@
             <li><a href="#customize-receipts">自定义收据</a></li><li><a href="#language-receipts">收据语言</a></li><li><a href="#email">电子收据</a></li>
           </ul></li>
           <li><a href="#history">交易记录</a><ul><li><a href="#close-day">每日平账</a></li><li><a href="#reconciliation">与终端对账</a></li></ul></li>
-          <li><a href="#shoppers">识别号和保存卡片</a></li><li><a href="#payment-links">付款链接</a></li>
+          <li><a href="#shoppers">识别号和保存卡片</a><ul><li><a href="#saved-card">扣款已保存的卡</a></li></ul></li><li><a href="#payment-links">付款链接</a></li>
           <li><a href="#preauth">订金</a></li><li><a href="#terminal-tips">终端小费</a></li><li><a href="#tips">收据小费</a></li><li><a href="#more">更多设备和数据</a></li>
         </ol></details>
       </nav>
@@ -294,7 +294,7 @@
           </div>
           <h3 id="reconciliation">核对终端总额并结束周期</h3>
           <ol>
-            <li>在<strong>交易记录</strong>中点按<strong>与终端核对总额</strong>。请求总额前，Mini mPOS 会尝试查询待处理或结果未知的终端交易。</li>
+            <li>在主页点按<strong>对账</strong>，然后点按<strong>与终端核对总额</strong>。请求总额前，Mini mPOS 会尝试查询待处理或结果未知的终端交易。<strong>打印今日报表</strong>可打印<strong>本地每日汇总</strong>。</li>
             <li>按币种核对销售和退款，并检查未解决交易、离线销售和未确认批次。终端周期不一定等于一个自然日；其他设备使用同一终端或本地记录缺失都可能导致差异。付款链接和示例记录不属于终端付款。</li>
             <li>准备好后点按<strong>结束对账周期</strong>，并在要求时完成经理批准。这会请求终端结束其对账周期，不只是打印报告。</li>
           </ol>
@@ -310,8 +310,16 @@
           <dl class="settings-list">
             <dt>商家交易识别号</dt><dd>如需记录预订或订单号，请开启<strong>设置 › 支付 › 要求输入商家交易识别号</strong>。此号码用于在 Adyen 中识别付款。留空时会生成唯一识别号。</dd>
             <dt>购物者识别号</dt><dd>在<strong>设置 › 支付</strong>中选择<strong>购物者识别号</strong>：结账时输入的购物者识别号（默认）、购物者电子邮件或无。它会随每笔付款发送给 Adyen。电子邮件识别号默认经过哈希处理；所有设备请使用相同的盐值。</dd>
-            <dt>保存卡片</dt><dd>设置购物者识别号后，开启<strong>提供保存卡片选项</strong>，并选择适合您 Adyen 配置的<strong>循环扣款模式</strong>。勾选<strong>保存卡片以供今后支付</strong>前须取得购物者同意。Mini mPOS 无法使用已保存的卡片扣款。</dd>
+            <dt>保存卡片</dt><dd>设置购物者识别号后，开启<strong>提供保存卡片选项</strong>，并选择适合您 Adyen 配置的<strong>循环扣款模式</strong>。勾选<strong>保存卡片以供今后支付</strong>前须取得购物者同意。之后如需扣款，请参见<a href="#saved-card">扣款已保存的卡</a>。</dd>
           </dl>
+          <h3 id="saved-card">扣款已保存的卡</h3>
+          <ol>
+            <li>在主页点按<strong>扣款已保存的卡</strong>，如有要求请输入经理 PIN。</li>
+            <li>输入购物者识别号（或用作识别号的电子邮件地址），然后点按<strong>查找已保存的卡</strong>。</li>
+            <li>选择一张卡，然后添加商品或<strong>自定义商品</strong>。此购物车与<strong>新建销售</strong>的购物车相互独立。</li>
+            <li>核对扣款信息后点按<strong>扣款</strong>。</li>
+          </ol>
+          <p>购物者不在场，因此请先征得其同意。API 密钥需要 <strong>Merchant Recurring role</strong>。为其他<strong>循环扣款模式</strong>保存的卡无法选择。请在<strong>交易记录</strong>中为这些付款退款；其收据上没有退款二维码。如果扣款结果未知，请在七天内从交易记录中核查，之后请在 Customer Area 中核查。</p>
           <p class="back-to-contents"><a href="#contents">返回目录</a></p>
         </section>
         <section id="payment-links">

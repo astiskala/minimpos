@@ -86,8 +86,8 @@
   <string name="checkout_email">Customer email</string>
   <string name="checkout_email_hint">The receipt is emailed once the payment is approved.</string>
   <string name="checkout_save_card">Save card for future payments</string>
-  <string name="checkout_save_card_hint">Tokenizes the card for this customer reference. Ask the customer for consent. Mini mPOS saves a token; charging saved cards needs your own integration.</string>
-  <string name="checkout_save_card_email_hint">Tokenizes the card for this email address. Ask the customer for consent. Mini mPOS saves a token; charging saved cards needs your own integration.</string>
+  <string name="checkout_save_card_hint">Tokenizes the card for this customer reference. Ask the customer for consent. Charge it later with Charge saved card on Home.</string>
+  <string name="checkout_save_card_email_hint">Tokenizes the card for this email address. Ask the customer for consent. Charge it later with Charge saved card on Home.</string>
   <string name="checkout_pay">Pay %1$s</string>
   <string name="checkout_scan_wallet">Scan wallet</string>
   <string name="checkout_send_link">Create payment link</string>
@@ -849,11 +849,11 @@
   <string name="settings_ask_transaction_reference_hint">Enter an order or booking number to identify the payment in Adyen. Leave blank to generate one.</string>
   <string name="settings_tokenization">Shoppers and saved cards</string>
   <string name="settings_offer_card_saving">Offer to save cards</string>
-  <string name="settings_offer_card_saving_hint">Checkout offers to save the card when there is a shopper reference. Ask the customer for consent. Mini mPOS saves a token; charging saved cards needs your own integration.</string>
+  <string name="settings_offer_card_saving_hint">Checkout offers to save the card when there is a shopper reference. Ask the customer for consent. Charge saved cards with Charge saved card on Home.</string>
   <string name="settings_tokenize_default">Save card switch on by default</string>
   <string name="settings_tokenize_default_hint">Only shown when a shopper reference is available.</string>
   <string name="settings_pre_auth_tokenize_default">Save card on by default for pre-authorizations</string>
-  <string name="settings_pre_auth_tokenize_default_hint">A saved card can be charged through your own integration for late costs after capture. Mini mPOS cannot charge saved cards.</string>
+  <string name="settings_pre_auth_tokenize_default_hint">Late costs after capture can be charged to the saved card with Charge saved card on Home.</string>
   <string name="settings_recurring_model">Recurring processing model</string>
   <string name="recurring_card_on_file">Card on file</string>
   <string name="recurring_subscription">Subscription</string>

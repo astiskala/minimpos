@@ -85,8 +85,8 @@
   <string name="checkout_email">購入者のメールアドレス</string>
   <string name="checkout_email_hint">決済が承認されると、領収書がメールで送信されます。</string>
   <string name="checkout_save_card">次回の決済用にカードを保存</string>
-  <string name="checkout_save_card_hint">カードをトークン化し、この購入者参照IDに紐付けます。購入者の同意を得てください。Mini mPOSはトークンを保存します。保存済みカードへの請求には別途独自の連携が必要です。</string>
-  <string name="checkout_save_card_email_hint">カードをトークン化し、このメールアドレスに紐付けます。購入者の同意を得てください。Mini mPOSはトークンを保存します。保存済みカードへの請求には別途独自の連携が必要です。</string>
+  <string name="checkout_save_card_hint">カードをトークン化し、この購入者参照IDに紐付けます。購入者の同意を得てください。後でホームの「保存カードに請求」から請求できます。</string>
+  <string name="checkout_save_card_email_hint">カードをトークン化し、このメールアドレスに紐付けます。購入者の同意を得てください。後でホームの「保存カードに請求」から請求できます。</string>
   <string name="checkout_pay">%1$sを決済</string>
   <string name="checkout_scan_wallet">ウォレットをスキャン</string>
   <string name="checkout_send_link">決済リンクを作成</string>
@@ -847,11 +847,11 @@
   <string name="settings_ask_transaction_reference_hint">注文番号や予約番号を入力して、Adyenで決済を識別します。空欄なら自動生成します。</string>
   <string name="settings_tokenization">購入者とカードの保存</string>
   <string name="settings_offer_card_saving">カード保存の選択肢を表示</string>
-  <string name="settings_offer_card_saving_hint">購入者参照IDがある場合、会計時に「次回の決済用にカードを保存」を表示します。購入者の同意を得てください。Mini mPOSはトークンを保存します。保存済みカードへの請求には別途独自の連携が必要です。</string>
+  <string name="settings_offer_card_saving_hint">購入者参照IDがある場合、会計時に「次回の決済用にカードを保存」を表示します。購入者の同意を得てください。保存カードにはホームの「保存カードに請求」から請求できます。</string>
   <string name="settings_tokenize_default">カード保存をデフォルトでオン</string>
   <string name="settings_tokenize_default_hint">購入者参照IDがある場合のみ表示します。</string>
   <string name="settings_pre_auth_tokenize_default">プリオーソリでもカード保存をデフォルトでオン</string>
-  <string name="settings_pre_auth_tokenize_default_hint">キャプチャ後の追加費用は、独自の連携から保存済みカードに請求できます。Mini mPOSから保存済みカードに請求することはできません。</string>
+  <string name="settings_pre_auth_tokenize_default_hint">キャプチャ後の追加費用は、ホームの「保存カードに請求」から保存カードに請求できます。</string>
   <string name="settings_recurring_model">継続課金モデル</string>
   <string name="recurring_card_on_file">カードオンファイル</string>
   <string name="recurring_subscription">サブスクリプション</string>

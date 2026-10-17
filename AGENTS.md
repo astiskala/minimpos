@@ -32,9 +32,10 @@ Adyen Payments app (Tap to Pay). The built-in simulator needs no Adyen account.
 
 - The device runs Mini mPOS; the terminal takes the card. Keep these distinct in user text.
 - Checkout API setup is required before real payments, even ordinary sales. Connection checks, refunds and printing
-  need only the destination. Select TEST/LIVE first for network/cloud terminals; on-device terminals and the Payments
-  app supply their environment. Never probe API credentials across environments; changing destination clears it unless
-  the saved API key and merchant account it belongs to stay.
+  need only the destination; saved-card charges and their refunds go through the Checkout API instead. Select
+  TEST/LIVE first for network/cloud terminals; on-device terminals and the Payments app supply their environment.
+  Never probe API credentials across environments; changing destination clears it unless the saved API key and
+  merchant account it belongs to stay.
 - Persist each financial operation before sending. A missing answer means unknown, not failed. Retry the same logical
   operation with its stored identity and request facts; a distinct authorization renewal needs a new identity.
   Historical actions must validate the original payment context against current credentials.
@@ -47,7 +48,8 @@ Adyen Payments app (Tap to Pay). The built-in simulator needs no Adyen account.
   clearly label their screen and delivered receipts as demos; their QR codes cannot take payments.
 - Optional Manager PIN approval is separate from admin access and must be checked again before financial operations.
 - Keep deliberate UI choices: no TEST banner (only simulator), no Home terminal-status line or unprotected-settings
-  warning. Home keeps both full-width sale/pre-authorization tiles, half-width Refund/History, slim Products/Settings.
+  warning. Home keeps both full-width sale/pre-authorization tiles, half-width Charge saved card/Refund and
+  History/Reconciliation, slim Products/Settings.
 - Every product has a tax rate; use 0% for untaxed items. Turning tax off keeps rates. The last rate cannot be deleted.
 - Customer reference is asked for only as the shopper reference. Card saving needs a shopper reference and consent.
   New installations use Customer reference as the shopper reference, no extra transaction reference; automatic printing

@@ -78,7 +78,7 @@ class ReceiptBuilderTest {
                 Divider,
                 Row("Flat white", "$9.00"),
                 Text("  2 x $4.50"),
-                Blank,
+                // Items follow each other without an empty line between them.
                 Row("Milk", "$3.00"),
                 Divider,
                 Row("TOTAL", "$12.00", TextStyle.BOLD),

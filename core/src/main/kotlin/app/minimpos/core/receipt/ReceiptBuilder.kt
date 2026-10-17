@@ -106,8 +106,7 @@ class ReceiptBuilder(
         items: List<ReceiptItem>,
     ) {
         var hasMarkedTaxRate = false
-        for ((index, item) in items.withIndex()) {
-            if (index > 0) out += Blank
+        for (item in items) {
             val name =
                 if (item.taxRateMilliPercent ==
                     options.markedTaxRateMilliPercent

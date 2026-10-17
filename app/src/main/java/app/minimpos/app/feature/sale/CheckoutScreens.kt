@@ -1,6 +1,7 @@
 package app.minimpos.app.feature.sale
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
@@ -17,6 +18,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ReceiptLong
+import androidx.compose.material.icons.filled.CreditCard
 import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Link
@@ -24,10 +26,14 @@ import androidx.compose.material.icons.filled.Print
 import androidx.compose.material.icons.filled.QrCodeScanner
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Share
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -84,6 +90,7 @@ import app.minimpos.core.payment.ScanWallet
 import app.minimpos.core.receipt.ReceiptCopy
 import app.minimpos.core.receipt.ReceiptDocument
 import app.minimpos.core.shopper.ShopperReferences
+import app.minimpos.terminal.checkout.StoredCard
 import app.minimpos.terminal.client.CardEntryOverride
 import app.minimpos.terminal.client.RetryAdvice
 
@@ -101,7 +108,16 @@ fun CheckoutScreen(
     vm: CheckoutViewModel = checkoutViewModel(kind),
 ) {
     val state by vm.state.collectAsStateWithLifecycle()
+    val tokens by vm.tokens.collectAsStateWithLifecycle()
     val money = rememberMoneyFormatter(state.currency)
+    var tokenStep by remember { mutableStateOf(TokenStep.NONE) }
+    if (tokenStep == TokenStep.APPROVE) {
+        return ManagerApproval(onApprove = { tokenStep = TokenStep.CHOOSE }, onCancel = { tokenStep = TokenStep.NONE })
+    }
+    TokenSteps(tokenStep, tokens, onStep = { tokenStep = it }) { card ->
+        tokenStep = TokenStep.NONE
+        if (vm.chargeToken(card)) navigator.replace(Route.TokenCharge)
+    }
     var confirmLink by remember { mutableStateOf(false) }
     var confirmWallet by remember { mutableStateOf(false) }
     var confirmSpecialEntry by remember { mutableStateOf(false) }
@@ -153,6 +169,10 @@ fun CheckoutScreen(
                 },
                 onSendLink = { if (state.tipOnReceipt || state.askGratuity) confirmLink = true else createLink() },
                 onScanWallet = { if (state.tipOnReceipt || state.askGratuity) confirmWallet = true else scanWallet() },
+                tokens = tokens.isNotEmpty(),
+                onChargeToken = {
+                    tokenStep = if (state.tipOnReceipt || state.askGratuity) TokenStep.CONFIRM_NO_TIP else TokenStep.APPROVE
+                },
             )
         },
     ) { padding ->
@@ -248,7 +268,10 @@ private fun LinkTipConfirmation(
     }
 }
 
-/** Pay on the terminal and, when payment links are offered, "Create payment link" under it. */
+/**
+ * Pay on the terminal and, under it, Scan wallet when offered, Charge token when the shopper has [tokens] saved, and
+ * Create payment link when links are offered.
+ */
 @Composable
 private fun CheckoutActions(
     state: Checkout,
@@ -256,6 +279,8 @@ private fun CheckoutActions(
     onPay: () -> Unit,
     onSendLink: () -> Unit,
     onScanWallet: () -> Unit,
+    tokens: Boolean,
+    onChargeToken: () -> Unit,
 ) {
     BottomActions {
         PrimaryButton(
@@ -269,7 +294,7 @@ private fun CheckoutActions(
             modifier = Modifier.testTag("pay"),
         )
         BoxWithConstraints(Modifier.fillMaxWidth()) {
-            if (maxWidth >= 480.dp && state.offersScanWallet && state.canSendLink) {
+            if (maxWidth >= 480.dp && state.offersScanWallet && state.canSendLink && !tokens) {
                 Row(horizontalArrangement = Arrangement.spacedBy(LocalDimens.current.spacing)) {
                     WalletCheckoutButton(state.canScanWallet, onScanWallet, Modifier.weight(1f))
                     LinkCheckoutButton(onSendLink, Modifier.weight(1f))
@@ -277,6 +302,7 @@ private fun CheckoutActions(
             } else {
                 Column(verticalArrangement = Arrangement.spacedBy(LocalDimens.current.spacing)) {
                     if (state.offersScanWallet) WalletCheckoutButton(state.canScanWallet, onScanWallet)
+                    if (tokens) TokenCheckoutButton(state.canPay, onChargeToken)
                     if (state.canSendLink) LinkCheckoutButton(onSendLink)
                 }
             }
@@ -296,6 +322,72 @@ private fun WalletCheckoutButton(
     icon = Icons.Default.QrCodeScanner,
     modifier = modifier.testTag("scanWallet"),
 )
+
+@Composable
+private fun TokenCheckoutButton(
+    enabled: Boolean,
+    onClick: () -> Unit,
+) = SecondaryButton(
+    stringResource(R.string.checkout_charge_token),
+    onClick,
+    enabled = enabled,
+    icon = Icons.Default.CreditCard,
+    modifier = Modifier.testTag("chargeToken"),
+)
+
+/** Where charging a saved token from checkout stands: nothing, confirming no tip, Manager approval, choosing a token. */
+private enum class TokenStep { NONE, CONFIRM_NO_TIP, APPROVE, CHOOSE }
+
+/**
+ * The confirmation that a token charge takes no tip ([TokenStep.CONFIRM_NO_TIP]) and the choice of one of [tokens]
+ * ([TokenStep.CHOOSE]); Manager approval comes between them, from the screen.
+ */
+@Composable
+private fun TokenSteps(
+    step: TokenStep,
+    tokens: List<StoredCard>,
+    onStep: (TokenStep) -> Unit,
+    onChoose: (StoredCard) -> Unit,
+) {
+    when (step) {
+        TokenStep.CONFIRM_NO_TIP -> {
+            ConfirmDialog(
+                title = stringResource(R.string.checkout_charge_token),
+                message = stringResource(R.string.checkout_token_without_tip),
+                confirmLabel = stringResource(R.string.checkout_charge_token),
+                onConfirm = { onStep(TokenStep.APPROVE) },
+                onDismiss = { onStep(TokenStep.NONE) },
+            )
+        }
+
+        TokenStep.CHOOSE -> {
+            AlertDialog(
+                onDismissRequest = { onStep(TokenStep.NONE) },
+                title = { Text(stringResource(R.string.checkout_choose_token)) },
+                text = {
+                    Column(Modifier.verticalScroll(rememberScrollState())) {
+                        tokens.forEach { card ->
+                            ListItem(
+                                headlineContent = { Text(cardLabel(card.id, card.brand, card.lastFour)) },
+                                supportingContent =
+                                    card.expiryMonth?.let { month ->
+                                        card.expiryYear?.let { year -> { Text(stringResource(R.string.saved_card_expires, month, year)) } }
+                                    },
+                                leadingContent = { Icon(Icons.Default.CreditCard, contentDescription = null) },
+                                modifier = Modifier.clickable { onChoose(card) }.testTag("token_${card.id}"),
+                            )
+                        }
+                    }
+                },
+                confirmButton = {},
+                dismissButton = { TextButton(onClick = { onStep(TokenStep.NONE) }) { Text(stringResource(R.string.action_cancel)) } },
+            )
+        }
+
+        // Approval is shown in place of the screen.
+        TokenStep.NONE, TokenStep.APPROVE -> {}
+    }
+}
 
 @Composable
 private fun LinkCheckoutButton(
@@ -497,6 +589,7 @@ private fun checkoutViewModel(kind: SaleKind): CheckoutViewModel {
             container.links,
             walletPayments = container.walletPayments,
             discovery = container.walletDiscovery,
+            charges = container.savedCardCharges.takeIf { kind == SaleKind.SALE },
         )
     }
 }

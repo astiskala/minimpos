@@ -38,12 +38,15 @@ import kotlin.uuid.Uuid
  * @property payment The priced cart, references and shopper reference; an immediate-charge sale with a shopper reference.
  * @property card The saved card to charge.
  * @property recurringModel Adyen's `recurringProcessingModel` to charge it with, frozen with the sale.
+ * @property fromCheckout Whether the sale was rung up as a New sale and charged from its checkout, so that session
+ *   (rather than Charge token's own) is cleared once the token is charged.
  * @throws IllegalArgumentException for a payment that is not an immediate-charge sale with a shopper reference.
  */
 data class SavedCardStart(
     val payment: PaymentStart,
     val card: StoredCard,
     val recurringModel: String,
+    val fromCheckout: Boolean = false,
 ) {
     init {
         require(payment.kind == SaleKind.SALE && !payment.manualCapture) { "A saved card is charged straight away" }

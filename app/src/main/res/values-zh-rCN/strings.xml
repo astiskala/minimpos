@@ -85,8 +85,8 @@
   <string name="checkout_email">购物者电子邮件地址</string>
   <string name="checkout_email_hint">支付获批后，收据将通过电子邮件发送。</string>
   <string name="checkout_save_card">保存卡片以供今后支付</string>
-  <string name="checkout_save_card_hint">将卡片令牌化并关联至此购物者识别号。请先征得购物者同意。之后可在主页使用“令牌扣款”收款。</string>
-  <string name="checkout_save_card_email_hint">将卡片令牌化并关联至此电子邮件地址。请先征得购物者同意。之后可在主页使用“令牌扣款”收款。</string>
+  <string name="checkout_save_card_hint">将卡片令牌化并关联至此购物者识别号。请先征得购物者同意。</string>
+  <string name="checkout_save_card_email_hint">将卡片令牌化并关联至此电子邮件地址。请先征得购物者同意。</string>
   <string name="checkout_pay">支付 %1$s</string>
   <string name="checkout_scan_wallet">扫描钱包</string>
   <string name="checkout_send_link">创建付款链接</string>
@@ -363,7 +363,6 @@
   <string name="history_no_match_hint">可搜索识别号、授权码、购物者、卡号末四位或金额。</string>
   <string name="history_show_all">显示全部</string>
   <string name="history_print_day">打印整日汇总</string>
-  <string name="history_reconcile">与终端核对总额</string>
   <string name="history_switch_title">删除记录并切换？</string>
   <string name="history_switch_message">在 LIVE、TEST 和模拟器之间切换将永久删除所有本地支付记录和每日报告数据。商品和其他设置将保留。Adyen 记录不会删除。</string>
   <string name="history_switch_unfinished">存在未完成的支付。此操作不会取消 Adyen 的支付、授权或付款链接。本地恢复和安全重试数据将丢失。</string>
@@ -383,15 +382,26 @@
   <string name="report_issue_note">未解决的结果可能改变这些总额。</string>
   <string name="report_demo">演示 — 未发生资金交易</string>
   <string name="report_unknown">环境未知</string>
-  <string name="reconciliation_title">终端对账（周期 %1$s）</string>
-  <string name="reconciliation_closed_title">已结束终端对账周期 %1$s</string>
-  <string name="reconciliation_matched">Mini mPOS 与终端总额一致。</string>
-  <string name="reconciliation_mismatch">总额存在差异或仍有未解决交易。</string>
-  <string name="reconciliation_sales_label">销售额（%1$s）</string>
-  <string name="reconciliation_refunds_label">退款（%1$s）</string>
-  <string name="reconciliation_compare">Mini mPOS %1$s · 终端 %2$s</string>
-  <string name="reconciliation_close_period">结束对账周期</string>
-  <string name="reconciliation_offline_warning">离线销售：%1$d · 未确认终端批次：%2$d</string>
+  <string name="reconciliation_title">终端对账期 %1$s</string>
+  <string name="reconciliation_closed_title">终端对账期 %1$s 已结束</string>
+  <string name="reconciliation_matched">总额一致</string>
+  <string name="reconciliation_mismatch">总额不一致</string>
+  <string name="reconciliation_close_period">结束终端对账期</string>
+  <string name="reconciliation_offline_warning">离线销售：%1$d · 尚未上传至 Adyen 的批次：%2$d</string>
+  <string name="reconciliation_unresolved">未确认的终端付款：%1$d</string>
+  <string name="reconciliation_sales">销售额</string>
+  <string name="reconciliation_refunds">退款</string>
+  <string name="reconciliation_column_local">Mini mPOS</string>
+  <string name="reconciliation_column_terminal">终端</string>
+  <string name="reconciliation_totals_header">1. 核对总额</string>
+  <string name="reconciliation_check_hint">将终端当前对账期的总额与本设备上的付款进行比对。会先核查未确认的终端付款。</string>
+  <string name="reconciliation_check">核对终端总额</string>
+  <string name="reconciliation_end_header">2. 营业结束</string>
+  <string name="reconciliation_close_hint">总额一致后，结束终端的对账期。终端会开始新的对账期，明天的总额将从零开始。</string>
+  <string name="reconciliation_close_confirm_title">要结束终端对账期吗？</string>
+  <string name="reconciliation_close_confirm_message">终端将结束当前对账期并开始新的对账期。此操作无法撤销。</string>
+  <string name="reconciliation_report_header">3. 每日报表</string>
+  <string name="reconciliation_report_hint">打印本设备今日付款和退款的本地汇总。这不是 Adyen 的结算。</string>
 
   <!-- Products and sample data -->
   <string name="products_title">商品</string>
@@ -1106,6 +1116,9 @@
   <string name="saved_card_review_note">Adyen 将在购物者不在场的情况下使用令牌扣款。如有需要，请在交易记录中退款。</string>
   <string name="setup_shopper_reference">请在“设置 › 支付”中选择购物者识别号，以使用令牌。</string>
   <string name="setup_totals">当前收款目标无法提供终端汇总。Tap to Pay 不提供汇总。</string>
-  <string name="reconciliation_intro">将终端汇总与 Mini mPOS 进行比对。会先核查未确认的终端付款。请在营业日结束时结束对账期。</string>
   <string name="reconciliation_print_today">打印今日报表</string>
+  <string name="checkout_charge_token">令牌扣款</string>
+  <string name="checkout_choose_token">选择令牌</string>
+  <string name="checkout_token_without_tip">使用令牌扣款时不含小费。</string>
+  <string name="reconciliation_mismatch_hint">请在交易记录中处理需要关注的付款。使用此终端的其他设备也会计入其总额。</string>
 </resources>

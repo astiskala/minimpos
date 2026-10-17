@@ -22,6 +22,7 @@ import app.minimpos.app.history.StoredPayments
 import app.minimpos.app.history.awaitsLinkPayment
 import app.minimpos.app.history.decline
 import app.minimpos.app.history.simulatedLink
+import app.minimpos.app.payment.CardLookup
 import app.minimpos.app.payment.Checkout
 import app.minimpos.app.payment.CheckoutForm
 import app.minimpos.app.payment.LinkUpdate
@@ -29,6 +30,8 @@ import app.minimpos.app.payment.PaymentLinks
 import app.minimpos.app.payment.PaymentStart
 import app.minimpos.app.payment.ReceiptDelivery
 import app.minimpos.app.payment.SaleSession
+import app.minimpos.app.payment.SavedCardCharges
+import app.minimpos.app.payment.SavedCardStart
 import app.minimpos.app.payment.TransactionLifecycle
 import app.minimpos.app.payment.WalletPayments
 import app.minimpos.app.terminal.TerminalState
@@ -38,6 +41,7 @@ import app.minimpos.core.cart.Cart
 import app.minimpos.core.cart.CartTotals
 import app.minimpos.core.money.CurrencySpec
 import app.minimpos.core.tax.TaxMode
+import app.minimpos.terminal.checkout.StoredCard
 import app.minimpos.terminal.client.RetryAdvice
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -56,6 +60,7 @@ import java.time.Clock
 import java.time.ZoneId
 import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.time.Duration
+import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
 
 /**
@@ -219,18 +224,22 @@ class SaleViewModel(
  * @param zone The time zone of generated merchant references.
  * @param walletPayments Prepares scanned-wallet sales; null offers no wallet action.
  * @param discovery Memory-only, currency-filtered wallet availability; null offers none.
+ * @param charges Looks up and charges the shopper's saved tokens; null offers no token charge.
+ * @param lookupDelay How long the shopper reference must stay unchanged before its tokens are looked up.
  */
 class CheckoutViewModel(
     private val session: SaleSession,
     private val payments: TransactionLifecycle<PaymentStart>,
     settings: StateFlow<AppSettings>,
-    terminal: StateFlow<TerminalState>,
+    private val terminal: StateFlow<TerminalState>,
     currency: (AppSettings) -> CurrencySpec,
     private val links: PaymentLinks? = null,
     private val clock: Clock = Clock.systemDefaultZone(),
     private val zone: () -> ZoneId = { ZoneId.systemDefault() },
     private val walletPayments: WalletPayments? = null,
     discovery: WalletDiscovery? = null,
+    private val charges: SavedCardCharges? = null,
+    private val lookupDelay: Duration = 700.milliseconds,
 ) : ViewModel() {
     private val checkout =
         session.checkout(
@@ -250,6 +259,39 @@ class CheckoutViewModel(
 
     private val linkStarted = AtomicBoolean()
 
+    /**
+     * The tokens saved for the entered shopper reference that can be charged with the recurring model, looked up in the
+     * background once the reference stops changing; empty while there is none, the lookup fails or runs, or the sale
+     * cannot be charged to a token (a pre-authorisation, or no Checkout API). A lookup changes nothing.
+     */
+    val tokens: StateFlow<List<StoredCard>>
+        field = MutableStateFlow(emptyList())
+
+    init {
+        charges?.let { lookups ->
+            viewModelScope.launch {
+                state
+                    .map { tokenLookup(it) }
+                    .distinctUntilChanged()
+                    .collectLatest { lookup ->
+                        tokens.value = emptyList()
+                        if (lookup == null) return@collectLatest
+                        delay(lookupDelay)
+                        val found = lookups.cards(lookup.first) as? CardLookup.Listed ?: return@collectLatest
+                        tokens.value = found.cards.filter { it.supports(lookup.second) }
+                    }
+            }
+        }
+    }
+
+    /** The shopper reference and recurring model to look tokens up for in [checkout]; null when none can be charged. */
+    private fun tokenLookup(checkout: Checkout): Pair<String, String>? {
+        val reference = checkout.shopperReference ?: return null
+        val payment = checkout.payment
+        if (checkout.preAuthorisation || SavedCardCharges.blocked(payment.shopperReferenceSource, terminal.value) != null) return null
+        return reference to payment.recurringModel().value
+    }
+
     /** Updates the form (kept in the [SaleSession] so it survives going back to the cart). */
     fun update(transform: (CheckoutForm) -> CheckoutForm) = session.updateForm(transform)
 
@@ -261,6 +303,20 @@ class CheckoutViewModel(
 
     /** Prepares the unchanged sale for wallet scanning; false when unavailable or already busy. */
     fun scanWallet(): Boolean = walletPayments?.begin(state.value) == true
+
+    /**
+     * Charges [card], one of [tokens], for the sale as rung up, with the shopper not present; Manager approval is asked
+     * for first and checked again before sending. Returns false when the form is not ready, [card] is no longer offered,
+     * or another charge is running.
+     */
+    fun chargeToken(card: StoredCard): Boolean {
+        val charges = charges ?: return false
+        if (card !in tokens.value) return false
+        val current = state.value
+        val start = session.paymentStart(current, clock.instant(), zone())?.forSavedCard() ?: return false
+        if (start.shopperReference == null || start.manualCapture) return false
+        return charges.start(SavedCardStart(start, card, current.payment.recurringModel().value, fromCheckout = true)) != null
+    }
 
     /**
      * Starts creating a payment link instead ([Checkout.linkStart]) and returns its sale's ID; null when no link can be

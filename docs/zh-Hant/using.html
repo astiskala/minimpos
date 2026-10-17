@@ -294,9 +294,10 @@
           </div>
           <h3 id="reconciliation">核對終端總額並結束週期</h3>
           <ol>
-            <li>在主頁點按<strong>對帳</strong>，然後點按<strong>與終端核對總額</strong>。請求總額前，Mini mPOS 會嘗試查詢待處理或結果未知的終端交易。<strong>列印今日報表</strong>可列印<strong>本地每日摘要</strong>。</li>
-            <li>按貨幣核對銷售和退款，並檢查未解決交易、離線銷售和未確認批次。終端週期不一定等於一個曆日；其他設備使用同一終端或本地紀錄缺失都可能導致差異。付款連結和示例紀錄不屬於終端付款。</li>
-            <li>準備好後點按<strong>結束對賬週期</strong>，並在要求時完成經理批准。這會請求終端結束其對帳週期，不只是列印報告。</li>
+            <li>在主頁點按<strong>對帳</strong>，然後點按<strong>核對終端總額</strong>。Mini mPOS 會先核查待處理或結果未知的終端付款，然後並排顯示 Mini mPOS 與終端的銷售額及退款。</li>
+            <li>如果顯示<strong>總額不一致</strong>，請在交易紀錄中處理需要關注的付款後再次核對。終端對帳週期不一定等於一個曆日；其他設備使用同一終端或本地紀錄缺失都可能導致差異。付款連結、代碼扣款和示例紀錄不屬於終端付款。</li>
+            <li>營業結束時，點按<strong>結束終端對帳週期</strong>並確認，在要求時完成經理批准。終端會結束目前的週期並開始新的週期；此操作無法還原。</li>
+            <li>如有需要，點按<strong>列印今日報表</strong>列印<strong>本地每日摘要</strong>。</li>
           </ol>
           <p>此功能適用於實體終端和模擬器，不適用於 Tap to Pay。總額一致或週期結束都不代表結算、退款完成或離線付款已上傳。最終財務結果仍請以商戶後台為準。</p>
           <figure class="guide-shot">
@@ -319,7 +320,7 @@
             <li>選擇一個代碼，然後加入商品或<strong>自訂商品</strong>。此購物車與<strong>新建銷售</strong>的購物車互相獨立。</li>
             <li>核對扣款資料後點按<strong>扣款</strong>。</li>
           </ol>
-          <p>顧客不在場，因此請先取得其同意。為其他<strong>循環扣款模式</strong>儲存的代碼無法選擇。請在<strong>交易紀錄</strong>中為這些付款退款；其收據上沒有退款二維碼。如果扣款結果未知，請在七天內從交易紀錄中核查，之後請在 Customer Area 中核查。</p>
+          <p>顧客不在場，因此請先取得其同意。為其他<strong>循環扣款模式</strong>儲存的代碼無法選擇。請在<strong>交易紀錄</strong>中為這些付款退款；其收據上沒有退款二維碼。如果扣款結果未知，請在七天內從交易紀錄中核查，之後請在 Customer Area 中核查。在新建銷售的結帳頁面，輸入的顧客參考編號有已儲存的代碼時，<strong>掃描錢包</strong>和<strong>建立付款連結</strong>之間會顯示<strong>代碼扣款</strong>：經理批准後，選擇一個代碼即可向其扣款。</p>
           <p class="back-to-contents"><a href="#contents">返回目錄</a></p>
         </section>
         <section id="payment-links">

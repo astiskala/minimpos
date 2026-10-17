@@ -473,7 +473,9 @@ class AppContainer(
             scope = appScope,
             sales = sales,
             target = api::target,
-            onCharged = { id, start -> completeSale(id, start.payment, savedCardSession) },
+            onCharged = { id, start ->
+                completeSale(id, start.payment, if (start.fromCheckout) session(SaleKind.SALE) else savedCardSession)
+            },
             permits = ::managerPermits,
         )
 

@@ -20,6 +20,12 @@ description: Re-capture the screenshots and social image of the docs/ website, o
   - AMS1 (3:5): `sale-ams1.png`, captured and saved at the AMS1's 480×800 hdpi (`wm size 480x800`, `wm density 240`
     on the S1F2 AVD, then `wm size reset`/`wm density reset`; `screencap` then returns 480×800).
 - PNGs with a 96-colour palette (Pillow: Lanczos resize, median-cut, no dither; this ImageMagick has no PNG delegate).
+- No system bars: Adyen terminals show no clock or gesture bar. Hide the status bar icons and clock with
+  `settings put secure icon_blacklist clock,battery,wifi,mobile,airplane,cast,hotspot,volume,bluetooth,location,alarm_clock,zen,ethernet,vpn,nfc,rotate,headset`
+  (then `stop`/`start`), and before resizing paint the status bar (top 48 px at 720×1280) and gesture bar (bottom 48 px)
+  with the app's first row below and last row above them, column by column. For an existing 540×960 PNG that is the top
+  and bottom 36 px; for `sale-ams1.png` (480×800, three-button bar) the top 36 px and bottom 72 px. Delete
+  `icon_blacklist` afterwards.
 - If a frame's screen `rect` changes, update `.terminal-* img` in `docs/styles.css` (percentages of the viewBox) and
   the social page to match.
 
@@ -127,9 +133,12 @@ closes. Always restore the market's device locale when recapturing only part of 
 10. `offline-payment.png` and `reconciliation.png`: use a separate empty-history demo fixture with the same products.
     Enable Settings › Simulator › Simulate offline Store-and-Forward, then approve the $34.00 sale. In its History
     detail, scroll past the receipt buttons to show the full Offline processing and Unconfirmed offline batches rows,
-    followed by the receipt preview. Return to History and tap Reconcile with terminal without restarting the app:
-    the simulator ledger is in memory. Capture matching $34.00 totals together with the offline-sale and
+    followed by the receipt preview. Go Home, open Reconciliation and tap Check terminal totals without restarting the
+    app: the simulator ledger is in memory. Capture matching $34.00 totals together with the offline-sale and
     one-unconfirmed-batch warning. Restore the main fixture afterward.
+11. `checkout.png` shows Charge token: the main fixture's first sale saved a token under its customer reference, so
+    the button appears once the lookup answers. Localized fixtures need that sale's references in the language's
+    numeric form (`1042`, `2077`).
 
 ## Driving the UI
 

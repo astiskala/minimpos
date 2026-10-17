@@ -107,9 +107,7 @@ fun CheckoutScreen(
     modifier: Modifier = Modifier,
     vm: CheckoutViewModel = checkoutViewModel(kind),
 ) {
-    val state by vm.state.collectAsStateWithLifecycle()
     val tokens by vm.tokens.collectAsStateWithLifecycle()
-    val money = rememberMoneyFormatter(state.currency)
     var tokenStep by remember { mutableStateOf(TokenStep.NONE) }
     if (tokenStep == TokenStep.APPROVE) {
         return ManagerApproval(onApprove = { tokenStep = TokenStep.CHOOSE }, onCancel = { tokenStep = TokenStep.NONE })
@@ -118,6 +116,44 @@ fun CheckoutScreen(
         tokenStep = TokenStep.NONE
         if (vm.chargeToken(card)) navigator.replace(Route.TokenCharge)
     }
+    val state by vm.state.collectAsStateWithLifecycle()
+    CheckoutContent(
+        state = state,
+        navigator = navigator,
+        kind = kind,
+        actions = CheckoutCallbacks(vm::pay, vm::scanWallet, vm::sendLink, vm::update),
+        tokens = tokens.isNotEmpty(),
+        onChargeToken = { tokenStep = state.tokenStart() },
+        modifier = modifier,
+    )
+}
+
+/**
+ * What the checkout's actions do: start the payment, prepare wallet scanning, create a link (its sale's ID, or null)
+ * and update the form.
+ */
+private class CheckoutCallbacks(
+    val pay: () -> Boolean,
+    val scanWallet: () -> Boolean,
+    val sendLink: () -> String?,
+    val update: ((CheckoutForm) -> CheckoutForm) -> Unit,
+)
+
+/** A token charge takes no tip, so it is confirmed first when a tip was asked for; else it goes to Manager approval. */
+private fun Checkout.tokenStart(): TokenStep = if (tipOnReceipt || askGratuity) TokenStep.CONFIRM_NO_TIP else TokenStep.APPROVE
+
+/** The checkout itself: its details, the payment actions and their confirmations and approvals. */
+@Composable
+private fun CheckoutContent(
+    state: Checkout,
+    navigator: Navigator,
+    kind: SaleKind,
+    actions: CheckoutCallbacks,
+    tokens: Boolean,
+    onChargeToken: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val money = rememberMoneyFormatter(state.currency)
     var confirmLink by remember { mutableStateOf(false) }
     var confirmWallet by remember { mutableStateOf(false) }
     var confirmSpecialEntry by remember { mutableStateOf(false) }
@@ -126,7 +162,7 @@ fun CheckoutScreen(
         return ManagerApproval(
             onApprove = {
                 approveSpecialEntry = false
-                if (vm.pay()) navigator.replace(Route.Payment(kind))
+                if (actions.pay()) navigator.replace(Route.Payment(kind))
             },
             onCancel = { approveSpecialEntry = false },
         )
@@ -136,7 +172,7 @@ fun CheckoutScreen(
         approveSpecialEntry = true
     }, onDismiss = { confirmSpecialEntry = false })
     val scanWallet = {
-        if (vm.scanWallet()) navigator.replace(Route.WalletScan)
+        if (actions.scanWallet()) navigator.replace(Route.WalletScan)
         Unit
     }
     WalletTipConfirmation(confirmWallet, onConfirm = {
@@ -144,7 +180,7 @@ fun CheckoutScreen(
         scanWallet()
     }, onDismiss = { confirmWallet = false })
     val createLink = {
-        vm.sendLink()?.let { navigator.replace(Route.PaymentLink(it, fresh = true)) }
+        actions.sendLink()?.let { navigator.replace(Route.PaymentLink(it, fresh = true)) }
         Unit
     }
     LinkTipConfirmation(confirmLink, onConfirm = {
@@ -163,20 +199,18 @@ fun CheckoutScreen(
                 onPay = {
                     if (state.requiresSpecialEntryApproval) {
                         confirmSpecialEntry = true
-                    } else if (vm.pay()) {
+                    } else if (actions.pay()) {
                         navigator.replace(Route.Payment(kind))
                     }
                 },
                 onSendLink = { if (state.tipOnReceipt || state.askGratuity) confirmLink = true else createLink() },
                 onScanWallet = { if (state.tipOnReceipt || state.askGratuity) confirmWallet = true else scanWallet() },
-                tokens = tokens.isNotEmpty(),
-                onChargeToken = {
-                    tokenStep = if (state.tipOnReceipt || state.askGratuity) TokenStep.CONFIRM_NO_TIP else TokenStep.APPROVE
-                },
+                tokens = tokens,
+                onChargeToken = onChargeToken,
             )
         },
     ) { padding ->
-        CheckoutDetails(state, money, vm::update, Modifier.fillMaxSize().padding(padding))
+        CheckoutDetails(state, money, actions.update, Modifier.fillMaxSize().padding(padding))
     }
 }
 
@@ -294,7 +328,8 @@ private fun CheckoutActions(
             modifier = Modifier.testTag("pay"),
         )
         BoxWithConstraints(Modifier.fillMaxWidth()) {
-            if (maxWidth >= 480.dp && state.offersScanWallet && state.canSendLink && !tokens) {
+            val sideBySide = state.offersScanWallet && state.canSendLink && !tokens
+            if (maxWidth >= 480.dp && sideBySide) {
                 Row(horizontalArrangement = Arrangement.spacedBy(LocalDimens.current.spacing)) {
                     WalletCheckoutButton(state.canScanWallet, onScanWallet, Modifier.weight(1f))
                     LinkCheckoutButton(onSendLink, Modifier.weight(1f))

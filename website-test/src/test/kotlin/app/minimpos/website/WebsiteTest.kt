@@ -46,10 +46,6 @@ class QuickStartGuideTest {
                     "Management API - Terminal actions read",
                     "Management API - Terminal settings read and write",
                     "Management API - Terminal settings Advanced read and write",
-                    "Management API - Payment methods read",
-                    "Management API - Stores read",
-                    "Management API - Account read",
-                    "Merchant Recurring role",
                     "Cloud Device API role",
                 ).inOrder()
             steps.select("ul.roles li").forEach { role ->

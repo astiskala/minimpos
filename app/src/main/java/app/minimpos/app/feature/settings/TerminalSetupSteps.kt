@@ -546,22 +546,15 @@ private fun ColumnScope.AdyenApiStep(
 }
 
 /**
- * Every role the API test requires beyond default Checkout access, matching `AdyenRole.required`; cloud adds its
- * transport role.
+ * The roles the API test requires that new API credentials lack by default (`AdyenRole.required` without the default
+ * ones); cloud adds its transport role.
  */
 @Composable
 private fun ColumnScope.ApiKeyRoles(cloud: Boolean) {
     SettingNote(stringResource(R.string.settings_adyen_roles_hint))
     if (cloud) SettingNote("• " + stringResource(R.string.settings_adyen_role_cloud), Modifier.testTag("roleCloud"))
     SettingNote("• " + stringResource(R.string.settings_adyen_role_terminals), Modifier.testTag("roleTerminals"))
-    listOf(
-        R.string.settings_adyen_role_settings,
-        R.string.settings_adyen_role_shared_key,
-        R.string.settings_adyen_role_payment_methods,
-        R.string.settings_adyen_role_stores,
-        R.string.settings_adyen_role_account,
-        R.string.settings_adyen_role_recurring,
-    ).forEach {
+    listOf(R.string.settings_adyen_role_settings, R.string.settings_adyen_role_shared_key).forEach {
         SettingNote("• " + stringResource(it))
     }
 }

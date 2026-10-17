@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.text.TextAutoSize
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.automirrored.filled.ReceiptLong
@@ -51,6 +52,7 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.minimpos.app.R
 import app.minimpos.app.data.settings.TerminalMode
@@ -384,7 +386,18 @@ private fun RowScope.HomeTile(
                 modifier = Modifier.size(if (dimens.compact) 24.dp else 32.dp),
             )
             Spacer(Modifier.height(4.dp).weight(1f))
-            Text(label, style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            val style = MaterialTheme.typography.titleMedium
+            // Longer labels, such as Charge saved card, shrink to fit a half-width tile rather than lose their end.
+            Text(
+                label,
+                style = style,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                autoSize = TextAutoSize.StepBased(minFontSize = MIN_TILE_LABEL_SIZE, maxFontSize = style.fontSize),
+            )
         }
     }
 }
+
+/** The smallest a Home tile label shrinks to before it is ellipsized. */
+private val MIN_TILE_LABEL_SIZE = 12.sp

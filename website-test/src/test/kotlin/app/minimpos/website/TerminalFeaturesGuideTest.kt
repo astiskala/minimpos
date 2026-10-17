@@ -19,7 +19,7 @@ class TerminalFeaturesGuideTest {
                 "shopper-display" to listOf("settings_shopper_display"),
                 "giving" to listOf("checkout_ask_giving"),
                 "keyed-entry" to listOf("checkout_moto", "checkout_mke"),
-                "reconciliation" to listOf("history_reconcile", "reconciliation_close_period"),
+                "reconciliation" to listOf("reconciliation_check", "reconciliation_close_period"),
                 "offline" to listOf("detail_offline_mode", "detail_unconfirmed_batches"),
             )
         val resources =

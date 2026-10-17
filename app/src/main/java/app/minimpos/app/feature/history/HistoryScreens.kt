@@ -793,69 +793,6 @@ private fun PaymentDetailsCard(sale: SaleEntity) {
 }
 
 @Composable
-internal fun ReconciliationCard(
-    report: TerminalReconciliationReport,
-    running: Boolean,
-    onClosePeriod: () -> Unit,
-    onDismiss: () -> Unit,
-) {
-    val locale = currentLocale()
-    val colors = LocalStatusColors.current
-    // The Reconciliation screen already pads its content, so the card lines up with its buttons.
-    Column(Modifier.fillMaxWidth().padding(top = 12.dp).testTag("reconciliationCard")) {
-        Card {
-            Text(
-                text =
-                    stringResource(
-                        if (report.closedPeriod) R.string.reconciliation_closed_title else R.string.reconciliation_title,
-                        report.poiReconciliationId ?: "—",
-                    ),
-                style = MaterialTheme.typography.titleSmall,
-            )
-            Text(
-                text = stringResource(if (report.allMatch) R.string.reconciliation_matched else R.string.reconciliation_mismatch),
-                style = MaterialTheme.typography.bodySmall,
-                color = if (report.allMatch) colors.success else colors.warning,
-            )
-            if (report.offlineSaleCount > 0 || report.unconfirmedBatchCount > 0) {
-                Text(
-                    text = stringResource(R.string.reconciliation_offline_warning, report.offlineSaleCount, report.unconfirmedBatchCount),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = colors.warning,
-                )
-            }
-            report.currencies.forEach { row ->
-                val fmt = MoneyFormatter(CurrencySpec.of(row.currency), locale)
-                LabeledValue(
-                    stringResource(R.string.reconciliation_sales_label, row.currency),
-                    stringResource(R.string.reconciliation_compare, fmt.format(row.localSalesMinor), fmt.format(row.terminalSalesMinor)),
-                )
-                if (row.localRefundsMinor > 0 || row.terminalRefundsMinor > 0) {
-                    LabeledValue(
-                        stringResource(R.string.reconciliation_refunds_label, row.currency),
-                        stringResource(
-                            R.string.reconciliation_compare,
-                            fmt.format(row.localRefundsMinor),
-                            fmt.format(row.terminalRefundsMinor),
-                        ),
-                    )
-                }
-            }
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                if (!report.closedPeriod) {
-                    TextButton(onClick = onClosePeriod, enabled = !running, modifier = Modifier.testTag("closeReconciliationPeriod")) {
-                        Text(stringResource(R.string.reconciliation_close_period))
-                    }
-                }
-                TextButton(onClick = onDismiss, modifier = Modifier.testTag("dismissReconciliation")) {
-                    Text(stringResource(R.string.action_close))
-                }
-            }
-        }
-    }
-}
-
-@Composable
 internal fun historyViewModel(): HistoryViewModel {
     val container = LocalAppContainer.current
     return viewModel {

@@ -85,8 +85,8 @@
   <string name="checkout_email">顧客電郵地址</string>
   <string name="checkout_email_hint">支付獲批後，收據將通過電郵發送。</string>
   <string name="checkout_save_card">儲存卡以供今後支付</string>
-  <string name="checkout_save_card_hint">將卡代碼化並關聯至此顧客參考編號。請先徵得顧客同意。之後可在主頁使用“代碼扣款”收款。</string>
-  <string name="checkout_save_card_email_hint">將卡代碼化並關聯至此電郵地址。請先徵得顧客同意。之後可在主頁使用“代碼扣款”收款。</string>
+  <string name="checkout_save_card_hint">將卡代碼化並關聯至此顧客參考編號。請先徵得顧客同意。</string>
+  <string name="checkout_save_card_email_hint">將卡代碼化並關聯至此電郵地址。請先徵得顧客同意。</string>
   <string name="checkout_pay">支付 %1$s</string>
   <string name="checkout_scan_wallet">掃描錢包</string>
   <string name="checkout_send_link">建立付款連結</string>
@@ -363,7 +363,6 @@
   <string name="history_no_match_hint">可搜尋參考編號、授權碼、顧客、卡號末四位或金額。</string>
   <string name="history_show_all">顯示全部</string>
   <string name="history_print_day">列印整日摘要</string>
-  <string name="history_reconcile">與終端核對總額</string>
   <string name="history_switch_title">刪除紀錄並切換？</string>
   <string name="history_switch_message">在 LIVE、TEST 和模擬器之間切換將永久刪除所有本地支付紀錄和每日報告資料。商品和其他設定將保留。Adyen 紀錄不會刪除。</string>
   <string name="history_switch_unfinished">存在未完成的支付。此操作不會取消 Adyen 的支付、授權或付款連結。本地恢復和安全重試資料將遺失。</string>
@@ -383,15 +382,26 @@
   <string name="report_issue_note">未解決的結果可能改變這些總額。</string>
   <string name="report_demo">演示 — 未發生資金交易</string>
   <string name="report_unknown">環境未知</string>
-  <string name="reconciliation_title">終端對賬（週期 %1$s）</string>
-  <string name="reconciliation_closed_title">已結束終端對帳週期 %1$s</string>
-  <string name="reconciliation_matched">Mini mPOS 與終端總額一致。</string>
-  <string name="reconciliation_mismatch">總額存在差異或仍有未解決交易。</string>
-  <string name="reconciliation_sales_label">銷售額（%1$s）</string>
-  <string name="reconciliation_refunds_label">退款（%1$s）</string>
-  <string name="reconciliation_compare">Mini mPOS %1$s · 終端 %2$s</string>
-  <string name="reconciliation_close_period">結束對賬週期</string>
-  <string name="reconciliation_offline_warning">離線銷售：%1$d · 未確認終端批次：%2$d</string>
+  <string name="reconciliation_title">終端對帳週期 %1$s</string>
+  <string name="reconciliation_closed_title">終端對帳週期 %1$s 已結束</string>
+  <string name="reconciliation_matched">總額一致</string>
+  <string name="reconciliation_mismatch">總額不一致</string>
+  <string name="reconciliation_close_period">結束終端對帳週期</string>
+  <string name="reconciliation_offline_warning">離線銷售：%1$d · 尚未上載至 Adyen 的批次：%2$d</string>
+  <string name="reconciliation_unresolved">未確認的終端付款：%1$d</string>
+  <string name="reconciliation_sales">銷售額</string>
+  <string name="reconciliation_refunds">退款</string>
+  <string name="reconciliation_column_local">Mini mPOS</string>
+  <string name="reconciliation_column_terminal">終端</string>
+  <string name="reconciliation_totals_header">1. 核對總額</string>
+  <string name="reconciliation_check_hint">將終端目前對帳週期的總額與本裝置上的付款比對。會先核查未確認的終端付款。</string>
+  <string name="reconciliation_check">核對終端總額</string>
+  <string name="reconciliation_end_header">2. 營業結束</string>
+  <string name="reconciliation_close_hint">總額一致後，結束終端的對帳週期。終端會開始新的週期，明天的總額將從零開始。</string>
+  <string name="reconciliation_close_confirm_title">要結束終端對帳週期嗎？</string>
+  <string name="reconciliation_close_confirm_message">終端將結束目前的對帳週期並開始新的週期。此操作無法還原。</string>
+  <string name="reconciliation_report_header">3. 每日報表</string>
+  <string name="reconciliation_report_hint">列印本裝置今日付款及退款的本地摘要。這不是 Adyen 的結算。</string>
 
   <!-- Products and sample data -->
   <string name="products_title">商品</string>
@@ -1106,6 +1116,9 @@
   <string name="saved_card_review_note">Adyen 會在顧客不在場的情況下使用代碼扣款。如有需要，請在交易紀錄中退款。</string>
   <string name="setup_shopper_reference">請在“設定 › 支付”中選擇顧客參考編號，以使用代碼。</string>
   <string name="setup_totals">目前收款目標無法提供終端匯總。Tap to Pay 不提供匯總。</string>
-  <string name="reconciliation_intro">將終端匯總與 Mini mPOS 比對。會先核查未確認的終端付款。請在營業日結束時結束對帳期。</string>
   <string name="reconciliation_print_today">列印今日報表</string>
+  <string name="checkout_charge_token">代碼扣款</string>
+  <string name="checkout_choose_token">選擇代碼</string>
+  <string name="checkout_token_without_tip">使用代碼扣款時不含小費。</string>
+  <string name="reconciliation_mismatch_hint">請在交易紀錄中處理需要關注的付款。使用此終端的其他裝置也會計入其總額。</string>
 </resources>

@@ -86,8 +86,8 @@
   <string name="checkout_email">Customer email</string>
   <string name="checkout_email_hint">The receipt is emailed once the payment is approved.</string>
   <string name="checkout_save_card">Save card for future payments</string>
-  <string name="checkout_save_card_hint">Tokenizes the card for this customer reference. Ask the customer for consent. Charge the token later with Charge token on Home.</string>
-  <string name="checkout_save_card_email_hint">Tokenizes the card for this email address. Ask the customer for consent. Charge the token later with Charge token on Home.</string>
+  <string name="checkout_save_card_hint">Tokenizes the card for this customer reference. Ask the customer for consent.</string>
+  <string name="checkout_save_card_email_hint">Tokenizes the card for this email address. Ask the customer for consent.</string>
   <string name="checkout_pay">Pay %1$s</string>
   <string name="checkout_scan_wallet">Scan wallet</string>
   <string name="checkout_send_link">Create payment link</string>
@@ -363,7 +363,6 @@
   <string name="history_no_match_hint">Try a reference, auth code, shopper, the card’s last 4 digits or an amount.</string>
   <string name="history_show_all">Show all</string>
   <string name="history_print_day">Print whole-day summary</string>
-  <string name="history_reconcile">Reconcile with terminal</string>
   <string name="history_switch_title">Delete history and switch?</string>
   <string name="history_switch_message">Switching between LIVE, TEST, and simulator permanently deletes all local payment history and daily report data. Products and other settings stay. Adyen records are not deleted.</string>
   <string name="history_switch_unfinished">Unfinished payments exist. This does not cancel payments, authorizations, or links at Adyen. Local recovery and safe retry data will be lost.</string>
@@ -383,15 +382,26 @@
   <string name="report_issue_note">Unresolved outcomes may change these totals.</string>
   <string name="report_demo">DEMO — no money moved</string>
   <string name="report_unknown">Environment unavailable</string>
-  <string name="reconciliation_title">Terminal reconciliation (period %1$s)</string>
-  <string name="reconciliation_closed_title">Closed terminal period %1$s</string>
-  <string name="reconciliation_matched">Mini mPOS and terminal totals match.</string>
-  <string name="reconciliation_mismatch">Totals differ or unresolved transactions remain.</string>
-  <string name="reconciliation_sales_label">Sales (%1$s)</string>
-  <string name="reconciliation_refunds_label">Refunds (%1$s)</string>
-  <string name="reconciliation_compare">Mini mPOS %1$s · Terminal %2$s</string>
-  <string name="reconciliation_close_period">Close period</string>
-  <string name="reconciliation_offline_warning">Offline sales: %1$d · Unconfirmed terminal batches: %2$d</string>
+  <string name="reconciliation_title">Terminal period %1$s</string>
+  <string name="reconciliation_closed_title">Terminal period %1$s closed</string>
+  <string name="reconciliation_matched">Totals match</string>
+  <string name="reconciliation_mismatch">Totals differ</string>
+  <string name="reconciliation_close_period">Close terminal period</string>
+  <string name="reconciliation_offline_warning">Offline sales: %1$d · Batches not yet uploaded to Adyen: %2$d</string>
+  <string name="reconciliation_unresolved">Unresolved terminal payments: %1$d</string>
+  <string name="reconciliation_sales">Sales</string>
+  <string name="reconciliation_refunds">Refunds</string>
+  <string name="reconciliation_column_local">Mini mPOS</string>
+  <string name="reconciliation_column_terminal">Terminal</string>
+  <string name="reconciliation_totals_header">1. Check totals</string>
+  <string name="reconciliation_check_hint">Compares the terminal’s totals for its current period with the payments on this device. Unresolved terminal payments are checked first.</string>
+  <string name="reconciliation_check">Check terminal totals</string>
+  <string name="reconciliation_end_header">2. End of day</string>
+  <string name="reconciliation_close_hint">Once the totals match, close the terminal’s period. The terminal starts a new one, so tomorrow’s totals start from zero.</string>
+  <string name="reconciliation_close_confirm_title">Close the terminal period?</string>
+  <string name="reconciliation_close_confirm_message">The terminal ends its current period and starts a new one. This cannot be undone.</string>
+  <string name="reconciliation_report_header">3. Daily report</string>
+  <string name="reconciliation_report_hint">Prints this device’s local summary of today’s payments and refunds. It is not Adyen’s settlement.</string>
 
   <!-- Products and sample data -->
   <string name="products_title">Products</string>
@@ -1110,6 +1120,9 @@
   <string name="saved_card_review_note">Adyen charges the token without the shopper present. Refund it from History if needed.</string>
   <string name="setup_shopper_reference">Choose a shopper reference in Settings › Payments to use tokens.</string>
   <string name="setup_totals">Terminal totals are not available where payments go now. Tap to Pay does not report them.</string>
-  <string name="reconciliation_intro">Compare the terminal’s totals with Mini mPOS. Unresolved terminal payments are checked first. Close the period at the end of the day.</string>
   <string name="reconciliation_print_today">Print today’s report</string>
+  <string name="checkout_charge_token">Charge token</string>
+  <string name="checkout_choose_token">Choose a token</string>
+  <string name="checkout_token_without_tip">The token is charged without a tip.</string>
+  <string name="reconciliation_mismatch_hint">Resolve payments that need attention in History. Other devices using this terminal also count in its totals.</string>
 </resources>

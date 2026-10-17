@@ -91,6 +91,19 @@ class GatedActionsTest {
         compose.waitUntilAtLeastOneExists(hasTestTag("reconcileTerminal"), 15_000)
         compose.onNodeWithTag("reconcileTerminal").assertIsEnabled().performClick()
         compose.waitUntilAtLeastOneExists(hasTestTag("reconciliationCard"), 15_000)
+        compose.onNodeWithTag("reconciliationStatus").assertTextContains(env.context.getString(R.string.reconciliation_matched))
+        // Closing the period is confirmed first, then ends it: it cannot be closed twice.
+        compose
+            .onNodeWithTag("closeReconciliationPeriod")
+            .performScrollTo()
+            .assertIsEnabled()
+            .performClick()
+        compose.waitUntilAtLeastOneExists(hasTestTag("confirm"), 15_000)
+        compose.onNodeWithTag("confirm").performClick()
+        compose.waitUntil(15_000) {
+            compose.onAllNodesWithTag("reconciliationCard").fetchSemanticsNodes().isNotEmpty() &&
+                runCatching { compose.onNodeWithTag("closeReconciliationPeriod").assertIsNotEnabled() }.isSuccess
+        }
         useNetworkTerminalWithoutId()
         compose.waitUntilAtLeastOneExists(hasTestTag("blockedReason"), 15_000)
         compose.onNodeWithTag("reconcileTerminal").assertIsNotEnabled()

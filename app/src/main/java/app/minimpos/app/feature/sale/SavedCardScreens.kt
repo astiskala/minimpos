@@ -1,6 +1,8 @@
 package app.minimpos.app.feature.sale
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.fillMaxSize
@@ -23,7 +25,10 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
@@ -153,7 +158,7 @@ private fun ColumnScope.CardList(
 }
 
 /** The card as the operator recognises it: brand and last four digits, as far as Adyen sent them, else its token ID. */
-private fun cardLabel(
+internal fun cardLabel(
     id: String,
     brand: String?,
     lastFour: String?,
@@ -239,5 +244,55 @@ private fun savedCardViewModel(): SavedCardViewModel {
             container.terminalStatus.state,
             container::currency,
         )
+    }
+}
+
+/**
+ * Follows a token charged from a New sale's checkout to its result, which replaces this screen. Back is disabled while
+ * the charge runs; it cannot be cancelled once sent.
+ */
+@Composable
+fun TokenChargeScreen(
+    navigator: Navigator,
+    modifier: Modifier = Modifier,
+) {
+    val charges = LocalAppContainer.current.savedCardCharges
+    val state by charges.state.collectAsStateWithLifecycle()
+    // Leaving the result acknowledges the charge, which must not send this screen Home on its way out.
+    var finished by remember { mutableStateOf(false) }
+    LaunchedEffect(state) {
+        when (val current = state) {
+            is TransactionState.Finished -> {
+                finished = true
+                navigator.replace(Route.SaleResult(current.id))
+                charges.acknowledge()
+            }
+
+            TransactionState.Idle -> {
+                if (!finished) navigator.home()
+            }
+
+            // The charge runs on; its result replaces this screen.
+            is TransactionState.Processing -> {}
+        }
+    }
+    BackHandler(enabled = true) {}
+    MiniScaffold(title = stringResource(R.string.checkout_charge_token), onBack = null, modifier = modifier) { padding ->
+        Column(
+            Modifier
+                .fillMaxSize()
+                .padding(padding)
+                .padding(LocalDimens.current.screenPadding)
+                .testTag("tokenCharging"),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center,
+        ) {
+            CircularProgressIndicator()
+            Text(
+                stringResource(R.string.saved_card_charging),
+                style = MaterialTheme.typography.bodyLarge,
+                modifier = Modifier.padding(top = LocalDimens.current.spacing),
+            )
+        }
     }
 }

@@ -1,13 +1,12 @@
 package app.minimpos.tooling
 
 import org.w3c.dom.Element
+import org.w3c.dom.NodeList
 import org.xml.sax.SAXException
-import org.xml.sax.SAXParseException
 import org.xml.sax.helpers.DefaultHandler
 import java.nio.file.Files
 import java.nio.file.Path
 import java.util.Locale
-import javax.xml.XMLConstants
 import javax.xml.parsers.DocumentBuilderFactory
 
 internal object BuildReports {
@@ -48,13 +47,16 @@ internal object BuildReports {
         module: String,
     ): List<Suite> {
         val directory = root.resolve("$module/build/test-results")
-        if (!Files.isDirectory(directory)) return emptyList()
-        return Files.walk(directory).use { paths ->
-            paths
-                .filter { Files.isRegularFile(it) && it.fileName.toString().startsWith("TEST-") && it.toString().endsWith(".xml") }
-                .sorted()
-                .map { readSuite(root, module, it) }
-                .toList()
+        return if (!Files.isDirectory(directory)) {
+            emptyList()
+        } else {
+            Files.walk(directory).use { paths ->
+                paths
+                    .filter { Files.isRegularFile(it) && it.fileName.toString().startsWith("TEST-") && it.toString().endsWith(".xml") }
+                    .sorted()
+                    .map { readSuite(root, module, it) }
+                    .toList()
+            }
         }
     }
 
@@ -66,22 +68,10 @@ internal object BuildReports {
         val factory =
             DocumentBuilderFactory.newInstance().apply {
                 setFeature("http://apache.org/xml/features/disallow-doctype-decl", true)
-                setFeature("http://xml.org/sax/features/external-general-entities", false)
-                setFeature("http://xml.org/sax/features/external-parameter-entities", false)
-                setAttribute(XMLConstants.ACCESS_EXTERNAL_DTD, "")
-                setAttribute(XMLConstants.ACCESS_EXTERNAL_SCHEMA, "")
-                isXIncludeAware = false
-                isExpandEntityReferences = false
             }
         val builder =
             factory.newDocumentBuilder().apply {
-                setErrorHandler(
-                    object : DefaultHandler() {
-                        override fun error(exception: SAXParseException): Nothing = throw exception
-
-                        override fun fatalError(exception: SAXParseException): Nothing = throw exception
-                    },
-                )
+                setErrorHandler(DefaultHandler())
             }
         val suite =
             try {
@@ -90,14 +80,10 @@ internal object BuildReports {
                 throw IllegalArgumentException("Cannot parse test report: ${root.relativize(report)}", exception)
             }
         require(suite.tagName == "testsuite") { "Expected testsuite: ${root.relativize(report)}" }
-        val tests = suite.getElementsByTagName("testcase")
         val failures =
-            (0..<tests.length).flatMap { index ->
-                val test = tests.item(index) as Element
+            suite.getElementsByTagName("testcase").elements().flatMap { test ->
                 listOf("failure", "error").flatMap { kind ->
-                    val nodes = test.getElementsByTagName(kind)
-                    (0..<nodes.length).map { failureIndex ->
-                        val failure = nodes.item(failureIndex) as Element
+                    test.getElementsByTagName(kind).elements().map { failure ->
                         val lines = failure.textContent.trim().lines()
                         val assertion =
                             lines
@@ -125,6 +111,8 @@ internal object BuildReports {
             failures,
         )
     }
+
+    private fun NodeList.elements(): List<Element> = List(length) { item(it) as Element }
 
     private fun quote(value: String) = "'${value.replace("'", "'\\''")}'"
 

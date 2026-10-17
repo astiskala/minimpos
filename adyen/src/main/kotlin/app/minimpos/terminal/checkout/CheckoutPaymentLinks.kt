@@ -116,6 +116,6 @@ class CheckoutPaymentLinks(
 
     private companion object {
         /** Expiry timestamps use whole seconds, as Adyen's examples show (`2026-10-03T09:30:00Z`). */
-        val EXPIRY_PRECISION: ChronoUnit = ChronoUnit.SECONDS
+        private val EXPIRY_PRECISION: ChronoUnit = ChronoUnit.SECONDS
     }
 }

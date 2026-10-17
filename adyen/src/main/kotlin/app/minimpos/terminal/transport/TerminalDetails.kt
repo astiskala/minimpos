@@ -498,7 +498,7 @@ class AdyenTerminalDetails(
                 } else {
                     found ==
                         patch.gratuity.copy(
-                            currency = found?.currency ?: patch.currency,
+                            currency = patch.currency.trim().uppercase(),
                             predefinedEntries = if (patch.gratuity.usePredefinedEntries) patch.gratuity.predefinedEntries else emptyList(),
                         )
                 }
@@ -526,7 +526,7 @@ class AdyenTerminalDetails(
         return RemoteTerminalCapabilities(
             gratuities = parseGratuities(settings),
             dccEnabled = settings.dcc?.enableDcc == true,
-            surchargeConfigured = surcharge?.askConfirmation == true || surcharge?.configurations.orEmpty().any { it != null },
+            surchargeConfigured = surcharge?.askConfirmation == true || !surcharge?.configurations.isNullOrEmpty(),
             moto = TerminalMotoSettings(enabled = moto?.enableMoto == true, maxAmount = moto?.maxAmount),
             offline =
                 TerminalOfflineLimits(
@@ -538,39 +538,43 @@ class AdyenTerminalDetails(
     }
 
     private fun parseGratuities(settings: TerminalSettings): List<TerminalGratuity> =
-        settings.gratuities.orEmpty().mapNotNull { item ->
-            val currency =
-                item
-                    ?.currency
-                    ?.trim()
-                    ?.uppercase()
-                    .orEmpty()
-            if (currency.isEmpty()) {
-                null
-            } else {
-                val usePredefined = item.usePredefinedTipEntries == true
-                val entries =
-                    if (usePredefined) {
-                        item.predefinedTipEntries.orEmpty().mapNotNull { entry -> entry?.trim()?.takeIf { it.isNotEmpty() } }
-                    } else {
-                        emptyList()
-                    }
-                TerminalGratuity(currency, usePredefined, entries, item.allowCustomAmount == true)
+        settings.gratuities
+            .orEmpty()
+            .filterNotNull()
+            .mapNotNull { item ->
+                val currency =
+                    item.currency
+                        ?.trim()
+                        ?.uppercase()
+                        .orEmpty()
+                if (currency.isEmpty()) {
+                    null
+                } else {
+                    val usePredefined = item.usePredefinedTipEntries == true
+                    val entries =
+                        if (usePredefined) {
+                            item.predefinedTipEntries
+                                .orEmpty()
+                                .mapNotNull { entry -> entry?.trim()?.takeIf { it.isNotEmpty() } }
+                        } else {
+                            emptyList()
+                        }
+                    TerminalGratuity(currency, usePredefined, entries, item.allowCustomAmount == true)
+                }
             }
-        }
 
     private fun parseStoreAndForward(settings: TerminalSettings): Map<String, Long> =
         settings.storeAndForward
             ?.maxAmount
             .orEmpty()
+            .filterNotNull()
             .mapNotNull { entry ->
                 val code =
-                    entry
-                        ?.currencyCode
+                    entry.currencyCode
                         ?.trim()
                         ?.uppercase()
                         .orEmpty()
-                val amount = entry?.amount?.toLong()
+                val amount = entry.amount?.toLong()
                 if (code.isNotEmpty() && amount != null && amount >= 0) code to amount else null
             }.toMap()
 
@@ -699,13 +703,13 @@ class AdyenTerminalDetails(
     }
 
     private companion object {
-        val TIMEOUT = 15.seconds
-        val KEY_VERSIONS = 1..9_999
+        private val TIMEOUT = 15.seconds
+        private val KEY_VERSIONS = 1..9_999
 
         /** [REQUIRED_ROLES] as Adyen names them in the Customer Area. */
         const val MANAGEMENT_ROLES =
             "Management API—Terminal actions read, Terminal settings read and write, Terminal settings Advanced read and write"
-        val REQUIRED_ROLES =
+        private val REQUIRED_ROLES =
             setOf(
                 "ManagementAPI-Terminalactionsread",
                 "ManagementAPI-Terminalsettingsreadandwrite",

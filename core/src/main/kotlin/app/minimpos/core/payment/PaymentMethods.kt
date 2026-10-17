@@ -101,8 +101,7 @@ enum class ScanWallet(
             return configured(normalized) ?: when (normalized) {
                 "wechatpay" -> WECHAT_PAY
                 "alipay_plus_alipay_cn" -> ALIPAY
-                "alipay_plus_alipay_hk" -> ALIPAY_HK
-                else -> normalized.takeIf { it.startsWith("alipay_plus_") }?.removePrefix("alipay_plus_")?.let(::configured)
+                else -> configured(normalized.removePrefix("alipay_plus_"))
             }
         }
     }

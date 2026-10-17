@@ -39,14 +39,19 @@ class ReleaseTest {
     @Test
     fun `invalid duplicate or exhausted versions remain unchanged`() {
         val version = temporary.root.toPath().resolve("version.properties")
+        Files.writeString(version, "versionName=0.6.2\nversionCode=${Release.MAX_CODE}\n")
+        assertThat(Release.readVersion(version)).isEqualTo(Release.Version("0.6.2", Release.MAX_CODE))
         val texts =
             listOf(
+                "versionCode=14\n",
+                "versionName=0.6.2\n",
                 "versionName=0.6\nversionCode=14\n",
                 "versionName=0.6.2\nversionCode=0\n",
                 "versionName=0.6.2\nversionName=0.6.3\nversionCode=14\n",
                 "versionName=0.6.2\nversionName=invalid\nversionCode=14\n",
                 "versionName=0.6.2\nversionCode=14\nversionCode=15\n",
                 "versionName=0.6.2\nversionCode=${Release.MAX_CODE}\n",
+                "versionName=0.6.2\nversionCode=${Release.MAX_CODE + 1}\n",
                 "versionName=0.6.2\nversionCode=99999999999999999999999\n",
                 "versionName=0.6.2\nversionCode=+14\n",
             )
@@ -82,8 +87,10 @@ class ReleaseTest {
             )
         assertThat(Release.selectCiRun(JsonArray(listOf(run)), commit)).isEqualTo(run)
         val dispatch = JsonObject(run + ("event" to JsonPrimitive("workflow_dispatch")) + ("id" to JsonPrimitive(124)))
-        assertThat(Release.selectCiRun(JsonArray(listOf(dispatch, run)), commit)).isEqualTo(dispatch)
+        val duplicateId = JsonObject(dispatch + ("created_at" to JsonPrimitive("2026-10-06T00:00:00Z")))
+        assertThat(Release.selectCiRun(JsonArray(listOf(JsonPrimitive("ignored"), dispatch, run)), commit)).isEqualTo(dispatch)
         assertThat(Release.selectCiRun(JsonArray(listOf(run, dispatch)), commit)).isEqualTo(dispatch)
+        assertThat(Release.selectCiRun(JsonArray(listOf(dispatch, duplicateId)), commit)).isEqualTo(dispatch)
         assertThat(Release.selectCiRun(JsonArray(emptyList()), commit)).isNull()
     }
 
@@ -197,6 +204,9 @@ class ReleaseTest {
         val args = arrayOf("--artifact", fixture.artifact.toString(), "--commit", commit, "--run-id", "123", "--run-attempt", "1")
         assertThat(run("manifest", *args).code).isEqualTo(0)
         assertThat(run("verify", *args).code).isEqualTo(0)
+        if (System.getProperty("minimpos.tooling.jar") != null) {
+            assertThat(Cli.runJar("release", "--version", fixture.version.toString(), "verify", *args).code).isEqualTo(0)
+        }
         assertThat(run("candidate", "--subject", "Release 0.6.3", "--files", "version.properties").code).isEqualTo(0)
         assertThat(run("candidate", "--subject", "Other", "--files", "version.properties").code).isNotEqualTo(0)
         val update = fixture.root.resolve("update.json")
@@ -205,6 +215,16 @@ class ReleaseTest {
             .isEqualTo("{\"versionName\":\"0.6.3\",\"versionCode\":15,\"apk\":\"minimpos-0.6.3.apk\"}\n")
         assertThat(run("update", "--unknown", "x").code).isNotEqualTo(0)
         assertThat(run("update", "--out", "x", "--out", "y").code).isNotEqualTo(0)
+        assertThat(run("update", "--out").code).isNotEqualTo(0)
+        assertThat(run("update", "-x").code).isNotEqualTo(0)
+        assertThat(run("bump").code).isNotEqualTo(0)
+        assertThat(run("bump", "patch", "extra").code).isNotEqualTo(0)
+        assertThat(run().code).isNotEqualTo(0)
+        assertThat(run("unknown").code).isNotEqualTo(0)
+        assertThat(run("candidate", "--subject", "Release 0.6.3").code).isNotEqualTo(0)
+        assertThat(Cli.run().code).isNotEqualTo(0)
+        assertThat(Cli.run("unknown").code).isNotEqualTo(0)
+        assertThat(Cli.run("signing").code).isNotEqualTo(0)
     }
 
     @Test
@@ -225,6 +245,10 @@ class ReleaseTest {
             Cli.run("release", "ci", "--runs", runs.toString(), "--commit", "b".repeat(40))
         assertThat(none.code).isEqualTo(0)
         assertThat(none.output).isEqualTo("null\n")
+        for (invalid in listOf("[]", "{}", """{"workflow_runs":{}}""")) {
+            Files.writeString(runs, invalid)
+            assertThat(Cli.run("release", "ci", "--runs", runs.toString(), "--commit", commit).code).isNotEqualTo(0)
+        }
     }
 
     private fun json(text: String) = Json.parseToJsonElement(text) as JsonObject

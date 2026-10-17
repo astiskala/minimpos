@@ -32,7 +32,6 @@ data class Decline(
         get() {
             val reason = refusalReason.orEmpty()
             return when (errorCondition ?: return null) {
-                ABORTED, "WrongPIN", "UnreachableHost", "NotFound" -> RetryAdvice.RETRY
                 "DeviceOut", "UnavailableDevice" -> RetryAdvice.WAIT_AND_RETRY
                 BUSY -> RetryAdvice.TERMINAL_BUSY
                 "NotAllowed", "PaymentRestriction" -> RetryAdvice.DIFFERENT_PAYMENT_METHOD

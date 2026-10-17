@@ -46,8 +46,8 @@ internal sealed interface AdyenReply {
  */
 internal fun AdyenReply.Answered.fault(
     key: ApiKey,
-    role: String? = null,
-    error: AdyenError? = null,
+    role: String?,
+    error: AdyenError?,
 ): Fault =
     when {
         code == HTTP_UNAUTHORIZED -> Fault.Credential(key)
@@ -150,7 +150,7 @@ internal class AdyenHttp(
         }
 
     private companion object {
-        val JSON = "application/json; charset=utf-8".toMediaType()
+        private val JSON = "application/json; charset=utf-8".toMediaType()
     }
 }
 

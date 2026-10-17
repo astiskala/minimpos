@@ -9,6 +9,7 @@ import app.minimpos.terminal.checkout.PaymentLinkRequest
 import app.minimpos.terminal.checkout.PaymentLinkResult
 import app.minimpos.terminal.checkout.PaymentLinkStatus
 import app.minimpos.terminal.client.PosApplication
+import app.minimpos.terminal.simulator.SimulatedPaymentLinks
 import app.minimpos.terminal.transport.ApiKey
 import app.minimpos.terminal.transport.ExternalText
 import app.minimpos.terminal.transport.Fault
@@ -21,7 +22,10 @@ import mockwebserver3.MockResponse
 import mockwebserver3.MockWebServer
 import org.junit.After
 import org.junit.Test
+import java.time.Clock
 import java.time.Instant
+import java.time.ZoneId
+import java.time.ZoneOffset
 import java.util.concurrent.TimeUnit
 import kotlin.time.Duration.Companion.milliseconds
 
@@ -214,4 +218,32 @@ class CheckoutPaymentLinksTest {
         assertThat(result).isEqualTo(PaymentLinkResult.Failed(Fault.Unreachable(url.host, terminal = false)))
         assertThat(result.toString()).doesNotContain("secret-api-key")
     }
+
+    @Test
+    fun `simulated payment links track creation, expiration and unknown ids offline`() =
+        runBlocking {
+            var now = Instant.parse("2026-10-02T09:30:00Z")
+            val clock =
+                object : Clock() {
+                    override fun getZone() = ZoneOffset.UTC
+
+                    override fun withZone(zone: ZoneId?) = this
+
+                    override fun instant(): Instant = now
+                }
+            val sim = SimulatedPaymentLinks(clock)
+            val created = (sim.create(request, "sim-1") as PaymentLinkResult.Answered).link
+            assertThat(created.status).isEqualTo(PaymentLinkStatus.ACTIVE)
+            assertThat(created.url).startsWith("https://example.invalid/minimpos-demo/simulated:")
+            assertThat(created.expiresAt).isEqualTo(expiresAt)
+
+            assertThat((sim.status(created.id) as PaymentLinkResult.Answered).link.status).isEqualTo(PaymentLinkStatus.ACTIVE)
+            now = expiresAt
+            assertThat((sim.status(created.id) as PaymentLinkResult.Answered).link.status).isEqualTo(PaymentLinkStatus.EXPIRED)
+            assertThat((sim.expire(created.id) as PaymentLinkResult.Answered).link.status).isEqualTo(PaymentLinkStatus.EXPIRED)
+
+            assertThat(sim.status("unknown")).isEqualTo(PaymentLinkResult.Failed(Fault.NotFound(null)))
+            assertThat(sim.status("simulated:notanumber:key")).isEqualTo(PaymentLinkResult.Failed(Fault.NotFound(null)))
+            assertThat(sim.expire("unknown")).isEqualTo(PaymentLinkResult.Failed(Fault.NotFound(null)))
+        }
 }

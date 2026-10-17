@@ -43,20 +43,27 @@ class ReceiptRenderersTest {
 
     @Test
     fun `plain text wraps long rows and words`() {
-        val renderer = PlainTextReceiptRenderer(width = 16)
-        val text = renderer.render(ReceiptDocument(listOf(Row("A very long product name", "$10.00"))))
+        val renderer = PlainTextReceiptRenderer()
+        assertThat(renderer.render(ReceiptDocument(listOf(Divider)))).hasLength(33)
+        val narrow = PlainTextReceiptRenderer(width = 16)
+        val text = narrow.render(ReceiptDocument(listOf(Row("A very long product name", "$10.00"))))
         assertThat(text.lines()).containsAtLeast("A very long", "product name", "          $10.00").inOrder()
         assertThat(
-            renderer.wrap("abcdefghijklmnopqrstuvwxyz end"),
+            narrow.wrap("abcdefghijklmnopqrstuvwxyz end"),
         ).containsExactly("abcdefghijklmnop", "qrstuvwxyz end").inOrder()
-        assertThat(renderer.wrap("aa abcdefghijklmnopqrst")).containsExactly("aa", "abcdefghijklmnop", "qrst").inOrder()
-        assertThrows(IllegalArgumentException::class.java) { PlainTextReceiptRenderer(width = 5) }
+        assertThat(narrow.wrap("aa abcdefghijklmnopqrst")).containsExactly("aa", "abcdefghijklmnop", "qrst").inOrder()
+        assertThat(narrow.wrap(" 123456789012345")).containsExactly(" 123456789012345")
+        assertThat(narrow.wrap("12345 1234567890")).containsExactly("12345 1234567890")
+        assertThat(narrow.wrap("abcdefghijklmnop ")).containsExactly("abcdefghijklmnop")
+        assertThrows(IllegalArgumentException::class.java) { PlainTextReceiptRenderer(width = 15) }
     }
 
     @Test
     fun `receipt columns keep a readable gutter rather than a single separating space`() {
         val document = ReceiptDocument(listOf(Row("1234567890", "12345")))
         assertThat(PlainTextReceiptRenderer(16).render(document)).isEqualTo("1234567890\n           12345\n")
+        val exactFit = ReceiptDocument(listOf(Row("123456789", "12345")))
+        assertThat(PlainTextReceiptRenderer(16).render(exactFit)).isEqualTo("123456789  12345\n")
         val html = HtmlReceiptRenderer().render(document, "Receipt")
         assertThat(html).contains("line-height:1.55")
         assertThat(html).contains("table-layout:fixed")
@@ -103,6 +110,8 @@ class ReceiptRenderersTest {
         assertThat(ReceiptTextWidth.columns("中文かなＡＢ한글")).isEqualTo(16)
         val astral = "\uD840\uDC00"
         assertThat(ReceiptTextWidth.columns(astral)).isEqualTo(2)
+        assertThat(ReceiptTextWidth.columns("\u10FF\u1100\u115F\u1160")).isEqualTo(6)
+        assertThat(ReceiptTextWidth.columns(String(Character.toChars(0x3FFFD)) + String(Character.toChars(0x3FFFE)))).isEqualTo(3)
         assertThat(ReceiptTextWidth.lineEnd("a\u0301$astral", 1)).isEqualTo(2)
         assertThat(ReceiptTextWidth.lineEnd(astral, 1)).isEqualTo(0)
         assertThat(ReceiptTextWidth.lineEnd(astral, 2)).isEqualTo(2)
@@ -120,6 +129,8 @@ class ReceiptRenderersTest {
         assertThat(html).contains("src=\"cid:qr0\"")
         assertThat(html).contains("src=\"cid:qr1\"")
         assertThat(html).contains("Scan me")
+        assertThat(html).contains("text-align:left;")
+        assertThat(html).contains("text-align:center;")
         assertThat(html).contains("text-align:right;")
         assertThat(html).contains("text-decoration:underline;")
         assertThat(HtmlReceiptRenderer().render(ReceiptDocument(emptyList()), "t")).doesNotContain("<p")
@@ -150,9 +161,11 @@ class ReceiptRenderersTest {
         assertThat(text).hasSize(8)
         assertThat(text.takeLast(2)).containsExactly(Blank, Text("Scan me", Align.CENTER)).inOrder()
         assertThat(segments.drop(1)).containsExactly(ReceiptSegment.QrCode("MPR1*x"), ReceiptSegment.QrCode("MPR1*y")).inOrder()
+        assertThat((segments[1] as ReceiptSegment.QrCode).content).isEqualTo("MPR1*x")
         assertThat(
             ReceiptDocument(listOf(Blank, Qr("a"), Blank)).segments(),
         ).containsExactly(ReceiptSegment.QrCode("a"))
+        assertThat(ReceiptDocument(listOf(Blank, Blank)).segments()).isEmpty()
         // A caption on its own is worth a text request.
         assertThat(ReceiptDocument(listOf(Qr("a", "Code"))).segments().first())
             .isEqualTo(ReceiptSegment.TextBlock(listOf(Blank, Text("Code", Align.CENTER))))

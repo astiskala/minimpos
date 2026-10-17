@@ -56,6 +56,7 @@ class PaymentMethodsTest {
 
     @Test
     fun `finds the wallet at the end of the variant`() {
+        assertThat(Wallet.entries.map { it.displayName }).containsExactly("Apple Pay", "Google Pay", "Samsung Pay").inOrder()
         assertThat(PaymentMethods.wallet("visa_applepay")).isEqualTo(Wallet.APPLE_PAY)
         assertThat(PaymentMethods.wallet("MC_GooglePay")).isEqualTo(Wallet.GOOGLE_PAY)
         assertThat(PaymentMethods.wallet("maestro_usa_samsungpay")).isEqualTo(Wallet.SAMSUNG_PAY)

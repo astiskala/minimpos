@@ -163,6 +163,15 @@ class PaymentsAppTest {
         // A Payments app that cannot be started means nothing was sent.
         app.unanswered = AppLinkAnswer.NotStarted
         assertThat((runBlocking { client.pay(payment) } as TransactionOutcome.NotProcessed).fault).isEqualTo(Fault.NotStarted)
+        app.unanswered = null
+        // Missing response/error parameters or empty request fail cleanly.
+        app.reply = { "$RETURN_URL/nexo" }
+        assertThat(
+            runBlocking { PaymentsAppTransport(key, TerminalEnvironment.TEST, app, RETURN_URL).send(request, 5.seconds) },
+        ).isEqualTo(Delivery.Failed(Fault.AppRefused(null)))
+        assertThat(
+            runBlocking { PaymentsAppTransport(key, TerminalEnvironment.TEST, app, RETURN_URL).send(TerminalAPIRequest(), 5.seconds) },
+        ).isEqualTo(Delivery.Failed(Fault.Unsupported))
     }
 
     @Test
@@ -214,6 +223,28 @@ class PaymentsAppTest {
                 } as Onboarding.Failed
             ).fault,
         ).isEqualTo(Fault.UnreadableReply())
+        app.reply = null
+        app.unanswered = AppLinkAnswer.NotStarted
+        assertThat(runBlocking { onboarding.board(BoardingTarget("HarbourCoffeeCOM")) })
+            .isEqualTo(Onboarding.Failed(Fault.NotStarted))
+        app.unanswered = null
+        management.result = ManagementResult.NotBoarded
+        assertThat(runBlocking { onboarding.board(BoardingTarget("HarbourCoffeeCOM")) })
+            .isEqualTo(Onboarding.Failed(Fault.UnreadableReply()))
+        val minimalManagement =
+            object : PaymentsAppManagement {
+                override suspend fun boardingToken(
+                    target: BoardingTarget,
+                    boardingRequestToken: String,
+                ): ManagementResult = ManagementResult.NotBoarded
+
+                override suspend fun revoke(
+                    merchantAccount: String,
+                    installationId: String,
+                ): ManagementResult = ManagementResult.NotBoarded
+            }
+        assertThat(runBlocking { minimalManagement.registration(BoardingTarget("HarbourCoffeeCOM"), "I1") })
+            .isEqualTo(ManagementResult.Failed(Fault.Unsupported))
         assertThrows(IllegalArgumentException::class.java) { BoardingTarget(" ") }
     }
 
@@ -335,6 +366,40 @@ class PaymentsAppTest {
                 assertThat(server.takeRequest().url.queryParameter("offset")).isEqualTo("0")
                 assertThat(server.takeRequest().url.queryParameter("offset")).isEqualTo("100")
             }
+            val defaultManagement =
+                object : PaymentsAppManagement {
+                    override suspend fun boardingToken(
+                        target: BoardingTarget,
+                        boardingRequestToken: String,
+                    ) = ManagementResult.NotBoarded
+
+                    override suspend fun revoke(
+                        merchantAccount: String,
+                        installationId: String,
+                    ) = ManagementResult.NotBoarded
+                }
+            assertThat(defaultManagement.registration(BoardingTarget("Merchant"), "I1"))
+                .isEqualTo(ManagementResult.Failed(Fault.Unsupported))
+            assertThat(Onboarding.Boarded("INSTALLATION-1").installationId).isEqualTo("INSTALLATION-1")
+
+            var stepCount = 0
+            val abandonOnSecondStep =
+                object : AppLinkExchange {
+                    override suspend fun exchange(
+                        link: String,
+                        packageName: String,
+                        timeout: Duration,
+                    ): AppLinkAnswer =
+                        if (++stepCount == 1) {
+                            AppLinkAnswer.Returned("$RETURN_URL/boarded?boarded=false&installationId=I1&boardingRequestToken=BRT-1")
+                        } else {
+                            AppLinkAnswer.Abandoned
+                        }
+
+                    override fun lateReplies(): List<String> = emptyList()
+                }
+            val onboarding = PaymentsAppOnboarding(TerminalEnvironment.TEST, abandonOnSecondStep, RecordingManagement(), RETURN_URL)
+            assertThat(onboarding.board(BoardingTarget("Merchant"))).isEqualTo(Onboarding.Failed(Fault.Abandoned))
         }
 
     /** One link the fake Payments app was asked to open. */
@@ -457,6 +522,19 @@ class PaymentsAppTest {
             installationId: String,
         ): ManagementResult = result
     }
+
+    @Test
+    fun `unencryptable request fails with RequestNotEncrypted before invoking app link`() =
+        runBlocking {
+            val unencryptable =
+                object : TerminalAPIRequest() {
+                    private var reads = 0
+
+                    override fun getSaleToPOIRequest(): SaleToPOIRequest? =
+                        if (reads++ == 0) SaleToPOIRequest().apply { paymentRequest = PaymentRequest() } else null
+                }
+            assertThat(transport.send(unencryptable, 5.seconds)).isEqualTo(Delivery.Failed(Fault.RequestNotEncrypted))
+        }
 
     private companion object {
         const val RETURN_URL = "minimpos://paymentsapp"

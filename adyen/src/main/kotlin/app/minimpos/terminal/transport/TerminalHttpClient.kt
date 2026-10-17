@@ -209,7 +209,7 @@ class TerminalHttpClient(
 
     private companion object {
         /** Words in a terminal's rejection that point to the shared key. */
-        val KEY_HINTS = listOf("crypt", "hmac", "key", "security")
-        val JSON = "application/json; charset=utf-8".toMediaType()
+        private val KEY_HINTS = listOf("crypt", "hmac", "key", "security")
+        private val JSON = "application/json; charset=utf-8".toMediaType()
     }
 }

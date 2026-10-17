@@ -102,12 +102,14 @@ class ReceiptBuilder(
         out: MutableList<ReceiptElement>,
         items: List<ReceiptItem>,
     ) {
+        var hasMarkedTaxRate = false
         for ((index, item) in items.withIndex()) {
             if (index > 0) out += Blank
             val name =
                 if (item.taxRateMilliPercent ==
                     options.markedTaxRateMilliPercent
                 ) {
+                    hasMarkedTaxRate = true
                     "${item.name} ${options.markedTaxRateMarker}"
                 } else {
                     item.name
@@ -117,7 +119,7 @@ class ReceiptBuilder(
                 out += Text(labels.quantityFormat.format(money.locale, item.quantity, money.format(item.unitPrice)))
             }
         }
-        if (labels.markedTaxRateNote.isNotBlank() && items.any { it.taxRateMilliPercent == options.markedTaxRateMilliPercent }) {
+        if (hasMarkedTaxRate && labels.markedTaxRateNote.isNotBlank()) {
             out += Text(labels.markedTaxRateNote)
         }
     }
@@ -277,15 +279,13 @@ class ReceiptBuilder(
         out += Blank
         lines.forEach { out += Text(it, Align.CENTER) }
     }
-
-    private companion object {
-        /** Merchant name/address lines configured in the Customer Area; redundant when we print our own header. */
-        val ADYEN_HEADER_KEYS = setOf("header1", "header2")
-
-        /** A line to write an amount on; fits next to its label on a 24-character roll. */
-        val WRITE_IN = "_".repeat(14)
-
-        /** A line to sign on. */
-        val SIGN_HERE = "_".repeat(20)
-    }
 }
+
+/** Merchant name/address lines configured in the Customer Area; redundant when we print our own header. */
+private val ADYEN_HEADER_KEYS = setOf("header1", "header2")
+
+/** A line to write an amount on; fits next to its label on a 24-character roll. */
+private val WRITE_IN = "_".repeat(14)
+
+/** A line to sign on. */
+private val SIGN_HERE = "_".repeat(20)

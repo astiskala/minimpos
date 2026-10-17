@@ -4,6 +4,7 @@ import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
 import java.io.IOException
+import java.io.PrintStream
 import java.nio.file.Path
 import kotlin.system.exitProcess
 
@@ -11,23 +12,31 @@ import kotlin.system.exitProcess
 internal object Tooling {
     @JvmStatic
     fun main(args: Array<String>) {
-        val code =
-            try {
-                execute(args.toList())
-            } catch (exception: IllegalArgumentException) {
-                System.err.println(exception.message)
-                1
-            } catch (exception: IOException) {
-                System.err.println("Cannot access tooling input/output: ${exception.javaClass.simpleName}")
-                1
-            }
-        exitProcess(code)
+        exitProcess(run(args.toList(), System.out, System.err))
     }
 
-    private fun execute(args: List<String>): Int {
+    internal fun run(
+        args: List<String>,
+        out: PrintStream,
+        err: PrintStream,
+    ): Int =
+        try {
+            execute(args, out)
+        } catch (exception: IllegalArgumentException) {
+            err.println(exception.message)
+            1
+        } catch (exception: IOException) {
+            err.println("Cannot access tooling input/output: ${exception.javaClass.simpleName}")
+            1
+        }
+
+    private fun execute(
+        args: List<String>,
+        out: PrintStream,
+    ): Int {
         when (args.firstOrNull()) {
             "release" -> {
-                release(Arguments(args.drop(1)))
+                release(Arguments(args.drop(1)), out)
             }
 
             "signing" -> {
@@ -37,7 +46,7 @@ internal object Tooling {
 
             "report" -> {
                 require(args.size == 2) { "Expected report and a repository directory" }
-                System.out.print(BuildReports.render(Path.of(args[1])))
+                out.print(BuildReports.render(Path.of(args[1])))
             }
 
             else -> {
@@ -47,7 +56,10 @@ internal object Tooling {
         return 0
     }
 
-    private fun release(args: Arguments) {
+    private fun release(
+        args: Arguments,
+        out: PrintStream,
+    ) {
         val version = Path.of(args.optional("version") ?: "version.properties")
         when (args.positionals.firstOrNull()) {
             "bump" -> {
@@ -72,11 +84,11 @@ internal object Tooling {
                         requireNotNull(runs) { "Expected workflow_runs array" },
                         args.required("commit"),
                     )
-                System.out.println(selected ?: JsonNull)
+                out.println(selected ?: JsonNull)
             }
 
             "update" -> {
-                Release.writeJson(Path.of(args.optional("out") ?: "update.json"), Release.updateMetadata(version))
+                Release.writeJson(Path.of(args.required("out")), Release.updateMetadata(version))
             }
 
             else -> {

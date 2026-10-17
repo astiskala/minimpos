@@ -6,22 +6,30 @@ import app.minimpos.terminal.transport.CredentialLookup
 import app.minimpos.terminal.transport.DiscoveredKey
 import app.minimpos.terminal.transport.Fault
 import app.minimpos.terminal.transport.MalformedPart
+import app.minimpos.terminal.transport.RemoteTerminalCapabilities
 import app.minimpos.terminal.transport.SharedKeyLookup
 import app.minimpos.terminal.transport.SharedKeyUpdate
 import app.minimpos.terminal.transport.TerminalCapabilitiesLookup
 import app.minimpos.terminal.transport.TerminalCapabilitiesPatch
 import app.minimpos.terminal.transport.TerminalCapabilitiesUpdate
+import app.minimpos.terminal.transport.TerminalDetailsApi
 import app.minimpos.terminal.transport.TerminalEnvironment
 import app.minimpos.terminal.transport.TerminalGratuity
 import app.minimpos.terminal.transport.TerminalListing
 import app.minimpos.terminal.transport.TerminalMotoSettings
+import app.minimpos.terminal.transport.TerminalOfflineLimits
 import com.adyen.model.management.TerminalSettings
 import com.google.common.truth.Truth.assertThat
 import kotlinx.coroutines.runBlocking
 import mockwebserver3.MockResponse
 import mockwebserver3.MockWebServer
+import okhttp3.OkHttpClient
+import okhttp3.Protocol
+import okhttp3.Response
+import okhttp3.ResponseBody.Companion.toResponseBody
 import org.junit.After
 import org.junit.Test
+import java.util.concurrent.TimeUnit
 
 class TerminalDetailsTest {
     private val server = MockWebServer().apply { start() }
@@ -83,21 +91,51 @@ class TerminalDetailsTest {
         runBlocking {
             reply(
                 """
-                {"data":[{"id":"S1F2-123456789","assignment":{"merchantId":"Merchant","storeId":"ST1", "reassignmentTarget":{"merchantId":"Wrong","storeId":"ST2"}},
+                {"data":[{"id":"S1F2-123456789","model":"S1F2","countryCode":"AU","assignment":{"merchantId":"Merchant","storeId":"ST1","reassignmentTarget":{"merchantId":"Wrong","storeId":"ST2"}},
                 "connectivity":{"ethernet":{"ipAddress":"192.168.1.2"},"wifi":{"ipAddress":"192.168.1.3"}}}],
                 "_links":{"next":{"href":"https://untrusted.example/"}}}
                 """.trimIndent(),
             )
-            reply("""{"data":[{"id":"AMS1-123456789","connectivity":{"wifi":{"ipAddress":"192.168.1.4"}}}]}""")
+            reply(
+                """{"data":[{"id":"AMS1-123456789","connectivity":{"ethernet":{"ipAddress":" "},"wifi":{"ipAddress":"192.168.1.4"}}}]}""",
+            )
             val listed = api.terminals(TerminalEnvironment.TEST) as TerminalListing.Listed
             assertThat(listed.environment).isEqualTo(TerminalEnvironment.TEST)
             assertThat(listed.terminals.map { it.host }).containsExactly("192.168.1.2", "192.168.1.4").inOrder()
-            assertThat(listed.terminals.first().merchantAccount).isEqualTo("Merchant")
-            assertThat(listed.terminals.first().storeId).isEqualTo("ST1")
+            val firstTerminal = listed.terminals.first()
+            assertThat(firstTerminal.id).isEqualTo("S1F2-123456789")
+            assertThat(firstTerminal.model).isEqualTo("S1F2")
+            assertThat(firstTerminal.merchantAccount).isEqualTo("Merchant")
+            assertThat(firstTerminal.storeId).isEqualTo("ST1")
+            assertThat(firstTerminal.countryCode).isEqualTo("AU")
             val first = server.takeRequest()
             assertThat(first.headers["x-api-key"]).isEqualTo("secret")
             assertThat(first.method).isEqualTo("GET")
             assertThat(server.takeRequest().url.queryParameter("pageNumber")).isEqualTo("2")
+        }
+
+    @Test
+    fun `default interface methods report unsupported`() =
+        runBlocking {
+            val minimal =
+                object : TerminalDetailsApi {
+                    override suspend fun terminals(
+                        environment: TerminalEnvironment,
+                        id: String?,
+                    ): TerminalListing = TerminalListing.Failed(Fault.Unsupported)
+
+                    override suspend fun sharedKey(
+                        id: String,
+                        environment: TerminalEnvironment,
+                    ): SharedKeyLookup = SharedKeyLookup.Failed(Fault.Unsupported)
+                }
+            assertThat(minimal.credential(TerminalEnvironment.TEST)).isEqualTo(CredentialLookup.Failed(Fault.Unsupported))
+            assertThat(minimal.createSharedKey("ID", TerminalEnvironment.TEST, DiscoveredKey("k", 1, "secret")))
+                .isEqualTo(SharedKeyUpdate.Failed(Fault.Unsupported))
+            assertThat(minimal.capabilities("ID", TerminalEnvironment.TEST))
+                .isEqualTo(TerminalCapabilitiesLookup.Failed(Fault.Unsupported))
+            assertThat(minimal.updateCapabilities("ID", TerminalEnvironment.TEST, TerminalCapabilitiesPatch.Dcc(true)))
+                .isEqualTo(TerminalCapabilitiesUpdate.Failed(Fault.Unsupported, uncertain = false))
         }
 
     @Test
@@ -174,6 +212,10 @@ class TerminalDetailsTest {
             }
             reply("{}", 403)
             assertThat(api.sharedKey("ID", TerminalEnvironment.TEST)).isEqualTo(SharedKeyLookup.Failed(Fault.Permission(ApiKey.ADYEN)))
+            reply("""{"nexo":{"encryptionKey":{"identifier":"key","version":1,"passphrase":"secret"}}}""")
+            assertThat((api.sharedKey("ID", TerminalEnvironment.TEST) as SharedKeyLookup.Found).key.version).isEqualTo(1)
+            reply("""{"nexo":{"encryptionKey":{"identifier":"key","version":9999,"passphrase":"secret"}}}""")
+            assertThat((api.sharedKey("ID", TerminalEnvironment.TEST) as SharedKeyLookup.Found).key.version).isEqualTo(9999)
         }
 
     @Test
@@ -315,6 +357,17 @@ class TerminalDetailsTest {
             assertThat(api.createSharedKey("ID", TerminalEnvironment.TEST, DiscoveredKey("new", 1, "NewStrongSecret123!")))
                 .isEqualTo(SharedKeyUpdate.Failed(Fault.UnreadableReply(), uncertain = true))
             assertThat(server.requestCount).isEqualTo(5)
+            // Read-back failure or mismatched key fields remain uncertain.
+            reply("{}")
+            reply("{}")
+            reply("{}", 503)
+            assertThat(api.createSharedKey("ID", TerminalEnvironment.TEST, DiscoveredKey("new", 1, "NewStrongSecret123!")))
+                .isEqualTo(SharedKeyUpdate.Failed(Fault.AdyenUnavailable(503), uncertain = true))
+            reply("{}")
+            reply("{}")
+            reply("""{"nexo":{"encryptionKey":{"identifier":"new","version":1,"passphrase":"WrongPassword"}}}""")
+            assertThat(api.createSharedKey("ID", TerminalEnvironment.TEST, DiscoveredKey("new", 1, "NewStrongSecret123!")))
+                .isEqualTo(SharedKeyUpdate.Failed(Fault.UnreadableReply(), uncertain = true))
         }
 
     @Test
@@ -402,6 +455,232 @@ class TerminalDetailsTest {
                     .map { it.currencyCode },
             ).containsExactly("USD", "EUR").inOrder()
             assertThat(server.takeRequest().method).isEqualTo("GET")
+
+            // Removing gratuity for a currency keeps the remaining currencies.
+            reply(
+                """
+                {"gratuities":[
+                  {"currency":"USD","usePredefinedTipEntries":false,"allowCustomAmount":true},
+                  {"currency":"EUR","usePredefinedTipEntries":false,"allowCustomAmount":true}
+                ]}
+                """.trimIndent(),
+            )
+            reply("{}")
+            reply("""{"gratuities":[{"currency":"USD","usePredefinedTipEntries":false,"allowCustomAmount":true}]}""")
+            assertThat(
+                api.updateCapabilities("ID", TerminalEnvironment.TEST, TerminalCapabilitiesPatch.Gratuity("EUR", null)),
+            ).isInstanceOf(TerminalCapabilitiesUpdate.Ready::class.java)
+        }
+
+    @Test
+    fun `handles capabilities parsing edge cases and read-back or HTTP failures`() =
+        runBlocking {
+            assertThat(TerminalOfflineLimits(0, emptyMap(), null).configuredFor("EUR")).isFalse()
+            assertThat(TerminalOfflineLimits(1, emptyMap(), null).configuredFor("EUR")).isTrue()
+            assertThat(TerminalOfflineLimits(null, mapOf("EUR" to 0L), null).configuredFor("EUR")).isFalse()
+            assertThat(TerminalOfflineLimits(null, mapOf("EUR" to 100L), 0).configuredFor("EUR")).isFalse()
+            assertThat(TerminalOfflineLimits(null, mapOf("EUR" to 100L), 1).configuredFor("EUR")).isTrue()
+            assertThat(TerminalOfflineLimits(null, mapOf("EUR" to 100L), null).configuredFor("EUR")).isTrue()
+
+            reply(
+                """
+                {
+                  "surcharge": {"askConfirmation": false, "configurations": [{"currencyCode": "EUR"}]},
+                  "gratuities": [
+                    {"currency": " ", "allowCustomAmount": true},
+                    {"currency": "EUR", "allowCustomAmount": false, "usePredefinedTipEntries": true, "predefinedTipEntries": ["10%", " "]}
+                  ],
+                  "offlineProcessing": {"chipFloorLimit": -1},
+                  "storeAndForward": {
+                    "maxPayments": -1,
+                    "maxAmount": [
+                      {"currencyCode": " ", "amount": 100},
+                      {"currencyCode": "EUR", "amount": -5},
+                      {"currencyCode": "GBP", "amount": 0}
+                    ]
+                  }
+                }
+                """.trimIndent(),
+            )
+            val edge = (api.capabilities("ID", TerminalEnvironment.TEST) as TerminalCapabilitiesLookup.Found).capabilities
+            assertThat(edge.surchargeConfigured).isTrue()
+            assertThat(edge.gratuityFor("eur")).isEqualTo(TerminalGratuity("EUR", true, listOf("10%"), false))
+            assertThat(edge.gratuityFor("gbp")).isNull()
+            assertThat(edge.offline).isEqualTo(TerminalOfflineLimits(-1, mapOf("GBP" to 0L), -1))
+
+            reply("not json")
+            assertThat(api.capabilities("ID", TerminalEnvironment.TEST))
+                .isEqualTo(TerminalCapabilitiesLookup.Failed(Fault.Malformed(MalformedPart.SETTINGS)))
+            reply("{}", 503)
+            assertThat(api.capabilities("ID", TerminalEnvironment.TEST))
+                .isEqualTo(TerminalCapabilitiesLookup.Failed(Fault.AdyenUnavailable(503)))
+
+            reply("{}")
+            reply("""{"dcc":{"enableDcc":false}}""")
+            assertThat(api.updateCapabilities("ID", TerminalEnvironment.TEST, TerminalCapabilitiesPatch.Dcc(true)))
+                .isEqualTo(TerminalCapabilitiesUpdate.Failed(Fault.UnreadableReply(), uncertain = true))
+            reply("{}", 503)
+            assertThat(api.updateCapabilities("ID", TerminalEnvironment.TEST, TerminalCapabilitiesPatch.Gratuity("EUR", null)))
+                .isEqualTo(TerminalCapabilitiesUpdate.Failed(Fault.AdyenUnavailable(503), uncertain = false))
+            reply("{}", 401)
+            assertThat(api.updateCapabilities("ID", TerminalEnvironment.TEST, TerminalCapabilitiesPatch.Dcc(true)))
+                .isEqualTo(TerminalCapabilitiesUpdate.Failed(Fault.Credential(ApiKey.ADYEN), uncertain = false))
+            reply("{}", 503)
+            assertThat(api.updateCapabilities("ID", TerminalEnvironment.TEST, TerminalCapabilitiesPatch.Dcc(true)))
+                .isEqualTo(TerminalCapabilitiesUpdate.Failed(Fault.AdyenUnavailable(503), uncertain = true))
+            reply("{}")
+            reply("{}", 401)
+            val capFailed = api.updateCapabilities("ID", TerminalEnvironment.TEST, TerminalCapabilitiesPatch.Dcc(true))
+            assertThat(capFailed).isEqualTo(TerminalCapabilitiesUpdate.Failed(Fault.Credential(ApiKey.ADYEN), uncertain = true))
+            assertThat((capFailed as TerminalCapabilitiesUpdate.Failed).uncertain).isTrue()
+            assertThat(TerminalCapabilitiesUpdate.Failed(Fault.Credential(ApiKey.ADYEN), uncertain = false).uncertain).isFalse()
+            assertThat(SharedKeyUpdate.Failed(Fault.TimedOut, uncertain = true).uncertain).isTrue()
+            assertThat(SharedKeyUpdate.Failed(Fault.Credential(ApiKey.ADYEN), uncertain = false).uncertain).isFalse()
+        }
+
+    @Test
+    fun `preserves supported card types when patching offline limits`(): Unit =
+        runBlocking {
+            reply("not json")
+            assertThat(api.updateCapabilities("ID", TerminalEnvironment.TEST, TerminalCapabilitiesPatch.Gratuity("EUR", null)))
+                .isEqualTo(TerminalCapabilitiesUpdate.Failed(Fault.Malformed(MalformedPart.SETTINGS), uncertain = false))
+            reply("{}", 503)
+            assertThat(api.terminals(TerminalEnvironment.TEST, id = "P400Plus-1"))
+                .isEqualTo(TerminalListing.Failed(Fault.AdyenUnavailable(503)))
+
+            while (server.requestCount > 0) {
+                if (server.takeRequest(1, TimeUnit.MILLISECONDS) == null) break
+            }
+            reply("""{"storeAndForward":{"supportedCardTypes":{"credit":true,"debit":false,"prepaid":false}}}""")
+            reply("{}")
+            reply("""{"offlineProcessing":{},"storeAndForward":{"maxAmount":[{"currencyCode":"EUR","amount":5000}]}}""")
+            assertThat(
+                api.updateCapabilities(
+                    "ID",
+                    TerminalEnvironment.TEST,
+                    TerminalCapabilitiesPatch.Offline("EUR", chipFloorLimit = null, maxStoreAndForwardMinor = 5000, maxPayments = null),
+                ),
+            ).isInstanceOf(TerminalCapabilitiesUpdate.Ready::class.java)
+            server.takeRequest()
+            val preservedCardsPatch = checkNotNull(server.takeRequest().body).utf8()
+            assertThat(
+                TerminalSettings
+                    .fromJson(preservedCardsPatch)
+                    .storeAndForward
+                    .supportedCardTypes
+                    .debit,
+            ).isFalse()
+            server.takeRequest()
+
+            reply("""{"storeAndForward":{}}""")
+            reply("{}")
+            reply("""{"offlineProcessing":{},"storeAndForward":{}}""")
+            assertThat(
+                api.updateCapabilities(
+                    "ID",
+                    TerminalEnvironment.TEST,
+                    TerminalCapabilitiesPatch.Offline("EUR", chipFloorLimit = null, maxStoreAndForwardMinor = null, maxPayments = null),
+                ),
+            ).isInstanceOf(TerminalCapabilitiesUpdate.Ready::class.java)
+            server.takeRequest()
+            val emptyAmountsPatch = checkNotNull(server.takeRequest().body).utf8()
+            assertThat(TerminalSettings.fromJson(emptyAmountsPatch).storeAndForward.supportedCardTypes).isNull()
+            server.takeRequest()
+        }
+
+    @Test
+    fun `verifies moto and offline read-backs`() =
+        runBlocking {
+            reply("{}")
+            reply("""{"moto":{"enableMoto":true,"maxAmount":100}}""")
+            assertThat(
+                api.updateCapabilities(
+                    "ID",
+                    TerminalEnvironment.TEST,
+                    TerminalCapabilitiesPatch.Moto(TerminalMotoSettings(enabled = true, maxAmount = 500)),
+                ),
+            ).isEqualTo(TerminalCapabilitiesUpdate.Failed(Fault.UnreadableReply(), uncertain = true))
+
+            reply("{}")
+            reply("""{"moto":{"enableMoto":false,"maxAmount":500}}""")
+            assertThat(
+                api.updateCapabilities(
+                    "ID",
+                    TerminalEnvironment.TEST,
+                    TerminalCapabilitiesPatch.Moto(TerminalMotoSettings(enabled = true, maxAmount = null)),
+                ),
+            ).isEqualTo(TerminalCapabilitiesUpdate.Failed(Fault.UnreadableReply(), uncertain = true))
+
+            reply("{}")
+            reply("{}")
+            reply("""{"offlineProcessing":{"chipFloorLimit":10},"storeAndForward":{"maxPayments":5}}""")
+            assertThat(
+                api.updateCapabilities(
+                    "ID",
+                    TerminalEnvironment.TEST,
+                    TerminalCapabilitiesPatch.Offline("EUR", chipFloorLimit = 20, maxStoreAndForwardMinor = null, maxPayments = 5),
+                ),
+            ).isEqualTo(TerminalCapabilitiesUpdate.Failed(Fault.UnreadableReply(), uncertain = true))
+
+            reply("{}")
+            reply("{}")
+            reply("""{"offlineProcessing":{"chipFloorLimit":20},"storeAndForward":{"maxPayments":10}}""")
+            assertThat(
+                api.updateCapabilities(
+                    "ID",
+                    TerminalEnvironment.TEST,
+                    TerminalCapabilitiesPatch.Offline("EUR", chipFloorLimit = 20, maxStoreAndForwardMinor = null, maxPayments = 5),
+                ),
+            ).isEqualTo(TerminalCapabilitiesUpdate.Failed(Fault.UnreadableReply(), uncertain = true))
+        }
+
+    @Test
+    fun `default interface methods and default baseUrl work as expected`() =
+        runBlocking {
+            val defaultApi =
+                object : TerminalDetailsApi {
+                    override suspend fun terminals(
+                        environment: TerminalEnvironment,
+                        id: String?,
+                    ) = TerminalListing.Listed(emptyList(), environment)
+
+                    override suspend fun sharedKey(
+                        id: String,
+                        environment: TerminalEnvironment,
+                    ) = SharedKeyLookup.Missing
+                }
+            assertThat(defaultApi.credential(TerminalEnvironment.TEST)).isEqualTo(CredentialLookup.Failed(Fault.Unsupported))
+            assertThat(defaultApi.createSharedKey("ID", TerminalEnvironment.TEST, DiscoveredKey("k", 1, "p")))
+                .isEqualTo(SharedKeyUpdate.Failed(Fault.Unsupported))
+            assertThat(defaultApi.capabilities("ID", TerminalEnvironment.TEST))
+                .isEqualTo(TerminalCapabilitiesLookup.Failed(Fault.Unsupported))
+            assertThat(defaultApi.updateCapabilities("ID", TerminalEnvironment.TEST, TerminalCapabilitiesPatch.Dcc(false)))
+                .isEqualTo(TerminalCapabilitiesUpdate.Failed(Fault.Unsupported))
+            assertThat(TerminalCapabilitiesPatch.Dcc(false).enabled).isFalse()
+            assertThat(TerminalMotoSettings(enabled = false, maxAmount = null).enabled).isFalse()
+            assertThat(TerminalGratuity("EUR", false, emptyList(), false).usePredefinedEntries).isFalse()
+            assertThat(TerminalGratuity("EUR", false, emptyList(), false).allowCustomAmount).isFalse()
+            assertThat(TerminalGratuity("EUR", true, listOf("10%"), true).allowCustomAmount).isTrue()
+            assertThat(RemoteTerminalCapabilities().surchargeConfigured).isFalse()
+            val defaultUrlDetails =
+                AdyenTerminalDetails(
+                    apiKey = "mgmt-key",
+                    baseClient =
+                        OkHttpClient
+                            .Builder()
+                            .addInterceptor { chain ->
+                                Response
+                                    .Builder()
+                                    .request(chain.request())
+                                    .protocol(Protocol.HTTP_1_1)
+                                    .code(200)
+                                    .message("OK")
+                                    .body("""{"roles":[]}""".toResponseBody())
+                                    .build()
+                            }.build(),
+                )
+            assertThat(defaultUrlDetails.credential(TerminalEnvironment.TEST))
+                .isEqualTo(CredentialLookup.Failed(Fault.Permission(ApiKey.ADYEN, ROLES)))
         }
 
     private companion object {

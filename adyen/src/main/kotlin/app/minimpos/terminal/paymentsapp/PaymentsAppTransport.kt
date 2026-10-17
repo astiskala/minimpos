@@ -33,25 +33,19 @@ sealed interface AppLinkAnswer {
     ) : AppLinkAnswer
 
     /** No answer came back; [fault] says whether the app may have acted. */
-    sealed interface Unanswered : AppLinkAnswer {
+    sealed class Unanswered(
         /** Why, as a fault of the request the link carried. */
-        val fault: Fault
-    }
+        val fault: Fault,
+    ) : AppLinkAnswer
 
     /** The app could not be started, so nothing was sent. */
-    data object NotStarted : Unanswered {
-        override val fault: Fault get() = Fault.NotStarted
-    }
+    data object NotStarted : Unanswered(Fault.NotStarted)
 
     /** The app did not call back in time; whether it acted is unknown. */
-    data object TimedOut : Unanswered {
-        override val fault: Fault get() = Fault.TimedOut
-    }
+    data object TimedOut : Unanswered(Fault.TimedOut)
 
     /** The operator came back from the app without an answer; whether it acted is unknown. */
-    data object Abandoned : Unanswered {
-        override val fault: Fault get() = Fault.Abandoned
-    }
+    data object Abandoned : Unanswered(Fault.Abandoned)
 }
 
 /**

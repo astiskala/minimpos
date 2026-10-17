@@ -316,6 +316,6 @@ class PaymentsAppOnboarding(
         const val BOARD = "board"
 
         /** How long the operator may take in the Payments app at each step. */
-        val STEP_TIMEOUT = 5.minutes
+        private val STEP_TIMEOUT = 5.minutes
     }
 }

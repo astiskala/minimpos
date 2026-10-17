@@ -112,7 +112,7 @@ class AdyenWalletMethods(
     private fun parsePage(body: String): Pair<List<WalletMethod>, Boolean>? {
         val response = decodeAdyenModel(body, PaymentMethodResponse::class.java)
         val data = response?.data
-        if (data == null || !response.typesWithErrors.isNullOrEmpty() || data.any { it?.type.isNullOrBlank() }) {
+        if (data == null || !response.typesWithErrors.isNullOrEmpty() || data.any { it.type.isNullOrBlank() }) {
             return null
         }
         return data.map(::method) to
@@ -134,7 +134,7 @@ class AdyenWalletMethods(
         )
 
     private companion object {
-        val TIMEOUT = 15.seconds
+        private val TIMEOUT = 15.seconds
         const val PAYMENT_METHODS_READ = "Management API—Payment methods read"
     }
 }

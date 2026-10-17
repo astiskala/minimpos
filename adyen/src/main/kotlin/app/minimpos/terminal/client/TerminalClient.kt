@@ -131,7 +131,7 @@ class TerminalClient(
                                     saleTransactionID = transaction(effectiveParams.merchantReference, clock.instant())
                                     saleReferenceID = effectiveParams.saleReferenceId
                                     saleToAcquirerData =
-                                        acquirerData {
+                                        acquirerData().apply {
                                             shopperReference = effectiveParams.shopperReference
                                             shopperEmail = effectiveParams.shopperEmail
                                             recurringProcessingModel =
@@ -155,9 +155,10 @@ class TerminalClient(
                                                 additionalData = mapOf(MANUAL_CAPTURE to "true")
                                             }
                                         }
-                                    effectiveParams.terminalTip?.takeIf { it.suggestions != null }?.let {
-                                        saleToPOIData =
-                                            encodeTipOperation(it)
+                                    effectiveParams.terminalTip?.let { tip ->
+                                        tip.suggestions?.let { suggestions ->
+                                            saleToPOIData = encodeTipOperation(tip.amountToTipOn, suggestions)
+                                        }
                                     }
                                     if (effectiveParams.requestCardAlias) tokenRequestedType = TokenRequestedType.CUSTOMER
                                 }
@@ -295,7 +296,10 @@ class TerminalClient(
                             SaleData().apply {
                                 saleTransactionID = transaction(params.merchantReference, clock.instant())
                                 // Partial refunds must state the original currency.
-                                saleToAcquirerData = acquirerData { currency = params.currency?.takeIf { params.amount != null } }
+                                saleToAcquirerData =
+                                    acquirerData().apply {
+                                        currency = params.currency?.takeIf { params.amount != null }
+                                    }
                             }
                     }
             }
@@ -634,10 +638,9 @@ class TerminalClient(
             }
     }
 
-    private fun acquirerData(configure: SaleToAcquirerData.() -> Unit): SaleToAcquirerData =
+    private fun acquirerData(): SaleToAcquirerData =
         SaleToAcquirerData().apply {
             application?.let { applicationInfo = it.toApplicationInfo() }
-            configure()
         }
 
     private fun message(
@@ -665,26 +668,33 @@ class TerminalClient(
 
     private fun wrap(request: SaleToPOIRequest) = TerminalAPIRequest().apply { saleToPOIRequest = request }
 
-    private fun encodeTipOperation(tip: TerminalTipOptions): String {
+    private fun encodeTipOperation(
+        amountToTipOn: BigDecimal?,
+        configured: TerminalTipSuggestions,
+    ): String {
         val suggestions =
-            when (val configured = checkNotNull(tip.suggestions)) {
+            when (configured) {
                 is TerminalTipSuggestions.Percentages -> {
                     buildMap<String, Any> {
-                        configured.percentages.forEachIndexed { index, pct -> put("Percentage${index + 1}", pct) }
+                        for (index in configured.percentages.indices) {
+                            put("Percentage${index + 1}", configured.percentages[index])
+                        }
                         put("TipCustom", configured.allowCustom)
                     }
                 }
 
                 is TerminalTipSuggestions.FixedAmounts -> {
                     buildMap<String, Any> {
-                        configured.amountsMinor.forEachIndexed { index, amt -> put("Amount${index + 1}", amt) }
+                        for (index in configured.amountsMinor.indices) {
+                            put("Amount${index + 1}", configured.amountsMinor[index])
+                        }
                         put("TipCustom", configured.allowCustom)
                     }
                 }
             }
         val tipOptions =
             buildMap<String, Any> {
-                tip.amountToTipOn?.let { put("AmountToTipOn", it) }
+                amountToTipOn?.let { put("AmountToTipOn", it) }
                 put("TipSuggestions", suggestions)
             }
         val operation = mapOf("Operation" to listOf(mapOf("Type" to "Payment", "TipOptions" to tipOptions)))

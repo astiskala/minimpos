@@ -15,16 +15,24 @@ class CartTest {
 
     @Test
     fun `adding the same product merges quantities`() {
+        val flatWhite = CartProduct(1, "Flat white", "SKU1", 450, gst)
+        val muffin = CartProduct(2, "Muffin", "SKU2", 500, free)
+        assertThat(flatWhite.id).isEqualTo(1)
+        assertThat(flatWhite.sku).isEqualTo("SKU1")
         val cart =
             Cart()
-                .addProduct(CartProduct(1, "Flat white", null, 450, gst), ::key)
-                .addProduct(CartProduct(1, "Flat white", null, 450, gst), ::key)
-                .addProduct(CartProduct(2, "Muffin", "SKU2", 500, free), ::key)
+                .addProduct(flatWhite, ::key)
+                .addProduct(muffin, ::key)
+                .addProduct(muffin, ::key)
+                .addProduct(muffin, ::key)
+                .addProduct(flatWhite.copy(unitPrice = 500), ::key)
+                .addProduct(flatWhite.copy(tax = free), ::key)
         assertThat(
             cart.lines.map {
                 it.name to it.quantity
             },
-        ).containsExactly("Flat white" to 2, "Muffin" to 1).inOrder()
+        ).containsExactly("Flat white" to 1, "Muffin" to 3, "Flat white" to 1, "Flat white" to 1).inOrder()
+        assertThat(cart.lines.first().sku).isEqualTo("SKU1")
     }
 
     @Test
@@ -46,6 +54,7 @@ class CartTest {
                 .quantity,
         ).isEqualTo(Cart.MAX_QUANTITY)
         assertThat(cart.setQuantity(lineKey, 0).lines).isEmpty()
+        assertThat(cart.setQuantity(lineKey, -1).lines).isEmpty()
         assertThat(
             cart
                 .setQuantity("other", 3)

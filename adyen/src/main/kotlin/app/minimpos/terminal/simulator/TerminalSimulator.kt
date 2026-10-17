@@ -16,23 +16,16 @@ import com.adyen.model.nexo.AdminResponse
 import com.adyen.model.nexo.AmountsResp
 import com.adyen.model.nexo.CardData
 import com.adyen.model.nexo.CharacterStyleType
-import com.adyen.model.nexo.DeviceType
-import com.adyen.model.nexo.DiagnosisResponse
-import com.adyen.model.nexo.DisplayResponse
 import com.adyen.model.nexo.DocumentQualifierType
 import com.adyen.model.nexo.EntryModeType
 import com.adyen.model.nexo.ErrorConditionType
 import com.adyen.model.nexo.GetTotalsResponse
-import com.adyen.model.nexo.GlobalStatusType
-import com.adyen.model.nexo.InfoQualifyType
 import com.adyen.model.nexo.MessageHeader
 import com.adyen.model.nexo.MessageType
 import com.adyen.model.nexo.OutputContent
 import com.adyen.model.nexo.OutputFormatType
-import com.adyen.model.nexo.OutputResult
 import com.adyen.model.nexo.OutputText
 import com.adyen.model.nexo.POIData
-import com.adyen.model.nexo.POIStatus
 import com.adyen.model.nexo.PaymentAcquirerData
 import com.adyen.model.nexo.PaymentInstrumentData
 import com.adyen.model.nexo.PaymentInstrumentType
@@ -44,7 +37,6 @@ import com.adyen.model.nexo.PaymentToken
 import com.adyen.model.nexo.PaymentType
 import com.adyen.model.nexo.PrintOutput
 import com.adyen.model.nexo.PrintResponse
-import com.adyen.model.nexo.PrinterStatusType
 import com.adyen.model.nexo.ReconciliationRequest
 import com.adyen.model.nexo.ReconciliationResponse
 import com.adyen.model.nexo.Response
@@ -197,18 +189,21 @@ class TerminalSimulator(
             }
 
             message.reversalRequest != null -> {
-                respond(header) { reversalResponse = reversal(header, message.reversalRequest) }
+                respond(header, SaleToPOIResponse().apply { reversalResponse = reversal(header, message.reversalRequest) })
             }
 
             message.printRequest != null -> {
-                respond(header) { printResponse = print(message.printRequest.printOutput, settings) }
+                respond(header, SaleToPOIResponse().apply { printResponse = print(message.printRequest.printOutput, settings) })
             }
 
             message.transactionStatusRequest != null -> {
-                respond(header) {
-                    transactionStatusResponse =
-                        status(message.transactionStatusRequest)
-                }
+                respond(
+                    header,
+                    SaleToPOIResponse().apply {
+                        transactionStatusResponse =
+                            status(message.transactionStatusRequest)
+                    },
+                )
             }
 
             message.abortRequest != null -> {
@@ -219,18 +214,7 @@ class TerminalSimulator(
             }
 
             message.diagnosisRequest != null -> {
-                respond(header) {
-                    diagnosisResponse =
-                        DiagnosisResponse().apply {
-                            response = Response().apply { result = ResultType.SUCCESS }
-                            poiStatus =
-                                POIStatus().apply {
-                                    globalStatus = GlobalStatusType.OK
-                                    setPEDOKFlag(true)
-                                    printerStatus = if (settings.hasPrinter) PrinterStatusType.OK else null
-                                }
-                        }
-                }
+                respond(header, SaleToPOIResponse().apply { diagnosisResponse = simulateDiagnosisResponse(settings) })
             }
 
             else -> {
@@ -246,41 +230,33 @@ class TerminalSimulator(
     ): TerminalAPIResponse =
         when {
             message.getTotalsRequest != null -> {
-                respond(header) { getTotalsResponse = totalsResponse() }
+                respond(header, SaleToPOIResponse().apply { getTotalsResponse = totalsResponse() })
             }
 
             message.reconciliationRequest != null -> {
-                respond(header) {
-                    reconciliationResponse = reconcileResponse(message.reconciliationRequest)
-                }
+                respond(
+                    header,
+                    SaleToPOIResponse().apply {
+                        reconciliationResponse = reconcileResponse(message.reconciliationRequest)
+                    },
+                )
             }
 
             message.adminRequest != null -> {
-                respond(header) {
-                    adminResponse = AdminResponse().apply { response = Response().apply { result = ResultType.SUCCESS } }
-                }
+                respond(
+                    header,
+                    SaleToPOIResponse().apply {
+                        adminResponse = AdminResponse().apply { response = Response().apply { result = ResultType.SUCCESS } }
+                    },
+                )
             }
 
             message.displayRequest != null -> {
-                respond(header) {
-                    displayResponse =
-                        DisplayResponse().apply {
-                            outputResult +=
-                                message.displayRequest.displayOutput.orEmpty().map {
-                                    OutputResult().apply {
-                                        device = it.device ?: DeviceType.CUSTOMER_DISPLAY
-                                        infoQualify = it.infoQualify ?: InfoQualifyType.DISPLAY
-                                        response = Response().apply { result = ResultType.SUCCESS }
-                                    }
-                                }
-                        }
-                }
+                respond(header, SaleToPOIResponse().apply { displayResponse = simulateDisplayResponse(message.displayRequest) })
             }
 
             message.inputRequest != null -> {
-                respond(header) {
-                    inputResponse = simulateInputResponse(message.inputRequest, settings)
-                }
+                respond(header, SaleToPOIResponse().apply { inputResponse = simulateInputResponse(message.inputRequest, settings) })
             }
 
             else -> {
@@ -305,23 +281,17 @@ class TerminalSimulator(
             inProgress -= serviceId
         }
         val outcome =
-            when {
-                aborted.remove(serviceId) -> {
-                    null
-                }
-
-                settings.outcome == SimulatedOutcome.RANDOM -> {
-                    if (random.nextInt(PERCENT) < RANDOM_APPROVAL_PERCENT) SimulatedOutcome.APPROVE else SimulatedOutcome.DECLINE
-                }
-
-                else -> {
-                    settings.outcome
-                }
+            if (aborted.remove(serviceId)) {
+                null
+            } else if (settings.outcome == SimulatedOutcome.RANDOM) {
+                if (random.nextInt(PERCENT) < RANDOM_APPROVAL_PERCENT) SimulatedOutcome.APPROVE else SimulatedOutcome.DECLINE
+            } else {
+                settings.outcome
             }
         val response = paymentResponse(request, outcome, settings)
         completed.remember(serviceId, payment = response)
         if (outcome == SimulatedOutcome.TIMEOUT) throw SocketTimeoutException("Simulated timeout")
-        return respond(header) { paymentResponse = response }
+        return respond(header, SaleToPOIResponse().apply { paymentResponse = response })
     }
 
     private fun paymentResponse(
@@ -611,7 +581,7 @@ class TerminalSimulator(
         tender: String,
         psp: String?,
     ) = POIData().apply {
-        val txId = if (psp.isNullOrBlank()) tender else "$tender.$psp"
+        val txId = if (psp == null) tender else "$tender.$psp"
         poiTransactionID = TerminalClient.transaction(txId, clock.instant())
         poiReconciliationID = reconciliationId.get().toString()
     }
@@ -715,10 +685,10 @@ class TerminalSimulator(
 
     private fun respond(
         header: MessageHeader,
-        body: SaleToPOIResponse.() -> Unit,
+        response: SaleToPOIResponse,
     ) = TerminalAPIResponse().apply {
         saleToPOIResponse =
-            SaleToPOIResponse().apply {
+            response.apply {
                 messageHeader =
                     MessageHeader().apply {
                         protocolVersion = header.protocolVersion
@@ -729,7 +699,6 @@ class TerminalSimulator(
                         saleID = header.saleID
                         poiid = header.poiid
                     }
-                body()
             }
     }
 

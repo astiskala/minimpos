@@ -80,13 +80,13 @@ scripts/dev finish
 | --- | --- |
 | `format` | Existing `spotlessApply`: ktlint and fixable Markdown, plus text whitespace. Review the diff. |
 | `test MODULE PATTERN` | Matching tests in `core`, `adyen`, `app`, `website-test` or `tooling`; quote the pattern. |
-| `check AREA` | Module `check` for `core`/`adyen`/`app`; focused `website`, `workflows`, `markdown`, `architecture`, `localization`, `ui`, `qr`, `db` or `payment` lanes. |
+| `check AREA` | Module `check` for `core`/`adyen`/`app`/`tooling`; focused `website`, `workflows`, `markdown`, `architecture`, `localization`, `ui`, `qr`, `db` or `payment` lanes. |
 | `finish` | Format, then full `qualityGate --continue`; formatting failure stops the gate, gate failure stays nonzero. |
 | `preflight` | Read-only check of JDK 17+, SDK 37/build tools and Chrome; reports missing cached linters without failing for them. |
 | `warm` | Preflight, then compiler/test/browser/pinned-tool warmup; does not install SDKs or change config. |
 | `report` | Build current tooling, then summarize existing JUnit XML: exact assertions, first project frame, quoted reruns and slowest suites. |
 | `profile WORKERS [PATTERN]` | Rerun only the app test task with 1–4 workers and Gradle `--profile`; default pattern `*ui.*`. |
-| `mutation` | Existing `mutationTest`: PIT mutation testing of `core` and `adyen`; slow, never part of `finish` or CI. |
+| `mutation` | Existing `mutationTest`: PIT mutation testing of `core`, `adyen` and `tooling`; slow, never part of `finish` or CI. |
 
 Except `preflight`/`report`, commands accept trailing Gradle flags. `scripts/dev help` shows syntax.
 Fast lanes deliberately omit unrelated checks. Passing one never replaces `finish`; dependency edits still need a

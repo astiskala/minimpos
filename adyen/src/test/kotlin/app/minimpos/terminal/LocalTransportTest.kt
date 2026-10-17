@@ -44,9 +44,12 @@ import org.junit.Assert.assertThrows
 import org.junit.Test
 import java.io.IOException
 import java.net.ConnectException
+import java.net.NoRouteToHostException
 import java.net.SocketTimeoutException
 import java.net.UnknownHostException
+import java.security.GeneralSecurityException
 import java.security.MessageDigest
+import java.security.cert.CertificateException
 import java.util.Locale
 import java.util.concurrent.TimeUnit
 import javax.net.ssl.SSLHandshakeException
@@ -266,6 +269,10 @@ class LocalTransportTest {
 
     @Test
     fun `replies signed with another key may have taken effect and point to the shared key`() {
+        assertThat(key.keyIdentifier).isEqualTo("key-id")
+        assertThat(key.passphrase).isEqualTo("correct horse battery staple")
+        assertThat(key.keyVersion).isEqualTo(3)
+        assertThat(key.toString()).isEqualTo("TerminalKey(key-id, v3)")
         val server = server()
         val other = NexoCrypto(TerminalKey("key-id", "wrong passphrase", 3).toSecurityKey())
         server.reply(
@@ -275,8 +282,19 @@ class LocalTransportTest {
                 },
             ),
         )
+        server.reply(
+            gson.toJson(
+                TerminalAPISecuredResponse().apply {
+                    saleToPOIResponse =
+                        terminalCrypto.encrypt(gson.toJson(diagnosisOk()), header(MessageType.RESPONSE)).apply {
+                            securityTrailer.hmac = ByteArray(32)
+                        }
+                },
+            ),
+        )
         server.reply("""{"SaleToPOIResponse":{"NexoBlob":"AAAA"}}""")
         val transport = AdyenLocalTransport("localhost", key, tls(), Redirect(server.url("/nexo/"), http()))
+        assertThat(runBlocking { transport.send(request, 5.seconds) }).isEqualTo(Delivery.Failed(Fault.ReplyUnverified))
         assertThat(runBlocking { transport.send(request, 5.seconds) }).isEqualTo(Delivery.Failed(Fault.ReplyUnverified))
         val garbled = runBlocking { transport.send(request, 5.seconds) } as Delivery.Failed
         assertThat(garbled.fault.mayHaveTakenEffect).isTrue()
@@ -291,6 +309,35 @@ class LocalTransportTest {
         server.reply("oops", code = 500)
         val transport = AdyenLocalTransport("localhost", key, tls(), Redirect(server.url("/nexo/"), http()))
         assertThat(runBlocking { transport.send(request, 5.seconds) }).isEqualTo(Delivery.Failed(Fault.TerminalHttp(500)))
+
+        val baseHttp = http()
+        val securityFail =
+            Redirect(
+                server.url("/nexo/"),
+                object : ClientInterface by baseHttp {
+                    override fun request(
+                        endpoint: String,
+                        requestBody: String,
+                        config: Config,
+                    ): String = throw GeneralSecurityException("bad key")
+                },
+            )
+        assertThat(runBlocking { AdyenLocalTransport("localhost", key, tls(), securityFail).send(request, 5.seconds) })
+            .isEqualTo(Delivery.Failed(Fault.ReplyUnverified))
+
+        val genericFail =
+            Redirect(
+                server.url("/nexo/"),
+                object : ClientInterface by baseHttp {
+                    override fun request(
+                        endpoint: String,
+                        requestBody: String,
+                        config: Config,
+                    ): String = error("unexpected")
+                },
+            )
+        assertThat(runBlocking { AdyenLocalTransport("localhost", key, tls(), genericFail).send(request, 5.seconds) })
+            .isEqualTo(Delivery.Failed(Fault.UnreadableReply()))
     }
 
     @Test
@@ -307,6 +354,12 @@ class LocalTransportTest {
             """{"SaleToPOIRequest":{"MessageHeader":{"MessageClass":"Event","MessageCategory":"Event","MessageType":"Notification"},""" +
                 """"EventNotification":{"EventToNotify":"Reject","EventDetails":"message=Crypto%20error"}}}""",
         )
+        server.reply(
+            """{"SaleToPOIRequest":{"EventNotification":{"EventToNotify":"Reject","EventDetails":"message=Invalid+HMAC+signature"}}}""",
+        )
+        server.reply(
+            """{"SaleToPOIRequest":{"EventNotification":{"EventToNotify":"Reject","EventDetails":"message=Security+header+missing"}}}""",
+        )
         val event =
             gson.toJson(
                 TerminalAPISecuredRequest().apply {
@@ -319,13 +372,18 @@ class LocalTransportTest {
                 },
             )
         server.reply(event)
+        server.reply(event)
         server.reply("""["Bad JSON:1: unexpected end"]""")
         server.reply("""{"SaleToPOIResponse":{"MessageHeader":{}}}""")
         val client = http()
+        val unencryptedClient = TerminalHttpClient(tls(), crypto = null)
 
-        fun rejection() = fault { client.post(server.url("/nexo/")) }
+        fun rejection(c: TerminalHttpClient = client) = fault { c.post(server.url("/nexo/")) }
         assertThat(rejection()).isEqualTo(Fault.KeyRejected(ExternalText("Crypto error")))
+        assertThat(rejection()).isEqualTo(Fault.KeyRejected(ExternalText("Invalid HMAC signature")))
+        assertThat(rejection()).isEqualTo(Fault.KeyRejected(ExternalText("Security header missing")))
         assertThat(rejection()).isEqualTo(Fault.TerminalRejected(ExternalText("Unknown POIID")))
+        assertThat(rejection(unencryptedClient)).isEqualTo(Fault.TerminalRejected(null))
         assertThat(rejection()).isEqualTo(Fault.TerminalRejected(ExternalText("Bad JSON:1: unexpected end")))
         assertThat(rejection()).isEqualTo(Fault.TerminalRejected(null))
     }
@@ -334,9 +392,11 @@ class LocalTransportTest {
     fun `malformed replies and HTTP errors are protocol errors`() {
         val server = server()
         server.reply("not json {")
+        server.reply("123")
         server.reply("oops", code = 500)
         val client = http()
         assertThat(fault { client.post(server.url("/nexo/")) }).isEqualTo(Fault.UnreadableReply())
+        assertThat(fault { client.post(server.url("/nexo/")) }).isEqualTo(Fault.TerminalRejected(null))
         assertThat(fault { client.post(server.url("/nexo/")) }).isEqualTo(Fault.TerminalHttp(500))
     }
 
@@ -398,6 +458,14 @@ class LocalTransportTest {
         assertThat(fault { client.post(mismatched.url("/nexo/")) }).isInstanceOf(Fault.Untrusted::class.java)
         assertThat(detected).hasSize(2)
         assertThat(tls.environmentOf(emptyList())).isNull()
+        assertThat(tls.environmentOf(listOf(root.certificate))).isNull()
+        val testLeaf =
+            HeldCertificate
+                .Builder()
+                .commonName("S1F2-000158213605014.test.terminal.adyen.com")
+                .signedBy(root)
+                .build()
+        assertThat(tls.environmentOf(listOf(testLeaf.certificate, root.certificate))).isEqualTo(TerminalEnvironment.TEST)
         assertThat(
             tls.environmentOf(
                 listOf(
@@ -413,6 +481,23 @@ class LocalTransportTest {
 
     @Test
     fun `wrong environment, foreign roots and non-terminal certificates are rejected`() {
+        val tls = TerminalTls(mapOf(TerminalEnvironment.TEST to root.certificate))
+        val sameNameSpoofRoot =
+            HeldCertificate
+                .Builder()
+                .certificateAuthority(0)
+                .commonName("Fake Adyen Root")
+                .build()
+        val spoofedLeaf =
+            HeldCertificate
+                .Builder()
+                .commonName("S1F2-000158213605014.test.terminal.adyen.com")
+                .signedBy(sameNameSpoofRoot)
+                .build()
+        assertThat(tls.environmentOf(listOf(spoofedLeaf.certificate))).isNull()
+        assertThrows(CertificateException::class.java) {
+            tls.trustManager.checkClientTrusted(arrayOf(spoofedLeaf.certificate), "RSA")
+        }
         val server = server()
         server.reply("")
         assertThat(fault { http(TerminalEnvironment.LIVE).post(server.url("/nexo/")) }).isInstanceOf(Fault.Untrusted::class.java)
@@ -470,6 +555,12 @@ class LocalTransportTest {
         val noDns = OkHttpClient.Builder().dns { throw UnknownHostException(it) }.build()
         assertThat(fault { TerminalHttpClient(tls(), terminalCrypto, noDns).request("https://terminal.invalid:8443/nexo/", "{}", config) })
             .isEqualTo(Fault.UnknownHost("terminal.invalid", terminal = true))
+        val noRoute = OkHttpClient.Builder().addInterceptor { throw NoRouteToHostException("no route") }.build()
+        assertThat(
+            fault {
+                TerminalHttpClient(tls(), terminalCrypto, noRoute).request("https://terminal.invalid:8443/nexo/", "{}", config)
+            },
+        ).isEqualTo(Fault.Unreachable("terminal.invalid:8443", terminal = true))
     }
 
     @Test
@@ -483,6 +574,7 @@ class LocalTransportTest {
         // By default both roots are trusted; the terminal's certificate tells which environment it belongs to.
         assertThat(TerminalTls().trustManager.acceptedIssuers.map { it.subjectX500Principal })
             .containsExactlyElementsIn(TerminalEnvironment.entries.map { TerminalTls.loadRoot(it).subjectX500Principal })
+        assertThat(runBlocking { TerminalTls().readEnvironment("127.0.0.1") }).isNull()
     }
 
     @Test

@@ -9,14 +9,14 @@ usage() {
     'Usage: scripts/dev COMMAND [ARGS] [GRADLE FLAGS]' \
     '  format                         Fix formatting at an edit checkpoint' \
     '  test MODULE PATTERN             Run matching tests (core, adyen, app, website-test, tooling)' \
-    '  check AREA                      core, adyen, app, website, workflows, markdown, architecture,' \
-    '                                  localization, ui, qr, db, payment' \
+    '  check AREA                      core, adyen, app, tooling, website, workflows, markdown,' \
+    '                                  architecture, localization, ui, qr, db, payment' \
     '  finish                          Format, then full qualityGate --continue' \
     '  preflight                       Check local JDK, SDK 37, Chrome; no downloads or writes' \
     '  warm                            Warm compiler, Robolectric, browser and pinned tool caches' \
     '  report                          Build tooling, summarize existing JUnit failures and timings' \
     '  profile WORKERS [PATTERN]        Rerun app tests only; workers 1-4, default pattern *ui.*' \
-    '  mutation                        Mutation-test core and adyen with PIT (slow; not part of finish)'
+    '  mutation                        Mutation-test core, adyen and tooling with PIT (slow; not part of finish)'
 }
 invalid() {
   printf '%s\n' "$1" >&2
@@ -107,7 +107,7 @@ case "$command" in
     area=$1
     shift
     case "$area" in
-      core|adyen|app) tasks=(":$area:check") ;;
+      core|adyen|app|tooling) tasks=(":$area:check") ;;
       website) tasks=(:website-test:check markdownCheck) ;;
       workflows) tasks=(actionlint shellCheck zizmor :tooling:test --tests '*WorkflowTest' --tests '*RunnerTest') ;;
       markdown) tasks=(markdownCheck) ;;

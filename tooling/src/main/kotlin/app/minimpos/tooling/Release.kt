@@ -6,7 +6,6 @@ import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
-import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.longOrNull
 import kotlinx.serialization.json.put
 import java.math.BigInteger
@@ -44,9 +43,9 @@ internal object Release {
             name != null &&
                 versionName.matches(name) &&
                 codeText != null &&
-                codeText.all { it in '0'..'9' } &&
+                positiveInteger.matches(codeText) &&
                 code != null &&
-                code in 1..MAX_CODE,
+                code <= MAX_CODE,
         ) { "Invalid version.properties" }
         return Version(name, code)
     }
@@ -150,20 +149,13 @@ internal object Release {
         Files.writeString(path, "$value\n")
     }
 
-    private fun sha256(path: Path): String {
-        val digest = MessageDigest.getInstance("SHA-256")
-        Files.newInputStream(path).use { input ->
-            val bytes = ByteArray(DEFAULT_BUFFER_SIZE)
-            var count = input.read(bytes)
-            while (count >= 0) {
-                digest.update(bytes, 0, count)
-                count = input.read(bytes)
-            }
-        }
-        return digest.digest().joinToString("") { it.toUByte().toString(HEX_RADIX).padStart(HEX_BYTE_WIDTH, '0') }
-    }
+    private fun sha256(path: Path): String =
+        MessageDigest
+            .getInstance("SHA-256")
+            .digest(Files.readAllBytes(path))
+            .joinToString("") { it.toUByte().toString(HEX_RADIX).padStart(HEX_BYTE_WIDTH, '0') }
 
-    private fun JsonObject.string(key: String): String? = (get(key) as? JsonPrimitive)?.takeIf { it.isString }?.contentOrNull
+    private fun JsonObject.string(key: String): String? = (get(key) as? JsonPrimitive)?.takeIf { it.isString }?.content
 
     private fun JsonObject.positiveInteger(key: String): Long? =
         (get(key) as? JsonPrimitive)?.takeUnless { it.isString }?.longOrNull?.takeIf { it > 0 }

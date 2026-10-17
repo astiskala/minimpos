@@ -31,7 +31,7 @@ class SigningPropertiesTest {
 
     @Test
     fun `missing or multiline signing properties fail without printing values or partial extraction`() {
-        for (value in listOf("", "keyPassword=first\\nsecond\n", "keyPassword=first\\rsecond\n")) {
+        for (value in listOf("", "keyPassword=\n", "keyPassword=first\\nsecond\n", "keyPassword=first\\rsecond\n")) {
             val root = temporary.newFolder().toPath()
             Files.writeString(root.resolve("signing.properties"), "storePassword=fixture-not-for-output\nkeyAlias=alias\n$value")
             val result = Cli.run("signing", root.toString())
@@ -51,6 +51,7 @@ class SigningPropertiesTest {
         val result = Cli.run("signing", root.toString())
         assertThat(result.code).isNotEqualTo(0)
         assertThat(Files.readString(target)).isEqualTo("retained")
+        assertThat(result.output).contains("Cannot access tooling input/output:")
         assertThat(result.output).doesNotContain("secret")
     }
 }

@@ -98,8 +98,6 @@ object AdditionalResponseParser {
     }
 
     private fun decodeBase64Json(text: String): JsonObject? {
-        // Base64 can end in '=' padding but never contains '&'.
-        if (text.contains('=') && text.contains('&')) return null
         val bytes = runCatching { Base64.withPadding(Base64.PaddingOption.PRESENT_OPTIONAL).decode(text) }.getOrNull() ?: return null
         val json = bytes.toString(Charsets.UTF_8).trim()
         if (!json.startsWith("{")) return null
@@ -116,7 +114,7 @@ object AdditionalResponseParser {
             when {
                 element.isJsonObject -> {
                     element.asJsonObject.entrySet().forEach { (k, v) ->
-                        visit(if (prefix.isEmpty()) k else "$prefix.$k", v)
+                        visit("$prefix.$k", v)
                     }
                 }
 

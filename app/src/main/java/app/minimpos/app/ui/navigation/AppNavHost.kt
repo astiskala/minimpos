@@ -14,6 +14,7 @@ import app.minimpos.app.data.db.SaleKind
 import app.minimpos.app.feature.capture.CaptureScreen
 import app.minimpos.app.feature.capture.TipScreen
 import app.minimpos.app.feature.history.HistoryScreen
+import app.minimpos.app.feature.history.ReconciliationScreen
 import app.minimpos.app.feature.history.RefundDetailScreen
 import app.minimpos.app.feature.history.SaleDetailScreen
 import app.minimpos.app.feature.home.HomeScreen
@@ -30,6 +31,8 @@ import app.minimpos.app.feature.sale.PaymentLinkScreen
 import app.minimpos.app.feature.sale.PaymentScreen
 import app.minimpos.app.feature.sale.SaleResultScreen
 import app.minimpos.app.feature.sale.SaleScreen
+import app.minimpos.app.feature.sale.SavedCardReviewScreen
+import app.minimpos.app.feature.sale.SavedCardScreen
 import app.minimpos.app.feature.sale.WalletScreen
 import app.minimpos.app.feature.settings.SettingsScreen
 import app.minimpos.app.feature.settings.SettingsSectionScreen
@@ -91,6 +94,10 @@ fun AppNavHost() {
                 entry<Route.Refund> { PinGate(navigator, manager = true) { RefundScreen(it.payload, it.saleId, navigator) } }
                 entry<Route.RefundProcessing> { RefundProcessingScreen(navigator) }
                 entry<Route.RefundResult> { RefundResultScreen(it.refundId, navigator) }
+                entry<Route.SavedCard> { PinGate(navigator, manager = true) { SavedCardScreen(navigator) } }
+                entry<Route.SavedCardSale> { PinGate(navigator, manager = true) { SaleScreen(navigator, SaleKind.SALE, card = it.card) } }
+                entry<Route.SavedCardReview> { PinGate(navigator, manager = true) { SavedCardReviewScreen(it.card, navigator) } }
+                entry<Route.Reconciliation> { ReconciliationScreen(navigator) }
                 entry<Route.History> { HistoryScreen(navigator) }
                 entry<Route.SaleDetail> { SaleDetailScreen(it.saleId, navigator) }
                 entry<Route.RefundDetail> { RefundDetailScreen(it.refundId, navigator) }

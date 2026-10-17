@@ -128,6 +128,36 @@ sealed interface Route : NavKey {
         override val requiresManager get() = true
     }
 
+    /** Finding a shopper's saved cards by their shopper reference and choosing one to charge. */
+    @Serializable data object SavedCard : Route {
+        override val requiresManager get() = true
+    }
+
+    /**
+     * Ringing up the sale to charge to a saved card, in its own cart.
+     *
+     * @property card The chosen card.
+     */
+    @Serializable data class SavedCardSale(
+        val card: ChosenCard,
+    ) : Route {
+        override val requiresManager get() = true
+    }
+
+    /**
+     * Reviewing and charging the saved card, then following the charge to its result.
+     *
+     * @property card The chosen card.
+     */
+    @Serializable data class SavedCardReview(
+        val card: ChosenCard,
+    ) : Route {
+        override val requiresManager get() = true
+    }
+
+    /** Terminal totals compared with Mini mPOS, closing the terminal's period and today's report. */
+    @Serializable data object Reconciliation : Route
+
     /** Sales and refunds by day. */
     @Serializable data object History : Route
 
@@ -203,3 +233,18 @@ sealed interface Route : NavKey {
             }
     }
 }
+
+/**
+ * The saved card chosen for a charge, as navigation keeps it across process death: Adyen's token ID and its summary,
+ * never a card number.
+ *
+ * @property id Adyen's `storedPaymentMethodId`.
+ * @property brand The card brand, such as `visa`; null when Adyen sent none.
+ * @property lastFour The last four digits; null when Adyen sent none.
+ */
+@Serializable
+data class ChosenCard(
+    val id: String,
+    val brand: String? = null,
+    val lastFour: String? = null,
+)

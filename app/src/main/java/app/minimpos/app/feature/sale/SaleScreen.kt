@@ -94,6 +94,7 @@ import app.minimpos.app.ui.components.SecondaryButton
 import app.minimpos.app.ui.components.currentLocale
 import app.minimpos.app.ui.components.rememberMoneyFormatter
 import app.minimpos.app.ui.components.rememberSearchControl
+import app.minimpos.app.ui.navigation.ChosenCard
 import app.minimpos.app.ui.navigation.Navigator
 import app.minimpos.app.ui.navigation.Route
 import app.minimpos.app.ui.theme.LocalDimens
@@ -108,7 +109,8 @@ import kotlinx.coroutines.launch
  * Ringing up a payment of [kind]. For a sale: product tiles with search and category filters, custom amounts, barcode
  * scanning and the cart, with checkout as the main action. For a [SaleKind.singleItem] kind (the pre-authorise screen)
  * only its products, and no cart: tapping a product, adding a custom amount or scanning a barcode goes straight to
- * checkout with it (replacing any item chosen before).
+ * checkout with it (replacing any item chosen before). With a saved [card] the sale is rung up in its own cart and its
+ * checkout reviews the charge of that card instead.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -116,11 +118,12 @@ fun SaleScreen(
     navigator: Navigator,
     kind: SaleKind,
     modifier: Modifier = Modifier,
-    vm: SaleViewModel = saleViewModel(kind),
+    card: ChosenCard? = null,
+    vm: SaleViewModel = saleViewModel(kind, savedCard = card != null),
 ) {
     val state by vm.state.collectAsStateWithLifecycle()
     val money = rememberMoneyFormatter(state.currency)
-    val checkout = Route.Checkout(kind)
+    val checkout = card?.let(Route::SavedCardReview) ?: Route.Checkout(kind)
     // Checking the screen on top keeps a second quick tap from opening checkout twice.
     val onChosen = { if (kind.singleItem && navigator.current == Route.ringUp(kind)) navigator.push(checkout) }
     var overlay by rememberSaveable { mutableStateOf<SaleOverlay?>(null) }
@@ -139,7 +142,14 @@ fun SaleScreen(
     }
 
     MiniScaffold(
-        title = stringResource(if (kind == SaleKind.PRE_AUTHORISATION) R.string.pre_auth_title else R.string.sale_title),
+        title =
+            stringResource(
+                when {
+                    card != null -> R.string.saved_card_title
+                    kind == SaleKind.PRE_AUTHORISATION -> R.string.pre_auth_title
+                    else -> R.string.sale_title
+                },
+            ),
         onBack = navigator::back,
         modifier = modifier,
         snackbarHostState = snackbar,
@@ -394,10 +404,14 @@ private fun CartSheet(
 }
 
 @Composable
-private fun saleViewModel(kind: SaleKind): SaleViewModel {
+private fun saleViewModel(
+    kind: SaleKind,
+    savedCard: Boolean,
+): SaleViewModel {
     val container = LocalAppContainer.current
-    return viewModel(key = kind.name) {
-        SaleViewModel(container.catalog, container.session(kind), container.settingsState, container::currency)
+    return viewModel(key = if (savedCard) "savedCard" else kind.name) {
+        val session = if (savedCard) container.savedCardSession else container.session(kind)
+        SaleViewModel(container.catalog, session, container.settingsState, container::currency)
     }
 }
 

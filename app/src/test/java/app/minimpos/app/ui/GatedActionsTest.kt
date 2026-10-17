@@ -84,6 +84,20 @@ class GatedActionsTest {
     }
 
     @Test
+    fun `reconciliation from Home checks the simulator's totals and waits for the terminal ID elsewhere`() {
+        env.useSimulator()
+        compose.setContent { MiniMposApp(env.container) }
+        compose.onNodeWithTag("reconciliation").performClick()
+        compose.waitUntilAtLeastOneExists(hasTestTag("reconcileTerminal"), 15_000)
+        compose.onNodeWithTag("reconcileTerminal").assertIsEnabled().performClick()
+        compose.waitUntilAtLeastOneExists(hasTestTag("reconciliationCard"), 15_000)
+        useNetworkTerminalWithoutId()
+        compose.waitUntilAtLeastOneExists(hasTestTag("blockedReason"), 15_000)
+        compose.onNodeWithTag("reconcileTerminal").assertIsNotEnabled()
+        compose.onAllNodesWithTag("blockedReason")[0].assertTextContains(env.context.getString(R.string.setup_poiid))
+    }
+
+    @Test
     fun `test emails wait for SMTP settings`() {
         env.useSimulator()
         open("email")

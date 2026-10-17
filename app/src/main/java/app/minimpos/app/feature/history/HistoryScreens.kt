@@ -128,31 +128,12 @@ fun HistoryScreen(
     vm: HistoryViewModel = historyViewModel(),
 ) {
     val state by vm.state.collectAsStateWithLifecycle()
-    var closeApproval by remember { mutableStateOf(false) }
-    if (closeApproval) {
-        return ManagerApproval(
-            onApprove = {
-                closeApproval = false
-                vm.reconcileTerminal(closePeriod = true)
-            },
-            onCancel = { closeApproval = false },
-        )
-    }
     val search = rememberSearchControl(available = state.hasHistory, onRequest = LocalDimens.current.compact, state.query, vm::setQuery)
     MiniScaffold(
         title = stringResource(R.string.history_title),
         onBack = navigator::back,
         modifier = modifier,
         actions = {
-            if (state.canReconcile) {
-                IconButton(
-                    onClick = { vm.reconcileTerminal(closePeriod = false) },
-                    enabled = !state.reconcile.running,
-                    modifier = Modifier.testTag("reconcileTerminal"),
-                ) {
-                    Icon(Icons.Default.Refresh, contentDescription = stringResource(R.string.history_reconcile))
-                }
-            }
             if (search.onRequest) SearchToggle(search.mode, stringResource(R.string.history_search), search.toggle)
         },
     ) { padding ->
@@ -168,10 +149,6 @@ fun HistoryScreen(
             }
             HistoryFilters(state.filter, vm::setFilter, state.methods, state.method, vm::setMethod)
             OutcomeMessage(state.print)
-            OutcomeMessage(state.reconcile)
-            state.reconciliation?.let { report ->
-                ReconciliationCard(report, state.reconcile.running, { closeApproval = true }, vm::dismissReconciliation)
-            }
             HistoryBody(state, vm::printDay, vm::showAll, navigator)
         }
     }
@@ -816,7 +793,7 @@ private fun PaymentDetailsCard(sale: SaleEntity) {
 }
 
 @Composable
-private fun ReconciliationCard(
+internal fun ReconciliationCard(
     report: TerminalReconciliationReport,
     running: Boolean,
     onClosePeriod: () -> Unit,
@@ -878,7 +855,7 @@ private fun ReconciliationCard(
 }
 
 @Composable
-private fun historyViewModel(): HistoryViewModel {
+internal fun historyViewModel(): HistoryViewModel {
     val container = LocalAppContainer.current
     return viewModel {
         HistoryViewModel(

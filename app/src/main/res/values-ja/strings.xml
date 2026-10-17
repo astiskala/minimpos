@@ -1096,4 +1096,20 @@
   <string name="sentences">%1$s%2$s</string>
   <string name="action_unconfirmed">Adyenが結果を確認できませんでした。他の操作をする前に、もう一度確認してください。</string>
   <string name="still_unconfirmed">まだ確認できません：%1$s</string>
+  <string name="home_saved_card">保存カードに請求</string>
+  <string name="home_reconciliation">照合</string>
+  <string name="saved_card_title">保存カードに請求</string>
+  <string name="saved_card_intro">購入者に保存されたカードを検索して選択し、請求する商品を入力します。購入者が不在でも請求できます。事前に同意を得てください。</string>
+  <string name="saved_card_find">保存カードを検索</string>
+  <string name="saved_card_none">この購入者に保存されたカードはありません。</string>
+  <string name="saved_card_expires">有効期限 %1$s/%2$s</string>
+  <string name="saved_card_unsupported">別の種類の支払い用に保存されているため、ここでは請求できません。</string>
+  <string name="saved_card_card">カード</string>
+  <string name="saved_card_charge">%1$sを請求</string>
+  <string name="saved_card_charging">保存カードに請求しています…</string>
+  <string name="saved_card_review_note">Adyenは購入者不在のままカードに請求します。必要な場合は取引履歴から返金してください。</string>
+  <string name="setup_shopper_reference">保存カードを使うには、「設定 › 決済」で購入者参照IDを選択してください。</string>
+  <string name="setup_totals">現在の決済先では端末の合計を取得できません。Tap to Payは合計を報告しません。</string>
+  <string name="reconciliation_intro">端末の合計をMini mPOSと比較します。未確定の端末決済を先に確認します。営業終了時に期間を締めてください。</string>
+  <string name="reconciliation_print_today">本日のレポートを印刷</string>
 </resources>

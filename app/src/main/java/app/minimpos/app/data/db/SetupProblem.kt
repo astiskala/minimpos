@@ -150,4 +150,10 @@ enum class SetupProblem {
      * sending it again could act twice; it is checked in the Customer Area instead.
      */
     CHARGE_TOO_OLD,
+
+    /** No shopper reference is configured (Settings › Payments), so no saved card can be found or charged. */
+    SHOPPER_REFERENCE,
+
+    /** The destination cannot report terminal totals or close a reconciliation period (Tap to Pay). */
+    TOTALS,
 }

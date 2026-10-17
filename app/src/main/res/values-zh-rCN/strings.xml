@@ -1055,6 +1055,7 @@
   <string name="setup_key_recovery_unreadable">无法读取待完成的密钥设置。创建其他密钥前，请获取现有密钥或联系支持。</string>
   <string name="setup_key_creation_unconfirmed">尚未确认密钥创建结果。请继续密钥设置，先读取 Adyen 设置再重试。</string>
   <string name="setup_printer">没有可用的打印机。请检查“设置 › 收据”中的“打印机”，使用模拟器时请检查“设置 › 模拟器”。</string>
+  <string name="setup_charge_too_old">此操作时间过久，无法安全地再次发送。请在商户后台查看结果。</string>
   <string name="payment_context_mismatch">当前设置与原支付的终端、商家账户或环境不一致。请恢复原设置后继续。</string>
   <string name="fault_unreachable_terminal">无法连接终端。请确认终端已开机、位于同一网络，且 IP 地址正确。</string>
   <string name="fault_unreachable_adyen">无法连接 Adyen。请检查互联网连接。</string>

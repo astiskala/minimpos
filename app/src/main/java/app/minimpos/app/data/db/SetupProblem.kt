@@ -144,4 +144,10 @@ enum class SetupProblem {
 
     /** Printing is not offered: the printer setting is off, or the terminal (or simulator) has no printer. */
     PRINTER,
+
+    /**
+     * A saved-card charge or Checkout refund whose outcome is unknown is older than Adyen keeps idempotency keys, so
+     * sending it again could act twice; it is checked in the Customer Area instead.
+     */
+    CHARGE_TOO_OLD,
 }

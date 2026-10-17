@@ -119,6 +119,11 @@ data class RefundStart(
     val cancellation: Boolean = false,
     /** Original locally recorded destination; null for an independently reviewed foreign receipt. */
     val expectedContext: PaymentContext? = null,
+    /**
+     * Whether the refund goes through Adyen's Checkout API rather than a terminal, because the payment was a saved-card
+     * charge ([app.minimpos.app.data.db.SaleEntity.savedCard]) with no terminal transaction to reverse.
+     */
+    val checkout: Boolean = false,
 ) {
     init {
         require(amountMinor > 0) { "Refund amount must be positive" }
@@ -222,6 +227,7 @@ class RefundablePayment private constructor(
             merchantReference = Ids.transactionReference(prefix, now, zone),
             lines = (choice as? RefundChoice.Items)?.let(::refundedLines).orEmpty(),
             expectedContext = local?.sale?.context,
+            checkout = local?.sale?.savedCard == true,
         )
     }
 
@@ -328,12 +334,13 @@ class RefundablePayment private constructor(
             }
 
         /**
-         * The refund QR code content for [record]'s receipt, or null when the sale could never be refunded (a
-         * pre-authorisation, or its transaction ID cannot be carried in the code). Printed whether or not something is
-         * left to refund.
+         * The refund QR code content for [record]'s receipt, or null when the sale could never be refunded with one (a
+         * pre-authorisation, a saved-card charge, which is refunded from history through the Checkout API, or its
+         * transaction ID cannot be carried in the code). Printed whether or not something is left to refund.
          */
         fun qrCode(record: SaleWithLines): String? {
-            if (record.sale.kind == SaleKind.PRE_AUTHORISATION || !record.sale.standing.charged) return null
+            val sale = record.sale
+            if (sale.kind == SaleKind.PRE_AUTHORISATION || sale.savedCard || !sale.standing.charged) return null
             val payment = eligible(record) ?: return null
             // Eligibility already requires a time stamp with a time zone, so it is one instant.
             val instant = checkNotNull(TerminalClient.instantOf(payment.timestamp))

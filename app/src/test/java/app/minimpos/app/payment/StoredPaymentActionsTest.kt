@@ -37,9 +37,7 @@ class StoredPaymentActionsTest {
     private val clock = Clock.fixed(Instant.parse("2026-10-07T23:30:00Z"), ZoneOffset.UTC)
 
     private fun actions() =
-        StoredPaymentActions(container.refunds, container.captures, container.settingsState, clock) {
-            ZoneOffset.ofHours(2)
-        }
+        StoredPaymentActions(container.refunds, container.captures, container.settingsState, clock, zone = { ZoneOffset.ofHours(2) })
 
     private fun pay(kind: SaleKind = SaleKind.SALE): SaleWithLines {
         val id =

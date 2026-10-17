@@ -234,6 +234,25 @@ class SaleBook(
             )
         }
 
+        /**
+         * [start] as the new PENDING saved-card sale [id] in the original [context], opened at [createdAt] (epoch ms),
+         * with the card and recurring model it charges, before anything is sent.
+         */
+        internal fun savedCardSale(
+            id: String,
+            start: SavedCardStart,
+            createdAt: Long,
+            context: PaymentContext?,
+        ): SaleEntity =
+            pendingSale(id, start.payment, createdAt).copy(
+                savedCard = true,
+                chargedCardId = start.card.id,
+                chargeRecurringModel = start.recurringModel,
+                paymentBrand = start.card.brand,
+                maskedPan = start.card.lastFour?.let { "**** $it" },
+                context = context,
+            )
+
         /** The priced cart [totals] as the lines of sale [saleId], in cart order. */
         internal fun lines(
             saleId: String,

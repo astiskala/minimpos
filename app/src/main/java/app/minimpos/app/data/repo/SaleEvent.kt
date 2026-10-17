@@ -9,12 +9,14 @@ import app.minimpos.app.data.db.SetupProblem
 import app.minimpos.app.data.db.StoredReason
 import app.minimpos.core.money.CurrencySpec
 import app.minimpos.core.payment.PaymentContext
+import app.minimpos.terminal.checkout.CardChargeResult
 import app.minimpos.terminal.checkout.ModificationResult
 import app.minimpos.terminal.checkout.PaymentLink
 import app.minimpos.terminal.checkout.PaymentLinkStatus
 import app.minimpos.terminal.client.OfflineProcessingMode
 import app.minimpos.terminal.client.TransactionDetails
 import app.minimpos.terminal.transport.Fault
+import java.time.Instant
 
 /**
  * Something that happened to a stored sale after it was opened, which moves it on ([after]). It is the one place that
@@ -172,6 +174,19 @@ sealed interface SaleEvent {
     ) : SaleEvent
 
     /**
+     * Adyen answered the charge of a saved card ([SaleEntity.savedCard]): charged ([SaleStatus.APPROVED], with its PSP
+     * reference standing in as the transaction ID `.pspReference` that Adyen uses for payments not taken on a terminal),
+     * refused ([SaleStatus.DECLINED]), not taken ([SaleStatus.FAILED]) or unknown ([SaleStatus.UNKNOWN]).
+     *
+     * @property result What Adyen answered.
+     * @property processedAt When the answer arrived, in epoch milliseconds.
+     */
+    data class CardAnswered(
+        val result: CardChargeResult,
+        val processedAt: Long,
+    ) : SaleEvent
+
+    /**
      * Persists adjustment identity and amount before it can take effect.
      * @property key Logical operation identity reused until its outcome is known.
      * @property amountMinor Frozen adjustment amount, in minor units.
@@ -253,6 +268,37 @@ fun SaleEntity.after(event: SaleEvent): SaleEntity =
 
         is SaleEvent.ContextRecorded, is SaleEvent.AdjustmentSending -> {
             prepared(event)
+        }
+
+        is SaleEvent.CardAnswered -> {
+            cardAnswered(event)
+        }
+    }
+
+private fun SaleEntity.cardAnswered(event: SaleEvent.CardAnswered): SaleEntity =
+    when (val result = event.result) {
+        is CardChargeResult.Authorised -> {
+            ended(SaleStatus.APPROVED, null, null).copy(
+                pspReference = result.pspReference,
+                poiTransactionId = ".${result.pspReference}",
+                poiTimestamp = Instant.ofEpochMilli(event.processedAt).toString(),
+                paymentBrand = result.brand ?: paymentBrand,
+                maskedPan = result.lastFour?.let { "**** $it" } ?: maskedPan,
+                authCode = result.authCode,
+                processedAt = processedAt ?: event.processedAt,
+            )
+        }
+
+        is CardChargeResult.Refused -> {
+            ended(SaleStatus.DECLINED, result.said?.text, null).copy(pspReference = result.pspReference ?: pspReference)
+        }
+
+        is CardChargeResult.Failed -> {
+            if (result.fault.mayHaveTakenEffect) {
+                ended(SaleStatus.UNKNOWN, null, StoredReason.Unconfirmed(Failure.Remote(result.fault)))
+            } else {
+                ended(SaleStatus.FAILED, null, StoredReason.NotDone(Failure.Remote(result.fault)))
+            }
         }
     }
 

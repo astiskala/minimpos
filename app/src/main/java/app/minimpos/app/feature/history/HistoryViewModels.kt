@@ -28,6 +28,7 @@ import app.minimpos.app.history.TerminalReconciliationReport
 import app.minimpos.app.history.standing
 import app.minimpos.app.payment.PaymentStart
 import app.minimpos.app.payment.ReceiptDelivery
+import app.minimpos.app.payment.SavedCardCharges
 import app.minimpos.app.payment.StoredPaymentActions
 import app.minimpos.app.payment.TransactionLifecycle
 import app.minimpos.app.terminal.Attempt
@@ -402,6 +403,7 @@ data class SaleDetailUiState(
  * @param receipts Prints and emails its receipt.
  * @param operations Cancels holds and retries captures.
  * @param lifecycle The payments' lifecycle, for re-checking an unknown outcome.
+ * @param charges Saved-card charges, for re-checking one whose outcome is unknown; null where there are none.
  */
 class SaleDetailViewModel(
     private val saleId: String,
@@ -410,11 +412,12 @@ class SaleDetailViewModel(
     receipts: ReceiptDelivery,
     private val operations: StoredPaymentActions,
     lifecycle: TransactionLifecycle<PaymentStart>,
+    charges: SavedCardCharges? = null,
 ) : ViewModel() {
     private val local = MutableStateFlow(SaleDetailUiState())
 
     /** The receipt, reprinting and emailing it, and re-checking an unknown outcome. */
-    val transaction = TransactionActions.forSale(viewModelScope, saleId, receipts, lifecycle, fresh = false)
+    val transaction = TransactionActions.forSale(viewModelScope, saleId, receipts, lifecycle, fresh = false, charges = charges)
 
     /** The screen state, updated whenever the sale, its refunds, the capture mode or an action changes. */
     val state: StateFlow<SaleDetailUiState> =

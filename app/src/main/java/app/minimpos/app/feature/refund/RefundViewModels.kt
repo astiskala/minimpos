@@ -12,6 +12,7 @@ import app.minimpos.app.history.RefundChoice
 import app.minimpos.app.history.RefundStart
 import app.minimpos.app.history.Refundability
 import app.minimpos.app.history.RefundablePayment
+import app.minimpos.app.payment.CheckoutRefunds
 import app.minimpos.app.payment.ReceiptDelivery
 import app.minimpos.app.payment.StoredPaymentActions
 import app.minimpos.app.payment.TransactionLifecycle
@@ -154,6 +155,8 @@ data class RefundResultUiState(
  * @param receipts Prints and emails its receipt.
  * @param lifecycle The refunds' lifecycle, for status checks and leaving the result.
  * @param justMade False when opened from history: nothing is delivered automatically and leaving acknowledges nothing.
+ * @param checkout Refunds of saved-card charges sent through the Checkout API, for their status checks and leaving the
+ *   result; null where there are none.
  */
 class RefundResultViewModel(
     refundId: String,
@@ -161,9 +164,10 @@ class RefundResultViewModel(
     receipts: ReceiptDelivery,
     private val lifecycle: TransactionLifecycle<RefundStart>,
     private val justMade: Boolean = true,
+    private val checkout: CheckoutRefunds? = null,
 ) : ViewModel() {
     /** The receipt, printing and emailing it, and re-checking an unknown outcome. */
-    val transaction = TransactionActions.forRefund(viewModelScope, refundId, receipts, lifecycle, fresh = justMade)
+    val transaction = TransactionActions.forRefund(viewModelScope, refundId, receipts, lifecycle, fresh = justMade, checkout = checkout)
 
     /** The screen state, updated whenever the refund, settings, printer or an action changes. */
     val state: StateFlow<RefundResultUiState> =
@@ -172,6 +176,9 @@ class RefundResultViewModel(
 
     /** Leaves the result, so the next refund can start. */
     fun finish() {
-        if (justMade) lifecycle.acknowledge()
+        if (justMade) {
+            lifecycle.acknowledge()
+            checkout?.acknowledge()
+        }
     }
 }

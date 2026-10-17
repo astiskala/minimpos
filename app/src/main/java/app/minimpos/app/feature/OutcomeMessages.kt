@@ -392,6 +392,8 @@ private val SetupProblem.textRes: Int
             SetupProblem.KEY_CREATION_UNCONFIRMED -> R.string.setup_key_creation_unconfirmed
 
             SetupProblem.PRINTER -> R.string.setup_printer
+
+            SetupProblem.CHARGE_TOO_OLD -> R.string.setup_charge_too_old
         }
 
 /** Why a tip, capture or adjustment did not go through, named after what was sent; a refusal says the amount. */

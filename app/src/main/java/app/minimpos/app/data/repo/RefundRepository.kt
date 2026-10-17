@@ -78,10 +78,10 @@ class RefundRepository(
     /**
      * Stores how refund [id] ended: its [status], why it was not accepted (the terminal's [message], or the app's
      * [reason]) and, when the terminal answered, its [details] (PSP reference and the customer's card receipt; without
-     * an answer the stored ones are kept). When it was accepted ([RefundStatus.REQUESTED]) it is applied to its local
-     * sale ([SaleRepository.applyRefund]), so the same items or amount cannot be refunded twice from this terminal. This
-     * is the only change to a refund after [create]. Reads and writes in one transaction; does nothing when the refund no
-     * longer exists.
+     * an answer the stored ones are kept; a Checkout refund's own [pspReference] is kept too). When it was accepted
+     * ([RefundStatus.REQUESTED]) it is applied to its local sale ([SaleRepository.applyRefund]), so the same items or
+     * amount cannot be refunded twice from this terminal. This is the only change to a refund after [create]. Reads and
+     * writes in one transaction; does nothing when the refund no longer exists.
      */
     suspend fun settle(
         id: String,
@@ -89,6 +89,7 @@ class RefundRepository(
         message: String?,
         details: TransactionDetails?,
         reason: StoredReason? = null,
+        pspReference: String? = null,
     ) = db.withTransaction {
         val stored = dao.refund(id) ?: return@withTransaction
         if (stored.status == RefundStatus.REQUESTED && status != RefundStatus.REQUESTED) return@withTransaction
@@ -109,7 +110,7 @@ class RefundRepository(
                     },
                 message = message,
                 reason = reason,
-                pspReference = details?.pspReference ?: stored.pspReference,
+                pspReference = details?.pspReference ?: pspReference ?: stored.pspReference,
                 poiReconciliationId = details?.poiReconciliationId ?: stored.poiReconciliationId,
                 customerReceiptJson = details?.let { ReceiptLinesJson.encodeFields(it.customerReceipt) } ?: stored.customerReceiptJson,
             )

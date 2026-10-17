@@ -48,7 +48,10 @@ class OnTerminalDiscoveryTest {
     private var creations = 0
     private val details: TerminalDetailsApi =
         object : TerminalDetailsApi {
-            override suspend fun credential(environment: TerminalEnvironment) = app.minimpos.terminal.transport.CredentialLookup.Allowed
+            override suspend fun credential(
+                environment: TerminalEnvironment,
+                cloud: Boolean,
+            ) = app.minimpos.terminal.transport.CredentialLookup.Allowed
 
             override suspend fun terminals(
                 environment: TerminalEnvironment,

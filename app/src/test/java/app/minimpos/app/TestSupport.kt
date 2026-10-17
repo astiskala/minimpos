@@ -507,7 +507,10 @@ class TestEnvironment(
 
     private fun defaultTerminalDetails(): TerminalDetailsApi =
         object : TerminalDetailsApi {
-            override suspend fun credential(environment: TerminalEnvironment) = CredentialLookup.Allowed
+            override suspend fun credential(
+                environment: TerminalEnvironment,
+                cloud: Boolean,
+            ) = CredentialLookup.Allowed
 
             override suspend fun terminals(
                 environment: TerminalEnvironment,

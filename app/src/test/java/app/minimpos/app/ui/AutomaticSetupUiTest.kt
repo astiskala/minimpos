@@ -80,7 +80,10 @@ class AutomaticSetupUiTest {
     private var verificationRelease: CompletableDeferred<Unit>? = null
     private val details: TerminalDetailsApi =
         object : TerminalDetailsApi {
-            override suspend fun credential(environment: TerminalEnvironment): CredentialLookup {
+            override suspend fun credential(
+                environment: TerminalEnvironment,
+                cloud: Boolean,
+            ): CredentialLookup {
                 verificationRelease?.await()
                 return CredentialLookup.Allowed
             }

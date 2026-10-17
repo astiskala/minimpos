@@ -1,9 +1,11 @@
 package app.minimpos.app.feature
 
 import androidx.annotation.StringRes
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
 import app.minimpos.app.R
 import app.minimpos.app.data.db.DeviceFault
@@ -15,6 +17,9 @@ import app.minimpos.app.data.db.SetupProblem
 import app.minimpos.app.data.db.StoredReason
 import app.minimpos.app.payment.WalletScanProblem
 import app.minimpos.app.ui.components.ActionMessage
+import app.minimpos.app.ui.components.BlockedReason
+import app.minimpos.app.ui.components.PrimaryButton
+import app.minimpos.app.ui.components.SecondaryButton
 import app.minimpos.app.ui.components.currentLocale
 import app.minimpos.core.money.CurrencySpec
 import app.minimpos.core.money.MoneyFormatter
@@ -385,6 +390,8 @@ private val SetupProblem.textRes: Int
             SetupProblem.KEY_RECOVERY_UNREADABLE -> R.string.setup_key_recovery_unreadable
 
             SetupProblem.KEY_CREATION_UNCONFIRMED -> R.string.setup_key_creation_unconfirmed
+
+            SetupProblem.PRINTER -> R.string.setup_printer
         }
 
 /** Why a tip, capture or adjustment did not go through, named after what was sent; a refusal says the amount. */
@@ -418,6 +425,31 @@ private fun ActionOutcome.Connected.connectedText(): String {
     if (setupOnly) return stringResource(R.string.settings_payments_app_setup_checked)
     val printer = stringResource(if (hasPrinter) R.string.home_printer_yes else R.string.home_printer_no)
     return "${stringResource(R.string.settings_connection_ok)} (${globalStatus ?: "OK"}, $printer)"
+}
+
+/**
+ * An action that cannot run until [blocked] is fixed: then the button is disabled and the reason, which says what to
+ * do, shows directly under it ([BlockedReason]). Without a reason it is the ordinary [PrimaryButton] (when [primary])
+ * or [SecondaryButton]. Every action with a precondition known before it is pressed uses this, so none can be pressed
+ * only to report what was already known.
+ */
+@Composable
+fun ColumnScope.GatedButton(
+    text: String,
+    onClick: () -> Unit,
+    blocked: Failure?,
+    modifier: Modifier = Modifier,
+    loading: Boolean = false,
+    icon: ImageVector? = null,
+    primary: Boolean = false,
+) {
+    val enabled = blocked == null
+    if (primary) {
+        PrimaryButton(text, onClick, modifier, enabled = enabled, loading = loading, icon = icon)
+    } else {
+        SecondaryButton(text, onClick, modifier, enabled = enabled, loading = loading, icon = icon)
+    }
+    blocked?.let { BlockedReason(it.text()) }
 }
 
 /** The outcome of [state] under its button, in the error colour for a failure; nothing while there is none. */

@@ -8,19 +8,23 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.minimpos.app.R
+import app.minimpos.app.data.db.EmailFault
+import app.minimpos.app.data.db.Failure
 import app.minimpos.app.data.security.Secret
 import app.minimpos.app.data.settings.EmailCapture
 import app.minimpos.app.data.settings.EmailSettings
 import app.minimpos.app.data.settings.PaymentSettings
 import app.minimpos.app.data.settings.ShopperReferenceSource
+import app.minimpos.app.feature.GatedButton
 import app.minimpos.app.feature.OutcomeMessage
 import app.minimpos.app.feature.text
 import app.minimpos.app.ui.components.LocalAppContainer
-import app.minimpos.app.ui.components.SecondaryButton
 import app.minimpos.app.ui.components.SectionHeader
 import app.minimpos.app.ui.components.TextInputDialog
 import app.minimpos.core.shopper.ShopperReferences
@@ -52,12 +56,13 @@ internal fun ColumnScope.EmailSection(
     )
     EmailMessageSettings(email, ::update)
     SettingActions {
-        SecondaryButton(
+        GatedButton(
             stringResource(R.string.settings_send_test),
             { askRecipient = true },
-            enabled = email.isConfigured,
+            blocked = Failure.Email(EmailFault.NOT_CONFIGURED).takeUnless { email.isConfigured },
             loading = actions.email.running,
             icon = Icons.Default.Email,
+            modifier = Modifier.testTag("sendTestEmail"),
         )
         OutcomeMessage(actions.email)
     }

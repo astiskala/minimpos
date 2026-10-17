@@ -18,6 +18,7 @@ import kotlinx.coroutines.Dispatchers
 import okhttp3.HttpUrl
 import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.OkHttpClient
+import java.util.Locale
 import kotlin.time.Duration.Companion.seconds
 
 /** Read-only terminal assignment and last reported network address; empty optional fields need manual entry.
@@ -69,7 +70,7 @@ sealed interface TerminalListing {
 
 /** Read-only credential-role check; no secrets or raw API responses are exposed. */
 sealed interface CredentialLookup {
-    /** Credential has the required terminal-access role. */
+    /** Credential has every required role. */
     data object Allowed : CredentialLookup
 
     /** Credential could not be verified.
@@ -254,8 +255,14 @@ sealed interface TerminalCapabilitiesUpdate {
 
 /** Management discovery and explicit key creation; main-safe, without silent retries or environment fallback. */
 interface TerminalDetailsApi {
-    /** Checks terminal-access, terminal-settings write and Advanced roles in [environment]. */
-    suspend fun credential(environment: TerminalEnvironment): CredentialLookup = CredentialLookup.Failed(Fault.Unsupported)
+    /**
+     * Checks that the credential has every [AdyenRole.required] role in [environment] (with the cloud device role when
+     * payments go to a [cloud] terminal); a missing role fails with a [Fault.Permission] naming each one missing.
+     */
+    suspend fun credential(
+        environment: TerminalEnvironment,
+        cloud: Boolean = false,
+    ): CredentialLookup = CredentialLookup.Failed(Fault.Unsupported)
 
     /** Reads all visible terminals, or only the exact [id] using a targeted substring search followed by exact matching. */
     suspend fun terminals(
@@ -307,18 +314,24 @@ class AdyenTerminalDetails(
 ) : TerminalDetailsApi {
     private val http = AdyenHttp(apiKey, baseClient, dispatcher)
 
-    override suspend fun credential(environment: TerminalEnvironment): CredentialLookup {
+    override suspend fun credential(
+        environment: TerminalEnvironment,
+        cloud: Boolean,
+    ): CredentialLookup {
+        val required = AdyenRole.required(cloud)
         val reply = http.get(baseUrl(environment).newBuilder().addPathSegment("me").build(), TIMEOUT)
-        if (reply !is AdyenReply.Answered || !reply.ok) return CredentialLookup.Failed(managementFault(reply, role = MANAGEMENT_ROLES))
+        if (reply !is AdyenReply.Answered || !reply.ok) {
+            return CredentialLookup.Failed(managementFault(reply, role = AdyenRole.names(required)))
+        }
         val roles =
             runCatching {
                 requireNotNull(decodeAdyenModel(reply.body, MeApiCredential::class.java)?.roles).map { requireNotNull(it) }
             }.getOrNull() ?: return CredentialLookup.Failed(Fault.UnreadableReply())
-        val normalized = roles.map { it.replace("—", "-").replace("–", "-").replace(" ", "") }.toSet()
-        return if (normalized.containsAll(REQUIRED_ROLES)) {
+        val missing = AdyenRole.missing(roles, required)
+        return if (missing.isEmpty()) {
             CredentialLookup.Allowed
         } else {
-            CredentialLookup.Failed(Fault.Permission(ApiKey.ADYEN, MANAGEMENT_ROLES))
+            CredentialLookup.Failed(Fault.Permission(ApiKey.ADYEN, AdyenRole.names(missing)))
         }
     }
 
@@ -705,15 +718,70 @@ class AdyenTerminalDetails(
     private companion object {
         private val TIMEOUT = 15.seconds
         private val KEY_VERSIONS = 1..9_999
+    }
+}
 
-        /** [REQUIRED_ROLES] as Adyen names them in the Customer Area. */
-        const val MANAGEMENT_ROLES =
-            "Management API—Terminal actions read, Terminal settings read and write, Terminal settings Advanced read and write"
-        private val REQUIRED_ROLES =
-            setOf(
-                "ManagementAPI-Terminalactionsread",
-                "ManagementAPI-Terminalsettingsreadandwrite",
-                "ManagementAPI-TerminalsettingsAdvancedreadandwrite",
-            )
+/**
+ * An API credential role every real Mini mPOS setup requires beyond Adyen's default ones, as the Customer Area names it
+ * ([displayName]). [CLOUD_DEVICE] is required only while payments go to a cloud terminal.
+ *
+ * @property displayName The role's name in the Customer Area, shown verbatim when it is missing.
+ * @property alternatives Other spellings Adyen has used for the same role.
+ */
+enum class AdyenRole(
+    val displayName: String,
+    private val alternatives: List<String> = emptyList(),
+) {
+    /** Lists terminals and their assignment: discovery and terminal access checks. */
+    TERMINAL_ACTIONS_READ("Management API - Terminal actions read"),
+
+    /** Reads and updates terminal settings: capabilities. */
+    TERMINAL_SETTINGS("Management API - Terminal settings read and write"),
+
+    /** Reads and creates shared keys. */
+    TERMINAL_SETTINGS_ADVANCED("Management API - Terminal settings Advanced read and write"),
+
+    /** Reads payment method settings: scanned wallets and gift cards. */
+    PAYMENT_METHODS_READ("Management API - Payment methods read"),
+
+    /** Reads the assigned store's receipt details. */
+    STORES_READ("Management API - Stores read"),
+
+    /** Reads the merchant account's legal name for receipts. */
+    ACCOUNT_READ("Management API - Account read", listOf("Management API - Accounts read")),
+
+    /** Lists a shopper's saved cards. */
+    MERCHANT_RECURRING("Merchant Recurring role"),
+
+    /** Reaches cloud terminals; only for that destination. */
+    CLOUD_DEVICE("Cloud Device API role"),
+    ;
+
+    /** Role checks and names. */
+    companion object {
+        /** The roles a real setup requires; [cloud] adds [CLOUD_DEVICE]. */
+        fun required(cloud: Boolean): List<AdyenRole> = entries.filter { cloud || it != CLOUD_DEVICE }
+
+        /**
+         * Which of [required] the credential's [granted] role names lack, compared without case, spaces or the kind of
+         * dash, since Adyen's own spellings vary.
+         */
+        fun missing(
+            granted: List<String>,
+            required: List<AdyenRole>,
+        ): List<AdyenRole> {
+            val have = granted.map(::normalized).toSet()
+            return required.filter { role -> (listOf(role.displayName) + role.alternatives).none { normalized(it) in have } }
+        }
+
+        /** [roles] by their Customer Area names, as one comma-separated text. */
+        fun names(roles: List<AdyenRole>): String = roles.joinToString(", ") { it.displayName }
+
+        private fun normalized(name: String): String =
+            name
+                .replace('—', '-')
+                .replace('–', '-')
+                .filterNot(Char::isWhitespace)
+                .lowercase(Locale.ROOT)
     }
 }

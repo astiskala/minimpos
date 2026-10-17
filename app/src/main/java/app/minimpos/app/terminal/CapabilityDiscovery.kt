@@ -117,6 +117,9 @@ data class AdyenCapabilitiesState(
     val problem: SetupProblem? = null,
     val failure: Failure? = null,
 ) {
+    /** Why a refresh cannot run now: the setup [problem] it would only report again; null when it can. */
+    val refreshBlocked: Failure? get() = problem?.let(Failure::NotSetUp)
+
     /** Gratuity configuration for [currency], if any. */
     fun gratuityFor(currency: String): GratuityCapability? = gratuities.firstOrNull { it.currency.equals(currency, ignoreCase = true) }
 

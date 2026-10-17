@@ -545,13 +545,23 @@ private fun ColumnScope.AdyenApiStep(
     setup.connectedTerminals?.let { TerminalChoiceDialog(it, setupEvents::onTerminalChoose) }
 }
 
-/** Mandatory Management roles beyond default Checkout access; cloud adds its transport role. */
+/**
+ * Every role the API test requires beyond default Checkout access, matching `AdyenRole.required`; cloud adds its
+ * transport role.
+ */
 @Composable
 private fun ColumnScope.ApiKeyRoles(cloud: Boolean) {
     SettingNote(stringResource(R.string.settings_adyen_roles_hint))
     if (cloud) SettingNote("• " + stringResource(R.string.settings_adyen_role_cloud), Modifier.testTag("roleCloud"))
     SettingNote("• " + stringResource(R.string.settings_adyen_role_terminals), Modifier.testTag("roleTerminals"))
-    listOf(R.string.settings_adyen_role_settings, R.string.settings_adyen_role_shared_key).forEach {
+    listOf(
+        R.string.settings_adyen_role_settings,
+        R.string.settings_adyen_role_shared_key,
+        R.string.settings_adyen_role_payment_methods,
+        R.string.settings_adyen_role_stores,
+        R.string.settings_adyen_role_account,
+        R.string.settings_adyen_role_recurring,
+    ).forEach {
         SettingNote("• " + stringResource(it))
     }
 }

@@ -68,6 +68,7 @@ import app.minimpos.app.data.settings.PaymentSettings
 import app.minimpos.app.data.settings.PricingChange
 import app.minimpos.app.data.settings.SimulatorSettings
 import app.minimpos.app.data.settings.TerminalMode
+import app.minimpos.app.feature.GatedButton
 import app.minimpos.app.feature.lock.SetPinScreen
 import app.minimpos.app.feature.text
 import app.minimpos.app.feature.walletCheckFailed
@@ -766,7 +767,6 @@ private fun WalletSettings(
     onRefresh: () -> Unit,
 ) {
     SectionHeader(stringResource(R.string.wallet_methods))
-    if (!state.simulated) SettingNote(stringResource(R.string.wallet_role_hint))
     val offered = state.offered(currency)
     if (state.checked) {
         SettingNote(
@@ -778,11 +778,11 @@ private fun WalletSettings(
         )
     }
     state.failure?.let { SettingNote(walletCheckFailed(it)) }
-    state.problem?.let { SettingNote(it.text()) }
     SettingActions {
-        SecondaryButton(
+        GatedButton(
             stringResource(R.string.wallet_refresh),
             onRefresh,
+            blocked = state.refreshBlocked,
             loading = state.checking,
             modifier = Modifier.testTag("refreshWallets"),
         )

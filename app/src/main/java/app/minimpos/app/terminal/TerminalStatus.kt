@@ -37,6 +37,8 @@ import kotlinx.coroutines.launch
  * @property importPending Whether a verified import journal still blocks new financial operations until saving resumes.
  * @property supportsTerminalFeatures Whether physical-terminal capabilities are supported on this destination.
  * @property supportsShopperDisplay Whether external-terminal shopper display and input requests are supported.
+ * @property connectionProblem What must still be entered before the destination can be reached at all (printing,
+ *   refunds, connection checks), from [TerminalSetup.connectionProblem]; null when nothing is missing.
  */
 data class TerminalState(
     val loaded: Boolean = false,
@@ -54,7 +56,14 @@ data class TerminalState(
     val importPending: Boolean = false,
     val supportsTerminalFeatures: Boolean = true,
     val supportsShopperDisplay: Boolean = true,
+    val connectionProblem: SetupProblem? = null,
 ) {
+    /**
+     * Why printing cannot be tried now: what the destination still needs, else [SetupProblem.PRINTER] while printing is
+     * not offered; null when a print can be sent.
+     */
+    val printBlocked: SetupProblem? get() = connectionProblem ?: SetupProblem.PRINTER.takeUnless { printerAvailable }
+
     /**
      * Whether receipts and payment links can be shared through Android's share sheet: on phones and tablets, not on an
      * Adyen terminal, which has no apps to share with (it emails instead).
@@ -103,6 +112,7 @@ class TerminalStatus(
                 importPending = setup.importPending,
                 supportsTerminalFeatures = setup.supportsTerminalFeatures,
                 supportsShopperDisplay = setup.supportsShopperDisplay,
+                connectionProblem = setup.connectionProblem,
             )
         }.stateIn(scope, SharingStarted.Eagerly, TerminalState())
 

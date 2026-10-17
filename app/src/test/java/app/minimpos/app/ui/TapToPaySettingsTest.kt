@@ -43,7 +43,10 @@ class TapToPaySettingsTest {
     private val paymentsApp = FakePaymentsApp()
     private val details =
         object : TerminalDetailsApi {
-            override suspend fun credential(environment: TerminalEnvironment) = app.minimpos.terminal.transport.CredentialLookup.Allowed
+            override suspend fun credential(
+                environment: TerminalEnvironment,
+                cloud: Boolean,
+            ) = app.minimpos.terminal.transport.CredentialLookup.Allowed
 
             override suspend fun terminals(
                 environment: TerminalEnvironment,

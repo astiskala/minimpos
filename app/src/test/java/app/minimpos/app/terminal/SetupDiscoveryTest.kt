@@ -35,7 +35,10 @@ class SetupDiscoveryTest {
     private val queries = mutableListOf<String?>()
     private val api =
         object : TerminalDetailsApi {
-            override suspend fun credential(environment: TerminalEnvironment) = app.minimpos.terminal.transport.CredentialLookup.Allowed
+            override suspend fun credential(
+                environment: TerminalEnvironment,
+                cloud: Boolean,
+            ) = app.minimpos.terminal.transport.CredentialLookup.Allowed
 
             override suspend fun terminals(
                 environment: TerminalEnvironment,

@@ -7,19 +7,24 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Print
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.minimpos.app.R
+import app.minimpos.app.data.db.Failure
 import app.minimpos.app.data.settings.MerchantCopyPolicy
 import app.minimpos.app.data.settings.PrinterMode
 import app.minimpos.app.data.settings.ReceiptSettings
+import app.minimpos.app.feature.GatedButton
 import app.minimpos.app.feature.OutcomeMessage
+import app.minimpos.app.ui.components.LocalAppContainer
 import app.minimpos.app.ui.components.ReceiptPreview
-import app.minimpos.app.ui.components.SecondaryButton
 import app.minimpos.app.ui.components.SectionHeader
 import app.minimpos.core.tax.TaxRates
 
@@ -52,12 +57,16 @@ internal fun ColumnScope.ReceiptsSection(
     state.sampleReceipt?.let { document ->
         Box(Modifier.fillMaxWidth().padding(16.dp), contentAlignment = Alignment.Center) { ReceiptPreview(document) }
     }
+    val terminal by LocalAppContainer.current.terminalStatus.state
+        .collectAsStateWithLifecycle()
     SettingActions {
-        SecondaryButton(
+        GatedButton(
             stringResource(R.string.settings_print_test),
             events::onTestPrint,
+            blocked = terminal.printBlocked?.let(Failure::NotSetUp),
             loading = actions.print.running,
             icon = Icons.Default.Print,
+            modifier = Modifier.testTag("printTest"),
         )
         OutcomeMessage(actions.print)
     }

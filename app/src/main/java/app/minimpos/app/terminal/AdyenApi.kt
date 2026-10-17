@@ -8,8 +8,10 @@ import app.minimpos.core.payment.PaymentContext
 import app.minimpos.terminal.checkout.CheckoutCredentials
 import app.minimpos.terminal.checkout.CheckoutModifications
 import app.minimpos.terminal.checkout.CheckoutPaymentLinks
+import app.minimpos.terminal.checkout.CheckoutSavedCards
 import app.minimpos.terminal.checkout.PaymentLinkApi
 import app.minimpos.terminal.checkout.PaymentModifications
+import app.minimpos.terminal.checkout.SavedCardApi
 import app.minimpos.terminal.simulator.SimulatedPaymentLinks
 import app.minimpos.terminal.transport.TerminalEnvironment
 
@@ -48,6 +50,7 @@ sealed interface ApiSetup {
  *   ([ApiSetup.Incomplete]).
  * @param links Creates, checks and expires real or simulated payment links; null when setup is incomplete.
  * @property context Actual account and environment; isolated fake adapters may omit it.
+ * @param cards Lists and charges real or simulated saved cards; null when setup is incomplete.
  */
 data class ApiTarget(
     private val setup: ApiSetup,
@@ -55,6 +58,7 @@ data class ApiTarget(
     private val links: PaymentLinkApi? = null,
     /** Actual account/environment; fixed fake targets may omit it. */
     val context: PaymentContext? = null,
+    private val cards: SavedCardApi? = null,
 ) {
     internal val realAndReady: Boolean get() = setup == ApiSetup.Complete
 
@@ -63,6 +67,9 @@ data class ApiTarget(
 
     /** Link access for [expected]; real and simulated payment contexts must never be mixed. */
     fun links(expected: PaymentContext?): ApiAccess<PaymentLinkApi> = access(links, expected)
+
+    /** Saved-card access for [expected]; a charge is sent and rechecked only in its original payment context. */
+    fun savedCards(expected: PaymentContext?): ApiAccess<SavedCardApi> = access(cards, expected)
 
     private fun <T : Any> access(
         client: T?,
@@ -146,6 +153,8 @@ sealed interface ApiCheck {
  * @param simulatedLinks Answers offline demo links; their final outcomes remain in stored sales.
  * @param verifyAccess Checks the required Management role and current terminal assignment before Checkout verification.
  * @param readEnvironment Refreshes the device certificate before checking saved credentials, without cross-environment probes.
+ * @param connectCards Makes the saved-card client for real credentials; tests replace it.
+ * @param simulatedCards Answers saved cards while payments go to the simulator; null offers none.
  */
 class AdyenApi(
     private val setups: TerminalSetupSource,
@@ -155,9 +164,12 @@ class AdyenApi(
     private val simulatedLinks: PaymentLinkApi = SimulatedPaymentLinks(),
     private val verifyAccess: suspend (UnlockedSetup) -> Failure?,
     private val readEnvironment: suspend () -> Unit = {},
+    private val connectCards: (CheckoutCredentials) -> SavedCardApi = { CheckoutSavedCards(it) },
+    private val simulatedCards: SavedCardApi? = null,
 ) {
     private val clients = Reused<CheckoutCredentials, PaymentModifications>()
     private val linkClients = Reused<CheckoutCredentials, PaymentLinkApi>()
+    private val cardClients = Reused<CheckoutCredentials, SavedCardApi>()
 
     /** Where captures, adjustments and payment links go now with the stored settings, as [TerminalSetup.apiSetup] decides. */
     suspend fun target(): ApiTarget {
@@ -165,7 +177,7 @@ class AdyenApi(
         val setup = unlocked.setup
         val target =
             when (val api = setup.apiSetup) {
-                ApiSetup.Simulated -> ApiTarget(api, simulated, simulatedLinks)
+                ApiSetup.Simulated -> ApiTarget(api, simulated, simulatedLinks, cards = simulatedCards)
                 ApiSetup.Complete -> connected(setup.settings.terminal, checkNotNull(setup.environment), checkNotNull(unlocked.apiKey))
                 is ApiSetup.Incomplete -> ApiTarget(api)
             }
@@ -179,7 +191,12 @@ class AdyenApi(
         apiKey: String,
     ): ApiTarget {
         val credentials = CheckoutCredentials(apiKey, terminal.merchantAccount.trim(), environment, terminal.liveUrlPrefix.trim())
-        return ApiTarget(ApiSetup.Complete, clients.get(credentials, connect), linkClients.get(credentials, connectLinks))
+        return ApiTarget(
+            ApiSetup.Complete,
+            clients.get(credentials, connect),
+            linkClients.get(credentials, connectLinks),
+            cards = cardClients.get(credentials, connectCards),
+        )
     }
 
     /** Checks that the API can be used with the stored settings, without changing anything. */

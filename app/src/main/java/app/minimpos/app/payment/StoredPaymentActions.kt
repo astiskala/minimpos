@@ -20,6 +20,8 @@ import java.time.ZoneId
  * @param settings Current saved settings, read at each initiation for the reference prefix.
  * @param clock Stamps the merchant reference of a refund or cancellation.
  * @param zone The time zone of that reference, read for each initiation.
+ * @param checkoutRefunds Sends refunds of saved-card charges ([RefundStart.checkout]) through the Checkout API; null
+ *   where none can be refunded.
  */
 class StoredPaymentActions(
     private val refunds: TransactionLifecycle<RefundStart>,
@@ -27,6 +29,7 @@ class StoredPaymentActions(
     private val settings: StateFlow<AppSettings>,
     private val clock: Clock = Clock.systemDefaultZone(),
     private val zone: () -> ZoneId = { ZoneId.systemDefault() },
+    private val checkoutRefunds: CheckoutRefunds? = null,
 ) {
     /**
      * Starts [choice] of [payment] as a referenced refund; false for an invalid choice or a busy lifecycle.
@@ -45,5 +48,11 @@ class StoredPaymentActions(
     /** Retries [saleId]'s stored capture amount and identity; callers use `persisting` to survive screen cancellation. */
     suspend fun retryCapture(saleId: String): CaptureResult = captures.retryCapture(saleId)
 
-    private fun start(request: RefundStart?): String? = request?.let(refunds::start)
+    /** Starts [request] where it goes: a saved-card charge's refund through the Checkout API, others on the terminal. */
+    private fun start(request: RefundStart?): String? =
+        when {
+            request == null -> null
+            request.checkout -> checkoutRefunds?.start(request)
+            else -> refunds.start(request)
+        }
 }

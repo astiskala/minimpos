@@ -425,7 +425,10 @@ fun RefundProcessingScreen(
     modifier: Modifier = Modifier,
 ) {
     val container = LocalAppContainer.current
-    val state by container.refunds.state.collectAsStateWithLifecycle()
+    val terminal by container.refunds.state.collectAsStateWithLifecycle()
+    val checkout by container.checkoutRefunds.state.collectAsStateWithLifecycle()
+    // A saved-card charge's refund runs through the Checkout API rather than the terminal; follow whichever runs.
+    val state = if (checkout != TransactionState.Idle) checkout else terminal
     LaunchedEffect(state) {
         when (val current = state) {
             is TransactionState.Finished -> navigator.replace(Route.RefundResult(current.id))
@@ -661,6 +664,13 @@ private fun refundResultViewModel(
 ): RefundResultViewModel {
     val container = LocalAppContainer.current
     return viewModel(key = refundId) {
-        RefundResultViewModel(refundId, container.refundRecords, container.receipts, container.refunds, justMade = !fromHistory)
+        RefundResultViewModel(
+            refundId,
+            container.refundRecords,
+            container.receipts,
+            container.refunds,
+            justMade = !fromHistory,
+            checkout = container.checkoutRefunds,
+        )
     }
 }

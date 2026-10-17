@@ -904,6 +904,7 @@ private fun saleDetailViewModel(saleId: String): SaleDetailViewModel {
             container.receipts,
             container.storedPaymentActions,
             container.payments,
+            container.savedCardCharges,
         )
     }
 }

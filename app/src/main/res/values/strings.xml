@@ -1059,6 +1059,7 @@
   <string name="setup_key_recovery_unreadable">Pending key setup could not be read. Retrieve an existing key or contact support before creating another.</string>
   <string name="setup_key_creation_unconfirmed">Key creation is unconfirmed. Resume key setup to read Adyen settings before retrying.</string>
   <string name="setup_printer">No printer is available. Check Printer in Settings › Receipts, or in Settings › Simulator when simulating.</string>
+  <string name="setup_charge_too_old">This is too old to send again safely. Check its outcome in your Customer Area.</string>
   <string name="payment_context_mismatch">This setup does not match the original payment’s terminal, merchant account or environment. Restore the original setup before you continue.</string>
   <string name="fault_unreachable_terminal">The terminal could not be reached. Check that it is on, on the same network and at this IP address.</string>
   <string name="fault_unreachable_adyen">Adyen could not be reached. Check the internet connection.</string>

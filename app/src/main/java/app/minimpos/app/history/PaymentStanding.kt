@@ -169,6 +169,9 @@ val SaleEntity.awaitsLinkPayment: Boolean get() = paymentLink && status == SaleS
 /** Whether this sale is an offline demo link, regardless of its status or the device's current destination. */
 val SaleEntity.simulatedLink: Boolean get() = paymentLink && context?.simulated == true
 
+/** Whether this sale moved no money: seeded sample history, or a payment its original context took with the simulator. */
+val SaleEntity.simulatedSale: Boolean get() = sample || context?.simulated == true
+
 /** What the operator can do with a stored payment now, see [actions]. */
 enum class PaymentAction {
     /** Refund it, as [RefundablePayment.check] allows: approved and charged, with something left to refund. */

@@ -366,6 +366,16 @@ data class SaleEntity(
     val offlineMode: String? = null,
     /** Unconfirmed offline batch count reported by the terminal (`unconfirmedBatchCount`); null when unavailable. */
     val unconfirmedBatchCount: Int? = null,
+    /**
+     * Whether the sale is paid with a card saved for its [shopperReference], charged through Adyen's Checkout API with
+     * the shopper not present instead of on a terminal; it is refunded through the Checkout API too. Added in database
+     * version 12.
+     */
+    @ColumnInfo(defaultValue = "0") val savedCard: Boolean = false,
+    /** The saved card ([storedPaymentMethodId] of the token) the [savedCard] sale charges; a request fact kept for retries. */
+    val chargedCardId: String? = null,
+    /** Adyen's `recurringProcessingModel` the [savedCard] sale is charged with, frozen when it is opened. */
+    val chargeRecurringModel: String? = null,
 ) {
     /** What the payment holds on the card: [authorisedMinor] after an adjustment, else [totalMinor]. */
     val heldMinor: Long get() = authorisedMinor ?: totalMinor
@@ -571,6 +581,11 @@ data class RefundEntity(
     val processedAt: Long? = null,
     /** Terminal reconciliation period ID (`POIReconciliationID`) reported by the terminal; null when unavailable. */
     val poiReconciliationId: String? = null,
+    /**
+     * Whether the refund was sent through Adyen's Checkout API (`/payments/{pspReference}/refunds`, idempotency key from
+     * [id]) because its payment was a saved-card charge, rather than as a terminal reversal. Added in database version 12.
+     */
+    @ColumnInfo(defaultValue = "0") val checkoutRefund: Boolean = false,
 )
 
 /**

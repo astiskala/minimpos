@@ -22,7 +22,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         RefundEntity::class,
         HistorySwitchEntity::class,
     ],
-    version = 11,
+    version = 12,
     exportSchema = true,
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -61,11 +61,25 @@ abstract class AppDatabase : RoomDatabase() {
                 }
             }
 
+        /**
+         * Preserves all released 1.1.x version-11 data when upgrading to version 12, which records saved-card charges
+         * and refunds sent through the Checkout API; every existing row is neither.
+         */
+        val MIGRATION_11_12: Migration =
+            object : Migration(11, 12) {
+                override fun migrate(db: SupportSQLiteDatabase) {
+                    db.execSQL("ALTER TABLE `sales` ADD COLUMN `savedCard` INTEGER NOT NULL DEFAULT 0")
+                    db.execSQL("ALTER TABLE `sales` ADD COLUMN `chargedCardId` TEXT")
+                    db.execSQL("ALTER TABLE `sales` ADD COLUMN `chargeRecurringModel` TEXT")
+                    db.execSQL("ALTER TABLE `refunds` ADD COLUMN `checkoutRefund` INTEGER NOT NULL DEFAULT 0")
+                }
+            }
+
         /** Opens lazily on first query with versioned migrations; no destructive fallback is configured. */
         fun create(context: Context): AppDatabase =
             Room
                 .databaseBuilder(context, AppDatabase::class.java, "minimpos.db")
-                .addMigrations(MIGRATION_10_11)
+                .addMigrations(MIGRATION_10_11, MIGRATION_11_12)
                 .build()
     }
 }

@@ -87,7 +87,7 @@ class SaleRepository(
                         is SaleEvent.Sending, is SaleEvent.LinkAnswered, is SaleEvent.NotSent, is SaleEvent.NotSetUp,
                         is SaleEvent.OutcomeUnknown, is SaleEvent.Emailed, is SaleEvent.AdjustmentAnswered,
                         is SaleEvent.ModificationNotSetUp, SaleEvent.Interrupted, is SaleEvent.ContextRecorded,
-                        is SaleEvent.AdjustmentSending,
+                        is SaleEvent.AdjustmentSending, is SaleEvent.CardAnswered,
                         -> {
                             event
                         }

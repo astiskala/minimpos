@@ -25,7 +25,7 @@ import kotlin.uuid.Uuid
 class DatabaseSchemaTest {
     private val context = ApplicationProvider.getApplicationContext<Context>()
 
-    private fun exportedSchema(version: Int = 11): JSONObject =
+    private fun exportedSchema(version: Int = 12): JSONObject =
         listOf("schemas", "app/schemas")
             .map { File(it, "app.minimpos.app.data.db.AppDatabase/$version.json") }
             .first { it.exists() }
@@ -33,7 +33,7 @@ class DatabaseSchemaTest {
 
     private fun createExportedDatabase(
         name: String,
-        version: Int = 11,
+        version: Int = 12,
     ) {
         val schema = exportedSchema(version)
         val file = context.getDatabasePath(name).apply { parentFile?.mkdirs() }
@@ -62,7 +62,7 @@ class DatabaseSchemaTest {
         val db =
             Room
                 .databaseBuilder(context, AppDatabase::class.java, name)
-                .addMigrations(AppDatabase.MIGRATION_10_11)
+                .addMigrations(AppDatabase.MIGRATION_10_11, AppDatabase.MIGRATION_11_12)
                 .allowMainThreadQueries()
                 .build()
         try {
@@ -143,7 +143,54 @@ class DatabaseSchemaTest {
                     assertThat(sale.totalMinor).isEqualTo(1_000)
                     assertThat(sale.merchantReference).isEqualTo("MP-10")
                     assertThat(sale.poiReconciliationId).isNull()
-                    assertThat(db.openHelper.readableDatabase.version).isEqualTo(11)
+                    assertThat(sale.savedCard).isFalse()
+                    assertThat(db.openHelper.readableDatabase.version).isEqualTo(12)
+                }
+            }
+        } finally {
+            context.deleteDatabase(name)
+        }
+    }
+
+    @Test
+    fun `migrates version 11 database to version 12 preserving sales, unfinished refunds and catalogue`() {
+        val name = "schema-v11-${Uuid.random()}"
+        createExportedDatabase(name, version = 11)
+        val file = context.getDatabasePath(name)
+        SQLiteDatabase.openDatabase(file.path, null, SQLiteDatabase.OPEN_READWRITE).use { raw ->
+            raw.execSQL("INSERT INTO `tax_rates` (`id`, `name`, `rateMilliPercent`, `sortOrder`) VALUES (1, 'GST', 10000, 0)")
+            raw.execSQL(
+                "INSERT INTO `sales` (`id`, `sample`, `createdAt`, `currency`, `taxMode`, `netMinor`, `taxMinor`, `totalMinor`, " +
+                    "`status`, `merchantReference`, `tokenizationRequested`, `signatureRequired`, `refundedMinor`, `kind`, " +
+                    "`tipOnReceipt`, `holdCancelled`, `paymentLink`, `adjustmentPending`, `paidMinor`, `storedPaymentMethodId`) " +
+                    "VALUES ('s11', 0, 100, 'AUD', 'INCLUSIVE', 909, 91, 1000, 'UNKNOWN', 'MP-11', 1, 0, 0, 'SALE', 0, 0, 0, 0, 0, 'TOKEN')",
+            )
+            raw.execSQL(
+                "INSERT INTO `refunds` (`id`, `saleId`, `createdAt`, `merchantReference`, `originalTransactionId`, " +
+                    "`originalTimestamp`, `currency`, `amountMinor`, `full`, `status`, `cancellation`) " +
+                    "VALUES ('r11', 's11', 200, 'R-11', 'T.PSP', '2026-01-01T00:00:00Z', 'AUD', 500, 0, 'UNKNOWN', 0)",
+            )
+        }
+        try {
+            withDatabase(name) { db ->
+                runBlocking {
+                    val sale = checkNotNull(db.saleDao().sale("s11")).sale
+                    assertThat(sale.status).isEqualTo(SaleStatus.UNKNOWN)
+                    assertThat(sale.storedPaymentMethodId).isEqualTo("TOKEN")
+                    assertThat(sale.savedCard).isFalse()
+                    assertThat(sale.chargedCardId).isNull()
+                    assertThat(sale.chargeRecurringModel).isNull()
+                    val refund = checkNotNull(db.refundDao().refund("r11"))
+                    assertThat(refund.amountMinor).isEqualTo(500)
+                    assertThat(refund.checkoutRefund).isFalse()
+                    assertThat(
+                        db
+                            .catalogDao()
+                            .taxRatesOnce()
+                            .single()
+                            .name,
+                    ).isEqualTo("GST")
+                    assertThat(db.openHelper.readableDatabase.version).isEqualTo(12)
                 }
             }
         } finally {

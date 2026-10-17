@@ -3,11 +3,13 @@ package app.minimpos.app.feature
 import app.minimpos.app.data.db.Failure
 import app.minimpos.app.history.RefundStart
 import app.minimpos.app.payment.CaptureResult
+import app.minimpos.app.payment.CheckoutRefunds
 import app.minimpos.app.payment.LinkUpdate
 import app.minimpos.app.payment.PaymentLinks
 import app.minimpos.app.payment.PaymentStart
 import app.minimpos.app.payment.ReceiptDelivery
 import app.minimpos.app.payment.Recheck
+import app.minimpos.app.payment.SavedCardCharges
 import app.minimpos.app.payment.SharedReceipt
 import app.minimpos.app.payment.StoredTransaction
 import app.minimpos.app.payment.TransactionLifecycle
@@ -357,9 +359,9 @@ class TransactionActions private constructor(
         fun canPrintReports(receipts: ReceiptDelivery): Flow<Boolean> = receipts.canPrintReports
 
         /**
-         * The actions on sale [saleId], in [scope]: receipts through [receipts], status checks through [payments]. A
-         * [fresh] sale (on the result just after its payment) gets its automatic receipt, and email is offered only
-         * when checkout captures emails.
+         * The actions on sale [saleId], in [scope]: receipts through [receipts], status checks through [payments], or
+         * through [charges] for a saved-card charge (which sends its stored charge again). A [fresh] sale (on the result
+         * just after its payment) gets its automatic receipt, and email is offered only when checkout captures emails.
          */
         fun forSale(
             scope: CoroutineScope,
@@ -367,7 +369,10 @@ class TransactionActions private constructor(
             receipts: ReceiptDelivery,
             payments: TransactionLifecycle<PaymentStart>,
             fresh: Boolean,
-        ) = TransactionActions(scope, receipts, StoredTransaction.Sale(saleId), fresh) { payments.recheck(saleId) }
+            charges: SavedCardCharges? = null,
+        ) = TransactionActions(scope, receipts, StoredTransaction.Sale(saleId), fresh) {
+            charges?.recheck(saleId)?.takeIf { it is Recheck.StillUnknown } ?: payments.recheck(saleId)
+        }
 
         /**
          * The actions on sale [saleId], paid through a payment link, in [scope]: as [forSale], except that emailing is
@@ -384,7 +389,8 @@ class TransactionActions private constructor(
 
         /**
          * The actions on refund [refundId], in [scope]: receipts through [receipts] (a refund has one copy only), status
-         * checks through [refunds]. A [fresh] refund (on the result just after it) gets its automatic receipt.
+         * checks through [refunds], or through [checkout] for a refund sent through the Checkout API (which sends it
+         * again). A [fresh] refund (on the result just after it) gets its automatic receipt.
          */
         fun forRefund(
             scope: CoroutineScope,
@@ -392,7 +398,10 @@ class TransactionActions private constructor(
             receipts: ReceiptDelivery,
             refunds: TransactionLifecycle<RefundStart>,
             fresh: Boolean,
-        ) = TransactionActions(scope, receipts, StoredTransaction.Refund(refundId), fresh) { refunds.recheck(refundId) }
+            checkout: CheckoutRefunds? = null,
+        ) = TransactionActions(scope, receipts, StoredTransaction.Refund(refundId), fresh) {
+            checkout?.recheck(refundId)?.takeIf { it is Recheck.StillUnknown } ?: refunds.recheck(refundId)
+        }
     }
 }
 

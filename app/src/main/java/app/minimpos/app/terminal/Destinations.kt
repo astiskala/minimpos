@@ -7,6 +7,8 @@ import app.minimpos.app.data.settings.TerminalMode
 import app.minimpos.app.data.settings.TerminalSettings
 import app.minimpos.core.payment.PaymentContext
 import app.minimpos.terminal.checkout.PaymentModifications
+import app.minimpos.terminal.checkout.SavedCardApi
+import app.minimpos.terminal.checkout.StoredCard
 import app.minimpos.terminal.client.OfflineProcessingMode
 import app.minimpos.terminal.client.PosApplication
 import app.minimpos.terminal.client.RecoveryPolicy
@@ -168,6 +170,9 @@ class SimulatedTerminal(
 
     /** Adyen's Checkout API for the simulator's payments, answering from what happened to them; [AdyenApi] uses it. */
     val modifications: PaymentModifications get() = simulator.modifications
+
+    /** Simulated saved cards: the [cards] the app knows simulated payments saved, charged with the simulator's outcome. */
+    fun savedCards(cards: suspend (shopperReference: String) -> List<StoredCard>): SavedCardApi = simulator.savedCards(cards)
 
     override suspend fun open(unlocked: UnlockedSetup): Opening {
         val sim = unlocked.setup.settings.simulator

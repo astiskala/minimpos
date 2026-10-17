@@ -47,7 +47,7 @@ data class SavedCardStart(
 ) {
     init {
         require(payment.kind == SaleKind.SALE && !payment.manualCapture) { "A saved card is charged straight away" }
-        require(payment.shopperReference != null) { "A saved card is charged for a shopper reference" }
+        requireNotNull(payment.shopperReference) { "A saved card is charged for a shopper reference" }
     }
 }
 
@@ -210,13 +210,19 @@ class SavedCardCharges(
     private suspend fun interrupted(id: String) {
         try {
             sales.record(id, SaleEvent.OutcomeUnknown(Failure.Device(DeviceFault.DATABASE)))
+        } catch (e: CancellationException) {
+            throw e
         } catch (ignored: SQLException) {
             // It stays PENDING, which the next start turns into UNKNOWN.
+        } catch (ignored: IllegalStateException) {
+            // The database is closed; it stays PENDING, which the next start turns into UNKNOWN.
         }
     }
 
     /** Values shared with tests and history. */
     companion object {
+        private const val LAST_FOUR = 4
+
         /** How long after a charge was opened its unknown outcome may be sent again: Adyen keeps keys at least this long. */
         val RECHECK_WINDOW: Duration = Duration.ofDays(7)
 
@@ -278,7 +284,5 @@ class SavedCardCharges(
                         ?.ifEmpty { null },
                 )
             }
-
-        private const val LAST_FOUR = 4
     }
 }

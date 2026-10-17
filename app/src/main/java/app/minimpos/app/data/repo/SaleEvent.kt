@@ -81,7 +81,9 @@ sealed interface SaleEvent {
      */
     data class NotSent(
         val fault: Fault,
-    ) : SaleEvent
+    ) : NotTaken {
+        override val failure: Failure get() = Failure.Remote(fault)
+    }
 
     /**
      * Nothing was sent, because something must be set up first ([Failure.NotSetUp]), so nothing was charged.
@@ -90,7 +92,15 @@ sealed interface SaleEvent {
      */
     data class NotSetUp(
         val problem: SetupProblem,
-    ) : SaleEvent
+    ) : NotTaken {
+        override val failure: Failure get() = Failure.NotSetUp(problem)
+    }
+
+    /** Nothing was charged: what was sent was not taken ([NotSent]) or nothing could be sent ([NotSetUp]). */
+    sealed interface NotTaken : SaleEvent {
+        /** Why, as the sale stores it. */
+        val failure: Failure
+    }
 
     /**
      * It is not known whether what was sent took effect (a payment link that may or may not have been created):
@@ -230,12 +240,8 @@ fun SaleEntity.after(event: SaleEvent): SaleEntity =
             linkAnswered(event)
         }
 
-        is SaleEvent.NotSent -> {
-            ended(SaleStatus.FAILED, null, StoredReason.NotDone(Failure.Remote(event.fault)))
-        }
-
-        is SaleEvent.NotSetUp -> {
-            ended(SaleStatus.FAILED, null, StoredReason.NotDone(Failure.NotSetUp(event.problem)))
+        is SaleEvent.NotTaken -> {
+            ended(SaleStatus.FAILED, null, StoredReason.NotDone(event.failure))
         }
 
         is SaleEvent.OutcomeUnknown -> {

@@ -7,8 +7,11 @@ import app.minimpos.terminal.checkout.CheckoutModifications
 import app.minimpos.terminal.checkout.CheckoutSavedCards
 import app.minimpos.terminal.checkout.ModificationAmount
 import app.minimpos.terminal.checkout.ModificationResult
+import app.minimpos.terminal.checkout.PaymentModifications
 import app.minimpos.terminal.checkout.StoredCard
 import app.minimpos.terminal.checkout.StoredCardListing
+import app.minimpos.terminal.simulator.SimulatedLedger
+import app.minimpos.terminal.simulator.SimulatedModifications
 import app.minimpos.terminal.simulator.SimulatedOutcome
 import app.minimpos.terminal.simulator.SimulatorConfig
 import app.minimpos.terminal.simulator.TerminalSimulator
@@ -174,5 +177,40 @@ class SavedCardsTest {
             outcome = SimulatedOutcome.TIMEOUT
             assertThat(cards.charge(request, "d")).isEqualTo(CardChargeResult.Failed(Fault.TimedOut))
             assertThat(cards.charge(request, "d")).isInstanceOf(CardChargeResult.Authorised::class.java)
+        }
+
+    @Test
+    fun `refunds are refused for holds and cancellations and unsupported without an implementation`() =
+        runBlocking {
+            val ledger = SimulatedLedger()
+            val modifications = SimulatedModifications(Random(2), ledger)
+            ledger.approved("HELD", manualCapture = true)
+            assertThat((modifications.refund("HELD", amount, "R", "k1") as ModificationResult.Failed).fault)
+                .isInstanceOf(Fault.AdyenRejected::class.java)
+            ledger.approved("VOID", manualCapture = true)
+            assertThat(ledger.cancel("VOID")).isTrue()
+            assertThat((modifications.refund("VOID", amount, "R", "k2") as ModificationResult.Failed).fault)
+                .isInstanceOf(Fault.AdyenRejected::class.java)
+            assertThat(modifications.refund("UNKNOWN", amount, "R", "k3")).isInstanceOf(ModificationResult.Received::class.java)
+            val minimal =
+                object : PaymentModifications by modifications {
+                    override suspend fun refund(
+                        paymentPspReference: String,
+                        amount: ModificationAmount,
+                        reference: String,
+                        idempotencyKey: String,
+                    ) = super.refund(paymentPspReference, amount, reference, idempotencyKey)
+                }
+            assertThat(minimal.refund("PSP", amount, "R", "k4")).isEqualTo(ModificationResult.Failed(Fault.Unsupported))
+        }
+
+    @Test
+    fun `a random simulated outcome mostly approves saved-card charges`() =
+        runBlocking {
+            val simulator = TerminalSimulator({ SimulatorConfig(outcome = SimulatedOutcome.RANDOM, delayMillis = 0) }, random = Random(3))
+            val cards = simulator.savedCards { listOf(StoredCard("TOKEN1", "visa", "1111")) }
+            val results = (1..20).map { cards.charge(request, "r$it") }
+            assertThat(results.count { it is CardChargeResult.Authorised }).isGreaterThan(results.count { it is CardChargeResult.Refused })
+            assertThat(results.filterIsInstance<CardChargeResult.Refused>()).isNotEmpty()
         }
 }

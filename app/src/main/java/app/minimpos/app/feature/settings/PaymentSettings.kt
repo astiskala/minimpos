@@ -2,6 +2,8 @@ package app.minimpos.app.feature.settings
 
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import app.minimpos.app.R
 import app.minimpos.app.data.settings.PaymentSettings
@@ -19,7 +21,7 @@ internal fun ColumnScope.PaymentsSection(
     val payment = state.settings.payment
 
     fun update(transform: (PaymentSettings) -> PaymentSettings) = events.onUpdate { it.copy(payment = transform(it.payment)) }
-    SectionHeader(stringResource(R.string.settings_pricing))
+    SectionHeader(stringResource(R.string.settings_pricing), Modifier.testTag("pricingHeader"))
     CurrencySetting(
         selectedCode = payment.currencyCode,
         automatic = PaymentSettings().resolvedCurrency(LocalAppContainer.current.device.country),

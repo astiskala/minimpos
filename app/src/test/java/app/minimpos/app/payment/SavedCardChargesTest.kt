@@ -26,6 +26,7 @@ import app.minimpos.terminal.checkout.PaymentModifications
 import app.minimpos.terminal.checkout.SavedCardApi
 import app.minimpos.terminal.checkout.StoredCard
 import app.minimpos.terminal.checkout.StoredCardListing
+import app.minimpos.terminal.simulator.SimulatedModifications
 import app.minimpos.terminal.transport.ExternalText
 import app.minimpos.terminal.transport.Fault
 import com.google.common.truth.Truth.assertThat
@@ -36,6 +37,7 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import java.time.Clock
 import java.time.Instant
+import java.time.ZoneId
 import java.time.ZoneOffset
 
 /** Saved-card charges and their Checkout refunds: persisted before sending, idempotent, context- and approval-checked. */
@@ -49,7 +51,7 @@ class SavedCardChargesTest {
         object : Clock() {
             override fun getZone() = ZoneOffset.UTC
 
-            override fun withZone(zone: java.time.ZoneId?) = this
+            override fun withZone(zone: ZoneId?) = this
 
             override fun instant(): Instant = now
         }
@@ -72,8 +74,7 @@ class SavedCardChargesTest {
     private val refundsSent = mutableListOf<String>()
     private var refundAnswer: ModificationResult = ModificationResult.Received("REF1")
     private val modifications =
-        object : PaymentModifications by app.minimpos.terminal.simulator
-            .SimulatedModifications() {
+        object : PaymentModifications by SimulatedModifications() {
             override suspend fun refund(
                 paymentPspReference: String,
                 amount: ModificationAmount,
@@ -108,7 +109,7 @@ class SavedCardChargesTest {
     fun tearDown() = env.close()
 
     private fun start(): SavedCardStart {
-        val cart = Cart().addProduct(CartProduct(1, "Flat white", null, 450, AppliedTax("GST", 10_000)), { "line" })
+        val cart = Cart().addProduct(CartProduct(1, "Flat white", null, 450, AppliedTax("GST", 10_000))) { "line" }
         val payment =
             PaymentStart(
                 totals = cart.totals(TaxMode.INCLUSIVE),
@@ -163,7 +164,10 @@ class SavedCardChargesTest {
         assertThat(sale.maskedPan).isEqualTo("**** 1111")
         assertThat(sale.context).isEqualTo(context)
         assertThat(charged).containsExactly(id)
-        assertThat(charges.start(start())).isNotNull()
+        // A finished charge does not block the next one.
+        answers += CardChargeResult.Authorised("PSP10")
+        val next = checkNotNull(charges.start(start()))
+        await { charges.state.first { it == TransactionState.Finished(next) } }
         val record = checkNotNull(await { container.sales.get(id) })
         assertThat(RefundablePayment.qrCode(record)).isNull()
         val payment = (RefundablePayment.check(record) as Refundability.Refundable).payment

@@ -28,10 +28,14 @@ import app.minimpos.core.cart.CartProduct
 import app.minimpos.core.money.CurrencySpec
 import app.minimpos.core.payment.PaymentContext
 import app.minimpos.core.tax.TaxMode
+import app.minimpos.terminal.checkout.CardChargeRequest
+import app.minimpos.terminal.checkout.CardChargeResult
 import app.minimpos.terminal.checkout.CheckoutCredentials
 import app.minimpos.terminal.checkout.ModificationAmount
 import app.minimpos.terminal.checkout.ModificationResult
 import app.minimpos.terminal.checkout.PaymentModifications
+import app.minimpos.terminal.checkout.SavedCardApi
+import app.minimpos.terminal.checkout.StoredCardListing
 import app.minimpos.terminal.transport.ExternalText
 import app.minimpos.terminal.transport.Fault
 import app.minimpos.terminal.transport.TerminalEnvironment
@@ -289,12 +293,21 @@ class CapturesTest {
     fun `the API needs the merchant account, key, environment and live prefix`() {
         val connected = mutableListOf<CheckoutCredentials>()
         val links = FakeLinkApi()
+        val cards =
+            object : SavedCardApi {
+                override suspend fun list(shopperReference: String) = StoredCardListing.Failed(Fault.Unsupported)
+
+                override suspend fun charge(
+                    request: CardChargeRequest,
+                    idempotencyKey: String,
+                ) = CardChargeResult.Failed(Fault.Unsupported)
+            }
         val setups = TerminalSetupSource(container.settings, container.secrets, container.device)
         val live =
             AdyenApi(setups, simulated = fake, connect = {
                 connected += it
                 fake
-            }, connectLinks = { links }, simulatedLinks = links, verifyAccess = { null })
+            }, connectLinks = { links }, simulatedLinks = links, verifyAccess = { null }, connectCards = { cards })
         env.updateSettings { it.copy(terminal = it.terminal.copy(mode = TerminalMode.TERMINAL)) }
         assertThat(await { live.target() }.modifications(null)).isEqualTo(ApiAccess.Unavailable(SetupProblem.MERCHANT_ACCOUNT))
         assertThat(await { live.verify() }).isEqualTo(ApiCheck.NotSetUp(SetupProblem.MERCHANT_ACCOUNT))
@@ -312,6 +325,7 @@ class CapturesTest {
                 fake,
                 links,
                 PaymentContext("TERMINAL", "", "MiniMPOS", "Merchant", "LIVE"),
+                cards,
             ),
         )
         assertThat(connected.single()).isEqualTo(CheckoutCredentials("key", "Merchant", TerminalEnvironment.LIVE, "abc-Company"))

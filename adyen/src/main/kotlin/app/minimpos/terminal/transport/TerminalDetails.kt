@@ -728,7 +728,7 @@ class AdyenTerminalDetails(
  *
  * @property displayName The role's name in the Customer Area, shown verbatim when it is missing.
  * @property default Whether Adyen assigns the role to new API credentials by default.
- * @property alternatives Other spellings Adyen has used for the same role.
+ * @param alternatives Other spellings Adyen has used for the same role.
  */
 enum class AdyenRole(
     val displayName: String,

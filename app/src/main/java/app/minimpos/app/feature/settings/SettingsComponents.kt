@@ -459,7 +459,7 @@ fun SettingIntro(
     modifier: Modifier = Modifier,
 ) {
     val compact = LocalDimens.current.compact
-    SettingNote(text, modifier.padding(top = if (compact) 8.dp else 16.dp))
+    SettingNote(text, modifier.testTag("settingIntro").padding(top = if (compact) 8.dp else 16.dp))
 }
 
 /** Small explanatory text under a setting. */

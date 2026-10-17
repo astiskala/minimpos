@@ -864,7 +864,7 @@
   <string name="settings_email_reference_mode">Email as shopper reference</string>
   <string name="settings_email_hashed">Hashed (recommended)</string>
   <string name="settings_email_raw">Raw email address</string>
-  <string name="settings_email_reference_hint">Adyen advises against personal data such as email addresses in shopperReference.</string>
+  <string name="settings_email_reference_hint">Adyen advises against using personal data, such as email addresses, as shopper references.</string>
   <string name="settings_email_salt">Hash salt</string>
   <string name="settings_email_salt_hint">Use the same salt on every device so the same email maps to the same token.</string>
   <string name="settings_shopper_email_hint">Emails collected before payment are always sent to Adyen, including for payment links. Emails collected afterward are only used for receipts.</string>
@@ -898,7 +898,7 @@
   <string name="settings_show_terminal_qr">Show QR receipt on terminal after approval</string>
   <string name="settings_ask_shopper_rating">Ask shopper for 0–10 rating after approval</string>
   <string name="settings_allow_partial_auth">Allow partial authorizations</string>
-  <string name="settings_allow_partial_auth_hint">Accept partial card approvals (AllowPartialAuthorisation) and prompt for the remaining balance on another card.</string>
+  <string name="settings_allow_partial_auth_hint">Accept partial card approvals and prompt for the remaining balance on another card.</string>
   <string name="settings_ask_giving_hint">Prompt shoppers on the terminal for an Adyen Giving donation after purchase.</string>
   <string name="settings_allow_moto">Offer MOTO at checkout</string>
   <string name="settings_allow_moto_hint">Allow Mail Order / Telephone Order keyed card payments (requires Manager PIN).</string>

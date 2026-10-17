@@ -1,8 +1,8 @@
 {
-  "scan_id": "scan-2026-10-16-regional-docs-ui",
-  "scan_date": "2026-10-16T12:25:03.358286Z",
+  "scan_id": "scan-2026-10-17-merchant-api-wording",
+  "scan_date": "2026-10-17T01:32:59.383369Z",
   "scan_type": "working",
-  "commit_range": "7700945e9ce75b906ca76f3f36f5a297dd95329d..working-tree",
+  "commit_range": "e1699e3d3f676b33b7844fcdc0bfd2bbb817f86d..working-tree",
   "pr_number": null,
   "threat_model_version": "1.0.0",
   "findings": [],
@@ -22,10 +22,10 @@
       "DoS": 0,
       "ElevationOfPrivilege": 0
     },
-    "files_analyzed": 55,
-    "screenshots_reviewed": 116
+    "files_analyzed": 5,
+    "screenshots_reviewed": 0
   },
-  "scope": "Changed source, resources, dependencies, tests, documentation and screenshot fixtures relative to HEAD. PNGs reviewed as fictional simulator assets.",
+  "scope": "Four localized string resource files and LocalizationTest relative to HEAD. Report metadata excluded from the analyzed file count.",
   "thresholds_triggered": [],
   "limitations": [
     "LLM-based change review, not a full repository audit or a dependency vulnerability database scan.",
@@ -33,15 +33,9 @@
     "Existing device-resident credentials and upstream Gradle plugin deprecations remain documented trade-offs."
   ],
   "reviewed_controls": [
-    "Wallet artwork uses fixed HTTPS URLs with enum-owned brand names, no credentials or shopper data, and bounded library caches.",
-    "Public CDN requests do not select a payment environment or probe API credentials; unavailable artwork leaves wallet selection usable.",
-    "Receipt HTML escaping, web-only link filtering and narrow receipt file sharing remain intact.",
-    "No financial protocol, database schema, recovery, idempotency, PIN authorization or original-context eligibility changes.",
-    "Regional data lives in documented simulator fixtures; no saved merchant text is rewritten by app-language changes.",
-    "All public screenshots and transfer codes use disposable demo data without real credentials.",
-    "Offline Coil test interception prevents external image requests in app unit tests.",
-    "Website assets remain local; the setup helper retains its no-network CSP and existing transfer formats.",
-    "No new production logging or committed keys, keystores or signing properties.",
-    "Merchant-facing hints use plain language in all four locales; a resource regression guard excludes terminal tipping API field names without changing protocol identifiers."
+    "Only app-owned hint values change; API identifiers, serialized fields and payment behavior remain untouched.",
+    "The privacy warning still discourages personal data in shopper references in all four languages.",
+    "The resource regression guard checks all four translations, allows only named product brands and handles Android escaped newlines.",
+    "No new logging, endpoints, dependencies, storage, credentials, permissions, authorization or recovery changes."
   ]
 }

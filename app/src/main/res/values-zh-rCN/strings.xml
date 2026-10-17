@@ -862,7 +862,7 @@
   <string name="settings_email_reference_mode">电子邮件作为购物者识别号</string>
   <string name="settings_email_hashed">哈希值（推荐）</string>
   <string name="settings_email_raw">原始电子邮件地址</string>
-  <string name="settings_email_reference_hint">Adyen 建议不要在 shopperReference 中使用电子邮件地址等个人数据。</string>
+  <string name="settings_email_reference_hint">Adyen 建议不要将电子邮件地址等个人数据用作购物者识别号。</string>
   <string name="settings_email_salt">哈希盐值</string>
   <string name="settings_email_salt_hint">所有设备请使用相同盐值，使同一电子邮件地址对应同一令牌。</string>
   <string name="settings_shopper_email_hint">支付前收集的电子邮件始终会发送给 Adyen，付款链接也一样。支付后收集的电子邮件仅用于发送收据。</string>
@@ -896,7 +896,7 @@
   <string name="settings_show_terminal_qr">批准后在终端显示二维码收据</string>
   <string name="settings_ask_shopper_rating">批准后请购物者进行 0–10 评分</string>
   <string name="settings_allow_partial_auth">允许部分授权</string>
-  <string name="settings_allow_partial_auth_hint">接受银行卡部分批准（AllowPartialAuthorisation），并提示用另一张卡支付剩余差额。</string>
+  <string name="settings_allow_partial_auth_hint">接受银行卡部分批准，并提示用另一张卡支付剩余差额。</string>
   <string name="settings_ask_giving_hint">购买后在终端上提示购物者进行 Adyen Giving 慈善捐款。</string>
   <string name="settings_allow_moto">在结账时提供 MOTO</string>
   <string name="settings_allow_moto_hint">允许邮购/电话订购（MOTO）手动输入卡号付款（需要经理 PIN 码）。</string>

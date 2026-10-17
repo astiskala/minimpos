@@ -70,7 +70,7 @@
             <li><a href="#customize-receipts">領収書をカスタマイズ</a></li><li><a href="#language-receipts">領収書の言語</a></li><li><a href="#email">領収書のメール送信</a></li>
           </ul></li>
           <li><a href="#history">取引履歴</a><ul><li><a href="#close-day">一日の精算</a></li><li><a href="#reconciliation">端末との集計照合</a></li></ul></li>
-          <li><a href="#shoppers">参照IDとカード保存</a></li><li><a href="#payment-links">決済リンク</a></li>
+          <li><a href="#shoppers">参照IDとカード保存</a><ul><li><a href="#saved-card">保存カードに請求</a></li></ul></li><li><a href="#payment-links">決済リンク</a></li>
           <li><a href="#preauth">予約金</a></li><li><a href="#terminal-tips">端末でのチップ</a></li><li><a href="#tips">領収書のチップ</a></li><li><a href="#more">追加デバイスとデータ</a></li>
         </ol></div>
         <details class="mobile-contents"><summary class="toc-title">このページの内容</summary><ol>
@@ -88,7 +88,7 @@
             <li><a href="#customize-receipts">領収書をカスタマイズ</a></li><li><a href="#language-receipts">領収書の言語</a></li><li><a href="#email">領収書のメール送信</a></li>
           </ul></li>
           <li><a href="#history">取引履歴</a><ul><li><a href="#close-day">一日の精算</a></li><li><a href="#reconciliation">端末との集計照合</a></li></ul></li>
-          <li><a href="#shoppers">参照IDとカード保存</a></li><li><a href="#payment-links">決済リンク</a></li>
+          <li><a href="#shoppers">参照IDとカード保存</a><ul><li><a href="#saved-card">保存カードに請求</a></li></ul></li><li><a href="#payment-links">決済リンク</a></li>
           <li><a href="#preauth">予約金</a></li><li><a href="#terminal-tips">端末でのチップ</a></li><li><a href="#tips">領収書のチップ</a></li><li><a href="#more">追加デバイスとデータ</a></li>
         </ol></details>
       </nav>
@@ -294,7 +294,7 @@
           </div>
           <h3 id="reconciliation">端末の合計と照合し、期間を締める</h3>
           <ol>
-            <li><strong>取引履歴</strong>で<strong>端末と集計を照合</strong>をタップします。Mini mPOSは、合計を要求する前に処理中や結果不明の端末取引の確認を試みます。</li>
+            <li>ホームで<strong>照合</strong>をタップし、<strong>端末と集計を照合</strong>をタップします。Mini mPOSは、合計を要求する前に処理中や結果不明の端末取引の確認を試みます。<strong>本日のレポートを印刷</strong>で<strong>ローカル日次集計</strong>を印刷します。</li>
             <li>通貨ごとの販売と返金を比較し、未解決取引、オフライン販売、未確認バッチを確認します。端末の集計期間は暦日とは限りません。同じ端末を別のデバイスから使った場合やローカル履歴が不足する場合は差異が生じます。決済リンクとサンプル履歴は端末決済ではありません。</li>
             <li>準備ができたら<strong>集計期間を締める</strong>をタップし、必要ならマネージャーの承認を行います。これはレポートの印刷だけでなく、端末に集計期間の終了を要求します。</li>
           </ol>
@@ -310,8 +310,16 @@
           <dl class="settings-list">
             <dt>加盟店参照ID</dt><dd>予約番号や注文番号を記録するには、<strong>設定 › 決済 › 加盟店参照IDの入力を求める</strong>をオンにします。この番号は Adyen で決済を識別します。空欄なら一意の参照IDを生成します。</dd>
             <dt>購入者参照ID</dt><dd><strong>設定 › 決済</strong>で<strong>購入者参照ID</strong>を、会計で入力する購入者参照ID（初期設定）、購入者のメール、なしから選びます。すべての決済とともに Adyen に送信します。メールの参照IDは初期設定でハッシュ化されます。すべてのデバイスで同じソルトを使ってください。</dd>
-            <dt>カード保存</dt><dd>購入者参照IDを設定したうえで<strong>カード保存の選択肢を表示</strong>をオンにし、Adyen の設定に合った<strong>継続課金モデル</strong>を選びます。<strong>次回の決済用にカードを保存</strong>を選ぶ前に購入者の同意を得てください。Mini mPOS は保存したカードで請求できません。</dd>
+            <dt>カード保存</dt><dd>購入者参照IDを設定したうえで<strong>カード保存の選択肢を表示</strong>をオンにし、Adyen の設定に合った<strong>継続課金モデル</strong>を選びます。<strong>次回の決済用にカードを保存</strong>を選ぶ前に購入者の同意を得てください。後で請求するには<a href="#saved-card">保存カードに請求</a>を参照してください。</dd>
           </dl>
+          <h3 id="saved-card">保存カードに請求</h3>
+          <ol>
+            <li>ホームで<strong>保存カードに請求</strong>をタップし、求められた場合はマネージャーPINを入力します。</li>
+            <li>購入者参照ID（またはそれに使うメールアドレス）を入力し、<strong>保存カードを検索</strong>をタップします。</li>
+            <li>カードを選び、商品または<strong>任意の商品</strong>を追加します。このカートは<strong>新規販売</strong>のカートとは別です。</li>
+            <li>請求内容を確認し、<strong>請求</strong>をタップします。</li>
+          </ol>
+          <p>購入者は不在のため、事前に同意を得てください。APIキーには<strong>Merchant Recurring role</strong>が必要です。別の<strong>継続課金モデル</strong>用に保存されたカードは選択できません。これらの決済は<strong>取引履歴</strong>から返金します。領収書に返金用QRコードはありません。請求結果が不明な場合は7日以内に取引履歴から確認し、それ以降はCustomer Areaで確認してください。</p>
           <p class="back-to-contents"><a href="#contents">目次に戻る</a></p>
         </section>
         <section id="payment-links">

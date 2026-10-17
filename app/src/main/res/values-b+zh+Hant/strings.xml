@@ -85,8 +85,8 @@
   <string name="checkout_email">顧客電郵地址</string>
   <string name="checkout_email_hint">支付獲批後，收據將通過電郵發送。</string>
   <string name="checkout_save_card">儲存卡以供今後支付</string>
-  <string name="checkout_save_card_hint">將卡代碼化並關聯至此顧客參考編號。請先徵得顧客同意。Mini mPOS 僅儲存代碼；使用儲存的卡收款需要您自己的整合。</string>
-  <string name="checkout_save_card_email_hint">將卡代碼化並關聯至此電郵地址。請先徵得顧客同意。Mini mPOS 僅儲存代碼；使用儲存的卡收款需要您自己的整合。</string>
+  <string name="checkout_save_card_hint">將卡代碼化並關聯至此顧客參考編號。請先徵得顧客同意。之後可在主頁使用“扣款已儲存的卡”收款。</string>
+  <string name="checkout_save_card_email_hint">將卡代碼化並關聯至此電郵地址。請先徵得顧客同意。之後可在主頁使用“扣款已儲存的卡”收款。</string>
   <string name="checkout_pay">支付 %1$s</string>
   <string name="checkout_scan_wallet">掃描錢包</string>
   <string name="checkout_send_link">建立付款連結</string>
@@ -847,11 +847,11 @@
   <string name="settings_ask_transaction_reference_hint">輸入訂單號或預訂號，以便在 Adyen 中識別付款。留空則自動生成。</string>
   <string name="settings_tokenization">顧客與儲存卡</string>
   <string name="settings_offer_card_saving">提供儲存卡選項</string>
-  <string name="settings_offer_card_saving_hint">有顧客參考編號時，結帳會顯示“儲存卡以供今後支付”。請先徵得顧客同意。Mini mPOS 僅儲存代碼；使用儲存的卡收款需要您自己的整合。</string>
+  <string name="settings_offer_card_saving_hint">有顧客參考編號時，結帳會顯示“儲存卡以供今後支付”。請先徵得顧客同意。可在主頁使用“扣款已儲存的卡”收款。</string>
   <string name="settings_tokenize_default">預設啟用儲存卡</string>
   <string name="settings_tokenize_default_hint">僅在有顧客參考編號時顯示。</string>
   <string name="settings_pre_auth_tokenize_default">預授權預設儲存卡</string>
-  <string name="settings_pre_auth_tokenize_default_hint">預授權扣款完成後，可通過您自己的整合使用儲存的卡收取延遲產生的費用。Mini mPOS 無法使用儲存的卡收款。</string>
+  <string name="settings_pre_auth_tokenize_default_hint">預授權扣款完成後產生的延遲費用，可在主頁使用“扣款已儲存的卡”收取。</string>
   <string name="settings_recurring_model">循環扣款模式</string>
   <string name="recurring_card_on_file">已儲存卡</string>
   <string name="recurring_subscription">訂閱</string>
@@ -1054,7 +1054,7 @@
   <string name="setup_key_connection_pending">新密鑰已儲存。請更新此終端的設定：打開“Admin menu › Config › Update”。完成後返回 Mini mPOS，點按“再次檢查”以完成設定。</string>
   <string name="setup_key_recovery_unreadable">無法讀取待完成的密鑰設定。建立其他密鑰前，請取得現有密鑰或聯繫支援。</string>
   <string name="setup_key_creation_unconfirmed">尚未確認密鑰建立結果。請繼續密鑰設定，先讀取 Adyen 設定再重試。</string>
-  <string name="setup_printer">沒有可用的打印機。請檢查「設定 › 收據」中的「打印機」，使用模擬器時請檢查「設定 › 模擬器」。</string>
+  <string name="setup_printer">沒有可用的打印機。請檢查“設定 › 收據”中的“打印機”，使用模擬器時請檢查“設定 › 模擬器”。</string>
   <string name="setup_charge_too_old">此操作時間過久，無法安全地再次發送。請在商戶後台查看結果。</string>
   <string name="payment_context_mismatch">目前設定與原支付的終端、商戶帳戶或環境不一致。請恢復原設定後繼續。</string>
   <string name="fault_unreachable_terminal">無法連接終端。請確認終端已開機、位於同一網絡，且 IP 地址正確。</string>
@@ -1108,7 +1108,7 @@
   <string name="saved_card_charge">扣款 %1$s</string>
   <string name="saved_card_charging">正在扣款已儲存的卡…</string>
   <string name="saved_card_review_note">Adyen 會在顧客不在場的情況下扣款。如有需要，請在交易紀錄中退款。</string>
-  <string name="setup_shopper_reference">請在「設定 › 支付」中選擇顧客參考編號，以使用已儲存的卡。</string>
+  <string name="setup_shopper_reference">請在“設定 › 支付”中選擇顧客參考編號，以使用已儲存的卡。</string>
   <string name="setup_totals">目前收款目標無法提供終端匯總。Tap to Pay 不提供匯總。</string>
   <string name="reconciliation_intro">將終端匯總與 Mini mPOS 比對。會先核查未確認的終端付款。請在營業日結束時結束對帳期。</string>
   <string name="reconciliation_print_today">列印今日報表</string>

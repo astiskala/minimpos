@@ -70,7 +70,7 @@
             <li><a href="#customize-receipts">自訂收據</a></li><li><a href="#language-receipts">收據語言</a></li><li><a href="#email">電子收據</a></li>
           </ul></li>
           <li><a href="#history">交易紀錄</a><ul><li><a href="#close-day">每日對帳</a></li><li><a href="#reconciliation">與終端對帳</a></li></ul></li>
-          <li><a href="#shoppers">參考編號和儲存卡</a></li><li><a href="#payment-links">付款連結</a></li>
+          <li><a href="#shoppers">參考編號和儲存卡</a><ul><li><a href="#saved-card">扣款已儲存的卡</a></li></ul></li><li><a href="#payment-links">付款連結</a></li>
           <li><a href="#preauth">訂金</a></li><li><a href="#terminal-tips">終端小費</a></li><li><a href="#tips">收據小費</a></li><li><a href="#more">更多設備和資料</a></li>
         </ol></div>
         <details class="mobile-contents"><summary class="toc-title">本頁目錄</summary><ol>
@@ -88,7 +88,7 @@
             <li><a href="#customize-receipts">自訂收據</a></li><li><a href="#language-receipts">收據語言</a></li><li><a href="#email">電子收據</a></li>
           </ul></li>
           <li><a href="#history">交易紀錄</a><ul><li><a href="#close-day">每日對帳</a></li><li><a href="#reconciliation">與終端對帳</a></li></ul></li>
-          <li><a href="#shoppers">參考編號和儲存卡</a></li><li><a href="#payment-links">付款連結</a></li>
+          <li><a href="#shoppers">參考編號和儲存卡</a><ul><li><a href="#saved-card">扣款已儲存的卡</a></li></ul></li><li><a href="#payment-links">付款連結</a></li>
           <li><a href="#preauth">訂金</a></li><li><a href="#terminal-tips">終端小費</a></li><li><a href="#tips">收據小費</a></li><li><a href="#more">更多設備和資料</a></li>
         </ol></details>
       </nav>
@@ -294,7 +294,7 @@
           </div>
           <h3 id="reconciliation">核對終端總額並結束週期</h3>
           <ol>
-            <li>在<strong>交易紀錄</strong>中點按<strong>與終端核對總額</strong>。請求總額前，Mini mPOS 會嘗試查詢待處理或結果未知的終端交易。</li>
+            <li>在主頁點按<strong>對帳</strong>，然後點按<strong>與終端核對總額</strong>。請求總額前，Mini mPOS 會嘗試查詢待處理或結果未知的終端交易。<strong>列印今日報表</strong>可列印<strong>本地每日摘要</strong>。</li>
             <li>按貨幣核對銷售和退款，並檢查未解決交易、離線銷售和未確認批次。終端週期不一定等於一個曆日；其他設備使用同一終端或本地紀錄缺失都可能導致差異。付款連結和示例紀錄不屬於終端付款。</li>
             <li>準備好後點按<strong>結束對賬週期</strong>，並在要求時完成經理批准。這會請求終端結束其對帳週期，不只是列印報告。</li>
           </ol>
@@ -310,8 +310,16 @@
           <dl class="settings-list">
             <dt>商戶交易參考編號</dt><dd>如需紀錄預訂或訂單號，請開啟<strong>設定 › 支付 › 要求輸入商戶交易參考編號</strong>。此號碼用於在 Adyen 中識別付款。留空時會生成唯一參考編號。</dd>
             <dt>顧客參考編號</dt><dd>在<strong>設定 › 支付</strong>中選擇<strong>顧客參考編號</strong>：結帳時輸入的顧客參考編號（預設）、顧客電郵或無。它會隨每筆付款發送給 Adyen。電郵參考編號預設經過雜湊處理；所有設備請使用相同的鹽值。</dd>
-            <dt>儲存卡</dt><dd>設定顧客參考編號後，開啟<strong>提供儲存卡選項</strong>，並選擇適合您 Adyen 設定的<strong>循環扣款模式</strong>。勾選<strong>儲存卡以供今後支付</strong>前須取得顧客同意。Mini mPOS 無法使用已儲存的卡扣款。</dd>
+            <dt>儲存卡</dt><dd>設定顧客參考編號後，開啟<strong>提供儲存卡選項</strong>，並選擇適合您 Adyen 設定的<strong>循環扣款模式</strong>。勾選<strong>儲存卡以供今後支付</strong>前須取得顧客同意。之後如需扣款，請參見<a href="#saved-card">扣款已儲存的卡</a>。</dd>
           </dl>
+          <h3 id="saved-card">扣款已儲存的卡</h3>
+          <ol>
+            <li>在主頁點按<strong>扣款已儲存的卡</strong>，如有要求請輸入經理 PIN。</li>
+            <li>輸入顧客參考編號（或用作參考編號的電郵地址），然後點按<strong>尋找已儲存的卡</strong>。</li>
+            <li>選擇一張卡，然後加入商品或<strong>自訂商品</strong>。此購物車與<strong>新建銷售</strong>的購物車互相獨立。</li>
+            <li>核對扣款資料後點按<strong>扣款</strong>。</li>
+          </ol>
+          <p>顧客不在場，因此請先取得其同意。API 密鑰需要 <strong>Merchant Recurring role</strong>。為其他<strong>循環扣款模式</strong>儲存的卡無法選擇。請在<strong>交易紀錄</strong>中為這些付款退款；其收據上沒有退款二維碼。如果扣款結果未知，請在七天內從交易紀錄中核查，之後請在 Customer Area 中核查。</p>
           <p class="back-to-contents"><a href="#contents">返回目錄</a></p>
         </section>
         <section id="payment-links">

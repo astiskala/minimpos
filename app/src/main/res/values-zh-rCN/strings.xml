@@ -85,8 +85,8 @@
   <string name="checkout_email">购物者电子邮件地址</string>
   <string name="checkout_email_hint">支付获批后，收据将通过电子邮件发送。</string>
   <string name="checkout_save_card">保存卡片以供今后支付</string>
-  <string name="checkout_save_card_hint">将卡片令牌化并关联至此购物者识别号。请先征得购物者同意。Mini mPOS 仅保存令牌；使用保存的卡片收款需要您自己的集成。</string>
-  <string name="checkout_save_card_email_hint">将卡片令牌化并关联至此电子邮件地址。请先征得购物者同意。Mini mPOS 仅保存令牌；使用保存的卡片收款需要您自己的集成。</string>
+  <string name="checkout_save_card_hint">将卡片令牌化并关联至此购物者识别号。请先征得购物者同意。之后可在主页使用“扣款已保存的卡”收款。</string>
+  <string name="checkout_save_card_email_hint">将卡片令牌化并关联至此电子邮件地址。请先征得购物者同意。之后可在主页使用“扣款已保存的卡”收款。</string>
   <string name="checkout_pay">支付 %1$s</string>
   <string name="checkout_scan_wallet">扫描钱包</string>
   <string name="checkout_send_link">创建付款链接</string>
@@ -847,11 +847,11 @@
   <string name="settings_ask_transaction_reference_hint">输入订单号或预订号，以便在 Adyen 中识别付款。留空则自动生成。</string>
   <string name="settings_tokenization">购物者与保存卡片</string>
   <string name="settings_offer_card_saving">提供保存卡片选项</string>
-  <string name="settings_offer_card_saving_hint">有购物者识别号时，结账会显示“保存卡片以供今后支付”。请先征得购物者同意。Mini mPOS 仅保存令牌；使用保存的卡片收款需要您自己的集成。</string>
+  <string name="settings_offer_card_saving_hint">有购物者识别号时，结账会显示“保存卡片以供今后支付”。请先征得购物者同意。可在主页使用“扣款已保存的卡”收款。</string>
   <string name="settings_tokenize_default">默认启用保存卡片</string>
   <string name="settings_tokenize_default_hint">仅在有购物者识别号时显示。</string>
   <string name="settings_pre_auth_tokenize_default">预授权默认保存卡片</string>
-  <string name="settings_pre_auth_tokenize_default_hint">预授权扣款完成后，可通过您自己的集成使用保存的卡片收取延迟产生的费用。Mini mPOS 无法使用保存的卡片收款。</string>
+  <string name="settings_pre_auth_tokenize_default_hint">预授权扣款完成后产生的延迟费用，可在主页使用“扣款已保存的卡”收取。</string>
   <string name="settings_recurring_model">循环扣款模式</string>
   <string name="recurring_card_on_file">在档卡</string>
   <string name="recurring_subscription">订阅</string>

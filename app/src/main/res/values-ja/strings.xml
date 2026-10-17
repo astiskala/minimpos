@@ -862,7 +862,7 @@
   <string name="settings_email_reference_mode">メールを購入者参照IDに使用</string>
   <string name="settings_email_hashed">ハッシュ化（推奨）</string>
   <string name="settings_email_raw">メールアドレスをそのまま使用</string>
-  <string name="settings_email_reference_hint">AdyenはshopperReferenceにメールアドレスなどの個人情報を使用しないことを推奨しています。</string>
+  <string name="settings_email_reference_hint">Adyenは購入者参照IDにメールアドレスなどの個人情報を使用しないことを推奨しています。</string>
   <string name="settings_email_salt">ハッシュのソルト</string>
   <string name="settings_email_salt_hint">同じメールを同じトークンに対応させるため、すべてのデバイスで同じソルトを使用してください。</string>
   <string name="settings_shopper_email_hint">決済前に入力したメールは、決済リンクでも必ずAdyenに送信します。決済後に入力したメールは領収書の送信にのみ使います。</string>
@@ -896,7 +896,7 @@
   <string name="settings_show_terminal_qr">承認後に端末へQR領収書を表示</string>
   <string name="settings_ask_shopper_rating">承認後に0〜10の評価を求める</string>
   <string name="settings_allow_partial_auth">一部承認を許可</string>
-  <string name="settings_allow_partial_auth_hint">カードの一部承認（AllowPartialAuthorisation）を受け入れ、残額を別のカードで決済できるようにします。</string>
+  <string name="settings_allow_partial_auth_hint">カードの一部承認を受け入れ、残額を別のカードで決済できるようにします。</string>
   <string name="settings_ask_giving_hint">購入後に端末でAdyen Givingの寄付を購入者に尋ねます。</string>
   <string name="settings_allow_moto">会計時にMOTOを許可</string>
   <string name="settings_allow_moto_hint">郵送・電話注文（MOTO）の手入力決済を許可します（マネージャーPINが必要）。</string>

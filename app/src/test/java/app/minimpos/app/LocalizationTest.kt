@@ -57,11 +57,20 @@ class LocalizationTest {
     }
 
     @Test
-    fun `merchant strings do not expose terminal tipping API field names`() {
+    fun `merchant strings do not expose raw API field names`() {
+        val camelCase = Regex("[A-Za-z]*[a-z][A-Z][A-Za-z]*")
+        // Product names are merchant-facing; protocol field names are not.
+        val brands = setOf("mPOS", "PayMe", "iCloud")
         listOf("values", "values-ja", "values-zh-rCN", "values-b+zh+Hant").forEach { folder ->
-            val text = resourceEntries(folder).values.flatten().joinToString("\n")
-            assertWithMessage(folder).that(text).doesNotContain("AskGratuity")
-            assertWithMessage(folder).that(text).doesNotContain("AmountToTipOn")
+            resourceEntries(folder).forEach { (name, texts) ->
+                val identifiers =
+                    camelCase
+                        .findAll(texts.joinToString("\n").replace("\\n", "\n"))
+                        .map { it.value }
+                        .filterNot { it in brands }
+                        .toList()
+                assertWithMessage("$folder/$name raw API field names").that(identifiers).isEmpty()
+            }
         }
     }
 

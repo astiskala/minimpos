@@ -642,6 +642,12 @@ class AppFlowTest {
         condition: () -> Boolean,
     ) = compose.awaitCondition("Saving $description", condition)
 
+    /** Waits until the currency row shows [text]: the screen redraws after the saved setting changes. */
+    private fun awaitCurrencyShown(text: String) =
+        compose.awaitCondition("currency shows $text") {
+            runCatching { compose.onNodeWithTag("currency").assertTextContains(text, substring = true) }.isSuccess
+        }
+
     @Test
     fun `any Adyen currency can be chosen, or automatic`() {
         compose.onNodeWithTag("settings").performClick()
@@ -660,7 +666,7 @@ class AppFlowTest {
         assertThat(container.settingsState.value.payment.currencyCode).isEqualTo("AUD")
         compose.onNodeWithTag("confirm").performClick()
         awaitSetting("BRL") { container.settingsState.value.payment.currencyCode == "BRL" }
-        compose.onNodeWithTag("currency").assertTextContains("BRL – Brazilian Real", substring = true)
+        awaitCurrencyShown("BRL – Brazilian Real")
 
         compose.onNodeWithTag("currency").performClick()
         compose.waitForTag("currencySearch")
@@ -677,7 +683,7 @@ class AppFlowTest {
                 .isEmpty()
         }
         // The device is in Australia, so Automatic means AUD.
-        compose.onNodeWithTag("currency").assertTextContains("Automatic (AUD – Australian Dollar)", substring = true)
+        awaitCurrencyShown("Automatic (AUD – Australian Dollar)")
         assertThat(container.currency().code).isEqualTo("AUD")
     }
 

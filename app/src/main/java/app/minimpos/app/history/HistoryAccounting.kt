@@ -176,22 +176,93 @@ data class TerminalReconciliationReport(
     val allMatch: Boolean get() = currencies.all { it.matches } && unresolvedCount == 0
 }
 
+/**
+ * Processing-day totals per currency for the activities the filter shows: approved sales, accepted captures with
+ * their tips, accepted refunds and newly authorized holds. Later capture or cancellation does not erase original
+ * hold activity. Manual-capture bills count as sales only on dated capture acceptance.
+ *
+ * @property salesMinor Approved sales' amounts (with tips, or what a pre-authorisation captured) by ISO 4217 currency
+ *   code, in minor units.
+ * @property saleCount Number of approved sales.
+ * @property refundsMinor Accepted refunds' amounts by currency code, in minor units.
+ * @property refundCount Number of accepted refunds.
+ * @property preAuthsMinor Newly authorized manual-capture amounts by currency code, in minor units;
+ *   unchanged by later capture or cancellation.
+ * @property preAuthCount Number of newly authorized holds.
+ * @property tipsMinor The tips included in [salesMinor], by currency code, in minor units; only currencies with tips.
+ */
+data class DayTotals(
+    val salesMinor: Map<String, Long>,
+    val saleCount: Int,
+    val refundsMinor: Map<String, Long>,
+    val refundCount: Int,
+    val preAuthsMinor: Map<String, Long> = emptyMap(),
+    val preAuthCount: Int = 0,
+    val tipsMinor: Map<String, Long> = emptyMap(),
+)
+
+/**
+ * One day of history, in the time zone it was grouped in (see [HistoryAccounting.days]).
+ *
+ * @property date The local date.
+ * @property totals The day's totals.
+ * @property items Original transactions with dated activity on this day, newest activity first.
+ * @property captures Sale IDs whose accepted capture occurred on this day.
+ * @property times Most recent activity per original transaction, in epoch milliseconds.
+ */
+data class HistoryDay(
+    val date: LocalDate,
+    val totals: DayTotals,
+    val items: List<HistoryItem>,
+    /** Sales whose accepted capture occurred on this day. */
+    val captures: Set<String> = emptySet(),
+    /** Most recent dated activity per original transaction, in epoch milliseconds. */
+    val times: Map<String, Long> = emptyMap(),
+)
+
 /** Pure processing-day accounting shared by filtered History and unfiltered reports; no clock or storage access. */
 object HistoryAccounting {
-    /** Whether [item] has any issue activity; multiple unresolved operations still select its record only once. */
+    /**
+     * Whether [item] has any issue activity ([SaleEntity.issues], or an unresolved refund); multiple unresolved
+     * operations still select its record only once.
+     */
     fun needsAttention(item: HistoryItem): Boolean =
         when (item) {
-            is HistoryItem.Sale -> item.sale.hasOperationIssue() || item.sale.hasCaptureIssue()
+            is HistoryItem.Sale -> item.sale.issues.isNotEmpty()
             is HistoryItem.Refund -> item.refund.status.unresolved
         }
 
-    private fun SaleEntity.hasOperationIssue(): Boolean = status == SaleStatus.PENDING || status == SaleStatus.UNKNOWN || adjustmentPending
-
-    private fun SaleEntity.hasCaptureIssue(): Boolean {
-        val standing = standing
-        return standing == PaymentStanding.CAPTURE_FAILED || standing == PaymentStanding.CAPTURE_UNKNOWN ||
-            standing == PaymentStanding.CAPTURE_SENDING
-    }
+    /**
+     * [items] grouped into processing days in [zone], newest day first, each with its totals: what History lists for
+     * the transactions a filter shows. Activities without a date (paid links, undated captures) are left out.
+     */
+    fun days(
+        items: List<HistoryItem>,
+        zone: ZoneId,
+    ): List<HistoryDay> =
+        activities(items)
+            .filter { it.at != null }
+            .groupBy { Instant.ofEpochMilli(checkNotNull(it.at)).atZone(zone).toLocalDate() }
+            .map { (date, activities) ->
+                val totals = totals(activities)
+                val sorted = activities.sortedByDescending { it.at }
+                HistoryDay(
+                    date = date,
+                    totals =
+                        DayTotals(
+                            salesMinor = totals.filterValues { it.saleCount > 0 }.mapValues { it.value.salesMinor },
+                            saleCount = totals.values.sumOf { it.saleCount },
+                            refundsMinor = totals.filterValues { it.refundCount > 0 }.mapValues { it.value.refundsMinor },
+                            refundCount = totals.values.sumOf { it.refundCount },
+                            preAuthsMinor = totals.filterValues { it.holdCount > 0 }.mapValues { it.value.heldMinor },
+                            preAuthCount = totals.values.sumOf { it.holdCount },
+                            tipsMinor = totals.filterValues { it.tipsMinor > 0 }.mapValues { it.value.tipsMinor },
+                        ),
+                    items = sorted.map { it.item }.distinctBy { it.id },
+                    captures = activities.filter { it.kind == HistoryActivityKind.CAPTURE }.map { it.item.id }.toSet(),
+                    times = sorted.distinctBy { it.item.id }.associate { it.item.id to checkNotNull(it.at) },
+                )
+            }.sortedByDescending { it.date }
 
     /** Original attempts plus monetary activities; missing capture/link dates stay null rather than being guessed. */
     fun activities(items: List<HistoryItem>): List<HistoryActivity> =
@@ -260,10 +331,11 @@ object HistoryAccounting {
                     }
                 }
             }
-            if (sale.hasOperationIssue()) {
+            val issues = sale.issues
+            if (PaymentIssue.OUTCOME in issues || PaymentIssue.ADJUSTMENT in issues) {
                 add(HistoryActivity(item, sale.createdAt, HistoryActivityKind.ISSUE))
             }
-            if (sale.hasCaptureIssue()) {
+            if (PaymentIssue.CAPTURE in issues) {
                 add(HistoryActivity(item, sale.captureStartedAt ?: sale.createdAt, HistoryActivityKind.ISSUE))
             }
         }
@@ -316,7 +388,8 @@ object HistoryAccounting {
     /**
      * Compares terminal-reported [outcome] against local terminal operations in [items] for [poiId] (matching
      * [TerminalTotalsOutcome.Answered.poiReconciliationId] when stored, otherwise [date] in [zone]). Excludes payment
-     * links, manual-capture holds, hold cancellations and sample records, which do not appear in terminal debit/credit totals.
+     * links, saved-card charges and their Checkout refunds, manual-capture holds, hold cancellations and sample records,
+     * which do not appear in terminal debit/credit totals (see [SaleEntity.terminalOperation]).
      */
     fun compareReconciliation(
         items: List<HistoryItem>,
@@ -361,7 +434,11 @@ object HistoryAccounting {
         )
     }
 
-    /** Terminal items in [items] for [poiId] whose terminal outcome is still unresolved (`PENDING` or `UNKNOWN`). */
+    /**
+     * Terminal items in [items] for [poiId] whose terminal outcome is still unresolved (a sale's
+     * [PaymentIssue.OUTCOME], or a pending or unknown refund); adjustments and captures go through the Checkout API and
+     * are not terminal operations.
+     */
     fun unresolvedTerminalItems(
         items: List<HistoryItem>,
         poiId: String,
@@ -374,18 +451,18 @@ object HistoryAccounting {
         when (item) {
             is HistoryItem.Sale -> {
                 val s = item.sale
-                !s.sample && !s.paymentLink && (poiId.isBlank() || s.poiId == poiId || s.context?.poiId == poiId)
+                s.terminalOperation && (poiId.isBlank() || s.poiId == poiId || s.context?.poiId == poiId)
             }
 
             is HistoryItem.Refund -> {
                 val r = item.refund
-                poiId.isBlank() || r.context?.poiId == poiId
+                r.terminalOperation && (poiId.isBlank() || r.context?.poiId == poiId)
             }
         }
 
     private fun isUnresolvedTerminalItem(item: HistoryItem): Boolean =
         when (item) {
-            is HistoryItem.Sale -> item.sale.status == SaleStatus.PENDING || item.sale.status == SaleStatus.UNKNOWN
+            is HistoryItem.Sale -> PaymentIssue.OUTCOME in item.sale.issues
             is HistoryItem.Refund -> item.refund.status.unresolved
         }
 

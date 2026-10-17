@@ -1,5 +1,10 @@
 package app.minimpos.terminal
 
+import app.minimpos.terminal.checkout.AdyenCheckout
+import app.minimpos.terminal.checkout.CheckoutCredentials
+import app.minimpos.terminal.checkout.CheckoutModifications
+import app.minimpos.terminal.checkout.CheckoutPaymentLinks
+import app.minimpos.terminal.checkout.CheckoutSavedCards
 import app.minimpos.terminal.client.Decline
 import app.minimpos.terminal.client.TransactionDetails
 import app.minimpos.terminal.paymentsapp.AdyenPaymentsAppManagement
@@ -14,11 +19,13 @@ import com.adyen.Client
 import com.adyen.model.management.DefaultErrorResponseEntity
 import com.google.gson.JsonObject
 import com.tngtech.archunit.base.DescribedPredicate
+import com.tngtech.archunit.core.domain.JavaCall
 import com.tngtech.archunit.core.domain.JavaClass
 import com.tngtech.archunit.core.domain.JavaClass.Predicates.assignableTo
 import com.tngtech.archunit.core.domain.JavaClass.Predicates.resideInAnyPackage
 import com.tngtech.archunit.core.domain.JavaClass.Predicates.type
 import com.tngtech.archunit.core.domain.JavaClasses
+import com.tngtech.archunit.core.domain.properties.HasOwner
 import com.tngtech.archunit.core.importer.ClassFileImporter
 import com.tngtech.archunit.core.importer.ImportOption
 import com.tngtech.archunit.lang.ArchRule
@@ -208,6 +215,48 @@ class ArchitectureTest {
     private class ManagementFaultViolation {
         fun error() = DefaultErrorResponseEntity()
     }
+
+    @Test
+    fun `the Checkout API's parts are made together for one credential`() =
+        // AdyenCheckout makes modifications, links and saved cards with one HTTP client and application information.
+        // A part's default-argument constructor delegates to its own full constructor.
+        checkoutParts(
+            DescribedPredicate.not(
+                JavaClass.Predicates.belongToAnyOf(
+                    AdyenCheckout::class.java,
+                    CheckoutModifications::class.java,
+                    CheckoutPaymentLinks::class.java,
+                    CheckoutSavedCards::class.java,
+                ),
+            ),
+        ).check(terminal)
+
+    @Test
+    fun `checkout part ownership rejects a part made on its own`() {
+        val violation = ClassFileImporter().importClasses(CheckoutPartViolation::class.java)
+        val rule = checkoutParts(type(CheckoutPartViolation::class.java))
+        assertTrue(rule.description, rule.evaluate(violation).hasViolation())
+    }
+
+    private class CheckoutPartViolation {
+        fun make(credentials: CheckoutCredentials) = CheckoutPaymentLinks(credentials)
+    }
+
+    private fun checkoutParts(classes: DescribedPredicate<in JavaClass>): ArchRule =
+        noClasses()
+            .that(classes)
+            .should()
+            .callConstructorWhere(
+                JavaCall.Predicates.target(
+                    HasOwner.Predicates.With.owner(
+                        JavaClass.Predicates.belongToAnyOf(
+                            CheckoutModifications::class.java,
+                            CheckoutPaymentLinks::class.java,
+                            CheckoutSavedCards::class.java,
+                        ),
+                    ),
+                ),
+            )
 
     @Test
     fun `only the decline reads why a transaction was not approved`() =

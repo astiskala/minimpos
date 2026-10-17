@@ -9,13 +9,12 @@ import app.minimpos.app.data.repo.SaleRepository
 import app.minimpos.app.feature.TransactionActions
 import app.minimpos.app.feature.TransactionActionsState
 import app.minimpos.app.history.RefundChoice
-import app.minimpos.app.history.RefundStart
 import app.minimpos.app.history.Refundability
 import app.minimpos.app.history.RefundablePayment
-import app.minimpos.app.payment.CheckoutRefunds
+import app.minimpos.app.history.canCheckAgain
+import app.minimpos.app.payment.FinancialOperations
 import app.minimpos.app.payment.ReceiptDelivery
 import app.minimpos.app.payment.StoredPaymentActions
-import app.minimpos.app.payment.TransactionLifecycle
 import app.minimpos.core.codec.RefundQrPayload
 import app.minimpos.core.money.AmountEntry
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -142,8 +141,11 @@ data class RefundResultUiState(
     /** Whether the terminal accepted the refund (Adyen confirms it later). */
     val accepted: Boolean get() = refund?.status == RefundStatus.REQUESTED
 
-    /** Whether the refund's outcome is unknown and can be checked again with the terminal. */
-    val canRecheck: Boolean get() = refund?.status == RefundStatus.UNKNOWN && refund.serviceId != null
+    /**
+     * Whether the refund's outcome is unknown and can be checked again, the way it was sent (see
+     * [RefundEntity.canCheckAgain]).
+     */
+    val canRecheck: Boolean get() = refund?.canCheckAgain == true
 }
 
 /**
@@ -153,21 +155,18 @@ data class RefundResultUiState(
  * @param refundId The refund shown.
  * @param refunds Where it is stored.
  * @param receipts Prints and emails its receipt.
- * @param lifecycle The refunds' lifecycle, for status checks and leaving the result.
+ * @param operations Asks again about an unknown outcome the way the refund was sent, and leaves the result.
  * @param justMade False when opened from history: nothing is delivered automatically and leaving acknowledges nothing.
- * @param checkout Refunds of saved-card charges sent through the Checkout API, for their status checks and leaving the
- *   result; null where there are none.
  */
 class RefundResultViewModel(
     refundId: String,
     refunds: RefundRepository,
     receipts: ReceiptDelivery,
-    private val lifecycle: TransactionLifecycle<RefundStart>,
+    private val operations: FinancialOperations,
     private val justMade: Boolean = true,
-    private val checkout: CheckoutRefunds? = null,
 ) : ViewModel() {
     /** The receipt, printing and emailing it, and re-checking an unknown outcome. */
-    val transaction = TransactionActions.forRefund(viewModelScope, refundId, receipts, lifecycle, fresh = justMade, checkout = checkout)
+    val transaction = TransactionActions.forRefund(viewModelScope, refundId, receipts, operations, fresh = justMade)
 
     /** The screen state, updated whenever the refund, settings, printer or an action changes. */
     val state: StateFlow<RefundResultUiState> =
@@ -176,9 +175,6 @@ class RefundResultViewModel(
 
     /** Leaves the result, so the next refund can start. */
     fun finish() {
-        if (justMade) {
-            lifecycle.acknowledge()
-            checkout?.acknowledge()
-        }
+        if (justMade) operations.acknowledgeRefund()
     }
 }

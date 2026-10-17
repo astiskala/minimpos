@@ -3,15 +3,15 @@ package app.minimpos.app.terminal
 import app.minimpos.app.data.db.Failure
 import app.minimpos.app.data.db.SetupProblem
 import app.minimpos.app.data.security.SecretStoreException
-import app.minimpos.app.data.settings.SettingsRepository
 import app.minimpos.app.data.settings.TerminalMode
 import app.minimpos.terminal.transport.AdyenTerminalDetails
 import app.minimpos.terminal.transport.CredentialLookup
 import app.minimpos.terminal.transport.DiscoveredKey
+import app.minimpos.terminal.transport.SharedKeyApi
 import app.minimpos.terminal.transport.SharedKeyLookup
 import app.minimpos.terminal.transport.TerminalDetails
-import app.minimpos.terminal.transport.TerminalDetailsApi
 import app.minimpos.terminal.transport.TerminalEnvironment
+import app.minimpos.terminal.transport.TerminalListingApi
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
@@ -72,8 +72,8 @@ sealed interface SetupDiscoveryChoice {
 }
 
 /** Optional setup discovery through Management, independent of payment readiness.
- * @param setups Unlocks the API key through the existing setup boundary.
- * @param settings Saves selected connection fields.
+ * @param setups Unlocks the API key through the existing setup boundary, and saves selected connection fields through
+ *   its [TerminalSetupSource.SetupFence] only while the setup a search began on is still stored.
  * @param savePassphrase Encrypts a retrieved passphrase through the container's secret-store writer.
  * @param connect Builds read-only Management access; tests inject a fake.
  * @param readEnvironment Reads this device's certificate before using Management.
@@ -81,9 +81,8 @@ sealed interface SetupDiscoveryChoice {
  */
 class SetupDiscovery(
     private val setups: TerminalSetupSource,
-    private val settings: SettingsRepository,
     private val savePassphrase: suspend (String) -> Unit,
-    private val connect: (String) -> TerminalDetailsApi = { AdyenTerminalDetails(it) },
+    private val connect: (String) -> SharedKeyApi = { AdyenTerminalDetails(it) },
     private val readEnvironment: suspend () -> Unit = {},
     private val sharedKeys: SharedKeySetup,
 ) {
@@ -98,10 +97,10 @@ class SetupDiscovery(
             val unlocked = setups.unlocked()
             val key = unlocked.apiKey ?: return@withLock SetupDiscoverySearch.Unavailable
             val setup = unlocked.setup
-            if (!setup.discoversTerminals) return@withLock SetupDiscoverySearch.Unavailable
+            if (!setup.capabilities.discoversTerminals) return@withLock SetupDiscoverySearch.Unavailable
             val environment = setup.environment ?: return@withLock SetupDiscoverySearch.Unavailable
             val api = connect(key)
-            val credential = api.credential(environment, setup.usesCloudDeviceApi)
+            val credential = api.credential(environment, setup.capabilities.usesCloudDeviceApi)
             if (credential is CredentialLookup.Failed) return@withLock SetupDiscoverySearch.Failed(Failure.Remote(credential.fault))
             val onDevice = setup.onTerminal && setup.mode == TerminalMode.TERMINAL
             val terminals =
@@ -109,7 +108,7 @@ class SetupDiscovery(
                     is DiscoveredTerminals.Found -> found.terminals
                     is DiscoveredTerminals.Failed -> return@withLock SetupDiscoverySearch.Failed(found.failure)
                 }
-            selection = Selection(key, setup, api, environment, terminals)
+            selection = Selection(setups.SetupFence(unlocked, SetupFreshness.CREDENTIAL), setup, api, environment, terminals)
             SetupDiscoverySearch.Found(terminals.map { it.id })
         }
 
@@ -147,10 +146,7 @@ class SetupDiscovery(
                 }
             val local = selected.setup.mode == TerminalMode.TERMINAL
             val lookup = if (local) selected.api.sharedKey(terminal.id, selected.environment) else null
-            val current = setups.unlocked()
-            if (current.apiKey != selected.key || current.setup.settings.terminal != selected.setup.settings.terminal) {
-                return@withLock SetupDiscoveryChoice.Ignored
-            }
+            if (!selected.fence.stillCurrent()) return@withLock SetupDiscoveryChoice.Ignored
             val key = (lookup as? SharedKeyLookup.Found)?.key?.takeIf { store(it) }
             apply(selected, terminal, key)
             choiceOutcome(selected, terminal, key, lookup)
@@ -176,24 +172,13 @@ class SetupDiscovery(
     internal suspend fun setupKey(confirmed: SharedKeyOffer? = null): SharedKeySetupOutcome =
         mutex.withLock {
             val unlocked = setups.unlocked(forValidation = true)
-
-            suspend fun unchanged(): Boolean {
-                val current = setups.unlocked(forValidation = true)
-                return current.apiKey == unlocked.apiKey && current.setup.settings.terminal == unlocked.setup.settings.terminal
-            }
-            val result = sharedKeys.resolve(unlocked, confirmed, unchanged = ::unchanged)
+            // The passphrase saved below is part of this work, so only the connection fields and API key must stay.
+            val fence = setups.SetupFence(unlocked, SetupFreshness.CREDENTIAL)
+            val result = sharedKeys.resolve(unlocked, confirmed, unchanged = fence::stillCurrent)
             if (result !is SharedKeySetupOutcome.Ready) return@withLock result
-            if (!unchanged()) return@withLock SharedKeySetupOutcome.Failed(SetupProblem.SETUP_CHANGED)
+            fence.changed()?.let { return@withLock SharedKeySetupOutcome.Failed(it) }
             savePassphrase(result.key.passphrase)
-            settings.update {
-                if (it.terminal !=
-                    unlocked.setup.settings.terminal
-                ) {
-                    it
-                } else {
-                    it.copy(terminal = it.terminal.copy(keyIdentifier = result.key.identifier, keyVersion = result.key.version))
-                }
-            }
+            fence.update { it.copy(terminal = it.terminal.copy(keyIdentifier = result.key.identifier, keyVersion = result.key.version)) }
             result
         }
 
@@ -210,50 +195,46 @@ class SetupDiscovery(
         terminal: TerminalDetails,
         key: DiscoveredKey?,
     ) {
-        settings.update {
-            if (it.terminal != selected.setup.settings.terminal) {
-                it
-            } else {
-                it.copy(
-                    terminal =
-                        it.terminal.copy(
-                            poiIdOverride =
-                                if (selected.setup.onTerminal &&
-                                    selected.setup.mode == TerminalMode.TERMINAL
-                                ) {
-                                    it.terminal.poiIdOverride
-                                } else {
-                                    terminal.id
-                                },
-                            merchantAccount = terminal.merchantAccount.ifBlank { it.terminal.merchantAccount },
-                            storeId = terminal.storeId,
-                            host =
-                                if (selected.setup.mode == TerminalMode.TERMINAL &&
-                                    !selected.setup.onTerminal
-                                ) {
-                                    terminal.host.ifBlank { it.terminal.host }
-                                } else {
-                                    it.terminal.host
-                                },
-                            keyIdentifier = key?.identifier ?: it.terminal.keyIdentifier,
-                            keyVersion = key?.version ?: it.terminal.keyVersion,
-                        ),
-                )
-            }
+        selected.fence.update {
+            it.copy(
+                terminal =
+                    it.terminal.copy(
+                        poiIdOverride =
+                            if (selected.setup.onTerminal &&
+                                selected.setup.mode == TerminalMode.TERMINAL
+                            ) {
+                                it.terminal.poiIdOverride
+                            } else {
+                                terminal.id
+                            },
+                        merchantAccount = terminal.merchantAccount.ifBlank { it.terminal.merchantAccount },
+                        storeId = terminal.storeId,
+                        host =
+                            if (selected.setup.mode == TerminalMode.TERMINAL &&
+                                !selected.setup.onTerminal
+                            ) {
+                                terminal.host.ifBlank { it.terminal.host }
+                            } else {
+                                it.terminal.host
+                            },
+                        keyIdentifier = key?.identifier ?: it.terminal.keyIdentifier,
+                        keyVersion = key?.version ?: it.terminal.keyVersion,
+                    ),
+            )
         }
     }
 
     private class Selection(
-        val key: String,
+        val fence: TerminalSetupSource.SetupFence,
         val setup: TerminalSetup,
-        val api: TerminalDetailsApi,
+        val api: SharedKeyApi,
         val environment: TerminalEnvironment,
         val terminals: List<TerminalDetails>,
     )
 }
 
 internal class SetupAccess(
-    private val connect: (String) -> TerminalDetailsApi = { AdyenTerminalDetails(it) },
+    private val connect: (String) -> TerminalListingApi = { AdyenTerminalDetails(it) },
 ) {
     /** Why the credential or terminal assignment of [unlocked] cannot be used; null when it can. */
     suspend fun verify(unlocked: UnlockedSetup): Failure? {
@@ -275,16 +256,27 @@ internal class SetupAccess(
 
             else -> {
                 val api = connect(key)
-                when (val credential = api.credential(environment, setup.usesCloudDeviceApi)) {
-                    is CredentialLookup.Failed -> Failure.Remote(credential.fault)
-                    CredentialLookup.Allowed -> if (setup.discoversTerminals && setup.poiId != null) assignment(api, setup) else null
+                when (val credential = api.credential(environment, setup.capabilities.usesCloudDeviceApi)) {
+                    is CredentialLookup.Failed -> {
+                        Failure.Remote(credential.fault)
+                    }
+
+                    CredentialLookup.Allowed -> {
+                        if (setup.capabilities.discoversTerminals &&
+                            setup.poiId != null
+                        ) {
+                            assignment(api, setup)
+                        } else {
+                            null
+                        }
+                    }
                 }
             }
         }
     }
 
     private suspend fun assignment(
-        api: TerminalDetailsApi,
+        api: TerminalListingApi,
         setup: TerminalSetup,
     ): Failure? =
         TerminalAssignments.verifyAccess(

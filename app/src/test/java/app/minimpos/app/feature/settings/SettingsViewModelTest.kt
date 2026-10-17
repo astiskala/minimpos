@@ -2,6 +2,7 @@ package app.minimpos.app.feature.settings
 
 import app.minimpos.app.AppContainer
 import app.minimpos.app.FakeDevice
+import app.minimpos.app.FakeLinkApi
 import app.minimpos.app.FakeStoreDetails
 import app.minimpos.app.FakeTerminal
 import app.minimpos.app.TestEnvironment
@@ -19,9 +20,12 @@ import app.minimpos.app.data.settings.TerminalMode
 import app.minimpos.app.feature.ActionOutcome
 import app.minimpos.app.terminal.AdyenApi
 import app.minimpos.app.terminal.ReceiptBusiness
+import app.minimpos.app.terminal.SimulatedTerminal
 import app.minimpos.app.terminal.TerminalSetupSource
+import app.minimpos.app.terminal.VirtualPrinter
 import app.minimpos.core.receipt.PlainTextReceiptRenderer
 import app.minimpos.core.tax.TaxRates
+import app.minimpos.terminal.checkout.CheckoutApi
 import app.minimpos.terminal.checkout.PaymentModifications
 import app.minimpos.terminal.simulator.SimulatedModifications
 import app.minimpos.terminal.transport.ApiKey
@@ -103,7 +107,11 @@ class SettingsViewModelTest {
                 }
             }
         val api =
-            AdyenApi(TerminalSetupSource(container.settings, container.secrets, container.device), modifications, verifyAccess = { null })
+            AdyenApi(
+                TerminalSetupSource(container.settings, container.secrets, container.device),
+                CheckoutApi.of(modifications, FakeLinkApi(), SimulatedTerminal(VirtualPrinter()).savedCards { emptyList() }),
+                verifyAccess = { null },
+            )
         val vm = settingsViewModel(api = api)
         vm.saveAndTest(Secret.ADYEN_API_KEY)
         await { entered.await() }

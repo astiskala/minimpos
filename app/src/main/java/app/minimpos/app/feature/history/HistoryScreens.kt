@@ -74,9 +74,13 @@ import app.minimpos.app.feature.sale.adviceText
 import app.minimpos.app.feature.sale.statusKind
 import app.minimpos.app.feature.sale.statusTitle
 import app.minimpos.app.feature.stillUnconfirmed
+import app.minimpos.app.history.DayTotals
+import app.minimpos.app.history.HistoryDay
 import app.minimpos.app.history.PaymentAction
 import app.minimpos.app.history.decline
+import app.minimpos.app.history.linkUnsettled
 import app.minimpos.app.history.methodCode
+import app.minimpos.app.history.paidOnline
 import app.minimpos.app.history.simulatedLink
 import app.minimpos.app.share.ShareEffect
 import app.minimpos.app.ui.components.Card
@@ -531,7 +535,7 @@ private fun SaleDetailOutcome(
         HoldNotes(sale, money)
         if (sale.simulatedLink) {
             OutcomeNote(stringResource(R.string.link_simulation_note))
-        } else if (sale.paymentLink && sale.status == SaleStatus.APPROVED) {
+        } else if (sale.paidOnline) {
             OutcomeNote(stringResource(R.string.link_paid_note))
         }
     }
@@ -641,7 +645,7 @@ private fun ColumnScope.SaleDetailActions(
     onShowLink: () -> Unit,
 ) {
     val sale = state.record?.sale ?: return
-    if (sale.paymentLink && (sale.status == SaleStatus.AWAITING_PAYMENT || sale.status == SaleStatus.UNKNOWN)) {
+    if (sale.linkUnsettled) {
         SecondaryButton(
             stringResource(R.string.detail_show_link),
             onShowLink,
@@ -657,7 +661,7 @@ private fun ColumnScope.SaleDetailActions(
             modifier = Modifier.fillMaxWidth(),
         )
     }
-    if (sale.status == SaleStatus.UNKNOWN && sale.serviceId != null) {
+    if (PaymentAction.CHECK_AGAIN in state.actions) {
         SecondaryButton(
             stringResource(R.string.result_check_again),
             onRecheck,
@@ -798,8 +802,7 @@ internal fun historyViewModel(): HistoryViewModel {
             receipts = container.receipts,
             gateway = container.gateway,
             terminal = container.terminalStatus.state,
-            payments = container.payments,
-            refunds = container.refunds,
+            operations = container.operations,
             permitsClose = container::managerPermits,
         )
     }
@@ -815,8 +818,7 @@ private fun saleDetailViewModel(saleId: String): SaleDetailViewModel {
             container.refundRecords,
             container.receipts,
             container.storedPaymentActions,
-            container.payments,
-            container.savedCardCharges,
+            container.operations,
         )
     }
 }

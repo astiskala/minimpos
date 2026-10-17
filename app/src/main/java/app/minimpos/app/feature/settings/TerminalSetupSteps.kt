@@ -101,10 +101,10 @@ internal fun ColumnScope.TerminalSteps(
         )
     val update: TerminalUpdate = { transform -> events.onUpdate { it.copy(terminal = transform(it.terminal)) } }
     key(status.mode, status.environment, setup.revision) {
-        if (status.selectsEnvironment) {
+        if (status.capabilities.selectsEnvironment) {
             EnvironmentStep(status.environment, update)
         }
-        if (!status.selectsEnvironment || status.environment != null || state.hasSavedConnectionDetails()) {
+        if (!status.capabilities.selectsEnvironment || status.environment != null || state.hasSavedConnectionDetails()) {
             DestinationSteps(status, state, actions, setup, events, setupEvents, api, update)
         }
     }
@@ -195,7 +195,7 @@ private fun ColumnScope.DestinationSteps(
         if (status.needsPaymentsApp(suppliedDetails, api.keySaved)) return
     }
     AdyenApiStep(
-        number = if (status.selectsEnvironment || status.mode == TerminalMode.PAYMENTS_APP) 2 else 1,
+        number = if (status.capabilities.selectsEnvironment || status.mode == TerminalMode.PAYMENTS_APP) 2 else 1,
         cloud = status.mode == TerminalMode.CLOUD,
         discovers = status.mode != TerminalMode.PAYMENTS_APP,
         discoveryReady = api.testCompleted(actions.api, testedFields),

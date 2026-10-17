@@ -5,9 +5,9 @@ import app.minimpos.app.data.db.SetupProblem
 import app.minimpos.app.data.settings.TerminalSettings
 import app.minimpos.terminal.transport.Fault
 import app.minimpos.terminal.transport.TerminalDetails
-import app.minimpos.terminal.transport.TerminalDetailsApi
 import app.minimpos.terminal.transport.TerminalEnvironment
 import app.minimpos.terminal.transport.TerminalListing
+import app.minimpos.terminal.transport.TerminalListingApi
 
 /** Pure reading of a terminal listing, without credentials, storage or remote calls. */
 internal sealed interface TerminalAssignment {
@@ -75,7 +75,7 @@ internal sealed interface AssignedTerminal {
 internal object TerminalAssignments {
     /** Lists eligible terminals in [environment], filtering to [poiId] when [onDevice]. */
     suspend fun listOffered(
-        api: TerminalDetailsApi,
+        api: TerminalListingApi,
         environment: TerminalEnvironment,
         onDevice: Boolean,
         poiId: String?,
@@ -99,7 +99,7 @@ internal object TerminalAssignments {
 
     /** Resolves an automatic or explicit [poiId] in [environment] for [merchantAccount]. */
     suspend fun discover(
-        api: TerminalDetailsApi,
+        api: TerminalListingApi,
         environment: TerminalEnvironment,
         poiId: String?,
         merchantAccount: String,
@@ -120,7 +120,7 @@ internal object TerminalAssignments {
 
     /** Verifies that [poiId] in [environment] is accessible and assigned to [merchantAccount]; null when valid. */
     suspend fun verifyAccess(
-        api: TerminalDetailsApi,
+        api: TerminalListingApi,
         environment: TerminalEnvironment,
         poiId: String,
         merchantAccount: String,
@@ -132,7 +132,7 @@ internal object TerminalAssignments {
 
     /** Verifies that [poiId] in [environment] has a unique identity and unchanged account/store in [original]. */
     suspend fun verifyUnchanged(
-        api: TerminalDetailsApi,
+        api: TerminalListingApi,
         environment: TerminalEnvironment,
         poiId: String,
         original: TerminalSettings,
@@ -144,7 +144,7 @@ internal object TerminalAssignments {
 
     /** Reads the assigned terminal [poiId] in [environment] for [merchantAccount], checking the response environment. */
     suspend fun assigned(
-        api: TerminalDetailsApi,
+        api: TerminalListingApi,
         environment: TerminalEnvironment,
         poiId: String,
         merchantAccount: String,
@@ -163,7 +163,7 @@ internal object TerminalAssignments {
         }
 
     private suspend fun query(
-        api: TerminalDetailsApi,
+        api: TerminalListingApi,
         environment: TerminalEnvironment,
         poiId: String?,
     ): ListingResult =

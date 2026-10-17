@@ -5,10 +5,10 @@ import app.minimpos.app.data.db.SetupProblem
 import app.minimpos.core.payment.PaymentContext
 import app.minimpos.terminal.transport.Fault
 import app.minimpos.terminal.transport.RemoteTerminalCapabilities
+import app.minimpos.terminal.transport.TerminalCapabilitiesApi
 import app.minimpos.terminal.transport.TerminalCapabilitiesLookup
 import app.minimpos.terminal.transport.TerminalCapabilitiesPatch
 import app.minimpos.terminal.transport.TerminalCapabilitiesUpdate
-import app.minimpos.terminal.transport.TerminalDetailsApi
 import app.minimpos.terminal.transport.TerminalEnvironment
 import app.minimpos.terminal.transport.TerminalGratuity
 import app.minimpos.terminal.transport.TerminalMotoSettings
@@ -235,7 +235,7 @@ sealed interface CapabilityPatchResult {
  */
 class CapabilityDiscovery(
     private val setups: TerminalSetupSource,
-    private val terminals: (String) -> TerminalDetailsApi,
+    private val terminals: (String) -> TerminalCapabilitiesApi,
     private val walletMethods: (String, TerminalEnvironment) -> WalletMethodsApi,
 ) {
     private val mutex = Mutex()
@@ -258,15 +258,16 @@ class CapabilityDiscovery(
             val origin = setups.unlocked()
             val setup = origin.setup
             val context = setup.paymentContext()
-            val old = state.value.takeIf { it.identity == origin.validationIdentity && it.context == context } ?: AdyenCapabilitiesState()
+            val identity = setups.SetupFence(origin, SetupFreshness.SECRETS).identity
+            val old = state.value.takeIf { it.identity == identity && it.context == context } ?: AdyenCapabilitiesState()
             val initial =
                 old.copy(
                     context = context,
-                    identity = origin.validationIdentity,
-                    supportsTerminalFeatures = setup.supportsTerminalFeatures,
-                    supportsOfflinePayments = setup.supportsOfflinePayments,
-                    supportsShopperDisplay = setup.supportsShopperDisplay,
-                    discoversTerminals = setup.discoversTerminals,
+                    identity = identity,
+                    supportsTerminalFeatures = setup.capabilities.supportsTerminalFeatures,
+                    supportsOfflinePayments = setup.capabilities.supportsOfflinePayments,
+                    supportsShopperDisplay = setup.capabilities.supportsShopperDisplay,
+                    discoversTerminals = setup.capabilities.discoversTerminals,
                     simulated = setup.apiSetup == ApiSetup.Simulated,
                     checking = true,
                 )
@@ -281,7 +282,7 @@ class CapabilityDiscovery(
                     )
                 }
 
-                !setup.discoversTerminals -> {
+                !setup.capabilities.discoversTerminals -> {
                     publish(
                         origin,
                         initial.copy(checking = false, checked = true, problem = setup.problem, failure = null),
@@ -352,11 +353,11 @@ class CapabilityDiscovery(
                     state.value
                         .copy(
                             context = setup.paymentContext(),
-                            identity = origin.validationIdentity,
-                            supportsTerminalFeatures = setup.supportsTerminalFeatures,
-                            supportsOfflinePayments = setup.supportsOfflinePayments,
-                            supportsShopperDisplay = setup.supportsShopperDisplay,
-                            discoversTerminals = setup.discoversTerminals,
+                            identity = setups.SetupFence(origin, SetupFreshness.SECRETS).identity,
+                            supportsTerminalFeatures = setup.capabilities.supportsTerminalFeatures,
+                            supportsOfflinePayments = setup.capabilities.supportsOfflinePayments,
+                            supportsShopperDisplay = setup.capabilities.supportsShopperDisplay,
+                            discoversTerminals = setup.capabilities.discoversTerminals,
                             simulated = true,
                             checking = false,
                             checked = true,
@@ -366,7 +367,7 @@ class CapabilityDiscovery(
                 state.value = next
                 return@withLock CapabilityPatchResult.Updated
             }
-            if (!setup.discoversTerminals) {
+            if (!setup.capabilities.discoversTerminals) {
                 return@withLock CapabilityPatchResult.NotDone(Failure.Remote(Fault.Unsupported))
             }
             val problem = setup.problem
@@ -381,9 +382,8 @@ class CapabilityDiscovery(
             if (unchangedFailure != null) {
                 return@withLock CapabilityPatchResult.NotDone(unchangedFailure)
             }
-            val actual = setups.unlocked()
-            if (actual.validationIdentity != origin.validationIdentity || actual.setup.settings.terminal != setup.settings.terminal) {
-                return@withLock CapabilityPatchResult.NotDone(Failure.NotSetUp(SetupProblem.SETUP_CHANGED))
+            setups.SetupFence(origin, SetupFreshness.SECRETS).changed()?.let {
+                return@withLock CapabilityPatchResult.NotDone(Failure.NotSetUp(it))
             }
             when (val result = api.updateCapabilities(poiId, environment, patch)) {
                 is TerminalCapabilitiesUpdate.Ready -> {
@@ -518,9 +518,6 @@ class CapabilityDiscovery(
         origin: UnlockedSetup,
         result: AdyenCapabilitiesState,
     ) {
-        val actual = setups.unlocked()
-        if (actual.validationIdentity == origin.validationIdentity && actual.setup.settings.terminal == origin.setup.settings.terminal) {
-            state.value = result
-        }
+        if (setups.SetupFence(origin, SetupFreshness.SECRETS).stillCurrent()) state.value = result
     }
 }

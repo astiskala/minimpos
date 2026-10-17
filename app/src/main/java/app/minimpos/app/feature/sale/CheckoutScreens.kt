@@ -844,7 +844,7 @@ private fun ColumnScope.UnapprovedSaleActions(
     onAbortBusy: () -> Unit,
     onBackToSale: () -> Unit,
 ) {
-    if (state.record?.sale?.status == SaleStatus.UNKNOWN) {
+    if (PaymentAction.CHECK_AGAIN in state.actions) {
         SecondaryButton(
             stringResource(R.string.result_check_again),
             onRecheck,
@@ -1002,6 +1002,6 @@ fun ColumnScope.ReceiptToggle(
 private fun saleResultViewModel(saleId: String): SaleResultViewModel {
     val container = LocalAppContainer.current
     return viewModel(key = saleId) {
-        SaleResultViewModel(saleId, container.storedPayments, container.receipts, container.payments)
+        SaleResultViewModel(saleId, container.storedPayments, container.receipts, container.payments, container.operations)
     }
 }

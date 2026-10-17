@@ -277,15 +277,23 @@ class TerminalGateway(
     val printers: StateFlow<Map<String, Boolean>>
         field = MutableStateFlow<Map<String, Boolean>>(emptyMap())
 
-    private val cloudTerminal =
-        CloudTerminal(cloud, setups.device) { setup, endpoint ->
-            detectedEnvironment.value = DetectedEnvironment(setup, endpoint.environment, endpoint.region)
-        }
-    private val destinations =
+    private val destinations = adapters { detectedEnvironment.value = it }
+    private val cloudTerminal = destinations.filterIsInstance<CloudTerminal>().single()
+
+    /** [adapters] for a candidate's check, which an inner class reaches without a synthetic method accessor. */
+    private val candidateAdapters: ((DetectedEnvironment) -> Unit) -> List<Destination> = ::adapters
+
+    /**
+     * Every destination's adapter, telling [detected] what its transport learned about the terminal it reached; the
+     * gateway's own adapters and a candidate's check differ only in where that goes.
+     */
+    private fun adapters(detected: (DetectedEnvironment) -> Unit): List<Destination> =
         listOf(
             simulator,
-            LocalTerminal(connect, ::environmentDetected),
-            cloudTerminal,
+            LocalTerminal(connect) { origin, environment -> detected(DetectedEnvironment(origin, environment)) },
+            CloudTerminal(cloud, setups.device) { origin, endpoint ->
+                detected(DetectedEnvironment(origin, endpoint.environment, endpoint.region))
+            },
             PaymentsAppDestination(paymentsApp),
         )
 
@@ -426,17 +434,7 @@ class TerminalGateway(
             val setup = unlocked.setup
             setup.connectionProblem?.let { return TerminalConnection.NotSetUp(it) to null }
             val detected = AtomicReference<DetectedEnvironment?>()
-            val candidates =
-                listOf(
-                    simulator,
-                    LocalTerminal(connect) { origin, environment -> detected.set(DetectedEnvironment(origin, environment)) },
-                    CloudTerminal(
-                        cloud,
-                        setups.device,
-                    ) { origin, endpoint -> detected.set(DetectedEnvironment(origin, endpoint.environment, endpoint.region)) },
-                    PaymentsAppDestination(paymentsApp),
-                )
-            val connection = candidates.single { it.rules == setup.destination }.connect(unlocked, application)
+            val connection = candidateAdapters(detected::set).single { it.rules == setup.destination }.connect(unlocked, application)
             return diagnose(connection) to detected.get()
         }
 

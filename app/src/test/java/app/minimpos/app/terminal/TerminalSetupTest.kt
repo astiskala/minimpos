@@ -31,21 +31,21 @@ class TerminalSetupTest {
         listOf(phone, FakeDevice(model = "Tablet")).forEach { device ->
             listOf(TerminalMode.TERMINAL, TerminalMode.CLOUD).forEach { mode ->
                 val setup = resolve(TerminalSettings(mode = mode), device = device)
-                assertThat(setup.selectsEnvironment).isTrue()
+                assertThat(setup.capabilities.selectsEnvironment).isTrue()
                 assertThat(setup.environment).isNull()
                 assertThat(setup.connectionProblem).isEqualTo(SetupProblem.ENVIRONMENT)
                 assertThat(setup.problem).isEqualTo(SetupProblem.ENVIRONMENT)
             }
         }
-        assertThat(resolve(device = onTerminal).selectsEnvironment).isFalse()
-        assertThat(resolve().selectsEnvironment).isFalse()
+        assertThat(resolve(device = onTerminal).capabilities.selectsEnvironment).isFalse()
+        assertThat(resolve().capabilities.selectsEnvironment).isFalse()
         val paymentsApp = FakeDevice(paymentsApps = setOf(TerminalEnvironment.LIVE))
         val setup =
             resolve(
                 TerminalSettings(mode = TerminalMode.PAYMENTS_APP, environment = TerminalEnvironment.TEST),
                 device = paymentsApp,
             )
-        assertThat(setup.selectsEnvironment).isFalse()
+        assertThat(setup.capabilities.selectsEnvironment).isFalse()
         assertThat(setup.environment).isEqualTo(TerminalEnvironment.LIVE)
     }
 
@@ -59,7 +59,7 @@ class TerminalSetupTest {
         assertThat(simulator.connectionProblem).isNull()
         assertThat(simulator.problem).isNull()
         assertThat(simulator.onTerminal).isFalse()
-        assertThat(simulator.checksConnection).isFalse()
+        assertThat(simulator.capabilities.checksConnection).isFalse()
 
         val network = TerminalSettings(mode = TerminalMode.TERMINAL, environment = TerminalEnvironment.TEST)
         assertThat(resolve(network).poiId).isNull()
@@ -74,7 +74,7 @@ class TerminalSetupTest {
         assertThat(resolve(withKey).connectionProblem).isEqualTo(SetupProblem.PASSPHRASE)
         assertThat(resolve(withKey.copy(keyVersion = 0), passphrase).connectionProblem).isEqualTo(SetupProblem.KEY_VERSION)
         assertThat(resolve(withKey, passphrase).connectionProblem).isNull()
-        assertThat(resolve(withKey, passphrase).checksConnection).isTrue()
+        assertThat(resolve(withKey, passphrase).capabilities.checksConnection).isTrue()
     }
 
     @Test

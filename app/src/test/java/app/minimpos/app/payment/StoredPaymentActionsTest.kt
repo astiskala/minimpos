@@ -37,7 +37,7 @@ class StoredPaymentActionsTest {
     private val clock = Clock.fixed(Instant.parse("2026-10-07T23:30:00Z"), ZoneOffset.UTC)
 
     private fun actions() =
-        StoredPaymentActions(container.refunds, container.captures, container.settingsState, clock, zone = { ZoneOffset.ofHours(2) })
+        StoredPaymentActions(container.operations, container.captures, container.settingsState, clock, zone = { ZoneOffset.ofHours(2) })
 
     private fun pay(kind: SaleKind = SaleKind.SALE): SaleWithLines {
         val id =
@@ -109,8 +109,20 @@ class StoredPaymentActionsTest {
             val sale = pay()
             val held = pay(SaleKind.PRE_AUTHORISATION)
             val lifecycle = TransactionLifecycle(backgroundScope, container.gateway, RefundBook(container.refundRecords))
-            val actions = StoredPaymentActions(lifecycle, container.captures, container.settingsState, clock)
+            val checkout = CheckoutRefunds(backgroundScope, container.refundRecords, container.sales, container.api::target)
+            val operations =
+                FinancialOperations(
+                    container.payments,
+                    lifecycle,
+                    container.savedCardCharges,
+                    checkout,
+                    container.links,
+                    container.sales,
+                    container.refundRecords,
+                )
+            val actions = StoredPaymentActions(operations, container.captures, container.settingsState, clock)
             assertThat(actions.refund(refundable(sale), RefundChoice.Everything)).isTrue()
+            assertThat(operations.running).isTrue()
             assertThat(actions.refund(refundable(sale), RefundChoice.Everything)).isFalse()
             assertThat(actions.cancel(held)).isNull()
         }

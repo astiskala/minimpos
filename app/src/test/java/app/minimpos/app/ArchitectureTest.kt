@@ -111,8 +111,10 @@ import app.minimpos.terminal.transport.DiscoveredKey
 import app.minimpos.terminal.transport.ExternalText
 import app.minimpos.terminal.transport.Fault
 import app.minimpos.terminal.transport.MalformedPart
+import app.minimpos.terminal.transport.SharedKeyApi
 import app.minimpos.terminal.transport.TerminalDetailsApi
 import app.minimpos.terminal.transport.TerminalEnvironment
+import app.minimpos.terminal.transport.TerminalListingApi
 import com.tngtech.archunit.base.DescribedPredicate
 import com.tngtech.archunit.base.DescribedPredicate.not
 import com.tngtech.archunit.core.domain.JavaCall.Predicates.target
@@ -1085,13 +1087,16 @@ class ArchitectureTest {
                                 call.target.name.startsWith("rememberVerified")
                         },
                     ),
+                // The container hands completion to the setup source, which calls it once it remembers a verified setup.
                 noClasses()
                     .that()
                     .haveNameNotMatching(
                         within(
                             SharedKeySetup::class.java.name,
                         ),
-                    ).should()
+                    ).and()
+                    .haveNameNotMatching(within(AppContainer::class.java.name))
+                    .should()
                     .callMethodWhere(callTo(SharedKeySetup::class.java.name, "complete")),
                 noClasses()
                     .that(type(TransferImportViewModel::class.java).or(type(SetupVerificationViolation::class.java)))
@@ -1159,7 +1164,7 @@ class ArchitectureTest {
                 .haveNameNotMatching(within("app.minimpos.app.terminal.SharedKeySetup"))
                 .should()
                 .callMethodWhere(
-                    callToSubtypeOf(TerminalDetailsApi::class.java, "createSharedKey"),
+                    callToSubtypeOf(SharedKeyApi::class.java, "createSharedKey"),
                 )
 
         // Only explicit switch confirmation and its authenticated import journal may discard recovery identities.
@@ -1219,7 +1224,7 @@ class ArchitectureTest {
                     .that()
                     .haveNameNotMatching(within(TerminalAssignments::class.java.name))
                     .should()
-                    .callMethodWhere(callToSubtypeOf(TerminalDetailsApi::class.java, "terminals")),
+                    .callMethodWhere(callToSubtypeOf(TerminalListingApi::class.java, "terminals")),
             )
 
         // Encrypted recovery journals are read and decoded in one snapshot through EncryptedJournal.

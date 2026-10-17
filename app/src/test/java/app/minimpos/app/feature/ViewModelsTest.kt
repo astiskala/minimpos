@@ -258,7 +258,7 @@ class ViewModelsTest {
                 .session(SaleKind.SALE)
                 .cart.value.lines,
         ).isEmpty()
-        val vm = SaleResultViewModel(saleId, container.storedPayments, container.receipts, container.payments)
+        val vm = SaleResultViewModel(saleId, container.storedPayments, container.receipts, container.payments, container.operations)
         val state = await { vm.state.first { it.transaction.print.done && it.transaction.email.done } }
         assertThat(state.approved).isTrue()
         assertThat(state.transaction.merchantCopyPending).isTrue()
@@ -281,7 +281,7 @@ class ViewModelsTest {
         vm.transaction.email("c@d.co")
         await { vm.state.first { it.transaction.email.outcome == ActionOutcome.Emailed("c@d.co") } }
         // A second view model for the same sale (the screen recreated) delivers nothing again.
-        val again = SaleResultViewModel(saleId, container.storedPayments, container.receipts, container.payments)
+        val again = SaleResultViewModel(saleId, container.storedPayments, container.receipts, container.payments, container.operations)
         await { again.state.first { it.record != null && it.transaction.receipt != null } }
         assertThat(again.state.value.transaction.print).isEqualTo(ActionState())
         assertThat(env.mail.sent).hasSize(2)
@@ -299,7 +299,7 @@ class ViewModelsTest {
         container.session(SaleKind.SALE).addProduct(latte, tax)
         val saleId = payAndWait()
         val screen = CoroutineScope(Job() + UnconfinedTestDispatcher())
-        val actions = TransactionActions.forSale(screen, saleId, container.receipts, container.payments, fresh = false)
+        val actions = TransactionActions.forSale(screen, saleId, container.receipts, container.operations, fresh = false)
         actions.email("a@b.co")
         // Leaving the screen cancels its scope while the email is being sent.
         screen.cancel()
@@ -327,7 +327,7 @@ class ViewModelsTest {
         assertThat(checkout.pay()).isTrue()
         assertThat(checkout.pay()).isFalse()
         val saleId = await { (container.payments.state.first { it is TransactionState.Finished } as TransactionState.Finished).id }
-        val result = SaleResultViewModel(saleId, container.storedPayments, container.receipts, container.payments)
+        val result = SaleResultViewModel(saleId, container.storedPayments, container.receipts, container.payments, container.operations)
         await { result.state.first { it.record?.sale?.isPartiallyPaid == true } }
         assertThat(result.payRemaining()).isTrue()
         assertThat(result.payRemaining()).isFalse()
@@ -363,7 +363,7 @@ class ViewModelsTest {
         val (tax, latte) = seedCatalogue()
         container.session(SaleKind.SALE).addProduct(latte, tax)
         val saleId = payAndWait()
-        val vm = SaleResultViewModel(saleId, container.storedPayments, container.receipts, container.payments)
+        val vm = SaleResultViewModel(saleId, container.storedPayments, container.receipts, container.payments, container.operations)
         val busy = await { vm.state.first { it.record != null } }
         assertThat(busy.advice).isEqualTo(RetryAdvice.TERMINAL_BUSY)
         assertThat(busy.busyServiceId).isEqualTo(TerminalSimulator.BUSY_SERVICE_ID)
@@ -413,7 +413,7 @@ class ViewModelsTest {
         assertThat(refund.merchantReference).startsWith("R-")
         assertThat(refund.full).isFalse()
 
-        val result = RefundResultViewModel(refundId, container.refundRecords, container.receipts, container.refunds)
+        val result = RefundResultViewModel(refundId, container.refundRecords, container.receipts, container.operations)
         val resultState = await { result.state.first { it.refund != null } }
         assertThat(resultState.accepted).isTrue()
         assertThat(resultState.canRecheck).isFalse()
@@ -444,7 +444,8 @@ class ViewModelsTest {
         container.refunds.acknowledge()
 
         // Opened again from history, nothing is delivered automatically or acknowledged.
-        val fromHistory = RefundResultViewModel(refundId, container.refundRecords, container.receipts, container.refunds, justMade = false)
+        val fromHistory =
+            RefundResultViewModel(refundId, container.refundRecords, container.receipts, container.operations, justMade = false)
         assertThat(await { fromHistory.state.first { it.refund != null } }.transaction.print.running).isFalse()
         // Only an unknown outcome is checked again; a settled one has nothing left to confirm.
         fromHistory.transaction.recheck()
@@ -534,7 +535,7 @@ class ViewModelsTest {
                 container.refundRecords,
                 container.receipts,
                 container.storedPaymentActions,
-                container.payments,
+                container.operations,
             )
         val state = await { detail.state.first { it.record != null } }
         assertThat(state.actions).contains(PaymentAction.REFUND)

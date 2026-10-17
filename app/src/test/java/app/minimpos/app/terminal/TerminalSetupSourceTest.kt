@@ -3,6 +3,8 @@ package app.minimpos.app.terminal
 import app.minimpos.app.FakeDevice
 import app.minimpos.app.TestEnvironment
 import app.minimpos.app.await
+import app.minimpos.app.data.db.SetupProblem
+import app.minimpos.app.data.security.Secret
 import app.minimpos.app.data.settings.TerminalMode
 import app.minimpos.terminal.transport.CloudRegion
 import app.minimpos.terminal.transport.TerminalEnvironment
@@ -78,5 +80,39 @@ class TerminalSetupSourceTest {
                     .current()
                     .receipt.title,
             ).isEqualTo("New merchant text")
+        }
+
+    @Test
+    fun `a fence keeps work to the setup it began on, at the strength it needs`() =
+        await {
+            // A local terminal reads the shared-key passphrase as well as the API key.
+            container.settings.update { it.copy(terminal = it.terminal.copy(mode = TerminalMode.TERMINAL)) }
+            container.secrets.set(Secret.ADYEN_API_KEY, "KEY-1")
+            container.secrets.set(Secret.TERMINAL_PASSPHRASE, "first")
+            val origin = source.unlocked()
+            val connection = source.SetupFence(origin.setup)
+            val credential = source.SetupFence(origin, SetupFreshness.CREDENTIAL)
+            val secrets = source.SetupFence(origin, SetupFreshness.SECRETS)
+            assertThat(listOf(connection, credential, secrets).map { it.stillCurrent() }).containsExactly(true, true, true)
+            assertThat(secrets.identity).isNotNull()
+
+            // A passphrase the work saves itself changes the secret snapshot, not the credential.
+            container.secrets.set(Secret.TERMINAL_PASSPHRASE, "second")
+            assertThat(connection.stillCurrent()).isTrue()
+            assertThat(credential.stillCurrent()).isTrue()
+            assertThat(secrets.changed()).isEqualTo(SetupProblem.SETUP_CHANGED)
+            assertThat(secrets.update { it.copy(languageTag = "ja") }).isFalse()
+            assertThat(container.settings.current().languageTag).isEmpty()
+
+            container.secrets.set(Secret.ADYEN_API_KEY, "KEY-2")
+            assertThat(credential.stillCurrent()).isFalse()
+            assertThat(credential.update { it.copy(languageTag = "ja") }).isFalse()
+            assertThat(connection.update { it.copy(languageTag = "ja") }).isTrue()
+            assertThat(container.settings.current().languageTag).isEqualTo("ja")
+
+            container.settings.update { it.copy(terminal = it.terminal.copy(host = "192.0.2.10")) }
+            assertThat(connection.changed()).isEqualTo(SetupProblem.SETUP_CHANGED)
+            assertThat(connection.update { it.copy(languageTag = "") }).isFalse()
+            assertThat(container.settings.current().languageTag).isEqualTo("ja")
         }
 }

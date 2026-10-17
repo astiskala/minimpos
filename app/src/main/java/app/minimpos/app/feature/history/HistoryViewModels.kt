@@ -17,20 +17,18 @@ import app.minimpos.app.feature.TransactionActionsState
 import app.minimpos.app.feature.launchWrite
 import app.minimpos.app.feature.toState
 import app.minimpos.app.history.HistoryAccounting
-import app.minimpos.app.history.HistoryActivityKind
+import app.minimpos.app.history.HistoryDay
 import app.minimpos.app.history.PaymentAction
 import app.minimpos.app.history.PaymentStanding
-import app.minimpos.app.history.RefundStart
 import app.minimpos.app.history.RefundablePayment
 import app.minimpos.app.history.StoredPayment
 import app.minimpos.app.history.StoredPayments
 import app.minimpos.app.history.TerminalReconciliationReport
 import app.minimpos.app.history.standing
-import app.minimpos.app.payment.PaymentStart
+import app.minimpos.app.payment.FinancialOperations
 import app.minimpos.app.payment.ReceiptDelivery
-import app.minimpos.app.payment.SavedCardCharges
 import app.minimpos.app.payment.StoredPaymentActions
-import app.minimpos.app.payment.TransactionLifecycle
+import app.minimpos.app.payment.StoredTransaction
 import app.minimpos.app.terminal.Attempt
 import app.minimpos.app.terminal.TerminalGateway
 import app.minimpos.app.terminal.TerminalState
@@ -45,53 +43,8 @@ import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
-
-/**
- * Processing-day totals per currency for the activities the filter shows: approved sales, accepted captures with
- * their tips, accepted refunds and newly authorized holds. Later capture or cancellation does not erase original
- * hold activity. Manual-capture bills count as sales only on dated capture acceptance.
- *
- * @property salesMinor Approved sales' amounts (with tips, or what a pre-authorisation captured) by ISO 4217 currency
- *   code, in minor units.
- * @property saleCount Number of approved sales.
- * @property refundsMinor Accepted refunds' amounts by currency code, in minor units.
- * @property refundCount Number of accepted refunds.
- * @property preAuthsMinor Newly authorized manual-capture amounts by currency code, in minor units;
- *   unchanged by later capture or cancellation.
- * @property preAuthCount Number of newly authorized holds.
- * @property tipsMinor The tips included in [salesMinor], by currency code, in minor units; only currencies with tips.
- */
-data class DayTotals(
-    val salesMinor: Map<String, Long>,
-    val saleCount: Int,
-    val refundsMinor: Map<String, Long>,
-    val refundCount: Int,
-    val preAuthsMinor: Map<String, Long> = emptyMap(),
-    val preAuthCount: Int = 0,
-    val tipsMinor: Map<String, Long> = emptyMap(),
-)
-
-/**
- * One day of history, in the device's time zone.
- *
- * @property date The local date.
- * @property totals The day's totals.
- * @property items Original transactions with dated activity on this day, newest activity first.
- * @property captures Sale IDs whose accepted capture occurred on this day.
- * @property times Most recent activity per original transaction, in epoch milliseconds.
- */
-data class HistoryDay(
-    val date: LocalDate,
-    val totals: DayTotals,
-    val items: List<HistoryItem>,
-    /** Sales whose accepted capture occurred on this day. */
-    val captures: Set<String> = emptySet(),
-    /** Most recent dated activity per original transaction, in epoch milliseconds. */
-    val times: Map<String, Long> = emptyMap(),
-)
 
 /** Which transactions the history list shows. */
 enum class HistoryFilter {
@@ -159,8 +112,8 @@ class HistoryViewModel(
     private val receipts: ReceiptDelivery? = null,
     private val gateway: TerminalGateway? = null,
     private val terminal: Flow<TerminalState> = flowOf(TerminalState()),
-    private val payments: TransactionLifecycle<PaymentStart>? = null,
-    private val refunds: TransactionLifecycle<RefundStart>? = null,
+    /** Asks again about unresolved terminal operations before reconciling; absent only in list-only tests. */
+    private val operations: FinancialOperations? = null,
     private val permitsClose: suspend () -> Boolean = { true },
 ) : ViewModel() {
     private val print = MutableStateFlow(ActionState())
@@ -192,7 +145,7 @@ class HistoryViewModel(
             HistoryUiState(
                 loaded = true,
                 filter = selected,
-                days = group(shown),
+                days = HistoryAccounting.days(shown, zone()),
                 query = text,
                 method = chosen,
                 methods = PaymentMethodFilter.available(sales.values.toList()),
@@ -200,7 +153,7 @@ class HistoryViewModel(
             )
         }.combine(
             combine(canPrint, print, terminal, reconcileState) { available, action, term, (recAction, recReport) ->
-                ReconcileSlice(available, action, gateway != null && term.supportsTerminalFeatures, recAction, recReport)
+                ReconcileSlice(available, action, gateway != null && term.capabilities.supportsTerminalFeatures, recAction, recReport)
             },
         ) { list, slice ->
             list.copy(
@@ -245,10 +198,12 @@ class HistoryViewModel(
             val poiId = currentTerminal.poiId.orEmpty()
             val beforeItems = history.items().first()
             HistoryAccounting.unresolvedTerminalItems(beforeItems, poiId).forEach { item ->
-                when (item) {
-                    is HistoryItem.Sale -> payments?.recheck(item.id)
-                    is HistoryItem.Refund -> refunds?.recheck(item.id)
-                }
+                operations?.recheck(
+                    when (item) {
+                        is HistoryItem.Sale -> StoredTransaction.Sale(item.id)
+                        is HistoryItem.Refund -> StoredTransaction.Refund(item.id)
+                    },
+                )
             }
             when (val attempt = terminalGateway.totals(closePeriod, permitsClose)) {
                 is Attempt.NotSetUp -> {
@@ -342,34 +297,6 @@ class HistoryViewModel(
                 HistoryAccounting.needsAttention(item)
             }
         }
-
-    private fun group(items: List<HistoryItem>): List<HistoryDay> {
-        val currentZone = zone()
-        return HistoryAccounting
-            .activities(items)
-            .filter { it.at != null }
-            .groupBy { Instant.ofEpochMilli(checkNotNull(it.at)).atZone(currentZone).toLocalDate() }
-            .map { (date, activities) ->
-                val totals = HistoryAccounting.totals(activities)
-                val sorted = activities.sortedByDescending { it.at }
-                HistoryDay(
-                    date = date,
-                    totals =
-                        DayTotals(
-                            salesMinor = totals.filterValues { it.saleCount > 0 }.mapValues { it.value.salesMinor },
-                            saleCount = totals.values.sumOf { it.saleCount },
-                            refundsMinor = totals.filterValues { it.refundCount > 0 }.mapValues { it.value.refundsMinor },
-                            refundCount = totals.values.sumOf { it.refundCount },
-                            preAuthsMinor = totals.filterValues { it.holdCount > 0 }.mapValues { it.value.heldMinor },
-                            preAuthCount = totals.values.sumOf { it.holdCount },
-                            tipsMinor = totals.filterValues { it.tipsMinor > 0 }.mapValues { it.value.tipsMinor },
-                        ),
-                    items = sorted.map { it.item }.distinctBy { it.id },
-                    captures = activities.filter { it.kind == HistoryActivityKind.CAPTURE }.map { it.item.id }.toSet(),
-                    times = sorted.distinctBy { it.item.id }.associate { it.item.id to checkNotNull(it.at) },
-                )
-            }.sortedByDescending { it.date }
-    }
 }
 
 /**
@@ -402,8 +329,7 @@ data class SaleDetailUiState(
  * @param refunds Where its refunds and cancellations are stored.
  * @param receipts Prints and emails its receipt.
  * @param operations Cancels holds and retries captures.
- * @param lifecycle The payments' lifecycle, for re-checking an unknown outcome.
- * @param charges Saved-card charges, for re-checking one whose outcome is unknown; null where there are none.
+ * @param financial Asks again about an unknown outcome, the way the payment was sent.
  */
 class SaleDetailViewModel(
     private val saleId: String,
@@ -411,13 +337,12 @@ class SaleDetailViewModel(
     refunds: RefundRepository,
     receipts: ReceiptDelivery,
     private val operations: StoredPaymentActions,
-    lifecycle: TransactionLifecycle<PaymentStart>,
-    charges: SavedCardCharges? = null,
+    financial: FinancialOperations,
 ) : ViewModel() {
     private val local = MutableStateFlow(SaleDetailUiState())
 
     /** The receipt, reprinting and emailing it, and re-checking an unknown outcome. */
-    val transaction = TransactionActions.forSale(viewModelScope, saleId, receipts, lifecycle, fresh = false, charges = charges)
+    val transaction = TransactionActions.forSale(viewModelScope, saleId, receipts, financial, fresh = false)
 
     /** The screen state, updated whenever the sale, its refunds, the capture mode or an action changes. */
     val state: StateFlow<SaleDetailUiState> =

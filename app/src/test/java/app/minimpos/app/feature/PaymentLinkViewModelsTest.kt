@@ -80,7 +80,15 @@ class PaymentLinkViewModelsTest {
         id: String,
         fresh: Boolean = false,
         poll: Duration = 1.hours,
-    ) = PaymentLinkViewModel(id, container.storedPayments, container.receipts, container.links, fresh, poll).also(viewModels::add)
+    ) = PaymentLinkViewModel(
+        id,
+        container.storedPayments,
+        container.receipts,
+        container.links,
+        container.operations,
+        fresh,
+        poll,
+    ).also(viewModels::add)
 
     @Test
     fun `checkout offers a link only while links are set up, and sends the cart as one`() {

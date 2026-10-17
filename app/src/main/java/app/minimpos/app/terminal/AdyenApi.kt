@@ -5,14 +5,12 @@ import app.minimpos.app.data.db.SetupProblem
 import app.minimpos.app.data.security.SecretStore
 import app.minimpos.app.data.settings.TerminalSettings
 import app.minimpos.core.payment.PaymentContext
+import app.minimpos.terminal.checkout.AdyenCheckout
+import app.minimpos.terminal.checkout.CheckoutApi
 import app.minimpos.terminal.checkout.CheckoutCredentials
-import app.minimpos.terminal.checkout.CheckoutModifications
-import app.minimpos.terminal.checkout.CheckoutPaymentLinks
-import app.minimpos.terminal.checkout.CheckoutSavedCards
 import app.minimpos.terminal.checkout.PaymentLinkApi
 import app.minimpos.terminal.checkout.PaymentModifications
 import app.minimpos.terminal.checkout.SavedCardApi
-import app.minimpos.terminal.simulator.SimulatedPaymentLinks
 import app.minimpos.terminal.transport.TerminalEnvironment
 
 /**
@@ -146,30 +144,20 @@ sealed interface ApiCheck {
  * ([TerminalSetup.environment]): selected for network/cloud terminals, or read from this device or the installed Payments app.
  *
  * @param setups Where payments go now, how far the API is set up, and the API key.
- * @param simulated Answers while payments go to the simulator: in the app the [SimulatedTerminal]'s, which knows the
- *   simulator's payments.
- * @param connect Makes the client for real credentials; tests replace it.
- * @param connectLinks Makes the payment link client for real credentials; tests replace it.
- * @param simulatedLinks Answers offline demo links; their final outcomes remain in stored sales.
+ * @param simulated Answers while payments go to the simulator: in the app the [SimulatedTerminal]'s modifications and
+ *   saved cards, which know the simulator's payments, with offline demo links whose outcomes remain in stored sales.
+ * @param connect Makes the Checkout API for real credentials, once per credential; tests replace it.
  * @param verifyAccess Checks the required Management role and current terminal assignment before Checkout verification.
  * @param readEnvironment Refreshes the device certificate before checking saved credentials, without cross-environment probes.
- * @param connectCards Makes the saved-card client for real credentials; tests replace it.
- * @param simulatedCards Answers saved cards while payments go to the simulator; null offers none.
  */
 class AdyenApi(
     private val setups: TerminalSetupSource,
-    private val simulated: PaymentModifications,
-    private val connect: (CheckoutCredentials) -> PaymentModifications = { CheckoutModifications(it) },
-    private val connectLinks: (CheckoutCredentials) -> PaymentLinkApi = { CheckoutPaymentLinks(it) },
-    private val simulatedLinks: PaymentLinkApi = SimulatedPaymentLinks(),
+    private val simulated: CheckoutApi,
+    private val connect: (CheckoutCredentials) -> CheckoutApi = { AdyenCheckout(it) },
     private val verifyAccess: suspend (UnlockedSetup) -> Failure?,
     private val readEnvironment: suspend () -> Unit = {},
-    private val connectCards: (CheckoutCredentials) -> SavedCardApi = { CheckoutSavedCards(it) },
-    private val simulatedCards: SavedCardApi? = null,
 ) {
-    private val clients = Reused<CheckoutCredentials, PaymentModifications>()
-    private val linkClients = Reused<CheckoutCredentials, PaymentLinkApi>()
-    private val cardClients = Reused<CheckoutCredentials, SavedCardApi>()
+    private val clients = Reused<CheckoutCredentials, CheckoutApi>()
 
     /** Where captures, adjustments and payment links go now with the stored settings, as [TerminalSetup.apiSetup] decides. */
     suspend fun target(): ApiTarget {
@@ -177,7 +165,7 @@ class AdyenApi(
         val setup = unlocked.setup
         val target =
             when (val api = setup.apiSetup) {
-                ApiSetup.Simulated -> ApiTarget(api, simulated, simulatedLinks, cards = simulatedCards)
+                ApiSetup.Simulated -> ApiTarget(api, simulated.modifications, simulated.links, cards = simulated.savedCards)
                 ApiSetup.Complete -> connected(setup.settings.terminal, checkNotNull(setup.environment), checkNotNull(unlocked.apiKey))
                 is ApiSetup.Incomplete -> ApiTarget(api)
             }
@@ -191,12 +179,8 @@ class AdyenApi(
         apiKey: String,
     ): ApiTarget {
         val credentials = CheckoutCredentials(apiKey, terminal.merchantAccount.trim(), environment, terminal.liveUrlPrefix.trim())
-        return ApiTarget(
-            ApiSetup.Complete,
-            clients.get(credentials, connect),
-            linkClients.get(credentials, connectLinks),
-            cards = cardClients.get(credentials, connectCards),
-        )
+        val checkout = clients.get(credentials, connect)
+        return ApiTarget(ApiSetup.Complete, checkout.modifications, checkout.links, cards = checkout.savedCards)
     }
 
     /** Checks that the API can be used with the stored settings, without changing anything. */
@@ -210,7 +194,7 @@ class AdyenApi(
         accessVerified: Boolean = false,
     ): ApiCheck {
         val setup = unlocked.setup
-        if (setup.apiSetup == ApiSetup.Simulated) return checkout(simulated)
+        if (setup.apiSetup == ApiSetup.Simulated) return checkout(simulated.modifications)
         val problem = setup.apiSetup.problem
         return when {
             problem != null -> ApiCheck.NotSetUp(problem)

@@ -9,6 +9,7 @@ import app.minimpos.app.data.settings.AppSettings
 import app.minimpos.app.data.settings.PrinterMode
 import app.minimpos.app.data.settings.SettingsRepository
 import app.minimpos.app.data.settings.TerminalMode
+import app.minimpos.app.data.settings.TerminalSettings
 import app.minimpos.core.payment.PaymentContext
 import app.minimpos.terminal.transport.TerminalEnvironment
 import app.minimpos.terminal.transport.TerminalKey
@@ -73,20 +74,25 @@ data class TerminalSetup(
             ?: sharedKeyProblem(settings.terminal, saved).takeIf { connectionProblem == SetupProblem.PAYMENTS_APP_NOT_BOARDED }
             ?: apiSetup.problem
 
-    /** Whether read-only terminal discovery can propose connection fields for this destination. */
-    val discoversTerminals: Boolean get() = destination.discoversTerminals
-
-    /** Whether the API key also needs the Cloud device API role, see [DestinationRules.usesCloudDeviceApi]. */
-    val usesCloudDeviceApi: Boolean get() = destination.usesCloudDeviceApi
+    /** What [destination] can do and asks of this setup, read once from its rules; see [DestinationCapabilities]. */
+    val capabilities: DestinationCapabilities
+        get() =
+            DestinationCapabilities(
+                discoversTerminals = destination.discoversTerminals,
+                usesCloudDeviceApi = destination.usesCloudDeviceApi,
+                selectsEnvironment = destination.selectsEnvironment(onTerminal),
+                checksConnection = destination.checksConnection,
+                scannedWallets = destination.scannedWallets,
+                supportsTerminalFeatures = destination.supportsTerminalFeatures,
+                supportsOfflinePayments = destination.supportsOfflinePayments,
+                supportsShopperDisplay = destination.supportsTerminalFeatures && (!onTerminal || destination.simulatesApi),
+            )
 
     internal val needsSharedKey: Boolean get() = Secret.TERMINAL_PASSPHRASE in destination.secrets
 
     internal val boardsPhone: Boolean get() = destination.boardsPhone
 
     internal val importPending: Boolean get() = apiSetup.problem == SetupProblem.TRANSFER_PENDING
-
-    /** Whether Settings must ask the merchant for TEST or LIVE before API credentials or terminal details. */
-    val selectsEnvironment: Boolean get() = destination.selectsEnvironment(onTerminal)
 
     internal val suppliesCertificateEnvironment: Boolean get() = onTerminal && destination == LocalTerminal
 
@@ -106,12 +112,6 @@ data class TerminalSetup(
             PrinterMode.OFF -> false
             PrinterMode.AUTO -> destination.printer(settings, poiId, printers)
         }
-
-    /**
-     * Whether the connection is checked in the background (at startup and when the setup changes): whenever payments go
-     * to something real rather than the simulator ([DestinationRules.checksConnection]).
-     */
-    val checksConnection: Boolean get() = destination.checksConnection
 
     /**
      * Whether checkout offers payment links: whenever the Checkout API is set up or simulated.
@@ -149,18 +149,6 @@ data class TerminalSetup(
             identity,
         )
     }
-
-    /** Whether the resolved destination supports shopper-presented wallet codes, independently of account configuration. */
-    val scannedWallets: Boolean get() = destination.scannedWallets
-
-    /** Whether physical-terminal features (terminal tipping, Giving, MOTO/MKE, totals, display) are supported. */
-    val supportsTerminalFeatures: Boolean get() = destination.supportsTerminalFeatures
-
-    /** Whether local offline EMV and store-and-forward processing are supported on this destination. */
-    val supportsOfflinePayments: Boolean get() = destination.supportsOfflinePayments
-
-    /** Whether shopper-facing display and input requests are supported (external terminal or simulator). */
-    val supportsShopperDisplay: Boolean get() = destination.supportsTerminalFeatures && (!onTerminal || destination.simulatesApi)
 
     /** Non-secret identity for this resolved setup, with [detected] from its actual transport when known. */
     fun paymentContext(detected: TerminalEnvironment? = environment): PaymentContext =
@@ -308,6 +296,34 @@ data class TerminalSetup(
 }
 
 /**
+ * What a destination can do and asks of its setup, read once from its [DestinationRules] by
+ * [TerminalSetup.capabilities] and carried whole by [TerminalState.capabilities], so a new capability is added in one
+ * place. Non-secret, and holds no settings.
+ *
+ * @property discoversTerminals Whether read-only terminal discovery can propose connection fields.
+ * @property usesCloudDeviceApi Whether the API key also needs the Cloud device API role.
+ * @property selectsEnvironment Whether Settings must ask for TEST or LIVE before API credentials or terminal details.
+ * @property checksConnection Whether the connection is checked in the background, at startup and when the setup changes:
+ *   whenever payments go to something real rather than the simulator.
+ * @property scannedWallets Whether shopper-presented wallet codes are supported, independently of account configuration.
+ * @property supportsTerminalFeatures Whether physical-terminal features (terminal tipping, Giving, MOTO/MKE, totals,
+ *   display) are supported.
+ * @property supportsOfflinePayments Whether local offline EMV and store-and-forward processing are supported.
+ * @property supportsShopperDisplay Whether shopper-facing display and input requests are supported (an external
+ *   terminal or the simulator).
+ */
+data class DestinationCapabilities(
+    val discoversTerminals: Boolean = false,
+    val usesCloudDeviceApi: Boolean = false,
+    val selectsEnvironment: Boolean = false,
+    val checksConnection: Boolean = false,
+    val scannedWallets: Boolean = false,
+    val supportsTerminalFeatures: Boolean = true,
+    val supportsOfflinePayments: Boolean = false,
+    val supportsShopperDisplay: Boolean = true,
+)
+
+/**
  * A [TerminalSetup] with the secrets it needs decrypted, once, by [TerminalSetupSource.unlocked]: what the destinations,
  * the Checkout API and Tap to Pay are opened with, so none of them reads a secret itself. [toString] leaves the secrets
  * out.
@@ -340,6 +356,18 @@ class UnlockedSetup(
     val apiKey: String? get() = values[Secret.ADYEN_API_KEY]
 
     override fun toString() = "UnlockedSetup($setup, ${values.keys})"
+}
+
+/** How much of the setup work began on must still be stored for its result to apply, see [TerminalSetupSource.SetupFence]. */
+enum class SetupFreshness {
+    /** The connection fields ([TerminalSettings]) only. */
+    CONNECTION,
+
+    /** The connection fields and the Adyen API key, so a passphrase the work saves itself does not count as a change. */
+    CREDENTIAL,
+
+    /** The connection fields and the exact stored secret snapshot, for readings cached against the verified setup. */
+    SECRETS,
 }
 
 /** Whether Tap to Pay can be set up on this phone, see [TerminalSetup.boarding]. */
@@ -375,6 +403,8 @@ sealed interface BoardingSetup {
  * @param secrets Tells which secrets are saved, and decrypts them.
  * @property device The device the app runs on.
  * @param historySwitchPending Confirmed deletion journal that must finish before new operations.
+ * @param onVerified Completes what waited for a verified setup, called once a tested setup is remembered as verified:
+ *   in the app, [SharedKeySetup.complete] for pending shared-key recovery records.
  */
 class TerminalSetupSource(
     private val settings: SettingsRepository,
@@ -382,6 +412,7 @@ class TerminalSetupSource(
     val device: DeviceInfo,
     /** Pending confirmed history-switch journal, blocking new operations until destination recovery completes. */
     private val historySwitchPending: Flow<Boolean> = flowOf(false),
+    private val onVerified: suspend (UnlockedSetup) -> Unit = {},
 ) {
     /** The setup with the stored settings now, without reading any secret. */
     suspend fun current(): TerminalSetup = reading(settings.current(), read = false).setup
@@ -424,7 +455,64 @@ class TerminalSetupSource(
     internal fun learnedCandidate(detected: DetectedEnvironment): AppSettings =
         detected.setup.settings.copy(terminal = detected.setup.learnedEnvironment(detected))
 
-    internal var onVerified: suspend (UnlockedSetup) -> Unit = {}
+    /**
+     * What work begun on one setup reading checks before its result applies: whether that setup is still stored, to the
+     * [SetupFreshness] the work needs, and settings writes that apply only then. Made from this source, so callers never
+     * compare connection fields, API keys or secret fingerprints themselves; a stale result becomes
+     * [SetupProblem.SETUP_CHANGED].
+     *
+     * @property origin The setup the work began on.
+     * @param freshness What must still be the same.
+     * @param apiKey The API key the work began with, for [SetupFreshness.CREDENTIAL]; never shown or logged.
+     * @param secrets The fingerprint of the stored secrets the work began with, for [SetupFreshness.SECRETS].
+     */
+    inner class SetupFence internal constructor(
+        val origin: TerminalSetup,
+        private val freshness: SetupFreshness,
+        private val apiKey: String?,
+        private val secrets: String?,
+    ) {
+        /** A fence for work begun on [unlocked] that needs [freshness] to hold before its result applies. */
+        constructor(unlocked: UnlockedSetup, freshness: SetupFreshness) :
+            this(unlocked.setup, freshness, unlocked.apiKey, unlocked.validationIdentity)
+
+        /** A fence for work begun on [origin] that needs only its connection fields to stay the same. */
+        constructor(origin: TerminalSetup) : this(origin, SetupFreshness.CONNECTION, null, null)
+
+        /**
+         * A non-secret fingerprint of the stored secrets and connection fields the work began on, to keep a cached
+         * reading for; null for an unsaved candidate or a connection-only fence.
+         */
+        val identity: String? get() = secrets
+
+        /** Whether the setup the work began on is still stored, to this fence's [SetupFreshness]. */
+        suspend fun stillCurrent(): Boolean =
+            when (freshness) {
+                SetupFreshness.CONNECTION -> settings.current().terminal == origin.settings.terminal
+                SetupFreshness.CREDENTIAL -> unlocked(forValidation = true).let { it.apiKey == apiKey && it.began() }
+                SetupFreshness.SECRETS -> unlocked().let { it.validationIdentity == secrets && it.began() }
+            }
+
+        /** [SetupProblem.SETUP_CHANGED] when the setup the work began on is no longer stored; null while it is. */
+        suspend fun changed(): SetupProblem? = SetupProblem.SETUP_CHANGED.takeUnless { stillCurrent() }
+
+        /**
+         * Applies [transform] to the stored settings only while the setup the work began on is still stored: the
+         * connection fields atomically with the write, the rest of this fence's [SetupFreshness] just before it. Returns
+         * whether it was applied; [transform] must not have side effects.
+         */
+        suspend fun update(transform: (AppSettings) -> AppSettings): Boolean {
+            if (freshness != SetupFreshness.CONNECTION && !stillCurrent()) return false
+            var applied = false
+            settings.update {
+                applied = it.terminal == origin.settings.terminal
+                if (applied) transform(it) else it
+            }
+            return applied
+        }
+
+        private fun UnlockedSetup.began() = setup.settings.terminal == origin.settings.terminal
+    }
 
     internal suspend fun rememberVerified(tested: UnlockedSetup): Boolean {
         val current = reading(settings.current(), read = false, forValidation = true)

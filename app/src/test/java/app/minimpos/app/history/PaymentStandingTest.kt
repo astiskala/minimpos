@@ -1,6 +1,8 @@
 package app.minimpos.app.history
 
 import app.minimpos.app.data.db.CaptureStatus
+import app.minimpos.app.data.db.RefundEntity
+import app.minimpos.app.data.db.RefundStatus
 import app.minimpos.app.data.db.SaleEntity
 import app.minimpos.app.data.db.SaleKind
 import app.minimpos.app.data.db.SaleStatus
@@ -8,6 +10,7 @@ import app.minimpos.app.data.db.SaleWithLines
 import app.minimpos.app.history.PaymentAction.ADJUST
 import app.minimpos.app.history.PaymentAction.CANCEL
 import app.minimpos.app.history.PaymentAction.CAPTURE
+import app.minimpos.app.history.PaymentAction.CHECK_AGAIN
 import app.minimpos.app.history.PaymentAction.ENTER_TIP
 import app.minimpos.app.history.PaymentAction.REFUND
 import app.minimpos.app.history.PaymentAction.RETRY_CAPTURE
@@ -34,6 +37,20 @@ class PaymentStandingTest {
             pspReference = "PSP1",
         )
     private val preAuth = sale.copy(kind = SaleKind.PRE_AUTHORISATION)
+    private val refund =
+        RefundEntity(
+            id = "r1",
+            saleId = "s1",
+            createdAt = 2,
+            merchantReference = "R-1",
+            originalTransactionId = "BV0q001643892070000.PSP1",
+            originalTimestamp = "2026-09-29T11:04:00.000Z",
+            originalReference = "MP-1",
+            currency = "AUD",
+            amountMinor = 1_000,
+            full = true,
+            status = RefundStatus.UNKNOWN,
+        )
     private val tipSale = sale.copy(tipOnReceipt = true)
 
     private fun SaleEntity.actions() = SaleWithLines(this, emptyList()).actions
@@ -45,7 +62,7 @@ class PaymentStandingTest {
                 val stored = it.copy(status = status)
                 assertThat(stored.standing).isEqualTo(PaymentStanding.NOT_APPROVED)
                 assertThat(stored.actions()).isEmpty()
-                assertThat(stored.totalsShare).isEqualTo(TotalsShare.NONE)
+                assertThat(stored.paidOnline).isFalse()
             }
         }
     }
@@ -76,7 +93,11 @@ class PaymentStandingTest {
         assertThat(ReceiptStanding.of(paid).paidOnline).isTrue()
         assertThat(ReceiptStanding.of(paid).unpaidLink).isNull()
         assertThat(paid.standing).isEqualTo(PaymentStanding.CHARGED)
-        assertThat(paid.totalsShare).isEqualTo(TotalsShare.SALE)
+        assertThat(paid.paidOnline).isTrue()
+        assertThat(paid.linkUnsettled).isFalse()
+        assertThat(link.linkUnsettled).isTrue()
+        assertThat(link.copy(status = SaleStatus.UNKNOWN).linkUnsettled).isTrue()
+        assertThat(link.copy(status = SaleStatus.EXPIRED).linkUnsettled).isFalse()
         assertThat(paid.actions()).isEmpty()
         assertThat(ReceiptStanding.of(link.copy(status = SaleStatus.EXPIRED)).unpaidLink).isNull()
         assertThat(ReceiptStanding.of(sale).paidOnline).isFalse()
@@ -112,7 +133,7 @@ class PaymentStandingTest {
         assertThat(sale.standing.held).isFalse()
         assertThat(sale.actions()).containsExactly(REFUND)
         assertThat(sale.copy(refundedMinor = 1_000).actions()).isEmpty()
-        assertThat(sale.totalsShare).isEqualTo(TotalsShare.SALE)
+        assertThat(sale.issues).isEmpty()
     }
 
     @Test
@@ -176,13 +197,45 @@ class PaymentStandingTest {
     }
 
     @Test
-    fun `day totals count pre-authorisations as held until they are captured, and cancelled holds not at all`() {
-        assertThat(preAuth.totalsShare).isEqualTo(TotalsShare.HELD)
-        assertThat(preAuth.copy(captureStatus = CaptureStatus.UNKNOWN).totalsShare).isEqualTo(TotalsShare.HELD)
-        assertThat(preAuth.copy(captureStatus = CaptureStatus.REQUESTED).totalsShare).isEqualTo(TotalsShare.SALE)
-        assertThat(preAuth.copy(holdCancelled = true).totalsShare).isEqualTo(TotalsShare.NONE)
-        assertThat(tipSale.totalsShare).isEqualTo(TotalsShare.HELD)
-        assertThat(tipSale.copy(holdCancelled = true).totalsShare).isEqualTo(TotalsShare.NONE)
+    fun `what still needs attention is read once from the outcome, an adjustment and the capture`() {
+        assertThat(sale.copy(status = SaleStatus.UNKNOWN).issues).containsExactly(PaymentIssue.OUTCOME)
+        assertThat(sale.copy(status = SaleStatus.PENDING).issues).containsExactly(PaymentIssue.OUTCOME)
+        assertThat(sale.copy(status = SaleStatus.DECLINED).issues).isEmpty()
+        assertThat(preAuth.copy(adjustmentPending = true).issues).containsExactly(PaymentIssue.ADJUSTMENT)
+        listOf(CaptureStatus.PENDING, CaptureStatus.FAILED, CaptureStatus.UNKNOWN).forEach {
+            assertThat(preAuth.copy(captureStatus = it, capturedMinor = 800).issues).containsExactly(PaymentIssue.CAPTURE)
+        }
+        assertThat(preAuth.copy(captureStatus = CaptureStatus.REQUESTED, capturedMinor = 800).issues).isEmpty()
+        // A cancellation accepted after a capture whose outcome was unknown settled the hold.
+        assertThat(preAuth.copy(holdCancelled = true, captureStatus = CaptureStatus.UNKNOWN).issues).isEmpty()
+    }
+
+    @Test
+    fun `an unknown outcome is offered for checking again only the way the payment was sent`() {
+        val unknown = sale.copy(status = SaleStatus.UNKNOWN, serviceId = "SVC1")
+        assertThat(unknown.actions()).containsExactly(CHECK_AGAIN)
+        // Without a terminal ServiceID only a saved-card charge, resent with its stored key, can be checked again.
+        assertThat(unknown.copy(serviceId = null).actions()).isEmpty()
+        assertThat(unknown.copy(serviceId = null, savedCard = true).actions()).containsExactly(CHECK_AGAIN)
+        // A payment link is asked about through its link, and sample history moved no money.
+        assertThat(unknown.copy(paymentLink = true).actions()).isEmpty()
+        assertThat(unknown.copy(sample = true).actions()).isEmpty()
+        assertThat(unknown.copy(status = SaleStatus.DECLINED).actions()).isEmpty()
+
+        assertThat(refund.copy(serviceId = "SVC2").canCheckAgain).isTrue()
+        assertThat(refund.canCheckAgain).isFalse()
+        assertThat(refund.copy(checkoutRefund = true).canCheckAgain).isTrue()
+        assertThat(refund.copy(checkoutRefund = true, status = RefundStatus.REQUESTED).canCheckAgain).isFalse()
+    }
+
+    @Test
+    fun `only operations sent to a terminal count towards its totals`() {
+        assertThat(sale.terminalOperation).isTrue()
+        assertThat(sale.copy(savedCard = true).terminalOperation).isFalse()
+        assertThat(sale.copy(paymentLink = true).terminalOperation).isFalse()
+        assertThat(sale.copy(sample = true).terminalOperation).isFalse()
+        assertThat(refund.terminalOperation).isTrue()
+        assertThat(refund.copy(checkoutRefund = true).terminalOperation).isFalse()
     }
 
     @Test

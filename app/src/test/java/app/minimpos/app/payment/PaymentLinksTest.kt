@@ -17,9 +17,9 @@ import app.minimpos.app.history.PaymentAction
 import app.minimpos.app.history.PaymentStanding
 import app.minimpos.app.history.ReceiptStanding
 import app.minimpos.app.history.StoredPayment
-import app.minimpos.app.history.TotalsShare
+import app.minimpos.app.history.issues
+import app.minimpos.app.history.paidOnline
 import app.minimpos.app.history.standing
-import app.minimpos.app.history.totalsShare
 import app.minimpos.core.money.CurrencySpec
 import app.minimpos.core.receipt.PlainTextReceiptRenderer
 import app.minimpos.terminal.checkout.ModificationAmount
@@ -106,7 +106,8 @@ class PaymentLinksTest {
         await { session.cart.first { it.lines.isEmpty() } }
         // Unpaid, it counts nowhere and can be neither refunded nor cancelled.
         assertThat(sale.standing).isEqualTo(PaymentStanding.NOT_APPROVED)
-        assertThat(sale.totalsShare).isEqualTo(TotalsShare.NONE)
+        assertThat(sale.paidOnline).isFalse()
+        assertThat(sale.issues).isEmpty()
         assertThat(ReceiptStanding.of(sale).unpaidLink).isEqualTo(FakeLinkApi.URL)
     }
 
@@ -158,7 +159,7 @@ class PaymentLinksTest {
         val paid = await { container.sales.get(id)!! }
         assertThat(paid.sale.status).isEqualTo(SaleStatus.APPROVED)
         assertThat(paid.sale.standing).isEqualTo(PaymentStanding.CHARGED)
-        assertThat(paid.sale.totalsShare).isEqualTo(TotalsShare.SALE)
+        assertThat(paid.sale.paidOnline).isTrue()
         assertThat(ReceiptStanding.of(paid.sale).paidOnline).isTrue()
         assertThat(ReceiptStanding.of(paid.sale).unpaidLink).isNull()
         assertThat(StoredPayment(paid).actions).doesNotContain(PaymentAction.REFUND)

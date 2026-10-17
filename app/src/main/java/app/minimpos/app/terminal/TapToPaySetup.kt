@@ -103,11 +103,12 @@ class TapToPaySetup(
         access: Access.Granted,
         reboard: Boolean,
     ): TapToPayOutcome {
-        val original = setups.current().settings.terminal
+        val origin = setups.current()
+        val original = origin.settings.terminal
         val result = register(original.target(), access.environment, access.apiKey, access.management, reboard)
         return if (result is TapToPayOutcome.Boarded) {
             val boarded = original.copy(paymentsAppInstallationId = result.installationId)
-            settings.update { if (it.terminal == original) it.copy(terminal = boarded) else it }
+            setups.SetupFence(origin).update { it.copy(terminal = boarded) }
             if (settings.current().terminal == boarded) result else TapToPayOutcome.NotSetUp(SetupProblem.SETUP_CHANGED)
         } else {
             result
@@ -115,7 +116,7 @@ class TapToPaySetup(
     }
 
     internal suspend fun checkSaved(setup: TerminalSetup): TapToPayOutcome {
-        if (setups.current().settings.terminal != setup.settings.terminal) return TapToPayOutcome.NotSetUp(SetupProblem.SETUP_CHANGED)
+        setups.SetupFence(setup).changed()?.let { return TapToPayOutcome.NotSetUp(it) }
         val terminal = setup.settings.terminal
         return when (val access = setups.boarding()) {
             is BoardingSetup.Blocked -> {

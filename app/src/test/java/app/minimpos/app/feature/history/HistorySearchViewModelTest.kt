@@ -312,7 +312,8 @@ class HistorySearchViewModelTest {
                     payments = env.container.payments,
                     refunds = env.container.refunds,
                 ).also(viewModels::add)
-            vm.state.first { it.loaded }
+            // Printing is offered once the simulator's printer is known; asking earlier prints nothing.
+            vm.state.first { it.loaded && it.canPrint }
             vm.printDay(day)
             assertThat(
                 vm.state

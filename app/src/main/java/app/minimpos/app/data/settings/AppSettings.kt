@@ -276,7 +276,7 @@ data class TerminalSettings(
         when (if (mode == TerminalMode.AUTO) automaticMode else mode) {
             TerminalMode.SIMULATOR -> "SIMULATOR"
             TerminalMode.PAYMENTS_APP -> null
-            else -> environment?.name
+            TerminalMode.AUTO, TerminalMode.TERMINAL, TerminalMode.CLOUD -> environment?.name
         }
 
     /** These settings with [keyVersion] within its range. */

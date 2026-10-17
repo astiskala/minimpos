@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -112,9 +113,7 @@ private fun ReferenceField(
                 autoCorrectEnabled = false,
                 imeAction = ImeAction.Search,
             ),
-        keyboardActions =
-            androidx.compose.foundation.text
-                .KeyboardActions(onSearch = { onDone() }),
+        keyboardActions = KeyboardActions(onSearch = { onDone() }),
         modifier = Modifier.fillMaxWidth().padding(top = LocalDimens.current.spacing).testTag("savedCardReference"),
     )
 }
@@ -132,7 +131,7 @@ private fun ColumnScope.CardList(
     cards.forEach { card ->
         val usable = chargeable(card)
         ListItem(
-            headlineContent = { Text(card.label()) },
+            headlineContent = { Text(cardLabel(card.id, card.brand, card.lastFour)) },
             supportingContent = {
                 val details =
                     listOfNotNull(
@@ -153,10 +152,12 @@ private fun ColumnScope.CardList(
     }
 }
 
-/** The card as the operator recognises it: brand and last four digits, as far as Adyen sent them. */
-private fun StoredCard.label(): String = listOfNotNull(brand?.uppercase(), lastFour?.let { "•••• $it" }).joinToString(" ").ifEmpty { id }
-
-private fun ChosenCard.label(): String = listOfNotNull(brand?.uppercase(), lastFour?.let { "•••• $it" }).joinToString(" ").ifEmpty { id }
+/** The card as the operator recognises it: brand and last four digits, as far as Adyen sent them, else its token ID. */
+private fun cardLabel(
+    id: String,
+    brand: String?,
+    lastFour: String?,
+): String = listOfNotNull(brand?.uppercase(), lastFour?.let { "•••• $it" }).joinToString(" ").ifEmpty { id }
 
 private fun StoredCard.chosen() = ChosenCard(id, brand, lastFour)
 
@@ -211,7 +212,7 @@ fun SavedCardReviewScreen(
                 .padding(LocalDimens.current.screenPadding),
             horizontalAlignment = Alignment.Start,
         ) {
-            LabeledValue(stringResource(R.string.saved_card_card), card.label())
+            LabeledValue(stringResource(R.string.saved_card_card), cardLabel(card.id, card.brand, card.lastFour))
             LabeledValue(stringResource(R.string.detail_shopper_reference), state.shopperReference)
             state.checkout.totals.lines
                 .forEach { LabeledValue("${it.line.quantity} × ${it.line.name}", money.format(it.amounts.gross)) }

@@ -163,7 +163,8 @@ class DatabaseSchemaTest {
                 "INSERT INTO `sales` (`id`, `sample`, `createdAt`, `currency`, `taxMode`, `netMinor`, `taxMinor`, `totalMinor`, " +
                     "`status`, `merchantReference`, `tokenizationRequested`, `signatureRequired`, `refundedMinor`, `kind`, " +
                     "`tipOnReceipt`, `holdCancelled`, `paymentLink`, `adjustmentPending`, `paidMinor`, `storedPaymentMethodId`) " +
-                    "VALUES ('s11', 0, 100, 'AUD', 'INCLUSIVE', 909, 91, 1000, 'UNKNOWN', 'MP-11', 1, 0, 0, 'SALE', 0, 0, 0, 0, 0, 'TOKEN')",
+                    "VALUES ('s11', 0, 100, 'AUD', 'INCLUSIVE', 909, 91, 1000, 'UNKNOWN', 'MP-11', 1, 0, 0, 'SALE', " +
+                    "0, 0, 0, 0, 0, 'TOKEN')",
             )
             raw.execSQL(
                 "INSERT INTO `refunds` (`id`, `saleId`, `createdAt`, `merchantReference`, `originalTransactionId`, " +

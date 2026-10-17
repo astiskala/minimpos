@@ -104,6 +104,7 @@ sealed interface Refundability {
  * @property cancellation Whether this full reversal cancels a pre-authorisation ([RefundablePayment.cancellation])
  *   rather than refunding a sale.
  * @property expectedContext Original locally recorded destination; null for a reviewed foreign receipt.
+ * @property checkout Whether the refund goes through Adyen's Checkout API rather than a terminal (a saved-card charge).
  * @throws IllegalArgumentException if [amountMinor] is not positive.
  */
 data class RefundStart(
@@ -119,10 +120,7 @@ data class RefundStart(
     val cancellation: Boolean = false,
     /** Original locally recorded destination; null for an independently reviewed foreign receipt. */
     val expectedContext: PaymentContext? = null,
-    /**
-     * Whether the refund goes through Adyen's Checkout API rather than a terminal, because the payment was a saved-card
-     * charge ([app.minimpos.app.data.db.SaleEntity.savedCard]) with no terminal transaction to reverse.
-     */
+    /** True for a saved-card charge ([app.minimpos.app.data.db.SaleEntity.savedCard]), which has no terminal reversal. */
     val checkout: Boolean = false,
 ) {
     init {

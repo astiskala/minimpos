@@ -176,8 +176,12 @@ class CheckoutRefunds(
     private suspend fun interrupted(id: String) {
         try {
             refunds.settle(id, RefundStatus.UNKNOWN, null, null, StoredReason.Unconfirmed(Failure.Device(DeviceFault.DATABASE)))
+        } catch (e: CancellationException) {
+            throw e
         } catch (ignored: SQLException) {
             // It stays PENDING, which the next start turns into UNKNOWN.
+        } catch (ignored: IllegalStateException) {
+            // The database is closed; it stays PENDING, which the next start turns into UNKNOWN.
         }
     }
 

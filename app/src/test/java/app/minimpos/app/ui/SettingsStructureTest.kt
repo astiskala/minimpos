@@ -7,12 +7,10 @@ import androidx.compose.ui.test.assertIsOff
 import androidx.compose.ui.test.assertIsOn
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.onNodeWithTag
-import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.unit.dp
 import app.minimpos.app.MiniMposApp
-import app.minimpos.app.R
 import app.minimpos.app.TestEnvironment
 import app.minimpos.app.awaitCondition
 import app.minimpos.app.createRecordingComposeRule
@@ -71,7 +69,7 @@ class SettingsStructureTest {
         open("payments")
         val headingTop =
             compose
-                .onNodeWithText(env.context.getString(R.string.settings_pricing).uppercase())
+                .onNodeWithTag("pricingHeader")
                 .fetchSemanticsNode()
                 .boundsInRoot.top
         compose.onNodeWithTag("referenceSource").performScrollTo().assertIsDisplayed()
@@ -88,7 +86,7 @@ class SettingsStructureTest {
         // An opening explanation without a heading starts where a heading's text would.
         val introTop =
             compose
-                .onNodeWithText(env.context.getString(R.string.settings_shopper_display_hint))
+                .onNodeWithTag("settingIntro")
                 .fetchSemanticsNode()
                 .boundsInRoot.top
         assertThat(introTop).isWithin(1f).of(headingTop)

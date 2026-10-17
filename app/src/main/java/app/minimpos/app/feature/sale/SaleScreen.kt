@@ -1,5 +1,6 @@
 package app.minimpos.app.feature.sale
 
+import androidx.annotation.StringRes
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -142,14 +143,7 @@ fun SaleScreen(
     }
 
     MiniScaffold(
-        title =
-            stringResource(
-                when {
-                    card != null -> R.string.saved_card_title
-                    kind == SaleKind.PRE_AUTHORISATION -> R.string.pre_auth_title
-                    else -> R.string.sale_title
-                },
-            ),
+        title = stringResource(saleTitle(kind, savedCard = card != null)),
         onBack = navigator::back,
         modifier = modifier,
         snackbarHostState = snackbar,
@@ -192,6 +186,18 @@ fun SaleScreen(
         onClose = { overlay = null },
     )
 }
+
+/** The title of the ring-up screen of [kind], or of a [savedCard] charge's own cart. */
+@StringRes
+private fun saleTitle(
+    kind: SaleKind,
+    savedCard: Boolean,
+): Int =
+    when {
+        savedCard -> R.string.saved_card_title
+        kind == SaleKind.PRE_AUTHORISATION -> R.string.pre_auth_title
+        else -> R.string.sale_title
+    }
 
 /**
  * The product search for [productCount] products: shown once there are enough products to need it, but where height is

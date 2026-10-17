@@ -2,6 +2,7 @@ package app.minimpos.app
 
 import android.app.Application
 import android.content.Context
+import android.os.Looper
 import androidx.compose.ui.test.junit4.ComposeTestRule
 import androidx.core.content.FileProvider
 import androidx.lifecycle.ViewModel
@@ -79,6 +80,7 @@ import kotlinx.coroutines.joinAll
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
 import org.junit.rules.ExternalResource
+import org.robolectric.Shadows
 import java.io.File
 import java.io.IOException
 import java.net.URLDecoder
@@ -591,6 +593,10 @@ class TestEnvironment(
 
     /** Stops the container's background work, closes the database and deletes the temporary files. */
     fun close() {
+        // Screens' writes finish after the screens close (persisting): let queued ones resume, then wait behind them in
+        // DataStore's update queue, so the files are not deleted while one is being renamed into place.
+        Shadows.shadowOf(Looper.getMainLooper()).idle()
+        runBlocking { withTimeout(10_000) { container.settings.update { it } } }
         runBlocking { scope.coroutineContext[Job]?.cancelAndJoin() }
         container.database.close()
         dir.deleteRecursively()

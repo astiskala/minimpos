@@ -59,6 +59,7 @@ import app.minimpos.app.history.StoredPayment
 import app.minimpos.app.history.actions
 import app.minimpos.app.payment.CaptureResult
 import app.minimpos.app.payment.Checkout
+import app.minimpos.app.payment.CheckoutRefunds
 import app.minimpos.app.payment.PaymentLinkStart
 import app.minimpos.app.payment.PaymentLinks
 import app.minimpos.app.payment.PaymentStart
@@ -66,6 +67,7 @@ import app.minimpos.app.payment.PricingChanges
 import app.minimpos.app.payment.ReceiptDelivery
 import app.minimpos.app.payment.SaleBook
 import app.minimpos.app.payment.SaleSession
+import app.minimpos.app.payment.SavedCardCharges
 import app.minimpos.app.payment.SettingsEdit
 import app.minimpos.app.receipt.PrintRenderer
 import app.minimpos.app.receipt.ReceiptFactory
@@ -96,9 +98,12 @@ import app.minimpos.app.update.UpdateCheck
 import app.minimpos.core.codec.Transfer
 import app.minimpos.core.money.CurrencySpec
 import app.minimpos.core.payment.PaymentContext
+import app.minimpos.terminal.checkout.CardChargeRequest
+import app.minimpos.terminal.checkout.ModificationAmount
 import app.minimpos.terminal.checkout.PaymentLink
 import app.minimpos.terminal.checkout.PaymentLinkApi
 import app.minimpos.terminal.checkout.PaymentModifications
+import app.minimpos.terminal.checkout.SavedCardApi
 import app.minimpos.terminal.client.PrintJob
 import app.minimpos.terminal.client.PrintLine
 import app.minimpos.terminal.client.TerminalClient
@@ -460,6 +465,22 @@ class ArchitectureTest {
             api: TerminalDetailsApi,
             key: DiscoveredKey,
         ) = api.createSharedKey("ID", TerminalEnvironment.TEST, key)
+    }
+
+    @Test
+    fun `saved cards are charged and Checkout refunds sent only by their owners`() = savedCardOwnership.check(app)
+
+    @Test
+    fun `saved-card ownership rejects charges and refunds sent elsewhere`() =
+        reject(listOf(savedCardOwnership), SavedCardViolation::class.java)
+
+    private class SavedCardViolation {
+        suspend fun charge(
+            api: SavedCardApi,
+            request: CardChargeRequest,
+        ) = api.charge(request, "key")
+
+        suspend fun refund(api: PaymentModifications) = api.refund("PSP", ModificationAmount("AUD", 1), "R", "key")
     }
 
     @Test
@@ -1161,6 +1182,21 @@ class ArchitectureTest {
                 .callMethodWhere(
                     callToSubtypeOf(TerminalDetailsApi::class.java, "createSharedKey"),
                 )
+
+        // A saved-card charge or Checkout refund is stored PENDING first and sent from what was stored with its one
+        // idempotency key, after Manager approval and context rechecks; sending elsewhere could charge or refund twice.
+        val savedCardOwnership: ArchRule =
+            noClasses()
+                .that()
+                .haveNameNotMatching(within(SavedCardCharges::class.java.name))
+                .and()
+                .haveNameNotMatching(within(CheckoutRefunds::class.java.name))
+                .and()
+                .resideOutsideOfPackage(TERMINAL_PACKAGE)
+                .should()
+                .callMethodWhere(callToSubtypeOf(SavedCardApi::class.java, "charge"))
+                .orShould()
+                .callMethodWhere(callToSubtypeOf(PaymentModifications::class.java, "refund"))
 
         // Only explicit switch confirmation and its authenticated import journal may discard recovery identities.
         val historyPurgeOwnership: ArchRule =

@@ -1096,4 +1096,20 @@
   <string name="sentences">%1$s%2$s</string>
   <string name="action_unconfirmed">Adyen 未确认结果。请先再次查询，再进行其他操作。</string>
   <string name="still_unconfirmed">仍未确认：%1$s</string>
+  <string name="home_saved_card">扣款已保存的卡</string>
+  <string name="home_reconciliation">对账</string>
+  <string name="saved_card_title">扣款已保存的卡</string>
+  <string name="saved_card_intro">查找为购物者保存的卡，选择一张，然后录入要扣款的商品。购物者无需在场；请先征得其同意。</string>
+  <string name="saved_card_find">查找已保存的卡</string>
+  <string name="saved_card_none">此购物者没有已保存的卡。</string>
+  <string name="saved_card_expires">有效期至 %1$s/%2$s</string>
+  <string name="saved_card_unsupported">此卡为其他付款类型保存，无法在此扣款。</string>
+  <string name="saved_card_card">卡</string>
+  <string name="saved_card_charge">扣款 %1$s</string>
+  <string name="saved_card_charging">正在扣款已保存的卡…</string>
+  <string name="saved_card_review_note">Adyen 将在购物者不在场的情况下扣款。如有需要，请在交易记录中退款。</string>
+  <string name="setup_shopper_reference">请在“设置 › 支付”中选择购物者识别号，以使用已保存的卡。</string>
+  <string name="setup_totals">当前收款目标无法提供终端汇总。Tap to Pay 不提供汇总。</string>
+  <string name="reconciliation_intro">将终端汇总与 Mini mPOS 进行比对。会先核查未确认的终端付款。请在营业日结束时结束对账期。</string>
+  <string name="reconciliation_print_today">打印今日报表</string>
 </resources>

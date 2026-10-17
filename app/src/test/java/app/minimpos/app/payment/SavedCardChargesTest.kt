@@ -131,6 +131,16 @@ class SavedCardChargesTest {
     private fun sale(id: String) = checkNotNull(await { container.sales.get(id) }).sale
 
     @Test
+    fun `a second start while charging stores and sends nothing`() {
+        answers += CardChargeResult.Authorised("PSP9")
+        val first = checkNotNull(charges.start(start()))
+        assertThat(charges.start(start())).isNull()
+        await { charges.state.first { it == TransactionState.Finished(first) } }
+        assertThat(sent).hasSize(1)
+        assertThat(await { container.sales.get("sale-2") }).isNull()
+    }
+
+    @Test
     fun `cards are listed only where the Checkout API is ready`() {
         assertThat(await { charges.cards("CUST-001") }).isEqualTo(CardLookup.Listed(listOf(card)))
         assertThat(await { charges.cards("OTHER") }).isEqualTo(CardLookup.NotDone(Failure.Remote(Fault.TimedOut)))

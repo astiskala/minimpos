@@ -150,7 +150,9 @@ class SmallScreenTest {
         env.updateSettings { it.copy(terminal = it.terminal.copy(environment = TerminalEnvironment.TEST)) }
         compose.setContent { MiniMposApp(container) }
         // Beside the setup card, every tile still fits.
-        listOf("newSale", "preAuth", "refund", "history", "products", "settings").forEach { compose.onNodeWithTag(it).assertIsDisplayed() }
+        listOf("newSale", "preAuth", "savedCard", "refund", "history", "reconciliation", "products", "settings").forEach {
+            compose.onNodeWithTag(it).assertIsDisplayed()
+        }
         compose.onNodeWithTag("terminalSetup").assertIsDisplayed().performClick()
         waitForTag("apiKey")
         compose.onNodeWithTag("keyIdentifier").assertDoesNotExist()
@@ -339,7 +341,9 @@ class SmallScreenTest {
         env.updateSettings { it.copy(terminal = it.terminal.copy(environment = TerminalEnvironment.TEST)) }
         await { container.terminalStatus.state.first { it.environment == TerminalEnvironment.TEST } }
         compose.setContent { MiniMposApp(container) }
-        listOf("newSale", "preAuth", "refund", "history", "products", "settings").forEach { compose.onNodeWithTag(it).assertIsDisplayed() }
+        listOf("newSale", "preAuth", "savedCard", "refund", "history", "reconciliation", "products", "settings").forEach {
+            compose.onNodeWithTag(it).assertIsDisplayed()
+        }
         compose.onNodeWithTag("terminalSetup").assertDoesNotExist()
         // A test terminal already says TEST in its own status bar, so the app adds no banner.
         compose.onNodeWithTag("modeBanner").assertDoesNotExist()
@@ -430,7 +434,9 @@ class SmallScreenTest {
         compose.setContent { MiniMposApp(container) }
         // Both payment tiles and every other tile fit.
         waitForTag("preAuth")
-        listOf("newSale", "preAuth", "refund", "history", "products", "settings").forEach { compose.onNodeWithTag(it).assertIsDisplayed() }
+        listOf("newSale", "preAuth", "savedCard", "refund", "history", "reconciliation", "products", "settings").forEach {
+            compose.onNodeWithTag(it).assertIsDisplayed()
+        }
 
         compose.onNodeWithTag("preAuth").performClick()
         waitForText("Catering deposit")

@@ -394,6 +394,10 @@ private val SetupProblem.textRes: Int
             SetupProblem.PRINTER -> R.string.setup_printer
 
             SetupProblem.CHARGE_TOO_OLD -> R.string.setup_charge_too_old
+
+            SetupProblem.SHOPPER_REFERENCE -> R.string.setup_shopper_reference
+
+            SetupProblem.TOTALS -> R.string.setup_totals
         }
 
 /** Why a tip, capture or adjustment did not go through, named after what was sent; a refusal says the amount. */
@@ -432,8 +436,8 @@ private fun ActionOutcome.Connected.connectedText(): String {
 /**
  * An action that cannot run until [blocked] is fixed: then the button is disabled and the reason, which says what to
  * do, shows directly under it ([BlockedReason]). Without a reason it is the ordinary [PrimaryButton] (when [primary])
- * or [SecondaryButton]. Every action with a precondition known before it is pressed uses this, so none can be pressed
- * only to report what was already known.
+ * or [SecondaryButton], disabled without a reason while input is incomplete ([enabled] false). Every action with a
+ * precondition known before it is pressed uses this, so none can be pressed only to report what was already known.
  */
 @Composable
 fun ColumnScope.GatedButton(
@@ -444,12 +448,13 @@ fun ColumnScope.GatedButton(
     loading: Boolean = false,
     icon: ImageVector? = null,
     primary: Boolean = false,
+    enabled: Boolean = true,
 ) {
-    val enabled = blocked == null
+    val active = enabled && blocked == null
     if (primary) {
-        PrimaryButton(text, onClick, modifier, enabled = enabled, loading = loading, icon = icon)
+        PrimaryButton(text, onClick, modifier, enabled = active, loading = loading, icon = icon)
     } else {
-        SecondaryButton(text, onClick, modifier, enabled = enabled, loading = loading, icon = icon)
+        SecondaryButton(text, onClick, modifier, enabled = active, loading = loading, icon = icon)
     }
     blocked?.let { BlockedReason(it.text()) }
 }

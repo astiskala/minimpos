@@ -87,6 +87,13 @@ data class PaymentStart(
      */
     val manualCapture: Boolean get() = kind == SaleKind.PRE_AUTHORISATION || tipOnReceipt
 
+    /**
+     * This payment as a saved-card charge, without what only a terminal offers: saving the card, partial approval,
+     * giving, terminal tipping and shopper prompts.
+     */
+    fun forSavedCard(): PaymentStart =
+        copy(tokenization = null, allowPartialAuthorisation = false, askGiving = false, terminalTip = null, shopperFlow = null)
+
     /** Attaches a transient [instrument] only to this validated sale, bound to [context] and exact [setupIdentity]. */
     internal fun withScanned(
         instrument: ScannedPayment,

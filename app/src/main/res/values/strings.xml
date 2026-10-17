@@ -1100,4 +1100,20 @@
   <string name="sentences">%1$s %2$s</string>
   <string name="action_unconfirmed">Adyen did not confirm the result. Check again before you try anything else.</string>
   <string name="still_unconfirmed">Still not confirmed: %1$s</string>
+  <string name="home_saved_card">Charge saved card</string>
+  <string name="home_reconciliation">Reconciliation</string>
+  <string name="saved_card_title">Charge saved card</string>
+  <string name="saved_card_intro">Find the cards saved for a shopper, choose one, then ring up what to charge. The shopper does not need to be present; get their consent first.</string>
+  <string name="saved_card_find">Find saved cards</string>
+  <string name="saved_card_none">No cards are saved for this shopper.</string>
+  <string name="saved_card_expires">Expires %1$s/%2$s</string>
+  <string name="saved_card_unsupported">Saved for another kind of payment; it cannot be charged here.</string>
+  <string name="saved_card_card">Card</string>
+  <string name="saved_card_charge">Charge %1$s</string>
+  <string name="saved_card_charging">Charging the saved card…</string>
+  <string name="saved_card_review_note">Adyen charges the card without the shopper present. Refund it from History if needed.</string>
+  <string name="setup_shopper_reference">Choose a shopper reference in Settings › Payments to use saved cards.</string>
+  <string name="setup_totals">Terminal totals are not available where payments go now. Tap to Pay does not report them.</string>
+  <string name="reconciliation_intro">Compare the terminal’s totals with Mini mPOS. Unresolved terminal payments are checked first. Close the period at the end of the day.</string>
+  <string name="reconciliation_print_today">Print today’s report</string>
 </resources>

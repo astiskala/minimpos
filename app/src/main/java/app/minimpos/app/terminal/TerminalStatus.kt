@@ -65,6 +65,12 @@ data class TerminalState(
     val printBlocked: SetupProblem? get() = connectionProblem ?: SetupProblem.PRINTER.takeUnless { printerAvailable }
 
     /**
+     * Why terminal totals cannot be checked or a period closed now: what the destination still needs, else
+     * [SetupProblem.TOTALS] where it reports no totals (Tap to Pay); null when they can.
+     */
+    val totalsBlocked: SetupProblem? get() = connectionProblem ?: SetupProblem.TOTALS.takeUnless { supportsTerminalFeatures }
+
+    /**
      * Whether receipts and payment links can be shared through Android's share sheet: on phones and tablets, not on an
      * Adyen terminal, which has no apps to share with (it emails instead).
      */

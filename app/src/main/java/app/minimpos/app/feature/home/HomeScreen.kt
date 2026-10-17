@@ -19,7 +19,9 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.automirrored.filled.ReceiptLong
+import androidx.compose.material.icons.filled.Balance
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.CreditCard
 import androidx.compose.material.icons.filled.ErrorOutline
 import androidx.compose.material.icons.filled.Inventory2
 import androidx.compose.material.icons.filled.Key
@@ -259,18 +261,32 @@ private fun ColumnScope.AreaTiles(
     locked: Boolean,
     onOpen: (Route) -> Unit,
 ) {
-    Row(Modifier.fillMaxWidth().weight(0.8f), horizontalArrangement = Arrangement.spacedBy(LocalDimens.current.spacing)) {
+    Row(Modifier.fillMaxWidth().weight(0.7f), horizontalArrangement = Arrangement.spacedBy(LocalDimens.current.spacing)) {
+        HomeTile(
+            Icons.Default.CreditCard,
+            stringResource(R.string.home_saved_card),
+            onClick = { onOpen(Route.SavedCard) },
+            modifier = Modifier.testTag("savedCard"),
+        )
         HomeTile(
             Icons.Default.QrCodeScanner,
             stringResource(R.string.home_refund),
             onClick = { onOpen(Route.RefundScan) },
             modifier = Modifier.testTag("refund"),
         )
+    }
+    Row(Modifier.fillMaxWidth().weight(0.7f), horizontalArrangement = Arrangement.spacedBy(LocalDimens.current.spacing)) {
         HomeTile(
             Icons.AutoMirrored.Filled.ReceiptLong,
             stringResource(R.string.home_history),
             onClick = { onOpen(Route.History) },
             modifier = Modifier.testTag("history"),
+        )
+        HomeTile(
+            Icons.Default.Balance,
+            stringResource(R.string.home_reconciliation),
+            onClick = { onOpen(Route.Reconciliation) },
+            modifier = Modifier.testTag("reconciliation"),
         )
     }
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(LocalDimens.current.spacing)) {

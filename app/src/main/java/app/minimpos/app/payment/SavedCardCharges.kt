@@ -10,9 +10,11 @@ import app.minimpos.app.data.db.SetupProblem
 import app.minimpos.app.data.repo.HistoryItem
 import app.minimpos.app.data.repo.SaleEvent
 import app.minimpos.app.data.repo.SaleRepository
+import app.minimpos.app.data.settings.ShopperReferenceSource
 import app.minimpos.app.history.simulatedSale
 import app.minimpos.app.terminal.ApiAccess
 import app.minimpos.app.terminal.ApiTarget
+import app.minimpos.app.terminal.TerminalState
 import app.minimpos.terminal.checkout.CardChargeRequest
 import app.minimpos.terminal.checkout.CardChargeResult
 import app.minimpos.terminal.checkout.ModificationAmount
@@ -217,6 +219,21 @@ class SavedCardCharges(
     companion object {
         /** How long after a charge was opened its unknown outcome may be sent again: Adyen keeps keys at least this long. */
         val RECHECK_WINDOW: Duration = Duration.ofDays(7)
+
+        /**
+         * Why saved cards cannot be found or charged now: no shopper reference is made ([source] is
+         * [ShopperReferenceSource.NONE]), a verified import is still saving, or the Checkout API is not set up where
+         * [terminal] says payments go; null when they can.
+         */
+        fun blocked(
+            source: ShopperReferenceSource,
+            terminal: TerminalState,
+        ): Failure? =
+            when {
+                source == ShopperReferenceSource.NONE -> SetupProblem.SHOPPER_REFERENCE
+                terminal.importPending -> SetupProblem.TRANSFER_PENDING
+                else -> terminal.apiProblem
+            }?.let(Failure::NotSetUp)
 
         /** The idempotency key of the charge of sale [saleId]: one charge per sale, however often it is sent. */
         fun idempotencyKey(saleId: String): String = "card-$saleId"

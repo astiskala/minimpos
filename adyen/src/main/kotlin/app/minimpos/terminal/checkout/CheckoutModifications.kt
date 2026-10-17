@@ -13,6 +13,8 @@ import com.adyen.model.checkout.PaymentAmountUpdateResponse
 import com.adyen.model.checkout.PaymentCaptureRequest
 import com.adyen.model.checkout.PaymentCaptureResponse
 import com.adyen.model.checkout.PaymentMethodsRequest
+import com.adyen.model.checkout.PaymentRefundRequest
+import com.adyen.model.checkout.PaymentRefundResponse
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import okhttp3.HttpUrl
@@ -82,6 +84,34 @@ class CheckoutModifications(
             idempotencyKey,
             ::adjusted,
         )
+
+    override suspend fun refund(
+        paymentPspReference: String,
+        amount: ModificationAmount,
+        reference: String,
+        idempotencyKey: String,
+    ): ModificationResult =
+        modify(
+            listOf("payments", paymentPspReference, "refunds"),
+            PaymentRefundRequest()
+                .merchantAccount(credentials.merchantAccount)
+                .amount(amount.checkoutAmount())
+                .applicationInfo(application?.checkoutInfo())
+                .reference(reference)
+                .toJson(),
+            idempotencyKey,
+            ::refunded,
+        )
+
+    private fun refunded(text: String): ModificationResult {
+        val response =
+            decodeAdyenModel(text, PaymentRefundResponse::class.java)
+                ?: return ModificationResult.Failed(Fault.UnreadableReply())
+        return when (response.status) {
+            PaymentRefundResponse.StatusEnum.RECEIVED -> ModificationResult.Received(response.pspReference)
+            else -> ModificationResult.Failed(unexpectedStatus(text))
+        }
+    }
 
     override suspend fun verify(): Fault? {
         val body = PaymentMethodsRequest().merchantAccount(credentials.merchantAccount).toJson()

@@ -112,6 +112,24 @@ interface PaymentModifications {
     ): ModificationResult
 
     /**
+     * Refunds [amount] of the payment [paymentPspReference] (`POST /payments/{paymentPspReference}/refunds`), for
+     * payments taken through the Checkout API rather than a terminal. Adyen answers [ModificationResult.Received]; whether
+     * the money is returned is only known later, in the Customer Area. By default nothing is sent
+     * ([Fault.Unsupported]).
+     *
+     * @param paymentPspReference The PSP reference of the payment to refund.
+     * @param amount What to refund, at most what is left of the payment.
+     * @param reference The merchant's reference for the refund, shown in the Customer Area.
+     * @param idempotencyKey Sent as `Idempotency-Key`, so repeating a refund whose outcome is unknown cannot refund twice.
+     */
+    suspend fun refund(
+        paymentPspReference: String,
+        amount: ModificationAmount,
+        reference: String,
+        idempotencyKey: String,
+    ): ModificationResult = ModificationResult.Failed(Fault.Unsupported)
+
+    /**
      * Checks that the API key is accepted for the merchant account without changing anything (a payment methods
      * request). Returns null when it is, else why not.
      */

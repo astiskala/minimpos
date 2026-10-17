@@ -41,6 +41,8 @@ class MoneyTest {
         // An exact code comes first, before names that merely contain it.
         assertThat(AdyenCurrencies.search("sek").first().code).isEqualTo("SEK")
         assertThat(AdyenCurrencies.search("aud").first().code).isEqualTo("AUD")
+        assertThat(AdyenCurrencies.search("nad").map { it.code }).containsExactly("NAD", "CAD").inOrder()
+        assertThat(AdyenCurrencies.search("ron").first().code).isEqualTo("RON")
         assertThat(AdyenCurrencies.search("dollar").map { it.code }).containsAtLeast("AUD", "NZD", "USD")
         assertThat(AdyenCurrencies.search("no such money")).isEmpty()
     }
@@ -110,6 +112,7 @@ class MoneyTest {
         var entry = AmountEntry(maxDigits = 3)
         repeat(5) { entry = entry.append(9) }
         assertThat(entry.minor).isEqualTo(999)
+        assertThrows(IllegalArgumentException::class.java) { AmountEntry().append(-1) }
         assertThrows(IllegalArgumentException::class.java) { AmountEntry().append(10) }
     }
 }

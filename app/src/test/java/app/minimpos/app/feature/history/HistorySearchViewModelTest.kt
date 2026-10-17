@@ -3,13 +3,19 @@ package app.minimpos.app.feature.history
 import app.minimpos.app.TestEnvironment
 import app.minimpos.app.closeViewModels
 import app.minimpos.app.data.db.CaptureStatus
+import app.minimpos.app.data.db.Failure
 import app.minimpos.app.data.db.RefundEntity
 import app.minimpos.app.data.db.RefundStatus
 import app.minimpos.app.data.db.SaleEntity
 import app.minimpos.app.data.db.SaleStatus
+import app.minimpos.app.data.db.SetupProblem
 import app.minimpos.app.data.repo.HistoryItem
+import app.minimpos.app.data.settings.TerminalMode
+import app.minimpos.app.feature.ActionOutcome
 import app.minimpos.app.history.HistoryAccounting
 import app.minimpos.app.history.HistoryActivityKind
+import app.minimpos.app.terminal.TerminalSetup
+import app.minimpos.core.payment.PaymentContext
 import app.minimpos.core.payment.Wallet
 import com.google.common.truth.Truth.assertThat
 import kotlinx.coroutines.Dispatchers
@@ -25,6 +31,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import java.time.Instant
+import java.time.LocalDate
 import java.time.ZoneOffset
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -221,5 +228,103 @@ class HistorySearchViewModelTest {
             val state = vm.state.first { it.loaded }
             assertThat(state.hasHistory).isFalse()
             assertThat(state.methods).isEmpty()
+        }
+
+    @Test
+    fun `reconciles terminal totals, enforces manager approval on period close, and dismisses report`() =
+        runTest(dispatcher) {
+            env.useSimulator()
+            val day = LocalDate.parse("2026-10-05")
+            val dayMillis = Instant.parse("2026-10-05T12:00:00Z").toEpochMilli()
+            val simContext = PaymentContext("SIMULATOR", TerminalSetup.SIMULATOR_POI_ID, "SIMULATOR", "", "SIMULATOR")
+            db.saleDao().insert(
+                sale("unknown-sale", 1500, "visa", "visa").copy(
+                    createdAt = dayMillis,
+                    processedAt = dayMillis,
+                    status = SaleStatus.UNKNOWN,
+                    context = simContext,
+                ),
+            )
+            db.refundDao().insert(
+                RefundEntity(
+                    id = "unknown-refund",
+                    saleId = null,
+                    createdAt = dayMillis,
+                    merchantReference = "R-UNK",
+                    originalTransactionId = "T.P",
+                    originalTimestamp = "2026-10-05T10:00:00Z",
+                    originalReference = null,
+                    currency = "AUD",
+                    amountMinor = 500,
+                    full = false,
+                    status = RefundStatus.UNKNOWN,
+                    context = simContext,
+                ),
+            )
+            var closeAllowed = false
+            val vm =
+                HistoryViewModel(
+                    history = env.container.history,
+                    zone = { ZoneOffset.UTC },
+                    receipts = env.container.receipts,
+                    gateway = env.container.gateway,
+                    terminal = env.container.terminalStatus.state,
+                    payments = env.container.payments,
+                    refunds = env.container.refunds,
+                    permitsClose = { closeAllowed },
+                ).also(viewModels::add)
+
+            val initial = vm.state.first { it.loaded && it.canReconcile }
+            assertThat(initial.canPrint).isTrue()
+
+            vm.reconcileTerminal(date = day, closePeriod = false)
+            val checked = vm.state.first { it.reconciliation != null }
+            assertThat(checked.reconcile.done).isTrue()
+            assertThat(checked.reconciliation?.closedPeriod).isFalse()
+
+            vm.dismissReconciliation()
+            assertThat(vm.state.first { it.reconciliation == null }.reconciliation).isNull()
+
+            vm.reconcileTerminal(date = day, closePeriod = true)
+            val denied = vm.state.first { it.reconcile.isError }
+            assertThat(denied.reconcile.outcome).isEqualTo(
+                ActionOutcome.Failed(Failure.NotSetUp(SetupProblem.MANAGER_APPROVAL)),
+            )
+
+            closeAllowed = true
+            vm.reconcileTerminal(date = day, closePeriod = true)
+            val closed = vm.state.first { it.reconciliation != null }
+            assertThat(closed.reconciliation?.closedPeriod).isTrue()
+        }
+
+    @Test
+    fun `prints day report and surfaces terminal setup problem on reconciliation`() =
+        runTest(dispatcher) {
+            env.useSimulator()
+            val day = LocalDate.parse("2026-10-05")
+            val vm =
+                HistoryViewModel(
+                    history = env.container.history,
+                    zone = { ZoneOffset.UTC },
+                    receipts = env.container.receipts,
+                    gateway = env.container.gateway,
+                    terminal = env.container.terminalStatus.state,
+                    payments = env.container.payments,
+                    refunds = env.container.refunds,
+                ).also(viewModels::add)
+            vm.state.first { it.loaded }
+            vm.printDay(day)
+            assertThat(
+                vm.state
+                    .first { it.print.outcome == ActionOutcome.Printed }
+                    .print.outcome,
+            ).isEqualTo(ActionOutcome.Printed)
+
+            env.updateSettings { it.copy(terminal = it.terminal.copy(mode = TerminalMode.CLOUD, environment = null)) }
+            vm.reconcileTerminal(date = day, closePeriod = false)
+            val notSetUp = vm.state.first { it.reconcile.isError }
+            assertThat(notSetUp.reconcile.outcome).isEqualTo(
+                ActionOutcome.Failed(Failure.NotSetUp(SetupProblem.ENVIRONMENT)),
+            )
         }
 }

@@ -16,6 +16,7 @@ java {
 kotlin {
     compilerOptions {
         jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
+        jvmDefault.set(org.jetbrains.kotlin.gradle.dsl.JvmDefaultMode.NO_COMPATIBILITY)
         allWarningsAsErrors.set(true)
         extraWarnings.set(true)
     }
@@ -63,10 +64,10 @@ kover {
         }
         verify {
             rule("Core line coverage") {
-                minBound(95)
+                minBound(100)
             }
             rule("Core branch coverage") {
-                minBound(85, kotlinx.kover.gradle.plugin.dsl.CoverageUnit.BRANCH)
+                minBound(97, kotlinx.kover.gradle.plugin.dsl.CoverageUnit.BRANCH)
             }
         }
     }
@@ -84,9 +85,9 @@ pitest {
     threads.set(4)
     outputFormats.set(listOf("HTML", "XML"))
     timestampedReports.set(false)
-    // Kotlin's generated null checks and serializers are compiler output, not behaviour the tests could notice.
-    avoidCallsTo.set(listOf("kotlin.jvm.internal"))
+    // Kotlin's generated null checks, resource-closing finally blocks, coroutine state-machine checks and serializers are compiler output.
+    avoidCallsTo.set(listOf("kotlin.jvm.internal", "kotlin.ResultKt", "kotlin.io.CloseableKt"))
     excludedClasses.set(listOf("*\$\$serializer"))
     // Just below the score reached when mutation testing was added; raise it as tests improve, never lower it.
-    mutationThreshold.set(91)
+    mutationThreshold.set(98)
 }

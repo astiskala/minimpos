@@ -32,6 +32,10 @@ import mockwebserver3.MockResponse
 import mockwebserver3.MockWebServer
 import mockwebserver3.RecordedRequest
 import okhttp3.HttpUrl.Companion.toHttpUrl
+import okhttp3.OkHttpClient
+import okhttp3.Protocol
+import okhttp3.Response
+import okhttp3.ResponseBody.Companion.toResponseBody
 import org.junit.After
 import org.junit.Assert.assertThrows
 import org.junit.Test
@@ -90,17 +94,25 @@ class CloudDevicesTest {
 
     @Test
     fun `regions follow Adyen's data centre table and live endpoints need one`() {
-        assertThat(CloudRegion.forCountry("au")).isEqualTo(CloudRegion.AU)
-        assertThat(CloudRegion.forCountry("NZ")).isEqualTo(CloudRegion.AU)
-        assertThat(CloudRegion.forCountry("CA")).isEqualTo(CloudRegion.US)
-        assertThat(CloudRegion.forCountry("JP")).isEqualTo(CloudRegion.NEA)
+        listOf("US", "ca", "MX", "BR", "PR").forEach {
+            assertThat(CloudRegion.forCountry(it)).isEqualTo(CloudRegion.US)
+        }
+        listOf("au", "NZ").forEach {
+            assertThat(CloudRegion.forCountry(it)).isEqualTo(CloudRegion.AU)
+        }
+        listOf("HK", "JP", "MY", "SG").forEach {
+            assertThat(CloudRegion.forCountry(it)).isEqualTo(CloudRegion.NEA)
+        }
         assertThat(CloudRegion.forCountry("NL")).isEqualTo(CloudRegion.EU)
         assertThat(CloudRegion.forCountry("")).isEqualTo(CloudRegion.EU)
         assertThat(CloudEndpoint.TEST.baseUrl).isEqualTo("https://device-api-test.adyen.com")
         assertThat(CloudEndpoint(TerminalEnvironment.LIVE, CloudRegion.AU).baseUrl).isEqualTo("https://device-api-live-au.adyen.com")
         assertThat(CloudEndpoint(TerminalEnvironment.LIVE, CloudRegion.EU).baseUrl).isEqualTo("https://device-api-live.adyen.com")
+        assertThat(AdyenCloudDevices.MIN_TRANSACTION_TIMEOUT).isEqualTo(160.seconds)
         assertThrows(IllegalArgumentException::class.java) { CloudEndpoint(TerminalEnvironment.LIVE) }
+        assertThrows(IllegalArgumentException::class.java) { CloudEndpoint(TerminalEnvironment.TEST, CloudRegion.EU) }
         assertThrows(IllegalArgumentException::class.java) { CloudCredentials(" ", "Merchant") }
+        assertThrows(IllegalArgumentException::class.java) { CloudCredentials("key", " ") }
         assertThat(credentials.toString()).doesNotContain("cloud-api-key")
     }
 
@@ -160,11 +172,26 @@ class CloudDevicesTest {
         assertThat(failure(408).fault.mayHaveTakenEffect).isTrue()
         assertThat(failure(200, """{"unexpected":true}""").fault).isEqualTo(Fault.UnreadableReply())
         // Adyen answers a terminal that is not there, or did not answer, with an event notification.
-        assertThat(failure(200, event("Device S1F2-1 is not connected")).fault)
-            .isEqualTo(Fault.TerminalOffline("S1F2-000158213605014", ExternalText("Device S1F2-1 is not connected")))
+        listOf(
+            "Device S1F2-1 is not connected",
+            "Device S1F2-1 is offline",
+            "Unknown device S1F2-1",
+            "Device not found",
+        ).forEach { msg ->
+            assertThat(failure(200, event(msg)).fault)
+                .isEqualTo(Fault.TerminalOffline("S1F2-000158213605014", ExternalText(msg)))
+        }
         val late = failure(200, event("Did not receive a response from the POI."))
         assertThat(late.fault)
             .isEqualTo(Fault.NoAnswerFromTerminal("S1F2-000158213605014", ExternalText("Did not receive a response from the POI.")))
+        val rawDetails =
+            """{"SaleToPOIRequest":{"EventNotification":{"EventToNotify":"Reject","EventDetails":"error=timeout"}}}"""
+        assertThat(failure(200, rawDetails).fault)
+            .isEqualTo(Fault.NoAnswerFromTerminal("S1F2-000158213605014", ExternalText("error=timeout")))
+        // Longer timeouts above MIN_TRANSACTION_TIMEOUT are also accepted.
+        syncReply = { MockResponse.Builder().code(404).build() }
+        assertThat(runBlocking { transport.send(header(request), 200.seconds) })
+            .isEqualTo(Delivery.Failed(Fault.NotFound("S1F2-000158213605014")))
         // Without a POIID nothing is sent.
         val anonymous =
             TerminalAPIRequest().apply {
@@ -226,6 +253,8 @@ class CloudDevicesTest {
         val unknown = runBlocking { devices.detect(TerminalEnvironment.TEST, null, "AU") }
         assertThat(unknown).isEqualTo(CloudDetection.Failed(Fault.Credential(ApiKey.ADYEN)))
         assertThat(server.requestCount).isEqualTo(1)
+        val liveUnknown = runBlocking { devices.detect(TerminalEnvironment.LIVE, "S1F2-000158213605014", "AU") }
+        assertThat(liveUnknown).isEqualTo(CloudDetection.Failed(Fault.Credential(ApiKey.ADYEN)))
         listings["/test"] = 403 to ""
         assertThat(
             (
@@ -271,6 +300,26 @@ class CloudDevicesTest {
             )
         val delivery = runBlocking { transport.send(request, 5.seconds) } as Delivery.Failed
         assertThat(delivery.fault.mayHaveTakenEffect).isFalse()
+        assertThat(credentials.toString()).isEqualTo("CloudCredentials(HarbourCoffeeCOM)")
+        val defaultEndpointDevices =
+            AdyenCloudDevices(
+                credentials,
+                baseClient =
+                    OkHttpClient
+                        .Builder()
+                        .addInterceptor { chain ->
+                            Response
+                                .Builder()
+                                .request(chain.request())
+                                .protocol(Protocol.HTTP_1_1)
+                                .code(200)
+                                .message("OK")
+                                .body("""{"uniqueDeviceIds":["S1F2-1"]}""".toResponseBody())
+                                .build()
+                        }.build(),
+            )
+        assertThat(runBlocking { defaultEndpointDevices.connectedDevices(CloudEndpoint.TEST) })
+            .isEqualTo(CloudListing.Listed(listOf("S1F2-1")))
     }
 
     private fun header(request: TerminalAPIRequest) =

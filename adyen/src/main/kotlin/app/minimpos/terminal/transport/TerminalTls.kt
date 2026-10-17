@@ -112,9 +112,7 @@ class TerminalTls(
          * @throws IllegalStateException If the certificate is not bundled.
          */
         fun loadRoot(environment: TerminalEnvironment): X509Certificate {
-            val stream =
-                TerminalTls::class.java.getResourceAsStream(environment.certificateResource)
-                    ?: error("Missing Adyen root certificate ${environment.certificateResource}")
+            val stream = checkNotNull(TerminalTls::class.java.getResourceAsStream(environment.certificateResource))
             return stream.use { CertificateFactory.getInstance("X.509").generateCertificate(it) as X509Certificate }
         }
     }

@@ -18,14 +18,30 @@ import app.minimpos.app.MiniMposApp
 import app.minimpos.app.R
 import app.minimpos.app.TestEnvironment
 import app.minimpos.app.await
+import app.minimpos.app.data.db.DeviceFault
+import app.minimpos.app.data.db.EmailFault
 import app.minimpos.app.data.db.Failure
+import app.minimpos.app.data.db.RefundEntity
+import app.minimpos.app.data.db.RefundStatus
 import app.minimpos.app.data.db.SaleEntity
 import app.minimpos.app.data.db.SaleKind
 import app.minimpos.app.data.db.SaleStatus
 import app.minimpos.app.data.db.SetupProblem
 import app.minimpos.app.data.db.StoredReason
 import app.minimpos.app.data.db.TaxRateEntity
+import app.minimpos.app.feature.ActionOutcome
+import app.minimpos.app.feature.CaptureStep
+import app.minimpos.app.feature.modificationNote
 import app.minimpos.app.feature.outcomeNote
+import app.minimpos.app.feature.setupCard
+import app.minimpos.app.feature.stillUnconfirmed
+import app.minimpos.app.feature.text
+import app.minimpos.app.feature.walletCheckFailed
+import app.minimpos.app.payment.WalletScanProblem
+import app.minimpos.terminal.transport.ApiKey
+import app.minimpos.terminal.transport.ExternalText
+import app.minimpos.terminal.transport.Fault
+import app.minimpos.terminal.transport.MalformedPart
 import com.google.common.truth.Truth.assertThat
 import org.junit.Before
 import org.junit.Rule
@@ -86,6 +102,116 @@ class LocalizedUiTest {
         }
         compose.onNodeWithTag("notSetUp").assertTextContains("端末ID", substring = true)
         compose.onNodeWithTag("interrupted").assertTextContains("${env.context.getString(R.string.payment_interrupted)} (EOF)")
+    }
+
+    private fun allFaults(said: ExternalText): List<Fault> =
+        listOf(
+            Fault.Unreachable("192.0.2.1", terminal = true),
+            Fault.Unreachable("checkout-test.adyen.com", terminal = false),
+            Fault.UnknownHost("pos.local", terminal = true),
+            Fault.UnknownHost("checkout-test.adyen.com", terminal = false),
+            Fault.Untrusted("192.0.2.1"),
+            Fault.KeyRejected(said),
+            Fault.TerminalRejected(said),
+            Fault.TerminalOffline("S1F2-1", said),
+            Fault.NotStarted,
+            Fault.AppRefused(said),
+            Fault.Unsupported,
+            Fault.NoLateReply,
+            Fault.NoRecord,
+            Fault.RequestNotEncrypted,
+            Fault.Credential(ApiKey.ADYEN),
+            Fault.Credential(ApiKey.PAYMENTS_APP),
+            Fault.Permission(ApiKey.ADYEN, "Role"),
+            Fault.Permission(ApiKey.PAYMENTS_APP, null),
+            Fault.NotFound("S1F2-1"),
+            Fault.AdyenRejected(422, "101", said),
+            Fault.ListTooLarge,
+            Fault.TimedOut,
+            Fault.ConnectionLost,
+            Fault.ReplyUnverified,
+            Fault.UnreadableReply(said),
+            Fault.NoAnswerFromTerminal("S1F2-1", said),
+            Fault.Abandoned,
+            Fault.TerminalHttp(502),
+            Fault.AdyenUnavailable(503, null, said),
+            Fault.StillInProgress,
+        ) + MalformedPart.entries.map { Fault.Malformed(it) }
+
+    private fun allOutcomes(said: ExternalText): List<ActionOutcome> =
+        listOf(
+            ActionOutcome.Printed,
+            ActionOutcome.Emailed("shopper@example.com"),
+            ActionOutcome.AbortSent,
+            ActionOutcome.LinkNotPaid,
+            ActionOutcome.NotCaptured(Failure.Remote(Fault.TimedOut), CaptureStep.CAPTURE),
+            ActionOutcome.NotCaptured(Failure.Remote(Fault.TimedOut), CaptureStep.ADJUSTMENT),
+            ActionOutcome.CaptureUnconfirmed(Failure.Remote(Fault.TimedOut), CaptureStep.CAPTURE),
+            ActionOutcome.CaptureUnconfirmed(Failure.Remote(Fault.TimedOut), CaptureStep.ADJUSTMENT),
+            ActionOutcome.CaptureRefused(CaptureStep.TIP, 500, "JPY", said),
+            ActionOutcome.CaptureRefused(CaptureStep.CAPTURE, 1_000, "JPY", null),
+            ActionOutcome.CaptureNotAllowed,
+            ActionOutcome.Connected(hasPrinter = true, globalStatus = "OK", setupOnly = false),
+            ActionOutcome.Connected(hasPrinter = false, globalStatus = null, setupOnly = false),
+            ActionOutcome.Connected(hasPrinter = false, globalStatus = null, setupOnly = true),
+            ActionOutcome.ConnectionFailed(Failure.Remote(Fault.TimedOut)),
+            ActionOutcome.ApiWorks,
+            ActionOutcome.TapToPayReady("INST-1"),
+            ActionOutcome.TapToPayRemoved,
+            ActionOutcome.TestEmailSent("ops@example.com"),
+            ActionOutcome.Missing,
+            ActionOutcome.Unconfirmed(Failure.Remote(Fault.TimedOut)),
+            ActionOutcome.Failed(Failure.Remote(Fault.TimedOut)),
+        )
+
+    private fun baseSale() =
+        SaleEntity(
+            id = "s",
+            createdAt = 1,
+            currency = "JPY",
+            taxMode = "INCLUSIVE",
+            netMinor = 1_000,
+            taxMinor = 0,
+            totalMinor = 1_000,
+            status = SaleStatus.UNKNOWN,
+            merchantReference = "MP",
+        )
+
+    @Test
+    fun `words every outcome fault setup problem and stored note without blank strings`() {
+        val said = ExternalText("Adyen said")
+        val failures =
+            SetupProblem.entries.map { Failure.NotSetUp(it) } +
+                allFaults(said).map { Failure.Remote(it) } +
+                DeviceFault.entries.map { Failure.Device(it) } +
+                EmailFault.entries.map { Failure.Email(it, said) }
+        val baseSale = baseSale()
+        val baseRefund =
+            RefundEntity("r", "s", 1, "MR", "TX", "2026-10-05T12:00:00Z", "MP", "JPY", 500, false, RefundStatus.UNKNOWN)
+        val rendered = mutableListOf<String>()
+        compose.setContent {
+            allOutcomes(said).forEach { rendered += it.text() }
+            failures.forEach { rendered += it.text() }
+            WalletScanProblem.entries.forEach { rendered += it.text() }
+            SetupProblem.entries.forEach {
+                val (titleOn, bodyOn) = it.setupCard(onTerminal = true)
+                val (titleOff, bodyOff) = it.setupCard(onTerminal = false)
+                rendered += listOf(titleOn, bodyOn, titleOff, bodyOff)
+            }
+            rendered += walletCheckFailed(Failure.Remote(Fault.TimedOut))
+            rendered += stillUnconfirmed(Failure.Remote(Fault.TimedOut))
+            val timedOutUnconfirmed = StoredReason.Unconfirmed(Failure.Remote(Fault.TimedOut))
+            rendered += checkNotNull(baseSale.copy(paymentLink = true, reason = timedOutUnconfirmed).outcomeNote())
+            rendered += checkNotNull(baseSale.copy(reason = StoredReason.Unconfirmed(null)).outcomeNote())
+            val timedOutNotDone = StoredReason.NotDone(Failure.Remote(Fault.TimedOut))
+            rendered += checkNotNull(baseSale.copy(modificationReason = timedOutNotDone).modificationNote())
+            rendered += checkNotNull(baseSale.copy(modificationReason = timedOutUnconfirmed).modificationNote())
+            rendered += checkNotNull(baseSale.copy(modificationReason = StoredReason.Interrupted).modificationNote())
+            rendered += checkNotNull(baseRefund.copy(reason = StoredReason.Interrupted).outcomeNote())
+            assertThat(baseSale.copy(modificationReason = StoredReason.Unconfirmed(null)).modificationNote()).isNull()
+        }
+        assertThat(rendered).isNotEmpty()
+        assertThat(rendered.all { it.isNotBlank() }).isTrue()
     }
 
     @Test

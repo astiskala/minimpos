@@ -64,9 +64,10 @@ object QrChunks {
         val parts = text.trimStart().trimEnd { it.isWhitespace() && it != ' ' }.split(':', limit = FIELDS)
         if (parts.size != FIELDS || parts[0] != PREFIX || parts[1].length != SET_ID_LENGTH) return null
         val position = parts[2].split('/')
-        val index = position.getOrNull(0)?.toIntOrNull() ?: return null
-        val total = position.getOrNull(1)?.toIntOrNull() ?: return null
-        if (position.size != 2 || total !in 1..MAX_CHUNKS || index !in 1..total) return null
+        if (position.size != 2) return null
+        val index = position[0].toIntOrNull() ?: return null
+        val total = position[1].toIntOrNull() ?: return null
+        if (total > MAX_CHUNKS || index !in 1..total) return null
         return Chunk(parts[1], index, total, parts[FIELDS - 1])
     }
 }

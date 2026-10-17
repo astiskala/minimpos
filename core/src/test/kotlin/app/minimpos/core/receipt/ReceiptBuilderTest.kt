@@ -12,6 +12,7 @@ import app.minimpos.core.receipt.ReceiptElement.Text
 import app.minimpos.core.tax.TaxAmounts
 import app.minimpos.core.tax.TaxMode
 import com.google.common.truth.Truth.assertThat
+import kotlinx.serialization.json.Json
 import org.junit.Test
 import java.util.Locale
 
@@ -265,6 +266,12 @@ class ReceiptBuilderTest {
         assertThat(doc.elements).doesNotContain(Text("Held on the card, not charged yet", Align.CENTER))
         assertThat(builder().sale(sale().copy(preAuthorisation = true)).elements)
             .contains(Text("Held on the card, not charged yet", Align.CENTER))
+        val cancelledHold = builder().sale(sale().copy(preAuthorisation = true, holdCancelled = true))
+        assertThat(cancelledHold.elements).contains(Row("TOTAL", "$12.00", TextStyle.BOLD))
+        assertThat(cancelledHold.elements).doesNotContain(Text("Held on the card, not charged yet", Align.CENTER))
+        val pendingHold = builder().sale(sale().copy(preAuthorisation = true, standingNote = "Hold pending"))
+        assertThat(pendingHold.elements).contains(Text("Hold pending", Align.CENTER, TextStyle.BOLD))
+        assertThat(pendingHold.elements).doesNotContain(Text("Held on the card, not charged yet", Align.CENTER))
     }
 
     @Test
@@ -302,15 +309,28 @@ class ReceiptBuilderTest {
                 .filterIsInstance<Row>()
                 .map { it.left }
         assertThat(rows).doesNotContain("Customer")
+        val nullCustomerRows =
+            builder()
+                .sale(sale(customer = null))
+                .elements
+                .filterIsInstance<Row>()
+                .map { it.left }
+        assertThat(nullCustomerRows).doesNotContain("Customer")
     }
 
     @Test
     fun `adyen header lines are kept when there is no own header`() {
         val bare = ReceiptBuilder(ReceiptBranding(), ReceiptOptions(), ReceiptLabels(), money)
-        val doc = bare.sale(sale().copy(cardReceipt = cardLines, refundQr = null))
+        val doc = bare.sale(sale().copy(cardReceipt = cardLines + CardReceiptLine(name = "", value = "1234"), refundQr = null))
         assertThat(doc.elements.first()).isEqualTo(Row("Date", "29/09/2026 21:03"))
         assertThat(doc.elements).contains(Text("ADYEN CAFE", Align.CENTER))
+        assertThat(doc.elements).contains(Row("", "1234"))
         assertThat(doc.qrCodes).isEmpty()
+        val untitled =
+            ReceiptBuilder(branding.copy(title = "", taxIdLabel = ""), ReceiptOptions(), ReceiptLabels(), money)
+                .sale(sale())
+        assertThat(untitled.elements).contains(Text("12 345 678 901", Align.CENTER))
+        assertThat(untitled.elements).doesNotContain(Text("TAX INVOICE", Align.CENTER, TextStyle.BOLD))
     }
 
     @Test
@@ -322,21 +342,34 @@ class ReceiptBuilderTest {
                 dateTime = "30/09/2026 10:00",
                 items = listOf(ReceiptItem("Flat white", 1, 450, 450)),
                 amount = 450,
-                cardReceipt = emptyList(),
+                cardReceipt = cardLines,
+                standingNote = "Refund pending",
             )
         val doc = builder().refund(refund)
         assertThat(doc.elements).containsAtLeast(
             Text("REFUND", Align.CENTER, TextStyle.BOLD),
+            Row("Date", "30/09/2026 10:00"),
             Row("Reference", "MP-R1"),
             Row("Original sale", "MP-1"),
             Row("Flat white", "$4.50"),
             Row("REFUND TOTAL", "$4.50", TextStyle.BOLD),
+            Text("Refund pending", Align.CENTER, TextStyle.BOLD),
+            Row("Card", "**** 9999"),
+            Text("Thank you!", Align.CENTER),
         )
         val partial =
             ReceiptBuilder(branding.copy(footer = ""), ReceiptOptions(showReferences = false), ReceiptLabels(), money)
-                .refund(refund.copy(items = emptyList()))
+                .refund(refund.copy(items = emptyList(), cardReceipt = emptyList(), standingNote = null))
         assertThat(partial.elements).contains(Text("Partial refund"))
         assertThat(partial.elements.filterIsInstance<Row>().map { it.left }).doesNotContain("Reference")
+        val fullEmptyItems =
+            ReceiptBuilder(ReceiptBranding(), ReceiptOptions(), ReceiptLabels(refundTitle = ""), money)
+                .refund(refund.copy(items = emptyList(), full = true))
+        assertThat(fullEmptyItems.elements).contains(Text(""))
+        val brandedUntitledRefund =
+            ReceiptBuilder(branding, ReceiptOptions(), ReceiptLabels(refundTitle = ""), money)
+                .refund(refund.copy(items = emptyList(), full = true))
+        assertThat(brandedUntitledRefund.elements.first()).isEqualTo(Text("Corner Cafe", Align.CENTER, TextStyle.BOLD))
     }
 
     @Test
@@ -419,5 +452,29 @@ class ReceiptBuilderTest {
         assertThat(AppliedTax("VAT", 20_000).label()).isEqualTo("VAT 20%")
         assertThat(AppliedTax("GST 10%", 10_000).label()).isEqualTo("GST 10%")
         assertThat(AppliedTax("", 5_500).label()).isEqualTo("5.5%")
+    }
+
+    @Test
+    fun `card receipt lines round trip through JSON with or without optional fields`() {
+        val full = CardReceiptLine(key = "pan", name = "Card", value = "**** 1234", bold = true)
+        assertThat(Json.decodeFromString<CardReceiptLine>(Json.encodeToString(full))).isEqualTo(full)
+        assertThat(Json.decodeFromString<CardReceiptLine>("{}")).isEqualTo(CardReceiptLine())
+        val defaultSale =
+            SaleReceipt(
+                reference = "R",
+                customerReference = null,
+                dateTime = "now",
+                mode = TaxMode.INCLUSIVE,
+                items = emptyList(),
+                amounts = TaxAmounts.ZERO,
+                breakdown = emptyList(),
+                approved = true,
+                cardReceipt = emptyList(),
+                refundQr = null,
+                cardSaved = false,
+            )
+        assertThat(defaultSale.cardSaved).isFalse()
+        assertThat(defaultSale.preAuthorisation).isFalse()
+        assertThat(Json.decodeFromString<CardReceiptLine>(Json.encodeToString(CardReceiptLine()))).isEqualTo(CardReceiptLine())
     }
 }

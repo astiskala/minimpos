@@ -4,6 +4,9 @@ import com.google.common.truth.Truth.assertThat
 import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.TemporaryFolder
+import java.io.ByteArrayOutputStream
+import java.io.PrintStream
+import java.nio.charset.StandardCharsets
 import java.nio.file.Files
 import java.nio.file.Path
 
@@ -19,12 +22,16 @@ class BuildReportsTest {
             "app",
             "testDebugUnitTest",
             """
-            <testsuite name="app.minimpos.app.ExampleTest" tests="2" skipped="1" failures="1" errors="0"
+            <testsuite name="app.minimpos.app.ExampleTest" tests="2" skipped="1" failures="1" errors="1"
                 timestamp="2026-10-06T13:01:00Z" time="12.5">
               <testcase classname="app.minimpos.app.ExampleTest" name="shopper's amount" time="12.5">
                 <failure message="expected: &lt;100&gt; but was: &lt;90&gt;">java.lang.AssertionError: expected: &lt;100&gt; but was: &lt;90&gt;
             at org.junit.Assert.fail(Assert.java:89)
             at app.minimpos.app.ExampleTest.shopper(ExampleTest.kt:42)</failure>
+              </testcase>
+              <testcase name="blankAttributes">
+                <error message="Fallback message">
+            at org.junit.Assert.fail(Assert.java:89)</error>
               </testcase>
             </testsuite>
             """.trimIndent(),
@@ -33,8 +40,11 @@ class BuildReportsTest {
         assertThat(result.code).isEqualTo(0)
         assertThat(result.output).contains("expected: <100> but was: <90>")
         assertThat(result.output).contains("ExampleTest.shopper(ExampleTest.kt:42)")
+        assertThat(result.output).contains("app.minimpos.app.ExampleTest > blankAttributes")
+        assertThat(result.output).contains("Fallback message")
         assertThat(result.output).contains("2026-10-06T13:01:00Z")
         assertThat(result.output).contains("12.500s")
+        assertThat(result.output).contains("tests=2")
         assertThat(result.output).contains("skipped=1")
         val rerun =
             "scripts/gradle ':app:testDebugUnitTest' --tests " +
@@ -49,28 +59,63 @@ class BuildReportsTest {
         val root = temporary.newFolder().toPath()
         assertThat(Cli.run("report", root.toString()).output).contains("No JUnit reports")
         report(root, "core", "test", "<testsuite name=\"Fast\" tests=\"1\" time=\"0.25\"/>")
+        Files.writeString(root.resolve("core/build/test-results/test/other.xml"), "ignored")
+        Files.writeString(root.resolve("core/build/test-results/test/TEST-ignored.txt"), "ignored")
         report(root, "adyen", "test", "<testsuite name=\"Slow\" tests=\"1\" time=\"3.5\"/>")
+        report(root, "app", "test", "<testsuite name=\"Bare\"/>")
+        report(root, "tooling", "test", "<testsuite name=\"Tie\" tests=\"1\" time=\"0.25\"/>")
         val result = Cli.run("report", root.toString())
         assertThat(result.code).isEqualTo(0)
         assertThat(result.output.indexOf("Slow")).isLessThan(result.output.indexOf("Fast"))
+        assertThat(result.output.indexOf("Fast")).isLessThan(result.output.indexOf("Tie"))
+        assertThat(result.output.indexOf("Tie")).isLessThan(result.output.indexOf("Bare"))
+        assertThat(result.output).contains("0.000s Bare tests=unknown skipped=0 timestamp=unknown")
     }
 
     @Test
     fun `external entities and malformed XML fail without disclosing file contents`() {
         val root = temporary.newFolder().toPath()
         val secret = Files.writeString(root.resolve("private.txt"), "DO_NOT_DISCLOSE")
-        for (xml in listOf("<!DOCTYPE testsuite [<!ENTITY x SYSTEM '${secret.toUri()}'>]><testsuite name='&x;'/>", "<testsuite>")) {
-            report(root, "core", "test", xml)
-            val result = Cli.run("report", root.toString())
-            assertThat(result.code).isEqualTo(1)
-            assertThat(result.output).contains("Cannot parse test report")
-            assertThat(result.output).doesNotContain("DO_NOT_DISCLOSE")
+        val originalErr = System.err
+        val errBytes = ByteArrayOutputStream()
+        System.setErr(PrintStream(errBytes, true, StandardCharsets.UTF_8))
+        try {
+            val malformedInputs =
+                listOf(
+                    "<!DOCTYPE testsuite [<!ENTITY x SYSTEM '${secret.toUri()}'>]><testsuite name='&x;'/>",
+                    "<!DOCTYPE testsuite [<!ENTITY x 'INTERNAL_ENTITY'>]><testsuite name='&x;'/>",
+                    "<testsuite>",
+                )
+            for (xml in malformedInputs) {
+                report(root, "core", "test", xml)
+                val result = Cli.run("report", root.toString())
+                assertThat(result.code).isEqualTo(1)
+                assertThat(result.output).contains("Cannot parse test report")
+                assertThat(result.output).doesNotContain("DO_NOT_DISCLOSE")
+            }
+            report(root, "core", "test", "<not-a-testsuite/>")
+            val wrongRoot = Cli.run("report", root.toString())
+            assertThat(wrongRoot.code).isEqualTo(1)
+            assertThat(wrongRoot.output).contains("Expected testsuite")
+        } finally {
+            System.setErr(originalErr)
         }
+        assertThat(errBytes.toString(StandardCharsets.UTF_8)).isEmpty()
     }
 
     @Test
     fun `unknown commands and surplus report arguments fail`() {
         assertThat(Cli.run("report").code).isEqualTo(1)
+        assertThat(
+            Cli
+                .run(
+                    "report",
+                    temporary.root
+                        .toPath()
+                        .resolve("missing")
+                        .toString(),
+                ).code,
+        ).isEqualTo(1)
         assertThat(Cli.run("report", temporary.root.toString(), "extra").code).isEqualTo(1)
     }
 

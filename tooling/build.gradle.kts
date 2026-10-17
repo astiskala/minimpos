@@ -1,7 +1,10 @@
 plugins {
     alias(libs.plugins.kotlin.jvm)
+    alias(libs.plugins.kover)
+    alias(libs.plugins.android.lint)
     alias(libs.plugins.detekt)
     alias(libs.plugins.dokka)
+    alias(libs.plugins.pitest)
 }
 
 java {
@@ -12,6 +15,7 @@ java {
 kotlin {
     compilerOptions {
         jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
+        jvmDefault.set(org.jetbrains.kotlin.gradle.dsl.JvmDefaultMode.NO_COMPATIBILITY)
         allWarningsAsErrors.set(true)
         extraWarnings.set(true)
     }
@@ -30,6 +34,13 @@ dokka {
         failOnWarning.set(true)
         offlineMode.set(true)
     }
+}
+
+lint {
+    abortOnError = true
+    warningsAsErrors = true
+    checkAllWarnings = true
+    checkTestSources = true
 }
 
 dependencies {
@@ -70,7 +81,39 @@ tasks.test {
     )
 }
 
+kover {
+    reports {
+        verify {
+            rule("Tooling line coverage") {
+                minBound(99)
+            }
+            rule("Tooling branch coverage") {
+                minBound(96, kotlinx.kover.gradle.plugin.dsl.CoverageUnit.BRANCH)
+            }
+        }
+    }
+}
+
 tasks.named("check") {
     setDependsOn(dependsOn - tasks.named("detekt"))
-    dependsOn("detektMain", "detektTest", "dokkaGeneratePublicationHtml", cliJar)
+    dependsOn("koverVerify", "detektMain", "detektTest", "dokkaGeneratePublicationHtml", cliJar)
+}
+
+pitest {
+    targetClasses.set(listOf("app.minimpos.tooling.*"))
+    excludedTestClasses.set(
+        listOf(
+            "app.minimpos.tooling.ArchitectureTest",
+            "app.minimpos.tooling.CiScriptTest",
+            "app.minimpos.tooling.DevRunnerTest",
+            "app.minimpos.tooling.GradleRunnerTest",
+            "app.minimpos.tooling.ReleaseReuseTest",
+            "app.minimpos.tooling.WorkflowTest",
+        ),
+    )
+    threads.set(4)
+    outputFormats.set(listOf("HTML", "XML"))
+    timestampedReports.set(false)
+    avoidCallsTo.set(listOf("kotlin.jvm.internal", "kotlin.ResultKt", "kotlin.io.CloseableKt", "kotlin.jdk7.AutoCloseableKt"))
+    mutationThreshold.set(100)
 }

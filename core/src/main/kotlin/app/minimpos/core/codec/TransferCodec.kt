@@ -200,8 +200,10 @@ object TransferCodec {
         val taxRates =
             List(reader.readCount()) {
                 val name = reader.readString()
-                val rate = reader.readVarint().toInt()
-                if (!TaxRates.isValid(rate)) throw TransferFormatException("Invalid tax rate for '$name'")
+                val rate = reader.readVarint().coerceAtMost(Int.MAX_VALUE.toLong()).toInt()
+                if (!TaxRates.isValid(rate)) {
+                    throw TransferFormatException("Invalid tax rate for '$name'")
+                }
                 CatalogueTaxRate(name, rate)
             }
         val categories = List(reader.readCount()) { CatalogueCategory(reader.readString()) }
@@ -209,15 +211,14 @@ object TransferCodec {
             List(reader.readCount()) {
                 val name = reader.readString()
                 val priceMinor = reader.readVarint()
-                val tax = reader.readVarint().toInt()
+                val tax = reader.readCount()
                 CatalogueProduct(
                     name = name,
                     priceMinor = priceMinor,
                     taxRateIndex = (tax - 1).takeIf { tax > 0 },
                     categoryIndex =
                         reader
-                            .readVarint()
-                            .toInt()
+                            .readCount()
                             .takeIf { stored -> stored > 0 }
                             ?.minus(1),
                     sku = reader.readString().ifEmpty { null },
@@ -250,7 +251,7 @@ object TransferCodec {
             val buffer = ByteArray(BUFFER_BYTES)
             while (!inflater.finished()) {
                 val n = inflater.inflate(buffer)
-                if (n == 0 && (inflater.needsInput() || inflater.needsDictionary())) {
+                if (n == 0 && inflater.needsInput()) {
                     throw TransferFormatException("Transfer data is truncated")
                 }
                 out.write(buffer, 0, n)
@@ -321,11 +322,11 @@ object TransferCodec {
         }
 
         fun readString(): String {
-            val length = readVarint().toInt()
+            val length = readVarint()
             if (length > MAX_STRING_BYTES || position + length > bytes.size) {
                 throw TransferFormatException("Invalid text in transfer")
             }
-            return String(bytes, position, length, Charsets.UTF_8).also { position += length }
+            return String(bytes, position, length.toInt(), Charsets.UTF_8).also { position += length.toInt() }
         }
 
         fun readBytes(max: Int): ByteArray {
@@ -334,9 +335,6 @@ object TransferCodec {
             return bytes.copyOfRange(position, position + length.toInt()).also { position += length.toInt() }
         }
 
-        fun readAscii(length: Int): String {
-            if (position + length > bytes.size) throw TransferFormatException("Transfer data is truncated")
-            return String(bytes, position, length, Charsets.US_ASCII).also { position += length }
-        }
+        fun readAscii(length: Int): String = String(bytes, position, length, Charsets.US_ASCII).also { position += length }
     }
 }

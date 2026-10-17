@@ -1,6 +1,8 @@
 package app.minimpos.terminal
 
 import app.minimpos.terminal.client.BarcodeScan
+import app.minimpos.terminal.client.CardEntryOverride
+import app.minimpos.terminal.client.InputOutcome
 import app.minimpos.terminal.client.PaymentParams
 import app.minimpos.terminal.client.PosApplication
 import app.minimpos.terminal.client.PrintAlign
@@ -13,10 +15,26 @@ import app.minimpos.terminal.client.RecurringModel
 import app.minimpos.terminal.client.RefundParams
 import app.minimpos.terminal.client.RetryAdvice
 import app.minimpos.terminal.client.ScannedPayment
+import app.minimpos.terminal.client.ShopperSessionFlow
 import app.minimpos.terminal.client.TerminalClient
+import app.minimpos.terminal.client.TerminalCurrencyTotals
 import app.minimpos.terminal.client.TerminalIdentity
+import app.minimpos.terminal.client.TerminalTipOptions
+import app.minimpos.terminal.client.TerminalTipSuggestions
+import app.minimpos.terminal.client.TerminalTotalsOutcome
 import app.minimpos.terminal.client.TransactionKind
 import app.minimpos.terminal.client.TransactionOutcome
+import app.minimpos.terminal.client.VirtualReceipt
+import app.minimpos.terminal.client.VirtualReceiptLine
+import app.minimpos.terminal.client.displayQrCode
+import app.minimpos.terminal.client.displayVirtualReceipt
+import app.minimpos.terminal.client.getTotals
+import app.minimpos.terminal.client.givingDonation
+import app.minimpos.terminal.client.requestConfirmation
+import app.minimpos.terminal.client.requestRating
+import app.minimpos.terminal.client.requestText
+import app.minimpos.terminal.client.shopperSession
+import app.minimpos.terminal.client.toPrintJob
 import app.minimpos.terminal.transport.Delivery
 import app.minimpos.terminal.transport.ExternalText
 import app.minimpos.terminal.transport.Fault
@@ -27,14 +45,26 @@ import com.adyen.model.nexo.AmountsResp
 import com.adyen.model.nexo.BarcodeType
 import com.adyen.model.nexo.CardData
 import com.adyen.model.nexo.CharacterStyleType
+import com.adyen.model.nexo.DeviceType
 import com.adyen.model.nexo.DiagnosisResponse
+import com.adyen.model.nexo.DisplayResponse
 import com.adyen.model.nexo.DocumentQualifierType
 import com.adyen.model.nexo.EntryModeType
 import com.adyen.model.nexo.ErrorConditionType
+import com.adyen.model.nexo.GetTotalsResponse
 import com.adyen.model.nexo.GlobalStatusType
+import com.adyen.model.nexo.InfoQualifyType
+import com.adyen.model.nexo.Input
+import com.adyen.model.nexo.InputCommandType
+import com.adyen.model.nexo.InputResponse
+import com.adyen.model.nexo.InputResult
 import com.adyen.model.nexo.MessageCategoryType
 import com.adyen.model.nexo.MessageClassType
+import com.adyen.model.nexo.OutputBarcode
+import com.adyen.model.nexo.OutputContent
 import com.adyen.model.nexo.OutputFormatType
+import com.adyen.model.nexo.OutputResult
+import com.adyen.model.nexo.OutputText
 import com.adyen.model.nexo.POIData
 import com.adyen.model.nexo.POIStatus
 import com.adyen.model.nexo.PaymentAcquirerData
@@ -42,8 +72,11 @@ import com.adyen.model.nexo.PaymentInstrumentData
 import com.adyen.model.nexo.PaymentResponse
 import com.adyen.model.nexo.PaymentResult
 import com.adyen.model.nexo.PaymentToken
+import com.adyen.model.nexo.PaymentTotals
+import com.adyen.model.nexo.PrintOutput
 import com.adyen.model.nexo.PrintResponse
 import com.adyen.model.nexo.PrinterStatusType
+import com.adyen.model.nexo.ReconciliationResponse
 import com.adyen.model.nexo.RepeatedMessageResponse
 import com.adyen.model.nexo.RepeatedResponseMessageBody
 import com.adyen.model.nexo.Response
@@ -51,16 +84,21 @@ import com.adyen.model.nexo.ResultType
 import com.adyen.model.nexo.ReversalReasonType
 import com.adyen.model.nexo.ReversalResponse
 import com.adyen.model.nexo.SaleData
+import com.adyen.model.nexo.SaleToPOIRequest
 import com.adyen.model.nexo.SaleToPOIResponse
 import com.adyen.model.nexo.TokenRequestedType
 import com.adyen.model.nexo.TransactionStatusResponse
+import com.adyen.model.nexo.TransactionTotals
+import com.adyen.model.nexo.TransactionType
 import com.adyen.model.terminal.TerminalAPIRequest
 import com.adyen.model.terminal.TerminalAPIResponse
 import com.google.common.truth.Truth.assertThat
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertThrows
 import org.junit.Test
 import java.math.BigDecimal
+import java.math.BigInteger
 import java.time.Clock
 import java.time.Instant
 import java.time.ZoneOffset
@@ -202,6 +240,27 @@ class TerminalClientTest {
             assertThat(bodies.last()).contains("\"Type\":\"End\"")
             assertThat(bodies).containsNoDuplicates()
             assertThat(sent.all { it.saleToPOIRequest.paymentRequest == null }).isTrue()
+
+            val cancelledScan =
+                client {
+                    respond {
+                        adminResponse = AdminResponse().apply { response = result(ResultType.FAILURE, ErrorConditionType.CANCEL) }
+                    }
+                }.scanBarcode(42)
+            assertThat(cancelledScan).isEqualTo(BarcodeScan.NotRead)
+
+            val blankScan =
+                client {
+                    respond {
+                        adminResponse =
+                            AdminResponse().apply {
+                                response = result(ResultType.SUCCESS, additional = base64("""{"Barcode":{"Data":" "}}"""))
+                            }
+                    }
+                }.scanBarcode(42)
+            assertThat(blankScan).isEqualTo(BarcodeScan.NotRead)
+            assertThat(client { empty }.scanBarcode(42)).isEqualTo(BarcodeScan.NotRead)
+            assertThat(client { Delivery.Failed(UNREACHABLE) }.scanBarcode(42)).isEqualTo(BarcodeScan.NotRead)
         }
 
     @Test
@@ -640,6 +699,620 @@ class TerminalClientTest {
             assertThat(saleData.saleToAcquirerData.applicationInfo.adyenLibrary.name).isEqualTo("adyen-java-api-library")
             assertThat(saleData.saleToAcquirerData.tenderOption).isNull()
             assertThat(saleData.tokenRequestedType).isNull()
+        }
+
+    private companion object {
+        val UNREACHABLE = Fault.Unreachable("192.168.1.20:8443", terminal = true)
+    }
+}
+
+class ShopperDisplayAndTotalsTest {
+    private var ids = 0
+    private val clock = Clock.fixed(Instant.parse("2026-09-30T01:02:03.456Z"), ZoneOffset.UTC)
+    private val params = PaymentParams(BigDecimal("12.50"), "AUD", "MP-1")
+    private val empty = Delivery.Answered(null)
+
+    private fun client(reply: (TerminalAPIRequest) -> Delivery) =
+        TerminalClient(
+            transport = TerminalTransport { request, _ -> reply(request) },
+            identity = TerminalIdentity("POS1", "S1F2-000158213605014"),
+            application = PosApplication("Mini mPOS", "1.0", "Mini mPOS", "Android", "13"),
+            clock = clock,
+            newServiceId = { "S${++ids}" },
+            recovery = RecoveryPolicy(attempts = 3, intervalMillis = 10, maxInProgressChecks = 3),
+        )
+
+    private fun respond(body: SaleToPOIResponse.() -> Unit) =
+        Delivery.Answered(
+            TerminalAPIResponse().apply {
+                saleToPOIResponse = SaleToPOIResponse().apply(body)
+            },
+        )
+
+    private fun result(
+        type: ResultType,
+        condition: ErrorConditionType? = null,
+        additional: String? = null,
+    ) = Response().apply {
+        result = type
+        errorCondition = condition
+        additionalResponse = additional
+    }
+
+    private fun approval() =
+        PaymentResponse().apply {
+            response = result(ResultType.SUCCESS)
+            saleData = SaleData().apply { saleTransactionID = TerminalClient.transaction("MP-1", clock.instant()) }
+            poiData = POIData().apply { poiTransactionID = TerminalClient.transaction("TENDER.PSP123", clock.instant()) }
+            paymentResult =
+                PaymentResult().apply {
+                    amountsResp =
+                        AmountsResp().apply {
+                            currency = "AUD"
+                            authorizedAmount = BigDecimal("12.50")
+                        }
+                }
+        }
+
+    private fun inputClient(
+        res: Response,
+        confirmed: Boolean? = null,
+        text: String? = null,
+        digit: String? = null,
+    ) = client {
+        respond {
+            inputResponse =
+                InputResponse().apply {
+                    inputResult =
+                        InputResult().apply {
+                            response = res
+                            input =
+                                Input().apply {
+                                    setConfirmedFlag(confirmed)
+                                    textInput = text
+                                    digitInput = digit
+                                }
+                        }
+                }
+        }
+    }
+
+    @Test
+    fun `validates payment and tip model preconditions`() {
+        assertThrows(IllegalArgumentException::class.java) {
+            PaymentParams(BigDecimal.ONE, "AUD", "MP-1", scannedPayment = ScannedPayment("wechatpay_pos", "123"), preAuthorisation = true)
+        }
+        assertThrows(IllegalArgumentException::class.java) {
+            PaymentParams(BigDecimal.ONE, "AUD", "MP-1", terminalTip = TerminalTipOptions(), preAuthorisation = true)
+        }
+        assertThrows(IllegalArgumentException::class.java) {
+            PaymentParams(BigDecimal.ONE, "AUD", "MP-1", allowPartialAuthorisation = true, preAuthorisation = true)
+        }
+        assertThrows(IllegalArgumentException::class.java) {
+            PaymentParams(BigDecimal.ONE, "AUD", "MP-1", askGiving = true, preAuthorisation = true)
+        }
+        assertThrows(IllegalArgumentException::class.java) {
+            PaymentParams(
+                BigDecimal.ONE,
+                "AUD",
+                "MP-1",
+                scannedPayment = ScannedPayment("wechatpay_pos", "123"),
+                cardEntryOverride = CardEntryOverride.MOTO,
+            )
+        }
+        assertThrows(IllegalArgumentException::class.java) { TerminalTipSuggestions.Percentages(emptyList(), true) }
+        assertThrows(IllegalArgumentException::class.java) { TerminalTipSuggestions.Percentages(listOf(1, 2, 3, 4), true) }
+        assertThrows(IllegalArgumentException::class.java) { TerminalTipSuggestions.Percentages(listOf(0), true) }
+        assertThrows(IllegalArgumentException::class.java) { TerminalTipSuggestions.Percentages(listOf(101), true) }
+        assertThat(TerminalTipSuggestions.Percentages(listOf(1, 100, 10), false).allowCustom).isFalse()
+        assertThat(TerminalTipSuggestions.Percentages(listOf(10), true).allowCustom).isTrue()
+        assertThrows(IllegalArgumentException::class.java) { TerminalTipSuggestions.FixedAmounts(emptyList(), true) }
+        assertThrows(IllegalArgumentException::class.java) { TerminalTipSuggestions.FixedAmounts(listOf(1, 2, 3, 4), true) }
+        assertThrows(IllegalArgumentException::class.java) { TerminalTipSuggestions.FixedAmounts(listOf(0), true) }
+        assertThat(TerminalTipSuggestions.FixedAmounts(listOf(1, 2, 3), false).allowCustom).isFalse()
+        assertThat(TerminalTipSuggestions.FixedAmounts(listOf(1), true).allowCustom).isTrue()
+        assertThrows(IllegalArgumentException::class.java) {
+            TerminalTipOptions(suggestions = TerminalTipSuggestions.Percentages(listOf(10)), amountToTipOn = BigDecimal.ZERO)
+        }
+        assertThrows(IllegalArgumentException::class.java) { TerminalTipOptions(amountToTipOn = BigDecimal.ONE) }
+        assertThat(
+            TerminalTipOptions(
+                suggestions = TerminalTipSuggestions.Percentages(listOf(10)),
+                amountToTipOn = BigDecimal("0.01"),
+            ).amountToTipOn,
+        ).isEqualTo(BigDecimal("0.01"))
+    }
+
+    @Test
+    fun `validates scanned payment and shopper flow preconditions`() {
+        assertThrows(IllegalArgumentException::class.java) { ScannedPayment(" ", "123") }
+        assertThrows(IllegalArgumentException::class.java) { ScannedPayment("wechatpay_pos", "") }
+        assertThrows(IllegalArgumentException::class.java) { ScannedPayment("wechatpay_pos", "1".repeat(129)) }
+        assertThrows(IllegalArgumentException::class.java) { ScannedPayment("wechatpay_pos", "/") }
+        assertThrows(IllegalArgumentException::class.java) { ScannedPayment("wechatpay_pos", ":") }
+        assertThat(ScannedPayment("wechatpay_pos", "09".repeat(64)).available).isTrue()
+        assertThrows(IllegalArgumentException::class.java) { ShopperSessionFlow(sessionId = 0) }
+        assertThat(ShopperSessionFlow(sessionId = 1).sessionId).isEqualTo(1)
+        val discardable = ScannedPayment("wechatpay_pos", "123")
+        assertThat(discardable.toString()).isEqualTo("ScannedPayment(brand=wechatpay_pos, code=[redacted])")
+        discardable.discard()
+        assertThat(discardable.available).isFalse()
+        assertThrows(IllegalStateException::class.java) { discardable.consume() }
+        assertThat(
+            VirtualReceipt(header = "Order", lines = emptyList(), total = BigDecimal.ONE, currency = "EUR").toXml(),
+        ).contains("""<screen name="virtual-receipt.xslt">""")
+        assertThat(PaymentParams(BigDecimal.ONE, "EUR", "M", saleReferenceId = "SR-1").saleReferenceId).isEqualTo("SR-1")
+        assertThat(RecoveryPolicy(intervalMillis = 2_000L).intervalMillis).isEqualTo(2_000L)
+        assertThat(TransactionOutcome.Unknown("U-1", Fault.TimedOut).serviceId).isEqualTo("U-1")
+        assertThat(PrintOutcome.Failed(Fault.Unsupported, noPrinter = false).noPrinter).isFalse()
+        val sampleFlow =
+            ShopperSessionFlow(
+                confirmLabel = "Yes",
+                cancelLabel = "No",
+                emailPrompt = "Email?",
+                qrReceipt = "https://adyen.link/1",
+                qrHeader = "Scan",
+            )
+        assertThat(sampleFlow.confirmLabel).isEqualTo("Yes")
+        assertThat(sampleFlow.cancelLabel).isEqualTo("No")
+        assertThat(sampleFlow.emailPrompt).isEqualTo("Email?")
+        assertThat(sampleFlow.qrReceipt).isEqualTo("https://adyen.link/1")
+        assertThat(sampleFlow.qrHeader).isEqualTo("Scan")
+        assertThat(sampleFlow.virtualReceipt).isNull()
+    }
+
+    @Test
+    fun `converts print outputs with invalid barcodes and justified italic text`() {
+        assertThat(PrintOutput().toPrintJob()).isNull()
+        val invalidBarcode =
+            PrintOutput().apply {
+                outputContent =
+                    OutputContent().apply {
+                        outputFormat = OutputFormatType.BAR_CODE
+                        outputBarcode = OutputBarcode().apply { barcodeValue = "%zz" }
+                    }
+            }
+        assertThat(invalidBarcode.toPrintJob()).isEqualTo(PrintJob.QrCode("%zz"))
+        val oddText =
+            PrintOutput().apply {
+                outputContent =
+                    OutputContent().apply {
+                        outputFormat = OutputFormatType.TEXT
+                        outputText =
+                            listOf(
+                                OutputText().apply {
+                                    text = "line"
+                                    alignment = AlignmentType.JUSTIFIED
+                                    characterStyle = CharacterStyleType.ITALIC
+                                    isEndOfLineFlag = false
+                                },
+                            )
+                    }
+            }
+        assertThat(oddText.toPrintJob()).isEqualTo(PrintJob.Text(listOf(PrintLine.Text("line", PrintAlign.LEFT, PrintStyle.NORMAL))))
+    }
+
+    @Test
+    fun `reconcile and getTotals sort multi-currency totals and handle reverse debit and errors`() =
+        runTest {
+            val usdTotals =
+                TransactionTotals().apply {
+                    paymentCurrency = "USD"
+                    paymentTotals.addAll(
+                        listOf(
+                            PaymentTotals().apply {
+                                transactionType = TransactionType.DEBIT
+                                transactionAmount = BigDecimal("20.00")
+                                transactionCount = BigInteger.valueOf(2)
+                            },
+                            PaymentTotals().apply {
+                                transactionType = TransactionType.REVERSE_DEBIT
+                                transactionAmount = BigDecimal("5.00")
+                                transactionCount = BigInteger.valueOf(1)
+                            },
+                            PaymentTotals().apply {
+                                transactionType = TransactionType.FAILED
+                                transactionAmount = BigDecimal("99.00")
+                                transactionCount = BigInteger.valueOf(3)
+                            },
+                        ),
+                    )
+                }
+            val audTotals =
+                TransactionTotals().apply {
+                    paymentCurrency = "AUD"
+                    paymentTotals.add(
+                        PaymentTotals().apply {
+                            transactionType = TransactionType.CREDIT
+                            transactionAmount = BigDecimal("4.00")
+                            transactionCount = BigInteger.valueOf(1)
+                        },
+                    )
+                }
+            val okClient =
+                client {
+                    respond {
+                        getTotalsResponse =
+                            GetTotalsResponse().apply {
+                                response = result(ResultType.SUCCESS)
+                                poiReconciliationID = "42"
+                                transactionTotals.addAll(listOf(usdTotals, audTotals))
+                            }
+                    }
+                }
+            val answered = okClient.getTotals() as TerminalTotalsOutcome.Answered
+            assertThat(answered.poiReconciliationId).isEqualTo("42")
+            assertThat(answered.closedPeriod).isFalse()
+            assertThat(answered.totals)
+                .containsExactly(
+                    TerminalCurrencyTotals("AUD", BigDecimal.ZERO, 0, BigDecimal("4.00"), 1),
+                    TerminalCurrencyTotals("USD", BigDecimal("20.00"), 2, BigDecimal("5.00"), 1),
+                ).inOrder()
+            val firstTotal = answered.totals.first()
+            assertThat(firstTotal.currency).isEqualTo("AUD")
+            assertThat(firstTotal.debitAmount to firstTotal.debitCount).isEqualTo(BigDecimal.ZERO to 0)
+            assertThat(firstTotal.creditAmount to firstTotal.creditCount).isEqualTo(BigDecimal("4.00") to 1)
+        }
+
+    @Test
+    fun `reconcile surfaces failure faults and unreadable replies`() =
+        runTest {
+            val failedResp =
+                client {
+                    respond {
+                        reconciliationResponse =
+                            ReconciliationResponse().apply {
+                                response = result(ResultType.FAILURE, additional = "message=Busy")
+                            }
+                    }
+                }
+            val recFailed = failedResp.reconcile() as TerminalTotalsOutcome.Failed
+            assertThat(recFailed).isEqualTo(TerminalTotalsOutcome.Failed(Fault.TerminalRejected(ExternalText("Busy"))))
+            assertThat(recFailed.fault).isEqualTo(Fault.TerminalRejected(ExternalText("Busy")))
+            assertThat(client { empty }.reconcile()).isEqualTo(TerminalTotalsOutcome.Failed(Fault.UnreadableReply()))
+            assertThat(client { Delivery.Failed(UNREACHABLE) }.reconcile()).isEqualTo(TerminalTotalsOutcome.Failed(UNREACHABLE))
+        }
+
+    @Test
+    fun `shopper display virtual receipts and QR codes handle responses`() =
+        runTest {
+            val receipt =
+                VirtualReceipt(
+                    header = "A & B <Shop>",
+                    lines = listOf(VirtualReceiptLine(2, "Item \"1\" 'x'", "AUD", BigDecimal("9.00"))),
+                    subtotal = BigDecimal("8.18"),
+                    tax = BigDecimal("0.82"),
+                    total = BigDecimal("9.00"),
+                    currency = "AUD",
+                )
+            assertThat(receipt.header).isEqualTo("A & B <Shop>")
+            assertThat(receipt.lines.single().count).isEqualTo(2)
+            assertThat(receipt.lines.single().description).isEqualTo("Item \"1\" 'x'")
+            assertThat(receipt.lines.single().currency).isEqualTo("AUD")
+            assertThat(receipt.lines.single().amount).isEqualTo(BigDecimal("9.00"))
+            assertThat(receipt.subtotal).isEqualTo(BigDecimal("8.18"))
+            assertThat(receipt.tax).isEqualTo(BigDecimal("0.82"))
+            assertThat(receipt.total).isEqualTo(BigDecimal("9.00"))
+            assertThat(receipt.currency).isEqualTo("AUD")
+            assertThat(receipt.totalLabel).isEqualTo("Total")
+            assertThat(receipt.toXml("M400-123456789")).contains("virtual_receipt02.xslt")
+            assertThat(receipt.toXml("M400-123456789")).contains("&amp;")
+            assertThat(receipt.toXml("S1F2-123456789")).contains("virtual-receipt.xslt")
+            assertThrows(IllegalArgumentException::class.java) {
+                runBlocking { client { empty }.shopperSession(0, begin = true) }
+            }
+
+            val displayOk =
+                client {
+                    respond {
+                        displayResponse =
+                            DisplayResponse().apply {
+                                outputResult.add(OutputResult().apply { response = result(ResultType.SUCCESS) })
+                            }
+                    }
+                }
+            assertThat(displayOk.displayVirtualReceipt(receipt)).isTrue()
+            assertThat(displayOk.displayQrCode("https://adyen.link/PL1", "Scan", "Pay")).isTrue()
+            assertThat(displayOk.displayQrCode("http://adyen.link/PL1")).isTrue()
+            assertThat(displayOk.displayQrCode("MPR1*data", "Header", "Footer")).isTrue()
+            assertThat(displayOk.shopperSession(1, begin = true)).isFalse()
+
+            val adminOk =
+                client {
+                    respond {
+                        adminResponse = AdminResponse().apply { response = result(ResultType.SUCCESS) }
+                    }
+                }
+            assertThat(adminOk.shopperSession(1, begin = true)).isTrue()
+            assertThat(adminOk.shopperSession(1, begin = false)).isTrue()
+
+            val displayFail = client { Delivery.Failed(UNREACHABLE) }
+            assertThat(displayFail.displayQrCode("https://adyen.link/PL1")).isFalse()
+            assertThat(displayFail.shopperSession(1, begin = false)).isFalse()
+        }
+
+    @Test
+    fun `input prompts handle confirmation text and rating responses`() =
+        runTest {
+            assertThat(inputClient(result(ResultType.SUCCESS), confirmed = true).requestConfirmation("Title", "Sub"))
+                .isEqualTo(InputOutcome.Entered(true))
+            assertThat(inputClient(result(ResultType.SUCCESS), confirmed = false).requestConfirmation("Title", "Sub"))
+                .isEqualTo(InputOutcome.Entered(false))
+            assertThat(inputClient(result(ResultType.FAILURE, ErrorConditionType.CANCEL)).requestConfirmation("Title", "Sub"))
+                .isEqualTo(InputOutcome.Cancelled)
+            assertThat(inputClient(result(ResultType.FAILURE, ErrorConditionType.ABORTED)).requestConfirmation("Title", "Sub"))
+                .isEqualTo(InputOutcome.Cancelled)
+            assertThat(inputClient(result(ResultType.FAILURE, ErrorConditionType.BUSY)).requestConfirmation("Title", "Sub"))
+                .isInstanceOf(InputOutcome.Failed::class.java)
+            assertThat(client { empty }.requestConfirmation("Title", "Sub"))
+                .isEqualTo(InputOutcome.Failed(Fault.UnreadableReply()))
+            assertThat(client { Delivery.Failed(UNREACHABLE) }.requestConfirmation("Title", "Sub"))
+                .isEqualTo(InputOutcome.Failed(UNREACHABLE))
+
+            val enteredText = inputClient(result(ResultType.SUCCESS), text = "a@b.co").requestText("Email") as InputOutcome.Entered
+            assertThat(enteredText).isEqualTo(InputOutcome.Entered("a@b.co"))
+            assertThat(enteredText.value).isEqualTo("a@b.co")
+            assertThat(inputClient(result(ResultType.SUCCESS), text = " ").requestText("Email"))
+                .isEqualTo(InputOutcome.Cancelled)
+            assertThat(inputClient(result(ResultType.FAILURE, ErrorConditionType.CANCEL)).requestText("Email"))
+                .isEqualTo(InputOutcome.Cancelled)
+            val failedInput = inputClient(result(ResultType.FAILURE, ErrorConditionType.BUSY)).requestText("Email") as InputOutcome.Failed
+            assertThat(failedInput.fault).isInstanceOf(Fault.TerminalRejected::class.java)
+            assertThat(client { Delivery.Failed(UNREACHABLE) }.requestText("Email"))
+                .isEqualTo(InputOutcome.Failed(UNREACHABLE))
+
+            assertThat(inputClient(result(ResultType.SUCCESS), digit = "0").requestRating("Rate", "Sub"))
+                .isEqualTo(InputOutcome.Entered(0))
+            assertThat(inputClient(result(ResultType.SUCCESS), digit = "10").requestRating("Rate"))
+                .isEqualTo(InputOutcome.Entered(10))
+            assertThat(inputClient(result(ResultType.SUCCESS), digit = "-1").requestRating("Rate"))
+                .isEqualTo(InputOutcome.Cancelled)
+            assertThat(inputClient(result(ResultType.SUCCESS), digit = "11").requestRating("Rate"))
+                .isEqualTo(InputOutcome.Cancelled)
+            assertThat(inputClient(result(ResultType.SUCCESS), digit = "abc").requestRating("Rate"))
+                .isEqualTo(InputOutcome.Cancelled)
+            assertThat(inputClient(result(ResultType.FAILURE, ErrorConditionType.CANCEL)).requestRating("Rate"))
+                .isEqualTo(InputOutcome.Cancelled)
+            assertThat(client { Delivery.Failed(UNREACHABLE) }.requestRating("Rate"))
+                .isEqualTo(InputOutcome.Failed(UNREACHABLE))
+        }
+
+    @Test
+    fun `shopper flow handles cancellation null input decline and missing giving donation`() =
+        runTest {
+            var cancelledServiceId: String? = null
+            val cancelledOutcome =
+                inputClient(result(ResultType.FAILURE, ErrorConditionType.CANCEL))
+                    .pay(
+                        params.copy(shopperFlow = ShopperSessionFlow(confirmationPrompt = "Confirm" to "Sub")),
+                        serviceId = "CUSTOM-S1",
+                        onStarted = { cancelledServiceId = it },
+                    ) as TransactionOutcome.Completed
+            assertThat(cancelledServiceId).isNull()
+            assertThat(cancelledOutcome.serviceId).isEqualTo("CUSTOM-S1")
+            assertThat(cancelledOutcome.recovered).isFalse()
+            assertThat(cancelledOutcome.details.success).isFalse()
+            assertThat(cancelledOutcome.details.errorCondition).isEqualTo("Cancel")
+            assertThat(cancelledOutcome.details.message).isNull()
+            assertThat(cancelledOutcome.details.refusalReason).isNull()
+            assertThat(cancelledOutcome.details.decline?.cancelled).isTrue()
+            assertThat(cancelledOutcome.details.merchantReference).isEqualTo("MP-1")
+            assertThat(cancelledOutcome.details.amount).isNull()
+            assertThat(cancelledOutcome.details.currency).isNull()
+
+            val nullInputClient =
+                client {
+                    respond {
+                        inputResponse =
+                            InputResponse().apply {
+                                inputResult = InputResult().apply { response = result(ResultType.SUCCESS) }
+                            }
+                    }
+                }
+            assertThat(nullInputClient.requestConfirmation("Title", "Sub"))
+                .isEqualTo(InputOutcome.Failed(Fault.UnreadableReply()))
+
+            val flowDeclined =
+                client {
+                    respond {
+                        paymentResponse =
+                            PaymentResponse().apply {
+                                response = result(ResultType.FAILURE, ErrorConditionType.REFUSAL)
+                            }
+                    }
+                }.pay(params.copy(shopperFlow = ShopperSessionFlow()), serviceId = "FLOW-DEC") as TransactionOutcome.Completed
+            assertThat(flowDeclined.details.success).isFalse()
+
+            val givingMissing =
+                client { req ->
+                    if (req.saleToPOIRequest.transactionStatusRequest != null) {
+                        empty
+                    } else {
+                        respond {
+                            paymentResponse =
+                                approval().apply {
+                                    response = result(ResultType.SUCCESS, additional = "adyen_giving_service_id=GIVING-MISS")
+                                }
+                        }
+                    }
+                }.pay(params.copy(shopperFlow = ShopperSessionFlow()), serviceId = "FLOW-GIV") as TransactionOutcome.Completed
+            assertThat(givingMissing.details.success).isTrue()
+            assertThat(givingMissing.details.givingServiceId).isEqualTo("GIVING-MISS")
+            assertThat(givingMissing.details.donationAmount).isNull()
+        }
+
+    @Test
+    fun `emits expected nexo wire fields for display and QR requests`() =
+        runTest {
+            val captured = mutableListOf<SaleToPOIRequest>()
+            val capturingClient =
+                client { req ->
+                    captured += req.saleToPOIRequest
+                    respond {
+                        displayResponse =
+                            DisplayResponse().apply {
+                                outputResult += OutputResult().apply { response = result(ResultType.SUCCESS) }
+                            }
+                    }
+                }
+            assertThat(
+                capturingClient.displayVirtualReceipt(
+                    VirtualReceipt(header = "Order", lines = emptyList(), total = BigDecimal.ONE, currency = "EUR"),
+                ),
+            ).isTrue()
+            val vrOut =
+                captured
+                    .last()
+                    .displayRequest.displayOutput
+                    .single()
+            assertThat(vrOut.device).isEqualTo(DeviceType.CUSTOMER_DISPLAY)
+            assertThat(vrOut.infoQualify).isEqualTo(InfoQualifyType.DISPLAY)
+            assertThat(vrOut.outputContent.outputFormat).isEqualTo(OutputFormatType.XHTML)
+            assertThat(String(vrOut.outputContent.outputXHTML, Charsets.UTF_8)).contains("<receipt>")
+
+            assertThat(capturingClient.displayQrCode("RAW TEXT", header = "Head", footer = "Foot", minimumSeconds = 7)).isTrue()
+            val qrOuts = captured.last().displayRequest.displayOutput
+            assertThat(qrOuts).hasSize(3)
+            assertThat(qrOuts[0].device).isEqualTo(DeviceType.CUSTOMER_DISPLAY)
+            assertThat(qrOuts[0].infoQualify).isEqualTo(InfoQualifyType.DISPLAY)
+            assertThat(qrOuts[0].outputContent.outputFormat).isEqualTo(OutputFormatType.TEXT)
+            assertThat(
+                qrOuts[0]
+                    .outputContent.outputText
+                    .single()
+                    .text,
+            ).isEqualTo("Head")
+            assertThat(qrOuts[1].device).isEqualTo(DeviceType.CUSTOMER_DISPLAY)
+            assertThat(qrOuts[1].infoQualify).isEqualTo(InfoQualifyType.DISPLAY)
+            assertThat(qrOuts[1].minimumDisplayTime).isEqualTo(7)
+            assertThat(qrOuts[1].isResponseRequiredFlag).isTrue()
+            assertThat(qrOuts[1].outputContent.outputFormat).isEqualTo(OutputFormatType.BAR_CODE)
+            assertThat(qrOuts[1].outputContent.outputBarcode.barcodeType).isEqualTo(BarcodeType.QRCODE)
+            assertThat(qrOuts[1].outputContent.outputBarcode.barcodeValue).isEqualTo("RAW+TEXT")
+            assertThat(
+                qrOuts[2]
+                    .outputContent.outputText
+                    .single()
+                    .text,
+            ).isEqualTo("Foot")
+
+            assertThat(capturingClient.displayQrCode("http://adyen.link/1", header = " ", footer = " ")).isTrue()
+            val httpQr =
+                captured
+                    .last()
+                    .displayRequest.displayOutput
+                    .single()
+            assertThat(httpQr.outputContent.outputBarcode.barcodeValue).isEqualTo("http://adyen.link/1")
+        }
+
+    @Test
+    fun `emits expected nexo wire fields for input requests`() =
+        runTest {
+            val captured = mutableListOf<SaleToPOIRequest>()
+            val capturingClient =
+                client { req ->
+                    captured += req.saleToPOIRequest
+                    respond {
+                        inputResponse =
+                            InputResponse().apply {
+                                inputResult =
+                                    InputResult().apply {
+                                        response = result(ResultType.SUCCESS)
+                                        input =
+                                            Input().apply {
+                                                setConfirmedFlag(true)
+                                                textInput = "x@y.z"
+                                                digitInput = "8"
+                                            }
+                                    }
+                            }
+                    }
+                }
+            capturingClient.requestConfirmation("Title", "Body", cancelLabel = "No", confirmLabel = "Yes", timeoutSeconds = 12)
+            val confirmReq = captured.last().inputRequest
+            assertThat(confirmReq.displayOutput.device).isEqualTo(DeviceType.CUSTOMER_DISPLAY)
+            assertThat(confirmReq.displayOutput.infoQualify).isEqualTo(InfoQualifyType.DISPLAY)
+            assertThat(confirmReq.displayOutput.outputContent.outputFormat).isEqualTo(OutputFormatType.TEXT)
+            assertThat(confirmReq.displayOutput.outputContent.predefinedContent.referenceID).isEqualTo("GetConfirmation")
+            assertThat(
+                confirmReq.displayOutput.outputContent.outputText
+                    .map { it.text },
+            ).containsExactly("Title", "Body", "No", "Yes")
+            assertThat(confirmReq.inputData.device).isEqualTo(DeviceType.CUSTOMER_INPUT)
+            assertThat(confirmReq.inputData.infoQualify).isEqualTo(InfoQualifyType.INPUT)
+            assertThat(confirmReq.inputData.inputCommand).isEqualTo(InputCommandType.GET_CONFIRMATION)
+            assertThat(confirmReq.inputData.maxInputTime).isEqualTo(BigInteger.valueOf(12))
+            assertThat(confirmReq.inputData.defaultInputString).isNull()
+
+            capturingClient.requestText("Email", placeholder = "p@q.r", timeoutSeconds = 15)
+            assertThat(
+                captured
+                    .last()
+                    .inputRequest.inputData.defaultInputString,
+            ).isEqualTo("p@q.r")
+
+            capturingClient.requestRating("Rate", subtitle = " ")
+            assertThat(
+                captured
+                    .last()
+                    .inputRequest.displayOutput.outputContent.outputText
+                    .map { it.text },
+            ).containsExactly("Rate")
+        }
+
+    @Test
+    fun `emits expected nexo wire fields for admin and giving requests`() =
+        runTest {
+            val captured = mutableListOf<SaleToPOIRequest>()
+            val capturingClient =
+                client { req ->
+                    captured += req.saleToPOIRequest
+                    respond {
+                        adminResponse = AdminResponse().apply { response = result(ResultType.SUCCESS) }
+                        transactionStatusResponse =
+                            TransactionStatusResponse().apply {
+                                repeatedMessageResponse =
+                                    RepeatedMessageResponse().apply {
+                                        repeatedResponseMessageBody =
+                                            RepeatedResponseMessageBody().apply {
+                                                paymentResponse =
+                                                    approval().apply {
+                                                        paymentResult.amountsResp.authorizedAmount = BigDecimal("3.00")
+                                                    }
+                                            }
+                                    }
+                            }
+                    }
+                }
+            assertThat(capturingClient.shopperSession(7, begin = true, waitingTimeoutMs = 45_000)).isTrue()
+            assertThat(
+                String(
+                    Base64.decode(
+                        captured
+                            .last()
+                            .adminRequest.serviceIdentification,
+                    ),
+                    Charsets.UTF_8,
+                ),
+            ).contains("Begin")
+            assertThat(capturingClient.shopperSession(7, begin = false)).isTrue()
+            assertThat(
+                String(
+                    Base64.decode(
+                        captured
+                            .last()
+                            .adminRequest.serviceIdentification,
+                    ),
+                    Charsets.UTF_8,
+                ),
+            ).contains("End")
+
+            assertThat(capturingClient.givingDonation("GIV-9")).isEqualTo(BigDecimal("3.00"))
+            val givReq = captured.last().transactionStatusRequest
+            assertThat(givReq.isReceiptReprintFlag).isTrue()
+            assertThat(givReq.messageReference.messageCategory).isEqualTo(MessageCategoryType.PAYMENT)
+            assertThat(givReq.messageReference.saleID).isEqualTo(TerminalClient.GIVING_SALE_ID)
+            assertThat(givReq.messageReference.serviceID).isEqualTo("GIV-9")
         }
 
     private companion object {

@@ -200,6 +200,14 @@ class CheckoutModificationsTest {
             assertThat(api.verify()).isEqualTo(Fault.Credential(ApiKey.ADYEN))
             assertThat(api.verify()).isEqualTo(Fault.Permission(ApiKey.ADYEN))
             assertThat(api.verify()).isEqualTo(Fault.AdyenRejected(422, "901", ExternalText("Invalid merchant account")))
+            reply("not json")
+            assertThat(api.updateAmount("PSP1", amount, "r", "blob", "k")).isEqualTo(failed(Fault.UnreadableReply()))
+            reply("not json")
+            val closed = MockWebServer().apply { start() }
+            val url = closed.url("/v72/")
+            closed.close()
+            assertThat(CheckoutModifications(credentials, baseUrl = url).verify())
+                .isEqualTo(Fault.Unreachable(url.host, terminal = false))
         }
     }
 
@@ -217,7 +225,16 @@ class CheckoutModificationsTest {
                 assertThat((answer as ModificationResult.Failed).fault).isInstanceOf(Fault.UnreadableReply::class.java)
             }
             reply("""{"status":"received","pspReference":"CAP","futureField":{}}""")
-            assertThat(api.capture("PSP", amount, "r", "k")).isEqualTo(ModificationResult.Received("CAP"))
+            val received = api.capture("PSP", amount, "r", "k") as ModificationResult.Received
+            assertThat(received).isEqualTo(ModificationResult.Received("CAP"))
+            assertThat(received.pspReference).isEqualTo("CAP")
+            val authorised = ModificationResult.Authorised("ADJ", "next")
+            assertThat(authorised.pspReference).isEqualTo("ADJ")
+            assertThat(authorised.adjustAuthorisationData).isEqualTo("next")
+            val refused = ModificationResult.Refused(ExternalText("No"))
+            assertThat(refused.said).isEqualTo(ExternalText("No"))
+            assertThat(CheckoutCredentials("k", "m", TerminalEnvironment.LIVE, "1797a841fbb37ca7-AdyenDemo").liveUrlPrefix)
+                .isEqualTo("1797a841fbb37ca7-AdyenDemo")
         }
 
     @Test

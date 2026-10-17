@@ -10,9 +10,12 @@ import app.minimpos.app.data.repo.SaleEvent
 import app.minimpos.app.data.repo.after
 import app.minimpos.core.payment.PaymentContext
 import app.minimpos.terminal.checkout.ModificationResult
+import app.minimpos.terminal.client.TerminalCurrencyTotals
+import app.minimpos.terminal.client.TerminalTotalsOutcome
 import app.minimpos.terminal.transport.Fault
 import com.google.common.truth.Truth.assertThat
 import org.junit.Test
+import java.math.BigDecimal
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
@@ -242,5 +245,163 @@ class HistoryAccountingTest {
                 .getValue("USD")
                 .salesMinor,
         ).isEqualTo(10_000)
+    }
+
+    @Test
+    fun `unresolvedTerminalItems selects only unresolved terminal sales and refunds for the matching terminal`() {
+        val pendingSale = sale.copy(id = "pending-sale", status = SaleStatus.PENDING)
+        val unknownSale = sale.copy(id = "unknown-sale", status = SaleStatus.UNKNOWN)
+        val approvedSale = sale.copy(id = "approved-sale", status = SaleStatus.APPROVED)
+        val linkSale = sale.copy(id = "link-sale", status = SaleStatus.PENDING, paymentLink = true)
+        val otherTerminalSale =
+            sale.copy(
+                id = "other-terminal-sale",
+                status = SaleStatus.UNKNOWN,
+                context = PaymentContext("TERMINAL", "S1F2-2", "POS", "Merchant", "LIVE"),
+            )
+        val refundBase =
+            RefundEntity(
+                id = "pending-refund",
+                saleId = sale.id,
+                createdAt = monday,
+                merchantReference = "R",
+                originalTransactionId = "T",
+                originalTimestamp = "2026-10-05T12:00:00Z",
+                originalReference = "SALE",
+                currency = "USD",
+                amountMinor = 2000,
+                full = false,
+                status = RefundStatus.PENDING,
+                context = sale.context,
+            )
+        val unknownRefund = refundBase.copy(id = "unknown-refund", status = RefundStatus.UNKNOWN)
+        val requestedRefund = refundBase.copy(id = "requested-refund", status = RefundStatus.REQUESTED)
+        val otherTerminalRefund =
+            refundBase.copy(
+                id = "other-refund",
+                status = RefundStatus.UNKNOWN,
+                context = PaymentContext("TERMINAL", "S1F2-2", "POS", "Merchant", "LIVE"),
+            )
+        val items =
+            listOf(
+                HistoryItem.Sale(pendingSale),
+                HistoryItem.Sale(unknownSale),
+                HistoryItem.Sale(approvedSale),
+                HistoryItem.Sale(linkSale),
+                HistoryItem.Sale(otherTerminalSale),
+                HistoryItem.Refund(refundBase),
+                HistoryItem.Refund(unknownRefund),
+                HistoryItem.Refund(requestedRefund),
+                HistoryItem.Refund(otherTerminalRefund),
+            )
+
+        assertThat(HistoryAccounting.unresolvedTerminalItems(items, "S1F2-1").map { it.id })
+            .containsExactly("pending-sale", "unknown-sale", "pending-refund", "unknown-refund")
+            .inOrder()
+        assertThat(HistoryAccounting.unresolvedTerminalItems(items, "").map { it.id })
+            .containsExactly(
+                "pending-sale",
+                "unknown-sale",
+                "other-terminal-sale",
+                "pending-refund",
+                "unknown-refund",
+                "other-refund",
+            ).inOrder()
+    }
+
+    private fun reconciliationItems(): List<HistoryItem> {
+        val simCtx = PaymentContext("SIMULATOR", "S1F2-1", "SIMULATOR", "", "SIMULATOR")
+        val testCtx = PaymentContext("TERMINAL", "S1F2-1", "POS", "Merchant", "TEST")
+        val otherPoiCtx = PaymentContext("TERMINAL", "S1F2-2", "POS", "Merchant", "LIVE")
+        val saleUsd =
+            sale.copy(
+                id = "s-usd",
+                totalMinor = 10_000,
+                tipMinor = 1_500,
+                offlineMode = "OFFLINE_EMV",
+                unconfirmedBatchCount = 2,
+                poiReconciliationId = "REC-1",
+            )
+        val refundUsd =
+            RefundEntity(
+                "r-usd",
+                saleUsd.id,
+                monday,
+                "R-USD",
+                "T",
+                "2026-10-05T12:00:00Z",
+                "SALE",
+                "USD",
+                2_000,
+                false,
+                RefundStatus.REQUESTED,
+                context = sale.context,
+                processedAt = monday,
+                poiReconciliationId = "REC-1",
+            )
+        return listOf(
+            HistoryItem.Sale(saleUsd),
+            HistoryItem.Sale(sale.copy(id = "s-eur", currency = "EUR", totalMinor = 5_000, poiReconciliationId = "REC-1")),
+            HistoryItem.Sale(sale.copy(id = "s-link", paymentLink = true, totalMinor = 9_999)),
+            HistoryItem.Sale(sale.copy(id = "s-other-poi", totalMinor = 8_888, context = otherPoiCtx)),
+            HistoryItem.Sale(sale.copy(id = "s-sim", processedAt = tuesday, totalMinor = 7_777, context = simCtx)),
+            HistoryItem.Sale(sale.copy(id = "s-test", processedAt = tuesday, totalMinor = 6_666, context = testCtx)),
+            HistoryItem.Sale(sale.copy(id = "s-unknown", processedAt = tuesday, totalMinor = 5_555, context = null)),
+            HistoryItem.Sale(sale.copy(id = "s-tue", processedAt = tuesday, totalMinor = 4_444, poiReconciliationId = "REC-2")),
+            HistoryItem.Refund(refundUsd),
+            HistoryItem.Refund(refundUsd.copy(id = "r-sim", processedAt = tuesday, poiReconciliationId = "REC-2", context = simCtx)),
+            HistoryItem.Refund(refundUsd.copy(id = "r-test", processedAt = tuesday, poiReconciliationId = "REC-2", context = testCtx)),
+            HistoryItem.Refund(refundUsd.copy(id = "r-unknown", processedAt = tuesday, poiReconciliationId = "REC-2", context = null)),
+        )
+    }
+
+    @Test
+    fun `compareReconciliation compares terminal totals against matching local terminal activity`() {
+        val items = reconciliationItems()
+        val day = LocalDate.parse("2026-10-05")
+        assertThat(HistoryAccounting.activities(items).map { it.scope to it.currency }).containsAtLeast(
+            HistoryScope.LIVE to "USD",
+            HistoryScope.DEMO to "USD",
+            HistoryScope.TEST to "USD",
+            HistoryScope.UNKNOWN to "USD",
+        )
+        val matchedOutcome =
+            TerminalTotalsOutcome.Answered(
+                poiReconciliationId = "REC-1",
+                closedPeriod = true,
+                totals =
+                    listOf(
+                        TerminalCurrencyTotals("USD", BigDecimal("115.00"), 1, BigDecimal("20.00"), 1),
+                        TerminalCurrencyTotals("EUR", BigDecimal("50.00"), 1, BigDecimal.ZERO, 0),
+                    ),
+            )
+        val matched = HistoryAccounting.compareReconciliation(items, "S1F2-1", matchedOutcome, day, ZoneOffset.UTC)
+        assertThat(matched.poiId to matched.poiReconciliationId).isEqualTo("S1F2-1" to "REC-1")
+        assertThat(matched.closedPeriod && matched.allMatch).isTrue()
+        assertThat(matched.offlineSaleCount to matched.unconfirmedBatchCount).isEqualTo(1 to 2)
+        val usdSummary = matched.currencies.first { it.currency == "USD" }
+        assertThat(usdSummary.matches).isTrue()
+        assertThat(usdSummary.localSalesMinor to usdSummary.terminalSalesMinor).isEqualTo(11_500L to 11_500L)
+        assertThat(usdSummary.localRefundsMinor to usdSummary.terminalRefundsMinor).isEqualTo(2_000L to 2_000L)
+
+        val mismatchedOutcome =
+            matchedOutcome.copy(
+                poiReconciliationId = null,
+                closedPeriod = false,
+                totals = listOf(TerminalCurrencyTotals("USD", BigDecimal("120.00"), 2, BigDecimal("15.00"), 1)),
+            )
+        val mismatched = HistoryAccounting.compareReconciliation(items, "S1F2-1", mismatchedOutcome, day, ZoneOffset.UTC)
+        assertThat(mismatched.allMatch).isFalse()
+        assertThat(mismatched.currencies.first { it.currency == "USD" }.matches).isFalse()
+
+        val emptyPoi =
+            HistoryAccounting.compareReconciliation(
+                items,
+                "",
+                matchedOutcome.copy(poiReconciliationId = null),
+                day,
+                ZoneOffset.UTC,
+            )
+        assertThat(emptyPoi.currencies.first { it.currency == "USD" }.localSalesMinor).isEqualTo(20_388L)
     }
 }

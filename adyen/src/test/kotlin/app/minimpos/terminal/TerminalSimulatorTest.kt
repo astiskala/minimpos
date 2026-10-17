@@ -2,7 +2,9 @@ package app.minimpos.terminal
 
 import app.minimpos.terminal.checkout.ModificationAmount
 import app.minimpos.terminal.checkout.ModificationResult
+import app.minimpos.terminal.client.BarcodeScan
 import app.minimpos.terminal.client.CardEntryOverride
+import app.minimpos.terminal.client.InputOutcome
 import app.minimpos.terminal.client.OfflineProcessingMode
 import app.minimpos.terminal.client.PaymentParams
 import app.minimpos.terminal.client.PosApplication
@@ -23,19 +25,40 @@ import app.minimpos.terminal.client.TerminalIdentity
 import app.minimpos.terminal.client.TerminalTipOptions
 import app.minimpos.terminal.client.TerminalTipSuggestions
 import app.minimpos.terminal.client.TerminalTotalsOutcome
+import app.minimpos.terminal.client.TransactionKind
 import app.minimpos.terminal.client.TransactionOutcome
 import app.minimpos.terminal.client.VirtualReceipt
 import app.minimpos.terminal.client.VirtualReceiptLine
 import app.minimpos.terminal.client.getTotals
+import app.minimpos.terminal.client.requestConfirmation
 import app.minimpos.terminal.simulator.SimulatedModifications
 import app.minimpos.terminal.simulator.SimulatedOutcome
 import app.minimpos.terminal.simulator.SimulatorConfig
 import app.minimpos.terminal.simulator.TerminalSimulator
 import app.minimpos.terminal.transport.Delivery
 import app.minimpos.terminal.transport.Fault
+import com.adyen.model.nexo.AmountsReq
+import com.adyen.model.nexo.CharacterStyleType
 import com.adyen.model.nexo.DiagnosisRequest
+import com.adyen.model.nexo.DocumentQualifierType
+import com.adyen.model.nexo.ErrorConditionType
+import com.adyen.model.nexo.GlobalStatusType
+import com.adyen.model.nexo.MessageCategoryType
+import com.adyen.model.nexo.MessageClassType
 import com.adyen.model.nexo.MessageHeader
+import com.adyen.model.nexo.MessageType
+import com.adyen.model.nexo.OutputFormatType
+import com.adyen.model.nexo.PaymentInstrumentType
+import com.adyen.model.nexo.PaymentRequest
+import com.adyen.model.nexo.PaymentTransaction
+import com.adyen.model.nexo.PaymentType
+import com.adyen.model.nexo.PrintOutput
+import com.adyen.model.nexo.PrintRequest
+import com.adyen.model.nexo.ResultType
+import com.adyen.model.nexo.SaleData
 import com.adyen.model.nexo.SaleToPOIRequest
+import com.adyen.model.nexo.TokenRequestedType
+import com.adyen.model.nexo.TransactionIdentification
 import com.adyen.model.terminal.TerminalAPIRequest
 import com.google.common.truth.Truth.assertThat
 import kotlinx.coroutines.CompletableDeferred
@@ -273,6 +296,19 @@ class TerminalSimulatorTest {
     @Test
     fun `simulates native terminal tipping with default and dynamic SaleToPOIData options`() =
         runBlocking {
+            val defaultCfg = SimulatorConfig()
+            assertThat(defaultCfg.outcome).isEqualTo(SimulatedOutcome.APPROVE)
+            assertThat(defaultCfg.delayMillis).isEqualTo(2_500L)
+            assertThat(defaultCfg.hasPrinter).isTrue()
+            assertThat(defaultCfg.signatureRequired).isFalse()
+            assertThat(defaultCfg.partialApprovalPercent).isEqualTo(100)
+            assertThat(defaultCfg.givingDonationAmount).isEqualTo(BigDecimal.ONE)
+            assertThat(defaultCfg.offlineMode).isEqualTo(OfflineProcessingMode.ONLINE)
+            assertThat(defaultCfg.unconfirmedBatchCount).isEqualTo(1)
+            assertThat(defaultCfg.shopperConfirmed).isTrue()
+            assertThat(defaultCfg.shopperEmailInput).isEqualTo("shopper@example.com")
+            assertThat(defaultCfg.shopperRating).isEqualTo(9)
+
             val plainTip =
                 pay(
                     tokenizing.copy(
@@ -289,12 +325,25 @@ class TerminalSimulatorTest {
                         amount = BigDecimal("6.00"),
                         terminalTip =
                             TerminalTipOptions(
-                                suggestions = TerminalTipSuggestions.FixedAmounts(listOf(100, 200, 300), allowCustom = true),
+                                suggestions = TerminalTipSuggestions.FixedAmounts(listOf(100, 200, 300), allowCustom = false),
                             ),
                     ),
                 )
             assertThat(fixedTip.tipAmount).isEqualTo(BigDecimal("1.00"))
             assertThat(fixedTip.amount).isEqualTo(BigDecimal("7.00"))
+
+            val percentTipNoCustom =
+                pay(
+                    tokenizing.copy(
+                        amount = BigDecimal("50.00"),
+                        terminalTip =
+                            TerminalTipOptions(
+                                suggestions = TerminalTipSuggestions.Percentages(listOf(10, 20), allowCustom = false),
+                            ),
+                    ),
+                )
+            assertThat(percentTipNoCustom.tipAmount).isEqualTo(BigDecimal("5.00"))
+            assertThat(percentTipNoCustom.amount).isEqualTo(BigDecimal("55.00"))
 
             val preTaxPercentTip =
                 pay(
@@ -314,6 +363,8 @@ class TerminalSimulatorTest {
     @Test
     fun `getTotals and reconcile report and reset period totals`() =
         runBlocking {
+            val pUsd = pay(tokenizing.copy(amount = BigDecimal("5.00"), currency = "USD"))
+            assertThat(pUsd.poiReconciliationId).isEqualTo("1000")
             val p1 = pay(tokenizing.copy(amount = BigDecimal("10.00"), currency = "AUD"))
             assertThat(p1.poiReconciliationId).isEqualTo("1000")
             client.refund(RefundParams(p1.poiTransactionId!!, p1.poiTimestamp!!, "MP-R", BigDecimal("3.00"), "AUD"))
@@ -321,15 +372,23 @@ class TerminalSimulatorTest {
             val totals = client.getTotals() as TerminalTotalsOutcome.Answered
             assertThat(totals.poiReconciliationId).isEqualTo("1000")
             assertThat(totals.closedPeriod).isFalse()
-            assertThat(totals.totals).containsExactly(
-                TerminalCurrencyTotals(
-                    currency = "AUD",
-                    debitAmount = BigDecimal("10.00"),
-                    debitCount = 1,
-                    creditAmount = BigDecimal("3.00"),
-                    creditCount = 1,
-                ),
-            )
+            assertThat(totals.totals)
+                .containsExactly(
+                    TerminalCurrencyTotals(
+                        currency = "AUD",
+                        debitAmount = BigDecimal("10.00"),
+                        debitCount = 1,
+                        creditAmount = BigDecimal("3.00"),
+                        creditCount = 1,
+                    ),
+                    TerminalCurrencyTotals(
+                        currency = "USD",
+                        debitAmount = BigDecimal("5.00"),
+                        debitCount = 1,
+                        creditAmount = BigDecimal.ZERO,
+                        creditCount = 0,
+                    ),
+                ).inOrder()
 
             val closed = client.reconcile() as TerminalTotalsOutcome.Answered
             assertThat(closed.poiReconciliationId).isEqualTo("1000")
@@ -367,11 +426,30 @@ class TerminalSimulatorTest {
             val declinedConfirm = pay(tokenizing.copy(shopperFlow = flow))
             assertThat(declinedConfirm.success).isFalse()
             assertThat(declinedConfirm.decline?.cancelled).isTrue()
+
+            config = config.copy(shopperConfirmed = true)
+            val scanned = client.scanBarcode(1)
+            assertThat(scanned).isEqualTo(BarcodeScan.NotRead)
+            client.endBarcodeScan(1)
+
+            config = config.copy(outcome = SimulatedOutcome.CANCEL)
+            assertThat(client.scanBarcode(1)).isEqualTo(BarcodeScan.NotRead)
+            assertThat(client.requestConfirmation("Confirm", "Sub")).isEqualTo(InputOutcome.Entered(true))
         }
 
     @Test
     fun `simulates partial authorisation via 139 suffix and configured ratio`() =
         runBlocking {
+            val notPartial =
+                pay(
+                    tokenizing.copy(
+                        amount = BigDecimal("10.00"),
+                        allowPartialAuthorisation = true,
+                    ),
+                )
+            assertThat(notPartial.partial).isFalse()
+            assertThat(notPartial.amount).isEqualTo(BigDecimal("10.00"))
+
             val triggerPartial =
                 pay(
                     tokenizing.copy(
@@ -441,5 +519,170 @@ class TerminalSimulatorTest {
             assertThat(safOffline.offlineMode).isEqualTo(OfflineProcessingMode.STORE_AND_FORWARD)
             assertThat(safOffline.unconfirmedBatchCount).isEqualTo(3)
             assertThat(safOffline.pspReference).isNull()
+            assertThat(safOffline.partial).isFalse()
+            assertThat(safOffline.maskedPan).isNotEmpty()
+            assertThat(safOffline.tokenization?.cardAlias).isNotEmpty()
+            assertThat(safOffline.tokenization?.operationType).isEqualTo("created")
+
+            val refundOut =
+                client.refund(
+                    RefundParams(
+                        originalTransactionId = safOffline.poiTransactionId!!,
+                        originalTimestamp = safOffline.poiTimestamp!!,
+                        merchantReference = "REF-SIM-1",
+                        amount = BigDecimal("5.00"),
+                        currency = "AUD",
+                    ),
+                    serviceId = "REV-SIM-1",
+                ) as TransactionOutcome.Completed
+            assertThat(refundOut.details.success).isTrue()
+            assertThat(refundOut.details.pspReference).isNotEmpty()
+            assertThat(refundOut.details.poiTransactionId).isNotEmpty()
+            val repeatedRefund =
+                client.status(
+                    "REV-SIM-1",
+                    TransactionKind.REFUND,
+                ) as TransactionOutcome.Completed
+            assertThat(repeatedRefund.recovered).isTrue()
+            assertThat(repeatedRefund.details.pspReference).isEqualTo(refundOut.details.pspReference)
+        }
+
+    private fun paymentWireRequest(serviceId: String): TerminalAPIRequest {
+        val header =
+            MessageHeader().apply {
+                protocolVersion = "3.0"
+                messageClass = MessageClassType.SERVICE
+                messageCategory = MessageCategoryType.PAYMENT
+                messageType = MessageType.REQUEST
+                serviceID = serviceId
+                saleID = "MiniMPOS"
+                poiid = "SIM-1"
+            }
+        val payment =
+            PaymentRequest().apply {
+                saleData = SaleData().apply { saleTransactionID = TransactionIdentification().apply { transactionID = "MREF-WIRE" } }
+                paymentTransaction =
+                    PaymentTransaction().apply {
+                        amountsReq =
+                            AmountsReq().apply {
+                                currency = "EUR"
+                                requestedAmount = BigDecimal("10.00")
+                            }
+                    }
+            }
+        return TerminalAPIRequest().apply {
+            saleToPOIRequest =
+                SaleToPOIRequest().apply {
+                    messageHeader = header
+                    paymentRequest = payment
+                }
+        }
+    }
+
+    @Test
+    fun `populates raw wire message headers and response fields`() =
+        runBlocking {
+            val diagReq =
+                TerminalAPIRequest().apply {
+                    saleToPOIRequest =
+                        SaleToPOIRequest().apply {
+                            messageHeader =
+                                MessageHeader().apply {
+                                    protocolVersion = "3.0"
+                                    messageClass = MessageClassType.SERVICE
+                                    messageCategory = MessageCategoryType.DIAGNOSIS
+                                    messageType = MessageType.REQUEST
+                                    serviceID = "DIAG-1"
+                                    saleID = "MiniMPOS"
+                                    poiid = "SIM-1"
+                                }
+                            diagnosisRequest = DiagnosisRequest()
+                        }
+                }
+            val diagResp = (simulator.send(diagReq, 5.seconds) as Delivery.Answered).response!!.saleToPOIResponse
+            assertThat(diagResp.messageHeader.protocolVersion).isEqualTo("3.0")
+            assertThat(diagResp.messageHeader.messageClass).isEqualTo(MessageClassType.SERVICE)
+            assertThat(diagResp.messageHeader.messageCategory).isEqualTo(MessageCategoryType.DIAGNOSIS)
+            assertThat(diagResp.messageHeader.messageType).isEqualTo(MessageType.RESPONSE)
+            assertThat(diagResp.messageHeader.serviceID).isEqualTo("DIAG-1")
+            assertThat(diagResp.messageHeader.saleID).isEqualTo("MiniMPOS")
+            assertThat(diagResp.messageHeader.poiid).isEqualTo("SIM-1")
+            assertThat(diagResp.diagnosisResponse.poiStatus.globalStatus).isEqualTo(GlobalStatusType.OK)
+            assertThat(diagResp.diagnosisResponse.poiStatus.isPEDOKFlag).isTrue()
+
+            config = SimulatorConfig(delayMillis = 0)
+            val payWireResp =
+                (simulator.send(paymentWireRequest("PW-1"), 5.seconds) as Delivery.Answered)
+                    .response!!
+                    .saleToPOIResponse
+                    .paymentResponse
+            assertThat(payWireResp.saleData.saleTransactionID.transactionID).isEqualTo("MREF-WIRE")
+            assertThat(payWireResp.paymentResult.paymentType).isEqualTo(PaymentType.NORMAL)
+            assertThat(payWireResp.paymentResult.amountsResp.currency).isEqualTo("EUR")
+            assertThat(payWireResp.paymentResult.isOnlineFlag).isTrue()
+            assertThat(payWireResp.paymentResult.paymentAcquirerData.approvalCode).isNotEmpty()
+            val cardInst = payWireResp.paymentResult.paymentInstrumentData
+            assertThat(cardInst.paymentInstrumentType).isEqualTo(PaymentInstrumentType.CARD)
+            assertThat(cardInst.cardData.paymentBrand).isNotEmpty()
+            assertThat(cardInst.cardData.paymentToken.tokenRequestedType).isEqualTo(TokenRequestedType.CUSTOMER)
+            assertThat(cardInst.cardData.paymentToken.tokenValue).isNotEmpty()
+            val receiptContent = payWireResp.paymentReceipt.first().outputContent
+            assertThat(receiptContent.outputFormat).isEqualTo(OutputFormatType.TEXT)
+            assertThat(receiptContent.outputText.any { it.characterStyle == CharacterStyleType.BOLD }).isTrue()
+            assertThat(receiptContent.outputText.all { it.isEndOfLineFlag == true }).isTrue()
+        }
+
+    @Test
+    fun `populates raw wire fields for busy offline and printer responses`() =
+        runBlocking {
+            val payWireReq = paymentWireRequest("PW-2")
+            config = SimulatorConfig(delayMillis = 0, outcome = SimulatedOutcome.BUSY)
+            val busyWireResp =
+                (simulator.send(payWireReq, 5.seconds) as Delivery.Answered)
+                    .response!!
+                    .saleToPOIResponse
+                    .paymentResponse
+            assertThat(busyWireResp.saleData.saleTransactionID.transactionID).isEqualTo("MREF-WIRE")
+
+            config = SimulatorConfig(delayMillis = 0, outcome = SimulatedOutcome.APPROVE, offlineMode = OfflineProcessingMode.OFFLINE_EMV)
+            val offlineWireResp =
+                (simulator.send(payWireReq, 5.seconds) as Delivery.Answered)
+                    .response!!
+                    .saleToPOIResponse
+                    .paymentResponse
+            assertThat(offlineWireResp.paymentResult.isOnlineFlag).isFalse()
+            assertThat(offlineWireResp.paymentResult.paymentAcquirerData.approvalCode).isNull()
+
+            config = SimulatorConfig(delayMillis = 0, hasPrinter = false)
+            val printWireReq =
+                TerminalAPIRequest().apply {
+                    saleToPOIRequest =
+                        SaleToPOIRequest().apply {
+                            messageHeader = payWireReq.saleToPOIRequest.messageHeader
+                            printRequest =
+                                PrintRequest().apply {
+                                    printOutput =
+                                        PrintOutput().apply {
+                                            documentQualifier = DocumentQualifierType.CUSTOMER_RECEIPT
+                                        }
+                                }
+                        }
+                }
+            val noPrinterResp =
+                (simulator.send(printWireReq, 5.seconds) as Delivery.Answered)
+                    .response!!
+                    .saleToPOIResponse
+                    .printResponse
+            assertThat(noPrinterResp.documentQualifier).isEqualTo(DocumentQualifierType.CUSTOMER_RECEIPT)
+            assertThat(noPrinterResp.response.result).isEqualTo(ResultType.FAILURE)
+            assertThat(noPrinterResp.response.errorCondition).isEqualTo(ErrorConditionType.UNAVAILABLE_DEVICE)
+            config = SimulatorConfig(delayMillis = 0, hasPrinter = true)
+            val okPrinterResp =
+                (simulator.send(printWireReq, 5.seconds) as Delivery.Answered)
+                    .response!!
+                    .saleToPOIResponse
+                    .printResponse
+            assertThat(okPrinterResp.documentQualifier).isEqualTo(DocumentQualifierType.CUSTOMER_RECEIPT)
+            assertThat(okPrinterResp.response.result).isEqualTo(ResultType.SUCCESS)
         }
 }

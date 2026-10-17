@@ -8,6 +8,7 @@ import app.minimpos.terminal.transport.AdyenHttp
 import app.minimpos.terminal.transport.AdyenStoreDetails
 import app.minimpos.terminal.transport.AdyenTerminalDetails
 import app.minimpos.terminal.transport.AdyenWalletMethods
+import app.minimpos.terminal.transport.ExternalText
 import app.minimpos.terminal.transport.TerminalHttpClient
 import com.adyen.Client
 import com.adyen.model.management.DefaultErrorResponseEntity
@@ -167,6 +168,30 @@ class ArchitectureTest {
     }
 
     @Test
+    fun `production code outside the simulator only constructs ExternalText through ExternalText of`() {
+        externalTextOwnership(
+            resideInAnyPackage("app.minimpos.terminal..")
+                .and(DescribedPredicate.not(resideInAnyPackage("app.minimpos.terminal.simulator..")))
+                .and(
+                    DescribedPredicate.not(
+                        type(ExternalText::class.java).or(type(ExternalText.Companion::class.java)),
+                    ),
+                ),
+        ).check(terminal)
+    }
+
+    @Test
+    fun `external text ownership rejects direct ExternalText construction`() {
+        val violation = ClassFileImporter().importClasses(ExternalTextViolation::class.java)
+        val rule = externalTextOwnership(type(ExternalTextViolation::class.java))
+        assertTrue(rule.description, rule.evaluate(violation).hasViolation())
+    }
+
+    private class ExternalTextViolation {
+        fun fabricated() = ExternalText("Cancelled by shopper")
+    }
+
+    @Test
     fun `only ManagementJson maps Management API error responses into faults`() =
         managementFaultOwnership(
             resideInAnyPackage("app.minimpos.terminal..")
@@ -266,6 +291,13 @@ class ArchitectureTest {
 
         fun deliveryOwnership(selected: DescribedPredicate<JavaClass>): ArchRule =
             noClasses().that(selected).should().dependOnClassesThat(assignableTo(IOException::class.java))
+
+        fun externalTextOwnership(selected: DescribedPredicate<JavaClass>): ArchRule =
+            noClasses()
+                .that(selected)
+                .should()
+                .callMethod(ExternalText::class.java, "constructor-impl", String::class.java)
+                .because("Production code outside the simulator wraps nullable remote fields via ExternalText.of")
 
         fun managementFaultOwnership(selected: DescribedPredicate<JavaClass>): ArchRule =
             noClasses()

@@ -47,22 +47,18 @@ enum class MalformedPart {
  * them in the operator's language; only the [ExternalText] they carry is shown verbatim. A decline is not a fault: the
  * terminal answered.
  */
-sealed interface Fault {
+sealed class Fault(
     /**
      * Whether the request may have reached its destination and taken effect, so its outcome is unknown until it is
      * established; false when it certainly took no effect.
      */
-    val mayHaveTakenEffect: Boolean
-
+    val mayHaveTakenEffect: Boolean,
+) {
     /** A fault after which the request certainly took no effect. */
-    sealed interface NotSent : Fault {
-        override val mayHaveTakenEffect: Boolean get() = false
-    }
+    sealed class NotSent : Fault(mayHaveTakenEffect = false)
 
     /** A fault after which the request may have taken effect. */
-    sealed interface MaybeSent : Fault {
-        override val mayHaveTakenEffect: Boolean get() = true
-    }
+    sealed class MaybeSent : Fault(mayHaveTakenEffect = true)
 
     /**
      * Nothing answered at [host]: the connection was refused or there is no route to it.
@@ -73,7 +69,7 @@ sealed interface Fault {
     data class Unreachable(
         val host: String,
         val terminal: Boolean,
-    ) : NotSent
+    ) : NotSent()
 
     /**
      * The name [host] could not be looked up.
@@ -84,7 +80,7 @@ sealed interface Fault {
     data class UnknownHost(
         val host: String,
         val terminal: Boolean,
-    ) : NotSent
+    ) : NotSent()
 
     /**
      * The device at [host] did not present a valid Adyen terminal certificate for the expected environment.
@@ -93,7 +89,7 @@ sealed interface Fault {
      */
     data class Untrusted(
         val host: String,
-    ) : NotSent
+    ) : NotSent()
 
     /**
      * The terminal refused the request because of the shared key.
@@ -102,7 +98,7 @@ sealed interface Fault {
      */
     data class KeyRejected(
         val said: ExternalText?,
-    ) : NotSent
+    ) : NotSent()
 
     /**
      * The terminal refused the request for another reason.
@@ -111,7 +107,7 @@ sealed interface Fault {
      */
     data class TerminalRejected(
         val said: ExternalText?,
-    ) : NotSent
+    ) : NotSent()
 
     /**
      * Adyen reports that the cloud terminal [poiId] is not connected, so the request never reached it.
@@ -122,10 +118,10 @@ sealed interface Fault {
     data class TerminalOffline(
         val poiId: String,
         val said: ExternalText?,
-    ) : NotSent
+    ) : NotSent()
 
     /** The Adyen Payments app could not be opened. */
-    data object NotStarted : NotSent
+    data object NotStarted : NotSent()
 
     /**
      * The Payments app answered without taking the request.
@@ -134,19 +130,19 @@ sealed interface Fault {
      */
     data class AppRefused(
         val said: ExternalText?,
-    ) : NotSent
+    ) : NotSent()
 
     /** The destination does not take this kind of request. */
-    data object Unsupported : NotSent
+    data object Unsupported : NotSent()
 
     /** The Payments app cannot be asked for a result, and no late reply to the transaction has arrived. */
-    data object NoLateReply : NotSent
+    data object NoLateReply : NotSent()
 
     /** The terminal has no record of the transaction a status check asked about, so it was not processed. */
-    data object NoRecord : NotSent
+    data object NoRecord : NotSent()
 
     /** The request could not be encrypted with the shared key. */
-    data object RequestNotEncrypted : NotSent
+    data object RequestNotEncrypted : NotSent()
 
     /**
      * Adyen did not accept the API key (HTTP 401).
@@ -155,7 +151,7 @@ sealed interface Fault {
      */
     data class Credential(
         val key: ApiKey,
-    ) : NotSent
+    ) : NotSent()
 
     /**
      * The API key lacks a role, or access to the merchant account or store (HTTP 403, or a role missing from its
@@ -167,7 +163,7 @@ sealed interface Fault {
     data class Permission(
         val key: ApiKey,
         val role: String? = null,
-    ) : NotSent
+    ) : NotSent()
 
     /**
      * Adyen does not know the requested terminal in the merchant account (HTTP 404).
@@ -176,7 +172,7 @@ sealed interface Fault {
      */
     data class NotFound(
         val poiId: String?,
-    ) : NotSent
+    ) : NotSent()
 
     /**
      * Adyen rejected the request (an HTTP 4xx other than 401, 403, 404, 408 and 429).
@@ -189,19 +185,19 @@ sealed interface Fault {
         val http: Int,
         val errorCode: String? = null,
         val said: ExternalText? = null,
-    ) : NotSent
+    ) : NotSent()
 
     /** A list was too long to read completely, so nothing partial was used. */
-    data object ListTooLarge : NotSent
+    data object ListTooLarge : NotSent()
 
     /** No answer came back within the request's time limit. */
-    data object TimedOut : MaybeSent
+    data object TimedOut : MaybeSent()
 
     /** The connection broke, or failed in another way, before an answer came back. */
-    data object ConnectionLost : MaybeSent
+    data object ConnectionLost : MaybeSent()
 
     /** The terminal's reply failed decryption or its integrity check, which usually means a shared key mismatch. */
-    data object ReplyUnverified : MaybeSent
+    data object ReplyUnverified : MaybeSent()
 
     /**
      * An answer came back that could not be read or did not belong to the request.
@@ -210,7 +206,7 @@ sealed interface Fault {
      */
     data class UnreadableReply(
         val said: ExternalText? = null,
-    ) : MaybeSent
+    ) : MaybeSent()
 
     /**
      * A successful Management answer contained data that cannot be used safely.
@@ -219,7 +215,7 @@ sealed interface Fault {
      */
     data class Malformed(
         val part: MalformedPart,
-    ) : MaybeSent
+    ) : MaybeSent()
 
     /**
      * Adyen forwarded the request to the cloud terminal [poiId] but got no answer from it.
@@ -230,10 +226,10 @@ sealed interface Fault {
     data class NoAnswerFromTerminal(
         val poiId: String,
         val said: ExternalText?,
-    ) : MaybeSent
+    ) : MaybeSent()
 
     /** The operator came back from the Payments app before it answered. */
-    data object Abandoned : MaybeSent
+    data object Abandoned : MaybeSent()
 
     /**
      * The terminal answered with an HTTP error.
@@ -242,7 +238,7 @@ sealed interface Fault {
      */
     data class TerminalHttp(
         val code: Int,
-    ) : MaybeSent
+    ) : MaybeSent()
 
     /**
      * Adyen timed out, throttled the request or had a server error (HTTP 408, 429 or 5xx).
@@ -255,8 +251,8 @@ sealed interface Fault {
         val http: Int,
         val errorCode: String? = null,
         val said: ExternalText? = null,
-    ) : MaybeSent
+    ) : MaybeSent()
 
     /** The terminal reports the transaction as still in progress (the shopper or the issuer is not done yet). */
-    data object StillInProgress : MaybeSent
+    data object StillInProgress : MaybeSent()
 }

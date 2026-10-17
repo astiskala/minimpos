@@ -55,7 +55,11 @@ class StoreDetailsTest {
                 "1 Main St\nSuite 2\nBuilding A\nSydney\nNSW\n2000\nAU",
                 "+61212345678",
             )
-        assertThat(store()).isEqualTo(StoreLookup.Found(expected))
+        val found = store() as StoreLookup.Found
+        assertThat(found).isEqualTo(StoreLookup.Found(expected))
+        assertThat(found.store.name).isEqualTo("Harbour Coffee")
+        assertThat(found.store.address).isEqualTo("1 Main St\nSuite 2\nBuilding A\nSydney\nNSW\n2000\nAU")
+        assertThat(found.store.phone).isEqualTo("+61212345678")
         val sent = server.takeRequest()
         assertThat(sent.method).isEqualTo("GET")
         assertThat(sent.url.encodedPath).isEqualTo("/v3/merchants/Merchant%2FOne/stores/ST1")
@@ -75,7 +79,9 @@ class StoreDetailsTest {
     @Test
     fun `merchant receipt lookup reads only legal name without borrowing city or store fields`() {
         reply("""{"id":"Merchant/One","name":" Legal Shop ","merchantCity":"Sydney","description":"Internal"}""")
-        assertThat(runBlocking { api.merchant("Merchant/One") }).isEqualTo(MerchantLookup.Found("Legal Shop"))
+        val found = runBlocking { api.merchant("Merchant/One") } as MerchantLookup.Found
+        assertThat(found).isEqualTo(MerchantLookup.Found("Legal Shop"))
+        assertThat(found.legalName).isEqualTo("Legal Shop")
         val sent = server.takeRequest()
         assertThat(sent.method).isEqualTo("GET")
         assertThat(sent.url.encodedPath).isEqualTo("/v3/merchants/Merchant%2FOne")
@@ -100,6 +106,10 @@ class StoreDetailsTest {
     fun `blank optional fields are valid`() {
         reply("""{"id":"ST1","shopperStatement":" ","phoneNumber":null,"address":{}}""")
         assertThat(store()).isEqualTo(StoreLookup.Found(StoreDetails("", "", "")))
+        reply("""{"id":"ST1"}""")
+        assertThat(store()).isEqualTo(StoreLookup.Found(StoreDetails("", "", "")))
+        reply("""{"id":" "}""")
+        assertThat(runBlocking { api.merchant("Merchant/One") }).isEqualTo(MerchantLookup.Failed(Fault.UnreadableReply()))
     }
 
     @Test

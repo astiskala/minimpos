@@ -20,7 +20,7 @@ internal fun unexpectedStatus(text: String): Fault = Fault.UnreadableReply(Exter
 
 /** The fault of an unsuccessful Checkout answer, with Adyen's error message and code from its error model. */
 internal fun AdyenReply.Answered.checkoutFault(): Fault =
-    parseError(body).let { fault(ApiKey.ADYEN, error = AdyenError(ExternalText.of(it?.message), it?.errorCode)) }
+    parseError(body).let { fault(ApiKey.ADYEN, role = null, error = AdyenError(ExternalText.of(it?.message), it?.errorCode)) }
 
 /** The fault of a call that got no usable answer from the Checkout API. */
 internal fun AdyenReply.failure(): Fault? =

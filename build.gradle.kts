@@ -306,8 +306,8 @@ val zizmor =
 
 tasks.register("mutationTest") {
     group = "verification"
-    description = "Mutation-tests :core and :adyen with PIT (not part of qualityGate): each mutant reruns the tests."
-    dependsOn(":core:pitest", ":adyen:pitest")
+    description = "Mutation-tests :core, :adyen and :tooling with PIT (not part of qualityGate): each mutant reruns the tests."
+    dependsOn(":core:pitest", ":adyen:pitest", ":tooling:pitest")
 }
 
 tasks.register("qualityGate") {

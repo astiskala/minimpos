@@ -131,7 +131,19 @@ class CodecTest {
     fun `catalogue validates references and encoder limits`() {
         assertThrows(IllegalArgumentException::class.java) { catalogue.copy(currencyCode = "AU") }
         assertThrows(IllegalArgumentException::class.java) {
-            catalogue.copy(products = listOf(CatalogueProduct("x", 1, 0, 7, null)))
+            catalogue.copy(taxRates = listOf(CatalogueTaxRate("Invalid", -1)))
+        }
+        assertThrows(IllegalArgumentException::class.java) {
+            catalogue.copy(products = listOf(CatalogueProduct("x", 1, -1, null, null)))
+        }
+        assertThrows(IllegalArgumentException::class.java) {
+            catalogue.copy(products = listOf(CatalogueProduct("x", 1, 2, null, null)))
+        }
+        assertThrows(IllegalArgumentException::class.java) {
+            catalogue.copy(products = listOf(CatalogueProduct("x", 1, 0, -1, null)))
+        }
+        assertThrows(IllegalArgumentException::class.java) {
+            catalogue.copy(products = listOf(CatalogueProduct("x", 1, 0, 2, null)))
         }
         assertThrows(IllegalArgumentException::class.java) {
             encodeCatalogue(
@@ -154,6 +166,12 @@ class CodecTest {
         assertThat(TransferCodec.decode(TransferCodec.encode(settingsOnly))).isEqualTo(settingsOnly)
         val secretsOnly = Transfer(sealedSecrets = secrets)
         assertThat(TransferCodec.decode(TransferCodec.encode(secretsOnly))).isEqualTo(secretsOnly)
+        assertThat(TransferCodec.authenticationData(secretsOnly)).isEmpty()
+        assertThat(TransferCodec.authenticationData(Transfer(catalogue = catalogue))).isNotEmpty()
+        assertThat(TransferCodec.authenticationData(settingsOnly)).isNotEmpty()
+        assertThat(TransferCodec.authenticationData(Transfer(connection = "{}"))).isNotEmpty()
+        assertThat(TransferCodec.authenticationData(full))
+            .isEqualTo(TransferCodec.authenticationData(full.copy(sealedSecrets = null)))
         // Settings longer than a catalogue text are fine, up to their own limit.
         val long = Transfer(settings = "x".repeat(10_000))
         assertThat(TransferCodec.decode(TransferCodec.encode(long))).isEqualTo(long)
@@ -175,7 +193,10 @@ class CodecTest {
         sealed.toByteArray()[1] = 9
         assertThat(sealed).isEqualTo(SealedSecrets(byteArrayOf(1, 2)))
         assertThat(sealed.hashCode()).isEqualTo(SealedSecrets(byteArrayOf(1, 2)).hashCode())
+        assertThat(sealed.hashCode()).isNotEqualTo(0)
+        assertThat(sealed.hashCode()).isNotEqualTo(SealedSecrets(byteArrayOf(1)).hashCode())
         assertThat(sealed).isNotEqualTo(SealedSecrets(byteArrayOf(1)))
+        assertThat(sealed.equals("not secrets")).isFalse()
         assertThat(sealed.toString()).isEqualTo("SealedSecrets(2 bytes)")
     }
 
@@ -305,7 +326,10 @@ class CodecTest {
             text,
         ).isEqualTo("MPR1*BV0q001643892070000.VK9DRSLLRCQ2WN82*1790679835123*1200*AUD*MP-260929-210355-4F2A")
         assertThat(URLEncoder.encode(text, "UTF-8")).isEqualTo(text)
-        assertThat(RefundQrPayload.decode(text)).isEqualTo(payload)
+        val decoded = RefundQrPayload.decode(text)!!
+        assertThat(decoded).isEqualTo(payload)
+        assertThat(decoded.transactionId).isEqualTo("BV0q001643892070000.VK9DRSLLRCQ2WN82")
+        assertThat(decoded.amountMinor).isEqualTo(1200)
         assertThat(
             RefundQrPayload.decode(payload.copy(reference = "has space").encode()),
         ).isEqualTo(payload.copy(reference = null))
@@ -316,6 +340,7 @@ class CodecTest {
         listOf(
             "",
             "MPR1*a*1*2",
+            "MPR1*a*1*2*AUD*ref*extra",
             "MPR2*a*1*2*AUD",
             "MPR1*a b*1*2*AUD",
             "MPR1*a*x*2*AUD",

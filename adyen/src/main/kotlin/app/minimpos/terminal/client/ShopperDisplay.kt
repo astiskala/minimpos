@@ -234,7 +234,7 @@ suspend fun TerminalClient.displayQrCode(
 ): Boolean {
     val outputs =
         buildList {
-            header?.takeIf { it.isNotBlank() }?.let { add(textDisplayOutput(it)) }
+            if (!header.isNullOrBlank()) add(textDisplayOutput(header))
             add(
                 DisplayOutput().apply {
                     device = DeviceType.CUSTOMER_DISPLAY
@@ -257,7 +257,7 @@ suspend fun TerminalClient.displayQrCode(
                         }
                 },
             )
-            footer?.takeIf { it.isNotBlank() }?.let { add(textDisplayOutput(it)) }
+            if (!footer.isNullOrBlank()) add(textDisplayOutput(footer))
         }
     return sendDisplay(outputs)
 }
@@ -326,7 +326,7 @@ suspend fun TerminalClient.requestRating(
     val delivery =
         inputMessage(
             referenceId = "GetRating",
-            texts = listOfNotNull(title, subtitle?.takeIf { it.isNotBlank() }),
+            texts = if (subtitle.isNullOrBlank()) listOf(title) else listOf(title, subtitle),
             command = InputCommandType.DIGIT_STRING,
             timeoutSeconds = timeoutSeconds,
         )
@@ -436,8 +436,7 @@ private fun parseInputDelivery(delivery: Delivery): InputOutcome<Input> {
         val input = inputResult.input ?: return InputOutcome.Failed(Fault.UnreadableReply())
         return InputOutcome.Entered(input)
     }
-    val condition = response?.errorCondition?.value()
-    if (condition.equals("Cancel", ignoreCase = true) || condition.equals("Aborted", ignoreCase = true)) {
+    if (Decline.of(succeeded = false, errorCondition = response?.errorCondition?.value(), refusalReason = null)?.cancelled == true) {
         return InputOutcome.Cancelled
     }
     val message = AdditionalResponseParser.parse(response?.additionalResponse)["message"]
@@ -507,14 +506,12 @@ private suspend fun TerminalClient.runShopperFlowSteps(
     val prompt = flow.confirmationPrompt
     val confirmed =
         prompt == null ||
-            (
-                requestConfirmation(
-                    title = prompt.first,
-                    body = prompt.second,
-                    cancelLabel = flow.cancelLabel,
-                    confirmLabel = flow.confirmLabel,
-                ) as? InputOutcome.Entered
-            )?.value == true
+            requestConfirmation(
+                title = prompt.first,
+                body = prompt.second,
+                cancelLabel = flow.cancelLabel,
+                confirmLabel = flow.confirmLabel,
+            ) == InputOutcome.Entered(true)
     if (!confirmed) {
         return TransactionOutcome.Completed(serviceId, shopperCancelledDetails(params.merchantReference))
     }
@@ -524,7 +521,7 @@ private suspend fun TerminalClient.runShopperFlowSteps(
         } else {
             null
         }
-    val effectiveParams = if (collectedEmail != null) params.copy(shopperEmail = collectedEmail) else params
+    val effectiveParams = params.copy(shopperEmail = params.shopperEmail ?: collectedEmail)
     val outcome = payCore(effectiveParams)
     return if (outcome is TransactionOutcome.Completed && outcome.details.success) {
         flow.qrReceipt?.let { displayQrCode(it, header = flow.qrHeader) }
@@ -548,8 +545,8 @@ private fun shopperCancelledDetails(merchantReference: String): TransactionDetai
     TransactionDetails(
         success = false,
         errorCondition = "Cancel",
-        message = ExternalText.of("Cancelled by shopper"),
-        refusalReason = "Cancelled by shopper",
+        message = null,
+        refusalReason = null,
         poiTransactionId = null,
         poiTimestamp = null,
         pspReference = null,

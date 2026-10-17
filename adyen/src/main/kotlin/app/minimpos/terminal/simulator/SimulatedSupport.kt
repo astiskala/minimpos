@@ -5,17 +5,24 @@ import app.minimpos.terminal.client.OfflineProcessingMode
 import app.minimpos.terminal.client.TerminalClient
 import app.minimpos.terminal.client.TerminalCurrencyTotals
 import com.adyen.model.nexo.DeviceType
+import com.adyen.model.nexo.DiagnosisResponse
+import com.adyen.model.nexo.DisplayRequest
+import com.adyen.model.nexo.DisplayResponse
 import com.adyen.model.nexo.ErrorConditionType
 import com.adyen.model.nexo.ForceEntryModeType
+import com.adyen.model.nexo.GlobalStatusType
 import com.adyen.model.nexo.InfoQualifyType
 import com.adyen.model.nexo.Input
 import com.adyen.model.nexo.InputCommandType
 import com.adyen.model.nexo.InputRequest
 import com.adyen.model.nexo.InputResponse
 import com.adyen.model.nexo.InputResult
+import com.adyen.model.nexo.OutputResult
+import com.adyen.model.nexo.POIStatus
 import com.adyen.model.nexo.PaymentInstrumentType
 import com.adyen.model.nexo.PaymentRequest
 import com.adyen.model.nexo.PaymentTotals
+import com.adyen.model.nexo.PrinterStatusType
 import com.adyen.model.nexo.Response
 import com.adyen.model.nexo.ResultType
 import com.adyen.model.nexo.SaleData
@@ -156,14 +163,10 @@ internal fun simulatedTipAmount(
                         BigDecimal.valueOf(suggestions.get("Amount1").asLong, scale)
                     }
 
-                    suggestions.has("Percentage1") -> {
+                    else -> {
                         base
                             .multiply(BigDecimal.valueOf(suggestions.get("Percentage1").asLong))
                             .divide(BigDecimal.valueOf(PERCENT), scale, RoundingMode.HALF_UP)
-                    }
-
-                    else -> {
-                        null
                     }
                 }
             }.getOrNull()
@@ -186,7 +189,7 @@ internal fun simulateInputResponse(
                 setConfirmedFlag(settings.shopperConfirmed)
             } else if (command == InputCommandType.TEXT_STRING) {
                 textInput = settings.shopperEmailInput
-            } else if (command == InputCommandType.DIGIT_STRING) {
+            } else {
                 digitInput = settings.shopperRating.toString()
             }
         }
@@ -200,6 +203,29 @@ internal fun simulateInputResponse(
             }
     }
 }
+
+internal fun simulateDiagnosisResponse(settings: SimulatorConfig): DiagnosisResponse =
+    DiagnosisResponse().apply {
+        response = Response().apply { result = ResultType.SUCCESS }
+        poiStatus =
+            POIStatus().apply {
+                globalStatus = GlobalStatusType.OK
+                setPEDOKFlag(true)
+                printerStatus = if (settings.hasPrinter) PrinterStatusType.OK else null
+            }
+    }
+
+internal fun simulateDisplayResponse(request: DisplayRequest): DisplayResponse =
+    DisplayResponse().apply {
+        outputResult +=
+            request.displayOutput.orEmpty().map {
+                OutputResult().apply {
+                    device = it.device ?: DeviceType.CUSTOMER_DISPLAY
+                    infoQualify = it.infoQualify ?: InfoQualifyType.DISPLAY
+                    response = Response().apply { result = ResultType.SUCCESS }
+                }
+            }
+    }
 
 internal fun buildSimulatedTransactionTotals(entries: List<TerminalCurrencyTotals>): List<TransactionTotals> =
     entries.sortedBy { it.currency }.map { item ->

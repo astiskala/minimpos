@@ -326,7 +326,7 @@ class CloudTransport internal constructor(
 
     private companion object {
         /** How Adyen words that a terminal cannot be reached at all, so the request never got to it. */
-        val NOT_CONNECTED = listOf("not connected", "offline", "unknown device", "not found")
+        private val NOT_CONNECTED = listOf("not connected", "offline", "unknown device", "not found")
     }
 }
 

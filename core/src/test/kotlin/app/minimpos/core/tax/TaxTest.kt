@@ -64,12 +64,14 @@ class TaxTest {
     @Test
     fun `a new installation starts with its country's standard rate, included in prices`() {
         assertThat(StarterTax.forCountry("AU")).isEqualTo(StarterTax(10_000))
+        assertThat(StarterTax.forCountry("AU").reducedMilliPercent).isNull()
         assertThat(StarterTax.forCountry(" de ")).isEqualTo(StarterTax(19_000, null, TaxMode.INCLUSIVE))
         assertThat(StarterTax.forCountry("FI").standardMilliPercent).isEqualTo(25_500)
         assertThat(StarterTax.forCountry("RO").standardMilliPercent).isEqualTo(21_000)
         assertThat(StarterTax.forCountry("SE").standardMilliPercent).isEqualTo(25_000)
         // Japanese receipts total the reduced rate separately, so it is there from the start.
         assertThat(StarterTax.forCountry("JP")).isEqualTo(StarterTax(10_000, 8_000, TaxMode.INCLUSIVE))
+        assertThat(StarterTax.forCountry("JP").reducedMilliPercent).isEqualTo(8_000)
     }
 
     @Test

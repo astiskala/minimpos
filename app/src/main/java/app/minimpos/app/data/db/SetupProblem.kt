@@ -141,4 +141,7 @@ enum class SetupProblem {
 
     /** Key creation may have reached Adyen without confirmed read-back; explicit recovery must read first. */
     KEY_CREATION_UNCONFIRMED,
+
+    /** Printing is not offered: the printer setting is off, or the terminal (or simulator) has no printer. */
+    PRINTER,
 }

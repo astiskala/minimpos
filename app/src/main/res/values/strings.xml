@@ -137,7 +137,6 @@
   <string name="wallet_requested">Requested wallet</string>
   <string name="wallet_methods">Scanned wallets</string>
   <string name="wallet_refresh">Refresh scanned wallets</string>
-  <string name="wallet_role_hint">Optional role: Management API - Payment methods read. Discovery errors do not block ordinary payments.</string>
   <string name="wallet_none">No scanned wallets available for %1$s.</string>
   <string name="wallet_available">Available for %1$s: %2$s</string>
   <string name="wallet_check_failed">Wallet check failed: %1$s</string>
@@ -670,6 +669,10 @@
   <string name="settings_adyen_role_terminals">Management API - Terminal actions read</string>
   <string name="settings_adyen_role_settings">Management API - Terminal settings read and write</string>
   <string name="settings_adyen_role_shared_key">Management API - Terminal settings Advanced read and write</string>
+  <string name="settings_adyen_role_payment_methods">Management API - Payment methods read</string>
+  <string name="settings_adyen_role_stores">Management API - Stores read</string>
+  <string name="settings_adyen_role_account">Management API - Account read</string>
+  <string name="settings_adyen_role_recurring">Merchant Recurring role</string>
   <string name="settings_live_prefix">Live URL prefix</string>
   <string name="settings_live_prefix_hint">Enter the Checkout live URL prefix. This can be found under Developers › API URLs.</string>
   <string name="settings_test_api">Test API</string>
@@ -1055,6 +1058,7 @@
   <string name="setup_key_connection_pending">The new key is saved. Update this terminal’s config: open Admin menu › Config › Update. When finished, return to Mini mPOS and tap Check again to complete setup.</string>
   <string name="setup_key_recovery_unreadable">Pending key setup could not be read. Retrieve an existing key or contact support before creating another.</string>
   <string name="setup_key_creation_unconfirmed">Key creation is unconfirmed. Resume key setup to read Adyen settings before retrying.</string>
+  <string name="setup_printer">No printer is available. Check Printer in Settings › Receipts, or in Settings › Simulator when simulating.</string>
   <string name="payment_context_mismatch">This setup does not match the original payment’s terminal, merchant account or environment. Restore the original setup before you continue.</string>
   <string name="fault_unreachable_terminal">The terminal could not be reached. Check that it is on, on the same network and at this IP address.</string>
   <string name="fault_unreachable_adyen">Adyen could not be reached. Check the internet connection.</string>

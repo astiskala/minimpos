@@ -45,6 +45,9 @@ data class WalletAvailability(
     val problem: SetupProblem? = null,
     val failure: Failure? = null,
 ) {
+    /** Why a refresh cannot run now: the setup [problem] it would only report again; null when it can. */
+    val refreshBlocked: Failure? get() = problem?.let(Failure::NotSetUp)
+
     /** Explicitly configured wallets for [currency]; the simulator offers offline demos of every requested wallet. */
     fun offered(currency: String): List<ScanWallet> =
         when {

@@ -137,7 +137,6 @@
   <string name="wallet_requested">请求的钱包</string>
   <string name="wallet_methods">扫码钱包</string>
   <string name="wallet_refresh">刷新扫码钱包</string>
-  <string name="wallet_role_hint">可选角色：Management API - Payment methods read。查询错误不会阻止普通支付。</string>
   <string name="wallet_none">没有适用于 %1$s 的扫码钱包。</string>
   <string name="wallet_available">适用于 %1$s：%2$s</string>
   <string name="wallet_check_failed">钱包检查失败：%1$s</string>
@@ -670,6 +669,10 @@
   <string name="settings_adyen_role_terminals">Management API - Terminal actions read</string>
   <string name="settings_adyen_role_settings">Management API - Terminal settings read and write</string>
   <string name="settings_adyen_role_shared_key">Management API - Terminal settings Advanced read and write</string>
+  <string name="settings_adyen_role_payment_methods">Management API - Payment methods read</string>
+  <string name="settings_adyen_role_stores">Management API - Stores read</string>
+  <string name="settings_adyen_role_account">Management API - Account read</string>
+  <string name="settings_adyen_role_recurring">Merchant Recurring role</string>
   <string name="settings_live_prefix">LIVE URL 前缀</string>
   <string name="settings_live_prefix_hint">请输入 Checkout 实时 URL 前缀，可在“Developers › API URLs”中找到。</string>
   <string name="settings_test_api">测试 API</string>
@@ -1051,6 +1054,7 @@
   <string name="setup_key_connection_pending">新密钥已保存。请更新此终端的配置：打开“Admin menu › Config › Update”。完成后返回 Mini mPOS，点按“再次检查”以完成设置。</string>
   <string name="setup_key_recovery_unreadable">无法读取待完成的密钥设置。创建其他密钥前，请获取现有密钥或联系支持。</string>
   <string name="setup_key_creation_unconfirmed">尚未确认密钥创建结果。请继续密钥设置，先读取 Adyen 设置再重试。</string>
+  <string name="setup_printer">没有可用的打印机。请检查“设置 › 收据”中的“打印机”，使用模拟器时请检查“设置 › 模拟器”。</string>
   <string name="payment_context_mismatch">当前设置与原支付的终端、商家账户或环境不一致。请恢复原设置后继续。</string>
   <string name="fault_unreachable_terminal">无法连接终端。请确认终端已开机、位于同一网络，且 IP 地址正确。</string>
   <string name="fault_unreachable_adyen">无法连接 Adyen。请检查互联网连接。</string>

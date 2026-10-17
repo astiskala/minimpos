@@ -372,6 +372,7 @@ internal class CloudTerminal(
         override val scannedWallets: Boolean get() = true
         override val secrets: Set<Secret> get() = setOf(Secret.ADYEN_API_KEY)
         override val discoversTerminals: Boolean get() = true
+        override val usesCloudDeviceApi: Boolean get() = true
 
         override fun selectsEnvironment(onTerminal: Boolean): Boolean = true
 

@@ -45,6 +45,9 @@ sealed interface DestinationRules {
     /** Whether this destination needs explicit phone registration before connection verification. */
     val boardsPhone: Boolean get() = false
 
+    /** Whether payments go through Adyen's Cloud device API, so the API key also needs its role. */
+    val usesCloudDeviceApi: Boolean get() = false
+
     /** Whether the merchant must choose TEST or LIVE instead of reading it from this device or the Payments app. */
     fun selectsEnvironment(onTerminal: Boolean): Boolean = false
 

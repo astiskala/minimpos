@@ -1,5 +1,6 @@
 package app.minimpos.terminal
 
+import app.minimpos.terminal.transport.AdyenRole
 import app.minimpos.terminal.transport.AdyenTerminalDetails
 import app.minimpos.terminal.transport.ApiKey
 import app.minimpos.terminal.transport.CredentialLookup
@@ -52,12 +53,7 @@ class TerminalDetailsTest {
     @Test
     fun `credential role checks are bounded to one environment and return typed failures`() =
         runBlocking {
-            reply(
-                """
-                {"roles":["Management API - Terminal actions read","Management API – Terminal settings read and write",
-                "Management API - Terminal settings Advanced read and write"]}
-                """.trimIndent(),
-            )
+            reply(rolesReply(ALL_ROLES.map { it.replace(" - ", " – ") } + "Checkout webservice role"))
             assertThat(api.credential(TerminalEnvironment.TEST)).isEqualTo(CredentialLookup.Allowed)
             assertThat(server.takeRequest().url.encodedPath).isEqualTo("/test/v3/me")
             reply("""{"roles":["Checkout webservice role"]}""")
@@ -73,18 +69,32 @@ class TerminalDetailsTest {
         }
 
     @Test
-    fun `real setup requires terminal settings write and advanced roles even when unused`() =
+    fun `real setup requires every role even when unused and names only the missing ones`() =
         runBlocking {
-            reply("""{"roles":["Management API - Terminal actions read"]}""")
-            assertThat(api.credential(TerminalEnvironment.TEST)).isEqualTo(CredentialLookup.Failed(Fault.Permission(ApiKey.ADYEN, ROLES)))
-            reply(
-                """
-                {"roles":["Management API - Terminal actions read",
-                "Management API - Terminal settings read and write","Management API - Terminal settings Advanced read and write"]}
-                """.trimIndent(),
-            )
+            reply(rolesReply(listOf("Management API - Terminal actions read")))
+            assertThat(api.credential(TerminalEnvironment.TEST))
+                .isEqualTo(
+                    CredentialLookup.Failed(Fault.Permission(ApiKey.ADYEN, AdyenRole.names(AdyenRole.required(cloud = false).drop(1)))),
+                )
+            reply(rolesReply(ALL_ROLES - "Management API - Payment methods read"))
+            assertThat(api.credential(TerminalEnvironment.TEST))
+                .isEqualTo(CredentialLookup.Failed(Fault.Permission(ApiKey.ADYEN, "Management API - Payment methods read")))
+            // Adyen has spelled roles with other dashes, spacing, case and plurals.
+            val respelled =
+                ALL_ROLES.map { it.replace(" - ", "—").uppercase() }.map {
+                    if (it.contains("ACCOUNT READ")) "Management API - Accounts read" else it
+                }
+            reply(rolesReply(respelled))
             assertThat(api.credential(TerminalEnvironment.TEST)).isEqualTo(CredentialLookup.Allowed)
+            // A cloud terminal also needs the Cloud device API role.
+            reply(rolesReply(ALL_ROLES))
+            assertThat(api.credential(TerminalEnvironment.TEST, cloud = true))
+                .isEqualTo(CredentialLookup.Failed(Fault.Permission(ApiKey.ADYEN, "Cloud Device API role")))
+            reply(rolesReply(ALL_ROLES + "Cloud Device API role"))
+            assertThat(api.credential(TerminalEnvironment.TEST, cloud = true)).isEqualTo(CredentialLookup.Allowed)
         }
+
+    private fun rolesReply(roles: List<String>): String = roles.joinToString(",", """{"roles":[""", "]}") { "\"$it\"" }
 
     @Test
     fun `reads assignments and network addresses across pages without following untrusted URLs`() =
@@ -684,7 +694,16 @@ class TerminalDetailsTest {
         }
 
     private companion object {
-        const val ROLES =
-            "Management API—Terminal actions read, Terminal settings read and write, Terminal settings Advanced read and write"
+        val ALL_ROLES =
+            listOf(
+                "Management API - Terminal actions read",
+                "Management API - Terminal settings read and write",
+                "Management API - Terminal settings Advanced read and write",
+                "Management API - Payment methods read",
+                "Management API - Stores read",
+                "Management API - Account read",
+                "Merchant Recurring role",
+            )
+        val ROLES = ALL_ROLES.joinToString(", ")
     }
 }

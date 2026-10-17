@@ -76,6 +76,9 @@ data class TerminalSetup(
     /** Whether read-only terminal discovery can propose connection fields for this destination. */
     val discoversTerminals: Boolean get() = destination.discoversTerminals
 
+    /** Whether the API key also needs the Cloud device API role, see [DestinationRules.usesCloudDeviceApi]. */
+    val usesCloudDeviceApi: Boolean get() = destination.usesCloudDeviceApi
+
     internal val needsSharedKey: Boolean get() = Secret.TERMINAL_PASSPHRASE in destination.secrets
 
     internal val boardsPhone: Boolean get() = destination.boardsPhone

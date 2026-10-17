@@ -101,7 +101,7 @@ class SetupDiscovery(
             if (!setup.discoversTerminals) return@withLock SetupDiscoverySearch.Unavailable
             val environment = setup.environment ?: return@withLock SetupDiscoverySearch.Unavailable
             val api = connect(key)
-            val credential = api.credential(environment)
+            val credential = api.credential(environment, setup.usesCloudDeviceApi)
             if (credential is CredentialLookup.Failed) return@withLock SetupDiscoverySearch.Failed(Failure.Remote(credential.fault))
             val onDevice = setup.onTerminal && setup.mode == TerminalMode.TERMINAL
             val terminals =
@@ -275,7 +275,7 @@ internal class SetupAccess(
 
             else -> {
                 val api = connect(key)
-                when (val credential = api.credential(environment)) {
+                when (val credential = api.credential(environment, setup.usesCloudDeviceApi)) {
                     is CredentialLookup.Failed -> Failure.Remote(credential.fault)
                     CredentialLookup.Allowed -> if (setup.discoversTerminals && setup.poiId != null) assignment(api, setup) else null
                 }

@@ -9,6 +9,7 @@ import app.minimpos.core.receipt.HtmlReceiptRenderer
 import app.minimpos.core.receipt.PlainTextReceiptRenderer
 import app.minimpos.core.receipt.ReceiptDocument
 import app.minimpos.core.receipt.ReceiptElement
+import app.minimpos.terminal.transport.AdyenRole
 import com.google.common.truth.Truth.assertThat
 import com.google.common.truth.Truth.assertWithMessage
 import org.junit.Test
@@ -113,7 +114,9 @@ class LocalizationTest {
         }
         listOf("values", "values-zh-rCN", "values-b+zh+Hant", "values-ja").forEach { folder ->
             val strings = resourceEntries(folder)
-            assertThat(strings.getValue("string:wallet_role_hint").single()).contains("Management API - Payment methods read")
+            // Settings lists exactly the roles the API test requires, by their Customer Area names in every language.
+            val roles = strings.filterKeys { it.startsWith("string:settings_adyen_role_") }.values.map { it.single() }
+            assertThat(roles).containsExactlyElementsIn(AdyenRole.entries.map { it.displayName })
             assertThat(strings.getValue("string:settings_business_import_hint").single()).contains("Management API - Stores read")
         }
     }

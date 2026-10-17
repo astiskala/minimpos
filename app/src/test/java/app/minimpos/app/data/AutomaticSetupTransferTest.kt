@@ -60,7 +60,10 @@ class AutomaticSetupTransferTest {
     private var credentialReads = 0
     private val details: TerminalDetailsApi =
         object : TerminalDetailsApi {
-            override suspend fun credential(environment: TerminalEnvironment): CredentialLookup {
+            override suspend fun credential(
+                environment: TerminalEnvironment,
+                cloud: Boolean,
+            ): CredentialLookup {
                 credentialReads++
                 return credential
             }

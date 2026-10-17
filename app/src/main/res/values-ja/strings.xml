@@ -137,7 +137,6 @@
   <string name="wallet_requested">リクエストしたウォレット</string>
   <string name="wallet_methods">スキャン対応ウォレット</string>
   <string name="wallet_refresh">ウォレットを更新</string>
-  <string name="wallet_role_hint">任意のロール：Management API - Payment methods read。照会エラーは通常の決済を妨げません。</string>
   <string name="wallet_none">%1$s に対応するスキャン用ウォレットはありません。</string>
   <string name="wallet_available">%1$s 対応：%2$s</string>
   <string name="wallet_check_failed">ウォレット確認失敗：%1$s</string>
@@ -670,6 +669,10 @@
   <string name="settings_adyen_role_terminals">Management API - Terminal actions read</string>
   <string name="settings_adyen_role_settings">Management API - Terminal settings read and write</string>
   <string name="settings_adyen_role_shared_key">Management API - Terminal settings Advanced read and write</string>
+  <string name="settings_adyen_role_payment_methods">Management API - Payment methods read</string>
+  <string name="settings_adyen_role_stores">Management API - Stores read</string>
+  <string name="settings_adyen_role_account">Management API - Account read</string>
+  <string name="settings_adyen_role_recurring">Merchant Recurring role</string>
   <string name="settings_live_prefix">LIVE URLプレフィックス</string>
   <string name="settings_live_prefix_hint">CheckoutライブURLプレフィックスを入力してください。「Developers › API URLs」で確認できます。</string>
   <string name="settings_test_api">APIをテスト</string>
@@ -1051,6 +1054,7 @@
   <string name="setup_key_connection_pending">新しいキーを保存しました。この端末で「Admin menu › Config › Update」を開き、設定を更新してください。完了後、Mini mPOS に戻り「もう一度確認」をタップして設定を完了します。</string>
   <string name="setup_key_recovery_unreadable">保存途中のキー設定を読み取れませんでした。別のキーを作成する前に既存のキーを取得するか、サポートへお問い合わせください。</string>
   <string name="setup_key_creation_unconfirmed">キー作成の結果は未確認です。キー設定を再開して Adyen の設定を読み取ってから再試行してください。</string>
+  <string name="setup_printer">使用できるプリンターがありません。「設定 › 領収書」の「プリンター」を確認してください。シミュレーター使用時は「設定 › シミュレーター」を確認してください。</string>
   <string name="payment_context_mismatch">現在の設定は元の決済の端末、マーチャントアカウント、または環境と一致しません。元の設定に戻してから続行してください。</string>
   <string name="fault_unreachable_terminal">端末に接続できませんでした。端末の電源、同じネットワークにあること、IPアドレスを確認してください。</string>
   <string name="fault_unreachable_adyen">Adyenに接続できませんでした。インターネット接続を確認してください。</string>

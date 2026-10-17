@@ -27,6 +27,7 @@ import app.minimpos.app.R
 import app.minimpos.app.data.settings.PaymentSettings
 import app.minimpos.app.data.settings.ReceiptTipping
 import app.minimpos.app.feature.ActionState
+import app.minimpos.app.feature.GatedButton
 import app.minimpos.app.feature.OutcomeMessage
 import app.minimpos.app.feature.text
 import app.minimpos.app.terminal.AdyenCapabilitiesState
@@ -47,17 +48,19 @@ internal fun ColumnScope.CapabilitiesSection(
     events: CapabilitiesEvents,
 ) {
     SettingIntro(stringResource(R.string.capabilities_intro))
-    capabilities.problem?.let { SettingNote(it.text()) }
     capabilities.failure?.let { SettingNote(it.text()) }
     if (capabilities.discoversTerminals || capabilities.simulated) {
         SettingActions {
-            SecondaryButton(
+            GatedButton(
                 stringResource(R.string.capabilities_refresh),
                 events::onRefresh,
+                blocked = capabilities.refreshBlocked,
                 loading = capabilities.checking,
                 modifier = Modifier.testTag("refreshCapabilities"),
             )
         }
+    } else {
+        capabilities.problem?.let { SettingNote(it.text()) }
     }
 
     SectionHeader(stringResource(R.string.capabilities_matrix_header))

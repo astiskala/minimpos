@@ -722,14 +722,17 @@ class AdyenTerminalDetails(
 }
 
 /**
- * An API credential role every real Mini mPOS setup requires beyond Adyen's default ones, as the Customer Area names it
- * ([displayName]). [CLOUD_DEVICE] is required only while payments go to a cloud terminal.
+ * An API credential role every real Mini mPOS setup requires, as the Customer Area names it ([displayName]). Some are
+ * granted to new credentials by default ([default]), so setup guides ask only for the others; all are still checked,
+ * since an admin can remove a default role. [CLOUD_DEVICE] is required only while payments go to a cloud terminal.
  *
  * @property displayName The role's name in the Customer Area, shown verbatim when it is missing.
+ * @property default Whether Adyen assigns the role to new API credentials by default.
  * @property alternatives Other spellings Adyen has used for the same role.
  */
 enum class AdyenRole(
     val displayName: String,
+    val default: Boolean = false,
     private val alternatives: List<String> = emptyList(),
 ) {
     /** Lists terminals and their assignment: discovery and terminal access checks. */
@@ -742,16 +745,16 @@ enum class AdyenRole(
     TERMINAL_SETTINGS_ADVANCED("Management API - Terminal settings Advanced read and write"),
 
     /** Reads payment method settings: scanned wallets and gift cards. */
-    PAYMENT_METHODS_READ("Management API - Payment methods read"),
+    PAYMENT_METHODS_READ("Management API - Payment methods read", default = true),
 
     /** Reads the assigned store's receipt details. */
-    STORES_READ("Management API - Stores read"),
+    STORES_READ("Management API - Stores read", default = true),
 
     /** Reads the merchant account's legal name for receipts. */
-    ACCOUNT_READ("Management API - Account read", listOf("Management API - Accounts read")),
+    ACCOUNT_READ("Management API - Account read", default = true, alternatives = listOf("Management API - Accounts read")),
 
     /** Lists a shopper's saved cards. */
-    MERCHANT_RECURRING("Merchant Recurring role"),
+    MERCHANT_RECURRING("Merchant Recurring role", default = true),
 
     /** Reaches cloud terminals; only for that destination. */
     CLOUD_DEVICE("Cloud Device API role"),

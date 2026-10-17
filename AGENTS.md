@@ -48,7 +48,7 @@ Adyen Payments app (Tap to Pay). The built-in simulator needs no Adyen account.
   clearly label their screen and delivered receipts as demos; their QR codes cannot take payments.
 - Optional Manager PIN approval is separate from admin access and must be checked again before financial operations.
 - Keep deliberate UI choices: no TEST banner (only simulator), no Home terminal-status line or unprotected-settings
-  warning. Home keeps both full-width sale/pre-authorization tiles, half-width Charge saved card/Refund and
+  warning. Home keeps both full-width sale/pre-authorization tiles, half-width Charge token/Refund and
   History/Reconciliation, slim Products/Settings.
 - Every product has a tax rate; use 0% for untaxed items. Turning tax off keeps rates. The last rate cannot be deleted.
 - Customer reference is asked for only as the shopper reference. Card saving needs a shopper reference and consent.

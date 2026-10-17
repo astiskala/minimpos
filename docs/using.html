@@ -73,7 +73,7 @@
             <li><a href="#customize-receipts">Customize receipts</a></li><li><a href="#language-receipts">Receipt language</a></li><li><a href="#email">Email receipts</a></li>
           </ul></li>
           <li><a href="#history">History</a><ul><li><a href="#close-day">Close the day</a></li><li><a href="#reconciliation">Reconcile with the terminal</a></li></ul></li>
-          <li><a href="#shoppers">References and saved cards</a><ul><li><a href="#saved-card">Charge a saved card</a></li></ul></li><li><a href="#payment-links">Payment links</a></li>
+          <li><a href="#shoppers">References and saved cards</a><ul><li><a href="#saved-card">Charge a token</a></li></ul></li><li><a href="#payment-links">Payment links</a></li>
           <li><a href="#preauth">Deposits</a></li><li><a href="#terminal-tips">Tips on the terminal</a></li><li><a href="#tips">Tips on the receipt</a></li><li><a href="#more">More devices and data</a></li>
         </ol></div>
         <details class="mobile-contents"><summary class="toc-title">On this page</summary><ol>
@@ -91,7 +91,7 @@
             <li><a href="#customize-receipts">Customize receipts</a></li><li><a href="#language-receipts">Receipt language</a></li><li><a href="#email">Email receipts</a></li>
           </ul></li>
           <li><a href="#history">History</a><ul><li><a href="#close-day">Close the day</a></li><li><a href="#reconciliation">Reconcile with the terminal</a></li></ul></li>
-          <li><a href="#shoppers">References and saved cards</a><ul><li><a href="#saved-card">Charge a saved card</a></li></ul></li><li><a href="#payment-links">Payment links</a></li>
+          <li><a href="#shoppers">References and saved cards</a><ul><li><a href="#saved-card">Charge a token</a></li></ul></li><li><a href="#payment-links">Payment links</a></li>
           <li><a href="#preauth">Deposits</a></li><li><a href="#terminal-tips">Tips on the terminal</a></li><li><a href="#tips">Tips on the receipt</a></li><li><a href="#more">More devices and data</a></li>
         </ol></details>
       </nav>
@@ -313,16 +313,16 @@
           <dl class="settings-list">
             <dt>Merchant reference</dt><dd>To record a booking or order number, turn on <strong>Settings › Payments › Ask for a merchant reference</strong>. The number identifies the payment in Adyen. If left blank, a unique reference is generated.</dd>
             <dt>Shopper reference</dt><dd>In <strong>Settings › Payments</strong>, choose the <strong>Shopper reference</strong>: a customer reference typed at checkout (the default), the customer's email, or none. It is sent to Adyen with every payment. Email references are hashed by default; use the same salt on every device.</dd>
-            <dt>Saved cards</dt><dd>With a shopper reference set, turn on <strong>Offer to save cards</strong> and choose the <strong>Recurring processing model</strong> for your Adyen setup. Get the customer's consent before selecting <strong>Save card for future payments</strong>. To charge one later, see <a href="#saved-card">charge a saved card</a>.</dd>
+            <dt>Saved cards</dt><dd>With a shopper reference set, turn on <strong>Offer to save cards</strong> and choose the <strong>Recurring processing model</strong> for your Adyen setup. Get the customer's consent before selecting <strong>Save card for future payments</strong>. To charge one later, see <a href="#saved-card">charge a token</a>.</dd>
           </dl>
-          <h3 id="saved-card">Charge a saved card</h3>
+          <h3 id="saved-card">Charge a token</h3>
           <ol>
-            <li>On Home, tap <strong>Charge saved card</strong> and enter the Manager PIN if asked.</li>
-            <li>Enter the customer reference, or the email when that is the shopper reference, and tap <strong>Find saved cards</strong>.</li>
-            <li>Choose a card, then add products or a <strong>Custom item</strong>. This cart is separate from <strong>New sale</strong>.</li>
+            <li>On Home, tap <strong>Charge token</strong> and enter the Manager PIN if asked.</li>
+            <li>Enter the customer reference, or the email when that is the shopper reference, and tap <strong>Find tokens</strong>.</li>
+            <li>Choose a token, then add products or a <strong>Custom item</strong>. This cart is separate from <strong>New sale</strong>.</li>
             <li>Review the charge and tap <strong>Charge</strong>.</li>
           </ol>
-          <p>The customer is not present, so get their consent first. Cards saved for a different <strong>Recurring processing model</strong> cannot be chosen. Refund these payments from <strong>History</strong>; their receipts have no refund QR code. If a charge's result is unknown, check it from History within seven days, after that in the Customer Area.</p>
+          <p>The customer is not present, so get their consent first. Tokens saved for a different <strong>Recurring processing model</strong> cannot be chosen. Refund these payments from <strong>History</strong>; their receipts have no refund QR code. If a charge's result is unknown, check it from History within seven days, after that in the Customer Area.</p>
           <p class="back-to-contents"><a href="#contents">Back to contents</a></p>
         </section>
         <section id="payment-links">

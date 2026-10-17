@@ -1,6 +1,8 @@
 package app.minimpos.app.history
 
 import app.minimpos.app.data.db.CaptureStatus
+import app.minimpos.app.data.db.RefundEntity
+import app.minimpos.app.data.db.RefundStatus
 import app.minimpos.app.data.db.SaleEntity
 import app.minimpos.app.data.db.SaleKind
 import app.minimpos.app.data.db.SaleStatus
@@ -9,9 +11,10 @@ import app.minimpos.terminal.client.Decline
 
 /**
  * Where a stored sale stands as a payment, worked out once from its status, kind, capture and cancellation. It is the
- * one reading of those fields: what can be done with the payment ([actions]), how it counts in the day's totals
- * ([totalsShare]), the status headings and notes, and the receipts all start from it, so none of them reads
- * [SaleEntity.captureStatus] or [SaleEntity.holdCancelled] itself.
+ * one reading of those fields: what can be done with the payment ([actions]), what about it still needs attention
+ * ([issues], which day totals and History's issue filter share through [HistoryAccounting]), the status headings and
+ * notes, and the receipts all start from it, so none of them reads [SaleEntity.captureStatus] or
+ * [SaleEntity.holdCancelled] itself.
  *
  * Payments taken with manual capture ([SaleEntity.manualCapture]: pre-authorisations and sales taken for tipping on the
  * receipt) move from [AWAITING_TIP] or [HELD] through a capture ([CAPTURE_SENDING], then [CAPTURE_REQUESTED],
@@ -155,7 +158,7 @@ data class ReceiptStanding(
                 capturedMinor = sale.capturedMinor?.takeIf { preAuthorisation && standing.captured },
                 unpaidLink = unpaidLink,
                 linkExpiresAt = sale.paymentLinkExpiresAt?.takeIf { unpaidLink != null },
-                paidOnline = sale.paymentLink && standing.charged,
+                paidOnline = sale.paidOnline,
                 simulatedLink = sale.simulatedLink,
                 standing = standing,
             )
@@ -165,6 +168,52 @@ data class ReceiptStanding(
 
 /** Whether this sale's payment link has been created and not paid yet, so the shopper can still pay with it. */
 val SaleEntity.awaitsLinkPayment: Boolean get() = paymentLink && status == SaleStatus.AWAITING_PAYMENT && paymentLinkUrl != null
+
+/**
+ * Whether this sale's payment link screen still has something to offer: the link can be paid, or whether it was created
+ * is unknown and can be asked about there.
+ */
+val SaleEntity.linkUnsettled: Boolean
+    get() = paymentLink && (status == SaleStatus.AWAITING_PAYMENT || status == SaleStatus.UNKNOWN)
+
+/** Whether this sale was paid through its payment link, which its receipt and detail say. */
+val SaleEntity.paidOnline: Boolean get() = paymentLink && standing.charged
+
+/**
+ * Whether this sale was sent to a terminal, so terminal totals and reconciliation include it: not seeded sample
+ * history, a payment link or a saved-card charge, which go through Adyen's Checkout API instead.
+ */
+val SaleEntity.terminalOperation: Boolean get() = !sample && !paymentLink && !savedCard
+
+/** Whether this refund was sent to a terminal, so terminal totals include it: not a Checkout refund of a saved-card charge. */
+val RefundEntity.terminalOperation: Boolean get() = !checkoutRefund
+
+/** What about a stored sale still needs attention, see [issues]. */
+enum class PaymentIssue {
+    /** Whether the payment went through is not known yet: it is still pending or its outcome is unknown. */
+    OUTCOME,
+
+    /** An authorisation adjustment was sent and its outcome is unknown; only the same request may be sent again. */
+    ADJUSTMENT,
+
+    /** Its capture is being sent, failed or has an unknown outcome ([PaymentStanding.CAPTURE_SENDING] and the like). */
+    CAPTURE,
+}
+
+/**
+ * What about this sale still needs attention, the one issue reading History's filter, day totals and reconciliation
+ * share; empty when nothing does.
+ */
+val SaleEntity.issues: Set<PaymentIssue>
+    get() =
+        buildSet {
+            if (status == SaleStatus.PENDING || status == SaleStatus.UNKNOWN) add(PaymentIssue.OUTCOME)
+            if (adjustmentPending) add(PaymentIssue.ADJUSTMENT)
+            if (standing in CAPTURE_ISSUES) add(PaymentIssue.CAPTURE)
+        }
+
+/** The standings of a capture that still needs attention, see [PaymentIssue.CAPTURE]. */
+private val CAPTURE_ISSUES = setOf(PaymentStanding.CAPTURE_FAILED, PaymentStanding.CAPTURE_UNKNOWN, PaymentStanding.CAPTURE_SENDING)
 
 /** Whether this sale is an offline demo link, regardless of its status or the device's current destination. */
 val SaleEntity.simulatedLink: Boolean get() = paymentLink && context?.simulated == true
@@ -194,6 +243,12 @@ enum class PaymentAction {
      * the capture of a tip. A pre-authorisation whose capture failed is captured again with a new amount instead.
      */
     RETRY_CAPTURE,
+
+    /**
+     * Ask again whether the payment went through, which is unknown: the terminal's status of its stored ServiceID, or a
+     * saved-card charge sent again with its stored idempotency key. A payment link is asked about through its link.
+     */
+    CHECK_AGAIN,
 }
 
 /**
@@ -207,7 +262,19 @@ val SaleWithLines.actions: Set<PaymentAction>
             if (RefundablePayment.check(this@actions) is Refundability.Refundable) add(PaymentAction.REFUND)
             if (RefundablePayment.cancellable(this@actions)) add(PaymentAction.CANCEL)
             if (sale.pspReference != null) addAll(captureActions(sale))
+            if (sale.canCheckAgain) add(PaymentAction.CHECK_AGAIN)
         }
+
+/** Whether this sale's unknown outcome can be asked about again the way it was sent, see [PaymentAction.CHECK_AGAIN]. */
+private val SaleEntity.canCheckAgain: Boolean
+    get() = status == SaleStatus.UNKNOWN && !paymentLink && (savedCard || serviceId != null)
+
+/**
+ * Whether this refund's unknown outcome can be asked about again the way it was sent: the terminal's status of its
+ * stored ServiceID, or a Checkout refund sent again with its stored idempotency key.
+ */
+val RefundEntity.canCheckAgain: Boolean
+    get() = status == RefundStatus.UNKNOWN && (checkoutRefund || serviceId != null)
 
 /** What the Checkout API can do with [sale], which has a PSP reference. */
 private fun captureActions(sale: SaleEntity): Set<PaymentAction> {
@@ -220,26 +287,3 @@ private fun captureActions(sale: SaleEntity): Set<PaymentAction> {
         if (retry && sale.capturedMinor != null) add(PaymentAction.RETRY_CAPTURE)
     }
 }
-
-/** How a stored payment counts in History's day totals, see [totalsShare]. */
-enum class TotalsShare {
-    /** Not at all: it was not approved, or it held its amount and was cancelled, so nothing was charged. */
-    NONE,
-
-    /** As a sale at [SaleEntity.amountMinor]: an ordinary approved sale or an accepted manual capture. */
-    SALE,
-
-    /** As held at [SaleEntity.heldMinor]: manual-capture payments awaiting an accepted capture. */
-    HELD,
-}
-
-/** How this sale counts in the day's totals: a pre-authorisation counts as a sale only once it is captured. */
-val SaleEntity.totalsShare: TotalsShare
-    get() {
-        val standing = standing
-        return when {
-            standing == PaymentStanding.NOT_APPROVED || standing == PaymentStanding.HOLD_CANCELLED -> TotalsShare.NONE
-            standing.charged -> TotalsShare.SALE
-            else -> TotalsShare.HELD
-        }
-    }

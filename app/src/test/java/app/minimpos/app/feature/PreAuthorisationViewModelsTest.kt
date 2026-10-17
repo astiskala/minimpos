@@ -182,7 +182,14 @@ class PreAuthorisationViewModelsTest {
                 .cart.value.lines,
         ).isEmpty()
 
-        val result = SaleResultViewModel(id, container.storedPayments, container.receipts, container.payments).also(viewModels::add)
+        val result =
+            SaleResultViewModel(
+                id,
+                container.storedPayments,
+                container.receipts,
+                container.payments,
+                container.operations,
+            ).also(viewModels::add)
         assertThat(await { result.state.first { it.record != null } }.preAuthorisation).isTrue()
         assertThat(
             container
@@ -211,7 +218,7 @@ class PreAuthorisationViewModelsTest {
                 container.refundRecords,
                 container.receipts,
                 container.storedPaymentActions,
-                container.payments,
+                container.operations,
             ).also(viewModels::add)
         val loaded = await { detail.state.first { it.record != null } }
         assertThat(loaded.actions).doesNotContain(PaymentAction.REFUND)

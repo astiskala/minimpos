@@ -269,8 +269,7 @@ class HistorySearchViewModelTest {
                     receipts = env.container.receipts,
                     gateway = env.container.gateway,
                     terminal = env.container.terminalStatus.state,
-                    payments = env.container.payments,
-                    refunds = env.container.refunds,
+                    operations = env.container.operations,
                     permitsClose = { closeAllowed },
                 ).also(viewModels::add)
 
@@ -309,8 +308,7 @@ class HistorySearchViewModelTest {
                     receipts = env.container.receipts,
                     gateway = env.container.gateway,
                     terminal = env.container.terminalStatus.state,
-                    payments = env.container.payments,
-                    refunds = env.container.refunds,
+                    operations = env.container.operations,
                 ).also(viewModels::add)
             // Printing is offered once the simulator's printer is known; asking earlier prints nothing.
             vm.state.first { it.loaded && it.canPrint }

@@ -96,7 +96,7 @@ class TippingViewModelsTest {
             container.refundRecords,
             container.receipts,
             container.storedPaymentActions,
-            container.payments,
+            container.operations,
         )
 
     @Test

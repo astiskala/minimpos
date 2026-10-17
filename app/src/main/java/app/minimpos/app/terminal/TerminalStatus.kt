@@ -33,10 +33,8 @@ import kotlinx.coroutines.launch
  * @property apiSetup How far the Checkout API is set up, see [TerminalSetup.apiSetup]; captures follow the same decision.
  * @property paymentLinks Whether checkout offers payment links, see [TerminalSetup.paymentLinks].
  * @property paymentsApps The Adyen Payments apps installed, by environment, see [TerminalSetup.paymentsApps].
- * @property selectsEnvironment Whether setup asks for TEST or LIVE before credentials.
  * @property importPending Whether a verified import journal still blocks new financial operations until saving resumes.
- * @property supportsTerminalFeatures Whether physical-terminal capabilities are supported on this destination.
- * @property supportsShopperDisplay Whether external-terminal shopper display and input requests are supported.
+ * @property capabilities What the destination can do and asks of its setup, see [TerminalSetup.capabilities].
  * @property connectionProblem What must still be entered before the destination can be reached at all (printing,
  *   refunds, connection checks), from [TerminalSetup.connectionProblem]; null when nothing is missing.
  */
@@ -52,10 +50,8 @@ data class TerminalState(
     val apiSetup: ApiSetup = ApiSetup.Simulated,
     val paymentLinks: Boolean = false,
     val paymentsApps: Set<TerminalEnvironment> = emptySet(),
-    val selectsEnvironment: Boolean = false,
     val importPending: Boolean = false,
-    val supportsTerminalFeatures: Boolean = true,
-    val supportsShopperDisplay: Boolean = true,
+    val capabilities: DestinationCapabilities = DestinationCapabilities(),
     val connectionProblem: SetupProblem? = null,
 ) {
     /**
@@ -68,7 +64,7 @@ data class TerminalState(
      * Why terminal totals cannot be checked or a period closed now: what the destination still needs, else
      * [SetupProblem.TOTALS] where it reports no totals (Tap to Pay); null when they can.
      */
-    val totalsBlocked: SetupProblem? get() = connectionProblem ?: SetupProblem.TOTALS.takeUnless { supportsTerminalFeatures }
+    val totalsBlocked: SetupProblem? get() = connectionProblem ?: SetupProblem.TOTALS.takeUnless { capabilities.supportsTerminalFeatures }
 
     /**
      * Whether receipts and payment links can be shared through Android's share sheet: on phones and tablets, not on an
@@ -114,10 +110,8 @@ class TerminalStatus(
                 apiSetup = setup.apiSetup,
                 paymentLinks = setup.paymentLinks,
                 paymentsApps = setup.paymentsApps,
-                selectsEnvironment = setup.selectsEnvironment,
                 importPending = setup.importPending,
-                supportsTerminalFeatures = setup.supportsTerminalFeatures,
-                supportsShopperDisplay = setup.supportsShopperDisplay,
+                capabilities = setup.capabilities,
                 connectionProblem = setup.connectionProblem,
             )
         }.stateIn(scope, SharingStarted.Eagerly, TerminalState())
@@ -127,7 +121,7 @@ class TerminalStatus(
 
     /**
      * Starts the background work, once per process: a connection check at startup and whenever the terminal settings or
-     * the saved passphrase change (typing is debounced into one check), while [TerminalSetup.checksConnection]; and saving the
+     * the saved passphrase change (typing is debounced into one check), while [DestinationCapabilities.checksConnection]; and saving the
      * environment each connection reports into the settings.
      */
     @OptIn(FlowPreview::class)
@@ -136,8 +130,8 @@ class TerminalStatus(
             setups.changes
                 .map { setup ->
                     Triple(
-                        setup.settings.terminal.selectEnvironment(setup.environment.takeIf { setup.selectsEnvironment }),
-                        setup.checksConnection,
+                        setup.settings.terminal.selectEnvironment(setup.environment.takeIf { setup.capabilities.selectsEnvironment }),
+                        setup.capabilities.checksConnection,
                         setup.connectionProblem,
                     )
                 }.distinctUntilChanged()
@@ -187,7 +181,7 @@ class TerminalStatus(
 
     /** Checks again when the last check failed while payments go to a terminal, so a warning clears once it answers. */
     suspend fun recheckIfFailed() {
-        if (connection.value is TerminalConnection.Failed && setups.current().checksConnection) check()
+        if (connection.value is TerminalConnection.Failed && setups.current().capabilities.checksConnection) check()
     }
 
     /**

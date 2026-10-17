@@ -25,6 +25,7 @@ import app.minimpos.app.history.simulatedLink
 import app.minimpos.app.payment.CardLookup
 import app.minimpos.app.payment.Checkout
 import app.minimpos.app.payment.CheckoutForm
+import app.minimpos.app.payment.FinancialOperations
 import app.minimpos.app.payment.LinkUpdate
 import app.minimpos.app.payment.PaymentLinks
 import app.minimpos.app.payment.PaymentStart
@@ -249,8 +250,8 @@ class CheckoutViewModel(
             },
             terminal.map { it.paymentLinks && links != null },
             discovery?.state ?: flowOf(WalletAvailability()),
-            terminal.map { it.supportsTerminalFeatures },
-            terminal.map { it.supportsShopperDisplay },
+            terminal.map { it.capabilities.supportsTerminalFeatures },
+            terminal.map { it.capabilities.supportsShopperDisplay },
             currency,
         )
 
@@ -369,6 +370,7 @@ data class PaymentLinkUiState(
  * @param payments Follows it, with what can be done with it.
  * @param receipts Prints, emails and shares its receipt.
  * @param links Asks Adyen about the link, and cancels it.
+ * @param operations Asks again about an unknown link creation, as every receipt's status check does.
  * @param fresh Whether the link was just created at checkout, so its automatic delivery is due.
  * @param pollInterval How often an open link is checked while the screen is shown.
  */
@@ -377,13 +379,14 @@ class PaymentLinkViewModel(
     payments: StoredPayments,
     receipts: ReceiptDelivery,
     private val links: PaymentLinks,
+    operations: FinancialOperations,
     fresh: Boolean,
     private val pollInterval: Duration = 10.seconds,
 ) : ViewModel() {
     private val local = MutableStateFlow(PaymentLinkUiState())
 
     /** The receipt (unpaid, with the link, until it is paid), printing, emailing and sharing it. */
-    val transaction = TransactionActions.forLink(viewModelScope, saleId, receipts, links, fresh)
+    val transaction = TransactionActions.forSale(viewModelScope, saleId, receipts, operations, fresh)
 
     /** The screen state, updated whenever the sale or an action changes. */
     val state: StateFlow<PaymentLinkUiState> =
@@ -477,18 +480,20 @@ data class SaleResultUiState(
  * @param saleId The sale (or pre-authorisation) that was paid.
  * @param payments Follows it, with what can be done with it.
  * @param receipts Prints and emails its receipt.
- * @param lifecycle The payments' lifecycle, for status checks, busy terminals and leaving the result.
+ * @param lifecycle The payments' lifecycle, for busy terminals, the remaining balance and leaving the result.
+ * @param operations Asks again about an unknown outcome, the way the payment was sent.
  */
 class SaleResultViewModel(
     private val saleId: String,
     payments: StoredPayments,
     receipts: ReceiptDelivery,
     private val lifecycle: TransactionLifecycle<PaymentStart>,
+    operations: FinancialOperations,
 ) : ViewModel() {
     private val local = MutableStateFlow(SaleResultUiState(busyServiceId = lifecycle.busyServiceId(saleId)))
 
     /** The receipt, printing (the customer copy, then the merchant copy when it is due), emailing and re-checking. */
-    val transaction = TransactionActions.forSale(viewModelScope, saleId, receipts, lifecycle, fresh = true)
+    val transaction = TransactionActions.forSale(viewModelScope, saleId, receipts, operations, fresh = true)
 
     /** The screen state, updated whenever the sale, the capture mode or an action changes. */
     val state: StateFlow<SaleResultUiState> =

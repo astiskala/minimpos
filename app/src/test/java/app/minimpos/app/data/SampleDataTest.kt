@@ -15,8 +15,7 @@ import app.minimpos.app.data.settings.AppSettings
 import app.minimpos.app.data.settings.PaymentSettings
 import app.minimpos.app.history.RefundablePayment
 import app.minimpos.app.history.StoredPayment
-import app.minimpos.app.history.TotalsShare
-import app.minimpos.app.history.totalsShare
+import app.minimpos.app.history.terminalOperation
 import app.minimpos.core.receipt.PlainTextReceiptRenderer
 import app.minimpos.core.tax.TaxMode
 import com.google.common.truth.Truth.assertThat
@@ -55,7 +54,8 @@ class SampleDataTest {
                 assertThat(it.sample).isTrue()
                 assertThat(it.context!!.simulated).isTrue()
                 assertThat(it.currency).isEqualTo("AUD")
-                assertThat(it.totalsShare).isEqualTo(if (it.status == SaleStatus.APPROVED) TotalsShare.SALE else TotalsShare.NONE)
+                // Sample history is never compared against a terminal's totals.
+                assertThat(it.terminalOperation).isFalse()
                 val record = container.sales.get(it.id)!!
                 assertThat(record.lines).hasSize(1)
                 assertThat(StoredPayment(record).actions).isEmpty()

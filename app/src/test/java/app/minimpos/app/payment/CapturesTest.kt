@@ -30,6 +30,7 @@ import app.minimpos.core.payment.PaymentContext
 import app.minimpos.core.tax.TaxMode
 import app.minimpos.terminal.checkout.CardChargeRequest
 import app.minimpos.terminal.checkout.CardChargeResult
+import app.minimpos.terminal.checkout.CheckoutApi
 import app.minimpos.terminal.checkout.CheckoutCredentials
 import app.minimpos.terminal.checkout.ModificationAmount
 import app.minimpos.terminal.checkout.ModificationResult
@@ -304,10 +305,10 @@ class CapturesTest {
             }
         val setups = TerminalSetupSource(container.settings, container.secrets, container.device)
         val live =
-            AdyenApi(setups, simulated = fake, connect = {
+            AdyenApi(setups, simulated = CheckoutApi.of(fake, links, cards), connect = {
                 connected += it
-                fake
-            }, connectLinks = { links }, simulatedLinks = links, verifyAccess = { null }, connectCards = { cards })
+                CheckoutApi.of(fake, links, cards)
+            }, verifyAccess = { null })
         env.updateSettings { it.copy(terminal = it.terminal.copy(mode = TerminalMode.TERMINAL)) }
         assertThat(await { live.target() }.modifications(null)).isEqualTo(ApiAccess.Unavailable(SetupProblem.MERCHANT_ACCOUNT))
         assertThat(await { live.verify() }).isEqualTo(ApiCheck.NotSetUp(SetupProblem.MERCHANT_ACCOUNT))
@@ -342,6 +343,7 @@ class CapturesTest {
                 fake,
                 links,
                 context = PaymentContext("SIMULATOR", "SIMULATOR-000000001", "MiniMPOS", "Merchant", null, simulated = true),
+                cards = cards,
             ),
         )
     }

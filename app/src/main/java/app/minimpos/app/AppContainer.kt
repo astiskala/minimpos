@@ -37,6 +37,7 @@ import app.minimpos.app.history.RefundStart
 import app.minimpos.app.history.StoredPayments
 import app.minimpos.app.payment.Captures
 import app.minimpos.app.payment.CheckoutRefunds
+import app.minimpos.app.payment.FinancialOperations
 import app.minimpos.app.payment.PaymentLinks
 import app.minimpos.app.payment.PaymentStart
 import app.minimpos.app.payment.PricingChanges
@@ -49,7 +50,6 @@ import app.minimpos.app.payment.SavedCardCharges
 import app.minimpos.app.payment.ShopperPromptTexts
 import app.minimpos.app.payment.StoredPaymentActions
 import app.minimpos.app.payment.TransactionLifecycle
-import app.minimpos.app.payment.TransactionState
 import app.minimpos.app.payment.WalletPayments
 import app.minimpos.app.qr.QrCodes
 import app.minimpos.app.receipt.ReceiptFactory
@@ -73,6 +73,7 @@ import app.minimpos.app.terminal.TapToPaySetup
 import app.minimpos.app.terminal.TerminalGateway
 import app.minimpos.app.terminal.TerminalSetupSource
 import app.minimpos.app.terminal.TerminalStatus
+import app.minimpos.app.terminal.UnlockedSetup
 import app.minimpos.app.terminal.VirtualPrinter
 import app.minimpos.app.terminal.WalletDiscovery
 import app.minimpos.app.terminal.refreshEnvironment
@@ -83,19 +84,16 @@ import app.minimpos.core.money.CurrencySpec
 import app.minimpos.core.receipt.ReceiptDocument
 import app.minimpos.core.receipt.ReceiptLabels
 import app.minimpos.core.tax.StarterTax
+import app.minimpos.terminal.checkout.AdyenCheckout
+import app.minimpos.terminal.checkout.CheckoutApi
 import app.minimpos.terminal.checkout.CheckoutCredentials
-import app.minimpos.terminal.checkout.CheckoutModifications
-import app.minimpos.terminal.checkout.CheckoutPaymentLinks
-import app.minimpos.terminal.checkout.CheckoutSavedCards
-import app.minimpos.terminal.checkout.PaymentLinkApi
-import app.minimpos.terminal.checkout.PaymentModifications
-import app.minimpos.terminal.checkout.SavedCardApi
 import app.minimpos.terminal.client.CardEntryOverride
 import app.minimpos.terminal.client.PosApplication
 import app.minimpos.terminal.paymentsapp.AdyenPaymentsAppManagement
 import app.minimpos.terminal.paymentsapp.AppLinkExchange
 import app.minimpos.terminal.paymentsapp.PaymentsAppManagement
 import app.minimpos.terminal.paymentsapp.PaymentsAppTransport
+import app.minimpos.terminal.simulator.SimulatedPaymentLinks
 import app.minimpos.terminal.transport.AdyenCloudDevices
 import app.minimpos.terminal.transport.AdyenLocalTransport
 import app.minimpos.terminal.transport.AdyenStoreDetails
@@ -143,9 +141,8 @@ import kotlin.time.Duration.Companion.minutes
  * @param cloudDevices Reaches terminals in the cloud with an API key.
  * @param paymentsAppExchange Opens the Adyen Payments app; null uses [paymentsApp], which the activity serves.
  * @param paymentsAppManagement Boards and revokes the Payments app with an API key, in an environment.
- * @param paymentLinks Creates, checks and expires payment links with Checkout API credentials.
- * @param paymentModifications Verifies API access and modifies payments with Checkout API credentials.
- * @param savedCards Lists and charges saved cards with Checkout API credentials; null uses Adyen's Checkout API.
+ * @param checkout Makes the Checkout API (modifications, payment links and saved cards) for one credential; null uses
+ *   Adyen's.
  * @param storeDetails Reads Management API store or merchant details for reviewed receipt-business import.
  * @param terminalDetails Reads optional Management terminal setup details.
  * @param terminalEnvironment Reads the local terminal certificate without credentials.
@@ -169,9 +166,7 @@ class AppContainer(
     paymentsAppManagement: (apiKey: String, environment: TerminalEnvironment) -> PaymentsAppManagement = { key, environment ->
         AdyenPaymentsAppManagement(key, environment)
     },
-    paymentLinks: ((CheckoutCredentials) -> PaymentLinkApi)? = null,
-    paymentModifications: ((CheckoutCredentials) -> PaymentModifications)? = null,
-    savedCards: ((CheckoutCredentials) -> SavedCardApi)? = null,
+    checkout: ((CheckoutCredentials) -> CheckoutApi)? = null,
     storeDetails: (String, TerminalEnvironment) -> StoreDetailsApi = { key, environment ->
         AdyenStoreDetails(key, environment)
     },
@@ -276,7 +271,9 @@ class AppContainer(
             osVersion = device.osVersion,
         )
 
-    private val terminalSetup = TerminalSetupSource(settings, secrets, device, history.switchPending)
+    /** The one setup source; a setup it remembers as verified completes the shared-key recovery records waiting for it. */
+    private val terminalSetup: TerminalSetupSource =
+        TerminalSetupSource(settings, secrets, device, history.switchPending, ::completeKeyRecovery)
 
     /** Read-only Management store lookup for manually importing receipt business details. */
     val receiptBusinessDetails = ReceiptBusinessDetails(terminalSetup, storeDetails, terminalDetails)
@@ -307,13 +304,15 @@ class AppContainer(
     val api =
         AdyenApi(
             terminalSetup,
-            simulated = simulator.modifications,
-            connect = paymentModifications ?: { CheckoutModifications(it, application = application.toApplicationInfo()) },
-            connectLinks = paymentLinks ?: { CheckoutPaymentLinks(it, application = application.toApplicationInfo()) },
+            simulated =
+                CheckoutApi.of(
+                    simulator.modifications,
+                    SimulatedPaymentLinks(),
+                    simulator.savedCards { SavedCardCharges.simulatedCards(history.snapshot(), it) },
+                ),
+            connect = checkout ?: { AdyenCheckout(it, application.toApplicationInfo()) },
             verifyAccess = SetupAccess(terminalDetails)::verify,
             readEnvironment = gateway::refreshEnvironment,
-            connectCards = savedCards ?: { CheckoutSavedCards(it, application = application.toApplicationInfo()) },
-            simulatedCards = simulator.savedCards { SavedCardCharges.simulatedCards(history.snapshot(), it) },
         )
 
     /** Optional memory-only POS-wallet availability; errors are displayed only in Settings. */
@@ -322,11 +321,11 @@ class AppContainer(
     /** Progressive terminal capability inspection and scoped Management updates for Settings › Capabilities. */
     val capabilityDiscovery = CapabilityDiscovery(terminalSetup, terminalDetails, walletMethods)
 
-    private val sharedKeys = SharedKeySetup(terminalSetup, terminalDetails, api::verify, ::financialOperationRunning)
+    private val sharedKeys: SharedKeySetup = SharedKeySetup(terminalSetup, terminalDetails, api::verify, ::financialOperationRunning)
 
     /** Optional read-only discovery of terminal connection fields, within the destination's environment. */
     val setupDiscovery =
-        SetupDiscovery(terminalSetup, settings, {
+        SetupDiscovery(terminalSetup, {
             secrets.set(Secret.TERMINAL_PASSPHRASE, it)
         }, terminalDetails, gateway::readEnvironment, sharedKeys)
 
@@ -433,8 +432,8 @@ class AppContainer(
                         settingsState,
                         flowOf(terminalStatus.state.value.printerAvailable),
                         wallets = walletDiscovery.state,
-                        terminalTippingAvailable = flowOf(terminalStatus.state.value.supportsTerminalFeatures),
-                        shopperDisplayAvailable = flowOf(terminalStatus.state.value.supportsShopperDisplay),
+                        terminalTippingAvailable = flowOf(terminalStatus.state.value.capabilities.supportsTerminalFeatures),
+                        shopperDisplayAvailable = flowOf(terminalStatus.state.value.capabilities.supportsShopperDisplay),
                         currency = ::currency,
                     ).first()
             },
@@ -480,11 +479,23 @@ class AppContainer(
         )
 
     /** Refunds saved-card charges through the Checkout API, which has no terminal transaction to reverse. */
-    val checkoutRefunds =
+    private val checkoutRefunds =
         CheckoutRefunds(appScope, refundRecords, sales, api::target, onAccepted = { receipts.arm(it) }, permits = ::managerPermits)
 
+    /**
+     * Every financial operation, whichever way it is sent: status checks, refund routing and whether anything is being
+     * sent now, which setup changes wait for.
+     */
+    val operations = FinancialOperations(payments, refunds, savedCardCharges, checkoutRefunds, links, sales, refundRecords)
+
     /** Refund/cancellation initiation and capture retries, keeping reference facts out of screens. */
-    val storedPaymentActions = StoredPaymentActions(refunds, captures, settingsState, checkoutRefunds = checkoutRefunds)
+    val storedPaymentActions = StoredPaymentActions(operations, captures, settingsState)
+
+    /** Whether a financial operation is being sent now, see [FinancialOperations.running]. */
+    private fun financialOperationRunning(): Boolean = operations.running
+
+    /** Forgets shared-key recovery records waiting for [unlocked] once the setup source verified it. */
+    private suspend fun completeKeyRecovery(unlocked: UnlockedSetup) = sharedKeys.complete(unlocked)
 
     private fun completeSale(
         id: String,
@@ -495,9 +506,6 @@ class AppContainer(
         session.complete(start)
     }
 
-    private fun financialOperationRunning(): Boolean =
-        listOf(payments.state, refunds.state, savedCardCharges.state, checkoutRefunds.state).any { it.value is TransactionState.Processing }
-
     internal val setupImport =
         SetupImport(
             setupTransfer,
@@ -507,15 +515,11 @@ class AppContainer(
             tapToPay,
             SetupImportChecks(receiptBusinessDetails, terminalDetails, sharedKeys),
             historySwitches,
-        ) {
-            payments.state.value is TransactionState.Processing || refunds.state.value is TransactionState.Processing
-        }
+        ) { operations.running }
 
     /** Confirmed pricing changes and their recovery, including both payment kinds' sessions. */
     val pricingChanges =
-        PricingChanges(settings, catalog, ::currency, sessions.values + savedCardSession) {
-            financialOperationRunning()
-        }
+        PricingChanges(settings, catalog, ::currency, sessions.values + savedCardSession) { operations.running }
 
     /** Optional offline catalog and read-only history examples, with scoped removal. */
     val sampleData =

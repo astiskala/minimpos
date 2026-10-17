@@ -16,6 +16,9 @@ Starred rules are enforced by `ArchitectureTest`. KDoc is the detailed API/proto
   `:adyen`); client/checkout code must not see them. Results carry faults and `ExternalText`, never English sentences
   or exception messages.
 - \* Only `client/Decline` interprets ErrorCondition and retry advice. Do not compare its strings elsewhere.
+- \* Only `AdyenCheckout` makes the Checkout parts (modifications, links, saved cards), together per credential.
+  Management is sliced into `TerminalListingApi`, `SharedKeyApi` and `TerminalCapabilitiesApi`; `TerminalDetailsApi`
+  is all three, for the adapter and the app's container.
 - \* Always install our `TerminalHttpClient` on the Adyen `Client`. The default Apache client crashes on Android;
   even a bare `httpClient` inside `Client.apply` calls its getter and creates it. The getter and unencrypted TEST-only
   `TerminalLocalAPIUnencrypted` are forbidden.

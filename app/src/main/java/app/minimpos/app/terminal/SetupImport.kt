@@ -13,9 +13,9 @@ import app.minimpos.app.data.transfer.SetupTransfer
 import app.minimpos.core.codec.Transfer
 import app.minimpos.terminal.transport.CredentialLookup
 import app.minimpos.terminal.transport.DiscoveredKey
+import app.minimpos.terminal.transport.SharedKeyApi
 import app.minimpos.terminal.transport.SharedKeyLookup
 import app.minimpos.terminal.transport.TerminalDetails
-import app.minimpos.terminal.transport.TerminalDetailsApi
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -54,7 +54,7 @@ class SetupImportChecks(
     /** Proposes store or merchant receipt fields without replacing saved merchant text. */
     val businessDetails: ReceiptBusinessDetails,
     /** Creates a read-only terminal-management client for the candidate credential. */
-    val terminals: (String) -> TerminalDetailsApi,
+    val terminals: (String) -> SharedKeyApi,
     /** Owns key creation only after explicit consent, without changing active import configuration. */
     val sharedKeys: SharedKeySetup,
 )
@@ -188,7 +188,7 @@ class SetupImport internal constructor(
         val key = unlocked.apiKey ?: return Step.Halted(SetupImportOutcome.Failed(SetupProblem.API_KEY, incomplete = true))
         val environment =
             unlocked.setup.environment ?: return Step.Halted(SetupImportOutcome.Failed(SetupProblem.ENVIRONMENT, incomplete = true))
-        return when (val result = checks.terminals(key).credential(environment, unlocked.setup.usesCloudDeviceApi)) {
+        return when (val result = checks.terminals(key).credential(environment, unlocked.setup.capabilities.usesCloudDeviceApi)) {
             CredentialLookup.Allowed -> Step.Next(current)
             is CredentialLookup.Failed -> Step.Halted(SetupImportOutcome.Failed(Failure.Remote(result.fault)))
         }
@@ -200,7 +200,7 @@ class SetupImport internal constructor(
     ): Step {
         val prepared = current.prepared
         val unlocked = candidate(prepared)
-        if (!unlocked.setup.discoversTerminals) return Step.Next(current)
+        if (!unlocked.setup.capabilities.discoversTerminals) return Step.Next(current)
         val setup = unlocked.setup
         val environment = checkNotNull(setup.environment)
         val management = checks.terminals(checkNotNull(unlocked.apiKey))

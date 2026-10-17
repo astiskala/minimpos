@@ -5,6 +5,7 @@ import app.minimpos.app.data.settings.TerminalSettings
 import app.minimpos.app.terminal.CapabilityDiscovery
 import app.minimpos.app.terminal.DestinationRules
 import app.minimpos.terminal.transport.CloudRegion
+import app.minimpos.terminal.transport.TerminalCapabilitiesApi
 import app.minimpos.terminal.transport.TerminalCapabilitiesPatch
 import app.minimpos.terminal.transport.TerminalDetailsApi
 import app.minimpos.terminal.transport.TerminalEnvironment
@@ -148,8 +149,10 @@ class SettingsArchitectureTest {
                     "${Regex.escape(CapabilityDiscovery::class.java.name)}(\\$.*)?",
                 ).should()
                 .callMethodWhere(
-                    DescribedPredicate.describe<JavaMethodCall>("a call to TerminalDetailsApi.capabilities/updateCapabilities") { call ->
-                        call.targetOwner.isAssignableTo(TerminalDetailsApi::class.java) &&
+                    DescribedPredicate.describe<JavaMethodCall>(
+                        "a call to TerminalCapabilitiesApi.capabilities/updateCapabilities",
+                    ) { call ->
+                        call.targetOwner.isAssignableTo(TerminalCapabilitiesApi::class.java) &&
                             call.name.substringBefore('$') in setOf("capabilities", "updateCapabilities")
                     },
                 )

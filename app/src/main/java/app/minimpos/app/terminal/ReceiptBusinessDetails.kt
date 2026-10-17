@@ -9,8 +9,8 @@ import app.minimpos.terminal.transport.AdyenTerminalDetails
 import app.minimpos.terminal.transport.MerchantLookup
 import app.minimpos.terminal.transport.StoreDetailsApi
 import app.minimpos.terminal.transport.StoreLookup
-import app.minimpos.terminal.transport.TerminalDetailsApi
 import app.minimpos.terminal.transport.TerminalEnvironment
+import app.minimpos.terminal.transport.TerminalListingApi
 
 /**
  * Proposed receipt fields from the assigned store or merchant account; existing merchant text is never replaced by
@@ -68,7 +68,7 @@ sealed interface ReceiptBusinesses {
 class ReceiptBusinessDetails(
     private val setups: TerminalSetupSource,
     private val connect: (String, TerminalEnvironment) -> StoreDetailsApi = { key, environment -> AdyenStoreDetails(key, environment) },
-    private val terminals: (String) -> TerminalDetailsApi = { AdyenTerminalDetails(it) },
+    private val terminals: (String) -> TerminalListingApi = { AdyenTerminalDetails(it) },
 ) {
     /** Loads the assigned store, or the merchant legal name without unrelated stores; never writes settings or Adyen. */
     suspend fun lookup(): ReceiptBusinesses = lookup(setups.unlocked())
@@ -103,7 +103,7 @@ class ReceiptBusinessDetails(
 
     private suspend fun assignedStore(unlocked: UnlockedSetup): StoreScope {
         val setup = unlocked.setup
-        if (!setup.discoversTerminals || setup.poiId == null) return StoreScope.Assigned(setup.settings.terminal.storeId)
+        if (!setup.capabilities.discoversTerminals || setup.poiId == null) return StoreScope.Assigned(setup.settings.terminal.storeId)
         return when (
             val assigned =
                 TerminalAssignments.assigned(

@@ -1,18 +1,12 @@
 package app.minimpos.app.feature
 
 import app.minimpos.app.data.db.Failure
-import app.minimpos.app.history.RefundStart
 import app.minimpos.app.payment.CaptureResult
-import app.minimpos.app.payment.CheckoutRefunds
-import app.minimpos.app.payment.LinkUpdate
-import app.minimpos.app.payment.PaymentLinks
-import app.minimpos.app.payment.PaymentStart
+import app.minimpos.app.payment.FinancialOperations
 import app.minimpos.app.payment.ReceiptDelivery
 import app.minimpos.app.payment.Recheck
-import app.minimpos.app.payment.SavedCardCharges
 import app.minimpos.app.payment.SharedReceipt
 import app.minimpos.app.payment.StoredTransaction
-import app.minimpos.app.payment.TransactionLifecycle
 import app.minimpos.app.receipt.ActionResult
 import app.minimpos.core.receipt.ReceiptCopy
 import app.minimpos.core.receipt.ReceiptDocument
@@ -258,11 +252,11 @@ data class TransactionActionsState(
 )
 
 /**
- * The receipt and status of one stored sale ([forSale], or [forLink] for one paid through a payment link) or refund
- * ([forRefund]), as every result and detail screen offers them: the receipt itself and whether it can be printed,
- * emailed or shared, printing, emailing, sharing and re-checking (TransactionStatus, or asking Adyen about the link),
- * with their progress and outcome in [state]. For a transaction just made (`fresh`) it also delivers the receipt
- * automatically, once per transaction whatever screens are made for it (see [ReceiptDelivery]).
+ * The receipt and status of one stored sale ([forSale]) or refund ([forRefund]), as every result and detail screen
+ * offers them: the receipt itself and whether it can be printed, emailed or shared, printing, emailing, sharing and
+ * re-checking (asked the way the transaction was sent, see [FinancialOperations.recheck]), with their progress and
+ * outcome in [state]. For a transaction just made (`fresh`) it also delivers the receipt automatically, once per
+ * transaction whatever screens are made for it (see [ReceiptDelivery]).
  *
  * A view model makes one with its `viewModelScope`; prints and status checks stop when the screen closes, but an email
  * always finishes (`persisting`), since a sent sale receipt records the address on the sale.
@@ -272,7 +266,7 @@ class TransactionActions private constructor(
     private val receipts: ReceiptDelivery,
     private val transaction: StoredTransaction,
     fresh: Boolean,
-    private val rechecking: suspend () -> Recheck,
+    private val operations: FinancialOperations,
 ) {
     /** The receipt to share when asked, as last offered. */
     @Volatile private var shareable: SharedReceipt? = null
@@ -329,11 +323,11 @@ class TransactionActions private constructor(
         }
     }
 
-    /** Asks the terminal again for an unknown outcome; the stored transaction updates when it is settled. */
+    /** Asks again for an unknown outcome, the way the transaction was sent; the stored transaction updates when it is settled. */
     fun recheck() {
         state.update { it.copy(rechecking = true, stillUnknown = null) }
         scope.launch {
-            val checked = rechecking()
+            val checked = operations.recheck(transaction)
             state.update { it.copy(rechecking = false, stillUnknown = (checked as? Recheck.StillUnknown)?.failure) }
         }
     }
@@ -359,56 +353,28 @@ class TransactionActions private constructor(
         fun canPrintReports(receipts: ReceiptDelivery): Flow<Boolean> = receipts.canPrintReports
 
         /**
-         * The actions on sale [saleId], in [scope]: receipts through [receipts], status checks through [payments], or
-         * through [charges] for a saved-card charge (which sends its stored charge again). A [fresh] sale (on the result
-         * just after its payment) gets its automatic receipt, and email is offered only when checkout captures emails.
+         * The actions on sale [saleId] (taken on a terminal, with a saved card or through a payment link), in [scope]:
+         * receipts through [receipts] and status checks through [operations]. A [fresh] sale (on the result just after
+         * its payment) gets its automatic receipt.
          */
         fun forSale(
             scope: CoroutineScope,
             saleId: String,
             receipts: ReceiptDelivery,
-            payments: TransactionLifecycle<PaymentStart>,
+            operations: FinancialOperations,
             fresh: Boolean,
-            charges: SavedCardCharges? = null,
-        ) = TransactionActions(scope, receipts, StoredTransaction.Sale(saleId), fresh) {
-            charges?.recheck(saleId)?.takeIf { it is Recheck.StillUnknown } ?: payments.recheck(saleId)
-        }
+        ) = TransactionActions(scope, receipts, StoredTransaction.Sale(saleId), fresh, operations)
 
         /**
-         * The actions on sale [saleId], paid through a payment link, in [scope]: as [forSale], except that emailing is
-         * offered whenever email is set up (it is how the link reaches the shopper), and re-checking asks Adyen about
-         * the link through [links] (true once the sale is settled: paid, expired or cancelled).
-         */
-        fun forLink(
-            scope: CoroutineScope,
-            saleId: String,
-            receipts: ReceiptDelivery,
-            links: PaymentLinks,
-            fresh: Boolean,
-        ) = TransactionActions(scope, receipts, StoredTransaction.Sale(saleId), fresh) { links.check(saleId).recheck() }
-
-        /**
-         * The actions on refund [refundId], in [scope]: receipts through [receipts] (a refund has one copy only), status
-         * checks through [refunds], or through [checkout] for a refund sent through the Checkout API (which sends it
-         * again). A [fresh] refund (on the result just after it) gets its automatic receipt.
+         * The actions on refund [refundId], in [scope]: receipts through [receipts] (a refund has one copy only) and
+         * status checks through [operations]. A [fresh] refund (on the result just after it) gets its automatic receipt.
          */
         fun forRefund(
             scope: CoroutineScope,
             refundId: String,
             receipts: ReceiptDelivery,
-            refunds: TransactionLifecycle<RefundStart>,
+            operations: FinancialOperations,
             fresh: Boolean,
-            checkout: CheckoutRefunds? = null,
-        ) = TransactionActions(scope, receipts, StoredTransaction.Refund(refundId), fresh) {
-            checkout?.recheck(refundId)?.takeIf { it is Recheck.StillUnknown } ?: refunds.recheck(refundId)
-        }
+        ) = TransactionActions(scope, receipts, StoredTransaction.Refund(refundId), fresh, operations)
     }
 }
-
-/** This link answer as a status check: settled once the link exists or ended, else still unknown for why. */
-private fun LinkUpdate.recheck(): Recheck =
-    when (this) {
-        LinkUpdate.Settled, LinkUpdate.StillOpen -> Recheck.Settled
-        is LinkUpdate.NotDone -> Recheck.StillUnknown(failure)
-        is LinkUpdate.Unconfirmed -> Recheck.StillUnknown(failure)
-    }

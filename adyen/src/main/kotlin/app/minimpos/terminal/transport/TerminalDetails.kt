@@ -253,8 +253,11 @@ sealed interface TerminalCapabilitiesUpdate {
     ) : TerminalCapabilitiesUpdate
 }
 
-/** Management discovery and explicit key creation; main-safe, without silent retries or environment fallback. */
-interface TerminalDetailsApi {
+/**
+ * Management terminal listings for one API key: the credential's roles and the terminals it may use; main-safe, without
+ * silent retries or environment fallback. Every Management job that writes to a terminal first checks its listing.
+ */
+interface TerminalListingApi {
     /**
      * Checks that the credential has every [AdyenRole.required] role in [environment] (with the cloud device role when
      * payments go to a [cloud] terminal); a missing role fails with a [Fault.Permission] naming each one missing.
@@ -269,7 +272,10 @@ interface TerminalDetailsApi {
         environment: TerminalEnvironment,
         id: String? = null,
     ): TerminalListing
+}
 
+/** A terminal's shared key through Management: reading the effective key, and explicitly confirmed creation. */
+interface SharedKeyApi : TerminalListingApi {
     /** Reads the effective key, distinguishing verified absence from failed reads. */
     suspend fun sharedKey(
         id: String,
@@ -285,7 +291,10 @@ interface TerminalDetailsApi {
         environment: TerminalEnvironment,
         key: DiscoveredKey,
     ): SharedKeyUpdate = SharedKeyUpdate.Failed(Fault.Unsupported)
+}
 
+/** A terminal's non-secret capability settings through Management: reading them, and scoped, verified updates. */
+interface TerminalCapabilitiesApi : TerminalListingApi {
     /** Reads non-secret capability sections from `/terminals/{id}/terminalSettings`. */
     suspend fun capabilities(
         id: String,
@@ -299,6 +308,14 @@ interface TerminalDetailsApi {
         patch: TerminalCapabilitiesPatch,
     ): TerminalCapabilitiesUpdate = TerminalCapabilitiesUpdate.Failed(Fault.Unsupported)
 }
+
+/**
+ * Every Management terminal job for one API key, as [AdyenTerminalDetails] implements them; the app's container hands
+ * each task only the narrow interface its job needs ([TerminalListingApi], [SharedKeyApi] or [TerminalCapabilitiesApi]).
+ */
+interface TerminalDetailsApi :
+    SharedKeyApi,
+    TerminalCapabilitiesApi
 
 /** Management v3 terminal discovery with bounded pagination and no automatic request retries.
  * @param apiKey Credential sent only in the authentication header.

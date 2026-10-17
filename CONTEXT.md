@@ -17,7 +17,8 @@ existing spelling (`preAuthorisation`, `SaleKind.PRE_AUTHORISATION`, `authorised
 | Session | Cart, checkout form and revision for one payment kind, kept across navigation. | `SaleSession`, `container.session(kind)` |
 | Checkout | Decides what a session may become: readiness, references, card saving and receipt tipping. | `payment/Checkout`, `PaymentStart` |
 | Transaction | A payment/refund sent to the terminal: persisted pending, then settled as succeeded, cancelled, declined, failed or unknown. | `TransactionLifecycle`, `TransactionBook`, `Settlement` |
-| Status check / recheck | Requests the original transaction's outcome; not a new payment. | `TransactionLifecycle` |
+| Financial operation | A terminal transaction, saved-card charge or Checkout refund being sent; one place routes its status check and refund, and says whether any is running. | `payment/FinancialOperations`, `CheckoutOperations`, `CheckoutBook` |
+| Status check / recheck | Requests the original operation's outcome the way it was sent; not a new payment. Offered from the stored reading. | `FinancialOperations.recheck`, `PaymentAction.CHECK_AGAIN`, `RefundEntity.canCheckAgain` |
 | Abort | Asks the terminal to stop a current transaction; does not establish its outcome. | `TerminalClient` |
 | Decline | Terminal refusal/cancellation/busy reason and retry advice, derived from ErrorCondition. | `client/Decline` |
 | Payment link | Sale paid on Adyen's payment page instead of a terminal; awaiting payment after creation, then paid, expired or cancelled. Simulator links are offline demos completed explicitly; their QR codes cannot take payments. | `payment/PaymentLinks`, `PaymentLinkStart` |
@@ -48,7 +49,8 @@ existing spelling (`preAuthorisation`, `SaleKind.PRE_AUTHORISATION`, `authorised
 | Tip on the receipt | Sale held with manual capture; customer writes a tip on paper, then staff enter and capture it. Tips above 20% require adjustment first. | `tipOnReceipt`, `PaymentStanding` |
 | Cancellation | Full reversal of a held payment; if already captured externally, Adyen refunds it instead. | `PaymentAction.CANCEL` |
 | Refund | Referenced return of a charged payment, full/by amount/by item. Item refunds need the stored original sale. | `RefundablePayment`, `RefundStart`, refund QR `MPR1*` |
-| Day totals / history search | Processing-day aggregation of retained activity currently shown; capture and tip count on acceptance day, new holds stay separate. Issue filtering uses the same accounting activity reading. | `history/HistoryAccounting`, `feature/history/HistorySearch` |
+| Day totals / history search | Processing-day aggregation of retained activity currently shown; capture and tip count on acceptance day, new holds stay separate. Issue filtering uses the same accounting activity reading. | `HistoryAccounting.days`, `feature/history/HistorySearch` |
+| Issue | What about a stored sale still needs attention: its outcome, an adjustment or its capture; one reading for filters, totals and reconciliation. | `SaleEntity.issues`, `PaymentIssue` |
 | Daily report | Unfiltered whole-day local summary; currencies/environments separate, undated links/captures excluded from dated net. Seeded samples count as demos and disappear with sample purge. | `HistoryAccounting`, `ReceiptDelivery` |
 | Terminal reconciliation | Retrieves terminal totals (`GetTotalsRequest`) or closes the current reconciliation period (`ReconciliationRequest` with `SaleReconciliation`), rechecking unresolved terminal operations first and comparing terminal debit/credit totals against local accounting. Opened from Home's Reconciliation screen: check totals, close the period (confirmed, Manager-approved), print today's report. | `TerminalClient.getTotals`, `TerminalClient.reconcile`, `HistoryAccounting.compareReconciliation` |
 | History environment switch | Explicitly confirmed LIVE/TEST/simulator transition deletes all local operations, including unfinished ones; durable non-secret journal completes destination settings. | `terminal/HistorySwitches` |
@@ -64,13 +66,15 @@ existing spelling (`preAuthorisation`, `SaleKind.PRE_AUTHORISATION`, `authorised
 | Adyen integration | Android-free Terminal, Checkout, Cloud device and Management APIs and simulator. | `:adyen` |
 | Destination | Where payments go: local terminal, cloud terminal, Payments app or simulator. | `terminal/Destination`, `TerminalMode` |
 | Destination rules | Pure requirements/capabilities: setup, printer, secrets, recovery, timeouts, abort/diagnosis. | `DestinationRules`, adapter companions in `Destinations.kt` |
+| Destination capabilities | What the resolved destination can do and asks of its setup, carried as one value to setup screens and status. | `DestinationCapabilities`, `TerminalSetup.capabilities` |
 | Terminal setup | One resolved reading of destination, identity, environment, API setup and printer. | `TerminalSetup.resolve`, `TerminalSetupSource` |
 | Setup discovery | Read-only terminal assignment and optional shared-key lookup; immutable operation outcomes distinguish unavailable discovery, failures and manual completion. Terminal access and every required API role (`GET /me`; the cloud device role only for cloud terminals) are verified for every real setup. | `terminal/SetupDiscovery`, `SetupAccess`, `AdyenRole` |
-| Terminal assignment | Pure reading and verified Management query of listed POIIDs, merchant accounts and stores; discovery may fill a blank account, access requires an exact account, and shared-key creation also requires an unchanged store and unique identity. | `terminal/TerminalAssignments` |
+| Terminal assignment | Pure reading and verified Management query of listed POIIDs, merchant accounts and stores; discovery may fill a blank account, access requires an exact account, and shared-key creation also requires an unchanged store and unique identity. | `terminal/TerminalAssignments`, `TerminalListingApi` |
 | Adyen capabilities | Progressive reading of destination support, Management `terminalSettings` (`gratuities`, `dcc`, `surcharge`, `moto`, `offlineProcessing`, `storeAndForward`) and POS payment methods, plus scoped non-secret `terminalSettings` updates after unchanged-assignment verification. | `terminal/CapabilityDiscovery`, `SettingsSections.CAPABILITIES` |
 | Verified setup | Local fingerprint of checked connection fields and encrypted payment secrets; changed facts invalidate it, not a process restart. | `TerminalSetupSource`, `AppSettings.verifiedSetup` |
 | Verified setup import | Authenticated QR candidate checked before activation; encrypted commit journal resumes interrupted saves, with an atomic catalog import receipt. | `terminal/SetupImport`, `data/transfer/SetupTransfer` |
 | Unlocked setup | Resolved setup with required secrets decrypted once. | `UnlockedSetup` |
+| Setup fence | What work begun on one setup checks before its result applies: connection fields, plus the API key, or the exact secret snapshot. | `TerminalSetupSource.SetupFence`, `SetupFreshness` |
 | Setup problem | Missing/unreadable information or other local condition to enter, install, approve or reconcile first, reported typed rather than thrown. What Adyen refuses or fails to answer is a fault, not a setup problem; retired entries are kept only so stored names read. | `SetupProblem` |
 | Connection | Open with a client, or blocked as not set up/unreachable. | `Connection`, `Destination.connect` |
 | Connection check | Checks reachability/setup and learns printer availability when supported. | `TerminalStatus` |
@@ -83,7 +87,7 @@ existing spelling (`preAuthorisation`, `SaleKind.PRE_AUTHORISATION`, `authorised
 | Shared-key creation | Confirmed terminal-specific creation after read-only checks; encrypted recovery retains one generated key per context until setup verifies. Never replaces an existing effective key. | `terminal/SharedKeySetup` |
 | Adyen API key | Credential shared by Checkout/cloud operations and optional Management reads; distinct from the boarding credential. | `ADYEN_API_KEY` |
 | Boarding | Registers/revokes the Payments app installation for Tap to Pay. | `TapToPaySetup`, `PAYMENTS_APP_API_KEY` |
-| Checkout API | Captures, adjustments and links, required before real payments; access eligibility belongs to the target. | `ApiSetup`, `AdyenApi`, `ApiTarget` |
+| Checkout API | Captures, adjustments, links and saved cards, required before real payments; made once per credential, and access eligibility belongs to the target. | `ApiSetup`, `AdyenApi`, `ApiTarget`, `CheckoutApi`, `AdyenCheckout` |
 
 ## Receipts, configuration and access
 

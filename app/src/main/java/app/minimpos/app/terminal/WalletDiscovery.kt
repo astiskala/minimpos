@@ -5,8 +5,8 @@ import app.minimpos.app.data.db.SetupProblem
 import app.minimpos.core.payment.PaymentContext
 import app.minimpos.core.payment.ScanWallet
 import app.minimpos.terminal.transport.Fault
-import app.minimpos.terminal.transport.TerminalDetailsApi
 import app.minimpos.terminal.transport.TerminalEnvironment
+import app.minimpos.terminal.transport.TerminalListingApi
 import app.minimpos.terminal.transport.WalletMethodListing
 import app.minimpos.terminal.transport.WalletMethodsApi
 import kotlinx.coroutines.CoroutineScope
@@ -68,7 +68,7 @@ data class WalletAvailability(
 class WalletDiscovery(
     private val setups: TerminalSetupSource,
     private val scope: CoroutineScope,
-    private val terminals: (String) -> TerminalDetailsApi,
+    private val terminals: (String) -> TerminalListingApi,
     private val connect: (String, TerminalEnvironment) -> WalletMethodsApi,
 ) {
     private val refreshes = Mutex()
@@ -104,18 +104,19 @@ class WalletDiscovery(
             val origin = setups.unlocked()
             val setup = origin.setup
             val context = setup.paymentContext()
-            val old = state.value.takeIf { it.identity == origin.validationIdentity && it.context == context } ?: WalletAvailability()
+            val identity = setups.SetupFence(origin, SetupFreshness.SECRETS).identity
+            val old = state.value.takeIf { it.identity == identity && it.context == context } ?: WalletAvailability()
             val initial =
                 old.copy(
                     context = context,
-                    identity = origin.validationIdentity,
-                    supported = setup.scannedWallets,
+                    identity = identity,
+                    supported = setup.capabilities.scannedWallets,
                     simulated = setup.apiSetup == ApiSetup.Simulated,
                     checking = true,
                 )
             state.value = initial
             when {
-                !setup.scannedWallets -> {
+                !setup.capabilities.scannedWallets -> {
                     publish(origin, initial.copy(checking = false))
                 }
 
@@ -139,7 +140,7 @@ class WalletDiscovery(
     /** Revalidates a scan's original setup without networking, so stale discovery can never rebind a payment. */
     internal suspend fun current(origin: WalletAvailability): Boolean {
         val actual = setups.unlocked()
-        return actual.setup.problem == null && actual.validationIdentity == origin.identity &&
+        return actual.setup.problem == null && setups.SetupFence(actual, SetupFreshness.SECRETS).identity == origin.identity &&
             actual.setup.paymentContext() == origin.context
     }
 
@@ -209,9 +210,6 @@ class WalletDiscovery(
         origin: UnlockedSetup,
         result: WalletAvailability,
     ) {
-        val actual = setups.unlocked()
-        if (actual.validationIdentity == origin.validationIdentity && actual.setup.settings.terminal == origin.setup.settings.terminal) {
-            state.value = result
-        }
+        if (setups.SetupFence(origin, SetupFreshness.SECRETS).stillCurrent()) state.value = result
     }
 }

@@ -309,6 +309,29 @@ class HistoryAccountingTest {
             ).inOrder()
     }
 
+    @Test
+    fun `saved-card charges and their Checkout refunds are never unresolved terminal items`() {
+        val refund =
+            RefundEntity(
+                id = "checkout-refund",
+                saleId = sale.id,
+                createdAt = monday,
+                merchantReference = "R",
+                originalTransactionId = "T",
+                originalTimestamp = "2026-10-05T12:00:00Z",
+                originalReference = "SALE",
+                currency = "USD",
+                amountMinor = 2000,
+                full = false,
+                status = RefundStatus.UNKNOWN,
+                context = sale.context,
+                checkoutRefund = true,
+            )
+        val items = listOf(HistoryItem.Sale(sale.copy(status = SaleStatus.UNKNOWN, savedCard = true)), HistoryItem.Refund(refund))
+        assertThat(HistoryAccounting.unresolvedTerminalItems(items, "S1F2-1")).isEmpty()
+        assertThat(HistoryAccounting.unresolvedTerminalItems(items, "")).isEmpty()
+    }
+
     private fun reconciliationItems(): List<HistoryItem> {
         val simCtx = PaymentContext("SIMULATOR", "S1F2-1", "SIMULATOR", "", "SIMULATOR")
         val testCtx = PaymentContext("TERMINAL", "S1F2-1", "POS", "Merchant", "TEST")
@@ -352,6 +375,9 @@ class HistoryAccountingTest {
             HistoryItem.Refund(refundUsd.copy(id = "r-sim", processedAt = tuesday, poiReconciliationId = "REC-2", context = simCtx)),
             HistoryItem.Refund(refundUsd.copy(id = "r-test", processedAt = tuesday, poiReconciliationId = "REC-2", context = testCtx)),
             HistoryItem.Refund(refundUsd.copy(id = "r-unknown", processedAt = tuesday, poiReconciliationId = "REC-2", context = null)),
+            // A saved-card charge and its Checkout refund are not in the terminal's totals.
+            HistoryItem.Sale(sale.copy(id = "s-card", savedCard = true, totalMinor = 3_333, poiReconciliationId = "REC-1")),
+            HistoryItem.Refund(refundUsd.copy(id = "r-card", amountMinor = 1_111, checkoutRefund = true)),
         )
     }
 
@@ -403,5 +429,35 @@ class HistoryAccountingTest {
                 ZoneOffset.UTC,
             )
         assertThat(emptyPoi.currencies.first { it.currency == "USD" }.localSalesMinor).isEqualTo(20_388L)
+    }
+
+    @Test
+    fun `days group dated activity by processing day in the zone, newest first, with their totals`() {
+        val captured =
+            sale.copy(
+                id = "tip",
+                tipOnReceipt = true,
+                tipMinor = 1_500,
+                capturedMinor = 11_500,
+                captureStatus = CaptureStatus.REQUESTED,
+                captureProcessedAt = tuesday,
+            )
+        val link = sale.copy(id = "link", paymentLink = true, processedAt = null, createdAt = tuesday)
+        val items = listOf(sale, captured, link).map { HistoryItem.Sale(it) }
+        val days = HistoryAccounting.days(items, ZoneOffset.UTC)
+        assertThat(days.map { it.date }).containsExactly(LocalDate.parse("2026-10-06"), LocalDate.parse("2026-10-05")).inOrder()
+        val (tue, mon) = days
+        assertThat(tue.totals.salesMinor).containsExactly("USD", 11_500L)
+        assertThat(tue.totals.tipsMinor).containsExactly("USD", 1_500L)
+        assertThat(tue.captures).containsExactly("tip")
+        // The paid link's opening is dated, its undated online payment is not.
+        assertThat(tue.items.map { it.id }).containsExactly("tip", "link")
+        assertThat(mon.totals.salesMinor).containsExactly("USD", 10_000L)
+        assertThat(mon.totals.preAuthsMinor).containsExactly("USD", 10_000L)
+        assertThat(mon.totals.saleCount to mon.totals.preAuthCount).isEqualTo(1 to 1)
+        assertThat(mon.times).containsExactly("sale", monday, "tip", monday)
+        // A zone far enough east moves Monday noon UTC into Tuesday.
+        assertThat(HistoryAccounting.days(listOf(HistoryItem.Sale(sale)), ZoneOffset.ofHours(13)).single().date)
+            .isEqualTo(LocalDate.parse("2026-10-06"))
     }
 }

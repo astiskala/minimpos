@@ -22,6 +22,8 @@ import app.minimpos.app.terminal.Attempt
 import app.minimpos.app.terminal.DeviceInfo
 import app.minimpos.app.terminal.TerminalSetupSource
 import app.minimpos.app.update.UpdateCheck
+import app.minimpos.terminal.checkout.CheckoutApi
+import app.minimpos.terminal.checkout.CheckoutSavedCards
 import app.minimpos.terminal.checkout.PaymentLink
 import app.minimpos.terminal.checkout.PaymentLinkApi
 import app.minimpos.terminal.checkout.PaymentLinkRequest
@@ -495,8 +497,7 @@ class TestEnvironment(
             cloudDevices = cloud::connect,
             paymentsAppExchange = paymentsApp,
             paymentsAppManagement = { _, _ -> management },
-            paymentLinks = { links },
-            paymentModifications = { modifications },
+            checkout = { CheckoutApi.of(modifications, links, CheckoutSavedCards(it)) },
             storeDetails = { _, _ -> stores },
             terminalDetails = { terminalDetails ?: defaultTerminalDetails() },
             walletMethods = { _, _ -> walletMethods },

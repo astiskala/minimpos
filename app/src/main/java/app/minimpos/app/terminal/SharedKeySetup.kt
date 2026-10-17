@@ -7,9 +7,9 @@ import app.minimpos.app.data.security.RecoveryJournal
 import app.minimpos.app.data.security.SharedKeyGenerator
 import app.minimpos.app.data.settings.TerminalSettings
 import app.minimpos.terminal.transport.DiscoveredKey
+import app.minimpos.terminal.transport.SharedKeyApi
 import app.minimpos.terminal.transport.SharedKeyLookup
 import app.minimpos.terminal.transport.SharedKeyUpdate
-import app.minimpos.terminal.transport.TerminalDetailsApi
 import app.minimpos.terminal.transport.TerminalEnvironment
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -65,7 +65,7 @@ internal sealed interface SharedKeySetupOutcome {
  */
 class SharedKeySetup internal constructor(
     setups: TerminalSetupSource,
-    private val connect: (String) -> TerminalDetailsApi,
+    private val connect: (String) -> SharedKeyApi,
     private val verifyApi: suspend (UnlockedSetup) -> ApiCheck,
     private val busy: () -> Boolean,
 ) {
@@ -75,10 +75,6 @@ class SharedKeySetup internal constructor(
         setups.journal(RecoveryJournal.KEY_CREATION, serializer<KeyRecords>()) { parsed ->
             parsed.entries.isNotEmpty() && parsed.entries.all { it.valid() }
         }
-
-    init {
-        setups.onVerified = ::complete
-    }
 
     internal suspend fun resolve(
         unlocked: UnlockedSetup,
@@ -102,7 +98,11 @@ class SharedKeySetup internal constructor(
     ): SharedKeySetupOutcome.Failed? {
         val setup = unlocked.setup
         if (busy() || !unchanged()) return SharedKeySetupOutcome.Failed(SetupProblem.SETUP_CHANGED)
-        if (!setup.discoversTerminals || !setup.needsSharedKey) return SharedKeySetupOutcome.Failed(SetupProblem.KEY_IDENTIFIER)
+        if (!setup.capabilities.discoversTerminals ||
+            !setup.needsSharedKey
+        ) {
+            return SharedKeySetupOutcome.Failed(SetupProblem.KEY_IDENTIFIER)
+        }
         val problem = setup.connectionProblem?.takeUnless { it in KEY_PROBLEMS }
         if (problem != null) return SharedKeySetupOutcome.Failed(problem)
         if (verified) return null
@@ -174,7 +174,7 @@ class SharedKeySetup internal constructor(
     private class Attempt(
         val unlocked: UnlockedSetup,
         val records: KeyRecords,
-        val api: TerminalDetailsApi,
+        val api: SharedKeyApi,
         val unchanged: suspend () -> Boolean,
     ) {
         val previous = records.entries.firstOrNull { it.matches(unlocked) }
@@ -185,13 +185,17 @@ class SharedKeySetup internal constructor(
     internal suspend fun pendingOffer(unlocked: UnlockedSetup): SharedKeyOffer? =
         mutex.withLock {
             if (unlocked.apiKey == null || unlocked.setup.poiId == null || unlocked.setup.environment == null) return@withLock null
-            if (!unlocked.setup.discoversTerminals || !unlocked.setup.needsSharedKey) return@withLock null
+            if (!unlocked.setup.capabilities.discoversTerminals || !unlocked.setup.needsSharedKey) return@withLock null
             if (records()?.entries?.any { it.matches(unlocked) } == true) offer(unlocked, resume = true) else null
         }
 
+    /**
+     * Forgets the recovery record of [unlocked]'s context once that setup verified; the container hands this to
+     * [TerminalSetupSource], which calls it whenever it remembers a verified setup.
+     */
     internal suspend fun complete(unlocked: UnlockedSetup) =
         mutex.withLock {
-            if (!unlocked.setup.discoversTerminals || !unlocked.setup.needsSharedKey) return@withLock
+            if (!unlocked.setup.capabilities.discoversTerminals || !unlocked.setup.needsSharedKey) return@withLock
             val current = records() ?: return@withLock
             val remaining = current.entries.filterNot { it.matches(unlocked) }
             if (remaining.size != current.entries.size) write(KeyRecords(remaining))

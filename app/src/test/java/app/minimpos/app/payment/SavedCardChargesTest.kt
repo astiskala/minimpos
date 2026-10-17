@@ -2,14 +2,18 @@ package app.minimpos.app.payment
 
 import app.minimpos.app.TestEnvironment
 import app.minimpos.app.await
+import app.minimpos.app.data.db.DeviceFault
 import app.minimpos.app.data.db.Failure
 import app.minimpos.app.data.db.RefundStatus
 import app.minimpos.app.data.db.SaleStatus
 import app.minimpos.app.data.db.SetupProblem
 import app.minimpos.app.data.db.StoredReason
+import app.minimpos.app.history.PaymentAction
 import app.minimpos.app.history.RefundChoice
 import app.minimpos.app.history.Refundability
 import app.minimpos.app.history.RefundablePayment
+import app.minimpos.app.history.StoredPayment
+import app.minimpos.app.history.canCheckAgain
 import app.minimpos.app.terminal.ApiSetup
 import app.minimpos.app.terminal.ApiTarget
 import app.minimpos.core.cart.AppliedTax
@@ -58,6 +62,7 @@ class SavedCardChargesTest {
     private val card = StoredCard("TOKEN1", "visa", "1111", recurringModels = setOf("UnscheduledCardOnFile"))
     private val sent = mutableListOf<Pair<CardChargeRequest, String>>()
     private var answers = ArrayDeque<CardChargeResult>()
+    private var failure: RuntimeException? = null
     private val cards =
         object : SavedCardApi {
             override suspend fun list(shopperReference: String) =
@@ -67,6 +72,7 @@ class SavedCardChargesTest {
                 request: CardChargeRequest,
                 idempotencyKey: String,
             ): CardChargeResult {
+                failure?.let { throw it }
                 sent += request to idempotencyKey
                 return answers.removeFirst()
             }
@@ -104,6 +110,17 @@ class SavedCardChargesTest {
         CheckoutRefunds(container.appScope, container.refundRecords, container.sales, {
             target
         }, { accepted += it }, clock, { "refund-${++ids}" }, { approved })
+
+    private val operations =
+        FinancialOperations(
+            container.payments,
+            container.refunds,
+            charges,
+            refunds,
+            container.links,
+            container.sales,
+            container.refundRecords,
+        )
 
     @After
     fun tearDown() = env.close()
@@ -230,7 +247,7 @@ class SavedCardChargesTest {
         target = ApiTarget(ApiSetup.Complete, modifications, context = context, cards = cards)
         assertThat(await { charges.recheck(unknown) }).isEqualTo(Recheck.StillUnknown(Failure.NotSetUp(SetupProblem.MANAGER_APPROVAL)))
         approved = true
-        now = now.plus(SavedCardCharges.RECHECK_WINDOW).plusSeconds(1)
+        now = now.plus(CheckoutOperations.RECHECK_WINDOW).plusSeconds(1)
         assertThat(await { charges.recheck(unknown) }).isEqualTo(Recheck.StillUnknown(Failure.NotSetUp(SetupProblem.CHARGE_TOO_OLD)))
         assertThat(sent).hasSize(1)
         assertThat(sale(unknown).status).isEqualTo(SaleStatus.UNKNOWN)
@@ -254,5 +271,45 @@ class SavedCardChargesTest {
         assertThat(refundsSent.map { it.substringAfterLast(':') }.distinct()).containsExactly(CheckoutRefunds.idempotencyKey(refundId))
         assertThat(await { refunds.recheck(refundId) }).isEqualTo(Recheck.Settled)
         assertThat(refundsSent).hasSize(2)
+    }
+
+    @Test
+    fun `unknown charges and Checkout refunds are offered and checked again the way they were sent`() {
+        answers += CardChargeResult.Failed(Fault.TimedOut)
+        val unknown = charge()
+        charges.acknowledge()
+        val stored = checkNotNull(await { container.sales.get(unknown) })
+        // A saved-card charge has no terminal ServiceID, yet it can be checked again.
+        assertThat(stored.sale.serviceId).isNull()
+        assertThat(StoredPayment(stored).actions).contains(PaymentAction.CHECK_AGAIN)
+        answers += CardChargeResult.Authorised("PSP9")
+        assertThat(await { operations.recheck(StoredTransaction.Sale(unknown)) }).isEqualTo(Recheck.Settled)
+        assertThat(sale(unknown).status).isEqualTo(SaleStatus.APPROVED)
+        assertThat(StoredPayment(checkNotNull(await { container.sales.get(unknown) })).actions).doesNotContain(PaymentAction.CHECK_AGAIN)
+        assertThat(sent.map { it.second }).containsExactly("card-$unknown", "card-$unknown")
+
+        val record = checkNotNull(await { container.sales.get(unknown) })
+        val payment = (RefundablePayment.check(record) as Refundability.Refundable).payment
+        refundAnswer = ModificationResult.Failed(Fault.TimedOut)
+        val refundId = checkNotNull(operations.refund(checkNotNull(payment.request(RefundChoice.Everything, "", now, ZoneOffset.UTC))))
+        await { operations.refundProgress.first { it == TransactionState.Finished(refundId) } }
+        val refund = checkNotNull(await { container.refundRecords.get(refundId) })
+        assertThat(refund.serviceId).isNull()
+        assertThat(refund.canCheckAgain).isTrue()
+        operations.acknowledgeRefund()
+        assertThat(operations.currentRefund).isEqualTo(TransactionState.Idle)
+        refundAnswer = ModificationResult.Received("REF2")
+        assertThat(await { operations.recheck(StoredTransaction.Refund(refundId)) }).isEqualTo(Recheck.Settled)
+        assertThat(checkNotNull(await { container.refundRecords.get(refundId) }).canCheckAgain).isFalse()
+        assertThat(operations.running).isFalse()
+    }
+
+    @Test
+    fun `an unexpected failure while charging leaves the charge unknown rather than pending`() {
+        failure = IllegalArgumentException("unexpected")
+        val id = charge()
+        assertThat(sale(id).status).isEqualTo(SaleStatus.UNKNOWN)
+        assertThat(sale(id).reason).isEqualTo(StoredReason.Unconfirmed(Failure.Device(DeviceFault.UNEXPECTED)))
+        assertThat(charged).isEmpty()
     }
 }

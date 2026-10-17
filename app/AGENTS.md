@@ -1,7 +1,8 @@
 # `:app`
 
 Read root `AGENTS.md` for repository constraints. Domain names/owners are in `CONTEXT.md`, code contracts in KDoc.
-Starred rules below are enforced by `ArchitectureTest`, `SettingsArchitectureTest` and `PinArchitectureTest`.
+Starred rules below are enforced by `ArchitectureTest`, `OwnershipArchitectureTest`, `SettingsArchitectureTest` and
+`PinArchitectureTest`.
 
 ## Architecture boundaries
 
@@ -22,11 +23,14 @@ Starred rules below are enforced by `ArchitectureTest`, `SettingsArchitectureTes
   to the repository. Deletion atomically protects referenced rates and the last rate; caller eligibility is presentation.
 - \* `PaymentStanding` alone reads capture/hold status (apart from `SaleEvent` writing it); `CaptureStatus.captured`
   defines captured statuses. `StoredPayment.actions` owns allowed actions and is checked by capture operations too.
+  `SaleEntity.issues` is the one issue reading; screens get whole days from `HistoryAccounting.days`.
 - \* Decision rules stay pure: Checkout, PaymentLinkRequests, SaleEvent, PaymentStanding, RefundablePayment,
   HistorySearch, HistoryAccounting, TerminalAssignments, WalletOffers, TerminalSetup, DestinationRules and settings models.
   No Android, coroutines, repositories or clocks; do not rederive their decisions elsewhere. History filters reuse
   accounting's issue meaning rather than reading pending/unknown status fields. `ReceiptStanding` owns receipt meaning;
   only the stored-payment reading interprets the original payment context's simulator flag for demo links.
+- \* Work begun on one setup checks it is still stored only through `TerminalSetupSource.SetupFence`, which
+  alone compares secret fingerprints. The source takes everything it calls as constructor arguments.
 - \* Only `TerminalSetupSource` calls `TerminalSetup.resolve` and reads destination/API secrets. Unlock once per call;
   unreadable secrets become typed setup problems. `boarding()` and `candidateBoarding()` do the same for the Payments
   app credential. Encrypted recovery journals use `EncryptedJournal` in one snapshot; only `RecoveryJournal` accesses
@@ -43,13 +47,20 @@ Starred rules below are enforced by `ArchitectureTest`, `SettingsArchitectureTes
 - \* Setup, receipt, wallet and capability tasks share `TerminalAssignments`, which alone queries `TerminalDetailsApi.terminals`
   and verifies the listing environment while preserving each task's distinct strictness.
   Only `CapabilityDiscovery` reads or updates Management capability settings (`capabilities`, `updateCapabilities`).
+  Tasks receive `TerminalListingApi`, `SharedKeyApi` or `TerminalCapabilitiesApi`; only the container holds
+  `TerminalDetailsApi`.
   `SetupDiscovery` returns immutable operation outcomes, not ambient problem/key-missing getters.
 - \* Destination requirements/capabilities belong to adapter companions in `Destinations.kt`; `DestinationRules.of`
   selects rules. Adapters open transports; only `Destination.connect` constructs clients, only the gateway opens
-  adapters. Outside destination/rules/settings code, don't branch on CLOUD or PAYMENTS_APP.
+  adapters, all built in `TerminalGateway.adapters`. Outside destination/rules/settings code, don't branch on CLOUD or
+  PAYMENTS_APP. Capabilities travel as one `DestinationCapabilities` value; `TerminalState` carries it whole.
 - \* `ApiSetup` owns API readiness; only `AdyenApi` creates/copies `ApiTarget`. Only the target decides adapter access
   and original payment-context eligibility (`ApiAccess`); ready access and raw adapters cannot be fabricated by callers.
-  `Captures` takes a target supplier, not `AdyenApi`; simulator modifications are injected by the container.
+  `Captures` takes a target supplier, not `AdyenApi`; the simulated `CheckoutApi` is injected by the container, and
+  the app never builds a Checkout part outside `AdyenCheckout`.
+- \* Only `FinancialOperations` checks stored operations again, routes refunds and says whether any is running; screens
+  offer checks from `PaymentAction.CHECK_AGAIN`/`RefundEntity.canCheckAgain`, never a ServiceID. Saved-card charges
+  and Checkout refunds are sent only by `CheckoutBook`s run by `CheckoutOperations`.
 - \* `TransactionLifecycle` stores only through `TransactionBook`. Links reach Adyen/store link answers only through
   `PaymentLinks`, which serializes checks/cancellations and obtains eligible `ApiTarget` access. An unknown creation
   stays unknown when setup is unavailable; a context mismatch must change nothing. `TerminalSetup` decides link offers.

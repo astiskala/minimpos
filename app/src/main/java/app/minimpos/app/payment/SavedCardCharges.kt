@@ -1,6 +1,5 @@
 package app.minimpos.app.payment
 
-import android.database.SQLException
 import app.minimpos.app.data.db.DeviceFault
 import app.minimpos.app.data.db.Failure
 import app.minimpos.app.data.db.SaleEntity
@@ -15,21 +14,16 @@ import app.minimpos.app.history.simulatedSale
 import app.minimpos.app.terminal.ApiAccess
 import app.minimpos.app.terminal.ApiTarget
 import app.minimpos.app.terminal.TerminalState
+import app.minimpos.core.payment.PaymentContext
 import app.minimpos.terminal.checkout.CardChargeRequest
 import app.minimpos.terminal.checkout.CardChargeResult
 import app.minimpos.terminal.checkout.ModificationAmount
 import app.minimpos.terminal.checkout.SavedCardApi
 import app.minimpos.terminal.checkout.StoredCard
 import app.minimpos.terminal.checkout.StoredCardListing
-import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
 import java.time.Clock
-import java.time.Duration
 import kotlin.uuid.Uuid
 
 /**
@@ -81,9 +75,9 @@ sealed interface CardLookup {
  *
  * Each charge is stored as a PENDING sale, with the card and recurring model it charges, before Adyen is called, and is
  * sent from the stored sale with the idempotency key [idempotencyKey], so asking again sends the same request and
- * Adyen answers what it did the first time instead of charging twice. Adyen keeps idempotency keys for at least
- * [RECHECK_WINDOW]; an older unknown charge is not sent again and is checked in the Customer Area. Manager approval is
- * checked again immediately before anything is sent. Charges and checks run one at a time.
+ * Adyen answers what it did the first time instead of charging twice. [CheckoutOperations] runs them: Manager approval
+ * is checked again immediately before anything is sent, an unknown charge is sent again only within
+ * [CheckoutOperations.RECHECK_WINDOW], and charges and checks run one at a time.
  *
  * @param scope Where charges run, so one survives leaving the screen.
  * @param sales Where the sales are stored.
@@ -95,20 +89,18 @@ sealed interface CardLookup {
  * @param permits Whether Manager approval allows a charge now, checked under the operation lock.
  */
 class SavedCardCharges(
-    private val scope: CoroutineScope,
-    private val sales: SaleRepository,
+    scope: CoroutineScope,
+    sales: SaleRepository,
     private val target: suspend () -> ApiTarget,
-    private val onCharged: (id: String, start: SavedCardStart) -> Unit = { _, _ -> },
-    private val clock: Clock = Clock.systemUTC(),
-    private val newId: () -> String = { Uuid.random().toString() },
-    private val permits: suspend () -> Boolean = { true },
+    onCharged: (id: String, start: SavedCardStart) -> Unit = { _, _ -> },
+    clock: Clock = Clock.systemUTC(),
+    newId: () -> String = { Uuid.random().toString() },
+    permits: suspend () -> Boolean = { true },
 ) {
-    private val mutex = Mutex()
-    private val unresolved = mutableMapOf<String, SavedCardStart>()
+    private val operations = CheckoutOperations(scope, Book(sales), target, onCharged, clock, newId, permits)
 
     /** The charge running now, which the charging screen follows to its result. */
-    val state: StateFlow<TransactionState>
-        field = MutableStateFlow<TransactionState>(TransactionState.Idle)
+    val state: StateFlow<TransactionState> = operations.state
 
     /** Lists the cards saved under [shopperReference] where payments go now; nothing is stored. */
     suspend fun cards(shopperReference: String): CardLookup {
@@ -131,103 +123,80 @@ class SavedCardCharges(
      * Charges [start] in the background and returns the new sale's ID straight away; null, with nothing stored or sent,
      * while another charge is running (such as a second tap on the same action).
      */
-    @Synchronized
-    fun start(start: SavedCardStart): String? {
-        if (state.value is TransactionState.Processing) return null
-        val id = newId()
-        state.value = TransactionState.Processing(id)
-        synchronized(unresolved) { unresolved[id] = start }
-        scope.launch {
-            try {
-                val opened = SaleBook.savedCardSale(id, start, clock.millis(), target().context)
-                sales.createPending(opened, SaleBook.lines(id, start.payment.totals))
-                mutex.withLock { sales.get(id)?.sale?.let { send(it) } }
-            } catch (e: CancellationException) {
-                throw e
-            } catch (ignored: SQLException) {
-                interrupted(id)
-            } catch (ignored: IllegalStateException) {
-                interrupted(id)
-            } finally {
-                state.value = TransactionState.Finished(id)
-            }
-        }
-        return id
-    }
+    fun start(start: SavedCardStart): String? = operations.start(start)
 
     /** Returns to [TransactionState.Idle] once the result has been seen, so the next charge can start. */
-    fun acknowledge() {
-        if (state.value is TransactionState.Finished) state.value = TransactionState.Idle
-    }
+    fun acknowledge() = operations.acknowledge()
 
     /**
      * Sends the charge of sale [saleId], whose outcome is unknown, again with its stored request and idempotency key, and
-     * stores Adyen's answer. Anything else has nothing left to check ([Recheck.Settled]); nothing changes when Manager
-     * approval, the Checkout API or the original payment context is missing, or the charge is older than
-     * [RECHECK_WINDOW].
+     * stores Adyen's answer, as [CheckoutOperations.recheck] does; anything but an unknown saved-card charge has nothing
+     * left to check ([Recheck.Settled]). Callers check through [FinancialOperations.recheck].
      */
-    suspend fun recheck(saleId: String): Recheck =
-        mutex.withLock {
-            val sale =
-                sales.get(saleId)?.sale?.takeIf { it.savedCard && it.status == SaleStatus.UNKNOWN } ?: return@withLock Recheck.Settled
-            if (Duration.ofMillis(clock.millis() - sale.createdAt) > RECHECK_WINDOW) {
-                return@withLock Recheck.StillUnknown(Failure.NotSetUp(SetupProblem.CHARGE_TOO_OLD))
-            }
-            send(sale)?.let { Recheck.StillUnknown(it) } ?: Recheck.Settled
-        }
+    suspend fun recheck(saleId: String): Recheck = operations.recheck(saleId)
 
-    /** Sends the stored charge [sale] and stores the answer; returns why nothing (or nothing certain) is known yet. */
-    private suspend fun send(sale: SaleEntity): Failure? {
-        val pending = sale.status == SaleStatus.PENDING
-        if (!permits()) {
-            if (pending) sales.record(sale.id, SaleEvent.NotSetUp(SetupProblem.MANAGER_APPROVAL))
-            return Failure.NotSetUp(SetupProblem.MANAGER_APPROVAL)
-        }
-        val client: SavedCardApi =
-            when (val access = target().savedCards(sale.context)) {
-                is ApiAccess.Ready -> {
-                    access.client
+    /** Saved-card charges as stored sales, sent with [SavedCardApi.charge] built only from what the sale stored. */
+    private class Book(
+        private val sales: SaleRepository,
+    ) : CheckoutBook<SavedCardStart, SavedCardApi> {
+        override suspend fun open(
+            id: String,
+            request: SavedCardStart,
+            createdAt: Long,
+            current: PaymentContext?,
+        ) = sales.createPending(SaleBook.savedCardSale(id, request, createdAt, current), SaleBook.lines(id, request.payment.totals))
+
+        override suspend fun unsent(id: String): CheckoutRecord? =
+            sales
+                .get(id)
+                ?.sale
+                ?.takeIf { it.savedCard && (it.status == SaleStatus.PENDING || it.status == SaleStatus.UNKNOWN) }
+                ?.let { CheckoutRecord(it.status == SaleStatus.PENDING, it.createdAt, it.context) }
+
+        override fun access(
+            target: ApiTarget,
+            context: PaymentContext?,
+        ): ApiAccess<SavedCardApi> = target.savedCards(context)
+
+        override suspend fun send(
+            id: String,
+            client: SavedCardApi,
+            now: Long,
+        ): CheckoutAnswer {
+            val sale = sales.get(id)?.sale ?: return CheckoutAnswer.NotTaken
+            val result = client.charge(request(sale), idempotencyKey(id))
+            sales.record(id, SaleEvent.CardAnswered(result, now))
+            return when {
+                result is CardChargeResult.Authorised -> {
+                    CheckoutAnswer.Taken
                 }
 
-                is ApiAccess.Blocked -> {
-                    // Nothing was sent; only a charge never sent before is known not to have happened.
-                    if (pending && access is ApiAccess.Unavailable) sales.record(sale.id, SaleEvent.NotSetUp(access.problem))
-                    return Failure.NotSetUp(access.problem)
+                result is CardChargeResult.Failed && result.fault.mayHaveTakenEffect -> {
+                    CheckoutAnswer.Unconfirmed(
+                        Failure.Remote(result.fault),
+                    )
+                }
+
+                else -> {
+                    CheckoutAnswer.NotTaken
                 }
             }
-        val result = client.charge(request(sale), idempotencyKey(sale.id))
-        sales.record(sale.id, SaleEvent.CardAnswered(result, clock.millis()))
-        val start =
-            if (result is CardChargeResult.Failed &&
-                result.fault.mayHaveTakenEffect
-            ) {
-                null
-            } else {
-                synchronized(unresolved) { unresolved.remove(sale.id) }
-            }
-        if (result is CardChargeResult.Authorised && start != null) onCharged(sale.id, start)
-        return (result as? CardChargeResult.Failed)?.takeIf { it.fault.mayHaveTakenEffect }?.let { Failure.Remote(it.fault) }
-    }
-
-    /** Stores sale [id] as unknown after the device failed while charging it. */
-    private suspend fun interrupted(id: String) {
-        try {
-            sales.record(id, SaleEvent.OutcomeUnknown(Failure.Device(DeviceFault.DATABASE)))
-        } catch (e: CancellationException) {
-            throw e
-        } catch (ignored: SQLException) {
-            // It stays PENDING, which the next start turns into UNKNOWN.
-        } catch (ignored: IllegalStateException) {
-            // The database is closed; it stays PENDING, which the next start turns into UNKNOWN.
         }
+
+        override suspend fun notSent(
+            id: String,
+            problem: SetupProblem,
+        ) = sales.record(id, SaleEvent.NotSetUp(problem))
+
+        override suspend fun interrupted(
+            id: String,
+            fault: DeviceFault,
+        ) = sales.record(id, SaleEvent.OutcomeUnknown(Failure.Device(fault)))
     }
 
     /** Values shared with tests and history. */
     companion object {
         private const val LAST_FOUR = 4
-
-        /** How long after a charge was opened its unknown outcome may be sent again: Adyen keeps keys at least this long. */
-        val RECHECK_WINDOW: Duration = Duration.ofDays(7)
 
         /**
          * Why saved cards cannot be found or charged now: no shopper reference is made ([source] is

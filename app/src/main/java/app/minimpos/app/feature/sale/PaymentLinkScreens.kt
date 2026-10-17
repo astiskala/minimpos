@@ -407,6 +407,6 @@ private fun paymentLinkViewModel(
 ): PaymentLinkViewModel {
     val container = LocalAppContainer.current
     return viewModel(key = saleId) {
-        PaymentLinkViewModel(saleId, container.storedPayments, container.receipts, container.links, fresh)
+        PaymentLinkViewModel(saleId, container.storedPayments, container.receipts, container.links, container.operations, fresh)
     }
 }

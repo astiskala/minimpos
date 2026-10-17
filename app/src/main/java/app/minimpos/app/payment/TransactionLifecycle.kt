@@ -1,6 +1,5 @@
 package app.minimpos.app.payment
 
-import android.database.SQLException
 import app.minimpos.app.data.db.DeviceFault
 import app.minimpos.app.data.db.Failure
 import app.minimpos.app.data.db.SetupProblem
@@ -14,9 +13,7 @@ import app.minimpos.terminal.client.TerminalClient
 import app.minimpos.terminal.client.TransactionDetails
 import app.minimpos.terminal.client.TransactionKind
 import app.minimpos.terminal.client.TransactionOutcome
-import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -184,7 +181,9 @@ interface TransactionBook<R> {
 
 /**
  * Runs transactions of one kind (payments or refunds) on an application-wide scope, so one in progress survives screen
- * changes (the Adyen payment UI takes over the display on the terminal). At most one runs at a time.
+ * changes (the Adyen payment UI takes over the display on the terminal). At most one runs at a time. It is the terminal
+ * side of [FinancialOperations], which callers ask to check an unknown outcome again; the single-flight and safety-net
+ * skeleton is shared with [CheckoutOperations].
  *
  * Every transaction is stored as PENDING before the terminal is called and always ends in a final status, even if
  * something unexpected fails, so an interrupted one can be traced. Terminal outcomes are classified in one place (see
@@ -213,46 +212,28 @@ class TransactionLifecycle<R>(
     private val newServiceId: () -> String = { TerminalClient.randomServiceId() },
     private val permits: suspend (R) -> Boolean = { true },
 ) {
+    private val runner = OperationRunner<R>(scope)
+
     /** The current transaction; the waiting and result screens follow it. */
-    val state: StateFlow<TransactionState>
-        field = MutableStateFlow<TransactionState>(TransactionState.Idle)
+    val state: StateFlow<TransactionState> = runner.state
     private val busyServiceIds = mutableMapOf<String, String>()
-    private val unresolvedRequests = mutableMapOf<String, R>()
     private val rechecks = Mutex()
 
     /**
      * Starts [request] in the background and returns the new record's ID straight away; null, with nothing stored or
      * sent, while a transaction is already in progress (such as a second tap on the same action).
      */
-    @Synchronized
-    fun start(request: R): String? {
-        if (state.value is TransactionState.Processing) return null
-        val id = book.existingId(request) ?: newId()
-        state.value = TransactionState.Processing(id)
-        synchronized(unresolvedRequests) { unresolvedRequests[id] = request }
-        scope.launch {
-            try {
-                run(id, request)
-            } catch (e: CancellationException) {
-                throw e
-            } catch (
-                // Whatever went wrong, the record must not be left looking as if it were still in progress.
-                @Suppress("TooGenericExceptionCaught") ignored: Exception,
-            ) {
-                try {
-                    // The request may already have been sent, so the outcome is unconfirmed rather than failed.
-                    val unexpected = Failure.Device(DeviceFault.UNEXPECTED)
-                    book.settle(id, Settlement(SettlementStatus.UNKNOWN, null, reason = StoredReason.Unconfirmed(unexpected)))
-                } catch (ignored: SQLException) {
-                    // It stays PENDING, which the next start turns into UNKNOWN.
-                }
-                state.value = TransactionState.Finished(id)
-            } finally {
-                book.release(request)
-            }
-        }
-        return id
-    }
+    fun start(request: R): String? =
+        runner.start(
+            request,
+            id = { book.existingId(request) ?: newId() },
+            interrupted = { id, _ ->
+                // The request may already have been sent, so the outcome is unconfirmed rather than failed.
+                val unexpected = Failure.Device(DeviceFault.UNEXPECTED)
+                book.settle(id, Settlement(SettlementStatus.UNKNOWN, null, reason = StoredReason.Unconfirmed(unexpected)))
+            },
+            release = { book.release(request) },
+        ) { id -> run(id, request) }
 
     /**
      * Asks the terminal to cancel the running transaction (an AbortRequest). Does nothing before its request is being
@@ -261,10 +242,10 @@ class TransactionLifecycle<R>(
      */
     @Synchronized
     fun cancel() {
-        val processing = state.value as? TransactionState.Processing ?: return
+        val processing = runner.state.value as? TransactionState.Processing ?: return
         if (processing.cancelling) return
         val serviceId = processing.serviceId ?: return
-        state.value = processing.copy(cancelling = true)
+        runner.state.value = processing.copy(cancelling = true)
         scope.launch { gateway.abort(serviceId, book.kind) }
     }
 
@@ -281,9 +262,7 @@ class TransactionLifecycle<R>(
     }
 
     /** Returns to [TransactionState.Idle] once the result has been seen, so the next transaction can start. */
-    fun acknowledge() {
-        if (state.value is TransactionState.Finished) state.value = TransactionState.Idle
-    }
+    fun acknowledge() = runner.acknowledge()
 
     /**
      * Asks the terminal again (TransactionStatus) about record [id] whose outcome is unknown, and stores the answer.
@@ -312,7 +291,7 @@ class TransactionLifecycle<R>(
         book.open(id, request, serviceId, clock.millis())
         val onSending: suspend (String) -> Unit = { poiId ->
             book.sending(id, poiId)
-            state.update { current ->
+            runner.state.update { current ->
                 (current as? TransactionState.Processing)?.takeIf { it.id == id }?.copy(serviceId = serviceId) ?: current
             }
         }
@@ -355,7 +334,6 @@ class TransactionLifecycle<R>(
             }
         book.settle(id, settlement)
         complete(id, settlement)
-        state.value = TransactionState.Finished(id)
     }
 
     private fun complete(
@@ -363,7 +341,7 @@ class TransactionLifecycle<R>(
         settlement: Settlement,
     ) {
         if (settlement.status == SettlementStatus.UNKNOWN) return
-        val request = synchronized(unresolvedRequests) { unresolvedRequests.remove(id) } ?: return
+        val request = runner.resolved(id) ?: return
         if (settlement.status == SettlementStatus.SUCCEEDED) onSucceeded(id, request)
     }
 

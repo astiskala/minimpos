@@ -13,26 +13,24 @@ import java.time.ZoneId
  * What financial screens can do to a stored sale besides delivering its receipt: starts refunds and cancellations,
  * and retries captures without exposing reference construction or financial implementations to those callers.
  * Pure eligibility stays in [RefundablePayment]; original-context and Manager approval rechecks stay in the
- * financial implementations. Starting a reversal does not establish its outcome; the lifecycle follows that separately.
+ * financial implementations. Starting a reversal does not establish its outcome; [FinancialOperations.refundProgress]
+ * follows that separately.
  *
- * @param refunds The refunds' lifecycle, which also runs cancellations of payments that only hold their amount.
+ * @param operations Sends refunds and cancellations the way their payment was taken (see [FinancialOperations.refund]).
  * @param captures Sends a capture again.
  * @param settings Current saved settings, read at each initiation for the reference prefix.
  * @param clock Stamps the merchant reference of a refund or cancellation.
  * @param zone The time zone of that reference, read for each initiation.
- * @param checkoutRefunds Sends refunds of saved-card charges ([RefundStart.checkout]) through the Checkout API; null
- *   where none can be refunded.
  */
 class StoredPaymentActions(
-    private val refunds: TransactionLifecycle<RefundStart>,
+    private val operations: FinancialOperations,
     private val captures: Captures,
     private val settings: StateFlow<AppSettings>,
     private val clock: Clock = Clock.systemDefaultZone(),
     private val zone: () -> ZoneId = { ZoneId.systemDefault() },
-    private val checkoutRefunds: CheckoutRefunds? = null,
 ) {
     /**
-     * Starts [choice] of [payment] as a referenced refund; false for an invalid choice or a busy lifecycle.
+     * Starts [choice] of [payment] as a referenced refund; false for an invalid choice or while a refund is running.
      * A foreign receipt must have been independently reviewed by the caller, as on the refund screen.
      * Amounts use the payment's original currency minor units. True means started, not accepted or confirmed.
      */
@@ -48,11 +46,5 @@ class StoredPaymentActions(
     /** Retries [saleId]'s stored capture amount and identity; callers use `persisting` to survive screen cancellation. */
     suspend fun retryCapture(saleId: String): CaptureResult = captures.retryCapture(saleId)
 
-    /** Starts [request] where it goes: a saved-card charge's refund through the Checkout API, others on the terminal. */
-    private fun start(request: RefundStart?): String? =
-        when {
-            request == null -> null
-            request.checkout -> checkoutRefunds?.start(request)
-            else -> refunds.start(request)
-        }
+    private fun start(request: RefundStart?): String? = request?.let(operations::refund)
 }

@@ -12,35 +12,40 @@ internal fun ColumnScope.ShopperDisplaySection(
     payment: PaymentSettings,
     update: ((PaymentSettings) -> PaymentSettings) -> Unit,
 ) {
-    SettingNote(stringResource(R.string.settings_shopper_display_hint))
+    SettingIntro(stringResource(R.string.settings_shopper_display_hint))
     SettingSwitch(
         stringResource(R.string.settings_show_virtual_receipt),
         payment.showVirtualReceipt,
         { value -> update { it.copy(showVirtualReceipt = value) } },
+        subtitle = stringResource(R.string.settings_show_virtual_receipt_hint),
         tag = "showVirtualReceipt",
     )
     SettingSwitch(
         stringResource(R.string.settings_confirm_basket_terminal),
         payment.confirmBasketOnTerminal,
         { value -> update { it.copy(confirmBasketOnTerminal = value) } },
+        subtitle = stringResource(R.string.settings_confirm_basket_terminal_hint),
         tag = "confirmBasketOnTerminal",
     )
     SettingSwitch(
         stringResource(R.string.settings_collect_email_terminal),
         payment.collectEmailOnTerminal,
         { value -> update { it.copy(collectEmailOnTerminal = value) } },
+        subtitle = stringResource(R.string.settings_collect_email_terminal_hint),
         tag = "collectEmailOnTerminal",
     )
     SettingSwitch(
         stringResource(R.string.settings_show_terminal_qr),
         payment.showTerminalQrReceipt,
         { value -> update { it.copy(showTerminalQrReceipt = value) } },
+        subtitle = stringResource(R.string.settings_show_terminal_qr_hint),
         tag = "showTerminalQrReceipt",
     )
     SettingSwitch(
         stringResource(R.string.settings_ask_shopper_rating),
         payment.askShopperRating,
         { value -> update { it.copy(askShopperRating = value) } },
+        subtitle = stringResource(R.string.settings_ask_shopper_rating_hint),
         tag = "askShopperRating",
     )
 }

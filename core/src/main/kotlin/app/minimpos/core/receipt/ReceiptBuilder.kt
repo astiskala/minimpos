@@ -29,13 +29,16 @@ class ReceiptBuilder(
      * what it holds after an adjustment and what was captured. [SaleReceipt.tip] adds the tip lines after the totals:
      * blank ones to fill in (and on the merchant copy a line to sign), or the tip entered and the total with it. A sale
      * still to be paid through its payment link ([SaleReceipt.unpaidLink]) is marked unpaid and totalled as the amount
-     * due, with the link's QR code, its address and how long it works; one paid through it says so.
+     * due, with the link's QR code, its address and how long it works; one paid through it says so. [SaleReceipt.notice]
+     * comes first. A note the receipt already carries is never printed again, so standings and notices that say the
+     * same thing appear once.
      */
     fun sale(
         receipt: SaleReceipt,
         copy: ReceiptCopy = ReceiptCopy.CUSTOMER,
     ): ReceiptDocument {
         val out = mutableListOf<ReceiptElement>()
+        receipt.notice?.let { note(out, it) }
         header(out, title = if (receipt.preAuthorisation) labels.preAuthTitle else branding.title)
         if (copy == ReceiptCopy.MERCHANT) out += Text(labels.merchantCopy, Align.CENTER, TextStyle.BOLD)
         if (out.isNotEmpty() && out.last() != Blank) out += Blank
@@ -50,7 +53,7 @@ class ReceiptBuilder(
         totals(out, receipt)
         modifications(out, receipt, copy)
         standing(out, receipt)
-        if (receipt.cardSaved) out += Text(labels.cardSaved, Align.CENTER)
+        if (receipt.cardSaved) note(out, labels.cardSaved, TextStyle.NORMAL)
         cardReceipt(out, receipt.cardReceipt)
         footer(out)
         val showsRefundQr = copy == ReceiptCopy.CUSTOMER && receipt.approved && !receipt.preAuthorisation && options.showRefundQr
@@ -74,12 +77,12 @@ class ReceiptBuilder(
         out += Divider
         when {
             cancellation -> out += Text(labels.cancellationNote)
-            receipt.items.isEmpty() -> out += Text(if (receipt.full) labels.refundTitle else labels.partialRefund)
+            receipt.items.isEmpty() -> out += Text(if (receipt.full) labels.fullRefund else labels.partialRefund)
             else -> items(out, receipt.items)
         }
         out += Divider
         out += Row(if (cancellation) labels.released else labels.refundTotal, money.format(receipt.amount), TextStyle.BOLD)
-        receipt.standingNote?.let { out += Text(it, Align.CENTER, TextStyle.BOLD) }
+        receipt.standingNote?.let { note(out, it) }
         cardReceipt(out, receipt.cardReceipt)
         footer(out)
         return ReceiptDocument(out)
@@ -223,16 +226,31 @@ class ReceiptBuilder(
             }
 
             !receipt.approved -> {
-                out += Blank
-                out += Text(labels.notCompleted, Align.CENTER, TextStyle.BOLD)
+                note(out, labels.notCompleted, blankBefore = true)
             }
 
             receipt.preAuthorisation && receipt.captured == null && !receipt.holdCancelled && receipt.standingNote == null -> {
-                out += Text(labels.preAuthNote, Align.CENTER)
+                note(out, labels.preAuthNote, TextStyle.NORMAL)
             }
         }
-        receipt.standingNote?.let { out += Text(it, Align.CENTER, TextStyle.BOLD) }
-        if (receipt.paidOnline) out += Text(labels.paidOnline, Align.CENTER)
+        receipt.standingNote?.let { note(out, it) }
+        if (receipt.paidOnline) note(out, labels.paidOnline, TextStyle.NORMAL)
+    }
+
+    /**
+     * Adds the centred note [text] in [style] (after a blank line when [blankBefore]), unless the receipt already says
+     * exactly that: one meaning, such as a payment that was not completed, is printed once however many parts of the
+     * sale's standing report it. Adyen's card receipt lines are added later and printed verbatim.
+     */
+    private fun note(
+        out: MutableList<ReceiptElement>,
+        text: String,
+        style: TextStyle = TextStyle.BOLD,
+        blankBefore: Boolean = false,
+    ) {
+        if (text.isBlank() || out.any { it is Text && it.text.trim() == text.trim() }) return
+        if (blankBefore) out += Blank
+        out += Text(text, Align.CENTER, style)
     }
 
     /** The unpaid mark, then the payment [link] as a QR code to scan and as an address to open, and how long it works. */

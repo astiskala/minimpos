@@ -11,12 +11,14 @@ import app.minimpos.app.data.settings.ReceiptTipping
 import app.minimpos.app.data.settings.SecuritySettings
 import app.minimpos.app.data.settings.ShopperReferenceSource
 import app.minimpos.app.data.settings.SimulatorSettings
+import app.minimpos.app.data.settings.StorageJson
 import app.minimpos.app.data.settings.TerminalMode
 import app.minimpos.app.data.settings.TerminalSettings
 import app.minimpos.core.tax.TaxMode
 import app.minimpos.terminal.transport.CloudRegion
 import app.minimpos.terminal.transport.TerminalEnvironment
 import com.google.common.truth.Truth.assertThat
+import kotlinx.serialization.serializer
 import org.junit.Test
 
 /** Plain JUnit: the settings model owns the limits of its numbers and which settings belong to one device. */
@@ -88,6 +90,14 @@ class AppSettingsTest {
         assertThat(AppSettings().payment.shopperReferenceSource).isEqualTo(ShopperReferenceSource.CUSTOMER_REFERENCE)
         assertThat(AppSettings().receipt.autoPrint).isTrue()
         assertThat(australia.copy(payment = PaymentSettings(), receipt = ReceiptSettings())).isEqualTo(AppSettings())
+    }
+
+    @Test
+    fun `new installations show the virtual receipt while a stored choice to hide it is kept`() {
+        assertThat(AppSettings.forNewInstallation("AU").payment.showVirtualReceipt).isTrue()
+        val hidden = AppSettings(payment = PaymentSettings(showVirtualReceipt = false))
+        val stored = StorageJson.encodeToString(serializer<AppSettings>(), hidden)
+        assertThat(StorageJson.decodeFromString(serializer<AppSettings>(), stored).payment.showVirtualReceipt).isFalse()
     }
 
     @Test
@@ -252,6 +262,36 @@ class AppSettingsTest {
         assertThat(cloud.cloudRegion).isNull()
         assertThat(cloud.selectDestination(TerminalMode.TERMINAL, TerminalMode.TERMINAL).mode).isEqualTo(TerminalMode.AUTO)
         assertThat(cloud.selectDestination(TerminalMode.SIMULATOR, TerminalMode.SIMULATOR).mode).isEqualTo(TerminalMode.AUTO)
+    }
+
+    @Test
+    fun `destination changes keep the environment only with the saved API key and merchant account it belongs to`() {
+        val cloud =
+            TerminalSettings(
+                mode = TerminalMode.CLOUD,
+                environment = TerminalEnvironment.LIVE,
+                cloudRegion = CloudRegion.AU,
+                merchantAccount = "Merchant",
+            )
+        val network = cloud.selectDestination(TerminalMode.TERMINAL, TerminalMode.SIMULATOR, apiKeySaved = true)
+        assertThat(network).isEqualTo(cloud.copy(mode = TerminalMode.TERMINAL, cloudRegion = null))
+        assertThat(network.selectDestination(TerminalMode.CLOUD, TerminalMode.SIMULATOR, apiKeySaved = true).environment)
+            .isEqualTo(TerminalEnvironment.LIVE)
+        assertThat(cloud.selectDestination(TerminalMode.TERMINAL, TerminalMode.SIMULATOR, apiKeySaved = false).environment).isNull()
+        assertThat(
+            cloud
+                .copy(
+                    merchantAccount = " ",
+                ).selectDestination(TerminalMode.TERMINAL, TerminalMode.SIMULATOR, apiKeySaved = true)
+                .environment,
+        ).isNull()
+        val simulator = cloud.selectDestination(TerminalMode.SIMULATOR, TerminalMode.SIMULATOR, apiKeySaved = true)
+        assertThat(simulator.mode).isEqualTo(TerminalMode.AUTO)
+        assertThat(simulator.environment).isEqualTo(TerminalEnvironment.LIVE)
+        assertThat(simulator.historyEnvironment(TerminalMode.SIMULATOR)).isEqualTo("SIMULATOR")
+        val app = cloud.selectDestination(TerminalMode.PAYMENTS_APP, TerminalMode.SIMULATOR, apiKeySaved = true)
+        assertThat(app.environment).isEqualTo(TerminalEnvironment.LIVE)
+        assertThat(app.historyEnvironment(TerminalMode.SIMULATOR)).isNull()
     }
 
     @Test

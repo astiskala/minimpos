@@ -7,11 +7,15 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.test.assertHeightIsEqualTo
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.onAllNodesWithTag
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.unit.dp
 import app.minimpos.app.feature.sale.ReceiptToggle
+import app.minimpos.app.receipt.PrintRenderer
+import app.minimpos.app.ui.components.PrintJobsPreview
 import app.minimpos.app.ui.components.ReceiptPreview
 import app.minimpos.app.ui.theme.MiniMposTheme
 import app.minimpos.core.receipt.ReceiptDocument
@@ -34,6 +38,25 @@ class ReceiptToggleTest {
     fun `preview dividers stay a single row on the smallest screen`() {
         compose.setContent { MiniMposTheme { ReceiptPreview(ReceiptDocument(listOf(ReceiptElement.Divider))) } }
         compose.onNodeWithTag("receiptDivider").assertIsDisplayed().assertHeightIsEqualTo(16.dp)
+    }
+
+    @Test
+    fun `printed dividers span the simulated slip exactly like preview dividers`() {
+        val document = ReceiptDocument(listOf(ReceiptElement.Text("Corner Cafe"), ReceiptElement.Divider, ReceiptElement.Text("-")))
+        compose.setContent {
+            MiniMposTheme {
+                Column {
+                    ReceiptPreview(document)
+                    PrintJobsPreview(PrintRenderer.jobs(document, dividerWidth = 32))
+                }
+            }
+        }
+        val dividers = compose.onAllNodesWithTag("receiptDivider").fetchSemanticsNodes().map { it.boundsInRoot }
+        assertThat(dividers).hasSize(2)
+        assertThat(dividers[1].width).isEqualTo(dividers[0].width)
+        compose.onNodeWithText("-".repeat(32)).assertDoesNotExist()
+        // A single dash is text, not a divider.
+        assertThat(compose.onAllNodesWithText("-").fetchSemanticsNodes()).hasSize(2)
     }
 
     @Test

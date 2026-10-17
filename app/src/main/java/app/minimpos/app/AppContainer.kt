@@ -616,13 +616,19 @@ class AppContainer(
             demoLink = localized.getString(R.string.link_demo_label),
             standing = { standing ->
                 when (standing) {
-                    PaymentStanding.CHARGED -> null
-                    PaymentStanding.NOT_APPROVED -> localized.getString(R.string.receipt_not_completed)
+                    // The receipt builder already warns about payments that were not approved.
+                    PaymentStanding.CHARGED, PaymentStanding.NOT_APPROVED -> null
+
                     PaymentStanding.AWAITING_TIP -> localized.getString(R.string.detail_tip_awaiting)
+
                     PaymentStanding.HELD -> localized.getString(R.string.receipt_pre_auth_note)
+
                     PaymentStanding.CAPTURE_REQUESTED -> localized.getString(R.string.status_capture_requested)
+
                     PaymentStanding.CAPTURE_FAILED -> localized.getString(R.string.status_capture_failed)
+
                     PaymentStanding.CAPTURE_SENDING, PaymentStanding.CAPTURE_UNKNOWN -> localized.getString(R.string.status_capture_unknown)
+
                     PaymentStanding.HOLD_CANCELLED -> localized.getString(R.string.status_cancellation_requested)
                 }
             },
@@ -687,6 +693,7 @@ class AppContainer(
             originalReference = localizedContext.getString(R.string.receipt_original_sale),
             refundTotal = localizedContext.getString(R.string.receipt_refund_total),
             partialRefund = localizedContext.getString(R.string.receipt_partial_refund),
+            fullRefund = localizedContext.getString(R.string.receipt_full_refund),
             cardSaved = localizedContext.getString(R.string.receipt_card_saved),
             notCompleted = localizedContext.getString(R.string.receipt_not_completed),
             preAuthTitle = localizedContext.getString(R.string.receipt_pre_auth_title),

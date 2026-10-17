@@ -14,18 +14,15 @@ import app.minimpos.core.cart.TaxBreakdown
 import app.minimpos.core.codec.RefundQrPayload
 import app.minimpos.core.money.CurrencySpec
 import app.minimpos.core.money.MoneyFormatter
-import app.minimpos.core.receipt.Align
 import app.minimpos.core.receipt.ReceiptBranding
 import app.minimpos.core.receipt.ReceiptBuilder
 import app.minimpos.core.receipt.ReceiptCopy
 import app.minimpos.core.receipt.ReceiptDocument
-import app.minimpos.core.receipt.ReceiptElement
 import app.minimpos.core.receipt.ReceiptItem
 import app.minimpos.core.receipt.ReceiptLabels
 import app.minimpos.core.receipt.ReceiptOptions
 import app.minimpos.core.receipt.RefundReceipt
 import app.minimpos.core.receipt.SaleReceipt
-import app.minimpos.core.receipt.TextStyle
 import app.minimpos.core.receipt.TipLines
 import app.minimpos.core.receipt.UnpaidLink
 import app.minimpos.core.tax.TaxAmounts
@@ -60,7 +57,8 @@ data class ReceiptSampleTexts(
  * @property sample Product and tax names for the settings preview receipt.
  * @property simulationNote Permanent demo warning for simulated links and seeded samples.
  * @property demoLink Non-payable demo label for simulated link QR codes and captions.
- * @property standing Localised payment-standing note; null when no note is shown.
+ * @property standing Localised payment-standing note; null when no note is shown, including for a payment that was not
+ *   approved, whose warning the receipt builder prints itself.
  * @property refund Localised refund-request status note.
  * @property report Localised daily-report heading and row labels.
  */
@@ -70,7 +68,7 @@ data class ReceiptTexts(
     val sample: ReceiptSampleTexts = ReceiptSampleTexts(),
     val simulationNote: String = "Simulation only. No money moved.",
     val demoLink: String = "Demo link",
-    val standing: (PaymentStanding) -> String? = { it.name.takeUnless { name -> name == "CHARGED" } },
+    val standing: (PaymentStanding) -> String? = { it.name.takeUnless { name -> name == "CHARGED" || name == "NOT_APPROVED" } },
     val refund: (RefundStatus) -> String? = { it.name },
     val report: (ReportText) -> String = { it.name },
 )
@@ -140,6 +138,7 @@ class ReceiptFactory(
                 }.sortedWith(compareByDescending<TaxBreakdown> { it.tax.rateMilliPercent }.thenBy { it.tax.name })
         val resolved = current
         val standing = ReceiptStanding.of(sale)
+        val simulated = standing.simulatedLink || sale.sample
         val receipt =
             SaleReceipt(
                 reference = sale.merchantReference,
@@ -173,14 +172,9 @@ class ReceiptFactory(
                 paidOnline = standing.paidOnline,
                 standingNote = resolved.standing(standing.standing),
                 holdCancelled = standing.standing == PaymentStanding.HOLD_CANCELLED,
+                notice = resolved.simulationNote.takeIf { simulated },
             )
-        val simulated = standing.simulatedLink || sale.sample
-        val document = builder(settings, currency, resolved, simulated).sale(receipt, copy)
-        return if (simulated) {
-            ReceiptDocument(listOf(ReceiptElement.Text(resolved.simulationNote, Align.CENTER, TextStyle.BOLD)) + document.elements)
-        } else {
-            document
-        }
+        return builder(settings, currency, resolved, simulated).sale(receipt, copy)
     }
 
     /**

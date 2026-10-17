@@ -33,7 +33,8 @@ Adyen Payments app (Tap to Pay). The built-in simulator needs no Adyen account.
 - The device runs Mini mPOS; the terminal takes the card. Keep these distinct in user text.
 - Checkout API setup is required before real payments, even ordinary sales. Connection checks, refunds and printing
   need only the destination. Select TEST/LIVE first for network/cloud terminals; on-device terminals and the Payments
-  app supply their environment. Never probe API credentials across environments; changing destination clears it.
+  app supply their environment. Never probe API credentials across environments; changing destination clears it unless
+  the saved API key and merchant account it belongs to stay.
 - Persist each financial operation before sending. A missing answer means unknown, not failed. Retry the same logical
   operation with its stored identity and request facts; a distinct authorization renewal needs a new identity.
   Historical actions must validate the original payment context against current credentials.

@@ -10,7 +10,6 @@ import app.minimpos.app.data.security.SecretStoreException
 import app.minimpos.app.data.settings.AppSettings
 import app.minimpos.app.data.settings.SettingsRepository
 import app.minimpos.app.data.settings.TerminalSettings
-import app.minimpos.terminal.paymentsapp.AdyenPaymentsAppManagement
 import app.minimpos.terminal.paymentsapp.AppLinkExchange
 import app.minimpos.terminal.paymentsapp.BoardingTarget
 import app.minimpos.terminal.paymentsapp.ManagementResult
@@ -72,9 +71,7 @@ class TapToPaySetup(
     private val setups: TerminalSetupSource,
     private val settings: SettingsRepository,
     private val exchange: AppLinkExchange,
-    private val management: (apiKey: String, environment: TerminalEnvironment) -> PaymentsAppManagement = { key, environment ->
-        AdyenPaymentsAppManagement(key, environment)
-    },
+    private val management: (apiKey: String, environment: TerminalEnvironment) -> PaymentsAppManagement,
     private val verifyApi: suspend () -> ApiCheck,
 ) {
     private val journal = setups.journal(RecoveryJournal.BOARDING, serializer<RegistrationRecovery>())

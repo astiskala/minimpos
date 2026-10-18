@@ -34,7 +34,7 @@ class WalletMethodsTest {
                 }
                 server.enqueue(MockResponse.Builder().code(403).build())
                 assertThat(api.methods("Merchant", " "))
-                    .isEqualTo(WalletMethodListing.Failed(Fault.Permission(ApiKey.ADYEN, "Management API—Payment methods read")))
+                    .isEqualTo(WalletMethodListing.Failed(Fault.Permission(ApiKey.ADYEN, "Management API - Payment methods read")))
                 assertThat(server.takeRequest().url.queryParameter("storeId")).isNull()
             }
             val offlineClient = OkHttpClient.Builder().dns(Dns { throw UnknownHostException("offline") }).build()

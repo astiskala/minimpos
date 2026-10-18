@@ -59,7 +59,7 @@ fun interface WalletMethodsApi {
 
 /**
  * Management v3 payment-method reads through the shared HTTP boundary and SDK wire models.
- * Requires Management API—Payment methods read. Pagination stays at the supplied endpoint; links are never followed.
+ * Requires [AdyenRole.PAYMENT_METHODS_READ]. Pagination stays at the supplied endpoint; links are never followed.
  * @param apiKey Credential sent only as an authentication header.
  * @param environment Exact environment, never probed across TEST/LIVE.
  * @param baseUrl Endpoint override for offline tests.
@@ -82,7 +82,7 @@ class AdyenWalletMethods(
         when (
             val pages =
                 collectManagementPages(
-                    role = PAYMENT_METHODS_READ,
+                    role = AdyenRole.PAYMENT_METHODS_READ.displayName,
                     fetch = { page(merchantAccount, storeId, it) },
                     parse = ::parsePage,
                 )
@@ -135,6 +135,5 @@ class AdyenWalletMethods(
 
     private companion object {
         private val TIMEOUT = 15.seconds
-        const val PAYMENT_METHODS_READ = "Management API—Payment methods read"
     }
 }

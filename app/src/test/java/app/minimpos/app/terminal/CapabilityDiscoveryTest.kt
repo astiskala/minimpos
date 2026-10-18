@@ -35,6 +35,7 @@ import app.minimpos.terminal.transport.TerminalOfflineLimits
 import app.minimpos.terminal.transport.WalletMethod
 import app.minimpos.terminal.transport.WalletMethodListing
 import com.google.common.truth.Truth.assertThat
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.first
@@ -59,6 +60,7 @@ class CapabilityDiscoveryTest {
     private val patches = mutableListOf<TerminalCapabilitiesPatch>()
     private var listedMerchant = "HarbourCoffeeCOM"
     private var lookupOverride: TerminalCapabilitiesLookup? = null
+    private var lookupGate: CompletableDeferred<Unit>? = null
     private var updateOverride: TerminalCapabilitiesUpdate? = null
 
     private val detailsApi =
@@ -85,7 +87,10 @@ class CapabilityDiscoveryTest {
             override suspend fun capabilities(
                 id: String,
                 environment: TerminalEnvironment,
-            ): TerminalCapabilitiesLookup = lookupOverride ?: TerminalCapabilitiesLookup.Found(currentCapabilities)
+            ): TerminalCapabilitiesLookup {
+                lookupGate?.await()
+                return lookupOverride ?: TerminalCapabilitiesLookup.Found(currentCapabilities)
+            }
 
             override suspend fun updateCapabilities(
                 id: String,
@@ -249,6 +254,33 @@ class CapabilityDiscoveryTest {
             assertThat(problemState.problem).isEqualTo(SetupProblem.ENVIRONMENT)
             assertThat(await { env.container.capabilityDiscovery.updateDcc(true) })
                 .isEqualTo(CapabilityPatchResult.NotDone(Failure.NotSetUp(SetupProblem.ENVIRONMENT)))
+        } finally {
+            closeViewModels(listOf(vm))
+            Dispatchers.resetMain()
+        }
+    }
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    @Test
+    fun `setup change while capabilities are checked refreshes them for the new setup`() {
+        Dispatchers.setMain(UnconfinedTestDispatcher())
+        await { env.container.secrets.set(Secret.ADYEN_API_KEY, "api-key") }
+        env.updateSettings {
+            val conn = it.terminal.withConnection(TerminalMode.CLOUD, TerminalEnvironment.TEST)
+            it.copy(terminal = conn.copy(merchantAccount = "HarbourCoffeeCOM", poiIdOverride = "S1F2-000158213605014", storeId = "ST1"))
+        }
+        val lookup = CompletableDeferred<Unit>()
+        lookupGate = lookup
+        val vm = CapabilitiesViewModel(discovery = env.container.capabilityDiscovery)
+        try {
+            await { vm.state.first { it.checking } }
+            // The reading begun on the old setup cannot be published, so only a new refresh can finish checking.
+            env.updateSettings { it.copy(terminal = it.terminal.copy(storeId = "ST2")) }
+            lookup.complete(Unit)
+
+            val refreshed = await { vm.state.first { !it.checking && it.problem == null } }
+            assertThat(refreshed.failure).isNull()
+            assertThat(refreshed.giftCardsFor("AUD")).containsExactly("svs")
         } finally {
             closeViewModels(listOf(vm))
             Dispatchers.resetMain()

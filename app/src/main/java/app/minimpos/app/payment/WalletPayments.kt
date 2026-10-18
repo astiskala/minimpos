@@ -1,5 +1,6 @@
 package app.minimpos.app.payment
 
+import app.minimpos.app.data.settings.PaymentSettings
 import app.minimpos.app.terminal.NativeScanner
 import app.minimpos.app.terminal.TerminalGateway
 import app.minimpos.app.terminal.WalletAvailability
@@ -84,7 +85,7 @@ data class WalletPaymentState(
     val stage: WalletScanStage = WalletScanStage.CLOSED,
     val epoch: Long = 0,
     val amountMinor: Long = 0,
-    val currency: CurrencySpec = CurrencySpec("EUR", 2),
+    val currency: CurrencySpec = PaymentSettings.FALLBACK_CURRENCY_SPEC,
     val wallets: List<ScanWallet> = emptyList(),
     val selected: ScanWallet? = null,
     val source: WalletScanSource? = null,

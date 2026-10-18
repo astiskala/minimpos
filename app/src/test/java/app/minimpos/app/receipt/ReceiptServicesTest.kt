@@ -1,5 +1,6 @@
 package app.minimpos.app.receipt
 
+import app.minimpos.app.FakeDevice
 import app.minimpos.app.TestEnvironment
 import app.minimpos.app.await
 import app.minimpos.app.data.db.CaptureStatus
@@ -477,6 +478,23 @@ class ReceiptServicesTest {
         assertThat(shared.paymentLink).isNull()
         assertThat(shared.document.elements).contains(ReceiptElement.Text("REFUND", Align.CENTER, TextStyle.BOLD))
         assertThat(await { container.receipts.offer(StoredTransaction.Refund("missing")).first() }.share).isNull()
+    }
+
+    @Test
+    fun `an Adyen terminal is offered no receipt to share`() {
+        val onTerminal = TestEnvironment(FakeDevice(detectedPoiId = "S1F2-000158213605014"))
+        try {
+            await { onTerminal.container.sales.createPending(sale, lines) }
+            val offer =
+                await {
+                    onTerminal.container.receipts
+                        .offer(StoredTransaction.Sale("s1"))
+                        .first { it.receipt != null && !it.canShare }
+                }
+            assertThat(offer.share).isNull()
+        } finally {
+            onTerminal.close()
+        }
     }
 
     @Test

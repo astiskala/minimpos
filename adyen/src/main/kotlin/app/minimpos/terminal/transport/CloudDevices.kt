@@ -5,7 +5,6 @@ import com.adyen.model.ApiError
 import com.adyen.model.clouddevice.ConnectedDevicesResponse
 import com.adyen.model.terminal.TerminalAPIRequest
 import com.adyen.model.terminal.TerminalAPIResponse
-import com.adyen.terminal.serialization.TerminalAPIGsonBuilder
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import okhttp3.HttpUrl
@@ -276,8 +275,6 @@ class CloudTransport internal constructor(
     private val merchantUrl: HttpUrl,
     private val http: AdyenHttp,
 ) : TerminalTransport {
-    private val gson = TerminalAPIGsonBuilder.create()
-
     override suspend fun send(
         request: TerminalAPIRequest,
         timeout: Duration,
@@ -290,7 +287,7 @@ class CloudTransport internal constructor(
                 .addPathSegment(poiId)
                 .addPathSegment("sync")
                 .build()
-        return when (val reply = http.post(url, gson.toJson(request), timeout)) {
+        return when (val reply = http.post(url, nexoGson.toJson(request), timeout)) {
             is AdyenReply.Failed -> Delivery.Failed(reply.fault)
             is AdyenReply.Answered if !reply.ok -> Delivery.Failed(cloudFault(reply.code, reply.body, poiId))
             is AdyenReply.Answered -> reply(reply.body, poiId)
@@ -303,7 +300,8 @@ class CloudTransport internal constructor(
     ): Delivery {
         // An abort is acknowledged with a bare "ok". Gson and Adyen's type adapters reject unreadable JSON with several
         // exception types (a field of the wrong type fails as UnsupportedOperationException); none may escape send.
-        val response = runCatching { gson.fromJson(body, TerminalAPIResponse::class.java) }.getOrNull() ?: return Delivery.Answered(null)
+        val response =
+            runCatching { nexoGson.fromJson(body, TerminalAPIResponse::class.java) }.getOrNull() ?: return Delivery.Answered(null)
         if (response.saleToPOIResponse != null) return Delivery.Answered(response)
         val details = eventDetails(body) ?: return Delivery.Failed(Fault.UnreadableReply())
         val message = FormEncoding.decode(details)["message"] ?: details
@@ -317,7 +315,7 @@ class CloudTransport internal constructor(
 
     private fun eventDetails(body: String): String? =
         runCatching {
-            gson
+            nexoGson
                 .fromJson(body, TerminalAPIRequest::class.java)
                 .saleToPOIRequest
                 ?.eventNotification
@@ -345,8 +343,5 @@ internal fun cloudFault(
         .Answered(
             code,
             body,
-        ).fault(ApiKey.ADYEN, CLOUD_DEVICE_ROLE, AdyenError(ExternalText.of(error?.message), error?.errorCode))
+        ).fault(ApiKey.ADYEN, AdyenRole.CLOUD_DEVICE.displayName, AdyenError(ExternalText.of(error?.message), error?.errorCode))
 }
-
-/** The API credential role the Cloud device API needs, as Adyen names it. */
-private const val CLOUD_DEVICE_ROLE = "Cloud Device API role"

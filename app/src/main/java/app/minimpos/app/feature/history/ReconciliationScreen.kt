@@ -48,12 +48,10 @@ import app.minimpos.app.ui.components.LocalAppContainer
 import app.minimpos.app.ui.components.MiniScaffold
 import app.minimpos.app.ui.components.StepBody
 import app.minimpos.app.ui.components.StepHeader
-import app.minimpos.app.ui.components.currentLocale
+import app.minimpos.app.ui.components.rememberMoneyFormatters
 import app.minimpos.app.ui.navigation.Navigator
 import app.minimpos.app.ui.theme.LocalDimens
 import app.minimpos.app.ui.theme.LocalStatusColors
-import app.minimpos.core.money.CurrencySpec
-import app.minimpos.core.money.MoneyFormatter
 import java.time.LocalDate
 
 /**
@@ -227,7 +225,7 @@ private fun ReconciliationResult(report: TerminalReconciliationReport) {
 /** Mini mPOS and terminal columns, with a row each for sales and (when there are any) refunds per currency. */
 @Composable
 private fun TotalsTable(currencies: List<CurrencyReconciliation>) {
-    val locale = currentLocale()
+    val formatters = rememberMoneyFormatters()
     Column(Modifier.fillMaxWidth().padding(top = 12.dp)) {
         TableRow(
             "",
@@ -237,7 +235,7 @@ private fun TotalsTable(currencies: List<CurrencyReconciliation>) {
         )
         HorizontalDivider()
         currencies.forEach { row ->
-            val money = MoneyFormatter(CurrencySpec.of(row.currency), locale)
+            val money = formatters[row.currency]
             val sales = stringResource(R.string.reconciliation_sales)
             val refunds = stringResource(R.string.reconciliation_refunds)
             val label = { text: String -> if (currencies.size > 1) "$text (${row.currency})" else text }

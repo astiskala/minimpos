@@ -172,8 +172,6 @@ class SavedCardCharges(
     private class Book(
         private val sales: SaleRepository,
     ) : CheckoutBook<SavedCardStart, SavedCardApi> {
-        override val needsApproval: Boolean get() = true
-
         override fun amount(request: SavedCardStart): OperationAmount = request.payment.amount
 
         override suspend fun open(

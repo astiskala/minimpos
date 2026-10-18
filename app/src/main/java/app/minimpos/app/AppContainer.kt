@@ -123,9 +123,12 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.serializer
+import okhttp3.OkHttpClient
 import java.io.File
 import java.util.Locale
 import kotlin.time.Duration.Companion.minutes
+
+internal val Context.locale: Locale get() = resources.configuration.locales[0] ?: Locale.ROOT
 
 /**
  * Manual dependency injection: one instance per process, created by [MiniMposApplication]. Screens reach it through
@@ -139,6 +142,8 @@ import kotlin.time.Duration.Companion.minutes
  * @param mailTransport Sends emails; null uses JavaMail's SMTP transport.
  * @param storageDir The DataStore file for a name.
  * @property appScope Where work that outlives any screen runs (payments, refunds, connection checks).
+ * @param http The one OkHttp client every default Adyen API client and terminal connection derives from, so they share
+ *   its connection pool and dispatcher.
  * @param terminalTransport Connects to a real terminal at a host with a shared key.
  * @param ioDispatcher Runs file and Keystore work.
  * @param cloudDevices Reaches terminals in the cloud with an API key.
@@ -162,20 +167,25 @@ class AppContainer(
     mailTransport: MailTransport? = null,
     private val storageDir: (String) -> File = { context.dataStoreFile(it) },
     val appScope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Default),
-    terminalTransport: (host: String, key: TerminalKey, tls: TerminalTls) -> TerminalTransport = ::AdyenLocalTransport,
+    http: OkHttpClient = OkHttpClient(),
+    terminalTransport: (host: String, key: TerminalKey, tls: TerminalTls) -> TerminalTransport = { host, key, tls ->
+        AdyenLocalTransport(host, key, tls, http)
+    },
     private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
-    cloudDevices: (CloudCredentials) -> CloudDevices = { AdyenCloudDevices(it) },
+    cloudDevices: (CloudCredentials) -> CloudDevices = { AdyenCloudDevices(it, baseClient = http) },
     paymentsAppExchange: AppLinkExchange? = null,
     paymentsAppManagement: (apiKey: String, environment: TerminalEnvironment) -> PaymentsAppManagement = { key, environment ->
-        AdyenPaymentsAppManagement(key, environment)
+        AdyenPaymentsAppManagement(key, environment, baseClient = http)
     },
     checkout: ((CheckoutCredentials) -> CheckoutApi)? = null,
     storeDetails: (String, TerminalEnvironment) -> StoreDetailsApi = { key, environment ->
-        AdyenStoreDetails(key, environment)
+        AdyenStoreDetails(key, environment, baseClient = http)
     },
-    terminalDetails: (String) -> TerminalDetailsApi = { AdyenTerminalDetails(it) },
+    terminalDetails: (String) -> TerminalDetailsApi = { AdyenTerminalDetails(it, baseClient = http) },
     terminalEnvironment: suspend () -> TerminalEnvironment? = { TerminalTls().readEnvironment("localhost") },
-    walletMethods: (String, TerminalEnvironment) -> WalletMethodsApi = { key, environment -> AdyenWalletMethods(key, environment) },
+    walletMethods: (String, TerminalEnvironment) -> WalletMethodsApi = { key, environment ->
+        AdyenWalletMethods(key, environment, baseClient = http)
+    },
     updateCheck: suspend () -> UpdateCheck = { GitHubReleases().latest(BuildConfig.VERSION_CODE.toLong()) },
     onboardingCompleted: Boolean = false,
 ) {
@@ -303,7 +313,7 @@ class AppContainer(
                     SimulatedPaymentLinks(),
                     simulator.savedCards { SavedCardCharges.simulatedCards(history.snapshot(), it) },
                 ),
-            connect = checkout ?: { AdyenCheckout(it, application.toApplicationInfo()) },
+            connect = checkout ?: { AdyenCheckout(it, application.toApplicationInfo(), http) },
             verifyAccess = SetupAccess(terminalDetails)::verify,
             readEnvironment = gateway::refreshEnvironment,
         )
@@ -446,7 +456,7 @@ class AppContainer(
             scope = appScope,
             sales = sales,
             target = api::target,
-            locale = { localizedContext.resources.configuration.locales[0] ?: Locale.ROOT },
+            locale = { localizedContext.locale },
             onCreated = { id, start ->
                 // The cart is now the link's to pay, so the next sale starts afresh.
                 completeSale(id, start.payment)
@@ -587,11 +597,7 @@ class AppContainer(
      * language for the stored defaults, the app language for names made later).
      */
     private fun installation(localized: Context): NewInstallation =
-        NewInstallation(
-            country,
-            localized.resources.configuration.locales[0]
-                .language,
-        ) { localized.getString(it.resource()) }
+        NewInstallation(country, localized.locale.language) { localized.getString(it.resource()) }
 
     /** Records actual touch, key or text-entry activity for both PIN sessions; call on the main thread. */
     fun userActivity() {
@@ -648,7 +654,7 @@ class AppContainer(
         val localized = context.withAppLanguage(languageTag.ifEmpty { settingsState.value.languageTag })
         return ReceiptTexts(
             labels = receiptLabels(localized),
-            locale = localized.resources.configuration.locales[0] ?: Locale.ROOT,
+            locale = localized.locale,
             sample = sampleTexts(localized),
             simulationNote = localized.getString(R.string.link_simulation_note),
             demoLink = localized.getString(R.string.link_demo_label),

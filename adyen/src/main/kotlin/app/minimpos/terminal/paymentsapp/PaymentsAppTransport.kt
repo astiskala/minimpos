@@ -8,6 +8,7 @@ import app.minimpos.terminal.transport.Fault
 import app.minimpos.terminal.transport.TerminalEnvironment
 import app.minimpos.terminal.transport.TerminalKey
 import app.minimpos.terminal.transport.TerminalTransport
+import app.minimpos.terminal.transport.nexoGson
 import com.adyen.model.nexo.MessageHeader
 import com.adyen.model.nexo.SaleToPOIResponse
 import com.adyen.model.nexo.TransactionStatusRequest
@@ -16,7 +17,6 @@ import com.adyen.model.terminal.TerminalAPIResponse
 import com.adyen.model.terminal.TerminalAPISecuredRequest
 import com.adyen.model.terminal.TerminalAPISecuredResponse
 import com.adyen.terminal.security.NexoCrypto
-import com.adyen.terminal.serialization.TerminalAPIGsonBuilder
 import java.net.URLEncoder
 import kotlin.io.encoding.Base64
 import kotlin.time.Duration
@@ -143,14 +143,13 @@ internal class PaymentsAppCrypto(
     key: TerminalKey,
 ) {
     private val crypto = NexoCrypto(key.toSecurityKey())
-    private val gson = TerminalAPIGsonBuilder.create()
 
     /** [request] encrypted and encoded for [PaymentsAppLinks.nexo]; null when it cannot be encrypted. */
     fun encrypt(request: TerminalAPIRequest): String? {
         // NexoCrypto declares that it throws any Exception.
         val message =
-            runCatching { crypto.encrypt(gson.toJson(request), request.saleToPOIRequest.messageHeader) }.getOrNull() ?: return null
-        val json = gson.toJson(TerminalAPISecuredRequest().apply { saleToPOIRequest = message })
+            runCatching { crypto.encrypt(nexoGson.toJson(request), request.saleToPOIRequest.messageHeader) }.getOrNull() ?: return null
+        val json = nexoGson.toJson(TerminalAPISecuredRequest().apply { saleToPOIRequest = message })
         return Base64.UrlSafe.encode(json.toByteArray())
     }
 
@@ -159,11 +158,11 @@ internal class PaymentsAppCrypto(
         // Base64, JSON and NexoCrypto each fail with their own exceptions, and NexoCrypto declares any Exception.
         runCatching {
             val secured =
-                gson.fromJson(
+                nexoGson.fromJson(
                     String(Base64.UrlSafe.withPadding(Base64.PaddingOption.PRESENT_OPTIONAL).decode(response)),
                     TerminalAPISecuredResponse::class.java,
                 )
-            gson.fromJson(crypto.decrypt(checkNotNull(secured?.saleToPOIResponse)), TerminalAPIResponse::class.java)
+            nexoGson.fromJson(crypto.decrypt(checkNotNull(secured?.saleToPOIResponse)), TerminalAPIResponse::class.java)
         }.getOrNull()
 }
 

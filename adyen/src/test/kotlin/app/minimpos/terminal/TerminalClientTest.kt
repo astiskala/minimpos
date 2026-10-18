@@ -18,6 +18,7 @@ import app.minimpos.terminal.client.ShopperSessionFlow
 import app.minimpos.terminal.client.TerminalClient
 import app.minimpos.terminal.client.TerminalCurrencyTotals
 import app.minimpos.terminal.client.TerminalIdentity
+import app.minimpos.terminal.client.TerminalMoney
 import app.minimpos.terminal.client.TerminalTipOptions
 import app.minimpos.terminal.client.TerminalTipSuggestions
 import app.minimpos.terminal.client.TerminalTotalsOutcome
@@ -699,6 +700,7 @@ class ShopperDisplayAndTotalsTest {
     private val clock = Clock.fixed(Instant.parse("2026-09-30T01:02:03.456Z"), ZoneOffset.UTC)
     private val params = PaymentParams(1250, "AUD", "MP-1")
     private val empty = Delivery.Answered(null)
+    private val money = TerminalMoney(testCurrencyDigits)
 
     private fun client(reply: (TerminalAPIRequest) -> Delivery) =
         TerminalClient(
@@ -833,7 +835,7 @@ class ShopperDisplayAndTotalsTest {
         discardable.discard()
         assertThrows(IllegalStateException::class.java) { discardable.consume() }
         assertThat(
-            VirtualReceipt(header = "Order", lines = emptyList(), totalMinor = 100, currency = "EUR").toXml(fractionDigits = 2),
+            VirtualReceipt(header = "Order", lines = emptyList(), totalMinor = 100, currency = "EUR").toXml(money = money),
         ).contains("""<screen name="virtual-receipt.xslt">""")
         assertThat(PaymentParams(100, "EUR", "M", saleReferenceId = "SR-1").saleReferenceId).isEqualTo("SR-1")
         assertThat(RecoveryPolicy(intervalMillis = 2_000L).intervalMillis).isEqualTo(2_000L)
@@ -983,9 +985,9 @@ class ShopperDisplayAndTotalsTest {
             assertThat(receipt.subtotalMinor to receipt.taxMinor).isEqualTo(818L to 82L)
             assertThat(receipt.totalMinor to receipt.currency).isEqualTo(900L to "AUD")
             assertThat(receipt.totalLabel).isEqualTo("Total")
-            assertThat(receipt.toXml("M400-123456789", 2)).contains("virtual_receipt02.xslt")
-            assertThat(receipt.toXml("M400-123456789", 2)).contains("&amp;")
-            assertThat(receipt.toXml("S1F2-123456789", 2)).contains("virtual-receipt.xslt")
+            assertThat(receipt.toXml("M400-123456789", money)).contains("virtual_receipt02.xslt")
+            assertThat(receipt.toXml("M400-123456789", money)).contains("&amp;")
+            assertThat(receipt.toXml("S1F2-123456789", money)).contains("virtual-receipt.xslt")
 
             val displayOk =
                 client {

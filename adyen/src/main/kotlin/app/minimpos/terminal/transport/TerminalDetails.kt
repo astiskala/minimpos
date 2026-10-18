@@ -188,7 +188,11 @@ sealed interface TerminalCapabilitiesLookup {
     ) : TerminalCapabilitiesLookup
 }
 
-/** Scoped Management `terminalSettings` update for one capability section; never touches `nexo` or unrelated sections. */
+/**
+ * Scoped Management `terminalSettings` update for one capability section; never touches `nexo` or unrelated sections.
+ * Management replaces each sent object whole: a limit left out of it (null here) is removed from the terminal, which
+ * then inherits its store's, merchant account's or company's value, so the read-back may still show one.
+ */
 sealed interface TerminalCapabilitiesPatch {
     /** Updates the gratuity entry for [currency], preserving other currencies' entries.
      * @property currency ISO 4217 currency code being updated.
@@ -207,7 +211,7 @@ sealed interface TerminalCapabilitiesPatch {
     ) : TerminalCapabilitiesPatch
 
     /** Updates `moto`.
-     * @property settings New MOTO settings.
+     * @property settings New MOTO settings; a null [TerminalMotoSettings.maxAmount] removes the terminal's own limit.
      */
     data class Moto(
         val settings: TerminalMotoSettings,
@@ -215,9 +219,10 @@ sealed interface TerminalCapabilitiesPatch {
 
     /** Updates `offlineProcessing` and `storeAndForward` for [currency], preserving other currencies' store-and-forward limits.
      * @property currency ISO 4217 currency code for [maxStoreAndForwardMinor].
-     * @property chipFloorLimit Chip floor limit in major units, or null to clear.
-     * @property maxStoreAndForwardMinor Maximum store-and-forward amount in minor units of [currency], or null to remove.
-     * @property maxPayments Maximum number of stored payments, or null to leave unset.
+     * @property chipFloorLimit Chip floor limit in major units, or null to remove the terminal's own limit.
+     * @property maxStoreAndForwardMinor Maximum store-and-forward amount in minor units of [currency], or null to remove
+     *   [currency]'s entry.
+     * @property maxPayments Maximum number of stored payments, or null to remove the terminal's own limit.
      */
     data class Offline(
         val currency: String,
@@ -509,6 +514,8 @@ class AdyenTerminalDetails(
             }
         }
 
+    // A removed MOTO or offline limit reads back as whatever the terminal inherits, so only limits that were set can be
+    // compared.
     private fun matchesPatch(
         patch: TerminalCapabilitiesPatch,
         actual: RemoteTerminalCapabilities,

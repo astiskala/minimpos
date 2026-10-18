@@ -12,7 +12,9 @@ import app.minimpos.terminal.transport.Delivery
 import app.minimpos.terminal.transport.Fault
 import app.minimpos.terminal.transport.FaultException
 import app.minimpos.terminal.transport.TerminalTransport
+import app.minimpos.terminal.transport.base64Json
 import app.minimpos.terminal.transport.fault
+import app.minimpos.terminal.transport.nexoGson
 import com.adyen.model.nexo.AdminResponse
 import com.adyen.model.nexo.AmountsResp
 import com.adyen.model.nexo.CardData
@@ -52,7 +54,6 @@ import com.adyen.model.nexo.TransactionStatusRequest
 import com.adyen.model.nexo.TransactionStatusResponse
 import com.adyen.model.terminal.TerminalAPIRequest
 import com.adyen.model.terminal.TerminalAPIResponse
-import com.adyen.terminal.serialization.TerminalAPIGsonBuilder
 import kotlinx.coroutines.delay
 import java.io.IOException
 import java.math.BigDecimal
@@ -63,7 +64,6 @@ import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicInteger
-import kotlin.io.encoding.Base64
 import kotlin.random.Random
 import kotlin.time.Duration
 
@@ -154,7 +154,6 @@ class TerminalSimulator(
     /** Receives every print request that succeeds, read back the way a terminal prints it, e.g. to show it on screen. */
     private val onPrint: (PrintJob) -> Unit = {},
 ) : TerminalTransport {
-    private val gson = TerminalAPIGsonBuilder.create()
     private val completed = CompletedTransactions()
     private val aborted = ConcurrentHashMap.newKeySet<String>()
     private val inProgress = ConcurrentHashMap.newKeySet<String>()
@@ -177,14 +176,14 @@ class TerminalSimulator(
         request: TerminalAPIRequest,
         timeout: Duration,
     ): Delivery {
-        val received = gson.fromJson(gson.toJson(request), TerminalAPIRequest::class.java)
+        val received = nexoGson.fromJson(nexoGson.toJson(request), TerminalAPIRequest::class.java)
         val response =
             try {
                 handle(received)
             } catch (e: IOException) {
                 return Delivery.Failed(e.fault())
             }
-        return Delivery.Answered(response?.let { gson.fromJson(gson.toJson(it), TerminalAPIResponse::class.java) })
+        return Delivery.Answered(response?.let { nexoGson.fromJson(nexoGson.toJson(it), TerminalAPIResponse::class.java) })
     }
 
     private suspend fun handle(request: TerminalAPIRequest): TerminalAPIResponse? {
@@ -314,7 +313,7 @@ class TerminalSimulator(
         val refusal = if (payment.approved) null else simulatedRefusal(outcome)
         val additional =
             buildPaymentAdditional(payment, request.saleData?.saleToAcquirerData, refusal, random) {
-                randomString(PSP_LENGTH, DIGITS)
+                randomString(TOKEN_LENGTH, DIGITS)
             }
         return PaymentResponse().apply {
             response =
@@ -367,7 +366,7 @@ class TerminalSimulator(
             SimulatedPayment(
                 card = if (wallet) SimulatedCard(brand, brand, brand.uppercase(), "", "", "") else CARDS[random.nextInt(CARDS.size)],
                 wallet = wallet,
-                psp = randomString(PSP_LENGTH, UPPER),
+                psp = SimulatedModifications.pspReference(random),
                 tender = randomString(TENDER_PREFIX_LENGTH, ALNUM) + randomString(TENDER_DIGITS, DIGITS),
                 authCode = randomString(AUTH_CODE_LENGTH, DIGITS),
                 merchantReference =
@@ -488,7 +487,7 @@ class TerminalSimulator(
         header: MessageHeader,
         request: ReversalRequest,
     ): ReversalResponse {
-        val psp = randomString(PSP_LENGTH, UPPER)
+        val psp = SimulatedModifications.pspReference(random)
         val merchantReference =
             request.saleData
                 ?.saleTransactionID
@@ -510,7 +509,8 @@ class TerminalSimulator(
                 response =
                     Response().apply {
                         result = ResultType.SUCCESS
-                        additionalResponse = base64Json(mapOf("pspReference" to psp, "merchantReference" to merchantReference))
+                        additionalResponse =
+                            base64Json(mapOf(NexoVocabulary.PSP_REFERENCE to psp, NexoVocabulary.MERCHANT_REFERENCE to merchantReference))
                     }
                 poiData = poiData(randomString(TENDER_PREFIX_LENGTH, ALNUM) + randomString(TENDER_DIGITS, DIGITS), psp)
                 reversedAmount = amount
@@ -680,9 +680,6 @@ class TerminalSimulator(
         }
     }
 
-    /** Requests carry SaleToAcquirerData as Base64 JSON, so the terminal answers AdditionalResponse in kind. */
-    private fun base64Json(values: Map<String, String>): String = Base64.encode(gson.toJson(values).toByteArray(Charsets.UTF_8))
-
     private fun formEncode(values: Map<String, String>): String =
         values.entries.joinToString("&") { (k, v) -> "${urlEncode(k)}=${urlEncode(v)}" }
 
@@ -720,12 +717,11 @@ class TerminalSimulator(
         private const val POLL_MILLIS = 100L
         private const val PERCENT = 100
         private const val RANDOM_APPROVAL_PERCENT = 80
-        private const val PSP_LENGTH = 16
+        private const val TOKEN_LENGTH = 16
         private const val TENDER_PREFIX_LENGTH = 4
         private const val TENDER_DIGITS = 15
         private const val AUTH_CODE_LENGTH = 6
         private const val DIGITS = "0123456789"
-        private const val UPPER = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
         private const val ALNUM = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"
         private val CARDS =
             listOf(

@@ -43,7 +43,6 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import app.minimpos.app.R
 import app.minimpos.app.data.db.TaxRateEntity
-import app.minimpos.app.data.settings.PaymentSettings
 import app.minimpos.app.ui.components.ActionMessage
 import app.minimpos.app.ui.components.SecondaryButton
 import app.minimpos.app.ui.components.SectionHeader
@@ -63,7 +62,7 @@ internal fun ColumnScope.TaxSection(
     var editing by remember { mutableStateOf<TaxRateEntity?>(null) }
     val defaultId = state.defaultTaxRate?.id
 
-    fun update(transform: (PaymentSettings) -> PaymentSettings) = events.onUpdate { it.copy(payment = transform(it.payment)) }
+    val update = events::onPaymentUpdate
     val chargeTax = state.settings.payment.chargeTax
     SettingSwitch(
         title = stringResource(R.string.settings_charge_tax),

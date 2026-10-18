@@ -12,6 +12,7 @@ import com.adyen.terminal.security.exception.NexoCryptoException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runInterruptible
+import okhttp3.OkHttpClient
 import java.io.IOException
 import java.security.GeneralSecurityException
 import java.util.concurrent.ConcurrentHashMap
@@ -70,12 +71,14 @@ class AdyenLocalTransport(
     private val key: TerminalKey,
     /** Decides which terminals are trusted; used only by the default HTTP client. */
     tls: TerminalTls,
+    /** The client the default HTTP client derives from, so an app can share one connection pool and dispatcher. */
+    baseClient: OkHttpClient = OkHttpClient(),
     /**
      * The HTTP client installed on the library's `Client`, replacing its Apache HttpClient, which crashes on Android.
      * Not named `httpClient`: inside `Client(...).apply { }` that name would resolve to `Client.getHttpClient()`, which
      * creates the Apache client.
      */
-    private val http: ClientInterface = TerminalHttpClient(tls, NexoCrypto(key.toSecurityKey())),
+    private val http: ClientInterface = TerminalHttpClient(tls, NexoCrypto(key.toSecurityKey()), baseClient),
     /** Where the blocking library calls run. */
     private val dispatcher: CoroutineDispatcher = Dispatchers.IO,
 ) : TerminalTransport {

@@ -70,8 +70,10 @@ class ReceiptBusinessDetailsTest {
         assertThat(await { container.settings.current() }).isEqualTo(before)
         stores.storeAnswer = StoreLookup.Missing
         assertThat(read()).isEqualTo(ReceiptBusinesses.Failed(Failure.NotSetUp(SetupProblem.STORE_ACCESS)))
-        stores.storeAnswer = StoreLookup.Failed(Fault.Permission(ApiKey.ADYEN, "Management API—Stores read"))
-        assertThat(read()).isEqualTo(ReceiptBusinesses.Failed(Failure.Remote(Fault.Permission(ApiKey.ADYEN, "Management API—Stores read"))))
+        stores.storeAnswer = StoreLookup.Failed(Fault.Permission(ApiKey.ADYEN, "Management API - Stores read"))
+        assertThat(
+            read(),
+        ).isEqualTo(ReceiptBusinesses.Failed(Failure.Remote(Fault.Permission(ApiKey.ADYEN, "Management API - Stores read"))))
     }
 
     @Test
@@ -80,10 +82,10 @@ class ReceiptBusinessDetailsTest {
         env.updateSettings { it.copy(terminal = it.terminal.copy(merchantAccount = "Merchant")) }
         assertThat(read()).isEqualTo(ReceiptBusinesses.Found(ReceiptBusiness("Legal Shop", "", ""), fromStore = false))
         assertThat(calls).containsExactly("merchant:Merchant")
-        stores.merchantAnswer = MerchantLookup.Failed(Fault.Permission(ApiKey.ADYEN, "Management API—Account read"))
+        stores.merchantAnswer = MerchantLookup.Failed(Fault.Permission(ApiKey.ADYEN, "Management API - Account read"))
         assertThat(
             read(),
-        ).isEqualTo(ReceiptBusinesses.Failed(Failure.Remote(Fault.Permission(ApiKey.ADYEN, "Management API—Account read"))))
+        ).isEqualTo(ReceiptBusinesses.Failed(Failure.Remote(Fault.Permission(ApiKey.ADYEN, "Management API - Account read"))))
     }
 
     @Test

@@ -77,8 +77,6 @@ class CheckoutRefunds(
         private val refunds: RefundRepository,
         private val sales: SaleRepository,
     ) : CheckoutBook<RefundStart, PaymentModifications> {
-        override val needsApproval: Boolean get() = true
-
         override fun amount(request: RefundStart): OperationAmount = OperationAmount(request.amountMinor, request.currency)
 
         override suspend fun open(

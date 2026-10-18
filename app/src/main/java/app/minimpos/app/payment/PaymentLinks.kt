@@ -246,8 +246,6 @@ class PaymentLinks(
         private val sales: SaleRepository,
         private val locale: () -> Locale,
     ) : CheckoutBook<PaymentLinkStart, PaymentLinkApi> {
-        override val needsApproval: Boolean get() = false
-
         override fun amount(request: PaymentLinkStart): OperationAmount = request.payment.amount
 
         override suspend fun open(

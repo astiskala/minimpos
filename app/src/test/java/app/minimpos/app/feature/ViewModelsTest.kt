@@ -37,7 +37,6 @@ import app.minimpos.core.shopper.ShopperReferences
 import app.minimpos.core.tax.TaxMode
 import app.minimpos.terminal.client.RetryAdvice
 import app.minimpos.terminal.simulator.SimulatedOutcome
-import app.minimpos.terminal.simulator.TerminalSimulator
 import com.google.common.truth.Truth.assertThat
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
@@ -375,10 +374,10 @@ class ViewModelsTest {
         val vm = SaleResultViewModel(saleId, container.storedPayments, container.receipts, container.payments, container.operations)
         val busy = await { vm.state.first { it.record != null } }
         assertThat(busy.advice).isEqualTo(RetryAdvice.TERMINAL_BUSY)
-        assertThat(busy.busyServiceId).isEqualTo(TerminalSimulator.BUSY_SERVICE_ID)
+        assertThat(busy.canAbortBusy).isTrue()
         vm.abortBusyTransaction()
         // The stored refusal stops naming the busy transaction once the abort was sent, which the record shows.
-        val aborted = await { vm.state.first { it.abort.done && it.busyServiceId == null } }
+        val aborted = await { vm.state.first { it.abort.done && !it.canAbortBusy } }
         assertThat(aborted.abort.outcome).isEqualTo(ActionOutcome.AbortSent)
         vm.abortBusyTransaction()
         assertThat(await { vm.state.first { it.abort.isError } }.abort.isError).isTrue()
@@ -450,12 +449,15 @@ class ViewModelsTest {
         vm.setQuantity(lineId, 1)
         assertThat(vm.refund()).isTrue()
         val refundId = await { (container.refunds.state.first { it is TransactionState.Finished } as TransactionState.Finished).id }
-        container.refunds.acknowledge()
+        // The result right after the refund claims its automatic receipt.
+        val justMade = RefundResultViewModel(refundId, container.refundRecords, container.receipts, container.operations)
+        await { justMade.state.first { it.transaction.print.done } }
+        justMade.finish()
 
         // Opened again from history, nothing is delivered automatically or acknowledged.
         val fromHistory =
             RefundResultViewModel(refundId, container.refundRecords, container.receipts, container.operations, justMade = false)
-        assertThat(await { fromHistory.state.first { it.refund != null } }.transaction.print.running).isFalse()
+        assertThat(await { fromHistory.state.first { it.refund != null } }.transaction.print).isEqualTo(ActionState())
         // Only an unknown outcome is checked again; a settled one has nothing left to confirm.
         fromHistory.transaction.recheck()
         assertThat(

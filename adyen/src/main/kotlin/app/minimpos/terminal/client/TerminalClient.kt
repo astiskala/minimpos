@@ -6,7 +6,7 @@ import app.minimpos.terminal.transport.Delivery
 import app.minimpos.terminal.transport.ExternalText
 import app.minimpos.terminal.transport.Fault
 import app.minimpos.terminal.transport.TerminalTransport
-import com.adyen.model.checkout.JSON
+import app.minimpos.terminal.transport.base64Json
 import com.adyen.model.nexo.AbortRequest
 import com.adyen.model.nexo.AdminRequest
 import com.adyen.model.nexo.AmountsReq
@@ -63,7 +63,6 @@ import java.time.format.DateTimeFormatter
 import javax.xml.datatype.DatatypeConstants
 import javax.xml.datatype.DatatypeFactory
 import javax.xml.datatype.XMLGregorianCalendar
-import kotlin.io.encoding.Base64
 import kotlin.random.Random
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.seconds
@@ -214,10 +213,9 @@ class TerminalClient(
                 put("Session", mapOf("Id" to sessionId, "Type" to if (once) "Once" else "End"))
                 if (once) put("Operation", listOf(mapOf("Type" to "ScanBarcode", "TimeoutMs" to 30_000)))
             }
-        val encoded = Base64.encode(JSON.getMapper().writeValueAsString(service).toByteArray(Charsets.UTF_8))
         return message(MessageClassType.SERVICE, MessageCategoryType.ADMIN, newServiceId())
             .apply {
-                adminRequest = AdminRequest().apply { serviceIdentification = encoded }
+                adminRequest = AdminRequest().apply { serviceIdentification = base64Json(service) }
             }.let { TerminalAPIRequest().apply { saleToPOIRequest = it } }
     }
 
@@ -469,7 +467,7 @@ class TerminalClient(
         closedPeriod: Boolean,
     ): TerminalTotalsOutcome {
         if (response?.result != ResultType.SUCCESS) {
-            val message = AdditionalResponseParser.parse(response?.additionalResponse)["message"]
+            val message = AdditionalResponseParser.parse(response?.additionalResponse)[NexoVocabulary.MESSAGE]
             return TerminalTotalsOutcome.Failed(Fault.TerminalRejected(ExternalText.of(message)))
         }
         val byCurrency = linkedMapOf<String, TerminalCurrencyTotals>()
@@ -703,7 +701,7 @@ class TerminalClient(
                 put(NexoVocabulary.TIP_SUGGESTIONS, suggestions)
             }
         val operation = mapOf(NexoVocabulary.OPERATION to listOf(mapOf("Type" to "Payment", NexoVocabulary.TIP_OPTIONS to tipOptions)))
-        return Base64.encode(JSON.getMapper().writeValueAsString(operation).toByteArray(Charsets.UTF_8))
+        return base64Json(operation)
     }
 
     private fun TransactionKind.category(): MessageCategoryType =

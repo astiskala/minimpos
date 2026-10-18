@@ -152,6 +152,35 @@ fun CenteredScrollColumn(
     }
 }
 
+/**
+ * A screen's scrolling body inside [MiniScaffold]'s [padding]: centred and no wider than the content width on large
+ * windows, its children spaced apart and aligned by [horizontalAlignment].
+ */
+@Composable
+fun ScreenColumn(
+    padding: PaddingValues,
+    modifier: Modifier = Modifier,
+    horizontalAlignment: Alignment.Horizontal = Alignment.Start,
+    content: @Composable ColumnScope.() -> Unit,
+) {
+    val dimens = LocalDimens.current
+    Column(
+        modifier
+            .fillMaxSize()
+            .padding(padding)
+            .verticalScroll(rememberScrollState())
+            .padding(dimens.screenPadding),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Column(
+            Modifier.widthIn(max = dimens.contentMaxWidth),
+            horizontalAlignment = horizontalAlignment,
+            verticalArrangement = Arrangement.spacedBy(dimens.spacing),
+            content = content,
+        )
+    }
+}
+
 /** The upper-case title of a group of rows in a list, a heading for screen readers. */
 @Composable
 fun SectionHeader(

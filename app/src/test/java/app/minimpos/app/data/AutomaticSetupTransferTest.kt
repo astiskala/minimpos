@@ -530,7 +530,7 @@ class AutomaticSetupTransferTest {
 
     @Test
     fun `manual blank receipt fields do not trigger Adyen lookup or erase saved text`() {
-        storeDetails.storeAnswer = StoreLookup.Failed(Fault.Permission(ApiKey.ADYEN, "Management API—Stores read"))
+        storeDetails.storeAnswer = StoreLookup.Failed(Fault.Permission(ApiKey.ADYEN, "Management API - Stores read"))
         env.updateSettings { it.copy(receipt = it.receipt.copy(businessName = "Saved", addressLines = "Saved address")) }
         val result =
             import(
@@ -549,7 +549,7 @@ class AutomaticSetupTransferTest {
     @Test
     fun `receipt lookup failures do not block verified setup or overwrite existing business text`() {
         env.updateSettings { it.copy(receipt = it.receipt.copy(businessName = "Saved shop", phone = "Saved phone")) }
-        storeDetails.storeAnswer = StoreLookup.Failed(Fault.Permission(ApiKey.ADYEN, "Management API—Stores read"))
+        storeDetails.storeAnswer = StoreLookup.Failed(Fault.Permission(ApiKey.ADYEN, "Management API - Stores read"))
         val result = (import() as SetupImportOutcome.Committed).outcome as ImportOutcome.Imported
         assertThat(result.result.businessWarning).isTrue()
         assertThat(await { env.container.settings.current() }.receipt.businessName).isEqualTo("Saved shop")

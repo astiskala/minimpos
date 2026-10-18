@@ -58,9 +58,6 @@ data class CheckoutRecord(
  * @param C The Checkout adapter the operation is sent with.
  */
 interface CheckoutBook<R, C> {
-    /** Whether this kind of operation moves money only with Manager approval, see [ManagerApproval]. */
-    val needsApproval: Boolean
-
     /** What [request] charges or refunds, which its waiting screen shows. */
     fun amount(request: R): OperationAmount
 
@@ -129,7 +126,7 @@ interface CheckoutBook<R, C> {
  *   this process, including on a [recheck].
  * @param clock Stamps the records and decides whether an unknown one may be sent again.
  * @param newId Generates record IDs.
- * @param approval Manager approval, for the kinds the [book] says need it.
+ * @param approval Manager approval of this kind; [ManagerApproval.NOT_REQUIRED] for a kind sent without it.
  * @param mutex Serializes sends and rechecks; shared when a caller also serializes follow-up operations.
  * @param recheckWindow Maximum age for resending an unknown operation; null when idempotency retries do not expire locally.
  */
@@ -190,7 +187,7 @@ class CheckoutOperations<R, C>(
         record: CheckoutRecord,
         grant: ManagerApproval.Grant?,
     ): Failure? {
-        val approved = !book.needsApproval || if (grant != null) approval.allows(grant) else approval.allowsNow()
+        val approved = if (grant != null) approval.allows(grant) else approval.allowsNow()
         val problem = if (approved) book.missing(id) else SetupProblem.MANAGER_APPROVAL
         if (problem != null) return notSent(id, record.pending, problem)
         val client =

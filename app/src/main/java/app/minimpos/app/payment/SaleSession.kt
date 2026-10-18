@@ -149,22 +149,18 @@ class SaleSession(
         now: Instant,
         zone: ZoneId,
         walletScan: WalletScanStart? = null,
-    ): PaymentStart? =
-        synchronized(this) {
-            val current = checkout.takeIf { it.kind == kind && it.sessionRevision == revision } ?: return null
-            if (walletScan == null) {
-                current.paymentStart(now, zone)
-            } else {
-                current
-                    .takeIf { it.matchesWalletCheckout(walletScan.actual, walletScan.wallet) }
-                    ?.walletStart(now, zone)
-                    ?.withScanned(
-                        ScannedPayment(walletScan.wallet.brand, walletScan.code),
-                        checkNotNull(walletScan.origin.context),
-                        checkNotNull(walletScan.origin.identity),
-                    )
-            }
-        }
+    ): PaymentStart? {
+        val current = current(checkout) ?: return null
+        if (walletScan == null) return current.paymentStart(now, zone)
+        return current
+            .takeIf { it.matchesWalletCheckout(walletScan.actual, walletScan.wallet) }
+            ?.walletStart(now, zone)
+            ?.withScanned(
+                ScannedPayment(walletScan.wallet.brand, walletScan.code),
+                checkNotNull(walletScan.origin.context),
+                checkNotNull(walletScan.origin.identity),
+            )
+    }
 
     /** Builds a link from the displayed [checkout] at [now] in [zone]; null when unavailable or an edit made it stale. */
     fun linkStart(
@@ -264,7 +260,8 @@ fun SaleSession.savedCardStart(
     now: Instant,
     zone: ZoneId,
     fromCheckout: Boolean = false,
-): SavedCardStart? =
-    paymentStart(checkout, now, zone)?.forSavedCard()?.let {
-        checkout.savedCardStart(card, now, zone, fromCheckout = fromCheckout)
-    }
+): SavedCardStart? {
+    // The session's payment start is null once an edit made checkout stale; the charge is built from checkout itself.
+    paymentStart(checkout, now, zone) ?: return null
+    return checkout.savedCardStart(card, now, zone, fromCheckout = fromCheckout)
+}

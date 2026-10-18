@@ -65,22 +65,16 @@ class CiScriptTest {
         gateExit: Int = 0,
         releaseExit: Int = 0,
         ci: String = "true",
-    ): Int {
-        val process =
-            ProcessBuilder("bash", root.resolve("scripts/ci").toString())
-                .apply {
-                    directory(temporary.root)
-                    redirectErrorStream(true)
-                    redirectOutput(root.resolve("output").toFile())
-                    environment().putAll(
-                        mapOf(
-                            "CI" to ci,
-                            "CALLS" to root.resolve("calls").toString(),
-                            "GATE_EXIT" to gateExit.toString(),
-                            "RELEASE_EXIT" to releaseExit.toString(),
-                        ),
-                    )
-                }.start()
-        return process.waitFor()
-    }
+    ): Int =
+        Cli
+            .runCommand(
+                listOf("bash", root.resolve("scripts/ci").toString()),
+                temporary.root.toPath(),
+                mapOf(
+                    "CI" to ci,
+                    "CALLS" to root.resolve("calls").toString(),
+                    "GATE_EXIT" to gateExit.toString(),
+                    "RELEASE_EXIT" to releaseExit.toString(),
+                ),
+            ).code
 }

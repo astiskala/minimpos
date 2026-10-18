@@ -199,13 +199,14 @@ interface TransactionBook<R> {
     suspend fun unsettledServiceId(id: String): String?
 
     /**
-     * The ServiceID of the transaction a stored `Busy` refusal named for record [id], which an [abort] request asks the
-     * terminal to stop and records as sent; null without one (and for refunds, whose screens offer no abort).
+     * Sends [abort] for the ServiceID of the transaction a stored `Busy` refusal named for record [id], and once it was
+     * sent records that the refusal names none, so it is not offered again. Returns whether it was sent: false without
+     * one (and for refunds, whose screens offer no abort).
      */
-    suspend fun busyServiceId(
+    suspend fun abortBusy(
         id: String,
-        abort: Boolean = false,
-    ): String? = null
+        abort: suspend (serviceId: String) -> Boolean,
+    ): Boolean = false
 
     /** Records the actual connection's non-secret context for [id]. */
     suspend fun recordContext(
@@ -298,12 +299,7 @@ class TransactionLifecycle<R>(
      * stored refusal names and the record keeps until the abort was sent. Returns whether the abort was sent; it can
      * be sent once per refused transaction.
      */
-    suspend fun abortBusyTransaction(id: String): Boolean {
-        val serviceId = book.busyServiceId(id) ?: return false
-        if (!gateway.abort(serviceId)) return false
-        book.busyServiceId(id, abort = true)
-        return true
-    }
+    suspend fun abortBusyTransaction(id: String): Boolean = book.abortBusy(id) { gateway.abort(it) }
 
     /** Returns to [TransactionState.Idle] once the result has been seen, so the next transaction can start. */
     fun acknowledge() = runner.acknowledge()

@@ -8,6 +8,7 @@ import app.minimpos.app.data.db.SaleKind
 import app.minimpos.app.data.db.TaxRateEntity
 import app.minimpos.app.data.repo.CatalogRepository
 import app.minimpos.app.data.settings.AppSettings
+import app.minimpos.app.data.settings.PaymentSettings
 import app.minimpos.app.feature.launchWrite
 import app.minimpos.core.money.CurrencySpec
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -32,7 +33,7 @@ data class ProductsUiState(
     val products: List<ProductEntity> = emptyList(),
     val categories: List<CategoryEntity> = emptyList(),
     val taxRates: List<TaxRateEntity> = emptyList(),
-    val currency: CurrencySpec = CurrencySpec("EUR", 2),
+    val currency: CurrencySpec = PaymentSettings.FALLBACK_CURRENCY_SPEC,
     val chargeTax: Boolean = true,
 ) {
     // Looked up once per state rather than by every row on every recomposition.
@@ -114,7 +115,7 @@ data class ProductEditUiState(
     val form: ProductForm = ProductForm(),
     val taxRates: List<TaxRateEntity> = emptyList(),
     val categories: List<CategoryEntity> = emptyList(),
-    val currency: CurrencySpec = CurrencySpec("EUR", 2),
+    val currency: CurrencySpec = PaymentSettings.FALLBACK_CURRENCY_SPEC,
     val skuInUse: Boolean = false,
     val chargeTax: Boolean = true,
     val saving: Boolean = false,

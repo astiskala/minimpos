@@ -99,7 +99,7 @@ class StoreDetailsTest {
         }
         reply("{}", 403)
         assertThat((runBlocking { api.merchant("Merchant/One") } as MerchantLookup.Failed).fault)
-            .isEqualTo(Fault.Permission(ApiKey.ADYEN, "Management API—Account read"))
+            .isEqualTo(Fault.Permission(ApiKey.ADYEN, "Management API - Account read"))
     }
 
     @Test
@@ -136,7 +136,7 @@ class StoreDetailsTest {
         reply("{}", 401)
         assertThat(failure()).isEqualTo(Fault.Credential(ApiKey.ADYEN))
         reply("{}", 403)
-        assertThat(failure()).isEqualTo(Fault.Permission(ApiKey.ADYEN, "Management API—Stores read"))
+        assertThat(failure()).isEqualTo(Fault.Permission(ApiKey.ADYEN, "Management API - Stores read"))
         reply("""{"detail":"Store access denied","errorCode":"00_422"}""", 422)
         assertThat(failure()).isEqualTo(Fault.AdyenRejected(422, "00_422", ExternalText("Store access denied")))
         reply("""{"title":"Unavailable"}""", 503)

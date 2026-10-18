@@ -20,8 +20,6 @@ import app.minimpos.terminal.client.TerminalTotalsOutcome
 import app.minimpos.terminal.client.TransactionKind
 import app.minimpos.terminal.client.TransactionOutcome
 import app.minimpos.terminal.paymentsapp.PaymentsAppLinks
-import app.minimpos.terminal.transport.AdyenCloudDevices
-import app.minimpos.terminal.transport.AdyenLocalTransport
 import app.minimpos.terminal.transport.CloudCredentials
 import app.minimpos.terminal.transport.CloudDevices
 import app.minimpos.terminal.transport.CloudRegion
@@ -229,9 +227,9 @@ class TerminalGateway(
     /** Reaches the Adyen Payments app of an environment with a shared key; the container plugs in its App Links. */
     private val paymentsApp: (key: TerminalKey, environment: TerminalEnvironment) -> TerminalTransport,
     /** Connects to a real terminal; tests replace it. */
-    private val connect: (host: String, key: TerminalKey, tls: TerminalTls) -> TerminalTransport = ::AdyenLocalTransport,
+    private val connect: (host: String, key: TerminalKey, tls: TerminalTls) -> TerminalTransport,
     /** Reaches terminals in the cloud with an API key; tests replace it. */
-    private val cloud: (CloudCredentials) -> CloudDevices = { AdyenCloudDevices(it) },
+    private val cloud: (CloudCredentials) -> CloudDevices,
     /** Reads this device's terminal certificate before credentials are entered; tests replace the TLS connection. */
     private val localEnvironment: suspend () -> TerminalEnvironment? = { TerminalTls().readEnvironment(TerminalSetup.LOCALHOST) },
 ) {

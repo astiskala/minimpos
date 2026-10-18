@@ -332,7 +332,7 @@ class SaleEventTest {
                 Fault.NoRecord,
                 Fault.RequestNotEncrypted,
                 Fault.Credential(ApiKey.PAYMENTS_APP),
-                Fault.Permission(ApiKey.ADYEN, "Management API—Stores read"),
+                Fault.Permission(ApiKey.ADYEN, "Management API - Stores read"),
                 Fault.Permission(ApiKey.ADYEN),
                 Fault.NotFound("P400Plus-1"),
                 Fault.NotFound(null),

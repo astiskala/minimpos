@@ -4,8 +4,6 @@ import app.minimpos.app.data.db.Failure
 import app.minimpos.app.data.db.SetupProblem
 import app.minimpos.app.data.settings.ReceiptSettings
 import app.minimpos.app.data.settings.TerminalSettings
-import app.minimpos.terminal.transport.AdyenStoreDetails
-import app.minimpos.terminal.transport.AdyenTerminalDetails
 import app.minimpos.terminal.transport.MerchantLookup
 import app.minimpos.terminal.transport.StoreDetailsApi
 import app.minimpos.terminal.transport.StoreLookup
@@ -67,8 +65,8 @@ sealed interface ReceiptBusinesses {
  */
 class ReceiptBusinessDetails(
     private val setups: TerminalSetupSource,
-    private val connect: (String, TerminalEnvironment) -> StoreDetailsApi = { key, environment -> AdyenStoreDetails(key, environment) },
-    private val terminals: (String) -> TerminalListingApi = { AdyenTerminalDetails(it) },
+    private val connect: (String, TerminalEnvironment) -> StoreDetailsApi,
+    private val terminals: (String) -> TerminalListingApi,
 ) {
     /** Loads the assigned store, or the merchant legal name without unrelated stores; never writes settings or Adyen. */
     suspend fun lookup(): ReceiptBusinesses = lookup(setups.unlocked())

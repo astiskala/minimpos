@@ -4,7 +4,6 @@ import app.minimpos.app.data.db.Failure
 import app.minimpos.app.data.db.SetupProblem
 import app.minimpos.app.data.security.SecretStoreException
 import app.minimpos.app.data.settings.TerminalMode
-import app.minimpos.terminal.transport.AdyenTerminalDetails
 import app.minimpos.terminal.transport.CredentialLookup
 import app.minimpos.terminal.transport.DiscoveredKey
 import app.minimpos.terminal.transport.SharedKeyApi
@@ -104,7 +103,7 @@ internal sealed interface SharedKeyConnection {
 class SetupDiscovery(
     private val setups: TerminalSetupSource,
     private val savePassphrase: suspend (String) -> Unit,
-    private val connect: (String) -> SharedKeyApi = { AdyenTerminalDetails(it) },
+    private val connect: (String) -> SharedKeyApi,
     private val readEnvironment: suspend () -> Unit = {},
     private val sharedKeys: SharedKeySetup,
     private val verifyConnection: suspend () -> TerminalConnection,
@@ -293,7 +292,7 @@ class SetupDiscovery(
 }
 
 internal class SetupAccess(
-    private val connect: (String) -> TerminalListingApi = { AdyenTerminalDetails(it) },
+    private val connect: (String) -> TerminalListingApi,
 ) {
     /** Why the credential or terminal assignment of [unlocked] cannot be used; null when it can. */
     suspend fun verify(unlocked: UnlockedSetup): Failure? {

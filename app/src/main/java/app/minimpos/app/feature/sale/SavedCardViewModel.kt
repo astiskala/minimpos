@@ -2,7 +2,6 @@ package app.minimpos.app.feature.sale
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import app.minimpos.app.data.db.Failure
 import app.minimpos.app.data.settings.AppSettings
 import app.minimpos.app.data.settings.ShopperReferenceSource
 import app.minimpos.app.payment.Checkout
@@ -26,34 +25,20 @@ import java.time.ZoneId
  *
  * @property checkout The saved-card session's checkout: its form holds the shopper reference typed, its cart the sale.
  * @property source What the shopper reference is made from, which decides the field asked for.
- * @property blocked Why cards cannot be found or charged now (no shopper reference configured, the Checkout API not set
- *   up, or a verified import still saving); null when they can.
- * @property finding Whether a lookup is running.
- * @property cards The cards found for the shopper reference last looked up; null before a lookup.
- * @property failure Why the last lookup listed nothing; null when it worked.
  * @property recurringModel Adyen's `recurringProcessingModel` charges use; cards not saved for it cannot be chosen.
  * @property charge The charge running or finished; [TransactionState.Idle] before one starts.
- * @property lookup Current non-secret lookup reading, including selected-card eligibility.
+ * @property lookup The current lookup: why it is blocked, whether it is running, the cards found or why it failed, and
+ *   which of them can be charged.
  */
 data class SavedCardUiState(
     val checkout: Checkout = Checkout(),
     val source: ShopperReferenceSource = ShopperReferenceSource.CUSTOMER_REFERENCE,
-    val blocked: Failure? = null,
-    val finding: Boolean = false,
-    val cards: List<StoredCard>? = null,
-    val failure: Failure? = null,
     val recurringModel: String = "",
     val charge: TransactionState = TransactionState.Idle,
     val lookup: SavedCardLookupState = SavedCardLookupState(),
 ) {
     /** The shopper reference the typed field makes, as checkout makes it; null while it is not valid. */
     val shopperReference: String? get() = checkout.shopperReference
-
-    /** The cards that may be charged with [recurringModel]; the others are listed but cannot be chosen. */
-    fun chargeable(card: StoredCard): Boolean = lookup.chargeable(card)
-
-    /** Why a selected [card] cannot be charged now; null while its original lookup remains usable. */
-    fun selectionProblem(card: StoredCard): Failure? = lookup.selectionProblem(card)
 }
 
 /**
@@ -87,10 +72,6 @@ class SavedCardViewModel(
             SavedCardUiState(
                 checkout = current,
                 source = payment.shopperReferenceSource,
-                blocked = found.blocked,
-                finding = found.finding,
-                cards = found.cards,
-                failure = found.failure,
                 recurringModel = payment.recurringModel().value,
                 charge = charge,
                 lookup = found,
@@ -112,7 +93,7 @@ class SavedCardViewModel(
      */
     fun charge(card: StoredCard): Boolean {
         val current = state.value
-        if (current.blocked != null) return false
+        if (current.lookup.blocked != null) return false
         val start = session.savedCardStart(current.checkout, card, clock.instant(), zone()) ?: return false
         return lookup.start(start) != null
     }

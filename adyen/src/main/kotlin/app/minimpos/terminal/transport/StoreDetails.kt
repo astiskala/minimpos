@@ -65,13 +65,13 @@ sealed interface MerchantLookup {
 
 /** Read-only Management API store and merchant access; safe to call from any thread. */
 interface StoreDetailsApi {
-    /** Reads store [storeId] of [merchantAccount] with Management API—Stores read, without listing other stores. */
+    /** Reads store [storeId] of [merchantAccount] with [AdyenRole.STORES_READ], without listing other stores. */
     suspend fun store(
         merchantAccount: String,
         storeId: String,
     ): StoreLookup
 
-    /** Reads the legal name of [merchantAccount] with Management API—Account read; it has no receipt address or phone. */
+    /** Reads the legal name of [merchantAccount] with [AdyenRole.ACCOUNT_READ]; it has no receipt address or phone. */
     suspend fun merchant(merchantAccount: String): MerchantLookup
 }
 
@@ -117,7 +117,7 @@ class AdyenStoreDetails(
                     }
 
                     !reply.ok -> {
-                        StoreLookup.Failed(managementFault(reply, role = STORES_READ))
+                        StoreLookup.Failed(managementFault(reply, role = AdyenRole.STORES_READ.displayName))
                     }
 
                     else -> {
@@ -146,7 +146,7 @@ class AdyenStoreDetails(
 
             is AdyenReply.Answered -> {
                 if (!reply.ok) {
-                    MerchantLookup.Failed(managementFault(reply, role = ACCOUNT_READ))
+                    MerchantLookup.Failed(managementFault(reply, role = AdyenRole.ACCOUNT_READ.displayName))
                 } else {
                     runCatching {
                         val merchant = requireNotNull(decodeAdyenModel(reply.body, Merchant::class.java))
@@ -176,11 +176,9 @@ class AdyenStoreDetails(
         )
     }
 
-    /** Endpoint, read timeout and the API key roles each read needs. */
+    /** Endpoint and read timeout. */
     companion object {
         private val TIMEOUT = 30.seconds
-        private const val STORES_READ = "Management API—Stores read"
-        private const val ACCOUNT_READ = "Management API—Account read"
 
         /** Management v3 endpoint for [environment], with no trailing slash. */
         fun endpoint(environment: TerminalEnvironment): String = managementEndpoint(environment)

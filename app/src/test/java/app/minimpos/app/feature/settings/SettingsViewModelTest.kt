@@ -109,10 +109,12 @@ class SettingsViewModelTest {
                     return null
                 }
             }
+        val checkout = CheckoutApi.of(modifications, FakeLinkApi(), SimulatedTerminal(VirtualPrinter()).savedCards { emptyList() })
         val api =
             AdyenApi(
                 TerminalSetupSource(container.settings, container.secrets, container.device),
-                CheckoutApi.of(modifications, FakeLinkApi(), SimulatedTerminal(VirtualPrinter()).savedCards { emptyList() }),
+                checkout,
+                connect = { checkout },
                 verifyAccess = { null },
             )
         val vm = settingsViewModel(api = api)
@@ -180,7 +182,7 @@ class SettingsViewModelTest {
     fun `receipt lookup failures leave receipt settings unchanged`() {
         val failed =
             TestEnvironment(
-                stores = FakeStoreDetails(storeAnswer = StoreLookup.Failed(Fault.Permission(ApiKey.ADYEN, "Management API—Stores read"))),
+                stores = FakeStoreDetails(storeAnswer = StoreLookup.Failed(Fault.Permission(ApiKey.ADYEN, "Management API - Stores read"))),
             )
         try {
             failed.useLinks()
@@ -189,7 +191,7 @@ class SettingsViewModelTest {
             val before = await { failed.container.settings.current() }
             vm.businessImport.find()
             assertThat(await { vm.businessImport.state.first { it.lookup.isError } }.lookup.outcome)
-                .isEqualTo(ActionOutcome.Failed(Failure.Remote(Fault.Permission(ApiKey.ADYEN, "Management API—Stores read"))))
+                .isEqualTo(ActionOutcome.Failed(Failure.Remote(Fault.Permission(ApiKey.ADYEN, "Management API - Stores read"))))
             assertThat(await { failed.container.settings.current() }).isEqualTo(before)
             assertThat(vm.businessImport.state.value.proposal).isNull()
         } finally {

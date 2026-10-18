@@ -20,13 +20,20 @@ import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
-/** Palette modelled on the Adyen terminal payment UI: white surfaces, Adyen green actions, dark navy text. */
+/**
+ * Palette modelled on the Adyen terminal payment UI: white surfaces, Adyen green actions, dark navy text. Every text
+ * colour reaches WCAG AA (4.5:1) on the backgrounds it is used on, and outlines and icons 3:1 (`ThemeContrastTest`).
+ */
 object AdyenColors {
-    /** Adyen green: primary actions and success. */
-    val Green = Color(0xFF0ABF53)
+    /**
+     * Adyen green for primary actions and success, deepened from the brand's #0ABF53 (2.4:1 with white text) so white
+     * text and icons on it, and it as text on white, stay legible.
+     */
+    val Green = Color(0xFF00843F)
 
     /** Light green background of primary containers. */
     val GreenLight = Color(0xFFE6F8EE)
@@ -44,7 +51,7 @@ object AdyenColors {
     val Border = Color(0xFFE3E8EE)
 
     /** Field outlines. */
-    val Outline = Color(0xFF8F9AAA)
+    val Outline = Color(0xFF848FA0)
 
     /** Errors and declines. */
     val Red = Color(0xFFD10244)
@@ -52,8 +59,8 @@ object AdyenColors {
     /** Light red background of error containers. */
     val RedLight = Color(0xFFFBE6ED)
 
-    /** Warnings, such as unknown outcomes and the TEST banner. */
-    val Orange = Color(0xFFE56A00)
+    /** Warnings, such as unknown outcomes and the simulator banner; dark enough for small text on [OrangeLight]. */
+    val Orange = Color(0xFFB35300)
 
     /** Light orange background of warning containers. */
     val OrangeLight = Color(0xFFFFF1E5)
@@ -70,6 +77,7 @@ object AdyenColors {
  * @property warningContainer Background behind [warning] content.
  * @property error Declines and failures.
  * @property errorContainer Background behind [error] content.
+ * @property onStatus Icons and text drawn on [success], [warning] or [error], such as a result badge's mark.
  */
 @Immutable
 data class StatusColors(
@@ -78,12 +86,14 @@ data class StatusColors(
     val warningContainer: Color = AdyenColors.OrangeLight,
     val error: Color = AdyenColors.Red,
     val errorContainer: Color = AdyenColors.RedLight,
+    val onStatus: Color = Color.White,
 )
 
 /** The [StatusColors] of the current theme. */
 val LocalStatusColors = staticCompositionLocalOf { StatusColors() }
 
-private val colors =
+/** The app's Material colour scheme; light only, like the terminals' own payment screens. */
+internal val MiniMposColors =
     lightColorScheme(
         primary = AdyenColors.Green,
         onPrimary = Color.White,
@@ -134,8 +144,9 @@ private val shapes =
         extraLarge = RoundedCornerShape(24.dp),
     )
 
-/** Large amount text used on checkout and result screens, like the terminal's amount display. */
-val AmountTextStyle = TextStyle(fontSize = 44.sp, fontWeight = FontWeight.Bold, letterSpacing = (-1).sp)
+/** Large amount text used on checkout and result screens, like the terminal's amount display: a bolder display style. */
+val AmountTextStyle: TextStyle =
+    typography.displayMedium.copy(fontSize = 44.sp, lineHeight = TextUnit.Unspecified, letterSpacing = (-1).sp)
 
 /**
  * Sizes for the screen the app runs on, from the AMS1's 4" 480×800 px display (about 320×533 dp, of which the status
@@ -178,6 +189,18 @@ data class Dimens(
     val outcomeStyle: TextStyle,
     /** Size of the spinner while the terminal handles a transaction. */
     val progressSize: Dp,
+    /** The widest a screen's content column (forms, results, details) grows, so lines stay readable on tablets. */
+    val contentMaxWidth: Dp = 560.dp,
+    /** The widest a settings list grows. */
+    val listMaxWidth: Dp = 640.dp,
+    /** The tallest Home's tiles grow together, the height they have on the largest terminals (S1F4 Pro). */
+    val homeMaxHeight: Dp = 640.dp,
+    /** Space before and after the content of list and settings rows. */
+    val rowHorizontalPadding: Dp = 16.dp,
+    /** Space under a list's last row that keeps it clear of a floating action button. */
+    val fabClearance: Dp = 88.dp,
+    /** The widest a lone button grows when it does not span a column, such as Cancel while waiting. */
+    val narrowActionMaxWidth: Dp = 320.dp,
 ) {
     /** The size sets and how one is chosen. */
     companion object {
@@ -273,7 +296,7 @@ val LocalDimens = staticCompositionLocalOf { Dimens.Regular }
  */
 @Composable
 fun MiniMposTheme(content: @Composable () -> Unit) {
-    MaterialTheme(colorScheme = colors, typography = typography, shapes = shapes) {
+    MaterialTheme(colorScheme = MiniMposColors, typography = typography, shapes = shapes) {
         BoxWithConstraints {
             val bars = WindowInsets.systemBars.asPaddingValues()
             val direction = LocalLayoutDirection.current

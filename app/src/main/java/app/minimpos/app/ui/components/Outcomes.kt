@@ -29,6 +29,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
@@ -60,7 +64,7 @@ fun OutcomeHeader(
             title,
             style = dimens.outcomeStyle,
             textAlign = TextAlign.Center,
-            modifier = if (titleTag != null) Modifier.testTag(titleTag) else Modifier,
+            modifier = (if (titleTag != null) Modifier.testTag(titleTag) else Modifier).semantics { heading() },
         )
         Text(amount, style = dimens.amountStyle, textAlign = TextAlign.Center)
         content()
@@ -84,7 +88,8 @@ fun OutcomeNote(
 
 /**
  * What a screen shows while the terminal handles a transaction: the [amount] (when known), a spinner, [message] and
- * any actions in [content] (such as cancelling) under it, centred in the space [modifier] gives it.
+ * any actions in [content] (such as cancelling) under it, centred in the space [modifier] gives it and scrolling when
+ * large text makes it taller. Screen readers announce [message] whenever it changes, such as to "Canceling…".
  */
 @Composable
 fun ProcessingContent(
@@ -94,14 +99,18 @@ fun ProcessingContent(
     content: @Composable ColumnScope.() -> Unit = {},
 ) {
     val dimens = LocalDimens.current
-    Column(
+    CenteredScrollColumn(
         modifier.fillMaxSize().padding(dimens.screenPadding * 2),
-        horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(dimens.spacing * 2, Alignment.CenterVertically),
     ) {
         amount?.let { Text(it, style = dimens.amountStyle, textAlign = TextAlign.Center) }
         CircularProgressIndicator(Modifier.size(dimens.progressSize).testTag("progress"), strokeWidth = 5.dp)
-        Text(message, style = MaterialTheme.typography.titleMedium, textAlign = TextAlign.Center)
+        Text(
+            message,
+            style = MaterialTheme.typography.titleMedium,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
+        )
         content()
     }
 }
@@ -119,7 +128,8 @@ fun TransactionRow(
     kind: StatusKind,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
-    contentPadding: PaddingValues = PaddingValues(horizontal = 16.dp, vertical = LocalDimens.current.rowPadding),
+    contentPadding: PaddingValues =
+        PaddingValues(horizontal = LocalDimens.current.rowHorizontalPadding, vertical = LocalDimens.current.rowPadding),
 ) {
     Row(
         modifier.fillMaxWidth().clickable(onClick = onClick).padding(contentPadding),
@@ -185,6 +195,6 @@ fun StatusBadge(
         modifier = modifier.size(size).background(kind.color(), CircleShape),
         contentAlignment = Alignment.Center,
     ) {
-        Icon(icon, contentDescription = null, tint = Color.White, modifier = Modifier.size(size * 0.55f))
+        Icon(icon, contentDescription = null, tint = LocalStatusColors.current.onStatus, modifier = Modifier.size(size * 0.55f))
     }
 }

@@ -338,13 +338,18 @@ fun SettingsScreen(
     val terminal by container.terminalStatus.state.collectAsStateWithLifecycle()
     val mode = terminal.mode
 
-    fun open(section: String) = navigator.push(Route.SettingsSection(section))
-    MiniScaffold(title = stringResource(R.string.settings_title), onBack = navigator::back, modifier = modifier) { padding ->
+    fun open(section: String) = navigator.openFrom(Route.Settings, Route.SettingsSection(section))
+    MiniScaffold(
+        title = stringResource(R.string.settings_title),
+        // Beside a section in an expanded window, Back leaves Settings rather than closing that section.
+        onBack = { navigator.leave(Route.Settings) },
+        modifier = modifier,
+    ) { padding ->
         Column(
             Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState()),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            Column(Modifier.widthIn(max = 640.dp)) {
+            Column(Modifier.widthIn(max = LocalDimens.current.listMaxWidth)) {
                 SectionHeader(stringResource(R.string.settings_connection_group))
                 ConnectionSectionRows(
                     terminalSummary =
@@ -510,7 +515,7 @@ fun SettingsSectionScreen(
     }
     val events = remember(vm, sampleData) { settingsEvents(vm, sampleData) }
     val setupEvents = remember(setup) { terminalSetupEvents(setup) }
-    var settingPin by remember { mutableStateOf<Boolean?>(null) }
+    var settingPin by rememberSaveable { mutableStateOf<Boolean?>(null) }
     if (settingPin != null) {
         SetPinScreen(onDone = {
             vm.setPin(it, manager = settingPin == true)
@@ -533,7 +538,7 @@ fun SettingsSectionScreen(
             Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState()),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            Column(Modifier.widthIn(max = 640.dp).padding(bottom = 32.dp)) {
+            Column(Modifier.widthIn(max = LocalDimens.current.listMaxWidth).padding(bottom = 32.dp)) {
                 if (section == SettingsSections.DATA) {
                     val samples by sampleData.state.collectAsStateWithLifecycle()
                     SampleDataSection(samples, events.samples)
@@ -589,7 +594,7 @@ private fun SetupScannerAction(
     hasDrafts: Boolean,
     onScan: () -> Unit,
 ) {
-    var confirm by remember { mutableStateOf(false) }
+    var confirm by rememberSaveable { mutableStateOf(false) }
     IconButton(
         onClick = { if (hasDrafts) confirm = true else onScan() },
         enabled = enabled,
@@ -912,7 +917,7 @@ private fun ConnectionStatus(
             Modifier
                 .fillMaxWidth()
                 .semantics(mergeDescendants = true) {}
-                .padding(horizontal = 16.dp, vertical = LocalDimens.current.rowPadding)
+                .padding(horizontal = LocalDimens.current.rowHorizontalPadding, vertical = LocalDimens.current.rowPadding)
                 .testTag("connectionStatus"),
             verticalAlignment = Alignment.CenterVertically,
         ) {

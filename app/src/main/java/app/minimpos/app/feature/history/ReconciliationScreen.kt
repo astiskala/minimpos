@@ -24,7 +24,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -72,8 +72,8 @@ fun ReconciliationScreen(
     val state by vm.state.collectAsStateWithLifecycle()
     val terminal by LocalAppContainer.current.terminalStatus.state
         .collectAsStateWithLifecycle()
-    var confirmClose by remember { mutableStateOf(false) }
-    var closeApproval by remember { mutableStateOf(false) }
+    var confirmClose by rememberSaveable { mutableStateOf(false) }
+    var closeApproval by rememberSaveable { mutableStateOf(false) }
     if (closeApproval) {
         return ManagerApproval(
             onApprove = {

@@ -28,6 +28,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.ReadOnlyComposable
+import androidx.compose.runtime.Stable
 import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -89,6 +90,32 @@ fun rememberMoneyFormatter(currency: CurrencySpec): MoneyFormatter {
 @Composable
 fun rememberMoneyFormatter(currencyCode: String): MoneyFormatter =
     rememberMoneyFormatter(remember(currencyCode) { CurrencySpec.of(currencyCode) })
+
+/**
+ * Money formatters in one UI [locale], each currency's created once, for lists that mix currencies (history days and
+ * rows) without building one per row on every recomposition. Use from the main thread only, as composition does.
+ */
+@Stable
+class MoneyFormatters(
+    private val locale: Locale,
+) {
+    private val byCode = HashMap<String, MoneyFormatter>()
+
+    /**
+     * The formatter for [currencyCode], such as a stored sale's.
+     *
+     * @throws IllegalArgumentException if Adyen does not support [currencyCode].
+     */
+    operator fun get(currencyCode: String): MoneyFormatter =
+        byCode.getOrPut(currencyCode) { MoneyFormatter(CurrencySpec.of(currencyCode), locale) }
+}
+
+/** [MoneyFormatters] for the current UI locale, kept until it changes. */
+@Composable
+fun rememberMoneyFormatters(): MoneyFormatters {
+    val locale = currentLocale()
+    return remember(locale) { MoneyFormatters(locale) }
+}
 
 /**
  * Thin banner under the top bar when payments are simulated. There is none for the TEST environment: Adyen's test

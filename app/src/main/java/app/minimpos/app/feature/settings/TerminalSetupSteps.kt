@@ -67,6 +67,7 @@ import app.minimpos.app.ui.components.SharedKeyDialog
 import app.minimpos.app.ui.components.StepHeader
 import app.minimpos.app.ui.components.currentSetupGate
 import app.minimpos.app.ui.components.openUrl
+import app.minimpos.app.ui.theme.LocalDimens
 import app.minimpos.terminal.transport.TerminalEnvironment
 
 /** Changes the terminal settings with a transform of the stored ones. */
@@ -264,7 +265,7 @@ private fun ColumnScope.EnvironmentStep(
                         role = Role.RadioButton,
                         onClick = { update { it.selectEnvironment(value) } },
                     ).heightIn(min = 48.dp)
-                    .padding(horizontal = 16.dp)
+                    .padding(horizontal = LocalDimens.current.rowHorizontalPadding)
                     .testTag("environment_$value"),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
@@ -670,7 +671,7 @@ private fun ColumnScope.PaymentsAppStep(
 ) {
     StepHeader(number, stringResource(R.string.settings_payments_app), done = paymentsApps.size == 1)
     SettingNote(stringResource(R.string.settings_payments_app_hint))
-    Column(Modifier.padding(horizontal = 16.dp)) {
+    Column(Modifier.padding(horizontal = LocalDimens.current.rowHorizontalPadding)) {
         LabeledValue(stringResource(R.string.settings_payments_app_installed), paymentsAppLabel(paymentsApps))
     }
     if (paymentsApps.size > 1) {
@@ -733,7 +734,7 @@ private fun ColumnScope.TapToPayStep(
     StepHeader(number, stringResource(R.string.settings_tap_to_pay), done = boarded)
     SettingNote(stringResource(R.string.settings_tap_to_pay_hint))
     SettingNote(stringResource(R.string.settings_payments_app_key_hint))
-    Column(Modifier.padding(horizontal = 16.dp)) {
+    Column(Modifier.padding(horizontal = LocalDimens.current.rowHorizontalPadding)) {
         LabeledValue(
             stringResource(R.string.settings_installation_id),
             installationId.ifBlank { stringResource(R.string.settings_not_boarded) },

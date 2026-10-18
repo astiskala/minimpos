@@ -4,7 +4,6 @@ import androidx.annotation.StringRes
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -49,10 +48,12 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.adaptive.currentWindowAdaptiveInfoV2
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -64,6 +65,10 @@ import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -73,6 +78,7 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.window.core.layout.WindowSizeClass
 import app.minimpos.app.R
 import app.minimpos.app.data.db.CategoryEntity
 import app.minimpos.app.data.db.ProductEntity
@@ -129,7 +135,7 @@ fun SaleScreen(
     val onChosen = { if (kind.singleItem && navigator.current == Route.ringUp(kind)) navigator.push(checkout) }
     var overlay by rememberSaveable { mutableStateOf<SaleOverlay?>(null) }
     var customOffered by rememberSaveable { mutableStateOf(false) }
-    val search = rememberProductSearch(state.products.size, state.query, vm::setQuery)
+    val search = rememberProductSearch(state.products.size, vm::setQuery)
     val snackbar = remember { SnackbarHostState() }
     val addScannedSku = rememberSkuHandler(snackbar, vm::addBySku, onAdd = onChosen)
 
@@ -161,8 +167,7 @@ fun SaleScreen(
         SaleLayout(
             state = state,
             money = money,
-            search = search.mode,
-            onQuery = vm::setQuery,
+            search = search,
             onCategory = vm::selectCategory,
             onAdd = { if (vm.add(it)) onChosen() },
             onCustom = { overlay = SaleOverlay.CUSTOM_ITEM },
@@ -206,9 +211,8 @@ private fun saleTitle(
 @Composable
 private fun rememberProductSearch(
     productCount: Int,
-    query: String,
     onQuery: (String) -> Unit,
-): SearchControl = rememberSearchControl(productCount > SEARCH_THRESHOLD, LocalDimens.current.compact, query, onQuery)
+): SearchControl = rememberSearchControl(productCount > SEARCH_THRESHOLD, LocalDimens.current.compact, onQuery)
 
 /** What the sale screen shows over the products; only one at a time. */
 private enum class SaleOverlay { CART, CUSTOM_ITEM, SCANNER, CLEAR_CART }
@@ -324,15 +328,15 @@ private fun RowScope.SaleBarActions(
 }
 
 /**
- * The product browser with, on narrow screens, a checkout bar that opens the cart sheet; screens at least 720 dp wide
- * show the cart beside the products instead. A pre-authorisation has neither: choosing its item opens checkout.
+ * The product browser with, in compact and medium windows, a checkout bar that opens the cart sheet; expanded windows
+ * (840 dp wide or more) show the cart beside the products instead. A pre-authorisation has neither: choosing its item
+ * opens checkout.
  */
 @Composable
 private fun SaleLayout(
     state: SaleUiState,
     money: MoneyFormatter,
-    search: SearchMode,
-    onQuery: (String) -> Unit,
+    search: SearchControl,
     onCategory: (Long?) -> Unit,
     onAdd: (ProductEntity) -> Unit,
     onCustom: () -> Unit,
@@ -342,16 +346,15 @@ private fun SaleLayout(
     onCheckout: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    BoxWithConstraints(modifier.fillMaxSize()) {
-        val wide = maxWidth >= 720.dp
-        val cart = !state.kind.singleItem
+    val wide = currentWindowAdaptiveInfoV2().windowSizeClass.isWidthAtLeastBreakpoint(WindowSizeClass.WIDTH_DP_EXPANDED_LOWER_BOUND)
+    val cart = !state.kind.singleItem
+    Box(modifier.fillMaxSize()) {
         Row(Modifier.fillMaxSize()) {
             Column(Modifier.weight(1f).fillMaxHeight()) {
                 ProductBrowser(
                     state = state,
                     money = money,
                     search = search,
-                    onQuery = onQuery,
                     onCategory = onCategory,
                     onAdd = onAdd,
                     onCustom = onCustom,
@@ -367,7 +370,7 @@ private fun SaleLayout(
                 }
             }
             if (cart && wide) {
-                Surface(color = MaterialTheme.colorScheme.surfaceVariant, modifier = Modifier.width(340.dp).fillMaxHeight()) {
+                Surface(color = MaterialTheme.colorScheme.surfaceVariant, modifier = Modifier.width(CART_PANE_WIDTH).fillMaxHeight()) {
                     Column {
                         CartList(state.cart.lines, money, onQuantity, onRemove, Modifier.weight(1f))
                         CheckoutBar(state.totals.itemCount, money.format(state.totals.amounts.gross), null, onCheckout)
@@ -395,7 +398,7 @@ private fun CartSheet(
             Text(
                 stringResource(R.string.sale_cart),
                 style = dimens.titleStyle,
-                modifier = Modifier.padding(horizontal = 16.dp),
+                modifier = Modifier.padding(horizontal = dimens.rowHorizontalPadding).semantics { heading() },
             )
             CartList(state.cart.lines, money, onQuantity, onRemove, Modifier.heightIn(max = 420.dp))
             Box(Modifier.padding(horizontal = dimens.screenPadding)) {
@@ -425,8 +428,7 @@ private fun saleViewModel(
 private fun ProductBrowser(
     state: SaleUiState,
     money: MoneyFormatter,
-    search: SearchMode,
-    onQuery: (String) -> Unit,
+    search: SearchControl,
     onCategory: (Long?) -> Unit,
     onAdd: (ProductEntity) -> Unit,
     onCustom: () -> Unit,
@@ -436,12 +438,11 @@ private fun ProductBrowser(
     val gap = dimens.spacing
     val tileHeight = dimens.tileHeight
     Column(modifier) {
-        if (search != SearchMode.HIDDEN) {
+        if (search.mode != SearchMode.HIDDEN) {
             SearchField(
-                state.query,
-                onQuery,
+                search.text,
                 stringResource(R.string.sale_search),
-                focus = search == SearchMode.REQUESTED,
+                focus = search.mode == SearchMode.REQUESTED,
                 modifier = Modifier.fillMaxWidth().padding(start = gap, end = gap, top = gap),
             )
         }
@@ -538,13 +539,19 @@ private fun ProductTile(
 ) {
     val gap = LocalDimens.current.spacing
     val inCart = quantity > 0
+    val inCartText = stringResource(R.string.sale_in_cart, quantity)
     // Products in the cart get a green outline and their count beside the price, where it never covers the name.
     Surface(
         onClick = onClick,
         shape = MaterialTheme.shapes.medium,
         color = if (inCart) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant,
         border = if (inCart) BorderStroke(1.dp, MaterialTheme.colorScheme.primary) else null,
-        modifier = Modifier.fillMaxWidth().heightIn(min = minHeight).testTag("product_${product.id}"),
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .heightIn(min = minHeight)
+                .semantics { if (inCart) stateDescription = inCartText }
+                .testTag("product_${product.id}"),
     ) {
         Column(Modifier.padding(gap), verticalArrangement = Arrangement.SpaceBetween) {
             Text(product.name, style = MaterialTheme.typography.titleSmall, maxLines = 2, overflow = TextOverflow.Ellipsis)
@@ -557,7 +564,11 @@ private fun ProductTile(
                     modifier = Modifier.weight(1f),
                 )
                 if (inCart) {
-                    Badge(containerColor = MaterialTheme.colorScheme.primary, modifier = Modifier.testTag("inCart_${product.id}")) {
+                    // The tile's state description says what the bare count means.
+                    Badge(
+                        containerColor = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.testTag("inCart_${product.id}").clearAndSetSemantics {},
+                    ) {
                         Text(quantity.toString(), style = MaterialTheme.typography.labelMedium)
                     }
                 }
@@ -624,7 +635,10 @@ private fun CartList(
     LazyColumn(modifier.testTag("cartList")) {
         items(lines, key = { it.key }) { line ->
             Row(
-                Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = LocalDimens.current.rowPadding),
+                Modifier.fillMaxWidth().padding(
+                    horizontal = LocalDimens.current.rowHorizontalPadding,
+                    vertical = LocalDimens.current.rowPadding,
+                ),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Column(Modifier.weight(1f)) {
@@ -635,7 +649,7 @@ private fun CartList(
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
-                QuantityStepper(line.quantity, onChange = { onQuantity(line.key, it) })
+                QuantityStepper(line.quantity, line.name, onChange = { onQuantity(line.key, it) })
                 IconButton(onClick = { onRemove(line.key) }) {
                     Icon(Icons.Default.DeleteOutline, contentDescription = stringResource(R.string.action_remove))
                 }
@@ -655,10 +669,13 @@ private fun CustomItemDialog(
     onAdd: (name: String, amountMinor: Long, taxRateId: Long) -> Unit,
     onDismiss: () -> Unit,
 ) {
-    var entry by remember { mutableStateOf(AmountEntry()) }
-    var name by remember { mutableStateOf("") }
+    // What was typed survives rotation and process death; the amount as its minor units, the rate by its ID.
+    var amountMinor by rememberSaveable { mutableLongStateOf(0L) }
+    val entry = AmountEntry(amountMinor)
+    var name by rememberSaveable { mutableStateOf("") }
     // Items without tax get a 0% rate from the same list; with tax switched off the rate is kept but not shown.
-    var taxRate by remember { mutableStateOf(defaultTaxRate) }
+    var taxRateId by rememberSaveable { mutableStateOf(defaultTaxRate?.id) }
+    val taxRate = taxRates.firstOrNull { it.id == taxRateId } ?: defaultTaxRate
     val defaultName = stringResource(R.string.sale_custom_default_name)
     val dimens = LocalDimens.current
     Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
@@ -686,20 +703,12 @@ private fun CustomItemDialog(
                     modifier = Modifier.fillMaxWidth().testTag("customAmount"),
                     textAlign = TextAlign.Center,
                 )
-                OutlinedTextField(
-                    value = name,
-                    onValueChange = { name = it.take(60) },
-                    label = { Text(stringResource(R.string.sale_custom_description)) },
-                    placeholder = { Text(defaultName) },
-                    singleLine = true,
-                    keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences),
-                    modifier = Modifier.fillMaxWidth(),
-                )
-                if (chargeTax) TaxRatePicker(taxRates, taxRate, onSelect = { taxRate = it })
+                CustomItemName(name, defaultName, onChange = { name = it.take(60) })
+                if (chargeTax) TaxRatePicker(taxRates, taxRate, onSelect = { taxRateId = it.id })
                 NumericKeypad(
-                    onDigit = { entry = entry.append(it) },
-                    onDoubleZero = { entry = entry.appendDoubleZero() },
-                    onBackspace = { entry = entry.backspace() },
+                    onDigit = { amountMinor = entry.append(it).minor },
+                    onDoubleZero = { amountMinor = entry.appendDoubleZero().minor },
+                    onBackspace = { amountMinor = entry.backspace().minor },
                     modifier = if (dimens.compact) Modifier.weight(1f) else Modifier,
                     fill = dimens.compact,
                 )
@@ -716,6 +725,22 @@ private fun CustomItemDialog(
         }
     }
 }
+
+/** The optional description of a custom item, [defaultName] when left empty. */
+@Composable
+private fun CustomItemName(
+    name: String,
+    defaultName: String,
+    onChange: (String) -> Unit,
+) = OutlinedTextField(
+    value = name,
+    onValueChange = onChange,
+    label = { Text(stringResource(R.string.sale_custom_description)) },
+    placeholder = { Text(defaultName) },
+    singleLine = true,
+    keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences),
+    modifier = Modifier.fillMaxWidth(),
+)
 
 /** A drop-down to choose one of [taxRates], showing each as its name and rate. */
 @OptIn(ExperimentalMaterial3Api::class)
@@ -751,3 +776,6 @@ fun TaxRatePicker(
 }
 
 private const val SEARCH_THRESHOLD = 8
+
+/** The width of the cart beside the products in an expanded window. */
+private val CART_PANE_WIDTH = 340.dp

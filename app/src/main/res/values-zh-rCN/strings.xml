@@ -15,11 +15,11 @@
   <string name="action_cancel">取消</string>
   <string name="action_clear">清空</string>
   <string name="action_close">关闭</string>
-  <string name="action_decrease">减少</string>
+  <string name="action_decrease_item">减少%1$s</string>
   <string name="action_delete">删除</string>
   <string name="action_done">完成</string>
   <string name="action_home">主页</string>
-  <string name="action_increase">增加</string>
+  <string name="action_increase_item">增加%1$s</string>
   <string name="action_more">更多选项</string>
   <string name="action_next">下一步</string>
   <string name="action_ok">确定</string>
@@ -68,6 +68,7 @@
   <plurals name="sale_items">
     <item quantity="other">%1$d 件商品</item>
   </plurals>
+  <string name="sale_in_cart">本次销售中 %1$d 件</string>
   <string name="pre_auth_title">预授权</string>
   <string name="pre_auth_no_products">暂无预授权商品。请在“商品”中将商品设为预授权商品，或使用自定义金额。</string>
   <string name="pre_auth_charge">预授权 %1$s</string>
@@ -106,6 +107,10 @@
   <string name="payment_title">支付</string>
   <string name="payment_follow_terminal">请按照终端上的提示操作</string>
   <string name="payment_cancelling">正在取消…</string>
+  <string name="payment_cancel_title">取消这笔支付？</string>
+  <string name="payment_cancel_message">如果购物者尚未付款，终端会停止这笔支付。</string>
+  <string name="payment_cancel_keep">继续等待</string>
+  <string name="processing_wait">请等待结果后再离开此页面。</string>
   <string name="payment_unknown_outcome">终端未确认支付结果。再次收款前，请先在商户后台核实。</string>
   <string name="payment_interrupted">应用在收到结果前已停止运行。</string>
   <string name="capture_interrupted">应用在收到 Adyen 的扣款响应前已停止运行。可以安全地重试同一扣款请求。</string>
@@ -359,6 +364,7 @@
   <string name="history_capture_activity">扣款 / 小费</string>
   <string name="history_offline_label">离线</string>
   <string name="history_search">搜索交易</string>
+  <string name="history_choose">选择一笔交易，在此查看。</string>
   <string name="history_method">付款方式</string>
   <string name="history_method_any">所有付款方式</string>
   <string name="history_no_match">无匹配交易</string>
@@ -602,6 +608,9 @@
   <string name="pin_confirm">再次输入 PIN</string>
   <string name="pin_mismatch">两次输入的 PIN 不一致。请重新设置。</string>
   <string name="pin_hint">PIN 长度：%1$d 至 %2$d 位</string>
+  <plurals name="pin_digits_entered">
+    <item quantity="other">已输入 %1$d 位数字</item>
+  </plurals>
   <string name="manager_pin_title">经理 PIN</string>
   <string name="manager_pin_enter">输入经理 PIN</string>
   <string name="manager_pin_set">设置经理 PIN</string>
@@ -612,6 +621,7 @@
 
   <!-- Settings: overview and language -->
   <string name="settings_title">设置</string>
+  <string name="settings_choose">选择一个部分以更改其设置。</string>
   <string name="settings_terminal">终端</string>
   <string name="settings_capabilities">Adyen 功能</string>
   <string name="settings_capabilities_summary">功能可用性和终端设置</string>

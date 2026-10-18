@@ -39,4 +39,28 @@ class Navigator(
 
     /** Returns to the Home screen, closing everything else. */
     fun home() = popTo(Route.Home)
+
+    /**
+     * Opens [route] from the list [list] (History, Settings): whatever was opened from that list before is closed
+     * first, so in an expanded window, where the list stays beside its detail, a new choice replaces the old one rather
+     * than stacking up. In a narrower window the list is the current screen whenever it can be tapped, so this pushes.
+     */
+    fun openFrom(
+        list: Route,
+        route: Route,
+    ) {
+        val index = backStack.indexOfLast { it == list }
+        if (index >= 0) while (backStack.lastIndex > index) backStack.removeAt(backStack.lastIndex)
+        push(route)
+    }
+
+    /**
+     * Closes [route] and everything opened above it, as a list's Back does while its detail is beside it; Home is never
+     * removed. Without [route] on the stack, this is [back].
+     */
+    fun leave(route: Route) {
+        val index = backStack.indexOfLast { it == route }
+        if (index < 0) return back()
+        while (backStack.size > maxOf(index, 1)) backStack.removeAt(backStack.lastIndex)
+    }
 }

@@ -25,6 +25,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -34,6 +35,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -86,6 +89,7 @@ import app.minimpos.app.ui.theme.LocalDimens
 import app.minimpos.core.catalogue.Catalogue
 import app.minimpos.terminal.transport.TerminalEnvironment
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 /**
  * Shares this terminal's setup with another one: first the choice of catalogue, settings and secrets, then the QR
@@ -136,7 +140,7 @@ private fun ExportChoice(
 ) {
     val noSecrets = state.secretsAvailable.isEmpty()
     Column(modifier.fillMaxSize().verticalScroll(rememberScrollState()), horizontalAlignment = Alignment.CenterHorizontally) {
-        Column(Modifier.widthIn(max = 560.dp)) {
+        Column(Modifier.widthIn(max = LocalDimens.current.contentMaxWidth)) {
             Text(
                 stringResource(R.string.transfer_choose_hint),
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -176,7 +180,7 @@ private fun ExportCodes(
     modifier: Modifier = Modifier,
 ) {
     var index by remember { mutableIntStateOf(0) }
-    var playing by remember { mutableStateOf(true) }
+    var playing by rememberSaveable { mutableStateOf(true) }
     KeepScreenOn()
     LaunchedEffect(codes.size, playing) {
         while (playing && codes.size > 1) {
@@ -276,12 +280,18 @@ fun TransferImportScreen(
     LaunchedEffect(returnHome) {
         if (returnHome) navigator.home()
     }
-    var confirmReplace by remember { mutableStateOf(false) }
-    BackHandler(enabled = state == ImportUiState.Importing) {}
+    var confirmReplace by rememberSaveable { mutableStateOf(false) }
+    val importing = state == ImportUiState.Importing
+    val snackbar = remember { SnackbarHostState() }
+    val scope = rememberCoroutineScope()
+    val wait = stringResource(R.string.processing_wait)
+    // An import must finish where it started; Back says so instead of doing nothing, and the arrow hides meanwhile.
+    BackHandler(enabled = importing) { scope.launch { snackbar.showSnackbar(wait) } }
     MiniScaffold(
         title = stringResource(R.string.transfer_import),
-        onBack = { if (state != ImportUiState.Importing) navigator.back() },
+        onBack = navigator::back.takeUnless { importing },
         modifier = modifier,
+        snackbarHostState = snackbar,
         bottomBar = {
             ImportBottomBar(
                 state,
@@ -543,7 +553,7 @@ private fun ImportReady(
             .padding(dimens.screenPadding),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Column(Modifier.widthIn(max = 560.dp), verticalArrangement = Arrangement.spacedBy(dimens.spacing)) {
+        Column(Modifier.widthIn(max = LocalDimens.current.contentMaxWidth), verticalArrangement = Arrangement.spacedBy(dimens.spacing)) {
             Text(stringResource(R.string.transfer_ready), style = MaterialTheme.typography.titleLarge)
             if (received.hasConnection) ConnectionPreview(received)
             TransferSummary(received.catalogue, received.hasSettings, received.hasSecrets, connection = received.hasConnection)
@@ -727,7 +737,7 @@ private fun ImportDone(
             textAlign = TextAlign.Center,
             modifier = Modifier.testTag("importDone"),
         )
-        Card(Modifier.widthIn(max = 560.dp)) {
+        Card(Modifier.widthIn(max = LocalDimens.current.contentMaxWidth)) {
             result.catalogue?.let { summary ->
                 LabeledValue(stringResource(R.string.transfer_added), summary.productsAdded.toString())
                 LabeledValue(stringResource(R.string.transfer_updated), summary.productsUpdated.toString())

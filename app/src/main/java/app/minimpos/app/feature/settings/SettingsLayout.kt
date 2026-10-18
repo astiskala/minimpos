@@ -10,11 +10,10 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.unit.dp
 import app.minimpos.app.ui.components.ConfirmDialog
 import app.minimpos.app.ui.components.TertiaryButton
 import app.minimpos.app.ui.theme.LocalDimens
@@ -30,7 +29,7 @@ fun SettingActions(
 ) {
     val dimens = LocalDimens.current
     Column(
-        modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = dimens.spacing),
+        modifier.fillMaxWidth().padding(horizontal = LocalDimens.current.rowHorizontalPadding, vertical = dimens.spacing),
         verticalArrangement = Arrangement.spacedBy(dimens.spacing),
         content = content,
     )
@@ -50,7 +49,7 @@ fun ConfirmedRemoval(
     icon: ImageVector? = Icons.Default.Delete,
     enabled: Boolean = true,
 ) {
-    var asking by remember { mutableStateOf(false) }
+    var asking by rememberSaveable { mutableStateOf(false) }
     TertiaryButton(text, { asking = true }, modifier, enabled = enabled, destructive = true, icon = icon)
     if (asking) {
         ConfirmDialog(

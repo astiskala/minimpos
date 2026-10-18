@@ -130,12 +130,14 @@ private fun RowScope.ButtonContent(
 }
 
 /**
- * − [quantity] + controls, as on the cart and a refund's items. [onChange] gets the new quantity; decreasing stops at
- * [min] and increasing at [max]. [increaseTag] tags the + button for tests.
+ * − [quantity] + controls, as on the cart and a refund's items; screen readers name [itemName] on both buttons, so a
+ * list of steppers stays clear. [onChange] gets the new quantity; decreasing stops at [min] and increasing at [max].
+ * [increaseTag] tags the + button for tests.
  */
 @Composable
 fun QuantityStepper(
     quantity: Int,
+    itemName: String,
     onChange: (Int) -> Unit,
     modifier: Modifier = Modifier,
     min: Int = 0,
@@ -144,7 +146,7 @@ fun QuantityStepper(
 ) {
     Row(modifier, verticalAlignment = Alignment.CenterVertically) {
         IconButton(onClick = { onChange(quantity - 1) }, enabled = quantity > min) {
-            Icon(Icons.Default.Remove, contentDescription = stringResource(R.string.action_decrease))
+            Icon(Icons.Default.Remove, contentDescription = stringResource(R.string.action_decrease_item, itemName))
         }
         // A fixed width, so the buttons stay put when the count reaches two digits.
         Text(
@@ -158,7 +160,7 @@ fun QuantityStepper(
             enabled = quantity < max,
             modifier = if (increaseTag != null) Modifier.testTag(increaseTag) else Modifier,
         ) {
-            Icon(Icons.Default.Add, contentDescription = stringResource(R.string.action_increase))
+            Icon(Icons.Default.Add, contentDescription = stringResource(R.string.action_increase_item, itemName))
         }
     }
 }

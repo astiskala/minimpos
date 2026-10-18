@@ -22,7 +22,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -80,8 +80,8 @@ fun PaymentLinkScreen(
     vm: PaymentLinkViewModel = paymentLinkViewModel(saleId, fresh),
 ) {
     val state by vm.state.collectAsStateWithLifecycle()
-    var dialog by remember { mutableStateOf<LinkDialog?>(null) }
-    var approval by remember { mutableStateOf<LinkApproval?>(null) }
+    var dialog by rememberSaveable { mutableStateOf<LinkDialog?>(null) }
+    var approval by rememberSaveable { mutableStateOf<LinkApproval?>(null) }
     if (approval != null) {
         return ManagerApproval(onApprove = {
             if (approval == LinkApproval.SIMULATE) vm.simulate() else dialog = LinkDialog.CANCEL
@@ -170,7 +170,7 @@ private fun PaymentLinkContent(
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Column(
-            Modifier.widthIn(max = 560.dp),
+            Modifier.widthIn(max = LocalDimens.current.contentMaxWidth),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(dimens.spacing),
         ) {

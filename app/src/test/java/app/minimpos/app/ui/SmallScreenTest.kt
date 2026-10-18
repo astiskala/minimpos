@@ -6,6 +6,7 @@ import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertTextContains
+import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.isEnabled
@@ -17,10 +18,13 @@ import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.performTextReplacement
 import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.height
 import app.minimpos.app.FakeDevice
 import app.minimpos.app.FakeTerminal
 import app.minimpos.app.GST_RATES
 import app.minimpos.app.MiniMposApp
+import app.minimpos.app.R
 import app.minimpos.app.TestEnvironment
 import app.minimpos.app.await
 import app.minimpos.app.awaitCondition
@@ -35,12 +39,14 @@ import app.minimpos.app.data.settings.ReceiptTipping
 import app.minimpos.core.receipt.ReceiptElement
 import app.minimpos.terminal.transport.TerminalEnvironment
 import com.google.common.truth.Truth.assertThat
+import com.google.common.truth.Truth.assertWithMessage
 import kotlinx.coroutines.flow.first
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import org.robolectric.RuntimeEnvironment
 import org.robolectric.annotation.Config
 import app.minimpos.app.createRecordingComposeRule as createComposeRule
 
@@ -263,6 +269,84 @@ class SmallScreenTest {
     @Test
     @Config(qualifiers = "en-rAU-w360dp-h568dp-xhdpi")
     fun `a sale fits the S1F2 screen`() = saleFitsTheScreen()
+
+    @Test
+    fun `home tiles keep their labels and touch size beside the setup card on the smallest terminal`() {
+        compose.setContent { MiniMposApp(container) }
+        assertHomeTilesUsable()
+        // Everything still fits without scrolling.
+        compose.onNodeWithTag("settings").assertIsDisplayed()
+    }
+
+    @Test
+    @Config(qualifiers = "en-rAU-w320dp-h456dp-mdpi")
+    fun `home tiles keep their labels on the P630`() {
+        compose.setContent { MiniMposApp(container) }
+        assertHomeTilesUsable()
+    }
+
+    @Test
+    @Config(qualifiers = "en-rAU-w800dp-h360dp-xhdpi")
+    fun `home scrolls rather than squeezing its tiles on a landscape phone`() {
+        compose.setContent { MiniMposApp(container) }
+        assertHomeTilesUsable()
+    }
+
+    @Test
+    fun `home scrolls rather than cutting labels with the largest text`() {
+        RuntimeEnvironment.setFontScale(2f)
+        compose.setContent { MiniMposApp(container) }
+        assertHomeTilesUsable()
+    }
+
+    @Test
+    fun `the PIN pad scrolls to every key with the largest text`() {
+        await { container.pinManager.setPin("1357") }
+        RuntimeEnvironment.setFontScale(2f)
+        compose.setContent { MiniMposApp(container) }
+        compose.onNodeWithTag("settings").performScrollTo().performClick()
+        waitForTag("pin_1")
+        listOf(1, 3, 5, 7).forEach {
+            compose
+                .onNodeWithTag("pin_$it")
+                .performScrollTo()
+                .assertIsDisplayed()
+                .performClick()
+        }
+        compose
+            .onNodeWithTag("pinDots")
+            .assert(SemanticsMatcher.expectValue(SemanticsProperties.ContentDescription, listOf("4 digits entered")))
+        compose
+            .onNodeWithTag("pin_OK")
+            .performScrollTo()
+            .assertIsDisplayed()
+            .performClick()
+        waitForTag("section_terminal")
+    }
+
+    /** Every Home tile is at least 48 dp tall once scrolled to, with its label inside it rather than cut off. */
+    private fun assertHomeTilesUsable() {
+        waitForTag("newSale")
+        listOf("newSale", "preAuth").forEach { tag ->
+            val tile = compose.onNodeWithTag(tag).performScrollTo().getUnclippedBoundsInRoot()
+            assertWithMessage(tag).that(tile.height).isAtLeast(48.dp)
+        }
+        mapOf(
+            "savedCard" to R.string.home_saved_card,
+            "refund" to R.string.home_refund,
+            "history" to R.string.home_history,
+            "reconciliation" to R.string.home_reconciliation,
+        ).forEach { (tag, label) ->
+            val tile = compose.onNodeWithTag(tag).performScrollTo().getUnclippedBoundsInRoot()
+            val text = compose.onNodeWithText(env.context.getString(label), useUnmergedTree = true).getUnclippedBoundsInRoot()
+            assertWithMessage(tag).that(tile.height).isAtLeast(48.dp)
+            assertWithMessage("$tag label top").that(text.top).isAtLeast(tile.top)
+            assertWithMessage("$tag label bottom").that(text.bottom).isAtMost(tile.bottom)
+            // A label squeezed by its tile measures far less than a line.
+            assertWithMessage("$tag label height").that(text.height).isAtLeast(14.dp)
+        }
+        listOf("products", "settings").forEach { compose.onNodeWithTag(it).performScrollTo().assertIsDisplayed() }
+    }
 
     @Test
     fun `the search field only takes room once asked for`() {

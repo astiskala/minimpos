@@ -43,11 +43,14 @@ import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -87,6 +90,7 @@ import app.minimpos.app.ui.components.EmptyState
 import app.minimpos.app.ui.components.LabeledValue
 import app.minimpos.app.ui.components.LocalAppContainer
 import app.minimpos.app.ui.components.MiniScaffold
+import app.minimpos.app.ui.components.MoneyFormatters
 import app.minimpos.app.ui.components.OutcomeHeader
 import app.minimpos.app.ui.components.OutcomeNote
 import app.minimpos.app.ui.components.SearchField
@@ -98,11 +102,11 @@ import app.minimpos.app.ui.components.TransactionRow
 import app.minimpos.app.ui.components.currentLocale
 import app.minimpos.app.ui.components.currentSetupGate
 import app.minimpos.app.ui.components.rememberMoneyFormatter
+import app.minimpos.app.ui.components.rememberMoneyFormatters
 import app.minimpos.app.ui.components.rememberSearchControl
 import app.minimpos.app.ui.navigation.Navigator
 import app.minimpos.app.ui.navigation.Route
 import app.minimpos.app.ui.theme.LocalDimens
-import app.minimpos.core.money.CurrencySpec
 import app.minimpos.core.money.MoneyFormatter
 import app.minimpos.core.payment.PaymentMethods
 import app.minimpos.core.payment.ScanWallet
@@ -111,7 +115,6 @@ import java.time.LocalDate
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.time.format.FormatStyle
-import java.util.Locale
 
 /**
  * Sales and refunds by day, newest first, with each day's totals, filters for sales, refunds and issues, a payment
@@ -124,10 +127,11 @@ fun HistoryScreen(
     vm: HistoryViewModel = historyViewModel(),
 ) {
     val state by vm.state.collectAsStateWithLifecycle()
-    val search = rememberSearchControl(available = state.hasHistory, onRequest = LocalDimens.current.compact, state.query, vm::setQuery)
+    val search = rememberSearchControl(available = state.hasHistory, onRequest = LocalDimens.current.compact, vm::setQuery)
     MiniScaffold(
         title = stringResource(R.string.history_title),
-        onBack = navigator::back,
+        // Beside a detail in an expanded window, Back leaves History rather than closing that detail.
+        onBack = { navigator.leave(Route.History) },
         modifier = modifier,
         actions = {
             if (search.onRequest) SearchToggle(search.mode, stringResource(R.string.history_search), search.toggle)
@@ -136,8 +140,7 @@ fun HistoryScreen(
         Column(Modifier.fillMaxSize().padding(padding)) {
             if (search.mode != SearchMode.HIDDEN) {
                 SearchField(
-                    state.query,
-                    vm::setQuery,
+                    search.text,
                     stringResource(R.string.history_search),
                     focus = search.mode == SearchMode.REQUESTED,
                     modifier = Modifier.fillMaxWidth().padding(start = 12.dp, end = 12.dp, top = 8.dp),
@@ -146,7 +149,11 @@ fun HistoryScreen(
             HistoryFilters(state.filter, vm::setFilter, state.methods, state.method, vm::setMethod)
             OutcomeMessage(state.print)
             val gate = currentSetupGate()
-            HistoryBody(state, { day -> gate.run { vm.printDay(day) } }, vm::showAll, navigator)
+            val showAll = {
+                search.clear()
+                vm.showAll()
+            }
+            HistoryBody(state, { day -> gate.run { vm.printDay(day) } }, showAll, navigator)
         }
     }
 }
@@ -164,8 +171,8 @@ private fun ColumnScope.HistoryBody(
         state.days.isNotEmpty() -> {
             HistoryList(state.days, state.canPrint, state.print.running, onPrintDay) { item ->
                 when (item) {
-                    is HistoryItem.Sale -> navigator.push(Route.SaleDetail(item.sale.id))
-                    is HistoryItem.Refund -> navigator.push(Route.RefundDetail(item.refund.id))
+                    is HistoryItem.Sale -> navigator.openFrom(Route.History, Route.SaleDetail(item.sale.id))
+                    is HistoryItem.Refund -> navigator.openFrom(Route.History, Route.RefundDetail(item.refund.id))
                 }
             }
         }
@@ -198,24 +205,25 @@ private fun HistoryList(
     onPrint: (LocalDate) -> Unit,
     onOpen: (HistoryItem) -> Unit,
 ) {
-    val timeFormat = remember { DateTimeFormatter.ofLocalizedTime(FormatStyle.SHORT) }
-    val dateFormat = remember { DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM) }
+    // In the app's language, which may differ from the device's (the formatters' default).
+    val locale = currentLocale()
+    val timeFormat = remember(locale) { DateTimeFormatter.ofLocalizedTime(FormatStyle.SHORT).withLocale(locale) }
+    val dateFormat = remember(locale) { DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM).withLocale(locale) }
+    val money = rememberMoneyFormatters()
+    val today = LocalDate.now()
     LazyColumn(Modifier.fillMaxSize().testTag("historyList")) {
         days.forEach { day ->
             stickyHeader(key = day.date.toString()) {
                 DayHeader(
                     day,
-                    if (day.date == LocalDate.now()) {
-                        stringResource(R.string.history_today)
-                    } else {
-                        dateFormat.format(day.date)
-                    },
+                    if (day.date == today) stringResource(R.string.history_today) else dateFormat.format(day.date),
                     canPrint,
                     printing,
+                    money,
                 ) { onPrint(day.date) }
             }
             items(day.items, key = { "${day.date}-${it.id}" }) { item ->
-                HistoryRow(item, timeFormat, day.times[item.id] ?: item.createdAt, item.id in day.captures) { onOpen(item) }
+                HistoryRow(item, timeFormat, day.times[item.id] ?: item.createdAt, item.id in day.captures, money) { onOpen(item) }
                 HorizontalDivider()
             }
         }
@@ -302,15 +310,19 @@ private fun DayHeader(
     title: String,
     canPrint: Boolean,
     printing: Boolean,
+    money: MoneyFormatters,
     onPrint: () -> Unit,
 ) {
     Row(
-        Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.surfaceVariant).padding(horizontal = 16.dp, vertical = 8.dp),
+        Modifier
+            .fillMaxWidth()
+            .background(MaterialTheme.colorScheme.surfaceVariant)
+            .padding(horizontal = LocalDimens.current.rowHorizontalPadding, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Column(Modifier.weight(1f)) {
-            Text(title, style = MaterialTheme.typography.titleSmall)
-            DaySummary(day.totals)
+            Text(title, style = MaterialTheme.typography.titleSmall, modifier = Modifier.semantics { heading() })
+            DaySummary(day.totals, money)
         }
         if (canPrint) {
             IconButton(
@@ -326,13 +338,11 @@ private fun DayHeader(
 
 /** Wraps between transaction types; a count stays attached to its amount even for unusually long totals. */
 @Composable
-private fun DaySummary(day: DayTotals) {
-    val locale = currentLocale()
-
-    fun totals(values: Map<String, Long>) =
-        values.entries.joinToString(" + ") { (currency, minor) ->
-            MoneyFormatter(CurrencySpec.of(currency), locale).format(minor)
-        }
+private fun DaySummary(
+    day: DayTotals,
+    money: MoneyFormatters,
+) {
+    fun totals(values: Map<String, Long>) = values.entries.joinToString(" + ") { (currency, minor) -> money[currency].format(minor) }
     val parts =
         buildList {
             if (day.saleCount > 0) add(stringResource(R.string.history_day_sales, totals(day.salesMinor), day.saleCount))
@@ -357,11 +367,12 @@ private fun HistoryRow(
     timeFormat: DateTimeFormatter,
     at: Long,
     captured: Boolean,
+    money: MoneyFormatters,
     onClick: () -> Unit,
 ) {
     val stamp = timeFormat.format(Instant.ofEpochMilli(at).atZone(ZoneId.systemDefault()))
     val time = if (captured) "$stamp · ${stringResource(R.string.history_capture_activity)}" else stamp
-    val row = historyRowText(item, time, currentLocale())
+    val row = historyRowText(item, time, money)
     TransactionRow(row.title, row.subtitle, row.amount, row.status, row.kind, onClick)
 }
 
@@ -378,7 +389,7 @@ private data class HistoryRowText(
 private fun historyRowText(
     item: HistoryItem,
     time: String,
-    locale: Locale,
+    money: MoneyFormatters,
 ): HistoryRowText =
     when (item) {
         is HistoryItem.Sale -> {
@@ -392,7 +403,7 @@ private fun historyRowText(
                     paymentMethodText(sale),
                     sale.customerReference,
                 ).joinToString(" · "),
-                MoneyFormatter(CurrencySpec.of(sale.currency), locale).format(sale.amountMinor),
+                money[sale.currency].format(sale.amountMinor),
                 statusTitle(sale),
                 statusKind(sale),
             )
@@ -400,7 +411,7 @@ private fun historyRowText(
 
         is HistoryItem.Refund -> {
             val refund = item.refund
-            val amount = MoneyFormatter(CurrencySpec.of(refund.currency), locale).format(refund.amountMinor)
+            val amount = money[refund.currency].format(refund.amountMinor)
             HistoryRowText(
                 stringResource(if (refund.cancellation) R.string.history_cancellation else R.string.history_refund),
                 listOf(time, refund.originalReference ?: refund.originalTransactionId).joinToString(" · "),
@@ -436,7 +447,7 @@ fun SaleDetailScreen(
 ) {
     val container = LocalAppContainer.current
     val state by vm.state.collectAsStateWithLifecycle()
-    var cancelling by remember { mutableStateOf(false) }
+    var cancelling by rememberSaveable { mutableStateOf(false) }
     var approval by remember { mutableStateOf<(() -> Unit)?>(null) }
     if (approval != null) {
         return ManagerApproval(onApprove = {
@@ -579,7 +590,11 @@ private fun DetailColumn(
             .padding(dimens.screenPadding),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Column(Modifier.widthIn(max = 560.dp), verticalArrangement = Arrangement.spacedBy(dimens.spacing), content = content)
+        Column(
+            Modifier.widthIn(max = dimens.contentMaxWidth),
+            verticalArrangement = Arrangement.spacedBy(dimens.spacing),
+            content = content,
+        )
     }
 }
 

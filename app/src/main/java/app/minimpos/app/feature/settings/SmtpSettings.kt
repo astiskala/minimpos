@@ -35,6 +35,7 @@ import app.minimpos.app.ui.components.ActionMessage
 import app.minimpos.app.ui.components.SectionHeader
 import app.minimpos.app.ui.components.TertiaryButton
 import app.minimpos.app.ui.components.openUrl
+import app.minimpos.app.ui.theme.LocalDimens
 
 /**
  * The SMTP server, login and password ([onPassword] with null forgets it); the providers' help pages are linked only
@@ -55,7 +56,13 @@ internal fun ColumnScope.SmtpServerSettings(
         update { it.copy(username = value.trim()) }
     })
     SettingSecret(stringResource(R.string.settings_smtp_password), passwordSaved, onPassword, { onPassword(null) })
-    secretError?.let { ActionMessage(it, isError = true, modifier = Modifier.padding(horizontal = 16.dp)) }
+    secretError?.let {
+        ActionMessage(
+            it,
+            isError = true,
+            modifier = Modifier.padding(horizontal = LocalDimens.current.rowHorizontalPadding),
+        )
+    }
 }
 
 /**
@@ -136,7 +143,7 @@ private fun SmtpProviderButtons(
     onFill: (SmtpProvider) -> Unit,
     onOther: () -> Unit,
 ) {
-    Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp)) {
+    Column(Modifier.fillMaxWidth().padding(horizontal = LocalDimens.current.rowHorizontalPadding, vertical = 4.dp)) {
         Text(
             stringResource(R.string.settings_smtp_providers),
             style = MaterialTheme.typography.bodyMedium,
@@ -177,7 +184,7 @@ private fun SmtpProviderHelp(
     canOpenLinks: Boolean,
 ) {
     val context = LocalContext.current
-    Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp)) {
+    Column(Modifier.fillMaxWidth().padding(horizontal = LocalDimens.current.rowHorizontalPadding, vertical = 4.dp)) {
         Text(
             stringResource(providerAdvice(provider)),
             style = MaterialTheme.typography.bodySmall,

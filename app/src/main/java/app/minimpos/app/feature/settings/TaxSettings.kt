@@ -29,6 +29,7 @@ import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -93,7 +94,7 @@ internal fun ColumnScope.TaxSection(
         ActionMessage(
             pluralStringResource(R.plurals.settings_tax_in_use, count, count),
             isError = true,
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+            modifier = Modifier.padding(horizontal = LocalDimens.current.rowHorizontalPadding, vertical = 8.dp),
         )
     }
     SettingActions {
@@ -133,7 +134,7 @@ private fun TaxRateRow(
         Modifier
             .fillMaxWidth()
             .clickable(onClick = onClick)
-            .padding(horizontal = 16.dp, vertical = LocalDimens.current.rowPadding)
+            .padding(horizontal = LocalDimens.current.rowHorizontalPadding, vertical = LocalDimens.current.rowPadding)
             .testTag("taxRow_${rate.id}"),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -260,7 +261,7 @@ private fun TaxNameSuggestions(
 ) {
     val suggestions = stringArrayResource(R.array.tax_name_suggestions)
     val matching = suggestions.firstOrNull { name.trim() == it }
-    var otherChosen by remember { mutableStateOf(false) }
+    var otherChosen by rememberSaveable { mutableStateOf(false) }
     FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         suggestions.forEach { suggestion ->
             TaxNameChip(suggestion, matching == suggestion, {

@@ -20,14 +20,13 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import app.minimpos.app.R
@@ -62,7 +61,7 @@ fun TipScreen(
     vm: TipViewModel = tipViewModel(saleId),
 ) {
     val state by vm.state.collectAsStateWithLifecycle()
-    var confirming by remember { mutableStateOf<Long?>(null) }
+    var confirming by rememberSaveable { mutableStateOf<Long?>(null) }
     val gate = currentSetupGate()
     LaunchedEffect(state.submission.done) { if (state.submission.done) navigator.back() }
     MiniScaffold(
@@ -191,7 +190,7 @@ fun CaptureScreen(
     vm: CaptureViewModel = captureViewModel(saleId, adjustOnly),
 ) {
     val state by vm.state.collectAsStateWithLifecycle()
-    var confirming by remember { mutableStateOf(false) }
+    var confirming by rememberSaveable { mutableStateOf(false) }
     val gate = currentSetupGate()
     LaunchedEffect(state.submission.done) { if (state.submission.done) navigator.back() }
     val sale = state.sale
@@ -299,7 +298,11 @@ private fun KeypadColumn(
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Column(
-            Modifier.widthIn(max = 560.dp).padding(dimens.screenPadding).then(if (dimens.compact) Modifier.weight(1f) else Modifier),
+            Modifier
+                .widthIn(
+                    max = LocalDimens.current.contentMaxWidth,
+                ).padding(dimens.screenPadding)
+                .then(if (dimens.compact) Modifier.weight(1f) else Modifier),
             verticalArrangement = Arrangement.spacedBy(dimens.spacing),
         ) {
             content()

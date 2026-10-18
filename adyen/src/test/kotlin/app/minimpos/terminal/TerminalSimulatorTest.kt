@@ -4,7 +4,6 @@ import app.minimpos.terminal.checkout.ModificationAmount
 import app.minimpos.terminal.checkout.ModificationResult
 import app.minimpos.terminal.client.BarcodeScan
 import app.minimpos.terminal.client.CardEntryOverride
-import app.minimpos.terminal.client.InputOutcome
 import app.minimpos.terminal.client.OfflineProcessingMode
 import app.minimpos.terminal.client.PaymentParams
 import app.minimpos.terminal.client.PosApplication
@@ -29,8 +28,6 @@ import app.minimpos.terminal.client.TransactionKind
 import app.minimpos.terminal.client.TransactionOutcome
 import app.minimpos.terminal.client.VirtualReceipt
 import app.minimpos.terminal.client.VirtualReceiptLine
-import app.minimpos.terminal.client.getTotals
-import app.minimpos.terminal.client.requestConfirmation
 import app.minimpos.terminal.simulator.SimulatedModifications
 import app.minimpos.terminal.simulator.SimulatedOutcome
 import app.minimpos.terminal.simulator.SimulatorConfig
@@ -434,7 +431,8 @@ class TerminalSimulatorTest {
 
             config = config.copy(outcome = SimulatedOutcome.CANCEL)
             assertThat(client.scanBarcode(1)).isEqualTo(BarcodeScan.NotRead)
-            assertThat(client.requestConfirmation("Confirm", "Sub")).isEqualTo(InputOutcome.Entered(true))
+            val cancelledWithPrompt = pay(tokenizing.copy(shopperFlow = ShopperSessionFlow(confirmationPrompt = "Confirm" to "Sub")))
+            assertThat(cancelledWithPrompt.decline?.cancelled).isTrue()
         }
 
     @Test

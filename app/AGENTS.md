@@ -62,11 +62,10 @@ Starred rules below are enforced by `ArchitectureTest`, `OwnershipArchitectureTe
   `Captures` takes a target supplier, not `AdyenApi`; the simulated `CheckoutApi` is injected by the container, and
   the app never builds a Checkout part outside `AdyenCheckout`.
 - \* Only `FinancialOperations` checks stored operations again, routes refunds and says whether any is running; screens
-  offer checks from `PaymentAction.CHECK_AGAIN`/`RefundEntity.canCheckAgain`, never a ServiceID. Saved-card charges
-  and Checkout refunds are sent only by `CheckoutBook`s run by `CheckoutOperations`. Payment-link creation runs
-  on the same single-flight skeleton (`OperationRunner`) and declines a second link per checkout, so screens never
-  guard it. Terminal reconciliation (recheck unresolved, read or close totals, compare) is one operation in
-  payment (`TerminalReconciliation`); screens follow its outcome.
+  offer checks from `PaymentAction.CHECK_AGAIN`/`RefundEntity.canCheckAgain`, never a ServiceID. Saved-card charges,
+  Checkout refunds and payment-link creations are sent only by `CheckoutBook`s run by `CheckoutOperations`, which
+  declines a second link per checkout so screens never guard it. Terminal reconciliation (recheck unresolved, read or
+  close totals, compare) is one operation in payment (`TerminalReconciliation`); screens follow its outcome.
 - \* `TransactionLifecycle` stores only through `TransactionBook`. A stored Busy refusal's ServiceID lives on the
   sale, written and cleared only by `SaleEvent`; the book is its only reader, and the waiting screen asks
   `TransactionState.Processing.canCancel` rather than a ServiceID. Links reach Adyen/store link answers only through
@@ -88,8 +87,9 @@ Starred rules below are enforced by `ArchitectureTest`, `OwnershipArchitectureTe
   Only `CaptureResult.toState(CaptureStep, …)` creates capture-action outcomes outside the capture module.
 - \* Only `ReceiptLinesJson` converts Adyen receipt fields; only `PrintRenderer` builds print jobs from document segments.
 - \* Only the container creates/completes one `SaleSession` per kind. Start through its atomic cart/form/revision
-  snapshot, including scanned-wallet starts and offered-wallet checkout assembly; only the session reads revisions or
-  copies `Checkout`. Stale starts cannot pay or clear newer work; terminal/link completion share the same wiring.
+  snapshot, including payment, link, saved-card and scanned-wallet starts and offered-wallet checkout assembly; only the
+  session reads revisions or copies `Checkout`. Stale starts cannot pay or clear newer work; terminal/link completion
+  share the same wiring.
 - \* Only `payment/PricingChanges` owns the pricing journal, confirmation/recovery, absolute catalog targets, session
   repricing, `withStableSettings` (wired by the container into `SampleData`) and single-pass `SettingsEdit` evaluation.
   Settings only presents confirmation. Block checkout until repricing finishes; replay must be idempotent, including
@@ -103,7 +103,8 @@ Starred rules below are enforced by `ArchitectureTest`, `OwnershipArchitectureTe
   country. Language stays local on setup transfer, and changing it must not rewrite saved merchant text.
 - \* Below screens and their view-model factories, composables take state/callbacks, not view models. Settings bundles
   callbacks in `SettingsEvents`/`TerminalSetupEvents`; `TerminalSetupViewModel` and `ReceiptBusinessImports` observe
-  narrow settings slices rather than `SettingsViewModel` or `SettingsUiState`.
+  narrow settings slices rather than `SettingsViewModel` or `SettingsUiState`, and `CapabilitiesViewModel` follows
+  `CapabilityDiscovery.changes` from `TerminalSetupSource.discoveryChanges`.
 - \* Only PIN-entry UI and `data.security` verify PINs. Financial actions request Manager approval and recheck it before
   sending; admin access is separate. Secrets remain in `SecretStore`.
 - \* `TerminalState.needsSetup` is read only by the container's `SetupGate`, followed by `SetupGateHost` in the nav host.

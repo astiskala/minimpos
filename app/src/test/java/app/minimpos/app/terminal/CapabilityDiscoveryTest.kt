@@ -38,7 +38,6 @@ import com.google.common.truth.Truth.assertThat
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.setMain
@@ -205,11 +204,7 @@ class CapabilityDiscoveryTest {
     fun `updates simulator and view model capabilities and handles non-discoverable or incomplete setups`() {
         Dispatchers.setMain(UnconfinedTestDispatcher())
         env.useSimulator()
-        val vm =
-            CapabilitiesViewModel(
-                discovery = env.container.capabilityDiscovery,
-                observedTerminal = env.container.settingsState.map { it.terminal },
-            )
+        val vm = CapabilitiesViewModel(discovery = env.container.capabilityDiscovery)
         try {
             await { vm.state.first { it.checked && it.simulated } }
             vm.saveGratuity("EUR", GratuityCapability("EUR", true, listOf("10%"), true))

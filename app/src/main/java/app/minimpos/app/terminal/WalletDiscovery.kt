@@ -13,8 +13,6 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.collectLatest
-import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -82,14 +80,10 @@ class WalletDiscovery(
     fun start() {
         if (!started.compareAndSet(false, true)) return
         scope.launch {
-            setups.changes
-                .map { setup ->
-                    Triple(setup.settings.terminal to setup.settings.verifiedSetup, setup.paymentContext(), setup.problem)
-                }.distinctUntilChanged()
-                .collectLatest {
-                    state.value = WalletAvailability()
-                    refresh()
-                }
+            setups.discoveryChanges.collectLatest {
+                state.value = WalletAvailability()
+                refresh()
+            }
         }
     }
 

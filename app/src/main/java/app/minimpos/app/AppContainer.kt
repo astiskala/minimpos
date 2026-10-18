@@ -117,7 +117,6 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.serialization.KSerializer
@@ -441,11 +440,9 @@ class AppContainer(
             currentCheckout = {
                 session(SaleKind.SALE)
                     .checkout(
-                        settingsState,
-                        flowOf(terminalStatus.state.value.printerAvailable),
+                        settings = settingsState,
+                        terminal = terminalStatus.state,
                         wallets = walletDiscovery.state,
-                        terminalTippingAvailable = flowOf(terminalStatus.state.value.capabilities.supportsTerminalFeatures),
-                        shopperDisplayAvailable = flowOf(terminalStatus.state.value.capabilities.supportsShopperDisplay),
                         currency = ::currency,
                     ).first()
             },

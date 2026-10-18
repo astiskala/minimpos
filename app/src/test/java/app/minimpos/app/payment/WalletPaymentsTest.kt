@@ -5,6 +5,7 @@ import app.minimpos.app.await
 import app.minimpos.app.data.db.SaleKind
 import app.minimpos.app.data.db.SaleStatus
 import app.minimpos.app.data.db.TaxRateEntity
+import app.minimpos.app.terminal.TerminalState
 import app.minimpos.core.payment.ScanWallet
 import com.google.common.truth.Truth.assertThat
 import kotlinx.coroutines.flow.first
@@ -29,7 +30,7 @@ class WalletPaymentsTest {
             session
                 .checkout(
                     env.container.settingsState,
-                    flowOf(true),
+                    flowOf(TerminalState(printerAvailable = true)),
                     wallets = env.container.walletDiscovery.state,
                     currency = env.container::currency,
                 ).first()
@@ -79,7 +80,7 @@ class WalletPaymentsTest {
                 session
                     .checkout(
                         env.container.settingsState,
-                        flowOf(true),
+                        flowOf(TerminalState(printerAvailable = true)),
                         wallets = env.container.walletDiscovery.state,
                         currency = env.container::currency,
                     ).first()

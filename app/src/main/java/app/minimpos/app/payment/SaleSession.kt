@@ -4,12 +4,14 @@ import app.minimpos.app.data.db.ProductEntity
 import app.minimpos.app.data.db.SaleKind
 import app.minimpos.app.data.db.TaxRateEntity
 import app.minimpos.app.data.settings.AppSettings
+import app.minimpos.app.terminal.TerminalState
 import app.minimpos.app.terminal.WalletAvailability
 import app.minimpos.core.cart.AppliedTax
 import app.minimpos.core.cart.Cart
 import app.minimpos.core.cart.CartProduct
 import app.minimpos.core.money.CurrencySpec
 import app.minimpos.core.payment.ScanWallet
+import app.minimpos.terminal.checkout.StoredCard
 import app.minimpos.terminal.client.CardEntryOverride
 import app.minimpos.terminal.client.ScannedPayment
 import kotlinx.coroutines.flow.Flow
@@ -102,31 +104,21 @@ class SaleSession(
 
     /**
      * The checkout of this session's cart and form with [settings], charged in the [currency] the settings give,
-     * offering tipping on the receipt while [printerAvailable], payment links while [linksAvailable] and scanned
-     * wallets from [wallets]; updated whenever any of them changes.
+     * following [terminal] (printer, payment links when [offersLinks], and whole destination capabilities) and
+     * scanned wallets from [wallets]; updated whenever any of them changes.
      */
     fun checkout(
         settings: Flow<AppSettings>,
-        printerAvailable: Flow<Boolean>,
-        linksAvailable: Flow<Boolean> = flowOf(false),
+        terminal: Flow<TerminalState> = flowOf(TerminalState()),
         wallets: Flow<WalletAvailability> = flowOf(WalletAvailability()),
-        terminalTippingAvailable: Flow<Boolean> = flowOf(true),
-        shopperDisplayAvailable: Flow<Boolean> = flowOf(false),
+        offersLinks: Boolean = true,
         currency: (AppSettings) -> CurrencySpec,
     ): Flow<Checkout> =
-        combine(
-            combine(snapshot, settings, printerAvailable) { snap, appSettings, printer -> Triple(snap, appSettings, printer) },
-            combine(linksAvailable, wallets, terminalTippingAvailable, shopperDisplayAvailable) {
-                links,
-                availableWallets,
-                terminalTips,
-                shopperDisplay,
-                ->
-                CheckoutCapabilities(links, availableWallets, terminalTips, shopperDisplay)
-            },
-        ) { (snapshot, appSettings, printer), caps ->
+        combine(snapshot, settings, terminal, wallets) { snapshot, appSettings, status, availableWallets ->
             val payment = appSettings.payment
             val resolvedCurrency = currency(appSettings)
+            val caps = status.capabilities
+            val shopperDisplay = caps.supportsShopperDisplay && shopperTexts != null
             Checkout(
                 snapshot.form,
                 payment,
@@ -139,23 +131,16 @@ class SaleSession(
                 ).totals(payment.taxMode, payment.chargeTax),
                 resolvedCurrency,
                 kind,
-                printer,
-                caps.linksAvailable,
+                status.printerAvailable,
+                status.paymentLinks && offersLinks,
                 snapshot.revision,
-                caps.wallets.offered(resolvedCurrency.code),
-                terminalTippingAvailable = caps.terminalTippingAvailable,
-                shopperDisplayAvailable = caps.shopperDisplayAvailable,
-                shopperTexts = if (caps.shopperDisplayAvailable) checkNotNull(shopperTexts).invoke() else null,
+                availableWallets.offered(resolvedCurrency.code),
+                terminalTippingAvailable = caps.supportsTerminalFeatures,
+                shopperDisplayAvailable = shopperDisplay,
+                shopperTexts = if (shopperDisplay) shopperTexts.invoke() else null,
                 emailOnTerminal = appSettings.asksEmailOnTerminal,
             )
         }
-
-    private data class CheckoutCapabilities(
-        val linksAvailable: Boolean,
-        val wallets: WalletAvailability,
-        val terminalTippingAvailable: Boolean,
-        val shopperDisplayAvailable: Boolean,
-    )
 
     /**
      * Builds a payment from the displayed [checkout] at [now] in [zone] (for [walletScan], only when [checkout] and
@@ -188,10 +173,7 @@ class SaleSession(
         checkout: Checkout,
         now: Instant,
         zone: ZoneId,
-    ): PaymentLinkStart? =
-        synchronized(this) {
-            checkout.takeIf { it.kind == kind && it.sessionRevision == revision }?.linkStart(now, zone)
-        }
+    ): PaymentLinkStart? = current(checkout)?.linkStart(now, zone)
 
     /**
      * Adds one unit of [product] with [tax], joining an existing line for the same product at the same price and tax
@@ -202,7 +184,12 @@ class SaleSession(
         product: ProductEntity,
         tax: TaxRateEntity,
     ) = edited {
-        cart.update { base(it).addProduct(CartProduct(product.id, product.name, product.sku, product.priceMinor, applied(tax)), newKey) }
+        cart.update {
+            (if (singleItem) Cart() else it).addProduct(
+                CartProduct(product.id, product.name, product.sku, product.priceMinor, AppliedTax(tax.name, tax.rateMilliPercent)),
+                newKey,
+            )
+        }
     }
 
     /**
@@ -215,11 +202,9 @@ class SaleSession(
         name: String,
         amountMinor: Long,
         tax: TaxRateEntity,
-    ) = edited { cart.update { base(it).addCustom(name, amountMinor, applied(tax), newKey()) } }
-
-    private fun base(cart: Cart) = if (singleItem) Cart() else cart
-
-    private fun applied(tax: TaxRateEntity) = AppliedTax(tax.name, tax.rateMilliPercent)
+    ) = edited {
+        cart.update { (if (singleItem) Cart() else it).addCustom(name, amountMinor, AppliedTax(tax.name, tax.rateMilliPercent), newKey()) }
+    }
 
     /**
      * Sets the quantity of the line with [key], capped at [Cart.MAX_QUANTITY] (at one for a [SaleKind.singleItem] kind); zero or
@@ -264,4 +249,24 @@ class SaleSession(
             snapshot.value = Snapshot(cart.value, form.value, revision)
             Unit
         }
+
+    private fun current(checkout: Checkout): Checkout? =
+        synchronized(this) {
+            checkout.takeIf { it.kind == kind && it.sessionRevision == revision }
+        }
 }
+
+/**
+ * Builds a saved-card charge for [card] from the displayed [checkout] at [now] in [zone]; null when unavailable,
+ * [card] is ineligible for the recurring model, or an edit made [checkout] stale.
+ */
+fun SaleSession.savedCardStart(
+    checkout: Checkout,
+    card: StoredCard,
+    now: Instant,
+    zone: ZoneId,
+    fromCheckout: Boolean = false,
+): SavedCardStart? =
+    paymentStart(checkout, now, zone)?.forSavedCard()?.let {
+        checkout.savedCardStart(card, now, zone, fromCheckout = fromCheckout)
+    }

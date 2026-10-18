@@ -6,6 +6,7 @@ import app.minimpos.terminal.checkout.CheckoutModifications
 import app.minimpos.terminal.checkout.CheckoutPaymentLinks
 import app.minimpos.terminal.checkout.CheckoutSavedCards
 import app.minimpos.terminal.client.Decline
+import app.minimpos.terminal.client.TerminalClient
 import app.minimpos.terminal.client.TransactionDetails
 import app.minimpos.terminal.paymentsapp.AdyenPaymentsAppManagement
 import app.minimpos.terminal.transport.AdyenCloudDevices
@@ -13,6 +14,7 @@ import app.minimpos.terminal.transport.AdyenHttp
 import app.minimpos.terminal.transport.AdyenStoreDetails
 import app.minimpos.terminal.transport.AdyenTerminalDetails
 import app.minimpos.terminal.transport.AdyenWalletMethods
+import app.minimpos.terminal.transport.Delivery
 import app.minimpos.terminal.transport.ExternalText
 import app.minimpos.terminal.transport.TerminalHttpClient
 import com.adyen.Client
@@ -271,6 +273,47 @@ class ArchitectureTest {
             .check(terminal)
 
     @Test
+    fun `simple nexo answers and shopper display steps stay behind their single owners`() {
+        terminalAnswerOwnership(
+            resideInAnyPackage("app.minimpos.terminal.client..")
+                .and(
+                    DescribedPredicate.not(
+                        DescribedPredicate.describe("TerminalAnswer or TerminalClient.execute") {
+                            it.name.endsWith(".TerminalAnswerKt") || it.name == TerminalClient::class.java.name
+                        },
+                    ),
+                ),
+        ).check(terminal)
+        shopperDisplayEncapsulation(
+            DescribedPredicate.describe("ShopperDisplayKt") { it.name.endsWith(".ShopperDisplayKt") },
+        ).check(terminal)
+    }
+
+    @Test
+    fun `terminal answer and shopper display ownership reject direct envelope reads and public step helpers`() {
+        val answerViolation = ClassFileImporter().importClasses(DirectEnvelopeReadViolation::class.java)
+        assertTrue(
+            terminalAnswerOwnership(type(DirectEnvelopeReadViolation::class.java))
+                .evaluate(answerViolation)
+                .hasViolation(),
+        )
+        val displayViolation = ClassFileImporter().importClasses(PublicShopperStepViolation::class.java)
+        assertTrue(
+            shopperDisplayEncapsulation(type(PublicShopperStepViolation::class.java))
+                .evaluate(displayViolation)
+                .hasViolation(),
+        )
+    }
+
+    private class DirectEnvelopeReadViolation {
+        fun unwrap(answered: Delivery.Answered) = answered.response
+    }
+
+    private class PublicShopperStepViolation {
+        fun step(id: String) = id.trim()
+    }
+
+    @Test
     fun `packages only depend downwards`() =
         // The simulator stands in for both APIs and shares its ledger between them, so nothing relies on it; the Terminal
         // API client and the Checkout API client know nothing of each other. The Payments app is one more transport
@@ -355,6 +398,26 @@ class ArchitectureTest {
                 .dependOnClassesThat()
                 .haveSimpleName("DefaultErrorResponseEntity")
                 .because("Management adapters share error-response decoding and Fault mapping in ManagementJson")
+
+        fun terminalAnswerOwnership(selected: DescribedPredicate<JavaClass>): ArchRule =
+            noClasses()
+                .that(selected)
+                .should()
+                .callMethod(Delivery.Answered::class.java, "getResponse")
+                .because("One-request nexo operations read response envelopes through readTerminalAnswer")
+
+        fun shopperDisplayEncapsulation(selected: DescribedPredicate<JavaClass>): ArchRule =
+            noMethods()
+                .that()
+                .areDeclaredInClassesThat(selected)
+                .and()
+                .doNotHaveName("executeShopperFlow")
+                .and()
+                .haveNameNotMatching("access\\$.*")
+                .should()
+                .bePublic()
+                .allowEmptyShould(true)
+                .because("Shopper display and Adyen Giving nexo steps sit behind TerminalClient.pay")
 
         const val SIMULATOR = "Simulator"
         const val CLIENT = "Client"

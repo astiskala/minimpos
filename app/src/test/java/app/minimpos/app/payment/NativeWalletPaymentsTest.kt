@@ -26,7 +26,6 @@ import com.adyen.model.terminal.TerminalAPIResponse
 import com.google.common.truth.Truth.assertThat
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.withTimeout
 import org.junit.Rule
 import org.junit.Test
@@ -125,7 +124,6 @@ class NativeWalletPaymentsTest {
             session
                 .checkout(
                     env.container.settingsState,
-                    flowOf(false),
                     wallets = env.container.walletDiscovery.state,
                     currency = env.container::currency,
                 ).first()

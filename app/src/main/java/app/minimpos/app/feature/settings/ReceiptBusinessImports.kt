@@ -8,6 +8,7 @@ import app.minimpos.app.data.settings.TerminalSettings
 import app.minimpos.app.feature.ActionOutcome
 import app.minimpos.app.feature.ActionState
 import app.minimpos.app.feature.launchWrite
+import app.minimpos.app.terminal.AdyenApi
 import app.minimpos.app.terminal.ReceiptBusiness
 import app.minimpos.app.terminal.ReceiptBusinessDetails
 import app.minimpos.app.terminal.ReceiptBusinesses
@@ -37,10 +38,19 @@ internal class ReceiptBusinessImports(
     private val details: ReceiptBusinessDetails,
     private val operations: SettingsOperations,
     private val observedReceipt: Flow<ReceiptSettings>,
+    private val api: AdyenApi? = null,
 ) {
     val state: StateFlow<ReceiptBusinessImportState>
         field = MutableStateFlow(ReceiptBusinessImportState())
     private var origin: TerminalSettings? = null
+
+    /** Automatically looks up store or merchant receipt details when the Checkout API is ready and receipt details are blank. */
+    suspend fun findIfMissing() {
+        val target = api?.target() ?: return
+        if (target.realAndReady && observedReceipt.first().businessDetailsMissing) {
+            find(automatic = true)
+        }
+    }
 
     fun find(automatic: Boolean = false) {
         if (state.value.lookup.running) return

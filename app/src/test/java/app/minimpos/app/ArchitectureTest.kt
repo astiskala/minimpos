@@ -66,6 +66,7 @@ import app.minimpos.app.payment.PricingChanges
 import app.minimpos.app.payment.ReceiptDelivery
 import app.minimpos.app.payment.SaleBook
 import app.minimpos.app.payment.SaleSession
+import app.minimpos.app.payment.SavedCardStart
 import app.minimpos.app.payment.SettingsEdit
 import app.minimpos.app.receipt.PrintRenderer
 import app.minimpos.app.receipt.ReceiptFactory
@@ -247,15 +248,17 @@ class ArchitectureTest {
             .dependOnClassesThat()
             .resideInAnyPackage("android.content..", "android.view..", "android.widget..", "androidx.compose.ui..")
             .check(app)
-        settingsPresentationIsolation.check(app)
+        settingsPresentationIsolation.forEach { it.check(app) }
     }
 
     @Test
     fun `settings presentation isolation rejects cross-view-model state coupling`() =
-        reject(listOf(settingsPresentationIsolation), SettingsPresentationViolation::class.java)
+        reject(settingsPresentationIsolation, SettingsPresentationViolation::class.java)
 
     private class SettingsPresentationViolation {
         fun coupled(state: SettingsUiState) = state.loaded
+
+        fun terminalOnly(settings: TerminalSettings) = settings.merchantAccount
     }
 
     @Test
@@ -1480,16 +1483,25 @@ class ArchitectureTest {
                 .should()
                 .callMethodWhere(callTo(PAYMENT_STANDING_FILE, "getActions"))
 
-        val settingsPresentationIsolation: ArchRule =
-            noClasses()
-                .that(
-                    type(TerminalSetupViewModel::class.java)
-                        .or(type(CapabilitiesViewModel::class.java))
-                        .or(type(ReceiptBusinessImports::class.java))
-                        .or(type(SettingsPresentationViolation::class.java)),
-                ).should()
-                .dependOnClassesThat(belongToAnyOf(SettingsViewModel::class.java, SettingsUiState::class.java))
-                .because("terminal setup and receipt-business import observe narrow settings slices rather than SettingsUiState")
+        val settingsPresentationIsolation: List<ArchRule> =
+            listOf(
+                noClasses()
+                    .that(
+                        type(TerminalSetupViewModel::class.java)
+                            .or(type(CapabilitiesViewModel::class.java))
+                            .or(type(ReceiptBusinessImports::class.java))
+                            .or(type(SettingsPresentationViolation::class.java)),
+                    ).should()
+                    .dependOnClassesThat(belongToAnyOf(SettingsViewModel::class.java, SettingsUiState::class.java))
+                    .because("terminal setup and receipt-business import observe narrow settings slices rather than SettingsUiState"),
+                noClasses()
+                    .that(
+                        type(CapabilitiesViewModel::class.java)
+                            .or(type(SettingsPresentationViolation::class.java)),
+                    ).should()
+                    .dependOnClassesThat(belongToAnyOf(AppSettings::class.java, TerminalSettings::class.java))
+                    .because("CapabilitiesViewModel follows CapabilityDiscovery.changes so secret and verification updates refresh it too"),
+            )
 
         // One implementation owns the journal ordering for confirmation and recovery; screens cannot reprice sessions.
         val pricingOwnership: List<ArchRule> =
@@ -1570,11 +1582,18 @@ class ArchitectureTest {
             listOf(
                 noClasses()
                     .that()
-                    .haveNameNotMatching(within(Checkout::class.java.name, SaleSession::class.java.name))
-                    .should()
+                    .haveNameNotMatching(
+                        within(Checkout::class.java.name, SaleSession::class.java.name, "app.minimpos.app.payment.SaleSessionKt"),
+                    ).should()
                     .callMethodWhere(
-                        callTo(Checkout::class.java.name, "paymentStart", "linkStart", "walletStart", "matchesWalletCheckout")
-                            .or(callTo(PaymentStart::class.java.name, "withScanned")),
+                        callTo(
+                            Checkout::class.java.name,
+                            "paymentStart",
+                            "linkStart",
+                            "savedCardStart",
+                            "walletStart",
+                            "matchesWalletCheckout",
+                        ).or(callTo(PaymentStart::class.java.name, "withScanned", "forSavedCard")),
                     ),
                 noClasses()
                     .that()
@@ -1593,9 +1612,10 @@ class ArchitectureTest {
                     .callMethodWhere(callTo(PaymentStart::class.java.name, "getSessionRevision")),
                 noClasses()
                     .that()
-                    .haveNameNotMatching(within(Checkout::class.java.name, PaymentStart::class.java.name))
-                    .should()
-                    .callConstructorWhere(target(owner(type(PaymentStart::class.java)))),
+                    .haveNameNotMatching(
+                        within(Checkout::class.java.name, PaymentStart::class.java.name, SavedCardStart::class.java.name),
+                    ).should()
+                    .callConstructorWhere(target(owner(belongToAnyOf(PaymentStart::class.java, SavedCardStart::class.java)))),
                 classes().should(
                     object : ArchCondition<JavaClass>("complete sessions through the container's shared completeSale wiring") {
                         override fun check(

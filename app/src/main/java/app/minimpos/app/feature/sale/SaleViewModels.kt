@@ -31,9 +31,9 @@ import app.minimpos.app.payment.PaymentStart
 import app.minimpos.app.payment.ReceiptDelivery
 import app.minimpos.app.payment.SaleSession
 import app.minimpos.app.payment.SavedCardCharges
-import app.minimpos.app.payment.SavedCardStart
 import app.minimpos.app.payment.TransactionLifecycle
 import app.minimpos.app.payment.WalletPayments
+import app.minimpos.app.payment.savedCardStart
 import app.minimpos.app.terminal.TerminalState
 import app.minimpos.app.terminal.WalletAvailability
 import app.minimpos.app.terminal.WalletDiscovery
@@ -242,15 +242,11 @@ class CheckoutViewModel(
 ) : ViewModel() {
     private val checkout =
         session.checkout(
-            settings,
-            terminal.map {
-                it.printerAvailable
-            },
-            terminal.map { it.paymentLinks && links != null },
-            discovery?.state ?: flowOf(WalletAvailability()),
-            terminal.map { it.capabilities.supportsTerminalFeatures },
-            terminal.map { it.capabilities.supportsShopperDisplay },
-            currency,
+            settings = settings,
+            terminal = terminal,
+            wallets = discovery?.state ?: flowOf(WalletAvailability()),
+            offersLinks = links != null,
+            currency = currency,
         )
 
     /** The screen state, updated whenever the form, cart, settings, printer or payment link setup change. */
@@ -309,10 +305,8 @@ class CheckoutViewModel(
     fun chargeToken(card: StoredCard): Boolean {
         val charges = charges ?: return false
         if (card !in tokens.value) return false
-        val current = state.value
-        val start = session.paymentStart(current, clock.instant(), zone())?.forSavedCard() ?: return false
-        if (start.shopperReference == null || start.manualCapture) return false
-        return charges.start(SavedCardStart(start, card, current.payment.recurringModel().value, fromCheckout = true)) != null
+        val start = session.savedCardStart(state.value, card, clock.instant(), zone(), fromCheckout = true) ?: return false
+        return charges.start(start) != null
     }
 
     /**

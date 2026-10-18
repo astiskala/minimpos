@@ -12,6 +12,7 @@ import app.minimpos.core.money.CurrencySpec
 import app.minimpos.core.payment.ScanWallet
 import app.minimpos.core.shopper.ShopperReferences
 import app.minimpos.core.tax.TaxMode
+import app.minimpos.terminal.checkout.StoredCard
 import app.minimpos.terminal.client.CardEntryOverride
 import app.minimpos.terminal.client.ShopperSessionFlow
 import app.minimpos.terminal.client.TerminalTipOptions
@@ -327,6 +328,22 @@ data class Checkout(
             ) ?: return null
         val lifetime = minOf(Duration.ofHours(payment.linkExpiryHours.toLong()), MAX_LINK_LIFETIME)
         return PaymentLinkStart(start, now.plus(lifetime))
+    }
+
+    /**
+     * The saved-card charge to start for [card] at [now] in [zone], or null unless this checkout is an immediate-charge
+     * sale with a [shopperReference] that [canPay] and [card] supports the configured recurring processing model.
+     */
+    fun savedCardStart(
+        card: StoredCard,
+        now: Instant,
+        zone: ZoneId,
+        fromCheckout: Boolean = false,
+    ): SavedCardStart? {
+        val model = payment.recurringModel().value
+        if (preAuthorisation || shopperReference == null || !card.supports(model)) return null
+        val start = paymentStart(now, zone)?.forSavedCard() ?: return null
+        return SavedCardStart(start, card, model, fromCheckout = fromCheckout)
     }
 
     /** Whether scanned wallets are offered, independently of entered-field validation. */

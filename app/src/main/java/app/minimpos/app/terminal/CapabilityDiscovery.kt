@@ -16,6 +16,7 @@ import app.minimpos.terminal.transport.TerminalOfflineLimits
 import app.minimpos.terminal.transport.WalletMethod
 import app.minimpos.terminal.transport.WalletMethodListing
 import app.minimpos.terminal.transport.WalletMethodsApi
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.sync.Mutex
@@ -246,6 +247,9 @@ class CapabilityDiscovery(
     /** Current non-secret capability state. */
     val state: StateFlow<AdyenCapabilitiesState>
         field = MutableStateFlow(AdyenCapabilitiesState())
+
+    /** Distinct setup-identity changes that require a capability refresh. */
+    val changes: Flow<*> get() = setups.discoveryChanges
 
     /** Refreshes capability state for the current setup. */
     suspend fun refresh(): AdyenCapabilitiesState =

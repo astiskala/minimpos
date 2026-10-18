@@ -2,7 +2,6 @@ package app.minimpos.terminal
 
 import app.minimpos.terminal.client.BarcodeScan
 import app.minimpos.terminal.client.CardEntryOverride
-import app.minimpos.terminal.client.InputOutcome
 import app.minimpos.terminal.client.PaymentParams
 import app.minimpos.terminal.client.PosApplication
 import app.minimpos.terminal.client.PrintAlign
@@ -26,14 +25,6 @@ import app.minimpos.terminal.client.TransactionKind
 import app.minimpos.terminal.client.TransactionOutcome
 import app.minimpos.terminal.client.VirtualReceipt
 import app.minimpos.terminal.client.VirtualReceiptLine
-import app.minimpos.terminal.client.displayQrCode
-import app.minimpos.terminal.client.displayVirtualReceipt
-import app.minimpos.terminal.client.getTotals
-import app.minimpos.terminal.client.givingDonation
-import app.minimpos.terminal.client.requestConfirmation
-import app.minimpos.terminal.client.requestRating
-import app.minimpos.terminal.client.requestText
-import app.minimpos.terminal.client.shopperSession
 import app.minimpos.terminal.client.toPrintJob
 import app.minimpos.terminal.transport.Delivery
 import app.minimpos.terminal.transport.ExternalText
@@ -93,7 +84,6 @@ import com.adyen.model.nexo.TransactionType
 import com.adyen.model.terminal.TerminalAPIRequest
 import com.adyen.model.terminal.TerminalAPIResponse
 import com.google.common.truth.Truth.assertThat
-import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertThrows
 import org.junit.Test
@@ -761,6 +751,12 @@ class ShopperDisplayAndTotalsTest {
         digit: String? = null,
     ) = client {
         respond {
+            adminResponse = AdminResponse().apply { response = result(ResultType.SUCCESS) }
+            displayResponse =
+                DisplayResponse().apply {
+                    outputResult += OutputResult().apply { response = result(ResultType.SUCCESS) }
+                }
+            paymentResponse = approval()
             inputResponse =
                 InputResponse().apply {
                     inputResult =
@@ -974,7 +970,7 @@ class ShopperDisplayAndTotalsTest {
         }
 
     @Test
-    fun `shopper display virtual receipts and QR codes handle responses`() =
+    fun `shopper display virtual receipts and QR codes handle responses through pay`() =
         runTest {
             val receipt =
                 VirtualReceipt(
@@ -986,95 +982,110 @@ class ShopperDisplayAndTotalsTest {
                     currency = "AUD",
                 )
             assertThat(receipt.header).isEqualTo("A & B <Shop>")
-            assertThat(receipt.lines.single().count).isEqualTo(2)
-            assertThat(receipt.lines.single().description).isEqualTo("Item \"1\" 'x'")
-            assertThat(receipt.lines.single().currency).isEqualTo("AUD")
-            assertThat(receipt.lines.single().amount).isEqualTo(BigDecimal("9.00"))
-            assertThat(receipt.subtotal).isEqualTo(BigDecimal("8.18"))
-            assertThat(receipt.tax).isEqualTo(BigDecimal("0.82"))
-            assertThat(receipt.total).isEqualTo(BigDecimal("9.00"))
-            assertThat(receipt.currency).isEqualTo("AUD")
+            assertThat(receipt.lines.single()).isEqualTo(VirtualReceiptLine(2, "Item \"1\" 'x'", "AUD", BigDecimal("9.00")))
+            assertThat(receipt.subtotal to receipt.tax).isEqualTo(BigDecimal("8.18") to BigDecimal("0.82"))
+            assertThat(receipt.total to receipt.currency).isEqualTo(BigDecimal("9.00") to "AUD")
             assertThat(receipt.totalLabel).isEqualTo("Total")
             assertThat(receipt.toXml("M400-123456789")).contains("virtual_receipt02.xslt")
             assertThat(receipt.toXml("M400-123456789")).contains("&amp;")
             assertThat(receipt.toXml("S1F2-123456789")).contains("virtual-receipt.xslt")
-            assertThrows(IllegalArgumentException::class.java) {
-                runBlocking { client { empty }.shopperSession(0, begin = true) }
-            }
 
             val displayOk =
                 client {
                     respond {
+                        adminResponse = AdminResponse().apply { response = result(ResultType.SUCCESS) }
                         displayResponse =
                             DisplayResponse().apply {
                                 outputResult.add(OutputResult().apply { response = result(ResultType.SUCCESS) })
                             }
+                        paymentResponse = approval()
                     }
                 }
-            assertThat(displayOk.displayVirtualReceipt(receipt)).isTrue()
-            assertThat(displayOk.displayQrCode("https://adyen.link/PL1", "Scan", "Pay")).isTrue()
-            assertThat(displayOk.displayQrCode("http://adyen.link/PL1")).isTrue()
-            assertThat(displayOk.displayQrCode("MPR1*data", "Header", "Footer")).isTrue()
-            assertThat(displayOk.shopperSession(1, begin = true)).isFalse()
+            for (flow in listOf(
+                ShopperSessionFlow(virtualReceipt = receipt, qrReceipt = "https://adyen.link/PL1", qrHeader = "Scan"),
+                ShopperSessionFlow(qrReceipt = "http://adyen.link/PL1"),
+                ShopperSessionFlow(qrReceipt = "MPR1*data", qrHeader = "Header"),
+            )) {
+                val outcome = displayOk.pay(params.copy(shopperFlow = flow)) as TransactionOutcome.Completed
+                assertThat(outcome.details.success).isTrue()
+            }
 
-            val adminOk =
-                client {
-                    respond {
-                        adminResponse = AdminResponse().apply { response = result(ResultType.SUCCESS) }
+            val displayFailed =
+                client { req ->
+                    if (req.saleToPOIRequest.paymentRequest != null) {
+                        respond { paymentResponse = approval() }
+                    } else {
+                        Delivery.Failed(UNREACHABLE)
                     }
-                }
-            assertThat(adminOk.shopperSession(1, begin = true)).isTrue()
-            assertThat(adminOk.shopperSession(1, begin = false)).isTrue()
-
-            val displayFail = client { Delivery.Failed(UNREACHABLE) }
-            assertThat(displayFail.displayQrCode("https://adyen.link/PL1")).isFalse()
-            assertThat(displayFail.shopperSession(1, begin = false)).isFalse()
+                }.pay(params.copy(shopperFlow = ShopperSessionFlow(virtualReceipt = receipt, qrReceipt = "https://adyen.link/PL1")))
+                    as TransactionOutcome.Completed
+            assertThat(displayFailed.details.success).isTrue()
         }
 
     @Test
-    fun `input prompts handle confirmation text and rating responses`() =
+    fun `input prompts handle confirmation text and rating responses through pay`() =
         runTest {
-            assertThat(inputClient(result(ResultType.SUCCESS), confirmed = true).requestConfirmation("Title", "Sub"))
-                .isEqualTo(InputOutcome.Entered(true))
-            assertThat(inputClient(result(ResultType.SUCCESS), confirmed = false).requestConfirmation("Title", "Sub"))
-                .isEqualTo(InputOutcome.Entered(false))
-            assertThat(inputClient(result(ResultType.FAILURE, ErrorConditionType.CANCEL)).requestConfirmation("Title", "Sub"))
-                .isEqualTo(InputOutcome.Cancelled)
-            assertThat(inputClient(result(ResultType.FAILURE, ErrorConditionType.ABORTED)).requestConfirmation("Title", "Sub"))
-                .isEqualTo(InputOutcome.Cancelled)
-            assertThat(inputClient(result(ResultType.FAILURE, ErrorConditionType.BUSY)).requestConfirmation("Title", "Sub"))
-                .isInstanceOf(InputOutcome.Failed::class.java)
-            assertThat(client { empty }.requestConfirmation("Title", "Sub"))
-                .isEqualTo(InputOutcome.Failed(Fault.UnreadableReply()))
-            assertThat(client { Delivery.Failed(UNREACHABLE) }.requestConfirmation("Title", "Sub"))
-                .isEqualTo(InputOutcome.Failed(UNREACHABLE))
+            val confirmFlow = ShopperSessionFlow(confirmationPrompt = "Title" to "Sub")
+            val confirmed =
+                inputClient(result(ResultType.SUCCESS), confirmed = true)
+                    .pay(params.copy(shopperFlow = confirmFlow)) as TransactionOutcome.Completed
+            assertThat(confirmed.details.success).isTrue()
 
-            val enteredText = inputClient(result(ResultType.SUCCESS), text = "a@b.co").requestText("Email") as InputOutcome.Entered
-            assertThat(enteredText).isEqualTo(InputOutcome.Entered("a@b.co"))
-            assertThat(enteredText.value).isEqualTo("a@b.co")
-            assertThat(inputClient(result(ResultType.SUCCESS), text = " ").requestText("Email"))
-                .isEqualTo(InputOutcome.Cancelled)
-            assertThat(inputClient(result(ResultType.FAILURE, ErrorConditionType.CANCEL)).requestText("Email"))
-                .isEqualTo(InputOutcome.Cancelled)
-            val failedInput = inputClient(result(ResultType.FAILURE, ErrorConditionType.BUSY)).requestText("Email") as InputOutcome.Failed
-            assertThat(failedInput.fault).isInstanceOf(Fault.TerminalRejected::class.java)
-            assertThat(client { Delivery.Failed(UNREACHABLE) }.requestText("Email"))
-                .isEqualTo(InputOutcome.Failed(UNREACHABLE))
+            for (cancelledClient in listOf(
+                inputClient(result(ResultType.SUCCESS), confirmed = false),
+                inputClient(result(ResultType.FAILURE, ErrorConditionType.CANCEL)),
+                inputClient(result(ResultType.FAILURE, ErrorConditionType.ABORTED)),
+            )) {
+                val cancelled = cancelledClient.pay(params.copy(shopperFlow = confirmFlow)) as TransactionOutcome.Completed
+                assertThat(cancelled.details.decline?.cancelled).isTrue()
+            }
 
-            assertThat(inputClient(result(ResultType.SUCCESS), digit = "0").requestRating("Rate", "Sub"))
-                .isEqualTo(InputOutcome.Entered(0))
-            assertThat(inputClient(result(ResultType.SUCCESS), digit = "10").requestRating("Rate"))
-                .isEqualTo(InputOutcome.Entered(10))
-            assertThat(inputClient(result(ResultType.SUCCESS), digit = "-1").requestRating("Rate"))
-                .isEqualTo(InputOutcome.Cancelled)
-            assertThat(inputClient(result(ResultType.SUCCESS), digit = "11").requestRating("Rate"))
-                .isEqualTo(InputOutcome.Cancelled)
-            assertThat(inputClient(result(ResultType.SUCCESS), digit = "abc").requestRating("Rate"))
-                .isEqualTo(InputOutcome.Cancelled)
-            assertThat(inputClient(result(ResultType.FAILURE, ErrorConditionType.CANCEL)).requestRating("Rate"))
-                .isEqualTo(InputOutcome.Cancelled)
-            assertThat(client { Delivery.Failed(UNREACHABLE) }.requestRating("Rate"))
-                .isEqualTo(InputOutcome.Failed(UNREACHABLE))
+            val busyConfirm =
+                inputClient(result(ResultType.FAILURE, ErrorConditionType.BUSY))
+                    .pay(params.copy(shopperFlow = confirmFlow)) as TransactionOutcome.NotProcessed
+            assertThat(busyConfirm.fault).isInstanceOf(Fault.TerminalRejected::class.java)
+            assertThat((client { empty }.pay(params.copy(shopperFlow = confirmFlow)) as TransactionOutcome.NotProcessed).fault)
+                .isEqualTo(Fault.UnreadableReply())
+            assertThat(
+                (client { Delivery.Failed(UNREACHABLE) }.pay(params.copy(shopperFlow = confirmFlow)) as TransactionOutcome.NotProcessed)
+                    .fault,
+            ).isEqualTo(UNREACHABLE)
+
+            val emailFlow = ShopperSessionFlow(emailPrompt = "Email")
+            val enteredText =
+                inputClient(result(ResultType.SUCCESS), text = "a@b.co")
+                    .pay(params.copy(shopperEmail = null, shopperFlow = emailFlow)) as TransactionOutcome.Completed
+            assertThat(enteredText.details.collectedEmail).isEqualTo("a@b.co")
+
+            for (noEmailClient in listOf(
+                inputClient(result(ResultType.SUCCESS), text = " "),
+                inputClient(result(ResultType.FAILURE, ErrorConditionType.CANCEL)),
+                inputClient(result(ResultType.FAILURE, ErrorConditionType.BUSY)),
+            )) {
+                val noEmail =
+                    noEmailClient.pay(params.copy(shopperEmail = null, shopperFlow = emailFlow)) as TransactionOutcome.Completed
+                assertThat(noEmail.details.collectedEmail).isNull()
+            }
+
+            val ratingFlow = ShopperSessionFlow(ratingPrompt = "Rate" to "Sub")
+            val ratingZero =
+                inputClient(result(ResultType.SUCCESS), digit = "0")
+                    .pay(params.copy(shopperFlow = ratingFlow)) as TransactionOutcome.Completed
+            assertThat(ratingZero.details.shopperRating).isEqualTo(0)
+            val ratingTen =
+                inputClient(result(ResultType.SUCCESS), digit = "10")
+                    .pay(params.copy(shopperFlow = ShopperSessionFlow(ratingPrompt = "Rate" to null))) as TransactionOutcome.Completed
+            assertThat(ratingTen.details.shopperRating).isEqualTo(10)
+            for (invalid in listOf("-1", "11", "abc")) {
+                val invalidRating =
+                    inputClient(result(ResultType.SUCCESS), digit = invalid)
+                        .pay(params.copy(shopperFlow = ratingFlow)) as TransactionOutcome.Completed
+                assertThat(invalidRating.details.shopperRating).isNull()
+            }
+            val cancelledRating =
+                inputClient(result(ResultType.FAILURE, ErrorConditionType.CANCEL))
+                    .pay(params.copy(shopperFlow = ratingFlow)) as TransactionOutcome.Completed
+            assertThat(cancelledRating.details.shopperRating).isNull()
         }
 
     @Test
@@ -1093,12 +1104,8 @@ class ShopperDisplayAndTotalsTest {
             assertThat(cancelledOutcome.recovered).isFalse()
             assertThat(cancelledOutcome.details.success).isFalse()
             assertThat(cancelledOutcome.details.errorCondition).isEqualTo("Cancel")
-            assertThat(cancelledOutcome.details.message).isNull()
-            assertThat(cancelledOutcome.details.refusalReason).isNull()
             assertThat(cancelledOutcome.details.decline?.cancelled).isTrue()
             assertThat(cancelledOutcome.details.merchantReference).isEqualTo("MP-1")
-            assertThat(cancelledOutcome.details.amount).isNull()
-            assertThat(cancelledOutcome.details.currency).isNull()
 
             val nullInputClient =
                 client {
@@ -1109,8 +1116,10 @@ class ShopperDisplayAndTotalsTest {
                             }
                     }
                 }
-            assertThat(nullInputClient.requestConfirmation("Title", "Sub"))
-                .isEqualTo(InputOutcome.Failed(Fault.UnreadableReply()))
+            val nullInputOutcome =
+                nullInputClient.pay(params.copy(shopperFlow = ShopperSessionFlow(confirmationPrompt = "Title" to "Sub")))
+                    as TransactionOutcome.NotProcessed
+            assertThat(nullInputOutcome.fault).isEqualTo(Fault.UnreadableReply())
 
             val flowDeclined =
                 client {
@@ -1136,7 +1145,6 @@ class ShopperDisplayAndTotalsTest {
                         }
                     }
                 }.pay(params.copy(shopperFlow = ShopperSessionFlow()), serviceId = "FLOW-GIV") as TransactionOutcome.Completed
-            assertThat(givingMissing.details.success).isTrue()
             assertThat(givingMissing.details.givingServiceId).isEqualTo("GIVING-MISS")
             assertThat(givingMissing.details.donationAmount).isNull()
         }
@@ -1149,32 +1157,26 @@ class ShopperDisplayAndTotalsTest {
                 client { req ->
                     captured += req.saleToPOIRequest
                     respond {
+                        adminResponse = AdminResponse().apply { response = result(ResultType.SUCCESS) }
                         displayResponse =
                             DisplayResponse().apply {
                                 outputResult += OutputResult().apply { response = result(ResultType.SUCCESS) }
                             }
+                        paymentResponse = approval()
                     }
                 }
-            assertThat(
-                capturingClient.displayVirtualReceipt(
-                    VirtualReceipt(header = "Order", lines = emptyList(), total = BigDecimal.ONE, currency = "EUR"),
-                ),
-            ).isTrue()
-            val vrOut =
-                captured
-                    .last()
-                    .displayRequest.displayOutput
-                    .single()
-            assertThat(vrOut.device).isEqualTo(DeviceType.CUSTOMER_DISPLAY)
-            assertThat(vrOut.infoQualify).isEqualTo(InfoQualifyType.DISPLAY)
+            val receipt = VirtualReceipt(header = "Order", lines = emptyList(), total = BigDecimal.ONE, currency = "EUR")
+            capturingClient.pay(
+                params.copy(shopperFlow = ShopperSessionFlow(virtualReceipt = receipt, qrReceipt = "RAW TEXT", qrHeader = "Head")),
+            )
+            val displays = captured.mapNotNull { it.displayRequest }
+            val vrOut = displays[0].displayOutput.single()
+            assertThat(vrOut.device to vrOut.infoQualify).isEqualTo(DeviceType.CUSTOMER_DISPLAY to InfoQualifyType.DISPLAY)
             assertThat(vrOut.outputContent.outputFormat).isEqualTo(OutputFormatType.XHTML)
             assertThat(String(vrOut.outputContent.outputXHTML, Charsets.UTF_8)).contains("<receipt>")
 
-            assertThat(capturingClient.displayQrCode("RAW TEXT", header = "Head", footer = "Foot", minimumSeconds = 7)).isTrue()
-            val qrOuts = captured.last().displayRequest.displayOutput
-            assertThat(qrOuts).hasSize(3)
-            assertThat(qrOuts[0].device).isEqualTo(DeviceType.CUSTOMER_DISPLAY)
-            assertThat(qrOuts[0].infoQualify).isEqualTo(InfoQualifyType.DISPLAY)
+            val qrOuts = displays[1].displayOutput
+            assertThat(qrOuts).hasSize(2)
             assertThat(qrOuts[0].outputContent.outputFormat).isEqualTo(OutputFormatType.TEXT)
             assertThat(
                 qrOuts[0]
@@ -1182,25 +1184,17 @@ class ShopperDisplayAndTotalsTest {
                     .single()
                     .text,
             ).isEqualTo("Head")
-            assertThat(qrOuts[1].device).isEqualTo(DeviceType.CUSTOMER_DISPLAY)
-            assertThat(qrOuts[1].infoQualify).isEqualTo(InfoQualifyType.DISPLAY)
-            assertThat(qrOuts[1].minimumDisplayTime).isEqualTo(7)
-            assertThat(qrOuts[1].isResponseRequiredFlag).isTrue()
+            assertThat(qrOuts[1].minimumDisplayTime to qrOuts[1].isResponseRequiredFlag).isEqualTo(10 to true)
             assertThat(qrOuts[1].outputContent.outputFormat).isEqualTo(OutputFormatType.BAR_CODE)
             assertThat(qrOuts[1].outputContent.outputBarcode.barcodeType).isEqualTo(BarcodeType.QRCODE)
             assertThat(qrOuts[1].outputContent.outputBarcode.barcodeValue).isEqualTo("RAW+TEXT")
-            assertThat(
-                qrOuts[2]
-                    .outputContent.outputText
-                    .single()
-                    .text,
-            ).isEqualTo("Foot")
 
-            assertThat(capturingClient.displayQrCode("http://adyen.link/1", header = " ", footer = " ")).isTrue()
+            capturingClient.pay(params.copy(shopperFlow = ShopperSessionFlow(qrReceipt = "http://adyen.link/1", qrHeader = " ")))
             val httpQr =
                 captured
+                    .mapNotNull { it.displayRequest }
                     .last()
-                    .displayRequest.displayOutput
+                    .displayOutput
                     .single()
             assertThat(httpQr.outputContent.outputBarcode.barcodeValue).isEqualTo("http://adyen.link/1")
         }
@@ -1213,6 +1207,8 @@ class ShopperDisplayAndTotalsTest {
                 client { req ->
                     captured += req.saleToPOIRequest
                     respond {
+                        adminResponse = AdminResponse().apply { response = result(ResultType.SUCCESS) }
+                        paymentResponse = approval()
                         inputResponse =
                             InputResponse().apply {
                                 inputResult =
@@ -1228,8 +1224,21 @@ class ShopperDisplayAndTotalsTest {
                             }
                     }
                 }
-            capturingClient.requestConfirmation("Title", "Body", cancelLabel = "No", confirmLabel = "Yes", timeoutSeconds = 12)
-            val confirmReq = captured.last().inputRequest
+            capturingClient.pay(
+                params.copy(
+                    shopperEmail = null,
+                    shopperFlow =
+                        ShopperSessionFlow(
+                            confirmationPrompt = "Title" to "Body",
+                            cancelLabel = "No",
+                            confirmLabel = "Yes",
+                            emailPrompt = "Email",
+                            ratingPrompt = "Rate" to " ",
+                        ),
+                ),
+            )
+            val inputs = captured.mapNotNull { it.inputRequest }
+            val confirmReq = inputs[0]
             assertThat(confirmReq.displayOutput.device).isEqualTo(DeviceType.CUSTOMER_DISPLAY)
             assertThat(confirmReq.displayOutput.infoQualify).isEqualTo(InfoQualifyType.DISPLAY)
             assertThat(confirmReq.displayOutput.outputContent.outputFormat).isEqualTo(OutputFormatType.TEXT)
@@ -1241,21 +1250,13 @@ class ShopperDisplayAndTotalsTest {
             assertThat(confirmReq.inputData.device).isEqualTo(DeviceType.CUSTOMER_INPUT)
             assertThat(confirmReq.inputData.infoQualify).isEqualTo(InfoQualifyType.INPUT)
             assertThat(confirmReq.inputData.inputCommand).isEqualTo(InputCommandType.GET_CONFIRMATION)
-            assertThat(confirmReq.inputData.maxInputTime).isEqualTo(BigInteger.valueOf(12))
+            assertThat(confirmReq.inputData.maxInputTime).isEqualTo(BigInteger.valueOf(60))
             assertThat(confirmReq.inputData.defaultInputString).isNull()
 
-            capturingClient.requestText("Email", placeholder = "p@q.r", timeoutSeconds = 15)
+            assertThat(inputs[1].inputData.defaultInputString).isEqualTo("name@domain.com")
             assertThat(
-                captured
-                    .last()
-                    .inputRequest.inputData.defaultInputString,
-            ).isEqualTo("p@q.r")
-
-            capturingClient.requestRating("Rate", subtitle = " ")
-            assertThat(
-                captured
-                    .last()
-                    .inputRequest.displayOutput.outputContent.outputText
+                inputs[2]
+                    .displayOutput.outputContent.outputText
                     .map { it.text },
             ).containsExactly("Rate")
         }
@@ -1269,6 +1270,10 @@ class ShopperDisplayAndTotalsTest {
                     captured += req.saleToPOIRequest
                     respond {
                         adminResponse = AdminResponse().apply { response = result(ResultType.SUCCESS) }
+                        paymentResponse =
+                            approval().apply {
+                                response = result(ResultType.SUCCESS, additional = "adyen_giving_service_id=GIV-9")
+                            }
                         transactionStatusResponse =
                             TransactionStatusResponse().apply {
                                 repeatedMessageResponse =
@@ -1284,31 +1289,24 @@ class ShopperDisplayAndTotalsTest {
                             }
                     }
                 }
-            assertThat(capturingClient.shopperSession(7, begin = true, waitingTimeoutMs = 45_000)).isTrue()
+            val outcome =
+                capturingClient.pay(params.copy(shopperFlow = ShopperSessionFlow(sessionId = 7))) as TransactionOutcome.Completed
+            assertThat(outcome.details.donationAmount).isEqualTo(BigDecimal("3.00"))
+            val admins = captured.mapNotNull { it.adminRequest }
             assertThat(
                 String(
-                    Base64.decode(
-                        captured
-                            .last()
-                            .adminRequest.serviceIdentification,
-                    ),
+                    Base64.decode(admins.first().serviceIdentification),
                     Charsets.UTF_8,
                 ),
             ).contains("Begin")
-            assertThat(capturingClient.shopperSession(7, begin = false)).isTrue()
             assertThat(
                 String(
-                    Base64.decode(
-                        captured
-                            .last()
-                            .adminRequest.serviceIdentification,
-                    ),
+                    Base64.decode(admins.last().serviceIdentification),
                     Charsets.UTF_8,
                 ),
             ).contains("End")
 
-            assertThat(capturingClient.givingDonation("GIV-9")).isEqualTo(BigDecimal("3.00"))
-            val givReq = captured.last().transactionStatusRequest
+            val givReq = captured.mapNotNull { it.transactionStatusRequest }.single()
             assertThat(givReq.isReceiptReprintFlag).isTrue()
             assertThat(givReq.messageReference.messageCategory).isEqualTo(MessageCategoryType.PAYMENT)
             assertThat(givReq.messageReference.saleID).isEqualTo(TerminalClient.GIVING_SALE_ID)

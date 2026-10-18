@@ -37,6 +37,7 @@ import app.minimpos.terminal.checkout.CheckoutCredentials
 import app.minimpos.terminal.checkout.CheckoutModifications
 import app.minimpos.terminal.checkout.CheckoutPaymentLinks
 import app.minimpos.terminal.checkout.CheckoutSavedCards
+import app.minimpos.terminal.checkout.PaymentLinkApi
 import app.minimpos.terminal.checkout.PaymentModifications
 import app.minimpos.terminal.checkout.SavedCardApi
 import app.minimpos.terminal.transport.TerminalDetailsApi
@@ -293,7 +294,9 @@ class OwnershipArchitectureTest {
                     .areNotAssignableTo(CheckoutBook::class.java)
                     .should()
                     .callMethodWhere(
-                        callToSubtypeOf(SavedCardApi::class.java, "charge").or(callToSubtypeOf(PaymentModifications::class.java, "refund")),
+                        callToSubtypeOf(SavedCardApi::class.java, "charge")
+                            .or(callToSubtypeOf(PaymentModifications::class.java, "refund"))
+                            .or(callToSubtypeOf(PaymentLinkApi::class.java, "create")),
                     ),
             )
 

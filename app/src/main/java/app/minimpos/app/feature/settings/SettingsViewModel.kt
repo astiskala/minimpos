@@ -181,7 +181,8 @@ class SettingsViewModel(
     internal val pricing = PricingChanges(this, pricingChanges, historySwitches, environment)
 
     /** Store receipt proposals and confirmation actions, without automatic replacement of merchant text. */
-    internal val businessImport = ReceiptBusinessImports(this, checks.businessDetails, pricingChanges, state.map { it.settings.receipt })
+    internal val businessImport =
+        ReceiptBusinessImports(this, checks.businessDetails, pricingChanges, state.map { it.settings.receipt }, checks.api)
 
     /** Stores ordinary settings; pricing and history-destructive environment changes require confirmation. */
     fun update(transform: (AppSettings) -> AppSettings) = pricing.edit(transform)
@@ -316,10 +317,7 @@ class SettingsViewModel(
         when (val connection = checks.status.check()) {
             is TerminalConnection.Connected -> {
                 val diagnosis = connection.diagnosis
-                val target = checks.api.target()
-                if (target.realAndReady && state.value.settings.receipt.businessDetailsMissing) {
-                    businessImport.find(automatic = true)
-                }
+                businessImport.findIfMissing()
                 ActionState(
                     outcome = ActionOutcome.Connected(diagnosis.globalStatus, diagnosis.hasPrinter, connection.setupOnly),
                     done = true,

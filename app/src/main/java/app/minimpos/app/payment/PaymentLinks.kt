@@ -1,11 +1,9 @@
 package app.minimpos.app.payment
 
-import android.database.SQLException
 import app.minimpos.app.data.db.DeviceFault
 import app.minimpos.app.data.db.Failure
 import app.minimpos.app.data.db.SaleEntity
 import app.minimpos.app.data.db.SaleStatus
-import app.minimpos.app.data.db.SaleWithLines
 import app.minimpos.app.data.db.SetupProblem
 import app.minimpos.app.data.repo.SaleEvent
 import app.minimpos.app.data.repo.SaleRepository
@@ -13,11 +11,11 @@ import app.minimpos.app.history.simulatedLink
 import app.minimpos.app.terminal.AdyenApi
 import app.minimpos.app.terminal.ApiAccess
 import app.minimpos.app.terminal.ApiTarget
+import app.minimpos.core.payment.PaymentContext
 import app.minimpos.terminal.checkout.PaymentLink
 import app.minimpos.terminal.checkout.PaymentLinkApi
 import app.minimpos.terminal.checkout.PaymentLinkResult
 import app.minimpos.terminal.checkout.PaymentLinkStatus
-import app.minimpos.terminal.transport.Fault
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -64,11 +62,10 @@ sealed interface LinkUpdate {
  *
  * Each sale is stored as PENDING before Adyen is called and always ends in a final status (an unknown outcome is
  * [SaleStatus.UNKNOWN], which [check] resolves by creating the link again with the same idempotency key, so Adyen
- * returns the link made the first time). The request is made from the stored sale ([PaymentLinkRequests]), so the
- * second one is the same as the first. Checks and cancellations of all links run one at a time, so an answer that
- * arrives late never overwrites a newer one. Creation runs on the shared single-flight skeleton: at most one link is
- * being created at a time, and one coherent checkout ([PaymentStart.sessionRevision]) can start only one link, because
- * each link can be paid on its own, so a second would be a second charge.
+ * returns the link made the first time). Creation and unknown-creation recovery run on [CheckoutOperations] through
+ * [Book]; checks and cancellations of all links share the same lock, so an answer that arrives late never overwrites a
+ * newer one. One coherent checkout ([PaymentStart.sessionRevision]) can start only one link, because each link can be
+ * paid on its own, so a second would be a second charge.
  *
  * @param scope Where links are created, so a creation survives leaving the screen.
  * @param sales Where the sales are stored.
@@ -84,14 +81,24 @@ class PaymentLinks(
     scope: CoroutineScope,
     private val sales: SaleRepository,
     private val target: suspend () -> ApiTarget,
-    private val onCreated: (id: String, start: PaymentLinkStart) -> Unit = { _, _ -> },
-    private val clock: Clock = Clock.systemUTC(),
-    private val newId: () -> String = { Uuid.random().toString() },
-    private val locale: () -> Locale = { Locale.getDefault() },
+    onCreated: (id: String, start: PaymentLinkStart) -> Unit = { _, _ -> },
+    clock: Clock = Clock.systemUTC(),
+    newId: () -> String = { Uuid.random().toString() },
+    locale: () -> Locale = { Locale.getDefault() },
     private val permits: suspend () -> Boolean = { true },
 ) {
     private val mutex = Mutex()
-    private val runner = OperationRunner<PaymentLinkStart>(scope)
+    private val operations =
+        CheckoutOperations(
+            scope = scope,
+            book = Book(sales, locale),
+            target = target,
+            onSucceeded = onCreated,
+            clock = clock,
+            newId = newId,
+            mutex = mutex,
+            recheckWindow = null,
+        )
 
     /** Checkouts that already started one link, by their session revision; see [start]. */
     private val linkedRevisions = mutableSetOf<Long>()
@@ -110,29 +117,7 @@ class PaymentLinks(
         return id
     }
 
-    private fun started(link: PaymentLinkStart): String? =
-        runner.start(
-            link,
-            id = { newId() },
-            interrupted = { id, cause ->
-                // A database failure named it so; anything else is unexpected. The record must not look as if it were
-                // still running.
-                val fault = (cause as? SQLException)?.let { DeviceFault.DATABASE } ?: DeviceFault.UNEXPECTED
-                sales.record(id, SaleEvent.OutcomeUnknown(Failure.Device(fault)))
-            },
-        ) { id ->
-            val initial = target()
-            val language = locale()
-            val pending =
-                link.pendingSale(
-                    id,
-                    clock.millis(),
-                    initial.context,
-                    language,
-                )
-            sales.createPending(pending, SaleBook.lines(id, link.payment.totals))
-            mutex.withLock { sales.get(id)?.let { send(it) } }
-        }
+    private fun started(link: PaymentLinkStart): String? = operations.start(link)
 
     /**
      * Asks Adyen where the link of sale [saleId] stands and stores it: paid, expired or still open. A sale whose link
@@ -146,7 +131,7 @@ class PaymentLinks(
             val linkId = sale.paymentLinkId
             when {
                 sale.status != SaleStatus.AWAITING_PAYMENT && sale.status != SaleStatus.UNKNOWN -> LinkUpdate.Settled
-                linkId == null -> send(record)
+                linkId == null -> recheckCreation(saleId)
                 else -> withApi(sale) { stored(saleId, it.status(linkId)) }
             }
         }
@@ -190,42 +175,21 @@ class PaymentLinks(
             }
         }
 
-    /** Creates the link of [record] (again, after an unknown outcome) and stores how that went. */
-    private suspend fun send(record: SaleWithLines): LinkUpdate {
-        val id = record.sale.id
-        val api =
-            when (val access = target().links(record.sale.context)) {
-                is ApiAccess.Ready -> {
-                    access.client
-                }
-
-                is ApiAccess.Blocked -> {
-                    return if (access is ApiAccess.Unavailable && record.sale.status != SaleStatus.UNKNOWN) {
-                        sales.record(id, SaleEvent.NotSetUp(access.problem))
-                        runner.resolved(id)
-                        LinkUpdate.Settled
-                    } else {
-                        notSetUp(access.problem)
-                    }
+    private suspend fun recheckCreation(saleId: String): LinkUpdate =
+        when (val rechecked = operations.recheckUnlocked(saleId)) {
+            Recheck.Settled -> {
+                if (sales.get(saleId)?.sale?.status == SaleStatus.AWAITING_PAYMENT) {
+                    LinkUpdate.StillOpen
+                } else {
+                    LinkUpdate.Settled
                 }
             }
-        val request = PaymentLinkRequests.request(record)
-        return when (val result = api.create(request, idempotencyKey(id))) {
-            is PaymentLinkResult.Answered -> {
-                applied(id, result.link)
-            }
 
-            is PaymentLinkResult.Failed if !result.fault.mayHaveTakenEffect -> {
-                settleFailed(id, result.fault)
-            }
-
-            is PaymentLinkResult.Failed -> {
-                val failure = Failure.Remote(result.fault)
-                sales.record(id, SaleEvent.OutcomeUnknown(failure))
-                LinkUpdate.Unconfirmed(failure)
+            is Recheck.StillUnknown -> {
+                val failure = rechecked.failure
+                if (failure is Failure.NotSetUp) LinkUpdate.NotDone(failure) else LinkUpdate.Unconfirmed(failure)
             }
         }
-    }
 
     /** Runs [call] with the payment link API, or fails (changing nothing) when it is not set up now. */
     private suspend fun withApi(
@@ -272,18 +236,73 @@ class PaymentLinks(
     ): LinkUpdate {
         val answered = SaleEvent.LinkAnswered(link, cancelling)
         sales.record(id, answered)
-        val start = runner.resolved(id)
-        if (start != null && (answered.stillOpen || link.status == PaymentLinkStatus.COMPLETED)) onCreated(id, start)
         return if (answered.stillOpen) LinkUpdate.StillOpen else LinkUpdate.Settled
     }
 
-    private suspend fun settleFailed(
-        id: String,
-        fault: Fault,
-    ): LinkUpdate {
-        sales.record(id, SaleEvent.NotSent(fault))
-        runner.resolved(id)
-        return LinkUpdate.Settled
+    /** Payment-link creation as a stored sale, sent with [PaymentLinkApi.create] built only from what the sale stored. */
+    private class Book(
+        private val sales: SaleRepository,
+        private val locale: () -> Locale,
+    ) : CheckoutBook<PaymentLinkStart, PaymentLinkApi> {
+        override suspend fun open(
+            id: String,
+            request: PaymentLinkStart,
+            createdAt: Long,
+            current: PaymentContext?,
+        ) = sales.createPending(request.pendingSale(id, createdAt, current, locale()), SaleBook.lines(id, request.payment.totals))
+
+        override suspend fun unsent(id: String): CheckoutRecord? =
+            sales
+                .get(id)
+                ?.sale
+                ?.takeIf {
+                    it.paymentLink && it.paymentLinkId == null && (it.status == SaleStatus.PENDING || it.status == SaleStatus.UNKNOWN)
+                }?.let { CheckoutRecord(it.status == SaleStatus.PENDING, it.createdAt, it.context) }
+
+        override fun access(
+            target: ApiTarget,
+            context: PaymentContext?,
+        ): ApiAccess<PaymentLinkApi> = target.links(context)
+
+        override suspend fun send(
+            id: String,
+            client: PaymentLinkApi,
+            now: Long,
+        ): CheckoutAnswer {
+            val record = sales.get(id) ?: return CheckoutAnswer.NotTaken
+            return when (val result = client.create(PaymentLinkRequests.request(record), idempotencyKey(id))) {
+                is PaymentLinkResult.Answered -> {
+                    val answered = SaleEvent.LinkAnswered(result.link)
+                    sales.record(id, answered)
+                    if (answered.stillOpen || result.link.status == PaymentLinkStatus.COMPLETED) {
+                        CheckoutAnswer.Taken
+                    } else {
+                        CheckoutAnswer.NotTaken
+                    }
+                }
+
+                is PaymentLinkResult.Failed if !result.fault.mayHaveTakenEffect -> {
+                    sales.record(id, SaleEvent.NotSent(result.fault))
+                    CheckoutAnswer.NotTaken
+                }
+
+                is PaymentLinkResult.Failed -> {
+                    val failure = Failure.Remote(result.fault)
+                    sales.record(id, SaleEvent.OutcomeUnknown(failure))
+                    CheckoutAnswer.Unconfirmed(failure)
+                }
+            }
+        }
+
+        override suspend fun notSent(
+            id: String,
+            problem: SetupProblem,
+        ) = sales.record(id, SaleEvent.NotSetUp(problem))
+
+        override suspend fun interrupted(
+            id: String,
+            fault: DeviceFault,
+        ) = sales.record(id, SaleEvent.OutcomeUnknown(Failure.Device(fault)))
     }
 
     /** Payment link values. */

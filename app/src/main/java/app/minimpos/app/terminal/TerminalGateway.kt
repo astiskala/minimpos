@@ -19,7 +19,6 @@ import app.minimpos.terminal.client.TerminalClient
 import app.minimpos.terminal.client.TerminalTotalsOutcome
 import app.minimpos.terminal.client.TransactionKind
 import app.minimpos.terminal.client.TransactionOutcome
-import app.minimpos.terminal.client.getTotals
 import app.minimpos.terminal.paymentsapp.PaymentsAppLinks
 import app.minimpos.terminal.transport.AdyenCloudDevices
 import app.minimpos.terminal.transport.AdyenLocalTransport

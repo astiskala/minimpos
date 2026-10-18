@@ -24,9 +24,6 @@ data class StoredPayment(
     /** The sale row. */
     val sale: SaleEntity get() = record.sale
 
-    /** Where the payment stands, see [PaymentStanding.of]. */
-    val standing: PaymentStanding get() = sale.standing
-
     /** What can be done with the payment now, see [SaleWithLines.actions]. */
     val actions: Set<PaymentAction> = record.actions
 }

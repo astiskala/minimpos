@@ -273,7 +273,10 @@ label screenshots as demos, and keep demo data consistent. The guides' SMTP link
 - For a dead-code audit, build release and inspect `app/build/outputs/mapping/release/usage.txt`. The block before the
   first `androidx.*` entry shows public members production never reaches; review serialization/Room members by hand.
 
-Gradle 9.8 deprecates `Configuration.setVisible`; several current plugins still call it. Do not suppress warnings.
+Gradle 9.8 deprecates `Configuration.setVisible` (removal planned for Gradle 11). It is the build's only deprecation,
+and the summary's "incompatible with Gradle 10" wording names the next major version for any deprecation. The latest
+stable AGP, Dokka, Kover, KSP, detekt and gradle-pitest-plugin still call it; AGP 9.5 removes the calls. Upgrade the
+plugins when fixed releases are at least seven days old. Do not suppress warnings or pin an older Gradle.
 To see configuration-time warnings hidden by a reused configuration cache:
 
 ```sh

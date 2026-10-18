@@ -27,8 +27,6 @@ import app.minimpos.app.payment.ReceiptDelivery
 import app.minimpos.app.payment.ReconciliationOutcome
 import app.minimpos.app.payment.StoredPaymentActions
 import app.minimpos.app.payment.TerminalReconciliation
-import app.minimpos.app.terminal.TerminalState
-import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -52,9 +50,8 @@ import java.time.ZoneId
  * @property hasHistory Whether history holds any transaction at all, matching or not.
  * @property canPrint Whether daily reports can print on the current destination.
  * @property print Latest whole-day print outcome.
- * @property canReconcile Whether the current destination supports terminal totals and reconciliation.
  * @property reconcile Latest terminal totals/reconciliation action state.
- * @property reconciliation Latest comparison between local records and terminal totals; null before running or after dismissal.
+ * @property reconciliation Latest comparison between local records and terminal totals; null before running.
  */
 data class HistoryUiState(
     val loaded: Boolean = false,
@@ -68,7 +65,6 @@ data class HistoryUiState(
     val canPrint: Boolean = false,
     /** Latest whole-day print outcome. */
     val print: ActionState = ActionState(),
-    val canReconcile: Boolean = false,
     val reconcile: ActionState = ActionState(),
     val reconciliation: TerminalReconciliationReport? = null,
 ) {
@@ -85,7 +81,6 @@ class HistoryViewModel(
     private val receipts: ReceiptDelivery? = null,
     /** Terminal reconciliation, absent only in list-only tests. */
     private val reconciliation: TerminalReconciliation? = null,
-    terminal: Flow<TerminalState> = flowOf(TerminalState()),
 ) : ViewModel() {
     private val print = MutableStateFlow(ActionState())
     private val reconcileState = MutableStateFlow<Pair<ActionState, TerminalReconciliationReport?>>(ActionState() to null)
@@ -123,15 +118,13 @@ class HistoryViewModel(
                 hasHistory = items.isNotEmpty(),
             )
         }.combine(
-            combine(canPrint, print, terminal, reconcileState) { available, action, term, (recAction, recReport) ->
-                val canReconcile = reconciliation != null && term.capabilities.supportsTerminalFeatures
-                ReconcileSlice(available, action, canReconcile, recAction, recReport)
+            combine(canPrint, print, reconcileState) { available, action, (recAction, recReport) ->
+                ReconcileSlice(available, action, recAction, recReport)
             },
         ) { list, slice ->
             list.copy(
                 canPrint = slice.canPrint,
                 print = slice.print,
-                canReconcile = slice.canReconcile,
                 reconcile = slice.reconcile,
                 reconciliation = slice.reconciliation,
             )
@@ -140,7 +133,6 @@ class HistoryViewModel(
     private data class ReconcileSlice(
         val canPrint: Boolean,
         val print: ActionState,
-        val canReconcile: Boolean,
         val reconcile: ActionState,
         val reconciliation: TerminalReconciliationReport?,
     )
@@ -177,11 +169,6 @@ class HistoryViewModel(
                     }
                 }
         }
-    }
-
-    /** Dismisses the displayed terminal reconciliation comparison card. */
-    fun dismissReconciliation() {
-        reconcileState.update { (action, _) -> action to null }
     }
 
     /** Shows the transactions matching [value]. */

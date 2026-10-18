@@ -16,6 +16,7 @@ import app.minimpos.app.history.Refundability
 import app.minimpos.app.history.RefundablePayment
 import app.minimpos.app.history.StoredPayment
 import app.minimpos.app.history.canCheckAgain
+import app.minimpos.app.simulatedModifications
 import app.minimpos.app.terminal.ApiSetup
 import app.minimpos.app.terminal.ApiTarget
 import app.minimpos.core.cart.AppliedTax
@@ -32,7 +33,6 @@ import app.minimpos.terminal.checkout.PaymentModifications
 import app.minimpos.terminal.checkout.SavedCardApi
 import app.minimpos.terminal.checkout.StoredCard
 import app.minimpos.terminal.checkout.StoredCardListing
-import app.minimpos.terminal.simulator.SimulatedModifications
 import app.minimpos.terminal.transport.ExternalText
 import app.minimpos.terminal.transport.Fault
 import com.google.common.truth.Truth.assertThat
@@ -82,7 +82,7 @@ class SavedCardChargesTest {
     private val refundsSent = mutableListOf<String>()
     private var refundAnswer: ModificationResult = ModificationResult.Received("REF1")
     private val modifications =
-        object : PaymentModifications by SimulatedModifications() {
+        object : PaymentModifications by simulatedModifications() {
             override suspend fun refund(
                 paymentPspReference: String,
                 amount: ModificationAmount,

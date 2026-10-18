@@ -115,8 +115,10 @@ class LocalizationTest {
         listOf("values", "values-zh-rCN", "values-b+zh+Hant", "values-ja").forEach { folder ->
             val strings = resourceEntries(folder)
             // Settings lists exactly the required roles new credentials lack by default, by their Customer Area names.
+            val grantedByDefault =
+                setOf(AdyenRole.PAYMENT_METHODS_READ, AdyenRole.STORES_READ, AdyenRole.ACCOUNT_READ, AdyenRole.MERCHANT_RECURRING)
             val roles = strings.filterKeys { it.startsWith("string:settings_adyen_role_") }.values.map { it.single() }
-            assertThat(roles).containsExactlyElementsIn(AdyenRole.entries.filterNot { it.default }.map { it.displayName })
+            assertThat(roles).containsExactlyElementsIn((AdyenRole.entries - grantedByDefault).map { it.displayName })
             assertThat(strings.getValue("string:settings_business_import_hint").single()).contains("Management API - Stores read")
         }
     }

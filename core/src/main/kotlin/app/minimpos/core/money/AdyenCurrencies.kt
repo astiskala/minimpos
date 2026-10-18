@@ -7,8 +7,7 @@ import java.util.Locale
  * A currency Adyen supports, with the number of decimals Adyen uses for it.
  *
  * @property code the upper-case ISO 4217 code, e.g. "AUD" (plus Adyen-specific codes such as "CNH").
- * @property name the English name from Adyen's table, shown in the currency picker and matched by
- *   [AdyenCurrencies.search].
+ * @property name the English name from Adyen's table, shown in the currency picker and matched by its search.
  * @property decimals the number of minor-unit digits Adyen expects in amounts, which can differ from ISO 4217
  *   (e.g. ISK is 2, IDR is 0).
  */
@@ -173,9 +172,6 @@ object AdyenCurrencies {
     /** Looks up [code] ignoring surrounding whitespace and case; null when Adyen does not support the currency. */
     operator fun get(code: String): AdyenCurrency? = all[code.trim().uppercase()]
 
-    /** Every currency, ordered by code (the currency picker's list when nothing has been searched for). */
-    val sorted: List<AdyenCurrency> by lazy { all.values.sortedBy { it.code } }
-
     /**
      * The legal tender of [country] (ISO 3166 alpha-2, e.g. "SE" gives SEK), used as the default currency on a
      * device in that country. Null when the JDK does not know the country or Adyen does not support its currency.
@@ -184,16 +180,4 @@ object AdyenCurrencies {
         runCatching { Currency.getInstance(Locale.Builder().setRegion(country.trim()).build()) }
             .getOrNull()
             ?.let { get(it.currencyCode) }
-
-    /**
-     * Currencies whose code or name contains [query] (ignoring case), ordered by code with an exact code match first.
-     * A blank query returns [sorted].
-     */
-    fun search(query: String): List<AdyenCurrency> {
-        val q = query.trim()
-        if (q.isEmpty()) return sorted
-        return sorted
-            .filter { it.code.contains(q, ignoreCase = true) || it.name.contains(q, ignoreCase = true) }
-            .sortedByDescending { it.code.equals(q, ignoreCase = true) }
-    }
 }

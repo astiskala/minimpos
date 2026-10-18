@@ -13,8 +13,10 @@ import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.cancel
-import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.last
+import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.runTest
@@ -67,13 +69,13 @@ class AutomaticReceiptDeliveryTest {
     @Test
     fun `automatic delivery runs once per armed transaction as the settings say`() =
         runTest(dispatcher) {
-            assertThat(automatic(transaction)).isEqualTo(AutoDelivery(complete = true))
+            assertThat(automatic(transaction)).isEqualTo(AutoDelivery())
             receipts.arm("s1")
             val delivered = automatic(transaction)
             assertThat(delivered.printed?.result).isEqualTo(ActionResult.Success)
             assertThat(delivered.emailTo).isEqualTo("a@b.co")
             assertThat(delivered.emailed).isEqualTo(ActionResult.Success)
-            assertThat(automatic(transaction)).isEqualTo(AutoDelivery(complete = true))
+            assertThat(automatic(transaction)).isEqualTo(AutoDelivery())
             assertThat(env.mail.sent).hasSize(1)
 
             container.settings.update { it.copy(payment = it.payment.copy(emailCapture = EmailCapture.AFTER_PAYMENT)) }
@@ -89,23 +91,23 @@ class AutomaticReceiptDeliveryTest {
                 )
             }
             receipts.arm("s1")
-            assertThat(automatic(transaction)).isEqualTo(AutoDelivery(complete = true))
+            assertThat(automatic(transaction)).isEqualTo(AutoDelivery())
 
             container.settings.update {
                 it.copy(receipt = it.receipt.copy(autoPrint = true), simulator = it.simulator.copy(hasPrinter = false))
             }
             container.terminalStatus.state.first { !it.printerAvailable }
             receipts.arm("r1")
-            assertThat(automatic(StoredTransaction.Refund("r1"))).isEqualTo(AutoDelivery(complete = true))
+            assertThat(automatic(StoredTransaction.Refund("r1"))).isEqualTo(AutoDelivery())
             receipts.arm("missing")
-            assertThat(automatic(StoredTransaction.Sale("missing"))).isEqualTo(AutoDelivery(complete = true))
+            assertThat(automatic(StoredTransaction.Sale("missing"))).isEqualTo(AutoDelivery())
         }
 
     @Test
     fun `claimed delivery finishes after its screen closes and competing screens cannot dispatch again`() =
         runTest(dispatcher) {
             receipts.arm("s1")
-            lateinit var progress: StateFlow<AutoDelivery>
+            lateinit var progress: Flow<AutoDelivery>
             val screen = CoroutineScope(Job() + dispatcher)
             screen.launch(start = CoroutineStart.UNDISPATCHED) {
                 progress = receipts.automation(transaction)
@@ -113,10 +115,10 @@ class AutomaticReceiptDeliveryTest {
             }
             screen.cancel()
             val competing = receipts.automation(transaction)
-            val delivered = progress.first { it.complete }
+            val delivered = progress.last()
             assertThat(delivered.printed?.result).isEqualTo(ActionResult.Success)
             assertThat(delivered.emailed).isEqualTo(ActionResult.Success)
-            assertThat(competing.value).isEqualTo(AutoDelivery(complete = true))
+            assertThat(competing.toList()).containsExactly(AutoDelivery())
             assertThat(env.mail.sent).hasSize(1)
             assertThat(
                 container.sales
@@ -126,5 +128,5 @@ class AutomaticReceiptDeliveryTest {
             ).isEqualTo("a@b.co")
         }
 
-    private suspend fun automatic(transaction: StoredTransaction) = receipts.automation(transaction).first { it.complete }
+    private suspend fun automatic(transaction: StoredTransaction) = receipts.automation(transaction).last()
 }

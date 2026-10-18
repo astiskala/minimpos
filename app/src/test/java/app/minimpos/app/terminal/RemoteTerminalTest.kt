@@ -97,7 +97,7 @@ class RemoteTerminalTest {
             container.settings.update { it.copy(terminal = it.terminal.copy(merchantAccount = "Other")) }
         }
         container.terminalStatus.start()
-        assertThat(await { gateway.connectedTerminals() }).isInstanceOf(ConnectedTerminals.Listed::class.java)
+        await { gateway.diagnose() }
         val current = await { container.settings.current() }.terminal
         assertThat(current.merchantAccount).isEqualTo("Other")
         assertThat(current.cloudRegion).isNull()
@@ -109,7 +109,6 @@ class RemoteTerminalTest {
         env.updateSettings { it.copy(terminal = it.terminal.copy(environment = null)) }
         assertThat(await { gateway.diagnose() }).isEqualTo(TerminalConnection.NotSetUp(SetupProblem.ENVIRONMENT))
         assertThat(await { gateway.pay(payment, "PAY1") }).isEqualTo(Attempt.NotSetUp(SetupProblem.ENVIRONMENT))
-        assertThat(await { gateway.connectedTerminals() }).isEqualTo(ConnectedTerminals.NotSetUp(SetupProblem.ENVIRONMENT))
         assertThat(cloud.detections).isEqualTo(0)
     }
 
@@ -151,21 +150,9 @@ class RemoteTerminalTest {
         val credential = Fault.Credential(ApiKey.ADYEN)
         assertThat((await { gateway.diagnose() } as TerminalConnection.Failed).failure).isEqualTo(Failure.Remote(credential))
         assertThat((await { gateway.pay(payment, "PAY1") }.made() as TransactionOutcome.NotProcessed).fault).isEqualTo(credential)
-        assertThat((await { container.terminalStatus.connectedTerminals() } as ConnectedTerminals.Failed).fault).isEqualTo(credential)
         // A key saved but no longer readable is reported as such.
         env.cipher.fail = true
         assertThat((await { gateway.diagnose() } as TerminalConnection.NotSetUp).problem).isEqualTo(SetupProblem.UNREADABLE_API_KEY)
-    }
-
-    @Test
-    fun `the terminals connected in the cloud can be listed before one is chosen`() {
-        assertThat(await { gateway.connectedTerminals() }).isEqualTo(ConnectedTerminals.NotSetUp(SetupProblem.ENVIRONMENT))
-        useCloud(poiId = "")
-        assertThat((await { gateway.diagnose() } as TerminalConnection.NotSetUp).problem).isEqualTo(SetupProblem.POI_ID)
-        val listed = await { gateway.connectedTerminals() } as ConnectedTerminals.Listed
-        assertThat(listed.poiIds).containsExactly("AMS1-000168223606144", "S1F2-000158213605014").inOrder()
-        assertThat(gateway.detectedEnvironment.value?.environment).isEqualTo(TerminalEnvironment.LIVE)
-        assertThat(gateway.detectedEnvironment.value?.cloudRegion).isEqualTo(CloudRegion.AU)
     }
 
     @Test
@@ -203,7 +190,7 @@ class RemoteTerminalTest {
             await {
                 gateway.status("PAY1", TransactionKind.PAYMENT)
             }.made(),
-        ).isEqualTo(TransactionOutcome.Unknown("PAY1", Fault.NoLateReply))
+        ).isEqualTo(TransactionOutcome.Unknown(Fault.NoLateReply))
         assertThat(await { gateway.abort("PAY1") }).isFalse()
     }
 

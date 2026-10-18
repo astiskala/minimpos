@@ -5,6 +5,7 @@ import app.minimpos.terminal.checkout.CheckoutModifications
 import app.minimpos.terminal.checkout.ModificationAmount
 import app.minimpos.terminal.checkout.ModificationResult
 import app.minimpos.terminal.client.PosApplication
+import app.minimpos.terminal.simulator.SimulatedLedger
 import app.minimpos.terminal.simulator.SimulatedModifications
 import app.minimpos.terminal.transport.ApiKey
 import app.minimpos.terminal.transport.ExternalText
@@ -250,7 +251,7 @@ class CheckoutModificationsTest {
 
     @Test
     fun `the simulated API accepts everything and adjusts synchronously only with a blob`() {
-        val simulated = SimulatedModifications(Random(1))
+        val simulated = SimulatedModifications(Random(1), SimulatedLedger())
         runBlocking {
             assertThat(simulated.capture("PSP", amount, "r", "k")).isInstanceOf(ModificationResult.Received::class.java)
             assertThat(simulated.updateAmount("PSP", amount, "r", null, "k")).isInstanceOf(ModificationResult.Received::class.java)

@@ -265,7 +265,7 @@ class TerminalDetailsTest {
                     TerminalEnvironment.TEST,
                     DiscoveredKey("new", 1, "NewStrongSecret123!"),
                 ) as SharedKeyUpdate.Ready
-            assertThat(result.created).isTrue()
+            assertThat(result.key.identifier).isEqualTo("new")
             assertThat(server.takeRequest().method).isEqualTo("GET")
             val patch = server.takeRequest()
             assertThat(patch.method).isEqualTo("PATCH")
@@ -297,7 +297,7 @@ class TerminalDetailsTest {
                     TerminalEnvironment.TEST,
                     DiscoveredKey("new", 1, "NewStrongSecret123!"),
                 ) as SharedKeyUpdate.Ready
-            assertThat(result.created).isTrue()
+            assertThat(result.key.identifier).isEqualTo("new")
             assertThat(server.takeRequest().method).isEqualTo("GET")
             val patch = server.takeRequest()
             assertThat(patch.method).isEqualTo("PATCH")
@@ -321,7 +321,6 @@ class TerminalDetailsTest {
                     TerminalEnvironment.TEST,
                     DiscoveredKey("new", 1, "NewStrongSecret123!"),
                 ) as SharedKeyUpdate.Ready
-            assertThat(result.created).isFalse()
             assertThat(result.key.identifier).isEqualTo("existing")
             assertThat(server.requestCount).isEqualTo(1)
         }
@@ -396,7 +395,6 @@ class TerminalDetailsTest {
             assertThat(found.dccEnabled).isFalse()
             assertThat(found.surchargeConfigured).isTrue()
             assertThat(found.moto).isEqualTo(TerminalMotoSettings(enabled = false, maxAmount = 250))
-            assertThat(found.offline.configuredFor("USD")).isTrue()
             server.takeRequest()
 
             reply(initial)
@@ -453,7 +451,7 @@ class TerminalDetailsTest {
             )
             val offlineReq = TerminalCapabilitiesPatch.Offline("EUR", chipFloorLimit = 75, maxStoreAndForwardMinor = 5000, maxPayments = 15)
             val updatedOffline = api.updateCapabilities("ID", TerminalEnvironment.TEST, offlineReq) as TerminalCapabilitiesUpdate.Ready
-            assertThat(updatedOffline.capabilities.offline.configuredFor("EUR")).isTrue()
+            assertThat(updatedOffline.capabilities.offline.chipFloorLimit).isEqualTo(75)
             server.takeRequest()
             val offlinePatch = checkNotNull(server.takeRequest().body).utf8()
             assertThat(offlinePatch).doesNotContain("nexo")
@@ -485,13 +483,6 @@ class TerminalDetailsTest {
     @Test
     fun `handles capabilities parsing edge cases and read-back or HTTP failures`() =
         runBlocking {
-            assertThat(TerminalOfflineLimits(0, emptyMap(), null).configuredFor("EUR")).isFalse()
-            assertThat(TerminalOfflineLimits(1, emptyMap(), null).configuredFor("EUR")).isTrue()
-            assertThat(TerminalOfflineLimits(null, mapOf("EUR" to 0L), null).configuredFor("EUR")).isFalse()
-            assertThat(TerminalOfflineLimits(null, mapOf("EUR" to 100L), 0).configuredFor("EUR")).isFalse()
-            assertThat(TerminalOfflineLimits(null, mapOf("EUR" to 100L), 1).configuredFor("EUR")).isTrue()
-            assertThat(TerminalOfflineLimits(null, mapOf("EUR" to 100L), null).configuredFor("EUR")).isTrue()
-
             reply(
                 """
                 {

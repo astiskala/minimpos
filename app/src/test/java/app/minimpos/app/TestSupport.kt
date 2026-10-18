@@ -39,7 +39,6 @@ import app.minimpos.terminal.paymentsapp.AppLinkExchange
 import app.minimpos.terminal.paymentsapp.BoardingTarget
 import app.minimpos.terminal.paymentsapp.ManagementResult
 import app.minimpos.terminal.paymentsapp.PaymentsAppManagement
-import app.minimpos.terminal.simulator.SimulatedModifications
 import app.minimpos.terminal.simulator.SimulatorConfig
 import app.minimpos.terminal.simulator.TerminalSimulator
 import app.minimpos.terminal.transport.AdyenLocalTransport
@@ -151,6 +150,9 @@ class FakeDevice(
     override val country: String = "AU",
     override var paymentsApps: Set<TerminalEnvironment> = emptySet(),
 ) : DeviceInfo
+
+/** Simulated Checkout modifications that know no payments, so they accept every capture and adjustment. */
+fun simulatedModifications(): PaymentModifications = TerminalSimulator(config = { SimulatorConfig() }).modifications
 
 /**
  * Answers [result] instead of reaching GitHub, and records every check. The default answers [UpdateCheck.Current],
@@ -444,7 +446,7 @@ class TestEnvironment(
     /** Replaces Adyen's payment links. */
     links: FakeLinkApi = FakeLinkApi(),
     /** Replaces Checkout API access checks and payment modifications; never reaches Adyen. */
-    modifications: PaymentModifications = SimulatedModifications(),
+    modifications: PaymentModifications = simulatedModifications(),
     /** Replaces the GitHub update check; the default answers that no update is available. */
     updates: FakeUpdateCheck = FakeUpdateCheck(),
     stores: StoreDetailsApi = FakeStoreDetails(),

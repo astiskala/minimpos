@@ -87,7 +87,7 @@ class AutomaticSetupTransferTest {
                 createdKeys += key
                 this@AutomaticSetupTransferTest.key = key
                 if (activateKey) terminal.passphrase = key.passphrase
-                return SharedKeyUpdate.Ready(key, created = true)
+                return SharedKeyUpdate.Ready(key)
             }
         }
     private val management = FakeManagement()

@@ -67,15 +67,14 @@ class SavedCardLookup internal constructor(
         val model: String,
         val origin: ApiTarget,
         val blocked: Failure?,
-        val revision: Long = 0,
     ) {
         val available: Boolean get() = reference != null && blocked == null
 
         fun matches(start: SavedCardStart): Boolean = start.payment.shopperReference == reference && start.recurringModel == model
     }
 
+    // Each emitted reading is a new object, so identity tells a reading from an equal later one.
     @Volatile private var current: Query? = null
-    private var revision = 0L
 
     /** Current listing, cleared before a changed reading can be queried. */
     val state: StateFlow<SavedCardLookupState>
@@ -90,14 +89,11 @@ class SavedCardLookup internal constructor(
                     origin,
                     SavedCardCharges.blocked(checkout.payment.shopperReferenceSource, status),
                 )
-            }.distinctUntilChanged().collectLatest { reading ->
-                val query =
-                    synchronized(this@SavedCardLookup) {
-                        reading.copy(revision = ++revision).also {
-                            current = it
-                            state.value = SavedCardLookupState(blocked = it.blocked)
-                        }
-                    }
+            }.distinctUntilChanged().collectLatest { query ->
+                synchronized(this@SavedCardLookup) {
+                    current = query
+                    state.value = SavedCardLookupState(blocked = query.blocked)
+                }
                 if (lookupDelay != null && query.reference != null && query.blocked == null) {
                     delay(lookupDelay)
                     if (begin(query)) fetch(query)
@@ -128,7 +124,7 @@ class SavedCardLookup internal constructor(
 
     private fun begin(query: Query): Boolean =
         synchronized(this) {
-            if (current != query || !query.available || state.value.finding) {
+            if (current !== query || !query.available || state.value.finding) {
                 false
             } else {
                 state.value = SavedCardLookupState(reference = query.reference, finding = true)
@@ -139,7 +135,7 @@ class SavedCardLookup internal constructor(
     private suspend fun fetch(query: Query) {
         val found = charges.cards(checkNotNull(query.reference), query.origin)
         synchronized(this) {
-            if (current != query) return
+            if (current !== query) return
             state.value =
                 when (found) {
                     is CardLookup.Listed -> {

@@ -18,6 +18,7 @@ import app.minimpos.app.data.db.TaxRateEntity
 import app.minimpos.app.data.security.Secret
 import app.minimpos.app.data.settings.TerminalMode
 import app.minimpos.app.feature.ActionOutcome
+import app.minimpos.app.simulatedModifications
 import app.minimpos.app.terminal.AdyenApi
 import app.minimpos.app.terminal.ReceiptBusiness
 import app.minimpos.app.terminal.SimulatedTerminal
@@ -27,7 +28,6 @@ import app.minimpos.core.receipt.PlainTextReceiptRenderer
 import app.minimpos.core.tax.TaxRates
 import app.minimpos.terminal.checkout.CheckoutApi
 import app.minimpos.terminal.checkout.PaymentModifications
-import app.minimpos.terminal.simulator.SimulatedModifications
 import app.minimpos.terminal.transport.ApiKey
 import app.minimpos.terminal.transport.Delivery
 import app.minimpos.terminal.transport.ExternalText
@@ -101,7 +101,7 @@ class SettingsViewModelTest {
         val release = CompletableDeferred<Unit>()
         var calls = 0
         val modifications =
-            object : PaymentModifications by SimulatedModifications() {
+            object : PaymentModifications by simulatedModifications() {
                 override suspend fun verify(): Fault? {
                     calls++
                     entered.complete(Unit)

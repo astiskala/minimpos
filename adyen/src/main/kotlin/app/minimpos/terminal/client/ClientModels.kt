@@ -331,9 +331,6 @@ class ScannedPayment(
         require(code.length in 1..MAX_SCANNED_CODE_LENGTH && code.all { it in '0'..'9' }) { "Invalid payment code" }
     }
 
-    /** Whether a code remains available; false after consumption or explicit discard. */
-    val available: Boolean get() = value.get() != null
-
     /** Erases the retained reference when an attempt is abandoned, including before a request could be constructed. */
     fun discard() {
         value.set(null)
@@ -386,18 +383,9 @@ data class RefundParams(
  *
  * @property storedPaymentMethodId The token for charging the stored card later (`tokenization.storedPaymentMethodId`,
  *   or the older `recurring.recurringDetailReference`).
- * @property shopperReference The shopper the card was stored for, as sent in [PaymentParams.shopperReference]; null if
- *   the terminal did not echo it.
- * @property operationType What happened to the stored card (`tokenization.store.operationType`, e.g. `created`); null
- *   if not reported.
- * @property cardAlias Adyen's alias for the card number, which identifies the same card across payments without
- *   exposing it; null if not reported.
  */
 data class Tokenization(
     val storedPaymentMethodId: String?,
-    val shopperReference: String?,
-    val operationType: String?,
-    val cardAlias: String?,
 )
 
 /**
@@ -501,28 +489,20 @@ data class TransactionDetails(
  * as [NotProcessed] or [Unknown], not thrown.
  */
 sealed interface TransactionOutcome {
-    /** The ServiceID of the payment or refund request (not of any status check made to settle it). */
-    val serviceId: String
-
-    /** The terminal returned a result (approved or not). [recovered] is true when it came via a status check. */
+    /** The terminal returned a result (approved or not), in its original response or a status check's. */
     data class Completed(
-        override val serviceId: String,
         /** The terminal's answer; check [TransactionDetails.success] to see whether it was approved. */
         val details: TransactionDetails,
-        /** True when the answer came from a transaction status check instead of the original response. */
-        val recovered: Boolean = false,
     ) : TransactionOutcome
 
     /** The request never took effect, so nothing was charged or refunded. */
     data class NotProcessed(
-        override val serviceId: String,
         /** Why: a fault that took no effect, or [Fault.NoRecord] from a status check. */
         val fault: Fault,
     ) : TransactionOutcome
 
     /** The result could not be confirmed; check the Customer Area before retrying. */
     data class Unknown(
-        override val serviceId: String,
         /**
          * What prevented the confirmation: the original request's fault, the status check's, or
          * [Fault.StillInProgress] while the terminal still works on it.

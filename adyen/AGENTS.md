@@ -16,6 +16,11 @@ Starred rules are enforced by `ArchitectureTest`. KDoc is the detailed API/proto
   `:adyen`); client/checkout code must not see them. Results carry faults and `ExternalText`, never English sentences
   or exception messages.
 - \* Only `client/Decline` interprets ErrorCondition and retry advice. Do not compare its strings elsewhere.
+- \* The nexo wire vocabulary (`AdditionalResponse`/`AdditionalData` keys, the Base64 tip-operation blob) has one owner,
+  `client/NexoVocabulary.kt`: the client that writes requests and reads answers and the simulator that answers them
+  both read it, so a renamed key fails to compile instead of silently changing simulator answers. Reading the body of a
+  simple one-request answer (transport fault, empty or unexpected shape) is likewise one owner
+  (`client/NexoResponse.kt`), shared by print, diagnose, totals, status checks and input.
 - \* Only `AdyenCheckout` makes the Checkout parts (modifications, links, saved cards), together per credential.
   Management is sliced into `TerminalListingApi`, `SharedKeyApi` and `TerminalCapabilitiesApi`; `TerminalDetailsApi`
   is all three, for the adapter and the app's container.

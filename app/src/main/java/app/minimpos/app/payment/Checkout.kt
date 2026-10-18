@@ -82,8 +82,20 @@ data class Checkout(
     /** Whether the amount is only held (a pre-authorisation) rather than charged. */
     val preAuthorisation: Boolean get() = kind == SaleKind.PRE_AUTHORISATION
 
+    /** Whether the optional transaction-reference field is shown. */
+    val showsTransactionReference: Boolean get() = payment.askTransactionReference
+
     /** Whether the email field is shown. */
     val showEmail: Boolean get() = payment.captureEmailBefore
+
+    /** Whether the tax row is shown with the total, which only a sale that charges tax has. */
+    val showsTax: Boolean get() = payment.chargeTax
+
+    /** Whether a typed email's receipt is also sent automatically, as the email field explains. */
+    val emailsAutomatically: Boolean get() = payment.captureEmailBefore && payment.autoSendEmail
+
+    /** Whether the card is saved under the email rather than the customer reference, as the saving switch explains. */
+    val savesCardByEmail: Boolean get() = payment.shopperReferenceSource == ShopperReferenceSource.EMAIL
 
     /** Whether the customer reference field is shown (exactly when it is the shopper reference). */
     val showCustomerReference: Boolean get() = payment.asksCustomerReference
@@ -155,6 +167,12 @@ data class Checkout(
             canTipOnReceipt &&
                 !askGratuity &&
                 (form.tipOnReceipt ?: (payment.receiptTipping == ReceiptTipping.DEFAULT_ON))
+
+    /**
+     * Whether charging a token first needs the operator to confirm the sale takes no tip: it was rung up with tipping
+     * offered, which a saved-card charge never takes.
+     */
+    val tokenChargeNeedsNoTipConfirmation: Boolean get() = tipOnReceipt || askGratuity
 
     /** Whether Adyen Giving (`AskGiving`) is offered: for an immediate-charge sale on a destination that supports it. */
     val canAskGiving: Boolean

@@ -56,7 +56,6 @@ import app.minimpos.app.R
 import app.minimpos.app.data.db.RefundEntity
 import app.minimpos.app.data.db.SaleEntity
 import app.minimpos.app.data.db.SaleKind
-import app.minimpos.app.data.db.SaleStatus
 import app.minimpos.app.data.repo.HistoryItem
 import app.minimpos.app.feature.MerchantCopy
 import app.minimpos.app.feature.OutcomeMessage
@@ -472,7 +471,7 @@ fun SaleDetailScreen(
                 onCancel = { gate.run { approval = { cancelling = true } } },
                 onShowLink = { navigator.push(Route.PaymentLink(sale.id)) },
             )
-            if (sale.status == SaleStatus.APPROVED) {
+            if (sale.approved) {
                 ReceiptActions(state.transaction, vm.transaction, MerchantCopy.ALWAYS, email = sale.shopperEmail.orEmpty())
             }
             SaleRefunds(state.refunds, money, preAuth, container::formatDateTime) {
@@ -733,10 +732,8 @@ internal fun historyViewModel(): HistoryViewModel {
         HistoryViewModel(
             history = container.history,
             receipts = container.receipts,
-            gateway = container.gateway,
+            reconciliation = container.reconciliation,
             terminal = container.terminalStatus.state,
-            operations = container.operations,
-            permitsClose = container::managerPermits,
         )
     }
 }

@@ -49,6 +49,7 @@ import app.minimpos.app.payment.SaleSession
 import app.minimpos.app.payment.SavedCardCharges
 import app.minimpos.app.payment.ShopperPromptTexts
 import app.minimpos.app.payment.StoredPaymentActions
+import app.minimpos.app.payment.TerminalReconciliation
 import app.minimpos.app.payment.TransactionLifecycle
 import app.minimpos.app.payment.WalletPayments
 import app.minimpos.app.qr.QrCodes
@@ -272,8 +273,12 @@ class AppContainer(
             osVersion = device.osVersion,
         )
 
-    /** The one setup source; a setup it remembers as verified completes the shared-key recovery records waiting for it. */
-    private val terminalSetup: TerminalSetupSource =
+    /**
+     * The one setup source; a setup it remembers as verified completes the shared-key recovery records waiting for it.
+     * Tests reach the wired source itself rather than building a sibling over the same settings and secrets, so they
+     * exercise its history-switch gating and verified completions exactly as the app runs them.
+     */
+    internal val terminalSetup: TerminalSetupSource =
         TerminalSetupSource(settings, secrets, device, history.switchPending, ::completeKeyRecovery)
 
     /** Read-only Management store lookup for manually importing receipt business details. */
@@ -494,6 +499,13 @@ class AppContainer(
      * sent now, which setup changes wait for.
      */
     val operations = FinancialOperations(payments, refunds, savedCardCharges, checkoutRefunds, links, sales, refundRecords)
+
+    /**
+     * One terminal reconciliation: rechecks unresolved terminal operations, reads or closes the period and compares its
+     * totals against local accounting, so the screens only follow its outcome.
+     */
+    val reconciliation =
+        TerminalReconciliation(history, operations, gateway, terminalStatus.state, permits = ::managerPermits)
 
     /** Refund/cancellation initiation and capture retries, keeping reference facts out of screens. */
     val storedPaymentActions = StoredPaymentActions(operations, captures, settingsState)

@@ -52,9 +52,6 @@ data class Decline(
         private const val ABORTED = "Aborted"
         private const val BUSY = "Busy"
 
-        /** The `AdditionalResponse` key that names the transaction a busy terminal is working on. */
-        private const val SERVICE_ID = "serviceId"
-
         private val INVALID_CARD_FINAL = listOf("Card data authentication failed")
 
         private val REFUSAL_FINAL =
@@ -83,7 +80,7 @@ data class Decline(
             if (succeeded) {
                 null
             } else {
-                Decline(errorCondition, refusalReason, additionalData[SERVICE_ID]?.takeIf { errorCondition == BUSY })
+                Decline(errorCondition, refusalReason, additionalData[NexoVocabulary.BUSY_SERVICE_ID]?.takeIf { errorCondition == BUSY })
             }
     }
 }

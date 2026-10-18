@@ -368,9 +368,9 @@ class ViewModelsTest {
         assertThat(busy.advice).isEqualTo(RetryAdvice.TERMINAL_BUSY)
         assertThat(busy.busyServiceId).isEqualTo(TerminalSimulator.BUSY_SERVICE_ID)
         vm.abortBusyTransaction()
-        val aborted = await { vm.state.first { it.abort.done } }
+        // The stored refusal stops naming the busy transaction once the abort was sent, which the record shows.
+        val aborted = await { vm.state.first { it.abort.done && it.busyServiceId == null } }
         assertThat(aborted.abort.outcome).isEqualTo(ActionOutcome.AbortSent)
-        assertThat(aborted.busyServiceId).isNull()
         vm.abortBusyTransaction()
         assertThat(await { vm.state.first { it.abort.isError } }.abort.isError).isTrue()
     }

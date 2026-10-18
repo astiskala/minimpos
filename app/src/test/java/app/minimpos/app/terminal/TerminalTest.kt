@@ -207,7 +207,7 @@ class TerminalTest {
             assertThat(connected.printerAvailable).isTrue()
             await { container.terminalStatus.recheckIfFailed() }
 
-            val setups = TerminalSetupSource(container.settings, container.secrets, container.device)
+            val setups = container.terminalSetup
             container.gateway.environmentDetected(await { setups.current() }, TerminalEnvironment.LIVE)
             await { container.settingsState.first { it.terminal.environment == TerminalEnvironment.LIVE } }
             assertThat(await { container.terminalStatus.state.first { it.environment == TerminalEnvironment.LIVE } }.onTerminal).isTrue()

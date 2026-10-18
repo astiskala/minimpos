@@ -1584,9 +1584,11 @@ class ArchitectureTest {
                         callTo(PaymentStart::class.java.name, "copy")
                             .or(callTo(Checkout::class.java.name, "copy")),
                     ),
+                // PaymentLinks also reads the revision of the checkout-built start it is given, to decline a second
+                // link for the same coherent checkout; it attaches no revision of its own.
                 noClasses()
                     .that()
-                    .haveNameNotMatching(within(SaleSession::class.java.name))
+                    .haveNameNotMatching(within(SaleSession::class.java.name, PaymentLinks::class.java.name))
                     .should()
                     .callMethodWhere(callTo(PaymentStart::class.java.name, "getSessionRevision")),
                 noClasses()

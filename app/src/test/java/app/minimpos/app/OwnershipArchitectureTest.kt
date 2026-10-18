@@ -20,7 +20,9 @@ import app.minimpos.app.payment.CheckoutRefunds
 import app.minimpos.app.payment.FinancialOperations
 import app.minimpos.app.payment.PaymentStart
 import app.minimpos.app.payment.SavedCardCharges
+import app.minimpos.app.payment.TerminalReconciliation
 import app.minimpos.app.payment.TransactionLifecycle
+import app.minimpos.app.terminal.AdyenCapabilitiesState
 import app.minimpos.app.terminal.Destination
 import app.minimpos.app.terminal.DestinationCapabilities
 import app.minimpos.app.terminal.PaymentsAppDestination
@@ -161,6 +163,18 @@ class OwnershipArchitectureTest {
 
         fun build(reach: (key: TerminalKey, environment: TerminalEnvironment) -> TerminalTransport) = PaymentsAppDestination(reach)
     }
+
+    @Test
+    fun `only terminal reconciliation compares local and terminal totals`() =
+        // The recheck-unresolved, totals and compare sequence is one operation in payment; screens follow its outcome.
+        noClasses()
+            .that()
+            .haveNameNotMatching(within(TerminalReconciliation::class.java.name))
+            .should()
+            .callMethodWhere(callTo(HistoryAccounting::class.java.name, "compareReconciliation", "unresolvedTerminalItems"))
+            .orShould()
+            .callMethodWhere(callTo(TerminalGateway::class.java.name, "totals"))
+            .check(app)
 
     @Test
     fun `only the setup gate decides whether actions wait for setup`() = setupGateOwnership.check(app)
@@ -366,10 +380,17 @@ class OwnershipArchitectureTest {
         // copying flags; the gateway builds every destination's adapter in one function for itself and candidates.
         val capabilityValue: List<ArchRule> =
             listOf(
+                // AdyenCapabilitiesState carries the value whole too, so its default constructs one; the status's own
+                // state is the not-yet-loaded default.
                 noClasses()
                     .that()
                     .haveNameNotMatching(
-                        within(TerminalSetup::class.java.name, DestinationCapabilities::class.java.name, TerminalState::class.java.name),
+                        within(
+                            TerminalSetup::class.java.name,
+                            DestinationCapabilities::class.java.name,
+                            TerminalState::class.java.name,
+                            AdyenCapabilitiesState::class.java.name,
+                        ),
                     ).should()
                     .callConstructorWhere(target(owner(type(DestinationCapabilities::class.java)))),
                 noFields()

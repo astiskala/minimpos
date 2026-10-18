@@ -16,6 +16,12 @@ sealed interface Route : NavKey {
     /** Whether this route exposes money-moving actions gated by the optional Manager PIN. */
     val requiresManager: Boolean get() = false
 
+    /**
+     * Whether this screen's actions reach Adyen or a terminal, so Home's tile for it asks for the setup to be finished
+     * first; false for the local-only screens, which open straight away.
+     */
+    val requiresSetup: Boolean get() = true
+
     /** The start screen with a tile per area; always at the bottom of the back stack. */
     @Serializable data object Home : Route
 
@@ -161,8 +167,10 @@ sealed interface Route : NavKey {
     /** Terminal totals compared with Mini mPOS, closing the terminal's period and today's report. */
     @Serializable data object Reconciliation : Route
 
-    /** Sales and refunds by day. */
-    @Serializable data object History : Route
+    /** Sales and refunds by day; local, so it opens before payments are set up. */
+    @Serializable data object History : Route {
+        override val requiresSetup get() = false
+    }
 
     /**
      * A sale from history.
@@ -182,9 +190,11 @@ sealed interface Route : NavKey {
         val refundId: String,
     ) : Route
 
-    /** The product and category list. */
+    /** The product and category list; local, so it opens before payments are set up. */
     @Serializable data object Products : Route {
         override val isProtected get() = true
+
+        override val requiresSetup get() = false
     }
 
     /**
@@ -210,9 +220,11 @@ sealed interface Route : NavKey {
         override val isProtected get() = true
     }
 
-    /** The list of settings sections. */
+    /** The list of settings sections; local, so it opens before payments are set up. */
     @Serializable data object Settings : Route {
         override val isProtected get() = true
+
+        override val requiresSetup get() = false
     }
 
     /**

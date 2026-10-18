@@ -189,7 +189,7 @@ class TerminalClient(
                 ?.takeIf { it.result == ResultType.SUCCESS }
                 ?.additionalResponse
                 ?.let(AdditionalResponseParser::parse)
-                ?.get("Barcode.Data")
+                ?.get(NexoVocabulary.BARCODE_DATA)
         return code?.takeIf { it.isNotBlank() }?.let(BarcodeScan::Read) ?: BarcodeScan.NotRead
     }
 
@@ -354,20 +354,12 @@ class TerminalClient(
                 printRequest = PrintRequest().apply { printOutput = job.toNexo() }
             }
         val response =
-            when (val delivery = transport.send(wrap(request), shortTimeout)) {
-                is Delivery.Answered -> {
-                    delivery.response
-                        ?.saleToPOIResponse
-                        ?.printResponse
-                        ?.response
-                }
-
-                is Delivery.Failed -> {
-                    return PrintOutcome.Failed(delivery.fault, noPrinter = false)
-                }
-            } ?: return PrintOutcome.Failed(Fault.UnreadableReply(), noPrinter = false)
+            when (val answer = readTerminalAnswer(transport.send(wrap(request), shortTimeout)) { it.printResponse?.response }) {
+                is TerminalAnswer.Unread -> return PrintOutcome.Failed(answer.fault, noPrinter = false)
+                is TerminalAnswer.Read -> answer.body
+            }
         if (response.result == ResultType.SUCCESS) return null
-        val message = AdditionalResponseParser.parse(response.additionalResponse)["message"]
+        val message = AdditionalResponseParser.parse(response.additionalResponse)[NexoVocabulary.MESSAGE]
         val noPrinter =
             response.errorCondition == ErrorConditionType.UNAVAILABLE_DEVICE || message.orEmpty().contains("no printer", ignoreCase = true)
         return PrintOutcome.Failed(Fault.TerminalRejected(ExternalText.of(message)), noPrinter)
@@ -386,15 +378,15 @@ class TerminalClient(
                 diagnosisRequest = DiagnosisRequest().apply { setHostDiagnosisFlag(false) }
             }
         val response =
-            when (val delivery = transport.send(wrap(request), shortTimeout)) {
-                is Delivery.Answered -> delivery.response?.saleToPOIResponse?.diagnosisResponse
-                is Delivery.Failed -> return DiagnosisResult(reachable = false, fault = delivery.fault)
-            } ?: return DiagnosisResult(reachable = false, fault = Fault.UnreadableReply())
+            when (val answer = readTerminalAnswer(transport.send(wrap(request), shortTimeout)) { it.diagnosisResponse }) {
+                is TerminalAnswer.Unread -> return DiagnosisResult(reachable = false, fault = answer.fault)
+                is TerminalAnswer.Read -> answer.body
+            }
         val additional = AdditionalResponseParser.parse(response.response?.additionalResponse)
         val reachable = response.response?.result == ResultType.SUCCESS
         return DiagnosisResult(
             reachable = reachable,
-            fault = Fault.TerminalRejected(ExternalText.of(additional["message"])).takeUnless { reachable },
+            fault = Fault.TerminalRejected(ExternalText.of(additional[NexoVocabulary.MESSAGE])).takeUnless { reachable },
             globalStatus = response.poiStatus?.globalStatus?.value(),
             printerStatus = response.poiStatus?.printerStatus?.value(),
         )
@@ -424,36 +416,46 @@ class TerminalClient(
                         }
                 }
             }
-        return when (val delivery = transport.send(wrap(request), shortTimeout)) {
-            is Delivery.Failed -> {
-                TerminalTotalsOutcome.Failed(delivery.fault)
-            }
+        return when (
+            val answer =
+                readTerminalAnswer(transport.send(wrap(request), shortTimeout)) { response ->
+                    when {
+                        closePeriod -> {
+                            response.reconciliationResponse?.let {
+                                TotalsBody(it.response, it.poiReconciliationID, it.transactionTotals)
+                            }
+                        }
 
-            is Delivery.Answered -> {
-                val poiResponse = delivery.response?.saleToPOIResponse
-                val getTotals = poiResponse?.getTotalsResponse
-                val recon = poiResponse?.reconciliationResponse
-                when {
-                    closePeriod && recon != null -> {
-                        mapTotalsResponse(recon.response, recon.poiReconciliationID, recon.transactionTotals, closedPeriod = true)
-                    }
-
-                    !closePeriod && getTotals != null -> {
-                        mapTotalsResponse(
-                            getTotals.response,
-                            getTotals.poiReconciliationID,
-                            getTotals.transactionTotals,
-                            closedPeriod = false,
-                        )
-                    }
-
-                    else -> {
-                        TerminalTotalsOutcome.Failed(Fault.UnreadableReply())
+                        else -> {
+                            response.getTotalsResponse?.let {
+                                TotalsBody(it.response, it.poiReconciliationID, it.transactionTotals)
+                            }
+                        }
                     }
                 }
+        ) {
+            is TerminalAnswer.Unread -> {
+                TerminalTotalsOutcome.Failed(answer.fault)
+            }
+
+            is TerminalAnswer.Read -> {
+                val totals = answer.body
+                mapTotalsResponse(
+                    totals.response,
+                    totals.poiReconciliationId,
+                    totals.totals,
+                    closedPeriod = closePeriod,
+                )
             }
         }
     }
+
+    /** The body of a `GetTotals` or `SaleReconciliation` answer, whichever was asked for. */
+    private data class TotalsBody(
+        val response: Response?,
+        val poiReconciliationId: String?,
+        val totals: List<TransactionTotals>?,
+    )
 
     private fun mapTotalsResponse(
         response: Response?,
@@ -592,11 +594,12 @@ class TerminalClient(
         serviceId: String,
         category: MessageCategoryType,
     ): StatusCheck {
+        val sent = transport.send(wrap(statusRequest(serviceId, category)), shortTimeout)
         val status =
-            when (val delivery = transport.send(wrap(statusRequest(serviceId, category)), shortTimeout)) {
-                is Delivery.Failed -> return StatusCheck.NoAnswer(delivery.fault)
-                is Delivery.Answered -> delivery.response?.saleToPOIResponse?.transactionStatusResponse
-            } ?: return StatusCheck.NoAnswer(Fault.UnreadableReply())
+            when (val answer = readTerminalAnswer(sent) { it.transactionStatusResponse }) {
+                is TerminalAnswer.Unread -> return StatusCheck.NoAnswer(answer.fault)
+                is TerminalAnswer.Read -> answer.body
+            }
         val response = status.response
         return when {
             response?.result == ResultType.SUCCESS -> {
@@ -677,27 +680,27 @@ class TerminalClient(
                 is TerminalTipSuggestions.Percentages -> {
                     buildMap<String, Any> {
                         for (index in configured.percentages.indices) {
-                            put("Percentage${index + 1}", configured.percentages[index])
+                            put("${NexoVocabulary.TIP_PERCENTAGE}${index + 1}", configured.percentages[index])
                         }
-                        put("TipCustom", configured.allowCustom)
+                        put(NexoVocabulary.TIP_CUSTOM, configured.allowCustom)
                     }
                 }
 
                 is TerminalTipSuggestions.FixedAmounts -> {
                     buildMap<String, Any> {
                         for (index in configured.amountsMinor.indices) {
-                            put("Amount${index + 1}", configured.amountsMinor[index])
+                            put("${NexoVocabulary.TIP_AMOUNT}${index + 1}", configured.amountsMinor[index])
                         }
-                        put("TipCustom", configured.allowCustom)
+                        put(NexoVocabulary.TIP_CUSTOM, configured.allowCustom)
                     }
                 }
             }
         val tipOptions =
             buildMap<String, Any> {
-                amountToTipOn?.let { put("AmountToTipOn", it) }
-                put("TipSuggestions", suggestions)
+                amountToTipOn?.let { put(NexoVocabulary.AMOUNT_TO_TIP_ON, it) }
+                put(NexoVocabulary.TIP_SUGGESTIONS, suggestions)
             }
-        val operation = mapOf("Operation" to listOf(mapOf("Type" to "Payment", "TipOptions" to tipOptions)))
+        val operation = mapOf(NexoVocabulary.OPERATION to listOf(mapOf("Type" to "Payment", NexoVocabulary.TIP_OPTIONS to tipOptions)))
         return Base64.encode(JSON.getMapper().writeValueAsString(operation).toByteArray(Charsets.UTF_8))
     }
 
@@ -798,12 +801,12 @@ class TerminalClient(
             val additional = AdditionalResponseParser.parse(response.response?.additionalResponse)
             val card = response.paymentResult?.paymentInstrumentData?.cardData
             val storedId =
-                additional["tokenization.storedPaymentMethodId"] ?: additional["recurring.recurringDetailReference"]
-            val online = response.paymentResult?.isOnlineFlag != false && additional["offline"] != "true"
+                additional[NexoVocabulary.TOKENIZATION_STORED_PAYMENT_METHOD_ID] ?: additional[NexoVocabulary.RECURRING_DETAIL_REFERENCE]
+            val online = response.paymentResult?.isOnlineFlag != false && additional[NexoVocabulary.OFFLINE] != "true"
             val offlineMode =
                 when {
                     online -> OfflineProcessingMode.ONLINE
-                    !additional["offlineAuthCode"].isNullOrBlank() -> OfflineProcessingMode.OFFLINE_EMV
+                    !additional[NexoVocabulary.OFFLINE_AUTH_CODE].isNullOrBlank() -> OfflineProcessingMode.OFFLINE_EMV
                     else -> OfflineProcessingMode.STORE_AND_FORWARD
                 }
             return details(
@@ -816,27 +819,28 @@ class TerminalClient(
                 amount = response.paymentResult?.amountsResp?.authorizedAmount,
                 tipAmount = response.paymentResult?.amountsResp?.tipAmount,
                 currency = response.paymentResult?.amountsResp?.currency,
-                paymentBrand = card?.paymentBrand ?: additional["paymentMethod"],
-                paymentMethodVariant = additional["paymentMethodVariant"],
+                paymentBrand = card?.paymentBrand ?: additional[NexoVocabulary.PAYMENT_METHOD],
+                paymentMethodVariant = additional[NexoVocabulary.PAYMENT_METHOD_VARIANT],
                 maskedPan = card?.maskedPAN,
-                entryMode = card?.entryMode?.firstOrNull()?.value() ?: additional["posEntryMode"],
+                entryMode = card?.entryMode?.firstOrNull()?.value() ?: additional[NexoVocabulary.POS_ENTRY_MODE],
                 approvalCode =
                     response.paymentResult?.paymentAcquirerData?.approvalCode
-                        ?: additional["authCode"]
-                        ?: additional["offlineAuthCode"],
+                        ?: additional[NexoVocabulary.AUTH_CODE]
+                        ?: additional[NexoVocabulary.OFFLINE_AUTH_CODE],
                 tokenization =
                     storedId?.let {
                         Tokenization(
                             storedPaymentMethodId = it,
                             shopperReference =
-                                additional["tokenization.shopperReference"] ?: additional["recurring.shopperReference"],
-                            operationType = additional["tokenization.store.operationType"],
-                            cardAlias = card?.paymentToken?.tokenValue ?: additional["alias"],
+                                additional[NexoVocabulary.TOKENIZATION_SHOPPER_REFERENCE]
+                                    ?: additional[NexoVocabulary.RECURRING_SHOPPER_REFERENCE],
+                            operationType = additional[NexoVocabulary.TOKENIZATION_OPERATION_TYPE],
+                            cardAlias = card?.paymentToken?.tokenValue ?: additional[NexoVocabulary.ALIAS],
                         )
                     },
-                givingServiceId = additional["adyen_giving_service_id"]?.trim()?.ifEmpty { null },
+                givingServiceId = additional[NexoVocabulary.ADYEN_GIVING_SERVICE_ID]?.trim()?.ifEmpty { null },
                 offlineMode = offlineMode,
-                unconfirmedBatchCount = additional["unconfirmedBatchCount"]?.trim()?.toIntOrNull()?.takeIf { it >= 0 },
+                unconfirmedBatchCount = additional[NexoVocabulary.UNCONFIRMED_BATCH_COUNT]?.trim()?.toIntOrNull()?.takeIf { it >= 0 },
             )
         }
 
@@ -850,7 +854,7 @@ class TerminalClient(
                 poiData = response.poiData,
                 receipts = response.paymentReceipt,
             ).copy(
-                merchantReference = additional["merchantReference"],
+                merchantReference = additional[NexoVocabulary.MERCHANT_REFERENCE],
                 amount = response.reversedAmount,
             )
         }
@@ -864,18 +868,22 @@ class TerminalClient(
             val poi = poiData?.poiTransactionID
             val partial = response?.result == ResultType.PARTIAL
             val success = response?.result == ResultType.SUCCESS || partial
-            val refusalReason = additional["refusalReason"]
+            val refusalReason = additional[NexoVocabulary.REFUSAL_REASON]
             return TransactionDetails(
                 success = success,
                 partial = partial,
                 errorCondition = response?.errorCondition?.value(),
-                message = ExternalText.of(refusalReason ?: additional["message"] ?: additional["errors"] ?: additional["warnings"]),
+                message =
+                    ExternalText.of(
+                        refusalReason ?: additional[NexoVocabulary.MESSAGE] ?: additional[NexoVocabulary.ERRORS]
+                            ?: additional[NexoVocabulary.WARNINGS],
+                    ),
                 refusalReason = refusalReason,
                 poiTransactionId = poi?.transactionID,
                 poiTimestamp = poi?.timeStamp?.toXMLFormat(),
                 poiReconciliationId = poiData?.poiReconciliationID?.trim()?.ifEmpty { null },
                 pspReference =
-                    additional["pspReference"]
+                    additional[NexoVocabulary.PSP_REFERENCE]
                         ?: poi?.transactionID?.substringAfter('.', missingDelimiterValue = "")?.ifEmpty { null },
                 merchantReference = null,
                 amount = null,

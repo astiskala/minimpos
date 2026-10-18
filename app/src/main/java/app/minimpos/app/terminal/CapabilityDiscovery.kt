@@ -78,10 +78,8 @@ data class OfflineCapability(
  * Snapshot of destination and Management API capabilities for Settings › Capabilities.
  * @property context Destination/account/environment that was checked; null before discovery.
  * @property identity Fingerprint of the checked connection and encrypted payment secrets; never a credential.
- * @property supportsTerminalFeatures Whether physical-terminal features are supported on this destination.
- * @property supportsOfflinePayments Whether local offline processing is supported on this destination.
- * @property supportsShopperDisplay Whether external-terminal shopper display/input requests are supported.
- * @property discoversTerminals Whether Management `terminalSettings` can be read and updated for this destination.
+ * @property capabilities What the destination supports and asks of its setup, carried whole (as `TerminalState`
+ *   carries it too); Settings › Capabilities reads its flags from there.
  * @property simulated Whether the resolved destination is the built-in simulator.
  * @property checking Whether a capability refresh is running.
  * @property checked Whether a complete capability answer has been obtained.
@@ -99,10 +97,7 @@ data class OfflineCapability(
 data class AdyenCapabilitiesState(
     val context: PaymentContext? = null,
     val identity: String? = null,
-    val supportsTerminalFeatures: Boolean = true,
-    val supportsOfflinePayments: Boolean = true,
-    val supportsShopperDisplay: Boolean = true,
-    val discoversTerminals: Boolean = false,
+    val capabilities: DestinationCapabilities = DestinationCapabilities(),
     val simulated: Boolean = false,
     val checking: Boolean = false,
     val checked: Boolean = false,
@@ -125,7 +120,7 @@ data class AdyenCapabilitiesState(
 
     /** Configured POS gift card types for [currency]. */
     fun giftCardsFor(currency: String): List<String> =
-        if (!supportsTerminalFeatures) {
+        if (!capabilities.supportsTerminalFeatures) {
             emptyList()
         } else if (simulated) {
             listOf("svs")
@@ -139,7 +134,7 @@ data class AdyenCapabilitiesState(
         enabledLocally: Boolean,
     ): CapabilityStanding =
         when {
-            !supportsTerminalFeatures -> CapabilityStanding.UNSUPPORTED
+            !capabilities.supportsTerminalFeatures -> CapabilityStanding.UNSUPPORTED
             simulated || gratuityFor(currency) != null || enabledLocally -> CapabilityStanding.AVAILABLE
             else -> CapabilityStanding.NEEDS_CONFIGURATION
         }
@@ -148,7 +143,7 @@ data class AdyenCapabilitiesState(
     val dccStanding: CapabilityStanding
         get() =
             when {
-                !supportsTerminalFeatures -> CapabilityStanding.UNSUPPORTED
+                !capabilities.supportsTerminalFeatures -> CapabilityStanding.UNSUPPORTED
                 dccEnabled -> CapabilityStanding.AVAILABLE
                 else -> CapabilityStanding.NEEDS_CONFIGURATION
             }
@@ -156,7 +151,7 @@ data class AdyenCapabilitiesState(
     /** Standing of Adyen Giving (`AskGiving`), given whether it is [enabledLocally]. */
     fun givingStanding(enabledLocally: Boolean): CapabilityStanding =
         when {
-            !supportsTerminalFeatures -> CapabilityStanding.UNSUPPORTED
+            !capabilities.supportsTerminalFeatures -> CapabilityStanding.UNSUPPORTED
             enabledLocally || simulated -> CapabilityStanding.AVAILABLE
             else -> CapabilityStanding.NEEDS_CONFIGURATION
         }
@@ -165,7 +160,7 @@ data class AdyenCapabilitiesState(
     val surchargeStanding: CapabilityStanding
         get() =
             when {
-                !supportsTerminalFeatures -> CapabilityStanding.UNSUPPORTED
+                !capabilities.supportsTerminalFeatures -> CapabilityStanding.UNSUPPORTED
                 surchargeConfigured -> CapabilityStanding.AVAILABLE
                 else -> CapabilityStanding.NEEDS_CONFIGURATION
             }
@@ -176,7 +171,7 @@ data class AdyenCapabilitiesState(
     /** Standing of POS gift cards for [currency]. */
     fun giftCardStanding(currency: String): CapabilityStanding =
         when {
-            !supportsTerminalFeatures -> CapabilityStanding.UNSUPPORTED
+            !capabilities.supportsTerminalFeatures -> CapabilityStanding.UNSUPPORTED
             giftCardsFor(currency).isNotEmpty() -> CapabilityStanding.AVAILABLE
             else -> CapabilityStanding.NEEDS_CONFIGURATION
         }
@@ -184,7 +179,7 @@ data class AdyenCapabilitiesState(
     /** Standing of MOTO / Manual Key Entry, given whether either is [enabledLocally]. */
     fun motoStanding(enabledLocally: Boolean): CapabilityStanding =
         when {
-            !supportsTerminalFeatures -> CapabilityStanding.UNSUPPORTED
+            !capabilities.supportsTerminalFeatures -> CapabilityStanding.UNSUPPORTED
             moto.enabled || enabledLocally -> CapabilityStanding.AVAILABLE
             else -> CapabilityStanding.NEEDS_CONFIGURATION
         }
@@ -192,18 +187,18 @@ data class AdyenCapabilitiesState(
     /** Standing of local offline payments for [currency]. */
     fun offlineStanding(currency: String): CapabilityStanding =
         when {
-            !supportsOfflinePayments -> CapabilityStanding.UNSUPPORTED
+            !capabilities.supportsOfflinePayments -> CapabilityStanding.UNSUPPORTED
             simulated || offline.configuredFor(currency) -> CapabilityStanding.AVAILABLE
             else -> CapabilityStanding.NEEDS_CONFIGURATION
         }
 
     /** Standing of terminal reconciliation (`GetTotals` / `SaleReconciliation`). */
     val reconciliationStanding: CapabilityStanding
-        get() = if (supportsTerminalFeatures) CapabilityStanding.AVAILABLE else CapabilityStanding.UNSUPPORTED
+        get() = if (capabilities.supportsTerminalFeatures) CapabilityStanding.AVAILABLE else CapabilityStanding.UNSUPPORTED
 
     /** Standing of shopper-facing display and input requests. */
     val shopperDisplayStanding: CapabilityStanding
-        get() = if (supportsShopperDisplay) CapabilityStanding.AVAILABLE else CapabilityStanding.UNSUPPORTED
+        get() = if (capabilities.supportsShopperDisplay) CapabilityStanding.AVAILABLE else CapabilityStanding.UNSUPPORTED
 }
 
 /** Outcome of a scoped Management `terminalSettings` capability update. */
@@ -264,10 +259,7 @@ class CapabilityDiscovery(
                 old.copy(
                     context = context,
                     identity = identity,
-                    supportsTerminalFeatures = setup.capabilities.supportsTerminalFeatures,
-                    supportsOfflinePayments = setup.capabilities.supportsOfflinePayments,
-                    supportsShopperDisplay = setup.capabilities.supportsShopperDisplay,
-                    discoversTerminals = setup.capabilities.discoversTerminals,
+                    capabilities = setup.capabilities,
                     simulated = setup.apiSetup == ApiSetup.Simulated,
                     checking = true,
                 )
@@ -354,10 +346,7 @@ class CapabilityDiscovery(
                         .copy(
                             context = setup.paymentContext(),
                             identity = setups.SetupFence(origin, SetupFreshness.SECRETS).identity,
-                            supportsTerminalFeatures = setup.capabilities.supportsTerminalFeatures,
-                            supportsOfflinePayments = setup.capabilities.supportsOfflinePayments,
-                            supportsShopperDisplay = setup.capabilities.supportsShopperDisplay,
-                            discoversTerminals = setup.capabilities.discoversTerminals,
+                            capabilities = setup.capabilities,
                             simulated = true,
                             checking = false,
                             checked = true,

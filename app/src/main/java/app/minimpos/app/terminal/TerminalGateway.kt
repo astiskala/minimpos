@@ -348,21 +348,11 @@ class TerminalGateway(
         kind: TransactionKind,
         expected: PaymentContext? = null,
     ): Attempt<TransactionOutcome> =
-        when (val connection = connection()) {
-            is Connection.Open -> {
-                if (expected == null || expected.matchesTerminal(connection.context())) {
-                    Attempt.Made(connection.client.status(serviceId, kind))
-                } else {
-                    Attempt.NotSetUp(SetupProblem.PAYMENT_CONTEXT)
-                }
-            }
-
-            is Connection.NotSetUp -> {
-                Attempt.NotSetUp(connection.problem)
-            }
-
-            is Connection.Unreachable -> {
-                Attempt.Made(TransactionOutcome.Unknown(serviceId, connection.fault))
+        attempt(unreachable = { TransactionOutcome.Unknown(serviceId, it) }) { open ->
+            if (expected == null || expected.matchesTerminal(open.context())) {
+                Attempt.Made(open.client.status(serviceId, kind))
+            } else {
+                Attempt.NotSetUp(SetupProblem.PAYMENT_CONTEXT)
             }
         }
 
@@ -386,22 +376,12 @@ class TerminalGateway(
      * for want of a printer is remembered in [printers].
      */
     suspend fun print(jobs: List<PrintJob>): Attempt<PrintOutcome> =
-        when (val connection = connection()) {
-            is Connection.Open -> {
-                val outcome = connection.client.print(jobs)
-                if (outcome is PrintOutcome.Failed && outcome.noPrinter) {
-                    printers.update { it + (connection.client.identity.poiId to false) }
-                }
-                Attempt.Made(outcome)
+        attempt(unreachable = { PrintOutcome.Failed(it, noPrinter = false) }) { open ->
+            val outcome = open.client.print(jobs)
+            if (outcome is PrintOutcome.Failed && outcome.noPrinter) {
+                printers.update { it + (open.client.identity.poiId to false) }
             }
-
-            is Connection.NotSetUp -> {
-                Attempt.NotSetUp(connection.problem)
-            }
-
-            is Connection.Unreachable -> {
-                Attempt.Made(PrintOutcome.Failed(connection.fault, noPrinter = false))
-            }
+            Attempt.Made(outcome)
         }
 
     internal val candidates = CandidateChecks()
@@ -471,21 +451,11 @@ class TerminalGateway(
         closePeriod: Boolean,
         permitsClose: suspend () -> Boolean,
     ): Attempt<TerminalTotalsOutcome> =
-        when (val connection = connection()) {
-            is Connection.Open -> {
-                when {
-                    closePeriod && !permitsClose() -> Attempt.NotSetUp(SetupProblem.MANAGER_APPROVAL)
-                    !connection.destination.supportsTerminalFeatures -> Attempt.Made(TerminalTotalsOutcome.Failed(Fault.Unsupported))
-                    else -> Attempt.Made(if (closePeriod) connection.client.reconcile() else connection.client.getTotals())
-                }
-            }
-
-            is Connection.NotSetUp -> {
-                Attempt.NotSetUp(connection.problem)
-            }
-
-            is Connection.Unreachable -> {
-                Attempt.Made(TerminalTotalsOutcome.Failed(connection.fault))
+        attempt(unreachable = { TerminalTotalsOutcome.Failed(it) }) { open ->
+            when {
+                closePeriod && !permitsClose() -> Attempt.NotSetUp(SetupProblem.MANAGER_APPROVAL)
+                !open.destination.supportsTerminalFeatures -> Attempt.Made(TerminalTotalsOutcome.Failed(Fault.Unsupported))
+                else -> Attempt.Made(if (closePeriod) open.client.reconcile() else open.client.getTotals())
             }
         }
 
@@ -524,6 +494,32 @@ class TerminalGateway(
     }
 
     /**
+     * What one operation on the current connection came to: [Attempt.NotSetUp] when nothing can be sent, else
+     * [Attempt.Made] of what [unreachable] makes of a destination that could not be reached, or what [sent] did on the
+     * open client ([paying] takes the whole setup problem; [expectedIdentity] requires the checked snapshot). Every
+     * connection operation shares this one reading of the connection.
+     */
+    private suspend fun <T> attempt(
+        paying: Boolean = false,
+        expectedIdentity: String? = null,
+        unreachable: (Fault) -> T,
+        sent: suspend (Connection.Open) -> Attempt<T>,
+    ): Attempt<T> =
+        when (val connection = connection(paying, expectedIdentity)) {
+            is Connection.Open -> {
+                sent(connection)
+            }
+
+            is Connection.NotSetUp -> {
+                Attempt.NotSetUp(connection.problem)
+            }
+
+            is Connection.Unreachable -> {
+                Attempt.Made(unreachable(connection.fault))
+            }
+        }
+
+    /**
      * Sends a payment ([paying]) or refund with [call] once [onSending] was told the POIID, or says why nothing can be
      * sent.
      */
@@ -536,25 +532,15 @@ class TerminalGateway(
         expectedIdentity: String? = null,
         call: suspend (TerminalClient) -> TransactionOutcome,
     ): Attempt<TransactionOutcome> =
-        when (val connection = connection(paying, expectedIdentity)) {
-            is Connection.Open -> {
-                if (expected != null && !expected.matchesTerminal(connection.context())) {
-                    Attempt.NotSetUp(SetupProblem.PAYMENT_CONTEXT)
-                } else {
-                    onContext(connection.context())
-                    onSending(connection.client.identity.poiId)
-                    val outcome = call(connection.client)
-                    onContext(connection.context())
-                    Attempt.Made(outcome)
-                }
-            }
-
-            is Connection.NotSetUp -> {
-                Attempt.NotSetUp(connection.problem)
-            }
-
-            is Connection.Unreachable -> {
-                Attempt.Made(TransactionOutcome.NotProcessed(serviceId, connection.fault))
+        attempt(paying, expectedIdentity, unreachable = { TransactionOutcome.NotProcessed(serviceId, it) }) { open ->
+            if (expected != null && !expected.matchesTerminal(open.context())) {
+                Attempt.NotSetUp(SetupProblem.PAYMENT_CONTEXT)
+            } else {
+                onContext(open.context())
+                onSending(open.client.identity.poiId)
+                val outcome = call(open.client)
+                onContext(open.context())
+                Attempt.Made(outcome)
             }
         }
 

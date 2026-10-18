@@ -72,6 +72,7 @@ import app.minimpos.app.feature.GatedButton
 import app.minimpos.app.feature.lock.SetPinScreen
 import app.minimpos.app.feature.text
 import app.minimpos.app.feature.walletCheckFailed
+import app.minimpos.app.terminal.DestinationRules
 import app.minimpos.app.terminal.ReceiptBusiness
 import app.minimpos.app.terminal.SharedKeyOffer
 import app.minimpos.app.terminal.TerminalConnection
@@ -754,7 +755,7 @@ private fun ColumnScope.TerminalSection(
             { navigator.push(Route.SettingsSection(SettingsSections.SIMULATOR)) },
         )
     } else {
-        TerminalSteps(status, state, actions, setup, events, setupEvents)
+        TerminalSteps(status, DestinationRules.of(mode, LocalAppContainer.current.device), state, actions, setup, events, setupEvents)
     }
     val container = LocalAppContainer.current
     val wallets by container.walletDiscovery.state.collectAsStateWithLifecycle()

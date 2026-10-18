@@ -20,7 +20,6 @@ import app.minimpos.app.payment.TransactionLifecycle
 import app.minimpos.app.terminal.ApiSetup
 import app.minimpos.app.terminal.Attempt
 import app.minimpos.app.terminal.DeviceInfo
-import app.minimpos.app.terminal.TerminalSetupSource
 import app.minimpos.app.update.UpdateCheck
 import app.minimpos.terminal.checkout.CheckoutApi
 import app.minimpos.terminal.checkout.CheckoutSavedCards
@@ -596,8 +595,7 @@ class TestEnvironment(
         runBlocking {
             container.settings.update(transform)
             if (verifiedSetup) {
-                val source =
-                    TerminalSetupSource(container.settings, container.secrets, device)
+                val source = container.terminalSetup
                 val candidate = source.unlocked(forValidation = true)
                 if (candidate.setup.apiSetup ==
                     ApiSetup.Complete

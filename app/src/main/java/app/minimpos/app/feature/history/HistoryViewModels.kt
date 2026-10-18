@@ -2,7 +2,6 @@ package app.minimpos.app.feature.history
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import app.minimpos.app.data.db.Failure
 import app.minimpos.app.data.db.RefundEntity
 import app.minimpos.app.data.db.SaleKind
 import app.minimpos.app.data.db.SaleWithLines
@@ -27,18 +26,15 @@ import app.minimpos.app.history.TerminalReconciliationReport
 import app.minimpos.app.history.standing
 import app.minimpos.app.payment.FinancialOperations
 import app.minimpos.app.payment.ReceiptDelivery
+import app.minimpos.app.payment.ReconciliationOutcome
 import app.minimpos.app.payment.StoredPaymentActions
-import app.minimpos.app.payment.StoredTransaction
-import app.minimpos.app.terminal.Attempt
-import app.minimpos.app.terminal.TerminalGateway
+import app.minimpos.app.payment.TerminalReconciliation
 import app.minimpos.app.terminal.TerminalState
-import app.minimpos.terminal.client.TerminalTotalsOutcome
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
@@ -105,16 +101,14 @@ data class HistoryUiState(
 
 /** The history list: sales and refunds by day, with daily totals, filtered and searched. */
 class HistoryViewModel(
-    private val history: HistoryRepository,
+    history: HistoryRepository,
     /** The time zone days are counted in; read for each update, so it follows the device's setting. */
     private val zone: () -> ZoneId = { ZoneId.systemDefault() },
     /** Report delivery, absent only in list-only tests. */
     private val receipts: ReceiptDelivery? = null,
-    private val gateway: TerminalGateway? = null,
-    private val terminal: Flow<TerminalState> = flowOf(TerminalState()),
-    /** Asks again about unresolved terminal operations before reconciling; absent only in list-only tests. */
-    private val operations: FinancialOperations? = null,
-    private val permitsClose: suspend () -> Boolean = { true },
+    /** Terminal reconciliation, absent only in list-only tests. */
+    private val reconciliation: TerminalReconciliation? = null,
+    terminal: Flow<TerminalState> = flowOf(TerminalState()),
 ) : ViewModel() {
     private val print = MutableStateFlow(ActionState())
     private val reconcileState = MutableStateFlow<Pair<ActionState, TerminalReconciliationReport?>>(ActionState() to null)
@@ -153,7 +147,8 @@ class HistoryViewModel(
             )
         }.combine(
             combine(canPrint, print, terminal, reconcileState) { available, action, term, (recAction, recReport) ->
-                ReconcileSlice(available, action, gateway != null && term.capabilities.supportsTerminalFeatures, recAction, recReport)
+                val canReconcile = reconciliation != null && term.capabilities.supportsTerminalFeatures
+                ReconcileSlice(available, action, canReconcile, recAction, recReport)
             },
         ) { list, slice ->
             list.copy(
@@ -182,58 +177,29 @@ class HistoryViewModel(
     }
 
     /**
-     * Rechecks any unresolved terminal operations for the current terminal, then retrieves terminal totals
-     * (`GetTotalsRequest`, or `SaleReconciliation` when [closePeriod] is true) and compares them against local
-     * accounting for [date]. Closing a period rechecks Manager PIN approval before sending.
+     * Runs one terminal reconciliation for [date] (`GetTotalsRequest`, or `SaleReconciliation` when [closePeriod] is
+     * true) and shows its comparison, or why nothing could be compared. Closing a period rechecks Manager PIN approval
+     * before sending; duplicate taps are ignored.
      */
     fun reconcileTerminal(
         date: LocalDate = LocalDate.now(zone()),
         closePeriod: Boolean = false,
     ) {
-        val terminalGateway = gateway ?: return
+        val reconciliation = reconciliation ?: return
         if (reconcileState.value.first.running) return
         reconcileState.value = ActionState(running = true) to null
-        launchWrite({
-            val currentTerminal = terminal.first()
-            val poiId = currentTerminal.poiId.orEmpty()
-            val beforeItems = history.items().first()
-            HistoryAccounting.unresolvedTerminalItems(beforeItems, poiId).forEach { item ->
-                operations?.recheck(
-                    when (item) {
-                        is HistoryItem.Sale -> StoredTransaction.Sale(item.id)
-                        is HistoryItem.Refund -> StoredTransaction.Refund(item.id)
-                    },
-                )
-            }
-            when (val attempt = terminalGateway.totals(closePeriod, permitsClose)) {
-                is Attempt.NotSetUp -> {
-                    reconcileState.value =
-                        ActionState(outcome = ActionOutcome.Failed(Failure.NotSetUp(attempt.problem)), isError = true) to null
-                }
+        launchWrite({ reconciliation.reconcile(date, closePeriod) }) { outcome ->
+            reconcileState.value =
+                when (outcome) {
+                    is ReconciliationOutcome.Failed -> {
+                        ActionState(outcome = ActionOutcome.Failed(outcome.failure), isError = true) to null
+                    }
 
-                is Attempt.Made -> {
-                    when (val outcome = attempt.result) {
-                        is TerminalTotalsOutcome.Failed -> {
-                            reconcileState.value =
-                                ActionState(outcome = ActionOutcome.Failed(Failure.Remote(outcome.fault)), isError = true) to null
-                        }
-
-                        is TerminalTotalsOutcome.Answered -> {
-                            val currentItems = history.items().first()
-                            val report =
-                                HistoryAccounting.compareReconciliation(
-                                    items = currentItems,
-                                    poiId = poiId,
-                                    outcome = outcome,
-                                    date = date,
-                                    zone = zone(),
-                                )
-                            reconcileState.value = ActionState(done = true) to report
-                        }
+                    is ReconciliationOutcome.Reconciled -> {
+                        ActionState(done = true) to outcome.report
                     }
                 }
-            }
-        })
+        }
     }
 
     /** Dismisses the displayed terminal reconciliation comparison card. */

@@ -131,9 +131,9 @@ class ReceiptRecords(
  * receipt settings, and what the screens offer for them ([offer]). Every operation takes the [StoredTransaction], and
  * what differs between sales and refunds is decided here: a sale has a merchant copy, a refund one copy only; the
  * receipt of a sale still awaiting its payment link's payment is an unpaid one with the link, emailed as a payment
- * request. It decides what is delivered automatically after a transaction, exactly once per transaction that
- * succeeded while the app runs: the transaction lifecycles call [arm], and [app.minimpos.app.feature.TransactionActions]
- * claims the automation for a transaction just made with [automation], which only delivers something the first time.
+ * request. It also owns what is delivered automatically after a transaction, exactly once per transaction that
+ * succeeded while the app runs: the transaction lifecycles call [arm], and whichever screen is opened first for it
+ * claims it with [automation] through [app.minimpos.app.feature.TransactionActions]; later screens get nothing.
  *
  * Missing sales and refunds (for example after pruning) are [ActionResult.Missing]; missing terminal or email setup and
  * delivery errors are [ActionResult.Failed] with the typed failure the screens word.

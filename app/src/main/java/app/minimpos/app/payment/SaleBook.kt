@@ -195,8 +195,27 @@ class SaleBook(
                 SettlementStatus.FAILED -> SaleStatus.FAILED
                 SettlementStatus.UNKNOWN -> SaleStatus.UNKNOWN
             }
-        sales.record(id, SaleEvent.Settled(status, settlement.message, settlement.details, settlement.reason))
+        sales.record(
+            id,
+            SaleEvent.Settled(
+                status,
+                settlement.message,
+                settlement.details,
+                settlement.reason,
+                busyServiceId = settlement.details?.decline?.busyServiceId,
+            ),
+        )
     }
+
+    override suspend fun busyServiceId(
+        id: String,
+        abort: Boolean,
+    ): String? =
+        sales
+            .get(id)
+            ?.sale
+            ?.busyServiceId
+            ?.also { if (abort) sales.record(id, SaleEvent.BusyAborted) }
 
     override suspend fun unsettledServiceId(id: String): String? =
         sales

@@ -253,7 +253,7 @@ class LocalTransportTest {
         val server = server()
         server.reply(securedResponse(diagnosisOk()))
         val redirect = Redirect(server.url("/nexo/"), http())
-        val transport = AdyenLocalTransport("localhost", key, tls(), redirect)
+        val transport = AdyenLocalTransport("localhost", key, tls(), http = redirect)
         val response = (runBlocking { transport.send(request, 5.seconds) } as Delivery.Answered).response!!
         assertThat(response.saleToPOIResponse.diagnosisResponse.response.result).isEqualTo(ResultType.SUCCESS)
         assertThat(redirect.endpoint).isEqualTo("https://localhost:8443/nexo/")
@@ -293,7 +293,7 @@ class LocalTransportTest {
             ),
         )
         server.reply("""{"SaleToPOIResponse":{"NexoBlob":"AAAA"}}""")
-        val transport = AdyenLocalTransport("localhost", key, tls(), Redirect(server.url("/nexo/"), http()))
+        val transport = AdyenLocalTransport("localhost", key, tls(), http = Redirect(server.url("/nexo/"), http()))
         assertThat(runBlocking { transport.send(request, 5.seconds) }).isEqualTo(Delivery.Failed(Fault.ReplyUnverified))
         assertThat(runBlocking { transport.send(request, 5.seconds) }).isEqualTo(Delivery.Failed(Fault.ReplyUnverified))
         val garbled = runBlocking { transport.send(request, 5.seconds) } as Delivery.Failed
@@ -307,7 +307,7 @@ class LocalTransportTest {
         assertThat(IOException().fault()).isEqualTo(Fault.ConnectionLost)
         val server = server()
         server.reply("oops", code = 500)
-        val transport = AdyenLocalTransport("localhost", key, tls(), Redirect(server.url("/nexo/"), http()))
+        val transport = AdyenLocalTransport("localhost", key, tls(), http = Redirect(server.url("/nexo/"), http()))
         assertThat(runBlocking { transport.send(request, 5.seconds) }).isEqualTo(Delivery.Failed(Fault.TerminalHttp(500)))
 
         val baseHttp = http()
@@ -322,7 +322,7 @@ class LocalTransportTest {
                     ): String = throw GeneralSecurityException("bad key")
                 },
             )
-        assertThat(runBlocking { AdyenLocalTransport("localhost", key, tls(), securityFail).send(request, 5.seconds) })
+        assertThat(runBlocking { AdyenLocalTransport("localhost", key, tls(), http = securityFail).send(request, 5.seconds) })
             .isEqualTo(Delivery.Failed(Fault.ReplyUnverified))
 
         val genericFail =
@@ -336,7 +336,7 @@ class LocalTransportTest {
                     ): String = error("unexpected")
                 },
             )
-        assertThat(runBlocking { AdyenLocalTransport("localhost", key, tls(), genericFail).send(request, 5.seconds) })
+        assertThat(runBlocking { AdyenLocalTransport("localhost", key, tls(), http = genericFail).send(request, 5.seconds) })
             .isEqualTo(Delivery.Failed(Fault.UnreadableReply()))
     }
 

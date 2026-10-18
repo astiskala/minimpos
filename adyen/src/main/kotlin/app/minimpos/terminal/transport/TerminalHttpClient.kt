@@ -8,7 +8,6 @@ import com.adyen.model.RequestOptions
 import com.adyen.model.terminal.TerminalAPIRequest
 import com.adyen.model.terminal.TerminalAPISecuredRequest
 import com.adyen.terminal.security.NexoCrypto
-import com.adyen.terminal.serialization.TerminalAPIGsonBuilder
 import com.google.gson.JsonElement
 import com.google.gson.JsonObject
 import com.google.gson.JsonParseException
@@ -50,7 +49,6 @@ class TerminalHttpClient(
     /** The client to derive from, so an app can share one connection pool and dispatcher. */
     baseClient: OkHttpClient = OkHttpClient(),
 ) : ClientInterface {
-    private val gson = TerminalAPIGsonBuilder.create()
     private val client =
         baseClient
             .newBuilder()
@@ -184,12 +182,12 @@ class TerminalHttpClient(
         val request = root.objectAt("SaleToPOIRequest") ?: return null
         val plain =
             if (request.has("NexoBlob")) {
-                val secured = gson.fromJson(root, TerminalAPISecuredRequest::class.java).saleToPOIRequest
+                val secured = nexoGson.fromJson(root, TerminalAPISecuredRequest::class.java).saleToPOIRequest
                 crypto?.decrypt(secured) ?: return null
             } else {
                 root.toString()
             }
-        return gson
+        return nexoGson
             .fromJson(plain, TerminalAPIRequest::class.java)
             .saleToPOIRequest
             ?.eventNotification

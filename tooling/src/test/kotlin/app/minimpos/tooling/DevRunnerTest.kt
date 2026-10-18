@@ -6,7 +6,6 @@ import org.junit.Test
 import org.junit.rules.TemporaryFolder
 import java.nio.file.Files
 import java.nio.file.Path
-import java.util.concurrent.TimeUnit
 
 class DevRunnerTest {
     @get:Rule
@@ -16,76 +15,76 @@ class DevRunnerTest {
     fun `test lane preserves pattern and flags without shell evaluation`() {
         val root = fixture()
         val result = run(root, "test", "app", "*CheckoutTest.name; echo unsafe", "--stacktrace")
-        assertThat(result.first).isEqualTo(0)
-        assertThat(result.second).contains("<:app:testDebugUnitTest>\n<--tests>\n<*CheckoutTest.name; echo unsafe>\n<--stacktrace>")
+        assertThat(result.code).isEqualTo(0)
+        assertThat(result.output).contains("<:app:testDebugUnitTest>\n<--tests>\n<*CheckoutTest.name; echo unsafe>\n<--stacktrace>")
     }
 
     @Test
     fun `architecture lane checks all modules without running whole suites`() {
         val result = run(fixture(), "check", "architecture")
-        assertThat(result.first).isEqualTo(0)
-        assertThat(result.second).contains("<:core:test>\n<--tests>\n<*ArchitectureTest>")
-        assertThat(result.second).contains("<:adyen:test>\n<--tests>\n<*ArchitectureTest>")
-        assertThat(result.second).contains("<:app:testDebugUnitTest>\n<--tests>\n<*ArchitectureTest>")
+        assertThat(result.code).isEqualTo(0)
+        assertThat(result.output).contains("<:core:test>\n<--tests>\n<*ArchitectureTest>")
+        assertThat(result.output).contains("<:adyen:test>\n<--tests>\n<*ArchitectureTest>")
+        assertThat(result.output).contains("<:app:testDebugUnitTest>\n<--tests>\n<*ArchitectureTest>")
     }
 
     @Test
     fun `payment lane includes stored history and receipt tests after package moves`() {
         val result = run(fixture(), "check", "payment")
-        assertThat(result.first).isEqualTo(0)
-        assertThat(result.second).contains("<--tests>\n<*payment.*>")
-        assertThat(result.second).contains("<--tests>\n<*history.*>")
-        assertThat(result.second).contains("<--tests>\n<*receipt.*>")
-        assertThat(result.second).contains("<:app:detektDebug>")
+        assertThat(result.code).isEqualTo(0)
+        assertThat(result.output).contains("<--tests>\n<*payment.*>")
+        assertThat(result.output).contains("<--tests>\n<*history.*>")
+        assertThat(result.output).contains("<--tests>\n<*receipt.*>")
+        assertThat(result.output).contains("<:app:detektDebug>")
     }
 
     @Test
     fun `finish formats then collects all findings without hiding failure`() {
         val root = fixture("case \"${'$'}*\" in *qualityGate*) exit 37 ;; esac")
         val result = run(root, "finish", "--stacktrace")
-        assertThat(result.first).isEqualTo(37)
-        assertThat(result.second).contains("<spotlessApply>")
-        assertThat(result.second).contains("<qualityGate>\n<--continue>\n<--stacktrace>")
+        assertThat(result.code).isEqualTo(37)
+        assertThat(result.output).contains("<spotlessApply>")
+        assertThat(result.output).contains("<qualityGate>\n<--continue>\n<--stacktrace>")
     }
 
     @Test
     fun `format failure blocks final gate`() {
         val result = run(fixture("exit 23"), "finish")
-        assertThat(result.first).isEqualTo(23)
-        assertThat(result.second).doesNotContain("qualityGate")
+        assertThat(result.code).isEqualTo(23)
+        assertThat(result.output).doesNotContain("qualityGate")
     }
 
     @Test
     fun `invalid lanes missing patterns and worker counts fail before Gradle`() {
         for (args in listOf(listOf("check", "unknown"), listOf("test", "app"), listOf("test", "unknown", "*"), listOf("profile", "0"))) {
             val result = run(fixture(), *args.toTypedArray())
-            assertThat(result.first).isEqualTo(2)
-            assertThat(result.second).doesNotContain("<")
+            assertThat(result.code).isEqualTo(2)
+            assertThat(result.output).doesNotContain("<")
         }
     }
 
     @Test
     fun `profile reruns only selected test task with explicit worker count`() {
         val result = run(fixture(), "profile", "1", "*AppFlowTest", "--stacktrace")
-        assertThat(result.first).isEqualTo(0)
-        assertThat(result.second).contains("<:app:testDebugUnitTest>\n<--rerun>\n<--tests>\n<*AppFlowTest>")
-        assertThat(result.second).contains("<-PappTestWorkers=1>\n<--profile>\n<--stacktrace>")
+        assertThat(result.code).isEqualTo(0)
+        assertThat(result.output).contains("<:app:testDebugUnitTest>\n<--rerun>\n<--tests>\n<*AppFlowTest>")
+        assertThat(result.output).contains("<-PappTestWorkers=1>\n<--profile>\n<--stacktrace>")
     }
 
     @Test
     fun `mutation runs only the separate mutation task with trailing flags`() {
         val result = run(fixture(), "mutation", "--continue")
-        assertThat(result.first).isEqualTo(0)
-        assertThat(result.second).contains("<mutationTest>\n<--continue>")
-        assertThat(result.second).doesNotContain("qualityGate")
+        assertThat(result.code).isEqualTo(0)
+        assertThat(result.output).contains("<mutationTest>\n<--continue>")
+        assertThat(result.output).doesNotContain("qualityGate")
     }
 
     @Test
     fun `help succeeds without Gradle or local configuration`() {
         val result = run(fixture(), "help")
-        assertThat(result.first).isEqualTo(0)
-        assertThat(result.second).contains("finish")
-        assertThat(result.second).doesNotContain("<")
+        assertThat(result.code).isEqualTo(0)
+        assertThat(result.output).contains("finish")
+        assertThat(result.output).doesNotContain("<")
     }
 
     @Test
@@ -113,9 +112,9 @@ class DevRunnerTest {
                         "MINIMPOS_CHROME" to bin.resolve("chrome").toString(),
                     ),
             )
-        assertThat(result.first).isEqualTo(0)
-        assertThat(result.second).contains("SDK 37: OK")
-        assertThat(result.second).contains("not cached")
+        assertThat(result.code).isEqualTo(0)
+        assertThat(result.output).contains("SDK 37: OK")
+        assertThat(result.output).contains("not cached")
         assertThat(Files.exists(root.resolve("build"))).isFalse()
     }
 
@@ -124,10 +123,10 @@ class DevRunnerTest {
         val root = fixture()
         Files.writeString(root.resolve("local.properties"), "sdk.dir=/missing\n")
         val result = run(root, "preflight", environment = mapOf("MINIMPOS_CHROME" to "/missing"))
-        assertThat(result.first).isEqualTo(1)
-        assertThat(result.second).contains("SDK: install platform 37")
-        assertThat(result.second).contains("Chrome: install")
-        assertThat(result.second).doesNotContain("<")
+        assertThat(result.code).isEqualTo(1)
+        assertThat(result.output).contains("SDK: install platform 37")
+        assertThat(result.output).contains("Chrome: install")
+        assertThat(result.output).doesNotContain("<")
     }
 
     @Test
@@ -138,9 +137,9 @@ class DevRunnerTest {
         Files.writeString(bin.resolve("java"), "#!/bin/sh\necho 'openjdk version \"11.0.1\"' >&2\n").toFile().setExecutable(true)
         Files.writeString(root.resolve("local.properties"), "sdk.dir=/missing\n")
         val result = run(root, "warm", environment = mapOf("JAVA_HOME" to home.toString(), "MINIMPOS_CHROME" to "/missing"))
-        assertThat(result.first).isEqualTo(1)
-        assertThat(result.second).contains("JDK: need JDK 17+")
-        assertThat(result.second).doesNotContain("<")
+        assertThat(result.code).isEqualTo(1)
+        assertThat(result.output).contains("JDK: need JDK 17+")
+        assertThat(result.output).doesNotContain("<")
     }
 
     private fun fixture(body: String = ""): Path {
@@ -155,17 +154,5 @@ class DevRunnerTest {
         root: Path,
         vararg args: String,
         environment: Map<String, String> = emptyMap(),
-    ): Pair<Int, String> {
-        val process =
-            ProcessBuilder(listOf("bash", root.resolve("scripts/dev").toString()) + args)
-                .apply { environment().putAll(environment) }
-                .redirectErrorStream(true)
-                .start()
-        try {
-            check(process.waitFor(30, TimeUnit.SECONDS)) { "Dev runner timed out" }
-            return process.exitValue() to process.inputStream.bufferedReader().readText()
-        } finally {
-            if (process.isAlive) process.destroyForcibly()
-        }
-    }
+    ): Cli.Result = Cli.runCommand(listOf("bash", root.resolve("scripts/dev").toString()) + args, environment = environment)
 }

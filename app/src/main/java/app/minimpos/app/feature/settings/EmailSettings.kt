@@ -44,9 +44,7 @@ internal fun ColumnScope.EmailSection(
 
     fun update(transform: (EmailSettings) -> EmailSettings) = events.onUpdate { it.copy(email = transform(it.email)) }
     SectionHeader(stringResource(R.string.settings_email_receipts))
-    EmailCaptureSettings(state.settings) { transform ->
-        events.onUpdate { it.copy(payment = transform(it.payment)) }
-    }
+    EmailCaptureSettings(state.settings, events::onPaymentUpdate)
     SmtpServerSettings(
         email = email,
         passwordSaved = Secret.SMTP_PASSWORD in state.secrets,

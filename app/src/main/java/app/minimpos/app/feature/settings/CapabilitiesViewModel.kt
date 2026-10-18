@@ -48,13 +48,16 @@ class CapabilitiesViewModel(
 
     init {
         viewModelScope.launch {
-            discovery.changes.collectLatest {
-                refresh()
+            // A later setup change cancels the refresh it supersedes (whose result would not be published) instead of
+            // being skipped while that refresh is still checking, which would leave the stale reading checking.
+            discovery.changes.collectLatest { _ ->
+                discovery.refresh()
+                actions.update { it.copy(revision = it.revision + 1) }
             }
         }
     }
 
-    /** Refreshes Management capability inspection. */
+    /** Refreshes Management capability inspection; ignored while a refresh is checking. */
     fun refresh() {
         if (state.value.checking) return
         launchWrite({ discovery.refresh() }) { _ ->
@@ -66,46 +69,13 @@ class CapabilitiesViewModel(
     fun saveGratuity(
         currency: String,
         gratuity: GratuityCapability?,
-    ) {
-        if (actions.value.gratuity.running) return
-        actions.update { it.copy(gratuity = ActionState(running = true)) }
-        launchWrite({ discovery.updateGratuity(currency, gratuity) }) { result ->
-            actions.update {
-                it.copy(
-                    gratuity = result.toActionState(),
-                    revision = if (result == CapabilityPatchResult.Updated) it.revision + 1 else it.revision,
-                )
-            }
-        }
-    }
+    ) = save({ it.gratuity }, { copy(gratuity = it) }) { discovery.updateGratuity(currency, gratuity) }
 
     /** Updates the terminal's Dynamic Currency Conversion setting. */
-    fun saveDcc(enabled: Boolean) {
-        if (actions.value.dcc.running) return
-        actions.update { it.copy(dcc = ActionState(running = true)) }
-        launchWrite({ discovery.updateDcc(enabled) }) { result ->
-            actions.update {
-                it.copy(
-                    dcc = result.toActionState(),
-                    revision = if (result == CapabilityPatchResult.Updated) it.revision + 1 else it.revision,
-                )
-            }
-        }
-    }
+    fun saveDcc(enabled: Boolean) = save({ it.dcc }, { copy(dcc = it) }) { discovery.updateDcc(enabled) }
 
     /** Updates the terminal's MOTO configuration. */
-    fun saveMoto(moto: MotoCapability) {
-        if (actions.value.moto.running) return
-        actions.update { it.copy(moto = ActionState(running = true)) }
-        launchWrite({ discovery.updateMoto(moto) }) { result ->
-            actions.update {
-                it.copy(
-                    moto = result.toActionState(),
-                    revision = if (result == CapabilityPatchResult.Updated) it.revision + 1 else it.revision,
-                )
-            }
-        }
-    }
+    fun saveMoto(moto: MotoCapability) = save({ it.moto }, { copy(moto = it) }) { discovery.updateMoto(moto) }
 
     /** Updates the terminal's offline EMV and store-and-forward limits for [currency]. */
     fun saveOffline(
@@ -113,22 +83,27 @@ class CapabilitiesViewModel(
         chipFloorLimit: Int?,
         maxStoreAndForwardMinor: Int?,
         maxPayments: Int?,
+    ) = save({ it.offline }, { copy(offline = it) }) {
+        discovery.updateOffline(
+            currency = currency,
+            chipFloorLimit = chipFloorLimit,
+            maxStoreAndForwardMinor = maxStoreAndForwardMinor,
+            maxPayments = maxPayments,
+        )
+    }
+
+    /** Sends [patch] unless the action in [slot] is running, recording its outcome there with [record]. */
+    private fun save(
+        slot: (CapabilitiesActions) -> ActionState,
+        record: CapabilitiesActions.(ActionState) -> CapabilitiesActions,
+        patch: suspend () -> CapabilityPatchResult,
     ) {
-        if (actions.value.offline.running) return
-        actions.update { it.copy(offline = ActionState(running = true)) }
-        launchWrite({
-            discovery.updateOffline(
-                currency = currency,
-                chipFloorLimit = chipFloorLimit,
-                maxStoreAndForwardMinor = maxStoreAndForwardMinor,
-                maxPayments = maxPayments,
-            )
-        }) { result ->
+        if (slot(actions.value).running) return
+        actions.update { it.record(ActionState(running = true)) }
+        launchWrite(patch) { result ->
             actions.update {
-                it.copy(
-                    offline = result.toActionState(),
-                    revision = if (result == CapabilityPatchResult.Updated) it.revision + 1 else it.revision,
-                )
+                val recorded = it.record(result.toActionState())
+                if (result == CapabilityPatchResult.Updated) recorded.copy(revision = recorded.revision + 1) else recorded
             }
         }
     }

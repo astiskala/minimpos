@@ -10,6 +10,7 @@ import app.minimpos.app.data.db.SaleWithLines
 import app.minimpos.app.data.db.TaxRateEntity
 import app.minimpos.app.data.repo.CatalogRepository
 import app.minimpos.app.data.settings.AppSettings
+import app.minimpos.app.data.settings.PaymentSettings
 import app.minimpos.app.feature.ActionOutcome
 import app.minimpos.app.feature.ActionState
 import app.minimpos.app.feature.TransactionActions
@@ -88,7 +89,7 @@ data class SaleUiState(
     val selectedCategory: Long? = null,
     val cart: Cart = Cart(),
     val totals: CartTotals = Cart().totals(TaxMode.INCLUSIVE),
-    val currency: CurrencySpec = CurrencySpec("EUR", 2),
+    val currency: CurrencySpec = PaymentSettings.FALLBACK_CURRENCY_SPEC,
     val defaultTaxRate: TaxRateEntity? = null,
     val chargeTax: Boolean = true,
     val kind: SaleKind = SaleKind.SALE,
@@ -434,11 +435,8 @@ data class SaleResultUiState(
     /** Whether the payment was approved. */
     val approved: Boolean get() = record?.sale?.approved == true
 
-    /**
-     * The ServiceID of the transaction a busy terminal is working on, which the stored refusal names until its abort
-     * was sent; null without one.
-     */
-    val busyServiceId: String? get() = record?.sale?.busyServiceId
+    /** Whether the stored refusal names a transaction a busy terminal is working on, whose abort was not sent yet. */
+    val canAbortBusy: Boolean get() = record?.sale?.busyServiceId != null
 
     /** What kind of payment it was; a sale until the record is loaded. */
     val kind: SaleKind get() = record?.sale?.kind ?: SaleKind.SALE

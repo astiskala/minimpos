@@ -84,7 +84,8 @@ data class ReceiptPrint(
  * @property canPrint Whether printing is offered.
  * @property canEmail Whether emailing it is offered.
  * @property canShare Whether sharing it through Android's share sheet is offered (not on an Adyen terminal).
- * @property share The receipt to share when asked, as it is emailed; null while the transaction is not stored.
+ * @property share The receipt to share when asked, as it is emailed; null while the transaction is not stored or
+ *   sharing is not offered.
  */
 data class ReceiptOffer(
     val receipt: ReceiptDocument?,
@@ -291,7 +292,7 @@ class ReceiptDelivery(
                 canEmail = current.email.isConfigured && captured,
                 canShare = terminal.canShare,
                 share =
-                    record?.let {
+                    record?.takeIf { terminal.canShare }?.let {
                         val sale = it.sale
                         val standing = ReceiptStanding.of(sale)
                         SharedReceipt(
@@ -315,7 +316,7 @@ class ReceiptDelivery(
                 canEmail = current.email.isConfigured,
                 canShare = terminal.canShare,
                 share =
-                    refund?.let { stored ->
+                    refund?.takeIf { terminal.canShare }?.let { stored ->
                         receipt?.let { SharedReceipt(it, stored.merchantReference, stored.amountMinor, stored.currency) }
                     },
             )

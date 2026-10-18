@@ -4,7 +4,6 @@ import androidx.lifecycle.ViewModel
 import app.minimpos.app.data.db.Failure
 import app.minimpos.app.data.security.Secret
 import app.minimpos.app.data.security.SecretStore
-import app.minimpos.app.data.security.SecretStoreException
 import app.minimpos.app.data.settings.SettingsRepository
 import app.minimpos.app.data.settings.TerminalMode
 import app.minimpos.app.data.settings.TerminalSettings
@@ -178,10 +177,8 @@ class TerminalSetupViewModel(
         if (actions.value.terminals.running || actions.value.keyResult.running) return
         actions.update { it.copy(keyResult = ActionState(running = true)) }
         launchWrite({
-            try {
-                keyOutcome(discovery.setupKey(confirmed))
-            } catch (ignored: SecretStoreException) {
-                actions.update { it.copy(keyResult = ActionState(outcome = SECURE_STORAGE_FAILED, isError = true)) }
+            runSecretWrite { keyOutcome(discovery.setupKey(confirmed)) }?.let { failed ->
+                actions.update { it.copy(keyResult = ActionState(outcome = failed, isError = true)) }
             }
         })
     }

@@ -87,7 +87,7 @@ class SimulatedModifications internal constructor(
     ): ModificationResult {
         ledger.captureRefusal(paymentPspReference)?.let { return ModificationResult.Failed(it) }
         ledger.captured(paymentPspReference)
-        return ModificationResult.Received(pspReference())
+        return ModificationResult.Received(pspReference(random))
     }
 
     override suspend fun updateAmount(
@@ -100,8 +100,8 @@ class SimulatedModifications internal constructor(
         val refusal = ledger.adjustmentRefusal(paymentPspReference)
         return when {
             refusal != null -> ModificationResult.Failed(refusal)
-            adjustAuthorisationData != null -> ModificationResult.Authorised(pspReference(), blob(random))
-            else -> ModificationResult.Received(pspReference())
+            adjustAuthorisationData != null -> ModificationResult.Authorised(pspReference(random), blob(random))
+            else -> ModificationResult.Received(pspReference(random))
         }
     }
 
@@ -113,19 +113,21 @@ class SimulatedModifications internal constructor(
         idempotencyKey: String,
     ): ModificationResult =
         ledger.refundRefusal(paymentPspReference)?.let { ModificationResult.Failed(it) }
-            ?: ModificationResult.Received(pspReference())
+            ?: ModificationResult.Received(pspReference(random))
 
     override suspend fun verify(): Fault? = null
 
-    private fun pspReference() = (1..PSP_LENGTH).map { UPPER[random.nextInt(UPPER.length)] }.joinToString("")
-
-    /** Values shared with the simulated terminal. */
+    /** Values shared with the simulated terminal and saved cards. */
     companion object {
-        private const val PSP_LENGTH = 16
         private const val BLOB_BYTES = 24
-        private const val UPPER = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+        private const val PSP_LENGTH = 16
+        private const val PSP_ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
 
         /** A random stand-in for Adyen's `adjustAuthorisationData` blob. */
         internal fun blob(random: Random): String = "BQABAQ" + Base64.encode(random.nextBytes(BLOB_BYTES))
+
+        /** A random stand-in for an Adyen PSP reference: 16 upper-case letters and digits. */
+        internal fun pspReference(random: Random): String =
+            (1..PSP_LENGTH).map { PSP_ALPHABET[random.nextInt(PSP_ALPHABET.length)] }.joinToString("")
     }
 }

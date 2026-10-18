@@ -1,7 +1,6 @@
 package app.minimpos.app.feature.products
 
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
@@ -10,12 +9,9 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Category
@@ -71,6 +67,7 @@ import app.minimpos.app.ui.components.EmptyState
 import app.minimpos.app.ui.components.LocalAppContainer
 import app.minimpos.app.ui.components.MiniScaffold
 import app.minimpos.app.ui.components.PrimaryButton
+import app.minimpos.app.ui.components.ScreenColumn
 import app.minimpos.app.ui.components.SwitchRow
 import app.minimpos.app.ui.components.rememberMoneyFormatter
 import app.minimpos.app.ui.navigation.Navigator
@@ -331,7 +328,6 @@ fun ProductEditScreen(
     var confirmDelete by rememberSaveable { mutableStateOf(false) }
     var scan by rememberSaveable { mutableStateOf(false) }
     val form = state.form
-    val dimens = LocalDimens.current
 
     MiniScaffold(
         title = stringResource(if (productId == null) R.string.products_add else R.string.products_edit),
@@ -359,20 +355,11 @@ fun ProductEditScreen(
         },
     ) { padding ->
         if (!state.loaded) return@MiniScaffold
-        Column(
-            Modifier
-                .fillMaxSize()
-                .padding(padding)
-                .verticalScroll(rememberScrollState())
-                .padding(dimens.screenPadding),
-            horizontalAlignment = Alignment.CenterHorizontally,
-        ) {
-            Column(Modifier.widthIn(max = dimens.contentMaxWidth), verticalArrangement = Arrangement.spacedBy(dimens.spacing)) {
-                ProductFields(state, onUpdate = {
-                    container.userActivity()
-                    vm.update(it)
-                }, onScan = { scan = true })
-            }
+        ScreenColumn(padding) {
+            ProductFields(state, onUpdate = {
+                container.userActivity()
+                vm.update(it)
+            }, onScan = { scan = true })
         }
     }
     if (scan) {

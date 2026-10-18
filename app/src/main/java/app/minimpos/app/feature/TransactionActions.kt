@@ -259,8 +259,8 @@ data class TransactionActionsState(
  * re-checking (asked the way the transaction was sent, see [FinancialOperations.recheck]), with their progress and
  * outcome in [state]. Whichever screen is opened first for a transaction that just succeeded claims its automatic
  * delivery (see [ReceiptDelivery.arm]); every later screen, and any screen for an older transaction, delivers nothing
- * automatically. A [fresh] screen, on the result just after the transaction, alone widens which email actions it
- * offers.
+ * automatically. A [fresh] sale screen, on the result just after its payment, offers email only as
+ * [ReceiptDelivery.offer] allows right after a payment.
  *
  * A view model makes one with its `viewModelScope`; manual prints and status checks stop when the screen closes, but a
  * manual email always finishes (`persisting`), since a sent sale receipt records the address on the sale. Automatic
@@ -273,8 +273,6 @@ class TransactionActions private constructor(
     fresh: Boolean,
     private val operations: FinancialOperations,
 ) : ReceiptEvents {
-    private val offer = receipts.offer(transaction, fresh)
-
     /** The receipt to share when asked, as last offered. */
     @Volatile private var shareable: SharedReceipt? = null
 
@@ -284,7 +282,7 @@ class TransactionActions private constructor(
 
     init {
         scope.launch {
-            offer.collect { offered ->
+            receipts.offer(transaction, fresh).collect { offered ->
                 shareable = offered.share
                 state.update {
                     it.copy(
@@ -298,7 +296,7 @@ class TransactionActions private constructor(
         }
         // Whichever screen is opened first claims the transaction's one automatic delivery, fresh or not.
         scope.launch {
-            offer.first { it.receipt != null }
+            state.first { it.receipt != null }
             var previous = AutoDelivery()
             receipts.automation(transaction).collect { automatic ->
                 if (automatic.printing != previous.printing || automatic.printed != previous.printed) {
@@ -375,7 +373,7 @@ class TransactionActions private constructor(
         /**
          * The actions on sale [saleId] (taken on a terminal, with a saved card or through a payment link), in [scope]:
          * receipts through [receipts] and status checks through [operations]. A [fresh] sale (on the result just after
-         * its payment) also offers emailing when checkout captured an address.
+         * its payment) offers emailing only when checkout captures emails or the sale is a payment link.
          */
         fun forSale(
             scope: CoroutineScope,
@@ -386,16 +384,14 @@ class TransactionActions private constructor(
         ) = TransactionActions(scope, receipts, StoredTransaction.Sale(saleId), fresh, operations)
 
         /**
-         * The actions on refund [refundId], in [scope]: receipts through [receipts] (a refund has one copy only) and
-         * status checks through [operations]. A [fresh] refund (on the result just after it) also offers emailing when
-         * checkout captured an address.
+         * The actions on refund [refundId], in [scope]: receipts through [receipts] (a refund has one copy only, and
+         * email is offered whenever it is set up) and status checks through [operations].
          */
         fun forRefund(
             scope: CoroutineScope,
             refundId: String,
             receipts: ReceiptDelivery,
             operations: FinancialOperations,
-            fresh: Boolean,
-        ) = TransactionActions(scope, receipts, StoredTransaction.Refund(refundId), fresh, operations)
+        ) = TransactionActions(scope, receipts, StoredTransaction.Refund(refundId), fresh = false, operations)
     }
 }

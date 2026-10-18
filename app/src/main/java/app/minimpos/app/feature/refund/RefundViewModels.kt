@@ -150,13 +150,14 @@ data class RefundResultUiState(
 
 /**
  * A refund's outcome and receipt, right after the refund or later from history: the receipt, printing and emailing it,
- * and re-checking an unknown outcome ([transaction], which delivers the automatic receipt of a refund [justMade]).
+ * and re-checking an unknown outcome ([transaction], which claims the automatic receipt when it is the first screen
+ * opened for a just accepted refund).
  *
  * @param refundId The refund shown.
  * @param refunds Where it is stored.
  * @param receipts Prints and emails its receipt.
  * @param operations Asks again about an unknown outcome the way the refund was sent, and leaves the result.
- * @param justMade False when opened from history: nothing is delivered automatically and leaving acknowledges nothing.
+ * @param justMade False when opened from history: leaving acknowledges nothing.
  */
 class RefundResultViewModel(
     refundId: String,
@@ -166,7 +167,7 @@ class RefundResultViewModel(
     private val justMade: Boolean = true,
 ) : ViewModel() {
     /** The receipt, printing and emailing it, and re-checking an unknown outcome. */
-    val transaction = TransactionActions.forRefund(viewModelScope, refundId, receipts, operations, fresh = justMade)
+    val transaction = TransactionActions.forRefund(viewModelScope, refundId, receipts, operations)
 
     /** The screen state, updated whenever the refund, settings, printer or an action changes. */
     val state: StateFlow<RefundResultUiState> =

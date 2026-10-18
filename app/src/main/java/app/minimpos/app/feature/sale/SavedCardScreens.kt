@@ -77,18 +77,19 @@ fun SavedCardScreen(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             ReferenceField(state, vm::setReference, vm::find)
+            val lookup = state.lookup
             GatedButton(
                 stringResource(R.string.saved_card_find),
                 vm::find,
-                blocked = state.blocked,
+                blocked = lookup.blocked,
                 enabled = state.shopperReference != null,
-                loading = state.finding,
+                loading = lookup.finding,
                 requiresSetup = true,
                 icon = Icons.Default.Search,
                 modifier = Modifier.padding(top = dimens.spacing).testTag("findCards"),
             )
-            state.failure?.let { ActionMessage(it.text(), isError = true) }
-            state.cards?.let { cards -> CardList(cards, state::chargeable) { navigator.push(Route.SavedCardSale(it.chosen())) } }
+            lookup.failure?.let { ActionMessage(it.text(), isError = true) }
+            lookup.cards?.let { cards -> CardList(cards, lookup::chargeable) { navigator.push(Route.SavedCardSale(it.chosen())) } }
         }
     }
 }
@@ -106,7 +107,7 @@ private fun ReferenceField(
         onValueChange = onChange,
         label = { Text(stringResource(if (email) R.string.checkout_email else R.string.checkout_customer_reference)) },
         singleLine = true,
-        enabled = state.blocked == null,
+        enabled = state.lookup.blocked == null,
         keyboardOptions =
             KeyboardOptions(
                 keyboardType = if (email) KeyboardType.Email else KeyboardType.Text,
@@ -194,7 +195,7 @@ fun SavedCardReviewScreen(
                     GatedButton(
                         stringResource(R.string.saved_card_charge, total),
                         { vm.charge(card.stored(state.recurringModel)) },
-                        blocked = state.selectionProblem(card.stored(state.recurringModel)),
+                        blocked = state.lookup.selectionProblem(card.stored(state.recurringModel)),
                         enabled = state.checkout.canPay && state.shopperReference != null,
                         primary = true,
                         requiresSetup = true,

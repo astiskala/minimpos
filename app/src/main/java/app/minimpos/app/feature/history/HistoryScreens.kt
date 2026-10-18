@@ -12,12 +12,9 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ReceiptLong
 import androidx.compose.material.icons.automirrored.filled.Undo
@@ -93,6 +90,7 @@ import app.minimpos.app.ui.components.MiniScaffold
 import app.minimpos.app.ui.components.MoneyFormatters
 import app.minimpos.app.ui.components.OutcomeHeader
 import app.minimpos.app.ui.components.OutcomeNote
+import app.minimpos.app.ui.components.ScreenColumn
 import app.minimpos.app.ui.components.SearchField
 import app.minimpos.app.ui.components.SearchMode
 import app.minimpos.app.ui.components.SearchToggle
@@ -466,7 +464,7 @@ fun SaleDetailScreen(
         val sale = record.sale
         val money = rememberMoneyFormatter(sale.currency)
         // The outcome and actions come first, as on the result screen, so they show without scrolling past every detail.
-        DetailColumn(padding) {
+        ScreenColumn(padding) {
             SaleDetailOutcome(state, money, container::formatDateTime)
             HoldActions(
                 state = state,
@@ -573,29 +571,6 @@ private fun ColumnScope.HoldActions(
         )
     }
     OutcomeMessage(state.retry)
-}
-
-/** A detail screen's scrolling body inside the scaffold's [padding], centred and spaced like a result screen's. */
-@Composable
-private fun DetailColumn(
-    padding: PaddingValues,
-    content: @Composable ColumnScope.() -> Unit,
-) {
-    val dimens = LocalDimens.current
-    Column(
-        Modifier
-            .fillMaxSize()
-            .padding(padding)
-            .verticalScroll(rememberScrollState())
-            .padding(dimens.screenPadding),
-        horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
-        Column(
-            Modifier.widthIn(max = dimens.contentMaxWidth),
-            verticalArrangement = Arrangement.spacedBy(dimens.spacing),
-            content = content,
-        )
-    }
 }
 
 /** Confirms cancelling the hold of [sale] (a pre-authorisation, or a sale awaiting its tip); [onConfirm] cancels it. */

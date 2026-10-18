@@ -7,7 +7,6 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -51,6 +50,7 @@ import app.minimpos.app.R
 import app.minimpos.app.data.db.SaleEntity
 import app.minimpos.app.data.db.SaleKind
 import app.minimpos.app.data.db.SaleStatus
+import app.minimpos.app.data.settings.PaymentSettings
 import app.minimpos.app.feature.MerchantCopy
 import app.minimpos.app.feature.OutcomeMessage
 import app.minimpos.app.feature.ReceiptActions
@@ -80,6 +80,7 @@ import app.minimpos.app.ui.components.OutcomeHeader
 import app.minimpos.app.ui.components.OutcomeNote
 import app.minimpos.app.ui.components.PrimaryButton
 import app.minimpos.app.ui.components.ProcessingContent
+import app.minimpos.app.ui.components.ScreenColumn
 import app.minimpos.app.ui.components.SecondaryButton
 import app.minimpos.app.ui.components.SwitchRow
 import app.minimpos.app.ui.components.currentSetupGate
@@ -741,7 +742,7 @@ fun SaleResultScreen(
 ) {
     val state by vm.state.collectAsStateWithLifecycle()
     val record = state.record
-    val money = rememberMoneyFormatter(record?.sale?.currency ?: "EUR")
+    val money = rememberMoneyFormatter(record?.sale?.currency ?: PaymentSettings.FALLBACK_CURRENCY)
     val ringUp = Route.ringUp(state.kind)
     val gate = currentSetupGate()
 
@@ -774,7 +775,7 @@ fun SaleResultScreen(
         },
     ) { padding ->
         if (record == null) return@MiniScaffold
-        SaleResultColumn(padding) {
+        ScreenColumn(padding, horizontalAlignment = Alignment.CenterHorizontally) {
             SaleOutcome(state, money)
             SalePaymentCard(record.sale)
             if (state.approved) {
@@ -786,29 +787,6 @@ fun SaleResultScreen(
         }
     }
     ShareEffect(state.transaction.share, vm.transaction::shared)
-}
-
-@Composable
-private fun SaleResultColumn(
-    padding: PaddingValues,
-    content: @Composable ColumnScope.() -> Unit,
-) {
-    val dimens = LocalDimens.current
-    Column(
-        Modifier
-            .fillMaxSize()
-            .padding(padding)
-            .verticalScroll(rememberScrollState())
-            .padding(dimens.screenPadding),
-        horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
-        Column(
-            Modifier.widthIn(max = dimens.contentMaxWidth),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(dimens.spacing),
-            content = content,
-        )
-    }
 }
 
 /** The outcome badge and title, the amount, and for unsuccessful payments why and what to do next. */
@@ -882,7 +860,7 @@ private fun ColumnScope.UnapprovedSaleActions(
     onBackToSale: () -> Unit,
 ) {
     if (PaymentAction.CHECK_AGAIN in state.actions) StatusCheck(state.transaction, onRecheck)
-    if (state.busyServiceId != null) {
+    if (state.canAbortBusy) {
         SecondaryButton(
             stringResource(R.string.result_abort_busy),
             onAbortBusy,

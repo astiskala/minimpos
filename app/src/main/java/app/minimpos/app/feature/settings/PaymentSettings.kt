@@ -12,6 +12,10 @@ import app.minimpos.app.ui.components.LocalAppContainer
 import app.minimpos.app.ui.components.SectionHeader
 import app.minimpos.core.shopper.EmailReferenceMode
 
+/** Stores the payment settings with [transform] applied, through [SettingsEvents.onUpdate]. */
+internal fun SettingsEvents.onPaymentUpdate(transform: (PaymentSettings) -> PaymentSettings) =
+    onUpdate { it.copy(payment = transform(it.payment)) }
+
 /** Currency, payment references, card-entry offers, card saving and link expiry; no connection setup or receipt delivery. */
 @Composable
 internal fun ColumnScope.PaymentsSection(
@@ -19,8 +23,7 @@ internal fun ColumnScope.PaymentsSection(
     events: SettingsEvents,
 ) {
     val payment = state.settings.payment
-
-    fun update(transform: (PaymentSettings) -> PaymentSettings) = events.onUpdate { it.copy(payment = transform(it.payment)) }
+    val update = events::onPaymentUpdate
     SectionHeader(stringResource(R.string.settings_pricing), Modifier.testTag("pricingHeader"))
     CurrencySetting(
         selectedCode = payment.currencyCode,
@@ -61,9 +64,9 @@ internal fun ColumnScope.PaymentsSection(
         tag = "allowMke",
     )
     SectionHeader(stringResource(R.string.settings_tokenization))
-    ShopperReferenceSettings(payment, ::update)
+    ShopperReferenceSettings(payment, update)
     SectionHeader(stringResource(R.string.settings_payment_links))
-    PaymentLinkSettings(payment, ::update)
+    PaymentLinkSettings(payment, update)
 }
 
 /** How long payment links remain payable; API readiness belongs to Terminal settings. */

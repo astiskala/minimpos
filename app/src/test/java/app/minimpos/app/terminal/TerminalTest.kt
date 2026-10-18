@@ -208,9 +208,9 @@ class TerminalTest {
             assertThat(connected.printerAvailable).isTrue()
             await { container.terminalStatus.recheckIfFailed() }
 
-            // The terminal's certificate says which environment it is in.
+            // Every connection check reads the terminal's certificate again, so a changed environment is learned.
             certificate = TerminalEnvironment.LIVE
-            await { container.gateway.readEnvironment() }
+            await { container.terminalStatus.check() }
             await { container.settingsState.first { it.terminal.environment == TerminalEnvironment.LIVE } }
             assertThat(await { container.terminalStatus.state.first { it.environment == TerminalEnvironment.LIVE } }.onTerminal).isTrue()
         }

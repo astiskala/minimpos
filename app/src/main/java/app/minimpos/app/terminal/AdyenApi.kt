@@ -5,7 +5,6 @@ import app.minimpos.app.data.db.SetupProblem
 import app.minimpos.app.data.security.SecretStore
 import app.minimpos.app.data.settings.TerminalSettings
 import app.minimpos.core.payment.PaymentContext
-import app.minimpos.terminal.checkout.AdyenCheckout
 import app.minimpos.terminal.checkout.CheckoutApi
 import app.minimpos.terminal.checkout.CheckoutCredentials
 import app.minimpos.terminal.checkout.PaymentLinkApi
@@ -156,14 +155,14 @@ sealed interface ApiCheck {
 class AdyenApi(
     private val setups: TerminalSetupSource,
     private val simulated: CheckoutApi,
-    private val connect: (CheckoutCredentials) -> CheckoutApi = { AdyenCheckout(it) },
+    private val connect: (CheckoutCredentials) -> CheckoutApi,
     private val verifyAccess: suspend (UnlockedSetup) -> Failure?,
     private val readEnvironment: suspend () -> Unit = {},
 ) {
     private val clients = Reused<CheckoutCredentials, CheckoutApi>()
 
     /** Current targets, including credential changes, for invalidating memory-only saved-card listings. */
-    val targets: Flow<ApiTarget> = setups.changes.map { target() }.distinctUntilChanged()
+    val targets: Flow<ApiTarget> = setups.apiChanges.map { target() }.distinctUntilChanged()
 
     /** Where captures, adjustments and payment links go now with the stored settings, as [TerminalSetup.apiSetup] decides. */
     suspend fun target(): ApiTarget {

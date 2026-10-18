@@ -40,6 +40,14 @@ private const val PERCENT = 100L
 private const val ADYEN_PARTIAL_TRIGGER_SUFFIX = "139"
 private const val DEFAULT_PARTIAL_RATIO = 50L
 
+/** The tender options a request carries (`SaleToAcquirerData.tenderOption`, comma-separated). */
+private fun SaleData?.tenders(): List<String> =
+    this
+        ?.saleToAcquirerData
+        ?.tenderOption
+        ?.split(',')
+        .orEmpty()
+
 internal data class SimulatedCard(
     val brand: String,
     val variant: String,
@@ -70,12 +78,7 @@ internal data class SimulatedPayment(
 }
 
 internal fun simulatedCardEntryOverride(request: PaymentRequest): CardEntryOverride {
-    val tenders =
-        request.saleData
-            ?.saleToAcquirerData
-            ?.tenderOption
-            ?.split(',')
-            .orEmpty()
+    val tenders = request.saleData.tenders()
     val forceModes =
         request.paymentTransaction
             ?.transactionConditions
@@ -95,13 +98,7 @@ internal fun simulatedGivingServiceId(
     settings: SimulatorConfig,
 ): String? {
     if (!approved || partial || settings.givingDonationAmount <= BigDecimal.ZERO) return null
-    val tenders =
-        saleData
-            ?.saleToAcquirerData
-            ?.tenderOption
-            ?.split(',')
-            .orEmpty()
-    return "GIVINGSIM1".takeIf { TerminalClient.ASK_GIVING in tenders }
+    return "GIVINGSIM1".takeIf { TerminalClient.ASK_GIVING in saleData.tenders() }
 }
 
 internal fun simulatedPartialAmount(
@@ -109,13 +106,7 @@ internal fun simulatedPartialAmount(
     requestedAmount: BigDecimal,
     settings: SimulatorConfig,
 ): BigDecimal? {
-    val tenders =
-        saleData
-            ?.saleToAcquirerData
-            ?.tenderOption
-            ?.split(',')
-            .orEmpty()
-    if (TerminalClient.ALLOW_PARTIAL_AUTHORISATION !in tenders) return null
+    if (TerminalClient.ALLOW_PARTIAL_AUTHORISATION !in saleData.tenders()) return null
     val scale = requestedAmount.scale().coerceAtLeast(0)
     val minorString = requestedAmount.movePointRight(scale).toBigInteger().toString()
     val ratio =
@@ -135,13 +126,7 @@ internal fun simulatedTipAmount(
     saleData: SaleData?,
     requestedAmount: BigDecimal,
 ): BigDecimal? {
-    val tenders =
-        saleData
-            ?.saleToAcquirerData
-            ?.tenderOption
-            ?.split(',')
-            .orEmpty()
-    if (TerminalClient.ASK_GRATUITY !in tenders) return null
+    if (TerminalClient.ASK_GRATUITY !in saleData.tenders()) return null
     val scale = requestedAmount.scale().coerceAtLeast(0)
     val poiData = saleData?.saleToPOIData
     if (!poiData.isNullOrBlank()) {
@@ -281,7 +266,7 @@ internal fun buildPaymentAdditional(
             NexoVocabulary.PAYMENT_METHOD to payment.card.brand,
             NexoVocabulary.PAYMENT_METHOD_VARIANT to payment.card.variant,
             NexoVocabulary.CARD_SUMMARY to payment.card.maskedPan.takeLast(4),
-            "posEntryMode" to
+            NexoVocabulary.POS_ENTRY_MODE to
                 when {
                     payment.wallet -> "Scanned"
                     payment.entryOverride == CardEntryOverride.MOTO -> "MOTO"

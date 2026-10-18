@@ -69,7 +69,7 @@ data class Checkout(
     val form: CheckoutForm = CheckoutForm(),
     val payment: PaymentSettings = PaymentSettings(),
     val totals: CartTotals = Cart().totals(TaxMode.INCLUSIVE),
-    val currency: CurrencySpec = CurrencySpec("EUR", 2),
+    val currency: CurrencySpec = PaymentSettings.FALLBACK_CURRENCY_SPEC,
     val kind: SaleKind = SaleKind.SALE,
     val printerAvailable: Boolean = false,
     val linksAvailable: Boolean = false,

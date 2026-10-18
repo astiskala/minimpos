@@ -219,15 +219,15 @@ class SaleBook(
         )
     }
 
-    override suspend fun busyServiceId(
+    override suspend fun abortBusy(
         id: String,
-        abort: Boolean,
-    ): String? =
-        sales
-            .get(id)
-            ?.sale
-            ?.busyServiceId
-            ?.also { if (abort) sales.record(id, SaleEvent.BusyAborted) }
+        abort: suspend (serviceId: String) -> Boolean,
+    ): Boolean {
+        val serviceId = sales.get(id)?.sale?.busyServiceId ?: return false
+        if (!abort(serviceId)) return false
+        sales.record(id, SaleEvent.BusyAborted)
+        return true
+    }
 
     override suspend fun unsettledServiceId(id: String): String? =
         sales

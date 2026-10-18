@@ -4,7 +4,7 @@ import app.minimpos.terminal.parse.AdditionalResponseParser
 import app.minimpos.terminal.transport.Delivery
 import app.minimpos.terminal.transport.ExternalText
 import app.minimpos.terminal.transport.Fault
-import com.adyen.model.checkout.JSON
+import app.minimpos.terminal.transport.base64Json
 import com.adyen.model.nexo.AdminRequest
 import com.adyen.model.nexo.BarcodeType
 import com.adyen.model.nexo.DeviceType
@@ -27,10 +27,8 @@ import com.adyen.model.nexo.ResultType
 import com.adyen.model.nexo.TransactionStatusRequest
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.withContext
-import java.math.BigDecimal
 import java.math.BigInteger
 import java.net.URLEncoder
-import kotlin.io.encoding.Base64
 
 private const val DEFAULT_WAITING_TIMEOUT_MS = 15_000
 private const val DEFAULT_INPUT_TIMEOUT_SECONDS = 60
@@ -60,7 +58,7 @@ data class VirtualReceiptLine(
  * @property subtotalMinor Optional subtotal before tax in minor units.
  * @property taxMinor Optional total tax in minor units.
  * @property totalMinor Final total in minor units.
- * @property currency Currency symbol or ISO 4217 code.
+ * @property currency ISO 4217 code; its Adyen decimals convert every amount, the lines' too.
  * @property totalLabel Label for the total line.
  */
 data class VirtualReceipt(
@@ -73,14 +71,14 @@ data class VirtualReceipt(
     val totalLabel: String = "Total",
 ) {
     /**
-     * Renders the Adyen virtual-receipt XML document for terminal model [poiId], with amounts in major units of
-     * [fractionDigits] decimals (the currency's Adyen decimals).
+     * Renders the Adyen virtual-receipt XML document for terminal model [poiId], with every amount in the major units of
+     * [currency] that [money] converts it to.
      */
-    fun toXml(
+    internal fun toXml(
         poiId: String = "",
-        fractionDigits: Int,
+        money: TerminalMoney,
     ): String {
-        fun major(minor: Long) = BigDecimal.valueOf(minor, fractionDigits).toPlainString()
+        fun major(minor: Long) = money.major(minor, currency).toPlainString()
         val screen = if (poiId.startsWith("M400-", ignoreCase = true)) "virtual_receipt02.xslt" else "virtual-receipt.xslt"
         return buildString {
             append("""<?xml version="1.0" encoding="UTF-8"?>""")
@@ -185,10 +183,9 @@ private suspend fun TerminalClient.shopperSession(
                 )
             }
         }
-    val encoded = Base64.encode(JSON.getMapper().writeValueAsString(payload).toByteArray(Charsets.UTF_8))
     val delivery =
         sendShortMessage(MessageClassType.SERVICE, MessageCategoryType.ADMIN) {
-            adminRequest = AdminRequest().apply { serviceIdentification = encoded }
+            adminRequest = AdminRequest().apply { serviceIdentification = base64Json(payload) }
         }
     val response = (readTerminalAnswer(delivery) { it.adminResponse?.response } as? TerminalAnswer.Read)?.body
     return response?.result == ResultType.SUCCESS
@@ -196,7 +193,7 @@ private suspend fun TerminalClient.shopperSession(
 
 /** Displays a [VirtualReceipt] (`OutputFormat=XHTML`) on the customer display. */
 private suspend fun TerminalClient.displayVirtualReceipt(receipt: VirtualReceipt): Boolean {
-    val xmlBytes = receipt.toXml(identity.poiId, money.fractionDigits(receipt.currency)).toByteArray(Charsets.UTF_8)
+    val xmlBytes = receipt.toXml(identity.poiId, money).toByteArray(Charsets.UTF_8)
     val output =
         DisplayOutput().apply {
             device = DeviceType.CUSTOMER_DISPLAY

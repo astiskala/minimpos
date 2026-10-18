@@ -589,14 +589,25 @@ class TerminalSetupSource(
 
     private val deviceReads = MutableStateFlow(0)
 
+    private val readings: Flow<UnlockedSetup> =
+        combine(settings.settings, secrets.configured, deviceReads, historySwitchPending) { current, _, _, _ ->
+            reading(current, read = false)
+        }
+
     /**
      * The setup each time the settings or the saved secrets change, or the device is read again ([readDevice]), without
      * reading any secret.
      */
-    val changes: Flow<TerminalSetup> =
-        combine(settings.settings, secrets.configured, deviceReads, historySwitchPending) { current, _, _, _ ->
-            reading(current, read = false).setup
-        }
+    val changes: Flow<TerminalSetup> = readings.map { it.setup }
+
+    /**
+     * Distinct changes of what [AdyenApi.target] is made from, the saved API key's fingerprint included, without
+     * reading any secret: unrelated settings writes, such as typing receipt text, do not decrypt the key again.
+     */
+    internal val apiChanges: Flow<*> =
+        readings
+            .map { Triple(it.setup.settings.terminal, it.setup.apiSetup, it.setup.paymentContext()) to it.validationIdentity }
+            .distinctUntilChanged()
 
     /** Distinct setup-identity changes that invalidate cached Management wallet and capability readings. */
     internal val discoveryChanges: Flow<*> =

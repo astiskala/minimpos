@@ -42,7 +42,7 @@ class SimulatedSavedCards internal constructor(
                     SimulatedOutcome.RANDOM -> random.nextInt(RANDOM_SPAN) != 0
                     SimulatedOutcome.DECLINE, SimulatedOutcome.CANCEL, SimulatedOutcome.BUSY -> false
                 }
-        val psp = (1..PSP_LENGTH).map { UPPER[random.nextInt(UPPER.length)] }.joinToString("")
+        val psp = SimulatedModifications.pspReference(random)
         val result =
             when {
                 card == null -> {
@@ -69,9 +69,7 @@ class SimulatedSavedCards internal constructor(
     }
 
     private companion object {
-        const val PSP_LENGTH = 16
         const val RANDOM_SPAN = 5
         const val AUTH_CODES = 1_000_000
-        const val UPPER = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
     }
 }

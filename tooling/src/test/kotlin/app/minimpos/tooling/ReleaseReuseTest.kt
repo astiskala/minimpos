@@ -133,27 +133,21 @@ class ReleaseReuseTest {
     private fun execute(
         root: Path,
         apiExit: Int = 0,
-    ): Int {
-        val process =
-            ProcessBuilder("bash", "--noprofile", "--norc", "-eo", "pipefail", root.resolve("reuse.sh").toString())
-                .apply {
-                    directory(root.toFile())
-                    redirectErrorStream(true)
-                    redirectOutput(root.resolve("log").toFile())
-                    environment().putAll(
-                        mapOf(
-                            "PATH" to "${root.resolve("bin")}:${System.getenv("PATH")}",
-                            "COMMIT" to commit,
-                            "REPOSITORY" to "example/project",
-                            "RUNNER_TEMP" to root.resolve("runner").toString(),
-                            "GITHUB_OUTPUT" to root.resolve("outputs").toString(),
-                            "GITHUB_STEP_SUMMARY" to root.resolve("summary").toString(),
-                            "MOCK_RUNS" to root.resolve("runs.json").toString(),
-                            "MOCK_ARTIFACTS" to root.resolve("artifacts").toString(),
-                            "MOCK_API_EXIT" to apiExit.toString(),
-                        ),
-                    )
-                }.start()
-        return process.waitFor()
-    }
+    ): Int =
+        Cli
+            .runCommand(
+                listOf("bash", "--noprofile", "--norc", "-eo", "pipefail", root.resolve("reuse.sh").toString()),
+                root,
+                mapOf(
+                    "PATH" to "${root.resolve("bin")}:${System.getenv("PATH")}",
+                    "COMMIT" to commit,
+                    "REPOSITORY" to "example/project",
+                    "RUNNER_TEMP" to root.resolve("runner").toString(),
+                    "GITHUB_OUTPUT" to root.resolve("outputs").toString(),
+                    "GITHUB_STEP_SUMMARY" to root.resolve("summary").toString(),
+                    "MOCK_RUNS" to root.resolve("runs.json").toString(),
+                    "MOCK_ARTIFACTS" to root.resolve("artifacts").toString(),
+                    "MOCK_API_EXIT" to apiExit.toString(),
+                ),
+            ).code
 }

@@ -2,6 +2,7 @@ package app.minimpos.app.data.settings
 
 import app.minimpos.app.data.db.TaxRateEntity
 import app.minimpos.core.money.AdyenCurrencies
+import app.minimpos.core.money.CurrencySpec
 import app.minimpos.core.shopper.EmailReferenceMode
 import app.minimpos.core.tax.TaxMode
 import app.minimpos.core.tax.TaxRates
@@ -449,6 +450,9 @@ data class PaymentSettings(
     companion object {
         /** The currency when none is chosen and the device's country has none that Adyen supports. */
         const val FALLBACK_CURRENCY = "EUR"
+
+        /** [FALLBACK_CURRENCY] with Adyen's decimals; states show amounts in it until their settings have been read. */
+        val FALLBACK_CURRENCY_SPEC: CurrencySpec = CurrencySpec.of(FALLBACK_CURRENCY)
 
         /** The values Adyen accepts for `recurringProcessingModel`. */
         val RECURRING_MODELS: List<String> = RecurringModel.entries.map { it.value }

@@ -16,6 +16,9 @@ class GradleRunnerTest {
     @get:Rule
     val temporary = TemporaryFolder()
 
+    private val Cli.Result.log: Path
+        get() = Path.of(output.substringAfter("Full log: ").substringBefore('\n'))
+
     @Test
     fun `known progress disappears but warnings and complete private logs remain`() {
         val progress =
@@ -82,7 +85,7 @@ class GradleRunnerTest {
             assertThat(result.output).contains((listOf("--console=plain") + args).joinToString("\n") { "<$it>" })
             assertThat(result.output).contains(root.toString())
         }
-        assertThat(results.map { it.output.substringAfter("Full log: ").substringBefore('\n') }).containsNoDuplicates()
+        assertThat(results.map { it.log }).containsNoDuplicates()
     }
 
     @Test
@@ -113,7 +116,11 @@ class GradleRunnerTest {
                     while :; do sleep 1; done
                     """.trimIndent(),
                 )
-            val child = start(root)
+            val child =
+                ProcessBuilder(root.resolve("scripts/gradle").toString())
+                    .directory(temporary.root)
+                    .redirectErrorStream(true)
+                    .start()
             val ready = CountDownLatch(1)
             val text = StringBuffer()
             val reader =
@@ -133,8 +140,7 @@ class GradleRunnerTest {
                 assertThat(child.exitValue()).isEqualTo(expected)
                 assertThat(text.toString()).contains("interrupted-$signal")
             } finally {
-                child.descendants().forEach { it.destroyForcibly() }
-                if (child.isAlive) child.destroyForcibly()
+                Cli.stop(child)
             }
         }
     }
@@ -196,34 +202,8 @@ class GradleRunnerTest {
         return root
     }
 
-    private fun start(
-        root: Path,
-        vararg args: String,
-    ): Process =
-        ProcessBuilder(listOf(root.resolve("scripts/gradle").toString()) + args)
-            .directory(temporary.root)
-            .redirectErrorStream(true)
-            .start()
-
     private fun run(
         root: Path,
         vararg args: String,
-    ): Result {
-        val child = start(root, *args)
-        try {
-            check(child.waitFor(30, TimeUnit.SECONDS)) { "Gradle runner timed out" }
-            val output = child.inputStream.bufferedReader().readText()
-            val log = Path.of(output.substringAfter("Full log: ").substringBefore('\n'))
-            return Result(child.exitValue(), output, log)
-        } finally {
-            child.descendants().forEach { it.destroyForcibly() }
-            if (child.isAlive) child.destroyForcibly()
-        }
-    }
-
-    private data class Result(
-        val code: Int,
-        val output: String,
-        val log: Path,
-    )
+    ): Cli.Result = Cli.runCommand(listOf(root.resolve("scripts/gradle").toString()) + args, temporary.root.toPath())
 }

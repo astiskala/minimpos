@@ -648,15 +648,11 @@ private fun ColumnScope.SettingsContent(
         }
 
         SettingsSections.TIPPING -> {
-            TippingSection(state.settings.payment) { transform ->
-                events.onUpdate { it.copy(payment = transform(it.payment)) }
-            }
+            TippingSection(state.settings.payment, events::onPaymentUpdate)
         }
 
         SettingsSections.SHOPPER_DISPLAY -> {
-            ShopperDisplaySection(state.settings.payment, state.settings.emailReceiptsReady) { transform ->
-                events.onUpdate { it.copy(payment = transform(it.payment)) }
-            }
+            ShopperDisplaySection(state.settings.payment, state.settings.emailReceiptsReady, events::onPaymentUpdate)
         }
 
         SettingsSections.TAX -> {

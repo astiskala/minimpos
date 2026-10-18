@@ -73,6 +73,7 @@ import app.minimpos.app.ui.components.OutcomeNote
 import app.minimpos.app.ui.components.PrimaryButton
 import app.minimpos.app.ui.components.ProcessingContent
 import app.minimpos.app.ui.components.QuantityStepper
+import app.minimpos.app.ui.components.ScreenColumn
 import app.minimpos.app.ui.components.SecondaryButton
 import app.minimpos.app.ui.components.StatusKind
 import app.minimpos.app.ui.components.currentSetupGate
@@ -490,7 +491,6 @@ fun RefundResultScreen(
         if (fromHistory) navigator.back() else navigator.home()
     }
     BackHandler { done() }
-    val dimens = LocalDimens.current
     MiniScaffold(
         title = stringResource(resultTitle(state.refund?.cancellation == true, fromHistory)),
         onBack = { done() },
@@ -513,24 +513,11 @@ fun RefundResultScreen(
     ) { padding ->
         val refund = state.refund ?: return@MiniScaffold
         val money = rememberMoneyFormatter(refund.currency)
-        Column(
-            Modifier
-                .fillMaxSize()
-                .padding(padding)
-                .verticalScroll(rememberScrollState())
-                .padding(dimens.screenPadding),
-            horizontalAlignment = Alignment.CenterHorizontally,
-        ) {
-            Column(
-                Modifier.widthIn(max = LocalDimens.current.contentMaxWidth),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(dimens.spacing),
-            ) {
-                RefundOutcome(refund, money)
-                RefundDetailsCard(refund, container::formatDateTime)
-                if (state.canRecheck) StatusCheck(state.transaction, vm.transaction::recheck)
-                if (state.accepted) ReceiptActions(state.transaction, vm.transaction, MerchantCopy.NONE)
-            }
+        ScreenColumn(padding, horizontalAlignment = Alignment.CenterHorizontally) {
+            RefundOutcome(refund, money)
+            RefundDetailsCard(refund, container::formatDateTime)
+            if (state.canRecheck) StatusCheck(state.transaction, vm.transaction::recheck)
+            if (state.accepted) ReceiptActions(state.transaction, vm.transaction, MerchantCopy.NONE)
         }
     }
     ShareEffect(state.transaction.share, vm.transaction::shared)

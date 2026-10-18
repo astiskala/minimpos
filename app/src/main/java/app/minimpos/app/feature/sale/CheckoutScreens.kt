@@ -26,6 +26,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -33,6 +34,8 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -90,6 +93,7 @@ import app.minimpos.core.payment.ScanWallet
 import app.minimpos.core.shopper.ShopperReferences
 import app.minimpos.terminal.checkout.StoredCard
 import app.minimpos.terminal.client.CardEntryOverride
+import kotlinx.coroutines.launch
 
 /**
  * The last step before paying: the amount, the optional merchant reference, customer reference and email fields,
@@ -105,7 +109,7 @@ fun CheckoutScreen(
     vm: CheckoutViewModel = checkoutViewModel(kind),
 ) {
     val tokens by vm.tokens.collectAsStateWithLifecycle()
-    var choosingToken by remember { mutableStateOf(false) }
+    var choosingToken by rememberSaveable { mutableStateOf(false) }
     TokenChoice(choosingToken, tokens, onDismiss = { choosingToken = false }) { card ->
         choosingToken = false
         if (vm.chargeToken(card)) navigator.replace(Route.Payment(SaleKind.SALE))
@@ -318,7 +322,7 @@ private fun CheckoutDetails(
         modifier.verticalScroll(rememberScrollState()).padding(dimens.screenPadding),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Column(Modifier.widthIn(max = 560.dp), verticalArrangement = Arrangement.spacedBy(dimens.spacing)) {
+        Column(Modifier.widthIn(max = dimens.contentMaxWidth), verticalArrangement = Arrangement.spacedBy(dimens.spacing)) {
             Text(
                 money.format(state.totals.amounts.gross),
                 style = dimens.amountStyle,
@@ -373,7 +377,7 @@ private fun CheckoutActions(
         )
         BoxWithConstraints(Modifier.fillMaxWidth()) {
             val sideBySide = state.offersScanWallet && state.canSendLink && !tokens
-            if (maxWidth >= 480.dp && sideBySide) {
+            if (maxWidth >= SIDE_BY_SIDE_ACTIONS_WIDTH && sideBySide) {
                 Row(horizontalArrangement = Arrangement.spacedBy(LocalDimens.current.spacing)) {
                     WalletCheckoutButton(state.canScanWallet, scanWallet, Modifier.weight(1f))
                     LinkCheckoutButton(sendLink, Modifier.weight(1f))
@@ -654,7 +658,9 @@ private fun checkoutViewModel(kind: SaleKind): CheckoutViewModel {
  * ([paymentProgress][app.minimpos.app.payment.FinancialOperations.paymentProgress]): on the
  * terminal, whose own payment screen usually covers this one, or as a saved-card charge from checkout. Then opens the
  * result. The amount is what the payment requests, so collecting a remaining balance shows the balance. The cancel
- * button, and Back, ask the terminal to cancel a terminal payment once it has been sent; a charge cannot be stopped.
+ * button asks the terminal to cancel a terminal payment once it has been sent; Back asks first, since a stray gesture
+ * must not stop the shopper's payment. While nothing can be cancelled (not sent yet, or a charge, which cannot be
+ * stopped), Back only says to wait for the result.
  */
 @Composable
 fun PaymentScreen(
@@ -664,6 +670,10 @@ fun PaymentScreen(
 ) {
     val operations = LocalAppContainer.current.operations
     val state by operations.paymentProgress.collectAsStateWithLifecycle(initialValue = operations.currentPayment)
+    var confirmCancel by rememberSaveable { mutableStateOf(false) }
+    val snackbar = remember { SnackbarHostState() }
+    val scope = rememberCoroutineScope()
+    val wait = stringResource(R.string.processing_wait)
 
     LaunchedEffect(state) {
         when (val current = state) {
@@ -672,11 +682,28 @@ fun PaymentScreen(
             is TransactionState.Processing -> Unit
         }
     }
-    BackHandler(enabled = state is TransactionState.Processing) { operations.cancelPayment() }
-
     val processing = state as? TransactionState.Processing
+    val cancellable = processing != null && processing.onTerminal && processing.canCancel && !processing.cancelling
+    BackHandler(enabled = processing != null) {
+        if (cancellable) confirmCancel = true else scope.launch { snackbar.showSnackbar(wait) }
+    }
+    if (confirmCancel && cancellable) {
+        ConfirmDialog(
+            title = stringResource(R.string.payment_cancel_title),
+            message = stringResource(R.string.payment_cancel_message),
+            confirmLabel = stringResource(R.string.detail_cancel_payment),
+            dismissLabel = stringResource(R.string.payment_cancel_keep),
+            destructive = true,
+            onConfirm = {
+                confirmCancel = false
+                operations.cancelPayment()
+            },
+            onDismiss = { confirmCancel = false },
+        )
+    }
+
     val title = if (processing?.onTerminal == false) R.string.checkout_charge_token else R.string.payment_title
-    MiniScaffold(title = stringResource(title), onBack = null, modifier = modifier) { padding ->
+    MiniScaffold(title = stringResource(title), onBack = null, modifier = modifier, snackbarHostState = snackbar) { padding ->
         ProcessingContent(
             amount = processing?.amount?.let { rememberMoneyFormatter(it.currency).format(it.amountMinor) },
             message =
@@ -694,7 +721,7 @@ fun PaymentScreen(
                     text = stringResource(R.string.action_cancel),
                     onClick = operations::cancelPayment,
                     enabled = processing?.canCancel == true && !processing.cancelling,
-                    modifier = Modifier.widthIn(max = 320.dp).testTag("cancelPayment"),
+                    modifier = Modifier.widthIn(max = LocalDimens.current.narrowActionMaxWidth).testTag("cancelPayment"),
                 )
             }
         }
@@ -776,7 +803,7 @@ private fun SaleResultColumn(
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Column(
-            Modifier.widthIn(max = 560.dp),
+            Modifier.widthIn(max = dimens.contentMaxWidth),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(dimens.spacing),
             content = content,
@@ -909,3 +936,6 @@ private fun saleResultViewModel(saleId: String): SaleResultViewModel {
         SaleResultViewModel(saleId, container.storedPayments, container.receipts, container.payments, container.operations)
     }
 }
+
+/** The width from which the action bar puts Scan wallet and Create payment link side by side. */
+private val SIDE_BY_SIDE_ACTIONS_WIDTH = 480.dp

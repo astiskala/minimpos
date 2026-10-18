@@ -6,7 +6,7 @@ import androidx.compose.material.icons.filled.Email
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
@@ -40,7 +40,7 @@ internal fun ColumnScope.EmailSection(
     val email = state.settings.email
     val terminal by LocalAppContainer.current.terminalStatus.state
         .collectAsStateWithLifecycle()
-    var askRecipient by remember { mutableStateOf(false) }
+    var askRecipient by rememberSaveable { mutableStateOf(false) }
 
     fun update(transform: (EmailSettings) -> EmailSettings) = events.onUpdate { it.copy(email = transform(it.email)) }
     SectionHeader(stringResource(R.string.settings_email_receipts))

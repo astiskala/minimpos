@@ -6,6 +6,7 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
@@ -14,7 +15,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.NonRestartableComposable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
@@ -45,9 +46,16 @@ fun ConfirmDialog(
         title = { Text(title) },
         text = { Text(message) },
         confirmButton = {
-            TextButton(onClick = onConfirm, modifier = Modifier.testTag("confirm")) {
-                Text(confirmLabel, color = if (destructive) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary)
-            }
+            TextButton(
+                onClick = onConfirm,
+                colors =
+                    if (destructive) {
+                        ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
+                    } else {
+                        ButtonDefaults.textButtonColors()
+                    },
+                modifier = Modifier.testTag("confirm"),
+            ) { Text(confirmLabel) }
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text(dismissLabel ?: stringResource(R.string.action_cancel)) } },
     )
@@ -95,7 +103,7 @@ fun HistorySwitchDialog(
 
 /**
  * A one-field input dialog (e.g. an email address to send a receipt to). [onConfirm] gets the trimmed text, and is
- * only possible while [validate] accepts it.
+ * only possible while [validate] accepts it. The typed text survives rotation, so it is never used for secrets.
  */
 @Composable
 fun TextInputDialog(
@@ -108,7 +116,7 @@ fun TextInputDialog(
     keyboardType: KeyboardType = KeyboardType.Text,
     validate: (String) -> Boolean = { it.isNotBlank() },
 ) {
-    var value by remember { mutableStateOf(initial) }
+    var value by rememberSaveable { mutableStateOf(initial) }
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(title) },

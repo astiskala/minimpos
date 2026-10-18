@@ -330,7 +330,7 @@ class TerminalClientTest {
             assertThat(request.paymentRequest.paymentTransaction.amountsReq.requestedAmount).isEqualTo(BigDecimal("12.50"))
 
             val details = (outcome as TransactionOutcome.Completed).details
-            assertThat(sent.none { it.saleToPOIRequest.transactionStatusRequest != null }).isTrue()
+            assertThat(sent.all { it.saleToPOIRequest.transactionStatusRequest == null }).isTrue()
             assertThat(details.success).isTrue()
             assertThat(details.decline).isNull()
             assertThat(details.pspReference).isEqualTo("PSP123")

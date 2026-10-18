@@ -17,7 +17,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -40,6 +40,7 @@ import app.minimpos.app.ui.components.SecondaryButton
 import app.minimpos.app.ui.components.SectionHeader
 import app.minimpos.app.ui.components.SetupRequired
 import app.minimpos.app.ui.components.currentSetupGate
+import app.minimpos.app.ui.theme.LocalDimens
 import app.minimpos.app.ui.theme.LocalStatusColors
 
 /** Settings › Capabilities: progressive readiness matrix and scoped Management `terminalSettings` editors. */
@@ -162,7 +163,7 @@ private fun CapabilityStandingRow(
         Row(
             Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 10.dp)
+                .padding(horizontal = LocalDimens.current.rowHorizontalPadding, vertical = 10.dp)
                 .let { if (tag != null) it.testTag(tag) else it },
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
@@ -193,7 +194,7 @@ private fun CapabilityStandingRow(
                     },
             )
         }
-        HorizontalDivider(Modifier.padding(start = 16.dp))
+        HorizontalDivider(Modifier.padding(start = LocalDimens.current.rowHorizontalPadding))
     }
 }
 
@@ -205,9 +206,9 @@ private fun ColumnScope.RemoteGratuityEditor(
     onSave: (String, GratuityCapability?) -> Unit,
 ) {
     val existing = capabilities.gratuityFor(currency)
-    var enabled by remember { mutableStateOf(existing != null) }
-    var predefined by remember { mutableStateOf(existing?.usePredefinedEntries != false) }
-    var entriesText by remember {
+    var enabled by rememberSaveable { mutableStateOf(existing != null) }
+    var predefined by rememberSaveable { mutableStateOf(existing?.usePredefinedEntries != false) }
+    var entriesText by rememberSaveable {
         mutableStateOf(
             existing
                 ?.predefinedEntries
@@ -216,7 +217,7 @@ private fun ColumnScope.RemoteGratuityEditor(
                 ?: "10%,15%,20%",
         )
     }
-    var allowCustom by remember { mutableStateOf(existing?.allowCustomAmount != false) }
+    var allowCustom by rememberSaveable { mutableStateOf(existing?.allowCustomAmount != false) }
 
     SectionHeader(stringResource(R.string.capability_gratuity_section, currency))
     SettingSwitch(
@@ -287,7 +288,7 @@ private fun ColumnScope.RemoteDccEditor(
     action: ActionState,
     onSave: (Boolean) -> Unit,
 ) {
-    var enabled by remember { mutableStateOf(capabilities.dccEnabled) }
+    var enabled by rememberSaveable { mutableStateOf(capabilities.dccEnabled) }
     SectionHeader(stringResource(R.string.capability_dcc))
     SettingSwitch(
         title = stringResource(R.string.capability_dcc_enable),
@@ -305,8 +306,8 @@ private fun ColumnScope.RemoteMotoEditor(
     action: ActionState,
     onSave: (MotoCapability) -> Unit,
 ) {
-    var enabled by remember { mutableStateOf(capabilities.moto.enabled) }
-    var maxAmountText by remember {
+    var enabled by rememberSaveable { mutableStateOf(capabilities.moto.enabled) }
+    var maxAmountText by rememberSaveable {
         mutableStateOf(
             capabilities.moto.maxAmount
                 ?.toString()
@@ -344,9 +345,9 @@ private fun ColumnScope.RemoteOfflineEditor(
     onSave: (String, Int?, Int?, Int?) -> Unit,
 ) {
     val offline = capabilities.offline
-    var chipFloorText by remember { mutableStateOf(offline.chipFloorLimit?.toString().orEmpty()) }
-    var safMaxMinorText by remember { mutableStateOf(offline.maxStoreAndForwardMinor[currency]?.toString().orEmpty()) }
-    var maxPaymentsText by remember { mutableStateOf(offline.maxPayments?.toString().orEmpty()) }
+    var chipFloorText by rememberSaveable { mutableStateOf(offline.chipFloorLimit?.toString().orEmpty()) }
+    var safMaxMinorText by rememberSaveable { mutableStateOf(offline.maxStoreAndForwardMinor[currency]?.toString().orEmpty()) }
+    var maxPaymentsText by rememberSaveable { mutableStateOf(offline.maxPayments?.toString().orEmpty()) }
 
     SectionHeader(stringResource(R.string.capability_offline_section, currency))
     SettingTextField(

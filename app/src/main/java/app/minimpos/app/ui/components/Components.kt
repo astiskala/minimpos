@@ -2,6 +2,7 @@ package app.minimpos.app.ui.components
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
@@ -22,7 +23,9 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.union
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.toggleable
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.outlined.Info
@@ -47,7 +50,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -114,7 +120,11 @@ fun BottomActions(
     Surface(shadowElevation = 8.dp, modifier = modifier) {
         Box(Modifier.fillMaxWidth().navigationBarsPadding(), contentAlignment = Alignment.Center) {
             Column(
-                Modifier.widthIn(max = 560.dp).fillMaxWidth().padding(horizontal = dimens.screenPadding, vertical = dimens.spacing),
+                Modifier
+                    .widthIn(
+                        max = dimens.contentMaxWidth,
+                    ).fillMaxWidth()
+                    .padding(horizontal = dimens.screenPadding, vertical = dimens.spacing),
                 verticalArrangement = Arrangement.spacedBy(dimens.spacing),
                 content = content,
             )
@@ -122,18 +132,46 @@ fun BottomActions(
     }
 }
 
-/** The upper-case title of a group of rows in a list. */
+/**
+ * A column centred in the space [modifier] gives it, which scrolls once its content is taller (large text, a landscape
+ * phone) instead of cutting it off.
+ */
+@Composable
+fun CenteredScrollColumn(
+    modifier: Modifier = Modifier,
+    verticalArrangement: Arrangement.Vertical = Arrangement.Center,
+    content: @Composable ColumnScope.() -> Unit,
+) {
+    BoxWithConstraints(modifier) {
+        Column(
+            Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).heightIn(min = maxHeight),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = verticalArrangement,
+            content = content,
+        )
+    }
+}
+
+/** The upper-case title of a group of rows in a list, a heading for screen readers. */
 @Composable
 fun SectionHeader(
     text: String,
     modifier: Modifier = Modifier,
 ) {
-    val compact = LocalDimens.current.compact
+    val dimens = LocalDimens.current
+    val compact = dimens.compact
     Text(
         text = text.uppercase(),
         style = MaterialTheme.typography.labelMedium,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
-        modifier = modifier.padding(start = 16.dp, end = 16.dp, top = if (compact) 12.dp else 20.dp, bottom = if (compact) 4.dp else 8.dp),
+        modifier =
+            modifier
+                .padding(
+                    start = dimens.rowHorizontalPadding,
+                    end = dimens.rowHorizontalPadding,
+                    top = if (compact) 12.dp else 20.dp,
+                    bottom = if (compact) 4.dp else 8.dp,
+                ).semantics { heading() },
     )
 }
 
@@ -241,7 +279,8 @@ fun Card(
 
 /**
  * Why the disabled action above cannot run yet, saying what to do, with a warning icon; tagged `blockedReason`. Every
- * action with a known precondition shows it this way rather than failing only after it is pressed.
+ * action with a known precondition shows it this way rather than failing only after it is pressed. Screen readers
+ * announce it when it appears or changes.
  */
 @Composable
 fun BlockedReason(
@@ -252,7 +291,7 @@ fun BlockedReason(
         modifier
             .fillMaxWidth()
             .padding(top = 4.dp)
-            .semantics(mergeDescendants = true) {}
+            .semantics(mergeDescendants = true) { liveRegion = LiveRegionMode.Polite }
             .testTag("blockedReason"),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -262,7 +301,7 @@ fun BlockedReason(
     }
 }
 
-/** Shows a result message briefly under an action button. */
+/** Shows a result message briefly under an action button; screen readers announce it as it appears. */
 @Composable
 fun ActionMessage(
     message: String,
@@ -274,7 +313,7 @@ fun ActionMessage(
         message,
         color = if (isError) colors.error else colors.success,
         style = MaterialTheme.typography.bodyMedium,
-        modifier = modifier.fillMaxWidth().padding(top = 4.dp),
+        modifier = modifier.fillMaxWidth().padding(top = 4.dp).semantics { liveRegion = LiveRegionMode.Polite },
         textAlign = TextAlign.Center,
     )
 }

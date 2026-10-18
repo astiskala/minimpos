@@ -1,6 +1,7 @@
 package app.minimpos.app.feature.home
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.PaddingValues
@@ -10,13 +11,14 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.TextAutoSize
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.automirrored.filled.ReceiptLong
@@ -43,14 +45,24 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.IntrinsicMeasurable
+import androidx.compose.ui.layout.IntrinsicMeasureScope
+import androidx.compose.ui.layout.Layout
+import androidx.compose.ui.layout.Measurable
+import androidx.compose.ui.layout.MeasurePolicy
+import androidx.compose.ui.layout.MeasureResult
+import androidx.compose.ui.layout.MeasureScope
+import androidx.compose.ui.layout.layout
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Constraints
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -70,7 +82,8 @@ import app.minimpos.app.ui.theme.LocalStatusColors
 import app.minimpos.app.update.UpdateCheck
 
 /**
- * The home screen fills the available height rather than scrolling, so everything fits on a 4" terminal screen. While
+ * The home screen fills the available height, so everything fits on a 4" terminal screen without scrolling. Only when
+ * the tiles would get less room than their content needs (a landscape phone, large text) does it scroll instead. While
  * payments still need setting up, a card says so and every tile that reaches Adyen or a terminal explains that instead
  * of opening.
  */
@@ -96,30 +109,45 @@ fun HomeScreen(
         onBack = null,
         modifier = modifier,
     ) { padding ->
-        Column(
-            modifier = Modifier.fillMaxSize().padding(padding).padding(dimens.screenPadding),
-            horizontalAlignment = Alignment.CenterHorizontally,
-        ) {
+        BoxWithConstraints(Modifier.fillMaxSize().padding(padding)) {
             // The tiles share the height, up to that of the largest terminals (the S1F4 Pro), and stop growing beyond.
+            val height = (maxHeight - dimens.screenPadding * 2).coerceIn(0.dp, dimens.homeMaxHeight)
             Column(
-                Modifier.widthIn(max = 560.dp).heightIn(max = 640.dp).fillMaxHeight(),
-                verticalArrangement = Arrangement.spacedBy(dimens.spacing),
+                Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(dimens.screenPadding),
+                horizontalAlignment = Alignment.CenterHorizontally,
             ) {
-                // Wherever payments go but the simulator: this terminal, one on the network or in the cloud, or Tap to Pay.
-                if (terminal.loaded && terminal.mode != TerminalMode.SIMULATOR) {
-                    ConnectionProblem(gate.pending, terminal.connection, gate::openSetup) {
-                        navigator.push(Route.SettingsSection(SettingsSections.TERMINAL))
+                Column(
+                    Modifier.widthIn(max = dimens.contentMaxWidth).fillOrGrow(height),
+                    verticalArrangement = Arrangement.spacedBy(dimens.spacing),
+                ) {
+                    // Wherever payments go but the simulator: this terminal, one on the network or in the cloud, or Tap to Pay.
+                    if (terminal.loaded && terminal.mode != TerminalMode.SIMULATOR) {
+                        ConnectionProblem(gate.pending, terminal.connection, gate::openSetup) {
+                            navigator.push(Route.SettingsSection(SettingsSections.TERMINAL))
+                        }
                     }
+                    (update as? UpdateCheck.Available)?.let { offered ->
+                        UpdateCard(offered, container.update::dismiss)
+                    }
+                    PaymentTiles(onOpen = open)
+                    AreaTiles(locked = pinSet, onOpen = open)
                 }
-                (update as? UpdateCheck.Available)?.let { offered ->
-                    UpdateCard(offered, container.update::dismiss)
-                }
-                PaymentTiles(onOpen = open)
-                AreaTiles(locked = pinSet, onOpen = open)
             }
         }
     }
 }
+
+/**
+ * Makes the column exactly [height] tall, its weighted tiles sharing what the cards leave, unless its content needs
+ * more: its minimum intrinsic height gives every weighted tile at least its own minimum (text, icon and touch size).
+ * The column then grows past [height] and the screen scrolls, rather than squeezing tiles until their labels are cut.
+ */
+private fun Modifier.fillOrGrow(height: Dp): Modifier =
+    layout { measurable, constraints ->
+        val target = maxOf(height.roundToPx(), measurable.minIntrinsicHeight(constraints.maxWidth))
+        val placeable = measurable.measure(constraints.copy(minHeight = target, maxHeight = target))
+        layout(placeable.width, placeable.height) { placeable.place(0, 0) }
+    }
 
 /**
  * The two large green tiles that start a payment, one above the other: New sale and New pre-authorisation. Both are
@@ -222,7 +250,8 @@ private fun UpdateCard(
 
 /**
  * A large green tile that starts a payment (a sale, or a pre-authorisation): the icon beside the title and hint. Where
- * the height is limited the title gets a smaller style and the hint a single line, so two tiles fit a 4" screen.
+ * the height is limited the title gets a smaller style, shrinking to one line, and the hint a single line, so two tiles
+ * fit a 4" screen.
  */
 @Composable
 private fun PaymentTile(
@@ -236,19 +265,27 @@ private fun PaymentTile(
     Surface(
         onClick = onClick,
         color = MaterialTheme.colorScheme.primary,
-        contentColor = Color.White,
+        contentColor = MaterialTheme.colorScheme.onPrimary,
         shape = MaterialTheme.shapes.large,
         modifier = modifier,
     ) {
-        Row(Modifier.padding(horizontal = dimens.screenPadding + 8.dp), verticalAlignment = Alignment.CenterVertically) {
+        Row(
+            Modifier.padding(horizontal = dimens.screenPadding + 8.dp, vertical = dimens.spacing / 2),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
             Icon(icon, contentDescription = null, modifier = Modifier.size(if (dimens.compact) 32.dp else 40.dp))
             Spacer(Modifier.width(dimens.screenPadding))
             Column {
+                val style = if (dimens.compact) MaterialTheme.typography.titleLarge else MaterialTheme.typography.headlineSmall
                 Text(
                     title,
-                    style = if (dimens.compact) MaterialTheme.typography.titleLarge else MaterialTheme.typography.headlineSmall,
-                    maxLines = 2,
+                    style = style,
+                    maxLines = if (dimens.compact) 1 else 2,
                     overflow = TextOverflow.Ellipsis,
+                    autoSize =
+                        TextAutoSize.StepBased(minFontSize = MIN_PAYMENT_TITLE_SIZE, maxFontSize = style.fontSize).takeIf {
+                            dimens.compact
+                        },
                 )
                 Text(
                     hint,
@@ -371,6 +408,7 @@ private fun SetupCard(
     }
 }
 
+/** A half-width tile: its icon above the label, or beside it where the tile is too short for both stacked. */
 @Composable
 private fun RowScope.HomeTile(
     icon: ImageVector,
@@ -385,14 +423,13 @@ private fun RowScope.HomeTile(
         shape = MaterialTheme.shapes.large,
         modifier = modifier.weight(1f).fillMaxHeight(),
     ) {
-        Column(Modifier.padding(dimens.cardPadding)) {
+        IconAndLabel(stackGap = 4.dp, sideGap = dimens.spacing, modifier = Modifier.padding(dimens.cardPadding)) {
             Icon(
                 icon,
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.size(if (dimens.compact) 24.dp else 32.dp),
             )
-            Spacer(Modifier.height(4.dp).weight(1f))
             val style = MaterialTheme.typography.titleMedium
             // Longer labels, such as Charge saved card, shrink to fit a half-width tile rather than lose their end.
             Text(
@@ -406,5 +443,74 @@ private fun RowScope.HomeTile(
     }
 }
 
+/**
+ * Lays out its two children, an icon then a label: the icon at the top and the label at the bottom, at least
+ * [stackGap] apart, when the height holds both; otherwise side by side, [sideGap] apart and centred vertically, as on
+ * the AMS1 while the setup card takes room. Its minimum intrinsic height is the side-by-side one, which is what Home
+ * guarantees each tile before it scrolls.
+ */
+@Composable
+private fun IconAndLabel(
+    stackGap: Dp,
+    sideGap: Dp,
+    modifier: Modifier = Modifier,
+    content: @Composable () -> Unit,
+) {
+    val policy = remember(stackGap, sideGap) { IconAndLabelPolicy(stackGap, sideGap) }
+    Layout(content, modifier, policy)
+}
+
+/** The measure policy of [IconAndLabel]. */
+private class IconAndLabelPolicy(
+    private val stackGap: Dp,
+    private val sideGap: Dp,
+) : MeasurePolicy {
+    override fun MeasureScope.measure(
+        measurables: List<Measurable>,
+        constraints: Constraints,
+    ): MeasureResult {
+        val (icon, label) = measurables
+        val loose = constraints.copy(minWidth = 0, minHeight = 0)
+        val iconPlaceable = icon.measure(loose)
+        val width = if (constraints.hasBoundedWidth) constraints.maxWidth else constraints.minWidth
+        val stackedHeight = iconPlaceable.height + stackGap.roundToPx() + label.minIntrinsicHeight(width)
+        if (!constraints.hasBoundedHeight || stackedHeight <= constraints.maxHeight) {
+            val labelPlaceable = label.measure(loose)
+            val height = if (constraints.hasBoundedHeight) constraints.maxHeight else stackedHeight
+            return layout(width, height) {
+                iconPlaceable.place(0, 0)
+                labelPlaceable.place(0, height - labelPlaceable.height)
+            }
+        }
+        val labelX = iconPlaceable.width + sideGap.roundToPx()
+        val labelPlaceable = label.measure(loose.copy(maxWidth = (width - labelX).coerceAtLeast(0)))
+        val height = constraints.maxHeight
+        return layout(width, height) {
+            iconPlaceable.place(0, (height - iconPlaceable.height) / 2)
+            labelPlaceable.place(labelX, (height - labelPlaceable.height) / 2)
+        }
+    }
+
+    override fun IntrinsicMeasureScope.minIntrinsicHeight(
+        measurables: List<IntrinsicMeasurable>,
+        width: Int,
+    ): Int {
+        val (icon, label) = measurables
+        val labelWidth = (width - icon.maxIntrinsicWidth(Constraints.Infinity) - sideGap.roundToPx()).coerceAtLeast(0)
+        return maxOf(icon.minIntrinsicHeight(width), label.minIntrinsicHeight(labelWidth))
+    }
+
+    override fun IntrinsicMeasureScope.maxIntrinsicHeight(
+        measurables: List<IntrinsicMeasurable>,
+        width: Int,
+    ): Int {
+        val (icon, label) = measurables
+        return icon.maxIntrinsicHeight(width) + stackGap.roundToPx() + label.maxIntrinsicHeight(width)
+    }
+}
+
 /** The smallest a Home tile label shrinks to before it is ellipsized. */
 private val MIN_TILE_LABEL_SIZE = 12.sp
+
+/** The smallest a payment tile's title shrinks to on a short screen before it is ellipsized. */
+private val MIN_PAYMENT_TITLE_SIZE = 16.sp

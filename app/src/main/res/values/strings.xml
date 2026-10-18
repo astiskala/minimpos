@@ -15,11 +15,11 @@
   <string name="action_cancel">Cancel</string>
   <string name="action_clear">Clear</string>
   <string name="action_close">Close</string>
-  <string name="action_decrease">Decrease</string>
+  <string name="action_decrease_item">Decrease %1$s</string>
   <string name="action_delete">Delete</string>
   <string name="action_done">Done</string>
   <string name="action_home">Home</string>
-  <string name="action_increase">Increase</string>
+  <string name="action_increase_item">Increase %1$s</string>
   <string name="action_more">More options</string>
   <string name="action_next">Next</string>
   <string name="action_ok">OK</string>
@@ -69,6 +69,7 @@
     <item quantity="one">%1$d item</item>
     <item quantity="other">%1$d items</item>
   </plurals>
+  <string name="sale_in_cart">%1$d in this sale</string>
   <string name="pre_auth_title">Pre-authorize</string>
   <string name="pre_auth_no_products">No pre-authorization products yet. Mark products as pre-authorization under Products, or use a custom amount.</string>
   <string name="pre_auth_charge">Pre-authorize %1$s</string>
@@ -107,6 +108,10 @@
   <string name="payment_title">Payment</string>
   <string name="payment_follow_terminal">Follow the instructions on the terminal</string>
   <string name="payment_cancelling">Canceling…</string>
+  <string name="payment_cancel_title">Cancel this payment?</string>
+  <string name="payment_cancel_message">The terminal stops the payment if the shopper has not paid yet.</string>
+  <string name="payment_cancel_keep">Keep waiting</string>
+  <string name="processing_wait">Wait for the result before leaving this screen.</string>
   <string name="payment_unknown_outcome">The terminal did not confirm the result. Check the payment in your Customer Area before charging again.</string>
   <string name="payment_interrupted">The app stopped before the result was received.</string>
   <string name="capture_interrupted">The app stopped before Adyen answered the capture request. Retry the same capture safely.</string>
@@ -359,6 +364,7 @@
   <string name="history_capture_activity">Capture / tip</string>
   <string name="history_offline_label">Offline</string>
   <string name="history_search">Search transactions</string>
+  <string name="history_choose">Choose a transaction to see it here.</string>
   <string name="history_method">Payment method</string>
   <string name="history_method_any">Any payment method</string>
   <string name="history_no_match">No matching transactions</string>
@@ -602,6 +608,10 @@
   <string name="pin_confirm">Enter the PIN again</string>
   <string name="pin_mismatch">The PINs did not match. Start again.</string>
   <string name="pin_hint">PIN length: %1$d to %2$d</string>
+  <plurals name="pin_digits_entered">
+    <item quantity="one">%1$d digit entered</item>
+    <item quantity="other">%1$d digits entered</item>
+  </plurals>
   <string name="manager_pin_title">Manager PIN</string>
   <string name="manager_pin_enter">Enter the Manager PIN</string>
   <string name="manager_pin_set">Set Manager PIN</string>
@@ -612,6 +622,7 @@
 
   <!-- Settings: overview and language -->
   <string name="settings_title">Settings</string>
+  <string name="settings_choose">Choose a section to change its settings.</string>
   <string name="settings_terminal">Terminal</string>
   <string name="settings_capabilities">Adyen capabilities</string>
   <string name="settings_capabilities_summary">Availability and terminal setup</string>

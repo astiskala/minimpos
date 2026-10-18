@@ -141,6 +141,9 @@ Starred rules below are enforced by `ArchitectureTest`, `OwnershipArchitectureTe
 - detekt does not run compiler plugins: use `serializer<T>()`, not `T.serializer()`.
 - Compose uses `LocalDimens` tiers and shared components. Primary actions stay in `MiniScaffold`'s `BottomActions`;
   result screens put Home beside the primary action. Split sibling content into scope extensions to preserve spacing.
+- Theme colours keep `ThemeContrastTest` passing (WCAG AA). Content shown in place of a screen (PIN entry, Manager
+  approval) handles system Back like its arrow. History and Settings open details with `Navigator.openFrom` and leave
+  with `leave`, as expanded windows show them beside their detail.
 - Removal of saved keys, PINs, phone registration or history uses red `ConfirmedRemoval`; Settings actions use
   `SettingActions` and icons. Secret placeholders stay one line.
 - Flows: workflow screen (one pinned primary "Verb amount", confirm before money moves back) → `ProcessingContent` →

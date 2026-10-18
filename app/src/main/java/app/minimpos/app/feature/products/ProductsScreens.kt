@@ -200,10 +200,10 @@ private fun ProductList(
     }
     val preAuth = stringResource(R.string.products_kind_pre_auth)
     // The bottom padding keeps the last row clear of the add button.
-    LazyColumn(Modifier.fillMaxSize().testTag("productList"), contentPadding = PaddingValues(bottom = 88.dp)) {
+    LazyColumn(Modifier.fillMaxSize().testTag("productList"), contentPadding = PaddingValues(bottom = LocalDimens.current.fabClearance)) {
         items(state.products, key = { it.id }) { product ->
-            val tax = state.taxRates.firstOrNull { it.id == product.taxRateId }
-            val category = state.categories.firstOrNull { it.id == product.categoryId }
+            val tax = state.taxRate(product.taxRateId)
+            val category = state.category(product.categoryId)
             ListRow(
                 title = product.name,
                 subtitle =
@@ -234,9 +234,9 @@ private fun CategoryList(
         )
         return
     }
-    LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = 88.dp)) {
+    LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = LocalDimens.current.fabClearance)) {
         items(state.categories, key = { it.id }) { category ->
-            val count = state.products.count { it.categoryId == category.id }
+            val count = state.productCount(category.id)
             ListRow(category.name, stringResource(R.string.products_count, count), null) { onEdit(category) }
         }
     }
@@ -251,7 +251,11 @@ private fun ListRow(
 ) {
     Column {
         Row(
-            Modifier.fillMaxWidth().clickable(onClick = onClick).padding(horizontal = 16.dp, vertical = LocalDimens.current.rowPadding),
+            Modifier
+                .fillMaxWidth()
+                .clickable(
+                    onClick = onClick,
+                ).padding(horizontal = LocalDimens.current.rowHorizontalPadding, vertical = LocalDimens.current.rowPadding),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Column(Modifier.weight(1f)) {
@@ -277,7 +281,7 @@ private fun CategoryDialog(
     onDelete: () -> Unit,
     onDismiss: () -> Unit,
 ) {
-    var name by remember { mutableStateOf(category.name) }
+    var name by rememberSaveable { mutableStateOf(category.name) }
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(stringResource(if (category.id == 0L) R.string.products_add_category else R.string.products_edit_category)) },
@@ -324,8 +328,8 @@ fun ProductEditScreen(
 ) {
     val container = LocalAppContainer.current
     val state by vm.state.collectAsStateWithLifecycle()
-    var confirmDelete by remember { mutableStateOf(false) }
-    var scan by remember { mutableStateOf(false) }
+    var confirmDelete by rememberSaveable { mutableStateOf(false) }
+    var scan by rememberSaveable { mutableStateOf(false) }
     val form = state.form
     val dimens = LocalDimens.current
 
@@ -363,7 +367,7 @@ fun ProductEditScreen(
                 .padding(dimens.screenPadding),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            Column(Modifier.widthIn(max = 560.dp), verticalArrangement = Arrangement.spacedBy(dimens.spacing)) {
+            Column(Modifier.widthIn(max = dimens.contentMaxWidth), verticalArrangement = Arrangement.spacedBy(dimens.spacing)) {
                 ProductFields(state, onUpdate = {
                     container.userActivity()
                     vm.update(it)

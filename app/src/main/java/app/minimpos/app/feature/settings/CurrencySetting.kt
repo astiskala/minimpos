@@ -14,6 +14,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Search
@@ -34,6 +35,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.unit.dp
@@ -87,7 +89,7 @@ internal fun CurrencySetting(
             .fillMaxWidth()
             .clickable {
                 open = true
-            }.padding(horizontal = 16.dp, vertical = LocalDimens.current.rowPadding)
+            }.padding(horizontal = LocalDimens.current.rowHorizontalPadding, vertical = LocalDimens.current.rowPadding)
             .testTag("currency"),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -137,7 +139,12 @@ private fun CurrencyPickerDialog(
             shape = MaterialTheme.shapes.extraLarge,
             // The same container colour as the app's other (AlertDialog) dialogs.
             color = MaterialTheme.colorScheme.surfaceContainerHigh,
-            modifier = Modifier.fillMaxWidth().padding(if (LocalDimens.current.compact) 12.dp else 24.dp).widthIn(max = 560.dp),
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .padding(
+                        if (LocalDimens.current.compact) 12.dp else 24.dp,
+                    ).widthIn(max = LocalDimens.current.contentMaxWidth),
         ) {
             Column(
                 Modifier.heightIn(max = 600.dp).padding(vertical = if (LocalDimens.current.compact) 12.dp else 20.dp),
@@ -157,7 +164,7 @@ private fun CurrencyPickerDialog(
                     keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Characters, imeAction = ImeAction.Search),
                     modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp).testTag("currencySearch"),
                 )
-                LazyColumn(state = listState, modifier = Modifier.weight(1f, fill = false)) {
+                LazyColumn(state = listState, modifier = Modifier.weight(1f, fill = false).selectableGroup()) {
                     items(options, key = { it }) { code ->
                         CurrencyOption(AdyenCurrencies[code]?.label(locale) ?: autoLabel, code == selectedCode, code.ifEmpty { "auto" }) {
                             onSelect(code)
@@ -192,7 +199,7 @@ private fun CurrencyOption(
     Row(
         Modifier
             .fillMaxWidth()
-            .selectable(selected = selected, onClick = onClick)
+            .selectable(selected = selected, onClick = onClick, role = Role.RadioButton)
             .padding(horizontal = 24.dp, vertical = 12.dp)
             .testTag("currency_$tagSuffix"),
         verticalAlignment = Alignment.CenterVertically,

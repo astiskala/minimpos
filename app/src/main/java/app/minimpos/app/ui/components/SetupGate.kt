@@ -18,7 +18,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.minimpos.app.R
 import app.minimpos.app.ui.theme.LocalDimens
@@ -109,7 +108,12 @@ fun SetupRequired(modifier: Modifier = Modifier) {
     val gate = currentSetupGate()
     val dimens = LocalDimens.current
     Column(
-        modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = dimens.spacing).testTag("setupRequired"),
+        modifier
+            .fillMaxWidth()
+            .padding(
+                horizontal = LocalDimens.current.rowHorizontalPadding,
+                vertical = dimens.spacing,
+            ).testTag("setupRequired"),
         verticalArrangement = Arrangement.spacedBy(dimens.spacing),
     ) {
         Text(stringResource(R.string.setup_required_title), style = MaterialTheme.typography.titleSmall)

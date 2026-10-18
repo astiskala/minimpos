@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
@@ -30,6 +31,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.minimumInteractiveComponentSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -37,6 +39,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -44,6 +47,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -80,9 +84,14 @@ fun SettingTextField(
     tag: String? = null,
 ) {
     val container = LocalAppContainer.current
-    var text by remember { mutableStateOf(value) }
+    var text by rememberSaveable { mutableStateOf(value) }
     val error = isError(text)
-    Column(modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = if (LocalDimens.current.compact) 2.dp else 4.dp)) {
+    Column(
+        modifier.fillMaxWidth().padding(
+            horizontal = LocalDimens.current.rowHorizontalPadding,
+            vertical = if (LocalDimens.current.compact) 2.dp else 4.dp,
+        ),
+    ) {
         OutlinedTextField(
             value = text,
             onValueChange = {
@@ -159,7 +168,7 @@ fun SettingSwitch(
     enabled: Boolean = true,
     blocked: String? = null,
 ) {
-    Column(modifier.padding(horizontal = 16.dp, vertical = LocalDimens.current.rowPadding - 2.dp)) {
+    Column(modifier.padding(horizontal = LocalDimens.current.rowHorizontalPadding, vertical = LocalDimens.current.rowPadding - 2.dp)) {
         SwitchRow(
             title = title,
             checked = checked && blocked == null,
@@ -187,7 +196,7 @@ fun <T : Any> SettingChoice(
     tag: String? = null,
     navigationIcon: ImageVector? = null,
 ) {
-    var open by remember { mutableStateOf(false) }
+    var open by rememberSaveable { mutableStateOf(false) }
     if (navigationIcon != null) {
         SettingNavRow(
             navigationIcon,
@@ -203,7 +212,7 @@ fun <T : Any> SettingChoice(
                 .fillMaxWidth()
                 .clickable {
                     open = true
-                }.padding(horizontal = 16.dp, vertical = LocalDimens.current.rowPadding)
+                }.padding(horizontal = LocalDimens.current.rowHorizontalPadding, vertical = LocalDimens.current.rowPadding)
                 .tagged(tag),
             verticalAlignment = Alignment.CenterVertically,
         ) {
@@ -249,13 +258,14 @@ private fun <T : Any> ChoiceDialog(
         onDismissRequest = onDismiss,
         title = { Text(title) },
         text = {
-            Column(Modifier.verticalScroll(rememberScrollState())) {
+            Column(Modifier.verticalScroll(rememberScrollState()).selectableGroup()) {
                 note?.let { Text(it, style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(bottom = 12.dp)) }
                 options.forEach { (value, label) ->
                     Row(
                         Modifier
                             .fillMaxWidth()
-                            .selectable(selected = value == selected, onClick = { onSelect(value) })
+                            .minimumInteractiveComponentSize()
+                            .selectable(selected = value == selected, onClick = { onSelect(value) }, role = Role.RadioButton)
                             .padding(vertical = 10.dp)
                             .tagged(tag?.let { "${it}_$value" }),
                         verticalAlignment = Alignment.CenterVertically,
@@ -336,14 +346,25 @@ fun SecretField(
             label = label,
             onDone = onSubmit,
             placeholder = stringResource(if (isSet) R.string.settings_secret_replace else R.string.settings_secret_enter),
-            modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = if (compact) 2.dp else 4.dp).tagged(tag),
+            modifier =
+                Modifier
+                    .padding(
+                        start = LocalDimens.current.rowHorizontalPadding,
+                        end = LocalDimens.current.rowHorizontalPadding,
+                        top = if (compact) 2.dp else 4.dp,
+                    ).tagged(tag),
         )
         // Whether it is saved, on its own line at the screen's text edge (not indented like a field's supporting text).
         FieldNote(
             if (isSet) Icons.Default.CheckCircle else Icons.Default.ErrorOutline,
             stringResource(if (isSet) R.string.settings_secret_saved else R.string.settings_secret_not_saved),
             if (isSet) colors.success else colors.error,
-            Modifier.padding(start = 16.dp, end = 16.dp, top = 6.dp, bottom = if (compact) 8.dp else 12.dp),
+            Modifier.padding(
+                start = LocalDimens.current.rowHorizontalPadding,
+                end = LocalDimens.current.rowHorizontalPadding,
+                top = 6.dp,
+                bottom = if (compact) 8.dp else 12.dp,
+            ),
         )
     }
 }
@@ -358,13 +379,13 @@ fun SettingSecret(
     modifier: Modifier = Modifier,
     tag: String? = null,
 ) {
-    var open by remember { mutableStateOf(false) }
+    var open by rememberSaveable { mutableStateOf(false) }
     Row(
         modifier
             .fillMaxWidth()
             .clickable {
                 open = true
-            }.padding(horizontal = 16.dp, vertical = LocalDimens.current.rowPadding)
+            }.padding(horizontal = LocalDimens.current.rowHorizontalPadding, vertical = LocalDimens.current.rowPadding)
             .tagged(tag),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -436,7 +457,7 @@ fun SettingNavRow(
                 .heightIn(min = 72.dp)
                 .clickable(
                     onClick = onClick,
-                ).padding(horizontal = 16.dp, vertical = dimens.rowPadding + 2.dp)
+                ).padding(horizontal = LocalDimens.current.rowHorizontalPadding, vertical = dimens.rowPadding + 2.dp)
                 .tagged(tag),
             verticalAlignment = Alignment.CenterVertically,
         ) {
@@ -481,6 +502,6 @@ fun SettingNote(
         text,
         style = MaterialTheme.typography.bodySmall,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
-        modifier = modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
+        modifier = modifier.fillMaxWidth().padding(horizontal = LocalDimens.current.rowHorizontalPadding, vertical = 4.dp),
     )
 }

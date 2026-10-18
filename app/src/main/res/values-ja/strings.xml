@@ -15,11 +15,11 @@
   <string name="action_cancel">キャンセル</string>
   <string name="action_clear">クリア</string>
   <string name="action_close">閉じる</string>
-  <string name="action_decrease">減らす</string>
+  <string name="action_decrease_item">%1$sを減らす</string>
   <string name="action_delete">削除</string>
   <string name="action_done">完了</string>
   <string name="action_home">ホーム</string>
-  <string name="action_increase">増やす</string>
+  <string name="action_increase_item">%1$sを増やす</string>
   <string name="action_more">その他の操作</string>
   <string name="action_next">次へ</string>
   <string name="action_ok">OK</string>
@@ -68,6 +68,7 @@
   <plurals name="sale_items">
     <item quantity="other">%1$d点</item>
   </plurals>
+  <string name="sale_in_cart">この販売に%1$d点</string>
   <string name="pre_auth_title">プリオーソリ</string>
   <string name="pre_auth_no_products">プリオーソリ商品がありません。「商品」で設定するか、任意の金額を使用してください。</string>
   <string name="pre_auth_charge">%1$sをプリオーソリ</string>
@@ -106,6 +107,10 @@
   <string name="payment_title">決済</string>
   <string name="payment_follow_terminal">端末の案内に従ってください</string>
   <string name="payment_cancelling">キャンセル中…</string>
+  <string name="payment_cancel_title">この決済をキャンセルしますか？</string>
+  <string name="payment_cancel_message">購入者がまだ支払っていない場合、端末は決済を中止します。</string>
+  <string name="payment_cancel_keep">このまま待つ</string>
+  <string name="processing_wait">結果が出るまでこの画面でお待ちください。</string>
   <string name="payment_unknown_outcome">端末から結果を確認できませんでした。再度請求する前に、Customer Areaで決済を確認してください。</string>
   <string name="payment_interrupted">結果を受信する前にアプリが停止しました。</string>
   <string name="capture_interrupted">キャプチャ要求へのAdyenの応答を受信する前にアプリが停止しました。同じキャプチャ要求を安全に再試行できます。</string>
@@ -359,6 +364,7 @@
   <string name="history_capture_activity">キャプチャ / チップ</string>
   <string name="history_offline_label">オフライン</string>
   <string name="history_search">取引を検索</string>
+  <string name="history_choose">取引を選ぶと、ここに表示されます。</string>
   <string name="history_method">決済方法</string>
   <string name="history_method_any">すべての決済方法</string>
   <string name="history_no_match">一致する取引がありません</string>
@@ -602,6 +608,9 @@
   <string name="pin_confirm">PINをもう一度入力</string>
   <string name="pin_mismatch">PINが一致しません。最初からやり直してください。</string>
   <string name="pin_hint">PINの桁数：%1$d〜%2$d</string>
+  <plurals name="pin_digits_entered">
+    <item quantity="other">%1$d桁入力済み</item>
+  </plurals>
   <string name="manager_pin_title">マネージャーPIN</string>
   <string name="manager_pin_enter">マネージャーPINを入力</string>
   <string name="manager_pin_set">マネージャーPINを設定</string>
@@ -612,6 +621,7 @@
 
   <!-- Settings: overview and language -->
   <string name="settings_title">設定</string>
+  <string name="settings_choose">変更する設定の項目を選んでください。</string>
   <string name="settings_terminal">端末</string>
   <string name="settings_capabilities">Adyen機能</string>
   <string name="settings_capabilities_summary">機能の対応状況と端末設定</string>

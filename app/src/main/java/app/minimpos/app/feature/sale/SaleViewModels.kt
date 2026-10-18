@@ -96,22 +96,26 @@ data class SaleUiState(
     /** Whether this is a pre-authorisation, which holds one item. */
     val preAuthorisation: Boolean get() = kind == SaleKind.PRE_AUTHORISATION
 
+    // The readings below are worked out once per state, not on every recomposition that reads them.
+
     /** The products matching [selectedCategory] and [query]. */
-    val visibleProducts: List<ProductEntity>
-        get() =
+    val visibleProducts: List<ProductEntity> =
+        query.trim().let { search ->
             products.filter { product ->
                 (selectedCategory == null || product.categoryId == selectedCategory) &&
-                    (
-                        query.isBlank() || product.name.contains(query.trim(), ignoreCase = true) ||
-                            product.sku?.contains(query.trim()) == true
-                    )
+                    (search.isEmpty() || product.name.contains(search, ignoreCase = true) || product.sku?.contains(search) == true)
             }
+        }
 
     /** Whether any product has a SKU, which is when barcode scanning is offered. */
-    val hasSkus: Boolean get() = products.any { !it.sku.isNullOrBlank() }
+    val hasSkus: Boolean = products.any { !it.sku.isNullOrBlank() }
+
+    /** Units in the cart by product ID (null for custom items), over all of each product's lines. */
+    private val cartQuantities: Map<Long?, Int> =
+        cart.lines.groupBy { it.productId }.mapValues { (_, lines) -> lines.sumOf { it.quantity } }
 
     /** How many units of product [productId] are in the cart, over all its lines; shown as a badge on its tile. */
-    fun quantityInCart(productId: Long): Int = cart.lines.filter { it.productId == productId }.sumOf { it.quantity }
+    fun quantityInCart(productId: Long): Int = cartQuantities[productId] ?: 0
 }
 
 /**

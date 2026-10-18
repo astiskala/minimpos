@@ -139,6 +139,8 @@ class DeadCodeTest {
     }
 
     private companion object {
+        const val ANDROID = "http://schemas.android.com/apk/res/android"
+
         val PACKAGE = Regex("""^package\s+([\w.]+)""", RegexOption.MULTILINE)
 
         /** The package [file] declares, or "" for the default package. */
@@ -156,7 +158,7 @@ class DeadCodeTest {
             return manifests
                 .flatMap { manifest ->
                     val elements = factory.newDocumentBuilder().parse(manifest).getElementsByTagName("*")
-                    (0 until elements.length).mapNotNull { index ->
+                    (0..<elements.length).mapNotNull { index ->
                         elements
                             .item(index)
                             .attributes
@@ -166,8 +168,6 @@ class DeadCodeTest {
                 }.map { if (it.startsWith('.')) "$namespace$it" else it }
                 .toSet()
         }
-
-        const val ANDROID = "http://schemas.android.com/apk/res/android"
     }
 }
 
@@ -207,6 +207,10 @@ internal class DeadCode(
             .groupingBy { it }
             .eachCount()
 
+    private val Visibility.checked get() = this == Visibility.PUBLIC || this == Visibility.INTERNAL || this == Visibility.PROTECTED
+
+    private val JavaCodeUnit.location get() = sourceCodeLocation.toString()
+
     /** Every unused declaration, by class name; an unused class's members are not listed separately. */
     fun findings(): List<DeadDeclaration> =
         own.flatMap { type ->
@@ -225,7 +229,8 @@ internal class DeadCode(
         if (km.kind == ClassKind.ENUM_ENTRY || km.kind == ClassKind.ANNOTATION_CLASS) return emptyList()
         val members = members(type, km, km)
         // Constants and inline functions are copied into their callers, which then need not refer to the class.
-        if (km.kind != ClassKind.COMPANION_OBJECT && !referenced(type) && members.none { it.used && it.byName }) {
+        val usedByName = members.any { it.used && it.byName }
+        if (km.kind != ClassKind.COMPANION_OBJECT && !referenced(type) && !usedByName) {
             return listOf(DeadDeclaration("class", type.name, type.sourceCodeLocation.toString()))
         }
         // Deserializing creates an instance through the serialization plugin's constructor, which stands for the primary one.
@@ -255,7 +260,7 @@ internal class DeadCode(
         km: KmClass?,
     ): List<Member> {
         // The serialization plugin adds serializer() to @Serializable classes and their companions.
-        val serializable = (listOf(type) + type.enclosingClass.stream().toList()).any { it.isAnnotatedWith(SERIALIZABLE) }
+        val serializable = listOfNotNull(type, type.enclosingClass.orElse(null)).any { it.isAnnotatedWith(SERIALIZABLE) }
         val functions =
             container.functions
                 .filter { it.kind == MemberKind.DECLARATION && it.visibility.checked && !(serializable && it.name == "serializer") }
@@ -400,7 +405,7 @@ internal class DeadCode(
     private fun metadataOf(type: JavaClass): KotlinClassMetadata? =
         metadata.getOrPut(type) {
             type.tryGetAnnotationOfType("kotlin.Metadata").orElse(null)?.properties?.let { values ->
-                fun strings(name: String) = (values[name] as Array<*>?)?.map { it as String }?.toTypedArray()
+                fun strings(name: String) = (values[name] as Array<*>?)?.map { checkNotNull(it) as String }?.toTypedArray()
                 KotlinClassMetadata.readStrict(
                     Metadata(
                         kind = values["k"] as Int?,
@@ -414,10 +419,6 @@ internal class DeadCode(
                 )
             }
         }
-
-    private val Visibility.checked get() = this == Visibility.PUBLIC || this == Visibility.INTERNAL || this == Visibility.PROTECTED
-
-    private val JavaCodeUnit.location get() = sourceCodeLocation.toString()
 
     private companion object {
         val WORD = Regex("""\b[A-Za-z_]\w*\b""")

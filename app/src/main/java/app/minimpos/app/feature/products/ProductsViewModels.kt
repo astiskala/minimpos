@@ -34,7 +34,21 @@ data class ProductsUiState(
     val taxRates: List<TaxRateEntity> = emptyList(),
     val currency: CurrencySpec = CurrencySpec("EUR", 2),
     val chargeTax: Boolean = true,
-)
+) {
+    // Looked up once per state rather than by every row on every recomposition.
+    private val taxRatesById = taxRates.associateBy { it.id }
+    private val categoriesById = categories.associateBy { it.id }
+    private val productCounts = products.groupingBy { it.categoryId }.eachCount()
+
+    /** The tax rate with [id], or null when there is none (such as one deleted since). */
+    fun taxRate(id: Long): TaxRateEntity? = taxRatesById[id]
+
+    /** The category with [id], or null for none (uncategorised). */
+    fun category(id: Long?): CategoryEntity? = categoriesById[id]
+
+    /** How many products the category [categoryId] holds. */
+    fun productCount(categoryId: Long): Int = productCounts[categoryId] ?: 0
+}
 
 /** Products and categories. Tax rates are managed in Settings › Tax. */
 class ProductsViewModel(

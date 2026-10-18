@@ -50,8 +50,12 @@ fun StepHeader(
             .semantics(mergeDescendants = true) {
                 heading()
                 if (done) contentDescription = "$number. $title, $doneLabel"
-            }.padding(start = 16.dp, end = 16.dp, top = if (compact) 16.dp else 24.dp, bottom = if (compact) 4.dp else 8.dp)
-            .testTag("step_$number"),
+            }.padding(
+                start = LocalDimens.current.rowHorizontalPadding,
+                end = LocalDimens.current.rowHorizontalPadding,
+                top = if (compact) 16.dp else 24.dp,
+                bottom = if (compact) 4.dp else 8.dp,
+            ).testTag("step_$number"),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Box(
@@ -88,7 +92,10 @@ fun StepBody(
     content: @Composable ColumnScope.() -> Unit,
 ) {
     val dimens = LocalDimens.current
-    Column(modifier.fillMaxWidth().padding(horizontal = 16.dp), verticalArrangement = Arrangement.spacedBy(dimens.spacing)) {
+    Column(
+        modifier.fillMaxWidth().padding(horizontal = LocalDimens.current.rowHorizontalPadding),
+        verticalArrangement = Arrangement.spacedBy(dimens.spacing),
+    ) {
         hint?.let { Text(it, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant) }
         content()
     }

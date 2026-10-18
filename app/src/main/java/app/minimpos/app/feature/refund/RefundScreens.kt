@@ -31,6 +31,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
@@ -39,7 +40,6 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import app.minimpos.app.R
@@ -134,7 +134,7 @@ fun RefundScreen(
 ) {
     val container = LocalAppContainer.current
     val state by vm.state.collectAsStateWithLifecycle()
-    var confirm by remember { mutableStateOf(false) }
+    var confirm by rememberSaveable { mutableStateOf(false) }
     val ready = state.load as? Refundability.Refundable
     val gate = currentSetupGate()
 
@@ -272,7 +272,7 @@ private fun RefundChoice(
             .padding(dimens.screenPadding),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Column(Modifier.widthIn(max = 560.dp), verticalArrangement = Arrangement.spacedBy(dimens.spacing)) {
+        Column(Modifier.widthIn(max = LocalDimens.current.contentMaxWidth), verticalArrangement = Arrangement.spacedBy(dimens.spacing)) {
             OriginalPaymentCard(original, money, formatDateTime)
             if (!original.itemsKnown) {
                 Text(
@@ -402,7 +402,13 @@ private fun ColumnScope.RefundLines(
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
-            QuantityStepper(selected, onChange = { onQuantity(line.id, it) }, max = remaining, increaseTag = "increase_${line.id}")
+            QuantityStepper(
+                selected,
+                line.name,
+                onChange = { onQuantity(line.id, it) },
+                max = remaining,
+                increaseTag = "increase_${line.id}",
+            )
         }
         HorizontalDivider()
     }
@@ -438,7 +444,11 @@ fun RefundProcessingScreen(
             is TransactionState.Processing -> Unit
         }
     }
-    BackHandler(enabled = true) {}
+    // The request is stored and runs on whatever screen is shown, but this one shows its result: Back says to wait.
+    val snackbar = remember { SnackbarHostState() }
+    val scope = rememberCoroutineScope()
+    val wait = stringResource(R.string.processing_wait)
+    BackHandler { scope.launch { snackbar.showSnackbar(wait) } }
     val processing = state as? TransactionState.Processing
     // The refund is stored before the terminal is called, so whether it is a cancellation can be shown straight away.
     val refund by remember(processing?.id) { processing?.id?.let(container.refundRecords::observe) ?: flowOf(null) }
@@ -448,6 +458,7 @@ fun RefundProcessingScreen(
         title = stringResource(if (cancellation) R.string.cancellation_title else R.string.refund_title),
         onBack = null,
         modifier = modifier,
+        snackbarHostState = snackbar,
     ) { padding ->
         ProcessingContent(
             amount = processing?.amount?.let { rememberMoneyFormatter(it.currency).format(it.amountMinor) },
@@ -511,7 +522,7 @@ fun RefundResultScreen(
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             Column(
-                Modifier.widthIn(max = 560.dp),
+                Modifier.widthIn(max = LocalDimens.current.contentMaxWidth),
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(dimens.spacing),
             ) {

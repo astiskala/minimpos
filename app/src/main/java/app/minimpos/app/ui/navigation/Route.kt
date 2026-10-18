@@ -161,9 +161,6 @@ sealed interface Route : NavKey {
         override val requiresManager get() = true
     }
 
-    /** Following a token charged from a New sale's checkout to its result. */
-    @Serializable data object TokenCharge : Route
-
     /** Terminal totals compared with Mini mPOS, closing the terminal's period and today's report. */
     @Serializable data object Reconciliation : Route
 

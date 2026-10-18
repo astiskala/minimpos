@@ -54,6 +54,10 @@ import app.minimpos.app.feature.OutcomeMessage
 import app.minimpos.app.feature.text
 import app.minimpos.app.terminal.DestinationRules
 import app.minimpos.app.terminal.PaymentsAppDestination
+import app.minimpos.app.terminal.SetupProgress
+import app.minimpos.app.terminal.SetupStepKind
+import app.minimpos.app.terminal.SetupVisit
+import app.minimpos.app.terminal.TerminalSetupPlan
 import app.minimpos.app.terminal.TerminalState
 import app.minimpos.app.ui.components.ActionMessage
 import app.minimpos.app.ui.components.LabeledValue
@@ -107,12 +111,7 @@ internal fun ColumnScope.TerminalSteps(
         )
     val update: TerminalUpdate = { transform -> events.onUpdate { it.copy(terminal = transform(it.terminal)) } }
     key(status.mode, status.environment, setup.revision) {
-        if (status.capabilities.selectsEnvironment) {
-            EnvironmentStep(status.environment, update)
-        }
-        if (!status.capabilities.selectsEnvironment || status.environment != null || state.hasSavedConnectionDetails()) {
-            DestinationSteps(status, rules, state, actions, setup, events, setupEvents, api, update)
-        }
+        DestinationSteps(status, rules, state, actions, setup, events, setupEvents, api, update)
     }
     SharedKeyActions(setup, setupEvents)
 }
@@ -153,17 +152,6 @@ private fun ColumnScope.SharedKeyActions(
     }
 }
 
-private fun SettingsUiState.hasSavedConnectionDetails(): Boolean {
-    val terminal = settings.terminal
-    val values = listOf(terminal.merchantAccount, terminal.keyIdentifier, terminal.host, terminal.poiIdOverride)
-    return values.any(String::isNotBlank) || secrets.any { it in setOf(Secret.ADYEN_API_KEY, Secret.TERMINAL_PASSPHRASE) }
-}
-
-private fun TerminalState.needsPaymentsApp(
-    suppliedDetails: Boolean,
-    apiSaved: Boolean,
-): Boolean = paymentsApps.size != 1 && !suppliedDetails && !apiSaved
-
 /** Destination-specific steps after the selected or device-supplied environment is available. */
 @Composable
 private fun ColumnScope.DestinationSteps(
@@ -177,21 +165,32 @@ private fun ColumnScope.DestinationSteps(
     api: ApiEntry,
     update: TerminalUpdate,
 ) {
-    val suppliedDetails = rules.suppliedDetails(state.settings.terminal, state.secrets)
     var testedFields by remember { mutableStateOf<Pair<String, String>?>(null) }
     var apiComplete by remember { mutableStateOf(false) }
     // An immediate retest can conflate running and success; new tested fields must still recheck completion.
     LaunchedEffect(actions.api, api.problem, api.key, testedFields) {
         if (api.testCompleted(actions.api, testedFields)) apiComplete = true
     }
-    if (status.mode == TerminalMode.PAYMENTS_APP) {
-        PaymentsAppStep(1, status.paymentsApps)
-        if (status.needsPaymentsApp(suppliedDetails, api.keySaved)) return
-    }
-    val verified = !currentSetupGate().pending
+    val terminal = state.settings.terminal
+    val progress =
+        SetupProgress(
+            onTerminal = status.onTerminal,
+            environmentChosen = status.environment != null,
+            paymentsApps = status.paymentsApps.size,
+            terminal = terminal,
+            secrets = state.secrets,
+            verified = !currentSetupGate().pending,
+            visit = rememberSetupVisit(terminal, apiTested = apiComplete),
+        )
+    val plan = TerminalSetupPlan.steps(rules, progress)
+
+    fun step(kind: SetupStepKind) = plan.firstOrNull { it.kind == kind }
+    step(SetupStepKind.ENVIRONMENT)?.let { EnvironmentStep(it.number, it.done, status.environment, update) }
+    step(SetupStepKind.PAYMENTS_APP)?.let { PaymentsAppStep(it.number, status.paymentsApps) }
+    val apiStep = step(SetupStepKind.ADYEN_API) ?: return
     AdyenApiStep(
-        number = if (status.capabilities.selectsEnvironment || status.mode == TerminalMode.PAYMENTS_APP) 2 else 1,
-        done = apiComplete || verified,
+        number = apiStep.number,
+        done = apiStep.done,
         cloud = status.mode == TerminalMode.CLOUD,
         discovers = status.mode != TerminalMode.PAYMENTS_APP,
         discoveryReady = api.testCompleted(actions.api, testedFields),
@@ -206,42 +205,54 @@ private fun ColumnScope.DestinationSteps(
             events.onSaveAndTest(Secret.ADYEN_API_KEY, api.key, SettingsTest.API)
         },
     )
-    if (!apiComplete && !suppliedDetails) return
-    when (status.mode) {
-        TerminalMode.TERMINAL -> {
-            LocalTerminalSteps(status.onTerminal, verified, state, actions, events, setupEvents, update)
-        }
-
-        TerminalMode.CLOUD -> {
-            CloudTerminalStep(
-                number = 3,
-                done = verified,
-                poiId = state.settings.terminal.poiIdOverride,
-                setup = setup,
-                testing = actions.connection.running,
-                onPoiId = { id -> update { it.copy(poiIdOverride = id) } },
-                onFindTerminals = { setupEvents.onTerminalsFind(api.key) },
-                onTest = {
-                    if (!actions.connection.running) events.onSaveAndTest(Secret.ADYEN_API_KEY, api.key, SettingsTest.CLOUD)
-                },
-            )
-        }
-
-        TerminalMode.PAYMENTS_APP -> {
-            TapToPaySteps(verified, state, actions, setup, events, setupEvents, update)
-        }
-
-        TerminalMode.SIMULATOR, TerminalMode.AUTO -> {}
+    step(SetupStepKind.NETWORK_TERMINAL)?.let { NetworkTerminalStep(it.number, it.done, terminal, update) }
+    step(SetupStepKind.CLOUD_TERMINAL)?.let { cloud ->
+        CloudTerminalStep(
+            number = cloud.number,
+            done = cloud.done,
+            poiId = state.settings.terminal.poiIdOverride,
+            setup = setup,
+            testing = actions.connection.running,
+            onPoiId = { id -> update { it.copy(poiIdOverride = id) } },
+            onFindTerminals = { setupEvents.onTerminalsFind(api.key) },
+            onTest = {
+                if (!actions.connection.running) events.onSaveAndTest(Secret.ADYEN_API_KEY, api.key, SettingsTest.CLOUD)
+            },
+        )
     }
+    step(SetupStepKind.TAP_TO_PAY)?.let { TapToPayEntry(it.number, state, setup, events, setupEvents, update) }
+    step(SetupStepKind.SHARED_KEY)?.let { SharedKeyStep(it.number, it.done, state, actions, events, setupEvents, update) }
+}
+
+/**
+ * What this visit unlocked: [apiTested], and once entered in this visit a network terminal's address and POIID, or this
+ * phone's registration; kept until the visit ends even if those details are removed again.
+ */
+@Composable
+private fun rememberSetupVisit(
+    terminal: TerminalSettings,
+    apiTested: Boolean,
+): SetupVisit {
+    var terminalEntered by remember { mutableStateOf(false) }
+    LaunchedEffect(terminal.host, terminal.poiIdOverride) {
+        if (terminal.host.isNotBlank() && terminal.poiIdOverride.isNotBlank()) terminalEntered = true
+    }
+    var boarded by remember { mutableStateOf(false) }
+    LaunchedEffect(terminal.paymentsAppInstallationId) {
+        if (terminal.paymentsAppInstallationId.isNotBlank()) boarded = true
+    }
+    return SetupVisit(apiTested = apiTested, terminalEntered = terminalEntered, boarded = boarded)
 }
 
 /** The environment chosen before using a network or cloud terminal; no default silently opts into real payments. */
 @Composable
 private fun ColumnScope.EnvironmentStep(
+    number: Int,
+    done: Boolean,
     environment: TerminalEnvironment?,
     update: TerminalUpdate,
 ) {
-    StepHeader(1, stringResource(R.string.settings_environment), done = environment != null)
+    StepHeader(number, stringResource(R.string.settings_environment), done = done)
     SettingNote(stringResource(R.string.settings_environment_hint), Modifier.testTag("environmentHint"))
     Column(Modifier.selectableGroup().testTag("environment")) {
         TerminalEnvironment.entries.forEach { value ->
@@ -294,36 +305,11 @@ private fun ApiEntry.testCompleted(
     return matches && settled
 }
 
-/** A terminal reached by the local Terminal API: this one ([onTerminal]), or one on the network. */
+/** Setting up Tap to Pay with the Adyen Payments app on this phone: its store, the Payments app API key and boarding. */
 @Composable
-private fun ColumnScope.LocalTerminalSteps(
-    onTerminal: Boolean,
-    verified: Boolean,
+private fun ColumnScope.TapToPayEntry(
+    number: Int,
     state: SettingsUiState,
-    actions: SettingsActions,
-    events: SettingsEvents,
-    setupEvents: TerminalSetupEvents,
-    update: TerminalUpdate,
-) {
-    val first = if (onTerminal) 2 else 4
-    if (!onTerminal) {
-        NetworkTerminalStep(3, state.settings.terminal, update)
-        var terminalComplete by remember { mutableStateOf(false) }
-        val terminal = state.settings.terminal
-        LaunchedEffect(terminal.host, terminal.poiIdOverride) {
-            if (terminal.host.isNotBlank() && terminal.poiIdOverride.isNotBlank()) terminalComplete = true
-        }
-        if (!terminalComplete && terminal.keyIdentifier.isBlank() && Secret.TERMINAL_PASSPHRASE !in state.secrets) return
-    }
-    SharedKeyStep(first, verified, state, actions, events, setupEvents, update)
-}
-
-/** Tap to Pay with the Adyen Payments app on this phone: the app, the Checkout API, setting it up, the shared key. */
-@Composable
-private fun ColumnScope.TapToPaySteps(
-    verified: Boolean,
-    state: SettingsUiState,
-    actions: SettingsActions,
     setup: TerminalSetupActions,
     events: SettingsEvents,
     setupEvents: TerminalSetupEvents,
@@ -331,7 +317,7 @@ private fun ColumnScope.TapToPaySteps(
 ) {
     val terminal = state.settings.terminal
     TapToPayStep(
-        number = 3,
+        number = number,
         installationId = terminal.paymentsAppInstallationId,
         storeId = terminal.storeId,
         apiKeySaved = Secret.PAYMENTS_APP_API_KEY in state.secrets,
@@ -342,24 +328,17 @@ private fun ColumnScope.TapToPaySteps(
         onForgetApiKey = { events.onSecretChange(Secret.PAYMENTS_APP_API_KEY, null) },
         onDraft = { setupEvents.onSecretDraft(Secret.PAYMENTS_APP_API_KEY, it) },
     )
-    var boarded by remember { mutableStateOf(false) }
-    LaunchedEffect(terminal.paymentsAppInstallationId) {
-        if (terminal.paymentsAppInstallationId.isNotBlank()) boarded = true
-    }
-    if (boarded || terminal.keyIdentifier.isNotBlank() || Secret.TERMINAL_PASSPHRASE in state.secrets) {
-        SharedKeyStep(4, verified, state, actions, events, setupEvents, update)
-    }
 }
 
 /** The IP address and POIID of a terminal on the network; a terminal running the app knows both itself. */
 @Composable
 private fun ColumnScope.NetworkTerminalStep(
     number: Int,
+    done: Boolean,
     terminal: TerminalSettings,
     update: TerminalUpdate,
 ) {
-    val entered = terminal.host.isNotBlank() && terminal.poiIdOverride.isNotBlank()
-    StepHeader(number, stringResource(R.string.settings_step_terminal), done = entered)
+    StepHeader(number, stringResource(R.string.settings_step_terminal), done = done)
     SettingNote(stringResource(R.string.settings_host_hint))
     SettingNote(stringResource(R.string.settings_poiid_help))
     SettingTextField(

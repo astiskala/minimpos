@@ -35,7 +35,6 @@ import app.minimpos.app.feature.sale.SaleResultScreen
 import app.minimpos.app.feature.sale.SaleScreen
 import app.minimpos.app.feature.sale.SavedCardReviewScreen
 import app.minimpos.app.feature.sale.SavedCardScreen
-import app.minimpos.app.feature.sale.TokenChargeScreen
 import app.minimpos.app.feature.sale.WalletScreen
 import app.minimpos.app.feature.settings.SettingsScreen
 import app.minimpos.app.feature.settings.SettingsSectionScreen
@@ -112,7 +111,6 @@ private fun AppEntries(
                 entry<Route.SavedCard> { PinGate(navigator, manager = true) { SavedCardScreen(navigator) } }
                 entry<Route.SavedCardSale> { PinGate(navigator, manager = true) { SaleScreen(navigator, SaleKind.SALE, card = it.card) } }
                 entry<Route.SavedCardReview> { PinGate(navigator, manager = true) { SavedCardReviewScreen(it.card, navigator) } }
-                entry<Route.TokenCharge> { TokenChargeScreen(navigator) }
                 entry<Route.Reconciliation> { ReconciliationScreen(navigator) }
                 entry<Route.History> { HistoryScreen(navigator) }
                 entry<Route.SaleDetail> { SaleDetailScreen(it.saleId, navigator) }

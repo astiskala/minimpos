@@ -7,13 +7,13 @@ import app.minimpos.app.data.settings.AppSettings
 import app.minimpos.app.data.settings.ShopperReferenceSource
 import app.minimpos.app.payment.Checkout
 import app.minimpos.app.payment.SaleSession
-import app.minimpos.app.payment.SavedCardCharges
 import app.minimpos.app.payment.SavedCardLookup
 import app.minimpos.app.payment.SavedCardLookupState
 import app.minimpos.app.payment.TransactionState
 import app.minimpos.app.payment.savedCardStart
 import app.minimpos.core.money.CurrencySpec
 import app.minimpos.terminal.checkout.StoredCard
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
@@ -63,7 +63,8 @@ data class SavedCardUiState(
  * reference is typed into the session's form, as checkout reads it; nothing is stored until a charge starts.
  *
  * @param session The saved-card sale's own session.
- * @param charges Lists cards and charges them.
+ * @param progress The payment running or finished ([app.minimpos.app.payment.FinancialOperations.paymentProgress]),
+ *   which the review screen follows to its result.
  * @param lookup Explicit lookup retained across the reference, cart and review screens.
  * @param settings The current settings, for the shopper reference source and recurring model.
  * @param currency The currency charged.
@@ -72,7 +73,7 @@ data class SavedCardUiState(
  */
 class SavedCardViewModel(
     private val session: SaleSession,
-    private val charges: SavedCardCharges,
+    progress: Flow<TransactionState>,
     private val lookup: SavedCardLookup,
     settings: StateFlow<AppSettings>,
     currency: (AppSettings) -> CurrencySpec,
@@ -83,7 +84,7 @@ class SavedCardViewModel(
 
     /** The screen state, updated as the form, cart, setup, lookup or charge changes. */
     val state: StateFlow<SavedCardUiState> =
-        combine(checkout, lookup.state, charges.state) { current, found, charge ->
+        combine(checkout, lookup.state, progress) { current, found, charge ->
             val payment = current.payment
             SavedCardUiState(
                 checkout = current,
@@ -118,7 +119,4 @@ class SavedCardViewModel(
         val start = session.savedCardStart(current.checkout, card, clock.instant(), zone()) ?: return false
         return lookup.start(start) != null
     }
-
-    /** Leaves a finished charge, so the next one can start. */
-    fun acknowledge() = charges.acknowledge()
 }

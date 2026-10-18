@@ -15,7 +15,6 @@ import app.minimpos.terminal.client.TerminalTotalsOutcome
 import app.minimpos.terminal.transport.Fault
 import com.google.common.truth.Truth.assertThat
 import org.junit.Test
-import java.math.BigDecimal
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
@@ -397,8 +396,8 @@ class HistoryAccountingTest {
                 closedPeriod = true,
                 totals =
                     listOf(
-                        TerminalCurrencyTotals("USD", BigDecimal("115.00"), 1, BigDecimal("20.00"), 1),
-                        TerminalCurrencyTotals("EUR", BigDecimal("50.00"), 1, BigDecimal.ZERO, 0),
+                        TerminalCurrencyTotals("USD", 11_500, 1, 2000, 1),
+                        TerminalCurrencyTotals("EUR", 5000, 1, 0, 0),
                     ),
             )
         val matched = HistoryAccounting.compareReconciliation(items, "S1F2-1", matchedOutcome, day, ZoneOffset.UTC)
@@ -414,7 +413,7 @@ class HistoryAccountingTest {
             matchedOutcome.copy(
                 poiReconciliationId = null,
                 closedPeriod = false,
-                totals = listOf(TerminalCurrencyTotals("USD", BigDecimal("120.00"), 2, BigDecimal("15.00"), 1)),
+                totals = listOf(TerminalCurrencyTotals("USD", 12_000, 2, 1500, 1)),
             )
         val mismatched = HistoryAccounting.compareReconciliation(items, "S1F2-1", mismatchedOutcome, day, ZoneOffset.UTC)
         assertThat(mismatched.allMatch).isFalse()

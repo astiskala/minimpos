@@ -4,6 +4,7 @@ import app.minimpos.app.data.db.DeviceFault
 import app.minimpos.app.data.db.Failure
 import app.minimpos.app.data.db.SetupProblem
 import app.minimpos.app.data.db.StoredReason
+import app.minimpos.app.data.security.ManagerApproval
 import app.minimpos.app.terminal.Attempt
 import app.minimpos.app.terminal.TerminalGateway
 import app.minimpos.core.payment.PaymentContext
@@ -31,11 +32,15 @@ sealed interface TransactionState {
      * One is running.
      *
      * @property id The stored sale or refund.
+     * @property amount What it charges or refunds, as requested: for a payment of a partly paid sale, the balance.
+     * @property onTerminal Whether the shopper follows it on a terminal; false for one the app sends to Adyen itself.
      * @property canCancel Whether the terminal can be asked to stop it, which it can once its request is being sent.
      * @property cancelling Whether asking it to stop was already requested (an AbortRequest was sent).
      */
     data class Processing(
         val id: String,
+        val amount: OperationAmount,
+        val onTerminal: Boolean,
         val canCancel: Boolean = false,
         val cancelling: Boolean = false,
     ) : TransactionState
@@ -49,6 +54,17 @@ sealed interface TransactionState {
         val id: String,
     ) : TransactionState
 }
+
+/**
+ * What a financial operation charges or refunds, as its request asks for it.
+ *
+ * @property amountMinor In minor units of [currency].
+ * @property currency ISO 4217 code.
+ */
+data class OperationAmount(
+    val amountMinor: Long,
+    val currency: String,
+)
 
 /** What checking the outcome of an unconfirmed transaction again found, see [TransactionLifecycle.recheck]. */
 sealed interface Recheck {
@@ -102,8 +118,14 @@ data class Settlement(
 
 /** The Terminal API request a transaction sends. */
 sealed interface TerminalOperation {
+    /** What it charges or refunds, which its waiting screen shows. */
+    val amount: OperationAmount
+
+    /** Whether it moves money only with Manager approval, see [ManagerApproval]. */
+    val needsApproval: Boolean
+
     /**
-     * A card payment.
+     * A card payment. MOTO and MKE payments need Manager approval; ordinary card entry does not.
      *
      * @property params What to charge.
      * @property expected Original destination for a scanned payment; null for ordinary terminal collection.
@@ -113,16 +135,23 @@ sealed interface TerminalOperation {
         val params: PaymentParams,
         val expected: PaymentContext? = null,
         val setupIdentity: String? = null,
-    ) : TerminalOperation
+    ) : TerminalOperation {
+        override val amount: OperationAmount get() = OperationAmount(params.amountMinor, params.currency)
+        override val needsApproval: Boolean get() = params.cardEntryOverride.needsManagerApproval
+    }
 
     /**
-     * A referenced refund.
+     * A referenced refund, which always needs Manager approval.
      *
      * @property params The payment to refund, and how much.
+     * @property amount The amount refunded, the whole original amount for a full one.
      */
     data class Refund(
         val params: RefundParams,
-    ) : TerminalOperation
+        override val amount: OperationAmount,
+    ) : TerminalOperation {
+        override val needsApproval: Boolean get() = true
+    }
 }
 
 /**
@@ -145,7 +174,7 @@ interface TransactionBook<R> {
         createdAt: Long,
     )
 
-    /** The request to send for [request]. */
+    /** The request to send for [request]: pure, so it also says what the waiting screen shows and whether it needs approval. */
     fun operation(request: R): TerminalOperation
 
     /** Erases transient request material after every attempt, including persistence failures; recovery facts remain intact. */
@@ -209,7 +238,8 @@ interface TransactionBook<R> {
  * @param clock Stamps the records.
  * @param newId Generates record IDs.
  * @param newServiceId Generates the ServiceIDs of the requests.
- * @param permits Whether the action is authorized now, checked again immediately before sending.
+ * @param approval Manager approval of the operations that need it ([TerminalOperation.needsApproval]): taken when one
+ *   starts and checked again immediately before sending.
  */
 class TransactionLifecycle<R>(
     private val scope: CoroutineScope,
@@ -219,9 +249,9 @@ class TransactionLifecycle<R>(
     private val clock: Clock = Clock.systemUTC(),
     private val newId: () -> String = { Uuid.random().toString() },
     private val newServiceId: () -> String = { TerminalClient.randomServiceId() },
-    private val permits: suspend (R) -> Boolean = { true },
+    private val approval: ManagerApproval = ManagerApproval.NOT_REQUIRED,
 ) {
-    private val runner = OperationRunner<R>(scope)
+    private val runner = OperationRunner<R>(scope, onTerminal = true) { book.operation(it).amount }
 
     /** The current transaction; the waiting and result screens follow it. */
     val state: StateFlow<TransactionState> = runner.state
@@ -232,10 +262,12 @@ class TransactionLifecycle<R>(
 
     /**
      * Starts [request] in the background and returns the new record's ID straight away; null, with nothing stored or
-     * sent, while a transaction is already in progress (such as a second tap on the same action).
+     * sent, while a transaction is already in progress (such as a second tap on the same action). Call it when the
+     * operator starts the transaction: it keeps the Manager approval held now.
      */
-    fun start(request: R): String? =
-        runner.start(
+    fun start(request: R): String? {
+        val grant = approval.grant()
+        return runner.start(
             request,
             id = { book.existingId(request) ?: newId() },
             interrupted = { id, _ ->
@@ -244,7 +276,8 @@ class TransactionLifecycle<R>(
                 book.settle(id, Settlement(SettlementStatus.UNKNOWN, null, reason = StoredReason.Unconfirmed(unexpected)))
             },
             release = { book.release(request) },
-        ) { id -> run(id, request) }
+        ) { id -> run(id, request, grant) }
+    }
 
     /**
      * Asks the terminal to cancel the running transaction (an AbortRequest). Does nothing before its request is being
@@ -300,6 +333,7 @@ class TransactionLifecycle<R>(
     private suspend fun run(
         id: String,
         request: R,
+        grant: ManagerApproval.Grant,
     ) {
         val serviceId = newServiceId()
         book.open(id, request, serviceId, clock.millis())
@@ -310,11 +344,12 @@ class TransactionLifecycle<R>(
                 (current as? TransactionState.Processing)?.takeIf { it.id == id }?.copy(canCancel = true) ?: current
             }
         }
+        val operation = book.operation(request)
         val attempt =
-            if (!permits(request)) {
+            if (operation.needsApproval && !approval.allows(grant)) {
                 Attempt.NotSetUp(SetupProblem.MANAGER_APPROVAL)
             } else {
-                when (val operation = book.operation(request)) {
+                when (operation) {
                     is TerminalOperation.Pay -> {
                         gateway.pay(
                             operation.params,

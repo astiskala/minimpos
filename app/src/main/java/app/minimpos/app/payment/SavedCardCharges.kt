@@ -9,6 +9,7 @@ import app.minimpos.app.data.db.SetupProblem
 import app.minimpos.app.data.repo.HistoryItem
 import app.minimpos.app.data.repo.SaleEvent
 import app.minimpos.app.data.repo.SaleRepository
+import app.minimpos.app.data.security.ManagerApproval
 import app.minimpos.app.data.settings.ShopperReferenceSource
 import app.minimpos.app.history.simulatedSale
 import app.minimpos.app.terminal.ApiAccess
@@ -97,7 +98,7 @@ sealed interface CardLookup {
  *   to clear its originating session and arm automatic delivery.
  * @param clock Stamps the sales and decides whether an unknown charge may be sent again.
  * @param newId Generates sale IDs.
- * @param permits Whether Manager approval allows a charge now, checked under the operation lock.
+ * @param approval Manager approval, which every charge needs: taken when it starts, checked again before sending.
  * @param targets Current targets, including credential changes; fixed-target tests may use the default one reading.
  */
 class SavedCardCharges(
@@ -107,10 +108,10 @@ class SavedCardCharges(
     onCharged: (id: String, start: SavedCardStart) -> Unit = { _, _ -> },
     clock: Clock = Clock.systemUTC(),
     newId: () -> String = { Uuid.random().toString() },
-    permits: suspend () -> Boolean = { true },
+    approval: ManagerApproval = ManagerApproval.NOT_REQUIRED,
     private val targets: Flow<ApiTarget> = flow { emit(target()) },
 ) {
-    private val operations = CheckoutOperations(scope, Book(sales), target, onCharged, clock, newId, permits)
+    private val operations = CheckoutOperations(scope, Book(sales), target, onCharged, clock, newId, approval)
 
     /** The charge running now, which the charging screen follows to its result. */
     val state: StateFlow<TransactionState> = operations.state
@@ -171,6 +172,10 @@ class SavedCardCharges(
     private class Book(
         private val sales: SaleRepository,
     ) : CheckoutBook<SavedCardStart, SavedCardApi> {
+        override val needsApproval: Boolean get() = true
+
+        override fun amount(request: SavedCardStart): OperationAmount = request.payment.amount
+
         override suspend fun open(
             id: String,
             request: SavedCardStart,

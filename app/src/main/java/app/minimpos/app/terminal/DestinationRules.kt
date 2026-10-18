@@ -110,6 +110,12 @@ sealed interface DestinationRules {
     ): Boolean = false
 
     /**
+     * The steps of Settings › Terminal this destination asks for on this device ([onTerminal]), in the order they are
+     * done; [TerminalSetupPlan] numbers and reveals them. None for the simulator.
+     */
+    fun setupSteps(onTerminal: Boolean): List<SetupStepKind> = emptyList()
+
+    /**
      * Whether printing is offered when Settings › Receipts › Printer is set to detect it, with [settings], the [poiId]
      * and what terminals reported about their printers ([printers], by POIID). By default a terminal reported as having
      * one, or not asked yet and an S1F2 or S1F4 (models such as the S1E4Pro and S1F4Pro share the same `Build.MODEL`).

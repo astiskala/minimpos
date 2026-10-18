@@ -586,7 +586,11 @@ data class RefundEntity(
      * Added in database version 10.
      */
     val reason: StoredReason? = null,
-    /** Actual refund connection, persisted before sending; null before sending. */
+    /**
+     * The connection the refund belongs to: for a terminal refund, the one it is actually sent with, persisted before
+     * sending (null until then); for a Checkout refund ([checkoutRefund]), the original payment's context, stored when
+     * it is opened.
+     */
     val context: PaymentContext? = null,
     /** Terminal acceptance time in epoch milliseconds; null before acceptance or when unavailable. */
     val processedAt: Long? = null,

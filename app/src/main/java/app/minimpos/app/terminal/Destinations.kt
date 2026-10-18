@@ -5,6 +5,7 @@ import app.minimpos.app.data.security.Secret
 import app.minimpos.app.data.settings.AppSettings
 import app.minimpos.app.data.settings.TerminalMode
 import app.minimpos.app.data.settings.TerminalSettings
+import app.minimpos.core.money.AdyenCurrencies
 import app.minimpos.core.payment.PaymentContext
 import app.minimpos.terminal.checkout.PaymentModifications
 import app.minimpos.terminal.checkout.SavedCardApi
@@ -124,6 +125,8 @@ sealed interface Destination {
                         application = application,
                         transactionTimeout = rules.transactionTimeout,
                         recovery = rules.recovery,
+                        // Amounts cross the client in minor units; Adyen's decimals convert them for nexo.
+                        currencyDigits = { AdyenCurrencies[it]?.decimals },
                     )
                 Connection.Open(client, rules) { setup.paymentContext(opening.environment() ?: setup.environment) }
             }
@@ -268,6 +271,13 @@ internal class LocalTerminal(
 
         override fun selectsEnvironment(onTerminal: Boolean): Boolean = !onTerminal
 
+        override fun setupSteps(onTerminal: Boolean): List<SetupStepKind> =
+            if (onTerminal) {
+                listOf(SetupStepKind.ADYEN_API, SetupStepKind.SHARED_KEY)
+            } else {
+                listOf(SetupStepKind.ENVIRONMENT, SetupStepKind.ADYEN_API, SetupStepKind.NETWORK_TERMINAL, SetupStepKind.SHARED_KEY)
+            }
+
         override fun learnedEnvironment(
             setup: TerminalSetup,
             detected: DetectedEnvironment,
@@ -390,6 +400,9 @@ internal class CloudTerminal(
 
         override fun selectsEnvironment(onTerminal: Boolean): Boolean = true
 
+        override fun setupSteps(onTerminal: Boolean): List<SetupStepKind> =
+            listOf(SetupStepKind.ENVIRONMENT, SetupStepKind.ADYEN_API, SetupStepKind.CLOUD_TERMINAL)
+
         override fun learnedEnvironment(
             setup: TerminalSetup,
             detected: DetectedEnvironment,
@@ -460,6 +473,10 @@ internal class PaymentsAppDestination(
         override val secrets: Set<Secret> get() = setOf(Secret.TERMINAL_PASSPHRASE)
         override val supportsTerminalFeatures: Boolean get() = false
         override val boardsPhone: Boolean get() = true
+
+        override fun setupSteps(onTerminal: Boolean): List<SetupStepKind> =
+            listOf(SetupStepKind.PAYMENTS_APP, SetupStepKind.ADYEN_API, SetupStepKind.TAP_TO_PAY, SetupStepKind.SHARED_KEY)
+
         override val aborts: Boolean get() = false
         override val diagnoses: Boolean get() = false
         override val recovery: RecoveryPolicy get() = RECOVERY

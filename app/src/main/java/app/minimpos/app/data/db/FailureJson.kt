@@ -31,49 +31,95 @@ internal object FailureJson {
     private const val ERROR_CODE = "errorCode"
     private const val KEY = "key"
 
-    private val CODECS: List<Codec<out Fault>> =
-        listOf(
-            codec<Fault.Unreachable>("UNREACHABLE", { host(it.host, it.terminal) }) { it.host(Fault::Unreachable) },
-            codec<Fault.UnknownHost>("UNKNOWN_HOST", { host(it.host, it.terminal) }) { it.host(Fault::UnknownHost) },
-            codec<Fault.Untrusted>("UNTRUSTED", { put(HOST, it.host) }) { json -> json.string(HOST)?.let(Fault::Untrusted) },
-            codec<Fault.KeyRejected>("KEY_REJECTED", { put(SAID, it.said?.text) }) { Fault.KeyRejected(it.text(SAID)) },
-            codec<Fault.TerminalRejected>("TERMINAL_REJECTED", { put(SAID, it.said?.text) }) { Fault.TerminalRejected(it.text(SAID)) },
-            codec<Fault.TerminalOffline>("TERMINAL_OFFLINE", {
-                put(POI_ID, it.poiId)
-                put(SAID, it.said?.text)
-            }) { json -> json.string(POI_ID)?.let { Fault.TerminalOffline(it, json.text(SAID)) } },
-            fixed("NOT_STARTED", Fault.NotStarted),
-            codec<Fault.AppRefused>("APP_REFUSED", { put(SAID, it.said?.text) }) { Fault.AppRefused(it.text(SAID)) },
-            fixed("UNSUPPORTED", Fault.Unsupported),
-            fixed("NO_LATE_REPLY", Fault.NoLateReply),
-            fixed("NO_RECORD", Fault.NoRecord),
-            fixed("REQUEST_NOT_ENCRYPTED", Fault.RequestNotEncrypted),
-            codec<Fault.Credential>("CREDENTIAL", { put(KEY, it.key.name) }) { json -> json.key()?.let(Fault::Credential) },
-            codec<Fault.Permission>("PERMISSION", {
-                put(KEY, it.key.name)
-                it.role?.let { role -> put("role", role) }
-            }) { json -> json.key()?.let { Fault.Permission(it, json.string("role")) } },
-            codec<Fault.NotFound>("NOT_FOUND", { fault -> fault.poiId?.let { put(POI_ID, it) } }) { Fault.NotFound(it.string(POI_ID)) },
-            codec<Fault.AdyenRejected>("ADYEN_REJECTED", { adyen(it.http, it.errorCode, it.said) }) { it.adyen(Fault::AdyenRejected) },
-            fixed("LIST_TOO_LARGE", Fault.ListTooLarge),
-            fixed("TIMED_OUT", Fault.TimedOut),
-            fixed("CONNECTION_LOST", Fault.ConnectionLost),
-            fixed("REPLY_UNVERIFIED", Fault.ReplyUnverified),
-            codec<Fault.UnreadableReply>("UNREADABLE_REPLY", { put(SAID, it.said?.text) }) { Fault.UnreadableReply(it.text(SAID)) },
-            codec<Fault.Malformed>("MALFORMED", { put("part", it.part.name) }) { json ->
-                MalformedPart.entries.find { it.name == json.string("part") }?.let(Fault::Malformed)
-            },
-            codec<Fault.NoAnswerFromTerminal>("NO_ANSWER_FROM_TERMINAL", {
-                put(POI_ID, it.poiId)
-                put(SAID, it.said?.text)
-            }) { json -> json.string(POI_ID)?.let { Fault.NoAnswerFromTerminal(it, json.text(SAID)) } },
-            fixed("ABANDONED", Fault.Abandoned),
-            codec<Fault.TerminalHttp>("TERMINAL_HTTP", { put(HTTP, it.code) }) { json -> json.int(HTTP)?.let(Fault::TerminalHttp) },
-            codec<Fault.AdyenUnavailable>("ADYEN_UNAVAILABLE", { adyen(it.http, it.errorCode, it.said) }) {
-                it.adyen(Fault::AdyenUnavailable)
-            },
-            fixed("STILL_IN_PROGRESS", Fault.StillInProgress),
-        )
+    /**
+     * Every codec, in definition order: each one registers itself here when it is made, so reading knows every kind
+     * writing can produce. Declared before the codecs, which the object initialises in order.
+     */
+    private val CODECS = mutableListOf<Codec<out Fault>>()
+
+    private val UNREACHABLE = codec<Fault.Unreachable>("UNREACHABLE", { host(it.host, it.terminal) }) { it.host(Fault::Unreachable) }
+    private val UNKNOWN_HOST = codec<Fault.UnknownHost>("UNKNOWN_HOST", { host(it.host, it.terminal) }) { it.host(Fault::UnknownHost) }
+    private val UNTRUSTED = codec<Fault.Untrusted>("UNTRUSTED", { put(HOST, it.host) }) { json -> json.string(HOST)?.let(Fault::Untrusted) }
+    private val KEY_REJECTED = codec<Fault.KeyRejected>("KEY_REJECTED", { put(SAID, it.said?.text) }) { Fault.KeyRejected(it.text(SAID)) }
+    private val TERMINAL_REJECTED =
+        codec<Fault.TerminalRejected>("TERMINAL_REJECTED", { put(SAID, it.said?.text) }) { Fault.TerminalRejected(it.text(SAID)) }
+    private val TERMINAL_OFFLINE =
+        codec<Fault.TerminalOffline>("TERMINAL_OFFLINE", {
+            put(POI_ID, it.poiId)
+            put(SAID, it.said?.text)
+        }) { json -> json.string(POI_ID)?.let { Fault.TerminalOffline(it, json.text(SAID)) } }
+    private val NOT_STARTED = fixed("NOT_STARTED", Fault.NotStarted)
+    private val APP_REFUSED = codec<Fault.AppRefused>("APP_REFUSED", { put(SAID, it.said?.text) }) { Fault.AppRefused(it.text(SAID)) }
+    private val UNSUPPORTED = fixed("UNSUPPORTED", Fault.Unsupported)
+    private val NO_LATE_REPLY = fixed("NO_LATE_REPLY", Fault.NoLateReply)
+    private val NO_RECORD = fixed("NO_RECORD", Fault.NoRecord)
+    private val REQUEST_NOT_ENCRYPTED = fixed("REQUEST_NOT_ENCRYPTED", Fault.RequestNotEncrypted)
+    private val CREDENTIAL = codec<Fault.Credential>("CREDENTIAL", { put(KEY, it.key.name) }) { json -> json.key()?.let(Fault::Credential) }
+    private val PERMISSION =
+        codec<Fault.Permission>("PERMISSION", {
+            put(KEY, it.key.name)
+            it.role?.let { role -> put("role", role) }
+        }) { json -> json.key()?.let { Fault.Permission(it, json.string("role")) } }
+    private val NOT_FOUND =
+        codec<Fault.NotFound>("NOT_FOUND", { fault -> fault.poiId?.let { put(POI_ID, it) } }) { Fault.NotFound(it.string(POI_ID)) }
+    private val ADYEN_REJECTED =
+        codec<Fault.AdyenRejected>("ADYEN_REJECTED", { adyen(it.http, it.errorCode, it.said) }) { it.adyen(Fault::AdyenRejected) }
+    private val LIST_TOO_LARGE = fixed("LIST_TOO_LARGE", Fault.ListTooLarge)
+    private val TIMED_OUT = fixed("TIMED_OUT", Fault.TimedOut)
+    private val CONNECTION_LOST = fixed("CONNECTION_LOST", Fault.ConnectionLost)
+    private val REPLY_UNVERIFIED = fixed("REPLY_UNVERIFIED", Fault.ReplyUnverified)
+    private val UNREADABLE_REPLY =
+        codec<Fault.UnreadableReply>("UNREADABLE_REPLY", { put(SAID, it.said?.text) }) { Fault.UnreadableReply(it.text(SAID)) }
+    private val MALFORMED =
+        codec<Fault.Malformed>("MALFORMED", { put("part", it.part.name) }) { json ->
+            MalformedPart.entries.find { it.name == json.string("part") }?.let(Fault::Malformed)
+        }
+    private val NO_ANSWER_FROM_TERMINAL =
+        codec<Fault.NoAnswerFromTerminal>("NO_ANSWER_FROM_TERMINAL", {
+            put(POI_ID, it.poiId)
+            put(SAID, it.said?.text)
+        }) { json -> json.string(POI_ID)?.let { Fault.NoAnswerFromTerminal(it, json.text(SAID)) } }
+    private val ABANDONED = fixed("ABANDONED", Fault.Abandoned)
+    private val TERMINAL_HTTP =
+        codec<Fault.TerminalHttp>("TERMINAL_HTTP", { put(HTTP, it.code) }) { json -> json.int(HTTP)?.let(Fault::TerminalHttp) }
+    private val ADYEN_UNAVAILABLE =
+        codec<Fault.AdyenUnavailable>("ADYEN_UNAVAILABLE", { adyen(it.http, it.errorCode, it.said) }) { it.adyen(Fault::AdyenUnavailable) }
+    private val STILL_IN_PROGRESS = fixed("STILL_IN_PROGRESS", Fault.StillInProgress)
+
+    /**
+     * How [fault] is stored. Exhaustive over [Fault], so a new kind of fault does not compile until it has a codec, rather
+     * than failing when its stored reason is written.
+     */
+    private fun codecOf(fault: Fault): Codec<out Fault> =
+        when (fault) {
+            is Fault.Unreachable -> UNREACHABLE
+            is Fault.UnknownHost -> UNKNOWN_HOST
+            is Fault.Untrusted -> UNTRUSTED
+            is Fault.KeyRejected -> KEY_REJECTED
+            is Fault.TerminalRejected -> TERMINAL_REJECTED
+            is Fault.TerminalOffline -> TERMINAL_OFFLINE
+            Fault.NotStarted -> NOT_STARTED
+            is Fault.AppRefused -> APP_REFUSED
+            Fault.Unsupported -> UNSUPPORTED
+            Fault.NoLateReply -> NO_LATE_REPLY
+            Fault.NoRecord -> NO_RECORD
+            Fault.RequestNotEncrypted -> REQUEST_NOT_ENCRYPTED
+            is Fault.Credential -> CREDENTIAL
+            is Fault.Permission -> PERMISSION
+            is Fault.NotFound -> NOT_FOUND
+            is Fault.AdyenRejected -> ADYEN_REJECTED
+            Fault.ListTooLarge -> LIST_TOO_LARGE
+            Fault.TimedOut -> TIMED_OUT
+            Fault.ConnectionLost -> CONNECTION_LOST
+            Fault.ReplyUnverified -> REPLY_UNVERIFIED
+            is Fault.UnreadableReply -> UNREADABLE_REPLY
+            is Fault.Malformed -> MALFORMED
+            is Fault.NoAnswerFromTerminal -> NO_ANSWER_FROM_TERMINAL
+            Fault.Abandoned -> ABANDONED
+            is Fault.TerminalHttp -> TERMINAL_HTTP
+            is Fault.AdyenUnavailable -> ADYEN_UNAVAILABLE
+            Fault.StillInProgress -> STILL_IN_PROGRESS
+        }
 
     /** [failure] as JSON. */
     fun encode(failure: Failure): String =
@@ -93,7 +139,7 @@ internal object FailureJson {
                 }
 
                 is Failure.Remote -> {
-                    val codec = CODECS.first { it.type.isInstance(failure.fault) }
+                    val codec = codecOf(failure.fault)
                     kind("fault", codec.kind)
                     codec.write(this, failure.fault)
                 }
@@ -176,12 +222,12 @@ internal object FailureJson {
         kind: String,
         noinline write: JsonObjectBuilder.(T) -> Unit,
         noinline read: (JsonObject) -> T?,
-    ) = Codec(kind, T::class.java, write, read)
+    ) = Codec(kind, T::class.java, write, read).also { CODECS += it }
 
     private fun <T : Fault> fixed(
         kind: String,
         fault: T,
-    ) = Codec(kind, fault.javaClass, {}, { fault })
+    ) = Codec(kind, fault.javaClass, {}, { fault }).also { CODECS += it }
 
     private fun JsonObjectBuilder.host(
         host: String,

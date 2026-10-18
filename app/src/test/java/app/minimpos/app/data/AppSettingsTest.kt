@@ -15,6 +15,7 @@ import app.minimpos.app.data.settings.SimulatorSettings
 import app.minimpos.app.data.settings.StorageJson
 import app.minimpos.app.data.settings.TerminalMode
 import app.minimpos.app.data.settings.TerminalSettings
+import app.minimpos.app.newInstallation
 import app.minimpos.core.tax.TaxMode
 import app.minimpos.terminal.transport.CloudRegion
 import app.minimpos.terminal.transport.TerminalEnvironment
@@ -74,7 +75,7 @@ class AppSettingsTest {
 
     @Test
     fun `a new installation asks for a customer reference, prints automatically and taxes as is usual there`() {
-        val australia = AppSettings.forNewInstallation("AU")
+        val australia = newInstallation("AU")
         assertThat(australia.payment.askTransactionReference).isFalse()
         assertThat(australia.payment.shopperReferenceSource).isEqualTo(ShopperReferenceSource.CUSTOMER_REFERENCE)
         assertThat(australia.payment.asksCustomerReference).isTrue()
@@ -82,20 +83,22 @@ class AppSettingsTest {
         assertThat(australia.payment.receiptTipping).isEqualTo(ReceiptTipping.DISABLED)
         listOf("", "AU", "HK", "JP", "US").forEach { country ->
             listOf("en", "zh", "ja").forEach { language ->
-                assertThat(AppSettings.forNewInstallation(country, language).receipt.showReferences).isTrue()
+                assertThat(newInstallation(country, language).receipt.showReferences).isTrue()
             }
         }
         assertThat(australia.payment.taxMode).isEqualTo(TaxMode.INCLUSIVE)
-        assertThat(AppSettings.forNewInstallation("US").payment.taxMode).isEqualTo(TaxMode.EXCLUSIVE)
+        assertThat(newInstallation("US").payment.taxMode).isEqualTo(TaxMode.EXCLUSIVE)
         assertThat(AppSettings().payment.askTransactionReference).isFalse()
         assertThat(AppSettings().payment.shopperReferenceSource).isEqualTo(ShopperReferenceSource.CUSTOMER_REFERENCE)
         assertThat(AppSettings().receipt.autoPrint).isTrue()
-        assertThat(australia.copy(payment = PaymentSettings(), receipt = ReceiptSettings())).isEqualTo(AppSettings())
+        assertThat(
+            australia.copy(payment = PaymentSettings(), receipt = ReceiptSettings(), email = AppSettings().email),
+        ).isEqualTo(AppSettings())
     }
 
     @Test
     fun `new installations show the virtual receipt while a stored choice to hide it is kept`() {
-        assertThat(AppSettings.forNewInstallation("AU").payment.showVirtualReceipt).isTrue()
+        assertThat(newInstallation("AU").payment.showVirtualReceipt).isTrue()
         val hidden = AppSettings(payment = PaymentSettings(showVirtualReceipt = false))
         val stored = StorageJson.encodeToString(serializer<AppSettings>(), hidden)
         assertThat(StorageJson.decodeFromString(serializer<AppSettings>(), stored).payment.showVirtualReceipt).isFalse()
@@ -103,21 +106,21 @@ class AppSettingsTest {
 
     @Test
     fun `regional receipt defaults remain ordinary configurable settings`() {
-        val australia = AppSettings.forNewInstallation("AU")
+        val australia = newInstallation("AU")
         assertThat(australia.receipt.markedTaxRateMilliPercent).isEqualTo(0)
         assertThat(australia.receipt.showTaxAmounts).isTrue()
-        val hongKong = AppSettings.forNewInstallation("HK")
+        val hongKong = newInstallation("HK")
         assertThat(hongKong.payment.chargeTax).isFalse()
         assertThat(hongKong.receipt.showTaxAmounts).isFalse()
         assertThat(hongKong.receipt.showTaxRateTotals).isFalse()
         listOf("GB", "DE", "RO", "SE").forEach { country ->
-            val settings = AppSettings.forNewInstallation(country)
+            val settings = newInstallation(country)
             assertThat(settings.receipt.showTaxRateTotals).isTrue()
             assertThat(settings.receipt.showTaxAmounts).isTrue()
             assertThat(settings.receipt.markedTaxRateMilliPercent).isNull()
         }
         listOf("NZ", "SG", "MY", "US", "CA", "MX", "BR", "").forEach { country ->
-            val settings = AppSettings.forNewInstallation(country)
+            val settings = newInstallation(country)
             assertThat(settings.receipt.showTaxRateTotals).isFalse()
             assertThat(settings.receipt.showTaxAmounts).isTrue()
             assertThat(settings.receipt.markedTaxRateMilliPercent).isNull()
@@ -126,14 +129,14 @@ class AppSettingsTest {
 
     @Test
     fun `Japanese language selects initial receipt style without changing regional pricing`() {
-        val japanese = AppSettings.forNewInstallation("AU", "ja")
+        val japanese = newInstallation("AU", "ja")
         assertThat(japanese.receipt.showTaxAmounts).isFalse()
         assertThat(japanese.receipt.showTaxRateTotals).isTrue()
         assertThat(japanese.receipt.markedTaxRateMilliPercent).isEqualTo(8_000)
         assertThat(japanese.payment.taxMode).isEqualTo(TaxMode.INCLUSIVE)
-        assertThat(AppSettings.forNewInstallation("US", "ja").payment.taxMode).isEqualTo(TaxMode.EXCLUSIVE)
-        assertThat(AppSettings.forNewInstallation("HK", "ja").payment.chargeTax).isFalse()
-        assertThat(AppSettings.forNewInstallation(" gb ").receipt.showTaxRateTotals).isTrue()
+        assertThat(newInstallation("US", "ja").payment.taxMode).isEqualTo(TaxMode.EXCLUSIVE)
+        assertThat(newInstallation("HK", "ja").payment.chargeTax).isFalse()
+        assertThat(newInstallation(" gb ").receipt.showTaxRateTotals).isTrue()
     }
 
     @Test
@@ -170,9 +173,9 @@ class AppSettingsTest {
                 "SK",
             )
         countries.forEach { country ->
-            assertThat(AppSettings.forNewInstallation(country).receipt.showTaxRateTotals).isTrue()
+            assertThat(newInstallation(country).receipt.showTaxRateTotals).isTrue()
         }
-        assertThat(AppSettings.forNewInstallation("CH").receipt.showTaxRateTotals).isFalse()
+        assertThat(newInstallation("CH").receipt.showTaxRateTotals).isFalse()
     }
 
     @Test

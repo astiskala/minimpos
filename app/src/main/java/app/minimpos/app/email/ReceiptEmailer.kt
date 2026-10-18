@@ -7,6 +7,7 @@ import app.minimpos.app.data.security.SecretStore
 import app.minimpos.app.data.settings.AppSettings
 import app.minimpos.app.data.settings.SettingsRepository
 import app.minimpos.app.receipt.ActionResult
+import app.minimpos.app.receipt.ReceiptKind
 import app.minimpos.core.receipt.HtmlReceiptRenderer
 import app.minimpos.core.receipt.PlainTextReceiptRenderer
 import app.minimpos.core.receipt.ReceiptDocument
@@ -61,57 +62,29 @@ class ReceiptEmailer(
     private val texts: EmailTexts get() = currentTexts()
 
     /**
-     * Emails [document], the receipt of the sale (or, with [preAuthorisation], the pre-authorisation) with merchant
-     * reference [reference], to [to]. [simulatedLink] uses a demo subject and intro, even after completion.
+     * Emails [document], a receipt of [kind] with merchant reference [reference], to [to]. Its subject and introduction
+     * follow the kind, as the document does: a payment link's request to pay gets the payment link subject, an offline
+     * demo the demo subject and note, even after completion; others the receipt subject with their own introduction.
      */
-    suspend fun sendSale(
+    suspend fun send(
         to: String,
         document: ReceiptDocument,
         reference: String,
-        preAuthorisation: Boolean = false,
-        simulatedLink: Boolean = false,
+        kind: ReceiptKind,
     ): ActionResult {
         val current = settings.current()
-        val intro =
-            if (simulatedLink) {
-                texts.simulationNote
-            } else if (preAuthorisation) {
-                texts.preAuthIntro
-            } else {
-                texts.intro
+        val words = texts
+        val envelope =
+            when (kind) {
+                ReceiptKind.SALE -> Envelope(words.intro, current.email.subject)
+                ReceiptKind.PRE_AUTHORISATION -> Envelope(words.preAuthIntro, current.email.subject)
+                ReceiptKind.UNPAID_LINK -> Envelope(words.linkIntro, words.linkSubject)
+                ReceiptKind.DEMO_LINK -> Envelope(words.simulationNote, words.demoSubject)
+                ReceiptKind.REFUND -> Envelope(words.refundIntro, current.email.subject)
+                ReceiptKind.CANCELLATION -> Envelope(words.cancellationIntro, current.email.subject)
             }
-        return send(current, to, document, intro, reference, if (simulatedLink) texts.demoSubject else current.email.subject)
+        return send(current, to, document, reference, envelope)
     }
-
-    /**
-     * Emails [document], the unpaid receipt (with the payment link) of the sale with merchant reference [reference], to
-     * [to], under the payment link subject rather than the receipt one. [simulated] identifies a non-payable demo.
-     */
-    suspend fun sendPaymentLink(
-        to: String,
-        document: ReceiptDocument,
-        reference: String,
-        simulated: Boolean = false,
-    ): ActionResult =
-        send(
-            settings.current(),
-            to,
-            document,
-            if (simulated) texts.simulationNote else texts.linkIntro,
-            reference,
-            if (simulated) texts.demoSubject else texts.linkSubject,
-        )
-
-    /**
-     * Emails [document], the receipt of the refund (or, with [cancellation], of the cancelled hold) with
-     * merchant reference [reference], to [to].
-     */
-    suspend fun sendRefund(
-        to: String,
-        document: ReceiptDocument,
-        reference: String,
-        cancellation: Boolean = false,
-    ): ActionResult = send(settings.current(), to, document, if (cancellation) texts.cancellationIntro else texts.refundIntro, reference)
 
     /** Sends a short test email to [to], to check the SMTP settings. */
     suspend fun sendTest(to: String): ActionResult {
@@ -125,9 +98,8 @@ class ReceiptEmailer(
         current: AppSettings,
         to: String,
         document: ReceiptDocument,
-        intro: String,
         reference: String,
-        subjectFormat: String = current.email.subject,
+        envelope: Envelope,
     ): ActionResult {
         validate(current, to)?.let { return it }
         val business =
@@ -135,9 +107,10 @@ class ReceiptEmailer(
                 .trim()
                 .ifEmpty { texts.appName }
         val subject =
-            subjectFormat
+            envelope.subjectFormat
                 .replace("{business}", business)
                 .replace("{reference}", reference)
+        val intro = envelope.intro
         val images = document.qrCodes.mapIndexed { index, qr -> InlineImage("qr$index", qrPng(qr.content)) }
         val message =
             EmailMessage(
@@ -172,4 +145,15 @@ class ReceiptEmailer(
             // The sender name cannot be encoded: the server never got the message.
             ActionResult.Failed(Failure.Email(EmailFault.REJECTED))
         }
+
+    /**
+     * What a receipt email of one kind says around the receipt.
+     *
+     * @property intro The text above the receipt.
+     * @property subjectFormat The subject, with its `{business}` and `{reference}` placeholders.
+     */
+    private class Envelope(
+        val intro: String,
+        val subjectFormat: String,
+    )
 }

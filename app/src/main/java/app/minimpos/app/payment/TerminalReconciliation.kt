@@ -3,6 +3,7 @@ package app.minimpos.app.payment
 import app.minimpos.app.data.db.Failure
 import app.minimpos.app.data.repo.HistoryItem
 import app.minimpos.app.data.repo.HistoryRepository
+import app.minimpos.app.data.security.ManagerApproval
 import app.minimpos.app.history.HistoryAccounting
 import app.minimpos.app.history.TerminalReconciliationReport
 import app.minimpos.app.terminal.Attempt
@@ -37,14 +38,15 @@ sealed interface ReconciliationOutcome {
  * One terminal reconciliation, run the way Home's Reconciliation screen offers it: every unresolved terminal operation
  * of the current terminal is checked again first ([FinancialOperations.recheck], the way it was sent), then the
  * terminal's current totals are read — or its period closed when asked — and compared against local accounting for the
- * day ([HistoryAccounting.compareReconciliation]). Closing a period rechecks [permits] immediately before sending, so
- * a Manager approval that expired meanwhile sends nothing.
+ * day ([HistoryAccounting.compareReconciliation]). Closing a period keeps the Manager approval held when it starts and
+ * checks it again immediately before sending, so one that expired meanwhile sends nothing.
  *
  * @param history The retained activity the unresolved operations are read from and compared.
  * @param operations Asks the terminal again about unresolved operations, the way each was sent.
  * @param gateway Reads the terminal's totals or closes its reconciliation period.
  * @param terminal The current terminal, whose POIID scopes the unresolved operations and the comparison.
- * @param permits Whether closing the period is authorized now, checked again before sending.
+ * @param approval Manager approval of closing the period: taken when the reconciliation starts, checked again before
+ *   sending.
  * @param zone The time zone the compared [LocalDate] is counted in.
  */
 class TerminalReconciliation(
@@ -52,23 +54,24 @@ class TerminalReconciliation(
     private val operations: FinancialOperations,
     private val gateway: TerminalGateway,
     private val terminal: Flow<TerminalState>,
-    private val permits: suspend () -> Boolean = { true },
+    private val approval: ManagerApproval = ManagerApproval.NOT_REQUIRED,
     private val zone: () -> ZoneId = { ZoneId.systemDefault() },
 ) {
     /**
      * Reconciles the terminal's totals with local accounting for [date] ([ReconciliationOutcome.Reconciled]), or
-     * returns why nothing could be compared or closed ([ReconciliationOutcome.Failed]). Closing while [permits] denies
-     * it sends nothing and changes no sale.
+     * returns why nothing could be compared or closed ([ReconciliationOutcome.Failed]). Call it when the operator starts
+     * it; closing without Manager approval sends nothing and changes no sale.
      */
     suspend fun reconcile(
         date: LocalDate = LocalDate.now(zone()),
         closePeriod: Boolean = false,
     ): ReconciliationOutcome {
+        val grant = approval.grant()
         val poiId = terminal.first().poiId.orEmpty()
         HistoryAccounting.unresolvedTerminalItems(history.items().first(), poiId).forEach { item ->
             operations.recheck(item.storedTransaction())
         }
-        return when (val attempt = gateway.totals(closePeriod, permits)) {
+        return when (val attempt = gateway.totals(closePeriod) { approval.allows(grant) }) {
             is Attempt.NotSetUp -> {
                 ReconciliationOutcome.Failed(Failure.NotSetUp(attempt.problem))
             }

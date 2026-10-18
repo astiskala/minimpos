@@ -199,6 +199,21 @@ class SessionLock(
     /** Whether the session is unlocked and unexpired; a thread-safe check that does not refresh activity. */
     fun allows(autoLockMillis: Long): Boolean = unlocked.value && (autoLockMillis <= 0 || clock() - lastActivity < autoLockMillis)
 
+    /**
+     * When something approved now was approved, in this lock's clock: now while the session [allows] it, else null.
+     * See [unexpired].
+     */
+    fun approvalTime(autoLockMillis: Long): Long? = if (allows(autoLockMillis)) clock() else null
+
+    /**
+     * Whether an approval taken at [approvedAt] ([approvalTime]) has not timed out after [autoLockMillis] of
+     * inactivity, whether or not the session was locked since; 0 or less never times out.
+     */
+    fun unexpired(
+        approvedAt: Long,
+        autoLockMillis: Long,
+    ): Boolean = autoLockMillis <= 0 || clock() - approvedAt < autoLockMillis
+
     /** Locks an expired session without refreshing activity; 0 or less disables inactivity expiry. */
     fun expire(autoLockMillis: Long) {
         if (unlocked.value && autoLockMillis > 0 && clock() - lastActivity >= autoLockMillis) lock()

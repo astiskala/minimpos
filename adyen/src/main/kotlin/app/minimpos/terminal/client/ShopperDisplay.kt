@@ -43,13 +43,13 @@ private const val MAX_RATING = 10
  * @property count Quantity of the item.
  * @property description Item name.
  * @property currency Currency symbol or code.
- * @property amount Line gross amount in major units.
+ * @property amountMinor Line gross amount in minor units.
  */
 data class VirtualReceiptLine(
     val count: Int,
     val description: String,
     val currency: String,
-    val amount: BigDecimal,
+    val amountMinor: Long,
 )
 
 /**
@@ -57,23 +57,30 @@ data class VirtualReceiptLine(
  *
  * @property header Heading above the item list.
  * @property lines Line items in cart order.
- * @property subtotal Optional subtotal before tax in major units.
- * @property tax Optional total tax in major units.
- * @property total Final total in major units.
+ * @property subtotalMinor Optional subtotal before tax in minor units.
+ * @property taxMinor Optional total tax in minor units.
+ * @property totalMinor Final total in minor units.
  * @property currency Currency symbol or ISO 4217 code.
  * @property totalLabel Label for the total line.
  */
 data class VirtualReceipt(
     val header: String,
     val lines: List<VirtualReceiptLine>,
-    val subtotal: BigDecimal? = null,
-    val tax: BigDecimal? = null,
-    val total: BigDecimal,
+    val subtotalMinor: Long? = null,
+    val taxMinor: Long? = null,
+    val totalMinor: Long,
     val currency: String,
     val totalLabel: String = "Total",
 ) {
-    /** Renders the Adyen virtual-receipt XML document for terminal model [poiId]. */
-    fun toXml(poiId: String = ""): String {
+    /**
+     * Renders the Adyen virtual-receipt XML document for terminal model [poiId], with amounts in major units of
+     * [fractionDigits] decimals (the currency's Adyen decimals).
+     */
+    fun toXml(
+        poiId: String = "",
+        fractionDigits: Int,
+    ): String {
+        fun major(minor: Long) = BigDecimal.valueOf(minor, fractionDigits).toPlainString()
         val screen = if (poiId.startsWith("M400-", ignoreCase = true)) "virtual_receipt02.xslt" else "virtual-receipt.xslt"
         return buildString {
             append("""<?xml version="1.0" encoding="UTF-8"?>""")
@@ -83,20 +90,20 @@ data class VirtualReceipt(
                 append("<lineitem>")
                 append("<count>${line.count}</count>")
                 append("<description>${escapeXml(line.description)}</description>")
-                append("<amount><currency>${escapeXml(line.currency)}</currency><value>${line.amount.toPlainString()}</value></amount>")
+                append("<amount><currency>${escapeXml(line.currency)}</currency><value>${major(line.amountMinor)}</value></amount>")
                 append("</lineitem>")
             }
             append("</lines>")
-            subtotal?.let {
+            subtotalMinor?.let {
                 append("<subtotal><description>Subtotal</description>")
-                append("<amount><currency>${escapeXml(currency)}</currency><value>${it.toPlainString()}</value></amount></subtotal>")
+                append("<amount><currency>${escapeXml(currency)}</currency><value>${major(it)}</value></amount></subtotal>")
             }
-            tax?.let {
+            taxMinor?.let {
                 append("<tax><taxtotal><description>Tax</description>")
-                append("<amount><currency>${escapeXml(currency)}</currency><value>${it.toPlainString()}</value></amount></taxtotal></tax>")
+                append("<amount><currency>${escapeXml(currency)}</currency><value>${major(it)}</value></amount></taxtotal></tax>")
             }
             append("<total><description>${escapeXml(totalLabel)}</description>")
-            append("<amount><currency>${escapeXml(currency)}</currency><value>${total.toPlainString()}</value></amount></total>")
+            append("<amount><currency>${escapeXml(currency)}</currency><value>${major(totalMinor)}</value></amount></total>")
             append("</receipt></screen>")
         }
     }
@@ -189,7 +196,7 @@ private suspend fun TerminalClient.shopperSession(
 
 /** Displays a [VirtualReceipt] (`OutputFormat=XHTML`) on the customer display. */
 private suspend fun TerminalClient.displayVirtualReceipt(receipt: VirtualReceipt): Boolean {
-    val xmlBytes = receipt.toXml(identity.poiId).toByteArray(Charsets.UTF_8)
+    val xmlBytes = receipt.toXml(identity.poiId, money.fractionDigits(receipt.currency)).toByteArray(Charsets.UTF_8)
     val output =
         DisplayOutput().apply {
             device = DeviceType.CUSTOMER_DISPLAY
@@ -372,7 +379,7 @@ private inline fun <T : Any> parseInputDelivery(
 }
 
 /** Queries the two-step Adyen Giving donation status (`SaleID=AdyenGiving`) for [givingServiceId], returning the donated amount. */
-private suspend fun TerminalClient.givingDonation(givingServiceId: String): BigDecimal? {
+private suspend fun TerminalClient.givingDonation(givingServiceId: String): Long? {
     val delivery =
         sendShortMessage(MessageClassType.SERVICE, MessageCategoryType.TRANSACTION_STATUS) {
             transactionStatusRequest =
@@ -399,7 +406,7 @@ private suspend fun TerminalClient.givingDonation(givingServiceId: String): BigD
         ?.takeIf { it.response?.result == ResultType.SUCCESS }
         ?.paymentResult
         ?.amountsResp
-        ?.authorizedAmount
+        ?.let { money.minor(it.authorizedAmount, it.currency) }
 }
 
 internal suspend fun TerminalClient.executeShopperFlow(
@@ -422,7 +429,7 @@ private suspend fun TerminalClient.attachGivingDonation(outcome: TransactionOutc
     if (outcome !is TransactionOutcome.Completed || !outcome.details.success) return outcome
     val givingId = outcome.details.givingServiceId ?: return outcome
     val donation = givingDonation(givingId) ?: return outcome
-    return outcome.copy(details = outcome.details.copy(donationAmount = donation))
+    return outcome.copy(details = outcome.details.copy(donationMinor = donation))
 }
 
 private suspend fun TerminalClient.confirmBasket(
@@ -498,7 +505,7 @@ private fun shopperCancelledDetails(merchantReference: String): TransactionDetai
         poiTimestamp = null,
         pspReference = null,
         merchantReference = merchantReference,
-        amount = null,
+        amountMinor = null,
         currency = null,
         paymentBrand = null,
         maskedPan = null,

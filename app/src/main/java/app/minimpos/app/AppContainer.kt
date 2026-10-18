@@ -16,6 +16,7 @@ import app.minimpos.app.data.repo.RefundRepository
 import app.minimpos.app.data.repo.SaleRepository
 import app.minimpos.app.data.repo.SampleData
 import app.minimpos.app.data.security.KeystoreSecretCipher
+import app.minimpos.app.data.security.ManagerApproval
 import app.minimpos.app.data.security.PinManager
 import app.minimpos.app.data.security.Secret
 import app.minimpos.app.data.security.SecretBlob
@@ -23,7 +24,9 @@ import app.minimpos.app.data.security.SecretCipher
 import app.minimpos.app.data.security.SecretStore
 import app.minimpos.app.data.security.SessionLock
 import app.minimpos.app.data.settings.AppSettings
+import app.minimpos.app.data.settings.InstallationText
 import app.minimpos.app.data.settings.JsonDataStoreSerializer
+import app.minimpos.app.data.settings.NewInstallation
 import app.minimpos.app.data.settings.PaymentSettings
 import app.minimpos.app.data.settings.SettingsRepository
 import app.minimpos.app.data.settings.TerminalMode
@@ -89,7 +92,6 @@ import app.minimpos.core.tax.StarterTax
 import app.minimpos.terminal.checkout.AdyenCheckout
 import app.minimpos.terminal.checkout.CheckoutApi
 import app.minimpos.terminal.checkout.CheckoutCredentials
-import app.minimpos.terminal.client.CardEntryOverride
 import app.minimpos.terminal.client.PosApplication
 import app.minimpos.terminal.paymentsapp.AdyenPaymentsAppManagement
 import app.minimpos.terminal.paymentsapp.AppLinkExchange
@@ -178,32 +180,7 @@ class AppContainer(
     onboardingCompleted: Boolean = false,
 ) {
     private val country = device.country.trim().uppercase(Locale.ROOT)
-    private val defaults =
-        AppSettings
-            .forNewInstallation(
-                country,
-                context.resources.configuration.locales[0]
-                    .language,
-            ).let {
-                it.copy(
-                    receipt =
-                        it.receipt.copy(
-                            title = context.resources.getString(R.string.receipt_default_title),
-                            footer = context.resources.getString(R.string.receipt_default_footer),
-                            taxIdLabel = context.resources.getString(taxIdLabelResource()),
-                            markedTaxRateNote =
-                                context.resources.getString(
-                                    if (country == "AU" && it.receipt.markedTaxRateMilliPercent == 0) {
-                                        R.string.receipt_default_no_gst_note
-                                    } else {
-                                        R.string.receipt_default_tax_marker_note
-                                    },
-                                ),
-                        ),
-                    email = it.email.copy(subject = context.resources.getString(R.string.email_default_subject)),
-                    onboardingCompleted = onboardingCompleted,
-                )
-            }
+    private val defaults = installation(context).settings.copy(onboardingCompleted = onboardingCompleted)
 
     /** Non-secret settings (`settings.json`). */
     val settings = SettingsRepository(store("settings.json", serializer<AppSettings>(), defaults))
@@ -229,11 +206,22 @@ class AppContainer(
     /** Whether money-moving actions are currently unlocked. */
     val managerLock = SessionLock()
 
+    /**
+     * Manager approval of money-moving operations: taken when one starts, so leaving the screen that approved it cannot
+     * refuse it, and checked again before sending.
+     */
+    val managerApproval =
+        ManagerApproval(
+            configured = { managerPin.pinConfigured.first() },
+            session = managerLock,
+            autoLockMillis = { settingsState.value.security.autoLockMinutes.minutes.inWholeMilliseconds },
+        )
+
     /** Whether the admin area is unlocked. */
     val sessionLock = SessionLock()
 
     /** Tax rates, categories and products. */
-    val catalog = CatalogRepository(database, localizedContext.getString(R.string.tax_default_zero))
+    val catalog = CatalogRepository(database) { installation(localizedContext).zeroRateName }
 
     /** Stored sales. */
     val sales = SaleRepository(database)
@@ -427,7 +415,7 @@ class AppContainer(
                 // The cart has been paid for, so the next payment of its kind starts afresh.
                 completeSale(id, start)
             },
-            permits = { start -> start.cardEntryOverride == CardEntryOverride.NORMAL || managerPermits() },
+            approval = managerApproval,
         )
 
     /** Transient wallet scanning delegates to the same sale lifecycle, with original-context send protection. */
@@ -450,7 +438,7 @@ class AppContainer(
         )
 
     /** Enters tips and captures and adjusts payments taken with manual capture. */
-    val captures = Captures(sales, api::target, ::managerPermits)
+    val captures = Captures(sales, api::target, managerApproval)
 
     /** Creates payment links for sales, asks Adyen whether they were paid, and cancels them. */
     val links =
@@ -463,7 +451,7 @@ class AppContainer(
                 // The cart is now the link's to pay, so the next sale starts afresh.
                 completeSale(id, start.payment)
             },
-            permits = ::managerPermits,
+            approval = managerApproval,
         )
 
     /** Runs referenced refunds and keeps their progress. */
@@ -473,7 +461,7 @@ class AppContainer(
             gateway = gateway,
             book = RefundBook(refundRecords),
             onSucceeded = { id, _ -> receipts.arm(id) },
-            permits = { managerPermits() },
+            approval = managerApproval,
         )
 
     /** Charges saved cards through the Checkout API and asks again about unknown charges. */
@@ -485,7 +473,7 @@ class AppContainer(
             onCharged = { id, start ->
                 completeSale(id, start.payment, if (start.fromCheckout) session(SaleKind.SALE) else savedCardSession)
             },
-            permits = ::managerPermits,
+            approval = managerApproval,
             targets = api.targets,
         )
 
@@ -499,7 +487,7 @@ class AppContainer(
 
     /** Refunds saved-card charges through the Checkout API, which has no terminal transaction to reverse. */
     private val checkoutRefunds =
-        CheckoutRefunds(appScope, refundRecords, sales, api::target, onAccepted = { receipts.arm(it) }, permits = ::managerPermits)
+        CheckoutRefunds(appScope, refundRecords, sales, api::target, onAccepted = { receipts.arm(it) }, approval = managerApproval)
 
     /**
      * Every financial operation, whichever way it is sent: status checks, refund routing and whether anything is being
@@ -512,7 +500,7 @@ class AppContainer(
      * totals against local accounting, so the screens only follow its outcome.
      */
     val reconciliation =
-        TerminalReconciliation(history, operations, gateway, terminalStatus.state, permits = ::managerPermits)
+        TerminalReconciliation(history, operations, gateway, terminalStatus.state, approval = managerApproval)
 
     /** Refund/cancellation initiation and capture retries, keeping reference facts out of screens. */
     val storedPaymentActions = StoredPaymentActions(operations, captures, settingsState)
@@ -592,24 +580,18 @@ class AppContainer(
      * The tax rates a new installation starts with, named in the current language: the [StarterTax] of the device's
      * country (its standard rate, and a reduced one where it has one), then always a 0% rate.
      */
-    internal fun starterTaxRates(): List<TaxRateEntity> {
-        val starter = StarterTax.forCountry(device.country)
-        return listOfNotNull(
-            starter.standardMilliPercent?.let {
-                TaxRateEntity(
-                    name = localizedContext.getString(standardTaxNameResource()),
-                    rateMilliPercent = it,
-                )
-            },
-            starter.reducedMilliPercent?.let {
-                TaxRateEntity(
-                    name = localizedContext.getString(R.string.tax_default_reduced),
-                    rateMilliPercent = it,
-                )
-            },
-            TaxRateEntity(name = localizedContext.getString(R.string.tax_default_zero), rateMilliPercent = 0),
-        )
-    }
+    internal fun starterTaxRates(): List<TaxRateEntity> = installation(localizedContext).starterTaxRates
+
+    /**
+     * What a new installation starts with in this device's country, worded with [localized]'s resources (the device's
+     * language for the stored defaults, the app language for names made later).
+     */
+    private fun installation(localized: Context): NewInstallation =
+        NewInstallation(
+            country,
+            localized.resources.configuration.locales[0]
+                .language,
+        ) { localized.getString(it.resource()) }
 
     /** Records actual touch, key or text-entry activity for both PIN sessions; call on the main thread. */
     fun userActivity() {
@@ -621,14 +603,6 @@ class AppContainer(
     /** The currency payments are taken in with [appSettings] (by default the current ones). */
     fun currency(appSettings: AppSettings = settingsState.value): CurrencySpec =
         resolveCurrency(appSettings.payment, Locale.forLanguageTag("und-${device.country}"))
-
-    internal suspend fun managerPermits(): Boolean =
-        !managerPin.pinConfigured.first() ||
-            managerLock.allows(
-                settings
-                    .current()
-                    .security.autoLockMinutes.minutes.inWholeMilliseconds,
-            )
 
     private fun <T> store(
         name: String,
@@ -642,26 +616,32 @@ class AppContainer(
             produceFile = { storageDir(name) },
         )
 
+    /** The resource of each text a new installation starts with: the Android adapter of [NewInstallation]'s texts. */
     @StringRes
-    private fun taxIdLabelResource(): Int =
-        when (country) {
-            "AU" -> R.string.receipt_tax_id_abn
-            "NZ" -> R.string.receipt_tax_id_gst
-            "SG" -> R.string.receipt_tax_id_gst_registration
-            "MY" -> R.string.receipt_tax_id_sst_registration
-            "CA" -> R.string.receipt_tax_id_gst_hst
-            "MX" -> R.string.receipt_tax_id_rfc
-            "BR" -> R.string.receipt_tax_id_cpf_cnpj
-            else -> if (country in AppSettings.VAT_COUNTRIES) R.string.receipt_tax_id_vat else R.string.receipt_default_tax_id
-        }
-
-    @StringRes
-    private fun standardTaxNameResource(): Int =
-        when (country) {
-            "AU", "NZ", "SG" -> R.string.tax_name_gst
-            "MY" -> R.string.tax_name_sst
-            "MX" -> R.string.tax_name_iva
-            else -> if (country in AppSettings.VAT_COUNTRIES) R.string.tax_name_vat else R.string.tax_default_standard
+    private fun InstallationText.resource(): Int =
+        when (this) {
+            InstallationText.RECEIPT_TITLE -> R.string.receipt_default_title
+            InstallationText.RECEIPT_FOOTER -> R.string.receipt_default_footer
+            InstallationText.EMAIL_SUBJECT -> R.string.email_default_subject
+            InstallationText.TAX_ID_DEFAULT -> R.string.receipt_default_tax_id
+            InstallationText.TAX_ID_ABN -> R.string.receipt_tax_id_abn
+            InstallationText.TAX_ID_GST -> R.string.receipt_tax_id_gst
+            InstallationText.TAX_ID_GST_REGISTRATION -> R.string.receipt_tax_id_gst_registration
+            InstallationText.TAX_ID_SST_REGISTRATION -> R.string.receipt_tax_id_sst_registration
+            InstallationText.TAX_ID_GST_HST -> R.string.receipt_tax_id_gst_hst
+            InstallationText.TAX_ID_RFC -> R.string.receipt_tax_id_rfc
+            InstallationText.TAX_ID_CPF_CNPJ -> R.string.receipt_tax_id_cpf_cnpj
+            InstallationText.TAX_ID_VAT -> R.string.receipt_tax_id_vat
+            InstallationText.NO_TAX_NOTE -> R.string.receipt_default_no_gst_note
+            InstallationText.TAX_MARKER_NOTE -> R.string.receipt_default_tax_marker_note
+            InstallationText.TAX_GST -> R.string.tax_name_gst
+            InstallationText.TAX_SST -> R.string.tax_name_sst
+            InstallationText.TAX_IVA -> R.string.tax_name_iva
+            InstallationText.TAX_VAT -> R.string.tax_name_vat
+            InstallationText.TAX_STANDARD -> R.string.tax_default_standard
+            InstallationText.TAX_REDUCED -> R.string.tax_default_reduced
+            InstallationText.TAX_ZERO -> R.string.tax_default_zero
+            InstallationText.SAMPLE_TAX -> R.string.receipt_sample_tax
         }
 
     private fun receiptTexts(languageTag: String = settingsState.value.languageTag): ReceiptTexts {
@@ -728,10 +708,7 @@ class AppContainer(
         ReceiptSampleTexts(
             coffee = localizedContext.getString(R.string.receipt_sample_coffee),
             custom = localizedContext.getString(R.string.receipt_sample_item),
-            taxed =
-                localizedContext.getString(
-                    standardTaxNameResource().takeUnless { it == R.string.tax_default_standard } ?: R.string.receipt_sample_tax,
-                ),
+            taxed = installation(localizedContext).sampleTaxName,
             zero = localizedContext.getString(R.string.receipt_sample_zero_tax),
         )
 
@@ -778,10 +755,11 @@ class AppContainer(
             paidOnline = localizedContext.getString(R.string.receipt_paid_online),
         )
 
+    // The demo label and note are the receipt's own, so an email's envelope says what its receipt says.
     private fun emailTexts() =
         EmailTexts(
-            demoSubject = localizedContext.getString(R.string.link_demo_label),
-            simulationNote = localizedContext.getString(R.string.link_simulation_note),
+            demoSubject = receiptTexts().demoLink,
+            simulationNote = receiptTexts().simulationNote,
             appName = localizedContext.getString(R.string.app_name),
             intro = localizedContext.getString(R.string.email_intro),
             refundIntro = localizedContext.getString(R.string.email_refund_intro),

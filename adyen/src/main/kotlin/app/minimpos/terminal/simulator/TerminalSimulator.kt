@@ -6,7 +6,6 @@ import app.minimpos.terminal.client.NexoVocabulary
 import app.minimpos.terminal.client.OfflineProcessingMode
 import app.minimpos.terminal.client.PrintJob
 import app.minimpos.terminal.client.TerminalClient
-import app.minimpos.terminal.client.TerminalCurrencyTotals
 import app.minimpos.terminal.client.toPrintJob
 import app.minimpos.terminal.transport.CompletedTransactions
 import app.minimpos.terminal.transport.Delivery
@@ -161,7 +160,7 @@ class TerminalSimulator(
     private val inProgress = ConcurrentHashMap.newKeySet<String>()
     private val ledger = SimulatedLedger()
     private val reconciliationId = AtomicInteger(INITIAL_RECONCILIATION_ID)
-    private val periodTotals = ConcurrentHashMap<String, TerminalCurrencyTotals>()
+    private val periodTotals = ConcurrentHashMap<String, SimulatedPeriodTotals>()
     private val paymentAmountsByTransactionId = ConcurrentHashMap<String, Pair<String, BigDecimal>>()
 
     /** Adyen's Checkout API for the payments this simulator takes, answering from what happened to them. */
@@ -416,7 +415,7 @@ class TerminalSimulator(
             val key = if (payment.isOffline) payment.tender else "${payment.tender}.${payment.psp}"
             paymentAmountsByTransactionId[key] = currency to authorizedAmount
             periodTotals.compute(currency) { _, current ->
-                val base = current ?: TerminalCurrencyTotals(currency)
+                val base = current ?: SimulatedPeriodTotals(currency)
                 base.copy(debitAmount = base.debitAmount + authorizedAmount, debitCount = base.debitCount + 1)
             }
         }
@@ -546,11 +545,13 @@ class TerminalSimulator(
                 ?.transactionID
                 .orEmpty()
         val original = paymentAmountsByTransactionId[originalId]
-        val currency = original?.first ?: "EUR"
+        // A refund of a payment this simulator did not take states its currency only when partial; a full one of an
+        // unknown payment has no currency to count it in, so it is left out of the totals rather than counted as EUR.
+        val currency = original?.first ?: request.saleData?.saleToAcquirerData?.currency ?: return
         val reversed = request.reversedAmount ?: original?.second ?: BigDecimal.ZERO
         if (reversed > BigDecimal.ZERO) {
             periodTotals.compute(currency) { _, current ->
-                val base = current ?: TerminalCurrencyTotals(currency)
+                val base = current ?: SimulatedPeriodTotals(currency)
                 base.copy(creditAmount = base.creditAmount + reversed, creditCount = base.creditCount + 1)
             }
         }

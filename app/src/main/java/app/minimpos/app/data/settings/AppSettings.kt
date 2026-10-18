@@ -3,7 +3,6 @@ package app.minimpos.app.data.settings
 import app.minimpos.app.data.db.TaxRateEntity
 import app.minimpos.core.money.AdyenCurrencies
 import app.minimpos.core.shopper.EmailReferenceMode
-import app.minimpos.core.tax.StarterTax
 import app.minimpos.core.tax.TaxMode
 import app.minimpos.core.tax.TaxRates
 import app.minimpos.terminal.client.RecurringModel
@@ -11,7 +10,6 @@ import app.minimpos.terminal.simulator.SimulatedOutcome
 import app.minimpos.terminal.transport.CloudRegion
 import app.minimpos.terminal.transport.TerminalEnvironment
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.serializer
 
 /**
  * All non-secret configuration, stored as JSON in DataStore (`settings.json`) and edited in Settings. Shared-key
@@ -125,71 +123,9 @@ data class AppSettings(
                 ),
         )
 
-    /** The settings a new installation starts with. */
+    /** The display languages Settings offers. */
     companion object {
         internal val LANGUAGE_TAGS = listOf("", "en", "zh-CN", "zh-Hant", "ja")
-
-        internal val VAT_COUNTRIES =
-            setOf(
-                "AT",
-                "BE",
-                "BG",
-                "CY",
-                "CZ",
-                "DE",
-                "DK",
-                "EE",
-                "ES",
-                "FI",
-                "FR",
-                "GB",
-                "GR",
-                "HR",
-                "HU",
-                "IE",
-                "IT",
-                "LT",
-                "LU",
-                "LV",
-                "MT",
-                "NL",
-                "PL",
-                "PT",
-                "RO",
-                "SE",
-                "SI",
-                "SK",
-            )
-
-        /**
-         * The settings a new installation starts with in [country] (ISO 3166-1 alpha-2, possibly empty), using
-         * [language] (ISO 639-1, empty for the baseline receipt style): regional pricing and receipt display choices,
-         * no extra checkout references or card saving, and automatic receipts wherever there is a printer.
-         * These are initial values only; saved and transferred settings are used as written.
-         */
-        fun forNewInstallation(
-            country: String,
-            language: String = "",
-        ): AppSettings {
-            val code = country.trim().uppercase()
-            val japanese = language.equals("ja", ignoreCase = true)
-            val receipt = ReceiptSettings()
-            return AppSettings(
-                payment = PaymentSettings(taxMode = StarterTax.forCountry(code).mode, chargeTax = code != "HK"),
-                receipt =
-                    receipt.copy(
-                        showTaxAmounts = !japanese && code != "HK",
-                        showTaxRateTotals = japanese || code in VAT_COUNTRIES,
-                        markedTaxRateMilliPercent =
-                            when {
-                                japanese -> StarterTax.forCountry("JP").reducedMilliPercent
-                                code == "AU" -> 0
-                                else -> null
-                            },
-                        markedTaxRateNote = if (code == "AU" && !japanese) "※ No GST charged" else receipt.markedTaxRateNote,
-                    ),
-            )
-        }
     }
 }
 
@@ -318,13 +254,8 @@ data class TerminalSettings(
             storeId = device.storeId,
         )
 
-    internal fun verificationKey(
-        poiId: String?,
-        environment: TerminalEnvironment?,
-        destination: TerminalMode,
-    ): String =
-        StorageJson.encodeToString(serializer<TerminalSettings>(), copy(cloudRegion = null)) +
-            ":terminal-settings-write:${destination.name}:${poiId.orEmpty()}:${environment?.name.orEmpty()}"
+    /** These settings without the facts learned from Adyen rather than chosen (the cloud region). */
+    internal fun withoutLearnedFacts(): TerminalSettings = copy(cloudRegion = null)
 
     /** The limits of the numbers. */
     companion object {
@@ -385,7 +316,7 @@ enum class ReceiptTipping {
  * @property currencyCode Any currency in Adyen's currency table; blank follows the device's country.
  * @property chargeTax Off: no sale is taxed; products keep their tax rate for when it is switched back on.
  * @property taxMode Whether prices include tax; a new installation starts as is usual in the device's country
- *   ([AppSettings.forNewInstallation]).
+ *   ([NewInstallation.settings]).
  * @property defaultTaxRateId The tax rate new products and custom items start with; null (or a deleted rate) means the
  *   first rate.
  * @property referencePrefix Optional start of generated merchant references; they are unique without one.

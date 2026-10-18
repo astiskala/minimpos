@@ -169,12 +169,6 @@ data class Checkout(
                 !askGratuity &&
                 (form.tipOnReceipt ?: (payment.receiptTipping == ReceiptTipping.DEFAULT_ON))
 
-    /**
-     * Whether charging a token first needs the operator to confirm the sale takes no tip: it was rung up with tipping
-     * offered, which a saved-card charge never takes.
-     */
-    val tokenChargeNeedsNoTipConfirmation: Boolean get() = tipOnReceipt || askGratuity
-
     /** Whether Adyen Giving (`AskGiving`) is offered: for an immediate-charge sale on a destination that supports it. */
     val canAskGiving: Boolean
         get() = payment.askGiving != ReceiptTipping.DISABLED && !preAuthorisation && !tipOnReceipt && terminalTippingAvailable
@@ -199,14 +193,47 @@ data class Checkout(
             }
 
     /** True when the operator selected MOTO or MKE, requiring a fraud/liability warning and Manager PIN approval. */
-    val requiresSpecialEntryApproval: Boolean get() = effectiveCardEntry != CardEntryOverride.NORMAL
+    val requiresSpecialEntryApproval: Boolean get() = effectiveCardEntry.needsManagerApproval
+
+    /** What a tender other than the terminal leaves out of this sale: its tip and its donation invitation, when chosen. */
+    private val dropped: Set<DroppedOption>
+        get() =
+            buildSet {
+                if (tipOnReceipt || askGratuity) add(DroppedOption.TIP)
+                if (askGiving) add(DroppedOption.DONATION)
+            }
+
+    /**
+     * What must happen before this checkout is paid with [tender], the one reading of each tender's confirmations:
+     * what the tender drops of what the shopper would be offered (a payment link, scanned wallet or token takes no tip
+     * and invites no donation, as [linkStart], [walletStart] and [savedCardStart] leave them out), the special
+     * card-entry warning, and Manager approval, which every token charge and MOTO/MKE payment needs.
+     */
+    fun ceremony(tender: Tender): TenderCeremony =
+        when (tender) {
+            Tender.TERMINAL -> {
+                TenderCeremony(
+                    emptySet(),
+                    specialEntryWarning = requiresSpecialEntryApproval,
+                    managerApproval = requiresSpecialEntryApproval,
+                )
+            }
+
+            Tender.LINK, Tender.WALLET -> {
+                TenderCeremony(dropped, specialEntryWarning = false, managerApproval = false)
+            }
+
+            Tender.TOKEN -> {
+                TenderCeremony(dropped, specialEntryWarning = false, managerApproval = true)
+            }
+        }
 
     /** Resolved per-payment terminal tipping options when [askGratuity] is active; null otherwise. */
     fun terminalTipOptions(): TerminalTipOptions? {
         if (!askGratuity) return null
         val preTaxAmount =
-            currency.toMajor(totals.amounts.net).takeIf {
-                payment.tipOnPreTax && payment.chargeTax && totals.amounts.net in 1..<totals.amounts.gross
+            totals.amounts.net.takeIf {
+                payment.tipOnPreTax && payment.chargeTax && it in 1..<totals.amounts.gross
             }
         if (!payment.dynamicTipOverride && preTaxAmount == null) return TerminalTipOptions()
         val suggestions =
@@ -215,7 +242,7 @@ data class Checkout(
             } else {
                 TerminalTipSuggestions.Percentages(payment.tipPercentages, payment.allowCustomTip)
             }
-        return TerminalTipOptions(suggestions = suggestions, amountToTipOn = preTaxAmount)
+        return TerminalTipOptions(suggestions = suggestions, amountToTipOnMinor = preTaxAmount)
     }
 
     /** Resolved chained shopper display and input session for external terminals; null when disabled or unsupported. */
@@ -228,11 +255,11 @@ data class Checkout(
                     header = texts.order,
                     lines =
                         totals.lines.map {
-                            VirtualReceiptLine(it.line.quantity, it.line.name, currency.code, currency.toMajor(it.amounts.gross))
+                            VirtualReceiptLine(it.line.quantity, it.line.name, currency.code, it.amounts.gross)
                         },
-                    subtotal = currency.toMajor(totals.amounts.net).takeIf { payment.chargeTax },
-                    tax = currency.toMajor(totals.amounts.tax).takeIf { payment.chargeTax },
-                    total = currency.toMajor(totals.amounts.gross),
+                    subtotalMinor = totals.amounts.net.takeIf { payment.chargeTax },
+                    taxMinor = totals.amounts.tax.takeIf { payment.chargeTax },
+                    totalMinor = totals.amounts.gross,
                     currency = currency.code,
                     totalLabel = texts.total,
                 )
@@ -259,12 +286,6 @@ data class Checkout(
             ratingPrompt = ratingPrompt,
         )
     }
-
-    /** Amount requested on the first tender in minor units: operator-entered split amount when valid, else full gross total. */
-    val requestedAmountMinor: Long
-        get() =
-            form.splitAmountMinor?.takeIf { !preAuthorisation && it in 1..<totals.amounts.gross }
-                ?: totals.amounts.gross
 
     /** Whether "Pay" is enabled: something to charge and every entered field valid. */
     val canPay: Boolean get() = !totals.isEmpty && totals.amounts.gross > 0 && emailValid && referenceValid && customerReferenceValid
@@ -294,7 +315,6 @@ data class Checkout(
             terminalTip = terminalTipOptions(),
             shopperFlow = shopperSessionFlow(reference),
             allowPartialAuthorisation = allowPartial,
-            requestedAmountMinor = requestedAmountMinor,
             askGiving = askGiving,
             cardEntryOverride = effectiveCardEntry,
         )
@@ -413,3 +433,46 @@ data class Checkout(
         val MAX_LINK_LIFETIME: Duration = Duration.ofDays(70).minusMinutes(5)
     }
 }
+
+/** A way to pay a checkout: on the terminal, by payment link, with a scanned wallet code, or with a saved card (Charge token). */
+enum class Tender {
+    /** Card on the terminal, possibly with MOTO or MKE entry. */
+    TERMINAL,
+
+    /** A payment link the shopper pays on Adyen's page. */
+    LINK,
+
+    /** A shopper-presented wallet code scanned at checkout. */
+    WALLET,
+
+    /** A card saved for the shopper reference, charged through Checkout. */
+    TOKEN,
+}
+
+/** What a tender leaves out of a sale that the shopper would otherwise be offered, see [Checkout.ceremony]. */
+enum class DroppedOption {
+    /** Tipping on the receipt or on the terminal. */
+    TIP,
+
+    /** The Adyen Giving charity donation invitation. */
+    DONATION,
+}
+
+/**
+ * What must happen, in order, before a checkout is paid with one tender ([Checkout.ceremony]).
+ *
+ * @property drops What the tender leaves out, which the operator confirms first; empty when nothing is lost.
+ * @property specialEntryWarning Whether the MOTO/MKE fraud and liability warning is confirmed next.
+ * @property managerApproval Whether Manager approval is asked for last, which the operation checks again before sending.
+ */
+data class TenderCeremony(
+    val drops: Set<DroppedOption>,
+    val specialEntryWarning: Boolean,
+    val managerApproval: Boolean,
+)
+
+/**
+ * Whether a payment taken with this card entry needs Manager approval: MOTO and MKE do, ordinary entry does not. The
+ * one rule for both the checkout that asks for approval and the payment that checks it again before sending.
+ */
+internal val CardEntryOverride.needsManagerApproval: Boolean get() = this != CardEntryOverride.NORMAL

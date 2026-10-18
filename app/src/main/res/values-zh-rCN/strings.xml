@@ -89,6 +89,8 @@
   <string name="checkout_scan_wallet">扫描钱包</string>
   <string name="checkout_send_link">创建付款链接</string>
   <string name="checkout_link_without_tip">付款链接不支持终端小费或收据小费。是否不加小费创建链接？</string>
+  <string name="checkout_link_without_donation">付款链接不支持邀请慈善捐款。是否不邀请捐款创建链接？</string>
+  <string name="checkout_link_without_tip_or_donation">付款链接不支持小费或慈善捐款。是否不含这些选项创建链接？</string>
   <string name="checkout_pre_auth_note">仅冻结卡内金额。稍后可在“交易记录”中扣款或取消。</string>
   <string name="checkout_tip_on_receipt">在收据上填写小费</string>
   <string name="checkout_tip_on_receipt_hint">购物者在打印的收据上填写小费并签名。随后输入小费，即可扣取总额。</string>
@@ -128,6 +130,8 @@
   <string name="wallet_saving_note">已请求保存支付信息，是否可用取决于钱包。</string>
   <string name="wallet_payme_note">PayMe 扫码尚未验证，可能被拒绝。</string>
   <string name="wallet_without_tip">不加小费继续支付？扫码钱包付款不支持终端小费或收据小费，并会立即收取总额。</string>
+  <string name="wallet_without_donation">不邀请捐款继续支付？扫码钱包付款不支持邀请慈善捐款，并会立即收取总额。</string>
+  <string name="wallet_without_tip_or_donation">不加小费也不邀请捐款继续支付？扫码钱包付款两者均不支持，并会立即收取总额。</string>
   <string name="wallet_invalid_code">这不是该钱包的有效付款码。请重新扫描或更换钱包。</string>
   <string name="wallet_scan_failed">未收到付款码。请重新扫描或使用摄像头。</string>
   <string name="wallet_checkout_changed">结账或终端设置已改变。请返回结账并检查。</string>
@@ -1143,5 +1147,7 @@
   <string name="checkout_charge_token">令牌扣款</string>
   <string name="checkout_choose_token">选择令牌</string>
   <string name="checkout_token_without_tip">使用令牌扣款时不含小费。</string>
+  <string name="checkout_token_without_donation">使用令牌扣款时不邀请捐款。</string>
+  <string name="checkout_token_without_tip_or_donation">使用令牌扣款时不含小费，也不邀请捐款。</string>
   <string name="reconciliation_mismatch_hint">请在交易记录中处理需要关注的付款。使用此终端的其他设备也会计入其总额。</string>
 </resources>

@@ -68,9 +68,10 @@ sealed interface DeleteResult {
 class CatalogRepository(
     private val db: AppDatabase,
     /**
-     * Name for the 0% rate created when an imported catalogue leaves a product's tax rate unspecified.
+     * Name for the 0% rate created when an imported catalogue leaves a product's tax rate unspecified, read when one is
+     * created, so it follows the app language of that moment.
      */
-    private val zeroRateName: String = "No tax",
+    private val zeroRateName: () -> String = { "No tax" },
 ) {
     private val dao = db.catalogDao()
 
@@ -367,7 +368,7 @@ class CatalogRepository(
     private suspend fun zeroRateId(taxRates: ImportedTaxRates): Long =
         taxRates.zeroRateId ?: (
             dao.taxRatesOnce().firstOrNull { it.rateMilliPercent == 0 }?.id
-                ?: dao.insert(TaxRateEntity(name = zeroRateName, rateMilliPercent = 0, sortOrder = taxRates.ids.size)).also {
+                ?: dao.insert(TaxRateEntity(name = zeroRateName(), rateMilliPercent = 0, sortOrder = taxRates.ids.size)).also {
                     taxRates.added++
                 }
         ).also { taxRates.zeroRateId = it }

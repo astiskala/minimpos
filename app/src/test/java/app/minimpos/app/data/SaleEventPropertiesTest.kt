@@ -33,7 +33,7 @@ class SaleEventPropertiesTest {
             poiTimestamp = "2026-09-29T11:04:00.000Z",
             pspReference = "PSP1",
             merchantReference = "MP-1",
-            amount = null,
+            amountMinor = null,
             currency = "AUD",
             paymentBrand = "visa",
             maskedPan = null,

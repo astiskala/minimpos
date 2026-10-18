@@ -12,6 +12,7 @@ import app.minimpos.app.data.settings.AppSettings
 import app.minimpos.app.data.settings.JsonDataStoreSerializer
 import app.minimpos.app.data.settings.StorageJson
 import app.minimpos.app.data.settings.TerminalSettings
+import app.minimpos.app.newInstallation
 import app.minimpos.core.payment.PaymentContext
 import app.minimpos.core.receipt.CardReceiptLine
 import com.google.common.truth.Truth.assertThat
@@ -93,7 +94,7 @@ class StoredFormatTest {
         val secrets: String
         try {
             val container = written.container
-            val filled = StoredFixtures.filled(StorageJson, serializer<AppSettings>(), AppSettings.forNewInstallation("AU"), "current")
+            val filled = StoredFixtures.filled(StorageJson, serializer<AppSettings>(), newInstallation("AU"), "current")
             await {
                 container.settings.update { filled }
                 Secret.entries.forEach { container.secrets.set(it, "${it.name} current") }

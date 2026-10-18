@@ -27,6 +27,8 @@ import app.minimpos.app.history.PaymentAction
 import app.minimpos.app.history.RefundInvalidReason
 import app.minimpos.app.history.Refundability
 import app.minimpos.app.history.RefundablePayment
+import app.minimpos.app.payment.Checkout
+import app.minimpos.app.payment.OperationAmount
 import app.minimpos.app.payment.TransactionState
 import app.minimpos.core.codec.RefundQrPayload
 import app.minimpos.core.receipt.ReceiptCopy
@@ -328,7 +330,14 @@ class ViewModelsTest {
         assertThat(checkout.pay()).isFalse()
         val saleId = await { (container.payments.state.first { it is TransactionState.Finished } as TransactionState.Finished).id }
         val result = SaleResultViewModel(saleId, container.storedPayments, container.receipts, container.payments, container.operations)
-        await { result.state.first { it.record?.sale?.isPartiallyPaid == true } }
+        val partial = checkNotNull(await { result.state.first { it.record?.sale?.isPartiallyPaid == true } }.record).sale
+        // The waiting screen shows what the next tender requests: the balance, not the cart the first tender cleared.
+        assertThat(checkNotNull(Checkout.remainingPayment(partial)).amount).isEqualTo(OperationAmount(partial.remainingMinor, "AUD"))
+        assertThat(
+            container
+                .session(SaleKind.SALE)
+                .cart.value.lines,
+        ).isEmpty()
         assertThat(result.payRemaining()).isTrue()
         assertThat(result.payRemaining()).isFalse()
         await { container.payments.state.first { it == TransactionState.Finished(saleId) } }

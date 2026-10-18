@@ -15,9 +15,13 @@ import kotlinx.coroutines.launch
  *
  * @param R What the screen collected for one operation.
  * @param scope Where operations run.
+ * @param onTerminal Whether the shopper follows its operations on a terminal, for [TransactionState.Processing].
+ * @param amountOf What an operation charges or refunds, for [TransactionState.Processing].
  */
 internal class OperationRunner<R>(
     private val scope: CoroutineScope,
+    private val onTerminal: Boolean,
+    private val amountOf: (R) -> OperationAmount,
 ) {
     /** The current operation; a runner may refine a [TransactionState.Processing] one (for example once it is sent). */
     val state = MutableStateFlow<TransactionState>(TransactionState.Idle)
@@ -44,7 +48,7 @@ internal class OperationRunner<R>(
     ): String? {
         if (state.value is TransactionState.Processing) return null
         val started = id()
-        state.value = TransactionState.Processing(started)
+        state.value = TransactionState.Processing(started, amountOf(request), onTerminal)
         synchronized(unresolved) { unresolved[started] = request }
         scope.launch {
             try {

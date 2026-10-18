@@ -20,6 +20,7 @@ import app.minimpos.core.payment.ScanWallet
 import app.minimpos.core.shopper.EmailReferenceMode
 import app.minimpos.core.tax.TaxMode
 import app.minimpos.terminal.checkout.StoredCard
+import app.minimpos.terminal.client.CardEntryOverride
 import app.minimpos.terminal.client.RecurringModel
 import app.minimpos.terminal.client.TerminalTipOptions
 import app.minimpos.terminal.client.TerminalTipSuggestions
@@ -52,6 +53,32 @@ class CheckoutTest {
         kind: SaleKind = SaleKind.SALE,
         printer: Boolean = true,
     ) = Checkout(form, payment, totals, aud, kind, printer)
+
+    @Test
+    fun `each tender's ceremony says what it drops, then the special entry warning, then Manager approval`() {
+        val giving = PaymentSettings(receiptTipping = ReceiptTipping.DEFAULT_ON, askGiving = ReceiptTipping.DEFAULT_ON)
+        val tipped = checkout(payment = giving.copy(askGiving = ReceiptTipping.DISABLED))
+        assertThat(tipped.ceremony(Tender.LINK)).isEqualTo(TenderCeremony(setOf(DroppedOption.TIP), false, false))
+        assertThat(tipped.ceremony(Tender.WALLET).drops).containsExactly(DroppedOption.TIP)
+        assertThat(tipped.ceremony(Tender.TOKEN)).isEqualTo(TenderCeremony(setOf(DroppedOption.TIP), false, true))
+        assertThat(tipped.ceremony(Tender.TERMINAL)).isEqualTo(TenderCeremony(emptySet(), false, false))
+
+        // A sale inviting a donation loses it on a link, a wallet or a token too, which the operator confirms.
+        val donating = checkout(payment = giving.copy(receiptTipping = ReceiptTipping.DISABLED))
+        assertThat(donating.ceremony(Tender.LINK).drops).containsExactly(DroppedOption.DONATION)
+        assertThat(
+            donating
+                .copy(linksAvailable = true)
+                .linkStart(Instant.EPOCH, ZoneOffset.UTC)
+                ?.payment
+                ?.askGiving,
+        ).isFalse()
+        assertThat(donating.paymentStart(Instant.EPOCH, ZoneOffset.UTC)?.askGiving).isTrue()
+
+        val moto = checkout(form = CheckoutForm(cardEntryOverride = CardEntryOverride.MOTO), payment = PaymentSettings(allowMoto = true))
+        assertThat(moto.ceremony(Tender.TERMINAL)).isEqualTo(TenderCeremony(emptySet(), specialEntryWarning = true, managerApproval = true))
+        assertThat(checkout().ceremony(Tender.TOKEN)).isEqualTo(TenderCeremony(emptySet(), false, true))
+    }
 
     @Test
     fun `remaining tender uses stored sale facts without repeating card consent tips or shopper prompts`() {
@@ -414,7 +441,7 @@ class CheckoutTest {
         assertThat(smallCheckout.terminalTipOptions()).isEqualTo(
             TerminalTipOptions(
                 suggestions = TerminalTipSuggestions.FixedAmounts(listOf(100, 200, 300), allowCustom = true),
-                amountToTipOn = aud.toMajor(smallCart.amounts.net),
+                amountToTipOnMinor = smallCart.amounts.net,
             ),
         )
 
@@ -422,7 +449,7 @@ class CheckoutTest {
         assertThat(largeCheckout.terminalTipOptions()).isEqualTo(
             TerminalTipOptions(
                 suggestions = TerminalTipSuggestions.Percentages(listOf(10, 15, 20), allowCustom = true),
-                amountToTipOn = aud.toMajor(10_000),
+                amountToTipOnMinor = 10_000,
             ),
         )
 

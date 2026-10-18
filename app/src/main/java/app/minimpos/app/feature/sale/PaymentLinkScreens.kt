@@ -44,6 +44,8 @@ import app.minimpos.app.feature.ResultAction
 import app.minimpos.app.feature.ResultBar
 import app.minimpos.app.feature.lock.ManagerApproval
 import app.minimpos.app.feature.outcomeNote
+import app.minimpos.app.history.SaleResultNext
+import app.minimpos.app.history.saleResultNext
 import app.minimpos.app.history.simulatedLink
 import app.minimpos.app.share.ShareEffect
 import app.minimpos.app.ui.components.ConfirmDialog
@@ -319,7 +321,10 @@ private fun ColumnScope.CheckButton(
     OutcomeMessage(state.check)
 }
 
-/** Home beside "New sale", or "Try again" for a link Adyen did not make (the cart is still there). */
+/**
+ * Home beside what [saleResultNext] offers the link: "Try again" for a link Adyen did not make (the cart is still
+ * there), "New sale" once a link took the cart, nothing while whether it was made is unknown.
+ */
 @Composable
 private fun LinkResultBar(
     sale: SaleEntity,
@@ -327,10 +332,18 @@ private fun LinkResultBar(
 ) = ResultBar(
     onHome = navigator::home,
     next =
-        if (sale.status == SaleStatus.FAILED) {
-            ResultAction(stringResource(R.string.result_try_again), "tryAgain") { navigator.replace(Route.Checkout(SaleKind.SALE)) }
-        } else {
-            ResultAction(stringResource(R.string.result_new_sale), "newSaleAfter") { navigator.popTo(Route.Sale) }
+        when (saleResultNext(sale)) {
+            SaleResultNext.TRY_AGAIN -> {
+                ResultAction(stringResource(R.string.result_try_again), "tryAgain") { navigator.replace(Route.Checkout(SaleKind.SALE)) }
+            }
+
+            SaleResultNext.NEW_SALE -> {
+                ResultAction(stringResource(R.string.result_new_sale), "newSaleAfter") { navigator.popTo(Route.Sale) }
+            }
+
+            SaleResultNext.PAY_REMAINING, SaleResultNext.NONE -> {
+                null
+            }
         },
 )
 

@@ -68,9 +68,9 @@ data class ReceiptTexts(
     val sample: ReceiptSampleTexts = ReceiptSampleTexts(),
     val simulationNote: String = "Simulation only. No money moved.",
     val demoLink: String = "Demo link",
-    val standing: (PaymentStanding) -> String? = { it.name.takeUnless { name -> name == "CHARGED" || name == "NOT_APPROVED" } },
-    val refund: (RefundStatus) -> String? = { it.name },
-    val report: (ReportText) -> String = { it.name },
+    val standing: (PaymentStanding) -> String?,
+    val refund: (RefundStatus) -> String?,
+    val report: (ReportText) -> String,
 )
 
 /**
@@ -81,19 +81,9 @@ data class ReceiptTexts(
  * @param zone Time zone used to format transaction and report timestamps.
  */
 class ReceiptFactory(
-    private val texts: (languageTag: String) -> ReceiptTexts = { ReceiptTexts() },
+    private val texts: (languageTag: String) -> ReceiptTexts,
     private val zone: () -> ZoneId = { ZoneId.systemDefault() },
 ) {
-    /** Creates a factory with fixed [labels] and [locale] supplier, for unit tests. */
-    constructor(
-        labels: ReceiptLabels,
-        locale: () -> Locale = { Locale.getDefault() },
-        zone: () -> ZoneId = { ZoneId.systemDefault() },
-    ) : this(
-        texts = { ReceiptTexts(labels = labels, locale = locale()) },
-        zone = zone,
-    )
-
     private val current: ReceiptTexts get() = texts("")
 
     /** Summary of retained processing-day activity; no payment receipt, QR, or settlement claim. */
@@ -117,7 +107,8 @@ class ReceiptFactory(
      * A sale that can be refunded gets a refund QR code ([RefundablePayment.qrCode]); unapproved ones are marked as not
      * completed, and pre-authorisations are titled and totalled as an amount held, with what they hold after an
      * adjustment and what was captured. A sale taken for tipping on the receipt gets tip lines to fill in until its
-     * tip is entered (only on [paper]: an emailed receipt leaves them out), then the tip and the total with it. A sale
+     * tip is entered (only on [ReceiptSurface.PAPER]: an emailed or shared receipt leaves them out), then the tip and the
+     * total with it. A sale
      * still awaiting its payment link's payment is an unpaid receipt with the link and when it stops working; one paid
      * through it says it was paid online.
      */
@@ -125,7 +116,7 @@ class ReceiptFactory(
         record: SaleWithLines,
         settings: ReceiptSettings,
         copy: ReceiptCopy = ReceiptCopy.CUSTOMER,
-        paper: Boolean = true,
+        surface: ReceiptSurface = ReceiptSurface.PAPER,
     ): ReceiptDocument {
         val sale = record.sale
         val currency = CurrencySpec.of(sale.currency)
@@ -163,7 +154,7 @@ class ReceiptFactory(
                 tip =
                     when {
                         standing.tipMinor != null -> TipLines.Entered(standing.tipMinor)
-                        standing.awaitingTip && paper -> TipLines.Blank
+                        standing.awaitingTip && surface == ReceiptSurface.PAPER -> TipLines.Blank
                         else -> null
                     },
                 heldNow = standing.heldNowMinor,

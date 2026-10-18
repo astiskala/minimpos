@@ -7,7 +7,6 @@ import com.adyen.model.applicationinfo.ApplicationInfo
 import com.adyen.model.applicationinfo.CommonField
 import com.adyen.model.applicationinfo.ExternalPlatform
 import com.adyen.model.applicationinfo.MerchantDevice
-import java.math.BigDecimal
 import java.util.concurrent.atomic.AtomicReference
 
 private const val MAX_SCANNED_CODE_LENGTH = 128
@@ -189,10 +188,10 @@ enum class OfflineProcessingMode {
  */
 data class PaymentParams(
     /**
-     * The amount to charge in major units of [currency] (e.g. `12.50` for EUR 12.50), which is what nexo's
-     * `RequestedAmount` expects. Callers holding minor units must convert with the currency's Adyen decimals.
+     * The amount to charge in minor units of [currency] (e.g. `1250` for EUR 12.50); the client converts it once, with
+     * the currency's Adyen decimals, to the major units nexo's `RequestedAmount` expects.
      */
-    val amount: BigDecimal,
+    val amountMinor: Long,
     /** The ISO 4217 currency code, e.g. `EUR`. */
     val currency: String,
     /**
@@ -212,14 +211,14 @@ data class PaymentParams(
      * card is not stored.
      */
     val recurringProcessingModel: RecurringModel? = null,
-    /** e.g. `ReceiptHandler`, so the POS prints receipts instead of the terminal. Sent comma-separated. */
-    val tenderOptions: List<String> = emptyList(),
+    /** Whether the app prints the receipts, card details included, instead of the terminal (`ReceiptHandler`). */
+    val appPrintsReceipts: Boolean = false,
     /** Free-form key/value pairs stored with the payment at Adyen; an empty map sends none. */
     val metadata: Map<String, String> = emptyMap(),
     /** Requests the card alias (TokenRequestedType=Customer); tokenization itself is driven by the shopper fields. */
     val requestCardAlias: Boolean = false,
     /**
-     * Only holds [amount] on the card: Adyen's authorisation type `PreAuth` with manual capture, so the payment can be
+     * Only holds [amountMinor] on the card: Adyen's authorisation type `PreAuth` with manual capture, so the payment can be
      * adjusted and is captured (or cancelled) later instead of being captured automatically. False takes a normal
      * payment with the account's default authorisation type and capture.
      */
@@ -230,7 +229,7 @@ data class PaymentParams(
     val terminalTip: TerminalTipOptions? = null,
     /** Chained customer-display and input prompts run before and after the payment; null skips them. */
     val shopperFlow: ShopperSessionFlow? = null,
-    /** Sends `AllowPartialAuthorisation` in `SaleToAcquirerData.tenderOption` so the terminal can approve part of [amount]. */
+    /** Sends `AllowPartialAuthorisation` in `SaleToAcquirerData.tenderOption` so the terminal can approve part of [amountMinor]. */
     val allowPartialAuthorisation: Boolean = false,
     /** Optional `SaleData.SaleReferenceID` grouping split tenders of the same sale. */
     val saleReferenceId: String? = null,
@@ -296,18 +295,18 @@ sealed interface TerminalTipSuggestions {
 
 /**
  * Per-payment terminal tipping configuration (`AskGratuity` with optional `SaleData.SaleToPOIData` `TipOptions` override).
- * Adyen requires [suggestions] whenever [amountToTipOn] is specified.
+ * Adyen requires [suggestions] whenever [amountToTipOnMinor] is specified.
  *
  * @property suggestions Dynamic per-payment `TipSuggestions` override; null uses the terminal's configured gratuities.
- * @property amountToTipOn Part of the purchase amount in major units to calculate percentage tips on (`AmountToTipOn`);
- *   null tips on the full requested amount. Requires [suggestions].
+ * @property amountToTipOnMinor Part of the purchase amount, in minor units, to calculate percentage tips on
+ *   (`AmountToTipOn`); null tips on the full requested amount. Requires [suggestions].
  */
 data class TerminalTipOptions(
     val suggestions: TerminalTipSuggestions? = null,
-    val amountToTipOn: BigDecimal? = null,
+    val amountToTipOnMinor: Long? = null,
 ) {
     init {
-        require(amountToTipOn == null || (suggestions != null && amountToTipOn > BigDecimal.ZERO)) {
+        require(amountToTipOnMinor == null || (suggestions != null && amountToTipOnMinor > 0)) {
             "AmountToTipOn requires positive amount and TipSuggestions"
         }
     }
@@ -363,7 +362,7 @@ sealed interface BarcodeScan {
  * A refund of an earlier card payment, see [TerminalClient.refund]. The Terminal API calls this a reversal: it refers to
  * the original payment by the terminal's transaction ID and timestamp, so no card needs to be presented.
  *
- * Constructing it with an [amount] but no [currency] throws [IllegalArgumentException].
+ * Constructing it with an [amountMinor] but no [currency] throws [IllegalArgumentException].
  */
 data class RefundParams(
     /** The original payment's `POIData.POITransactionID.TransactionID` ([TransactionDetails.poiTransactionId]). */
@@ -372,13 +371,13 @@ data class RefundParams(
     val originalTimestamp: String,
     /** The POS's own reference for this refund (not the original payment's), sent as its `SaleTransactionID`. */
     val merchantReference: String,
-    /** Null refunds the full original amount; otherwise a partial refund in [currency], in major units. */
-    val amount: BigDecimal? = null,
+    /** Null refunds the full original amount; otherwise a partial refund in [currency], in minor units. */
+    val amountMinor: Long? = null,
     /** The original payment's ISO 4217 currency code; required for a partial refund and not sent for a full one. */
     val currency: String? = null,
 ) {
     init {
-        require(amount == null || currency != null) { "Partial refunds need the original currency" }
+        require(amountMinor == null || currency != null) { "Partial refunds need the original currency" }
     }
 }
 
@@ -432,11 +431,14 @@ data class TransactionDetails(
     val pspReference: String?,
     /** The merchant reference the terminal reports: the payment's `SaleTransactionID`, or a refund's `merchantReference`. */
     val merchantReference: String?,
-    /** The authorised amount of a payment, or the reversed amount of a refund (null if the terminal omitted it). */
-    val amount: BigDecimal?,
-    /** The tip added on the terminal (`PaymentResult.AmountsResp.TipAmount`), in major units; null when none was added. */
-    val tipAmount: BigDecimal? = null,
-    /** The ISO 4217 currency code of a payment's [amount]. */
+    /**
+     * The authorised amount of a payment, or the reversed amount of a refund, in minor units of [currency]; null if the
+     * terminal omitted it or named a currency without Adyen decimals.
+     */
+    val amountMinor: Long?,
+    /** The tip added on the terminal (`PaymentResult.AmountsResp.TipAmount`), in minor units; null when none was added. */
+    val tipMinor: Long? = null,
+    /** The ISO 4217 currency code of a payment's [amountMinor]. */
     val currency: String?,
     /** The card scheme, e.g. `mc` or `visa`. */
     val paymentBrand: String?,
@@ -470,8 +472,8 @@ data class TransactionDetails(
     val shopperRating: Int? = null,
     /** ServiceID of the two-step Adyen Giving donation (`adyen_giving_service_id`), when the shopper donated. */
     val givingServiceId: String? = null,
-    /** Charity donation amount in major units from the two-step Adyen Giving status lookup; null when none. */
-    val donationAmount: BigDecimal? = null,
+    /** Charity donation amount in minor units of [currency] from the two-step Adyen Giving status lookup; null when none. */
+    val donationMinor: Long? = null,
     /** Whether the transaction was approved online, via Offline EMV, or via Store-and-Forward. */
     val offlineMode: OfflineProcessingMode = OfflineProcessingMode.ONLINE,
     /** Number of unconfirmed offline batches stored on the terminal (`unconfirmedBatchCount`), if reported. */
@@ -551,16 +553,16 @@ sealed interface PrintOutcome {
  * Totals reported by the terminal for one [currency] in a `GetTotalsResponse` or `ReconciliationResponse`.
  *
  * @property currency ISO 4217 currency code (`PaymentCurrency`).
- * @property debitAmount Total approved payment amount (`TransactionType.DEBIT`), in major units.
+ * @property debitMinor Total approved payment amount (`TransactionType.DEBIT`), in minor units.
  * @property debitCount Number of approved debit transactions.
- * @property creditAmount Total accepted refund/reversal amount (`TransactionType.CREDIT` or `REVERSE_DEBIT`), in major units.
+ * @property creditMinor Total accepted refund/reversal amount (`TransactionType.CREDIT` or `REVERSE_DEBIT`), in minor units.
  * @property creditCount Number of accepted credit/reversal transactions.
  */
 data class TerminalCurrencyTotals(
     val currency: String,
-    val debitAmount: BigDecimal = BigDecimal.ZERO,
+    val debitMinor: Long = 0,
     val debitCount: Int = 0,
-    val creditAmount: BigDecimal = BigDecimal.ZERO,
+    val creditMinor: Long = 0,
     val creditCount: Int = 0,
 )
 

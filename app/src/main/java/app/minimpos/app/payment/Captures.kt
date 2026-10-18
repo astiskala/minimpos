@@ -5,6 +5,7 @@ import app.minimpos.app.data.db.Failure
 import app.minimpos.app.data.db.SaleEntity
 import app.minimpos.app.data.repo.SaleEvent
 import app.minimpos.app.data.repo.SaleRepository
+import app.minimpos.app.data.security.ManagerApproval
 import app.minimpos.app.history.PaymentAction
 import app.minimpos.app.history.PaymentStanding
 import app.minimpos.app.history.StoredPayment
@@ -82,12 +83,13 @@ sealed interface CaptureResult {
  *
  * @param sales Where the payments are stored, and their capture recorded.
  * @param target Where captures and adjustments go now: [AdyenApi.target] in the app, a fixed target in tests.
- * @param permits Whether the money-moving action is authorized now, checked under the operation lock.
+ * @param approval Manager approval, which every capture and adjustment needs, checked as held now under the
+ *   operation lock.
  */
 class Captures(
     private val sales: SaleRepository,
     private val target: suspend () -> ApiTarget,
-    private val permits: suspend () -> Boolean = { true },
+    private val approval: ManagerApproval = ManagerApproval.NOT_REQUIRED,
 ) {
     private val mutex = Mutex()
 
@@ -161,7 +163,7 @@ class Captures(
         saleId: String,
         action: PaymentAction,
     ): SaleEntity? =
-        if (!permits()) {
+        if (!approval.allowsNow()) {
             null
         } else {
             sales

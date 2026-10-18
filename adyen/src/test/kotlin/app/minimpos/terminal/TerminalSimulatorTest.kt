@@ -73,6 +73,7 @@ class TerminalSimulatorTest {
     private val simulator = TerminalSimulator(config = { config }, random = Random(42), onPrint = { printed += it })
     private val client =
         TerminalClient(
+            currencyDigits = testCurrencyDigits,
             transport = simulator,
             identity = TerminalIdentity("POS1", "SIMULATOR-000000001"),
             application = PosApplication("Mini mPOS", "1.0", "Mini mPOS", "Android", "13"),
@@ -80,7 +81,7 @@ class TerminalSimulatorTest {
         )
     private val tokenizing =
         PaymentParams(
-            amount = BigDecimal("12.00"),
+            amountMinor = 1200,
             currency = "AUD",
             merchantReference = "MP-1",
             shopperReference = "CUST-1",
@@ -105,7 +106,7 @@ class TerminalSimulatorTest {
     fun `approves with receipts and tokenization`() {
         val details = pay()
         assertThat(details.success).isTrue()
-        assertThat(details.amount).isEqualTo(BigDecimal("12.00"))
+        assertThat(details.amountMinor).isEqualTo(1200)
         assertThat(details.poiTransactionId).contains(".")
         assertThat(details.poiTimestamp).isNotNull()
         assertThat(details.tokenization!!.shopperReference).isEqualTo("CUST-1")
@@ -241,10 +242,10 @@ class TerminalSimulatorTest {
     fun `refunds, prints and diagnoses`() =
         runBlocking {
             val payment = pay()
-            val refund = client.refund(RefundParams(payment.poiTransactionId!!, payment.poiTimestamp!!, "MP-R", BigDecimal("2.00"), "AUD"))
+            val refund = client.refund(RefundParams(payment.poiTransactionId!!, payment.poiTimestamp!!, "MP-R", 200, "AUD"))
             val details = (refund as TransactionOutcome.Completed).details
             assertThat(details.success).isTrue()
-            assertThat(details.amount).isEqualTo(BigDecimal("2.00"))
+            assertThat(details.amountMinor).isEqualTo(200)
             assertThat(details.customerReceipt.map { it.name }).contains("REFUND REQUESTED")
             val full = client.refund(RefundParams(payment.poiTransactionId, payment.poiTimestamp, "MP-R2")) as TransactionOutcome.Completed
             assertThat(full.details.customerReceipt.map { it.value }).contains("Full amount")
@@ -309,62 +310,71 @@ class TerminalSimulatorTest {
             val plainTip =
                 pay(
                     tokenizing.copy(
-                        amount = BigDecimal("20.00"),
+                        amountMinor = 2000,
                         terminalTip = TerminalTipOptions(),
                     ),
                 )
-            assertThat(plainTip.tipAmount).isEqualTo(BigDecimal("2.00"))
-            assertThat(plainTip.amount).isEqualTo(BigDecimal("22.00"))
+            assertThat(plainTip.tipMinor).isEqualTo(200)
+            assertThat(plainTip.amountMinor).isEqualTo(2200)
 
             val fixedTip =
                 pay(
                     tokenizing.copy(
-                        amount = BigDecimal("6.00"),
+                        amountMinor = 600,
                         terminalTip =
                             TerminalTipOptions(
                                 suggestions = TerminalTipSuggestions.FixedAmounts(listOf(100, 200, 300), allowCustom = false),
                             ),
                     ),
                 )
-            assertThat(fixedTip.tipAmount).isEqualTo(BigDecimal("1.00"))
-            assertThat(fixedTip.amount).isEqualTo(BigDecimal("7.00"))
+            assertThat(fixedTip.tipMinor).isEqualTo(100)
+            assertThat(fixedTip.amountMinor).isEqualTo(700)
 
             val percentTipNoCustom =
                 pay(
                     tokenizing.copy(
-                        amount = BigDecimal("50.00"),
+                        amountMinor = 5000,
                         terminalTip =
                             TerminalTipOptions(
                                 suggestions = TerminalTipSuggestions.Percentages(listOf(10, 20), allowCustom = false),
                             ),
                     ),
                 )
-            assertThat(percentTipNoCustom.tipAmount).isEqualTo(BigDecimal("5.00"))
-            assertThat(percentTipNoCustom.amount).isEqualTo(BigDecimal("55.00"))
+            assertThat(percentTipNoCustom.tipMinor).isEqualTo(500)
+            assertThat(percentTipNoCustom.amountMinor).isEqualTo(5500)
 
             val preTaxPercentTip =
                 pay(
                     tokenizing.copy(
-                        amount = BigDecimal("110.00"),
+                        amountMinor = 11_000,
                         terminalTip =
                             TerminalTipOptions(
                                 suggestions = TerminalTipSuggestions.Percentages(listOf(15, 18, 20), allowCustom = true),
-                                amountToTipOn = BigDecimal("100.00"),
+                                amountToTipOnMinor = 10_000,
                             ),
                     ),
                 )
-            assertThat(preTaxPercentTip.tipAmount).isEqualTo(BigDecimal("15.00"))
-            assertThat(preTaxPercentTip.amount).isEqualTo(BigDecimal("125.00"))
+            assertThat(preTaxPercentTip.tipMinor).isEqualTo(1500)
+            assertThat(preTaxPercentTip.amountMinor).isEqualTo(12_500)
+        }
+
+    @Test
+    fun `refunds of payments the simulator did not take count only in the currency they state`() =
+        runBlocking<Unit> {
+            client.refund(RefundParams("UNKNOWN.1", "2026-09-30T01:02:03.456Z", "MP-R1", 300, "AUD"))
+            client.refund(RefundParams("UNKNOWN.2", "2026-09-30T01:02:03.456Z", "MP-R2"))
+            val totals = client.getTotals() as TerminalTotalsOutcome.Answered
+            assertThat(totals.totals).containsExactly(TerminalCurrencyTotals(currency = "AUD", creditMinor = 300, creditCount = 1))
         }
 
     @Test
     fun `getTotals and reconcile report and reset period totals`() =
         runBlocking {
-            val pUsd = pay(tokenizing.copy(amount = BigDecimal("5.00"), currency = "USD"))
+            val pUsd = pay(tokenizing.copy(amountMinor = 500, currency = "USD"))
             assertThat(pUsd.poiReconciliationId).isEqualTo("1000")
-            val p1 = pay(tokenizing.copy(amount = BigDecimal("10.00"), currency = "AUD"))
+            val p1 = pay(tokenizing.copy(amountMinor = 1000, currency = "AUD"))
             assertThat(p1.poiReconciliationId).isEqualTo("1000")
-            client.refund(RefundParams(p1.poiTransactionId!!, p1.poiTimestamp!!, "MP-R", BigDecimal("3.00"), "AUD"))
+            client.refund(RefundParams(p1.poiTransactionId!!, p1.poiTimestamp!!, "MP-R", 300, "AUD"))
 
             val totals = client.getTotals() as TerminalTotalsOutcome.Answered
             assertThat(totals.poiReconciliationId).isEqualTo("1000")
@@ -373,16 +383,16 @@ class TerminalSimulatorTest {
                 .containsExactly(
                     TerminalCurrencyTotals(
                         currency = "AUD",
-                        debitAmount = BigDecimal("10.00"),
+                        debitMinor = 1000,
                         debitCount = 1,
-                        creditAmount = BigDecimal("3.00"),
+                        creditMinor = 300,
                         creditCount = 1,
                     ),
                     TerminalCurrencyTotals(
                         currency = "USD",
-                        debitAmount = BigDecimal("5.00"),
+                        debitMinor = 500,
                         debitCount = 1,
-                        creditAmount = BigDecimal.ZERO,
+                        creditMinor = 0,
                         creditCount = 0,
                     ),
                 ).inOrder()
@@ -405,8 +415,8 @@ class TerminalSimulatorTest {
                     virtualReceipt =
                         VirtualReceipt(
                             header = "Order",
-                            lines = listOf(VirtualReceiptLine(1, "Coffee", "AUD", BigDecimal("4.50"))),
-                            total = BigDecimal("4.50"),
+                            lines = listOf(VirtualReceiptLine(1, "Coffee", "AUD", 450)),
+                            totalMinor = 450,
                             currency = "AUD",
                         ),
                     confirmationPrompt = "Confirm order" to "AUD 4.50",
@@ -441,47 +451,47 @@ class TerminalSimulatorTest {
             val notPartial =
                 pay(
                     tokenizing.copy(
-                        amount = BigDecimal("10.00"),
+                        amountMinor = 1000,
                         allowPartialAuthorisation = true,
                     ),
                 )
             assertThat(notPartial.partial).isFalse()
-            assertThat(notPartial.amount).isEqualTo(BigDecimal("10.00"))
+            assertThat(notPartial.amountMinor).isEqualTo(1000)
 
             val triggerPartial =
                 pay(
                     tokenizing.copy(
-                        amount = BigDecimal("11.39"),
+                        amountMinor = 1139,
                         allowPartialAuthorisation = true,
                         saleReferenceId = "MP-SPLIT-1",
                     ),
                 )
             assertThat(triggerPartial.success).isTrue()
             assertThat(triggerPartial.partial).isTrue()
-            assertThat(triggerPartial.amount).isEqualTo(BigDecimal("5.70"))
+            assertThat(triggerPartial.amountMinor).isEqualTo(570)
 
             config = config.copy(partialApprovalPercent = 40)
             val ratioPartial =
                 pay(
                     tokenizing.copy(
-                        amount = BigDecimal("20.00"),
+                        amountMinor = 2000,
                         allowPartialAuthorisation = true,
                     ),
                 )
             assertThat(ratioPartial.success).isTrue()
             assertThat(ratioPartial.partial).isTrue()
-            assertThat(ratioPartial.amount).isEqualTo(BigDecimal("8.00"))
+            assertThat(ratioPartial.amountMinor).isEqualTo(800)
         }
 
     @Test
     fun `simulates AskGiving with two-step AdyenGiving status lookup`() =
         runBlocking {
             config = config.copy(givingDonationAmount = BigDecimal("2.50"))
-            val details = pay(tokenizing.copy(amount = BigDecimal("15.00"), askGiving = true))
+            val details = pay(tokenizing.copy(amountMinor = 1500, askGiving = true))
             assertThat(details.success).isTrue()
-            assertThat(details.amount).isEqualTo(BigDecimal("15.00"))
+            assertThat(details.amountMinor).isEqualTo(1500)
             assertThat(details.givingServiceId).isEqualTo("GIVINGSIM1")
-            assertThat(details.donationAmount).isEqualTo(BigDecimal("2.50"))
+            assertThat(details.donationMinor).isEqualTo(250)
         }
 
     @Test
@@ -528,7 +538,7 @@ class TerminalSimulatorTest {
                         originalTransactionId = safOffline.poiTransactionId!!,
                         originalTimestamp = safOffline.poiTimestamp!!,
                         merchantReference = "REF-SIM-1",
-                        amount = BigDecimal("5.00"),
+                        amountMinor = 500,
                         currency = "AUD",
                     ),
                     serviceId = "REV-SIM-1",

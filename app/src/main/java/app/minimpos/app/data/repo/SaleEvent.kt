@@ -3,11 +3,12 @@ package app.minimpos.app.data.repo
 import app.minimpos.app.data.db.AdjustmentStatus
 import app.minimpos.app.data.db.CaptureStatus
 import app.minimpos.app.data.db.Failure
+import app.minimpos.app.data.db.RefundEntity
 import app.minimpos.app.data.db.SaleEntity
 import app.minimpos.app.data.db.SaleStatus
+import app.minimpos.app.data.db.SaleWithLines
 import app.minimpos.app.data.db.SetupProblem
 import app.minimpos.app.data.db.StoredReason
-import app.minimpos.core.money.CurrencySpec
 import app.minimpos.core.payment.PaymentContext
 import app.minimpos.terminal.checkout.CardChargeResult
 import app.minimpos.terminal.checkout.ModificationResult
@@ -428,11 +429,7 @@ private fun SaleEntity.answered(
     details: TransactionDetails,
 ): SaleEntity {
     val (terminalTipMinor, updatedPaidMinor) = settledAmounts(eventStatus, details)
-    val donatedMinor =
-        details.donationAmount
-            ?.takeIf { eventStatus == SaleStatus.APPROVED }
-            ?.let { CurrencySpec.of(currency).toMinor(it) }
-            ?.takeIf { it > 0 }
+    val donatedMinor = details.donationMinor?.takeIf { eventStatus == SaleStatus.APPROVED && it > 0 }
     return ended.copy(
         poiTransactionId = details.poiTransactionId,
         poiTimestamp = details.poiTimestamp,
@@ -465,9 +462,8 @@ private fun SaleEntity.settledAmounts(
     details: TransactionDetails,
 ): Pair<Long?, Long> {
     if (eventStatus != SaleStatus.APPROVED || manualCapture) return null to paidMinor
-    val spec = CurrencySpec.of(currency)
-    val terminalTipMinor = details.tipAmount?.let { spec.toMinor(it) }?.takeIf { it > 0 }
-    val reportedMinor = details.amount?.let { spec.toMinor(it) }
+    val terminalTipMinor = details.tipMinor?.takeIf { it > 0 }
+    val reportedMinor = details.amountMinor
     val remaining = totalMinor - paidMinor
     val baseTenderMinor =
         if (reportedMinor != null && isPartialOrSplitTender(details.partial, reportedMinor, remaining, paidMinor)) {
@@ -498,18 +494,17 @@ data class ApprovedTender(
 )
 
 /**
- * The approved terminal tender of a settled [SaleEvent], for the sale of [currency] that totals [totalMinor] minor
- * units and had already collected [paidMinor]; null when the answer approves nothing.
+ * The approved terminal tender of a settled [SaleEvent], for the sale that totals [totalMinor] minor units and had
+ * already collected [paidMinor]; null when the answer approves nothing.
  */
 fun SaleEvent.Settled.approvedTender(
-    currency: String,
     totalMinor: Long,
     paidMinor: Long,
 ): ApprovedTender? {
     if (status != SaleStatus.APPROVED) return null
     val details = details ?: return null
     val requested = (totalMinor - paidMinor).coerceAtLeast(0)
-    val authorised = details.amount?.let { CurrencySpec.of(currency).toMinor(it) } ?: requested
+    val authorised = details.amountMinor ?: requested
     return ApprovedTender(requested, authorised)
 }
 
@@ -593,4 +588,21 @@ private fun SaleEntity.interrupted(): SaleEntity {
     } else {
         payment
     }
+}
+
+/**
+ * This sale once [refund], accepted by Adyen, is applied: a cancellation releases the hold; a full refund marks every
+ * line refunded and the whole amount; an item or amount refund adds its quantities and amount, never beyond what was
+ * sold or charged. Pure, so [SaleRepository.applyRefund] only stores it.
+ */
+internal fun SaleWithLines.refundedBy(refund: RefundEntity): SaleWithLines {
+    if (refund.cancellation) return copy(sale = sale.copy(holdCancelled = true))
+    val added = ReceiptLinesJson.decodeRefunded(refund.linesJson).groupBy { it.lineId }
+    val refundedLines =
+        lines.map { line ->
+            val quantity = added[line.id].orEmpty().sumOf { it.quantity }
+            line.copy(refundedQuantity = if (refund.full) line.quantity else (line.refundedQuantity + quantity).coerceAtMost(line.quantity))
+        }
+    val total = if (refund.full) sale.amountMinor else sale.refundedMinor + refund.amountMinor
+    return copy(sale = sale.copy(refundedMinor = total.coerceAtMost(sale.amountMinor)), lines = refundedLines)
 }

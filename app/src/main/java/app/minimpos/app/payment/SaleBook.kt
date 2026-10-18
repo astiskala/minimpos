@@ -103,6 +103,9 @@ data class PaymentStart(
             cardEntryOverride = CardEntryOverride.NORMAL,
         )
 
+    /** What this payment requests on its tender, in [currency]. */
+    val amount: OperationAmount get() = OperationAmount(requestedAmountMinor, currency.code)
+
     /** Attaches a transient [instrument] only to this validated sale, bound to [context] and exact [setupIdentity]. */
     internal fun withScanned(
         instrument: ScannedPayment,
@@ -158,14 +161,14 @@ class SaleBook(
         val isSplit = request.existingSaleId != null || request.requestedAmountMinor < request.totals.amounts.gross
         return TerminalOperation.Pay(
             PaymentParams(
-                amount = request.currency.toMajor(request.requestedAmountMinor),
+                amountMinor = request.requestedAmountMinor,
                 currency = request.currency.code,
                 merchantReference = request.merchantReference,
                 shopperReference = request.shopperReference,
                 shopperEmail = request.shopperEmail,
                 recurringProcessingModel = tokenization?.recurringProcessingModel,
                 // The app prints its own combined receipt, including the card details.
-                tenderOptions = listOf(RECEIPT_HANDLER),
+                appPrintsReceipts = true,
                 metadata = listOfNotNull(request.customerReference?.let { "customerReference" to it }).toMap(),
                 requestCardAlias = tokenization != null && request.scannedPayment == null,
                 // A tip on the receipt is captured later with the tip, as Adyen's tipping on the receipt flow asks.
@@ -235,12 +238,6 @@ class SaleBook(
 
     /** Terminal API values and conversions shared with refunds, and the stored form of a payment, shared with links. */
     companion object {
-        /**
-         * The `TenderOption` that makes the terminal leave receipt printing to the app, which prints one combined slip
-         * with the card receipt lines instead.
-         */
-        const val RECEIPT_HANDLER = "ReceiptHandler"
-
         /** [request] as the new PENDING sale [id], started at [createdAt] (epoch ms), before anything is sent. */
         internal fun pendingSale(
             id: String,

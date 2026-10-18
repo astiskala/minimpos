@@ -72,7 +72,7 @@ class SaleRepository(
     ) {
         val sale = record.sale
         val details = settled.details ?: return
-        val tender = settled.approvedTender(sale.currency, sale.totalMinor, sale.paidMinor) ?: return
+        val tender = settled.approvedTender(sale.totalMinor, sale.paidMinor) ?: return
         val seq = record.tenders.size + 1
         dao.upsertTender(
             SaleTenderEntity(
@@ -104,23 +104,9 @@ class SaleRepository(
         val saleId = refund.saleId?.takeIf { refund.status == RefundStatus.REQUESTED } ?: return
         db.withTransaction {
             val record = dao.sale(saleId) ?: return@withTransaction
-            val sale = record.sale
-            if (refund.cancellation) {
-                dao.update(sale.copy(holdCancelled = true))
-                return@withTransaction
-            }
-            val refunded = ReceiptLinesJson.decodeRefunded(refund.linesJson).groupBy { it.lineId }
-            dao.updateLines(
-                record.lines.map { line ->
-                    val added = refunded[line.id].orEmpty().sumOf { it.quantity }
-                    line.copy(
-                        refundedQuantity = if (refund.full) line.quantity else (line.refundedQuantity + added).coerceAtMost(line.quantity),
-                    )
-                },
-            )
-            val amount = sale.amountMinor
-            val total = if (refund.full) amount else sale.refundedMinor + refund.amountMinor
-            dao.update(sale.copy(refundedMinor = total.coerceAtMost(amount)))
+            val refunded = record.refundedBy(refund)
+            if (refunded.lines != record.lines) dao.updateLines(refunded.lines)
+            dao.update(refunded.sale)
         }
     }
 }

@@ -4,7 +4,6 @@ import app.minimpos.terminal.client.CardEntryOverride
 import app.minimpos.terminal.client.NexoVocabulary
 import app.minimpos.terminal.client.OfflineProcessingMode
 import app.minimpos.terminal.client.TerminalClient
-import app.minimpos.terminal.client.TerminalCurrencyTotals
 import com.adyen.model.nexo.DeviceType
 import com.adyen.model.nexo.DiagnosisResponse
 import com.adyen.model.nexo.DisplayRequest
@@ -228,7 +227,24 @@ internal fun simulateDisplayResponse(request: DisplayRequest): DisplayResponse =
             }
     }
 
-internal fun buildSimulatedTransactionTotals(entries: List<TerminalCurrencyTotals>): List<TransactionTotals> =
+/**
+ * The simulator's running totals of one currency in its reconciliation period, in the major units nexo carries.
+ *
+ * @property currency ISO 4217 code.
+ * @property debitAmount Approved payments.
+ * @property debitCount How many payments were approved.
+ * @property creditAmount Accepted refunds and reversals.
+ * @property creditCount How many refunds and reversals were accepted.
+ */
+internal data class SimulatedPeriodTotals(
+    val currency: String,
+    val debitAmount: BigDecimal = BigDecimal.ZERO,
+    val debitCount: Int = 0,
+    val creditAmount: BigDecimal = BigDecimal.ZERO,
+    val creditCount: Int = 0,
+)
+
+internal fun buildSimulatedTransactionTotals(entries: List<SimulatedPeriodTotals>): List<TransactionTotals> =
     entries.sortedBy { it.currency }.map { item ->
         TransactionTotals().apply {
             paymentInstrumentType = PaymentInstrumentType.CARD

@@ -10,6 +10,7 @@ import app.minimpos.app.data.settings.PrinterMode
 import app.minimpos.app.data.settings.SettingsRepository
 import app.minimpos.app.data.settings.TerminalMode
 import app.minimpos.app.data.settings.TerminalSettings
+import app.minimpos.app.data.settings.VerifiedSetup
 import app.minimpos.core.payment.PaymentContext
 import app.minimpos.terminal.transport.DiscoveredKey
 import app.minimpos.terminal.transport.TerminalEnvironment
@@ -427,7 +428,12 @@ class TerminalSetupSource(
     ): UnlockedSetup {
         val raw = TerminalSetup.resolve(current, secrets.configured.first(), device, verified = true, pendingImport = false)
         val requested = raw.secretsToRead(Secret.entries.toSet())
-        val snapshot = secrets.setupSecrets(current.terminal.verificationKey(raw.poiId, raw.environment, raw.mode), requested, read)
+        val snapshot =
+            secrets.setupSecrets(
+                VerifiedSetup.connectionKey(current.terminal, raw.poiId, raw.environment, raw.mode),
+                requested,
+                read,
+            )
         val setup =
             TerminalSetup.resolve(
                 current,
@@ -531,9 +537,8 @@ class TerminalSetupSource(
         val identity = tested.validationIdentity ?: return false
         if (identity != current.validationIdentity) return false
         settings.update { saved ->
-            if (saved.terminal.verificationKey(current.setup.poiId, current.setup.environment, current.setup.mode) ==
-                tested.setup.settings.terminal
-                    .verificationKey(tested.setup.poiId, tested.setup.environment, tested.setup.mode)
+            if (VerifiedSetup.connectionKey(saved.terminal, current.setup.poiId, current.setup.environment, current.setup.mode) ==
+                VerifiedSetup.connectionKey(tested.setup.settings.terminal, tested.setup.poiId, tested.setup.environment, tested.setup.mode)
             ) {
                 saved.copy(verifiedSetup = identity)
             } else {

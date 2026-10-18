@@ -30,9 +30,9 @@ import app.minimpos.app.data.db.SaleEntity
 import app.minimpos.app.data.db.SaleKind
 import app.minimpos.app.data.db.SaleStatus
 import app.minimpos.app.data.repo.HistoryItem
-import app.minimpos.app.data.settings.AppSettings
 import app.minimpos.app.data.settings.ReceiptTipping
 import app.minimpos.app.data.settings.ShopperReferenceSource
+import app.minimpos.app.newInstallation
 import app.minimpos.core.cart.AppliedTax
 import app.minimpos.terminal.simulator.SimulatedOutcome
 import com.google.common.truth.Truth.assertThat
@@ -122,7 +122,7 @@ class AppFlowTest {
 
     @Test
     fun `a new installation offers an optional customer reference and prints the receipt by itself`() {
-        val fresh = AppSettings.forNewInstallation("AU")
+        val fresh = newInstallation("AU")
         env.updateSettings { it.copy(payment = fresh.payment.copy(currencyCode = "AUD"), receipt = fresh.receipt) }
         ringUpCustomAmount(9, 5, 0)
         compose.onNodeWithTag("charge").performClick()

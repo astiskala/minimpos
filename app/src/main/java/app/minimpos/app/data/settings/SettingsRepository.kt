@@ -66,9 +66,7 @@ class SettingsRepository(
         store.update { stored ->
             val current = stored.normalized()
             val next = transform(current).normalized()
-            val before = current.terminal.verificationKey(null, null, current.terminal.mode)
-            val after = next.terminal.verificationKey(null, null, next.terminal.mode)
-            if (before != after) next.copy(verifiedSetup = null) else next
+            if (VerifiedSetup.invalidatedBy(current.terminal, next.terminal)) next.copy(verifiedSetup = null) else next
         }
     }
 }

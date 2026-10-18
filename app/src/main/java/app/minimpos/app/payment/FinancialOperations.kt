@@ -41,6 +41,28 @@ class FinancialOperations(
         get() = listOf(payments.state, refunds.state, charges.state, checkoutRefunds.state).any { it.value is TransactionState.Processing }
 
     /**
+     * The payment running or just finished, whichever way it is sent: on the terminal (scanned wallets included) or as a
+     * saved-card charge. The payment screens follow it to its result; [TransactionState.Processing] says what it
+     * requests and whether the shopper follows it on the terminal. [currentPayment] is its value now.
+     */
+    val paymentProgress: Flow<TransactionState> = combine(payments.state, charges.state, ::following)
+
+    /** [paymentProgress] now, for a screen's first frame. */
+    val currentPayment: TransactionState get() = following(payments.state.value, charges.state.value)
+
+    /**
+     * Asks the terminal to stop the running payment once it can ([TransactionState.Processing.canCancel]); a saved-card
+     * charge cannot be stopped once sent.
+     */
+    fun cancelPayment() = payments.cancel()
+
+    /** Leaves a finished payment, whichever way it was sent, so the next one can start; leaving its result calls it. */
+    fun acknowledgePayment() {
+        payments.acknowledge()
+        charges.acknowledge()
+    }
+
+    /**
      * The refund (or cancellation) running or just finished, whichever way it is sent; the refund screens follow it to
      * its result. [currentRefund] is its value now.
      */
@@ -93,7 +115,7 @@ class FinancialOperations(
             }
         }
 
-    /** The refund a screen follows: whichever is running, else one sent through the Checkout API that finished, else the terminal's. */
+    /** The operation a screen follows: whichever is running, else one sent through the Checkout API that finished, else the terminal's. */
     private fun following(
         terminal: TransactionState,
         checkout: TransactionState,

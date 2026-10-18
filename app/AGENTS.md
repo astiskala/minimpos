@@ -10,8 +10,9 @@ Starred rules below are enforced by `ArchitectureTest`, `OwnershipArchitectureTe
   `history`/`terminal` → `data`, beside the isolated `update` package. Every production class belongs to a listed
   module or the application bootstrap. Only UI reaches `AppContainer`; view models hold no UI types or display text.
 - \* Only `terminal` integrates `:adyen` transports/simulator/Payments app, with the container wiring them. Elsewhere
-  only stored environment/region/outcome values and `TerminalClient` companion helpers are allowed. `com.adyen` stays
-  in `:adyen`, Room in `data`, crypto in `data.security`. Nothing logs or prints.
+  only stored environment/region/outcome values and `TerminalClient` companion helpers are allowed. Terminal requests
+  and answers carry minor units; the payment, refund, settlement and reconciliation readings never convert units.
+  `com.adyen` stays in `:adyen`, Room in `data`, crypto in `data.security`. Nothing logs or prints.
 - \* Self-update is isolated in `update`: only it reads GitHub Releases, only the container arms its one startup check
   on a device that is not an Adyen terminal, and only Home offers the newer version for the browser to download
   (terminals update through the Customer Area). Checks stay silent unless they offer something.
@@ -24,14 +25,16 @@ Starred rules below are enforced by `ArchitectureTest`, `OwnershipArchitectureTe
 - \* `PaymentStanding` alone reads capture/hold status (apart from `SaleEvent` writing it); `CaptureStatus.captured`
   defines captured statuses. `StoredPayment.actions` owns allowed actions and is checked by capture operations too.
   `SaleEntity.issues` is the one issue reading; screens get whole days from `HistoryAccounting.days`.
-  `saleResultNext` is the one reading of what a result screen offers next.
+  `saleResultNext` is the one reading of what a result screen offers next, payment links included.
 - \* Decision rules stay pure: Checkout, PaymentLinkRequests, SaleEvent, PaymentStanding, RefundablePayment,
-  HistorySearch, HistoryAccounting, TerminalAssignments, WalletOffers, TerminalSetup, DestinationRules and settings models.
+  HistorySearch, HistoryAccounting, ReceiptKind, TerminalAssignments, WalletOffers, TerminalSetup, TerminalSetupPlan,
+  DestinationRules, NewInstallation, VerifiedSetup and settings models.
   No Android, coroutines, repositories or clocks; do not rederive their decisions elsewhere. History filters reuse
   accounting's issue meaning rather than reading pending/unknown status fields. `ReceiptStanding` owns receipt meaning;
   only the stored-payment reading interprets the original payment context's simulator flag for demo links.
 - \* Work begun on one setup checks it is still stored only through `TerminalSetupSource.SetupFence`, which
-  alone compares secret fingerprints. The source takes everything it calls as constructor arguments.
+  alone compares secret fingerprints. The source takes everything it calls as constructor arguments. `VerifiedSetup`
+  alone decides what the verified-setup fingerprint covers; only the source reads `AppSettings.verifiedSetup`.
 - \* Only `TerminalSetupSource` calls `TerminalSetup.resolve` and reads destination/API secrets. Unlock once per call;
   unreadable secrets become typed setup problems. `boarding()` and `candidateBoarding()` do the same for the Payments
   app credential. Encrypted recovery journals use `EncryptedJournal` in one snapshot; only `RecoveryJournal` accesses
@@ -54,17 +57,20 @@ Starred rules below are enforced by `ArchitectureTest`, `OwnershipArchitectureTe
   `TerminalDetailsApi`.
   `SetupDiscovery` returns immutable operation outcomes, not ambient problem/key-missing getters.
 - \* Destination requirements/capabilities belong to adapter companions in `Destinations.kt`; `DestinationRules.of`
-  selects rules. Which of a destination's connection details are already supplied is the rules' too
-  (`suppliedDetails`); the Settings steps render it. Adapters open transports; only `Destination.connect` constructs
-  clients, only the gateway opens adapters, all built in `TerminalGateway.adapters`. Outside
-  destination/rules/settings code, don't branch on CLOUD or PAYMENTS_APP. Capabilities travel as one
+  selects rules. Which Settings › Terminal steps a destination asks for (`setupSteps`) and which of its connection
+  details are already supplied (`suppliedDetails`) are the rules' too; only `TerminalSetupPlan` reads them to number,
+  reveal and tick the steps, and the Settings steps render the plan. Adapters open transports; only
+  `Destination.connect` constructs clients, only the gateway opens adapters, all built in `TerminalGateway.adapters`.
+  Outside destination/rules/settings code, don't branch on CLOUD or PAYMENTS_APP. Capabilities travel as one
   `DestinationCapabilities` value; `TerminalState` carries it whole.
 - \* `ApiSetup` owns API readiness; only `AdyenApi` creates/copies `ApiTarget`. Only the target decides adapter access
   and original payment-context eligibility (`ApiAccess`); ready access and raw adapters cannot be fabricated by callers.
   `Captures` takes a target supplier, not `AdyenApi`; the simulated `CheckoutApi` is injected by the container, and
   the app never builds a Checkout part outside `AdyenCheckout`.
 - \* Only `FinancialOperations` checks stored operations again, routes refunds and says whether any is running; screens
-  offer checks from `PaymentAction.CHECK_AGAIN`/`RefundEntity.canCheckAgain`, never a ServiceID. Saved-card charges,
+  offer checks from `PaymentAction.CHECK_AGAIN`/`RefundEntity.canCheckAgain`, never a ServiceID. Waiting and result
+  screens follow `paymentProgress`/`refundProgress` (amount as requested) and leave results through it, never through a
+  runner's own state. Saved-card charges,
   Checkout refunds and payment-link creations are sent only by `CheckoutBook`s run by `CheckoutOperations`, which
   declines a second link per checkout so screens never guard it. Terminal reconciliation (recheck unresolved, read or
   close totals, compare) is one operation in payment (`TerminalReconciliation`); screens follow its outcome.
@@ -84,8 +90,9 @@ Starred rules below are enforced by `ArchitectureTest`, `OwnershipArchitectureTe
   their existing owners. `Captures` owns cancellation protection from committed request through stored answer;
   capture and tip screens never provide that protection themselves.
 - \* Screens access receipts through `TransactionActions`, backed by `ReceiptDelivery` for `StoredTransaction`.
-  Only delivery uses `ReceiptFactory`; only the container arms automatic delivery, and whichever screen opens first for
-  an armed transaction claims it — callers pass no "first screen" flag of their own. UI state outside Settings must
+  Only delivery uses `ReceiptFactory`; `ReceiptKind` is the one reading both the document and its email follow. Only
+  the container arms automatic delivery, and whichever screen opens first for an armed transaction claims it —
+  callers pass no "first screen" flag of their own. UI state outside Settings must
   not hold `AppSettings` or `printerAvailable`. Only `TransactionActions` claims automatic delivery; only
   `ReceiptDelivery` publishes its progress and dispatches it in the application scope. Manual printing stays
   screen-scoped; automatic attempts are not retried after an uncertain send or process death.
@@ -106,7 +113,8 @@ Starred rules below are enforced by `ArchitectureTest`, `OwnershipArchitectureTe
   read from the stored diff in that one pass, never declared by callers: a write that reprices must be caught
   wherever it comes from.
 - \* Settings ranges live on section companions; only `SettingsRepository` and `AppSettings` normalize. Do not clamp
-  downstream. Constructor defaults are current; installation applies country/language defaults. `TerminalSettings`
+  downstream. Constructor defaults are current; only `NewInstallation` applies country/language defaults (the one
+  `StarterTax.forCountry` caller), worded through its text adapter. `TerminalSettings`
   owns destination/environment choices and their coupled fields; destination companions may copy only learned facts.
 - \* App-language overrides use scoped resources, never the process-wide locale; pricing still follows the device
   country. Language stays local on setup transfer, and changing it must not rewrite saved merchant text.
@@ -115,7 +123,9 @@ Starred rules below are enforced by `ArchitectureTest`, `OwnershipArchitectureTe
   narrow settings slices rather than `SettingsViewModel` or `SettingsUiState`, and `CapabilitiesViewModel` follows
   `CapabilityDiscovery.changes` from `TerminalSetupSource.discoveryChanges`.
 - \* Only PIN-entry UI and `data.security` verify PINs. Financial actions request Manager approval and recheck it before
-  sending; admin access is separate. Secrets remain in `SecretStore`.
+  sending; admin access is separate. Secrets remain in `SecretStore`. `payment` decides approval only through
+  `ManagerApproval`: an operation keeps the grant it started with, so leaving the approving screen cannot refuse it.
+  `Checkout.ceremony` decides per tender what is dropped and confirmed and whether approval is asked.
 - \* `TerminalState.needsSetup` is read only by the container's `SetupGate`, followed by `SetupGateHost` in the nav host.
   Every UI action reaching Adyen or a terminal runs through `currentSetupGate().run`/`GatedButton(requiresSetup = true)`;
   content that only means something once set up shows `SetupRequired`. Setup tools and `StatusCheck` never do, and Home

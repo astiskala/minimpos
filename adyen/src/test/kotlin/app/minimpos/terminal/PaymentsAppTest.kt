@@ -49,7 +49,6 @@ import mockwebserver3.MockWebServer
 import okhttp3.HttpUrl
 import org.junit.Assert.assertThrows
 import org.junit.Test
-import java.math.BigDecimal
 import java.net.URLDecoder
 import kotlin.io.encoding.Base64
 import kotlin.time.Duration
@@ -64,8 +63,9 @@ class PaymentsAppTest {
             transport,
             TerminalIdentity("MiniMPOS", "INSTALLATION-1"),
             recovery = RecoveryPolicy(attempts = 1, intervalMillis = 1, maxInProgressChecks = 1),
+            currencyDigits = testCurrencyDigits,
         )
-    private val payment = PaymentParams(BigDecimal("12.50"), "EUR", "260930-1")
+    private val payment = PaymentParams(1250, "EUR", "260930-1")
 
     @Test
     fun `links follow Adyen's formats for each environment`() {

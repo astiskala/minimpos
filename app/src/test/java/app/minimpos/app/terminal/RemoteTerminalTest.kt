@@ -35,7 +35,6 @@ import org.junit.After
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
-import java.math.BigDecimal
 
 /** Payments that go to a terminal in the cloud, or to the Adyen Payments app on this phone (Tap to Pay). */
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -49,7 +48,7 @@ class RemoteTerminalTest {
     private val env = TestEnvironment(phone, dispatcher = dispatcher, cloud = cloud, paymentsApp = paymentsApp, management = management)
     private val container = env.container
     private val gateway = container.gateway
-    private val payment = PaymentParams(BigDecimal("1.00"), "AUD", "MP-1")
+    private val payment = PaymentParams(100, "AUD", "MP-1")
 
     @After
     fun tearDown() = env.close()

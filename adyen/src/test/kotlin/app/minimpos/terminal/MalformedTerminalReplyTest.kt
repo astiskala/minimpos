@@ -23,7 +23,6 @@ import com.google.gson.JsonParser
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.runTest
 import org.junit.Test
-import java.math.BigDecimal
 
 /**
  * A terminal's answer to a payment or refund, damaged in every way [JsonDamage] knows, must never change what happened: an
@@ -32,10 +31,11 @@ import java.math.BigDecimal
  */
 class MalformedTerminalReplyTest {
     private val gson = TerminalAPIGsonBuilder.create()
-    private val payment = PaymentParams(BigDecimal("12.00"), "AUD", "MP-1")
+    private val payment = PaymentParams(1200, "AUD", "MP-1")
 
     private fun client(transport: TerminalTransport) =
         TerminalClient(
+            currencyDigits = testCurrencyDigits,
             transport = transport,
             identity = TerminalIdentity("POS1", "SIMULATOR-000000001"),
             application = PosApplication("Mini mPOS", "1.0", "Mini mPOS", "Android", "13"),
@@ -152,7 +152,7 @@ class MalformedTerminalReplyTest {
                     checkNotNull(paid.details.poiTransactionId),
                     checkNotNull(paid.details.poiTimestamp),
                     "MP-R",
-                    BigDecimal("12.00"),
+                    1200,
                     "AUD",
                 )
             val (outcome, reply) = original(SimulatedOutcome.APPROVE, { it.isRefund() }, simulator) { it.refund(refund) }

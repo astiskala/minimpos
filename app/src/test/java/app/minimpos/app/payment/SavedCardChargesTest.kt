@@ -8,6 +8,8 @@ import app.minimpos.app.data.db.RefundStatus
 import app.minimpos.app.data.db.SaleStatus
 import app.minimpos.app.data.db.SetupProblem
 import app.minimpos.app.data.db.StoredReason
+import app.minimpos.app.data.security.ManagerApproval
+import app.minimpos.app.data.security.SessionLock
 import app.minimpos.app.history.PaymentAction
 import app.minimpos.app.history.RefundChoice
 import app.minimpos.app.history.Refundability
@@ -92,7 +94,8 @@ class SavedCardChargesTest {
             }
         }
     private var target = ApiTarget(ApiSetup.Complete, modifications, context = context, cards = cards)
-    private var approved = true
+    private val manager = SessionLock { 0L }.apply { unlock() }
+    private val approval = ManagerApproval({ true }, manager, { 0L })
     private val charged = mutableListOf<String>()
     private var ids = 0
     private val charges =
@@ -103,13 +106,13 @@ class SavedCardChargesTest {
             onCharged = { id, _ -> charged += id },
             clock = clock,
             newId = { "sale-${++ids}" },
-            permits = { approved },
+            approval = approval,
         )
     private val accepted = mutableListOf<String>()
     private val refunds =
         CheckoutRefunds(container.appScope, container.refundRecords, container.sales, {
             target
-        }, { accepted += it }, clock, { "refund-${++ids}" }, { approved })
+        }, { accepted += it }, clock, { "refund-${++ids}" }, approval)
 
     private val operations =
         FinancialOperations(
@@ -229,13 +232,24 @@ class SavedCardChargesTest {
     }
 
     @Test
+    fun `a charge keeps the approval it started with when leaving the approving screen locks the session`() {
+        answers += CardChargeResult.Authorised("PSP8")
+        val id = checkNotNull(charges.start(start()))
+        // Navigating to the waiting screen, which needs no Manager approval, locks the session straight away.
+        manager.lock()
+        await { charges.state.first { it == TransactionState.Finished(id) } }
+        assertThat(sale(id).status).isEqualTo(SaleStatus.APPROVED)
+        assertThat(sent).hasSize(1)
+    }
+
+    @Test
     fun `nothing is sent without Manager approval, setup or the original context, and old unknown charges stay unknown`() {
-        approved = false
+        manager.lock()
         val refused = charge()
         assertThat(sent).isEmpty()
         assertThat(sale(refused).reason).isEqualTo(StoredReason.NotDone(Failure.NotSetUp(SetupProblem.MANAGER_APPROVAL)))
         charges.acknowledge()
-        approved = true
+        manager.unlock()
         answers += CardChargeResult.Failed(Fault.ConnectionLost)
         val unknown = charge()
         target = target.copy(context = context.copy(merchantAccount = "Other"))
@@ -243,10 +257,10 @@ class SavedCardChargesTest {
         target = ApiTarget(ApiSetup.Incomplete(SetupProblem.API_KEY), context = context)
         assertThat(await { charges.recheck(unknown) }).isEqualTo(Recheck.StillUnknown(Failure.NotSetUp(SetupProblem.API_KEY)))
         assertThat(sale(unknown).status).isEqualTo(SaleStatus.UNKNOWN)
-        approved = false
+        manager.lock()
         target = ApiTarget(ApiSetup.Complete, modifications, context = context, cards = cards)
         assertThat(await { charges.recheck(unknown) }).isEqualTo(Recheck.StillUnknown(Failure.NotSetUp(SetupProblem.MANAGER_APPROVAL)))
-        approved = true
+        manager.unlock()
         now = now.plus(CheckoutOperations.RECHECK_WINDOW).plusSeconds(1)
         assertThat(await { charges.recheck(unknown) }).isEqualTo(Recheck.StillUnknown(Failure.NotSetUp(SetupProblem.CHARGE_TOO_OLD)))
         assertThat(sent).hasSize(1)

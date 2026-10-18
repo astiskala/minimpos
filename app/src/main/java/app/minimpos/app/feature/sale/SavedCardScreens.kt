@@ -1,6 +1,5 @@
 package app.minimpos.app.feature.sale
 
-import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
@@ -23,8 +22,6 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -52,7 +49,6 @@ import app.minimpos.app.ui.navigation.Navigator
 import app.minimpos.app.ui.navigation.Route
 import app.minimpos.app.ui.theme.LocalDimens
 import app.minimpos.terminal.checkout.StoredCard
-import kotlinx.coroutines.flow.flowOf
 
 /**
  * Charge saved card, first step: the shopper reference (the customer reference or email, whichever Settings › Payments
@@ -183,10 +179,8 @@ fun SavedCardReviewScreen(
     val money = rememberMoneyFormatter(state.checkout.currency)
     val charge = state.charge
     LaunchedEffect(charge) {
-        if (charge is TransactionState.Finished) {
-            vm.acknowledge()
-            navigator.replace(Route.SaleResult(charge.id))
-        }
+        // Leaving the result acknowledges the charge, as for any payment.
+        if (charge is TransactionState.Finished) navigator.replace(Route.SaleResult(charge.id))
     }
     val charging = charge is TransactionState.Processing
     val total = money.format(state.checkout.totals.amounts.gross)
@@ -243,54 +237,10 @@ private fun savedCardViewModel(): SavedCardViewModel {
     return viewModel(key = "savedCard") {
         SavedCardViewModel(
             container.savedCardSession,
-            container.savedCardCharges,
+            container.operations.paymentProgress,
             container.savedCardLookup,
             container.settingsState,
             container::currency,
-        )
-    }
-}
-
-/**
- * Follows a token charged from a New sale's checkout to its result, which replaces this screen. Back is disabled while
- * the charge runs; it cannot be cancelled once sent.
- */
-@Composable
-fun TokenChargeScreen(
-    navigator: Navigator,
-    modifier: Modifier = Modifier,
-) {
-    val container = LocalAppContainer.current
-    val charges = container.savedCardCharges
-    val state by charges.state.collectAsStateWithLifecycle()
-    // Leaving the result acknowledges the charge, which must not send this screen Home on its way out.
-    var finished by remember { mutableStateOf(false) }
-    LaunchedEffect(state) {
-        when (val current = state) {
-            is TransactionState.Finished -> {
-                finished = true
-                navigator.replace(Route.SaleResult(current.id))
-                charges.acknowledge()
-            }
-
-            TransactionState.Idle -> {
-                if (!finished) navigator.home()
-            }
-
-            // The charge runs on; its result replaces this screen.
-            is TransactionState.Processing -> {}
-        }
-    }
-    BackHandler(enabled = true) {}
-    // The charge is stored before it is sent, so its amount can be shown as a payment's is.
-    val saleId = (state as? TransactionState.Processing)?.id
-    val stored by remember(saleId) { saleId?.let(container.storedPayments::observe) ?: flowOf(null) }
-        .collectAsStateWithLifecycle(initialValue = null)
-    MiniScaffold(title = stringResource(R.string.checkout_charge_token), onBack = null, modifier = modifier) { padding ->
-        ProcessingContent(
-            amount = stored?.sale?.let { rememberMoneyFormatter(it.currency).format(it.amountMinor) },
-            message = stringResource(R.string.saved_card_charging),
-            modifier = Modifier.padding(padding).testTag("tokenCharging"),
         )
     }
 }

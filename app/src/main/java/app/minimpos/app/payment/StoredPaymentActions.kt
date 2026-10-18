@@ -43,7 +43,7 @@ class StoredPaymentActions(
     fun cancel(record: SaleWithLines): String? =
         start(RefundablePayment.cancellation(record, settings.value.payment.referencePrefix, clock.instant(), zone()))
 
-    /** Retries [saleId]'s stored capture amount and identity; callers use `persisting` to survive screen cancellation. */
+    /** Retries [saleId]'s stored capture amount and identity; the capture module owns execution through its stored answer. */
     suspend fun retryCapture(saleId: String): CaptureResult = captures.retryCapture(saleId)
 
     private fun start(request: RefundStart?): String? = request?.let(operations::refund)

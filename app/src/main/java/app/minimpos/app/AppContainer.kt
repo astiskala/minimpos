@@ -328,17 +328,17 @@ class AppContainer(
 
     private val sharedKeys: SharedKeySetup = SharedKeySetup(terminalSetup, terminalDetails, api::verify, ::financialOperationRunning)
 
-    /** Optional read-only discovery of terminal connection fields, within the destination's environment. */
-    val setupDiscovery =
-        SetupDiscovery(terminalSetup, {
-            secrets.set(Secret.TERMINAL_PASSPHRASE, it)
-        }, terminalDetails, gateway::readEnvironment, sharedKeys)
-
     /** Boards (and revokes) the Adyen Payments app on this phone, for Tap to Pay. */
     val tapToPay = TapToPaySetup(terminalSetup, settings, paymentsAppLinks, paymentsAppManagement) { api.verify() }
 
     /** Whether payments and printing can work, for Home, Settings and the receipt screens. */
     val terminalStatus = TerminalStatus(terminalSetup, gateway, appScope, api::verify, tapToPay::checkSaved)
+
+    /** Optional terminal discovery and explicitly confirmed shared-key setup through connection verification. */
+    val setupDiscovery =
+        SetupDiscovery(terminalSetup, {
+            secrets.set(Secret.TERMINAL_PASSPHRASE, it)
+        }, terminalDetails, gateway::readEnvironment, sharedKeys, terminalStatus::check)
 
     /**
      * The startup check for a newer GitHub release, which Home offers to download in the browser; never started on an
@@ -390,6 +390,7 @@ class AppContainer(
                     qrPng = { QrCodes.png(it) },
                     currentTexts = ::emailTexts,
                 ),
+            scope = appScope,
         )
 
     private val sessions = SaleKind.entries.associateWith { SaleSession(it, ::shopperPromptTexts) }
@@ -485,6 +486,15 @@ class AppContainer(
                 completeSale(id, start.payment, if (start.fromCheckout) session(SaleKind.SALE) else savedCardSession)
             },
             permits = ::managerPermits,
+            targets = api.targets,
+        )
+
+    /** Explicit Charge token lookup, retained across its reference, cart and review screens; never queries on its own. */
+    val savedCardLookup =
+        savedCardCharges.lookup(
+            appScope,
+            savedCardSession.checkout(settingsState, currency = ::currency),
+            terminalStatus.state,
         )
 
     /** Refunds saved-card charges through the Checkout API, which has no terminal transaction to reverse. */

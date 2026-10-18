@@ -5,18 +5,15 @@ import androidx.lifecycle.viewModelScope
 import app.minimpos.app.data.db.Failure
 import app.minimpos.app.data.settings.AppSettings
 import app.minimpos.app.data.settings.ShopperReferenceSource
-import app.minimpos.app.feature.launchWrite
-import app.minimpos.app.payment.CardLookup
 import app.minimpos.app.payment.Checkout
 import app.minimpos.app.payment.SaleSession
 import app.minimpos.app.payment.SavedCardCharges
+import app.minimpos.app.payment.SavedCardLookup
+import app.minimpos.app.payment.SavedCardLookupState
 import app.minimpos.app.payment.TransactionState
 import app.minimpos.app.payment.savedCardStart
-import app.minimpos.app.terminal.TerminalState
 import app.minimpos.core.money.CurrencySpec
 import app.minimpos.terminal.checkout.StoredCard
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
@@ -37,6 +34,7 @@ import java.time.ZoneId
  * @property searchedReference The shopper reference the [cards] belong to; a changed reference needs a new lookup.
  * @property recurringModel Adyen's `recurringProcessingModel` charges use; cards not saved for it cannot be chosen.
  * @property charge The charge running or finished; [TransactionState.Idle] before one starts.
+ * @property lookup Current non-secret lookup reading, including selected-card eligibility.
  */
 data class SavedCardUiState(
     val checkout: Checkout = Checkout(),
@@ -48,21 +46,17 @@ data class SavedCardUiState(
     val searchedReference: String? = null,
     val recurringModel: String = "",
     val charge: TransactionState = TransactionState.Idle,
+    val lookup: SavedCardLookupState = SavedCardLookupState(),
 ) {
     /** The shopper reference the typed field makes, as checkout makes it; null while it is not valid. */
     val shopperReference: String? get() = checkout.shopperReference
 
     /** The cards that may be charged with [recurringModel]; the others are listed but cannot be chosen. */
-    fun chargeable(card: StoredCard): Boolean = card.supports(recurringModel)
-}
+    fun chargeable(card: StoredCard): Boolean = lookup.chargeable(card)
 
-/** The lookup result kept for the reference it was made for. */
-private data class Lookup(
-    val finding: Boolean = false,
-    val reference: String? = null,
-    val cards: List<StoredCard>? = null,
-    val failure: Failure? = null,
-)
+    /** Why a selected [card] cannot be charged now; null while its original lookup remains usable. */
+    fun selectionProblem(card: StoredCard): Failure? = lookup.selectionProblem(card)
+}
 
 /**
  * Finding a shopper's saved cards and charging one for the sale rung up in the saved-card [session]. The shopper
@@ -70,8 +64,8 @@ private data class Lookup(
  *
  * @param session The saved-card sale's own session.
  * @param charges Lists cards and charges them.
+ * @param lookup Explicit lookup retained across the reference, cart and review screens.
  * @param settings The current settings, for the shopper reference source and recurring model.
- * @param terminal Where payments go now, for the Checkout API's readiness.
  * @param currency The currency charged.
  * @param clock Stamps the generated merchant reference.
  * @param zone The time zone of that reference.
@@ -79,29 +73,29 @@ private data class Lookup(
 class SavedCardViewModel(
     private val session: SaleSession,
     private val charges: SavedCardCharges,
+    private val lookup: SavedCardLookup,
     settings: StateFlow<AppSettings>,
-    terminal: Flow<TerminalState>,
     currency: (AppSettings) -> CurrencySpec,
     private val clock: Clock = Clock.systemDefaultZone(),
     private val zone: () -> ZoneId = { ZoneId.systemDefault() },
 ) : ViewModel() {
-    private val lookup = MutableStateFlow(Lookup())
     private val checkout = session.checkout(settings = settings, currency = currency)
 
     /** The screen state, updated as the form, cart, setup, lookup or charge changes. */
     val state: StateFlow<SavedCardUiState> =
-        combine(checkout, terminal, lookup, charges.state) { current, status, found, charge ->
+        combine(checkout, lookup.state, charges.state) { current, found, charge ->
             val payment = current.payment
             SavedCardUiState(
                 checkout = current,
                 source = payment.shopperReferenceSource,
-                blocked = SavedCardCharges.blocked(payment.shopperReferenceSource, status),
+                blocked = found.blocked,
                 finding = found.finding,
-                cards = found.cards.takeIf { found.reference == current.shopperReference },
-                failure = found.failure.takeIf { found.reference == current.shopperReference },
+                cards = found.cards,
+                failure = found.failure,
                 searchedReference = found.reference,
                 recurringModel = payment.recurringModel().value,
                 charge = charge,
+                lookup = found,
             )
         }.stateIn(viewModelScope, SharingStarted.Eagerly, SavedCardUiState())
 
@@ -112,19 +106,7 @@ class SavedCardViewModel(
         }
 
     /** Lists the cards saved for the typed shopper reference; ignored while one is running, blocked or invalid. */
-    fun find() {
-        val current = state.value
-        val reference = current.shopperReference ?: return
-        if (current.finding || current.blocked != null) return
-        lookup.value = Lookup(finding = true, reference = reference)
-        launchWrite({ charges.cards(reference) }) { found ->
-            lookup.value =
-                when (found) {
-                    is CardLookup.Listed -> Lookup(reference = reference, cards = found.cards)
-                    is CardLookup.NotDone -> Lookup(reference = reference, failure = found.failure)
-                }
-        }
-    }
+    fun find() = lookup.find()
 
     /**
      * Charges [card] for the rung-up sale; returns whether it started (false while blocked, nothing is rung up, the
@@ -134,7 +116,7 @@ class SavedCardViewModel(
         val current = state.value
         if (current.blocked != null) return false
         val start = session.savedCardStart(current.checkout, card, clock.instant(), zone()) ?: return false
-        return charges.start(start) != null
+        return lookup.start(start) != null
     }
 
     /** Leaves a finished charge, so the next one can start. */

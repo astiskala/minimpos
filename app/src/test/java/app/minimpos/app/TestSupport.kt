@@ -21,14 +21,17 @@ import app.minimpos.app.terminal.ApiSetup
 import app.minimpos.app.terminal.Attempt
 import app.minimpos.app.terminal.DeviceInfo
 import app.minimpos.app.update.UpdateCheck
+import app.minimpos.terminal.checkout.CardChargeRequest
+import app.minimpos.terminal.checkout.CardChargeResult
 import app.minimpos.terminal.checkout.CheckoutApi
-import app.minimpos.terminal.checkout.CheckoutSavedCards
 import app.minimpos.terminal.checkout.PaymentLink
 import app.minimpos.terminal.checkout.PaymentLinkApi
 import app.minimpos.terminal.checkout.PaymentLinkRequest
 import app.minimpos.terminal.checkout.PaymentLinkResult
 import app.minimpos.terminal.checkout.PaymentLinkStatus
 import app.minimpos.terminal.checkout.PaymentModifications
+import app.minimpos.terminal.checkout.SavedCardApi
+import app.minimpos.terminal.checkout.StoredCardListing
 import app.minimpos.terminal.parse.FormEncoding
 import app.minimpos.terminal.paymentsapp.AppLinkAnswer
 import app.minimpos.terminal.paymentsapp.AppLinkExchange
@@ -39,6 +42,7 @@ import app.minimpos.terminal.simulator.SimulatedModifications
 import app.minimpos.terminal.simulator.SimulatorConfig
 import app.minimpos.terminal.simulator.TerminalSimulator
 import app.minimpos.terminal.transport.AdyenLocalTransport
+import app.minimpos.terminal.transport.ApiKey
 import app.minimpos.terminal.transport.CloudCredentials
 import app.minimpos.terminal.transport.CloudDetection
 import app.minimpos.terminal.transport.CloudDevices
@@ -427,7 +431,7 @@ class FakeStoreDetails(
 class TestEnvironment(
     private val device: DeviceInfo = FakeDevice(),
     /** Replaces the real (network) terminal connection. */
-    terminal: FakeTerminal? = null,
+    terminal: FakeTerminal = FakeTerminal(),
     /** Runs the container's application scope (payments, refunds and connection checks). */
     dispatcher: CoroutineDispatcher = Dispatchers.Default,
     /** Replaces the Cloud device API. */
@@ -492,11 +496,24 @@ class TestEnvironment(
             mailTransport = mail,
             storageDir = { File(dir, it) },
             appScope = scope,
-            terminalTransport = { host, key, tls -> terminal?.connect(host, key) ?: AdyenLocalTransport(host, key, tls) },
+            terminalTransport = { host, key, _ -> terminal.connect(host, key) },
             cloudDevices = cloud::connect,
             paymentsAppExchange = paymentsApp,
             paymentsAppManagement = { _, _ -> management },
-            checkout = { CheckoutApi.of(modifications, links, CheckoutSavedCards(it)) },
+            checkout = {
+                CheckoutApi.of(
+                    modifications,
+                    links,
+                    object : SavedCardApi {
+                        override suspend fun list(shopperReference: String) = StoredCardListing.Listed(emptyList())
+
+                        override suspend fun charge(
+                            request: CardChargeRequest,
+                            idempotencyKey: String,
+                        ) = CardChargeResult.Failed(Fault.Permission(ApiKey.ADYEN))
+                    },
+                )
+            },
             storeDetails = { _, _ -> stores },
             terminalDetails = { terminalDetails ?: defaultTerminalDetails() },
             walletMethods = { _, _ -> walletMethods },

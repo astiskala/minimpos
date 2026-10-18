@@ -14,11 +14,10 @@ import app.minimpos.app.feature.launchWrite
 import app.minimpos.app.feature.persisting
 import app.minimpos.app.terminal.SetupDiscovery
 import app.minimpos.app.terminal.SetupDiscoverySearch
+import app.minimpos.app.terminal.SharedKeyConnection
 import app.minimpos.app.terminal.SharedKeyOffer
-import app.minimpos.app.terminal.SharedKeySetupOutcome
 import app.minimpos.app.terminal.TapToPayOutcome
 import app.minimpos.app.terminal.TapToPaySetup
-import app.minimpos.app.terminal.TerminalConnection
 import app.minimpos.app.terminal.TerminalStatus
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -187,50 +186,42 @@ class TerminalSetupViewModel(
         })
     }
 
-    private suspend fun keyOutcome(result: SharedKeySetupOutcome) {
+    private suspend fun keyOutcome(result: SharedKeyConnection) {
+        if (result.configured) {
+            val terminal = settings.current().terminal
+            observedTerminal.first { it == terminal }
+        }
         when (result) {
-            is SharedKeySetupOutcome.Confirmation -> {
+            is SharedKeyConnection.Confirmation -> {
                 actions.update {
                     it.copy(sharedKeyOffer = result.offer, keyResult = ActionState(), manualDetails = false)
                 }
             }
 
-            is SharedKeySetupOutcome.Failed -> {
-                val offer = discovery.pendingKey()
-                val outcome =
-                    ActionOutcome.Failed(result.failure)
-                actions.update { it.copy(sharedKeyOffer = offer, keyResult = ActionState(outcome = outcome, isError = true)) }
+            is SharedKeyConnection.Failed -> {
+                actions.update {
+                    it.copy(
+                        sharedKeyOffer = result.offer,
+                        keyPending = result.pending,
+                        manualDetails = if (result.configured) false else it.manualDetails,
+                        revision = if (result.configured) it.revision + 1 else it.revision,
+                        keyResult = ActionState(outcome = ActionOutcome.Failed(result.failure), isError = true),
+                    )
+                }
             }
 
-            is SharedKeySetupOutcome.Ready -> {
-                checkedKey(result)
+            SharedKeyConnection.Connected -> {
+                onConnected()
+                actions.update {
+                    it.copy(
+                        sharedKeyOffer = null,
+                        keyPending = false,
+                        manualDetails = false,
+                        revision = it.revision + 1,
+                        keyResult = ActionState(done = true),
+                    )
+                }
             }
-        }
-    }
-
-    private suspend fun checkedKey(ready: SharedKeySetupOutcome.Ready) {
-        val pending = ready.pending
-        val current = settings.current().terminal
-        observedTerminal.first { it == current }
-        val connected = status.check() is TerminalConnection.Connected
-        if (connected) onConnected()
-        val result =
-            if (connected) {
-                ActionState(done = true)
-            } else {
-                ActionState(
-                    outcome = ActionOutcome.Failed(Failure.NotSetUp(ready.unverifiedProblem)),
-                    isError = true,
-                )
-            }
-        actions.update {
-            it.copy(
-                sharedKeyOffer = null,
-                keyPending = !connected && pending,
-                manualDetails = false,
-                revision = it.revision + 1,
-                keyResult = result,
-            )
         }
     }
 

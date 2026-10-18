@@ -16,8 +16,12 @@ import app.minimpos.terminal.checkout.ModificationResult
 import app.minimpos.terminal.checkout.PaymentModifications
 import app.minimpos.terminal.transport.ExternalText
 import app.minimpos.terminal.transport.Fault
+import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withContext
 import kotlin.uuid.Uuid
 
 /** What became of entering a tip, a capture or an authorisation adjustment, see [Captures]. */
@@ -72,8 +76,9 @@ sealed interface CaptureResult {
  * the issuer refuses, the tip is not saved, so a smaller one can be entered. Otherwise the tip is saved and the total
  * captured (Adyen's overcapture). Every capture is stored as [CaptureStatus.PENDING] before it is sent and with an
  * idempotency key made from the sale and amount, so one whose outcome is unknown can be sent again
- * ([retryCapture]) without capturing twice. One operation runs at a time. A caller that must not lose an operation
- * when it is cancelled (a view model whose screen closes) runs it with `persisting`.
+ * ([retryCapture]) without capturing twice. One operation runs at a time. Waiting and eligibility checks are
+ * cancellable; once committed, the stored request, exchange and stored answer finish even if the caller is cancelled.
+ * Cancellation is then rethrown so a closed screen never continues with the outcome.
  *
  * @param sales Where the payments are stored, and their capture recorded.
  * @param target Where captures and adjustments go now: [AdyenApi.target] in the app, a fixed target in tests.
@@ -174,7 +179,9 @@ class Captures(
     ): CaptureResult =
         when (val access = target.modifications(sale.context)) {
             is ApiAccess.Ready -> {
-                send(access.client)
+                currentCoroutineContext().ensureActive()
+                withContext(NonCancellable) { send(access.client) }
+                    .also { currentCoroutineContext().ensureActive() }
             }
 
             is ApiAccess.Blocked -> {

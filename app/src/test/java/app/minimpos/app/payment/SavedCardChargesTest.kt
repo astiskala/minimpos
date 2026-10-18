@@ -254,6 +254,19 @@ class SavedCardChargesTest {
     }
 
     @Test
+    fun `a selected listing cannot charge a different account and a never sent start is not left pending`() {
+        val original = start().forLookup(card, context)
+        target = target.copy(context = context.copy(merchantAccount = "Other"))
+        val id = checkNotNull(charges.start(original))
+        await { charges.state.first { it == TransactionState.Finished(id) } }
+        assertThat(sent).isEmpty()
+        val stored = sale(id)
+        assertThat(stored.context).isEqualTo(context)
+        assertThat(stored.status).isEqualTo(SaleStatus.FAILED)
+        assertThat(stored.reason).isEqualTo(StoredReason.NotDone(Failure.NotSetUp(SetupProblem.PAYMENT_CONTEXT)))
+    }
+
+    @Test
     fun `a Checkout refund whose answer is lost is sent again with the same key and a rejected one fails`() {
         answers += CardChargeResult.Authorised("PSP9")
         val id = charge()

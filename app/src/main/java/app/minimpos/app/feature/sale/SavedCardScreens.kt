@@ -200,7 +200,7 @@ fun SavedCardReviewScreen(
                     GatedButton(
                         stringResource(R.string.saved_card_charge, total),
                         { vm.charge(card.stored(state.recurringModel)) },
-                        blocked = state.blocked,
+                        blocked = state.selectionProblem(card.stored(state.recurringModel)),
                         enabled = state.checkout.canPay && state.shopperReference != null,
                         primary = true,
                         requiresSetup = true,
@@ -244,8 +244,8 @@ private fun savedCardViewModel(): SavedCardViewModel {
         SavedCardViewModel(
             container.savedCardSession,
             container.savedCardCharges,
+            container.savedCardLookup,
             container.settingsState,
-            container.terminalStatus.state,
             container::currency,
         )
     }

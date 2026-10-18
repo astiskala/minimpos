@@ -41,7 +41,12 @@ import app.minimpos.terminal.transport.ExternalText
 import app.minimpos.terminal.transport.Fault
 import app.minimpos.terminal.transport.TerminalEnvironment
 import com.google.common.truth.Truth.assertThat
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.CoroutineStart
+import kotlinx.coroutines.cancelAndJoin
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 import org.junit.After
 import org.junit.Assert.assertThrows
 import org.junit.Test
@@ -55,6 +60,7 @@ private class FakeModifications : PaymentModifications {
     val captures = mutableListOf<Triple<String, ModificationAmount, String>>()
     val adjustments = mutableListOf<Pair<ModificationAmount, String?>>()
     val keys = mutableListOf<String>()
+    var beforeAnswer: suspend () -> Unit = {}
 
     override suspend fun capture(
         paymentPspReference: String,
@@ -64,6 +70,7 @@ private class FakeModifications : PaymentModifications {
     ): ModificationResult {
         captures += Triple(paymentPspReference, amount, reference)
         keys += idempotencyKey
+        beforeAnswer()
         return captureResult
     }
 
@@ -76,6 +83,7 @@ private class FakeModifications : PaymentModifications {
     ): ModificationResult {
         adjustments += amount to adjustAuthorisationData
         keys += idempotencyKey
+        beforeAnswer()
         return adjustResult
             ?: if (adjustAuthorisationData !=
                 null
@@ -129,6 +137,65 @@ class CapturesTest {
         }
 
     private fun sale(id: String = "s1") = await { container.sales.get(id)!!.sale }
+
+    @Test
+    fun `closing the caller during adjustment still captures and records the answer without continuing the caller`() {
+        store()
+        await {
+            coroutineScope {
+                val sending = CompletableDeferred<Unit>()
+                val answer = CompletableDeferred<Unit>()
+                fake.beforeAnswer = {
+                    sending.complete(Unit)
+                    answer.await()
+                }
+                var continued = false
+                val caller =
+                    launch {
+                        captures.addTip("s1", 600)
+                        continued = true
+                    }
+                sending.await()
+                caller.cancel()
+                answer.complete(Unit)
+                caller.join()
+                val stored = container.sales.get("s1")!!.sale
+                assertThat(stored.adjustment).isEqualTo(AdjustmentStatus.AUTHORISED)
+                assertThat(stored.captureStatus).isEqualTo(CaptureStatus.REQUESTED)
+                assertThat(stored.tipMinor).isEqualTo(600)
+                assertThat(fake.adjustments).hasSize(1)
+                assertThat(fake.captures).hasSize(1)
+                assertThat(fake.keys.last()).isEqualTo("capture-s1-2600")
+                assertThat(continued).isFalse()
+            }
+        }
+    }
+
+    @Test
+    fun `cancelling a queued capture never commits it`() {
+        store()
+        store(bill.copy(id = "s2"))
+        await {
+            coroutineScope {
+                val sending = CompletableDeferred<Unit>()
+                val answer = CompletableDeferred<Unit>()
+                fake.beforeAnswer = {
+                    sending.complete(Unit)
+                    answer.await()
+                }
+                val first = launch { captures.addTip("s1", 0) }
+                sending.await()
+                val queued = launch(start = CoroutineStart.UNDISPATCHED) { captures.addTip("s2", 0) }
+                queued.cancelAndJoin()
+                answer.complete(Unit)
+                first.join()
+                assertThat(fake.captures).hasSize(1)
+                val untouched = container.sales.get("s2")!!.sale
+                assertThat(untouched.tipMinor).isNull()
+                assertThat(untouched.captureStatus).isEqualTo(bill.captureStatus)
+            }
+        }
+    }
 
     @Test
     fun `a small tip is captured with the bill without adjusting`() {

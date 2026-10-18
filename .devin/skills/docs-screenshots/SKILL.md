@@ -32,14 +32,24 @@ description: Re-capture the screenshots and social image of the docs/ website, o
 ## Capture script
 
 `scripts/docs-capture` (Bash, checked by shellcheck) drives the docs emulator by visible text, so one sequence works
-in every language: `prepare`, `locale LANG`, `snapshot`/`restore NAME.tar` (app data in `/data/local/tmp`), `launch`,
+in every language: `prepare`, `locale LANG`, `snapshot`/`restore NAME.tar` (app data in `/data/local/tmp`), `launch LANG`,
 `tap LANG KEY` (a string resource, or `=literal text`), `scroll LANG KEY`, `shot LANG NAME` and `finish`. Raw
 720×1280 captures collect in `/tmp/minimpos-shots` as `LANG-NAME.png`; `process` then paints the system bars, scales
 to 540×960 and quantizes them into `docs/images[/LANG]/` through `:tooling`'s `screenshots` command
 (`DocsScreenshots`). Keep per-language fixtures as on-device snapshots (`docs-<set>-<lang>.tar`); `flow LANG NAME...`
-restores one before each named flow (`settings`: terminal-setup, tax, terminal-tipping; `preauth`: pre-auth-detail;
-`offline`: offline-payment, reconciliation) and `settings LANG KEY` opens a Settings section past the admin PIN. Add a
-named flow there for each screenshot you recapture by hand twice, rather than a temporary script.
+restores one before each named flow:
+
+- `home`: home only; `overview`: home, history, history-search; `catalog`: products; `preferences`: settings, capabilities.
+- `cart`: sale; `checkout`: sale, checkout, wallets, wallet-scan, processing, approved, receipt, refund.
+- `authorize`: pre-auth; `preauth`: pre-auth-detail; `settings`: terminal-setup, tax, terminal-tipping.
+- `transfer`: transfer, export; `partial`: partial-payment; `gratuity`: tip-receipt, tip; `tax_dialog`: tax-dialog.
+- `offline`: offline-payment, reconciliation.
+- `ams1`: sale and the 480×800 sale-ams1 image. Keep that raw image outside the S1F2 processing directory.
+
+`settings LANG KEY` opens a Settings section past the admin PIN; `expand_receipt` expands the open simulated printer.
+Add a named flow there for each screenshot you
+recapture by hand twice, rather than a temporary script. Do not edit the running shell script during a capture.
+Launch waits for localized Home controls; a Home capture checks them again and refuses splash screens.
 
 ## Emulator
 
@@ -53,9 +63,10 @@ named flow there for each screenshot you recapture by hand twice, rather than a 
   `com.android.systemui.emulation.pixel_4a`, then `stop`/`start`): they add a hole-punch cutout, a 68 dp status bar
   and rounded corners that clip the clock. Wait for Package Manager after restarting the framework before launching
   the app; an early launch can report that the activity does not exist.
-- Setup: `adb root`, set `persist.sys.locale` to the fixture's `deviceLocale` and use its `timeZone`
-  (`settings put global auto_time_zone 0` and `service call alarm 3 s16 <timeZone>`; setprop alone does not stick),
-  then `stop`/`start`; wait until Package Manager resolves the app's activity, not just its APK path. Window, transition
+- Setup: `adb root`, set `persist.sys.locale` to the fixture's `deviceLocale`, then `stop`/`start`; wait until Package
+  Manager resolves the app's activity, not just its APK path. After restarting, disable automatic time zone selection
+  with `settings put global auto_time_zone 0` and apply the fixture's `timeZone` with `cmd alarm set-timezone <timeZone>`.
+  Verify `getprop persist.sys.timezone`; a numeric Binder call or setprop alone is not reliable. Window, transition
   and animator animations off; SystemUI demo mode (clock 09:30, full Wi-Fi and battery, no notifications; re-send it
   after every `stop`/`start`).
 - The frames show terminals, so make the app behave as on one: `settings put global device_name S1F2-000158213605014`

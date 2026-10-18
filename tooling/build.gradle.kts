@@ -69,6 +69,7 @@ tasks.test {
         repository.file("scripts/gradle"),
         repository.file("scripts/dev"),
         repository.file("scripts/ci"),
+        repository.file("scripts/docs-capture"),
     )
     inputs.dir(repository.dir(".github/workflows")).withPathSensitivity(PathSensitivity.RELATIVE)
     systemProperty("minimpos.repository", repository.asFile.absolutePath)

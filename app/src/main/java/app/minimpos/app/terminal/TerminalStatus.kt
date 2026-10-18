@@ -74,6 +74,16 @@ data class TerminalState(
 
     /** What must still be entered before the Checkout API can be used ([ApiSetup.problem]); null when nothing is. */
     val apiProblem: SetupProblem? get() = apiSetup.problem
+
+    /**
+     * Whether payments still need setting up: something must be entered, or no connection check (the Settings test or
+     * the background one) has verified the connection and Checkout API since the setup last changed
+     * ([SetupProblem.SETUP_NOT_VERIFIED]), or the last check found something to set up. False for the simulator and
+     * until [loaded]. Every action that reaches Adyen or a terminal waits for this; status checks of unfinished
+     * operations never do.
+     */
+    val needsSetup: Boolean
+        get() = loaded && (setupProblem != null || (capabilities.checksConnection && connection is TerminalConnection.NotSetUp))
 }
 
 /**

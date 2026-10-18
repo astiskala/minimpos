@@ -290,10 +290,10 @@ val actionlint =
     }
 
 val shellCheck =
-    registerCheck("shellCheck", "Checks the concise Bash Gradle runner with shellcheck.") {
+    registerCheck("shellCheck", "Checks the Bash Gradle runners and the docs capture script with shellcheck.") {
         sources.from("scripts/gradle", "scripts/dev", "scripts/ci")
         tools.from(shellcheckDownload)
-        command.set(listOf(tool("shellcheck"), "scripts/gradle", "scripts/dev", "scripts/ci"))
+        command.set(listOf(tool("shellcheck"), "scripts/gradle", "scripts/dev", "scripts/ci", "scripts/docs-capture"))
     }
 
 val zizmor =

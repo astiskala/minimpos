@@ -20,18 +20,22 @@ import app.minimpos.app.feature.OutcomeMessage
 import app.minimpos.app.terminal.ReceiptBusiness
 import app.minimpos.app.ui.components.LabeledValue
 import app.minimpos.app.ui.components.SecondaryButton
+import app.minimpos.app.ui.components.currentSetupGate
 
-/** Explicit Management lookup followed by review; only confirmation fills blank receipt fields. */
+/**
+ * Explicit Management lookup (through the setup gate) followed by review; only confirmation fills blank receipt fields.
+ */
 @Composable
 internal fun ReceiptBusinessImport(
     state: ReceiptBusinessImportState,
     events: ReceiptBusinessEvents,
 ) {
+    val gate = currentSetupGate()
     SettingNote(stringResource(R.string.settings_business_import_hint))
     SettingActions {
         SecondaryButton(
             stringResource(R.string.settings_business_import),
-            events::onFind,
+            { gate.run(events::onFind) },
             loading = state.lookup.running,
             icon = Icons.Default.FileDownload,
             modifier = Modifier.testTag("findReceiptBusinesses"),

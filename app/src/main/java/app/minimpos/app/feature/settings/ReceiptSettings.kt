@@ -66,6 +66,7 @@ internal fun ColumnScope.ReceiptsSection(
             blocked = terminal.printBlocked?.let(Failure::NotSetUp),
             loading = actions.print.running,
             icon = Icons.Default.Print,
+            requiresSetup = true,
             modifier = Modifier.testTag("printTest"),
         )
         OutcomeMessage(actions.print)
@@ -150,10 +151,11 @@ private fun ColumnScope.ReceiptPrintingSettings(
             ),
         selected = receipt.printerMode,
         onSelect = { mode -> update { it.copy(printerMode = mode) } },
+        subtitle = stringResource(R.string.settings_printer_hint),
     )
     SettingSwitch(stringResource(R.string.settings_auto_print), receipt.autoPrint, { value ->
         update { it.copy(autoPrint = value) }
-    }, tag = "autoPrint")
+    }, subtitle = stringResource(R.string.settings_auto_print_hint), tag = "autoPrint")
     SettingChoice(
         title = stringResource(R.string.settings_merchant_copy),
         options =
@@ -164,6 +166,7 @@ private fun ColumnScope.ReceiptPrintingSettings(
             ),
         selected = receipt.merchantCopy,
         onSelect = { policy -> update { it.copy(merchantCopy = policy) } },
+        subtitle = stringResource(R.string.settings_merchant_copy_hint),
     )
     SettingNumberField(
         stringResource(R.string.settings_chars_per_line),

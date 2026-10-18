@@ -60,6 +60,8 @@ class AppLanguageTest {
                             collectEmailOnTerminal = true,
                             askShopperRating = true,
                         ),
+                    // The terminal asks for an email only once emailed receipts are ready.
+                    email = it.email.copy(host = "smtp.example.com", fromAddress = "shop@example.com"),
                 )
             }
             val checkouts =

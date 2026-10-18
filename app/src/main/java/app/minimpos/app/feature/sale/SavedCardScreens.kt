@@ -2,7 +2,6 @@ package app.minimpos.app.feature.sale
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.fillMaxSize
@@ -16,7 +15,6 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CreditCard
 import androidx.compose.material.icons.filled.Search
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
@@ -48,12 +46,14 @@ import app.minimpos.app.ui.components.BottomActions
 import app.minimpos.app.ui.components.LabeledValue
 import app.minimpos.app.ui.components.LocalAppContainer
 import app.minimpos.app.ui.components.MiniScaffold
+import app.minimpos.app.ui.components.ProcessingContent
 import app.minimpos.app.ui.components.rememberMoneyFormatter
 import app.minimpos.app.ui.navigation.ChosenCard
 import app.minimpos.app.ui.navigation.Navigator
 import app.minimpos.app.ui.navigation.Route
 import app.minimpos.app.ui.theme.LocalDimens
 import app.minimpos.terminal.checkout.StoredCard
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.launch
 
 /**
@@ -89,6 +89,7 @@ fun SavedCardScreen(
                 blocked = state.blocked,
                 enabled = state.shopperReference != null,
                 loading = state.finding,
+                requiresSetup = true,
                 icon = Icons.Default.Search,
                 modifier = Modifier.padding(top = dimens.spacing).testTag("findCards"),
             )
@@ -169,8 +170,9 @@ private fun StoredCard.chosen() = ChosenCard(id, brand, lastFour)
 private fun ChosenCard.stored(recurringModel: String) = StoredCard(id, brand, lastFour, recurringModels = setOf(recurringModel))
 
 /**
- * Charge saved card, last step: the sale rung up, the card and shopper reference, then the charge, followed to the sale's
- * result. Manager approval guards the route and is checked again before the charge is sent.
+ * Charge saved card, last step: the sale rung up, the card and shopper reference, then the charge, shown as processing
+ * like any payment and followed to the sale's result. Manager approval guards the route and is checked again before the
+ * charge is sent.
  */
 @Composable
 fun SavedCardReviewScreen(
@@ -196,19 +198,25 @@ fun SavedCardReviewScreen(
         onBack = navigator::back.takeUnless { charging },
         modifier = modifier,
         bottomBar = {
-            BottomActions {
-                GatedButton(
-                    stringResource(R.string.saved_card_charge, total),
-                    { scope.launch { vm.charge(card.stored(state.recurringModel)) } },
-                    blocked = state.blocked,
-                    enabled = state.checkout.canPay && state.shopperReference != null,
-                    loading = charging,
-                    primary = true,
-                    modifier = Modifier.testTag("chargeSavedCard"),
-                )
+            if (!charging) {
+                BottomActions {
+                    GatedButton(
+                        stringResource(R.string.saved_card_charge, total),
+                        { scope.launch { vm.charge(card.stored(state.recurringModel)) } },
+                        blocked = state.blocked,
+                        enabled = state.checkout.canPay && state.shopperReference != null,
+                        primary = true,
+                        requiresSetup = true,
+                        modifier = Modifier.testTag("chargeSavedCard"),
+                    )
+                }
             }
         },
     ) { padding ->
+        if (charging) {
+            ProcessingContent(total, stringResource(R.string.saved_card_charging), Modifier.padding(padding))
+            return@MiniScaffold
+        }
         Column(
             Modifier
                 .fillMaxSize()
@@ -223,12 +231,11 @@ fun SavedCardReviewScreen(
                 .forEach { LabeledValue("${it.line.quantity} × ${it.line.name}", money.format(it.amounts.gross)) }
             LabeledValue(stringResource(R.string.checkout_total), total, emphasize = true)
             Text(
-                stringResource(if (charging) R.string.saved_card_charging else R.string.saved_card_review_note),
+                stringResource(R.string.saved_card_review_note),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(top = LocalDimens.current.spacing),
             )
-            if (charging) CircularProgressIndicator(Modifier.padding(top = LocalDimens.current.spacing))
         }
     }
 }
@@ -256,7 +263,8 @@ fun TokenChargeScreen(
     navigator: Navigator,
     modifier: Modifier = Modifier,
 ) {
-    val charges = LocalAppContainer.current.savedCardCharges
+    val container = LocalAppContainer.current
+    val charges = container.savedCardCharges
     val state by charges.state.collectAsStateWithLifecycle()
     // Leaving the result acknowledges the charge, which must not send this screen Home on its way out.
     var finished by remember { mutableStateOf(false) }
@@ -277,22 +285,15 @@ fun TokenChargeScreen(
         }
     }
     BackHandler(enabled = true) {}
+    // The charge is stored before it is sent, so its amount can be shown as a payment's is.
+    val saleId = (state as? TransactionState.Processing)?.id
+    val stored by remember(saleId) { saleId?.let(container.storedPayments::observe) ?: flowOf(null) }
+        .collectAsStateWithLifecycle(initialValue = null)
     MiniScaffold(title = stringResource(R.string.checkout_charge_token), onBack = null, modifier = modifier) { padding ->
-        Column(
-            Modifier
-                .fillMaxSize()
-                .padding(padding)
-                .padding(LocalDimens.current.screenPadding)
-                .testTag("tokenCharging"),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center,
-        ) {
-            CircularProgressIndicator()
-            Text(
-                stringResource(R.string.saved_card_charging),
-                style = MaterialTheme.typography.bodyLarge,
-                modifier = Modifier.padding(top = LocalDimens.current.spacing),
-            )
-        }
+        ProcessingContent(
+            amount = stored?.sale?.let { rememberMoneyFormatter(it.currency).format(it.amountMinor) },
+            message = stringResource(R.string.saved_card_charging),
+            modifier = Modifier.padding(padding).testTag("tokenCharging"),
+        )
     }
 }

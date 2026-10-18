@@ -11,7 +11,6 @@ import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
-import androidx.compose.ui.test.isEnabled
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithTag
@@ -34,7 +33,6 @@ import app.minimpos.app.data.repo.HistoryItem
 import app.minimpos.app.data.settings.AppSettings
 import app.minimpos.app.data.settings.ReceiptTipping
 import app.minimpos.app.data.settings.ShopperReferenceSource
-import app.minimpos.app.data.settings.TerminalMode
 import app.minimpos.core.cart.AppliedTax
 import app.minimpos.terminal.simulator.SimulatedOutcome
 import com.google.common.truth.Truth.assertThat
@@ -135,25 +133,6 @@ class AppFlowTest {
         waitForText("Approved")
         compose.waitForTag("virtualPrinter")
         waitForText("Scan this code for returns")
-    }
-
-    @Test
-    fun `home says what payments off the terminal still need`() {
-        env.updateSettings { it.copy(terminal = it.terminal.copy(mode = TerminalMode.CLOUD)) }
-        compose.waitForTag("terminalSetup")
-        compose
-            .onNodeWithTag("terminalSetup")
-            .assertTextContains("Finish setting up payments", substring = true)
-            .assertTextContains("Select TEST or LIVE", substring = true)
-            .performClick()
-        compose.waitUntilAtLeastOneExists(hasTestTag("scanSetup") and isEnabled(), 15_000)
-        compose
-            .onNodeWithTag("scanSetup")
-            .assertIsDisplayed()
-            .performClick()
-        waitForText("Point the camera at the QR codes shown on the other device or on the setup helper page.")
-        compose.onNodeWithTag("back").performClick()
-        compose.waitForTag("terminalMode")
     }
 
     @Test
@@ -397,7 +376,9 @@ class AppFlowTest {
                 .refund
         assertThat(refund.status).isEqualTo(RefundStatus.REQUESTED)
         assertThat(refund.full).isTrue()
-        compose.onNodeWithTag("refundDone").performClick()
+        // The result offers the next refund beside Home, as a sale's result offers the next sale.
+        compose.onNodeWithTag("newRefund").assertIsDisplayed()
+        compose.onNodeWithTag("home").performClick()
         compose.waitForTag("newSale")
     }
 
@@ -556,7 +537,7 @@ class AppFlowTest {
                 .refund
         assertThat(cancellation.cancellation).isTrue()
         assertThat(cancellation.status).isEqualTo(RefundStatus.REQUESTED)
-        compose.onNodeWithTag("refundDone").performClick()
+        compose.onNodeWithTag("home").performClick()
         compose.waitForTag("preAuth")
     }
 

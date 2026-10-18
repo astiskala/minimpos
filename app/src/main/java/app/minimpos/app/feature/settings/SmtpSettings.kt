@@ -120,6 +120,7 @@ private fun ColumnScope.SmtpServerFields(
             ),
         selected = email.security,
         onSelect = { security -> update { it.copy(security = security) } },
+        subtitle = stringResource(R.string.settings_smtp_security_hint),
         tag = "smtpSecurity",
     )
 }

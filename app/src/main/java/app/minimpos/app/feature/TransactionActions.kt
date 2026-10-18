@@ -267,7 +267,7 @@ class TransactionActions private constructor(
     private val transaction: StoredTransaction,
     fresh: Boolean,
     private val operations: FinancialOperations,
-) {
+) : ReceiptEvents {
     /** The receipt to share when asked, as last offered. */
     @Volatile private var shareable: SharedReceipt? = null
 
@@ -304,7 +304,7 @@ class TransactionActions private constructor(
      * Prints [copy] of the receipt. After the customer copy of a sale, [TransactionActionsState.merchantCopyPending] says
      * whether the merchant copy is due (it waits for the operator to tear off the first).
      */
-    fun print(copy: ReceiptCopy = ReceiptCopy.CUSTOMER) {
+    override fun print(copy: ReceiptCopy) {
         state.update { it.copy(print = ActionState(running = true), merchantCopyPending = false) }
         scope.launch {
             val printed = receipts.print(transaction, copy)
@@ -315,7 +315,7 @@ class TransactionActions private constructor(
     }
 
     /** Emails the receipt to [to]. */
-    fun email(to: String) {
+    override fun email(to: String) {
         state.update { it.copy(email = ActionState(running = true)) }
         scope.launch {
             val result = persisting { receipts.email(transaction, to) }
@@ -333,7 +333,7 @@ class TransactionActions private constructor(
     }
 
     /** Asks for the receipt to be shared; the screen hands [TransactionActionsState.share] to the share sheet. */
-    fun share() {
+    override fun share() {
         val shared = shareable ?: return
         state.update { it.copy(share = shared) }
     }

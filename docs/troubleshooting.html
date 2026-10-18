@@ -139,9 +139,9 @@
           <h2>Pairing or setup fails</h2>
           <p>Start with the message on Home, then open <strong>Settings › Terminal</strong> and run <strong>Test API</strong>. For a physical terminal, also run <strong>Test connection</strong>. For Tap to Pay, check Payments app registration instead. For the full steps, see <a href="quick-start.html#connect">Connect to Adyen</a>.</p>
           <dl class="fixes">
-            <div><dt>Home asks you to enter a detail “in Terminal settings”</dt>
-              <dd><p><span class="fix-label">Cause</span>A required field is empty, or a saved key could not be read on this device.</p>
-                <p><span class="fix-label">Fix</span>Enter the missing detail, or enter the key again, in <strong>Settings › Terminal</strong>.</p></dd></div>
+            <div><dt>Home says “Payments aren’t set up yet”</dt>
+              <dd><p><span class="fix-label">Cause</span>A required field is empty, a saved key could not be read on this device, or no connection test has passed since the setup changed. Until then, payments, refunds, printing and other Adyen actions explain this instead of running.</p>
+                <p><span class="fix-label">Fix</span>Tap <strong>Finish setting up payments</strong>. In <strong>Settings › Terminal</strong>, enter what is missing, or enter the key again, then tap <strong>Test connection</strong>.</p></dd></div>
             <div><dt>The API test fails or setup reports an access problem</dt>
               <dd><p><span class="fix-label">Cause</span>The API key, merchant account or live URL prefix is wrong, a role is missing, or the credential is from another company account or environment.</p>
                 <p><span class="fix-label">Fix</span>Check the credential's roles and access against the <a href="quick-start.html#credentials">credential requirements</a>. For LIVE, check the <strong>Live URL prefix</strong>.</p></dd></div>
@@ -234,7 +234,7 @@
                 <p><span class="fix-label">Fix</span></p>
                 <ol>
                   <li>In <strong>Settings › About</strong>, check that <strong>Printer</strong> shows <strong>Available</strong>. If not, run <strong>Test connection</strong> in <strong>Settings › Terminal</strong>.</li>
-                  <li>In <strong>Settings › Receipts</strong>, set <strong>Printer</strong> to <strong>Detect automatically</strong> and check <strong>Print automatically after payment</strong>.</li>
+                  <li>In <strong>Settings › Receipts</strong>, set <strong>Printer</strong> to <strong>Detect automatically</strong> and check <strong>Print automatically</strong>.</li>
                   <li>Tap <strong>Print test receipt</strong>. If nothing prints, check the terminal's paper roll.</li>
                 </ol></dd></div>
             <div><dt>The layout is cut off or wraps badly</dt>

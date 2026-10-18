@@ -61,6 +61,8 @@ data class ShopperPromptTexts(
  * @property terminalTippingAvailable Whether the destination supports native terminal tipping (`AskGratuity`).
  * @property shopperDisplayAvailable Whether the destination supports shopper-facing terminal display and input requests.
  * @property shopperTexts App-localized terminal prompts; required when [shopperDisplayAvailable].
+ * @property emailOnTerminal Whether the terminal asks for an email when none was entered
+ *   ([app.minimpos.app.data.settings.AppSettings.asksEmailOnTerminal]).
  */
 data class Checkout(
     val form: CheckoutForm = CheckoutForm(),
@@ -75,6 +77,7 @@ data class Checkout(
     val terminalTippingAvailable: Boolean = true,
     val shopperDisplayAvailable: Boolean = false,
     val shopperTexts: ShopperPromptTexts? = null,
+    val emailOnTerminal: Boolean = false,
 ) {
     /** Whether the amount is only held (a pre-authorisation) rather than charged. */
     val preAuthorisation: Boolean get() = kind == SaleKind.PRE_AUTHORISATION
@@ -223,7 +226,7 @@ data class Checkout(
             } else {
                 null
             }
-        val emailPrompt = texts.email.takeIf { payment.collectEmailOnTerminal && form.email.isBlank() }
+        val emailPrompt = texts.email.takeIf { emailOnTerminal && form.email.isBlank() }
         val qrReceipt = merchantReference.takeIf { payment.showTerminalQrReceipt }
         val ratingPrompt = (texts.rating to (null as String?)).takeIf { payment.askShopperRating }
         if (listOf(virtualReceipt, confirmPrompt, emailPrompt, qrReceipt, ratingPrompt).all { it == null }) return null

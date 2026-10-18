@@ -3,6 +3,7 @@ package app.minimpos.app.data
 import app.minimpos.app.data.settings.AppSettings
 import app.minimpos.app.data.settings.ConnectionDestination
 import app.minimpos.app.data.settings.ConnectionSetup
+import app.minimpos.app.data.settings.EmailCapture
 import app.minimpos.app.data.settings.EmailSettings
 import app.minimpos.app.data.settings.HistorySettings
 import app.minimpos.app.data.settings.PaymentSettings
@@ -342,5 +343,24 @@ class AppSettingsTest {
             .isEqualTo(cloud)
         assertThat(ConnectionSetup(liveUrlPrefix = " abc ", storeId = "ST2").appliedTo(cloud, onTerminal = false))
             .isEqualTo(cloud.copy(liveUrlPrefix = "abc", storeId = "ST2"))
+    }
+
+    @Test
+    fun `the terminal asks for an email only once emailed receipts are ready, and its email is then sent like a checkout one`() {
+        val smtp = EmailSettings(host = "smtp.example.com", fromAddress = "shop@example.com")
+        val asking = AppSettings(payment = PaymentSettings(collectEmailOnTerminal = true, emailCapture = EmailCapture.AFTER_PAYMENT))
+        // Without SMTP, or while checkout never collects emails, the prompt would only promise a receipt that never comes.
+        assertThat(asking.asksEmailOnTerminal).isFalse()
+        assertThat(asking.copy(email = smtp, payment = asking.payment.copy(emailCapture = EmailCapture.OFF)).asksEmailOnTerminal).isFalse()
+        val ready = asking.copy(email = smtp)
+        assertThat(ready.emailReceiptsReady).isTrue()
+        assertThat(ready.asksEmailOnTerminal).isTrue()
+        assertThat(ready.emailsReceiptAutomatically).isTrue()
+        assertThat(ready.copy(payment = ready.payment.copy(autoSendEmail = false)).emailsReceiptAutomatically).isFalse()
+        // After payment without the terminal prompt, an email is only ever sent on request.
+        assertThat(ready.copy(payment = ready.payment.copy(collectEmailOnTerminal = false)).emailsReceiptAutomatically).isFalse()
+        val beforePayment = AppSettings(payment = PaymentSettings(emailCapture = EmailCapture.BEFORE_PAYMENT))
+        assertThat(beforePayment.emailsReceiptAutomatically).isTrue()
+        assertThat(beforePayment.asksEmailOnTerminal).isFalse()
     }
 }

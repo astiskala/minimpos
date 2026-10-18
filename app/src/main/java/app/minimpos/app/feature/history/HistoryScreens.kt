@@ -23,7 +23,6 @@ import androidx.compose.material.icons.automirrored.filled.ReceiptLong
 import androidx.compose.material.icons.automirrored.filled.Undo
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.EditNote
-import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.Link
 import androidx.compose.material.icons.filled.LockOpen
 import androidx.compose.material.icons.filled.Payments
@@ -59,8 +58,10 @@ import app.minimpos.app.data.db.SaleEntity
 import app.minimpos.app.data.db.SaleKind
 import app.minimpos.app.data.db.SaleStatus
 import app.minimpos.app.data.repo.HistoryItem
+import app.minimpos.app.feature.MerchantCopy
 import app.minimpos.app.feature.OutcomeMessage
-import app.minimpos.app.feature.TransactionActionsState
+import app.minimpos.app.feature.ReceiptActions
+import app.minimpos.app.feature.StatusCheck
 import app.minimpos.app.feature.lock.ManagerApproval
 import app.minimpos.app.feature.modificationNote
 import app.minimpos.app.feature.outcomeNote
@@ -69,11 +70,9 @@ import app.minimpos.app.feature.refund.refundStatusKind
 import app.minimpos.app.feature.refund.refundStatusTitle
 import app.minimpos.app.feature.sale.EnterTipButton
 import app.minimpos.app.feature.sale.HoldNotes
-import app.minimpos.app.feature.sale.ShareReceiptButton
 import app.minimpos.app.feature.sale.adviceText
 import app.minimpos.app.feature.sale.statusKind
 import app.minimpos.app.feature.sale.statusTitle
-import app.minimpos.app.feature.stillUnconfirmed
 import app.minimpos.app.history.DayTotals
 import app.minimpos.app.history.HistoryDay
 import app.minimpos.app.history.PaymentAction
@@ -85,14 +84,12 @@ import app.minimpos.app.history.simulatedLink
 import app.minimpos.app.share.ShareEffect
 import app.minimpos.app.ui.components.Card
 import app.minimpos.app.ui.components.ConfirmDialog
-import app.minimpos.app.ui.components.EmailReceiptDialog
 import app.minimpos.app.ui.components.EmptyState
 import app.minimpos.app.ui.components.LabeledValue
 import app.minimpos.app.ui.components.LocalAppContainer
 import app.minimpos.app.ui.components.MiniScaffold
 import app.minimpos.app.ui.components.OutcomeHeader
 import app.minimpos.app.ui.components.OutcomeNote
-import app.minimpos.app.ui.components.ReceiptPreview
 import app.minimpos.app.ui.components.SearchField
 import app.minimpos.app.ui.components.SearchMode
 import app.minimpos.app.ui.components.SearchToggle
@@ -100,6 +97,7 @@ import app.minimpos.app.ui.components.SecondaryButton
 import app.minimpos.app.ui.components.StatusKind
 import app.minimpos.app.ui.components.TransactionRow
 import app.minimpos.app.ui.components.currentLocale
+import app.minimpos.app.ui.components.currentSetupGate
 import app.minimpos.app.ui.components.rememberMoneyFormatter
 import app.minimpos.app.ui.components.rememberSearchControl
 import app.minimpos.app.ui.navigation.Navigator
@@ -109,8 +107,6 @@ import app.minimpos.core.money.CurrencySpec
 import app.minimpos.core.money.MoneyFormatter
 import app.minimpos.core.payment.PaymentMethods
 import app.minimpos.core.payment.ScanWallet
-import app.minimpos.core.receipt.ReceiptCopy
-import app.minimpos.core.receipt.ReceiptDocument
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
@@ -150,7 +146,8 @@ fun HistoryScreen(
             }
             HistoryFilters(state.filter, vm::setFilter, state.methods, state.method, vm::setMethod)
             OutcomeMessage(state.print)
-            HistoryBody(state, vm::printDay, vm::showAll, navigator)
+            val gate = currentSetupGate()
+            HistoryBody(state, { day -> gate.run { vm.printDay(day) } }, vm::showAll, navigator)
         }
     }
 }
@@ -440,7 +437,7 @@ fun SaleDetailScreen(
 ) {
     val container = LocalAppContainer.current
     val state by vm.state.collectAsStateWithLifecycle()
-    var dialog by remember { mutableStateOf<DetailDialog?>(null) }
+    var cancelling by remember { mutableStateOf(false) }
     var approval by remember { mutableStateOf<(() -> Unit)?>(null) }
     if (approval != null) {
         return ManagerApproval(onApprove = {
@@ -448,7 +445,7 @@ fun SaleDetailScreen(
             approval = null
         }, onCancel = { approval = null })
     }
-    val dimens = LocalDimens.current
+    val gate = currentSetupGate()
     val preAuth = state.record?.sale?.kind == SaleKind.PRE_AUTHORISATION
     MiniScaffold(
         title = stringResource(if (preAuth) R.string.detail_pre_auth_title else R.string.detail_title),
@@ -458,58 +455,42 @@ fun SaleDetailScreen(
         val record = state.record ?: return@MiniScaffold
         val sale = record.sale
         val money = rememberMoneyFormatter(sale.currency)
-        Column(
-            Modifier
-                .fillMaxSize()
-                .padding(padding)
-                .verticalScroll(rememberScrollState())
-                .padding(dimens.screenPadding),
-            horizontalAlignment = Alignment.CenterHorizontally,
-        ) {
-            // The outcome and actions come first, as on the result screen, so they show without scrolling past every detail.
-            Column(Modifier.widthIn(max = 560.dp), verticalArrangement = Arrangement.spacedBy(dimens.spacing)) {
-                SaleDetailOutcome(state, money, container::formatDateTime)
-                HoldActions(
-                    state = state,
-                    onEnterTip = { navigator.push(Route.Tip(sale.id)) },
-                    onCapture = { navigator.push(Route.Capture(sale.id)) },
-                    onAdjust = { navigator.push(Route.Capture(sale.id, adjustOnly = true)) },
-                    onRetryCapture = { approval = vm::retryCapture },
-                )
-                SaleDetailActions(
-                    state = state,
-                    onRecheck = vm.transaction::recheck,
-                    onRefund = { navigator.push(Route.Refund(saleId = sale.id)) },
-                    onCancel = { approval = { dialog = DetailDialog.CANCEL } },
-                    onPrint = vm.transaction::print,
-                    onEmail = { dialog = DetailDialog.EMAIL },
-                    onShare = vm.transaction::share,
-                    onShowLink = { navigator.push(Route.PaymentLink(sale.id)) },
-                )
-                SaleRefunds(state.refunds, money, preAuth, container::formatDateTime) {
-                    navigator.push(Route.RefundDetail(it))
-                }
-                SaleDetailsAndReceipt(sale, state.transaction.receipt)
+        // The outcome and actions come first, as on the result screen, so they show without scrolling past every detail.
+        DetailColumn(padding) {
+            SaleDetailOutcome(state, money, container::formatDateTime)
+            HoldActions(
+                state = state,
+                onEnterTip = { gate.run { navigator.push(Route.Tip(sale.id)) } },
+                onCapture = { gate.run { navigator.push(Route.Capture(sale.id)) } },
+                onAdjust = { gate.run { navigator.push(Route.Capture(sale.id, adjustOnly = true)) } },
+                onRetryCapture = { gate.run { approval = vm::retryCapture } },
+            )
+            SaleDetailActions(
+                state = state,
+                onRecheck = vm.transaction::recheck,
+                onRefund = { gate.run { navigator.push(Route.Refund(saleId = sale.id)) } },
+                onCancel = { gate.run { approval = { cancelling = true } } },
+                onShowLink = { navigator.push(Route.PaymentLink(sale.id)) },
+            )
+            if (sale.status == SaleStatus.APPROVED) {
+                ReceiptActions(state.transaction, vm.transaction, MerchantCopy.ALWAYS, email = sale.shopperEmail.orEmpty())
+            }
+            SaleRefunds(state.refunds, money, preAuth, container::formatDateTime) {
+                navigator.push(Route.RefundDetail(it))
+            }
+            PaymentDetailsCard(sale)
+        }
+    }
+    if (cancelling) {
+        state.record?.sale?.let { sale ->
+            CancelHoldDialog(sale, onDismiss = { cancelling = false }) {
+                cancelling = false
+                if (vm.cancel() != null) navigator.push(Route.RefundProcessing)
             }
         }
     }
-    SaleDetailDialogs(state.record?.sale, dialog, onEmail = vm.transaction::email, onDismiss = { dialog = null }) {
-        if (vm.cancel() != null) navigator.push(Route.RefundProcessing)
-    }
     ShareEffect(state.transaction.share, vm.transaction::shared)
 }
-
-@Composable
-private fun ColumnScope.SaleDetailsAndReceipt(
-    sale: SaleEntity,
-    receipt: ReceiptDocument?,
-) {
-    PaymentDetailsCard(sale)
-    receipt?.let { ReceiptPreview(it, Modifier.align(Alignment.CenterHorizontally)) }
-}
-
-/** The dialogs the sale detail screen opens. */
-private enum class DetailDialog { EMAIL, CANCEL }
 
 /**
  * The outcome badge, title and amount, with when it was paid, what was refunded, the tip, adjustments and capture of a
@@ -584,49 +565,47 @@ private fun ColumnScope.HoldActions(
     OutcomeMessage(state.retry)
 }
 
-/**
- * The [dialog] open over the detail of [stored], if any: the address to email the receipt to, or confirming the
- * cancellation of a pre-authorisation. Either closes ([onDismiss]) before [onEmail] or [onCancel] runs.
- */
+/** A detail screen's scrolling body inside the scaffold's [padding], centred and spaced like a result screen's. */
 @Composable
-private fun SaleDetailDialogs(
-    stored: SaleEntity?,
-    dialog: DetailDialog?,
-    onEmail: (to: String) -> Unit,
-    onDismiss: () -> Unit,
-    onCancel: () -> Unit,
+private fun DetailColumn(
+    padding: PaddingValues,
+    content: @Composable ColumnScope.() -> Unit,
 ) {
-    val sale = stored ?: return
-    if (dialog == DetailDialog.EMAIL) {
-        EmailReceiptDialog(
-            onSend = {
-                onDismiss()
-                onEmail(it)
-            },
-            onDismiss = onDismiss,
-            initial = sale.shopperEmail.orEmpty(),
-        )
+    val dimens = LocalDimens.current
+    Column(
+        Modifier
+            .fillMaxSize()
+            .padding(padding)
+            .verticalScroll(rememberScrollState())
+            .padding(dimens.screenPadding),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Column(Modifier.widthIn(max = 560.dp), verticalArrangement = Arrangement.spacedBy(dimens.spacing), content = content)
     }
-    if (dialog == DetailDialog.CANCEL) {
-        val held = rememberMoneyFormatter(sale.currency).format(sale.heldMinor)
-        ConfirmDialog(
-            title = stringResource(if (sale.tipOnReceipt) R.string.tip_cancel_title else R.string.pre_auth_cancel_title),
-            message =
-                if (sale.tipOnReceipt) {
-                    stringResource(R.string.tip_cancel_message, held)
-                } else {
-                    stringResource(R.string.pre_auth_cancel_message, held)
-                },
-            confirmLabel = stringResource(if (sale.tipOnReceipt) R.string.detail_cancel_payment else R.string.pre_auth_cancel_confirm),
-            destructive = true,
-            dismissLabel = stringResource(R.string.pre_auth_cancel_keep),
-            onConfirm = {
-                onDismiss()
-                onCancel()
+}
+
+/** Confirms cancelling the hold of [sale] (a pre-authorisation, or a sale awaiting its tip); [onConfirm] cancels it. */
+@Composable
+private fun CancelHoldDialog(
+    sale: SaleEntity,
+    onDismiss: () -> Unit,
+    onConfirm: () -> Unit,
+) {
+    val held = rememberMoneyFormatter(sale.currency).format(sale.heldMinor)
+    ConfirmDialog(
+        title = stringResource(if (sale.tipOnReceipt) R.string.tip_cancel_title else R.string.pre_auth_cancel_title),
+        message =
+            if (sale.tipOnReceipt) {
+                stringResource(R.string.tip_cancel_message, held)
+            } else {
+                stringResource(R.string.pre_auth_cancel_message, held)
             },
-            onDismiss = onDismiss,
-        )
-    }
+        confirmLabel = stringResource(if (sale.tipOnReceipt) R.string.detail_cancel_payment else R.string.pre_auth_cancel_confirm),
+        destructive = true,
+        dismissLabel = stringResource(R.string.pre_auth_cancel_keep),
+        onConfirm = onConfirm,
+        onDismiss = onDismiss,
+    )
 }
 
 /**
@@ -639,9 +618,6 @@ private fun ColumnScope.SaleDetailActions(
     onRecheck: () -> Unit,
     onRefund: () -> Unit,
     onCancel: () -> Unit,
-    onPrint: (ReceiptCopy) -> Unit,
-    onEmail: () -> Unit,
-    onShare: () -> Unit,
     onShowLink: () -> Unit,
 ) {
     val sale = state.record?.sale ?: return
@@ -661,17 +637,7 @@ private fun ColumnScope.SaleDetailActions(
             modifier = Modifier.fillMaxWidth(),
         )
     }
-    if (PaymentAction.CHECK_AGAIN in state.actions) {
-        SecondaryButton(
-            stringResource(R.string.result_check_again),
-            onRecheck,
-            loading = state.transaction.rechecking,
-            icon = Icons.Default.Refresh,
-        )
-        state.transaction.stillUnknown?.let {
-            Text(stillUnconfirmed(it), textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
-        }
-    }
+    if (PaymentAction.CHECK_AGAIN in state.actions) StatusCheck(state.transaction, onRecheck)
     if (PaymentAction.REFUND in state.actions) {
         SecondaryButton(
             stringResource(R.string.detail_refund),
@@ -688,39 +654,6 @@ private fun ColumnScope.SaleDetailActions(
             modifier = Modifier.testTag("cancelPreAuth"),
         )
     }
-    if (sale.status == SaleStatus.APPROVED) SaleReceiptActions(state.transaction, onPrint, onEmail, onShare)
-}
-
-/** Reprinting (either copy), emailing and sharing (on phones and tablets) an approved sale's receipt. */
-@Composable
-private fun ColumnScope.SaleReceiptActions(
-    transaction: TransactionActionsState,
-    onPrint: (ReceiptCopy) -> Unit,
-    onEmail: () -> Unit,
-    onShare: () -> Unit,
-) {
-    if (transaction.canPrint) {
-        SecondaryButton(stringResource(R.string.detail_reprint), {
-            onPrint(ReceiptCopy.CUSTOMER)
-        }, loading = transaction.print.running, icon = Icons.Default.Print)
-        SecondaryButton(
-            stringResource(R.string.result_print_merchant),
-            { onPrint(ReceiptCopy.MERCHANT) },
-            loading = transaction.print.running,
-            icon = Icons.Default.Print,
-        )
-        OutcomeMessage(transaction.print)
-    }
-    if (transaction.canEmail) {
-        SecondaryButton(
-            stringResource(R.string.result_email),
-            onEmail,
-            loading = transaction.email.running,
-            icon = Icons.Default.Email,
-        )
-        OutcomeMessage(transaction.email)
-    }
-    if (transaction.canShare) ShareReceiptButton(onShare)
 }
 
 /**

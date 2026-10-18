@@ -8,6 +8,8 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CloudUpload
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -36,6 +38,8 @@ import app.minimpos.app.terminal.GratuityCapability
 import app.minimpos.app.terminal.MotoCapability
 import app.minimpos.app.ui.components.SecondaryButton
 import app.minimpos.app.ui.components.SectionHeader
+import app.minimpos.app.ui.components.SetupRequired
+import app.minimpos.app.ui.components.currentSetupGate
 import app.minimpos.app.ui.theme.LocalStatusColors
 
 /** Settings › Capabilities: progressive readiness matrix and scoped Management `terminalSettings` editors. */
@@ -48,6 +52,11 @@ internal fun ColumnScope.CapabilitiesSection(
     events: CapabilitiesEvents,
 ) {
     SettingIntro(stringResource(R.string.capabilities_intro))
+    // Until payments are set up there is nothing at Adyen to inspect or configure yet.
+    if (currentSetupGate().pending) {
+        SetupRequired()
+        return
+    }
     capabilities.failure?.let { SettingNote(it.text()) }
     if (capabilities.discoversTerminals || capabilities.simulated) {
         SettingActions {
@@ -210,11 +219,21 @@ private fun ColumnScope.RemoteGratuityEditor(
     var allowCustom by remember { mutableStateOf(existing?.allowCustomAmount != false) }
 
     SectionHeader(stringResource(R.string.capability_gratuity_section, currency))
-    SettingSwitch(stringResource(R.string.capability_gratuity_enable, currency), enabled, { enabled = it }, tag = "capGratuityEnable")
+    SettingSwitch(
+        stringResource(R.string.capability_gratuity_enable),
+        enabled,
+        { enabled = it },
+        subtitle = stringResource(R.string.capability_gratuity_enable_hint, currency),
+        tag = "capGratuityEnable",
+    )
     if (enabled) {
-        SettingSwitch(stringResource(R.string.capability_gratuity_predefined), predefined, {
-            predefined = it
-        }, tag = "capGratuityPredefined")
+        SettingSwitch(
+            stringResource(R.string.capability_gratuity_predefined),
+            predefined,
+            { predefined = it },
+            subtitle = stringResource(R.string.capability_gratuity_predefined_hint),
+            tag = "capGratuityPredefined",
+        )
         if (predefined) {
             SettingTextField(
                 label = stringResource(R.string.capability_gratuity_entries),
@@ -224,18 +243,20 @@ private fun ColumnScope.RemoteGratuityEditor(
                 autoCorrect = false,
                 tag = "capGratuityEntries",
             )
-            SettingSwitch(stringResource(R.string.capability_gratuity_custom), allowCustom, { allowCustom = it }, tag = "capGratuityCustom")
+            SettingSwitch(
+                stringResource(R.string.capability_gratuity_custom),
+                allowCustom,
+                { allowCustom = it },
+                subtitle = stringResource(R.string.capability_gratuity_custom_hint),
+                tag = "capGratuityCustom",
+            )
         }
     }
-    SettingActions {
-        SecondaryButton(
-            text = stringResource(R.string.action_save),
-            onClick = { onSave(currency, buildGratuityTarget(currency, enabled, predefined, entriesText, allowCustom)) },
-            loading = action.running,
-            modifier = Modifier.testTag("saveCapGratuity"),
-        )
-        OutcomeMessage(action)
-    }
+    SaveToAdyen(
+        action,
+        { onSave(currency, buildGratuityTarget(currency, enabled, predefined, entriesText, allowCustom)) },
+        "saveCapGratuity",
+    )
 }
 
 private fun buildGratuityTarget(
@@ -271,16 +292,11 @@ private fun ColumnScope.RemoteDccEditor(
     SettingSwitch(
         title = stringResource(R.string.capability_dcc_enable),
         checked = enabled,
-        onChange = {
-            enabled = it
-            onSave(it)
-        },
-        enabled = !action.running,
+        onChange = { enabled = it },
+        subtitle = stringResource(R.string.capability_dcc_enable_hint),
         tag = "capDccEnable",
     )
-    SettingActions {
-        OutcomeMessage(action)
-    }
+    SaveToAdyen(action, { onSave(enabled) }, "saveCapDcc")
 }
 
 @Composable
@@ -302,6 +318,7 @@ private fun ColumnScope.RemoteMotoEditor(
         title = stringResource(R.string.capability_moto_enable),
         checked = enabled,
         onChange = { enabled = it },
+        subtitle = stringResource(R.string.capability_moto_enable_hint),
         tag = "capMotoEnable",
     )
     if (enabled) {
@@ -314,22 +331,9 @@ private fun ColumnScope.RemoteMotoEditor(
             tag = "capMotoMaxAmount",
         )
     }
-    SettingActions {
-        SecondaryButton(
-            text = stringResource(R.string.action_save),
-            onClick = {
-                onSave(
-                    MotoCapability(
-                        enabled = enabled,
-                        maxAmount = maxAmountText.trim().toIntOrNull()?.takeIf { it > 0 },
-                    ),
-                )
-            },
-            loading = action.running,
-            modifier = Modifier.testTag("saveCapMoto"),
-        )
-        OutcomeMessage(action)
-    }
+    SaveToAdyen(action, {
+        onSave(MotoCapability(enabled = enabled, maxAmount = maxAmountText.trim().toIntOrNull()?.takeIf { it > 0 }))
+    }, "saveCapMoto")
 }
 
 @Composable
@@ -369,19 +373,33 @@ private fun ColumnScope.RemoteOfflineEditor(
         autoCorrect = false,
         tag = "capOfflineMaxPayments",
     )
+    SaveToAdyen(action, {
+        onSave(
+            currency,
+            chipFloorText.trim().toIntOrNull()?.takeIf { it >= 0 },
+            safMaxMinorText.trim().toIntOrNull()?.takeIf { it >= 0 },
+            maxPaymentsText.trim().toIntOrNull()?.takeIf { it >= 0 },
+        )
+    }, "saveCapOffline")
+}
+
+/**
+ * "Save to Adyen" under an Adyen-side section: unlike local settings, which save as they change, its edits are a draft
+ * until [onSave] sends them, with the [action]'s outcome under the button, which is tagged [tag].
+ */
+@Composable
+private fun SaveToAdyen(
+    action: ActionState,
+    onSave: () -> Unit,
+    tag: String,
+) {
     SettingActions {
         SecondaryButton(
-            text = stringResource(R.string.action_save),
-            onClick = {
-                onSave(
-                    currency,
-                    chipFloorText.trim().toIntOrNull()?.takeIf { it >= 0 },
-                    safMaxMinorText.trim().toIntOrNull()?.takeIf { it >= 0 },
-                    maxPaymentsText.trim().toIntOrNull()?.takeIf { it >= 0 },
-                )
-            },
+            text = stringResource(R.string.capability_save),
+            onClick = onSave,
             loading = action.running,
-            modifier = Modifier.testTag("saveCapOffline"),
+            icon = Icons.Default.CloudUpload,
+            modifier = Modifier.testTag(tag),
         )
         OutcomeMessage(action)
     }

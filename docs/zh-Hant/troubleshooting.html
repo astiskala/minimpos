@@ -139,9 +139,9 @@
           <h2>終端綁定或設定失敗</h2>
           <p>先查看首頁的提示，再打開<strong>設定 › 終端</strong>，運行<strong>測試 API</strong>。實體終端還需運行<strong>測試連接</strong>。Tap to Pay 則檢查 Payments 應用程式的註冊狀態。完整步驟請參閱<a href="quick-start.html#connect">連接 Adyen</a>。</p>
           <dl class="fixes">
-            <div><dt>首頁提示“請在終端設定中輸入”某項資訊</dt>
-              <dd><p><span class="fix-label">原因</span>必填欄位為空，或本設備無法讀取已儲存的密鑰。</p>
-                <p><span class="fix-label">解決</span>在<strong>設定 › 終端</strong>中填寫缺少的資訊，或重新輸入密鑰。</p></dd></div>
+            <div><dt>首頁提示“尚未完成收款設定”</dt>
+              <dd><p><span class="fix-label">原因</span>必填欄位為空、本設備無法讀取已儲存的密鑰，或設定更改後尚未通過連線測試。在此之前，支付、退款、列印和其他 Adyen 操作會顯示此說明，而不會執行。</p>
+                <p><span class="fix-label">解決</span>點按<strong>完成收款設定</strong>。在<strong>設定 › 終端</strong>中填寫缺少的資訊或重新輸入密鑰，然後點按<strong>測試連接</strong>。</p></dd></div>
             <div><dt>API 測試失敗，或設定提示存取問題</dt>
               <dd><p><span class="fix-label">原因</span>API 密鑰、商戶帳戶或 LIVE URL 前置字元有誤，缺少角色，或憑據屬於其他 Company 帳戶或環境。</p>
                 <p><span class="fix-label">解決</span>按照<a href="quick-start.html#credentials">憑據要求</a>檢查憑據的角色和存取範圍。LIVE 請檢查 <strong>LIVE URL 前置字元</strong>。</p></dd></div>
@@ -234,7 +234,7 @@
                 <p><span class="fix-label">解決</span></p>
                 <ol>
                   <li>在<strong>設定 › 關於</strong>中確認<strong>打印機</strong>顯示<strong>可用</strong>。否則請在<strong>設定 › 終端</strong>中運行<strong>測試連接</strong>。</li>
-                  <li>在<strong>設定 › 收據</strong>中將<strong>打印機</strong>設為<strong>自動檢測</strong>，並檢查<strong>支付後自動列印</strong>。</li>
+                  <li>在<strong>設定 › 收據</strong>中將<strong>打印機</strong>設為<strong>自動檢測</strong>，並檢查<strong>自動列印</strong>。</li>
                   <li>點按<strong>列印測試收據</strong>。如果仍無法列印，請檢查終端的收據紙捲。</li>
                 </ol></dd></div>
             <div><dt>排版被截斷或換行異常</dt>

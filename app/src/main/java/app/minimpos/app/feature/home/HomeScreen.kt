@@ -57,12 +57,11 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.minimpos.app.R
 import app.minimpos.app.data.settings.TerminalMode
 import app.minimpos.app.feature.settings.SettingsSections
-import app.minimpos.app.feature.setupCard
 import app.minimpos.app.feature.text
 import app.minimpos.app.terminal.TerminalConnection
-import app.minimpos.app.terminal.TerminalState
 import app.minimpos.app.ui.components.LocalAppContainer
 import app.minimpos.app.ui.components.MiniScaffold
+import app.minimpos.app.ui.components.currentSetupGate
 import app.minimpos.app.ui.components.openInBrowser
 import app.minimpos.app.ui.navigation.Navigator
 import app.minimpos.app.ui.navigation.Route
@@ -70,7 +69,11 @@ import app.minimpos.app.ui.theme.LocalDimens
 import app.minimpos.app.ui.theme.LocalStatusColors
 import app.minimpos.app.update.UpdateCheck
 
-/** The home screen fills the available height rather than scrolling, so everything fits on a 4" terminal screen. */
+/**
+ * The home screen fills the available height rather than scrolling, so everything fits on a 4" terminal screen. While
+ * payments still need setting up, a card says so and every tile that reaches Adyen or a terminal explains that instead
+ * of opening.
+ */
 @Composable
 fun HomeScreen(
     navigator: Navigator,
@@ -82,8 +85,11 @@ fun HomeScreen(
     val pinSet by container.pinManager.pinConfigured.collectAsStateWithLifecycle(initialValue = false)
     val terminal by container.terminalStatus.state.collectAsStateWithLifecycle()
     val update by container.update.state.collectAsStateWithLifecycle()
+    val gate = currentSetupGate()
     // A failed check is retried whenever Home is shown, so its warning clears once the terminal answers again.
     LaunchedEffect(Unit) { container.terminalStatus.recheckIfFailed() }
+    // Every tile but History and the admin areas reaches Adyen or a terminal, so it asks to finish setup first.
+    val open = { route: Route -> if (route in SETUP_FREE_ROUTES) navigator.push(route) else gate.run { navigator.push(route) } }
 
     MiniScaffold(
         title = settings.receipt.businessName.ifBlank { stringResource(R.string.app_name) },
@@ -101,13 +107,15 @@ fun HomeScreen(
             ) {
                 // Wherever payments go but the simulator: this terminal, one on the network or in the cloud, or Tap to Pay.
                 if (terminal.loaded && terminal.mode != TerminalMode.SIMULATOR) {
-                    ConnectionProblem(terminal) { navigator.push(Route.SettingsSection(SettingsSections.TERMINAL)) }
+                    ConnectionProblem(gate.pending, terminal.connection, gate::openSetup) {
+                        navigator.push(Route.SettingsSection(SettingsSections.TERMINAL))
+                    }
                 }
                 (update as? UpdateCheck.Available)?.let { offered ->
                     UpdateCard(offered, container.update::dismiss)
                 }
-                PaymentTiles(onOpen = navigator::push)
-                AreaTiles(locked = pinSet, onOpen = navigator::push)
+                PaymentTiles(onOpen = open)
+                AreaTiles(locked = pinSet, onOpen = open)
             }
         }
     }
@@ -135,27 +143,29 @@ private fun ColumnScope.PaymentTiles(onOpen: (Route) -> Unit) {
     )
 }
 
+/** The routes Home opens without payments being set up: History and the admin areas. */
+private val SETUP_FREE_ROUTES = setOf(Route.History, Route.Products, Route.Settings)
+
 /**
- * A [SetupCard] while payments cannot work: something must still be entered (the Checkout API included) or the terminal
- * did not answer; else nothing. On a terminal whose shared key is missing it asks for that; otherwise it says what is
- * missing.
+ * A [SetupCard] while payments cannot work, else nothing: while they still need setting up ([needsSetup]) the gate's
+ * generic "not set up yet" ([onSetUp] finishes it); otherwise, when the terminal did not answer, why
+ * ([onOpenSettings] opens Terminal settings).
  */
 @Composable
 private fun ConnectionProblem(
-    terminal: TerminalState,
-    onClick: () -> Unit,
+    needsSetup: Boolean,
+    connection: TerminalConnection,
+    onSetUp: () -> Unit,
+    onOpenSettings: () -> Unit,
 ) {
-    val connection = terminal.connection
-    val problem = terminal.setupProblem ?: (connection as? TerminalConnection.NotSetUp)?.problem
     when {
-        problem != null -> {
-            val (title, text) = problem.setupCard(terminal.onTerminal)
+        needsSetup -> {
             SetupCard(
                 Icons.Default.Key,
-                title,
-                text,
+                stringResource(R.string.setup_required_title),
+                stringResource(R.string.home_setup_text),
                 error = false,
-                onClick = onClick,
+                onClick = onSetUp,
             )
         }
 
@@ -165,7 +175,7 @@ private fun ConnectionProblem(
                 stringResource(R.string.home_connection_failed),
                 connection.failure.text(),
                 error = true,
-                onClick = onClick,
+                onClick = onOpenSettings,
             )
         }
     }

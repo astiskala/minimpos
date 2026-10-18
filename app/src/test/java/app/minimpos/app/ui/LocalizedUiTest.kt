@@ -33,7 +33,6 @@ import app.minimpos.app.feature.ActionOutcome
 import app.minimpos.app.feature.CaptureStep
 import app.minimpos.app.feature.modificationNote
 import app.minimpos.app.feature.outcomeNote
-import app.minimpos.app.feature.setupCard
 import app.minimpos.app.feature.stillUnconfirmed
 import app.minimpos.app.feature.text
 import app.minimpos.app.feature.walletCheckFailed
@@ -193,11 +192,7 @@ class LocalizedUiTest {
             allOutcomes(said).forEach { rendered += it.text() }
             failures.forEach { rendered += it.text() }
             WalletScanProblem.entries.forEach { rendered += it.text() }
-            SetupProblem.entries.forEach {
-                val (titleOn, bodyOn) = it.setupCard(onTerminal = true)
-                val (titleOff, bodyOff) = it.setupCard(onTerminal = false)
-                rendered += listOf(titleOn, bodyOn, titleOff, bodyOff)
-            }
+            SetupProblem.entries.forEach { rendered += it.text() }
             rendered += walletCheckFailed(Failure.Remote(Fault.TimedOut))
             rendered += stillUnconfirmed(Failure.Remote(Fault.TimedOut))
             val timedOutUnconfirmed = StoredReason.Unconfirmed(Failure.Remote(Fault.TimedOut))

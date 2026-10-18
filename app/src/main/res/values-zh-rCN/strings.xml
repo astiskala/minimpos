@@ -41,9 +41,7 @@
   <string name="home_settings">设置</string>
   <string name="home_printer_yes">打印机可用</string>
   <string name="home_printer_no">无打印机</string>
-  <string name="home_setup_title">连接此终端</string>
-  <string name="home_setup_text">点按此处完成终端设置。</string>
-  <string name="home_setup_title_remote">完成收款设置</string>
+  <string name="home_setup_text">点按此处完成收款设置。</string>
   <string name="home_connection_failed">目前无法收款</string>
   <string name="update_available">版本 %1$s 可用</string>
   <string name="update_download">更新</string>
@@ -232,7 +230,6 @@
   <string name="detail_refund">退款</string>
   <string name="detail_refunds">退款记录</string>
   <string name="detail_refunded">已退款 %1$s</string>
-  <string name="detail_reprint">重新打印收据</string>
   <string name="detail_capture">扣款</string>
   <string name="detail_adjust">调整金额</string>
   <string name="detail_retry_capture">重试扣款</string>
@@ -265,6 +262,7 @@
 
   <!-- Refunds and cancellations -->
   <string name="refund_title">退款</string>
+  <string name="refund_new">新退款</string>
   <string name="refund_detail_title">退款详情</string>
   <string name="refund_scan_title">扫描收据</string>
   <string name="refund_scan_hint">扫描收据上打印的二维码</string>
@@ -393,14 +391,14 @@
   <string name="reconciliation_refunds">退款</string>
   <string name="reconciliation_column_local">Mini mPOS</string>
   <string name="reconciliation_column_terminal">终端</string>
-  <string name="reconciliation_totals_header">1. 核对总额</string>
+  <string name="reconciliation_totals_header">核对总额</string>
   <string name="reconciliation_check_hint">将终端当前对账期的总额与本设备上的付款进行比对。会先核查未确认的终端付款。</string>
   <string name="reconciliation_check">核对终端总额</string>
-  <string name="reconciliation_end_header">2. 营业结束</string>
+  <string name="reconciliation_end_header">营业结束</string>
   <string name="reconciliation_close_hint">总额一致后，结束终端的对账期。终端会开始新的对账期，明天的总额将从零开始。</string>
   <string name="reconciliation_close_confirm_title">要结束终端对账期吗？</string>
   <string name="reconciliation_close_confirm_message">终端将结束当前对账期并开始新的对账期。此操作无法撤销。</string>
-  <string name="reconciliation_report_header">3. 每日报表</string>
+  <string name="reconciliation_report_header">每日报表</string>
   <string name="reconciliation_report_hint">打印本设备今日付款和退款的本地汇总。这不是 Adyen 的结算。</string>
 
   <!-- Products and sample data -->
@@ -660,6 +658,7 @@
   <string name="settings_scan_discard_drafts">打开扫描器将丢弃未保存的密钥。在导入之前，已保存的设置不会改变。</string>
   <string name="settings_scan_discard_confirm">丢弃并扫描</string>
   <string name="settings_mode">支付目标</string>
+  <string name="settings_mode_hint">Mini mPOS 将支付发送到哪里。</string>
   <string name="settings_mode_terminal">此终端</string>
   <string name="settings_mode_network">同一网络中的终端</string>
   <string name="settings_mode_cloud">通过互联网连接的终端（云端）</string>
@@ -760,6 +759,7 @@
   <!-- Settings: Adyen capabilities -->
   <string name="capabilities_intro">查看当前收款目标支持的 Adyen 功能，以及商户后台中为此终端配置的状态。</string>
   <string name="capabilities_refresh">刷新功能状态</string>
+  <string name="capability_save">保存到 Adyen</string>
   <string name="capabilities_matrix_header">功能状态</string>
   <string name="capability_status_available">可用</string>
   <string name="capability_status_needs_config">需要配置</string>
@@ -775,14 +775,19 @@
   <string name="capability_reconciliation">终端对账汇总</string>
   <string name="capability_shopper_display">购物者端屏幕显示</string>
   <string name="capability_gratuity_section">终端小费设置（%1$s）</string>
-  <string name="capability_gratuity_enable">配置 %1$s 终端小费</string>
-  <string name="capability_gratuity_predefined">显示预设小费按钮</string>
+  <string name="capability_gratuity_enable">终端小费选项</string>
+  <string name="capability_gratuity_enable_hint">Adyen 会在终端上为 %1$s 付款显示小费选项。</string>
+  <string name="capability_gratuity_predefined">小费按钮</string>
+  <string name="capability_gratuity_predefined_hint">购物者从您的小费选项中选择，而不是自行输入。</string>
   <string name="capability_gratuity_entries">预设小费选项</string>
   <string name="capability_gratuity_entries_hint">以逗号分隔的百分比或最小货币单位金额（最多 4 项）。</string>
-  <string name="capability_gratuity_custom">包含自定义小费选项</string>
-  <string name="capability_dcc_enable">在终端启用动态货币转换 (DCC)</string>
+  <string name="capability_gratuity_custom">自定义小费</string>
+  <string name="capability_gratuity_custom_hint">其中一个按钮让购物者输入自定义小费。</string>
+  <string name="capability_dcc_enable">提供货币转换</string>
+  <string name="capability_dcc_enable_hint">持外国卡的持卡人可以用自己的货币付款（DCC）。</string>
   <string name="capability_moto_section">MOTO 终端设置</string>
-  <string name="capability_moto_enable">在终端启用 MOTO</string>
+  <string name="capability_moto_enable">允许终端 MOTO</string>
+  <string name="capability_moto_enable_hint">终端接受手动输入的邮购和电话订购，不超过最高金额。</string>
   <string name="capability_moto_max_amount">MOTO 最高限额（主货币单位）</string>
   <string name="capability_offline_section">离线限额（%1$s）</string>
   <string name="capability_offline_chip_floor">芯片离线限额（主货币单位）</string>
@@ -792,6 +797,7 @@
   <!-- Settings: simulator -->
   <string name="settings_simulator_hint">模拟器无需终端即可响应支付、退款和打印请求，并模拟 Checkout API。可在模拟器或手机上体验所有界面。</string>
   <string name="settings_sim_outcome">支付结果</string>
+  <string name="settings_sim_outcome_hint">模拟终端如何回应支付。</string>
   <string name="settings_sim_approve">批准</string>
   <string name="settings_sim_decline">拒绝</string>
   <string name="settings_sim_cancel">购物者取消</string>
@@ -799,9 +805,11 @@
   <string name="settings_sim_busy">终端忙碌</string>
   <string name="settings_sim_random">随机</string>
   <string name="settings_sim_delay">延迟（毫秒）</string>
-  <string name="settings_sim_printer">配有打印机</string>
-  <string name="settings_sim_signature">需要签名</string>
-  <string name="settings_sim_offline">模拟离线存储转发式（Store-and-Forward）</string>
+  <string name="settings_sim_printer">收据打印机</string>
+  <string name="settings_sim_printer_hint">模拟终端配有打印机，收据会在屏幕上打印。</string>
+  <string name="settings_sim_signature">要求签名</string>
+  <string name="settings_sim_signature_hint">模拟银行卡支付需要持卡人在商家联上签名。</string>
+  <string name="settings_sim_offline">离线批准</string>
   <string name="settings_sim_offline_hint">在无 PSP 识别号的情况下离线批准模拟交易，并报告未确认批次。</string>
 
   <!-- Settings: payments, pricing, and tax -->
@@ -844,6 +852,7 @@
     <item>销售税</item>
   </string-array>
   <string name="settings_tax_mode">价格</string>
+  <string name="settings_tax_mode_hint">商品价格是否已含税。</string>
   <string name="settings_tax_inclusive">含税</string>
   <string name="settings_tax_exclusive">不含税（结账时加税）</string>
   <string name="settings_references">识别号</string>
@@ -854,11 +863,12 @@
   <string name="settings_tokenization">购物者与保存卡片</string>
   <string name="settings_offer_card_saving">提供保存卡片选项</string>
   <string name="settings_offer_card_saving_hint">有购物者识别号时，结账会显示“保存卡片以供今后支付”。请先征得购物者同意。之后可在主页使用“令牌扣款”收款。</string>
-  <string name="settings_tokenize_default">默认启用保存卡片</string>
-  <string name="settings_tokenize_default_hint">仅在有购物者识别号时显示。</string>
-  <string name="settings_pre_auth_tokenize_default">预授权默认保存卡片</string>
-  <string name="settings_pre_auth_tokenize_default_hint">预授权扣款完成后产生的延迟费用，可在主页使用“令牌扣款”收取。</string>
+  <string name="settings_tokenize_default">默认保存卡片</string>
+  <string name="settings_tokenize_default_hint">有购物者识别号时，销售默认开启“保存卡片以供今后支付”。</string>
+  <string name="settings_pre_auth_tokenize_default">预授权也保存卡片</string>
+  <string name="settings_pre_auth_tokenize_default_hint">预授权默认开启保存卡片，之后的费用可通过“令牌扣款”收取。</string>
   <string name="settings_recurring_model">循环扣款模式</string>
+  <string name="settings_recurring_model_hint">Adyen 可如何使用已保存的卡片扣款。请选择购物者同意的方式。</string>
   <string name="recurring_card_on_file">在档卡</string>
   <string name="recurring_subscription">订阅</string>
   <string name="recurring_unscheduled">不定期在档卡扣款</string>
@@ -878,11 +888,13 @@
   <string name="settings_shopper_email_hint">支付前收集的电子邮件始终会发送给 Adyen，付款链接也一样。支付后收集的电子邮件仅用于发送收据。</string>
   <string name="settings_email_receipts">电子收据</string>
   <string name="settings_email_capture">询问购物者的电子邮件地址</string>
+  <string name="settings_email_capture_hint">支付前由结账页询问；支付后由结果页的“发送电子收据”询问。</string>
   <string name="settings_capture_off">从不</string>
   <string name="settings_capture_before">支付前</string>
   <string name="settings_capture_after">支付后</string>
   <string name="settings_email_capture_reference">始终在支付前询问：电子邮件是保存卡片时的购物者识别号。</string>
   <string name="settings_auto_send">自动发送电子收据</string>
+  <string name="settings_auto_send_hint">支付获批后，将收据发送到结账时或在终端上提供的电子邮件。</string>
   <string name="settings_tipping">小费</string>
   <string name="settings_tip_disabled">禁用</string>
   <string name="settings_tip_default_off">启用（默认关闭）</string>
@@ -891,8 +903,8 @@
   <string name="settings_terminal_tip_hint">在终端屏幕上提示购物者添加小费。</string>
   <string name="settings_dynamic_tip_override">按订单金额动态推荐小费</string>
   <string name="settings_dynamic_tip_override_hint">小额订单推荐固定金额，较大金额订单推荐百分比小费。</string>
-  <string name="settings_tip_on_pre_tax">按税前金额计算百分比小费</string>
-  <string name="settings_tip_on_pre_tax_hint">按税前小计计算百分比小费。</string>
+  <string name="settings_tip_on_pre_tax">按税前金额计算小费</string>
+  <string name="settings_tip_on_pre_tax_hint">百分比小费按税前小计计算。</string>
   <string name="settings_payment_links">付款链接</string>
   <string name="settings_links_hint">结账时可创建 Adyen 付款链接，供购物者在线支付。模拟器模式可试用演示链接，不会收款。</string>
   <string name="settings_link_expiry">链接有效时长（小时）</string>
@@ -906,6 +918,7 @@
   <string name="settings_confirm_basket_terminal_hint">购物者先在终端上确认总额再付款。如果购物者拒绝，付款将被取消。</string>
   <string name="settings_collect_email_terminal">在终端上询问电子邮件</string>
   <string name="settings_collect_email_terminal_hint">如果结账时未填写电子邮件，购物者可在终端上输入电子邮件以接收收据，也可跳过。</string>
+  <string name="settings_email_receipts_first">请先在“设置 › 电子收据”中设置电子收据。</string>
   <string name="settings_show_terminal_qr">批准后显示二维码</string>
   <string name="settings_show_terminal_qr_hint">付款批准后，终端会将该笔付款的交易单号显示为二维码，供购物者扫描。</string>
   <string name="settings_ask_shopper_rating">请购物者评分</string>
@@ -914,9 +927,9 @@
   <string name="settings_allow_partial_auth_hint">接受银行卡部分批准，并提示用另一张卡支付剩余差额。</string>
   <string name="settings_ask_giving_hint">购买后在终端上提示购物者进行 Adyen Giving 慈善捐款。</string>
   <string name="settings_allow_moto">在结账时提供 MOTO</string>
-  <string name="settings_allow_moto_hint">允许邮购/电话订购（MOTO）手动输入卡号付款（需要经理 PIN 码）。</string>
-  <string name="settings_allow_mke">在结账时提供手动键入卡号（MKE）</string>
-  <string name="settings_allow_mke_hint">芯片无法读取时允许店员在终端上手动键入卡号（需要经理 PIN 码）。</string>
+  <string name="settings_allow_moto_hint">店员可在终端上手动输入邮购和电话订购的卡号。需要经理批准。</string>
+  <string name="settings_allow_mke">提供手动键入卡号</string>
+  <string name="settings_allow_mke_hint">芯片无法读取时，店员可在终端上手动键入卡号。需要经理批准。</string>
 
   <!-- Settings: receipts and SMTP -->
   <string name="settings_header_footer">页眉和页脚</string>
@@ -949,11 +962,14 @@
   <string name="settings_show_qr_hint">工作人员可扫描收据，发起关联原支付的退款。</string>
   <string name="settings_printing">打印</string>
   <string name="settings_printer">打印机</string>
+  <string name="settings_printer_hint">Mini mPOS 是否提供打印。“自动检测”会询问终端。</string>
   <string name="settings_printer_auto">自动检测</string>
   <string name="settings_printer_on">始终可用</string>
   <string name="settings_printer_off">不打印</string>
-  <string name="settings_auto_print">支付后自动打印</string>
+  <string name="settings_auto_print">自动打印</string>
+  <string name="settings_auto_print_hint">支付获批后立即打印顾客收据。</string>
   <string name="settings_merchant_copy">商家联</string>
+  <string name="settings_merchant_copy_hint">何时打印第二联供您留存。</string>
   <string name="settings_merchant_never">从不</string>
   <string name="settings_merchant_signature">仅在需要签名时</string>
   <string name="settings_merchant_always">始终</string>
@@ -964,6 +980,7 @@
   <string name="settings_smtp">SMTP 服务器</string>
   <string name="settings_smtp_host">服务器</string>
   <string name="settings_smtp_security">安全</string>
+  <string name="settings_smtp_security_hint">与邮件服务器连接的加密方式。</string>
   <string name="settings_smtp_starttls">STARTTLS（通常为端口 587）</string>
   <string name="settings_smtp_ssl">SSL/TLS（通常为端口 465）</string>
   <string name="settings_smtp_none">无（不推荐）</string>
@@ -995,6 +1012,7 @@
   <string name="settings_remove_pin">移除管理员 PIN</string>
   <string name="settings_remove_pin_message">设置和商品将不再受到保护。已设置的经理 PIN 也会被移除。</string>
   <string name="settings_auto_lock">重新锁定时间</string>
+  <string name="settings_auto_lock_hint">输入管理员 PIN 后，设置和商品保持解锁的时长。</string>
   <string name="settings_auto_lock_never">仅在离开时</string>
   <plurals name="settings_minutes">
     <item quantity="other">%1$d 分钟</item>
@@ -1002,6 +1020,7 @@
   <string name="settings_pin_forgotten">忘记 PIN？请从设备设置中清除应用数据；此设备上的配置和交易记录也将丢失。</string>
   <string name="settings_history">交易记录</string>
   <string name="settings_retention">交易保留时长</string>
+  <string name="settings_retention_hint">较早的已结算销售和退款会被删除，未完成的会保留。</string>
   <string name="settings_retention_forever">永久</string>
   <plurals name="settings_days">
     <item quantity="other">%1$d 天</item>
@@ -1048,6 +1067,10 @@
   <string name="setup_payments_app_api_key">请在终端设置中输入 Payments 应用 API 密钥</string>
   <string name="setup_unreadable_payments_app_key">无法在此设备上读取已保存的 Payments 应用 API 密钥，请在终端设置中重新输入</string>
   <string name="setup_not_verified">收款前，请测试 API 访问权限和连接。</string>
+  <string name="setup_required_title">尚未完成收款设置</string>
+  <string name="setup_required_message">Mini mPOS 需要先成功测试与 Adyen 的连接。“设置 › 终端”会显示还缺少什么。</string>
+  <string name="setup_required_action">完成收款设置</string>
+  <string name="step_done">已完成</string>
   <string name="setup_transfer_pending">设置导入尚未保存完成。请重试以继续。</string>
   <string name="setup_terminal_access">此 API 密钥无法访问本终端。请确认密钥属于终端的 Company 账户，并具有访问本终端的权限。</string>
   <string name="setup_merchant_mismatch">商家账户与终端当前分配的账户不一致。请更正账户或终端注册后再继续。</string>

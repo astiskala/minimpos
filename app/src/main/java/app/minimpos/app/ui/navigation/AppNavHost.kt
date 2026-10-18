@@ -6,6 +6,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.navigation3.rememberViewModelStoreNavEntryDecorator
+import androidx.navigation3.runtime.NavBackStack
+import androidx.navigation3.runtime.NavKey
 import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.runtime.rememberNavBackStack
 import androidx.navigation3.runtime.rememberSaveableStateHolderNavEntryDecorator
@@ -37,15 +39,18 @@ import app.minimpos.app.feature.sale.TokenChargeScreen
 import app.minimpos.app.feature.sale.WalletScreen
 import app.minimpos.app.feature.settings.SettingsScreen
 import app.minimpos.app.feature.settings.SettingsSectionScreen
+import app.minimpos.app.feature.settings.SettingsSections
 import app.minimpos.app.feature.transfer.TransferExportScreen
 import app.minimpos.app.feature.transfer.TransferImportScreen
 import app.minimpos.app.ui.components.LocalAppContainer
+import app.minimpos.app.ui.components.SetupGateHost
 
 /**
  * Maps every [Route] to its screen, starting at [Route.Home] or first-run [Route.Onboarding] above Home.
  * Onboarding stays below setup screens so Back can change the initial choice. Admin routes are wrapped in [PinGate], and the admin
  * area locks again once no protected route is left on the back stack. Each entry gets its own saved state and view
- * models, which are cleared when it leaves the stack.
+ * models, which are cleared when it leaves the stack. Every screen is inside the [SetupGateHost], whose "Finish setting
+ * up payments" opens Settings › Terminal.
  */
 @Composable
 fun AppNavHost() {
@@ -72,6 +77,17 @@ fun AppNavHost() {
         if (backStack.none { (it as? Route)?.requiresManager == true }) container.managerLock.lock()
     }
 
+    SetupGateHost(onSetUp = { navigator.push(Route.SettingsSection(SettingsSections.TERMINAL)) }) {
+        AppEntries(backStack, navigator)
+    }
+}
+
+/** The screens of every [Route] on [backStack]. */
+@Composable
+private fun AppEntries(
+    backStack: NavBackStack<NavKey>,
+    navigator: Navigator,
+) {
     NavDisplay(
         backStack = backStack,
         onBack = { navigator.back() },

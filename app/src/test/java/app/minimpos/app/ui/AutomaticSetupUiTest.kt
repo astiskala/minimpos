@@ -33,6 +33,7 @@ import app.minimpos.app.feature.transfer.ImportUiState
 import app.minimpos.app.feature.transfer.TransferImportScreen
 import app.minimpos.app.feature.transfer.TransferImportViewModel
 import app.minimpos.app.ui.components.LocalAppContainer
+import app.minimpos.app.ui.components.SetupGateHost
 import app.minimpos.app.ui.navigation.Navigator
 import app.minimpos.app.ui.navigation.Route
 import app.minimpos.app.ui.theme.MiniMposTheme
@@ -172,10 +173,12 @@ class AutomaticSetupUiTest {
         compose.setContent {
             MiniMposTheme {
                 CompositionLocalProvider(LocalAppContainer provides container) {
-                    when (val route = navigator.current) {
-                        is Route.SettingsSection -> SettingsSectionScreen(route.section, navigator)
-                        Route.Home -> HomeScreen(navigator)
-                        else -> TransferImportScreen(navigator, vm = vm)
+                    SetupGateHost(onSetUp = {}) {
+                        when (val route = navigator.current) {
+                            is Route.SettingsSection -> SettingsSectionScreen(route.section, navigator)
+                            Route.Home -> HomeScreen(navigator)
+                            else -> TransferImportScreen(navigator, vm = vm)
+                        }
                     }
                 }
             }

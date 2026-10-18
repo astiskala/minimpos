@@ -269,10 +269,9 @@ class ReceiptDelivery(
     private suspend fun automationForSale(saleId: String): AutoDelivery {
         val sale = (if (claim(saleId)) records.sales.get(saleId)?.sale else null) ?: return AutoDelivery()
         val current = settings.current()
-        val payment = current.payment
         return AutoDelivery(
             print = printsAutomatically(current),
-            emailTo = sale.shopperEmail?.takeIf { payment.captureEmailBefore && payment.autoSendEmail },
+            emailTo = sale.shopperEmail?.takeIf { current.emailsReceiptAutomatically },
         )
     }
 

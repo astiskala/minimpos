@@ -41,9 +41,7 @@
   <string name="home_settings">設定</string>
   <string name="home_printer_yes">プリンターあり</string>
   <string name="home_printer_no">プリンターなし</string>
-  <string name="home_setup_title">この端末に接続</string>
-  <string name="home_setup_text">ここをタップして端末設定を完了。</string>
-  <string name="home_setup_title_remote">決済の設定を完了</string>
+  <string name="home_setup_text">ここをタップして決済の設定を完了。</string>
   <string name="home_connection_failed">現在、決済を受け付けられません</string>
   <string name="update_available">バージョン %1$s が利用可能</string>
   <string name="update_download">更新</string>
@@ -232,7 +230,6 @@
   <string name="detail_refund">返金</string>
   <string name="detail_refunds">返金履歴</string>
   <string name="detail_refunded">%1$s返金済み</string>
-  <string name="detail_reprint">領収書を再印刷</string>
   <string name="detail_capture">キャプチャ</string>
   <string name="detail_adjust">金額を調整</string>
   <string name="detail_retry_capture">キャプチャを再試行</string>
@@ -265,6 +262,7 @@
 
   <!-- Refunds and cancellations -->
   <string name="refund_title">返金</string>
+  <string name="refund_new">新しい返金</string>
   <string name="refund_detail_title">返金の詳細</string>
   <string name="refund_scan_title">領収書をスキャン</string>
   <string name="refund_scan_hint">領収書に印刷されたQRコードをスキャン</string>
@@ -393,14 +391,14 @@
   <string name="reconciliation_refunds">返金</string>
   <string name="reconciliation_column_local">Mini mPOS</string>
   <string name="reconciliation_column_terminal">端末</string>
-  <string name="reconciliation_totals_header">1. 合計を確認</string>
+  <string name="reconciliation_totals_header">合計を確認</string>
   <string name="reconciliation_check_hint">端末の現在の集計期間の合計を、このデバイスの決済と比較します。未確定の端末決済を先に確認します。</string>
   <string name="reconciliation_check">端末の合計を確認</string>
-  <string name="reconciliation_end_header">2. 営業終了</string>
+  <string name="reconciliation_end_header">営業終了</string>
   <string name="reconciliation_close_hint">合計が一致したら、端末の集計期間を締めます。端末は新しい期間を開始し、翌日の合計はゼロから始まります。</string>
   <string name="reconciliation_close_confirm_title">端末の集計期間を締めますか？</string>
   <string name="reconciliation_close_confirm_message">端末は現在の集計期間を終了し、新しい期間を開始します。元に戻すことはできません。</string>
-  <string name="reconciliation_report_header">3. 日次レポート</string>
+  <string name="reconciliation_report_header">日次レポート</string>
   <string name="reconciliation_report_hint">このデバイスの本日の決済と返金のローカル集計を印刷します。Adyenの精算ではありません。</string>
 
   <!-- Products and sample data -->
@@ -660,6 +658,7 @@
   <string name="settings_scan_discard_drafts">スキャナーを開くと、未保存のキーは破棄されます。インポートするまで保存済みの設定は変わりません。</string>
   <string name="settings_scan_discard_confirm">破棄して読み取る</string>
   <string name="settings_mode">決済先</string>
+  <string name="settings_mode_hint">Mini mPOSが決済を送る先です。</string>
   <string name="settings_mode_terminal">この端末</string>
   <string name="settings_mode_network">ネットワーク上の端末</string>
   <string name="settings_mode_cloud">インターネット経由の端末（クラウド）</string>
@@ -760,6 +759,7 @@
   <!-- Settings: Adyen capabilities -->
   <string name="capabilities_intro">この決済先で対応しているAdyen機能と、Customer Areaでこの端末に設定されている内容を確認します。</string>
   <string name="capabilities_refresh">機能を再確認</string>
+  <string name="capability_save">Adyenに保存</string>
   <string name="capabilities_matrix_header">機能一覧</string>
   <string name="capability_status_available">利用可能</string>
   <string name="capability_status_needs_config">要設定</string>
@@ -775,14 +775,19 @@
   <string name="capability_reconciliation">端末集計・精算</string>
   <string name="capability_shopper_display">購入者向け画面表示</string>
   <string name="capability_gratuity_section">端末でのチップ設定（%1$s）</string>
-  <string name="capability_gratuity_enable">%1$sの端末チップを設定</string>
-  <string name="capability_gratuity_predefined">定義済みチップ選択肢を表示</string>
+  <string name="capability_gratuity_enable">端末のチップ選択肢</string>
+  <string name="capability_gratuity_enable_hint">Adyenが%1$sの決済で端末にチップ選択肢を表示します。</string>
+  <string name="capability_gratuity_predefined">チップボタン</string>
+  <string name="capability_gratuity_predefined_hint">購入者はチップを入力する代わりに選択肢から選びます。</string>
   <string name="capability_gratuity_entries">定義済みチップ選択肢</string>
   <string name="capability_gratuity_entries_hint">カンマ区切りの割合または最小通貨単位の金額（最大4件）。</string>
-  <string name="capability_gratuity_custom">自由入力のチップ選択肢を含める</string>
-  <string name="capability_dcc_enable">端末で通貨選択決済（DCC）を有効化</string>
+  <string name="capability_gratuity_custom">自由入力のチップ</string>
+  <string name="capability_gratuity_custom_hint">ボタンの1つで購入者が任意のチップを入力できます。</string>
+  <string name="capability_dcc_enable">通貨選択決済を提供</string>
+  <string name="capability_dcc_enable_hint">海外カードの所有者が自国通貨で支払えます（DCC）。</string>
   <string name="capability_moto_section">MOTO端末設定</string>
-  <string name="capability_moto_enable">端末でMOTOを有効化</string>
+  <string name="capability_moto_enable">端末でMOTOを許可</string>
+  <string name="capability_moto_enable_hint">端末で郵送・電話注文の手入力を上限額まで受け付けます。</string>
   <string name="capability_moto_max_amount">MOTO上限金額（主通貨単位）</string>
   <string name="capability_offline_section">オフライン上限（%1$s）</string>
   <string name="capability_offline_chip_floor">ICチップオフライン上限（主通貨単位）</string>
@@ -792,6 +797,7 @@
   <!-- Settings: simulator -->
   <string name="settings_simulator_hint">端末なしで決済、返金、印刷のリクエストに応答し、Checkout APIもシミュレートします。エミュレーターやスマートフォンですべての画面を試せます。</string>
   <string name="settings_sim_outcome">決済結果</string>
+  <string name="settings_sim_outcome_hint">シミュレーターの端末が決済にどう応答するかです。</string>
   <string name="settings_sim_approve">承認</string>
   <string name="settings_sim_decline">拒否</string>
   <string name="settings_sim_cancel">購入者がキャンセル</string>
@@ -799,9 +805,11 @@
   <string name="settings_sim_busy">端末使用中</string>
   <string name="settings_sim_random">ランダム</string>
   <string name="settings_sim_delay">遅延（ミリ秒）</string>
-  <string name="settings_sim_printer">プリンターあり</string>
-  <string name="settings_sim_signature">署名が必要</string>
-  <string name="settings_sim_offline">オフライン（ストア・アンド・フォワード）をシミュレート</string>
+  <string name="settings_sim_printer">レシートプリンター</string>
+  <string name="settings_sim_printer_hint">シミュレーターの端末にプリンターがあり、レシートは画面に印刷されます。</string>
+  <string name="settings_sim_signature">署名を求める</string>
+  <string name="settings_sim_signature_hint">シミュレーションのカード決済で加盟店控えへの署名が必要になります。</string>
+  <string name="settings_sim_offline">オフライン承認</string>
   <string name="settings_sim_offline_hint">PSP参照IDなしでオフライン承認をシミュレートし、未確認バッチを報告します。</string>
 
   <!-- Settings: payments, pricing, and tax -->
@@ -844,6 +852,7 @@
     <item>売上税</item>
   </string-array>
   <string name="settings_tax_mode">価格</string>
+  <string name="settings_tax_mode_hint">商品価格が税込みかどうかです。</string>
   <string name="settings_tax_inclusive">税込</string>
   <string name="settings_tax_exclusive">税抜（会計時に加算）</string>
   <string name="settings_references">参照ID</string>
@@ -854,11 +863,12 @@
   <string name="settings_tokenization">購入者とカードの保存</string>
   <string name="settings_offer_card_saving">カード保存の選択肢を表示</string>
   <string name="settings_offer_card_saving_hint">購入者参照IDがある場合、会計時に「次回の決済用にカードを保存」を表示します。購入者の同意を得てください。トークンには後でホームの「トークンで請求」から請求できます。</string>
-  <string name="settings_tokenize_default">カード保存をデフォルトでオン</string>
-  <string name="settings_tokenize_default_hint">購入者参照IDがある場合のみ表示します。</string>
-  <string name="settings_pre_auth_tokenize_default">プリオーソリでもカード保存をデフォルトでオン</string>
-  <string name="settings_pre_auth_tokenize_default_hint">キャプチャ後の追加費用は、ホームの「トークンで請求」からトークンに請求できます。</string>
+  <string name="settings_tokenize_default">カードを標準で保存</string>
+  <string name="settings_tokenize_default_hint">購入者参照IDがあるとき、販売は「次回の決済用にカードを保存」がオンで始まります。</string>
+  <string name="settings_pre_auth_tokenize_default">プリオーソリでもカードを保存</string>
+  <string name="settings_pre_auth_tokenize_default_hint">プリオーソリもカード保存がオンで始まり、後の追加費用を「トークンで請求」で請求できます。</string>
   <string name="settings_recurring_model">継続課金モデル</string>
+  <string name="settings_recurring_model_hint">Adyenが保存済みカードに請求できる方法です。購入者が同意した内容を選んでください。</string>
   <string name="recurring_card_on_file">カードオンファイル</string>
   <string name="recurring_subscription">サブスクリプション</string>
   <string name="recurring_unscheduled">不定期のカードオンファイル</string>
@@ -878,11 +888,13 @@
   <string name="settings_shopper_email_hint">決済前に入力したメールは、決済リンクでも必ずAdyenに送信します。決済後に入力したメールは領収書の送信にのみ使います。</string>
   <string name="settings_email_receipts">領収書のメール送信</string>
   <string name="settings_email_capture">購入者にメールアドレスを尋ねる</string>
+  <string name="settings_email_capture_hint">決済前は会計画面で、決済後は結果画面の「領収書をメール送信」で尋ねます。</string>
   <string name="settings_capture_off">入力しない</string>
   <string name="settings_capture_before">決済前</string>
   <string name="settings_capture_after">決済後</string>
   <string name="settings_email_capture_reference">必ず決済前に入力します。メールが保存カードの購入者参照IDになります。</string>
   <string name="settings_auto_send">領収書を自動でメール送信</string>
+  <string name="settings_auto_send_hint">決済が承認されたら、会計時または端末で入力されたアドレスに領収書を送ります。</string>
   <string name="settings_tipping">チップ</string>
   <string name="settings_tip_disabled">無効</string>
   <string name="settings_tip_default_off">有効（初期値オフ）</string>
@@ -891,8 +903,8 @@
   <string name="settings_terminal_tip_hint">端末画面で購入者にチップを尋ねます。</string>
   <string name="settings_dynamic_tip_override">購入金額に応じたチップ候補</string>
   <string name="settings_dynamic_tip_override_hint">少額の会計では定額、高額の会計では割合のチップ候補を表示します。</string>
-  <string name="settings_tip_on_pre_tax">税抜き金額に対して割合チップを計算</string>
-  <string name="settings_tip_on_pre_tax_hint">税抜き小計をもとに割合のチップを計算します。</string>
+  <string name="settings_tip_on_pre_tax">税抜き金額でチップを計算</string>
+  <string name="settings_tip_on_pre_tax_hint">割合のチップは税抜き小計から計算します。</string>
   <string name="settings_payment_links">決済リンク</string>
   <string name="settings_links_hint">会計時にAdyenの決済リンクを作成し、購入者にオンラインで支払ってもらえます。シミュレーターモードでは、お金を動かさずにデモリンクを試せます。</string>
   <string name="settings_link_expiry">リンクの有効時間（時間）</string>
@@ -906,6 +918,7 @@
   <string name="settings_confirm_basket_terminal_hint">購入者は支払いの前に端末で合計を確認します。購入者が拒否すると、決済はキャンセルされます。</string>
   <string name="settings_collect_email_terminal">端末でメールアドレスを尋ねる</string>
   <string name="settings_collect_email_terminal_hint">会計時にメールアドレスが未入力の場合、購入者は領収書用に端末で入力するか、スキップできます。</string>
+  <string name="settings_email_receipts_first">先に「設定 › 領収書のメール送信」でメール送信を設定してください。</string>
   <string name="settings_show_terminal_qr">承認後にQRコードを表示</string>
   <string name="settings_show_terminal_qr_hint">決済が承認されると、端末は取引番号をQRコードで表示し、購入者が読み取れます。</string>
   <string name="settings_ask_shopper_rating">評価を求める</string>
@@ -914,9 +927,9 @@
   <string name="settings_allow_partial_auth_hint">カードの一部承認を受け入れ、残額を別のカードで決済できるようにします。</string>
   <string name="settings_ask_giving_hint">購入後に端末でAdyen Givingの寄付を購入者に尋ねます。</string>
   <string name="settings_allow_moto">会計時にMOTOを許可</string>
-  <string name="settings_allow_moto_hint">郵送・電話注文（MOTO）の手入力決済を許可します（マネージャーPINが必要）。</string>
-  <string name="settings_allow_mke">会計時に手入力決済（MKE）を許可</string>
-  <string name="settings_allow_mke_hint">ICチップが読み取れない場合に端末でのカード番号手入力を許可します（マネージャーPINが必要）。</string>
+  <string name="settings_allow_moto_hint">郵送・電話注文のカード番号をスタッフが端末で入力できます。マネージャーの承認が必要です。</string>
+  <string name="settings_allow_mke">手入力決済を許可</string>
+  <string name="settings_allow_mke_hint">ICチップが読み取れないとき、スタッフが端末でカード番号を入力できます。マネージャーの承認が必要です。</string>
 
   <!-- Settings: receipts and SMTP -->
   <string name="settings_header_footer">ヘッダーとフッター</string>
@@ -949,11 +962,14 @@
   <string name="settings_show_qr_hint">領収書をスキャンして、元の決済に紐付いた返金を開始できます。</string>
   <string name="settings_printing">印刷</string>
   <string name="settings_printer">プリンター</string>
+  <string name="settings_printer_hint">Mini mPOSが印刷を提供するかどうかです。「自動検出」は端末に確認します。</string>
   <string name="settings_printer_auto">自動検出</string>
   <string name="settings_printer_on">常に使用可能</string>
   <string name="settings_printer_off">印刷しない</string>
-  <string name="settings_auto_print">決済後に自動印刷</string>
+  <string name="settings_auto_print">自動で印刷</string>
+  <string name="settings_auto_print_hint">決済が承認されたらすぐにお客様控えを印刷します。</string>
   <string name="settings_merchant_copy">加盟店控え</string>
+  <string name="settings_merchant_copy_hint">保管用の2枚目を印刷するタイミングです。</string>
   <string name="settings_merchant_never">印刷しない</string>
   <string name="settings_merchant_signature">署名が必要な場合のみ</string>
   <string name="settings_merchant_always">常に印刷</string>
@@ -964,6 +980,7 @@
   <string name="settings_smtp">SMTPサーバー</string>
   <string name="settings_smtp_host">サーバー</string>
   <string name="settings_smtp_security">セキュリティ</string>
+  <string name="settings_smtp_security_hint">メールサーバーとの接続の暗号化方式です。</string>
   <string name="settings_smtp_starttls">STARTTLS（通常ポート587）</string>
   <string name="settings_smtp_ssl">SSL/TLS（通常ポート465）</string>
   <string name="settings_smtp_none">なし（非推奨）</string>
@@ -995,6 +1012,7 @@
   <string name="settings_remove_pin">管理者PINを削除</string>
   <string name="settings_remove_pin_message">設定と商品が保護されなくなります。マネージャーPINも設定されている場合は削除されます。</string>
   <string name="settings_auto_lock">再ロックまでの時間</string>
+  <string name="settings_auto_lock_hint">管理者PINを入力した後、設定と商品を開いたままにする時間です。</string>
   <string name="settings_auto_lock_never">画面を離れたときのみ</string>
   <plurals name="settings_minutes">
     <item quantity="other">%1$d分</item>
@@ -1002,6 +1020,7 @@
   <string name="settings_pin_forgotten">PINを忘れた場合は、デバイスの設定からアプリのデータを消去してください。このデバイスの設定と履歴は失われます。</string>
   <string name="settings_history">取引履歴</string>
   <string name="settings_retention">取引の保存期間</string>
+  <string name="settings_retention_hint">古い完了済みの販売と返金は削除されます。未完了のものは残ります。</string>
   <string name="settings_retention_forever">無期限</string>
   <plurals name="settings_days">
     <item quantity="other">%1$d日</item>
@@ -1048,6 +1067,10 @@
   <string name="setup_payments_app_api_key">端末設定にPaymentsアプリのAPIキーを入力してください</string>
   <string name="setup_unreadable_payments_app_key">保存したPaymentsアプリのAPIキーをこのデバイスで読み取れませんでした。端末設定で再入力してください</string>
   <string name="setup_not_verified">決済前に API アクセスと接続をテストしてください。</string>
+  <string name="setup_required_title">決済の設定が完了していません</string>
+  <string name="setup_required_message">Mini mPOSでは先にAdyenへの接続テストが必要です。「設定 › 端末」で不足している項目を確認できます。</string>
+  <string name="setup_required_action">決済の設定を完了</string>
+  <string name="step_done">完了</string>
   <string name="setup_transfer_pending">設定のインポートは保存途中です。再試行して続行してください。</string>
   <string name="setup_terminal_access">この API キーは端末にアクセスできません。端末の Company アカウントに属し、この端末へのアクセス権があることを確認してください。</string>
   <string name="setup_merchant_mismatch">マーチャントアカウントが端末の現在の割り当てと一致しません。アカウントまたは端末登録を修正してから続行してください。</string>

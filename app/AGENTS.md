@@ -95,6 +95,11 @@ Starred rules below are enforced by `ArchitectureTest`, `OwnershipArchitectureTe
   narrow settings slices rather than `SettingsViewModel` or `SettingsUiState`.
 - \* Only PIN-entry UI and `data.security` verify PINs. Financial actions request Manager approval and recheck it before
   sending; admin access is separate. Secrets remain in `SecretStore`.
+- \* `TerminalState.needsSetup` is read only by the container's `SetupGate`, followed by `SetupGateHost` in the nav host.
+  Every UI action reaching Adyen or a terminal runs through `currentSetupGate().run`/`GatedButton(requiresSetup = true)`;
+  content that only means something once set up shows `SetupRequired`. Setup tools and `StatusCheck` never do.
+- \* Result and detail screens offer receipts only through `ReceiptActions` (one order: print, merchant copy, email,
+  share, show receipt), status checks through `StatusCheck` and result bars through `ResultBar` (Home + next step).
 
 ## Non-obvious implementation constraints
 
@@ -105,6 +110,11 @@ Starred rules below are enforced by `ArchitectureTest`, `OwnershipArchitectureTe
   result screens put Home beside the primary action. Split sibling content into scope extensions to preserve spacing.
 - Removal of saved keys, PINs, phone registration or history uses red `ConfirmedRemoval`; Settings actions use
   `SettingActions` and icons. Secret placeholders stay one line.
+- Flows: workflow screen (one pinned primary "Verb amount", confirm before money moves back) → `ProcessingContent` →
+  result. Stepped screens use `StepHeader`/`StepBody`: later steps hidden until unlocked, tick once done, actions as
+  main action → outcome → removals.
+- Settings switches and choices have a short title plus a 1–2 sentence description. Local settings save as they
+  change; Adyen-side capability sections edit a draft sent by "Save to Adyen".
 
 ## Tests
 

@@ -146,6 +146,7 @@ class SaleSession(
                 terminalTippingAvailable = caps.terminalTippingAvailable,
                 shopperDisplayAvailable = caps.shopperDisplayAvailable,
                 shopperTexts = if (caps.shopperDisplayAvailable) checkNotNull(shopperTexts).invoke() else null,
+                emailOnTerminal = appSettings.asksEmailOnTerminal,
             )
         }
 

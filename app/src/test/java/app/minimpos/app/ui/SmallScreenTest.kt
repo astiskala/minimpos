@@ -404,7 +404,10 @@ class SmallScreenTest {
             "printLink",
             "checkLink",
             "cancelLink",
-        ).forEach { compose.onNodeWithTag(it).performScrollTo().assertIsDisplayed() }
+        ).forEach { tag ->
+            // The automatic print's outcome can appear under Print link meanwhile and move the rest down.
+            compose.waitUntil(15_000) { runCatching { compose.onNodeWithTag(tag).performScrollTo().assertIsDisplayed() }.isSuccess }
+        }
         compose.onNodeWithTag("shareLink").assertDoesNotExist()
     }
 

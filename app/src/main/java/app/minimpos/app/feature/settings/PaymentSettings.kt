@@ -153,6 +153,7 @@ private fun ColumnScope.CardSavingSettings(
             },
         selected = payment.recurringProcessingModel,
         onSelect = { model -> update { it.copy(recurringProcessingModel = model) } },
+        subtitle = stringResource(R.string.settings_recurring_model_hint),
     )
 }
 

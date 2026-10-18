@@ -1,0 +1,284 @@
+#!/usr/bin/env bash
+# Drives docs screenshot captures on the docs emulator (see .devin/skills/docs-screenshots/SKILL.md › Capture script).
+#
+#   scripts/docs-capture prepare             overlays off, no status icons, terminal device name, no animations
+#   scripts/docs-capture locale LANG         device locale and time zone of a sample-data.json market (en, zh-CN, zh-Hant, ja)
+#   scripts/docs-capture snapshot NAME.tar   app data into /data/local/tmp/NAME.tar
+#   scripts/docs-capture restore NAME.tar    app data from /data/local/tmp/NAME.tar
+#   scripts/docs-capture launch | back       start the app | press Back
+#   scripts/docs-capture tap LANG KEY [S]    tap the first node showing string KEY in LANG (=TEXT literal, ^KEY contains)
+#   scripts/docs-capture scroll LANG KEY     swipe up until KEY's node is on screen
+#   scripts/docs-capture settings LANG [KEY] open Settings with the fixtures' admin PIN, then section KEY
+#   scripts/docs-capture shot LANG NAME      raw capture into $SHOTS/LANG-NAME.png
+#   scripts/docs-capture flow LANG NAME...   named flows (settings, preauth, offline), each from docs-$SNAPSHOT-LANG.tar
+#   scripts/docs-capture process             $SHOTS/*.png into docs/images[/LANG]/ (540x960, 96 colours) via :tooling
+#   scripts/docs-capture finish              remove the capture-only device settings
+#
+# ANDROID_SERIAL selects the emulator (default emulator-5570); SHOTS the raw folder (default /tmp/minimpos-shots);
+# SNAPSHOT the fixture snapshot set (default 1017). Run locale before a language's flows.
+set -euo pipefail
+
+root=$(cd "$(dirname "$0")/.." && pwd)
+adb=${ANDROID_HOME:-$HOME/Library/Android/sdk}/platform-tools/adb
+serial=${ANDROID_SERIAL:-emulator-5570}
+shots=${SHOTS:-/tmp/minimpos-shots}
+package=app.minimpos
+
+device() { "$adb" -s "$serial" "$@"; }
+remote() { device shell "$@"; }
+
+demo_mode() {
+  remote settings put global sysui_demo_allowed 1
+  local demo=(am broadcast -a com.android.systemui.demo -e command)
+  remote "${demo[@]}" enter >/dev/null
+  remote "${demo[@]}" clock -e hhmm 0930 >/dev/null
+  remote "${demo[@]}" network -e wifi show -e level 4 >/dev/null
+  remote "${demo[@]}" battery -e level 100 -e plugged false >/dev/null
+  remote "${demo[@]}" notifications -e visible false >/dev/null
+}
+
+restart_framework() {
+  remote stop
+  remote start
+  local _
+  for _ in $(seq 90); do
+    if [[ $(remote getprop sys.boot_completed | tr -d '\r') == 1 ]] &&
+      remote cmd package resolve-activity --brief "$package" | grep -q "$package"; then
+      break
+    fi
+    sleep 2
+  done
+  sleep 3
+  demo_mode
+}
+
+# The value of string resource $2 in language $1, unescaped as the app shows it.
+string() {
+  local folder
+  case $1 in
+    en) folder=values ;; zh-CN) folder=values-zh-rCN ;; zh-Hant) folder=values-b+zh+Hant ;; ja) folder=values-ja ;;
+    *) echo "Unknown language: $1" >&2; exit 1 ;;
+  esac
+  sed -n "s:.*<string name=\"$2\"[^>]*>\(.*\)</string>.*:\1:p" "$root/app/src/main/res/$folder/strings.xml" |
+    head -n 1 | sed -e "s/\\\\'/'/g" -e 's/&amp;/\&/g'
+}
+
+# What tap and scroll look for: =TEXT literally, ^KEY any text containing the longest literal part of string KEY (for
+# strings with format arguments, such as "Pay %1$s" or "%1$sを決済"), else string KEY.
+label() {
+  case $2 in
+    =*) printf '%s' "${2#=}" ;;
+    ^*) printf '^%s' "$(string "$1" "${2#^}" | sed 's/%[0-9]*\$*[sd]/\n/g' | awk '{ $1 = $1 } length > length(best) { best = $0 } END { print best }')" ;;
+    *) string "$1" "$2" ;;
+  esac
+}
+
+# The centre "x y" of the first node whose text or description is exactly $1 (whose text contains it when $1 begins
+# with ^); empty when none is on screen.
+centre() {
+  local text=${1#^}
+  remote uiautomator dump /data/local/tmp/ui.xml >/dev/null 2>&1 || true
+  device exec-out cat /data/local/tmp/ui.xml | tr '>' '\n' |
+    if [[ $1 == ^* ]]; then
+      awk -v t="$text" 'match($0, /text="[^"]*"/) && index(substr($0, RSTART + 6, RLENGTH - 7), t)'
+    else
+      grep -F -e "text=\"$text\"" -e "content-desc=\"$text\""
+    fi | head -n 1 |
+    sed -n 's/.*bounds="\[\([0-9]*\),\([0-9]*\)\]\[\([0-9]*\),\([0-9]*\)\]".*/\1 \2 \3 \4/p' |
+    awk '{ print int(($1 + $3) / 2), int(($2 + $4) / 2) }'
+}
+
+prepare() {
+  device root >/dev/null
+  sleep 2
+  remote cmd overlay disable com.android.internal.emulation.pixel_4a
+  remote cmd overlay disable com.android.systemui.emulation.pixel_4a
+  remote settings put secure icon_blacklist \
+    clock,battery,wifi,mobile,airplane,cast,hotspot,volume,bluetooth,location,alarm_clock,zen,ethernet,vpn,nfc,rotate,headset
+  remote settings put global device_name S1F2-000158213605014
+  local scale
+  for scale in window_animation_scale transition_animation_scale animator_duration_scale; do
+    remote settings put global "$scale" 0
+  done
+  restart_framework
+}
+
+# The sample-data.json block of language $1, on one line.
+market() {
+  tr -d '\n' <"$root/.devin/skills/docs-screenshots/sample-data.json" | grep -o "\"$1\": *{.*" | head -n 1
+}
+
+locale() {
+  local block locale zone
+  block=$(market "$1")
+  locale=$(sed -n 's/^[^}]*"deviceLocale": *"\([^"]*\)".*/\1/p' <<<"$block")
+  zone=$(sed -n 's/^[^}]*"timeZone": *"\([^"]*\)".*/\1/p' <<<"$block")
+  [[ -n $locale && -n $zone ]] || { echo "No market for $1" >&2; exit 1; }
+  remote setprop persist.sys.locale "$locale"
+  remote settings put global auto_time_zone 0
+  remote service call alarm 3 s16 "$zone" >/dev/null
+  restart_framework
+}
+
+# The fixture name of English sample item $2 in language $1 (sample-data.json "names").
+item() {
+  market "$1" | grep -o '"names": *{[^}]*}' | head -n 1 | sed -n "s/.*\"$2\": *\"\([^\"]*\)\".*/\1/p"
+}
+
+snapshot() {
+  remote am force-stop "$package"
+  remote "cd /data/data/$package && tar -cf /data/local/tmp/$1 ."
+}
+
+restore() {
+  remote am force-stop "$package"
+  local uid
+  uid=$(remote stat -c %u "/data/data/$package" | tr -d '\r')
+  remote "rm -rf /data/data/$package/* && cd /data/data/$package && tar -xf /data/local/tmp/$1 &&
+    chown -R $uid:$uid /data/data/$package && restorecon -R /data/data/$package"
+}
+
+launch() {
+  remote am start -n "$package/.app.MainActivity" >/dev/null
+  sleep 4
+}
+
+back() {
+  remote input keyevent KEYCODE_BACK
+  sleep 1.5
+}
+
+tap() {
+  local text x y
+  text=$(label "$1" "$2")
+  for _ in 1 2 3 4 5; do
+    read -r x y <<<"$(centre "$text")" || true
+    if [[ -n ${x:-} ]]; then
+      remote input tap "$x" "$y"
+      sleep "${3:-1.5}"
+      return
+    fi
+    sleep 1
+  done
+  echo "Nothing shows: $text" >&2
+  exit 1
+}
+
+# Swipes up until KEY's node is clear of the bars, or shows but the screen cannot scroll further.
+scroll() {
+  local text y last=
+  text=$(label "$1" "$2")
+  for _ in $(seq 10); do
+    y=$(centre "$text" | awk '{ print $2 }') || true
+    if [[ -n $y ]] && { ((y > 200 && y < 1050)) || [[ $y == "$last" ]]; }; then return; fi
+    last=$y
+    remote input swipe 360 1000 360 550 500
+    sleep 1.2
+  done
+  echo "Cannot scroll to: $text" >&2
+  exit 1
+}
+
+shot() {
+  mkdir -p "$shots"
+  device exec-out screencap -p >"$shots/$1-$2.png"
+  echo "Captured $shots/$1-$2.png"
+}
+
+# Opens Settings in language $1, entering the fixtures' admin PIN, then section $2 (a string key) when given.
+settings() {
+  tap "$1" home_settings 2
+  local digit
+  for digit in 1 3 5 7; do tap "$1" "=$digit" 0.3; done
+  tap "$1" action_ok 2
+  if [[ -n ${2:-} ]]; then
+    scroll "$1" "$2"
+    tap "$1" "$2" 2
+  fi
+}
+
+# Named flows for language $1, each starting from its fixture snapshot docs-<snapshot>-$1.tar (SNAPSHOT, default 1017).
+flow_settings() {
+  settings "$1" settings_terminal
+  shot "$1" terminal-setup
+  back
+  scroll "$1" settings_tax
+  tap "$1" settings_tax 2
+  shot "$1" tax
+  back
+  scroll "$1" settings_tips_donations
+  tap "$1" settings_tips_donations 2
+  tap "$1" checkout_tip_on_terminal
+  tap "$1" settings_tip_default_on
+  tap "$1" settings_dynamic_tip_override
+  shot "$1" terminal-tipping
+  back
+  back
+}
+
+flow_preauth() {
+  tap "$1" home_history 2.5
+  scroll "$1" status_pre_authorised
+  tap "$1" status_pre_authorised 2.5
+  shot "$1" pre-auth-detail
+  back
+  back
+}
+
+# Empties the history and turns on simulated offline approvals in the stopped app's data, then sells the main cart.
+flow_offline() {
+  remote am force-stop "$package"
+  remote "cd /data/data/$package/databases && sqlite3 minimpos.db 'DELETE FROM sale_tenders; DELETE FROM sale_lines; DELETE FROM refunds; DELETE FROM sales;'"
+  remote "sed -i 's/\"simulator\":{[^}]*}/\"simulator\":{\"delayMillis\":1500,\"hasPrinter\":true,\"offlineMode\":true}/' /data/data/$package/files/datastore/settings.json"
+  launch
+  tap "$1" home_new_sale 2
+  local product
+  for product in "Flat white" "Flat white" "Banana bread" "Coffee beans 250 g"; do tap "$1" "=$(item "$1" "$product")" 0.8; done
+  tap "$1" ^sale_charge 2.5
+  tap "$1" ^checkout_pay 12
+  tap "$1" action_home 2.5
+  tap "$1" home_history 2.5
+  tap "$1" status_approved 2.5
+  scroll "$1" detail_unconfirmed_batches
+  shot "$1" offline-payment
+  back
+  back
+  tap "$1" home_reconciliation 2
+  tap "$1" reconciliation_check 6
+  shot "$1" reconciliation
+  back
+}
+
+flow() {
+  local language=$1 name
+  shift
+  for name in "$@"; do
+    restore "docs-${SNAPSHOT:-1017}-$language.tar"
+    launch
+    "flow_$name" "$language"
+  done
+}
+
+process() {
+  "$root/scripts/gradle" :tooling:cliJar >/dev/null
+  java -jar "$root/tooling/build/libs/minimpos-tooling.jar" screenshots "$shots" "$root/docs/images"
+}
+
+finish() {
+  remote settings delete secure icon_blacklist
+  remote settings delete global device_name
+  remote settings put global auto_time 1
+  remote am broadcast -a com.android.systemui.demo -e command exit >/dev/null
+}
+
+case ${1:-} in
+  prepare | locale | snapshot | restore | launch | back | tap | scroll | shot | settings | flow | process | finish)
+    command=$1
+    shift
+    "$command" "$@"
+    ;;
+  *)
+    sed -n '2,20p' "$0"
+    exit 1
+    ;;
+esac

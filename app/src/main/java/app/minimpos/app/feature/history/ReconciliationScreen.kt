@@ -1,6 +1,5 @@
 package app.minimpos.app.feature.history
 
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
@@ -47,7 +46,8 @@ import app.minimpos.app.ui.components.Card
 import app.minimpos.app.ui.components.ConfirmDialog
 import app.minimpos.app.ui.components.LocalAppContainer
 import app.minimpos.app.ui.components.MiniScaffold
-import app.minimpos.app.ui.components.SectionHeader
+import app.minimpos.app.ui.components.StepBody
+import app.minimpos.app.ui.components.StepHeader
 import app.minimpos.app.ui.components.currentLocale
 import app.minimpos.app.ui.navigation.Navigator
 import app.minimpos.app.ui.theme.LocalDimens
@@ -59,8 +59,9 @@ import java.time.LocalDate
 /**
  * Reconciliation from Home, in the order of the end of a day: check the terminal's totals against Mini mPOS (rechecking
  * unresolved terminal payments first), close the terminal's period once they match (confirmed, with Manager approval),
- * and print today's local report. Each step explains itself; where the destination reports no totals (Tap to Pay) or
- * prints nothing, its button says why.
+ * and print today's local report. The later steps appear once totals have been checked. Each step explains itself;
+ * while payments still need setting up its button explains that, and where the destination reports no totals (Tap to
+ * Pay) or prints nothing, its button says why.
  */
 @Composable
 fun ReconciliationScreen(
@@ -115,7 +116,11 @@ fun ReconciliationScreen(
     }
 }
 
-/** The three steps: check totals with the result, close the period, print today's report. */
+/**
+ * The three numbered steps: check totals (with the result), then, once they have been checked, close the period and
+ * print today's report. Each step's number turns into a tick once done; each reaches the terminal, so it goes through the
+ * setup gate before its own precondition (a destination without totals, no printer) applies.
+ */
 @Composable
 private fun ColumnScope.ReconciliationSteps(
     state: HistoryUiState,
@@ -126,7 +131,8 @@ private fun ColumnScope.ReconciliationSteps(
     onPrint: () -> Unit,
 ) {
     val report = state.reconciliation
-    Step(R.string.reconciliation_totals_header, R.string.reconciliation_check_hint) {
+    StepHeader(1, stringResource(R.string.reconciliation_totals_header), done = report != null)
+    StepBody(stringResource(R.string.reconciliation_check_hint)) {
         GatedButton(
             stringResource(R.string.reconciliation_check),
             onCheck,
@@ -134,46 +140,39 @@ private fun ColumnScope.ReconciliationSteps(
             loading = state.reconcile.running,
             icon = Icons.Default.Sync,
             primary = report == null,
+            requiresSetup = true,
             modifier = Modifier.testTag("reconcileTerminal"),
         )
         OutcomeMessage(state.reconcile)
         report?.let { ReconciliationResult(it) }
     }
-    Step(R.string.reconciliation_end_header, R.string.reconciliation_close_hint) {
+    // Closing the period and the day's report follow a totals check, as at the end of a day.
+    if (report == null) return
+    StepHeader(2, stringResource(R.string.reconciliation_end_header), done = report.closedPeriod)
+    StepBody(stringResource(R.string.reconciliation_close_hint)) {
         GatedButton(
             stringResource(R.string.reconciliation_close_period),
             onClose,
             blocked = totalsBlocked,
-            enabled = !state.reconcile.running && report?.closedPeriod != true,
+            enabled = !state.reconcile.running && !report.closedPeriod,
             icon = Icons.Default.EventAvailable,
-            primary = report?.allMatch == true && !report.closedPeriod,
+            primary = report.allMatch && !report.closedPeriod,
+            requiresSetup = true,
             modifier = Modifier.testTag("closeReconciliationPeriod"),
         )
     }
-    Step(R.string.reconciliation_report_header, R.string.reconciliation_report_hint) {
+    StepHeader(3, stringResource(R.string.reconciliation_report_header), done = state.print.done)
+    StepBody(stringResource(R.string.reconciliation_report_hint)) {
         GatedButton(
             stringResource(R.string.reconciliation_print_today),
             onPrint,
             blocked = printBlocked,
             loading = state.print.running,
             icon = Icons.Default.Print,
+            requiresSetup = true,
             modifier = Modifier.testTag("printToday"),
         )
         OutcomeMessage(state.print)
-    }
-}
-
-/** One step of the screen: its heading, what it does, then its [content], padded like the screen. */
-@Composable
-private fun ColumnScope.Step(
-    title: Int,
-    hint: Int,
-    content: @Composable ColumnScope.() -> Unit,
-) {
-    SectionHeader(stringResource(title))
-    Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text(stringResource(hint), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        content()
     }
 }
 

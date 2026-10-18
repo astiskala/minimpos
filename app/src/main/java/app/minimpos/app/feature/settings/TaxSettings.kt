@@ -81,6 +81,7 @@ internal fun ColumnScope.TaxSection(
             ),
         selected = state.settings.payment.taxMode,
         onSelect = { mode -> update { it.copy(taxMode = mode) } },
+        subtitle = stringResource(R.string.settings_tax_mode_hint),
         tag = "taxMode",
     )
     SectionHeader(stringResource(R.string.settings_tax_rates))

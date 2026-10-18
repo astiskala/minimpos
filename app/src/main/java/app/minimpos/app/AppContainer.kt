@@ -77,6 +77,7 @@ import app.minimpos.app.terminal.UnlockedSetup
 import app.minimpos.app.terminal.VirtualPrinter
 import app.minimpos.app.terminal.WalletDiscovery
 import app.minimpos.app.terminal.refreshEnvironment
+import app.minimpos.app.ui.components.SetupGate
 import app.minimpos.app.update.AppUpdate
 import app.minimpos.app.update.GitHubReleases
 import app.minimpos.app.update.UpdateCheck
@@ -343,6 +344,12 @@ class AppContainer(
 
     /** Stored sales with what can be done with them now, for the screens that show one. */
     val storedPayments = StoredPayments(sales)
+
+    /**
+     * Holds back every screen action reaching Adyen or a terminal while payments still need setting up; the navigation
+     * host keeps it following the terminal status and shows its explanation.
+     */
+    val setupGate = SetupGate()
 
     /**
      * Builds receipt documents from stored sales and refunds, with localised labels. Screens get their receipts from

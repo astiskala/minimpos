@@ -51,6 +51,26 @@ data class AppSettings(
 ) {
     internal val acceptsSetupImport: Boolean get() = pricingChange == null
 
+    /**
+     * Whether an email the shopper gives could become a receipt: email is set up ([EmailSettings.isConfigured]) and
+     * checkout collects emails at all ([PaymentSettings.effectiveEmailCapture] is not [EmailCapture.OFF]). Until then
+     * the terminal does not ask for one, whatever [PaymentSettings.collectEmailOnTerminal] says.
+     */
+    val emailReceiptsReady: Boolean get() = email.isConfigured && payment.effectiveEmailCapture != EmailCapture.OFF
+
+    /**
+     * Whether a separate terminal asks the shopper for an email when none was entered at checkout: the shopper-display
+     * switch ([PaymentSettings.collectEmailOnTerminal]) while [emailReceiptsReady].
+     */
+    val asksEmailOnTerminal: Boolean get() = payment.collectEmailOnTerminal && emailReceiptsReady
+
+    /**
+     * Whether a just approved sale's receipt is emailed by itself to the email the shopper gave before or during the
+     * payment, at checkout ([PaymentSettings.captureEmailBefore]) or on the terminal ([asksEmailOnTerminal]):
+     * [PaymentSettings.autoSendEmail]. An email entered after the payment is only ever sent on request.
+     */
+    val emailsReceiptAutomatically: Boolean get() = payment.autoSendEmail && (payment.captureEmailBefore || asksEmailOnTerminal)
+
     /** These settings with numbers within their section's limits and a supported language tag, or Android's language. */
     fun normalized(): AppSettings =
         copy(
@@ -377,8 +397,8 @@ enum class ReceiptTipping {
  * @property receiptTipping Whether receipt tipping is offered for sales with a printer, and its initial choice.
  * @property recurringProcessingModel Adyen's `recurringProcessingModel` for saved cards, one of [RECURRING_MODELS].
  * @property emailCapture When checkout asks for an email; [effectiveEmailCapture] is what applies.
- * @property autoSendEmail When the email was captured before payment, send the receipt as soon as the payment is
- *   approved.
+ * @property autoSendEmail When the shopper gave an email at checkout or on the terminal, send the receipt as soon as the
+ *   payment is approved ([AppSettings.emailsReceiptAutomatically]).
  * @property shopperReferenceSource What the shopper reference sent with every payment is made from, whether or not the
  *   card is saved; new installations use [ShopperReferenceSource.CUSTOMER_REFERENCE]. [ShopperReferenceSource.NONE]
  *   sends none and saves no cards.
@@ -398,7 +418,8 @@ enum class ReceiptTipping {
  * @property showVirtualReceipt Whether external terminals display a virtual receipt before payment (`DisplayRequest`); on
  *   by default.
  * @property confirmBasketOnTerminal Whether external terminals prompt the shopper to confirm the basket before payment.
- * @property collectEmailOnTerminal Whether external terminals prompt the shopper to enter their email before payment.
+ * @property collectEmailOnTerminal Whether external terminals prompt the shopper to enter their email before payment,
+ *   once emailed receipts are ready ([AppSettings.asksEmailOnTerminal]).
  * @property showTerminalQrReceipt Whether external terminals display a QR code receipt after approval.
  * @property askShopperRating Whether external terminals prompt the shopper for a 0–10 rating after approval.
  * @property allowPartialAuthorisation Whether immediate-charge sales send `AllowPartialAuthorisation` and accept split tenders.

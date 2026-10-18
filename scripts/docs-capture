@@ -5,12 +5,13 @@
 #   scripts/docs-capture locale LANG         device locale and time zone of a sample-data.json market (en, zh-CN, zh-Hant, ja)
 #   scripts/docs-capture snapshot NAME.tar   app data into /data/local/tmp/NAME.tar
 #   scripts/docs-capture restore NAME.tar    app data from /data/local/tmp/NAME.tar
-#   scripts/docs-capture launch | back       start the app | press Back
+#   scripts/docs-capture launch LANG | back  start the app and wait for Home | press Back
 #   scripts/docs-capture tap LANG KEY [S]    tap the first node showing string KEY in LANG (=TEXT literal, ^KEY contains)
 #   scripts/docs-capture scroll LANG KEY     swipe up until KEY's node is on screen
 #   scripts/docs-capture settings LANG [KEY] open Settings with the fixtures' admin PIN, then section KEY
 #   scripts/docs-capture shot LANG NAME      raw capture into $SHOTS/LANG-NAME.png
-#   scripts/docs-capture flow LANG NAME...   named flows (settings, preauth, offline), each from docs-$SNAPSHOT-LANG.tar
+#   scripts/docs-capture expand_receipt      expand the open simulated printer sheet
+#   scripts/docs-capture flow LANG NAME...   named flows listed below, each from docs-$SNAPSHOT-LANG.tar
 #   scripts/docs-capture process             $SHOTS/*.png into docs/images[/LANG]/ (540x960, 96 colours) via :tooling
 #   scripts/docs-capture finish              remove the capture-only device settings
 #
@@ -49,6 +50,7 @@ restart_framework() {
     sleep 2
   done
   sleep 3
+  remote settings put global device_name S1F2-000158213605014
   demo_mode
 }
 
@@ -76,14 +78,17 @@ label() {
 # The centre "x y" of the first node whose text or description is exactly $1 (whose text contains it when $1 begins
 # with ^); empty when none is on screen.
 centre() {
-  local text=${1#^}
-  remote uiautomator dump /data/local/tmp/ui.xml >/dev/null 2>&1 || true
-  device exec-out cat /data/local/tmp/ui.xml | tr '>' '\n' |
+  local text=${1#^} file=/data/local/tmp/docs-ui-$$-$RANDOM.xml xml
+  remote uiautomator dump "$file" >/dev/null 2>&1 || return 1
+  xml=$(device exec-out cat "$file") || return 1
+  remote rm -f "$file"
+  printf '%s' "$xml" | tr '>' '\n' |
     if [[ $1 == ^* ]]; then
-      awk -v t="$text" 'match($0, /text="[^"]*"/) && index(substr($0, RSTART + 6, RLENGTH - 7), t)'
+      # In Chinese, the simulator disclosure also contains the word on the Pay button.
+      awk -v t="$text" 'match($0, /text="[^"]*"/) && index(substr($0, RSTART + 6, RLENGTH - 7), t)' | tail -n 1
     else
-      grep -F -e "text=\"$text\"" -e "content-desc=\"$text\""
-    fi | head -n 1 |
+      grep -F -e "text=\"$text\"" -e "content-desc=\"$text\"" | head -n 1
+    fi |
     sed -n 's/.*bounds="\[\([0-9]*\),\([0-9]*\)\]\[\([0-9]*\),\([0-9]*\)\]".*/\1 \2 \3 \4/p' |
     awk '{ print int(($1 + $3) / 2), int(($2 + $4) / 2) }'
 }
@@ -95,7 +100,6 @@ prepare() {
   remote cmd overlay disable com.android.systemui.emulation.pixel_4a
   remote settings put secure icon_blacklist \
     clock,battery,wifi,mobile,airplane,cast,hotspot,volume,bluetooth,location,alarm_clock,zen,ethernet,vpn,nfc,rotate,headset
-  remote settings put global device_name S1F2-000158213605014
   local scale
   for scale in window_animation_scale transition_animation_scale animator_duration_scale; do
     remote settings put global "$scale" 0
@@ -115,9 +119,9 @@ locale() {
   zone=$(sed -n 's/^[^}]*"timeZone": *"\([^"]*\)".*/\1/p' <<<"$block")
   [[ -n $locale && -n $zone ]] || { echo "No market for $1" >&2; exit 1; }
   remote setprop persist.sys.locale "$locale"
-  remote settings put global auto_time_zone 0
-  remote service call alarm 3 s16 "$zone" >/dev/null
   restart_framework
+  remote settings put global auto_time_zone 0
+  remote cmd alarm set-timezone "$zone"
 }
 
 # The fixture name of English sample item $2 in language $1 (sample-data.json "names").
@@ -140,7 +144,19 @@ restore() {
 
 launch() {
   remote am start -n "$package/.app.MainActivity" >/dev/null
-  sleep 4
+  ready "${1:-en}" home_new_sale
+}
+
+ready() {
+  local text xy _
+  text=$(label "$1" "$2")
+  for _ in $(seq 20); do
+    xy=$(centre "$text") || true
+    if [[ -n $xy ]]; then return; fi
+    sleep 1
+  done
+  echo "Screen never became ready: $text" >&2
+  exit 1
 }
 
 back() {
@@ -180,6 +196,10 @@ scroll() {
 }
 
 shot() {
+  if [[ $2 == home ]]; then
+    ready "$1" home_new_sale
+    ready "$1" home_settings
+  fi
   mkdir -p "$shots"
   device exec-out screencap -p >"$shots/$1-$2.png"
   echo "Captured $shots/$1-$2.png"
@@ -225,12 +245,239 @@ flow_preauth() {
   back
 }
 
+# The same synthetic fixture is restored before each flow, so captures never change a merchant's data.
+flow_overview() {
+  flow_home "$1"
+  tap "$1" home_history 2
+  shot "$1" history
+  tap "$1" history_search
+  remote input keyevent KEYCODE_EISU
+  remote input text "$(market "$1" | sed -n 's/^[^}]*"customerReference": *"\([^"]*\)".*/\1/p')"
+  back
+  shot "$1" history-search
+}
+
+flow_home() {
+  shot "$1" home
+}
+
+flow_catalog() {
+  tap "$1" home_products
+  local digit
+  for digit in 1 3 5 7; do tap "$1" "=$digit" 0.3; done
+  tap "$1" action_ok 2
+  shot "$1" products
+}
+
+flow_preferences() {
+  settings "$1"
+  shot "$1" settings
+  scroll "$1" settings_capabilities
+  tap "$1" settings_capabilities 3
+  shot "$1" capabilities
+}
+
+flow_cart() {
+  tap "$1" home_new_sale 2
+  local product
+  for product in "Flat white" "Flat white" "Banana bread" "Coffee beans 250 g"; do
+    tap "$1" "=$(item "$1" "$product")" 0.5
+  done
+  shot "$1" sale
+}
+
+fixture_reference() {
+  market "$1" | sed -n "s/^[^}]*\"$2\": *\"\\([^\"]*\\)\".*/\\1/p"
+}
+
+enter_reference() {
+  tap "$1" checkout_customer_reference
+  remote input keyevent KEYCODE_EISU
+  remote input text "$(fixture_reference "$1" "$2")"
+  back
+}
+
+# Switches expose their state without a text label; choose the first switch in these single-switch forms.
+enable_first_switch() {
+  local xy x y
+  remote uiautomator dump /data/local/tmp/ui.xml >/dev/null 2>&1
+  xy=$(device exec-out cat /data/local/tmp/ui.xml | tr '>' '\n' |
+    grep 'checkable="true"' | head -n 1 | grep 'checked="false"' |
+    sed -n 's/.*bounds="\[\([0-9]*\),\([0-9]*\)\]\[\([0-9]*\),\([0-9]*\)\]".*/\1 \2 \3 \4/p' |
+    awk '{ print int(($1 + $3) / 2), int(($2 + $4) / 2) }') || true
+  if [[ -n $xy ]]; then
+    read -r x y <<<"$xy"
+    remote input tap "$x" "$y"
+  fi
+}
+
+expand_receipt() {
+  local xy x y
+  remote uiautomator dump /data/local/tmp/ui.xml >/dev/null 2>&1
+  xy=$(device exec-out cat /data/local/tmp/ui.xml | tr '>' '\n' |
+    sed -n 's/.*bounds="\[\([0-9]*\),\([0-9]*\)\]\[\([0-9]*\),\([0-9]*\)\]".*/\1 \2 \3 \4/p' |
+    awk '$4 - $2 == 8 { print int(($1 + $3) / 2), int(($2 + $4) / 2); exit }')
+  [[ -n $xy ]] || { echo "No receipt sheet handle" >&2; exit 1; }
+  read -r x y <<<"$xy"
+  remote input swipe "$x" "$y" 360 90 1500
+  sleep 2
+}
+
+flow_checkout() {
+  flow_cart "$1"
+  tap "$1" ^sale_charge 2
+  enter_reference "$1" customerReference
+  back
+  tap "$1" ^sale_charge 2
+  remote input swipe 360 520 360 170 1000
+  enable_first_switch
+  sleep 2
+  shot "$1" checkout
+  tap "$1" checkout_scan_wallet 3
+  shot "$1" wallets
+  tap "$1" "=Alipay" 3
+  shot "$1" wallet-scan
+  back
+  tap "$1" ^checkout_pay 0.2
+  shot "$1" processing
+  sleep 10
+  shot "$1" approved
+  tap "$1" result_print 3
+  expand_receipt
+  shot "$1" receipt
+  back
+  back
+  tap "$1" action_home 2
+  tap "$1" home_history 2
+  tap "$1" status_approved 2
+  tap "$1" detail_refund 2
+  tap "$1" refund_option_items 2
+  local product text
+  for product in "Flat white" "Banana bread"; do
+    text=$(string "$1" action_increase_item)
+    tap "$1" "=${text/\%1\$s/$(item "$1" "$product")}" 0.5
+  done
+  shot "$1" refund
+}
+
+flow_authorize() {
+  tap "$1" home_pre_auth 2
+  tap "$1" "=$(item "$1" "Catering deposit")" 2
+  enter_reference "$1" preAuthCustomerReference
+  enable_first_switch
+  shot "$1" pre-auth
+}
+
+flow_transfer() {
+  settings "$1" settings_data
+  tap "$1" transfer_export 2
+  shot "$1" transfer
+  tap "$1" transfer_show_codes 5
+  scroll "$1" action_pause
+  tap "$1" action_pause
+  remote input swipe 360 400 360 1100 500
+  sleep 1
+  shot "$1" export
+}
+
+fixture_number() {
+  market "$1" | sed -n "s/^[^}]*\"$2\": *\\([0-9.]*\\).*/\\1/p"
+}
+
+# Patch only this restored, disposable demo fixture, before launching the app again.
+demo_settings() {
+  remote am force-stop "$package"
+  remote "sed -i '$2' /data/data/$package/files/datastore/settings.json"
+  launch "$1"
+}
+
+flow_partial() {
+  demo_settings "$1" 's/"payment":{/"payment":{"allowPartialAuthorisation":true,"terminalTipping":"DISABLED",/;s/"hasPrinter":true/"hasPrinter":false/'
+  tap "$1" home_new_sale 2
+  tap "$1" sale_custom_item
+  local amount digit i
+  amount=$(fixture_number "$1" partialMinor)
+  for ((i = 0; i < ${#amount}; i++)); do
+    digit=${amount:i:1}
+    tap "$1" "=$digit" 0.2
+  done
+  tap "$1" action_add
+  tap "$1" ^sale_charge
+  tap "$1" ^checkout_pay 12
+  shot "$1" partial-payment
+}
+
+flow_gratuity() {
+  settings "$1" settings_tips_donations
+  tap "$1" checkout_tip_on_receipt
+  tap "$1" settings_tip_default_on
+  back
+  back
+  tap "$1" home_new_sale 2
+  local product
+  for product in "Avocado toast" "Avocado toast" "Flat white" "Flat white"; do
+    tap "$1" "=$(item "$1" "$product")" 0.5
+  done
+  tap "$1" ^sale_charge 2
+  tap "$1" ^checkout_pay 12
+  local reference
+  remote uiautomator dump /data/local/tmp/ui.xml >/dev/null 2>&1
+  reference=$(device exec-out cat /data/local/tmp/ui.xml | grep -o 'text="[0-9]\{6\}-[0-9]\{6\}-[A-Z0-9]\{4\}"' |
+    head -n 1 | cut -d '"' -f 2)
+  tap "$1" action_home 2
+  tap "$1" home_history 2
+  tap "$1" "=$reference" 2
+  tap "$1" result_print_merchant 3
+  expand_receipt
+  remote input swipe 360 1000 360 650 1500
+  sleep 2
+  shot "$1" tip-receipt
+  back
+  back
+  tap "$1" result_enter_tip 2
+  local amount digit i
+  amount=$(fixture_number "$1" tipMinor)
+  for ((i = 0; i < ${#amount}; i++)); do
+    digit=${amount:i:1}
+    tap "$1" "=$digit" 0.2
+  done
+  shot "$1" tip
+}
+
+flow_tax_dialog() {
+  settings "$1" settings_tax
+  tap "$1" "=$(market "$1" | grep -o '"taxRates": *\[[^]]*' | grep -o '"name": *"[^"]*"' |
+    head -n 1 | sed 's/"name": *"//;s/"$//')" 2
+  tap "$1" settings_tax_rate
+  remote input keyevent KEYCODE_MOVE_END
+  remote input keyevent --longpress KEYCODE_DEL
+  remote input keyevent KEYCODE_DEL KEYCODE_DEL KEYCODE_DEL KEYCODE_DEL KEYCODE_DEL
+  remote input text "$(market "$1" | sed -n 's/^[^}]*"taxDialogRate": *"\([^"]*\)".*/\1/p')"
+  back
+  shot "$1" tax-dialog
+}
+
+flow_ams1() {
+  flow_cart "$1"
+  remote wm size 480x800
+  remote wm density 240
+  remote cmd overlay enable com.android.internal.systemui.navbar.threebutton
+  remote cmd overlay disable com.android.internal.systemui.navbar.gestural
+  sleep 4
+  shot "$1" sale-ams1
+  remote wm size reset
+  remote wm density reset
+  remote cmd overlay disable com.android.internal.systemui.navbar.threebutton
+  remote cmd overlay enable com.android.internal.systemui.navbar.gestural
+  sleep 3
+}
+
 # Empties the history and turns on simulated offline approvals in the stopped app's data, then sells the main cart.
 flow_offline() {
   remote am force-stop "$package"
   remote "cd /data/data/$package/databases && sqlite3 minimpos.db 'DELETE FROM sale_tenders; DELETE FROM sale_lines; DELETE FROM refunds; DELETE FROM sales;'"
   remote "sed -i 's/\"simulator\":{[^}]*}/\"simulator\":{\"delayMillis\":1500,\"hasPrinter\":true,\"offlineMode\":true}/' /data/data/$package/files/datastore/settings.json"
-  launch
+  launch "$1"
   tap "$1" home_new_sale 2
   local product
   for product in "Flat white" "Flat white" "Banana bread" "Coffee beans 250 g"; do tap "$1" "=$(item "$1" "$product")" 0.8; done
@@ -254,7 +501,7 @@ flow() {
   shift
   for name in "$@"; do
     restore "docs-${SNAPSHOT:-1017}-$language.tar"
-    launch
+    launch "$language"
     "flow_$name" "$language"
   done
 }
@@ -272,7 +519,7 @@ finish() {
 }
 
 case ${1:-} in
-  prepare | locale | snapshot | restore | launch | back | tap | scroll | shot | settings | flow | process | finish)
+  prepare | locale | snapshot | restore | launch | back | tap | scroll | shot | expand_receipt | settings | flow | process | finish)
     command=$1
     shift
     "$command" "$@"

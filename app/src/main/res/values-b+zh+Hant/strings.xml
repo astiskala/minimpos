@@ -89,6 +89,8 @@
   <string name="checkout_scan_wallet">掃描錢包</string>
   <string name="checkout_send_link">建立付款連結</string>
   <string name="checkout_link_without_tip">付款連結不支援終端小費或收據小費。是否不加小費建立連結？</string>
+  <string name="checkout_link_without_donation">付款連結不支援邀請慈善捐款。是否不邀請捐款建立連結？</string>
+  <string name="checkout_link_without_tip_or_donation">付款連結不支援小費或慈善捐款。是否不含這些選項建立連結？</string>
   <string name="checkout_pre_auth_note">僅凍結卡內金額。稍後可在“交易紀錄”中扣款或取消。</string>
   <string name="checkout_tip_on_receipt">在收據上填寫小費</string>
   <string name="checkout_tip_on_receipt_hint">顧客在列印的收據上填寫小費並簽名。隨後輸入小費，即可扣取總額。</string>
@@ -128,6 +130,8 @@
   <string name="wallet_saving_note">已請求儲存支付資訊，是否可用取決於錢包。</string>
   <string name="wallet_payme_note">PayMe 掃碼尚未驗證，可能被拒絕。</string>
   <string name="wallet_without_tip">不加小費繼續支付？掃碼錢包付款不支援終端小費或收據小費，並會立即收取總額。</string>
+  <string name="wallet_without_donation">不邀請捐款繼續支付？掃碼錢包付款不支援邀請慈善捐款，並會立即收取總額。</string>
+  <string name="wallet_without_tip_or_donation">不加小費亦不邀請捐款繼續支付？掃碼錢包付款兩者均不支援，並會立即收取總額。</string>
   <string name="wallet_invalid_code">這不是該錢包的有效付款碼。請重新掃描或更換錢包。</string>
   <string name="wallet_scan_failed">未收到付款碼。請重新掃描或使用相機。</string>
   <string name="wallet_checkout_changed">結帳或終端設定已改變。請返回結帳並檢查。</string>
@@ -1143,5 +1147,7 @@
   <string name="checkout_charge_token">代碼扣款</string>
   <string name="checkout_choose_token">選擇代碼</string>
   <string name="checkout_token_without_tip">使用代碼扣款時不含小費。</string>
+  <string name="checkout_token_without_donation">使用代碼扣款時不邀請捐款。</string>
+  <string name="checkout_token_without_tip_or_donation">使用代碼扣款時不含小費，亦不邀請捐款。</string>
   <string name="reconciliation_mismatch_hint">請在交易紀錄中處理需要關注的付款。使用此終端的其他裝置也會計入其總額。</string>
 </resources>

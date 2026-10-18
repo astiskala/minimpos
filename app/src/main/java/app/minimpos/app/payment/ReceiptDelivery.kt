@@ -19,6 +19,8 @@ import app.minimpos.app.history.standing
 import app.minimpos.app.receipt.ActionResult
 import app.minimpos.app.receipt.PrintRenderer
 import app.minimpos.app.receipt.ReceiptFactory
+import app.minimpos.app.receipt.ReceiptKind
+import app.minimpos.app.receipt.ReceiptSurface
 import app.minimpos.app.terminal.Attempt
 import app.minimpos.app.terminal.TerminalGateway
 import app.minimpos.app.terminal.TerminalStatus
@@ -34,6 +36,7 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import java.time.Clock
 import java.time.LocalDate
 import java.time.ZoneId
 
@@ -159,6 +162,7 @@ class ReceiptRecords(
  * @param status Tells whether printing is offered.
  * @param emailer Emails them.
  * @param scope Owns claimed automatic delivery independently of the screen observing it.
+ * @param clock Stamps when a daily summary was generated.
  */
 class ReceiptDelivery(
     private val settings: SettingsRepository,
@@ -168,20 +172,21 @@ class ReceiptDelivery(
     private val status: TerminalStatus,
     private val emailer: ReceiptEmailer,
     private val scope: CoroutineScope,
+    private val clock: Clock = Clock.systemUTC(),
 ) {
     /** Whether a daily summary can be printed with the current destination and receipt settings. */
     val canPrintReports: Flow<Boolean> = status.state.map { it.printerAvailable }
 
-    /** Prints an unfiltered local summary for [date], using one time zone and generation timestamp. */
-    suspend fun printReport(date: LocalDate): ActionResult {
+    /**
+     * Prints an unfiltered local summary for [date], counted in [zone] (the zone the day was chosen in) and stamped
+     * with one generation time from the clock.
+     */
+    suspend fun printReport(
+        date: LocalDate,
+        zone: ZoneId,
+    ): ActionResult {
         val current = settings.current()
-        val report =
-            HistoryAccounting.report(
-                records.history.snapshot(),
-                date,
-                ZoneId.systemDefault(),
-                System.currentTimeMillis(),
-            )
+        val report = HistoryAccounting.report(records.history.snapshot(), date, zone, clock.millis())
         return print(receipts.dailyReport(report, current.receipt), current)
     }
 
@@ -281,7 +286,7 @@ class ReceiptDelivery(
                         val sale = it.sale
                         val standing = ReceiptStanding.of(sale)
                         SharedReceipt(
-                            document = receipts.sale(it, current.receipt, paper = false),
+                            document = receipts.sale(it, current.receipt, surface = ReceiptSurface.ELECTRONIC),
                             reference = sale.merchantReference,
                             amountMinor = sale.amountMinor,
                             currency = sale.currency,
@@ -350,14 +355,8 @@ class ReceiptDelivery(
     ): ActionResult {
         val record = records.sales.get(saleId) ?: return ActionResult.Missing
         val sale = record.sale
-        val document = receipts.sale(record, settings.current().receipt, paper = false)
-        val standing = ReceiptStanding.of(sale)
-        val result =
-            if (standing.unpaidLink != null) {
-                emailer.sendPaymentLink(to, document, sale.merchantReference, standing.simulatedLink)
-            } else {
-                emailer.sendSale(to, document, sale.merchantReference, standing.preAuthorisation, standing.simulatedLink)
-            }
+        val document = receipts.sale(record, settings.current().receipt, surface = ReceiptSurface.ELECTRONIC)
+        val result = emailer.send(to, document, sale.merchantReference, ReceiptKind.of(ReceiptStanding.of(sale)))
         return result.also { if (it == ActionResult.Success) records.sales.record(saleId, SaleEvent.Emailed(to.trim())) }
     }
 
@@ -366,7 +365,7 @@ class ReceiptDelivery(
         to: String,
     ): ActionResult {
         val refund = records.refunds.get(refundId) ?: return ActionResult.Missing
-        return emailer.sendRefund(to, receipts.refund(refund, settings.current().receipt), refund.merchantReference, refund.cancellation)
+        return emailer.send(to, receipts.refund(refund, settings.current().receipt), refund.merchantReference, ReceiptKind.of(refund))
     }
 
     /** Sends a short test email to [to], to check the SMTP settings. */

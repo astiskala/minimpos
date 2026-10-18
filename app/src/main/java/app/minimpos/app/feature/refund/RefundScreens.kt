@@ -439,9 +439,9 @@ fun RefundProcessingScreen(
         }
     }
     BackHandler(enabled = true) {}
-    // The refund is stored before the terminal is called, so its amount can be shown as the payment's is.
-    val refundId = (state as? TransactionState.Processing)?.id
-    val refund by remember(refundId) { refundId?.let(container.refundRecords::observe) ?: flowOf(null) }
+    val processing = state as? TransactionState.Processing
+    // The refund is stored before the terminal is called, so whether it is a cancellation can be shown straight away.
+    val refund by remember(processing?.id) { processing?.id?.let(container.refundRecords::observe) ?: flowOf(null) }
         .collectAsStateWithLifecycle(initialValue = null)
     val cancellation = refund?.cancellation == true
     MiniScaffold(
@@ -450,7 +450,7 @@ fun RefundProcessingScreen(
         modifier = modifier,
     ) { padding ->
         ProcessingContent(
-            amount = refund?.let { rememberMoneyFormatter(it.currency).format(it.amountMinor) },
+            amount = processing?.amount?.let { rememberMoneyFormatter(it.currency).format(it.amountMinor) },
             message = stringResource(if (cancellation) R.string.cancellation_processing else R.string.refund_processing),
             modifier = Modifier.padding(padding),
         )

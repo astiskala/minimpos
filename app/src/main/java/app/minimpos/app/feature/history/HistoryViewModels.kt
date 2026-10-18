@@ -18,12 +18,10 @@ import app.minimpos.app.feature.toState
 import app.minimpos.app.history.HistoryAccounting
 import app.minimpos.app.history.HistoryDay
 import app.minimpos.app.history.PaymentAction
-import app.minimpos.app.history.PaymentStanding
 import app.minimpos.app.history.RefundablePayment
 import app.minimpos.app.history.StoredPayment
 import app.minimpos.app.history.StoredPayments
 import app.minimpos.app.history.TerminalReconciliationReport
-import app.minimpos.app.history.standing
 import app.minimpos.app.payment.FinancialOperations
 import app.minimpos.app.payment.ReceiptDelivery
 import app.minimpos.app.payment.ReconciliationOutcome
@@ -41,27 +39,6 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.ZoneId
-
-/** Which transactions the history list shows. */
-enum class HistoryFilter {
-    /** Every sale and refund. */
-    ALL,
-
-    /** Sales only (not pre-authorisations), whatever their status. */
-    SALES,
-
-    /** Sales taken for tipping on the receipt whose tip has not been entered yet. */
-    AWAITING_TIP,
-
-    /** Pre-authorisations and their cancellations, whatever their status. */
-    PRE_AUTHS,
-
-    /** Refunds only (not cancellations of pre-authorisations), whatever their status. */
-    REFUNDS,
-
-    /** Sales and refunds whose outcome is still pending or unknown, which need checking. */
-    ISSUES,
-}
 
 /**
  * What the history list shows.
@@ -134,7 +111,7 @@ class HistoryViewModel(
                             is HistoryItem.Sale -> item.sale
                             is HistoryItem.Refund -> item.refund.saleId?.let(sales::get)
                         }
-                    matches(item, selected, preAuths) && search.matches(item, sale)
+                    selected.matches(item, preAuths) && search.matches(item, sale)
                 }
             HistoryUiState(
                 loaded = true,
@@ -173,7 +150,7 @@ class HistoryViewModel(
         val delivery = receipts ?: return
         if (!state.value.canPrint || print.value.running) return
         print.value = ActionState(running = true)
-        viewModelScope.launch { print.value = TransactionActions.printReport(delivery, date) }
+        viewModelScope.launch { print.value = TransactionActions.printReport(delivery, date, zone()) }
     }
 
     /**
@@ -228,41 +205,6 @@ class HistoryViewModel(
         query.value = ""
         method.value = null
     }
-
-    /** Whether [item] shows with [filter]; [preAuths] are the IDs of the pre-authorisations, whose cancellations show with them. */
-    private fun matches(
-        item: HistoryItem,
-        filter: HistoryFilter,
-        preAuths: Set<String>,
-    ): Boolean =
-        when (filter) {
-            HistoryFilter.ALL -> {
-                true
-            }
-
-            HistoryFilter.SALES -> {
-                item is HistoryItem.Sale && item.sale.kind == SaleKind.SALE
-            }
-
-            HistoryFilter.AWAITING_TIP -> {
-                item is HistoryItem.Sale && item.sale.standing == PaymentStanding.AWAITING_TIP
-            }
-
-            HistoryFilter.PRE_AUTHS -> {
-                when (item) {
-                    is HistoryItem.Sale -> item.sale.kind == SaleKind.PRE_AUTHORISATION
-                    is HistoryItem.Refund -> item.refund.cancellation && item.refund.saleId in preAuths
-                }
-            }
-
-            HistoryFilter.REFUNDS -> {
-                item is HistoryItem.Refund && !item.refund.cancellation
-            }
-
-            HistoryFilter.ISSUES -> {
-                HistoryAccounting.needsAttention(item)
-            }
-        }
 }
 
 /**

@@ -26,14 +26,13 @@ import org.junit.After
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
-import java.math.BigDecimal
 
 /** The terminal as the app sees it: where payments go, operations without complete setup, and the published status. */
 @RunWith(RobolectricTestRunner::class)
 class TerminalTest {
     private val env = TestEnvironment()
     private val container = env.container
-    private val payment = PaymentParams(BigDecimal("1.00"), "AUD", "MP-1")
+    private val payment = PaymentParams(100, "AUD", "MP-1")
 
     @After
     fun tearDown() = env.close()

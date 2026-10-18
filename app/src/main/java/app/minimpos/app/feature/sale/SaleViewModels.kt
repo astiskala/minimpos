@@ -454,15 +454,15 @@ data class SaleResultUiState(
  * @param saleId The sale (or pre-authorisation) that was paid.
  * @param payments Follows it, with what can be done with it.
  * @param receipts Prints and emails its receipt.
- * @param lifecycle The payments' lifecycle, for busy terminals, the remaining balance and leaving the result.
- * @param operations Asks again about an unknown outcome, the way the payment was sent.
+ * @param lifecycle The terminal payments' lifecycle, for busy terminals and collecting the remaining balance.
+ * @param operations Asks again about an unknown outcome the way the payment was sent, and leaves its result.
  */
 class SaleResultViewModel(
     private val saleId: String,
     payments: StoredPayments,
     receipts: ReceiptDelivery,
     private val lifecycle: TransactionLifecycle<PaymentStart>,
-    operations: FinancialOperations,
+    private val operations: FinancialOperations,
 ) : ViewModel() {
     private val local = MutableStateFlow(SaleResultUiState())
 
@@ -487,8 +487,8 @@ class SaleResultViewModel(
         }
     }
 
-    /** Leaves the result, so the next payment can start. */
-    fun finish() = lifecycle.acknowledge()
+    /** Leaves the result, so the next payment can start, whichever way this one was sent. */
+    fun finish() = operations.acknowledgePayment()
 
     /**
      * Starts collecting the remaining balance of a partially paid sale on another card; false when not partially paid
@@ -497,7 +497,7 @@ class SaleResultViewModel(
     fun payRemaining(): Boolean {
         val sale = state.value.record?.sale ?: return false
         val start = Checkout.remainingPayment(sale) ?: return false
-        lifecycle.acknowledge()
+        operations.acknowledgePayment()
         return lifecycle.start(start) != null
     }
 }

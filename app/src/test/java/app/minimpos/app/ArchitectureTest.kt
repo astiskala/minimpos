@@ -29,6 +29,7 @@ import app.minimpos.app.data.repo.RefundRepository
 import app.minimpos.app.data.repo.SaleRepository
 import app.minimpos.app.data.security.EncryptedJournal
 import app.minimpos.app.data.security.JournalRead
+import app.minimpos.app.data.security.ManagerApproval
 import app.minimpos.app.data.security.RecoveryJournal
 import app.minimpos.app.data.security.SecretBlob
 import app.minimpos.app.data.security.SecretStore
@@ -627,7 +628,7 @@ class ArchitectureTest {
     @Test
     fun `the transaction lifecycle stores only through its book`() =
         // It names why a transaction failed with the stored values (StoredReason, Failure, SetupProblem, DeviceFault),
-        // which its book stores.
+        // which its book stores, and keeps the Manager approval a request started with (ManagerApproval).
         noClasses()
             .that(declaredIn("app.minimpos.app.payment", "TransactionLifecycle.kt"))
             .should()
@@ -636,7 +637,8 @@ class ArchitectureTest {
                     .and(not(assignableTo(StoredReason::class.java)))
                     .and(not(assignableTo(Failure::class.java)))
                     .and(not(type(SetupProblem::class.java)))
-                    .and(not(type(DeviceFault::class.java))),
+                    .and(not(type(DeviceFault::class.java)))
+                    .and(not(belongToAnyOf(ManagerApproval::class.java))),
             ).check(app)
 
     @Test
@@ -1269,12 +1271,16 @@ class ArchitectureTest {
                 .or(declaredIn("app.minimpos.app.data.settings", "AppSettings.kt"))
                 .or(declaredIn("app.minimpos.app.data.settings", "ConnectionSetup.kt"))
                 .or(declaredIn("app.minimpos.app.data.settings", "PricingChange.kt"))
+                .or(declaredIn("app.minimpos.app.data.settings", "NewInstallation.kt"))
+                .or(declaredIn("app.minimpos.app.data.settings", "VerifiedSetup.kt"))
                 .or(declaredIn("app.minimpos.app.history", "PaymentStanding.kt"))
                 .or(declaredIn("app.minimpos.app.history", "RefundablePayment.kt"))
                 .or(declaredIn("app.minimpos.app.history", "HistoryAccounting.kt"))
+                .or(declaredIn("app.minimpos.app.receipt", "ReceiptKind.kt"))
                 .or(declaredIn("app.minimpos.app.feature.history", "HistorySearch.kt"))
                 .or(declaredIn("app.minimpos.app.terminal", "TerminalAssignments.kt"))
                 .or(declaredIn("app.minimpos.app.terminal", "WalletOffers.kt"))
+                .or(declaredIn("app.minimpos.app.terminal", "TerminalSetupPlan.kt"))
                 // TerminalSetup.kt also holds TerminalSetupSource, which reads the stored settings and secrets.
                 .or(DescribedPredicate.describe("TerminalSetup") { it.name.matches(Regex(within(TerminalSetup::class.java.name))) })
                 // What each destination needs and can do, on its adapter's companion; the adapters open transports.

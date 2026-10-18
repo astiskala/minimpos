@@ -7,6 +7,7 @@ import app.minimpos.app.data.db.SaleStatus
 import app.minimpos.app.data.db.SetupProblem
 import app.minimpos.app.data.repo.SaleEvent
 import app.minimpos.app.data.repo.SaleRepository
+import app.minimpos.app.data.security.ManagerApproval
 import app.minimpos.app.history.simulatedLink
 import app.minimpos.app.terminal.AdyenApi
 import app.minimpos.app.terminal.ApiAccess
@@ -75,7 +76,8 @@ sealed interface LinkUpdate {
  * @param clock Stamps the sales.
  * @param newId Generates sale IDs.
  * @param locale The device's locale, for the payment page's language and country.
- * @param permits Whether cancellation is authorized now, checked under the operation lock.
+ * @param approval Manager approval of cancelling a link or completing a demo, checked as held now under the operation
+ *   lock; creating a link needs none.
  */
 class PaymentLinks(
     scope: CoroutineScope,
@@ -85,7 +87,7 @@ class PaymentLinks(
     clock: Clock = Clock.systemUTC(),
     newId: () -> String = { Uuid.random().toString() },
     locale: () -> Locale = { Locale.getDefault() },
-    private val permits: suspend () -> Boolean = { true },
+    private val approval: ManagerApproval = ManagerApproval.NOT_REQUIRED,
 ) {
     private val mutex = Mutex()
     private val operations =
@@ -144,7 +146,7 @@ class PaymentLinks(
         mutex.withLock {
             val sale = sales.get(saleId)?.sale?.takeIf { it.status == SaleStatus.AWAITING_PAYMENT }
             val linkId = sale?.paymentLinkId ?: return@withLock LinkUpdate.Settled
-            if (!permits()) return@withLock notSetUp(SetupProblem.MANAGER_APPROVAL)
+            if (!approval.allowsNow()) return@withLock notSetUp(SetupProblem.MANAGER_APPROVAL)
             withApi(sale) { stored(saleId, it.expire(linkId), cancelling = true) }
         }
 
@@ -159,7 +161,7 @@ class PaymentLinks(
             if (!sale.simulatedLink) return@withLock notSetUp(SetupProblem.PAYMENT_CONTEXT)
             if (sale.status != SaleStatus.AWAITING_PAYMENT) return@withLock LinkUpdate.Settled
             val linkId = sale.paymentLinkId ?: return@withLock LinkUpdate.Settled
-            if (!permits()) return@withLock notSetUp(SetupProblem.MANAGER_APPROVAL)
+            if (!approval.allowsNow()) return@withLock notSetUp(SetupProblem.MANAGER_APPROVAL)
             withApi(sale) { api ->
                 when (val result = api.status(linkId)) {
                     is PaymentLinkResult.Answered -> {
@@ -244,6 +246,10 @@ class PaymentLinks(
         private val sales: SaleRepository,
         private val locale: () -> Locale,
     ) : CheckoutBook<PaymentLinkStart, PaymentLinkApi> {
+        override val needsApproval: Boolean get() = false
+
+        override fun amount(request: PaymentLinkStart): OperationAmount = request.payment.amount
+
         override suspend fun open(
             id: String,
             request: PaymentLinkStart,

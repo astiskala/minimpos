@@ -90,6 +90,8 @@
   <string name="checkout_scan_wallet">Scan wallet</string>
   <string name="checkout_send_link">Create payment link</string>
   <string name="checkout_link_without_tip">Payment links do not support terminal or receipt tips. Create this link without tipping?</string>
+  <string name="checkout_link_without_donation">Payment links do not invite charity donations. Create this link without a donation invitation?</string>
+  <string name="checkout_link_without_tip_or_donation">Payment links do not support tips or charity donations. Create this link without them?</string>
   <string name="checkout_pre_auth_note">This only holds the amount on the card. Capture or cancel it later from History.</string>
   <string name="checkout_tip_on_receipt">Tip on the receipt</string>
   <string name="checkout_tip_on_receipt_hint">The customer writes a tip on the printed receipt and signs it. Enter the tip afterwards to capture the total.</string>
@@ -128,6 +130,8 @@
   <string name="wallet_saving_note">Saving requested. Availability depends on the wallet.</string>
   <string name="wallet_payme_note">PayMe scanning is unverified and may be rejected.</string>
   <string name="wallet_without_tip">Pay without tipping? Scanned wallet payments do not support terminal or receipt tips and charge the total immediately.</string>
+  <string name="wallet_without_donation">Pay without a donation invitation? Scanned wallet payments do not invite charity donations and charge the total immediately.</string>
+  <string name="wallet_without_tip_or_donation">Pay without tipping or a donation invitation? Scanned wallet payments support neither and charge the total immediately.</string>
   <string name="wallet_invalid_code">Not a valid payment code for this wallet. Scan again or change wallet.</string>
   <string name="wallet_scan_failed">No code received. Scan again or use the camera.</string>
   <string name="wallet_checkout_changed">Checkout or terminal setup changed. Return to checkout and review it.</string>
@@ -1147,5 +1151,7 @@
   <string name="checkout_charge_token">Charge token</string>
   <string name="checkout_choose_token">Choose a token</string>
   <string name="checkout_token_without_tip">The token is charged without a tip.</string>
+  <string name="checkout_token_without_donation">The token is charged without a donation invitation.</string>
+  <string name="checkout_token_without_tip_or_donation">The token is charged without a tip or donation invitation.</string>
   <string name="reconciliation_mismatch_hint">Resolve payments that need attention in History. Other devices using this terminal also count in its totals.</string>
 </resources>

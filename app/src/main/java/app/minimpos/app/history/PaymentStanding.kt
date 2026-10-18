@@ -130,18 +130,44 @@ enum class SaleResultNext {
 
 /**
  * What the result of [sale] offers beside Home, the one reading of its outcome: collecting its remaining balance, the
- * next payment once it was approved, or a retry after a refusal the terminal's advice allows.
+ * next payment once it was approved, or a retry after a refusal the terminal's advice allows. A payment link takes its
+ * cart when Adyen makes it, so a link offers a retry only when it was never made, nothing while that is unknown, and
+ * the next sale otherwise, whether it was paid, cancelled or expired.
  */
 fun saleResultNext(sale: SaleEntity): SaleResultNext =
     when {
-        sale.isPartiallyPaid -> SaleResultNext.PAY_REMAINING
+        sale.isPartiallyPaid -> {
+            SaleResultNext.PAY_REMAINING
+        }
 
-        sale.approved -> SaleResultNext.NEW_SALE
+        sale.paymentLink -> {
+            when (sale.status) {
+                SaleStatus.FAILED -> {
+                    SaleResultNext.TRY_AGAIN
+                }
+
+                SaleStatus.PENDING, SaleStatus.UNKNOWN -> {
+                    SaleResultNext.NONE
+                }
+
+                SaleStatus.AWAITING_PAYMENT, SaleStatus.APPROVED, SaleStatus.DECLINED, SaleStatus.CANCELLED, SaleStatus.EXPIRED -> {
+                    SaleResultNext.NEW_SALE
+                }
+            }
+        }
+
+        sale.approved -> {
+            SaleResultNext.NEW_SALE
+        }
 
         sale.status in setOf(SaleStatus.DECLINED, SaleStatus.CANCELLED, SaleStatus.FAILED) &&
-            sale.decline?.advice != RetryAdvice.DO_NOT_RETRY -> SaleResultNext.TRY_AGAIN
+            sale.decline?.advice != RetryAdvice.DO_NOT_RETRY -> {
+            SaleResultNext.TRY_AGAIN
+        }
 
-        else -> SaleResultNext.NONE
+        else -> {
+            SaleResultNext.NONE
+        }
     }
 
 /**

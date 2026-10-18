@@ -6,9 +6,9 @@ import app.minimpos.app.data.db.RefundEntity
 import app.minimpos.app.data.db.RefundStatus
 import app.minimpos.app.data.db.SetupProblem
 import app.minimpos.app.data.db.StoredReason
-import app.minimpos.app.data.repo.ReceiptLinesJson
 import app.minimpos.app.data.repo.RefundRepository
 import app.minimpos.app.data.repo.SaleRepository
+import app.minimpos.app.data.security.ManagerApproval
 import app.minimpos.app.history.RefundStart
 import app.minimpos.app.terminal.ApiAccess
 import app.minimpos.app.terminal.ApiTarget
@@ -38,7 +38,7 @@ import kotlin.uuid.Uuid
  *   automatic receipt.
  * @param clock Stamps the refunds and decides whether an unknown one may be sent again.
  * @param newId Generates refund IDs.
- * @param permits Whether Manager approval allows a refund now, checked under the operation lock.
+ * @param approval Manager approval, which every refund needs: taken when it starts, checked again before sending.
  */
 class CheckoutRefunds(
     scope: CoroutineScope,
@@ -48,10 +48,10 @@ class CheckoutRefunds(
     onAccepted: (id: String) -> Unit = {},
     clock: Clock = Clock.systemUTC(),
     newId: () -> String = { Uuid.random().toString() },
-    permits: suspend () -> Boolean = { true },
+    approval: ManagerApproval = ManagerApproval.NOT_REQUIRED,
 ) {
     private val operations =
-        CheckoutOperations(scope, Book(refunds, sales), target, { id, _ -> onAccepted(id) }, clock, newId, permits)
+        CheckoutOperations(scope, Book(refunds, sales), target, { id, _ -> onAccepted(id) }, clock, newId, approval)
 
     /** The refund running now, which the refund screens follow to its result. */
     val state: StateFlow<TransactionState> = operations.state
@@ -77,12 +77,16 @@ class CheckoutRefunds(
         private val refunds: RefundRepository,
         private val sales: SaleRepository,
     ) : CheckoutBook<RefundStart, PaymentModifications> {
+        override val needsApproval: Boolean get() = true
+
+        override fun amount(request: RefundStart): OperationAmount = OperationAmount(request.amountMinor, request.currency)
+
         override suspend fun open(
             id: String,
             request: RefundStart,
             createdAt: Long,
             current: PaymentContext?,
-        ) = refunds.create(opened(id, request, createdAt))
+        ) = refunds.create(request.pendingRefund(id, createdAt, checkout = true))
 
         override suspend fun unsent(id: String): CheckoutRecord? {
             val refund =
@@ -161,28 +165,5 @@ class CheckoutRefunds(
     companion object {
         /** The idempotency key of refund [refundId]: one refund, however often it is sent. */
         fun idempotencyKey(refundId: String): String = "refund-$refundId"
-
-        /** [request] as the new PENDING Checkout refund [id], opened at [createdAt] (epoch ms). */
-        internal fun opened(
-            id: String,
-            request: RefundStart,
-            createdAt: Long,
-        ): RefundEntity =
-            RefundEntity(
-                id = id,
-                saleId = request.saleId,
-                createdAt = createdAt,
-                merchantReference = request.merchantReference,
-                originalTransactionId = request.originalTransactionId,
-                originalTimestamp = request.originalTimestamp,
-                originalReference = request.originalReference,
-                currency = request.currency,
-                amountMinor = request.amountMinor,
-                full = request.full,
-                status = RefundStatus.PENDING,
-                linesJson = ReceiptLinesJson.encodeRefunded(request.lines),
-                context = request.expectedContext,
-                checkoutRefund = true,
-            )
     }
 }

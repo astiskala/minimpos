@@ -3,20 +3,37 @@ package app.minimpos.app
 import app.minimpos.app.ArchitectureTest.Companion.app
 import app.minimpos.app.ArchitectureTest.Companion.callTo
 import app.minimpos.app.ArchitectureTest.Companion.within
+import app.minimpos.app.data.security.PinManager
+import app.minimpos.app.data.security.SessionLock
+import app.minimpos.app.data.settings.AppSettings
+import app.minimpos.app.data.settings.NewInstallation
+import app.minimpos.app.data.settings.SettingsRepository
+import app.minimpos.app.data.settings.TerminalSettings
 import app.minimpos.app.feature.TransactionActions
 import app.minimpos.app.feature.capture.CaptureViewModel
 import app.minimpos.app.feature.capture.TipViewModel
 import app.minimpos.app.feature.history.SaleDetailViewModel
 import app.minimpos.app.feature.persisting
+import app.minimpos.app.history.HistoryAccounting
+import app.minimpos.app.history.ReceiptStanding
+import app.minimpos.app.history.RefundablePayment
 import app.minimpos.app.payment.AutoDelivery
 import app.minimpos.app.payment.Checkout
+import app.minimpos.app.payment.CheckoutRefunds
 import app.minimpos.app.payment.ReceiptDelivery
+import app.minimpos.app.payment.SaleBook
 import app.minimpos.app.payment.SavedCardCharges
 import app.minimpos.app.payment.SavedCardLookup
 import app.minimpos.app.payment.StoredTransaction
+import app.minimpos.app.payment.TransactionLifecycle
+import app.minimpos.app.receipt.ReceiptFactory
+import app.minimpos.app.receipt.ReceiptKind
+import app.minimpos.app.terminal.DestinationRules
 import app.minimpos.app.terminal.SetupDiscovery
 import app.minimpos.app.terminal.SharedKeySetupOutcome
 import app.minimpos.app.terminal.TerminalSetupSource
+import app.minimpos.core.money.CurrencySpec
+import app.minimpos.core.tax.StarterTax
 import app.minimpos.terminal.checkout.CheckoutCredentials
 import app.minimpos.terminal.checkout.CheckoutSavedCards
 import app.minimpos.terminal.checkout.StoredCard
@@ -98,6 +115,97 @@ class DeepeningArchitectureTest {
         fun dispatch(progress: AutoDelivery) = progress.copy(emailing = true)
     }
 
+    @Test
+    fun `financial operations decide Manager approval only through the approval they started with`() = managerApproval.check(app)
+
+    @Test
+    fun `approval ownership rejects operations reading the screen-scoped Manager session`() =
+        reject(listOf(managerApproval), ManagerApprovalViolation::class.java)
+
+    private class ManagerApprovalViolation {
+        fun approved(session: SessionLock) = session.allows(0)
+    }
+
+    @Test
+    fun `screens follow running payments and refunds only through financial operations`() = operationProgress.check(app)
+
+    @Test
+    fun `progress ownership rejects screens following or leaving a runner themselves`() =
+        reject(listOf(operationProgress), ProgressViolation::class.java)
+
+    private class ProgressViolation {
+        fun follow(charges: SavedCardCharges) = charges.state
+    }
+
+    @Test
+    fun `regional new-installation defaults are decided only by NewInstallation`() = newInstallationDefaults.check(app)
+
+    @Test
+    fun `new-installation ownership rejects a regional default decided elsewhere`() =
+        reject(listOf(newInstallationDefaults), NewInstallationViolation::class.java)
+
+    private class NewInstallationViolation {
+        fun rate(country: String) = StarterTax.forCountry(country)
+    }
+
+    @Test
+    fun `checkout screens follow each tender's ceremony instead of deciding confirmations themselves`() = tenderCeremony.check(app)
+
+    @Test
+    fun `tender ceremony ownership rejects a screen deciding special entry approval itself`() =
+        reject(listOf(tenderCeremony), TenderCeremonyViolation::class.java)
+
+    private class TenderCeremonyViolation {
+        fun approve(checkout: Checkout) = checkout.requiresSpecialEntryApproval
+    }
+
+    @Test
+    fun `a receipt's kind decides both its document and its email envelope`() = receiptKind.check(app)
+
+    @Test
+    fun `receipt kind ownership rejects delivery choosing an envelope from the standing itself`() =
+        reject(listOf(receiptKind), ReceiptKindViolation::class.java)
+
+    private class ReceiptKindViolation {
+        fun envelope(standing: ReceiptStanding) = standing.preAuthorisation
+    }
+
+    @Test
+    fun `terminal requests and answers are read in minor units, converted only by the client`() = terminalMoney.check(app)
+
+    @Test
+    fun `terminal money ownership rejects a terminal reading converting units itself`() =
+        reject(listOf(terminalMoney), TerminalMoneyViolation::class.java)
+
+    private class TerminalMoneyViolation {
+        fun major(spec: CurrencySpec) = spec.toMajor(100)
+    }
+
+    @Test
+    fun `settings render the terminal setup plan instead of deciding its steps`() = setupPlan.check(app)
+
+    @Test
+    fun `setup plan ownership rejects a screen reading supplied details itself`() =
+        reject(listOf(setupPlan), SetupPlanViolation::class.java)
+
+    private class SetupPlanViolation {
+        fun supplied(rules: DestinationRules) = rules.suppliedDetails(TerminalSettings(), emptySet())
+    }
+
+    @Test
+    fun `only the setup source compares the verified setup fingerprint`() = verifiedSetup.check(app)
+
+    @Test
+    fun `verified setup ownership rejects a fingerprint compared elsewhere`() =
+        reject(listOf(verifiedSetup), VerifiedSetupViolation::class.java)
+
+    private class VerifiedSetupViolation {
+        fun verified(
+            settings: AppSettings,
+            identity: String,
+        ) = settings.verifiedSetup == identity
+    }
+
     private fun reject(
         rules: List<ArchRule>,
         violation: Class<*>,
@@ -155,6 +263,96 @@ class DeepeningArchitectureTest {
                     .should()
                     .callMethodWhere(callTo(TerminalSetupSource.SetupFence::class.java.name, "withSharedKey")),
             )
+
+        // The Manager session closes when navigation leaves manager screens; an operation started while it was open keeps
+        // that approval through ManagerApproval instead of rereading the session, which could refuse what was approved.
+        val managerApproval: ArchRule =
+            noClasses()
+                .that()
+                .resideInAPackage("app.minimpos.app.payment..")
+                .or()
+                .haveNameMatching(within(ManagerApprovalViolation::class.java.name))
+                .should()
+                .dependOnClassesThat()
+                .belongToAnyOf(SessionLock::class.java, PinManager::class.java)
+
+        // A waiting or result screen that picks a runner re-derives where its amount comes from and which runner to leave;
+        // FinancialOperations follows payments and refunds whichever way they are sent, with the amount requested.
+        val operationProgress: ArchRule =
+            noClasses()
+                .that()
+                .resideInAnyPackage("app.minimpos.app.feature..", "app.minimpos.app.ui..")
+                .or()
+                .haveNameMatching(within(ProgressViolation::class.java.name))
+                .should()
+                .callMethodWhere(callTo(TransactionLifecycle::class.java.name, "getState", "acknowledge", "cancel"))
+                .orShould()
+                .callMethodWhere(callTo(SavedCardCharges::class.java.name, "getState", "acknowledge"))
+                .orShould()
+                .callMethodWhere(callTo(CheckoutRefunds::class.java.name, "getState", "acknowledge"))
+
+        // Country and language defaults read the starter tax in one module with a text adapter, so a regional rule (such
+        // as Australia's GST-free note) cannot be decided twice with different conditions in the container.
+        val newInstallationDefaults: ArchRule =
+            noClasses()
+                .that()
+                .haveNameNotMatching(within(NewInstallation::class.java.name))
+                .should()
+                .callMethodWhere(callTo(StarterTax.Companion::class.java.name, "forCountry"))
+
+        // What each tender drops and which confirmations and approval come first is decided next to the copies that drop
+        // it (Checkout.ceremony); a screen re-deriving it forgot the donation invitation before.
+        val tenderCeremony: ArchRule =
+            noClasses()
+                .that()
+                .resideOutsideOfPackage("app.minimpos.app.payment..")
+                .should()
+                .callMethodWhere(callTo(Checkout::class.java.name, "getRequiresSpecialEntryApproval"))
+
+        // Delivery once re-read the standing's flags to pick an email subject and introduction, so the envelope could
+        // disagree with the document; ReceiptKind is the one reading both follow.
+        val receiptKind: ArchRule =
+            noClasses()
+                .that()
+                .haveNameNotMatching(
+                    within(ReceiptKind::class.java.name, ReceiptFactory::class.java.name, ReceiptStanding::class.java.name),
+                ).should()
+                .callMethodWhere(callTo(ReceiptStanding::class.java.name, "getPreAuthorisation"))
+
+        // Amounts cross TerminalClient in minor units and the client converts them with Adyen's decimals once, so the
+        // payment, refund, settlement and reconciliation readings never re-apply the conversion themselves.
+        val terminalMoney: ArchRule =
+            noClasses()
+                .that()
+                .haveNameMatching(
+                    within(
+                        SaleBook::class.java.name,
+                        RefundablePayment::class.java.name,
+                        HistoryAccounting::class.java.name,
+                        "app.minimpos.app.data.repo.SaleEventKt",
+                        TerminalMoneyViolation::class.java.name,
+                    ),
+                ).should()
+                .callMethodWhere(callTo(CurrencySpec::class.java.name, "toMajor", "toMinor"))
+
+        // Which steps a destination shows, their numbers and when they unlock is one pure reading (TerminalSetupPlan);
+        // composables re-deriving it numbered and revealed steps differently for each destination.
+        val setupPlan: ArchRule =
+            noClasses()
+                .that()
+                .resideOutsideOfPackage("app.minimpos.app.terminal..")
+                .should()
+                .callMethodWhere(callTo(DestinationRules::class.java.name, "suppliedDetails"))
+
+        // What the verified-setup fingerprint covers is decided once (VerifiedSetup); only the setup source compares
+        // and records it, and only the settings write clears it, so a second reading cannot disagree with the gate.
+        val verifiedSetup: ArchRule =
+            noClasses()
+                .that()
+                .haveNameNotMatching(
+                    within(TerminalSetupSource::class.java.name, AppSettings::class.java.name, SettingsRepository::class.java.name),
+                ).should()
+                .callMethodWhere(callTo(AppSettings::class.java.name, "getVerifiedSetup"))
 
         // First-screen claiming stays shared, while dispatch and its progress cannot be reconstructed in presentation.
         val receiptAutomation: List<ArchRule> =

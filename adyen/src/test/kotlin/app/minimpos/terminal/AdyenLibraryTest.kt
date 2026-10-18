@@ -94,6 +94,7 @@ class AdyenLibraryTest {
         var sent: TerminalAPIRequest? = null
         val client =
             TerminalClient(
+                currencyDigits = testCurrencyDigits,
                 transport = { request, _ ->
                     sent = request
                     Delivery.Answered(null)
@@ -107,12 +108,12 @@ class AdyenLibraryTest {
         runBlocking {
             client.pay(
                 PaymentParams(
-                    amount = BigDecimal("12.50"),
+                    amountMinor = 1250,
                     currency = "AUD",
                     merchantReference = "MP-1",
                     shopperReference = "CUST-1",
                     recurringProcessingModel = RecurringModel.UNSCHEDULED_CARD_ON_FILE,
-                    tenderOptions = listOf("ReceiptHandler"),
+                    appPrintsReceipts = true,
                 ),
             )
         }

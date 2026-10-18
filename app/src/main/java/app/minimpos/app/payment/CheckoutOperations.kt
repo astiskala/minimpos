@@ -4,6 +4,7 @@ import android.database.SQLException
 import app.minimpos.app.data.db.DeviceFault
 import app.minimpos.app.data.db.Failure
 import app.minimpos.app.data.db.SetupProblem
+import app.minimpos.app.data.security.ManagerApproval
 import app.minimpos.app.terminal.ApiAccess
 import app.minimpos.app.terminal.ApiTarget
 import app.minimpos.core.payment.PaymentContext
@@ -57,6 +58,12 @@ data class CheckoutRecord(
  * @param C The Checkout adapter the operation is sent with.
  */
 interface CheckoutBook<R, C> {
+    /** Whether this kind of operation moves money only with Manager approval, see [ManagerApproval]. */
+    val needsApproval: Boolean
+
+    /** What [request] charges or refunds, which its waiting screen shows. */
+    fun amount(request: R): OperationAmount
+
     /**
      * Stores [request] as the new PENDING record [id], opened at [createdAt] (epoch ms) while [current] is the current
      * API target's payment context (null for a fixed fake target).
@@ -108,7 +115,8 @@ interface CheckoutBook<R, C> {
  * Each operation is stored PENDING before Adyen is called and is sent from what was stored with its idempotency key, so
  * a repeat returns Adyen's first answer instead of taking effect twice. Adyen keeps idempotency keys for at least
  * [RECHECK_WINDOW]; an older unknown operation is not sent again and is checked in the Customer Area. Manager approval
- * is checked again under the operation lock immediately before anything is sent. A never-sent operation that cannot be
+ * of kinds that need it is taken when an operation starts and checked again under the operation lock immediately
+ * before anything is sent; resending an unknown one checks the approval held now. A never-sent operation that cannot be
  * sent (approval, missing facts or no Checkout API) is stored as not done; an unknown one stays unknown; and one whose
  * original payment context no longer matches the credentials is never changed.
  *
@@ -121,7 +129,7 @@ interface CheckoutBook<R, C> {
  *   this process, including on a [recheck].
  * @param clock Stamps the records and decides whether an unknown one may be sent again.
  * @param newId Generates record IDs.
- * @param permits Whether Manager approval allows the operation now, checked under the operation lock.
+ * @param approval Manager approval, for the kinds the [book] says need it.
  * @param mutex Serializes sends and rechecks; shared when a caller also serializes follow-up operations.
  * @param recheckWindow Maximum age for resending an unknown operation; null when idempotency retries do not expire locally.
  */
@@ -132,24 +140,27 @@ class CheckoutOperations<R, C>(
     private val onSucceeded: (id: String, request: R) -> Unit = { _, _ -> },
     private val clock: Clock = Clock.systemUTC(),
     private val newId: () -> String = { Uuid.random().toString() },
-    private val permits: suspend () -> Boolean = { true },
+    private val approval: ManagerApproval = ManagerApproval.NOT_REQUIRED,
     private val mutex: Mutex = Mutex(),
     private val recheckWindow: Duration? = RECHECK_WINDOW,
 ) {
-    private val runner = OperationRunner<R>(scope)
+    private val runner = OperationRunner<R>(scope, onTerminal = false, amountOf = book::amount)
 
     /** The operation running now, which its screen follows to the result. */
     val state: StateFlow<TransactionState> = runner.state
 
     /**
      * Stores and sends [request] in the background and returns the new record's ID straight away; null, with nothing
-     * stored or sent, while another operation of this kind is running (such as a second tap on the same action).
+     * stored or sent, while another operation of this kind is running (such as a second tap on the same action). Call
+     * it when the operator starts the operation: it keeps the Manager approval held now.
      */
-    fun start(request: R): String? =
-        runner.start(request, newId, ::interrupted) { id ->
+    fun start(request: R): String? {
+        val grant = approval.grant()
+        return runner.start(request, newId, ::interrupted) { id ->
             book.open(id, request, clock.millis(), target().context)
-            mutex.withLock { book.unsent(id)?.takeIf { it.pending }?.let { send(id, it) } }
+            mutex.withLock { book.unsent(id)?.takeIf { it.pending }?.let { send(id, it, grant) } }
         }
+    }
 
     /** Returns to [TransactionState.Idle] once the result has been seen, so the next operation can start. */
     fun acknowledge() = runner.acknowledge()
@@ -167,15 +178,20 @@ class CheckoutOperations<R, C>(
         if (recheckWindow != null && Duration.ofMillis(clock.millis() - record.createdAt) > recheckWindow) {
             return Recheck.StillUnknown(Failure.NotSetUp(SetupProblem.CHARGE_TOO_OLD))
         }
-        return send(id, record)?.let(Recheck::StillUnknown) ?: Recheck.Settled
+        return send(id, record, grant = null)?.let(Recheck::StillUnknown) ?: Recheck.Settled
     }
 
-    /** Sends [record] [id] and stores the answer; returns why nothing (or nothing certain) is known yet. */
+    /**
+     * Sends [record] [id] and stores the answer; returns why nothing (or nothing certain) is known yet. [grant] is the
+     * approval taken when it started in this process; null for a resend, which needs the approval held now.
+     */
     private suspend fun send(
         id: String,
         record: CheckoutRecord,
+        grant: ManagerApproval.Grant?,
     ): Failure? {
-        val problem = if (permits()) book.missing(id) else SetupProblem.MANAGER_APPROVAL
+        val approved = !book.needsApproval || if (grant != null) approval.allows(grant) else approval.allowsNow()
+        val problem = if (approved) book.missing(id) else SetupProblem.MANAGER_APPROVAL
         if (problem != null) return notSent(id, record.pending, problem)
         val client =
             when (val access = book.access(target(), record.context)) {

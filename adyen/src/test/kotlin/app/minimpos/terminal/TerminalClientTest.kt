@@ -104,6 +104,7 @@ class TerminalClientTest {
         recovery: RecoveryPolicy = RecoveryPolicy(attempts = 3, intervalMillis = 10, maxInProgressChecks = 3),
         reply: (TerminalAPIRequest) -> Delivery,
     ) = TerminalClient(
+        currencyDigits = testCurrencyDigits,
         transport =
             TerminalTransport { request, _ ->
                 sent += request
@@ -193,13 +194,13 @@ class TerminalClientTest {
 
     private val params =
         PaymentParams(
-            amount = BigDecimal("12.50"),
+            amountMinor = 1250,
             currency = "AUD",
             merchantReference = "MP-1",
             shopperReference = "CUST-1",
             shopperEmail = "a@b.co",
             recurringProcessingModel = RecurringModel.CARD_ON_FILE,
-            tenderOptions = listOf("ReceiptHandler", "AskGratuity"),
+            appPrintsReceipts = true,
             metadata = mapOf("customerReference" to "C1"),
             requestCardAlias = true,
         )
@@ -323,7 +324,7 @@ class TerminalClientTest {
             val acquirer = saleData.saleToAcquirerData
             assertThat(acquirer.shopperEmail).isEqualTo("a@b.co")
             assertThat(acquirer.recurringProcessingModel.toString()).isEqualTo("CardOnFile")
-            assertThat(acquirer.tenderOption).isEqualTo("ReceiptHandler,AskGratuity")
+            assertThat(acquirer.tenderOption).isEqualTo("ReceiptHandler")
             assertThat(acquirer.metadata).containsExactly("customerReference", "C1")
             assertThat(acquirer.applicationInfo.merchantApplication.name).isEqualTo("Mini mPOS")
             assertThat(request.paymentRequest.paymentTransaction.amountsReq.requestedAmount).isEqualTo(BigDecimal("12.50"))
@@ -336,7 +337,7 @@ class TerminalClientTest {
             assertThat(details.poiTransactionId).isEqualTo("TENDER.PSP123")
             assertThat(details.poiTimestamp).isEqualTo("2026-09-30T01:02:03.456Z")
             assertThat(details.merchantReference).isEqualTo("MP-1")
-            assertThat(details.amount).isEqualTo(BigDecimal("12.50"))
+            assertThat(details.amountMinor).isEqualTo(1250)
             assertThat(details.currency).isEqualTo("AUD")
             assertThat(details.paymentBrand).isEqualTo("mc")
             assertThat(details.paymentMethodVariant).isEqualTo("mc_applepay")
@@ -490,12 +491,12 @@ class TerminalClientTest {
             val client = client { respond { reversalResponse = reversal } }
             val partial =
                 client.refund(
-                    RefundParams("TENDER.PSP123", "2026-09-29T11:04:00.000Z", "MP-R", BigDecimal("4.50"), "AUD"),
+                    RefundParams("TENDER.PSP123", "2026-09-29T11:04:00.000Z", "MP-R", 450, "AUD"),
                 )
             val details = (partial as TransactionOutcome.Completed).details
             assertThat(details.pspReference).isEqualTo("REF1")
             assertThat(details.merchantReference).isEqualTo("MP-R")
-            assertThat(details.amount).isEqualTo(BigDecimal("4.50"))
+            assertThat(details.amountMinor).isEqualTo(450)
             val request = sent.last().saleToPOIRequest.reversalRequest
             assertThat(request.reversalReason).isEqualTo(ReversalReasonType.MERCHANT_CANCEL)
             assertThat(request.originalPOITransaction.poiTransactionID.transactionID).isEqualTo("TENDER.PSP123")
@@ -512,7 +513,7 @@ class TerminalClientTest {
             val full = sent.last().saleToPOIRequest.reversalRequest
             assertThat(full.reversedAmount).isNull()
             assertThat(full.saleData.saleToAcquirerData.currency).isNull()
-            assertThrows(IllegalArgumentException::class.java) { RefundParams("T", "t", "R", BigDecimal.ONE) }
+            assertThrows(IllegalArgumentException::class.java) { RefundParams("T", "t", "R", 100) }
         }
 
     @Test
@@ -680,7 +681,7 @@ class TerminalClientTest {
     @Test
     fun `requests without application info still carry the library details`() =
         runTest {
-            val plain = params.copy(tenderOptions = emptyList(), metadata = emptyMap(), requestCardAlias = false)
+            val plain = params.copy(appPrintsReceipts = false, metadata = emptyMap(), requestCardAlias = false)
             client(application = null) { empty }.pay(plain)
             val saleData =
                 sent
@@ -699,11 +700,12 @@ class TerminalClientTest {
 class ShopperDisplayAndTotalsTest {
     private var ids = 0
     private val clock = Clock.fixed(Instant.parse("2026-09-30T01:02:03.456Z"), ZoneOffset.UTC)
-    private val params = PaymentParams(BigDecimal("12.50"), "AUD", "MP-1")
+    private val params = PaymentParams(1250, "AUD", "MP-1")
     private val empty = Delivery.Answered(null)
 
     private fun client(reply: (TerminalAPIRequest) -> Delivery) =
         TerminalClient(
+            currencyDigits = testCurrencyDigits,
             transport = TerminalTransport { request, _ -> reply(request) },
             identity = TerminalIdentity("POS1", "S1F2-000158213605014"),
             application = PosApplication("Mini mPOS", "1.0", "Mini mPOS", "Android", "13"),
@@ -776,20 +778,20 @@ class ShopperDisplayAndTotalsTest {
     @Test
     fun `validates payment and tip model preconditions`() {
         assertThrows(IllegalArgumentException::class.java) {
-            PaymentParams(BigDecimal.ONE, "AUD", "MP-1", scannedPayment = ScannedPayment("wechatpay_pos", "123"), preAuthorisation = true)
+            PaymentParams(100, "AUD", "MP-1", scannedPayment = ScannedPayment("wechatpay_pos", "123"), preAuthorisation = true)
         }
         assertThrows(IllegalArgumentException::class.java) {
-            PaymentParams(BigDecimal.ONE, "AUD", "MP-1", terminalTip = TerminalTipOptions(), preAuthorisation = true)
+            PaymentParams(100, "AUD", "MP-1", terminalTip = TerminalTipOptions(), preAuthorisation = true)
         }
         assertThrows(IllegalArgumentException::class.java) {
-            PaymentParams(BigDecimal.ONE, "AUD", "MP-1", allowPartialAuthorisation = true, preAuthorisation = true)
+            PaymentParams(100, "AUD", "MP-1", allowPartialAuthorisation = true, preAuthorisation = true)
         }
         assertThrows(IllegalArgumentException::class.java) {
-            PaymentParams(BigDecimal.ONE, "AUD", "MP-1", askGiving = true, preAuthorisation = true)
+            PaymentParams(100, "AUD", "MP-1", askGiving = true, preAuthorisation = true)
         }
         assertThrows(IllegalArgumentException::class.java) {
             PaymentParams(
-                BigDecimal.ONE,
+                100,
                 "AUD",
                 "MP-1",
                 scannedPayment = ScannedPayment("wechatpay_pos", "123"),
@@ -808,15 +810,15 @@ class ShopperDisplayAndTotalsTest {
         assertThat(TerminalTipSuggestions.FixedAmounts(listOf(1, 2, 3), false).allowCustom).isFalse()
         assertThat(TerminalTipSuggestions.FixedAmounts(listOf(1), true).allowCustom).isTrue()
         assertThrows(IllegalArgumentException::class.java) {
-            TerminalTipOptions(suggestions = TerminalTipSuggestions.Percentages(listOf(10)), amountToTipOn = BigDecimal.ZERO)
+            TerminalTipOptions(suggestions = TerminalTipSuggestions.Percentages(listOf(10)), amountToTipOnMinor = 0)
         }
-        assertThrows(IllegalArgumentException::class.java) { TerminalTipOptions(amountToTipOn = BigDecimal.ONE) }
+        assertThrows(IllegalArgumentException::class.java) { TerminalTipOptions(amountToTipOnMinor = 100) }
         assertThat(
             TerminalTipOptions(
                 suggestions = TerminalTipSuggestions.Percentages(listOf(10)),
-                amountToTipOn = BigDecimal("0.01"),
-            ).amountToTipOn,
-        ).isEqualTo(BigDecimal("0.01"))
+                amountToTipOnMinor = 1,
+            ).amountToTipOnMinor,
+        ).isEqualTo(1L)
     }
 
     @Test
@@ -835,9 +837,9 @@ class ShopperDisplayAndTotalsTest {
         assertThat(discardable.available).isFalse()
         assertThrows(IllegalStateException::class.java) { discardable.consume() }
         assertThat(
-            VirtualReceipt(header = "Order", lines = emptyList(), total = BigDecimal.ONE, currency = "EUR").toXml(),
+            VirtualReceipt(header = "Order", lines = emptyList(), totalMinor = 100, currency = "EUR").toXml(fractionDigits = 2),
         ).contains("""<screen name="virtual-receipt.xslt">""")
-        assertThat(PaymentParams(BigDecimal.ONE, "EUR", "M", saleReferenceId = "SR-1").saleReferenceId).isEqualTo("SR-1")
+        assertThat(PaymentParams(100, "EUR", "M", saleReferenceId = "SR-1").saleReferenceId).isEqualTo("SR-1")
         assertThat(RecoveryPolicy(intervalMillis = 2_000L).intervalMillis).isEqualTo(2_000L)
         assertThat(TransactionOutcome.Unknown("U-1", Fault.TimedOut).serviceId).isEqualTo("U-1")
         assertThat(PrintOutcome.Failed(Fault.Unsupported, noPrinter = false).noPrinter).isFalse()
@@ -941,13 +943,13 @@ class ShopperDisplayAndTotalsTest {
             assertThat(answered.closedPeriod).isFalse()
             assertThat(answered.totals)
                 .containsExactly(
-                    TerminalCurrencyTotals("AUD", BigDecimal.ZERO, 0, BigDecimal("4.00"), 1),
-                    TerminalCurrencyTotals("USD", BigDecimal("20.00"), 2, BigDecimal("5.00"), 1),
+                    TerminalCurrencyTotals("AUD", 0, 0, 400, 1),
+                    TerminalCurrencyTotals("USD", 2000, 2, 500, 1),
                 ).inOrder()
             val firstTotal = answered.totals.first()
             assertThat(firstTotal.currency).isEqualTo("AUD")
-            assertThat(firstTotal.debitAmount to firstTotal.debitCount).isEqualTo(BigDecimal.ZERO to 0)
-            assertThat(firstTotal.creditAmount to firstTotal.creditCount).isEqualTo(BigDecimal("4.00") to 1)
+            assertThat(firstTotal.debitMinor to firstTotal.debitCount).isEqualTo(0L to 0)
+            assertThat(firstTotal.creditMinor to firstTotal.creditCount).isEqualTo(400L to 1)
         }
 
     @Test
@@ -975,20 +977,20 @@ class ShopperDisplayAndTotalsTest {
             val receipt =
                 VirtualReceipt(
                     header = "A & B <Shop>",
-                    lines = listOf(VirtualReceiptLine(2, "Item \"1\" 'x'", "AUD", BigDecimal("9.00"))),
-                    subtotal = BigDecimal("8.18"),
-                    tax = BigDecimal("0.82"),
-                    total = BigDecimal("9.00"),
+                    lines = listOf(VirtualReceiptLine(2, "Item \"1\" 'x'", "AUD", 900)),
+                    subtotalMinor = 818,
+                    taxMinor = 82,
+                    totalMinor = 900,
                     currency = "AUD",
                 )
             assertThat(receipt.header).isEqualTo("A & B <Shop>")
-            assertThat(receipt.lines.single()).isEqualTo(VirtualReceiptLine(2, "Item \"1\" 'x'", "AUD", BigDecimal("9.00")))
-            assertThat(receipt.subtotal to receipt.tax).isEqualTo(BigDecimal("8.18") to BigDecimal("0.82"))
-            assertThat(receipt.total to receipt.currency).isEqualTo(BigDecimal("9.00") to "AUD")
+            assertThat(receipt.lines.single()).isEqualTo(VirtualReceiptLine(2, "Item \"1\" 'x'", "AUD", 900))
+            assertThat(receipt.subtotalMinor to receipt.taxMinor).isEqualTo(818L to 82L)
+            assertThat(receipt.totalMinor to receipt.currency).isEqualTo(900L to "AUD")
             assertThat(receipt.totalLabel).isEqualTo("Total")
-            assertThat(receipt.toXml("M400-123456789")).contains("virtual_receipt02.xslt")
-            assertThat(receipt.toXml("M400-123456789")).contains("&amp;")
-            assertThat(receipt.toXml("S1F2-123456789")).contains("virtual-receipt.xslt")
+            assertThat(receipt.toXml("M400-123456789", 2)).contains("virtual_receipt02.xslt")
+            assertThat(receipt.toXml("M400-123456789", 2)).contains("&amp;")
+            assertThat(receipt.toXml("S1F2-123456789", 2)).contains("virtual-receipt.xslt")
 
             val displayOk =
                 client {
@@ -1146,7 +1148,7 @@ class ShopperDisplayAndTotalsTest {
                     }
                 }.pay(params.copy(shopperFlow = ShopperSessionFlow()), serviceId = "FLOW-GIV") as TransactionOutcome.Completed
             assertThat(givingMissing.details.givingServiceId).isEqualTo("GIVING-MISS")
-            assertThat(givingMissing.details.donationAmount).isNull()
+            assertThat(givingMissing.details.donationMinor).isNull()
         }
 
     @Test
@@ -1165,7 +1167,7 @@ class ShopperDisplayAndTotalsTest {
                         paymentResponse = approval()
                     }
                 }
-            val receipt = VirtualReceipt(header = "Order", lines = emptyList(), total = BigDecimal.ONE, currency = "EUR")
+            val receipt = VirtualReceipt(header = "Order", lines = emptyList(), totalMinor = 100, currency = "EUR")
             capturingClient.pay(
                 params.copy(shopperFlow = ShopperSessionFlow(virtualReceipt = receipt, qrReceipt = "RAW TEXT", qrHeader = "Head")),
             )
@@ -1291,7 +1293,7 @@ class ShopperDisplayAndTotalsTest {
                 }
             val outcome =
                 capturingClient.pay(params.copy(shopperFlow = ShopperSessionFlow(sessionId = 7))) as TransactionOutcome.Completed
-            assertThat(outcome.details.donationAmount).isEqualTo(BigDecimal("3.00"))
+            assertThat(outcome.details.donationMinor).isEqualTo(300)
             val admins = captured.mapNotNull { it.adminRequest }
             assertThat(
                 String(

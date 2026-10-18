@@ -89,6 +89,8 @@
   <string name="checkout_scan_wallet">ウォレットをスキャン</string>
   <string name="checkout_send_link">決済リンクを作成</string>
   <string name="checkout_link_without_tip">決済リンクは端末と領収書のチップに対応していません。チップなしでリンクを作成しますか？</string>
+  <string name="checkout_link_without_donation">決済リンクはチャリティ寄付の案内に対応していません。寄付の案内なしでリンクを作成しますか？</string>
+  <string name="checkout_link_without_tip_or_donation">決済リンクはチップとチャリティ寄付に対応していません。これらなしでリンクを作成しますか？</string>
   <string name="checkout_pre_auth_note">カードの利用枠を確保するだけです。後で「取引履歴」からキャプチャまたはキャンセルしてください。</string>
   <string name="checkout_tip_on_receipt">領収書にチップを記入</string>
   <string name="checkout_tip_on_receipt_hint">購入者が印刷した領収書にチップを記入して署名します。その後チップを入力して合計額をキャプチャします。</string>
@@ -128,6 +130,8 @@
   <string name="wallet_saving_note">保存をリクエストしました。対応状況はウォレットによります。</string>
   <string name="wallet_payme_note">PayMe のスキャンは未検証で、拒否される場合があります。</string>
   <string name="wallet_without_tip">チップなしで支払いますか？スキャンするウォレット決済は端末と領収書のチップに対応せず、合計額を直ちに請求します。</string>
+  <string name="wallet_without_donation">寄付の案内なしで支払いますか？スキャンするウォレット決済はチャリティ寄付の案内に対応せず、合計額を直ちに請求します。</string>
+  <string name="wallet_without_tip_or_donation">チップと寄付の案内なしで支払いますか？スキャンするウォレット決済はどちらにも対応せず、合計額を直ちに請求します。</string>
   <string name="wallet_invalid_code">このウォレットの有効な支払いコードではありません。再スキャンするかウォレットを変更してください。</string>
   <string name="wallet_scan_failed">コードを受信できませんでした。再スキャンするかカメラを使用してください。</string>
   <string name="wallet_checkout_changed">会計または端末設定が変わりました。会計に戻って確認してください。</string>
@@ -1143,5 +1147,7 @@
   <string name="checkout_charge_token">トークンで請求</string>
   <string name="checkout_choose_token">トークンを選択</string>
   <string name="checkout_token_without_tip">トークンでの請求にはチップは含まれません。</string>
+  <string name="checkout_token_without_donation">トークンでの請求では寄付を案内しません。</string>
+  <string name="checkout_token_without_tip_or_donation">トークンでの請求にはチップは含まれず、寄付も案内しません。</string>
   <string name="reconciliation_mismatch_hint">取引履歴で確認が必要な決済を解決してください。この端末を使う他のデバイスの決済も合計に含まれます。</string>
 </resources>

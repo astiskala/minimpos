@@ -12,7 +12,6 @@ import app.minimpos.core.payment.PaymentContext
 import com.google.common.truth.Truth.assertThat
 import org.junit.Assert.assertThrows
 import org.junit.Test
-import java.math.BigDecimal
 import java.time.Instant
 import java.time.ZoneOffset
 
@@ -121,7 +120,7 @@ class RefundablePaymentTest {
         assertThat(full.originalReference).isEqualTo("MP-1")
         assertThat(full.merchantReference).matches("R-260930-145811-[0-9A-Z]{4}")
         assertThat(full.lines).isEmpty()
-        assertThat(full.params().amount).isNull()
+        assertThat(full.params().amountMinor).isNull()
         assertThat(full.params().currency).isNull()
 
         val rest =
@@ -131,7 +130,7 @@ class RefundablePaymentTest {
         assertThat(rest.full).isFalse()
         assertThat(rest.amountMinor).isEqualTo(900)
         assertThat(rest.merchantReference).startsWith("MP-R-")
-        assertThat(rest.params().amount).isEqualTo(BigDecimal("9.00"))
+        assertThat(rest.params().amountMinor).isEqualTo(900)
         assertThat(rest.params().currency).isEqualTo("AUD")
 
         assertThat(refundable().request(RefundChoice.Amount(0), "", now, ZoneOffset.UTC)).isNull()
@@ -202,7 +201,7 @@ class RefundablePaymentTest {
         assertThat(cancel.originalTransactionId).isEqualTo(sale.poiTransactionId)
         assertThat(cancel.originalTimestamp).isEqualTo(sale.poiTimestamp)
         assertThat(cancel.merchantReference).matches("MP-C-260930-145811-[0-9A-Z]{4}")
-        assertThat(cancel.params().amount).isNull()
+        assertThat(cancel.params().amountMinor).isNull()
 
         // Sales are refunded instead; unapproved pre-authorisations, ones the terminal gave no transaction details for
         // and ones already cancelled cannot be cancelled.

@@ -53,6 +53,7 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import java.io.ByteArrayOutputStream
+import java.time.ZoneId
 import java.time.ZoneOffset
 import java.util.Locale
 import javax.mail.MessagingException
@@ -94,14 +95,18 @@ class ReceiptServicesTest {
 
     private fun store() = await { container.sales.createPending(sale, lines) }
 
+    /** A factory outside the container: Australian English formatting, default labels and no standing or refund notes. */
+    private fun factory(zone: ZoneId = ZoneId.systemDefault()) =
+        ReceiptFactory(
+            { _ ->
+                ReceiptTexts(ReceiptLabels(), Locale.forLanguageTag("en-AU"), standing = { null }, refund = { null }, report = { it.name })
+            },
+            { zone },
+        )
+
     @Test
     fun `sale receipts carry lines, tax and the refund QR code`() {
-        val factory =
-            ReceiptFactory(
-                ReceiptLabels(),
-                { Locale.forLanguageTag("en-AU") },
-                { ZoneOffset.UTC },
-            )
+        val factory = factory(zone = ZoneOffset.UTC)
         val record = SaleWithLines(sale, lines)
         val customer = factory.sale(record, ReceiptSettings(businessName = "Cafe", addressLines = "1 St\n2 Ave"))
         assertThat(customer.elements).contains(ReceiptElement.Row("Includes GST 10%", "$0.82"))
@@ -190,7 +195,7 @@ class ReceiptServicesTest {
                 markedTaxRateNote = "* Reduced rate",
             )
         val record = SaleWithLines(sale, lines.map { it.copy(taxRateMilliPercent = 5_500) })
-        val factory = ReceiptFactory(ReceiptLabels(), { Locale.forLanguageTag("en-AU") })
+        val factory = factory()
         val document = factory.sale(record, settings)
         assertThat(document.elements).containsAtLeast(
             ReceiptElement.Row("Latte *", "$9.00"),
@@ -546,7 +551,7 @@ class ReceiptServicesTest {
                 .sale(
                     SaleWithLines(awaiting, lines),
                     ReceiptSettings(),
-                    paper = false,
+                    surface = ReceiptSurface.ELECTRONIC,
                 ).elements
                 .filterIsInstance<ReceiptElement.Row>()
                 .map {

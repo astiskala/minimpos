@@ -30,6 +30,7 @@ import app.minimpos.core.cart.Cart
 import app.minimpos.core.cart.CartProduct
 import app.minimpos.core.money.CurrencySpec
 import app.minimpos.core.tax.TaxMode
+import app.minimpos.terminal.client.CardEntryOverride
 import app.minimpos.terminal.client.RecurringModel
 import app.minimpos.terminal.client.RefundParams
 import app.minimpos.terminal.simulator.SimulatedOutcome
@@ -109,6 +110,21 @@ class TransactionLifecycleTest {
         val record = await { container.refundRecords.get(id)!! }
         assertThat(record.status).isEqualTo(RefundStatus.FAILED)
         assertThat(record.reason).isEqualTo(StoredReason.NotDone(Failure.NotSetUp(SetupProblem.MANAGER_APPROVAL)))
+    }
+
+    @Test
+    fun `an approved MOTO payment keeps its approval when leaving checkout locks the Manager session`() {
+        env.useSimulator { it.copy(payment = it.payment.copy(allowMoto = true)) }
+        await { container.managerPin.setPin("2468") }
+        container.managerLock.unlock()
+        val id = payments.started(request().copy(cardEntryOverride = CardEntryOverride.MOTO))
+        // The waiting screen needs no Manager approval, so navigating to it locks the session at once.
+        container.managerLock.lock()
+        assertThat(finished(id).sale.status).isEqualTo(SaleStatus.APPROVED)
+
+        payments.acknowledge()
+        val refused = payments.started(request().copy(cardEntryOverride = CardEntryOverride.MOTO))
+        assertThat(finished(refused).sale.reason).isEqualTo(StoredReason.NotDone(Failure.NotSetUp(SetupProblem.MANAGER_APPROVAL)))
     }
 
     @Test

@@ -6,7 +6,6 @@ import app.minimpos.app.data.db.SaleWithLines
 import app.minimpos.app.data.repo.RefundedLine
 import app.minimpos.core.codec.RefundQrPayload
 import app.minimpos.core.ids.Ids
-import app.minimpos.core.money.CurrencySpec
 import app.minimpos.core.payment.PaymentContext
 import app.minimpos.core.refund.RefundCalculator
 import app.minimpos.core.refund.RefundableLine
@@ -127,13 +126,13 @@ data class RefundStart(
         require(amountMinor > 0) { "Refund amount must be positive" }
     }
 
-    /** The Terminal API reversal: a full one is sent without amount and currency, a partial one in major units. */
+    /** The Terminal API reversal: a full one is sent without amount and currency, a partial one in minor units. */
     fun params(): RefundParams =
         RefundParams(
             originalTransactionId = originalTransactionId,
             originalTimestamp = originalTimestamp,
             merchantReference = merchantReference,
-            amount = if (full) null else CurrencySpec.of(currency).toMajor(amountMinor),
+            amountMinor = if (full) null else amountMinor,
             currency = if (full) null else currency,
         )
 }

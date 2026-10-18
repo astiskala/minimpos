@@ -1,8 +1,12 @@
 package app.minimpos.app.feature.history
 
 import app.minimpos.app.data.db.SaleEntity
+import app.minimpos.app.data.db.SaleKind
 import app.minimpos.app.data.repo.HistoryItem
+import app.minimpos.app.history.HistoryAccounting
+import app.minimpos.app.history.PaymentStanding
 import app.minimpos.app.history.methodCode
+import app.minimpos.app.history.standing
 import app.minimpos.core.money.CurrencySpec
 import app.minimpos.core.payment.PaymentMethods
 import app.minimpos.core.payment.Wallet
@@ -132,4 +136,63 @@ class HistorySearch(
         /** The digits of a masked card number that identify the card to staff and shoppers. */
         const val LAST_DIGITS = 4
     }
+}
+
+/** Which transactions the history list shows. */
+enum class HistoryFilter {
+    /** Every sale and refund. */
+    ALL,
+
+    /** Sales only (not pre-authorisations), whatever their status. */
+    SALES,
+
+    /** Sales taken for tipping on the receipt whose tip has not been entered yet. */
+    AWAITING_TIP,
+
+    /** Pre-authorisations and their cancellations, whatever their status. */
+    PRE_AUTHS,
+
+    /** Refunds only (not cancellations of pre-authorisations), whatever their status. */
+    REFUNDS,
+
+    /** Sales and refunds whose outcome is still pending or unknown, which need checking. */
+    ISSUES,
+    ;
+
+    /**
+     * Whether [item] shows with this filter; [preAuths] are the IDs of the pre-authorisations, whose cancellations show
+     * with them. Issues are accounting's reading ([HistoryAccounting.needsAttention]), not status fields read again.
+     */
+    fun matches(
+        item: HistoryItem,
+        preAuths: Set<String>,
+    ): Boolean =
+        when (this) {
+            ALL -> {
+                true
+            }
+
+            SALES -> {
+                item is HistoryItem.Sale && item.sale.kind == SaleKind.SALE
+            }
+
+            AWAITING_TIP -> {
+                item is HistoryItem.Sale && item.sale.standing == PaymentStanding.AWAITING_TIP
+            }
+
+            PRE_AUTHS -> {
+                when (item) {
+                    is HistoryItem.Sale -> item.sale.kind == SaleKind.PRE_AUTHORISATION
+                    is HistoryItem.Refund -> item.refund.cancellation && item.refund.saleId in preAuths
+                }
+            }
+
+            REFUNDS -> {
+                item is HistoryItem.Refund && !item.refund.cancellation
+            }
+
+            ISSUES -> {
+                HistoryAccounting.needsAttention(item)
+            }
+        }
 }

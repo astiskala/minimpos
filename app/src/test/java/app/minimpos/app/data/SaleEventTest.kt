@@ -5,15 +5,21 @@ import app.minimpos.app.data.db.CaptureStatus
 import app.minimpos.app.data.db.DeviceFault
 import app.minimpos.app.data.db.EmailFault
 import app.minimpos.app.data.db.Failure
+import app.minimpos.app.data.db.RefundEntity
+import app.minimpos.app.data.db.RefundStatus
 import app.minimpos.app.data.db.SaleEntity
 import app.minimpos.app.data.db.SaleKind
+import app.minimpos.app.data.db.SaleLineEntity
 import app.minimpos.app.data.db.SaleStatus
 import app.minimpos.app.data.db.SaleWithLines
 import app.minimpos.app.data.db.SetupProblem
 import app.minimpos.app.data.db.StoredReason
 import app.minimpos.app.data.db.StoredReasonConverter
+import app.minimpos.app.data.repo.ReceiptLinesJson
+import app.minimpos.app.data.repo.RefundedLine
 import app.minimpos.app.data.repo.SaleEvent
 import app.minimpos.app.data.repo.after
+import app.minimpos.app.data.repo.refundedBy
 import app.minimpos.app.history.PaymentAction
 import app.minimpos.app.history.PaymentStanding
 import app.minimpos.app.history.actions
@@ -54,7 +60,7 @@ class SaleEventTest {
             poiTimestamp = "2026-09-29T11:04:00.000Z",
             pspReference = "PSP1",
             merchantReference = "MP-1",
-            amount = null,
+            amountMinor = null,
             currency = "AUD",
             paymentBrand = "visa",
             maskedPan = null,
@@ -199,6 +205,58 @@ class SaleEventTest {
         assertThat(capture.actions()).containsExactly(PaymentAction.RETRY_CAPTURE)
 
         assertThat(tipSale.after(interrupted)).isEqualTo(tipSale)
+    }
+
+    @Test
+    fun `an accepted refund adds its items and amount within what was sold, and a full one refunds everything`() {
+        val line =
+            SaleLineEntity(
+                id = 1,
+                saleId = tipSale.id,
+                position = 0,
+                productId = null,
+                name = "Latte",
+                sku = null,
+                unitPriceMinor = 450,
+                quantity = 2,
+                taxName = "GST",
+                taxRateMilliPercent = 10_000,
+                netMinor = 818,
+                taxMinor = 82,
+                grossMinor = 900,
+            )
+        val record = SaleWithLines(tipSale.copy(refundedMinor = 0), listOf(line))
+
+        fun refund(
+            full: Boolean,
+            amountMinor: Long,
+            quantity: Int,
+        ) = RefundEntity(
+            id = "r",
+            saleId = tipSale.id,
+            createdAt = 1,
+            merchantReference = "R",
+            originalTransactionId = "T",
+            originalTimestamp = "2026-10-17T10:00:00.000Z",
+            originalReference = null,
+            currency = "AUD",
+            amountMinor = amountMinor,
+            full = full,
+            status = RefundStatus.REQUESTED,
+            linesJson = ReceiptLinesJson.encodeRefunded(listOf(RefundedLine(1, "Latte", quantity, 450, 450L * quantity))),
+        )
+        val partial = record.refundedBy(refund(full = false, amountMinor = 450, quantity = 1))
+        assertThat(partial.lines.single().refundedQuantity).isEqualTo(1)
+        assertThat(partial.sale.refundedMinor).isEqualTo(450)
+        val beyond = partial.refundedBy(refund(full = false, amountMinor = 1_000_000, quantity = 5))
+        assertThat(beyond.lines.single().refundedQuantity).isEqualTo(2)
+        assertThat(beyond.sale.refundedMinor).isEqualTo(tipSale.amountMinor)
+        val full = record.refundedBy(refund(full = true, amountMinor = 0, quantity = 0))
+        assertThat(full.lines.single().refundedQuantity).isEqualTo(2)
+        assertThat(full.sale.refundedMinor).isEqualTo(tipSale.amountMinor)
+        val released = record.refundedBy(refund(full = true, amountMinor = 0, quantity = 0).copy(cancellation = true))
+        assertThat(released.sale.holdCancelled).isTrue()
+        assertThat(released.lines).isEqualTo(record.lines)
     }
 
     @Test

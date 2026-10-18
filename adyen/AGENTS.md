@@ -37,6 +37,8 @@ Starred rules are enforced by `ArchitectureTest`. KDoc is the detailed API/proto
   leaks bookkeeping into JSON. `AdyenModelR8Test` exercises optimized models offline. HTTP still goes through `AdyenHttp`.
   Raw fields are only for unmodeled `refusalReason`, unknown-status diagnostics, extensible `AdditionalResponse`
   data and unstructured terminal rejections.
+- Amounts cross `TerminalClient` in minor units with typed intents (such as `appPrintsReceipts`); only the client
+  converts them to and from nexo's major units, with the Adyen decimals it is constructed with (`currencyDigits`).
 - `TerminalLocalAPI` posts to `<endpoint>:8443/nexo/`; `xerces:xercesImpl` supplies `DatatypeFactory` on Android.
   Unknown enum values deserialize to null. Keep application info identical on every payment/refund.
 - `TerminalSimulator` and `SimulatedModifications` share a ledger; changes must agree across Terminal and Checkout

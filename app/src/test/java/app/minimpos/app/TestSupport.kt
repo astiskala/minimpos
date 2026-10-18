@@ -14,6 +14,7 @@ import app.minimpos.app.data.db.TaxRateEntity
 import app.minimpos.app.data.security.Secret
 import app.minimpos.app.data.security.SecretCipher
 import app.minimpos.app.data.settings.AppSettings
+import app.minimpos.app.data.settings.NewInstallation
 import app.minimpos.app.data.settings.TerminalMode
 import app.minimpos.app.email.MailTransport
 import app.minimpos.app.payment.TransactionLifecycle
@@ -689,3 +690,12 @@ fun ComposeTestRule.awaitCondition(
         condition()
     }
 }
+
+/**
+ * A new installation's settings in [country] and [language], with every text named after its
+ * [InstallationText][app.minimpos.app.data.settings.InstallationText] key.
+ */
+fun newInstallation(
+    country: String,
+    language: String = "",
+): AppSettings = NewInstallation(country, language) { it.name }.settings

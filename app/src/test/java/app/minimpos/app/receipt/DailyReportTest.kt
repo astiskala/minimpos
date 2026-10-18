@@ -49,7 +49,7 @@ class DailyReportTest {
             env.useSimulator()
             container.sales.createPending(sale, emptyList())
             val date = Instant.ofEpochMilli(at).atZone(ZoneId.systemDefault()).toLocalDate()
-            val result = container.receipts.printReport(date)
+            val result = container.receipts.printReport(date, ZoneId.systemDefault())
             assertThat(result).isEqualTo(ActionResult.Success)
             val jobs = container.virtualPrinter.jobs.value
             assertThat(jobs).hasSize(1)
@@ -87,7 +87,7 @@ class DailyReportTest {
             env.useSimulator { it.copy(simulator = it.simulator.copy(hasPrinter = false)) }
             val offered = container.receipts.canPrintReports.first()
             assertThat(offered).isFalse()
-            val result = container.receipts.printReport(LocalDate.now())
+            val result = container.receipts.printReport(LocalDate.now(), ZoneId.systemDefault())
             assertThat(result).isInstanceOf(ActionResult.Failed::class.java)
             assertThat(container.virtualPrinter.jobs.value).isEmpty()
         }

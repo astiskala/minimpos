@@ -10,6 +10,8 @@ import app.minimpos.app.data.db.SaleEntity
 import app.minimpos.app.data.db.SaleStatus
 import app.minimpos.app.data.db.SetupProblem
 import app.minimpos.app.data.repo.HistoryItem
+import app.minimpos.app.data.security.ManagerApproval
+import app.minimpos.app.data.security.SessionLock
 import app.minimpos.app.data.settings.TerminalMode
 import app.minimpos.app.feature.ActionOutcome
 import app.minimpos.app.history.HistoryAccounting
@@ -223,7 +225,7 @@ class HistorySearchViewModelTest {
         }
 
     /** The history list view model, with reconciliation wired to the container like Home's screen does. */
-    private fun reconciliationViewModel(permits: suspend () -> Boolean = { true }): HistoryViewModel =
+    private fun reconciliationViewModel(approval: ManagerApproval = ManagerApproval.NOT_REQUIRED): HistoryViewModel =
         HistoryViewModel(
             history = env.container.history,
             zone = { ZoneOffset.UTC },
@@ -234,7 +236,7 @@ class HistorySearchViewModelTest {
                     env.container.operations,
                     env.container.gateway,
                     env.container.terminalStatus.state,
-                    permits,
+                    approval,
                 ),
             terminal = env.container.terminalStatus.state,
         ).also(viewModels::add)
@@ -279,8 +281,8 @@ class HistorySearchViewModelTest {
                     context = simContext,
                 ),
             )
-            var closeAllowed = false
-            val vm = reconciliationViewModel { closeAllowed }
+            val manager = SessionLock { 0L }
+            val vm = reconciliationViewModel(ManagerApproval({ true }, manager, { 0L }))
 
             val initial = vm.state.first { it.loaded && it.canReconcile }
             assertThat(initial.canPrint).isTrue()
@@ -299,7 +301,7 @@ class HistorySearchViewModelTest {
                 ActionOutcome.Failed(Failure.NotSetUp(SetupProblem.MANAGER_APPROVAL)),
             )
 
-            closeAllowed = true
+            manager.unlock()
             vm.reconcileTerminal(date = day, closePeriod = true)
             val closed = vm.state.first { it.reconciliation != null }
             assertThat(closed.reconciliation?.closedPeriod).isTrue()

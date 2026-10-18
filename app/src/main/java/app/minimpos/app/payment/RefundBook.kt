@@ -28,24 +28,7 @@ class RefundBook(
         serviceId: String,
         createdAt: Long,
     ) {
-        refunds.create(
-            RefundEntity(
-                id = id,
-                saleId = request.saleId,
-                createdAt = createdAt,
-                merchantReference = request.merchantReference,
-                originalTransactionId = request.originalTransactionId,
-                originalTimestamp = request.originalTimestamp,
-                originalReference = request.originalReference,
-                currency = request.currency,
-                amountMinor = request.amountMinor,
-                full = request.full,
-                status = RefundStatus.PENDING,
-                serviceId = serviceId,
-                linesJson = ReceiptLinesJson.encodeRefunded(request.lines),
-                cancellation = request.cancellation,
-            ),
-        )
+        refunds.create(request.pendingRefund(id, createdAt, serviceId = serviceId))
     }
 
     override suspend fun recordContext(
@@ -57,7 +40,8 @@ class RefundBook(
 
     override fun expectedContext(request: RefundStart) = request.expectedContext
 
-    override fun operation(request: RefundStart): TerminalOperation = TerminalOperation.Refund(request.params())
+    override fun operation(request: RefundStart): TerminalOperation =
+        TerminalOperation.Refund(request.params(), OperationAmount(request.amountMinor, request.currency))
 
     override suspend fun settle(
         id: String,
@@ -74,3 +58,33 @@ class RefundBook(
 
     override suspend fun unsettledServiceId(id: String): String? = refunds.get(id)?.takeIf { it.status == RefundStatus.UNKNOWN }?.serviceId
 }
+
+/**
+ * This refund as the new PENDING record [id], opened at [createdAt] (epoch ms) before anything is sent: one record shape
+ * for both ways a refund is sent. A terminal refund carries its [serviceId]; a Checkout refund ([checkout]) keeps the
+ * original payment's context it must be sent in.
+ */
+internal fun RefundStart.pendingRefund(
+    id: String,
+    createdAt: Long,
+    serviceId: String? = null,
+    checkout: Boolean = false,
+): RefundEntity =
+    RefundEntity(
+        id = id,
+        saleId = saleId,
+        createdAt = createdAt,
+        merchantReference = merchantReference,
+        originalTransactionId = originalTransactionId,
+        originalTimestamp = originalTimestamp,
+        originalReference = originalReference,
+        currency = currency,
+        amountMinor = amountMinor,
+        full = full,
+        status = RefundStatus.PENDING,
+        serviceId = serviceId,
+        linesJson = ReceiptLinesJson.encodeRefunded(lines),
+        cancellation = cancellation,
+        context = expectedContext.takeIf { checkout },
+        checkoutRefund = checkout,
+    )

@@ -97,7 +97,15 @@ class TerminalClient(
     private val transactionTimeout: Duration = DEFAULT_TRANSACTION_TIMEOUT,
     /** The timeout for requests the terminal answers without the shopper: abort, print, diagnosis and status checks. */
     private val shortTimeout: Duration = 30.seconds,
+    /**
+     * The Adyen decimals of an ISO 4217 currency, null for one Adyen does not support: amounts cross this client in
+     * minor units, and only here become the major units nexo carries.
+     */
+    currencyDigits: (currency: String) -> Int?,
 ) {
+    /** Converts amounts between this client's minor units and nexo's major units. */
+    internal val money = TerminalMoney(currencyDigits)
+
     /**
      * Takes a card payment: the terminal asks the shopper to present a card and the call returns when the payment is
      * approved, declined or cancelled, or once the transaction timeout (by default [DEFAULT_TRANSACTION_TIMEOUT]) has
@@ -140,15 +148,7 @@ class TerminalClient(
                                                         it.name,
                                                     )
                                                 }
-                                            val tenders =
-                                                buildList {
-                                                    addAll(effectiveParams.tenderOptions)
-                                                    if (effectiveParams.terminalTip != null) add(ASK_GRATUITY)
-                                                    if (effectiveParams.allowPartialAuthorisation) add(ALLOW_PARTIAL_AUTHORISATION)
-                                                    if (effectiveParams.askGiving) add(ASK_GIVING)
-                                                    if (effectiveParams.cardEntryOverride == CardEntryOverride.MOTO) add(MOTO)
-                                                }.distinct()
-                                            tenderOption = tenders.takeIf { it.isNotEmpty() }?.joinToString(",")
+                                            tenderOption = effectiveParams.tenderOption()
                                             metadata = effectiveParams.metadata.takeIf { it.isNotEmpty() }
                                             if (effectiveParams.preAuthorisation) {
                                                 authorisationType = PRE_AUTH
@@ -157,7 +157,11 @@ class TerminalClient(
                                         }
                                     effectiveParams.terminalTip?.let { tip ->
                                         tip.suggestions?.let { suggestions ->
-                                            saleToPOIData = encodeTipOperation(tip.amountToTipOn, suggestions)
+                                            saleToPOIData =
+                                                encodeTipOperation(
+                                                    tip.amountToTipOnMinor?.let { money.major(it, effectiveParams.currency) },
+                                                    suggestions,
+                                                )
                                         }
                                     }
                                     if (effectiveParams.requestCardAlias) tokenRequestedType = TokenRequestedType.CUSTOMER
@@ -167,7 +171,11 @@ class TerminalClient(
                         }
                 }
             onStarted(serviceId)
-            execute(serviceId, MessageCategoryType.PAYMENT, request) { it.paymentResponse?.let(::mapPayment) }
+            execute(serviceId, MessageCategoryType.PAYMENT, request) {
+                it.paymentResponse?.let { answer ->
+                    mapPayment(answer, money::minor)
+                }
+            }
         }
 
     /**
@@ -232,7 +240,7 @@ class TerminalClient(
             amountsReq =
                 AmountsReq().apply {
                     currency = params.currency
-                    requestedAmount = params.amount
+                    requestedAmount = money.major(params.amountMinor, params.currency)
                 }
         }
 
@@ -283,19 +291,21 @@ class TerminalClient(
                                     }
                             }
                         reversalReason = ReversalReasonType.MERCHANT_CANCEL
-                        reversedAmount = params.amount
+                        reversedAmount = params.amountMinor?.let { money.major(it, checkNotNull(params.currency)) }
                         saleData =
                             SaleData().apply {
                                 saleTransactionID = transaction(params.merchantReference, clock.instant())
                                 // Partial refunds must state the original currency.
                                 saleToAcquirerData =
                                     acquirerData().apply {
-                                        currency = params.currency?.takeIf { params.amount != null }
+                                        currency = params.currency?.takeIf { params.amountMinor != null }
                                     }
                             }
                     }
             }
-        return execute(serviceId, MessageCategoryType.REVERSAL, request) { it.reversalResponse?.let(::mapReversal) }
+        return execute(serviceId, MessageCategoryType.REVERSAL, request) {
+            it.reversalResponse?.let { answer -> mapReversal(answer, params.currency, money::minor) }
+        }
     }
 
     /**
@@ -472,20 +482,20 @@ class TerminalClient(
             if (currency.isNotEmpty()) {
                 var current = byCurrency[currency] ?: TerminalCurrencyTotals(currency)
                 group.paymentTotals.orEmpty().forEach { entry ->
-                    val amount = entry.transactionAmount ?: BigDecimal.ZERO
+                    val amount = money.minor(entry.transactionAmount ?: BigDecimal.ZERO, currency) ?: 0L
                     val count = entry.transactionCount?.toInt() ?: 0
                     current =
                         when (entry.transactionType) {
                             TransactionType.DEBIT -> {
                                 current.copy(
-                                    debitAmount = current.debitAmount + amount,
+                                    debitMinor = current.debitMinor + amount,
                                     debitCount = current.debitCount + count,
                                 )
                             }
 
                             TransactionType.CREDIT, TransactionType.REVERSE_DEBIT -> {
                                 current.copy(
-                                    creditAmount = current.creditAmount + amount,
+                                    creditMinor = current.creditMinor + amount,
                                     creditCount = current.creditCount + count,
                                 )
                             }
@@ -599,7 +609,9 @@ class TerminalClient(
         return when {
             response?.result == ResultType.SUCCESS -> {
                 val body = status.repeatedMessageResponse?.repeatedResponseMessageBody
-                val details = body?.paymentResponse?.let(::mapPayment) ?: body?.reversalResponse?.let(::mapReversal)
+                val details =
+                    body?.paymentResponse?.let { mapPayment(it, money::minor) }
+                        ?: body?.reversalResponse?.let { mapReversal(it, null, money::minor) }
                 details?.let { StatusCheck.Settled(TransactionOutcome.Completed(serviceId, it, recovered = true)) }
                     ?: StatusCheck.NoAnswer(Fault.UnreadableReply())
             }
@@ -720,6 +732,9 @@ class TerminalClient(
          */
         internal const val PRE_AUTH = "PreAuth"
 
+        /** Tender option: the app prints the receipts, card details included, instead of the terminal. */
+        const val RECEIPT_HANDLER = "ReceiptHandler"
+
         /** Tender option that prompts the shopper for a tip on the terminal. */
         const val ASK_GRATUITY = "AskGratuity"
 
@@ -791,7 +806,10 @@ class TerminalClient(
          * The payment [response] said; null when it has no result this version can read (missing, or a value it does
          * not know), which leaves the payment unknown rather than declined.
          */
-        internal fun mapPayment(response: PaymentResponse): TransactionDetails? {
+        internal fun mapPayment(
+            response: PaymentResponse,
+            minor: (BigDecimal?, String?) -> Long?,
+        ): TransactionDetails? {
             if (response.response?.result == null) return null
             val additional = AdditionalResponseParser.parse(response.response?.additionalResponse)
             val card = response.paymentResult?.paymentInstrumentData?.cardData
@@ -811,8 +829,8 @@ class TerminalClient(
                 receipts = response.paymentReceipt,
             ).copy(
                 merchantReference = response.saleData?.saleTransactionID?.transactionID,
-                amount = response.paymentResult?.amountsResp?.authorizedAmount,
-                tipAmount = response.paymentResult?.amountsResp?.tipAmount,
+                amountMinor = minor(response.paymentResult?.amountsResp?.authorizedAmount, response.paymentResult?.amountsResp?.currency),
+                tipMinor = minor(response.paymentResult?.amountsResp?.tipAmount, response.paymentResult?.amountsResp?.currency),
                 currency = response.paymentResult?.amountsResp?.currency,
                 paymentBrand = card?.paymentBrand ?: additional[NexoVocabulary.PAYMENT_METHOD],
                 paymentMethodVariant = additional[NexoVocabulary.PAYMENT_METHOD_VARIANT],
@@ -839,8 +857,15 @@ class TerminalClient(
             )
         }
 
-        /** The refund [response] said; null, so the refund stays unknown, when it has no result this version can read. */
-        internal fun mapReversal(response: ReversalResponse): TransactionDetails? {
+        /**
+         * The refund [response] said, its reversed amount read in [currency] (null when the request named none); null, so
+         * the refund stays unknown, when it has no result this version can read.
+         */
+        internal fun mapReversal(
+            response: ReversalResponse,
+            currency: String?,
+            minor: (BigDecimal?, String?) -> Long?,
+        ): TransactionDetails? {
             if (response.response?.result == null) return null
             val additional = AdditionalResponseParser.parse(response.response?.additionalResponse)
             return details(
@@ -850,7 +875,7 @@ class TerminalClient(
                 receipts = response.paymentReceipt,
             ).copy(
                 merchantReference = additional[NexoVocabulary.MERCHANT_REFERENCE],
-                amount = response.reversedAmount,
+                amountMinor = minor(response.reversedAmount, currency),
             )
         }
 
@@ -881,7 +906,7 @@ class TerminalClient(
                     additional[NexoVocabulary.PSP_REFERENCE]
                         ?: poi?.transactionID?.substringAfter('.', missingDelimiterValue = "")?.ifEmpty { null },
                 merchantReference = null,
-                amount = null,
+                amountMinor = null,
                 currency = null,
                 paymentBrand = null,
                 maskedPan = null,
@@ -896,3 +921,13 @@ class TerminalClient(
         }
     }
 }
+
+/** The tender options of this payment (`SaleToAcquirerData.tenderOption`), comma-separated; null for none. */
+internal fun PaymentParams.tenderOption(): String? =
+    buildList {
+        if (appPrintsReceipts) add(TerminalClient.RECEIPT_HANDLER)
+        if (terminalTip != null) add(TerminalClient.ASK_GRATUITY)
+        if (allowPartialAuthorisation) add(TerminalClient.ALLOW_PARTIAL_AUTHORISATION)
+        if (askGiving) add(TerminalClient.ASK_GIVING)
+        if (cardEntryOverride == CardEntryOverride.MOTO) add(TerminalClient.MOTO)
+    }.takeIf { it.isNotEmpty() }?.joinToString(",")

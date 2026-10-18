@@ -55,6 +55,16 @@ class SaleResultNextTest {
     }
 
     @Test
+    fun `a payment link offers a retry only when it was never made, since a made link took its cart`() {
+        fun link(status: SaleStatus) = saleResultNext(sale(status).copy(paymentLink = true))
+        assertThat(link(SaleStatus.FAILED)).isEqualTo(SaleResultNext.TRY_AGAIN)
+        assertThat(link(SaleStatus.PENDING)).isEqualTo(SaleResultNext.NONE)
+        assertThat(link(SaleStatus.UNKNOWN)).isEqualTo(SaleResultNext.NONE)
+        listOf(SaleStatus.AWAITING_PAYMENT, SaleStatus.APPROVED, SaleStatus.CANCELLED, SaleStatus.EXPIRED, SaleStatus.DECLINED)
+            .forEach { assertThat(link(it)).isEqualTo(SaleResultNext.NEW_SALE) }
+    }
+
+    @Test
     fun `pending, unknown and expired sales offer nothing`() {
         assertThat(saleResultNext(sale(SaleStatus.PENDING))).isEqualTo(SaleResultNext.NONE)
         assertThat(saleResultNext(sale(SaleStatus.UNKNOWN))).isEqualTo(SaleResultNext.NONE)

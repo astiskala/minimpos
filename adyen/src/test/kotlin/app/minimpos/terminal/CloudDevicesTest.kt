@@ -39,7 +39,6 @@ import okhttp3.ResponseBody.Companion.toResponseBody
 import org.junit.After
 import org.junit.Assert.assertThrows
 import org.junit.Test
-import java.math.BigDecimal
 import kotlin.time.Duration.Companion.seconds
 
 class CloudDevicesTest {
@@ -88,9 +87,10 @@ class CloudDevicesTest {
             devices.transport(endpoint),
             TerminalIdentity("MiniMPOS", "S1F2-000158213605014"),
             recovery = RecoveryPolicy(attempts = 1, intervalMillis = 1, maxInProgressChecks = 1),
+            currencyDigits = testCurrencyDigits,
         )
 
-    private val payment = PaymentParams(BigDecimal("12.50"), "AUD", "260930-1")
+    private val payment = PaymentParams(1250, "AUD", "260930-1")
 
     @Test
     fun `regions follow Adyen's data centre table and live endpoints need one`() {

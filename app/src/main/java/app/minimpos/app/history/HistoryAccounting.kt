@@ -4,7 +4,6 @@ import app.minimpos.app.data.db.RefundStatus
 import app.minimpos.app.data.db.SaleEntity
 import app.minimpos.app.data.db.SaleStatus
 import app.minimpos.app.data.repo.HistoryItem
-import app.minimpos.core.money.CurrencySpec
 import app.minimpos.terminal.client.TerminalTotalsOutcome
 import java.time.Instant
 import java.time.LocalDate
@@ -406,14 +405,13 @@ object HistoryAccounting {
         val currencies = (localSales.keys + localRefunds.keys + remoteByCurrency.keys).toSortedSet()
         val comparisons =
             currencies.map { code ->
-                val spec = CurrencySpec.of(code)
                 val remote = remoteByCurrency[code]
                 CurrencyReconciliation(
                     currency = code,
                     localSalesMinor = localSales[code] ?: 0L,
-                    terminalSalesMinor = remote?.let { spec.toMinor(it.debitAmount) } ?: 0L,
+                    terminalSalesMinor = remote?.debitMinor ?: 0L,
                     localRefundsMinor = localRefunds[code] ?: 0L,
-                    terminalRefundsMinor = remote?.let { spec.toMinor(it.creditAmount) } ?: 0L,
+                    terminalRefundsMinor = remote?.creditMinor ?: 0L,
                 )
             }
         return TerminalReconciliationReport(

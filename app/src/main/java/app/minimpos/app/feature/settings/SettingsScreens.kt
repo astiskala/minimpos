@@ -76,6 +76,7 @@ import app.minimpos.app.terminal.DestinationRules
 import app.minimpos.app.terminal.ReceiptBusiness
 import app.minimpos.app.terminal.SharedKeyOffer
 import app.minimpos.app.terminal.TerminalConnection
+import app.minimpos.app.terminal.TerminalSetupPlan
 import app.minimpos.app.terminal.WalletAvailability
 import app.minimpos.app.ui.components.ActionMessage
 import app.minimpos.app.ui.components.ConfirmDialog
@@ -719,16 +720,7 @@ private fun ColumnScope.TerminalSection(
     // must not regrow the full Quick setup section after a connection error.
     val untouched =
         terminal.mode in setOf(TerminalMode.AUTO, TerminalMode.SIMULATOR) &&
-            listOf(
-                terminal.host,
-                terminal.poiIdOverride,
-                terminal.merchantAccount,
-                terminal.keyIdentifier,
-                terminal.paymentsAppInstallationId,
-                terminal.storeId,
-                terminal.liveUrlPrefix,
-            ).all { it.isBlank() } &&
-            state.secrets.none { it in setOf(Secret.ADYEN_API_KEY, Secret.TERMINAL_PASSPHRASE, Secret.PAYMENTS_APP_API_KEY) }
+            !TerminalSetupPlan.savedConnectionDetails(terminal, state.secrets)
     val quickSetup = status.loaded && untouched && !manualSetup && setup.unsavedSecrets.isEmpty()
     if (quickSetup) {
         QuickSetup { navigator.push(Route.TransferImport) }

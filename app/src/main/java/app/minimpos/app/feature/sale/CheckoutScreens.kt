@@ -1,6 +1,7 @@
 package app.minimpos.app.feature.sale
 
 import androidx.activity.compose.BackHandler
+import androidx.annotation.StringRes
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -32,7 +33,6 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -62,6 +62,9 @@ import app.minimpos.app.history.saleResultNext
 import app.minimpos.app.history.standing
 import app.minimpos.app.payment.Checkout
 import app.minimpos.app.payment.CheckoutForm
+import app.minimpos.app.payment.DroppedOption
+import app.minimpos.app.payment.Tender
+import app.minimpos.app.payment.TenderCeremony
 import app.minimpos.app.payment.TransactionState
 import app.minimpos.app.share.ShareEffect
 import app.minimpos.app.ui.components.BottomActions
@@ -102,13 +105,10 @@ fun CheckoutScreen(
     vm: CheckoutViewModel = checkoutViewModel(kind),
 ) {
     val tokens by vm.tokens.collectAsStateWithLifecycle()
-    var tokenStep by remember { mutableStateOf(TokenStep.NONE) }
-    if (tokenStep == TokenStep.APPROVE) {
-        return ManagerApproval(onApprove = { tokenStep = TokenStep.CHOOSE }, onCancel = { tokenStep = TokenStep.NONE })
-    }
-    TokenSteps(tokenStep, tokens, onStep = { tokenStep = it }) { card ->
-        tokenStep = TokenStep.NONE
-        if (vm.chargeToken(card)) navigator.replace(Route.TokenCharge)
+    var choosingToken by remember { mutableStateOf(false) }
+    TokenChoice(choosingToken, tokens, onDismiss = { choosingToken = false }) { card ->
+        choosingToken = false
+        if (vm.chargeToken(card)) navigator.replace(Route.Payment(SaleKind.SALE))
     }
     val state by vm.state.collectAsStateWithLifecycle()
     CheckoutContent(
@@ -117,7 +117,7 @@ fun CheckoutScreen(
         kind = kind,
         actions = CheckoutCallbacks(vm::pay, vm::scanWallet, vm::sendLink, vm::update),
         tokens = tokens.isNotEmpty(),
-        onChargeToken = { tokenStep = if (state.tokenChargeNeedsNoTipConfirmation) TokenStep.CONFIRM_NO_TIP else TokenStep.APPROVE },
+        onChooseToken = { choosingToken = true },
         modifier = modifier,
     )
 }
@@ -133,7 +133,28 @@ private class CheckoutCallbacks(
     val update: ((CheckoutForm) -> CheckoutForm) -> Unit,
 )
 
-/** The checkout itself: its details, the payment actions and their confirmations and approvals. */
+/** The steps of a tender's ceremony ([Checkout.ceremony]), in the order the checkout shows the ones it needs. */
+private enum class CeremonyStep {
+    /** Confirm what the tender drops: the tip or the donation invitation. */
+    DROPS,
+
+    /** Confirm the MOTO/MKE fraud and liability warning. */
+    SPECIAL_ENTRY,
+
+    /** Manager approval, in place of the screen. */
+    APPROVAL,
+    ;
+
+    /** Whether [ceremony] needs this step. */
+    fun needed(ceremony: TenderCeremony): Boolean =
+        when (this) {
+            DROPS -> ceremony.drops.isNotEmpty()
+            SPECIAL_ENTRY -> ceremony.specialEntryWarning
+            APPROVAL -> ceremony.managerApproval
+        }
+}
+
+/** The checkout itself: its details and the payment actions, each preceded by the steps its tender's ceremony needs. */
 @Composable
 private fun CheckoutContent(
     state: Checkout,
@@ -141,43 +162,38 @@ private fun CheckoutContent(
     kind: SaleKind,
     actions: CheckoutCallbacks,
     tokens: Boolean,
-    onChargeToken: () -> Unit,
+    onChooseToken: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val money = rememberMoneyFormatter(state.currency)
-    var confirmLink by remember { mutableStateOf(false) }
-    var confirmWallet by remember { mutableStateOf(false) }
-    var confirmSpecialEntry by remember { mutableStateOf(false) }
-    var approveSpecialEntry by remember { mutableStateOf(false) }
-    if (approveSpecialEntry) {
-        return ManagerApproval(
-            onApprove = {
-                approveSpecialEntry = false
-                if (actions.pay()) navigator.replace(Route.Payment(kind))
-            },
-            onCancel = { approveSpecialEntry = false },
-        )
+    var step by remember { mutableStateOf<Pair<Tender, CeremonyStep>?>(null) }
+
+    fun start(tender: Tender) {
+        step = null
+        when (tender) {
+            Tender.TERMINAL -> if (actions.pay()) navigator.replace(Route.Payment(kind))
+            Tender.LINK -> actions.sendLink()?.let { navigator.replace(Route.PaymentLink(it, fresh = true)) }
+            Tender.WALLET -> if (actions.scanWallet()) navigator.replace(Route.WalletScan)
+            Tender.TOKEN -> onChooseToken()
+        }
     }
-    SpecialEntryConfirmation(confirmSpecialEntry, state.effectiveCardEntry, onConfirm = {
-        confirmSpecialEntry = false
-        approveSpecialEntry = true
-    }, onDismiss = { confirmSpecialEntry = false })
-    val scanWallet = {
-        if (actions.scanWallet()) navigator.replace(Route.WalletScan)
-        Unit
+
+    // Shows the next step [tender]'s ceremony needs after [done], or starts it once none is left.
+    fun advance(
+        tender: Tender,
+        done: CeremonyStep? = null,
+    ) {
+        val ceremony = state.ceremony(tender)
+        val next = CeremonyStep.entries.firstOrNull { (done == null || it > done) && it.needed(ceremony) }
+        if (next == null) start(tender) else step = tender to next
     }
-    WalletTipConfirmation(confirmWallet, onConfirm = {
-        confirmWallet = false
-        scanWallet()
-    }, onDismiss = { confirmWallet = false })
-    val createLink = {
-        actions.sendLink()?.let { navigator.replace(Route.PaymentLink(it, fresh = true)) }
-        Unit
+    val current = step
+    if (current?.second == CeremonyStep.APPROVAL) {
+        return ManagerApproval(onApprove = { start(current.first) }, onCancel = { step = null })
     }
-    LinkTipConfirmation(confirmLink, onConfirm = {
-        confirmLink = false
-        createLink()
-    }, onDismiss = { confirmLink = false })
+    current?.let { (tender, shown) ->
+        CeremonyDialog(tender, shown, state, onConfirm = { advance(tender, shown) }, onDismiss = { step = null })
+    }
 
     MiniScaffold(
         title = stringResource(R.string.checkout_title),
@@ -187,17 +203,11 @@ private fun CheckoutContent(
             CheckoutActions(
                 state,
                 money,
-                onPay = {
-                    if (state.requiresSpecialEntryApproval) {
-                        confirmSpecialEntry = true
-                    } else if (actions.pay()) {
-                        navigator.replace(Route.Payment(kind))
-                    }
-                },
-                onSendLink = { if (state.tipOnReceipt || state.askGratuity) confirmLink = true else createLink() },
-                onScanWallet = { if (state.tipOnReceipt || state.askGratuity) confirmWallet = true else scanWallet() },
+                onPay = { advance(Tender.TERMINAL) },
+                onSendLink = { advance(Tender.LINK) },
+                onScanWallet = { advance(Tender.WALLET) },
                 tokens = tokens,
-                onChargeToken = onChargeToken,
+                onChargeToken = { advance(Tender.TOKEN) },
             )
         },
     ) { padding ->
@@ -205,39 +215,94 @@ private fun CheckoutContent(
     }
 }
 
+/** The confirmation of [step] before paying with [tender]: what it drops, or the special card-entry warning. */
 @Composable
-private fun WalletTipConfirmation(
-    visible: Boolean,
+private fun CeremonyDialog(
+    tender: Tender,
+    step: CeremonyStep,
+    state: Checkout,
     onConfirm: () -> Unit,
     onDismiss: () -> Unit,
 ) {
-    if (visible) {
-        ConfirmDialog(
-            title = stringResource(R.string.checkout_scan_wallet),
-            message = stringResource(R.string.wallet_without_tip),
-            confirmLabel = stringResource(R.string.checkout_scan_wallet),
-            onConfirm = onConfirm,
-            onDismiss = onDismiss,
-        )
+    when (step) {
+        CeremonyStep.DROPS -> {
+            val label = stringResource(tender.label())
+            ConfirmDialog(
+                title = label,
+                message = stringResource(dropsMessage(tender, state.ceremony(tender).drops)),
+                confirmLabel = label,
+                onConfirm = onConfirm,
+                onDismiss = onDismiss,
+            )
+        }
+
+        CeremonyStep.SPECIAL_ENTRY -> {
+            val label =
+                stringResource(
+                    if (state.effectiveCardEntry ==
+                        CardEntryOverride.MOTO
+                    ) {
+                        R.string.checkout_moto
+                    } else {
+                        R.string.checkout_mke
+                    },
+                )
+            ConfirmDialog(
+                title = label,
+                message = stringResource(R.string.checkout_special_entry_warning),
+                confirmLabel = label,
+                onConfirm = onConfirm,
+                onDismiss = onDismiss,
+            )
+        }
+
+        // Approval is shown in place of the screen.
+        CeremonyStep.APPROVAL -> {}
     }
 }
 
-@Composable
-private fun SpecialEntryConfirmation(
-    visible: Boolean,
-    mode: CardEntryOverride,
-    onConfirm: () -> Unit,
-    onDismiss: () -> Unit,
-) {
-    if (visible) {
-        val label = stringResource(if (mode == CardEntryOverride.MOTO) R.string.checkout_moto else R.string.checkout_mke)
-        ConfirmDialog(
-            title = label,
-            message = stringResource(R.string.checkout_special_entry_warning),
-            confirmLabel = label,
-            onConfirm = onConfirm,
-            onDismiss = onDismiss,
-        )
+/** The action that pays with this tender, as its button names it. */
+@StringRes
+private fun Tender.label(): Int =
+    when (this) {
+        Tender.TERMINAL -> R.string.checkout_title
+        Tender.LINK -> R.string.checkout_send_link
+        Tender.WALLET -> R.string.checkout_scan_wallet
+        Tender.TOKEN -> R.string.checkout_charge_token
+    }
+
+/** What paying with [tender] leaves out of the sale, [drops], as the operator confirms it. */
+@StringRes
+private fun dropsMessage(
+    tender: Tender,
+    drops: Set<DroppedOption>,
+): Int {
+    val tip = DroppedOption.TIP in drops
+    val donation = DroppedOption.DONATION in drops
+    return when (tender) {
+        Tender.LINK -> {
+            when {
+                tip && donation -> R.string.checkout_link_without_tip_or_donation
+                tip -> R.string.checkout_link_without_tip
+                else -> R.string.checkout_link_without_donation
+            }
+        }
+
+        Tender.WALLET -> {
+            when {
+                tip && donation -> R.string.wallet_without_tip_or_donation
+                tip -> R.string.wallet_without_tip
+                else -> R.string.wallet_without_donation
+            }
+        }
+
+        Tender.TOKEN, Tender.TERMINAL -> {
+            when {
+                tip && donation -> R.string.checkout_token_without_tip_or_donation
+                tip -> R.string.checkout_token_without_tip
+                else -> R.string.checkout_token_without_donation
+            }
+        }
     }
 }
 
@@ -273,23 +338,6 @@ private fun CheckoutDetails(
             CheckoutFields(state, onUpdate)
             CheckoutSwitches(state, onUpdate)
         }
-    }
-}
-
-@Composable
-private fun LinkTipConfirmation(
-    visible: Boolean,
-    onConfirm: () -> Unit,
-    onDismiss: () -> Unit,
-) {
-    if (visible) {
-        ConfirmDialog(
-            title = stringResource(R.string.checkout_send_link),
-            message = stringResource(R.string.checkout_link_without_tip),
-            confirmLabel = stringResource(R.string.checkout_send_link),
-            onConfirm = onConfirm,
-            onDismiss = onDismiss,
-        )
     }
 }
 
@@ -366,58 +414,36 @@ private fun TokenCheckoutButton(
     modifier = Modifier.testTag("chargeToken"),
 )
 
-/** Where charging a saved token from checkout stands: nothing, confirming no tip, Manager approval, choosing a token. */
-private enum class TokenStep { NONE, CONFIRM_NO_TIP, APPROVE, CHOOSE }
-
-/**
- * The confirmation that a token charge takes no tip ([TokenStep.CONFIRM_NO_TIP]) and the choice of one of [tokens]
- * ([TokenStep.CHOOSE]); Manager approval comes between them, from the screen.
- */
+/** The choice of one of [tokens] to charge, once [visible]: after the ceremony, the chosen card is charged. */
 @Composable
-private fun TokenSteps(
-    step: TokenStep,
+private fun TokenChoice(
+    visible: Boolean,
     tokens: List<StoredCard>,
-    onStep: (TokenStep) -> Unit,
+    onDismiss: () -> Unit,
     onChoose: (StoredCard) -> Unit,
 ) {
-    when (step) {
-        TokenStep.CONFIRM_NO_TIP -> {
-            ConfirmDialog(
-                title = stringResource(R.string.checkout_charge_token),
-                message = stringResource(R.string.checkout_token_without_tip),
-                confirmLabel = stringResource(R.string.checkout_charge_token),
-                onConfirm = { onStep(TokenStep.APPROVE) },
-                onDismiss = { onStep(TokenStep.NONE) },
-            )
-        }
-
-        TokenStep.CHOOSE -> {
-            AlertDialog(
-                onDismissRequest = { onStep(TokenStep.NONE) },
-                title = { Text(stringResource(R.string.checkout_choose_token)) },
-                text = {
-                    Column(Modifier.verticalScroll(rememberScrollState())) {
-                        tokens.forEach { card ->
-                            ListItem(
-                                headlineContent = { Text(cardLabel(card.id, card.brand, card.lastFour)) },
-                                supportingContent =
-                                    card.expiryMonth?.let { month ->
-                                        card.expiryYear?.let { year -> { Text(stringResource(R.string.saved_card_expires, month, year)) } }
-                                    },
-                                leadingContent = { Icon(Icons.Default.CreditCard, contentDescription = null) },
-                                modifier = Modifier.clickable { onChoose(card) }.testTag("token_${card.id}"),
-                            )
-                        }
-                    }
-                },
-                confirmButton = {},
-                dismissButton = { TextButton(onClick = { onStep(TokenStep.NONE) }) { Text(stringResource(R.string.action_cancel)) } },
-            )
-        }
-
-        // Approval is shown in place of the screen.
-        TokenStep.NONE, TokenStep.APPROVE -> {}
-    }
+    if (!visible) return
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.checkout_choose_token)) },
+        text = {
+            Column(Modifier.verticalScroll(rememberScrollState())) {
+                tokens.forEach { card ->
+                    ListItem(
+                        headlineContent = { Text(cardLabel(card.id, card.brand, card.lastFour)) },
+                        supportingContent =
+                            card.expiryMonth?.let { month ->
+                                card.expiryYear?.let { year -> { Text(stringResource(R.string.saved_card_expires, month, year)) } }
+                            },
+                        leadingContent = { Icon(Icons.Default.CreditCard, contentDescription = null) },
+                        modifier = Modifier.clickable { onChoose(card) }.testTag("token_${card.id}"),
+                    )
+                }
+            }
+        },
+        confirmButton = {},
+        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) } },
+    )
 }
 
 @Composable
@@ -624,9 +650,11 @@ private fun checkoutViewModel(kind: SaleKind): CheckoutViewModel {
 }
 
 /**
- * Waits while the shopper pays on the terminal (whose own payment screen usually covers this one), then opens the
- * result. The cancel button, and Back, ask the terminal to cancel the payment once it has been sent. [kind] says
- * which cart is being paid.
+ * Waits while a payment of [kind] runs, whichever way it is sent
+ * ([paymentProgress][app.minimpos.app.payment.FinancialOperations.paymentProgress]): on the
+ * terminal, whose own payment screen usually covers this one, or as a saved-card charge from checkout. Then opens the
+ * result. The amount is what the payment requests, so collecting a remaining balance shows the balance. The cancel
+ * button, and Back, ask the terminal to cancel a terminal payment once it has been sent; a charge cannot be stopped.
  */
 @Composable
 fun PaymentScreen(
@@ -634,13 +662,8 @@ fun PaymentScreen(
     kind: SaleKind,
     modifier: Modifier = Modifier,
 ) {
-    val container = LocalAppContainer.current
-    val state by container.payments.state.collectAsStateWithLifecycle()
-    val cart by container.session(kind).cart.collectAsStateWithLifecycle()
-    val settings by container.settingsState.collectAsStateWithLifecycle()
-    val money = rememberMoneyFormatter(container.currency(settings))
-    // The session is cleared as soon as the payment is approved, so the amount shown is the one the payment started with.
-    val paying = rememberSaveable { cart.totals(settings.payment.taxMode, settings.payment.chargeTax).amounts.gross }
+    val operations = LocalAppContainer.current.operations
+    val state by operations.paymentProgress.collectAsStateWithLifecycle(initialValue = operations.currentPayment)
 
     LaunchedEffect(state) {
         when (val current = state) {
@@ -649,21 +672,31 @@ fun PaymentScreen(
             is TransactionState.Processing -> Unit
         }
     }
-    BackHandler(enabled = state is TransactionState.Processing) { container.payments.cancel() }
+    BackHandler(enabled = state is TransactionState.Processing) { operations.cancelPayment() }
 
     val processing = state as? TransactionState.Processing
-    MiniScaffold(title = stringResource(R.string.payment_title), onBack = null, modifier = modifier) { padding ->
+    val title = if (processing?.onTerminal == false) R.string.checkout_charge_token else R.string.payment_title
+    MiniScaffold(title = stringResource(title), onBack = null, modifier = modifier) { padding ->
         ProcessingContent(
-            amount = money.format(paying),
-            message = stringResource(if (processing?.cancelling == true) R.string.payment_cancelling else R.string.payment_follow_terminal),
-            modifier = Modifier.padding(padding),
+            amount = processing?.amount?.let { rememberMoneyFormatter(it.currency).format(it.amountMinor) },
+            message =
+                stringResource(
+                    when {
+                        processing?.onTerminal == false -> R.string.saved_card_charging
+                        processing?.cancelling == true -> R.string.payment_cancelling
+                        else -> R.string.payment_follow_terminal
+                    },
+                ),
+            modifier = Modifier.padding(padding).testTag(if (processing?.onTerminal == false) "tokenCharging" else "paymentWaiting"),
         ) {
-            SecondaryButton(
-                text = stringResource(R.string.action_cancel),
-                onClick = container.payments::cancel,
-                enabled = processing?.canCancel == true && !processing.cancelling,
-                modifier = Modifier.widthIn(max = 320.dp).testTag("cancelPayment"),
-            )
+            if (processing?.onTerminal != false) {
+                SecondaryButton(
+                    text = stringResource(R.string.action_cancel),
+                    onClick = operations::cancelPayment,
+                    enabled = processing?.canCancel == true && !processing.cancelling,
+                    modifier = Modifier.widthIn(max = 320.dp).testTag("cancelPayment"),
+                )
+            }
         }
     }
 }

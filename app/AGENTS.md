@@ -1,8 +1,8 @@
 # `:app`
 
 Read root `AGENTS.md` for repository constraints. Domain names/owners are in `CONTEXT.md`, code contracts in KDoc.
-Starred rules below are enforced by `ArchitectureTest`, `OwnershipArchitectureTest`, `SettingsArchitectureTest` and
-`PinArchitectureTest`.
+Starred rules below are enforced by `ArchitectureTest`, `OwnershipArchitectureTest`, `DeepeningArchitectureTest`,
+`SettingsArchitectureTest` and `PinArchitectureTest`.
 
 ## Architecture boundaries
 
@@ -45,6 +45,8 @@ Starred rules below are enforced by `ArchitectureTest`, `OwnershipArchitectureTe
   through `TerminalSetupSource`, which automatically completes pending shared-key recovery records in `SharedKeySetup`.
 - \* Only `SharedKeySetup` creates terminal-specific keys at Adyen, after explicit confirmation and encrypted recovery
   persistence. Discovery stays read-only; existing effective keys are reused, never deliberately replaced.
+  Raw `SharedKeySetupOutcome` stays in `terminal`; `SetupDiscovery` owns saved-key persistence through connection
+  verification, using the source's exact-key fence. Settings presents only its completed non-secret reading.
 - \* Setup, receipt, wallet and capability tasks share `TerminalAssignments`, which alone queries `TerminalDetailsApi.terminals`
   and verifies the listing environment while preserving each task's distinct strictness.
   Only `CapabilityDiscovery` reads or updates Management capability settings (`capabilities`, `updateCapabilities`).
@@ -66,20 +68,27 @@ Starred rules below are enforced by `ArchitectureTest`, `OwnershipArchitectureTe
   Checkout refunds and payment-link creations are sent only by `CheckoutBook`s run by `CheckoutOperations`, which
   declines a second link per checkout so screens never guard it. Terminal reconciliation (recheck unresolved, read or
   close totals, compare) is one operation in payment (`TerminalReconciliation`); screens follow its outcome.
+- \* Only `SavedCardLookup` lists and selects saved cards for a charge. It owns reference/model/target freshness and
+  model eligibility; Checkout still validates pure request facts. Charge token retains its explicit lookup across
+  reference/cart/review screens; checkout's automatic lookup stays screen-scoped.
 - \* `TransactionLifecycle` stores only through `TransactionBook`. A stored Busy refusal's ServiceID lives on the
   sale, written and cleared only by `SaleEvent`; the book is its only reader, and the waiting screen asks
   `TransactionState.Processing.canCancel` rather than a ServiceID. Links reach Adyen/store link answers only through
   `PaymentLinks`, which serializes checks/cancellations and obtains eligible `ApiTarget` access. An unknown creation
-  stays unknown when setup is unavailable; a context mismatch must change nothing. `TerminalSetup` decides link offers.
+  stays unknown when setup is unavailable or its context mismatches; a fresh blocked start records known-not-sent.
+  `TerminalSetup` decides link offers.
 - \* Only `share` hands files to other apps; `ShareSheet` exposes one cached image under `shared_files.xml`.
   Screens use `TransactionActions.share` and `ShareEffect`; offer only when `TerminalState.canShare`.
 - \* Financial screens initiate refunds/cancellations through `StoredPaymentActions`, not pure request construction.
   It owns reference facts and busy-start handling; eligibility, foreign-receipt review and financial rechecks stay with
-  their existing owners.
+  their existing owners. `Captures` owns cancellation protection from committed request through stored answer;
+  capture and tip screens never provide that protection themselves.
 - \* Screens access receipts through `TransactionActions`, backed by `ReceiptDelivery` for `StoredTransaction`.
   Only delivery uses `ReceiptFactory`; only the container arms automatic delivery, and whichever screen opens first for
   an armed transaction claims it — callers pass no "first screen" flag of their own. UI state outside Settings must
-  not hold `AppSettings` or `printerAvailable`.
+  not hold `AppSettings` or `printerAvailable`. Only `TransactionActions` claims automatic delivery; only
+  `ReceiptDelivery` publishes its progress and dispatches it in the application scope. Manual printing stays
+  screen-scoped; automatic attempts are not retried after an uncertain send or process death.
 - \* Outcomes/failures/setup problems/stored reasons are worded only in `OutcomeMessages.kt`; screens carry a
   `Failure` whole. Tests assert typed outcomes. Store app reasons as `StoredReason`, external messages verbatim; use
   `outcomeNote`/`modificationNote` at presentation. Never read exception messages (only `SmtpMailer.kt` keeps the
@@ -116,7 +125,8 @@ Starred rules below are enforced by `ArchitectureTest`, `OwnershipArchitectureTe
 
 ## Non-obvious implementation constraints
 
-- Screen writes use `launchWrite`/`persisting`, not a bare `viewModelScope.launch`, so navigation cannot drop them.
+- Screen writes use `launchWrite`/`persisting`, except captures whose module owns their execution lifetime, so
+  navigation cannot drop them.
   Never put suspending side effects in `MutableStateFlow.update`.
 - detekt does not run compiler plugins: use `serializer<T>()`, not `T.serializer()`.
 - Compose uses `LocalDimens` tiers and shared components. Primary actions stay in `MiniScaffold`'s `BottomActions`;

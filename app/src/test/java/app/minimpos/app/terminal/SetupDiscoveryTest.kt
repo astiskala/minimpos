@@ -1,12 +1,15 @@
 package app.minimpos.app.terminal
 
 import app.minimpos.app.FakeDevice
+import app.minimpos.app.FakeTerminal
 import app.minimpos.app.TestEnvironment
 import app.minimpos.app.await
+import app.minimpos.app.closeViewModels
 import app.minimpos.app.data.db.Failure
 import app.minimpos.app.data.db.SetupProblem
 import app.minimpos.app.data.security.Secret
 import app.minimpos.app.data.settings.TerminalMode
+import app.minimpos.app.feature.settings.TerminalSetupViewModel
 import app.minimpos.terminal.transport.ApiKey
 import app.minimpos.terminal.transport.DiscoveredKey
 import app.minimpos.terminal.transport.Fault
@@ -16,6 +19,15 @@ import app.minimpos.terminal.transport.TerminalDetailsApi
 import app.minimpos.terminal.transport.TerminalEnvironment
 import app.minimpos.terminal.transport.TerminalListing
 import com.google.common.truth.Truth.assertThat
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.test.UnconfinedTestDispatcher
+import kotlinx.coroutines.test.resetMain
+import kotlinx.coroutines.test.setMain
+import kotlinx.coroutines.withContext
 import org.junit.After
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -55,7 +67,7 @@ class SetupDiscoveryTest {
                 environment: TerminalEnvironment,
             ): SharedKeyLookup = sharedKey?.let(SharedKeyLookup::Found) ?: keyUnavailable
         }
-    private var env = TestEnvironment(terminalDetails = api)
+    private var env = TestEnvironment(terminal = FakeTerminal(" secret passphrase "), terminalDetails = api)
     private val container get() = env.container
 
     private fun ready(mode: TerminalMode = TerminalMode.TERMINAL) {
@@ -65,6 +77,98 @@ class SetupDiscoveryTest {
 
     @After
     fun tearDown() = env.close()
+
+    @Test
+    fun `saved shared key setup verifies the connection before returning`() {
+        ready()
+        await { container.setupDiscovery.find() }
+        await { container.setupDiscovery.choose("S1F2-123456789") }
+        await { container.setupDiscovery.setupKey() }
+        assertThat(await { container.settings.current() }.verifiedSetup).isNotNull()
+    }
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    @Test
+    fun `configured key refreshes editors only after the settings echo even when verification fails`() {
+        ready()
+        await { container.setupDiscovery.find() }
+        await { container.setupDiscovery.choose("S1F2-123456789") }
+        val shown = MutableStateFlow(await { container.settings.current() }.terminal)
+        Dispatchers.setMain(UnconfinedTestDispatcher())
+        val vm =
+            TerminalSetupViewModel(
+                container.secrets,
+                container.terminalStatus,
+                container.tapToPay,
+                container.setupDiscovery,
+                container.settings,
+                observedTerminal = shown,
+            )
+        try {
+            sharedKey = DiscoveredKey("next-key", 3, "next-passphrase")
+            vm.checkSharedKey()
+            val configured = await { container.settings.settings.first { it.terminal.keyIdentifier == "next-key" } }.terminal
+            await { container.terminalStatus.state.first { it.connection is TerminalConnection.Failed } }
+            assertThat(vm.actions.value.keyResult.running).isTrue()
+            assertThat(vm.actions.value.revision).isEqualTo(0)
+            shown.value = configured
+            val completed = await { vm.actions.first { !it.keyResult.running } }
+            assertThat(completed.keyResult.isError).isTrue()
+            assertThat(completed.revision).isEqualTo(1)
+        } finally {
+            shown.value = await { withContext(NonCancellable) { container.settings.current().terminal } }
+            closeViewModels(listOf(vm))
+            Dispatchers.resetMain()
+        }
+    }
+
+    @Test
+    fun `setup changing during passphrase persistence refuses completion and skips verification`() {
+        ready()
+        await { container.setupDiscovery.find() }
+        await { container.setupDiscovery.choose("S1F2-123456789") }
+        sharedKey = DiscoveredKey("new-key", 3, "new-passphrase")
+        var verified = false
+        val discovery =
+            SetupDiscovery(
+                container.terminalSetup,
+                {
+                    container.secrets.set(Secret.TERMINAL_PASSPHRASE, it)
+                    container.settings.update { saved -> saved.copy(terminal = saved.terminal.copy(host = "192.0.2.20")) }
+                },
+                { api },
+                sharedKeys = SharedKeySetup(container.terminalSetup, { api }, { ApiCheck.Works }, { false }),
+                verifyConnection = {
+                    verified = true
+                    container.terminalStatus.check()
+                },
+            )
+        assertThat(await { discovery.setupKey() })
+            .isEqualTo(SharedKeyConnection.Failed(Failure.NotSetUp(SetupProblem.SETUP_CHANGED)))
+        assertThat(verified).isFalse()
+        val saved = await { container.settings.current() }.terminal
+        assertThat(saved.host).isEqualTo("192.0.2.20")
+        assertThat(saved.keyIdentifier).isEqualTo("key")
+    }
+
+    @Test
+    fun `discovery cannot report completion after its fenced field write was rejected`() {
+        ready()
+        val discovery =
+            SetupDiscovery(
+                container.terminalSetup,
+                {
+                    container.secrets.set(Secret.TERMINAL_PASSPHRASE, it)
+                    container.settings.update { saved -> saved.copy(terminal = saved.terminal.copy(host = "192.0.2.20")) }
+                },
+                { api },
+                sharedKeys = SharedKeySetup(container.terminalSetup, { api }, { ApiCheck.Works }, { false }),
+                verifyConnection = container.terminalStatus::check,
+            )
+        await { discovery.find() }
+        assertThat(await { discovery.choose("S1F2-123456789") }).isEqualTo(SetupDiscoveryChoice.Ignored)
+        assertThat(await { container.settings.current() }.terminal.poiIdOverride).isEmpty()
+    }
 
     @Test
     fun `discovery never guesses an unknown environment and uses the merchant's choice`() {

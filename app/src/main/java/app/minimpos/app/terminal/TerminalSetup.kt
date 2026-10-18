@@ -11,6 +11,7 @@ import app.minimpos.app.data.settings.SettingsRepository
 import app.minimpos.app.data.settings.TerminalMode
 import app.minimpos.app.data.settings.TerminalSettings
 import app.minimpos.core.payment.PaymentContext
+import app.minimpos.terminal.transport.DiscoveredKey
 import app.minimpos.terminal.transport.TerminalEnvironment
 import app.minimpos.terminal.transport.TerminalKey
 import kotlinx.coroutines.flow.Flow
@@ -511,6 +512,15 @@ class TerminalSetupSource(
                 if (applied) transform(it) else it
             }
             return applied
+        }
+
+        /** Strong fence for the exact [key] just saved by this work; null if its fields, passphrase or original credential changed. */
+        internal suspend fun withSharedKey(key: DiscoveredKey): SetupFence? {
+            val actual = unlocked(forValidation = true)
+            val expected = origin.settings.terminal.copy(keyIdentifier = key.identifier, keyVersion = key.version)
+            if (actual.setup.settings.terminal != expected || actual.apiKey != apiKey) return null
+            if (actual.terminalKey != TerminalKey(key.identifier.trim(), key.passphrase, key.version)) return null
+            return SetupFence(actual, SetupFreshness.SECRETS)
         }
 
         private fun UnlockedSetup.began() = setup.settings.terminal == origin.settings.terminal

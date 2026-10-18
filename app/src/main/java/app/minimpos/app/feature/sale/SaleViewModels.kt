@@ -21,7 +21,6 @@ import app.minimpos.app.history.StoredPayments
 import app.minimpos.app.history.awaitsLinkPayment
 import app.minimpos.app.history.decline
 import app.minimpos.app.history.simulatedLink
-import app.minimpos.app.payment.CardLookup
 import app.minimpos.app.payment.Checkout
 import app.minimpos.app.payment.CheckoutForm
 import app.minimpos.app.payment.FinancialOperations
@@ -237,8 +236,8 @@ class CheckoutViewModel(
     private val zone: () -> ZoneId = { ZoneId.systemDefault() },
     private val walletPayments: WalletPayments? = null,
     discovery: WalletDiscovery? = null,
-    private val charges: SavedCardCharges? = null,
-    private val lookupDelay: Duration = 700.milliseconds,
+    charges: SavedCardCharges? = null,
+    lookupDelay: Duration = 700.milliseconds,
 ) : ViewModel() {
     private val checkout =
         session.checkout(
@@ -257,33 +256,15 @@ class CheckoutViewModel(
      * background once the reference stops changing; empty while there is none, the lookup fails or runs, or the sale
      * cannot be charged to a token (a pre-authorisation, or no Checkout API). A lookup changes nothing.
      */
-    val tokens: StateFlow<List<StoredCard>>
-        field = MutableStateFlow(emptyList())
+    private val cardLookup = charges?.lookup(viewModelScope, checkout, terminal, lookupDelay)
 
-    init {
-        charges?.let { lookups ->
-            viewModelScope.launch {
-                state
-                    .map { tokenLookup(it) }
-                    .distinctUntilChanged()
-                    .collectLatest { lookup ->
-                        tokens.value = emptyList()
-                        if (lookup == null) return@collectLatest
-                        delay(lookupDelay)
-                        val found = lookups.cards(lookup.first) as? CardLookup.Listed ?: return@collectLatest
-                        tokens.value = found.cards.filter { it.supports(lookup.second) }
-                    }
-            }
-        }
-    }
-
-    /** The shopper reference and recurring model to look tokens up for in [checkout]; null when none can be charged. */
-    private fun tokenLookup(checkout: Checkout): Pair<String, String>? {
-        val reference = checkout.shopperReference ?: return null
-        val payment = checkout.payment
-        if (checkout.preAuthorisation || SavedCardCharges.blocked(payment.shopperReferenceSource, terminal.value) != null) return null
-        return reference to payment.recurringModel().value
-    }
+    /** Current chargeable cards; freshness and recurring-model eligibility belong to the saved-card lookup. */
+    val tokens: StateFlow<List<StoredCard>> =
+        cardLookup
+            ?.state
+            ?.map { it.eligible }
+            ?.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
+            ?: MutableStateFlow(emptyList())
 
     /** Updates the form (kept in the [SaleSession] so it survives going back to the cart). */
     fun update(transform: (CheckoutForm) -> CheckoutForm) = session.updateForm(transform)
@@ -303,10 +284,10 @@ class CheckoutViewModel(
      * or another charge is running.
      */
     fun chargeToken(card: StoredCard): Boolean {
-        val charges = charges ?: return false
+        val lookup = cardLookup ?: return false
         if (card !in tokens.value) return false
         val start = session.savedCardStart(state.value, card, clock.instant(), zone(), fromCheckout = true) ?: return false
-        return charges.start(start) != null
+        return lookup.start(start) != null
     }
 
     /**

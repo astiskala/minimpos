@@ -327,7 +327,8 @@ class SaleDetailViewModel(
         val sale = state.value.record?.sale ?: return
         if (local.value.retry.running) return
         local.update { it.copy(retry = ActionState(running = true)) }
-        launchWrite({ operations.retryCapture(saleId) }) { result ->
+        viewModelScope.launch {
+            val result = operations.retryCapture(saleId)
             local.update { it.copy(retry = result.toState(CaptureStep.CAPTURE, sale.capturedMinor ?: 0, sale.currency)) }
         }
     }

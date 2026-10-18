@@ -10,6 +10,7 @@ import app.minimpos.app.data.security.Secret
 import app.minimpos.app.data.security.SecretStoreException
 import app.minimpos.app.data.security.SharedKeyGenerator
 import app.minimpos.app.data.settings.TerminalMode
+import app.minimpos.terminal.client.DiagnosisResult
 import app.minimpos.terminal.transport.ApiKey
 import app.minimpos.terminal.transport.DiscoveredKey
 import app.minimpos.terminal.transport.Fault
@@ -185,6 +186,56 @@ class SharedKeySetupTest {
         val result = await { restarted.resolve(unlocked(), restarted.pendingOffer(unlocked())) } as SharedKeySetupOutcome.Ready
         assertThat(result.pending).isTrue()
         assertThat(requested).hasSize(1)
+    }
+
+    @Test
+    fun `saved setup retains a created key until verification and checking again never creates twice`() {
+        val verifiedSource =
+            TerminalSetupSource(
+                env.container.settings,
+                env.container.secrets,
+                FakeDevice(),
+                onVerified = { owner().complete(it) },
+            )
+        val shared = SharedKeySetup(verifiedSource, { details }, { ApiCheck.Works }, { false })
+        var online = false
+        val discovery =
+            SetupDiscovery(
+                verifiedSource,
+                { env.container.secrets.set(Secret.TERMINAL_PASSPHRASE, it) },
+                { details },
+                sharedKeys = shared,
+                verifyConnection = {
+                    if (online) {
+                        verifiedSource.rememberVerified(verifiedSource.unlocked(forValidation = true))
+                        TerminalConnection.Connected(DiagnosisResult(true, null))
+                    } else {
+                        TerminalConnection.NotSetUp(SetupProblem.KEY_CONNECTION_PENDING)
+                    }
+                },
+            )
+        val confirmation = await { discovery.setupKey() } as SharedKeyConnection.Confirmation
+        val pending = await { discovery.setupKey(confirmation.offer) } as SharedKeyConnection.Failed
+        assertThat(pending.pending).isTrue()
+        assertThat(pending.configured).isTrue()
+        assertThat(pending.failure).isEqualTo(Failure.NotSetUp(SetupProblem.KEY_CONNECTION_PENDING))
+        assertThat(
+            await {
+                env.container.secrets
+                    .hasJournal(RecoveryJournal.KEY_CREATION)
+                    .first()
+            },
+        ).isTrue()
+        online = true
+        assertThat(await { discovery.setupKey() }).isEqualTo(SharedKeyConnection.Connected)
+        assertThat(requested).hasSize(1)
+        assertThat(
+            await {
+                env.container.secrets
+                    .hasJournal(RecoveryJournal.KEY_CREATION)
+                    .first()
+            },
+        ).isFalse()
     }
 
     @Test

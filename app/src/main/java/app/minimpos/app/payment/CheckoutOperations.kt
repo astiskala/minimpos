@@ -181,9 +181,9 @@ class CheckoutOperations<R, C>(
             when (val access = book.access(target(), record.context)) {
                 is ApiAccess.Ready -> access.client
 
-                // Nothing was sent; only an operation never sent before is known not to have happened, and a different
-                // payment context must change nothing.
-                is ApiAccess.Blocked -> return notSent(id, record.pending && access is ApiAccess.Unavailable, access.problem)
+                // A fresh pending request is known not sent, including after its selected context changed. An unknown
+                // operation may already have happened, so missing setup or a different context must leave it unchanged.
+                is ApiAccess.Blocked -> return notSent(id, record.pending, access.problem)
             }
         return when (val answer = book.send(id, client, clock.millis())) {
             is CheckoutAnswer.Unconfirmed -> {

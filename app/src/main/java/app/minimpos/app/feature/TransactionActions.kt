@@ -1,6 +1,7 @@
 package app.minimpos.app.feature
 
 import app.minimpos.app.data.db.Failure
+import app.minimpos.app.payment.AutoDelivery
 import app.minimpos.app.payment.CaptureResult
 import app.minimpos.app.payment.FinancialOperations
 import app.minimpos.app.payment.ReceiptDelivery
@@ -260,8 +261,9 @@ data class TransactionActionsState(
  * automatically. A [fresh] screen, on the result just after the transaction, alone widens which email actions it
  * offers.
  *
- * A view model makes one with its `viewModelScope`; prints and status checks stop when the screen closes, but an email
- * always finishes (`persisting`), since a sent sale receipt records the address on the sale.
+ * A view model makes one with its `viewModelScope`; manual prints and status checks stop when the screen closes, but a
+ * manual email always finishes (`persisting`), since a sent sale receipt records the address on the sale. Automatic
+ * delivery belongs to the receipt module's application scope, so closing the claiming screen cannot abandon it.
  */
 class TransactionActions private constructor(
     private val scope: CoroutineScope,
@@ -296,9 +298,23 @@ class TransactionActions private constructor(
         // Whichever screen is opened first claims the transaction's one automatic delivery, fresh or not.
         scope.launch {
             offer.first { it.receipt != null }
-            val automatic = receipts.automation(transaction)
-            if (automatic.print) print()
-            automatic.emailTo?.let(::email)
+            var previous = AutoDelivery()
+            receipts.automation(transaction).collect { automatic ->
+                if (automatic.printing != previous.printing || automatic.printed != previous.printed) {
+                    val printed = automatic.printed
+                    state.update {
+                        it.copy(
+                            print = printed?.result?.toState(ActionOutcome.Printed) ?: ActionState(running = automatic.printing),
+                            merchantCopyPending = printed?.merchantCopyDue == true,
+                        )
+                    }
+                }
+                if (automatic.emailing != previous.emailing || automatic.emailed != previous.emailed) {
+                    val emailed = automatic.emailed?.toState(ActionOutcome.Emailed(checkNotNull(automatic.emailTo)))
+                    state.update { it.copy(email = emailed ?: ActionState(running = automatic.emailing)) }
+                }
+                previous = automatic
+            }
         }
     }
 

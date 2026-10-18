@@ -29,6 +29,7 @@ import app.minimpos.terminal.checkout.CheckoutApi
 import app.minimpos.terminal.checkout.PaymentModifications
 import app.minimpos.terminal.simulator.SimulatedModifications
 import app.minimpos.terminal.transport.ApiKey
+import app.minimpos.terminal.transport.Delivery
 import app.minimpos.terminal.transport.ExternalText
 import app.minimpos.terminal.transport.Fault
 import app.minimpos.terminal.transport.StoreLookup
@@ -51,7 +52,9 @@ import org.robolectric.RobolectricTestRunner
 @OptIn(ExperimentalCoroutinesApi::class)
 @RunWith(RobolectricTestRunner::class)
 class SettingsViewModelTest {
-    private val env = TestEnvironment()
+    private var terminalFailure: Fault? = null
+    private val testTerminal = FakeTerminal(reply = { terminalFailure?.let { fault -> Delivery.Failed(fault) } })
+    private val env = TestEnvironment(terminal = testTerminal)
     private val container = env.container
     private val viewModels = mutableListOf<SettingsViewModel>()
 
@@ -345,11 +348,14 @@ class SettingsViewModelTest {
                     ),
             )
         }
+        testTerminal.passphrase = "secret"
+        val unreachable = Fault.Unreachable("127.0.0.1:8443", terminal = true)
+        terminalFailure = unreachable
         vm.saveAndTest(Secret.TERMINAL_PASSPHRASE)
         assertThat(
             await {
                 vm.actions.first { it.connection.isError && it.connection.outcome is ActionOutcome.ConnectionFailed }
             }.connection.outcome.let { (it as? ActionOutcome.ConnectionFailed)?.failure },
-        ).isEqualTo(Failure.Remote(Fault.Unreachable("127.0.0.1:8443", terminal = true)))
+        ).isEqualTo(Failure.Remote(unreachable))
     }
 }

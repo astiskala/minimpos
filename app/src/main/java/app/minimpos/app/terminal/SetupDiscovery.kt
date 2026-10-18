@@ -71,13 +71,35 @@ sealed interface SetupDiscoveryChoice {
     ) : SetupDiscoveryChoice
 }
 
+/** Completion of saved shared-key setup, including its fenced save and connection verification; never carries secrets. */
+internal sealed interface SharedKeyConnection {
+    /** Whether the exact saved key is now configured, including one whose communication check has not passed yet. */
+    val configured: Boolean get() = false
+
+    data class Confirmation(
+        val offer: SharedKeyOffer,
+    ) : SharedKeyConnection
+
+    data object Connected : SharedKeyConnection {
+        override val configured: Boolean = true
+    }
+
+    data class Failed(
+        val failure: Failure,
+        val offer: SharedKeyOffer? = null,
+        val pending: Boolean = false,
+        override val configured: Boolean = false,
+    ) : SharedKeyConnection
+}
+
 /** Optional setup discovery through Management, independent of payment readiness.
- * @param setups Unlocks the API key through the existing setup boundary, and saves selected connection fields through
+ * @param setups Unlocks the API key through the setup source, and saves selected connection fields through
  *   its [TerminalSetupSource.SetupFence] only while the setup a search began on is still stored.
  * @param savePassphrase Encrypts a retrieved passphrase through the container's secret-store writer.
  * @param connect Builds read-only Management access; tests inject a fake.
  * @param readEnvironment Reads this device's certificate before using Management.
  * @param sharedKeys Owns separately confirmed key creation and encrypted recovery.
+ * @param verifyConnection Checks saved setup and records its verified identity through TerminalStatus.
  */
 class SetupDiscovery(
     private val setups: TerminalSetupSource,
@@ -85,6 +107,7 @@ class SetupDiscovery(
     private val connect: (String) -> SharedKeyApi = { AdyenTerminalDetails(it) },
     private val readEnvironment: suspend () -> Unit = {},
     private val sharedKeys: SharedKeySetup,
+    private val verifyConnection: suspend () -> TerminalConnection,
 ) {
     private var selection: Selection? = null
     private val mutex = Mutex()
@@ -148,7 +171,7 @@ class SetupDiscovery(
             val lookup = if (local) selected.api.sharedKey(terminal.id, selected.environment) else null
             if (!selected.fence.stillCurrent()) return@withLock SetupDiscoveryChoice.Ignored
             val key = (lookup as? SharedKeyLookup.Found)?.key?.takeIf { store(it) }
-            apply(selected, terminal, key)
+            if (!apply(selected, terminal, key)) return@withLock SetupDiscoveryChoice.Ignored
             choiceOutcome(selected, terminal, key, lookup)
         }
 
@@ -169,18 +192,55 @@ class SetupDiscovery(
 
     internal suspend fun pendingKey(): SharedKeyOffer? = sharedKeys.pendingOffer(setups.unlocked(forValidation = true))
 
-    internal suspend fun setupKey(confirmed: SharedKeyOffer? = null): SharedKeySetupOutcome =
+    internal suspend fun setupKey(confirmed: SharedKeyOffer? = null): SharedKeyConnection =
         mutex.withLock {
             val unlocked = setups.unlocked(forValidation = true)
             // The passphrase saved below is part of this work, so only the connection fields and API key must stay.
             val fence = setups.SetupFence(unlocked, SetupFreshness.CREDENTIAL)
             val result = sharedKeys.resolve(unlocked, confirmed, unchanged = fence::stillCurrent)
-            if (result !is SharedKeySetupOutcome.Ready) return@withLock result
-            fence.changed()?.let { return@withLock SharedKeySetupOutcome.Failed(it) }
-            savePassphrase(result.key.passphrase)
-            fence.update { it.copy(terminal = it.terminal.copy(keyIdentifier = result.key.identifier, keyVersion = result.key.version)) }
-            result
+            when (result) {
+                is SharedKeySetupOutcome.Confirmation -> {
+                    SharedKeyConnection.Confirmation(result.offer)
+                }
+
+                is SharedKeySetupOutcome.Failed -> {
+                    val offer = pendingKey()
+                    SharedKeyConnection.Failed(result.failure, offer, pending = offer?.resume == true)
+                }
+
+                is SharedKeySetupOutcome.Ready -> {
+                    connectKey(fence, result)
+                }
+            }
         }
+
+    private suspend fun connectKey(
+        fence: TerminalSetupSource.SetupFence,
+        ready: SharedKeySetupOutcome.Ready,
+    ): SharedKeyConnection {
+        fence.changed()?.let { return SharedKeyConnection.Failed(Failure.NotSetUp(it)) }
+        val committed = saveKey(fence, ready.key)
+        return if (committed == null) {
+            SharedKeyConnection.Failed(Failure.NotSetUp(SetupProblem.SETUP_CHANGED))
+        } else {
+            val connected = verifyConnection() is TerminalConnection.Connected
+            val changed = committed.changed()
+            when {
+                changed != null -> SharedKeyConnection.Failed(Failure.NotSetUp(changed))
+                connected -> SharedKeyConnection.Connected
+                else -> SharedKeyConnection.Failed(Failure.NotSetUp(ready.unverifiedProblem), pending = ready.pending, configured = true)
+            }
+        }
+    }
+
+    private suspend fun saveKey(
+        fence: TerminalSetupSource.SetupFence,
+        key: DiscoveredKey,
+    ): TerminalSetupSource.SetupFence? {
+        savePassphrase(key.passphrase)
+        val applied = fence.update { it.copy(terminal = it.terminal.copy(keyIdentifier = key.identifier, keyVersion = key.version)) }
+        return if (applied) fence.withSharedKey(key) else null
+    }
 
     private suspend fun store(key: DiscoveredKey): Boolean =
         try {
@@ -194,7 +254,7 @@ class SetupDiscovery(
         selected: Selection,
         terminal: TerminalDetails,
         key: DiscoveredKey?,
-    ) {
+    ): Boolean =
         selected.fence.update {
             it.copy(
                 terminal =
@@ -222,7 +282,6 @@ class SetupDiscovery(
                     ),
             )
         }
-    }
 
     private class Selection(
         val fence: TerminalSetupSource.SetupFence,

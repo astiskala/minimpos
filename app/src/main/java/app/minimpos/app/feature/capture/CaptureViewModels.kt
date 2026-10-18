@@ -5,7 +5,6 @@ import androidx.lifecycle.viewModelScope
 import app.minimpos.app.data.db.SaleEntity
 import app.minimpos.app.feature.ActionState
 import app.minimpos.app.feature.CaptureStep
-import app.minimpos.app.feature.launchWrite
 import app.minimpos.app.feature.toState
 import app.minimpos.app.history.PaymentAction
 import app.minimpos.app.history.PaymentStanding
@@ -19,6 +18,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
 
 /** What the operator types on the tip screen: the tip, or the total the customer wrote. */
 enum class TipInput {
@@ -74,7 +74,7 @@ data class TipUiState(
 
 /**
  * Entering the tip written on the receipt of [saleId] and capturing the bill plus the tip (see [Captures.addTip]). The
- * tip is sent with `persisting`, so it finishes even if the screen closes.
+ * capture module finishes a committed operation even if the screen closes.
  *
  * @param saleId The sale awaiting its tip.
  * @param payments Follows it.
@@ -103,7 +103,8 @@ class TipViewModel(
         val current = state.value
         val sale = current.sale?.takeIf { current.canSubmit } ?: return
         local.update { it.copy(submission = ActionState(running = true)) }
-        launchWrite({ captures.addTip(saleId, tipMinor) }) { result ->
+        viewModelScope.launch {
+            val result = captures.addTip(saleId, tipMinor)
             local.update { it.copy(submission = result.toState(CaptureStep.TIP, current.billMinor + tipMinor, sale.currency)) }
         }
     }
@@ -176,7 +177,8 @@ class CaptureViewModel(
         val amount = current.amountMinor
         val step = if (current.adjustOnly) CaptureStep.ADJUSTMENT else CaptureStep.CAPTURE
         local.update { it.copy(submission = ActionState(running = true)) }
-        launchWrite({ if (current.adjustOnly) captures.adjust(saleId, amount) else captures.capture(saleId, amount) }) { result ->
+        viewModelScope.launch {
+            val result = if (current.adjustOnly) captures.adjust(saleId, amount) else captures.capture(saleId, amount)
             local.update { it.copy(submission = result.toState(step, amount, sale.currency)) }
         }
     }

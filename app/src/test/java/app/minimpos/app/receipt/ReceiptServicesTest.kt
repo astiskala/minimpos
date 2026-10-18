@@ -25,7 +25,6 @@ import app.minimpos.app.email.EmailMessage
 import app.minimpos.app.email.InlineImage
 import app.minimpos.app.email.MailTransport
 import app.minimpos.app.email.SmtpMailer
-import app.minimpos.app.payment.AutoDelivery
 import app.minimpos.app.payment.ReceiptOffer
 import app.minimpos.app.payment.ReceiptPrint
 import app.minimpos.app.payment.StoredTransaction
@@ -295,45 +294,6 @@ class ReceiptServicesTest {
         val noPrinter = ((failure.result as ActionResult.Failed).failure as Failure.Remote).fault as Fault.TerminalRejected
         assertThat(noPrinter.said?.text).contains("no printer")
         assertThat(failure.merchantCopyDue).isFalse()
-    }
-
-    @Test
-    fun `automatic delivery runs once per armed transaction, as the settings say`() {
-        env.useSimulator {
-            it.copy(
-                receipt = it.receipt.copy(autoPrint = true),
-                payment = it.payment.copy(emailCapture = EmailCapture.BEFORE_PAYMENT, autoSendEmail = true),
-            )
-        }
-        await { container.terminalStatus.state.first { it.printerAvailable } }
-        await { container.sales.createPending(sale.copy(shopperEmail = "a@b.co"), lines) }
-        val receipts = container.receipts
-        // Nothing is delivered for a sale that did not just succeed.
-        assertThat(await { receipts.automation(StoredTransaction.Sale("s1")) }).isEqualTo(AutoDelivery())
-        receipts.arm("s1")
-        assertThat(await { receipts.automation(StoredTransaction.Sale("s1")) }).isEqualTo(AutoDelivery(print = true, emailTo = "a@b.co"))
-        assertThat(await { receipts.automation(StoredTransaction.Sale("s1")) }).isEqualTo(AutoDelivery())
-
-        // The email is only sent automatically when it was asked for before payment and Send automatically is on.
-        env.updateSettings { it.copy(payment = it.payment.copy(emailCapture = EmailCapture.AFTER_PAYMENT)) }
-        receipts.arm("s1")
-        assertThat(await { receipts.automation(StoredTransaction.Sale("s1")) }).isEqualTo(AutoDelivery(print = true))
-        env.updateSettings {
-            it.copy(
-                payment = it.payment.copy(emailCapture = EmailCapture.BEFORE_PAYMENT, autoSendEmail = false),
-                receipt = it.receipt.copy(autoPrint = false),
-            )
-        }
-        receipts.arm("s1")
-        assertThat(await { receipts.automation(StoredTransaction.Sale("s1")) }).isEqualTo(AutoDelivery())
-
-        // Without a printer nothing is printed automatically.
-        env.useSimulator { it.copy(receipt = it.receipt.copy(autoPrint = true), simulator = it.simulator.copy(hasPrinter = false)) }
-        await { container.terminalStatus.state.first { !it.printerAvailable } }
-        receipts.arm("r1")
-        assertThat(await { receipts.automation(StoredTransaction.Refund("r1")) }).isEqualTo(AutoDelivery())
-        receipts.arm("missing")
-        assertThat(await { receipts.automation(StoredTransaction.Sale("missing")) }).isEqualTo(AutoDelivery())
     }
 
     @Test

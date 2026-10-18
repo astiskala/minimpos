@@ -66,7 +66,7 @@ class SettingsStructureTest {
             compose.onNodeWithTag("section_$section").performScrollTo().assertHeightIsEqualTo(72.dp)
         }
         compose.onNodeWithTag("appLanguage").performScrollTo().assertHeightIsEqualTo(72.dp)
-        open("payments")
+        open("payments", "pricingHeader")
         val headingTop =
             compose
                 .onNodeWithTag("pricingHeader")
@@ -77,12 +77,12 @@ class SettingsStructureTest {
         compose.onNodeWithTag("showVirtualReceipt").assertDoesNotExist()
         compose.onNodeWithTag("emailCapture").assertDoesNotExist()
         back()
-        open("tipping")
+        open("tipping", "terminalTipping")
         compose.onNodeWithTag("terminalTipping").performScrollTo().assertIsDisplayed()
         compose.onNodeWithTag("receiptTipping").performScrollTo().assertIsDisplayed()
         compose.onNodeWithTag("askGivingSetting").performScrollTo().assertIsDisplayed()
         back()
-        open("shopper_display")
+        open("shopper_display", "settingIntro")
         // An opening explanation without a heading starts where a heading's text would.
         val introTop =
             compose
@@ -98,18 +98,22 @@ class SettingsStructureTest {
             .performClick()
         compose.awaitCondition("shopper display saved") { !env.container.settingsState.value.payment.showVirtualReceipt }
         back()
-        open("shopper_display")
+        open("shopper_display", "settingIntro")
         compose.onNodeWithTag("showVirtualReceipt").performScrollTo().assertIsOff()
         compose.onNodeWithTag("askShopperRating").performScrollTo().assertIsDisplayed()
         back()
-        open("email")
+        open("email", "emailCapture")
         compose.onNodeWithTag("emailCapture").performScrollTo().assertIsDisplayed()
         compose.onNodeWithTag("fromAddress").performScrollTo().assertIsDisplayed()
     }
 
-    private fun open(section: String) {
+    private fun open(
+        section: String,
+        content: String,
+    ) {
         compose.waitUntilAtLeastOneExists(hasTestTag("section_$section"), 15_000)
         compose.onNodeWithTag("section_$section").performScrollTo().performClick()
+        compose.waitUntilAtLeastOneExists(hasTestTag(content), 15_000)
     }
 
     private fun back() {

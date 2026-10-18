@@ -12,6 +12,9 @@ import app.minimpos.terminal.checkout.PaymentLinkApi
 import app.minimpos.terminal.checkout.PaymentModifications
 import app.minimpos.terminal.checkout.SavedCardApi
 import app.minimpos.terminal.transport.TerminalEnvironment
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 
 /**
  * How far the Checkout API is set up, see [TerminalSetup.apiSetup]: the one decision behind both what the screens show
@@ -105,7 +108,7 @@ sealed interface ApiAccess<out T> {
         override val problem: SetupProblem,
     ) : Blocked
 
-    /** Current credentials do not match the stored operation; its record must remain unchanged. */
+    /** Current credentials do not match the operation; unknown records stay unchanged, fresh starts are known not sent. */
     data object ContextMismatch : Blocked {
         override val problem: SetupProblem = SetupProblem.PAYMENT_CONTEXT
     }
@@ -158,6 +161,9 @@ class AdyenApi(
     private val readEnvironment: suspend () -> Unit = {},
 ) {
     private val clients = Reused<CheckoutCredentials, CheckoutApi>()
+
+    /** Current targets, including credential changes, for invalidating memory-only saved-card listings. */
+    val targets: Flow<ApiTarget> = setups.changes.map { target() }.distinctUntilChanged()
 
     /** Where captures, adjustments and payment links go now with the stored settings, as [TerminalSetup.apiSetup] decides. */
     suspend fun target(): ApiTarget {

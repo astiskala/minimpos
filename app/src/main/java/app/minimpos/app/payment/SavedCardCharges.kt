@@ -22,8 +22,11 @@ import app.minimpos.terminal.checkout.SavedCardApi
 import app.minimpos.terminal.checkout.StoredCard
 import app.minimpos.terminal.checkout.StoredCardListing
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.flow
 import java.time.Clock
+import kotlin.time.Duration
 import kotlin.uuid.Uuid
 
 /**
@@ -34,6 +37,7 @@ import kotlin.uuid.Uuid
  * @property recurringModel Adyen's `recurringProcessingModel` to charge it with, frozen with the sale.
  * @property fromCheckout Whether the sale was rung up as a New sale and charged from its checkout, so that session
  *   (rather than Charge token's own) is cleared once the token is charged.
+ * @property lookupContext Original context of the selected listing; null only for context-free tests or direct test starts.
  * @throws IllegalArgumentException for a payment that is not an immediate-charge sale with a shopper reference.
  */
 data class SavedCardStart(
@@ -41,11 +45,18 @@ data class SavedCardStart(
     val card: StoredCard,
     val recurringModel: String,
     val fromCheckout: Boolean = false,
+    internal val lookupContext: PaymentContext? = null,
 ) {
     init {
         require(payment.kind == SaleKind.SALE && !payment.manualCapture) { "A saved card is charged straight away" }
         requireNotNull(payment.shopperReference) { "A saved card is charged for a shopper reference" }
     }
+
+    /** Retains the listed [card] and its [context], so a queued charge cannot move to a different merchant or environment. */
+    internal fun forLookup(
+        card: StoredCard,
+        context: PaymentContext?,
+    ): SavedCardStart = copy(card = card, lookupContext = context)
 }
 
 /** The cards saved for a shopper reference, or why they could not be listed. */
@@ -87,6 +98,7 @@ sealed interface CardLookup {
  * @param clock Stamps the sales and decides whether an unknown charge may be sent again.
  * @param newId Generates sale IDs.
  * @param permits Whether Manager approval allows a charge now, checked under the operation lock.
+ * @param targets Current targets, including credential changes; fixed-target tests may use the default one reading.
  */
 class SavedCardCharges(
     scope: CoroutineScope,
@@ -96,27 +108,47 @@ class SavedCardCharges(
     clock: Clock = Clock.systemUTC(),
     newId: () -> String = { Uuid.random().toString() },
     permits: suspend () -> Boolean = { true },
+    private val targets: Flow<ApiTarget> = flow { emit(target()) },
 ) {
     private val operations = CheckoutOperations(scope, Book(sales), target, onCharged, clock, newId, permits)
 
     /** The charge running now, which the charging screen follows to its result. */
     val state: StateFlow<TransactionState> = operations.state
 
-    /** Lists the cards saved under [shopperReference] where payments go now; nothing is stored. */
-    suspend fun cards(shopperReference: String): CardLookup {
-        val current = target()
-        return when (val access = current.savedCards(current.context)) {
-            is ApiAccess.Blocked -> {
-                CardLookup.NotDone(Failure.NotSetUp(access.problem))
-            }
+    /**
+     * Makes a memory-only lookup for [checkouts] and [terminal] in [scope]. Null [delay] requires explicit lookup;
+     * otherwise each unchanged eligible reference is looked up after that delay.
+     */
+    fun lookup(
+        scope: CoroutineScope,
+        checkouts: Flow<Checkout>,
+        terminal: Flow<TerminalState>,
+        delay: Duration? = null,
+    ): SavedCardLookup = SavedCardLookup(scope, checkouts, terminal, targets, this, delay)
 
-            is ApiAccess.Ready -> {
-                when (val listed = access.client.list(shopperReference)) {
-                    is StoredCardListing.Listed -> CardLookup.Listed(listed.cards)
-                    is StoredCardListing.Failed -> CardLookup.NotDone(Failure.Remote(listed.fault))
+    /** Lists [shopperReference]'s cards in the current target without storing anything. */
+    internal suspend fun cards(shopperReference: String): CardLookup = cards(shopperReference, target())
+
+    /** Lists [shopperReference]'s cards only while [origin] is still current, including after the answer; stores nothing. */
+    internal suspend fun cards(
+        shopperReference: String,
+        origin: ApiTarget,
+    ): CardLookup {
+        if (target() != origin) return CardLookup.NotDone(Failure.NotSetUp(SetupProblem.SETUP_CHANGED))
+        val result =
+            when (val access = origin.savedCards(origin.context)) {
+                is ApiAccess.Blocked -> {
+                    CardLookup.NotDone(Failure.NotSetUp(access.problem))
+                }
+
+                is ApiAccess.Ready -> {
+                    when (val listed = access.client.list(shopperReference)) {
+                        is StoredCardListing.Listed -> CardLookup.Listed(listed.cards)
+                        is StoredCardListing.Failed -> CardLookup.NotDone(Failure.Remote(listed.fault))
+                    }
                 }
             }
-        }
+        return if (target() == origin) result else CardLookup.NotDone(Failure.NotSetUp(SetupProblem.SETUP_CHANGED))
     }
 
     /**
@@ -144,7 +176,10 @@ class SavedCardCharges(
             request: SavedCardStart,
             createdAt: Long,
             current: PaymentContext?,
-        ) = sales.createPending(SaleBook.savedCardSale(id, request, createdAt, current), SaleBook.lines(id, request.payment.totals))
+        ) = sales.createPending(
+            SaleBook.savedCardSale(id, request, createdAt, request.lookupContext ?: current),
+            SaleBook.lines(id, request.payment.totals),
+        )
 
         override suspend fun unsent(id: String): CheckoutRecord? =
             sales

@@ -25,9 +25,15 @@ import app.minimpos.app.terminal.TerminalStatus
 import app.minimpos.core.receipt.ReceiptCopy
 import app.minimpos.core.receipt.ReceiptDocument
 import app.minimpos.terminal.client.PrintOutcome
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.ZoneId
 
@@ -105,14 +111,22 @@ data class SharedReceipt(
 )
 
 /**
- * What to deliver automatically after a transaction, see [ReceiptDelivery.automation].
+ * Progress of one process-owned automatic delivery attempt, see [ReceiptDelivery.automation].
  *
- * @property print Whether to print the customer receipt.
- * @property emailTo Where to email the receipt, or null for no email.
+ * @property printing Whether its customer receipt is being printed.
+ * @property printed Print outcome; null before completion or when no automatic print is due.
+ * @property emailing Whether its receipt is being emailed.
+ * @property emailTo Address captured for automatic emailing; null when none is due.
+ * @property emailed Email outcome; null before completion or when no automatic email is due.
+ * @property complete Whether planning and every due attempt finished; true immediately for an unarmed transaction.
  */
 data class AutoDelivery(
-    val print: Boolean = false,
+    val printing: Boolean = false,
+    val printed: ReceiptPrint? = null,
+    val emailing: Boolean = false,
     val emailTo: String? = null,
+    val emailed: ActionResult? = null,
+    val complete: Boolean = false,
 )
 
 /** Stored transaction sources shared by receipt and whole-day delivery. */
@@ -131,9 +145,9 @@ class ReceiptRecords(
  * receipt settings, and what the screens offer for them ([offer]). Every operation takes the [StoredTransaction], and
  * what differs between sales and refunds is decided here: a sale has a merchant copy, a refund one copy only; the
  * receipt of a sale still awaiting its payment link's payment is an unpaid one with the link, emailed as a payment
- * request. It also owns what is delivered automatically after a transaction, exactly once per transaction that
- * succeeded while the app runs: the transaction lifecycles call [arm], and whichever screen is opened first for it
- * claims it with [automation] through [app.minimpos.app.feature.TransactionActions]; later screens get nothing.
+ * request. It owns one automatic delivery attempt per [arm] in this process: whichever screen opens first claims it
+ * with [automation] through [app.minimpos.app.feature.TransactionActions]; later screens get nothing. Claimed work
+ * runs in the application scope even after that screen closes. No durable queue or automatic uncertain-send retry.
  *
  * Missing sales and refunds (for example after pruning) are [ActionResult.Missing]; missing terminal or email setup and
  * delivery errors are [ActionResult.Failed] with the typed failure the screens word.
@@ -144,6 +158,7 @@ class ReceiptRecords(
  * @param gateway Prints them.
  * @param status Tells whether printing is offered.
  * @param emailer Emails them.
+ * @param scope Owns claimed automatic delivery independently of the screen observing it.
  */
 class ReceiptDelivery(
     private val settings: SettingsRepository,
@@ -152,6 +167,7 @@ class ReceiptDelivery(
     private val gateway: TerminalGateway,
     private val status: TerminalStatus,
     private val emailer: ReceiptEmailer,
+    private val scope: CoroutineScope,
 ) {
     /** Whether a daily summary can be printed with the current destination and receipt settings. */
     val canPrintReports: Flow<Boolean> = status.state.map { it.printerAvailable }
@@ -187,15 +203,43 @@ class ReceiptDelivery(
         }
 
     /**
-     * What to deliver automatically for [transaction]: nothing unless it was armed and not claimed before; else the
-     * customer receipt is printed when Settings › Receipts › Print automatically is on and printing is offered, and a
-     * sale's is emailed when the email was captured before payment and Send automatically is on.
+     * Claims and dispatches automatic delivery for [transaction] atomically with respect to other claimants.
+     * Printing and emailing share the existing settings policy and run independently; cancelling the observer does
+     * not abandon either attempt. Unarmed transactions return an already complete, empty reading.
      */
-    suspend fun automation(transaction: StoredTransaction): AutoDelivery =
-        when (transaction) {
-            is StoredTransaction.Sale -> automationForSale(transaction.id)
-            is StoredTransaction.Refund -> AutoDelivery(print = claim(transaction.id) && printsAutomatically(settings.current()))
+    fun automation(transaction: StoredTransaction): StateFlow<AutoDelivery> {
+        val id =
+            when (transaction) {
+                is StoredTransaction.Sale -> transaction.id
+                is StoredTransaction.Refund -> transaction.id
+            }
+        if (!claim(id)) return MutableStateFlow(AutoDelivery(complete = true))
+        val progress = MutableStateFlow(AutoDelivery())
+        scope.launch {
+            val plan =
+                when (transaction) {
+                    is StoredTransaction.Sale -> automationForSale(transaction.id)
+                    is StoredTransaction.Refund -> DeliveryPlan(print = printsAutomatically(settings.current()))
+                }
+            progress.value = AutoDelivery(printing = plan.print, emailing = plan.emailTo != null, emailTo = plan.emailTo)
+            coroutineScope {
+                if (plan.print) {
+                    launch {
+                        val printed = print(transaction)
+                        progress.update { it.copy(printing = false, printed = printed) }
+                    }
+                }
+                plan.emailTo?.let { to ->
+                    launch {
+                        val emailed = email(transaction, to)
+                        progress.update { it.copy(emailing = false, emailed = emailed) }
+                    }
+                }
+            }
+            progress.update { it.copy(complete = true) }
         }
+        return progress
+    }
 
     /** Prints [copy] of the receipt of [transaction] (a refund has one copy), and says whether the merchant copy is due next. */
     suspend fun print(
@@ -266,10 +310,15 @@ class ReceiptDelivery(
     /** Makes the automatic delivery of [id], a just approved sale or accepted refund, due. */
     fun arm(id: String) = synchronized(armed) { armed += id }
 
-    private suspend fun automationForSale(saleId: String): AutoDelivery {
-        val sale = (if (claim(saleId)) records.sales.get(saleId)?.sale else null) ?: return AutoDelivery()
+    private data class DeliveryPlan(
+        val print: Boolean = false,
+        val emailTo: String? = null,
+    )
+
+    private suspend fun automationForSale(saleId: String): DeliveryPlan {
+        val sale = records.sales.get(saleId)?.sale ?: return DeliveryPlan()
         val current = settings.current()
-        return AutoDelivery(
+        return DeliveryPlan(
             print = printsAutomatically(current),
             emailTo = sale.shopperEmail?.takeIf { current.emailsReceiptAutomatically },
         )

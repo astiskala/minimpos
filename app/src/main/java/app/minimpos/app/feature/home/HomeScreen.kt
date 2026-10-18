@@ -89,7 +89,7 @@ fun HomeScreen(
     // A failed check is retried whenever Home is shown, so its warning clears once the terminal answers again.
     LaunchedEffect(Unit) { container.terminalStatus.recheckIfFailed() }
     // Every tile but History and the admin areas reaches Adyen or a terminal, so it asks to finish setup first.
-    val open = { route: Route -> if (route in SETUP_FREE_ROUTES) navigator.push(route) else gate.run { navigator.push(route) } }
+    val open = { route: Route -> if (route.requiresSetup) gate.run { navigator.push(route) } else navigator.push(route) }
 
     MiniScaffold(
         title = settings.receipt.businessName.ifBlank { stringResource(R.string.app_name) },
@@ -142,9 +142,6 @@ private fun ColumnScope.PaymentTiles(onOpen: (Route) -> Unit) {
         modifier = Modifier.fillMaxWidth().weight(1f).testTag("preAuth"),
     )
 }
-
-/** The routes Home opens without payments being set up: History and the admin areas. */
-private val SETUP_FREE_ROUTES = setOf(Route.History, Route.Products, Route.Settings)
 
 /**
  * A [SetupCard] while payments cannot work, else nothing: while they still need setting up ([needsSetup]) the gate's

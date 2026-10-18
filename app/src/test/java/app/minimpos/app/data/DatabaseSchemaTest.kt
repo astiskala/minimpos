@@ -25,7 +25,7 @@ import kotlin.uuid.Uuid
 class DatabaseSchemaTest {
     private val context = ApplicationProvider.getApplicationContext<Context>()
 
-    private fun exportedSchema(version: Int = 12): JSONObject =
+    private fun exportedSchema(version: Int = 13): JSONObject =
         listOf("schemas", "app/schemas")
             .map { File(it, "app.minimpos.app.data.db.AppDatabase/$version.json") }
             .first { it.exists() }
@@ -33,7 +33,7 @@ class DatabaseSchemaTest {
 
     private fun createExportedDatabase(
         name: String,
-        version: Int = 12,
+        version: Int = 13,
     ) {
         val schema = exportedSchema(version)
         val file = context.getDatabasePath(name).apply { parentFile?.mkdirs() }
@@ -62,7 +62,7 @@ class DatabaseSchemaTest {
         val db =
             Room
                 .databaseBuilder(context, AppDatabase::class.java, name)
-                .addMigrations(AppDatabase.MIGRATION_10_11, AppDatabase.MIGRATION_11_12)
+                .addMigrations(AppDatabase.MIGRATION_10_11, AppDatabase.MIGRATION_11_12, AppDatabase.MIGRATION_12_13)
                 .allowMainThreadQueries()
                 .build()
         try {
@@ -144,7 +144,7 @@ class DatabaseSchemaTest {
                     assertThat(sale.merchantReference).isEqualTo("MP-10")
                     assertThat(sale.poiReconciliationId).isNull()
                     assertThat(sale.savedCard).isFalse()
-                    assertThat(db.openHelper.readableDatabase.version).isEqualTo(12)
+                    assertThat(db.openHelper.readableDatabase.version).isEqualTo(13)
                 }
             }
         } finally {
@@ -191,7 +191,38 @@ class DatabaseSchemaTest {
                             .single()
                             .name,
                     ).isEqualTo("GST")
-                    assertThat(db.openHelper.readableDatabase.version).isEqualTo(12)
+                    assertThat(db.openHelper.readableDatabase.version).isEqualTo(13)
+                }
+            }
+        } finally {
+            context.deleteDatabase(name)
+        }
+    }
+
+    @Test
+    fun `migrates version 12 database to version 13 preserving sales and their busy refusals`() {
+        val name = "schema-v12-${Uuid.random()}"
+        createExportedDatabase(name, version = 12)
+        val file = context.getDatabasePath(name)
+        SQLiteDatabase.openDatabase(file.path, null, SQLiteDatabase.OPEN_READWRITE).use { raw ->
+            raw.execSQL("INSERT INTO `tax_rates` (`id`, `name`, `rateMilliPercent`, `sortOrder`) VALUES (1, 'GST', 10000, 0)")
+            raw.execSQL(
+                "INSERT INTO `sales` (`id`, `sample`, `createdAt`, `currency`, `taxMode`, `netMinor`, `taxMinor`, `totalMinor`, " +
+                    "`status`, `merchantReference`, `tokenizationRequested`, `signatureRequired`, `refundedMinor`, `kind`, " +
+                    "`tipOnReceipt`, `holdCancelled`, `paymentLink`, `adjustmentPending`, `paidMinor`, `savedCard`, " +
+                    "`errorCondition`) " +
+                    "VALUES ('s12', 0, 100, 'AUD', 'INCLUSIVE', 909, 91, 1000, 'DECLINED', 'MP-12', 0, 0, 0, 'SALE', " +
+                    "0, 0, 0, 0, 0, 0, 'Busy')",
+            )
+        }
+        try {
+            withDatabase(name) { db ->
+                runBlocking {
+                    val sale = checkNotNull(db.saleDao().sale("s12")).sale
+                    assertThat(sale.status).isEqualTo(SaleStatus.DECLINED)
+                    assertThat(sale.errorCondition).isEqualTo("Busy")
+                    assertThat(sale.busyServiceId).isNull()
+                    assertThat(db.openHelper.readableDatabase.version).isEqualTo(13)
                 }
             }
         } finally {

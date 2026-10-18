@@ -6,7 +6,6 @@ import app.minimpos.app.data.db.CategoryEntity
 import app.minimpos.app.data.db.ProductEntity
 import app.minimpos.app.data.db.SaleEntity
 import app.minimpos.app.data.db.SaleKind
-import app.minimpos.app.data.db.SaleStatus
 import app.minimpos.app.data.db.SaleWithLines
 import app.minimpos.app.data.db.TaxRateEntity
 import app.minimpos.app.data.repo.CatalogRepository
@@ -59,7 +58,6 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.time.Clock
 import java.time.ZoneId
-import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
@@ -258,8 +256,6 @@ class CheckoutViewModel(
     /** The screen state, updated whenever the form, cart, settings, printer or payment link setup change. */
     val state: StateFlow<Checkout> = checkout.stateIn(viewModelScope, SharingStarted.Eagerly, Checkout(kind = session.kind))
 
-    private val linkStarted = AtomicBoolean()
-
     /**
      * The tokens saved for the entered shopper reference that can be charged with the recurring model, looked up in the
      * background once the reference stops changing; empty while there is none, the lookup fails or runs, or the sale
@@ -320,14 +316,13 @@ class CheckoutViewModel(
     }
 
     /**
-     * Starts creating a payment link instead ([Checkout.linkStart]) and returns its sale's ID; null when no link can be
-     * made (the form is not ready, or links are not offered) or this checkout already started one, such as on a second
-     * tap: each link can be paid on its own, so a second one would be a second charge.
+     * Starts creating a payment link instead ([Checkout.linkStart]) and returns its sale's ID; null when no link can
+     * be made (the form is not ready, or links are not offered), while one is being created, or this checkout already
+     * started one, such as on a second tap: each link can be paid on its own, so a second one would be a second charge.
      */
     fun sendLink(): String? {
         val links = links ?: return null
         val start = session.linkStart(state.value, clock.instant(), zone()) ?: return null
-        if (!linkStarted.compareAndSet(false, true)) return null
         return links.start(start)
     }
 }
@@ -355,7 +350,7 @@ data class PaymentLinkUiState(
     val openLink: String? get() = sale?.takeIf { it.awaitsLinkPayment }?.paymentLinkUrl
 
     /** Whether Adyen is still being asked for the link (the sale is not stored yet, or still PENDING). */
-    val creating: Boolean get() = sale == null || sale?.status == SaleStatus.PENDING
+    val creating: Boolean get() = sale == null || sale?.pending == true
 
     /** Whether this link was created without a real payment service, regardless of the current destination. */
     val simulated: Boolean get() = sale?.simulatedLink == true
@@ -444,13 +439,11 @@ class PaymentLinkViewModel(
  *
  * @property payment The sale with what can be done with it now, or null until it has been loaded.
  * @property transaction The receipt, printing (with the merchant copy when it is due), emailing and re-checking the sale.
- * @property busyServiceId The terminal's own in-progress transaction, when the payment was declined as Busy.
- * @property abort The latest abort of that transaction.
+ * @property abort The latest abort of the transaction a busy terminal is working on.
  */
 data class SaleResultUiState(
     val payment: StoredPayment? = null,
     val transaction: TransactionActionsState = TransactionActionsState(),
-    val busyServiceId: String? = null,
     val abort: ActionState = ActionState(),
 ) {
     /** The sale and its lines, or null until loaded. */
@@ -460,7 +453,13 @@ data class SaleResultUiState(
     val actions: Set<PaymentAction> get() = payment?.actions.orEmpty()
 
     /** Whether the payment was approved. */
-    val approved: Boolean get() = record?.sale?.status == SaleStatus.APPROVED
+    val approved: Boolean get() = record?.sale?.approved == true
+
+    /**
+     * The ServiceID of the transaction a busy terminal is working on, which the stored refusal names until its abort
+     * was sent; null without one.
+     */
+    val busyServiceId: String? get() = record?.sale?.busyServiceId
 
     /** What kind of payment it was; a sale until the record is loaded. */
     val kind: SaleKind get() = record?.sale?.kind ?: SaleKind.SALE
@@ -490,7 +489,7 @@ class SaleResultViewModel(
     private val lifecycle: TransactionLifecycle<PaymentStart>,
     operations: FinancialOperations,
 ) : ViewModel() {
-    private val local = MutableStateFlow(SaleResultUiState(busyServiceId = lifecycle.busyServiceId(saleId)))
+    private val local = MutableStateFlow(SaleResultUiState())
 
     /** The receipt, printing (the customer copy, then the merchant copy when it is due), emailing and re-checking. */
     val transaction = TransactionActions.forSale(viewModelScope, saleId, receipts, operations, fresh = true)
@@ -503,14 +502,12 @@ class SaleResultViewModel(
 
     /** Cancels the transaction a busy terminal is working on, so the payment can be retried. */
     fun abortBusyTransaction() {
+        if (local.value.abort.running) return
         local.update { it.copy(abort = ActionState(running = true)) }
-        viewModelScope.launch {
-            val sent = lifecycle.abortBusyTransaction(saleId)
+        launchWrite({ lifecycle.abortBusyTransaction(saleId) }) { sent ->
+            // Once sent, the stored refusal no longer names the busy transaction, so the action disappears on its own.
             local.update {
-                it.copy(
-                    busyServiceId = null,
-                    abort = if (sent) ActionState(outcome = ActionOutcome.AbortSent, done = true) else ActionState(isError = true),
-                )
+                it.copy(abort = if (sent) ActionState(outcome = ActionOutcome.AbortSent, done = true) else ActionState(isError = true))
             }
         }
     }

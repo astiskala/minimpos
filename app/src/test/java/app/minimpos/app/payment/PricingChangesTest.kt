@@ -5,14 +5,18 @@ import androidx.datastore.core.DataStore
 import app.minimpos.app.TestEnvironment
 import app.minimpos.app.await
 import app.minimpos.app.data.db.ProductEntity
+import app.minimpos.app.data.db.SaleEntity
 import app.minimpos.app.data.db.SaleKind
+import app.minimpos.app.data.db.SaleStatus
 import app.minimpos.app.data.db.TaxRateEntity
 import app.minimpos.app.data.settings.AppSettings
 import app.minimpos.app.data.settings.PaymentSettings
 import app.minimpos.app.data.settings.PricingChange
 import app.minimpos.app.data.settings.SettingsRepository
+import app.minimpos.app.data.settings.TerminalMode
 import app.minimpos.core.money.CurrencySpec
 import app.minimpos.core.tax.TaxMode
+import app.minimpos.terminal.transport.TerminalEnvironment
 import com.google.common.truth.Truth.assertThat
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -203,5 +207,62 @@ class PricingChangesTest {
             data.value = updated
             return updated
         }
+    }
+
+    @Test
+    fun `a repricing change bundled with ordinary settings still previews only the pricing`() {
+        seed()
+        val title = store.data.value.receipt.title
+        val change =
+            checkNotNull(
+                await {
+                    operations.update {
+                        it.copy(receipt = it.receipt.copy(title = "Shop"), payment = it.payment.copy(currencyCode = "JPY"))
+                    }
+                },
+            )
+        // The bundled ordinary edit is not saved either: confirmation applies the whole change together.
+        assertThat(store.data.value.receipt.title).isEqualTo(title)
+        assertThat(store.data.value.payment.currencyCode).isNotEqualTo("JPY")
+        assertThat(change.toCurrency).isEqualTo("JPY")
+    }
+
+    @Test
+    fun `a change that switches the history environment is confirmed before any repricing it also makes`() {
+        seed()
+        await {
+            container.database.saleDao().insert(
+                SaleEntity(
+                    id = "sample-history",
+                    sample = true,
+                    createdAt = 1,
+                    currency = "AUD",
+                    taxMode = "INCLUSIVE",
+                    netMinor = 1,
+                    taxMinor = 0,
+                    totalMinor = 1,
+                    status = SaleStatus.APPROVED,
+                    merchantReference = "M",
+                ),
+            )
+        }
+        val before = await { container.settings.current() }
+        val edit =
+            await {
+                container.pricingChanges.edit(
+                    {
+                        it.copy(
+                            payment = it.payment.copy(currencyCode = "JPY"),
+                            terminal = it.terminal.copy(mode = TerminalMode.TERMINAL, environment = TerminalEnvironment.LIVE),
+                        )
+                    },
+                    container.historySwitches,
+                )
+            }
+        assertThat(edit).isInstanceOf(SettingsEdit.ConfirmHistorySwitch::class.java)
+        // Neither the destination nor the repricing was stored; the destructive switch is confirmed first.
+        val after = await { container.settings.current() }
+        assertThat(after.terminal.mode).isEqualTo(before.terminal.mode)
+        assertThat(after.payment.currencyCode).isNotEqualTo("JPY")
     }
 }

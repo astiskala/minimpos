@@ -100,6 +100,16 @@ sealed interface DestinationRules {
     ): SetupProblem?
 
     /**
+     * Whether any connection detail of this destination is already [supplied][suppliedDetails] in [terminal] or among
+     * the [saved] secrets: the fields its steps ask for, which is destination knowledge the Settings › Terminal steps
+     * render rather than re-derive. False for the simulator.
+     */
+    fun suppliedDetails(
+        terminal: TerminalSettings,
+        saved: Set<Secret>,
+    ): Boolean = false
+
+    /**
      * Whether printing is offered when Settings › Receipts › Printer is set to detect it, with [settings], the [poiId]
      * and what terminals reported about their printers ([printers], by POIID). By default a terminal reported as having
      * one, or not asked yet and an S1F2 or S1F4 (models such as the S1E4Pro and S1F4Pro share the same `Build.MODEL`).

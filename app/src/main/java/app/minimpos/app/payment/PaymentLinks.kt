@@ -18,9 +18,7 @@ import app.minimpos.terminal.checkout.PaymentLinkApi
 import app.minimpos.terminal.checkout.PaymentLinkResult
 import app.minimpos.terminal.checkout.PaymentLinkStatus
 import app.minimpos.terminal.transport.Fault
-import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import java.time.Clock
@@ -68,7 +66,9 @@ sealed interface LinkUpdate {
  * [SaleStatus.UNKNOWN], which [check] resolves by creating the link again with the same idempotency key, so Adyen
  * returns the link made the first time). The request is made from the stored sale ([PaymentLinkRequests]), so the
  * second one is the same as the first. Checks and cancellations of all links run one at a time, so an answer that
- * arrives late never overwrites a newer one.
+ * arrives late never overwrites a newer one. Creation runs on the shared single-flight skeleton: at most one link is
+ * being created at a time, and one coherent checkout ([PaymentStart.sessionRevision]) can start only one link, because
+ * each link can be paid on its own, so a second would be a second charge.
  *
  * @param scope Where links are created, so a creation survives leaving the screen.
  * @param sales Where the sales are stored.
@@ -81,7 +81,7 @@ sealed interface LinkUpdate {
  * @param permits Whether cancellation is authorized now, checked under the operation lock.
  */
 class PaymentLinks(
-    private val scope: CoroutineScope,
+    scope: CoroutineScope,
     private val sales: SaleRepository,
     private val target: suspend () -> ApiTarget,
     private val onCreated: (id: String, start: PaymentLinkStart) -> Unit = { _, _ -> },
@@ -91,50 +91,48 @@ class PaymentLinks(
     private val permits: suspend () -> Boolean = { true },
 ) {
     private val mutex = Mutex()
-    private val unresolvedStarts = mutableMapOf<String, PaymentLinkStart>()
+    private val runner = OperationRunner<PaymentLinkStart>(scope)
+
+    /** Checkouts that already started one link, by their session revision; see [start]. */
+    private val linkedRevisions = mutableSetOf<Long>()
 
     /**
-     * Creates the payment link for [link] in the background and returns the new sale's ID straight away; the stored
-     * sale follows: PENDING, then [SaleStatus.AWAITING_PAYMENT] once Adyen made the link, else failed or unknown.
+     * Creates the payment link for [link] in the background and returns the new sale's ID straight away; null, with
+     * nothing stored or sent, while another link is being created or this checkout ([PaymentStart.sessionRevision])
+     * already started one. The stored sale follows: PENDING, then [SaleStatus.AWAITING_PAYMENT] once Adyen made the
+     * link, else failed or unknown.
      */
-    fun start(link: PaymentLinkStart): String {
-        val id = newId()
-        synchronized(unresolvedStarts) { unresolvedStarts[id] = link }
-        scope.launch {
-            try {
-                val initial = target()
-                val language = locale()
-                val pending =
-                    link.pendingSale(
-                        id,
-                        clock.millis(),
-                        initial.context,
-                        language,
-                    )
-                sales.createPending(pending, SaleBook.lines(id, link.payment.totals))
-                mutex.withLock { sales.get(id)?.let { send(it) } }
-            } catch (e: CancellationException) {
-                throw e
-            } catch (ignored: SQLException) {
-                interrupted(id, DeviceFault.DATABASE)
-            } catch (ignored: IllegalStateException) {
-                interrupted(id, DeviceFault.UNEXPECTED)
-            }
-        }
+    fun start(link: PaymentLinkStart): String? {
+        val revision = link.payment.sessionRevision ?: return started(link)
+        if (!synchronized(linkedRevisions) { linkedRevisions.add(revision) }) return null
+        val id = started(link)
+        if (id == null) synchronized(linkedRevisions) { linkedRevisions.remove(revision) }
         return id
     }
 
-    /** Stores sale [id] as unknown after [fault] stopped its creation, so it does not look as if it were still running. */
-    private suspend fun interrupted(
-        id: String,
-        fault: DeviceFault,
-    ) {
-        try {
-            sales.record(id, SaleEvent.OutcomeUnknown(Failure.Device(fault)))
-        } catch (ignored: SQLException) {
-            // It stays PENDING, which the next start turns into UNKNOWN.
+    private fun started(link: PaymentLinkStart): String? =
+        runner.start(
+            link,
+            id = { newId() },
+            interrupted = { id, cause ->
+                // A database failure named it so; anything else is unexpected. The record must not look as if it were
+                // still running.
+                val fault = (cause as? SQLException)?.let { DeviceFault.DATABASE } ?: DeviceFault.UNEXPECTED
+                sales.record(id, SaleEvent.OutcomeUnknown(Failure.Device(fault)))
+            },
+        ) { id ->
+            val initial = target()
+            val language = locale()
+            val pending =
+                link.pendingSale(
+                    id,
+                    clock.millis(),
+                    initial.context,
+                    language,
+                )
+            sales.createPending(pending, SaleBook.lines(id, link.payment.totals))
+            mutex.withLock { sales.get(id)?.let { send(it) } }
         }
-    }
 
     /**
      * Asks Adyen where the link of sale [saleId] stands and stores it: paid, expired or still open. A sale whose link
@@ -204,7 +202,7 @@ class PaymentLinks(
                 is ApiAccess.Blocked -> {
                     return if (access is ApiAccess.Unavailable && record.sale.status != SaleStatus.UNKNOWN) {
                         sales.record(id, SaleEvent.NotSetUp(access.problem))
-                        synchronized(unresolvedStarts) { unresolvedStarts.remove(id) }
+                        runner.resolved(id)
                         LinkUpdate.Settled
                     } else {
                         notSetUp(access.problem)
@@ -274,7 +272,7 @@ class PaymentLinks(
     ): LinkUpdate {
         val answered = SaleEvent.LinkAnswered(link, cancelling)
         sales.record(id, answered)
-        val start = synchronized(unresolvedStarts) { unresolvedStarts.remove(id) }
+        val start = runner.resolved(id)
         if (start != null && (answered.stillOpen || link.status == PaymentLinkStatus.COMPLETED)) onCreated(id, start)
         return if (answered.stillOpen) LinkUpdate.StillOpen else LinkUpdate.Settled
     }
@@ -284,7 +282,7 @@ class PaymentLinks(
         fault: Fault,
     ): LinkUpdate {
         sales.record(id, SaleEvent.NotSent(fault))
-        synchronized(unresolvedStarts) { unresolvedStarts.remove(id) }
+        runner.resolved(id)
         return LinkUpdate.Settled
     }
 

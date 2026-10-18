@@ -1,0 +1,103 @@
+package app.minimpos.app.payment
+
+import app.minimpos.app.data.db.Failure
+import app.minimpos.app.data.repo.HistoryItem
+import app.minimpos.app.data.repo.HistoryRepository
+import app.minimpos.app.history.HistoryAccounting
+import app.minimpos.app.history.TerminalReconciliationReport
+import app.minimpos.app.terminal.Attempt
+import app.minimpos.app.terminal.TerminalGateway
+import app.minimpos.app.terminal.TerminalState
+import app.minimpos.terminal.client.TerminalTotalsOutcome
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
+import java.time.LocalDate
+import java.time.ZoneId
+
+/** What one terminal reconciliation ended with, see [TerminalReconciliation.reconcile]. */
+sealed interface ReconciliationOutcome {
+    /**
+     * The terminal answered; its totals are compared in [report], whether or not they match.
+     */
+    data class Reconciled(
+        val report: TerminalReconciliationReport,
+    ) : ReconciliationOutcome
+
+    /**
+     * No totals were compared, so nothing closed either.
+     *
+     * @property failure What must be entered first, or why the terminal could not be asked.
+     */
+    data class Failed(
+        val failure: Failure,
+    ) : ReconciliationOutcome
+}
+
+/**
+ * One terminal reconciliation, run the way Home's Reconciliation screen offers it: every unresolved terminal operation
+ * of the current terminal is checked again first ([FinancialOperations.recheck], the way it was sent), then the
+ * terminal's current totals are read — or its period closed when asked — and compared against local accounting for the
+ * day ([HistoryAccounting.compareReconciliation]). Closing a period rechecks [permits] immediately before sending, so
+ * a Manager approval that expired meanwhile sends nothing.
+ *
+ * @param history The retained activity the unresolved operations are read from and compared.
+ * @param operations Asks the terminal again about unresolved operations, the way each was sent.
+ * @param gateway Reads the terminal's totals or closes its reconciliation period.
+ * @param terminal The current terminal, whose POIID scopes the unresolved operations and the comparison.
+ * @param permits Whether closing the period is authorized now, checked again before sending.
+ * @param zone The time zone the compared [LocalDate] is counted in.
+ */
+class TerminalReconciliation(
+    private val history: HistoryRepository,
+    private val operations: FinancialOperations,
+    private val gateway: TerminalGateway,
+    private val terminal: Flow<TerminalState>,
+    private val permits: suspend () -> Boolean = { true },
+    private val zone: () -> ZoneId = { ZoneId.systemDefault() },
+) {
+    /**
+     * Reconciles the terminal's totals with local accounting for [date] ([ReconciliationOutcome.Reconciled]), or
+     * returns why nothing could be compared or closed ([ReconciliationOutcome.Failed]). Closing while [permits] denies
+     * it sends nothing and changes no sale.
+     */
+    suspend fun reconcile(
+        date: LocalDate = LocalDate.now(zone()),
+        closePeriod: Boolean = false,
+    ): ReconciliationOutcome {
+        val poiId = terminal.first().poiId.orEmpty()
+        HistoryAccounting.unresolvedTerminalItems(history.items().first(), poiId).forEach { item ->
+            operations.recheck(item.storedTransaction())
+        }
+        return when (val attempt = gateway.totals(closePeriod, permits)) {
+            is Attempt.NotSetUp -> {
+                ReconciliationOutcome.Failed(Failure.NotSetUp(attempt.problem))
+            }
+
+            is Attempt.Made -> {
+                when (val outcome = attempt.result) {
+                    is TerminalTotalsOutcome.Failed -> {
+                        ReconciliationOutcome.Failed(Failure.Remote(outcome.fault))
+                    }
+
+                    is TerminalTotalsOutcome.Answered -> {
+                        ReconciliationOutcome.Reconciled(
+                            HistoryAccounting.compareReconciliation(
+                                items = history.items().first(),
+                                poiId = poiId,
+                                outcome = outcome,
+                                date = date,
+                                zone = zone(),
+                            ),
+                        )
+                    }
+                }
+            }
+        }
+    }
+
+    private fun HistoryItem.storedTransaction(): StoredTransaction =
+        when (this) {
+            is HistoryItem.Sale -> StoredTransaction.Sale(id)
+            is HistoryItem.Refund -> StoredTransaction.Refund(id)
+        }
+}

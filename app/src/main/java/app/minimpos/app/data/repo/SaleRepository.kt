@@ -6,12 +6,9 @@ import app.minimpos.app.data.db.RefundEntity
 import app.minimpos.app.data.db.RefundStatus
 import app.minimpos.app.data.db.SaleEntity
 import app.minimpos.app.data.db.SaleLineEntity
-import app.minimpos.app.data.db.SaleStatus
 import app.minimpos.app.data.db.SaleTenderEntity
 import app.minimpos.app.data.db.SaleWithLines
-import app.minimpos.core.money.CurrencySpec
 import kotlinx.coroutines.flow.Flow
-import java.time.Instant
 
 /**
  * Stored card payments ([SaleEntity] with its [SaleLineEntity] items), and every change to them after they were opened.
@@ -61,37 +58,7 @@ class SaleRepository(
         db.withTransaction {
             dao.sale(id)?.let { record ->
                 val sale = record.sale
-                val stamped =
-                    when (event) {
-                        is SaleEvent.Settled -> {
-                            event.copy(
-                                processedAt =
-                                    event.processedAt ?: event.details?.poiTimestamp?.let {
-                                        runCatching {
-                                            Instant
-                                                .parse(it)
-                                                .toEpochMilli()
-                                        }.getOrNull()
-                                    } ?: now(),
-                            )
-                        }
-
-                        is SaleEvent.CaptureSending -> {
-                            event.copy(startedAt = event.startedAt ?: now())
-                        }
-
-                        is SaleEvent.CaptureAnswered -> {
-                            event.copy(processedAt = event.processedAt ?: now())
-                        }
-
-                        is SaleEvent.Sending, is SaleEvent.LinkAnswered, is SaleEvent.NotSent, is SaleEvent.NotSetUp,
-                        is SaleEvent.OutcomeUnknown, is SaleEvent.Emailed, is SaleEvent.AdjustmentAnswered,
-                        is SaleEvent.ModificationNotSetUp, SaleEvent.Interrupted, is SaleEvent.ContextRecorded,
-                        is SaleEvent.AdjustmentSending, is SaleEvent.CardAnswered,
-                        -> {
-                            event
-                        }
-                    }
+                val stamped = event.stamped(now())
                 val updated = sale.after(stamped)
                 if (updated != sale) dao.update(updated)
                 if (stamped is SaleEvent.Settled) recordApprovedTender(record, stamped)
@@ -103,20 +70,17 @@ class SaleRepository(
         record: SaleWithLines,
         settled: SaleEvent.Settled,
     ) {
-        val details = settled.details ?: return
-        if (settled.status != SaleStatus.APPROVED) return
         val sale = record.sale
+        val details = settled.details ?: return
+        val tender = settled.approvedTender(sale.currency, sale.totalMinor, sale.paidMinor) ?: return
         val seq = record.tenders.size + 1
-        val spec = CurrencySpec.of(sale.currency)
-        val requested = (sale.totalMinor - sale.paidMinor).coerceAtLeast(0)
-        val authorised = details.amount?.let { spec.toMinor(it) } ?: requested
         dao.upsertTender(
             SaleTenderEntity(
                 id = "${sale.id}-$seq",
                 saleId = sale.id,
                 sequence = seq,
-                requestedMinor = requested,
-                authorisedMinor = authorised,
+                requestedMinor = tender.requestedMinor,
+                authorisedMinor = tender.authorisedMinor,
                 status = settled.status,
                 poiTransactionId = details.poiTransactionId,
                 poiTimestamp = details.poiTimestamp,

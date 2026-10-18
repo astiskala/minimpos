@@ -52,6 +52,7 @@ import app.minimpos.app.data.settings.TerminalSettings
 import app.minimpos.app.feature.ActionState
 import app.minimpos.app.feature.OutcomeMessage
 import app.minimpos.app.feature.text
+import app.minimpos.app.terminal.DestinationRules
 import app.minimpos.app.terminal.PaymentsAppDestination
 import app.minimpos.app.terminal.TerminalState
 import app.minimpos.app.ui.components.ActionMessage
@@ -86,6 +87,7 @@ private typealias TerminalUpdate = ((TerminalSettings) -> TerminalSettings) -> U
 @Composable
 internal fun ColumnScope.TerminalSteps(
     status: TerminalState,
+    rules: DestinationRules,
     state: SettingsUiState,
     actions: SettingsActions,
     setup: TerminalSetupActions,
@@ -109,7 +111,7 @@ internal fun ColumnScope.TerminalSteps(
             EnvironmentStep(status.environment, update)
         }
         if (!status.capabilities.selectsEnvironment || status.environment != null || state.hasSavedConnectionDetails()) {
-            DestinationSteps(status, state, actions, setup, events, setupEvents, api, update)
+            DestinationSteps(status, rules, state, actions, setup, events, setupEvents, api, update)
         }
     }
     SharedKeyActions(setup, setupEvents)
@@ -162,23 +164,11 @@ private fun TerminalState.needsPaymentsApp(
     apiSaved: Boolean,
 ): Boolean = paymentsApps.size != 1 && !suppliedDetails && !apiSaved
 
-private fun SettingsUiState.suppliedDestinationDetails(mode: TerminalMode): Boolean {
-    val terminal = settings.terminal
-    val fields =
-        when (mode) {
-            TerminalMode.TERMINAL -> listOf(terminal.host, terminal.poiIdOverride, terminal.keyIdentifier)
-            TerminalMode.CLOUD -> listOf(terminal.poiIdOverride)
-            TerminalMode.PAYMENTS_APP -> listOf(terminal.paymentsAppInstallationId, terminal.keyIdentifier)
-            TerminalMode.AUTO, TerminalMode.SIMULATOR -> emptyList()
-        }
-    val passphraseSupplied = mode != TerminalMode.CLOUD && Secret.TERMINAL_PASSPHRASE in secrets
-    return fields.any(String::isNotBlank) || passphraseSupplied
-}
-
 /** Destination-specific steps after the selected or device-supplied environment is available. */
 @Composable
 private fun ColumnScope.DestinationSteps(
     status: TerminalState,
+    rules: DestinationRules,
     state: SettingsUiState,
     actions: SettingsActions,
     setup: TerminalSetupActions,
@@ -187,7 +177,7 @@ private fun ColumnScope.DestinationSteps(
     api: ApiEntry,
     update: TerminalUpdate,
 ) {
-    val suppliedDetails = state.suppliedDestinationDetails(status.mode)
+    val suppliedDetails = rules.suppliedDetails(state.settings.terminal, state.secrets)
     var testedFields by remember { mutableStateOf<Pair<String, String>?>(null) }
     var apiComplete by remember { mutableStateOf(false) }
     // An immediate retest can conflate running and success; new tested fields must still recheck completion.

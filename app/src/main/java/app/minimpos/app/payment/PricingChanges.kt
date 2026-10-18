@@ -42,6 +42,11 @@ sealed interface SettingsEdit {
  * finish a confirmation even when its screen closes. Absolute catalogue targets make replay idempotent, and sessions
  * are repriced while the journal still blocks checkout.
  *
+ * A change's pricing intent is read from the stored diff in one pass ([reprices]), never declared by callers: any
+ * write that reprices the catalogue must be caught wherever it comes from, and a declared intent could be forgotten.
+ * A change that both switches the history environment and reprices is confirmed as the switch first ([edit]); its
+ * repricing follows once the switch is settled.
+ *
  * @param settings Stores pricing and the local journal.
  * @param catalog Stores absolute catalogue prices atomically.
  * @param currency Resolves the device-country currency when the setting is blank.
@@ -75,7 +80,7 @@ class PricingChanges(
 
     /**
      * Evaluates [transform] in one serialized pass: proposes a history-switch confirmation when [switches] requires
-     * one, otherwise stores ordinary settings or proposes a pricing confirmation.
+     * one (even when the change also reprices), otherwise stores ordinary settings or proposes a pricing confirmation.
      */
     suspend fun edit(
         transform: (AppSettings) -> AppSettings,
@@ -106,7 +111,7 @@ class PricingChanges(
         proposed: AppSettings,
         transform: (AppSettings) -> AppSettings,
     ): PricingChange? =
-        if (currency(current) == currency(proposed) && current.payment.taxMode == proposed.payment.taxMode) {
+        if (!reprices(current, proposed)) {
             settings.update(transform)
             null
         } else if (active()) {
@@ -114,6 +119,16 @@ class PricingChanges(
         } else {
             preview(current, proposed)
         }
+
+    /**
+     * Whether changing the settings from [current] to [proposed] reprices the catalogue: the charged currency or the
+     * tax style changes. The single-pass evaluation reads the stored values; see the class contract for why a caller
+     * never declares this intent.
+     */
+    private fun reprices(
+        current: AppSettings,
+        proposed: AppSettings,
+    ): Boolean = currency(current) != currency(proposed) || current.payment.taxMode != proposed.payment.taxMode
 
     /** Commits [change]; false while busy, another journal exists, or its currency or catalogue preview is stale. */
     suspend fun confirm(change: PricingChange): Boolean =

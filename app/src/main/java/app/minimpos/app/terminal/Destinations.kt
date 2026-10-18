@@ -297,6 +297,15 @@ internal class LocalTerminal(
                 host == null -> SetupProblem.HOST
                 else -> sharedKeyProblem(terminal, saved)
             }
+
+        override fun suppliedDetails(
+            terminal: TerminalSettings,
+            saved: Set<Secret>,
+        ): Boolean =
+            terminal.host.isNotBlank() ||
+                configuredPoiId(terminal) != null ||
+                terminal.keyIdentifier.isNotBlank() ||
+                Secret.TERMINAL_PASSPHRASE in saved
     }
 }
 
@@ -412,6 +421,11 @@ internal class CloudTerminal(
                 poiId == null -> SetupProblem.POI_ID
                 else -> null
             }
+
+        override fun suppliedDetails(
+            terminal: TerminalSettings,
+            saved: Set<Secret>,
+        ): Boolean = configuredPoiId(terminal) != null
     }
 }
 
@@ -470,6 +484,14 @@ internal class PaymentsAppDestination(
             paymentsAppProblem(device.isAdyenTerminal, device.paymentsApps)
                 ?: boardingProblem(terminal, poiId)
                 ?: sharedKeyProblem(terminal, saved)
+
+        override fun suppliedDetails(
+            terminal: TerminalSettings,
+            saved: Set<Secret>,
+        ): Boolean =
+            terminal.paymentsAppInstallationId.isNotBlank() ||
+                terminal.keyIdentifier.isNotBlank() ||
+                Secret.TERMINAL_PASSPHRASE in saved
 
         /** Until boarded ([poiId] is null): the merchant account boarding needs, else boarding itself. */
         private fun boardingProblem(

@@ -14,6 +14,7 @@ import app.minimpos.app.data.settings.TerminalMode
 import app.minimpos.app.feature.ActionOutcome
 import app.minimpos.app.history.HistoryAccounting
 import app.minimpos.app.history.HistoryActivityKind
+import app.minimpos.app.payment.TerminalReconciliation
 import app.minimpos.app.terminal.TerminalSetup
 import app.minimpos.core.payment.PaymentContext
 import app.minimpos.core.payment.Wallet
@@ -221,6 +222,23 @@ class HistorySearchViewModelTest {
             assertThat(vm.ids { it.filter == HistoryFilter.ISSUES }.distinct()).containsExactlyElementsIn(expected)
         }
 
+    /** The history list view model, with reconciliation wired to the container like Home's screen does. */
+    private fun reconciliationViewModel(permits: suspend () -> Boolean = { true }): HistoryViewModel =
+        HistoryViewModel(
+            history = env.container.history,
+            zone = { ZoneOffset.UTC },
+            receipts = env.container.receipts,
+            reconciliation =
+                TerminalReconciliation(
+                    env.container.history,
+                    env.container.operations,
+                    env.container.gateway,
+                    env.container.terminalStatus.state,
+                    permits,
+                ),
+            terminal = env.container.terminalStatus.state,
+        ).also(viewModels::add)
+
     @Test
     fun `an empty history is not a search without matches`() =
         runTest(dispatcher) {
@@ -262,16 +280,7 @@ class HistorySearchViewModelTest {
                 ),
             )
             var closeAllowed = false
-            val vm =
-                HistoryViewModel(
-                    history = env.container.history,
-                    zone = { ZoneOffset.UTC },
-                    receipts = env.container.receipts,
-                    gateway = env.container.gateway,
-                    terminal = env.container.terminalStatus.state,
-                    operations = env.container.operations,
-                    permitsClose = { closeAllowed },
-                ).also(viewModels::add)
+            val vm = reconciliationViewModel { closeAllowed }
 
             val initial = vm.state.first { it.loaded && it.canReconcile }
             assertThat(initial.canPrint).isTrue()
@@ -301,15 +310,7 @@ class HistorySearchViewModelTest {
         runTest(dispatcher) {
             env.useSimulator()
             val day = LocalDate.parse("2026-10-05")
-            val vm =
-                HistoryViewModel(
-                    history = env.container.history,
-                    zone = { ZoneOffset.UTC },
-                    receipts = env.container.receipts,
-                    gateway = env.container.gateway,
-                    terminal = env.container.terminalStatus.state,
-                    operations = env.container.operations,
-                ).also(viewModels::add)
+            val vm = reconciliationViewModel()
             // Printing is offered once the simulator's printer is known; asking earlier prints nothing.
             vm.state.first { it.loaded && it.canPrint }
             vm.printDay(day)

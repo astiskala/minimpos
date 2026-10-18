@@ -2,6 +2,7 @@ package app.minimpos.terminal.simulator
 
 import app.minimpos.terminal.checkout.StoredCard
 import app.minimpos.terminal.client.CardEntryOverride
+import app.minimpos.terminal.client.NexoVocabulary
 import app.minimpos.terminal.client.OfflineProcessingMode
 import app.minimpos.terminal.client.PrintJob
 import app.minimpos.terminal.client.TerminalClient
@@ -476,8 +477,8 @@ class TerminalSimulator(
                     additionalResponse =
                         base64Json(
                             mapOf(
-                                "message" to "Forbidden Request, Service Dialogue PaymentRequest is in Progress",
-                                "serviceId" to BUSY_SERVICE_ID,
+                                NexoVocabulary.MESSAGE to "Forbidden Request, Service Dialogue PaymentRequest is in Progress",
+                                NexoVocabulary.BUSY_SERVICE_ID to BUSY_SERVICE_ID,
                             ),
                         )
                 }

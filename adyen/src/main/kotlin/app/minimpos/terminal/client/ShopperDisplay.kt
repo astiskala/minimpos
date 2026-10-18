@@ -419,18 +419,10 @@ private fun inputRequestData(
 
 private fun parseInputDelivery(delivery: Delivery): InputOutcome<Input> {
     val inputResult =
-        when (delivery) {
-            is Delivery.Answered -> {
-                delivery.response
-                    ?.saleToPOIResponse
-                    ?.inputResponse
-                    ?.inputResult
-            }
-
-            is Delivery.Failed -> {
-                return InputOutcome.Failed(delivery.fault)
-            }
-        } ?: return InputOutcome.Failed(Fault.UnreadableReply())
+        when (val answer = readTerminalAnswer(delivery) { it.inputResponse?.inputResult }) {
+            is TerminalAnswer.Unread -> return InputOutcome.Failed(answer.fault)
+            is TerminalAnswer.Read -> answer.body
+        }
     val response = inputResult.response
     if (response?.result == ResultType.SUCCESS) {
         val input = inputResult.input ?: return InputOutcome.Failed(Fault.UnreadableReply())
@@ -439,7 +431,7 @@ private fun parseInputDelivery(delivery: Delivery): InputOutcome<Input> {
     if (Decline.of(succeeded = false, errorCondition = response?.errorCondition?.value(), refusalReason = null)?.cancelled == true) {
         return InputOutcome.Cancelled
     }
-    val message = AdditionalResponseParser.parse(response?.additionalResponse)["message"]
+    val message = AdditionalResponseParser.parse(response?.additionalResponse)[NexoVocabulary.MESSAGE]
     return InputOutcome.Failed(Fault.TerminalRejected(ExternalText.of(message)))
 }
 

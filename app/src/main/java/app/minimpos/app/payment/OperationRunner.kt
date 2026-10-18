@@ -7,11 +7,11 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
 
 /**
- * The single-flight skeleton every financial-operation runner shares: [TransactionLifecycle] on the terminal and
- * [CheckoutOperations] through the Checkout API. At most one operation runs at a time, on [scope] so it survives
- * screen changes, and it always ends [TransactionState.Finished], even when something unexpected fails, after its
- * runner has stored it as unknown. Requests started in this process are kept until their outcome is known, so a
- * runner can report a success once with the original request.
+ * The single-flight skeleton every financial-operation runner shares: [TransactionLifecycle] on the terminal,
+ * [CheckoutOperations] through the Checkout API, and [PaymentLinks] creations. At most one operation runs at a time,
+ * on [scope] so it survives screen changes, and it always ends [TransactionState.Finished], even when something
+ * unexpected fails, after its runner has stored it as unknown. Requests started in this process are kept until their
+ * outcome is known, so a runner can report a success once with the original request.
  *
  * @param R What the screen collected for one operation.
  * @param scope Where operations run.

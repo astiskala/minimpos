@@ -234,7 +234,7 @@ class CapabilityDiscoveryTest {
 
             // Non-discoverable destination (Payments app) rejects remote capability writes.
             env.updateSettings { it.copy(terminal = it.terminal.withConnection(TerminalMode.PAYMENTS_APP, TerminalEnvironment.TEST)) }
-            await { vm.state.first { !it.supportsTerminalFeatures } }
+            await { vm.state.first { !it.capabilities.supportsTerminalFeatures } }
             assertUnsupportedAndStandings(vm.state.value)
 
             vm.saveDcc(false)
@@ -272,25 +272,25 @@ class CapabilityDiscoveryTest {
         assertThat(unsupportedState.offlineStanding("AUD")).isEqualTo(CapabilityStanding.UNSUPPORTED)
         assertThat(unsupportedState.reconciliationStanding).isEqualTo(CapabilityStanding.UNSUPPORTED)
         assertThat(unsupportedState.shopperDisplayStanding).isEqualTo(CapabilityStanding.UNSUPPORTED)
-        assertThat(AdyenCapabilitiesState(supportsShopperDisplay = true).shopperDisplayStanding)
+        assertThat(AdyenCapabilitiesState(capabilities = DestinationCapabilities(supportsShopperDisplay = true)).shopperDisplayStanding)
             .isEqualTo(CapabilityStanding.AVAILABLE)
-        assertThat(AdyenCapabilitiesState(supportsTerminalFeatures = true).givingStanding(false))
+        assertThat(AdyenCapabilitiesState(capabilities = DestinationCapabilities(supportsTerminalFeatures = true)).givingStanding(false))
             .isEqualTo(CapabilityStanding.NEEDS_CONFIGURATION)
-        assertThat(AdyenCapabilitiesState(supportsTerminalFeatures = true).givingStanding(true))
+        assertThat(AdyenCapabilitiesState(capabilities = DestinationCapabilities(supportsTerminalFeatures = true)).givingStanding(true))
             .isEqualTo(CapabilityStanding.AVAILABLE)
-        assertThat(AdyenCapabilitiesState(supportsTerminalFeatures = true).motoStanding(false))
+        assertThat(AdyenCapabilitiesState(capabilities = DestinationCapabilities(supportsTerminalFeatures = true)).motoStanding(false))
             .isEqualTo(CapabilityStanding.NEEDS_CONFIGURATION)
-        assertThat(AdyenCapabilitiesState(supportsTerminalFeatures = true).motoStanding(true))
+        assertThat(AdyenCapabilitiesState(capabilities = DestinationCapabilities(supportsTerminalFeatures = true)).motoStanding(true))
             .isEqualTo(CapabilityStanding.AVAILABLE)
         assertThat(
             AdyenCapabilitiesState(
-                supportsOfflinePayments = true,
+                capabilities = DestinationCapabilities(supportsOfflinePayments = true),
                 offline = OfflineCapability(maxStoreAndForwardMinor = mapOf("AUD" to 1_000L), maxPayments = 5),
             ).offlineStanding("AUD"),
         ).isEqualTo(CapabilityStanding.AVAILABLE)
         assertThat(
             AdyenCapabilitiesState(
-                supportsOfflinePayments = true,
+                capabilities = DestinationCapabilities(supportsOfflinePayments = true),
                 offline = OfflineCapability(maxStoreAndForwardMinor = mapOf("AUD" to 1_000L), maxPayments = 0),
             ).offlineStanding("AUD"),
         ).isEqualTo(CapabilityStanding.NEEDS_CONFIGURATION)

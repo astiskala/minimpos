@@ -48,7 +48,6 @@ import app.minimpos.app.R
 import app.minimpos.app.data.db.SaleEntity
 import app.minimpos.app.data.db.SaleKind
 import app.minimpos.app.data.db.SaleStatus
-import app.minimpos.app.data.settings.ShopperReferenceSource
 import app.minimpos.app.feature.MerchantCopy
 import app.minimpos.app.feature.OutcomeMessage
 import app.minimpos.app.feature.ReceiptActions
@@ -58,6 +57,8 @@ import app.minimpos.app.feature.StatusCheck
 import app.minimpos.app.feature.lock.ManagerApproval
 import app.minimpos.app.feature.outcomeNote
 import app.minimpos.app.history.PaymentAction
+import app.minimpos.app.history.SaleResultNext
+import app.minimpos.app.history.saleResultNext
 import app.minimpos.app.history.standing
 import app.minimpos.app.payment.Checkout
 import app.minimpos.app.payment.CheckoutForm
@@ -86,7 +87,6 @@ import app.minimpos.core.payment.ScanWallet
 import app.minimpos.core.shopper.ShopperReferences
 import app.minimpos.terminal.checkout.StoredCard
 import app.minimpos.terminal.client.CardEntryOverride
-import app.minimpos.terminal.client.RetryAdvice
 
 /**
  * The last step before paying: the amount, the optional merchant reference, customer reference and email fields,
@@ -117,7 +117,7 @@ fun CheckoutScreen(
         kind = kind,
         actions = CheckoutCallbacks(vm::pay, vm::scanWallet, vm::sendLink, vm::update),
         tokens = tokens.isNotEmpty(),
-        onChargeToken = { tokenStep = state.tokenStart() },
+        onChargeToken = { tokenStep = if (state.tokenChargeNeedsNoTipConfirmation) TokenStep.CONFIRM_NO_TIP else TokenStep.APPROVE },
         modifier = modifier,
     )
 }
@@ -132,9 +132,6 @@ private class CheckoutCallbacks(
     val sendLink: () -> String?,
     val update: ((CheckoutForm) -> CheckoutForm) -> Unit,
 )
-
-/** A token charge takes no tip, so it is confirmed first when a tip was asked for; else it goes to Manager approval. */
-private fun Checkout.tokenStart(): TokenStep = if (tipOnReceipt || askGratuity) TokenStep.CONFIRM_NO_TIP else TokenStep.APPROVE
 
 /** The checkout itself: its details, the payment actions and their confirmations and approvals. */
 @Composable
@@ -445,7 +442,7 @@ private fun CartSummary(
             LabeledValue("${priced.line.quantity} × ${priced.line.name}", money.format(priced.amounts.gross))
         }
         HorizontalDivider(Modifier.padding(vertical = 8.dp))
-        if (state.payment.chargeTax) LabeledValue(stringResource(R.string.checkout_tax), money.format(state.totals.amounts.tax))
+        if (state.showsTax) LabeledValue(stringResource(R.string.checkout_tax), money.format(state.totals.amounts.tax))
         LabeledValue(stringResource(R.string.checkout_total), money.format(state.totals.amounts.gross), emphasize = true)
     }
 }
@@ -456,8 +453,7 @@ private fun ColumnScope.CheckoutFields(
     state: Checkout,
     onUpdate: ((CheckoutForm) -> CheckoutForm) -> Unit,
 ) {
-    val payment = state.payment
-    if (payment.askTransactionReference) {
+    if (state.showsTransactionReference) {
         OutlinedTextField(
             value = state.form.transactionReference,
             onValueChange = { value -> onUpdate { it.copy(transactionReference = value) } },
@@ -495,7 +491,7 @@ private fun ColumnScope.CheckoutFields(
             supportingText = {
                 if (!state.emailValid) {
                     Text(stringResource(R.string.email_invalid_address))
-                } else if (payment.captureEmailBefore && payment.autoSendEmail) {
+                } else if (state.emailsAutomatically) {
                     Text(stringResource(R.string.checkout_email_hint))
                 }
             },
@@ -513,11 +509,10 @@ private fun ColumnScope.CheckoutSwitches(
     state: Checkout,
     onUpdate: ((CheckoutForm) -> CheckoutForm) -> Unit,
 ) {
-    val payment = state.payment
     if (state.canTokenize) {
         SaveCardSwitch(
             checked = state.tokenize,
-            byEmail = payment.shopperReferenceSource == ShopperReferenceSource.EMAIL,
+            byEmail = state.savesCardByEmail,
             onChange = { checked -> onUpdate { it.copy(tokenize = checked) } },
         )
     }
@@ -666,7 +661,7 @@ fun PaymentScreen(
             SecondaryButton(
                 text = stringResource(R.string.action_cancel),
                 onClick = container.payments::cancel,
-                enabled = processing?.serviceId != null && !processing.cancelling,
+                enabled = processing?.canCancel == true && !processing.cancelling,
                 modifier = Modifier.widthIn(max = 320.dp).testTag("cancelPayment"),
             )
         }
@@ -791,13 +786,13 @@ private fun saleResultNext(
     onPayRemaining: () -> Unit,
     onTryAgain: () -> Unit,
 ): ResultAction? {
-    val sale = state.record?.sale
-    return when {
-        sale?.isPartiallyPaid == true -> {
+    val sale = state.record?.sale ?: return null
+    return when (saleResultNext(sale)) {
+        SaleResultNext.PAY_REMAINING -> {
             ResultAction(stringResource(R.string.result_pay_remaining, money.format(sale.remainingMinor)), "payRemaining", onPayRemaining)
         }
 
-        state.approved -> {
+        SaleResultNext.NEW_SALE -> {
             ResultAction(
                 stringResource(if (state.preAuthorisation) R.string.result_new_pre_auth else R.string.result_new_sale),
                 "newSaleAfter",
@@ -805,11 +800,11 @@ private fun saleResultNext(
             )
         }
 
-        sale?.status in setOf(SaleStatus.DECLINED, SaleStatus.CANCELLED, SaleStatus.FAILED) && state.advice != RetryAdvice.DO_NOT_RETRY -> {
+        SaleResultNext.TRY_AGAIN -> {
             ResultAction(stringResource(R.string.result_try_again), "tryAgain", onTryAgain)
         }
 
-        else -> {
+        SaleResultNext.NONE -> {
             null
         }
     }

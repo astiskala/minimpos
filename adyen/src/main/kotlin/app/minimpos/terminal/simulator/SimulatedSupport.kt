@@ -1,6 +1,7 @@
 package app.minimpos.terminal.simulator
 
 import app.minimpos.terminal.client.CardEntryOverride
+import app.minimpos.terminal.client.NexoVocabulary
 import app.minimpos.terminal.client.OfflineProcessingMode
 import app.minimpos.terminal.client.TerminalClient
 import app.minimpos.terminal.client.TerminalCurrencyTotals
@@ -152,20 +153,20 @@ internal fun simulatedTipAmount(
                     JsonParser
                         .parseString(decoded)
                         .asJsonObject
-                        .getAsJsonArray("Operation")
+                        .getAsJsonArray(NexoVocabulary.OPERATION)
                         .first()
                         .asJsonObject
-                        .getAsJsonObject("TipOptions")
-                val base = tipOptions.get("AmountToTipOn")?.asBigDecimal ?: requestedAmount
-                val suggestions = tipOptions.getAsJsonObject("TipSuggestions")
+                        .getAsJsonObject(NexoVocabulary.TIP_OPTIONS)
+                val base = tipOptions.get(NexoVocabulary.AMOUNT_TO_TIP_ON)?.asBigDecimal ?: requestedAmount
+                val suggestions = tipOptions.getAsJsonObject(NexoVocabulary.TIP_SUGGESTIONS)
                 when {
-                    suggestions.has("Amount1") -> {
-                        BigDecimal.valueOf(suggestions.get("Amount1").asLong, scale)
+                    suggestions.has(NexoVocabulary.FIRST_TIP_AMOUNT) -> {
+                        BigDecimal.valueOf(suggestions.get(NexoVocabulary.FIRST_TIP_AMOUNT).asLong, scale)
                     }
 
                     else -> {
                         base
-                            .multiply(BigDecimal.valueOf(suggestions.get("Percentage1").asLong))
+                            .multiply(BigDecimal.valueOf(suggestions.get(NexoVocabulary.FIRST_TIP_PERCENTAGE).asLong))
                             .divide(BigDecimal.valueOf(PERCENT), scale, RoundingMode.HALF_UP)
                     }
                 }
@@ -260,10 +261,10 @@ internal fun buildPaymentAdditional(
 ): Map<String, String> {
     val additional =
         linkedMapOf(
-            "merchantReference" to payment.merchantReference,
-            "paymentMethod" to payment.card.brand,
-            "paymentMethodVariant" to payment.card.variant,
-            "cardSummary" to payment.card.maskedPan.takeLast(4),
+            NexoVocabulary.MERCHANT_REFERENCE to payment.merchantReference,
+            NexoVocabulary.PAYMENT_METHOD to payment.card.brand,
+            NexoVocabulary.PAYMENT_METHOD_VARIANT to payment.card.variant,
+            NexoVocabulary.CARD_SUMMARY to payment.card.maskedPan.takeLast(4),
             "posEntryMode" to
                 when {
                     payment.wallet -> "Scanned"
@@ -273,26 +274,26 @@ internal fun buildPaymentAdditional(
                 },
         )
     if (!payment.isOffline) {
-        additional["pspReference"] = payment.psp
+        additional[NexoVocabulary.PSP_REFERENCE] = payment.psp
     }
     if (refusal == null) {
         if (payment.isOffline) {
-            additional["offline"] = "true"
-            additional["unconfirmedBatchCount"] = payment.unconfirmedBatchCount.coerceAtLeast(1).toString()
+            additional[NexoVocabulary.OFFLINE] = "true"
+            additional[NexoVocabulary.UNCONFIRMED_BATCH_COUNT] = payment.unconfirmedBatchCount.coerceAtLeast(1).toString()
             if (payment.offlineMode == OfflineProcessingMode.OFFLINE_EMV) {
-                additional["offlineAuthCode"] = payment.authCode
+                additional[NexoVocabulary.OFFLINE_AUTH_CODE] = payment.authCode
             }
         } else {
-            additional["authCode"] = payment.authCode
+            additional[NexoVocabulary.AUTH_CODE] = payment.authCode
         }
-        if (payment.preAuthorisation) additional["adjustAuthorisationData"] = SimulatedModifications.blob(random)
+        if (payment.preAuthorisation) additional[NexoVocabulary.ADJUST_AUTHORISATION_DATA] = SimulatedModifications.blob(random)
         if (!payment.wallet) additional += simulatedTokenization(payment.card, acquirer, randomToken)
         payment.givingServiceId?.let {
-            additional["adyen_giving_sale_id"] = TerminalClient.GIVING_SALE_ID
-            additional["adyen_giving_service_id"] = it
+            additional[NexoVocabulary.ADYEN_GIVING_SALE_ID] = TerminalClient.GIVING_SALE_ID
+            additional[NexoVocabulary.ADYEN_GIVING_SERVICE_ID] = it
         }
     } else {
-        additional["refusalReason"] = refusal.second
+        additional[NexoVocabulary.REFUSAL_REASON] = refusal.second
     }
     return additional
 }
@@ -327,13 +328,13 @@ private fun simulatedTokenization(
     if (shopperReference == null || model == null) return emptyMap()
     val token = randomToken()
     return buildMap {
-        put("alias", card.alias)
-        put("recurring.recurringDetailReference", token)
-        put("recurring.shopperReference", shopperReference)
-        put("recurringProcessingModel", model.toString())
-        put("tokenization.shopperReference", shopperReference)
-        put("tokenization.storedPaymentMethodId", token)
-        put("tokenization.store.operationType", "created")
-        acquirerData.shopperEmail?.let { put("shopperEmail", it) }
+        put(NexoVocabulary.ALIAS, card.alias)
+        put(NexoVocabulary.RECURRING_DETAIL_REFERENCE, token)
+        put(NexoVocabulary.RECURRING_SHOPPER_REFERENCE, shopperReference)
+        put(NexoVocabulary.RECURRING_PROCESSING_MODEL, model.toString())
+        put(NexoVocabulary.TOKENIZATION_SHOPPER_REFERENCE, shopperReference)
+        put(NexoVocabulary.TOKENIZATION_STORED_PAYMENT_METHOD_ID, token)
+        put(NexoVocabulary.TOKENIZATION_OPERATION_TYPE, "created")
+        acquirerData.shopperEmail?.let { put(NexoVocabulary.SHOPPER_EMAIL, it) }
     }
 }

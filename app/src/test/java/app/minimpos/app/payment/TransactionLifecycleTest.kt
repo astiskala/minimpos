@@ -172,7 +172,7 @@ class TransactionLifecycleTest {
         assertThat(declined.errorCondition).isEqualTo("Refusal")
         assertThat(declined.refusalReason).isEqualTo("Not enough balance")
         assertThat(await { container.receipts.automation(StoredTransaction.Sale(declined.id)) }.print).isFalse()
-        assertThat(payments.busyServiceId(declined.id)).isNull()
+        assertThat(await { payments.busyServiceId(declined.id) }).isNull()
         payments.acknowledge()
 
         env.useSimulator { it.copy(simulator = it.simulator.copy(outcome = SimulatedOutcome.CANCEL)) }
@@ -185,9 +185,9 @@ class TransactionLifecycleTest {
         val sale = finished(start()).sale
         assertThat(sale.status).isEqualTo(SaleStatus.DECLINED)
         assertThat(sale.errorCondition).isEqualTo("Busy")
-        assertThat(payments.busyServiceId(sale.id)).isEqualTo(TerminalSimulator.BUSY_SERVICE_ID)
+        assertThat(await { payments.busyServiceId(sale.id) }).isEqualTo(TerminalSimulator.BUSY_SERVICE_ID)
         assertThat(await { payments.abortBusyTransaction(sale.id) }).isTrue()
-        assertThat(payments.busyServiceId(sale.id)).isNull()
+        assertThat(await { payments.busyServiceId(sale.id) }).isNull()
         assertThat(await { payments.abortBusyTransaction(sale.id) }).isFalse()
     }
 
@@ -196,7 +196,7 @@ class TransactionLifecycleTest {
         env.useSimulator { it.copy(simulator = it.simulator.copy(delayMillis = 20_000)) }
         payments.cancel()
         val saleId = start()
-        await { payments.state.first { (it as? TransactionState.Processing)?.serviceId != null } }
+        await { payments.state.first { (it as? TransactionState.Processing)?.canCancel == true } }
         // A second start (such as a second tap on Pay) stores and sends nothing.
         assertThat(payments.start(request())).isNull()
         assertThat(await { container.history.items().first() }).hasSize(1)
@@ -223,7 +223,7 @@ class TransactionLifecycleTest {
             await { onTerminal.container.terminalStatus.check() }
             val lifecycle = onTerminal.container.payments
             val saleId = lifecycle.started(request())
-            await { lifecycle.state.first { (it as? TransactionState.Processing)?.serviceId != null } }
+            await { lifecycle.state.first { (it as? TransactionState.Processing)?.canCancel == true } }
             lifecycle.cancel()
             lifecycle.cancel()
             await {

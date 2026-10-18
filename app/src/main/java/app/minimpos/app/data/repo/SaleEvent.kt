@@ -20,10 +20,10 @@ import java.time.Instant
 
 /**
  * Something that happened to a stored sale after it was opened, which moves it on ([after]). It is the one place that
- * decides which [SaleStatus], [CaptureStatus] and fields each happening writes, so callers name what happened rather
- * than the fields; [SaleRepository.record] applies it in a transaction. Pure: tested with plain JUnit, with
- * [app.minimpos.app.history.PaymentStanding] as what can be observed. An accepted refund or cancellation, which also
- * changes the sale's lines, is [SaleRepository.applyRefund].
+ * decides which [SaleStatus], [CaptureStatus] and fields each happening writes, and when each happened ([stamped]), so
+ * callers name what happened rather than the fields or times; [SaleRepository.record] applies it in a transaction.
+ * Pure: tested with plain JUnit, with [app.minimpos.app.history.PaymentStanding] as what can be observed. An accepted
+ * refund or cancellation, which also changes the sale's lines, is [SaleRepository.applyRefund].
  *
  * Why something did not succeed is stored as the terminal or Adyen answered it (`message`, verbatim) or as a typed
  * [StoredReason] the screens word, which also keeps the words of a fault; each happening that writes one clears the
@@ -31,13 +31,23 @@ import java.time.Instant
  */
 sealed interface SaleEvent {
     /**
+     * This event with the time it records stamped: the happening's own ([Settled.processedAt],
+     * [CaptureSending.startedAt], [CaptureAnswered.processedAt]) taken from the terminal's own timestamp when it sent
+     * one, else from [now] (epoch ms, see [SaleRepository.record]), unless already known. Pure, like the event itself;
+     * the caller supplies the clock.
+     */
+    fun stamped(now: Long): SaleEvent
+
+    /**
      * The payment is being sent to the terminal.
      *
      * @property poiId The POIID of the terminal it goes to.
      */
     data class Sending(
         val poiId: String,
-    ) : SaleEvent
+    ) : SaleEvent {
+        override fun stamped(now: Long) = this
+    }
 
     /**
      * The terminal's transaction ended (or the app gave up on it), as its lifecycle classified it.
@@ -48,6 +58,8 @@ sealed interface SaleEvent {
      *   synchronous adjustments); null when it did not answer, which keeps what is stored.
      * @property reason Why it did not succeed, when the app says so; null otherwise.
      * @property processedAt Approval time in epoch milliseconds; null without a known approval date.
+     * @property busyServiceId The ServiceID of the transaction a `Busy` refusal named, which can be aborted once; null
+     *   otherwise. Only the sale's own event writes it, and [BusyAborted] clears it.
      */
     data class Settled(
         val status: SaleStatus,
@@ -56,7 +68,27 @@ sealed interface SaleEvent {
         val reason: StoredReason? = null,
         /** Terminal approval time in epoch milliseconds; null when unavailable. */
         val processedAt: Long? = null,
-    ) : SaleEvent
+        /** The ServiceID a `Busy` refusal named; see [busyServiceId]. */
+        val busyServiceId: String? = null,
+    ) : SaleEvent {
+        override fun stamped(now: Long): SaleEvent =
+            copy(
+                processedAt =
+                    processedAt
+                        ?: details?.poiTimestamp?.let {
+                            runCatching { Instant.parse(it).toEpochMilli() }.getOrNull()
+                        }
+                        ?: now,
+            )
+    }
+
+    /**
+     * The terminal was asked to stop the transaction a `Busy` refusal named, so it cannot be asked again; whether it
+     * actually stopped arrives with the refused transaction itself.
+     */
+    data object BusyAborted : SaleEvent {
+        override fun stamped(now: Long) = this
+    }
 
     /**
      * Adyen answered about the sale's payment link: where it stands, with its ID, address and expiry (an expiry Adyen did
@@ -70,6 +102,8 @@ sealed interface SaleEvent {
         val link: PaymentLink,
         val cancelling: Boolean = false,
     ) : SaleEvent {
+        override fun stamped(now: Long) = this
+
         /** Whether the link can still be paid, so the sale awaits its payment ([SaleStatus.AWAITING_PAYMENT]). */
         val stillOpen: Boolean get() = link.status == PaymentLinkStatus.ACTIVE || link.status == PaymentLinkStatus.PAYMENT_PENDING
     }
@@ -82,6 +116,8 @@ sealed interface SaleEvent {
     data class NotSent(
         val fault: Fault,
     ) : NotTaken {
+        override fun stamped(now: Long) = this
+
         override val failure: Failure get() = Failure.Remote(fault)
     }
 
@@ -93,6 +129,8 @@ sealed interface SaleEvent {
     data class NotSetUp(
         val problem: SetupProblem,
     ) : NotTaken {
+        override fun stamped(now: Long) = this
+
         override val failure: Failure get() = Failure.NotSetUp(problem)
     }
 
@@ -110,7 +148,9 @@ sealed interface SaleEvent {
      */
     data class OutcomeUnknown(
         val failure: Failure? = null,
-    ) : SaleEvent
+    ) : SaleEvent {
+        override fun stamped(now: Long) = this
+    }
 
     /**
      * The receipt was emailed.
@@ -119,7 +159,12 @@ sealed interface SaleEvent {
      */
     data class Emailed(
         val to: String,
-    ) : SaleEvent
+    ) : SaleEvent {
+        override fun stamped(now: Long) = this
+    }
+
+    /** A capture or adjustment happening, grouped for how it moves the sale on ([modified]). */
+    sealed interface ModificationEvent : SaleEvent
 
     /**
      * Adyen answered an adjustment of what the payment holds to [amountMinor]: it went through (synchronously, with a
@@ -131,7 +176,10 @@ sealed interface SaleEvent {
     data class AdjustmentAnswered(
         val amountMinor: Long,
         val result: ModificationResult,
-    ) : SaleEvent
+    ) : SaleEvent,
+        ModificationEvent {
+        override fun stamped(now: Long) = this
+    }
 
     /**
      * A capture of [amountMinor] is about to be sent to Adyen, with the tip entered for it.
@@ -145,7 +193,10 @@ sealed interface SaleEvent {
         val tipMinor: Long? = null,
         /** Persisted send time in epoch milliseconds; null only without a known time. */
         val startedAt: Long? = null,
-    ) : SaleEvent
+    ) : SaleEvent,
+        ModificationEvent {
+        override fun stamped(now: Long): SaleEvent = copy(startedAt = startedAt ?: now)
+    }
 
     /**
      * Adyen answered the capture being sent: received, not taken (it can be captured again) or unknown (it can be sent
@@ -158,7 +209,10 @@ sealed interface SaleEvent {
         val result: ModificationResult,
         /** Time acceptance was observed in epoch milliseconds; null when unavailable. */
         val processedAt: Long? = null,
-    ) : SaleEvent
+    ) : SaleEvent,
+        ModificationEvent {
+        override fun stamped(now: Long): SaleEvent = copy(processedAt = processedAt ?: now)
+    }
 
     /**
      * A capture or adjustment was not sent, because the Checkout API is only partly set up.
@@ -167,13 +221,18 @@ sealed interface SaleEvent {
      */
     data class ModificationNotSetUp(
         val problem: SetupProblem,
-    ) : SaleEvent
+    ) : SaleEvent,
+        ModificationEvent {
+        override fun stamped(now: Long) = this
+    }
 
     /**
      * The app stopped while the payment, or its capture, was being sent: a PENDING payment becomes unknown, and so does
      * a PENDING capture, which can then be sent again, both for [StoredReason.Interrupted]. Anything else is left alone.
      */
-    data object Interrupted : SaleEvent
+    data object Interrupted : SaleEvent {
+        override fun stamped(now: Long) = this
+    }
 
     /**
      * Records the non-secret connection before sending, then its certificate environment once answered.
@@ -181,7 +240,9 @@ sealed interface SaleEvent {
      */
     data class ContextRecorded(
         val context: PaymentContext,
-    ) : SaleEvent
+    ) : SaleEvent {
+        override fun stamped(now: Long) = this
+    }
 
     /**
      * Adyen answered the charge of a saved card ([SaleEntity.savedCard]): charged ([SaleStatus.APPROVED], with its PSP
@@ -194,7 +255,9 @@ sealed interface SaleEvent {
     data class CardAnswered(
         val result: CardChargeResult,
         val processedAt: Long,
-    ) : SaleEvent
+    ) : SaleEvent {
+        override fun stamped(now: Long) = this
+    }
 
     /**
      * Persists adjustment identity and amount before it can take effect.
@@ -204,7 +267,9 @@ sealed interface SaleEvent {
     data class AdjustmentSending(
         val key: String,
         val amountMinor: Long,
-    ) : SaleEvent
+    ) : SaleEvent {
+        override fun stamped(now: Long) = this
+    }
 }
 
 /** Whether this record is settled enough to remove; unresolved transactions, links and held amounts remain actionable. */
@@ -252,6 +317,30 @@ fun SaleEntity.after(event: SaleEvent): SaleEntity =
             copy(emailedTo = event.to)
         }
 
+        is SaleEvent.ModificationEvent -> {
+            modified(event)
+        }
+
+        SaleEvent.BusyAborted -> {
+            copy(busyServiceId = null)
+        }
+
+        SaleEvent.Interrupted -> {
+            interrupted()
+        }
+
+        is SaleEvent.ContextRecorded, is SaleEvent.AdjustmentSending -> {
+            prepared(event)
+        }
+
+        is SaleEvent.CardAnswered -> {
+            cardAnswered(event)
+        }
+    }
+
+/** How a capture or adjustment happening moves the sale on: what was sent, what Adyen answered, or what was missing. */
+private fun SaleEntity.modified(event: SaleEvent.ModificationEvent): SaleEntity =
+    when (event) {
         is SaleEvent.AdjustmentAnswered -> {
             adjustmentAnswered(event.amountMinor, event.result).copy(adjustmentPending = event.result.unconfirmed)
         }
@@ -266,18 +355,6 @@ fun SaleEntity.after(event: SaleEvent): SaleEntity =
 
         is SaleEvent.ModificationNotSetUp -> {
             modificationFailed(null, StoredReason.NotDone(Failure.NotSetUp(event.problem)))
-        }
-
-        SaleEvent.Interrupted -> {
-            interrupted()
-        }
-
-        is SaleEvent.ContextRecorded, is SaleEvent.AdjustmentSending -> {
-            prepared(event)
-        }
-
-        is SaleEvent.CardAnswered -> {
-            cardAnswered(event)
         }
     }
 
@@ -339,12 +416,21 @@ private fun SaleEntity.settled(event: SaleEvent.Settled): SaleEntity {
     val ended =
         ended(effectiveStatus, event.message, event.reason).copy(
             processedAt = processedAt ?: event.processedAt.takeIf { effectiveStatus == SaleStatus.APPROVED && !paymentLink },
+            busyServiceId = event.busyServiceId ?: busyServiceId,
         )
-    val details = event.details ?: return ended
-    val (terminalTipMinor, updatedPaidMinor) = settledAmounts(event.status, details)
+    return event.details?.let { answered(event.status, ended, it) } ?: ended
+}
+
+/** [ended] with the transaction, card, receipt and tipping facts of the terminal's [details] answer. */
+private fun SaleEntity.answered(
+    eventStatus: SaleStatus,
+    ended: SaleEntity,
+    details: TransactionDetails,
+): SaleEntity {
+    val (terminalTipMinor, updatedPaidMinor) = settledAmounts(eventStatus, details)
     val donatedMinor =
         details.donationAmount
-            ?.takeIf { event.status == SaleStatus.APPROVED }
+            ?.takeIf { eventStatus == SaleStatus.APPROVED }
             ?.let { CurrencySpec.of(currency).toMinor(it) }
             ?.takeIf { it > 0 }
     return ended.copy(
@@ -398,6 +484,34 @@ private fun isPartialOrSplitTender(
     remainingMinor: Long,
     paidMinor: Long,
 ): Boolean = partial || reportedMinor < remainingMinor || paidMinor > 0
+
+/**
+ * The approved terminal tender of a settled [SaleEvent], as the repository stores its row.
+ *
+ * @property requestedMinor What this tender was asked for: the balance still due in minor units.
+ * @property authorisedMinor What the terminal approved for this tender in minor units; the requested amount when it
+ *   reported none.
+ */
+data class ApprovedTender(
+    val requestedMinor: Long,
+    val authorisedMinor: Long,
+)
+
+/**
+ * The approved terminal tender of a settled [SaleEvent], for the sale of [currency] that totals [totalMinor] minor
+ * units and had already collected [paidMinor]; null when the answer approves nothing.
+ */
+fun SaleEvent.Settled.approvedTender(
+    currency: String,
+    totalMinor: Long,
+    paidMinor: Long,
+): ApprovedTender? {
+    if (status != SaleStatus.APPROVED) return null
+    val details = details ?: return null
+    val requested = (totalMinor - paidMinor).coerceAtLeast(0)
+    val authorised = details.amount?.let { CurrencySpec.of(currency).toMinor(it) } ?: requested
+    return ApprovedTender(requested, authorised)
+}
 
 private fun SaleEntity.linkAnswered(event: SaleEvent.LinkAnswered): SaleEntity {
     val link = event.link

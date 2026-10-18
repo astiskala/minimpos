@@ -58,7 +58,7 @@ internal fun ColumnScope.CapabilitiesSection(
         return
     }
     capabilities.failure?.let { SettingNote(it.text()) }
-    if (capabilities.discoversTerminals || capabilities.simulated) {
+    if (capabilities.capabilities.discoversTerminals || capabilities.simulated) {
         SettingActions {
             GatedButton(
                 stringResource(R.string.capabilities_refresh),
@@ -75,12 +75,12 @@ internal fun ColumnScope.CapabilitiesSection(
     SectionHeader(stringResource(R.string.capabilities_matrix_header))
     CapabilitiesMatrix(capabilities, payment, currency)
 
-    if ((capabilities.discoversTerminals || capabilities.simulated) && capabilities.problem == null) {
+    if ((capabilities.capabilities.discoversTerminals || capabilities.simulated) && capabilities.problem == null) {
         key(actions.revision, currency) {
             RemoteGratuityEditor(capabilities, actions.gratuity, currency, events::onSaveGratuity)
             RemoteDccEditor(capabilities, actions.dcc, events::onSaveDcc)
             RemoteMotoEditor(capabilities, actions.moto, events::onSaveMoto)
-            if (capabilities.supportsOfflinePayments) {
+            if (capabilities.capabilities.supportsOfflinePayments) {
                 RemoteOfflineEditor(capabilities, actions.offline, currency, events::onSaveOffline)
             }
         }

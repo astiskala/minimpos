@@ -31,12 +31,12 @@ sealed interface TransactionState {
      * One is running.
      *
      * @property id The stored sale or refund.
-     * @property serviceId The nexo ServiceID of the request, once it is being sent; needed to cancel it.
-     * @property cancelling Whether a cancel (AbortRequest) has been sent.
+     * @property canCancel Whether the terminal can be asked to stop it, which it can once its request is being sent.
+     * @property cancelling Whether asking it to stop was already requested (an AbortRequest was sent).
      */
     data class Processing(
         val id: String,
-        val serviceId: String? = null,
+        val canCancel: Boolean = false,
         val cancelling: Boolean = false,
     ) : TransactionState
 
@@ -169,6 +169,15 @@ interface TransactionBook<R> {
     /** The ServiceID of record [id] when its outcome is still unknown, so it can be checked again; else null. */
     suspend fun unsettledServiceId(id: String): String?
 
+    /**
+     * The ServiceID of the transaction a stored `Busy` refusal named for record [id], which an [abort] request asks the
+     * terminal to stop and records as sent; null without one (and for refunds, whose screens offer no abort).
+     */
+    suspend fun busyServiceId(
+        id: String,
+        abort: Boolean = false,
+    ): String? = null
+
     /** Records the actual connection's non-secret context for [id]. */
     suspend fun recordContext(
         id: String,
@@ -216,7 +225,9 @@ class TransactionLifecycle<R>(
 
     /** The current transaction; the waiting and result screens follow it. */
     val state: StateFlow<TransactionState> = runner.state
-    private val busyServiceIds = mutableMapOf<String, String>()
+
+    /** The ServiceID of the running transaction, once its request is being sent; how [cancel] addresses its abort. */
+    private val serviceIds = mutableMapOf<String, String>()
     private val rechecks = Mutex()
 
     /**
@@ -243,22 +254,25 @@ class TransactionLifecycle<R>(
     @Synchronized
     fun cancel() {
         val processing = runner.state.value as? TransactionState.Processing ?: return
-        if (processing.cancelling) return
-        val serviceId = processing.serviceId ?: return
+        if (processing.cancelling || !processing.canCancel) return
+        val serviceId = synchronized(serviceIds) { serviceIds[processing.id] } ?: return
         runner.state.value = processing.copy(cancelling = true)
         scope.launch { gateway.abort(serviceId, book.kind) }
     }
 
-    /** For a transaction refused with ErrorCondition Busy: the ServiceID of the transaction the terminal is busy with. */
-    fun busyServiceId(id: String): String? = synchronized(busyServiceIds) { busyServiceIds[id] }
+    /** For a transaction refused with ErrorCondition Busy: the ServiceID of the transaction the terminal said it is busy with. */
+    suspend fun busyServiceId(id: String): String? = book.busyServiceId(id)
 
     /**
-     * Adyen: with Busy, the in-progress transaction can be cancelled with an AbortRequest for its ServiceID. Returns
-     * whether the abort was sent; it can be sent once per refused transaction.
+     * Adyen: with Busy, the in-progress transaction can be cancelled with an AbortRequest for its ServiceID, which the
+     * stored refusal names and the record keeps until the abort was sent. Returns whether the abort was sent; it can
+     * be sent once per refused transaction.
      */
     suspend fun abortBusyTransaction(id: String): Boolean {
-        val serviceId = synchronized(busyServiceIds) { busyServiceIds.remove(id) } ?: return false
-        return gateway.abort(serviceId)
+        val serviceId = book.busyServiceId(id) ?: return false
+        if (!gateway.abort(serviceId)) return false
+        book.busyServiceId(id, abort = true)
+        return true
     }
 
     /** Returns to [TransactionState.Idle] once the result has been seen, so the next transaction can start. */
@@ -277,7 +291,7 @@ class TransactionLifecycle<R>(
                     is Attempt.Made -> attempt.result
                 }
             if (outcome is TransactionOutcome.Unknown) return@withLock Recheck.StillUnknown(Failure.Remote(outcome.fault))
-            val settlement = settle(id, outcome)
+            val settlement = settle(outcome)
             book.settle(id, settlement)
             complete(id, settlement)
             Recheck.Settled
@@ -290,9 +304,10 @@ class TransactionLifecycle<R>(
         val serviceId = newServiceId()
         book.open(id, request, serviceId, clock.millis())
         val onSending: suspend (String) -> Unit = { poiId ->
+            synchronized(serviceIds) { serviceIds[id] = serviceId }
             book.sending(id, poiId)
             runner.state.update { current ->
-                (current as? TransactionState.Processing)?.takeIf { it.id == id }?.copy(serviceId = serviceId) ?: current
+                (current as? TransactionState.Processing)?.takeIf { it.id == id }?.copy(canCancel = true) ?: current
             }
         }
         val attempt =
@@ -321,7 +336,7 @@ class TransactionLifecycle<R>(
         val settlement =
             when (attempt) {
                 is Attempt.Made -> {
-                    settle(id, attempt.result)
+                    settle(attempt.result)
                 }
 
                 is Attempt.NotSetUp -> {
@@ -345,16 +360,12 @@ class TransactionLifecycle<R>(
         if (settlement.status == SettlementStatus.SUCCEEDED) onSucceeded(id, request)
     }
 
-    /** Classifies [outcome] and remembers the transaction a busy terminal names. */
-    private fun settle(
-        id: String,
-        outcome: TransactionOutcome,
-    ): Settlement =
+    /** Classifies [outcome]. */
+    private fun settle(outcome: TransactionOutcome): Settlement =
         when (outcome) {
             is TransactionOutcome.Completed -> {
                 val details = outcome.details
                 val decline = details.decline
-                decline?.busyServiceId?.let { synchronized(busyServiceIds) { busyServiceIds[id] = it } }
                 val status =
                     when {
                         decline == null -> SettlementStatus.SUCCEEDED

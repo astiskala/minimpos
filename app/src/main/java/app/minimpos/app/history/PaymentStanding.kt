@@ -8,6 +8,7 @@ import app.minimpos.app.data.db.SaleKind
 import app.minimpos.app.data.db.SaleStatus
 import app.minimpos.app.data.db.SaleWithLines
 import app.minimpos.terminal.client.Decline
+import app.minimpos.terminal.client.RetryAdvice
 
 /**
  * Where a stored sale stands as a payment, worked out once from its status, kind, capture and cancellation. It is the
@@ -108,6 +109,40 @@ val SaleEntity.standing: PaymentStanding get() = PaymentStanding.of(this)
  * [Decline.advice].
  */
 val SaleEntity.decline: Decline? get() = Decline.of(status == SaleStatus.APPROVED, errorCondition, refusalReason)
+
+/**
+ * What the result screen offers a stored sale beside Home; the one reading of its outcome, so the screen only words it.
+ * See [saleResultNext].
+ */
+enum class SaleResultNext {
+    /** Collect the remaining balance of a partially paid sale on another card. */
+    PAY_REMAINING,
+
+    /** The payment was approved: start the next one of its kind. */
+    NEW_SALE,
+
+    /** The payment failed and may be retried: back to checkout with the same cart. */
+    TRY_AGAIN,
+
+    /** Nothing is offered. */
+    NONE,
+}
+
+/**
+ * What the result of [sale] offers beside Home, the one reading of its outcome: collecting its remaining balance, the
+ * next payment once it was approved, or a retry after a refusal the terminal's advice allows.
+ */
+fun saleResultNext(sale: SaleEntity): SaleResultNext =
+    when {
+        sale.isPartiallyPaid -> SaleResultNext.PAY_REMAINING
+
+        sale.approved -> SaleResultNext.NEW_SALE
+
+        sale.status in setOf(SaleStatus.DECLINED, SaleStatus.CANCELLED, SaleStatus.FAILED) &&
+            sale.decline?.advice != RetryAdvice.DO_NOT_RETRY -> SaleResultNext.TRY_AGAIN
+
+        else -> SaleResultNext.NONE
+    }
 
 /**
  * What a sale's receipt says about it as a payment, read from where it stands ([PaymentStanding.of]), so the receipt

@@ -315,4 +315,31 @@ class TerminalSetupTest {
         assertThat(u2.printerAvailable(mapOf("S1U2-000158213605014" to true))).isTrue()
         assertThat(resolve(terminal).printerAvailable(emptyMap())).isFalse()
     }
+
+    @Test
+    fun `each destination knows which of its details are already supplied`() {
+        // The simulator has no connection details to supply.
+        val rules = DestinationRules.of(TerminalMode.SIMULATOR, phone)
+        assertThat(rules.suppliedDetails(TerminalSettings(host = "192.168.1.9"), emptySet())).isFalse()
+
+        // A terminal: address, POIID, key identifier or a saved passphrase.
+        val terminal = DestinationRules.of(TerminalMode.TERMINAL, phone)
+        assertThat(terminal.suppliedDetails(TerminalSettings(), emptySet())).isFalse()
+        assertThat(terminal.suppliedDetails(TerminalSettings(host = "192.168.1.9"), emptySet())).isTrue()
+        assertThat(terminal.suppliedDetails(TerminalSettings(poiIdOverride = "S1F2-000158213605014"), emptySet())).isTrue()
+        assertThat(terminal.suppliedDetails(TerminalSettings(keyIdentifier = "key"), emptySet())).isTrue()
+        assertThat(terminal.suppliedDetails(TerminalSettings(), passphrase)).isTrue()
+
+        // A cloud terminal: only its POIID; a saved passphrase belongs to no cloud terminal.
+        val cloud = DestinationRules.of(TerminalMode.CLOUD, phone)
+        assertThat(cloud.suppliedDetails(TerminalSettings(), passphrase)).isFalse()
+        assertThat(cloud.suppliedDetails(TerminalSettings(poiIdOverride = "S1F2-000158213605014"), emptySet())).isTrue()
+
+        // Tap to Pay: boarding or the shared key.
+        val paymentsApp = DestinationRules.of(TerminalMode.PAYMENTS_APP, phone)
+        assertThat(paymentsApp.suppliedDetails(TerminalSettings(), emptySet())).isFalse()
+        assertThat(paymentsApp.suppliedDetails(TerminalSettings(paymentsAppInstallationId = "installed"), emptySet())).isTrue()
+        assertThat(paymentsApp.suppliedDetails(TerminalSettings(keyIdentifier = "key"), emptySet())).isTrue()
+        assertThat(paymentsApp.suppliedDetails(TerminalSettings(), passphrase)).isTrue()
+    }
 }

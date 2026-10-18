@@ -376,7 +376,18 @@ data class SaleEntity(
     val chargedCardId: String? = null,
     /** Adyen's `recurringProcessingModel` the [savedCard] sale is charged with, frozen when it is opened. */
     val chargeRecurringModel: String? = null,
+    /**
+     * The ServiceID of the transaction a terminal that answered `Busy` said it was busy with, which can be aborted once.
+     * Cleared when that abort was sent; null without a busy refusal. Added in database version 13.
+     */
+    val busyServiceId: String? = null,
 ) {
+    /** Whether the terminal approved the payment, whatever was captured or refunded since. */
+    val approved: Boolean get() = status == SaleStatus.APPROVED
+
+    /** Whether it has not been answered yet, so it may still be waiting to be sent or settled. */
+    val pending: Boolean get() = status == SaleStatus.PENDING
+
     /** What the payment holds on the card: [authorisedMinor] after an adjustment, else [totalMinor]. */
     val heldMinor: Long get() = authorisedMinor ?: totalMinor
 

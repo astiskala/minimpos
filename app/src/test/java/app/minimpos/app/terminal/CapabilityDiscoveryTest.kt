@@ -306,6 +306,7 @@ class CapabilityDiscoveryTest {
         compose.onNodeWithTag("cap_tipping").performScrollTo().assertIsDisplayed()
         compose.onNodeWithTag("cap_partial_auth").performScrollTo().assertIsDisplayed()
         compose.onNodeWithTag("capDccEnable").performScrollTo().performClick()
+        compose.onNodeWithTag("saveCapDcc").performScrollTo().performClick()
         compose.awaitCondition("DCC enabled in simulator") { env.container.capabilityDiscovery.state.value.dccEnabled }
     }
 }

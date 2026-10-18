@@ -19,7 +19,7 @@ description: Re-capture the screenshots and social image of the docs/ website, o
   - S1F2 (9:16): captured at the S1F2's 720×1280 xhdpi, saved as 540×960. All screenshots except the hero's AMS1 one.
   - AMS1 (3:5): `sale-ams1.png`, captured and saved at the AMS1's 480×800 hdpi (`wm size 480x800`, `wm density 240`
     on the S1F2 AVD, then `wm size reset`/`wm density reset`; `screencap` then returns 480×800).
-- PNGs with a 96-colour palette (Pillow: Lanczos resize, median-cut, no dither; this ImageMagick has no PNG delegate).
+- PNGs with a 96-colour palette (median cut, no dither), made by `scripts/docs-capture process`; see Capture script.
 - No system bars: Adyen terminals show no clock or gesture bar. Hide the status bar icons and clock with
   `settings put secure icon_blacklist clock,battery,wifi,mobile,airplane,cast,hotspot,volume,bluetooth,location,alarm_clock,zen,ethernet,vpn,nfc,rotate,headset`
   (then `stop`/`start`), and before resizing paint the status bar (top 48 px at 720×1280) and gesture bar (bottom 48 px)
@@ -28,6 +28,18 @@ description: Re-capture the screenshots and social image of the docs/ website, o
   `icon_blacklist` afterwards.
 - If a frame's screen `rect` changes, update `.terminal-* img` in `docs/styles.css` (percentages of the viewBox) and
   the social page to match.
+
+## Capture script
+
+`scripts/docs-capture` (Bash, checked by shellcheck) drives the docs emulator by visible text, so one sequence works
+in every language: `prepare`, `locale LANG`, `snapshot`/`restore NAME.tar` (app data in `/data/local/tmp`), `launch`,
+`tap LANG KEY` (a string resource, or `=literal text`), `scroll LANG KEY`, `shot LANG NAME` and `finish`. Raw
+720×1280 captures collect in `/tmp/minimpos-shots` as `LANG-NAME.png`; `process` then paints the system bars, scales
+to 540×960 and quantizes them into `docs/images[/LANG]/` through `:tooling`'s `screenshots` command
+(`DocsScreenshots`). Keep per-language fixtures as on-device snapshots (`docs-<set>-<lang>.tar`); `flow LANG NAME...`
+restores one before each named flow (`settings`: terminal-setup, tax, terminal-tipping; `preauth`: pre-auth-detail;
+`offline`: offline-payment, reconciliation) and `settings LANG KEY` opens a Settings section past the admin PIN. Add a
+named flow there for each screenshot you recapture by hand twice, rather than a temporary script.
 
 ## Emulator
 
@@ -66,7 +78,7 @@ Seeded before the first launch (debug builds only), piped in with
 `adb shell "cat … | run-as app.minimpos sh -c 'cat > …'"`:
 
 - A Room DB built from the latest `app/schemas/app.minimpos.app.data.db.AppDatabase/<version>.json`
-  (Python sqlite3, `PRAGMA user_version`).
+  (the `sqlite3` command-line tool, `PRAGMA user_version`). Do not add Python to the project.
 - `files/datastore/settings.json`: auto-lock 10 min, simulator delay 6 s (so the "waiting" screen can be captured).
   Explicitly set `payment.askTransactionReference = false`, `payment.shopperReferenceSource = CUSTOMER_REFERENCE`,
   `payment.offerCardSaving = true` and `receipt.autoPrint = false` for these demos. Omitted keys take the current
@@ -131,7 +143,7 @@ closes. Always restore the market's device locale when recapturing only part of 
    result with Pay remaining visible; turn the simulated printer off for this capture so Show receipt also fits.
    Restore the printer afterward; do not add this payment to the main history screenshot.
 10. `offline-payment.png` and `reconciliation.png`: use a separate empty-history demo fixture with the same products.
-    Enable Settings › Simulator › Simulate offline Store-and-Forward, then approve the $34.00 sale. In its History
+    Enable Settings › Simulator › Offline approvals, then approve the $34.00 sale. In its History
     detail, scroll past the receipt buttons to show the full Offline processing and Unconfirmed offline batches rows,
     followed by the receipt preview. Go Home, open Reconciliation and tap Check terminal totals without restarting the
     app: the simulator ledger is in memory. Capture matching $34.00 totals together with the offline-sale and

@@ -49,8 +49,15 @@ internal object Tooling {
                 out.print(BuildReports.render(Path.of(args[1])))
             }
 
+            "screenshots" -> {
+                val directories = args.drop(1)
+                require(directories.size == 2) { "Expected screenshots, a raw capture directory and docs/images" }
+                val (raw, images) = directories
+                DocsScreenshots.processAll(Path.of(raw), Path.of(images)).forEach { out.println("Saved $it") }
+            }
+
             else -> {
-                throw IllegalArgumentException("Expected release, signing or report")
+                throw IllegalArgumentException("Expected release, signing, report or screenshots")
             }
         }
         return 0

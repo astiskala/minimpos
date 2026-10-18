@@ -122,10 +122,10 @@
         </section>
         <section id="capabilities">
           <h2>检查并配置 Adyen 功能</h2>
-          <p>连接收款目标后，打开<strong>设置 › Adyen 功能</strong>。页面将功能标为<strong>可用</strong>、<strong>需要配置</strong>或<strong>此收款目标不支持</strong>。这些只是设置状态，不代表商家账户、银行卡或付款方式一定能完成交易。</p>
+          <p>连接收款目标后，打开<strong>设置 › Adyen 功能</strong>。页面将功能标为<strong>可用</strong>、<strong>需要配置</strong>或<strong>此收款目标不支持</strong>。这些只是设置状态，不代表商家账户、银行卡或付款方式一定能完成交易。完成收款设置前，此页面会显示<strong>完成收款设置</strong>。</p>
           <ol>
             <li>点按<strong>刷新功能状态</strong>，读取所选终端的设置。检查真实终端需要<a href="quick-start.html#credentials">快速入门中列出的 Management API 角色</a>。</li>
-            <li>对于支持的终端，可配置付款币种的终端小费、DCC、MOTO 或离线限额。这些控件会更新 Adyen 上的终端设置，而不只是 Mini mPOS。“主货币单位”使用货币的主单位；最小单位金额使用 Adyen 的货币精度。</li>
+            <li>对于支持的终端，可配置付款币种的终端小费、DCC、MOTO 或离线限额。这些控件会更新 Adyen 上的终端设置，而不只是 Mini mPOS，且只在点按<strong>保存到 Adyen</strong>时更新。“主货币单位”使用货币的主单位；最小单位金额使用 Adyen 的货币精度。</li>
             <li>在设置中的<strong>支付</strong>、<strong>小费与捐款</strong>或<strong>购物者端终端屏幕</strong>中启用所需结账选项，并在 TEST 中测试。功能列表还包括 Adyen Giving、部分授权、附加费、礼品卡、终端对账和购物者端屏幕，但并非每项都有配置控件。</li>
           </ol>
           <p>Tap to Pay 不提供终端小费、购物者端屏幕、MOTO/MKE、离线支付或终端对账等实体终端功能。部分授权是独立的付款选项。账户开通和付款方式要求请参阅 <a href="https://docs.adyen.com/point-of-sale">Adyen 线下支付文档</a>。模拟器中可用不代表真实终端支持。</p>
@@ -166,7 +166,7 @@
             <figcaption class="fine">简体中文模拟器部分授权演示，并非已全额支付的销售。</figcaption>
           </figure>
           <h3 id="shopper-display">使用购物者端终端屏幕</h3>
-          <p>使用独立的网络或云终端时，打开<strong>设置 › 购物者端终端屏幕</strong>。可选择在付款前显示商品明细、请购物者确认订单，或在结账未填写电子邮件时收集电子邮件。批准后可显示二维码并邀请购物者进行 0–10 评分；终端返回的评分显示在交易详情中。</p>
+          <p>使用独立的网络或云终端时，打开<strong>设置 › 购物者端终端屏幕</strong>。可选择在付款前显示商品明细、请购物者确认订单，或在结账未填写电子邮件时收集电子邮件。收集电子邮件需要先设置<a href="#receipts">电子收据</a>；开启<strong>自动发送电子收据</strong>后，收据会自动发送。批准后可显示二维码并邀请购物者进行 0–10 评分；终端返回的评分显示在交易详情中。</p>
           <p>这些提示使用所选应用语言，模拟器也可演示。Mini mPOS 直接运行在支付终端上时不提供此功能。显示的二维码包含商家识别号，不是托管收据的下载链接；仍请<a href="#receipts">打印、发送电子收据或分享收据</a>。</p>
           <h3 id="giving">邀请慈善捐款</h3>
           <p>与 Adyen 安排开通 Adyen Giving 后，在<strong>设置 › 小费与捐款</strong>中启用<strong>慈善捐款（Adyen Giving）</strong>。销售结账时选择它，在付款后通过终端邀请捐款。预授权和收据小费冻结付款不提供此选项。</p>
@@ -235,7 +235,7 @@
           <h3 id="customize-receipts">自定义并测试收据</h3>
           <ol>
             <li>在<strong>设置 › 收据</strong>中填写商家信息、抬头和页脚。也可点按<strong>从 Adyen 导入商家信息</strong>，从 Adyen 门店补充空白字段。</li>
-            <li>选择<strong>支付后自动打印</strong>、何时打印<strong>商家联</strong>，以及是否<strong>显示退款二维码</strong>。</li>
+            <li>选择<strong>自动打印</strong>、何时打印<strong>商家联</strong>，以及是否<strong>显示退款二维码</strong>。</li>
             <li>点按<strong>打印测试收据</strong>并检查打印效果。屏幕预览无法显示打印机的确切排版。</li>
           </ol>
           <p>其他选项：</p>
@@ -376,7 +376,7 @@
           <h2>在终端上收取小费</h2>
           <ol>
             <li>在 <a href="#capabilities">Adyen 功能</a>中检查终端小费。必要时为付款币种设置预设和自定义小费选项。</li>
-            <li>在<strong>设置 › 小费与捐款</strong>中启用<strong>在终端上输入小费</strong>并选择结账默认状态。可选开启<strong>按订单金额动态推荐小费</strong>，对小额订单推荐固定金额、较大订单推荐百分比，或开启<strong>按税前金额计算百分比小费</strong>。</li>
+            <li>在<strong>设置 › 小费与捐款</strong>中启用<strong>在终端上输入小费</strong>并选择结账默认状态。可选开启<strong>按订单金额动态推荐小费</strong>，对小额订单推荐固定金额、较大订单推荐百分比，或开启<strong>按税前金额计算小费</strong>。</li>
             <li>销售结账时选择<strong>在终端上输入小费</strong>，点按<strong>支付</strong>。购物者在卡片扣款前选择小费。核对返回的总额和小费并提供收据。</li>
           </ol>
           <p>此流程不需要打印机，也无需稍后录入小费。终端小费和<a href="#tips">收据小费</a>不能同时选择。两者均不用于预授权、扫码钱包付款或付款链接；Tap to Pay 不提供终端小费。</p>

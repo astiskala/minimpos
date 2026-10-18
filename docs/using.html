@@ -125,10 +125,10 @@
         </section>
         <section id="capabilities">
           <h2>Check and configure Adyen capabilities</h2>
-          <p>Open <strong>Settings › Adyen capabilities</strong> after connecting your payment destination. The screen shows features as <strong>Available</strong>, <strong>Needs configuration</strong> or <strong>Unsupported on this destination</strong>. These are setup indicators, not proof that your merchant account, card or payment method can complete a transaction.</p>
+          <p>Open <strong>Settings › Adyen capabilities</strong> after connecting your payment destination. The screen shows features as <strong>Available</strong>, <strong>Needs configuration</strong> or <strong>Unsupported on this destination</strong>. These are setup indicators, not proof that your merchant account, card or payment method can complete a transaction. Until payments are set up, the screen offers <strong>Finish setting up payments</strong> instead.</p>
           <ol>
             <li>Tap <strong>Refresh capabilities</strong> to read the selected terminal's settings. Real terminal inspection uses the <a href="quick-start.html#credentials">Management API roles in Quick start</a>.</li>
-            <li>For supported terminals, configure terminal tipping for the payment currency, DCC, MOTO or offline limits. These controls update terminal settings at Adyen, not just Mini mPOS. Amounts labeled major units use whole currency units; minor-unit amounts use Adyen's currency precision.</li>
+            <li>For supported terminals, configure terminal tipping for the payment currency, DCC, MOTO or offline limits. These controls update terminal settings at Adyen, not just Mini mPOS, and only when you tap <strong>Save to Adyen</strong>. Amounts labeled major units use whole currency units; minor-unit amounts use Adyen's currency precision.</li>
             <li>Enable the checkout options you need under <strong>Payments</strong>, <strong>Tips and donations</strong> or <strong>Shopper terminal display</strong> in Settings, then test them in TEST. The matrix also lists Adyen Giving, partial authorization, surcharge, gift cards, terminal reconciliation and shopper display; it does not provide an editor for every feature.</li>
           </ol>
           <p>Tap to Pay does not offer physical-terminal features such as terminal tipping, shopper display, MOTO/MKE, offline payments or terminal reconciliation. Partial authorization is a separate payment option. For account enablement and payment-method requirements, follow the <a href="https://docs.adyen.com/point-of-sale">Adyen in-person payments documentation</a>. Simulator availability does not establish real-terminal support.</p>
@@ -169,7 +169,7 @@
             <figcaption class="fine">English simulator demo of a partial approval, not a fully paid sale.</figcaption>
           </figure>
           <h3 id="shopper-display">Use the shopper-facing terminal screen</h3>
-          <p>With a separate network/cloud terminal, open <strong>Settings › Shopper terminal display</strong>. Choose whether to show item details before payment, ask the shopper to confirm the order, or collect an email when checkout has none. After approval, you can show a QR code and ask for a 0–10 rating; a returned rating appears in transaction details.</p>
+          <p>With a separate network/cloud terminal, open <strong>Settings › Shopper terminal display</strong>. Choose whether to show item details before payment, ask the shopper to confirm the order, or collect an email when checkout has none. Asking for an email needs <a href="#receipts">email receipts</a> to be set up; the receipt is then emailed automatically when <strong>Email the receipt automatically</strong> is on. After approval, you can show a QR code and ask for a 0–10 rating; a returned rating appears in transaction details.</p>
           <p>These prompts use the selected app language and are also simulated. They are not offered when Mini mPOS runs on the payment terminal itself. The displayed QR code contains the merchant reference, not a hosted receipt download; continue to <a href="#receipts">print, email or share the receipt</a>.</p>
           <h3 id="giving">Invite a charity donation</h3>
           <p>After arranging Adyen Giving with Adyen, enable <strong>Charity donation (Adyen Giving)</strong> in <strong>Settings › Tips and donations</strong>. At sale checkout, select it to invite a donation on the terminal after payment. It is not offered for pre-authorizations or receipt-tip holds.</p>
@@ -238,7 +238,7 @@
           <h3 id="customize-receipts">Customize and test receipts</h3>
           <ol>
             <li>In <strong>Settings › Receipts</strong>, enter your business details, header and footer. Or tap <strong>Import business details from Adyen</strong> to fill blank fields from your Adyen store.</li>
-            <li>Choose <strong>Print automatically after payment</strong>, when to print a <strong>Merchant copy</strong>, and whether to <strong>Show refund QR code</strong>.</li>
+            <li>Choose <strong>Print automatically</strong>, when to print a <strong>Merchant copy</strong>, and whether to <strong>Show refund QR code</strong>.</li>
             <li>Tap <strong>Print test receipt</strong> and check the printout. The on-screen preview does not show the printer's exact layout.</li>
           </ol>
           <p>Other options:</p>
@@ -379,7 +379,7 @@
           <h2>Collect a tip on the terminal</h2>
           <ol>
             <li>Check terminal tipping in <a href="#capabilities">Adyen capabilities</a>. Set the terminal's predefined and custom tip options for the payment currency when needed.</li>
-            <li>In <strong>Settings › Tips and donations</strong>, enable <strong>Tip on the terminal</strong> and choose its checkout default. Optionally enable <strong>Dynamic basket tip suggestions</strong> for fixed amounts on small baskets and percentages on larger ones, or <strong>Calculate percentage tips before tax</strong>.</li>
+            <li>In <strong>Settings › Tips and donations</strong>, enable <strong>Tip on the terminal</strong> and choose its checkout default. Optionally enable <strong>Dynamic basket tip suggestions</strong> for fixed amounts on small baskets and percentages on larger ones, or <strong>Tip on the pre-tax amount</strong>.</li>
             <li>At sale checkout, select <strong>Tip on the terminal</strong> and tap <strong>Pay</strong>. The shopper chooses a tip before the card is charged. Check the returned total and tip and deliver the receipt.</li>
           </ol>
           <p>This does not need a printer or later tip entry. Terminal tipping and <a href="#tips">tips on the receipt</a> cannot be selected together. Neither is offered for pre-authorizations, scanned-wallet payments or payment links; terminal tipping is not offered with Tap to Pay.</p>

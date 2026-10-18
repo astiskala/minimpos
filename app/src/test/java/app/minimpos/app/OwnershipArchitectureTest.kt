@@ -10,6 +10,7 @@ import app.minimpos.app.ArchitectureTest.Companion.within
 import app.minimpos.app.data.db.RefundEntity
 import app.minimpos.app.data.db.SaleEntity
 import app.minimpos.app.data.repo.HistoryItem
+import app.minimpos.app.feature.TransactionActionsState
 import app.minimpos.app.history.HistoryAccounting
 import app.minimpos.app.history.PaymentStanding
 import app.minimpos.app.history.RefundStart
@@ -161,6 +162,29 @@ class OwnershipArchitectureTest {
         fun build(reach: (key: TerminalKey, environment: TerminalEnvironment) -> TerminalTransport) = PaymentsAppDestination(reach)
     }
 
+    @Test
+    fun `only the setup gate decides whether actions wait for setup`() = setupGateOwnership.check(app)
+
+    @Test
+    fun `setup gate ownership rejects a screen reading setup readiness itself`() =
+        reject(listOf(setupGateOwnership), SetupGateViolation::class.java)
+
+    private class SetupGateViolation {
+        fun ready(state: TerminalState) = !state.needsSetup
+    }
+
+    @Test
+    fun `result and detail screens share their receipt and status check components`() =
+        transactionComponentOwnership.forEach { it.check(app) }
+
+    @Test
+    fun `transaction component ownership rejects hand-built receipt buttons and status checks`() =
+        reject(transactionComponentOwnership, TransactionComponentViolation::class.java)
+
+    private class TransactionComponentViolation {
+        fun offers(state: TransactionActionsState) = state.canPrint || state.stillUnknown != null
+    }
+
     private fun reject(
         rules: List<ArchRule>,
         violation: Class<*>,
@@ -170,6 +194,40 @@ class OwnershipArchitectureTest {
     }
 
     private companion object {
+        // Every gated action asks the one SetupGate, so "not set up yet" is decided, explained and linked the same way
+        // on every screen; a screen reading readiness itself would drift into its own wording or partial gate.
+        val setupGateOwnership: ArchRule =
+            noClasses()
+                .that()
+                .haveNameNotMatching(within("app.minimpos.app.ui.components.SetupGate", "app.minimpos.app.ui.components.SetupGateKt"))
+                .should()
+                .callMethodWhere(callTo(TerminalState::class.java.name, "getNeedsSetup"))
+
+        // Receipt buttons and status checks appear in one order, with one wording and one setup gate, on every result and
+        // detail screen. An open payment link delivers a payment request rather than a receipt, in the same order.
+        val transactionComponentOwnership: List<ArchRule> =
+            listOf(
+                noClasses()
+                    .that()
+                    .haveNameNotMatching(
+                        within("app.minimpos.app.feature.TransactionComponentsKt", "app.minimpos.app.feature.sale.PaymentLinkScreensKt"),
+                    ).should()
+                    .callMethodWhere(
+                        callTo(
+                            TransactionActionsState::class.java.name,
+                            "getCanPrint",
+                            "getCanEmail",
+                            "getCanShare",
+                            "getMerchantCopyPending",
+                        ),
+                    ),
+                noClasses()
+                    .that()
+                    .haveNameNotMatching(within("app.minimpos.app.feature.TransactionComponentsKt"))
+                    .should()
+                    .callMethodWhere(callTo(TransactionActionsState::class.java.name, "getStillUnknown", "getRechecking")),
+            )
+
         // FinancialOperations knows how each stored operation was sent, so status checks, refund routing and whether
         // anything is being sent cannot drift apart between callers; screens offer a check from the stored-payment
         // reading, not the terminal's ServiceID; and Checkout charges and refunds share one runner's recovery rules.

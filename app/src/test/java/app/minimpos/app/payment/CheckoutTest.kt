@@ -410,4 +410,20 @@ class CheckoutTest {
         assertThat(switchedToReceipt.askGratuity).isFalse()
         assertThat(switchedToReceipt.terminalTipOptions()).isNull()
     }
+
+    @Test
+    fun `the terminal asks for an email only when the settings allow it and none was entered`() {
+        val texts = ShopperPromptTexts("Order", "Total", "Confirm", "OK", "Cancel", "Your email", "Rate us")
+        val checkout =
+            Checkout(
+                payment = PaymentSettings(collectEmailOnTerminal = true),
+                shopperDisplayAvailable = true,
+                shopperTexts = texts,
+            )
+        // The switch alone does not ask: emailed receipts must be ready (AppSettings.asksEmailOnTerminal).
+        assertThat(checkout.shopperSessionFlow("REF")?.emailPrompt).isNull()
+        assertThat(checkout.copy(emailOnTerminal = true).shopperSessionFlow("REF")?.emailPrompt).isEqualTo("Your email")
+        val entered = checkout.copy(emailOnTerminal = true, form = CheckoutForm(email = "shopper@example.com"))
+        assertThat(entered.shopperSessionFlow("REF")?.emailPrompt).isNull()
+    }
 }

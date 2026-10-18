@@ -13,7 +13,7 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.unit.dp
-import app.minimpos.app.feature.sale.ReceiptToggle
+import app.minimpos.app.feature.ReceiptToggle
 import app.minimpos.app.receipt.PrintRenderer
 import app.minimpos.app.ui.components.PrintJobsPreview
 import app.minimpos.app.ui.components.ReceiptPreview

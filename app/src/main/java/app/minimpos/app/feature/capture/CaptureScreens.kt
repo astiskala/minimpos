@@ -42,6 +42,7 @@ import app.minimpos.app.ui.components.MiniScaffold
 import app.minimpos.app.ui.components.NumericKeypad
 import app.minimpos.app.ui.components.PrimaryButton
 import app.minimpos.app.ui.components.SecondaryButton
+import app.minimpos.app.ui.components.currentSetupGate
 import app.minimpos.app.ui.components.rememberMoneyFormatter
 import app.minimpos.app.ui.navigation.Navigator
 import app.minimpos.app.ui.theme.LocalDimens
@@ -62,6 +63,7 @@ fun TipScreen(
 ) {
     val state by vm.state.collectAsStateWithLifecycle()
     var confirming by remember { mutableStateOf<Long?>(null) }
+    val gate = currentSetupGate()
     LaunchedEffect(state.submission.done) { if (state.submission.done) navigator.back() }
     MiniScaffold(
         title = stringResource(R.string.tip_title),
@@ -73,13 +75,13 @@ fun TipScreen(
                     Row(horizontalArrangement = Arrangement.spacedBy(LocalDimens.current.spacing)) {
                         SecondaryButton(
                             stringResource(R.string.tip_no_tip),
-                            { confirming = 0 },
+                            { gate.run { confirming = 0 } },
                             enabled = state.canSubmit,
                             modifier = Modifier.weight(1f).testTag("noTip"),
                         )
                         PrimaryButton(
                             stringResource(R.string.tip_add),
-                            { confirming = state.tipMinor },
+                            { gate.run { confirming = state.tipMinor } },
                             enabled = state.canAddTip,
                             loading = state.submission.running,
                             modifier = Modifier.weight(1f).testTag("addTip"),
@@ -190,6 +192,7 @@ fun CaptureScreen(
 ) {
     val state by vm.state.collectAsStateWithLifecycle()
     var confirming by remember { mutableStateOf(false) }
+    val gate = currentSetupGate()
     LaunchedEffect(state.submission.done) { if (state.submission.done) navigator.back() }
     val sale = state.sale
     MiniScaffold(
@@ -202,7 +205,7 @@ fun CaptureScreen(
                 BottomActions {
                     PrimaryButton(
                         stringResource(if (adjustOnly) R.string.adjust_button else R.string.capture_button, amount),
-                        { confirming = true },
+                        { gate.run { confirming = true } },
                         enabled = state.canSubmit,
                         loading = state.submission.running,
                         modifier = Modifier.testTag("submitCapture"),

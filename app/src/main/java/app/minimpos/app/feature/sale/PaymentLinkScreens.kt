@@ -4,7 +4,6 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -37,23 +36,27 @@ import app.minimpos.app.R
 import app.minimpos.app.data.db.SaleEntity
 import app.minimpos.app.data.db.SaleKind
 import app.minimpos.app.data.db.SaleStatus
+import app.minimpos.app.feature.MerchantCopy
 import app.minimpos.app.feature.OutcomeMessage
+import app.minimpos.app.feature.ReceiptActions
+import app.minimpos.app.feature.ReceiptEvents
+import app.minimpos.app.feature.ResultAction
+import app.minimpos.app.feature.ResultBar
 import app.minimpos.app.feature.lock.ManagerApproval
 import app.minimpos.app.feature.outcomeNote
 import app.minimpos.app.history.simulatedLink
 import app.minimpos.app.share.ShareEffect
-import app.minimpos.app.ui.components.BottomActions
 import app.minimpos.app.ui.components.ConfirmDialog
 import app.minimpos.app.ui.components.EmailReceiptDialog
 import app.minimpos.app.ui.components.LocalAppContainer
 import app.minimpos.app.ui.components.MiniScaffold
 import app.minimpos.app.ui.components.OutcomeHeader
 import app.minimpos.app.ui.components.OutcomeNote
-import app.minimpos.app.ui.components.PrimaryButton
 import app.minimpos.app.ui.components.ProcessingContent
 import app.minimpos.app.ui.components.QrImage
 import app.minimpos.app.ui.components.SecondaryButton
 import app.minimpos.app.ui.components.TertiaryButton
+import app.minimpos.app.ui.components.currentSetupGate
 import app.minimpos.app.ui.components.rememberMoneyFormatter
 import app.minimpos.app.ui.navigation.Navigator
 import app.minimpos.app.ui.navigation.Route
@@ -84,22 +87,13 @@ fun PaymentLinkScreen(
         }, onCancel = { approval = null })
     }
     val leave = { if (fresh) navigator.popTo(Route.Sale) else navigator.back() }
+    val gate = currentSetupGate()
     BackHandler { leave() }
     MiniScaffold(
         title = stringResource(R.string.link_title),
         onBack = leave,
         modifier = modifier,
-        bottomBar = {
-            val sale = state.sale
-            if (sale != null && !state.creating) {
-                PaymentLinkBottomBar(
-                    sale,
-                    onHome = navigator::home,
-                    onNewSale = { navigator.popTo(Route.Sale) },
-                    onTryAgain = { navigator.replace(Route.Checkout(SaleKind.SALE)) },
-                )
-            }
-        },
+        bottomBar = { state.sale?.takeUnless { state.creating }?.let { LinkResultBar(it, navigator) } },
     ) { padding ->
         val sale = state.sale
         if (sale == null || state.creating) {
@@ -117,9 +111,10 @@ fun PaymentLinkScreen(
                 onEmail = { dialog = LinkDialog.EMAIL },
                 onPrint = { vm.transaction.print() },
                 onCheck = vm::check,
-                onCancel = { approval = LinkApproval.CANCEL },
+                onCancel = { gate.run { approval = LinkApproval.CANCEL } },
                 onSimulate = { approval = LinkApproval.SIMULATE },
             ),
+            vm.transaction,
             Modifier.padding(padding),
         )
     }
@@ -159,6 +154,7 @@ private class LinkEvents(
 private fun PaymentLinkContent(
     state: PaymentLinkUiState,
     events: LinkEvents,
+    receipt: ReceiptEvents,
     modifier: Modifier = Modifier,
 ) {
     val sale = state.sale ?: return
@@ -182,7 +178,7 @@ private fun PaymentLinkContent(
                 OpenLink(link, state.simulated)
                 OpenLinkActions(state, events)
             } else {
-                SettledLinkActions(state, events)
+                SettledLinkActions(state, events, receipt)
             }
         }
     }
@@ -237,13 +233,17 @@ private fun ColumnScope.OpenLink(
     }
 }
 
-/** Delivering the open link (sharing, emailing, printing), checking whether it was paid, and cancelling it. */
+/**
+ * Delivering the open link in the receipt actions' order (printing, emailing, sharing), checking whether it was paid,
+ * and cancelling it; a demo link can first be completed without moving money.
+ */
 @Composable
 private fun ColumnScope.OpenLinkActions(
     state: PaymentLinkUiState,
     events: LinkEvents,
 ) {
     val transaction = state.transaction
+    val gate = currentSetupGate()
     if (state.simulated) {
         SecondaryButton(
             stringResource(R.string.link_simulate),
@@ -254,13 +254,15 @@ private fun ColumnScope.OpenLinkActions(
         )
         OutcomeMessage(state.simulation)
     }
-    if (transaction.canShare) {
+    if (transaction.canPrint) {
         SecondaryButton(
-            stringResource(R.string.link_share),
-            events.onShare,
-            icon = Icons.Default.Share,
-            modifier = Modifier.testTag("shareLink"),
+            stringResource(R.string.link_print),
+            { gate.run(events.onPrint) },
+            loading = transaction.print.running,
+            icon = Icons.Default.Print,
+            modifier = Modifier.testTag("printLink"),
         )
+        OutcomeMessage(transaction.print)
     }
     if (transaction.canEmail) {
         SecondaryButton(
@@ -272,53 +274,33 @@ private fun ColumnScope.OpenLinkActions(
         )
         OutcomeMessage(transaction.email)
     }
-    if (transaction.canPrint) {
+    if (transaction.canShare) {
         SecondaryButton(
-            stringResource(R.string.link_print),
-            events.onPrint,
-            loading = transaction.print.running,
-            icon = Icons.Default.Print,
-            modifier = Modifier.testTag("printLink"),
+            stringResource(R.string.link_share),
+            events.onShare,
+            icon = Icons.Default.Share,
+            modifier = Modifier.testTag("shareLink"),
         )
-        OutcomeMessage(transaction.print)
     }
     CheckButton(state, events.onCheck)
     TertiaryButton(stringResource(R.string.link_cancel), events.onCancel, destructive = true, modifier = Modifier.testTag("cancelLink"))
     OutcomeMessage(state.cancel)
 }
 
-/**
- * For a link that is no longer open: checking again after an unknown outcome, or, once paid, the receipt's printing,
- * emailing and sharing.
- */
+/** For a link that is no longer open: checking again after an unknown outcome, or, once paid, the receipt actions. */
 @Composable
 private fun ColumnScope.SettledLinkActions(
     state: PaymentLinkUiState,
     events: LinkEvents,
+    receipt: ReceiptEvents,
 ) {
     val sale = state.sale ?: return
     if (sale.status == SaleStatus.UNKNOWN) CheckButton(state, events.onCheck)
-    if (sale.status != SaleStatus.APPROVED) return
-    val transaction = state.transaction
-    if (transaction.canPrint) {
-        SecondaryButton(
-            stringResource(R.string.result_print),
-            events.onPrint,
-            loading = transaction.print.running,
-            icon = Icons.Default.Print,
-        )
-        OutcomeMessage(transaction.print)
+    if (sale.status ==
+        SaleStatus.APPROVED
+    ) {
+        ReceiptActions(state.transaction, receipt, MerchantCopy.NONE, email = sale.shopperEmail.orEmpty())
     }
-    if (transaction.canEmail) {
-        SecondaryButton(
-            stringResource(R.string.result_email),
-            events.onEmail,
-            loading = transaction.email.running,
-            icon = Icons.Default.Email,
-        )
-        OutcomeMessage(transaction.email)
-    }
-    if (transaction.canShare) ShareReceiptButton(events.onShare)
 }
 
 /** "Check payment" with the outcome of the last check. */
@@ -339,23 +321,18 @@ private fun ColumnScope.CheckButton(
 
 /** Home beside "New sale", or "Try again" for a link Adyen did not make (the cart is still there). */
 @Composable
-private fun PaymentLinkBottomBar(
+private fun LinkResultBar(
     sale: SaleEntity,
-    onHome: () -> Unit,
-    onNewSale: () -> Unit,
-    onTryAgain: () -> Unit,
-) {
-    BottomActions {
-        Row(horizontalArrangement = Arrangement.spacedBy(LocalDimens.current.spacing), verticalAlignment = Alignment.CenterVertically) {
-            HomeButton(onHome, Modifier.weight(1f))
-            if (sale.status == SaleStatus.FAILED) {
-                PrimaryButton(stringResource(R.string.result_try_again), onTryAgain, modifier = Modifier.weight(1f).testTag("tryAgain"))
-            } else {
-                PrimaryButton(stringResource(R.string.result_new_sale), onNewSale, modifier = Modifier.weight(1f).testTag("newSaleAfter"))
-            }
-        }
-    }
-}
+    navigator: Navigator,
+) = ResultBar(
+    onHome = navigator::home,
+    next =
+        if (sale.status == SaleStatus.FAILED) {
+            ResultAction(stringResource(R.string.result_try_again), "tryAgain") { navigator.replace(Route.Checkout(SaleKind.SALE)) }
+        } else {
+            ResultAction(stringResource(R.string.result_new_sale), "newSaleAfter") { navigator.popTo(Route.Sale) }
+        },
+)
 
 /** The [dialog] open over the link of [sale], if any; either closes ([onDismiss]) before [onEmail] or [onCancel] runs. */
 @Composable

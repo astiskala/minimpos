@@ -1,10 +1,12 @@
 package app.minimpos.app.ui
 
 import androidx.compose.ui.test.ExperimentalTestApi
+import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.hasTestTag
+import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
@@ -21,7 +23,10 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 
-/** Actions whose precondition is known before they are pressed are disabled, with the fix shown under them. */
+/**
+ * Actions whose precondition is known before they are pressed are disabled, with the fix shown under them; those that
+ * wait for payments to be set up explain that instead, and content only meaningful once set up is replaced by the way there.
+ */
 @OptIn(ExperimentalTestApi::class)
 @RunWith(RobolectricTestRunner::class)
 @Config(qualifiers = "en-rAU-w320dp-h460dp-hdpi")
@@ -59,17 +64,21 @@ class GatedActionsTest {
     }
 
     @Test
-    fun `scanned wallet refresh waits for the terminal ID`() {
+    fun `scanned wallets wait for payments to be set up`() {
         useNetworkTerminalWithoutId()
         open("terminal")
-        assertBlocked("refreshWallets", R.string.setup_poiid)
+        compose.waitUntilAtLeastOneExists(hasTestTag("terminalMode"), 15_000)
+        compose.onNodeWithTag("refreshWallets").assertDoesNotExist()
     }
 
     @Test
-    fun `capability refresh waits for the terminal ID`() {
+    fun `capabilities wait for payments to be set up and lead to the setup`() {
         useNetworkTerminalWithoutId()
         open("capabilities")
-        assertBlocked("refreshCapabilities", R.string.setup_poiid)
+        compose.waitUntilAtLeastOneExists(hasTestTag("setupRequired"), 15_000)
+        listOf("refreshCapabilities", "cap_tipping", "saveCapDcc").forEach { compose.onNodeWithTag(it).assertDoesNotExist() }
+        compose.onNodeWithTag("finishSetup").performScrollTo().performClick()
+        compose.waitUntilAtLeastOneExists(hasTestTag("terminalMode"), 15_000)
     }
 
     @Test
@@ -104,10 +113,15 @@ class GatedActionsTest {
             compose.onAllNodesWithTag("reconciliationCard").fetchSemanticsNodes().isNotEmpty() &&
                 runCatching { compose.onNodeWithTag("closeReconciliationPeriod").assertIsNotEnabled() }.isSuccess
         }
+        // Elsewhere the check waits for payments to be set up: pressing it explains that instead of failing.
         useNetworkTerminalWithoutId()
-        compose.waitUntilAtLeastOneExists(hasTestTag("blockedReason"), 15_000)
-        compose.onNodeWithTag("reconcileTerminal").assertIsNotEnabled()
-        compose.onAllNodesWithTag("blockedReason")[0].assertTextContains(env.context.getString(R.string.setup_poiid))
+        compose
+            .onNodeWithTag("reconcileTerminal")
+            .performScrollTo()
+            .assertIsEnabled()
+            .performClick()
+        compose.waitUntilAtLeastOneExists(hasText(env.context.getString(R.string.setup_required_message)), 15_000)
+        compose.onAllNodesWithTag("blockedReason").assertCountEquals(0)
     }
 
     @Test

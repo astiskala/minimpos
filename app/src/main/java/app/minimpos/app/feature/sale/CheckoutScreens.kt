@@ -10,22 +10,15 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ReceiptLong
 import androidx.compose.material.icons.filled.CreditCard
-import androidx.compose.material.icons.filled.Email
-import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Link
-import androidx.compose.material.icons.filled.Print
 import androidx.compose.material.icons.filled.QrCodeScanner
-import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -56,10 +49,14 @@ import app.minimpos.app.data.db.SaleEntity
 import app.minimpos.app.data.db.SaleKind
 import app.minimpos.app.data.db.SaleStatus
 import app.minimpos.app.data.settings.ShopperReferenceSource
+import app.minimpos.app.feature.MerchantCopy
 import app.minimpos.app.feature.OutcomeMessage
+import app.minimpos.app.feature.ReceiptActions
+import app.minimpos.app.feature.ResultAction
+import app.minimpos.app.feature.ResultBar
+import app.minimpos.app.feature.StatusCheck
 import app.minimpos.app.feature.lock.ManagerApproval
 import app.minimpos.app.feature.outcomeNote
-import app.minimpos.app.feature.stillUnconfirmed
 import app.minimpos.app.history.PaymentAction
 import app.minimpos.app.history.standing
 import app.minimpos.app.payment.Checkout
@@ -69,7 +66,6 @@ import app.minimpos.app.share.ShareEffect
 import app.minimpos.app.ui.components.BottomActions
 import app.minimpos.app.ui.components.Card
 import app.minimpos.app.ui.components.ConfirmDialog
-import app.minimpos.app.ui.components.EmailReceiptDialog
 import app.minimpos.app.ui.components.LabeledValue
 import app.minimpos.app.ui.components.LocalAppContainer
 import app.minimpos.app.ui.components.MiniScaffold
@@ -77,9 +73,9 @@ import app.minimpos.app.ui.components.OutcomeHeader
 import app.minimpos.app.ui.components.OutcomeNote
 import app.minimpos.app.ui.components.PrimaryButton
 import app.minimpos.app.ui.components.ProcessingContent
-import app.minimpos.app.ui.components.ReceiptPreview
 import app.minimpos.app.ui.components.SecondaryButton
 import app.minimpos.app.ui.components.SwitchRow
+import app.minimpos.app.ui.components.currentSetupGate
 import app.minimpos.app.ui.components.rememberMoneyFormatter
 import app.minimpos.app.ui.navigation.Navigator
 import app.minimpos.app.ui.navigation.Route
@@ -87,8 +83,6 @@ import app.minimpos.app.ui.theme.LocalDimens
 import app.minimpos.core.money.MoneyFormatter
 import app.minimpos.core.payment.PaymentMethods
 import app.minimpos.core.payment.ScanWallet
-import app.minimpos.core.receipt.ReceiptCopy
-import app.minimpos.core.receipt.ReceiptDocument
 import app.minimpos.core.shopper.ShopperReferences
 import app.minimpos.terminal.checkout.StoredCard
 import app.minimpos.terminal.client.CardEntryOverride
@@ -304,7 +298,7 @@ private fun LinkTipConfirmation(
 
 /**
  * Pay on the terminal and, under it, Scan wallet when offered, Charge token when the shopper has [tokens] saved, and
- * Create payment link when links are offered.
+ * Create payment link when links are offered. Each reaches Adyen or a terminal, so each goes through the setup gate.
  */
 @Composable
 private fun CheckoutActions(
@@ -316,6 +310,11 @@ private fun CheckoutActions(
     tokens: Boolean,
     onChargeToken: () -> Unit,
 ) {
+    val gate = currentSetupGate()
+    val pay = { gate.run(onPay) }
+    val sendLink = { gate.run(onSendLink) }
+    val scanWallet = { gate.run(onScanWallet) }
+    val chargeToken = { gate.run(onChargeToken) }
     BottomActions {
         PrimaryButton(
             text =
@@ -324,21 +323,21 @@ private fun CheckoutActions(
                     money.format(state.totals.amounts.gross),
                 ),
             enabled = state.canPay,
-            onClick = onPay,
+            onClick = pay,
             modifier = Modifier.testTag("pay"),
         )
         BoxWithConstraints(Modifier.fillMaxWidth()) {
             val sideBySide = state.offersScanWallet && state.canSendLink && !tokens
             if (maxWidth >= 480.dp && sideBySide) {
                 Row(horizontalArrangement = Arrangement.spacedBy(LocalDimens.current.spacing)) {
-                    WalletCheckoutButton(state.canScanWallet, onScanWallet, Modifier.weight(1f))
-                    LinkCheckoutButton(onSendLink, Modifier.weight(1f))
+                    WalletCheckoutButton(state.canScanWallet, scanWallet, Modifier.weight(1f))
+                    LinkCheckoutButton(sendLink, Modifier.weight(1f))
                 }
             } else {
                 Column(verticalArrangement = Arrangement.spacedBy(LocalDimens.current.spacing)) {
-                    if (state.offersScanWallet) WalletCheckoutButton(state.canScanWallet, onScanWallet)
-                    if (tokens) TokenCheckoutButton(state.canPay, onChargeToken)
-                    if (state.canSendLink) LinkCheckoutButton(onSendLink)
+                    if (state.offersScanWallet) WalletCheckoutButton(state.canScanWallet, scanWallet)
+                    if (tokens) TokenCheckoutButton(state.canPay, chargeToken)
+                    if (state.canSendLink) LinkCheckoutButton(sendLink)
                 }
             }
         }
@@ -686,10 +685,10 @@ fun SaleResultScreen(
     vm: SaleResultViewModel = saleResultViewModel(saleId),
 ) {
     val state by vm.state.collectAsStateWithLifecycle()
-    var showReceipt by remember { mutableStateOf(false) }
     val record = state.record
     val money = rememberMoneyFormatter(record?.sale?.currency ?: "EUR")
     val ringUp = Route.ringUp(state.kind)
+    val gate = currentSetupGate()
 
     fun done(route: Route) {
         vm.finish()
@@ -703,16 +702,19 @@ fun SaleResultScreen(
         modifier = modifier,
         bottomBar = {
             if (record != null) {
-                SaleResultBottomBar(
-                    state,
-                    money,
+                ResultBar(
                     onHome = { done(Route.Home) },
-                    onNewSale = { done(ringUp) },
-                    onPayRemaining = { if (vm.payRemaining()) navigator.replace(Route.Payment(state.kind)) },
-                ) {
-                    vm.finish()
-                    navigator.replace(Route.Checkout(state.kind))
-                }
+                    next =
+                        saleResultNext(
+                            state,
+                            money,
+                            onNewSale = { done(ringUp) },
+                            onPayRemaining = { gate.run { if (vm.payRemaining()) navigator.replace(Route.Payment(state.kind)) } },
+                        ) {
+                            vm.finish()
+                            navigator.replace(Route.Checkout(state.kind))
+                        },
+                )
             }
         },
     ) { padding ->
@@ -721,15 +723,8 @@ fun SaleResultScreen(
             SaleOutcome(state, money)
             SalePaymentCard(record.sale)
             if (state.approved) {
-                ApprovedSaleActions(
-                    state,
-                    state.transaction.receipt?.takeIf { showReceipt },
-                    vm.transaction::print,
-                    { vm.transaction.print(ReceiptCopy.MERCHANT) },
-                    { navigator.push(Route.Tip(saleId)) },
-                    vm.transaction::email,
-                    vm.transaction::share,
-                ) { showReceipt = !showReceipt }
+                if (PaymentAction.ENTER_TIP in state.actions) EnterTipButton({ gate.run { navigator.push(Route.Tip(saleId)) } })
+                ReceiptActions(state.transaction, vm.transaction, MerchantCopy.WHEN_DUE, email = record.sale.shopperEmail.orEmpty())
             } else {
                 UnapprovedSaleActions(state, vm.transaction::recheck, vm::abortBusyTransaction) { done(ringUp) }
             }
@@ -784,54 +779,41 @@ private fun SaleOutcome(
 }
 
 /**
- * Home, beside "New sale" (or "New pre-auth" after a pre-authorisation) after an approved payment or "Try again"
- * otherwise, which goes back to checkout with the same cart.
+ * What the result offers beside Home: "Pay remaining" for a partly paid sale, "New sale" (or "New pre-auth" after a
+ * pre-authorisation) after an approved payment, or "Try again" (back to checkout with the same cart) after one that
+ * failed and may be retried; null after one that must not be.
  */
 @Composable
-private fun SaleResultBottomBar(
+private fun saleResultNext(
     state: SaleResultUiState,
     money: MoneyFormatter,
-    onHome: () -> Unit,
     onNewSale: () -> Unit,
     onPayRemaining: () -> Unit,
     onTryAgain: () -> Unit,
-) {
+): ResultAction? {
     val sale = state.record?.sale
-    BottomActions {
-        Row(horizontalArrangement = Arrangement.spacedBy(LocalDimens.current.spacing), verticalAlignment = Alignment.CenterVertically) {
-            HomeButton(onHome, Modifier.weight(1f))
-            if (sale?.isPartiallyPaid == true) {
-                PrimaryButton(
-                    stringResource(R.string.result_pay_remaining, money.format(sale.remainingMinor)),
-                    onPayRemaining,
-                    modifier = Modifier.weight(1f).testTag("payRemaining"),
-                )
-            } else if (state.approved) {
-                PrimaryButton(
-                    stringResource(if (state.preAuthorisation) R.string.result_new_pre_auth else R.string.result_new_sale),
-                    onNewSale,
-                    modifier = Modifier.weight(1f).testTag("newSaleAfter"),
-                )
-            } else if (sale?.status in setOf(SaleStatus.DECLINED, SaleStatus.CANCELLED, SaleStatus.FAILED) &&
-                state.advice != RetryAdvice.DO_NOT_RETRY
-            ) {
-                PrimaryButton(stringResource(R.string.result_try_again), onTryAgain, modifier = Modifier.weight(1f).testTag("tryAgain"))
-            }
+    return when {
+        sale?.isPartiallyPaid == true -> {
+            ResultAction(stringResource(R.string.result_pay_remaining, money.format(sale.remainingMinor)), "payRemaining", onPayRemaining)
+        }
+
+        state.approved -> {
+            ResultAction(
+                stringResource(if (state.preAuthorisation) R.string.result_new_pre_auth else R.string.result_new_sale),
+                "newSaleAfter",
+                onNewSale,
+            )
+        }
+
+        sale?.status in setOf(SaleStatus.DECLINED, SaleStatus.CANCELLED, SaleStatus.FAILED) && state.advice != RetryAdvice.DO_NOT_RETRY -> {
+            ResultAction(stringResource(R.string.result_try_again), "tryAgain", onTryAgain)
+        }
+
+        else -> {
+            null
         }
     }
 }
-
-/** Goes back to the home screen from a result, next to the result's main action and as tall as it. */
-@Composable
-fun HomeButton(
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-) = SecondaryButton(
-    stringResource(R.string.action_home),
-    onClick,
-    icon = Icons.Default.Home,
-    modifier = modifier.heightIn(min = LocalDimens.current.buttonHeight).testTag("home"),
-)
 
 /**
  * For a payment that was not approved: checking an unknown outcome again, cancelling the transaction a busy terminal is
@@ -844,17 +826,7 @@ private fun ColumnScope.UnapprovedSaleActions(
     onAbortBusy: () -> Unit,
     onBackToSale: () -> Unit,
 ) {
-    if (PaymentAction.CHECK_AGAIN in state.actions) {
-        SecondaryButton(
-            stringResource(R.string.result_check_again),
-            onRecheck,
-            loading = state.transaction.rechecking,
-            icon = Icons.Default.Refresh,
-        )
-        state.transaction.stillUnknown?.let {
-            Text(stillUnconfirmed(it), textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
-        }
-    }
+    if (PaymentAction.CHECK_AGAIN in state.actions) StatusCheck(state.transaction, onRecheck)
     if (state.busyServiceId != null) {
         SecondaryButton(
             stringResource(R.string.result_abort_busy),
@@ -900,102 +872,6 @@ private fun SalePaymentCard(sale: SaleEntity) {
             )
         }
     }
-}
-
-/**
- * Printing (then the merchant copy, when one is due), entering the tip of a sale awaiting one, emailing, sharing (on
- * phones and tablets) and showing the receipt of an approved sale ([receipt] is null while hidden). The email button
- * asks for the address, starting with the one captured at checkout.
- */
-@Composable
-private fun ColumnScope.ApprovedSaleActions(
-    state: SaleResultUiState,
-    receipt: ReceiptDocument?,
-    onPrint: () -> Unit,
-    onPrintMerchantCopy: () -> Unit,
-    onEnterTip: () -> Unit,
-    onEmail: (to: String) -> Unit,
-    onShare: () -> Unit,
-    onToggleReceipt: () -> Unit,
-) {
-    var askEmail by remember { mutableStateOf(false) }
-    if (state.transaction.canPrint) {
-        SecondaryButton(
-            stringResource(R.string.result_print),
-            onPrint,
-            loading = state.transaction.print.running,
-            icon = Icons.Default.Print,
-            modifier = Modifier.testTag("print"),
-        )
-        if (state.transaction.merchantCopyPending) {
-            Text(stringResource(R.string.result_tear_off), textAlign = TextAlign.Center)
-            SecondaryButton(
-                stringResource(R.string.result_print_merchant),
-                onPrintMerchantCopy,
-                loading = state.transaction.print.running,
-                icon = Icons.Default.Print,
-            )
-        }
-        OutcomeMessage(state.transaction.print)
-    }
-    if (PaymentAction.ENTER_TIP in state.actions) EnterTipButton(onEnterTip)
-    if (state.transaction.canEmail) {
-        SecondaryButton(
-            stringResource(R.string.result_email),
-            { askEmail = true },
-            loading = state.transaction.email.running,
-            icon = Icons.Default.Email,
-            modifier = Modifier.testTag("emailReceipt"),
-        )
-        OutcomeMessage(state.transaction.email)
-    }
-    if (state.transaction.canShare) ShareReceiptButton(onShare)
-    ReceiptToggle(receipt, onToggleReceipt)
-    if (askEmail) {
-        EmailReceiptDialog(
-            onSend = {
-                askEmail = false
-                onEmail(it)
-            },
-            onDismiss = { askEmail = false },
-            initial =
-                state.record
-                    ?.sale
-                    ?.shopperEmail
-                    .orEmpty(),
-        )
-    }
-}
-
-/** Shares the receipt as an image through Android's share sheet (offered on phones and tablets only). */
-@Composable
-fun ShareReceiptButton(
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-) = SecondaryButton(
-    stringResource(R.string.result_share),
-    onClick,
-    icon = Icons.Default.Share,
-    modifier = modifier.testTag("shareReceipt"),
-)
-
-/**
- * "Show receipt" / "Hide receipt" ([modifier] applies to this button) and, while shown, the [receipt] itself (null
- * while hidden).
- */
-@Composable
-fun ColumnScope.ReceiptToggle(
-    receipt: ReceiptDocument?,
-    onToggle: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    SecondaryButton(
-        stringResource(if (receipt != null) R.string.result_hide_receipt else R.string.result_show_receipt),
-        onToggle,
-        icon = Icons.AutoMirrored.Filled.ReceiptLong,
-        modifier = modifier.testTag("toggleReceipt"),
-    )
-    receipt?.let { ReceiptPreview(it, Modifier.align(Alignment.CenterHorizontally)) }
 }
 
 @Composable

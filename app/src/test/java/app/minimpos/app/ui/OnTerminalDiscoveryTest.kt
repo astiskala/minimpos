@@ -19,6 +19,7 @@ import app.minimpos.app.data.security.RecoveryJournal
 import app.minimpos.app.data.security.Secret
 import app.minimpos.app.feature.settings.SettingsSectionScreen
 import app.minimpos.app.ui.components.LocalAppContainer
+import app.minimpos.app.ui.components.SetupGateHost
 import app.minimpos.app.ui.navigation.Navigator
 import app.minimpos.app.ui.navigation.Route
 import app.minimpos.app.ui.theme.MiniMposTheme
@@ -94,7 +95,9 @@ class OnTerminalDiscoveryTest {
         compose.setContent {
             MiniMposTheme {
                 CompositionLocalProvider(LocalAppContainer provides container) {
-                    SettingsSectionScreen("terminal", navigator)
+                    SetupGateHost(onSetUp = {}) {
+                        SettingsSectionScreen("terminal", navigator)
+                    }
                 }
             }
         }

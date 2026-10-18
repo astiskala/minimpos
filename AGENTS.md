@@ -31,11 +31,13 @@ Adyen Payments app (Tap to Pay). The built-in simulator needs no Adyen account.
 ## Payment and product boundaries
 
 - The device runs Mini mPOS; the terminal takes the card. Keep these distinct in user text.
-- Checkout API setup is required before real payments, even ordinary sales. Connection checks, refunds and printing
-  need only the destination; saved-card charges and their refunds go through the Checkout API instead. Select
-  TEST/LIVE first for network/cloud terminals; on-device terminals and the Payments app supply their environment.
-  Never probe API credentials across environments; changing destination clears it unless the saved API key and
-  merchant account it belongs to stay.
+- Checkout API setup is required before real payments, even ordinary sales. Until a connection check verifies the
+  setup, every action reaching Adyen or a terminal (refunds, captures, printing, reconciliation, capabilities, Adyen
+  imports included) goes through the setup gate, which explains generically and links to Settings › Terminal; setup
+  tools and status checks of unfinished operations never wait. Saved-card charges and their refunds go through the
+  Checkout API. Select TEST/LIVE first for network/cloud terminals; on-device terminals and the Payments app supply
+  their environment. Never probe API credentials across environments; changing destination clears it unless the saved
+  API key and merchant account it belongs to stay.
 - Persist each financial operation before sending. A missing answer means unknown, not failed. Retry the same logical
   operation with its stored identity and request facts; a distinct authorization renewal needs a new identity.
   Historical actions must validate the original payment context against current credentials.
@@ -49,7 +51,9 @@ Adyen Payments app (Tap to Pay). The built-in simulator needs no Adyen account.
 - Optional Manager PIN approval is separate from admin access and must be checked again before financial operations.
 - Keep deliberate UI choices: no TEST banner (only simulator), no Home terminal-status line or unprotected-settings
   warning. Home keeps both full-width sale/pre-authorization tiles, half-width Charge token/Refund and
-  History/Reconciliation, slim Products/Settings.
+  History/Reconciliation, slim Products/Settings. Gated tiles stay pressable and explain; only the setup card is shown.
+- Ask the shopper's email on the terminal only once emailed receipts are ready (SMTP set up, capture not Never); a
+  terminal email is sent automatically like a checkout one.
 - Every product has a tax rate; use 0% for untaxed items. Turning tax off keeps rates. The last rate cannot be deleted.
 - Customer reference is asked for only as the shopper reference. Card saving needs a shopper reference and consent.
   New installations use Customer reference as the shopper reference, no extra transaction reference; automatic printing

@@ -6,10 +6,14 @@ import androidx.compose.ui.res.stringResource
 import app.minimpos.app.R
 import app.minimpos.app.data.settings.PaymentSettings
 
-/** Optional shopper interactions on a separate terminal; unsupported destinations retain preferences without using them. */
+/**
+ * Optional shopper interactions on a separate terminal; unsupported destinations retain preferences without using them.
+ * Asking for an email waits for emailed receipts to be ready ([emailReceiptsReady]), saying so under its switch.
+ */
 @Composable
 internal fun ColumnScope.ShopperDisplaySection(
     payment: PaymentSettings,
+    emailReceiptsReady: Boolean,
     update: ((PaymentSettings) -> PaymentSettings) -> Unit,
 ) {
     SettingIntro(stringResource(R.string.settings_shopper_display_hint))
@@ -33,6 +37,7 @@ internal fun ColumnScope.ShopperDisplaySection(
         { value -> update { it.copy(collectEmailOnTerminal = value) } },
         subtitle = stringResource(R.string.settings_collect_email_terminal_hint),
         tag = "collectEmailOnTerminal",
+        blocked = stringResource(R.string.settings_email_receipts_first).takeUnless { emailReceiptsReady },
     )
     SettingSwitch(
         stringResource(R.string.settings_show_terminal_qr),

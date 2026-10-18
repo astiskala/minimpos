@@ -23,7 +23,8 @@ class ArchitectureTest {
                 .withImportOption(ImportOption.Predefined.DO_NOT_INCLUDE_TESTS)
                 .importPackages("app.minimpos.tooling")
 
-        // Signing must run offline without Android, Gradle plugins or additional runtime libraries.
+        // Signing must run offline without Android, Gradle plugins or additional runtime libraries; docs screenshots use
+        // only the JDK's own imaging (java.awt, javax.imageio).
         val dependencyRule: ArchRule =
             classes()
                 .should()
@@ -31,6 +32,7 @@ class ArchitectureTest {
                 .resideInAnyPackage(
                     "app.minimpos.tooling..",
                     "java..",
+                    "javax.imageio..",
                     "javax.xml..",
                     "org.w3c.dom..",
                     "org.xml.sax..",

@@ -522,7 +522,13 @@ class TestEnvironment(
                 val ids = listOfNotNull(device.detectedPoiId, configuredId) + listOf("AMS1-000168223606144", "S1F2-000158213605014")
                 return TerminalListing.Listed(
                     ids.distinct().filter { id == null || it == id }.map { terminalId ->
-                        TerminalDetails(terminalId, terminalSettings.merchantAccount.ifBlank { "Merchant" }, "192.168.1.42")
+                        // The configured terminal is assigned to the configured store, as a verified setup's would be.
+                        val store =
+                            terminalSettings.storeId
+                                .trim()
+                                .takeIf { terminalId == configuredId }
+                                .orEmpty()
+                        TerminalDetails(terminalId, terminalSettings.merchantAccount.trim().ifBlank { "Merchant" }, "192.168.1.42", store)
                     },
                     environment,
                 )
@@ -548,11 +554,12 @@ class TestEnvironment(
     }
 
     /**
-     * Payment links work: the merchant account and API key are saved, and payments go to this terminal (whose
-     * environment, TEST, is detected), so the Checkout API is set up.
+     * Payment links work: the merchant account and API key are saved, and payments go to a terminal on the network
+     * (TEST) whose address, POIID and shared key are saved, so the whole setup is complete and verified.
      */
     fun useLinks() {
         await { container.secrets.set(Secret.ADYEN_API_KEY, "key") }
+        await { container.secrets.set(Secret.TERMINAL_PASSPHRASE, "passphrase") }
         updateSettings {
             it.copy(
                 terminal =
@@ -560,10 +567,17 @@ class TestEnvironment(
                         mode = TerminalMode.TERMINAL,
                         merchantAccount = "HarbourCoffeeCOM",
                         environment = TerminalEnvironment.TEST,
+                        host = "192.0.2.10",
+                        poiIdOverride = "S1F2-000158213605014",
+                        keyIdentifier = "KEY",
                     ),
             )
         }
-        runBlocking { withTimeout(5_000) { container.terminalStatus.state.first { it.mode == TerminalMode.TERMINAL && it.paymentLinks } } }
+        runBlocking {
+            withTimeout(5_000) {
+                container.terminalStatus.state.first { it.mode == TerminalMode.TERMINAL && it.paymentLinks && !it.needsSetup }
+            }
+        }
     }
 
     /** Simulator with no delay, and settings loaded into the container's state. */

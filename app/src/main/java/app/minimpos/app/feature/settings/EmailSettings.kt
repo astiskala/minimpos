@@ -17,6 +17,7 @@ import app.minimpos.app.R
 import app.minimpos.app.data.db.EmailFault
 import app.minimpos.app.data.db.Failure
 import app.minimpos.app.data.security.Secret
+import app.minimpos.app.data.settings.AppSettings
 import app.minimpos.app.data.settings.EmailCapture
 import app.minimpos.app.data.settings.EmailSettings
 import app.minimpos.app.data.settings.PaymentSettings
@@ -43,7 +44,7 @@ internal fun ColumnScope.EmailSection(
 
     fun update(transform: (EmailSettings) -> EmailSettings) = events.onUpdate { it.copy(email = transform(it.email)) }
     SectionHeader(stringResource(R.string.settings_email_receipts))
-    EmailCaptureSettings(state.settings.payment) { transform ->
+    EmailCaptureSettings(state.settings) { transform ->
         events.onUpdate { it.copy(payment = transform(it.payment)) }
     }
     SmtpServerSettings(
@@ -109,12 +110,17 @@ private fun ColumnScope.EmailMessageSettings(
     }, supporting = stringResource(R.string.settings_subject_hint))
 }
 
-/** Shopper-reference requirements still restrict email collection to before payment when necessary. */
+/**
+ * When the shopper's email is asked for and whether its receipt then goes by itself: automatic sending is offered while
+ * an email can be given before or during the payment, at checkout or on the terminal. Shopper-reference requirements
+ * still restrict email collection to before payment when necessary.
+ */
 @Composable
 private fun ColumnScope.EmailCaptureSettings(
-    payment: PaymentSettings,
+    settings: AppSettings,
     update: ((PaymentSettings) -> PaymentSettings) -> Unit,
 ) {
+    val payment = settings.payment
     val emailIsReference = payment.shopperReferenceSource == ShopperReferenceSource.EMAIL
     SettingNote(stringResource(R.string.settings_shopper_email_hint))
     SettingChoice(
@@ -127,12 +133,19 @@ private fun ColumnScope.EmailCaptureSettings(
             ),
         selected = payment.effectiveEmailCapture,
         onSelect = { capture -> update { it.copy(emailCapture = capture) } },
-        subtitle = stringResource(R.string.settings_email_capture_reference).takeIf { emailIsReference },
+        subtitle =
+            stringResource(
+                if (emailIsReference) R.string.settings_email_capture_reference else R.string.settings_email_capture_hint,
+            ),
         tag = "emailCapture",
     )
-    if (payment.captureEmailBefore) {
-        SettingSwitch(stringResource(R.string.settings_auto_send), payment.autoSendEmail, { value ->
-            update { it.copy(autoSendEmail = value) }
-        })
+    if (payment.captureEmailBefore || settings.asksEmailOnTerminal) {
+        SettingSwitch(
+            stringResource(R.string.settings_auto_send),
+            payment.autoSendEmail,
+            { value -> update { it.copy(autoSendEmail = value) } },
+            subtitle = stringResource(R.string.settings_auto_send_hint),
+            tag = "autoSendEmail",
+        )
     }
 }

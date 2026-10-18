@@ -14,9 +14,6 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Email
-import androidx.compose.material.icons.filled.Print
-import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -49,11 +46,12 @@ import app.minimpos.app.R
 import app.minimpos.app.data.db.RefundEntity
 import app.minimpos.app.data.db.RefundStatus
 import app.minimpos.app.data.db.SaleLineEntity
-import app.minimpos.app.feature.OutcomeMessage
+import app.minimpos.app.feature.MerchantCopy
+import app.minimpos.app.feature.ReceiptActions
+import app.minimpos.app.feature.ResultAction
+import app.minimpos.app.feature.ResultBar
+import app.minimpos.app.feature.StatusCheck
 import app.minimpos.app.feature.outcomeNote
-import app.minimpos.app.feature.sale.ReceiptToggle
-import app.minimpos.app.feature.sale.ShareReceiptButton
-import app.minimpos.app.feature.stillUnconfirmed
 import app.minimpos.app.history.RefundInvalidReason
 import app.minimpos.app.history.Refundability
 import app.minimpos.app.history.RefundablePayment
@@ -65,7 +63,6 @@ import app.minimpos.app.share.ShareEffect
 import app.minimpos.app.ui.components.BottomActions
 import app.minimpos.app.ui.components.Card
 import app.minimpos.app.ui.components.ConfirmDialog
-import app.minimpos.app.ui.components.EmailReceiptDialog
 import app.minimpos.app.ui.components.EmptyState
 import app.minimpos.app.ui.components.LabeledValue
 import app.minimpos.app.ui.components.LocalAppContainer
@@ -78,6 +75,7 @@ import app.minimpos.app.ui.components.ProcessingContent
 import app.minimpos.app.ui.components.QuantityStepper
 import app.minimpos.app.ui.components.SecondaryButton
 import app.minimpos.app.ui.components.StatusKind
+import app.minimpos.app.ui.components.currentSetupGate
 import app.minimpos.app.ui.components.rememberMoneyFormatter
 import app.minimpos.app.ui.navigation.Navigator
 import app.minimpos.app.ui.navigation.Route
@@ -85,7 +83,6 @@ import app.minimpos.app.ui.theme.LocalDimens
 import app.minimpos.core.codec.RefundQrPayload
 import app.minimpos.core.money.AmountEntry
 import app.minimpos.core.money.MoneyFormatter
-import app.minimpos.core.receipt.ReceiptDocument
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.launch
 
@@ -139,24 +136,13 @@ fun RefundScreen(
     val state by vm.state.collectAsStateWithLifecycle()
     var confirm by remember { mutableStateOf(false) }
     val ready = state.load as? Refundability.Refundable
+    val gate = currentSetupGate()
 
     MiniScaffold(
         title = stringResource(R.string.refund_title),
         onBack = navigator::back,
         modifier = modifier,
-        bottomBar = {
-            if (ready != null) {
-                val money = rememberMoneyFormatter(ready.payment.currency)
-                BottomActions {
-                    PrimaryButton(
-                        text = stringResource(R.string.refund_button, money.format(state.refundMinor)),
-                        enabled = state.amountValid,
-                        onClick = { confirm = true },
-                        modifier = Modifier.testTag("startRefund"),
-                    )
-                }
-            }
-        },
+        bottomBar = { if (ready != null) RefundBar(ready.payment.currency, state) { gate.run { confirm = true } } },
     ) { padding ->
         when (val load = state.load) {
             null -> {
@@ -195,6 +181,24 @@ fun RefundScreen(
                 }
             }
         }
+    }
+}
+
+/** "Refund" with the amount, pinned under the refund's choice, asking to confirm ([onRefund]) once the amount is valid. */
+@Composable
+private fun RefundBar(
+    currency: String,
+    state: RefundUiState,
+    onRefund: () -> Unit,
+) {
+    val money = rememberMoneyFormatter(currency)
+    BottomActions {
+        PrimaryButton(
+            text = stringResource(R.string.refund_button, money.format(state.refundMinor)),
+            enabled = state.amountValid,
+            onClick = onRefund,
+            modifier = Modifier.testTag("startRefund"),
+        )
     }
 }
 
@@ -454,8 +458,9 @@ fun RefundProcessingScreen(
 }
 
 /**
- * The outcome of refund [refundId], with printing, emailing and the receipt. [fromHistory] opens it for an older
- * refund: nothing is printed automatically and leaving goes back instead of home.
+ * The outcome of refund [refundId], with a status check while it is unknown and the receipt actions once accepted.
+ * Just made, Home sits beside "New refund" (Home alone after a cancellation). [fromHistory] opens it as an older
+ * refund's detail: nothing is printed automatically, there is no bottom bar and leaving goes back instead of home.
  */
 @Composable
 fun RefundResultScreen(
@@ -467,8 +472,7 @@ fun RefundResultScreen(
 ) {
     val container = LocalAppContainer.current
     val state by vm.state.collectAsStateWithLifecycle()
-    var askEmail by remember { mutableStateOf(false) }
-    var showReceipt by remember { mutableStateOf(fromHistory) }
+    val gate = currentSetupGate()
 
     fun done() {
         vm.finish()
@@ -481,8 +485,18 @@ fun RefundResultScreen(
         onBack = { done() },
         modifier = modifier,
         bottomBar = {
-            if (state.refund != null) {
-                BottomActions { PrimaryButton(stringResource(R.string.action_done), { done() }, modifier = Modifier.testTag("refundDone")) }
+            val refund = state.refund
+            if (refund != null && !fromHistory) {
+                ResultBar(
+                    onHome = { done() },
+                    next =
+                        ResultAction(stringResource(R.string.refund_new), "newRefund") {
+                            gate.run {
+                                vm.finish()
+                                navigator.replace(Route.RefundScan)
+                            }
+                        }.takeUnless { refund.cancellation },
+                )
             }
         },
     ) { padding ->
@@ -503,28 +517,10 @@ fun RefundResultScreen(
             ) {
                 RefundOutcome(refund, money)
                 RefundDetailsCard(refund, container::formatDateTime)
-                if (state.canRecheck) RefundRecheck(state, vm.transaction::recheck)
-                if (state.accepted) {
-                    RefundReceiptActions(
-                        state = state,
-                        receipt = state.transaction.receipt?.takeIf { showReceipt },
-                        onPrint = vm.transaction::print,
-                        onEmail = { askEmail = true },
-                        onShare = vm.transaction::share,
-                        onToggleReceipt = { showReceipt = !showReceipt },
-                    )
-                }
+                if (state.canRecheck) StatusCheck(state.transaction, vm.transaction::recheck)
+                if (state.accepted) ReceiptActions(state.transaction, vm.transaction, MerchantCopy.NONE)
             }
         }
-    }
-    if (askEmail) {
-        EmailReceiptDialog(
-            onSend = {
-                askEmail = false
-                vm.transaction.email(it)
-            },
-            onDismiss = { askEmail = false },
-        )
     }
     ShareEffect(state.transaction.share, vm.transaction::shared)
 }
@@ -600,59 +596,6 @@ private fun RefundDetailsCard(
         LabeledValue(stringResource(R.string.detail_date), formatDateTime(refund.createdAt))
         LabeledValue(stringResource(R.string.detail_psp), refund.pspReference)
     }
-}
-
-/** Checking an unknown refund outcome again with the terminal, and what the last check found. */
-@Composable
-private fun ColumnScope.RefundRecheck(
-    state: RefundResultUiState,
-    onRecheck: () -> Unit,
-) {
-    SecondaryButton(
-        stringResource(R.string.result_check_again),
-        onRecheck,
-        loading = state.transaction.rechecking,
-        icon = Icons.Default.Refresh,
-        modifier = Modifier.testTag("refundRecheck"),
-    )
-    state.transaction.stillUnknown?.let {
-        Text(stillUnconfirmed(it), textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
-    }
-}
-
-/**
- * Printing, emailing and sharing (on phones and tablets) an accepted refund's receipt, and showing it ([receipt] is
- * null while hidden).
- */
-@Composable
-private fun ColumnScope.RefundReceiptActions(
-    state: RefundResultUiState,
-    receipt: ReceiptDocument?,
-    onPrint: () -> Unit,
-    onEmail: () -> Unit,
-    onShare: () -> Unit,
-    onToggleReceipt: () -> Unit,
-) {
-    if (state.transaction.canPrint) {
-        SecondaryButton(
-            stringResource(R.string.result_print),
-            onPrint,
-            loading = state.transaction.print.running,
-            icon = Icons.Default.Print,
-        )
-        OutcomeMessage(state.transaction.print)
-    }
-    if (state.transaction.canEmail) {
-        SecondaryButton(
-            stringResource(R.string.result_email),
-            onEmail,
-            loading = state.transaction.email.running,
-            icon = Icons.Default.Email,
-        )
-        OutcomeMessage(state.transaction.email)
-    }
-    if (state.transaction.canShare) ShareReceiptButton(onShare)
-    ReceiptToggle(receipt, onToggleReceipt)
 }
 
 @Composable

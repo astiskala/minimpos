@@ -51,6 +51,7 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import app.minimpos.app.R
+import app.minimpos.app.ui.components.BlockedReason
 import app.minimpos.app.ui.components.LocalAppContainer
 import app.minimpos.app.ui.components.SwitchRow
 import app.minimpos.app.ui.theme.LocalDimens
@@ -142,7 +143,11 @@ fun SettingNumberField(
     tag = tag,
 )
 
-/** An on/off setting as a row that toggles when tapped anywhere. */
+/**
+ * An on/off setting as a row that toggles when tapped anywhere: a short [title], then a [subtitle] saying in a sentence
+ * or two what it does (the guides hold the details). While [blocked] says what to set up first, the switch shows off and
+ * cannot change, with that reason under it; the saved choice is kept for when it applies again.
+ */
 @Composable
 fun SettingSwitch(
     title: String,
@@ -152,15 +157,19 @@ fun SettingSwitch(
     subtitle: String? = null,
     tag: String? = null,
     enabled: Boolean = true,
+    blocked: String? = null,
 ) {
-    SwitchRow(
-        title = title,
-        checked = checked,
-        onChange = onChange,
-        subtitle = subtitle,
-        enabled = enabled,
-        modifier = modifier.padding(horizontal = 16.dp, vertical = LocalDimens.current.rowPadding - 2.dp).tagged(tag),
-    )
+    Column(modifier.padding(horizontal = 16.dp, vertical = LocalDimens.current.rowPadding - 2.dp)) {
+        SwitchRow(
+            title = title,
+            checked = checked && blocked == null,
+            onChange = onChange,
+            subtitle = subtitle,
+            enabled = enabled && blocked == null,
+            modifier = Modifier.tagged(tag),
+        )
+        blocked?.let { BlockedReason(it) }
+    }
 }
 
 /**

@@ -86,6 +86,7 @@ import app.minimpos.app.ui.components.SecondaryButton
 import app.minimpos.app.ui.components.SectionHeader
 import app.minimpos.app.ui.components.StatusBadge
 import app.minimpos.app.ui.components.StatusKind
+import app.minimpos.app.ui.components.currentSetupGate
 import app.minimpos.app.ui.navigation.Navigator
 import app.minimpos.app.ui.navigation.Route
 import app.minimpos.app.ui.theme.LocalDimens
@@ -648,7 +649,7 @@ private fun ColumnScope.SettingsContent(
         }
 
         SettingsSections.SHOPPER_DISPLAY -> {
-            ShopperDisplaySection(state.settings.payment) { transform ->
+            ShopperDisplaySection(state.settings.payment, state.settings.emailReceiptsReady) { transform ->
                 events.onUpdate { it.copy(payment = transform(it.payment)) }
             }
         }
@@ -757,7 +758,10 @@ private fun ColumnScope.TerminalSection(
     }
     val container = LocalAppContainer.current
     val wallets by container.walletDiscovery.state.collectAsStateWithLifecycle()
-    if (wallets.supported) WalletSettings(wallets, container.currency(state.settings).code, container.walletDiscovery::refreshInBackground)
+    // What Adyen reports about wallets only means something once payments are set up.
+    if (wallets.supported && !currentSetupGate().pending) {
+        WalletSettings(wallets, container.currency(state.settings).code, container.walletDiscovery::refreshInBackground)
+    }
 }
 
 @Composable
@@ -859,6 +863,7 @@ private fun TerminalModeChoice(
             } + (TerminalMode.SIMULATOR to stringResource(R.string.settings_mode_simulator)),
         selected = mode,
         onSelect = onSelect,
+        subtitle = stringResource(R.string.settings_mode_hint),
         tag = "terminalMode",
     )
 }
@@ -991,6 +996,7 @@ private fun SimulatorSection(
         options = SimulatedOutcome.entries.map { it to simulatorOutcomeLabel(it) },
         selected = simulator.outcome,
         onSelect = { outcome -> update { it.copy(outcome = outcome) } },
+        subtitle = stringResource(R.string.settings_sim_outcome_hint),
         tag = "simOutcome",
     )
     SettingNumberField(
@@ -1003,10 +1009,20 @@ private fun SimulatorSection(
             update { it.copy(delayMillis = delay.toLong()) }
         },
     )
-    SettingSwitch(stringResource(R.string.settings_sim_printer), simulator.hasPrinter, { value -> update { it.copy(hasPrinter = value) } })
-    SettingSwitch(stringResource(R.string.settings_sim_signature), simulator.signatureRequired, { value ->
-        update { it.copy(signatureRequired = value) }
-    })
+    SettingSwitch(
+        stringResource(R.string.settings_sim_printer),
+        simulator.hasPrinter,
+        { value -> update { it.copy(hasPrinter = value) } },
+        subtitle = stringResource(R.string.settings_sim_printer_hint),
+        tag = "simPrinter",
+    )
+    SettingSwitch(
+        stringResource(R.string.settings_sim_signature),
+        simulator.signatureRequired,
+        { value -> update { it.copy(signatureRequired = value) } },
+        subtitle = stringResource(R.string.settings_sim_signature_hint),
+        tag = "simSignature",
+    )
     SettingSwitch(
         stringResource(R.string.settings_sim_offline),
         simulator.offlineMode,
@@ -1070,6 +1086,7 @@ private fun SecuritySection(
             },
         selected = state.settings.security.autoLockMinutes,
         onSelect = { minutes -> events.onUpdate { it.copy(security = it.security.copy(autoLockMinutes = minutes)) } },
+        subtitle = stringResource(R.string.settings_auto_lock_hint),
     )
     ManagerPinSettings(state, events) { onSetPin(true) }
     SettingNote(stringResource(R.string.settings_pin_forgotten))
@@ -1126,6 +1143,7 @@ private fun DataSection(
             },
         selected = state.settings.history.retentionDays,
         onSelect = { days -> events.onUpdate { it.copy(history = it.history.copy(retentionDays = days)) } },
+        subtitle = stringResource(R.string.settings_retention_hint),
     )
     SettingActions {
         ConfirmedRemoval(

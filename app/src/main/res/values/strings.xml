@@ -41,9 +41,7 @@
   <string name="home_settings">Settings</string>
   <string name="home_printer_yes">printer available</string>
   <string name="home_printer_no">no printer</string>
-  <string name="home_setup_title">Connect to this terminal</string>
-  <string name="home_setup_text">Tap here to finish terminal setup.</string>
-  <string name="home_setup_title_remote">Finish setting up payments</string>
+  <string name="home_setup_text">Tap to finish setting up payments.</string>
   <string name="home_connection_failed">Payments are not working right now</string>
   <string name="update_available">Version %1$s is available</string>
   <string name="update_download">Update</string>
@@ -232,7 +230,6 @@
   <string name="detail_refund">Refund</string>
   <string name="detail_refunds">Refunds</string>
   <string name="detail_refunded">Refunded %1$s</string>
-  <string name="detail_reprint">Reprint receipt</string>
   <string name="detail_capture">Capture</string>
   <string name="detail_adjust">Adjust amount</string>
   <string name="detail_retry_capture">Retry capture</string>
@@ -265,6 +262,7 @@
 
   <!-- Refunds and cancellations -->
   <string name="refund_title">Refund</string>
+  <string name="refund_new">New refund</string>
   <string name="refund_detail_title">Refund details</string>
   <string name="refund_scan_title">Scan receipt</string>
   <string name="refund_scan_hint">Scan the QR code printed on the receipt</string>
@@ -393,14 +391,14 @@
   <string name="reconciliation_refunds">Refunds</string>
   <string name="reconciliation_column_local">Mini mPOS</string>
   <string name="reconciliation_column_terminal">Terminal</string>
-  <string name="reconciliation_totals_header">1. Check totals</string>
+  <string name="reconciliation_totals_header">Check totals</string>
   <string name="reconciliation_check_hint">Compares the terminal’s totals for its current period with the payments on this device. Unresolved terminal payments are checked first.</string>
   <string name="reconciliation_check">Check terminal totals</string>
-  <string name="reconciliation_end_header">2. End of day</string>
+  <string name="reconciliation_end_header">End of day</string>
   <string name="reconciliation_close_hint">Once the totals match, close the terminal’s period. The terminal starts a new one, so tomorrow’s totals start from zero.</string>
   <string name="reconciliation_close_confirm_title">Close the terminal period?</string>
   <string name="reconciliation_close_confirm_message">The terminal ends its current period and starts a new one. This cannot be undone.</string>
-  <string name="reconciliation_report_header">3. Daily report</string>
+  <string name="reconciliation_report_header">Daily report</string>
   <string name="reconciliation_report_hint">Prints this device’s local summary of today’s payments and refunds. It is not Adyen’s settlement.</string>
 
   <!-- Products and sample data -->
@@ -660,6 +658,7 @@
   <string name="settings_scan_discard_drafts">Unsaved keys will be discarded when you open the scanner. Saved settings will not change until you import.</string>
   <string name="settings_scan_discard_confirm">Discard and scan</string>
   <string name="settings_mode">Payments go to</string>
+  <string name="settings_mode_hint">Where Mini mPOS sends payments.</string>
   <string name="settings_mode_terminal">This terminal</string>
   <string name="settings_mode_network">A terminal on your network</string>
   <string name="settings_mode_cloud">A terminal over the internet (cloud)</string>
@@ -760,6 +759,7 @@
   <!-- Settings: Adyen capabilities -->
   <string name="capabilities_intro">Inspect which Adyen features are supported on this destination and configured for this terminal in your Customer Area.</string>
   <string name="capabilities_refresh">Refresh capabilities</string>
+  <string name="capability_save">Save to Adyen</string>
   <string name="capabilities_matrix_header">Capabilities</string>
   <string name="capability_status_available">Available</string>
   <string name="capability_status_needs_config">Needs configuration</string>
@@ -775,14 +775,19 @@
   <string name="capability_reconciliation">Terminal reconciliation</string>
   <string name="capability_shopper_display">Shopper display</string>
   <string name="capability_gratuity_section">Terminal tipping (%1$s)</string>
-  <string name="capability_gratuity_enable">Configure terminal tipping for %1$s</string>
-  <string name="capability_gratuity_predefined">Show predefined tip buttons</string>
+  <string name="capability_gratuity_enable">Tip options on the terminal</string>
+  <string name="capability_gratuity_enable_hint">Adyen shows tip options on the terminal for %1$s payments.</string>
+  <string name="capability_gratuity_predefined">Tip buttons</string>
+  <string name="capability_gratuity_predefined_hint">Shoppers choose one of your tip options instead of typing a tip.</string>
   <string name="capability_gratuity_entries">Predefined tip options</string>
   <string name="capability_gratuity_entries_hint">Comma-separated percentages or minor-unit amounts (up to 4).</string>
-  <string name="capability_gratuity_custom">Include custom tip option</string>
-  <string name="capability_dcc_enable">Enable Dynamic Currency Conversion on terminal</string>
+  <string name="capability_gratuity_custom">Custom tip</string>
+  <string name="capability_gratuity_custom_hint">One of the buttons lets shoppers type their own tip.</string>
+  <string name="capability_dcc_enable">Offer currency conversion</string>
+  <string name="capability_dcc_enable_hint">Cardholders with foreign cards can pay in their own currency (DCC).</string>
   <string name="capability_moto_section">MOTO terminal settings</string>
-  <string name="capability_moto_enable">Enable MOTO on terminal</string>
+  <string name="capability_moto_enable">Allow MOTO on the terminal</string>
+  <string name="capability_moto_enable_hint">The terminal accepts keyed mail and telephone orders, up to the maximum amount.</string>
   <string name="capability_moto_max_amount">MOTO max amount (major units)</string>
   <string name="capability_offline_section">Offline limits (%1$s)</string>
   <string name="capability_offline_chip_floor">Chip floor limit (major units)</string>
@@ -792,6 +797,7 @@
   <!-- Settings: simulator -->
   <string name="settings_simulator_hint">The simulator answers payment, refund and print requests without a terminal. It also simulates the Checkout API. Try every screen on an emulator or phone.</string>
   <string name="settings_sim_outcome">Payment outcome</string>
+  <string name="settings_sim_outcome_hint">How the simulated terminal answers payments.</string>
   <string name="settings_sim_approve">Approve</string>
   <string name="settings_sim_decline">Decline</string>
   <string name="settings_sim_cancel">Shopper cancels</string>
@@ -799,9 +805,11 @@
   <string name="settings_sim_busy">Terminal busy</string>
   <string name="settings_sim_random">Random</string>
   <string name="settings_sim_delay">Delay (ms)</string>
-  <string name="settings_sim_printer">Has a printer</string>
-  <string name="settings_sim_signature">Signature required</string>
-  <string name="settings_sim_offline">Simulate offline Store-and-Forward</string>
+  <string name="settings_sim_printer">Receipt printer</string>
+  <string name="settings_sim_printer_hint">The simulated terminal has a printer, so receipts print on screen.</string>
+  <string name="settings_sim_signature">Ask for a signature</string>
+  <string name="settings_sim_signature_hint">Simulated card payments need the cardholder’s signature on the merchant copy.</string>
+  <string name="settings_sim_offline">Offline approvals</string>
   <string name="settings_sim_offline_hint">Approve simulated payments offline without a PSP reference and report an unconfirmed batch.</string>
 
   <!-- Settings: payments, pricing, and tax -->
@@ -846,6 +854,7 @@
     <item>Sales tax</item>
   </string-array>
   <string name="settings_tax_mode">Prices</string>
+  <string name="settings_tax_mode_hint">Whether product prices already include tax.</string>
   <string name="settings_tax_inclusive">Include tax</string>
   <string name="settings_tax_exclusive">Exclude tax (added at checkout)</string>
   <string name="settings_references">References</string>
@@ -856,11 +865,12 @@
   <string name="settings_tokenization">Shoppers and saved cards</string>
   <string name="settings_offer_card_saving">Offer to save cards</string>
   <string name="settings_offer_card_saving_hint">Checkout offers to save the card when there is a shopper reference. Ask the customer for consent. Charge tokens later with Charge token on Home.</string>
-  <string name="settings_tokenize_default">Save card switch on by default</string>
-  <string name="settings_tokenize_default_hint">Only shown when a shopper reference is available.</string>
-  <string name="settings_pre_auth_tokenize_default">Save card on by default for pre-authorizations</string>
-  <string name="settings_pre_auth_tokenize_default_hint">Late costs after capture can be charged to the token with Charge token on Home.</string>
+  <string name="settings_tokenize_default">Save cards by default</string>
+  <string name="settings_tokenize_default_hint">Sales start with Save card on when there is a shopper reference.</string>
+  <string name="settings_pre_auth_tokenize_default">Save cards for pre-authorizations</string>
+  <string name="settings_pre_auth_tokenize_default_hint">Pre-authorizations start with Save card on, so later costs can be charged with Charge token.</string>
   <string name="settings_recurring_model">Recurring processing model</string>
+  <string name="settings_recurring_model_hint">How Adyen may charge saved cards. Choose what the shopper agreed to.</string>
   <string name="recurring_card_on_file">Card on file</string>
   <string name="recurring_subscription">Subscription</string>
   <string name="recurring_unscheduled">Unscheduled card on file</string>
@@ -880,11 +890,13 @@
   <string name="settings_shopper_email_hint">Emails collected before payment are always sent to Adyen, including for payment links. Emails collected afterward are only used for receipts.</string>
   <string name="settings_email_receipts">Email receipts</string>
   <string name="settings_email_capture">Ask for the shopper’s email</string>
+  <string name="settings_email_capture_hint">Before payment, checkout asks for it. After payment, the result’s Email receipt asks.</string>
   <string name="settings_capture_off">Never</string>
   <string name="settings_capture_before">Before payment</string>
   <string name="settings_capture_after">After payment</string>
   <string name="settings_email_capture_reference">Always before payment: the email is the shopper reference for saved cards.</string>
   <string name="settings_auto_send">Email the receipt automatically</string>
+  <string name="settings_auto_send_hint">Send the receipt when the payment is approved, to the email given at checkout or on the terminal.</string>
   <string name="settings_tipping">Tipping</string>
   <string name="settings_tip_disabled">Disabled</string>
   <string name="settings_tip_default_off">Enabled (default off)</string>
@@ -893,8 +905,8 @@
   <string name="settings_terminal_tip_hint">Prompt shoppers for a tip on the terminal screen.</string>
   <string name="settings_dynamic_tip_override">Dynamic basket tip suggestions</string>
   <string name="settings_dynamic_tip_override_hint">Suggest fixed tip amounts on small baskets and percentages on larger ones.</string>
-  <string name="settings_tip_on_pre_tax">Calculate percentage tips before tax</string>
-  <string name="settings_tip_on_pre_tax_hint">Use the pre-tax subtotal to calculate percentage tips.</string>
+  <string name="settings_tip_on_pre_tax">Tip on the pre-tax amount</string>
+  <string name="settings_tip_on_pre_tax_hint">Percentage tips are worked out on the subtotal before tax.</string>
   <string name="settings_payment_links">Payment links</string>
   <string name="settings_links_hint">Checkout can create an Adyen payment link for the customer to pay online. In simulator mode, try a demo link without moving money.</string>
   <string name="settings_link_expiry">Links work for (hours)</string>
@@ -907,7 +919,8 @@
   <string name="settings_confirm_basket_terminal">Ask to confirm the total</string>
   <string name="settings_confirm_basket_terminal_hint">The shopper confirms the total on the terminal before paying. If they decline, the payment is canceled.</string>
   <string name="settings_collect_email_terminal">Ask for email on the terminal</string>
-  <string name="settings_collect_email_terminal_hint">If no email was entered at checkout, the shopper can type one on the terminal for the receipt, or skip it.</string>
+  <string name="settings_collect_email_terminal_hint">If no email was entered at checkout, the shopper can type one on the terminal to get the receipt, or skip it.</string>
+  <string name="settings_email_receipts_first">Set up email receipts first in Settings › Email receipts.</string>
   <string name="settings_show_terminal_qr">Show QR code after approval</string>
   <string name="settings_show_terminal_qr_hint">After an approved payment, the terminal shows the payment’s reference as a QR code the shopper can scan.</string>
   <string name="settings_ask_shopper_rating">Ask for a rating</string>
@@ -916,9 +929,9 @@
   <string name="settings_allow_partial_auth_hint">Accept partial card approvals and prompt for the remaining balance on another card.</string>
   <string name="settings_ask_giving_hint">Prompt shoppers on the terminal for an Adyen Giving donation after purchase.</string>
   <string name="settings_allow_moto">Offer MOTO at checkout</string>
-  <string name="settings_allow_moto_hint">Allow Mail Order / Telephone Order keyed card payments (requires Manager PIN).</string>
-  <string name="settings_allow_mke">Offer Manual Key Entry (MKE) at checkout</string>
-  <string name="settings_allow_mke_hint">Allow staff to key a card number on the terminal when the chip cannot be read (requires Manager PIN).</string>
+  <string name="settings_allow_moto_hint">Staff can key mail and telephone orders on the terminal. Needs Manager approval.</string>
+  <string name="settings_allow_mke">Offer manual key entry</string>
+  <string name="settings_allow_mke_hint">Staff can key the card on the terminal when the chip can’t be read. Needs Manager approval.</string>
 
   <!-- Settings: receipts and SMTP -->
   <string name="settings_header_footer">Header and footer</string>
@@ -951,11 +964,14 @@
   <string name="settings_show_qr_hint">Lets staff start a referenced refund by scanning the receipt.</string>
   <string name="settings_printing">Printing</string>
   <string name="settings_printer">Printer</string>
+  <string name="settings_printer_hint">Whether Mini mPOS offers printing. Detect automatically asks the terminal.</string>
   <string name="settings_printer_auto">Detect automatically</string>
   <string name="settings_printer_on">Always available</string>
   <string name="settings_printer_off">Never print</string>
-  <string name="settings_auto_print">Print automatically after payment</string>
+  <string name="settings_auto_print">Print automatically</string>
+  <string name="settings_auto_print_hint">Print the customer receipt as soon as a payment is approved.</string>
   <string name="settings_merchant_copy">Merchant copy</string>
+  <string name="settings_merchant_copy_hint">When a second copy prints for you to keep.</string>
   <string name="settings_merchant_never">Never</string>
   <string name="settings_merchant_signature">Only when a signature is needed</string>
   <string name="settings_merchant_always">Always</string>
@@ -966,6 +982,7 @@
   <string name="settings_smtp">SMTP server</string>
   <string name="settings_smtp_host">Server</string>
   <string name="settings_smtp_security">Security</string>
+  <string name="settings_smtp_security_hint">How the connection to the mail server is encrypted.</string>
   <string name="settings_smtp_starttls">STARTTLS (usually port 587)</string>
   <string name="settings_smtp_ssl">SSL/TLS (usually port 465)</string>
   <string name="settings_smtp_none">None (not recommended)</string>
@@ -997,6 +1014,7 @@
   <string name="settings_remove_pin">Remove Admin PIN</string>
   <string name="settings_remove_pin_message">This removes protection from settings and products. It also removes the Manager PIN if one is set.</string>
   <string name="settings_auto_lock">Lock again after</string>
+  <string name="settings_auto_lock_hint">How long settings and products stay open after the admin PIN is entered.</string>
   <string name="settings_auto_lock_never">Only when leaving</string>
   <plurals name="settings_minutes">
     <item quantity="one">%1$d minute</item>
@@ -1005,6 +1023,7 @@
   <string name="settings_pin_forgotten">Forgotten the PIN? Clear the app’s data from the device’s settings; configuration and history on this device are then lost.</string>
   <string name="settings_history">History</string>
   <string name="settings_retention">Keep transactions for</string>
+  <string name="settings_retention_hint">Older settled sales and refunds are deleted. Unfinished ones are kept.</string>
   <string name="settings_retention_forever">Forever</string>
   <plurals name="settings_days">
     <item quantity="one">%1$d day</item>
@@ -1052,6 +1071,10 @@
   <string name="setup_payments_app_api_key">Enter the Payments app API key in Terminal settings</string>
   <string name="setup_unreadable_payments_app_key">The saved Payments app API key could not be read on this device; enter it again in Terminal settings</string>
   <string name="setup_not_verified">Test API access and the connection before taking payments.</string>
+  <string name="setup_required_title">Payments aren’t set up yet</string>
+  <string name="setup_required_message">Mini mPOS needs a tested connection to Adyen first. Settings › Terminal shows what is still missing.</string>
+  <string name="setup_required_action">Finish setting up payments</string>
+  <string name="step_done">Done</string>
   <string name="setup_transfer_pending">Setup import needs to finish saving. Retry to resume.</string>
   <string name="setup_terminal_access">This API key cannot access this terminal. Check that it belongs to the terminal’s company account and has access to this terminal.</string>
   <string name="setup_merchant_mismatch">The merchant account does not match this terminal’s current assignment. Correct the account or boarding before continuing.</string>

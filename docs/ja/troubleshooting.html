@@ -139,9 +139,9 @@
           <h2>端末ペアリングや設定がうまくいかない</h2>
           <p>まずホームのメッセージを確認し、<strong>設定 › 端末</strong>で<strong>APIをテスト</strong>を実行します。物理端末では<strong>接続をテスト</strong>も実行します。Tap to Pay では Payments アプリの登録状態を確認します。詳しい手順は<a href="quick-start.html#connect">Adyen に接続する</a>を参照してください。</p>
           <dl class="fixes">
-            <div><dt>ホームに「端末設定に…を入力してください」と表示される</dt>
-              <dd><p><span class="fix-label">原因</span>必須項目が空であるか、保存したキーをこのデバイスで読み取れません。</p>
-                <p><span class="fix-label">対処</span><strong>設定 › 端末</strong>で不足している項目を入力するか、キーを入力し直します。</p></dd></div>
+            <div><dt>ホームに「決済の設定が完了していません」と表示される</dt>
+              <dd><p><span class="fix-label">原因</span>必須項目が空であるか、保存したキーをこのデバイスで読み取れないか、設定の変更後に接続テストが成功していません。それまでは、決済、返金、印刷などのAdyen操作は実行されず、この説明が表示されます。</p>
+                <p><span class="fix-label">対処</span><strong>決済の設定を完了</strong>をタップします。<strong>設定 › 端末</strong>で不足している項目を入力するか、キーを入力し直し、<strong>接続をテスト</strong>をタップします。</p></dd></div>
             <div><dt>API のテストに失敗する、またはアクセスの問題が表示される</dt>
               <dd><p><span class="fix-label">原因</span>APIキー、マーチャントアカウント、LIVE URLプレフィックスが誤っている、ロールが不足している、または認証情報が別の Company アカウントや環境のものです。</p>
                 <p><span class="fix-label">対処</span><a href="quick-start.html#credentials">認証情報の要件</a>に照らしてロールとアクセス範囲を確認します。LIVE では <strong>LIVE URLプレフィックス</strong>を確認します。</p></dd></div>
@@ -234,7 +234,7 @@
                 <p><span class="fix-label">対処</span></p>
                 <ol>
                   <li><strong>設定 › アプリ情報</strong>で<strong>プリンター</strong>が<strong>あり</strong>になっていることを確認します。なっていなければ、<strong>設定 › 端末</strong>で<strong>接続をテスト</strong>を実行します。</li>
-                  <li><strong>設定 › 領収書</strong>で<strong>プリンター</strong>を<strong>自動検出</strong>にし、<strong>決済後に自動印刷</strong>を確認します。</li>
+                  <li><strong>設定 › 領収書</strong>で<strong>プリンター</strong>を<strong>自動検出</strong>にし、<strong>自動で印刷</strong>を確認します。</li>
                   <li><strong>テスト領収書を印刷</strong>をタップします。印刷されない場合は、端末のロール紙を確認します。</li>
                 </ol></dd></div>
             <div><dt>レイアウトが切れる、折り返しがおかしい</dt>

@@ -124,9 +124,8 @@ class PaymentsAppTest {
         app.keepAnswers = true
         // The payment's own status check already finds the answer.
         val paid = runBlocking { client.pay(payment, serviceId = "PAY2") } as TransactionOutcome.Completed
-        assertThat(paid.recovered).isTrue()
+        assertThat(paid.details.success).isTrue()
         val recovered = runBlocking { client.status("PAY2") } as TransactionOutcome.Completed
-        assertThat(recovered.recovered).isTrue()
         assertThat(recovered.details.success).isTrue()
         // Answers to other requests do not count.
         assertThat(runBlocking { client.status("OTHER") }).isInstanceOf(TransactionOutcome.Unknown::class.java)

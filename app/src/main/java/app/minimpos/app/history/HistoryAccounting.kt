@@ -152,18 +152,16 @@ data class CurrencyReconciliation(
 }
 
 /**
- * Comparison between Mini mPOS local records and a terminal `GetTotals` or `SaleReconciliation` answer.
+ * Comparison between Mini mPOS local records and one terminal's `GetTotals` or `SaleReconciliation` answer.
  *
- * @property poiId Terminal POIID compared.
  * @property poiReconciliationId Terminal reconciliation period ID (`POIReconciliationID`), if reported.
  * @property closedPeriod True when the reconciliation period was closed (`SaleReconciliation`).
  * @property currencies Per-currency comparison rows, sorted by currency code.
- * @property unresolvedCount Unresolved terminal operations for [poiId] that may still affect totals.
+ * @property unresolvedCount Unresolved operations on the compared terminal that may still affect totals.
  * @property offlineSaleCount Number of offline-approved sales in the compared scope.
- * @property unconfirmedBatchCount Highest `unconfirmedBatchCount` reported on offline sales for [poiId].
+ * @property unconfirmedBatchCount Highest `unconfirmedBatchCount` reported on the compared terminal's offline sales.
  */
 data class TerminalReconciliationReport(
-    val poiId: String,
     val poiReconciliationId: String?,
     val closedPeriod: Boolean,
     val currencies: List<CurrencyReconciliation>,
@@ -415,7 +413,6 @@ object HistoryAccounting {
                 )
             }
         return TerminalReconciliationReport(
-            poiId = poiId,
             poiReconciliationId = outcome.poiReconciliationId,
             closedPeriod = outcome.closedPeriod,
             currencies = comparisons,

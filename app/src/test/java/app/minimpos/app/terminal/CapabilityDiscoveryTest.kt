@@ -206,7 +206,7 @@ class CapabilityDiscoveryTest {
         env.useSimulator()
         val vm = CapabilitiesViewModel(discovery = env.container.capabilityDiscovery)
         try {
-            await { vm.state.first { it.checked && it.simulated } }
+            await { vm.state.first { it.simulated && !it.checking } }
             vm.saveGratuity("EUR", GratuityCapability("EUR", true, listOf("10%"), true))
             await { vm.actions.first { it.gratuity.done } }
             vm.saveGratuity("EUR", null)
@@ -297,7 +297,10 @@ class CapabilityDiscoveryTest {
         compose.setContent { MiniMposApp(env.container) }
         compose.onNodeWithTag("settings").performClick()
         compose.onNodeWithTag("section_capabilities").performScrollTo().performClick()
-        compose.awaitCondition("capabilities loaded") { env.container.capabilityDiscovery.state.value.checked }
+        compose.awaitCondition("capabilities loaded") {
+            env.container.capabilityDiscovery.state.value
+                .let { it.simulated && !it.checking }
+        }
         compose.onNodeWithTag("cap_tipping").performScrollTo().assertIsDisplayed()
         compose.onNodeWithTag("cap_partial_auth").performScrollTo().assertIsDisplayed()
         compose.onNodeWithTag("capDccEnable").performScrollTo().performClick()

@@ -270,7 +270,7 @@ class TerminalClientTest {
             assertThat(request.paymentRequest.paymentTransaction.amountsReq.requestedAmount).isEqualTo(BigDecimal("12.50"))
             assertThat(request.messageHeader.serviceID).isEqualTo("WALLET1")
             assertThat(payment.toString()).doesNotContain("133341022926803846")
-            assertThat(payment.available).isFalse()
+            assertThrows(IllegalStateException::class.java) { payment.consume() }
         }
 
     @Test
@@ -288,7 +288,7 @@ class TerminalClientTest {
                     .first()
                     .saleToPOIRequest.paymentRequest.paymentData.paymentInstrumentData.storedValueAccountID.storedValueID,
             ).isEqualTo("000190468703")
-            assertThat(payment.available).isFalse()
+            assertThrows(IllegalStateException::class.java) { payment.consume() }
         }
 
     @Test
@@ -330,7 +330,7 @@ class TerminalClientTest {
             assertThat(request.paymentRequest.paymentTransaction.amountsReq.requestedAmount).isEqualTo(BigDecimal("12.50"))
 
             val details = (outcome as TransactionOutcome.Completed).details
-            assertThat(outcome.recovered).isFalse()
+            assertThat(sent.none { it.saleToPOIRequest.transactionStatusRequest != null }).isTrue()
             assertThat(details.success).isTrue()
             assertThat(details.decline).isNull()
             assertThat(details.pspReference).isEqualTo("PSP123")
@@ -345,8 +345,6 @@ class TerminalClientTest {
             assertThat(details.entryMode).isEqualTo("Contactless")
             assertThat(details.approvalCode).isEqualTo("123456")
             assertThat(details.tokenization!!.storedPaymentMethodId).isEqualTo("TOKEN1")
-            assertThat(details.tokenization.shopperReference).isEqualTo("CUST-1")
-            assertThat(details.tokenization.cardAlias).isEqualTo("ALIAS1")
         }
 
     @Test
@@ -387,7 +385,6 @@ class TerminalClientTest {
             assertThat(details.paymentMethodVariant).isNull()
             assertThat(details.approvalCode).isEqualTo("9")
             assertThat(details.tokenization!!.storedPaymentMethodId).isEqualTo("R1")
-            assertThat(details.tokenization.cardAlias).isEqualTo("A1")
             assertThat(details.decline!!.busyServiceId).isNull()
 
             val busy =
@@ -415,7 +412,7 @@ class TerminalClientTest {
             val unreachable = client { Delivery.Failed(UNREACHABLE) }.pay(params)
             assertThat((unreachable as TransactionOutcome.NotProcessed).fault).isEqualTo(UNREACHABLE)
             val rejected = client { Delivery.Failed(Fault.KeyRejected(null)) }.pay(params)
-            assertThat(rejected).isEqualTo(TransactionOutcome.NotProcessed(rejected.serviceId, Fault.KeyRejected(null)))
+            assertThat(rejected).isEqualTo(TransactionOutcome.NotProcessed(Fault.KeyRejected(null)))
         }
 
     @Test
@@ -432,8 +429,8 @@ class TerminalClientTest {
                         else -> statusReply(result(ResultType.SUCCESS), paymentBody(approval()))
                     }
                 }.pay(params)
-            assertThat((outcome as TransactionOutcome.Completed).recovered).isTrue()
-            assertThat(outcome.details.pspReference).isEqualTo("PSP123")
+            assertThat(calls).isEqualTo(4)
+            assertThat((outcome as TransactionOutcome.Completed).details.pspReference).isEqualTo("PSP123")
             val status = sent.last().saleToPOIRequest
             assertThat(status.messageHeader.messageCategory).isEqualTo(MessageCategoryType.TRANSACTION_STATUS)
             assertThat(status.transactionStatusRequest.messageReference.serviceID).isEqualTo("S1")
@@ -828,20 +825,18 @@ class ShopperDisplayAndTotalsTest {
         assertThrows(IllegalArgumentException::class.java) { ScannedPayment("wechatpay_pos", "1".repeat(129)) }
         assertThrows(IllegalArgumentException::class.java) { ScannedPayment("wechatpay_pos", "/") }
         assertThrows(IllegalArgumentException::class.java) { ScannedPayment("wechatpay_pos", ":") }
-        assertThat(ScannedPayment("wechatpay_pos", "09".repeat(64)).available).isTrue()
+        assertThat(ScannedPayment("wechatpay_pos", "09".repeat(64)).consume()).isEqualTo("09".repeat(64))
         assertThrows(IllegalArgumentException::class.java) { ShopperSessionFlow(sessionId = 0) }
         assertThat(ShopperSessionFlow(sessionId = 1).sessionId).isEqualTo(1)
         val discardable = ScannedPayment("wechatpay_pos", "123")
         assertThat(discardable.toString()).isEqualTo("ScannedPayment(brand=wechatpay_pos, code=[redacted])")
         discardable.discard()
-        assertThat(discardable.available).isFalse()
         assertThrows(IllegalStateException::class.java) { discardable.consume() }
         assertThat(
             VirtualReceipt(header = "Order", lines = emptyList(), totalMinor = 100, currency = "EUR").toXml(fractionDigits = 2),
         ).contains("""<screen name="virtual-receipt.xslt">""")
         assertThat(PaymentParams(100, "EUR", "M", saleReferenceId = "SR-1").saleReferenceId).isEqualTo("SR-1")
         assertThat(RecoveryPolicy(intervalMillis = 2_000L).intervalMillis).isEqualTo(2_000L)
-        assertThat(TransactionOutcome.Unknown("U-1", Fault.TimedOut).serviceId).isEqualTo("U-1")
         assertThat(PrintOutcome.Failed(Fault.Unsupported, noPrinter = false).noPrinter).isFalse()
         val sampleFlow =
             ShopperSessionFlow(
@@ -1102,8 +1097,6 @@ class ShopperDisplayAndTotalsTest {
                         onStarted = { cancelledServiceId = it },
                     ) as TransactionOutcome.Completed
             assertThat(cancelledServiceId).isNull()
-            assertThat(cancelledOutcome.serviceId).isEqualTo("CUSTOM-S1")
-            assertThat(cancelledOutcome.recovered).isFalse()
             assertThat(cancelledOutcome.details.success).isFalse()
             assertThat(cancelledOutcome.details.errorCondition).isEqualTo("Cancel")
             assertThat(cancelledOutcome.details.decline?.cancelled).isTrue()

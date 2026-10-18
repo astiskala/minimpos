@@ -293,9 +293,6 @@ class TransactionLifecycle<R>(
         scope.launch { gateway.abort(serviceId, book.kind) }
     }
 
-    /** For a transaction refused with ErrorCondition Busy: the ServiceID of the transaction the terminal said it is busy with. */
-    suspend fun busyServiceId(id: String): String? = book.busyServiceId(id)
-
     /**
      * Adyen: with Busy, the in-progress transaction can be cancelled with an AbortRequest for its ServiceID, which the
      * stored refusal names and the record keeps until the abort was sent. Returns whether the abort was sent; it can

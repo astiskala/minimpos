@@ -23,7 +23,7 @@ class MoneyTest {
     }
 
     @Test
-    fun `currencies default from the country and can be searched`() {
+    fun `currencies default from the country`() {
         assertThat(AdyenCurrencies.forCountry("AU")!!.code).isEqualTo("AUD")
         assertThat(AdyenCurrencies.forCountry(" se ")!!.code).isEqualTo("SEK")
         assertThat(AdyenCurrencies.forCountry("DE")!!.code).isEqualTo("EUR")
@@ -33,18 +33,7 @@ class MoneyTest {
         assertThat(AdyenCurrencies.forCountry("ZZ")).isNull()
         assertThat(AdyenCurrencies.forCountry("AQ")).isNull()
         assertThat(AdyenCurrencies.forCountry("KP")).isNull()
-
-        assertThat(AdyenCurrencies.sorted).hasSize(138)
-        assertThat(AdyenCurrencies.sorted.map { it.code }).isInOrder()
-        assertThat(AdyenCurrencies.search(" ")).isEqualTo(AdyenCurrencies.sorted)
-        assertThat(AdyenCurrencies.search("kron").map { it.code }).containsExactly("DKK", "ISK", "NOK", "SEK").inOrder()
-        // An exact code comes first, before names that merely contain it.
-        assertThat(AdyenCurrencies.search("sek").first().code).isEqualTo("SEK")
-        assertThat(AdyenCurrencies.search("aud").first().code).isEqualTo("AUD")
-        assertThat(AdyenCurrencies.search("nad").map { it.code }).containsExactly("NAD", "CAD").inOrder()
-        assertThat(AdyenCurrencies.search("ron").first().code).isEqualTo("RON")
-        assertThat(AdyenCurrencies.search("dollar").map { it.code }).containsAtLeast("AUD", "NZD", "USD")
-        assertThat(AdyenCurrencies.search("no such money")).isEmpty()
+        assertThat(AdyenCurrencies.all).hasSize(138)
     }
 
     @Test

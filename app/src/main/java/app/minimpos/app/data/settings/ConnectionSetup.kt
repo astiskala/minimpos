@@ -119,15 +119,6 @@ data class ConnectionSetup(
             fromName = smtpFromName.or(email.fromName),
         )
 
-    /** Whether this helper requests optional automatic setup for a destination supported by this device; never boards. */
-    fun requestsAutomaticSetup(onTerminal: Boolean): Boolean =
-        automatic &&
-            when (destination) {
-                ConnectionDestination.THIS_TERMINAL -> onTerminal
-                ConnectionDestination.NETWORK, ConnectionDestination.CLOUD -> !onTerminal
-                ConnectionDestination.TAP_TO_PAY, null -> false
-            }
-
     /**
      * [terminal] with what this setup holds, on a device that is an Adyen terminal when [onTerminal]. A terminal only
      * ever takes payments itself, so there only [ConnectionDestination.THIS_TERMINAL] changes where payments go (to

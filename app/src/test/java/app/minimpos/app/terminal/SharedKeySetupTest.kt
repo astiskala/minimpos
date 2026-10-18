@@ -74,7 +74,7 @@ class SharedKeySetupTest {
                 ).isTrue()
                 requested += key
                 if (accepted) found = SharedKeyLookup.Found(key)
-                return updateFailure ?: SharedKeyUpdate.Ready(key, created = true)
+                return updateFailure ?: SharedKeyUpdate.Ready(key)
             }
         }
     private val source by lazy {

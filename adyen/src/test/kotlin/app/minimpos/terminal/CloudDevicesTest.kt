@@ -138,7 +138,7 @@ class CloudDevicesTest {
             MockResponse.Builder().body("""{"SaleToPOIResponse":{"PaymentResponse":{"SaleData":{"SaleToAcquirerData":{"a":1}}}}}""").build()
         }
         val outcome = runBlocking { client().pay(payment, serviceId = "PAY1") }
-        assertThat(outcome).isEqualTo(TransactionOutcome.Unknown("PAY1", Fault.UnreadableReply()))
+        assertThat(outcome).isEqualTo(TransactionOutcome.Unknown(Fault.UnreadableReply()))
     }
 
     @Test

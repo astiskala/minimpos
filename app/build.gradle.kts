@@ -244,6 +244,9 @@ dependencies {
     testImplementation(libs.androidx.compose.ui.test.junit4)
     testImplementation(libs.okhttp.mockwebserver)
     testImplementation(libs.archunit)
+    testImplementation(libs.kotlin.metadata.jvm)
+    // Only so DeadCodeTest sees the release tooling beside the app's own modules; no app code uses it.
+    testRuntimeOnly(project(":tooling"))
     testImplementation(files(com.android.tools.r8.R8::class.java.protectionDomain.codeSource.location))
 
     detektPlugins(libs.compose.rules.detekt)
@@ -614,6 +617,19 @@ abstract class AndroidApiArguments : CommandLineArgumentProvider {
         )
 }
 
+/**
+ * Points `DeadCodeTest` at each production module's `src/main`: their Kotlin files tell hand-written classes from
+ * generated ones and show where constants and inline functions, which leave no reference in bytecode, are used; the
+ * app's manifest names the classes Android creates.
+ */
+abstract class ProductionSourcesArgument : CommandLineArgumentProvider {
+    @get:InputFiles
+    @get:PathSensitive(PathSensitivity.RELATIVE)
+    abstract val roots: ConfigurableFileCollection
+
+    override fun asArguments() = listOf("-Dminimpos.productionSources=${roots.files.joinToString(File.pathSeparator)}")
+}
+
 val sdkAndroidJar = androidComponents.sdkComponents.bootClasspath.map { jars -> jars.first { it.asFile.name == "android.jar" }.asFile }
 
 val listBackportedMethods =
@@ -633,6 +649,11 @@ tasks.withType<Test>().configureEach {
             minSdk.set(android.defaultConfig.minSdk)
             uiFailureDirectory.set(uiFailures)
             adyenModelRules.set(layout.projectDirectory.file("proguard-rules.pro"))
+        }
+    val repository = isolated.rootProject.projectDirectory
+    jvmArgumentProviders +=
+        objects.newInstance<ProductionSourcesArgument>().apply {
+            roots.from(listOf("core", "adyen", "app", "tooling").map { repository.dir("$it/src/main") })
         }
 }
 

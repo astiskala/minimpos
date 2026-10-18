@@ -28,6 +28,7 @@ import app.minimpos.terminal.client.TransactionKind
 import app.minimpos.terminal.client.TransactionOutcome
 import app.minimpos.terminal.client.VirtualReceipt
 import app.minimpos.terminal.client.VirtualReceiptLine
+import app.minimpos.terminal.simulator.SimulatedLedger
 import app.minimpos.terminal.simulator.SimulatedModifications
 import app.minimpos.terminal.simulator.SimulatedOutcome
 import app.minimpos.terminal.simulator.SimulatorConfig
@@ -109,7 +110,7 @@ class TerminalSimulatorTest {
         assertThat(details.amountMinor).isEqualTo(1200)
         assertThat(details.poiTransactionId).contains(".")
         assertThat(details.poiTimestamp).isNotNull()
-        assertThat(details.tokenization!!.shopperReference).isEqualTo("CUST-1")
+        assertThat(details.tokenization!!.storedPaymentMethodId).isNotEmpty()
         assertThat(details.additionalData["shopperEmail"]).isEqualTo("a@b.co")
         assertThat(details.customerReceipt.map { it.name }).contains("APPROVED")
         assertThat(details.cashierReceipt.map { it.name }).contains("MERCHANT COPY")
@@ -174,7 +175,7 @@ class TerminalSimulatorTest {
 
             // Payments it never saw (from before a restart) are accepted.
             assertThat(api.capture("UNKNOWNPSP", amount, "MP-1", "k7")).isInstanceOf(ModificationResult.Received::class.java)
-            assertThat(SimulatedModifications().capture(sale.pspReference, amount, "MP-1", "k8"))
+            assertThat(SimulatedModifications(Random.Default, SimulatedLedger()).capture(sale.pspReference, amount, "MP-1", "k8"))
                 .isInstanceOf(ModificationResult.Received::class.java)
         }
 
@@ -221,7 +222,6 @@ class TerminalSimulatorTest {
     fun `timeouts are recovered through transaction status`() {
         config = config.copy(outcome = SimulatedOutcome.TIMEOUT)
         val outcome = runBlocking { client.pay(tokenizing) } as TransactionOutcome.Completed
-        assertThat(outcome.recovered).isTrue()
         assertThat(outcome.details.success).isTrue()
     }
 
@@ -529,8 +529,7 @@ class TerminalSimulatorTest {
             assertThat(safOffline.pspReference).isNull()
             assertThat(safOffline.partial).isFalse()
             assertThat(safOffline.maskedPan).isNotEmpty()
-            assertThat(safOffline.tokenization?.cardAlias).isNotEmpty()
-            assertThat(safOffline.tokenization?.operationType).isEqualTo("created")
+            assertThat(safOffline.tokenization?.storedPaymentMethodId).isNotEmpty()
 
             val refundOut =
                 client.refund(
@@ -551,7 +550,6 @@ class TerminalSimulatorTest {
                     "REV-SIM-1",
                     TransactionKind.REFUND,
                 ) as TransactionOutcome.Completed
-            assertThat(repeatedRefund.recovered).isTrue()
             assertThat(repeatedRefund.details.pspReference).isEqualTo(refundOut.details.pspReference)
         }
 

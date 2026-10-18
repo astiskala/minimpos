@@ -200,9 +200,6 @@ class TerminalStatus(
      */
     fun readDevice() = setups.readDevice()
 
-    /** The terminals connected in the cloud, for choosing one in Settings; see [TerminalGateway.connectedTerminals]. */
-    suspend fun connectedTerminals(): ConnectedTerminals = gateway.connectedTerminals()
-
     private companion object {
         const val CHECK_DELAY_MILLIS = 1_000L
     }

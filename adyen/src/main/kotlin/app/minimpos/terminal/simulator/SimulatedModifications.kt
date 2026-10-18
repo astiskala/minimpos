@@ -79,9 +79,6 @@ class SimulatedModifications internal constructor(
     private val random: Random,
     private val ledger: SimulatedLedger,
 ) : PaymentModifications {
-    /** One that knows no payments, so it accepts every capture and adjustment; [random] makes PSP references and blobs. */
-    constructor(random: Random = Random.Default) : this(random, SimulatedLedger())
-
     override suspend fun capture(
         paymentPspReference: String,
         amount: ModificationAmount,

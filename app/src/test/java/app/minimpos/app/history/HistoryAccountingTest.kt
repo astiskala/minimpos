@@ -401,7 +401,7 @@ class HistoryAccountingTest {
                     ),
             )
         val matched = HistoryAccounting.compareReconciliation(items, "S1F2-1", matchedOutcome, day, ZoneOffset.UTC)
-        assertThat(matched.poiId to matched.poiReconciliationId).isEqualTo("S1F2-1" to "REC-1")
+        assertThat(matched.poiReconciliationId).isEqualTo("REC-1")
         assertThat(matched.closedPeriod && matched.allMatch).isTrue()
         assertThat(matched.offlineSaleCount to matched.unconfirmedBatchCount).isEqualTo(1 to 2)
         val usdSummary = matched.currencies.first { it.currency == "USD" }

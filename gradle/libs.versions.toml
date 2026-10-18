@@ -85,6 +85,7 @@ truth = { module = "com.google.truth:truth", version.ref = "truth" }
 robolectric = { module = "org.robolectric:robolectric", version.ref = "robolectric" }
 androidx-test-core = { module = "androidx.test:core-ktx", version.ref = "androidxTestCore" }
 archunit = { module = "com.tngtech.archunit:archunit-junit4", version.ref = "archunit" }
+kotlin-metadata-jvm = { module = "org.jetbrains.kotlin:kotlin-metadata-jvm", version.ref = "kotlin" }
 jsoup = { module = "org.jsoup:jsoup", version.ref = "jsoup" }
 nu-validator = { module = "nu.validator:validator", version.ref = "nuValidator" }
 reload4j = { module = "ch.qos.reload4j:reload4j", version.ref = "reload4j" }

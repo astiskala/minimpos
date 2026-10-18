@@ -10,12 +10,14 @@ import app.minimpos.terminal.checkout.CheckoutPaymentLinks
 import app.minimpos.terminal.checkout.CheckoutSavedCards
 import app.minimpos.terminal.checkout.SavedCardApi
 import app.minimpos.terminal.checkout.StoredCardListing
+import app.minimpos.terminal.simulator.SimulatedLedger
 import app.minimpos.terminal.simulator.SimulatedModifications
 import app.minimpos.terminal.simulator.SimulatedPaymentLinks
 import app.minimpos.terminal.transport.Fault
 import app.minimpos.terminal.transport.TerminalEnvironment
 import com.google.common.truth.Truth.assertThat
 import org.junit.Test
+import kotlin.random.Random
 
 class CheckoutApiTest {
     @Test
@@ -28,7 +30,7 @@ class CheckoutApiTest {
 
     @Test
     fun `parts assemble into one Checkout API as given`() {
-        val modifications = SimulatedModifications()
+        val modifications = SimulatedModifications(Random.Default, SimulatedLedger())
         val links = SimulatedPaymentLinks()
         val cards =
             object : SavedCardApi {

@@ -733,7 +733,6 @@ internal fun historyViewModel(): HistoryViewModel {
             history = container.history,
             receipts = container.receipts,
             reconciliation = container.reconciliation,
-            terminal = container.terminalStatus.state,
         )
     }
 }

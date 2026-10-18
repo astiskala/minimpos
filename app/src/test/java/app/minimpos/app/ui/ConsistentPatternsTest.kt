@@ -68,7 +68,7 @@ class ConsistentPatternsTest {
         env.useSimulator()
         open("capabilities")
         val discovery = env.container.capabilityDiscovery
-        compose.awaitCondition("capabilities read") { discovery.state.value.checked }
+        compose.awaitCondition("capabilities read") { discovery.state.value.let { it.simulated && !it.checking } }
         compose.waitUntilAtLeastOneExists(hasTestTag("capDccEnable"), 15_000)
         compose.onNodeWithTag("capDccEnable").performScrollTo().performClick()
         assertThat(discovery.state.value.dccEnabled).isFalse()

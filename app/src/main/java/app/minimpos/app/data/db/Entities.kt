@@ -652,7 +652,7 @@ data class SaleTenderEntity(
  *
  * @property sale The sale row.
  * @property lines Its lines in no particular order; use [sortedLines] for receipt order.
- * @property tenders Its recorded tenders; use [sortedTenders] for chronological tender order.
+ * @property tenders Its recorded tenders, in no particular order ([SaleTenderEntity.sequence] is chronological).
  */
 data class SaleWithLines(
     @Embedded val sale: SaleEntity,
@@ -661,7 +661,4 @@ data class SaleWithLines(
 ) {
     /** [lines] in cart order (by [SaleLineEntity.position]). */
     val sortedLines: List<SaleLineEntity> get() = lines.sortedBy { it.position }
-
-    /** [tenders] in chronological sequence order (by [SaleTenderEntity.sequence]). */
-    val sortedTenders: List<SaleTenderEntity> get() = tenders.sortedBy { it.sequence }
 }

@@ -31,9 +31,10 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.transformWhile
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.time.Clock
@@ -121,7 +122,6 @@ data class SharedReceipt(
  * @property emailing Whether its receipt is being emailed.
  * @property emailTo Address captured for automatic emailing; null when none is due.
  * @property emailed Email outcome; null before completion or when no automatic email is due.
- * @property complete Whether planning and every due attempt finished; true immediately for an unarmed transaction.
  */
 data class AutoDelivery(
     val printing: Boolean = false,
@@ -129,7 +129,6 @@ data class AutoDelivery(
     val emailing: Boolean = false,
     val emailTo: String? = null,
     val emailed: ActionResult? = null,
-    val complete: Boolean = false,
 )
 
 /** Stored transaction sources shared by receipt and whole-day delivery. */
@@ -210,41 +209,51 @@ class ReceiptDelivery(
     /**
      * Claims and dispatches automatic delivery for [transaction] atomically with respect to other claimants.
      * Printing and emailing share the existing settings policy and run independently; cancelling the observer does
-     * not abandon either attempt. Unarmed transactions return an already complete, empty reading.
+     * not abandon either attempt. The flow gives the latest progress and completes after planning and every due attempt
+     * finished; for a transaction that is not armed, or already claimed, it gives one empty reading.
      */
-    fun automation(transaction: StoredTransaction): StateFlow<AutoDelivery> {
+    fun automation(transaction: StoredTransaction): Flow<AutoDelivery> {
         val id =
             when (transaction) {
                 is StoredTransaction.Sale -> transaction.id
                 is StoredTransaction.Refund -> transaction.id
             }
-        if (!claim(id)) return MutableStateFlow(AutoDelivery(complete = true))
-        val progress = MutableStateFlow(AutoDelivery())
+        if (!claim(id)) return flowOf(AutoDelivery())
+        val progress = MutableStateFlow(AutoProgress(AutoDelivery()))
         scope.launch {
             val plan =
                 when (transaction) {
                     is StoredTransaction.Sale -> automationForSale(transaction.id)
                     is StoredTransaction.Refund -> DeliveryPlan(print = printsAutomatically(settings.current()))
                 }
-            progress.value = AutoDelivery(printing = plan.print, emailing = plan.emailTo != null, emailTo = plan.emailTo)
+            progress.value = AutoProgress(AutoDelivery(printing = plan.print, emailing = plan.emailTo != null, emailTo = plan.emailTo))
             coroutineScope {
                 if (plan.print) {
                     launch {
                         val printed = print(transaction)
-                        progress.update { it.copy(printing = false, printed = printed) }
+                        progress.update { it.copy(reading = it.reading.copy(printing = false, printed = printed)) }
                     }
                 }
                 plan.emailTo?.let { to ->
                     launch {
                         val emailed = email(transaction, to)
-                        progress.update { it.copy(emailing = false, emailed = emailed) }
+                        progress.update { it.copy(reading = it.reading.copy(emailing = false, emailed = emailed)) }
                     }
                 }
             }
-            progress.update { it.copy(complete = true) }
+            progress.update { it.copy(finished = true) }
         }
-        return progress
+        return progress.transformWhile {
+            emit(it.reading)
+            !it.finished
+        }
     }
+
+    /** One automatic delivery's [reading], and whether it is the last one ([finished]). */
+    private data class AutoProgress(
+        val reading: AutoDelivery,
+        val finished: Boolean = false,
+    )
 
     /** Prints [copy] of the receipt of [transaction] (a refund has one copy), and says whether the merchant copy is due next. */
     suspend fun print(

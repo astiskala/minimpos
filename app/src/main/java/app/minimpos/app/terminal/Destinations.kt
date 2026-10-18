@@ -367,27 +367,6 @@ internal class CloudTerminal(
     }
 
     /**
-     * The terminals connected to the merchant account of [unlocked], for choosing one: it needs only the merchant account
-     * and API key (no POIID yet), in the selected environment.
-     */
-    suspend fun connectedTerminals(unlocked: UnlockedSetup): ConnectedTerminals {
-        val merchantAccount = unlocked.setup.settings.terminal.merchantAccount
-        val apiKey = unlocked.apiKey
-        val environment = unlocked.setup.environment ?: return ConnectedTerminals.NotSetUp(SetupProblem.ENVIRONMENT)
-        if (merchantAccount.isBlank() || apiKey == null) return ConnectedTerminals.NotSetUp(SetupProblem.API_REQUIRED)
-        return when (val detection = cloud(CloudCredentials(apiKey, merchantAccount.trim())).detect(environment, null, device.country)) {
-            is CloudDetection.Found -> {
-                onDetected(unlocked.setup, detection.endpoint)
-                ConnectedTerminals.Listed(detection.devices.sorted())
-            }
-
-            is CloudDetection.Failed -> {
-                ConnectedTerminals.Failed(detection.fault)
-            }
-        }
-    }
-
-    /**
      * The rules of a terminal in the cloud ([TerminalMode.CLOUD]): the merchant account, the API key and its configured
      * POIID, no shared key or address; payments wait [AdyenCloudDevices.MIN_TRANSACTION_TIMEOUT], as Adyen requires.
      */

@@ -105,11 +105,9 @@ sealed interface SharedKeyLookup {
 sealed interface SharedKeyUpdate {
     /** Read-back key after PATCH, or an existing key reused without PATCH.
      * @property key Effective secret values.
-     * @property created Whether a PATCH was sent successfully.
      */
     class Ready(
         val key: DiscoveredKey,
-        val created: Boolean,
     ) : SharedKeyUpdate
 
     /** Creation or verification failed; the caller retains its encrypted recovery record.
@@ -153,12 +151,7 @@ data class TerminalOfflineLimits(
     val chipFloorLimit: Int? = null,
     val maxStoreAndForwardMinor: Map<String, Long> = emptyMap(),
     val maxPayments: Int? = null,
-) {
-    /** Whether any offline EMV or store-and-forward limit is active for [currency]. */
-    fun configuredFor(currency: String): Boolean =
-        (chipFloorLimit != null && chipFloorLimit > 0) ||
-            ((maxStoreAndForwardMinor[currency] ?: 0L) > 0L && (maxPayments == null || maxPayments > 0))
-}
+)
 
 /** Non-secret terminal feature settings read from Management `terminalSettings`.
  * @property gratuities Configured gratuities by currency.
@@ -399,7 +392,7 @@ class AdyenTerminalDetails(
         if (before !is AdyenReply.Answered || !before.ok) return SharedKeyUpdate.Failed(managementFault(before))
         val settings = decodeTerminalSettings(before.body) ?: return SharedKeyUpdate.Failed(Fault.Malformed(MalformedPart.SETTINGS))
         return when (val existing = lookup(settings)) {
-            is SharedKeyLookup.Found -> SharedKeyUpdate.Ready(existing.key, created = false)
+            is SharedKeyLookup.Found -> SharedKeyUpdate.Ready(existing.key)
             is SharedKeyLookup.Failed -> SharedKeyUpdate.Failed(existing.fault)
             SharedKeyLookup.Missing -> patchKey(id, environment, key, settings)
         }
@@ -635,10 +628,7 @@ class AdyenTerminalDetails(
                     verified.key.identifier == key.identifier && verified.key.version == key.version &&
                         verified.key.passphrase == key.passphrase
                 if (same) {
-                    SharedKeyUpdate.Ready(
-                        verified.key,
-                        created = true,
-                    )
+                    SharedKeyUpdate.Ready(verified.key)
                 } else {
                     SharedKeyUpdate.Failed(Fault.UnreadableReply(), uncertain = true)
                 }
@@ -739,17 +729,15 @@ class AdyenTerminalDetails(
 }
 
 /**
- * An API credential role every real Mini mPOS setup requires, as the Customer Area names it ([displayName]). Some are
- * granted to new credentials by default ([default]), so setup guides ask only for the others; all are still checked,
- * since an admin can remove a default role. [CLOUD_DEVICE] is required only while payments go to a cloud terminal.
+ * An API credential role every real Mini mPOS setup requires, as the Customer Area names it ([displayName]). Adyen
+ * grants some to new credentials by default, so setup guides ask only for the others; all are still checked, since an
+ * admin can remove a default role. [CLOUD_DEVICE] is required only while payments go to a cloud terminal.
  *
  * @property displayName The role's name in the Customer Area, shown verbatim when it is missing.
- * @property default Whether Adyen assigns the role to new API credentials by default.
  * @param alternatives Other spellings Adyen has used for the same role.
  */
 enum class AdyenRole(
     val displayName: String,
-    val default: Boolean = false,
     private val alternatives: List<String> = emptyList(),
 ) {
     /** Lists terminals and their assignment: discovery and terminal access checks. */
@@ -761,17 +749,17 @@ enum class AdyenRole(
     /** Reads and creates shared keys. */
     TERMINAL_SETTINGS_ADVANCED("Management API - Terminal settings Advanced read and write"),
 
-    /** Reads payment method settings: scanned wallets and gift cards. */
-    PAYMENT_METHODS_READ("Management API - Payment methods read", default = true),
+    /** Reads payment method settings: scanned wallets and gift cards. Granted to new credentials by default. */
+    PAYMENT_METHODS_READ("Management API - Payment methods read"),
 
-    /** Reads the assigned store's receipt details. */
-    STORES_READ("Management API - Stores read", default = true),
+    /** Reads the assigned store's receipt details. Granted to new credentials by default. */
+    STORES_READ("Management API - Stores read"),
 
-    /** Reads the merchant account's legal name for receipts. */
-    ACCOUNT_READ("Management API - Account read", default = true, alternatives = listOf("Management API - Accounts read")),
+    /** Reads the merchant account's legal name for receipts. Granted to new credentials by default. */
+    ACCOUNT_READ("Management API - Account read", alternatives = listOf("Management API - Accounts read")),
 
-    /** Lists a shopper's saved cards. */
-    MERCHANT_RECURRING("Merchant Recurring role", default = true),
+    /** Lists a shopper's saved cards. Granted to new credentials by default. */
+    MERCHANT_RECURRING("Merchant Recurring role"),
 
     /** Reaches cloud terminals; only for that destination. */
     CLOUD_DEVICE("Cloud Device API role"),

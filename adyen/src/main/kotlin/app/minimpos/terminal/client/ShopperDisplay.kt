@@ -411,13 +411,12 @@ private suspend fun TerminalClient.givingDonation(givingServiceId: String): Long
 
 internal suspend fun TerminalClient.executeShopperFlow(
     params: PaymentParams,
-    serviceId: String,
     payCore: suspend (PaymentParams) -> TransactionOutcome,
 ): TransactionOutcome {
     val flow = params.shopperFlow ?: return attachGivingDonation(payCore(params))
     shopperSession(flow.sessionId, begin = true)
     return try {
-        attachGivingDonation(runShopperFlowSteps(flow, params, serviceId, payCore))
+        attachGivingDonation(runShopperFlowSteps(flow, params, payCore))
     } finally {
         withContext(NonCancellable) {
             shopperSession(flow.sessionId, begin = false)
@@ -435,7 +434,6 @@ private suspend fun TerminalClient.attachGivingDonation(outcome: TransactionOutc
 private suspend fun TerminalClient.confirmBasket(
     flow: ShopperSessionFlow,
     params: PaymentParams,
-    serviceId: String,
 ): TransactionOutcome? {
     val prompt = flow.confirmationPrompt ?: return null
     return when (
@@ -448,15 +446,15 @@ private suspend fun TerminalClient.confirmBasket(
             )
     ) {
         is InputOutcome.Entered -> {
-            TransactionOutcome.Completed(serviceId, shopperCancelledDetails(params.merchantReference)).takeUnless { confirmation.value }
+            TransactionOutcome.Completed(shopperCancelledDetails(params.merchantReference)).takeUnless { confirmation.value }
         }
 
         InputOutcome.Cancelled -> {
-            TransactionOutcome.Completed(serviceId, shopperCancelledDetails(params.merchantReference))
+            TransactionOutcome.Completed(shopperCancelledDetails(params.merchantReference))
         }
 
         is InputOutcome.Failed -> {
-            TransactionOutcome.NotProcessed(serviceId, confirmation.fault)
+            TransactionOutcome.NotProcessed(confirmation.fault)
         }
     }
 }
@@ -464,11 +462,10 @@ private suspend fun TerminalClient.confirmBasket(
 private suspend fun TerminalClient.runShopperFlowSteps(
     flow: ShopperSessionFlow,
     params: PaymentParams,
-    serviceId: String,
     payCore: suspend (PaymentParams) -> TransactionOutcome,
 ): TransactionOutcome {
     flow.virtualReceipt?.let { displayVirtualReceipt(it) }
-    confirmBasket(flow, params, serviceId)?.let { return it }
+    confirmBasket(flow, params)?.let { return it }
     val collectedEmail =
         if (flow.emailPrompt != null && params.shopperEmail == null) {
             (requestText(flow.emailPrompt) as? InputOutcome.Entered)?.value

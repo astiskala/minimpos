@@ -340,7 +340,7 @@ class ArchitectureTest {
             .and()
             .haveNameNotMatching(within(TerminalGateway::class.java.name))
             .should()
-            .callMethodWhere(callToSubtypeOf(Destination::class.java, "open", "connect", "connectedTerminals"))
+            .callMethodWhere(callToSubtypeOf(Destination::class.java, "open", "connect"))
             .check(app)
         // What a destination needs is read by the setup, and what it can do by the gateway and the client it connects.
         destinationCapabilityOwnership.check(app)

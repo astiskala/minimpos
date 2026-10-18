@@ -29,9 +29,8 @@ import java.time.ZoneId
  * @property blocked Why cards cannot be found or charged now (no shopper reference configured, the Checkout API not set
  *   up, or a verified import still saving); null when they can.
  * @property finding Whether a lookup is running.
- * @property cards The cards found for [searchedReference]; null before a lookup.
+ * @property cards The cards found for the shopper reference last looked up; null before a lookup.
  * @property failure Why the last lookup listed nothing; null when it worked.
- * @property searchedReference The shopper reference the [cards] belong to; a changed reference needs a new lookup.
  * @property recurringModel Adyen's `recurringProcessingModel` charges use; cards not saved for it cannot be chosen.
  * @property charge The charge running or finished; [TransactionState.Idle] before one starts.
  * @property lookup Current non-secret lookup reading, including selected-card eligibility.
@@ -43,7 +42,6 @@ data class SavedCardUiState(
     val finding: Boolean = false,
     val cards: List<StoredCard>? = null,
     val failure: Failure? = null,
-    val searchedReference: String? = null,
     val recurringModel: String = "",
     val charge: TransactionState = TransactionState.Idle,
     val lookup: SavedCardLookupState = SavedCardLookupState(),
@@ -93,7 +91,6 @@ class SavedCardViewModel(
                 finding = found.finding,
                 cards = found.cards,
                 failure = found.failure,
-                searchedReference = found.reference,
                 recurringModel = payment.recurringModel().value,
                 charge = charge,
                 lookup = found,

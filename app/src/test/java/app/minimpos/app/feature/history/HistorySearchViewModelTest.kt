@@ -238,7 +238,6 @@ class HistorySearchViewModelTest {
                     env.container.terminalStatus.state,
                     approval,
                 ),
-            terminal = env.container.terminalStatus.state,
         ).also(viewModels::add)
 
     @Test
@@ -284,16 +283,13 @@ class HistorySearchViewModelTest {
             val manager = SessionLock { 0L }
             val vm = reconciliationViewModel(ManagerApproval({ true }, manager, { 0L }))
 
-            val initial = vm.state.first { it.loaded && it.canReconcile }
-            assertThat(initial.canPrint).isTrue()
+            val initial = vm.state.first { it.loaded && it.canPrint }
+            assertThat(initial.reconciliation).isNull()
 
             vm.reconcileTerminal(date = day, closePeriod = false)
             val checked = vm.state.first { it.reconciliation != null }
             assertThat(checked.reconcile.done).isTrue()
             assertThat(checked.reconciliation?.closedPeriod).isFalse()
-
-            vm.dismissReconciliation()
-            assertThat(vm.state.first { it.reconciliation == null }.reconciliation).isNull()
 
             vm.reconcileTerminal(date = day, closePeriod = true)
             val denied = vm.state.first { it.reconcile.isError }

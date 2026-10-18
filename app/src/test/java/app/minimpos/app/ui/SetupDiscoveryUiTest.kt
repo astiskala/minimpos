@@ -20,9 +20,9 @@ import app.minimpos.app.await
 import app.minimpos.app.awaitCondition
 import app.minimpos.app.data.security.Secret
 import app.minimpos.app.data.settings.TerminalMode
+import app.minimpos.app.simulatedModifications
 import app.minimpos.app.terminal.TerminalConnection
 import app.minimpos.terminal.checkout.PaymentModifications
-import app.minimpos.terminal.simulator.SimulatedModifications
 import app.minimpos.terminal.transport.ApiKey
 import app.minimpos.terminal.transport.Fault
 import app.minimpos.terminal.transport.TerminalEnvironment
@@ -44,7 +44,7 @@ class SetupDiscoveryUiTest {
     private var apiRelease: CompletableDeferred<Unit>? = null
     private var apiEntered = CompletableDeferred<Unit>()
     private val modifications =
-        object : PaymentModifications by SimulatedModifications() {
+        object : PaymentModifications by simulatedModifications() {
             override suspend fun verify(): Fault? {
                 apiEntered.complete(Unit)
                 apiRelease?.await()

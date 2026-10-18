@@ -83,7 +83,6 @@ data class OfflineCapability(
  *   carries it too); Settings › Capabilities reads its flags from there.
  * @property simulated Whether the resolved destination is the built-in simulator.
  * @property checking Whether a capability refresh is running.
- * @property checked Whether a complete capability answer has been obtained.
  * @property gratuities Configured gratuities by currency.
  * @property dccEnabled Whether Dynamic Currency Conversion is enabled on the terminal.
  * @property surchargeConfigured Whether card surcharge rules are configured on the terminal.
@@ -101,7 +100,6 @@ data class AdyenCapabilitiesState(
     val capabilities: DestinationCapabilities = DestinationCapabilities(),
     val simulated: Boolean = false,
     val checking: Boolean = false,
-    val checked: Boolean = false,
     val gratuities: List<GratuityCapability> = emptyList(),
     val dccEnabled: Boolean = false,
     val surchargeConfigured: Boolean = false,
@@ -274,19 +272,19 @@ class CapabilityDiscovery(
                         origin,
                         initial
                             .withRemote(simulatedCapabilities)
-                            .copy(checking = false, checked = true, problem = null, failure = null),
+                            .copy(checking = false, problem = null, failure = null),
                     )
                 }
 
                 !setup.capabilities.discoversTerminals -> {
                     publish(
                         origin,
-                        initial.copy(checking = false, checked = true, problem = setup.problem, failure = null),
+                        initial.copy(checking = false, problem = setup.problem, failure = null),
                     )
                 }
 
                 setup.problem != null -> {
-                    publish(origin, initial.copy(checking = false, checked = false, problem = setup.problem, failure = null))
+                    publish(origin, initial.copy(checking = false, problem = setup.problem, failure = null))
                 }
 
                 else -> {
@@ -353,7 +351,6 @@ class CapabilityDiscovery(
                             capabilities = setup.capabilities,
                             simulated = true,
                             checking = false,
-                            checked = true,
                             problem = null,
                             failure = null,
                         ).withRemote(simulatedCapabilities)
@@ -384,7 +381,7 @@ class CapabilityDiscovery(
                         origin,
                         state.value
                             .withRemote(result.capabilities)
-                            .copy(checking = false, checked = true, problem = null, failure = null),
+                            .copy(checking = false, problem = null, failure = null),
                     )
                     CapabilityPatchResult.Updated
                 }
@@ -411,7 +408,7 @@ class CapabilityDiscovery(
             }
 
             is AssignedTerminal.Blocked -> {
-                publish(origin, initial.copy(checking = false, checked = false, problem = assigned.problem))
+                publish(origin, initial.copy(checking = false, problem = assigned.problem))
             }
 
             is AssignedTerminal.Found -> {
@@ -436,7 +433,6 @@ class CapabilityDiscovery(
                                     storeId = terminal.storeId,
                                     countryCode = terminal.countryCode,
                                     checking = false,
-                                    checked = true,
                                     problem = null,
                                     failure = null,
                                 ),

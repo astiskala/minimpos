@@ -127,7 +127,7 @@ class AutomaticSetupUiTest {
                 creations++
                 generatedKey = key
                 if (activateKey) terminal.passphrase = key.passphrase
-                return SharedKeyUpdate.Ready(key, created = true)
+                return SharedKeyUpdate.Ready(key)
             }
         }
 

@@ -75,7 +75,7 @@ class OnTerminalDiscoveryTest {
                 creations++
                 remoteKey = key
                 terminal.passphrase = key.passphrase
-                return SharedKeyUpdate.Ready(key, created = true)
+                return SharedKeyUpdate.Ready(key)
             }
         }
 

@@ -207,36 +207,6 @@ sealed interface Attempt<out T> {
     ) : Attempt<Nothing>
 }
 
-/** The terminals connected to the merchant account in the cloud, from [TerminalGateway.connectedTerminals]. */
-sealed interface ConnectedTerminals {
-    /**
-     * Adyen listed them.
-     *
-     * @property poiIds Their POIIDs, sorted.
-     */
-    data class Listed(
-        val poiIds: List<String>,
-    ) : ConnectedTerminals
-
-    /**
-     * They cannot be listed before something is entered.
-     *
-     * @property problem What to enter first.
-     */
-    data class NotSetUp(
-        val problem: SetupProblem,
-    ) : ConnectedTerminals
-
-    /**
-     * They could not be listed.
-     *
-     * @property fault Why.
-     */
-    data class Failed(
-        val fault: Fault,
-    ) : ConnectedTerminals
-}
-
 /**
  * The payment terminal as the rest of the app sees it: the Terminal API operations, sent to the [Destination] the
  * [TerminalSetup] at the time of each call says (this terminal, one on the network or in the cloud, the Adyen Payments
@@ -277,7 +247,6 @@ class TerminalGateway(
         field = MutableStateFlow<Map<String, Boolean>>(emptyMap())
 
     private val destinations = adapters { detectedEnvironment.value = it }
-    private val cloudTerminal = destinations.filterIsInstance<CloudTerminal>().single()
 
     /** [adapters] for a candidate's check, which an inner class reaches without a synthetic method accessor. */
     private val candidateAdapters: ((DetectedEnvironment) -> Unit) -> List<Destination> = ::adapters
@@ -309,7 +278,7 @@ class TerminalGateway(
         onContext: suspend (PaymentContext) -> Unit = {},
         onSending: suspend (poiId: String) -> Unit = {},
     ): Attempt<TransactionOutcome> =
-        send(serviceId, paying = true, onSending, onContext, expected, expectedIdentity) {
+        send(paying = true, onSending, onContext, expected, expectedIdentity) {
             it.pay(params, serviceId)
         }
 
@@ -334,7 +303,7 @@ class TerminalGateway(
         expected: PaymentContext? = null,
         onContext: suspend (PaymentContext) -> Unit = {},
         onSending: suspend (poiId: String) -> Unit = {},
-    ): Attempt<TransactionOutcome> = send(serviceId, paying = false, onSending, onContext, expected) { it.refund(params, serviceId) }
+    ): Attempt<TransactionOutcome> = send(paying = false, onSending, onContext, expected) { it.refund(params, serviceId) }
 
     /**
      * Asks the terminal once for the result of the [kind] of transaction sent with [serviceId], see
@@ -347,7 +316,7 @@ class TerminalGateway(
         kind: TransactionKind,
         expected: PaymentContext? = null,
     ): Attempt<TransactionOutcome> =
-        attempt(unreachable = { TransactionOutcome.Unknown(serviceId, it) }) { open ->
+        attempt(unreachable = { TransactionOutcome.Unknown(it) }) { open ->
             if (expected == null || expected.matchesTerminal(open.context())) {
                 Attempt.Made(open.client.status(serviceId, kind))
             } else {
@@ -458,19 +427,8 @@ class TerminalGateway(
             }
         }
 
-    /** The terminals connected to the merchant account in the cloud, for choosing one, see [CloudTerminal.connectedTerminals]. */
-    suspend fun connectedTerminals(): ConnectedTerminals = cloudTerminal.connectedTerminals(setups.unlocked())
-
     /** Reads and saves this device's certificate environment before setup discovery or a connection check. */
     suspend fun readEnvironment() = setups.readLocalEnvironment(localEnvironment)
-
-    /** Called by [TerminalTls] with the environment of each verified terminal certificate. */
-    internal fun environmentDetected(
-        setup: TerminalSetup,
-        environment: TerminalEnvironment,
-    ) {
-        detectedEnvironment.value = DetectedEnvironment(setup, environment)
-    }
 
     /**
      * The client for where payments go now with the stored settings, or why there is none: for a payment ([paying]) the
@@ -523,7 +481,6 @@ class TerminalGateway(
      * sent.
      */
     private suspend fun send(
-        serviceId: String,
         paying: Boolean,
         onSending: suspend (poiId: String) -> Unit,
         onContext: suspend (PaymentContext) -> Unit,
@@ -531,7 +488,7 @@ class TerminalGateway(
         expectedIdentity: String? = null,
         call: suspend (TerminalClient) -> TransactionOutcome,
     ): Attempt<TransactionOutcome> =
-        attempt(paying, expectedIdentity, unreachable = { TransactionOutcome.NotProcessed(serviceId, it) }) { open ->
+        attempt(paying, expectedIdentity, unreachable = { TransactionOutcome.NotProcessed(it) }) { open ->
             if (expected != null && !expected.matchesTerminal(open.context())) {
                 Attempt.NotSetUp(SetupProblem.PAYMENT_CONTEXT)
             } else {

@@ -41,10 +41,11 @@ class TerminalTest {
     private fun onTerminal(
         poiId: String = "S1F2-000158213605014",
         passphrase: String = "correct horse battery staple",
+        certificate: () -> TerminalEnvironment = { TerminalEnvironment.TEST },
         block: (TestEnvironment, FakeTerminal) -> Unit,
     ) {
         val fake = FakeTerminal(passphrase)
-        val terminal = TestEnvironment(FakeDevice(detectedPoiId = poiId), fake)
+        val terminal = TestEnvironment(FakeDevice(detectedPoiId = poiId), fake, terminalEnvironment = { certificate() })
         try {
             block(terminal, fake)
         } finally {
@@ -191,8 +192,9 @@ class TerminalTest {
     }
 
     @Test
-    fun `the app checks the connection in the background, retries failures and remembers the environment`() =
-        onTerminal(poiId = "AMS1-000168223606144") { terminal, _ ->
+    fun `the app checks the connection in the background, retries failures and remembers the environment`() {
+        var certificate = TerminalEnvironment.TEST
+        onTerminal(poiId = "AMS1-000168223606144", certificate = { certificate }) { terminal, _ ->
             val container = terminal.container
             container.start()
             await { container.terminalStatus.state.first { it.connection is TerminalConnection.NotSetUp } }
@@ -206,9 +208,11 @@ class TerminalTest {
             assertThat(connected.printerAvailable).isTrue()
             await { container.terminalStatus.recheckIfFailed() }
 
-            val setups = container.terminalSetup
-            container.gateway.environmentDetected(await { setups.current() }, TerminalEnvironment.LIVE)
+            // The terminal's certificate says which environment it is in.
+            certificate = TerminalEnvironment.LIVE
+            await { container.gateway.readEnvironment() }
             await { container.settingsState.first { it.terminal.environment == TerminalEnvironment.LIVE } }
             assertThat(await { container.terminalStatus.state.first { it.environment == TerminalEnvironment.LIVE } }.onTerminal).isTrue()
         }
+    }
 }

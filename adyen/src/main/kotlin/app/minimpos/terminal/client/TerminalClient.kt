@@ -129,7 +129,7 @@ class TerminalClient(
         serviceId: String = newServiceId(),
         onStarted: (serviceId: String) -> Unit = {},
     ): TransactionOutcome =
-        executeShopperFlow(params, serviceId) { effectiveParams ->
+        executeShopperFlow(params) { effectiveParams ->
             val request =
                 message(MessageClassType.SERVICE, MessageCategoryType.PAYMENT, serviceId).apply {
                     paymentRequest =
@@ -522,7 +522,7 @@ class TerminalClient(
      *
      * @param serviceId The ServiceID the payment or refund was sent with.
      * @param kind Whether it was a payment or a refund.
-     * @return [TransactionOutcome.Completed] (marked as recovered) with the original result;
+     * @return [TransactionOutcome.Completed] with the original result;
      *   [TransactionOutcome.NotProcessed] ([Fault.NoRecord]) if the terminal has no record of it; otherwise
      *   [TransactionOutcome.Unknown] with why, [Fault.StillInProgress] while the transaction is still in progress. I/O
      *   errors are not thrown.
@@ -533,8 +533,8 @@ class TerminalClient(
     ): TransactionOutcome =
         when (val check = checkStatus(serviceId, kind.category())) {
             is StatusCheck.Settled -> check.outcome
-            StatusCheck.InProgress -> TransactionOutcome.Unknown(serviceId, Fault.StillInProgress)
-            is StatusCheck.NoAnswer -> TransactionOutcome.Unknown(serviceId, check.fault)
+            StatusCheck.InProgress -> TransactionOutcome.Unknown(Fault.StillInProgress)
+            is StatusCheck.NoAnswer -> TransactionOutcome.Unknown(check.fault)
         }
 
     private suspend fun execute(
@@ -546,17 +546,12 @@ class TerminalClient(
         val response =
             when (val delivery = transport.send(wrap(request), transactionTimeout)) {
                 is Delivery.Answered -> delivery.response
-
-                is Delivery.Failed if !delivery.fault.mayHaveTakenEffect -> return TransactionOutcome.NotProcessed(
-                    serviceId,
-                    delivery.fault,
-                )
-
+                is Delivery.Failed if !delivery.fault.mayHaveTakenEffect -> return TransactionOutcome.NotProcessed(delivery.fault)
                 is Delivery.Failed -> return recover(serviceId, category, delivery.fault)
             }
         val details =
             response?.saleToPOIResponse?.let(extract) ?: return recover(serviceId, category, Fault.UnreadableReply())
-        return TransactionOutcome.Completed(serviceId, details)
+        return TransactionOutcome.Completed(details)
     }
 
     /**
@@ -578,7 +573,7 @@ class TerminalClient(
                 is StatusCheck.NoAnswer -> unanswered++
             }
         }
-        return TransactionOutcome.Unknown(serviceId, if (inProgress >= recovery.maxInProgressChecks) Fault.StillInProgress else fault)
+        return TransactionOutcome.Unknown(if (inProgress >= recovery.maxInProgressChecks) Fault.StillInProgress else fault)
     }
 
     private sealed interface StatusCheck {
@@ -612,12 +607,12 @@ class TerminalClient(
                 val details =
                     body?.paymentResponse?.let { mapPayment(it, money::minor) }
                         ?: body?.reversalResponse?.let { mapReversal(it, null, money::minor) }
-                details?.let { StatusCheck.Settled(TransactionOutcome.Completed(serviceId, it, recovered = true)) }
+                details?.let { StatusCheck.Settled(TransactionOutcome.Completed(it)) }
                     ?: StatusCheck.NoAnswer(Fault.UnreadableReply())
             }
 
             response?.errorCondition == ErrorConditionType.NOT_FOUND -> {
-                StatusCheck.Settled(TransactionOutcome.NotProcessed(serviceId, Fault.NoRecord))
+                StatusCheck.Settled(TransactionOutcome.NotProcessed(Fault.NoRecord))
             }
 
             response?.errorCondition == ErrorConditionType.IN_PROGRESS -> {
@@ -842,14 +837,7 @@ class TerminalClient(
                         ?: additional[NexoVocabulary.OFFLINE_AUTH_CODE],
                 tokenization =
                     storedId?.let {
-                        Tokenization(
-                            storedPaymentMethodId = it,
-                            shopperReference =
-                                additional[NexoVocabulary.TOKENIZATION_SHOPPER_REFERENCE]
-                                    ?: additional[NexoVocabulary.RECURRING_SHOPPER_REFERENCE],
-                            operationType = additional[NexoVocabulary.TOKENIZATION_OPERATION_TYPE],
-                            cardAlias = card?.paymentToken?.tokenValue ?: additional[NexoVocabulary.ALIAS],
-                        )
+                        Tokenization(storedPaymentMethodId = it)
                     },
                 givingServiceId = additional[NexoVocabulary.ADYEN_GIVING_SERVICE_ID]?.trim()?.ifEmpty { null },
                 offlineMode = offlineMode,

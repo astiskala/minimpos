@@ -177,13 +177,9 @@ class TerminalClient(
      */
     suspend fun scanBarcode(sessionId: Long): BarcodeScan {
         val request = barcodeRequest(sessionId, once = true)
-        val delivery = transport.send(request, 35.seconds)
         val response =
-            (delivery as? Delivery.Answered)
-                ?.response
-                ?.saleToPOIResponse
-                ?.adminResponse
-                ?.response
+            (readTerminalAnswer(transport.send(request, 35.seconds)) { it.adminResponse?.response } as? TerminalAnswer.Read)
+                ?.body
         val code =
             response
                 ?.takeIf { it.result == ResultType.SUCCESS }
@@ -196,12 +192,8 @@ class TerminalClient(
     /** Ends only native scanning session [sessionId]; best effort, never aborts or establishes a payment outcome. */
     suspend fun endBarcodeScan(sessionId: Long): Boolean {
         val delivery = transport.send(barcodeRequest(sessionId, once = false), shortTimeout)
-        return (delivery as? Delivery.Answered)
-            ?.response
-            ?.saleToPOIResponse
-            ?.adminResponse
-            ?.response
-            ?.result == ResultType.SUCCESS
+        val response = (readTerminalAnswer(delivery) { it.adminResponse?.response } as? TerminalAnswer.Read)?.body
+        return response?.result == ResultType.SUCCESS
     }
 
     private fun barcodeRequest(
@@ -391,6 +383,9 @@ class TerminalClient(
             printerStatus = response.poiStatus?.printerStatus?.value(),
         )
     }
+
+    /** Retrieves the terminal's current reconciliation period totals (`GetTotalsRequest`) without closing the period. */
+    suspend fun getTotals(): TerminalTotalsOutcome = reconcile(closePeriod = false)
 
     /**
      * Retrieves the terminal's current reconciliation period totals (`GetTotalsRequest`), or starts a new period

@@ -25,7 +25,6 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -54,7 +53,6 @@ import app.minimpos.app.ui.navigation.Route
 import app.minimpos.app.ui.theme.LocalDimens
 import app.minimpos.terminal.checkout.StoredCard
 import kotlinx.coroutines.flow.flowOf
-import kotlinx.coroutines.launch
 
 /**
  * Charge saved card, first step: the shopper reference (the customer reference or email, whichever Settings › Payments
@@ -182,7 +180,6 @@ fun SavedCardReviewScreen(
     vm: SavedCardViewModel = savedCardViewModel(),
 ) {
     val state by vm.state.collectAsStateWithLifecycle()
-    val scope = rememberCoroutineScope()
     val money = rememberMoneyFormatter(state.checkout.currency)
     val charge = state.charge
     LaunchedEffect(charge) {
@@ -202,7 +199,7 @@ fun SavedCardReviewScreen(
                 BottomActions {
                     GatedButton(
                         stringResource(R.string.saved_card_charge, total),
-                        { scope.launch { vm.charge(card.stored(state.recurringModel)) } },
+                        { vm.charge(card.stored(state.recurringModel)) },
                         blocked = state.blocked,
                         enabled = state.checkout.canPay && state.shopperReference != null,
                         primary = true,

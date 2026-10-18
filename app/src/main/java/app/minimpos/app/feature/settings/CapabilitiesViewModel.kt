@@ -2,7 +2,6 @@ package app.minimpos.app.feature.settings
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import app.minimpos.app.data.settings.TerminalSettings
 import app.minimpos.app.feature.ActionOutcome
 import app.minimpos.app.feature.ActionState
 import app.minimpos.app.feature.launchWrite
@@ -11,11 +10,9 @@ import app.minimpos.app.terminal.CapabilityDiscovery
 import app.minimpos.app.terminal.CapabilityPatchResult
 import app.minimpos.app.terminal.GratuityCapability
 import app.minimpos.app.terminal.MotoCapability
-import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.collectLatest
-import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
@@ -36,13 +33,11 @@ data class CapabilitiesActions(
 )
 
 /**
- * ViewModel for Adyen capabilities, observing only the narrow [TerminalSettings] slice.
+ * ViewModel for Adyen capabilities, following setup-identity changes from [CapabilityDiscovery.changes].
  * @param discovery Reads and updates Management terminal capabilities.
- * @param observedTerminal Narrow terminal settings slice that triggers capability refresh on change.
  */
 class CapabilitiesViewModel(
     private val discovery: CapabilityDiscovery,
-    observedTerminal: Flow<TerminalSettings>,
 ) : ViewModel() {
     /** Current non-secret capability state. */
     val state: StateFlow<AdyenCapabilitiesState> = discovery.state
@@ -53,7 +48,7 @@ class CapabilitiesViewModel(
 
     init {
         viewModelScope.launch {
-            observedTerminal.distinctUntilChanged().collectLatest {
+            discovery.changes.collectLatest {
                 refresh()
             }
         }

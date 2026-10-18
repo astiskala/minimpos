@@ -11,6 +11,7 @@ import app.minimpos.app.data.settings.PaymentSettings
 import app.minimpos.app.data.settings.PricingChange
 import app.minimpos.app.data.settings.ReceiptTipping
 import app.minimpos.app.data.settings.ShopperReferenceSource
+import app.minimpos.app.terminal.TerminalState
 import app.minimpos.core.cart.AppliedTax
 import app.minimpos.core.cart.Cart
 import app.minimpos.core.cart.CartProduct
@@ -18,6 +19,7 @@ import app.minimpos.core.money.CurrencySpec
 import app.minimpos.core.payment.ScanWallet
 import app.minimpos.core.shopper.EmailReferenceMode
 import app.minimpos.core.tax.TaxMode
+import app.minimpos.terminal.checkout.StoredCard
 import app.minimpos.terminal.client.RecurringModel
 import app.minimpos.terminal.client.TerminalTipOptions
 import app.minimpos.terminal.client.TerminalTipSuggestions
@@ -113,7 +115,7 @@ class CheckoutTest {
     fun `completing a payment clears only its originating session revision`() =
         runBlocking {
             val session = SaleSession()
-            val checkouts = session.checkout(flowOf(AppSettings()), flowOf(false)) { aud }
+            val checkouts = session.checkout(flowOf(AppSettings())) { aud }
             session.addProduct(ProductEntity(1, "Latte", 450, 1), TaxRateEntity(1, "GST", 10_000))
             val start = checkNotNull(session.paymentStart(checkouts.first(), now, ZoneOffset.UTC))
             assertThat(start.sessionRevision).isNotNull()
@@ -126,20 +128,34 @@ class CheckoutTest {
         }
 
     @Test
-    fun `session starts reject a stale displayed checkout for payments and links`() =
+    fun `session starts reject a stale displayed checkout for payments links and saved cards`() =
         runBlocking {
             val session = SaleSession()
-            val checkouts = session.checkout(flowOf(AppSettings()), flowOf(false), flowOf(true)) { aud }
+            val terminal = flowOf(TerminalState(printerAvailable = true, paymentLinks = true))
+            val settings =
+                flowOf(
+                    AppSettings(
+                        payment = PaymentSettings(receiptTipping = ReceiptTipping.DEFAULT_ON),
+                    ),
+                )
+            val checkouts = session.checkout(settings, terminal) { aud }
+            val card = StoredCard("card-1", "visa", "1111", recurringModels = setOf("UnscheduledCardOnFile"))
             session.addProduct(ProductEntity(1, "Latte", 450, 1), TaxRateEntity(1, "GST", 10_000))
+            session.updateForm { it.copy(customerReference = "CUST-1") }
             val displayed = checkouts.first()
             session.updateForm { it.copy(email = "new@example.com") }
             assertThat(session.paymentStart(displayed, now, ZoneOffset.UTC)).isNull()
             assertThat(session.linkStart(displayed, now, ZoneOffset.UTC)).isNull()
+            assertThat(session.savedCardStart(displayed, card, now, ZoneOffset.UTC)).isNull()
             val current = checkouts.first()
+            assertThat(current.tipOnReceipt).isTrue()
             val payment = checkNotNull(session.paymentStart(current, now, ZoneOffset.UTC))
             val link = checkNotNull(session.linkStart(current, now, ZoneOffset.UTC))
+            val savedCard = checkNotNull(session.savedCardStart(current, card, now, ZoneOffset.UTC, fromCheckout = true))
             assertThat(payment.shopperEmail).isEqualTo("new@example.com")
             assertThat(link.payment.sessionRevision).isEqualTo(payment.sessionRevision)
+            assertThat(savedCard.payment.manualCapture).isFalse()
+            assertThat(savedCard.fromCheckout).isTrue()
             session.complete(link.payment)
             assertThat(session.cart.value.lines).isEmpty()
             assertThat(session.form.value).isEqualTo(CheckoutForm())
@@ -152,7 +168,7 @@ class CheckoutTest {
             session.addProduct(ProductEntity(1, "Tea", 450, 1), TaxRateEntity(1, "GST", 10_000))
             session.updateForm { it.copy(email = "sam@example.com") }
             val settings = MutableStateFlow(AppSettings())
-            val checkouts = session.checkout(settings, flowOf(false), flowOf(true)) { aud }
+            val checkouts = session.checkout(settings, flowOf(TerminalState(paymentLinks = true))) { aud }
             settings.value = settings.value.copy(pricingChange = PricingChange("AUD", "JPY", PaymentSettings(), emptyMap()))
             val blocked = checkouts.first()
             assertThat(session.paymentStart(blocked, now, ZoneOffset.UTC)).isNull()
@@ -169,7 +185,7 @@ class CheckoutTest {
             val sale = SaleSession()
             val preAuth = SaleSession(SaleKind.PRE_AUTHORISATION)
             listOf(sale, preAuth).forEach { it.addProduct(ProductEntity(1, "Tea", 450, 1), TaxRateEntity(1, "GST", 10_000)) }
-            val checkout = preAuth.checkout(flowOf(AppSettings()), flowOf(false), flowOf(true)) { aud }.first()
+            val checkout = preAuth.checkout(flowOf(AppSettings()), flowOf(TerminalState(paymentLinks = true))) { aud }.first()
             assertThat(sale.paymentStart(checkout, now, ZoneOffset.UTC)).isNull()
             assertThat(preAuth.linkStart(checkout, now, ZoneOffset.UTC)).isNull()
             val start = checkNotNull(preAuth.paymentStart(checkout, now, ZoneOffset.UTC))
@@ -354,7 +370,7 @@ class CheckoutTest {
                             ),
                     ),
                 )
-            val checkouts = session.checkout(settings, flowOf(false)) { CurrencySpec.of("AUD") }
+            val checkouts = session.checkout(settings) { CurrencySpec.of("AUD") }
             assertThat(checkouts.first().canPay).isFalse()
             session.addProduct(ProductEntity(1, "Tea", 400, 1), TaxRateEntity(1, "GST", 10_000))
             session.updateForm { it.copy(customerReference = "CUST-9") }
@@ -364,7 +380,12 @@ class CheckoutTest {
             assertThat(ready.printerAvailable).isFalse()
             assertThat(ready.linksAvailable).isFalse()
             assertThat(ready.kind).isEqualTo(SaleKind.SALE)
-            assertThat(session.checkout(settings, flowOf(false), flowOf(true)) { CurrencySpec.of("AUD") }.first().canSendLink).isTrue()
+            assertThat(
+                session
+                    .checkout(settings, flowOf(TerminalState(paymentLinks = true))) { CurrencySpec.of("AUD") }
+                    .first()
+                    .canSendLink,
+            ).isTrue()
         }
 
     @Test

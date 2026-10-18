@@ -16,8 +16,10 @@ import app.minimpos.terminal.transport.TerminalKey
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
 import kotlinx.serialization.KSerializer
 
@@ -580,6 +582,13 @@ class TerminalSetupSource(
         combine(settings.settings, secrets.configured, deviceReads, historySwitchPending) { current, _, _, _ ->
             reading(current, read = false).setup
         }
+
+    /** Distinct setup-identity changes that invalidate cached Management wallet and capability readings. */
+    internal val discoveryChanges: Flow<*> =
+        changes
+            .map { setup ->
+                Triple(setup.settings.terminal to setup.settings.verifiedSetup, setup.paymentContext(), setup.problem)
+            }.distinctUntilChanged()
 
     /** Resolves [changes] again with what the device says now: an Adyen Payments app may have been installed or removed. */
     fun readDevice() = deviceReads.update { it + 1 }

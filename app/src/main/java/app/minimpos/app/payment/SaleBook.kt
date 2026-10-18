@@ -89,10 +89,19 @@ data class PaymentStart(
 
     /**
      * This payment as a saved-card charge, without what only a terminal offers: saving the card, partial approval,
-     * giving, terminal tipping and shopper prompts.
+     * split tender, giving, receipt or terminal tipping, shopper prompts and special card-entry overrides.
      */
     fun forSavedCard(): PaymentStart =
-        copy(tokenization = null, allowPartialAuthorisation = false, askGiving = false, terminalTip = null, shopperFlow = null)
+        copy(
+            tokenization = null,
+            tipOnReceipt = false,
+            terminalTip = null,
+            shopperFlow = null,
+            allowPartialAuthorisation = false,
+            requestedAmountMinor = totals.amounts.gross,
+            askGiving = false,
+            cardEntryOverride = CardEntryOverride.NORMAL,
+        )
 
     /** Attaches a transient [instrument] only to this validated sale, bound to [context] and exact [setupIdentity]. */
     internal fun withScanned(

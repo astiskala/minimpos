@@ -20,6 +20,7 @@ import app.minimpos.app.history.StoredPayment
 import app.minimpos.app.history.issues
 import app.minimpos.app.history.paidOnline
 import app.minimpos.app.history.standing
+import app.minimpos.app.terminal.TerminalState
 import app.minimpos.core.money.CurrencySpec
 import app.minimpos.core.receipt.PlainTextReceiptRenderer
 import app.minimpos.terminal.checkout.ModificationAmount
@@ -62,7 +63,9 @@ class PaymentLinksTest {
         session.updateForm { it.copy(customerReference = customerReference, email = "sam@example.com", tokenize = tokenize) }
         val checkout =
             await {
-                session.checkout(container.settingsState, flowOf(false), flowOf(true)) { CurrencySpec.of("AUD") }.first()
+                session
+                    .checkout(container.settingsState, flowOf(TerminalState(paymentLinks = true))) { CurrencySpec.of("AUD") }
+                    .first()
             }
         return checkNotNull(session.linkStart(checkout, instant, ZoneOffset.UTC))
     }

@@ -20,7 +20,8 @@ Starred rules are enforced by `ArchitectureTest`. KDoc is the detailed API/proto
   `client/NexoVocabulary.kt`: the client that writes requests and reads answers and the simulator that answers them
   both read it, so a renamed key fails to compile instead of silently changing simulator answers. Reading the body of a
   simple one-request answer (transport fault, empty or unexpected shape) is likewise one owner
-  (`client/NexoResponse.kt`), shared by print, diagnose, totals, status checks and input.
+  (`client/TerminalAnswer.kt`), shared by print, diagnose, totals, status checks, barcode scanning, shopper display and
+  Adyen Giving; shopper-display and Giving nexo steps sit behind `TerminalClient.pay`.
 - \* Only `AdyenCheckout` makes the Checkout parts (modifications, links, saved cards), together per credential.
   Management is sliced into `TerminalListingApi`, `SharedKeyApi` and `TerminalCapabilitiesApi`; `TerminalDetailsApi`
   is all three, for the adapter and the app's container.

@@ -10,8 +10,8 @@ import app.minimpos.app.payment.CardLookup
 import app.minimpos.app.payment.Checkout
 import app.minimpos.app.payment.SaleSession
 import app.minimpos.app.payment.SavedCardCharges
-import app.minimpos.app.payment.SavedCardStart
 import app.minimpos.app.payment.TransactionState
+import app.minimpos.app.payment.savedCardStart
 import app.minimpos.app.terminal.TerminalState
 import app.minimpos.core.money.CurrencySpec
 import app.minimpos.terminal.checkout.StoredCard
@@ -20,8 +20,6 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.stateIn
 import java.time.Clock
 import java.time.ZoneId
@@ -88,14 +86,7 @@ class SavedCardViewModel(
     private val zone: () -> ZoneId = { ZoneId.systemDefault() },
 ) : ViewModel() {
     private val lookup = MutableStateFlow(Lookup())
-    private val checkout =
-        session.checkout(
-            settings,
-            flowOf(false),
-            terminalTippingAvailable = flowOf(false),
-            shopperDisplayAvailable = flowOf(false),
-            currency = currency,
-        )
+    private val checkout = session.checkout(settings = settings, currency = currency)
 
     /** The screen state, updated as the form, cart, setup, lookup or charge changes. */
     val state: StateFlow<SavedCardUiState> =
@@ -139,13 +130,11 @@ class SavedCardViewModel(
      * Charges [card] for the rung-up sale; returns whether it started (false while blocked, nothing is rung up, the
      * card cannot be charged with the recurring model, or a charge is already running).
      */
-    suspend fun charge(card: StoredCard): Boolean {
+    fun charge(card: StoredCard): Boolean {
         val current = state.value
-        if (current.blocked != null || !current.chargeable(card)) return false
-        val displayed = checkout.first()
-        val start = session.paymentStart(displayed, clock.instant(), zone())?.forSavedCard() ?: return false
-        if (start.shopperReference == null || start.manualCapture) return false
-        return charges.start(SavedCardStart(start, card, current.recurringModel)) != null
+        if (current.blocked != null) return false
+        val start = session.savedCardStart(current.checkout, card, clock.instant(), zone()) ?: return false
+        return charges.start(start) != null
     }
 
     /** Leaves a finished charge, so the next one can start. */

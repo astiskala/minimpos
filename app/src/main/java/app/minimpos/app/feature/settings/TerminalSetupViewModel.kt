@@ -67,6 +67,8 @@ data class TerminalSetupActions(
  * @param discovery Reads optional terminal setup details.
  * @param settings Reads the fields after a discovered setup is saved.
  * @param observedTerminal Terminal settings stream to synchronize before resetting field editing state.
+ * @param onConnected Invoked when a shared-key connection check verifies the terminal, so missing receipt business
+ *   details can be looked up automatically just as after a manual connection test.
  */
 class TerminalSetupViewModel(
     private val secrets: SecretStore,
@@ -75,6 +77,7 @@ class TerminalSetupViewModel(
     private val discovery: SetupDiscovery,
     private val settings: SettingsRepository,
     private val observedTerminal: Flow<TerminalSettings> = settings.settings.map { it.terminal },
+    private val onConnected: suspend () -> Unit = {},
 ) : ViewModel() {
     /** Outcomes of the latest actions. */
     val actions: StateFlow<TerminalSetupActions>
@@ -210,6 +213,7 @@ class TerminalSetupViewModel(
         val current = settings.current().terminal
         observedTerminal.first { it == current }
         val connected = status.check() is TerminalConnection.Connected
+        if (connected) onConnected()
         val result =
             if (connected) {
                 ActionState(done = true)

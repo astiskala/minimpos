@@ -140,40 +140,23 @@ data class ShopperSessionFlow(
 }
 
 /** Outcome of a terminal `InputRequest`. */
-sealed interface InputOutcome<out T> {
-    /**
-     * The shopper supplied input on the terminal.
-     *
-     * @param T Type of parsed input value.
-     * @property value Parsed input value.
-     */
+private sealed interface InputOutcome<out T> {
     data class Entered<out T>(
         val value: T,
     ) : InputOutcome<T>
 
-    /** The shopper cancelled or declined the input prompt on the terminal. */
     data object Cancelled : InputOutcome<Nothing>
 
-    /**
-     * The input request failed or was rejected by the terminal.
-     *
-     * @property fault Why.
-     */
     data class Failed(
         val fault: Fault,
     ) : InputOutcome<Nothing>
 }
 
-/** Retrieves the terminal's current reconciliation period totals (`GetTotalsRequest`) without closing the period. */
-suspend fun TerminalClient.getTotals(): TerminalTotalsOutcome = reconcile(closePeriod = false)
-
 /** Starts or ends a multi-request terminal waiting-screen session (`AdminRequest`). */
-suspend fun TerminalClient.shopperSession(
+private suspend fun TerminalClient.shopperSession(
     sessionId: Long,
     begin: Boolean,
-    waitingTimeoutMs: Int = DEFAULT_WAITING_TIMEOUT_MS,
 ): Boolean {
-    require(sessionId > 0) { "Invalid shopper session id" }
     val payload =
         buildMap<String, Any> {
             put("Session", mapOf("Id" to sessionId, "Type" to if (begin) "Begin" else "End"))
@@ -184,12 +167,12 @@ suspend fun TerminalClient.shopperSession(
                         mapOf(
                             "Type" to "InputRequest",
                             "Variant" to "WaitingScreen",
-                            "UserInterfaceData" to mapOf("WaitingScreenTimeoutMs" to waitingTimeoutMs),
+                            "UserInterfaceData" to mapOf("WaitingScreenTimeoutMs" to DEFAULT_WAITING_TIMEOUT_MS),
                         ),
                         mapOf(
                             "Type" to "DisplayRequest",
                             "Variant" to "WaitingScreen",
-                            "UserInterfaceData" to mapOf("WaitingScreenTimeoutMs" to waitingTimeoutMs),
+                            "UserInterfaceData" to mapOf("WaitingScreenTimeoutMs" to DEFAULT_WAITING_TIMEOUT_MS),
                         ),
                     ),
                 )
@@ -200,17 +183,12 @@ suspend fun TerminalClient.shopperSession(
         sendShortMessage(MessageClassType.SERVICE, MessageCategoryType.ADMIN) {
             adminRequest = AdminRequest().apply { serviceIdentification = encoded }
         }
-    val response =
-        (delivery as? Delivery.Answered)
-            ?.response
-            ?.saleToPOIResponse
-            ?.adminResponse
-            ?.response
+    val response = (readTerminalAnswer(delivery) { it.adminResponse?.response } as? TerminalAnswer.Read)?.body
     return response?.result == ResultType.SUCCESS
 }
 
 /** Displays a [VirtualReceipt] (`OutputFormat=XHTML`) on the customer display. */
-suspend fun TerminalClient.displayVirtualReceipt(receipt: VirtualReceipt): Boolean {
+private suspend fun TerminalClient.displayVirtualReceipt(receipt: VirtualReceipt): Boolean {
     val xmlBytes = receipt.toXml(identity.poiId).toByteArray(Charsets.UTF_8)
     val output =
         DisplayOutput().apply {
@@ -225,12 +203,10 @@ suspend fun TerminalClient.displayVirtualReceipt(receipt: VirtualReceipt): Boole
     return sendDisplay(listOf(output))
 }
 
-/** Displays a QR code (`OutputFormat=BarCode`) with optional [header] and [footer] text on the customer display. */
-suspend fun TerminalClient.displayQrCode(
+/** Displays a QR code (`OutputFormat=BarCode`) with optional [header] text on the customer display. */
+private suspend fun TerminalClient.displayQrCode(
     qrData: String,
-    header: String? = null,
-    footer: String? = null,
-    minimumSeconds: Int = DEFAULT_QR_DISPLAY_SECONDS,
+    header: String?,
 ): Boolean {
     val outputs =
         buildList {
@@ -239,7 +215,7 @@ suspend fun TerminalClient.displayQrCode(
                 DisplayOutput().apply {
                     device = DeviceType.CUSTOMER_DISPLAY
                     infoQualify = InfoQualifyType.DISPLAY
-                    minimumDisplayTime = minimumSeconds
+                    minimumDisplayTime = DEFAULT_QR_DISPLAY_SECONDS
                     setResponseRequiredFlag(true)
                     outputContent =
                         OutputContent().apply {
@@ -257,95 +233,57 @@ suspend fun TerminalClient.displayQrCode(
                         }
                 },
             )
-            if (!footer.isNullOrBlank()) add(textDisplayOutput(footer))
         }
     return sendDisplay(outputs)
 }
 
 /** Asks the shopper for confirmation (`GetConfirmation`) on the terminal display. */
-suspend fun TerminalClient.requestConfirmation(
+private suspend fun TerminalClient.requestConfirmation(
     title: String,
     body: String,
-    cancelLabel: String = "Cancel",
-    confirmLabel: String = "Confirm",
-    timeoutSeconds: Int = DEFAULT_INPUT_TIMEOUT_SECONDS,
+    cancelLabel: String,
+    confirmLabel: String,
 ): InputOutcome<Boolean> {
     val delivery =
         inputMessage(
             referenceId = "GetConfirmation",
             texts = listOf(title, body, cancelLabel, confirmLabel),
             command = InputCommandType.GET_CONFIRMATION,
-            timeoutSeconds = timeoutSeconds,
+            timeoutSeconds = DEFAULT_INPUT_TIMEOUT_SECONDS,
         )
-    return when (val outcome = parseInputDelivery(delivery)) {
-        is InputOutcome.Entered -> InputOutcome.Entered(outcome.value.isConfirmedFlag == true)
-        InputOutcome.Cancelled -> InputOutcome.Cancelled
-        is InputOutcome.Failed -> outcome
-    }
+    return parseInputDelivery(delivery) { it.isConfirmedFlag == true }
 }
 
 /** Asks the shopper to enter text (`GetText` / `TextString`), such as an email address, on the terminal display. */
-suspend fun TerminalClient.requestText(
-    prompt: String,
-    placeholder: String = "name@domain.com",
-    timeoutSeconds: Int = DEFAULT_INPUT_TIMEOUT_SECONDS,
-): InputOutcome<String> {
+private suspend fun TerminalClient.requestText(prompt: String): InputOutcome<String> {
     val delivery =
         inputMessage(
             referenceId = "GetText",
             texts = listOf(prompt),
             command = InputCommandType.TEXT_STRING,
-            timeoutSeconds = timeoutSeconds,
-            defaultInput = placeholder,
+            timeoutSeconds = DEFAULT_INPUT_TIMEOUT_SECONDS,
+            defaultInput = "name@domain.com",
         )
-    return when (val outcome = parseInputDelivery(delivery)) {
-        is InputOutcome.Entered -> {
-            val text =
-                outcome.value.textInput
-                    ?.trim()
-                    .orEmpty()
-            if (text.isEmpty()) InputOutcome.Cancelled else InputOutcome.Entered(text)
-        }
-
-        InputOutcome.Cancelled -> {
-            InputOutcome.Cancelled
-        }
-
-        is InputOutcome.Failed -> {
-            outcome
-        }
-    }
+    return parseInputDelivery(delivery) { it.textInput?.trim()?.takeIf(String::isNotEmpty) }
 }
 
 /** Asks the shopper for a 0–10 rating (`GetRating` / `DigitString`) on the terminal display. */
-suspend fun TerminalClient.requestRating(
+private suspend fun TerminalClient.requestRating(
     title: String,
-    subtitle: String? = null,
-    timeoutSeconds: Int = DEFAULT_INPUT_TIMEOUT_SECONDS,
+    subtitle: String?,
 ): InputOutcome<Int> {
     val delivery =
         inputMessage(
             referenceId = "GetRating",
             texts = if (subtitle.isNullOrBlank()) listOf(title) else listOf(title, subtitle),
             command = InputCommandType.DIGIT_STRING,
-            timeoutSeconds = timeoutSeconds,
+            timeoutSeconds = DEFAULT_INPUT_TIMEOUT_SECONDS,
         )
-    return when (val outcome = parseInputDelivery(delivery)) {
-        is InputOutcome.Entered -> {
-            val rating =
-                outcome.value.digitInput
-                    ?.trim()
-                    ?.toIntOrNull()
-            if (rating != null && rating in 0..MAX_RATING) InputOutcome.Entered(rating) else InputOutcome.Cancelled
-        }
-
-        InputOutcome.Cancelled -> {
-            InputOutcome.Cancelled
-        }
-
-        is InputOutcome.Failed -> {
-            outcome
-        }
+    return parseInputDelivery(delivery) {
+        it.digitInput
+            ?.trim()
+            ?.toIntOrNull()
+            ?.takeIf { rating -> rating in 0..MAX_RATING }
     }
 }
 
@@ -354,12 +292,7 @@ private suspend fun TerminalClient.sendDisplay(outputs: List<DisplayOutput>): Bo
         sendShortMessage(MessageClassType.DEVICE, MessageCategoryType.DISPLAY) {
             displayRequest = DisplayRequest().apply { displayOutput += outputs }
         }
-    val results =
-        (delivery as? Delivery.Answered)
-            ?.response
-            ?.saleToPOIResponse
-            ?.displayResponse
-            ?.outputResult
+    val results = (readTerminalAnswer(delivery) { it.displayResponse?.outputResult } as? TerminalAnswer.Read)?.body
     return !results.isNullOrEmpty() && results.all { it.response?.result == ResultType.SUCCESS }
 }
 
@@ -417,7 +350,10 @@ private fun inputRequestData(
         defaultInputString = defaultInput
     }
 
-private fun parseInputDelivery(delivery: Delivery): InputOutcome<Input> {
+private inline fun <T : Any> parseInputDelivery(
+    delivery: Delivery,
+    extract: (Input) -> T?,
+): InputOutcome<T> {
     val inputResult =
         when (val answer = readTerminalAnswer(delivery) { it.inputResponse?.inputResult }) {
             is TerminalAnswer.Unread -> return InputOutcome.Failed(answer.fault)
@@ -426,7 +362,7 @@ private fun parseInputDelivery(delivery: Delivery): InputOutcome<Input> {
     val response = inputResult.response
     if (response?.result == ResultType.SUCCESS) {
         val input = inputResult.input ?: return InputOutcome.Failed(Fault.UnreadableReply())
-        return InputOutcome.Entered(input)
+        return extract(input)?.let { InputOutcome.Entered(it) } ?: InputOutcome.Cancelled
     }
     if (Decline.of(succeeded = false, errorCondition = response?.errorCondition?.value(), refusalReason = null)?.cancelled == true) {
         return InputOutcome.Cancelled
@@ -436,7 +372,7 @@ private fun parseInputDelivery(delivery: Delivery): InputOutcome<Input> {
 }
 
 /** Queries the two-step Adyen Giving donation status (`SaleID=AdyenGiving`) for [givingServiceId], returning the donated amount. */
-suspend fun TerminalClient.givingDonation(givingServiceId: String): BigDecimal? {
+private suspend fun TerminalClient.givingDonation(givingServiceId: String): BigDecimal? {
     val delivery =
         sendShortMessage(MessageClassType.SERVICE, MessageCategoryType.TRANSACTION_STATUS) {
             transactionStatusRequest =
@@ -451,13 +387,14 @@ suspend fun TerminalClient.givingDonation(givingServiceId: String): BigDecimal? 
                 }
         }
     val repeated =
-        (delivery as? Delivery.Answered)
-            ?.response
-            ?.saleToPOIResponse
-            ?.transactionStatusResponse
-            ?.repeatedMessageResponse
-            ?.repeatedResponseMessageBody
-            ?.paymentResponse
+        (
+            readTerminalAnswer(delivery) {
+                it.transactionStatusResponse
+                    ?.repeatedMessageResponse
+                    ?.repeatedResponseMessageBody
+                    ?.paymentResponse
+            } as? TerminalAnswer.Read
+        )?.body
     return repeated
         ?.takeIf { it.response?.result == ResultType.SUCCESS }
         ?.paymentResult
@@ -488,6 +425,35 @@ private suspend fun TerminalClient.attachGivingDonation(outcome: TransactionOutc
     return outcome.copy(details = outcome.details.copy(donationAmount = donation))
 }
 
+private suspend fun TerminalClient.confirmBasket(
+    flow: ShopperSessionFlow,
+    params: PaymentParams,
+    serviceId: String,
+): TransactionOutcome? {
+    val prompt = flow.confirmationPrompt ?: return null
+    return when (
+        val confirmation =
+            requestConfirmation(
+                title = prompt.first,
+                body = prompt.second,
+                cancelLabel = flow.cancelLabel,
+                confirmLabel = flow.confirmLabel,
+            )
+    ) {
+        is InputOutcome.Entered -> {
+            TransactionOutcome.Completed(serviceId, shopperCancelledDetails(params.merchantReference)).takeUnless { confirmation.value }
+        }
+
+        InputOutcome.Cancelled -> {
+            TransactionOutcome.Completed(serviceId, shopperCancelledDetails(params.merchantReference))
+        }
+
+        is InputOutcome.Failed -> {
+            TransactionOutcome.NotProcessed(serviceId, confirmation.fault)
+        }
+    }
+}
+
 private suspend fun TerminalClient.runShopperFlowSteps(
     flow: ShopperSessionFlow,
     params: PaymentParams,
@@ -495,18 +461,7 @@ private suspend fun TerminalClient.runShopperFlowSteps(
     payCore: suspend (PaymentParams) -> TransactionOutcome,
 ): TransactionOutcome {
     flow.virtualReceipt?.let { displayVirtualReceipt(it) }
-    val prompt = flow.confirmationPrompt
-    val confirmed =
-        prompt == null ||
-            requestConfirmation(
-                title = prompt.first,
-                body = prompt.second,
-                cancelLabel = flow.cancelLabel,
-                confirmLabel = flow.confirmLabel,
-            ) == InputOutcome.Entered(true)
-    if (!confirmed) {
-        return TransactionOutcome.Completed(serviceId, shopperCancelledDetails(params.merchantReference))
-    }
+    confirmBasket(flow, params, serviceId)?.let { return it }
     val collectedEmail =
         if (flow.emailPrompt != null && params.shopperEmail == null) {
             (requestText(flow.emailPrompt) as? InputOutcome.Entered)?.value

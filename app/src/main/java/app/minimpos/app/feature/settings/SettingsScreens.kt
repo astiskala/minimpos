@@ -130,6 +130,7 @@ private fun terminalSetupViewModel(settings: SettingsViewModel): TerminalSetupVi
             container.setupDiscovery,
             container.settings,
             settings.state.map { it.settings.terminal },
+            settings.businessImport::findIfMissing,
         )
     }
 }
@@ -138,10 +139,7 @@ private fun terminalSetupViewModel(settings: SettingsViewModel): TerminalSetupVi
 private fun capabilitiesViewModel(): CapabilitiesViewModel {
     val container = LocalAppContainer.current
     return viewModel {
-        CapabilitiesViewModel(
-            container.capabilityDiscovery,
-            container.settings.settings.map { it.terminal },
-        )
+        CapabilitiesViewModel(container.capabilityDiscovery)
     }
 }
 

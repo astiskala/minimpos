@@ -122,6 +122,8 @@ interface CheckoutBook<R, C> {
  * @param clock Stamps the records and decides whether an unknown one may be sent again.
  * @param newId Generates record IDs.
  * @param permits Whether Manager approval allows the operation now, checked under the operation lock.
+ * @param mutex Serializes sends and rechecks; shared when a caller also serializes follow-up operations.
+ * @param recheckWindow Maximum age for resending an unknown operation; null when idempotency retries do not expire locally.
  */
 class CheckoutOperations<R, C>(
     scope: CoroutineScope,
@@ -131,9 +133,10 @@ class CheckoutOperations<R, C>(
     private val clock: Clock = Clock.systemUTC(),
     private val newId: () -> String = { Uuid.random().toString() },
     private val permits: suspend () -> Boolean = { true },
+    private val mutex: Mutex = Mutex(),
+    private val recheckWindow: Duration? = RECHECK_WINDOW,
 ) {
     private val runner = OperationRunner<R>(scope)
-    private val mutex = Mutex()
 
     /** The operation running now, which its screen follows to the result. */
     val state: StateFlow<TransactionState> = runner.state
@@ -154,16 +157,18 @@ class CheckoutOperations<R, C>(
     /**
      * Sends record [id], whose outcome is unknown, again with its stored request and idempotency key, and stores Adyen's
      * answer. Anything else has nothing left to check ([Recheck.Settled]); nothing changes while approval, setup or the
-     * original payment context is missing, or once it is older than [RECHECK_WINDOW].
+     * original payment context is missing, or once it is older than [recheckWindow].
      */
-    suspend fun recheck(id: String): Recheck =
-        mutex.withLock {
-            val record = book.unsent(id)?.takeUnless { it.pending } ?: return@withLock Recheck.Settled
-            if (Duration.ofMillis(clock.millis() - record.createdAt) > RECHECK_WINDOW) {
-                return@withLock Recheck.StillUnknown(Failure.NotSetUp(SetupProblem.CHARGE_TOO_OLD))
-            }
-            send(id, record)?.let(Recheck::StillUnknown) ?: Recheck.Settled
+    suspend fun recheck(id: String): Recheck = mutex.withLock { recheckUnlocked(id) }
+
+    /** Runs [recheck] while the caller already holds [mutex]. */
+    internal suspend fun recheckUnlocked(id: String): Recheck {
+        val record = book.unsent(id)?.takeUnless { it.pending } ?: return Recheck.Settled
+        if (recheckWindow != null && Duration.ofMillis(clock.millis() - record.createdAt) > recheckWindow) {
+            return Recheck.StillUnknown(Failure.NotSetUp(SetupProblem.CHARGE_TOO_OLD))
         }
+        return send(id, record)?.let(Recheck::StillUnknown) ?: Recheck.Settled
+    }
 
     /** Sends [record] [id] and stores the answer; returns why nothing (or nothing certain) is known yet. */
     private suspend fun send(

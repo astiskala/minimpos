@@ -10,7 +10,6 @@ import app.minimpos.core.receipt.PlainTextReceiptRenderer
 import com.google.common.truth.Truth.assertThat
 import com.google.common.truth.Truth.assertWithMessage
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.flow.flowOf
 import kotlinx.serialization.serializer
 import org.junit.Rule
 import org.junit.Test
@@ -67,8 +66,6 @@ class AppLanguageTest {
             val checkouts =
                 env.container.session(SaleKind.SALE).checkout(
                     env.container.settingsState,
-                    flowOf(false),
-                    shopperDisplayAvailable = flowOf(true),
                     currency = env.container::currency,
                 )
             mapOf("en" to "Order", "zh-CN" to "订单", "zh-Hant" to "訂單", "ja" to "注文").forEach { (tag, order) ->

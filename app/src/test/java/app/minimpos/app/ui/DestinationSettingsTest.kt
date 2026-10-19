@@ -9,6 +9,7 @@ import androidx.compose.ui.test.assertIsOff
 import androidx.compose.ui.test.assertIsOn
 import androidx.compose.ui.test.hasAnyDescendant
 import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
@@ -103,6 +104,9 @@ class DestinationSettingsTest {
     @Config(qualifiers = "ja-w320dp-h460dp-hdpi")
     fun `unsupported tip and Giving choices stay disabled in Japanese without changing stored preferences`() {
         open("tipping")
+        compose.awaitCondition("tip settings finish opening") {
+            compose.onAllNodesWithTag("terminalTipping").fetchSemanticsNodes().isNotEmpty()
+        }
         listOf("terminalTipping", "receiptTipping", "askGivingSetting", "dynamicTipOverride", "tipOnPreTax").forEach { tag ->
             compose.onNodeWithTag(tag).performScrollTo().assertIsNotEnabled()
         }

@@ -20,6 +20,7 @@ import app.minimpos.terminal.transport.Fault
 import app.minimpos.terminal.transport.TerminalEnvironment
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.serializer
+import java.util.concurrent.atomic.AtomicReference
 
 /** The outcome of [TapToPaySetup.board] and [TapToPaySetup.unregister]. Failures are reported here, never thrown. */
 sealed interface TapToPayOutcome {
@@ -46,7 +47,9 @@ sealed interface TapToPayOutcome {
     ) : TapToPayOutcome
 
     /**
-     * Active local settings were not changed; remote registration may already have completed and remains recoverable.
+     * Active local settings were not changed, except that boarding (from Settings or a setup import) forgets a stored
+     * installation ID once the Payments app may have dropped its boarding; remote registration may already have
+     * completed and remains recoverable.
      *
      * @property failure Why: the Payments app, Adyen or this device's secure storage.
      */
@@ -76,10 +79,18 @@ class TapToPaySetup(
 ) {
     private val journal = setups.journal(RecoveryJournal.BOARDING, serializer<RegistrationRecovery>())
 
+    // Adyen's list of boarded instances can lag behind a boarding its token already confirmed. Storing the new
+    // installation ID needs a fresh connection check, which would otherwise close the setup gate until the list
+    // catches up. Kept in memory only: after a restart, the list decides again.
+    private val confirmed = AtomicReference<RegistrationRecovery?>()
+
     /**
      * Boards the Payments app (or confirms that it is boarded); [reboard] boards it again, e.g. for another store. It
-     * opens the Payments app up to twice and calls the Management API in between. The shared key is entered separately
-     * through the setup helper or on this device; boarding never retrieves or replaces it.
+     * opens the Payments app up to twice and calls the Management API in between; a Payments app boarded already but
+     * not listed for this merchant account or store (boarded elsewhere, or revoked at Adyen) is boarded again here,
+     * opening it three times in all. Once the Payments app may have dropped its boarding, a failure also forgets the
+     * stored installation ID, so the setup asks for Tap to Pay again. The shared key is entered separately through the
+     * setup helper or on this device; boarding never retrieves or replaces it.
      */
     suspend fun board(reboard: Boolean = false): TapToPayOutcome =
         when (val access = access()) {
@@ -102,14 +113,11 @@ class TapToPaySetup(
     ): TapToPayOutcome {
         val origin = setups.current()
         val original = origin.settings.terminal
-        val result = register(original.target(), access.environment, access.apiKey, access.management, reboard)
-        return if (result is TapToPayOutcome.Boarded) {
-            val boarded = original.copy(paymentsAppInstallationId = result.installationId)
-            setups.SetupFence(origin).update { it.copy(terminal = boarded) }
-            if (settings.current().terminal == boarded) result else TapToPayOutcome.NotSetUp(SetupProblem.SETUP_CHANGED)
-        } else {
-            result
-        }
+        val result = register(Attempt(origin, original.target(), access), reboard)
+        if (result !is TapToPayOutcome.Boarded) return result
+        val boarded = original.copy(paymentsAppInstallationId = result.installationId)
+        setups.SetupFence(origin).update { it.copy(terminal = boarded) }
+        return if (settings.current().terminal == boarded) result else TapToPayOutcome.NotSetUp(SetupProblem.SETUP_CHANGED)
     }
 
     internal suspend fun checkSaved(setup: TerminalSetup): TapToPayOutcome {
@@ -124,7 +132,7 @@ class TapToPaySetup(
                 if (terminal.paymentsAppInstallationId.isBlank()) {
                     TapToPayOutcome.NotSetUp(SetupProblem.PAYMENTS_APP_NOT_BOARDED)
                 } else {
-                    registered(management(access.apiKey, access.environment), terminal.target(), terminal.paymentsAppInstallationId)
+                    registered(access, terminal.target(), terminal.paymentsAppInstallationId)
                 }
             }
         }
@@ -152,7 +160,8 @@ class TapToPaySetup(
                 JournalRead.Unreadable -> return TapToPayOutcome.Failed(Failure.Device(DeviceFault.SECURE_STORAGE))
             }
         val same = previous?.matches(access, target) == true
-        val active = setups.current().settings.terminal
+        val origin = setups.current()
+        val active = origin.settings.terminal
         val activeMatches = active.targetOrNull() == target
         val installation =
             if (same) {
@@ -160,10 +169,9 @@ class TapToPaySetup(
             } else {
                 active.paymentsAppInstallationId.takeIf { activeMatches && it.isNotBlank() }
             }
-        val client = management(access.apiKey, access.environment)
         return when {
             installation != null -> {
-                registered(client, target, installation)
+                registered(access, target, installation)
             }
 
             !explicit -> {
@@ -172,58 +180,132 @@ class TapToPaySetup(
 
             else -> {
                 register(
-                    target,
-                    access.environment,
-                    access.apiKey,
-                    client,
+                    Attempt(origin, target, granted(access)),
                     reboard = !same && active.paymentsAppInstallationId.isNotBlank() && !activeMatches,
                 )
             }
         }
     }
 
+    /**
+     * Boards this phone for [attempt] ([reboard] afresh) and checks it with Adyen's list of boarded instances, unless
+     * the boarding token already confirmed it. A Payments app boarded already but not listed at the target (boarded at
+     * another merchant account or store, or revoked at Adyen) is boarded again at the target.
+     */
     private suspend fun register(
-        target: BoardingTarget,
-        environment: TerminalEnvironment,
-        key: String,
-        client: PaymentsAppManagement,
+        attempt: Attempt,
         reboard: Boolean,
     ): TapToPayOutcome =
         try {
-            remember(key, environment, target, null)
-            val onboarding = PaymentsAppOnboarding(environment, exchange, client, PaymentsAppBridge.RETURN_URL)
-            when (val result = onboarding.board(target, reboard)) {
-                is Onboarding.Failed -> {
-                    TapToPayOutcome.Failed(Failure.Remote(result.fault))
+            confirmed.set(null)
+            remember(attempt, null)
+            val access = attempt.access
+            val onboarding = PaymentsAppOnboarding(access.environment, exchange, access.management, PaymentsAppBridge.RETURN_URL)
+            when (val result = onboarding.board(attempt.target, reboard)) {
+                is Onboarding.AlreadyBoarded -> {
+                    when (val listing = listing(attempt, result.installationId)) {
+                        ManagementResult.NotBoarded -> settle(attempt, onboarding.board(attempt.target, reboard = true))
+                        else -> listing.outcome(result.installationId)
+                    }
                 }
 
-                is Onboarding.Boarded -> {
-                    remember(key, environment, target, result.installationId)
-                    registered(client, target, result.installationId)
+                else -> {
+                    settle(attempt, result)
                 }
             }
         } catch (ignored: SecretStoreException) {
             TapToPayOutcome.Failed(Failure.Device(DeviceFault.SECURE_STORAGE))
         }
 
-    private suspend fun remember(
-        key: String,
-        environment: TerminalEnvironment,
-        target: BoardingTarget,
-        installation: String?,
-    ) {
-        journal.write(RegistrationRecovery(key, environment, target.merchantAccount, target.storeId, installation))
+    /**
+     * One [register] call: it boards this phone at the merchant account or store [target], with the Payments app API
+     * key, environment and Management API ([access]) that each installation reported is remembered with for recovery.
+     * [origin] is the setup stored when it began, whose installation ID is forgotten if the Payments app may have
+     * dropped its boarding.
+     */
+    private class Attempt(
+        val origin: TerminalSetup,
+        val target: BoardingTarget,
+        val access: Access.Granted,
+    )
+
+    /**
+     * What boarding [result] comes to: listed at the target, unless the boarding token already confirmed it. Once the
+     * Payments app may have dropped its boarding without being registered here, the stored installation ID is forgotten.
+     */
+    private suspend fun settle(
+        attempt: Attempt,
+        result: Onboarding,
+    ): TapToPayOutcome =
+        when (result) {
+            is Onboarding.Failed -> {
+                if (result.unboarded) forget(attempt.origin)
+                TapToPayOutcome.Failed(Failure.Remote(result.fault))
+            }
+
+            is Onboarding.NewlyBoarded if result.confirmed -> {
+                confirmed.set(remember(attempt, result.installationId))
+                TapToPayOutcome.Boarded(result.installationId)
+            }
+
+            is Onboarding.Boarded -> {
+                val outcome = listing(attempt, result.installationId).outcome(result.installationId)
+                if (result is Onboarding.NewlyBoarded && outcome !is TapToPayOutcome.Boarded) forget(attempt.origin)
+                outcome
+            }
+        }
+
+    /**
+     * Forgets the installation ID stored in [origin], whichever destination it is for, while [origin] is still the
+     * stored setup, so the setup asks for Tap to Pay again.
+     */
+    private suspend fun forget(origin: TerminalSetup) {
+        val terminal = origin.settings.terminal
+        if (terminal.paymentsAppInstallationId.isBlank()) return
+        setups.SetupFence(origin).update { it.copy(terminal = terminal.copy(paymentsAppInstallationId = "")) }
     }
 
+    /** Remembers installation [id] for [attempt], then asks Adyen whether it is listed at the target. */
+    private suspend fun listing(
+        attempt: Attempt,
+        id: String,
+    ): ManagementResult {
+        remember(attempt, id)
+        return attempt.access.management.registration(attempt.target, id)
+    }
+
+    private suspend fun remember(
+        attempt: Attempt,
+        installation: String?,
+    ): RegistrationRecovery {
+        val target = attempt.target
+        val access = attempt.access
+        val recovery = RegistrationRecovery(access.apiKey, access.environment, target.merchantAccount, target.storeId, installation)
+        journal.write(recovery)
+        return recovery
+    }
+
+    /**
+     * Whether installation [id] is listed at [target] for [access]. A boarding the token [confirmed] counts as listed
+     * until the list first shows it.
+     */
     private suspend fun registered(
-        client: PaymentsAppManagement,
+        access: BoardingSetup.Ready,
         target: BoardingTarget,
         id: String,
-    ): TapToPayOutcome =
-        when (val result = client.registration(target, id)) {
+    ): TapToPayOutcome {
+        val listed = management(access.apiKey, access.environment).registration(target, id)
+        val vouched = confirmed.get()?.takeIf { it.matches(access, target) && it.installation == id } ?: return listed.outcome(id)
+        if (listed is ManagementResult.Done) confirmed.compareAndSet(vouched, null)
+        return if (listed == ManagementResult.NotBoarded) TapToPayOutcome.Boarded(id) else listed.outcome(id)
+    }
+
+    /** What this answer to the Management API's registration check of installation [id] means for Tap to Pay. */
+    private fun ManagementResult.outcome(id: String): TapToPayOutcome =
+        when (this) {
             is ManagementResult.Done -> TapToPayOutcome.Boarded(id)
             ManagementResult.NotBoarded -> TapToPayOutcome.NotSetUp(SetupProblem.PAYMENTS_APP_NOT_BOARDED)
-            is ManagementResult.Failed -> TapToPayOutcome.Failed(Failure.Remote(result.fault))
+            is ManagementResult.Failed -> TapToPayOutcome.Failed(Failure.Remote(fault))
         }
 
     private fun TerminalSettings.target(): BoardingTarget = BoardingTarget(merchantAccount.trim(), storeId.trim().ifEmpty { null })
@@ -271,6 +353,7 @@ class TapToPaySetup(
             }
 
             is ManagementResult.Done -> {
+                confirmed.set(null)
                 settings.update { it.copy(terminal = it.terminal.copy(paymentsAppInstallationId = "")) }
                 journal.write(null)
                 TapToPayOutcome.Unregistered
@@ -286,10 +369,12 @@ class TapToPaySetup(
             }
 
             is BoardingSetup.Ready -> {
-                val client = management(boarding.apiKey, boarding.environment)
-                Access.Granted(boarding.environment, client, boarding.apiKey)
+                granted(boarding)
             }
         }
+
+    private fun granted(boarding: BoardingSetup.Ready): Access.Granted =
+        Access.Granted(boarding.environment, management(boarding.apiKey, boarding.environment), boarding.apiKey)
 
     private sealed interface Access {
         class Granted(

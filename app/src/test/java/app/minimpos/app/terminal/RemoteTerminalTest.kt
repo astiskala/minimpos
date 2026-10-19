@@ -195,6 +195,71 @@ class RemoteTerminalTest {
     }
 
     @Test
+    fun `a boarding token issued for this installation confirms setup while Adyen's list lags behind`() {
+        useTapToPay()
+        await { container.secrets.set(Secret.ADYEN_API_KEY, "key") }
+        await { container.secrets.set(Secret.PAYMENTS_APP_API_KEY, "pa-key") }
+        management.result = ManagementResult.Done("BT-1", FakePaymentsApp.INSTALLATION_ID)
+        management.registrationResult = ManagementResult.NotBoarded
+        assertThat(await { container.tapToPay.board() }).isEqualTo(TapToPayOutcome.Boarded(FakePaymentsApp.INSTALLATION_ID))
+        assertThat(await { container.tapToPay.board(reboard = true) }).isEqualTo(TapToPayOutcome.Boarded(FakePaymentsApp.INSTALLATION_ID))
+        assertThat(management.requests).hasSize(2)
+        assertThat(await { container.settings.current() }.terminal.paymentsAppInstallationId).isEqualTo(FakePaymentsApp.INSTALLATION_ID)
+
+        // The connection check that verifies the new installation trusts the token too, so payments can start.
+        assertThat(await { container.terminalStatus.check() }).isInstanceOf(TerminalConnection.Connected::class.java)
+        assertThat(await { gateway.pay(payment, "PAY1") }.made()).isInstanceOf(TransactionOutcome.Completed::class.java)
+    }
+
+    @Test
+    fun `a boarding the token confirmed vouches only for its installation, until Adyen lists it`() {
+        useTapToPay()
+        await { container.secrets.set(Secret.ADYEN_API_KEY, "key") }
+        await { container.secrets.set(Secret.PAYMENTS_APP_API_KEY, "pa-key") }
+        management.result = ManagementResult.Done("BT-1", FakePaymentsApp.INSTALLATION_ID)
+        management.registrationResult = ManagementResult.NotBoarded
+        assertThat(await { container.tapToPay.board() }).isEqualTo(TapToPayOutcome.Boarded(FakePaymentsApp.INSTALLATION_ID))
+        val notBoarded = TapToPayOutcome.NotSetUp(SetupProblem.PAYMENTS_APP_NOT_BOARDED)
+
+        env.updateSettings { it.copy(terminal = it.terminal.copy(paymentsAppInstallationId = "INSTALLATION-2")) }
+        assertThat(await { container.tapToPay.checkSaved(container.terminalSetup.current()) }).isEqualTo(notBoarded)
+        env.updateSettings { it.copy(terminal = it.terminal.copy(paymentsAppInstallationId = FakePaymentsApp.INSTALLATION_ID)) }
+        assertThat(await { container.tapToPay.checkSaved(container.terminalSetup.current()) })
+            .isEqualTo(TapToPayOutcome.Boarded(FakePaymentsApp.INSTALLATION_ID))
+
+        // Once listed, the list decides again, so a later revocation at Adyen counts.
+        management.registrationResult = ManagementResult.Done()
+        assertThat(await { container.tapToPay.checkSaved(container.terminalSetup.current()) })
+            .isEqualTo(TapToPayOutcome.Boarded(FakePaymentsApp.INSTALLATION_ID))
+        management.registrationResult = ManagementResult.NotBoarded
+        assertThat(await { container.tapToPay.checkSaved(container.terminalSetup.current()) }).isEqualTo(notBoarded)
+    }
+
+    @Test
+    fun `a Payments app boarded elsewhere is boarded here, and a failed reboarding forgets the installation`() {
+        useTapToPay()
+        await { container.secrets.set(Secret.ADYEN_API_KEY, "key") }
+        await { container.secrets.set(Secret.PAYMENTS_APP_API_KEY, "pa-key") }
+        paymentsApp.boarded = true
+        management.result = ManagementResult.Done("BT-1", FakePaymentsApp.INSTALLATION_ID)
+        management.registrationResult = ManagementResult.NotBoarded
+        assertThat(await { container.tapToPay.board() }).isEqualTo(TapToPayOutcome.Boarded(FakePaymentsApp.INSTALLATION_ID))
+        assertThat(paymentsApp.opened.map { it.substringBefore('?') to ("reboard=true" in it) })
+            .containsExactly(
+                "https://www.adyen.com/test/boarded" to false,
+                "https://www.adyen.com/test/boarded" to true,
+                "https://www.adyen.com/test/board" to false,
+            ).inOrder()
+        assertThat(management.requests).containsExactly(BoardingTarget("Merchant"))
+
+        management.result = ManagementResult.Failed(Fault.AdyenUnavailable(503))
+        assertThat(await { container.tapToPay.board(reboard = true) })
+            .isEqualTo(TapToPayOutcome.Failed(Failure.Remote(Fault.AdyenUnavailable(503))))
+        assertThat(await { container.settings.current() }.terminal.paymentsAppInstallationId).isEmpty()
+        assertThat(await { gateway.diagnose() }).isEqualTo(TerminalConnection.NotSetUp(SetupProblem.PAYMENTS_APP_NOT_BOARDED))
+    }
+
+    @Test
     fun `this phone can be removed, and Tap to Pay explains what is missing`() {
         useTapToPay()
         await { container.secrets.set(Secret.ADYEN_API_KEY, "key") }

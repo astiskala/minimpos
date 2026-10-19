@@ -67,7 +67,7 @@ data class SettingsUiState(
  * Outcomes of the settings screen's actions.
  *
  * @property connection The latest connection test; its message is shown in a dialog until
- *   [SettingsViewModel.dismissConnectionResult].
+ *   [SettingsViewModel.dismissTestResult].
  * @property passphraseStored Whether the passphrase given to the latest connection test was stored (so the field can be
  *   cleared).
  * @property secretError Set when a secret (password, passphrase or PIN) could not be stored on this device.
@@ -258,8 +258,7 @@ class SettingsViewModel(
      * Saves [value] as [secret] if one was entered (an API key without surrounding spaces) and verifies that it reads
      * back, then runs [test]: by default the terminal connection for [Secret.TERMINAL_PASSPHRASE] and the Checkout API
      * for [Secret.ADYEN_API_KEY] (which also reaches terminals in the cloud, so its test can be both,
-     * [SettingsTest.CLOUD]). No test charges anything. The connection's outcome is shown until
-     * [dismissConnectionResult].
+     * [SettingsTest.CLOUD]). No test charges anything. Each outcome is shown until [dismissTestResult].
      *
      * @throws IllegalArgumentException for a secret that cannot be tested.
      */
@@ -344,9 +343,18 @@ class SettingsViewModel(
             is ApiCheck.Failed -> ActionState(outcome = ActionOutcome.Failed(check.failure), isError = true)
         }
 
-    /** Closes the connection test's result dialog. */
-    fun dismissConnectionResult() {
-        actions.update { it.copy(connection = ActionState()) }
+    /**
+     * Closes the result dialog of [test]: the Checkout API test's, keeping whether it succeeded; the connection test's;
+     * or, for [SettingsTest.CLOUD], the connection test's together with the Checkout API result it showed.
+     */
+    fun dismissTestResult(test: SettingsTest) {
+        actions.update {
+            when (test) {
+                SettingsTest.CONNECTION -> it.copy(connection = ActionState())
+                SettingsTest.API -> it.copy(api = it.api.dismissed())
+                SettingsTest.CLOUD -> it.copy(connection = ActionState(), api = it.api.dismissed())
+            }
+        }
     }
 
     /** Sends a test email to [to] with the stored SMTP settings. */

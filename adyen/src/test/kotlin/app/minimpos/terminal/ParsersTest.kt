@@ -161,7 +161,7 @@ class ParsersTest {
         assertThat(advice("Busy")).isEqualTo(RetryAdvice.TERMINAL_BUSY)
         assertThat(advice("NotAllowed")).isEqualTo(RetryAdvice.DIFFERENT_PAYMENT_METHOD)
         assertThat(advice("MessageFormat")).isEqualTo(RetryAdvice.CHECK_SETUP)
-        assertThat(advice("UnavailableService")).isEqualTo(RetryAdvice.CHECK_SETUP)
+        assertThat(advice("UnavailableService")).isEqualTo(RetryAdvice.NOT_ENABLED)
         assertThat(advice("Cancel", "Approved")).isEqualTo(RetryAdvice.DO_NOT_RETRY)
         assertThat(advice("Cancel", "approved")).isEqualTo(RetryAdvice.DO_NOT_RETRY)
         assertThat(advice("Cancel", "Cancelled by shopper")).isEqualTo(RetryAdvice.RETRY)

@@ -170,7 +170,10 @@ data class ActionState(
     val outcome: ActionOutcome? = null,
     val isError: Boolean = false,
     val done: Boolean = false,
-)
+) {
+    /** This state once its outcome has been seen and closed, still telling whether the action succeeded or failed. */
+    fun dismissed(): ActionState = copy(outcome = null)
+}
 
 /** This result as a finished [ActionState]: [success] on success, else why not as an error. */
 fun ActionResult.toState(success: ActionOutcome) =

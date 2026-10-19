@@ -105,8 +105,11 @@
               <dd><p><span class="fix-label">原因</span>終端或其讀卡器暫時不可用。</p>
                 <p><span class="fix-label">解決</span>稍候，確認終端已開機並已連接，然後重試。參見<a href="#network-dropouts">網絡中斷</a>。</p></dd></div>
             <div><dt>“終端未接受請求。重試前，請檢查終端設定。”</dt>
-              <dd><p><span class="fix-label">原因</span>終端拒絕了請求或不提供此服務，通常是設定或帳戶設定問題。</p>
+              <dd><p><span class="fix-label">原因</span>終端拒絕了所發送的請求，通常是設定問題。</p>
                 <p><span class="fix-label">解決</span>在<strong>設定 › 終端</strong>中運行測試；參見<a href="#connection">終端綁定和設定</a>。如果測試通過，請聯繫 Adyen 檢查終端設定。</p></dd></div>
+            <div><dt>“終端或您的 Adyen 帳戶不支援此請求。請聯絡 Adyen 支援團隊確認已開通，然後重試。”</dt>
+              <dd><p><span class="fix-label">原因</span>終端或 Adyen 不提供此付款所需的功能，通常是因為帳戶尚未開通。</p>
+                <p><span class="fix-label">解決</span>請聯絡 Adyen 支援團隊確認商戶帳戶已開通該功能。如使用 Tap to Pay，請確認除 Adyen Payments app role 外，亦已開通 Tap to Pay on Android。然後重試。</p></dd></div>
             <div><dt>“請勿再次收款：此次支付已成功。”</dt>
               <dd><p><span class="fix-label">原因</span>雖然終端報告了取消，但付款已獲批准。</p>
                 <p><span class="fix-label">解決</span>請勿再次收款。如果顧客不應付款，請為其退款。</p></dd></div>

@@ -105,8 +105,11 @@
               <dd><p><span class="fix-label">Cause</span>The terminal or its card reader is temporarily unavailable.</p>
                 <p><span class="fix-label">Fix</span>Wait a moment, check that the terminal is on and connected, then try again. See <a href="#network-dropouts">network dropouts</a>.</p></dd></div>
             <div><dt>“The terminal did not accept the request. Check the Terminal settings before trying again.”</dt>
-              <dd><p><span class="fix-label">Cause</span>The terminal rejected the request or does not offer this service, usually because of a setup or account configuration problem.</p>
+              <dd><p><span class="fix-label">Cause</span>The terminal rejected the request as sent, usually because of a setup problem.</p>
                 <p><span class="fix-label">Fix</span>Run the tests in <strong>Settings › Terminal</strong>; see <a href="#connection">pairing and setup</a>. If they pass, ask Adyen to check the terminal's configuration.</p></dd></div>
+            <div><dt>“The terminal or your Adyen account doesn’t support this request. Ask Adyen Support to check it’s enabled, then try again.”</dt>
+              <dd><p><span class="fix-label">Cause</span>The terminal or Adyen does not offer what the payment asked for, often because it is not enabled for the account.</p>
+                <p><span class="fix-label">Fix</span>Ask Adyen Support to check that it is enabled for the merchant account. For Tap to Pay, check that Tap to Pay on Android is enabled, not only the Adyen Payments app role. Then try again.</p></dd></div>
             <div><dt>“Do not charge again: this payment went through.”</dt>
               <dd><p><span class="fix-label">Cause</span>The payment was approved even though the terminal reported a cancellation.</p>
                 <p><span class="fix-label">Fix</span>Do not charge again. Refund it if the customer should not pay.</p></dd></div>

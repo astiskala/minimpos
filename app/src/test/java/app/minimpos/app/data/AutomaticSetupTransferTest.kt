@@ -15,6 +15,7 @@ import app.minimpos.app.data.repo.ImportMode
 import app.minimpos.app.data.security.RecoveryJournal
 import app.minimpos.app.data.security.Secret
 import app.minimpos.app.data.security.TransferSeal
+import app.minimpos.app.data.settings.TerminalMode
 import app.minimpos.app.data.transfer.ImportOutcome
 import app.minimpos.app.data.transfer.ReceivedTransfer
 import app.minimpos.app.terminal.ApiAccess
@@ -641,5 +642,41 @@ class AutomaticSetupTransferTest {
         assertThat((outcome.outcome as ImportOutcome.Imported).result.paymentsAppChecked).isTrue()
         assertThat(management.requests).hasSize(1)
         assertThat(await { env.container.settings.current() }.terminal.paymentsAppInstallationId).isEqualTo(FakePaymentsApp.INSTALLATION_ID)
+    }
+
+    @Test
+    fun `a reboarding that fails during import forgets the active installation`() {
+        env.close()
+        env =
+            TestEnvironment(
+                FakeDevice(paymentsApps = setOf(TerminalEnvironment.TEST)),
+                paymentsApp = phone,
+                management = management,
+                terminalDetails = details,
+                verifiedSetup = false,
+            )
+        env.updateSettings {
+            it.copy(
+                terminal =
+                    it.terminal.copy(
+                        mode = TerminalMode.PAYMENTS_APP,
+                        merchantAccount = "Old",
+                        paymentsAppInstallationId = FakePaymentsApp.INSTALLATION_ID,
+                    ),
+            )
+        }
+        phone.boarded = true
+        val received =
+            received(
+                """{"destination":"tapToPay","merchantAccount":"Merchant","keyIdentifier":"shared","keyVersion":1}""",
+                """{"ADYEN_API_KEY":"key","PAYMENTS_APP_API_KEY":"boarding-key","TERMINAL_PASSPHRASE":"shared passphrase"}""",
+            )
+        management.result = ManagementResult.Failed(Fault.AdyenUnavailable(503))
+        val failed = await { env.container.setupImport.import(received, ImportMode.MERGE, code, board = true) }
+        assertThat(failed).isEqualTo(SetupImportOutcome.Failed(failure = Failure.Remote(Fault.AdyenUnavailable(503))))
+        assertThat(phone.opened.single()).contains("reboard=true")
+        val active = await { env.container.settings.current() }.terminal
+        assertThat(active.merchantAccount).isEqualTo("Old")
+        assertThat(active.paymentsAppInstallationId).isEmpty()
     }
 }

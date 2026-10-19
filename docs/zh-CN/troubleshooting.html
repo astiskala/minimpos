@@ -105,8 +105,11 @@
               <dd><p><span class="fix-label">原因</span>终端或其读卡器暂时不可用。</p>
                 <p><span class="fix-label">解决</span>稍候，确认终端已开机并已连接，然后重试。参见<a href="#network-dropouts">网络中断</a>。</p></dd></div>
             <div><dt>“终端未接受请求。重试前，请检查终端设置。”</dt>
-              <dd><p><span class="fix-label">原因</span>终端拒绝了请求或不提供此服务，通常是设置或账户配置问题。</p>
+              <dd><p><span class="fix-label">原因</span>终端拒绝了所发送的请求，通常是设置问题。</p>
                 <p><span class="fix-label">解决</span>在<strong>设置 › 终端</strong>中运行测试；参见<a href="#connection">终端绑定和设置</a>。如果测试通过，请联系 Adyen 检查终端配置。</p></dd></div>
+            <div><dt>“终端或您的 Adyen 账户不支持此请求。请联系 Adyen 支持团队确认已开通，然后重试。”</dt>
+              <dd><p><span class="fix-label">原因</span>终端或 Adyen 不提供此付款所需的功能，通常是因为账户尚未开通。</p>
+                <p><span class="fix-label">解决</span>请联系 Adyen 支持团队确认商家账户已开通该功能。对于 Tap to Pay，请确认除 Adyen Payments app role 外，也已开通 Tap to Pay on Android。然后重试。</p></dd></div>
             <div><dt>“请勿再次收款：此次支付已成功。”</dt>
               <dd><p><span class="fix-label">原因</span>虽然终端报告了取消，但付款已获批准。</p>
                 <p><span class="fix-label">解决</span>请勿再次收款。如果购物者不应付款，请为其退款。</p></dd></div>

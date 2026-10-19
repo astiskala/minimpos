@@ -105,8 +105,11 @@
               <dd><p><span class="fix-label">原因</span>端末またはカードリーダーが一時的に使用できません。</p>
                 <p><span class="fix-label">対処</span>少し待ち、端末の電源と接続を確認してから再試行します。<a href="#network-dropouts">ネットワークの切断</a>を参照してください。</p></dd></div>
             <div><dt>「端末がリクエストを受け付けませんでした。再試行する前に端末設定を確認してください。」</dt>
-              <dd><p><span class="fix-label">原因</span>端末がリクエストを拒否したか、このサービスに対応していません。多くの場合、設定やアカウント構成の問題です。</p>
+              <dd><p><span class="fix-label">原因</span>端末が送信されたリクエストを拒否しました。多くの場合、設定の問題です。</p>
                 <p><span class="fix-label">対処</span><strong>設定 › 端末</strong>でテストを実行します。<a href="#connection">端末ペアリングと設定</a>を参照してください。テストに成功する場合は、端末の構成確認を Adyen に依頼してください。</p></dd></div>
+            <div><dt>「端末またはAdyenアカウントがこのリクエストに対応していません。有効になっているかAdyenサポートに確認してから再試行してください。」</dt>
+              <dd><p><span class="fix-label">原因</span>端末または Adyen が、決済で求めた機能を提供していません。多くの場合、アカウントで有効になっていないためです。</p>
+                <p><span class="fix-label">対処</span>マーチャントアカウントで有効になっているか、Adyen サポートに確認を依頼してください。Tap to Pay の場合は、Adyen Payments app role だけでなく Tap to Pay on Android も有効になっているか確認してください。その後、再試行します。</p></dd></div>
             <div><dt>「再度請求しないでください。この決済は成功しています。」</dt>
               <dd><p><span class="fix-label">原因</span>端末はキャンセルを報告しましたが、決済は承認されています。</p>
                 <p><span class="fix-label">対処</span>再請求しないでください。購入者が支払うべきでない場合は返金します。</p></dd></div>

@@ -22,6 +22,7 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.unit.dp
 import app.minimpos.app.R
 import app.minimpos.app.terminal.SharedKeyOffer
 import app.minimpos.core.shopper.ShopperReferences
@@ -58,6 +59,29 @@ fun ConfirmDialog(
             ) { Text(confirmLabel) }
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text(dismissLabel ?: stringResource(R.string.action_cancel)) } },
+    )
+}
+
+/**
+ * Reports how an action went: [message] under a success or error badge ([isError]) and [title], scrolling on small
+ * screens. The message is tagged [tag] and the OK button `[tag]Ok`; both OK and dismissing call [onDismiss].
+ */
+@Composable
+fun ResultDialog(
+    title: String,
+    message: String,
+    isError: Boolean,
+    tag: String,
+    onDismiss: () -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        icon = { StatusBadge(if (isError) StatusKind.ERROR else StatusKind.SUCCESS, size = 40.dp) },
+        title = { Text(title) },
+        text = { Text(message, Modifier.verticalScroll(rememberScrollState()).testTag(tag)) },
+        confirmButton = {
+            TextButton(onClick = onDismiss, modifier = Modifier.testTag("${tag}Ok")) { Text(stringResource(R.string.action_ok)) }
+        },
     )
 }
 

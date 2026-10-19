@@ -34,13 +34,11 @@ import androidx.compose.material.icons.filled.Science
 import androidx.compose.material.icons.filled.Storage
 import androidx.compose.material.icons.filled.Sync
 import androidx.compose.material.icons.filled.Tv
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.runtime.getValue
@@ -68,6 +66,7 @@ import app.minimpos.app.data.settings.PaymentSettings
 import app.minimpos.app.data.settings.PricingChange
 import app.minimpos.app.data.settings.SimulatorSettings
 import app.minimpos.app.data.settings.TerminalMode
+import app.minimpos.app.feature.ActionState
 import app.minimpos.app.feature.GatedButton
 import app.minimpos.app.feature.lock.SetPinScreen
 import app.minimpos.app.feature.text
@@ -77,6 +76,7 @@ import app.minimpos.app.terminal.ReceiptBusiness
 import app.minimpos.app.terminal.SharedKeyOffer
 import app.minimpos.app.terminal.TerminalConnection
 import app.minimpos.app.terminal.TerminalSetupPlan
+import app.minimpos.app.terminal.TerminalState
 import app.minimpos.app.terminal.WalletAvailability
 import app.minimpos.app.ui.components.ActionMessage
 import app.minimpos.app.ui.components.ConfirmDialog
@@ -84,10 +84,9 @@ import app.minimpos.app.ui.components.HistorySwitchDialog
 import app.minimpos.app.ui.components.LabeledValue
 import app.minimpos.app.ui.components.LocalAppContainer
 import app.minimpos.app.ui.components.MiniScaffold
+import app.minimpos.app.ui.components.ResultDialog
 import app.minimpos.app.ui.components.SecondaryButton
 import app.minimpos.app.ui.components.SectionHeader
-import app.minimpos.app.ui.components.StatusBadge
-import app.minimpos.app.ui.components.StatusKind
 import app.minimpos.app.ui.components.currentSetupGate
 import app.minimpos.app.ui.navigation.Navigator
 import app.minimpos.app.ui.navigation.Route
@@ -162,8 +161,8 @@ internal interface SettingsEvents {
         test: SettingsTest,
     )
 
-    /** Closes the connection test's result ([SettingsViewModel.dismissConnectionResult]). */
-    fun onConnectionResultDismiss()
+    /** Closes the dialog showing [test]'s result ([SettingsViewModel.dismissTestResult]). */
+    fun onTestResultDismiss(test: SettingsTest)
 
     /** Store selection and receipt-business confirmation callbacks. */
     val businessImport: ReceiptBusinessEvents
@@ -230,6 +229,9 @@ internal interface TerminalSetupEvents {
 
     /** Removes this phone's Payments app instance ([TerminalSetupViewModel.removeTapToPay]). */
     fun onTapToPayRemove()
+
+    /** Closes the dialog showing [result] ([TerminalSetupViewModel.dismissResult]). */
+    fun onResultDismiss(result: SetupResult)
 }
 
 @Composable
@@ -270,7 +272,7 @@ private fun settingsEvents(
             test: SettingsTest,
         ) = settings.saveAndTest(secret, value, test)
 
-        override fun onConnectionResultDismiss() = settings.dismissConnectionResult()
+        override fun onTestResultDismiss(test: SettingsTest) = settings.dismissTestResult(test)
 
         override val businessImport =
             object : ReceiptBusinessEvents {
@@ -323,6 +325,8 @@ private fun terminalSetupEvents(setup: TerminalSetupViewModel): TerminalSetupEve
         ) = setup.setUpTapToPay(apiKey, again)
 
         override fun onTapToPayRemove() = setup.removeTapToPay()
+
+        override fun onResultDismiss(result: SetupResult) = setup.dismissResult(result)
     }
 
 /** The list of settings sections, each with a summary of its current value, plus the connection status. */
@@ -632,7 +636,6 @@ private fun ColumnScope.SettingsContent(
     when (section) {
         SettingsSections.TERMINAL -> {
             TerminalSection(state, actions, setup, events, setupEvents, navigator)
-            ConnectionResultSection(state, actions, events)
         }
 
         SettingsSections.CAPABILITIES -> {
@@ -701,7 +704,8 @@ private fun sectionTitle(section: String): Int =
 
 /**
  * Settings › Terminal: where the connection stands, where payments go, then what that destination needs as numbered
- * steps ([TerminalSteps]), the Checkout API among them; for the simulator, its own settings.
+ * steps ([TerminalSteps]), the Checkout API among them; for the simulator, its own settings. Outcomes show in a dialog
+ * ([TerminalResults]).
  */
 @Composable
 private fun ColumnScope.TerminalSection(
@@ -754,6 +758,7 @@ private fun ColumnScope.TerminalSection(
     if (wallets.supported && !currentSetupGate().pending) {
         WalletSettings(wallets, container.currency(state.settings).code, container.walletDiscovery::refreshInBackground)
     }
+    TerminalResults(status, state, actions, setup, events, setupEvents)
 }
 
 @Composable
@@ -785,36 +790,59 @@ private fun WalletSettings(
     }
 }
 
-/** The outcome of the last connection test. */
+/**
+ * The latest outcome in Settings › Terminal, one at a time in a dialog so it is seen however far the screen is
+ * scrolled: the connection test's first, then the Checkout API test's, the search for terminals in the cloud, Tap to
+ * Pay setup or removal, and shared-key setup.
+ */
 @Composable
-private fun ConnectionResultSection(
+private fun TerminalResults(
+    status: TerminalState,
     state: SettingsUiState,
     actions: SettingsActions,
+    setup: TerminalSetupActions,
     events: SettingsEvents,
+    setupEvents: TerminalSetupEvents,
 ) {
-    val container = LocalAppContainer.current
-    val status by container.terminalStatus.state.collectAsStateWithLifecycle()
-    // A currency that follows the device's region may not be the merchant's, so a successful test names it.
-    val automaticCurrency = container.currency(state.settings).code.takeIf { AdyenCurrencies[state.settings.payment.currencyCode] == null }
+    when {
+        actions.connection.outcome != null -> {
+            ConnectionResultDialog(actions.connection, actions.api, status, state.settings, events::onTestResultDismiss)
+        }
 
-    actions.connection.outcome?.let { outcome ->
-        // In the cloud the same test checks the Checkout API too (SettingsTest.CLOUD).
-        val api = actions.api.outcome?.takeIf { status.mode == TerminalMode.CLOUD }
-        ConnectionResultDialog(
-            outcome.text(),
-            actions.connection.isError,
-            status.environment,
-            automaticCurrency,
-            api?.let {
-                if (actions.api.isError) {
-                    stringResource(R.string.settings_connection_api_failed, it.text())
-                } else {
-                    stringResource(R.string.settings_connection_api_ok)
-                }
-            },
-            events::onConnectionResultDismiss,
-        )
+        actions.api.outcome != null -> {
+            OutcomeDialog(R.string.settings_api, actions.api, "apiResult") { events.onTestResultDismiss(SettingsTest.API) }
+        }
+
+        setup.terminals.outcome != null -> {
+            OutcomeDialog(R.string.settings_discover, setup.terminals, "terminalsResult") {
+                setupEvents.onResultDismiss(SetupResult.TERMINALS)
+            }
+        }
+
+        setup.tapToPay.outcome != null -> {
+            OutcomeDialog(R.string.settings_tap_to_pay, setup.tapToPay, "tapToPayResult") {
+                setupEvents.onResultDismiss(SetupResult.TAP_TO_PAY)
+            }
+        }
+
+        setup.keyResult.outcome != null -> {
+            OutcomeDialog(R.string.settings_shared_key, setup.keyResult, "sharedKeyResult") {
+                setupEvents.onResultDismiss(SetupResult.SHARED_KEY)
+            }
+        }
     }
+}
+
+/** [state]'s outcome in a [ResultDialog] titled [title], tagged [tag]; nothing while there is none. */
+@Composable
+private fun OutcomeDialog(
+    @StringRes title: Int,
+    state: ActionState,
+    tag: String,
+    onDismiss: () -> Unit,
+) {
+    val outcome = state.outcome ?: return
+    ResultDialog(stringResource(title), outcome.text(), state.isError, tag, onDismiss)
 }
 
 @Composable
@@ -931,46 +959,49 @@ private fun ConnectionStatus(
 }
 
 /**
- * The outcome of a connection test, in a dialog so it is seen however far the screen is scrolled. After a success it
- * also names the [environment], how the Checkout API test that came with it went ([api], in the cloud) and, while the
- * currency follows the device's region, that [automaticCurrency] (a code).
+ * The outcome of a [connection] test. After a success it also names the [status]'s environment, how the [api] test
+ * that came with it went (in the cloud, which [onDismiss] then closes too as [SettingsTest.CLOUD]) and, while the
+ * currency follows the device's region rather than [settings], that currency.
  */
 @Composable
 private fun ConnectionResultDialog(
-    message: String,
-    isError: Boolean,
-    environment: TerminalEnvironment?,
-    automaticCurrency: String?,
-    api: String?,
-    onDismiss: () -> Unit,
+    connection: ActionState,
+    api: ActionState,
+    status: TerminalState,
+    settings: AppSettings,
+    onDismiss: (SettingsTest) -> Unit,
 ) {
+    val outcome = connection.outcome ?: return
+    val isError = connection.isError
+    val apiOutcome = api.outcome?.takeIf { !isError && status.mode == TerminalMode.CLOUD }
     val details =
         if (isError) {
             emptyList()
         } else {
+            // A currency that follows the device's region may not be the merchant's, so a successful test names it.
+            val automaticCurrency =
+                LocalAppContainer.current
+                    .currency(settings)
+                    .code
+                    .takeIf { AdyenCurrencies[settings.payment.currencyCode] == null }
             listOfNotNull(
-                environmentLabel(environment),
-                api,
+                environmentLabel(status.environment),
+                apiOutcome?.let {
+                    if (api.isError) {
+                        stringResource(R.string.settings_connection_api_failed, it.text())
+                    } else {
+                        stringResource(R.string.settings_connection_api_ok)
+                    }
+                },
                 automaticCurrency?.let { stringResource(R.string.settings_connection_currency, it) },
             )
         }
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        icon = {
-            StatusBadge(if (isError) StatusKind.ERROR else StatusKind.SUCCESS, size = 40.dp)
-        },
-        title = {
-            Text(stringResource(if (isError) R.string.settings_connection_result_failed else R.string.settings_connection_ok))
-        },
-        text = {
-            Text(
-                (listOf(message) + details).joinToString("\n"),
-                modifier = Modifier.testTag("connectionResult"),
-            )
-        },
-        confirmButton = {
-            TextButton(onClick = onDismiss, modifier = Modifier.testTag("connectionResultOk")) { Text(stringResource(R.string.action_ok)) }
-        },
+    ResultDialog(
+        title = stringResource(if (isError) R.string.settings_connection_result_failed else R.string.settings_connection_ok),
+        message = (listOf(outcome.text()) + details).joinToString("\n"),
+        isError = isError,
+        tag = "connectionResult",
+        onDismiss = { onDismiss(if (apiOutcome != null) SettingsTest.CLOUD else SettingsTest.CONNECTION) },
     )
 }
 

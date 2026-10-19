@@ -217,6 +217,7 @@
   <string name="advice_different_payment_method">Do not retry with this card. Ask the shopper for a different card or payment method.</string>
   <string name="advice_terminal_busy">The terminal is busy with another transaction or its admin menu. Finish that first, then try again.</string>
   <string name="advice_check_setup">The terminal did not accept the request. Check the Terminal settings before trying again.</string>
+  <string name="advice_not_enabled">The terminal or your Adyen account doesn’t support this request. Ask Adyen Support to check it’s enabled, then try again.</string>
   <string name="advice_do_not_retry">Do not charge again: this payment went through.</string>
 
   <!-- Transaction details -->

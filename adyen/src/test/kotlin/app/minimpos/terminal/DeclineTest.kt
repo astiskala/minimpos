@@ -45,7 +45,7 @@ class DeclineTest {
                 "NotAllowed" to RetryAdvice.DIFFERENT_PAYMENT_METHOD,
                 "PaymentRestriction" to RetryAdvice.DIFFERENT_PAYMENT_METHOD,
                 "MessageFormat" to RetryAdvice.CHECK_SETUP,
-                "UnavailableService" to RetryAdvice.CHECK_SETUP,
+                "UnavailableService" to RetryAdvice.NOT_ENABLED,
                 "Cancel" to RetryAdvice.RETRY,
                 "InvalidCard" to RetryAdvice.RETRY,
                 "Refusal" to RetryAdvice.RETRY,

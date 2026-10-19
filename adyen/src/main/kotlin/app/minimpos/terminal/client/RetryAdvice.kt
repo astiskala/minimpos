@@ -17,8 +17,14 @@ enum class RetryAdvice {
     /** The terminal is busy with another transaction or its admin menu. */
     TERMINAL_BUSY,
 
-    /** The request was not accepted as sent (message format, unsupported service): the setup must be fixed first. */
+    /** The request was not accepted as sent (message format): the setup must be fixed first. */
     CHECK_SETUP,
+
+    /**
+     * The terminal or the Adyen account does not offer what was asked (unavailable service, such as Tap to Pay not
+     * enabled for the merchant account): Adyen must enable it first.
+     */
+    NOT_ENABLED,
 
     /** Nothing to retry (the payment went through). */
     DO_NOT_RETRY,

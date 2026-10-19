@@ -30,6 +30,7 @@ import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.locks.LockSupport
+import kotlin.io.encoding.Base64
 
 /**
  * Test-only Chromium driver using stable DevTools commands and JDK HTTP/WebSocket APIs, not Node or ChromeDriver.
@@ -44,16 +45,43 @@ internal class HelperBrowser : AutoCloseable {
     private val socket = connect()
 
     fun open(path: Path) {
+        openPage(path)
+        await {
+            executeScript(
+                "return document.getElementById('setup-form') !== null && !document.getElementById('setup-form').hidden",
+            ) == true
+        }
+    }
+
+    fun openPage(path: Path) {
         val url = path.toUri().toString()
         val answer = command("Page.navigate", buildJsonObject { put("url", url) })
         check(answer["errorText"] == null) { "Cannot load local helper page" }
         await {
             executeScript(
                 "return location.href === arguments[0] && document.readyState === 'complete' && " +
-                    "document.getElementById('setup-form') !== null && !document.getElementById('setup-form').hidden",
+                    "document.body !== null",
                 url,
             ) == true
         }
+    }
+
+    fun viewport(width: Int) {
+        command(
+            "Emulation.setDeviceMetricsOverride",
+            buildJsonObject {
+                put("width", width)
+                put("height", 900)
+                put("deviceScaleFactor", 1)
+                put("mobile", false)
+            },
+        )
+    }
+
+    fun screenshot(path: Path) {
+        val answer = command("Page.captureScreenshot", buildJsonObject { put("format", "png") })
+        Files.createDirectories(path.parent)
+        Files.write(path, Base64.decode(answer.getValue("data").jsonPrimitive.content))
     }
 
     fun executeScript(

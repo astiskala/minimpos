@@ -1,0 +1,44 @@
+#!/usr/bin/env bash
+# Own new disposable clones; never overwrite or reset a source AVD.
+set -euo pipefail
+avds=${ANDROID_AVD_HOME:-$HOME/.android/avd}
+sdk=${ANDROID_HOME:-${ANDROID_SDK_ROOT:-$HOME/Library/Android/sdk}}
+usage() {
+  echo 'Usage: scripts/docs-emulator clone SOURCE NAME | start NAME PORT | help'
+  echo 'NAME must start MiniMpos_Docs_Disposable_; source must already contain the demo snapshots.'
+}
+name_ok() { [[ $1 =~ ^MiniMpos_Docs_Disposable_[A-Za-z0-9_]+$ ]]; }
+case ${1:-help} in
+  help) usage ;;
+  clone)
+    if [[ $# == 3 && $2 =~ ^[A-Za-z0-9_.-]+$ ]] && name_ok "$3"; then
+      :
+    else
+      usage >&2; exit 2
+    fi
+    source=$avds/$2.avd
+    target=$avds/$3.avd
+    [[ -d $source && ! -e $target && ! -L $target && ! -e $avds/$3.ini && ! -L $avds/$3.ini ]] || {
+      echo 'Source missing or destination already exists; nothing overwritten.' >&2; exit 1;
+    }
+    case $(uname -s) in
+      Darwin) cp -cR "$source" "$target" ;;
+      Linux) cp --reflink=auto -R "$source" "$target" ;;
+      *) cp -R "$source" "$target" ;;
+    esac
+    sed -i.bak -e "s/^AvdId=.*/AvdId=$3/" -e "s/^avd.ini.displayname=.*/avd.ini.displayname=$3/" "$target/config.ini"
+    printf 'avd.ini.encoding=UTF-8\npath=%s\n' "$target" > "$avds/$3.ini"
+    printf 'Disposable screenshot clone of %s\n' "$2" > "$target/minimpos-docs-disposable"
+    echo "Created $3. Source untouched."
+    ;;
+  start)
+    if [[ $# == 3 && $3 =~ ^5[0-9]{3}$ ]] && name_ok "$2" && (( $3 >= 5554 && $3 <= 5682 && $3 % 2 == 0 )); then
+      :
+    else
+      usage >&2; exit 2;
+    fi
+    [[ -f $avds/$2.avd/minimpos-docs-disposable ]] || { echo 'Not an owned disposable docs AVD.' >&2; exit 1; }
+    exec "$sdk/emulator/emulator" -avd "$2" -port "$3" -read-only -no-window -no-snapshot -gpu swiftshader_indirect -cores 2
+    ;;
+  *) usage >&2; exit 2 ;;
+esac

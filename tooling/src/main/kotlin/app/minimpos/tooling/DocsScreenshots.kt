@@ -12,7 +12,8 @@ import kotlin.io.path.listDirectoryEntries
 import kotlin.io.path.nameWithoutExtension
 
 /**
- * Turns raw 720×1280 docs emulator captures into the website's 540×960 screenshots: the status and gesture bars are
+ * Turns raw docs emulator captures into frame-sized screenshots: S1F2 720×1280 becomes 540×960; AMS1 stays 480×800.
+ * The status and navigation bars are
  * painted with the background of the app's adjacent row (Adyen terminals show neither), the image is scaled down
  * smoothly and saved as an indexed PNG of at most [COLOURS] colours (median cut, no dithering).
  */
@@ -28,6 +29,15 @@ internal object DocsScreenshots {
 
     /** See [WIDTH]. */
     const val HEIGHT = 960
+
+    /** AMS1 raw and saved width in pixels; this capture is not resized. */
+    const val AMS1_WIDTH = 480
+
+    /** AMS1 raw and saved height in pixels. */
+    const val AMS1_HEIGHT = 800
+
+    private const val AMS1_STATUS_BAR = 36
+    private const val AMS1_NAVIGATION_BAR = 72
 
     /** The status and gesture bar height in raw pixels. */
     const val BAR = 48
@@ -54,31 +64,43 @@ internal object DocsScreenshots {
         raw: Path,
         images: Path,
     ): List<Path> =
-        raw.listDirectoryEntries().filter { it.extension == "png" }.sorted().map { file ->
-            val name = file.nameWithoutExtension
-            val language = (LANGUAGES + "en").firstOrNull { name.startsWith("$it-") }
-            requireNotNull(language) { "Expected <en|zh-CN|zh-Hant|ja>-<name>.png: $name" }
-            val target = (if (language == "en") images else images.resolve(language)).resolve(name.removePrefix("$language-") + ".png")
-            val image = requireNotNull(ImageIO.read(file.toFile())) { "Not a PNG: $name" }
-            Files.createDirectories(target.parent)
-            ImageIO.write(process(image), "png", target.toFile())
-            target
-        }
+        raw
+            .listDirectoryEntries()
+            .filter { it.extension == "png" }
+            .also { require(it.isNotEmpty()) { "No raw PNG captures to process" } }
+            .sorted()
+            .map { file ->
+                val name = file.nameWithoutExtension
+                val language = (LANGUAGES + "en").firstOrNull { name.startsWith("$it-") }
+                requireNotNull(language) { "Expected <en|zh-CN|zh-Hant|ja>-<name>.png: $name" }
+                val target = (if (language == "en") images else images.resolve(language)).resolve(name.removePrefix("$language-") + ".png")
+                val image = requireNotNull(ImageIO.read(file.toFile())) { "Not a PNG: $name" }
+                val ams1 = name.endsWith("-sale-ams1")
+                require(image.width == (if (ams1) AMS1_WIDTH else RAW_WIDTH) && image.height == (if (ams1) AMS1_HEIGHT else RAW_HEIGHT)) {
+                    "Capture dimensions do not match its terminal: $name"
+                }
+                Files.createDirectories(target.parent)
+                ImageIO.write(process(image), "png", target.toFile())
+                target
+            }
 
     /** One raw capture as a finished screenshot; see [DocsScreenshots]. */
     fun process(raw: BufferedImage): BufferedImage {
-        require(raw.width == RAW_WIDTH && raw.height == RAW_HEIGHT) { "Expected a ${RAW_WIDTH}x$RAW_HEIGHT capture" }
-        val painted = BufferedImage(RAW_WIDTH, RAW_HEIGHT, BufferedImage.TYPE_INT_RGB)
-        val top = background(raw, BAR)
-        val bottom = background(raw, RAW_HEIGHT - BAR - 1)
-        for (x in 0..<RAW_WIDTH) {
-            for (y in 0..<RAW_HEIGHT) {
+        val ams1 = raw.width == AMS1_WIDTH && raw.height == AMS1_HEIGHT
+        require(ams1 || (raw.width == RAW_WIDTH && raw.height == RAW_HEIGHT)) { "Expected a 720x1280 or 480x800 capture" }
+        val topBar = if (ams1) AMS1_STATUS_BAR else BAR
+        val bottomBar = if (ams1) AMS1_NAVIGATION_BAR else BAR
+        val painted = BufferedImage(raw.width, raw.height, BufferedImage.TYPE_INT_RGB)
+        val top = background(raw, topBar)
+        val bottom = background(raw, raw.height - bottomBar - 1)
+        for (x in 0..<raw.width) {
+            for (y in 0..<raw.height) {
                 painted.setRGB(
                     x,
                     y,
-                    if (y < BAR) {
+                    if (y < topBar) {
                         top
-                    } else if (y >= RAW_HEIGHT - BAR) {
+                    } else if (y >= raw.height - bottomBar) {
                         bottom
                     } else {
                         raw.getRGB(x, y)
@@ -86,7 +108,7 @@ internal object DocsScreenshots {
                 )
             }
         }
-        return quantize(scale(painted, WIDTH, HEIGHT), COLOURS)
+        return quantize(if (ams1) painted else scale(painted, WIDTH, HEIGHT), COLOURS)
     }
 
     /** The most common colour of row [y]: the screen's background there, so content running under a bar is cut cleanly. */
@@ -114,13 +136,13 @@ internal object DocsScreenshots {
         return scaled
     }
 
-    /** [image] with at most [colours] colours chosen by median cut, each pixel mapped to its nearest, undithered. */
+    /** [image] with at most [colours] median-cut colours, population-weighted centroids and nearest, undithered pixels. */
     fun quantize(
         image: BufferedImage,
         colours: Int,
     ): BufferedImage {
         val pixels = IntArray(image.width * image.height) { image.getRGB(it % image.width, it / image.width) and RGB_MASK }
-        val palette = medianCut(pixels.distinct(), colours)
+        val palette = medianCut(pixels.asIterable().groupingBy { it }.eachCount(), colours)
         val model =
             IndexColorModel(
                 8,
@@ -139,10 +161,10 @@ internal object DocsScreenshots {
     }
 
     private fun medianCut(
-        colours: List<Int>,
+        colours: Map<Int, Int>,
         count: Int,
     ): List<Int> {
-        val boxes = mutableListOf(colours)
+        val boxes = mutableListOf(colours.keys.toList())
         while (boxes.size < count) {
             val box = boxes.filter { it.size > 1 }.maxByOrNull { range(it).second } ?: break
             val channel = range(box).first
@@ -151,7 +173,13 @@ internal object DocsScreenshots {
             boxes += sorted.subList(0, sorted.size / 2)
             boxes += sorted.subList(sorted.size / 2, sorted.size)
         }
-        return boxes.map { box -> CHANNELS.fold(0) { rgb, c -> rgb or (box.sumOf { channel(it, c) } / box.size shl shift(c)) } }
+        return boxes.map { box ->
+            val population = box.sumOf { colours.getValue(it).toLong() }
+            CHANNELS.fold(0) { rgb, c ->
+                val average = box.sumOf { channel(it, c).toLong() * colours.getValue(it) } / population
+                rgb or (average.toInt() shl shift(c))
+            }
+        }
     }
 
     /** The channel (0 red, 1 green, 2 blue) with the widest spread in [box], and that spread. */

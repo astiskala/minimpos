@@ -1,0 +1,43 @@
+#!/usr/bin/env bash
+# Offline image post-processing; Chrome renders local files with outbound DNS disabled.
+set -euo pipefail
+root=$(cd "$(dirname "$0")/.." && pwd)
+usage() {
+  echo 'Usage: scripts/docs-assets process RAW | social | review | help'
+  echo 'MINIMPOS_CHROME overrides Chrome; DOCS_WORK defaults to build/docs-assets.'
+}
+command=${1:-help}
+case $command in
+  process) [[ $# == 2 ]] || { usage >&2; exit 2; } ;;
+  social | review | help) [[ $# == 1 || $# == 0 ]] || { usage >&2; exit 2; } ;;
+  *) usage >&2; exit 2 ;;
+esac
+if [[ $command == help ]]; then usage; exit; fi
+work=${DOCS_WORK:-$root/build/docs-assets}
+mkdir -p "$work"
+bash "$root/scripts/gradle" :tooling:cliJar
+tooling=(java -jar "$root/tooling/build/libs/minimpos-tooling.jar")
+case $command in
+  process) "${tooling[@]}" screenshots "$2" "$root/docs/images" ;;
+  review) "${tooling[@]}" docs-assets review "$root/docs/images" "$work" ;;
+  social)
+    chrome=${MINIMPOS_CHROME:-}
+    if [[ -z $chrome ]]; then
+      case $(uname -s) in
+        Darwin) chrome='/Applications/Google Chrome.app/Contents/MacOS/Google Chrome' ;;
+        *) chrome=$(command -v google-chrome || command -v chromium || true) ;;
+      esac
+    fi
+    [[ -x $chrome ]] || { echo 'Set MINIMPOS_CHROME to Chrome/Chromium or chrome-headless-shell.' >&2; exit 1; }
+    render=$(mktemp -d "$work/social.XXXXXX")
+    "${tooling[@]}" docs-assets pages "$root" "$render"
+    for language in en zh-CN zh-Hant ja; do
+      "$chrome" --headless --allow-file-access-from-files --force-device-scale-factor=1 --hide-scrollbars \
+        --disable-background-networking --disable-component-update --disable-sync --no-first-run \
+        "--user-data-dir=$render/profile-$language" \
+        '--host-resolver-rules=MAP * ~NOTFOUND' --timeout=15000 \
+        "--screenshot=$render/$language-social.png" --window-size=1200,630 "file://$render/$language.html"
+    done
+    "${tooling[@]}" docs-assets social "$render" "$root/docs/images"
+    ;;
+esac

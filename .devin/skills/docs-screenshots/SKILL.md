@@ -34,8 +34,8 @@ description: Re-capture the screenshots and social image of the docs/ website, o
 `scripts/docs-capture` (Bash, checked by shellcheck) drives the docs emulator by visible text, so one sequence works
 in every language: `prepare`, `locale LANG`, `snapshot`/`restore NAME.tar` (app data in `/data/local/tmp`), `launch LANG`,
 `tap LANG KEY` (a string resource, or `=literal text`), `scroll LANG KEY`, `shot LANG NAME` and `finish`. Raw
-720×1280 captures collect in `/tmp/minimpos-shots` as `LANG-NAME.png`; `process` then paints the system bars, scales
-to 540×960 and quantizes them into `docs/images[/LANG]/` through `:tooling`'s `screenshots` command
+Captures collect in `/tmp/minimpos-shots` as `LANG-NAME.png`; `process` then paints the system bars, scales S1F2 to
+540×960 (AMS1 stays 480×800) and quantizes them into `docs/images[/LANG]/` through `:tooling`'s `screenshots` command
 (`DocsScreenshots`). Keep per-language fixtures as on-device snapshots (`docs-<set>-<lang>.tar`); `flow LANG NAME...`
 restores one before each named flow:
 
@@ -44,19 +44,22 @@ restores one before each named flow:
 - `authorize`: pre-auth; `preauth`: pre-auth-detail; `settings`: terminal-setup, tax, terminal-tipping.
 - `transfer`: transfer, export; `partial`: partial-payment; `gratuity`: tip-receipt, tip; `tax_dialog`: tax-dialog.
 - `offline`: offline-payment, reconciliation.
-- `ams1`: sale and the 480×800 sale-ams1 image. Keep that raw image outside the S1F2 processing directory.
+- `ams1`: sale and the 480×800 sale-ams1 image. Both terminal sizes now share the raw processing directory.
 
 `settings LANG KEY` opens a Settings section past the admin PIN; `expand_receipt` expands the open simulated printer.
 Add a named flow there for each screenshot you
 recapture by hand twice, rather than a temporary script. Do not edit the running shell script during a capture.
 Launch waits for localized Home controls; a Home capture checks them again and refuses splash screens.
+For cloning, approved reset opt-in, batch capture, image processing/review and shutdown, use
+[CONTRIBUTING's repeatable workflow](../../../CONTRIBUTING.md#repeatable-screenshot-refresh). Do not recreate those
+steps with temporary Python, Node or shell scripts. Fixture resets refuse non-emulators, unowned AVDs and missing archives.
 
 ## Emulator
 
 - AVD `MiniMpos_Docs_S1F2`: a clone (`cp -c -R`) of `MiniMpos_Docs_Pixel4a` (API 33 google_apis, gesture nav,
   `hw.keyboard=no`) with `hw.lcd.width/height/density` = 720/1280/320, so it keeps the demo data. Use these separate
-  AVDs so existing emulator data is untouched. For a refresh, clone a stopped docs AVD under a new name, updating its
-  `config.ini` and sibling `.ini` paths; never reset another emulator's data. Headless:
+  AVDs as fixture sources so existing emulator data is untouched. For a refresh, use `scripts/docs-emulator clone`
+  on a stopped source, then `start` on the new owned disposable clone; never reset another emulator's data. Headless:
   `-no-window -no-snapshot -gpu swiftshader_indirect`. A
   `-read-only` boot of the Pixel 4a AVD from its snapshot stayed `offline` in adb.
 - Disable the Pixel 4a emulation overlays (`cmd overlay disable com.android.internal.emulation.pixel_4a` and
@@ -183,16 +186,14 @@ closes. Always restore the market's device locale when recapturing only part of 
 
 ## Social image and site rendering
 
-- `social.png` (1200×630) is an HTML page (light green-white background, favicon + "Mini mPOS", "The whole checkout.
-  One payment terminal.", a lead line, a navy "Free and open source" pill, a grey disclosure footer, and
-  `sale-ams1.png`/`receipt.png` in the blank `terminal-ams1.svg`/`terminal-s1f2.svg` frames, rotated -6° and 6°, with
-  the same screen insets as `docs/styles.css`). Render it with `--allow-file-access-from-files` and
-  `--force-device-scale-factor=1`.
+- `scripts/docs-assets social` generates `social.png` (1200×630) from the checked-in `social.html` template and
+  `social-copy.json` beside this skill. Keep their original design, frame insets and demo disclosures. It renders all
+  four languages with local assets only; no host paths or browser versions are embedded in a temporary generator.
 - The site's terminal frames are original SVG illustrations: keep their bottom bezels blank (no model labels) and the
   AMS1's top free of an NFC symbol; `./gradlew :website-test:check` checks this.
-- Render pages with Playwright's `chrome-headless-shell` (`~/Library/Caches/ms-playwright/`) and
-  `--screenshot --window-size=W,H`; full Chrome headless and the Playwright MCP browser crashed in this sandbox.
-- Review guides at desktop and phone widths. Guide frames are up to 300 px wide, with captions up to 420 px;
+- Use `MINIMPOS_CHROME` for Playwright's installed `chrome-headless-shell` if regular Chrome crashes in the sandbox.
+  The existing JDK browser driver now performs the desktop/phone layout audit in `GuideLayoutTest`; inspect its report
+  screenshots rather than recreating a DevTools driver. Guide frames are up to 300 px wide, with captions up to 420 px;
   paired wallet screenshots stack on phones. Check that images load, captions stay readable and pages do not overflow.
 - Let wallet logos finish loading from Adyen's public CDN before capturing. They are decorative and cached; unavailable
   images fall back to a wallet icon without hiding the name or blocking selection.

@@ -31,6 +31,23 @@ class DocsScreenshotsTest {
         }
 
     @Test
+    fun `empty capture folders cannot silently reuse old website images`() {
+        val raw = folder.newFolder("empty").toPath()
+        val images = folder.newFolder("unchanged").toPath()
+        val result = Cli.run("screenshots", raw.toString(), images.toString())
+        assertThat(result.code).isEqualTo(1)
+        assertThat(result.output).contains("No raw PNG captures")
+    }
+
+    @Test
+    fun `palette centroids weight pixel population so rare antialiasing colours cannot wash out brand colours`() {
+        val image = BufferedImage(100, 1, BufferedImage.TYPE_INT_RGB)
+        for (x in 0..<100) image.setRGB(x, 0, 0x00112C)
+        image.setRGB(99, 0, 0xFFFFFF)
+        assertThat(DocsScreenshots.quantize(image, 1).getRGB(0, 0) and 0xFFFFFF).isEqualTo(0x02132E)
+    }
+
+    @Test
     fun `system bars take the adjacent rows' background and the result is a small indexed frame-sized image`() {
         val shot = DocsScreenshots.process(capture())
         assertThat(shot.width).isEqualTo(DocsScreenshots.WIDTH)
@@ -55,6 +72,24 @@ class DocsScreenshotsTest {
         assertThat(
             (0..<4).map { quantized.getRGB(it, 0) and 0xFFFFFF },
         ).containsExactly(0xFFFFFF, 0x00112C, 0x0ABF53, 0xFFFFFF).inOrder()
+    }
+
+    @Test
+    fun `AMS1 removes 36px status and 72px navigation bars without resizing or losing terminal identity`() {
+        val image = BufferedImage(480, 800, BufferedImage.TYPE_INT_RGB)
+        for (y in 36..<728) for (x in 0..<480) image.setRGB(x, y, 0x00843F)
+        val processed = DocsScreenshots.process(image)
+        assertThat(processed.width).isEqualTo(480)
+        assertThat(processed.height).isEqualTo(800)
+        assertThat(processed.getRGB(0, 0) and 0xFFFFFF).isEqualTo(0x00843F)
+        assertThat(processed.getRGB(479, 799) and 0xFFFFFF).isEqualTo(0x00843F)
+        val raw = folder.newFolder("ams1").toPath()
+        val images = folder.newFolder("ams1-output").toPath()
+        ImageIO.write(image, "png", raw.resolve("en-sale-ams1.png").toFile())
+        assertThat(DocsScreenshots.processAll(raw, images)).containsExactly(images.resolve("sale-ams1.png"))
+        ImageIO.write(image, "png", raw.resolve("en-home.png").toFile())
+        assertThrows(IllegalArgumentException::class.java) { DocsScreenshots.processAll(raw, images) }
+        assertThrows(IllegalArgumentException::class.java) { DocsScreenshots.process(BufferedImage(480, 10, BufferedImage.TYPE_INT_RGB)) }
     }
 
     @Test

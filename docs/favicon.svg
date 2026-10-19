@@ -1,5 +1,16 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="18 18 72 72" role="img" aria-label="Mini mPOS">
-  <rect x="18" y="18" width="72" height="72" rx="18" fill="#0ABF53"/>
-  <path fill="#FFFFFF" d="M38,30h32a2,2 0,0 1,2 2v44l-4,-3 -4,3 -4,-3 -4,3 -4,-3 -4,3 -4,-3 -4,3 -4,-3 -4,3V32a2,2 0,0 1,2 -2z"/>
-  <path fill="#0ABF53" d="M42,38h16v3h-16zM62,38h4v3h-4zM42,46h16v3h-16zM62,46h4v3h-4zM42,54h16v3h-16zM62,54h4v3h-4zM42,63h24v3h-24z"/>
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512" fill="none" color="#fff" role="img" aria-labelledby="title desc">
+  <title id="title">Mini mPOS icon</title>
+  <desc id="desc">A receipt bearing a lowercase m, with a tilted payment card and contactless waves.</desc>
+  <rect width="512" height="512" fill="#00843F"/>
+  <g transform="matrix(4.947429 0 0 4.947429 -0.316578 24.821031)">
+    <g stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="4">
+      <path d="M55 35V15H20a5 5 0 0 0-5 5v59l7-5 7 5 7-5"/>
+      <path d="M25 38V24m0 7c0-9 10-9 10 0v7m0-7c0-9 10-9 10 0v7"/>
+      <g transform="rotate(-12 63 60)">
+        <rect width="46" height="30" x="40" y="45" rx="5"/>
+        <path d="M41 55h44"/>
+      </g>
+      <path d="M66 30q7 0 10 6m-9-16q13 0 19 11"/>
+    </g>
+  </g>
 </svg>

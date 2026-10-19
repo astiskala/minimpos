@@ -1,5 +1,8 @@
 package app.minimpos.app.ui.components
 
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardActions
@@ -20,11 +23,13 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import app.minimpos.app.R
 import app.minimpos.app.terminal.SharedKeyOffer
+import app.minimpos.app.ui.theme.LocalDimens
 import app.minimpos.core.shopper.ShopperReferences
 
 /**
@@ -64,7 +69,8 @@ fun ConfirmDialog(
 
 /**
  * Reports how an action went: [message] under a success or error badge ([isError]) and [title], scrolling on small
- * screens. The message is tagged [tag] and the OK button `[tag]Ok`; both OK and dismissing call [onDismiss].
+ * screens. Optional [details] appear as spaced bullets with hanging indents. The message is tagged [tag] and the OK
+ * button `[tag]Ok`; both OK and dismissing call [onDismiss].
  */
 @Composable
 fun ResultDialog(
@@ -73,12 +79,26 @@ fun ResultDialog(
     isError: Boolean,
     tag: String,
     onDismiss: () -> Unit,
+    details: List<String> = emptyList(),
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
         icon = { StatusBadge(if (isError) StatusKind.ERROR else StatusKind.SUCCESS, size = 40.dp) },
         title = { Text(title) },
-        text = { Text(message, Modifier.verticalScroll(rememberScrollState()).testTag(tag)) },
+        text = {
+            Column(
+                Modifier.verticalScroll(rememberScrollState()).semantics(mergeDescendants = true) {}.testTag(tag),
+                verticalArrangement = Arrangement.spacedBy(LocalDimens.current.spacing),
+            ) {
+                Text(message)
+                details.forEach { detail ->
+                    Row(horizontalArrangement = Arrangement.spacedBy(LocalDimens.current.spacing)) {
+                        Text("•")
+                        Text(detail, Modifier.weight(1f))
+                    }
+                }
+            }
+        },
         confirmButton = {
             TextButton(onClick = onDismiss, modifier = Modifier.testTag("${tag}Ok")) { Text(stringResource(R.string.action_ok)) }
         },

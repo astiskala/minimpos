@@ -35,6 +35,9 @@ object SettingsSections {
     /** History retention, clearing history, sample data and setup transfer. */
     const val DATA = "data"
 
+    /** User guides, issue reporting and device troubleshooting. */
+    const val HELP = "help"
+
     /** App, device and terminal details. */
     const val ABOUT = "about"
 }

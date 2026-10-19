@@ -1,6 +1,10 @@
 package app.minimpos.app.feature.settings
 
 import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.HelpOutline
+import androidx.compose.material.icons.automirrored.filled.MenuBook
+import androidx.compose.material.icons.filled.BugReport
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -13,11 +17,11 @@ import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import app.minimpos.app.R
+import app.minimpos.app.data.settings.TerminalMode
 import app.minimpos.app.feature.labels
 import app.minimpos.app.share.TroubleshootingShareEffect
 import app.minimpos.app.terminal.TapToPayCheck
 import app.minimpos.app.ui.components.SecondaryButton
-import app.minimpos.terminal.transport.TerminalEnvironment
 import java.time.Instant
 
 /**
@@ -65,10 +69,6 @@ internal fun ColumnScope.TapToPayTroubleshooting(
         SettingNote(labels.boarding)
         check.checkedAt?.let { SettingNote(stringResource(R.string.tap_check_time, Instant.ofEpochMilli(it).toString())) }
         check.boardingAt?.let { SettingNote(stringResource(R.string.tap_boarding_time, Instant.ofEpochMilli(it).toString())) }
-        val credential = originalUsername ?: check.credential?.username ?: stringResource(R.string.tap_current_credential)
-        SettingNote(stringResource(R.string.tap_checklist, credential), Modifier.testTag("tapClientKeyChecklist"))
-        SettingNote(stringResource(R.string.tap_session_failure))
-        CustomerAreaLink(check)
         SettingNote(stringResource(R.string.tap_report_notice))
         SettingActions {
             SecondaryButton(stringResource(R.string.tap_share_report), onReport, Modifier.testTag("shareTapReport"))
@@ -77,17 +77,35 @@ internal fun ColumnScope.TapToPayTroubleshooting(
     TroubleshootingShareEffect(report, onReportConsume)
 }
 
+/** Guides and issue reporting, with advisory details for the selected Tap to Pay destination. */
 @Composable
-private fun ColumnScope.CustomerAreaLink(check: TapToPayCheck) {
+internal fun ColumnScope.HelpSection(
+    mode: TerminalMode,
+    setup: TerminalSetupActions,
+    events: TerminalSetupEvents,
+) {
     val uri = LocalUriHandler.current
-    check.environment?.let { environment ->
-        val host = if (environment == TerminalEnvironment.TEST) "ca-test" else "ca-live"
-        SettingActions {
-            SecondaryButton(
-                stringResource(R.string.tap_open_customer_area, environment.name),
-                { uri.openUri("https://$host.adyen.com/") },
-                Modifier.testTag("tapCustomerArea"),
-            )
-        }
+    SettingActions {
+        SecondaryButton(
+            stringResource(R.string.help_user_guide),
+            { uri.openUri("https://minimpos.app/using.html") },
+            Modifier.testTag("helpUserGuide"),
+            icon = Icons.AutoMirrored.Filled.MenuBook,
+        )
+        SecondaryButton(
+            stringResource(R.string.help_troubleshooting),
+            { uri.openUri("https://minimpos.app/troubleshooting.html") },
+            Modifier.testTag("helpTroubleshooting"),
+            icon = Icons.AutoMirrored.Filled.HelpOutline,
+        )
+        SecondaryButton(
+            stringResource(R.string.help_report_issue),
+            { uri.openUri("https://github.com/astiskala/minimpos/issues") },
+            Modifier.testTag("helpReportIssue"),
+            icon = Icons.Default.BugReport,
+        )
+    }
+    if (mode == TerminalMode.PAYMENTS_APP) {
+        TapToPayTroubleshooting(setup.diagnostics, events::onTapToPayReport, setup.report, events::onTapReportShared)
     }
 }

@@ -89,6 +89,36 @@ class TapToPaySettingsTest {
         compose.onNodeWithTag("section_terminal").performClick()
     }
 
+    private fun openHelp() {
+        compose.onNodeWithTag("back").performClick()
+        waitForTag("section_help")
+        compose.onNodeWithTag("section_help").performScrollTo().performClick()
+        waitForTag("helpUserGuide")
+    }
+
+    private fun returnToTerminal() {
+        compose.onNodeWithTag("back").performClick()
+        compose.onNodeWithTag("section_terminal").performScrollTo().performClick()
+    }
+
+    @Test
+    @Config(qualifiers = "en-rAU-w320dp-h460dp-hdpi")
+    fun `help links open the guides and issue tracker on AMS1`() {
+        openTerminalSettings()
+        openHelp()
+        val application = ApplicationProvider.getApplicationContext<Application>()
+        listOf(
+            "helpUserGuide" to "https://minimpos.app/using.html",
+            "helpTroubleshooting" to "https://minimpos.app/troubleshooting.html",
+            "helpReportIssue" to "https://github.com/astiskala/minimpos/issues",
+        ).forEach { (tag, url) ->
+            compose.onNodeWithTag(tag).performScrollTo().performClick()
+            val opened = shadowOf(application).nextStartedActivity
+            assertThat(opened.action).isEqualTo(Intent.ACTION_VIEW)
+            assertThat(opened.dataString).isEqualTo(url)
+        }
+    }
+
     @Test
     fun `without the Payments app, Google Play opens on it, and the app shows once installed`() {
         openTerminalSettings()
@@ -162,7 +192,7 @@ class TapToPaySettingsTest {
     private fun testConnection(expected: String) {
         compose.onNodeWithTag("testConnection").performScrollTo().performClick()
         compose.waitUntilAtLeastOneExists(hasTestTag("connectionResult") and hasText(expected, substring = true), 15_000)
-        compose.onNodeWithTag("connectionResult").assertTextContains(expected, substring = true)
+        compose.onNodeWithTag("connectionResult").assertTextContains(expected, substring = true).assertTextContains("•")
         compose.onNodeWithTag("connectionResultOk").performClick()
         compose.waitUntilDoesNotExist(hasTestTag("connectionResult"), 15_000)
         compose.onNodeWithTag("checkTapToPay").assertDoesNotExist()
@@ -173,12 +203,15 @@ class TapToPaySettingsTest {
     fun `confirmed missing key offers scoped guidance refresh and an explicitly redacted share on AMS1`() {
         management.credentialResult = BoardingCredentialCheck.Verified("CRED-1", "ws@Company.Test", true, false)
         boardPhone()
+        compose.onNodeWithTag("tapClientKeyStatus").assertDoesNotExist()
+        compose.onNodeWithTag("tapTroubleshootingDetails").assertDoesNotExist()
+        compose.onNodeWithText("Credential saved.", substring = true).assertDoesNotExist()
+        openHelp()
         compose.onNodeWithTag("tapClientKeyStatus").performScrollTo().assertTextContains("has no client key", substring = true)
         compose.onNodeWithTag("tapTroubleshootingDetails").performScrollTo().performClick()
-        compose.onNodeWithTag("tapClientKeyChecklist").performScrollTo().assertTextContains("ws@Company.Test", substring = true)
-        compose.onNodeWithTag("tapCustomerArea").performScrollTo().performClick()
+        compose.onNodeWithText("Credential verified: ws@Company.Test").performScrollTo().assertExists()
+        compose.onNodeWithTag("tapCustomerArea").assertDoesNotExist()
         val application = ApplicationProvider.getApplicationContext<Application>()
-        assertThat(shadowOf(application).nextStartedActivity.dataString).isEqualTo("https://ca-test.adyen.com/")
         compose.onNodeWithTag("shareTapReport").performScrollTo().performClick()
         compose.awaitCondition("report chooser opens") { shadowOf(application).peekNextStartedActivity() != null }
         val chooser = shadowOf(application).nextStartedActivity
@@ -190,7 +223,9 @@ class TapToPaySettingsTest {
         assertThat(report).doesNotContain("boarding-key")
         assertThat(report).doesNotContain("checkout-key")
         management.credentialResult = BoardingCredentialCheck.Verified("CRED-1", "ws@Company.Test", true, true)
+        returnToTerminal()
         testConnection("Client key present")
+        openHelp()
         compose.waitUntilAtLeastOneExists(hasTestTag("tapClientKeyStatus") and hasText("Client key present", substring = true), 15_000)
         assertThat(management.requests).hasSize(1)
         assertThat(management.revoked).isEmpty()
@@ -198,13 +233,14 @@ class TapToPaySettingsTest {
 
     @Test
     @Config(qualifiers = "ja-w320dp-h460dp-hdpi")
-    fun `permission unavailable offers a manual checklist without declaring a missing key in Japanese`() {
+    fun `permission unavailable offers a troubleshooting guide without declaring a missing key in Japanese`() {
         boardPhone()
         management.credentialResult = BoardingCredentialCheck.Failed(Fault.Permission(ApiKey.PAYMENTS_APP))
         testConnection("GET /me")
+        openHelp()
         compose.waitUntilAtLeastOneExists(hasTestTag("tapClientKeyStatus") and hasText("GET /me", substring = true), 15_000)
         compose.onNodeWithTag("tapTroubleshootingDetails").performScrollTo().performClick()
-        compose.onNodeWithTag("tapClientKeyChecklist").performScrollTo().assertTextContains("クライアントキーの確認手順", substring = true)
+        compose.onNodeWithTag("helpTroubleshooting").performScrollTo().assertExists()
         compose.onNodeWithText("現在確認している Tap to Pay 設定用の認証情報にクライアントキーがありません。", substring = true).assertDoesNotExist()
         assertThat(management.requests).hasSize(1)
         assertThat(management.revoked).isEmpty()

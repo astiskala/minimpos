@@ -1,6 +1,7 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Bash and standard POSIX tools only: stream concise output, retain every raw byte and Gradle's exit status.
-set -u -o pipefail
+# Handle failures explicitly to preserve exit statuses and finish cleanup; do not enable errexit.
+set -uo pipefail
 root=$(CDPATH='' cd -- "$(dirname -- "$0")/.." && pwd) || exit "$?"
 umask 077
 mkdir -p "$root/build/gradle-logs" || exit "$?"
@@ -9,21 +10,30 @@ log="$directory/output.log"
 fifo="$directory/output.pipe"
 : > "$log"
 printf 'Gradle running. Full log: %s\n' "$log"
-if [ ! -x "$root/gradlew" ]; then
-  printf 'Cannot run Gradle: no executable wrapper at %s\n' "$root/gradlew" | tee -a "$log"
-  exit 1
+if [[ ! -x "$root/gradlew" ]]; then
+    printf 'Cannot run Gradle: no executable wrapper at %s\n' "$root/gradlew" | tee -a "$log"
+    exit 1
 fi
 mkfifo "$fifo" || exit "$?"
 trap 'rm -f "$fifo"' EXIT
 
 args=(--console=plain)
-while [ "$#" -gt 0 ]; do
-  case "$1" in
-    --) args+=("$@"); break ;;
-    --console) shift; [ "$#" -eq 0 ] || shift ;;
-    --console=*) shift ;;
-    *) args+=("$1"); shift ;;
-  esac
+while [[ "$#" -gt 0 ]]; do
+    case "$1" in
+        --)
+            args+=("$@")
+            break
+            ;;
+        --console)
+            shift
+            [[ "$#" -eq 0 ]] || shift
+            ;;
+        --console=*) shift ;;
+        *)
+            args+=("$1")
+            shift
+            ;;
+    esac
 done
 
 # Job control gives the wrapper its own process group and leaves INT enabled in background children.
@@ -38,8 +48,8 @@ tee "$log" < "$fifo" | awk '
 ' &
 reader=$!
 (
-  cd "$root" || exit "$?"
-  exec "$root/gradlew" "${args[@]}" < /dev/null
+    cd "$root" || exit "$?"
+    exec "$root/gradlew" "${args[@]}" < /dev/null
 ) > "$fifo" 2>&1 &
 child=$!
 set +m
@@ -48,34 +58,34 @@ trap 'interrupted=130; if kill -0 "$child" 2>/dev/null; then kill -INT -- "-$chi
 trap 'interrupted=143; if kill -0 "$child" 2>/dev/null; then kill -TERM -- "-$child"; fi' TERM
 wait "$child"
 status=$?
-if [ "$interrupted" -ne 0 ]; then
-  wait "$child"
-  status="$interrupted"
+if [[ "$interrupted" -ne 0 ]]; then
+    wait "$child"
+    status="$interrupted"
 fi
 wait "$reader"
 filtered=$?
 trap - INT TERM
-[ "$status" -ne 0 ] || status="$filtered"
+[[ "$status" -ne 0 ]] || status="$filtered"
 printf 'Gradle exit %s. Full log: %s\n' "$status" "$log"
-if [ "$status" -ne 0 ]; then
-  packet="$directory/repair.txt"
-  if {
-    printf 'Exit: %s\nFull log: %s\nRerun: cd ' "$status" "$log"
-    printf '%q' "$root"
-    printf ' && scripts/gradle '
-    printf '%q ' "${args[@]}"
-    printf '\nJUnit assertions, reruns and historical suite timings: scripts/dev report\n'
-    printf 'Reports: */build/reports/ and */build/test-results/\nUI artifacts: app/build/reports/ui-failures/\n'
-    awk '
+if [[ "$status" -ne 0 ]]; then
+    packet="$directory/repair.txt"
+    if {
+        printf 'Exit: %s\nFull log: %s\nRerun: cd ' "$status" "$log"
+        printf '%q' "$root"
+        printf ' && scripts/gradle '
+        printf '%q ' "${args[@]}"
+        printf '\nJUnit assertions, reruns and historical suite timings: scripts/dev report\n'
+        printf 'Reports: */build/reports/ and */build/test-results/\nUI artifacts: app/build/reports/ui-failures/\n'
+        awk '
       /^> Task .* FAILED$/ || / > .* FAILED$/ { print; frame = 0; next }
       /AssertionError|ComparisonFailure|expected:|but was:|^Execution failed for task/ { print; next }
       /app\.minimpos.*\([^)]*:[0-9]+\)/ && !frame { print; frame = 1; next }
       /^[ew]: .*\.(kt|kts):[0-9]+/ || /^[^[:space:]]+\.(kt|kts|xml|html|md):[0-9]+/ { print }
     ' "$log"
-  } > "$packet"; then
-    printf 'Repair packet: %s\n' "$packet"
-  else
-    printf 'Cannot write repair packet. Use full log: %s\n' "$log" >&2
-  fi
+    } > "$packet"; then
+        printf 'Repair packet: %s\n' "$packet"
+    else
+        printf 'Cannot write repair packet. Use full log: %s\n' "$log" >&2
+    fi
 fi
 exit "$status"

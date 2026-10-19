@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.HelpOutline
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.DeleteSweep
 import androidx.compose.material.icons.filled.Email
@@ -399,12 +400,25 @@ fun SettingsScreen(
                     tag = "appLanguage",
                     navigationIcon = Icons.Default.Language,
                 )
-                SettingNavRow(Icons.Default.Info, stringResource(R.string.settings_about), BuildConfig.VERSION_NAME, {
-                    open(SettingsSections.ABOUT)
-                }, tag = "section_about")
+                HelpAndAboutRows(onOpen = ::open)
             }
         }
     }
+}
+
+/** Help and app information, following the language choice in Settings. */
+@Composable
+private fun ColumnScope.HelpAndAboutRows(onOpen: (section: String) -> Unit) {
+    SettingNavRow(
+        Icons.AutoMirrored.Filled.HelpOutline,
+        stringResource(R.string.settings_help),
+        stringResource(R.string.settings_help_summary),
+        { onOpen(SettingsSections.HELP) },
+        tag = "section_help",
+    )
+    SettingNavRow(Icons.Default.Info, stringResource(R.string.settings_about), BuildConfig.VERSION_NAME, {
+        onOpen(SettingsSections.ABOUT)
+    }, tag = "section_about")
 }
 
 /** Destination setup and Adyen-side configuration; simulator controls appear only while payments go to it. */
@@ -695,6 +709,10 @@ private fun ColumnScope.SettingsContent(
             DataSection(state, actions, events, navigator)
         }
 
+        SettingsSections.HELP -> {
+            HelpSection(terminal.mode, setup, setupEvents)
+        }
+
         else -> {
             AboutSection(state)
         }
@@ -716,6 +734,7 @@ private fun sectionTitle(section: String): Int =
         SettingsSections.EMAIL -> R.string.settings_email
         SettingsSections.SECURITY -> R.string.settings_security
         SettingsSections.DATA -> R.string.settings_data
+        SettingsSections.HELP -> R.string.settings_help
         else -> R.string.settings_about
     }
 
@@ -1005,7 +1024,8 @@ private fun ConnectionResultDialog(
     val phoneLabels = phone.takeIf { status.mode == TerminalMode.PAYMENTS_APP && it.environment != null }?.labels()
     ResultDialog(
         title = stringResource(if (isError) R.string.settings_connection_result_failed else R.string.settings_connection_ok),
-        message = (listOf(outcome.text()) + details + listOfNotNull(phoneLabels?.clientKey, phoneLabels?.boarding)).joinToString("\n"),
+        message = outcome.text(),
+        details = details + listOfNotNull(phoneLabels?.clientKey, phoneLabels?.boarding),
         isError = isError,
         tag = "connectionResult",
         onDismiss = { onDismiss(if (apiOutcome != null) SettingsResult.CLOUD else SettingsResult.CONNECTION) },

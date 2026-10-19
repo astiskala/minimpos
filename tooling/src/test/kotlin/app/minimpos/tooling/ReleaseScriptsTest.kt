@@ -140,7 +140,7 @@ class ReleaseScriptsTest {
         body: String,
     ) {
         Files.createDirectories(file.parent)
-        Files.writeString(file, "#!/bin/bash\nset -eu\n$body\n").toFile().setExecutable(true)
+        Files.writeString(file, "#!/usr/bin/env bash\nset -eu\n$body\n").toFile().setExecutable(true)
     }
 
     private fun run(

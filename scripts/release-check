@@ -1,47 +1,68 @@
 #!/usr/bin/env bash
 # Read-only GitHub/download checks; never commits, dispatches, tags or publishes.
 set -euo pipefail
-root=$(cd "$(dirname "$0")/.." && pwd)
+root=$(CDPATH='' cd -- "$(dirname -- "$0")/.." && pwd)
 cd "$root"
 usage() {
-  echo 'Usage: scripts/release-check verify TAG [PREVIOUS_TAG] | watch RUN_ID TAG [PREVIOUS_TAG] | help'
-  echo 'Requires approved GitHub access; MINIMPOS_BUILD_TOOLS overrides the SDK build-tools directory.'
+    printf '%s\n' 'Usage: scripts/release-check verify TAG [PREVIOUS_TAG] | watch RUN_ID TAG [PREVIOUS_TAG] | help'
+    printf '%s\n' 'Requires approved GitHub access; MINIMPOS_BUILD_TOOLS overrides the SDK build-tools directory.'
 }
 case ${1:-help} in
-  help) usage; exit ;;
-  verify) [[ $# == 2 || $# == 3 ]] || { usage >&2; exit 2; }; shift ;;
-  watch)
-    [[ ( $# == 3 || $# == 4 ) && $2 =~ ^[1-9][0-9]*$ ]] || { usage >&2; exit 2; }
-    run=$2
-    shift 2
-    ;;
-  *) usage >&2; exit 2 ;;
+    help)
+        usage
+        exit
+        ;;
+    verify)
+        [[ $# == 2 || $# == 3 ]] || {
+            usage >&2
+            exit 2
+        }
+        shift
+        ;;
+    watch)
+        [[ ($# == 3 || $# == 4) && $2 =~ ^[1-9][0-9]*$ ]] || {
+            usage >&2
+            exit 2
+        }
+        run=$2
+        shift 2
+        ;;
+    *)
+        usage >&2
+        exit 2
+        ;;
 esac
 tag=$1
 previous=${2:-}
 for value in "$tag" ${previous:+"$previous"}; do
-  [[ $value =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo 'Expected vX.Y.Z tag.' >&2; exit 2; }
+    [[ $value =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] || {
+        printf '%s\n' 'Expected vX.Y.Z tag.' >&2
+        exit 2
+    }
 done
 sdk=${ANDROID_HOME:-${ANDROID_SDK_ROOT:-$HOME/Library/Android/sdk}}
 tools=${MINIMPOS_BUILD_TOOLS:-}
 if [[ -z $tools ]]; then
-  for candidate in "$sdk"/build-tools/*/apksigner; do
-    if [[ -x $candidate ]]; then tools=$(dirname "$candidate"); fi
-  done
+    for candidate in "$sdk"/build-tools/*/apksigner; do
+        if [[ -x $candidate ]]; then tools=$(dirname "$candidate"); fi
+    done
 fi
 for binary in apksigner zipalign aapt2; do
-  [[ -x $tools/$binary ]] || { echo "Missing Android build tool: $binary" >&2; exit 1; }
+    [[ -x $tools/$binary ]] || {
+        printf '%s\n' "Missing Android build tool: $binary" >&2
+        exit 1
+    }
 done
 bash "$root/scripts/gradle" :tooling:cliJar
 if [[ -n ${run:-} ]]; then gh run watch "$run" --interval 30 --exit-status; fi
 work=$(mktemp -d "$root/build/release-check.XXXXXX")
-echo "Verification files: $work"
+printf '%s\n' "Verification files: $work"
 gh release view "$tag" --json tagName,isDraft,isPrerelease,publishedAt,url,assets > "$work/release.json"
 gh release download "$tag" --pattern "minimpos-${tag#v}.apk" --pattern update.json --dir "$work"
 # Read the tag directly from GitHub: verification does not fetch refs or alter the checkout.
 gh api "repos/{owner}/{repo}/contents/version.properties?ref=$tag" -H 'Accept: application/vnd.github.raw+json' > "$work/version.properties"
 java -jar "$root/tooling/build/libs/minimpos-tooling.jar" release published \
-  --version "$work/version.properties" --artifact "$work" --metadata "$work/release.json"
+    --version "$work/version.properties" --artifact "$work" --metadata "$work/release.json"
 apk=$work/minimpos-${tag#v}.apk
 "$tools/apksigner" verify --verbose --print-certs --min-sdk-version 28 "$apk" | tee "$work/signature.txt"
 "$tools/zipalign" -c -P 16 4 "$apk"
@@ -50,11 +71,11 @@ code=$(sed -n 's/^versionCode=//p' "$work/version.properties")
 grep -F "name='app.minimpos' versionCode='$code' versionName='${tag#v}'" "$work/badging.txt"
 grep -F "minSdkVersion:'28'" "$work/badging.txt"
 if [[ -n $previous ]]; then
-  mkdir "$work/previous"
-  gh release download "$previous" --pattern "minimpos-${previous#v}.apk" --dir "$work/previous"
-  "$tools/apksigner" verify --print-certs --min-sdk-version 28 "$work/previous/minimpos-${previous#v}.apk" > "$work/previous/signature.txt"
-  grep -E '^Signer #[0-9]+ certificate SHA-256 digest:' "$work/signature.txt" > "$work/certificate.txt"
-  grep -E '^Signer #[0-9]+ certificate SHA-256 digest:' "$work/previous/signature.txt" > "$work/previous/certificate.txt"
-  cmp "$work/certificate.txt" "$work/previous/certificate.txt"
+    mkdir "$work/previous"
+    gh release download "$previous" --pattern "minimpos-${previous#v}.apk" --dir "$work/previous"
+    "$tools/apksigner" verify --print-certs --min-sdk-version 28 "$work/previous/minimpos-${previous#v}.apk" > "$work/previous/signature.txt"
+    grep -E '^Signer #[0-9]+ certificate SHA-256 digest:' "$work/signature.txt" > "$work/certificate.txt"
+    grep -E '^Signer #[0-9]+ certificate SHA-256 digest:' "$work/previous/signature.txt" > "$work/previous/certificate.txt"
+    cmp "$work/certificate.txt" "$work/previous/certificate.txt"
 fi
-echo "$tag verified: asset hashes, update metadata, package/version, signature, alignment${previous:+, signing-key continuity}."
+printf '%s\n' "$tag verified: asset hashes, update metadata, package/version, signature, alignment${previous:+, signing-key continuity}."

@@ -165,7 +165,7 @@
                 <p><span class="fix-label">解決</span>解除安裝不用的那個，再完成註冊並輸入共享密鑰。設定檢查通過並不代表測試了銀行卡付款，請完成一筆 TEST 付款。</p></dd></div>
             <div id="tap-to-pay-check"><dt>Tap to Pay 在出示卡片前傳回 UnavailableService</dt>
               <dd><p>Payments 應用程式無法完成請求。此通用錯誤不能證明 Adyen 服務中斷或缺少客戶端密鑰。如果收到 <code>1029_605</code>，這表示工作階段相關故障，不能證明缺少密鑰。</p>
-                <p>在<strong>設定 › 終端 › 共享密鑰</strong>點按<strong>測試連接</strong>，展開<strong>疑難排解詳情</strong>。連接測試亦會檢查 Tap to Pay 憑據及註冊狀態。Payments 應用程式的非成功結果頁面亦提供同一測試。憑據已儲存、已驗證、客戶端密鑰檢查、註冊狀態及付款結果互不等同；儲存或註冊不代表付款已準備就緒。</p>
+                <p>在<strong>設定 › 終端 › 共享密鑰</strong>點按<strong>測試連接</strong>。如需查看憑據詳情或分享已遮蔽敏感資料的報告，請開啟<strong>設定 › 說明與疑難排解 › 疑難排解詳情</strong>。連接測試亦會檢查 Tap to Pay 憑據及註冊狀態。Payments 應用程式的非成功結果頁面亦提供同一測試。憑據已儲存、已驗證、客戶端密鑰檢查、註冊狀態及付款結果互不等同；儲存或註冊不代表付款已準備就緒。</p>
                 <p>選用檢查透過公開的 Adyen Management v1 <a href="https://docs.adyen.com/api-explorer/Management/1/get/me">GET /me</a>，使用<strong>註冊 Payments 應用程式的同一憑據</strong>，而非獨立的 Terminal/Checkout 憑據。此端點允許任何 Management API 角色，但只有 Payments app role 可能不足。無權限時提供手動清單，不阻止付款。不要為診斷而新增廣泛的憑據管理權限。</p>
                 <p>如果確認缺少密鑰，在相應的 <a href="https://ca-test.adyen.com/">TEST Customer Area</a> 或 <a href="https://ca-live.adyen.com/">LIVE Customer Area</a> 中前往“Developers → API credentials”，選擇已驗證的憑據用戶名稱。在“Client settings → Authentication → Client key”下，只在沒有密鑰時產生密鑰。儲存，等候幾分鐘生效，然後再次<strong>測試連接</strong>。參見 <a href="https://docs.adyen.com/point-of-sale/mobile-android/build/payments-app">Adyen Payments 應用程式要求</a>。</p>
                 <p>客戶端密鑰必須屬於註冊所用的同一憑據。它不同於 API 密鑰，亦毋須貼到 Mini mPOS。只為滿足此原生前提不需要 Allowed origins。不要為排解問題而重新產生現有客戶端密鑰或輪換 API 密鑰。</p>

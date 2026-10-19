@@ -146,7 +146,7 @@ class DevRunnerTest {
         val root = temporary.newFolder().toPath()
         Files.createDirectories(root.resolve("scripts"))
         Files.copy(Path.of(System.getProperty("minimpos.repository"), "scripts/dev"), root.resolve("scripts/dev"))
-        Files.writeString(root.resolve("scripts/gradle"), "#!/bin/bash\nprintf '<%s>\\n' \"${'$'}@\"\n$body\n")
+        Files.writeString(root.resolve("scripts/gradle"), "#!/usr/bin/env bash\nprintf '<%s>\\n' \"${'$'}@\"\n$body\n")
         return root
     }
 

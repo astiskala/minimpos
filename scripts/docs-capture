@@ -22,7 +22,7 @@
 # SNAPSHOT the fixture snapshot set (default 1017). DOCS_RESET=1 explicitly permits demo resets on owned clones only.
 set -euo pipefail
 
-root=$(cd "$(dirname "$0")/.." && pwd)
+root=$(CDPATH='' cd -- "$(dirname -- "$0")/.." && pwd)
 adb=${ANDROID_HOME:-$HOME/Library/Android/sdk}/platform-tools/adb
 serial=${ANDROID_SERIAL:-emulator-5570}
 shots=${SHOTS:-/tmp/minimpos-shots}
@@ -32,575 +32,598 @@ device() { "$adb" -s "$serial" "$@"; }
 remote() { device shell "$@"; }
 
 demo_mode() {
-  remote settings put global sysui_demo_allowed 1
-  local demo=(am broadcast -a com.android.systemui.demo -e command)
-  remote "${demo[@]}" enter >/dev/null
-  remote "${demo[@]}" clock -e hhmm 0930 >/dev/null
-  remote "${demo[@]}" network -e wifi show -e level 4 >/dev/null
-  remote "${demo[@]}" battery -e level 100 -e plugged false >/dev/null
-  remote "${demo[@]}" notifications -e visible false >/dev/null
+    remote settings put global sysui_demo_allowed 1
+    local demo=(am broadcast -a com.android.systemui.demo -e command)
+    remote "${demo[@]}" enter > /dev/null
+    remote "${demo[@]}" clock -e hhmm 0930 > /dev/null
+    remote "${demo[@]}" network -e wifi show -e level 4 > /dev/null
+    remote "${demo[@]}" battery -e level 100 -e plugged false > /dev/null
+    remote "${demo[@]}" notifications -e visible false > /dev/null
 }
 
 restart_framework() {
-  remote stop
-  remote start
-  local _
-  for _ in $(seq 90); do
-    if [[ $(remote getprop sys.boot_completed | tr -d '\r') == 1 ]] &&
-      remote cmd package resolve-activity --brief "$package" | grep -q "$package"; then
-      break
-    fi
-    sleep 2
-  done
-  sleep 3
-  remote settings put global device_name S1F2-000158213605014
-  demo_mode
+    remote stop
+    remote start
+    local _
+    for _ in $(seq 90); do
+        if [[ $(remote getprop sys.boot_completed | tr -d '\r') == 1 ]] &&
+            remote cmd package resolve-activity --brief "$package" | grep -q "$package"; then
+            break
+        fi
+        sleep 2
+    done
+    sleep 3
+    remote settings put global device_name S1F2-000158213605014
+    demo_mode
 }
 
 # The value of string resource $2 in language $1, unescaped as the app shows it.
 string() {
-  local folder
-  case $1 in
-    en) folder=values ;; zh-CN) folder=values-zh-rCN ;; zh-Hant) folder=values-b+zh+Hant ;; ja) folder=values-ja ;;
-    *) echo "Unknown language: $1" >&2; exit 1 ;;
-  esac
-  sed -n "s:.*<string name=\"$2\"[^>]*>\(.*\)</string>.*:\1:p" "$root/app/src/main/res/$folder/strings.xml" |
-    head -n 1 | sed -e "s/\\\\'/'/g" -e 's/&amp;/\&/g'
+    local folder
+    case $1 in
+        en) folder=values ;; zh-CN) folder=values-zh-rCN ;; zh-Hant) folder=values-b+zh+Hant ;; ja) folder=values-ja ;;
+        *)
+            printf '%s\n' "Unknown language: $1" >&2
+            exit 1
+            ;;
+    esac
+    sed -n "s:.*<string name=\"$2\"[^>]*>\(.*\)</string>.*:\1:p" "$root/app/src/main/res/$folder/strings.xml" |
+        head -n 1 | sed -e "s/\\\\'/'/g" -e 's/&amp;/\&/g'
 }
 
 # What tap and scroll look for: =TEXT literally, ^KEY any text containing the longest literal part of string KEY (for
 # strings with format arguments, such as "Pay %1$s" or "%1$sを決済"), else string KEY.
 label() {
-  case $2 in
-    =*) printf '%s' "${2#=}" ;;
-    ^*) printf '^%s' "$(string "$1" "${2#^}" | sed 's/%[0-9]*\$*[sd]/\n/g' | awk '{ $1 = $1 } length > length(best) { best = $0 } END { print best }')" ;;
-    *) string "$1" "$2" ;;
-  esac
+    case $2 in
+        =*) printf '%s' "${2#=}" ;;
+        ^*) printf '^%s' "$(string "$1" "${2#^}" | sed 's/%[0-9]*\$*[sd]/\n/g' | awk '{ $1 = $1 } length > length(best) { best = $0 } END { print best }')" ;;
+        *) string "$1" "$2" ;;
+    esac
 }
 
 # The centre "x y" of the first node whose text or description is exactly $1 (whose text contains it when $1 begins
 # with ^); empty when none is on screen.
 centre() {
-  local text=${1#^} file=/data/local/tmp/docs-ui-$$-$RANDOM.xml xml
-  remote uiautomator dump "$file" >/dev/null 2>&1 || return 1
-  xml=$(device exec-out cat "$file") || return 1
-  remote rm -f "$file"
-  printf '%s' "$xml" | tr '>' '\n' |
-    if [[ $1 == ^* ]]; then
-      # In Chinese, the simulator disclosure also contains the word on the Pay button.
-      awk -v t="$text" 'match($0, /text="[^"]*"/) && index(substr($0, RSTART + 6, RLENGTH - 7), t)' | tail -n 1
-    else
-      grep -F -e "text=\"$text\"" -e "content-desc=\"$text\"" | head -n 1
-    fi |
-    sed -n 's/.*bounds="\[\([0-9]*\),\([0-9]*\)\]\[\([0-9]*\),\([0-9]*\)\]".*/\1 \2 \3 \4/p' |
-    awk '{ print int(($1 + $3) / 2), int(($2 + $4) / 2) }'
+    local text=${1#^} file=/data/local/tmp/docs-ui-$$-$RANDOM.xml xml
+    remote uiautomator dump "$file" > /dev/null 2>&1 || return 1
+    xml=$(device exec-out cat "$file") || return 1
+    remote rm -f "$file"
+    printf '%s' "$xml" | tr '>' '\n' |
+        if [[ $1 == ^* ]]; then
+            # In Chinese, the simulator disclosure also contains the word on the Pay button.
+            awk -v t="$text" 'match($0, /text="[^"]*"/) && index(substr($0, RSTART + 6, RLENGTH - 7), t)' | tail -n 1
+        else
+            grep -F -e "text=\"$text\"" -e "content-desc=\"$text\"" | head -n 1
+        fi |
+        sed -n 's/.*bounds="\[\([0-9]*\),\([0-9]*\)\]\[\([0-9]*\),\([0-9]*\)\]".*/\1 \2 \3 \4/p' |
+        awk '{ print int(($1 + $3) / 2), int(($2 + $4) / 2) }'
 }
 
 prepare() {
-  device root >/dev/null
-  sleep 2
-  remote cmd overlay disable com.android.internal.emulation.pixel_4a
-  remote cmd overlay disable com.android.systemui.emulation.pixel_4a
-  remote settings put secure icon_blacklist \
-    clock,battery,wifi,mobile,airplane,cast,hotspot,volume,bluetooth,location,alarm_clock,zen,ethernet,vpn,nfc,rotate,headset
-  local scale
-  for scale in window_animation_scale transition_animation_scale animator_duration_scale; do
-    remote settings put global "$scale" 0
-  done
-  restart_framework
+    device root > /dev/null
+    sleep 2
+    remote cmd overlay disable com.android.internal.emulation.pixel_4a
+    remote cmd overlay disable com.android.systemui.emulation.pixel_4a
+    remote settings put secure icon_blacklist \
+        clock,battery,wifi,mobile,airplane,cast,hotspot,volume,bluetooth,location,alarm_clock,zen,ethernet,vpn,nfc,rotate,headset
+    local scale
+    for scale in window_animation_scale transition_animation_scale animator_duration_scale; do
+        remote settings put global "$scale" 0
+    done
+    restart_framework
 }
 
 # The sample-data.json block of language $1, on one line.
 market() {
-  tr -d '\n' <"$root/.devin/skills/docs-screenshots/sample-data.json" | grep -o "\"$1\": *{.*" | head -n 1
+    tr -d '\n' < "$root/.devin/skills/docs-screenshots/sample-data.json" | grep -o "\"$1\": *{.*" | head -n 1
 }
 
 locale() {
-  local block locale zone
-  block=$(market "$1")
-  locale=$(sed -n 's/^[^}]*"deviceLocale": *"\([^"]*\)".*/\1/p' <<<"$block")
-  zone=$(sed -n 's/^[^}]*"timeZone": *"\([^"]*\)".*/\1/p' <<<"$block")
-  [[ -n $locale && -n $zone ]] || { echo "No market for $1" >&2; exit 1; }
-  remote setprop persist.sys.locale "$locale"
-  restart_framework
-  remote settings put global auto_time_zone 0
-  remote cmd alarm set-timezone "$zone"
+    local block locale zone
+    block=$(market "$1")
+    locale=$(sed -n 's/^[^}]*"deviceLocale": *"\([^"]*\)".*/\1/p' <<< "$block")
+    zone=$(sed -n 's/^[^}]*"timeZone": *"\([^"]*\)".*/\1/p' <<< "$block")
+    [[ -n $locale && -n $zone ]] || {
+        printf '%s\n' "No market for $1" >&2
+        exit 1
+    }
+    remote setprop persist.sys.locale "$locale"
+    restart_framework
+    remote settings put global auto_time_zone 0
+    remote cmd alarm set-timezone "$zone"
 }
 
 # The fixture name of English sample item $2 in language $1 (sample-data.json "names").
 item() {
-  market "$1" | grep -o '"names": *{[^}]*}' | head -n 1 | sed -n "s/.*\"$2\": *\"\([^\"]*\)\".*/\1/p"
+    market "$1" | grep -o '"names": *{[^}]*}' | head -n 1 | sed -n "s/.*\"$2\": *\"\([^\"]*\)\".*/\1/p"
 }
 
 snapshot() {
-  require_clone
-  snapshot_name "$1"
-  remote am force-stop "$package"
-  remote "cd /data/data/$package && tar -cf /data/local/tmp/$1 ."
+    require_clone
+    snapshot_name "$1"
+    remote am force-stop "$package"
+    remote "cd /data/data/$package && tar -cf /data/local/tmp/$1 ."
 }
 
 restore() {
-  require_clone
-  snapshot_name "$1"
-  remote test -f "/data/local/tmp/$1"
-  remote am force-stop "$package"
-  local uid
-  uid=$(remote stat -c %u "/data/data/$package" | tr -d '\r')
-  [[ $uid =~ ^[0-9]+$ ]] || { echo 'Missing app UID; refusing reset.' >&2; exit 1; }
-  remote "rm -rf /data/data/$package/* && cd /data/data/$package && tar -xf /data/local/tmp/$1 &&
+    require_clone
+    snapshot_name "$1"
+    remote test -f "/data/local/tmp/$1"
+    remote am force-stop "$package"
+    local uid
+    uid=$(remote stat -c %u "/data/data/$package" | tr -d '\r')
+    [[ $uid =~ ^[0-9]+$ ]] || {
+        printf '%s\n' 'Missing app UID; refusing reset.' >&2
+        exit 1
+    }
+    remote "rm -rf /data/data/$package/* && cd /data/data/$package && tar -xf /data/local/tmp/$1 &&
     chown -R $uid:$uid /data/data/$package && restorecon -R /data/data/$package"
-  if ! remote cat "/data/data/$package/files/datastore/settings.json" | tr -d '\n' |
-    grep -Eq '"terminal"[[:space:]]*:[[:space:]]*\{[^}]*"mode"[[:space:]]*:[[:space:]]*"SIMULATOR"'; then
-    echo 'Refusing non-simulator fixture; app not launched.' >&2
-    exit 1
-  fi
+    if ! remote cat "/data/data/$package/files/datastore/settings.json" | tr -d '\n' |
+        grep -Eq '"terminal"[[:space:]]*:[[:space:]]*\{[^}]*"mode"[[:space:]]*:[[:space:]]*"SIMULATOR"'; then
+        printf '%s\n' 'Refusing non-simulator fixture; app not launched.' >&2
+        exit 1
+    fi
 }
 
 snapshot_name() {
-  [[ $1 =~ ^[A-Za-z0-9_-]+\.tar$ ]] || { echo 'Expected a snapshot basename ending in .tar.' >&2; exit 2; }
+    [[ $1 =~ ^[A-Za-z0-9_-]+\.tar$ ]] || {
+        printf '%s\n' 'Expected a snapshot basename ending in .tar.' >&2
+        exit 2
+    }
 }
 
 require_clone() {
-  [[ ${DOCS_RESET:-} == 1 && $serial == emulator-* ]] || {
-    echo 'Demo resets require DOCS_RESET=1 and a disposable emulator.' >&2; exit 1;
-  }
-  local avd online=false _
-  for _ in $(seq 90); do
-    if [[ $(device get-state | tr -d '\r') == device ]]; then online=true; break; fi
-    sleep 2
-  done
-  [[ $online == true ]] || { echo 'Emulator never became available; no data reset.' >&2; exit 1; }
-  avd=$(device emu avd name | tr -d '\r' | head -n 1)
-  [[ $avd =~ ^MiniMpos_Docs_Disposable_[A-Za-z0-9_]+$ &&
-    -f ${ANDROID_AVD_HOME:-$HOME/.android/avd}/$avd.avd/minimpos-docs-disposable &&
-    $(remote getprop ro.kernel.qemu | tr -d '\r') == 1 ]] || {
-    echo 'Refusing reset: not an owned disposable docs clone. Use scripts/docs-emulator clone.' >&2; exit 1;
-  }
+    [[ ${DOCS_RESET:-} == 1 && $serial == emulator-* ]] || {
+        printf '%s\n' 'Demo resets require DOCS_RESET=1 and a disposable emulator.' >&2
+        exit 1
+    }
+    local avd online=false _
+    for _ in $(seq 90); do
+        if [[ $(device get-state | tr -d '\r') == device ]]; then
+            online=true
+            break
+        fi
+        sleep 2
+    done
+    [[ $online == true ]] || {
+        printf '%s\n' 'Emulator never became available; no data reset.' >&2
+        exit 1
+    }
+    avd=$(device emu avd name | tr -d '\r' | head -n 1)
+    [[ $avd =~ ^MiniMpos_Docs_Disposable_[A-Za-z0-9_]+$ &&
+        -f ${ANDROID_AVD_HOME:-$HOME/.android/avd}/$avd.avd/minimpos-docs-disposable &&
+        $(remote getprop ro.kernel.qemu | tr -d '\r') == 1 ]] || {
+        printf '%s\n' 'Refusing reset: not an owned disposable docs clone. Use scripts/docs-emulator clone.' >&2
+        exit 1
+    }
 }
 
 launch() {
-  remote am start -n "$package/.app.MainActivity" >/dev/null
-  ready "${1:-en}" home_new_sale
+    remote am start -n "$package/.app.MainActivity" > /dev/null
+    ready "${1:-en}" home_new_sale
 }
 
 ready() {
-  local text xy _
-  text=$(label "$1" "$2")
-  for _ in $(seq 20); do
-    xy=$(centre "$text") || true
-    if [[ -n $xy ]]; then return; fi
-    sleep 1
-  done
-  echo "Screen never became ready: $text" >&2
-  exit 1
+    local text xy _
+    text=$(label "$1" "$2")
+    for _ in $(seq 20); do
+        xy=$(centre "$text") || true
+        if [[ -n $xy ]]; then return; fi
+        sleep 1
+    done
+    printf '%s\n' "Screen never became ready: $text" >&2
+    exit 1
 }
 
 back() {
-  remote input keyevent KEYCODE_BACK
-  sleep 1.5
+    remote input keyevent KEYCODE_BACK
+    sleep 1.5
 }
 
 tap() {
-  local text x y
-  text=$(label "$1" "$2")
-  for _ in 1 2 3 4 5; do
-    read -r x y <<<"$(centre "$text")" || true
-    if [[ -n ${x:-} ]]; then
-      remote input tap "$x" "$y"
-      sleep "${3:-1.5}"
-      return
-    fi
-    sleep 1
-  done
-  echo "Nothing shows: $text" >&2
-  exit 1
+    local text x y
+    text=$(label "$1" "$2")
+    for _ in 1 2 3 4 5; do
+        read -r x y <<< "$(centre "$text")" || true
+        if [[ -n ${x:-} ]]; then
+            remote input tap "$x" "$y"
+            sleep "${3:-1.5}"
+            return
+        fi
+        sleep 1
+    done
+    printf '%s\n' "Nothing shows: $text" >&2
+    exit 1
 }
 
 # Swipes up until KEY's node is clear of the bars, or shows but the screen cannot scroll further.
 scroll() {
-  local text y last=
-  text=$(label "$1" "$2")
-  for _ in $(seq 10); do
-    y=$(centre "$text" | awk '{ print $2 }') || true
-    if [[ -n $y ]] && { ((y > 200 && y < 1050)) || [[ $y == "$last" ]]; }; then return; fi
-    last=$y
-    remote input swipe 360 1000 360 550 500
-    sleep 1.2
-  done
-  echo "Cannot scroll to: $text" >&2
-  exit 1
+    local text y last=
+    text=$(label "$1" "$2")
+    for _ in $(seq 10); do
+        y=$(centre "$text" | awk '{ print $2 }') || true
+        if [[ -n $y ]] && { ((y > 200 && y < 1050)) || [[ $y == "$last" ]]; }; then return; fi
+        last=$y
+        remote input swipe 360 1000 360 550 500
+        sleep 1.2
+    done
+    printf '%s\n' "Cannot scroll to: $text" >&2
+    exit 1
 }
 
 shot() {
-  if [[ $2 == home ]]; then
-    ready "$1" home_new_sale
-    ready "$1" home_settings
-  fi
-  mkdir -p "$shots"
-  device exec-out screencap -p >"$shots/$1-$2.png"
-  echo "Captured $shots/$1-$2.png"
+    if [[ $2 == home ]]; then
+        ready "$1" home_new_sale
+        ready "$1" home_settings
+    fi
+    mkdir -p "$shots"
+    device exec-out screencap -p > "$shots/$1-$2.png"
+    printf '%s\n' "Captured $shots/$1-$2.png"
 }
 
 # Opens Settings in language $1, entering the fixtures' admin PIN, then section $2 (a string key) when given.
 settings() {
-  tap "$1" home_settings 2
-  local digit
-  for digit in 1 3 5 7; do tap "$1" "=$digit" 0.3; done
-  tap "$1" action_ok 2
-  if [[ -n ${2:-} ]]; then
-    scroll "$1" "$2"
-    tap "$1" "$2" 2
-  fi
+    tap "$1" home_settings 2
+    local digit
+    for digit in 1 3 5 7; do tap "$1" "=$digit" 0.3; done
+    tap "$1" action_ok 2
+    if [[ -n ${2:-} ]]; then
+        scroll "$1" "$2"
+        tap "$1" "$2" 2
+    fi
 }
 
 # Named flows for language $1, each starting from its fixture snapshot docs-<snapshot>-$1.tar (SNAPSHOT, default 1017).
 flow_settings() {
-  settings "$1" settings_terminal
-  shot "$1" terminal-setup
-  back
-  scroll "$1" settings_tax
-  tap "$1" settings_tax 2
-  shot "$1" tax
-  back
-  scroll "$1" settings_tips_donations
-  tap "$1" settings_tips_donations 2
-  tap "$1" checkout_tip_on_terminal
-  tap "$1" settings_tip_default_on
-  tap "$1" settings_dynamic_tip_override
-  shot "$1" terminal-tipping
-  back
-  back
+    settings "$1" settings_terminal
+    shot "$1" terminal-setup
+    back
+    scroll "$1" settings_tax
+    tap "$1" settings_tax 2
+    shot "$1" tax
+    back
+    scroll "$1" settings_tips_donations
+    tap "$1" settings_tips_donations 2
+    tap "$1" checkout_tip_on_terminal
+    tap "$1" settings_tip_default_on
+    tap "$1" settings_dynamic_tip_override
+    shot "$1" terminal-tipping
+    back
+    back
 }
 
 flow_preauth() {
-  tap "$1" home_history 2.5
-  scroll "$1" status_pre_authorised
-  tap "$1" status_pre_authorised 2.5
-  shot "$1" pre-auth-detail
-  back
-  back
+    tap "$1" home_history 2.5
+    scroll "$1" status_pre_authorised
+    tap "$1" status_pre_authorised 2.5
+    shot "$1" pre-auth-detail
+    back
+    back
 }
 
 # The same synthetic fixture is restored before each flow, so captures never change a merchant's data.
 flow_overview() {
-  flow_home "$1"
-  tap "$1" home_history 2
-  shot "$1" history
-  tap "$1" history_search
-  remote input keyevent KEYCODE_EISU
-  remote input text "$(market "$1" | sed -n 's/^[^}]*"customerReference": *"\([^"]*\)".*/\1/p')"
-  back
-  shot "$1" history-search
+    flow_home "$1"
+    tap "$1" home_history 2
+    shot "$1" history
+    tap "$1" history_search
+    remote input keyevent KEYCODE_EISU
+    remote input text "$(market "$1" | sed -n 's/^[^}]*"customerReference": *"\([^"]*\)".*/\1/p')"
+    back
+    shot "$1" history-search
 }
 
 flow_home() {
-  shot "$1" home
+    shot "$1" home
 }
 
 flow_catalog() {
-  tap "$1" home_products
-  local digit
-  for digit in 1 3 5 7; do tap "$1" "=$digit" 0.3; done
-  tap "$1" action_ok 2
-  shot "$1" products
+    tap "$1" home_products
+    local digit
+    for digit in 1 3 5 7; do tap "$1" "=$digit" 0.3; done
+    tap "$1" action_ok 2
+    shot "$1" products
 }
 
 flow_preferences() {
-  settings "$1"
-  shot "$1" settings
-  scroll "$1" settings_capabilities
-  tap "$1" settings_capabilities 3
-  shot "$1" capabilities
+    settings "$1"
+    shot "$1" settings
+    scroll "$1" settings_capabilities
+    tap "$1" settings_capabilities 3
+    shot "$1" capabilities
 }
 
 flow_cart() {
-  tap "$1" home_new_sale 2
-  local product
-  for product in "Flat white" "Flat white" "Banana bread" "Coffee beans 250 g"; do
-    tap "$1" "=$(item "$1" "$product")" 0.5
-  done
-  shot "$1" sale
+    tap "$1" home_new_sale 2
+    local product
+    for product in "Flat white" "Flat white" "Banana bread" "Coffee beans 250 g"; do
+        tap "$1" "=$(item "$1" "$product")" 0.5
+    done
+    shot "$1" sale
 }
 
 fixture_reference() {
-  market "$1" | sed -n "s/^[^}]*\"$2\": *\"\\([^\"]*\\)\".*/\\1/p"
+    market "$1" | sed -n "s/^[^}]*\"$2\": *\"\\([^\"]*\\)\".*/\\1/p"
 }
 
 enter_reference() {
-  tap "$1" checkout_customer_reference
-  remote input keyevent KEYCODE_EISU
-  remote input text "$(fixture_reference "$1" "$2")"
-  back
+    tap "$1" checkout_customer_reference
+    remote input keyevent KEYCODE_EISU
+    remote input text "$(fixture_reference "$1" "$2")"
+    back
 }
 
 # Switches expose their state without a text label; choose the first switch in these single-switch forms.
 enable_first_switch() {
-  local xy x y
-  remote uiautomator dump /data/local/tmp/ui.xml >/dev/null 2>&1
-  xy=$(device exec-out cat /data/local/tmp/ui.xml | tr '>' '\n' |
-    grep 'checkable="true"' | head -n 1 | grep 'checked="false"' |
-    sed -n 's/.*bounds="\[\([0-9]*\),\([0-9]*\)\]\[\([0-9]*\),\([0-9]*\)\]".*/\1 \2 \3 \4/p' |
-    awk '{ print int(($1 + $3) / 2), int(($2 + $4) / 2) }') || true
-  if [[ -n $xy ]]; then
-    read -r x y <<<"$xy"
-    remote input tap "$x" "$y"
-  fi
+    local xy x y
+    remote uiautomator dump /data/local/tmp/ui.xml > /dev/null 2>&1
+    xy=$(device exec-out cat /data/local/tmp/ui.xml | tr '>' '\n' |
+        grep 'checkable="true"' | head -n 1 | grep 'checked="false"' |
+        sed -n 's/.*bounds="\[\([0-9]*\),\([0-9]*\)\]\[\([0-9]*\),\([0-9]*\)\]".*/\1 \2 \3 \4/p' |
+        awk '{ print int(($1 + $3) / 2), int(($2 + $4) / 2) }') || true
+    if [[ -n $xy ]]; then
+        read -r x y <<< "$xy"
+        remote input tap "$x" "$y"
+    fi
 }
 
 expand_receipt() {
-  local xy x y
-  remote uiautomator dump /data/local/tmp/ui.xml >/dev/null 2>&1
-  xy=$(device exec-out cat /data/local/tmp/ui.xml | tr '>' '\n' |
-    sed -n 's/.*bounds="\[\([0-9]*\),\([0-9]*\)\]\[\([0-9]*\),\([0-9]*\)\]".*/\1 \2 \3 \4/p' |
-    awk '$4 - $2 == 8 { print int(($1 + $3) / 2), int(($2 + $4) / 2); exit }')
-  [[ -n $xy ]] || { echo "No receipt sheet handle" >&2; exit 1; }
-  read -r x y <<<"$xy"
-  remote input swipe "$x" "$y" 360 90 1500
-  sleep 2
+    local xy x y
+    remote uiautomator dump /data/local/tmp/ui.xml > /dev/null 2>&1
+    xy=$(device exec-out cat /data/local/tmp/ui.xml | tr '>' '\n' |
+        sed -n 's/.*bounds="\[\([0-9]*\),\([0-9]*\)\]\[\([0-9]*\),\([0-9]*\)\]".*/\1 \2 \3 \4/p' |
+        awk '$4 - $2 == 8 { print int(($1 + $3) / 2), int(($2 + $4) / 2); exit }')
+    [[ -n $xy ]] || {
+        printf '%s\n' "No receipt sheet handle" >&2
+        exit 1
+    }
+    read -r x y <<< "$xy"
+    remote input swipe "$x" "$y" 360 90 1500
+    sleep 2
 }
 
 flow_checkout() {
-  flow_cart "$1"
-  tap "$1" ^sale_charge 2
-  enter_reference "$1" customerReference
-  back
-  tap "$1" ^sale_charge 2
-  remote input swipe 360 520 360 170 1000
-  enable_first_switch
-  sleep 2
-  shot "$1" checkout
-  tap "$1" checkout_scan_wallet 3
-  shot "$1" wallets
-  tap "$1" "=Alipay" 3
-  shot "$1" wallet-scan
-  back
-  tap "$1" ^checkout_pay 0.2
-  shot "$1" processing
-  sleep 10
-  shot "$1" approved
-  tap "$1" result_print 3
-  expand_receipt
-  shot "$1" receipt
-  back
-  back
-  tap "$1" action_home 2
-  tap "$1" home_history 2
-  tap "$1" status_approved 2
-  tap "$1" detail_refund 2
-  tap "$1" refund_option_items 2
-  local product text
-  for product in "Flat white" "Banana bread"; do
-    text=$(string "$1" action_increase_item)
-    tap "$1" "=${text/\%1\$s/$(item "$1" "$product")}" 0.5
-  done
-  shot "$1" refund
+    flow_cart "$1"
+    tap "$1" ^sale_charge 2
+    enter_reference "$1" customerReference
+    back
+    tap "$1" ^sale_charge 2
+    remote input swipe 360 520 360 170 1000
+    enable_first_switch
+    sleep 2
+    shot "$1" checkout
+    tap "$1" checkout_scan_wallet 3
+    shot "$1" wallets
+    tap "$1" "=Alipay" 3
+    shot "$1" wallet-scan
+    back
+    tap "$1" ^checkout_pay 0.2
+    shot "$1" processing
+    sleep 10
+    shot "$1" approved
+    tap "$1" result_print 3
+    expand_receipt
+    shot "$1" receipt
+    back
+    back
+    tap "$1" action_home 2
+    tap "$1" home_history 2
+    tap "$1" status_approved 2
+    tap "$1" detail_refund 2
+    tap "$1" refund_option_items 2
+    local product text
+    for product in "Flat white" "Banana bread"; do
+        text=$(string "$1" action_increase_item)
+        tap "$1" "=${text/\%1\$s/$(item "$1" "$product")}" 0.5
+    done
+    shot "$1" refund
 }
 
 flow_authorize() {
-  tap "$1" home_pre_auth 2
-  tap "$1" "=$(item "$1" "Catering deposit")" 2
-  enter_reference "$1" preAuthCustomerReference
-  enable_first_switch
-  shot "$1" pre-auth
+    tap "$1" home_pre_auth 2
+    tap "$1" "=$(item "$1" "Catering deposit")" 2
+    enter_reference "$1" preAuthCustomerReference
+    enable_first_switch
+    shot "$1" pre-auth
 }
 
 flow_transfer() {
-  settings "$1" settings_data
-  tap "$1" transfer_export 2
-  shot "$1" transfer
-  tap "$1" transfer_show_codes 5
-  scroll "$1" action_pause
-  tap "$1" action_pause
-  remote input swipe 360 400 360 1100 500
-  sleep 1
-  shot "$1" export
+    settings "$1" settings_data
+    tap "$1" transfer_export 2
+    shot "$1" transfer
+    tap "$1" transfer_show_codes 5
+    scroll "$1" action_pause
+    tap "$1" action_pause
+    remote input swipe 360 400 360 1100 500
+    sleep 1
+    shot "$1" export
 }
 
 fixture_number() {
-  market "$1" | sed -n "s/^[^}]*\"$2\": *\\([0-9.]*\\).*/\\1/p"
+    market "$1" | sed -n "s/^[^}]*\"$2\": *\\([0-9.]*\\).*/\\1/p"
 }
 
 # Patch only this restored, disposable demo fixture, before launching the app again.
 demo_settings() {
-  remote am force-stop "$package"
-  remote "sed -i '$2' /data/data/$package/files/datastore/settings.json"
-  launch "$1"
+    remote am force-stop "$package"
+    remote "sed -i '$2' /data/data/$package/files/datastore/settings.json"
+    launch "$1"
 }
 
 flow_partial() {
-  demo_settings "$1" 's/"payment":{/"payment":{"allowPartialAuthorisation":true,"terminalTipping":"DISABLED",/;s/"hasPrinter":true/"hasPrinter":false/'
-  tap "$1" home_new_sale 2
-  tap "$1" sale_custom_item
-  local amount digit i
-  amount=$(fixture_number "$1" partialMinor)
-  for ((i = 0; i < ${#amount}; i++)); do
-    digit=${amount:i:1}
-    tap "$1" "=$digit" 0.2
-  done
-  tap "$1" action_add
-  tap "$1" ^sale_charge
-  tap "$1" ^checkout_pay 12
-  shot "$1" partial-payment
+    demo_settings "$1" 's/"payment":{/"payment":{"allowPartialAuthorisation":true,"terminalTipping":"DISABLED",/;s/"hasPrinter":true/"hasPrinter":false/'
+    tap "$1" home_new_sale 2
+    tap "$1" sale_custom_item
+    local amount digit i
+    amount=$(fixture_number "$1" partialMinor)
+    for ((i = 0; i < ${#amount}; i++)); do
+        digit=${amount:i:1}
+        tap "$1" "=$digit" 0.2
+    done
+    tap "$1" action_add
+    tap "$1" ^sale_charge
+    tap "$1" ^checkout_pay 12
+    shot "$1" partial-payment
 }
 
 flow_gratuity() {
-  settings "$1" settings_tips_donations
-  tap "$1" checkout_tip_on_receipt
-  tap "$1" settings_tip_default_on
-  back
-  back
-  tap "$1" home_new_sale 2
-  local product
-  for product in "Avocado toast" "Avocado toast" "Flat white" "Flat white"; do
-    tap "$1" "=$(item "$1" "$product")" 0.5
-  done
-  tap "$1" ^sale_charge 2
-  tap "$1" ^checkout_pay 12
-  local reference
-  remote uiautomator dump /data/local/tmp/ui.xml >/dev/null 2>&1
-  reference=$(device exec-out cat /data/local/tmp/ui.xml | grep -o 'text="[0-9]\{6\}-[0-9]\{6\}-[A-Z0-9]\{4\}"' |
-    head -n 1 | cut -d '"' -f 2)
-  tap "$1" action_home 2
-  tap "$1" home_history 2
-  tap "$1" "=$reference" 2
-  tap "$1" result_print_merchant 3
-  expand_receipt
-  remote input swipe 360 1000 360 650 1500
-  sleep 2
-  shot "$1" tip-receipt
-  back
-  back
-  tap "$1" result_enter_tip 2
-  local amount digit i
-  amount=$(fixture_number "$1" tipMinor)
-  for ((i = 0; i < ${#amount}; i++)); do
-    digit=${amount:i:1}
-    tap "$1" "=$digit" 0.2
-  done
-  shot "$1" tip
+    settings "$1" settings_tips_donations
+    tap "$1" checkout_tip_on_receipt
+    tap "$1" settings_tip_default_on
+    back
+    back
+    tap "$1" home_new_sale 2
+    local product
+    for product in "Avocado toast" "Avocado toast" "Flat white" "Flat white"; do
+        tap "$1" "=$(item "$1" "$product")" 0.5
+    done
+    tap "$1" ^sale_charge 2
+    tap "$1" ^checkout_pay 12
+    local reference
+    remote uiautomator dump /data/local/tmp/ui.xml > /dev/null 2>&1
+    reference=$(device exec-out cat /data/local/tmp/ui.xml | grep -o 'text="[0-9]\{6\}-[0-9]\{6\}-[A-Z0-9]\{4\}"' |
+        head -n 1 | cut -d '"' -f 2)
+    tap "$1" action_home 2
+    tap "$1" home_history 2
+    tap "$1" "=$reference" 2
+    tap "$1" result_print_merchant 3
+    expand_receipt
+    remote input swipe 360 1000 360 650 1500
+    sleep 2
+    shot "$1" tip-receipt
+    back
+    back
+    tap "$1" result_enter_tip 2
+    local amount digit i
+    amount=$(fixture_number "$1" tipMinor)
+    for ((i = 0; i < ${#amount}; i++)); do
+        digit=${amount:i:1}
+        tap "$1" "=$digit" 0.2
+    done
+    shot "$1" tip
 }
 
 flow_tax_dialog() {
-  settings "$1" settings_tax
-  tap "$1" "=$(market "$1" | grep -o '"taxRates": *\[[^]]*' | grep -o '"name": *"[^"]*"' |
-    head -n 1 | sed 's/"name": *"//;s/"$//')" 2
-  tap "$1" settings_tax_rate
-  remote input keyevent KEYCODE_MOVE_END
-  remote input keyevent --longpress KEYCODE_DEL
-  remote input keyevent KEYCODE_DEL KEYCODE_DEL KEYCODE_DEL KEYCODE_DEL KEYCODE_DEL
-  remote input text "$(market "$1" | sed -n 's/^[^}]*"taxDialogRate": *"\([^"]*\)".*/\1/p')"
-  back
-  shot "$1" tax-dialog
+    settings "$1" settings_tax
+    tap "$1" "=$(market "$1" | grep -o '"taxRates": *\[[^]]*' | grep -o '"name": *"[^"]*"' |
+        head -n 1 | sed 's/"name": *"//;s/"$//')" 2
+    tap "$1" settings_tax_rate
+    remote input keyevent KEYCODE_MOVE_END
+    remote input keyevent --longpress KEYCODE_DEL
+    remote input keyevent KEYCODE_DEL KEYCODE_DEL KEYCODE_DEL KEYCODE_DEL KEYCODE_DEL
+    remote input text "$(market "$1" | sed -n 's/^[^}]*"taxDialogRate": *"\([^"]*\)".*/\1/p')"
+    back
+    shot "$1" tax-dialog
 }
 
 flow_ams1() {
-  flow_cart "$1"
-  remote wm size 480x800
-  remote wm density 240
-  remote cmd overlay enable com.android.internal.systemui.navbar.threebutton
-  remote cmd overlay disable com.android.internal.systemui.navbar.gestural
-  sleep 4
-  shot "$1" sale-ams1
-  remote wm size reset
-  remote wm density reset
-  remote cmd overlay disable com.android.internal.systemui.navbar.threebutton
-  remote cmd overlay enable com.android.internal.systemui.navbar.gestural
-  sleep 3
+    flow_cart "$1"
+    remote wm size 480x800
+    remote wm density 240
+    remote cmd overlay enable com.android.internal.systemui.navbar.threebutton
+    remote cmd overlay disable com.android.internal.systemui.navbar.gestural
+    sleep 4
+    shot "$1" sale-ams1
+    remote wm size reset
+    remote wm density reset
+    remote cmd overlay disable com.android.internal.systemui.navbar.threebutton
+    remote cmd overlay enable com.android.internal.systemui.navbar.gestural
+    sleep 3
 }
 
 # Empties the history and turns on simulated offline approvals in the stopped app's data, then sells the main cart.
 flow_offline() {
-  remote am force-stop "$package"
-  remote "cd /data/data/$package/databases && sqlite3 minimpos.db 'DELETE FROM sale_tenders; DELETE FROM sale_lines; DELETE FROM refunds; DELETE FROM sales;'"
-  remote "sed -i 's/\"simulator\":{[^}]*}/\"simulator\":{\"delayMillis\":1500,\"hasPrinter\":true,\"offlineMode\":true}/' /data/data/$package/files/datastore/settings.json"
-  launch "$1"
-  tap "$1" home_new_sale 2
-  local product
-  for product in "Flat white" "Flat white" "Banana bread" "Coffee beans 250 g"; do tap "$1" "=$(item "$1" "$product")" 0.8; done
-  tap "$1" ^sale_charge 2.5
-  tap "$1" ^checkout_pay 12
-  tap "$1" action_home 2.5
-  tap "$1" home_history 2.5
-  tap "$1" status_approved 2.5
-  scroll "$1" detail_unconfirmed_batches
-  shot "$1" offline-payment
-  back
-  back
-  tap "$1" home_reconciliation 2
-  tap "$1" reconciliation_check 6
-  shot "$1" reconciliation
-  back
+    remote am force-stop "$package"
+    remote "cd /data/data/$package/databases && sqlite3 minimpos.db 'DELETE FROM sale_tenders; DELETE FROM sale_lines; DELETE FROM refunds; DELETE FROM sales;'"
+    remote "sed -i 's/\"simulator\":{[^}]*}/\"simulator\":{\"delayMillis\":1500,\"hasPrinter\":true,\"offlineMode\":true}/' /data/data/$package/files/datastore/settings.json"
+    launch "$1"
+    tap "$1" home_new_sale 2
+    local product
+    for product in "Flat white" "Flat white" "Banana bread" "Coffee beans 250 g"; do tap "$1" "=$(item "$1" "$product")" 0.8; done
+    tap "$1" ^sale_charge 2.5
+    tap "$1" ^checkout_pay 12
+    tap "$1" action_home 2.5
+    tap "$1" home_history 2.5
+    tap "$1" status_approved 2.5
+    scroll "$1" detail_unconfirmed_batches
+    shot "$1" offline-payment
+    back
+    back
+    tap "$1" home_reconciliation 2
+    tap "$1" reconciliation_check 6
+    shot "$1" reconciliation
+    back
 }
 
 flow() {
-  local language=$1 name
-  shift
-  for name in "$@"; do
-    restore "docs-${SNAPSHOT:-1017}-$language.tar"
-    launch "$language"
-    "flow_$name" "$language"
-  done
+    local language=$1 name
+    shift
+    for name in "$@"; do
+        restore "docs-${SNAPSHOT:-1017}-$language.tar"
+        launch "$language"
+        "flow_$name" "$language"
+    done
 }
 
 process() {
-  bash "$root/scripts/docs-assets" process "$shots"
+    bash "$root/scripts/docs-assets" process "$shots"
 }
 
 install() {
-  require_clone
-  "$root/scripts/gradle" :app:assembleDebug
-  device wait-for-device
-  local _
-  for _ in $(seq 90); do
-    if remote cmd package path android | grep -q '^package:'; then
-      device install -r "$root/app/build/outputs/apk/debug/app-debug.apk"
-      return
-    fi
-    sleep 2
-  done
-  echo 'Package Manager never became ready; APK not installed.' >&2
-  exit 1
+    require_clone
+    "$root/scripts/gradle" :app:assembleDebug
+    device wait-for-device
+    local _
+    for _ in $(seq 90); do
+        if remote cmd package path android | grep -q '^package:'; then
+            device install -r "$root/app/build/outputs/apk/debug/app-debug.apk"
+            return
+        fi
+        sleep 2
+    done
+    printf '%s\n' 'Package Manager never became ready; APK not installed.' >&2
+    exit 1
 }
 
 batch() {
-  require_clone
-  if [[ $# == 0 ]]; then set -- en zh-CN zh-Hant ja; fi
-  local language
-  for language in "$@"; do
-    [[ -n $(string "$language" home_new_sale) ]] || exit 1
-  done
-  install
-  prepare
-  for language in "$@"; do
-    locale "$language"
-    remote settings put global auto_time 0
-    remote date "${DOCS_DATE:-101619302026.00}"
-    flow "$language" overview catalog preferences settings preauth offline authorize partial checkout gratuity tax_dialog transfer ams1
-  done
-  finish
+    require_clone
+    if [[ $# == 0 ]]; then set -- en zh-CN zh-Hant ja; fi
+    local language
+    for language in "$@"; do
+        [[ -n $(string "$language" home_new_sale) ]] || exit 1
+    done
+    install
+    prepare
+    for language in "$@"; do
+        locale "$language"
+        remote settings put global auto_time 0
+        remote date "${DOCS_DATE:-101619302026.00}"
+        flow "$language" overview catalog preferences settings preauth offline authorize partial checkout gratuity tax_dialog transfer ams1
+    done
+    finish
 }
 
 finish() {
-  remote settings delete secure icon_blacklist
-  remote settings delete global device_name
-  remote settings put global auto_time 1
-  remote am broadcast -a com.android.systemui.demo -e command exit >/dev/null
+    remote settings delete secure icon_blacklist
+    remote settings delete global device_name
+    remote settings put global auto_time 1
+    remote am broadcast -a com.android.systemui.demo -e command exit > /dev/null
 }
 
 shutdown() {
-  require_clone
-  finish
-  remote reboot -p
+    require_clone
+    finish
+    remote reboot -p
 }
 
 case ${1:-} in
-  prepare | locale | snapshot | restore | install | launch | back | tap | scroll | shot | expand_receipt | settings | flow | batch | process | finish | shutdown)
-    command=$1
-    shift
-    "$command" "$@"
-    ;;
-  *)
-    sed -n '2,20p' "$0"
-    exit 1
-    ;;
+    prepare | locale | snapshot | restore | install | launch | back | tap | scroll | shot | expand_receipt | settings | flow | batch | process | finish | shutdown)
+        command=$1
+        shift
+        "$command" "$@"
+        ;;
+    *)
+        sed -n '2,20p' "$0"
+        exit 1
+        ;;
 esac

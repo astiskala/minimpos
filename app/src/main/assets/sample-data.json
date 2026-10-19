@@ -1,5 +1,5 @@
 {
-  "purpose": "Fictional screenshot fixtures only. Company, contact and registration details are not real business records.",
+  "purpose": "Fictional app samples and screenshot fixtures. Company, contact and registration details are not real business records.",
   "languages": {
     "en": {
       "deviceLocale": "en-AU",
@@ -12,8 +12,16 @@
       "partialMinor": 2139,
       "taxDialogRate": "8.875",
       "taxRates": [
-        {"id": 1, "name": "GST", "rateMilliPercent": 10000},
-        {"id": 2, "name": "GST-free", "rateMilliPercent": 0}
+        {
+          "id": 1,
+          "name": "GST",
+          "rateMilliPercent": 10000
+        },
+        {
+          "id": 2,
+          "name": "GST-free",
+          "rateMilliPercent": 0
+        }
       ],
       "pricesMinor": {
         "Flat white": 500,
@@ -68,10 +76,20 @@
       "partialMinor": 2139,
       "taxDialogRate": "9",
       "taxRates": [
-        {"id": 1, "name": "消费税", "rateMilliPercent": 9000},
-        {"id": 2, "name": "零税率", "rateMilliPercent": 0}
+        {
+          "id": 1,
+          "name": "消费税",
+          "rateMilliPercent": 9000
+        },
+        {
+          "id": 2,
+          "name": "零税率",
+          "rateMilliPercent": 0
+        }
       ],
-      "taxRateIds": {"Coffee beans 250 g": 1},
+      "taxRateIds": {
+        "Coffee beans 250 g": 1
+      },
       "pricesMinor": {
         "Flat white": 550,
         "Long black": 450,
@@ -125,7 +143,11 @@
       "partialMinor": 12139,
       "taxDialogRate": "0",
       "taxRates": [
-        {"id": 1, "name": "不徵稅", "rateMilliPercent": 0}
+        {
+          "id": 1,
+          "name": "不徵稅",
+          "rateMilliPercent": 0
+        }
       ],
       "pricesMinor": {
         "Flat white": 3800,
@@ -180,8 +202,16 @@
       "partialMinor": 2139,
       "taxDialogRate": "8",
       "taxRates": [
-        {"id": 1, "name": "消費税", "rateMilliPercent": 10000},
-        {"id": 2, "name": "軽減税率", "rateMilliPercent": 8000}
+        {
+          "id": 1,
+          "name": "消費税",
+          "rateMilliPercent": 10000
+        },
+        {
+          "id": 2,
+          "name": "軽減税率",
+          "rateMilliPercent": 8000
+        }
       ],
       "pricesMinor": {
         "Flat white": 550,
@@ -225,5 +255,26 @@
         "Catering deposit": "ケータリング予約金"
       }
     }
+  },
+  "categories": {
+    "Coffee": [
+      "Flat white",
+      "Long black",
+      "Cappuccino",
+      "Chai latte",
+      "Iced latte"
+    ],
+    "Food": [
+      "Banana bread",
+      "Almond croissant",
+      "Avocado toast"
+    ],
+    "Retail": [
+      "Coffee beans 250 g",
+      "Reusable cup"
+    ],
+    "Bookings": [
+      "Catering deposit"
+    ]
   }
 }

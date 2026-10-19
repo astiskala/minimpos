@@ -438,7 +438,7 @@
   <string name="products_pre_auth_hint">在“预授权”中单独处理，不计入销售：在扣款前，金额仅在卡内冻结。</string>
   <string name="products_kind_pre_auth">预授权</string>
   <string name="sample_data">示例数据</string>
-  <string name="sample_data_hint">添加示例商品和只读演示记录。您的数据和支付目标不会改变。示例计入演示每日总额和报告。</string>
+  <string name="sample_data_hint">添加示例商品和只读演示记录。虚构公司信息会填入空白商家资料。示例计入演示每日总额和报告。</string>
   <string name="sample_add">添加示例数据</string>
   <string name="sample_remove">删除示例数据</string>
   <string name="sample_remove_message">删除示例商品（包括已编辑的商品）和演示记录？您自己的商品、记录、税率和设置将保留。您的商品使用的分类也将保留。</string>
@@ -447,11 +447,6 @@
   <string name="sample_write_failed">无法保存更改。请重试。</string>
   <string name="sample_history_hint">仅为示例记录，未发生资金交易。无法执行资金操作。</string>
   <string name="sample_label">示例</string>
-  <string name="sample_category">示例商品</string>
-  <string name="sample_coffee">示例咖啡</string>
-  <string name="sample_tea">示例茶</string>
-  <string name="sample_cake">示例蛋糕</string>
-  <string name="sample_deposit">示例押金</string>
 
   <!-- Setup and catalog transfer -->
   <string name="transfer_export">共享至另一台设备</string>
@@ -712,11 +707,12 @@
   <string name="settings_host_placeholder">例如 192.0.2.1</string>
   <string name="settings_host_hint">终端必须与此设备处于同一网络。</string>
   <string name="settings_port">端口</string>
-  <string name="settings_find_terminals">查找终端</string>
   <string name="settings_choose_terminal">选择终端</string>
   <string name="settings_no_terminals">没有可用的匹配终端。请手动输入信息。</string>
-  <string name="settings_save_and_discover">保存并获取设置</string>
-  <string name="settings_discover">获取设置</string>
+  <string name="settings_save_and_discover">保存并查找终端</string>
+  <string name="settings_testing_api">正在测试 API…</string>
+  <string name="settings_finding_setup">正在查找终端…</string>
+  <string name="settings_discover">查找要设置的终端</string>
   <string name="settings_discovery_manual">请检查下方信息，手动补充缺失项，然后测试连接及 API 密钥。必须具有所有必需的 API 权限。</string>
   <string name="settings_shared_key">共享密钥</string>
   <string name="settings_shared_key_hint">从商户后台的“Devices › Device settings › Integrations › Terminal API › Encryption key”复制（点按铅笔图标查看）。</string>

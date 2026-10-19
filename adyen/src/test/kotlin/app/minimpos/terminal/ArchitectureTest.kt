@@ -19,6 +19,8 @@ import app.minimpos.terminal.transport.ExternalText
 import app.minimpos.terminal.transport.TerminalHttpClient
 import com.adyen.Client
 import com.adyen.model.management.DefaultErrorResponseEntity
+import com.fasterxml.jackson.databind.node.JsonNodeFactory
+import com.fasterxml.jackson.databind.node.ObjectNode
 import com.google.gson.JsonObject
 import com.tngtech.archunit.base.DescribedPredicate
 import com.tngtech.archunit.core.domain.JavaCall
@@ -54,7 +56,7 @@ class ArchitectureTest {
             .check(terminal)
 
     @Test
-    fun `API clients use official models instead of manual Gson objects`() =
+    fun `API clients use official models instead of manual JSON trees`() =
         apiModelOwnership(
             resideInAnyPackage("app.minimpos.terminal.checkout..")
                 .or(type(AdyenStoreDetails::class.java))
@@ -66,13 +68,19 @@ class ArchitectureTest {
 
     @Test
     fun `API model ownership rejects a hand-written request`() {
-        val violation = ClassFileImporter().importClasses(RawApiModelViolation::class.java)
-        val rule = apiModelOwnership(type(RawApiModelViolation::class.java))
-        assertTrue(rule.description, rule.evaluate(violation).hasViolation())
+        listOf(RawApiModelViolation::class.java, JacksonApiModelViolation::class.java).forEach { type ->
+            val violation = ClassFileImporter().importClasses(type)
+            val rule = apiModelOwnership(type(type))
+            assertTrue(rule.description, rule.evaluate(violation).hasViolation())
+        }
     }
 
     private class RawApiModelViolation {
         fun body() = JsonObject()
+    }
+
+    private class JacksonApiModelViolation {
+        fun body(): ObjectNode = JsonNodeFactory.instance.objectNode()
     }
 
     @Test
@@ -379,7 +387,12 @@ class ArchitectureTest {
                 .that(selected)
                 .should()
                 .dependOnClassesThat()
-                .resideInAnyPackage("com.google.gson..")
+                .resideInAnyPackage(
+                    "com.google.gson..",
+                    "com.fasterxml.jackson.databind.node..",
+                    "kotlinx.serialization.json..",
+                    "org.json..",
+                ).because("Typed API adapters must serialize official SDK models, keeping wire fields owned by Adyen")
 
         fun deliveryOwnership(selected: DescribedPredicate<JavaClass>): ArchRule =
             noClasses().that(selected).should().dependOnClassesThat(assignableTo(IOException::class.java))

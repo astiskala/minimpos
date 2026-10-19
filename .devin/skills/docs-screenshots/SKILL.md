@@ -10,9 +10,9 @@ description: Re-capture the screenshots and social image of the docs/ website, o
 - Capture English, Simplified Chinese, Traditional Chinese and Japanese using `AppSettings.languageTag` (`en`,
   `zh-CN`, `zh-Hant`, `ja`), not translated overlays. English assets live directly in `docs/images/`; the other sets
   live in matching language subdirectories. Localized pages and social metadata must use their own set. Use the
-  separate localized café fixtures in `sample-data.json`, including native merchant details, products, categories,
-  receipt text, currency and prices. Never translate or reprice saved merchant data. Adyen receipt fields remain
-  verbatim in the app; only synthetic fixture card receipts are regenerated for the chosen demo currency.
+  separate localized café fixtures in `app/src/main/assets/sample-data.json`, including native merchant details,
+  products, categories, receipt text, currency and prices. Never translate or reprice saved merchant data. Adyen receipt
+  fields remain verbatim in the app; only synthetic fixture card receipts are regenerated for the chosen demo currency.
 - The site shows every screenshot inside a terminal frame, so each must have its frame's screen ratio
   (`WebsiteTest`'s "screenshots match their terminal frames" checks the PNG sizes, the `width`/`height` attributes and
   the white screen `rect` of each SVG):
@@ -101,8 +101,8 @@ Seeded before the first launch (debug builds only), piped in with
   saving switch and its consent explanation can fit.
 - Café "Harbour Coffee Co.", 1 Wharf Street Fremantle, ABN; GST 10% default and GST-free; AUD; 10 products in
   Coffee/Food/Retail, the beans GST-free with a barcode; plus "Catering deposit" $200.00 GST 10% in a Bookings category
-  as a pre-authorisation product. This is the English fixture; use `sample-data.json` for each other language's
-  native café, realistic prices and tax examples. JPY minor units are whole yen, not hundredths.
+  as a pre-authorisation product. This is the English fixture; use `app/src/main/assets/sample-data.json` for each
+  other language's native café, realistic prices and tax examples. JPY minor units are whole yen, not hundredths.
 - The admin PIN (1357) is set in the app.
 - Back up the database through SQLite, including committed WAL contents, before preparing localized copies. Recompute
   line amounts, net/tax totals, tips, authorizations, captures, tenders, refunds and synthetic card-receipt totals in the

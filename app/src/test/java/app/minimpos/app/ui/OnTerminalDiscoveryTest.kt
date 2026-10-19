@@ -85,7 +85,7 @@ class OnTerminalDiscoveryTest {
     @get:Rule(order = 1)
     val compose = createComposeRule()
 
-    /** Opens Terminal settings with a saved API key, then tests it and starts the discovery it unlocks. */
+    /** Opens Terminal settings with a saved API key, then discovers setup through its automatic API test. */
     private fun discover() {
         val container = env.container
         await { container.secrets.set(Secret.ADYEN_API_KEY, "imported-key") }
@@ -107,7 +107,6 @@ class OnTerminalDiscoveryTest {
         compose.awaitCondition("Terminal environment learned") {
             container.terminalStatus.state.value.environment == TerminalEnvironment.TEST
         }
-        compose.onNodeWithTag("testApi").performScrollTo().performClick()
         compose.waitUntilAtLeastOneExists(hasTestTag("discoverSetup"), 15_000)
         compose.onNodeWithTag("discoverSetup").performScrollTo().performClick()
     }

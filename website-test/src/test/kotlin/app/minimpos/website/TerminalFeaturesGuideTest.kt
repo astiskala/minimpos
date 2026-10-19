@@ -33,6 +33,11 @@ class TerminalFeaturesGuideTest {
                     .parse(docs.parent.resolve("app/src/main/res/$folder/strings.xml").readText())
                     .select("string[name]")
                     .associate { it.attr("name") to it.text() }
+            setup.select(".manual-setup").take(3).forEach { terminalSetup ->
+                assertWithMessage("$language terminal discovery label")
+                    .that(terminalSetup.text())
+                    .contains(strings.getValue("settings_discover"))
+            }
             labels.forEach { (id, keys) ->
                 val task = checkNotNull(using.getElementById(id)) { "$language missing #$id" }
                 val text =

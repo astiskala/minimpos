@@ -438,7 +438,7 @@
   <string name="products_pre_auth_hint">Taken on its own under Pre-authorize instead of in a sale: the amount is only held on the card until it is captured.</string>
   <string name="products_kind_pre_auth">Pre-auth</string>
   <string name="sample_data">Sample data</string>
-  <string name="sample_data_hint">Add example products and read-only demo history. Your data and payment destination stay unchanged. Samples count in demo day totals and reports.</string>
+  <string name="sample_data_hint">Add sample products and read-only demo history. Fictional company details fill an empty business profile. Samples count toward demo daily totals and reports.</string>
   <string name="sample_add">Add sample data</string>
   <string name="sample_remove">Remove sample data</string>
   <string name="sample_remove_message">Remove sample products (including edits) and demo history? Your own products, history, tax rates, and settings stay. Categories used by your products stay too.</string>
@@ -447,11 +447,6 @@
   <string name="sample_write_failed">Could not save the change. Try again.</string>
   <string name="sample_history_hint">Sample history only. No money moved. Financial actions are unavailable.</string>
   <string name="sample_label">Sample</string>
-  <string name="sample_category">Sample products</string>
-  <string name="sample_coffee">Sample coffee</string>
-  <string name="sample_tea">Sample tea</string>
-  <string name="sample_cake">Sample cake</string>
-  <string name="sample_deposit">Sample deposit</string>
 
   <!-- Setup and catalog transfer -->
   <string name="transfer_export">Share with another device</string>
@@ -713,11 +708,12 @@
   <string name="settings_host_placeholder">For example, 192.0.2.1</string>
   <string name="settings_host_hint">The terminal must be on the same network as this device.</string>
   <string name="settings_port">Port</string>
-  <string name="settings_find_terminals">Find terminals</string>
   <string name="settings_choose_terminal">Choose a terminal</string>
   <string name="settings_no_terminals">No matching terminals are available. Enter the details manually.</string>
-  <string name="settings_save_and_discover">Save and find setup</string>
-  <string name="settings_discover">Find setup</string>
+  <string name="settings_save_and_discover">Save and find terminal</string>
+  <string name="settings_testing_api">Testing API…</string>
+  <string name="settings_finding_setup">Finding terminal…</string>
+  <string name="settings_discover">Find terminal to set up</string>
   <string name="settings_discovery_manual">Review the details below. Enter anything missing manually, then test the connection and API key. All required API roles must be present.</string>
   <string name="settings_shared_key">Shared key</string>
   <string name="settings_shared_key_hint">Copy these from your Customer Area: Devices › Device settings › Integrations › Terminal API › Encryption key (select the pencil icon to see them).</string>

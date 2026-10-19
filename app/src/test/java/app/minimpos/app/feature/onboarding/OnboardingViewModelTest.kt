@@ -86,7 +86,7 @@ class OnboardingViewModelTest {
                 container.catalog,
                 container.sales,
                 container.history,
-                texts = { error("Unavailable sample names") },
+                fixture = { error("Unavailable sample fixture") },
                 starterRates = container::starterTaxRates,
                 country = "AU",
             )
@@ -110,11 +110,14 @@ class OnboardingViewModelTest {
         await { vm.state.first { it.added == true } }
         vm.populate()
         await { vm.state.first { !it.running && it.added == true } }
-        assertThat(await { container.catalog.products.first() }).hasSize(4)
+        assertThat(await { container.catalog.products.first() }).hasSize(11)
+        val withSamples = await { container.settings.current() }
+        assertThat(withSamples.receipt.businessName).isEqualTo("Harbour Coffee Co.")
+        assertThat(withSamples.copy(receipt = stored.receipt)).isEqualTo(stored)
         vm.purge()
         await { vm.state.first { it.added == false } }
         assertThat(await { container.catalog.products.first() }).isEmpty()
-        assertThat(await { container.settings.current() }).isEqualTo(stored)
+        assertThat(await { container.settings.current() }).isEqualTo(withSamples)
     }
 
     @Test
@@ -126,7 +129,7 @@ class OnboardingViewModelTest {
                 container.catalog,
                 container.sales,
                 container.history,
-                texts = { error("Unavailable sample names") },
+                fixture = { error("Unavailable sample fixture") },
                 starterRates = container::starterTaxRates,
                 country = "AU",
             )

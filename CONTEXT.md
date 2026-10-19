@@ -114,7 +114,7 @@ existing spelling (`preAuthorisation`, `SaleKind.PRE_AUTHORISATION`, `authorised
 | Email fault | Why a receipt email was not sent; the mail server's reply stays external text. | `EmailFault` |
 | Stored reason | Typed reason stored with a transaction or capture: not done, unconfirmed (with what prevented confirmation) or interrupted. Answer text remains verbatim. | `StoredReason` |
 | Catalogue | Products, categories and tax rates. | `CatalogRepository` |
-| Sample data | Optional demo products, categories and read-only simulated history, tracked separately for scoped removal. Never replaces merchant data or credentials. | `data/repo/SampleData`, `sample` on stored rows |
+| Sample data | Optional demo products, categories and read-only simulated history shared with screenshot fixtures, tracked separately for scoped removal. Fills an empty business profile with fictional details. Never replaces merchant data or credentials. | `data/repo/SampleData`, `sample` on stored rows |
 | Onboarding | First-run choice of simulator with sample data, setup import or terminal settings; completion stays local. | `feature/onboarding/OnboardingScreen`, `AppSettings.onboardingCompleted` |
 | Self-update | Startup check for a newer version on a device that is not an Adyen terminal; the offer opens the release's APK in the browser, which downloads it. Terminals update through the Customer Area. | `update/AppUpdate`, `update/GitHubReleases` |
 | Pricing change | Confirmed currency/tax-style transition, including durable recovery; numeric prices are preserved and rounded, not FX-converted. | `payment/PricingChanges` |

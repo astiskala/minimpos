@@ -193,13 +193,16 @@ private fun ColumnScope.DestinationSteps(
         done = apiStep.done,
         cloud = status.mode == TerminalMode.CLOUD,
         discovers = status.mode != TerminalMode.PAYMENTS_APP,
-        discoveryReady = api.testCompleted(actions.api, testedFields),
         api = api,
         actions = actions,
         setup = setup,
         events = events,
         setupEvents = setupEvents,
         update = update,
+        onFind = {
+            testedFields = api.terminal.merchantAccount to api.terminal.liveUrlPrefix
+            events.onSaveAndTest(Secret.ADYEN_API_KEY, api.key, SettingsTest.API) { setupEvents.onTerminalsFind("") }
+        },
         onTest = {
             testedFields = api.terminal.merchantAccount to api.terminal.liveUrlPrefix
             events.onSaveAndTest(Secret.ADYEN_API_KEY, api.key, SettingsTest.API)
@@ -211,10 +214,8 @@ private fun ColumnScope.DestinationSteps(
             number = cloud.number,
             done = cloud.done,
             poiId = state.settings.terminal.poiIdOverride,
-            setup = setup,
             testing = actions.connection.running,
             onPoiId = { id -> update { it.copy(poiIdOverride = id) } },
-            onFindTerminals = { setupEvents.onTerminalsFind(api.key) },
             onTest = {
                 if (!actions.connection.running) events.onSaveAndTest(Secret.ADYEN_API_KEY, api.key, SettingsTest.CLOUD)
             },
@@ -470,7 +471,7 @@ private fun ColumnScope.ApiFields(
 
 /**
  * One Adyen API step for every real destination: key and account together, then [onTest] and its outcome. Optional
- * terminal discovery appears after successful API testing; saved helper fields are never marked tested.
+ * terminal discovery first tests API access; saved helper fields are never marked tested.
  */
 @Composable
 private fun ColumnScope.AdyenApiStep(
@@ -478,7 +479,6 @@ private fun ColumnScope.AdyenApiStep(
     done: Boolean,
     cloud: Boolean,
     discovers: Boolean,
-    discoveryReady: Boolean,
     api: ApiEntry,
     actions: SettingsActions,
     setup: TerminalSetupActions,
@@ -486,6 +486,7 @@ private fun ColumnScope.AdyenApiStep(
     setupEvents: TerminalSetupEvents,
     update: TerminalUpdate,
     onTest: () -> Unit,
+    onFind: () -> Unit,
 ) {
     fun saveAndTest() {
         if (!actions.api.running) onTest()
@@ -515,7 +516,7 @@ private fun ColumnScope.AdyenApiStep(
             icon = Icons.Default.Api,
         )
         actions.secretError?.let { ActionMessage(it.text(), isError = true) }
-        if (discovers && discoveryReady) KeyDiscoveryActions(api, setup) { setupEvents.onTerminalsFind(api.key) }
+        if (discovers) KeyDiscoveryActions(api, setup, actions.api.running, onFind)
         if (api.keySaved) ForgetApiKey(events)
     }
     setup.connectedTerminals?.let { TerminalChoiceDialog(it, setupEvents::onTerminalChoose) }
@@ -540,13 +541,21 @@ private fun ColumnScope.ApiKeyRoles(cloud: Boolean) {
 private fun ColumnScope.KeyDiscoveryActions(
     api: ApiEntry,
     setup: TerminalSetupActions,
+    testingApi: Boolean,
     onSave: () -> Unit,
 ) {
     TestButton(
         typed = api.key.isNotBlank(),
-        save = R.string.settings_save_and_discover,
-        test = R.string.settings_discover,
-        running = setup.terminals.running,
+        save = if (testingApi) R.string.settings_testing_api else R.string.settings_save_and_discover,
+        test =
+            if (testingApi) {
+                R.string.settings_testing_api
+            } else if (setup.terminals.running) {
+                R.string.settings_finding_setup
+            } else {
+                R.string.settings_discover
+            },
+        running = testingApi || setup.terminals.running,
         onClick = onSave,
         tag = "discoverSetup",
         icon = Icons.Default.Search,
@@ -591,18 +600,16 @@ private fun TestButton(
 }
 
 /**
- * The terminal in the cloud: its POIID, typed or chosen using [onFindTerminals] and [TerminalChoiceDialog], and the
- * connection test ([testing] while it runs), which also rechecks the Checkout API.
+ * The terminal in the cloud: its POIID, typed or chosen through the API step's discovery, and the connection test
+ * ([testing] while it runs), which also rechecks the Checkout API.
  */
 @Composable
 private fun ColumnScope.CloudTerminalStep(
     number: Int,
     done: Boolean,
     poiId: String,
-    setup: TerminalSetupActions,
     testing: Boolean,
     onPoiId: (String) -> Unit,
-    onFindTerminals: () -> Unit,
     onTest: () -> Unit,
 ) {
     StepHeader(number, stringResource(R.string.settings_step_terminal), done = done)
@@ -617,13 +624,6 @@ private fun ColumnScope.CloudTerminalStep(
         tag = "poiId",
     )
     SettingActions {
-        SecondaryButton(
-            stringResource(R.string.settings_find_terminals),
-            onFindTerminals,
-            loading = setup.terminals.running,
-            icon = Icons.Default.Search,
-            modifier = Modifier.testTag("findTerminals"),
-        )
         TestButton(
             typed = false,
             save = R.string.settings_save_and_test,

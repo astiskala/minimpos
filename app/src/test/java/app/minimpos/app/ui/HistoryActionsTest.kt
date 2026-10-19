@@ -23,6 +23,7 @@ import app.minimpos.app.data.db.ProductEntity
 import app.minimpos.app.data.db.RefundEntity
 import app.minimpos.app.data.db.RefundStatus
 import app.minimpos.app.data.db.SaleKind
+import app.minimpos.app.data.db.SaleStatus
 import app.minimpos.core.money.CurrencySpec
 import app.minimpos.core.money.MoneyFormatter
 import app.minimpos.core.payment.PaymentContext
@@ -144,7 +145,15 @@ class HistoryActionsTest {
         compose.onNodeWithTag("history").performClick()
         val date = LocalDate.now()
         waitForTag("printDay_$date")
-        val amount = MoneyFormatter(CurrencySpec.of("AUD"), env.context.resources.configuration.locales[0]).format(450)
+        val approved =
+            await {
+                container.database
+                    .saleDao()
+                    .sales()
+                    .first()
+                    .single { it.status == SaleStatus.APPROVED }
+            }
+        val amount = MoneyFormatter(CurrencySpec.of("AUD"), env.context.resources.configuration.locales[0]).format(approved.totalMinor)
         val sales = env.context.getString(R.string.history_day_sales, amount, 1).replace(" (", "\u00a0(")
         val textLayouts = mutableListOf<TextLayoutResult>()
         compose.onNodeWithText(sales).performSemanticsAction(SemanticsActions.GetTextLayoutResult) { it(textLayouts) }

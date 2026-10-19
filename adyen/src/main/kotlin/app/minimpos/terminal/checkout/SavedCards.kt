@@ -251,7 +251,7 @@ class CheckoutSavedCards(
             }
 
             PaymentResponse.ResultCodeEnum.REFUSED, PaymentResponse.ResultCodeEnum.CANCELLED, PaymentResponse.ResultCodeEnum.ERROR -> {
-                CardChargeResult.Refused(psp, ExternalText.of(response.refusalReason ?: adyenField(text, "refusalReason")))
+                CardChargeResult.Refused(psp, ExternalText.of(response.refusalReason))
             }
 
             // Pending, received or an unexpected step: Adyen has not decided yet, so the outcome stays unknown.
@@ -260,7 +260,7 @@ class CheckoutSavedCards(
             }
 
             else -> {
-                CardChargeResult.Failed(Fault.UnreadableReply(ExternalText.of(adyenField(text, "resultCode"))))
+                CardChargeResult.Failed(Fault.UnreadableReply(ExternalText.of(adyenField(text, PaymentResponse.JSON_PROPERTY_RESULT_CODE))))
             }
         }
     }

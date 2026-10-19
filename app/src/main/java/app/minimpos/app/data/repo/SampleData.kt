@@ -13,7 +13,6 @@ import app.minimpos.core.money.CurrencySpec
 import app.minimpos.core.payment.PaymentContext
 import app.minimpos.core.tax.TaxRates
 import kotlinx.coroutines.flow.first
-import java.math.BigDecimal
 import kotlin.uuid.Uuid
 
 /**
@@ -25,7 +24,7 @@ import kotlin.uuid.Uuid
  * @param catalog Owns sample catalog writes.
  * @param sales Owns creation and settlement of demo sales.
  * @param history Owns scoped history removal.
- * @param texts Localized names stored only when samples are first added, in product order followed by the category.
+ * @param fixture Shared localized screenshot fixtures, read only when samples are added.
  * @param starterRates Initial tax rates if setup runs before startup seeding.
  * @param country Device country used when the merchant has not selected a currency.
  * @param now Epoch milliseconds used for the sample history.
@@ -36,7 +35,7 @@ class SampleData(
     private val catalog: CatalogRepository,
     private val sales: SaleRepository,
     private val history: HistoryRepository,
-    private val texts: () -> List<String>,
+    private val fixture: () -> SampleDataFixture,
     private val starterRates: () -> List<TaxRateEntity>,
     private val country: String,
     private val now: () -> Long = System::currentTimeMillis,
@@ -51,11 +50,9 @@ class SampleData(
             if (catalog.samples.exists() || history.hasSamples()) return@withTransaction false
             catalog.seedDefaults(starterRates())
             val tax = checkNotNull(settings.payment.defaultTaxRate(catalog.taxRates.first()))
-            val names = texts()
             val currency = CurrencySpec.of(settings.payment.resolvedCurrency(country))
-            val prices = listOf("4.50", "3.00", "6.00", "50.00").map { currency.toMinor(BigDecimal(it)) }
-            val products = catalog.samples.add(names.dropLast(1), names.last(), prices, tax.id)
-            products.filter { it.kind == SaleKind.SALE }.forEachIndexed { index, product ->
+            val products = catalog.samples.add(fixture().products(currency, tax.id), tax.id)
+            products.filter { it.kind == SaleKind.SALE }.take(SAMPLE_STATUSES.size).forEachIndexed { index, product ->
                 createSale(settings, currency, tax, product, index)
             }
             true
@@ -110,11 +107,12 @@ class SampleData(
                 ),
             ),
         )
-        val status = listOf(SaleStatus.APPROVED, SaleStatus.DECLINED, SaleStatus.CANCELLED)[index]
+        val status = SAMPLE_STATUSES[index]
         sales.record(id, SaleEvent.Settled(status, null, null, processedAt = now() - index * HOUR_MILLIS))
     }
 
     private companion object {
+        val SAMPLE_STATUSES = listOf(SaleStatus.APPROVED, SaleStatus.DECLINED, SaleStatus.CANCELLED)
         const val HOUR_MILLIS = 60L * 60 * 1000
     }
 }

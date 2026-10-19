@@ -178,27 +178,18 @@ class CatalogRepository(
         /** Whether any tracked sample catalog rows remain. */
         suspend fun exists(): Boolean = dao.productsOnce().any { it.sample } || dao.categoriesOnce().any { it.sample }
 
-        /** Adds a separate sample category and products without matching or overwriting merchant rows. */
+        /** Adds separate sample categories and products without matching or overwriting merchant rows. */
         suspend fun add(
-            names: List<String>,
-            categoryName: String,
-            prices: List<Long>,
+            categories: Map<String, List<ProductEntity>>,
             taxRateId: Long,
-        ): List<ProductEntity> {
-            val categoryId = dao.insert(CategoryEntity(name = categoryName, sample = true))
-            return names.mapIndexed { index, name ->
-                val product =
-                    ProductEntity(
-                        name = name,
-                        priceMinor = prices[index],
-                        taxRateId = taxRateId,
-                        categoryId = categoryId,
-                        kind = if (index == names.lastIndex) SaleKind.PRE_AUTHORISATION else SaleKind.SALE,
-                        sample = true,
-                    )
-                product.copy(id = dao.insert(product))
+        ): List<ProductEntity> =
+            categories.flatMap { (name, products) ->
+                val categoryId = dao.insert(CategoryEntity(name = name, sample = true))
+                products.map { product ->
+                    val sample = product.copy(categoryId = categoryId, taxRateId = taxRateId, sample = true)
+                    sample.copy(id = dao.insert(sample))
+                }
             }
-        }
 
         /** Removes tracked sample products; sample categories used by merchant products are kept. Tax rates are untouched. */
         suspend fun remove() {

@@ -1,6 +1,6 @@
 :root {
-  --green: #0abf53;
-  --green-dark: #079a42;
+  --green: #00843f;
+  --green-dark: #006b33;
   --green-light: #e6f8ee;
   --navy: #00112c;
   --grey: #5c687c;
@@ -413,7 +413,7 @@ a:focus-visible, summary:focus-visible { outline: 3px solid var(--green); outlin
 
 .step p, .step li { color: #c9d2de; }
 
-.step a { color: var(--green); font-weight: 700; }
+.step a { color: var(--green-light); font-weight: 700; }
 
 .step ol { padding-left: 1.2em; }
 
@@ -422,7 +422,7 @@ pre {
   padding: 18px 20px;
   border-radius: 12px;
   background: #000a1b;
-  color: #e6f8ee;
+  color: var(--green-light);
   font-family: var(--mono);
   font-size: 0.9rem;
   overflow-x: auto;

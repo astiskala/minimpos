@@ -29,10 +29,14 @@ class GuideLayoutTest {
                         val prefix = "${language.ifEmpty { "en/" }.dropLast(1)}-${page.removeSuffix(".html")}-$width"
                         browser.screenshot(reports.resolve("$prefix.png"))
                         assertWithMessage("$prefix broken images").that(broken).isEqualTo(emptyList<String>())
+                        assertWithMessage(
+                            "$prefix viewport",
+                        ).that(browser.executeScript("return window.innerWidth")).isEqualTo(width.toLong())
+                        // clientWidth excludes a classic scrollbar (Linux), which overlay scrollbars (macOS) do not take.
                         assertWithMessage("$prefix horizontal width")
                             .that(
                                 browser.executeScript("return Math.max(document.documentElement.scrollWidth, document.body.scrollWidth)"),
-                            ).isEqualTo(width.toLong())
+                            ).isEqualTo(browser.executeScript("return document.documentElement.clientWidth"))
                     }
                 }
             }

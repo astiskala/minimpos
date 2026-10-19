@@ -85,8 +85,8 @@ class DailyReportTest {
     fun `printer refusal surfaces failure and stops offering report printing`() =
         await {
             env.useSimulator { it.copy(simulator = it.simulator.copy(hasPrinter = false)) }
-            val offered = container.receipts.canPrintReports.first()
-            assertThat(offered).isFalse()
+            // The simulator change reaches the offer asynchronously; await fails if it is never withdrawn.
+            container.receipts.canPrintReports.first { !it }
             val result = container.receipts.printReport(LocalDate.now(), ZoneId.systemDefault())
             assertThat(result).isInstanceOf(ActionResult.Failed::class.java)
             assertThat(container.virtualPrinter.jobs.value).isEmpty()

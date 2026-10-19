@@ -25,6 +25,9 @@ enum class SetupStepKind {
 
     /** The shared key a local terminal or the Payments app encrypts messages with. */
     SHARED_KEY,
+
+    /** Final verification of API access and the supported connection checks. */
+    CONNECTION,
 }
 
 /**
@@ -103,7 +106,7 @@ object TerminalSetupPlan {
             SetupStepKind.ADYEN_API -> visit.apiTested
             SetupStepKind.NETWORK_TERMINAL -> terminal.host.isNotBlank() && terminal.poiIdOverride.isNotBlank()
             SetupStepKind.TAP_TO_PAY -> terminal.paymentsAppInstallationId.isNotBlank()
-            SetupStepKind.CLOUD_TERMINAL, SetupStepKind.SHARED_KEY -> false
+            SetupStepKind.CLOUD_TERMINAL, SetupStepKind.SHARED_KEY, SetupStepKind.CONNECTION -> false
         }
 
     /** Whether the steps after [kind] are revealed: it is done, or the destination's details are [supplied] already. */
@@ -118,7 +121,7 @@ object TerminalSetupPlan {
             SetupStepKind.ADYEN_API -> visit.apiTested || supplied
             SetupStepKind.NETWORK_TERMINAL -> visit.terminalEntered || keyStarted
             SetupStepKind.TAP_TO_PAY -> visit.boarded || keyStarted
-            SetupStepKind.CLOUD_TERMINAL, SetupStepKind.SHARED_KEY -> true
+            SetupStepKind.CLOUD_TERMINAL, SetupStepKind.SHARED_KEY, SetupStepKind.CONNECTION -> true
         }
     }
 

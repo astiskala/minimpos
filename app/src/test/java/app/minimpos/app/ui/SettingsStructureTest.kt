@@ -6,6 +6,7 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsOff
 import androidx.compose.ui.test.assertIsOn
 import androidx.compose.ui.test.hasTestTag
+import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
@@ -14,6 +15,7 @@ import app.minimpos.app.MiniMposApp
 import app.minimpos.app.TestEnvironment
 import app.minimpos.app.awaitCondition
 import app.minimpos.app.createRecordingComposeRule
+import app.minimpos.app.data.settings.TerminalMode
 import com.google.common.truth.Truth.assertThat
 import org.junit.Rule
 import org.junit.Test
@@ -45,6 +47,37 @@ class SettingsStructureTest {
     @Test
     @Config(qualifiers = "ja-rJP-w320dp-h460dp-hdpi")
     fun `Japanese settings sections fit AMS1`() = sectionsFit()
+
+    @Test
+    fun `network Help refreshes collapsed diagnostics on every expansion without result dialogs`() = diagnostics(TerminalMode.TERMINAL)
+
+    @Test
+    @Config(qualifiers = "ja-w320dp-h460dp-hdpi")
+    fun `Japanese cloud Help has expandable support details on AMS1`() = diagnostics(TerminalMode.CLOUD)
+
+    @Test
+    fun `simulator Help has expandable support details`() = diagnostics(TerminalMode.SIMULATOR)
+
+    private fun diagnostics(mode: TerminalMode) {
+        env.useCheckoutApi()
+        env.updateSettings { it.copy(terminal = it.terminal.copy(mode = mode)) }
+        compose.setContent { MiniMposApp(env.container) }
+        compose.onNodeWithTag("settings").performClick()
+        open("help", "tapTroubleshootingDetails")
+        compose.onNodeWithTag("shareTapReport").assertDoesNotExist()
+        repeat(2) {
+            compose.onNodeWithTag("tapTroubleshootingDetails").performScrollTo().performClick()
+            compose.waitUntilAtLeastOneExists(hasText("integration=${mode.name}"), 15_000)
+            compose.waitUntilAtLeastOneExists(hasText("merchantAccount=HarbourCoffeeCOM"), 15_000)
+            compose.waitUntilDoesNotExist(hasTestTag("diagnosticsLoading"), 15_000)
+            compose.onNodeWithTag("shareTapReport").performScrollTo().assertIsDisplayed()
+            compose.onNodeWithTag("testConnection").assertDoesNotExist()
+            compose.onNodeWithTag("connectionResult").assertDoesNotExist()
+            compose.onNodeWithTag("tapClientKeyStatus").assertDoesNotExist()
+            compose.onNodeWithTag("tapTroubleshootingDetails").performScrollTo().performClick()
+            compose.onNodeWithTag("shareTapReport").assertDoesNotExist()
+        }
+    }
 
     private fun sectionsFit() {
         env.useSimulator()

@@ -107,20 +107,40 @@ class SampleDataTest {
     }
 
     @Test
-    fun `sample action fills empty company details once and preserves merchant receipt text`() =
+    fun `sample action replaces business details even with existing samples but preserves receipt configuration`() =
         await {
             container.sampleData.populate()
             val receipt = container.settings.current().receipt
             assertThat(receipt.businessName).isEqualTo("Harbour Coffee Co.")
             assertThat(receipt.addressLines).isEqualTo("1 Wharf Street\nFremantle WA 6160")
             assertThat(receipt.taxId).isEqualTo("12 345 678 901")
-            container.sampleData.purge()
-            val merchant = ReceiptSettings(businessName = "Merchant", title = "Custom title", footer = "Custom footer")
+            val merchant =
+                ReceiptSettings(
+                    businessName = "Merchant",
+                    addressLines = "Merchant address",
+                    phone = "Merchant phone",
+                    taxId = "Merchant tax ID",
+                    title = "Custom title",
+                    footer = "Custom footer",
+                    autoPrint = false,
+                    charsPerLine = 48,
+                )
             env.updateSettings { it.copy(receipt = merchant) }
-            container.sampleData.populate()
-            assertThat(container.settings.current().receipt).isEqualTo(merchant)
+            assertThat(container.sampleData.populate()).isFalse()
+            val replaced = container.settings.current().receipt
+            assertThat(replaced).isEqualTo(
+                merchant.copy(
+                    businessName = receipt.businessName,
+                    addressLines = receipt.addressLines,
+                    phone = receipt.phone,
+                    taxId = receipt.taxId,
+                ),
+            )
             container.sampleData.purge()
-            assertThat(container.settings.current().receipt).isEqualTo(merchant)
+            assertThat(container.settings.current().receipt).isEqualTo(replaced)
+            env.updateSettings { it.copy(receipt = merchant) }
+            assertThat(container.sampleData.populate()).isTrue()
+            assertThat(container.settings.current().receipt).isEqualTo(replaced)
         }
 
     @Test

@@ -204,7 +204,7 @@
             <summary>手動</summary>
             <ol>
               <li><strong>設定 › 端末</strong>で<strong>決済先</strong>を<strong>ネットワーク上の端末</strong>にします。<strong>環境</strong>で端末に合う TEST または LIVE を選びます。</li>
-              <li><strong>Adyen API</strong>で Adyen APIキーとマーチャントアカウントを入力し、LIVE では LIVE URLプレフィックスも入力します。<strong>設定する端末を検索</strong>をタップすると、APIアクセスをテストして端末を選べます。手動で設定する場合は<strong>APIをテスト</strong>をタップします。</li>
+              <li><strong>Adyen API</strong>で Adyen APIキーとマーチャントアカウントを入力し、LIVE では LIVE URLプレフィックスも入力します。<strong>設定する端末を検索</strong>をタップすると、APIアクセスをテストして端末を選べます。不足する情報を手動で入力してください。</li>
               <li>端末の IP アドレスと<strong>端末ID（POIID）</strong>を確認または入力します。どちらも端末の「Device info」画面に表示されます。</li>
               <li>共有キーを確認または入力し、<strong>接続をテスト</strong>をタップします。</li>
             </ol>
@@ -226,7 +226,7 @@
             <summary>手動</summary>
             <ol>
               <li><strong>設定 › 端末</strong>で<strong>決済先</strong>を<strong>インターネット経由の端末（クラウド）</strong>にします。<strong>環境</strong>で端末に合う TEST または LIVE を選びます。</li>
-              <li><strong>Adyen API</strong>で Adyen APIキーとマーチャントアカウントを入力し、LIVE では LIVE URLプレフィックスも入力します。<strong>設定する端末を検索</strong>をタップすると、APIアクセスをテストして端末を選べます。手動で設定する場合は<strong>APIをテスト</strong>をタップします。</li>
+              <li><strong>Adyen API</strong>で Adyen APIキーとマーチャントアカウントを入力し、LIVE では LIVE URLプレフィックスも入力します。<strong>設定する端末を検索</strong>をタップすると、APIアクセスをテストして端末を選べます。不足する情報を手動で入力してください。</li>
               <li><strong>端末ID（POIID）</strong>を確認または入力し、<strong>接続をテスト</strong>をタップします。</li>
             </ol>
           </details>
@@ -269,10 +269,10 @@
         <section id="first-payment">
           <h2>TEST の構成を確認する</h2>
           <ol>
-            <li><strong>設定 › 端末</strong>で、環境が <strong>TEST</strong> であることを確認します。<strong>APIをテスト</strong>を実行し、成功を確認します。
+            <li><strong>設定 › 端末</strong>で、環境が <strong>TEST</strong> であることを確認します。最後の<strong>接続をテスト</strong>で API アクセスと対応する接続チェックを確認します。
               <ul>
                 <li>物理端末：<strong>接続をテスト</strong>を実行し、成功を確認します。</li>
-                <li>Tap to Pay：スマートフォンが <strong>Adyen Payments Test</strong> に登録されていることを確認します。接続テストはありません。以下の決済で構成を確認します。</li>
+                <li>Tap to Pay：スマートフォンが <strong>Adyen Payments Test</strong> に登録されていることを確認します。接続チェックは設定のみを確認し、端末診断には対応していません。以下のテスト決済で決済の動作を確認します。</li>
               </ul></li>
             <li><strong>設定 › 決済</strong>で通貨を、<strong>設定 › 税</strong>で税率と税込・税抜の設定を確認します。</li>
             <li>ホームで<strong>新規販売</strong>をタップし、<strong>任意の商品</strong>を追加して会計ボタンをタップします。</li>
@@ -296,10 +296,10 @@
             <li>使う予定の領収書の渡し方をテストします。実際のプリンターで印刷するか、テストメールを送信するか、領収書を共有します。</li>
             <li>管理者PINと、必要ならマネージャーPINを設定します。<a href="using.html#staff">スタッフの権限</a>を参照してください。</li>
             <li>LIVE の端末または LIVE 版 Payments アプリと、LIVE の認証情報に切り替えます。ネットワークやクラウドの端末では<strong>環境</strong>で <strong>LIVE</strong> を選びます。<strong>LIVE URLプレフィックス</strong>を入力します。<a href="https://docs.adyen.com/development-resources/live-endpoints">Adyen の LIVE エンドポイントガイド</a>を参照してください。</li>
-            <li><strong>設定 › 端末</strong>で<strong>APIをテスト</strong>を実行し、成功を確認します。環境が <strong>LIVE</strong> であることを確認します。
+            <li><strong>設定 › 端末</strong>で、環境が <strong>LIVE</strong> であることを確認します。最後の<strong>接続をテスト</strong>で API アクセスと対応する接続チェックを確認します。
               <ul>
                 <li>物理端末：<strong>接続をテスト</strong>を実行し、成功を確認します。</li>
-                <li>Tap to Pay：スマートフォンが LIVE 版 <strong>Adyen Payments</strong> アプリに登録されていることを確認します。接続テストはありません。</li>
+                <li>Tap to Pay：スマートフォンが LIVE 版 <strong>Adyen Payments</strong> アプリに登録されていることを確認します。接続チェックは設定のみを確認し、端末診断には対応していません。</li>
               </ul></li>
           </ol>
           <div class="callout callout-warning" role="note">
@@ -318,7 +318,7 @@
             <li>ようこそ画面で<strong>サンプルでシミュレーターを試す</strong>を選びます。ほかに、設定 QR コードを読み込む<strong>別のデバイスから設定</strong>と、<strong>端末を設定</strong>があります。</li>
             <li><strong>設定 › シミュレーター</strong>で、決済結果、待ち時間、プリンターの有無を選びます。</li>
           </ol>
-          <p>サンプルの商品と履歴にはデモと表示されます。事業者情報が空の場合は架空のカフェ情報が入ります。保存済みの事業者情報は変わりません。サンプルはデモの日次合計とレポートに含まれますが、実際の決済ではありません。<strong>設定 › データと転送</strong>で<strong>サンプルデータを追加</strong>または<strong>サンプルデータを削除</strong>を使えます。削除しても、ご自身の商品、履歴、設定は残ります。オフラインのデモリンクは<a href="using.html#payment-links">決済リンク</a>を参照してください。</p>
+          <p>サンプルの商品と履歴にはデモと表示されます。サンプルがすでにあっても、<strong>サンプルデータを追加</strong>を実行するたびにレシートの事業者情報を架空のカフェ情報に置き換えます。レシートのレイアウトと送信設定は変更しません。サンプルはデモの日次合計とレポートに含まれますが、実際の決済ではありません。<strong>設定 › データと転送</strong>で<strong>サンプルデータを追加</strong>または<strong>サンプルデータを削除</strong>を使えます。削除しても、ご自身の商品、履歴、設定は残ります。オフラインのデモリンクは<a href="using.html#payment-links">決済リンク</a>を参照してください。</p>
           <p class="back-to-contents"><a href="#contents">目次に戻る</a></p>
         </section>
       </div>

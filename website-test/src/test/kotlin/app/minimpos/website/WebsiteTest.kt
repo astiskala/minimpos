@@ -99,16 +99,18 @@ class QuickStartGuideTest {
     }
 
     @Test
-    fun `test and live validation distinguish physical connection checks from Payments app registration`() {
+    fun `test and live validation use final connection checks and explain Payments app diagnosis limits`() {
         val connection = mapOf("en" to "Test connection", "zh-CN" to "测试连接", "zh-Hant" to "測試連接", "ja" to "接続をテスト")
-        val api = mapOf("en" to "Test API", "zh-CN" to "测试 API", "zh-Hant" to "測試 API", "ja" to "APIをテスト")
-        val unavailable = mapOf("en" to "no connection test", "zh-CN" to "没有连接测试", "zh-Hant" to "沒有連接測試", "ja" to "接続テストはありません")
+        val unavailable =
+            mapOf("en" to "no terminal diagnosis", "zh-CN" to "不支持终端诊断", "zh-Hant" to "不支援終端診斷", "ja" to "端末診断には対応していません")
         LANGUAGES.forEach { language ->
             val guide = pages.getValue(language to Kind.GUIDE)
             listOf("first-payment" to "TEST", "live" to "LIVE").forEach { (id, environment) ->
                 val steps = guide.document.select("#$id > ol > li")
                 val check = if (id == "first-payment") steps.first()!! else steps.last()!!
-                assertWithMessage("${guide.name} #$id API check").that(check.text()).contains(api.getValue(language))
+                assertWithMessage(
+                    "${guide.name} #$id final check",
+                ).that(check.select("strong").eachText()).contains(connection.getValue(language))
                 assertThat(check.text()).contains(environment)
                 val destinations = check.select("ul > li")
                 assertWithMessage("${guide.name} #$id destination checks").that(destinations).hasSize(2)

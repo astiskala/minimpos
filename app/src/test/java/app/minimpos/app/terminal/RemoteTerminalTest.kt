@@ -78,6 +78,40 @@ class RemoteTerminalTest {
     }
 
     @Test
+    fun `support inspection checks cloud API and diagnosis independently without payment or setup changes`() {
+        useCloud()
+        val before = await { container.settings.current() }
+        val reading = checkNotNull(await { container.terminalStatus.inspect() })
+        assertThat(reading.api).isEqualTo(ApiCheck.Works)
+        assertThat(reading.connection).isInstanceOf(TerminalConnection.Connected::class.java)
+        assertThat(reading.facts["poiId"]).isEqualTo("S1F2-000158213605014")
+        assertThat(reading.facts["merchantAccount"]).isEqualTo(" Merchant ")
+        assertThat(reading.facts["integration"]).isEqualTo("CLOUD")
+        assertThat(reading.facts.values.joinToString()).doesNotContain("cloud-key")
+        assertThat(management.requests).isEmpty()
+        assertThat(paymentsApp.opened).isEmpty()
+        assertThat(await { container.settings.current() }).isEqualTo(before)
+    }
+
+    @Test
+    fun `support inspection discards results when its API credential changes`() {
+        useCloud()
+        cloud.beforeDetection = { container.secrets.set(Secret.ADYEN_API_KEY, "replacement-key") }
+        assertThat(await { container.terminalStatus.inspect() }).isNull()
+    }
+
+    @Test
+    fun `support diagnosis remains independent when API setup is incomplete but final verification fails`() {
+        useCloud()
+        env.updateSettings { it.copy(terminal = it.terminal.copy(liveUrlPrefix = "")) }
+        val reading = checkNotNull(await { container.terminalStatus.inspect() })
+        assertThat(reading.api).isEqualTo(ApiCheck.NotSetUp(SetupProblem.LIVE_PREFIX))
+        assertThat(reading.connection).isInstanceOf(TerminalConnection.Connected::class.java)
+        assertThat(await { container.terminalStatus.check(includeDiagnostics = true) })
+            .isEqualTo(TerminalConnection.NotSetUp(SetupProblem.LIVE_PREFIX))
+    }
+
+    @Test
     fun `changing the selected cloud environment opens a new transport without changing credentials`() {
         useCloud()
         assertThat(await { gateway.diagnose() }).isInstanceOf(TerminalConnection.Connected::class.java)

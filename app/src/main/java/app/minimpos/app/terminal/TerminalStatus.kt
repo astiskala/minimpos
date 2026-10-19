@@ -18,6 +18,20 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
 /**
+ * Independent read-only support checks, not payment-readiness verification.
+ * @property api Current credential/account access result.
+ * @property connection Diagnosis result, or setup-only validation where diagnosis is unsupported.
+ * @property checkedAt Completion time in UTC epoch milliseconds.
+ * @property facts Non-secret support fields using stable technical identifiers; empty values mean unavailable.
+ */
+data class SetupDiagnostics(
+    val api: ApiCheck,
+    val connection: TerminalConnection,
+    val checkedAt: Long,
+    val facts: Map<String, String>,
+)
+
+/**
  * Where payments go and whether they, and printing, can work, as Home, Settings and the receipt screens show it.
  *
  * @property loaded False until the settings and the list of saved secrets have been read.
@@ -164,24 +178,79 @@ class TerminalStatus(
 
     /**
      * Checks the stored connection, publishes the result in [state] and returns it.
-     * [includeDiagnostics] adds advisory Payments app checks for an explicit Test connection action; background checks
-     * leave it false, so ordinary status updates never open the Payments app or require Management permissions.
+     * [includeDiagnostics] forces fresh API verification and adds advisory Payments app checks for an explicit Test
+     * connection action. Background checks leave it false, so ordinary updates never open the Payments app or require
+     * extra Management permissions.
      */
     suspend fun check(includeDiagnostics: Boolean = false): TerminalConnection {
         connection.value = TerminalConnection.Checking
-        val result = if (setups.current().importPending) TerminalConnection.NotSetUp(SetupProblem.TRANSFER_PENDING) else checkActive()
+        val result =
+            if (setups.current().importPending) {
+                TerminalConnection.NotSetUp(
+                    SetupProblem.TRANSFER_PENDING,
+                )
+            } else {
+                checkActive(includeDiagnostics)
+            }
         val actual = setups.current()
         if (includeDiagnostics && actual.boardsPhone && !actual.importPending) inspectPhone()
         connection.value = result
         return result
     }
 
-    private suspend fun checkActive(): TerminalConnection {
+    /**
+     * Refreshes independent API, diagnosis and supported phone checks without boarding, key changes or payment requests.
+     * Returns null if the originating setup changed while checking. Does not mark setup verified.
+     */
+    suspend fun inspect(): SetupDiagnostics? {
+        gateway.refreshEnvironment()
+        val candidate = setups.unlocked(forValidation = true)
+        val actual = candidate.setup
+        val fence = setups.SetupFence(candidate, SetupFreshness.SECRETS)
+        val pending = actual.importPending
+        val api = if (pending) ApiCheck.NotSetUp(SetupProblem.TRANSFER_PENDING) else verifyApi(candidate)
+        val checked = if (pending) TerminalConnection.NotSetUp(SetupProblem.TRANSFER_PENDING) else gateway.diagnose()
+        if (actual.boardsPhone && !pending) inspectPhone()
+        if (!fence.stillCurrent()) return null
+        val terminal = actual.settings.terminal
+        val device = setups.device
+        return SetupDiagnostics(
+            api,
+            checked,
+            System.currentTimeMillis(),
+            buildMap {
+                put("integration", actual.mode.name)
+                put("environment", actual.environment?.name.orEmpty())
+                put("onTerminal", actual.onTerminal.toString())
+                put("merchantAccount", terminal.merchantAccount)
+                put("poiId", actual.poiId.orEmpty())
+                put("host", actual.host.orEmpty())
+                put("storeId", terminal.storeId)
+                put("installationId", terminal.paymentsAppInstallationId)
+                put("keyIdentifier", terminal.keyIdentifier)
+                put("keyVersion", terminal.keyVersion.toString())
+                put("liveUrlPrefix", terminal.liveUrlPrefix)
+                put("cloudRegion", terminal.cloudRegion?.name.orEmpty())
+                put("androidVersion", device.osVersion)
+                put("deviceModel", device.model)
+                put("paymentsApps", device.paymentsApps.joinToString { it.name })
+                actual.environment?.let { device.paymentsAppVersion(it) }?.let { put("paymentsAppVersion", it) }
+                put("supportsDiagnosis", actual.capabilities.diagnoses.toString())
+                put("supportsPrinting", actual.capabilities.supportsPrinting.toString())
+                put("supportsRemoteStatus", actual.capabilities.supportsRemoteStatus.toString())
+                put("setupProblem", actual.problem?.name.orEmpty())
+                put("connectionProblem", actual.connectionProblem?.name.orEmpty())
+            },
+        )
+    }
+
+    private suspend fun checkActive(forceApi: Boolean): TerminalConnection {
         gateway.refreshEnvironment()
         val actual = setups.current()
         val candidate = setups.unlocked(forValidation = true)
         val complete = candidate.setup.apiSetup == ApiSetup.Complete
-        val blocked = if (complete && actual.apiSetup != ApiSetup.Complete) credentialCheck(candidate) else null
+        val blocked =
+            if (forceApi || (complete && actual.apiSetup != ApiSetup.Complete)) credentialCheck(candidate) else null
         val result = blocked ?: gateway.diagnose()
         if (result is TerminalConnection.Connected && complete) {
             setups.rememberVerified(candidate)

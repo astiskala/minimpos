@@ -140,7 +140,8 @@
         </section>
         <section id="connection">
           <h2>终端绑定或设置失败</h2>
-          <p>先查看首页的提示，再打开<strong>设置 › 终端</strong>，运行<strong>测试 API</strong>。实体终端还需运行<strong>测试连接</strong>。Tap to Pay 则检查 Payments 应用的注册状态。完整步骤请参阅<a href="quick-start.html#connect">连接 Adyen</a>。</p>
+          <p>先查看首页的提示，再打开<strong>设置 › 终端</strong>，完成最后的<strong>测试连接</strong>步骤，验证 API 访问和此集成支持的连接检查。网络和云端设置使用<strong>查找要设置的终端</strong>测试 API 访问并列出终端；设备本机终端和 Tap to Pay 提供<strong>测试 API</strong>。完整步骤请参阅<a href="quick-start.html#connect">连接 Adyen</a>。</p>
+          <p>所有集成都可打开<strong>设置 › 帮助与故障排除 › 故障排查详情</strong>。详情默认折叠；展开后自动刷新只读检查并显示加载进度。折叠后重新展开可再次检查。结果包括设置缺失项、API 访问、受支持的连接检查、时间和设备信息，并标明不支持的检查。这些检查不保证付款、退款或打印成功，也不会发起付款、注册手机或更改密钥。使用<strong>分享已脱敏的报告</strong>分享显示的详情：保留商户、终端、安装实例和凭据 ID；排除秘密值、非结构化消息和顾客数据。不会自动上传任何内容。</p>
           <dl class="fixes">
             <div><dt>首页提示“尚未完成收款设置”</dt>
               <dd><p><span class="fix-label">原因</span>必填字段为空、本设备无法读取已保存的密钥，或设置更改后尚未通过连接测试。在此之前，支付、退款、打印和其他 Adyen 操作会显示此说明，而不会执行。</p>
@@ -165,8 +166,8 @@
                 <p><span class="fix-label">解决</span>卸载不用的那个，再完成注册并输入共享密钥。设置检查通过并不代表测试了银行卡付款，请完成一笔 TEST 付款。</p></dd></div>
             <div id="tap-to-pay-check"><dt>Tap to Pay 在出示卡片前返回 UnavailableService</dt>
               <dd><p>Payments 应用无法完成请求。此通用错误不能证明 Adyen 服务中断或缺少客户端密钥。如果收到 <code>1029_605</code>，这表示会话相关故障，不能证明缺少密钥。</p>
-                <p>在<strong>设置 › 终端 › 共享密钥</strong>点按<strong>测试连接</strong>。要查看凭据详情或分享脱敏报告，请打开<strong>设置 › 帮助与故障排除 › 故障排查详情</strong>。连接测试同时检查 Tap to Pay 凭据和注册状态。Payments 应用的非成功结果页面也提供同一测试。凭据已保存、已验证、客户端密钥检查、注册状态和支付结果互不等同；保存或注册不代表支付已准备就绪。</p>
-                <p>可选检查通过公开的 Adyen Management v1 <a href="https://docs.adyen.com/api-explorer/Management/1/get/me">GET /me</a>，使用<strong>注册 Payments 应用的同一凭据</strong>，而不是独立的 Terminal/Checkout 凭据。此端点允许任何 Management API 角色，但仅有 Payments app role 可能不够。无权限时提供手动清单，不阻止付款。不要为诊断而添加广泛的凭据管理权限。</p>
+                <p>在<strong>设置 › 终端</strong>中完成最后的<strong>测试连接</strong>步骤。要查看凭据详情或分享脱敏报告，请展开<strong>设置 › 帮助与故障排除 › 故障排查详情</strong>。两者都会刷新 Tap to Pay 凭据和注册状态检查。后台连接检查不包含参考性的客户端密钥检查；没有当前结果表示未检查，不表示密钥缺失。Payments 应用的非成功结果页面也提供连接测试。凭据已保存、已验证、客户端密钥检查、注册状态和支付结果互不等同；保存或注册不代表支付已准备就绪。</p>
+                <p>可选检查通过公开的 Adyen Management v1 <a href="https://docs.adyen.com/api-explorer/Management/1/get/me">GET /me</a>，使用<strong>注册 Payments 应用的同一凭据</strong>，而不是独立的 Terminal/Checkout 凭据。此端点允许任何 Management API 角色，但仅有 Payments app role 可能不够。权限不足会显示在结果中，本身不阻止付款。不要为诊断而添加广泛的凭据管理权限。</p>
                 <p>如果确认缺少密钥，在对应的 <a href="https://ca-test.adyen.com/">TEST Customer Area</a> 或 <a href="https://ca-live.adyen.com/">LIVE Customer Area</a> 中前往“Developers → API credentials”，选择已验证的凭据用户名。在“Client settings → Authentication → Client key”下，仅在没有密钥时生成密钥。保存，等待几分钟生效，然后再次<strong>测试连接</strong>。参见 <a href="https://docs.adyen.com/point-of-sale/mobile-android/build/payments-app">Adyen Payments 应用要求</a>。</p>
                 <p>客户端密钥必须属于注册所用的同一凭据。它不同于 API 密钥，也无需粘贴到 Mini mPOS。仅满足此原生前提不需要 Allowed origins。不要为排查问题而重新生成现有客户端密钥或轮换 API 密钥。</p>
                 <p>没有注册凭据记录的现有安装实例只能验证当前配置的凭据，不能确认最初注册所用的凭据。身份验证、权限、网络或结构错误均不表示缺少密钥。v1 文档规定该字段为必填字符串：空字符串确认缺失，缺少字段或 null 则无法验证。环境或凭据更改会使缓存结果失效；修改后请重新检查。</p>

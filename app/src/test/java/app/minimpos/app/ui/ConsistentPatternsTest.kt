@@ -74,6 +74,10 @@ class ConsistentPatternsTest {
         assertThat(discovery.state.value.dccEnabled).isFalse()
         compose.onNodeWithTag("saveCapDcc").performScrollTo().performClick()
         compose.awaitCondition("DCC saved") { discovery.state.value.dccEnabled }
+        compose.waitUntilAtLeastOneExists(hasTestTag("capabilityResult"), 15_000)
+        compose.onNodeWithTag("capabilityResult").assertTextContains(env.context.getString(R.string.settings_changes_saved))
+        compose.onNodeWithTag("capabilityResultOk").performClick()
+        compose.onNodeWithTag("capabilityResult").assertDoesNotExist()
     }
 
     @Test

@@ -25,11 +25,13 @@ import app.minimpos.app.payment.PricingChanges as SettingsOperations
  * @property lookup Latest read-only Management lookup.
  * @property proposal Proposal offered for review; null when no review is open.
  * @property revision Advances after import so business text editors reload confirmed values.
+ * @property resultPending Whether an explicitly requested action has an unacknowledged completion.
  */
 internal data class ReceiptBusinessImportState(
     val lookup: ActionState = ActionState(),
     val proposal: ReceiptBusiness? = null,
     val revision: Int = 0,
+    val resultPending: Boolean = false,
 )
 
 /** Settings' receipt-business review and confirmation; durable settings writes follow the owning view model's write lifecycle. */
@@ -43,6 +45,7 @@ internal class ReceiptBusinessImports(
     val state: StateFlow<ReceiptBusinessImportState>
         field = MutableStateFlow(ReceiptBusinessImportState())
     private var origin: TerminalSettings? = null
+    private var automatic = false
 
     /** Automatically looks up store or merchant receipt details when the Checkout API is ready and receipt details are blank. */
     suspend fun findIfMissing() {
@@ -54,7 +57,8 @@ internal class ReceiptBusinessImports(
 
     fun find(automatic: Boolean = false) {
         if (state.value.lookup.running) return
-        state.update { it.copy(lookup = ActionState(running = true), proposal = null) }
+        this.automatic = automatic
+        state.update { it.copy(lookup = ActionState(running = true), proposal = null, resultPending = false) }
         owner.viewModelScope.launch {
             origin = operations.changes.first().terminal
             val result = details.lookup()
@@ -62,6 +66,7 @@ internal class ReceiptBusinessImports(
             if (changed != null) {
                 state.update {
                     it.copy(
+                        resultPending = !automatic,
                         lookup =
                             ActionState(
                                 outcome = ActionOutcome.Failed(Failure.NotSetUp(changed)),
@@ -78,7 +83,10 @@ internal class ReceiptBusinessImports(
                     }
 
                     is ReceiptBusinesses.Failed -> {
-                        it.copy(lookup = ActionState(outcome = ActionOutcome.Failed(result.failure), isError = true))
+                        it.copy(
+                            lookup = ActionState(outcome = ActionOutcome.Failed(result.failure), isError = true),
+                            resultPending = !automatic,
+                        )
                     }
                 }
             }
@@ -90,13 +98,19 @@ internal class ReceiptBusinessImports(
         if (business != null && (business != state.value.proposal || !business.available)) return
         state.update { it.copy(proposal = null, lookup = ActionState()) }
         if (business != null) {
+            val notify = !automatic
             owner.launchWrite({
                 operations.update { if (it.terminal == origin) it.copy(receipt = business.applyTo(it.receipt)) else it }
                 val receipt = operations.changes.first().receipt
                 observedReceipt.first { it == receipt }
             }) { _ ->
-                state.update { it.copy(revision = it.revision + 1) }
+                state.update { it.copy(revision = it.revision + 1, resultPending = notify) }
             }
         }
+    }
+
+    /** Consumes only the explicit import/lookup result; background lookup failures remain inline. */
+    fun dismissResult() {
+        state.update { it.copy(resultPending = false, lookup = it.lookup.dismissed()) }
     }
 }

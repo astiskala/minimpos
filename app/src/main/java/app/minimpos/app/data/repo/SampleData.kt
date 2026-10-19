@@ -17,8 +17,9 @@ import kotlin.uuid.Uuid
 
 /**
  * Optional catalog examples and read-only simulated history. Creation and removal are atomic, main-safe and offline.
- * Existing catalog rows, history, tax rates and settings are never overwritten. Repeated creation does nothing while
- * any tracked samples remain; edits retain their sample identity. Exported catalog data has no sample identity.
+ * Existing catalog rows, history and tax rates are never overwritten. Repeated creation adds no rows while any tracked
+ * samples remain; edits retain their sample identity. The container replaces receipt business details after each
+ * completed population request. Exported catalog data has no sample identity.
  *
  * @param db Database transaction boundary shared by the repositories.
  * @param catalog Owns sample catalog writes.

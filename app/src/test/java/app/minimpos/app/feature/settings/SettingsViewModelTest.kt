@@ -173,6 +173,10 @@ class SettingsViewModelTest {
         vm.businessImport.find()
         assertThat(await { vm.businessImport.state.first { it.lookup.isError } }.lookup.outcome)
             .isEqualTo(ActionOutcome.Failed(Failure.NotSetUp(SetupProblem.API_REQUIRED)))
+        assertThat(vm.businessImport.state.value.resultPending).isTrue()
+        vm.businessImport.dismissResult()
+        assertThat(vm.businessImport.state.value.resultPending).isFalse()
+        assertThat(vm.businessImport.state.value.lookup.outcome).isNull()
         env.useLinks()
         env.updateSettings { it.copy(terminal = it.terminal.copy(storeId = "ST1")) }
         vm.businessImport.find()
@@ -242,6 +246,7 @@ class SettingsViewModelTest {
     fun `settings view model saves the passphrase before testing, and reports what went wrong`() {
         val onTerminal = TestEnvironment(FakeDevice(detectedPoiId = "AMS1-000168223606144"), FakeTerminal())
         try {
+            onTerminal.useCheckoutApi()
             onTerminal.updateSettings { it.copy(terminal = it.terminal.copy(keyIdentifier = "key")) }
             val vm = settingsViewModel(onTerminal.container)
 
@@ -345,11 +350,14 @@ class SettingsViewModelTest {
         assertThat(vm.actions.value.email).isEqualTo(ActionState(isError = true))
         vm.clearHistory()
         await { vm.actions.first { it.cleared } }
+        vm.dismissTestResult(SettingsResult.HISTORY)
+        assertThat(vm.actions.value.cleared).isFalse()
 
         env.updateSettings { it.copy(terminal = it.terminal.copy(mode = TerminalMode.TERMINAL)) }
         vm.saveAndTest(Secret.TERMINAL_PASSPHRASE)
         assertThat(await { vm.actions.first { it.connection.isError } }.connection.outcome)
-            .isEqualTo(ActionOutcome.Failed(Failure.NotSetUp(SetupProblem.ENVIRONMENT)))
+            .isEqualTo(ActionOutcome.Failed(Failure.NotSetUp(SetupProblem.MERCHANT_ACCOUNT)))
+        env.useCheckoutApi()
         env.updateSettings {
             it.copy(
                 terminal =

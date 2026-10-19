@@ -17,10 +17,10 @@ import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import app.minimpos.app.R
-import app.minimpos.app.data.settings.TerminalMode
 import app.minimpos.app.feature.labels
 import app.minimpos.app.share.TroubleshootingShareEffect
 import app.minimpos.app.terminal.TapToPayCheck
+import app.minimpos.app.terminal.TerminalState
 import app.minimpos.app.ui.components.SecondaryButton
 import java.time.Instant
 
@@ -47,12 +47,12 @@ internal fun ColumnScope.TapToPayTroubleshooting(
         }
     }
     val labels = check.labels()
-    SettingNote(labels.clientKey, Modifier.testTag("tapClientKeyStatus"))
     var expanded by rememberSaveable { mutableStateOf(false) }
     TextButton({ expanded = !expanded }, Modifier.testTag("tapTroubleshootingDetails")) {
-        Text(stringResource(R.string.tap_details))
+        Text(stringResource(R.string.diagnostics_details))
     }
     if (expanded) {
+        SettingNote(labels.clientKey, Modifier.testTag("tapClientKeyStatus"))
         check.credential?.let { credential ->
             SettingNote(stringResource(R.string.tap_credential_verified, credential.username))
             if (!credential.active) SettingNote(stringResource(R.string.tap_credential_inactive))
@@ -69,18 +69,18 @@ internal fun ColumnScope.TapToPayTroubleshooting(
         SettingNote(labels.boarding)
         check.checkedAt?.let { SettingNote(stringResource(R.string.tap_check_time, Instant.ofEpochMilli(it).toString())) }
         check.boardingAt?.let { SettingNote(stringResource(R.string.tap_boarding_time, Instant.ofEpochMilli(it).toString())) }
-        SettingNote(stringResource(R.string.tap_report_notice))
+        SettingNote(stringResource(R.string.diagnostics_report_notice))
         SettingActions {
-            SecondaryButton(stringResource(R.string.tap_share_report), onReport, Modifier.testTag("shareTapReport"))
+            SecondaryButton(stringResource(R.string.diagnostics_share_report), onReport, Modifier.testTag("shareTapReport"))
         }
     }
     TroubleshootingShareEffect(report, onReportConsume)
 }
 
-/** Guides and issue reporting, with advisory details for the selected Tap to Pay destination. */
+/** Guides and issue reporting, with expandable read-only checks for every integration. */
 @Composable
 internal fun ColumnScope.HelpSection(
-    mode: TerminalMode,
+    terminal: TerminalState,
     setup: TerminalSetupActions,
     events: TerminalSetupEvents,
 ) {
@@ -105,7 +105,5 @@ internal fun ColumnScope.HelpSection(
             icon = Icons.Default.BugReport,
         )
     }
-    if (mode == TerminalMode.PAYMENTS_APP) {
-        TapToPayTroubleshooting(setup.diagnostics, events::onTapToPayReport, setup.report, events::onTapReportShared)
-    }
+    IntegrationTroubleshooting(terminal, setup, events::onDiagnosticsRefresh)
 }

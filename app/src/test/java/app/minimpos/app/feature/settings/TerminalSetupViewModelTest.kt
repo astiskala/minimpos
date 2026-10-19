@@ -88,6 +88,7 @@ class TerminalSetupViewModelTest {
                         mode = TerminalMode.CLOUD,
                         merchantAccount = "Merchant",
                         environment = TerminalEnvironment.LIVE,
+                        liveUrlPrefix = "abc-Merchant",
                     ),
             )
         }
@@ -123,7 +124,7 @@ class TerminalSetupViewModelTest {
     }
 
     @Test
-    fun `in the cloud finding terminals saves the key typed, and one test checks the terminal, then the Checkout API`() {
+    fun `cloud discovery saves the key and final verification rejects incomplete API setup`() {
         container.start()
         env.updateSettings {
             it.copy(
@@ -145,16 +146,19 @@ class TerminalSetupViewModelTest {
         awaitTerminalSelection("S1F2-000158213605014")
 
         vm.saveAndTest(Secret.ADYEN_API_KEY, test = SettingsTest.CLOUD)
-        val tested = await { vm.actions.first { it.connection.done && it.api.outcome != null } }
-        assertThat(tested.connection.outcome).isInstanceOf(ActionOutcome.Connected::class.java)
-        // The key reaches a LIVE data center, so the Checkout API asks for the live URL prefix next.
-        assertThat(tested.api.outcome).isEqualTo(ActionOutcome.Failed(Failure.NotSetUp(SetupProblem.LIVE_PREFIX)))
-        assertThat(tested.api.isError).isTrue()
+        val tested = await { vm.actions.first { it.connection.isError } }
+        assertThat(tested.connection.outcome).isEqualTo(ActionOutcome.Failed(Failure.NotSetUp(SetupProblem.LIVE_PREFIX)))
+        assertThat(tested.api.outcome).isNull()
         vm.dismissTestResult(SettingsResult.CLOUD)
         assertThat(vm.actions.value.connection).isEqualTo(ActionState())
-        assertThat(vm.actions.value.api).isEqualTo(ActionState(isError = true))
+        assertThat(vm.actions.value.api).isEqualTo(ActionState())
 
-        // Without a terminal to reach, the Checkout API is not tested.
+        env.updateSettings { it.copy(terminal = it.terminal.copy(liveUrlPrefix = "abc-Merchant")) }
+        vm.saveAndTest(Secret.ADYEN_API_KEY, test = SettingsTest.CLOUD)
+        val connected = await { vm.actions.first { it.connection.done && it.api.done } }
+        assertThat(connected.api.outcome).isEqualTo(ActionOutcome.ApiWorks)
+        vm.dismissTestResult(SettingsResult.CLOUD)
+
         env.updateSettings { it.copy(terminal = it.terminal.copy(poiIdOverride = "")) }
         vm.saveAndTest(Secret.ADYEN_API_KEY, test = SettingsTest.CLOUD)
         val failed = await { vm.actions.first { it.connection.isError } }

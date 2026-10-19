@@ -15,6 +15,7 @@ import app.minimpos.app.data.security.SecretStore
 import app.minimpos.app.data.security.SecretStoreException
 import app.minimpos.app.data.security.TransferSeal
 import app.minimpos.app.data.settings.AppSettings
+import app.minimpos.app.data.settings.BoardingIdentity
 import app.minimpos.app.data.settings.ConnectionDestination
 import app.minimpos.app.data.settings.ConnectionSetup
 import app.minimpos.app.data.settings.ReceiptSettings
@@ -187,9 +188,16 @@ internal data class PreparedTransfer(
             importedSecrets = importedSecrets + (Secret.TERMINAL_PASSPHRASE to passphrase),
         )
 
-    fun withBoardedPhone(installationId: String): PreparedTransfer =
+    fun withBoardedPhone(
+        installationId: String,
+        identity: BoardingIdentity?,
+    ): PreparedTransfer =
         copy(
-            settings = settings.copy(terminal = settings.terminal.copy(paymentsAppInstallationId = installationId)),
+            settings =
+                settings.copy(
+                    terminal = settings.terminal.copy(paymentsAppInstallationId = installationId),
+                    boardingIdentity = identity ?: settings.boardingIdentity,
+                ),
             paymentsAppChecked = true,
         )
 }

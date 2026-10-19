@@ -36,6 +36,7 @@ import app.minimpos.terminal.checkout.StoredCardListing
 import app.minimpos.terminal.parse.FormEncoding
 import app.minimpos.terminal.paymentsapp.AppLinkAnswer
 import app.minimpos.terminal.paymentsapp.AppLinkExchange
+import app.minimpos.terminal.paymentsapp.BoardingCredentialCheck
 import app.minimpos.terminal.paymentsapp.BoardingTarget
 import app.minimpos.terminal.paymentsapp.ManagementResult
 import app.minimpos.terminal.paymentsapp.PaymentsAppManagement
@@ -149,6 +150,7 @@ class FakeDevice(
     override val osVersion: String = "13",
     override val country: String = "AU",
     override var paymentsApps: Set<TerminalEnvironment> = emptySet(),
+    override val hasCamera: Boolean = true,
 ) : DeviceInfo
 
 /** Simulated Checkout modifications that know no payments, so they accept every capture and adjustment. */
@@ -327,6 +329,17 @@ class FakePaymentsApp(
 class FakeManagement(
     var result: ManagementResult = ManagementResult.Done("BT-1"),
 ) : PaymentsAppManagement {
+    var credentialResult: BoardingCredentialCheck = BoardingCredentialCheck.Verified("CRED-1", "ws@Company.Test", true, true)
+    var credentialChecks = 0
+    var onCredential: suspend () -> Unit = {}
+    val connections = mutableListOf<Pair<String, TerminalEnvironment>>()
+
+    override suspend fun credential(): BoardingCredentialCheck {
+        credentialChecks++
+        onCredential()
+        return credentialResult
+    }
+
     /** Every boarding token request, in order. */
     val requests = mutableListOf<BoardingTarget>()
 
@@ -502,7 +515,7 @@ class TestEnvironment(
             terminalTransport = { host, key, _ -> terminal.connect(host, key) },
             cloudDevices = cloud::connect,
             paymentsAppExchange = paymentsApp,
-            paymentsAppManagement = { _, _ -> management },
+            paymentsAppManagement = { key, environment -> management.also { it.connections += key to environment } },
             checkout = {
                 CheckoutApi.of(
                     modifications,

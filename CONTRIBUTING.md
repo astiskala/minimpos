@@ -171,7 +171,8 @@ standalone release builds retain release lint by default. R8, signing and packag
 ### Known integration verification gaps
 
 There is no real Adyen test account in CI. Still needing real-device/API verification: cloud offline/busy event
-notifications; Payments app return-URL encoding, error answers and size limits; TEST payment-link paid/PATCH answers
+notifications; Payments app return-URL encoding, error answers and size limits, boarding-credential `/me` permissions
+and client-key propagation on physical phones; TEST payment-link paid/PATCH answers
 and line-item validation; whether a shopper reference without `recurringProcessingModel` stores no card;
 the role names `GET /me` reports for the required roles (`Merchant Recurring role`, `Management API - Account read`);
 `GET /storedPaymentMethods` listing terminal-saved tokens, shopper-not-present (`ContAuth`) token payments for each

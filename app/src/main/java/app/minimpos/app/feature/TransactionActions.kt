@@ -1,6 +1,7 @@
 package app.minimpos.app.feature
 
 import app.minimpos.app.data.db.Failure
+import app.minimpos.app.data.db.SaleStatus
 import app.minimpos.app.payment.AutoDelivery
 import app.minimpos.app.payment.CaptureResult
 import app.minimpos.app.payment.FinancialOperations
@@ -44,6 +45,14 @@ sealed interface ActionOutcome {
 
     /** Adyen says the payment link has not been paid yet. */
     data object LinkNotPaid : ActionOutcome
+
+    /**
+     * A manual payment-link check found a settled status.
+     * @property status The stored status after the check, not a separate confirmation of settlement.
+     */
+    data class LinkChecked(
+        val status: SaleStatus,
+    ) : ActionOutcome
 
     /** A tip, capture or adjustment did not go through, see [CaptureResult.toState]. */
     sealed interface CaptureFailed : ActionOutcome
@@ -350,6 +359,11 @@ class TransactionActions private constructor(
             val checked = operations.recheck(transaction)
             state.update { it.copy(rechecking = false, stillUnknown = (checked as? Recheck.StillUnknown)?.failure) }
         }
+    }
+
+    /** Acknowledges the unresolved-status popup without changing the stored transaction or allowing a new identity. */
+    fun dismissCheckResult() {
+        state.update { it.copy(stillUnknown = null) }
     }
 
     /** Asks for the receipt to be shared; the screen hands [TransactionActionsState.share] to the share sheet. */

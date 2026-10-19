@@ -37,6 +37,7 @@ import app.minimpos.app.data.db.SaleEntity
 import app.minimpos.app.data.db.SaleKind
 import app.minimpos.app.data.db.SaleStatus
 import app.minimpos.app.feature.MerchantCopy
+import app.minimpos.app.feature.OutcomeDialog
 import app.minimpos.app.feature.OutcomeMessage
 import app.minimpos.app.feature.ReceiptActions
 import app.minimpos.app.feature.ReceiptEvents
@@ -123,6 +124,7 @@ fun PaymentLinkScreen(
     state.sale?.let { sale ->
         PaymentLinkDialogs(sale, dialog, onEmail = vm.transaction::email, onCancel = vm::cancel, onDismiss = { dialog = null })
     }
+    OutcomeDialog(R.string.link_check, state.check, "linkCheckResult", vm::dismissCheckResult)
     ShareEffect(state.transaction.share, vm.transaction::shared)
 }
 
@@ -305,7 +307,7 @@ private fun ColumnScope.SettledLinkActions(
     }
 }
 
-/** "Check payment" with the outcome of the last check. */
+/** Manual "Check payment"; its result is shown by the screen even if the link settles and this button disappears. */
 @Composable
 private fun ColumnScope.CheckButton(
     state: PaymentLinkUiState,
@@ -318,7 +320,6 @@ private fun ColumnScope.CheckButton(
         icon = Icons.Default.Refresh,
         modifier = Modifier.testTag("checkLink"),
     )
-    OutcomeMessage(state.check)
 }
 
 /**

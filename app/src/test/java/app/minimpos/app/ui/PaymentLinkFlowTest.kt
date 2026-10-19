@@ -76,6 +76,11 @@ class PaymentLinkFlowTest {
         compose.waitUntilAtLeastOneExists(hasTestTag("linkStatus") and hasText("Awaiting payment"), 15_000)
         compose.onNodeWithTag("linkUrl").assertTextEquals(FakeLinkApi.URL)
         compose.onNodeWithTag("linkQr").assertExists()
+        compose.onNodeWithTag("checkLink").performScrollTo().performClick()
+        waitForTag("linkCheckResult")
+        compose.onNodeWithTag("linkCheckResult").assertTextEquals("Not paid yet.")
+        compose.onNodeWithTag("linkCheckResultOk").performClick()
+        compose.waitUntilDoesNotExist(hasTestTag("linkCheckResult"), 15_000)
         compose.onNodeWithTag("shareLink").performScrollTo().performClick()
         val application = ApplicationProvider.getApplicationContext<Application>()
         var chooser: Intent? = null
@@ -96,6 +101,9 @@ class PaymentLinkFlowTest {
         links.status = PaymentLinkStatus.COMPLETED
         compose.onNodeWithTag("checkLink").performScrollTo().performClick()
         compose.waitUntilAtLeastOneExists(hasTestTag("linkStatus") and hasText("Approved"), 15_000)
+        waitForTag("linkCheckResult")
+        compose.onNodeWithTag("linkCheckResult").assertTextEquals("Approved")
+        compose.onNodeWithTag("linkCheckResultOk").performClick()
         compose.onNodeWithText("Paid online with the payment link", substring = true).assertExists()
         compose.onNodeWithTag("shareReceipt").performScrollTo().assertIsDisplayed()
 
@@ -142,6 +150,10 @@ class PaymentLinkFlowTest {
         compose.waitUntilAtLeastOneExists(hasTestTag("linkStatus") and hasText("Awaiting payment"), 15_000)
         compose.onNodeWithText("Simulation only. No money moved.").assertExists()
         compose.onNodeWithTag("checkLink").performScrollTo().performClick()
+        waitForTag("linkCheckResult")
+        compose.onNodeWithTag("linkCheckResult").assertTextEquals("Not paid yet.")
+        compose.onNodeWithTag("linkCheckResultOk").performClick()
+        compose.waitUntilDoesNotExist(hasTestTag("linkCheckResult"), 15_000)
         compose.onNodeWithTag("linkStatus").assertTextEquals("Awaiting payment")
         compose.onNodeWithTag("shareLink").performScrollTo().performClick()
         val application = ApplicationProvider.getApplicationContext<Application>()

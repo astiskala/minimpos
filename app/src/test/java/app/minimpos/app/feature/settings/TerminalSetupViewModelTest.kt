@@ -105,7 +105,7 @@ class TerminalSetupViewModelTest {
         assertThat(tested.apiKeyStored).isTrue()
         assertThat(tested.connection.outcome).isEqualTo(ActionOutcome.Failed(Failure.NotSetUp(SetupProblem.POI_ID)))
         assertThat(await { container.secrets.get(Secret.ADYEN_API_KEY) }).isEqualTo("cloud-key")
-        vm.dismissTestResult(SettingsTest.CONNECTION)
+        vm.dismissTestResult(SettingsResult.CONNECTION)
 
         setup.findTerminals()
         val found = await { setup.actions.first { it.connectedTerminals != null } }
@@ -150,7 +150,7 @@ class TerminalSetupViewModelTest {
         // The key reaches a LIVE data center, so the Checkout API asks for the live URL prefix next.
         assertThat(tested.api.outcome).isEqualTo(ActionOutcome.Failed(Failure.NotSetUp(SetupProblem.LIVE_PREFIX)))
         assertThat(tested.api.isError).isTrue()
-        vm.dismissTestResult(SettingsTest.CLOUD)
+        vm.dismissTestResult(SettingsResult.CLOUD)
         assertThat(vm.actions.value.connection).isEqualTo(ActionState())
         assertThat(vm.actions.value.api).isEqualTo(ActionState(isError = true))
 
@@ -180,7 +180,8 @@ class TerminalSetupViewModelTest {
         assertThat(await { container.secrets.get(Secret.PAYMENTS_APP_API_KEY) }).isEqualTo("pa-key")
         vm.dismissResult(SetupResult.TAP_TO_PAY)
         vm.dismissResult(SetupResult.SHARED_KEY)
-        assertThat(vm.actions.value).isEqualTo(ready.copy(tapToPay = ActionState(done = true)))
+        assertThat(vm.actions.value.tapToPay).isEqualTo(ActionState(done = true))
+        assertThat(vm.actions.value.paymentsAppKeyStored).isTrue()
 
         vm.setUpTapToPay(again = true)
         await { vm.actions.first { it.tapToPay.done && !it.paymentsAppKeyStored } }

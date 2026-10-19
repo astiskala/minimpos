@@ -90,6 +90,10 @@ data class TerminalSetup(
                 supportsTerminalFeatures = destination.supportsTerminalFeatures,
                 supportsOfflinePayments = destination.supportsOfflinePayments,
                 supportsShopperDisplay = destination.supportsTerminalFeatures && (!onTerminal || destination.simulatesApi),
+                supportsPrinting = destination.supportsPrinting,
+                aborts = destination.aborts,
+                diagnoses = destination.diagnoses,
+                supportsRemoteStatus = destination.supportsRemoteStatus,
             )
 
     internal val needsSharedKey: Boolean get() = Secret.TERMINAL_PASSPHRASE in destination.secrets
@@ -107,14 +111,24 @@ data class TerminalSetup(
     fun learnedEnvironment(detected: DetectedEnvironment) = destination.learnedEnvironment(this, detected)
 
     /**
-     * Whether printing is offered, as Settings › Receipts › Printer says: always, never, or detected, which the
+     * Whether printing is supported and offered, as Settings › Receipts › Printer says: always, never, or detected, which the
      * [destination] decides with what terminals reported ([printers], by POIID; see [DestinationRules.printer]).
      */
     fun printerAvailable(printers: Map<String, Boolean>): Boolean =
-        when (settings.receipt.printerMode) {
-            PrinterMode.ON -> true
-            PrinterMode.OFF -> false
-            PrinterMode.AUTO -> destination.printer(settings, poiId, printers)
+        destination.supportsPrinting &&
+            when (settings.receipt.printerMode) {
+                PrinterMode.ON -> true
+                PrinterMode.OFF -> false
+                PrinterMode.AUTO -> destination.printer(settings, poiId, printers)
+            }
+
+    /** Printing readiness from destination support, reported hardware ([printers], by POIID), then local preferences. */
+    fun printingStanding(printers: Map<String, Boolean>): CapabilityStanding =
+        when {
+            !destination.supportsPrinting -> CapabilityStanding.UNSUPPORTED
+            printers[poiId] == false || (destination.simulatesApi && !settings.simulator.hasPrinter) -> CapabilityStanding.UNSUPPORTED
+            printerAvailable(printers) -> CapabilityStanding.AVAILABLE
+            else -> CapabilityStanding.NEEDS_CONFIGURATION
         }
 
     /**
@@ -315,6 +329,10 @@ data class TerminalSetup(
  * @property supportsOfflinePayments Whether local offline EMV and store-and-forward processing are supported.
  * @property supportsShopperDisplay Whether shopper-facing display and input requests are supported (an external
  *   terminal or the simulator).
+ * @property supportsPrinting Whether print requests are supported, independently of hardware and local preferences.
+ * @property aborts Whether the POS can request cancellation of a running terminal transaction.
+ * @property diagnoses Whether terminal diagnosis requests are supported.
+ * @property supportsRemoteStatus Whether missing transaction answers can be queried remotely; false for late-reply-only recovery.
  */
 data class DestinationCapabilities(
     val discoversTerminals: Boolean = false,
@@ -325,6 +343,10 @@ data class DestinationCapabilities(
     val supportsTerminalFeatures: Boolean = true,
     val supportsOfflinePayments: Boolean = false,
     val supportsShopperDisplay: Boolean = true,
+    val supportsPrinting: Boolean = true,
+    val aborts: Boolean = true,
+    val diagnoses: Boolean = true,
+    val supportsRemoteStatus: Boolean = true,
 )
 
 /**
@@ -372,6 +394,9 @@ enum class SetupFreshness {
 
     /** The connection fields and the exact stored secret snapshot, for readings cached against the verified setup. */
     SECRETS,
+
+    /** The connection fields, installed Payments app environment and its separate boarding credential. */
+    BOARDING,
 }
 
 /** Whether Tap to Pay can be set up on this phone, see [TerminalSetup.boarding]. */
@@ -488,6 +513,10 @@ class TerminalSetupSource(
         /** A fence for work begun on [origin] that needs only its connection fields to stay the same. */
         constructor(origin: TerminalSetup) : this(origin, SetupFreshness.CONNECTION, null, null)
 
+        /** A fence for introspection of the exact separate [boarding] credential in the installed app's environment. */
+        internal constructor(origin: TerminalSetup, boarding: BoardingSetup.Ready) :
+            this(origin, SetupFreshness.BOARDING, boarding.apiKey, null)
+
         /**
          * A non-secret fingerprint of the stored secrets and connection fields the work began on, to keep a cached
          * reading for; null for an unsaved candidate or a connection-only fence.
@@ -497,9 +526,24 @@ class TerminalSetupSource(
         /** Whether the setup the work began on is still stored, to this fence's [SetupFreshness]. */
         suspend fun stillCurrent(): Boolean =
             when (freshness) {
-                SetupFreshness.CONNECTION -> settings.current().terminal == origin.settings.terminal
-                SetupFreshness.CREDENTIAL -> unlocked(forValidation = true).let { it.apiKey == apiKey && it.began() }
-                SetupFreshness.SECRETS -> unlocked().let { it.validationIdentity == secrets && it.began() }
+                SetupFreshness.CONNECTION -> {
+                    settings.current().terminal == origin.settings.terminal
+                }
+
+                SetupFreshness.CREDENTIAL -> {
+                    unlocked(forValidation = true).let { it.apiKey == apiKey && it.began() }
+                }
+
+                SetupFreshness.SECRETS -> {
+                    unlocked().let { it.validationIdentity == secrets && it.began() }
+                }
+
+                SetupFreshness.BOARDING -> {
+                    boarding().let {
+                        it is BoardingSetup.Ready && it.apiKey == apiKey && it.environment == origin.paymentsApps.singleOrNull() &&
+                            settings.current().terminal == origin.settings.terminal && device.paymentsApps == origin.paymentsApps
+                    }
+                }
             }
 
         /** [SetupProblem.SETUP_CHANGED] when the setup the work began on is no longer stored; null while it is. */
@@ -608,6 +652,17 @@ class TerminalSetupSource(
         readings
             .map { Triple(it.setup.settings.terminal, it.setup.apiSetup, it.setup.paymentContext()) to it.validationIdentity }
             .distinctUntilChanged()
+
+    /** Invalidations for advisory checks, including replacement of the separate encrypted boarding credential. */
+    internal val boardingChanges: Flow<*> =
+        combine(settings.settings, secrets.configured, deviceReads) { current, _, _ ->
+            secrets
+                .setupSecrets(
+                    current.terminal.toString() + device.paymentsApps.sortedBy { it.name },
+                    setOf(Secret.PAYMENTS_APP_API_KEY),
+                    read = false,
+                ).identity
+        }.distinctUntilChanged()
 
     /** Distinct setup-identity changes that invalidate cached Management wallet and capability readings. */
     internal val discoveryChanges: Flow<*> =

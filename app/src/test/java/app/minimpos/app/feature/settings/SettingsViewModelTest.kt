@@ -128,10 +128,10 @@ class SettingsViewModelTest {
         assertThat(calls).isEqualTo(1)
         assertThat(finished.connection.done).isTrue()
         // Closing the connection result leaves the API result that came in meanwhile to be seen.
-        vm.dismissTestResult(SettingsTest.CONNECTION)
+        vm.dismissTestResult(SettingsResult.CONNECTION)
         assertThat(vm.actions.value.connection).isEqualTo(ActionState())
         assertThat(vm.actions.value.api).isEqualTo(finished.api)
-        vm.dismissTestResult(SettingsTest.API)
+        vm.dismissTestResult(SettingsResult.API)
         assertThat(vm.actions.value.api).isEqualTo(ActionState(done = true))
     }
 
@@ -250,7 +250,7 @@ class SettingsViewModelTest {
             assertThat((rejected.connection.outcome as? ActionOutcome.ConnectionFailed)?.failure)
                 .isEqualTo(Failure.Remote(Fault.KeyRejected(ExternalText("Crypto error"))))
             assertThat(rejected.passphraseStored).isTrue()
-            vm.dismissTestResult(SettingsTest.CONNECTION)
+            vm.dismissTestResult(SettingsResult.CONNECTION)
             assertThat(vm.actions.value.connection.outcome).isNull()
 
             vm.saveAndTest(Secret.TERMINAL_PASSPHRASE, "correct horse battery staple")
@@ -337,8 +337,12 @@ class SettingsViewModelTest {
         vm.printTest()
         assertThat(await { vm.actions.first { it.print.done } }.print.outcome).isEqualTo(ActionOutcome.Printed)
         assertThat(container.virtualPrinter.jobs.value).isNotEmpty()
+        vm.dismissTestResult(SettingsResult.PRINT)
+        assertThat(vm.actions.value.print).isEqualTo(ActionState(done = true))
         vm.sendTestEmail("a@b.co")
         assertThat(await { vm.actions.first { !it.email.running && it.email.outcome != null } }.email.isError).isTrue()
+        vm.dismissTestResult(SettingsResult.EMAIL)
+        assertThat(vm.actions.value.email).isEqualTo(ActionState(isError = true))
         vm.clearHistory()
         await { vm.actions.first { it.cleared } }
 

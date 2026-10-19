@@ -760,7 +760,7 @@
   <string name="settings_store_id">店舗ID（任意）</string>
   <string name="settings_store_id_hint">1店舗だけにTap to Payを設定する場合は、その店舗ID（リファレンスではありません）を入力します。空欄の場合はマーチャントアカウント全体に設定します。</string>
   <string name="settings_payments_app_key">PaymentsアプリのAPIキー</string>
-  <string name="settings_payments_app_key_hint">Adyen Payments app roleのみを持つAPI資格情報です（Adyenサポートが有効化します）。このスマートフォンの設定と削除に使います。</string>
+  <string name="settings_payments_app_key_hint">Adyen Payments app role とクライアントキーを持つ別の認証情報です。このスマートフォンの設定と削除に使います。入力するのは API キーで、クライアントキーではありません。</string>
   <string name="settings_set_up_tap_to_pay">Tap to Payを設定</string>
   <string name="settings_set_up_again">再設定</string>
   <string name="settings_remove_phone">このスマートフォンを削除</string>
@@ -771,14 +771,56 @@
   <string name="settings_forget_payments_app_key_message">支払いは続けられますが、キーを再入力するまでこのスマートフォンの再設定や削除はできません。</string>
   <string name="settings_payments_app_setup_checked">設定項目を確認しました。Paymentsアプリは接続確認で共有キーをテストできません。</string>
 
+  <!-- Tap to Pay troubleshooting -->
+  <string name="tap_details">トラブルシューティングの詳細</string>
+  <string name="tap_share_report">機密情報を除いたレポートを共有</string>
+  <string name="tap_report_notice">自由記述のメッセージ、キー、トークン、コールバック URL、買い物客のデータは含まれません。共有前に内容を確認してください。自動送信は行いません。</string>
+  <string name="tap_credential_saved">認証情報を保存済みです。保存だけでは決済の準備完了を意味しません。</string>
+  <string name="tap_credential_verified">確認済みの認証情報：%1$s</string>
+  <string name="tap_credential_inactive">この認証情報は無効です。</string>
+  <string name="tap_key_present">クライアントキーがあります。決済の動作を保証するものではありません。</string>
+  <string name="tap_key_missing">現在確認している Tap to Pay 設定用の認証情報にクライアントキーがありません。Payments app が決済を開始できない原因になることがあります。</string>
+  <string name="tap_key_permission">クライアントキーを確認できません。GET /me には Management API ロールが必要です。この診断権限は任意です。決済のためだけに広範な認証情報管理権限を追加しないでください。</string>
+  <string name="tap_key_auth">選択した環境で認証に失敗しました。保存済みの Payments app API キーと TEST/LIVE 環境を確認してください。</string>
+  <string name="tap_key_failed">API から有効な認証情報の応答が得られず、クライアントキーを確認できません。手動チェックリストを使うか、後で再確認してください。</string>
+  <string name="tap_key_unchecked">クライアントキーは未確認です。</string>
+  <string name="tap_boarding_known">この確認済み認証情報は、このインストールの登録記録と一致します。</string>
+  <string name="tap_boarding_unknown">現在設定されている認証情報を確認しています。このインストールの初回登録に使われた認証情報は確認できません。</string>
+  <string name="tap_boarded">Payments app は登録済みと応答しました。登録だけでは決済の準備完了を意味しません。</string>
+  <string name="tap_not_boarded">Payments app は未登録と応答しました。</string>
+  <string name="tap_boarding_unverified">Payments app の登録状況を確認できませんでした。</string>
+  <string name="tap_boarding_unchecked">Payments app の登録状況は未確認です。</string>
+  <string name="tap_current_credential">登録に使用した認証情報</string>
+  <string name="tap_checklist">クライアントキーの確認手順：\n1. 対応する TEST または LIVE 環境の Adyen Customer Area を開きます。\n2. 「Developers → API credentials」に移動します。\n3. %1$s を選択します。登録に使用したものと同じ認証情報である必要があります。\n4. 「Client settings → Authentication → Client key」で、キーがない場合のみ生成します。\n5. 変更を保存し、反映まで数分待ってから戻り、再確認します。\n\nクライアントキーは API キーとは異なります。Mini mPOS に貼り付ける必要はありません。このネイティブ Tap to Pay の前提条件を満たすだけなら Allowed origins は不要です。トラブルシューティングのために既存のクライアントキーを再生成したり、API キーをローテーションしたりしないでください。</string>
+  <string name="tap_open_customer_area">%1$s Customer Area を開く</string>
+  <string name="tap_check_time">認証情報の確認日時（UTC）：%1$s</string>
+  <string name="tap_boarding_time">登録状況の確認日時（UTC）：%1$s</string>
+  <string name="tap_unavailable">Payments app はリクエストを完了できませんでした。このエラーには複数の原因があり、障害やクライアントキー不足とは断定できません。設定と利用可能な診断情報を確認してください。</string>
+  <string name="tap_session_failure">1029_605 はセッション関連のエラーであり、クライアントキー不足の証拠ではありません。</string>
+  <string name="tap_boarding_credential">記録された登録用の認証情報：%1$s</string>
+  <string name="tap_boarding_unmatched">現在の認証情報と記録された登録用の認証情報の一致は確認できません。クライアントキーの問題解決には登録時の認証情報を使ってください。</string>
+
   <!-- Settings: Adyen capabilities -->
-  <string name="capabilities_intro">この決済先で対応しているAdyen機能と、Customer Areaでこの端末に設定されている内容を確認します。</string>
+  <string name="capabilities_intro">この決済先とデバイスが対応する機能を確認します。「非対応」は決済先または確認済みのハードウェアで利用できない機能です。「要設定」はアプリや Adyen の設定、またはハードウェアの確認が必要な状態です。「利用可能」は決済の承認を保証しません。</string>
   <string name="capabilities_refresh">機能を再確認</string>
   <string name="capability_save">Adyenに保存</string>
   <string name="capabilities_matrix_header">機能一覧</string>
   <string name="capability_status_available">利用可能</string>
   <string name="capability_status_needs_config">要設定</string>
-  <string name="capability_status_unsupported">この決済先では非対応</string>
+  <string name="capability_status_unsupported">非対応</string>
+  <string name="settings_unavailable_tap_to_pay">Tap to Pay では利用できません。</string>
+  <string name="settings_unavailable_destination">この決済先では利用できません。</string>
+  <string name="capability_printing">レシート印刷</string>
+  <string name="capability_receipt_sharing">レシート共有</string>
+  <string name="capability_receipt_tipping">レシートでのチップ</string>
+  <string name="capability_camera_scanning">デバイスのカメラでスキャン</string>
+  <string name="capability_camera_scanning_hint">商品バーコード、返金 QR コード、設定 QR コードを読み取ります。カメラの権限はスキャン時に求めます。</string>
+  <string name="capability_terminal_scanner">端末のバーコードスキャナー</string>
+  <string name="capability_scanned_wallets">ウォレットのコード決済</string>
+  <string name="capability_abort">POS からのキャンセル要求</string>
+  <string name="capability_diagnosis">端末診断</string>
+  <string name="capability_remote_status">取引状態のリモート照会</string>
+  <string name="capability_late_reply_hint">Tap to Pay には独自のキャンセルボタンがあります。応答が届かない取引はリモート照会できず、すでに受信した遅延応答でのみ結果を確認できます。端末診断なしでも設定の確認は可能です。</string>
   <string name="capability_terminal_tipping">端末でのチップ</string>
   <string name="capability_dcc">通貨選択決済（DCC）</string>
   <string name="capability_giving">Adyen Giving</string>

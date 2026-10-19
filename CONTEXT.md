@@ -93,6 +93,7 @@ existing spelling (`preAuthorisation`, `SaleKind.PRE_AUTHORISATION`, `authorised
 | Shared-key creation | Confirmed terminal-specific creation after read-only checks; encrypted recovery retains one generated key per context until setup verifies. Never replaces an existing effective key. Saved-setup completion includes a fenced save and exact-key connection verification; setup import keeps its separate verify-before-activation journal. | `terminal/SharedKeySetup`, `SetupDiscovery.setupKey` |
 | Adyen API key | Credential shared by Checkout/cloud operations and optional Management reads; distinct from the boarding credential. | `ADYEN_API_KEY` |
 | Boarding | Registers/revokes the Payments app installation for Tap to Pay. | `TapToPaySetup`, `PAYMENTS_APP_API_KEY` |
+| Tap to Pay troubleshooting | Advisory boarding-credential/client-key checks and redacted, manually shared diagnostics; never proof of payment readiness. | `terminal/TapToPayDiagnostics`, `TapToPayCheck`, `BoardingIdentity` |
 | Checkout API | Captures, adjustments, links and saved cards, required before real payments; made once per credential, and access eligibility belongs to the target. | `ApiSetup`, `AdyenApi`, `ApiTarget`, `CheckoutApi`, `AdyenCheckout` |
 
 ## Receipts, configuration and access

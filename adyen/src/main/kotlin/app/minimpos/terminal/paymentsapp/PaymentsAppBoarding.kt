@@ -9,6 +9,7 @@ import app.minimpos.terminal.transport.MANAGEMENT_PAGE_SIZE
 import app.minimpos.terminal.transport.MAX_MANAGEMENT_PAGES
 import app.minimpos.terminal.transport.TerminalEnvironment
 import app.minimpos.terminal.transport.decodeAdyenModel
+import app.minimpos.terminal.transport.decodeMeCredential
 import app.minimpos.terminal.transport.managementEndpoint
 import app.minimpos.terminal.transport.managementFault
 import com.adyen.model.paymentsapp.BoardingTokenRequest
@@ -69,6 +70,9 @@ sealed interface ManagementResult {
 
 /** Adyen's Management API for Payments app instances, which needs an API key with the Adyen Payments app role. */
 interface PaymentsAppManagement {
+    /** Read-only introspection of this boarding credential; no client/API key value escapes the adapter. */
+    suspend fun credential(): BoardingCredentialCheck = BoardingCredentialCheck.Failed(Fault.Unsupported)
+
     /** Verifies that [installationId] is currently boarded for [target], without changing registration. */
     suspend fun registration(
         target: BoardingTarget,
@@ -106,6 +110,25 @@ class AdyenPaymentsAppManagement(
     dispatcher: CoroutineDispatcher = Dispatchers.IO,
 ) : PaymentsAppManagement {
     private val http = AdyenHttp(apiKey, baseClient, dispatcher)
+
+    override suspend fun credential(): BoardingCredentialCheck {
+        val reply = http.get(baseUrl.newBuilder().addPathSegment("me").build(), TIMEOUT)
+        if (reply !is AdyenReply.Answered || !reply.ok) {
+            return BoardingCredentialCheck.Failed(managementFault(reply, ApiKey.PAYMENTS_APP))
+        }
+        return runCatching {
+            val credential = requireNotNull(decodeMeCredential(reply.body))
+            requireNotNull(credential.roles).forEach { requireNotNull(it) }
+            requireNotNull(credential.allowedIpAddresses).forEach { requireNotNull(it) }
+            BoardingCredentialCheck.Verified(
+                id = requireNotNull(credential.id?.takeIf { it.isNotBlank() }),
+                username = requireNotNull(credential.username?.takeIf { it.isNotBlank() }),
+                active = requireNotNull(credential.active),
+                // v1 requires a string: absent/null is an unreadable schema, not confirmed key absence.
+                clientKeyPresent = requireNotNull(credential.clientKey).isNotBlank(),
+            )
+        }.getOrNull() ?: BoardingCredentialCheck.Failed(Fault.UnreadableReply())
+    }
 
     override suspend fun registration(
         target: BoardingTarget,

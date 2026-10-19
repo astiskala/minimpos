@@ -105,6 +105,24 @@ enum class SettingsTest {
     CLOUD,
 }
 
+/** Which completed settings test popup is being acknowledged; separate from secret-testing commands. */
+enum class SettingsResult {
+    /** Terminal connection test. */
+    CONNECTION,
+
+    /** Checkout API test. */
+    API,
+
+    /** Combined cloud connection and Checkout API test. */
+    CLOUD,
+
+    /** Receipt test print. */
+    PRINT,
+
+    /** Receipt test email. */
+    EMAIL,
+}
+
 /**
  * The services behind the settings screen's test buttons.
  *
@@ -313,7 +331,7 @@ class SettingsViewModel(
     }
 
     private suspend fun connectionResult(): ActionState =
-        when (val connection = checks.status.check()) {
+        when (val connection = checks.status.check(includeDiagnostics = true)) {
             is TerminalConnection.Connected -> {
                 val diagnosis = connection.diagnosis
                 businessImport.findIfMissing()
@@ -345,14 +363,17 @@ class SettingsViewModel(
 
     /**
      * Closes the result dialog of [test]: the Checkout API test's, keeping whether it succeeded; the connection test's;
-     * or, for [SettingsTest.CLOUD], the connection test's together with the Checkout API result it showed.
+     * or, for [SettingsResult.CLOUD], the connection test's together with the Checkout API result it showed.
+     * Receipt test results keep their success or failure state after acknowledgment too.
      */
-    fun dismissTestResult(test: SettingsTest) {
+    fun dismissTestResult(test: SettingsResult) {
         actions.update {
             when (test) {
-                SettingsTest.CONNECTION -> it.copy(connection = ActionState())
-                SettingsTest.API -> it.copy(api = it.api.dismissed())
-                SettingsTest.CLOUD -> it.copy(connection = ActionState(), api = it.api.dismissed())
+                SettingsResult.CONNECTION -> it.copy(connection = ActionState())
+                SettingsResult.API -> it.copy(api = it.api.dismissed())
+                SettingsResult.CLOUD -> it.copy(connection = ActionState(), api = it.api.dismissed())
+                SettingsResult.PRINT -> it.copy(print = it.print.dismissed())
+                SettingsResult.EMAIL -> it.copy(email = it.email.dismissed())
             }
         }
     }

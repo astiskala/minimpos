@@ -59,6 +59,7 @@ import app.minimpos.app.feature.ResultBar
 import app.minimpos.app.feature.StatusCheck
 import app.minimpos.app.feature.lock.ManagerApproval
 import app.minimpos.app.feature.outcomeNote
+import app.minimpos.app.feature.settings.TapToPayTroubleshooting
 import app.minimpos.app.history.PaymentAction
 import app.minimpos.app.history.SaleResultNext
 import app.minimpos.app.history.saleResultNext
@@ -94,6 +95,7 @@ import app.minimpos.core.payment.ScanWallet
 import app.minimpos.core.shopper.ShopperReferences
 import app.minimpos.terminal.checkout.StoredCard
 import app.minimpos.terminal.client.CardEntryOverride
+import app.minimpos.terminal.client.RetryAdvice
 import kotlinx.coroutines.launch
 
 /**
@@ -777,12 +779,17 @@ fun SaleResultScreen(
         if (record == null) return@MiniScaffold
         ScreenColumn(padding, horizontalAlignment = Alignment.CenterHorizontally) {
             SaleOutcome(state, money)
+            if (state.tapToPayHelp) {
+                TapToPayTroubleshooting(state.tapToPay, vm::reportTapToPay, state.report, vm::reportShared, vm::testConnection)
+            }
             SalePaymentCard(record.sale)
             if (state.approved) {
                 if (PaymentAction.ENTER_TIP in state.actions) EnterTipButton({ gate.run { navigator.push(Route.Tip(saleId)) } })
                 ReceiptActions(state.transaction, vm.transaction, MerchantCopy.WHEN_DUE, email = record.sale.shopperEmail.orEmpty())
             } else {
-                UnapprovedSaleActions(state, vm.transaction::recheck, vm::abortBusyTransaction) { done(ringUp) }
+                UnapprovedSaleActions(state, vm.transaction::recheck, vm.transaction::dismissCheckResult, vm::abortBusyTransaction) {
+                    done(ringUp)
+                }
             }
         }
     }
@@ -802,7 +809,13 @@ private fun SaleOutcome(
         HoldNotes(sale, money, afterPayment = true)
         state.advice?.let { advice ->
             Text(
-                adviceText(advice),
+                if (state.tapToPayHelp &&
+                    advice == RetryAdvice.NOT_ENABLED
+                ) {
+                    stringResource(R.string.tap_unavailable)
+                } else {
+                    adviceText(advice)
+                },
                 style = MaterialTheme.typography.bodyMedium,
                 textAlign = TextAlign.Center,
                 modifier = Modifier.fillMaxWidth().testTag("retryAdvice"),
@@ -856,10 +869,11 @@ private fun saleResultNext(
 private fun ColumnScope.UnapprovedSaleActions(
     state: SaleResultUiState,
     onRecheck: () -> Unit,
+    onCheckDismiss: () -> Unit,
     onAbortBusy: () -> Unit,
     onBackToSale: () -> Unit,
 ) {
-    if (PaymentAction.CHECK_AGAIN in state.actions) StatusCheck(state.transaction, onRecheck)
+    if (PaymentAction.CHECK_AGAIN in state.actions) StatusCheck(state.transaction, onRecheck, onCheckDismiss)
     if (state.canAbortBusy) {
         SecondaryButton(
             stringResource(R.string.result_abort_busy),
@@ -911,7 +925,15 @@ private fun SalePaymentCard(sale: SaleEntity) {
 private fun saleResultViewModel(saleId: String): SaleResultViewModel {
     val container = LocalAppContainer.current
     return viewModel(key = saleId) {
-        SaleResultViewModel(saleId, container.storedPayments, container.receipts, container.payments, container.operations)
+        SaleResultViewModel(
+            saleId,
+            container.storedPayments,
+            container.receipts,
+            container.payments,
+            container.operations,
+            container.tapToPay.diagnostics,
+            container.terminalStatus,
+        )
     }
 }
 

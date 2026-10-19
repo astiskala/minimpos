@@ -116,7 +116,7 @@
               </ul>
               憑據須屬於您的 Company 帳戶，並能存取支付目標的商戶帳戶。參見 <a href="https://docs.adyen.com/development-resources/api-credentials/roles">Adyen API 角色指南</a>。</li>
             <li>LIVE 環境下，記下 <strong>Developers › API URLs</strong> 中的 <strong>LIVE URL 前置字元</strong>。</li>
-            <li>僅限 Tap to Pay：另建一個只有 <strong>Adyen Payments app role</strong> 的憑據，用於註冊手機。並按下方說明準備共享密鑰。</li>
+            <li>僅限 Tap to Pay：另建一個具有 <strong>Adyen Payments app role</strong> 和客戶端密鑰的憑據，用於註冊手機。可選診斷亦需要任何 Management API 角色；參見 <a href="troubleshooting.html#tap-to-pay-check">Tap to Pay 疑難排解</a>。並按下方說明準備共享密鑰。</li>
             <li>如需手動設定設備：
               <ul>
                 <li>記下<strong>商戶帳戶</strong>。</li>
@@ -251,7 +251,7 @@
             <summary>手動</summary>
             <ol>
               <li>在<strong>設定 › 終端 › Adyen API</strong>中輸入 Adyen API 密鑰和商戶帳戶。LIVE 還需輸入 LIVE URL 前置字元。點按<strong>測試 API</strong>。</li>
-              <li>在 <strong>Tap to Pay</strong> 中輸入 <strong>Payments 應用程式 API 密鑰</strong>，僅具有 Adyen Payments app role。可選填店舖 ID。</li>
+              <li>在 <strong>Tap to Pay</strong> 中輸入具有 Adyen Payments app role 和客戶端密鑰的憑據的 <strong>Payments 應用程式 API 密鑰</strong>。不要貼上客戶端密鑰。可選填店舖 ID。</li>
               <li>點按<strong>設定 Tap to Pay</strong>，在 Payments 應用程式中完成註冊。</li>
               <li>在 Mini mPOS 中輸入共享密鑰。</li>
             </ol>

@@ -128,7 +128,7 @@
               </ul>
               The credential must belong to your company account and have access to the destination's merchant account. See the <a href="https://docs.adyen.com/development-resources/api-credentials/roles">Adyen API role guide</a>.</li>
             <li>For LIVE, note the <strong>Live URL prefix</strong> from <strong>Developers › API URLs</strong>.</li>
-            <li>For Tap to Pay only: create a second credential with only the <strong>Adyen Payments app role</strong>, for registering the phone. Have the shared key ready as described below.</li>
+            <li>For Tap to Pay only: create a second credential with the <strong>Adyen Payments app role</strong> and a client key, for registering the phone. The optional setup diagnostic also needs any Management API role; see <a href="troubleshooting.html#tap-to-pay-check">Tap to Pay troubleshooting</a>. Have the shared key ready as described below.</li>
             <li>If you want to configure the device manually:
               <ul>
                 <li>Note the <strong>Merchant account</strong>.</li>
@@ -263,7 +263,7 @@
             <summary>Manual</summary>
             <ol>
               <li>In <strong>Settings › Terminal › Adyen API</strong>, enter the Adyen API key and merchant account. For live payments, also enter the live URL prefix. Tap <strong>Test API</strong>.</li>
-              <li>Under <strong>Tap to Pay</strong>, enter the <strong>Payments app API key</strong> with only the Adyen Payments app role. Optionally enter a store ID.</li>
+              <li>Under <strong>Tap to Pay</strong>, enter the <strong>Payments app API key</strong> whose credential has the Adyen Payments app role and a client key. Do not paste the client key here. Optionally enter a store ID.</li>
               <li>Tap <strong>Set up Tap to Pay</strong> and complete registration in the Payments app.</li>
               <li>In Mini mPOS, enter the shared key.</li>
             </ol>

@@ -10,6 +10,15 @@ internal object NexoVocabulary {
     /** The terminal's or acquirer's own text about a refusal or rejection, shown verbatim. */
     const val MESSAGE = "message"
 
+    /** Adyen's diagnostic error code, when provided alongside the nexo ErrorCondition. */
+    const val ERROR_CODE = "errorCode"
+
+    /** W3C trace context used by Adyen support to locate the underlying service error. */
+    const val TRACE_PARENT = "traceparent"
+
+    /** Support request identifier, when Adyen includes one in AdditionalResponse. */
+    const val REQUEST_ID = "requestId"
+
     /** Adyen's structured refusal reasons (`errors` of the flattened `AdditionalResponse`). */
     const val ERRORS = "errors"
 

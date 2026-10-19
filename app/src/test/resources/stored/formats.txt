@@ -96,6 +96,14 @@ settings.json: app.minimpos.app.data.settings.AppSettings
   onboardingCompleted: boolean
   verifiedSetup?: string
   languageTag: string
+  boardingIdentity?: app.minimpos.app.data.settings.BoardingIdentity
+    environment required: enum app.minimpos.terminal.transport.TerminalEnvironment [TEST, LIVE]
+    installationId required: string
+    merchant required: string
+    store? required: string
+    credentialId? required: string
+    username? required: string
+    boardedAt required: long
 
 secrets.json: app.minimpos.app.data.security.SecretBlob
   values: map
@@ -245,6 +253,14 @@ Encrypted journal: setup import: app.minimpos.app.data.transfer.PendingSetupImpo
     onboardingCompleted: boolean
     verifiedSetup?: string
     languageTag: string
+    boardingIdentity?: app.minimpos.app.data.settings.BoardingIdentity
+      environment required: enum app.minimpos.terminal.transport.TerminalEnvironment [TEST, LIVE]
+      installationId required: string
+      merchant required: string
+      store? required: string
+      credentialId? required: string
+      username? required: string
+      boardedAt required: long
   secrets required: map
     key: enum app.minimpos.app.data.security.Secret [TERMINAL_PASSPHRASE, SMTP_PASSWORD, PIN_VERIFIER, MANAGER_PIN_VERIFIER, ADYEN_API_KEY, PAYMENTS_APP_API_KEY]
     value: string
@@ -259,6 +275,14 @@ Encrypted journal: Tap to Pay registration: app.minimpos.app.terminal.TapToPaySe
   merchant required: string
   store? required: string
   installation? required: string
+  identity?: app.minimpos.app.data.settings.BoardingIdentity
+    environment required: enum app.minimpos.terminal.transport.TerminalEnvironment [TEST, LIVE]
+    installationId required: string
+    merchant required: string
+    store? required: string
+    credentialId? required: string
+    username? required: string
+    boardedAt required: long
 
 Encrypted journal: key creation: app.minimpos.app.terminal.SharedKeySetup.KeyRecords
   entries: list of

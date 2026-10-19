@@ -13,9 +13,11 @@ import app.minimpos.terminal.parse.FormEncoding
 import app.minimpos.terminal.paymentsapp.AdyenPaymentsAppManagement
 import app.minimpos.terminal.paymentsapp.AppLinkAnswer
 import app.minimpos.terminal.paymentsapp.AppLinkExchange
+import app.minimpos.terminal.paymentsapp.BoardingCredentialCheck
 import app.minimpos.terminal.paymentsapp.BoardingTarget
 import app.minimpos.terminal.paymentsapp.ManagementResult
 import app.minimpos.terminal.paymentsapp.Onboarding
+import app.minimpos.terminal.paymentsapp.PaymentsAppCrypto
 import app.minimpos.terminal.paymentsapp.PaymentsAppLinks
 import app.minimpos.terminal.paymentsapp.PaymentsAppManagement
 import app.minimpos.terminal.paymentsapp.PaymentsAppOnboarding
@@ -171,6 +173,52 @@ class PaymentsAppTest {
         assertThat(
             runBlocking { PaymentsAppTransport(key, TerminalEnvironment.TEST, app, RETURN_URL).send(TerminalAPIRequest(), 5.seconds) },
         ).isEqualTo(Delivery.Failed(Fault.Unsupported))
+    }
+
+    @Test
+    fun `short callback includes decoded error code and support trace ID`() {
+        val traceId = "4bf92f3577b34da6a3ce929d0e0e4736"
+        val traceParent = "00-$traceId-00f067aa0ba902b7-01"
+        app.reply = {
+            "$RETURN_URL/nexo?error=UnavailableService&message=Service+not+enabled" +
+                "&errorCode=APP%2F42&traceParent=$traceParent&secret=never-show"
+        }
+        val outcome = runBlocking { client.pay(payment) } as TransactionOutcome.NotProcessed
+        assertThat(outcome.fault).isEqualTo(
+            Fault.AppRefused(
+                ExternalText("UnavailableService\nService not enabled\nerrorCode=APP/42\ntraceparent=$traceParent\ntraceId=$traceId"),
+            ),
+        )
+    }
+
+    @Test
+    fun `an encoded short response exposes its trace without claiming a payment outcome`() {
+        val traceId = "4bf92f3577b34da6a3ce929d0e0e4736"
+        val traceParent = "00-$traceId-00f067aa0ba902b7-01"
+        val json =
+            """{"error":"UnavailableService","message":"Service not enabled","errorCode":"42","traceParent":"$traceParent","secret":"private"}"""
+        app.reply = { "$RETURN_URL/nexo?response=${Base64.UrlSafe.encode(json.toByteArray())}" }
+        val outcome = runBlocking { client.pay(payment) } as TransactionOutcome.Unknown
+        assertThat(outcome.fault).isEqualTo(
+            Fault.UnreadableReply(
+                ExternalText("UnavailableService\nService not enabled\nerrorCode=42\ntraceparent=$traceParent\ntraceId=$traceId"),
+            ),
+        )
+        listOf(
+            """{"error":{},"message":[],"traceParent":null}""",
+            "[]",
+            "null",
+            " ",
+            """{"unrecognized":"private"}""",
+            """{"SaleToPOIResponse":{},"message":"Not an authenticated answer","traceParent":"$traceParent"}""",
+        ).forEach { malformed ->
+            app.reply = { "$RETURN_URL/nexo?response=${Base64.UrlSafe.encode(malformed.toByteArray())}" }
+            assertThat((runBlocking { client.pay(payment) } as TransactionOutcome.Unknown).fault).isEqualTo(Fault.ReplyUnverified)
+        }
+        val crypto = PaymentsAppCrypto(key)
+        assertThat(crypto.shortError(Base64.UrlSafe.encode("null".toByteArray()))).isNull()
+        assertThat(crypto.shortError(Base64.UrlSafe.encode(" ".toByteArray()))).isNull()
+        assertThat(crypto.shortError(Base64.UrlSafe.encode("""{"SaleToPOIResponse":{}}""".toByteArray()))).isNull()
     }
 
     @Test
@@ -402,6 +450,7 @@ class PaymentsAppTest {
                 }
             assertThat(defaultManagement.registration(BoardingTarget("Merchant"), "I1"))
                 .isEqualTo(ManagementResult.Failed(Fault.Unsupported))
+            assertThat(defaultManagement.credential()).isEqualTo(BoardingCredentialCheck.Failed(Fault.Unsupported))
             assertThat(Onboarding.AlreadyBoarded("INSTALLATION-1").installationId).isEqualTo("INSTALLATION-1")
 
             var stepCount = 0

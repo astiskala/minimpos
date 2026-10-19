@@ -2,7 +2,8 @@ package app.minimpos.terminal.transport
 
 /**
  * Words written by Adyen, a terminal, the Adyen Payments app or a mail server, kept exactly as they came: never
- * translated, reworded or used to decide anything. Text the app writes itself is never wrapped in it.
+ * translated, reworded or used to decide anything. Selected protocol diagnostic values may accompany them under their
+ * protocol keys, including a trace ID extracted from W3C trace context. App-written prose is never wrapped in it.
  *
  * @property text The words as received, trimmed.
  */

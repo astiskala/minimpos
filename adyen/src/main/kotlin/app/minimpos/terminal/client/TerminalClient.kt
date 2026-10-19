@@ -7,6 +7,7 @@ import app.minimpos.terminal.transport.ExternalText
 import app.minimpos.terminal.transport.Fault
 import app.minimpos.terminal.transport.TerminalTransport
 import app.minimpos.terminal.transport.base64Json
+import app.minimpos.terminal.transport.responseText
 import com.adyen.model.nexo.AbortRequest
 import com.adyen.model.nexo.AdminRequest
 import com.adyen.model.nexo.AmountsReq
@@ -880,9 +881,16 @@ class TerminalClient(
                 partial = partial,
                 errorCondition = response?.errorCondition?.value(),
                 message =
-                    ExternalText.of(
-                        refusalReason ?: additional[NexoVocabulary.MESSAGE] ?: additional[NexoVocabulary.ERRORS]
-                            ?: additional[NexoVocabulary.WARNINGS],
+                    responseText(
+                        messages =
+                            listOf(
+                                refusalReason,
+                                additional[NexoVocabulary.MESSAGE] ?: additional[NexoVocabulary.ERRORS]
+                                    ?: additional[NexoVocabulary.WARNINGS],
+                            ),
+                        errorCode = additional[NexoVocabulary.ERROR_CODE],
+                        traceParent = additional[NexoVocabulary.TRACE_PARENT],
+                        requestId = additional[NexoVocabulary.REQUEST_ID],
                     ),
                 refusalReason = refusalReason,
                 poiTransactionId = poi?.transactionID,

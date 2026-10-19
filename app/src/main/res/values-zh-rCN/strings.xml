@@ -760,7 +760,7 @@
   <string name="settings_store_id">门店 ID（可选）</string>
   <string name="settings_store_id_hint">如只为一家门店设置 Tap to Pay，请填写其门店 ID（不是门店参考号）。留空则用于整个商家账户。</string>
   <string name="settings_payments_app_key">Payments 应用 API 密钥</string>
-  <string name="settings_payments_app_key_hint">仅具有 Adyen Payments app role 的 API 凭据（由 Adyen 支持团队开通），用于设置和移除本手机。</string>
+  <string name="settings_payments_app_key_hint">具有 Adyen Payments app role 和客户端密钥的独立凭据，用于设置和移除本手机。此处请输入 API 密钥，而不是客户端密钥。</string>
   <string name="settings_set_up_tap_to_pay">设置 Tap to Pay</string>
   <string name="settings_set_up_again">重新设置</string>
   <string name="settings_remove_phone">移除本手机</string>
@@ -771,14 +771,56 @@
   <string name="settings_forget_payments_app_key_message">仍可收款，但在重新输入密钥之前，无法重新设置或移除本手机。</string>
   <string name="settings_payments_app_setup_checked">已检查设置字段。Payments 应用无法通过连接检查测试共享密钥。</string>
 
+  <!-- Tap to Pay troubleshooting -->
+  <string name="tap_details">故障排查详情</string>
+  <string name="tap_share_report">分享已脱敏的报告</string>
+  <string name="tap_report_notice">报告不包含自由文本消息、密钥、令牌、回调地址或顾客数据。分享前请先检查。不会自动上传任何内容。</string>
+  <string name="tap_credential_saved">凭据已保存。这并不代表支付已准备就绪。</string>
+  <string name="tap_credential_verified">已验证凭据：%1$s</string>
+  <string name="tap_credential_inactive">此凭据未启用。</string>
+  <string name="tap_key_present">客户端密钥已存在。这并不保证支付能够成功进行。</string>
+  <string name="tap_key_missing">当前检查的 Tap to Pay 设置凭据没有客户端密钥。这可能导致 Payments app 无法开始支付。</string>
+  <string name="tap_key_permission">无法验证客户端密钥：GET /me 需要 Management API 角色。此诊断权限是可选的；不要仅为收款而添加广泛的凭据管理权限。</string>
+  <string name="tap_key_auth">在所选环境中身份验证失败。请检查已保存的 Payments app API 密钥和 TEST/LIVE 环境。</string>
+  <string name="tap_key_failed">API 未返回可用的凭据响应，无法验证客户端密钥。请使用手动检查清单或稍后重试检查。</string>
+  <string name="tap_key_unchecked">尚未检查客户端密钥。</string>
+  <string name="tap_boarding_known">此已验证凭据与本安装实例记录的注册凭据一致。</string>
+  <string name="tap_boarding_unknown">此检查验证的是当前配置的凭据。Mini mPOS 无法确认最初使用哪个凭据注册了本安装实例。</string>
+  <string name="tap_boarded">Payments app 报告已注册。注册本身并不代表支付已准备就绪。</string>
+  <string name="tap_not_boarded">Payments app 报告尚未注册。</string>
+  <string name="tap_boarding_unverified">无法验证 Payments app 注册状态。</string>
+  <string name="tap_boarding_unchecked">尚未检查 Payments app 注册状态。</string>
+  <string name="tap_current_credential">用于注册的凭据</string>
+  <string name="tap_checklist">客户端密钥检查清单：\n1. 在对应的 TEST 或 LIVE 环境中打开 Adyen Customer Area。\n2. 前往“Developers → API credentials”。\n3. 选择 %1$s。必须是用于注册的同一凭据。\n4. 在“Client settings → Authentication → Client key”下，仅在不存在密钥时生成客户端密钥。\n5. 保存更改，等待几分钟使其生效，然后返回并重新检查。\n\n客户端密钥与 API 密钥不同。无需将客户端密钥粘贴到 Mini mPOS。仅满足此原生 Tap to Pay 前提不需要设置 Allowed origins。不要为排查问题而重新生成已有的客户端密钥或轮换 API 密钥。</string>
+  <string name="tap_open_customer_area">打开 %1$s Customer Area</string>
+  <string name="tap_check_time">凭据检查时间（UTC）：%1$s</string>
+  <string name="tap_boarding_time">注册检查时间（UTC）：%1$s</string>
+  <string name="tap_unavailable">Payments app 无法完成请求。此错误可能有多种原因，不能据此断定服务中断或缺少客户端密钥。请检查设置并查看可用的诊断信息。</string>
+  <string name="tap_session_failure">1029_605 表示会话相关故障，不能证明缺少客户端密钥。</string>
+  <string name="tap_boarding_credential">记录的注册凭据：%1$s</string>
+  <string name="tap_boarding_unmatched">此检查不能确认当前凭据与记录的注册凭据一致。请使用记录的注册凭据排查客户端密钥问题。</string>
+
   <!-- Settings: Adyen capabilities -->
-  <string name="capabilities_intro">查看当前收款目标支持的 Adyen 功能，以及商户后台中为此终端配置的状态。</string>
+  <string name="capabilities_intro">查看此收款目标和设备支持的功能。“不支持”表示收款目标或已知硬件无法使用此功能。“需要配置”表示仍需调整本地或 Adyen 设置，或确认硬件。“可用”不保证付款获批。</string>
   <string name="capabilities_refresh">刷新功能状态</string>
   <string name="capability_save">保存到 Adyen</string>
   <string name="capabilities_matrix_header">功能状态</string>
   <string name="capability_status_available">可用</string>
   <string name="capability_status_needs_config">需要配置</string>
-  <string name="capability_status_unsupported">此收款目标不支持</string>
+  <string name="capability_status_unsupported">不支持</string>
+  <string name="settings_unavailable_tap_to_pay">使用 Tap to Pay 时不可用。</string>
+  <string name="settings_unavailable_destination">此收款目标不可用。</string>
+  <string name="capability_printing">收据打印</string>
+  <string name="capability_receipt_sharing">收据分享</string>
+  <string name="capability_receipt_tipping">收据小费</string>
+  <string name="capability_camera_scanning">设备摄像头扫描</string>
+  <string name="capability_camera_scanning_hint">商品条码、退款二维码和设置二维码。开始扫描时才会请求摄像头权限。</string>
+  <string name="capability_terminal_scanner">终端条码扫描器</string>
+  <string name="capability_scanned_wallets">扫码钱包付款</string>
+  <string name="capability_abort">POS 发起取消</string>
+  <string name="capability_diagnosis">终端诊断</string>
+  <string name="capability_remote_status">远程交易状态查询</string>
+  <string name="capability_late_reply_hint">Tap to Pay 有自己的取消按钮。无法远程查询未收到答复的交易；只有已经收到的延迟答复才能确认结果。无需终端诊断也可检查设置。</string>
   <string name="capability_terminal_tipping">终端小费</string>
   <string name="capability_dcc">动态货币转换 (DCC)</string>
   <string name="capability_giving">Adyen Giving</string>

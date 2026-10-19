@@ -399,7 +399,10 @@ data class TransactionDetails(
     val partial: Boolean = false,
     /** `Response.ErrorCondition` as sent by the terminal, e.g. `Refusal` or `Cancel`. */
     val errorCondition: String?,
-    /** The terminal's best explanation, verbatim: `refusalReason`, `message`, `errors` or `warnings`; null when none. */
+    /**
+     * The terminal's explanation (`refusalReason`, plus `message`, `errors` or `warnings`) and any `errorCode`,
+     * `traceparent` and extracted `traceId`, on separate lines; remote values stay verbatim. Null when none.
+     */
     val message: ExternalText?,
     /** Why the payment was declined (`refusalReason` in the `AdditionalResponse`, e.g. `Not enough balance`). */
     val refusalReason: String?,

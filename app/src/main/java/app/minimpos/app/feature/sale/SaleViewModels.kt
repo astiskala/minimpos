@@ -34,9 +34,13 @@ import app.minimpos.app.payment.SavedCardCharges
 import app.minimpos.app.payment.TransactionLifecycle
 import app.minimpos.app.payment.WalletPayments
 import app.minimpos.app.payment.savedCardStart
+import app.minimpos.app.terminal.TapToPayCheck
+import app.minimpos.app.terminal.TapToPayDiagnostics
 import app.minimpos.app.terminal.TerminalState
+import app.minimpos.app.terminal.TerminalStatus
 import app.minimpos.app.terminal.WalletAvailability
 import app.minimpos.app.terminal.WalletDiscovery
+import app.minimpos.app.terminal.usesPaymentsApp
 import app.minimpos.core.cart.Cart
 import app.minimpos.core.cart.CartTotals
 import app.minimpos.core.money.CurrencySpec
@@ -351,7 +355,7 @@ data class PaymentLinkUiState(
  */
 class PaymentLinkViewModel(
     private val saleId: String,
-    payments: StoredPayments,
+    private val payments: StoredPayments,
     receipts: ReceiptDelivery,
     private val links: PaymentLinks,
     operations: FinancialOperations,
@@ -385,7 +389,24 @@ class PaymentLinkViewModel(
     fun check() {
         if (local.value.check.running) return
         local.update { it.copy(check = ActionState(running = true)) }
-        launchWrite({ links.check(saleId) }) { update -> local.update { it.copy(check = update.toState(stillOpen = true)) } }
+        launchWrite({
+            val update = links.check(saleId)
+            if (update == LinkUpdate.Settled) {
+                val sale = payments.observe(saleId).first()?.sale
+                ActionState(
+                    outcome = sale?.let { ActionOutcome.LinkChecked(it.status) } ?: ActionOutcome.Missing,
+                    done = sale != null,
+                    isError = sale == null,
+                )
+            } else {
+                update.toState(stillOpen = true)
+            }
+        }) { checked -> local.update { it.copy(check = checked) } }
+    }
+
+    /** Closes the manual check's popup without changing the stored payment or background polling. */
+    fun dismissCheckResult() {
+        local.update { it.copy(check = it.check.dismissed()) }
     }
 
     /** Expires the link, so the shopper can no longer pay with it. */
@@ -420,11 +441,15 @@ class PaymentLinkViewModel(
  * @property payment The sale with what can be done with it now, or null until it has been loaded.
  * @property transaction The receipt, printing (with the merchant copy when it is due), emailing and re-checking the sale.
  * @property abort The latest abort of the transaction a busy terminal is working on.
+ * @property tapToPay Current advisory setup diagnostic, separate from this sale's payment outcome.
+ * @property report Explicitly requested redacted report, or null when none is pending.
  */
 data class SaleResultUiState(
     val payment: StoredPayment? = null,
     val transaction: TransactionActionsState = TransactionActionsState(),
     val abort: ActionState = ActionState(),
+    val tapToPay: TapToPayCheck = TapToPayCheck(),
+    val report: String? = null,
 ) {
     /** The sale and its lines, or null until loaded. */
     val record: SaleWithLines? get() = payment?.record
@@ -434,6 +459,9 @@ data class SaleResultUiState(
 
     /** Whether the payment was approved. */
     val approved: Boolean get() = record?.sale?.approved == true
+
+    /** Whether an unsuccessful historical Payments app operation can offer setup help without changing its outcome. */
+    val tapToPayHelp: Boolean get() = !approved && record?.sale?.context.usesPaymentsApp()
 
     /** Whether the stored refusal names a transaction a busy terminal is working on, whose abort was not sent yet. */
     val canAbortBusy: Boolean get() = record?.sale?.busyServiceId != null
@@ -458,6 +486,8 @@ data class SaleResultUiState(
  * @param receipts Prints and emails its receipt.
  * @param lifecycle The terminal payments' lifecycle, for busy terminals and collecting the remaining balance.
  * @param operations Asks again about an unknown outcome the way the payment was sent, and leaves its result.
+ * @param diagnostics Optional advisory checks and redacted report, never a payment/status retry.
+ * @param terminal The same connection tester as Settings; null when no explicit connection test is available.
  */
 class SaleResultViewModel(
     private val saleId: String,
@@ -465,6 +495,8 @@ class SaleResultViewModel(
     receipts: ReceiptDelivery,
     private val lifecycle: TransactionLifecycle<PaymentStart>,
     private val operations: FinancialOperations,
+    private val diagnostics: TapToPayDiagnostics? = null,
+    private val terminal: TerminalStatus? = null,
 ) : ViewModel() {
     private val local = MutableStateFlow(SaleResultUiState())
 
@@ -473,9 +505,33 @@ class SaleResultViewModel(
 
     /** The screen state, updated whenever the sale, the capture mode or an action changes. */
     val state: StateFlow<SaleResultUiState> =
-        combine(payments.observe(saleId), local, transaction.state) { payment, ui, actions ->
-            ui.copy(payment = payment, transaction = actions)
+        combine(
+            payments.observe(saleId),
+            local,
+            transaction.state,
+            diagnostics?.state ?: flowOf(TapToPayCheck()),
+        ) { payment, ui, actions, check ->
+            ui.copy(payment = payment, transaction = actions, tapToPay = check)
         }.stateIn(viewModelScope, SharingStarted.Eagerly, SaleResultUiState())
+
+    /** Runs the same explicit connection test as Settings, including advisory Payments app diagnostics. */
+    fun testConnection() {
+        if (diagnostics?.state?.value?.checking == true) return
+        launchWrite({ terminal?.check(includeDiagnostics = true) })
+    }
+
+    /** Builds an explicitly requested redacted report for this historical operation. */
+    fun reportTapToPay() {
+        launchWrite({
+            val sale = state.value.record?.sale
+            diagnostics?.report(sale, sale?.decline)
+        }) { report -> local.update { it.copy(report = report) } }
+    }
+
+    /** Consumes the report after opening the share sheet once. */
+    fun reportShared() {
+        local.update { it.copy(report = null) }
+    }
 
     /** Cancels the transaction a busy terminal is working on, so the payment can be retried. */
     fun abortBusyTransaction() {

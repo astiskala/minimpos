@@ -31,6 +31,9 @@ import app.minimpos.terminal.transport.TerminalTransport
 import java.util.concurrent.atomic.AtomicReference
 import kotlin.time.Duration
 
+/** Whether a historical context was sent to the Payments app, independent of the currently selected destination. */
+internal fun PaymentContext?.usesPaymentsApp(): Boolean = this?.destination == TerminalMode.PAYMENTS_APP.name
+
 /** Where payments go now, ready to send ([Open]) or why nothing can be sent ([Blocked]), see [Destination.connect]. */
 sealed interface Connection {
     /**
@@ -451,6 +454,8 @@ internal class PaymentsAppDestination(
         override val mode: TerminalMode get() = TerminalMode.PAYMENTS_APP
         override val secrets: Set<Secret> get() = setOf(Secret.TERMINAL_PASSPHRASE)
         override val supportsTerminalFeatures: Boolean get() = false
+        override val supportsPrinting: Boolean get() = false
+        override val supportsRemoteStatus: Boolean get() = false
         override val boardsPhone: Boolean get() = true
 
         override fun setupSteps(onTerminal: Boolean): List<SetupStepKind> =

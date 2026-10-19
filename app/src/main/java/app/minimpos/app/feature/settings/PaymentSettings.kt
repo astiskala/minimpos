@@ -8,6 +8,7 @@ import androidx.compose.ui.res.stringResource
 import app.minimpos.app.R
 import app.minimpos.app.data.settings.PaymentSettings
 import app.minimpos.app.data.settings.ShopperReferenceSource
+import app.minimpos.app.terminal.DestinationCapabilities
 import app.minimpos.app.ui.components.LocalAppContainer
 import app.minimpos.app.ui.components.SectionHeader
 import app.minimpos.core.shopper.EmailReferenceMode
@@ -20,6 +21,7 @@ internal fun SettingsEvents.onPaymentUpdate(transform: (PaymentSettings) -> Paym
 @Composable
 internal fun ColumnScope.PaymentsSection(
     state: SettingsUiState,
+    capabilities: DestinationCapabilities,
     events: SettingsEvents,
 ) {
     val payment = state.settings.payment
@@ -55,6 +57,7 @@ internal fun ColumnScope.PaymentsSection(
         { value -> update { it.copy(allowMoto = value) } },
         subtitle = stringResource(R.string.settings_allow_moto_hint),
         tag = "allowMoto",
+        blocked = stringResource(R.string.settings_unavailable_tap_to_pay).takeUnless { capabilities.supportsTerminalFeatures },
     )
     SettingSwitch(
         stringResource(R.string.settings_allow_mke),
@@ -62,6 +65,7 @@ internal fun ColumnScope.PaymentsSection(
         { value -> update { it.copy(allowMke = value) } },
         subtitle = stringResource(R.string.settings_allow_mke_hint),
         tag = "allowMke",
+        blocked = stringResource(R.string.settings_unavailable_tap_to_pay).takeUnless { capabilities.supportsTerminalFeatures },
     )
     SectionHeader(stringResource(R.string.settings_tokenization))
     ShopperReferenceSettings(payment, update)

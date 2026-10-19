@@ -10,6 +10,8 @@ import kotlin.system.exitProcess
 
 /** JVM-only entry point; release errors never print input values or signing secrets. */
 internal object Tooling {
+    private const val DOCS_ASSET_OPTIONS = 3
+
     @JvmStatic
     fun main(args: Array<String>) {
         exitProcess(run(args.toList(), System.out, System.err))
@@ -56,8 +58,15 @@ internal object Tooling {
                 DocsScreenshots.processAll(Path.of(raw), Path.of(images)).forEach { out.println("Saved $it") }
             }
 
+            "docs-assets" -> {
+                val options = args.drop(1)
+                require(options.size == DOCS_ASSET_OPTIONS) { "Expected docs-assets MODE INPUT OUTPUT" }
+                val (mode, input, output) = options
+                DocsAssets.run(mode, Path.of(input), Path.of(output)).forEach { out.println("Saved $it") }
+            }
+
             else -> {
-                throw IllegalArgumentException("Expected release, signing, report or screenshots")
+                throw IllegalArgumentException("Expected release, signing, report, screenshots or docs-assets")
             }
         }
         return 0
@@ -98,8 +107,12 @@ internal object Tooling {
                 Release.writeJson(Path.of(args.required("out")), Release.updateMetadata(version))
             }
 
+            "published" -> {
+                Release.checkPublished(version, Path.of(args.required("artifact")), Path.of(args.required("metadata")))
+            }
+
             else -> {
-                throw IllegalArgumentException("Expected bump, candidate, manifest, verify, ci or update")
+                throw IllegalArgumentException("Expected bump, candidate, manifest, verify, ci, update or published")
             }
         }
     }
@@ -129,7 +142,7 @@ private class Arguments(
 
     init {
         val supported =
-            setOf("version", "artifact", "commit", "run-id", "run-attempt", "subject", "files", "runs", "out")
+            setOf("version", "artifact", "commit", "run-id", "run-attempt", "subject", "files", "runs", "out", "metadata")
         val iterator = args.iterator()
         while (iterator.hasNext()) {
             val value = iterator.next()

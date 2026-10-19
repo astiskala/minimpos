@@ -41,9 +41,9 @@ spotless {
             "gradle/*.properties",
             ".vscode/*.json",
             ".github/**/*.yml",
-            "scripts/gradle",
-            "scripts/dev",
-            "scripts/ci",
+            "scripts/*",
+            ".devin/skills/docs-screenshots/*.html",
+            ".devin/skills/docs-screenshots/*.json",
             "config/**/*.yml",
             "*/src/**/*.xml",
             "*/lint.xml",
@@ -290,10 +290,12 @@ val actionlint =
     }
 
 val shellCheck =
-    registerCheck("shellCheck", "Checks the Bash Gradle runners and the docs capture script with shellcheck.") {
-        sources.from("scripts/gradle", "scripts/dev", "scripts/ci")
+    registerCheck("shellCheck", "Checks the Bash runners and docs/release helpers with shellcheck.") {
+        val scripts = fileTree("scripts") { include("*") }
+        sources.from(scripts)
         tools.from(shellcheckDownload)
-        command.set(listOf(tool("shellcheck"), "scripts/gradle", "scripts/dev", "scripts/ci", "scripts/docs-capture"))
+        val executable = tool("shellcheck")
+        command.set(scripts.elements.map { files -> listOf(executable) + files.map { it.asFile.absolutePath }.sorted() })
     }
 
 val zizmor =

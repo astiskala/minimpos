@@ -142,6 +142,35 @@ internal object Release {
 
     fun readJson(path: Path): JsonElement = Json.parseToJsonElement(Files.readString(path))
 
+    /**
+     * Verifies downloaded public assets against the release tag's [version] and GitHub [metadata];
+     * does not trust asset filenames alone.
+     */
+    fun checkPublished(
+        version: Path,
+        artifact: Path,
+        metadata: Path,
+    ) {
+        val current = readVersion(version)
+        val release = readJson(metadata) as? JsonObject
+        require(
+            release?.string("tagName") == "v${current.name}" &&
+                release["isDraft"] == JsonPrimitive(false) && release["isPrerelease"] == JsonPrimitive(false),
+        ) { "Expected a published stable release for this version" }
+        val assets = release["assets"] as? JsonArray
+        val expected = setOf("minimpos-${current.name}.apk", "update.json")
+        require(assets?.size == expected.size) { "Expected exactly the APK and update.json assets" }
+        val objects = assets.map { requireNotNull(it as? JsonObject) { "Invalid published asset" } }
+        require(objects.map { it.string("name") }.toSet() == expected) { "Wrong or duplicate published assets" }
+        objects.forEach { asset ->
+            val file = artifact.resolve(requireNotNull(asset.string("name")))
+            require(asset.string("digest") == "sha256:${sha256(file)}") { "Published asset digest mismatch" }
+        }
+        require(
+            readJson(artifact.resolve("update.json")) == updateMetadata(version),
+        ) { "Published update metadata differs from this version" }
+    }
+
     fun writeJson(
         path: Path,
         value: JsonElement,

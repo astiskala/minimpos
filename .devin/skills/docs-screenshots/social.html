@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="{{language}}">
+<head>
+<meta charset="utf-8">
+<base href="{{docs}}">
+<title>Mini mPOS</title>
+<style>
+html,body{margin:0;width:1200px;height:630px;overflow:hidden}
+body{font-family:system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;color:#00112c;background:linear-gradient(135deg,#e6f8ee 0%,#f4fbf7 45%,#f7fafc 100%);position:relative}
+.brand{position:absolute;left:64px;top:62px;display:flex;align-items:center;gap:14px;font-weight:700;font-size:27px}
+.brand img{width:44px;height:44px}
+h1{position:absolute;left:64px;top:152px;margin:0;font-size:59px;line-height:66px;letter-spacing:-0.5px;font-weight:700}
+.lead{position:absolute;left:64px;top:388px;margin:0;font-size:21.3px;line-height:34px;color:#5c687c}
+.pill{position:absolute;left:64px;top:489px;background:#00112c;color:#fff;font-weight:700;font-size:18px;padding:13px 18px;border-radius:10px}
+.foot{position:absolute;left:64px;top:555px;font-size:13.6px;color:#5c687c}
+.terminal{position:absolute;filter:drop-shadow(0 18px 28px rgba(0,17,44,.22))}
+.terminal img{position:absolute;display:block;object-fit:contain;background:#fff}
+.ams1{left:705px;top:123px;width:228px;height:421px;transform:rotate(-6deg);z-index:2;background:url("images/terminal-ams1.svg") center/100% 100% no-repeat}
+.ams1 img{left:7.6923%;top:12.5%;width:84.6154%;height:76.25%}
+.s1f2{left:941px;top:81px;width:208px;height:416px;transform:rotate(6deg);background:url("images/terminal-s1f2.svg") center/100% 100% no-repeat}
+.s1f2 img{left:10%;top:20.3333%;width:80%;height:71.1111%}
+</style>
+</head>
+<body>
+<div class="brand"><img src="favicon.svg" alt="">Mini mPOS</div>
+<h1>{{title}}</h1><p class="lead">{{lead}}</p><div class="pill">{{pill}}</div><div class="foot">{{foot}}</div>
+<div class="terminal s1f2"><img src="images/{{images}}receipt.png" alt=""></div>
+<div class="terminal ams1"><img src="images/{{images}}sale-ams1.png" alt=""></div>
+</body>
+</html>

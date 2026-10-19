@@ -253,6 +253,42 @@ Do not crop or stretch to fit,
 label screenshots as demos, and keep demo data consistent. The guides' SMTP links must match
 `SmtpProvider.helpUrl`; verify provider requirements when changing the list.
 
+### Repeatable screenshot refresh
+
+Use a stopped, pre-seeded docs AVD containing `docs-<set>-<language>.tar` snapshots for all requested languages.
+The snapshot set defaults to `1017` (`SNAPSHOT` overrides it). Create a fresh owned clone; existing destinations are
+never overwritten. Run `start` in a separate terminal; it stays in the foreground. Its read-only emulator session
+discards runtime edits on shutdown, leaving the source and saved fixture archives unchanged.
+
+```sh
+scripts/docs-emulator clone SOURCE_DOCS_AVD MiniMpos_Docs_Disposable_refresh
+scripts/docs-emulator start MiniMpos_Docs_Disposable_refresh 5570
+```
+
+After approving demo resets on that clone (the driver waits for its ADB connection):
+
+```sh
+export DOCS_RESET=1 ANDROID_SERIAL=emulator-5570 SHOTS="$PWD/build/docs-raw"
+scripts/docs-capture batch
+scripts/docs-capture process
+scripts/docs-assets social
+scripts/docs-assets review
+scripts/dev check website
+scripts/docs-capture shutdown
+```
+
+`batch [LANG...]` builds/installs the current debug APK, applies each locale/time zone and fixed demo clock, restores
+fixtures before each named flow and captures both terminal sizes. `DOCS_DATE` overrides the default fixture date
+(`101619302026.00`, Android's `MMDDhhmmYYYY.ss`). Home captures refuse splash screens. Raw S1F2 and AMS1 images share
+one folder; processing selects dimensions and bar heights from the terminal-specific filename.
+
+`social` renders the checked-in template and four-language copy with local assets only; use `MINIMPOS_CHROME` for a
+Chrome/Chromium or `chrome-headless-shell` executable. `review` validates language parity, frame dimensions and indexed
+palettes, then writes labeled contact sheets to `build/docs-assets` (`DOCS_WORK` overrides it). Inspect them: valid
+dimensions do not prove the correct screen or transaction. Website checks also render all four languages' five pages at
+390/1280 px, reject broken images and horizontal overflow, and save 40 screenshots in
+`website-test/build/reports/guide-layout`. Run `scripts/dev finish` before committing.
+
 ## Dependency and build maintenance
 
 - Add dependencies via `gradle/libs.versions.toml`, pin versions at least seven days old, and check the release build.
@@ -360,3 +396,18 @@ expire after 14 days; resume produces a fresh one. Only the latest release is ma
 The repository's `release` environment is restricted to `main`. Its secrets are `RELEASE_KEYSTORE` (base64 keystore)
 and `RELEASE_SIGNING_PROPERTIES` (`storePassword`, `keyAlias`, `keyPassword`). Never commit them or local SDK/signing
 files. See [SECURITY.md](SECURITY.md) for private vulnerability reporting.
+
+After dispatching the Release workflow with the approved version bump, use the checked-in monitor/verifier:
+
+```sh
+scripts/release-check watch RUN_ID vX.Y.Z vPREVIOUS.VERSION.NUMBER
+scripts/release-check verify vX.Y.Z vPREVIOUS.VERSION.NUMBER
+```
+
+Use `watch` while the workflow runs, or `verify` for an already published release; do not run both routinely.
+Both require approved GitHub access and the authenticated `gh` CLI. They only read GitHub and download artifacts;
+they never commit, push, dispatch, tag or publish. The optional previous tag enables signing-certificate continuity
+checks. SDK `apksigner`, `zipalign` and `aapt2` verify the released APK's signature at API 28, 16 KB alignment,
+application ID, version and minimum SDK. `MINIMPOS_BUILD_TOOLS` overrides the detected SDK build-tools directory.
+Kotlin tooling checks the two GitHub SHA-256 asset digests and exact `update.json` contract against the release tag's
+version file. Verification files stay in a fresh `build/release-check.*` directory; the checkout and refs stay unchanged.

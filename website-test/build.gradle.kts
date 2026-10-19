@@ -62,6 +62,13 @@ tasks.test {
         .withPathSensitivity(PathSensitivity.RELATIVE)
         .withPropertyName("website")
     systemProperty("minimpos.website", website.asFile.absolutePath)
+    systemProperty(
+        "minimpos.layoutReports",
+        layout.buildDirectory
+            .dir("reports/guide-layout")
+            .get()
+            .asFile.absolutePath,
+    )
     inputs
         .files(fileTree(appResources) { include("values*/strings.xml") })
         .withPathSensitivity(PathSensitivity.RELATIVE)

@@ -5,6 +5,7 @@
 #   scripts/docs-capture locale LANG         device locale and time zone of a sample-data.json market (en, zh-CN, zh-Hant, ja)
 #   scripts/docs-capture snapshot NAME.tar   app data into /data/local/tmp/NAME.tar
 #   scripts/docs-capture restore NAME.tar    app data from /data/local/tmp/NAME.tar
+#   scripts/docs-capture install             build/install current debug APK on an owned clone
 #   scripts/docs-capture launch LANG | back  start the app and wait for Home | press Back
 #   scripts/docs-capture tap LANG KEY [S]    tap the first node showing string KEY in LANG (=TEXT literal, ^KEY contains)
 #   scripts/docs-capture scroll LANG KEY     swipe up until KEY's node is on screen
@@ -12,11 +13,13 @@
 #   scripts/docs-capture shot LANG NAME      raw capture into $SHOTS/LANG-NAME.png
 #   scripts/docs-capture expand_receipt      expand the open simulated printer sheet
 #   scripts/docs-capture flow LANG NAME...   named flows listed below, each from docs-$SNAPSHOT-LANG.tar
-#   scripts/docs-capture process             $SHOTS/*.png into docs/images[/LANG]/ (540x960, 96 colours) via :tooling
+#   scripts/docs-capture batch [LANG...]     all flows; all four languages by default, serially on one disposable clone
+#   scripts/docs-capture process             raw S1F2/AMS1 captures into docs/images[/LANG]/ via scripts/docs-assets
 #   scripts/docs-capture finish              remove the capture-only device settings
+#   scripts/docs-capture shutdown            finish, then power off the owned disposable emulator
 #
 # ANDROID_SERIAL selects the emulator (default emulator-5570); SHOTS the raw folder (default /tmp/minimpos-shots);
-# SNAPSHOT the fixture snapshot set (default 1017). Run locale before a language's flows.
+# SNAPSHOT the fixture snapshot set (default 1017). DOCS_RESET=1 explicitly permits demo resets on owned clones only.
 set -euo pipefail
 
 root=$(cd "$(dirname "$0")/.." && pwd)
@@ -130,16 +133,49 @@ item() {
 }
 
 snapshot() {
+  require_clone
+  snapshot_name "$1"
   remote am force-stop "$package"
   remote "cd /data/data/$package && tar -cf /data/local/tmp/$1 ."
 }
 
 restore() {
+  require_clone
+  snapshot_name "$1"
+  remote test -f "/data/local/tmp/$1"
   remote am force-stop "$package"
   local uid
   uid=$(remote stat -c %u "/data/data/$package" | tr -d '\r')
+  [[ $uid =~ ^[0-9]+$ ]] || { echo 'Missing app UID; refusing reset.' >&2; exit 1; }
   remote "rm -rf /data/data/$package/* && cd /data/data/$package && tar -xf /data/local/tmp/$1 &&
     chown -R $uid:$uid /data/data/$package && restorecon -R /data/data/$package"
+  if ! remote cat "/data/data/$package/files/datastore/settings.json" | tr -d '\n' |
+    grep -Eq '"terminal"[[:space:]]*:[[:space:]]*\{[^}]*"mode"[[:space:]]*:[[:space:]]*"SIMULATOR"'; then
+    echo 'Refusing non-simulator fixture; app not launched.' >&2
+    exit 1
+  fi
+}
+
+snapshot_name() {
+  [[ $1 =~ ^[A-Za-z0-9_-]+\.tar$ ]] || { echo 'Expected a snapshot basename ending in .tar.' >&2; exit 2; }
+}
+
+require_clone() {
+  [[ ${DOCS_RESET:-} == 1 && $serial == emulator-* ]] || {
+    echo 'Demo resets require DOCS_RESET=1 and a disposable emulator.' >&2; exit 1;
+  }
+  local avd online=false _
+  for _ in $(seq 90); do
+    if [[ $(device get-state | tr -d '\r') == device ]]; then online=true; break; fi
+    sleep 2
+  done
+  [[ $online == true ]] || { echo 'Emulator never became available; no data reset.' >&2; exit 1; }
+  avd=$(device emu avd name | tr -d '\r' | head -n 1)
+  [[ $avd =~ ^MiniMpos_Docs_Disposable_[A-Za-z0-9_]+$ &&
+    -f ${ANDROID_AVD_HOME:-$HOME/.android/avd}/$avd.avd/minimpos-docs-disposable &&
+    $(remote getprop ro.kernel.qemu | tr -d '\r') == 1 ]] || {
+    echo 'Refusing reset: not an owned disposable docs clone. Use scripts/docs-emulator clone.' >&2; exit 1;
+  }
 }
 
 launch() {
@@ -507,8 +543,41 @@ flow() {
 }
 
 process() {
-  "$root/scripts/gradle" :tooling:cliJar >/dev/null
-  java -jar "$root/tooling/build/libs/minimpos-tooling.jar" screenshots "$shots" "$root/docs/images"
+  bash "$root/scripts/docs-assets" process "$shots"
+}
+
+install() {
+  require_clone
+  "$root/scripts/gradle" :app:assembleDebug
+  device wait-for-device
+  local _
+  for _ in $(seq 90); do
+    if remote cmd package path android | grep -q '^package:'; then
+      device install -r "$root/app/build/outputs/apk/debug/app-debug.apk"
+      return
+    fi
+    sleep 2
+  done
+  echo 'Package Manager never became ready; APK not installed.' >&2
+  exit 1
+}
+
+batch() {
+  require_clone
+  if [[ $# == 0 ]]; then set -- en zh-CN zh-Hant ja; fi
+  local language
+  for language in "$@"; do
+    [[ -n $(string "$language" home_new_sale) ]] || exit 1
+  done
+  install
+  prepare
+  for language in "$@"; do
+    locale "$language"
+    remote settings put global auto_time 0
+    remote date "${DOCS_DATE:-101619302026.00}"
+    flow "$language" overview catalog preferences settings preauth offline authorize partial checkout gratuity tax_dialog transfer ams1
+  done
+  finish
 }
 
 finish() {
@@ -518,8 +587,14 @@ finish() {
   remote am broadcast -a com.android.systemui.demo -e command exit >/dev/null
 }
 
+shutdown() {
+  require_clone
+  finish
+  remote reboot -p
+}
+
 case ${1:-} in
-  prepare | locale | snapshot | restore | launch | back | tap | scroll | shot | expand_receipt | settings | flow | process | finish)
+  prepare | locale | snapshot | restore | install | launch | back | tap | scroll | shot | expand_receipt | settings | flow | batch | process | finish | shutdown)
     command=$1
     shift
     "$command" "$@"

@@ -65,11 +65,10 @@ val cliJar =
 tasks.test {
     dependsOn(cliJar)
     val repository = isolated.rootProject.projectDirectory
+    inputs.dir(repository.dir("scripts")).withPathSensitivity(PathSensitivity.RELATIVE)
     inputs.files(
-        repository.file("scripts/gradle"),
-        repository.file("scripts/dev"),
-        repository.file("scripts/ci"),
-        repository.file("scripts/docs-capture"),
+        repository.file(".devin/skills/docs-screenshots/social.html"),
+        repository.file(".devin/skills/docs-screenshots/social-copy.json"),
     )
     inputs.dir(repository.dir(".github/workflows")).withPathSensitivity(PathSensitivity.RELATIVE)
     systemProperty("minimpos.repository", repository.asFile.absolutePath)

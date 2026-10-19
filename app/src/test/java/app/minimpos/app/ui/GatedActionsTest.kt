@@ -14,6 +14,7 @@ import androidx.compose.ui.test.performScrollTo
 import app.minimpos.app.MiniMposApp
 import app.minimpos.app.R
 import app.minimpos.app.TestEnvironment
+import app.minimpos.app.awaitCondition
 import app.minimpos.app.createRecordingComposeRule
 import app.minimpos.app.data.settings.TerminalMode
 import app.minimpos.terminal.transport.TerminalEnvironment
@@ -115,6 +116,7 @@ class GatedActionsTest {
         }
         // Elsewhere the check waits for payments to be set up: pressing it explains that instead of failing.
         useNetworkTerminalWithoutId()
+        compose.awaitCondition("the setup gate follows the changed destination") { env.container.setupGate.pending }
         compose
             .onNodeWithTag("reconcileTerminal")
             .performScrollTo()

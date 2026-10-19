@@ -438,11 +438,11 @@
   <string name="products_pre_auth_hint">在“预授权”中单独处理，不计入销售：在扣款前，金额仅在卡内冻结。</string>
   <string name="products_kind_pre_auth">预授权</string>
   <string name="sample_data">示例数据</string>
-  <string name="sample_data_hint">添加示例商品和只读演示记录。虚构公司信息会填入空白商家资料。示例计入演示每日总额和报告。</string>
+  <string name="sample_data_hint">添加示例商品和只读演示记录。每次使用都会以虚构公司信息替换收据商家信息，即使示例已存在。收据版式和发送设置保持不变。示例计入演示每日总额和报告。</string>
   <string name="sample_add">添加示例数据</string>
   <string name="sample_remove">删除示例数据</string>
   <string name="sample_remove_message">删除示例商品（包括已编辑的商品）和演示记录？您自己的商品、记录、税率和设置将保留。您的商品使用的分类也将保留。</string>
-  <string name="sample_added">示例数据已就绪。现有示例已保留。</string>
+  <string name="sample_added">示例数据已就绪。现有示例已保留；收据商家信息已替换。</string>
   <string name="sample_removed">示例数据已删除。</string>
   <string name="sample_write_failed">无法保存更改。请重试。</string>
   <string name="sample_history_hint">仅为示例记录，未发生资金交易。无法执行资金操作。</string>
@@ -617,6 +617,7 @@
 
   <!-- Settings: overview and language -->
   <string name="settings_title">设置</string>
+  <string name="settings_changes_saved">更改已保存。</string>
   <string name="settings_choose">选择一个部分以更改其设置。</string>
   <string name="settings_terminal">终端</string>
   <string name="settings_capabilities">Adyen 功能</string>
@@ -706,14 +707,13 @@
   <string name="settings_host">终端 IP 地址</string>
   <string name="settings_host_placeholder">例如 192.0.2.1</string>
   <string name="settings_host_hint">终端必须与此设备处于同一网络。</string>
-  <string name="settings_port">端口</string>
   <string name="settings_choose_terminal">选择终端</string>
   <string name="settings_no_terminals">没有可用的匹配终端。请手动输入信息。</string>
   <string name="settings_save_and_discover">保存并查找终端</string>
   <string name="settings_testing_api">正在测试 API…</string>
   <string name="settings_finding_setup">正在查找终端…</string>
   <string name="settings_discover">查找要设置的终端</string>
-  <string name="settings_discovery_manual">请检查下方信息，手动补充缺失项，然后测试连接及 API 密钥。必须具有所有必需的 API 权限。</string>
+  <string name="settings_discovery_manual">请检查下方信息并补充缺失项。最后点按“测试连接”，验证 API 访问和连接。</string>
   <string name="settings_shared_key">共享密钥</string>
   <string name="settings_shared_key_hint">从商户后台的“Devices › Device settings › Integrations › Terminal API › Encryption key”复制（点按铅笔图标查看）。</string>
   <string name="settings_payments_app_shared_key_hint">请在此输入共享密钥，或在设置助手中填写。手机注册不会获取共享密钥。</string>
@@ -721,6 +721,7 @@
   <string name="settings_key_version">密钥版本</string>
   <string name="settings_passphrase">密钥口令</string>
   <string name="settings_test_connection">测试连接</string>
+  <string name="settings_connection_final_hint">最后检查 API 访问和连接，完成设置。此操作不会发起付款。</string>
   <string name="settings_save_and_test">保存并测试</string>
   <string name="settings_forget_passphrase">移除已保存的口令</string>
   <string name="settings_forget_passphrase_title">移除已保存的口令？</string>
@@ -738,7 +739,7 @@
   <string name="settings_status_checking">正在检查连接…</string>
   <string name="settings_status_connected">已连接</string>
   <string name="settings_status_not_set_up">尚未设置</string>
-  <string name="settings_status_not_set_up_hint">请在下方输入共享密钥，然后点击“保存并测试”。</string>
+  <string name="settings_status_not_set_up_hint">在设置 › 终端中完成设置，然后点按“测试连接”。</string>
   <string name="settings_status_failed">未连接</string>
   <string name="settings_tap_to_pay">Tap to Pay</string>
   <string name="settings_tap_to_pay_hint">请 Adyen 支持团队开通 Tap to Pay on Android 和 Adyen Payments app role。设置会将本手机注册到您的商家账户或其某个门店。购物者在本手机上轻触银行卡或手机付款。本机没有打印机，请发送电子收据或分享收据。</string>
@@ -774,18 +775,27 @@
   <string name="help_troubleshooting">故障排除指南</string>
   <string name="help_report_issue">报告问题</string>
 
+  <!-- Shared integration diagnostics -->
+  <string name="diagnostics_api">API 访问：%1$s</string>
+  <string name="diagnostics_checked_at">检查完成时间（UTC）：%1$s</string>
+  <string name="diagnostics_connection">连接：%1$s</string>
+  <string name="diagnostics_details">故障排查详情</string>
+  <string name="diagnostics_limits">只读检查无法保证付款、退款或打印成功。请在设置 › 终端中补全所报告的设置；请求失败时检查网络和 API 权限。此处不会发起付款、注册手机或更改共享密钥。</string>
+  <string name="diagnostics_no_diagnosis">此集成不支持终端诊断。连接结果仅验证设置，不代表终端可达。</string>
+  <string name="diagnostics_no_status">不支持远程查询交易状态。付款结果未知时，只有 Mini mPOS 已收到的延迟回复才能确认结果。</string>
+  <string name="diagnostics_not_checked">未检查或不可用</string>
+  <string name="diagnostics_report_notice">包含商户、终端、安装实例和凭据 ID。不包含秘密值、自由文本消息、回调地址或顾客数据。分享前请先检查；不会自动上传任何内容。</string>
+  <string name="diagnostics_share_report">分享已脱敏的报告</string>
+
   <!-- Tap to Pay troubleshooting -->
-  <string name="tap_details">故障排查详情</string>
-  <string name="tap_share_report">分享已脱敏的报告</string>
-  <string name="tap_report_notice">报告不包含自由文本消息、密钥、令牌、回调地址或顾客数据。分享前请先检查。不会自动上传任何内容。</string>
   <string name="tap_credential_verified">已验证凭据：%1$s</string>
   <string name="tap_credential_inactive">此凭据未启用。</string>
   <string name="tap_key_present">客户端密钥已存在。这并不保证支付能够成功进行。</string>
   <string name="tap_key_missing">当前检查的 Tap to Pay 设置凭据没有客户端密钥。这可能导致 Payments app 无法开始支付。</string>
   <string name="tap_key_permission">无法验证客户端密钥：GET /me 需要 Management API 角色。此诊断权限是可选的；不要仅为收款而添加广泛的凭据管理权限。</string>
   <string name="tap_key_auth">在所选环境中身份验证失败。请检查已保存的 Payments app API 密钥和 TEST/LIVE 环境。</string>
-  <string name="tap_key_failed">API 未返回可用的凭据响应，无法验证客户端密钥。请使用手动检查清单或稍后重试检查。</string>
-  <string name="tap_key_unchecked">尚未检查客户端密钥。</string>
+  <string name="tap_key_failed">API 未返回可用的凭据响应，无法验证客户端密钥。请检查网络和 API 权限，然后重试检查。</string>
+  <string name="tap_key_unchecked">当前凭据和环境没有有效的客户端密钥检查结果。后台连接检查不包含此项参考检查。这不表示密钥缺失。</string>
   <string name="tap_boarding_known">此已验证凭据与本安装实例记录的注册凭据一致。</string>
   <string name="tap_boarding_unknown">此检查验证的是当前配置的凭据。Mini mPOS 无法确认最初使用哪个凭据注册了本安装实例。</string>
   <string name="tap_boarded">Payments app 报告已注册。注册本身并不代表支付已准备就绪。</string>
@@ -1034,6 +1044,7 @@
   <string name="settings_print_test">打印测试收据</string>
   <string name="settings_smtp">SMTP 服务器</string>
   <string name="settings_smtp_host">服务器</string>
+  <string name="settings_port">端口</string>
   <string name="settings_smtp_security">安全</string>
   <string name="settings_smtp_security_hint">与邮件服务器连接的加密方式。</string>
   <string name="settings_smtp_starttls">STARTTLS（通常为端口 587）</string>

@@ -17,8 +17,10 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import app.minimpos.app.R
 import app.minimpos.app.feature.OutcomeMessage
+import app.minimpos.app.feature.text
 import app.minimpos.app.terminal.ReceiptBusiness
 import app.minimpos.app.ui.components.LabeledValue
+import app.minimpos.app.ui.components.ResultDialog
 import app.minimpos.app.ui.components.SecondaryButton
 import app.minimpos.app.ui.components.currentSetupGate
 
@@ -40,7 +42,16 @@ internal fun ReceiptBusinessImport(
             icon = Icons.Default.FileDownload,
             modifier = Modifier.testTag("findReceiptBusinesses"),
         )
-        OutcomeMessage(state.lookup)
+        if (!state.resultPending) OutcomeMessage(state.lookup)
+    }
+    if (state.resultPending) {
+        ResultDialog(
+            title = stringResource(R.string.settings_business_import),
+            message = state.lookup.outcome?.text() ?: stringResource(R.string.settings_changes_saved),
+            isError = state.lookup.isError,
+            tag = "businessImportResult",
+            onDismiss = events::onResultDismiss,
+        )
     }
     state.proposal?.let { business ->
         AlertDialog(

@@ -72,6 +72,13 @@ class SetupDiscoveryUiTest {
     private fun assertSteps(vararg titles: String) =
         titles.forEachIndexed { index, title -> compose.onNodeWithTag("step_${index + 1}").assertTextContains(title) }
 
+    private fun findForManualEntry() {
+        compose.onNodeWithTag("testApi").assertDoesNotExist()
+        compose.onNodeWithTag("discoverSetup").performScrollTo().performClick()
+        waitForTag("terminal_S1F2-000158213605014")
+        compose.onNodeWithText(env.context.getString(R.string.action_cancel)).performClick()
+    }
+
     @Test
     @Config(qualifiers = "en-rAU-w411dp-h891dp-xhdpi")
     fun `terminal setup steps follow the selected destination`() {
@@ -110,15 +117,15 @@ class SetupDiscoveryUiTest {
             env.container.settingsState.value.terminal.merchantAccount == "Merchant"
         }
         compose.onNodeWithTag("apiKey").performScrollTo().performTextInput("key")
-        compose.onNodeWithTag("testApi").performScrollTo().performClick()
+        findForManualEntry()
         waitForTag("host")
         compose.onNodeWithTag("keyIdentifier").assertDoesNotExist()
         compose.onNodeWithTag("host").performScrollTo().performTextInput("192.168.1.42")
         compose.onNodeWithTag("keyIdentifier").assertDoesNotExist()
         compose.onNodeWithTag("poiId").performScrollTo().performTextInput("S1F2-000158213605014")
         waitForTag("keyIdentifier")
-        assertSteps("Environment", "Adyen API", "Terminal", "Shared key")
-        compose.onNodeWithTag("step_5").assertDoesNotExist()
+        assertSteps("Environment", "Adyen API", "Terminal", "Shared key", "Test connection")
+        compose.onNodeWithTag("step_6").assertDoesNotExist()
     }
 
     private fun assertCloudSteps() {
@@ -137,12 +144,12 @@ class SetupDiscoveryUiTest {
         compose.onNodeWithTag("host").assertDoesNotExist()
         compose.onNodeWithTag("keyIdentifier").assertDoesNotExist()
         compose.onNodeWithTag("step_3").assertExists()
-        compose.onNodeWithTag("testApi").assertExists()
+        compose.onNodeWithTag("testApi").assertDoesNotExist()
         compose.onNodeWithTag("livePrefix").performScrollTo().performTextInput("prefix")
         compose.awaitCondition("the cloud prefix is saved") {
             env.container.settingsState.value.terminal.liveUrlPrefix == "prefix"
         }
-        compose.onNodeWithTag("testApi").performScrollTo().performClick()
+        findForManualEntry()
         waitForTag("testConnection")
         compose.onNodeWithTag("findTerminals").assertDoesNotExist()
         compose.waitUntilAtLeastOneExists(
@@ -150,8 +157,8 @@ class SetupDiscoveryUiTest {
             15_000,
         )
         compose.onNodeWithTag("testConnection").assertExists()
-        assertSteps("Environment", "Adyen API", "Terminal")
-        compose.onNodeWithTag("step_4").assertDoesNotExist()
+        assertSteps("Environment", "Adyen API", "Terminal", "Test connection")
+        compose.onNodeWithTag("step_5").assertDoesNotExist()
         compose.onNodeWithTag("livePrefix").assertExists()
     }
 
@@ -350,6 +357,7 @@ class SetupDiscoveryUiTest {
         )
         compose.onNodeWithTag("discoverSetup").assertExists()
         compose.onNodeWithTag("terminal_S1F2-000158213605014").assertDoesNotExist()
+        compose.onNodeWithTag("apiResultOk").performClick()
         apiFailure = null
         compose.onNodeWithTag("discoverSetup").performScrollTo().performClick()
         waitForTag("terminal_S1F2-000158213605014")
@@ -359,8 +367,7 @@ class SetupDiscoveryUiTest {
             terminal.host == "192.168.1.42" && terminal.poiIdOverride == "S1F2-000158213605014"
         }
         compose.waitUntilAtLeastOneExists(hasTestTag("host") and hasText("192.168.1.42", substring = true), 15_000)
-        compose.onNodeWithTag("testApi").performScrollTo().performClick()
-        compose.waitUntilAtLeastOneExists(hasTestTag("apiResult") and hasText("API key works", substring = true), 15_000)
+        findForManualEntry()
         compose.onNodeWithTag("host").performScrollTo().assertTextContains("192.168.1.42", substring = true)
         compose.onNodeWithTag("poiId").assertTextContains("S1F2-000158213605014", substring = true)
         compose.onNodeWithTag("merchantAccount").performScrollTo().assertTextContains("Merchant", substring = true)
@@ -414,8 +421,9 @@ class SetupDiscoveryUiTest {
         compose.onNodeWithTag("settings").performClick()
         waitForTag("section_terminal")
         compose.onNodeWithTag("section_terminal").performClick()
-        waitForTag("testApi")
-        compose.onNodeWithTag("testApi").performScrollTo().performClick()
+        waitForTag("discoverSetup")
+        compose.onNodeWithTag("testApi").assertDoesNotExist()
+        compose.onNodeWithTag("discoverSetup").performScrollTo().performClick()
         compose.awaitCondition("API check starts") { apiEntered.isCompleted }
         compose.onNodeWithTag("step_3").assertDoesNotExist()
         compose.onNodeWithTag("merchantAccount").performScrollTo().performTextReplacement("ChangedMerchant")
@@ -423,20 +431,23 @@ class SetupDiscoveryUiTest {
             env.container.settingsState.value.terminal.merchantAccount == "ChangedMerchant"
         }
         apiRelease?.complete(Unit)
-        compose.waitUntilAtLeastOneExists(hasTestTag("apiResult") and hasText(env.context.getString(R.string.settings_api_ok)), 15_000)
+        waitForTag("terminal_S1F2-000158213605014")
+        compose.onNodeWithText(env.context.getString(R.string.action_cancel)).performClick()
         compose.onNodeWithTag("step_3").assertDoesNotExist()
         compose.onNodeWithTag("discoverSetup").assertExists()
         if (holdRetest) {
             apiEntered = CompletableDeferred()
             apiRelease = CompletableDeferred()
         }
-        compose.onNodeWithTag("testApi").performScrollTo().performClick()
+        compose.onNodeWithTag("discoverSetup").performScrollTo().performClick()
         if (holdRetest) {
             compose.awaitCondition("the new account test starts") { apiEntered.isCompleted }
             compose.onNodeWithTag("step_3").assertDoesNotExist()
             apiRelease?.complete(Unit)
         }
         waitForTag("host")
+        waitForTag("terminal_S1F2-000158213605014")
+        compose.onNodeWithText(env.context.getString(R.string.action_cancel)).performClick()
     }
 
     @Test

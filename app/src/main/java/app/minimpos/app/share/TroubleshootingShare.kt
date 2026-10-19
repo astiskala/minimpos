@@ -17,7 +17,7 @@ fun TroubleshootingShareEffect(
     onDone: () -> Unit,
 ) {
     val context = LocalContext.current
-    val title = stringResource(R.string.tap_share_report)
+    val title = stringResource(R.string.diagnostics_share_report)
     val consume by rememberUpdatedState(onDone)
     LaunchedEffect(report) {
         if (report != null) {

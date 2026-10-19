@@ -30,12 +30,12 @@ import app.minimpos.app.data.settings.PaymentSettings
 import app.minimpos.app.data.settings.ReceiptTipping
 import app.minimpos.app.feature.ActionState
 import app.minimpos.app.feature.GatedButton
-import app.minimpos.app.feature.OutcomeMessage
 import app.minimpos.app.feature.text
 import app.minimpos.app.terminal.AdyenCapabilitiesState
 import app.minimpos.app.terminal.CapabilityStanding
 import app.minimpos.app.terminal.GratuityCapability
 import app.minimpos.app.terminal.MotoCapability
+import app.minimpos.app.ui.components.ResultDialog
 import app.minimpos.app.ui.components.SecondaryButton
 import app.minimpos.app.ui.components.SectionHeader
 import app.minimpos.app.ui.components.SetupRequired
@@ -54,6 +54,7 @@ internal fun ColumnScope.CapabilitiesSection(
     sharing: CapabilityStanding,
     events: CapabilitiesEvents,
 ) {
+    CapabilityResults(actions, events::onResultDismiss)
     SettingIntro(stringResource(R.string.capabilities_intro))
     // Until payments are set up there is nothing at Adyen to inspect or configure yet.
     if (currentSetupGate().pending) {
@@ -89,6 +90,29 @@ internal fun ColumnScope.CapabilitiesSection(
                 RemoteOfflineEditor(capabilities, actions.offline, currency, events::onSaveOffline)
             }
         }
+    }
+}
+
+@Composable
+private fun CapabilityResults(
+    actions: CapabilitiesActions,
+    onDismiss: (CapabilityResult) -> Unit,
+) {
+    val result =
+        listOf(
+            CapabilityResult.GRATUITY to actions.gratuity,
+            CapabilityResult.DCC to actions.dcc,
+            CapabilityResult.MOTO to actions.moto,
+            CapabilityResult.OFFLINE to actions.offline,
+        ).firstOrNull { (_, action) -> action.done || action.outcome != null }
+    result?.let { (kind, action) ->
+        ResultDialog(
+            title = stringResource(R.string.capability_save),
+            message = action.outcome?.text() ?: stringResource(R.string.settings_changes_saved),
+            isError = action.isError,
+            tag = "capabilityResult",
+            onDismiss = { onDismiss(kind) },
+        )
     }
 }
 
@@ -461,7 +485,7 @@ private fun ColumnScope.RemoteOfflineEditor(
 
 /**
  * "Save to Adyen" under an Adyen-side section: unlike local settings, which save as they change, its edits are a draft
- * until [onSave] sends them, with the [action]'s outcome under the button, which is tagged [tag].
+ * until [onSave] sends them. The button is tagged [tag]; the section shows [action]'s completion in a dialog.
  */
 @Composable
 private fun SaveToAdyen(
@@ -477,6 +501,5 @@ private fun SaveToAdyen(
             icon = Icons.Default.CloudUpload,
             modifier = Modifier.testTag(tag),
         )
-        OutcomeMessage(action)
     }
 }

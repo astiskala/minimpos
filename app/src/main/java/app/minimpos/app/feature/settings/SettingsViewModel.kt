@@ -99,8 +99,8 @@ enum class SettingsTest {
     API,
 
     /**
-     * A terminal in the cloud and the Checkout API, which share the API key: the connection, shown in a dialog, then
-     * (once connected) the Checkout API, whose outcome the dialog shows too.
+     * A terminal in the cloud and the Checkout API, which share the API key. The final connection check verifies both;
+     * its dialog includes the successful API reading too.
      */
     CLOUD,
 }
@@ -121,6 +121,9 @@ enum class SettingsResult {
 
     /** Receipt test email. */
     EMAIL,
+
+    /** History clearing result. */
+    HISTORY,
 }
 
 /**
@@ -338,7 +341,7 @@ class SettingsViewModel(
 
             SettingsTest.CLOUD -> {
                 val connection = connectionResult()
-                val checked = if (connection.done) apiResult() else ActionState()
+                val checked = if (connection.done) ActionState(outcome = ActionOutcome.ApiWorks, done = true) else ActionState()
                 actions.update { it.copy(connection = connection, api = checked) }
             }
         }
@@ -388,6 +391,7 @@ class SettingsViewModel(
                 SettingsResult.CLOUD -> it.copy(connection = ActionState(), api = it.api.dismissed())
                 SettingsResult.PRINT -> it.copy(print = it.print.dismissed())
                 SettingsResult.EMAIL -> it.copy(email = it.email.dismissed())
+                SettingsResult.HISTORY -> it.copy(cleared = false)
             }
         }
     }

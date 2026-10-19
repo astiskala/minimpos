@@ -32,6 +32,21 @@ data class CapabilitiesActions(
     val revision: Int = 0,
 )
 
+/** Explicit Adyen settings save whose completion dialog is being acknowledged. */
+enum class CapabilityResult {
+    /** Terminal tipping configuration. */
+    GRATUITY,
+
+    /** Dynamic Currency Conversion configuration. */
+    DCC,
+
+    /** Mail Order / Telephone Order configuration. */
+    MOTO,
+
+    /** Offline payment limits. */
+    OFFLINE,
+}
+
 /**
  * ViewModel for Adyen capabilities, following setup-identity changes from [CapabilityDiscovery.changes].
  * @param discovery Reads and updates Management terminal capabilities.
@@ -62,6 +77,18 @@ class CapabilitiesViewModel(
         if (state.value.checking) return
         launchWrite({ discovery.refresh() }) { _ ->
             actions.update { it.copy(revision = it.revision + 1) }
+        }
+    }
+
+    /** Consumes [result]'s completion without changing the saved Adyen configuration. */
+    fun dismissResult(result: CapabilityResult) {
+        actions.update {
+            when (result) {
+                CapabilityResult.GRATUITY -> it.copy(gratuity = ActionState())
+                CapabilityResult.DCC -> it.copy(dcc = ActionState())
+                CapabilityResult.MOTO -> it.copy(moto = ActionState())
+                CapabilityResult.OFFLINE -> it.copy(offline = ActionState())
+            }
         }
     }
 

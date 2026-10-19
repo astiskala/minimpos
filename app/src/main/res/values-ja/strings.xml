@@ -438,11 +438,11 @@
   <string name="products_pre_auth_hint">販売ではなく「プリオーソリ」で単独処理します。キャプチャするまでカードの利用枠を確保するだけです。</string>
   <string name="products_kind_pre_auth">プリオーソリ</string>
   <string name="sample_data">サンプルデータ</string>
-  <string name="sample_data_hint">サンプル商品と読み取り専用のデモ履歴を追加します。事業者情報が空の場合、架空の会社情報を入力します。サンプルはデモの日次合計とレポートに含まれます。</string>
+  <string name="sample_data_hint">サンプル商品と読み取り専用のデモ履歴を追加します。サンプルがすでにあっても、実行するたびにレシートの事業者情報を架空の会社情報に置き換えます。レシートのレイアウトと送信設定は変更しません。サンプルはデモの日次合計とレポートに含まれます。</string>
   <string name="sample_add">サンプルデータを追加</string>
   <string name="sample_remove">サンプルデータを削除</string>
   <string name="sample_remove_message">サンプル商品（編集済みを含む）とデモ履歴を削除しますか？ご自身の商品、履歴、税率、設定は残ります。ご自身の商品が使うカテゴリも残ります。</string>
-  <string name="sample_added">サンプルデータを用意しました。既存のサンプルは保持されます。</string>
+  <string name="sample_added">サンプルデータを用意しました。既存のサンプルは保持し、レシートの事業者情報を置き換えました。</string>
   <string name="sample_removed">サンプルデータを削除しました。</string>
   <string name="sample_write_failed">変更を保存できませんでした。もう一度お試しください。</string>
   <string name="sample_history_hint">サンプル履歴です。資金移動はありません。決済操作はできません。</string>
@@ -617,6 +617,7 @@
 
   <!-- Settings: overview and language -->
   <string name="settings_title">設定</string>
+  <string name="settings_changes_saved">変更を保存しました。</string>
   <string name="settings_choose">変更する設定の項目を選んでください。</string>
   <string name="settings_terminal">端末</string>
   <string name="settings_capabilities">Adyen機能</string>
@@ -706,14 +707,13 @@
   <string name="settings_host">端末のIPアドレス</string>
   <string name="settings_host_placeholder">例：192.0.2.1</string>
   <string name="settings_host_hint">端末はこのデバイスと同じネットワークに接続してください。</string>
-  <string name="settings_port">ポート</string>
   <string name="settings_choose_terminal">端末を選択</string>
   <string name="settings_no_terminals">一致する端末がありません。情報を手動で入力してください。</string>
   <string name="settings_save_and_discover">保存して端末を検索</string>
   <string name="settings_testing_api">APIをテスト中…</string>
   <string name="settings_finding_setup">端末を検索中…</string>
   <string name="settings_discover">設定する端末を検索</string>
-  <string name="settings_discovery_manual">下の情報を確認し、不足する項目を手動で入力してから、接続とAPIキーをテストしてください。必須の API 権限がすべて必要です。</string>
+  <string name="settings_discovery_manual">下の情報を確認し、不足する項目を入力してください。最後に「接続をテスト」で API アクセスと接続を確認します。</string>
   <string name="settings_shared_key">共有キー</string>
   <string name="settings_shared_key_hint">Customer Areaの「Devices › Device settings › Integrations › Terminal API › Encryption key」からコピーしてください（鉛筆アイコンで表示）。</string>
   <string name="settings_payments_app_shared_key_hint">共有キーはここで入力するか、セットアップヘルパーに含めてください。スマートフォンの登録では取得しません。</string>
@@ -721,6 +721,7 @@
   <string name="settings_key_version">キーバージョン</string>
   <string name="settings_passphrase">キーのパスフレーズ</string>
   <string name="settings_test_connection">接続をテスト</string>
+  <string name="settings_connection_final_hint">最後に API アクセスと接続を確認して設定を完了します。決済は行いません。</string>
   <string name="settings_save_and_test">保存してテスト</string>
   <string name="settings_forget_passphrase">保存したパスフレーズを削除</string>
   <string name="settings_forget_passphrase_title">保存したパスフレーズを削除しますか？</string>
@@ -738,7 +739,7 @@
   <string name="settings_status_checking">接続を確認中…</string>
   <string name="settings_status_connected">接続済み</string>
   <string name="settings_status_not_set_up">未設定</string>
-  <string name="settings_status_not_set_up_hint">下に共有キーを入力し、「保存してテスト」をタップしてください。</string>
+  <string name="settings_status_not_set_up_hint">設定 › 端末で設定を完了し、「接続をテスト」をタップしてください。</string>
   <string name="settings_status_failed">未接続</string>
   <string name="settings_tap_to_pay">Tap to Pay</string>
   <string name="settings_tap_to_pay_hint">AdyenサポートにTap to Pay on AndroidとAdyen Payments app roleの有効化を依頼してください。設定すると、このスマートフォンをマーチャントアカウントまたはその店舗に登録します。購入者はカードやスマートフォンをこのスマートフォンにタッチして支払います。プリンターはないため、領収書をメール送信または共有してください。</string>
@@ -774,18 +775,27 @@
   <string name="help_troubleshooting">トラブルシューティングガイド</string>
   <string name="help_report_issue">問題を報告</string>
 
+  <!-- Shared integration diagnostics -->
+  <string name="diagnostics_api">API アクセス：%1$s</string>
+  <string name="diagnostics_checked_at">確認完了時刻（UTC）：%1$s</string>
+  <string name="diagnostics_connection">接続：%1$s</string>
+  <string name="diagnostics_details">トラブルシューティングの詳細</string>
+  <string name="diagnostics_limits">読み取り専用の確認では、決済・返金・印刷の成功は保証できません。報告された設定不足は設定 › 端末で修正し、リクエスト失敗時はネットワークと API 権限を確認してください。ここでは決済、端末登録、共有キーの変更は行いません。</string>
+  <string name="diagnostics_no_diagnosis">この連携は端末診断に対応していません。接続結果は設定のみを確認し、端末への到達性は確認しません。</string>
+  <string name="diagnostics_no_status">取引状況のリモート照会には対応していません。決済の応答がない場合、Mini mPOS がすでに受信した遅延応答のみで結果を確定できます。</string>
+  <string name="diagnostics_not_checked">未確認または利用不可</string>
+  <string name="diagnostics_report_notice">加盟店、端末、インストール、認証情報の ID を含みます。秘密の値、自由記述のメッセージ、コールバック URL、買い物客のデータは含みません。共有前に確認してください。自動送信は行いません。</string>
+  <string name="diagnostics_share_report">機密情報を除いたレポートを共有</string>
+
   <!-- Tap to Pay troubleshooting -->
-  <string name="tap_details">トラブルシューティングの詳細</string>
-  <string name="tap_share_report">機密情報を除いたレポートを共有</string>
-  <string name="tap_report_notice">自由記述のメッセージ、キー、トークン、コールバック URL、買い物客のデータは含まれません。共有前に内容を確認してください。自動送信は行いません。</string>
   <string name="tap_credential_verified">確認済みの認証情報：%1$s</string>
   <string name="tap_credential_inactive">この認証情報は無効です。</string>
   <string name="tap_key_present">クライアントキーがあります。決済の動作を保証するものではありません。</string>
   <string name="tap_key_missing">現在確認している Tap to Pay 設定用の認証情報にクライアントキーがありません。Payments app が決済を開始できない原因になることがあります。</string>
   <string name="tap_key_permission">クライアントキーを確認できません。GET /me には Management API ロールが必要です。この診断権限は任意です。決済のためだけに広範な認証情報管理権限を追加しないでください。</string>
   <string name="tap_key_auth">選択した環境で認証に失敗しました。保存済みの Payments app API キーと TEST/LIVE 環境を確認してください。</string>
-  <string name="tap_key_failed">API から有効な認証情報の応答が得られず、クライアントキーを確認できません。手動チェックリストを使うか、後で再確認してください。</string>
-  <string name="tap_key_unchecked">クライアントキーは未確認です。</string>
+  <string name="tap_key_failed">API から有効な認証情報の応答が得られず、クライアントキーを確認できません。ネットワークと API 権限を確認し、再度チェックしてください。</string>
+  <string name="tap_key_unchecked">現在の認証情報と環境に有効なクライアントキーの確認結果がありません。バックグラウンドの接続確認ではこの参考チェックを省略します。キーがないという意味ではありません。</string>
   <string name="tap_boarding_known">この確認済み認証情報は、このインストールの登録記録と一致します。</string>
   <string name="tap_boarding_unknown">現在設定されている認証情報を確認しています。このインストールの初回登録に使われた認証情報は確認できません。</string>
   <string name="tap_boarded">Payments app は登録済みと応答しました。登録だけでは決済の準備完了を意味しません。</string>
@@ -1034,6 +1044,7 @@
   <string name="settings_print_test">テスト領収書を印刷</string>
   <string name="settings_smtp">SMTPサーバー</string>
   <string name="settings_smtp_host">サーバー</string>
+  <string name="settings_port">ポート</string>
   <string name="settings_smtp_security">セキュリティ</string>
   <string name="settings_smtp_security_hint">メールサーバーとの接続の暗号化方式です。</string>
   <string name="settings_smtp_starttls">STARTTLS（通常ポート587）</string>

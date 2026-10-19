@@ -438,11 +438,11 @@
   <string name="products_pre_auth_hint">在“預授權”中單獨處理，不計入銷售：在扣款前，金額僅在卡內凍結。</string>
   <string name="products_kind_pre_auth">預授權</string>
   <string name="sample_data">示例資料</string>
-  <string name="sample_data_hint">新增示例商品和只讀演示紀錄。虛構公司資料會填入空白商戶資料。示例計入演示每日總額和報告。</string>
+  <string name="sample_data_hint">新增示例商品和只讀演示紀錄。每次使用都會以虛構公司資料取代收據商戶資料，即使示例已存在。收據版面和傳送設定保持不變。示例計入演示每日總額和報告。</string>
   <string name="sample_add">新增示例資料</string>
   <string name="sample_remove">刪除示例資料</string>
   <string name="sample_remove_message">刪除示例商品（包括已編輯的商品）和演示紀錄？您自己的商品、紀錄、稅率和設定將保留。您的商品使用的分類也將保留。</string>
-  <string name="sample_added">示例資料已就緒。現有示例已保留。</string>
+  <string name="sample_added">示例資料已就緒。現有示例已保留；收據商戶資料已取代。</string>
   <string name="sample_removed">示例資料已刪除。</string>
   <string name="sample_write_failed">無法儲存更改。請重試。</string>
   <string name="sample_history_hint">僅為示例紀錄，未發生資金交易。無法執行資金操作。</string>
@@ -617,6 +617,7 @@
 
   <!-- Settings: overview and language -->
   <string name="settings_title">設定</string>
+  <string name="settings_changes_saved">更改已儲存。</string>
   <string name="settings_choose">選擇一個部分以變更其設定。</string>
   <string name="settings_terminal">終端</string>
   <string name="settings_capabilities">Adyen 功能</string>
@@ -706,14 +707,13 @@
   <string name="settings_host">終端 IP 地址</string>
   <string name="settings_host_placeholder">例如 192.0.2.1</string>
   <string name="settings_host_hint">終端必須與此設備處於同一網絡。</string>
-  <string name="settings_port">連接埠</string>
   <string name="settings_choose_terminal">選擇終端</string>
   <string name="settings_no_terminals">沒有可用的相符終端。請手動輸入資訊。</string>
   <string name="settings_save_and_discover">儲存並尋找終端</string>
   <string name="settings_testing_api">正在測試 API…</string>
   <string name="settings_finding_setup">正在尋找終端…</string>
   <string name="settings_discover">尋找要設定的終端</string>
-  <string name="settings_discovery_manual">請檢查下方資訊，手動補充缺失項，然後測試連接及 API 密鑰。必須具有所有必需的 API 權限。</string>
+  <string name="settings_discovery_manual">請檢查下方資料並補充缺失項。最後點按「測試連接」，驗證 API 存取和連接。</string>
   <string name="settings_shared_key">共享密鑰</string>
   <string name="settings_shared_key_hint">從商戶後台的“Devices › Device settings › Integrations › Terminal API › Encryption key”複製（點按鉛筆圖示查看）。</string>
   <string name="settings_payments_app_shared_key_hint">請在此輸入共享密鑰，或在設定助手中填寫。手機註冊不會取得共享密鑰。</string>
@@ -721,6 +721,7 @@
   <string name="settings_key_version">密鑰版本</string>
   <string name="settings_passphrase">密鑰口令</string>
   <string name="settings_test_connection">測試連接</string>
+  <string name="settings_connection_final_hint">最後檢查 API 存取和連接，完成設定。此操作不會發起付款。</string>
   <string name="settings_save_and_test">儲存並測試</string>
   <string name="settings_forget_passphrase">移除已儲存的口令</string>
   <string name="settings_forget_passphrase_title">移除已儲存的口令？</string>
@@ -738,7 +739,7 @@
   <string name="settings_status_checking">正在檢查連接…</string>
   <string name="settings_status_connected">已連接</string>
   <string name="settings_status_not_set_up">尚未設定</string>
-  <string name="settings_status_not_set_up_hint">請在下方輸入共享密鑰，然後點按“儲存並測試”。</string>
+  <string name="settings_status_not_set_up_hint">在設定 › 終端機中完成設定，然後點按「測試連接」。</string>
   <string name="settings_status_failed">未連接</string>
   <string name="settings_tap_to_pay">Tap to Pay</string>
   <string name="settings_tap_to_pay_hint">請 Adyen 支援團隊開通 Tap to Pay on Android 和 Adyen Payments app role。設定會將本手機註冊到您的商戶帳戶或其某個店舖。顧客在本手機上輕觸銀行卡或手機付款。本機沒有打印機，請發送電子收據或分享收據。</string>
@@ -774,18 +775,27 @@
   <string name="help_troubleshooting">疑難排解指南</string>
   <string name="help_report_issue">回報問題</string>
 
+  <!-- Shared integration diagnostics -->
+  <string name="diagnostics_api">API 存取：%1$s</string>
+  <string name="diagnostics_checked_at">檢查完成時間（UTC）：%1$s</string>
+  <string name="diagnostics_connection">連接：%1$s</string>
+  <string name="diagnostics_details">疑難排解詳情</string>
+  <string name="diagnostics_limits">唯讀檢查無法保證付款、退款或列印成功。請在設定 › 終端機中補齊所報告的設定；請求失敗時檢查網絡和 API 權限。此處不會發起付款、註冊手機或更改共用密鑰。</string>
+  <string name="diagnostics_no_diagnosis">此整合不支援終端機診斷。連接結果只驗證設定，不代表能連接至終端機。</string>
+  <string name="diagnostics_no_status">不支援遙距查詢交易狀態。付款結果未知時，只有 Mini mPOS 已收到的延遲回覆才能確認結果。</string>
+  <string name="diagnostics_not_checked">未檢查或無法使用</string>
+  <string name="diagnostics_report_notice">包含商戶、終端機、安裝實例和憑證 ID。不包含秘密值、自由文字訊息、回調網址或顧客資料。分享前請先檢查；不會自動上載任何內容。</string>
+  <string name="diagnostics_share_report">分享已隱去敏感資料的報告</string>
+
   <!-- Tap to Pay troubleshooting -->
-  <string name="tap_details">疑難排解詳情</string>
-  <string name="tap_share_report">分享已隱去敏感資料的報告</string>
-  <string name="tap_report_notice">報告不包含自由文字訊息、密鑰、令牌、回調網址或顧客資料。分享前請先檢查。不會自動上載任何內容。</string>
   <string name="tap_credential_verified">已驗證憑據：%1$s</string>
   <string name="tap_credential_inactive">此憑據未啟用。</string>
   <string name="tap_key_present">客戶端密鑰已存在。這並不保證可以成功付款。</string>
   <string name="tap_key_missing">目前檢查的 Tap to Pay 設定憑據沒有客戶端密鑰。這可能導致 Payments app 無法開始付款。</string>
   <string name="tap_key_permission">無法驗證客戶端密鑰：GET /me 需要 Management API 角色。此診斷權限是可選的；不要只為收款而新增廣泛的憑據管理權限。</string>
   <string name="tap_key_auth">在所選環境中驗證失敗。請檢查已儲存的 Payments app API 密鑰及 TEST/LIVE 環境。</string>
-  <string name="tap_key_failed">API 未傳回可用的憑據回應，無法驗證客戶端密鑰。請使用手動檢查清單或稍後再檢查。</string>
-  <string name="tap_key_unchecked">尚未檢查客戶端密鑰。</string>
+  <string name="tap_key_failed">API 未傳回可用的憑據回應，無法驗證客戶端密鑰。請檢查網絡和 API 權限，然後重試檢查。</string>
+  <string name="tap_key_unchecked">目前憑據和環境沒有有效的客戶端密鑰檢查結果。背景連接檢查不包含此項參考檢查。這不表示密鑰遺失。</string>
   <string name="tap_boarding_known">此已驗證憑據與本安裝實例記錄的註冊憑據相符。</string>
   <string name="tap_boarding_unknown">此檢查驗證目前設定的憑據。Mini mPOS 無法確認最初使用哪個憑據註冊本安裝實例。</string>
   <string name="tap_boarded">Payments app 回報已註冊。註冊本身並不代表付款已準備就緒。</string>
@@ -1034,6 +1044,7 @@
   <string name="settings_print_test">列印測試收據</string>
   <string name="settings_smtp">SMTP 伺服器</string>
   <string name="settings_smtp_host">伺服器</string>
+  <string name="settings_port">連接埠</string>
   <string name="settings_smtp_security">安全</string>
   <string name="settings_smtp_security_hint">與郵件伺服器連線的加密方式。</string>
   <string name="settings_smtp_starttls">STARTTLS（通常為連接埠 587）</string>

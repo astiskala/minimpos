@@ -173,26 +173,30 @@ private fun StoredReason.text(
         }
     }
 
-/** Why an action did not happen or was not confirmed, as one sentence with what to do and any details in brackets. */
+/**
+ * Why an action did not happen or was not confirmed, with actionable details in brackets.
+ * [redactExternal] omits unstructured remote/server messages that can echo secrets, retaining typed identifiers and codes.
+ */
 @Composable
 @ReadOnlyComposable
-fun Failure.text(): String =
+fun Failure.text(redactExternal: Boolean = false): String =
     when (this) {
         is Failure.NotSetUp -> problem.text()
-        is Failure.Remote -> fault.text()
+        is Failure.Remote -> fault.text(redactExternal)
         is Failure.Device -> stringResource(fault.deviceRes)
-        is Failure.Email -> noted(stringResource(fault.emailRes), reply?.text)
+        is Failure.Email -> noted(stringResource(fault.emailRes), reply?.text?.takeUnless { redactExternal })
     }
 
 /** This fault as one sentence with what to do, followed by its details (host, terminal, Adyen's words, codes). */
 @Composable
 @ReadOnlyComposable
-private fun Fault.text(): String = noted(stringResource(faultRes), details().joinToString(", ").ifEmpty { null })
+private fun Fault.text(redactExternal: Boolean): String =
+    noted(stringResource(faultRes), details(includeExternal = !redactExternal).joinToString(", ").ifEmpty { null })
 
 /** The facts that identify this fault for the operator or support, in brackets after its sentence; Adyen's words verbatim. */
 @Composable
 @ReadOnlyComposable
-private fun Fault.details(): List<String> =
+private fun Fault.details(includeExternal: Boolean = true): List<String> =
     when (this) {
         is Fault.Unreachable -> listOf(host)
 
@@ -200,25 +204,25 @@ private fun Fault.details(): List<String> =
 
         is Fault.Untrusted -> listOf(host)
 
-        is Fault.KeyRejected -> listOfNotNull(said?.text)
+        is Fault.KeyRejected -> listOfNotNull(said?.text?.takeIf { includeExternal })
 
-        is Fault.TerminalRejected -> listOfNotNull(said?.text)
+        is Fault.TerminalRejected -> listOfNotNull(said?.text?.takeIf { includeExternal })
 
-        is Fault.TerminalOffline -> listOfNotNull(poiId, said?.text)
+        is Fault.TerminalOffline -> listOfNotNull(poiId, said?.text?.takeIf { includeExternal })
 
-        is Fault.AppRefused -> listOfNotNull(said?.text)
+        is Fault.AppRefused -> listOfNotNull(said?.text?.takeIf { includeExternal })
 
         is Fault.Permission -> listOfNotNull(role)
 
         is Fault.NotFound -> listOfNotNull(poiId)
 
-        is Fault.AdyenRejected -> adyenDetails(said, http, errorCode)
+        is Fault.AdyenRejected -> adyenDetails(said.takeIf { includeExternal }, http, errorCode)
 
-        is Fault.AdyenUnavailable -> adyenDetails(said, http, errorCode)
+        is Fault.AdyenUnavailable -> adyenDetails(said.takeIf { includeExternal }, http, errorCode)
 
-        is Fault.UnreadableReply -> listOfNotNull(said?.text)
+        is Fault.UnreadableReply -> listOfNotNull(said?.text?.takeIf { includeExternal })
 
-        is Fault.NoAnswerFromTerminal -> listOfNotNull(poiId, said?.text)
+        is Fault.NoAnswerFromTerminal -> listOfNotNull(poiId, said?.text?.takeIf { includeExternal })
 
         is Fault.TerminalHttp -> listOf(httpStatus(code))
 

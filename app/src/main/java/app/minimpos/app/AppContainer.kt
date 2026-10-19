@@ -567,7 +567,7 @@ class AppContainer(
             country = device.country,
             withSettings = { write ->
                 val added = pricingChanges.withStableSettings(write)
-                if (added) pricingChanges.update { it.copy(receipt = sampleFixture().receipt(it.receipt)) }
+                pricingChanges.update { it.copy(receipt = sampleFixture().receipt(it.receipt)) }
                 added
             },
         )

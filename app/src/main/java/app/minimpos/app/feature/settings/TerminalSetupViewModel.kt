@@ -12,6 +12,7 @@ import app.minimpos.app.feature.ActionOutcome
 import app.minimpos.app.feature.ActionState
 import app.minimpos.app.feature.launchWrite
 import app.minimpos.app.feature.persisting
+import app.minimpos.app.terminal.SetupDiagnostics
 import app.minimpos.app.terminal.SetupDiscovery
 import app.minimpos.app.terminal.SetupDiscoverySearch
 import app.minimpos.app.terminal.SharedKeyConnection
@@ -44,7 +45,8 @@ import kotlinx.coroutines.launch
  * @property keyPending Whether a remote key is created but its terminal connection has not verified.
  * @property keyResult Latest explicitly requested key setup or connection check.
  * @property diagnostics Latest advisory Payments app check, invalidated when its credential/environment changes.
- * @property report Explicitly requested redacted share report, or null when none is pending.
+ * @property checkingDiagnostics Whether independent integration checks are refreshing.
+ * @property integrationDiagnostics Latest completed integration checks, or null before checking or after a setup change.
  */
 data class TerminalSetupActions(
     val terminals: ActionState = ActionState(),
@@ -59,7 +61,8 @@ data class TerminalSetupActions(
     val keyPending: Boolean = false,
     val keyResult: ActionState = ActionState(),
     val diagnostics: TapToPayCheck = TapToPayCheck(),
-    val report: String? = null,
+    val checkingDiagnostics: Boolean = false,
+    val integrationDiagnostics: SetupDiagnostics? = null,
 )
 
 /** Which result of [TerminalSetupActions] a dialog shows, see [TerminalSetupViewModel.dismissResult]. */
@@ -256,14 +259,18 @@ class TerminalSetupViewModel(
     /** Removes this phone's Payments app instance (see [TapToPaySetup.unregister]). */
     fun removeTapToPay() = run(null) { tapToPay.unregister() }
 
-    /** Builds a redacted report only after an explicit share action. */
-    fun reportTapToPay() {
-        launchWrite({ tapToPay.diagnostics.report() }) { report -> actions.update { it.copy(report = report) } }
-    }
-
-    /** Consumes one requested share, so recomposition never shares it again. */
-    fun reportShared() {
-        actions.update { it.copy(report = null) }
+    /** Refreshes read-only support checks on expansion; no setup-result dialog or setup mutation. */
+    fun refreshDiagnostics() {
+        if (actions.value.checkingDiagnostics) return
+        actions.update { it.copy(checkingDiagnostics = true, integrationDiagnostics = null) }
+        viewModelScope.launch {
+            try {
+                val reading = status.inspect()
+                actions.update { it.copy(integrationDiagnostics = reading) }
+            } finally {
+                actions.update { it.copy(checkingDiagnostics = false) }
+            }
+        }
     }
 
     /** Closes the dialog showing [result]'s outcome, keeping whether it succeeded. */

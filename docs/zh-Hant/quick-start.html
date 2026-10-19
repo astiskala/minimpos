@@ -204,7 +204,7 @@
             <summary>手動</summary>
             <ol>
               <li>在<strong>設定 › 終端</strong>中，將<strong>支付目標</strong>設為<strong>同一網絡中的終端</strong>。在<strong>環境</strong>中選擇與終端一致的 TEST 或 LIVE。</li>
-              <li>在 <strong>Adyen API</strong> 中輸入 Adyen API 密鑰和商戶帳戶，LIVE 還需輸入 LIVE URL 前置字元。點按<strong>尋找要設定的終端</strong>以測試 API 存取並選擇終端，或點按<strong>測試 API</strong>後手動繼續設定。</li>
+              <li>在 <strong>Adyen API</strong> 中輸入 Adyen API 密鑰和商戶帳戶，LIVE 還需輸入 LIVE URL 前置字元。點按<strong>尋找要設定的終端</strong>以測試 API 存取並選擇終端。手動補充缺失的資料。</li>
               <li>檢查或輸入終端的 IP 地址和<strong>終端 ID（POIID）</strong>。兩者都顯示在終端的“Device info”畫面。</li>
               <li>檢查或輸入共享密鑰，點按<strong>測試連接</strong>。</li>
             </ol>
@@ -226,7 +226,7 @@
             <summary>手動</summary>
             <ol>
               <li>在<strong>設定 › 終端</strong>中，將<strong>支付目標</strong>設為<strong>通過互聯網連接的終端（雲端）</strong>。在<strong>環境</strong>中選擇與終端一致的 TEST 或 LIVE。</li>
-              <li>在 <strong>Adyen API</strong> 中輸入 Adyen API 密鑰和商戶帳戶，LIVE 還需輸入 LIVE URL 前置字元。點按<strong>尋找要設定的終端</strong>以測試 API 存取並選擇終端，或點按<strong>測試 API</strong>後手動繼續設定。</li>
+              <li>在 <strong>Adyen API</strong> 中輸入 Adyen API 密鑰和商戶帳戶，LIVE 還需輸入 LIVE URL 前置字元。點按<strong>尋找要設定的終端</strong>以測試 API 存取並選擇終端。手動補充缺失的資料。</li>
               <li>檢查或輸入<strong>終端 ID（POIID）</strong>，點按<strong>測試連接</strong>。</li>
             </ol>
           </details>
@@ -269,10 +269,10 @@
         <section id="first-payment">
           <h2>驗證 TEST 設定</h2>
           <ol>
-            <li>在<strong>設定 › 終端</strong>中，確認環境為 <strong>TEST</strong>。運行<strong>測試 API</strong>並確認通過。
+            <li>在<strong>設定 › 終端</strong>中，確認環境為 <strong>TEST</strong>。完成最後的<strong>測試連接</strong>步驟，驗證 API 存取和受支援的連接檢查。
               <ul>
                 <li>實體終端：運行<strong>測試連接</strong>並確認通過。</li>
-                <li>Tap to Pay：確認手機已在 <strong>Adyen Payments Test</strong> 中註冊。此應用程式沒有連接測試；下方付款用於驗證設定。</li>
+                <li>Tap to Pay：確認手機已在 <strong>Adyen Payments Test</strong> 中註冊。連接檢查只驗證設定，不支援終端診斷。使用下方測試付款檢查付款行為。</li>
               </ul></li>
             <li>在<strong>設定 › 支付</strong>中檢查貨幣，在<strong>設定 › 稅</strong>中檢查稅率和價格是否含稅。</li>
             <li>在首頁點按<strong>新建銷售</strong>，新增<strong>自訂商品</strong>，然後點按<strong>收款</strong>。</li>
@@ -296,10 +296,10 @@
             <li>測試計劃使用的收據交付方式：用實體打印機列印、發送測試郵件或分享收據。</li>
             <li>設定管理員 PIN，需要時另設經理 PIN；參見<a href="using.html#staff">員工權限</a>。</li>
             <li>改用 LIVE 終端或 LIVE 版 Payments 應用程式及 LIVE 憑據。網絡或雲端終端請在<strong>環境</strong>中選擇 <strong>LIVE</strong>。輸入 <strong>LIVE URL 前置字元</strong>；參見 <a href="https://docs.adyen.com/development-resources/live-endpoints">Adyen LIVE 端點指南</a>。</li>
-            <li>在<strong>設定 › 終端</strong>中運行<strong>測試 API</strong>並確認通過。確認環境為 <strong>LIVE</strong>。
+            <li>在<strong>設定 › 終端</strong>中，確認環境為 <strong>LIVE</strong>。完成最後的<strong>測試連接</strong>步驟，驗證 API 存取和受支援的連接檢查。
               <ul>
                 <li>實體終端：運行<strong>測試連接</strong>並確認通過。</li>
-                <li>Tap to Pay：確認手機已在 LIVE 版 <strong>Adyen Payments</strong> 應用程式中註冊。此應用程式沒有連接測試。</li>
+                <li>Tap to Pay：確認手機已在 LIVE 版 <strong>Adyen Payments</strong> 應用程式中註冊。連接檢查只驗證設定，不支援終端診斷。</li>
               </ul></li>
           </ol>
           <div class="callout callout-warning" role="note">
@@ -318,7 +318,7 @@
             <li>在歡迎畫面選擇<strong>使用示例資料試用模擬器</strong>。其他選項為<strong>從另一台設備設定</strong>（匯入設定二維碼）和<strong>設定終端</strong>。</li>
             <li>在<strong>設定 › 模擬器</strong>中選擇支付結果、延遲以及是否有打印機。</li>
           </ol>
-          <p>示例商品和交易紀錄會標為演示。虛構咖啡店資料會填入空白商戶資料；已儲存的商戶資料維持不變。示例計入演示每日總計和報告，並非真實付款。在<strong>設定 › 資料與轉移</strong>中可<strong>新增示例資料</strong>或<strong>刪除示例資料</strong>；刪除會保留您自己的商品、交易紀錄和設定。離線演示連結請參閱<a href="using.html#payment-links">付款連結</a>。</p>
+          <p>示例商品和交易紀錄會標為演示。每次<strong>新增示例資料</strong>都會以虛構咖啡店資料取代收據商戶資料，即使示例已存在；收據版面和傳送設定保持不變。示例計入演示每日總計和報告，並非真實付款。在<strong>設定 › 資料與轉移</strong>中可<strong>新增示例資料</strong>或<strong>刪除示例資料</strong>；刪除會保留您自己的商品、交易紀錄和設定。離線演示連結請參閱<a href="using.html#payment-links">付款連結</a>。</p>
           <p class="back-to-contents"><a href="#contents">返回目錄</a></p>
         </section>
       </div>

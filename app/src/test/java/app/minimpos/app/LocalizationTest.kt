@@ -26,18 +26,28 @@ import javax.xml.parsers.DocumentBuilderFactory
 @Config(qualifiers = "ja-rJP")
 class LocalizationTest {
     @Test
-    fun `Tap to Pay troubleshooting strings stay beside terminal setup in every language`() {
+    fun `shared and phone diagnostics stay grouped beside setup with shared keys sorted in every language`() {
         listOf("values", "values-ja", "values-zh-rCN", "values-b+zh+Hant").forEach { folder ->
             val names = resourceEntries(folder).keys.toList()
             val setup = names.indexOf("string:settings_payments_app_setup_checked")
             val capabilities = names.indexOf("string:capabilities_intro")
-            val diagnostics = names.filter { it.startsWith("string:tap_") }
+            val diagnostics = names.filter { it.startsWith("string:tap_") || it.startsWith("string:diagnostics_") }
             assertThat(diagnostics).isNotEmpty()
+            val shared = names.filter { it.startsWith("string:diagnostics_") }
+            assertThat(shared).containsAtLeast("string:diagnostics_details", "string:diagnostics_share_report")
+            assertThat(shared).containsExactlyElementsIn(shared.sorted()).inOrder()
             diagnostics.forEach { name ->
                 assertWithMessage("$folder/$name follows Tap to Pay setup").that(names.indexOf(name)).isGreaterThan(setup)
                 assertWithMessage("$folder/$name precedes capabilities").that(names.indexOf(name)).isLessThan(capabilities)
             }
-            assertThat(names).containsNoneOf("string:tap_check", "string:tap_check_again")
+            assertThat(names).containsNoneOf(
+                "string:tap_check",
+                "string:tap_check_again",
+                "string:tap_details",
+                "string:tap_share_report",
+                "string:tap_report_notice",
+                "string:diagnostics_time",
+            )
         }
     }
 

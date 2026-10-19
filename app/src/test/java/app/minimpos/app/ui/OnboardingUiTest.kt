@@ -57,7 +57,7 @@ class OnboardingUiTest {
         waitFor("addSamples")
         compose.onNodeWithTag("addSamples").performScrollTo().performClick()
         compose.waitUntilAtLeastOneExists(
-            hasText("Sample data is ready. Existing samples were kept."),
+            hasText("Sample data is ready. Existing samples were kept; receipt business details were replaced."),
             15_000,
         )
         assertThat(
@@ -66,6 +66,9 @@ class OnboardingUiTest {
                     .first()
             },
         ).hasSize(11)
+        compose.onNodeWithTag("sampleResult").assertExists()
+        compose.onNodeWithTag("sampleResultOk").performClick()
+        compose.onNodeWithTag("sampleResult").assertDoesNotExist()
         compose.onNodeWithTag("purgeSamples").performScrollTo().performClick()
         compose.onNodeWithTag("confirm").performClick()
         compose.awaitCondition("samples are purged") {
@@ -82,6 +85,9 @@ class OnboardingUiTest {
                     .first()
             },
         ).isEmpty()
+        waitFor("sampleResult")
+        compose.onNodeWithTag("sampleResultOk").performClick()
+        compose.onNodeWithTag("sampleResult").assertDoesNotExist()
         assertThat(env.container.settingsState.value.onboardingCompleted).isTrue()
     }
 

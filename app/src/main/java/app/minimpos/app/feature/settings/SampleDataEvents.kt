@@ -11,18 +11,21 @@ import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.viewmodel.compose.viewModel
 import app.minimpos.app.R
 import app.minimpos.app.feature.SampleDataState
-import app.minimpos.app.ui.components.ActionMessage
 import app.minimpos.app.ui.components.LocalAppContainer
+import app.minimpos.app.ui.components.ResultDialog
 import app.minimpos.app.ui.components.SecondaryButton
 import app.minimpos.app.ui.components.SectionHeader
 
 /** Sample controls grouped separately from ordinary settings and connection-test callbacks. */
 internal interface SampleDataEvents {
-    /** Adds tracked catalog/history samples. */
+    /** Adds tracked catalog/history samples and replaces receipt business details. */
     fun onAdd()
 
     /** Removes only tracked sample rows. */
     fun onPurge()
+
+    /** Acknowledges the latest sample-data result. */
+    fun onResultDismiss()
 }
 
 /** Screen-level factory for the sample-data settings actions. */
@@ -56,12 +59,25 @@ internal fun SampleDataSection(
             modifier = Modifier.testTag("purgeSamples"),
             enabled = !state.running,
         )
-        if (state.failed) {
-            ActionMessage(stringResource(R.string.sample_write_failed), isError = true)
-        } else {
-            state.added?.let {
-                ActionMessage(stringResource(if (it) R.string.sample_added else R.string.sample_removed), isError = false)
-            }
-        }
+    }
+    if (state.failed || state.added != null) {
+        ResultDialog(
+            title = stringResource(R.string.sample_data),
+            message =
+                stringResource(
+                    if (state.failed) {
+                        R.string.sample_write_failed
+                    } else if (state.added ==
+                        true
+                    ) {
+                        R.string.sample_added
+                    } else {
+                        R.string.sample_removed
+                    },
+                ),
+            isError = state.failed,
+            tag = "sampleResult",
+            onDismiss = events::onResultDismiss,
+        )
     }
 }

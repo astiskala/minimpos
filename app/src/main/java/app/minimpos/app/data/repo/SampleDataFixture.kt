@@ -48,9 +48,8 @@ class SampleDataFixture private constructor(
             }.toMap()
     }
 
-    /** Fills fictional business fields only when all merchant identity fields are empty; saved receipt text stays intact. */
+    /** Replaces receipt business fields with fictional details; layout, title, footer and delivery settings stay intact. */
     fun receipt(existing: ReceiptSettings): ReceiptSettings {
-        if (listOf(existing.businessName, existing.addressLines, existing.phone, existing.taxId).any { it.isNotBlank() }) return existing
         val receipt = market.getValue("receipt").jsonObject
 
         fun field(name: String) = receipt.getValue(name).jsonPrimitive.content

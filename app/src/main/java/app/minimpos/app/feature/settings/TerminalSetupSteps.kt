@@ -54,6 +54,7 @@ import app.minimpos.app.feature.text
 import app.minimpos.app.terminal.DestinationRules
 import app.minimpos.app.terminal.PaymentsAppDestination
 import app.minimpos.app.terminal.SetupProgress
+import app.minimpos.app.terminal.SetupStep
 import app.minimpos.app.terminal.SetupStepKind
 import app.minimpos.app.terminal.SetupVisit
 import app.minimpos.app.terminal.TerminalSetupPlan
@@ -76,10 +77,10 @@ private typealias TerminalUpdate = ((TerminalSettings) -> TerminalSettings) -> U
  * What Settings › Terminal asks for wherever payments go but the simulator, as numbered steps in the order they are
  * done. Network and cloud destinations first ask for the environment, before API access. On-device terminals read
  * their certificate; Tap to Pay starts with the Payments app whose installation determines the environment:
- * - this terminal: 1. Adyen API, 2. shared key;
- * - a terminal on the network: 1. environment, 2. Adyen API, 3. address and POIID, 4. shared key;
- * - a terminal in the cloud: 1. environment, 2. Adyen API, 3. terminal;
- * - Tap to Pay: 1. Payments app, 2. Adyen API, 3. boarding, 4. shared key.
+ * - this terminal: Adyen API, shared key, connection;
+ * - a terminal on the network: environment, Adyen API, address and POIID, shared key, connection;
+ * - a terminal in the cloud: environment, Adyen API, terminal, connection;
+ * - Tap to Pay: Payments app, Adyen API, boarding, shared key, connection.
  *
  * API testing unlocks subsequent steps in this visit; a later step stays hidden until then. Revealed steps stay available
  * for editing, so retesting or clearing an earlier field cannot discard an unsaved secret in a later step. A step's
@@ -114,7 +115,6 @@ internal fun ColumnScope.TerminalSteps(
     key(status.mode, status.environment, setup.revision) {
         DestinationSteps(status, rules, state, actions, setup, events, setupEvents, api, update)
     }
-    SharedKeyActions(setup, setupEvents)
 }
 
 @Composable
@@ -193,6 +193,7 @@ private fun ColumnScope.DestinationSteps(
         done = apiStep.done,
         cloud = status.mode == TerminalMode.CLOUD,
         discovers = status.mode != TerminalMode.PAYMENTS_APP,
+        findOnly = !status.onTerminal && status.mode != TerminalMode.PAYMENTS_APP,
         api = api,
         actions = actions,
         setup = setup,
@@ -208,21 +209,65 @@ private fun ColumnScope.DestinationSteps(
             events.onSaveAndTest(Secret.ADYEN_API_KEY, api.key, SettingsTest.API)
         },
     )
+    ConnectionSteps(plan, status, state, actions, setup, events, setupEvents, api.key, update)
+}
+
+@Composable
+private fun ColumnScope.ConnectionSteps(
+    plan: List<SetupStep>,
+    status: TerminalState,
+    state: SettingsUiState,
+    actions: SettingsActions,
+    setup: TerminalSetupActions,
+    events: SettingsEvents,
+    setupEvents: TerminalSetupEvents,
+    apiKey: String,
+    update: TerminalUpdate,
+) {
+    var passphrase by remember { mutableStateOf("") }
+    LaunchedEffect(actions.passphraseStored) { if (actions.passphraseStored) passphrase = "" }
+    val terminal = state.settings.terminal
+
+    fun step(kind: SetupStepKind) = plan.firstOrNull { it.kind == kind }
     step(SetupStepKind.NETWORK_TERMINAL)?.let { NetworkTerminalStep(it.number, it.done, terminal, update) }
     step(SetupStepKind.CLOUD_TERMINAL)?.let { cloud ->
         CloudTerminalStep(
             number = cloud.number,
             done = cloud.done,
             poiId = state.settings.terminal.poiIdOverride,
-            testing = actions.connection.running,
             onPoiId = { id -> update { it.copy(poiIdOverride = id) } },
-            onTest = {
-                if (!actions.connection.running) events.onSaveAndTest(Secret.ADYEN_API_KEY, api.key, SettingsTest.CLOUD)
-            },
         )
     }
     step(SetupStepKind.TAP_TO_PAY)?.let { TapToPayEntry(it.number, state, setup, events, setupEvents, update) }
-    step(SetupStepKind.SHARED_KEY)?.let { SharedKeyStep(it.number, it.done, state, actions, events, setupEvents, update) }
+
+    fun testConnection() {
+        if (!actions.connection.running) {
+            if (status.mode == TerminalMode.CLOUD) {
+                events.onSaveAndTest(Secret.ADYEN_API_KEY, apiKey, SettingsTest.CLOUD)
+            } else {
+                events.onSaveAndTest(Secret.TERMINAL_PASSPHRASE, passphrase, SettingsTest.CONNECTION)
+            }
+        }
+    }
+    step(SetupStepKind.SHARED_KEY)?.let { key ->
+        SharedKeyStep(key.number, key.done, state, events, setupEvents, update, passphrase, { passphrase = it }, ::testConnection)
+    }
+    SharedKeyActions(setup, setupEvents)
+    step(SetupStepKind.CONNECTION)?.let {
+        StepHeader(it.number, stringResource(R.string.settings_test_connection), done = it.done)
+        SettingNote(stringResource(R.string.settings_connection_final_hint))
+        SettingActions {
+            TestButton(
+                typed = passphrase.isNotEmpty(),
+                save = R.string.settings_save_and_test,
+                test = R.string.settings_test_connection,
+                running = actions.connection.running,
+                onClick = ::testConnection,
+                tag = "testConnection",
+            )
+            actions.secretError?.let { error -> ActionMessage(error.text(), isError = true) }
+        }
+    }
 }
 
 /**
@@ -364,27 +409,22 @@ private fun ColumnScope.NetworkTerminalStep(
 }
 
 /**
- * The shared key: identifier, passphrase (only kept in memory while typed, and cleared once stored) and version, the
- * button that saves the passphrase typed and tests the connection, and removing the saved passphrase.
+ * Shared-key fields and removal. The following connection step saves the in-memory passphrase and verifies setup.
  */
 @Composable
 private fun ColumnScope.SharedKeyStep(
     number: Int,
     done: Boolean,
     state: SettingsUiState,
-    actions: SettingsActions,
     events: SettingsEvents,
     setupEvents: TerminalSetupEvents,
     update: TerminalUpdate,
+    passphrase: String,
+    onPassphrase: (String) -> Unit,
+    onTest: () -> Unit,
 ) {
     val terminal = state.settings.terminal
     val saved = Secret.TERMINAL_PASSPHRASE in state.secrets
-    var passphrase by remember { mutableStateOf("") }
-    LaunchedEffect(actions.passphraseStored) { if (actions.passphraseStored) passphrase = "" }
-
-    fun saveAndTest() {
-        if (!actions.connection.running) events.onSaveAndTest(Secret.TERMINAL_PASSPHRASE, passphrase, SettingsTest.CONNECTION)
-    }
     StepHeader(number, stringResource(R.string.settings_shared_key), done = done)
     if (terminal.mode == TerminalMode.PAYMENTS_APP) {
         SettingNote(stringResource(R.string.settings_payments_app_shared_key_hint))
@@ -403,8 +443,8 @@ private fun ColumnScope.SharedKeyStep(
         label = stringResource(R.string.settings_passphrase),
         isSet = saved,
         value = passphrase,
-        onValueChange = { passphrase = it },
-        onSubmit = ::saveAndTest,
+        onValueChange = onPassphrase,
+        onSubmit = onTest,
         tag = "passphrase",
         onDraft = { setupEvents.onSecretDraft(Secret.TERMINAL_PASSPHRASE, it) },
     )
@@ -412,15 +452,6 @@ private fun ColumnScope.SharedKeyStep(
         update { it.copy(keyVersion = version) }
     }, tag = "keyVersion")
     SettingActions {
-        TestButton(
-            typed = passphrase.isNotEmpty(),
-            save = R.string.settings_save_and_test,
-            test = R.string.settings_test_connection,
-            running = actions.connection.running,
-            onClick = ::saveAndTest,
-            tag = "testConnection",
-        )
-        actions.secretError?.let { ActionMessage(it.text(), isError = true) }
         if (saved) ForgetPassphrase(events)
     }
 }
@@ -479,6 +510,7 @@ private fun ColumnScope.AdyenApiStep(
     done: Boolean,
     cloud: Boolean,
     discovers: Boolean,
+    findOnly: Boolean,
     api: ApiEntry,
     actions: SettingsActions,
     setup: TerminalSetupActions,
@@ -489,7 +521,9 @@ private fun ColumnScope.AdyenApiStep(
     onFind: () -> Unit,
 ) {
     fun saveAndTest() {
-        if (!actions.api.running) onTest()
+        if (!actions.api.running) {
+            if (findOnly) onFind() else onTest()
+        }
     }
     StepHeader(number, stringResource(R.string.settings_api), done = done)
     SettingNote(stringResource(R.string.settings_adyen_key_hint))
@@ -506,15 +540,17 @@ private fun ColumnScope.AdyenApiStep(
     )
     ApiFields(api, update)
     SettingActions {
-        TestButton(
-            typed = api.key.isNotBlank(),
-            save = R.string.settings_save_and_test_api,
-            test = R.string.settings_test_api,
-            running = actions.api.running,
-            onClick = ::saveAndTest,
-            tag = "testApi",
-            icon = Icons.Default.Api,
-        )
+        if (!findOnly) {
+            TestButton(
+                typed = api.key.isNotBlank(),
+                save = R.string.settings_save_and_test_api,
+                test = R.string.settings_test_api,
+                running = actions.api.running,
+                onClick = ::saveAndTest,
+                tag = "testApi",
+                icon = Icons.Default.Api,
+            )
+        }
         actions.secretError?.let { ActionMessage(it.text(), isError = true) }
         if (discovers) KeyDiscoveryActions(api, setup, actions.api.running, onFind)
         if (api.keySaved) ForgetApiKey(events)
@@ -600,17 +636,14 @@ private fun TestButton(
 }
 
 /**
- * The terminal in the cloud: its POIID, typed or chosen through the API step's discovery, and the connection test
- * ([testing] while it runs), which also rechecks the Checkout API.
+ * Terminal POIID, typed or chosen through the API step's discovery. Verification follows in its own step.
  */
 @Composable
 private fun ColumnScope.CloudTerminalStep(
     number: Int,
     done: Boolean,
     poiId: String,
-    testing: Boolean,
     onPoiId: (String) -> Unit,
-    onTest: () -> Unit,
 ) {
     StepHeader(number, stringResource(R.string.settings_step_terminal), done = done)
     SettingNote(stringResource(R.string.settings_cloud_poiid_help))
@@ -623,16 +656,6 @@ private fun ColumnScope.CloudTerminalStep(
         imeAction = ImeAction.Done,
         tag = "poiId",
     )
-    SettingActions {
-        TestButton(
-            typed = false,
-            save = R.string.settings_save_and_test,
-            test = R.string.settings_test_connection,
-            running = testing,
-            onClick = onTest,
-            tag = "testConnection",
-        )
-    }
 }
 
 /** The terminals connected in the cloud, to choose one; [onChoose] gets null when the dialog is dismissed. */

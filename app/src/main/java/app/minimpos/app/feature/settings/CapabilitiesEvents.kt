@@ -8,6 +8,9 @@ internal interface CapabilitiesEvents {
     /** Refreshes Management capability inspection. */
     fun onRefresh()
 
+    /** Acknowledges one explicit save result. */
+    fun onResultDismiss(result: CapabilityResult)
+
     /** Saves terminal gratuity settings for [currency]. */
     fun onSaveGratuity(
         currency: String,
@@ -32,6 +35,8 @@ internal interface CapabilitiesEvents {
 internal fun capabilitiesEvents(vm: CapabilitiesViewModel): CapabilitiesEvents =
     object : CapabilitiesEvents {
         override fun onRefresh() = vm.refresh()
+
+        override fun onResultDismiss(result: CapabilityResult) = vm.dismissResult(result)
 
         override fun onSaveGratuity(
             currency: String,

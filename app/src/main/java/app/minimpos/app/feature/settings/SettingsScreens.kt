@@ -204,6 +204,9 @@ internal interface ReceiptBusinessEvents {
 
     /** Confirms a currently offered proposal, or dismisses the selection for null. */
     fun onChoose(business: ReceiptBusiness?)
+
+    /** Acknowledges an explicit lookup/import result. */
+    fun onResultDismiss()
 }
 
 /** What Settings › Terminal asks [TerminalSetupViewModel] to do, as [SettingsEvents] does for [SettingsViewModel]. */
@@ -235,11 +238,8 @@ internal interface TerminalSetupEvents {
     /** Removes this phone's Payments app instance ([TerminalSetupViewModel.removeTapToPay]). */
     fun onTapToPayRemove()
 
-    /** Prepares an explicitly requested redacted report. */
-    fun onTapToPayReport()
-
-    /** Consumes the pending report share. */
-    fun onTapReportShared()
+    /** Refreshes supported read-only diagnostics when Help details expand. */
+    fun onDiagnosticsRefresh()
 
     /** Closes the dialog showing [result] ([TerminalSetupViewModel.dismissResult]). */
     fun onResultDismiss(result: SetupResult)
@@ -291,6 +291,8 @@ private fun settingsEvents(
                 override fun onFind() = settings.businessImport.find()
 
                 override fun onChoose(business: ReceiptBusiness?) = settings.businessImport.choose(business)
+
+                override fun onResultDismiss() = settings.businessImport.dismissResult()
             }
 
         override fun onTestPrint() = settings.printTest()
@@ -306,6 +308,8 @@ private fun settingsEvents(
                 override fun onAdd() = sampleData.populate()
 
                 override fun onPurge() = sampleData.purge()
+
+                override fun onResultDismiss() = sampleData.dismissResult()
             }
 
         override fun onTaxRateSave(
@@ -338,9 +342,7 @@ private fun terminalSetupEvents(setup: TerminalSetupViewModel): TerminalSetupEve
 
         override fun onTapToPayRemove() = setup.removeTapToPay()
 
-        override fun onTapToPayReport() = setup.reportTapToPay()
-
-        override fun onTapReportShared() = setup.reportShared()
+        override fun onDiagnosticsRefresh() = setup.refreshDiagnostics()
 
         override fun onResultDismiss(result: SetupResult) = setup.dismissResult(result)
     }
@@ -712,7 +714,7 @@ private fun ColumnScope.SettingsContent(
         }
 
         SettingsSections.HELP -> {
-            HelpSection(terminal.mode, setup, setupEvents)
+            HelpSection(terminal, setup, setupEvents)
         }
 
         else -> {
@@ -1206,7 +1208,15 @@ private fun DataSection(
             icon = Icons.Default.DeleteSweep,
             modifier = Modifier.testTag("clearHistory"),
         )
-        if (actions.cleared) ActionMessage(stringResource(R.string.settings_history_cleared), isError = false)
+    }
+    if (actions.cleared) {
+        ResultDialog(
+            title = stringResource(R.string.settings_clear_history),
+            message = stringResource(R.string.settings_history_cleared),
+            isError = false,
+            tag = "historyClearedResult",
+            onDismiss = { events.onTestResultDismiss(SettingsResult.HISTORY) },
+        )
     }
     SectionHeader(stringResource(R.string.settings_catalogue))
     SettingNavRow(

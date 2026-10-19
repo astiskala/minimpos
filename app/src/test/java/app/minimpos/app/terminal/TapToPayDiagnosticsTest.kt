@@ -87,6 +87,23 @@ class TapToPayDiagnosticsTest {
     }
 
     @Test
+    fun `support inspection refreshes phone checks without boarding or setup verification`() {
+        configured()
+        paymentsApp.boarded = true
+        val before = await { container.settings.current() }
+        val reading = checkNotNull(await { container.terminalStatus.inspect() })
+        assertThat(reading.facts["installationId"]).isEqualTo(FakePaymentsApp.INSTALLATION_ID)
+        assertThat(reading.facts["supportsDiagnosis"]).isEqualTo("false")
+        assertThat(reading.facts.values.joinToString()).doesNotContain("boarding-key")
+        assertThat(reading.facts.values.joinToString()).doesNotContain("unrelated-terminal-key")
+        assertThat(diagnostics.state.value.clientKey).isEqualTo(ClientKeyCheck.PRESENT)
+        assertThat(management.requests).isEmpty()
+        assertThat(management.revoked).isEmpty()
+        assertThat(paymentsApp.opened).hasSize(1)
+        assertThat(await { container.settings.current() }).isEqualTo(before)
+    }
+
+    @Test
     fun `check uses separate boarding credential and never infers legacy boarding identity`() {
         configured()
         paymentsApp.boarded = true

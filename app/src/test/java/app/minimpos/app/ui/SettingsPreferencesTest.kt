@@ -12,6 +12,7 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import app.minimpos.app.FakeStoreDetails
 import app.minimpos.app.MiniMposApp
+import app.minimpos.app.R
 import app.minimpos.app.TestEnvironment
 import app.minimpos.app.await
 import app.minimpos.app.awaitCondition
@@ -135,6 +136,9 @@ class SettingsPreferencesTest {
         compose.waitUntilAtLeastOneExists(hasTestTag("confirmReceiptBusiness"), 15_000)
         compose.onNodeWithTag("confirmReceiptBusiness").performClick()
         compose.waitUntilDoesNotExist(hasTestTag("confirmReceiptBusiness"), 15_000)
+        compose.waitUntilAtLeastOneExists(hasTestTag("businessImportResult"), 15_000)
+        compose.onNodeWithTag("businessImportResult").assertTextContains(env.context.getString(R.string.settings_changes_saved))
+        compose.onNodeWithTag("businessImportResultOk").performClick()
         compose.onNodeWithTag("businessName").performScrollTo().assertTextContains("My cafe")
         val receipt = container.settingsState.value.receipt
         assertThat(receipt.addressLines).isEqualTo("Old address")

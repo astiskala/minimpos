@@ -108,6 +108,8 @@ class OnboardingViewModelTest {
         vm.populate()
         vm.populate()
         await { vm.state.first { it.added == true } }
+        vm.dismissResult()
+        assertThat(vm.state.value.added).isNull()
         vm.populate()
         await { vm.state.first { !it.running && it.added == true } }
         assertThat(await { container.catalog.products.first() }).hasSize(11)
@@ -136,6 +138,8 @@ class OnboardingViewModelTest {
         val vm = SampleDataViewModel(broken).also(viewModels::add)
         vm.populate()
         await { vm.state.first { it.failed } }
+        vm.dismissResult()
+        assertThat(vm.state.value.failed).isFalse()
         vm.purge()
         await { vm.state.first { it.added == false } }
         assertThat(vm.state.value.failed).isFalse()

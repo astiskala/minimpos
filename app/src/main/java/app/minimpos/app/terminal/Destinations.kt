@@ -276,9 +276,15 @@ internal class LocalTerminal(
 
         override fun setupSteps(onTerminal: Boolean): List<SetupStepKind> =
             if (onTerminal) {
-                listOf(SetupStepKind.ADYEN_API, SetupStepKind.SHARED_KEY)
+                listOf(SetupStepKind.ADYEN_API, SetupStepKind.SHARED_KEY, SetupStepKind.CONNECTION)
             } else {
-                listOf(SetupStepKind.ENVIRONMENT, SetupStepKind.ADYEN_API, SetupStepKind.NETWORK_TERMINAL, SetupStepKind.SHARED_KEY)
+                listOf(
+                    SetupStepKind.ENVIRONMENT,
+                    SetupStepKind.ADYEN_API,
+                    SetupStepKind.NETWORK_TERMINAL,
+                    SetupStepKind.SHARED_KEY,
+                    SetupStepKind.CONNECTION,
+                )
             }
 
         override fun learnedEnvironment(
@@ -383,7 +389,7 @@ internal class CloudTerminal(
         override fun selectsEnvironment(onTerminal: Boolean): Boolean = true
 
         override fun setupSteps(onTerminal: Boolean): List<SetupStepKind> =
-            listOf(SetupStepKind.ENVIRONMENT, SetupStepKind.ADYEN_API, SetupStepKind.CLOUD_TERMINAL)
+            listOf(SetupStepKind.ENVIRONMENT, SetupStepKind.ADYEN_API, SetupStepKind.CLOUD_TERMINAL, SetupStepKind.CONNECTION)
 
         override fun learnedEnvironment(
             setup: TerminalSetup,
@@ -459,7 +465,13 @@ internal class PaymentsAppDestination(
         override val boardsPhone: Boolean get() = true
 
         override fun setupSteps(onTerminal: Boolean): List<SetupStepKind> =
-            listOf(SetupStepKind.PAYMENTS_APP, SetupStepKind.ADYEN_API, SetupStepKind.TAP_TO_PAY, SetupStepKind.SHARED_KEY)
+            listOf(
+                SetupStepKind.PAYMENTS_APP,
+                SetupStepKind.ADYEN_API,
+                SetupStepKind.TAP_TO_PAY,
+                SetupStepKind.SHARED_KEY,
+                SetupStepKind.CONNECTION,
+            )
 
         override val aborts: Boolean get() = false
         override val diagnoses: Boolean get() = false

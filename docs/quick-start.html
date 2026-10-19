@@ -216,7 +216,7 @@
             <summary>Manual</summary>
             <ol>
               <li>In <strong>Settings › Terminal</strong>, set <strong>Payments go to</strong> to <strong>A terminal on your network</strong>. Under <strong>Environment</strong>, choose TEST or LIVE to match the terminal.</li>
-              <li>Under <strong>Adyen API</strong>, enter the Adyen API key and merchant account, plus the live URL prefix for LIVE. Tap <strong>Find terminal to set up</strong> to test API access and choose the terminal, or <strong>Test API</strong> to continue manually.</li>
+              <li>Under <strong>Adyen API</strong>, enter the Adyen API key and merchant account, plus the live URL prefix for LIVE. Tap <strong>Find terminal to set up</strong> to test API access and choose the terminal. Enter any missing details manually.</li>
               <li>Check or enter the terminal's IP address and <strong>Terminal ID (POIID)</strong>. Both are on the terminal's Device info screen.</li>
               <li>Check or enter the shared key and tap <strong>Test connection</strong>.</li>
             </ol>
@@ -238,7 +238,7 @@
             <summary>Manual</summary>
             <ol>
               <li>In <strong>Settings › Terminal</strong>, set <strong>Payments go to</strong> to <strong>A terminal over the internet (cloud)</strong>. Under <strong>Environment</strong>, choose TEST or LIVE to match the terminal.</li>
-              <li>Under <strong>Adyen API</strong>, enter the Adyen API key and merchant account, plus the live URL prefix for LIVE. Tap <strong>Find terminal to set up</strong> to test API access and choose the terminal, or <strong>Test API</strong> to continue manually.</li>
+              <li>Under <strong>Adyen API</strong>, enter the Adyen API key and merchant account, plus the live URL prefix for LIVE. Tap <strong>Find terminal to set up</strong> to test API access and choose the terminal. Enter any missing details manually.</li>
               <li>Check or enter the <strong>Terminal ID (POIID)</strong> and tap <strong>Test connection</strong>.</li>
             </ol>
           </details>
@@ -281,10 +281,10 @@
         <section id="first-payment">
           <h2>Validate your TEST setup</h2>
           <ol>
-            <li>In <strong>Settings › Terminal</strong>, check that the environment is <strong>TEST</strong>. Run <strong>Test API</strong> and check it passes.
+            <li>In <strong>Settings › Terminal</strong>, check that the environment is <strong>TEST</strong>. Complete the final <strong>Test connection</strong> step to verify API access and supported connection checks.
               <ul>
                 <li>Physical terminal: run <strong>Test connection</strong> and check it passes.</li>
-                <li>Tap to Pay: confirm the phone is registered in <strong>Adyen Payments Test</strong>. There is no connection test; the payment below validates the setup.</li>
+                <li>Tap to Pay: confirm the phone is registered in <strong>Adyen Payments Test</strong>. The connection check validates setup only: there is no terminal diagnosis. Use the test payment below to check payment behavior.</li>
               </ul></li>
             <li>In <strong>Settings › Payments</strong>, check the currency. In <strong>Settings › Tax</strong>, check the rates and whether prices include tax.</li>
             <li>On Home, tap <strong>New sale</strong>, add a <strong>Custom item</strong> and tap <strong>Charge</strong>.</li>
@@ -308,10 +308,10 @@
             <li>Test the receipt delivery methods you plan to use: print on a real printer, send a test email or share a receipt.</li>
             <li>Set an admin PIN and, if needed, a Manager PIN; see <a href="using.html#staff">staff access</a>.</li>
             <li>Switch to the LIVE terminal or the LIVE Payments app, with LIVE credentials. For a network or cloud terminal, choose <strong>LIVE</strong> under <strong>Environment</strong>. Enter the <strong>Live URL prefix</strong>; see the <a href="https://docs.adyen.com/development-resources/live-endpoints">Adyen live endpoints guide</a>.</li>
-            <li>In <strong>Settings › Terminal</strong>, run <strong>Test API</strong> and check it passes. Check that the environment is <strong>LIVE</strong>.
+            <li>In <strong>Settings › Terminal</strong>, check that the environment is <strong>LIVE</strong>. Complete the final <strong>Test connection</strong> step to verify API access and supported connection checks.
               <ul>
                 <li>Physical terminal: run <strong>Test connection</strong> and check it passes.</li>
-                <li>Tap to Pay: confirm the phone is registered in the LIVE <strong>Adyen Payments</strong> app. There is no connection test.</li>
+                <li>Tap to Pay: confirm the phone is registered in the LIVE <strong>Adyen Payments</strong> app. The connection check validates setup only: there is no terminal diagnosis.</li>
               </ul></li>
           </ol>
           <div class="callout callout-warning" role="note">
@@ -330,7 +330,7 @@
             <li>On the welcome screen, choose <strong>Try simulator with samples</strong>. The other choices are <strong>Set up from another device</strong>, to import setup QR codes, and <strong>Set up a terminal</strong>.</li>
             <li>In <strong>Settings › Simulator</strong>, choose the payment outcome, the delay and whether a printer is available.</li>
           </ol>
-          <p>Sample products and history are labeled as demos. Fictional café details fill an empty business profile; saved business details stay unchanged. Samples count in demo day totals and reports; they are not real payments. In <strong>Settings › Data and transfer</strong>, use <strong>Add sample data</strong> or <strong>Remove sample data</strong>; removal keeps your own products, history and settings. For offline demo links, see <a href="using.html#payment-links">payment links</a>.</p>
+          <p>Sample products and history are labeled as demos. Each use of <strong>Add sample data</strong> replaces receipt business details with fictional café details, even if samples already exist; receipt layout and delivery settings stay unchanged. Samples count in demo day totals and reports; they are not real payments. In <strong>Settings › Data and transfer</strong>, use <strong>Add sample data</strong> or <strong>Remove sample data</strong>; removal keeps your own products, history and settings. For offline demo links, see <a href="using.html#payment-links">payment links</a>.</p>
           <p class="back-to-contents"><a href="#contents">Back to contents</a></p>
         </section>
       </div>

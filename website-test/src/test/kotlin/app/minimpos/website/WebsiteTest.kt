@@ -186,7 +186,7 @@ class WebsiteTest {
             assertThat(page.single("link", "rel" to "stylesheet").attr("href"))
                 .isEqualTo(if (language == "en") "styles.css" else "../styles.css")
             assertThat(page.single("meta", "name" to "twitter:card").attr("content")).isEqualTo("summary_large_image")
-            assertThat(page.single("meta", "name" to "theme-color").attr("content")).isEqualTo("#00112C")
+            assertThat(page.single("meta", "name" to "theme-color").attr("content")).isEqualTo("#00843F")
             assertThat(page.single("html").attr("lang")).isEqualTo(language)
             assertThat(page.single("link", "rel" to "canonical").attr("href")).isEqualTo(publicUrl(language, kind))
             assertThat(page.single("meta", "property" to "og:url").attr("content")).isEqualTo(publicUrl(language, kind))

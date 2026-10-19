@@ -35,7 +35,8 @@ data class Decline(
                 "DeviceOut", "UnavailableDevice" -> RetryAdvice.WAIT_AND_RETRY
                 BUSY -> RetryAdvice.TERMINAL_BUSY
                 "NotAllowed", "PaymentRestriction" -> RetryAdvice.DIFFERENT_PAYMENT_METHOD
-                "MessageFormat", "UnavailableService" -> RetryAdvice.CHECK_SETUP
+                "MessageFormat" -> RetryAdvice.CHECK_SETUP
+                "UnavailableService" -> RetryAdvice.NOT_ENABLED
                 CANCEL -> if (reason.equals("Approved", ignoreCase = true)) RetryAdvice.DO_NOT_RETRY else RetryAdvice.RETRY
                 "InvalidCard" -> if (INVALID_CARD_FINAL.matches(reason)) RetryAdvice.DIFFERENT_PAYMENT_METHOD else RetryAdvice.RETRY
                 "Refusal" -> if (REFUSAL_FINAL.matches(reason)) RetryAdvice.DIFFERENT_PAYMENT_METHOD else RetryAdvice.RETRY

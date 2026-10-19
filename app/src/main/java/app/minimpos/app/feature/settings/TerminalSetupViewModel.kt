@@ -55,6 +55,18 @@ data class TerminalSetupActions(
     val keyResult: ActionState = ActionState(),
 )
 
+/** Which result of [TerminalSetupActions] a dialog shows, see [TerminalSetupViewModel.dismissResult]. */
+enum class SetupResult {
+    /** [TerminalSetupActions.terminals]. */
+    TERMINALS,
+
+    /** [TerminalSetupActions.tapToPay]. */
+    TAP_TO_PAY,
+
+    /** [TerminalSetupActions.keyResult]. */
+    SHARED_KEY,
+}
+
 /**
  * Settings › Terminal's setup of where payments go off-terminal: choosing a terminal in the cloud from those connected,
  * and setting up (or removing) Tap to Pay with the Adyen Payments app.
@@ -233,6 +245,17 @@ class TerminalSetupViewModel(
 
     /** Removes this phone's Payments app instance (see [TapToPaySetup.unregister]). */
     fun removeTapToPay() = run(null) { tapToPay.unregister() }
+
+    /** Closes the dialog showing [result]'s outcome, keeping whether it succeeded. */
+    fun dismissResult(result: SetupResult) {
+        actions.update {
+            when (result) {
+                SetupResult.TERMINALS -> it.copy(terminals = it.terminals.dismissed())
+                SetupResult.TAP_TO_PAY -> it.copy(tapToPay = it.tapToPay.dismissed())
+                SetupResult.SHARED_KEY -> it.copy(keyResult = it.keyResult.dismissed())
+            }
+        }
+    }
 
     private fun run(
         apiKey: String?,

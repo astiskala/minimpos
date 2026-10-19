@@ -45,10 +45,13 @@ sealed interface ManagementResult {
      * Adyen did what was asked.
      *
      * @property boardingToken The one-time boarding token (valid for an hour) for a boarding token request; null for a
-     *   revocation.
+     *   revocation or registration check.
+     * @property installationId The installation the boarding token was issued for; null for a revocation or
+     *   registration check, or when Adyen named none.
      */
     data class Done(
         val boardingToken: String? = null,
+        val installationId: String? = null,
     ) : ManagementResult
 
     /** Adyen lists no boarded Payments app with that installation ID for the merchant account or store. */
@@ -187,7 +190,8 @@ class AdyenPaymentsAppManagement(
 
     private fun result(reply: AdyenReply.Answered): ManagementResult =
         if (reply.ok) {
-            ManagementResult.Done(decodeAdyenModel(reply.body, BoardingTokenResponse::class.java)?.boardingToken)
+            val issued = decodeAdyenModel(reply.body, BoardingTokenResponse::class.java)
+            ManagementResult.Done(issued?.boardingToken, issued?.installationId?.takeIf { it.isNotEmpty() })
         } else {
             ManagementResult.Failed(managementFault(reply, ApiKey.PAYMENTS_APP, PAYMENTS_APP_ROLE))
         }
@@ -204,22 +208,46 @@ class AdyenPaymentsAppManagement(
 
 /** The outcome of [PaymentsAppOnboarding.board]. */
 sealed interface Onboarding {
-    /**
-     * The Payments app is boarded.
-     *
-     * @property installationId The instance's ID, which is the POIID of every request to it.
-     */
-    data class Boarded(
-        val installationId: String,
-    ) : Onboarding
+    /** The Payments app is boarded; where (which merchant account or store) depends on how. */
+    sealed interface Boarded : Onboarding {
+        /** The instance's ID, which is the POIID of every request to it. */
+        val installationId: String
+    }
 
     /**
-     * It is not boarded.
+     * It was boarded already, so it took no boarding token: only the Management API's list of boarded instances tells
+     * whether it is boarded at the target, or at another merchant account or store (or was revoked at Adyen meanwhile).
+     *
+     * @property installationId The instance's ID.
+     */
+    data class AlreadyBoarded(
+        override val installationId: String,
+    ) : Boarded
+
+    /**
+     * It was boarded just now, with a boarding token Adyen issued for the target.
+     *
+     * @property installationId The instance's ID.
+     * @property confirmed Whether Adyen issued the token for this very installation, which confirms where it is boarded
+     *   without the Management API's list (that list can lag behind boarding); false when Adyen named no or another
+     *   installation.
+     */
+    data class NewlyBoarded(
+        override val installationId: String,
+        val confirmed: Boolean,
+    ) : Boarded
+
+    /**
+     * It is not boarded at the target.
      *
      * @property fault Why (from the Payments app, the exchange with it, or the Management API).
+     * @property unboarded Whether the Payments app may have no boarding now: it answered that it was not boarded, or
+     *   reboarding has started (or may have, when the first step went unanswered) and dropped the one it had. An
+     *   installation ID kept for it may then take no payments.
      */
     data class Failed(
         val fault: Fault,
+        val unboarded: Boolean,
     ) : Onboarding
 }
 
@@ -243,8 +271,9 @@ class PaymentsAppOnboarding(
 
     /**
      * Boards the Payments app at [target], or reports the instance it is already boarded with; with [reboard] it is
-     * boarded afresh (another merchant account or store). Network and Payments app errors, and a Payments app that
-     * cannot be started, are reported in the outcome.
+     * boarded afresh (another merchant account or store), which drops its earlier boarding as soon as the Payments app
+     * answers the first step. Network and Payments app errors, and a Payments app that cannot be started, are reported
+     * in the outcome.
      */
     suspend fun board(
         target: BoardingTarget,
@@ -253,43 +282,39 @@ class PaymentsAppOnboarding(
         val check =
             when (val answer = open(links.boardedCheck("$returnUrl/$BOARDED", reboard))) {
                 is Step.Answered -> answer.fields
-                is Step.Failed -> return Onboarding.Failed(answer.fault)
+                is Step.Failed -> return Onboarding.Failed(answer.fault, unboarded = reboard && answer.fault.mayHaveTakenEffect)
             }
+        if (check["boarded"] == "true" && !reboard) {
+            return check.installationId()?.let(Onboarding::AlreadyBoarded) ?: Onboarding.Failed(Fault.UnreadableReply(), unboarded = false)
+        }
         val token = check["boardingRequestToken"]
-        return when {
-            check["boarded"] == "true" && !reboard -> {
-                boarded(check)
-            }
-
-            token.isNullOrEmpty() -> {
-                failed(check)
-            }
-
-            else -> {
-                when (val result = management.boardingToken(target, token)) {
-                    is ManagementResult.Failed -> Onboarding.Failed(result.fault)
-                    ManagementResult.NotBoarded -> Onboarding.Failed(Fault.UnreadableReply())
-                    is ManagementResult.Done -> finish(result.boardingToken)
-                }
-            }
+        if (token.isNullOrEmpty()) return failed(check, unboarded = reboard || check["boarded"] == "false")
+        return when (val issued = management.boardingToken(target, token)) {
+            is ManagementResult.Failed -> Onboarding.Failed(issued.fault, unboarded = true)
+            ManagementResult.NotBoarded -> Onboarding.Failed(Fault.UnreadableReply(), unboarded = true)
+            is ManagementResult.Done -> finish(issued)
         }
     }
 
-    private suspend fun finish(boardingToken: String?): Onboarding {
-        if (boardingToken.isNullOrEmpty()) return Onboarding.Failed(Fault.UnreadableReply())
+    private suspend fun finish(issued: ManagementResult.Done): Onboarding {
+        val boardingToken = issued.boardingToken
+        if (boardingToken.isNullOrEmpty()) return Onboarding.Failed(Fault.UnreadableReply(), unboarded = true)
         val answer =
             when (val step = open(links.board(boardingToken, "$returnUrl/$BOARD"))) {
                 is Step.Answered -> step.fields
-                is Step.Failed -> return Onboarding.Failed(step.fault)
+                is Step.Failed -> return Onboarding.Failed(step.fault, unboarded = true)
             }
-        return if (answer["boarded"] == "true") boarded(answer) else failed(answer)
+        if (answer["boarded"] != "true") return failed(answer, unboarded = true)
+        val id = answer.installationId() ?: return Onboarding.Failed(Fault.UnreadableReply(), unboarded = true)
+        return Onboarding.NewlyBoarded(id, confirmed = id == issued.installationId)
     }
 
-    private fun boarded(answer: Map<String, String>): Onboarding =
-        answer["installationId"]?.takeIf { it.isNotEmpty() }?.let { Onboarding.Boarded(it) }
-            ?: Onboarding.Failed(Fault.UnreadableReply())
+    private fun Map<String, String>.installationId(): String? = get("installationId")?.takeIf { it.isNotEmpty() }
 
-    private fun failed(answer: Map<String, String>): Onboarding = Onboarding.Failed(Fault.AppRefused(ExternalText.of(answer["error"])))
+    private fun failed(
+        answer: Map<String, String>,
+        unboarded: Boolean,
+    ): Onboarding = Onboarding.Failed(Fault.AppRefused(ExternalText.of(answer["error"])), unboarded)
 
     private suspend fun open(link: String): Step =
         when (val answer = exchange.exchange(link, links.packageName, STEP_TIMEOUT)) {

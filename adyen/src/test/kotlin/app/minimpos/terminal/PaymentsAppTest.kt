@@ -179,16 +179,17 @@ class PaymentsAppTest {
         val onboarding = PaymentsAppOnboarding(TerminalEnvironment.TEST, app, management, RETURN_URL)
         app.boarded = false
         val boarded = runBlocking { onboarding.board(BoardingTarget("HarbourCoffeeCOM", "ST1")) }
-        assertThat(boarded).isEqualTo(Onboarding.Boarded("INSTALLATION-1"))
+        assertThat(boarded).isEqualTo(Onboarding.NewlyBoarded("INSTALLATION-1", confirmed = false))
         assertThat(management.requests).containsExactly(BoardingTarget("HarbourCoffeeCOM", "ST1") to "BRT-1")
         assertThat(app.opened.map { it.returnUrl }).containsExactly("$RETURN_URL/boarded", "$RETURN_URL/board").inOrder()
         assertThat(app.boardingTokens).containsExactly("BT-1")
 
         // Once boarded, the check alone answers; reboarding goes through the steps again.
-        assertThat(runBlocking { onboarding.board(BoardingTarget("HarbourCoffeeCOM")) }).isEqualTo(Onboarding.Boarded("INSTALLATION-1"))
+        assertThat(runBlocking { onboarding.board(BoardingTarget("HarbourCoffeeCOM")) })
+            .isEqualTo(Onboarding.AlreadyBoarded("INSTALLATION-1"))
         assertThat(management.requests).hasSize(1)
         assertThat(runBlocking { onboarding.board(BoardingTarget("HarbourCoffeeCOM"), reboard = true) })
-            .isEqualTo(Onboarding.Boarded("INSTALLATION-1"))
+            .isEqualTo(Onboarding.NewlyBoarded("INSTALLATION-1", confirmed = false))
         assertThat(app.opened.count { it.link.contains("reboard=true") }).isEqualTo(1)
         assertThat(management.requests).hasSize(2)
 
@@ -197,39 +198,19 @@ class PaymentsAppTest {
         management.result = ManagementResult.Failed(Fault.Permission(ApiKey.PAYMENTS_APP))
         assertThat(
             runBlocking { onboarding.board(BoardingTarget("HarbourCoffeeCOM")) },
-        ).isEqualTo(Onboarding.Failed(Fault.Permission(ApiKey.PAYMENTS_APP)))
+        ).isEqualTo(Onboarding.Failed(Fault.Permission(ApiKey.PAYMENTS_APP), unboarded = true))
         management.result = ManagementResult.Done(boardingToken = null)
-        assertThat(
-            (
-                runBlocking {
-                    onboarding.board(BoardingTarget("HarbourCoffeeCOM"))
-                } as Onboarding.Failed
-            ).fault,
-        ).isEqualTo(Fault.UnreadableReply())
+        assertThat(runBlocking { onboarding.board(BoardingTarget("HarbourCoffeeCOM")) })
+            .isEqualTo(Onboarding.Failed(Fault.UnreadableReply(), unboarded = true))
         app.reply = { "$RETURN_URL/boarded?boarded=false&error=Device+not+supported" }
-        assertThat(
-            (
-                runBlocking {
-                    onboarding.board(BoardingTarget("HarbourCoffeeCOM"))
-                } as Onboarding.Failed
-            ).fault,
-        ).isEqualTo(Fault.AppRefused(ExternalText("Device not supported")))
+        assertThat(runBlocking { onboarding.board(BoardingTarget("HarbourCoffeeCOM")) })
+            .isEqualTo(Onboarding.Failed(Fault.AppRefused(ExternalText("Device not supported")), unboarded = true))
+        app.reply = { "$RETURN_URL/boarded?error=Native+library+error" }
+        assertThat(runBlocking { onboarding.board(BoardingTarget("HarbourCoffeeCOM")) })
+            .isEqualTo(Onboarding.Failed(Fault.AppRefused(ExternalText("Native library error")), unboarded = false))
         app.reply = { "$RETURN_URL/boarded?boarded=true" }
-        assertThat(
-            (
-                runBlocking {
-                    onboarding.board(BoardingTarget("HarbourCoffeeCOM"))
-                } as Onboarding.Failed
-            ).fault,
-        ).isEqualTo(Fault.UnreadableReply())
-        app.reply = null
-        app.unanswered = AppLinkAnswer.NotStarted
         assertThat(runBlocking { onboarding.board(BoardingTarget("HarbourCoffeeCOM")) })
-            .isEqualTo(Onboarding.Failed(Fault.NotStarted))
-        app.unanswered = null
-        management.result = ManagementResult.NotBoarded
-        assertThat(runBlocking { onboarding.board(BoardingTarget("HarbourCoffeeCOM")) })
-            .isEqualTo(Onboarding.Failed(Fault.UnreadableReply()))
+            .isEqualTo(Onboarding.Failed(Fault.UnreadableReply(), unboarded = false))
         val minimalManagement =
             object : PaymentsAppManagement {
                 override suspend fun boardingToken(
@@ -248,12 +229,54 @@ class PaymentsAppTest {
     }
 
     @Test
+    fun `boarding steps without a usable answer say whether the Payments app may have dropped its boarding`() {
+        val management = RecordingManagement()
+        val onboarding = PaymentsAppOnboarding(TerminalEnvironment.TEST, app, management, RETURN_URL)
+        app.unanswered = AppLinkAnswer.NotStarted
+        assertThat(runBlocking { onboarding.board(BoardingTarget("Merchant"), reboard = true) })
+            .isEqualTo(Onboarding.Failed(Fault.NotStarted, unboarded = false))
+        app.unanswered = AppLinkAnswer.Abandoned
+        assertThat(runBlocking { onboarding.board(BoardingTarget("Merchant"), reboard = true) })
+            .isEqualTo(Onboarding.Failed(Fault.Abandoned, unboarded = true))
+        assertThat(runBlocking { onboarding.board(BoardingTarget("Merchant")) })
+            .isEqualTo(Onboarding.Failed(Fault.Abandoned, unboarded = false))
+        app.unanswered = null
+        app.boarded = false
+        management.result = ManagementResult.NotBoarded
+        assertThat(runBlocking { onboarding.board(BoardingTarget("Merchant")) })
+            .isEqualTo(Onboarding.Failed(Fault.UnreadableReply(), unboarded = true))
+        management.result = ManagementResult.Done("BT-1")
+        app.reply = { opened ->
+            if (opened.link.contains("/board?")) {
+                "${opened.returnUrl}?boarded=true"
+            } else {
+                "${opened.returnUrl}?boarded=false&installationId=INSTALLATION-1&boardingRequestToken=BRT-1"
+            }
+        }
+        assertThat(runBlocking { onboarding.board(BoardingTarget("Merchant")) })
+            .isEqualTo(Onboarding.Failed(Fault.UnreadableReply(), unboarded = true))
+    }
+
+    @Test
+    fun `a boarding token Adyen issued for the installation confirms where it is boarded`() {
+        val management = RecordingManagement()
+        val onboarding = PaymentsAppOnboarding(TerminalEnvironment.TEST, app, management, RETURN_URL)
+        app.boarded = false
+        management.result = ManagementResult.Done("BT-1", "INSTALLATION-1")
+        assertThat(runBlocking { onboarding.board(BoardingTarget("Merchant")) })
+            .isEqualTo(Onboarding.NewlyBoarded("INSTALLATION-1", confirmed = true))
+        management.result = ManagementResult.Done("BT-1", "ANOTHER")
+        assertThat(runBlocking { onboarding.board(BoardingTarget("Merchant"), reboard = true) })
+            .isEqualTo(Onboarding.NewlyBoarded("INSTALLATION-1", confirmed = false))
+    }
+
+    @Test
     fun `the Management API is called with the Payments app key, per merchant account or store`() {
         MockWebServer().use { server ->
             server.start()
             val api = AdyenPaymentsAppManagement("pa-key", TerminalEnvironment.TEST, baseUrl = server.url("/v1"))
             server.enqueue(MockResponse.Builder().body("""{"installationId":"I1","boardingToken":"BT"}""").build())
-            assertThat(runBlocking { api.boardingToken(BoardingTarget("Merchant"), "BRT") }).isEqualTo(ManagementResult.Done("BT"))
+            assertThat(runBlocking { api.boardingToken(BoardingTarget("Merchant"), "BRT") }).isEqualTo(ManagementResult.Done("BT", "I1"))
             val request = server.takeRequest()
             assertThat(request.url.encodedPath).isEqualTo("/v1/merchants/Merchant/generatePaymentsAppBoardingToken")
             assertThat(request.headers["x-api-key"]).isEqualTo("pa-key")
@@ -379,7 +402,7 @@ class PaymentsAppTest {
                 }
             assertThat(defaultManagement.registration(BoardingTarget("Merchant"), "I1"))
                 .isEqualTo(ManagementResult.Failed(Fault.Unsupported))
-            assertThat(Onboarding.Boarded("INSTALLATION-1").installationId).isEqualTo("INSTALLATION-1")
+            assertThat(Onboarding.AlreadyBoarded("INSTALLATION-1").installationId).isEqualTo("INSTALLATION-1")
 
             var stepCount = 0
             val abandonOnSecondStep =
@@ -398,7 +421,7 @@ class PaymentsAppTest {
                     override fun lateReplies(): List<String> = emptyList()
                 }
             val onboarding = PaymentsAppOnboarding(TerminalEnvironment.TEST, abandonOnSecondStep, RecordingManagement(), RETURN_URL)
-            assertThat(onboarding.board(BoardingTarget("Merchant"))).isEqualTo(Onboarding.Failed(Fault.Abandoned))
+            assertThat(onboarding.board(BoardingTarget("Merchant"))).isEqualTo(Onboarding.Failed(Fault.Abandoned, unboarded = true))
         }
 
     /** One link the fake Payments app was asked to open. */

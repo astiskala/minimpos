@@ -50,7 +50,6 @@ import app.minimpos.app.data.security.Secret
 import app.minimpos.app.data.settings.TerminalMode
 import app.minimpos.app.data.settings.TerminalSettings
 import app.minimpos.app.feature.ActionState
-import app.minimpos.app.feature.OutcomeMessage
 import app.minimpos.app.feature.text
 import app.minimpos.app.terminal.DestinationRules
 import app.minimpos.app.terminal.PaymentsAppDestination
@@ -85,7 +84,8 @@ private typealias TerminalUpdate = ((TerminalSettings) -> TerminalSettings) -> U
  * API testing unlocks subsequent steps in this visit; a later step stays hidden until then. Revealed steps stay available
  * for editing, so retesting or clearing an earlier field cannot discard an unsaved secret in a later step. A step's
  * number turns into a tick once it is done (every step once the setup is verified), and its actions follow one order:
- * the main action, its outcome, then removals. Supplied helper details are not tested.
+ * the main action, then removals; outcomes show in a dialog instead, one at a time. Supplied helper details are not
+ * tested.
  * The API key typed is kept here only in memory and cleared once stored. Discovery resets field editing state after
  * its saved settings have reached the screen, without resetting fields during ordinary typing.
  */
@@ -140,7 +140,6 @@ private fun ColumnScope.SharedKeyActions(
             }, { review = false })
         }
     }
-    OutcomeMessage(setup.keyResult, Modifier.testTag("sharedKeyResult"))
     if (setup.keyPending) {
         SettingActions {
             SecondaryButton(
@@ -515,7 +514,6 @@ private fun ColumnScope.AdyenApiStep(
             tag = "testApi",
             icon = Icons.Default.Api,
         )
-        OutcomeMessage(actions.api, Modifier.testTag("apiResult"))
         actions.secretError?.let { ActionMessage(it.text(), isError = true) }
         if (discovers && discoveryReady) KeyDiscoveryActions(api, setup) { setupEvents.onTerminalsFind(api.key) }
         if (api.keySaved) ForgetApiKey(events)
@@ -556,7 +554,6 @@ private fun ColumnScope.KeyDiscoveryActions(
     if (setup.terminals.done || setup.terminals.isError || setup.manualDetails) {
         SettingNote(stringResource(R.string.settings_discovery_manual))
     }
-    OutcomeMessage(setup.terminals, Modifier.testTag("terminalsResult"))
 }
 
 /** Removing the saved Adyen API key, once confirmed. */
@@ -713,7 +710,7 @@ private fun paymentsAppLabel(paymentsApps: Set<TerminalEnvironment>): String =
  * Setting up Tap to Pay on this phone: the boarded [installationId] (blank until boarded), the optional [storeId], the
  * Payments app API key (only kept in memory while typed, and cleared once stored), and the buttons that set it up
  * ([onSetUp] gets the key typed, or an empty one, and whether it is boarded already), remove this phone or forget the
- * key, with the last outcome.
+ * key; their outcome shows in a dialog.
  */
 @Composable
 private fun ColumnScope.TapToPayStep(
@@ -761,7 +758,7 @@ private fun ColumnScope.TapToPayStep(
     TapToPayButtons(boarded, apiKeySaved, setup.tapToPay, { again -> onSetUp(apiKey, again) }, onRemove, onForgetApiKey)
 }
 
-/** Set up (or again, once [boarded]), remove this phone and forget the saved API key, with the last [result]. */
+/** Set up (or again, once [boarded]), remove this phone and forget the saved API key, busy while [result] runs. */
 @Composable
 private fun TapToPayButtons(
     boarded: Boolean,
@@ -786,7 +783,6 @@ private fun TapToPayButtons(
                 icon = Icons.Default.Contactless,
             )
         }
-        OutcomeMessage(result, Modifier.testTag("tapToPayResult"))
         if (boarded) {
             ConfirmedRemoval(
                 text = stringResource(R.string.settings_remove_phone),

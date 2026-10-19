@@ -18,6 +18,7 @@ import app.minimpos.app.data.db.TaxRateEntity
 import app.minimpos.app.data.security.Secret
 import app.minimpos.app.data.settings.TerminalMode
 import app.minimpos.app.feature.ActionOutcome
+import app.minimpos.app.feature.ActionState
 import app.minimpos.app.simulatedModifications
 import app.minimpos.app.terminal.AdyenApi
 import app.minimpos.app.terminal.ReceiptBusiness
@@ -126,6 +127,12 @@ class SettingsViewModelTest {
         val finished = await { vm.actions.first { it.api.done } }
         assertThat(calls).isEqualTo(1)
         assertThat(finished.connection.done).isTrue()
+        // Closing the connection result leaves the API result that came in meanwhile to be seen.
+        vm.dismissTestResult(SettingsTest.CONNECTION)
+        assertThat(vm.actions.value.connection).isEqualTo(ActionState())
+        assertThat(vm.actions.value.api).isEqualTo(finished.api)
+        vm.dismissTestResult(SettingsTest.API)
+        assertThat(vm.actions.value.api).isEqualTo(ActionState(done = true))
     }
 
     @Test
@@ -243,7 +250,7 @@ class SettingsViewModelTest {
             assertThat((rejected.connection.outcome as? ActionOutcome.ConnectionFailed)?.failure)
                 .isEqualTo(Failure.Remote(Fault.KeyRejected(ExternalText("Crypto error"))))
             assertThat(rejected.passphraseStored).isTrue()
-            vm.dismissConnectionResult()
+            vm.dismissTestResult(SettingsTest.CONNECTION)
             assertThat(vm.actions.value.connection.outcome).isNull()
 
             vm.saveAndTest(Secret.TERMINAL_PASSPHRASE, "correct horse battery staple")

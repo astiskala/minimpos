@@ -217,6 +217,7 @@
   <string name="advice_different_payment_method">請勿使用此卡重試。請顧客使用其他卡或付款方式。</string>
   <string name="advice_terminal_busy">終端正在處理其他交易或顯示管理選單。請先完成該操作，再重試。</string>
   <string name="advice_check_setup">終端未接受請求。重試前，請檢查終端設定。</string>
+  <string name="advice_not_enabled">終端或您的 Adyen 帳戶不支援此請求。請聯絡 Adyen 支援團隊確認已開通，然後重試。</string>
   <string name="advice_do_not_retry">請勿再次收款：此次支付已成功。</string>
 
   <!-- Transaction details -->

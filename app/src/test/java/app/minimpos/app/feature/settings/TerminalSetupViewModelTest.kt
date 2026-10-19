@@ -13,6 +13,7 @@ import app.minimpos.app.data.db.SetupProblem
 import app.minimpos.app.data.security.Secret
 import app.minimpos.app.data.settings.TerminalMode
 import app.minimpos.app.feature.ActionOutcome
+import app.minimpos.app.feature.ActionState
 import app.minimpos.terminal.transport.TerminalEnvironment
 import com.google.common.truth.Truth.assertThat
 import kotlinx.coroutines.Dispatchers
@@ -96,13 +97,15 @@ class TerminalSetupViewModelTest {
         val missing = await { setup.actions.first { it.terminals.done } }
         assertThat(missing.manualDetails).isTrue()
         assertThat(missing.connectedTerminals).isNull()
+        setup.dismissResult(SetupResult.TERMINALS)
+        assertThat(setup.actions.value).isEqualTo(missing)
 
         vm.saveAndTest(Secret.ADYEN_API_KEY, " cloud-key ", SettingsTest.CONNECTION)
         val tested = await { vm.actions.first { it.connection.isError } }
         assertThat(tested.apiKeyStored).isTrue()
         assertThat(tested.connection.outcome).isEqualTo(ActionOutcome.Failed(Failure.NotSetUp(SetupProblem.POI_ID)))
         assertThat(await { container.secrets.get(Secret.ADYEN_API_KEY) }).isEqualTo("cloud-key")
-        vm.dismissConnectionResult()
+        vm.dismissTestResult(SettingsTest.CONNECTION)
 
         setup.findTerminals()
         val found = await { setup.actions.first { it.connectedTerminals != null } }
@@ -147,6 +150,9 @@ class TerminalSetupViewModelTest {
         // The key reaches a LIVE data center, so the Checkout API asks for the live URL prefix next.
         assertThat(tested.api.outcome).isEqualTo(ActionOutcome.Failed(Failure.NotSetUp(SetupProblem.LIVE_PREFIX)))
         assertThat(tested.api.isError).isTrue()
+        vm.dismissTestResult(SettingsTest.CLOUD)
+        assertThat(vm.actions.value.connection).isEqualTo(ActionState())
+        assertThat(vm.actions.value.api).isEqualTo(ActionState(isError = true))
 
         // Without a terminal to reach, the Checkout API is not tested.
         env.updateSettings { it.copy(terminal = it.terminal.copy(poiIdOverride = "")) }
@@ -172,6 +178,9 @@ class TerminalSetupViewModelTest {
         assertThat(ready.tapToPay.outcome).isEqualTo(ActionOutcome.TapToPayReady(FakePaymentsApp.INSTALLATION_ID))
         assertThat(ready.paymentsAppKeyStored).isTrue()
         assertThat(await { container.secrets.get(Secret.PAYMENTS_APP_API_KEY) }).isEqualTo("pa-key")
+        vm.dismissResult(SetupResult.TAP_TO_PAY)
+        vm.dismissResult(SetupResult.SHARED_KEY)
+        assertThat(vm.actions.value).isEqualTo(ready.copy(tapToPay = ActionState(done = true)))
 
         vm.setUpTapToPay(again = true)
         await { vm.actions.first { it.tapToPay.done && !it.paymentsAppKeyStored } }

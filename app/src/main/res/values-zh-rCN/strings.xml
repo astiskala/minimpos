@@ -217,6 +217,7 @@
   <string name="advice_different_payment_method">请勿使用此卡重试。请购物者使用其他卡片或付款方式。</string>
   <string name="advice_terminal_busy">终端正在处理其他交易或显示管理菜单。请先完成该操作，再重试。</string>
   <string name="advice_check_setup">终端未接受请求。重试前，请检查终端设置。</string>
+  <string name="advice_not_enabled">终端或您的 Adyen 账户不支持此请求。请联系 Adyen 支持团队确认已开通，然后重试。</string>
   <string name="advice_do_not_retry">请勿再次收款：此次支付已成功。</string>
 
   <!-- Transaction details -->

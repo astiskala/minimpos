@@ -44,6 +44,7 @@ fun adviceText(advice: RetryAdvice): String =
             RetryAdvice.DIFFERENT_PAYMENT_METHOD -> R.string.advice_different_payment_method
             RetryAdvice.TERMINAL_BUSY -> R.string.advice_terminal_busy
             RetryAdvice.CHECK_SETUP -> R.string.advice_check_setup
+            RetryAdvice.NOT_ENABLED -> R.string.advice_not_enabled
             RetryAdvice.DO_NOT_RETRY -> R.string.advice_do_not_retry
         },
     )

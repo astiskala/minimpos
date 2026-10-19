@@ -13,6 +13,7 @@ import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextInput
 import androidx.test.core.app.ApplicationProvider
 import app.minimpos.app.FakeDevice
+import app.minimpos.app.FakeManagement
 import app.minimpos.app.FakePaymentsApp
 import app.minimpos.app.MiniMposApp
 import app.minimpos.app.TestEnvironment
@@ -20,6 +21,8 @@ import app.minimpos.app.await
 import app.minimpos.app.awaitCondition
 import app.minimpos.app.data.security.Secret
 import app.minimpos.app.data.settings.TerminalMode
+import app.minimpos.terminal.paymentsapp.ManagementResult
+import app.minimpos.terminal.transport.Fault
 import app.minimpos.terminal.transport.SharedKeyLookup
 import app.minimpos.terminal.transport.TerminalDetailsApi
 import app.minimpos.terminal.transport.TerminalEnvironment
@@ -59,8 +62,10 @@ class TapToPaySettingsTest {
             ): SharedKeyLookup = error("No terminal key lookup")
         }
 
+    private val management = FakeManagement()
+
     @get:Rule(order = 0)
-    val env = TestEnvironment(device, paymentsApp = paymentsApp, terminalDetails = details)
+    val env = TestEnvironment(device, paymentsApp = paymentsApp, management = management, terminalDetails = details)
 
     @get:Rule(order = 1)
     val compose = createComposeRule()
@@ -133,13 +138,39 @@ class TapToPaySettingsTest {
         compose.awaitCondition("phone registration completes") {
             container.settingsState.value.terminal.paymentsAppInstallationId == FakePaymentsApp.INSTALLATION_ID
         }
+        compose.waitUntilAtLeastOneExists(
+            hasTestTag("tapToPayResult") and hasText(FakePaymentsApp.INSTALLATION_ID, substring = true),
+            15_000,
+        )
+        compose.onNodeWithTag("tapToPayResultOk").performClick()
+        compose.waitUntilDoesNotExist(hasTestTag("tapToPayResult"), 15_000)
         waitForTag("keyIdentifier")
     }
 
     private fun testApi() {
         waitForTag("testApi")
         compose.onNodeWithTag("testApi").performScrollTo().performClick()
+        waitForTag("apiResult")
+        compose.onNodeWithTag("apiResultOk").performClick()
+        compose.waitUntilDoesNotExist(hasTestTag("apiResult"), 15_000)
         waitForTag("setUpTapToPay")
+    }
+
+    @Test
+    fun `a failed reboarding says why in a dialog and asks for Tap to Pay again`() {
+        boardPhone()
+        management.result = ManagementResult.Failed(Fault.AdyenUnavailable(503))
+        compose
+            .onNodeWithTag("setUpTapToPay")
+            .performScrollTo()
+            .assertTextContains("Set up again")
+            .performClick()
+        compose.waitUntilAtLeastOneExists(hasTestTag("tapToPayResult") and hasText("HTTP 503", substring = true), 15_000)
+        compose.onNodeWithTag("tapToPayResultOk").performClick()
+        compose.waitUntilDoesNotExist(hasTestTag("tapToPayResult"), 15_000)
+        assertThat(container.settingsState.value.terminal.paymentsAppInstallationId).isEmpty()
+        compose.onNodeWithText("Not set up yet").performScrollTo().assertExists()
+        compose.onNodeWithTag("setUpTapToPay").assertTextContains("Set up Tap to Pay")
     }
 
     @Test

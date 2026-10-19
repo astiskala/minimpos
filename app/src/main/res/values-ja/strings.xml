@@ -217,6 +217,7 @@
   <string name="advice_different_payment_method">このカードで再試行しないでください。別のカードまたは決済方法を購入者にお願いしてください。</string>
   <string name="advice_terminal_busy">端末で別の取引または管理メニューの操作中です。先に完了してから再試行してください。</string>
   <string name="advice_check_setup">端末がリクエストを受け付けませんでした。再試行する前に端末設定を確認してください。</string>
+  <string name="advice_not_enabled">端末またはAdyenアカウントがこのリクエストに対応していません。有効になっているかAdyenサポートに確認してから再試行してください。</string>
   <string name="advice_do_not_retry">再度請求しないでください。この決済は成功しています。</string>
 
   <!-- Transaction details -->

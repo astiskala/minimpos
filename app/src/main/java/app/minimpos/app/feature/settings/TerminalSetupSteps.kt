@@ -221,7 +221,7 @@ private fun ColumnScope.DestinationSteps(
         )
     }
     step(SetupStepKind.TAP_TO_PAY)?.let { TapToPayEntry(it.number, state, setup, events, setupEvents, update) }
-    step(SetupStepKind.SHARED_KEY)?.let { SharedKeyStep(it.number, it.done, state, actions, setup, events, setupEvents, update) }
+    step(SetupStepKind.SHARED_KEY)?.let { SharedKeyStep(it.number, it.done, state, actions, events, setupEvents, update) }
 }
 
 /**
@@ -372,7 +372,6 @@ private fun ColumnScope.SharedKeyStep(
     done: Boolean,
     state: SettingsUiState,
     actions: SettingsActions,
-    setup: TerminalSetupActions,
     events: SettingsEvents,
     setupEvents: TerminalSetupEvents,
     update: TerminalUpdate,
@@ -422,14 +421,6 @@ private fun ColumnScope.SharedKeyStep(
         )
         actions.secretError?.let { ActionMessage(it.text(), isError = true) }
         if (saved) ForgetPassphrase(events)
-    }
-    if (terminal.mode == TerminalMode.PAYMENTS_APP) {
-        TapToPayTroubleshooting(
-            setup.diagnostics,
-            setupEvents::onTapToPayReport,
-            setup.report,
-            setupEvents::onTapReportShared,
-        )
     }
 }
 
@@ -765,7 +756,6 @@ private fun ColumnScope.TapToPayStep(
         onDraft = onDraft,
     )
     TapToPayButtons(boarded, apiKeySaved, setup.tapToPay, { again -> onSetUp(apiKey, again) }, onRemove, onForgetApiKey)
-    if (apiKeySaved) SettingNote(stringResource(R.string.tap_credential_saved))
 }
 
 /** Set up (or again, once [boarded]), remove this phone and forget the saved API key, busy while [result] runs. */

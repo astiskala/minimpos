@@ -771,11 +771,17 @@
   <string name="settings_forget_payments_app_key_message">仍可收款，但在重新输入密钥之前，无法重新设置或移除本手机。</string>
   <string name="settings_payments_app_setup_checked">已检查设置字段。Payments 应用无法通过连接检查测试共享密钥。</string>
 
+  <!-- Settings: help and troubleshooting -->
+  <string name="settings_help">帮助与故障排除</string>
+  <string name="settings_help_summary">使用指南、问题报告和故障排除详情</string>
+  <string name="help_user_guide">使用指南</string>
+  <string name="help_troubleshooting">故障排除指南</string>
+  <string name="help_report_issue">报告问题</string>
+
   <!-- Tap to Pay troubleshooting -->
   <string name="tap_details">故障排查详情</string>
   <string name="tap_share_report">分享已脱敏的报告</string>
   <string name="tap_report_notice">报告不包含自由文本消息、密钥、令牌、回调地址或顾客数据。分享前请先检查。不会自动上传任何内容。</string>
-  <string name="tap_credential_saved">凭据已保存。这并不代表支付已准备就绪。</string>
   <string name="tap_credential_verified">已验证凭据：%1$s</string>
   <string name="tap_credential_inactive">此凭据未启用。</string>
   <string name="tap_key_present">客户端密钥已存在。这并不保证支付能够成功进行。</string>
@@ -790,13 +796,9 @@
   <string name="tap_not_boarded">Payments app 报告尚未注册。</string>
   <string name="tap_boarding_unverified">无法验证 Payments app 注册状态。</string>
   <string name="tap_boarding_unchecked">尚未检查 Payments app 注册状态。</string>
-  <string name="tap_current_credential">用于注册的凭据</string>
-  <string name="tap_checklist">客户端密钥检查清单：\n1. 在对应的 TEST 或 LIVE 环境中打开 Adyen Customer Area。\n2. 前往“Developers → API credentials”。\n3. 选择 %1$s。必须是用于注册的同一凭据。\n4. 在“Client settings → Authentication → Client key”下，仅在不存在密钥时生成客户端密钥。\n5. 保存更改，等待几分钟使其生效，然后返回并重新检查。\n\n客户端密钥与 API 密钥不同。无需将客户端密钥粘贴到 Mini mPOS。仅满足此原生 Tap to Pay 前提不需要设置 Allowed origins。不要为排查问题而重新生成已有的客户端密钥或轮换 API 密钥。</string>
-  <string name="tap_open_customer_area">打开 %1$s Customer Area</string>
   <string name="tap_check_time">凭据检查时间（UTC）：%1$s</string>
   <string name="tap_boarding_time">注册检查时间（UTC）：%1$s</string>
   <string name="tap_unavailable">Payments app 无法完成请求。此错误可能有多种原因，不能据此断定服务中断或缺少客户端密钥。请检查设置并查看可用的诊断信息。</string>
-  <string name="tap_session_failure">1029_605 表示会话相关故障，不能证明缺少客户端密钥。</string>
   <string name="tap_boarding_credential">记录的注册凭据：%1$s</string>
   <string name="tap_boarding_unmatched">此检查不能确认当前凭据与记录的注册凭据一致。请使用记录的注册凭据排查客户端密钥问题。</string>
 

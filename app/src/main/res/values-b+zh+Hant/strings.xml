@@ -771,11 +771,17 @@
   <string name="settings_forget_payments_app_key_message">仍可收款，但在重新輸入密鑰之前，無法重新設定或移除本手機。</string>
   <string name="settings_payments_app_setup_checked">已檢查設定欄位。Payments 應用程式無法通過連接檢查測試共享密鑰。</string>
 
+  <!-- Settings: help and troubleshooting -->
+  <string name="settings_help">說明與疑難排解</string>
+  <string name="settings_help_summary">使用指南、問題回報及疑難排解詳情</string>
+  <string name="help_user_guide">使用指南</string>
+  <string name="help_troubleshooting">疑難排解指南</string>
+  <string name="help_report_issue">回報問題</string>
+
   <!-- Tap to Pay troubleshooting -->
   <string name="tap_details">疑難排解詳情</string>
   <string name="tap_share_report">分享已隱去敏感資料的報告</string>
   <string name="tap_report_notice">報告不包含自由文字訊息、密鑰、令牌、回調網址或顧客資料。分享前請先檢查。不會自動上載任何內容。</string>
-  <string name="tap_credential_saved">憑據已儲存。這並不代表付款已準備就緒。</string>
   <string name="tap_credential_verified">已驗證憑據：%1$s</string>
   <string name="tap_credential_inactive">此憑據未啟用。</string>
   <string name="tap_key_present">客戶端密鑰已存在。這並不保證可以成功付款。</string>
@@ -790,13 +796,9 @@
   <string name="tap_not_boarded">Payments app 回報尚未註冊。</string>
   <string name="tap_boarding_unverified">無法驗證 Payments app 註冊狀態。</string>
   <string name="tap_boarding_unchecked">尚未檢查 Payments app 註冊狀態。</string>
-  <string name="tap_current_credential">用於註冊的憑據</string>
-  <string name="tap_checklist">客戶端密鑰檢查清單：\n1. 在相應的 TEST 或 LIVE 環境中開啟 Adyen Customer Area。\n2. 前往“Developers → API credentials”。\n3. 選取 %1$s。必須是用於註冊的同一憑據。\n4. 在“Client settings → Authentication → Client key”下，只在沒有密鑰時產生客戶端密鑰。\n5. 儲存變更，等候幾分鐘讓設定生效，然後返回並重新檢查。\n\n客戶端密鑰與 API 密鑰不同。毋須將客戶端密鑰貼到 Mini mPOS。只為滿足此原生 Tap to Pay 前提不需要設定 Allowed origins。不要為排解問題而重新產生現有的客戶端密鑰或輪換 API 密鑰。</string>
-  <string name="tap_open_customer_area">開啟 %1$s Customer Area</string>
   <string name="tap_check_time">憑據檢查時間（UTC）：%1$s</string>
   <string name="tap_boarding_time">註冊檢查時間（UTC）：%1$s</string>
   <string name="tap_unavailable">Payments app 無法完成請求。此錯誤可能有多種原因，不能據此斷定服務中斷或缺少客戶端密鑰。請檢查設定並查看可用的診斷資料。</string>
-  <string name="tap_session_failure">1029_605 表示工作階段相關故障，不能證明缺少客戶端密鑰。</string>
   <string name="tap_boarding_credential">記錄的註冊憑據：%1$s</string>
   <string name="tap_boarding_unmatched">此檢查不能確認目前憑據與記錄的註冊憑據相符。請使用記錄的註冊憑據排解客戶端密鑰問題。</string>
 

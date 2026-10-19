@@ -52,46 +52,46 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           REPOSITORY: ${{ github.repository }}
         run: |
-          if [ "$(git ls-remote origin refs/heads/main | cut -f1)" != "$(git rev-parse HEAD)" ]; then
-            echo "::error::Main advanced after this workflow was selected. Run Release on current main."
-            exit 1
+          if [[ "$(git ls-remote origin refs/heads/main | cut -f1)" != "$(git rev-parse HEAD)" ]]; then
+              printf '%s\n' "::error::Main advanced after this workflow was selected. Run Release on current main."
+              exit 1
           fi
           name=$(sed -n 's/^versionName=//p' version.properties)
           version_commit=$(git log -1 --format=%H -- version.properties)
           subject=$(git log -1 --format=%s "$version_commit")
           files=$(git diff-tree --no-commit-id --name-only -r "$version_commit")
-          if [ "$BUMP" = resume ]; then
-            java -jar tooling/build/libs/minimpos-tooling.jar release candidate --subject "$subject" --files "$files"
+          if [[ "$BUMP" == resume ]]; then
+              java -jar tooling/build/libs/minimpos-tooling.jar release candidate --subject "$subject" --files "$files"
           else
-            if java -jar tooling/build/libs/minimpos-tooling.jar release candidate --subject "$subject" --files "$files" 2>/dev/null \
-              && [ -z "$(git ls-remote --tags origin "refs/tags/v$name")" ]; then
-              echo "::error::An unpublished version commit exists. Select resume instead of raising the version again."
+              if java -jar tooling/build/libs/minimpos-tooling.jar release candidate --subject "$subject" --files "$files" 2> /dev/null &&
+                  [[ -z "$(git ls-remote --tags origin "refs/tags/v$name")" ]]; then
+                  printf '%s\n' "::error::An unpublished version commit exists. Select resume instead of raising the version again."
+                  exit 1
+              fi
+              java -jar tooling/build/libs/minimpos-tooling.jar release bump "$BUMP"
+              name=$(sed -n 's/^versionName=//p' version.properties)
+          fi
+          if [[ -n "$(git ls-remote --tags origin "refs/tags/v$name")" ]]; then
+              printf '%s\n' "::error::Tag v$name already exists"
               exit 1
-            fi
-            java -jar tooling/build/libs/minimpos-tooling.jar release bump "$BUMP"
-            name=$(sed -n 's/^versionName=//p' version.properties)
           fi
-          if [ -n "$(git ls-remote --tags origin "refs/tags/v$name")" ]; then
-            echo "::error::Tag v$name already exists"
-            exit 1
-          fi
-          if [ "$BUMP" != resume ]; then
-            git config user.name "Adam Stiskala"
-            git config user.email "github@adamstiskala.com"
-            git diff --check
-            git diff -- version.properties
-            test "$(git diff --name-only)" = version.properties
-            git commit --quiet --message "Release $name" version.properties
-            auth=$(printf 'x-access-token:%s' "$GH_TOKEN" | base64 -w0)
-            echo "::add-mask::$auth"
-            git -c "http.https://github.com/.extraheader=AUTHORIZATION: basic $auth" push origin HEAD:main
+          if [[ "$BUMP" != resume ]]; then
+              git config user.name "Adam Stiskala"
+              git config user.email "github@adamstiskala.com"
+              git diff --check
+              git diff -- version.properties
+              test "$(git diff --name-only)" = version.properties
+              git commit --quiet --message "Release $name" version.properties
+              auth=$(printf 'x-access-token:%s' "$GH_TOKEN" | base64 -w0)
+              printf '%s\n' "::add-mask::$auth"
+              git -c "http.https://github.com/.extraheader=AUTHORIZATION: basic $auth" push origin HEAD:main
           fi
           {
-            echo "commit=$(git rev-parse HEAD)"
-            echo "name=$name"
-            echo "code=$(sed -n 's/^versionCode=//p' version.properties)"
+              printf '%s\n' "commit=$(git rev-parse HEAD)"
+              printf '%s\n' "name=$name"
+              printf '%s\n' "code=$(sed -n 's/^versionCode=//p' version.properties)"
           } >> "$GITHUB_OUTPUT"
-          echo "Prepared $name at $(git rev-parse HEAD)" >> "$GITHUB_STEP_SUMMARY"
+          printf '%s\n' "Prepared $name at $(git rev-parse HEAD)" >> "$GITHUB_STEP_SUMMARY"
       - name: Reuse successful exact-commit CI when available
         id: reuse
         env:
@@ -100,31 +100,31 @@ jobs:
           COMMIT: ${{ steps.version.outputs.commit }}
         run: |
           gh api --method GET "repos/$REPOSITORY/actions/workflows/ci.yml/runs" \
-            -f head_sha="$COMMIT" -f branch=main -f per_page=100 > "$RUNNER_TEMP/ci-runs.json"
+              -f head_sha="$COMMIT" -f branch=main -f per_page=100 > "$RUNNER_TEMP/ci-runs.json"
           # Try successful runs newest first. Missing/expired artifacts require fresh CI, never unverified reuse.
           while :; do
-            run=$(java -jar tooling/build/libs/minimpos-tooling.jar release ci --runs "$RUNNER_TEMP/ci-runs.json" \
-              --commit "$COMMIT")
-            if [ "$run" = null ]; then break; fi
-            id=$(jq -r '.id' <<< "$run")
-            attempt=$(jq -r '.run_attempt' <<< "$run")
-            artifact="$RUNNER_TEMP/reuse-$id-$attempt"
-            if gh run download "$id" --repo "$REPOSITORY" --name "release-$COMMIT-$attempt" --dir "$artifact"; then
-              # Verification runs the current checkout's tooling, not the downloaded executable.
-              java -jar tooling/build/libs/minimpos-tooling.jar release verify --artifact "$artifact" \
-                --commit "$COMMIT" --run-id "$id" --run-attempt "$attempt"
-              {
-                echo "run=$id"
-                echo "attempt=$attempt"
-              } >> "$GITHUB_OUTPUT"
-              echo "Reusing exact successful CI: $(jq -r '.html_url' <<< "$run")" >> "$GITHUB_STEP_SUMMARY"
-              exit 0
-            fi
-            jq --arg id "$id" '.workflow_runs |= map(select((.id | tostring) != $id))' \
-              "$RUNNER_TEMP/ci-runs.json" > "$RUNNER_TEMP/remaining-runs.json"
-            mv "$RUNNER_TEMP/remaining-runs.json" "$RUNNER_TEMP/ci-runs.json"
+              run=$(java -jar tooling/build/libs/minimpos-tooling.jar release ci --runs "$RUNNER_TEMP/ci-runs.json" \
+                  --commit "$COMMIT")
+              if [[ "$run" == null ]]; then break; fi
+              id=$(jq -r '.id' <<< "$run")
+              attempt=$(jq -r '.run_attempt' <<< "$run")
+              artifact="$RUNNER_TEMP/reuse-$id-$attempt"
+              if gh run download "$id" --repo "$REPOSITORY" --name "release-$COMMIT-$attempt" --dir "$artifact"; then
+                  # Verification runs the current checkout's tooling, not the downloaded executable.
+                  java -jar tooling/build/libs/minimpos-tooling.jar release verify --artifact "$artifact" \
+                      --commit "$COMMIT" --run-id "$id" --run-attempt "$attempt"
+                  {
+                      printf '%s\n' "run=$id"
+                      printf '%s\n' "attempt=$attempt"
+                  } >> "$GITHUB_OUTPUT"
+                  printf '%s\n' "Reusing exact successful CI: $(jq -r '.html_url' <<< "$run")" >> "$GITHUB_STEP_SUMMARY"
+                  exit 0
+              fi
+              jq --arg id "$id" '.workflow_runs |= map(select((.id | tostring) != $id))' \
+                  "$RUNNER_TEMP/ci-runs.json" > "$RUNNER_TEMP/remaining-runs.json"
+              mv "$RUNNER_TEMP/remaining-runs.json" "$RUNNER_TEMP/ci-runs.json"
           done
-          echo "No reusable exact-commit artifact; the full CI workflow will run." >> "$GITHUB_STEP_SUMMARY"
+          printf '%s\n' "No reusable exact-commit artifact; the full CI workflow will run." >> "$GITHUB_STEP_SUMMARY"
 
   ci:
     needs: prepare
@@ -171,10 +171,10 @@ jobs:
           cp app/build/outputs/apk/release/app-release-unsigned.apk build/release-artifact/
           cp tooling/build/libs/minimpos-tooling.jar build/release-artifact/
           java -jar tooling/build/libs/minimpos-tooling.jar release manifest --artifact build/release-artifact \
-            --commit "$COMMIT" --run-id "$RUN_ID" --run-attempt "$RUN_ATTEMPT"
+              --commit "$COMMIT" --run-id "$RUN_ID" --run-attempt "$RUN_ATTEMPT"
           {
-            echo "run=$RUN_ID"
-            echo "attempt=$RUN_ATTEMPT"
+              printf '%s\n' "run=$RUN_ID"
+              printf '%s\n' "attempt=$RUN_ATTEMPT"
           } >> "$GITHUB_OUTPUT"
 
       - name: Upload unsigned release artifact
@@ -227,9 +227,9 @@ jobs:
           RUN_ATTEMPT: ${{ needs.prepare.outputs.attempt || needs.ci.outputs.attempt }}
         run: |
           gh run download "$RUN_ID" --repo "$REPOSITORY" --name "release-$COMMIT-$RUN_ATTEMPT" \
-            --dir "$RUNNER_TEMP/release-artifact"
+              --dir "$RUNNER_TEMP/release-artifact"
           java -jar "$RUNNER_TEMP/release-artifact/minimpos-tooling.jar" release verify --artifact "$RUNNER_TEMP/release-artifact" \
-            --commit "$COMMIT" --run-id "$RUN_ID" --run-attempt "$RUN_ATTEMPT"
+              --commit "$COMMIT" --run-id "$RUN_ID" --run-attempt "$RUN_ATTEMPT"
           test "$(git ls-remote origin refs/heads/main | cut -f1)" = "$COMMIT"
 
       - name: Sign and verify the CI-built APK
@@ -240,23 +240,23 @@ jobs:
           CODE: ${{ needs.prepare.outputs.code }}
         run: |
           umask 077
-          if [ -z "$RELEASE_KEYSTORE" ] || [ -z "$RELEASE_SIGNING_PROPERTIES" ]; then
-            echo "::error::The release environment needs the RELEASE_KEYSTORE and RELEASE_SIGNING_PROPERTIES secrets"
-            exit 1
+          if [[ -z "$RELEASE_KEYSTORE" ]] || [[ -z "$RELEASE_SIGNING_PROPERTIES" ]]; then
+              printf '%s\n' "::error::The release environment needs the RELEASE_KEYSTORE and RELEASE_SIGNING_PROPERTIES secrets"
+              exit 1
           fi
           tools=$(printf '%s\n' "$ANDROID_HOME"/build-tools/* | sort -V | tail -n 1)
           apk="$RUNNER_TEMP/release-artifact/app-release-unsigned.apk"
-          "$tools/aapt" dump badging "$apk" \
-            | grep -F "package: name='app.minimpos' versionCode='$CODE' versionName='$VERSION'"
+          "$tools/aapt" dump badging "$apk" |
+              grep -F "package: name='app.minimpos' versionCode='$CODE' versionName='$VERSION'"
           printf '%s' "$RELEASE_KEYSTORE" | base64 --decode > "$RUNNER_TEMP/release.jks"
           printf '%s' "$RELEASE_SIGNING_PROPERTIES" > "$RUNNER_TEMP/signing.properties"
           # Use Java's same .properties parser as Gradle; never print or shell-evaluate secret values.
           java -jar "$RUNNER_TEMP/release-artifact/minimpos-tooling.jar" signing "$RUNNER_TEMP"
           "$tools/zipalign" -c -P 16 -v 4 "$apk"
           "$tools/apksigner" sign --ks "$RUNNER_TEMP/release.jks" \
-            --ks-key-alias "$(cat "$RUNNER_TEMP/keyAlias")" \
-            --ks-pass "file:$RUNNER_TEMP/storePassword" --key-pass "file:$RUNNER_TEMP/keyPassword" \
-            --out "$RUNNER_TEMP/minimpos-$VERSION.apk" "$apk"
+              --ks-key-alias "$(cat "$RUNNER_TEMP/keyAlias")" \
+              --ks-pass "file:$RUNNER_TEMP/storePassword" --key-pass "file:$RUNNER_TEMP/keyPassword" \
+              --out "$RUNNER_TEMP/minimpos-$VERSION.apk" "$apk"
           "$tools/apksigner" verify --verbose --print-certs "$RUNNER_TEMP/minimpos-$VERSION.apk" | grep -v '^WARNING'
           "$tools/zipalign" -c -P 16 -v 4 "$RUNNER_TEMP/minimpos-$VERSION.apk"
 
@@ -271,7 +271,7 @@ jobs:
           git config user.email "github@adamstiskala.com"
           git tag --annotate "v$VERSION" --message "Mini mPOS $VERSION"
           auth=$(printf 'x-access-token:%s' "$GH_TOKEN" | base64 -w0)
-          echo "::add-mask::$auth"
+          printf '%s\n' "::add-mask::$auth"
           git -c "http.https://github.com/.extraheader=AUTHORIZATION: basic $auth" push origin "refs/tags/v$VERSION"
 
       - name: Publish the GitHub Release
@@ -282,10 +282,10 @@ jobs:
           # The app reads this small metadata asset to compare the release's versionCode with its own.
           java -jar "$RUNNER_TEMP/release-artifact/minimpos-tooling.jar" release update --out "$RUNNER_TEMP/update.json"
           gh release create "v$VERSION" "$RUNNER_TEMP/minimpos-$VERSION.apk" "$RUNNER_TEMP/update.json" \
-            --verify-tag --title "Mini mPOS $VERSION" --generate-notes
+              --verify-tag --title "Mini mPOS $VERSION" --generate-notes
 
       - name: Remove signing material
         if: ${{ always() }}
         run: |
           rm -f "$RUNNER_TEMP/release.jks" "$RUNNER_TEMP/signing.properties" \
-            "$RUNNER_TEMP/storePassword" "$RUNNER_TEMP/keyAlias" "$RUNNER_TEMP/keyPassword"
+              "$RUNNER_TEMP/storePassword" "$RUNNER_TEMP/keyAlias" "$RUNNER_TEMP/keyPassword"

@@ -47,7 +47,7 @@ class CiScriptTest {
         Files.copy(Path.of(System.getProperty("minimpos.repository")).resolve("scripts/ci"), scripts.resolve("ci"))
         Files.writeString(
             root.resolve("gradlew"),
-            """#!/bin/bash
+            """#!/usr/bin/env bash
             |printf '%s\n' "${'$'}*" >> "${'$'}CALLS"
             |case "${'$'}1" in
             |  qualityGate) exit "${'$'}GATE_EXIT" ;;

@@ -71,7 +71,7 @@ class ReleaseReuseTest {
         val bin = Files.createDirectory(root.resolve("bin"))
         Files.writeString(
             bin.resolve("gh"),
-            """#!/bin/bash
+            """#!/usr/bin/env bash
             |set -euo pipefail
             |case "${'$'}1:${'$'}2" in
             |  api:--method)

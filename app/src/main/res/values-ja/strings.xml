@@ -771,11 +771,17 @@
   <string name="settings_forget_payments_app_key_message">支払いは続けられますが、キーを再入力するまでこのスマートフォンの再設定や削除はできません。</string>
   <string name="settings_payments_app_setup_checked">設定項目を確認しました。Paymentsアプリは接続確認で共有キーをテストできません。</string>
 
+  <!-- Settings: help and troubleshooting -->
+  <string name="settings_help">ヘルプとトラブルシューティング</string>
+  <string name="settings_help_summary">ガイド、問題の報告、トラブルシューティングの詳細</string>
+  <string name="help_user_guide">ユーザーガイド</string>
+  <string name="help_troubleshooting">トラブルシューティングガイド</string>
+  <string name="help_report_issue">問題を報告</string>
+
   <!-- Tap to Pay troubleshooting -->
   <string name="tap_details">トラブルシューティングの詳細</string>
   <string name="tap_share_report">機密情報を除いたレポートを共有</string>
   <string name="tap_report_notice">自由記述のメッセージ、キー、トークン、コールバック URL、買い物客のデータは含まれません。共有前に内容を確認してください。自動送信は行いません。</string>
-  <string name="tap_credential_saved">認証情報を保存済みです。保存だけでは決済の準備完了を意味しません。</string>
   <string name="tap_credential_verified">確認済みの認証情報：%1$s</string>
   <string name="tap_credential_inactive">この認証情報は無効です。</string>
   <string name="tap_key_present">クライアントキーがあります。決済の動作を保証するものではありません。</string>
@@ -790,13 +796,9 @@
   <string name="tap_not_boarded">Payments app は未登録と応答しました。</string>
   <string name="tap_boarding_unverified">Payments app の登録状況を確認できませんでした。</string>
   <string name="tap_boarding_unchecked">Payments app の登録状況は未確認です。</string>
-  <string name="tap_current_credential">登録に使用した認証情報</string>
-  <string name="tap_checklist">クライアントキーの確認手順：\n1. 対応する TEST または LIVE 環境の Adyen Customer Area を開きます。\n2. 「Developers → API credentials」に移動します。\n3. %1$s を選択します。登録に使用したものと同じ認証情報である必要があります。\n4. 「Client settings → Authentication → Client key」で、キーがない場合のみ生成します。\n5. 変更を保存し、反映まで数分待ってから戻り、再確認します。\n\nクライアントキーは API キーとは異なります。Mini mPOS に貼り付ける必要はありません。このネイティブ Tap to Pay の前提条件を満たすだけなら Allowed origins は不要です。トラブルシューティングのために既存のクライアントキーを再生成したり、API キーをローテーションしたりしないでください。</string>
-  <string name="tap_open_customer_area">%1$s Customer Area を開く</string>
   <string name="tap_check_time">認証情報の確認日時（UTC）：%1$s</string>
   <string name="tap_boarding_time">登録状況の確認日時（UTC）：%1$s</string>
   <string name="tap_unavailable">Payments app はリクエストを完了できませんでした。このエラーには複数の原因があり、障害やクライアントキー不足とは断定できません。設定と利用可能な診断情報を確認してください。</string>
-  <string name="tap_session_failure">1029_605 はセッション関連のエラーであり、クライアントキー不足の証拠ではありません。</string>
   <string name="tap_boarding_credential">記録された登録用の認証情報：%1$s</string>
   <string name="tap_boarding_unmatched">現在の認証情報と記録された登録用の認証情報の一致は確認できません。クライアントキーの問題解決には登録時の認証情報を使ってください。</string>
 

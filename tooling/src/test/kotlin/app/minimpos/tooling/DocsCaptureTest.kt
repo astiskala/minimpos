@@ -159,7 +159,7 @@ class DocsCaptureTest {
         Files
             .writeString(
                 tools.resolve("adb"),
-                """#!/bin/bash
+                """#!/usr/bin/env bash
             |set -eu
             |shift 2
             |printf '%s\n' "${'$'}*" >> "${'$'}FIXTURE/calls"

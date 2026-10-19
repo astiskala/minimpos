@@ -52,7 +52,7 @@ jobs:
           cp app/build/outputs/apk/release/app-release-unsigned.apk build/release-artifact/
           cp tooling/build/libs/minimpos-tooling.jar build/release-artifact/
           java -jar tooling/build/libs/minimpos-tooling.jar release manifest --artifact build/release-artifact \
-            --commit "$COMMIT" --run-id "$RUN_ID" --run-attempt "$RUN_ATTEMPT"
+              --commit "$COMMIT" --run-id "$RUN_ID" --run-attempt "$RUN_ATTEMPT"
 
       - name: Upload unsigned release artifact
         if: ${{ github.ref == 'refs/heads/main' && github.event_name != 'pull_request' }}

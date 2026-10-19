@@ -227,6 +227,22 @@ they require a backend for certificates, a private Maven repository, PCI MPoC an
   see [repository constraints](AGENTS.md).
 - New-install localized/regional defaults must not overwrite stored text or imported settings.
 
+### Shell scripts
+
+Maintained shell scripts use `#!/usr/bin/env bash` so direct execution and `bash scripts/…` both select Bash from
+`PATH`. Keep them compatible with macOS's bundled Bash 3.2 and Linux. Generated Gradle wrappers retain their upstream
+POSIX `sh` and Windows syntax.
+
+Use four-space indentation, `[[ … ]]` for Bash conditionals, arrays for command arguments and quoted expansions outside
+assignments and conditionals. Prefer `printf` with a fixed format for messages. Resolve checkout paths with
+`CDPATH='' cd -- …` so a caller's directory-search settings cannot affect them. Use `set -euo pipefail` unless the
+script deliberately handles failures itself, as the Gradle and development runners do to preserve exit statuses.
+The workflow shell blocks follow the same formatting and syntax conventions.
+
+Format maintained scripts with `shfmt -w -i 4 -ci -sr scripts/*`. ShellCheck and actionlint are part of the full gate;
+`tooling` tests cover argument quoting, failure propagation, signals and the docs/release helpers without real devices
+or publication.
+
 ## Website and screenshots
 
 The Pages workflow validates the website before publishing `docs/` unchanged. It runs on website, helper-contract,
@@ -253,6 +269,21 @@ own language's captures. Screenshots must match their original terminal frames: 
 Do not crop or stretch to fit,
 label screenshots as demos, and keep demo data consistent. The guides' SMTP links must match
 `SmtpProvider.helpUrl`; verify provider requirements when changing the list.
+
+### Logo and Android icons
+
+[`docs/favicon.svg`](docs/favicon.svg) is the logo source, with the app's primary green (`#00843F`) as its opaque
+background. The website rounds its corners in CSS. The Android vector foreground preserves the artwork on a 108 dp
+canvas, mapping the source's 512-unit square into the central 66 dp so every stroke stays inside the safe circle.
+The same white foreground supplies the themed monochrome layer. Keep the application icon as density-specific PNGs
+for Adyen's Customer Area, with 25% rounded corners; only the launcher activity uses the adaptive icon.
+
+[`app/src/main/ic_launcher-playstore.png`](app/src/main/ic_launcher-playstore.png) is the separate store asset:
+512×512, 32-bit sRGB PNG, opaque square background, no corner mask or shadow, following
+[Google Play's specifications](https://developer.android.com/distribute/google-play/resources/icon-design-specifications).
+When changing the SVG, re-export this asset and the 48/72/96/144/192 px application PNGs, update the vector paths and
+regenerate all four social previews with `scripts/docs-assets social`. App screenshots need recapturing only if their
+visible content changes.
 
 ### Repeatable screenshot refresh
 

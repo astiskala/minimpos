@@ -22,7 +22,7 @@ import app.minimpos.app.data.settings.MerchantCopyPolicy
 import app.minimpos.app.data.settings.PrinterMode
 import app.minimpos.app.data.settings.ReceiptSettings
 import app.minimpos.app.feature.GatedButton
-import app.minimpos.app.feature.OutcomeMessage
+import app.minimpos.app.feature.OutcomeDialog
 import app.minimpos.app.ui.components.LocalAppContainer
 import app.minimpos.app.ui.components.ReceiptPreview
 import app.minimpos.app.ui.components.SectionHeader
@@ -37,6 +37,9 @@ internal fun ColumnScope.ReceiptsSection(
     events: SettingsEvents,
 ) {
     val receipt = state.settings.receipt
+    val terminal by LocalAppContainer.current.terminalStatus.state
+        .collectAsStateWithLifecycle()
+    val printBlocked = stringResource(R.string.settings_unavailable_tap_to_pay).takeUnless { terminal.capabilities.supportsPrinting }
 
     fun update(transform: (ReceiptSettings) -> ReceiptSettings) = events.onUpdate { it.copy(receipt = transform(it.receipt)) }
     ReceiptBusinessImport(businessImport, events.businessImport)
@@ -52,13 +55,11 @@ internal fun ColumnScope.ReceiptsSection(
         { value -> update { it.copy(showRefundQr = value) } },
         subtitle = stringResource(R.string.settings_show_qr_hint),
     )
-    ReceiptPrintingSettings(receipt, ::update)
+    ReceiptPrintingSettings(receipt, printBlocked, ::update)
     SectionHeader(stringResource(R.string.settings_preview))
     state.sampleReceipt?.let { document ->
         Box(Modifier.fillMaxWidth().padding(16.dp), contentAlignment = Alignment.Center) { ReceiptPreview(document) }
     }
-    val terminal by LocalAppContainer.current.terminalStatus.state
-        .collectAsStateWithLifecycle()
     SettingActions {
         GatedButton(
             stringResource(R.string.settings_print_test),
@@ -69,8 +70,8 @@ internal fun ColumnScope.ReceiptsSection(
             requiresSetup = true,
             modifier = Modifier.testTag("printTest"),
         )
-        OutcomeMessage(actions.print)
     }
+    OutcomeDialog(R.string.settings_print_test, actions.print, "testPrintResult") { events.onTestResultDismiss(SettingsResult.PRINT) }
 }
 
 @Composable
@@ -138,6 +139,7 @@ private fun ColumnScope.ReceiptTextSettings(
 @Composable
 private fun ColumnScope.ReceiptPrintingSettings(
     receipt: ReceiptSettings,
+    blocked: String?,
     update: ((ReceiptSettings) -> ReceiptSettings) -> Unit,
 ) {
     SectionHeader(stringResource(R.string.settings_printing))
@@ -152,10 +154,12 @@ private fun ColumnScope.ReceiptPrintingSettings(
         selected = receipt.printerMode,
         onSelect = { mode -> update { it.copy(printerMode = mode) } },
         subtitle = stringResource(R.string.settings_printer_hint),
+        tag = "receiptPrinter",
+        blocked = blocked,
     )
     SettingSwitch(stringResource(R.string.settings_auto_print), receipt.autoPrint, { value ->
         update { it.copy(autoPrint = value) }
-    }, subtitle = stringResource(R.string.settings_auto_print_hint), tag = "autoPrint")
+    }, subtitle = stringResource(R.string.settings_auto_print_hint), tag = "autoPrint", blocked = blocked)
     SettingChoice(
         title = stringResource(R.string.settings_merchant_copy),
         options =
@@ -167,6 +171,8 @@ private fun ColumnScope.ReceiptPrintingSettings(
         selected = receipt.merchantCopy,
         onSelect = { policy -> update { it.copy(merchantCopy = policy) } },
         subtitle = stringResource(R.string.settings_merchant_copy_hint),
+        tag = "merchantCopy",
+        blocked = blocked,
     )
     SettingNumberField(
         stringResource(R.string.settings_chars_per_line),
@@ -174,5 +180,6 @@ private fun ColumnScope.ReceiptPrintingSettings(
         ReceiptSettings.CHARS_PER_LINE,
         { chars -> update { it.copy(charsPerLine = chars) } },
         supporting = stringResource(R.string.settings_chars_per_line_hint),
+        tag = "charsPerLine",
     )
 }

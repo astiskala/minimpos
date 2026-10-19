@@ -68,12 +68,15 @@ import app.minimpos.app.data.settings.SimulatorSettings
 import app.minimpos.app.data.settings.TerminalMode
 import app.minimpos.app.feature.ActionState
 import app.minimpos.app.feature.GatedButton
+import app.minimpos.app.feature.OutcomeDialog
+import app.minimpos.app.feature.labels
 import app.minimpos.app.feature.lock.SetPinScreen
 import app.minimpos.app.feature.text
 import app.minimpos.app.feature.walletCheckFailed
 import app.minimpos.app.terminal.DestinationRules
 import app.minimpos.app.terminal.ReceiptBusiness
 import app.minimpos.app.terminal.SharedKeyOffer
+import app.minimpos.app.terminal.TapToPayCheck
 import app.minimpos.app.terminal.TerminalConnection
 import app.minimpos.app.terminal.TerminalSetupPlan
 import app.minimpos.app.terminal.TerminalState
@@ -162,7 +165,7 @@ internal interface SettingsEvents {
     )
 
     /** Closes the dialog showing [test]'s result ([SettingsViewModel.dismissTestResult]). */
-    fun onTestResultDismiss(test: SettingsTest)
+    fun onTestResultDismiss(test: SettingsResult)
 
     /** Store selection and receipt-business confirmation callbacks. */
     val businessImport: ReceiptBusinessEvents
@@ -230,6 +233,12 @@ internal interface TerminalSetupEvents {
     /** Removes this phone's Payments app instance ([TerminalSetupViewModel.removeTapToPay]). */
     fun onTapToPayRemove()
 
+    /** Prepares an explicitly requested redacted report. */
+    fun onTapToPayReport()
+
+    /** Consumes the pending report share. */
+    fun onTapReportShared()
+
     /** Closes the dialog showing [result] ([TerminalSetupViewModel.dismissResult]). */
     fun onResultDismiss(result: SetupResult)
 }
@@ -272,7 +281,7 @@ private fun settingsEvents(
             test: SettingsTest,
         ) = settings.saveAndTest(secret, value, test)
 
-        override fun onTestResultDismiss(test: SettingsTest) = settings.dismissTestResult(test)
+        override fun onTestResultDismiss(test: SettingsResult) = settings.dismissTestResult(test)
 
         override val businessImport =
             object : ReceiptBusinessEvents {
@@ -325,6 +334,10 @@ private fun terminalSetupEvents(setup: TerminalSetupViewModel): TerminalSetupEve
         ) = setup.setUpTapToPay(apiKey, again)
 
         override fun onTapToPayRemove() = setup.removeTapToPay()
+
+        override fun onTapToPayReport() = setup.reportTapToPay()
+
+        override fun onTapReportShared() = setup.reportShared()
 
         override fun onResultDismiss(result: SetupResult) = setup.dismissResult(result)
     }
@@ -568,7 +581,9 @@ private fun ColumnScope.CapabilitiesSectionScreen(payment: PaymentSettings) {
     val actions by vm.actions.collectAsStateWithLifecycle()
     val events = remember(vm) { capabilitiesEvents(vm) }
     val currency = LocalAppContainer.current.currency(AppSettings(payment = payment)).code
-    CapabilitiesSection(capabilities, actions, payment, currency, events)
+    val terminal by LocalAppContainer.current.terminalStatus.state
+        .collectAsStateWithLifecycle()
+    CapabilitiesSection(capabilities, actions, payment, currency, terminal.printingStanding, terminal.receiptSharingStanding, events)
 }
 
 @Composable
@@ -633,6 +648,8 @@ private fun ColumnScope.SettingsContent(
     onSetPin: (Boolean) -> Unit,
     content: @Composable ColumnScope.() -> Unit,
 ) {
+    val terminal by LocalAppContainer.current.terminalStatus.state
+        .collectAsStateWithLifecycle()
     when (section) {
         SettingsSections.TERMINAL -> {
             TerminalSection(state, actions, setup, events, setupEvents, navigator)
@@ -647,15 +664,15 @@ private fun ColumnScope.SettingsContent(
         }
 
         SettingsSections.PAYMENTS -> {
-            PaymentsSection(state, events)
+            PaymentsSection(state, terminal.capabilities, events)
         }
 
         SettingsSections.TIPPING -> {
-            TippingSection(state.settings.payment, events::onPaymentUpdate)
+            TippingSection(state.settings.payment, terminal.capabilities, events::onPaymentUpdate)
         }
 
         SettingsSections.SHOPPER_DISPLAY -> {
-            ShopperDisplaySection(state.settings.payment, state.settings.emailReceiptsReady, events::onPaymentUpdate)
+            ShopperDisplaySection(state.settings.payment, state.settings.emailReceiptsReady, terminal.capabilities, events::onPaymentUpdate)
         }
 
         SettingsSections.TAX -> {
@@ -806,11 +823,11 @@ private fun TerminalResults(
 ) {
     when {
         actions.connection.outcome != null -> {
-            ConnectionResultDialog(actions.connection, actions.api, status, state.settings, events::onTestResultDismiss)
+            ConnectionResultDialog(actions.connection, actions.api, status, state.settings, setup.diagnostics, events::onTestResultDismiss)
         }
 
         actions.api.outcome != null -> {
-            OutcomeDialog(R.string.settings_api, actions.api, "apiResult") { events.onTestResultDismiss(SettingsTest.API) }
+            OutcomeDialog(R.string.settings_api, actions.api, "apiResult") { events.onTestResultDismiss(SettingsResult.API) }
         }
 
         setup.terminals.outcome != null -> {
@@ -831,18 +848,6 @@ private fun TerminalResults(
             }
         }
     }
-}
-
-/** [state]'s outcome in a [ResultDialog] titled [title], tagged [tag]; nothing while there is none. */
-@Composable
-private fun OutcomeDialog(
-    @StringRes title: Int,
-    state: ActionState,
-    tag: String,
-    onDismiss: () -> Unit,
-) {
-    val outcome = state.outcome ?: return
-    ResultDialog(stringResource(title), outcome.text(), state.isError, tag, onDismiss)
 }
 
 @Composable
@@ -969,7 +974,8 @@ private fun ConnectionResultDialog(
     api: ActionState,
     status: TerminalState,
     settings: AppSettings,
-    onDismiss: (SettingsTest) -> Unit,
+    phone: TapToPayCheck,
+    onDismiss: (SettingsResult) -> Unit,
 ) {
     val outcome = connection.outcome ?: return
     val isError = connection.isError
@@ -996,12 +1002,13 @@ private fun ConnectionResultDialog(
                 automaticCurrency?.let { stringResource(R.string.settings_connection_currency, it) },
             )
         }
+    val phoneLabels = phone.takeIf { status.mode == TerminalMode.PAYMENTS_APP && it.environment != null }?.labels()
     ResultDialog(
         title = stringResource(if (isError) R.string.settings_connection_result_failed else R.string.settings_connection_ok),
-        message = (listOf(outcome.text()) + details).joinToString("\n"),
+        message = (listOf(outcome.text()) + details + listOfNotNull(phoneLabels?.clientKey, phoneLabels?.boarding)).joinToString("\n"),
         isError = isError,
         tag = "connectionResult",
-        onDismiss = { onDismiss(if (apiOutcome != null) SettingsTest.CLOUD else SettingsTest.CONNECTION) },
+        onDismiss = { onDismiss(if (apiOutcome != null) SettingsResult.CLOUD else SettingsResult.CONNECTION) },
     )
 }
 

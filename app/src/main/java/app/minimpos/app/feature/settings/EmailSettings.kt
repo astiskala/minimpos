@@ -23,7 +23,7 @@ import app.minimpos.app.data.settings.EmailSettings
 import app.minimpos.app.data.settings.PaymentSettings
 import app.minimpos.app.data.settings.ShopperReferenceSource
 import app.minimpos.app.feature.GatedButton
-import app.minimpos.app.feature.OutcomeMessage
+import app.minimpos.app.feature.OutcomeDialog
 import app.minimpos.app.feature.text
 import app.minimpos.app.ui.components.LocalAppContainer
 import app.minimpos.app.ui.components.SectionHeader
@@ -63,8 +63,8 @@ internal fun ColumnScope.EmailSection(
             icon = Icons.Default.Email,
             modifier = Modifier.testTag("sendTestEmail"),
         )
-        OutcomeMessage(actions.email)
     }
+    OutcomeDialog(R.string.settings_send_test, actions.email, "testEmailResult") { events.onTestResultDismiss(SettingsResult.EMAIL) }
     if (askRecipient) {
         TextInputDialog(
             title = stringResource(R.string.settings_send_test),

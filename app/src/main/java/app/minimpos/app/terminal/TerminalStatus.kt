@@ -37,6 +37,7 @@ import kotlinx.coroutines.launch
  * @property capabilities What the destination can do and asks of its setup, see [TerminalSetup.capabilities].
  * @property connectionProblem What must still be entered before the destination can be reached at all (printing,
  *   refunds, connection checks), from [TerminalSetup.connectionProblem]; null when nothing is missing.
+ * @property printingStanding Printing readiness from destination support, known hardware and local preferences.
  */
 data class TerminalState(
     val loaded: Boolean = false,
@@ -53,6 +54,7 @@ data class TerminalState(
     val importPending: Boolean = false,
     val capabilities: DestinationCapabilities = DestinationCapabilities(),
     val connectionProblem: SetupProblem? = null,
+    val printingStanding: CapabilityStanding = CapabilityStanding.NEEDS_CONFIGURATION,
 ) {
     /**
      * Why printing cannot be tried now: what the destination still needs, else [SetupProblem.PRINTER] while printing is
@@ -71,6 +73,10 @@ data class TerminalState(
      * Adyen terminal, which has no apps to share with (it emails instead).
      */
     val canShare: Boolean get() = !onTerminal
+
+    /** Receipt sharing needs another app on this device; Adyen terminals use email instead. */
+    val receiptSharingStanding: CapabilityStanding
+        get() = if (canShare) CapabilityStanding.AVAILABLE else CapabilityStanding.UNSUPPORTED
 
     /** What must still be entered before the Checkout API can be used ([ApiSetup.problem]); null when nothing is. */
     val apiProblem: SetupProblem? get() = apiSetup.problem
@@ -95,6 +101,7 @@ data class TerminalState(
  * @param scope Keeps [state] up to date, runs background checks and forwards detections to [TerminalSetupSource.remember].
  * @param verifyApi Checks the exact unlocked candidate's credential and account when its cached verification is invalid.
  * @param verifyPhone Confirms existing phone registration against the candidate account/store; never registers automatically.
+ * @param inspectPhone Refreshes advisory boarding-credential and app-status diagnostics only on an explicit connection test.
  */
 class TerminalStatus(
     private val setups: TerminalSetupSource,
@@ -102,6 +109,7 @@ class TerminalStatus(
     private val scope: CoroutineScope,
     private val verifyApi: suspend (UnlockedSetup) -> ApiCheck,
     private val verifyPhone: suspend (TerminalSetup) -> TapToPayOutcome,
+    private val inspectPhone: suspend () -> Unit,
 ) {
     private val connection = MutableStateFlow<TerminalConnection>(TerminalConnection.Unknown)
 
@@ -123,6 +131,7 @@ class TerminalStatus(
                 importPending = setup.importPending,
                 capabilities = setup.capabilities,
                 connectionProblem = setup.connectionProblem,
+                printingStanding = setup.printingStanding(printers),
             )
         }.stateIn(scope, SharingStarted.Eagerly, TerminalState())
 
@@ -153,10 +162,16 @@ class TerminalStatus(
         }
     }
 
-    /** Checks the connection now with the stored settings, publishes the result in [state] and returns it. */
-    suspend fun check(): TerminalConnection {
+    /**
+     * Checks the stored connection, publishes the result in [state] and returns it.
+     * [includeDiagnostics] adds advisory Payments app checks for an explicit Test connection action; background checks
+     * leave it false, so ordinary status updates never open the Payments app or require Management permissions.
+     */
+    suspend fun check(includeDiagnostics: Boolean = false): TerminalConnection {
         connection.value = TerminalConnection.Checking
         val result = if (setups.current().importPending) TerminalConnection.NotSetUp(SetupProblem.TRANSFER_PENDING) else checkActive()
+        val actual = setups.current()
+        if (includeDiagnostics && actual.boardsPhone && !actual.importPending) inspectPhone()
         connection.value = result
         return result
     }

@@ -26,6 +26,22 @@ import javax.xml.parsers.DocumentBuilderFactory
 @Config(qualifiers = "ja-rJP")
 class LocalizationTest {
     @Test
+    fun `Tap to Pay troubleshooting strings stay beside terminal setup in every language`() {
+        listOf("values", "values-ja", "values-zh-rCN", "values-b+zh+Hant").forEach { folder ->
+            val names = resourceEntries(folder).keys.toList()
+            val setup = names.indexOf("string:settings_payments_app_setup_checked")
+            val capabilities = names.indexOf("string:capabilities_intro")
+            val diagnostics = names.filter { it.startsWith("string:tap_") }
+            assertThat(diagnostics).isNotEmpty()
+            diagnostics.forEach { name ->
+                assertWithMessage("$folder/$name follows Tap to Pay setup").that(names.indexOf(name)).isGreaterThan(setup)
+                assertWithMessage("$folder/$name precedes capabilities").that(names.indexOf(name)).isLessThan(capabilities)
+            }
+            assertThat(names).containsNoneOf("string:tap_check", "string:tap_check_again")
+        }
+    }
+
+    @Test
     fun `application identity uses the owned domain and keeps the display name`() {
         assertThat(BuildConfig.APPLICATION_ID).isEqualTo("app.minimpos")
         assertThat(RuntimeEnvironment.getApplication().packageName).isEqualTo("app.minimpos")

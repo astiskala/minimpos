@@ -2,6 +2,7 @@ package app.minimpos.app.terminal
 
 import android.app.LocaleManager
 import android.content.Context
+import android.content.pm.PackageManager
 import android.content.res.Resources
 import android.os.Build
 import android.provider.Settings
@@ -48,6 +49,9 @@ interface DeviceInfo {
     /** Whether this is an Adyen terminal, which is decided by a POIID having been detected. */
     val isAdyenTerminal: Boolean get() = detectedPoiId != null
 
+    /** Whether Android reports a device camera; reading this never requests camera permission or opens the camera. */
+    val hasCamera: Boolean get() = false
+
     /**
      * The device's country (ISO 3166-1 alpha-2, possibly empty), which picks the Cloud device API's data centre and the
      * tax a new installation starts with.
@@ -59,6 +63,9 @@ interface DeviceInfo {
      * the Payments app can be installed while the app runs.
      */
     val paymentsApps: Set<TerminalEnvironment> get() = emptySet()
+
+    /** Installed Payments app version from Android package metadata; null when unavailable or not visible. */
+    fun paymentsAppVersion(environment: TerminalEnvironment): String? = null
 }
 
 /**
@@ -75,6 +82,7 @@ class AndroidDeviceInfo(
             ?.takeIf { POI_ID.matches(it) }
     override val model: String = Build.MODEL.orEmpty()
     override val osVersion: String = Build.VERSION.RELEASE.orEmpty()
+    override val hasCamera: Boolean get() = context.packageManager.hasSystemFeature(PackageManager.FEATURE_CAMERA_ANY)
     override val country: String
         get() {
             val locales =
@@ -92,6 +100,13 @@ class AndroidDeviceInfo(
             TerminalEnvironment.entries
                 .filter { context.packageManager.getLaunchIntentForPackage(PaymentsAppLinks.packageName(it)) != null }
                 .toSet()
+
+    override fun paymentsAppVersion(environment: TerminalEnvironment): String? =
+        try {
+            context.packageManager.getPackageInfo(PaymentsAppLinks.packageName(environment), 0).versionName
+        } catch (ignored: PackageManager.NameNotFoundException) {
+            null
+        }
 
     /** The POIID format. */
     companion object {

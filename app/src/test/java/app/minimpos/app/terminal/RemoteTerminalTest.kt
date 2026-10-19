@@ -236,14 +236,17 @@ class RemoteTerminalTest {
     }
 
     @Test
-    fun `a Payments app boarded elsewhere is boarded here, and a failed reboarding forgets the installation`() {
+    fun `a Payments app boarded elsewhere needs explicit reboarding, and a failed reboarding forgets the installation`() {
         useTapToPay()
         await { container.secrets.set(Secret.ADYEN_API_KEY, "key") }
         await { container.secrets.set(Secret.PAYMENTS_APP_API_KEY, "pa-key") }
         paymentsApp.boarded = true
         management.result = ManagementResult.Done("BT-1", FakePaymentsApp.INSTALLATION_ID)
         management.registrationResult = ManagementResult.NotBoarded
-        assertThat(await { container.tapToPay.board() }).isEqualTo(TapToPayOutcome.Boarded(FakePaymentsApp.INSTALLATION_ID))
+        assertThat(await { container.tapToPay.board() }).isEqualTo(TapToPayOutcome.NotSetUp(SetupProblem.PAYMENTS_APP_NOT_BOARDED))
+        assertThat(management.requests).isEmpty()
+        assertThat(paymentsApp.opened).hasSize(1)
+        assertThat(await { container.tapToPay.board(reboard = true) }).isEqualTo(TapToPayOutcome.Boarded(FakePaymentsApp.INSTALLATION_ID))
         assertThat(paymentsApp.opened.map { it.substringBefore('?') to ("reboard=true" in it) })
             .containsExactly(
                 "https://www.adyen.com/test/boarded" to false,

@@ -2,6 +2,7 @@ package app.minimpos.terminal.transport
 
 import com.adyen.model.checkout.JSON
 import com.adyen.model.management.DefaultErrorResponseEntity
+import com.adyen.model.management.MeApiCredential
 import com.adyen.model.management.TerminalSettings
 import com.fasterxml.jackson.annotation.JsonIncludeProperties
 import com.fasterxml.jackson.core.JsonParser
@@ -82,6 +83,28 @@ internal fun <T> decodeAdyenModel(
     text: String,
     type: Class<T>,
 ): T? = runCatching { apiMapper.readValue(text, type) }.getOrNull()
+
+private val credentialMapper =
+    apiMapper.copy().registerModule(
+        SimpleModule().addDeserializer(
+            String::class.java,
+            object : JsonDeserializer<String>() {
+                override fun deserialize(
+                    parser: JsonParser,
+                    context: DeserializationContext,
+                ): String {
+                    if (parser.currentToken != JsonToken.VALUE_STRING) {
+                        throw JsonMappingException.from(parser, "Expected a credential string")
+                    }
+                    return parser.text
+                }
+            },
+        ),
+    )
+
+/** Reads Management v1's documented credential schema without coercing invalid diagnostic fields into missing keys. */
+internal fun decodeMeCredential(text: String): MeApiCredential? =
+    runCatching { credentialMapper.readValue(text, MeApiCredential::class.java) }.getOrNull()
 
 @JsonIncludeProperties("nexo")
 private interface NexoSettings

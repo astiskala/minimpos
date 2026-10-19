@@ -28,6 +28,7 @@ import app.minimpos.app.ui.components.BottomActions
 import app.minimpos.app.ui.components.EmailReceiptDialog
 import app.minimpos.app.ui.components.PrimaryButton
 import app.minimpos.app.ui.components.ReceiptPreview
+import app.minimpos.app.ui.components.ResultDialog
 import app.minimpos.app.ui.components.SecondaryButton
 import app.minimpos.app.ui.components.currentSetupGate
 import app.minimpos.app.ui.theme.LocalDimens
@@ -147,14 +148,15 @@ fun ColumnScope.ReceiptToggle(
 }
 
 /**
- * "Check again" for a transaction whose outcome is unknown, asked the way it was sent, and why the last check could
- * not establish it ([TransactionActionsState.stillUnknown]). Never held back by the setup gate: an unfinished
- * operation must stay recoverable. Tagged `checkAgain`.
+ * "Check again" for an unknown outcome, asked the way it was sent. An unresolved answer opens a dismissible result
+ * popup ([onDismiss]); a resolved answer updates the transaction's existing result screen. Never setup-gated:
+ * unfinished operations must stay recoverable. Tagged `checkAgain`.
  */
 @Composable
 fun ColumnScope.StatusCheck(
     state: TransactionActionsState,
     onRecheck: () -> Unit,
+    onDismiss: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     SecondaryButton(
@@ -164,7 +166,9 @@ fun ColumnScope.StatusCheck(
         icon = Icons.Default.Refresh,
         modifier = modifier.testTag("checkAgain"),
     )
-    state.stillUnknown?.let { Text(stillUnconfirmed(it), textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth()) }
+    state.stillUnknown?.let {
+        ResultDialog(stringResource(R.string.result_check_again), stillUnconfirmed(it), true, "statusCheckResult", onDismiss)
+    }
 }
 
 /**

@@ -73,6 +73,7 @@ import app.minimpos.app.terminal.SetupImport
 import app.minimpos.app.terminal.SetupImportChecks
 import app.minimpos.app.terminal.SharedKeySetup
 import app.minimpos.app.terminal.SimulatedTerminal
+import app.minimpos.app.terminal.TapToPayDiagnostics
 import app.minimpos.app.terminal.TapToPaySetup
 import app.minimpos.app.terminal.TerminalGateway
 import app.minimpos.app.terminal.TerminalSetupSource
@@ -327,10 +328,18 @@ class AppContainer(
     private val sharedKeys: SharedKeySetup = SharedKeySetup(terminalSetup, terminalDetails, api::verify, ::financialOperationRunning)
 
     /** Boards (and revokes) the Adyen Payments app on this phone, for Tap to Pay. */
-    val tapToPay = TapToPaySetup(terminalSetup, settings, paymentsAppLinks, paymentsAppManagement) { api.verify() }
+    val tapToPay =
+        TapToPaySetup(
+            terminalSetup,
+            settings,
+            paymentsAppLinks,
+            paymentsAppManagement,
+            TapToPayDiagnostics(terminalSetup, settings, paymentsAppLinks, paymentsAppManagement, appScope),
+        ) { api.verify() }
 
     /** Whether payments and printing can work, for Home, Settings and the receipt screens. */
-    val terminalStatus = TerminalStatus(terminalSetup, gateway, appScope, api::verify, tapToPay::checkSaved)
+    val terminalStatus =
+        TerminalStatus(terminalSetup, gateway, appScope, api::verify, tapToPay::checkSaved) { tapToPay.diagnostics.refresh() }
 
     /** Optional terminal discovery and explicitly confirmed shared-key setup through connection verification. */
     val setupDiscovery =

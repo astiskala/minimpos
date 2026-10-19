@@ -170,7 +170,8 @@ class CapabilityDiscoveryTest {
             it.copy(terminal = conn.copy(merchantAccount = "HarbourCoffeeCOM", poiIdOverride = "S1F2-000158213605014", storeId = "ST1"))
         }
         val state = await { discovery.refresh() }
-        assertThat(state.tippingStanding("AUD", enabledLocally = false)).isEqualTo(CapabilityStanding.AVAILABLE)
+        assertThat(state.tippingStanding("AUD", enabledLocally = false)).isEqualTo(CapabilityStanding.NEEDS_CONFIGURATION)
+        assertThat(state.tippingStanding("AUD", enabledLocally = true)).isEqualTo(CapabilityStanding.AVAILABLE)
         assertThat(state.dccStanding).isEqualTo(CapabilityStanding.NEEDS_CONFIGURATION)
         assertThat(state.surchargeStanding to state.giftCardStanding("AUD"))
             .isEqualTo(CapabilityStanding.AVAILABLE to CapabilityStanding.AVAILABLE)
@@ -293,14 +294,15 @@ class CapabilityDiscoveryTest {
         assertThat(unsupportedState.dccStanding).isEqualTo(CapabilityStanding.UNSUPPORTED)
         assertThat(unsupportedState.givingStanding(true)).isEqualTo(CapabilityStanding.UNSUPPORTED)
         assertThat(unsupportedState.surchargeStanding).isEqualTo(CapabilityStanding.UNSUPPORTED)
-        assertThat(unsupportedState.partialAuthStanding).isEqualTo(CapabilityStanding.AVAILABLE)
+        assertThat(unsupportedState.partialAuthStanding(true)).isEqualTo(CapabilityStanding.AVAILABLE)
         assertThat(unsupportedState.giftCardStanding("AUD")).isEqualTo(CapabilityStanding.UNSUPPORTED)
         assertThat(unsupportedState.motoStanding(true)).isEqualTo(CapabilityStanding.UNSUPPORTED)
         assertThat(unsupportedState.offlineStanding("AUD")).isEqualTo(CapabilityStanding.UNSUPPORTED)
         assertThat(unsupportedState.reconciliationStanding).isEqualTo(CapabilityStanding.UNSUPPORTED)
-        assertThat(unsupportedState.shopperDisplayStanding).isEqualTo(CapabilityStanding.UNSUPPORTED)
-        assertThat(AdyenCapabilitiesState(capabilities = DestinationCapabilities(supportsShopperDisplay = true)).shopperDisplayStanding)
-            .isEqualTo(CapabilityStanding.AVAILABLE)
+        assertThat(unsupportedState.shopperDisplayStanding(true)).isEqualTo(CapabilityStanding.UNSUPPORTED)
+        assertThat(
+            AdyenCapabilitiesState(capabilities = DestinationCapabilities(supportsShopperDisplay = true)).shopperDisplayStanding(true),
+        ).isEqualTo(CapabilityStanding.AVAILABLE)
         assertThat(AdyenCapabilitiesState(capabilities = DestinationCapabilities(supportsTerminalFeatures = true)).givingStanding(false))
             .isEqualTo(CapabilityStanding.NEEDS_CONFIGURATION)
         assertThat(AdyenCapabilitiesState(capabilities = DestinationCapabilities(supportsTerminalFeatures = true)).givingStanding(true))

@@ -616,6 +616,11 @@ class AutomaticSetupTransferTest {
         assertThat(resumed).isInstanceOf(SetupImportOutcome.Committed::class.java)
         assertThat(management.requests).hasSize(1)
         assertThat(phone.opened).hasSize(opened)
+        val evidence = await { env.container.settings.current() }.boardingIdentity
+        assertThat(evidence?.credentialId).isEqualTo("CRED-1")
+        assertThat(evidence?.username).isEqualTo("ws@Company.Test")
+        assertThat(evidence?.installationId).isEqualTo(FakePaymentsApp.INSTALLATION_ID)
+        assertThat(evidence?.environment).isEqualTo(TerminalEnvironment.TEST)
     }
 
     @Test

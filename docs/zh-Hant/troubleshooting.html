@@ -163,6 +163,14 @@
             <div><dt>“同時安裝了 TEST 和 LIVE 版 Adyen Payments 應用程式”</dt>
               <dd><p><span class="fix-label">原因</span>Tap to Pay 只能安裝一個 Payments 應用程式。</p>
                 <p><span class="fix-label">解決</span>解除安裝不用的那個，再完成註冊並輸入共享密鑰。設定檢查通過並不代表測試了銀行卡付款，請完成一筆 TEST 付款。</p></dd></div>
+            <div id="tap-to-pay-check"><dt>Tap to Pay 在出示卡片前傳回 UnavailableService</dt>
+              <dd><p>Payments 應用程式無法完成請求。此通用錯誤不能證明 Adyen 服務中斷或缺少客戶端密鑰。如果收到 <code>1029_605</code>，這表示工作階段相關故障，不能證明缺少密鑰。</p>
+                <p>在<strong>設定 › 終端 › 共享密鑰</strong>點按<strong>測試連接</strong>，展開<strong>疑難排解詳情</strong>。連接測試亦會檢查 Tap to Pay 憑據及註冊狀態。Payments 應用程式的非成功結果頁面亦提供同一測試。憑據已儲存、已驗證、客戶端密鑰檢查、註冊狀態及付款結果互不等同；儲存或註冊不代表付款已準備就緒。</p>
+                <p>選用檢查透過公開的 Adyen Management v1 <a href="https://docs.adyen.com/api-explorer/Management/1/get/me">GET /me</a>，使用<strong>註冊 Payments 應用程式的同一憑據</strong>，而非獨立的 Terminal/Checkout 憑據。此端點允許任何 Management API 角色，但只有 Payments app role 可能不足。無權限時提供手動清單，不阻止付款。不要為診斷而新增廣泛的憑據管理權限。</p>
+                <p>如果確認缺少密鑰，在相應的 <a href="https://ca-test.adyen.com/">TEST Customer Area</a> 或 <a href="https://ca-live.adyen.com/">LIVE Customer Area</a> 中前往“Developers → API credentials”，選擇已驗證的憑據用戶名稱。在“Client settings → Authentication → Client key”下，只在沒有密鑰時產生密鑰。儲存，等候幾分鐘生效，然後再次<strong>測試連接</strong>。參見 <a href="https://docs.adyen.com/point-of-sale/mobile-android/build/payments-app">Adyen Payments 應用程式要求</a>。</p>
+                <p>客戶端密鑰必須屬於註冊所用的同一憑據。它不同於 API 密鑰，亦毋須貼到 Mini mPOS。只為滿足此原生前提不需要 Allowed origins。不要為排解問題而重新產生現有客戶端密鑰或輪換 API 密鑰。</p>
+                <p>沒有註冊憑據記錄的現有安裝實例只能驗證目前設定的憑據，不能確認最初註冊所用的憑據。驗證、權限、網絡或結構錯誤均不表示缺少密鑰。v1 文件規定該欄位為必填字串：空字串確認缺失，缺少欄位或 null 則無法驗證。環境或憑據變更會令快取結果失效；修改後請重新檢查。</p>
+                <p><strong>分享已隱去敏感資料的報告</strong>提供可用的 UTC 時間、環境、帳戶/店舖及安裝 ID、已驗證憑據身份、應用程式/裝置版本、失敗階段、錯誤與追蹤 ID、ServiceID/SaleID。不包含自由文字、密鑰、令牌、回調網址或顧客資料。分享前請檢查；不會自動上載。檢查不會產生密鑰、變更權限、重新註冊、清除資料或重試付款。回調或解碼失敗不等於確認付款失敗；結果不明時，再次收款前請在 Customer Area 核對。</p></dd></div>
             <div id="key-setup"><dt>“新密鑰已儲存。請更新此終端的設定”</dt>
               <dd><p><span class="fix-label">原因</span>加密密鑰已在 Adyen 建立，但終端尚未載入。</p>
                 <p><span class="fix-label">解決</span>在終端上打開 <strong>Admin menu › Config › Update</strong>，然後返回 Mini mPOS 點按<strong>再次檢查</strong>。如果建立中斷，請點按<strong>繼續密鑰設定</strong>，不會建立第二個密鑰。參見<a href="quick-start.html#shared-key-creation">密鑰建立</a>及 <a href="https://docs.adyen.com/point-of-sale/managing-terminals/maintain-performance">Adyen 設定更新指南</a>。</p></dd></div>

@@ -183,7 +183,8 @@ fun SettingSwitch(
 
 /**
  * A single-choice setting: shows the current value, opens a radio list dialog. With [navigationIcon], uses the
- * settings menu's two-line layout and shows [subtitle] inside the dialog instead.
+ * settings menu's two-line layout and shows [subtitle] inside the dialog instead. A [blocked] reason prevents changes
+ * without overwriting the saved selection.
  */
 @Composable
 fun <T : Any> SettingChoice(
@@ -195,51 +196,62 @@ fun <T : Any> SettingChoice(
     subtitle: String? = null,
     tag: String? = null,
     navigationIcon: ImageVector? = null,
+    blocked: String? = null,
 ) {
     var open by rememberSaveable { mutableStateOf(false) }
-    if (navigationIcon != null) {
-        SettingNavRow(
-            navigationIcon,
-            title,
-            options.firstOrNull { it.first == selected }?.second.orEmpty(),
-            { open = true },
-            modifier,
-            tag,
-        )
-    } else {
-        Row(
-            modifier
-                .fillMaxWidth()
-                .clickable {
-                    open = true
-                }.padding(horizontal = LocalDimens.current.rowHorizontalPadding, vertical = LocalDimens.current.rowPadding)
-                .tagged(tag),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Column(Modifier.weight(1f)) {
-                Text(title, style = MaterialTheme.typography.bodyLarge)
-                Text(
-                    options.firstOrNull { it.first == selected }?.second.orEmpty(),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.primary,
-                )
-                subtitle?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+    Column(modifier) {
+        if (navigationIcon != null) {
+            SettingNavRow(
+                navigationIcon,
+                title,
+                options.firstOrNull { it.first == selected }?.second.orEmpty(),
+                { open = true },
+                Modifier,
+                tag,
+                enabled = blocked == null,
+            )
+        } else {
+            Row(
+                Modifier
+                    .fillMaxWidth()
+                    .clickable(enabled = blocked == null) {
+                        open = true
+                    }.padding(horizontal = LocalDimens.current.rowHorizontalPadding, vertical = LocalDimens.current.rowPadding)
+                    .tagged(tag),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Column(Modifier.weight(1f)) {
+                    Text(title, style = MaterialTheme.typography.bodyLarge)
+                    Text(
+                        options.firstOrNull { it.first == selected }?.second.orEmpty(),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = if (blocked == null) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    subtitle?.let {
+                        Text(
+                            it,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                }
             }
         }
-    }
-    if (open) {
-        ChoiceDialog(
-            title,
-            options,
-            selected,
-            onSelect = {
-                onSelect(it)
-                open = false
-            },
-            onDismiss = { open = false },
-            note = subtitle.takeIf { navigationIcon != null },
-            tag = tag,
-        )
+        blocked?.let { BlockedReason(it, Modifier.padding(horizontal = LocalDimens.current.rowHorizontalPadding)) }
+        if (open && blocked == null) {
+            ChoiceDialog(
+                title,
+                options,
+                selected,
+                onSelect = {
+                    onSelect(it)
+                    open = false
+                },
+                onDismiss = { open = false },
+                note = subtitle.takeIf { navigationIcon != null },
+                tag = tag,
+            )
+        }
     }
 }
 
@@ -448,6 +460,7 @@ fun SettingNavRow(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     tag: String? = null,
+    enabled: Boolean = true,
 ) {
     val dimens = LocalDimens.current
     Column(modifier.fillMaxWidth()) {
@@ -456,6 +469,7 @@ fun SettingNavRow(
                 .fillMaxWidth()
                 .heightIn(min = 72.dp)
                 .clickable(
+                    enabled = enabled,
                     onClick = onClick,
                 ).padding(horizontal = LocalDimens.current.rowHorizontalPadding, vertical = dimens.rowPadding + 2.dp)
                 .tagged(tag),

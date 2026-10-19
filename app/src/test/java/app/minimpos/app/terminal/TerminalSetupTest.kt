@@ -182,6 +182,11 @@ class TerminalSetupTest {
         val api = keyed.copy(paymentsAppInstallationId = "INSTALLATION-1", merchantAccount = "Merchant")
         assertThat(resolve(api, passphrase + Secret.ADYEN_API_KEY, phone).apiSetup).isEqualTo(ApiSetup.Complete)
         assertThat(boarded.printerAvailable(mapOf("INSTALLATION-1" to true))).isFalse()
+        val forcedPrinter =
+            boarded.copy(
+                settings = boarded.settings.copy(receipt = boarded.settings.receipt.copy(printerMode = PrinterMode.ON)),
+            )
+        assertThat(forcedPrinter.printerAvailable(mapOf("INSTALLATION-1" to true))).isFalse()
     }
 
     @Test

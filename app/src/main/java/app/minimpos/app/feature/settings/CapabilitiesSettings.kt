@@ -50,6 +50,8 @@ internal fun ColumnScope.CapabilitiesSection(
     actions: CapabilitiesActions,
     payment: PaymentSettings,
     currency: String,
+    printing: CapabilityStanding,
+    sharing: CapabilityStanding,
     events: CapabilitiesEvents,
 ) {
     SettingIntro(stringResource(R.string.capabilities_intro))
@@ -75,6 +77,8 @@ internal fun ColumnScope.CapabilitiesSection(
 
     SectionHeader(stringResource(R.string.capabilities_matrix_header))
     CapabilitiesMatrix(capabilities, payment, currency)
+    HardwareCapabilitiesMatrix(capabilities, payment, currency, printing, sharing)
+    InteractionCapabilitiesMatrix(capabilities, payment)
 
     if ((capabilities.capabilities.discoversTerminals || capabilities.simulated) && capabilities.problem == null) {
         key(actions.revision, currency) {
@@ -100,6 +104,7 @@ private fun ColumnScope.CapabilitiesMatrix(
             capabilities.tippingStanding(
                 currency,
                 enabledLocally = payment.terminalTipping != ReceiptTipping.DISABLED,
+                dynamicOverride = payment.dynamicTipOverride,
             ),
         tag = "cap_tipping",
     )
@@ -120,7 +125,7 @@ private fun ColumnScope.CapabilitiesMatrix(
     )
     CapabilityStandingRow(
         title = stringResource(R.string.capability_partial_auth),
-        standing = capabilities.partialAuthStanding,
+        standing = capabilities.partialAuthStanding(payment.allowPartialAuthorisation),
         tag = "cap_partial_auth",
     )
     val giftCards = capabilities.giftCardsFor(currency)
@@ -145,11 +150,81 @@ private fun ColumnScope.CapabilitiesMatrix(
         standing = capabilities.reconciliationStanding,
         tag = "cap_reconciliation",
     )
+}
+
+@Composable
+private fun ColumnScope.HardwareCapabilitiesMatrix(
+    capabilities: AdyenCapabilitiesState,
+    payment: PaymentSettings,
+    currency: String,
+    printing: CapabilityStanding,
+    sharing: CapabilityStanding,
+) {
+    CapabilityStandingRow(
+        title = stringResource(R.string.capability_scanned_wallets),
+        standing = capabilities.scannedWalletStanding(currency),
+        tag = "cap_scanned_wallets",
+    )
+    CapabilityStandingRow(
+        title = stringResource(R.string.capability_printing),
+        standing = printing,
+        tag = "cap_printing",
+    )
+    CapabilityStandingRow(
+        title = stringResource(R.string.capability_receipt_sharing),
+        standing = sharing,
+        tag = "cap_receipt_sharing",
+    )
+    CapabilityStandingRow(
+        title = stringResource(R.string.capability_receipt_tipping),
+        standing = capabilities.receiptTippingStanding(payment.receiptTipping != ReceiptTipping.DISABLED, printing),
+        tag = "cap_receipt_tipping",
+    )
+    CapabilityStandingRow(
+        title = stringResource(R.string.capability_camera_scanning),
+        standing = capabilities.cameraScanningStanding,
+        detail = stringResource(R.string.capability_camera_scanning_hint),
+        tag = "cap_camera_scanning",
+    )
+    CapabilityStandingRow(
+        title = stringResource(R.string.capability_terminal_scanner),
+        standing = capabilities.terminalScannerStanding,
+        tag = "cap_terminal_scanner",
+    )
+}
+
+@Composable
+private fun ColumnScope.InteractionCapabilitiesMatrix(
+    capabilities: AdyenCapabilitiesState,
+    payment: PaymentSettings,
+) {
     CapabilityStandingRow(
         title = stringResource(R.string.capability_shopper_display),
-        standing = capabilities.shopperDisplayStanding,
+        standing =
+            capabilities.shopperDisplayStanding(
+                payment.showVirtualReceipt || payment.confirmBasketOnTerminal || payment.collectEmailOnTerminal ||
+                    payment.showTerminalQrReceipt || payment.askShopperRating,
+            ),
         tag = "cap_shopper_display",
     )
+    CapabilityStandingRow(
+        title = stringResource(R.string.capability_abort),
+        standing = capabilities.abortStanding,
+        tag = "cap_abort",
+    )
+    CapabilityStandingRow(
+        title = stringResource(R.string.capability_diagnosis),
+        standing = capabilities.diagnosisStanding,
+        tag = "cap_diagnosis",
+    )
+    CapabilityStandingRow(
+        title = stringResource(R.string.capability_remote_status),
+        standing = capabilities.remoteStatusStanding,
+        tag = "cap_remote_status",
+    )
+    if (!capabilities.capabilities.supportsRemoteStatus) {
+        SettingNote(stringResource(R.string.capability_late_reply_hint))
+    }
 }
 
 @Composable

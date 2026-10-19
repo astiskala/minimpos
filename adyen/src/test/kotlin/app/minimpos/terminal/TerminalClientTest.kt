@@ -408,6 +408,46 @@ class TerminalClientTest {
         }
 
     @Test
+    fun `unavailable service preserves decoded diagnostics for support`() =
+        runTest {
+            val traceId = "4bf92f3577b34da6a3ce929d0e0e4736"
+            val traceParent = "00-$traceId-00f067aa0ba902b7-01"
+            val declined =
+                PaymentResponse().apply {
+                    response =
+                        result(
+                            ResultType.FAILURE,
+                            ErrorConditionType.UNAVAILABLE_SERVICE,
+                            "refusalReason=Unavailable&message=Tap+to+Pay%3A+not%20enabled%26retry%3Dfalse" +
+                                "&errorCode=APP%2F42&traceparent=$traceParent&shopperEmail=private%40example.com",
+                        )
+                }
+            val details = (client { respond { paymentResponse = declined } }.pay(params) as TransactionOutcome.Completed).details
+            assertThat(details.success).isFalse()
+            assertThat(details.errorCondition).isEqualTo("UnavailableService")
+            assertThat(details.refusalReason).isEqualTo("Unavailable")
+            assertThat(details.message?.text).isEqualTo(
+                "Unavailable\nTap to Pay: not enabled&retry=false\nerrorCode=APP/42\ntraceparent=$traceParent\ntraceId=$traceId",
+            )
+            assertThat(details.decline!!.advice).isEqualTo(RetryAdvice.NOT_ENABLED)
+        }
+
+    @Test
+    fun `base64 additional response retains support diagnostics without other payment fields`() =
+        runTest {
+            val parent = "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01"
+            val json =
+                """{"message":"Service unavailable","additionalData":{"errorCode":"42","traceparent":"$parent","token":"private"}}"""
+            val declined =
+                PaymentResponse().apply {
+                    response = result(ResultType.FAILURE, ErrorConditionType.UNAVAILABLE_SERVICE, Base64.encode(json.toByteArray()))
+                }
+            val details = (client { respond { paymentResponse = declined } }.pay(params) as TransactionOutcome.Completed).details
+            assertThat(details.message?.text)
+                .isEqualTo("Service unavailable\nerrorCode=42\ntraceparent=$parent\ntraceId=4bf92f3577b34da6a3ce929d0e0e4736")
+        }
+
+    @Test
     fun `unreachable or rejecting terminals mean not processed`() =
         runTest {
             val unreachable = client { Delivery.Failed(UNREACHABLE) }.pay(params)

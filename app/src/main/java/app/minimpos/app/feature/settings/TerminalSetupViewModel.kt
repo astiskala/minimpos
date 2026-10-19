@@ -1,6 +1,7 @@
 package app.minimpos.app.feature.settings
 
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
 import app.minimpos.app.data.db.Failure
 import app.minimpos.app.data.security.Secret
 import app.minimpos.app.data.security.SecretStore
@@ -15,6 +16,7 @@ import app.minimpos.app.terminal.SetupDiscovery
 import app.minimpos.app.terminal.SetupDiscoverySearch
 import app.minimpos.app.terminal.SharedKeyConnection
 import app.minimpos.app.terminal.SharedKeyOffer
+import app.minimpos.app.terminal.TapToPayCheck
 import app.minimpos.app.terminal.TapToPayOutcome
 import app.minimpos.app.terminal.TapToPaySetup
 import app.minimpos.app.terminal.TerminalStatus
@@ -24,6 +26,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
 
 /**
  * Where the search for terminals in the cloud and the Tap to Pay setup stand.
@@ -40,6 +43,8 @@ import kotlinx.coroutines.flow.update
  * @property sharedKeyOffer Non-secret creation/recovery confirmation; null when not offered.
  * @property keyPending Whether a remote key is created but its terminal connection has not verified.
  * @property keyResult Latest explicitly requested key setup or connection check.
+ * @property diagnostics Latest advisory Payments app check, invalidated when its credential/environment changes.
+ * @property report Explicitly requested redacted share report, or null when none is pending.
  */
 data class TerminalSetupActions(
     val terminals: ActionState = ActionState(),
@@ -53,6 +58,8 @@ data class TerminalSetupActions(
     val sharedKeyOffer: SharedKeyOffer? = null,
     val keyPending: Boolean = false,
     val keyResult: ActionState = ActionState(),
+    val diagnostics: TapToPayCheck = TapToPayCheck(),
+    val report: String? = null,
 )
 
 /** Which result of [TerminalSetupActions] a dialog shows, see [TerminalSetupViewModel.dismissResult]. */
@@ -94,6 +101,9 @@ class TerminalSetupViewModel(
         field = MutableStateFlow(TerminalSetupActions())
 
     init {
+        viewModelScope.launch {
+            tapToPay.diagnostics.state.collect { reading -> actions.update { it.copy(diagnostics = reading) } }
+        }
         launchWrite({ discovery.pendingKey() }) { offer ->
             actions.update { if (!it.terminals.running && it.revision == 0) it.copy(sharedKeyOffer = offer) else it }
         }
@@ -245,6 +255,16 @@ class TerminalSetupViewModel(
 
     /** Removes this phone's Payments app instance (see [TapToPaySetup.unregister]). */
     fun removeTapToPay() = run(null) { tapToPay.unregister() }
+
+    /** Builds a redacted report only after an explicit share action. */
+    fun reportTapToPay() {
+        launchWrite({ tapToPay.diagnostics.report() }) { report -> actions.update { it.copy(report = report) } }
+    }
+
+    /** Consumes one requested share, so recomposition never shares it again. */
+    fun reportShared() {
+        actions.update { it.copy(report = null) }
+    }
 
     /** Closes the dialog showing [result]'s outcome, keeping whether it succeeded. */
     fun dismissResult(result: SetupResult) {

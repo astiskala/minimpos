@@ -13,7 +13,11 @@ import app.minimpos.app.data.db.RefundEntity
 import app.minimpos.app.data.db.SaleEntity
 import app.minimpos.app.data.db.SetupProblem
 import app.minimpos.app.data.db.StoredReason
+import app.minimpos.app.feature.sale.statusTitle
 import app.minimpos.app.payment.WalletScanProblem
+import app.minimpos.app.terminal.ClientKeyCheck
+import app.minimpos.app.terminal.PaymentsAppBoardingStatus
+import app.minimpos.app.terminal.TapToPayCheck
 import app.minimpos.app.ui.components.ActionMessage
 import app.minimpos.app.ui.components.currentLocale
 import app.minimpos.core.money.CurrencySpec
@@ -22,6 +26,31 @@ import app.minimpos.terminal.transport.ApiKey
 import app.minimpos.terminal.transport.ExternalText
 import app.minimpos.terminal.transport.Fault
 import app.minimpos.terminal.transport.MalformedPart
+
+/** Advisory diagnostic labels, kept separate from the payment's outcome. */
+@Composable
+@ReadOnlyComposable
+internal fun TapToPayCheck.labels(): TapToPayLabels =
+    TapToPayLabels(
+        (failure as? Failure.NotSetUp)?.text() ?: stringResource(
+            when (clientKey) {
+                ClientKeyCheck.NOT_CHECKED -> R.string.tap_key_unchecked
+                ClientKeyCheck.PRESENT -> R.string.tap_key_present
+                ClientKeyCheck.MISSING -> R.string.tap_key_missing
+                ClientKeyCheck.PERMISSION_UNAVAILABLE -> R.string.tap_key_permission
+                ClientKeyCheck.AUTHENTICATION_FAILED -> R.string.tap_key_auth
+                ClientKeyCheck.FAILED -> R.string.tap_key_failed
+            },
+        ),
+        stringResource(
+            when (boarding) {
+                PaymentsAppBoardingStatus.NOT_CHECKED -> R.string.tap_boarding_unchecked
+                PaymentsAppBoardingStatus.BOARDED -> R.string.tap_boarded
+                PaymentsAppBoardingStatus.NOT_BOARDED -> R.string.tap_not_boarded
+                PaymentsAppBoardingStatus.UNVERIFIED -> R.string.tap_boarding_unverified
+            },
+        ),
+    )
 
 /** How the screens word this outcome; the one place view-model outcomes become text. */
 @Composable
@@ -32,6 +61,7 @@ fun ActionOutcome.text(): String =
         is ActionOutcome.Emailed -> stringResource(R.string.result_emailed, to)
         ActionOutcome.AbortSent -> stringResource(R.string.result_abort_sent)
         ActionOutcome.LinkNotPaid -> stringResource(R.string.link_not_paid)
+        is ActionOutcome.LinkChecked -> statusTitle(status)
         is ActionOutcome.CaptureFailed -> captureText()
         is ActionOutcome.Connected -> connectedText()
         is ActionOutcome.ConnectionFailed -> "${stringResource(R.string.settings_connection_failed)}: ${failure.text()}"

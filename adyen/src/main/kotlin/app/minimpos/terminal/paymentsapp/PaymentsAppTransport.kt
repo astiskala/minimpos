@@ -9,6 +9,7 @@ import app.minimpos.terminal.transport.TerminalEnvironment
 import app.minimpos.terminal.transport.TerminalKey
 import app.minimpos.terminal.transport.TerminalTransport
 import app.minimpos.terminal.transport.nexoGson
+import app.minimpos.terminal.transport.responseText
 import com.adyen.model.nexo.MessageHeader
 import com.adyen.model.nexo.SaleToPOIResponse
 import com.adyen.model.nexo.TransactionStatusRequest
@@ -17,6 +18,7 @@ import com.adyen.model.terminal.TerminalAPIResponse
 import com.adyen.model.terminal.TerminalAPISecuredRequest
 import com.adyen.model.terminal.TerminalAPISecuredResponse
 import com.adyen.terminal.security.NexoCrypto
+import com.google.gson.JsonObject
 import java.net.URLEncoder
 import kotlin.io.encoding.Base64
 import kotlin.time.Duration
@@ -164,6 +166,25 @@ internal class PaymentsAppCrypto(
                 )
             nexoGson.fromJson(crypto.decrypt(checkNotNull(secured?.saleToPOIResponse)), TerminalAPIResponse::class.java)
         }.getOrNull()
+
+    /**
+     * Allowlisted diagnostics from a Base64URL JSON short response without a nexo envelope, or null when unreadable.
+     * This is not an authenticated payment result and must never establish its outcome.
+     */
+    fun shortError(response: String): ExternalText? =
+        runCatching {
+            val json =
+                requireNotNull(
+                    nexoGson.fromJson(
+                        String(Base64.UrlSafe.withPadding(Base64.PaddingOption.PRESENT_OPTIONAL).decode(response)),
+                        JsonObject::class.java,
+                    ),
+                )
+            if (json.has("SaleToPOIResponse")) return@runCatching null
+
+            fun text(key: String) = json[key]?.takeIf { it.isJsonPrimitive }?.asString
+            responseText(listOf(text("error"), text("message")), text("errorCode"), text("traceParent"), text("requestId"))
+        }.getOrNull()
 }
 
 /**
@@ -226,8 +247,19 @@ class PaymentsAppTransport(
             }
         val encrypted =
             answer["response"]?.takeIf { it.isNotEmpty() }
-                ?: return Delivery.Failed(Fault.AppRefused(ExternalText.of(answer["error"])))
-        val response = crypto.decrypt(encrypted) ?: return Delivery.Failed(Fault.ReplyUnverified)
+                ?: return Delivery.Failed(
+                    Fault.AppRefused(
+                        responseText(
+                            messages = listOf(answer["error"], answer["message"]),
+                            errorCode = answer["errorCode"],
+                            traceParent = answer["traceParent"],
+                            requestId = answer["requestId"],
+                        ),
+                    ),
+                )
+        val response =
+            crypto.decrypt(encrypted)
+                ?: return Delivery.Failed(crypto.shortError(encrypted)?.let(Fault::UnreadableReply) ?: Fault.ReplyUnverified)
         if (response.saleToPOIResponse?.messageHeader?.serviceID != request.saleToPOIRequest.messageHeader.serviceID) {
             return Delivery.Failed(Fault.UnreadableReply())
         }

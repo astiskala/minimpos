@@ -155,16 +155,22 @@ class PaymentLinkViewModelsTest {
 
         vm.check()
         assertThat(await { vm.state.first { it.check.done } }.check.outcome).isEqualTo(ActionOutcome.LinkNotPaid)
+        vm.dismissCheckResult()
+        assertThat(await { vm.state.first { it.check.outcome == null } }.check.done).isTrue()
         api.getResult = PaymentLinkResult.Failed(Fault.TimedOut)
         vm.check()
         val failed = await { vm.state.first { it.check.isError } }.check
         assertThat(failed.outcome).isEqualTo(ActionOutcome.Failed(Failure.Remote(Fault.TimedOut)))
+        vm.dismissCheckResult()
+        assertThat(await { vm.state.first { it.check.outcome == null } }.check.isError).isTrue()
         api.getResult = null
         api.status = PaymentLinkStatus.COMPLETED
         vm.check()
-        val paid = await { vm.state.first { it.sale?.status == SaleStatus.APPROVED } }
+        val paid = await { vm.state.first { it.sale?.status == SaleStatus.APPROVED && it.check.done } }
         assertThat(paid.openLink).isNull()
-        assertThat(paid.check.outcome).isNull()
+        assertThat(paid.check.outcome).isEqualTo(ActionOutcome.LinkChecked(SaleStatus.APPROVED))
+        vm.dismissCheckResult()
+        assertThat(await { vm.state.first { it.check.outcome == null } }.sale?.status).isEqualTo(SaleStatus.APPROVED)
     }
 
     @Test
@@ -192,6 +198,7 @@ class PaymentLinkViewModelsTest {
         val asked = api.asked.size
         main.scheduler.advanceTimeBy(1.hours)
         assertThat(api.asked.size).isEqualTo(asked)
+        assertThat(vm.state.value.check).isEqualTo(ActionState())
     }
 
     @Test

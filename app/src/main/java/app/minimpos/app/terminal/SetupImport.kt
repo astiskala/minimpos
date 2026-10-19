@@ -324,7 +324,8 @@ class SetupImport internal constructor(
         if (!candidate(prepared).setup.boardsPhone) return Step.Next(current)
         return when (val result = tapToPay.candidate(prepared.settings, prepared.secrets, explicit)) {
             is TapToPayOutcome.Boarded -> {
-                Step.Next(current.copy(prepared = prepared.withBoardedPhone(result.installationId)))
+                val evidence = tapToPay.candidateIdentity(prepared.settings, prepared.secrets, result.installationId)
+                Step.Next(current.copy(prepared = prepared.withBoardedPhone(result.installationId, evidence)))
             }
 
             is TapToPayOutcome.NotSetUp -> {

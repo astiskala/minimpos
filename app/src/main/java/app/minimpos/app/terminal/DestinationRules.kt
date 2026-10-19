@@ -39,6 +39,12 @@ sealed interface DestinationRules {
     /** Whether physical-terminal capabilities (terminal tipping, Giving, MOTO/MKE, totals, display) are supported. */
     val supportsTerminalFeatures: Boolean get() = true
 
+    /** Whether receipt print requests are supported, independently of printer hardware and local preferences. */
+    val supportsPrinting: Boolean get() = true
+
+    /** Whether a missing transaction answer can be queried remotely, rather than only recovered from a late reply. */
+    val supportsRemoteStatus: Boolean get() = true
+
     /** Whether local offline EMV and store-and-forward processing are supported on this destination. */
     val supportsOfflinePayments: Boolean get() = false
 

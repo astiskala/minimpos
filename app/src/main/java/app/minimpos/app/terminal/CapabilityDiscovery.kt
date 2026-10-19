@@ -27,10 +27,10 @@ enum class CapabilityStanding {
     /** Ready to use on this destination and account/terminal configuration. */
     AVAILABLE,
 
-    /** Supported by the destination, but requires Management API or Customer Area configuration. */
+    /** Supported, but local/Adyen configuration or hardware verification is still needed. */
     NEEDS_CONFIGURATION,
 
-    /** Not supported on the selected payment destination. */
+    /** Not supported by the selected destination or its known hardware. */
     UNSUPPORTED,
 }
 
@@ -88,11 +88,13 @@ data class OfflineCapability(
  * @property surchargeConfigured Whether card surcharge rules are configured on the terminal.
  * @property moto MOTO configuration on the terminal.
  * @property offline Offline EMV and store-and-forward limits on the terminal.
- * @param methods Configured POS payment methods for gift-card inspection.
+ * @param methods Configured POS payment methods for gift-card and scanned-wallet inspection.
  * @property storeId Assigned terminal store ID, when known.
  * @property countryCode Assigned terminal country code, when known.
  * @property problem Setup problem blocking Management inspection; null when complete.
  * @property failure Discovery failure presented in Settings; null when none.
+ * @property cameraAvailable Whether Android reports a camera on the device running Mini mPOS, without opening it.
+ * @property nativeScanner Whether the assigned terminal is a confirmed scanner model; null before hardware discovery.
  */
 data class AdyenCapabilitiesState(
     val context: PaymentContext? = null,
@@ -110,6 +112,8 @@ data class AdyenCapabilitiesState(
     val countryCode: String = "",
     val problem: SetupProblem? = null,
     val failure: Failure? = null,
+    val cameraAvailable: Boolean = false,
+    val nativeScanner: Boolean? = null,
 ) {
     /** Why a refresh cannot run now: the setup [problem] it would only report again; null when it can. */
     val refreshBlocked: Failure? get() = problem?.let(Failure::NotSetUp)
@@ -127,14 +131,16 @@ data class AdyenCapabilitiesState(
             WalletOffers.giftCards(methods, storeId, countryCode, currency)
         }
 
-    /** Standing of native terminal tipping (`AskGratuity`) for [currency], given whether local tipping is [enabledLocally]. */
+    /** Native tipping readiness for [currency], with local offer [enabledLocally] and optional [dynamicOverride] tip entries. */
     fun tippingStanding(
         currency: String,
         enabledLocally: Boolean,
+        dynamicOverride: Boolean = false,
     ): CapabilityStanding =
         when {
             !capabilities.supportsTerminalFeatures -> CapabilityStanding.UNSUPPORTED
-            simulated || gratuityFor(currency) != null || enabledLocally -> CapabilityStanding.AVAILABLE
+            !enabledLocally -> CapabilityStanding.NEEDS_CONFIGURATION
+            simulated || gratuityFor(currency) != null || dynamicOverride -> CapabilityStanding.AVAILABLE
             else -> CapabilityStanding.NEEDS_CONFIGURATION
         }
 
@@ -151,7 +157,7 @@ data class AdyenCapabilitiesState(
     fun givingStanding(enabledLocally: Boolean): CapabilityStanding =
         when {
             !capabilities.supportsTerminalFeatures -> CapabilityStanding.UNSUPPORTED
-            enabledLocally || simulated -> CapabilityStanding.AVAILABLE
+            enabledLocally -> CapabilityStanding.AVAILABLE
             else -> CapabilityStanding.NEEDS_CONFIGURATION
         }
 
@@ -164,8 +170,9 @@ data class AdyenCapabilitiesState(
                 else -> CapabilityStanding.NEEDS_CONFIGURATION
             }
 
-    /** Standing of partial authorization (`AllowPartialAuthorisation`); supported on all destinations. */
-    val partialAuthStanding: CapabilityStanding get() = CapabilityStanding.AVAILABLE
+    /** Partial authorization (`AllowPartialAuthorisation`) is supported on all destinations, when [enabledLocally]. */
+    fun partialAuthStanding(enabledLocally: Boolean): CapabilityStanding =
+        if (enabledLocally) CapabilityStanding.AVAILABLE else CapabilityStanding.NEEDS_CONFIGURATION
 
     /** Standing of POS gift cards for [currency]. */
     fun giftCardStanding(currency: String): CapabilityStanding =
@@ -179,7 +186,7 @@ data class AdyenCapabilitiesState(
     fun motoStanding(enabledLocally: Boolean): CapabilityStanding =
         when {
             !capabilities.supportsTerminalFeatures -> CapabilityStanding.UNSUPPORTED
-            moto.enabled || enabledLocally -> CapabilityStanding.AVAILABLE
+            enabledLocally -> CapabilityStanding.AVAILABLE
             else -> CapabilityStanding.NEEDS_CONFIGURATION
         }
 
@@ -195,9 +202,77 @@ data class AdyenCapabilitiesState(
     val reconciliationStanding: CapabilityStanding
         get() = if (capabilities.supportsTerminalFeatures) CapabilityStanding.AVAILABLE else CapabilityStanding.UNSUPPORTED
 
-    /** Standing of shopper-facing display and input requests. */
-    val shopperDisplayStanding: CapabilityStanding
-        get() = if (capabilities.supportsShopperDisplay) CapabilityStanding.AVAILABLE else CapabilityStanding.UNSUPPORTED
+    /** Shopper-facing display and input readiness, given whether any interaction is [enabledLocally]. */
+    fun shopperDisplayStanding(enabledLocally: Boolean): CapabilityStanding =
+        when {
+            !capabilities.supportsShopperDisplay -> CapabilityStanding.UNSUPPORTED
+            enabledLocally -> CapabilityStanding.AVAILABLE
+            else -> CapabilityStanding.NEEDS_CONFIGURATION
+        }
+
+    /** Whether the POS can request cancellation; the destination's own Cancel button is independent. */
+    val abortStanding: CapabilityStanding
+        get() = if (capabilities.aborts) CapabilityStanding.AVAILABLE else CapabilityStanding.UNSUPPORTED
+
+    /** Whether a connection check can send a terminal diagnosis request, rather than only validate setup. */
+    val diagnosisStanding: CapabilityStanding
+        get() = if (capabilities.diagnoses) CapabilityStanding.AVAILABLE else CapabilityStanding.UNSUPPORTED
+
+    /** Whether transaction status is queried remotely, not merely recovered from an already received late reply. */
+    val remoteStatusStanding: CapabilityStanding
+        get() = if (capabilities.supportsRemoteStatus) CapabilityStanding.AVAILABLE else CapabilityStanding.UNSUPPORTED
+
+    /** Device-camera scanning for products, refunds and setup; camera permission is requested only when scanning. */
+    val cameraScanningStanding: CapabilityStanding
+        get() = if (cameraAvailable) CapabilityStanding.AVAILABLE else CapabilityStanding.UNSUPPORTED
+
+    /** Native terminal scanner support; an undiscovered model is not proof that a scanner is absent. */
+    val terminalScannerStanding: CapabilityStanding
+        get() =
+            when {
+                !capabilities.scannedWallets || nativeScanner == false -> CapabilityStanding.UNSUPPORTED
+                nativeScanner == true -> CapabilityStanding.AVAILABLE
+                else -> CapabilityStanding.NEEDS_CONFIGURATION
+            }
+
+    /** Scanned-wallet readiness for [currency], including account configuration and a usable code input source. */
+    fun scannedWalletStanding(currency: String): CapabilityStanding =
+        when {
+            !capabilities.scannedWallets -> {
+                CapabilityStanding.UNSUPPORTED
+            }
+
+            simulated -> {
+                CapabilityStanding.AVAILABLE
+            }
+
+            !cameraAvailable && nativeScanner == false -> {
+                CapabilityStanding.UNSUPPORTED
+            }
+
+            !cameraAvailable && nativeScanner == null -> {
+                CapabilityStanding.NEEDS_CONFIGURATION
+            }
+
+            WalletOffers.forCurrency(WalletOffers.configured(methods, storeId, countryCode), currency).isNotEmpty() -> {
+                CapabilityStanding.AVAILABLE
+            }
+
+            else -> {
+                CapabilityStanding.NEEDS_CONFIGURATION
+            }
+        }
+
+    /** Receipt-tip readiness from local offer [enabledLocally] and the current [printing] readiness. */
+    fun receiptTippingStanding(
+        enabledLocally: Boolean,
+        printing: CapabilityStanding,
+    ): CapabilityStanding =
+        when {
+            !capabilities.supportsPrinting || printing == CapabilityStanding.UNSUPPORTED -> CapabilityStanding.UNSUPPORTED
+            !enabledLocally -> CapabilityStanding.NEEDS_CONFIGURATION
+            else -> printing
+        }
 }
 
 /** Outcome of a scoped Management `terminalSettings` capability update. */
@@ -263,6 +338,8 @@ class CapabilityDiscovery(
                     identity = identity,
                     capabilities = setup.capabilities,
                     simulated = setup.apiSetup == ApiSetup.Simulated,
+                    cameraAvailable = setups.device.hasCamera,
+                    nativeScanner = if (setup.apiSetup == ApiSetup.Simulated) false else old.nativeScanner,
                     checking = true,
                 )
             state.value = initial
@@ -413,9 +490,10 @@ class CapabilityDiscovery(
 
             is AssignedTerminal.Found -> {
                 val terminal = assigned.terminal
+                val hardware = initial.copy(nativeScanner = WalletOffers.nativeScanner(terminal.model, terminal.id))
                 when (val caps = api.capabilities(poiId, environment)) {
                     is TerminalCapabilitiesLookup.Failed -> {
-                        publish(origin, initial.copy(checking = false, failure = Failure.Remote(caps.fault)))
+                        publish(origin, hardware.copy(checking = false, failure = Failure.Remote(caps.fault)))
                     }
 
                     is TerminalCapabilitiesLookup.Found -> {
@@ -426,7 +504,7 @@ class CapabilityDiscovery(
                             }
                         publish(
                             origin,
-                            initial
+                            hardware
                                 .withRemote(caps.capabilities)
                                 .copy(
                                     methods = methods,

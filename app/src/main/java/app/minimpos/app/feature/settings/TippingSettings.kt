@@ -6,14 +6,18 @@ import androidx.compose.ui.res.stringResource
 import app.minimpos.app.R
 import app.minimpos.app.data.settings.PaymentSettings
 import app.minimpos.app.data.settings.ReceiptTipping
+import app.minimpos.app.terminal.DestinationCapabilities
 import app.minimpos.app.ui.components.SectionHeader
 
 /** Checkout offers for terminal tips, receipt-tip holds and Adyen Giving; remote terminal configuration stays separate. */
 @Composable
 internal fun ColumnScope.TippingSection(
     payment: PaymentSettings,
+    capabilities: DestinationCapabilities,
     update: ((PaymentSettings) -> PaymentSettings) -> Unit,
 ) {
+    val terminalBlocked = stringResource(R.string.settings_unavailable_tap_to_pay).takeUnless { capabilities.supportsTerminalFeatures }
+    val printBlocked = stringResource(R.string.settings_unavailable_tap_to_pay).takeUnless { capabilities.supportsPrinting }
     SectionHeader(stringResource(R.string.settings_tipping))
     val options =
         listOf(
@@ -28,6 +32,7 @@ internal fun ColumnScope.TippingSection(
         onSelect = { value -> update { it.copy(terminalTipping = value) } },
         subtitle = stringResource(R.string.settings_terminal_tip_hint),
         tag = "terminalTipping",
+        blocked = terminalBlocked,
     )
     if (payment.terminalTipping != ReceiptTipping.DISABLED) {
         SettingSwitch(
@@ -36,6 +41,7 @@ internal fun ColumnScope.TippingSection(
             { value -> update { it.copy(dynamicTipOverride = value) } },
             subtitle = stringResource(R.string.settings_dynamic_tip_override_hint),
             tag = "dynamicTipOverride",
+            blocked = terminalBlocked,
         )
         SettingSwitch(
             stringResource(R.string.settings_tip_on_pre_tax),
@@ -43,6 +49,7 @@ internal fun ColumnScope.TippingSection(
             { value -> update { it.copy(tipOnPreTax = value) } },
             subtitle = stringResource(R.string.settings_tip_on_pre_tax_hint),
             tag = "tipOnPreTax",
+            blocked = terminalBlocked,
         )
     }
     SettingChoice(
@@ -52,6 +59,7 @@ internal fun ColumnScope.TippingSection(
         onSelect = { value -> update { it.copy(receiptTipping = value) } },
         subtitle = stringResource(R.string.settings_tip_default_hint),
         tag = "receiptTipping",
+        blocked = printBlocked,
     )
     SettingChoice(
         title = stringResource(R.string.checkout_ask_giving),
@@ -60,5 +68,6 @@ internal fun ColumnScope.TippingSection(
         onSelect = { value -> update { it.copy(askGiving = value) } },
         subtitle = stringResource(R.string.settings_ask_giving_hint),
         tag = "askGivingSetting",
+        blocked = terminalBlocked,
     )
 }

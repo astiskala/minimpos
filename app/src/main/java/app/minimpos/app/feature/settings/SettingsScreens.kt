@@ -158,11 +158,12 @@ internal interface SettingsEvents {
         value: String?,
     )
 
-    /** Saves [value] as [secret] unless it is null, then runs [test] ([SettingsViewModel.saveAndTest]). */
+    /** Saves [value] as [secret], runs [test], then [onApiVerified] after API success when supplied. */
     fun onSaveAndTest(
         secret: Secret,
         value: String?,
         test: SettingsTest,
+        onApiVerified: (() -> Unit)? = null,
     )
 
     /** Closes the dialog showing [test]'s result ([SettingsViewModel.dismissTestResult]). */
@@ -280,7 +281,8 @@ private fun settingsEvents(
             secret: Secret,
             value: String?,
             test: SettingsTest,
-        ) = settings.saveAndTest(secret, value, test)
+            onApiVerified: (() -> Unit)?,
+        ) = settings.saveAndTest(secret, value, test, onApiVerified)
 
         override fun onTestResultDismiss(test: SettingsResult) = settings.dismissTestResult(test)
 

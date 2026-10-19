@@ -146,7 +146,7 @@ class DocsCaptureTest {
                 "<string name=\"home_new_sale\">新建销售</string>\n" +
                 "<string name=\"home_settings\">设置</string>\n",
         )
-        val skill = Files.createDirectories(root.resolve(".devin/skills/docs-screenshots"))
+        val skill = Files.createDirectories(root.resolve("app/src/main/assets"))
         Files.writeString(skill.resolve("sample-data.json"), """{"zh-CN":{"deviceLocale":"zh-SG","timeZone":"Asia/Singapore"}}""")
         val bin = Files.createDirectories(root.resolve("bin"))
         Files.writeString(bin.resolve("sleep"), "#!/bin/sh\nexit 0\n").toFile().setExecutable(true)

@@ -278,14 +278,20 @@ class SettingsViewModel(
      * for [Secret.ADYEN_API_KEY] (which also reaches terminals in the cloud, so its test can be both,
      * [SettingsTest.CLOUD]). No test charges anything. Each outcome is shown until [dismissTestResult].
      *
-     * @throws IllegalArgumentException for a secret that cannot be tested.
+     * @param secret The API key or terminal passphrase to save and test.
+     * @param value Unsaved secret text; null or empty keeps the stored secret. API keys are trimmed.
+     * @param test Which read-only verification to run after saving.
+     * @param onApiVerified Optional continuation after a successful API-only test; its success dialog is skipped.
+     * @throws IllegalArgumentException for a secret that cannot be tested or a continuation on another test.
      */
     fun saveAndTest(
         secret: Secret,
         value: String? = null,
         test: SettingsTest = if (secret == Secret.ADYEN_API_KEY) SettingsTest.API else SettingsTest.CONNECTION,
+        onApiVerified: (() -> Unit)? = null,
     ) {
         require(secret == Secret.TERMINAL_PASSPHRASE || secret == Secret.ADYEN_API_KEY) { "$secret cannot be tested" }
+        require(onApiVerified == null || test == SettingsTest.API) { "Only API tests can continue discovery" }
         val api = test == SettingsTest.API
         val apiKey = secret == Secret.ADYEN_API_KEY
 
@@ -305,16 +311,24 @@ class SettingsViewModel(
                 }
                 actions.update { if (apiKey) it.copy(apiKeyStored = true) else it.copy(passphraseStored = true) }
             }
-            run(test)
+            run(test, onApiVerified)
         }
     }
 
-    /** Runs [test] and shows its outcome. */
-    private suspend fun run(test: SettingsTest) {
+    /** Runs [test], continuing through [onApiVerified] after API success or showing the outcome. */
+    private suspend fun run(
+        test: SettingsTest,
+        onApiVerified: (() -> Unit)?,
+    ) {
         when (test) {
             SettingsTest.API -> {
                 val result = apiResult()
-                actions.update { it.copy(api = result) }
+                if (result.done && onApiVerified != null) {
+                    actions.update { it.copy(api = result.dismissed()) }
+                    onApiVerified()
+                } else {
+                    actions.update { it.copy(api = result) }
+                }
             }
 
             SettingsTest.CONNECTION -> {

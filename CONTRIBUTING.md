@@ -201,8 +201,8 @@ they require a backend for certificates, a private Maven repository, PCI MPoC an
 
 - Follow [repository constraints](AGENTS.md) and existing module patterns. Use `Long` minor units and Adyen's decimals,
   never floating-point money; tax rates are thousandths of a percent.
-- Use the Adyen library for Terminal API models, crypto and certificate checks. The Android adaptations and exceptions
-  for plain JSON Checkout/cloud calls are in [the Adyen rules](adyen/AGENTS.md).
+- Use the Adyen library for every modeled API payload, crypto and certificate checks; see
+  [Adyen API model ownership](#adyen-api-model-ownership) and the [Adyen rules](adyen/AGENTS.md).
 - Every public/protected declaration needs KDoc (tests exempt): useful contracts, units, null meaning, threading,
   formats and errors. Constructor tags, when used, cover every parameter in order: public properties use `@property`,
   others `@param`. Don't merely repeat a declaration's name.
@@ -226,6 +226,33 @@ they require a backend for certificates, a private Maven repository, PCI MPoC an
 - QR formats retain one current contract. Update the app, setup helper, format tests and helper vectors together;
   see [repository constraints](AGENTS.md).
 - New-install localized/regional defaults must not overwrite stored text or imported settings.
+
+### Adyen API model ownership
+
+All Adyen integrations live in `:adyen` and use the pinned Adyen Java library's request and response models:
+
+| API | Model coverage |
+| --- | --- |
+| Checkout | Payment-method verification, captures, amount updates, refunds, payment links, stored-card listing and charges, plus errors. |
+| Terminal | Payments, reversals, status, abort, diagnosis, printing, totals, reconciliation, admin, display and input; encrypted local and Payments app envelopes. |
+| Cloud device | Connected-device listing and errors; forwarded Terminal API messages use the same Terminal models. |
+| Management | Credential introspection, terminals, shared keys, capability settings, merchants, stores, payment methods and errors. |
+| Payments app boarding | Boarding-token requests/responses and installation listings; revocation sends an empty JSON object. |
+
+Checkout, Management, cloud listings and boarding use the library's Jackson serialization; Terminal messages use its
+Gson builder. HTTP paths, query parameters, authentication, idempotency and timeouts belong to our transport adapters,
+not SDK service clients, except the local Terminal service with our Android-compatible HTTP client installed.
+
+Not every wire field has an SDK type. `AdminRequest.ServiceIdentification` (shopper sessions and barcode scans) and
+`SaleData.SaleToPOIData` (tip options) contain Base64 JSON in SDK string fields. `AdditionalData`, `AdditionalResponse`,
+metadata and string-valued tender options remain extensible. Payments app App Links and unstructured short errors are
+also hand-mapped. Raw response reads are limited to these extensions, unmodeled amount-update `refusalReason` and
+unknown-enum diagnostics; modeled saved-card refusal reasons use `PaymentResponse.refusalReason`.
+Adyen documents the [admin-session format](https://docs.adyen.com/point-of-sale/shopper-engagement/create-session/).
+
+`ArchitectureTest` rejects manual JSON trees in typed API adapters and checks HTTP ownership. Offline request/response,
+malformed-answer and optimized-model tests cover serialization and uncertain outcomes. These tests do not establish
+real-Adyen compatibility; the [verification gaps](#known-integration-verification-gaps) still apply.
 
 ### Shell scripts
 

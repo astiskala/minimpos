@@ -54,7 +54,7 @@ val website = isolated.rootProject.projectDirectory.dir("docs")
 
 // Troubleshooting quotes the app's messages, so the guide tests read its string resources.
 val appResources = isolated.rootProject.projectDirectory.dir("app/src/main/res")
-val screenshotSamples = isolated.rootProject.projectDirectory.file(".devin/skills/docs-screenshots/sample-data.json")
+val screenshotSamples = isolated.rootProject.projectDirectory.file("app/src/main/assets/sample-data.json")
 
 tasks.test {
     inputs

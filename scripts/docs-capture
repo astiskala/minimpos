@@ -115,7 +115,7 @@ prepare() {
 
 # The sample-data.json block of language $1, on one line.
 market() {
-    tr -d '\n' < "$root/.devin/skills/docs-screenshots/sample-data.json" | grep -o "\"$1\": *{.*" | head -n 1
+    tr -d '\n' < "$root/app/src/main/assets/sample-data.json" | grep -o "\"$1\": *{.*" | head -n 1
 }
 
 locale() {

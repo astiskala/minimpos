@@ -438,7 +438,7 @@
   <string name="products_pre_auth_hint">販売ではなく「プリオーソリ」で単独処理します。キャプチャするまでカードの利用枠を確保するだけです。</string>
   <string name="products_kind_pre_auth">プリオーソリ</string>
   <string name="sample_data">サンプルデータ</string>
-  <string name="sample_data_hint">サンプル商品と読み取り専用のデモ履歴を追加します。データや支払先は変更されません。サンプルはデモの日次合計とレポートに含まれます。</string>
+  <string name="sample_data_hint">サンプル商品と読み取り専用のデモ履歴を追加します。事業者情報が空の場合、架空の会社情報を入力します。サンプルはデモの日次合計とレポートに含まれます。</string>
   <string name="sample_add">サンプルデータを追加</string>
   <string name="sample_remove">サンプルデータを削除</string>
   <string name="sample_remove_message">サンプル商品（編集済みを含む）とデモ履歴を削除しますか？ご自身の商品、履歴、税率、設定は残ります。ご自身の商品が使うカテゴリも残ります。</string>
@@ -447,11 +447,6 @@
   <string name="sample_write_failed">変更を保存できませんでした。もう一度お試しください。</string>
   <string name="sample_history_hint">サンプル履歴です。資金移動はありません。決済操作はできません。</string>
   <string name="sample_label">サンプル</string>
-  <string name="sample_category">サンプル商品</string>
-  <string name="sample_coffee">サンプルコーヒー</string>
-  <string name="sample_tea">サンプルティー</string>
-  <string name="sample_cake">サンプルケーキ</string>
-  <string name="sample_deposit">サンプル保証金</string>
 
   <!-- Setup and catalog transfer -->
   <string name="transfer_export">別のデバイスに共有</string>
@@ -712,11 +707,12 @@
   <string name="settings_host_placeholder">例：192.0.2.1</string>
   <string name="settings_host_hint">端末はこのデバイスと同じネットワークに接続してください。</string>
   <string name="settings_port">ポート</string>
-  <string name="settings_find_terminals">端末を検索</string>
   <string name="settings_choose_terminal">端末を選択</string>
   <string name="settings_no_terminals">一致する端末がありません。情報を手動で入力してください。</string>
-  <string name="settings_save_and_discover">保存して設定を取得</string>
-  <string name="settings_discover">設定を取得</string>
+  <string name="settings_save_and_discover">保存して端末を検索</string>
+  <string name="settings_testing_api">APIをテスト中…</string>
+  <string name="settings_finding_setup">端末を検索中…</string>
+  <string name="settings_discover">設定する端末を検索</string>
   <string name="settings_discovery_manual">下の情報を確認し、不足する項目を手動で入力してから、接続とAPIキーをテストしてください。必須の API 権限がすべて必要です。</string>
   <string name="settings_shared_key">共有キー</string>
   <string name="settings_shared_key_hint">Customer Areaの「Devices › Device settings › Integrations › Terminal API › Encryption key」からコピーしてください（鉛筆アイコンで表示）。</string>

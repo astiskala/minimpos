@@ -49,7 +49,7 @@ class OnboardingUiTest {
                 env.container.catalog.products
                     .first()
             },
-        ).hasSize(4)
+        ).hasSize(11)
 
         compose.onNodeWithTag("settings").performClick()
         waitFor("section_data")
@@ -65,7 +65,7 @@ class OnboardingUiTest {
                 env.container.catalog.products
                     .first()
             },
-        ).hasSize(4)
+        ).hasSize(11)
         compose.onNodeWithTag("purgeSamples").performScrollTo().performClick()
         compose.onNodeWithTag("confirm").performClick()
         compose.awaitCondition("samples are purged") {

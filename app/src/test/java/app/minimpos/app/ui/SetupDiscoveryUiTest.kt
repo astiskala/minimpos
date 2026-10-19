@@ -143,7 +143,12 @@ class SetupDiscoveryUiTest {
             env.container.settingsState.value.terminal.liveUrlPrefix == "prefix"
         }
         compose.onNodeWithTag("testApi").performScrollTo().performClick()
-        waitForTag("findTerminals")
+        waitForTag("testConnection")
+        compose.onNodeWithTag("findTerminals").assertDoesNotExist()
+        compose.waitUntilAtLeastOneExists(
+            hasTestTag("discoverSetup") and hasText(env.context.getString(R.string.settings_discover)),
+            15_000,
+        )
         compose.onNodeWithTag("testConnection").assertExists()
         assertSteps("Environment", "Adyen API", "Terminal")
         compose.onNodeWithTag("step_4").assertDoesNotExist()
@@ -324,7 +329,7 @@ class SetupDiscoveryUiTest {
     }
 
     @Test
-    fun `discovery stays hidden until API testing succeeds then refreshes manual fields`() {
+    fun `discovery tests API automatically stops on failure then refreshes manual fields`() {
         val container = env.container
         env.updateSettings { it.copy(terminal = it.terminal.copy(mode = TerminalMode.TERMINAL, environment = TerminalEnvironment.TEST)) }
         compose.setContent { MiniMposApp(container) }
@@ -332,20 +337,20 @@ class SetupDiscoveryUiTest {
         waitForTag("section_terminal")
         compose.onNodeWithTag("section_terminal").performClick()
         waitForTag("apiKey")
-        compose.onNodeWithTag("discoverSetup").assertDoesNotExist()
+        compose.onNodeWithTag("discoverSetup").assertTextContains(env.context.getString(R.string.settings_discover))
         compose.onNodeWithTag("merchantAccount").performScrollTo().performTextInput("Merchant")
         compose.awaitCondition("the account is saved") { container.settingsState.value.terminal.merchantAccount == "Merchant" }
         compose.onNodeWithTag("apiKey").performScrollTo().performTextInput("discovery-key")
+        compose.onNodeWithTag("discoverSetup").assertTextContains(env.context.getString(R.string.settings_save_and_discover))
         apiFailure = Fault.Credential(ApiKey.ADYEN)
-        compose.onNodeWithTag("testApi").performScrollTo().performClick()
+        compose.onNodeWithTag("discoverSetup").performScrollTo().performClick()
         compose.waitUntilAtLeastOneExists(
             hasTestTag("apiResult") and hasText(env.context.getString(R.string.fault_credential_adyen), substring = true),
             15_000,
         )
-        compose.onNodeWithTag("discoverSetup").assertDoesNotExist()
+        compose.onNodeWithTag("discoverSetup").assertExists()
+        compose.onNodeWithTag("terminal_S1F2-000158213605014").assertDoesNotExist()
         apiFailure = null
-        compose.onNodeWithTag("testApi").performScrollTo().performClick()
-        waitForTag("discoverSetup")
         compose.onNodeWithTag("discoverSetup").performScrollTo().performClick()
         waitForTag("terminal_S1F2-000158213605014")
         compose.onNodeWithTag("terminal_S1F2-000158213605014").performClick()
@@ -359,6 +364,37 @@ class SetupDiscoveryUiTest {
         compose.onNodeWithTag("host").performScrollTo().assertTextContains("192.168.1.42", substring = true)
         compose.onNodeWithTag("poiId").assertTextContains("S1F2-000158213605014", substring = true)
         compose.onNodeWithTag("merchantAccount").performScrollTo().assertTextContains("Merchant", substring = true)
+    }
+
+    @Test
+    fun `cloud discovery waits for its API test and opens choices without a success popup`() {
+        env.updateSettings {
+            it.copy(terminal = it.terminal.copy(mode = TerminalMode.CLOUD, environment = TerminalEnvironment.TEST))
+        }
+        env.useCheckoutApi()
+        apiRelease = CompletableDeferred()
+        compose.setContent { MiniMposApp(env.container) }
+        compose.onNodeWithTag("settings").performClick()
+        waitForTag("section_terminal")
+        compose.onNodeWithTag("section_terminal").performClick()
+        waitForTag("discoverSetup")
+        compose.onNodeWithTag("discoverSetup").performScrollTo().performClick()
+        compose.awaitCondition("API check starts before discovery") { apiEntered.isCompleted }
+        compose.onNodeWithTag("discoverSetup").assertTextContains(env.context.getString(R.string.settings_testing_api))
+        compose.onNodeWithTag("terminal_S1F2-000158213605014").assertDoesNotExist()
+        apiRelease?.complete(Unit)
+        waitForTag("terminal_S1F2-000158213605014")
+        compose.onNodeWithTag("apiResult").assertDoesNotExist()
+        compose.onNodeWithTag("terminal_S1F2-000158213605014").performClick()
+        compose.awaitCondition("the chosen cloud terminal is saved") {
+            env.container.settingsState.value.terminal.poiIdOverride == "S1F2-000158213605014"
+        }
+        waitForTag("testConnection")
+        compose.onNodeWithTag("findTerminals").assertDoesNotExist()
+        compose.waitUntilAtLeastOneExists(
+            hasTestTag("discoverSetup") and hasText(env.context.getString(R.string.settings_discover)),
+            15_000,
+        )
     }
 
     @Test
@@ -389,7 +425,7 @@ class SetupDiscoveryUiTest {
         apiRelease?.complete(Unit)
         compose.waitUntilAtLeastOneExists(hasTestTag("apiResult") and hasText(env.context.getString(R.string.settings_api_ok)), 15_000)
         compose.onNodeWithTag("step_3").assertDoesNotExist()
-        compose.onNodeWithTag("discoverSetup").assertDoesNotExist()
+        compose.onNodeWithTag("discoverSetup").assertExists()
         if (holdRetest) {
             apiEntered = CompletableDeferred()
             apiRelease = CompletableDeferred()

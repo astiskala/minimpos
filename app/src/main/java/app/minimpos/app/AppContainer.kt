@@ -15,6 +15,7 @@ import app.minimpos.app.data.repo.HistoryRepository
 import app.minimpos.app.data.repo.RefundRepository
 import app.minimpos.app.data.repo.SaleRepository
 import app.minimpos.app.data.repo.SampleData
+import app.minimpos.app.data.repo.SampleDataFixture
 import app.minimpos.app.data.security.KeystoreSecretCipher
 import app.minimpos.app.data.security.ManagerApproval
 import app.minimpos.app.data.security.PinManager
@@ -561,18 +562,23 @@ class AppContainer(
             catalog,
             sales,
             history,
-            texts = {
-                listOf(
-                    R.string.sample_coffee,
-                    R.string.sample_tea,
-                    R.string.sample_cake,
-                    R.string.sample_deposit,
-                    R.string.sample_category,
-                ).map(localizedContext::getString)
-            },
+            fixture = ::sampleFixture,
             starterRates = ::starterTaxRates,
             country = device.country,
-            withSettings = pricingChanges::withStableSettings,
+            withSettings = { write ->
+                val added = pricingChanges.withStableSettings(write)
+                if (added) pricingChanges.update { it.copy(receipt = sampleFixture().receipt(it.receipt)) }
+                added
+            },
+        )
+
+    private fun sampleFixture(): SampleDataFixture =
+        SampleDataFixture.read(
+            context.assets
+                .open("sample-data.json")
+                .bufferedReader()
+                .use { it.readText() },
+            localizedContext.locale.toLanguageTag(),
         )
 
     /**

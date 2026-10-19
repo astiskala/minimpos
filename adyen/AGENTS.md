@@ -35,8 +35,9 @@ Starred rules are enforced by `ArchitectureTest`. KDoc is the detailed API/proto
   Checkout, Management, boarding and cloud listings use Jackson; nexo uses the library's Gson builder. Preserve
   Jackson annotations/methods/constructors and field names/access in release R8 rules: publicizing private SDK fields
   leaks bookkeeping into JSON. `AdyenModelR8Test` exercises optimized models offline. HTTP still goes through `AdyenHttp`.
-  Raw fields are only for unmodeled `refusalReason`, unknown-status diagnostics, extensible `AdditionalResponse`
-  data and unstructured terminal rejections.
+  Raw fields are only for unmodeled amount-update `refusalReason`, unknown-status diagnostics, extensible
+  `AdditionalData`/`AdditionalResponse`, Base64 admin/tip payloads in SDK string fields, Payments app App Links and
+  unstructured terminal rejections. See CONTRIBUTING's API model ownership for the coverage and transport boundary.
 - Amounts cross `TerminalClient` in minor units with typed intents (such as `appPrintsReceipts`); only the client
   converts them to and from nexo's major units, with the Adyen decimals it is constructed with (`currencyDigits`).
 - `TerminalLocalAPI` posts to `<endpoint>:8443/nexo/`; `xerces:xercesImpl` supplies `DatatypeFactory` on Android.

@@ -11,11 +11,14 @@ import app.minimpos.app.data.db.SaleWithLines
 import app.minimpos.app.data.db.TaxRateEntity
 import app.minimpos.app.data.repo.ImportMode
 import app.minimpos.app.data.repo.SampleData
+import app.minimpos.app.data.repo.SampleDataFixture
 import app.minimpos.app.data.settings.AppSettings
 import app.minimpos.app.data.settings.PaymentSettings
+import app.minimpos.app.data.settings.ReceiptSettings
 import app.minimpos.app.history.RefundablePayment
 import app.minimpos.app.history.StoredPayment
 import app.minimpos.app.history.terminalOperation
+import app.minimpos.core.money.CurrencySpec
 import app.minimpos.core.receipt.PlainTextReceiptRenderer
 import app.minimpos.core.tax.TaxMode
 import com.google.common.truth.Truth.assertThat
@@ -28,6 +31,7 @@ import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import java.io.IOException
 
 @RunWith(RobolectricTestRunner::class)
 class SampleDataTest {
@@ -41,7 +45,7 @@ class SampleDataTest {
             val results = coroutineScope { List(2) { async { container.sampleData.populate(settings) } }.awaitAll() }
             assertThat(results.count { it }).isEqualTo(1)
             val products = container.catalog.products.first()
-            assertThat(products).hasSize(4)
+            assertThat(products).hasSize(11)
             assertThat(products.all { it.sample && it.sku == null }).isTrue()
             assertThat(products.count { it.kind == SaleKind.PRE_AUTHORISATION }).isEqualTo(1)
             val sales =
@@ -68,6 +72,58 @@ class SampleDataTest {
         }
 
     @Test
+    fun `shared screenshot catalog has localized categories products and currency prices`() {
+        val json =
+            env.context.assets
+                .open("sample-data.json")
+                .bufferedReader()
+                .use { it.readText() }
+        val markets =
+            listOf(
+                Triple("en-AU", "AUD", "Harbour Coffee Co."),
+                Triple("zh-SG", "SGD", "晴川咖啡私人有限公司"),
+                Triple("zh-HK", "HKD", "榕巷咖啡有限公司"),
+                Triple("ja-JP", "JPY", "株式会社あおぞら焙煎所"),
+            )
+        markets.forEach { (language, currency, business) ->
+            val fixture = SampleDataFixture.read(json, language)
+            val products = fixture.products(CurrencySpec.of(currency), 1)
+            assertThat(products).hasSize(4)
+            assertThat(products.values.flatten()).hasSize(11)
+            assertThat(products.values.sumOf { group -> group.count { it.kind == SaleKind.PRE_AUTHORISATION } }).isEqualTo(1)
+            assertThat(fixture.receipt(ReceiptSettings()).businessName).isEqualTo(business)
+        }
+        val english = SampleDataFixture.read(json, "en-AU").products(CurrencySpec.of("AUD"), 1)
+        assertThat(english.getValue("Coffee").map { it.name })
+            .containsExactly(
+                "Flat white",
+                "Long black",
+                "Cappuccino",
+                "Chai latte",
+                "Iced latte",
+            ).inOrder()
+        assertThat(english.getValue("Coffee").first().priceMinor).isEqualTo(500)
+        assertThat(english.getValue("Bookings").single().priceMinor).isEqualTo(20_000)
+    }
+
+    @Test
+    fun `sample action fills empty company details once and preserves merchant receipt text`() =
+        await {
+            container.sampleData.populate()
+            val receipt = container.settings.current().receipt
+            assertThat(receipt.businessName).isEqualTo("Harbour Coffee Co.")
+            assertThat(receipt.addressLines).isEqualTo("1 Wharf Street\nFremantle WA 6160")
+            assertThat(receipt.taxId).isEqualTo("12 345 678 901")
+            container.sampleData.purge()
+            val merchant = ReceiptSettings(businessName = "Merchant", title = "Custom title", footer = "Custom footer")
+            env.updateSettings { it.copy(receipt = merchant) }
+            container.sampleData.populate()
+            assertThat(container.settings.current().receipt).isEqualTo(merchant)
+            container.sampleData.purge()
+            assertThat(container.settings.current().receipt).isEqualTo(merchant)
+        }
+
+    @Test
     fun `purge follows markers after edits and preserves merchant rows and shared categories`() =
         await {
             container.sampleData.populate(container.settings.current())
@@ -80,12 +136,12 @@ class SampleDataTest {
             val category =
                 container.catalog.categories
                     .first()
-                    .single()
+                    .first { it.id == sample.categoryId }
             container.catalog.saveCategory(category.copy(name = "Renamed sample category", sample = false))
             assertThat(
                 container.catalog.categories
                     .first()
-                    .single()
+                    .first { it.id == sample.categoryId }
                     .sample,
             ).isTrue()
             val own =
@@ -153,7 +209,7 @@ class SampleDataTest {
                     .none { it.sample },
             ).isTrue()
             container.sampleData.purge()
-            assertThat(container.catalog.products.first()).hasSize(4)
+            assertThat(container.catalog.products.first()).hasSize(11)
         }
 
     @Test
@@ -168,7 +224,7 @@ class SampleDataTest {
             val coffee =
                 container.catalog.products
                     .first()
-                    .first { it.name.contains("coffee") }
+                    .first { it.name == "Flat white" }
             assertThat(coffee.priceMinor).isEqualTo(5)
             val sale =
                 container.database
@@ -198,15 +254,15 @@ class SampleDataTest {
                     container.catalog,
                     container.sales,
                     container.history,
-                    texts = { listOf("Coffee", "Tea", "Cake", "Deposit", "Extra", "Category") },
+                    fixture = { throw IOException("Unavailable sample fixture") },
                     starterRates = { listOf(TaxRateEntity(name = "Zero", rateMilliPercent = 0)) },
                     country = "AU",
                 )
             try {
                 invalid.populate(AppSettings())
-                fail("Expected malformed sample names to fail")
-            } catch (_: IndexOutOfBoundsException) {
-                // The database transaction must roll back all writes made before the invalid price lookup.
+                fail("Expected unavailable sample fixture to fail")
+            } catch (_: IOException) {
+                // The database transaction must roll back all writes made before reading the unavailable fixture.
             }
             assertThat(container.catalog.products.first()).isEmpty()
             assertThat(container.catalog.categories.first()).isEmpty()

@@ -76,7 +76,7 @@ class DocumentationRefreshTest {
     private fun sampleLanguages(): JsonObject {
         val docs = Path.of(checkNotNull(System.getProperty("minimpos.website"))).toAbsolutePath().normalize()
         return Json
-            .parseToJsonElement(docs.parent.resolve(".devin/skills/docs-screenshots/sample-data.json").readText())
+            .parseToJsonElement(docs.parent.resolve("app/src/main/assets/sample-data.json").readText())
             .jsonObject
             .getValue("languages")
             .jsonObject

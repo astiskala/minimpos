@@ -6,6 +6,7 @@ import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.isEnabled
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -326,6 +327,8 @@ class SetupDiscoveryUiTest {
         // Once unlocked, retesting preserves the optional store field.
         compose.onNodeWithTag("storeId").performScrollTo().performTextInput("store-draft")
         apiFailure = Fault.AdyenUnavailable(503)
+        // The button is disabled while the previous test still runs, which would drop this click.
+        compose.waitUntilAtLeastOneExists(hasTestTag("testApi") and isEnabled(), 15_000)
         compose.onNodeWithTag("testApi").performScrollTo().performClick()
         compose.waitUntilAtLeastOneExists(
             hasTestTag("apiResult") and hasText(env.context.getString(R.string.fault_adyen_unavailable), substring = true),

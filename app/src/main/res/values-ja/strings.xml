@@ -509,7 +509,6 @@
   <string name="transfer_included">含まれます</string>
   <string name="transfer_not_included">含まれません</string>
   <string name="transfer_unchanged">変更なし</string>
-  <string name="transfer_environment_device">Adyen端末の証明書から取得します。それ以外はTESTまたはLIVEを選択してください</string>
   <string name="transfer_live_warning">LIVEは実際の決済を行います。インポート前に、意図した環境か確認してください。</string>
   <string name="transfer_secret_passphrase">共有キーのパスフレーズ</string>
   <string name="transfer_secret_api_key">Adyen APIキー</string>

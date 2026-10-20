@@ -110,7 +110,7 @@
             <legend>使用哪個 Adyen 環境？</legend>
             <label class="choice"><input type="radio" name="environment" value="test" checked> <span><strong>TEST</strong>：測試終端和測試卡</span></label>
             <label class="choice"><input type="radio" name="environment" value="live"> <span><strong>LIVE</strong>：真實支付</span></label>
-            <p class="hint">對於網絡或雲端終端及 Tap to Pay，此選項會作為應用程式環境匯入。在 Adyen 終端上運行時，環境由本設備的憑證決定。</p>
+            <p class="hint">每個設定二維碼都包含 TEST 或 LIVE，供匯入前確認。網絡或雲端終端及 Tap to Pay 會使用所選環境；Adyen 終端連線仍使用設備憑證中的環境。</p>
           </fieldset>
 
           <fieldset data-for="thisTerminal network cloud">

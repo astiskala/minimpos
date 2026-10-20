@@ -509,7 +509,6 @@
   <string name="transfer_included">已包含</string>
   <string name="transfer_not_included">未包含</string>
   <string name="transfer_unchanged">保持不变</string>
-  <string name="transfer_environment_device">从 Adyen 终端证书读取；其他设备请选择 TEST 或 LIVE</string>
   <string name="transfer_live_warning">LIVE 用于真实收款。导入前请确认这是您需要的环境。</string>
   <string name="transfer_secret_passphrase">共享密钥口令</string>
   <string name="transfer_secret_api_key">Adyen API 密钥</string>

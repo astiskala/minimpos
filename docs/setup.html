@@ -113,8 +113,8 @@
             <legend>Which Adyen environment?</legend>
             <label class="choice"><input type="radio" name="environment" value="test" checked> <span><strong>TEST</strong>: test terminals and test cards</span></label>
             <label class="choice"><input type="radio" name="environment" value="live"> <span><strong>LIVE</strong>: real payments</span></label>
-            <p class="hint">For a network/cloud terminal or Tap to Pay, this choice is imported as the app’s environment.
-              On an Adyen terminal, the device’s certificate determines it instead.</p>
+            <p class="hint">TEST or LIVE is included in every setup code for review. For a network/cloud terminal or Tap to Pay, it sets the app’s environment.
+              An Adyen terminal still uses its device certificate for the connection.</p>
           </fieldset>
 
           <fieldset data-for="thisTerminal network cloud">

@@ -269,7 +269,7 @@
     const data = new FormData(form);
     const connection = { destination: destination() };
     if (setupMode() === "automatic") connection.automatic = true;
-    if (["network", "cloud", "tapToPay"].includes(destination())) connection.environment = environment().toUpperCase();
+    connection.environment = environment().toUpperCase();
     for (const name of CONNECTION_FIELDS) {
       const value = (data.get(name) || "").trim();
       if (value) connection[name] = value;

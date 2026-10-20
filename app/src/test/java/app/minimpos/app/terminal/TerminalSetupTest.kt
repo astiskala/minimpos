@@ -36,6 +36,12 @@ class TerminalSetupTest {
                 assertThat(setup.environment).isNull()
                 assertThat(setup.connectionProblem).isEqualTo(SetupProblem.ENVIRONMENT)
                 assertThat(setup.problem).isEqualTo(SetupProblem.ENVIRONMENT)
+                TerminalEnvironment.entries.forEach { environment ->
+                    val selected = resolve(TerminalSettings(mode = mode, environment = environment), device = device)
+                    assertThat(selected.capabilities.selectsEnvironment).isTrue()
+                    assertThat(selected.environment).isEqualTo(environment)
+                    assertThat(selected.connectionProblem).isNotEqualTo(SetupProblem.ENVIRONMENT)
+                }
             }
         }
         assertThat(resolve(device = onTerminal).capabilities.selectsEnvironment).isFalse()

@@ -6,6 +6,7 @@ import app.minimpos.app.FakePaymentsApp
 import app.minimpos.app.TestEnvironment
 import app.minimpos.app.await
 import app.minimpos.app.data.db.Failure
+import app.minimpos.app.data.db.SetupProblem
 import app.minimpos.app.data.repo.ImportMode
 import app.minimpos.app.data.security.TransferSeal
 import app.minimpos.app.data.settings.TerminalMode
@@ -54,6 +55,30 @@ class TapToPayImportTest {
         assertThat(terminal.paymentsAppInstallationId).isEqualTo("TEST-INSTALLATION")
     }
 
+    @Test
+    fun `QR without environment is rejected before boarding or saving setup`() {
+        val before = await { env.container.settings.current() }
+        val result =
+            import(
+                """{"destination":"tapToPay","merchantAccount":"Merchant","keyIdentifier":"shared","keyVersion":1}""",
+            )
+        assertThat(result).isEqualTo(SetupImportOutcome.Failed(SetupProblem.ENVIRONMENT, incomplete = true))
+        assertThat(await { env.container.settings.current() }).isEqualTo(before)
+        assertThat(phone.opened).isEmpty()
+        assertThat(management.requests).isEmpty()
+    }
+
+    @Test
+    fun `fresh TEST QR supplies environment without a prior Terminal Settings choice`() {
+        val result =
+            import(
+                """{"destination":"tapToPay","environment":"TEST","merchantAccount":"Merchant","keyIdentifier":"shared","keyVersion":1}""",
+            )
+        assertThat(result).isInstanceOf(SetupImportOutcome.Committed::class.java)
+        assertThat(await { env.container.settings.current() }.terminal.environment).isEqualTo(TerminalEnvironment.TEST)
+        assertThat(phone.packages.toSet()).containsExactly("com.adyen.ipp.mobile.companion.test")
+    }
+
     private fun importLive(fails: Boolean): SetupImportOutcome {
         env.updateSettings {
             it.copy(
@@ -74,22 +99,25 @@ class TapToPayImportTest {
             } else {
                 ManagementResult.Done("BT", FakePaymentsApp.INSTALLATION_ID)
             }
-        val public =
-            Transfer(
-                connection =
-                    """{"destination":"tapToPay","environment":"LIVE","merchantAccount":"Merchant",
+        val result =
+            import(
+                """{"destination":"tapToPay","environment":"LIVE","merchantAccount":"Merchant",
                 |"liveUrlPrefix":"live-prefix","keyIdentifier":"shared","keyVersion":1}
-                    """.trimMargin(),
+                """.trimMargin(),
             )
+        assertThat(phone.opened.first()).startsWith("https://www.adyen.com/boarded?")
+        assertThat(phone.opened.first()).doesNotContain("reboard=true")
+        assertThat(phone.packages.toSet()).containsExactly("com.adyen.ipp.mobile.companion.live")
+        return result
+    }
+
+    private fun import(connection: String): SetupImportOutcome {
+        val public = Transfer(connection = connection)
         val secrets = """{"ADYEN_API_KEY":"key","TERMINAL_PASSPHRASE":"shared passphrase"}"""
         val seal = TransferSeal(iterations = 1_000)
         val code = seal.newCode()
         val encrypted = seal.seal(secrets.toByteArray(), code, TransferCodec.authenticationData(public))
         val received = env.container.setupTransfer.receive(public.copy(sealedSecrets = SealedSecrets(encrypted)))
-        val result = await { env.container.setupImport.import(received, ImportMode.MERGE, code, board = true) }
-        assertThat(phone.opened.first()).startsWith("https://www.adyen.com/boarded?")
-        assertThat(phone.opened.first()).doesNotContain("reboard=true")
-        assertThat(phone.packages.toSet()).containsExactly("com.adyen.ipp.mobile.companion.live")
-        return result
+        return await { env.container.setupImport.import(received, ImportMode.MERGE, code, board = true) }
     }
 }

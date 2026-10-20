@@ -259,9 +259,11 @@ class AutomaticSetupTransferTest {
 
     @Test
     fun `verified automatic setup imports assigned store details and survives repeated checks without Management`() {
-        val outcome = import() as SetupImportOutcome.Committed
+        // The QR declares LIVE, but this terminal's verified certificate is TEST and cannot be overridden.
+        val outcome = import("""{"destination":"thisTerminal","environment":"LIVE","automatic":true}""") as SetupImportOutcome.Committed
         assertThat(outcome.outcome).isInstanceOf(ImportOutcome.Imported::class.java)
         val saved = await { env.container.settings.current() }
+        assertThat(saved.terminal.environment).isEqualTo(TerminalEnvironment.TEST)
         assertThat(saved.terminal.merchantAccount).isEqualTo("Merchant")
         assertThat(saved.terminal.storeId).isEqualTo("ST1")
         assertThat(saved.terminal.keyIdentifier).isEqualTo("store-key")

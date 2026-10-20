@@ -299,15 +299,26 @@ class TransferScreensTest {
 
     @Test
     @Config(qualifiers = "zh-rCN-w320dp-h460dp-hdpi")
-    fun `Chinese QR preview gives destination text full width`() = reviewLiveDestination()
+    fun `Chinese QR preview shows details in two columns`() = reviewLiveDestination()
 
     @Test
     @Config(qualifiers = "ja-w320dp-h460dp-hdpi")
-    fun `Japanese QR preview gives destination text full width`() = reviewLiveDestination()
+    fun `Japanese QR preview shows details in two columns`() = reviewLiveDestination()
 
     @Test
     @Config(qualifiers = "zh-rHK-w320dp-h460dp-hdpi")
-    fun `Traditional Chinese QR preview gives destination text full width`() = reviewLiveDestination()
+    fun `Traditional Chinese QR preview shows details in two columns`() = reviewLiveDestination()
+
+    @Test
+    fun `on-terminal QR previews TEST without certificate instructions`() =
+        reviewLiveDestination(destinationName = "thisTerminal", environmentName = "TEST")
+
+    @Test
+    fun `on-terminal QR previews LIVE with its payment warning`() = reviewLiveDestination(destinationName = "thisTerminal")
+
+    @Test
+    fun `omitted QR environment stays unchanged without guessing TEST or LIVE`() =
+        reviewLiveDestination(destinationName = "thisTerminal", environmentName = null)
 
     private fun assertImportSummary() {
         compose.onNodeWithTag("transferCodeInput").performScrollTo()
@@ -322,8 +333,12 @@ class TransferScreensTest {
             ).assertExists()
     }
 
-    private fun reviewLiveDestination() {
-        val payload = TransferCodec.encode(protect(Transfer(connection = """{"destination":"cloud","environment":"LIVE"}""")))
+    private fun reviewLiveDestination(
+        destinationName: String = "cloud",
+        environmentName: String? = "LIVE",
+    ) {
+        val environmentField = environmentName?.let { ""","environment":"$it"""" }.orEmpty()
+        val payload = TransferCodec.encode(protect(Transfer(connection = """{"destination":"$destinationName"$environmentField}""")))
         val vm = TransferImportViewModel("AUD", container.setupImport)
         compose.awaitCondition(
             "Opening scanner",
@@ -341,14 +356,36 @@ class TransferScreensTest {
         }
         waitForTag("connectionPreview")
         val label = compose.onNodeWithText(env.context.getString(R.string.settings_mode)).fetchSemanticsNode().boundsInRoot
-        val destination = compose.onNodeWithText(env.context.getString(R.string.settings_mode_cloud)).fetchSemanticsNode().boundsInRoot
-        assertThat(destination.top).isAtLeast(label.bottom)
-        assertThat(destination.width).isAtLeast(label.width)
-        compose.onNodeWithText(env.context.getString(R.string.settings_env_live)).assertExists()
-        compose.onNodeWithTag("importLiveWarning").performScrollTo().assertIsDisplayed()
+        val destinationLabel = if (destinationName == "cloud") R.string.settings_mode_cloud else R.string.settings_mode_terminal
+        val destination = compose.onNodeWithText(env.context.getString(destinationLabel)).fetchSemanticsNode().boundsInRoot
+        assertThat(destination.left).isAtLeast(label.right)
+        assertThat(destination.top).isEqualTo(label.top)
+        assertThat(label.width).isGreaterThan(0f)
+        val environmentLabel =
+            compose
+                .onNodeWithText(
+                    env.context.getString(R.string.settings_environment),
+                ).fetchSemanticsNode()
+                .boundsInRoot
+        val environmentValue =
+            when (environmentName) {
+                "LIVE" -> R.string.settings_env_live
+                "TEST" -> R.string.settings_env_test
+                else -> R.string.transfer_unchanged
+            }
+        val environment = compose.onNodeWithText(env.context.getString(environmentValue)).fetchSemanticsNode().boundsInRoot
+        assertThat(environment.left).isAtLeast(environmentLabel.right)
+        assertThat(environment.right).isEqualTo(destination.right)
+        assertThat(environment.top).isEqualTo(environmentLabel.top)
+        if (environmentName == "LIVE") {
+            compose.onNodeWithTag("importLiveWarning").performScrollTo().assertIsDisplayed()
+        } else {
+            compose.onNodeWithTag("importLiveWarning").assertDoesNotExist()
+        }
         assertImportSummary()
         compose.onNodeWithTag("import").assertIsDisplayed()
         assertThat(await { container.settings.current() }).isEqualTo(before)
+        if (destinationName != "cloud") return
         compose.onNodeWithTag("import").performClick()
         compose.waitUntilAtLeastOneExists(
             hasText(env.context.getString(R.string.transfer_missing_fields)),

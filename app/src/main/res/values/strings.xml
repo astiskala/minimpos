@@ -509,7 +509,6 @@
   <string name="transfer_included">Included</string>
   <string name="transfer_not_included">Not included</string>
   <string name="transfer_unchanged">Unchanged</string>
-  <string name="transfer_environment_device">Read from an Adyen terminal’s certificate; otherwise choose TEST or LIVE</string>
   <string name="transfer_live_warning">LIVE takes real payments. Check that this is the intended environment before importing.</string>
   <string name="transfer_secret_passphrase">Shared key passphrase</string>
   <string name="transfer_secret_api_key">Adyen API key</string>

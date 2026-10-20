@@ -31,7 +31,7 @@ enum class ConnectionDestination {
  * sealed beside it, as in any transfer. The page leaves out what was not typed; a blank value counts as left out too.
  *
  * @property destination Where payments go; null leaves it as it is.
- * @property environment Selected environment for a network/cloud terminal or Tap to Pay; ignored on Adyen terminals.
+ * @property environment Selected environment for review and off-terminal setup; routing on Adyen terminals still uses their certificate.
  * @property host The IP address or host name of a terminal on the network.
  * @property poiId The terminal's POIID, for a terminal on the network or in the cloud.
  * @property keyIdentifier The shared key's identifier.

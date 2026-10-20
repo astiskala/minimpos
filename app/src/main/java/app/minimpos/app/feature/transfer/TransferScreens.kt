@@ -648,7 +648,7 @@ private fun ConnectionPreview(received: ReceivedTransfer) {
     val destination = received.connectionDestination
     val environment = received.connectionEnvironment
     Card(Modifier.fillMaxWidth().testTag("connectionPreview")) {
-        TransferDetail(
+        LabeledValue(
             stringResource(R.string.settings_mode),
             stringResource(
                 when (destination) {
@@ -660,7 +660,7 @@ private fun ConnectionPreview(received: ReceivedTransfer) {
                 },
             ),
         )
-        TransferDetail(
+        LabeledValue(
             stringResource(R.string.settings_environment),
             stringResource(
                 when {
@@ -670,10 +670,6 @@ private fun ConnectionPreview(received: ReceivedTransfer) {
 
                     environment == TerminalEnvironment.TEST -> {
                         R.string.settings_env_test
-                    }
-
-                    destination == ConnectionDestination.THIS_TERMINAL || destination == ConnectionDestination.TAP_TO_PAY -> {
-                        R.string.transfer_environment_device
                     }
 
                     else -> {

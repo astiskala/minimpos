@@ -234,9 +234,8 @@ class SetupHelperTest {
                 submit()
                 ready()
                 val automatic = if (mode == "automatic" && destination != "tapToPay") ""","automatic":true""" else ""
-                val environment = if (destination in listOf("network", "cloud", "tapToPay")) ""","environment":"TEST"""" else ""
                 val expected =
-                    """{"destination":"$destination"$automatic$environment,"smtpHost":"smtp.example.com","smtpPort":465,
+                    """{"destination":"$destination"$automatic,"environment":"TEST","smtpHost":"smtp.example.com","smtpPort":465,
                     |"smtpSecurity":"SSL","smtpUsername":"shop@example.com","smtpFromAddress":"receipts@example.com",
                     |"smtpFromName":"Example shop"}
                     """.trimMargin()
@@ -297,17 +296,22 @@ class SetupHelperTest {
     }
 
     @Test
-    fun `Tap to Pay transfers explicit LIVE choice in every helper language`() {
+    fun `every destination transfers explicit LIVE choice in every helper language`() {
         for (language in listOf("", "zh-CN/", "zh-Hant/", "ja/")) {
-            openPage(language)
-            field("destination", "tapToPay")
-            field("environment", "live")
-            submit()
-            ready()
-            assertThat(readTransfer())
-                .isEqualTo(
-                    receiptUnchanged("""{"destination":"tapToPay","environment":"LIVE"}""") to json("""{"ADYEN_API_KEY":"demo-key"}"""),
-                )
+            for (destination in listOf("thisTerminal", "network", "cloud", "tapToPay")) {
+                openPage(language)
+                field("destination", destination)
+                field("environment", "live")
+                field("setupMode", "automatic")
+                submit()
+                ready()
+                val automatic = if (destination == "tapToPay") "" else ""","automatic":true"""
+                assertThat(readTransfer())
+                    .isEqualTo(
+                        receiptUnchanged("""{"destination":"$destination"$automatic,"environment":"LIVE"}""") to
+                            json("""{"ADYEN_API_KEY":"demo-key"}"""),
+                    )
+            }
         }
     }
 

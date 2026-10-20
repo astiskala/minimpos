@@ -55,6 +55,7 @@ class DestinationSettingsTest {
                 terminal =
                     it.terminal.copy(
                         mode = TerminalMode.PAYMENTS_APP,
+                        environment = TerminalEnvironment.TEST,
                         merchantAccount = "Merchant",
                         paymentsAppInstallationId = "INSTALLATION-1",
                         keyIdentifier = "KEY",
@@ -134,6 +135,9 @@ class DestinationSettingsTest {
     @Config(qualifiers = "b+zh+Hant-w320dp-h460dp-hdpi")
     fun `Tap to Pay disables shopper display settings in Traditional Chinese`() {
         open("shopper_display")
+        compose.awaitCondition("shopper display settings load") {
+            compose.onAllNodesWithTag("showVirtualReceipt").fetchSemanticsNodes().isNotEmpty()
+        }
         listOf("showVirtualReceipt", "confirmBasketOnTerminal", "collectEmailOnTerminal", "showTerminalQrReceipt", "askShopperRating")
             .forEach { tag -> compose.onNodeWithTag(tag).performScrollTo().assertIsNotEnabled() }
         assertThat(env.container.settingsState.value.payment.showVirtualReceipt).isTrue()
@@ -179,5 +183,8 @@ class DestinationSettingsTest {
         compose.setContent { MiniMposApp(env.container) }
         compose.onNodeWithTag("settings").performClick()
         compose.onNodeWithTag("section_$section").performScrollTo().performClick()
+        compose.awaitCondition("settings section opens") {
+            compose.onAllNodesWithTag("section_$section").fetchSemanticsNodes().isEmpty()
+        }
     }
 }

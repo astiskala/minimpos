@@ -10,7 +10,10 @@ import app.minimpos.app.data.db.SetupProblem
 import app.minimpos.app.data.security.Secret
 import app.minimpos.app.data.settings.TerminalMode
 import app.minimpos.app.feature.settings.TerminalSetupViewModel
+import app.minimpos.terminal.transport.AdyenRole
 import app.minimpos.terminal.transport.ApiKey
+import app.minimpos.terminal.transport.CredentialLookup
+import app.minimpos.terminal.transport.CredentialRoles
 import app.minimpos.terminal.transport.DiscoveredKey
 import app.minimpos.terminal.transport.Fault
 import app.minimpos.terminal.transport.SharedKeyLookup
@@ -47,10 +50,8 @@ class SetupDiscoveryTest {
     private val queries = mutableListOf<String?>()
     private val api =
         object : TerminalDetailsApi {
-            override suspend fun credential(
-                environment: TerminalEnvironment,
-                cloud: Boolean,
-            ) = app.minimpos.terminal.transport.CredentialLookup.Allowed
+            override suspend fun credential(environment: TerminalEnvironment) =
+                CredentialLookup.Allowed(CredentialRoles(AdyenRole.required(), emptyList()))
 
             override suspend fun terminals(
                 environment: TerminalEnvironment,

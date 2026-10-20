@@ -46,6 +46,7 @@ class QuickStartGuideTest {
                     "Management API - Terminal actions read",
                     "Management API - Terminal settings read and write",
                     "Management API - Terminal settings Advanced read and write",
+                    "Management API - API credentials read and write",
                     "Cloud Device API role",
                 ).inOrder()
             steps.select("ul.roles li").forEach { role ->
@@ -61,8 +62,8 @@ class QuickStartGuideTest {
                 },
             ).contains("Devices › Device settings › Integrations › Terminal API › Encryption key")
             assertThat(text).doesNotContain("API tokenise payment details")
-            assertThat(steps.children().single { "Adyen Payments app role" in it.text() }.text())
-                .contains("Management API - API credentials read and write")
+            assertThat(steps.children().single { "Adyen Payments App role" in it.text() }.text())
+                .doesNotContain("Management API - API credentials read and write")
         }
     }
 
@@ -1090,7 +1091,7 @@ class SetupGuideTest {
             val heading = guide.document.getElementById("tap-to-pay")!!
             val notice = heading.nextElementSibling()!!
             assertWithMessage(guide.name).that(notice.hasClass("callout-prereq")).isTrue()
-            assertThat(notice.text()).contains("Adyen Payments app role")
+            assertThat(notice.text()).contains("Adyen Payments App role")
             assertThat(notice.select("a").map { it.attr("href") }).contains("https://help.adyen.com/contact")
             val following = heading.nextElementSiblings()
             val steps = following.first { it.tagName() == "ol" }.select("li")
@@ -1104,7 +1105,7 @@ class SetupGuideTest {
             assertThat(options.select("dt")).hasSize(1)
             assertThat(options.select("dd")).hasSize(1)
             assertThat(options.select("a").map { it.attr("href") }).containsExactly("setup.html", "#helper").inOrder()
-            assertThat(following.single { it.hasClass("manual-setup") }.text()).doesNotContain("Adyen Payments app role")
+            assertThat(following.single { it.hasClass("manual-setup") }.text()).doesNotContain("Adyen Payments App role")
         }
         val english =
             pages
@@ -1149,7 +1150,7 @@ class SetupGuideTest {
                 (listOf("TEST", "LIVE") + flowLabels).forEach {
                     assertThat(helper.text()).contains(it)
                 }
-                if (destination == "cloud") assertThat(helper.text()).contains("Cloud Device API role")
+                assertThat(helper.text()).doesNotContain("Cloud Device API role")
                 val manual = following.single { it.hasClass("manual-setup") }
                 assertThat(helper.nextElementSibling()).isEqualTo(manual)
                 assertThat(manual.tagName()).isEqualTo("details")

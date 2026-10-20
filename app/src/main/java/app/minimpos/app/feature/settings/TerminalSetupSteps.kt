@@ -75,12 +75,12 @@ private typealias TerminalUpdate = ((TerminalSettings) -> TerminalSettings) -> U
 
 /**
  * What Settings › Terminal asks for wherever payments go but the simulator, as numbered steps in the order they are
- * done. Network and cloud destinations first ask for the environment, before API access. On-device terminals read
- * their certificate; Tap to Pay starts with the Payments app whose installation determines the environment:
+ * done. Network, cloud and Tap to Pay destinations first ask for the environment, before API access. On-device terminals read
+ * their certificate; Tap to Pay then checks the selected environment's Payments app:
  * - this terminal: Adyen API, shared key, connection;
  * - a terminal on the network: environment, Adyen API, address and POIID, shared key, connection;
  * - a terminal in the cloud: environment, Adyen API, terminal, connection;
- * - Tap to Pay: Payments app, Adyen API, boarding, shared key, connection.
+ * - Tap to Pay: environment, Payments app, Adyen API, boarding, shared key, connection.
  *
  * API testing unlocks subsequent steps in this visit; a later step stays hidden until then. Revealed steps stay available
  * for editing, so retesting or clearing an earlier field cannot discard an unsaved secret in a later step. A step's
@@ -176,7 +176,7 @@ private fun ColumnScope.DestinationSteps(
         SetupProgress(
             onTerminal = status.onTerminal,
             environmentChosen = status.environment != null,
-            paymentsApps = status.paymentsApps.size,
+            paymentsApps = status.paymentsApps,
             terminal = terminal,
             secrets = state.secrets,
             verified = !currentSetupGate().pending,
@@ -186,13 +186,11 @@ private fun ColumnScope.DestinationSteps(
 
     fun step(kind: SetupStepKind) = plan.firstOrNull { it.kind == kind }
     step(SetupStepKind.ENVIRONMENT)?.let { EnvironmentStep(it.number, it.done, status.environment, update) }
-    step(SetupStepKind.PAYMENTS_APP)?.let { PaymentsAppStep(it.number, status.paymentsApps) }
+    step(SetupStepKind.PAYMENTS_APP)?.let { PaymentsAppStep(it, status.paymentsApps, status.environment) }
     val apiStep = step(SetupStepKind.ADYEN_API) ?: return
     AdyenApiStep(
         number = apiStep.number,
         done = apiStep.done,
-        cloud = status.mode == TerminalMode.CLOUD,
-        tapToPay = status.mode == TerminalMode.PAYMENTS_APP,
         discovers = status.mode != TerminalMode.PAYMENTS_APP,
         findOnly = !status.onTerminal && status.mode != TerminalMode.PAYMENTS_APP,
         api = api,
@@ -291,7 +289,7 @@ private fun rememberSetupVisit(
     return SetupVisit(apiTested = apiTested, terminalEntered = terminalEntered, boarded = boarded)
 }
 
-/** The environment chosen before using a network or cloud terminal; no default silently opts into real payments. */
+/** The environment chosen off-terminal; no default silently opts into real payments. */
 @Composable
 private fun ColumnScope.EnvironmentStep(
     number: Int,
@@ -505,8 +503,6 @@ private fun ColumnScope.ApiFields(
 private fun ColumnScope.AdyenApiStep(
     number: Int,
     done: Boolean,
-    cloud: Boolean,
-    tapToPay: Boolean,
     discovers: Boolean,
     findOnly: Boolean,
     api: ApiEntry,
@@ -525,7 +521,7 @@ private fun ColumnScope.AdyenApiStep(
     }
     StepHeader(number, stringResource(R.string.settings_api), done = done)
     SettingNote(stringResource(R.string.settings_adyen_key_hint))
-    ApiKeyRoles(cloud, tapToPay)
+    ApiKeyRoles()
 
     SecretField(
         label = stringResource(R.string.settings_api_key),
@@ -557,21 +553,17 @@ private fun ColumnScope.AdyenApiStep(
 }
 
 /**
- * The roles the API test requires that new API credentials lack by default (`AdyenRole.required` without the default
- * ones); cloud adds its transport role, and Tap to Pay the role its setup creates the phone's own credential with.
+ * The common required roles that new primary credentials lack by default; identical for every real destination.
  */
 @Composable
-private fun ColumnScope.ApiKeyRoles(
-    cloud: Boolean,
-    tapToPay: Boolean,
-) {
+private fun ColumnScope.ApiKeyRoles() {
     SettingNote(stringResource(R.string.settings_adyen_roles_hint))
-    if (cloud) SettingNote("• " + stringResource(R.string.settings_adyen_role_cloud), Modifier.testTag("roleCloud"))
+    SettingNote("• " + stringResource(R.string.settings_adyen_role_cloud), Modifier.testTag("roleCloud"))
     SettingNote("• " + stringResource(R.string.settings_adyen_role_terminals), Modifier.testTag("roleTerminals"))
     listOf(R.string.settings_adyen_role_settings, R.string.settings_adyen_role_shared_key).forEach {
         SettingNote("• " + stringResource(it))
     }
-    if (tapToPay) SettingNote("• " + stringResource(R.string.settings_adyen_role_credentials), Modifier.testTag("roleCredentials"))
+    SettingNote("• " + stringResource(R.string.settings_adyen_role_credentials), Modifier.testTag("roleCredentials"))
 }
 
 /** Optional terminal discovery, with its manual-entry fallback kept beside the API-key action. */
@@ -682,40 +674,36 @@ internal fun TerminalChoiceDialog(
 }
 
 /**
- * The Adyen Payments app: which one is installed ([paymentsApps]) and, while none is, buttons that open its Google Play
- * page (TEST and LIVE); with both installed, what to do about it. The app reads the device again when it comes back to
- * the front, so an app installed meanwhile shows.
+ * The installed Payments apps and, when the selected one is missing, its Google Play page. Both may be installed.
+ * The app reads the device again when it comes back to the front, so an app installed meanwhile shows.
  */
 @Composable
 private fun ColumnScope.PaymentsAppStep(
-    number: Int,
+    step: SetupStep,
     paymentsApps: Set<TerminalEnvironment>,
+    environment: TerminalEnvironment?,
 ) {
-    StepHeader(number, stringResource(R.string.settings_payments_app), done = paymentsApps.size == 1)
+    StepHeader(step.number, stringResource(R.string.settings_payments_app), done = step.done)
     SettingNote(stringResource(R.string.settings_payments_app_hint))
     Column(Modifier.padding(horizontal = LocalDimens.current.rowHorizontalPadding)) {
         LabeledValue(stringResource(R.string.settings_payments_app_installed), paymentsAppLabel(paymentsApps))
     }
-    if (paymentsApps.size > 1) {
-        SettingActions { ActionMessage(stringResource(R.string.setup_payments_app_ambiguous), isError = true) }
-    } else if (paymentsApps.isEmpty()) {
+    if (environment != null && environment !in paymentsApps) {
         val context = LocalContext.current
-
-        fun open(environment: TerminalEnvironment) {
-            context.openUrl(PaymentsAppDestination.storeUrl(environment))
-        }
         SettingActions {
             SecondaryButton(
-                stringResource(R.string.settings_get_payments_app_test),
-                { open(TerminalEnvironment.TEST) },
+                stringResource(
+                    if (environment ==
+                        TerminalEnvironment.TEST
+                    ) {
+                        R.string.settings_get_payments_app_test
+                    } else {
+                        R.string.settings_get_payments_app_live
+                    },
+                ),
+                { context.openUrl(PaymentsAppDestination.storeUrl(environment)) },
                 icon = Icons.Default.Download,
-                modifier = Modifier.testTag("getPaymentsAppTest"),
-            )
-            SecondaryButton(
-                stringResource(R.string.settings_get_payments_app_live),
-                { open(TerminalEnvironment.LIVE) },
-                icon = Icons.Default.Download,
-                modifier = Modifier.testTag("getPaymentsAppLive"),
+                modifier = Modifier.testTag(if (environment == TerminalEnvironment.TEST) "getPaymentsAppTest" else "getPaymentsAppLive"),
             )
         }
     }

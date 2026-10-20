@@ -10,12 +10,14 @@ sealed interface BoardingCredentialCheck {
      * @property username Verified credential name, not a user-entered label.
      * @property active Whether Adyen reports this credential enabled.
      * @property clientKeyPresent Whether the documented clientKey string is nonblank; its value is discarded.
+     * @property hasRequiredRole Whether the readable role list contains the boarding role.
      */
     data class Verified(
         val id: String,
         val username: String,
         val active: Boolean,
         val clientKeyPresent: Boolean,
+        val hasRequiredRole: Boolean,
     ) : BoardingCredentialCheck
 
     /**

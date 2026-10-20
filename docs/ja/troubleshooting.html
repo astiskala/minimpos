@@ -109,7 +109,7 @@
                 <p><span class="fix-label">対処</span><strong>設定 › 端末</strong>でテストを実行します。<a href="#connection">端末ペアリングと設定</a>を参照してください。テストに成功する場合は、端末の構成確認を Adyen に依頼してください。</p></dd></div>
             <div><dt>「端末またはAdyenアカウントがこのリクエストに対応していません。有効になっているかAdyenサポートに確認してから再試行してください。」</dt>
               <dd><p><span class="fix-label">原因</span>端末または Adyen が、決済で求めた機能を提供していません。多くの場合、アカウントで有効になっていないためです。</p>
-                <p><span class="fix-label">対処</span>マーチャントアカウントで有効になっているか、Adyen サポートに確認を依頼してください。Tap to Pay の場合は、Adyen Payments app role だけでなく Tap to Pay on Android も有効になっているか確認してください。その後、再試行します。</p></dd></div>
+                <p><span class="fix-label">対処</span>マーチャントアカウントで有効になっているか、Adyen サポートに確認を依頼してください。Tap to Pay の場合は、Adyen Payments App role だけでなく Tap to Pay on Android も有効になっているか確認してください。その後、再試行します。</p></dd></div>
             <div><dt>「再度請求しないでください。この決済は成功しています。」</dt>
               <dd><p><span class="fix-label">原因</span>端末はキャンセルを報告しましたが、決済は承認されています。</p>
                 <p><span class="fix-label">対処</span>再請求しないでください。購入者が支払うべきでない場合は返金します。</p></dd></div>
@@ -157,13 +157,13 @@
                 <p><span class="fix-label">対処</span>共有キーの識別子、パスフレーズ、バージョンを Customer Area と照合します。ネットワーク上の端末では、端末の「Device info」画面で IP アドレスと POIID を確認します。</p></dd></div>
             <div><dt>環境の不一致で接続が拒否される</dt>
               <dd><p><span class="fix-label">原因</span>TEST と LIVE が混在しています。端末、アカウント、APIキーはすべて同じ環境のものが必要です。</p>
-                <p><span class="fix-label">対処</span>ネットワークやクラウドの端末では、<strong>設定 › 端末</strong>の<strong>環境</strong>を確認します。Adyen 端末や Tap to Pay では、正しい環境のデバイスまたは Payments アプリを使います。</p></dd></div>
+                <p><span class="fix-label">対処</span>ネットワークやクラウドの端末、Tap to Pay では、<strong>設定 › 端末</strong>の<strong>環境</strong>を確認します。Adyen 端末では、正しい環境のデバイスを使います。</p></dd></div>
             <div><dt>クラウドの端末に接続できない</dt>
               <dd><p><span class="fix-label">原因</span>端末がオフライン、POIID が誤っている、または APIキーに Cloud Device API role がありません。</p>
                 <p><span class="fix-label">対処</span>端末の電源が入りオンラインであることを確認し、POIID と認証情報のロールを確認します。</p></dd></div>
-            <div><dt>「TEST版とLIVE版のAdyen Paymentsアプリが両方インストールされています」</dt>
-              <dd><p><span class="fix-label">原因</span>Tap to Pay では Payments アプリを 1 つだけ使います。</p>
-                <p><span class="fix-label">対処</span>使わない方をアンインストールし、登録を完了して共有キーを入力します。設定チェックの成功はカード決済のテストではないため、TEST 決済を行ってください。</p></dd></div>
+            <div><dt>選択した環境の Payments アプリがない</dt>
+              <dd><p><span class="fix-label">原因</span>選択した TEST または LIVE 環境の Payments アプリがインストールされていません。</p>
+                <p><span class="fix-label">対処</span><strong>設定 › 端末 › 環境</strong>を確認し、Google Play から対応するアプリをインストールします。両方をインストールできます。登録を完了し、対応する共有キーを入力して TEST 決済で確認してください。</p></dd></div>
             <div id="tap-to-pay-check"><dt>カードをかざす前に Tap to Pay が UnavailableService を返す</dt>
               <dd><p>Payments アプリがリクエストを完了できませんでした。この汎用エラーだけで Adyen の障害やクライアントキー不足とは判断できません。返された場合でも <code>1029_605</code> はセッション関連のエラーで、キー不足の証拠ではありません。</p>
                 <p><strong>設定 › 端末</strong>で<strong>接続をテスト</strong>を実行します。確認結果の簡潔な表と機密情報を除いたレポートは、<strong>設定 › ヘルプとトラブルシューティング › トラブルシューティングの詳細</strong>を開きます。決済が成功しなかった結果画面の<strong>ヘルプとトラブルシューティング</strong>ボタンからも、この詳細を直接開けます。表を開くと確認結果を更新します。バックグラウンドの接続確認ではクライアントキーを確認しません。</p>

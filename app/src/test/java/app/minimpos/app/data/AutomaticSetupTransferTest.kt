@@ -26,8 +26,10 @@ import app.minimpos.core.codec.Transfer
 import app.minimpos.core.codec.TransferCodec
 import app.minimpos.core.payment.PaymentContext
 import app.minimpos.terminal.paymentsapp.ManagementResult
+import app.minimpos.terminal.transport.AdyenRole
 import app.minimpos.terminal.transport.ApiKey
 import app.minimpos.terminal.transport.CredentialLookup
+import app.minimpos.terminal.transport.CredentialRoles
 import app.minimpos.terminal.transport.DiscoveredKey
 import app.minimpos.terminal.transport.ExternalText
 import app.minimpos.terminal.transport.Fault
@@ -50,7 +52,7 @@ import org.robolectric.RobolectricTestRunner
 @RunWith(RobolectricTestRunner::class)
 class AutomaticSetupTransferTest {
     private val poiId = "S1F2-000158213605014"
-    private var credential: CredentialLookup = CredentialLookup.Allowed
+    private var credential: CredentialLookup = CredentialLookup.Allowed(CredentialRoles(AdyenRole.required(), emptyList()))
     private var available = listOf(TerminalDetails(poiId, "Merchant", "192.168.1.42", "ST1"))
     private var key: DiscoveredKey? = DiscoveredKey("store-key", 2, "correct horse battery staple")
     private val terminal = FakeTerminal()
@@ -61,10 +63,7 @@ class AutomaticSetupTransferTest {
     private var credentialReads = 0
     private val details: TerminalDetailsApi =
         object : TerminalDetailsApi {
-            override suspend fun credential(
-                environment: TerminalEnvironment,
-                cloud: Boolean,
-            ): CredentialLookup {
+            override suspend fun credential(environment: TerminalEnvironment): CredentialLookup {
                 credentialReads++
                 return credential
             }
@@ -595,7 +594,7 @@ class AutomaticSetupTransferTest {
             )
         val received =
             received(
-                """{"destination":"tapToPay","merchantAccount":"Merchant","keyIdentifier":"shared","keyVersion":1}""",
+                """{"destination":"tapToPay","environment":"TEST","merchantAccount":"Merchant","keyIdentifier":"shared","keyVersion":1}""",
                 """{"ADYEN_API_KEY":"key","TERMINAL_PASSPHRASE":"shared passphrase"}""",
             )
         val before = await { env.container.settings.current() }
@@ -636,7 +635,7 @@ class AutomaticSetupTransferTest {
             )
         val received =
             received(
-                """{"destination":"tapToPay","merchantAccount":"Merchant","keyIdentifier":"shared","keyVersion":1}""",
+                """{"destination":"tapToPay","environment":"TEST","merchantAccount":"Merchant","keyIdentifier":"shared","keyVersion":1}""",
                 """{"ADYEN_API_KEY":"key","TERMINAL_PASSPHRASE":"shared passphrase"}""",
             )
         val proposed = await { env.container.setupImport.import(received, ImportMode.MERGE, code) }
@@ -665,6 +664,7 @@ class AutomaticSetupTransferTest {
                 terminal =
                     it.terminal.copy(
                         mode = TerminalMode.PAYMENTS_APP,
+                        environment = TerminalEnvironment.TEST,
                         merchantAccount = "Old",
                         paymentsAppInstallationId = FakePaymentsApp.INSTALLATION_ID,
                     ),
@@ -673,7 +673,7 @@ class AutomaticSetupTransferTest {
         phone.boarded = true
         val received =
             received(
-                """{"destination":"tapToPay","merchantAccount":"Merchant","keyIdentifier":"shared","keyVersion":1}""",
+                """{"destination":"tapToPay","environment":"TEST","merchantAccount":"Merchant","keyIdentifier":"shared","keyVersion":1}""",
                 """{"ADYEN_API_KEY":"key","TERMINAL_PASSPHRASE":"shared passphrase"}""",
             )
         management.result = ManagementResult.Failed(Fault.AdyenUnavailable(503))

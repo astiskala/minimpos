@@ -83,6 +83,42 @@ class HistorySwitchesTest {
         }
 
     @Test
+    fun `Tap to Pay environment switch warns about unfinished recovery before purging`() =
+        await {
+            val test =
+                container.settings
+                    .current()
+                    .terminal
+                    .withConnection(mode = TerminalMode.PAYMENTS_APP, environment = TerminalEnvironment.TEST)
+                    .copy(paymentsAppInstallationId = "test-installation")
+            container.settings.update { it.copy(terminal = test) }
+            val unfinished =
+                sale.copy(
+                    status = SaleStatus.UNKNOWN,
+                    context = sale.context!!.copy(destination = "PAYMENTS_APP", environment = "TEST", simulated = false),
+                )
+            container.sales.createPending(unfinished, emptyList())
+            assertThat(container.historySwitches.preview(test.selectEnvironment(TerminalEnvironment.TEST))).isNull()
+            val live = test.selectEnvironment(TerminalEnvironment.LIVE)
+            val plan = checkNotNull(container.historySwitches.preview(live))
+            assertThat(plan.unfinished).isTrue()
+            assertThat(container.history.items().first()).hasSize(1)
+            assertThat(container.settings.current().terminal).isEqualTo(test)
+            assertThat(container.historySwitches.confirm(plan)).isTrue()
+            assertThat(container.history.items().first()).isEmpty()
+            assertThat(
+                container.settings
+                    .current()
+                    .terminal.environment,
+            ).isEqualTo(TerminalEnvironment.LIVE)
+            assertThat(
+                container.settings
+                    .current()
+                    .terminal.paymentsAppInstallationId,
+            ).isEmpty()
+        }
+
+    @Test
     fun `stale destination confirmation never deletes history`() =
         await {
             env.useSimulator()

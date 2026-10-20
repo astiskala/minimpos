@@ -28,9 +28,9 @@ class TerminalSetupTest {
     ) = TerminalSetup.resolve(settings.copy(terminal = terminal), saved, device, verified = true, pendingImport = false)
 
     @Test
-    fun `environment selection is required only for network and cloud destinations on phones and tablets`() {
+    fun `environment selection is required for network cloud and Payments app destinations`() {
         listOf(phone, FakeDevice(model = "Tablet")).forEach { device ->
-            listOf(TerminalMode.TERMINAL, TerminalMode.CLOUD).forEach { mode ->
+            listOf(TerminalMode.TERMINAL, TerminalMode.CLOUD, TerminalMode.PAYMENTS_APP).forEach { mode ->
                 val setup = resolve(TerminalSettings(mode = mode), device = device)
                 assertThat(setup.capabilities.selectsEnvironment).isTrue()
                 assertThat(setup.environment).isNull()
@@ -46,8 +46,9 @@ class TerminalSetupTest {
                 TerminalSettings(mode = TerminalMode.PAYMENTS_APP, environment = TerminalEnvironment.TEST),
                 device = paymentsApp,
             )
-        assertThat(setup.capabilities.selectsEnvironment).isFalse()
-        assertThat(setup.environment).isEqualTo(TerminalEnvironment.LIVE)
+        assertThat(setup.capabilities.selectsEnvironment).isTrue()
+        assertThat(setup.environment).isEqualTo(TerminalEnvironment.TEST)
+        assertThat(setup.connectionProblem).isEqualTo(SetupProblem.PAYMENTS_APP_MISSING)
     }
 
     @Test
@@ -156,14 +157,14 @@ class TerminalSetupTest {
     }
 
     @Test
-    fun `the Payments app needs one installed app on a phone, boarding and the shared key`() {
+    fun `the Payments app needs the selected app on a phone boarding and the shared key`() {
         val phone = FakeDevice(paymentsApps = setOf(TerminalEnvironment.TEST))
-        val tapToPay = TerminalSettings(mode = TerminalMode.PAYMENTS_APP, poiIdOverride = "S1F2-1")
+        val tapToPay = TerminalSettings(mode = TerminalMode.PAYMENTS_APP, environment = TerminalEnvironment.TEST, poiIdOverride = "S1F2-1")
         assertThat(resolve(tapToPay, passphrase, onTerminal).connectionProblem).isEqualTo(SetupProblem.PAYMENTS_APP_ON_TERMINAL)
         assertThat(resolve(tapToPay, passphrase).connectionProblem).isEqualTo(SetupProblem.PAYMENTS_APP_MISSING)
         val both = FakeDevice(paymentsApps = TerminalEnvironment.entries.toSet())
-        assertThat(resolve(tapToPay, passphrase, both).connectionProblem).isEqualTo(SetupProblem.PAYMENTS_APP_AMBIGUOUS)
-        assertThat(resolve(tapToPay, passphrase, both).environment).isNull()
+        assertThat(resolve(tapToPay, passphrase, both).connectionProblem).isEqualTo(SetupProblem.MERCHANT_ACCOUNT)
+        assertThat(resolve(tapToPay, passphrase, both).environment).isEqualTo(TerminalEnvironment.TEST)
         // Then, in the order Settings asks for them: the merchant account boarding needs, boarding, the shared key.
         assertThat(resolve(tapToPay, passphrase, phone).connectionProblem).isEqualTo(SetupProblem.MERCHANT_ACCOUNT)
         val merchant = tapToPay.copy(merchantAccount = "Merchant")
@@ -178,7 +179,7 @@ class TerminalSetupTest {
         assertThat(boarded.problem).isEqualTo(SetupProblem.API_KEY)
         assertThat(boarded.paymentsApps).containsExactly(TerminalEnvironment.TEST)
         assertThat(boarded.poiId).isEqualTo("INSTALLATION-1")
-        // The installed Payments app tells the environment, so captures need no connection first; there is no printer.
+        // The selected environment also supplies the Checkout endpoint; there is no printer.
         assertThat(boarded.environment).isEqualTo(TerminalEnvironment.TEST)
         val api = keyed.copy(paymentsAppInstallationId = "INSTALLATION-1", merchantAccount = "Merchant")
         assertThat(resolve(api, passphrase + Secret.ADYEN_API_KEY, phone).apiSetup).isEqualTo(ApiSetup.Complete)
@@ -191,9 +192,12 @@ class TerminalSetupTest {
     }
 
     @Test
-    fun `Tap to Pay is boarded on a phone with one Payments app, for the merchant account, with the Adyen API key`() {
+    fun `Tap to Pay boards only the selected Payments app with the merchant account and Adyen API key`() {
         val phone = FakeDevice(paymentsApps = setOf(TerminalEnvironment.LIVE))
-        val merchant = AppSettings().let { it.copy(terminal = it.terminal.copy(merchantAccount = " Merchant ")) }
+        val merchant =
+            AppSettings().let {
+                it.copy(terminal = it.terminal.copy(merchantAccount = " Merchant ", environment = TerminalEnvironment.LIVE))
+            }
 
         fun boarding(
             device: DeviceInfo = phone,
@@ -207,8 +211,13 @@ class TerminalSetupTest {
         assertThat(boarding(onTerminal)).isEqualTo(BoardingOwner.Blocked(SetupProblem.PAYMENTS_APP_ON_TERMINAL))
         assertThat(boarding(FakeDevice())).isEqualTo(BoardingOwner.Blocked(SetupProblem.PAYMENTS_APP_MISSING))
         val both = FakeDevice(paymentsApps = TerminalEnvironment.entries.toSet())
-        assertThat(boarding(both)).isEqualTo(BoardingOwner.Blocked(SetupProblem.PAYMENTS_APP_AMBIGUOUS))
-        assertThat(boarding(settings = AppSettings())).isEqualTo(BoardingOwner.Blocked(SetupProblem.MERCHANT_ACCOUNT))
+        assertThat(boarding(both)).isEqualTo(ready)
+        assertThat(boarding(settings = merchant.copy(terminal = merchant.terminal.copy(environment = null))))
+            .isEqualTo(BoardingOwner.Blocked(SetupProblem.ENVIRONMENT))
+        assertThat(boarding(settings = merchant.copy(terminal = merchant.terminal.copy(environment = TerminalEnvironment.TEST))))
+            .isEqualTo(BoardingOwner.Blocked(SetupProblem.PAYMENTS_APP_MISSING))
+        assertThat(boarding(settings = merchant.copy(terminal = merchant.terminal.copy(merchantAccount = ""))))
+            .isEqualTo(BoardingOwner.Blocked(SetupProblem.MERCHANT_ACCOUNT))
         assertThat(boarding(read = emptyMap())).isEqualTo(BoardingOwner.Blocked(SetupProblem.API_KEY))
         // A key saved but no longer readable has to be entered again.
         assertThat(boarding(read = mapOf(Secret.ADYEN_API_KEY to null))).isEqualTo(BoardingOwner.Blocked(SetupProblem.UNREADABLE_API_KEY))

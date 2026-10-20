@@ -41,7 +41,9 @@ import app.minimpos.core.codec.QrChunks
 import app.minimpos.core.codec.SealedSecrets
 import app.minimpos.core.codec.Transfer
 import app.minimpos.core.codec.TransferCodec
+import app.minimpos.terminal.transport.AdyenRole
 import app.minimpos.terminal.transport.CredentialLookup
+import app.minimpos.terminal.transport.CredentialRoles
 import app.minimpos.terminal.transport.DiscoveredKey
 import app.minimpos.terminal.transport.Fault
 import app.minimpos.terminal.transport.MalformedPart
@@ -81,12 +83,9 @@ class AutomaticSetupUiTest {
     private var verificationRelease: CompletableDeferred<Unit>? = null
     private val details: TerminalDetailsApi =
         object : TerminalDetailsApi {
-            override suspend fun credential(
-                environment: TerminalEnvironment,
-                cloud: Boolean,
-            ): CredentialLookup {
+            override suspend fun credential(environment: TerminalEnvironment): CredentialLookup {
                 verificationRelease?.await()
-                return CredentialLookup.Allowed
+                return CredentialLookup.Allowed(CredentialRoles(AdyenRole.required(), emptyList()))
             }
 
             override suspend fun terminals(

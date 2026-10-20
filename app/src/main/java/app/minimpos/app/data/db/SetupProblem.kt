@@ -49,11 +49,8 @@ enum class SetupProblem {
     /** No API key is saved for a terminal in the cloud. */
     CLOUD_API_KEY,
 
-    /** The Adyen Payments app is not installed. */
+    /** The selected environment's Adyen Payments app is not installed. */
     PAYMENTS_APP_MISSING,
-
-    /** Both the TEST and the LIVE Payments app are installed, so the environment is ambiguous. */
-    PAYMENTS_APP_AMBIGUOUS,
 
     /** The Payments app has not been boarded on this phone yet (no installation ID). */
     PAYMENTS_APP_NOT_BOARDED,

@@ -104,9 +104,9 @@ class AdyenModelR8Test {
             Terminal::class.java to """{"id":"S1F2L-123456789","model":"S1F2L","countryCode":"AU"}""",
             BoardingTokenRequest::class.java to """{"boardingRequestToken":"synthetic"}""",
             CreateMerchantApiCredentialRequest::class.java to
-                """{"description":"Mini mPOS synthetic","roles":["Adyen Payments app role"]}""",
+                """{"description":"Mini mPOS synthetic","roles":["Adyen Payments App role"]}""",
             CreateApiCredentialResponse::class.java to
-                """{"id":"C1","apiKey":"synthetic","clientKey":"test_synthetic","active":true,"roles":["Adyen Payments app role"]}""",
+                """{"id":"C1","apiKey":"synthetic","clientKey":"test_synthetic","active":true,"roles":["Adyen Payments App role"]}""",
             ListMerchantApiCredentialsResponse::class.java to
                 """{"data":[{"id":"C1","description":"Mini mPOS synthetic"}],"pagesTotal":1}""",
             GenerateApiKeyResponse::class.java to """{"apiKey":"synthetic"}""",

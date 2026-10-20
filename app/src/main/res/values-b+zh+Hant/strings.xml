@@ -509,7 +509,7 @@
   <string name="transfer_included">已包含</string>
   <string name="transfer_not_included">未包含</string>
   <string name="transfer_unchanged">保持不變</string>
-  <string name="transfer_environment_device">由此設備或 Payments app 決定</string>
+  <string name="transfer_environment_device">從 Adyen 終端憑證讀取；其他設備請選擇 TEST 或 LIVE</string>
   <string name="transfer_live_warning">LIVE 用於真實收款。匯入前請確認這是您需要的環境。</string>
   <string name="transfer_secret_passphrase">共享密鑰口令</string>
   <string name="transfer_secret_api_key">Adyen API 密鑰</string>
@@ -761,9 +761,9 @@
   <string name="settings_status_not_set_up_hint">在設定 › 終端機中完成設定，然後點按「測試連接」。</string>
   <string name="settings_status_failed">未連接</string>
   <string name="settings_tap_to_pay">Tap to Pay</string>
-  <string name="settings_tap_to_pay_hint">請 Adyen 支援團隊開通 Tap to Pay on Android 和 Adyen Payments app role。設定會將本手機註冊到您的商戶帳戶或其某個店舖。顧客在本手機上輕觸銀行卡或手機付款。本機沒有打印機，請發送電子收據或分享收據。</string>
+  <string name="settings_tap_to_pay_hint">請 Adyen 支援團隊開通 Tap to Pay on Android 和 Adyen Payments App role。設定會將本手機註冊到您的商戶帳戶或其某個店舖。顧客在本手機上輕觸銀行卡或手機付款。本機沒有打印機，請發送電子收據或分享收據。</string>
   <string name="settings_payments_app">Adyen Payments 應用程式</string>
-  <string name="settings_payments_app_hint">Tap to Pay 在 Adyen Payments 應用程式中運行：測試帳戶使用 Adyen Payments Test，正式帳戶使用 Adyen Payments。請從 Google Play 安裝。</string>
+  <string name="settings_payments_app_hint">請從 Google Play 安裝 TEST 版 Adyen Payments Test 或 LIVE 版 Adyen Payments。兩者可以同時安裝；Mini mPOS 只會開啟所選環境的應用程式。</string>
   <string name="settings_payments_app_installed">已安裝</string>
   <string name="settings_payments_app_test">Adyen Payments Test（TEST）</string>
   <string name="settings_payments_app_live">Adyen Payments（LIVE）</string>
@@ -1126,8 +1126,7 @@
   <string name="setup_unreadable_api_key">此設備無法讀取已儲存的 Adyen API 密鑰；請在終端設定中重新輸入</string>
   <string name="setup_api_required">請先輸入商戶帳戶和 Adyen API 密鑰</string>
   <string name="setup_cloud_api_key">請在終端設定中輸入 API 密鑰</string>
-  <string name="setup_payments_app_missing">請從 Google Play 安裝 Adyen Payments 應用程式</string>
-  <string name="setup_payments_app_ambiguous">同時安裝了 TEST 和 LIVE 版 Adyen Payments 應用程式，請解除安裝不用的那個</string>
+  <string name="setup_payments_app_missing">請從 Google Play 安裝所選環境的 Adyen Payments 應用程式</string>
   <string name="setup_payments_app_not_boarded">請在終端設定中設定 Tap to Pay</string>
   <string name="setup_payments_app_on_terminal">Adyen Payments 應用程式無法在支付終端上運行</string>
   <string name="setup_payments_app_api_key">請在終端設定中設定 Tap to Pay，以建立這部手機的註冊憑據</string>

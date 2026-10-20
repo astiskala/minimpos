@@ -109,7 +109,7 @@
                 <p><span class="fix-label">解决</span>在<strong>设置 › 终端</strong>中运行测试；参见<a href="#connection">终端绑定和设置</a>。如果测试通过，请联系 Adyen 检查终端配置。</p></dd></div>
             <div><dt>“终端或您的 Adyen 账户不支持此请求。请联系 Adyen 支持团队确认已开通，然后重试。”</dt>
               <dd><p><span class="fix-label">原因</span>终端或 Adyen 不提供此付款所需的功能，通常是因为账户尚未开通。</p>
-                <p><span class="fix-label">解决</span>请联系 Adyen 支持团队确认商家账户已开通该功能。对于 Tap to Pay，请确认除 Adyen Payments app role 外，也已开通 Tap to Pay on Android。然后重试。</p></dd></div>
+                <p><span class="fix-label">解决</span>请联系 Adyen 支持团队确认商家账户已开通该功能。对于 Tap to Pay，请确认除 Adyen Payments App role 外，也已开通 Tap to Pay on Android。然后重试。</p></dd></div>
             <div><dt>“请勿再次收款：此次支付已成功。”</dt>
               <dd><p><span class="fix-label">原因</span>虽然终端报告了取消，但付款已获批准。</p>
                 <p><span class="fix-label">解决</span>请勿再次收款。如果购物者不应付款，请为其退款。</p></dd></div>
@@ -157,13 +157,13 @@
                 <p><span class="fix-label">解决</span>将共享密钥的标识符、口令和版本与商户后台核对。网络终端还需在终端的“Device info”界面核对 IP 地址和 POIID。</p></dd></div>
             <div><dt>连接因环境不一致被拒绝</dt>
               <dd><p><span class="fix-label">原因</span>混用了 TEST 和 LIVE：终端、账户和 API 密钥必须属于同一环境。</p>
-                <p><span class="fix-label">解决</span>网络或云端终端请在<strong>设置 › 终端</strong>中检查<strong>环境</strong>。在 Adyen 终端上运行或使用 Tap to Pay 时，请使用正确环境的设备或 Payments 应用。</p></dd></div>
+                <p><span class="fix-label">解决</span>网络或云端终端及 Tap to Pay 请在<strong>设置 › 终端</strong>中检查<strong>环境</strong>。在 Adyen 终端上运行时，请使用正确环境的设备。</p></dd></div>
             <div><dt>无法连接云端终端</dt>
               <dd><p><span class="fix-label">原因</span>终端离线、POIID 有误，或 API 密钥缺少 Cloud Device API role。</p>
                 <p><span class="fix-label">解决</span>确认终端已开机并在线，再检查 POIID 和凭据的角色。</p></dd></div>
-            <div><dt>“同时安装了 TEST 和 LIVE 版 Adyen Payments 应用”</dt>
-              <dd><p><span class="fix-label">原因</span>Tap to Pay 只能安装一个 Payments 应用。</p>
-                <p><span class="fix-label">解决</span>卸载不用的那个，再完成注册并输入共享密钥。设置检查通过并不代表测试了银行卡付款，请完成一笔 TEST 付款。</p></dd></div>
+            <div><dt>未安装所选环境的 Payments 应用</dt>
+              <dd><p><span class="fix-label">原因</span>未安装所选 TEST 或 LIVE 环境的 Payments 应用。</p>
+                <p><span class="fix-label">解决</span>检查<strong>设置 › 终端 › 环境</strong>，从 Google Play 安装对应应用。两者可以同时安装。完成注册，输入对应的共享密钥，再完成一笔 TEST 付款。</p></dd></div>
             <div id="tap-to-pay-check"><dt>Tap to Pay 在出示卡片前返回 UnavailableService</dt>
               <dd><p>Payments 应用无法完成请求。此通用错误不能证明 Adyen 服务中断或缺少客户端密钥。如果收到 <code>1029_605</code>，这表示会话相关故障，不能证明缺少密钥。</p>
                 <p>在<strong>设置 › 终端</strong>中运行<strong>测试连接</strong>。要查看简洁的检查结果表格或分享脱敏报告，请展开<strong>设置 › 帮助与故障排除 › 故障排查详情</strong>。未成功付款的结果页面上的<strong>帮助与故障排除</strong>按钮也会直接打开这些详情。展开表格时会刷新检查；后台连接检查不验证客户端密钥。</p>

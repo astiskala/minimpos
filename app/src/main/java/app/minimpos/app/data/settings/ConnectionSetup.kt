@@ -31,7 +31,7 @@ enum class ConnectionDestination {
  * sealed beside it, as in any transfer. The page leaves out what was not typed; a blank value counts as left out too.
  *
  * @property destination Where payments go; null leaves it as it is.
- * @property environment Selected environment for a network or cloud terminal; ignored on Adyen terminals and Tap to Pay.
+ * @property environment Selected environment for a network/cloud terminal or Tap to Pay; ignored on Adyen terminals.
  * @property host The IP address or host name of a terminal on the network.
  * @property poiId The terminal's POIID, for a terminal on the network or in the cloud.
  * @property keyIdentifier The shared key's identifier.
@@ -123,7 +123,7 @@ data class ConnectionSetup(
      * [terminal] with what this setup holds, on a device that is an Adyen terminal when [onTerminal]. A terminal only
      * ever takes payments itself, so there only [ConnectionDestination.THIS_TERMINAL] changes where payments go (to
      * Automatic, which is this terminal); elsewhere that one leaves it, and the others choose theirs. Choosing another
-     * destination forgets its environment, as Settings does; a supplied network/cloud environment then sets it.
+     * destination forgets its environment, as Settings does; a supplied off-terminal environment then sets it.
      */
     fun appliedTo(
         terminal: TerminalSettings,
@@ -138,7 +138,10 @@ data class ConnectionSetup(
                 ConnectionDestination.TAP_TO_PAY -> TerminalMode.PAYMENTS_APP.takeUnless { onTerminal }
             }
 
-        val selected = environment.takeIf { !onTerminal && (mode ?: terminal.mode) in setOf(TerminalMode.TERMINAL, TerminalMode.CLOUD) }
+        val selected =
+            environment.takeIf {
+                !onTerminal && (mode ?: terminal.mode) in setOf(TerminalMode.TERMINAL, TerminalMode.CLOUD, TerminalMode.PAYMENTS_APP)
+            }
         return terminal.withConnection(mode, selected).copy(
             host = host.or(terminal.host),
             poiIdOverride = poiId.or(terminal.poiIdOverride),

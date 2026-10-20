@@ -170,7 +170,15 @@ class TerminalSetupViewModelTest {
     fun `Tap to Pay provisions its credential automatically and the phone can be removed again`() {
         await { container.secrets.set(Secret.ADYEN_API_KEY, "key") }
         env.updateSettings {
-            it.copy(terminal = it.terminal.copy(mode = TerminalMode.PAYMENTS_APP, keyIdentifier = "key", merchantAccount = "Merchant"))
+            it.copy(
+                terminal =
+                    it.terminal.copy(
+                        mode = TerminalMode.PAYMENTS_APP,
+                        environment = TerminalEnvironment.TEST,
+                        keyIdentifier = "key",
+                        merchantAccount = "Merchant",
+                    ),
+            )
         }
         val vm = setupViewModel()
         vm.setUpTapToPay()

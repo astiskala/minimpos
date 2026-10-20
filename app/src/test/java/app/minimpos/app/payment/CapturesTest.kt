@@ -21,6 +21,7 @@ import app.minimpos.app.terminal.ApiAccess
 import app.minimpos.app.terminal.ApiCheck
 import app.minimpos.app.terminal.ApiSetup
 import app.minimpos.app.terminal.ApiTarget
+import app.minimpos.app.terminal.SetupAccessCheck
 import app.minimpos.app.terminal.TerminalSetupSource
 import app.minimpos.core.cart.AppliedTax
 import app.minimpos.core.cart.Cart
@@ -375,7 +376,7 @@ class CapturesTest {
             AdyenApi(setups, simulated = CheckoutApi.of(fake, links, cards), connect = {
                 connected += it
                 CheckoutApi.of(fake, links, cards)
-            }, verifyAccess = { null })
+            }, verifyAccess = { SetupAccessCheck() })
         env.updateSettings { it.copy(terminal = it.terminal.copy(mode = TerminalMode.TERMINAL)) }
         assertThat(await { live.target() }.modifications(null)).isEqualTo(ApiAccess.Unavailable(SetupProblem.MERCHANT_ACCOUNT))
         assertThat(await { live.verify() }).isEqualTo(ApiCheck.NotSetUp(SetupProblem.MERCHANT_ACCOUNT))

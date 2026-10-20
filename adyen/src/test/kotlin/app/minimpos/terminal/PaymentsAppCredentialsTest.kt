@@ -16,7 +16,7 @@ class PaymentsAppCredentialsTest {
     private val reference = "Mini mPOS synthetic-device"
 
     private fun credential(clientKey: String = "\"test_public\""): String =
-        """{"id":"C1","username":"ws_1@Company.Test","active":true,"roles":["Adyen Payments app role"],""" +
+        """{"id":"C1","username":"ws_1@Company.Test","active":true,"roles":["Adyen Payments App role"],""" +
             """"description":"$reference","clientKey":$clientKey}"""
 
     private fun created(clientKey: String = "\"test_public\""): String =
@@ -38,7 +38,7 @@ class PaymentsAppCredentialsTest {
                 assertThat(request.url.encodedPath).isEqualTo("/v3/merchants/Merchant/apiCredentials")
                 assertThat(request.headers["x-api-key"]).isEqualTo("primary-secret")
                 assertThat(request.body!!.utf8()).isEqualTo(
-                    """{"description":"$reference","roles":["Adyen Payments app role"]}""",
+                    """{"description":"$reference","roles":["Adyen Payments App role"]}""",
                 )
                 assertThat(server.requestCount).isEqualTo(1)
             }
@@ -152,7 +152,7 @@ class PaymentsAppCredentialsTest {
                 listOf(
                     """{"data":[${credential()},${credential()}]}""",
                     """{"data":[${credential().replace("\"active\":true", "\"active\":false")}]}""",
-                    """{"data":[${credential().replace("Adyen Payments app role", "Merchant Recurring role")}]}""",
+                    """{"data":[${credential().replace("Adyen Payments App role", "Merchant Recurring role")}]}""",
                     """{"data":[${credential().replace("\"C1\"", "\"\"")}]}""",
                     """{"data":[null]}""",
                     """{"data":null}""",

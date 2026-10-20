@@ -509,7 +509,7 @@
   <string name="transfer_included">Included</string>
   <string name="transfer_not_included">Not included</string>
   <string name="transfer_unchanged">Unchanged</string>
-  <string name="transfer_environment_device">Determined by this device or the Payments app</string>
+  <string name="transfer_environment_device">Read from an Adyen terminal’s certificate; otherwise choose TEST or LIVE</string>
   <string name="transfer_live_warning">LIVE takes real payments. Check that this is the intended environment before importing.</string>
   <string name="transfer_secret_passphrase">Shared key passphrase</string>
   <string name="transfer_secret_api_key">Adyen API key</string>
@@ -762,9 +762,9 @@
   <string name="settings_status_not_set_up_hint">Complete setup in Settings › Terminal, then tap Test connection.</string>
   <string name="settings_status_failed">Not connected</string>
   <string name="settings_tap_to_pay">Tap to Pay</string>
-  <string name="settings_tap_to_pay_hint">Ask Adyen Support to enable Tap to Pay on Android and the Adyen Payments app role. Setup registers this phone for your merchant account or one of its stores. Shoppers tap their card or phone on this phone. There is no printer; email or share receipts instead.</string>
+  <string name="settings_tap_to_pay_hint">Ask Adyen Support to enable Tap to Pay on Android and the Adyen Payments App role. Setup registers this phone for your merchant account or one of its stores. Shoppers tap their card or phone on this phone. There is no printer; email or share receipts instead.</string>
   <string name="settings_payments_app">Adyen Payments app</string>
-  <string name="settings_payments_app_hint">Tap to Pay runs in the Adyen Payments app: Adyen Payments Test for test accounts, Adyen Payments for live ones. Install it from Google Play.</string>
+  <string name="settings_payments_app_hint">Install Adyen Payments Test for TEST or Adyen Payments for LIVE from Google Play. Both can stay installed; Mini mPOS opens only the selected environment’s app.</string>
   <string name="settings_payments_app_installed">Installed</string>
   <string name="settings_payments_app_test">Adyen Payments Test (TEST)</string>
   <string name="settings_payments_app_live">Adyen Payments (LIVE)</string>
@@ -1131,8 +1131,7 @@
   <string name="setup_unreadable_api_key">The saved Adyen API key could not be read on this device; enter it again in Terminal settings</string>
   <string name="setup_api_required">Enter the merchant account and the Adyen API key first</string>
   <string name="setup_cloud_api_key">Enter the API key in Terminal settings</string>
-  <string name="setup_payments_app_missing">Install the Adyen Payments app from Google Play</string>
-  <string name="setup_payments_app_ambiguous">Both the TEST and the LIVE Adyen Payments app are installed; uninstall the one you do not use</string>
+  <string name="setup_payments_app_missing">Install the selected environment’s Adyen Payments app from Google Play</string>
   <string name="setup_payments_app_not_boarded">Set up Tap to Pay in Terminal settings</string>
   <string name="setup_payments_app_on_terminal">The Adyen Payments app does not run on payment terminals</string>
   <string name="setup_payments_app_api_key">Set up Tap to Pay in Terminal settings to create this phone’s registration credential</string>
@@ -1174,7 +1173,7 @@
   <string name="fault_credential_adyen">Adyen did not accept the API key. Check it in Terminal settings.</string>
   <string name="fault_credential_payments_app">Adyen did not accept this phone’s registration credential. Check its status in your Customer Area.</string>
   <string name="fault_permission_adyen">The API key lacks a role or access to this merchant account. Check the API credential in your Customer Area.</string>
-  <string name="fault_permission_payments_app">This phone’s registration credential lacks the Adyen Payments app role or access to this merchant account. Check it in your Customer Area.</string>
+  <string name="fault_permission_payments_app">This phone’s registration credential lacks the Adyen Payments App role or access to this merchant account. Check it in your Customer Area.</string>
   <string name="fault_not_found">Adyen does not know this terminal in this merchant account. Check the terminal ID and merchant account.</string>
   <string name="fault_adyen_rejected">Adyen rejected the request.</string>
   <string name="fault_list_too_large">The list is too long to read. Enter the details manually.</string>

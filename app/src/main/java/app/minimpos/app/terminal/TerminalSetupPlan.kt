@@ -2,10 +2,11 @@ package app.minimpos.app.terminal
 
 import app.minimpos.app.data.security.Secret
 import app.minimpos.app.data.settings.TerminalSettings
+import app.minimpos.terminal.transport.TerminalEnvironment
 
 /** One step of Settings › Terminal, see [TerminalSetupPlan]. */
 enum class SetupStepKind {
-    /** TEST or LIVE, for network and cloud terminals. */
+    /** TEST or LIVE, for network/cloud terminals and Tap to Pay. */
     ENVIRONMENT,
 
     /** The Adyen Payments app installed on this phone, for Tap to Pay. */
@@ -61,7 +62,7 @@ data class SetupVisit(
  *
  * @property onTerminal Whether the app runs on the payment terminal itself.
  * @property environmentChosen Whether TEST or LIVE is chosen.
- * @property paymentsApps How many Adyen Payments apps are installed on this phone.
+ * @property paymentsApps Which environments' Adyen Payments apps are installed on this phone.
  * @property terminal The saved terminal settings.
  * @property secrets The secrets saved.
  * @property verified Whether a connection check verified the setup.
@@ -70,7 +71,7 @@ data class SetupVisit(
 data class SetupProgress(
     val onTerminal: Boolean,
     val environmentChosen: Boolean,
-    val paymentsApps: Int,
+    val paymentsApps: Set<TerminalEnvironment>,
     val terminal: TerminalSettings,
     val secrets: Set<Secret>,
     val verified: Boolean,
@@ -102,7 +103,7 @@ object TerminalSetupPlan {
     private fun SetupProgress.done(kind: SetupStepKind): Boolean =
         when (kind) {
             SetupStepKind.ENVIRONMENT -> environmentChosen
-            SetupStepKind.PAYMENTS_APP -> paymentsApps == 1
+            SetupStepKind.PAYMENTS_APP -> terminal.environment in paymentsApps
             SetupStepKind.ADYEN_API -> visit.apiTested
             SetupStepKind.NETWORK_TERMINAL -> terminal.host.isNotBlank() && terminal.poiIdOverride.isNotBlank()
             SetupStepKind.TAP_TO_PAY -> terminal.paymentsAppInstallationId.isNotBlank()
@@ -117,7 +118,7 @@ object TerminalSetupPlan {
         val keyStarted = terminal.keyIdentifier.isNotBlank() || Secret.TERMINAL_PASSPHRASE in secrets
         return when (kind) {
             SetupStepKind.ENVIRONMENT -> environmentChosen || savedConnectionDetails(terminal, secrets)
-            SetupStepKind.PAYMENTS_APP -> paymentsApps == 1 || supplied || Secret.ADYEN_API_KEY in secrets
+            SetupStepKind.PAYMENTS_APP -> terminal.environment in paymentsApps || supplied || Secret.ADYEN_API_KEY in secrets
             SetupStepKind.ADYEN_API -> visit.apiTested || supplied
             SetupStepKind.NETWORK_TERMINAL -> visit.terminalEntered || keyStarted
             SetupStepKind.TAP_TO_PAY -> visit.boarded || keyStarted

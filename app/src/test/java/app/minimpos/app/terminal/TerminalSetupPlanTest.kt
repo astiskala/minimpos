@@ -12,6 +12,7 @@ import app.minimpos.app.terminal.SetupStepKind.NETWORK_TERMINAL
 import app.minimpos.app.terminal.SetupStepKind.PAYMENTS_APP
 import app.minimpos.app.terminal.SetupStepKind.SHARED_KEY
 import app.minimpos.app.terminal.SetupStepKind.TAP_TO_PAY
+import app.minimpos.terminal.transport.TerminalEnvironment
 import com.google.common.truth.Truth.assertThat
 import org.junit.Test
 
@@ -21,8 +22,8 @@ class TerminalSetupPlanTest {
         mode: TerminalMode,
         onTerminal: Boolean = false,
         environmentChosen: Boolean = true,
-        paymentsApps: Int = 1,
-        terminal: TerminalSettings = TerminalSettings(mode = mode),
+        paymentsApps: Set<TerminalEnvironment> = setOf(TerminalEnvironment.TEST),
+        terminal: TerminalSettings = TerminalSettings(mode = mode, environment = TerminalEnvironment.TEST),
         secrets: Set<Secret> = emptySet(),
         verified: Boolean = false,
         visit: SetupVisit = SetupVisit(),
@@ -47,7 +48,7 @@ class TerminalSetupPlanTest {
             .containsExactly(ENVIRONMENT to 1, ADYEN_API to 2, CLOUD_TERMINAL to 3, CONNECTION to 4)
             .inOrder()
         assertThat(steps(TerminalMode.PAYMENTS_APP, visit = tested).map { it.kind to it.number })
-            .containsExactly(PAYMENTS_APP to 1, ADYEN_API to 2, TAP_TO_PAY to 3, SHARED_KEY to 4, CONNECTION to 5)
+            .containsExactly(ENVIRONMENT to 1, PAYMENTS_APP to 2, ADYEN_API to 3, TAP_TO_PAY to 4, SHARED_KEY to 5, CONNECTION to 6)
             .inOrder()
         assertThat(steps(TerminalMode.SIMULATOR)).isEmpty()
     }
@@ -61,7 +62,15 @@ class TerminalSetupPlanTest {
             .inOrder()
         val saved = TerminalSettings(mode = TerminalMode.TERMINAL, host = "192.0.2.10", keyIdentifier = "KEY")
         assertThat(steps(TerminalMode.TERMINAL, terminal = saved).map { it.kind }.last()).isEqualTo(CONNECTION)
-        assertThat(steps(TerminalMode.PAYMENTS_APP, paymentsApps = 0).map { it.kind }).containsExactly(PAYMENTS_APP)
+        assertThat(steps(TerminalMode.PAYMENTS_APP, paymentsApps = emptySet()).map { it.kind })
+            .containsExactly(ENVIRONMENT, PAYMENTS_APP)
+            .inOrder()
+        assertThat(steps(TerminalMode.PAYMENTS_APP, environmentChosen = false).map { it.kind }).containsExactly(ENVIRONMENT)
+        assertThat(steps(TerminalMode.PAYMENTS_APP, paymentsApps = setOf(TerminalEnvironment.LIVE)).map { it.kind })
+            .containsExactly(ENVIRONMENT, PAYMENTS_APP)
+            .inOrder()
+        assertThat(steps(TerminalMode.PAYMENTS_APP, paymentsApps = TerminalEnvironment.entries.toSet()).filter { it.done }.map { it.kind })
+            .containsExactly(ENVIRONMENT, PAYMENTS_APP)
     }
 
     @Test

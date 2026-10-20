@@ -2,6 +2,7 @@ package app.minimpos.app.terminal
 
 import app.minimpos.app.data.db.SetupProblem
 import app.minimpos.app.data.settings.TerminalMode
+import app.minimpos.terminal.transport.AdyenRole
 import app.minimpos.terminal.transport.TerminalEnvironment
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.FlowPreview
@@ -121,7 +122,7 @@ class TerminalStatus(
     private val setups: TerminalSetupSource,
     private val gateway: TerminalGateway,
     private val scope: CoroutineScope,
-    private val verifyApi: suspend (UnlockedSetup) -> ApiCheck,
+    private val verifyApi: suspend (UnlockedSetup) -> ApiInspection,
     private val verifyPhone: suspend (TerminalSetup) -> TapToPayOutcome,
     private val inspectPhone: suspend () -> Unit,
 ) {
@@ -208,19 +209,24 @@ class TerminalStatus(
         val actual = candidate.setup
         val fence = setups.SetupFence(candidate, SetupFreshness.SECRETS)
         val pending = actual.importPending
-        val api = if (pending) ApiCheck.NotSetUp(SetupProblem.TRANSFER_PENDING) else verifyApi(candidate)
+        val inspection = if (pending) ApiInspection(ApiCheck.NotSetUp(SetupProblem.TRANSFER_PENDING)) else verifyApi(candidate)
         val checked = if (pending) TerminalConnection.NotSetUp(SetupProblem.TRANSFER_PENDING) else gateway.diagnose()
         if (actual.boardsPhone && !pending) inspectPhone()
         if (!fence.stillCurrent()) return null
         val terminal = actual.settings.terminal
         val device = setups.device
         return SetupDiagnostics(
-            api,
+            inspection.api,
             checked,
             System.currentTimeMillis(),
             buildMap {
                 put("integration", actual.mode.name)
                 put("environment", actual.environment?.name.orEmpty())
+                val roles = inspection.roles
+                put("apiHasRequiredRoles", roles?.complete?.toString() ?: "NOT_CHECKED")
+                put("apiRolesRequired", "[${AdyenRole.names(AdyenRole.required())}]")
+                put("apiRolesPresent", roles?.let { "[${AdyenRole.names(it.present)}]" } ?: "NOT_CHECKED")
+                put("apiRolesMissing", roles?.let { "[${AdyenRole.names(it.missing)}]" } ?: "NOT_CHECKED")
                 put("onTerminal", actual.onTerminal.toString())
                 put("merchantAccount", terminal.merchantAccount)
                 put("poiId", actual.poiId.orEmpty())
@@ -259,7 +265,7 @@ class TerminalStatus(
     }
 
     private suspend fun credentialCheck(candidate: UnlockedSetup): TerminalConnection? =
-        when (val checked = verifyApi(candidate)) {
+        when (val checked = verifyApi(candidate).api) {
             is ApiCheck.NotSetUp -> TerminalConnection.NotSetUp(checked.problem)
             is ApiCheck.Failed -> TerminalConnection.Failed(checked.failure)
             ApiCheck.Works -> if (candidate.setup.boardsPhone) phoneCheck(candidate.setup) else null

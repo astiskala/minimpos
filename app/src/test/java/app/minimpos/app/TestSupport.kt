@@ -45,6 +45,7 @@ import app.minimpos.terminal.paymentsapp.ProvisionedCredential
 import app.minimpos.terminal.simulator.SimulatorConfig
 import app.minimpos.terminal.simulator.TerminalSimulator
 import app.minimpos.terminal.transport.AdyenLocalTransport
+import app.minimpos.terminal.transport.AdyenRole
 import app.minimpos.terminal.transport.ApiKey
 import app.minimpos.terminal.transport.CloudCredentials
 import app.minimpos.terminal.transport.CloudDetection
@@ -52,6 +53,7 @@ import app.minimpos.terminal.transport.CloudDevices
 import app.minimpos.terminal.transport.CloudEndpoint
 import app.minimpos.terminal.transport.CloudRegion
 import app.minimpos.terminal.transport.CredentialLookup
+import app.minimpos.terminal.transport.CredentialRoles
 import app.minimpos.terminal.transport.Delivery
 import app.minimpos.terminal.transport.ExternalText
 import app.minimpos.terminal.transport.Fault
@@ -284,6 +286,9 @@ class FakePaymentsApp(
     /** Every link opened, in order. */
     val opened = mutableListOf<String>()
 
+    /** Explicit Android packages targeted by the links, in order. */
+    val packages = mutableListOf<String>()
+
     /** Whether it is boarded, and so answers the boarding check (unless it reboards) with its installation ID. */
     var boarded = false
 
@@ -293,6 +298,7 @@ class FakePaymentsApp(
         timeout: Duration,
     ): AppLinkAnswer {
         opened += link
+        packages += packageName
         val parameters = FormEncoding.decode(link.substringAfter('?'))
         val returnUrl = URLDecoder.decode(parameters.getValue("returnUrl"), "UTF-8")
         val boardedUrl = "$returnUrl?boarded=true&installationId=$INSTALLATION_ID"
@@ -331,7 +337,7 @@ class FakePaymentsApp(
 class FakeManagement(
     var result: ManagementResult = ManagementResult.Done("BT-1"),
 ) : PaymentsAppManagement {
-    var credentialResult: BoardingCredentialCheck = BoardingCredentialCheck.Verified("CRED-1", "ws@Company.Test", true, true)
+    var credentialResult: BoardingCredentialCheck = BoardingCredentialCheck.Verified("CRED-1", "ws@Company.Test", true, true, true)
     var credentialChecks = 0
     var onCredential: suspend () -> Unit = {}
     val connections = mutableListOf<Pair<String, TerminalEnvironment>>()
@@ -349,6 +355,7 @@ class FakeManagement(
     val revoked = mutableListOf<String>()
 
     var registrationResult: ManagementResult = ManagementResult.Done()
+    var beforeRevoke: suspend () -> Unit = {}
 
     override suspend fun registration(
         target: BoardingTarget,
@@ -363,7 +370,11 @@ class FakeManagement(
     override suspend fun revoke(
         merchantAccount: String,
         installationId: String,
-    ): ManagementResult = result.also { revoked += installationId }
+    ): ManagementResult {
+        revoked += installationId
+        beforeRevoke()
+        return result
+    }
 }
 
 class FakeBoardingCredentials : PaymentsAppCredentials {
@@ -561,10 +572,8 @@ class TestEnvironment(
 
     private fun defaultTerminalDetails(): TerminalDetailsApi =
         object : TerminalDetailsApi {
-            override suspend fun credential(
-                environment: TerminalEnvironment,
-                cloud: Boolean,
-            ) = CredentialLookup.Allowed
+            override suspend fun credential(environment: TerminalEnvironment) =
+                CredentialLookup.Allowed(CredentialRoles(AdyenRole.required(), emptyList()))
 
             override suspend fun terminals(
                 environment: TerminalEnvironment,

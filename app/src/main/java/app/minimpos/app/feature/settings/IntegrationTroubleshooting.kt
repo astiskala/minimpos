@@ -1,5 +1,6 @@
 package app.minimpos.app.feature.settings
 
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
@@ -7,6 +8,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.relocation.BringIntoViewRequester
 import androidx.compose.foundation.relocation.bringIntoViewRequester
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Troubleshoot
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
@@ -15,11 +18,13 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.testTag
@@ -49,45 +54,64 @@ internal fun ColumnScope.IntegrationTroubleshooting(
     var expanded by rememberSaveable { mutableStateOf(showDetails) }
     var report by remember { mutableStateOf<String?>(null) }
     val anchor = remember { BringIntoViewRequester() }
-    var placed by remember { mutableStateOf(false) }
+    var detailsHeight by remember { mutableIntStateOf(0) }
     val refresh by rememberUpdatedState(onRefresh)
-    LaunchedEffect(placed) { if (showDetails && placed) anchor.bringIntoView() }
-    Column(Modifier.fillMaxWidth().bringIntoViewRequester(anchor).onGloballyPositioned { placed = true }) {
+    // Loading replaces a short spinner with a long report; anchor after its new height is laid out.
+    LaunchedEffect(detailsHeight) { if (showDetails && expanded && detailsHeight > 0) anchor.bringIntoView() }
+    Column(Modifier.fillMaxWidth().bringIntoViewRequester(anchor).onGloballyPositioned { detailsHeight = it.size.height }) {
         SettingActions {
             TertiaryButton(
                 stringResource(R.string.diagnostics_details),
                 { expanded = !expanded },
                 Modifier.testTag("tapTroubleshootingDetails"),
+                icon = Icons.Default.Troubleshoot,
             )
         }
         if (expanded) {
-            LaunchedEffect(Unit) { refresh() }
-            if (setup.checkingDiagnostics) CircularProgressIndicator(Modifier.testTag("diagnosticsLoading"))
-            val rows = integrationRows(terminal, setup)
-            val inset = LocalDimens.current.rowHorizontalPadding
-            rows.forEach { (name, value) ->
-                HorizontalDivider(Modifier.padding(horizontal = inset))
-                Row(Modifier.fillMaxWidth().padding(horizontal = inset, vertical = 8.dp)) {
-                    Text(name, Modifier.weight(0.45f).padding(end = 12.dp), style = MaterialTheme.typography.labelMedium)
-                    Text(
-                        value,
-                        Modifier.weight(0.55f).testTag(if (name == "clientKeyCheck") "tapClientKeyStatus" else "diagnostic_$name"),
-                        style = MaterialTheme.typography.bodySmall,
-                    )
-                }
+            var refreshRequested by remember { mutableStateOf(false) }
+            LaunchedEffect(Unit) {
+                refresh()
+                refreshRequested = true
             }
-            SettingNote(stringResource(R.string.diagnostics_report_notice))
-            SettingActions {
-                SecondaryButton(
-                    stringResource(R.string.diagnostics_share_report),
-                    { report = rows.joinToString("\n") { (name, value) -> "$name=$value" } },
-                    Modifier.testTag("shareTapReport"),
-                    enabled = !setup.checkingDiagnostics,
-                )
+            if (!refreshRequested || setup.checkingDiagnostics) {
+                Box(Modifier.fillMaxWidth().padding(24.dp), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator(Modifier.testTag("diagnosticsLoading"))
+                }
+            } else {
+                IntegrationDetails(terminal, setup) { report = it }
             }
         }
     }
     TroubleshootingShareEffect(report) { report = null }
+}
+
+@Composable
+private fun ColumnScope.IntegrationDetails(
+    terminal: TerminalState,
+    setup: TerminalSetupActions,
+    onShare: (String) -> Unit,
+) {
+    val rows = integrationRows(terminal, setup)
+    val inset = LocalDimens.current.rowHorizontalPadding
+    rows.forEach { (name, value) ->
+        HorizontalDivider(Modifier.padding(horizontal = inset))
+        Row(Modifier.fillMaxWidth().padding(horizontal = inset, vertical = 8.dp)) {
+            Text(name, Modifier.weight(0.45f).padding(end = 12.dp), style = MaterialTheme.typography.labelMedium)
+            Text(
+                value,
+                Modifier.weight(0.55f).testTag(if (name == "clientKeyCheck") "tapClientKeyStatus" else "diagnostic_$name"),
+                style = MaterialTheme.typography.bodySmall,
+            )
+        }
+    }
+    SettingNote(stringResource(R.string.diagnostics_report_notice))
+    SettingActions {
+        SecondaryButton(
+            stringResource(R.string.diagnostics_share_report),
+            { onShare(rows.joinToString("\n") { (name, value) -> "$name=$value" }) },
+            Modifier.testTag("shareTapReport"),
+        )
+    }
 }
 
 @Composable
@@ -107,6 +131,9 @@ private fun integrationRows(
         if (reading == null) {
             add("integration" to terminal.mode.name)
             add("environment" to (terminal.environment?.name ?: notChecked))
+            listOf("apiHasRequiredRoles", "apiRolesRequired", "apiRolesPresent", "apiRolesMissing").forEach {
+                add(it to "NOT_CHECKED")
+            }
         }
         reading?.facts?.forEach { (name, value) -> add(name to value.ifEmpty { notChecked }) }
         if (terminal.mode == TerminalMode.PAYMENTS_APP) addAll(phoneDetails(setup))
@@ -140,6 +167,7 @@ private fun phoneDetails(setup: TerminalSetupActions): List<Pair<String, String>
     return buildList {
         add("clientKeyCheck" to check.clientKey.name)
         add("boardingStatus" to check.boarding.name)
+        add("paymentsAppApiHasRequiredRole" to (check.apiHasRequiredRole?.toString() ?: "NOT_CHECKED"))
         check.credential?.let {
             add("credential.id" to it.id)
             add("credential.username" to it.username)

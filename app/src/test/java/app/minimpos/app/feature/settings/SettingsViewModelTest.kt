@@ -22,6 +22,7 @@ import app.minimpos.app.feature.ActionState
 import app.minimpos.app.simulatedModifications
 import app.minimpos.app.terminal.AdyenApi
 import app.minimpos.app.terminal.ReceiptBusiness
+import app.minimpos.app.terminal.SetupAccessCheck
 import app.minimpos.app.terminal.SimulatedTerminal
 import app.minimpos.app.terminal.TerminalSetupSource
 import app.minimpos.app.terminal.VirtualPrinter
@@ -116,7 +117,7 @@ class SettingsViewModelTest {
                 TerminalSetupSource(container.settings, container.secrets, container.device),
                 checkout,
                 connect = { checkout },
-                verifyAccess = { null },
+                verifyAccess = { SetupAccessCheck() },
             )
         val vm = settingsViewModel(api = api)
         vm.saveAndTest(Secret.ADYEN_API_KEY)

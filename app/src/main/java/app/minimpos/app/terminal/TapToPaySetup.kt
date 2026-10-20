@@ -66,7 +66,7 @@ sealed interface TapToPayOutcome {
 /**
  * Sets up Tap to Pay with the Adyen Payments app on this phone: boards it for the merchant account (or store) in the
  * settings, using a dedicated credential provisioned automatically by the primary API key, and stores the installation
- * ID it reports as the POIID; or revokes it. The environment is the installed Payments app's.
+ * ID it reports as the POIID; or revokes it. The selected environment chooses the Payments app.
  *
  * @param setups Whether the Adyen API key can create this phone's own credential ([TerminalSetupSource.owner]) and
  *   whether it can be boarded with that credential ([TerminalSetupSource.boarding]), and the merchant account and store.
@@ -127,6 +127,7 @@ class TapToPaySetup(
         val fence = setups.SetupFence(unlocked, SetupFreshness.SECRETS)
         val blocked = fence.changed()?.let { TapToPayOutcome.NotSetUp(it) } ?: prepare(owner)
         if (blocked != null) return blocked
+        fence.changed()?.let { return TapToPayOutcome.NotSetUp(it) }
         return when (val access = access()) {
             is Access.Denied -> TapToPayOutcome.NotSetUp(access.problem)
             is Access.Granted -> fence.changed()?.let { TapToPayOutcome.NotSetUp(it) } ?: boardSaved(unlocked.setup, access, reboard)
@@ -256,7 +257,8 @@ class TapToPaySetup(
         val same = previous?.matches(access, target) == true
         val origin = setups.current()
         val active = origin.settings.terminal
-        val activeMatches = active.targetOrNull() == target
+        val sameEnvironment = active.environment == access.environment
+        val activeMatches = sameEnvironment && active.targetOrNull() == target
         val installation =
             if (same) {
                 previous.installation
@@ -275,7 +277,7 @@ class TapToPaySetup(
             else -> {
                 register(
                     Attempt(origin, target, granted(access)),
-                    reboard = !same && active.paymentsAppInstallationId.isNotBlank() && !activeMatches,
+                    reboard = !same && sameEnvironment && active.paymentsAppInstallationId.isNotBlank() && !activeMatches,
                 )
             }
         }
@@ -343,7 +345,7 @@ class TapToPaySetup(
         }
         return when (result) {
             is Onboarding.Failed -> {
-                if (result.unboarded) forget(attempt.origin)
+                if (result.unboarded) forget(attempt)
                 TapToPayOutcome.Failed(Failure.Remote(result.fault))
             }
 
@@ -354,19 +356,20 @@ class TapToPaySetup(
 
             is Onboarding.Boarded -> {
                 val outcome = listing(attempt, result.installationId).outcome(result.installationId)
-                if (result is Onboarding.NewlyBoarded && outcome !is TapToPayOutcome.Boarded) forget(attempt.origin)
+                if (result is Onboarding.NewlyBoarded && outcome !is TapToPayOutcome.Boarded) forget(attempt)
                 outcome
             }
         }
     }
 
     /**
-     * Forgets the installation ID stored in [origin], whichever destination it is for, while [origin] is still the
-     * stored setup, so the setup asks for Tap to Pay again.
+     * Forgets the installation ID stored when [attempt] began only for that same environment and unchanged setup,
+     * so setup asks for Tap to Pay again without dropping another installed app's registration.
      */
-    private suspend fun forget(origin: TerminalSetup) {
+    private suspend fun forget(attempt: Attempt) {
+        val origin = attempt.origin
         val terminal = origin.settings.terminal
-        if (terminal.paymentsAppInstallationId.isBlank()) return
+        if (terminal.environment != attempt.access.environment || terminal.paymentsAppInstallationId.isBlank()) return
         setups.SetupFence(origin).update { it.copy(terminal = terminal.copy(paymentsAppInstallationId = "")) }
     }
 
@@ -466,12 +469,14 @@ class TapToPaySetup(
      * also asks to unregister it in the Payments app's own settings.
      */
     suspend fun unregister(): TapToPayOutcome {
+        val origin = setups.current()
         val access =
             when (val checked = access()) {
                 is Access.Denied -> return TapToPayOutcome.NotSetUp(checked.problem)
                 is Access.Granted -> checked
             }
-        val terminal = setups.current().settings.terminal
+        setups.SetupFence(origin, access.boarding).changed()?.let { return TapToPayOutcome.NotSetUp(it) }
+        val terminal = origin.settings.terminal
         val id = terminal.paymentsAppInstallationId.trim()
         val result = if (id.isEmpty()) ManagementResult.Done() else access.management.revoke(terminal.merchantAccount.trim(), id)
         return when (result) {
@@ -488,7 +493,7 @@ class TapToPaySetup(
                 // The instance is revoked whatever changed meanwhile; only a newer boarding is kept, with its recovery.
                 var revoked = false
                 settings.update {
-                    revoked = it.terminal.paymentsAppInstallationId.trim() == id
+                    revoked = it.terminal.environment == access.environment && it.terminal.paymentsAppInstallationId.trim() == id
                     if (revoked) it.copy(terminal = it.terminal.copy(paymentsAppInstallationId = ""), boardingIdentity = null) else it
                 }
                 if (revoked) journal.write(null)
@@ -497,7 +502,7 @@ class TapToPaySetup(
         }
     }
 
-    /** The Management API for the installed Payments app, or what is missing for it ([TerminalSetup.boarding]). */
+    /** The Management API for the selected Payments app, or what is missing for it ([TerminalSetup.boarding]). */
     private suspend fun access(): Access =
         when (val boarding = setups.boarding()) {
             is BoardingSetup.Blocked -> {

@@ -25,7 +25,10 @@ import app.minimpos.app.data.security.Secret
 import app.minimpos.app.data.settings.TerminalMode
 import app.minimpos.terminal.paymentsapp.BoardingCredentialCheck
 import app.minimpos.terminal.paymentsapp.ManagementResult
+import app.minimpos.terminal.transport.AdyenRole
 import app.minimpos.terminal.transport.ApiKey
+import app.minimpos.terminal.transport.CredentialLookup
+import app.minimpos.terminal.transport.CredentialRoles
 import app.minimpos.terminal.transport.Fault
 import app.minimpos.terminal.transport.SharedKeyLookup
 import app.minimpos.terminal.transport.TerminalDetailsApi
@@ -50,10 +53,8 @@ class TapToPaySettingsTest {
     private val paymentsApp = FakePaymentsApp()
     private val details =
         object : TerminalDetailsApi {
-            override suspend fun credential(
-                environment: TerminalEnvironment,
-                cloud: Boolean,
-            ) = app.minimpos.terminal.transport.CredentialLookup.Allowed
+            override suspend fun credential(environment: TerminalEnvironment) =
+                CredentialLookup.Allowed(CredentialRoles(AdyenRole.required(), emptyList()))
 
             override suspend fun terminals(
                 environment: TerminalEnvironment,
@@ -78,7 +79,9 @@ class TapToPaySettingsTest {
 
     @Before
     fun setUp() {
-        env.updateSettings { it.copy(terminal = it.terminal.copy(mode = TerminalMode.PAYMENTS_APP)) }
+        env.updateSettings {
+            it.copy(terminal = it.terminal.copy(mode = TerminalMode.PAYMENTS_APP, environment = TerminalEnvironment.TEST))
+        }
     }
 
     private fun waitForTag(tag: String) = compose.waitUntilAtLeastOneExists(hasTestTag(tag), 15_000)
@@ -123,13 +126,21 @@ class TapToPaySettingsTest {
     @Test
     fun `without the Payments app, Google Play opens on it, and the app shows once installed`() {
         openTerminalSettings()
+        compose.onNodeWithTag("getPaymentsAppTest").assertExists()
+        compose.onNodeWithTag("getPaymentsAppLive").assertDoesNotExist()
+        compose.onNodeWithTag("environment_LIVE").performScrollTo().performClick()
         waitForTag("getPaymentsAppLive")
-        compose.onNodeWithTag("getPaymentsAppTest").assertTextContains("Get Adyen Payments Test")
         compose.onNodeWithTag("getPaymentsAppLive").performScrollTo().performClick()
         val opened = shadowOf(ApplicationProvider.getApplicationContext<Application>()).nextStartedActivity
         assertThat(opened.action).isEqualTo(Intent.ACTION_VIEW)
         assertThat(opened.dataString).isEqualTo("https://play.google.com/store/apps/details?id=com.adyen.ipp.mobile.companion.live")
-        compose.onNodeWithTag("getPaymentsAppTest").performScrollTo().performClick()
+        compose.onNodeWithTag("environment_TEST").performScrollTo().performClick()
+        waitForTag("getPaymentsAppTest")
+        compose
+            .onNodeWithTag("getPaymentsAppTest")
+            .assertTextContains("Get Adyen Payments Test")
+            .performScrollTo()
+            .performClick()
         assertThat(shadowOf(ApplicationProvider.getApplicationContext<Application>()).nextStartedActivity.dataString)
             .isEqualTo("https://play.google.com/store/apps/details?id=com.adyen.ipp.mobile.companion.test")
 
@@ -138,6 +149,23 @@ class TapToPaySettingsTest {
         container.terminalStatus.readDevice()
         compose.waitUntilAtLeastOneExists(hasText("Adyen Payments Test (TEST)"), 15_000)
         compose.onNodeWithTag("getPaymentsAppLive").assertDoesNotExist()
+    }
+
+    @Test
+    @Config(qualifiers = "en-rAU-w320dp-h460dp-hdpi")
+    fun `new Tap to Pay setup requires environment choice even with both apps installed`() {
+        device.paymentsApps = TerminalEnvironment.entries.toSet()
+        env.updateSettings { it.copy(terminal = it.terminal.selectEnvironment(null)) }
+        openTerminalSettings()
+        waitForTag("environment")
+        compose.onNodeWithTag("step_2").assertDoesNotExist()
+        compose.onNodeWithTag("apiKey").assertDoesNotExist()
+        compose.onNodeWithTag("environment_TEST").performScrollTo().performClick()
+        waitForTag("apiKey")
+        compose.onNodeWithTag("step_2").assertTextContains("Adyen Payments app")
+        compose.onNodeWithTag("getPaymentsAppTest").assertDoesNotExist()
+        compose.onNodeWithTag("getPaymentsAppLive").assertDoesNotExist()
+        assertThat(container.settingsState.value.terminal.environment).isEqualTo(TerminalEnvironment.TEST)
     }
 
     @Test
@@ -191,7 +219,7 @@ class TapToPaySettingsTest {
     @Test
     @Config(qualifiers = "en-rAU-w320dp-h460dp-hdpi")
     fun `confirmed missing key offers scoped guidance refresh and an explicitly redacted share on AMS1`() {
-        management.credentialResult = BoardingCredentialCheck.Verified("CRED-1", "ws@Company.Test", true, false)
+        management.credentialResult = BoardingCredentialCheck.Verified("CRED-1", "ws@Company.Test", true, false, true)
         boardPhone()
         compose.onNodeWithTag("tapClientKeyStatus").assertDoesNotExist()
         compose.onNodeWithTag("tapTroubleshootingDetails").assertDoesNotExist()
@@ -214,9 +242,13 @@ class TapToPaySettingsTest {
         val report = send.getStringExtra(Intent.EXTRA_TEXT).orEmpty()
         assertThat(report).contains("clientKeyCheck=MISSING")
         assertThat(report).contains("credential.username=ws@Company.Test")
+        assertThat(report).contains("apiHasRequiredRoles=true")
+        assertThat(report).contains("apiRolesPresent=[Management API - Terminal actions read")
+        assertThat(report).contains("apiRolesMissing=[]")
+        assertThat(report).contains("paymentsAppApiHasRequiredRole=true")
         assertThat(report).doesNotContain("boarding-key")
         assertThat(report).doesNotContain("checkout-key")
-        management.credentialResult = BoardingCredentialCheck.Verified("CRED-1", "ws@Company.Test", true, true)
+        management.credentialResult = BoardingCredentialCheck.Verified("CRED-1", "ws@Company.Test", true, true, true)
         returnToTerminal()
         testConnection("Client key present")
         openHelp()
@@ -276,6 +308,9 @@ class TapToPaySettingsTest {
     fun `boarding without a shared key leaves manual entry available and never queries settings`() {
         boardPhone()
         compose.onNodeWithTag("keyIdentifier").performScrollTo().performTextInput("manual-key")
+        compose.awaitCondition("manual key identifier is saved") {
+            container.settingsState.value.terminal.keyIdentifier == "manual-key"
+        }
         compose.onNodeWithTag("passphrase").performScrollTo().assertExists()
         compose.onNodeWithTag("keyVersion").assertExists()
         compose.onNodeWithTag("findSharedKey").assertDoesNotExist()

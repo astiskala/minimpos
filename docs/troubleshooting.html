@@ -109,7 +109,7 @@
                 <p><span class="fix-label">Fix</span>Run the tests in <strong>Settings › Terminal</strong>; see <a href="#connection">pairing and setup</a>. If they pass, ask Adyen to check the terminal's configuration.</p></dd></div>
             <div><dt>“The terminal or your Adyen account doesn’t support this request. Ask Adyen Support to check it’s enabled, then try again.”</dt>
               <dd><p><span class="fix-label">Cause</span>The terminal or Adyen does not offer what the payment asked for, often because it is not enabled for the account.</p>
-                <p><span class="fix-label">Fix</span>Ask Adyen Support to check that it is enabled for the merchant account. For Tap to Pay, check that Tap to Pay on Android is enabled, not only the Adyen Payments app role. Then try again.</p></dd></div>
+                <p><span class="fix-label">Fix</span>Ask Adyen Support to check that it is enabled for the merchant account. For Tap to Pay, check that Tap to Pay on Android is enabled, not only the Adyen Payments App role. Then try again.</p></dd></div>
             <div><dt>“Do not charge again: this payment went through.”</dt>
               <dd><p><span class="fix-label">Cause</span>The payment was approved even though the terminal reported a cancellation.</p>
                 <p><span class="fix-label">Fix</span>Do not charge again. Refund it if the customer should not pay.</p></dd></div>
@@ -157,13 +157,13 @@
                 <p><span class="fix-label">Fix</span>Compare the shared key's identifier, passphrase and version with the Customer Area. For a network terminal, check the IP address and POIID on the terminal's Device info screen.</p></dd></div>
             <div><dt>The connection is rejected because of the environment</dt>
               <dd><p><span class="fix-label">Cause</span>TEST and LIVE are mixed: the terminal, account and API key must all be from one environment.</p>
-                <p><span class="fix-label">Fix</span>For a network or cloud terminal, check <strong>Environment</strong> in <strong>Settings › Terminal</strong>. On an Adyen terminal or with Tap to Pay, use a device or Payments app from the right environment.</p></dd></div>
+                <p><span class="fix-label">Fix</span>For a network/cloud terminal or Tap to Pay, check <strong>Environment</strong> in <strong>Settings › Terminal</strong>. On an Adyen terminal, use a device from the right environment.</p></dd></div>
             <div><dt>A cloud terminal cannot be reached</dt>
               <dd><p><span class="fix-label">Cause</span>The terminal is offline, the POIID is wrong, or the API key lacks the Cloud Device API role.</p>
                 <p><span class="fix-label">Fix</span>Check that the terminal is on and online, then check the POIID and the credential's roles.</p></dd></div>
-            <div><dt>“Both the TEST and the LIVE Adyen Payments app are installed”</dt>
-              <dd><p><span class="fix-label">Cause</span>Tap to Pay needs exactly one Payments app.</p>
-                <p><span class="fix-label">Fix</span>Uninstall the one you do not use. Then finish registration and enter the shared key. A successful setup check does not test a card payment; make a TEST payment.</p></dd></div>
+            <div><dt>The selected Payments app is missing</dt>
+              <dd><p><span class="fix-label">Cause</span>The Payments app for the selected TEST or LIVE environment is not installed.</p>
+                <p><span class="fix-label">Fix</span>Check <strong>Settings › Terminal › Environment</strong> and install the matching app from Google Play. Both apps can stay installed. Finish registration and enter the matching shared key; confirm with a TEST payment.</p></dd></div>
             <div id="tap-to-pay-check"><dt>Tap to Pay returns UnavailableService before card presentation</dt>
               <dd><p>The Payments app could not complete the request. This generic error does not prove an Adyen outage or a missing client key. If <code>1029_605</code> is returned, it is a session-related failure, not proof of a missing key.</p>
                 <p>Run <strong>Test connection</strong> in <strong>Settings › Terminal</strong>. For a compact table of checks and a redacted report, expand <strong>Settings › Help and troubleshooting › Troubleshooting details</strong>. The <strong>Help and troubleshooting</strong> button on an unsuccessful payment opens these details directly. Expanding the table refreshes the checks; background connection checks skip client-key verification.</p>

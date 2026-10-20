@@ -29,7 +29,7 @@ import org.robolectric.RobolectricTestRunner
 
 @RunWith(RobolectricTestRunner::class)
 class BoardingProvisioningTest {
-    private val phone = FakeDevice(paymentsApps = setOf(TerminalEnvironment.TEST))
+    private val phone = FakeDevice(paymentsApps = TerminalEnvironment.entries.toSet())
     private val credentials = FakeBoardingCredentials()
     private val management = FakeManagement()
     private val paymentsApp = FakePaymentsApp()
@@ -148,9 +148,8 @@ class BoardingProvisioningTest {
             }
             paymentsApp.boarded = false
             container.tapToPay.board()
-            phone.paymentsApps = setOf(TerminalEnvironment.LIVE)
             env.updateSettings {
-                it.copy(terminal = it.terminal.copy(paymentsAppInstallationId = "", liveUrlPrefix = "live-prefix"))
+                it.copy(terminal = it.terminal.selectEnvironment(TerminalEnvironment.LIVE).copy(liveUrlPrefix = "live-prefix"))
             }
             paymentsApp.boarded = false
             container.tapToPay.board()
@@ -160,13 +159,28 @@ class BoardingProvisioningTest {
                     "key" to TerminalEnvironment.TEST,
                     "key" to TerminalEnvironment.LIVE,
                 ).inOrder()
-            phone.paymentsApps = setOf(TerminalEnvironment.TEST)
             env.updateSettings {
-                it.copy(terminal = it.terminal.copy(merchantAccount = "HarbourCoffeeCOM", paymentsAppInstallationId = ""))
+                it.copy(terminal = it.terminal.selectEnvironment(TerminalEnvironment.TEST).copy(merchantAccount = "HarbourCoffeeCOM"))
             }
             container.tapToPay.board()
             assertThat(credentials.requests).hasSize(3)
             assertThat((container.terminalSetup.boardingCredentials.read() as JournalRead.Present).value).hasSize(3)
+        }
+
+    @Test
+    fun `environment changed during provisioning cannot board either app`() =
+        await {
+            credentials.beforeProvision = {
+                env.updateSettings { it.copy(terminal = it.terminal.selectEnvironment(TerminalEnvironment.LIVE)) }
+            }
+            assertThat(container.tapToPay.board()).isEqualTo(TapToPayOutcome.NotSetUp(SetupProblem.SETUP_CHANGED))
+            assertThat(paymentsApp.opened).isEmpty()
+            assertThat(credentials.connections).containsExactly("key" to TerminalEnvironment.TEST)
+            assertThat(
+                container.settings
+                    .current()
+                    .terminal.paymentsAppInstallationId,
+            ).isEmpty()
         }
 
     @Test

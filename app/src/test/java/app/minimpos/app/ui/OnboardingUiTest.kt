@@ -2,15 +2,19 @@ package app.minimpos.app.ui
 
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import app.minimpos.app.MiniMposApp
+import app.minimpos.app.R
 import app.minimpos.app.TestEnvironment
 import app.minimpos.app.await
 import app.minimpos.app.awaitCondition
+import app.minimpos.app.data.db.ProductEntity
 import app.minimpos.app.data.settings.TerminalMode
 import com.google.common.truth.Truth.assertThat
 import kotlinx.coroutines.flow.first
@@ -34,13 +38,68 @@ class OnboardingUiTest {
     private fun waitFor(tag: String) = compose.waitUntilAtLeastOneExists(hasTestTag(tag), 15_000)
 
     @Test
+    fun `leaving demo reviews data and opens setup without changing merchant or sample data`() {
+        compose.setContent { MiniMposApp(env.container) }
+        waitFor("onboardingContinue")
+        compose.onNodeWithTag("onboardingContinue").performClick()
+        waitFor("settings")
+        await {
+            val tax =
+                env.container.catalog.taxRates
+                    .first()
+                    .first()
+            env.container.catalog.saveProduct(ProductEntity(name = "Merchant product", priceMinor = 100, taxRateId = tax.id))
+        }
+        val products =
+            await {
+                env.container.catalog.products
+                    .first()
+            }
+        val sales =
+            await {
+                env.container.database
+                    .saleDao()
+                    .sales()
+                    .first()
+            }
+        val settings = env.container.settingsState.value
+        compose.onNodeWithTag("settings").performClick()
+        compose.onNodeWithTag("section_simulator").performScrollTo().performClick()
+        waitFor("exitDemo")
+        compose.onNodeWithTag("exitDemo").performClick()
+        compose.onNodeWithText(env.context.getString(R.string.demo_exit_history_hint)).performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("reviewDemoSamples").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("reviewDemoReceipts").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("continueDemoSetup").performScrollTo().performClick()
+        waitFor("terminalMode")
+        assertThat(env.container.settingsState.value).isEqualTo(settings)
+        assertThat(env.container.terminalStatus.state.value.mode).isEqualTo(TerminalMode.SIMULATOR)
+        assertThat(
+            await {
+                env.container.catalog.products
+                    .first()
+            },
+        ).isEqualTo(products)
+        assertThat(
+            await {
+                env.container.database
+                    .saleDao()
+                    .sales()
+                    .first()
+            },
+        ).isEqualTo(sales)
+    }
+
+    @Test
     fun `all first-run choices fit AMS1 and simulator samples can be removed from Data`() {
         compose.setContent { MiniMposApp(env.container) }
         waitFor("onboardingSimulator")
         listOf("onboardingSimulator", "onboardingImport", "onboardingTerminal").forEach {
             compose.onNodeWithTag(it).assertIsDisplayed()
         }
+        compose.onNodeWithTag("onboardingSimulator").assertIsSelected()
         compose.onNodeWithTag("onboardingSimulator").performClick()
+        compose.onNodeWithTag("onboardingContinue").assertIsDisplayed().performClick()
         waitFor("settings")
         compose.awaitCondition("onboarding is persisted") { env.container.settingsState.value.onboardingCompleted }
         assertThat(env.container.terminalStatus.state.value.mode).isEqualTo(TerminalMode.SIMULATOR)
@@ -92,15 +151,20 @@ class OnboardingUiTest {
     }
 
     @Test
-    fun `first-run import opens the scanner without adding samples`() {
+    fun `first-run import explains codes before scanning without adding samples`() {
         compose.setContent { MiniMposApp(env.container) }
         waitFor("onboardingImport")
         compose.onNodeWithTag("onboardingImport").performClick()
+        assertThat(env.container.settingsState.value.onboardingCompleted).isFalse()
+        compose.onNodeWithTag("onboardingContinue").performClick()
         compose.waitUntilAtLeastOneExists(
             hasText("Set up from another device"),
             15_000,
         )
         compose.awaitCondition("import choice is persisted") { env.container.settingsState.value.onboardingCompleted }
+        compose.onNodeWithTag("setupCodesIntro").assertExists()
+        compose.onNodeWithTag("startSetupScan").assertIsDisplayed()
+        compose.onNodeWithTag("manualSetup").assertIsDisplayed()
         assertThat(
             await {
                 env.container.catalog.products
@@ -124,6 +188,7 @@ class OnboardingUiTest {
         compose.setContent { MiniMposApp(env.container) }
         waitFor("onboardingTerminal")
         compose.onNodeWithTag("onboardingTerminal").performClick()
+        compose.onNodeWithTag("onboardingContinue").performClick()
         waitFor("scanSetup")
         compose.awaitCondition("terminal choice is persisted") { env.container.settingsState.value.onboardingCompleted }
         assertThat(

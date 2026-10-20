@@ -138,8 +138,8 @@
           <h2>アプリをインストールする</h2>
           <p><a href="https://github.com/astiskala/minimpos/releases/latest">最新リリース</a>から署名済みの <code>minimpos-&lt;version&gt;.apk</code> をダウンロードします。</p>
           <dl class="settings-list">
-            <dt>Adyen 端末</dt><dd><ol><li>Customer Area で APK をアップロードし、端末に配布します。<a href="https://docs.adyen.com/point-of-sale/android-terminals/deploy-apps">Adyen のアプリ配布ガイド</a>を参照してください。ユーザーにはアプリのアップロード・配布権限が必要です。</li><li>端末で Mini mPOS を開き、<strong>端末を設定</strong>を選びます。</li></ol></dd>
-            <dt>タブレットやスマートフォン</dt><dd><ol><li>デバイスで APK を開き、Android の案内に従ってブラウザーやファイルマネージャーからのインストールを許可します。</li><li>Mini mPOS を開き、<strong>端末を設定</strong>を選びます。</li></ol></dd>
+            <dt>Adyen 端末</dt><dd><ol><li>Customer Area で APK をアップロードし、端末に配布します。<a href="https://docs.adyen.com/point-of-sale/android-terminals/deploy-apps">Adyen のアプリ配布ガイド</a>を参照してください。ユーザーにはアプリのアップロード・配布権限が必要です。</li><li>端末で Mini mPOS を開き、<strong>Adyen に接続</strong>を選んで<strong>続ける</strong>をタップします。</li></ol></dd>
+            <dt>タブレットやスマートフォン</dt><dd><ol><li>デバイスで APK を開き、Android の案内に従ってブラウザーやファイルマネージャーからのインストールを許可します。</li><li>Mini mPOS を開き、<strong>Adyen に接続</strong>を選んで<strong>続ける</strong>をタップします。</li></ol></dd>
           </dl>
           <div class="callout callout-important" role="note">
             <p class="callout-title">重要</p>
@@ -163,7 +163,7 @@
             <li><strong>自動（推奨）</strong>では Adyen APIキーだけを入力し、残りはデバイスが取得します。<strong>手動</strong>では接続情報をすべて入力します。</li>
             <li>必要な情報を入力します。</li>
             <li><strong>QRコードを作成</strong>をクリックします。12 文字の転送コードが表示されるため、ページは開いたままにします。</li>
-            <li>Mini mPOS の<strong>設定 › 端末</strong>で<strong>設定コードを読み取る</strong>か右上の QR アイコンをタップし、すべてのコードを読み取ります。</li>
+            <li>Mini mPOS の<strong>設定 › 端末</strong>で<strong>設定コードを読み取る</strong>か右上の QR アイコンをタップします。案内を読み、<strong>コードを持っています</strong>をタップしてすべてのコードを読み取ります。</li>
             <li>決済先と環境を確認し、転送コードを入力して<strong>確認してインポート</strong>をタップします。</li>
             <li>案内があれば端末を選ぶか、Tap to Pay のスマートフォンを登録します。すべての確認に成功するまで何も保存されません。</li>
           </ol>
@@ -315,10 +315,11 @@
           <p>Adyen アカウントや端末がなくても Mini mPOS を試せます。カードへの請求はありません。</p>
           <ol>
             <li>Android 9 以降のスマートフォンかエミュレーターに<a href="#install">アプリをインストール</a>します。</li>
-            <li>ようこそ画面で<strong>サンプルでシミュレーターを試す</strong>を選びます。ほかに、設定 QR コードを読み込む<strong>別のデバイスから設定</strong>と、<strong>端末を設定</strong>があります。</li>
+            <li>ようこそ画面で<strong>デモを試す</strong>を選び、<strong>続ける</strong>をタップします。ほかに、設定ヘルパーや別のデバイスの<strong>設定コードを読み取る</strong>と、<strong>Adyen に接続</strong>があります。Adyen 端末では接続、それ以外ではデモが最初に選択されています。</li>
             <li><strong>設定 › シミュレーター</strong>で、決済結果、待ち時間、プリンターの有無を選びます。</li>
           </ol>
           <p>サンプルの商品と履歴にはデモと表示されます。サンプルがすでにあっても、<strong>サンプルデータを追加</strong>を実行するたびにレシートの事業者情報を架空のカフェ情報に置き換えます。レシートのレイアウトと送信設定は変更しません。サンプルはデモの日次合計とレポートに含まれますが、実際の決済ではありません。<strong>設定 › データと転送</strong>で<strong>サンプルデータを追加</strong>または<strong>サンプルデータを削除</strong>を使えます。削除しても、ご自身の商品、履歴、設定は残ります。オフラインのデモリンクは<a href="using.html#payment-links">決済リンク</a>を参照してください。</p>
+          <p>接続するには、<strong>設定 › シミュレーター</strong>の<strong>実際の決済を設定</strong>をタップします。ショートカットでサンプルやレシートを確認し、<strong>設定に進む</strong>をタップします。設定を開くだけではデータは変わりません。TEST や LIVE への切り替えを確認すると、未完了の操作を含むすべてのローカル履歴が削除されます。サンプル商品とレシート情報は残ります。不要なサンプルは別途削除し、実際の決済前に架空の店舗情報を確認してください。まず TEST で検証します。</p>
           <p class="back-to-contents"><a href="#contents">目次に戻る</a></p>
         </section>
       </div>

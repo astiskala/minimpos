@@ -150,8 +150,8 @@
           <h2>Install the app</h2>
           <p>Download the signed <code>minimpos-&lt;version&gt;.apk</code> from the <a href="https://github.com/astiskala/minimpos/releases/latest">latest release</a>.</p>
           <dl class="settings-list">
-            <dt>Adyen terminal</dt><dd><ol><li>In the Customer Area, upload the APK and deploy it to your terminals; see the <a href="https://docs.adyen.com/point-of-sale/android-terminals/deploy-apps">Adyen app deployment guide</a>. Your user needs permission to upload and deploy apps.</li><li>Open Mini mPOS on the terminal and choose <strong>Set up a terminal</strong>.</li></ol></dd>
-            <dt>Tablet or phone</dt><dd><ol><li>Open the APK on the device and allow installation from your browser or file manager when Android asks.</li><li>Open Mini mPOS and choose <strong>Set up a terminal</strong>.</li></ol></dd>
+            <dt>Adyen terminal</dt><dd><ol><li>In the Customer Area, upload the APK and deploy it to your terminals; see the <a href="https://docs.adyen.com/point-of-sale/android-terminals/deploy-apps">Adyen app deployment guide</a>. Your user needs permission to upload and deploy apps.</li><li>Open Mini mPOS on the terminal, select <strong>Connect to Adyen</strong> and tap <strong>Continue</strong>.</li></ol></dd>
+            <dt>Tablet or phone</dt><dd><ol><li>Open the APK on the device and allow installation from your browser or file manager when Android asks.</li><li>Open Mini mPOS, select <strong>Connect to Adyen</strong> and tap <strong>Continue</strong>.</li></ol></dd>
           </dl>
           <div class="callout callout-important" role="note">
             <p class="callout-title">Important</p>
@@ -175,7 +175,7 @@
             <li>Choose <strong>Automatic (recommended)</strong> to enter only the Adyen API key; the device looks up the rest. Choose <strong>Manual</strong> to enter every connection detail.</li>
             <li>Enter the requested details.</li>
             <li>Click <strong>Make QR codes</strong>. Keep the page open: it shows the 12-character transfer code.</li>
-            <li>In Mini mPOS, open <strong>Settings › Terminal</strong> and tap <strong>Scan setup codes</strong> or the QR icon at the top right. Scan every code.</li>
+            <li>In Mini mPOS, open <strong>Settings › Terminal</strong> and tap <strong>Scan setup codes</strong> or the QR icon at the top right. Read the guidance, tap <strong>I already have codes</strong> and scan every code.</li>
             <li>Check the destination and environment, enter the transfer code and tap <strong>Verify and import</strong>.</li>
             <li>If asked, choose your terminal, or register the phone for Tap to Pay. Nothing is saved until all checks pass.</li>
           </ol>
@@ -327,10 +327,11 @@
           <p>To explore offline warnings, turn on <strong>Offline approvals</strong> in <strong>Settings › Simulator</strong>. Approved simulated sales then have no PSP reference and report an unconfirmed batch. Inspect the sale in History and try <a href="using.html#reconciliation">terminal reconciliation</a>. This is a demo, not a test of real offline authorization or later upload to Adyen.</p>
           <ol>
             <li><a href="#install">Install the app</a> on an Android 9+ phone or emulator.</li>
-            <li>On the welcome screen, choose <strong>Try simulator with samples</strong>. The other choices are <strong>Set up from another device</strong>, to import setup QR codes, and <strong>Set up a terminal</strong>.</li>
+            <li>On the welcome screen, select <strong>Try a demo</strong> and tap <strong>Continue</strong>. The other choices are <strong>Scan setup codes</strong>, from the setup helper or another device, and <strong>Connect to Adyen</strong>. Adyen terminals initially select connecting; other devices select the demo.</li>
             <li>In <strong>Settings › Simulator</strong>, choose the payment outcome, the delay and whether a printer is available.</li>
           </ol>
           <p>Sample products and history are labeled as demos. Each use of <strong>Add sample data</strong> replaces receipt business details with fictional café details, even if samples already exist; receipt layout and delivery settings stay unchanged. Samples count in demo day totals and reports; they are not real payments. In <strong>Settings › Data and transfer</strong>, use <strong>Add sample data</strong> or <strong>Remove sample data</strong>; removal keeps your own products, history and settings. For offline demo links, see <a href="using.html#payment-links">payment links</a>.</p>
+          <p>Ready to connect? In <strong>Settings › Simulator</strong>, tap <strong>Set up real payments</strong>. Review the sample-data and receipt shortcuts, then tap <strong>Continue to setup</strong>. Opening setup changes no data. A confirmed switch to TEST or LIVE deletes all local history, including unfinished operations; sample products and receipt details stay. Remove unwanted samples separately and review fictional receipt business details before real payments. Start with TEST.</p>
           <p class="back-to-contents"><a href="#contents">Back to contents</a></p>
         </section>
       </div>

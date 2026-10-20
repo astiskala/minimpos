@@ -160,15 +160,18 @@ class WebsiteTest {
             mapOf(
                 "en" to
                     listOf(
-                        "Try simulator with samples",
-                        "Set up from another device",
-                        "Set up a terminal",
+                        "Try a demo",
+                        "Scan setup codes",
+                        "Connect to Adyen",
+                        "Continue",
+                        "Set up real payments",
+                        "Continue to setup",
                         "Add sample data",
                         "Remove sample data",
                     ),
-                "zh-CN" to listOf("使用示例数据试用模拟器", "从另一台设备设置", "设置终端", "添加示例数据", "删除示例数据"),
-                "zh-Hant" to listOf("使用示例資料試用模擬器", "從另一台設備設定", "設定終端", "新增示例資料", "刪除示例資料"),
-                "ja" to listOf("サンプルでシミュレーターを試す", "別のデバイスから設定", "端末を設定", "サンプルデータを追加", "サンプルデータを削除"),
+                "zh-CN" to listOf("试用演示", "扫描设置二维码", "连接 Adyen", "继续", "设置真实支付", "继续设置", "添加示例数据", "删除示例数据"),
+                "zh-Hant" to listOf("試用示範", "掃描設定二維碼", "連接 Adyen", "繼續", "設定真實付款", "繼續設定", "新增示例資料", "刪除示例資料"),
+                "ja" to listOf("デモを試す", "設定コードを読み取る", "Adyen に接続", "続ける", "実際の決済を設定", "設定に進む", "サンプルデータを追加", "サンプルデータを削除"),
             )
         labels.forEach { (language, actions) ->
             val text =

@@ -403,7 +403,7 @@ class OwnershipArchitectureTest {
                     .areDeclaredIn(CapabilityValueViolation::class.java)
                     .should()
                     .haveNameMatching(
-                        "supports.*|selectsEnvironment|discoversTerminals|scannedWallets|usesCloudDeviceApi|checksConnection",
+                        "supports.*|selectsEnvironment|discoversTerminals|scannedWallets|checksConnection",
                     ),
                 classes().should(
                     object : ArchCondition<JavaClass>("build destination adapters only in TerminalGateway's adapters") {

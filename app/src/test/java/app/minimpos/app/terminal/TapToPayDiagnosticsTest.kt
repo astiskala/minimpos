@@ -44,6 +44,7 @@ class TapToPayDiagnosticsTest {
                 terminal =
                     it.terminal.copy(
                         mode = TerminalMode.PAYMENTS_APP,
+                        environment = TerminalEnvironment.TEST,
                         merchantAccount = "Merchant",
                         paymentsAppInstallationId = installation,
                     ),
@@ -96,9 +97,12 @@ class TapToPayDiagnosticsTest {
         val reading = checkNotNull(await { container.terminalStatus.inspect() })
         assertThat(reading.facts["installationId"]).isEqualTo(FakePaymentsApp.INSTALLATION_ID)
         assertThat(reading.facts["supportsDiagnosis"]).isEqualTo("false")
+        assertThat(reading.facts["apiHasRequiredRoles"]).isEqualTo("true")
+        assertThat(reading.facts["apiRolesMissing"]).isEqualTo("[]")
         assertThat(reading.facts.values.joinToString()).doesNotContain("boarding-key")
         assertThat(reading.facts.values.joinToString()).doesNotContain("unrelated-terminal-key")
         assertThat(diagnostics.state.value.clientKey).isEqualTo(ClientKeyCheck.PRESENT)
+        assertThat(diagnostics.state.value.apiHasRequiredRole).isTrue()
         assertThat(management.requests).isEmpty()
         assertThat(management.revoked).isEmpty()
         assertThat(paymentsApp.opened).hasSize(1)
@@ -137,14 +141,25 @@ class TapToPayDiagnosticsTest {
             val check = await { diagnostics.refresh() }
             assertThat(check.clientKey).isEqualTo(expected)
             assertThat(check.credential).isNull()
+            assertThat(check.apiHasRequiredRole).isNull()
         }
-        management.credentialResult = BoardingCredentialCheck.Verified("CRED-1", "ws@Company.Test", true, false)
+        management.credentialResult = BoardingCredentialCheck.Verified("CRED-1", "ws@Company.Test", true, false, true)
         assertThat(await { diagnostics.refresh() }.clientKey).isEqualTo(ClientKeyCheck.MISSING)
-        management.credentialResult = BoardingCredentialCheck.Verified("CRED-1", "ws@Company.Test", true, true)
+        management.credentialResult = BoardingCredentialCheck.Verified("CRED-1", "ws@Company.Test", true, true, true)
         assertThat(await { diagnostics.refresh() }.clientKey).isEqualTo(ClientKeyCheck.PRESENT)
         assertThat(management.requests).isEmpty()
         assertThat(management.revoked).isEmpty()
         assertThat(paymentsApp.opened.all { "/boarded?" in it && "reboard" !in it }).isTrue()
+    }
+
+    @Test
+    fun `missing boarding role is false only after successful introspection`() {
+        configured()
+        management.credentialResult = BoardingCredentialCheck.Verified("CRED-1", "ws@Company.Test", true, true, false)
+        assertThat(await { diagnostics.refresh() }.apiHasRequiredRole).isFalse()
+        await { boardingKey("replacement-key") }
+        await { diagnostics.state.first { it.apiHasRequiredRole == null } }
+        assertThat(diagnostics.state.value.apiHasRequiredRole).isNull()
     }
 
     @Test
@@ -157,6 +172,7 @@ class TapToPayDiagnosticsTest {
         assertThat(management.credentialChecks).isEqualTo(checks)
         await { diagnostics.refresh() }
         phone.paymentsApps = setOf(TerminalEnvironment.LIVE)
+        env.updateSettings { it.copy(terminal = it.terminal.selectEnvironment(TerminalEnvironment.LIVE)) }
         container.terminalSetup.readDevice()
         await { diagnostics.state.first { it.clientKey == ClientKeyCheck.NOT_CHECKED } }
         val live = await { diagnostics.refresh() }
@@ -193,7 +209,7 @@ class TapToPayDiagnosticsTest {
         assertThat(identity.installationId).isEqualTo(FakePaymentsApp.INSTALLATION_ID)
         assertThat(identity.environment).isEqualTo(TerminalEnvironment.TEST)
         assertThat(await { diagnostics.refresh() }.associated).isTrue()
-        management.credentialResult = BoardingCredentialCheck.Verified("CRED-2", "ws@Company.Other", true, true)
+        management.credentialResult = BoardingCredentialCheck.Verified("CRED-2", "ws@Company.Other", true, true, true)
         await { boardingKey("other-boarding-key") }
         assertThat(await { diagnostics.refresh() }.associated).isFalse()
         assertThat(await { diagnostics.refresh() }.boardingIdentity?.username).isEqualTo("ws@Company.Test")

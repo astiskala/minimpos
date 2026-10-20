@@ -295,7 +295,7 @@ class AppSettingsTest {
         assertThat(simulator.historyEnvironment(TerminalMode.SIMULATOR)).isEqualTo("SIMULATOR")
         val app = cloud.selectDestination(TerminalMode.PAYMENTS_APP, TerminalMode.SIMULATOR, apiKeySaved = true)
         assertThat(app.environment).isEqualTo(TerminalEnvironment.LIVE)
-        assertThat(app.historyEnvironment(TerminalMode.SIMULATOR)).isNull()
+        assertThat(app.historyEnvironment(TerminalMode.SIMULATOR)).isEqualTo("LIVE")
     }
 
     @Test
@@ -310,7 +310,7 @@ class AppSettingsTest {
     }
 
     @Test
-    fun `the helper imports an environment only for a network or cloud terminal`() {
+    fun `the helper imports an environment for network cloud and Payments app destinations`() {
         val network = TerminalSettings(mode = TerminalMode.TERMINAL, environment = TerminalEnvironment.TEST)
         assertThat(ConnectionSetup(environment = TerminalEnvironment.LIVE).appliedTo(network, onTerminal = false).environment)
             .isEqualTo(TerminalEnvironment.LIVE)
@@ -320,7 +320,24 @@ class AppSettingsTest {
         assertThat(imported.cloudRegion).isNull()
         assertThat(ConnectionSetup(environment = TerminalEnvironment.LIVE).appliedTo(network, onTerminal = true)).isEqualTo(network)
         val app = network.copy(mode = TerminalMode.PAYMENTS_APP)
-        assertThat(ConnectionSetup(environment = TerminalEnvironment.LIVE).appliedTo(app, onTerminal = false)).isEqualTo(app)
+        assertThat(ConnectionSetup(environment = TerminalEnvironment.LIVE).appliedTo(app, onTerminal = false))
+            .isEqualTo(app.copy(environment = TerminalEnvironment.LIVE))
+    }
+
+    @Test
+    fun `environment change forgets Payments app registration but reselection keeps it`() {
+        val registered =
+            TerminalSettings(
+                mode = TerminalMode.PAYMENTS_APP,
+                environment = TerminalEnvironment.TEST,
+                paymentsAppInstallationId = "test-installation",
+            )
+        assertThat(registered.selectEnvironment(TerminalEnvironment.TEST)).isEqualTo(registered)
+        assertThat(registered.selectEnvironment(TerminalEnvironment.LIVE).paymentsAppInstallationId).isEmpty()
+        assertThat(registered.selectEnvironment(null).paymentsAppInstallationId).isEmpty()
+        assertThat(
+            ConnectionSetup(environment = TerminalEnvironment.LIVE).appliedTo(registered, onTerminal = false).paymentsAppInstallationId,
+        ).isEmpty()
     }
 
     @Test

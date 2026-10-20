@@ -72,7 +72,15 @@ class RemoteTerminalTest {
 
     private fun useTapToPay() {
         env.updateSettings {
-            it.copy(terminal = it.terminal.copy(mode = TerminalMode.PAYMENTS_APP, keyIdentifier = "key", merchantAccount = "Merchant"))
+            it.copy(
+                terminal =
+                    it.terminal.copy(
+                        mode = TerminalMode.PAYMENTS_APP,
+                        environment = TerminalEnvironment.TEST,
+                        keyIdentifier = "key",
+                        merchantAccount = "Merchant",
+                    ),
+            )
         }
         await { container.secrets.set(Secret.TERMINAL_PASSPHRASE, "correct horse battery staple") }
     }
@@ -190,6 +198,30 @@ class RemoteTerminalTest {
     }
 
     @Test
+    fun `both installed apps route boarding and payments only to the selected environment`() {
+        phone.paymentsApps = TerminalEnvironment.entries.toSet()
+        useTapToPay()
+        await { container.secrets.set(Secret.ADYEN_API_KEY, "key") }
+        TerminalEnvironment.entries.forEach { environment ->
+            env.updateSettings {
+                it.copy(terminal = it.terminal.selectEnvironment(environment).copy(liveUrlPrefix = "live-prefix"))
+            }
+            paymentsApp.boarded = false
+            val first = paymentsApp.packages.size
+            assertThat(await { container.tapToPay.board() }).isInstanceOf(TapToPayOutcome.Boarded::class.java)
+            assertThat(await { container.terminalStatus.check() }).isInstanceOf(TerminalConnection.Connected::class.java)
+            val result = await { gateway.pay(payment, "PAY${environment.name}") }.made() as TransactionOutcome.Completed
+            assertThat(result.details.success).isTrue()
+            assertThat(paymentsApp.packages.drop(first))
+                .containsExactlyElementsIn(List(3) { "com.adyen.ipp.mobile.companion.${environment.name.lowercase()}" })
+                .inOrder()
+            val prefix = if (environment == TerminalEnvironment.TEST) "https://www.adyen.com/test/" else "https://www.adyen.com/"
+            assertThat(paymentsApp.opened.drop(first).all { it.startsWith(prefix) }).isTrue()
+            assertThat(management.connections.last().second).isEqualTo(environment)
+        }
+    }
+
+    @Test
     fun `Tap to Pay is set up by boarding the Payments app, then takes payments through it`() {
         useTapToPay()
         await { container.secrets.set(Secret.ADYEN_API_KEY, "key") }
@@ -292,6 +324,28 @@ class RemoteTerminalTest {
     }
 
     @Test
+    fun `late TEST revocation never clears a new LIVE registration`() {
+        phone.paymentsApps = TerminalEnvironment.entries.toSet()
+        useTapToPay()
+        await { container.secrets.set(Secret.ADYEN_API_KEY, "key") }
+        assertThat(await { container.tapToPay.board() }).isInstanceOf(TapToPayOutcome.Boarded::class.java)
+        management.beforeRevoke = {
+            env.updateSettings {
+                it.copy(
+                    terminal =
+                        it.terminal
+                            .selectEnvironment(TerminalEnvironment.LIVE)
+                            .copy(paymentsAppInstallationId = FakePaymentsApp.INSTALLATION_ID),
+                )
+            }
+        }
+        assertThat(await { container.tapToPay.unregister() }).isEqualTo(TapToPayOutcome.Unregistered)
+        val terminal = await { container.settings.current() }.terminal
+        assertThat(terminal.environment).isEqualTo(TerminalEnvironment.LIVE)
+        assertThat(terminal.paymentsAppInstallationId).isEqualTo(FakePaymentsApp.INSTALLATION_ID)
+    }
+
+    @Test
     fun `this phone can be removed, and Tap to Pay explains what is missing`() {
         useTapToPay()
         await { container.secrets.set(Secret.ADYEN_API_KEY, "key") }
@@ -314,7 +368,7 @@ class RemoteTerminalTest {
         env.updateSettings { it.copy(terminal = it.terminal.copy(merchantAccount = "")) }
         assertThat(await { container.tapToPay.board() }).isEqualTo(TapToPayOutcome.NotSetUp(SetupProblem.MERCHANT_ACCOUNT))
         phone.paymentsApps = TerminalEnvironment.entries.toSet()
-        assertThat(await { container.tapToPay.unregister() }).isEqualTo(TapToPayOutcome.NotSetUp(SetupProblem.PAYMENTS_APP_AMBIGUOUS))
+        assertThat(await { container.tapToPay.unregister() }).isEqualTo(TapToPayOutcome.NotSetUp(SetupProblem.MERCHANT_ACCOUNT))
         phone.paymentsApps = emptySet()
         assertThat(await { container.tapToPay.board() }).isEqualTo(TapToPayOutcome.NotSetUp(SetupProblem.PAYMENTS_APP_MISSING))
     }

@@ -188,8 +188,8 @@ class SetupImport internal constructor(
         val key = unlocked.apiKey ?: return Step.Halted(SetupImportOutcome.Failed(SetupProblem.API_KEY, incomplete = true))
         val environment =
             unlocked.setup.environment ?: return Step.Halted(SetupImportOutcome.Failed(SetupProblem.ENVIRONMENT, incomplete = true))
-        return when (val result = checks.terminals(key).credential(environment, unlocked.setup.capabilities.usesCloudDeviceApi)) {
-            CredentialLookup.Allowed -> Step.Next(current)
+        return when (val result = checks.terminals(key).credential(environment)) {
+            is CredentialLookup.Allowed -> Step.Next(current)
             is CredentialLookup.Failed -> Step.Halted(SetupImportOutcome.Failed(Failure.Remote(result.fault)))
         }
     }

@@ -509,7 +509,7 @@
   <string name="transfer_included">含まれます</string>
   <string name="transfer_not_included">含まれません</string>
   <string name="transfer_unchanged">変更なし</string>
-  <string name="transfer_environment_device">このデバイスまたはPayments appが決定</string>
+  <string name="transfer_environment_device">Adyen端末の証明書から取得します。それ以外はTESTまたはLIVEを選択してください</string>
   <string name="transfer_live_warning">LIVEは実際の決済を行います。インポート前に、意図した環境か確認してください。</string>
   <string name="transfer_secret_passphrase">共有キーのパスフレーズ</string>
   <string name="transfer_secret_api_key">Adyen APIキー</string>
@@ -761,9 +761,9 @@
   <string name="settings_status_not_set_up_hint">設定 › 端末で設定を完了し、「接続をテスト」をタップしてください。</string>
   <string name="settings_status_failed">未接続</string>
   <string name="settings_tap_to_pay">Tap to Pay</string>
-  <string name="settings_tap_to_pay_hint">AdyenサポートにTap to Pay on AndroidとAdyen Payments app roleの有効化を依頼してください。設定すると、このスマートフォンをマーチャントアカウントまたはその店舗に登録します。購入者はカードやスマートフォンをこのスマートフォンにタッチして支払います。プリンターはないため、領収書をメール送信または共有してください。</string>
+  <string name="settings_tap_to_pay_hint">AdyenサポートにTap to Pay on AndroidとAdyen Payments App roleの有効化を依頼してください。設定すると、このスマートフォンをマーチャントアカウントまたはその店舗に登録します。購入者はカードやスマートフォンをこのスマートフォンにタッチして支払います。プリンターはないため、領収書をメール送信または共有してください。</string>
   <string name="settings_payments_app">Adyen Paymentsアプリ</string>
-  <string name="settings_payments_app_hint">Tap to PayはAdyen Paymentsアプリで動作します。テストアカウントにはAdyen Payments Test、本番アカウントにはAdyen Paymentsを、Google Playからインストールしてください。</string>
+  <string name="settings_payments_app_hint">Google PlayからTEST用のAdyen Payments TestまたはLIVE用のAdyen Paymentsをインストールしてください。両方をインストールできます。Mini mPOSは選択した環境のアプリだけを開きます。</string>
   <string name="settings_payments_app_installed">インストール済み</string>
   <string name="settings_payments_app_test">Adyen Payments Test（TEST）</string>
   <string name="settings_payments_app_live">Adyen Payments（LIVE）</string>
@@ -1126,8 +1126,7 @@
   <string name="setup_unreadable_api_key">このデバイスで保存したAdyen APIキーを読み取れません。端末設定で再入力してください</string>
   <string name="setup_api_required">先にマーチャントアカウントとAdyen APIキーを入力してください</string>
   <string name="setup_cloud_api_key">端末設定にAPIキーを入力してください</string>
-  <string name="setup_payments_app_missing">Google PlayからAdyen Paymentsアプリをインストールしてください</string>
-  <string name="setup_payments_app_ambiguous">TEST版とLIVE版のAdyen Paymentsアプリが両方インストールされています。使わない方をアンインストールしてください</string>
+  <string name="setup_payments_app_missing">Google Playから選択した環境のAdyen Paymentsアプリをインストールしてください</string>
   <string name="setup_payments_app_not_boarded">端末設定でTap to Payを設定してください</string>
   <string name="setup_payments_app_on_terminal">Adyen Paymentsアプリは決済端末では動作しません</string>
   <string name="setup_payments_app_api_key">端末設定で Tap to Pay を設定し、このスマートフォンの登録用認証情報を作成してください</string>

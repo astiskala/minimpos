@@ -35,9 +35,12 @@ Adyen Payments app (Tap to Pay). The built-in simulator needs no Adyen account.
   setup, every action reaching Adyen or a terminal (refunds, captures, printing, reconciliation, capabilities, Adyen
   imports included) goes through the setup gate, which explains generically and links to Settings › Terminal; setup
   tools and status checks of unfinished operations never wait. Saved-card charges and their refunds go through the
-  Checkout API. Select TEST/LIVE first for network/cloud terminals; on-device terminals and the Payments app supply
-  their environment. Never probe API credentials across environments; changing destination clears it unless the saved
+  Checkout API. Select TEST/LIVE first for network/cloud terminals and Tap to Pay; on-device terminals supply
+  their environment. Tap to Pay opens only the selected environment's app; both apps may be installed.
+  Never probe API credentials across environments; changing destination clears it unless the saved
   API key and merchant account it belongs to stay.
+- Every real setup requires the same primary API credential roles, including API credential management and Cloud
+  Device API. Only the separate Payments app boarding credential requires `Adyen Payments App role`.
 - Persist each financial operation before sending. A missing answer means unknown, not failed. Retry the same logical
   operation with its stored identity and request facts; a distinct authorization renewal needs a new identity.
   Historical actions must validate the original payment context against current credentials.

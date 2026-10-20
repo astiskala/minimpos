@@ -46,8 +46,7 @@ import kotlinx.serialization.serializer
  * @property connectionProblem What must still be entered before the [destination] can be reached (connection checks,
  *   refunds, status checks, printing); null when nothing is missing (always for the simulator).
  * @property apiSetup How far the Checkout API is set up, which decides where captures go.
- * @property environment Where payments go: the installed Payments app's environment with [TerminalMode.PAYMENTS_APP],
- *   else the selected environment or this device's verified certificate
+ * @property environment Where payments go: the selected environment or this device's verified certificate
  *   ([app.minimpos.app.data.settings.TerminalSettings.environment]); null
  *   for the simulator and until known.
  * @property paymentsApps The environments of the Adyen Payments apps installed on the device when it was resolved.
@@ -86,7 +85,6 @@ data class TerminalSetup(
         get() =
             DestinationCapabilities(
                 discoversTerminals = destination.discoversTerminals,
-                usesCloudDeviceApi = destination.usesCloudDeviceApi,
                 selectsEnvironment = destination.selectsEnvironment(onTerminal),
                 checksConnection = destination.checksConnection,
                 scannedWallets = destination.scannedWallets,
@@ -254,15 +252,16 @@ data class TerminalSetup(
             read: Map<Secret, String?>,
         ): BoardingOwner {
             val apps = device.paymentsApps
+            val environment = settings.terminal.environment
             val problem =
-                paymentsAppProblem(device.isAdyenTerminal, apps)
+                paymentsAppProblem(device.isAdyenTerminal, apps, environment)
                     ?: SetupProblem.MERCHANT_ACCOUNT.takeIf { settings.terminal.merchantAccount.isBlank() }
                     ?: SetupProblem.API_KEY.takeIf { Secret.ADYEN_API_KEY !in read }
             val key = read[Secret.ADYEN_API_KEY]
             return when {
                 problem != null -> BoardingOwner.Blocked(problem)
                 key == null -> BoardingOwner.Blocked(SetupProblem.UNREADABLE_API_KEY)
-                else -> BoardingOwner.Ready(apps.single(), settings.terminal.merchantAccount.trim(), key)
+                else -> BoardingOwner.Ready(checkNotNull(environment), settings.terminal.merchantAccount.trim(), key)
             }
         }
 
@@ -321,7 +320,6 @@ data class TerminalSetup(
  * place. Non-secret, and holds no settings.
  *
  * @property discoversTerminals Whether read-only terminal discovery can propose connection fields.
- * @property usesCloudDeviceApi Whether the API key also needs the Cloud device API role.
  * @property selectsEnvironment Whether Settings must ask for TEST or LIVE before API credentials or terminal details.
  * @property checksConnection Whether the connection is checked in the background, at startup and when the setup changes:
  *   whenever payments go to something real rather than the simulator.
@@ -338,7 +336,6 @@ data class TerminalSetup(
  */
 data class DestinationCapabilities(
     val discoversTerminals: Boolean = false,
-    val usesCloudDeviceApi: Boolean = false,
     val selectsEnvironment: Boolean = false,
     val checksConnection: Boolean = false,
     val scannedWallets: Boolean = false,
@@ -397,7 +394,7 @@ enum class SetupFreshness {
     /** The connection fields and the exact stored secret snapshot, for readings cached against the verified setup. */
     SECRETS,
 
-    /** The connection fields, installed Payments app environment and its separate boarding credential. */
+    /** The connection fields, selected Payments app environment and its separate boarding credential. */
     BOARDING,
 }
 
@@ -406,7 +403,7 @@ sealed interface BoardingOwner {
     /**
      * It can. [toString] leaves the API key out.
      *
-     * @property environment The installed Payments app's, which the credential is created in.
+     * @property environment The selected environment, which the credential is created in.
      * @property merchantAccount The merchant account it is created for, trimmed.
      * @property apiKey The Adyen API key, decrypted.
      */
@@ -436,7 +433,7 @@ sealed interface BoardingSetup {
     /**
      * It can, with this phone's own credential. [toString] leaves the API key out.
      *
-     * @property environment The installed Payments app's, which the Management API is called in.
+     * @property environment The selected environment, which the Management API is called in.
      * @property apiKey The API key of this phone's own credential, decrypted.
      */
     data class Ready(
@@ -567,7 +564,7 @@ class TerminalSetupSource(
         /** A fence for work begun on [origin] that needs only its connection fields to stay the same. */
         constructor(origin: TerminalSetup) : this(origin, SetupFreshness.CONNECTION, null, null)
 
-        /** A fence for introspection of the exact separate [boarding] credential in the installed app's environment. */
+        /** A fence for the exact separate [boarding] credential in the selected environment. */
         internal constructor(origin: TerminalSetup, boarding: BoardingSetup.Ready) :
             this(origin, SetupFreshness.BOARDING, boarding.apiKey, null)
 
@@ -594,8 +591,8 @@ class TerminalSetupSource(
 
                 SetupFreshness.BOARDING -> {
                     boarding().let {
-                        it is BoardingSetup.Ready && it.apiKey == apiKey && it.environment == origin.paymentsApps.singleOrNull() &&
-                            settings.current().terminal == origin.settings.terminal && device.paymentsApps == origin.paymentsApps
+                        it is BoardingSetup.Ready && it.apiKey == apiKey && it.environment == origin.environment &&
+                            settings.current().terminal == origin.settings.terminal
                     }
                 }
             }
@@ -680,7 +677,7 @@ class TerminalSetupSource(
 
     /**
      * Whether the Payments app can be boarded (or revoked) with this phone's own credential, which the Adyen API key
-     * created for the merchant account and the installed Payments app's environment ([owner]): now with the stored
+     * created for the merchant account and the selected environment ([owner]): now with the stored
      * settings, or with the [candidate] setup. [SetupProblem.PAYMENTS_APP_API_KEY] until Tap to Pay setup creates it,
      * and [SetupProblem.UNREADABLE_PAYMENTS_APP_KEY] when it can no longer be decrypted.
      */

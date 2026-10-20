@@ -17,8 +17,10 @@ import app.minimpos.app.data.security.Secret
 import app.minimpos.app.data.settings.TerminalMode
 import app.minimpos.app.feature.ActionOutcome
 import app.minimpos.app.feature.settings.CapabilitiesViewModel
+import app.minimpos.terminal.transport.AdyenRole
 import app.minimpos.terminal.transport.ApiKey
 import app.minimpos.terminal.transport.CredentialLookup
+import app.minimpos.terminal.transport.CredentialRoles
 import app.minimpos.terminal.transport.Fault
 import app.minimpos.terminal.transport.RemoteTerminalCapabilities
 import app.minimpos.terminal.transport.SharedKeyLookup
@@ -65,10 +67,8 @@ class CapabilityDiscoveryTest {
 
     private val detailsApi =
         object : TerminalDetailsApi {
-            override suspend fun credential(
-                environment: TerminalEnvironment,
-                cloud: Boolean,
-            ) = CredentialLookup.Allowed
+            override suspend fun credential(environment: TerminalEnvironment) =
+                CredentialLookup.Allowed(CredentialRoles(AdyenRole.required(), emptyList()))
 
             override suspend fun terminals(
                 environment: TerminalEnvironment,

@@ -113,8 +113,8 @@
             <legend>Which Adyen environment?</legend>
             <label class="choice"><input type="radio" name="environment" value="test" checked> <span><strong>TEST</strong>: test terminals and test cards</span></label>
             <label class="choice"><input type="radio" name="environment" value="live"> <span><strong>LIVE</strong>: real payments</span></label>
-            <p class="hint">For a network or cloud terminal, this choice is imported as the app’s environment.
-              On an Adyen terminal or with Tap to Pay, the device or installed Payments app determines it instead.</p>
+            <p class="hint">For a network/cloud terminal or Tap to Pay, this choice is imported as the app’s environment.
+              On an Adyen terminal, the device’s certificate determines it instead.</p>
           </fieldset>
 
           <fieldset data-for="thisTerminal network cloud">
@@ -128,9 +128,8 @@
           <fieldset data-for="thisTerminal network cloud tapToPay" id="api-key-fields">
             <legend>Adyen API key</legend>
             <p class="hint">Create a credential in <a data-ca="developers/api-credentials/" href="https://ca-test.adyen.com/ca/ui/developers/api-credentials/" target="_blank" rel="noopener noreferrer" aria-describedby="customer-area-note">Developers › API credentials</a> and generate its API key.
-              <span data-only="cloud" hidden>Add the Cloud Device API role for cloud payments.</span>
               <span data-only="tapToPay" hidden>This key handles Checkout and provisions the phone’s separate registration credential.</span>
-              This main credential needs specific roles; see the <a href="quick-start.html#credentials">credential requirements</a>.</p>
+              Every setup requires the same main credential roles; see the <a href="quick-start.html#credentials">credential requirements</a>.</p>
             <label for="apiKey">API key</label>
             <input id="apiKey" name="apiKey" type="password" required spellcheck="false">
           </fieldset>
@@ -178,7 +177,7 @@
 
           <fieldset data-for="tapToPay">
             <legend>Tap to Pay</legend>
-            <p class="hint">Mini mPOS automatically creates a separate credential with the Adyen Payments app role and a client key. No extra key to enter or transfer. See <a href="troubleshooting.html#tap-to-pay-check">optional setup checks</a> and
+            <p class="hint">Mini mPOS automatically creates a separate credential with the Adyen Payments App role and a client key. No extra key to enter or transfer. See <a href="troubleshooting.html#tap-to-pay-check">optional setup checks</a> and
               the <a href="https://docs.adyen.com/point-of-sale/mobile-android/build/payments-app">Adyen Payments app guide</a>.</p>
             <label for="storeId">Store ID, optional</label>
             <input id="storeId" name="storeId" type="text" spellcheck="false">

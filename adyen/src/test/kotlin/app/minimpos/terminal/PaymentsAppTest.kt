@@ -345,7 +345,7 @@ class PaymentsAppTest {
                     .body("""{"detail":"Not allowed"}""")
                     .build(),
             )
-            val permission = Fault.Permission(ApiKey.PAYMENTS_APP, "Adyen Payments app role")
+            val permission = Fault.Permission(ApiKey.PAYMENTS_APP, "Adyen Payments App role")
             assertThat(runBlocking { api.revoke("Merchant", "I1") }).isEqualTo(ManagementResult.Failed(permission))
             server.enqueue(MockResponse.Builder().code(401).build())
             assertThat(

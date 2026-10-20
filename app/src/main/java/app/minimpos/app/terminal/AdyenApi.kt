@@ -10,6 +10,7 @@ import app.minimpos.terminal.checkout.CheckoutCredentials
 import app.minimpos.terminal.checkout.PaymentLinkApi
 import app.minimpos.terminal.checkout.PaymentModifications
 import app.minimpos.terminal.checkout.SavedCardApi
+import app.minimpos.terminal.transport.CredentialRoles
 import app.minimpos.terminal.transport.TerminalEnvironment
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -143,7 +144,7 @@ sealed interface ApiCheck {
  * and live URL prefix in [app.minimpos.app.data.settings.TerminalSettings], the API key in
  * [app.minimpos.app.data.security.SecretStore]). How far it is set up is [TerminalSetup.apiSetup]. While payments go to
  * the simulator the API is simulated too. The environment (TEST or LIVE) is where payments go
- * ([TerminalSetup.environment]): selected for network/cloud terminals, or read from this device or the installed Payments app.
+ * ([TerminalSetup.environment]): selected for network/cloud terminals and Tap to Pay, or read from this device's certificate.
  *
  * @param setups Where payments go now, how far the API is set up, and the API key.
  * @param simulated Answers while payments go to the simulator: in the app the [SimulatedTerminal]'s modifications and
@@ -156,7 +157,7 @@ class AdyenApi(
     private val setups: TerminalSetupSource,
     private val simulated: CheckoutApi,
     private val connect: (CheckoutCredentials) -> CheckoutApi,
-    private val verifyAccess: suspend (UnlockedSetup) -> Failure?,
+    private val verifyAccess: suspend (UnlockedSetup) -> SetupAccessCheck,
     private val readEnvironment: suspend () -> Unit = {},
 ) {
     private val clients = Reused<CheckoutCredentials, CheckoutApi>()
@@ -197,15 +198,19 @@ class AdyenApi(
     internal suspend fun verify(
         unlocked: UnlockedSetup,
         accessVerified: Boolean = false,
-    ): ApiCheck {
+    ): ApiCheck = inspect(unlocked, accessVerified).api
+
+    /** Fresh independent API/access reading; role evidence survives a later assignment or Checkout failure. */
+    internal suspend fun inspect(
+        unlocked: UnlockedSetup,
+        accessVerified: Boolean = false,
+    ): ApiInspection {
         val setup = unlocked.setup
-        if (setup.apiSetup == ApiSetup.Simulated) return checkout(simulated.modifications)
+        if (setup.apiSetup == ApiSetup.Simulated) return ApiInspection(checkout(simulated.modifications))
         val problem = setup.apiSetup.problem
-        return when {
-            problem != null -> ApiCheck.NotSetUp(problem)
-            !accessVerified -> verifyAccess(unlocked)?.let(ApiCheck::Failed) ?: verifyCheckout(unlocked)
-            else -> verifyCheckout(unlocked)
-        }
+        if (problem != null) return ApiInspection(ApiCheck.NotSetUp(problem))
+        val access = if (accessVerified) SetupAccessCheck() else verifyAccess(unlocked)
+        return ApiInspection(access.failure?.let(ApiCheck::Failed) ?: verifyCheckout(unlocked), access.roles)
     }
 
     private suspend fun verifyCheckout(unlocked: UnlockedSetup): ApiCheck {
@@ -220,3 +225,13 @@ class AdyenApi(
     private suspend fun checkout(client: PaymentModifications): ApiCheck =
         client.verify()?.let { ApiCheck.Failed(Failure.Remote(it)) } ?: ApiCheck.Works
 }
+
+/**
+ * Fresh API verification with independent, non-secret role evidence.
+ * @property api Credential/account/Checkout outcome.
+ * @property roles Required-role snapshot, or null when not checked successfully.
+ */
+data class ApiInspection(
+    val api: ApiCheck,
+    val roles: CredentialRoles? = null,
+)

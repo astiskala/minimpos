@@ -70,15 +70,37 @@ sealed interface TerminalListing {
 
 /** Read-only credential-role check; no secrets or raw API responses are exposed. */
 sealed interface CredentialLookup {
-    /** Credential has every required role. */
-    data object Allowed : CredentialLookup
+    /** Credential has every required role.
+     * @property roles Required roles observed in a readable credential response.
+     */
+    data class Allowed(
+        val roles: CredentialRoles,
+    ) : CredentialLookup
 
     /** Credential could not be verified.
      * @property fault Authentication, permission, temporary failure or unreadable answer.
+     * @property roles Observed required roles, or null if introspection did not complete.
      */
     data class Failed(
         val fault: Fault,
+        val roles: CredentialRoles? = null,
     ) : CredentialLookup
+}
+
+/**
+ * Required-role snapshot; unrelated granted roles and raw credential data are discarded.
+ * @property required Destination-specific roles checked.
+ * @property missing Required roles absent from the readable response.
+ */
+data class CredentialRoles(
+    val required: List<AdyenRole>,
+    val missing: List<AdyenRole>,
+) {
+    /** Required roles found, in required-list order. */
+    val present: List<AdyenRole> get() = required - missing.toSet()
+
+    /** Whether every required role was found, independent of other API/access checks. */
+    val complete: Boolean get() = missing.isEmpty()
 }
 
 /** Effective shared-key lookup; absence is distinct from denied, malformed or unavailable settings. */
@@ -257,13 +279,10 @@ sealed interface TerminalCapabilitiesUpdate {
  */
 interface TerminalListingApi {
     /**
-     * Checks that the credential has every [AdyenRole.required] role in [environment] (with the cloud device role when
-     * payments go to a [cloud] terminal); a missing role fails with a [Fault.Permission] naming each one missing.
+     * Checks every [AdyenRole.required] role in [environment], regardless of destination; a missing role fails with a
+     * [Fault.Permission] naming each one missing.
      */
-    suspend fun credential(
-        environment: TerminalEnvironment,
-        cloud: Boolean = false,
-    ): CredentialLookup = CredentialLookup.Failed(Fault.Unsupported)
+    suspend fun credential(environment: TerminalEnvironment): CredentialLookup = CredentialLookup.Failed(Fault.Unsupported)
 
     /** Reads all visible terminals, or only the exact [id] using a targeted substring search followed by exact matching. */
     suspend fun terminals(
@@ -329,11 +348,8 @@ class AdyenTerminalDetails(
 ) : TerminalDetailsApi {
     private val http = AdyenHttp(apiKey, baseClient, dispatcher)
 
-    override suspend fun credential(
-        environment: TerminalEnvironment,
-        cloud: Boolean,
-    ): CredentialLookup {
-        val required = AdyenRole.required(cloud)
+    override suspend fun credential(environment: TerminalEnvironment): CredentialLookup {
+        val required = AdyenRole.required()
         val reply = http.get(baseUrl(environment).newBuilder().addPathSegment("me").build(), TIMEOUT)
         if (reply !is AdyenReply.Answered || !reply.ok) {
             return CredentialLookup.Failed(managementFault(reply, role = AdyenRole.names(required)))
@@ -343,10 +359,11 @@ class AdyenTerminalDetails(
                 requireNotNull(decodeAdyenModel(reply.body, MeApiCredential::class.java)?.roles).map { requireNotNull(it) }
             }.getOrNull() ?: return CredentialLookup.Failed(Fault.UnreadableReply())
         val missing = AdyenRole.missing(roles, required)
+        val reading = CredentialRoles(required, missing)
         return if (missing.isEmpty()) {
-            CredentialLookup.Allowed
+            CredentialLookup.Allowed(reading)
         } else {
-            CredentialLookup.Failed(Fault.Permission(ApiKey.ADYEN, AdyenRole.names(missing)))
+            CredentialLookup.Failed(Fault.Permission(ApiKey.ADYEN, AdyenRole.names(missing)), reading)
         }
     }
 
@@ -738,8 +755,7 @@ class AdyenTerminalDetails(
 /**
  * An API credential role a real Mini mPOS setup requires, as the Customer Area names it ([displayName]). Adyen grants
  * some to new credentials by default, so setup guides ask only for the others; all are still checked, since an admin
- * can remove a default role. [CLOUD_DEVICE] is required only while payments go to a cloud terminal, and
- * [API_CREDENTIALS] only to set up Tap to Pay, which reports it when missing.
+ * can remove a default role. The primary credential needs the same roles for every destination.
  *
  * @property displayName The role's name in the Customer Area, shown verbatim when it is missing.
  * @param alternatives Other spellings Adyen has used for the same role.
@@ -757,7 +773,7 @@ enum class AdyenRole(
     /** Reads and creates shared keys. */
     TERMINAL_SETTINGS_ADVANCED("Management API - Terminal settings Advanced read and write"),
 
-    /** Creates the phone's own Tap to Pay credential during its setup; never checked by [required]. */
+    /** Creates the phone's own Tap to Pay credential during its setup. */
     API_CREDENTIALS("Management API - API credentials read and write"),
 
     /** Reads payment method settings: scanned wallets and gift cards. Granted to new credentials by default. */
@@ -772,14 +788,14 @@ enum class AdyenRole(
     /** Lists a shopper's saved cards. Granted to new credentials by default. */
     MERCHANT_RECURRING("Merchant Recurring role"),
 
-    /** Reaches cloud terminals; only for that destination. */
+    /** Reaches cloud terminals. */
     CLOUD_DEVICE("Cloud Device API role"),
     ;
 
     /** Role checks and names. */
     companion object {
-        /** The roles the API test requires; [cloud] adds [CLOUD_DEVICE]. */
-        fun required(cloud: Boolean): List<AdyenRole> = entries.filter { (cloud || it != CLOUD_DEVICE) && it != API_CREDENTIALS }
+        /** The complete role set the primary credential needs for every real destination. */
+        fun required(): List<AdyenRole> = entries
 
         /**
          * Which of [required] the credential's [granted] role names lack, compared without case, spaces or the kind of

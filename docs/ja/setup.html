@@ -110,7 +110,7 @@
             <legend>どの Adyen 環境ですか？</legend>
             <label class="choice"><input type="radio" name="environment" value="test" checked> <span><strong>TEST</strong>：テスト端末とテストカード</span></label>
             <label class="choice"><input type="radio" name="environment" value="live"> <span><strong>LIVE</strong>：本番の決済</span></label>
-            <p class="hint">ネットワークやクラウドの端末では、この選択をアプリの環境としてインポートします。Adyen端末やTap to Payでは、デバイスまたはインストールしたPaymentsアプリが環境を決めます。</p>
+            <p class="hint">ネットワークやクラウドの端末、Tap to Pay では、この選択をアプリの環境としてインポートします。Adyen 端末では、デバイスの証明書が環境を決めます。</p>
           </fieldset>
 
           <fieldset data-for="thisTerminal network cloud">
@@ -123,7 +123,7 @@
 
           <fieldset data-for="thisTerminal network cloud tapToPay" id="api-key-fields">
             <legend>Adyen APIキー</legend>
-            <p class="hint"><a data-ca="developers/api-credentials/" href="https://ca-test.adyen.com/ca/ui/developers/api-credentials/" target="_blank" rel="noopener noreferrer" aria-describedby="customer-area-note">Developers › API credentials</a>で認証情報を作成し、APIキーを生成してください。<span data-only="cloud" hidden>クラウド決済にはCloud Device API roleを追加します。</span><span data-only="tapToPay" hidden>このキーは Checkout と登録用認証情報の自動作成に使います。</span>このメインの認証情報には特定のロールが必要です。<a href="quick-start.html#credentials">認証情報の要件</a>を参照してください。</p>
+            <p class="hint"><a data-ca="developers/api-credentials/" href="https://ca-test.adyen.com/ca/ui/developers/api-credentials/" target="_blank" rel="noopener noreferrer" aria-describedby="customer-area-note">Developers › API credentials</a>で認証情報を作成し、APIキーを生成してください。<span data-only="tapToPay" hidden>このキーは Checkout と登録用認証情報の自動作成に使います。</span>すべての構成で、メインの認証情報に同じロールが必要です。<a href="quick-start.html#credentials">認証情報の要件</a>を参照してください。</p>
             <label for="apiKey">APIキー</label>
             <input id="apiKey" name="apiKey" type="password" required spellcheck="false">
           </fieldset>
@@ -170,7 +170,7 @@
 
           <fieldset data-for="tapToPay">
             <legend>Tap to Pay</legend>
-            <p class="hint">Mini mPOS が Adyen Payments app role とクライアントキーを持つ別の認証情報を自動作成します。追加のキーの入力や転送は不要です。<a href="troubleshooting.html#tap-to-pay-check">任意の確認</a>と<a href="https://docs.adyen.com/point-of-sale/mobile-android/build/payments-app">Adyen Payments アプリガイド</a>を参照してください。</p>
+            <p class="hint">Mini mPOS が Adyen Payments App role とクライアントキーを持つ別の認証情報を自動作成します。追加のキーの入力や転送は不要です。<a href="troubleshooting.html#tap-to-pay-check">任意の確認</a>と<a href="https://docs.adyen.com/point-of-sale/mobile-android/build/payments-app">Adyen Payments アプリガイド</a>を参照してください。</p>
             <label for="storeId">店舗ID（任意）</label>
             <input id="storeId" name="storeId" type="text" spellcheck="false">
             <p class="hint">スマートフォンを 1 店舗用に設定する場合：<a data-ca="devices/stores/" href="https://ca-test.adyen.com/ca/ui/devices/stores/" target="_blank" rel="noopener noreferrer" aria-describedby="customer-area-note">Devices › Stores</a> にあるその店舗の ID（reference ではありません）。</p>

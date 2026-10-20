@@ -110,7 +110,7 @@
             <legend>使用哪个 Adyen 环境？</legend>
             <label class="choice"><input type="radio" name="environment" value="test" checked> <span><strong>TEST</strong>：测试终端和测试卡</span></label>
             <label class="choice"><input type="radio" name="environment" value="live"> <span><strong>LIVE</strong>：真实支付</span></label>
-            <p class="hint">对于网络或云端终端，此选项会作为应用环境导入。在 Adyen 终端上运行或使用 Tap to Pay 时，环境由本设备或已安装的 Payments 应用决定。</p>
+            <p class="hint">对于网络或云端终端及 Tap to Pay，此选项会作为应用环境导入。在 Adyen 终端上运行时，环境由本设备的证书决定。</p>
           </fieldset>
 
           <fieldset data-for="thisTerminal network cloud">
@@ -123,7 +123,7 @@
 
           <fieldset data-for="thisTerminal network cloud tapToPay" id="api-key-fields">
             <legend>Adyen API 密钥</legend>
-            <p class="hint">在 <a data-ca="developers/api-credentials/" href="https://ca-test.adyen.com/ca/ui/developers/api-credentials/" target="_blank" rel="noopener noreferrer" aria-describedby="customer-area-note">Developers › API credentials</a> 中创建凭据并生成 API 密钥。<span data-only="cloud" hidden>云端付款需添加 Cloud Device API role。</span><span data-only="tapToPay" hidden>此密钥用于 Checkout 和自动创建注册凭据。</span>此主凭据需要特定角色；参见<a href="quick-start.html#credentials">凭据要求</a>。</p>
+            <p class="hint">在 <a data-ca="developers/api-credentials/" href="https://ca-test.adyen.com/ca/ui/developers/api-credentials/" target="_blank" rel="noopener noreferrer" aria-describedby="customer-area-note">Developers › API credentials</a> 中创建凭据并生成 API 密钥。<span data-only="tapToPay" hidden>此密钥用于 Checkout 和自动创建注册凭据。</span>所有配置都需要相同的主凭据角色；参见<a href="quick-start.html#credentials">凭据要求</a>。</p>
             <label for="apiKey">API 密钥</label>
             <input id="apiKey" name="apiKey" type="password" required spellcheck="false">
           </fieldset>
@@ -170,7 +170,7 @@
 
           <fieldset data-for="tapToPay">
             <legend>Tap to Pay</legend>
-            <p class="hint">Mini mPOS 自动创建具有 Adyen Payments app role 和客户端密钥的独立凭据。无需输入或传输额外密钥。参见<a href="troubleshooting.html#tap-to-pay-check">可选检查</a>和 <a href="https://docs.adyen.com/point-of-sale/mobile-android/build/payments-app">Adyen Payments 应用指南</a>。</p>
+            <p class="hint">Mini mPOS 自动创建具有 Adyen Payments App role 和客户端密钥的独立凭据。无需输入或传输额外密钥。参见<a href="troubleshooting.html#tap-to-pay-check">可选检查</a>和 <a href="https://docs.adyen.com/point-of-sale/mobile-android/build/payments-app">Adyen Payments 应用指南</a>。</p>
             <label for="storeId">门店 ID（可选）</label>
             <input id="storeId" name="storeId" type="text" spellcheck="false">
             <p class="hint">如只为一家门店设置本手机：填写 <a data-ca="devices/stores/" href="https://ca-test.adyen.com/ca/ui/devices/stores/" target="_blank" rel="noopener noreferrer" aria-describedby="customer-area-note">Devices › Stores</a> 中该门店的 ID（不是其 reference）。</p>

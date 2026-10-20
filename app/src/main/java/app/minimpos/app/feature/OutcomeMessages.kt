@@ -341,7 +341,6 @@ private val SetupProblem.textRes: Int
             SetupProblem.API_REQUIRED -> R.string.setup_api_required
             SetupProblem.CLOUD_API_KEY -> R.string.setup_cloud_api_key
             SetupProblem.PAYMENTS_APP_MISSING -> R.string.setup_payments_app_missing
-            SetupProblem.PAYMENTS_APP_AMBIGUOUS -> R.string.setup_payments_app_ambiguous
             SetupProblem.PAYMENTS_APP_NOT_BOARDED -> R.string.setup_payments_app_not_boarded
             SetupProblem.PAYMENTS_APP_ON_TERMINAL -> R.string.setup_payments_app_on_terminal
             SetupProblem.PAYMENTS_APP_API_KEY -> R.string.setup_payments_app_api_key

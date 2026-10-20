@@ -234,7 +234,7 @@ class SetupHelperTest {
                 submit()
                 ready()
                 val automatic = if (mode == "automatic" && destination != "tapToPay") ""","automatic":true""" else ""
-                val environment = if (destination in listOf("network", "cloud")) ""","environment":"TEST"""" else ""
+                val environment = if (destination in listOf("network", "cloud", "tapToPay")) ""","environment":"TEST"""" else ""
                 val expected =
                     """{"destination":"$destination"$automatic$environment,"smtpHost":"smtp.example.com","smtpPort":465,
                     |"smtpSecurity":"SSL","smtpUsername":"shop@example.com","smtpFromAddress":"receipts@example.com",
@@ -283,7 +283,7 @@ class SetupHelperTest {
             assertThat(readTransfer())
                 .isEqualTo(
                     receiptUnchanged(
-                        """{"destination":"tapToPay","merchantAccount":"Merchant","storeId":"ST1",
+                        """{"destination":"tapToPay","environment":"TEST","merchantAccount":"Merchant","storeId":"ST1",
                         |"keyIdentifier":"manual-key","keyVersion":2}
                         """.trimMargin(),
                     ) to
@@ -297,13 +297,28 @@ class SetupHelperTest {
     }
 
     @Test
+    fun `Tap to Pay transfers explicit LIVE choice in every helper language`() {
+        for (language in listOf("", "zh-CN/", "zh-Hant/", "ja/")) {
+            openPage(language)
+            field("destination", "tapToPay")
+            field("environment", "live")
+            submit()
+            ready()
+            assertThat(readTransfer())
+                .isEqualTo(
+                    receiptUnchanged("""{"destination":"tapToPay","environment":"LIVE"}""") to json("""{"ADYEN_API_KEY":"demo-key"}"""),
+                )
+        }
+    }
+
+    @Test
     fun `Tap to Pay permits device key entry but physical Manual setup still requires key`() {
         field("destination", "tapToPay")
         field("keyVersion", "1")
         submit()
         ready()
         assertThat(readTransfer())
-            .isEqualTo(receiptUnchanged("""{"destination":"tapToPay"}""") to json("""{"ADYEN_API_KEY":"demo-key"}"""))
+            .isEqualTo(receiptUnchanged("""{"destination":"tapToPay","environment":"TEST"}""") to json("""{"ADYEN_API_KEY":"demo-key"}"""))
         assertRequired(true)
         field("destination", "network")
         assertRequired(true)

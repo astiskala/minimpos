@@ -15,7 +15,7 @@ import java.net.SocketTimeoutException
 
 class BoardingCredentialTest {
     private fun credential(clientKey: String = "\"test_public_key\""): String =
-        """{"id":"CRED1","username":"ws@Company.Test","active":true,"roles":["Adyen Payments app role"],""" +
+        """{"id":"CRED1","username":"ws@Company.Test","active":true,"roles":["Adyen Payments App role"],""" +
             """"allowedIpAddresses":[],"clientKey":$clientKey}"""
 
     @Test
@@ -27,7 +27,7 @@ class BoardingCredentialTest {
                 listOf("\"test_public_key\"" to true, "\"\"" to false, "\" \"" to false).forEach { (key, present) ->
                     server.enqueue(MockResponse.Builder().body(credential(key)).build())
                     val result = api.credential()
-                    assertThat(result).isEqualTo(BoardingCredentialCheck.Verified("CRED1", "ws@Company.Test", true, present))
+                    assertThat(result).isEqualTo(BoardingCredentialCheck.Verified("CRED1", "ws@Company.Test", true, present, true))
                     assertThat(result.toString()).doesNotContain("test_public_key")
                     val request = server.takeRequest()
                     assertThat(request.method).isEqualTo("GET")
@@ -36,6 +36,17 @@ class BoardingCredentialTest {
                 }
             }
             assertThat(AdyenPaymentsAppManagement.endpoint(TerminalEnvironment.LIVE)).isEqualTo("https://management-live.adyen.com/v1")
+        }
+
+    @Test
+    fun `readable roles distinguish absent boarding role from an unchecked credential`() =
+        runBlocking {
+            MockWebServer().use { server ->
+                server.start()
+                val api = AdyenPaymentsAppManagement("boarding-key", TerminalEnvironment.TEST, server.url("/v1/"))
+                server.enqueue(MockResponse.Builder().body(credential().replace("[\"Adyen Payments App role\"]", "[]")).build())
+                assertThat(api.credential()).isEqualTo(BoardingCredentialCheck.Verified("CRED1", "ws@Company.Test", true, true, false))
+            }
         }
 
     @Test
@@ -55,8 +66,8 @@ class BoardingCredentialTest {
                     credential().replace("\"ws@Company.Test\"", "\"\""),
                     credential().replace("\"active\":true", "\"active\":\"true\""),
                     credential().replace("\"active\":true", "\"active\":null"),
-                    credential().replace("[\"Adyen Payments app role\"]", "null"),
-                    credential().replace("[\"Adyen Payments app role\"]", "[null]"),
+                    credential().replace("[\"Adyen Payments App role\"]", "null"),
+                    credential().replace("[\"Adyen Payments App role\"]", "[null]"),
                     credential().replace("\"allowedIpAddresses\":[]", "\"allowedIpAddresses\":null"),
                     credential().replace("\"allowedIpAddresses\":[]", "\"allowedIpAddresses\":[null]"),
                 ).forEach { body ->

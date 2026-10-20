@@ -109,7 +109,7 @@
                 <p><span class="fix-label">解決</span>在<strong>設定 › 終端</strong>中運行測試；參見<a href="#connection">終端綁定和設定</a>。如果測試通過，請聯繫 Adyen 檢查終端設定。</p></dd></div>
             <div><dt>“終端或您的 Adyen 帳戶不支援此請求。請聯絡 Adyen 支援團隊確認已開通，然後重試。”</dt>
               <dd><p><span class="fix-label">原因</span>終端或 Adyen 不提供此付款所需的功能，通常是因為帳戶尚未開通。</p>
-                <p><span class="fix-label">解決</span>請聯絡 Adyen 支援團隊確認商戶帳戶已開通該功能。如使用 Tap to Pay，請確認除 Adyen Payments app role 外，亦已開通 Tap to Pay on Android。然後重試。</p></dd></div>
+                <p><span class="fix-label">解決</span>請聯絡 Adyen 支援團隊確認商戶帳戶已開通該功能。如使用 Tap to Pay，請確認除 Adyen Payments App role 外，亦已開通 Tap to Pay on Android。然後重試。</p></dd></div>
             <div><dt>“請勿再次收款：此次支付已成功。”</dt>
               <dd><p><span class="fix-label">原因</span>雖然終端報告了取消，但付款已獲批准。</p>
                 <p><span class="fix-label">解決</span>請勿再次收款。如果顧客不應付款，請為其退款。</p></dd></div>
@@ -157,13 +157,13 @@
                 <p><span class="fix-label">解決</span>將共享密鑰的識別碼、口令和版本與商戶後台核對。網絡終端還需在終端的“Device info”畫面核對 IP 地址和 POIID。</p></dd></div>
             <div><dt>連接因環境不一致被拒絕</dt>
               <dd><p><span class="fix-label">原因</span>混用了 TEST 和 LIVE：終端、帳戶和 API 密鑰必須屬於同一環境。</p>
-                <p><span class="fix-label">解決</span>網絡或雲端終端請在<strong>設定 › 終端</strong>中檢查<strong>環境</strong>。在 Adyen 終端上運行或使用 Tap to Pay 時，請使用正確環境的設備或 Payments 應用程式。</p></dd></div>
+                <p><span class="fix-label">解決</span>網絡或雲端終端及 Tap to Pay 請在<strong>設定 › 終端</strong>中檢查<strong>環境</strong>。在 Adyen 終端上運行時，請使用正確環境的設備。</p></dd></div>
             <div><dt>無法連接雲端終端</dt>
               <dd><p><span class="fix-label">原因</span>終端離線、POIID 有誤，或 API 密鑰缺少 Cloud Device API role。</p>
                 <p><span class="fix-label">解決</span>確認終端已開機並已連線，再檢查 POIID 和憑據的角色。</p></dd></div>
-            <div><dt>“同時安裝了 TEST 和 LIVE 版 Adyen Payments 應用程式”</dt>
-              <dd><p><span class="fix-label">原因</span>Tap to Pay 只能安裝一個 Payments 應用程式。</p>
-                <p><span class="fix-label">解決</span>解除安裝不用的那個，再完成註冊並輸入共享密鑰。設定檢查通過並不代表測試了銀行卡付款，請完成一筆 TEST 付款。</p></dd></div>
+            <div><dt>未安裝所選環境的 Payments 應用程式</dt>
+              <dd><p><span class="fix-label">原因</span>未安裝所選 TEST 或 LIVE 環境的 Payments 應用程式。</p>
+                <p><span class="fix-label">解決</span>檢查<strong>設定 › 終端 › 環境</strong>，從 Google Play 安裝對應應用程式。兩者可以同時安裝。完成註冊，輸入對應的共享密鑰，再完成一筆 TEST 付款。</p></dd></div>
             <div id="tap-to-pay-check"><dt>Tap to Pay 在出示卡片前傳回 UnavailableService</dt>
               <dd><p>Payments 應用程式無法完成請求。此通用錯誤不能證明 Adyen 服務中斷或缺少客戶端密鑰。如果收到 <code>1029_605</code>，這表示工作階段相關故障，不能證明缺少密鑰。</p>
                 <p>在<strong>設定 › 終端</strong>中執行<strong>測試連接</strong>。如需查看簡潔的檢查結果表格或分享已隱去敏感資料的報告，請展開<strong>設定 › 說明與疑難排解 › 疑難排解詳情</strong>。未成功付款的結果頁面上的<strong>說明與疑難排解</strong>按鈕亦會直接開啟這些詳情。展開表格時會更新檢查；背景連接檢查不會驗證客戶端密鑰。</p>

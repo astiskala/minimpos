@@ -4,6 +4,7 @@ import app.minimpos.terminal.transport.AdyenRole
 import app.minimpos.terminal.transport.AdyenTerminalDetails
 import app.minimpos.terminal.transport.ApiKey
 import app.minimpos.terminal.transport.CredentialLookup
+import app.minimpos.terminal.transport.CredentialRoles
 import app.minimpos.terminal.transport.DiscoveredKey
 import app.minimpos.terminal.transport.Fault
 import app.minimpos.terminal.transport.MalformedPart
@@ -52,13 +53,21 @@ class TerminalDetailsTest {
     fun `credential role checks are bounded to one environment and return typed failures`() =
         runBlocking {
             reply(rolesReply(ALL_ROLES.map { it.replace(" - ", " – ") } + "Checkout webservice role"))
-            assertThat(api.credential(TerminalEnvironment.TEST)).isEqualTo(CredentialLookup.Allowed)
+            val allowed = api.credential(TerminalEnvironment.TEST) as CredentialLookup.Allowed
+            assertThat(allowed.roles).isEqualTo(CredentialRoles(AdyenRole.required(), emptyList()))
+            assertThat(allowed.roles.present).containsExactlyElementsIn(AdyenRole.required()).inOrder()
+            assertThat(allowed.roles.complete).isTrue()
             assertThat(server.takeRequest().url.encodedPath).isEqualTo("/test/v3/me")
             reply("""{"roles":["Checkout webservice role"]}""")
-            assertThat(api.credential(TerminalEnvironment.TEST)).isEqualTo(CredentialLookup.Failed(Fault.Permission(ApiKey.ADYEN, ROLES)))
+            val denied = api.credential(TerminalEnvironment.TEST) as CredentialLookup.Failed
+            assertThat(denied.fault).isEqualTo(Fault.Permission(ApiKey.ADYEN, ROLES))
+            assertThat(denied.roles).isEqualTo(CredentialRoles(AdyenRole.required(), AdyenRole.required()))
+            assertThat(denied.roles?.present).isEmpty()
+            assertThat(denied.roles?.complete).isFalse()
             listOf(401, 403, 503).forEach { status ->
                 reply("{}", status)
-                assertThat(api.credential(TerminalEnvironment.TEST)).isInstanceOf(CredentialLookup.Failed::class.java)
+                val failed = api.credential(TerminalEnvironment.TEST) as CredentialLookup.Failed
+                assertThat(failed.roles).isNull()
             }
             listOf("{}", "not json", """{"roles":[null]}""", """{"roles":[123]}""").forEach { body ->
                 reply(body)
@@ -70,26 +79,30 @@ class TerminalDetailsTest {
     fun `real setup requires every role even when unused and names only the missing ones`() =
         runBlocking {
             reply(rolesReply(listOf("Management API - Terminal actions read")))
-            assertThat(api.credential(TerminalEnvironment.TEST))
-                .isEqualTo(
-                    CredentialLookup.Failed(Fault.Permission(ApiKey.ADYEN, AdyenRole.names(AdyenRole.required(cloud = false).drop(1)))),
-                )
+            val partial = api.credential(TerminalEnvironment.TEST) as CredentialLookup.Failed
+            assertThat(partial.fault).isEqualTo(Fault.Permission(ApiKey.ADYEN, AdyenRole.names(AdyenRole.required().drop(1))))
+            assertThat(partial.roles?.present).containsExactly(AdyenRole.TERMINAL_ACTIONS_READ)
+            assertThat(partial.roles?.missing).containsExactlyElementsIn(AdyenRole.required().drop(1)).inOrder()
             reply(rolesReply(ALL_ROLES - "Management API - Payment methods read"))
-            assertThat(api.credential(TerminalEnvironment.TEST))
-                .isEqualTo(CredentialLookup.Failed(Fault.Permission(ApiKey.ADYEN, "Management API - Payment methods read")))
+            val missing = api.credential(TerminalEnvironment.TEST) as CredentialLookup.Failed
+            assertThat(missing.fault).isEqualTo(Fault.Permission(ApiKey.ADYEN, "Management API - Payment methods read"))
+            assertThat(missing.roles?.missing).containsExactly(AdyenRole.PAYMENT_METHODS_READ)
             // Adyen has spelled roles with other dashes, spacing, case and plurals.
             val respelled =
                 ALL_ROLES.map { it.replace(" - ", "—").uppercase() }.map {
                     if (it.contains("ACCOUNT READ")) "Management API - Accounts read" else it
                 }
             reply(rolesReply(respelled))
-            assertThat(api.credential(TerminalEnvironment.TEST)).isEqualTo(CredentialLookup.Allowed)
-            // A cloud terminal also needs the Cloud device API role.
-            reply(rolesReply(ALL_ROLES))
-            assertThat(api.credential(TerminalEnvironment.TEST, cloud = true))
-                .isEqualTo(CredentialLookup.Failed(Fault.Permission(ApiKey.ADYEN, "Cloud Device API role")))
-            reply(rolesReply(ALL_ROLES + "Cloud Device API role"))
-            assertThat(api.credential(TerminalEnvironment.TEST, cloud = true)).isEqualTo(CredentialLookup.Allowed)
+            assertThat(
+                api.credential(TerminalEnvironment.TEST),
+            ).isEqualTo(CredentialLookup.Allowed(CredentialRoles(AdyenRole.required(), emptyList())))
+            // The same complete set is required even without cloud or Tap to Pay.
+            listOf(AdyenRole.CLOUD_DEVICE, AdyenRole.API_CREDENTIALS).forEach { role ->
+                reply(rolesReply(ALL_ROLES - role.displayName))
+                val denied = api.credential(TerminalEnvironment.TEST) as CredentialLookup.Failed
+                assertThat(denied.fault).isEqualTo(Fault.Permission(ApiKey.ADYEN, role.displayName))
+                assertThat(denied.roles?.missing).containsExactly(role)
+            }
         }
 
     private fun rolesReply(roles: List<String>): String = roles.joinToString(",", """{"roles":[""", "]}") { "\"$it\"" }
@@ -423,7 +436,12 @@ class TerminalDetailsTest {
                             }.build(),
                 )
             assertThat(defaultUrlDetails.credential(TerminalEnvironment.TEST))
-                .isEqualTo(CredentialLookup.Failed(Fault.Permission(ApiKey.ADYEN, ROLES)))
+                .isEqualTo(
+                    CredentialLookup.Failed(
+                        Fault.Permission(ApiKey.ADYEN, ROLES),
+                        CredentialRoles(AdyenRole.required(), AdyenRole.required()),
+                    ),
+                )
         }
 
     private companion object {
@@ -432,10 +450,12 @@ class TerminalDetailsTest {
                 "Management API - Terminal actions read",
                 "Management API - Terminal settings read and write",
                 "Management API - Terminal settings Advanced read and write",
+                "Management API - API credentials read and write",
                 "Management API - Payment methods read",
                 "Management API - Stores read",
                 "Management API - Account read",
                 "Merchant Recurring role",
+                "Cloud Device API role",
             )
         val ROLES = ALL_ROLES.joinToString(", ")
     }

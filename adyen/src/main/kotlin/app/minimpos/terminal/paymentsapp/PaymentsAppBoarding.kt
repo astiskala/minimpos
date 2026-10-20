@@ -24,7 +24,7 @@ import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
 
 /** The Customer Area name of the API credential role that boards and revokes the Payments app. */
-internal const val PAYMENTS_APP_ROLE = "Adyen Payments app role"
+internal const val PAYMENTS_APP_ROLE = "Adyen Payments App role"
 
 /**
  * Where a Payments app instance is boarded: a merchant account, or one of its stores. Constructing it with a blank
@@ -71,7 +71,7 @@ sealed interface ManagementResult {
     ) : ManagementResult
 }
 
-/** Adyen's Management API for Payments app instances, which needs an API key with the Adyen Payments app role. */
+/** Adyen's Management API for Payments app instances, which needs an API key with the Adyen Payments App role. */
 interface PaymentsAppManagement {
     /** Read-only introspection of this boarding credential; no client/API key value escapes the adapter. */
     suspend fun credential(): BoardingCredentialCheck = BoardingCredentialCheck.Failed(Fault.Unsupported)
@@ -99,7 +99,7 @@ interface PaymentsAppManagement {
  * [PaymentsAppManagement] over HTTPS with OkHttp. The API key goes in the `x-api-key` header and is never part of a
  * message. Calls run on [dispatcher]; cancelling the coroutine interrupts them.
  *
- * @param apiKey An API key with the Adyen Payments app role.
+ * @param apiKey An API key with the Adyen Payments App role.
  * @param environment Which Management API to call.
  * @param baseUrl Where the API lives; tests point it at a local server.
  * @param baseClient The client to derive from, so an app can share one connection pool.
@@ -129,6 +129,7 @@ class AdyenPaymentsAppManagement(
                 active = requireNotNull(credential.active),
                 // v1 requires a string: absent/null is an unreadable schema, not confirmed key absence.
                 clientKeyPresent = requireNotNull(credential.clientKey).isNotBlank(),
+                hasRequiredRole = PAYMENTS_APP_ROLE in credential.roles,
             )
         }.getOrNull() ?: BoardingCredentialCheck.Failed(Fault.UnreadableReply())
     }

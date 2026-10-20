@@ -62,7 +62,7 @@ fun interface PaymentsAppCredentials {
 /**
  * Merchant-level Management v3 provisioning through the primary API key.
  * @param apiKey Primary key with API credentials read and write.
- * @param environment Installed Payments app's environment.
+ * @param environment Selected Payments app environment.
  * @param baseUrl Management v3 endpoint; tests use a local server.
  * @param baseClient Shared connection pool.
  * @param dispatcher Dispatcher for blocking HTTP.

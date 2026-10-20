@@ -23,6 +23,9 @@ import app.minimpos.app.ui.components.SetupGateHost
 import app.minimpos.app.ui.navigation.Navigator
 import app.minimpos.app.ui.navigation.Route
 import app.minimpos.app.ui.theme.MiniMposTheme
+import app.minimpos.terminal.transport.AdyenRole
+import app.minimpos.terminal.transport.CredentialLookup
+import app.minimpos.terminal.transport.CredentialRoles
 import app.minimpos.terminal.transport.DiscoveredKey
 import app.minimpos.terminal.transport.SharedKeyLookup
 import app.minimpos.terminal.transport.SharedKeyUpdate
@@ -49,10 +52,8 @@ class OnTerminalDiscoveryTest {
     private var creations = 0
     private val details: TerminalDetailsApi =
         object : TerminalDetailsApi {
-            override suspend fun credential(
-                environment: TerminalEnvironment,
-                cloud: Boolean,
-            ) = app.minimpos.terminal.transport.CredentialLookup.Allowed
+            override suspend fun credential(environment: TerminalEnvironment) =
+                CredentialLookup.Allowed(CredentialRoles(AdyenRole.required(), emptyList()))
 
             override suspend fun terminals(
                 environment: TerminalEnvironment,

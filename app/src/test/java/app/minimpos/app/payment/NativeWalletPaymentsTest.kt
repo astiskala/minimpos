@@ -8,7 +8,9 @@ import app.minimpos.app.data.db.SaleKind
 import app.minimpos.app.data.db.TaxRateEntity
 import app.minimpos.app.data.security.Secret
 import app.minimpos.core.payment.ScanWallet
+import app.minimpos.terminal.transport.AdyenRole
 import app.minimpos.terminal.transport.CredentialLookup
+import app.minimpos.terminal.transport.CredentialRoles
 import app.minimpos.terminal.transport.Delivery
 import app.minimpos.terminal.transport.SharedKeyLookup
 import app.minimpos.terminal.transport.TerminalDetails
@@ -83,10 +85,8 @@ class NativeWalletPaymentsTest {
                 },
             terminalDetails =
                 object : TerminalDetailsApi {
-                    override suspend fun credential(
-                        environment: TerminalEnvironment,
-                        cloud: Boolean,
-                    ) = CredentialLookup.Allowed
+                    override suspend fun credential(environment: TerminalEnvironment) =
+                        CredentialLookup.Allowed(CredentialRoles(AdyenRole.required(), emptyList()))
 
                     override suspend fun terminals(
                         environment: TerminalEnvironment,

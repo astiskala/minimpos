@@ -164,11 +164,12 @@ class SetupDiscoveryUiTest {
 
     private fun assertTapToPaySteps() {
         chooseMode(TerminalMode.PAYMENTS_APP)
+        compose.onNodeWithTag("environment_TEST").performScrollTo().performClick()
         waitForTag("getPaymentsAppTest")
         compose.onNodeWithText("Not installed").assertExists()
         compose.onNodeWithTag("getPaymentsAppTest").assertExists()
-        compose.onNodeWithTag("getPaymentsAppLive").assertExists()
-        assertSteps("Adyen Payments app", "Adyen API")
+        compose.onNodeWithTag("getPaymentsAppLive").assertDoesNotExist()
+        assertSteps("Environment", "Adyen Payments app", "Adyen API")
         compose.onNodeWithTag("step_2").assertExists()
         phone.paymentsApps = setOf(TerminalEnvironment.TEST)
         env.container.terminalStatus.readDevice()
@@ -177,12 +178,12 @@ class SetupDiscoveryUiTest {
         }
         compose.waitUntilAtLeastOneExists(hasText("Adyen Payments Test (TEST)"), 15_000)
         waitForTag("apiKey")
-        assertSteps("Adyen Payments app", "Adyen API")
-        compose.onNodeWithTag("step_3").assertDoesNotExist()
+        assertSteps("Environment", "Adyen Payments app", "Adyen API")
+        compose.onNodeWithTag("step_4").assertDoesNotExist()
         compose.onNodeWithTag("testApi").performScrollTo().performClick()
         waitForTag("setUpTapToPay")
-        assertSteps("Adyen Payments app", "Adyen API", "Tap to Pay")
-        compose.onNodeWithTag("environment").assertDoesNotExist()
+        assertSteps("Environment", "Adyen Payments app", "Adyen API", "Tap to Pay")
+        compose.onNodeWithTag("environment").assertExists()
         compose.onNodeWithTag("discoverSetup").assertDoesNotExist()
         compose.onNodeWithTag("keyIdentifier").assertDoesNotExist()
         compose.onNodeWithTag("paymentsAppKey").assertDoesNotExist()
@@ -236,7 +237,7 @@ class SetupDiscoveryUiTest {
         compose.awaitCondition("the selected environment is saved") {
             container.settingsState.value.terminal.environment == environment
         }
-        assertRoleHelp(mode)
+        assertRoleHelp()
         assertHintBeforeField("merchantAccountHint", "merchantAccount")
         if (environment == TerminalEnvironment.LIVE) {
             assertHintBeforeField("livePrefixHint", "livePrefix")
@@ -265,36 +266,34 @@ class SetupDiscoveryUiTest {
         assertThat(hint.bottom).isAtMost(choice.top)
     }
 
-    private fun assertRoleHelp(mode: TerminalMode) {
+    private fun assertRoleHelp() {
         compose.onNodeWithText(env.context.getString(R.string.settings_adyen_role_terminals), substring = true).assertExists()
         compose.onNodeWithText("Checkout webservice role", substring = true).assertDoesNotExist()
         compose.onNodeWithText("Required for real payments.", substring = true).assertDoesNotExist()
-        if (mode == TerminalMode.CLOUD) {
-            compose.onNodeWithTag("roleCloud").assertExists()
-            compose.onNodeWithText(env.context.getString(R.string.settings_adyen_role_shared_key), substring = true).assertExists()
-        } else {
-            compose.onNodeWithTag("roleCloud").assertDoesNotExist()
-            compose.onNodeWithText(env.context.getString(R.string.settings_adyen_role_settings), substring = true).assertExists()
-            compose.onNodeWithText(env.context.getString(R.string.settings_adyen_role_shared_key), substring = true).assertExists()
-        }
+        compose.onNodeWithTag("roleCloud").assertExists()
+        compose.onNodeWithTag("roleCredentials").assertExists()
+        compose.onNodeWithText(env.context.getString(R.string.settings_adyen_role_settings), substring = true).assertExists()
+        compose.onNodeWithText(env.context.getString(R.string.settings_adyen_role_shared_key), substring = true).assertExists()
     }
 
     @Test
     fun `Tap to Pay keeps boarding hidden until its API test succeeds without terminal discovery`() {
         phone.paymentsApps = setOf(TerminalEnvironment.TEST)
         val container = env.container
-        env.updateSettings { it.copy(terminal = it.terminal.copy(mode = TerminalMode.PAYMENTS_APP)) }
+        env.updateSettings {
+            it.copy(terminal = it.terminal.copy(mode = TerminalMode.PAYMENTS_APP, environment = TerminalEnvironment.TEST))
+        }
         container.start()
         compose.setContent { MiniMposApp(container) }
         compose.onNodeWithTag("settings").performClick()
         waitForTag("section_terminal")
         compose.onNodeWithTag("section_terminal").performClick()
         waitForTag("step_1")
-        compose.onNodeWithTag("step_1").assertIsDisplayed().assertTextContains("Adyen Payments app")
+        compose.onNodeWithTag("step_1").assertIsDisplayed().assertTextContains("Environment")
         compose.onNodeWithText(env.context.getString(R.string.settings_adyen_role_settings), substring = true).assertExists()
         compose.onNodeWithText(env.context.getString(R.string.settings_adyen_role_shared_key), substring = true).assertExists()
         compose.onNodeWithText(env.context.getString(R.string.settings_adyen_role_terminals), substring = true).assertExists()
-        compose.onNodeWithTag("environment").assertDoesNotExist()
+        compose.onNodeWithTag("environment").assertExists()
         compose.onNodeWithTag("discoverSetup").assertDoesNotExist()
         compose.onNodeWithTag("merchantAccount").performScrollTo().performTextInput("Merchant")
         compose.awaitCondition("the account is saved") { container.settingsState.value.terminal.merchantAccount == "Merchant" }
@@ -312,7 +311,7 @@ class SetupDiscoveryUiTest {
             hasTestTag("apiResult") and hasText(env.context.getString(R.string.fault_credential_adyen), substring = true),
             15_000,
         )
-        compose.onNodeWithTag("step_3").assertDoesNotExist()
+        compose.onNodeWithTag("step_4").assertDoesNotExist()
         apiFailure = null
         compose.onNodeWithTag("testApi").performScrollTo().performClick()
         waitForTag("setUpTapToPay")
@@ -322,8 +321,8 @@ class SetupDiscoveryUiTest {
         compose.onNodeWithTag("connectionStatus").assertDoesNotExist()
         compose.onNodeWithText(env.context.getString(R.string.settings_not_boarded)).assertExists()
         compose.onNodeWithTag("terminalsResult").assertDoesNotExist()
-        compose.onNodeWithTag("step_3").assertExists()
-        compose.onNodeWithTag("step_4").assertDoesNotExist()
+        compose.onNodeWithTag("step_4").assertExists()
+        compose.onNodeWithTag("step_5").assertDoesNotExist()
         // Once unlocked, retesting preserves the optional store field.
         compose.onNodeWithTag("storeId").performScrollTo().performTextInput("store-draft")
         apiFailure = Fault.AdyenUnavailable(503)
@@ -451,7 +450,7 @@ class SetupDiscoveryUiTest {
     }
 
     @Test
-    fun `installing both Payments apps leaves only the first step visible`() {
+    fun `both Payments apps still require explicit environment selection`() {
         phone.paymentsApps = TerminalEnvironment.entries.toSet()
         env.updateSettings { it.copy(terminal = it.terminal.copy(mode = TerminalMode.PAYMENTS_APP)) }
         compose.setContent { MiniMposApp(env.container) }
@@ -461,5 +460,10 @@ class SetupDiscoveryUiTest {
         waitForTag("step_1")
         compose.onNodeWithTag("step_2").assertDoesNotExist()
         compose.onNodeWithTag("apiKey").assertDoesNotExist()
+        compose.onNodeWithTag("environment_LIVE").performScrollTo().performClick()
+        waitForTag("apiKey")
+        assertSteps("Environment", "Adyen Payments app", "Adyen API")
+        compose.onNodeWithTag("getPaymentsAppTest").assertDoesNotExist()
+        compose.onNodeWithTag("getPaymentsAppLive").assertDoesNotExist()
     }
 }

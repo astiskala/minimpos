@@ -348,7 +348,7 @@ class AppContainer(
 
     /** Whether payments and printing can work, for Home, Settings and the receipt screens. */
     val terminalStatus =
-        TerminalStatus(terminalSetup, gateway, appScope, api::verify, tapToPay::checkSaved) { tapToPay.diagnostics.refresh() }
+        TerminalStatus(terminalSetup, gateway, appScope, api::inspect, tapToPay::checkSaved) { tapToPay.diagnostics.refresh() }
 
     /** Optional terminal discovery and explicitly confirmed shared-key setup through connection verification. */
     val setupDiscovery =

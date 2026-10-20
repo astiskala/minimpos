@@ -5,6 +5,7 @@ import app.minimpos.app.data.db.SetupProblem
 import app.minimpos.app.data.security.SecretStoreException
 import app.minimpos.app.data.settings.TerminalMode
 import app.minimpos.terminal.transport.CredentialLookup
+import app.minimpos.terminal.transport.CredentialRoles
 import app.minimpos.terminal.transport.DiscoveredKey
 import app.minimpos.terminal.transport.SharedKeyApi
 import app.minimpos.terminal.transport.SharedKeyLookup
@@ -122,7 +123,7 @@ class SetupDiscovery(
             if (!setup.capabilities.discoversTerminals) return@withLock SetupDiscoverySearch.Unavailable
             val environment = setup.environment ?: return@withLock SetupDiscoverySearch.Unavailable
             val api = connect(key)
-            val credential = api.credential(environment, setup.capabilities.usesCloudDeviceApi)
+            val credential = api.credential(environment)
             if (credential is CredentialLookup.Failed) return@withLock SetupDiscoverySearch.Failed(Failure.Remote(credential.fault))
             val onDevice = setup.onTerminal && setup.mode == TerminalMode.TERMINAL
             val terminals =
@@ -291,42 +292,48 @@ class SetupDiscovery(
     )
 }
 
+/**
+ * Independent Management access checks.
+ * @property failure Credential or assignment failure, or null when allowed.
+ * @property roles Observed required roles, or null when no readable credential response exists.
+ */
+data class SetupAccessCheck(
+    val failure: Failure? = null,
+    val roles: CredentialRoles? = null,
+)
+
 internal class SetupAccess(
     private val connect: (String) -> TerminalListingApi,
 ) {
-    /** Why the credential or terminal assignment of [unlocked] cannot be used; null when it can. */
-    suspend fun verify(unlocked: UnlockedSetup): Failure? {
+    /** Checks [unlocked]'s credential and assignment, retaining role evidence even when access fails. */
+    suspend fun verify(unlocked: UnlockedSetup): SetupAccessCheck {
         val setup = unlocked.setup
         val key = unlocked.apiKey
         val environment = setup.environment
         return when {
             setup.apiSetup == ApiSetup.Simulated -> {
-                null
+                SetupAccessCheck()
             }
 
             key == null -> {
-                Failure.NotSetUp(setup.apiSetup.problem ?: SetupProblem.API_KEY)
+                SetupAccessCheck(Failure.NotSetUp(setup.apiSetup.problem ?: SetupProblem.API_KEY))
             }
 
             environment == null -> {
-                Failure.NotSetUp(SetupProblem.ENVIRONMENT)
+                SetupAccessCheck(Failure.NotSetUp(SetupProblem.ENVIRONMENT))
             }
 
             else -> {
                 val api = connect(key)
-                when (val credential = api.credential(environment, setup.capabilities.usesCloudDeviceApi)) {
+                when (val credential = api.credential(environment)) {
                     is CredentialLookup.Failed -> {
-                        Failure.Remote(credential.fault)
+                        SetupAccessCheck(Failure.Remote(credential.fault), credential.roles)
                     }
 
-                    CredentialLookup.Allowed -> {
-                        if (setup.capabilities.discoversTerminals &&
-                            setup.poiId != null
-                        ) {
-                            assignment(api, setup)
-                        } else {
-                            null
-                        }
+                    is CredentialLookup.Allowed -> {
+                        val failure =
+                            if (setup.capabilities.discoversTerminals && setup.poiId != null) assignment(api, setup) else null
+                        SetupAccessCheck(failure, credential.roles)
                     }
                 }
             }

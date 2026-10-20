@@ -384,7 +384,6 @@ internal class CloudTerminal(
         override val scannedWallets: Boolean get() = true
         override val secrets: Set<Secret> get() = setOf(Secret.ADYEN_API_KEY)
         override val discoversTerminals: Boolean get() = true
-        override val usesCloudDeviceApi: Boolean get() = true
 
         override fun selectsEnvironment(onTerminal: Boolean): Boolean = true
 
@@ -431,7 +430,7 @@ internal class CloudTerminal(
 }
 
 /**
- * The Adyen Payments app on this phone (Tap to Pay), with the shared key, in the environment of the installed app.
+ * The selected environment's Adyen Payments app on this phone (Tap to Pay), with the shared key.
  *
  * @param reach Reaches the Payments app of an environment with a shared key; the container plugs in its App Links.
  */
@@ -448,8 +447,8 @@ internal class PaymentsAppDestination(
     }
 
     /**
-     * The rules of the Payments app ([TerminalMode.PAYMENTS_APP]): a phone with exactly one Payments app installed, whose
-     * environment it is, boarding (for the merchant account), whose installation ID is the POIID, then the shared key, in
+     * The rules of the Payments app ([TerminalMode.PAYMENTS_APP]): a selected environment, its app installed on a phone,
+     * boarding (for the merchant account), whose installation ID is the POIID, then the shared key, in
      * the order Settings › Terminal asks for them. It takes only payments and refunds: no abort (it has its own Cancel),
      * no diagnosis and no printer, and it cannot be asked for a transaction's status, only answer from a late reply, so a
      * payment whose answer is missing is checked once, shortly after, before it is reported unknown.
@@ -464,8 +463,11 @@ internal class PaymentsAppDestination(
         override val supportsRemoteStatus: Boolean get() = false
         override val boardsPhone: Boolean get() = true
 
+        override fun selectsEnvironment(onTerminal: Boolean): Boolean = true
+
         override fun setupSteps(onTerminal: Boolean): List<SetupStepKind> =
             listOf(
+                SetupStepKind.ENVIRONMENT,
                 SetupStepKind.PAYMENTS_APP,
                 SetupStepKind.ADYEN_API,
                 SetupStepKind.TAP_TO_PAY,
@@ -482,11 +484,6 @@ internal class PaymentsAppDestination(
             device: DeviceInfo,
         ): String? = terminal.paymentsAppInstallationId.trim().ifEmpty { null }
 
-        override fun environment(
-            terminal: TerminalSettings,
-            device: DeviceInfo,
-        ): TerminalEnvironment? = device.paymentsApps.singleOrNull()
-
         override fun problem(
             terminal: TerminalSettings,
             saved: Set<Secret>,
@@ -494,7 +491,7 @@ internal class PaymentsAppDestination(
             poiId: String?,
             host: String?,
         ): SetupProblem? =
-            paymentsAppProblem(device.isAdyenTerminal, device.paymentsApps)
+            paymentsAppProblem(device.isAdyenTerminal, device.paymentsApps, terminal.environment)
                 ?: boardingProblem(terminal, poiId)
                 ?: sharedKeyProblem(terminal, saved)
 

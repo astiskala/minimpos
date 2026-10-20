@@ -51,10 +51,7 @@ sealed interface DestinationRules {
     /** Whether this destination needs explicit phone registration before connection verification. */
     val boardsPhone: Boolean get() = false
 
-    /** Whether payments go through Adyen's Cloud device API, so the API key also needs its role. */
-    val usesCloudDeviceApi: Boolean get() = false
-
-    /** Whether the merchant must choose TEST or LIVE instead of reading it from this device or the Payments app. */
+    /** Whether the merchant must choose TEST or LIVE instead of reading it from this device's certificate. */
     fun selectsEnvironment(onTerminal: Boolean): Boolean = false
 
     /** Whether it takes an AbortRequest. */
@@ -166,14 +163,15 @@ internal fun sharedKeyProblem(
         else -> null
     }
 
-/** What is wrong with the device for the Payments app: it must be a phone with exactly one Payments app installed. */
+/** What is missing for Tap to Pay: a phone, an explicit environment, and that environment's Payments app. */
 internal fun paymentsAppProblem(
     onTerminal: Boolean,
     paymentsApps: Set<TerminalEnvironment>,
+    environment: TerminalEnvironment?,
 ): SetupProblem? =
     when {
         onTerminal -> SetupProblem.PAYMENTS_APP_ON_TERMINAL
-        paymentsApps.isEmpty() -> SetupProblem.PAYMENTS_APP_MISSING
-        paymentsApps.size > 1 -> SetupProblem.PAYMENTS_APP_AMBIGUOUS
+        environment == null -> SetupProblem.ENVIRONMENT
+        environment !in paymentsApps -> SetupProblem.PAYMENTS_APP_MISSING
         else -> null
     }

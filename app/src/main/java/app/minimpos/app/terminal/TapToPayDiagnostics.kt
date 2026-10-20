@@ -70,7 +70,7 @@ data class TapToPayCredential(
 
 /**
  * Non-secret diagnostic reading; null identities/times mean unavailable, never an assumed successful check.
- * @property environment Installed Payments app environment checked, or null before checking.
+ * @property environment Selected Payments app environment checked, or null before checking.
  * @property clientKey Credential introspection result.
  * @property credential Verified /me result, containing presence only, never the client key value.
  * @property checkedAt UTC epoch milliseconds of the credential response, or null before checking.
@@ -80,6 +80,7 @@ data class TapToPayCredential(
  * @property associated Whether persisted new-boarding evidence matches this verified credential and current installation.
  * @property boardingIdentity Original boarding evidence for this installation/environment, independent of the current credential.
  * @property failure Why the credential check could not run; null for a verified credential.
+ * @property apiHasRequiredRole Whether the boarding role was observed, or null before a readable role check.
  */
 data class TapToPayCheck(
     val environment: TerminalEnvironment? = null,
@@ -92,6 +93,7 @@ data class TapToPayCheck(
     val associated: Boolean = false,
     val boardingIdentity: BoardingIdentity? = null,
     val failure: Failure? = null,
+    val apiHasRequiredRole: Boolean? = null,
 )
 
 /**
@@ -189,6 +191,7 @@ class TapToPayDiagnostics(
                 credential = (result as? BoardingCredentialCheck.Verified)?.let { TapToPayCredential(it.id, it.username, it.active) },
                 checkedAt = now(),
                 failure = (result as? BoardingCredentialCheck.Failed)?.let { Failure.Remote(it.fault) },
+                apiHasRequiredRole = (result as? BoardingCredentialCheck.Verified)?.hasRequiredRole,
             )
         publish(fence, withBoardingIdentity(reading))
         return result

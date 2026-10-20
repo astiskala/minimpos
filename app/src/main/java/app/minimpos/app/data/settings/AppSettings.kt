@@ -159,9 +159,8 @@ enum class TerminalMode {
  * uses `localhost` and the device's own POIID.
  *
  * @property mode Where payments go; see [TerminalMode].
- * @property environment Selected for network/cloud terminals; read from this device's verified certificate on an
+ * @property environment Selected for network/cloud terminals and Tap to Pay; read from this device's verified certificate on an
  *   Adyen terminal. Null until selected or read; it picks the Checkout API endpoint.
- *   With [TerminalMode.PAYMENTS_APP] the installed Payments app decides instead.
  * @property cloudRegion Not a choice: the Cloud device API's live data centre found for the API key in
  *   [TerminalMode.CLOUD]; null for TEST or until found.
  * @property host Only used off-terminal (a terminal on the network): its IP address or host name. Port 8443 is implied.
@@ -213,8 +212,16 @@ data class TerminalSettings(
      */
     fun keepsEnvironment(apiKeySaved: Boolean): Boolean = apiKeySaved && merchantAccount.isNotBlank()
 
-    /** Selects [selected], clearing the learned cloud region even on reselection; null leaves the environment unknown. */
-    fun selectEnvironment(selected: TerminalEnvironment?): TerminalSettings = copy(environment = selected, cloudRegion = null)
+    /**
+     * Selects [selected], clearing the learned cloud region even on reselection; null leaves the environment unknown.
+     * A changed environment drops the Payments app installation ID, which belongs only to its original environment.
+     */
+    fun selectEnvironment(selected: TerminalEnvironment?): TerminalSettings =
+        copy(
+            environment = selected,
+            cloudRegion = null,
+            paymentsAppInstallationId = paymentsAppInstallationId.takeIf { selected == environment }.orEmpty(),
+        )
 
     /**
      * Imports a connection choice: null arguments retain the corresponding choice, a changed [mode] clears learned
@@ -229,14 +236,12 @@ data class TerminalSettings(
     }
 
     /**
-     * History accounting environment; null while a real destination has not established TEST or LIVE. The Payments app
-     * decides its own environment, so an environment kept from another destination does not count for it.
+     * History accounting environment; null while a real destination has not established TEST or LIVE.
      */
     fun historyEnvironment(automaticMode: TerminalMode): String? =
         when (if (mode == TerminalMode.AUTO) automaticMode else mode) {
             TerminalMode.SIMULATOR -> "SIMULATOR"
-            TerminalMode.PAYMENTS_APP -> null
-            TerminalMode.AUTO, TerminalMode.TERMINAL, TerminalMode.CLOUD -> environment?.name
+            TerminalMode.AUTO, TerminalMode.TERMINAL, TerminalMode.CLOUD, TerminalMode.PAYMENTS_APP -> environment?.name
         }
 
     /** These settings with [keyVersion] within its range. */

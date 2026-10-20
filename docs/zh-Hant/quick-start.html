@@ -112,11 +112,12 @@
                 <li><strong>Management API - Terminal actions read</strong></li>
                 <li><strong>Management API - Terminal settings read and write</strong></li>
                 <li><strong>Management API - Terminal settings Advanced read and write</strong></li>
+                <li><strong>Management API - API credentials read and write</strong></li>
                 <li><strong>Cloud Device API role</strong></li>
               </ul>
               憑據須屬於您的 Company 帳戶，並能存取支付目標的商戶帳戶。參見 <a href="https://docs.adyen.com/development-resources/api-credentials/roles">Adyen API 角色指南</a>。</li>
             <li>LIVE 環境下，記下 <strong>Developers › API URLs</strong> 中的 <strong>LIVE URL 前置字元</strong>。</li>
-            <li>Tap to Pay 還需為主 API 密鑰啟用 <strong>Management API - API credentials read and write</strong>，Mini mPOS 會藉此自動建立具有 <strong>Adyen Payments app role</strong> 和客戶端密鑰的商戶層級獨立憑據。請 Adyen 支援團隊開通 Tap to Pay，並容許透過公司憑據指派該角色。產生的密鑰只會加密儲存在這部手機，毋須輸入或傳送。參見 <a href="troubleshooting.html#tap-to-pay-check">Tap to Pay 疑難排解</a>，並準備好共享密鑰。</li>
+            <li>所有設定都需要上述主 API 憑據角色。使用 Tap to Pay 時，Mini mPOS 會自動建立具有 <strong>Adyen Payments App role</strong> 和客戶端密鑰的商戶層級獨立憑據。該角色屬於註冊憑據，而非主 API 密鑰。請 Adyen 支援團隊開通 Tap to Pay，並容許透過公司憑據指派該角色。產生的密鑰只會加密儲存在這部手機，毋須輸入或傳送。參見 <a href="troubleshooting.html#tap-to-pay-check">Tap to Pay 疑難排解</a>，並準備好共享密鑰。</li>
             <li>如需手動設定設備：
               <ul>
                 <li>記下<strong>商戶帳戶</strong>。</li>
@@ -214,13 +215,13 @@
             <p class="callout-title">前提條件</p>
             <ul>
               <li>Mini mPOS 已<a href="#install">安裝</a>在平板或手機上</li>
-              <li>與終端同一環境、具有 Cloud Device API role 的 <a href="#credentials">Adyen API 密鑰</a></li>
+              <li>與終端同一環境的 <a href="#credentials">Adyen API 密鑰</a></li>
               <li>設備和終端都可存取互聯網</li>
             </ul>
           </div>
           <dl class="settings-list setup-route">
             <dt>設定助手（建議）</dt>
-            <dd>在<a href="setup.html">設定助手</a>中選擇<strong>在平板電腦或手機上運行</strong>、配合通過互聯網連接的終端（雲端），以及終端的 <strong>TEST</strong> 或 <strong>LIVE</strong> 環境和<strong>自動</strong>。輸入具有 Cloud Device API role 的 API 密鑰，然後<a href="#helper">掃描二維碼</a>。找到多台終端時，請選擇您的終端。</dd>
+            <dd>在<a href="setup.html">設定助手</a>中選擇<strong>在平板電腦或手機上運行</strong>、配合通過互聯網連接的終端（雲端），以及終端的 <strong>TEST</strong> 或 <strong>LIVE</strong> 環境和<strong>自動</strong>。輸入 API 密鑰，然後<a href="#helper">掃描二維碼</a>。找到多台終端時，請選擇您的終端。</dd>
           </dl>
           <details class="manual-setup">
             <summary>手動</summary>
@@ -234,18 +235,18 @@
           <div class="callout callout-prereq" role="note">
             <p class="callout-title">前提條件</p>
             <ul>
-              <li>Adyen 已為您的公司開通 Tap to Pay 和 <strong>Adyen Payments app role</strong>；請<a href="https://help.adyen.com/contact">聯繫 Adyen 支援團隊</a></li>
+              <li>Adyen 已為您的公司開通 Tap to Pay 和 <strong>Adyen Payments App role</strong>；請<a href="https://help.adyen.com/contact">聯繫 Adyen 支援團隊</a></li>
               <li>Mini mPOS 已<a href="#install">安裝</a>在<a href="#devices">受支援的手機</a>上</li>
               <li><a href="#credentials">Adyen API 密鑰</a>和共享密鑰</li>
             </ul>
           </div>
           <ol>
-            <li>從 Google Play 安裝 TEST 用的 <a href="https://play.google.com/store/apps/details?id=com.adyen.ipp.mobile.companion.test">Adyen Payments Test</a> 或 LIVE 用的 <a href="https://play.google.com/store/apps/details?id=com.adyen.ipp.mobile.companion.live">Adyen Payments</a>，不要同時安裝。</li>
-            <li>在 Mini mPOS 中打開<strong>設定 › 終端</strong>，選擇<strong>在本手機上使用 Tap to Pay</strong>。</li>
+            <li>從 Google Play 安裝 TEST 用的 <a href="https://play.google.com/store/apps/details?id=com.adyen.ipp.mobile.companion.test">Adyen Payments Test</a> 或 LIVE 用的 <a href="https://play.google.com/store/apps/details?id=com.adyen.ipp.mobile.companion.live">Adyen Payments</a>。兩者可以同時安裝。</li>
+            <li>在 Mini mPOS 中打開<strong>設定 › 終端</strong>，選擇<strong>在本手機上使用 Tap to Pay</strong>，再在<strong>環境</strong>中選擇 TEST 或 LIVE。Mini mPOS 只會開啟所選環境的應用程式。</li>
           </ol>
           <dl class="settings-list setup-route">
             <dt>設定助手（建議）</dt>
-            <dd>在<a href="setup.html">設定助手</a>中選擇<strong>在手機上運行</strong>、使用 Adyen Payments 應用程式的 Tap to Pay，以及已安裝應用程式的 <strong>TEST</strong> 或 <strong>LIVE</strong> 環境。輸入 Adyen API 密鑰、商戶帳戶和共享密鑰，可選填店舖 ID。<a href="#helper">掃描二維碼</a>，並在提示時註冊手機；註冊憑據會自動建立。</dd>
+            <dd>在<a href="setup.html">設定助手</a>中選擇<strong>在手機上運行</strong>、使用 Adyen Payments 應用程式的 Tap to Pay，以及 <strong>TEST</strong> 或 <strong>LIVE</strong> 環境。輸入對應環境的 Adyen API 密鑰、商戶帳戶和共享密鑰，可選填店舖 ID。<a href="#helper">掃描二維碼</a>，並在提示時註冊手機；註冊憑據會自動建立。</dd>
           </dl>
           <details class="manual-setup">
             <summary>手動</summary>
@@ -295,7 +296,7 @@
             <li>在 TEST 中測試計劃使用的可選流程：<a href="using.html#preauth">訂金</a>、<a href="using.html#tips">收據小費</a>、<a href="using.html#payment-links">付款連結</a>或<a href="using.html#wallets">掃描錢包</a>。訂金和收據小費會凍結資金，直至扣款。請在商戶後台確認最終扣款結果。</li>
             <li>測試計劃使用的收據交付方式：用實體打印機列印、發送測試郵件或分享收據。</li>
             <li>設定管理員 PIN，需要時另設經理 PIN；參見<a href="using.html#staff">員工權限</a>。</li>
-            <li>改用 LIVE 終端或 LIVE 版 Payments 應用程式及 LIVE 憑據。網絡或雲端終端請在<strong>環境</strong>中選擇 <strong>LIVE</strong>。輸入 <strong>LIVE URL 前置字元</strong>；參見 <a href="https://docs.adyen.com/development-resources/live-endpoints">Adyen LIVE 端點指南</a>。</li>
+            <li>改用 LIVE 終端或 LIVE 版 Payments 應用程式及 LIVE 憑據。網絡或雲端終端及 Tap to Pay 請在<strong>環境</strong>中選擇 <strong>LIVE</strong>。輸入 <strong>LIVE URL 前置字元</strong>；參見 <a href="https://docs.adyen.com/development-resources/live-endpoints">Adyen LIVE 端點指南</a>。Tap to Pay 需要在所選環境中重新註冊。</li>
             <li>在<strong>設定 › 終端</strong>中，確認環境為 <strong>LIVE</strong>。完成最後的<strong>測試連接</strong>步驟，驗證 API 存取和受支援的連接檢查。
               <ul>
                 <li>實體終端：運行<strong>測試連接</strong>並確認通過。</li>
